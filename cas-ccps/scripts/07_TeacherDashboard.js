@@ -1,0 +1,970 @@
+// =============================================================================
+// FILE: 07_TeacherDashboard.js
+// STANDALONE APPS SCRIPT PROJECT — deployed as Web App
+// PURPOSE: Teacher-facing dashboard. Reads from the central Ledger,
+//          filtered to show only students assigned to the requesting teacher.
+//          Also provides the Lesson Context submission form (modal) and
+//          the submitLessonContext() handler called by it.
+//          All IDs from getConfig_() / Script Properties.
+// DEPLOY:  Execute as: Me · Access: Anyone in organization
+//
+// MODULE 2 ADDITIONS (marked ── M2 ──):
+//   submitLessonContext()    — server-side handler called by modal form
+//   getCompetencies()        — returns filtered competency list for dropdown
+//   buildModalHtml_()        — modal markup injected into dashboard shell
+//   All existing functions unchanged.
+// =============================================================================
+
+function doGet() {
+  return HtmlService
+    .createHtmlOutput(buildDashboardHtml_())
+    .setTitle("Assignment Dashboard")
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// ---------------------------------------------------------------------------
+// getDashboardData — called client-side via google.script.run
+// Filters Ledger to the requesting teacher's email and optionally by term
+// ---------------------------------------------------------------------------
+function getDashboardData(termFilter) {
+  const cfg = getConfig_();
+  const teacherEmail = cfg.teacherEmail;
+
+  const activeTerm = termFilter ||
+    PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "ALL";
+
+  const ss          = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const ledger      = ss.getSheetByName(cfg.tabs.ledger);
+  const staging     = ss.getSheetByName(cfg.tabs.stagingPipeline);
+  const ledgerData  = ledger.getDataRange().getValues();
+  const stagingData = staging ? staging.getDataRange().getValues() : [];
+
+  // Build pipeline status lookup by FileID
+  const pipelineStatus  = {};
+  const stagingHeaders  = stagingData[0] ? stagingData[0].map(h => String(h).trim()) : [];
+  const spFileIdx       = stagingHeaders.indexOf("StudentFileID");
+  const spStatusIdx     = stagingHeaders.indexOf("Status");
+  for (let i = 1; i < stagingData.length; i++) {
+    const fid = spFileIdx   !== -1 ? String(stagingData[i][spFileIdx]).trim()   : "";
+    const st  = spStatusIdx !== -1 ? String(stagingData[i][spStatusIdx]).trim() : "";
+    if (fid) pipelineStatus[fid] = st;
+  }
+
+  const students  = [];
+  const unitMap   = {};
+  const allTerms  = new Set();
+
+  for (let i = 1; i < ledgerData.length; i++) {
+    const row = ledgerData[i];
+    if (String(row[8]).toLowerCase() !== teacherEmail.toLowerCase()) continue;
+    if (!row[1]) continue;
+
+    const rowTerm    = String(row[18] || "").trim();
+    const ledgerStatus = String(row[12]).trim();
+
+    if (rowTerm) allTerms.add(rowTerm);
+    if (ledgerStatus === "ARCHIVED") continue;
+    if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
+
+    const fileId       = String(row[3]).trim();
+    const unitCode     = String(row[10]).trim();
+    const displayStatus = resolveDisplay_(ledgerStatus, pipelineStatus[fileId]);
+    const statusClass  = resolveClass_(displayStatus);
+
+    students.push({
+      name:        String(row[4]).trim()  || "—",
+      googleId:    String(row[1]).trim(),
+      block:       String(row[5]).trim(),
+      className:   String(row[6]).trim(),
+      period:      String(row[11]).trim(),
+      subject:     String(row[9]).trim(),
+      unitCode:    unitCode,
+      configId:    String(row[2]).trim(),
+      status:      displayStatus,
+      statusClass: statusClass,
+      lastEval:    row[15] ? formatDate_(row[15]) : "Never",
+      submittedAt: row[13] ? formatDate_(row[13]) : "—",
+      docUrl:      fileId
+        ? "https://docs.google.com/document/d/" + fileId + "/edit"
+        : "#"
+    });
+
+    if (!unitMap[unitCode]) unitMap[unitCode] = { total:0, compliant:0, pending:0, flagged:0 };
+    unitMap[unitCode].total++;
+    if (displayStatus === "COMPLIANT ✓")                         unitMap[unitCode].compliant++;
+    else if (["QUEUED","EVALUATING NOW"].includes(displayStatus)) unitMap[unitCode].pending++;
+    else if (displayStatus.includes("FLAGGED"))                   unitMap[unitCode].flagged++;
+  }
+
+  students.sort((a, b) => {
+    if (a.statusClass === "flagged" && b.statusClass !== "flagged") return -1;
+    if (b.statusClass === "flagged" && a.statusClass !== "flagged") return 1;
+    if (a.unitCode < b.unitCode) return -1;
+    if (a.unitCode > b.unitCode) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
+  // ── M2 warm-up readiness indicator ──────────────────────────────────────
+  // Reads StudentProfiles to build the dashboard readiness panel.
+  // Shows: students with eval history / warm-up history / shadow confidence.
+  // buildShadowMatrixSummary_() is defined in Script 23 (same project).
+  let warmUpReadiness = null;
+  const m2Enabled = PropertiesService.getScriptProperties().getProperty("M2_ENABLED");
+  if (m2Enabled === "true") {
+    try {
+      warmUpReadiness = buildShadowMatrixSummary_(ss, cfg);
+    } catch(e) {
+      Logger.log("[S07] Could not build warm-up readiness: " + e.message);
+    }
+  }
+
+  return {
+    students:       students,
+    unitSummary:    unitMap,
+    teacherEmail:   teacherEmail,
+    activeTerm:     activeTerm,
+    availableTerms: [...allTerms].sort().reverse(),
+    generatedAt:    formatDate_(new Date()),
+    warmUpReadiness: warmUpReadiness  // null if M2 not enabled
+  };
+}
+
+// ── M2 ──────────────────────────────────────────────────────────────────────
+// getCompetencies — discovers all courses for this teacher from the registry,
+// returns competencies grouped by course, sorted by task number within each.
+//
+// Course discovery: a row belongs to this teacher if:
+//   (a) teacher_email matches this teacher's email, OR
+//   (b) teacher_email is blank (shared row available to all teachers)
+// All unique subject values across matching rows become course tabs.
+//
+// Returns:
+//   { courses: [{ code, name, competencies: [{ id, taskNum, text, strand }] }] }
+//   courses sorted by code (8175 before 8177 etc.)
+//   competencies within each course sorted by taskNum ascending
+//
+// ── M3 HOOK ──
+//   Each competency carries a scaffolding placeholder populated by
+//   getStudentScaffoldingData() when Module 3 student profiles exist.
+//   For now scaffolding is always an empty array — zero UI cost.
+// ── M2 ──────────────────────────────────────────────────────────────────────
+function getCompetencies() {
+  const cfg   = getConfig_();
+  const email = cfg.teacherEmail || "";
+
+  const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
+
+  if (!sheet) {
+    Logger.log("[M2] CompetencyRegistry tab not found.");
+    return { error: "CompetencyRegistry tab not found. Run Module 2 setup." };
+  }
+
+  const data    = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+
+  // Column indices — resolved by name, not position
+  const iId      = headers.indexOf("competency_id");
+  const iText    = headers.indexOf("competency_text");
+  const iSubject = headers.indexOf("subject");
+  const iStrand  = headers.indexOf("strand");
+  const iEmail   = headers.indexOf("teacher_email");
+  const iActive  = headers.indexOf("active");
+
+  if (iId === -1 || iText === -1) {
+    return { error: "CompetencyRegistry missing required columns (competency_id, competency_text)." };
+  }
+
+  // ── Pass 1: collect all rows visible to this teacher ─────────────────────
+  // A row is visible if: teacher_email matches OR teacher_email is blank.
+  // Rows scoped to a different teacher are excluded.
+  const visibleRows = [];
+  for (let i = 1; i < data.length; i++) {
+    const row      = data[i];
+    const active   = iActive === -1 ? true
+      : String(row[iActive]).trim().toUpperCase() !== "FALSE";
+    if (!active) continue;
+
+    const rowEmail = iEmail !== -1 ? String(row[iEmail]).trim() : "";
+    const isShared = !rowEmail;
+    const isOwned  = rowEmail.toLowerCase() === email.toLowerCase();
+    if (!isShared && !isOwned) continue;
+
+    const compId  = String(row[iId]).trim();
+    const subject = iSubject !== -1 ? String(row[iSubject]).trim() : "";
+    if (!compId) continue;
+
+    // Extract task number from ID for sort — format is "COURSECODE-N"
+    // e.g. "8177-15" → taskNum 15. Falls back to 9999 if unparseable.
+    const dashIdx = compId.lastIndexOf("-");
+    const taskNum = dashIdx !== -1
+      ? parseInt(compId.substring(dashIdx + 1), 10) || 9999
+      : 9999;
+
+    // Extract course code — everything before the last dash
+    const courseCode = dashIdx !== -1 ? compId.substring(0, dashIdx) : compId;
+
+    visibleRows.push({
+      id:         compId,
+      courseCode: courseCode,
+      subject:    subject,
+      taskNum:    taskNum,
+      text:       String(row[iText]).trim(),
+      strand:     iStrand !== -1 ? String(row[iStrand]).trim() : "",
+      scaffolding: []  // ── M3 hook: populated by getStudentScaffoldingData() ──
+    });
+  }
+
+  if (visibleRows.length === 0) {
+    return { error: "No competencies found. Check the CompetencyRegistry tab." };
+  }
+
+  // ── Pass 2: group by course, sort by taskNum within each ─────────────────
+  // courseMap: { courseCode: { name, competencies[] } }
+  const courseMap = {};
+  for (const comp of visibleRows) {
+    const code = comp.courseCode;
+    if (!courseMap[code]) {
+      courseMap[code] = {
+        code:          code,
+        name:          comp.subject || code,  // subject column as display name
+        competencies:  []
+      };
+    }
+    courseMap[code].competencies.push({
+      id:          comp.id,
+      taskNum:     comp.taskNum,
+      text:        comp.text,
+      strand:      comp.strand,
+      scaffolding: comp.scaffolding
+    });
+  }
+
+  // Sort competencies within each course by taskNum ascending
+  for (const code of Object.keys(courseMap)) {
+    courseMap[code].competencies.sort((a, b) => a.taskNum - b.taskNum);
+  }
+
+  // Sort courses by code ascending (8175 before 8177)
+  const courses = Object.values(courseMap)
+    .sort((a, b) => a.code.localeCompare(b.code));
+
+  Logger.log("[M2] getCompetencies: " + courses.length + " course(s), " +
+    visibleRows.length + " total competencies for " + email);
+
+  return { courses: courses };
+}
+
+// ── M2 ──────────────────────────────────────────────────────────────────────
+// submitLessonContext — server-side handler for the modal form submit.
+// Validates input, delegates to Script 22 handler, returns result to client.
+//
+// Params (from client):
+//   payload {
+//     lessonDate, periodOrClass, activityDescription,
+//     learningObjective, keyVocabulary, priorLessonConnection,
+//     competencyIds   // comma-separated string
+//   }
+//
+// Returns:
+//   { success: true,  lessonId: "LES-...", frameDocUrl: null }  — on success
+//   { success: false, error: "human-readable message" }          — on failure
+// ── M2 ──────────────────────────────────────────────────────────────────────
+function submitLessonContext(payload) {
+  try {
+    // Attach teacher identity from Script Properties — not from client payload
+    const cfg = getConfig_();
+    payload.teacherEmail = cfg.teacherEmail;
+    payload.teacherName  = cfg.teacherName;
+
+    // Delegate to Script 22
+    const result = onLessonContextSubmit_(payload);
+    return result;
+
+  } catch (err) {
+    Logger.log("[M2] submitLessonContext error: " + err.message);
+    return { success: false, error: "Submission failed: " + err.message };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Existing helper functions — unchanged
+// ---------------------------------------------------------------------------
+function resolveDisplay_(ledger, pipeline) {
+  if (pipeline === "IN_PROCESS")        return "EVALUATING NOW";
+  if (pipeline === "PENDING_INFERENCE") return "QUEUED";
+  switch (ledger) {
+    case "ACTIVE":    return "NOT STARTED";
+    case "STAGED":    return "QUEUED";
+    case "COMPLETE":  return "EVALUATED";
+    case "COMPLIANT": return "COMPLIANT ✓";
+    default:          return ledger.startsWith("ERROR") ? "FLAGGED ⚠" : (ledger || "UNKNOWN");
+  }
+}
+
+function resolveClass_(display) {
+  if (display === "COMPLIANT ✓")    return "compliant";
+  if (display === "EVALUATING NOW") return "active";
+  if (display === "QUEUED")         return "queued";
+  if (display === "EVALUATED")      return "evaluated";
+  if (display === "NOT STARTED")    return "not-started";
+  if (display.includes("FLAGGED"))  return "flagged";
+  return "unknown";
+}
+
+function formatDate_(d) {
+  try {
+    if (!(d instanceof Date)) d = new Date(d);
+    return Utilities.formatDate(d, Session.getScriptTimeZone(), "MMM d, yyyy h:mm a");
+  } catch (e) { return String(d); }
+}
+
+// ---------------------------------------------------------------------------
+// buildDashboardHtml_ — self-contained single-page UI
+// M2 additions: "New Lesson" button in header, modal markup, modal JS
+// ---------------------------------------------------------------------------
+function buildDashboardHtml_() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Assignment Dashboard</title>
+<style>
+/* ── RESET + BASE ── */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
+
+/* ── HEADER ── */
+header{background:#1a73e8;color:white;padding:16px 24px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+header h1{font-size:18px;font-weight:500;flex:1}
+#refresh-btn{background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:white;padding:7px 14px;border-radius:4px;cursor:pointer;font-size:13px}
+#refresh-btn:hover{background:rgba(255,255,255,0.3)}
+#term-filter{padding:6px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:13px;margin-left:0}
+#term-filter option{color:#202124;background:white}
+
+/* ── M2: NEW LESSON BUTTON ── */
+#new-lesson-btn{background:white;color:#1a73e8;border:none;padding:7px 16px;border-radius:4px;cursor:pointer;font-size:13px;font-weight:600;letter-spacing:.2px;transition:background 0.15s}
+#new-lesson-btn:hover{background:#e8f0fe}
+
+/* ── LOADING ── */
+#loading{text-align:center;padding:60px 24px;color:#5f6368}
+.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── MAIN ── */
+.main{padding:20px 24px}
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
+.summary-card{background:white;border-radius:8px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.summary-card .count{font-size:32px;font-weight:600;line-height:1;margin-bottom:6px}
+.summary-card .label{font-size:12px;color:#5f6368;text-transform:uppercase;letter-spacing:.5px}
+.card-compliant .count{color:#1e8e3e}.card-pending .count{color:#e37400}
+.card-flagged .count{color:#d93025}.card-total .count{color:#1a73e8}
+.unit-section{margin-bottom:28px}
+.unit-header{font-size:13px;font-weight:600;color:#5f6368;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
+.student-row{background:white;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.08);border-left:4px solid #dadce0}
+.student-row.compliant{border-left-color:#1e8e3e}
+.student-row.active{border-left-color:#1a73e8}
+.student-row.queued{border-left-color:#e37400}
+.student-row.evaluated{border-left-color:#9334e6}
+.student-row.not-started{border-left-color:#dadce0}
+.student-row.flagged{border-left-color:#d93025;background:#fef7f7}
+.student-name{font-weight:500;font-size:14px;margin-bottom:3px}
+.student-meta{font-size:12px;color:#5f6368}
+.last-eval{font-size:11px;color:#80868b;margin-top:2px}
+.doc-link{display:block;font-size:11px;color:#1a73e8;margin-top:4px;text-decoration:none}
+.doc-link:hover{text-decoration:underline}
+.status-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap}
+.badge-compliant{background:#e6f4ea;color:#1e8e3e}
+.badge-active{background:#e8f0fe;color:#1a73e8}
+.badge-queued{background:#fef3e2;color:#e37400}
+.badge-evaluated{background:#f3e8fd;color:#9334e6}
+.badge-not-started{background:#f1f3f4;color:#5f6368}
+.badge-flagged{background:#fce8e6;color:#d93025}
+.badge-unknown{background:#f1f3f4;color:#5f6368}
+footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
+
+/* ── M2: MODAL ── */
+.modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
+.modal-backdrop.open{display:flex}
+.modal{background:white;border-radius:12px;width:100%;max-width:640px;box-shadow:0 8px 32px rgba(0,0,0,0.22);overflow:hidden;margin:auto}
+.modal-header{background:#1a73e8;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+.modal-header h2{font-size:16px;font-weight:500}
+.modal-close{background:none;border:none;color:white;font-size:22px;cursor:pointer;line-height:1;padding:0 4px;opacity:.8}
+.modal-close:hover{opacity:1}
+.modal-body{padding:24px}
+.modal-footer{padding:16px 24px;border-top:1px solid #e8eaed;display:flex;justify-content:flex-end;gap:10px;align-items:center}
+
+/* ── M2: FORM ELEMENTS ── */
+.field{margin-bottom:18px}
+.field label{display:block;font-size:13px;font-weight:500;color:#3c4043;margin-bottom:6px}
+.field label .req{color:#d93025;margin-left:2px}
+.field input[type="date"],
+.field input[type="text"],
+.field textarea,
+.field select{width:100%;padding:9px 12px;border:1px solid #dadce0;border-radius:6px;font-size:14px;font-family:inherit;color:#202124;background:white;transition:border-color 0.15s}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,0.15)}
+.field textarea{resize:vertical;min-height:80px;line-height:1.5}
+.field .hint{font-size:11px;color:#80868b;margin-top:4px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* ── M2: COURSE TABS ── */
+.course-tabs{display:flex;gap:0;border-bottom:2px solid #e8eaed;margin-bottom:16px}
+.course-tab{font-size:13px;font-weight:500;color:#5f6368;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;background:none;border-top:none;border-left:none;border-right:none}
+.course-tab:hover{color:#202124;background:#f8f9fa}
+.course-tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
+.course-tab .tab-badge{font-size:11px;background:#1a73e8;color:white;border-radius:10px;padding:1px 6px;font-weight:600;display:none}
+.course-tab.active .tab-badge{background:#1a73e8}
+.course-tab .tab-badge.has-checks{display:inline-block}
+.course-panel{display:none}
+.course-panel.active{display:block}
+
+/* ── M2: COMPETENCY CHECKLIST ── */
+.competency-loading{color:#80868b;font-size:13px;padding:8px 0}
+.strand-group{margin-bottom:14px}
+.strand-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#80868b;margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f1f3f4}
+.competency-item{display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background 0.1s}
+.competency-item:hover{background:#f8f9fa}
+.competency-item input[type="checkbox"]{margin-top:2px;flex-shrink:0;accent-color:#1a73e8;width:15px;height:15px;cursor:pointer}
+.competency-item .c-num{font-family:monospace;font-size:11px;color:#1a73e8;font-weight:700;white-space:nowrap;min-width:32px}
+.competency-item .c-text{font-size:13px;color:#3c4043;line-height:1.45}
+.competency-item .c-scaffold{font-size:10px;color:#1e8e3e;margin-top:2px}
+.competency-empty{font-size:13px;color:#80868b;padding:8px 0}
+.comp-container{max-height:260px;overflow-y:auto;border:1px solid #e8eaed;border-radius:6px;padding:8px 4px}
+
+/* ── M2: SUBMIT BUTTON ── */
+#submit-btn{background:#1a73e8;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.15s}
+#submit-btn:hover{background:#1557b0}
+#submit-btn:disabled{background:#dadce0;color:#80868b;cursor:not-allowed}
+#cancel-btn{background:none;border:none;color:#5f6368;font-size:14px;cursor:pointer;padding:9px 14px}
+#cancel-btn:hover{color:#202124}
+
+/* ── M2: TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#202124;color:white;padding:12px 20px;border-radius:8px;font-size:14px;z-index:400;opacity:0;transition:opacity 0.2s;pointer-events:none}
+.toast.show{opacity:1}
+.toast.error{background:#d93025}
+
+/* ── M2: FORM ERROR ── */
+.form-error{background:#fce8e6;color:#c5221f;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px;display:none}
+
+@media(max-width:600px){
+  .field-row{grid-template-columns:1fr}
+  .modal{border-radius:0}
+  .modal-backdrop{padding:0}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📊 Assignment Dashboard</h1>
+  <!-- ── M2: New Lesson button ── -->
+  <button id="new-lesson-btn" onclick="openModal()">+ New Lesson</button>
+  <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
+  <select id="term-filter" onchange="loadData()">
+    <option value="ALL">All Terms</option>
+  </select>
+</header>
+
+<!-- ── M2: Warm-Up Readiness Panel ── -->
+<div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:#5f6368;display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+  <span id="wr-unit" style="font-weight:600;color:#1a73e8"></span>
+  <span id="wr-eval"></span>
+  <span id="wr-warmup"></span>
+  <span id="wr-confidence"></span>
+  <span id="wr-locked"></span>
+</div>
+<div id="loading"><div class="spinner"></div><p>Loading class data…</p></div>
+<div id="main" class="main" style="display:none"></div>
+<footer id="footer"></footer>
+
+<!-- ── M2: LESSON CONTEXT MODAL ── -->
+<div class="modal-backdrop" id="modal-backdrop" onclick="handleBackdropClick(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+
+    <div class="modal-header">
+      <h2 id="modal-title">Log a Lesson</h2>
+      <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-error" id="form-error"></div>
+
+      <!-- Row 1: Date + Period -->
+      <div class="field-row">
+        <div class="field">
+          <label for="f-date">Lesson date <span class="req">*</span></label>
+          <input type="date" id="f-date">
+        </div>
+        <div class="field">
+          <label for="f-period">Period / class</label>
+          <input type="text" id="f-period" placeholder="e.g. Period 3  (optional)">
+        </div>
+      </div>
+
+      <!-- Learning objective -->
+      <div class="field">
+        <label for="f-objective">Learning objective <span class="req">*</span></label>
+        <textarea id="f-objective" rows="2" placeholder="What can students do by the end of this lesson that they couldn't at the start?"></textarea>
+      </div>
+
+      <!-- Activity description -->
+      <div class="field">
+        <label for="f-activity">What students are doing <span class="req">*</span></label>
+        <textarea id="f-activity" rows="2" placeholder="Describe the activity, task, or experience."></textarea>
+      </div>
+
+      <!-- Prior lesson connection -->
+      <div class="field">
+        <label for="f-prior">Connection to prior lesson</label>
+        <textarea id="f-prior" rows="2" placeholder="What did last lesson cover that this one builds on? (optional)"></textarea>
+      </div>
+
+      <!-- Key vocabulary -->
+      <div class="field">
+        <label for="f-vocab">Key vocabulary</label>
+        <input type="text" id="f-vocab" placeholder="irony, dramatic irony, situational irony  (comma-separated, optional)">
+        <div class="hint">Separate terms with commas.</div>
+      </div>
+
+      <!-- Competencies — course tabs -->
+      <div class="field">
+        <label>Competencies addressed <span class="req">*</span></label>
+        <div id="competency-tabs-shell">
+          <div class="competency-loading" id="comp-loading">Loading competencies…</div>
+          <!-- Course tabs injected here by loadCompetencies() -->
+        </div>
+        <div class="hint" id="comp-hint" style="margin-top:6px"></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button id="cancel-btn" onclick="closeModal()">Cancel</button>
+      <button id="submit-btn" onclick="submitLesson()" disabled>Log lesson</button>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── DASHBOARD ───────────────────────────────────────────────────────────────
+
+// ── renderWarmUpReadiness ────────────────────────────────────────────────
+// Populates the warm-up readiness panel in the dashboard header.
+// Called after loadData() receives warmUpReadiness from getDashboardData().
+// Panel is hidden if warmUpReadiness is null (M2 not enabled or no data yet).
+function renderWarmUpReadiness(r) {
+  const panel = document.getElementById("warmup-readiness-panel");
+  if (!panel) return;
+
+  if (!r) { panel.style.display = "none"; return; }
+
+  panel.style.display = "flex";
+
+  // Current unit
+  const unitEl = document.getElementById("wr-unit");
+  if (unitEl) unitEl.textContent = r.currentUnit
+    ? "📅 " + r.currentUnit
+    : "📅 No active unit";
+
+  // Eval history
+  const evalEl = document.getElementById("wr-eval");
+  if (evalEl) evalEl.textContent =
+    r.withEvalHistory + " of " + r.total + " students have evaluation history";
+
+  // Warm-up history
+  const wuEl = document.getElementById("wr-warmup");
+  if (wuEl) wuEl.textContent = r.withWarmUpHistory + " with warm-up responses";
+
+  // Shadow confidence
+  const confEl = document.getElementById("wr-confidence");
+  if (confEl) confEl.textContent = r.withShadowConfidence
+    ? r.withShadowConfidence + " building archetype confidence"
+    : "";
+
+  // Locked (high confidence)
+  const lockEl = document.getElementById("wr-locked");
+  if (lockEl) lockEl.textContent = r.locked
+    ? r.locked + " ready for personalized archetype"
+    : "";
+}
+
+function loadData() {
+  document.getElementById("loading").style.display = "block";
+  document.getElementById("main").style.display    = "none";
+  const term = document.getElementById("term-filter").value || "ALL";
+  google.script.run
+    .withSuccessHandler(render)
+    .withFailureHandler(function(e) {
+      document.getElementById("loading").innerHTML =
+        '<p style="color:#d93025;padding:24px;">⚠ Could not load data: ' + e.message + '</p>';
+    })
+    .getDashboardData(term);
+}
+
+function render(data) {
+  const main = document.getElementById("main");
+  if (!data || !data.students || data.students.length === 0) {
+    main.innerHTML = '<div style="text-align:center;padding:40px;color:#5f6368">No students registered yet.</div>';
+    document.getElementById("loading").style.display = "none";
+    main.style.display = "block";
+    return;
+  }
+
+  const total     = data.students.length;
+  const compliant = data.students.filter(s => s.statusClass === "compliant").length;
+  const pending   = data.students.filter(s => ["queued","active"].includes(s.statusClass)).length;
+  const flagged   = data.students.filter(s => s.statusClass === "flagged").length;
+
+  let html = \`<div class="summary-grid">
+    <div class="summary-card card-total"><div class="count">\${total}</div><div class="label">Students</div></div>
+    <div class="summary-card card-compliant"><div class="count">\${compliant}</div><div class="label">Submitted</div></div>
+    <div class="summary-card card-pending"><div class="count">\${pending}</div><div class="label">In progress</div></div>
+    <div class="summary-card card-flagged"><div class="count">\${flagged}</div><div class="label">Needs attention</div></div>
+  </div>\`;
+
+  const units = {};
+  data.students.forEach(s => {
+    if (!units[s.unitCode]) units[s.unitCode] = [];
+    units[s.unitCode].push(s);
+  });
+
+  const badgeMap = {
+    compliant:"badge-compliant", active:"badge-active", queued:"badge-queued",
+    evaluated:"badge-evaluated", "not-started":"badge-not-started",
+    flagged:"badge-flagged", unknown:"badge-unknown"
+  };
+
+  Object.keys(units).sort().forEach(unit => {
+    const u = data.unitSummary[unit] || {};
+    html += \`<div class="unit-section">
+      <div class="unit-header">\${esc(unit)} <span style="font-weight:400;margin-left:8px;">\${u.total||0} students · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
+    units[unit].forEach(s => {
+      html += \`<div class="student-row \${s.statusClass}">
+        <div>
+          <div class="student-name">\${esc(s.name)}</div>
+          <div class="student-meta">Block \${esc(s.block)} · Period \${esc(s.period)} · \${esc(s.subject)}</div>
+          <div class="last-eval">Last evaluation: \${esc(s.lastEval)}</div>
+          <a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>
+        </div>
+        <div><div class="status-badge \${badgeMap[s.statusClass]||'badge-unknown'}">\${esc(s.status)}</div></div>
+      </div>\`;
+    });
+    html += "</div>";
+  });
+
+  main.innerHTML = html;
+  document.getElementById("loading").style.display = "none";
+  main.style.display = "block";
+  document.getElementById("footer").textContent = "Last refreshed: " + data.generatedAt;
+
+  // ── M2: Render warm-up readiness panel ───────────────────────────────────
+  renderWarmUpReadiness(data.warmUpReadiness || null);
+
+  const sel = document.getElementById("term-filter");
+  const currentOptions = [...sel.options].map(o => o.value);
+  (data.availableTerms || []).forEach(t => {
+    if (!currentOptions.includes(t)) {
+      const opt = document.createElement("option");
+      opt.value = t; opt.textContent = t;
+      sel.appendChild(opt);
+    }
+  });
+  if (data.activeTerm && data.activeTerm !== "ALL") sel.value = data.activeTerm;
+}
+
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ── M2: MODAL ───────────────────────────────────────────────────────────────
+
+let competenciesLoaded = false;
+let activeCourseTab    = null; // tracks which course tab is currently visible
+
+function openModal() {
+  const today = new Date();
+  const yyyy  = today.getFullYear();
+  const mm    = String(today.getMonth()+1).padStart(2,"0");
+  const dd    = String(today.getDate()).padStart(2,"0");
+  document.getElementById("f-date").value = yyyy+"-"+mm+"-"+dd;
+
+  document.getElementById("form-error").style.display = "none";
+  document.getElementById("modal-backdrop").classList.add("open");
+  document.getElementById("f-objective").focus();
+
+  if (!competenciesLoaded) loadCompetencies();
+}
+
+function closeModal() {
+  document.getElementById("modal-backdrop").classList.remove("open");
+  clearForm();
+}
+
+function handleBackdropClick(e) {
+  if (e.target === document.getElementById("modal-backdrop")) closeModal();
+}
+
+function clearForm() {
+  ["f-date","f-period","f-objective","f-activity","f-prior","f-vocab"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = "";
+  });
+  // Uncheck all competencies across all course panels
+  document.querySelectorAll('.course-panel input[type="checkbox"]')
+    .forEach(cb => cb.checked = false);
+  updateAllTabBadges();
+  document.getElementById("form-error").style.display = "none";
+  updateSubmitBtn();
+}
+
+// ── loadCompetencies ──────────────────────────────────────────────────────
+// Calls server, receives { courses: [{ code, name, competencies: [...] }] },
+// renders a tab bar + scrollable panel per course.
+// Competencies within each course are already sorted by taskNum server-side.
+function loadCompetencies() {
+  document.getElementById("comp-loading").style.display = "block";
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById("comp-loading").style.display = "none";
+
+      if (result.error) {
+        document.getElementById("competency-tabs-shell").innerHTML =
+          '<div class="competency-empty">' + esc(result.error) + '</div>';
+        return;
+      }
+
+      const courses = result.courses || [];
+      if (courses.length === 0) {
+        document.getElementById("competency-tabs-shell").innerHTML =
+          '<div class="competency-empty">No competencies found. Check the CompetencyRegistry tab.</div>';
+        return;
+      }
+
+      // ── Build tab bar ──
+      let tabBarHtml = '<div class="course-tabs" id="course-tab-bar">';
+      courses.forEach((course, idx) => {
+        const isFirst = idx === 0;
+        tabBarHtml += \`<button
+          class="course-tab\${isFirst ? " active" : ""}"
+          id="tab-\${esc(course.code)}"
+          onclick="switchCourseTab('\${esc(course.code)}')"
+          title="\${esc(course.name)}"
+        >
+          \${esc(course.code)}
+          <span class="tab-badge" id="badge-\${esc(course.code)}">0</span>
+        </button>\`;
+      });
+      tabBarHtml += '</div>';
+
+      // ── Build one panel per course ──
+      let panelsHtml = "";
+      courses.forEach((course, idx) => {
+        const isFirst = idx === 0;
+        panelsHtml += \`<div class="course-panel\${isFirst ? " active" : ""}"
+          id="panel-\${esc(course.code)}"\>\`;
+
+        // Group competencies by strand — preserve taskNum order within strand
+        const strands = {};
+        const strandOrder = [];
+        course.competencies.forEach(c => {
+          const s = c.strand || "General";
+          if (!strands[s]) { strands[s] = []; strandOrder.push(s); }
+          strands[s].push(c);
+        });
+
+        panelsHtml += '<div class="comp-container">';
+        strandOrder.forEach(strand => {
+          panelsHtml += \`<div class="strand-group">
+            <div class="strand-label">\${esc(strand)}</div>\`;
+          strands[strand].forEach(c => {
+            panelsHtml += \`<label class="competency-item">
+              <input type="checkbox"
+                value="\${esc(c.id)}"
+                data-course="\${esc(course.code)}"
+                data-comp-id="\${esc(c.id)}"
+                onchange="onCompetencyChange('\${esc(course.code)}')">
+              <span class="c-num">\${esc(String(c.taskNum))}</span>
+              <span class="c-text">
+                \${esc(c.text)}
+                <span class="c-scaffold" id="scaffold-\${esc(c.id)}"></span>
+              </span>
+            </label>\`;
+            // ── M3 hook: scaffold-{id} span populated by
+            //    getStudentScaffoldingData() when profiles exist ──
+          });
+          panelsHtml += '</div>';
+        });
+        panelsHtml += '</div>'; // .comp-container
+
+        panelsHtml += '</div>'; // .course-panel
+      });
+
+      // Inject into shell (replace loading indicator)
+      document.getElementById("competency-tabs-shell").innerHTML =
+        tabBarHtml + panelsHtml;
+
+      // Set active tab state
+      activeCourseTab = courses[0].code;
+
+      // Hint line
+      document.getElementById("comp-hint").textContent =
+        courses.map(c => c.code + " — " + c.name).join("  ·  ");
+
+      competenciesLoaded = true;
+      updateSubmitBtn();
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById("comp-loading").style.display = "none";
+      document.getElementById("competency-tabs-shell").innerHTML =
+        '<div class="competency-empty">Could not load competencies: ' + esc(e.message||e) + '</div>';
+    })
+    .getCompetencies();
+}
+
+// ── switchCourseTab ───────────────────────────────────────────────────────
+function switchCourseTab(code) {
+  // Deactivate all tabs and panels
+  document.querySelectorAll(".course-tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".course-panel").forEach(p => p.classList.remove("active"));
+
+  // Activate selected
+  const tab   = document.getElementById("tab-"   + code);
+  const panel = document.getElementById("panel-" + code);
+  if (tab)   tab.classList.add("active");
+  if (panel) panel.classList.add("active");
+
+  activeCourseTab = code;
+}
+
+// ── onCompetencyChange ────────────────────────────────────────────────────
+// Fires on every checkbox change. Updates the badge for the affected course
+// and re-evaluates the submit button gate.
+function onCompetencyChange(courseCode) {
+  updateTabBadge(courseCode);
+  updateSubmitBtn();
+}
+
+// ── updateTabBadge ────────────────────────────────────────────────────────
+function updateTabBadge(courseCode) {
+  const panel = document.getElementById("panel-" + courseCode);
+  if (!panel) return;
+  const count  = panel.querySelectorAll('input[type="checkbox"]:checked').length;
+  const badge  = document.getElementById("badge-" + courseCode);
+  if (!badge) return;
+  badge.textContent = count;
+  badge.classList.toggle("has-checks", count > 0);
+}
+
+// ── updateAllTabBadges ────────────────────────────────────────────────────
+function updateAllTabBadges() {
+  document.querySelectorAll(".course-panel").forEach(panel => {
+    const code = panel.id.replace("panel-", "");
+    updateTabBadge(code);
+  });
+}
+
+// ── updateSubmitBtn ───────────────────────────────────────────────────────
+function updateSubmitBtn() {
+  const hasDate      = !!document.getElementById("f-date").value;
+  const hasObjective = !!document.getElementById("f-objective").value.trim();
+  const hasActivity  = !!document.getElementById("f-activity").value.trim();
+  // Collect checked boxes across ALL course panels
+  const hasComp = document.querySelectorAll(
+    '.course-panel input[type="checkbox"]:checked'
+  ).length > 0;
+  document.getElementById("submit-btn").disabled =
+    !(hasDate && hasObjective && hasActivity && hasComp);
+}
+
+// Wire up live validation for required text fields
+document.addEventListener("DOMContentLoaded", function() {
+  ["f-objective","f-activity"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", updateSubmitBtn);
+  });
+  document.getElementById("f-date").addEventListener("change", updateSubmitBtn);
+});
+
+// ── submitLesson ──────────────────────────────────────────────────────────
+function submitLesson() {
+  const btn = document.getElementById("submit-btn");
+  btn.disabled    = true;
+  btn.textContent = "Logging…";
+  hideFormError();
+
+  // Collect checked competency IDs across ALL course panels
+  const checkedBoxes  = document.querySelectorAll(
+    '.course-panel input[type="checkbox"]:checked'
+  );
+  const competencyIds = [...checkedBoxes].map(cb => cb.value).join(",");
+
+  const payload = {
+    lessonDate:            document.getElementById("f-date").value,
+    periodOrClass:         document.getElementById("f-period").value.trim(),
+    learningObjective:     document.getElementById("f-objective").value.trim(),
+    activityDescription:   document.getElementById("f-activity").value.trim(),
+    priorLessonConnection: document.getElementById("f-prior").value.trim(),
+    keyVocabulary:         document.getElementById("f-vocab").value.trim(),
+    competencyIds:         competencyIds
+  };
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      btn.textContent = "Log lesson";
+
+      if (!result.success) {
+        showFormError(result.error || "Submission failed. Please try again.");
+        btn.disabled = false;
+        return;
+      }
+
+      closeModal();
+      showToast("Lesson logged. Alignment will be recorded automatically.");
+
+      // ── S27 hook: open Lesson Frame doc when Script 27 exists ──
+      if (result.frameDocUrl) {
+        window.open(result.frameDocUrl, "_blank");
+      }
+    })
+    .withFailureHandler(function(e) {
+      btn.textContent = "Log lesson";
+      btn.disabled    = false;
+      showFormError("Could not reach the server: " + (e.message || e));
+    })
+    .submitLessonContext(payload);
+}
+
+function showFormError(msg) {
+  const el = document.getElementById("form-error");
+  el.textContent    = msg;
+  el.style.display  = "block";
+  el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+function hideFormError() {
+  document.getElementById("form-error").style.display = "none";
+}
+
+function showToast(msg, isError) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className   = "toast" + (isError ? " error" : "");
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 4000);
+}
+
+// Escape key closes modal
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape") closeModal();
+});
+
+loadData();
+</script>
+</body>
+</html>`;
+}
