@@ -7,6 +7,33 @@ The core problem it solves: you spend hours in AI sessions making decisions, bui
 
 ---
 
+## ⚠️ The delivered code does not match this file's own documentation
+
+8 of the 9 numbered `.gs` files now exist in this directory (only `8_WebApp_UI.html` is still missing, along with `appsscript.json`). Reading them against this README, `STUDIO_INTEGRATION_SPEC.md`, and `SCHEMA_REFERENCE.md` turned up real divergences — not typos, structural ones:
+
+1. **No `STUDIO_ACTIVE` status anywhere in the delivered code.** This README, the deployment guide, and the Studio integration spec all describe a 3-state pipeline — `PENDING_FLOW` → (Turnstile releases one at a time) → `STUDIO_ACTIVE` → (Studio infers) → `FLOW_COMPLETE`. The actual `3_Queue_Processor.gs` and `2_Ingestion_Sensors.gs` only ever use `PENDING_FLOW` and `FLOW_COMPLETE` — Studio is expected to poll `PENDING_FLOW` directly and flip straight to `FLOW_COMPLETE`. There is no concurrency-gating step in the delivered pipeline at all.
+2. **No shadow matrix implementation.** Central to this README's "Architecture in Two Paragraphs" section (5 operator values, confidence intervals, 0.75 auto-verify threshold) — absent from all 9 delivered files. Nothing computes, stores, or reads a shadow matrix.
+3. **No daily primer generator.** `generateDailyPrimer` (documented here as firing daily at 06:00) doesn't exist in any delivered file, and `setupAllTriggers()` in `1_Config_And_Deploy.gs` never installs it.
+4. **No auto-council trigger.** `autoCouncilCheck` (documented as firing every 2 hours once `COUNCIL_AUTO_TRIGGER_SESSIONS` sessions have accumulated) doesn't exist. The delivered council functions (`triggerCouncilSimulation`, `generateCouncilInputPayload`) are manual-only, gated by a "stasis guard" that just checks whether `CURRENT_STATE` changed since the last run — no session counter, no auto-fire.
+5. **`CFG` constants don't match.** This README lists `MAX_CHUNK_SIZE = 25000`; the delivered `1_Config_And_Deploy.gs` sets `MAX_CHUNK_SIZE: 8000`. `TURNSTILE_CONCURRENCY`, `TURNSTILE_STALE_MINS`, `SHADOW_VERIFY_THRESHOLD`, and `COUNCIL_AUTO_TRIGGER_SESSIONS` — all documented below — don't exist anywhere in the delivered `CFG` object.
+6. **Trigger count mismatch.** The "Installed Triggers" table below lists 10 handlers. `setupAllTriggers()` installs exactly 6 (`sensor1_scanInboundSessions`, `processInferenceQueue`, `sendDailyErrorReport`, `runSemanticSweeper`, `sweepRootForExhaust`, `sensor3_externalTelemetry`). `onGovernanceEdit` exists but is installed by a separate manual call (`installGovernanceTrigger()`) that `setupAllTriggers()` never invokes. `runMatrixTurnstile`, `generateDailyPrimer`, and `autoCouncilCheck` are never installed by anything — two of the three don't even exist as functions.
+7. **`10_Turnstile.gs` doesn't fit the rest of the codebase at all** — see the dedicated note below.
+
+**Practical implication:** treat this README, `DEPLOYMENT_GUIDE.md`, `USER_GUIDE.md`, `STUDIO_INTEGRATION_SPEC.md`, and `SCHEMA_REFERENCE.md` as describing an *aspirational* or *prior-version* design, not the code that's actually in this directory. Before deploying, decide which is the source of truth — likely the code, since it's the more recently uploaded and more concretely specific artifact — and update the docs (or the code) to match. Don't assume the doc-described behavior (shadow matrix, daily primer, Turnstile concurrency gating) exists just because it's written up in detail.
+
+### `10_Turnstile.gs` — kept, but flagged as inconsistent
+
+This file is real (it was uploaded alongside the other 8), but it doesn't belong stylistically or functionally with them:
+
+- Every other file opens with a `// FILE X of 8` header and closes with an `// END <filename>` footer naming the next file in sequence. `10_Turnstile.gs` has neither — it opens with an old-style `CE-CODE: Matrix_Turnstile_Engine v1.5` block instead.
+- `9_UI_Diagnostics.gs`'s own closing manifest says `ALL 9 FILES COMPLETE` and lists exactly 9 files (1 through 9) — Turnstile isn't one of them, by the codebase's own count.
+- It reads `STAGING_PIPELINE` columns named **`Status`** (col D) and **`Payload`** (col E), and operates on status values **`PENDING_INFERENCE`** / **`IN_PROCESS`**. Every other delivered file uses the `CFG.STAGING_COLS` map — `Payload_Type` (not `Payload`), `Status` at a different index — and the status values `PENDING_FLOW` / `FLOW_COMPLETE` / `NEEDS_CURATOR` / etc. These are incompatible schemas; if `runMatrixTurnstile()` ran against the real `STAGING_PIPELINE` sheet the other 8 files write to, its column lookups would silently return the wrong data.
+- It also reads `PropertiesService` key `ID_BRAIN_TRUST_INDEX`, while every other file uses `INDEX_ID` for the same spreadsheet.
+
+Read together with point 1 above, this looks like a leftover from an earlier (v5.4-era, "CE-CODE" style) draft that was never updated for v8.0's actual `STAGING_PIPELINE` schema. **Do not deploy this file as-is alongside the other 8** without first reconciling it — or rewriting it — to match `CFG.STAGING_COLS` and the `PENDING_FLOW`/`FLOW_COMPLETE` lifecycle the rest of the system actually uses.
+
+---
+
 ## Architecture in Two Paragraphs
 
 Sessions flow through a five-stage pipeline. Sensor 1 scans a Drive folder for new session documents every 5 minutes and creates rows in STAGING_PIPELINE with status `PENDING_FLOW`. The Turnstile (running every 5 minutes) releases rows one at a time to `STUDIO_ACTIVE`. Workspace Studio picks up `STUDIO_ACTIVE` rows, runs inference on the session text, writes structured JSON back to the document, and sets status to `FLOW_COMPLETE`. The Queue Processor (running every 10 minutes) finds `FLOW_COMPLETE` rows, parses the JSON, and fans the data out to ten downstream ledgers via the JSON Drip architecture. Each branch — current state, pivots, session log, cog registry, action register, vector routing, shadow matrix — is isolated so a failure in one doesn't stop the others.
@@ -18,20 +45,22 @@ The shadow matrix is the system's calibration model. It maintains confidence int
 ## File Structure
 
 ```
-appsscript.json            OAuth scopes, web app config
-1_Config_And_Deploy.gs     CFG constants, deploy, triggers, persona scaffolding
-2_Ingestion_Sensors.gs     Sensor 1 (Drive), Sensor 2 (webhook), Sensor 3 (telemetry)
-3_Queue_Processor.gs       Queue processor, processIntakePayload, JSON drip
-4_Vector_Router.gs         Vector routing, incubator, decay, promotion
-5_Error_And_Utilities.gs   Error log, daily digest, shadow matrix, daily primer
-6_Governance.gs            Turnstile edit handler, mutations, sweepers, council
-7_WebApp.gs                doGet (BOOTSTRAP|OPERATIONAL), doPost, server functions
-8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)
-9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, diagnostics menu
-10_Turnstile.gs            Matrix turnstile state machine, queue metrics
-KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project)
-KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)
+appsscript.json            OAuth scopes, web app config                    — MISSING
+1_Config_And_Deploy.gs     CFG constants, deploy, triggers                 ✅ in repo (see note below re: doc mismatch)
+2_Ingestion_Sensors.gs     Sensor 1 (Drive), Sensor 2 (webhook), Sensor 3   ✅ in repo
+3_Queue_Processor.gs       Queue processor, processIntakePayload           ✅ in repo
+4_Vector_Router.gs         Vector routing, incubator, decay, promotion     ✅ in repo
+5_Error_And_Utilities.gs   Error log, daily digest, utilities              ✅ in repo (no shadow matrix / daily primer — see note)
+6_Governance.gs            Mutations, sweepers, council simulation         ✅ in repo (no Turnstile handler — see note)
+7_WebApp.gs                doGet, doPost, server functions                 ✅ in repo
+8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   — MISSING
+9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, menu       ✅ in repo
+10_Turnstile.gs            Matrix turnstile state machine                 ⚠️ in repo but schema-inconsistent — see note above
+KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) — not needed
+KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)   — not needed
 ```
+
+Also still missing: 6 of 7 persona cog docs (only `PERSONA_DEVELOPER` is in `rtp-core-router/`), `PIVOTS_AND_LESSONS.gdoc`, and `CORE_THESIS` — these are Drive documents the deployed system expects to find/create, not code files, so they're a first-run/onboarding concern rather than a missing-upload concern.
 
 ---
 
