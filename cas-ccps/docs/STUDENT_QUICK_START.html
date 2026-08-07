@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Assignment — Quick Start</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --cream:   #faf7f2;
+  --paper:   #f4f0e8;
+  --ink:     #1a1612;
+  --ink-mid: #4a4540;
+  --ink-dim: #8a837a;
+  --rule:    #ddd8ce;
+  --green:   #2d6a4f;
+  --green-bg:#edf7f1;
+  --amber:   #b45309;
+  --amber-bg:#fef3c7;
+  --red:     #9b1c1c;
+  --red-bg:  #fef2f2;
+  --blue:    #1e40af;
+  --blue-bg: #eff6ff;
+  --serif:   'DM Serif Display', Georgia, serif;
+  --sans:    'DM Sans', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--sans);
+  background: var(--cream);
+  color: var(--ink);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* ── COVER ── */
+.cover {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 64px 48px 56px;
+  position: relative;
+  overflow: hidden;
+}
+
+.cover::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background:
+    radial-gradient(ellipse at 20% 50%, rgba(255,255,255,0.03) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, rgba(255,220,100,0.06) 0%, transparent 40%);
+  pointer-events: none;
+}
+
+.cover-tag {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.4);
+  margin-bottom: 20px;
+  display: block;
+}
+
+.cover h1 {
+  font-family: var(--serif);
+  font-size: 52px;
+  line-height: 1.05;
+  letter-spacing: -0.5px;
+  margin-bottom: 16px;
+  max-width: 600px;
+}
+
+.cover h1 em {
+  font-style: italic;
+  color: #f5c842;
+}
+
+.cover-sub {
+  font-size: 17px;
+  color: rgba(255,255,255,0.55);
+  max-width: 480px;
+  line-height: 1.6;
+  margin-bottom: 40px;
+}
+
+.cover-steps {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cover-step {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+}
+
+/* ── MAIN ── */
+.main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 32px 80px;
+}
+
+/* ── SECTION ── */
+.section {
+  padding: 52px 0 0;
+  border-top: 1px solid var(--rule);
+  margin-top: 52px;
+}
+
+.section:first-child {
+  border-top: none;
+  margin-top: 0;
+  padding-top: 52px;
+}
+
+.section-num {
+  font-family: var(--serif);
+  font-size: 72px;
+  line-height: 1;
+  color: var(--rule);
+  margin-bottom: -8px;
+  display: block;
+  letter-spacing: -2px;
+}
+
+.section h2 {
+  font-family: var(--serif);
+  font-size: 30px;
+  line-height: 1.2;
+  margin-bottom: 16px;
+  color: var(--ink);
+  letter-spacing: -0.3px;
+}
+
+.section p {
+  font-size: 16px;
+  color: var(--ink-mid);
+  margin-bottom: 16px;
+  line-height: 1.75;
+}
+
+.section p:last-child { margin-bottom: 0; }
+
+/* ── STEPS ── */
+.steps { margin: 24px 0; }
+
+.step {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 0 16px;
+  position: relative;
+  margin-bottom: 0;
+}
+
+.step:not(:last-child)::before {
+  content: "";
+  position: absolute;
+  left: 17px; top: 36px;
+  height: calc(100% - 4px);
+  width: 1px;
+  background: var(--rule);
+}
+
+.step-n {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: var(--cream);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 600;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.step-body {
+  padding: 6px 0 28px;
+}
+
+.step-body strong {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 6px;
+  color: var(--ink);
+}
+
+.step-body p {
+  font-size: 15px;
+  color: var(--ink-mid);
+  margin: 0;
+}
+
+/* ── DOCUMENT ZONES ── */
+.doc-diagram {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 24px 0;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.zone {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+  display: grid;
+  grid-template-columns: 4px 1fr auto;
+  gap: 0 16px;
+  align-items: center;
+}
+
+.zone:last-child { border-bottom: none; }
+
+.zone-bar {
+  height: 100%;
+  min-height: 32px;
+  border-radius: 2px;
+  align-self: stretch;
+}
+
+.zone-green  .zone-bar { background: #2d6a4f; }
+.zone-blue   .zone-bar { background: #1e40af; }
+.zone-amber  .zone-bar { background: #b45309; }
+.zone-grey   .zone-bar { background: #9ca3af; }
+
+.zone-body { }
+.zone-label {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  margin-bottom: 2px;
+}
+.zone-desc {
+  font-size: 13px;
+  color: var(--ink-dim);
+}
+
+.zone-green  .zone-label { color: #2d6a4f; }
+.zone-blue   .zone-label { color: #1e40af; }
+.zone-amber  .zone-label { color: #b45309; }
+.zone-grey   .zone-label { color: #6b7280; }
+
+.zone-tag {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.tag-write   { background: var(--amber-bg); color: var(--amber); }
+.tag-read    { background: var(--blue-bg);  color: var(--blue);  }
+.tag-system  { background: #f3f4f6;          color: #6b7280;      }
+
+/* ── CALLOUTS ── */
+.callout {
+  border-radius: 10px;
+  padding: 16px 20px;
+  margin: 20px 0;
+  display: flex;
+  gap: 14px;
+}
+
+.callout-icon { font-size: 20px; flex-shrink: 0; margin-top: 1px; }
+
+.callout-tip   { background: var(--green-bg); color: #1a4731; }
+.callout-warn  { background: var(--amber-bg); color: #78350f; }
+.callout-info  { background: var(--blue-bg);  color: #1e3a8a; }
+.callout-rule  { background: var(--red-bg);   color: var(--red); }
+
+.callout-body { font-size: 14.5px; line-height: 1.65; }
+.callout-body strong { font-weight: 600; }
+.callout-body p { margin-top: 6px; }
+
+/* ── EVALUATION SAMPLE ── */
+.eval-sample {
+  background: white;
+  border: 1px solid var(--rule);
+  border-radius: 12px;
+  overflow: hidden;
+  margin: 24px 0;
+  font-size: 14px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+
+.eval-header {
+  background: var(--ink);
+  color: var(--cream);
+  padding: 12px 20px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.eval-section {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--rule);
+}
+
+.eval-section:last-child { border-bottom: none; }
+
+.eval-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--ink-dim);
+  margin-bottom: 6px;
+}
+
+.eval-section p { color: var(--ink-mid); font-size: 14px; }
+
+.stamp-approved {
+  display: inline-block;
+  background: var(--green-bg);
+  color: var(--green);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+.stamp-revision {
+  display: inline-block;
+  background: var(--amber-bg);
+  color: var(--amber);
+  font-weight: 700;
+  font-size: 13px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid #fcd34d;
+}
+
+/* ── FAQ ── */
+.faq { margin: 24px 0; }
+
+.faq-item {
+  border: 1px solid var(--rule);
+  border-radius: 10px;
+  margin-bottom: 10px;
+  background: white;
+  overflow: hidden;
+}
+
+.faq-q {
+  padding: 14px 20px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  user-select: none;
+}
+
+.faq-q:hover { background: var(--paper); }
+
+.faq-arrow {
+  color: var(--ink-dim);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+
+.faq-item.open .faq-arrow { transform: rotate(180deg); }
+
+.faq-a {
+  display: none;
+  padding: 0 20px 16px;
+  color: var(--ink-mid);
+  font-size: 15px;
+  line-height: 1.7;
+  border-top: 1px solid var(--rule);
+}
+
+.faq-item.open .faq-a { display: block; }
+
+/* ── FOOTER ── */
+.footer {
+  background: var(--ink);
+  color: rgba(255,255,255,0.4);
+  text-align: center;
+  padding: 32px;
+  font-size: 13px;
+  margin-top: 80px;
+}
+
+@media (max-width: 600px) {
+  .cover { padding: 48px 24px 40px; }
+  .cover h1 { font-size: 36px; }
+  .main { padding: 0 20px 60px; }
+  .section-num { font-size: 52px; }
+}
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover">
+  <span class="cover-tag">Student Guide</span>
+  <h1>Your Assignment,<br><em>Step by Step</em></h1>
+  <p class="cover-sub">
+    Everything you need to know about writing your response,
+    getting feedback, and submitting your final work.
+  </p>
+  <div class="cover-steps">
+    <span class="cover-step">📄 Find your document</span>
+    <span class="cover-step">✍️ Write your response</span>
+    <span class="cover-step">📊 Get AI feedback</span>
+    <span class="cover-step">✅ Submit when ready</span>
+  </div>
+</div>
+
+<div class="main">
+
+<!-- SECTION 1: YOUR DOCUMENT -->
+<div class="section">
+  <span class="section-num">01</span>
+  <h2>Finding Your Assignment Document</h2>
+  <p>Your teacher has created a personal document for you in Google Drive. It's already shared with your Google account — you don't need to create anything.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Open Google Drive</strong>
+        <p>Go to drive.google.com and make sure you're signed into the correct Google account — the one your teacher used when they registered you.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Look in "Shared with me"</strong>
+        <p>Click "Shared with me" in the left sidebar. Your assignment document will be there, named after the assignment and your name.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Open it and bookmark it</strong>
+        <p>Open the document. Bookmark this page in your browser — you'll return to it every time you work on this assignment.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Use your original document.</strong> Don't copy it or create a new one. The system tracks your specific document — any other version won't work for submission.</div>
+  </div>
+</div>
+
+<!-- SECTION 2: DOCUMENT LAYOUT -->
+<div class="section">
+  <span class="section-num">02</span>
+  <h2>Understanding Your Document</h2>
+  <p>Your document has four distinct zones. Each one has a specific purpose.</p>
+
+  <div class="doc-diagram">
+    <div class="zone zone-green">
+      <div class="zone-bar"></div>
+      <div class="zone-body">
+        <div class="zone-label">📊 Feedback Zone</div>
+        <div class="zone-desc">Your evaluation reports appear here after each check. The most recent is at the top.</div>
+      </div>
+      <span class="zone-tag tag-read">System writes here</span>
+    </div>
+    <div class="zone zone-blue">
+      <div class="zone-bar"></div>
+      <div class="zone-body">
+        <div class="zone-label">📋 Assignment Prompt</div>
+        <div class="zone-desc">Your teacher's instructions. Read this carefully before you start writing.</div>
+      </div>
+      <span class="zone-tag tag-read">Read only</span>
+    </div>
+    <div class="zone zone-amber">
+      <div class="zone-bar"></div>
+      <div class="zone-body">
+        <div class="zone-label">✍️ Your Response</div>
+        <div class="zone-desc">Everything below "── YOUR RESPONSE BEGINS HERE ──" is where you write.</div>
+      </div>
+      <span class="zone-tag tag-write">You write here</span>
+    </div>
+    <div class="zone zone-grey">
+      <div class="zone-bar"></div>
+      <div class="zone-body">
+        <div class="zone-label">Footer / Tracking</div>
+        <div class="zone-desc">Contains your assignment tracking code and the Turn-In Form link.</div>
+      </div>
+      <span class="zone-tag tag-system">Do not edit</span>
+    </div>
+  </div>
+
+  <div class="callout callout-rule">
+    <span class="callout-icon">🚫</span>
+    <div class="callout-body"><strong>One rule:</strong> Only write in the response zone. Don't edit the feedback zone, the prompt, or the footer. The system uses those sections to track and verify your work.</div>
+  </div>
+</div>
+
+<!-- SECTION 3: WRITING & SUBMITTING FOR FEEDBACK -->
+<div class="section">
+  <span class="section-num">03</span>
+  <h2>Getting Your Feedback</h2>
+  <p>When you're ready to get feedback on your work, the assignment has a built-in evaluation tool. You can use it as many times as you need — there's no penalty for running multiple checks.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Write your response</strong>
+        <p>Write your work below the "── YOUR RESPONSE BEGINS HERE ──" line. Aim for at least 25 words — shorter responses don't give the system enough to evaluate meaningfully.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Click the evaluation menu</strong>
+        <p>In the document menu bar, click <strong>📊 AI Evaluation Panel → Run Assignment Check</strong>. A dialog will confirm your work has been submitted.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Wait 1–3 minutes</strong>
+        <p>Keep the document open. Your feedback will appear at the top of the document automatically. Refresh the page if it doesn't appear after 3 minutes.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <strong>Read your feedback</strong>
+        <p>Scroll to the top of the document. Your evaluation report will be there, along with instructions for what to do next.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Check your status anytime.</strong> Click <strong>📊 AI Evaluation Panel → Check My Status</strong> to see where you stand without waiting for feedback to arrive.</div>
+  </div>
+</div>
+
+<!-- SECTION 4: READING YOUR FEEDBACK -->
+<div class="section">
+  <span class="section-num">04</span>
+  <h2>Reading Your Evaluation</h2>
+  <p>Every evaluation report ends with one of two results. Here's what each one means and what you should do.</p>
+
+  <div class="eval-sample">
+    <div class="eval-header">Example Evaluation Report</div>
+    <div class="eval-section">
+      <div class="eval-section-label">Overall Assessment</div>
+      <p>Your response demonstrates a solid understanding of the core concepts. Your argument in the second paragraph is particularly well-reasoned. The connection to real-world examples strengthens your analysis.</p>
+    </div>
+    <div class="eval-section">
+      <div class="eval-section-label">Milestone Breakdown</div>
+      <p>✓ Milestone 1 — Clear thesis statement present<br>✓ Milestone 2 — Evidence cited and explained<br>⚠ Milestone 3 — Counterargument not addressed<br>✓ Milestone 4 — Conclusion ties back to thesis</p>
+    </div>
+    <div class="eval-section">
+      <div class="eval-section-label">Result</div>
+      <p><span class="stamp-approved">✅ YOUR WORK MEETS THE STANDARD</span></p>
+      <p style="margin-top:8px">You may submit using the Turn-In Form link at the bottom of this document.</p>
+    </div>
+  </div>
+
+  <p>If your work needs revision, the result will look like this instead:</p>
+
+  <div class="eval-sample">
+    <div class="eval-header">Example — Revision Required</div>
+    <div class="eval-section">
+      <div class="eval-section-label">Required Revisions</div>
+      <p>1. Address the counterargument in paragraph 3<br>2. Add at least one specific piece of evidence for your second claim<br>3. Expand your conclusion — currently only one sentence</p>
+    </div>
+    <div class="eval-section">
+      <div class="eval-section-label">Result</div>
+      <p><span class="stamp-revision">✏️ REVISIONS REQUIRED</span></p>
+      <p style="margin-top:8px">Make the changes listed above, then run another check. You can submit once you receive a passing result.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <span class="callout-icon">✅</span>
+    <div class="callout-body"><strong>Revisions are normal.</strong> Most students revise 2–3 times before passing. Each round of feedback shows you specifically what to improve — it's not a grade, it's a coach.</div>
+  </div>
+</div>
+
+<!-- SECTION 5: SUBMITTING -->
+<div class="section">
+  <span class="section-num">05</span>
+  <h2>Submitting Your Final Work</h2>
+  <p>Once you've received a passing evaluation, you're ready to submit. The Turn-In Form link is at the bottom of your document.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Scroll to the bottom of your document</strong>
+        <p>Find the section labelled "── READY TO SUBMIT? ──". Your Turn-In Form link is there.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Open the Turn-In Form</strong>
+        <p>Click the link. Make sure you're signed into the correct Google account — the same one you use for this document.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Paste your document link</strong>
+        <p>Copy the URL from your browser's address bar while your assignment document is open. Paste it into the "Assignment Document Link" field.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <strong>Check the box and submit</strong>
+        <p>Tick "I confirm this is my own original work" and click Submit. Your teacher will receive a notification and your submission is recorded.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Only submit after a passing result.</strong> If you submit before receiving a ✅ result, the system will reject the submission and write a notice in your document explaining what to do.</div>
+  </div>
+</div>
+
+<!-- SECTION 6: FAQ -->
+<div class="section">
+  <span class="section-num">06</span>
+  <h2>Common Questions</h2>
+
+  <div class="faq">
+
+    <div class="faq-item">
+      <div class="faq-q">
+        I don't see the "📊 AI Evaluation Panel" menu in my document.
+        <span class="faq-arrow">⌄</span>
+      </div>
+      <div class="faq-a">
+        This usually means you're not signed into the correct Google account, or you opened a copy of the document rather than your original. Close the document, sign out of Google, sign back in with the correct account, and reopen the document from "Shared with me" in Drive. If the menu still doesn't appear after refreshing, contact your teacher.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        I submitted for feedback but nothing appeared after 5 minutes.
+        <span class="faq-arrow">⌄</span>
+      </div>
+      <div class="faq-a">
+        First, refresh the page — feedback sometimes appears without the page updating automatically. If it's still not there, use <strong>📊 AI Evaluation Panel → Check My Status</strong> to see if your submission is queued. If status says "Being Evaluated Right Now", give it another minute. If status says "In Progress" for more than 10 minutes, let your teacher know.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        The system says "Not Enough to Evaluate Yet" when I try to run a check.
+        <span class="faq-arrow">⌄</span>
+      </div>
+      <div class="faq-a">
+        Your response needs to be at least 25 words before the system can give you meaningful feedback. Check how many words you've written — if it's close, try adding a few more sentences to fully express your ideas.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        The Turn-In Form says my submission was rejected.
+        <span class="faq-arrow">⌄</span>
+      </div>
+      <div class="faq-a">
+        Open your document — a notice has been written in the feedback zone explaining exactly why and what to do. The most common reasons are: no passing evaluation yet (run another check first), or a document link problem (make sure you copied the URL while your document was open). Follow the instructions in the notice and try submitting again.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        Can I run more than one evaluation? Will it hurt my grade?
+        <span class="faq-arrow">⌄</span>
+      </div>
+      <div class="faq-a">
+        Yes — run as many evaluations as you need. There is no penalty for revising multiple times. The system is designed for iteration: write, get feedback, improve, repeat. Your teacher sees your final submitted work, not how many checks you ran.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        I accidentally deleted part of my document — the footer or the zones.
+        <span class="faq-arrow">⌄</span>
+      </div>
+      <div class="faq-a">
+        Don't try to fix it yourself. Contact your teacher immediately and let them know what happened. They can restore the document or set up a new one for you. The document's version history (File → Version history) may also let you undo the change.
+      </div>
+    </div>
+
+    <div class="faq-item">
+      <div class="faq-q">
+        I submitted and then made more changes. Do I need to resubmit?
+        <span class="faq-arrow">⌄</span>
+      </div>
+      <div class="faq-a">
+        Once you submit and your submission is accepted, your work is recorded. Minor edits after submission don't change your submission record. If you made significant changes you want your teacher to see, contact them directly.
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<div class="footer">
+  Assignment System — Student Guide · Contact your teacher if you need help with anything not covered here.
+</div>
+
+<script>
+document.querySelectorAll('.faq-q').forEach(q => {
+  q.addEventListener('click', () => {
+    q.parentElement.classList.toggle('open');
+  });
+});
+</script>
+
+</body>
+</html>

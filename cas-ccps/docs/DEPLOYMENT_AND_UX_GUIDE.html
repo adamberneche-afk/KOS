@@ -1,0 +1,1629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Decoupled AI Wrapper Engine — Deployment & UX Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --ink:       #0f0e0d;
+    --paper:     #faf9f6;
+    --cream:     #f2efe8;
+    --rule:      #e0dbd0;
+    --accent:    #c84b1f;
+    --accent-lt: #f5e8e3;
+    --blue:      #1a4fa3;
+    --blue-lt:   #e8eef8;
+    --green:     #1a6b3c;
+    --green-lt:  #e6f2ec;
+    --gold:      #8a6a00;
+    --gold-lt:   #fdf3d0;
+    --purple:    #5b21b6;
+    --purple-lt: #ede8f8;
+    --muted:     #6b6560;
+    --mono:      'DM Mono', monospace;
+    --serif:     'DM Serif Display', serif;
+    --sans:      'Instrument Sans', sans-serif;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  .page-wrap {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--ink);
+    color: #d4cfc7;
+    padding: 32px 0;
+  }
+
+  .sidebar-logo {
+    padding: 0 24px 28px;
+    border-bottom: 1px solid #2a2825;
+    margin-bottom: 20px;
+  }
+
+  .sidebar-logo h2 {
+    font-family: var(--serif);
+    font-size: 18px;
+    color: #faf9f6;
+    line-height: 1.3;
+    font-weight: 400;
+  }
+
+  .sidebar-logo span {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: #7a746e;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    display: block;
+    margin-top: 4px;
+  }
+
+  .nav-section { padding: 0 16px 8px; }
+
+  .nav-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: #5a5550;
+    padding: 12px 8px 6px;
+    display: block;
+  }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    text-decoration: none;
+    color: #9c9690;
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+
+  .nav-link:hover { background: #1e1c1a; color: #faf9f6; }
+  .nav-link.active { background: var(--accent); color: #faf9f6; }
+
+  .nav-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    background: #2a2825;
+    color: #7a746e;
+    width: 20px; height: 20px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* ── CONTENT ── */
+  .content { max-width: 900px; }
+
+  /* ── HERO ── */
+  .hero {
+    background: var(--ink);
+    color: var(--paper);
+    padding: 64px 56px 56px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero::before {
+    content: "";
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(200,75,31,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 16px;
+  }
+
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: 40px;
+    font-weight: 400;
+    line-height: 1.15;
+    margin-bottom: 20px;
+    max-width: 600px;
+  }
+
+  .hero h1 em { font-style: italic; color: #c4bfb8; }
+
+  .hero-sub {
+    font-size: 15px;
+    color: #9c9690;
+    max-width: 540px;
+    line-height: 1.6;
+    margin-bottom: 32px;
+  }
+
+  .hero-stats { display: flex; gap: 32px; flex-wrap: wrap; }
+
+  .stat { display: flex; flex-direction: column; }
+  .stat-num { font-family: var(--serif); font-size: 28px; color: var(--paper); line-height: 1; }
+  .stat-label { font-size: 12px; color: #6b6560; margin-top: 2px; }
+
+  /* ── SECTIONS ── */
+  .section {
+    padding: 52px 56px 44px;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .section:last-child { border-bottom: none; }
+
+  .section-eyebrow {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+
+  .section h2 {
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 400;
+    margin-bottom: 6px;
+    line-height: 1.2;
+  }
+
+  .section-intro {
+    color: var(--muted);
+    font-size: 15px;
+    max-width: 620px;
+    margin-bottom: 36px;
+    line-height: 1.7;
+  }
+
+  /* ── DEPLOY STEPS ── */
+  .deploy-step {
+    display: grid;
+    grid-template-columns: 48px 1fr;
+    gap: 0 24px;
+    margin-bottom: 36px;
+    position: relative;
+  }
+
+  .deploy-step:not(:last-child)::after {
+    content: "";
+    position: absolute;
+    left: 23px; top: 48px; bottom: -12px;
+    width: 2px;
+    background: var(--rule);
+  }
+
+  .step-badge {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--serif);
+    font-size: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    position: relative;
+    z-index: 1;
+  }
+
+  .step-badge.accent  { background: var(--accent); }
+  .step-badge.blue    { background: var(--blue); }
+  .step-badge.green   { background: var(--green); }
+  .step-badge.purple  { background: var(--purple); }
+
+  .step-body { padding-top: 8px; }
+
+  .step-body h3 {
+    font-size: 17px;
+    font-weight: 700;
+    margin-bottom: 8px;
+  }
+
+  .step-body p {
+    color: var(--muted);
+    font-size: 14px;
+    margin-bottom: 12px;
+    line-height: 1.7;
+  }
+
+  .step-body p:last-child { margin-bottom: 0; }
+
+  /* ── TABLES ── */
+  .asset-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin: 16px 0 20px;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+
+  .asset-table th {
+    background: var(--cream);
+    text-align: left;
+    padding: 10px 16px;
+    font-weight: 700;
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .asset-table td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+    color: var(--ink);
+    font-size: 13px;
+  }
+
+  .asset-table tr:last-child td { border-bottom: none; }
+  .asset-table tr:hover td { background: var(--cream); }
+
+  .asset-table td:first-child {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--accent);
+    white-space: nowrap;
+  }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    background: #1a1816;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 16px 0;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: #c4bfb8;
+    overflow-x: auto;
+  }
+
+  .code-block .key   { color: #f0a070; }
+  .code-block .val   { color: #7ec8a0; }
+  .code-block .cmmt  { color: #4a4540; font-style: italic; }
+  .code-block .hi    { color: #f7d070; }
+
+  /* ── CALLOUTS ── */
+  .callout {
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 16px 0;
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  .callout-warn   { background: var(--gold-lt);   border-left: 3px solid var(--gold);   }
+  .callout-tip    { background: var(--blue-lt);   border-left: 3px solid var(--blue);   }
+  .callout-check  { background: var(--green-lt);  border-left: 3px solid var(--green);  }
+  .callout-red    { background: var(--accent-lt); border-left: 3px solid var(--accent); }
+  .callout-purple { background: var(--purple-lt); border-left: 3px solid var(--purple); }
+
+  .callout-icon { font-size: 18px; flex-shrink: 0; line-height: 1.4; }
+  .callout strong { font-weight: 700; color: var(--ink); }
+
+  /* ── TRIGGER GRID ── */
+  .trigger-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 16px 0;
+  }
+
+  .trigger-card {
+    background: var(--cream);
+    border-radius: 10px;
+    padding: 16px 18px;
+    border: 1px solid var(--rule);
+  }
+
+  .trigger-card .script-name {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+
+  .trigger-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+  .trigger-card p  { font-size: 12px; color: var(--muted); }
+
+  .trigger-type {
+    display: inline-block;
+    margin-top: 8px;
+    font-family: var(--mono);
+    font-size: 11px;
+    background: var(--ink);
+    color: #7ec8a0;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+
+  /* ── ROLE HEADERS ── */
+  .role-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 28px;
+    padding: 20px 24px;
+    border-radius: 12px;
+    border: 1px solid var(--rule);
+  }
+
+  .role-header.admin   { background: #f5f0eb; border-color: #d4c9b8; }
+  .role-header.teacher { background: var(--blue-lt); border-color: #c0cfe8; }
+  .role-header.student { background: var(--green-lt); border-color: #b0d4c0; }
+
+  .role-icon { font-size: 36px; flex-shrink: 0; }
+
+  .role-header h3 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 400;
+    margin-bottom: 2px;
+  }
+
+  .role-header p { font-size: 13px; color: var(--muted); }
+
+  /* ── JOURNEY ── */
+  .journey {
+    position: relative;
+    padding-left: 40px;
+    margin-bottom: 12px;
+  }
+
+  .journey::before {
+    content: "";
+    position: absolute;
+    left: 15px; top: 0; bottom: 0;
+    width: 2px;
+    background: var(--rule);
+  }
+
+  .journey-step {
+    position: relative;
+    margin-bottom: 20px;
+    padding: 16px 20px;
+    background: white;
+    border-radius: 10px;
+    border: 1px solid var(--rule);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  }
+
+  .journey-step::before {
+    content: "";
+    position: absolute;
+    left: -32px; top: 20px;
+    width: 14px; height: 14px;
+    background: var(--paper);
+    border: 2px solid var(--rule);
+    border-radius: 50%;
+    z-index: 1;
+  }
+
+  .journey-step.highlight::before { background: var(--accent); border-color: var(--accent); }
+  .journey-step.success::before   { background: var(--green);  border-color: var(--green);  }
+  .journey-step.system::before    { background: var(--blue);   border-color: var(--blue);   }
+  .journey-step.studio::before    { background: var(--purple); border-color: var(--purple); }
+
+  .journey-step h4 {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .journey-step p { font-size: 13px; color: var(--muted); line-height: 1.65; }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-weight: 400;
+  }
+
+  .tag-auto    { background: var(--blue-lt);   color: var(--blue);   }
+  .tag-manual  { background: var(--cream);      color: var(--muted);  }
+  .tag-studio  { background: var(--purple-lt);  color: var(--purple); }
+  .tag-instant { background: var(--green-lt);   color: var(--green);  }
+  .tag-once    { background: var(--accent-lt);  color: var(--accent); }
+
+  /* ── DOC ANATOMY ── */
+  .doc-anatomy {
+    border: 2px solid var(--rule);
+    border-radius: 12px;
+    overflow: hidden;
+    margin: 20px 0;
+    font-size: 13px;
+  }
+
+  .doc-zone {
+    padding: 16px 20px;
+    border-bottom: 2px dashed var(--rule);
+    position: relative;
+  }
+
+  .doc-zone:last-child { border-bottom: none; }
+
+  .doc-zone-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-bottom: 6px;
+  }
+
+  .doc-zone.feedback  { background: #fff8f5; }
+  .doc-zone.feedback .doc-zone-label  { color: var(--accent); }
+  .doc-zone.prompt    { background: white; }
+  .doc-zone.prompt .doc-zone-label    { color: var(--blue); }
+  .doc-zone.response  { background: #f5faf7; }
+  .doc-zone.response .doc-zone-label  { color: var(--green); }
+  .doc-zone.footer    { background: var(--cream); }
+  .doc-zone.footer .doc-zone-label    { color: var(--muted); }
+  .doc-zone p { color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+  .doc-pill {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 20px;
+    margin-left: 8px;
+    font-family: var(--mono);
+    vertical-align: middle;
+  }
+
+  .pill-read  { background: #fce8e6; color: #c84b1f; }
+  .pill-write { background: var(--green-lt); color: var(--green); }
+  .pill-lock  { background: var(--cream); color: var(--muted); }
+
+  /* ── PIPELINE DIAGRAM ── */
+  .pipeline {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+    margin: 16px 0 24px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .pipe-node {
+    flex: 1;
+    min-width: 110px;
+    background: white;
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 14px 12px;
+    text-align: center;
+    position: relative;
+    font-size: 12px;
+  }
+
+  .pipe-node + .pipe-node { margin-left: 24px; }
+
+  .pipe-node + .pipe-node::before {
+    content: "→";
+    position: absolute;
+    left: -18px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .pipe-node .pipe-icon  { font-size: 20px; margin-bottom: 5px; }
+  .pipe-node .pipe-label { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 3px; color: var(--ink); }
+  .pipe-node .pipe-sub   { color: var(--muted); font-size: 11px; }
+  .pipe-node.highlight   { border-color: var(--accent); background: var(--accent-lt); }
+  .pipe-node.system      { border-color: var(--blue);   background: var(--blue-lt);   }
+  .pipe-node.studio-node { border-color: var(--purple); background: var(--purple-lt); }
+
+  /* ── FOLDER TREE ── */
+  .folder-tree {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: #1a1816;
+    color: #c4bfb8;
+    border-radius: 10px;
+    padding: 24px 28px;
+    line-height: 2;
+  }
+
+  .folder-tree .folder { color: #f0a070; }
+  .folder-tree .doc    { color: #7ec8a0; }
+  .folder-tree .note   { color: #4a4540; font-style: italic; }
+
+  /* ── CHECKLIST ── */
+  .checklist { list-style: none; margin: 16px 0; }
+
+  .checklist li {
+    padding: 9px 0 9px 32px;
+    position: relative;
+    border-bottom: 1px solid var(--rule);
+    font-size: 14px;
+  }
+
+  .checklist li:last-child { border-bottom: none; }
+
+  .checklist li::before {
+    content: "□";
+    position: absolute;
+    left: 0;
+    color: var(--rule);
+    font-size: 18px;
+    line-height: 1.2;
+  }
+
+  .checklist li strong { font-weight: 700; }
+  .checklist li span   { font-size: 12px; color: var(--muted); display: block; margin-top: 2px; }
+
+  /* ── STUDIO FLOW STEPS ── */
+  .flow-block {
+    background: var(--purple-lt);
+    border: 1px solid #c4b0e8;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin: 16px 0;
+  }
+
+  .flow-block h4 {
+    font-family: var(--mono);
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--purple);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .flow-step {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+    font-size: 13px;
+    align-items: flex-start;
+  }
+
+  .flow-step:last-child { margin-bottom: 0; }
+
+  .flow-step-num {
+    width: 22px; height: 22px;
+    background: var(--purple);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .flow-step p { color: var(--ink); line-height: 1.5; margin: 0; font-size: 13px; }
+  .flow-step p span { color: var(--muted); display: block; font-size: 12px; margin-top: 2px; }
+
+  @media (max-width: 768px) {
+    .page-wrap { grid-template-columns: 1fr; }
+    .sidebar { display: none; }
+    .hero, .section { padding: 36px 24px; }
+    .trigger-grid { grid-template-columns: 1fr; }
+  }
+
+  @media print {
+    .sidebar { display: none; }
+    .page-wrap { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h2>Decoupled AI<br>Wrapper Engine</h2>
+    <span>Deployment Guide v3.0</span>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">Overview</span>
+    <a class="nav-link" href="#overview"><span class="nav-num">→</span> Architecture</a>
+    <a class="nav-link" href="#prereqs"><span class="nav-num">→</span> Prerequisites</a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">Admin Setup (Once)</span>
+    <a class="nav-link" href="#admin1"><span class="nav-num">1</span> Central Assets</a>
+    <a class="nav-link" href="#admin2"><span class="nav-num">2</span> Spreadsheet Schema</a>
+    <a class="nav-link" href="#admin3"><span class="nav-num">3</span> Deploy Scripts</a>
+    <a class="nav-link" href="#admin4"><span class="nav-num">4</span> Configure Studio Flows</a>
+    <a class="nav-link" href="#admin5"><span class="nav-num">5</span> Deploy Web Apps</a>
+    <a class="nav-link" href="#admin6"><span class="nav-num">6</span> Create Teacher Manuals</a>
+    <a class="nav-link" href="#admin7"><span class="nav-num">7</span> Set Triggers</a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">Teacher Setup (Per Teacher)</span>
+    <a class="nav-link" href="#teacher-setup"><span class="nav-num">8</span> Run Setup Wizard</a>
+    <a class="nav-link" href="#teacher-triggers"><span class="nav-num">9</span> Teacher Triggers</a>
+  </div>
+
+  <div class="nav-section">
+    <span class="nav-label">User Experience</span>
+    <a class="nav-link" href="#ux-admin"><span class="nav-num">→</span> Admin UX</a>
+    <a class="nav-link" href="#ux-teacher"><span class="nav-num">→</span> Teacher UX</a>
+    <a class="nav-link" href="#ux-student"><span class="nav-num">→</span> Student UX</a>
+    <a class="nav-link" href="#doc-anatomy"><span class="nav-num">→</span> Document Anatomy</a>
+    <a class="nav-link" href="#folder-structure"><span class="nav-num">→</span> Folder Structure</a>
+    <a class="nav-link" href="#pipeline"><span class="nav-num">→</span> Full Pipeline</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="content">
+
+<!-- HERO -->
+<div class="hero" id="overview">
+  <div class="hero-eyebrow">Decoupled AI Wrapper Engine · v3.0</div>
+  <h1>Deployment &amp; <em>User Experience</em> Guide</h1>
+  <p class="hero-sub">
+    Admin sets up once. Each teacher runs a two-minute wizard that creates
+    their entire personal workspace automatically. No API keys anywhere.
+    All inference runs through native Workspace Studio Flows.
+  </p>
+  <div class="hero-stats">
+    <div class="stat"><span class="stat-num">14</span><span class="stat-label">Script files</span></div>
+    <div class="stat"><span class="stat-num">2</span><span class="stat-label">Studio Flows</span></div>
+    <div class="stat"><span class="stat-num">0</span><span class="stat-label">API keys anywhere</span></div>
+    <div class="stat"><span class="stat-num">2 min</span><span class="stat-label">Teacher setup time</span></div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE OVERVIEW -->
+<div class="section">
+  <div class="section-eyebrow">How It Works</div>
+  <h2>Two-tier architecture</h2>
+  <p class="section-intro">
+    The admin configures the shared infrastructure once. Every teacher receives a
+    personal Teacher Manual Google Doc. Opening it and clicking one menu item
+    creates all their personal assets, stores every ID in that document's Script
+    Properties, and populates a setup summary page in the manual itself.
+  </p>
+
+  <div class="callout callout-purple">
+    <div class="callout-icon">⚡</div>
+    <div>
+      <strong>No API keys anywhere in the system.</strong>
+      Both Gemini inference calls — rubric extraction and student evaluation —
+      run through native Workspace Studio Flows using the enterprise Gemini
+      connector. No credentials are stored, hardcoded, or handled by any script.
+    </div>
+  </div>
+
+  <table class="asset-table">
+    <thead>
+      <tr><th>Who does it</th><th>What</th><th>When</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Admin</td><td>Creates central assets, deploys scripts, configures Studio Flows, creates master Teacher Manual</td><td>Once, before any teachers are onboarded</td></tr>
+      <tr><td>Admin</td><td>Copies master Teacher Manual, sets 3 Script Properties, shares copy with teacher</td><td>Once per teacher</td></tr>
+      <tr><td>Teacher</td><td>Opens manual, clicks "Run First-Time Setup", answers 3 prompts</td><td>Once per teacher (~2 minutes)</td></tr>
+      <tr><td>Teacher</td><td>Sets form submit triggers on their personal response sheets</td><td>Once per teacher (~5 minutes)</td></tr>
+      <tr><td>Teacher</td><td>Uploads rubrics, monitors dashboard, reviews submissions</td><td>Ongoing</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PREREQUISITES -->
+<div class="section" id="prereqs">
+  <div class="section-eyebrow">Before You Begin</div>
+  <h2>Prerequisites</h2>
+  <p class="section-intro">
+    Everything runs inside Google Workspace. One admin account owns
+    all shared infrastructure. Teachers and students use any Google account.
+  </p>
+
+  <ul class="checklist">
+    <li>
+      <strong>Google Workspace admin account</strong>
+      <span>Owns all central spreadsheets, folders, and shared scripts. Runs as the evaluation engine identity.</span>
+    </li>
+    <li>
+      <strong>Workspace Studio access</strong>
+      <span>Required for both Gemini inference flows. Available on Education, Business, and Enterprise Workspace plans.</span>
+    </li>
+    <li>
+      <strong>Drive Advanced Service</strong>
+      <span>Enable per Apps Script project in the Services panel. Required by Script 04 for forensic version history checks.</span>
+    </li>
+    <li>
+      <strong>Teacher email addresses</strong>
+      <span>Teachers receive confirmation emails and submission alerts. Students need no email.</span>
+    </li>
+    <li>
+      <strong>No API keys required</strong>
+      <span>All Gemini inference runs natively through Workspace Studio. Nothing to obtain or store.</span>
+    </li>
+  </ul>
+</div>
+
+<!-- ADMIN STEP 1 -->
+<div class="section" id="admin1">
+  <div class="section-eyebrow">Admin Setup — Step 1</div>
+  <h2>Create central shared assets</h2>
+  <p class="section-intro">
+    These assets are shared infrastructure — one set for the entire school.
+    Create them all under the admin Google account.
+  </p>
+
+  <div class="deploy-step">
+    <div class="step-badge accent">A</div>
+    <div class="step-body">
+      <h3>Admin Assignments Root Folder</h3>
+      <p>In My Drive, create a folder named <strong>Assignments</strong>.
+      This is the root of the five-level admin hierarchy. Script 02
+      builds all subject/course/teacher/period/student paths inside it automatically.</p>
+      <p>Record as <code>ADMIN_ROOT_FOLDER_ID</code> (the ID in the folder URL).</p>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge accent">B</div>
+    <div class="step-body">
+      <h3>Master Template Google Doc</h3>
+      <p>Create a blank Google Doc. Leave the body empty — Script 02 stamps
+      the three-zone structure into every student copy.</p>
+      <p>Script 01 + 09 must be bound to this document before it is ever copied.
+      See Step 3 for binding instructions.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN STEP 2 -->
+<div class="section" id="admin2">
+  <div class="section-eyebrow">Admin Setup — Step 2</div>
+  <h2>Create central spreadsheets</h2>
+
+  <div class="deploy-step">
+    <div class="step-badge accent">A</div>
+    <div class="step-body">
+      <h3>Central Ledger &amp; Queue Spreadsheet</h3>
+      <p>Create one Google Sheet. Add these tabs with header rows exactly as shown:</p>
+
+      <div class="code-block">
+<span class="cmmt">-- Ledger --</span>
+<span class="key">Timestamp | GoogleID | ConfigID | FileID | StudentName | Block |
+ClassName | TeacherName | TeacherEmail | Subject | CourseName |
+Period | Status | SubmissionTS | Notes | LastEval |
+AdminFileURL | StudentFileURL</span>
+
+<span class="cmmt">-- ReviewQueue --</span>
+<span class="key">Timestamp | GoogleID | FileID | ConfigID |
+StudentText | Status | ResultRef</span>
+
+<span class="cmmt">-- STAGING_PIPELINE --</span>
+<span class="key">Timestamp | QueueRowRef | StudentFileID | ConfigID | Status</span>
+      </div>
+
+      <p>Record as <code>CENTRAL_LEDGER_SS_ID</code> and <code>ADMIN_SS_ID</code>
+      (both point to this same spreadsheet).</p>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div>
+          <strong>RubricQueue tabs are created per teacher</strong> by the
+          Setup Wizard (Script 16) — named <code>[TeacherName]_RubricQueue</code>.
+          You do not need to create them manually.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN STEP 3 -->
+<div class="section" id="admin3">
+  <div class="section-eyebrow">Admin Setup — Step 3</div>
+  <h2>Deploy scripts</h2>
+  <p class="section-intro">
+    Each script binds to a specific asset. Open the asset → Extensions → Apps Script
+    → paste the file. Include <strong>00_SharedConfig.js</strong> in every project —
+    it is the shared config reader that replaces all hardcoded constants.
+  </p>
+
+  <table class="asset-table">
+    <thead>
+      <tr><th>Script(s)</th><th>Bind To</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>00 + 16 + 17</td>
+        <td>Unified Manual Google Doc</td>
+        <td>Script 16 is the unified setup wizard (admin + teacher). Script 17 is architecture documentation. All in one container-bound project.</td>
+      </tr>
+      <tr>
+        <td>00 + 01 + 09 + 17</td>
+        <td>Master Student Template Google Doc</td>
+        <td>Separate doc from the manual. Script 01 handles all student interactions. Must have CENTRAL_LEDGER_SS_ID and ADMIN_SS_ID set in Script Properties before any student docs are created.</td>
+      </tr>
+      <tr>
+        <td>00 + 02 + 03 + 04 + 06 + 10 + 18</td>
+        <td>Central Ledger spreadsheet — ONE project for all</td>
+        <td>All central scripts in a single project. Script 18 is the onFormSubmit dispatcher — set the trigger to call <code>dispatchFormSubmit</code> in Script 18 — not <code>onFormSubmit</code> (reserved name conflict). Scripts 02 and 04 are called by the dispatcher. Enable Drive Advanced Service. Script 04 rejection messages are fully inline — Script 11 is archived and not used.</td>
+      </tr>
+      <tr>
+        <td>00 + 05 + 19</td>
+        <td>Master Rubric Response Sheet template</td>
+        <td>Script 19 provides <code>getSheetConfig_()</code> and <code>writeConfigTab_()</code>. Script 05 reads config from the <code>_CONFIG</code> tab written by the setup wizard. Trigger set manually by teacher after setup (Step 9).</td>
+      </tr>
+      <tr>
+        <td>00 + 08 + 19</td>
+        <td>Master Teacher Matrix Sheet template</td>
+        <td>Script 19 provides <code>getSheetConfig_()</code>. Script 08 reads config from <code>_CONFIG</code> tab. Script 08's <code>onOpen()</code> self-registers time-driven triggers when teacher first opens their cloned matrix.</td>
+      </tr>
+      <tr>
+        <td>07</td>
+        <td>Standalone project</td>
+        <td>Teacher Dashboard web app. Execute as: Me (admin). Deployed once centrally.</td>
+      </tr>
+      <tr>
+        <td>13</td>
+        <td>Standalone project</td>
+        <td>Student Dashboard web app. Execute as: User accessing the app. Deployed once centrally.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-tip">
+    <div class="callout-icon">💡</div>
+    <div>
+      <strong>One trigger, two handlers.</strong>
+      Script 18's <code>dispatchFormSubmit</code> is the single installable trigger
+      entry point on the central ledger. Set the trigger to call
+      <code>dispatchFormSubmit</code> — never <code>onFormSubmit</code> (reserved name),
+      <code>onFormSubmit_Intake</code>
+      or <code>onTurnInSubmit</code> directly, and never the reserved simple
+      trigger name <code>onFormSubmit</code> which can conflict with installable triggers.
+      Each handler checks <code>namedValues</code> and exits immediately if it's
+      the wrong form type.
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <div class="callout-icon">💡</div>
+    <div>
+      <strong>Cloned sheet config.</strong>
+      Script Properties don't clone with <code>makeCopy()</code>. Script 16's
+      setup wizard writes a <code>_CONFIG</code> tab to each cloned sheet
+      (Rubric Response and Teacher Matrix) at creation time. Scripts 05 and 08
+      read from this tab via <code>getSheetConfig_()</code> (Script 19) using
+      <code>SpreadsheetApp.getActiveSpreadsheet()</code> — no hardcoded IDs needed.
+      Script 19 must be included in both master template sheet projects.
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <div class="callout-icon">⚠️</div>
+    <div>
+      <strong>Script 11 is archived.</strong>
+      Its rejection message content has been merged directly into Script 04.
+      Do not bind or deploy Script 11.
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN STEP 4 -->
+<div class="section" id="admin4">
+  <div class="section-eyebrow">Admin Setup — Step 4</div>
+  <h2>Configure Workspace Studio Flows</h2>
+  <p class="section-intro">
+    Two flows. No API keys. Both use the native enterprise Gemini connector.
+    Studio owns all inference and all write-back operations.
+  </p>
+
+  <div class="flow-block">
+    <h4>⚡ Flow 1 — Rubric Extraction</h4>
+    <div class="flow-step">
+      <div class="flow-step-num">1</div>
+      <p><strong>Trigger: Google Sheets — New row</strong>
+      <span>Sheet: Central Ledger spreadsheet · Tab: <code>[TeacherName]_RubricQueue</code> · Condition: Status = PENDING_EXTRACTION</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">2</div>
+      <p><strong>Read prompt template document</strong>
+      <span>Google Drive — Read File · File ID: <code>@trigger.PromptTemplateID</code></span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">3</div>
+      <p><strong>Gemini: extract structured config</strong>
+      <span>Native Gemini connector. Prompt: map rubric text to JSON schema (unitName, persona, milestone1–4, definitionOfDone). Return JSON only.</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">4</div>
+      <p><strong>Write DRAFT row to Teacher Matrix</strong>
+      <span>Google Sheets — Append Row · Sheet: teacher's TeacherMatrix tab · Status: DRAFT · Include all extracted fields + PromptTemplateID</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">5</div>
+      <p><strong>Mark RubricQueue row complete</strong>
+      <span>Google Sheets — Update Row · Set Status = COMPLETE</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">6</div>
+      <p><strong>Script 08 picks up the DRAFT row</strong>
+      <span>Automatic — Script 08's pollForNewDrafts() runs every 2 minutes, detects STATUS = DRAFT, sends teacher the pre-filled confirmation email.</span></p>
+    </div>
+  </div>
+
+  <div class="flow-block" style="margin-top:16px;">
+    <h4>⚡ Flow 2 — Student Evaluation</h4>
+    <div class="flow-step">
+      <div class="flow-step-num">1</div>
+      <p><strong>Trigger: Google Sheets — Row updated</strong>
+      <span>Sheet: Central Ledger spreadsheet · Tab: STAGING_PIPELINE · Condition: Status = IN_PROCESS (flipped by Turnstile, Script 06)</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">2</div>
+      <p><strong>Read student document</strong>
+      <span>Google Drive — Read File · File ID: <code>@trigger.StudentFileID</code> · Extract text between <code>── YOUR RESPONSE BEGINS HERE ──</code> and <code>[CONFIG_ID:</code></span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">3</div>
+      <p><strong>Read instructor config</strong>
+      <span>Google Sheets — Get Row · Teacher Matrix · Match ConfigID = <code>@trigger.ConfigID</code> · Extract Persona, Milestone1–4, DefinitionOfDone</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">4</div>
+      <p><strong>Gemini: evaluate student work</strong>
+      <span>Native Gemini connector. System prompt: instructor config + milestones + DoD. Student text isolated in <code>&lt;&lt;&lt;STUDENT_SUBMISSION&gt;&gt;&gt;</code> markers. Include explicit override-rejection instruction.</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">5</div>
+      <p><strong>Prepend feedback to student document header</strong>
+      <span>Google Docs — Insert Text · Document ID: <code>@trigger.StudentFileID</code> · Insert after <code>── FEEDBACK ──</code> marker · Include [SYSTEM: APPROVED] or [SYSTEM: REVISION_REQUIRED] stamp</span></p>
+    </div>
+    <div class="flow-step">
+      <div class="flow-step-num">6</div>
+      <p><strong>Mark STAGING_PIPELINE row COMPLETE</strong>
+      <span>Google Sheets — Update Row · Script 03's backPropagateCompletions() closes out the ReviewQueue row and updates Ledger timestamp within 2 minutes.</span></p>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN STEP 5 -->
+<div class="section" id="admin5">
+  <div class="section-eyebrow">Admin Setup — Step 5</div>
+  <h2>Deploy web apps</h2>
+
+  <div class="deploy-step">
+    <div class="step-badge green">A</div>
+    <div class="step-body">
+      <h3>Teacher Dashboard (Script 07)</h3>
+      <p>Deploy → New Deployment → Web App<br>
+      <strong>Execute as:</strong> Me (admin account)<br>
+      <strong>Access:</strong> Anyone in the organization</p>
+      <p>Record the deployment URL as <code>TEACHER_DASHBOARD_URL</code> in Script Properties
+      of the master Teacher Manual. Teachers will have it in their manual after setup.</p>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge green">B</div>
+    <div class="step-body">
+      <h3>Student Dashboard (Script 13)</h3>
+      <p>Deploy → New Deployment → Web App<br>
+      <strong>Execute as:</strong> User accessing the web app<br>
+      <strong>Access:</strong> Anyone with a Google account</p>
+      <p>Record as <code>STUDENT_DASHBOARD_URL</code>. Teachers share this URL
+      with students. Students bookmark it — it always shows only their own assignments.</p>
+      <div class="callout callout-warn">
+        <div class="callout-icon">⚠️</div>
+        <div>
+          <strong>"Execute as: User accessing the app"</strong> is critical here.
+          This makes Session.getActiveUser() return the student's own Google ID
+          so they see only their own rows from the Ledger.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN STEP 6 -->
+<div class="section" id="admin6">
+  <div class="section-eyebrow">Admin Setup — Step 6</div>
+  <h2>Create and pre-configure Teacher Manuals</h2>
+  <p class="section-intro">
+    The Teacher Manual is the doc each teacher receives. The admin creates one
+    master copy, pre-configures it with three Script Properties, then makes one
+    copy per teacher.
+  </p>
+
+  <div class="deploy-step">
+    <div class="step-badge purple">1</div>
+    <div class="step-body">
+      <h3>Create the master Teacher Manual Google Doc</h3>
+      <p>Create a new Google Doc. Write whatever onboarding content you want —
+      the setup script will append a personal setup details page at the end.</p>
+      <p>Bind Scripts 00 + 14 to this document (Extensions → Apps Script).
+      This is the setup wizard.</p>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge purple">2</div>
+    <div class="step-body">
+      <h3>Set the eight admin Script Properties on the master</h3>
+      <p>In the Apps Script editor: <strong>Project Settings → Script Properties → Add</strong></p>
+
+      <div class="code-block">
+<span class="cmmt">// Central infrastructure</span>
+<span class="key">ADMIN_ROOT_FOLDER_ID</span>          <span class="val">= "1ABC..."</span>  <span class="cmmt">// Admin Assignments root folder ID</span>
+<span class="key">CENTRAL_LEDGER_SS_ID</span>          <span class="val">= "1DEF..."</span>  <span class="cmmt">// Central Ledger + Queue spreadsheet ID</span>
+<span class="key">ADMIN_SS_ID</span>                   <span class="val">= "1DEF..."</span>  <span class="cmmt">// Same as above</span>
+<span class="key">ADMIN_NOTIFY_EMAIL</span>            <span class="val">= "admin@..."</span> <span class="cmmt">// Admin alert address</span>
+<span class="key">TEACHER_DASHBOARD_URL</span>         <span class="val">= "https://..."</span> <span class="cmmt">// From Step 5A</span>
+<span class="key">STUDENT_DASHBOARD_URL</span>         <span class="val">= "https://..."</span> <span class="cmmt">// From Step 5B</span>
+
+<span class="cmmt">// Master template pointers — hardened references to cloneable sheets</span>
+<span class="key">MASTER_RUBRIC_RESPONSE_SS_ID</span>  <span class="val">= "1GHI..."</span>  <span class="cmmt">// Scripts 00+05 already bound</span>
+<span class="key">MASTER_TEACHER_MATRIX_SS_ID</span>   <span class="val">= "1JKL..."</span>  <span class="cmmt">// Scripts 00+08 already bound</span>
+      </div>
+
+      <div class="callout callout-check">
+        <div class="callout-icon">✅</div>
+        <div>
+          All eight properties are inherited by every teacher copy of the manual.
+          The Setup Wizard reads them silently and uses the two master template IDs
+          to clone pre-scripted sheets directly into the teacher's folder.
+          Teachers never see or touch any of these values.
+        </div>
+      </div>
+
+      <div class="callout callout-tip">
+        <div class="callout-icon">💡</div>
+        <div>
+          <strong>Creating the master template sheets:</strong> Create one Google Sheet
+          and bind Scripts 00 + 05 to it — this is <code>MASTER_RUBRIC_RESPONSE_SS_ID</code>.
+          Create a second Google Sheet and bind Scripts 00 + 08 to it —
+          this is <code>MASTER_TEACHER_MATRIX_SS_ID</code>. Add the TeacherMatrix and
+          DraftUnits tabs with headers to the second sheet. When Script 16 clones them,
+          the bound scripts clone with the files automatically.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge purple">3</div>
+    <div class="step-body">
+      <h3>Make one copy per teacher and share it</h3>
+      <p>File → Make a copy for each teacher. Share the copy with that teacher
+      as an editor. The Script Properties are copied with the document —
+      each teacher's copy has the admin IDs pre-loaded and ready.</p>
+      <p>That's all the admin needs to do per teacher. The rest happens
+      automatically when the teacher opens their copy and runs the wizard.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ADMIN STEP 7 -->
+<div class="section" id="admin7">
+  <div class="section-eyebrow">Admin Setup — Step 7</div>
+  <h2>Set central triggers</h2>
+  <p class="section-intro">
+    These triggers are set once on the central shared scripts.
+    Per-teacher triggers are covered in Step 9.
+  </p>
+
+  <div class="trigger-grid">
+    <div class="trigger-card">
+      <div class="script-name">Script 02</div>
+      <h4>Student Registration</h4>
+      <p>Creates student document and folder hierarchy on Form 1 submission.</p>
+      <span class="trigger-type">onFormSubmit → onFormSubmit</span>
+    </div>
+    <div class="trigger-card">
+      <div class="script-name">Script 03</div>
+      <h4>Queue Bridge</h4>
+      <p>Moves PENDING ReviewQueue rows to STAGING_PIPELINE as pointers.</p>
+      <span class="trigger-type">Time-driven → Every 1 minute → bridgeQueue</span>
+    </div>
+    <div class="trigger-card">
+      <div class="script-name">Script 03</div>
+      <h4>Back-Propagation</h4>
+      <p>Closes ReviewQueue rows when Studio marks staging COMPLETE.</p>
+      <span class="trigger-type">Time-driven → Every 2 minutes → backPropagateCompletions</span>
+    </div>
+    <div class="trigger-card">
+      <div class="script-name">Script 04</div>
+      <h4>Turn-In Gate</h4>
+      <p>Runs three-point validation on Form 2 submissions.</p>
+      <span class="trigger-type">onFormSubmit → onTurnInSubmit</span>
+    </div>
+    <div class="trigger-card">
+      <div class="script-name">Script 06</div>
+      <h4>Staging Turnstile</h4>
+      <p>Releases exactly one PENDING_INFERENCE row to IN_PROCESS per run.</p>
+      <span class="trigger-type">Time-driven → Every 1 minute → runStagingTurnstile</span>
+    </div>
+    <div class="trigger-card">
+      <div class="script-name">Script 06</div>
+      <h4>Turnstile — Script Properties</h4>
+      <p>Set in Project Settings before enabling the trigger.</p>
+      <span class="trigger-type">ID_ADMIN_SPREADSHEET = CENTRAL_LEDGER_SS_ID</span>
+    </div>
+  </div>
+</div>
+
+<!-- TEACHER SETUP -->
+<div class="section" id="teacher-setup">
+  <div class="section-eyebrow">Teacher Setup — Step 8</div>
+  <h2>Teacher runs the setup wizard</h2>
+  <p class="section-intro">
+    Each teacher does this once. It takes about two minutes and requires
+    no technical knowledge. Everything is created automatically.
+  </p>
+
+  <div class="deploy-step">
+    <div class="step-badge blue">1</div>
+    <div class="step-body">
+      <h3>Open the Teacher Manual and click the menu</h3>
+      <p>The teacher opens their personal copy of the Teacher Manual.
+      A custom menu appears: <strong>⚙️ Assignment System → 🚀 Run First-Time Setup</strong>.</p>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge blue">2</div>
+    <div class="step-body">
+      <h3>Answer three prompts</h3>
+      <p>The wizard asks for:</p>
+      <ul style="margin: 8px 0 0 20px; font-size:14px; color:var(--muted); line-height:2;">
+        <li>Their full name</li>
+        <li>Their email address</li>
+        <li>Their subject area</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge blue">3</div>
+    <div class="step-body">
+      <h3>Wizard creates everything automatically</h3>
+      <p>In ~60 seconds, Script 16 creates:</p>
+      <ul style="margin: 8px 0 0 20px; font-size:14px; color:var(--muted); line-height:2;">
+        <li>Subject and teacher folders in the admin Drive hierarchy</li>
+        <li>Personal Teacher Matrix spreadsheet (with TeacherMatrix + DraftUnits tabs)</li>
+        <li>RubricQueue tab in the central admin spreadsheet</li>
+        <li>Four personal Google Forms (rubric upload, confirmation review, student intake, turn-in)</li>
+        <li>Response spreadsheets for each form</li>
+      </ul>
+      <p>All IDs are written to Script Properties. A setup summary page
+      is appended to the manual with direct links to every form and spreadsheet.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-check">
+    <div class="callout-icon">✅</div>
+    <div>
+      After the wizard, the teacher sees the ⚙️ Assignment System menu
+      with options to create assignments, register students, and open the dashboard.
+      Their manual is now their operational hub.
+    </div>
+  </div>
+</div>
+
+<!-- TEACHER TRIGGERS -->
+<div class="section" id="teacher-triggers">
+  <div class="section-eyebrow">Teacher Setup — Step 9</div>
+  <h2>One remaining manual step — authorize the rubric trigger</h2>
+  <p class="section-intro">
+    After the setup wizard runs, all time-driven triggers are set automatically.
+    One trigger cannot be set programmatically: the <code>onFormSubmit</code> trigger
+    on the Rubric Response sheet. The wizard writes step-by-step instructions
+    directly into the teacher's manual. The teacher follows them once.
+  </p>
+
+  <div class="deploy-step">
+    <div class="step-badge accent">1</div>
+    <div class="step-body">
+      <h3>Teacher opens their Rubric Responses spreadsheet</h3>
+      <p>The URL is in the setup summary page at the end of their manual,
+      under <strong>Your Spreadsheets</strong>. One click.</p>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge accent">2</div>
+    <div class="step-body">
+      <h3>Teacher opens Extensions → Apps Script → Triggers</h3>
+      <p>Scripts 00 + 05 are already bound to this sheet from the template clone.
+      No pasting. No editing. Just open the Triggers panel.</p>
+    </div>
+  </div>
+
+  <div class="deploy-step">
+    <div class="step-badge accent">3</div>
+    <div class="step-body">
+      <h3>Teacher adds one trigger exactly as shown in their manual</h3>
+      <div class="code-block">
+<span class="key">Function to run:</span>    <span class="val">onTeacherRubricSubmit</span>
+<span class="key">Deployment:</span>         <span class="val">Head</span>
+<span class="key">Event source:</span>       <span class="val">From spreadsheet</span>
+<span class="key">Event type:</span>         <span class="val">On form submit</span>
+      </div>
+      <p>Google asks for authorization once. Teacher clicks Allow. Done permanently.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-check">
+    <div class="callout-icon">✅</div>
+    <div>
+      <strong>What was automated vs. what remains manual:</strong><br>
+      Automated by Setup Wizard: folder creation, sheet cloning, form creation,
+      entry ID extraction, Script Properties, time-driven triggers (pollForNewDrafts,
+      abandonStaleDrafts), manual setup page written to the doc.<br><br>
+      Remaining manual: one onFormSubmit trigger authorization — ~2 minutes,
+      documented step-by-step in the teacher's own manual.
+    </div>
+  </div>
+</div>
+
+<!-- UX: ADMIN -->
+<div class="section" id="ux-admin">
+  <div class="section-eyebrow">User Experience</div>
+  <h2>The Admin Experience</h2>
+
+  <div class="role-header admin">
+    <div class="role-icon">🔧</div>
+    <div>
+      <h3>System Administrator</h3>
+      <p>Sets up once. Distributes teacher manuals. Monitors and recovers via the Admin Controls menu.</p>
+    </div>
+  </div>
+
+  <div class="journey">
+    <div class="journey-step highlight">
+      <h4>One-time central setup <span class="tag tag-once">~2 hours</span></h4>
+      <p>Creates central spreadsheet, folders, deploys all shared scripts,
+      configures two Studio Flows, deploys both web apps, creates master
+      Teacher Manual with six Script Properties pre-set. Done once for the
+      whole school.</p>
+    </div>
+    <div class="journey-step highlight">
+      <h4>Per-teacher onboarding <span class="tag tag-once">~5 minutes per teacher</span></h4>
+      <p>Makes a copy of the master Teacher Manual, shares it with the teacher.
+      After the teacher runs the setup wizard, the admin opens the teacher's
+      two response sheets and sets Scripts 05 and 08 with their triggers.
+      That's the full per-teacher admin workload.</p>
+    </div>
+    <div class="journey-step system">
+      <h4>Ongoing monitoring <span class="tag tag-instant">On demand</span></h4>
+      <p>The ⚙️ Admin Controls menu in the central spreadsheet provides a
+      System Health Check showing pipeline status, stuck rows, error counts,
+      and flagged students in one alert. Six recovery operations are available
+      without touching any script.</p>
+    </div>
+  </div>
+</div>
+
+<!-- UX: TEACHER -->
+<div class="section" id="ux-teacher">
+  <div class="section-eyebrow">User Experience</div>
+  <h2>The Teacher Experience</h2>
+
+  <div class="role-header teacher">
+    <div class="role-icon">👩‍🏫</div>
+    <div>
+      <h3>Instructor</h3>
+      <p>Opens manual, runs wizard once, then uses the manual's menu for everything. No spreadsheets, no scripts, no technical knowledge needed.</p>
+    </div>
+  </div>
+
+  <div class="journey">
+    <div class="journey-step highlight">
+      <h4>First open — run the setup wizard <span class="tag tag-once">~2 minutes</span></h4>
+      <p>Opens their Teacher Manual, sees the ⚙️ Assignment System menu,
+      clicks "Run First-Time Setup". Answers three prompts (name, email, subject).
+      Everything is created automatically. The manual updates itself with
+      a setup summary page containing all personal links.</p>
+    </div>
+    <div class="journey-step highlight">
+      <h4>Creating an assignment <span class="tag tag-manual">~5 minutes</span></h4>
+      <p>Uses the menu → "Create New Assignment" to open their Rubric Upload Form.
+      Pastes their evaluation rubric text and the Google Doc link of their
+      student-facing prompt template. Submits.</p>
+    </div>
+    <div class="journey-step studio">
+      <h4>Studio extracts the rubric automatically <span class="tag tag-studio">Studio Flow 1</span></h4>
+      <p>Workspace Studio reads the rubric, calls Gemini natively, extracts the
+      structured config (unit name, persona, four milestones, passing standard),
+      and writes a DRAFT row to the teacher's Teacher Matrix.
+      Script 08 detects the DRAFT and emails the teacher a pre-filled review form.</p>
+    </div>
+    <div class="journey-step highlight">
+      <h4>Review and confirm extraction <span class="tag tag-manual">~2 minutes</span></h4>
+      <p>Teacher receives an email with what the system extracted.
+      Clicks the link — a form pre-filled with every extracted field.
+      Edits anything wrong, clicks Submit. Assignment goes LIVE instantly.</p>
+    </div>
+    <div class="journey-step system">
+      <h4>Registering students <span class="tag tag-manual">Per student</span></h4>
+      <p>Uses the menu → "Register a Student" to open their Student Intake Form.
+      Fills in student Google account, name, block, period, and the assignment
+      Config ID. Script 02 creates the student's document and folder hierarchy
+      automatically, shares the document into the student's Drive.</p>
+    </div>
+    <div class="journey-step">
+      <h4>Monitoring progress <span class="tag tag-instant">Live</span></h4>
+      <p>Opens the Teacher Dashboard from the menu. Sees every student's
+      status grouped by unit — color-coded rows, evaluation timestamps,
+      direct document links. Flagged submissions surface at the top.</p>
+    </div>
+    <div class="journey-step success">
+      <h4>Receiving verified submissions <span class="tag tag-auto">Automatic</span></h4>
+      <p>Email notification for every submission that passes all three checks.
+      Contains student name, block, period, class, and a direct document link.
+      Ready to grade — no manual verification needed.</p>
+    </div>
+  </div>
+</div>
+
+<!-- UX: STUDENT -->
+<div class="section" id="ux-student">
+  <div class="section-eyebrow">User Experience</div>
+  <h2>The Student Experience</h2>
+
+  <div class="role-header student">
+    <div class="role-icon">🎒</div>
+    <div>
+      <h3>Student</h3>
+      <p>No email. No setup. No account creation. Works entirely inside their Google Doc and a bookmarked dashboard URL.</p>
+    </div>
+  </div>
+
+  <div class="journey">
+    <div class="journey-step system">
+      <h4>Document appears in their Drive <span class="tag tag-auto">Automatic</span></h4>
+      <p>When the teacher registers them, Script 02 creates their document
+      inside a shared class folder named <strong>[Block] - [Class] - [Teacher]</strong>
+      — e.g. <em>2O - AP Biology - Ms. Carter</em>. The document appears in
+      their Shared With Me. One right-click to add it to My Drive under
+      <strong>Assignments → 2O - AP Biology - Ms. Carter</strong>.</p>
+    </div>
+    <div class="journey-step highlight">
+      <h4>One-time authorization <span class="tag tag-once">First use only</span></h4>
+      <p>The first time they click the 📊 AI Evaluation Panel menu,
+      Google shows a one-time authorization dialog. Click Allow.
+      Never shown again. This is the only technical moment in the student's
+      entire experience.</p>
+    </div>
+    <div class="journey-step">
+      <h4>Reading and writing the assignment <span class="tag tag-manual">Student</span></h4>
+      <p>The document opens with a feedback zone at the top (initially showing
+      "No feedback yet"), then the teacher's assignment prompt, then a clear
+      divider: <em>── YOUR RESPONSE BEGINS HERE ──</em>. Student writes below it.
+      The CONFIG_ID tracking token is at the bottom, out of the way.</p>
+    </div>
+    <div class="journey-step highlight">
+      <h4>Requesting feedback <span class="tag tag-manual">Student</span></h4>
+      <p>Clicks <strong>📊 AI Evaluation Panel → Run Assignment Check</strong>.
+      Confirmation dialog tells them feedback arrives in 1–3 minutes.</p>
+    </div>
+    <div class="journey-step studio">
+      <h4>Feedback appears at the top of the document <span class="tag tag-studio">Studio Flow 2</span></h4>
+      <p>The evaluation report is prepended into the feedback zone —
+      above the assignment prompt, immediately visible on open.
+      Each report shows: result status, milestone-by-milestone breakdown,
+      required revisions list, and a plain-language <strong>WHAT TO DO NEXT</strong>
+      block. No system codes. No jargon. The most recent feedback is always first.</p>
+    </div>
+    <div class="journey-step">
+      <h4>Revising and re-checking <span class="tag tag-manual">Student</span></h4>
+      <p>Revises in the response zone, runs another check.
+      No limit on evaluations. Each one adds a new block at the top.
+      Full feedback history preserved in the document.
+      The status menu item shows current standing without scrolling.</p>
+    </div>
+    <div class="journey-step success">
+      <h4>Submitting <span class="tag tag-manual">Student</span></h4>
+      <p>Once the top of the document shows ✅ passing, opens the Turn-In Form
+      (link shared by teacher), types their Google account identifier,
+      pastes the document URL, submits. If validation fails for any reason,
+      a plain-language notice is written directly into their document's
+      feedback zone — they see it immediately on next open.
+      No email needed at any point.</p>
+    </div>
+    <div class="journey-step success">
+      <h4>Student Dashboard <span class="tag tag-instant">Any time</span></h4>
+      <p>Bookmarked URL shows all assignments across all teachers,
+      grouped by block and class. Each card shows status, last feedback time,
+      and a direct document link. Submitted assignments show confirmation in green.</p>
+    </div>
+  </div>
+</div>
+
+<!-- DOC ANATOMY -->
+<div class="section" id="doc-anatomy">
+  <div class="section-eyebrow">Reference</div>
+  <h2>Document Anatomy</h2>
+  <p class="section-intro">Four zones. Created once by Script 02. Maintained throughout the assignment lifecycle.</p>
+
+  <div class="doc-anatomy">
+    <div class="doc-zone feedback">
+      <div class="doc-zone-label">Zone 1 — Feedback Header
+        <span class="doc-pill pill-write">Written by Studio Flow 2</span>
+        <span class="doc-pill pill-read">Read by student</span>
+      </div>
+      <p>Evaluation reports prepend here — most recent always first. Starts with a
+      placeholder. After first evaluation each block shows: result, milestone breakdown,
+      required revisions, next-steps instructions, and a compliance stamp.
+      Rejection notices from Form 2 also appear here. Maximum visibility on open.</p>
+    </div>
+    <div class="doc-zone prompt">
+      <div class="doc-zone-label">Zone 2 — Assignment Prompt
+        <span class="doc-pill pill-lock">Copied from teacher template</span>
+        <span class="doc-pill pill-read">Read by student</span>
+      </div>
+      <p>Exact copy of the teacher's uploaded prompt template document.
+      Untouched after initial creation. Students read this — it is the assignment instructions.
+      Studio Flow 2 does not read this zone; it reads only Zone 3.</p>
+    </div>
+    <div class="doc-zone response">
+      <div class="doc-zone-label">Zone 3 — Student Response
+        <span class="doc-pill pill-write">Written by student</span>
+        <span class="doc-pill pill-read">Extracted for evaluation</span>
+      </div>
+      <p>Begins at <code>── YOUR RESPONSE BEGINS HERE ──</code>.
+      Everything between this line and the CONFIG_ID footer is the student's work.
+      Scripts 01 and Studio Flow 2 extract from this zone exclusively by marker position.</p>
+    </div>
+    <div class="doc-zone footer">
+      <div class="doc-zone-label">Zone 4 — CONFIG_ID Footer
+        <span class="doc-pill pill-lock">Tamper-evident</span>
+      </div>
+      <p>Contains <code>[CONFIG_ID: VDOE-XXXXXX-YYYY]</code>. Placed below all student work.
+      Scripts 01 and 04 scan for it here. If altered or missing, all validation fails.
+      Students are instructed not to modify this section.</p>
+    </div>
+  </div>
+</div>
+
+<!-- FOLDER STRUCTURE -->
+<div class="section" id="folder-structure">
+  <div class="section-eyebrow">Reference</div>
+  <h2>Folder Structure</h2>
+
+  <p style="font-weight:700; margin-bottom:10px; font-size:14px;">Admin Drive</p>
+  <div class="folder-tree">
+<span class="folder">📁 Assignments/</span>
+  <span class="folder">📁 Science/</span>
+    <span class="folder">📁 Ms. Carter/</span>
+      <span class="folder">📁 AP Biology — Teacher Matrix</span> <span class="note">← teacher's personal spreadsheet</span>
+      <span class="folder">📁 Period 3/</span>
+        <span class="folder">📁 Emma Rodriguez/</span>
+          <span class="doc">📄 Research Essay — Emma Rodriguez</span>
+        <span class="folder">📁 James Okafor/</span>
+          <span class="doc">📄 Research Essay — James Okafor</span>
+  <span class="folder">📁 _Student Shared Folders/</span>
+    <span class="folder">📁 2O - AP Biology - Ms. Carter/</span> <span class="note">← shared with all students in this class</span>
+      <span class="doc">📄 Research Essay — Emma Rodriguez</span>
+      <span class="doc">📄 Research Essay — James Okafor</span>
+  </div>
+
+  <p style="font-weight:700; margin: 24px 0 10px; font-size:14px;">Student Drive (Emma's view)</p>
+  <div class="folder-tree">
+<span class="folder">📁 My Drive/</span>
+  <span class="folder">📁 Assignments/</span> <span class="note">← added from Shared With Me with one right-click</span>
+    <span class="folder">📁 2O - AP Biology - Ms. Carter/</span>
+      <span class="doc">📄 Research Essay — Emma Rodriguez</span>
+    <span class="folder">📁 3E - US History - Mr. Patel/</span>
+      <span class="doc">📄 Primary Source Analysis — Emma Rodriguez</span>
+  </div>
+</div>
+
+<!-- FULL PIPELINE -->
+<div class="section" id="pipeline">
+  <div class="section-eyebrow">Reference</div>
+  <h2>Full Pipeline</h2>
+
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin-bottom:10px;">Assignment Creation</p>
+  <div class="pipeline">
+    <div class="pipe-node highlight"><div class="pipe-icon">📤</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Uploads rubric + prompt template</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📥</div><div class="pipe-label">Script 05</div><div class="pipe-sub">Validates, writes to RubricQueue</div></div>
+    <div class="pipe-node studio-node"><div class="pipe-icon">⚡</div><div class="pipe-label">Flow 1</div><div class="pipe-sub">Gemini extracts config → DRAFT row</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📧</div><div class="pipe-label">Script 08</div><div class="pipe-sub">Detects DRAFT, emails pre-filled review</div></div>
+    <div class="pipe-node highlight"><div class="pipe-icon">✅</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Confirms → unit goes LIVE</div></div>
+  </div>
+
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Student Registration</p>
+  <div class="pipeline">
+    <div class="pipe-node highlight"><div class="pipe-icon">📋</div><div class="pipe-label">Admin/Teacher</div><div class="pipe-sub">Submits Form 1</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📁</div><div class="pipe-label">Script 02</div><div class="pipe-sub">Creates 5-level folder hierarchy</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📄</div><div class="pipe-label">Script 02</div><div class="pipe-sub">Stamps doc, shares to student Drive</div></div>
+    <div class="pipe-node"><div class="pipe-icon">🎒</div><div class="pipe-label">Student</div><div class="pipe-sub">Doc in Shared With Me</div></div>
+  </div>
+
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Evaluation Cycle</p>
+  <div class="pipeline">
+    <div class="pipe-node highlight"><div class="pipe-icon">✍️</div><div class="pipe-label">Student</div><div class="pipe-sub">Writes, clicks Run Check</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">📥</div><div class="pipe-label">Script 01</div><div class="pipe-sub">Roster validation → ReviewQueue</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🌉</div><div class="pipe-label">Script 03</div><div class="pipe-sub">Bridges to STAGING_PIPELINE</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🚦</div><div class="pipe-label">Script 06</div><div class="pipe-sub">Turnstile → IN_PROCESS</div></div>
+    <div class="pipe-node studio-node"><div class="pipe-icon">⚡</div><div class="pipe-label">Flow 2</div><div class="pipe-sub">Gemini evaluates → writes feedback</div></div>
+    <div class="pipe-node"><div class="pipe-icon">📊</div><div class="pipe-label">Student</div><div class="pipe-sub">Feedback at top of doc</div></div>
+  </div>
+
+  <p style="font-weight:700; font-size:13px; text-transform:uppercase; letter-spacing:0.5px; color:var(--muted); margin: 24px 0 10px;">Final Submission</p>
+  <div class="pipeline">
+    <div class="pipe-node highlight"><div class="pipe-icon">📬</div><div class="pipe-label">Student</div><div class="pipe-sub">Submits Form 2</div></div>
+    <div class="pipe-node system"><div class="pipe-icon">🔍</div><div class="pipe-label">Script 04</div><div class="pipe-sub">3-point + stamp + forensic checks</div></div>
+    <div class="pipe-node"><div class="pipe-icon">✅</div><div class="pipe-label">Ledger</div><div class="pipe-sub">Row → COMPLIANT</div></div>
+    <div class="pipe-node success"><div class="pipe-icon">📧</div><div class="pipe-label">Teacher</div><div class="pipe-sub">Verified submission notification</div></div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+  const sections = document.querySelectorAll('[id]');
+  const links    = document.querySelectorAll('.nav-link');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        links.forEach(l => l.classList.toggle('active',
+          l.getAttribute('href') === '#' + e.target.id));
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+  sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

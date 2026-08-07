@@ -42,12 +42,15 @@ runs AI evaluation of student work, converts evidence into Student
 Competency Record (SCR) rating suggestions, and aggregates each student's
 activity into a living context document.
 
-**Status:** Modules 2 and 4 are documented as production-ready. Module 3 is
-mixed-confidence and gated on a Studio flow (Flow 2) that has never been
-built, plus a missing `lesson_unit_id` column on `TeacherMatrix`. Module 1
-(the base intake/grading pipeline everything else assumes) hasn't been
-uploaded yet — see [`cas-ccps/README.md`](./cas-ccps/README.md) for the
-full gap list.
+**Status:** Module 1 (the base intake/grading pipeline) is now ~20 files in
+hand — most of the system is here. But this batch surfaced the most
+significant finding in the repo so far: **two incompatible, mutually
+corroborated designs for who writes student feedback into the doc (Studio
+vs. GAS)**, plus two confirmed code bugs (a Turn-In Form field mismatch
+across 3 files, and a `ReferenceError` in the setup wizard's `onOpen()`),
+plus growing evidence that "Module 3" and "Module 4" mean different things
+in different parts of this codebase's own documentation. See
+[`cas-ccps/README.md`](./cas-ccps/README.md) for the full breakdown.
 
 ## Still pending
 
