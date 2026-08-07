@@ -7,9 +7,17 @@ The core problem it solves: you spend hours in AI sessions making decisions, bui
 
 ---
 
+## ✅ Code-complete: every file in this README's own file-structure list is now present
+
+`appsscript.json`, all 9 numbered `.gs` files, and `8_WebApp_UI.html` are all in this directory now — the full list this README specifies in "File Structure" below, minus the two files it explicitly says not to add (`KOS_PHASE0_PATCHES.gs`, `KOS_GAPS_AND_FIXES.gs`). That's a milestone, but it doesn't mean the system is deployable yet — see the mismatches below, none of which are resolved by having all the files.
+
+One genuinely clean result: `appsscript.json`'s 6 OAuth scopes (`drive`, `spreadsheets`, `documents`, `script.scriptapp`, `script.send_mail`, `userinfo.email`) match what the code actually calls — checked against every `DriveApp`/`DocumentApp`/`SpreadsheetApp`/`ScriptApp`/`MailApp`/`Session` call across all 9 files, with no `UrlFetchApp`, `CalendarApp`, `GmailApp`, or advanced-service usage anywhere that would need a scope or `dependencies` entry this manifest doesn't already have. `executeAs: "USER_DEPLOYING"` correctly corresponds to the deployment guide's "Execute as: Me" instruction. `runtimeVersion: "V8"` is required and present (the code uses optional chaining and destructuring throughout).
+
+One soft note: `webapp.access` is set to `"MYSELF"`. That matches the deployment guide's stated default ("Only myself... change to Anyone with Google account if you want to share the URL"), but Sensor 2 (the `doPost` webhook for `COG_EXHAUST`, documented in `7_WebApp.gs`'s own header as accepting POSTs from external tools) will likely need broader access to actually receive unauthenticated external POSTs. Worth deciding deliberately at deploy time rather than leaving the restrictive default in place if the webhook is meant to be used.
+
 ## ⚠️ The delivered code does not match this file's own documentation
 
-All 9 numbered `.gs` files plus `8_WebApp_UI.html` now exist in this directory (only `appsscript.json` is still missing). Reading them against this README, `STUDIO_INTEGRATION_SPEC.md`, and `SCHEMA_REFERENCE.md` turned up real divergences — not typos, structural ones:
+Reading the 9 `.gs` files and the HTML against this README, `STUDIO_INTEGRATION_SPEC.md`, and `SCHEMA_REFERENCE.md` turned up real divergences — not typos, structural ones:
 
 1. **No `STUDIO_ACTIVE` status anywhere in the delivered code.** This README, the deployment guide, and the Studio integration spec all describe a 3-state pipeline — `PENDING_FLOW` → (Turnstile releases one at a time) → `STUDIO_ACTIVE` → (Studio infers) → `FLOW_COMPLETE`. The actual `3_Queue_Processor.gs` and `2_Ingestion_Sensors.gs` only ever use `PENDING_FLOW` and `FLOW_COMPLETE` — Studio is expected to poll `PENDING_FLOW` directly and flip straight to `FLOW_COMPLETE`. There is no concurrency-gating step in the delivered pipeline at all.
 2. **No shadow matrix implementation.** Central to this README's "Architecture in Two Paragraphs" section (5 operator values, confidence intervals, 0.75 auto-verify threshold) — absent from all 9 delivered files. Nothing computes, stores, or reads a shadow matrix.
@@ -64,7 +72,7 @@ The shadow matrix is the system's calibration model. It maintains confidence int
 ## File Structure
 
 ```
-appsscript.json            OAuth scopes, web app config                    — MISSING
+appsscript.json            OAuth scopes, web app config                    ✅ in repo — scopes verified against actual code usage, clean
 1_Config_And_Deploy.gs     CFG constants, deploy, triggers                 ✅ in repo (see note below re: doc mismatch)
 2_Ingestion_Sensors.gs     Sensor 1 (Drive), Sensor 2 (webhook), Sensor 3   ✅ in repo
 3_Queue_Processor.gs       Queue processor, processIntakePayload           ✅ in repo

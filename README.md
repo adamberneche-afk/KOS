@@ -20,10 +20,17 @@ spreadsheet. Governed by an external orchestration layer (`RTP_CORE_ROUTER`)
 that runs a 7-persona council with RID-weighted routing and a human-in-the-loop
 firewall.
 
-**Status:** documentation is complete; the actual `.gs`/`.html` project
-files (`1_Config_And_Deploy.gs` through `10_Turnstile.gs`, `appsscript.json`,
-`8_WebApp_UI.html`) have not been uploaded yet. The Studio integration that
-closes the STAGING_PIPELINE loop is explicitly called out as unbuilt.
+**Status:** code-complete — every file in its own documented file structure
+(`appsscript.json`, all 9 numbered `.gs` files, `8_WebApp_UI.html`) is now
+in the repo. Not deploy-ready, though: the code, the pre-existing docs
+(README/DEPLOYMENT_GUIDE/STUDIO_INTEGRATION_SPEC/SCHEMA_REFERENCE), and the
+HTML client disagree with each other on real behavior — missing server
+functions the UI depends on, a doGet() that never activates the bootstrap
+screen, a shadow matrix and daily primer that are documented but not
+implemented, and one file (`10_Turnstile.gs`) that uses an incompatible
+schema from the rest of the codebase. See
+[`kos-personal/README.md`](./kos-personal/README.md) for the full
+reconciliation list.
 
 ## [`cas-ccps/`](./cas-ccps/) — Classroom Agency System (CCPS)
 
