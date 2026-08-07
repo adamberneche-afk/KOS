@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Platform Documentation — Classroom Agency System</title>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08090a;--ink:#0f1115;--surface:#14171c;--surface2:#1c2028;
+  --border:#252b35;--border2:#2f3847;
+  --text:#cdd5e0;--text-dim:#6b7a8d;--text-bright:#e8eef5;
+  --amber:#e8b84b;--amber-d:#c49a30;--amber-bg:rgba(232,184,75,0.08);--amber-border:rgba(232,184,75,0.2);
+  --teal:#3ecfb8;--teal-d:#28a090;--teal-bg:rgba(62,207,184,0.07);--teal-border:rgba(62,207,184,0.2);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,0.08);--violet-border:rgba(167,139,250,0.2);
+  --rose:#f87171;--rose-bg:rgba(248,113,113,0.08);
+  --slate:#64748b;
+  --display:'Anybody',system-ui,sans-serif;
+  --body:'Literata',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--void);color:var(--text);font-size:15px;line-height:1.7;min-height:100vh}
+
+/* ── NAVIGATION ── */
+.topnav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(8,9,10,0.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;display:flex;align-items:center;justify-content:space-between;height:56px}
+.topnav-brand{font-family:var(--display);font-size:13px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--amber)}
+.topnav-links{display:flex;gap:0}
+.topnav-link{font-family:var(--display);font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:0 16px;height:56px;display:flex;align-items:center;text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s}
+.topnav-link:hover{color:var(--text-bright)}
+.topnav-link.active{color:var(--amber);border-bottom-color:var(--amber)}
+
+/* ── HERO ── */
+.hero{padding:140px 80px 100px;position:relative;overflow:hidden;min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 20% 40%,rgba(62,207,184,0.04) 0%,transparent 60%),radial-gradient(ellipse 60% 40% at 80% 70%,rgba(232,184,75,0.05) 0%,transparent 50%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:80px 80px;opacity:0.3;pointer-events:none}
+.hero-eyebrow{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:3px;text-transform:uppercase;margin-bottom:32px;display:flex;align-items:center;gap:12px}
+.hero-eyebrow::before{content:"";width:40px;height:1px;background:var(--amber)}
+.hero h1{font-family:var(--display);font-size:clamp(48px,7vw,96px);font-weight:800;line-height:0.95;letter-spacing:-2px;color:var(--text-bright);margin-bottom:8px}
+.hero h1 .accent{color:var(--amber);display:block}
+.hero-sub{font-family:var(--display);font-size:clamp(16px,2vw,22px);font-weight:300;color:var(--text-dim);max-width:600px;line-height:1.5;margin:28px 0 56px}
+.hero-modules{display:flex;gap:16px;flex-wrap:wrap}
+.hero-module{background:var(--surface);border:1px solid var(--border2);border-radius:4px;padding:16px 22px;display:flex;align-items:center;gap:14px}
+.hero-module .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-amber{background:var(--amber)}.dot-teal{background:var(--teal)}.dot-violet{background:var(--violet)}
+.hero-module .mod-name{font-family:var(--display);font-size:12px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:var(--text-bright)}
+.hero-module .mod-status{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+
+/* ── MAIN ── */
+.main{padding-top:56px}
+.section{padding:80px}
+.section-alt{background:var(--surface)}
+
+/* ── SECTION HEADERS ── */
+.section-header{margin-bottom:56px}
+.section-eyebrow{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.section-eyebrow::before{content:"";width:24px;height:1px;background:var(--teal)}
+.section-header h2{font-family:var(--display);font-size:clamp(32px,4vw,52px);font-weight:800;letter-spacing:-1px;color:var(--text-bright);line-height:1.05}
+.section-header p{font-size:16px;color:var(--text-dim);max-width:560px;margin-top:16px;line-height:1.75}
+
+/* ── MODULE CARDS ── */
+.module-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:2px;background:var(--border)}
+.module-card{background:var(--surface);padding:40px 44px;position:relative;overflow:hidden}
+.module-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+.card-amber::before{background:linear-gradient(90deg,var(--amber),var(--amber-d))}
+.card-teal::before{background:linear-gradient(90deg,var(--teal),var(--teal-d))}
+.card-violet::before{background:linear-gradient(90deg,var(--violet),#7c5fe8)}
+.card-slate::before{background:linear-gradient(90deg,var(--slate),#475569)}
+.module-card-num{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:2px;margin-bottom:20px}
+.module-card h3{font-family:var(--display);font-size:24px;font-weight:800;letter-spacing:-0.3px;color:var(--text-bright);margin-bottom:10px}
+.module-card .card-sub{font-size:13px;color:var(--text-dim);margin-bottom:24px;line-height:1.6}
+.tag-row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:20px}
+.tag{font-family:var(--mono);font-size:10px;padding:3px 9px;border-radius:3px;font-weight:500}
+.tag-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.tag-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.tag-violet{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+.tag-slate{background:rgba(100,116,139,0.1);color:var(--slate);border:1px solid rgba(100,116,139,0.2)}
+.tag-green{background:rgba(74,222,128,0.08);color:#4ade80;border:1px solid rgba(74,222,128,0.2)}
+.tag-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border2)}
+.module-desc{font-size:14px;color:var(--text-dim);line-height:1.75}
+
+/* ── PRINCIPLE BLOCKS ── */
+.principle-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;background:var(--border);margin:40px 0}
+.principle{background:var(--ink);padding:32px 36px}
+.principle-n{font-family:var(--display);font-size:64px;font-weight:800;color:var(--border2);line-height:1;margin-bottom:12px;letter-spacing:-2px}
+.principle h4{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:8px;letter-spacing:-0.2px}
+.principle p{font-size:13px;color:var(--text-dim);line-height:1.7}
+
+/* ── SYSTEM MAP ── */
+.sys-map{background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:32px 36px;font-family:var(--mono);font-size:12px;color:var(--text-dim);line-height:2.2;overflow-x:auto;margin:24px 0}
+.sys-map .k{color:var(--amber)}
+.sys-map .v{color:var(--teal)}
+.sys-map .c{color:var(--text-dim);font-style:italic}
+.sys-map .h{color:var(--violet)}
+.sys-map .g{color:#4ade80}
+
+/* ── INTERFACE CARDS ── */
+.interface-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:24px 0}
+.iface-card{background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:24px 28px}
+.iface-card h4{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text-bright);margin-bottom:6px}
+.iface-card p{font-size:13px;color:var(--text-dim);line-height:1.65}
+.iface-card .iface-actor{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--amber);margin-bottom:10px}
+
+/* ── TIMELINE ── */
+.build-phases{display:grid;gap:1px;background:var(--border);margin:24px 0}
+.phase{background:var(--ink);padding:28px 36px;display:grid;grid-template-columns:160px 1fr;gap:32px;align-items:start}
+.phase-label{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
+.phase-label .pl{display:block;font-size:22px;font-weight:800;color:var(--text-bright);letter-spacing:-0.5px;line-height:1;margin-bottom:6px}
+.phase-content h4{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:8px}
+.phase-content p{font-size:13.5px;color:var(--text-dim);line-height:1.7;margin-bottom:10px}
+.phase-content p:last-child{margin-bottom:0}
+.phase-items{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+
+/* ── DATA SCHEMA ── */
+.schema-block{background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:16px 0}
+.schema-head{background:var(--surface2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+.schema-head h4{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright)}
+.schema-head span{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+.schema-row{display:grid;grid-template-columns:180px 90px 1fr;gap:12px;padding:9px 20px;border-bottom:1px solid rgba(37,43,53,0.5);font-size:12.5px;align-items:baseline}
+.schema-row:last-child{border-bottom:none}
+.schema-row.header{background:rgba(28,32,40,0.5);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+.col-n{font-family:var(--mono);color:var(--teal)}
+.col-t{font-family:var(--mono);font-size:11px;color:var(--violet)}
+.col-d{color:var(--text-dim)}
+
+/* ── CALLOUTS ── */
+.callout{border-radius:4px;padding:16px 20px;margin:20px 0;display:flex;gap:14px;font-size:14px;line-height:1.65}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.callout-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8a040}
+.callout-teal{background:var(--teal-bg);border-left:3px solid var(--teal);color:#2aaa96}
+.callout-body strong{font-weight:600}
+
+/* ── DECISION LOG ── */
+.decision-list{list-style:none;margin:20px 0}
+.decision-item{padding:14px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:100px 1fr;gap:20px;font-size:13.5px}
+.decision-item:last-child{border-bottom:none}
+.decision-key{font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:500;padding-top:2px}
+.decision-val{color:var(--text-dim);line-height:1.65}
+.decision-val strong{color:var(--text-bright);font-weight:500}
+
+/* ── FOOTER ── */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:48px 80px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:40px}
+.footer-col h4{font-family:var(--display);font-size:12px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim);margin-bottom:16px}
+.footer-col p,.footer-col li{font-size:13px;color:var(--text-dim);line-height:1.8}
+.footer-col ul{list-style:none}
+
+@media(max-width:960px){
+  .hero{padding:100px 32px 60px}
+  .section{padding:56px 32px}
+  .module-grid,.principle-row,.interface-grid{grid-template-columns:1fr}
+  .phase{grid-template-columns:1fr}
+  .topnav{padding:0 24px}
+  .topnav-links{display:none}
+  footer{grid-template-columns:1fr;padding:40px 32px}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topnav">
+  <span class="topnav-brand">CAS Platform</span>
+  <div class="topnav-links">
+    <a class="topnav-link active" href="#modules">Modules</a>
+    <a class="topnav-link" href="#module1">Evaluation Engine</a>
+    <a class="topnav-link" href="#module2">Lesson Intelligence</a>
+    <a class="topnav-link" href="#architecture">Architecture</a>
+    <a class="topnav-link" href="#build">Build Plan</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-eyebrow">Platform Documentation · v1.0</div>
+  <h1>Classroom<br><span class="accent">Agency System</span></h1>
+  <p class="hero-sub">A modular platform that automates prerequisites so teachers can protect the human moments that matter.</p>
+  <div class="hero-modules">
+    <div class="hero-module">
+      <div class="dot dot-amber"></div>
+      <div>
+        <div class="mod-name">Module 1 — Evaluation Engine</div>
+        <div class="mod-status">PRODUCTION READY · Pilot deployment</div>
+      </div>
+    </div>
+    <div class="hero-module">
+      <div class="dot dot-teal"></div>
+      <div>
+        <div class="mod-name">Module 2 — Lesson Intelligence</div>
+        <div class="mod-status">SPECIFICATION · Build ready</div>
+      </div>
+    </div>
+    <div class="hero-module">
+      <div class="dot dot-violet"></div>
+      <div>
+        <div class="mod-name">Module 3 — Student Profile</div>
+        <div class="mod-status">DESIGNED · Depends on M1 + M2</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- DESIGN PRINCIPLES -->
+<div class="section" id="principles">
+  <div class="section-header">
+    <div class="section-eyebrow">Foundation</div>
+    <h2>The Design Principle</h2>
+    <p>Every module in this platform is built on a single idea. Everything else follows from it.</p>
+  </div>
+
+  <div class="principle-row">
+    <div class="principle">
+      <div class="principle-n">01</div>
+      <h4>Automate the prerequisite</h4>
+      <p>Define what "ready for human attention" means in any context. Build a gate that enforces it automatically. The teacher's attention arrives only at the right moment.</p>
+    </div>
+    <div class="principle">
+      <div class="principle-n">02</div>
+      <h4>Protect the human moment</h4>
+      <p>Every piece of friction removed is an investment in the human relationship it was obscuring. The goal is never efficiency — it's presence.</p>
+    </div>
+    <div class="principle">
+      <div class="principle-n">03</div>
+      <h4>Never replace judgment</h4>
+      <p>The system verifies, surfaces, and scaffolds. The teacher decides, responds, and knows the student. Automation flags; humans act.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>The platform's north star:</strong> a classroom where teacher attention is concentrated precisely where it does the most good — in the messy, uncertain, genuinely human middle of the learning process, where no algorithm can substitute for a skilled adult who knows the student in front of them.</div>
+  </div>
+</div>
+
+<!-- MODULES OVERVIEW -->
+<div class="section section-alt" id="modules">
+  <div class="section-header">
+    <div class="section-eyebrow">Platform Structure</div>
+    <h2>Three Modules,<br>One Platform</h2>
+    <p>Each module is independently deployable and useful. Together they form a complete learning environment where automation serves human connection at every stage of the learning cycle.</p>
+  </div>
+
+  <div class="module-grid">
+    <div class="module-card card-amber">
+      <div class="module-card-num">MODULE 01</div>
+      <h3>Evaluation Engine</h3>
+      <p class="card-sub">Student-facing iterative feedback with turn-in gating. The prerequisite system for final submission.</p>
+      <div class="tag-row">
+        <span class="tag tag-green">PRODUCTION READY</span>
+        <span class="tag tag-amber">21 Scripts</span>
+        <span class="tag tag-amber">2 Studio Flows</span>
+        <span class="tag tag-amber">Pilot Active</span>
+      </div>
+      <p class="module-desc">Students receive AI-powered feedback within 1–3 minutes against teacher-defined rubric criteria. Multiple revision cycles. Turn-in gate requires verified passing evaluation before submission reaches the teacher. Teacher only sees work that met the standard.</p>
+    </div>
+
+    <div class="module-card card-teal">
+      <div class="module-card-num">MODULE 02</div>
+      <h3>Lesson Intelligence</h3>
+      <p class="card-sub">Lesson framing, competency alignment, and personalized warm-ups. The prerequisite system for instruction.</p>
+      <div class="tag-row">
+        <span class="tag tag-ghost">SPECIFICATION</span>
+        <span class="tag tag-teal">~8 Scripts</span>
+        <span class="tag tag-teal">2 Studio Flows</span>
+        <span class="tag tag-teal">Build Ready</span>
+      </div>
+      <p class="module-desc">Teacher inputs lesson context once. System generates learning objectives, competency alignment documentation, and personalized warm-ups for each student. Teacher begins instruction knowing the room — which students are ready, which concepts are fragile.</p>
+    </div>
+
+    <div class="module-card card-violet">
+      <div class="module-card-num">MODULE 03</div>
+      <h3>Student Profile</h3>
+      <p class="card-sub">Longitudinal knowledge state built from evaluation and lesson history. The connective tissue between modules.</p>
+      <div class="tag-row">
+        <span class="tag tag-ghost">DESIGNED</span>
+        <span class="tag tag-violet">~4 Scripts</span>
+        <span class="tag tag-violet">Depends on M1 + M2</span>
+      </div>
+      <p class="module-desc">Accumulates concept-level mastery data from every evaluation and warm-up. Powers personalized warm-up differentiation. Surfaces patterns to teachers. Becomes a longitudinal learning record across terms and years.</p>
+    </div>
+
+    <div class="module-card card-slate">
+      <div class="module-card-num">INFRASTRUCTURE</div>
+      <h3>Shared Platform Core</h3>
+      <p class="card-sub">Configuration, setup wizards, deployment tools, dashboards, and impact tracking shared across all modules.</p>
+      <div class="tag-row">
+        <span class="tag tag-green">PRODUCTION READY</span>
+        <span class="tag tag-slate">Scripts 00 + 16–21</span>
+        <span class="tag tag-slate">All modules</span>
+      </div>
+      <p class="module-desc">Unified setup wizard with role detection, AutoInstaller, _CONFIG tab persistence for cloned sheets, checkpoint-safe deployment, term management, health monitoring, and impact dashboard. Shared by all modules.</p>
+    </div>
+  </div>
+</div>
+
+<!-- MODULE 1 DETAIL -->
+<div class="section" id="module1">
+  <div class="section-header">
+    <div class="section-eyebrow">Module 01 — Production Ready</div>
+    <h2>Evaluation Engine</h2>
+    <p>Complete specification and deployment status of the system currently in pilot.</p>
+  </div>
+
+  <div class="sys-map">
+<span class="c">// EVALUATION ENGINE — Data Flow</span>
+
+<span class="k">Student</span> → clicks "Run Assignment Check"
+  → <span class="v">Script 01</span>: validates roster · cooldown · word count
+  → <span class="v">ReviewQueue</span>: PENDING row appended
+  → <span class="v">Script 03</span> bridgeQueue (1 min): dedup check → <span class="v">STAGING_PIPELINE</span>: PENDING_INFERENCE
+  → <span class="v">Script 06</span> Turnstile (1 min): per-teacher lane → flip to IN_PROCESS
+  → <span class="h">Studio Flow 2</span>: read doc → fetch config → Gemini eval → write feedback → COMPLETE
+  → <span class="v">Script 03</span> backprop (2 min): close queue → update ledger → post-process doc
+
+<span class="k">Teacher</span> → submits rubric
+  → <span class="v">Script 05</span>: validate → <span class="v">RubricQueue</span>: PENDING_EXTRACTION
+  → <span class="h">Studio Flow 1</span>: Gemini extract JSON → <span class="v">TeacherMatrix</span>: DRAFT
+  → <span class="v">Script 08</span>: detect DRAFT → pre-filled confirmation email
+  → <span class="k">Teacher</span> confirms → assignment LIVE
+
+<span class="k">Student</span> → submits Turn-In Form (email auto-collected)
+  → <span class="v">Script 04</span>: 3-point ledger match → compliance stamp → forensic check
+  → <span class="g">COMPLIANT</span> + teacher notification | <span class="rose">REJECTED</span> + notice in document
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 16px">Script Inventory</h3>
+
+  <div class="schema-block">
+    <div class="schema-head"><h4>21 Active Scripts</h4><span>6 Projects</span></div>
+    <div class="schema-row header"><span>File</span><span>Project</span><span>Purpose</span></div>
+    <div class="schema-row"><span class="col-n">00_SharedConfig</span><span class="col-t">All</span><span class="col-d">Central config reader — getConfig_()</span></div>
+    <div class="schema-row"><span class="col-n">01_StudentDoc</span><span class="col-t">Student Template</span><span class="col-d">Toolbar, evaluation submission, status check, readSystemIds()</span></div>
+    <div class="schema-row"><span class="col-n">02_Form1Intake</span><span class="col-t">Central Ledger</span><span class="col-d">Student registration, doc creation, prompt injection, Turn-In URL stamping</span></div>
+    <div class="schema-row"><span class="col-n">03_QueueBridge</span><span class="col-t">Central Ledger</span><span class="col-d">Queue bridging, backprop, deduplication, post-processing, timeout handling</span></div>
+    <div class="schema-row"><span class="col-n">04_TurnInGate</span><span class="col-t">Central Ledger</span><span class="col-d">3-point validation, compliance scan, forensic check, rejection notices</span></div>
+    <div class="schema-row"><span class="col-n">05_TeacherIntake</span><span class="col-t">Rubric Sheet</span><span class="col-d">Rubric validation, RubricQueue write, self-registering trigger</span></div>
+    <div class="schema-row"><span class="col-n">06_Turnstile</span><span class="col-t">Central Ledger</span><span class="col-d">Per-teacher lane routing, auto-clear stale rows, single-lane fallback</span></div>
+    <div class="schema-row"><span class="col-n">07_TeacherDashboard</span><span class="col-t">Standalone</span><span class="col-d">Web app — teacher view, term filter, Execute as: Me</span></div>
+    <div class="schema-row"><span class="col-n">08_ConfirmationStep</span><span class="col-t">Matrix Sheet</span><span class="col-d">Draft detection, pre-filled confirmation email, self-registering triggers</span></div>
+    <div class="schema-row"><span class="col-n">09_RevisionGuidance</span><span class="col-t">Student Template</span><span class="col-d">Reference copy — operative code in Script 03</span></div>
+    <div class="schema-row"><span class="col-n">10_AdminPanel</span><span class="col-t">Central Ledger</span><span class="col-d">Admin controls, term management, health check, daily autoHealthAlert</span></div>
+    <div class="schema-row"><span class="col-n">13_StudentDashboard</span><span class="col-t">Standalone</span><span class="col-d">Web app — student view, term filter, Execute as: User</span></div>
+    <div class="schema-row"><span class="col-n">15_StudioPrompts</span><span class="col-t">Reference</span><span class="col-d">Flow 1 + Flow 2 prompts and Studio configuration reference</span></div>
+    <div class="schema-row"><span class="col-n">16_UnifiedManualSetup</span><span class="col-t">Admin Manual</span><span class="col-d">Unified wizard — admin + teacher setup, role detection, menu management</span></div>
+    <div class="schema-row"><span class="col-n">17_MasterStudentTemplate</span><span class="col-t">Student Template</span><span class="col-d">Architecture documentation stub</span></div>
+    <div class="schema-row"><span class="col-n">18_FormSubmitDispatcher</span><span class="col-t">Central Ledger</span><span class="col-d">Single onFormSubmit entry — dispatches to Scripts 02 + 04</span></div>
+    <div class="schema-row"><span class="col-n">19_ClonedSheetConfig</span><span class="col-t">Manual + Both Sheets</span><span class="col-d">_CONFIG tab writer and reader for cloned sheet projects</span></div>
+    <div class="schema-row"><span class="col-n">20_SetupCheckpoint</span><span class="col-t">Admin Manual</span><span class="col-d">Transaction-safe checkpoint system for setup wizard</span></div>
+    <div class="schema-row"><span class="col-n">21_AutoInstaller</span><span class="col-t">Admin Manual</span><span class="col-d">Apps Script API installer — registry sheet reader, project creator, web app deployer</span></div>
+  </div>
+</div>
+
+<!-- MODULE 2 DETAIL -->
+<div class="section section-alt" id="module2">
+  <div class="section-header">
+    <div class="section-eyebrow">Module 02 — Specification</div>
+    <h2>Lesson Intelligence</h2>
+    <p>What gets built next. Full specification for the lesson framing, competency alignment, and warm-up system.</p>
+  </div>
+
+  <div class="interface-grid">
+    <div class="iface-card">
+      <div class="iface-actor">Teacher input</div>
+      <h4>Lesson Context Form</h4>
+      <p>One form per lesson. What are students doing, what should they be able to do after, which vocabulary is central, which competencies does it address, what did we do last time. Submits to LessonContext tab. Takes 5–10 minutes.</p>
+    </div>
+    <div class="iface-card">
+      <div class="iface-actor">System output → Teacher</div>
+      <h4>Lesson Frame Document</h4>
+      <p>Auto-generated from lesson context. Learning objective in teacher language. Competency alignment mapped. Suggested warm-up question. Connection to prior lesson explicit. Teacher reviews and approves.</p>
+    </div>
+    <div class="iface-card">
+      <div class="iface-actor">System output → Students</div>
+      <h4>Student-Facing Warm-Up</h4>
+      <p>Objective in plain language. Warm-up prompt connected to prior work or today's vocabulary. Personalized based on each student's evaluation history when Module 3 profile data is available.</p>
+    </div>
+    <div class="iface-card">
+      <div class="iface-actor">System output → Admin</div>
+      <h4>Competency Alignment Log</h4>
+      <p>Auto-accumulating record of every lesson mapped to competency framework. Date, description, competencies addressed, objective. Becomes end-of-term documentation artifact with no additional teacher effort.</p>
+    </div>
+    <div class="iface-card">
+      <div class="iface-actor">Teacher dashboard</div>
+      <h4>Pre-Lesson Readiness View</h4>
+      <p>Which students completed the warm-up. Which concepts are fragile across the class. Coverage map showing which competencies have and haven't been addressed this term. Teacher opens class already knowing the room.</p>
+    </div>
+    <div class="iface-card">
+      <div class="iface-actor">Setup — once per course</div>
+      <h4>Competency Registry</h4>
+      <p>A structured Google Sheet listing all competencies for this subject and grade level. 20–40 items. Built once from district framework. Drives the lesson form dropdown and the alignment log. The one setup investment that can't be skipped.</p>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:40px 0 16px">New Data Tabs Required</h3>
+
+  <div class="schema-block">
+    <div class="schema-head"><h4>LessonContext tab</h4><span>Central Ledger — one row per lesson</span></div>
+    <div class="schema-row header"><span>Column</span><span>Type</span><span>Description</span></div>
+    <div class="schema-row"><span class="col-n">lesson_date</span><span class="col-t">Date</span><span class="col-d">Date of the lesson</span></div>
+    <div class="schema-row"><span class="col-n">teacher_email</span><span class="col-t">String</span><span class="col-d">Submitting teacher — routes to correct dashboard</span></div>
+    <div class="schema-row"><span class="col-n">activity_description</span><span class="col-t">Text</span><span class="col-d">What students are doing today — plain description</span></div>
+    <div class="schema-row"><span class="col-n">learning_objective</span><span class="col-t">Text</span><span class="col-d">What students can do by end that they couldn't at start</span></div>
+    <div class="schema-row"><span class="col-n">key_vocabulary</span><span class="col-t">Text</span><span class="col-d">Comma-separated terms central to this lesson</span></div>
+    <div class="schema-row"><span class="col-n">prior_lesson_connection</span><span class="col-t">Text</span><span class="col-d">What last lesson covered that this builds on</span></div>
+    <div class="schema-row"><span class="col-n">competency_ids</span><span class="col-t">Text</span><span class="col-d">Comma-separated IDs from CompetencyRegistry</span></div>
+    <div class="schema-row"><span class="col-n">warm_up_generated</span><span class="col-t">Boolean</span><span class="col-d">Whether Studio has processed this row</span></div>
+  </div>
+
+  <div class="schema-block" style="margin-top:12px">
+    <div class="schema-head"><h4>CompetencyRegistry tab</h4><span>Central Ledger — one row per competency — set up once</span></div>
+    <div class="schema-row header"><span>Column</span><span>Type</span><span>Description</span></div>
+    <div class="schema-row"><span class="col-n">competency_id</span><span class="col-t">String</span><span class="col-d">Short code — e.g. ELA-W-1, SCI-INQ-3</span></div>
+    <div class="schema-row"><span class="col-n">competency_text</span><span class="col-t">Text</span><span class="col-d">Full competency statement from district framework</span></div>
+    <div class="schema-row"><span class="col-n">subject</span><span class="col-t">String</span><span class="col-d">Subject area</span></div>
+    <div class="schema-row"><span class="col-n">grade_band</span><span class="col-t">String</span><span class="col-d">e.g. 9-10, 11-12</span></div>
+    <div class="schema-row"><span class="col-n">strand</span><span class="col-t">String</span><span class="col-d">Competency category — e.g. Writing, Reading, Speaking</span></div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:40px 0 16px">New Scripts Required</h3>
+
+  <div class="schema-block">
+    <div class="schema-head"><h4>Module 2 Scripts — ~8 new files</h4><span>Extends Central Ledger project</span></div>
+    <div class="schema-row header"><span>File</span><span>Project</span><span>Purpose</span></div>
+    <div class="schema-row"><span class="col-n">22_LessonContextHandler</span><span class="col-t">Central Ledger</span><span class="col-d">Processes Lesson Context Form submissions, validates, writes to LessonContext tab, queues warm-up generation</span></div>
+    <div class="schema-row"><span class="col-n">23_StudentProfileManager</span><span class="col-t">Central Ledger</span><span class="col-d">Updates StudentProfiles after evaluations. Extracts concept-level outcomes. Tags mastered vs fragile concepts per student.</span></div>
+    <div class="schema-row"><span class="col-n">24_WarmUpBridge</span><span class="col-t">Central Ledger</span><span class="col-d">Routes warm-up generation requests through staging. One request per student per lesson day. Deduplication.</span></div>
+    <div class="schema-row"><span class="col-n">25_WarmUpWriter</span><span class="col-t">Central Ledger</span><span class="col-d">Writes generated warm-up content to student documents. Called by backprop after Studio Flow 3 completes.</span></div>
+    <div class="schema-row"><span class="col-n">26_CompetencyAlignmentLog</span><span class="col-t">Central Ledger</span><span class="col-d">Accumulates lesson-to-competency mappings. Generates term coverage report. Feeds admin documentation export.</span></div>
+    <div class="schema-row"><span class="col-n">27_LessonFrameGenerator</span><span class="col-t">Admin Manual</span><span class="col-d">Creates formatted lesson frame Google Doc from lesson context. Teacher reviews and approves before class.</span></div>
+    <div class="schema-row"><span class="col-n">28_Module2Setup</span><span class="col-t">Admin Manual</span><span class="col-d">Extends Script 16 wizard for Module 2 setup — creates new tabs, competency registry form, lesson context form.</span></div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:40px 0 16px">New Studio Flows Required</h3>
+
+  <div class="interface-grid">
+    <div class="iface-card">
+      <div class="iface-actor">Studio Flow 3</div>
+      <h4>Warm-Up Generation</h4>
+      <p>Trigger: new row in WarmUpQueue with PENDING status. Reads lesson context + student profile. Gemini generates personalized warm-up. Writes to student document via Docs connector. Marks COMPLETE.</p>
+    </div>
+    <div class="iface-card">
+      <div class="iface-actor">Studio Flow 4</div>
+      <h4>Warm-Up Evaluation</h4>
+      <p>Trigger: student submits warm-up response. Evaluates genuine engagement vs. surface response. Updates StudentProfile with concept engagement signal. Feeds pre-lesson readiness dashboard.</p>
+    </div>
+    <div class="iface-card">
+      <div class="iface-actor">Studio Flow 5</div>
+      <h4>Lesson Frame Generation</h4>
+      <p>Trigger: teacher submits Lesson Context Form. Reads competency registry. Generates formatted lesson frame with objective, alignment, warm-up suggestion. Writes to Google Doc for teacher review.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ARCHITECTURE -->
+<div class="section" id="architecture">
+  <div class="section-header">
+    <div class="section-eyebrow">Platform Architecture</div>
+    <h2>How the Modules Connect</h2>
+    <p>Each module is independently deployable. Shared infrastructure and data flows connect them when both are active.</p>
+  </div>
+
+  <div class="sys-map">
+<span class="c">// SHARED INFRASTRUCTURE (all modules)</span>
+<span class="k">Admin Manual Doc</span>       Scripts 00 · 16 · 19 · 20 · 21
+<span class="k">Central Ledger SS</span>      All pipeline tabs · all operational scripts
+<span class="k">Master Template Sheets</span> Rubric Response · Teacher Matrix (both clone per teacher)
+<span class="k">Student Template Doc</span>   Scripts 00 · 01 · 09 · 17 (clones per student)
+
+<span class="c">// MODULE 1 — EVALUATION ENGINE</span>
+<span class="k">New data tabs</span>
+  Ledger · ReviewQueue · STAGING_PIPELINE · RubricQueue · MatrixRegistry
+<span class="k">Scripts</span>  02 · 03 · 04 · 05 · 06 · 07 · 08 · 10 · 13 · 15 · 17 · 18
+<span class="k">Studio</span>   Flow 1 (Rubric Extraction) · Flow 2 (Student Evaluation)
+<span class="k">Triggers</span> dispatchFormSubmit · bridgeQueue (1m) · backPropagateCompletions (2m)
+          runStagingTurnstile (1m) · autoHealthAlert (daily)
+
+<span class="c">// MODULE 2 — LESSON INTELLIGENCE (builds on M1)</span>
+<span class="k">New data tabs</span>
+  LessonContext · CompetencyRegistry · WarmUpQueue · StudentProfiles
+<span class="k">Scripts</span>  22 · 23 · 24 · 25 · 26 · 27 · 28
+<span class="k">Studio</span>   Flow 3 (Warm-Up Gen) · Flow 4 (Warm-Up Eval) · Flow 5 (Lesson Frame)
+<span class="k">Triggers</span> processLessonContext (on form submit) · generateWarmUps (6am daily)
+          evaluateWarmUps (2m) · updateStudentProfiles (2m)
+
+<span class="c">// MODULE 3 — STUDENT PROFILE (depends on M1 + M2)</span>
+<span class="k">New data tabs</span>
+  ConceptMastery · LearningHistory
+<span class="k">Scripts</span>  23 extended · additional profile query functions
+<span class="k">Feeds</span>    M2 warm-up personalization · M1 evaluation context · teacher dashboard
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 16px">Key Architectural Decisions</h3>
+
+  <ul class="decision-list">
+    <li class="decision-item">
+      <span class="decision-key">SEPARATION</span>
+      <span class="decision-val"><strong>Module 2 is a separate deployment from Module 1.</strong> Same Central Ledger, new tabs and scripts. A school can run Module 1 indefinitely without Module 2. Module 2 deploys by adding tabs, scripts, and flows to an existing Module 1 installation — no changes to existing scripts.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">DATA FLOW</span>
+      <strong class="decision-val"><strong>Student evaluation outcomes feed Module 2 warm-up personalization.</strong> Script 23 reads evaluation results from Module 1 and writes concept-level signals to StudentProfiles. Module 2 reads those profiles when generating warm-ups. The integration is opt-in — warm-ups work without profiles, just less personalized.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">INFRASTRUCTURE</span>
+      <span class="decision-val"><strong>Script 16's setup wizard is extended, not replaced.</strong> Script 28 adds a Module 2 setup phase to the existing wizard. Same role detection, same checkpoint system, same Admin Manual. Teachers don't need a new manual.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">PRIVACY</span>
+      <span class="decision-val"><strong>Student profiles never leave Google Workspace.</strong> Same architectural principle as Module 1 — no external vendors, no data export, no additional DPAs. The competency registry and lesson context are entirely within the school's existing infrastructure.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">SCALE</span>
+      <span class="decision-val"><strong>Same per-teacher lane architecture applies to warm-up generation.</strong> Script 24 uses the same queue-and-pointer pattern as Script 03. Each teacher's warm-up generation queue is independent. Studio Flow 3 is subject to the same single-ledger concurrency constraints — same 10–15 teacher ceiling applies.</span>
+    </li>
+  </ul>
+</div>
+
+<!-- BUILD PLAN -->
+<div class="section section-alt" id="build">
+  <div class="section-header">
+    <div class="section-eyebrow">Roadmap</div>
+    <h2>Build Plan</h2>
+    <p>Sequenced by dependency and strategic value. Each phase is independently deployable.</p>
+  </div>
+
+  <div class="build-phases">
+    <div class="phase">
+      <div class="phase-label">
+        <span class="pl">Now</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--amber)">ACTIVE</span>
+      </div>
+      <div class="phase-content">
+        <h4>Module 1 Pilot — Your Classroom</h4>
+        <p>Deploy Module 1 in your own class for one full assignment cycle. Collect real data: revision rates, time recovered, student experience. Log in Impact Dashboard as D001.</p>
+        <p>Success condition: six end-to-end test checks pass. At least one complete student revision cycle documented.</p>
+        <div class="phase-items">
+          <span class="tag tag-amber">Evaluation Engine deployed</span>
+          <span class="tag tag-amber">Per-teacher lanes active</span>
+          <span class="tag tag-amber">Impact Dashboard logging</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-label">
+        <span class="pl">This term</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--teal)">NEXT</span>
+      </div>
+      <div class="phase-content">
+        <h4>Module 2 Lightweight — Lesson Framing</h4>
+        <p>Build the Lesson Context Form, CompetencyRegistry sheet, and Script 22 first. No Studio flows yet — just the form-to-document pipeline that generates lesson frames and logs competency alignment automatically.</p>
+        <p>This addresses the administrator ask immediately with minimal build effort. Running in your classroom alongside Module 1.</p>
+        <div class="phase-items">
+          <span class="tag tag-teal">Lesson Context Form</span>
+          <span class="tag tag-teal">Script 22 + 26</span>
+          <span class="tag tag-teal">Competency Registry</span>
+          <span class="tag tag-teal">Alignment log</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-label">
+        <span class="pl">This term</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--teal)">NEXT</span>
+      </div>
+      <div class="phase-content">
+        <h4>Module 1 Expansion — 2–3 Colleagues</h4>
+        <p>Onboard trusted colleagues with existing trust relationships. Different subjects. Document their experience in the Impact Dashboard. Build the multi-teacher evidence base.</p>
+        <p>Success condition: 3+ teacher deployment records with outcome data. At least one teacher quote suitable for an administrator briefing.</p>
+        <div class="phase-items">
+          <span class="tag tag-amber">3 teachers minimum</span>
+          <span class="tag tag-amber">2 buildings preferred</span>
+          <span class="tag tag-amber">Outcome data collected</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-label">
+        <span class="pl">Next term</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">PLANNED</span>
+      </div>
+      <div class="phase-content">
+        <h4>Module 2 Full — Warm-Ups + Studio Flows</h4>
+        <p>Add Studio Flows 3, 4, 5. Scripts 23–27. Student-facing warm-ups active. Pre-lesson readiness dashboard. Personalization when Module 3 profile data exists.</p>
+        <p>Prerequisite: Module 1 has been running long enough to have meaningful evaluation history to feed warm-up personalization.</p>
+        <div class="phase-items">
+          <span class="tag tag-teal">Flows 3 + 4 + 5</span>
+          <span class="tag tag-teal">Scripts 23–27</span>
+          <span class="tag tag-teal">Warm-up personalization</span>
+          <span class="tag tag-teal">Readiness dashboard</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="phase">
+      <div class="phase-label">
+        <span class="pl">Next year</span>
+        <span style="font-family:var(--mono);font-size:10px;color:var(--text-dim)">HORIZON</span>
+      </div>
+      <div class="phase-content">
+        <h4>Module 3 — Student Profile + County Conversation</h4>
+        <p>Longitudinal knowledge state accumulates from a full year of Module 1 + 2 data. Student profiles power differentiation across both modules. Evidence base strong enough for the county-level conversation.</p>
+        <p>The county conversation happens when the system is already running across multiple buildings. You're formalizing something that exists, not proposing something new.</p>
+        <div class="phase-items">
+          <span class="tag tag-violet">Module 3 build</span>
+          <span class="tag tag-violet">Multi-building deployment</span>
+          <span class="tag tag-violet">District conversation</span>
+          <span class="tag tag-violet">Role formalization</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<footer>
+  <div class="footer-col">
+    <h4>Platform</h4>
+    <ul>
+      <li>Module 1 — Evaluation Engine</li>
+      <li>Module 2 — Lesson Intelligence</li>
+      <li>Module 3 — Student Profile</li>
+      <li>Shared Infrastructure</li>
+    </ul>
+  </div>
+  <div class="footer-col">
+    <h4>Documentation</h4>
+    <ul>
+      <li>Admin Deployment Walkthrough</li>
+      <li>System Architecture</li>
+      <li>Studio Flow Reference</li>
+      <li>Teacher Reference Guide</li>
+      <li>Student Quick-Start</li>
+      <li>Impact Dashboard</li>
+    </ul>
+  </div>
+  <div class="footer-col">
+    <h4>Design Principle</h4>
+    <p>Automate the prerequisite. Protect the human moment. The goal is a classroom where teacher attention is concentrated precisely where it does the most good.</p>
+  </div>
+</footer>
+
+<script>
+const links = document.querySelectorAll('.topnav-link');
+const sections = ['principles','modules','module1','module2','architecture','build'];
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    links.forEach(l => l.classList.remove('active'));
+    const id = e.target.id;
+    const match = document.querySelector('.topnav-link[href="#'+id+'"]');
+    if (match) match.classList.add('active');
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(id => { const el = document.getElementById(id); if(el) obs.observe(el); });
+</script>
+</body>
+</html>

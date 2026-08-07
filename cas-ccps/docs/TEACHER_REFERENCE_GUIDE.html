@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teacher Reference Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,700;1,9..144,400&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f9f8f5;--white:#ffffff;--ink:#18170f;--mid:#4d4c44;--dim:#8c8b80;--rule:#e5e3da;
+  --teal:#0f6b6b;--teal-l:#e6f5f5;--teal-b:#7ecece;
+  --gold:#8a6800;--gold-l:#fdf5db;--gold-b:#f0c83a;
+  --rose:#8b1a1a;--rose-l:#fdf0f0;
+  --slate:#1a2840;--slate-l:#edf2f8;
+  --serif:'Fraunces',Georgia,serif;--sans:'Inter',system-ui,sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.65}
+
+/* ── LAYOUT ── */
+.shell{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--slate);padding:0;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,0.1) transparent}
+.sb-brand{padding:28px 24px 20px;border-bottom:1px solid rgba(255,255,255,0.08)}
+.sb-brand h2{font-family:var(--serif);font-size:16px;font-weight:500;color:white;line-height:1.3}
+.sb-brand p{font-size:11px;color:rgba(255,255,255,0.35);margin-top:4px}
+.sb-section{padding:20px 0 4px}
+.sb-section-label{font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:rgba(255,255,255,0.25);padding:0 24px 8px;display:block}
+.sb-link{display:block;padding:8px 24px;color:rgba(255,255,255,0.5);font-size:13px;text-decoration:none;border-left:2px solid transparent;transition:all 0.15s;line-height:1.3}
+.sb-link:hover{color:white;background:rgba(255,255,255,0.05)}
+.sb-link.active{color:var(--teal-b);border-left-color:var(--teal-b);background:rgba(126,206,206,0.08)}
+
+/* ── MAIN ── */
+.main{min-width:0}
+
+/* ── HERO ── */
+.hero{padding:56px 64px 48px;background:var(--white);border-bottom:1px solid var(--rule)}
+.hero-kicker{font-size:11px;font-weight:600;letter-spacing:2.5px;text-transform:uppercase;color:var(--teal);margin-bottom:16px}
+.hero h1{font-family:var(--serif);font-size:42px;font-weight:300;line-height:1.1;letter-spacing:-0.5px;margin-bottom:16px;max-width:580px}
+.hero h1 em{font-style:italic;color:var(--teal)}
+.hero-desc{font-size:16px;color:var(--mid);max-width:520px;line-height:1.75;margin-bottom:32px}
+.hero-pills{display:flex;gap:8px;flex-wrap:wrap}
+.hero-pill{font-size:12px;color:var(--mid);background:var(--bg);border:1px solid var(--rule);border-radius:20px;padding:5px 14px}
+
+/* ── CONTENT ── */
+.content{padding:0 64px 80px}
+
+/* ── TOPIC SECTIONS ── */
+.topic{padding-top:56px}
+.topic-anchor{display:block;height:1px;margin-top:-56px;visibility:hidden}
+
+.topic-header{display:flex;align-items:center;gap:16px;margin-bottom:28px;padding-bottom:20px;border-bottom:2px solid var(--rule)}
+.topic-icon{width:44px;height:44px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.icon-teal{background:var(--teal-l)}.icon-gold{background:var(--gold-l)}.icon-rose{background:var(--rose-l)}.icon-slate{background:var(--slate-l)}
+.topic-header h2{font-family:var(--serif);font-size:26px;font-weight:500;letter-spacing:-0.2px}
+
+/* ── STEPS ── */
+.steps{margin:20px 0}
+.step{display:grid;grid-template-columns:32px 1fr;gap:0 14px;position:relative}
+.step:not(:last-child)::before{content:"";position:absolute;left:15px;top:32px;bottom:0;width:1px;background:var(--rule)}
+.step-n{width:32px;height:32px;border-radius:50%;background:var(--teal);color:white;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;position:relative;z-index:1}
+.step-body{padding:4px 0 24px}
+.step-body strong{display:block;font-size:15px;font-weight:600;margin-bottom:5px}
+.step-body p{font-size:14px;color:var(--mid);line-height:1.7}
+
+/* ── CALLOUTS ── */
+.callout{border-radius:8px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;font-size:14px;line-height:1.65}
+.callout-icon{font-size:16px;flex-shrink:0;margin-top:1px}
+.callout-teal{background:var(--teal-l);color:var(--teal)}.callout-gold{background:var(--gold-l);color:var(--gold)}.callout-rose{background:var(--rose-l);color:var(--rose)}.callout-slate{background:var(--slate-l);color:var(--slate)}
+.callout-body strong{font-weight:600}
+
+/* ── TABLES ── */
+.ref-table{width:100%;border-collapse:collapse;background:white;border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:16px 0}
+.ref-table th{background:#f5f4f0;padding:10px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--rule)}
+.ref-table td{padding:12px 16px;border-bottom:1px solid var(--rule);font-size:14px;vertical-align:top}
+.ref-table tr:last-child td{border-bottom:none}
+.ref-table tr:hover td{background:#fafaf8}
+.td-label{font-weight:500;color:var(--ink);white-space:nowrap}
+.td-action{color:var(--teal);font-size:13px}
+
+/* ── STATUS TABLE ── */
+.status-row{display:flex;gap:16px;align-items:flex-start;padding:12px 0;border-bottom:1px solid var(--rule)}
+.status-row:last-child{border-bottom:none}
+.status-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;white-space:nowrap;flex-shrink:0;min-width:100px;text-align:center}
+.s-active{background:#f1f5f9;color:#475569}.s-staged{background:#dbeafe;color:#1e40af}.s-evaluated{background:#f3e8fd;color:#6b21a8}.s-compliant{background:#dcfce7;color:#166534}.s-archived{background:#f1f5f9;color:#6b7280}.s-error{background:#fee2e2;color:#991b1b}
+.status-desc{font-size:14px;color:var(--mid);line-height:1.6}
+
+/* ── CODE ── */
+.inline-code{font-family:monospace;font-size:12.5px;background:#f0efe8;border:1px solid var(--rule);border-radius:4px;padding:2px 6px;color:var(--ink)}
+
+/* ── DIVIDER ── */
+hr{border:none;border-top:1px solid var(--rule);margin:40px 0}
+
+/* ── FOOTER ── */
+footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;padding:28px;font-size:12px}
+
+@media(max-width:900px){.shell{grid-template-columns:1fr}.sidebar{display:none}.hero,.content{padding:36px 24px 60px}}
+</style>
+</head>
+<body>
+<div class="shell">
+
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sb-brand">
+    <h2>Teacher Reference Guide</h2>
+    <p>Assignment System</p>
+  </div>
+  <div class="sb-section">
+    <span class="sb-section-label">Getting Started</span>
+    <a class="sb-link" href="#setup">Your Setup</a>
+    <a class="sb-link" href="#workspace">Your Workspace</a>
+  </div>
+  <div class="sb-section">
+    <span class="sb-section-label">Day to Day</span>
+    <a class="sb-link" href="#create">Creating an Assignment</a>
+    <a class="sb-link" href="#register">Registering Students</a>
+    <a class="sb-link" href="#dashboard">Your Dashboard</a>
+    <a class="sb-link" href="#status">Understanding Status</a>
+  </div>
+  <div class="sb-section">
+    <span class="sb-section-label">Student Support</span>
+    <a class="sb-link" href="#problems">When Students Have Problems</a>
+    <a class="sb-link" href="#turnin">Turn-In Rejections</a>
+  </div>
+  <div class="sb-section">
+    <span class="sb-section-label">End of Term</span>
+    <a class="sb-link" href="#term">Term Management</a>
+    <a class="sb-link" href="#limits">What Teachers Can't Edit</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+<div class="hero">
+  <div class="hero-kicker">Teacher Reference</div>
+  <h1>Your guide to the<br><em>Assignment System</em></h1>
+  <p class="hero-desc">Everything you need to know for day-to-day use. This is a reference document — consult it when you have a question, not just during setup.</p>
+  <div class="hero-pills">
+    <span class="hero-pill">Creating assignments</span>
+    <span class="hero-pill">Registering students</span>
+    <span class="hero-pill">Reading your dashboard</span>
+    <span class="hero-pill">Handling problems</span>
+    <span class="hero-pill">End of term</span>
+  </div>
+</div>
+
+<div class="content">
+
+<!-- YOUR SETUP -->
+<div class="topic" id="setup">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal">⚙️</div>
+    <h2>Your Setup</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">You received an Admin Manual Google Doc with your name on it. When you first ran the setup wizard, it created your personal workspace automatically. Here's what was created and where to find it.</p>
+
+  <table class="ref-table">
+    <thead><tr><th>Asset</th><th>What it does</th><th>Where to find it</th></tr></thead>
+    <tbody>
+      <tr><td class="td-label">Teacher Manual Doc</td><td>Your operational hub — contains all your links and the ⚙️ Assignment System menu</td><td>In your Google Drive — the document you ran setup from</td></tr>
+      <tr><td class="td-label">Rubric Upload Form</td><td>Submit a new rubric to create an assignment</td><td>Link in your Teacher Setup Details page (end of manual)</td></tr>
+      <tr><td class="td-label">Student Registration Form</td><td>Register a student for an assignment</td><td>Link in your Teacher Setup Details page</td></tr>
+      <tr><td class="td-label">Turn-In Form</td><td>Students submit their final work here — shared across all teachers</td><td>Link in your Teacher Setup Details page — share this with students</td></tr>
+      <tr><td class="td-label">Teacher Matrix Sheet</td><td>Your assignment configurations — do not edit directly</td><td>Link in your Teacher Setup Details page</td></tr>
+      <tr><td class="td-label">Teacher Dashboard</td><td>Live view of all your students' progress</td><td>⚙️ Assignment System → Open My Dashboard</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Keep your Teacher Manual bookmarked.</strong> It's the starting point for every action — creating assignments, registering students, and opening your dashboard are all one click from the ⚙️ menu.</div>
+  </div>
+</div>
+
+<!-- YOUR WORKSPACE -->
+<div class="topic" id="workspace">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal">📁</div>
+    <h2>Your Workspace at a Glance</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">Your workspace lives entirely within Google Drive. Here's how the folder structure is organised:</p>
+
+  <div style="background:white;border:1px solid var(--rule);border-radius:10px;padding:20px 24px;font-family:monospace;font-size:13px;color:var(--mid);line-height:2.2">
+    📁 Assignments/<br>
+    &nbsp;&nbsp;📁 [Your Subject]/<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;📁 [Your Name]/          ← your personal folder<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📋 [Name] — Rubric Responses  ← rubric uploads land here<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📊 [Name] — Teacher Matrix    ← your assignment configs<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📬 [Name] — Rubric Upload Form<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📬 [Name] — Assignment Review Form<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📬 [Name] — Student Registration Form<br>
+    &nbsp;&nbsp;📁 _Student Shared Folders/  ← student docs live here<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;📁 [Block - Class - Teacher]/  ← per-class folder<br>
+    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;📄 [Assignment] — [Student Name]
+  </div>
+
+  <div class="callout callout-rose" style="margin-top:20px">
+    <span class="callout-icon">🚫</span>
+    <div class="callout-body"><strong>Don't edit the Teacher Matrix directly.</strong> It's managed by the system. Editing rows there can break the evaluation pipeline for your students.</div>
+  </div>
+</div>
+
+<!-- CREATING AN ASSIGNMENT -->
+<div class="topic" id="create">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-gold">📝</div>
+    <h2>Creating an Assignment</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:24px">Creating an assignment is a two-step process: upload your rubric, then confirm what the system extracted from it. Once confirmed, the assignment is live for students.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Create your prompt template document</strong>
+        <p>Write the student-facing assignment instructions in a Google Doc. This is what students will see in their document. Make it as clear as possible — the AI uses this context when evaluating responses. Share the doc as "Anyone with the link can view."</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Prepare your rubric</strong>
+        <p>Write your evaluation rubric. The more specific and detailed it is, the better the AI evaluation will be. Include measurable criteria — "demonstrates understanding of X" is better than "understands X." You'll paste the full rubric text directly into the upload form.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Open the Rubric Upload Form</strong>
+        <p>Click <span class="inline-code">⚙️ Assignment System → Create New Assignment</span> in your manual. Fill in: your name, subject, course name, paste the rubric text, paste the prompt template Google Doc link, and select the academic tier.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <strong>Wait for the review email (1–5 min)</strong>
+        <p>The system processes your rubric and extracts the assignment criteria using AI. You'll receive an email with a pre-filled review link. This usually arrives within 5 minutes.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">5</div>
+      <div class="step-body">
+        <strong>Review and confirm the extracted criteria</strong>
+        <p>Click the link in the email. You'll see a form pre-filled with what the system extracted: assignment name, AI coach persona, four milestones, and the passing standard. Review each field. Edit anything that's wrong. Submit when it looks right.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">6</div>
+      <div class="step-body">
+        <strong>Receive your Config ID</strong>
+        <p>After confirming, the assignment status changes to LIVE and you receive a confirmation email containing your <strong>Config ID</strong> (format: <span class="inline-code">VDOE-XXXXXX-YYYY</span>). Record this — you need it when registering students.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>If the review email doesn't arrive after 10 minutes:</strong> check with your admin. The system may have encountered a processing issue with your rubric file. The admin can re-queue it from the Admin Controls panel.</div>
+  </div>
+
+  <div class="callout callout-rose">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Once confirmed, the assignment criteria are fixed.</strong> There is no edit path for a live assignment — changes would invalidate evaluations already delivered. If you need to update the criteria significantly, create a new assignment and use the new Config ID for any remaining students.</div>
+  </div>
+</div>
+
+<!-- REGISTERING STUDENTS -->
+<div class="topic" id="register">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-gold">👥</div>
+    <h2>Registering Students</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:24px">Each student needs to be individually registered for each assignment. Registration creates their personal document and shares it to their Google Drive automatically.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Open the Student Registration Form</strong>
+        <p>Click <span class="inline-code">⚙️ Assignment System → Register a Student</span> in your manual.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Fill in the student's details</strong>
+        <p>Required: student's Google account email, full name, class name, subject, course name, period, your name and email, the assignment Config ID, and the student's block.</p>
+        <div class="callout callout-rose" style="margin-top:12px">
+          <span class="callout-icon">⚠️</span>
+          <div class="callout-body"><strong>The student's Google account email must be exact.</strong> It's used to match the student to their document when they submit evaluations. A typo here means the student can't use the evaluation system. Double-check it before submitting.</div>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Wait 1–2 minutes for the document to be created</strong>
+        <p>The system copies the master student template, injects your assignment prompt, and shares the document to the student's Google Drive. The student will find it in their "Shared with me" folder.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <strong>Tell the student to check Shared with me</strong>
+        <p>Send the student a quick message that their document is ready. They find it in Google Drive → Shared with me. Their Turn-In Form link is already in the document footer.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Register students in groups of 20–30.</strong> Large batches can occasionally time out. If a student doesn't receive their document within 5 minutes, submit the registration form again — re-submission is safe. Check your dashboard to confirm the student appears.</div>
+  </div>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon">📋</span>
+    <div class="callout-body"><strong>Course name must match exactly.</strong> The course name in the registration form must match exactly what you used when creating the assignment. Case and spacing matter.</div>
+  </div>
+</div>
+
+<!-- YOUR DASHBOARD -->
+<div class="topic" id="dashboard">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal">📊</div>
+    <h2>Your Dashboard</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">Your teacher dashboard shows all your students and their current assignment status. Open it from <span class="inline-code">⚙️ Assignment System → Open My Dashboard</span>.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Term filter:</strong> Use the dropdown at the top to filter by academic term. The current term is selected by default. Select "All Terms" to see every student across all terms.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Sorting:</strong> Flagged students appear first. Within each assignment group, students are sorted alphabetically. Students with flagged submissions (turn-in errors, processing failures) appear at the very top.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Refresh:</strong> The dashboard doesn't update automatically — click the ↻ Refresh button to see the latest status.</p>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">Click a student's "Open document ↗" link to go directly to their assignment document. You can read their response, see their full evaluation history, and check the compliance stamps from there.</div>
+  </div>
+</div>
+
+<!-- STATUS -->
+<div class="topic" id="status">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal">🔍</div>
+    <h2>Understanding Student Status</h2>
+  </div>
+
+  <div style="margin-top:4px">
+    <div class="status-row">
+      <div><span class="status-badge s-active">NOT STARTED</span></div>
+      <div class="status-desc">Document was created, student hasn't run their first evaluation yet. Normal for the first few days after registration.</div>
+    </div>
+    <div class="status-row">
+      <div><span class="status-badge s-staged">QUEUED</span></div>
+      <div class="status-desc">Student clicked "Run Assignment Check" — work is queued for evaluation. Should resolve to EVALUATED within 3 minutes.</div>
+    </div>
+    <div class="status-row">
+      <div><span class="status-badge" style="background:#dbeafe;color:#1e40af;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">EVALUATING</span></div>
+      <div class="status-desc">Evaluation is actively running right now. Normal — this resolves within 1–2 minutes.</div>
+    </div>
+    <div class="status-row">
+      <div><span class="status-badge" style="background:#f3e8fd;color:#6b21a8;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">EVALUATED</span></div>
+      <div class="status-desc">Feedback has been delivered. Student either passed or needs to revise. Open their document to see the result.</div>
+    </div>
+    <div class="status-row">
+      <div><span class="status-badge s-compliant">COMPLIANT ✓</span></div>
+      <div class="status-desc">Student submitted via the Turn-In Form and passed all verification checks. You received a notification email. Work is complete.</div>
+    </div>
+    <div class="status-row">
+      <div><span class="status-badge s-archived">ARCHIVED</span></div>
+      <div class="status-desc">Archived at end of term by the admin. No longer visible in the default dashboard view — select "All Terms" to see archived students.</div>
+    </div>
+    <div class="status-row">
+      <div><span class="status-badge s-error">FLAGGED ⚠</span></div>
+      <div class="status-desc">Something went wrong — submission error, processing failure, or a turn-in rejection that needs investigation. Open the student's document to read the error notice.</div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDENT PROBLEMS -->
+<div class="topic" id="problems">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-rose">🙋</div>
+    <h2>When Students Have Problems</h2>
+  </div>
+
+  <table class="ref-table">
+    <thead><tr><th style="width:35%">Student says…</th><th>What's happening</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="td-label">"I don't see the 📊 menu in my document"</td>
+        <td>Wrong Google account, or they opened a copy/new doc instead of their shared original</td>
+        <td>Ask them to sign out and sign into the correct account, then find the document in "Shared with me" in Drive</td>
+      </tr>
+      <tr>
+        <td class="td-label">"I submitted for feedback but nothing appeared"</td>
+        <td>Evaluation may still be running, or a pipeline issue</td>
+        <td>Ask them to check status via the menu and wait another 2 minutes. If nothing after 5 min, check the dashboard — if still QUEUED, contact admin to check the pipeline</td>
+      </tr>
+      <tr>
+        <td class="td-label">"The system says I haven't written enough"</td>
+        <td>Response is under 25 words</td>
+        <td>Ask them to write more — the system needs enough content to evaluate meaningfully</td>
+      </tr>
+      <tr>
+        <td class="td-label">"I accidentally deleted something in the document"</td>
+        <td>Student edited a protected zone (feedback, footer, prompt)</td>
+        <td>Ask them to use File → Version history → See version history to restore. If they deleted the CONFIG_ID footer, contact admin — the document may need to be re-created</td>
+      </tr>
+      <tr>
+        <td class="td-label">"I can't find my document"</td>
+        <td>Looking in the wrong place or wrong account</td>
+        <td>Tell them to go to drive.google.com → "Shared with me". If still missing, check your dashboard — if the student doesn't appear, their registration may have failed. Re-register them</td>
+      </tr>
+      <tr>
+        <td class="td-label">"The Turn-In Form gave me an error"</td>
+        <td>Various — see Turn-In Rejections section below</td>
+        <td>Ask them to open their document — a notice has been written in the feedback zone explaining exactly what to do</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- TURN-IN REJECTIONS -->
+<div class="topic" id="turnin">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-rose">📬</div>
+    <h2>Turn-In Rejections</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">When a turn-in submission is rejected, a plain-language notice is written directly into the student's document explaining what happened and what to do. You receive a notification email for each rejection. Here's what each code means:</p>
+
+  <table class="ref-table">
+    <thead><tr><th style="width:25%">Rejection Code</th><th>Cause</th><th>Resolution</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="td-label">NO_EVALUATION_FOUND</td>
+        <td>No evaluation has been run yet, or the evaluation stamp is missing</td>
+        <td>Student needs to run an evaluation first via the 📊 menu</td>
+      </tr>
+      <tr>
+        <td class="td-label">REVISION_REQUIRED</td>
+        <td>Most recent evaluation showed revisions needed</td>
+        <td>Student needs to revise and pass another evaluation before submitting</td>
+      </tr>
+      <tr>
+        <td class="td-label">MISSING_CONFIG_ID</td>
+        <td>Student submitted the wrong document — one without the assignment tracking code</td>
+        <td>Student needs to find their original assignment document in "Shared with me"</td>
+      </tr>
+      <tr>
+        <td class="td-label">LEDGER_MISMATCH</td>
+        <td>Google account signed into the Turn-In Form doesn't match the registered account</td>
+        <td>Student needs to sign into the correct Google account before opening the Turn-In Form link</td>
+      </tr>
+      <tr>
+        <td class="td-label">FORENSIC_FAILURE</td>
+        <td>System couldn't verify the evaluation report's authenticity</td>
+        <td>You need to manually review the student's document. Use Admin Controls → Manually Mark Student Compliant if you're satisfied the work is genuine</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">Most turn-in rejections are self-resolving — the notice in the student's document tells them exactly what to do. You only need to take action for <strong>FORENSIC_FAILURE</strong> cases.</div>
+  </div>
+</div>
+
+<!-- TERM MANAGEMENT -->
+<div class="topic" id="term">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-slate">📅</div>
+    <h2>Term Management</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">The system tracks which academic term each student registration belongs to. This allows dashboards to filter by term and allows completed terms to be archived cleanly.</p>
+
+  <div class="callout callout-slate">
+    <span class="callout-icon">📋</span>
+    <div class="callout-body"><strong>Term management is handled by the admin</strong> — not by teachers. This section explains what happens so you understand what you'll see at the start and end of each term.</div>
+  </div>
+
+  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">Start of term</h3>
+  <p style="color:var(--mid);margin-bottom:12px">The admin sets the current term (e.g. "2025-26 S2") before new students are registered. Your dashboard will automatically show the current term by default when you open it.</p>
+
+  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">During the term</h3>
+  <p style="color:var(--mid);margin-bottom:12px">Your dashboard shows all students from the current term. Use the term filter dropdown to switch between terms — for example, to check whether a student completed work in a previous term.</p>
+
+  <h3 style="font-size:15px;font-weight:600;margin:24px 0 12px">End of term</h3>
+  <p style="color:var(--mid);margin-bottom:12px">The admin archives completed terms via Admin Controls. Archived students disappear from the default dashboard view. Their records are preserved for academic integrity purposes — they're hidden, not deleted. To see archived students, select "All Terms" from the filter dropdown.</p>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Before the term ends:</strong> make sure all student statuses are resolved. Students still showing EVALUATED or NOT STARTED at term-end won't be automatically handled — reach out to them directly before the admin archives the term.</div>
+  </div>
+</div>
+
+<!-- WHAT TEACHERS CAN'T EDIT -->
+<div class="topic" id="limits">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-slate">🔒</div>
+    <h2>What Teachers Can and Can't Edit</h2>
+  </div>
+
+  <table class="ref-table">
+    <thead><tr><th style="width:35%">Item</th><th>Can edit?</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td class="td-label">Prompt template document</td><td class="td-action">✅ Yes</td><td>Edit it anytime. Changes affect students registered after the edit — already-registered students have the prompt injected at creation time</td></tr>
+      <tr><td class="td-label">Assignment criteria (milestones, persona)</td><td class="td-action">⚠️ Create new assignment</td><td>Use the rubric upload flow to create a new assignment with updated criteria. Don't edit the Teacher Matrix directly</td></tr>
+      <tr><td class="td-label">Student registration details</td><td class="td-action">❌ Contact admin</td><td>Student name, email, class, period — these are locked in the Ledger. Admin can correct them</td></tr>
+      <tr><td class="td-label">Student's assignment document</td><td class="td-action">⚠️ With care</td><td>You have editor access to every student doc. Only edit the response zone if absolutely necessary — do not touch the footer or compliance stamps</td></tr>
+      <tr><td class="td-label">Student compliant status</td><td class="td-action">✅ Via admin</td><td>Ask admin to use "Manually Mark Student Compliant" if you've personally reviewed a FORENSIC_FAILURE case</td></tr>
+      <tr><td class="td-label">Turn-In Form</td><td class="td-action">❌ Do not edit</td><td>Shared across all teachers and managed by admin</td></tr>
+      <tr><td class="td-label">Teacher Matrix spreadsheet</td><td class="td-action">❌ Do not edit</td><td>System-managed. Editing rows directly can corrupt the evaluation pipeline</td></tr>
+    </tbody>
+  </table>
+</div>
+
+</div><!-- /content -->
+</main>
+</div><!-- /shell -->
+
+<footer>
+  Assignment System — Teacher Reference Guide · Contact your system admin for anything not covered here.
+</footer>
+
+<script>
+const links = document.querySelectorAll('.sb-link');
+const sections = document.querySelectorAll('.topic');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      links.forEach(l => l.classList.remove('active'));
+      const id = e.target.id;
+      const match = document.querySelector('.sb-link[href="#'+id+'"]');
+      if (match) match.classList.add('active');
+    }
+  });
+}, { rootMargin: '-20% 0px -70% 0px' });
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

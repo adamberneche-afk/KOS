@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Studio Flow Configuration Reference</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#f5f5f0;--white:#ffffff;--ink:#111110;--mid:#4a4a45;--dim:#8a8a82;--rule:#e0e0d8;
+  --purple:#5b21b6;--purple-l:#ede9fe;--purple-b:#c4b5fd;
+  --green:#065f46;--green-l:#d1fae5;--amber:#92400e;--amber-l:#fef3c7;
+  --red:#991b1b;--red-l:#fee2e2;--blue:#1e3a8a;--blue-l:#dbeafe;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',system-ui,sans-serif;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6}
+header{background:var(--ink);color:white;padding:40px 48px 36px;display:grid;grid-template-columns:1fr auto;align-items:end;gap:24px}
+.header-left h1{font-size:28px;font-weight:600;letter-spacing:-0.3px;margin-bottom:6px}
+.header-left p{color:rgba(255,255,255,0.5);font-size:14px;max-width:440px}
+.header-right{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.flow-pill{font-family:var(--mono);font-size:11px;padding:4px 12px;border-radius:20px;white-space:nowrap}
+.pill-1{background:rgba(196,181,253,0.2);color:var(--purple-b);border:1px solid rgba(196,181,253,0.3)}
+.pill-2{background:rgba(167,243,208,0.15);color:#6ee7b7;border:1px solid rgba(167,243,208,0.25)}
+.tabs{background:white;border-bottom:2px solid var(--rule);padding:0 48px;display:flex;position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,0.06);overflow-x:auto}
+.tab{padding:14px 20px;font-size:13px;font-weight:500;color:var(--dim);text-decoration:none;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap}
+.tab:hover{color:var(--ink)}.tab.active{color:var(--purple);border-bottom-color:var(--purple)}
+.page{max-width:1100px;margin:0 auto;padding:0 48px 80px}
+.flow-block{margin-top:48px}
+.flow-title{display:flex;align-items:center;gap:16px;padding:20px 24px;background:var(--ink);color:white;border-radius:12px 12px 0 0}
+.flow-badge{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:600;flex-shrink:0}
+.badge-1{background:rgba(196,181,253,0.2);color:var(--purple-b)}.badge-2{background:rgba(167,243,208,0.15);color:#6ee7b7}
+.flow-title-text h2{font-size:17px;font-weight:600}.flow-title-text p{font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;font-family:var(--mono)}
+.flow-meta{background:white;border:1px solid var(--rule);border-top:none;padding:16px 24px;display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.meta-item label{display:block;font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);margin-bottom:4px}
+.meta-item span{font-family:var(--mono);font-size:12px;color:var(--ink)}
+.step-table{width:100%;border-collapse:collapse;background:white;border:1px solid var(--rule);border-top:none;border-radius:0 0 12px 12px;overflow:hidden}
+.step-table thead{background:#f8f8f5;border-bottom:2px solid var(--rule)}
+.step-table th{padding:10px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim)}
+.step-table td{padding:14px 16px;vertical-align:top;border-bottom:1px solid var(--rule);font-size:13px}
+.step-table tr:last-child td{border-bottom:none}.step-table tr:hover td{background:#fafaf8}
+.col-n{width:48px;text-align:center}.col-connector{width:180px}
+.step-n{width:28px;height:28px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:12px;font-weight:600}
+.n-trigger{background:#f0fdf4;color:var(--green);border:1.5px solid #bbf7d0}
+.n-step{background:var(--purple-l);color:var(--purple);border:1.5px solid var(--purple-b)}
+.n-gemini{background:#fdf4ff;color:#7e22ce;border:1.5px solid #e9d5ff}
+.n-write{background:var(--blue-l);color:var(--blue);border:1.5px solid #bfdbfe}
+.n-update{background:var(--green-l);color:var(--green);border:1.5px solid #a7f3d0}
+.connector-tag{display:inline-block;font-family:var(--mono);font-size:11px;padding:2px 8px;border-radius:4px;font-weight:500}
+.conn-sheets{background:#e8f5e9;color:#1b5e20}.conn-docs{background:#e3f2fd;color:#0d47a1}
+.conn-drive{background:#fff8e1;color:#e65100}.conn-gemini{background:#f3e5f5;color:#4a148c}
+.field-name{font-family:var(--mono);font-size:12px;color:var(--mid);margin-bottom:3px}
+.field-value{font-family:var(--mono);font-size:12px;background:#f5f5f0;border:1px solid var(--rule);border-radius:4px;padding:2px 7px;display:inline-block;color:var(--ink)}
+.value-var{color:var(--purple)}.value-literal{color:var(--green)}.value-prompt{color:var(--amber);font-style:italic}
+.col-notes{color:var(--mid);font-size:12.5px;line-height:1.55}
+.note-warn{display:block;background:var(--amber-l);border-left:3px solid #f59e0b;padding:6px 10px;border-radius:0 4px 4px 0;font-size:12px;color:var(--amber);margin-top:8px}
+.note-critical{display:block;background:var(--red-l);border-left:3px solid #ef4444;padding:6px 10px;border-radius:0 4px 4px 0;font-size:12px;color:var(--red);margin-top:8px}
+.note-tip{display:block;background:var(--green-l);border-left:3px solid #10b981;padding:6px 10px;border-radius:0 4px 4px 0;font-size:12px;color:var(--green);margin-top:8px}
+.callout{border-radius:8px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;font-size:13px;line-height:1.6}
+.callout-icon{font-size:16px;flex-shrink:0}
+.callout-critical{background:var(--red-l);border-left:3px solid #ef4444;color:var(--red)}
+.callout-warn{background:var(--amber-l);border-left:3px solid #f59e0b;color:var(--amber)}
+.callout-tip{background:var(--green-l);border-left:3px solid #10b981;color:var(--green)}
+.callout-info{background:var(--blue-l);border-left:3px solid #3b82f6;color:var(--blue)}
+.section-heading{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--dim);padding:40px 0 12px;border-bottom:1px solid var(--rule)}
+.prompt-block{background:white;border:1px solid var(--rule);border-radius:12px;overflow:hidden;margin-top:20px}
+.prompt-header{background:#f8f8f5;border-bottom:1px solid var(--rule);padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+.prompt-header h3{font-size:13px;font-weight:600;color:var(--mid)}.prompt-source{font-family:var(--mono);font-size:11px;color:var(--dim)}
+.prompt-body{padding:20px;font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--mid);white-space:pre-wrap;max-height:300px;overflow-y:auto}
+.prompt-note{background:#f8f8f5;border-top:1px solid var(--rule);padding:12px 20px;font-size:12px;color:var(--dim)}
+.var-table{width:100%;border-collapse:collapse;background:white;border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin-top:16px}
+.var-table th{background:#f8f8f5;padding:9px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--rule)}
+.var-table td{padding:11px 16px;border-bottom:1px solid var(--rule);font-size:13px;vertical-align:middle}
+.var-table tr:last-child td{border-bottom:none}
+.var-name{font-family:var(--mono);color:var(--purple);font-size:12px;white-space:nowrap}
+.var-source{font-family:var(--mono);font-size:11.5px;color:var(--mid)}
+@media(max-width:800px){header{grid-template-columns:1fr;padding:28px 20px}.tabs{padding:0 20px}.page{padding:0 20px 60px}.flow-meta{grid-template-columns:1fr}.col-connector{width:130px}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <h1>Studio Flow Configuration Reference</h1>
+    <p>Step-by-step connector settings for both Workspace Studio Flows. Keep this open alongside the Studio Flow editor.</p>
+  </div>
+  <div class="header-right">
+    <span class="flow-pill pill-1">Flow 1 — Rubric Extraction</span>
+    <span class="flow-pill pill-2">Flow 2 — Student Evaluation</span>
+  </div>
+</header>
+
+<div class="tabs">
+  <a class="tab active" href="#flow1">Flow 1 — Rubric Extraction</a>
+  <a class="tab" href="#flow2">Flow 2 — Student Evaluation</a>
+  <a class="tab" href="#prompts">Prompts</a>
+  <a class="tab" href="#variables">Variables</a>
+  <a class="tab" href="#troubleshooting">Troubleshooting</a>
+</div>
+
+<div class="page">
+
+<!-- FLOW 1 -->
+<div id="flow1" class="flow-block">
+  <div class="flow-title">
+    <div class="flow-badge badge-1">F1</div>
+    <div class="flow-title-text">
+      <h2>Flow 1 — Rubric Extraction</h2>
+      <p>Triggered by new RubricQueue row · Extracts milestones via Gemini · Writes DRAFT to Teacher Matrix</p>
+    </div>
+  </div>
+  <div class="flow-meta">
+    <div class="meta-item"><label>Flow Name</label><span>Assignment — Rubric Extraction</span></div>
+    <div class="meta-item"><label>Trigger Sheet</label><span>Central Ledger → RubricQueue tab</span></div>
+    <div class="meta-item"><label>Trigger Condition</label><span>Status = PENDING_EXTRACTION</span></div>
+  </div>
+  <table class="step-table">
+    <thead><tr><th class="col-n">#</th><th class="col-connector">Connector</th><th>Configuration</th><th class="col-notes">Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="col-n"><span class="step-n n-trigger">T</span></td>
+        <td><span class="connector-tag conn-sheets">Google Sheets</span><br><span class="field-name" style="display:block;margin-top:6px">Row added</span></td>
+        <td>
+          <div class="field-name">Spreadsheet</div><div class="field-value">Central Ledger Spreadsheet ID</div><br><br>
+          <div class="field-name">Sheet tab</div><div class="field-value value-literal">RubricQueue</div><br><br>
+          <div class="field-name">Condition: Status =</div><div class="field-value value-literal">PENDING_EXTRACTION</div>
+        </td>
+        <td class="col-notes">Fires when Script 05 appends a new rubric submission row.<span class="note-warn">⚠️ Tab name is case-sensitive: <code>RubricQueue</code></span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-step">1</span></td>
+        <td><span class="connector-tag conn-drive">Google Drive</span><br><span class="field-name" style="display:block;margin-top:6px">Get file content</span></td>
+        <td>
+          <div class="field-name">File ID</div><div class="field-value"><span class="value-var">@trigger.PromptTemplateID</span></div><br><br>
+          <div class="field-name">Output variable</div><div class="field-value value-literal">PROMPT_TEMPLATE_TEXT</div>
+        </td>
+        <td class="col-notes">Reads teacher's prompt template Google Doc.<span class="note-tip">✓ Validates doc accessibility before Gemini runs.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-gemini">2</span></td>
+        <td><span class="connector-tag conn-gemini">Gemini</span><br><span class="field-name" style="display:block;margin-top:6px">Generate content</span></td>
+        <td>
+          <div class="field-name">System prompt</div><div class="field-value value-prompt">FLOW_1_SYSTEM_PROMPT from 15_StudioFlowPrompts.js</div><br><br>
+          <div class="field-name">Variable mappings</div><br>
+          <div style="font-family:var(--mono);font-size:11.5px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px">
+            <span style="color:var(--purple)">{{RUBRIC_TEXT}}</span><span>→ @trigger.RubricText</span>
+            <span style="color:var(--purple)">{{COURSE_NAME}}</span><span>→ @trigger.CourseName</span>
+            <span style="color:var(--purple)">{{TIER}}</span><span>→ @trigger.Tier</span>
+            <span style="color:var(--purple)">{{PROMPT_TEMPLATE_TEXT}}</span><span>→ @step1.PROMPT_TEMPLATE_TEXT</span>
+          </div><br>
+          <div class="field-name">Output format</div><div class="field-value value-literal">JSON only — no preamble or markdown</div>
+        </td>
+        <td class="col-notes">Extracts structured assignment config from rubric.<span class="note-critical">🚨 JSON only output required. Any extra text breaks Step 3 parsing.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-write">3</span></td>
+        <td><span class="connector-tag conn-sheets">Google Sheets</span><br><span class="field-name" style="display:block;margin-top:6px">Append row</span></td>
+        <td>
+          <div class="field-name">Spreadsheet ID</div><div class="field-value"><span class="value-var">@trigger.TeacherMatrixSsId</span></div><br><br>
+          <div class="field-name">Tab</div><div class="field-value value-literal">TeacherMatrix</div><br><br>
+          <div class="field-name">Column mapping</div>
+          <div style="font-family:var(--mono);font-size:11px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin-top:6px">
+            <span style="color:var(--dim)">ConfigID</span><span>@gemini.configId</span>
+            <span style="color:var(--dim)">UnitName</span><span>@gemini.unitName</span>
+            <span style="color:var(--dim)">Tier</span><span>@trigger.Tier</span>
+            <span style="color:var(--dim)">Persona</span><span>@gemini.persona</span>
+            <span style="color:var(--dim)">Milestone1–4</span><span>@gemini.milestone1–4</span>
+            <span style="color:var(--dim)">DefinitionOfDone</span><span>@gemini.definitionOfDone</span>
+            <span style="color:var(--dim)">InstructorEmail</span><span>@trigger.TeacherEmail</span>
+            <span style="color:var(--dim)">Created</span><span>@now</span>
+            <span style="color:var(--dim)">Status</span><span style="color:var(--green)">DRAFT</span>
+            <span style="color:var(--dim)">PromptTemplateID</span><span>@trigger.PromptTemplateID</span>
+            <span style="color:var(--dim)">Subject</span><span>@trigger.Subject</span>
+            <span style="color:var(--dim)">CourseName</span><span>@trigger.CourseName</span>
+          </div>
+        </td>
+        <td class="col-notes">Writes DRAFT row to teacher's personal matrix. Script 08 polls for DRAFT rows and sends the teacher a review email.<span class="note-warn">⚠️ Spreadsheet ID is dynamic per teacher — use @trigger.TeacherMatrixSsId, not a hardcoded value.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-update">4</span></td>
+        <td><span class="connector-tag conn-sheets">Google Sheets</span><br><span class="field-name" style="display:block;margin-top:6px">Update row</span></td>
+        <td>
+          <div class="field-name">Row</div><div class="field-value"><span class="value-var">@trigger.row</span></div><br><br>
+          <div class="field-name">Status</div><div class="field-value value-literal">COMPLETE</div>
+        </td>
+        <td class="col-notes">Marks queue row complete to prevent re-triggering.<span class="note-critical">🚨 Must always run — use finally block if Step 3 can fail.</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- FLOW 2 -->
+<div id="flow2" class="flow-block">
+  <div class="flow-title">
+    <div class="flow-badge badge-2">F2</div>
+    <div class="flow-title-text">
+      <h2>Flow 2 — Student Evaluation</h2>
+      <p>Triggered by IN_PROCESS staging row · Evaluates student work · Writes feedback to student doc</p>
+    </div>
+  </div>
+  <div class="flow-meta">
+    <div class="meta-item"><label>Flow Name</label><span>Assignment — Student Evaluation</span></div>
+    <div class="meta-item"><label>Trigger Sheet</label><span>Central Ledger → STAGING_PIPELINE tab</span></div>
+    <div class="meta-item"><label>Trigger Condition</label><span>Status = IN_PROCESS</span></div>
+  </div>
+  <div class="callout callout-critical">
+    <span class="callout-icon">🚨</span>
+    <div><strong>Compliance stamp is a hard dependency.</strong> The evaluation report MUST end with exactly <code>[SYSTEM: APPROVED]</code> or <code>[SYSTEM: REVISION_REQUIRED]</code> followed by <code>── END EVALUATION ──</code>. Script 04's turn-in gate scans for these exact strings. Any deviation breaks submission validation.</div>
+  </div>
+  <table class="step-table">
+    <thead><tr><th class="col-n">#</th><th class="col-connector">Connector</th><th>Configuration</th><th class="col-notes">Notes</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="col-n"><span class="step-n n-trigger">T</span></td>
+        <td><span class="connector-tag conn-sheets">Google Sheets</span><br><span class="field-name" style="display:block;margin-top:6px">Row updated</span></td>
+        <td>
+          <div class="field-name">Spreadsheet</div><div class="field-value">Central Ledger Spreadsheet ID</div><br><br>
+          <div class="field-name">Tab</div><div class="field-value value-literal">STAGING_PIPELINE</div><br><br>
+          <div class="field-name">Condition: Status =</div><div class="field-value value-literal">IN_PROCESS</div>
+        </td>
+        <td class="col-notes">Script 06 Turnstile flips one row per open teacher lane to IN_PROCESS — one concurrent evaluation per teacher. Rows stuck &gt;12 min are auto-cleared to ERROR_TIMEOUT and the teacher is notified.<span class="note-tip">✓ Per-teacher lanes mean one teacher's slow evaluation never blocks another teacher's students.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-step">1</span></td>
+        <td><span class="connector-tag conn-docs">Google Docs</span><br><span class="field-name" style="display:block;margin-top:6px">Get document</span></td>
+        <td>
+          <div class="field-name">Document ID</div><div class="field-value"><span class="value-var">@trigger.StudentFileID</span></div><br><br>
+          <div class="field-name">Extract text between</div>
+          <div class="field-value value-literal">── YOUR RESPONSE BEGINS HERE ──</div>
+          <div style="font-size:11px;color:var(--dim);margin:2px 0">and</div>
+          <div class="field-value value-literal">[CONFIG_ID:</div><br><br>
+          <div class="field-name">Output variable</div><div class="field-value value-literal">STUDENT_RESPONSE_TEXT</div>
+        </td>
+        <td class="col-notes">Reads only the student's response zone — feedback and prompt zones excluded.<span class="note-warn">⚠️ If student deleted the response marker, this returns empty string.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-step">2</span></td>
+        <td><span class="connector-tag conn-sheets">Google Sheets</span><br><span class="field-name" style="display:block;margin-top:6px">Find row + lookup</span></td>
+        <td>
+          <div class="field-name">Lookup path</div>
+          <div style="font-size:12px;color:var(--mid);margin-top:4px;line-height:1.8">
+            1. Ledger → match ConfigID = <span style="color:var(--purple);font-family:var(--mono)">@trigger.ConfigID</span><br>
+            2. Get TeacherEmail → look up MatrixSsId in MatrixRegistry<br>
+            3. Open TeacherMatrix → read Persona, Milestone1–4, DefinitionOfDone, UnitName, Tier
+          </div><br>
+          <div class="field-name">Output variable</div><div class="field-value value-literal">INSTRUCTOR_CONFIG</div>
+        </td>
+        <td class="col-notes">Two-hop lookup routes to the correct teacher's matrix for this assignment config.</td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-gemini">3</span></td>
+        <td><span class="connector-tag conn-gemini">Gemini</span><br><span class="field-name" style="display:block;margin-top:6px">Generate content</span></td>
+        <td>
+          <div class="field-name">System prompt</div><div class="field-value value-prompt">FLOW_2_SYSTEM_PROMPT from 15_StudioFlowPrompts.js</div><br><br>
+          <div class="field-name">Variable mappings</div>
+          <div style="font-family:var(--mono);font-size:11.5px;display:grid;grid-template-columns:auto 1fr;gap:3px 12px;margin-top:6px">
+            <span style="color:var(--purple)">{{STUDENT_TEXT}}</span><span>→ @step1.STUDENT_RESPONSE_TEXT</span>
+            <span style="color:var(--purple)">{{PERSONA}}</span><span>→ @step2.INSTRUCTOR_CONFIG.Persona</span>
+            <span style="color:var(--purple)">{{MILESTONE_1}}</span><span>→ @step2.INSTRUCTOR_CONFIG.Milestone1</span>
+            <span style="color:var(--purple)">{{MILESTONE_2}}</span><span>→ @step2.INSTRUCTOR_CONFIG.Milestone2</span>
+            <span style="color:var(--purple)">{{MILESTONE_3}}</span><span>→ @step2.INSTRUCTOR_CONFIG.Milestone3</span>
+            <span style="color:var(--purple)">{{MILESTONE_4}}</span><span>→ @step2.INSTRUCTOR_CONFIG.Milestone4</span>
+            <span style="color:var(--purple)">{{DOD}}</span><span>→ @step2.INSTRUCTOR_CONFIG.DefinitionOfDone</span>
+            <span style="color:var(--purple)">{{UNIT_NAME}}</span><span>→ @step2.INSTRUCTOR_CONFIG.UnitName</span>
+            <span style="color:var(--purple)">{{TIER}}</span><span>→ @step2.INSTRUCTOR_CONFIG.Tier</span>
+          </div>
+        </td>
+        <td class="col-notes">Evaluates student work against instructor criteria. Output is the formatted evaluation report including compliance stamp.<span class="note-critical">🚨 Student text is wrapped in &lt;&lt;&lt;STUDENT_SUBMISSION&gt;&gt;&gt; markers in the prompt — do not remove these. They prevent prompt injection.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-write">4</span></td>
+        <td><span class="connector-tag conn-docs">Google Docs</span><br><span class="field-name" style="display:block;margin-top:6px">Find and replace</span></td>
+        <td>
+          <div class="field-name">Document ID</div><div class="field-value"><span class="value-var">@trigger.StudentFileID</span></div><br><br>
+          <div class="field-name">Find (exact text)</div>
+          <div style="font-family:var(--mono);font-size:10.5px;background:#f5f5f0;border:1px solid var(--rule);border-radius:4px;padding:6px 10px;margin-top:4px;word-break:break-all;color:var(--mid)">[No feedback yet. Use 📊 AI Evaluation Panel → Run Assignment Check to request your first evaluation.]</div><br>
+          <div class="field-name">Replace with</div><div class="field-value value-literal">(empty string)</div>
+        </td>
+        <td class="col-notes">Removes placeholder text. No-op on second+ evaluations.<span class="note-tip">✓ Script 03 removes this as backup if Step 4 fails.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-write">5</span></td>
+        <td><span class="connector-tag conn-docs">Google Docs</span><br><span class="field-name" style="display:block;margin-top:6px">Insert text</span></td>
+        <td>
+          <div class="field-name">Document ID</div><div class="field-value"><span class="value-var">@trigger.StudentFileID</span></div><br><br>
+          <div class="field-name">Insert after</div><div class="field-value value-literal">── FEEDBACK ──</div><br><br>
+          <div class="field-name">Content structure</div>
+          <div style="font-family:var(--mono);font-size:11px;background:#f5f5f0;border:1px solid var(--rule);border-radius:6px;padding:12px;margin-top:6px;line-height:2;color:var(--mid)">
+"\n── EVALUATION [<span style="color:var(--purple)">@now "MMM d h:mm a"</span>] ──\n"<br>
++ [<span style="color:var(--amber)">result line — see below</span>]<br>
++ "\n\n" + <span style="color:var(--purple)">@step3.geminiOutput</span><br>
++ "\n── END EVALUATION ──\n"
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:var(--mid)">Result line logic:</div>
+          <div style="font-family:var(--mono);font-size:11px;background:#f5f5f0;border:1px solid var(--rule);border-radius:6px;padding:10px;margin-top:4px;color:var(--mid);line-height:1.9">
+If output contains [SYSTEM: APPROVED]:<br>
+&nbsp;&nbsp;"✅ RESULT: YOUR WORK MEETS THE STANDARD\n"<br>
+Otherwise:<br>
+&nbsp;&nbsp;"✏️ RESULT: REVISIONS REQUIRED\n"
+          </div>
+        </td>
+        <td class="col-notes">Prepends the complete evaluation block into the feedback zone.<span class="note-critical">🚨 Do NOT add compliance stamps in this step — they come from Gemini's output via Step 3.</span><span class="note-warn">⚠️ Do NOT write the "What to do next" block — Script 03 handles that.</span></td>
+      </tr>
+      <tr>
+        <td class="col-n"><span class="step-n n-update">6</span></td>
+        <td><span class="connector-tag conn-sheets">Google Sheets</span><br><span class="field-name" style="display:block;margin-top:6px">Update row</span></td>
+        <td>
+          <div class="field-name">Row</div><div class="field-value"><span class="value-var">@trigger.row</span></div><br><br>
+          <div class="field-name">Status</div><div class="field-value value-literal">COMPLETE</div>
+        </td>
+        <td class="col-notes">Marks staging row COMPLETE. Script 03 backprop detects this within 2 minutes.<span class="note-critical">🚨 If this doesn't run, the row stays IN_PROCESS permanently, blocking all future evaluations. Admin receives auto-alert after 15 min.</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PROMPTS -->
+<div id="prompts" style="padding-top:48px">
+  <div class="section-heading">Prompts Reference</div>
+  <div class="callout callout-info" style="margin-top:20px">
+    <span class="callout-icon">📄</span>
+    <div>The full prompt text for both flows is in <strong>15_StudioFlowPrompts.js</strong>. Always paste the complete prompt verbatim — do not abbreviate or paraphrase. The excerpts below show structure and critical constraints only.</div>
+  </div>
+
+  <div class="flow-block">
+    <div class="flow-title">
+      <div class="flow-badge badge-1">F1</div>
+      <div class="flow-title-text"><h2>Flow 1 System Prompt — Output Schema</h2><p>Source: FLOW_1_SYSTEM_PROMPT in 15_StudioFlowPrompts.js</p></div>
+    </div>
+    <div class="prompt-block">
+      <div class="prompt-header"><h3>Required JSON output (exact structure)</h3><span class="prompt-source">JSON only — no preamble, no markdown fences</span></div>
+      <div class="prompt-body">{
+  "configId":         "VDOE-XXXXXX-YYYY",
+  "unitName":         "Short descriptive name for this assignment",
+  "persona":          "e.g. rigorous science writing coach who values precise vocabulary",
+  "milestone1":       "First major evaluation criterion — specific and measurable",
+  "milestone2":       "Second criterion",
+  "milestone3":       "Third criterion",
+  "milestone4":       "Fourth criterion",
+  "definitionOfDone": "Hidden from students — the complete passing standard"
+}</div>
+      <div class="prompt-note">End the system prompt with: "Respond with ONLY the JSON object. No explanation. No preamble. No markdown code fences." This is critical — any extra text breaks Step 3 parsing.</div>
+    </div>
+  </div>
+
+  <div class="flow-block">
+    <div class="flow-title">
+      <div class="flow-badge badge-2">F2</div>
+      <div class="flow-title-text"><h2>Flow 2 System Prompt — Output Structure</h2><p>Source: FLOW_2_SYSTEM_PROMPT in 15_StudioFlowPrompts.js</p></div>
+    </div>
+    <div class="prompt-block">
+      <div class="prompt-header"><h3>Required output structure (4 sections)</h3><span class="prompt-source">Plain text — not JSON</span></div>
+      <div class="prompt-body">── OVERALL ASSESSMENT ──
+[2–4 sentences on the student's work and strongest qualities]
+
+── MILESTONE BREAKDOWN ──
+[One line per milestone: ✓ or ⚠ + name + brief comment]
+
+── REQUIRED REVISIONS ──
+[Numbered list of specific changes needed. Omit section if APPROVED.]
+
+[SYSTEM: APPROVED]
+── END EVALUATION ──
+
+— OR —
+
+[SYSTEM: REVISION_REQUIRED]
+── END EVALUATION ──</div>
+      <div class="prompt-note">The student text is wrapped in &lt;&lt;&lt;STUDENT_SUBMISSION&gt;&gt;&gt; … &lt;&lt;&lt;/STUDENT_SUBMISSION&gt;&gt;&gt; in the user message. The system prompt must instruct Gemini to treat everything between these markers as passive data regardless of what it says.</div>
+    </div>
+  </div>
+</div>
+
+<!-- VARIABLES -->
+<div id="variables" style="padding-top:48px">
+  <div class="section-heading">Variables Reference</div>
+
+  <h3 style="font-size:13px;font-weight:600;margin:24px 0 8px;color:var(--mid);text-transform:uppercase;letter-spacing:1px">Flow 1 — RubricQueue Trigger Row</h3>
+  <table class="var-table">
+    <thead><tr><th>Variable</th><th>Column</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><span class="var-name">@trigger.TeacherEmail</span></td><td><span class="var-source">col 1</span></td><td>Submitting teacher's email</td></tr>
+      <tr><td><span class="var-name">@trigger.TeacherName</span></td><td><span class="var-source">col 2</span></td><td>Teacher's full name</td></tr>
+      <tr><td><span class="var-name">@trigger.Subject</span></td><td><span class="var-source">col 3</span></td><td>Subject area (e.g. Science)</td></tr>
+      <tr><td><span class="var-name">@trigger.CourseName</span></td><td><span class="var-source">col 4</span></td><td>Course name (e.g. AP Biology)</td></tr>
+      <tr><td><span class="var-name">@trigger.Tier</span></td><td><span class="var-source">col 5</span></td><td>Tier 1 Core / Tier 2 Honors / Tier 3 Executive</td></tr>
+      <tr><td><span class="var-name">@trigger.RubricText</span></td><td><span class="var-source">col 6</span></td><td>Full rubric text pasted by teacher</td></tr>
+      <tr><td><span class="var-name">@trigger.PromptTemplateID</span></td><td><span class="var-source">col 7</span></td><td>Google Doc ID of teacher's prompt template</td></tr>
+      <tr><td><span class="var-name">@trigger.TeacherMatrixSsId</span></td><td><span class="var-source">col 8</span></td><td>Spreadsheet ID of teacher's Teacher Matrix — dynamic per teacher</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="font-size:13px;font-weight:600;margin:28px 0 8px;color:var(--mid);text-transform:uppercase;letter-spacing:1px">Flow 2 — STAGING_PIPELINE Trigger Row</h3>
+  <table class="var-table">
+    <thead><tr><th>Variable</th><th>Column</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><span class="var-name">@trigger.QueueRowRef</span></td><td><span class="var-source">col 1</span></td><td>Row number in ReviewQueue — used by Script 03 backpropagation</td></tr>
+      <tr><td><span class="var-name">@trigger.StudentFileID</span></td><td><span class="var-source">col 2</span></td><td>Google Doc ID of the student's assignment document</td></tr>
+      <tr><td><span class="var-name">@trigger.ConfigID</span></td><td><span class="var-source">col 3</span></td><td>Assignment config ID — key for instructor config lookup</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- TROUBLESHOOTING -->
+<div id="troubleshooting" style="padding-top:48px;padding-bottom:40px">
+  <div class="section-heading">Troubleshooting</div>
+  <table class="step-table" style="margin-top:20px;border-radius:12px;border-top:1px solid var(--rule)">
+    <thead><tr><th style="width:28%">Symptom</th><th style="width:32%">Likely Cause</th><th>Resolution</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Teacher uploads rubric — no review email within 5 min</td>
+        <td>Flow 1 not triggering, or RubricQueue row stuck at PENDING_EXTRACTION</td>
+        <td>Check RubricQueue tab. If stuck, verify Flow 1 trigger condition matches exactly. Check Studio execution log for errors. Admin receives auto-alert after 2 hours.</td>
+      </tr>
+      <tr>
+        <td>Flow 1 runs but DRAFT row is empty or missing fields</td>
+        <td>Gemini returned malformed JSON or added explanation text</td>
+        <td>Check Gemini step output in Studio. Add stronger instruction: "Return ONLY the JSON object. Nothing else."</td>
+      </tr>
+      <tr>
+        <td>Student runs check — feedback never appears</td>
+        <td>Flow 2 not triggering, or row stuck IN_PROCESS</td>
+        <td>Check STAGING_PIPELINE. If IN_PROCESS &gt;15 min, use ⚙️ Admin Controls → Reset Stuck Pipeline Row. Admin receives auto-alert after 15 min.</td>
+      </tr>
+      <tr>
+        <td>Turn-In Form rejects despite passing evaluation</td>
+        <td>Compliance stamp missing or malformed</td>
+        <td>Open student doc — check evaluation ends with exactly <code>[SYSTEM: APPROVED]</code> then <code>── END EVALUATION ──</code>. Reinforce stamp format in system prompt if needed.</td>
+      </tr>
+      <tr>
+        <td>Placeholder "[No feedback yet...]" remains after evaluation</td>
+        <td>Flow 2 Step 4 find-and-replace failed</td>
+        <td>Script 03 removes it within 2 minutes as backup. If it persists, verify the find text in Step 4 matches exactly — copy it from <code>02_Form1_IntakeAndWorkspaceGenerator.js</code>.</td>
+      </tr>
+      <tr>
+        <td>Feedback written to wrong document</td>
+        <td>Step 5 using hardcoded doc ID</td>
+        <td>Verify Step 5 Document ID is <code>@trigger.StudentFileID</code>, not a static value.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+</div>
+
+<script>
+const sections = ['flow1','flow2','prompts','variables','troubleshooting'];
+const tabs = document.querySelectorAll('.tab');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      tabs.forEach(t => t.classList.remove('active'));
+      const m = document.querySelector('.tab[href="#'+e.target.id+'"]');
+      if (m) m.classList.add('active');
+    }
+  });
+}, { rootMargin: '-30% 0px -60% 0px' });
+sections.forEach(id => { const el = document.getElementById(id); if (el) obs.observe(el); });
+</script>
+</body>
+</html>

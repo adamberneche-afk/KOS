@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Teacher Quick-Start Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fafaf8;--white:#ffffff;--ink:#1c1b18;--mid:#52524e;--dim:#a0a09a;--rule:#e8e8e2;
+  --teal:#0d7377;--teal-l:#e8f6f6;--teal-dark:#095e62;
+  --gold:#b07d12;--gold-l:#fef8e7;
+  --rose:#9c1f2e;--rose-l:#fdf2f3;
+  --slate:#2c3e50;--slate-l:#f0f4f8;
+  --serif:'Instrument Serif',Georgia,serif;
+  --sans:'Instrument Sans',system-ui,sans-serif;
+}
+body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15px;line-height:1.7;max-width:800px;margin:0 auto;padding:0 32px 80px}
+.page-header{padding:52px 0 40px;border-bottom:2px solid var(--ink)}
+.kicker{font-size:11px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:var(--teal);margin-bottom:16px;display:block}
+h1{font-family:var(--serif);font-size:44px;line-height:1.05;letter-spacing:-0.5px;margin-bottom:14px}
+h1 em{font-style:italic;color:var(--teal)}
+.header-sub{font-size:16px;color:var(--mid);max-width:520px;line-height:1.75;margin-bottom:28px}
+.time-chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{font-size:12px;color:var(--mid);background:var(--white);border:1px solid var(--rule);border-radius:20px;padding:5px 14px}
+.section{padding:44px 0 0}
+.section-rule{display:flex;align-items:center;gap:16px;margin-bottom:28px}
+.section-num{font-family:var(--serif);font-size:40px;color:var(--rule);line-height:1;letter-spacing:-1px}
+.section-title{font-family:var(--serif);font-size:26px;font-weight:400;letter-spacing:-0.2px}
+.steps{margin:20px 0}
+.step{display:grid;grid-template-columns:36px 1fr;gap:0 16px;position:relative}
+.step:not(:last-child)::before{content:"";position:absolute;left:17px;top:36px;bottom:0;width:1px;background:var(--rule)}
+.step-n{width:36px;height:36px;border-radius:50%;background:var(--teal);color:white;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;flex-shrink:0;position:relative;z-index:1}
+.step-body{padding:5px 0 28px}
+.step-body strong{display:block;font-size:15px;font-weight:600;margin-bottom:6px}
+.step-body p{font-size:14.5px;color:var(--mid);line-height:1.72}
+.callout{border-radius:8px;padding:14px 18px;margin:16px 0;display:flex;gap:12px;font-size:14px;line-height:1.65}
+.callout-icon{font-size:17px;flex-shrink:0}
+.callout-teal{background:var(--teal-l);color:var(--teal-dark)}
+.callout-gold{background:var(--gold-l);color:var(--gold)}
+.callout-rose{background:var(--rose-l);color:var(--rose)}
+.callout-body strong{font-weight:600}
+.activation-block{background:var(--white);border:2px solid var(--teal);border-radius:12px;overflow:hidden;margin:20px 0}
+.activation-header{background:var(--teal);color:white;padding:14px 20px;display:flex;justify-content:space-between;align-items:center}
+.activation-header h3{font-size:15px;font-weight:600}
+.activation-header span{font-size:12px;opacity:0.75}
+.activation-body{padding:20px}
+.activation-body p{font-size:14px;color:var(--mid);margin-bottom:12px}
+.activation-body p:last-child{margin-bottom:0}
+.ref-table{width:100%;border-collapse:collapse;background:var(--white);border:1px solid var(--rule);border-radius:10px;overflow:hidden;margin:16px 0}
+.ref-table th{background:#f5f5f0;padding:10px 16px;text-align:left;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--dim);border-bottom:1px solid var(--rule)}
+.ref-table td{padding:12px 16px;border-bottom:1px solid var(--rule);font-size:14px;vertical-align:top}
+.ref-table tr:last-child td{border-bottom:none}
+code{font-family:monospace;font-size:12.5px;background:#f0f0ea;border:1px solid var(--rule);border-radius:4px;padding:1px 6px}
+.checklist{list-style:none;margin:16px 0}
+.checklist li{padding:10px 0 10px 32px;position:relative;font-size:14.5px;color:var(--mid);border-bottom:1px solid var(--rule);cursor:pointer;line-height:1.5}
+.checklist li:last-child{border-bottom:none}
+.checklist li::before{content:"□";position:absolute;left:4px;color:var(--rule);font-size:18px;line-height:1}
+.checklist li.done{text-decoration:line-through;color:var(--dim);opacity:0.6}
+.checklist li.done::before{content:"✓";color:var(--teal)}
+.page-footer{margin-top:56px;padding-top:24px;border-top:1px solid var(--rule);font-size:13px;color:var(--dim)}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <span class="kicker">Teacher Quick-Start</span>
+  <h1>You're set up.<br>Here's <em>what's next.</em></h1>
+  <p class="header-sub">Your workspace has been created by the Admin Manual wizard. This guide covers the two activation steps and how to create your first assignment.</p>
+  <div class="time-chips">
+    <span class="chip">⚡ Activation — 3 minutes</span>
+    <span class="chip">📝 First assignment — 15 minutes</span>
+    <span class="chip">👥 First student — 2 minutes</span>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-rule">
+    <span class="section-num">01</span>
+    <h2 class="section-title">Activate Your Workspace</h2>
+  </div>
+  <p style="color:var(--mid);margin-bottom:20px">Your workspace needs to be activated before you can use it. This takes about 3 minutes and only needs to be done once — ever.</p>
+  <p style="color:var(--mid);margin-bottom:20px">Scroll to the <strong>⚡ Two Quick Activation Steps</strong> section at the end of your Teacher Manual document. You'll find two links there.</p>
+
+  <div class="activation-block">
+    <div class="activation-header">
+      <h3>Activation Step 1 — Connect your Rubric Upload Form</h3>
+      <span>~90 seconds</span>
+    </div>
+    <div class="activation-body">
+      <p>Open the link labelled <strong>"Activation Step 1"</strong> from your Teacher Manual's setup summary page.</p>
+      <p>When the spreadsheet opens, a Google permission dialog will appear. Click <strong>Allow</strong>.</p>
+      <p>A confirmation message will appear: <em>"✅ Rubric Form Activated — Your Assignment Rubric Upload Form is now fully connected and ready to use."</em></p>
+      <p>Close that tab and return here.</p>
+    </div>
+  </div>
+
+  <div class="activation-block">
+    <div class="activation-header">
+      <h3>Activation Step 2 — Connect your Assignment Review system</h3>
+      <span>~90 seconds</span>
+    </div>
+    <div class="activation-body">
+      <p>Open the link labelled <strong>"Activation Step 2"</strong> from your Teacher Manual's setup summary page.</p>
+      <p>The same permission dialog will appear. Click <strong>Allow</strong>.</p>
+      <p>Confirmation: <em>"✅ Review System Activated — Your Assignment Review system is now connected and running."</em></p>
+      <p>Close that tab.</p>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">✅</span>
+    <div class="callout-body"><strong>Done.</strong> You never need to open those spreadsheets again. Everything runs automatically from here.</div>
+  </div>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Can't find the activation links?</strong> Open your Teacher Manual Google Doc and scroll to the end — they're on the "Your Teacher Setup Details" page. If the page isn't there, contact your admin.</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-rule">
+    <span class="section-num">02</span>
+    <h2 class="section-title">Create Your First Assignment</h2>
+  </div>
+  <p style="color:var(--mid);margin-bottom:24px">Before registering students, you need at least one assignment. Creating one generates a <strong>Config ID</strong> you'll use for every student registration.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Write your prompt template in a Google Doc</strong>
+        <p>Create a Google Doc with the student-facing assignment instructions. Set sharing to "Anyone with the link can view."</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Open the Rubric Upload Form</strong>
+        <p>In your Teacher Manual: <code>⚙️ Assignment System → Create New Assignment</code>. Fill in your details, paste your rubric, paste the prompt template link, select the tier.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Wait for the review email (1–5 minutes)</strong>
+        <p>The system extracts your criteria using AI and emails you a review link. If nothing arrives after 10 minutes, ask your admin to check the system.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">4</div>
+      <div class="step-body">
+        <strong>Review and confirm</strong>
+        <p>Click the pre-filled link in the email. Review the extracted assignment name, AI coach persona, four milestones, and passing standard. Edit anything wrong. Submit.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">5</div>
+      <div class="step-body">
+        <strong>Record your Config ID</strong>
+        <p>Your activation email contains a Config ID: <code>VDOE-XXXXXX-YYYY</code>. You'll paste this into the student registration form for every student in this assignment.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-rule">
+    <span class="section-num">03</span>
+    <h2 class="section-title">Register Your First Student</h2>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-n">1</div>
+      <div class="step-body">
+        <strong>Open the Student Registration Form</strong>
+        <p><code>⚙️ Assignment System → Register a Student</code></p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">2</div>
+      <div class="step-body">
+        <strong>Fill in the student's details</strong>
+        <p>Student Google account email (must be exact), name, block, class name, subject, course name, period, your details, and the Config ID.</p>
+        <div class="callout callout-rose" style="margin-top:12px">
+          <span class="callout-icon">⚠️</span>
+          <div class="callout-body"><strong>The Google account email must be exact.</strong> A typo means the student can't use the evaluation system.</div>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-n">3</div>
+      <div class="step-body">
+        <strong>Tell the student their document is ready</strong>
+        <p>Within 1–2 minutes it appears in their Google Drive under "Shared with me." Their Turn-In Form link is already in the document footer.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body"><strong>Registering a whole class?</strong> Submit once per student. Register in groups of 20–30. Check your dashboard after each batch.</div>
+  </div>
+</div>
+
+<div class="section">
+  <div class="section-rule">
+    <span class="section-num">04</span>
+    <h2 class="section-title">Quick Reference</h2>
+  </div>
+
+  <table class="ref-table">
+    <thead><tr><th>What you want to do</th><th>How</th></tr></thead>
+    <tbody>
+      <tr><td>Create a new assignment</td><td><code>⚙️ Assignment System → Create New Assignment</code></td></tr>
+      <tr><td>Register a student</td><td><code>⚙️ Assignment System → Register a Student</code></td></tr>
+      <tr><td>Open your dashboard</td><td><code>⚙️ Assignment System → Open My Dashboard</code></td></tr>
+      <tr><td>Share Turn-In Form with students</td><td>Copy the Turn-In Form URL from your Teacher Setup Details page</td></tr>
+      <tr><td>View a student's document</td><td>Dashboard → "Open document ↗" next to any student</td></tr>
+      <tr><td>Understand a rejection notice</td><td>Open student's document — notice explains exactly what happened</td></tr>
+      <tr><td>Manually mark a student complete</td><td>Ask your admin — Admin Controls → Manually Mark Student Compliant</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="section">
+  <div class="section-rule">
+    <span class="section-num">05</span>
+    <h2 class="section-title">Setup Checklist</h2>
+  </div>
+
+  <ul class="checklist">
+    <li>Ran the setup wizard in Teacher Manual</li>
+    <li>Opened Activation Step 1 link and clicked Allow</li>
+    <li>Saw "✅ Rubric Form Activated" confirmation</li>
+    <li>Opened Activation Step 2 link and clicked Allow</li>
+    <li>Saw "✅ Review System Activated" confirmation</li>
+    <li>Created a prompt template Google Doc (sharing: Anyone with link)</li>
+    <li>Submitted rubric via Rubric Upload Form</li>
+    <li>Received review email and confirmed the extracted criteria</li>
+    <li>Recorded the Config ID from the activation email</li>
+    <li>Registered at least one test student</li>
+    <li>Confirmed student document appeared in their Drive</li>
+    <li>Opened Teacher Dashboard — student appears</li>
+  </ul>
+
+  <div class="callout callout-teal" style="margin-top:20px">
+    <span class="callout-icon">🎉</span>
+    <div class="callout-body"><strong>All checked off?</strong> You're fully set up. For deeper reference on day-to-day use, see <strong>TEACHER_REFERENCE_GUIDE.html</strong>.</div>
+  </div>
+</div>
+
+<div class="page-footer">
+  Assignment System — Teacher Quick-Start · For detailed reference, see TEACHER_REFERENCE_GUIDE.html
+</div>
+
+<script>
+document.querySelectorAll('.checklist li').forEach(li => {
+  li.addEventListener('click', () => li.classList.toggle('done'));
+});
+</script>
+</body>
+</html>
