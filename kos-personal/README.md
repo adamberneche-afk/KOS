@@ -9,7 +9,7 @@ The core problem it solves: you spend hours in AI sessions making decisions, bui
 
 ## ⚠️ The delivered code does not match this file's own documentation
 
-8 of the 9 numbered `.gs` files now exist in this directory (only `8_WebApp_UI.html` is still missing, along with `appsscript.json`). Reading them against this README, `STUDIO_INTEGRATION_SPEC.md`, and `SCHEMA_REFERENCE.md` turned up real divergences — not typos, structural ones:
+All 9 numbered `.gs` files plus `8_WebApp_UI.html` now exist in this directory (only `appsscript.json` is still missing). Reading them against this README, `STUDIO_INTEGRATION_SPEC.md`, and `SCHEMA_REFERENCE.md` turned up real divergences — not typos, structural ones:
 
 1. **No `STUDIO_ACTIVE` status anywhere in the delivered code.** This README, the deployment guide, and the Studio integration spec all describe a 3-state pipeline — `PENDING_FLOW` → (Turnstile releases one at a time) → `STUDIO_ACTIVE` → (Studio infers) → `FLOW_COMPLETE`. The actual `3_Queue_Processor.gs` and `2_Ingestion_Sensors.gs` only ever use `PENDING_FLOW` and `FLOW_COMPLETE` — Studio is expected to poll `PENDING_FLOW` directly and flip straight to `FLOW_COMPLETE`. There is no concurrency-gating step in the delivered pipeline at all.
 2. **No shadow matrix implementation.** Central to this README's "Architecture in Two Paragraphs" section (5 operator values, confidence intervals, 0.75 auto-verify threshold) — absent from all 9 delivered files. Nothing computes, stores, or reads a shadow matrix.
@@ -32,6 +32,25 @@ This file is real (it was uploaded alongside the other 8), but it doesn't belong
 
 Read together with point 1 above, this looks like a leftover from an earlier (v5.4-era, "CE-CODE" style) draft that was never updated for v8.0's actual `STAGING_PIPELINE` schema. **Do not deploy this file as-is alongside the other 8** without first reconciling it — or rewriting it — to match `CFG.STAGING_COLS` and the `PENDING_FLOW`/`FLOW_COMPLETE` lifecycle the rest of the system actually uses.
 
+### `8_WebApp_UI.html` — calls server functions that don't exist
+
+This one is a concrete deploy-blocker, not just a documentation gap. The HTML client calls `google.script.run.<fnName>()` for a number of functions that aren't defined in *any* of the 9 `.gs` files:
+
+| Called by the HTML | Exists server-side? | Impact |
+|---|---|---|
+| `executeBootstrap()` | ❌ No — real function is `deployFullSystem()` | The **first screen a new user sees** ("Build My Studio" bootstrap) calls a function that doesn't exist. First deploy is broken as delivered. |
+| `completeOnboarding(payload)` | ❌ No — real onboarding is `runSocraticOnboarding()`, a `ui.prompt()`-based wizard that needs a spreadsheet UI context, not a JSON-payload callable | The entire "Personalize your advisor" 4-step bottom-sheet modal has no backend. Tapping it throws. |
+| `getQueueMetrics()` | ❌ No — real function is `getQueueStatus()`, with a **different response shape** (`{pending,ready,needs_curator,processed}` vs. the HTML's expected `{queued,pending,active,needs_review,needs_curator,processed}` plus a `managed_service` block) | Queue tab can't render even if the name were fixed — the shapes don't line up either. |
+| `getShadowMatrixStatus()` | ❌ No — no shadow matrix exists at all (see point 2 above) | Diagnostics tab's "Ambient Calibration" section and the header status dot have no data source. |
+| `generateDailyPrimer()` | ❌ No (see point 3 above) | "Generate today's session starter" button throws. |
+| `getInboundFolderUrl()` | ❌ No | The large-payload folder-drop panel's link never populates. |
+
+**Also a real bug, not a missing function:** `doGet()` in `7_WebApp.gs` calls `HtmlService.createHtmlOutputFromFile('8_WebApp_UI')` — plain file output, not a template. But `8_WebApp_UI.html` expects server-side scriptlet evaluation (`<?= mode ?>` on line ~779) to inject `'BOOTSTRAP'` or `'OPERATIONAL'`. Since the file is never evaluated as a template, that literal text is never substituted, `SERVER_MODE` never equals `'BOOTSTRAP'`, and the app **always** falls through to the `OPERATIONAL` branch on load — meaning the bootstrap screen (broken per above, but still) would never even display; a brand-new deployment would show the operational UI with nothing set up. Fixing this requires switching `doGet()` to `HtmlService.createTemplateFromFile(...).evaluate()` and having it pass a `mode` variable — neither of which the delivered `doGet()` does.
+
+**One more, lower-severity:** `triggerCouncilSimulation()` (real) creates a single doc instructing the model to "Act as ARCHITECT, AUDITOR, and MUSE independently" — not the 7 separate, isolated, per-persona stimulus docs the sequestered-council design (SMP-002, "Seven Bridges") calls for. That's consistent with SMP-002 still being `PENDING USER APPROVAL` per `9_UI_Diagnostics.gs`'s `sevenBridgesReview()` — the real sequestered version was never built. But the HTML's copy ("Queuing 7 isolated cog stimuli…", "7 cogs queued for independent review") is hardcoded to always say 7 regardless of what actually happened (`res.queued` doesn't exist on the real response, so `(res.queued || []).length || 7` always falls through to the literal `7`). Not a crash, but actively misleading about what just ran.
+
+**Also present, and unexplained by anything else in this repo:** the Queue tab's `renderServiceStatus()` renders a "Managed Inference" panel with a subscription tier and credit balance (`account.credit_balance`, `account.subscription_tier`). Nothing in any `.gs` file, or in any other doc in this repo, describes a subscription/credits system — it directly contradicts this README's own "Nothing is on a vendor server" positioning. Whether this is vestigial UI from a different (possibly commercial SaaS) variant of the product, or a forward-looking stub for a feature not built yet, isn't something this repo's contents can answer — worth checking with whoever's maintaining the source.
+
 ---
 
 ## Architecture in Two Paragraphs
@@ -53,7 +72,7 @@ appsscript.json            OAuth scopes, web app config                    — M
 5_Error_And_Utilities.gs   Error log, daily digest, utilities              ✅ in repo (no shadow matrix / daily primer — see note)
 6_Governance.gs            Mutations, sweepers, council simulation         ✅ in repo (no Turnstile handler — see note)
 7_WebApp.gs                doGet, doPost, server functions                 ✅ in repo
-8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   — MISSING
+8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   ✅ in repo (calls several missing server fns — see note above)
 9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, menu       ✅ in repo
 10_Turnstile.gs            Matrix turnstile state machine                 ⚠️ in repo but schema-inconsistent — see note above
 KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) — not needed
