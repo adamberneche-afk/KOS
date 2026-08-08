@@ -86,6 +86,25 @@ const CFG = {
   // ── Auto-Council (reconciliation decision 1 / 6_Governance.gs) ──
   COUNCIL_AUTO_TRIGGER_SESSIONS: 5,  // sessions between auto-council checks
 
+  // ── Inference Mode (Round 3 reconciliation) ────────────────────
+  // 'STUDIO'          — default. Native Workspace Studio + Gemini inference,
+  //                     no external server, no vendor billing relationship.
+  //                     This is the architecture kos-personal/README.md
+  //                     commits to by default.
+  // 'MANAGED_SERVICE' — optional. Routes inference through the standalone
+  //                     Node.js service at kos-personal/inference-service/
+  //                     (Express + Postgres + Stripe, deployed separately
+  //                     to Cloud Run or similar). A real, documented
+  //                     alternative for multi-tenant or non-Studio
+  //                     deployments — see inference-service/INFERENCE_SERVICE_DEPLOYMENT.md.
+  //                     Requires CFG.PROP.MANAGED_SERVICE_BASE_URL and
+  //                     CFG.PROP.MANAGED_SERVICE_API_KEY to be set as
+  //                     Script Properties (deployment-specific, not
+  //                     hardcoded here). getQueueMetrics() only attempts
+  //                     to reach the service, and the web UI only renders
+  //                     the credits panel, when this is 'MANAGED_SERVICE'.
+  INFERENCE_MODE: 'STUDIO',
+
   // ── Chunking ──────────────────────────────────────────────────
   // 25000 per README.md's "Key Configuration" table and
   // STUDIO_INTEGRATION_SPEC.md's Error Handling section (reconciliation
@@ -139,6 +158,12 @@ const CFG = {
     THESIS_VERIFIED:    'CORE_THESIS_VERIFIED',
     ONBOARDING_DAY:     'KOS_ONBOARDING_DAY',
     ONBOARDING_START:   'KOS_ONBOARDING_START',
+
+    // Managed inference service (optional — see CFG.INFERENCE_MODE above).
+    // Deployment-specific values, set once as Script Properties, never
+    // hardcoded into this file.
+    MANAGED_SERVICE_BASE_URL: 'KOS_MANAGED_SERVICE_BASE_URL',
+    MANAGED_SERVICE_API_KEY:  'KOS_MANAGED_SERVICE_API_KEY',
   },
 };
 
