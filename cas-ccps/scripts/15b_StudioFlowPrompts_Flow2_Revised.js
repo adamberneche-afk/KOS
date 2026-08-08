@@ -9,7 +9,7 @@
 //
 // STATUS: Flow 2 has never been deployed. This is not a patch to a live
 // system — it is the actual first build spec for Flow 2, informed by
-// Module 3's requirements. Treat this the same way you would treat
+// Module 5's requirements. Treat this the same way you would treat
 // 15_StudioFlowPrompts.js's original FLOW_2_SYSTEM_PROMPT: paste verbatim
 // into the Gemini step, do not abbreviate or paraphrase.
 //
@@ -30,13 +30,13 @@
 //        being read for TeacherEmail — one more field off a lookup
 //        that's already happening, not a new lookup)
 //      - the four MILESTONE_N_COMPETENCY_ID columns from TeacherMatrix
-//        (these exist only once Script 08's Module 3 addition has run
+//        (these exist only once Script 08's Module 5 addition has run
 //        for a given assignment — see DEPENDENCY note below)
 //
 // DEPENDENCY: this flow assumes TeacherMatrix rows have already been
-// confirmed through the updated 08_TeacherConfirmationStep.js (Module 3
+// confirmed through the updated 08_TeacherConfirmationStep.js (Module 5
 // addition), meaning MILESTONE_1_COMPETENCY_ID..4 are populated. If an
-// assignment was confirmed BEFORE Module 3 shipped, those four columns
+// assignment was confirmed BEFORE Module 5 shipped, those four columns
 // will be blank for it. Step 2's widened lookup will return empty
 // strings for competency_id, and the new write step should skip writing
 // a CompetencyEvidence row for any milestone where competency_id is
@@ -191,7 +191,7 @@ nothing after it.
 //     .Milestone4CompetencyId -- in addition to all fields the original
 //     design already provided.
 //   Note: if any Milestone_N_CompetencyId field comes back blank
-//     (assignment confirmed before Module 3 shipped -- see DEPENDENCY
+//     (assignment confirmed before Module 5 shipped -- see DEPENDENCY
 //     note at top of file), carry the blank value through. Do not
 //     substitute a default or guess -- Step 3b's evidence write will
 //     correctly skip that milestone.
@@ -305,7 +305,7 @@ nothing after it.
 // =============================================================================
 // COMPETENCYEVIDENCE -- NEW TAB SCHEMA (Central Ledger)
 // One row per milestone per evaluation run. Append-only. Written by
-// Flow 2's new Step 5b. Read by Module 3's threshold/aggregation script
+// Flow 2's new Step 5b. Read by Module 5's threshold/aggregation script
 // (not yet written -- this tab is its primary input).
 // =============================================================================
 //
@@ -321,7 +321,7 @@ nothing after it.
 //                                       from TeacherMatrix's
 //                                       Milestone_N_Competency_Id column,
 //                                       set by a teacher at confirmation
-//                                       time (Script 08, Module 3
+//                                       time (Script 08, Module 5
 //                                       addition) -- never AI-inferred.
 // milestone_text    Text      Flow 2    The actual milestone criterion
 //                                       text, copied verbatim from

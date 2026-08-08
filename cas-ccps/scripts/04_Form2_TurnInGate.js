@@ -7,11 +7,24 @@
 // DISAMBIGUATION:
 //   The central ledger receives Form 1 AND Form 2 responses.
 //   Form 1 is handled by Script 02's onFormSubmit (checks for "Student Google Account").
-//   Form 2 is handled by this script's onTurnInSubmit (checks for "Email Address").
+//   Form 2 is handled by this script's onTurnInSubmit (checks for "Your Google Account").
 //   Both scripts must be in the SAME Apps Script project on the central ledger.
-//   The Turn-In Form has setCollectEmail(true) — Google auto-collects the signed-in
-//   email. The student no longer types their account identifier manually.
-//   This eliminates LEDGER_MISMATCH errors caused by typos.
+//
+//   FIX (reconciliation decision 9): this file previously assumed
+//   setCollectEmail(true) and read Google's auto-collected "Email Address"
+//   field. That contradicted 16_UnifiedManualSetup.js (the actual form
+//   builder — createAdminAssets_() calls setCollectEmail(false) and adds a
+//   manual text item titled "Your Google Account") and
+//   18_FormSubmitDispatcher.js's own comment (which already said "Your
+//   Google Account"). As shipped, r["Email Address"] was always undefined
+//   on a real submission, so the disambiguation check below treated every
+//   real Form 2 turn-in as "not a Form 2 submission" and silently no-opped
+//   — turn-ins never registered, with no error. Fixed to match the form as
+//   it's actually built; 16 and 18 were already correct and are unchanged.
+//   The manually-typed field (vs. auto-collect) can still be mistyped —
+//   that's an accepted tradeoff already made when 16 was built this way,
+//   not something this fix changes. The LEDGER_MISMATCH handling and
+//   student-facing rejection messaging below still cover that case.
 //
 // FORENSIC CHECK:
 //   Uses version history timestamp pattern — rapid block write under 15 seconds —
@@ -25,15 +38,16 @@ function onTurnInSubmit(e) {
   const r   = e.namedValues;
 
   // DISAMBIGUATION — exit immediately if this is a Form 1 (student intake) submission
-  // Form 2 uses auto-collected email ("Email Address"); Form 1 does not collect email
-  if (!r["Email Address"]) {
+  // Form 2 reads the manually-typed "Your Google Account" field; Form 1 uses
+  // "Student Google Account" instead (see Script 02).
+  if (!r["Your Google Account"]) {
     Logger.log("onTurnInSubmit: not a Form 2 submission — skipping.");
     return;
   }
 
-  // Use Google's auto-collected email — student no longer types this manually
-  // Eliminates LEDGER_MISMATCH errors from typos and case mismatches
-  const googleId        = r["Email Address"]?.[0]?.trim().toLowerCase() || "";
+  // Student-typed Google account identifier — matched against the Ledger.
+  // A mistyped value here surfaces as LEDGER_MISMATCH below, not a silent no-op.
+  const googleId        = r["Your Google Account"]?.[0]?.trim().toLowerCase() || "";
   const submittedDocUrl = r["Assignment Document Link"]?.[0]?.trim()    || "";
 
   if (!googleId || !submittedDocUrl) {

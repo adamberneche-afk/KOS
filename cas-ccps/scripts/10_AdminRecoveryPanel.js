@@ -62,12 +62,9 @@ function autoHealthAlert() {
       if (elapsed !== null && elapsed >= STUCK_PIPELINE_MINUTES) {
         const fileId = fileIdx !== -1 ? String(stagingData[i][fileIdx]).trim() : "unknown";
         issues.push(
-          "⏱️ STUCK EVALUATION (row " + (i + 1) + ")
-" +
-          "   File ID: " + fileId + "
-" +
-          "   Stuck for: " + elapsed + " minutes
-" +
+          "⏱️ STUCK EVALUATION (row " + (i + 1) + ")\n" +
+          "   File ID: " + fileId + "\n" +
+          "   Stuck for: " + elapsed + " minutes\n" +
           "   Action: Use ⚙️ Admin Controls → Reset Stuck Pipeline Row"
         );
       }
@@ -97,16 +94,11 @@ function autoHealthAlert() {
         const course  = rCourseIdx !== -1
           ? String(rubricData[i][rCourseIdx]).trim()  : "unknown";
         issues.push(
-          "📋 STUCK RUBRIC EXTRACTION (row " + (i + 1) + ")
-" +
-          "   Teacher: " + teacher + "
-" +
-          "   Course:  " + course  + "
-" +
-          "   Stuck for: " + elapsed + " hour" + (elapsed === 1 ? "" : "s") + "
-" +
-          "   Action: Check Studio Flow 1 — it may have timed out or hit a quota limit
-" +
+          "📋 STUCK RUBRIC EXTRACTION (row " + (i + 1) + ")\n" +
+          "   Teacher: " + teacher + "\n" +
+          "   Course:  " + course  + "\n" +
+          "   Stuck for: " + elapsed + " hour" + (elapsed === 1 ? "" : "s") + "\n" +
+          "   Action: Check Studio Flow 1 — it may have timed out or hit a quota limit\n" +
           "   To re-queue: delete this row and ask the teacher to resubmit their rubric"
         );
       }
@@ -122,23 +114,11 @@ function autoHealthAlert() {
   const body =
     "The Assignment System automated health check found " +
     issues.length + " issue" + (issues.length === 1 ? "" : "s") +
-    " that need your attention.
-
-" +
-    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-" +
-    issues.join("
-
-") +
-    "
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-" +
-    "Open the Central Ledger Spreadsheet and use ⚙️ Admin Controls to resolve these.
-
-" +
+    " that need your attention.\n\n" +
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+    issues.join("\n\n") +
+    "\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n" +
+    "Open the Central Ledger Spreadsheet and use ⚙️ Admin Controls to resolve these.\n\n" +
     "— Assignment System (automated alert)";
 
   MailApp.sendEmail(
@@ -410,17 +390,10 @@ function setCurrentTerm() {
 
   const res = ui.prompt(
     "Set Current Term",
-    "Enter the term identifier for new student registrations.
-
-" +
-    "Current term: " + cur + "
-
-" +
-    "Format examples:  2025-26 S1  |  2025-26 S2  |  Fall 2025  |  Spring 2026
-
-" +
-    "All students registered AFTER this change will be tagged with the new term.
-" +
+    "Enter the term identifier for new student registrations.\n\n" +
+    "Current term: " + cur + "\n\n" +
+    "Format examples:  2025-26 S1  |  2025-26 S2  |  Fall 2025  |  Spring 2026\n\n" +
+    "All students registered AFTER this change will be tagged with the new term.\n" +
     "Existing registrations are not affected.",
     ui.ButtonSet.OK_CANCEL
   );
@@ -432,11 +405,8 @@ function setCurrentTerm() {
   PropertiesService.getScriptProperties().setProperty("CURRENT_TERM", newTerm);
   ui.alert(
     "✅ Current Term Updated",
-    "New term: " + newTerm + "
-
-" +
-    "All new student registrations will be tagged with this term.
-" +
+    "New term: " + newTerm + "\n\n" +
+    "All new student registrations will be tagged with this term.\n" +
     "Teacher and student dashboards will default to showing this term.",
     ui.ButtonSet.OK
   );
@@ -452,19 +422,11 @@ function archiveCompletedTerm() {
 
   const termRes = ui.prompt(
     "Archive a Completed Term",
-    "Enter the term to archive (e.g. 2025-26 S1).
-
-" +
-    "What gets archived:
-" +
-    "  • All COMPLIANT submissions from that term
-" +
-    "  • All ACTIVE (unfinished) rows from that term
-
-" +
-    "Archived rows stay in the Ledger for records but are hidden from dashboards.
-
-" +
+    "Enter the term to archive (e.g. 2025-26 S1).\n\n" +
+    "What gets archived:\n" +
+    "  • All COMPLIANT submissions from that term\n" +
+    "  • All ACTIVE (unfinished) rows from that term\n\n" +
+    "Archived rows stay in the Ledger for records but are hidden from dashboards.\n\n" +
     "This cannot be undone automatically — contact your admin to restore.",
     ui.ButtonSet.OK_CANCEL
   );
@@ -474,13 +436,13 @@ function archiveCompletedTerm() {
   if (!termToArchive) { ui.alert("Term cannot be blank."); return; }
 
   const confirm = ui.alert(
-    "Archive "" + termToArchive + ""?",
-    "This will mark all student records from "" + termToArchive + "" as ARCHIVED.
-
-" +
-    "They will no longer appear in teacher or student dashboards.
-
-" +
+    // FIX (found while verifying reconciliation decision 10): the literal
+    // quote characters meant to wrap termToArchive in the displayed message
+    // (e.g. Archive "2024-2025"?) were unescaped, breaking the string
+    // literal boundary — same class of bug as the newline fixes above.
+    "Archive \"" + termToArchive + "\"?",
+    "This will mark all student records from \"" + termToArchive + "\" as ARCHIVED.\n\n" +
+    "They will no longer appear in teacher or student dashboards.\n\n" +
     "Are you sure?",
     ui.ButtonSet.YES_NO
   );
@@ -511,16 +473,10 @@ function archiveCompletedTerm() {
 
   ui.alert(
     "✅ Archive Complete",
-    "Term archived: " + termToArchive + "
-
-" +
-    "Rows archived: " + archived + "
-" +
-    (skipped > 0 ? "Rows skipped (errors/other): " + skipped + "
-" : "") +
-    "
-These records are still in the Ledger for your records.
-" +
+    "Term archived: " + termToArchive + "\n\n" +
+    "Rows archived: " + archived + "\n" +
+    (skipped > 0 ? "Rows skipped (errors/other): " + skipped + "\n" : "") +
+    "\nThese records are still in the Ledger for your records.\n" +
     "They will no longer appear in dashboards.",
     ui.ButtonSet.OK
   );
@@ -551,8 +507,7 @@ function viewTermSummary() {
   }
 
   const sorted = Object.keys(terms).sort().reverse();
-  const lines  = ["TERM SUMMARY
-"];
+  const lines  = ["TERM SUMMARY\n"];
 
   sorted.forEach(term => {
     const t = terms[term];
@@ -563,8 +518,7 @@ function viewTermSummary() {
     lines.push("");
   });
 
-  ui.alert("Term Summary", lines.join("
-"), ui.ButtonSet.OK);
+  ui.alert("Term Summary", lines.join("\n"), ui.ButtonSet.OK);
 }
 
 // ---------------------------------------------------------------------------

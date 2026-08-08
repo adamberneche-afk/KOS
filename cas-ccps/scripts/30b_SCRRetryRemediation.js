@@ -507,7 +507,8 @@ function createLessonPrimarySecondaryTab_() {
 // -- which means TeacherMatrix needs a lesson_unit_id column added at
 // confirmation time (a teacher selecting which pacing-guide lesson this
 // assignment belongs to), the same way it gained four competency-ID
-// columns in Module 3's first build pass.
+// columns in Module 5's first build pass (reconciliation decision 6 —
+// this script's module label was Module 3, renumbered to Module 5).
 //
 // THIS IS A REAL, NOT-YET-CLOSED DEPENDENCY -- naming it explicitly
 // rather than assuming Flow 2's existing widened lookup already covers

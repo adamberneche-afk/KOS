@@ -27,9 +27,17 @@
 // onOpen — detects role, builds appropriate menu
 // ---------------------------------------------------------------------------
 function onOpen() {
+  // FIX (reconciliation decision 10): `props` was referenced below
+  // (line ~56, `props.getProperty("INSTALLER_COMPLETE")`) without ever
+  // being declared in this function's scope — a ReferenceError on every
+  // doc open once SETUP_COMPLETE is set, i.e. for every user after
+  // first-time setup finishes. Declared once here and reused for both
+  // property reads, matching every other function in this file, which
+  // already takes `props` as an explicit parameter.
+  const props = PropertiesService.getScriptProperties();
   const ui    = DocumentApp.getUi();
   const role  = detectRole_();
-  const setup = PropertiesService.getScriptProperties().getProperty("SETUP_COMPLETE");
+  const setup = props.getProperty("SETUP_COMPLETE");
 
   if (!setup) {
     // First open — show setup wizard entry point for detected role
@@ -116,17 +124,16 @@ function runAdminSetup_() {
   if (hasPartialSetup_("ADMIN")) {
     const issues   = verifyCheckpoints_();
     const hasIssues = issues.length > 0;
+    // FIX (found while verifying reconciliation decision 10): these strings
+    // previously contained literal, unescaped newline characters inside
+    // double-quoted string literals — invalid JS, would fail to save in
+    // the Apps Script editor (confirmed via `node --check`). Replaced with
+    // proper "\n" escapes; message text is unchanged.
     const resumeMsg = hasIssues
-      ? "A previous setup attempt was interrupted and some assets may be missing:
-" +
-        issues.map(i => "  • " + i).join("
-") + "
-
-" +
+      ? "A previous setup attempt was interrupted and some assets may be missing:\n" +
+        issues.map(i => "  • " + i).join("\n") + "\n\n" +
         "Click OK to start fresh (existing assets will be reused where possible)."
-      : "A previous setup attempt was interrupted before completing.
-
-" +
+      : "A previous setup attempt was interrupted before completing.\n\n" +
         "Click OK to resume from where it left off — no assets will be duplicated.";
 
     const resume = ui.alert("Resume Previous Setup?", resumeMsg, ui.ButtonSet.OK_CANCEL);
@@ -536,25 +543,22 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
   body.appendParagraph("Step 3 — Create and configure the Master Student Template")
     .setHeading(DocumentApp.ParagraphHeading.HEADING3);
   body.appendParagraph(
-    "1. Create a new blank Google Doc (this is the master student template).
-" +
-    "2. Open Extensions → Apps Script on that doc.
-" +
+    // FIX (found while verifying reconciliation decision 10): literal
+    // unescaped newlines replaced with "\n", same as the resumeMsg fix
+    // above. Also updates the Script 09 filename per reconciliation
+    // decision 8 — the original 09_StudentRevisionGuidance.js (GAS writes
+    // the report) is archived/superseded; 09_StudentRevisionGuidance_M1Base.js
+    // (Studio writes the report) is the live design.
+    "1. Create a new blank Google Doc (this is the master student template).\n" +
+    "2. Open Extensions → Apps Script on that doc.\n" +
     "3. Create four script files and paste: 00_SharedConfig.js, " +
-    "01_StudentDoc_ContainerScript.js, 09_StudentRevisionGuidance.js, " +
-    "17_MasterStudentTemplate.js
-" +
-    "4. Set Script Properties on that doc:
-" +
-    "     CENTRAL_LEDGER_SS_ID = " + result.ledgerSsId + "
-" +
-    "     ADMIN_SS_ID          = " + result.ledgerSsId + "
-" +
-    "5. Copy the doc's ID from its URL and open this manual's Apps Script project.
-" +
-    "6. In Script Properties, set: MASTER_STUDENT_TEMPLATE_ID = [that doc ID]
-
-" +
+    "01_StudentDoc_ContainerScript.js, 09_StudentRevisionGuidance_M1Base.js, " +
+    "17_MasterStudentTemplate.js\n" +
+    "4. Set Script Properties on that doc:\n" +
+    "     CENTRAL_LEDGER_SS_ID = " + result.ledgerSsId + "\n" +
+    "     ADMIN_SS_ID          = " + result.ledgerSsId + "\n" +
+    "5. Copy the doc's ID from its URL and open this manual's Apps Script project.\n" +
+    "6. In Script Properties, set: MASTER_STUDENT_TEMPLATE_ID = [that doc ID]\n\n" +
     "This doc is never shared with anyone. Script 02 copies it for each student."
   );
   body.appendParagraph("");

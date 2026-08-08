@@ -1,3 +1,14 @@
+// ⚠️ SUPERSEDED (reconciliation decision 8): this file assumes GAS writes
+// the evaluation report into the student doc (prependFeedbackToHeader()).
+// Four independent, mutually corroborating sources disagree — Studio's
+// native "Insert text" connector writes the report directly, and GAS
+// (03_QueueBridge.js's backPropagateCompletions()) only appends the
+// "what to do next" block afterward. See 09_StudentRevisionGuidance_M1Base.js
+// for the live design, and cas-ccps/README.md for the full evidence trail.
+// This was the very first file uploaded to this project — read as an
+// earlier or experimental design, not a competing live alternative.
+// Archived, not deleted. Confirmed (at archival time) that nothing else
+// in this repo calls prependFeedbackToHeader().
 // =============================================================================
 // FILE: 09_StudentRevisionGuidance.js
 // EXTENDS: Script 01 (add these functions to the same container-bound project)

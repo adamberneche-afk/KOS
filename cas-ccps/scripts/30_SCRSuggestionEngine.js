@@ -1,7 +1,18 @@
 // =============================================================================
 // FILE: 30_SCRSuggestionEngine.js
 // BOUND TO: Central Ledger spreadsheet
-// PURPOSE: The Module 3 threshold script. Reads CompetencyEvidence (Flow 2's
+// NUMBERING NOTE (reconciliation decision 6, revised during implementation):
+// this file's own comments below call it "Module 3." That collides with
+// PLATFORM_DOCUMENTATION.html's Module 3 (Student Profile) and — more
+// importantly — with the real, already-implemented Script 29's own
+// documentation (CAS_Module4_Documentation_v1.1.docx), which explicitly
+// reserves "Module 5" for exactly this kind of student-competency work
+// ("If a future Module 5 builds a genuine student-competency junction...").
+// This script is Module 5, not Module 3. Renumbering the label only —
+// the file name and script number (30) are unaffected; see
+// cas-ccps/README.md for the full module numbering table.
+//
+// PURPOSE: The Module 5 threshold script. Reads CompetencyEvidence (Flow 2's
 //          output — see 15b_StudioFlowPrompts_Flow2_Revised.js), computes a
 //          suggested SCR rating per student+competency using the locked
 //          threshold rule, and manages the suggest -> confirm/override
@@ -704,7 +715,7 @@ function runSCRUpdateNow_() {
 // Not built now because it wasn't asked for and guessing at the right
 // reopening trigger (time-based? evidence-count-based? always manual?)
 // would be exactly the kind of unrequested scope expansion this session
-// has otherwise avoided throughout Module 3's design.
+// has otherwise avoided throughout Module 5's design.
 //
 // WHY THE EXPORT IS MANUAL, NOT PART OF THE WEEKLY TRIGGER:
 // Locked design decision, restated: exporting to the Excel-workbook shape

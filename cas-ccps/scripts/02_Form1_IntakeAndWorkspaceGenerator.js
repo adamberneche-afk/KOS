@@ -63,24 +63,13 @@ function onFormSubmit_Intake(e) {
   const masterTemplateId = cfg.masterStudentTemplateId;
   if (!masterTemplateId) {
     const errMsg =
-      "Student registration failed for " + studentName + ".
-
-" +
-      "REASON: The Master Student Template has not been configured.
-
-" +
-      "The system administrator needs to:
-" +
-      "  1. Create the Master Student Template Google Doc
-" +
-      "  2. Bind Scripts 00, 01, 09, and 17 to it
-" +
-      "  3. Set MASTER_STUDENT_TEMPLATE_ID in the admin Script Properties
-
-" +
-      "Until this is done, no student documents can be created.
-
-" +
+      "Student registration failed for " + studentName + ".\n\n" +
+      "REASON: The Master Student Template has not been configured.\n\n" +
+      "The system administrator needs to:\n" +
+      "  1. Create the Master Student Template Google Doc\n" +
+      "  2. Bind Scripts 00, 01, 09, and 17 to it\n" +
+      "  3. Set MASTER_STUDENT_TEMPLATE_ID in the admin Script Properties\n\n" +
+      "Until this is done, no student documents can be created.\n\n" +
       "Assignment Config ID: " + unitConfigId;
 
     // Write error row to Ledger so it surfaces in dashboards and health check

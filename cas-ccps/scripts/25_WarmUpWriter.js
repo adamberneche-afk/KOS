@@ -506,40 +506,25 @@ function checkShadowMatrixInterrupts_(ss, cfg) {
   // ── Build digest email ────────────────────────────────────────────────────
   const rows = interrupts.map(item =>
     "  " + item.studentName + " — " + item.unitId +
-    "
-    Best archetype: " + item.bestArchetype +
+    "\n    Best archetype: " + item.bestArchetype +
     " (" + Math.round(item.confidence * 100) + "% confidence, " +
     item.historyCount + " warm-ups, trend: " + item.trend + ")"
-  ).join("
-
-");
+  ).join("\n\n");
 
   const subject = "[CAS] Warm-Up Archetype Confidence — " + interrupts.length +
                   " student" + (interrupts.length > 1 ? "s" : "") + " ready";
 
   const body =
-    "Hello " + teacherName + ",
-
-" +
+    "Hello " + teacherName + ",\n\n" +
     "The warm-up system has reached high confidence on archetype selection " +
-    "for the following student" + (interrupts.length > 1 ? "s" : "") + ":
-
-" +
-    rows + "
-
-" +
+    "for the following student" + (interrupts.length > 1 ? "s" : "") + ":\n\n" +
+    rows + "\n\n" +
     "The system will automatically weight toward the best archetype for " +
-    "each student's next warm-up.
-
-" +
+    "each student's next warm-up.\n\n" +
     "Reply OVERRIDE to any individual student name above if you want to " +
-    "keep the default archetype selection for that student.
-
-" +
+    "keep the default archetype selection for that student.\n\n" +
     "This digest is sent once per student per unit. You will not receive " +
-    "repeat notifications for the same student and unit.
-
-" +
+    "repeat notifications for the same student and unit.\n\n" +
     "— Classroom Agency System";
 
   try {
@@ -1124,23 +1109,13 @@ function _checkCronHealth_(stampKey, stageName, maxAgeMinutes, notifyEmail) {
       to:      notifyEmail,
       subject: "[CAS] Cron health warning — " + stageName,
       body:    "The warm-up pipeline cron stage " + stageName + " last ran " +
-               Math.round(ageMinutes) + " minutes ago.
-
-" +
-               "Expected: within " + maxAgeMinutes + " minutes of the current run.
-
-" +
+               Math.round(ageMinutes) + " minutes ago.\n\n" +
+               "Expected: within " + maxAgeMinutes + " minutes of the current run.\n\n" +
                "This may mean tonight's warm-up prompts are less personalized " +
-               "than usual, or that the evaluation pass did not complete.
-
-" +
+               "than usual, or that the evaluation pass did not complete.\n\n" +
                "Check the Apps Script execution log on the Central Ledger " +
-               "for details.
-
-" +
-               "Last successful run: " + stampStr + "
-
-" +
+               "for details.\n\n" +
+               "Last successful run: " + stampStr + "\n\n" +
                "— Classroom Agency System"
     });
     props.setProperty(alertKey, now.toISOString());

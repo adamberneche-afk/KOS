@@ -80,7 +80,7 @@
 // ── Already set by Module 1 setup (no action needed) ─────────────────────────
 //
 //   TEACHER_MATRIX_SS_ID → written by Script 16 during M1 teacher setup
-//                          Required by Script 31 to read competency tags
+//                          Required by Script 33 to read competency tags
 //
 //   TEACHER_EMAIL       → written by Script 16 during M1 setup
 //   TEACHER_NAME        → written by Script 16 during M1 setup
@@ -171,26 +171,36 @@
 //     Creates: StudentProfiles · WarmUpQueue · WarmUpRegistry · ClassSchedule
 //     Safe to re-run — skips existing tabs.
 //
-// 12b. IMPORT PACING GUIDE — run importPacingGuide() from Script 29
+// NUMBERING NOTE (reconciliation decision 7, revised during implementation):
+// this section originally claimed scripts 29, 30, and 31 for the three
+// items below. Scripts 29 (StudentContextAggregator, Module 4) and 30
+// (SCRSuggestionEngine, Module 5) are real, already-implemented files with
+// no relation to Module 2 — this addendum's claim on those numbers was
+// unbuilt and lost the collision. Renumbered to 31/32/33, the next free
+// slots. importPacingGuide()/importCompetencyRubrics() are not implemented
+// anywhere in this repo yet — treat 31 and 32 as reserved numbers for
+// whoever builds them, not as existing files.
+//
+// 12b. IMPORT PACING GUIDE — run importPacingGuide() from Script 31
 //      Upload PacingGuide_CAS_Context.json to teacher Drive folder first.
 //      Creates PacingGuide tab with 20 units. Run validatePacingGuide() to confirm.
 //      Enables warmup_anchor seeds in WarmUpQueue snapshots and unit-level
 //      shadow matrix tracking. Safe to re-run — clears and rewrites.
 //
-// 12c. IMPORT COMPETENCY RUBRICS — run importCompetencyRubrics() from Script 30
+// 12c. IMPORT COMPETENCY RUBRICS — run importCompetencyRubrics() from Script 32
 //      Upload CompetencyRubrics.json to teacher Drive folder first.
 //      Creates CompetencyRubrics tab with 220 rubrics (113 × 8175, 107 × 8177).
 //      Run validateRubricImport() to confirm. Enables skill_questions and
 //      archetype_question_map in WarmUpQueue lesson context snapshots.
 //      Safe to re-run — clears and rewrites.
 //
-// 12d. ADD SCRIPT 31 — ArtifactCompetencyBridge
-//      Add 31_ArtifactCompetencyBridge.js to the Central Ledger project.
-//      Run addCompetencyIdsColumn_() from Script 31 — adds competency_ids
+// 12d. ADD SCRIPT 33 — ArtifactCompetencyBridge
+//      Add 33_ArtifactCompetencyBridge.js to the Central Ledger project.
+//      Run addCompetencyIdsColumn_() from Script 33 — adds competency_ids
 //      column to TeacherMatrix sheet. Safe to re-run.
-//      Run installArtifactSyncTrigger_() from Script 31 — installs 3:05am
+//      Run installArtifactSyncTrigger_() from Script 33 — installs 3:05am
 //      nightly trigger. Completes the full cron sequence:
-//        3:00am S23 → 3:05am S31 → 3:15am S25 → 3:30am S24
+//        3:00am S23 → 3:05am S33 → 3:15am S25 → 3:30am S24
 //      Tag assignments with competency IDs in the Teacher Matrix
 //      (competency_ids column, comma-separated, e.g. "8177-47,8177-52").
 //      Run validateArtifactSync() to verify coverage is being tracked.
