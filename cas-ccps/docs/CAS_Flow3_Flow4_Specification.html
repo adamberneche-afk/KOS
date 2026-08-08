@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAS — Studio Flow 3 · Warm-Up Generation</title>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08090a;--ink:#0f1115;--surface:#14171c;--surface2:#1c2028;
+  --border:#252b35;--border2:#2f3847;
+  --text:#cdd5e0;--text-dim:#6b7a8d;--text-bright:#e8eef5;
+  --amber:#e8b84b;--amber-bg:rgba(232,184,75,0.08);--amber-border:rgba(232,184,75,0.2);
+  --teal:#3ecfb8;--teal-bg:rgba(62,207,184,0.07);--teal-border:rgba(62,207,184,0.2);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,0.08);--violet-border:rgba(167,139,250,0.2);
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--green-border:rgba(74,222,128,0.2);
+  --rose:#f87171;--rose-bg:rgba(248,113,113,0.08);--rose-border:rgba(248,113,113,0.2);
+  --sky:#38bdf8;--sky-bg:rgba(56,189,248,0.07);--sky-border:rgba(56,189,248,0.2);
+  --orange:#fb923c;--orange-bg:rgba(251,146,60,0.08);--orange-border:rgba(251,146,60,0.2);
+  --display:'Anybody',system-ui,sans-serif;
+  --body:'Literata',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--void);color:var(--text);font-size:15px;line-height:1.75;min-height:100vh}
+
+/* ── NAV ── */
+.topnav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(8,9,10,0.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;display:flex;align-items:center;justify-content:space-between;height:54px}
+.topnav-brand{font-family:var(--display);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--orange)}
+.topnav-links{display:flex}
+.topnav-link{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:0 14px;height:54px;display:flex;align-items:center;text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s}
+.topnav-link:hover{color:var(--text-bright)}
+.topnav-link.active{color:var(--orange);border-bottom-color:var(--orange)}
+
+/* ── HERO ── */
+.hero{padding:130px 80px 80px;position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 15% 60%,rgba(251,146,60,0.05) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 85% 30%,rgba(167,139,250,0.04) 0%,transparent 50%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:72px 72px;opacity:0.2;pointer-events:none}
+.eyebrow{font-family:var(--mono);font-size:10px;color:var(--orange);letter-spacing:3px;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:24px;height:1px;background:var(--orange)}
+.hero h1{font-family:var(--display);font-size:clamp(40px,5.5vw,72px);font-weight:800;line-height:0.95;letter-spacing:-2px;color:var(--text-bright);margin-bottom:6px}
+.hero h1 em{color:var(--orange);font-style:normal;display:block}
+.hero-sub{font-family:var(--display);font-size:clamp(14px,1.6vw,18px);font-weight:300;color:var(--text-dim);max-width:580px;line-height:1.6;margin:24px 0 40px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:10px;padding:4px 11px;border-radius:3px;font-weight:500}
+.badge-orange{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-border)}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.badge-violet{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+.badge-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border2)}
+
+/* ── LAYOUT ── */
+.page{max-width:1000px;margin:0 auto;padding:0 80px}
+.section{padding:60px 0;border-bottom:1px solid var(--border)}
+.section:last-child{border-bottom:none}
+.sec-eyebrow{font-family:var(--mono);font-size:10px;color:var(--orange);letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sec-eyebrow::before{content:"";width:20px;height:1px;background:var(--orange)}
+.section h2{font-family:var(--display);font-size:clamp(26px,3.2vw,40px);font-weight:800;letter-spacing:-1px;color:var(--text-bright);line-height:1.05;margin-bottom:12px}
+.section-intro{font-size:14.5px;color:var(--text-dim);max-width:680px;line-height:1.8;margin-bottom:36px}
+
+/* ── PROMPT BLOCK ── */
+.prompt-block{background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:20px 0}
+.prompt-block-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:12px 20px;display:flex;justify-content:space-between;align-items:center}
+.prompt-block-header h4{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright)}
+.prompt-block-header span{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+.prompt-body{padding:24px 28px;font-size:13.5px;color:var(--text-dim);line-height:1.9;white-space:pre-wrap;font-family:var(--mono)}
+.prompt-body .ph{color:var(--orange)} /* placeholder */
+.prompt-body .kw{color:var(--teal)}   /* keyword / instruction */
+.prompt-body .ex{color:var(--violet)} /* example */
+.prompt-body .cm{color:var(--text-dim);font-style:italic} /* comment */
+
+/* ── ARCHETYPE CARDS ── */
+.archetype-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin:24px 0}
+.archetype-card{background:var(--surface);padding:28px 32px;position:relative;overflow:hidden}
+.archetype-card::before{content:"";position:absolute;top:0;left:0;right:0;height:3px}
+.ac-paradox::before{background:var(--violet)}
+.ac-scenario::before{background:var(--teal)}
+.ac-bridge::before{background:var(--amber)}
+.ac-provocation::before{background:var(--orange)}
+.archetype-card h3{font-family:var(--display);font-size:17px;font-weight:700;color:var(--text-bright);margin-bottom:6px;letter-spacing:-0.2px}
+.archetype-card .ac-trigger{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1px;margin-bottom:14px;text-transform:uppercase}
+.archetype-card .ac-desc{font-size:13.5px;color:var(--text-dim);line-height:1.75;margin-bottom:16px}
+.archetype-card .ac-example{background:var(--ink);border:1px solid var(--border2);border-radius:3px;padding:14px 16px;font-size:13px;color:var(--text-dim);line-height:1.7;font-style:italic}
+.archetype-card .ac-example::before{content:"Example prompt — 8177 Branding unit";display:block;font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px;font-style:normal}
+
+/* ── DECISION TABLE ── */
+.decision-table{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px}
+.decision-table th{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:10px 16px;border-bottom:2px solid var(--border);text-align:left;background:var(--surface2)}
+.decision-table td{padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text-dim);vertical-align:top;line-height:1.6}
+.decision-table tr:last-child td{border-bottom:none}
+.decision-table td:first-child{font-family:var(--mono);font-size:11px;color:var(--teal);white-space:nowrap}
+.decision-table td:nth-child(2){color:var(--amber);font-family:var(--mono);font-size:11px}
+
+/* ── CALLOUTS ── */
+.callout{border-radius:4px;padding:14px 18px;margin:18px 0;display:flex;gap:12px;font-size:13.5px;line-height:1.65}
+.callout-icon{flex-shrink:0;margin-top:1px}
+.callout-teal{background:var(--teal-bg);border-left:3px solid var(--teal);color:#2aaa96}
+.callout-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8a040}
+.callout-violet{background:var(--violet-bg);border-left:3px solid var(--violet);color:#9a7ef5}
+.callout-orange{background:var(--orange-bg);border-left:3px solid var(--orange);color:#d97a30}
+.callout-rose{background:var(--rose-bg);border-left:3px solid var(--rose);color:#e06060}
+.callout-body strong{color:inherit;font-weight:600}
+
+/* ── JSON EXAMPLE ── */
+.json-block{background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:20px 24px;font-family:var(--mono);font-size:12px;line-height:1.9;overflow-x:auto;margin:14px 0}
+.json-block .jk{color:var(--sky)}
+.json-block .jv{color:var(--green)}
+.json-block .js{color:var(--amber)}
+.json-block .jc{color:var(--text-dim);font-style:italic}
+.json-block .jn{color:var(--violet)}
+
+/* ── DOC STRUCTURE ── */
+.doc-zones{background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:20px 0}
+.doc-zone{padding:16px 20px;border-bottom:1px solid var(--border);display:grid;grid-template-columns:180px 1fr;gap:16px;align-items:start;font-size:13px}
+.doc-zone:last-child{border-bottom:none}
+.zone-label{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;padding-top:2px}
+.zone-content{color:var(--text-dim);line-height:1.65}
+.zone-content code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+
+/* ── FOOTER ── */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:36px 80px;font-size:12px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+
+@media(max-width:900px){
+  .topnav{padding:0 20px}.topnav-links{display:none}
+  .hero,.page{padding-left:24px;padding-right:24px}
+  .archetype-grid{grid-template-columns:1fr}
+  .doc-zone{grid-template-columns:1fr}
+  footer{padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="topnav-brand">CAS · Studio Flow 3</span>
+  <div class="topnav-links">
+    <a class="topnav-link active" href="#overview">Overview</a>
+    <a class="topnav-link" href="#payload">Payload</a>
+    <a class="topnav-link" href="#archetypes">Archetypes</a>
+    <a class="topnav-link" href="#system-prompt">System Prompt</a>
+    <a class="topnav-link" href="#doc-structure">Doc Structure</a>
+    <a class="topnav-link" href="#configuration">Configuration</a>
+    <a class="topnav-link" href="#flow4">Flow 4</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="eyebrow">Studio Flow Specification</div>
+  <h1>Flow 3<em>Warm-Up Generation</em></h1>
+  <p class="hero-sub">Student-specific cognitive entry points generated from lesson context and individual learning history. Four prompt archetypes. One doc per student per class day.</p>
+  <div class="badges">
+    <span class="badge badge-orange">Trigger: WarmUpQueue PENDING</span>
+    <span class="badge badge-teal">6am class-day cron</span>
+    <span class="badge badge-violet">Gemini · temperature 0.7</span>
+    <span class="badge badge-ghost">~30s per student</span>
+    <span class="badge badge-amber">Anchor-aware · v1.1</span>
+    <span class="badge badge-ghost">Shadow matrix · pacing guide</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- OVERVIEW -->
+<div class="section" id="overview">
+  <div class="sec-eyebrow">What this flow does</div>
+  <h2>One prompt, one student, one class</h2>
+  <p class="section-intro">Flow 3 reads a WarmUpQueue row containing two JSON snapshots — the lesson context and the student's profile — and generates a single warm-up prompt personalized to that student's learning history. It creates a Google Doc in the student's warm-up folder, stamps it with the correct zone structure, shares it, and marks the queue row DELIVERED.</p>
+
+  <div class="callout callout-orange">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>The core design constraint:</strong> The warm-up is not a review question and not a preview question. It is a cognitive entry point — something that makes the student think before the lesson begins, creates a productive tension that the lesson resolves, and is interesting enough that a student who doesn't have to engage probably will anyway. It should never feel like homework.</div>
+  </div>
+
+  <table class="decision-table">
+    <thead>
+      <tr><th>Parameter</th><th>Value</th><th>Rationale</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Model</td><td>gemini-pro</td><td>Sufficient for structured creative generation. gemini-ultra overkill at this scale.</td></tr>
+      <tr><td>Temperature</td><td>0.7</td><td>High enough for genuine variation between students. Low enough to stay on-topic and coherent.</td></tr>
+      <tr><td>Max output tokens</td><td>400</td><td>3–5 sentences of prompt + doc zone scaffolding. No more needed.</td></tr>
+      <tr><td>Output format</td><td>Structured text</td><td>Not JSON — Flow 3 writes narrative prose directly into the doc. Structure enforced by zone delimiters.</td></tr>
+      <tr><td>Trigger</td><td>WarmUpQueue status = PENDING</td><td>Script 24 writes PENDING rows at 3:30am. Flow 3 processes them at 6am.</td></tr>
+      <tr><td>Per-teacher lane</td><td>Yes — same as Module 1</td><td>Flow 3 processes one PENDING row at a time per teacher lane. Prevents queue flooding at 6am.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- PAYLOAD -->
+<div class="section" id="payload">
+  <div class="sec-eyebrow">Input</div>
+  <h2>What Flow 3 receives</h2>
+  <p class="section-intro">Flow 3 reads two columns from the WarmUpQueue row: <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">lesson_context_snapshot</code> and <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">student_profile_snapshot</code>. Both are JSON strings serialized by Script 24 at 3:30am. Flow 3 parses them and constructs the generation prompt from their contents.</p>
+
+  <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">lesson_context_snapshot — full structure</div>
+  <div class="json-block">
+{
+  <span class="jk">"lesson_id"</span>:        <span class="js">"LES-20260114-A3F2"</span>,
+  <span class="jk">"lesson_date"</span>:      <span class="js">"2026-01-14"</span>,
+  <span class="jk">"objective"</span>:       <span class="js">"Students can explain how exclusivity affects perceived brand value in sports marketing."</span>,
+  <span class="jk">"activity"</span>:        <span class="js">"Case study analysis of Nike's limited-release strategy and its effect on resale markets."</span>,
+  <span class="jk">"vocabulary"</span>:      <span class="js">"exclusivity, perceived value, scarcity, brand equity, resale market"</span>,
+  <span class="jk">"prior_connection"</span>: <span class="js">"Last class covered how branding creates emotional associations with consumers."</span>,
+  <span class="jk">"competency_ids"</span>:   [<span class="js">"8175-47"</span>, <span class="js">"8175-52"</span>],
+  <span class="jk">"competency_texts"</span>: [
+    { <span class="jk">"id"</span>: <span class="js">"8175-47"</span>, <span class="jk">"text"</span>: <span class="js">"Explore the concept of branding."</span>,         <span class="jk">"strand"</span>: <span class="js">"Exploring the Concept of Branding"</span> },
+    { <span class="jk">"id"</span>: <span class="js">"8175-52"</span>, <span class="jk">"text"</span>: <span class="js">"Describe product development strategies."</span>, <span class="jk">"strand"</span>: <span class="js">"Describing Product Development"</span> }
+  ],
+  <span class="jk">"course_name"</span>:     <span class="js">"Sports Entertainment and Event Marketing"</span>,
+  <span class="jk">"period"</span>:          <span class="js">"2"</span>
+}
+  </div>
+
+  <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin:24px 0 8px">student_profile_snapshot — full structure</div>
+  <div class="json-block">
+{
+  <span class="jk">"student_email"</span>:          <span class="js">"student@school.edu"</span>,
+  <span class="jk">"student_name"</span>:           <span class="js">"Jordan"</span>,  <span class="jc">// first name only for prompt naturalness</span>
+  <span class="jk">"period"</span>:                  <span class="js">"2"</span>,
+  <span class="jk">"competencies_addressed"</span>:  [<span class="js">"8175-1"</span>, <span class="js">"8175-2"</span>, <span class="js">"8175-38"</span>, <span class="js">"8175-45"</span>],  <span class="jc">// IDs covered this term</span>
+  <span class="jk">"competency_gaps"</span>:         [<span class="js">"8175-52"</span>],  <span class="jc">// today's competencies NOT yet addressed for this student</span>
+  <span class="jk">"evaluation_signals"</span>: [
+    {
+      <span class="jk">"assignment_id"</span>: <span class="js">"VDOE-XK7R-2026"</span>,
+      <span class="jk">"date"</span>:          <span class="js">"2026-01-10"</span>,
+      <span class="jk">"indicators"</span>: {
+        <span class="jk">"strengths"</span>: [<span class="js">"analysis"</span>, <span class="js">"critical_thinking"</span>],
+        <span class="jk">"gaps"</span>:      [<span class="js">"application"</span>, <span class="js">"supporting_evidence"</span>]
+      },
+      <span class="jk">"note"</span>: <span class="js">"Strong conceptual grasp but struggles to apply terminology to real scenarios."</span>
+    }
+  ],
+  <span class="jk">"warmup_scores"</span>: [
+    { <span class="jk">"lesson_id"</span>: <span class="js">"LES-20260110-B2C1"</span>, <span class="jk">"engagement"</span>: <span class="jv">3</span>, <span class="jk">"total"</span>: <span class="jv">9</span> },
+    { <span class="jk">"lesson_id"</span>: <span class="js">"LES-20260108-A1D4"</span>, <span class="jk">"engagement"</span>: <span class="jv">2</span>, <span class="jk">"total"</span>: <span class="jv">7</span> }
+  ],
+  <span class="jk">"extra_credit_count"</span>:     <span class="jv">1</span>,
+  <span class="jk">"avg_engagement_score"</span>:   <span class="jv">2.5</span>,
+  <span class="jk">"last_updated"</span>:           <span class="js">"Fri Jan 13 2026 03:00:12 GMT-0500"</span>
+}
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>First name only in the prompt.</strong> Flow 3 addresses the student by first name in the warm-up doc header. The profile snapshot contains the full name — Flow 3 extracts the first word. This makes the doc feel personal without being surveillance-adjacent. The full name appears only in the doc filename, not in the prompt text itself.</div>
+  </div>
+</div>
+
+<!-- ARCHETYPES -->
+<div class="section" id="archetypes">
+  <div class="sec-eyebrow">Personalization logic</div>
+  <h2>Four prompt archetypes</h2>
+  <p class="section-intro">Flow 3 selects one of four prompt angles based on the student's profile. The selection is deterministic — given the same profile, the same archetype is always chosen. The content within the archetype varies with temperature.</p>
+
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Archetype selection now uses a two-layer model. The shadow matrix is checked first — if cross-unit confidence has crossed 0.75 for a student × archetype combination, that archetype is used directly. If confidence is below threshold or no shadow matrix data exists, the decision table below applies. The decision table is the fallback, not the primary selector for students with established history.</p>
+
+  <table class="decision-table" style="margin-bottom:28px">
+    <thead>
+      <tr><th>Archetype</th><th>Trigger condition (decision table — used when shadow confidence &lt; 0.75)</th><th>Shadow matrix override</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>PARADOX</td>
+        <td>avg_engagement ≥ 2.5 AND strengths contain analysis or critical_thinking AND gaps contain application</td>
+        <td>Used directly when shadow cross_confidence ≥ 0.75 for PARADOX on this student in the current unit type</td>
+      </tr>
+      <tr>
+        <td>CONCRETE SCENARIO</td>
+        <td>avg_engagement ≥ 1.5 AND gaps contain analysis or critical_thinking AND strengths contain application</td>
+        <td>Used directly when shadow cross_confidence ≥ 0.75 for CONCRETE SCENARIO</td>
+      </tr>
+      <tr>
+        <td>BRIDGE</td>
+        <td>competency_gaps is non-empty AND today's lesson introduces a duty area not yet covered this term</td>
+        <td>Shadow matrix weights toward BRIDGE for early-unit warm-ups (within_confidence &lt; 0.3) regardless of decision table</td>
+      </tr>
+      <tr>
+        <td>PROVOCATION</td>
+        <td>avg_engagement ≥ 2.5 AND extra_credit_count ≥ 1 AND evaluation_signals show no persistent gaps</td>
+        <td>Used directly when shadow cross_confidence ≥ 0.75 for PROVOCATION</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Shadow matrix selection note in Mode A prompt:</strong> When the shadow matrix overrides the decision table, Flow 3 receives a <code>{shadow_archetype_note}</code> placeholder explaining why: "Shadow matrix suggests PARADOX (72% confidence, 5 warm-ups in unit S1-U3, trend: rising)." This string is computed by <code>getStudentProfileSnapshot_()</code> in Script 23 at 3:30am queue-build time — not at generation time — and embedded in the <code>student_profile_snapshot</code> JSON on the WarmUpQueue row. Flow 3 reads it from the queue row with no additional Sheets reads. Null when cross_confidence &lt; 0.75 or no shadow history exists for the current unit. Snapshot isolation fully preserved.</div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Fallback order when no archetype matches (decision table):</strong> BRIDGE → CONCRETE SCENARIO → PARADOX. A student with no evaluation history and no warm-up history receives a BRIDGE prompt — all competencies are technically gaps and the anchor's prior connection field provides the bridge material. The pacing guide's <code>prior_lesson_connection</code> ensures BRIDGE has meaningful content even on the first day of a new unit.</div>
+  </div>
+
+  <div class="archetype-grid">
+
+    <div class="archetype-card ac-paradox">
+      <div class="ac-trigger">Archetype 01 · Paradox</div>
+      <h3>Surfaces contradiction</h3>
+      <p class="ac-desc">For students who think deeply but stay at the conceptual level. Presents two things that both seem true but can't both be right — at least not without nuance the lesson provides. The student walks in already wrestling with the tension.</p>
+      <div class="ac-example">Nike's Air Jordan line became one of the most valuable brands in sports history — but Nike deliberately limits how many pairs get released. If fewer people can buy your product, how can it be more valuable? What does that tell you about what "value" actually means in a market?</div>
+    </div>
+
+    <div class="archetype-card ac-scenario">
+      <div class="ac-trigger">Archetype 02 · Concrete Scenario</div>
+      <h3>Grounds abstraction</h3>
+      <p class="ac-desc">For students who work well with tangible problems but struggle to lift to the conceptual level. Presents a specific, real-sounding situation that requires judgment. The abstraction emerges from the scenario, not the other way around.</p>
+      <div class="ac-example">You're managing sponsorship for a mid-size esports team. A major energy drink brand offers you a deal — but their product has faced public criticism for targeting underage consumers. The money would fund your next three tournaments. What do you do, and why?</div>
+    </div>
+
+    <div class="archetype-card ac-bridge">
+      <div class="ac-trigger">Archetype 03 · Bridge</div>
+      <h3>Connects prior to new</h3>
+      <p class="ac-desc">For students entering a duty area they haven't covered yet. Finds the closest competency they have addressed and builds a bridge. Reduces the cognitive cost of encountering genuinely new material by activating adjacent knowledge.</p>
+      <div class="ac-example">Last week you looked at how branding creates emotional associations — the feeling a logo or name gives you. Today we're going into how companies develop products around those feelings. Before we start: think of a sports brand you feel something about. What did they have to get right about their product for that feeling to work?</div>
+    </div>
+
+    <div class="archetype-card ac-provocation">
+      <div class="ac-trigger">Archetype 04 · Provocation</div>
+      <h3>No easy answer</h3>
+      <p class="ac-desc">For students who are strong across the board and have demonstrated they'll engage beyond the minimum. A genuine intellectual challenge that doesn't scaffold. Rewards prior knowledge. Designed to make the discussion interesting for the whole class.</p>
+      <div class="ac-example">A sports team's brand can be worth more than the team itself — the New York Yankees brand generates more revenue than most franchises earn from games, merchandise, and media combined. If that's true, what exactly is a sports team selling? Is it games, or is it something else entirely?</div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SYSTEM PROMPT -->
+<div class="section" id="system-prompt">
+  <div class="sec-eyebrow">Prompt engineering</div>
+  <h2>Two-mode system prompt</h2>
+  <p class="section-intro">Flow 3 operates in two modes depending on whether a <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">warmup_anchor</code> is present in the lesson context snapshot. When an anchor exists (pacing guide imported), Flow 3 personalizes it. When no anchor exists (first run, pacing guide not yet loaded), Flow 3 generates from scratch. Both modes use the same archetype selection logic and writing constraints. The output is indistinguishable to the student.</p>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>What the anchor changes:</strong> Without an anchor, Flow 3 must simultaneously determine the pedagogical angle, generate the industry example, and calibrate the difficulty — three generative tasks at once. With an anchor, the teacher has already resolved the pedagogical angle and industry grounding. Flow 3's only job is to adapt the angle to this specific student's history. The anchor guarantees pedagogical quality; Flow 3 guarantees personalization.</div>
+  </div>
+
+  <!-- MODE A: ANCHOR-AWARE (pacing guide imported) -->
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:0 0 6px;letter-spacing:-0.2px">Mode A — Anchor-Aware <span style="font-family:var(--mono);font-size:11px;color:var(--green);background:var(--green-bg);border:1px solid var(--green-border);padding:2px 8px;border-radius:3px;margin-left:8px">when warmup_anchor is present</span></h3>
+  <p style="font-size:13.5px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">Flow 3 receives the teacher-authored anchor and personalizes it for this specific student. The anchor provides the pedagogical angle and industry grounding. Flow 3 applies the archetype, adjusts the cognitive demand, and targets the student's history — without rewriting the anchor's core idea.</p>
+
+  <div class="prompt-block">
+    <div class="prompt-block-header">
+      <h4>System Prompt — Mode A (Anchor-Aware)</h4>
+      <span>Use when warmup_anchor != null in lesson_context_snapshot</span>
+    </div>
+    <div class="prompt-body">You are personalizing a warm-up prompt for a high school CTE student in a Sports, Entertainment, and Event Management/Marketing course.
+
+<span class="kw">YOUR ROLE:</span>
+A teacher has written a seed prompt — a warmup anchor — that establishes the pedagogical angle and industry grounding for today's class. Your job is to adapt that anchor for this specific student based on their learning history. You are not rewriting the anchor. You are adjusting its cognitive demand, emphasis, and framing to match where this student is right now.
+
+The final prompt must feel like it was written for this student specifically — not like a template that was filled in.
+
+<span class="kw">TEACHER'S ANCHOR PROMPT:</span>
+<span class="ph">{warmup_anchor}</span>
+
+<span class="kw">UNIT CONTEXT:</span>
+Unit: <span class="ph">{pacing_unit_name}</span> (Stage <span class="ph">{pacing_stage}</span>)
+Course objective for this unit: <span class="ph">{course_objective}</span>
+Prior lesson connection: <span class="ph">{pacing_prior_connection}</span>
+Key vocabulary in play: <span class="ph">{pacing_key_vocabulary}</span>
+
+<span class="kw">TODAY'S LESSON:</span>
+Course: <span class="ph">{course_name}</span>
+Objective: <span class="ph">{objective}</span>
+Competencies addressed: <span class="ph">{competency_texts_formatted}</span>
+
+<span class="kw">STUDENT CONTEXT:</span>
+Name: <span class="ph">{first_name}</span>
+Competency gaps today (areas not yet covered): <span class="ph">{competency_gaps_formatted}</span>
+
+Evaluation history (last 3 assignments):
+<span class="ph">{evaluation_signals_formatted}</span>
+
+Warm-up engagement history:
+Average engagement score: <span class="ph">{avg_engagement_score}</span> / 3.0
+Extra credit replies submitted: <span class="ph">{extra_credit_count}</span>
+
+Shadow matrix — archetype confidence for this unit:
+<span class="ph">{shadow_archetype_note}</span>
+
+<span class="kw">ARCHETYPE SELECTED:</span> <span class="ph">{archetype}</span>
+
+How to apply each archetype to the anchor:
+PARADOX — The anchor already contains a tension. Sharpen it. Make the contradiction more explicit for a student who processes ideas conceptually. Don't resolve it — that's what class is for.
+CONCRETE SCENARIO — The anchor is abstract. Ground it. Add a specific, real-sounding situation that a student who thinks in examples can grab onto before they lift to the concept.
+BRIDGE — The anchor assumes prior exposure. Add a sentence that connects today's anchor to something this student has already covered, named specifically from their competency history.
+PROVOCATION — The anchor is too comfortable for this student. Raise the stakes. Add an implication or an edge case that has no easy answer and rewards exactly the kind of knowledge this student has been building.
+
+<span class="kw">ADAPTATION CONSTRAINTS — follow all of these without exception:</span>
+1. Preserve the anchor's core question and industry example. Do not replace them.
+2. You may add 1–2 sentences of framing before or after the anchor.
+3. The final prompt is 3 to 5 sentences total including any framing you add.
+4. Never use a list, bullet point, or numbered items.
+5. Exactly one open question — the anchor's question, sharpened if needed.
+6. Never mention grades, points, scores, or evaluation.
+7. Never use the words "today" or "lesson."
+8. Never reference the student's past performance explicitly.
+9. Write in second person ("you", "your").
+10. If the anchor already perfectly fits the archetype and student — return it unchanged. Do not adapt for the sake of adapting.
+
+<span class="kw">OUTPUT FORMAT:</span>
+Return only the adapted warm-up prompt text. No preamble, no label, no explanation. Just the prompt — 3 to 5 sentences ending in one open question.
+    </div>
+  </div>
+
+  <!-- MODE B: GENERATIVE (no pacing guide) -->
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:40px 0 6px;letter-spacing:-0.2px">Mode B — Generative <span style="font-family:var(--mono);font-size:11px;color:var(--amber);background:var(--amber-bg);border:1px solid var(--amber-border);padding:2px 8px;border-radius:3px;margin-left:8px">when warmup_anchor is null</span></h3>
+  <p style="font-size:13.5px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">Fallback mode for the first run before the pacing guide is imported, or for lesson dates that fall outside all pacing guide date ranges. Flow 3 generates from the lesson context and student profile alone. Output is valid but less pedagogically grounded than Mode A.</p>
+
+  <div class="prompt-block">
+    <div class="prompt-block-header">
+      <h4>System Prompt — Mode B (Generative)</h4>
+      <span>Use when warmup_anchor is null in lesson_context_snapshot</span>
+    </div>
+    <div class="prompt-body">You are generating a warm-up prompt for a high school CTE student in a Sports, Entertainment, and Event Management/Marketing course.
+
+<span class="kw">YOUR ROLE:</span>
+You write cognitive entry points — not review questions, not preview questions. A cognitive entry point makes a student think before the lesson begins, creates productive tension that the lesson resolves, and is interesting enough that a student who doesn't have to engage probably will anyway. It never feels like homework.
+
+<span class="kw">TODAY'S LESSON:</span>
+Course: <span class="ph">{course_name}</span>
+Objective: <span class="ph">{objective}</span>
+Activity: <span class="ph">{activity}</span>
+Key vocabulary: <span class="ph">{vocabulary}</span>
+Connection to prior lesson: <span class="ph">{prior_connection}</span>
+Competencies addressed: <span class="ph">{competency_texts_formatted}</span>
+
+<span class="kw">STUDENT CONTEXT:</span>
+Name: <span class="ph">{first_name}</span>
+Competencies this student has already covered this term: <span class="ph">{competencies_addressed_count}</span> of <span class="ph">{total_competencies}</span>
+New competency areas introduced today: <span class="ph">{competency_gaps_formatted}</span>
+
+Evaluation history (last 3 assignments):
+<span class="ph">{evaluation_signals_formatted}</span>
+
+Warm-up engagement history:
+Average engagement score: <span class="ph">{avg_engagement_score}</span> / 3.0
+Extra credit replies submitted: <span class="ph">{extra_credit_count}</span>
+
+<span class="kw">ARCHETYPE SELECTED:</span> <span class="ph">{archetype}</span>
+
+Archetype definitions:
+PARADOX — Surface a genuine contradiction. Two things both seem true but can't both be right without nuance the lesson provides. Student is conceptually strong, struggles with application.
+CONCRETE SCENARIO — Present a specific real-sounding industry situation requiring judgment. Abstraction emerges from the scenario. Student works well with tangible problems.
+BRIDGE — Connect today's new competency domain to something the student has already covered. Activate prior knowledge. Reduce friction of new material.
+PROVOCATION — A genuine intellectual challenge with no easy answer. No scaffolding. Rewards prior knowledge. For students who are strong across the board.
+
+<span class="kw">WRITING CONSTRAINTS — follow all of these without exception:</span>
+1. 3 to 5 sentences maximum. Not a word more.
+2. Never use a list, bullet point, or numbered items.
+3. Never use fill-in-the-blank format.
+4. Never ask more than one question. The prompt ends with exactly one question.
+5. The question must be open-ended — no yes/no questions.
+6. Never mention grades, points, scores, or evaluation.
+7. Never use the words "today" or "lesson" — the student already knows what day it is.
+8. Never reference the student's past performance explicitly — use it to inform the angle, not the content.
+9. Write in second person ("you", "your") — address the student directly.
+10. Industry-grounded — the scenario or example must be real or plausible in sports, entertainment, or event contexts. No generic business examples.
+11. Vocabulary words may appear naturally but must not be defined — the prompt assumes the student will encounter the definition in class.
+
+<span class="kw">OUTPUT FORMAT:</span>
+Return only the warm-up prompt text. No preamble, no label, no explanation, no quotation marks around the output. Just the prompt itself — 3 to 5 sentences ending in one open question.
+    </div>
+  </div>
+
+  <div class="callout callout-violet">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Placeholder population logic in Flow 3:</strong> Flow 3 parses both JSON snapshots from the queue row. Mode A or B is selected based on whether <code>warmup_anchor</code> is present and non-null. As of July 2026, <code>PacingGuide_CAS_Context_v2.json</code> is the authoritative source — warm-up anchors are now the full teacher-authored lesson card prompts, not compressed summaries. The <code>student_profile_snapshot</code> now includes SOL subject-area signals via <code>sol_correlations</code> on each competency rubric. Flow 3 can use SOL subject area as a tertiary personalization signal: a student whose shadow matrix shows consistently low engagement on History &amp; Social Sciences-correlated competencies is a different framing target than one who is strong there. This is not yet wired into the Mode A or B system prompts — it is available data pending a future system prompt update. The archetype is selected using the shadow matrix + decision table (see Archetypes section). <code>{shadow_archetype_note}</code> in Mode A is a plain-text line from the shadow matrix: "Shadow matrix suggests PARADOX (72% confidence, 5 warm-ups, rising trend)." This gives Gemini context for why the archetype was selected, which improves adaptation quality at the margin.</div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Constraint 10 in Mode A is the key discipline:</strong> "If the anchor already perfectly fits the archetype and student — return it unchanged." Flow 3 must not adapt for the sake of adapting. When the anchor is already a PARADOX and the selected archetype is PARADOX and the student's history doesn't change the framing, the right output is the anchor verbatim. Unnecessary adaptation degrades the teacher's intended prompt. The test: would a teacher reading both versions prefer the adaptation? If not, return the anchor.</div>
+  </div>
+
+  <div class="callout callout-rose">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Constraint 8 is unchanged across both modes.</strong> The prompt must never say "you've been struggling with application" or "since you're good at analysis." Students will read these docs. Using evaluation history to inform the angle is personalization. Making the history explicit in the text is surveillance. The distinction is everything — the archetype and shadow matrix handle the former, the constraint enforces the latter.</div>
+  </div>
+</div>
+
+<!-- DOC STRUCTURE -->
+<div class="section" id="doc-structure">
+  <div class="sec-eyebrow">Document format</div>
+  <h2>What Flow 3 creates</h2>
+  <p class="section-intro">Flow 3 creates one Google Doc per student per class day. The doc has a fixed three-zone structure. Zone delimiters are exact strings — Script 25 uses them to extract the response zone and detect extra credit replies. They must not be altered.</p>
+
+  <div class="doc-zones">
+    <div class="doc-zone">
+      <div class="zone-label" style="color:var(--teal)">Header</div>
+      <div class="zone-content">
+        Doc title: <code>Warm-Up [YYYY-MM-DD] — [Student First Name]</code><br>
+        First line of doc body: <code>Warm-Up — [Date in readable format] — [First Name]</code><br>
+        Not a zone — just identification. Appears before Zone 1.
+      </div>
+    </div>
+    <div class="doc-zone">
+      <div class="zone-label" style="color:var(--orange)">Zone 1 · Prompt</div>
+      <div class="zone-content">
+        Opens with: <code>── WARM-UP PROMPT ──</code><br>
+        Content: the generated warm-up text (3–5 sentences)<br>
+        Closes with: <code>── END PROMPT ──</code><br>
+        Font: 12pt, color #333333. Read-only intent — student does not write here.
+      </div>
+    </div>
+    <div class="doc-zone">
+      <div class="zone-label" style="color:var(--violet)">Zone 2 · Response</div>
+      <div class="zone-content">
+        Opens with: <code>── YOUR RESPONSE ──</code><br>
+        Content: blank — student writes here during the warm-up period<br>
+        Script 25 extracts everything after this marker (up to the FEEDBACK marker if present)<br>
+        Font: 11pt, color #202124. Student writes in default style.
+      </div>
+    </div>
+    <div class="doc-zone">
+      <div class="zone-label" style="color:var(--amber)">Zone 3 · Feedback</div>
+      <div class="zone-content">
+        Written by Script 25 after Flow 4 evaluates the response — not by Flow 3.<br>
+        Opens with: <code>── FEEDBACK ──</code><br>
+        Content: Flow 4's pedagogical feedback (1–3 sentences, no scores mentioned)<br>
+        Closes with: <code>── END FEEDBACK ──</code><br>
+        Any student text after <code>── END FEEDBACK ──</code> = extra credit reply, detected next night.
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Drive folder structure Flow 3 must create:</strong>
+    <code>[Admin Root Folder] / [Subject] / [Teacher Name] / [Period N] / Warm-Ups / [Student Name] /</code>
+    Flow 3 resolves this path using the lesson context snapshot (<code>course_name</code>, <code>period</code>) and the teacher's admin root folder ID from the queue row's embedded context. The student subfolder is created if it doesn't exist — same <code>getOrCreate</code> pattern as Module 1's <code>resolveFolder_()</code>. Doc is shared with the student as editor via <code>google_id</code> from the queue row.</div>
+  </div>
+</div>
+
+<!-- CONFIGURATION -->
+<div class="section" id="configuration">
+  <div class="sec-eyebrow">Studio setup</div>
+  <h2>Flow 3 configuration</h2>
+  <p class="section-intro">How to configure this flow in Google Workspace Studio. Settings that differ from Module 1's Flow 2 are marked.</p>
+
+  <table class="decision-table">
+    <thead>
+      <tr><th>Setting</th><th>Value</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Flow name</td><td>CAS — Warm-Up Generation</td><td>Matches naming convention of Flows 1 and 2</td></tr>
+      <tr><td>Trigger</td><td>Sheets — row added/updated</td><td>Spreadsheet: Central Ledger · Sheet: WarmUpQueue · Condition: Status = PENDING</td></tr>
+      <tr><td>Model</td><td>Gemini Pro</td><td>Same model as Flow 2</td></tr>
+      <tr><td>Temperature</td><td>0.7</td><td>Higher than Flow 2 (0.3) — warm-ups need creative variation</td></tr>
+      <tr><td>Max tokens</td><td>400</td><td>3–5 sentences is approximately 60–100 tokens. 400 gives headroom.</td></tr>
+      <tr><td>System prompt</td><td>Mode A (anchor) or Mode B (generative)</td><td>Mode selected based on warmup_anchor presence in snapshot. See System Prompt section above for both full texts.</td></tr>
+      <tr><td>Shadow matrix</td><td>Read from student_profile_snapshot</td><td>cross_confidence ≥ 0.75 overrides decision table archetype selection. Included as {shadow_archetype_note} in Mode A prompt.</td></tr>
+      <tr><td>Archetype write-back</td><td>WarmUpQueue col 19 (archetype)</td><td>Flow 3 writes the selected archetype back to the queue row after selection. Script 23 reads this nightly for shadow matrix updates.</td></tr>
+      <tr><td>Input connector</td><td>Sheets — read row</td><td>Read lesson_context_snapshot and student_profile_snapshot from trigger row</td></tr>
+      <tr><td>Output connector 1</td><td>Drive — create file</td><td>Create Google Doc in resolved folder path. Doc title: Warm-Up [date] — [first_name]</td></tr>
+      <tr><td>Output connector 2</td><td>Drive — share file</td><td>Share created doc with student email as editor</td></tr>
+      <tr><td>Output connector 3</td><td>Sheets — update row</td><td>Write doc_id, doc_url to trigger row. Set status = DELIVERED.</td></tr>
+      <tr><td>Error handling</td><td>Write ERROR to status</td><td>On any connector failure: set WarmUpQueue status = ERROR. Script 24's dedup check prevents re-queuing.</td></tr>
+      <tr><td>Concurrency</td><td>Per-teacher lane</td><td>One active execution per teacher at a time. Same Turnstile pattern as Module 1 if multiple teachers run simultaneously.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Archetype selection happens inside Flow 3's pre-processing step</strong> — before the Gemini call. Flow 3 reads the student profile snapshot, evaluates the four archetype conditions in priority order (PROVOCATION → PARADOX → CONCRETE SCENARIO → BRIDGE), selects the matching archetype, populates the <code>{archetype}</code> placeholder in the system prompt, then sends to Gemini. The archetype selection logic is implemented as a Flow 3 JavaScript transformation step, not by Gemini itself.</div>
+  </div>
+
+  <div class="callout callout-orange">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Admin root folder ID must be embedded in the queue row.</strong> Flow 3 needs the admin root folder ID to resolve the drive folder path. Script 24 should embed <code>cfg.adminRootFolderId</code> in the <code>lesson_context_snapshot</code> JSON when building queue rows. Add <code>"admin_root_folder_id": cfg.adminRootFolderId</code> to the snapshot object in Script 24's <code>lessonContextSnapshot</code> construction. This is the one config value not already present in the snapshot — add it before first deployment.</div>
+  </div>
+</div>
+
+<!-- FLOW 4 SPEC -->
+<div class="section" id="flow4">
+  <div class="sec-eyebrow">Studio Flow 4</div>
+  <h2>Warm-Up Evaluation</h2>
+  <p class="section-intro">Flow 4 is simpler than Flow 3 — it evaluates a response against two criteria and returns structured JSON. No doc creation, no Drive operations. Pure inference.</p>
+
+  <table class="decision-table" style="margin-bottom:24px">
+    <thead>
+      <tr><th>Setting</th><th>Value</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Flow name</td><td>CAS — Warm-Up Evaluation</td><td></td></tr>
+      <tr><td>Trigger</td><td>Sheets — row updated</td><td>Central Ledger · WarmUpQueue · Status = PENDING_EVAL</td></tr>
+      <tr><td>Model</td><td>Gemini Pro</td><td></td></tr>
+      <tr><td>Temperature</td><td>0.2</td><td>Low — evaluation needs consistency not creativity</td></tr>
+      <tr><td>Max tokens</td><td>256</td><td>JSON response is small. Strict cap prevents prose leakage.</td></tr>
+      <tr><td>Input</td><td>response_text + lesson_context_snapshot from trigger row</td><td>Flow 4 reconstructs the original prompt from the snapshot for context</td></tr>
+      <tr><td>Output connector</td><td>Sheets — update row</td><td>Write grammar_score, engagement_score, flow4_feedback to trigger row. Set status = SCORED.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="prompt-block">
+    <div class="prompt-block-header">
+      <h4>System Prompt — Studio Flow 4</h4>
+      <span>Configure in: Flow settings → System instructions</span>
+    </div>
+    <div class="prompt-body">You are evaluating a high school CTE student's warm-up response in a Sports, Entertainment, and Event Management/Marketing course.
+
+<span class="kw">THE WARM-UP PROMPT WAS:</span>
+<span class="ph">{original_prompt_text}</span>
+
+<span class="kw">THE STUDENT'S RESPONSE:</span>
+<span class="ph">{response_text}</span>
+
+<span class="kw">WORD COUNT SCORE (already computed — do not re-evaluate):</span>
+<span class="ph">{word_count_score}</span> / 6 points
+
+<span class="kw">YOUR TASK:</span>
+Evaluate the response on exactly two criteria:
+
+1. GRAMMAR AND SENTENCE STRUCTURE — 0 or 1 point
+   Award 1 point if the response consists of cohesive sentences with no errors that significantly impede comprehension.
+   Award 0 points if errors significantly impede comprehension.
+   Minor errors (comma splices, informal register) do not reduce the score.
+   Context: this is a verbal warm-up written in class, not a formal essay.
+
+2. ENGAGEMENT — 0, 1, 2, or 3 points
+   3 = Genuine. Directly addresses the prompt with original thought. Shows the student actually considered the question.
+   2 = Surface. On-topic but formulaic, thin, or restates the question without extending it.
+   1 = Minimal. Tangentially related, or so brief that genuine engagement cannot be confirmed.
+   0 = Off-topic or filler. Does not engage with the prompt at all.
+
+<span class="kw">FEEDBACK WRITING RULES — all mandatory:</span>
+- Write 1 to 3 sentences of pedagogical feedback.
+- NEVER mention points, scores, grades, or evaluation criteria.
+- NEVER say "good job", "well done", or similar praise without substance.
+- NEVER say "you need to improve" or similar deficit framing.
+- Write something that advances the student's thinking about today's topic.
+- The student will read this before the next class. It should make them want to think more.
+- If the response was genuine (score 3): push further. Ask the implicit next question.
+- If the response was surface (score 2): make the depth visible. Show what a deeper answer would look at.
+- If the response was minimal (score 1): find the thread of engagement and pull it.
+- If the response was off-topic (score 0): write one sentence connecting what they wrote to the actual prompt.
+
+<span class="kw">OUTPUT FORMAT — strict:</span>
+Return ONLY valid JSON. No preamble, no markdown, no explanation outside the JSON.
+{
+  "grammar": 0 or 1,
+  "engagement": 0, 1, 2, or 3,
+  "feedback": "your feedback text here"
+}
+    </div>
+  </div>
+
+  <div class="callout callout-violet">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Even a score-0 response gets pedagogical feedback.</strong> A student who wrote something off-topic still sees one sentence when they open their doc before next class. The sentence finds whatever thread connects their response to the prompt and makes that connection visible. This is not remediation — it's an invitation. The system never tells a student they failed a warm-up. That's the teacher's conversation, not the system's.</div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<footer>
+  <span>Classroom Agency System · Studio Flow 3 + 4 Specification · v1.2 — Anchor-Aware + Shadow Matrix + Bridging Flow</span>
+  <span style="font-family:var(--mono);font-size:11px">Warm-Up Generation · Warm-Up Evaluation · Bridging · Four Archetypes · 11-Point Scoring</span>
+</footer>
+
+<script>
+const links    = document.querySelectorAll('.topnav-link');
+const sections = ['overview','payload','archetypes','system-prompt','doc-structure','configuration','flow4'];
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    links.forEach(l => l.classList.remove('active'));
+    const match = document.querySelector('.topnav-link[href="#'+e.target.id+'"]');
+    if (match) match.classList.add('active');
+  });
+}, { rootMargin:'-15% 0px -75% 0px' });
+sections.forEach(id => { const el = document.getElementById(id); if(el) obs.observe(el); });
+</script>
+
+<!-- FLOW 5 -->
+<div style="background:var(--surface);border-top:3px solid var(--teal);padding:80px 80px 60px">
+  <div style="max-width:940px;margin:0 auto">
+    <div style="font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:3px;text-transform:uppercase;margin-bottom:14px">Studio Flow 5 — NEW</div>
+    <h2 style="font-family:var(--display);font-size:42px;font-weight:800;letter-spacing:-1.5px;color:var(--text-bright);margin-bottom:14px">Bridging Flow</h2>
+    <p style="font-size:14px;color:var(--text-dim);max-width:640px;line-height:1.85;margin-bottom:24px">Generates a 2–3 sentence connector between the student's most recent warm-up response and today's lesson. Runs before Flow 3 on the same PENDING queue row. Output written to <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">bridge_output</code> (WarmUpQueue col 21). Flow 3 prepends it to the warm-up doc when present. Strictly additive — no bridge is ever missing; students without prior responses simply don't receive one.</p>
+
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:36px">
+      <span style="background:var(--teal-bg);border:1px solid var(--teal-border);color:var(--teal);font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:3px">Trigger: WarmUpQueue PENDING + prior response</span>
+      <span style="background:var(--violet-bg);border:1px solid var(--violet-border);color:var(--violet);font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:3px">Temperature: 0.4</span>
+      <span style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:3px">Max tokens: 150</span>
+      <span style="background:var(--surface2);border:1px solid var(--border);color:var(--text-dim);font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:3px">Skips: no prior response</span>
+    </div>
+
+    <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:0 0 10px">Configuration</h3>
+    <table style="width:100%;border-collapse:collapse;margin-bottom:28px;font-size:13px">
+      <thead><tr style="background:var(--surface2)">
+        <th style="font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:10px 16px;border-bottom:2px solid var(--border);text-align:left">Setting</th>
+        <th style="font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:10px 16px;border-bottom:2px solid var(--border);text-align:left">Value / Notes</th>
+      </tr></thead>
+      <tbody style="color:var(--text-dim)">
+        <tr style="border-bottom:1px solid var(--border)"><td style="font-family:var(--mono);font-size:11px;color:var(--amber);padding:10px 16px">Name</td><td style="padding:10px 16px">CAS — Bridging Flow</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="font-family:var(--mono);font-size:11px;color:var(--amber);padding:10px 16px">Trigger</td><td style="padding:10px 16px">WarmUpQueue · Status = PENDING · flow5_prior_response != null in lesson_context_snapshot</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="font-family:var(--mono);font-size:11px;color:var(--amber);padding:10px 16px">Temperature</td><td style="padding:10px 16px">0.4 — connective not generative; lower than Flow 3's 0.7</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="font-family:var(--mono);font-size:11px;color:var(--amber);padding:10px 16px">Max tokens</td><td style="padding:10px 16px">150 — one paragraph, 2–3 sentences maximum</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="font-family:var(--mono);font-size:11px;color:var(--amber);padding:10px 16px">Input</td><td style="padding:10px 16px">flow5_prior_response · pacing_prior_connection · course_name — all from snapshot</td></tr>
+        <tr style="border-bottom:1px solid var(--border)"><td style="font-family:var(--mono);font-size:11px;color:var(--amber);padding:10px 16px">Output</td><td style="padding:10px 16px">bridge_output (col 21) on WarmUpQueue row · Status stays PENDING for Flow 3</td></tr>
+        <tr><td style="font-family:var(--mono);font-size:11px;color:var(--amber);padding:10px 16px">Run order</td><td style="padding:10px 16px">Before Flow 3 — Flow 3 reads bridge_output and prepends if present</td></tr>
+      </tbody>
+    </table>
+
+    <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:28px 0 10px">System prompt</h3>
+    <div style="background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:0 0 20px">
+      <div style="background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;justify-content:space-between">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text-dim)">System Prompt — Flow 5 Bridging</span>
+        <span style="font-family:var(--mono);font-size:11px;color:var(--amber)">Flow settings → System instructions</span>
+      </div>
+      <pre style="padding:20px 24px;font-family:var(--mono);font-size:12px;line-height:2;color:var(--text-dim);margin:0;white-space:pre-wrap">You are writing a one-paragraph bridge for a high school CTE student in a Sports, Entertainment, and Event Management/Marketing course.
+
+YOUR ROLE:
+The student wrote a warm-up response in a previous class. Today's lesson builds on what they engaged with. Write 2-3 sentences that make that connection explicit - what they thought about before, how it leads to today, and why that matters. The bridge goes at the top of their warm-up doc before the new prompt.
+
+WHAT THE STUDENT WROTE LAST TIME:
+{flow5_prior_response}
+
+HOW TODAY CONNECTS TO THE PRIOR LESSON:
+{pacing_prior_connection}
+
+TODAY'S COURSE:
+{course_name}
+
+CONSTRAINTS:
+1. Exactly 2-3 sentences. No more, no less.
+2. Address the student in second person ("you", "your").
+3. Reference what they actually wrote - name a specific idea if they expressed one.
+4. Do not preview today's lesson - only make the connection to the prior one.
+5. Never mention grades, scores, or warm-ups.
+6. Avoid "last time" - use "recently" or "in your last response" at most once.
+7. End with a sentence that creates forward momentum.
+8. If the prior response is too short or generic to reference, use only pacing_prior_connection.
+
+OUTPUT FORMAT:
+Return only the bridge paragraph. No label, no preamble. 2-3 sentences.</pre>
+    </div>
+
+    <div style="background:var(--teal-bg);border-left:3px solid var(--teal);padding:16px 20px;margin:0 0 16px;font-size:14px;line-height:1.7;color:#2aaa96"><strong>◈ Strictly additive.</strong> Flow 3 checks bridge_output before generating. If non-null, it prepends with a separator line. If null, the doc generates without it. No student ever sees a gap where a bridge should be.</div>
+    <div style="background:var(--amber-bg);border-left:3px solid var(--amber);padding:16px 20px;font-size:14px;line-height:1.7;color:#c8a040"><strong>◈ Constraint 3 is the discipline.</strong> Prior response is capped at 800 chars in the snapshot. "You connected ticket pricing to consumer income" is more useful than "you thought about industry factors." Constraint 8 provides graceful fallback when the prior response is too thin to name specifically.</div>
+  </div>
+</div>
+
+</body>
+</html>

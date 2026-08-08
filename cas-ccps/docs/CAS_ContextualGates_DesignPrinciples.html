@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAS — Contextual Gates · UI/UX Design Principles</title>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800;900&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08090a;--ink:#0f1115;--surface:#14171c;--surface2:#1c2028;
+  --border:#252b35;--border2:#2f3847;
+  --text:#cdd5e0;--text-dim:#6b7a8d;--text-bright:#e8eef5;
+  --amber:#e8b84b;--amber-d:#c49a30;--amber-bg:rgba(232,184,75,0.08);--amber-border:rgba(232,184,75,0.25);
+  --teal:#3ecfb8;--teal-bg:rgba(62,207,184,0.07);--teal-border:rgba(62,207,184,0.2);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,0.08);--violet-border:rgba(167,139,250,0.2);
+  --rose:#f87171;--rose-bg:rgba(248,113,113,0.1);--rose-border:rgba(248,113,113,0.25);
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--green-border:rgba(74,222,128,0.2);
+  --display:'Anybody',system-ui,sans-serif;
+  --body:'Literata',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--void);color:var(--text);font-size:15px;line-height:1.75;min-height:100vh}
+
+/* ── NAV ── */
+.topnav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(8,9,10,0.95);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;display:flex;align-items:center;justify-content:space-between;height:54px}
+.topnav-brand{font-family:var(--display);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--amber)}
+.topnav-links{display:flex}
+.topnav-link{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:0 14px;height:54px;display:flex;align-items:center;text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s}
+.topnav-link:hover{color:var(--text-bright)}
+.topnav-link.active{color:var(--amber);border-bottom-color:var(--amber)}
+
+/* ── HERO ── */
+.hero{min-height:100vh;display:flex;flex-direction:column;justify-content:flex-end;padding:120px 80px 80px;position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 80% 60% at 5% 80%,rgba(232,184,75,0.06) 0%,transparent 55%),radial-gradient(ellipse 50% 40% at 95% 20%,rgba(62,207,184,0.04) 0%,transparent 50%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:80px 80px;opacity:0.2;pointer-events:none}
+.hero-eyebrow{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:3px;text-transform:uppercase;margin-bottom:32px;display:flex;align-items:center;gap:12px}
+.hero-eyebrow::before{content:"";width:40px;height:1px;background:var(--amber)}
+.hero h1{font-family:var(--display);font-size:clamp(52px,8vw,112px);font-weight:900;line-height:0.9;letter-spacing:-3px;color:var(--text-bright);margin-bottom:0}
+.hero h1 .rule{color:var(--amber);display:block}
+.hero-sub{font-family:var(--display);font-size:clamp(16px,2vw,22px);font-weight:300;color:var(--text-dim);max-width:560px;line-height:1.55;margin:36px 0 52px}
+.hero-stats{display:flex;gap:40px;flex-wrap:wrap}
+.hero-stat{border-left:2px solid var(--amber-border);padding-left:20px}
+.hero-stat .stat-n{font-family:var(--display);font-size:36px;font-weight:800;color:var(--amber);line-height:1;letter-spacing:-1px}
+.hero-stat .stat-l{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+
+/* ── LAYOUT ── */
+.page{max-width:1100px;margin:0 auto;padding:0 80px}
+.section{padding:80px 0;border-bottom:1px solid var(--border)}
+.section:last-child{border-bottom:none}
+.sec-eyebrow{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:3px;text-transform:uppercase;margin-bottom:16px;display:flex;align-items:center;gap:10px}
+.sec-eyebrow::before{content:"";width:20px;height:1px;background:var(--teal)}
+.sec-eyebrow.amber{color:var(--amber)}
+.sec-eyebrow.amber::before{background:var(--amber)}
+.section h2{font-family:var(--display);font-size:clamp(32px,4vw,52px);font-weight:800;letter-spacing:-1.5px;color:var(--text-bright);line-height:1.0;margin-bottom:16px}
+.section-intro{font-size:15px;color:var(--text-dim);max-width:640px;line-height:1.85;margin-bottom:48px}
+
+/* ── PRINCIPLE STATEMENT ── */
+.principle-statement{font-family:var(--display);font-size:clamp(22px,3vw,38px);font-weight:800;letter-spacing:-0.5px;color:var(--amber);line-height:1.15;border-left:4px solid var(--amber);padding:20px 28px;background:var(--amber-bg);border-radius:0 4px 4px 0;margin:32px 0}
+
+/* ── CONTRAST CARDS — the signature element ── */
+.contrast{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--amber-border);border-radius:4px;overflow:hidden;margin:32px 0}
+.contrast-side{padding:28px 32px}
+.contrast-side.old{background:var(--rose-bg);border-top:3px solid var(--rose)}
+.contrast-side.new{background:var(--green-bg);border-top:3px solid var(--green)}
+.contrast-label{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:2px;text-transform:uppercase;margin-bottom:14px}
+.contrast-side.old .contrast-label{color:var(--rose)}
+.contrast-side.new .contrast-label{color:var(--green)}
+.contrast-side h4{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:10px;letter-spacing:-0.2px}
+.contrast-side p{font-size:13.5px;color:var(--text-dim);line-height:1.75}
+.contrast-side code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+.contrast-divider{display:flex;align-items:center;justify-content:center;background:var(--ink);font-family:var(--display);font-size:11px;font-weight:700;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;writing-mode:vertical-rl;padding:20px 12px}
+
+/* ── GATES — numbered principle list ── */
+.gates{display:grid;gap:1px;background:var(--border);margin:32px 0}
+.gate{background:var(--surface);padding:32px 36px;display:grid;grid-template-columns:80px 1fr;gap:28px;align-items:start;position:relative}
+.gate::before{content:"";position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--amber)}
+.gate-n{font-family:var(--display);font-size:48px;font-weight:900;color:rgba(232,184,75,0.15);line-height:1;letter-spacing:-2px}
+.gate-body h3{font-family:var(--display);font-size:19px;font-weight:700;color:var(--text-bright);margin-bottom:8px;letter-spacing:-0.2px}
+.gate-body p{font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:10px}
+.gate-body p:last-child{margin-bottom:0}
+.gate-body code{font-family:var(--mono);font-size:11.5px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+
+/* ── CODE BLOCKS ── */
+.code-block{background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:16px 0}
+.code-block-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:10px 16px;display:flex;justify-content:space-between;align-items:center}
+.code-block-header span{font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+.code-block-header .lang{color:var(--amber)}
+.code-body{padding:20px 24px;font-family:var(--mono);font-size:12px;line-height:2;overflow-x:auto;color:var(--text-dim)}
+.code-body .kw{color:var(--violet)}
+.code-body .fn{color:var(--teal)}
+.code-body .st{color:var(--amber)}
+.code-body .cm{color:var(--text-dim);font-style:italic}
+.code-body .ok{color:var(--green)}
+.code-body .er{color:var(--rose)}
+
+/* ── CALLOUTS ── */
+.callout{border-radius:4px;padding:16px 20px;margin:20px 0;display:flex;gap:14px;font-size:14px;line-height:1.7}
+.callout-icon{flex-shrink:0;margin-top:1px;font-size:16px}
+.callout-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8a040}
+.callout-teal{background:var(--teal-bg);border-left:3px solid var(--teal);color:#2aaa96}
+.callout-rose{background:var(--rose-bg);border-left:3px solid var(--rose);color:#e06060}
+.callout-body strong{color:inherit;font-weight:600}
+
+/* ── ANTI-PATTERNS ── */
+.antipattern-grid{display:grid;gap:1px;background:var(--border);margin:24px 0}
+.antipattern{background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:20px;align-items:start;border-left:3px solid var(--rose)}
+.ap-label{font-family:var(--mono);font-size:10px;color:var(--rose);letter-spacing:1.5px;text-transform:uppercase;padding-top:2px;line-height:1.5}
+.ap-body{font-size:13.5px;color:var(--text-dim);line-height:1.7}
+.ap-body strong{color:var(--text-bright);font-weight:500}
+.ap-body .fix{font-family:var(--mono);font-size:11px;color:var(--green);display:block;margin-top:8px}
+
+/* ── CHECKLIST ── */
+.checklist{background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:28px 32px;margin:24px 0}
+.checklist h4{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:16px;letter-spacing:-0.2px}
+.check-item{display:flex;align-items:baseline;gap:14px;padding:8px 0;border-bottom:1px solid var(--border);font-size:13.5px;color:var(--text-dim);line-height:1.6}
+.check-item:last-child{border-bottom:none}
+.check-box{width:18px;height:18px;border:1.5px solid var(--border2);border-radius:3px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all 0.15s}
+.check-box:hover{border-color:var(--amber)}
+.check-box.checked{background:var(--amber);border-color:var(--amber)}
+.check-box.checked::after{content:"✓";color:var(--void);font-size:11px;font-weight:700}
+.check-text{flex:1}
+.check-text strong{color:var(--text-bright);font-weight:500}
+
+/* ── DECISION TABLE ── */
+.dt{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px}
+.dt th{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:10px 16px;border-bottom:2px solid var(--border);text-align:left;background:var(--surface2)}
+.dt td{padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text-dim);vertical-align:top;line-height:1.6}
+.dt tr:last-child td{border-bottom:none}
+.dt td:first-child{font-family:var(--mono);font-size:11px;color:var(--amber);white-space:nowrap}
+.dt .good{color:var(--green)}
+.dt .bad{color:var(--rose)}
+
+/* ── QUOTE ── */
+.pull-quote{border-left:4px solid var(--teal);padding:24px 32px;margin:40px 0;background:var(--teal-bg);border-radius:0 4px 4px 0}
+.pull-quote p{font-family:var(--display);font-size:clamp(18px,2.2vw,26px);font-weight:600;color:var(--text-bright);line-height:1.4;letter-spacing:-0.3px}
+.pull-quote .attr{font-family:var(--mono);font-size:11px;color:var(--teal);margin-top:12px;letter-spacing:1px;text-transform:uppercase}
+
+/* ── FOOTER ── */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:40px 80px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;font-size:12px;color:var(--text-dim)}
+
+@media(max-width:900px){
+  .topnav{padding:0 20px}.topnav-links{display:none}
+  .hero,.page{padding-left:24px;padding-right:24px}
+  .contrast{grid-template-columns:1fr}.contrast-divider{writing-mode:horizontal-tb;padding:10px}
+  .gate{grid-template-columns:1fr}.gate-n{font-size:32px}
+  .antipattern{grid-template-columns:1fr}
+  footer{padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<nav class="topnav">
+  <span class="topnav-brand">CAS · Design Principles</span>
+  <div class="topnav-links">
+    <a class="topnav-link active" href="#philosophy">Philosophy</a>
+    <a class="topnav-link" href="#gates">The Five Gates</a>
+    <a class="topnav-link" href="#patterns">Patterns</a>
+    <a class="topnav-link" href="#antipatterns">Anti-Patterns</a>
+    <a class="topnav-link" href="#implementation">Implementation</a>
+    <a class="topnav-link" href="#checklist">Checklist</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-eyebrow">Classroom Agency System · UI/UX Design Principles</div>
+  <h1>Contextual<br><span class="rule">Gates</span></h1>
+  <p class="hero-sub">A philosophy for building setup wizards and deployment flows that fail loudly, verify everything, and never defer instructions to a document the user won't read.</p>
+  <div class="hero-stats">
+    <div class="hero-stat">
+      <div class="stat-n">0</div>
+      <div class="stat-l">Silent failures</div>
+    </div>
+    <div class="hero-stat">
+      <div class="stat-n">0</div>
+      <div class="stat-l">Deferred instructions</div>
+    </div>
+    <div class="hero-stat">
+      <div class="stat-n">0</div>
+      <div class="stat-l">Unknown states</div>
+    </div>
+    <div class="hero-stat">
+      <div class="stat-n">∞</div>
+      <div class="stat-l">In-place retries</div>
+    </div>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- PHILOSOPHY -->
+<div class="section" id="philosophy">
+  <div class="sec-eyebrow amber">The principle</div>
+  <h2>Fail loudly.<br>At the right moment.</h2>
+  <p class="section-intro">Most setup wizards treat completion as a binary: the script ran without errors, therefore setup is done. This is wrong. A script can run without errors and leave a system in a state that doesn't work — and the user won't find out until they're in front of a class and the "New Lesson" button doesn't appear.</p>
+
+  <div class="principle-statement">
+    A "complete" state means verified complete — not "the script ran without errors."
+  </div>
+
+  <p class="section-intro" style="margin-bottom:24px">Contextual gates is the design practice that enforces this. Every action that has a dependency, a manual follow-up, or a correctness risk stops the user at the exact moment it matters — verifies the result, surfaces any gap, and gives a path forward. Nothing is deferred to a summary document. Nothing fails silently. The user always knows exactly what state the system is in.</p>
+
+  <div class="pull-quote">
+    <p>The wizard should leave the teacher in a known, verified, unambiguous state at every step — and when it can't, it should make the gap visible at the point where it matters, not in a document they'll never read.</p>
+    <div class="attr">CAS Design Principle · Script 28 development</div>
+  </div>
+
+  <div class="contrast">
+    <div class="contrast-side old">
+      <div class="contrast-label">❌ The old pattern</div>
+      <h4>Deferred failure</h4>
+      <p>Setup runs. Summary doc is appended. Teacher clicks through the wizard, sees "Setup Complete," and closes the document. Three days later they open the Teacher Dashboard. No "New Lesson" button. They don't know why. They don't know what to fix. They email the admin.</p>
+    </div>
+    <div class="contrast-divider">vs</div>
+    <div class="contrast-side new">
+      <div class="contrast-label">✓ The contextual gate</div>
+      <h4>Verified completion</h4>
+      <p>After Phase A completes, the alert shows exact redeploy steps — model, step count, what to click — before the teacher closes the wizard. The completion state is: dashboard redeployed, competency tabs verified, backfill trigger confirmed. The teacher leaves knowing exactly what they have.</p>
+    </div>
+  </div>
+</div>
+
+<!-- THE FIVE GATES -->
+<div class="section" id="gates">
+  <div class="sec-eyebrow">The practice</div>
+  <h2>Five gates.<br>One principle.</h2>
+  <p class="section-intro">Every step in a setup wizard should pass through all five gates before declaring success. Gates are not optional — they are the completion condition, not a defensive afterthought.</p>
+
+  <div class="gates">
+
+    <div class="gate">
+      <div class="gate-n">01</div>
+      <div class="gate-body">
+        <h3>Verify your own output</h3>
+        <p>After every creation or write operation, read it back and confirm it landed correctly. Don't assume success because no exception was thrown. A tab creation call can succeed without the tab appearing if the spreadsheet has quota issues. A trigger installation can succeed without the trigger firing if permissions are incomplete.</p>
+        <p>The verification is the completion condition. The step is not done when the write call returns — it's done when the read-back confirms the expected state.</p>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="gate-n">02</div>
+      <div class="gate-body">
+        <h3>Surface failures at the point of action</h3>
+        <p>When a step fails, the alert appears at that step — not at the end, not in the summary doc, not in a log the user never sees. The failure message names exactly what failed, explains the most likely cause, and gives the path forward in the same alert.</p>
+        <p>A failure message that says "An error occurred" is not a failure message. It is noise. A failure message that says "The CompetencyRegistry tab could not be created — verify you have edit access to [URL]" is a gate.</p>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="gate-n">03</div>
+      <div class="gate-body">
+        <h3>Retry in-place, never restart</h3>
+        <p>When user input fails validation, the wizard stays open and presents the same prompt again. It does not exit, direct the user to a menu item, or require a full restart. Re-entry is in-place. The failure message appears before the next prompt — the user understands what they need to fix before they see the input field.</p>
+        <p>Three attempts is the standard ceiling. On the third failure, the wizard exits with a clear message explaining which menu item to use to complete the step. It never silently drops the requirement.</p>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="gate-n">04</div>
+      <div class="gate-body">
+        <h3>Never ask for what the system already knows</h3>
+        <p>Before prompting the user to type a value, check whether that value already exists in the system. Course names live in the CompetencyRegistry tab and in Script Properties. Teacher name and email live in Script Properties from Module 1 setup. The admin root folder ID lives in Script Properties set at admin setup time.</p>
+        <p>Present found values to the user for confirmation — not for re-entry. Confirmation is one click. Re-entry is a correctness risk. The system should never require the user to type something it already has.</p>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="gate-n">05</div>
+      <div class="gate-body">
+        <h3>Make deferred state visible and persistent</h3>
+        <p>If a step is deferred — because the user skipped it, because a file wasn't available, because a dependency wasn't met — that state must be visible every time the user opens the system until it's resolved. The menu item changes. The dashboard shows a banner. The status function reports it explicitly.</p>
+        <p>A "deferred" state that is indistinguishable from a "complete" state is a silent failure in a different costume. Deferred is acceptable. Silent is not.</p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- PATTERNS -->
+<div class="section" id="patterns">
+  <div class="sec-eyebrow">How it looks in practice</div>
+  <h2>The patterns</h2>
+  <p class="section-intro">Concrete implementations of the five gates in Google Apps Script. These are not abstract guidelines — they are copy-paste starting points for any wizard step.</p>
+
+  <!-- Pattern 1: Verify after create -->
+  <h3 style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--text-bright);margin:0 0 8px;letter-spacing:-0.3px">Pattern 1 — Verify after create</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">Create the resource, then read it back immediately. Gate blocks on mismatch before proceeding.</p>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span>Tabs created — then verified before moving to next step</span>
+      <span class="lang">Apps Script</span>
+    </div>
+    <div class="code-body"><span class="cm">// Create</span>
+<span class="fn">_createM2LightweightTabs_</span>(ss);
+
+<span class="cm">// Verify — read back immediately</span>
+<span class="kw">const</span> missingTabs = [<span class="st">"LessonContext"</span>, <span class="st">"CompetencyRegistry"</span>, <span class="st">"AlignmentLog"</span>, <span class="st">"ReportRegistry"</span>]
+  .filter(t => !ss.<span class="fn">getSheetByName</span>(t));
+
+<span class="kw">if</span> (missingTabs.length > <span class="st">0</span>) {
+  ui.<span class="fn">alert</span>(
+    <span class="st">"✗ Tab Creation Failed"</span>,
+    <span class="st">"Could not create:\n\n"</span> +
+    missingTabs.<span class="fn">map</span>(t => <span class="st">"  • "</span> + t).<span class="fn">join</span>(<span class="st">"\n"</span>) + <span class="st">"\n\n"</span> +
+    <span class="st">"Verify you have edit access to:\n"</span> + ss.<span class="fn">getUrl</span>(),
+    ui.ButtonSet.OK
+  );
+  <span class="kw">return</span>; <span class="cm">// Gate: do not proceed</span>
+}
+<span class="cm">// Only reaches here if ALL tabs verified present</span></div>
+  </div>
+
+  <!-- Pattern 2: In-place retry -->
+  <h3 style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--text-bright);margin:32px 0 8px;letter-spacing:-0.3px">Pattern 2 — In-place retry loop</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">User input is validated inline. Failure shows the exact problem and re-presents the same prompt. Wizard never exits on recoverable error.</p>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span>Schedule input — validates inline, retries in-place, exits cleanly after 3 failures</span>
+      <span class="lang">Apps Script</span>
+    </div>
+    <div class="code-body"><span class="kw">for</span> (<span class="kw">let</span> attempt = <span class="st">0</span>; attempt < <span class="st">3</span>; attempt++) {
+  <span class="kw">const</span> resp = ui.<span class="fn">prompt</span>(
+    <span class="st">"Block Schedule"</span> + (attempt > <span class="st">0</span> ? <span class="st">" — Fix and Retry"</span> : <span class="st">""</span>),
+    FORMAT_HELP,
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  <span class="kw">if</span> (resp.<span class="fn">getSelectedButton</span>() !== ui.Button.OK) <span class="kw">return null</span>;
+
+  <span class="kw">const</span> { rows, errors } = <span class="fn">parseSchedule_</span>(resp.<span class="fn">getResponseText</span>());
+
+  <span class="kw">if</span> (errors.length > <span class="st">0</span>) {
+    ui.<span class="fn">alert</span>(
+      <span class="st">"⚠ Schedule Format Errors"</span> +
+        (attempt < <span class="st">2</span> ? <span class="st">" — Please fix and retry"</span> : <span class="st">" — Final attempt"</span>),
+      errors.<span class="fn">map</span>(e => <span class="st">"  • "</span> + e).<span class="fn">join</span>(<span class="st">"\n"</span>),
+      ui.ButtonSet.OK
+    );
+    <span class="kw">if</span> (attempt === <span class="st">2</span>) <span class="kw">return null</span>; <span class="cm">// Clean exit after 3 failures</span>
+    <span class="kw">continue</span>; <span class="cm">// Stay in loop — re-present same prompt</span>
+  }
+
+  <span class="cm">// Validation passed — confirm before writing</span>
+  <span class="kw">const</span> confirm = ui.<span class="fn">alert</span>(<span class="st">"✅ Confirm"</span>, <span class="fn">preview</span>(rows), ui.ButtonSet.OK_CANCEL);
+  <span class="kw">if</span> (confirm !== ui.Button.OK) <span class="kw">continue</span>; <span class="cm">// Re-entry, not restart</span>
+
+  <span class="fn">writeSchedule_</span>(rows);
+  <span class="kw">return</span> { rows }; <span class="cm">// Success</span>
+}</div>
+  </div>
+
+  <!-- Pattern 3: Read before ask -->
+  <h3 style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--text-bright);margin:32px 0 8px;letter-spacing:-0.3px">Pattern 3 — Read before asking</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">Check every available data source before prompting. Present found values for confirmation, not re-entry. Only ask when the system genuinely doesn't know.</p>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span>Course name resolution — three sources tried before manual entry</span>
+      <span class="lang">Apps Script</span>
+    </div>
+    <div class="code-body"><span class="cm">// Source 1: already in the registry tab?</span>
+<span class="kw">const</span> fromRegistry = <span class="fn">readCoursesFromRegistry_</span>(ss);
+<span class="kw">if</span> (fromRegistry.length > <span class="st">0</span>) {
+  <span class="kw">const</span> ok = ui.<span class="fn">alert</span>(<span class="st">"✓ Courses Found"</span>, fromRegistry.<span class="fn">join</span>(<span class="st">"\n"</span>), ui.ButtonSet.OK_CANCEL);
+  <span class="kw">if</span> (ok === ui.Button.OK) <span class="kw">return</span> fromRegistry;
+}
+
+<span class="cm">// Source 2: stored in Script Properties from a previous run?</span>
+<span class="kw">const</span> fromProps = props.<span class="fn">getProperty</span>(<span class="st">"M2_COURSES"</span>)?.<span class="fn">split</span>(<span class="st">","</span>) ?? [];
+<span class="kw">if</span> (fromProps.length > <span class="st">0</span>) {
+  <span class="kw">const</span> ok = ui.<span class="fn">alert</span>(<span class="st">"✓ Courses in Config"</span>, fromProps.<span class="fn">join</span>(<span class="st">"\n"</span>), ui.ButtonSet.OK_CANCEL);
+  <span class="kw">if</span> (ok === ui.Button.OK) <span class="kw">return</span> fromProps;
+}
+
+<span class="cm">// Source 3: only now ask the teacher — and use retry loop</span>
+<span class="kw">return</span> <span class="fn">promptForCourseNames_</span>(ui);</div>
+  </div>
+
+  <!-- Pattern 4: Inline instructions -->
+  <h3 style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--text-bright);margin:32px 0 8px;letter-spacing:-0.3px">Pattern 4 — Inline instructions at the moment of action</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">Any manual step the user must take after the wizard runs is shown in the completion alert — not in the summary doc. The instructions are specific enough to follow without leaving the screen.</p>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span>Completion alert — redeploy instructions inline, not deferred to doc</span>
+      <span class="lang">Apps Script</span>
+    </div>
+    <div class="code-body">ui.<span class="fn">alert</span>(
+  <span class="st">"✅ Phase A Complete"</span>,
+
+  <span class="cm">// What was verified</span>
+  <span class="st">"✓ Tabs created and verified.\n"</span> +
+  <span class="st">"✓ "</span> + importResult.rowCount + <span class="st">" competencies imported.\n"</span> +
+  <span class="st">"✓ Backfill trigger confirmed active.\n\n"</span> +
+
+  <span class="cm">// ── Inline instruction — not in the doc ──────────────────</span>
+  <span class="st">"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"</span> +
+  <span class="st">"ACTION REQUIRED — Redeploy Teacher Dashboard\n"</span> +
+  <span class="st">"━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n"</span> +
+  <span class="st">"  1. Open the Script 07 project\n"</span> +
+  <span class="st">"  2. Deploy → Manage deployments\n"</span> +
+  <span class="st">"  3. Edit → New version → Deploy\n\n"</span> +
+  <span class="st">"Your dashboard URL stays the same:\n"</span> + dashUrl,
+
+  ui.ButtonSet.OK
+);</div>
+  </div>
+
+  <!-- Pattern 5: Persistent deferred state -->
+  <h3 style="font-family:var(--display);font-size:20px;font-weight:700;color:var(--text-bright);margin:32px 0 8px;letter-spacing:-0.3px">Pattern 5 — Persistent deferred state in the menu</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:14px">A deferred step changes the menu item label until it's resolved. The user sees the gap every time they open the document — not just once in a completion alert they dismissed.</p>
+  <div class="code-block">
+    <div class="code-block-header">
+      <span>Menu construction — four distinct states, each visible and actionable</span>
+      <span class="lang">Apps Script (add to Script 16 onOpen)</span>
+    </div>
+    <div class="code-body"><span class="kw">const</span> m2PhaseA = props.<span class="fn">getProperty</span>(<span class="st">"M2_SETUP_PHASE_A_COMPLETE"</span>);
+<span class="kw">const</span> m2Full   = props.<span class="fn">getProperty</span>(<span class="st">"M2_SETUP_COMPLETE"</span>);
+<span class="kw">const</span> m2Ready  = props.<span class="fn">getProperty</span>(<span class="st">"M2_REGISTRY_IMPORTED"</span>);
+
+menu.<span class="fn">addSeparator</span>();
+
+<span class="kw">if</span> (!m2PhaseA) {
+  <span class="cm">// State 1: not started</span>
+  menu.<span class="fn">addItem</span>(<span class="st">"📚 Set Up Lesson Intelligence"</span>, <span class="st">"runModule2Setup"</span>);
+
+} <span class="kw">else if</span> (!m2Ready) {
+  <span class="cm">// State 2: started but import deferred — gap is visible every open</span>
+  menu.<span class="fn">addItem</span>(<span class="st">"⚠ Module 2 — Import Required"</span>, <span class="st">"runModule2ImportOnly"</span>);
+
+} <span class="kw">else if</span> (!m2Full) {
+  <span class="cm">// State 3: Phase A complete, Phase B available</span>
+  menu.<span class="fn">addItem</span>(<span class="st">"🌅 Set Up Warm-Up Generation"</span>, <span class="st">"runModule2WarmUps"</span>);
+
+} <span class="kw">else</span> {
+  <span class="cm">// State 4: fully operational</span>
+  menu.<span class="fn">addItem</span>(<span class="st">"📚 Open Lesson Dashboard"</span>, <span class="st">"openLessonDashboard"</span>);
+}</div>
+  </div>
+</div>
+
+<!-- ANTI-PATTERNS -->
+<div class="section" id="antipatterns">
+  <div class="sec-eyebrow">What to avoid</div>
+  <h2>The anti-patterns</h2>
+  <p class="section-intro">These are the failure modes that contextual gates are designed to prevent. Each one produces the same outcome: a user who doesn't know the system isn't working until they need it to work.</p>
+
+  <div class="antipattern-grid">
+
+    <div class="antipattern">
+      <div class="ap-label">Silent success</div>
+      <div class="ap-body"><strong>The script ran without errors, therefore setup is done.</strong> No verification of the output state. Tabs created but empty. Triggers installed but not authorized. Registry imported but wrong format. The user sees a completion message and walks away.
+        <span class="fix">Fix → Gate 1: Verify output before declaring step complete.</span>
+      </div>
+    </div>
+
+    <div class="antipattern">
+      <div class="ap-label">Summary doc delivery</div>
+      <div class="ap-body"><strong>Instructions appear in the summary doc appended at wizard end.</strong> Teachers close the wizard when they see "Setup Complete." They don't read the page that was appended. The redeploy step, the manual trigger authorization, the CSV upload — all missed.
+        <span class="fix">Fix → Gate 2: Surface every required action in the completion alert, not the doc.</span>
+      </div>
+    </div>
+
+    <div class="antipattern">
+      <div class="ap-label">Exit on bad input</div>
+      <div class="ap-body"><strong>Validation fails and the wizard exits.</strong> The user has to find the menu item, re-open the wizard, navigate back to the failed step, and try again — with no memory of what they entered before. On the second attempt they often make the same mistake.
+        <span class="fix">Fix → Gate 3: Retry in-place. Stay in the loop. Show the error before the re-prompt.</span>
+      </div>
+    </div>
+
+    <div class="antipattern">
+      <div class="ap-label">Redundant entry</div>
+      <div class="ap-body"><strong>The wizard asks the teacher to type a value the system already has.</strong> Course names typed manually must match the CSV exactly — a trailing space breaks the dropdown silently. Teacher name typed again when Module 1 setup already stored it.
+        <span class="fix">Fix → Gate 4: Read before asking. Present found values for confirmation, not re-entry.</span>
+      </div>
+    </div>
+
+    <div class="antipattern">
+      <div class="ap-label">Silent deferral</div>
+      <div class="ap-body"><strong>A skipped step is indistinguishable from a completed step.</strong> The teacher defers the CSV import. The system marks Phase A complete. The competency dropdown is empty. The teacher logs a lesson and sees no competencies to select — no error, no indication, no path forward.
+        <span class="fix">Fix → Gate 5: Deferred state changes the menu label. Every open is a reminder.</span>
+      </div>
+    </div>
+
+    <div class="antipattern">
+      <div class="ap-label">Premature completion</div>
+      <div class="ap-body"><strong>The wizard offers a feature before the dependencies that make it useful exist.</strong> Phase B (warm-up generation) offered at the end of Phase A, before any evaluation history exists. Teacher sets up warm-ups, triggers run nightly against empty profiles, generic prompts are generated. Feels like it's working but isn't doing anything meaningful.
+        <span class="fix">Fix → Gate the offer on data readiness. Activate Phase B when M1 evaluation history exists.</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- IMPLEMENTATION DECISIONS -->
+<div class="section" id="implementation">
+  <div class="sec-eyebrow">Design decisions</div>
+  <h2>The tradeoffs</h2>
+  <p class="section-intro">Contextual gates add friction to the wizard flow. More alerts, more read-backs, more steps. These tradeoffs are deliberate.</p>
+
+  <table class="dt">
+    <thead>
+      <tr><th>Decision</th><th>Tradeoff accepted</th><th>Rationale</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Verify after every create</td>
+        <td class="bad">Extra read API calls. Slightly slower.</td>
+        <td>A failed silent create caught at setup costs 2 seconds. Caught in the classroom costs a lesson.</td>
+      </tr>
+      <tr>
+        <td>3-attempt retry loop</td>
+        <td class="bad">Three possible failures before exit. User can feel stuck.</td>
+        <td>Most users succeed on retry 1 or 2. Clean exit on attempt 3 with a specific menu item is better than silent failure after attempt 1.</td>
+      </tr>
+      <tr>
+        <td>Inline redeploy instructions</td>
+        <td class="bad">Long completion alert. Not dismissible quickly.</td>
+        <td>The teacher who doesn't read it still saw it. The teacher who reads the summary doc would have seen it there — this just ensures both paths converge.</td>
+      </tr>
+      <tr>
+        <td>_gateAlert_ as no-op for progress messages</td>
+        <td class="bad">Less visual progress feedback between steps.</td>
+        <td>Alerts require clicks. Click fatigue is real. Progress messages that require no action don't need a dismiss button — they go to the log.</td>
+      </tr>
+      <tr>
+        <td>Menu label reflects deferred state</td>
+        <td class="bad">Teachers see a warning item in their menu until they complete the step.</td>
+        <td>That's the point. The warning is the behavior. Removing the warning requires completing the step.</td>
+      </tr>
+      <tr>
+        <td>Summary doc as record, not instructions</td>
+        <td class="bad">Summary doc has less actionable content than before.</td>
+        <td>The summary doc was never a reliable delivery mechanism for instructions. Making it a record (what was configured, when, by whom) makes it useful for its actual audience: the admin auditing the installation.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>The summary doc is not retired — it's repurposed.</strong> Summary pages still get appended to the manual on every setup run. But their job changes: they're an audit record for administrators, not a delivery mechanism for teacher instructions. The distinction matters. An admin reviewing what was configured six months ago needs the doc. A teacher configuring their classroom for next week needs the inline alert.</div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>This principle applies beyond setup wizards.</strong> Any Apps Script flow that creates something, deploys something, or configures something should apply the same gates. Module 1's AutoInstaller, Module 1's rubric extraction confirmation step, Studio Flow error handling — all of them have silent failure modes that contextual gates would catch. Script 28 is the proof of concept. The pattern scales to every deployment-adjacent flow in the system.</div>
+  </div>
+</div>
+
+<!-- CHECKLIST -->
+<div class="section" id="checklist">
+  <div class="sec-eyebrow">Before shipping</div>
+  <h2>The checklist</h2>
+  <p class="section-intro">Apply to every wizard step before shipping. If any item is unchecked, the step has a silent failure mode.</p>
+
+  <div class="checklist">
+    <h4>Gate 1 — Verification</h4>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Output is read back after every write.</strong> Tab created → tab read back. Trigger installed → trigger list checked. Row written → row count verified.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Verification failure blocks progress.</strong> The step is not marked complete if the read-back doesn't match the expected state.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Verification failure gives the URL.</strong> Every tab/spreadsheet verification failure includes the spreadsheet URL in the alert text.</div></div>
+  </div>
+
+  <div class="checklist">
+    <h4>Gate 2 — Failure messages</h4>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>No failure message says only "An error occurred."</strong> Every failure names exactly what failed.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Every failure gives the most likely cause.</strong> Not just what happened — why it probably happened.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Every failure gives a path forward.</strong> Either "try again" or the exact menu item / manual step to resolve it.</div></div>
+  </div>
+
+  <div class="checklist">
+    <h4>Gate 3 — Retry behavior</h4>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Validation failure stays in the wizard.</strong> No prompt validation exits the wizard — it re-presents the same prompt.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Retry prompt shows the error before the input.</strong> The teacher knows what to fix before they see the field again.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Three-failure exit is clean and specific.</strong> After 3 attempts, wizard exits with the exact menu item to retry from.</div></div>
+  </div>
+
+  <div class="checklist">
+    <h4>Gate 4 — Data reuse</h4>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>No value is asked for that the system already has.</strong> Script Properties, existing tab data, and config files are checked before any prompt.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Found values are presented for confirmation, not re-entry.</strong> One click to confirm. Not a text field.</div></div>
+  </div>
+
+  <div class="checklist">
+    <h4>Gate 5 — Deferred state</h4>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Every deferred step changes a menu item.</strong> The gap is visible on every document open until resolved.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Deferred state is stored in a distinct Script Property.</strong> Not inferred from absence — explicitly set as a known incomplete state.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Completing a deferred step clears the warning.</strong> The menu item reverts to the operational state label when the step is resolved.</div></div>
+  </div>
+
+  <div class="checklist">
+    <h4>The summary doc</h4>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>No action items appear only in the summary doc.</strong> Every required action is in the completion alert. The summary doc records what was configured.</div></div>
+    <div class="check-item"><div class="check-box" onclick="toggle(this)"></div><div class="check-text"><strong>Manual steps are in the completion alert with exact steps.</strong> Not "see the summary doc." The steps are in the alert itself.</div></div>
+  </div>
+
+</div>
+
+</div><!-- /page -->
+
+<footer>
+  <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">Contextual Gates</span>
+  <span>Classroom Agency System · UI/UX Design Principles · v1.0</span>
+  <span style="font-family:var(--mono);font-size:11px">Derived from Script 28 development · CAS Module 2 Setup Wizard</span>
+</footer>
+
+<script>
+// ── Nav scroll spy ──
+const links    = document.querySelectorAll('.topnav-link');
+const sections = ['philosophy','gates','patterns','antipatterns','implementation','checklist'];
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    links.forEach(l => l.classList.remove('active'));
+    const match = document.querySelector('.topnav-link[href="#'+e.target.id+'"]');
+    if (match) match.classList.add('active');
+  });
+}, { rootMargin:'-15% 0px -75% 0px' });
+sections.forEach(id => { const el = document.getElementById(id); if(el) obs.observe(el); });
+
+// ── Interactive checklist ──
+function toggle(el) {
+  el.classList.toggle('checked');
+  // Update sibling text opacity
+  const text = el.nextElementSibling;
+  if (text) text.style.opacity = el.classList.contains('checked') ? '0.4' : '1';
+}
+</script>
+</body>
+</html>

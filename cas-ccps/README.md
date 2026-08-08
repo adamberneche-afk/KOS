@@ -181,14 +181,150 @@ remain open known gaps — still not uploaded anywhere.
 
 ---
 
+## Round 3 — large reupload batch closes most remaining gaps
+
+The user reuploaded 18 zip files "to ensure nothing was left out." Most
+duplicated what was already reconciled above, but the batch contained
+real, previously-missing material: the two data files Known Gaps #3/#4
+were blocked on, a materially larger pacing guide, the six actually-missing
+Module 2 Full scripts (as real code, not the doc-only spec Round 2
+declined to author from scratch), a genuine renumbering collision inside
+Module 2 itself, and a corrected Module 2 documentation set. Full findings
+are on record in this session's plan file; what follows is what landed.
+
+### 7. Data files — Known Gaps #3/#4 closed
+
+`data/CompetencyRegistry.csv` (222 lines, 221 competencies — header
+`competency_id,competency_text,subject,grade_band,strand,teacher_email,active`)
+and `data/LessonPrimarySecondary_Seed.csv` (14 rows — 7 stage/node pairs ×
+2 courses) are now in the repo, matching the schemas these gaps already
+documented. `data/CompetencyRubrics.json` was also refreshed to a version
+carrying the same 221 rubrics plus new `sol_correlations` metadata (same
+generation date, strict superset — the old version is kept at
+`data/archived/CompetencyRubrics_v1_SUPERSEDED.json`). Five VDOE SOL
+correlation support files (`8177_Printable_Version_with_Standards_Correlations.docx`,
+`8177_SOL_Official.csv`, `8177_SOL_Transitive_Mapping.csv`/`.docx`,
+`8177_SOL_Transitive_Summary.csv`) were filed under
+`data/sol-correlations/` as the documented derivation trail for that
+metadata.
+
+### 8. Pacing guide — adopted v2 as canonical
+
+`curriculum/PacingGuide_CAS_Context.json` was replaced with a documented
+superset rebuild (same 20 units, 16 fields → 20 fields — adds `chain_node`,
+`esports_connection`, `vocabulary_with_definitions`, `studio_flow_hooks`;
+warm-up anchors are now full teacher-authored prompts instead of
+compressed summaries). The prior version is kept at
+`curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.json`. **Known
+gap, not fixed here:** `scripts/31_PacingGuideManager.js` (see item 9)
+still only reads the original 16-field schema — it will silently ignore
+the 4 new v2 fields until its `PG_HEADERS`/`PG_COL_COUNT` and row-mapping
+are extended to carry them into the `PacingGuide` tab. `curriculum/PacingGuide_CAS_Context.csv`
+and `.docx` are now stale relative to the v2 JSON and were not
+regenerated — flagged, not silently left looking current.
+
+### 9. Six missing Module 2 Full scripts filed in as real code
+
+`22_LessonContextHandler.js`, `22b_CompetencyRegistryImporter.js`,
+`23_StudentProfileManager.js`, `24_WarmUpBridge.js`,
+`26_CompetencyAlignmentLog.js`, and `28_Module2Setup.js` are now in
+`scripts/` — real, substantial, already-implemented files, not the
+doc-only spec Round 2 explicitly declined to author from scratch (that
+decision was about *this project* writing untested code from a
+specification; these are real uploaded files, a different situation).
+`28_Module2Setup.js` had the same unescaped-newline-in-string-literal bug
+class documented in resolution 2 above (four broken alert-dialog strings,
+confirmed via `node --check`) — fixed the same way. **Script
+`27_LessonFrameGenerator` was not in this batch and remains a genuine
+open gap** — do not assume it shipped because its siblings did.
+
+### 10. Module 2's own numbering collision — resolved by keeping the repo's existing direction
+
+The batch's three Module 2 utility scripts — `PacingGuideManager`,
+`CompetencyRubricImporter`, `ArtifactCompetencyBridge` — were built and
+numbered **29, 30, 31** by whoever wrote them, unaware that this repo had
+already resolved a *different* 29/30/31 collision (resolution 4 above) by
+keeping those numbers for Module 4/5's `StudentContextAggregator` /
+`SCRSuggestionEngine` / `SCRRetryRemediation`. The newly-uploaded
+`CAS_Module2_Documentation.html` (v2.0) explicitly argues the *opposite*
+resolution — renumber Module 4/5 to 32/33/33b instead. **Decision: keep
+the repo's existing direction.** Module 4/5 keep 29/30/30b unchanged (two
+already-verified reconciliation passes and more cross-references than the
+newly-arrived alternative). Module 2's three utilities are filed in as:
+
+| Old (as authored) | Filed as | Log tag |
+|---|---|---|
+| `29_PacingGuideManager.js` | `scripts/31_PacingGuideManager.js` | `[S31]` |
+| `30_CompetencyRubricImporter.js` | `scripts/32_CompetencyRubricImporter.js` | `[S32]` |
+| `31_ArtifactCompetencyBridge.js` | `scripts/33_ArtifactCompetencyBridge.js` | `[S33]` |
+
+Every internal self-reference (log prefixes, header comments, the CRON
+sequence comment, and cross-references from `22b`/`23`/`24`/`28`) was
+updated to the new numbers — verified by grep, not assumed.
+`00_SharedConfig_M2_ADDENDUM_v2.js` already documented this exact 31/32/33
+target numbering before this batch arrived, so no change was needed
+there. `files_42/00_SharedConfig_M2_ADDENDUM.js` (no `_v2`) is confirmed
+stale — the version already in this repo supersedes it — and was **not**
+reintroduced. `docs/PLATFORM_DOCUMENTATION.html`'s Module 2 script-map
+table, previously flagging 31–33 "not yet built," now reflects that they
+are.
+
+### 11. Module 2 documentation — v2.0 adopted, with a numbering disclaimer
+
+`CAS_Module2_Documentation.html` (v2.0) is a materially larger successor
+to the archived `docs/CAS_Module2_Documentation_v1.1.docx` (now at
+`docs/archived/CAS_Module2_Documentation_v1.1_SUPERSEDED.docx`) — it
+documents the Full/Warm-Up build the old docx doesn't. Adopted as
+`docs/CAS_Module2_Documentation_v2.0.html`, **with a banner added at the
+top** disclosing that its own "Numbering Collision" section argues for
+the resolution this repo did *not* take (see item 10) — every "Script 29
+/ 30 / 31" in that document means this module's own pre-renumbering
+scheme and should be read as 31/32/33. Five companion docs — 
+`CAS_ContextualGates_DesignPrinciples.html`, `CAS_Flow3_Flow4_Specification.html`,
+`CAS_M2_DeploymentGuide.html`, `CAS_M2_Schema.html`,
+`CAS_M2_WarmUp_Schema.html` — were filed in alongside it; the three that
+reference script numbers also carry a short version of the same
+disclaimer banner.
+
+### 12. Known Gaps #2 closed — `lesson_unit_id` added
+
+Round 2's planned fix, executed here: one new column, following the exact
+append-only pattern the M5 competency-ID addendum already established.
+`08_TeacherConfirmationStep.js` gained `TM08.LESSON_UNIT_ID` (19) and
+`DU08.LESSON_UNIT_ID` (18), a new "M6" documentation block, a new
+`onTeacherConfirmSubmit()` read/write path, and a new blank pre-fill entry
+in `buildPrefilledUrl_()` — directly merged into the file, matching how
+its M5 columns were already merged rather than left as an unmerged
+addendum. `scripts/16_UnifiedManualSetup_M6_ADDENDUM.js` and
+`scripts/19_ClonedSheetConfig_M6_ADDENDUM.js` are new, unmerged patch
+files (same convention as the M5 addenda they sit on top of) adding the
+Confirmation Form's new "Lesson Unit" dropdown (sourced from Script 31's
+`PacingGuide` tab) and its config plumbing. "M6" is a file-naming label
+only — there is no `CAS_Module6_Documentation` and none is planned.
+**Known gap carried forward, not introduced by this change:** neither the
+M5 nor the M6 addenda extend the base `TeacherMatrix`/`DraftUnits`
+`setHeaders_()` calls in `16_UnifiedManualSetup.js` with the new columns'
+header labels — those columns are fully functional (read/written by
+position) but have no header text. Cosmetic, pre-existing, flagged here
+rather than silently fixed as a drive-by change.
+
+### 13. Archived-file naming convention — Known Gaps #8 closed
+
+`scripts/archived/11_StudentFriendlyRejections_ARCHIVED.js` renamed to
+`scripts/archived/ARCHIVED_11_StudentFriendlyRejections.js`, matching the
+prefix convention `ADMIN_DEPLOYMENT_WALKTHROUGH.html` documents (a `git
+mv`, no content change).
+
+---
+
 ## Directory map
 
 | Path | Contents |
 |---|---|
 | `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide. `docs/archived/` holds superseded docs the source itself marks superseded. |
 | `scripts/` | Numbered Apps Script files, base + addenda. `scripts/archived/` holds files the source itself marks superseded. |
-| `data/` | Reference data imported into the Central Ledger at setup time |
-| `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks |
+| `data/` | Reference data imported into the Central Ledger at setup time. `data/sol-correlations/` holds the VDOE SOL derivation trail. `data/archived/` holds superseded versions. |
+| `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks. `curriculum/archived/` holds the pre-v2 pacing guide JSON. |
 | `forms/` | Setup spec for the Warm-Up Response Google Form |
 
 ## What Module 1 (the base system) actually is
@@ -234,19 +370,20 @@ match plus a forensic Drive-revision check before marking the row
 
 | Module | Purpose | Status |
 |---|---|---|
-| **M1** — base intake/grading | See above | ~20 files in hand. Both confirmed bugs (Turn-In Form field mismatch, `16`'s `onOpen()` `ReferenceError`) fixed — see resolution 2 above. `CompetencyRegistry.csv` (the raw import source) is still not uploaded. |
-| **M2 Lightweight** — Lesson Intelligence | Teacher logs lesson context → `LessonContext` / `AlignmentLog` / `CompetencyRegistry` / `ReportRegistry`; generates term-end alignment reports | Production ready. Scripts 22, 22b, 26 still not uploaded as files, though their role is documented. |
-| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `25_WarmUpWriter.js` in hand. Scripts 23, 24, 27, 28 named and scoped but not yet uploaded. |
+| **M1** — base intake/grading | See above | ~20 files in hand. Both confirmed bugs (Turn-In Form field mismatch, `16`'s `onOpen()` `ReferenceError`) fixed — see resolution 2 above. `CompetencyRegistry.csv` is now in hand (resolution 7). |
+| **M2 Lightweight** — Lesson Intelligence | Teacher logs lesson context → `LessonContext` / `AlignmentLog` / `CompetencyRegistry` / `ReportRegistry`; generates term-end alignment reports | Production ready. `22`, `22b`, `26` now in hand (resolution 9) — all Lightweight scripts present. |
+| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `23`, `24`, `25`, `28` in hand (resolution 9); `31`/`32`/`33` (pacing/rubric/artifact utilities) in hand (resolution 10). **`27_LessonFrameGenerator` is the one Full script still not uploaded.** |
 | **M3** — Student Profile | Extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` — unaffected by this reconciliation pass |
-| **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct, see resolution 3 above |
+| **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct twice now (resolutions 3 and 10), see both above |
 | **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Cannot go fully live until Flow 2 is built in Studio. |
 
-`scripts/11_StudentFriendlyRejections_ARCHIVED.js` (merged into Script 04;
-kept in `scripts/archived/`) is itself informative: it emailed rejection
-notices to the *student*. The current Script 04 writes rejections into the
-doc instead — the system deliberately moved away from student email
-entirely at some point, consistent with the Ledger schema never carrying a
-student email/only a GoogleID.
+`scripts/archived/ARCHIVED_11_StudentFriendlyRejections.js` (merged into
+Script 04; renamed to match the repo's prefix convention — resolution 13)
+is itself informative: it emailed rejection notices to the *student*. The
+current Script 04 writes rejections into the doc instead — the system
+deliberately moved away from student email entirely at some point,
+consistent with the Ledger schema never carrying a student email/only a
+GoogleID.
 
 ## Known gaps (carried forward so a future session doesn't re-derive them)
 
@@ -254,34 +391,38 @@ student email/only a GoogleID.
    and `03_QueueBridge.js` assume it exists, and Module 5 cannot go fully
    live without it. Flows 3 (warm-up generation) and 4 (warm-up
    grading/grammar) are also unbuilt.
-2. **`TeacherMatrix` is confirmed missing a `lesson_unit_id` column** —
-   directly verified against Script 16's actual `createAdminAssets_()`
-   column list (15 columns, no such field) and Module 2's `LessonContext`
-   schema (8 columns, also no such field). Blocks M5's PRIMARY/SECONDARY
-   evidence split. Restored as an explicit gap entry in the merged
-   `CAS_Module5_Documentation_v1.1.docx` (see resolution 6 above).
-3. **`CompetencyRegistry.csv`** (the 221-row import source) is still not
-   uploaded — only the Sheet-tab schema it produces is documented, and the
-   already-present `data/CompetencyRubrics.json` (skill questions/rubric
-   detail) is a different, complementary artifact.
-4. **`LessonPrimarySecondary_Seed.csv`** (VDOE-SOL-derived seed data) is
-   referenced by `CAS_Module5_Documentation_v1.1.docx`'s deployment
-   checklist Step 6 but not uploaded — treat that step as blocked until it is.
+2. ~~`TeacherMatrix` missing a `lesson_unit_id` column~~ — **closed**, see
+   resolution 12 above.
+3. ~~`CompetencyRegistry.csv` not uploaded~~ — **closed**, see resolution 7 above.
+4. ~~`LessonPrimarySecondary_Seed.csv` not uploaded~~ — **closed**, see
+   resolution 7 above.
 5. **A v3/v4 of `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`** exists
    (referenced by the merged Module 5 doc's Repair Note 4, a Rubric Upload
-   Form fix) but hasn't been uploaded.
+   Form fix) but hasn't been uploaded. Still open — the Round 3 batch did
+   not contain it.
 6. Retry thresholds in `30b_SCRRetryRemediation.js` (5 total MET evidence
    rows, 2× secondary-to-primary ratio) remain provisional, unvalidated
    defaults.
-7. Scripts `22`, `22b`, `23`, `24`, `26`, `27`, `28` are named and scoped
-   by documentation now in this repo, but none have been uploaded as files
-   yet. Scripts `31`, `32`, `33` (Module 2's import/bridge utilities,
-   renumbered per resolution 4 above) are not implemented anywhere yet either.
-8. Two archived-file naming conventions coexist and disagree with each
-   other: `11_StudentFriendlyRejections_ARCHIVED.js` (suffix) vs.
-   `14_ARCHIVED_TeacherManualSetup.js` (prefix). `ADMIN_DEPLOYMENT_WALKTHROUGH.html`
-   documents the convention as prefix-only — a minor inconsistency, noted
-   so an automated archival check doesn't miss file 11.
+7. ~~Scripts 22, 22b, 23, 24, 26, 28, 31, 32, 33 not uploaded~~ — **closed**,
+   see resolutions 9 and 10 above. **`27_LessonFrameGenerator` remains
+   open** — it was not in the Round 3 batch either; do not assume it
+   shipped because its Module 2 Full siblings did.
+8. ~~Two archived-file naming conventions coexist~~ — **closed**, see
+   resolution 13 above.
+9. **`31_PacingGuideManager.js` doesn't yet read the v2 pacing guide's 4
+   new fields** (`chain_node`, `esports_connection`,
+   `vocabulary_with_definitions`, `studio_flow_hooks`) — see resolution 8
+   above. It will import and run against `PacingGuide_CAS_Context_v2.json`
+   without erroring, just silently drop the new fields, until its
+   `PG_HEADERS`/`PG_COL_COUNT`/row-mapping are extended.
+10. **`curriculum/PacingGuide_CAS_Context.csv` and `.docx`** are now stale
+    relative to the adopted `PacingGuide_CAS_Context_v2.json` — not
+    regenerated as part of this pass.
+11. **`data/CompetencyRegistry.csv` and `data/sol-correlations/` are not
+    yet imported into any Sheet** — the files exist in the repo (resolution
+    7), but nothing has run `importCompetencyRegistry()` (Script `22b`)
+    against them in a live deployment. This is a deployment-time action,
+    not a repo-file gap, listed here so it isn't mistaken for "already live."
 
 ## Naming note
 

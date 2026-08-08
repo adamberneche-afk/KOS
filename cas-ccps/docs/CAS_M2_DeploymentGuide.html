@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAS Module 2 — Deployment Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800;900&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08090a;--ink:#0f1115;--surface:#14171c;--surface2:#1c2028;
+  --border:#252b35;--border2:#2f3847;
+  --text:#cdd5e0;--text-dim:#6b7a8d;--text-bright:#e8eef5;
+  --amber:#e8b84b;--amber-d:#c49a30;--amber-bg:rgba(232,184,75,0.08);--amber-border:rgba(232,184,75,0.22);
+  --teal:#3ecfb8;--teal-bg:rgba(62,207,184,0.07);--teal-border:rgba(62,207,184,0.2);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,0.08);--violet-border:rgba(167,139,250,0.2);
+  --rose:#f87171;--rose-bg:rgba(248,113,113,0.08);--rose-border:rgba(248,113,113,0.22);
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.07);--green-border:rgba(74,222,128,0.2);
+  --sky:#38bdf8;--sky-bg:rgba(56,189,248,0.07);--sky-border:rgba(56,189,248,0.2);
+  --display:'Anybody',system-ui,sans-serif;
+  --body:'Literata',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+}
+
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--void);color:var(--text);font-size:15px;line-height:1.75;min-height:100vh}
+
+/* ── PROGRESS BAR ── */
+.progress-bar-wrap{position:fixed;top:0;left:0;right:0;z-index:300;height:3px;background:var(--border)}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--amber),var(--teal));width:0%;transition:width 0.3s ease}
+
+/* ── NAV ── */
+.topnav{position:fixed;top:3px;left:0;right:0;z-index:200;background:rgba(8,9,10,0.96);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 48px;height:52px}
+.topnav-brand{font-family:var(--display);font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--amber)}
+.topnav-right{display:flex;align-items:center;gap:24px}
+.progress-label{font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+.progress-label span{color:var(--amber);font-weight:500}
+.reset-btn{font-family:var(--mono);font-size:10px;color:var(--text-dim);background:none;border:1px solid var(--border);padding:4px 10px;border-radius:3px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;transition:all 0.15s}
+.reset-btn:hover{color:var(--text);border-color:var(--border2)}
+
+/* ── HERO ── */
+.hero{min-height:70vh;display:flex;flex-direction:column;justify-content:flex-end;padding:100px 80px 64px;position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 10% 90%,rgba(232,184,75,0.07) 0%,transparent 55%),radial-gradient(ellipse 40% 35% at 90% 15%,rgba(62,207,184,0.04) 0%,transparent 50%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:80px 80px;opacity:0.15;pointer-events:none}
+.hero-eyebrow{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:3px;text-transform:uppercase;margin-bottom:28px;display:flex;align-items:center;gap:12px}
+.hero-eyebrow::before{content:"";width:32px;height:1px;background:var(--amber)}
+.hero h1{font-family:var(--display);font-size:clamp(48px,7vw,96px);font-weight:900;line-height:0.9;letter-spacing:-3px;color:var(--text-bright)}
+.hero h1 em{color:var(--amber);font-style:normal;display:block}
+.hero-sub{font-size:16px;color:var(--text-dim);max-width:560px;line-height:1.8;margin:28px 0 40px}
+.hero-stats{display:flex;gap:36px;flex-wrap:wrap}
+.stat{border-left:2px solid var(--amber-border);padding-left:18px}
+.stat-n{font-family:var(--display);font-size:32px;font-weight:800;color:var(--amber);line-height:1;letter-spacing:-1px}
+.stat-l{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-top:4px}
+
+/* ── PHASE NAVIGATION ── */
+.phase-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:0 80px;display:flex;gap:0;overflow-x:auto;position:sticky;top:55px;z-index:100}
+.phase-tab{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:14px 20px;border-bottom:2px solid transparent;white-space:nowrap;cursor:pointer;transition:all 0.15s;text-decoration:none;display:flex;align-items:center;gap:8px}
+.phase-tab:hover{color:var(--text-bright)}
+.phase-tab.active{color:var(--amber);border-bottom-color:var(--amber)}
+.phase-tab .phase-count{font-family:var(--mono);font-size:9px;background:var(--surface2);border:1px solid var(--border);padding:2px 5px;border-radius:10px;color:var(--text-dim)}
+.phase-tab.done .phase-count{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+
+/* ── LAYOUT ── */
+.page{max-width:900px;margin:0 auto;padding:0 80px 120px}
+
+/* ── PHASE SECTIONS ── */
+.phase{padding:64px 0 0;border-bottom:1px solid var(--border)}
+.phase:last-child{border-bottom:none}
+.phase-header{margin-bottom:40px}
+.phase-eyebrow{font-family:var(--mono);font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:10px}
+.phase-eyebrow::before{content:"";width:16px;height:1px}
+.phase-eyebrow.code{color:var(--violet)}  .phase-eyebrow.code::before{background:var(--violet)}
+.phase-eyebrow.setup{color:var(--amber)}  .phase-eyebrow.setup::before{background:var(--amber)}
+.phase-eyebrow.data{color:var(--sky)}     .phase-eyebrow.data::before{background:var(--sky)}
+.phase-eyebrow.studio{color:var(--teal)}  .phase-eyebrow.studio::before{background:var(--teal)}
+.phase-eyebrow.smoke{color:var(--green)}  .phase-eyebrow.smoke::before{background:var(--green)}
+.phase h2{font-family:var(--display);font-size:clamp(28px,3.5vw,44px);font-weight:800;letter-spacing:-1px;color:var(--text-bright);line-height:1.05;margin-bottom:10px}
+.phase-desc{font-size:14px;color:var(--text-dim);line-height:1.8;max-width:640px}
+
+/* ── STEP CARDS ── */
+.steps{display:flex;flex-direction:column;gap:1px;background:var(--border);border-radius:4px;overflow:hidden;margin-top:28px}
+
+.step{background:var(--surface);display:grid;grid-template-columns:56px 1fr;align-items:start;transition:background 0.15s;position:relative}
+.step::before{content:"";position:absolute;top:0;left:0;bottom:0;width:3px;background:var(--border2);transition:background 0.2s}
+.step.done{background:var(--ink)}
+.step.done::before{background:var(--green)}
+
+.step-check{display:flex;align-items:flex-start;justify-content:center;padding:20px 0 20px 20px}
+.checkbox{width:20px;height:20px;border:1.5px solid var(--border2);border-radius:4px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;transition:all 0.15s;background:var(--ink)}
+.checkbox:hover{border-color:var(--amber)}
+.step.done .checkbox{background:var(--green);border-color:var(--green)}
+.checkbox-mark{display:none;color:var(--void);font-size:12px;font-weight:700}
+.step.done .checkbox-mark{display:block}
+
+.step-body{padding:18px 24px 20px 0}
+.step-num{font-family:var(--mono);font-size:9px;color:var(--text-dim);letter-spacing:2px;text-transform:uppercase;margin-bottom:5px}
+.step-title{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text-bright);margin-bottom:8px;letter-spacing:-0.2px;line-height:1.3}
+.step.done .step-title{color:var(--text-dim)}
+.step-desc{font-size:13.5px;color:var(--text-dim);line-height:1.75;margin-bottom:0}
+.step-desc code{font-family:var(--mono);font-size:11.5px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+.step-desc strong{color:var(--text);font-weight:500}
+
+/* ── STEP DETAIL BLOCKS ── */
+.step-detail{margin-top:12px;padding:14px 16px;background:var(--ink);border:1px solid var(--border);border-radius:4px;font-size:13px;line-height:1.85}
+.step-detail ol,.step-detail ul{padding-left:18px}
+.step-detail li{margin-bottom:4px;color:var(--text-dim)}
+.step-detail li strong{color:var(--text);font-weight:500}
+.step-detail li code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+.step-detail .note{font-family:var(--mono);font-size:10px;color:var(--amber);margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+
+/* ── CODE BLOCKS ── */
+.code-block{background:var(--void);border:1px solid var(--border);border-radius:4px;overflow:hidden;margin:10px 0}
+.code-block-header{background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 14px;display:flex;justify-content:space-between}
+.code-block-header span{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+.code-block-header .lang{color:var(--amber)}
+.code-body{padding:14px 18px;font-family:var(--mono);font-size:11.5px;line-height:1.9;overflow-x:auto;color:var(--text-dim);white-space:pre}
+
+/* ── CALLOUTS ── */
+.callout{border-radius:4px;padding:14px 18px;margin:12px 0;display:flex;gap:12px;font-size:13px;line-height:1.7}
+.callout-icon{flex-shrink:0;font-size:14px;margin-top:1px}
+.callout-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8a040}
+.callout-teal{background:var(--teal-bg);border-left:3px solid var(--teal);color:#2aaa96}
+.callout-rose{background:var(--rose-bg);border-left:3px solid var(--rose);color:#e06060}
+.callout-green{background:var(--green-bg);border-left:3px solid var(--green);color:#3a9e5f}
+.callout-body strong{color:inherit;font-weight:600}
+.callout-body code{font-family:var(--mono);font-size:10.5px;background:rgba(0,0,0,0.2);padding:1px 4px;border-radius:2px}
+
+/* ── TABLE ── */
+.dt{width:100%;border-collapse:collapse;margin:10px 0;font-size:12.5px}
+.dt th{font-family:var(--display);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;background:var(--surface2)}
+.dt td{padding:9px 14px;border-bottom:1px solid var(--border);color:var(--text-dim);vertical-align:top;line-height:1.6}
+.dt tr:last-child td{border-bottom:none}
+.dt td:first-child{font-family:var(--mono);font-size:11px;color:var(--amber)}
+.dt td code{font-family:var(--mono);font-size:10.5px;background:var(--surface2);border:1px solid var(--border);padding:1px 4px;border-radius:2px;color:var(--teal)}
+
+/* ── COMPLETION BANNER ── */
+.completion{display:none;background:linear-gradient(135deg,var(--green-bg),var(--teal-bg));border:1px solid var(--green-border);border-radius:4px;padding:40px;margin:60px 0;text-align:center}
+.completion.visible{display:block}
+.completion h3{font-family:var(--display);font-size:32px;font-weight:800;color:var(--green);margin-bottom:8px;letter-spacing:-0.5px}
+.completion p{font-size:14px;color:var(--text-dim);line-height:1.8}
+
+/* ── FOOTER ── */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:32px 80px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text-dim)}
+
+@media(max-width:800px){
+  .topnav{padding:0 20px}.topnav-right{gap:12px}
+  .hero{padding:80px 24px 48px}.page{padding:0 24px 80px}
+  .phase-nav{padding:0 24px}
+  footer{padding:24px}
+}
+</style>
+</head>
+<body>
+
+<div style="max-width:900px;margin:24px auto 0;padding:18px 24px;border:2px solid #c0392b;border-radius:8px;background:#fdecea;color:#7b241c;font-family:system-ui,sans-serif;font-size:14px;line-height:1.6">
+  <strong>⚠ RECONCILIATION NOTE —</strong> Every "Script 29" / "Script 30" /
+  "Script 31" reference in this document uses this module's own
+  pre-renumbering scheme. The actual checked-in files are
+  <code>scripts/31_PacingGuideManager.js</code>,
+  <code>scripts/32_CompetencyRubricImporter.js</code>, and
+  <code>scripts/33_ArtifactCompetencyBridge.js</code> — read every "29" as
+  31, "30" as 32, and "31" as 33. See the banner at the top of
+  <code>CAS_Module2_Documentation_v2.0.html</code> and
+  <code>cas-ccps/README.md</code> for the full reconciliation record.
+</div>
+
+
+<div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+
+<nav class="topnav">
+  <span class="topnav-brand">CAS · Deployment Guide</span>
+  <div class="topnav-right">
+    <span class="progress-label">Progress: <span id="progressLabel">0 / 0</span></span>
+    <button class="reset-btn" onclick="resetAll()">Reset</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-eyebrow">Classroom Agency System · Module 2</div>
+  <h1>Deployment<em>Guide</em></h1>
+  <p class="hero-sub">Step-by-step instructions from script files to a running warm-up pipeline. Check each step as you complete it. Progress saves in your browser.</p>
+  <div class="hero-stats">
+    <div class="stat"><div class="stat-n">5</div><div class="stat-l">Phases</div></div>
+    <div class="stat"><div class="stat-n">37</div><div class="stat-l">Steps</div></div>
+    <div class="stat"><div class="stat-n">~4h</div><div class="stat-l">Estimated time</div></div>
+    <div class="stat"><div class="stat-n">0</div><div class="stat-l">New vendors</div></div>
+  </div>
+</div>
+
+<!-- PHASE NAV -->
+<div class="phase-nav">
+  <a class="phase-tab" href="#phase-code">
+    Code <span class="phase-count" id="count-code">0/5</span>
+  </a>
+  <a class="phase-tab" href="#phase-data">
+    Data <span class="phase-count" id="count-data">0/4</span>
+  </a>
+  <a class="phase-tab" href="#phase-setup">
+    Setup <span class="phase-count" id="count-setup">0/14</span>
+  </a>
+  <a class="phase-tab" href="#phase-studio">
+    Studio Flows <span class="phase-count" id="count-studio">0/6</span>
+  </a>
+  <a class="phase-tab" href="#phase-smoke">
+    Smoke Test <span class="phase-count" id="count-smoke">0/8</span>
+  </a>
+</div>
+
+<div class="page">
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 1 — CODE
+════════════════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-code">
+  <div class="phase-header">
+    <div class="phase-eyebrow code">Phase 1 · ~45 min</div>
+    <h2>Add scripts to<br>the project</h2>
+    <p class="phase-desc">All new scripts bind to the Central Ledger spreadsheet — the same project as your existing Module 1 scripts. Script 07 (Teacher Dashboard) lives in its own separate project.</p>
+  </div>
+
+  <div class="steps" id="steps-code">
+
+    <div class="step" id="step-code-1">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 1 of 5</div>
+        <div class="step-title">Open the Central Ledger spreadsheet → Extensions → Apps Script</div>
+        <div class="step-desc">This is the spreadsheet that has your Ledger, ReviewQueue, STAGING_PIPELINE, and TeacherMatrix tabs. The Apps Script project already has your Module 1 scripts (Scripts 02–06, 10, etc.).</div>
+      </div>
+    </div>
+
+    <div class="step" id="step-code-2">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 2 of 5</div>
+        <div class="step-title">Add nine new script files to the Central Ledger project</div>
+        <div class="step-desc">For each file below: click the <strong>+</strong> next to Files → Script → name it exactly as shown → paste the contents from the downloaded file.</div>
+        <div class="step-detail">
+          <ol>
+            <li><strong>22_LessonContextHandler</strong> — paste <code>22_LessonContextHandler.js</code></li>
+            <li><strong>22b_CompetencyRegistryImporter</strong> — paste <code>22b_CompetencyRegistryImporter.js</code></li>
+            <li><strong>23_StudentProfileManager</strong> — paste <code>23_StudentProfileManager.js</code></li>
+            <li><strong>24_WarmUpBridge</strong> — paste <code>24_WarmUpBridge.js</code></li>
+            <li><strong>25_WarmUpWriter</strong> — paste <code>25_WarmUpWriter.js</code></li>
+            <li><strong>26_CompetencyAlignmentLog</strong> — paste <code>26_CompetencyAlignmentLog.js</code></li>
+            <li><strong>29_PacingGuideManager</strong> — paste <code>29_PacingGuideManager.js</code></li>
+            <li><strong>30_CompetencyRubricImporter</strong> — paste <code>30_CompetencyRubricImporter.js</code></li>
+            <li><strong>31_ArtifactCompetencyBridge</strong> — paste <code>31_ArtifactCompetencyBridge.js</code></li>
+          </ol>
+          <div class="note">Save after each file (Ctrl+S / Cmd+S). Do not run anything yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-code-3">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 3 of 5</div>
+        <div class="step-title">Update Script 00 — add Module 2 tabs and config</div>
+        <div class="step-desc">Open <code>00_SharedConfig</code> in the same project. Make two additions from <code>00_SharedConfig_M2_ADDENDUM.js</code>.</div>
+        <div class="step-detail">
+          <ol>
+            <li>Find the <code>tabs:</code> object in <code>getConfig_()</code>. Replace it with the complete version from <strong>Section A</strong> of the addendum file. It adds: <code>lessonContext</code>, <code>competencyRegistry</code>, <code>alignmentLog</code>, <code>reportRegistry</code>, <code>studentProfiles</code>, <code>warmUpQueue</code>, <code>warmUpRegistry</code>, <code>classSchedule</code>, <code>pacingGuide</code>, <code>competencyRubrics</code>.</li>
+            <li>In the <code>return {}</code> block of <code>getConfig_()</code>, add the line from <strong>Section B</strong>:
+              <div class="code-block"><div class="code-block-header"><span>Add to getConfig_() return object</span><span class="lang">Apps Script</span></div><div class="code-body">m2Enabled: p.M2_ENABLED || "false",
+shadowMatrixConfidenceThreshold: 0.75,
+shadowMatrixDecayFactor:         0.85,</div></div>
+            </li>
+          </ol>
+          <div class="note">Also update Script 00 in the Script 07 (Teacher Dashboard) project with the same Section A tabs update.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-code-4">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 4 of 5</div>
+        <div class="step-title">Update Script 07 — replace with new Teacher Dashboard file</div>
+        <div class="step-desc">Open the Script 07 project (the standalone Teacher Dashboard web app). Replace the contents of the main script file with <code>07_TeacherDashboard.js</code>. Do not redeploy yet — that happens in Phase 3.</div>
+        <div class="callout callout-amber">
+          <span class="callout-icon">◈</span>
+          <div class="callout-body"><strong>Script 07 is a separate project</strong> from the Central Ledger. It has its own Apps Script editor. Open the Teacher Dashboard spreadsheet (or web app URL) → Extensions → Apps Script to find it.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-code-5">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 5 of 5</div>
+        <div class="step-title">Set M2_ENABLED in Script Properties</div>
+        <div class="step-desc">In the Central Ledger Apps Script project: Project Settings (gear icon) → Script Properties → Add property.</div>
+        <div class="step-detail">
+          <table class="dt">
+            <thead><tr><th>Property</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>M2_ENABLED</td><td><code>true</code></td></tr>
+            </tbody>
+          </table>
+          <div class="note">All other M2 properties are set automatically by the scripts during setup. Only M2_ENABLED requires manual entry.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps-code -->
+</div><!-- /phase-code -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 2 — DATA
+════════════════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-data">
+  <div class="phase-header">
+    <div class="phase-eyebrow data">Phase 2 · ~10 min</div>
+    <h2>Upload data files<br>to Drive</h2>
+    <p class="phase-desc">Three JSON/CSV files need to be in your teacher Drive folder before the import scripts can run. Two were produced in this session. One you already have. <strong>Use PacingGuide_CAS_Context_v2.json</strong> — not the original. CompetencyRubrics.json now includes SOL correlations for 197 of 221 competencies (sourced from both VDOE official printable versions, including the 8177 file discovered embedded in the Canvas management cartridge).</p>
+  </div>
+
+  <div class="steps" id="steps-data">
+
+    <div class="step" id="step-data-1">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 1 of 4</div>
+        <div class="step-title">Upload CompetencyRegistry.csv to your teacher Drive folder</div>
+        <div class="step-desc">Download <code>CompetencyRegistry.csv</code> from this session. Upload it to your teacher assignments folder in Drive — the same folder that was created during Module 1 teacher setup (visible in your manual doc under "Your Admin Folder").</div>
+        <div class="callout callout-teal">
+          <span class="callout-icon">◈</span>
+          <div class="callout-body"><strong>File must be named exactly:</strong> <code>CompetencyRegistry.csv</code> — the importer searches by this exact filename. 221 rows expected (113 × 8175, 108 × 8177).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-data-2">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 2 of 4</div>
+        <div class="step-title">Upload CompetencyRubrics.json to your teacher Drive folder</div>
+        <div class="step-desc">Download <code>CompetencyRubrics.json</code> from this session. Upload to the same teacher folder. 221 rubrics — one per competency across both courses. Each rubric has demonstration indicators and skill questions pre-mapped to the four warm-up archetypes.</div>
+        <div class="callout callout-teal">
+          <span class="callout-icon">◈</span>
+          <div class="callout-body"><strong>File must be named exactly:</strong> <code>CompetencyRubrics.json</code>. If Drive renames it on upload, rename it back before running the importer.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-data-3">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 3 of 4</div>
+        <div class="step-title">Confirm <code>PacingGuide_CAS_Context_v2.json</code> is in your teacher Drive folder</div>
+        <div class="step-desc">This file was uploaded to Drive in a previous session. Confirm it's still in your teacher folder. If not, re-upload it now.</div>
+        <div class="callout callout-amber">
+          <span class="callout-icon">◈</span>
+          <div class="callout-body"><strong>File must be named exactly:</strong> <code>PacingGuide_CAS_Context.json</code>. Contains 20 units covering August 2026 – June 2027 with warmup anchors, competency IDs, and prior lesson connections per unit.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-data-4">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 4 of 4</div>
+        <div class="step-title">Confirm all three files are in the same folder</div>
+        <div class="step-desc">Open your teacher Drive folder and confirm all three files are present before proceeding.</div>
+        <div class="step-detail">
+          <ul>
+            <li><code>CompetencyRegistry.csv</code></li>
+            <li><code>CompetencyRubrics.json</code></li>
+            <li><code>PacingGuide_CAS_Context.json</code></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps-data -->
+</div><!-- /phase-data -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 3 — SETUP
+════════════════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-setup">
+  <div class="phase-header">
+    <div class="phase-eyebrow setup">Phase 3 · ~60 min</div>
+    <h2>Run setup functions<br>&amp; configure tabs</h2>
+    <p class="phase-desc">Run functions from the Script Editor in the order shown. Each function is listed with its script file. Run them one at a time — not as triggers.</p>
+  </div>
+
+  <div class="steps" id="steps-setup">
+
+    <div class="step" id="step-setup-1">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 1 of 14</div>
+        <div class="step-title">Run <code>createModule2Tabs_()</code> from Script 22</div>
+        <div class="step-desc">Creates the four lightweight tabs: LessonContext, CompetencyRegistry, AlignmentLog, ReportRegistry. Select <code>22_LessonContextHandler</code> in the file dropdown, choose <code>createModule2Tabs_</code> in the function dropdown, click Run.</div>
+        <div class="step-detail">
+          <div class="note">Safe to re-run — skips existing tabs. Expected output in logs: "M2 tabs created/verified."</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-2">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 2 of 14</div>
+        <div class="step-title">Run <code>importCompetencyRegistry()</code> from Script 22b</div>
+        <div class="step-desc">Imports <code>CompetencyRegistry.csv</code> from your teacher folder into the CompetencyRegistry tab. After running, open the tab and confirm 221 rows (plus header).</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px">Then run <code>validateRegistryImport()</code> to confirm:</p>
+          <ul>
+            <li>Total rows: 221</li>
+            <li>Sports Entertainment and Event Marketing (8175): 113</li>
+            <li>Sports Entertainment and Event Management (8177): 108</li>
+            <li>Issues found: none</li>
+          </ul>
+          <div class="note">If the file isn't found, confirm it's named exactly <code>CompetencyRegistry.csv</code> in your teacher folder.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-3">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 3 of 14</div>
+        <div class="step-title">Run <code>importPacingGuide()</code> from Script 29</div>
+        <div class="step-desc">Imports <code>PacingGuide_CAS_Context.json</code> into the PacingGuide tab. Creates the tab if it doesn't exist. Invalidates the Script Properties cache.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px">Then run <code>validatePacingGuide()</code> — confirm:</p>
+          <ul>
+            <li>Total units: 20</li>
+            <li>Missing anchor: 0</li>
+            <li>Missing start/end date: 0</li>
+            <li>All units valid ✓</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-4">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 4 of 14</div>
+        <div class="step-title">Run <code>importCompetencyRubrics()</code> from Script 30</div>
+        <div class="step-desc">Imports <code>CompetencyRubrics.json</code> into the CompetencyRubrics tab. Creates the tab if it doesn't exist. Calls <code>validateRubricImport()</code> automatically after writing.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px">Confirm in logs:</p>
+          <ul>
+            <li>Total rows: 221</li>
+            <li>Course 8175: 113 rubrics</li>
+            <li>Course 8177: 108 rubrics</li>
+            <li>Missing questions: NONE ✓</li>
+            <li>Missing indicators: NONE ✓</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-5">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 5 of 14</div>
+        <div class="step-title">Run <code>createWarmUpTabs_()</code> from Script 23</div>
+        <div class="step-desc">Creates six warm-up tabs: StudentProfiles, WarmUpQueue, WarmUpRegistry, ClassSchedule, PacingGuide (if not already created by Step 3), CompetencyRubrics (if not already created by Step 4). Safe to re-run.</div>
+        <div class="step-detail">
+          <div class="note">Confirm in spreadsheet: all six tabs exist with correct headers. WarmUpQueue should have 21 columns. StudentProfiles should have 14.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-6">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 6 of 14</div>
+        <div class="step-title">Populate the ClassSchedule tab manually</div>
+        <div class="step-desc">Open the ClassSchedule tab on the Central Ledger. Add one row per period you teach. The header row is already set.</div>
+        <div class="step-detail">
+          <table class="dt">
+            <thead><tr><th>teacher_email</th><th>period</th><th>day_type</th><th>course_name</th><th>active</th></tr></thead>
+            <tbody>
+              <tr><td>your@email.com</td><td>1</td><td><code>DAILY</code></td><td>Sports Entertainment and Event Management</td><td>TRUE</td></tr>
+              <tr><td>your@email.com</td><td>2</td><td><code>ODD</code></td><td>Sports Entertainment and Event Marketing</td><td>TRUE</td></tr>
+              <tr><td>your@email.com</td><td>3</td><td><code>EVEN</code></td><td>Sports Entertainment and Event Management</td><td>TRUE</td></tr>
+              <tr><td>your@email.com</td><td>4</td><td><code>ODD</code></td><td>Sports Entertainment and Event Marketing</td><td>TRUE</td></tr>
+            </tbody>
+          </table>
+          <div class="note">day_type values: DAILY (every school day), ODD (1st, 3rd, 5th... of month), EVEN (2nd, 4th, 6th...). Course names must match the subject column in CompetencyRegistry exactly.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-7">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 7 of 14</div>
+        <div class="step-title">Run <code>addCompetencyIdsColumn_()</code> from Script 31</div>
+        <div class="step-desc">Adds a <code>competency_ids</code> column to your Teacher Matrix spreadsheet. Run this once — it checks for the existing column and skips if already present.</div>
+        <div class="step-detail">
+          <div class="note">After running, open your Teacher Matrix spreadsheet and confirm column 16 is labeled <code>competency_ids</code>. The DraftUnits sheet gets the same column.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-8">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 8 of 14</div>
+        <div class="step-title">Tag existing Teacher Matrix assignments with competency IDs</div>
+        <div class="step-desc">Open your Teacher Matrix. In the new <code>competency_ids</code> column (column 16), enter comma-separated competency IDs for each assignment that addresses specific VDOE competencies.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px;margin-bottom:8px">Format: <code>8177-47,8177-52,8177-53</code></p>
+          <p style="color:var(--text-dim);font-size:13px">Competency IDs follow the pattern <code>COURSE-TASKNUMBER</code>. Find them in your CompetencyRegistry tab. Column B shows the competency text, column A shows the ID.</p>
+          <div class="callout callout-teal" style="margin-top:10px">
+            <span class="callout-icon">◈</span>
+            <div class="callout-body"><strong>This can be done gradually.</strong> It doesn't block warm-up generation. Start with your current active assignments and add past ones over the first few weeks. Script 31 only processes COMPLETE artifacts — partial tagging still produces partial per-student coverage.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-9">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 9 of 14</div>
+        <div class="step-title">Run <code>installWarmUpTriggers_()</code> from Script 23</div>
+        <div class="step-desc">Installs three nightly time-based triggers. Run from the Script Editor — select Script 23, function <code>installWarmUpTriggers_</code>, click Run.</div>
+        <div class="step-detail">
+          <table class="dt">
+            <thead><tr><th>Function</th><th>Time</th></tr></thead>
+            <tbody>
+              <tr><td>updateAllStudentProfiles</td><td>Every day at 3:00am</td></tr>
+              <tr><td>runWarmUpEvaluation</td><td>Every day at 3:15am</td></tr>
+              <tr><td>buildWarmUpQueues</td><td>Every day at 3:30am</td></tr>
+            </tbody>
+          </table>
+          <div class="note">Verify: Triggers panel (clock icon in Script Editor sidebar) → confirm three triggers appear. Google will ask for authorization — click Allow.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-10">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 10 of 14</div>
+        <div class="step-title">Run <code>installRegistrationTrigger_()</code> from Script 25</div>
+        <div class="step-desc">Installs the every-5-minute safety net trigger that registers delivered warm-ups and catches any that were delivered after the main evaluation window.</div>
+        <div class="step-detail">
+          <div class="note">Function: <code>registerDeliveredWarmUps</code> · Every 5 minutes. Confirm in Triggers panel.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-11">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 11 of 14</div>
+        <div class="step-title">Run <code>installArtifactSyncTrigger_()</code> from Script 31</div>
+        <div class="step-desc">Installs the 3:05am artifact competency sync trigger — runs between Script 23 (3:00am) and Script 25 (3:15am) to overlay per-student competency coverage from completed work artifacts.</div>
+        <div class="step-detail">
+          <div class="note">Function: <code>syncArtifactCompetencies</code> · Every day at 3:05am. Confirm in Triggers panel. Full sequence: 3:00am S23 → 3:05am S31 → 3:15am S25 → 3:30am S24.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-12">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 12 of 14</div>
+        <div class="step-title">Run <code>installModule2Triggers_()</code> from Script 22</div>
+        <div class="step-desc">Installs the alignment backfill safety trigger — runs every 5 minutes to catch any lesson context submissions that weren't aligned in real time.</div>
+        <div class="step-detail">
+          <div class="note">Function: <code>runAlignmentLogBackfill_</code> · Every 5 minutes.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-13">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 13 of 14</div>
+        <div class="step-title">Redeploy Script 07 — Teacher Dashboard</div>
+        <div class="step-desc">The new Script 07 adds the warm-up readiness panel and the "New Lesson" modal. Redeploy the existing web app — the URL does not change.</div>
+        <div class="step-detail">
+          <ol>
+            <li>Open the Script 07 project → Deploy → <strong>Manage deployments</strong></li>
+            <li>Select your existing deployment → click the <strong>Edit</strong> pencil icon</li>
+            <li>Version: <strong>New version</strong></li>
+            <li>Click <strong>Deploy</strong></li>
+          </ol>
+          <div class="note">The dashboard URL stays the same. Teachers do not need a new link. The "New Lesson" button and the readiness panel will appear on next refresh.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-setup-14">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 14 of 14</div>
+        <div class="step-title">Verify trigger count in the Triggers panel</div>
+        <div class="step-desc">Open Script Editor → Triggers (clock icon). Confirm all five triggers are present.</div>
+        <div class="step-detail">
+          <table class="dt">
+            <thead><tr><th>Function</th><th>Schedule</th><th>Script</th></tr></thead>
+            <tbody>
+              <tr><td>updateAllStudentProfiles</td><td>Daily 3:00am</td><td>S23</td></tr>
+              <tr><td>syncArtifactCompetencies</td><td>Daily 3:05am</td><td>S31</td></tr>
+              <tr><td>runWarmUpEvaluation</td><td>Daily 3:15am</td><td>S25</td></tr>
+              <tr><td>buildWarmUpQueues</td><td>Daily 3:30am</td><td>S24</td></tr>
+              <tr><td>registerDeliveredWarmUps</td><td>Every 5 min</td><td>S25</td></tr>
+              <tr><td>runAlignmentLogBackfill_</td><td>Every 5 min</td><td>S22</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps-setup -->
+</div><!-- /phase-setup -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 4 — STUDIO FLOWS
+════════════════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-studio">
+  <div class="phase-header">
+    <div class="phase-eyebrow studio">Phase 4 · ~2–3 hours</div>
+    <h2>Configure<br>Studio Flows</h2>
+    <p class="phase-desc">Three flows in Google Workspace Studio. Keep <code>CAS_Flow3_Flow4_Specification.html</code> open in another tab — it has the exact system prompts, temperatures, and field mappings for all three flows.</p>
+  </div>
+
+  <div class="steps" id="steps-studio">
+
+    <div class="step" id="step-studio-1">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 1 of 6</div>
+        <div class="step-title">Open Google Workspace Studio and create Flow 5 — Bridging Flow</div>
+        <div class="step-desc">Create this flow first because Flow 3 depends on it running before generation. Flow 5 is the simplest — temperature 0.4, max 150 tokens, one input field, one output field.</div>
+        <div class="step-detail">
+          <table class="dt">
+            <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Name</td><td>CAS — Bridging Flow</td></tr>
+              <tr><td>Trigger</td><td>WarmUpQueue · Status = PENDING · <code>flow5_prior_response</code> != null in snapshot</td></tr>
+              <tr><td>Temperature</td><td><code>0.4</code></td></tr>
+              <tr><td>Max tokens</td><td><code>150</code></td></tr>
+              <tr><td>Input</td><td><code>flow5_prior_response</code> · <code>pacing_prior_connection</code> · <code>course_name</code> from <code>lesson_context_snapshot</code></td></tr>
+              <tr><td>Output</td><td>Write to <code>bridge_output</code> (col 21) · Status stays PENDING</td></tr>
+              <tr><td>System prompt</td><td>See CAS_Flow3_Flow4_Specification.html → Flow 5 section</td></tr>
+            </tbody>
+          </table>
+          <div class="note">Runs before Flow 3 on the same PENDING row. Skips rows where flow5_prior_response is null.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-studio-2">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 2 of 6</div>
+        <div class="step-title">Create Flow 3 — Warm-Up Generation (Mode A: anchor-aware)</div>
+        <div class="step-desc">The primary generation flow. Runs after Flow 5. Checks for <code>warmup_anchor</code> in the snapshot — if present, personalizes it (Mode A). If null, generates from scratch (Mode B).</div>
+        <div class="step-detail">
+          <table class="dt">
+            <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Name</td><td>CAS — Warm-Up Generation</td></tr>
+              <tr><td>Trigger</td><td>WarmUpQueue · Status = PENDING (after Flow 5)</td></tr>
+              <tr><td>Temperature</td><td><code>0.7</code></td></tr>
+              <tr><td>Max tokens</td><td><code>400</code></td></tr>
+              <tr><td>Input</td><td><code>lesson_context_snapshot</code> + <code>student_profile_snapshot</code> from queue row</td></tr>
+              <tr><td>Output 1</td><td>Create Google Doc in student warm-up folder (path from <code>admin_root_folder_id</code> in snapshot)</td></tr>
+              <tr><td>Output 2</td><td>Share doc with <code>student_email</code> as editor</td></tr>
+              <tr><td>Output 3</td><td>Write <code>doc_id</code> + <code>doc_url</code> to queue row · Write selected archetype to col 19 · Set status = DELIVERED</td></tr>
+              <tr><td>System prompt</td><td>See CAS_Flow3_Flow4_Specification.html → Mode A and Mode B prompts</td></tr>
+            </tbody>
+          </table>
+          <div class="note">The doc structure: bridge paragraph (if bridge_output present) → separator → warm-up prompt → response line → student response zone.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-studio-3">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 3 of 6</div>
+        <div class="step-title">Create Flow 4 — Warm-Up Evaluation</div>
+        <div class="step-desc">Evaluates student responses after Script 25 extracts the text and queues the row for AI scoring. Returns grammar and engagement scores plus brief pedagogical feedback.</div>
+        <div class="step-detail">
+          <table class="dt">
+            <thead><tr><th>Setting</th><th>Value</th></tr></thead>
+            <tbody>
+              <tr><td>Name</td><td>CAS — Warm-Up Evaluation</td></tr>
+              <tr><td>Trigger</td><td>WarmUpQueue · Status = PENDING_EVAL</td></tr>
+              <tr><td>Temperature</td><td><code>0.2</code></td></tr>
+              <tr><td>Max tokens</td><td><code>256</code></td></tr>
+              <tr><td>Input</td><td><code>response_text</code> + <code>lesson_context_snapshot</code> from queue row</td></tr>
+              <tr><td>Output</td><td>Write <code>grammar_score</code> + <code>engagement_score</code> + <code>flow4_feedback</code> · Set status = SCORED</td></tr>
+              <tr><td>Response format</td><td>JSON only — no preamble, no markdown: <code>{"grammar":0|1,"engagement":0|1|2|3,"feedback":"..."}</code></td></tr>
+              <tr><td>System prompt</td><td>See CAS_Flow3_Flow4_Specification.html → Flow 4 section</td></tr>
+            </tbody>
+          </table>
+          <div class="note">Feedback tone: forward-looking, never punitive. Never mentions scores. Written as a question or observation the student can act on.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-studio-4">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 4 of 6</div>
+        <div class="step-title">Test Flow 5 with a synthetic queue row</div>
+        <div class="step-desc">Create a test row in WarmUpQueue with status = PENDING and a non-null <code>flow5_prior_response</code> in the lesson context snapshot JSON. Trigger Flow 5 and confirm <code>bridge_output</code> (col 21) is populated with 2–3 sentences.</div>
+      </div>
+    </div>
+
+    <div class="step" id="step-studio-5">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 5 of 6</div>
+        <div class="step-title">Test Flow 3 with a synthetic queue row</div>
+        <div class="step-desc">Create a test row with status = PENDING, a populated <code>lesson_context_snapshot</code> (include a <code>warmup_anchor</code> to test Mode A). Trigger Flow 3. Confirm: warm-up doc appears in student Drive folder, doc is shared, <code>doc_id</code> written to queue row, status = DELIVERED, archetype written to col 19.</div>
+      </div>
+    </div>
+
+    <div class="step" id="step-studio-6">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 6 of 6</div>
+        <div class="step-title">Test Flow 4 with a synthetic queue row</div>
+        <div class="step-desc">Write 35+ words of student text into the test doc. Run <code>runWarmUpEvaluation()</code> from Script 25 manually (Script Editor → select Script 25 → run). This extracts the response and sets status = PENDING_EVAL. Then trigger Flow 4. Confirm: grammar_score + engagement_score populated, feedback written, status = SCORED.</div>
+      </div>
+    </div>
+
+  </div><!-- /steps-studio -->
+</div><!-- /phase-studio -->
+
+
+<!-- ═══════════════════════════════════════════════════════════════
+     PHASE 5 — SMOKE TEST
+════════════════════════════════════════════════════════════════ -->
+<div class="phase" id="phase-smoke">
+  <div class="phase-header">
+    <div class="phase-eyebrow smoke">Phase 5 · ~30 min</div>
+    <h2>Smoke test<br>the full pipeline</h2>
+    <p class="phase-desc">Run the complete pipeline manually end-to-end before the first overnight cron. This catches any integration issues before real student data is involved. Do this the day before classes start.</p>
+  </div>
+
+  <div class="steps" id="steps-smoke">
+
+    <div class="step" id="step-smoke-1">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 1 of 8</div>
+        <div class="step-title">Log a lesson via the Teacher Dashboard</div>
+        <div class="step-desc">Open your Teacher Dashboard URL. Click <strong>New Lesson</strong> in the header. Fill in: lesson date (tomorrow's date), learning objective, activity description, 2–3 competencies from one of your courses. Click <strong>Log lesson</strong>.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px">Confirm immediately:</p>
+          <ul>
+            <li>Toast: "Lesson logged. Alignment will be recorded automatically."</li>
+            <li>LessonContext tab: one new row, status = ALIGNMENT_LOGGED</li>
+            <li>AlignmentLog tab: one row per competency selected</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-smoke-2">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 2 of 8</div>
+        <div class="step-title">Run <code>updateAllStudentProfiles()</code> from Script 23</div>
+        <div class="step-desc">Simulates the 3:00am Stage 1 cron. Builds StudentProfile rows for all enrolled students. After running, open StudentProfiles tab — one row per student, with evaluation signals and warmup_scores populated from Module 1 history.</div>
+        <div class="step-detail">
+          <div class="note">Students with no Module 1 history get empty evaluation_signals — correct. Shadow matrix will be empty {} until the first scored warm-up night.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-smoke-3">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 3 of 8</div>
+        <div class="step-title">Run <code>syncArtifactCompetencies()</code> from Script 31</div>
+        <div class="step-desc">Simulates the 3:05am artifact sync. Reads STAGING_PIPELINE for COMPLETE assignments, joins to Teacher Matrix competency_ids, updates StudentProfiles. If no assignments are tagged yet, logs "No competency tags found" — expected.</div>
+      </div>
+    </div>
+
+    <div class="step" id="step-smoke-4">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 4 of 8</div>
+        <div class="step-title">Run <code>buildWarmUpQueues()</code> from Script 24</div>
+        <div class="step-desc">Simulates the 3:30am Stage 3 cron. Reads the lesson you logged in Step 1 (tomorrow's date), determines which periods meet tomorrow by date parity, and builds one WarmUpQueue row per enrolled student in those periods.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px">Confirm in WarmUpQueue tab:</p>
+          <ul>
+            <li>One row per student in the period(s) meeting tomorrow</li>
+            <li>Status = PENDING</li>
+            <li><code>lesson_context_snapshot</code> is populated JSON (not empty)</li>
+            <li><code>student_profile_snapshot</code> is populated JSON</li>
+            <li>Snapshot contains <code>warmup_anchor</code> if pacing guide was imported</li>
+            <li>Snapshot contains <code>competency_rubrics</code> array</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-smoke-5">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 5 of 8</div>
+        <div class="step-title">Trigger Flow 5 and Flow 3 manually on the PENDING rows</div>
+        <div class="step-desc">In Studio, manually trigger Flow 5 on one of the PENDING rows (choose one with a prior response if any exist, otherwise skip Flow 5 and go straight to Flow 3). Then trigger Flow 3.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px">Confirm:</p>
+          <ul>
+            <li>Flow 5: <code>bridge_output</code> (col 21) populated with 2–3 sentences (if prior response existed)</li>
+            <li>Flow 3: warm-up doc created in student Drive folder</li>
+            <li>Flow 3: <code>doc_id</code> + <code>doc_url</code> written to queue row</li>
+            <li>Flow 3: <code>archetype</code> (col 19) populated</li>
+            <li>Flow 3: status = DELIVERED</li>
+            <li>WarmUpRegistry: one new row</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-smoke-6">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 6 of 8</div>
+        <div class="step-title">Write a test response and run evaluation</div>
+        <div class="step-desc">Open one of the warm-up docs that was created. Write 35+ words below the response line. Then run <code>runWarmUpEvaluation()</code> from Script 25 in the Script Editor.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px">Confirm:</p>
+          <ul>
+            <li>WarmUpQueue row: <code>response_text</code> extracted, <code>word_count</code> populated, status = PENDING_EVAL</li>
+            <li>After Flow 4 runs: <code>grammar_score</code> + <code>engagement_score</code> populated, status = SCORED</li>
+            <li>Warm-up doc: feedback written below the student's response</li>
+            <li>WarmUpRegistry row: <code>total_score</code> populated</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-smoke-7">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 7 of 8</div>
+        <div class="step-title">Generate alignment and warm-up reports</div>
+        <div class="step-desc">Run both report generators from the Script Editor to confirm end-of-term reporting works.</div>
+        <div class="step-detail">
+          <ol>
+            <li>Run <code>generateAlignmentReport()</code> from Script 26 → confirm a Google Doc is created in your teacher folder, ReportRegistry row written</li>
+            <li>Run <code>generateWarmUpReport()</code> from Script 25 → confirm a grade report Doc is created, ReportRegistry row written (type: WARMUP_TERM)</li>
+          </ol>
+        </div>
+      </div>
+    </div>
+
+    <div class="step" id="step-smoke-8">
+      <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
+      <div class="step-body">
+        <div class="step-num">Step 8 of 8</div>
+        <div class="step-title">Confirm nightly cron is ready</div>
+        <div class="step-desc">The system is ready to run autonomously. Tonight's cron will be the first live run. You don't need to do anything.</div>
+        <div class="step-detail">
+          <p style="color:var(--text-dim);font-size:13px;margin-bottom:8px">Before logging off:</p>
+          <ul>
+            <li>Log tomorrow's actual lesson via the Teacher Dashboard</li>
+            <li>Confirm ClassSchedule has the correct day_type for tomorrow's calendar date</li>
+          </ul>
+          <div class="callout callout-green" style="margin-top:12px">
+            <span class="callout-icon">◈</span>
+            <div class="callout-body"><strong>The system takes over from here.</strong> At 3:00am scripts run, at 6:00am flows generate, students open their docs in first period and their warm-up is waiting. The only thing you need to do each day is log the next day's lesson before you leave school. Everything else is automatic.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /steps-smoke -->
+
+  <!-- Completion banner -->
+  <div class="completion" id="completion">
+    <h3>🎉 Deployment complete</h3>
+    <p>All 37 steps complete. The warm-up pipeline runs tonight at 3am.<br>Tomorrow your students open their docs and their warm-up is waiting.</p>
+  </div>
+
+</div><!-- /phase-smoke -->
+
+</div><!-- /page -->
+
+<footer>
+  <span style="font-family:var(--display);font-size:13px;font-weight:700;color:var(--amber)">CAS · Deployment Guide</span>
+  <span>Classroom Agency System · Module 2 · 37 steps · ~4 hours</span>
+  <span style="font-family:var(--mono);font-size:11px">Progress saves in browser localStorage</span>
+</footer>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+const STORAGE_KEY = 'cas_deploy_progress';
+const PHASES = {
+  'code':   { steps: 5,  label: 'Phase 1' },
+  'data':   { steps: 4,  label: 'Phase 2' },
+  'setup':  { steps: 14, label: 'Phase 3' },
+  'studio': { steps: 6,  label: 'Phase 4' },
+  'smoke':  { steps: 8,  label: 'Phase 5' },
+};
+const TOTAL = 37;
+
+function getState() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}'); }
+  catch(e) { return {}; }
+}
+function saveState(state) {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+  catch(e) {}
+}
+
+// ── Toggle a step ─────────────────────────────────────────────────────────────
+function toggle(checkbox) {
+  const step    = checkbox.closest('.step');
+  const stepId  = step.id;
+  const isDone  = step.classList.contains('done');
+  const state   = getState();
+
+  if (isDone) {
+    step.classList.remove('done');
+    delete state[stepId];
+  } else {
+    step.classList.add('done');
+    state[stepId] = true;
+  }
+  saveState(state);
+  updateProgress();
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────────
+function updateProgress() {
+  const state    = getState();
+  const done     = Object.keys(state).length;
+  const pct      = Math.round((done / TOTAL) * 100);
+
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressLabel').textContent = done + ' / ' + TOTAL;
+
+  // Phase counts
+  for (const [phase, info] of Object.entries(PHASES)) {
+    let phaseDone = 0;
+    for (let i = 1; i <= info.steps; i++) {
+      if (state['step-' + phase + '-' + i]) phaseDone++;
+    }
+    const el = document.getElementById('count-' + phase);
+    if (el) {
+      el.textContent = phaseDone + '/' + info.steps;
+      const tab = el.closest('.phase-tab');
+      if (tab) tab.classList.toggle('done', phaseDone === info.steps);
+    }
+  }
+
+  // Completion banner
+  const completion = document.getElementById('completion');
+  if (completion) completion.classList.toggle('visible', done === TOTAL);
+}
+
+// ── Restore state on load ─────────────────────────────────────────────────────
+function restoreState() {
+  const state = getState();
+  for (const stepId of Object.keys(state)) {
+    const step = document.getElementById(stepId);
+    if (step) step.classList.add('done');
+  }
+  updateProgress();
+}
+
+// ── Reset ─────────────────────────────────────────────────────────────────────
+function resetAll() {
+  if (!confirm('Reset all progress?')) return;
+  localStorage.removeItem(STORAGE_KEY);
+  document.querySelectorAll('.step.done').forEach(s => s.classList.remove('done'));
+  updateProgress();
+}
+
+// ── Phase tab active state on scroll ─────────────────────────────────────────
+const phaseSections = document.querySelectorAll('.phase');
+const phaseTabs     = document.querySelectorAll('.phase-tab');
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    const id = e.target.id.replace('phase-', '');
+    phaseTabs.forEach(t => {
+      t.classList.toggle('active', t.getAttribute('href') === '#phase-' + id);
+    });
+  });
+}, { rootMargin: '-20% 0px -60% 0px' });
+phaseSections.forEach(s => observer.observe(s));
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+restoreState();
+</script>
+</body>
+</html>
