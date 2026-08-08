@@ -34,19 +34,27 @@
 // These are defined in other files but accessible to the HTML
 // client because all GAS project files share one execution scope:
 //
+//   Bootstrap screen:
+//     executeBootstrap()              → 1_Config_And_Deploy.gs (alias of deployFullSystem)
+//
 //   Ingest tab:
 //     submitSessionLog(text)          → 2_Ingestion_Sensors.gs
 //     submitExternalData(text, title) → 2_Ingestion_Sensors.gs
+//     getInboundFolderUrl()           → this file
 //
 //   Queue tab:
-//     getQueueStatus()                → 3_Queue_Processor.gs
+//     getQueueMetrics()                → 3_Queue_Processor.gs
+//     getQueueStatus()                 → 3_Queue_Processor.gs (legacy shape, still available)
 //
 //   Diagnostics tab:
 //     getVectorState()                → 4_Vector_Router.gs
 //     runPromotionCheck()              → 4_Vector_Router.gs
+//     getShadowMatrixStatus()         → 5_Error_And_Utilities.gs
+//     completeOnboarding(payload)     → 5_Error_And_Utilities.gs
 //     sendDailyErrorReport()          → 5_Error_And_Utilities.gs
 //     archiveStagingPipeline()        → 5_Error_And_Utilities.gs
 //     triggerCouncilSimulation()      → 6_Governance.gs
+//     generateDailyPrimer()           → 6_Governance.gs
 //     deployFullSystem()              → 1_Config_And_Deploy.gs
 // ================================================================
 
@@ -56,12 +64,28 @@
  * The HTML file must be named "8_WebApp_UI" in the GAS project
  * (the .html extension is implicit in GAS file naming).
  *
+ * FIX (reconciliation decision 3): previously used
+ * createHtmlOutputFromFile(), which never evaluates the
+ * 8_WebApp_UI.html `<?= mode ?>` scriptlet — SERVER_MODE was always
+ * the literal string '<?= mode ?>', which doesn't equal 'BOOTSTRAP',
+ * so the app always fell through to the OPERATIONAL branch even on a
+ * brand-new, undeployed instance. createTemplateFromFile().evaluate()
+ * actually substitutes the `mode` variable set below.
+ *
+ * mode is BOOTSTRAP whenever INDEX_ID isn't set yet — i.e. deployFullSystem()
+ * (via executeBootstrap()) has never successfully run. This is the same
+ * signal DEPLOYMENT_GUIDE.md's Troubleshooting section already uses
+ * ("Web app shows BOOTSTRAP after already deploying" ⇒ INDEX_ID missing).
+ *
  * @param  {GoogleAppsScript.Events.DoGet} e
  * @returns {HtmlOutput}
  */
 function doGet(e) {
-  return HtmlService
-    .createHtmlOutputFromFile('8_WebApp_UI')
+  const indexId  = PropertiesService.getScriptProperties().getProperty('INDEX_ID');
+  const template = HtmlService.createTemplateFromFile('8_WebApp_UI');
+  template.mode  = indexId ? 'OPERATIONAL' : 'BOOTSTRAP';
+
+  return template.evaluate()
     .setTitle('KOS v8.0 — Active Brain Trust')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL)
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0, maximum-scale=1.0');
@@ -199,6 +223,28 @@ function getSystemHealth() {
       triggersActive:   triggers.length,
       triggerList:      triggers,
     };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+
+/**
+ * Returns the Drive URL of 03.5_INBOUND_SESSIONS — the folder-drop
+ * target for large payloads that exceed the web app's direct-paste
+ * threshold. Populates the Ingest tab's drop-panel link
+ * (reconciliation decision 3).
+ *
+ * Called by the web app via:
+ *   google.script.run.withSuccessHandler(fn).getInboundFolderUrl()
+ *
+ * @returns {Object} { success, url?, message? }
+ */
+function getInboundFolderUrl() {
+  try {
+    const folder = _getSystemAsset(
+      CFG.INBOUND_SESSIONS_FOLDER, 'ID_03_5_INBOUND_SESSIONS', true);
+    return { success: true, url: folder.getUrl() };
   } catch (e) {
     return { success: false, message: e.message };
   }

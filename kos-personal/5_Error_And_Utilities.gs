@@ -698,8 +698,256 @@ function _seedCoreThesisDoc(a, deployType) {
 
 
 // ================================================================
+// SHADOW MATRIX (reconciliation decision 1)
+// ================================================================
+//
+// Implements the shadow matrix described in kos-personal/README.md's
+// "Architecture in Two Paragraphs" and fully specified in
+// SCHEMA_REFERENCE.md's "Shadow Matrix JSON Shape" — previously
+// documented in detail but absent from every delivered file.
+//
+// Maintains confidence intervals for 5 operator values, updated
+// passively from each processed session's `alignment_observations`
+// (see STUDIO_INTEGRATION_SPEC.md Step 5). Stored as a single JSON
+// blob under PropertiesService key KOS_SHADOW_MATRIX, matching the
+// pattern already used for KOS_PROMOTED_VECTORS and COUNCIL_LAST_RUN.
+// ================================================================
+
+const SHADOW_QUESTIONS = ['admin_ghost', 'relational_targets', 'necessary_struggle', 'prime_directive', 'temporal_constraints'];
+
+const SHADOW_LABELS = {
+  admin_ghost:          'Admin Ghost',
+  relational_targets:   'Relational Targets',
+  necessary_struggle:   'Necessary Struggle',
+  prime_directive:      'Prime Directive',
+  temporal_constraints: 'Temporal Constraints',
+};
+
+// Maps a shadow question to the existing CFG.PROP key it auto-populates
+// once VERIFIED, per README.md: "At 0.75 confidence, a value is marked
+// VERIFIED and auto-populated into the system's operator properties."
+// Only questions with a direct 1:1 onboarding-property equivalent are
+// listed — prime_directive and temporal_constraints have no matching
+// operator property today, so they live in the shadow matrix only.
+const SHADOW_TO_PROP = {
+  admin_ghost:        CFG.PROP.ADMIN_GHOST,
+  relational_targets: CFG.PROP.RELATIONAL_TARGETS,
+  necessary_struggle: CFG.PROP.NECESSARY_STRUGGLE,
+};
+
+/**
+ * Classifies a confidence score per SCHEMA_REFERENCE.md's thresholds:
+ * UNKNOWN (0.0–0.09), HYPOTHESIZED (0.10–0.74), VERIFIED (0.75–1.0).
+ * The VERIFIED cutoff is CFG.SHADOW_VERIFY_THRESHOLD, not hardcoded.
+ *
+ * @param  {number} confidence  0.0–1.0
+ * @returns {string}            'UNKNOWN' | 'HYPOTHESIZED' | 'VERIFIED'
+ */
+function _classifyShadowStatus(confidence) {
+  if (confidence >= CFG.SHADOW_VERIFY_THRESHOLD) return 'VERIFIED';
+  if (confidence >= 0.10) return 'HYPOTHESIZED';
+  return 'UNKNOWN';
+}
+
+/**
+ * Reads the shadow matrix from PropertiesService, initializing any
+ * missing question to the UNKNOWN baseline shape from SCHEMA_REFERENCE.md.
+ *
+ * @returns {Object}  { [question]: { inferred_value, confidence, status, evidence_count, last_updated } }
+ */
+function _readShadowMatrix() {
+  let matrix = {};
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty('KOS_SHADOW_MATRIX');
+    if (raw) matrix = JSON.parse(raw);
+  } catch (e) {
+    console.warn('[ShadowMatrix] Stored matrix corrupt — resetting. ' + e.message);
+    matrix = {};
+  }
+  SHADOW_QUESTIONS.forEach(q => {
+    if (!matrix[q]) {
+      matrix[q] = { inferred_value: '', confidence: 0, status: 'UNKNOWN', evidence_count: 0, last_updated: '' };
+    }
+  });
+  return matrix;
+}
+
+/**
+ * Applies one session's `alignment_observations` (STUDIO_INTEGRATION_SPEC.md
+ * Step 5) to the shadow matrix: adds each confidence_delta (never negative,
+ * capped at 1.0 per question, max +0.15/session per the spec), updates
+ * inferred_value when a new non-null signal string is present, bumps
+ * evidence_count when a positive delta was applied, and re-classifies
+ * status. When a question crosses into VERIFIED, auto-populates the
+ * corresponding operator property (SHADOW_TO_PROP) — but only if that
+ * property isn't already set, so explicit onboarding answers are never
+ * silently overwritten by an inferred one.
+ *
+ * Called by processIntakePayload (3_Queue_Processor.gs) after every
+ * successful intake. Non-fatal — caller wraps this in try/catch.
+ *
+ * @param {Object} observations  pd.alignment_observations from the
+ *                                inference payload. No-ops if absent.
+ */
+function _updateShadowMatrix(observations) {
+  if (!observations) return;
+  const deltas = observations.confidence_deltas || {};
+  const props  = PropertiesService.getScriptProperties();
+  const matrix = _readShadowMatrix();
+  const ts     = new Date().toISOString();
+
+  const signalKeyFor = {
+    admin_ghost:          'admin_ghost_signal',
+    relational_targets:   'relational_signal',
+    necessary_struggle:   'necessary_struggle_signal',
+    prime_directive:      'prime_directive_signal',
+    temporal_constraints: 'temporal_signal',
+  };
+
+  SHADOW_QUESTIONS.forEach(q => {
+    const rawDelta = parseFloat(deltas[q]) || 0;
+    // Per spec: confidence only increases, never decreases; cap 0.15/session.
+    const delta = Math.max(0, Math.min(rawDelta, 0.15));
+
+    const entry = matrix[q];
+    if (delta > 0) {
+      entry.confidence      = Math.min(1, parseFloat((entry.confidence + delta).toFixed(4)));
+      entry.evidence_count  = (entry.evidence_count || 0) + 1;
+      entry.last_updated    = ts;
+    }
+
+    const signal = observations[signalKeyFor[q]];
+    if (signal && typeof signal === 'string' && signal.trim()) {
+      entry.inferred_value = signal.trim();
+    }
+
+    const wasVerified = entry.status === 'VERIFIED';
+    entry.status = _classifyShadowStatus(entry.confidence);
+
+    // Auto-populate the matching operator property on first VERIFIED —
+    // only if the operator hasn't already set it explicitly.
+    if (!wasVerified && entry.status === 'VERIFIED' && SHADOW_TO_PROP[q]) {
+      const propKey = SHADOW_TO_PROP[q];
+      if (propKey && !props.getProperty(propKey) && entry.inferred_value) {
+        props.setProperty(propKey, entry.inferred_value);
+        console.log('[ShadowMatrix] ' + q + ' VERIFIED — auto-populated ' + propKey);
+      }
+    }
+  });
+
+  props.setProperty('KOS_SHADOW_MATRIX', JSON.stringify(matrix));
+}
+
+/**
+ * Returns the shadow matrix state for the web app Diagnostics tab
+ * (the "Ambient Calibration" section and header engine-mode dot).
+ *
+ * engine_mode:
+ *   CALIBRATED — engine armed via Socratic Onboarding / completeOnboarding
+ *   LEARNING   — not armed, but at least one shadow question has evidence
+ *   COLD       — not armed, no shadow evidence yet
+ *
+ * Called by the web app via:
+ *   google.script.run.withSuccessHandler(fn).getShadowMatrixStatus()
+ *
+ * @returns {Object} { success, engine_mode, all_verified, questions[] }
+ */
+function getShadowMatrixStatus() {
+  try {
+    const props   = PropertiesService.getScriptProperties();
+    const armed   = !!props.getProperty('IDENTITY_KEY') &&
+                     props.getProperty(CFG.PROP.THESIS_VERIFIED) === 'true';
+    const matrix  = _readShadowMatrix();
+
+    const questions = SHADOW_QUESTIONS.map(q => ({
+      key:        q,
+      label:      SHADOW_LABELS[q],
+      confidence: matrix[q].confidence,
+      status:     matrix[q].status,
+      inferred:   matrix[q].inferred_value || '',
+    }));
+
+    const hasEvidence = SHADOW_QUESTIONS.some(q => (matrix[q].evidence_count || 0) > 0);
+    const allVerified = SHADOW_QUESTIONS.every(q => matrix[q].status === 'VERIFIED');
+
+    const engineMode = armed ? 'CALIBRATED' : (hasEvidence ? 'LEARNING' : 'COLD');
+
+    return { success: true, engine_mode: engineMode, all_verified: allVerified, questions };
+
+  } catch (e) {
+    _reportError('getShadowMatrixStatus', e, null);
+    return { success: false, message: e.message };
+  }
+}
+
+
+// ================================================================
 // ONBOARDING HELPERS
 // ================================================================
+
+/**
+ * Headless counterpart to runSocraticOnboarding() (9_UI_Diagnostics.gs)
+ * — the deployed standalone web app has no bound-spreadsheet UI context
+ * for ui.prompt(), so this JSON-payload version is the only viable
+ * onboarding path for the real product surface (reconciliation decision 3).
+ *
+ * Called by the web app via:
+ *   google.script.run
+ *     .withSuccessHandler(fn)
+ *     .completeOnboarding({ deployType, role, audience, vision,
+ *                           adminGhost, struggle, targets, passphrase, adminEmail })
+ *
+ * @param  {Object} payload  Form fields from the "Arm Engine" modal (8_WebApp_UI.html).
+ * @returns {Object} { success, message }
+ */
+function completeOnboarding(payload) {
+  try {
+    const p = payload || {};
+    if (!p.role || !p.role.trim())       return { success: false, message: 'Role is required.' };
+    if (!p.vision || !p.vision.trim())   return { success: false, message: '90-Day Vision is required.' };
+    if (!p.passphrase)                   return { success: false, message: 'Passphrase is required.' };
+
+    const props = PropertiesService.getScriptProperties();
+    const dt = ['INDIVIDUAL', 'EDUCATOR', 'COMMERCIAL'].includes((p.deployType || '').toUpperCase())
+      ? p.deployType.toUpperCase() : 'INDIVIDUAL';
+
+    props.setProperty('IDENTITY_KEY_SALT', p.passphrase);
+    props.setProperty(CFG.PROP.DEPLOYMENT_TYPE,   dt);
+    props.setProperty(CFG.PROP.OPERATOR_ROLE,     p.role.trim());
+    props.setProperty(CFG.PROP.OPERATOR_AUDIENCE, (p.audience  || '').trim());
+    props.setProperty(CFG.PROP.ADMIN_GHOST,       (p.adminGhost || '').trim());
+    props.setProperty(CFG.PROP.NECESSARY_STRUGGLE,(p.struggle  || '').trim());
+    props.setProperty(CFG.PROP.RELATIONAL_TARGETS,(p.targets   || '').trim());
+    props.setProperty(CFG.PROP.VISION_90_DAY,     p.vision.trim());
+
+    if (p.adminEmail && p.adminEmail.trim()) {
+      props.setProperty('KOS_ADMIN_EMAIL', p.adminEmail.trim());
+    }
+
+    Object.entries(_inferCalibrationWeights(p.role)).forEach(([k, v]) => {
+      if (!props.getProperty(k)) props.setProperty(k, String(v));
+    });
+
+    _seedCoreThesisDoc({
+      role: p.role, audience: p.audience, adminGhost: p.adminGhost,
+      struggle: p.struggle, targets: p.targets, vision: p.vision,
+    }, dt);
+    generateIdentityKey();
+
+    props.setProperty(CFG.PROP.THESIS_VERIFIED, 'true');
+    props.setProperty(CFG.PROP.ONBOARDING_DAY,  '1');
+    props.setProperty(CFG.PROP.ONBOARDING_START, new Date().toISOString());
+    _logOnboardingDay(1, 'WEB_ONBOARDING_COMPLETE', p.vision);
+
+    console.log('[completeOnboarding] Engine armed via web app. Deployment: ' + dt);
+    return { success: true, message: 'Engine armed. Day 1 of ' + CFG.ONBOARDING_DAYS + '.' };
+
+  } catch (e) {
+    _reportError('completeOnboarding', e, null);
+    return { success: false, message: e.message };
+  }
+}
+
 
 /**
  * Increments the onboarding day counter in PropertiesService and

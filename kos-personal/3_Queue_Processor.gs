@@ -353,6 +353,12 @@ function processIntakePayload(rawJSONPayload) {
       }
     }
 
+    // ── SHADOW MATRIX — passive calibration (reconciliation decision 1) ──
+    // Non-fatal: a bad/missing alignment_observations block should never
+    // fail the whole intake, matching how every other branch above degrades.
+    try { _updateShadowMatrix(pd.alignment_observations); }
+    catch (shadowErr) { console.warn('[processIntakePayload] Shadow matrix update failed: ' + shadowErr.message); }
+
     // ── VECTOR ROUTER ────────────────────────────────────────────
     // BUG-01 FIX: call _routeVectorWeightsInternal directly
     // (not routeVectorWeights) since this function holds the lock.
@@ -430,6 +436,91 @@ function getQueueStatus() {
 
   } catch (e) {
     _reportError('getQueueStatus', e, null);
+    return { success: false, message: e.message };
+  }
+}
+
+
+/**
+ * Returns live status counts for the web app Queue tab, in the shape
+ * 8_WebApp_UI.html actually expects (reconciliation decision 3) —
+ * `{queued, pending, active, needs_review, needs_curator, processed}`
+ * rather than getQueueStatus()'s `{pending, ready, needs_curator, processed}`.
+ *
+ * Status → bucket mapping:
+ *   queued        = PENDING_FLOW        (waiting for the Turnstile)
+ *   active        = STUDIO_ACTIVE + FLOW_COMPLETE (the engine currently
+ *                   owns these rows — either Studio is working on them,
+ *                   or Studio finished and the queue processor hasn't
+ *                   drained them yet)
+ *   needs_review  = NEEDS_CURATOR
+ *   processed     = PROCESSED + INTAKE_PROCESSED
+ *
+ * `pending` and `needs_curator` are included as aliases of `queued` and
+ * `needs_review` respectively — 8_WebApp_UI.html's renderQueue() reads
+ * either name (`c.queued ?? c.pending`, `c.needs_review ?? c.needs_curator`).
+ * FAILED_PARSE rows are intentionally excluded, same as getQueueStatus().
+ *
+ * No `managed_service` field — see reconciliation decision 3: no vendor
+ * billing relationship exists anywhere in this system, so the HTML's
+ * former "Managed Inference" credits panel has been removed entirely
+ * rather than given a fake data source.
+ *
+ * Called by the web app via:
+ *   google.script.run.withSuccessHandler(renderQueue).getQueueMetrics()
+ *
+ * @returns {Object} { success, counts, needs_curator[], total, last_updated }
+ */
+function getQueueMetrics() {
+  try {
+    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+    const SC      = CFG.STAGING_COLS;
+
+    let queued = 0, active = 0, needsReview = 0, processed = 0;
+    const needsCuratorRows = [];
+
+    if (staging.getLastRow() > 1) {
+      const data = staging
+        .getRange(2, 1, staging.getLastRow() - 1, 7)
+        .getValues();
+
+      data.forEach(row => {
+        const s = String(row[SC.STATUS]);
+        if      (s === 'PENDING_FLOW')                               queued++;
+        else if (s === 'STUDIO_ACTIVE' || s === 'FLOW_COMPLETE')     active++;
+        else if (s === 'NEEDS_CURATOR')                              needsReview++;
+        else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      processed++;
+        // FAILED_PARSE, ERROR rows intentionally excluded — same as getQueueStatus()
+
+        if (s === 'NEEDS_CURATOR') {
+          needsCuratorRows.push({
+            uid:     String(row[SC.PAYLOAD_UID]),
+            type:    String(row[SC.PAYLOAD_TYPE]),
+            url:     String(row[SC.DOC_URL]),
+            retries: parseInt(row[SC.RETRY_COUNT]) || 0,
+          });
+        }
+      });
+    }
+
+    const counts = {
+      queued, pending: queued,
+      active,
+      needs_review: needsReview, needs_curator: needsReview,
+      processed,
+    };
+
+    return {
+      success:       true,
+      counts,
+      needs_curator: needsCuratorRows,
+      total:         queued + active + needsReview + processed,
+      last_updated:  new Date().toLocaleTimeString(),
+    };
+
+  } catch (e) {
+    _reportError('getQueueMetrics', e, null);
     return { success: false, message: e.message };
   }
 }

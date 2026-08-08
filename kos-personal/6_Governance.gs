@@ -66,16 +66,12 @@
  * on BRAIN_TRUST_INDEX. Safe to call multiple times — removes
  * the existing trigger before re-creating.
  *
- * Add a call to this function inside setupAllTriggers() in
- * 1_Config_And_Deploy.gs for fully automated deployment:
- *
- *   tryInstall('onGovernanceEdit', () => {
- *     const indexId = props.getProperty('INDEX_ID');
- *     if (!indexId) throw new Error('INDEX_ID not set');
- *     ScriptApp.newTrigger('onGovernanceEdit')
- *       .forSpreadsheet(SpreadsheetApp.openById(indexId))
- *       .onEdit().create();
- *   });
+ * NOTE: setupAllTriggers() in 1_Config_And_Deploy.gs now installs this
+ * same trigger directly as part of its normal 10-trigger pass (see
+ * reconciliation decision 1 — the trigger-count mismatch this function's
+ * old docstring described is resolved). This standalone function is kept
+ * for manual re-install from the Apps Script editor if the trigger is
+ * ever orphaned without wanting to re-run all of setupAllTriggers().
  */
 function installGovernanceTrigger() {
   try {
@@ -501,6 +497,160 @@ function triggerCouncilSimulation() {
     return { success: false, message: e.message };
   } finally {
     lock.releaseLock();
+  }
+}
+
+
+// ================================================================
+// DAILY PRIMER — TIME-DRIVEN + WEB APP ENTRY POINT
+// ================================================================
+
+/**
+ * Assembles the current vector state, shadow matrix status, and the
+ * operator's 90-day vision into a session-ready context document,
+ * per README.md's "Architecture in Two Paragraphs" — "The daily primer
+ * assembles current vector state, shadow matrix status, and the
+ * operator's 90-day vision into a session-ready context document every
+ * morning at 06:00." Documented in SCHEMA_REFERENCE.md's Key Drive
+ * Documents table as `DAILY_PRIMER_YYYY-MM-DD` in 03.1_Current_State.
+ *
+ * Idempotent per day — re-running the same day overwrites that day's
+ * primer rather than creating duplicates.
+ *
+ * Called by the web app via:
+ *   google.script.run.withSuccessHandler(fn).generateDailyPrimer()
+ *
+ * Fires: daily at 06:00 via time-driven trigger (setupAllTriggers).
+ *
+ * @returns {Object} { success, docName, docUrl, message }
+ */
+function generateDailyPrimer() {
+  try {
+    _coldEngineGate('generateDailyPrimer', 'TIER_1');
+
+    const props     = PropertiesService.getScriptProperties();
+    const folderId  = props.getProperty('ID_03_1_CURRENT_STATE');
+    if (!folderId) {
+      throw new Error('ID_03_1_CURRENT_STATE not set. Run deployFullSystem().');
+    }
+    const folder = DriveApp.getFolderById(folderId);
+
+    const dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    const docName = 'DAILY_PRIMER_' + dateStr;
+
+    // Idempotent: remove today's primer if this already ran once today.
+    const existing = folder.getFilesByName(docName);
+    while (existing.hasNext()) existing.next().setTrashed(true);
+
+    const vectorState = getVectorState();
+    const shadowState = getShadowMatrixStatus();
+    const vision       = props.getProperty(CFG.PROP.VISION_90_DAY) || 'Not defined';
+    const onboardingDay = props.getProperty(CFG.PROP.ONBOARDING_DAY) || '0';
+
+    const doc  = DocumentApp.create(docName);
+    const dId  = doc.getId();
+    const body = doc.getBody();
+
+    body.appendParagraph('DAILY PRIMER — ' + dateStr)
+        .setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    body.appendParagraph('Onboarding Day ' + onboardingDay + ' of ' + CFG.ONBOARDING_DAYS);
+
+    body.appendParagraph('90-Day Vision').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph(vision);
+
+    body.appendParagraph('Vector State').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    if (vectorState.success && vectorState.vectors.length > 0) {
+      vectorState.vectors.forEach(v =>
+        body.appendListItem(v.name + ': ' + v.score.toFixed(2))
+      );
+    } else {
+      body.appendParagraph('No sessions processed yet.');
+    }
+
+    body.appendParagraph('Shadow Matrix — Calibration Status')
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    if (shadowState.success) {
+      body.appendParagraph('Engine mode: ' + shadowState.engine_mode);
+      shadowState.questions.forEach(q =>
+        body.appendListItem(
+          q.label + ': ' + q.status + ' (' + Math.round(q.confidence * 100) + '%)' +
+          (q.inferred ? ' — ' + q.inferred : '')
+        )
+      );
+    } else {
+      body.appendParagraph('Shadow matrix unavailable.');
+    }
+
+    doc.saveAndClose();
+    DriveApp.getFileById(dId).moveTo(folder);
+    const docUrl = DriveApp.getFileById(dId).getUrl();
+
+    console.log('[generateDailyPrimer] Created: ' + docName);
+    return { success: true, docName, docUrl, message: 'Daily primer saved to 03.1_CURRENT_STATE.' };
+
+  } catch (e) {
+    _reportError('generateDailyPrimer', e, null);
+    return { success: false, message: e.message };
+  }
+}
+
+
+// ================================================================
+// AUTO-COUNCIL CHECK — TIME-DRIVEN ENTRY POINT
+// ================================================================
+
+/**
+ * Fires the sequestered/simulated council automatically once
+ * CFG.COUNCIL_AUTO_TRIGGER_SESSIONS sessions have been processed since
+ * the last council run, per README.md's documented auto-council trigger
+ * (previously unbuilt — see reconciliation decision 1).
+ *
+ * Counts SESSION_LOG rows with a Timestamp after COUNCIL_LAST_RUN rather
+ * than maintaining a separate counter, so it stays correct even if
+ * COUNCIL_LAST_RUN was also just updated by a manual triggerCouncilSimulation()
+ * run in the same window.
+ *
+ * Delegates to triggerCouncilSimulation() — that function's own stasis
+ * guard (CURRENT_STATE must have changed since the last run) still
+ * applies, so this can safely fire on every 2-hour tick without risking
+ * a duplicate council run when there is nothing new to review.
+ *
+ * Fires: every 2 hours via time-driven trigger (setupAllTriggers).
+ */
+function autoCouncilCheck() {
+  try {
+    _coldEngineGate('autoCouncilCheck', 'TIER_1');
+
+    const props      = PropertiesService.getScriptProperties();
+    const lastRunMs  = parseInt(props.getProperty('COUNCIL_LAST_RUN') || '0', 10);
+    const ss         = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const sessionLog = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
+
+    if (!sessionLog || sessionLog.getLastRow() <= 1) return;
+
+    const timestamps = sessionLog
+      .getRange(2, 2, sessionLog.getLastRow() - 1, 1)  // col B = Timestamp
+      .getValues()
+      .flat();
+
+    const newSessions = timestamps.filter(ts => {
+      const ms = new Date(ts).getTime();
+      return !isNaN(ms) && ms > lastRunMs;
+    }).length;
+
+    if (newSessions < CFG.COUNCIL_AUTO_TRIGGER_SESSIONS) {
+      console.log('[autoCouncilCheck] ' + newSessions + '/' + CFG.COUNCIL_AUTO_TRIGGER_SESSIONS + ' sessions — not yet due.');
+      return;
+    }
+
+    console.log('[autoCouncilCheck] ' + newSessions + ' sessions since last run — firing council.');
+    const result = triggerCouncilSimulation();
+    if (!result.success) {
+      console.log('[autoCouncilCheck] triggerCouncilSimulation declined: ' + result.message);
+    }
+
+  } catch (e) {
+    _reportError('autoCouncilCheck', e, null);
   }
 }
 

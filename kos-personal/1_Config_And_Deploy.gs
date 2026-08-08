@@ -76,8 +76,21 @@ const CFG = {
   },
   MAX_RETRIES: 3,
 
+  // ── Turnstile (reconciliation decision 2 / 10_Turnstile.gs) ────
+  TURNSTILE_CONCURRENCY: 1,   // max concurrent STUDIO_ACTIVE rows
+  TURNSTILE_STALE_MINS:  30,  // minutes before a stuck STUDIO_ACTIVE row resets
+
+  // ── Shadow Matrix (reconciliation decision 1 / 5_Error_And_Utilities.gs) ──
+  SHADOW_VERIFY_THRESHOLD: 0.75,  // confidence to mark a shadow question VERIFIED
+
+  // ── Auto-Council (reconciliation decision 1 / 6_Governance.gs) ──
+  COUNCIL_AUTO_TRIGGER_SESSIONS: 5,  // sessions between auto-council checks
+
   // ── Chunking ──────────────────────────────────────────────────
-  MAX_CHUNK_SIZE:           8000,
+  // 25000 per README.md's "Key Configuration" table and
+  // STUDIO_INTEGRATION_SPEC.md's Error Handling section (reconciliation
+  // decision 1 — was 8000 in the originally delivered file).
+  MAX_CHUNK_SIZE:           25000,
   DELIMITER:                '[🧠 RTP',
 
   // ── Vector Router ─────────────────────────────────────────────
@@ -260,6 +273,23 @@ function deployFullSystem() {
 }
 
 
+/**
+ * Web app Bootstrap-screen entry point. Thin alias for deployFullSystem()
+ * — the HTML client (8_WebApp_UI.html) calls executeBootstrap() by name
+ * on first load; the real deploy logic lives in deployFullSystem() above.
+ * Kept as a separate named function (rather than renaming the HTML call)
+ * so the "Bootstrap" concept in the UI has its own explicit entry point.
+ *
+ * Called by the web app via:
+ *   google.script.run.withSuccessHandler(fn).executeBootstrap()
+ *
+ * @returns {Object} Same shape as deployFullSystem(): { success, log[], errors[] }
+ */
+function executeBootstrap() {
+  return deployFullSystem();
+}
+
+
 // ================================================================
 // TRIGGER MANAGEMENT
 // ================================================================
@@ -268,13 +298,18 @@ function deployFullSystem() {
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed:
+ * Triggers installed (10 total — matches DEPLOYMENT_GUIDE.md's
+ * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
+ *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
  *   processInferenceQueue         → every 10 min (time-driven)
- *   sendDailyErrorReport          → daily 08:00  (time-driven)
  *   runSemanticSweeper            → hourly        (time-driven)
  *   sweepRootForExhaust           → hourly        (time-driven)
+ *   sendDailyErrorReport          → daily 08:00  (time-driven)
+ *   generateDailyPrimer           → daily 06:00  (time-driven) — 6_Governance.gs
+ *   autoCouncilCheck              → every 2 hours (time-driven) — 6_Governance.gs
  *   sensor3_externalTelemetry     → onChange on BRAIN_TRUST_INDEX
+ *   onGovernanceEdit              → onEdit on BRAIN_TRUST_INDEX — 6_Governance.gs
  *
  * Note: Sensor 2 (COG_EXHAUST) is the doPost() web app endpoint —
  * it requires no installable trigger.
@@ -285,11 +320,15 @@ function setupAllTriggers() {
   const log = [];
   const KOS_TRIGGERS = [
     'sensor1_scanInboundSessions',
+    'runMatrixTurnstile',
     'processInferenceQueue',
-    'sendDailyErrorReport',
     'runSemanticSweeper',
     'sweepRootForExhaust',
+    'sendDailyErrorReport',
+    'generateDailyPrimer',
+    'autoCouncilCheck',
     'sensor3_externalTelemetry',
+    'onGovernanceEdit',
   ];
 
   // ── Clear existing KOS triggers ────────────────────────────
@@ -316,16 +355,16 @@ function setupAllTriggers() {
       .timeBased().everyMinutes(5).create()
   );
 
+  // ── Turnstile — every 5 min (10_Turnstile.gs) ──────────────
+  tryInstall('runMatrixTurnstile', () =>
+    ScriptApp.newTrigger('runMatrixTurnstile')
+      .timeBased().everyMinutes(5).create()
+  );
+
   // ── Queue Processor — every 10 min ─────────────────────────
   tryInstall('processInferenceQueue', () =>
     ScriptApp.newTrigger('processInferenceQueue')
       .timeBased().everyMinutes(10).create()
-  );
-
-  // ── Daily Error Report — 08:00 ─────────────────────────────
-  tryInstall('sendDailyErrorReport', () =>
-    ScriptApp.newTrigger('sendDailyErrorReport')
-      .timeBased().atHour(8).everyDays(1).create()
   );
 
   // ── Semantic Sweeper — hourly ───────────────────────────────
@@ -340,6 +379,24 @@ function setupAllTriggers() {
       .timeBased().everyHours(1).create()
   );
 
+  // ── Daily Error Report — 08:00 ─────────────────────────────
+  tryInstall('sendDailyErrorReport', () =>
+    ScriptApp.newTrigger('sendDailyErrorReport')
+      .timeBased().atHour(8).everyDays(1).create()
+  );
+
+  // ── Daily Primer — 06:00 (6_Governance.gs) ─────────────────
+  tryInstall('generateDailyPrimer', () =>
+    ScriptApp.newTrigger('generateDailyPrimer')
+      .timeBased().atHour(6).everyDays(1).create()
+  );
+
+  // ── Auto-Council Check — every 2 hours (6_Governance.gs) ───
+  tryInstall('autoCouncilCheck', () =>
+    ScriptApp.newTrigger('autoCouncilCheck')
+      .timeBased().everyHours(2).create()
+  );
+
   // ── Sensor 3 — onChange on BRAIN_TRUST_INDEX ───────────────
   // The onChange trigger must bind to the spreadsheet object.
   // Requires INDEX_ID to be set — safe to call after property registration.
@@ -349,6 +406,19 @@ function setupAllTriggers() {
     ScriptApp.newTrigger('sensor3_externalTelemetry')
       .forSpreadsheet(SpreadsheetApp.openById(indexId))
       .onChange()
+      .create();
+  });
+
+  // ── Governance — onEdit on BRAIN_TRUST_INDEX (6_Governance.gs) ──
+  // Previously only installed via a separate manual installGovernanceTrigger()
+  // call — folded in here so setupAllTriggers() installs all 10 documented
+  // triggers in one pass (see DEPLOYMENT_GUIDE.md Phase 9).
+  tryInstall('onGovernanceEdit', () => {
+    const indexId = PropertiesService.getScriptProperties().getProperty('INDEX_ID');
+    if (!indexId) throw new Error('INDEX_ID not set — run deployFullSystem first');
+    ScriptApp.newTrigger('onGovernanceEdit')
+      .forSpreadsheet(SpreadsheetApp.openById(indexId))
+      .onEdit()
       .create();
   });
 
@@ -368,10 +438,11 @@ function setupAllTriggers() {
  */
 function teardownAllTriggers() {
   const KOS_TRIGGERS = [
-    'sensor1_scanInboundSessions', 'processInferenceQueue',
-    'sendDailyErrorReport', 'runSemanticSweeper',
-    'sweepRootForExhaust', 'sensor3_externalTelemetry',
-    'onGovernanceEdit',  // governance trigger
+    'sensor1_scanInboundSessions', 'runMatrixTurnstile',
+    'processInferenceQueue', 'runSemanticSweeper',
+    'sweepRootForExhaust', 'sendDailyErrorReport',
+    'generateDailyPrimer', 'autoCouncilCheck',
+    'sensor3_externalTelemetry', 'onGovernanceEdit',
   ];
   let count = 0;
   ScriptApp.getProjectTriggers().forEach(t => {
