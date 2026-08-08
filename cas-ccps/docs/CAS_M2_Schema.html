@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAS Module 2 — Data Schema</title>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08090a;--ink:#0f1115;--surface:#14171c;--surface2:#1c2028;
+  --border:#252b35;--border2:#2f3847;
+  --text:#cdd5e0;--text-dim:#6b7a8d;--text-bright:#e8eef5;
+  --amber:#e8b84b;--amber-d:#c49a30;--amber-bg:rgba(232,184,75,0.08);--amber-border:rgba(232,184,75,0.2);
+  --teal:#3ecfb8;--teal-d:#28a090;--teal-bg:rgba(62,207,184,0.07);--teal-border:rgba(62,207,184,0.2);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,0.08);--violet-border:rgba(167,139,250,0.2);
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--green-border:rgba(74,222,128,0.2);
+  --rose:#f87171;--rose-bg:rgba(248,113,113,0.08);--rose-border:rgba(248,113,113,0.2);
+  --display:'Anybody',system-ui,sans-serif;
+  --body:'Literata',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--void);color:var(--text);font-size:15px;line-height:1.7;min-height:100vh;padding:0 0 80px}
+
+.topbar{background:rgba(8,9,10,0.96);border-bottom:1px solid var(--border);padding:0 56px;height:52px;display:flex;align-items:center;gap:24px;position:sticky;top:0;z-index:100}
+.topbar-brand{font-family:var(--display);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--amber)}
+.topbar-sep{width:1px;height:20px;background:var(--border)}
+.topbar-sub{font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+.topbar-links{margin-left:auto;display:flex;gap:0}
+.topbar-link{font-family:var(--mono);font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:0 14px;height:52px;display:flex;align-items:center;text-decoration:none;border-bottom:2px solid transparent;transition:color 0.15s}
+.topbar-link:hover{color:var(--teal)}
+
+.hero{padding:72px 56px 56px;border-bottom:1px solid var(--border)}
+.eyebrow{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:3px;text-transform:uppercase;margin-bottom:20px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:20px;height:1px;background:var(--teal)}
+.hero h1{font-family:var(--display);font-size:clamp(36px,5vw,64px);font-weight:800;line-height:0.95;letter-spacing:-2px;color:var(--text-bright);margin-bottom:20px}
+.hero h1 em{color:var(--teal);font-style:normal}
+.hero-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+.badge{font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:3px;font-weight:500}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border2)}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-violet{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+
+.page{max-width:1100px;margin:0 auto;padding:0 56px}
+
+.section{padding:56px 0;border-bottom:1px solid var(--border)}
+.section:last-child{border-bottom:none}
+.section-header{margin-bottom:36px}
+.section-header h2{font-family:var(--display);font-size:28px;font-weight:800;letter-spacing:-0.5px;color:var(--text-bright)}
+.section-header p{font-size:14px;color:var(--text-dim);margin-top:8px;max-width:600px;line-height:1.7}
+
+/* TAB BLOCK */
+.tab-block{margin-bottom:40px}
+.tab-title-row{display:flex;align-items:baseline;gap:16px;margin-bottom:6px}
+.tab-title{font-family:var(--display);font-size:20px;font-weight:800;color:var(--text-bright);letter-spacing:-0.3px}
+.tab-subtitle{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase}
+.tab-desc{font-size:13.5px;color:var(--text-dim);line-height:1.7;margin-bottom:16px;max-width:680px}
+
+/* SCHEMA TABLE */
+.schema{background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;width:100%}
+.schema-header{background:var(--surface2);border-bottom:1px solid var(--border);display:grid;padding:10px 20px;font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+.schema-header.cols-4{grid-template-columns:220px 80px 90px 1fr}
+.schema-header.cols-3{grid-template-columns:220px 80px 1fr}
+.schema-row{display:grid;padding:10px 20px;border-bottom:1px solid rgba(37,43,53,0.6);font-size:13px;align-items:baseline;line-height:1.55}
+.schema-row.cols-4{grid-template-columns:220px 80px 90px 1fr}
+.schema-row.cols-3{grid-template-columns:220px 80px 1fr}
+.schema-row:last-child{border-bottom:none}
+.schema-row.group-head{background:rgba(28,32,40,0.4);padding-top:14px;padding-bottom:6px}
+.schema-row.group-head .col-field{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
+
+.col-field{font-family:var(--mono);font-size:12px;color:var(--teal)}
+.col-type{font-family:var(--mono);font-size:11px;color:var(--violet)}
+.col-writer{font-family:var(--mono);font-size:11px;color:var(--amber)}
+.col-desc{color:var(--text-dim);font-size:13px}
+.col-note{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+
+/* CALLOUT */
+.callout{border-radius:4px;padding:14px 18px;margin:20px 0;display:flex;gap:12px;font-size:13.5px;line-height:1.65}
+.callout-icon{flex-shrink:0;margin-top:1px;font-size:15px}
+.callout-teal{background:var(--teal-bg);border-left:3px solid var(--teal);color:#2aaa96}
+.callout-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8a040}
+.callout-violet{background:var(--violet-bg);border-left:3px solid var(--violet);color:#9a7ef5}
+.callout-body strong{font-weight:600}
+
+/* ENUM BLOCK */
+.enum-block{background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:14px 18px;margin:10px 0;font-family:var(--mono);font-size:12px;line-height:2;color:var(--text-dim)}
+.enum-block .ev{color:var(--amber)}
+.enum-block .ec{color:var(--text-dim);font-style:italic;margin-left:8px}
+
+/* INDEX OVERVIEW */
+.index-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin-bottom:40px}
+.index-card{background:var(--surface);padding:24px 28px}
+.index-card h3{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text-bright);margin-bottom:6px}
+.index-card p{font-size:13px;color:var(--text-dim);line-height:1.65;margin-bottom:12px}
+.index-card .ic-meta{font-family:var(--mono);font-size:10px;color:var(--text-dim);display:flex;gap:10px;flex-wrap:wrap}
+
+/* COLUMN COUNT PILL */
+.col-count{font-family:var(--mono);font-size:10px;background:var(--surface2);border:1px solid var(--border2);border-radius:3px;padding:2px 8px;color:var(--text-dim);margin-left:4px}
+
+@media(max-width:800px){
+  .topbar{padding:0 20px}
+  .hero,.page{padding-left:20px;padding-right:20px}
+  .schema-header.cols-4,.schema-row.cols-4{grid-template-columns:1fr 1fr}
+  .index-grid{grid-template-columns:1fr}
+  .topbar-links{display:none}
+}
+</style>
+</head>
+<body>
+
+<div style="max-width:900px;margin:24px auto 0;padding:18px 24px;border:2px solid #c0392b;border-radius:8px;background:#fdecea;color:#7b241c;font-family:system-ui,sans-serif;font-size:14px;line-height:1.6">
+  <strong>⚠ RECONCILIATION NOTE —</strong> Every "Script 29" / "Script 30" /
+  "Script 31" reference in this document uses this module's own
+  pre-renumbering scheme. The actual checked-in files are
+  <code>scripts/31_PacingGuideManager.js</code>,
+  <code>scripts/32_CompetencyRubricImporter.js</code>, and
+  <code>scripts/33_ArtifactCompetencyBridge.js</code> — read every "29" as
+  31, "30" as 32, and "31" as 33. See the banner at the top of
+  <code>CAS_Module2_Documentation_v2.0.html</code> and
+  <code>cas-ccps/README.md</code> for the full reconciliation record.
+</div>
+
+
+<div class="topbar">
+  <span class="topbar-brand">CAS Platform</span>
+  <div class="topbar-sep"></div>
+  <span class="topbar-sub">Module 2 · Lightweight · Data Schema</span>
+  <div class="topbar-links">
+    <a class="topbar-link" href="#overview">Overview</a>
+    <a class="topbar-link" href="#lesson-context">LessonContext</a>
+    <a class="topbar-link" href="#competency-registry">CompetencyRegistry</a>
+    <a class="topbar-link" href="#alignment-log">AlignmentLog</a>
+    <a class="topbar-link" href="#notes">Notes</a>
+    <a class="topbar-link" href="#m2-full-tabs">Full Build Tabs</a>
+  </div>
+</div>
+
+<div class="hero">
+  <div class="eyebrow">Data Schema Reference</div>
+  <h1>Module 2 <em>Lightweight</em><br>Tab Definitions</h1>
+  <div class="hero-meta">
+    <span class="badge badge-teal">3 New Tabs</span>
+    <span class="badge badge-amber">Scripts 22 + 26</span>
+    <span class="badge badge-ghost">No Studio Flows</span>
+    <span class="badge badge-green">Additive — no M1 changes</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- OVERVIEW -->
+<div class="section" id="overview">
+  <div class="section-header">
+    <h2>Tab Overview</h2>
+    <p>Three new tabs added to the existing Central Ledger spreadsheet. No existing tabs are modified.</p>
+  </div>
+
+  <div class="index-grid">
+    <div class="index-card">
+      <h3>LessonContext</h3>
+      <p>One row per lesson submission. Written by Script 22 when the teacher submits the Lesson Context Form. The source of truth for what was taught, when, and why.</p>
+      <div class="ic-meta">
+        <span class="badge badge-teal">13 columns</span>
+        <span class="badge badge-ghost">Written by: S22</span>
+        <span class="badge badge-ghost">Read by: S26, S27</span>
+      </div>
+    </div>
+    <div class="index-card">
+      <h3>CompetencyRegistry</h3>
+      <p>One row per competency from the district framework. Set up once. Never written by any script after initial load — only read. Powers the form dropdown and the alignment log.</p>
+      <div class="ic-meta">
+        <span class="badge badge-amber">5 columns</span>
+        <span class="badge badge-ghost">Written by: Manual / S28</span>
+        <span class="badge badge-ghost">Read by: S22, S26</span>
+      </div>
+    </div>
+    <div class="index-card">
+      <h3>AlignmentLog</h3>
+      <p>Append-only. One row per lesson-competency pair — so one lesson with three competencies produces three rows. Accumulates automatically. Feeds end-of-term documentation export.</p>
+      <div class="ic-meta">
+        <span class="badge badge-violet">8 columns</span>
+        <span class="badge badge-ghost">Written by: S26</span>
+        <span class="badge badge-ghost">Read by: dashboard, export</span>
+      </div>
+    </div>
+    <div class="index-card" style="background:var(--ink)">
+      <h3 style="color:var(--text-dim)">No other tabs</h3>
+      <p>The lightweight build does not create WarmUpQueue, StudentProfiles, or ConceptMastery — those belong to the full Module 2 build. Module 1 tabs (ReviewQueue, STAGING_PIPELINE, etc.) are untouched.</p>
+      <div class="ic-meta">
+        <span class="badge badge-ghost">M1 tabs: read-only from M2 perspective</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Naming convention:</strong> Tab names use PascalCase to match the Module 1 pattern (ReviewQueue, STAGING_PIPELINE, etc.). The exception is STAGING_PIPELINE, which is all-caps to signal infrastructure. New tabs follow the mixed-case convention of operational tabs.</div>
+  </div>
+</div>
+
+<!-- LESSON CONTEXT -->
+<div class="section" id="lesson-context">
+  <div class="tab-block">
+    <div class="tab-title-row">
+      <div class="tab-title">LessonContext</div>
+      <div class="tab-subtitle">Central Ledger · one row per lesson</div>
+    </div>
+    <div class="tab-desc">Written by Script 22 on every Lesson Context Form submission. One row = one lesson = one day (or one multi-day unit, at teacher discretion). The row is never deleted — updated in place as status progresses from RECEIVED → FRAME_GENERATED → PUBLISHED.</div>
+
+    <table class="schema" style="width:100%">
+      <div class="schema-header cols-4"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
+
+      <div class="schema-row cols-4 group-head"><span class="col-field">── IDENTITY ──</span><span></span><span></span><span></span></div>
+      <div class="schema-row cols-4">
+        <span class="col-field">lesson_id</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">Auto-generated UUID. Format: <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">LES-{YYYYMMDD}-{4hex}</code>. Primary key. Used in AlignmentLog foreign key.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">teacher_email</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">Authenticated submitter email. Pulled from Session.getActiveUser() at form submit — not a form field. Used for routing to teacher-specific dashboard view.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">submitted_at</span>
+        <span class="col-type">DateTime</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">Server timestamp at row write. ISO 8601. Distinct from lesson_date — a teacher may submit Friday's lesson plan on Thursday evening.</span>
+      </div>
+
+      <div class="schema-row cols-4 group-head"><span class="col-field">── LESSON CONTENT (from form) ──</span><span></span><span></span><span></span></div>
+      <div class="schema-row cols-4">
+        <span class="col-field">lesson_date</span>
+        <span class="col-type">Date</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">The date this lesson is taught. Form field — teacher-entered. YYYY-MM-DD. Used as display label in all downstream views and the alignment log.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">period_or_class</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">Optional. Period name or class identifier (e.g. "Period 3", "AP Lang"). Allows a teacher with multiple sections to submit separate lesson contexts for the same date. Nullable — single-section teachers leave blank.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">activity_description</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">What students are doing today. Plain prose. Free-form. Not processed by any script in the lightweight build — consumed as-is by S27 (Lesson Frame Generator) when that script is built.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">learning_objective</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">What students can do by end of lesson that they couldn't at the start. Teacher's own language. Becomes the anchor for the Lesson Frame Document and the AlignmentLog objective field.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">key_vocabulary</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">Comma-separated terms. E.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">"irony, dramatic irony, situational irony"</code>. S22 trims whitespace but does not validate against any vocabulary list. Stored as-written.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">prior_lesson_connection</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">What last lesson covered that this one builds on. Free-form prose. Nullable — first lesson of a unit may leave blank. Used in Lesson Frame Document to make the learning progression explicit.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">competency_ids</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">Comma-separated competency IDs from CompetencyRegistry. E.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">"ELA-W-1,ELA-W-3"</code>. S22 validates each ID exists in CompetencyRegistry before writing — unknown IDs trigger a validation error returned to the form.</span>
+      </div>
+      <div class="schema-row cols-4"><span class="col-name">warm_up_generated</span><span class="col-type">Boolean</span><span class="col-writer">S24</span><span class="col-desc">Flag set by Script 24 when a WarmUpQueue row has been built for this lesson context. Prevents duplicate queue rows on re-runs. Empty until the 3:30am queue build runs.</span></div>
+
+      <div class="schema-row cols-4 group-head"><span class="col-field">── STATUS + PIPELINE ──</span><span></span><span></span><span></span></div>
+      <div class="schema-row cols-4">
+        <span class="col-field">status</span>
+        <span class="col-type">Enum</span>
+        <span class="col-writer">S22, S26</span>
+        <span class="col-desc">Lifecycle state of this lesson row. See enum values below.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">alignment_logged_at</span>
+        <span class="col-type">DateTime</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Timestamp when Script 26 successfully wrote AlignmentLog rows for this lesson. Null until processed. S26 uses this as its processed check — it skips rows where this field is populated.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">error_notes</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S22, S26</span>
+        <span class="col-desc">Human-readable error detail written by any script on validation failure. Null on success. Visible in admin health check. Never shown to students.</span>
+      </div>
+    </table>
+
+    <div style="margin-top:16px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">status enum</div>
+      <div class="enum-block">
+        <div><span class="ev">RECEIVED</span><span class="ec">→ S22 has written the row. S26 has not yet run.</span></div>
+        <div><span class="ev">ALIGNMENT_LOGGED</span><span class="ec">→ S26 has written AlignmentLog rows for this lesson.</span></div>
+        <div><span class="ev">FRAME_GENERATED</span><span class="ec">→ S27 has created the Lesson Frame Document (future build).</span></div>
+        <div><span class="ev">ERROR</span><span class="ec">→ A script encountered a failure. See error_notes. Retryable.</span></div>
+      </div>
+    </div>
+
+    <div class="callout callout-amber">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Why ALIGNMENT_LOGGED not COMPLETE?</strong> The lightweight build has two distinct downstream steps: alignment logging (S26, built now) and frame generation (S27, built later). Using separate status values means S26 can be deployed and running without waiting for S27, and the status column tells you exactly where each row is in the pipeline.</div>
+    </div>
+  </div>
+</div>
+
+<!-- COMPETENCY REGISTRY -->
+<div class="section" id="competency-registry">
+  <div class="tab-block">
+    <div class="tab-title-row">
+      <div class="tab-title">CompetencyRegistry</div>
+      <div class="tab-subtitle">Central Ledger · one row per competency · set up once</div>
+    </div>
+    <div class="tab-desc">The source of truth for the competency framework. Set up once from the district framework at the start of the year. Never modified by operational scripts — only read. A teacher with multiple courses may have multiple subjects in the same registry, filtered by the <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">subject</code> and <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">teacher_email</code> columns.</div>
+
+    <table class="schema" style="width:100%">
+      <div class="schema-header cols-4"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
+
+      <div class="schema-row cols-4">
+        <span class="col-field">competency_id</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">Manual / S28</span>
+        <span class="col-desc">Primary key. Short human-readable code. E.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">ELA-W-1</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">SCI-INQ-3</code>. No spaces. Validated against this registry when LessonContext form is submitted. Must be unique within the sheet.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">competency_text</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">Manual / S28</span>
+        <span class="col-desc">Full competency statement as written in the district framework. Pasted verbatim. This is the text that appears in the Alignment Log and any documentation exports.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">subject</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">Manual / S28</span>
+        <span class="col-desc">Subject area. E.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">ELA</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">Science</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">History</code>. Used to filter the Lesson Context Form dropdown to show only relevant competencies to each teacher.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">grade_band</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">Manual / S28</span>
+        <span class="col-desc">Grade range. E.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">9-10</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">11-12</code>. Nullable for frameworks that span all grades. Secondary filter for form dropdown.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">strand</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">Manual / S28</span>
+        <span class="col-desc">Competency category within subject. E.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">Writing</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">Reading</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">Speaking &amp; Listening</code>. Used in AlignmentLog coverage report to group competencies by domain.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">teacher_email</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">Manual / S28</span>
+        <span class="col-desc">Optional. If populated, this competency is only surfaced to this teacher's Lesson Context Form dropdown. Null = available to all teachers with matching subject. Enables subject-specific frameworks per teacher without separate sheets.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">active</span>
+        <span class="col-type">Boolean</span>
+        <span class="col-writer">Manual</span>
+        <span class="col-desc">Default TRUE. Set to FALSE to retire a competency without deleting it. Inactive competencies are excluded from the form dropdown but remain in AlignmentLog history. Preserves referential integrity.</span>
+      </div>
+    </table>
+
+    <div class="callout callout-violet">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>teacher_email is the lightweight alternative to a separate sheet per teacher.</strong> If you later run Module 2 for colleagues, their competency frameworks can coexist in the same registry tab, filtered by their email. No schema change required.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ALIGNMENT LOG -->
+<div class="section" id="alignment-log">
+  <div class="tab-block">
+    <div class="tab-title-row">
+      <div class="tab-title">AlignmentLog</div>
+      <div class="tab-subtitle">Central Ledger · one row per lesson-competency pair · append-only</div>
+    </div>
+    <div class="tab-desc">Script 26 writes one row here for every competency ID in a LessonContext row. A lesson with three competencies = three AlignmentLog rows, all sharing the same lesson_id foreign key. Append-only — rows are never updated or deleted. This is the artifact that becomes term-end documentation.</div>
+
+    <table class="schema" style="width:100%">
+      <div class="schema-header cols-4"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
+
+      <div class="schema-row cols-4 group-head"><span class="col-field">── IDENTITY ──</span><span></span><span></span><span></span></div>
+      <div class="schema-row cols-4">
+        <span class="col-field">log_id</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Auto-generated UUID for this specific log row. Format: <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">ALG-{YYYYMMDD}-{4hex}</code>. Not the lesson ID. Used if rows ever need to be referenced individually (e.g. in a future export function).</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">lesson_id</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Foreign key to LessonContext.lesson_id. All AlignmentLog rows produced from one lesson submission share the same lesson_id. Enables JOIN-style lookups between tabs.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">logged_at</span>
+        <span class="col-type">DateTime</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Server timestamp when S26 wrote this row. ISO 8601. Used for audit trail and as the sort key when generating coverage reports chronologically.</span>
+      </div>
+
+      <div class="schema-row cols-4 group-head"><span class="col-field">── DENORMALIZED LESSON FIELDS (for readable exports) ──</span><span></span><span></span><span></span></div>
+      <div class="schema-row cols-4">
+        <span class="col-field">lesson_date</span>
+        <span class="col-type">Date</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Copied from LessonContext at write time. Denormalized so the AlignmentLog tab is self-contained and readable without a JOIN. This is the field that appears in the end-of-term documentation report.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">teacher_email</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Copied from LessonContext. Denormalized. Enables filtering the alignment log by teacher without looking up the lesson_id in LessonContext first.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">learning_objective</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Copied from LessonContext. The human-readable description of what this lesson was for. Makes the log row meaningful in isolation — an administrator reading the export sees what was taught, not just a competency code.</span>
+      </div>
+
+      <div class="schema-row cols-4 group-head"><span class="col-field">── COMPETENCY FIELDS ──</span><span></span><span></span><span></span></div>
+      <div class="schema-row cols-4">
+        <span class="col-field">competency_id</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">The single competency this row represents. Foreign key to CompetencyRegistry.competency_id. One row per competency per lesson — multiple competencies produce multiple rows.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">competency_text</span>
+        <span class="col-type">Text</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Copied from CompetencyRegistry at write time. Full competency statement. Denormalized for the same reason as learning_objective — the export document should be self-contained, not dependent on another tab.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">strand</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S26</span>
+        <span class="col-desc">Copied from CompetencyRegistry. Used in the coverage report to group log rows by competency domain (Writing, Reading, etc.) and identify which strands have and haven't been addressed.</span>
+      </div>
+    </table>
+
+    <div class="callout callout-teal">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Why denormalize?</strong> The AlignmentLog is the export artifact. When an administrator asks for documentation of competency coverage, you want to be able to filter the AlignmentLog tab directly in Sheets and share it — not explain that they need to cross-reference two other tabs to understand what they're reading. Denormalization here is a deliberate product choice, not a schema mistake.</div>
+    </div>
+
+    <div class="callout callout-amber">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Append-only is the rule.</strong> S26 never updates or deletes AlignmentLog rows. If a teacher resubmits a lesson context with corrected competency IDs, S26 appends new rows and notes the correction in LessonContext.error_notes. The old rows remain for audit integrity. A future admin function can filter by logged_at to use the most recent mapping per lesson_id.</div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPLEMENTATION NOTES -->
+<div class="section" id="notes">
+  <div class="section-header">
+    <h2>Implementation Notes for Scripts 22 + 26</h2>
+    <p>Decisions that should be made before writing a line of code.</p>
+  </div>
+
+  <div style="display:grid;gap:1px;background:var(--border);margin-bottom:32px">
+
+    <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px">TAB CREATION</span>
+      <span style="color:var(--text-dim);line-height:1.7">Script 28 (setup wizard extension) should be the one that creates all three tabs with the correct headers. Scripts 22 and 26 should detect missing tabs and throw a clear error rather than attempting to create them — keeps setup concerns separated from operational concerns. For the lightweight build before S28 exists, a manual setup function in S22 is acceptable.</span>
+    </div>
+
+    <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px;border-top:1px solid var(--border)">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px">TRIGGER — S22</span>
+      <span style="color:var(--text-dim);line-height:1.7">onFormSubmit trigger installed by S22's self-registering trigger pattern (same as S05 in Module 1). The Lesson Context Form's submit fires S22. S22 validates, writes to LessonContext, sets status RECEIVED, then calls S26 directly (not via a queue) — lightweight build has no need for queue decoupling at this stage.</span>
+    </div>
+
+    <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px;border-top:1px solid var(--border)">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px">TRIGGER — S26</span>
+      <span style="color:var(--text-dim);line-height:1.7">Called directly by S22 after a successful LessonContext write. Also installable as a standalone time-based trigger (every 5 min) to catch any RECEIVED rows that S22 dropped on. S26 reads all LessonContext rows where alignment_logged_at is null and status is RECEIVED — idempotent, safe to run repeatedly.</span>
+    </div>
+
+    <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px;border-top:1px solid var(--border)">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px">VALIDATION</span>
+      <span style="color:var(--text-dim);line-height:1.7">S22 validates: (1) lesson_date is a valid date and not in the past by more than 30 days, (2) learning_objective is non-empty, (3) every ID in competency_ids exists in CompetencyRegistry with active=TRUE. Validation failure writes status=ERROR and error_notes, and returns a user-facing error to the form response. Does not write to AlignmentLog.</span>
+    </div>
+
+    <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px;border-top:1px solid var(--border)">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px">DEDUP</span>
+      <span style="color:var(--text-dim);line-height:1.7">If a teacher resubmits the same lesson (same teacher_email + lesson_date + period_or_class), S22 creates a new row with a new lesson_id rather than updating the original. The old row's status becomes SUPERSEDED (add this to the enum). S26 skips SUPERSEDED rows. This preserves history and avoids update-in-place complexity in the lightweight build.</span>
+    </div>
+
+    <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px;border-top:1px solid var(--border)">
+      <span style="font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px">CONFIG</span>
+      <span style="color:var(--text-dim);line-height:1.7">Module 2 config values go in the existing _CONFIG tab (Script 19 pattern). New keys: <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">M2_LESSON_CONTEXT_FORM_ID</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">M2_ENABLED</code>, <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">M2_DEFAULT_SUBJECT</code>. Same getConfig_() reader — no new config infrastructure needed.</span>
+    </div>
+
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Column order matters.</strong> Sheets doesn't enforce schema — the column positions in the actual tab must match what the scripts expect. Establish a canonical column order now and document it as the header row. Both S22 and S26 should write by column name (using a header lookup pattern) rather than by hardcoded column index, same pattern as Module 1.</div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<footer style="background:var(--surface);border-top:1px solid var(--border);padding:36px 56px;margin-top:0;font-family:var(--mono);font-size:11px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;flex-wrap:gap">
+  <span>CAS Platform · Module 2 Lightweight · Data Schema v1.0</span>
+  <span>Next: Script 22 — LessonContextHandler</span>
+</footer>
+
+<div id="m2-full-tabs" style="background:var(--surface);border-top:2px solid var(--sky);padding:48px;margin-top:0">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--sky,#38bdf8);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">Module 2 Full Build — Additional Tabs</div>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:20px">The following tabs are created during Module 2 Full Build (warm-ups). They are not part of the Lightweight build. Full schemas in <code style="font-family:var(--mono)">CAS_M2_WarmUp_Schema.html</code>.</p>
+  <div style="display:grid;gap:12px">
+    <div style="background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:16px 20px">
+      <div style="font-family:var(--mono);font-size:12px;color:var(--teal);margin-bottom:6px">PacingGuide <span style="color:var(--text-dim);font-size:10px">— 16 columns — read-only after import</span></div>
+      <p style="font-size:13px;color:var(--text-dim);line-height:1.7">20-unit pacing guide imported from <code style="font-family:var(--mono)">PacingGuide_CAS_Context.json</code> by Script 29. Key fields: <code style="font-family:var(--mono)">lesson_unit_id</code> · <code style="font-family:var(--mono)">approx_start</code> · <code style="font-family:var(--mono)">approx_end</code> · <code style="font-family:var(--mono)">warmup_anchor</code> · <code style="font-family:var(--mono)">prior_lesson_connection</code> · competency_ids per course. Drives unit resolution for shadow matrix and warm-up anchor seeds for Flow 3.</p>
+    </div>
+    <div style="background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:16px 20px">
+      <div style="font-family:var(--mono);font-size:12px;color:var(--teal);margin-bottom:6px">CompetencyRubrics <span style="color:var(--text-dim);font-size:10px">— 8 columns — 221 rows — read-only after import</span></div>
+      <p style="font-size:13px;color:var(--text-dim);line-height:1.7">221 competency rubrics imported from <code style="font-family:var(--mono)">CompetencyRubrics.json</code> by Script 30. Extracted from two Canvas Common Cartridges (courses 8175 + 8177). Key fields: <code style="font-family:var(--mono)">competency_id</code> · <code style="font-family:var(--mono)">demonstration_indicators</code> (JSON array) · <code style="font-family:var(--mono)">skill_questions</code> (JSON array, avg 4.9 per competency). Script 24 embeds rubrics in WarmUpQueue snapshots via <code style="font-family:var(--mono)">addRubricsToSnapshot_()</code>. Resolves sparse context — Flow 3 always has structured skill questions regardless of lesson context detail.</p>
+    </div>
+    <div style="background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:16px 20px">
+      <div style="font-family:var(--mono);font-size:12px;color:var(--amber);margin-bottom:6px">TeacherMatrix — new column: competency_ids</div>
+      <p style="font-size:13px;color:var(--text-dim);line-height:1.7">The Teacher Matrix (Module 1, Script 16) gets one new column added by Script 31: <code style="font-family:var(--mono)">competency_ids</code> (comma-separated IDs, e.g. "8177-47,8177-52"). Run <code style="font-family:var(--mono)">addCompetencyIdsColumn_()</code> once. The teacher tags each assignment with the competencies it addresses. Script 31 reads this at 3:05am to compute per-student competency coverage from completed work artifacts.</p>
+    </div>
+  </div>
+</div>
+<div style="background:var(--surface);border-top:2px solid var(--violet);padding:48px;margin-top:0">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">CompetencyRubrics — July 2026 enrichment</div>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;max-width:800px;margin-bottom:16px">Three new fields added to every rubric entry following extraction from both VDOE official standards files.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:12.5px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;font-family:var(--display);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Field</th>
+      <th style="padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;font-family:var(--display);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Coverage</th>
+      <th style="padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;font-family:var(--display);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Notes</th>
+    </tr></thead>
+    <tbody style="color:var(--text-dim)">
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--violet)">sol_correlations</td>
+        <td style="padding:8px 14px">197 / 221</td>
+        <td style="padding:8px 14px">Subject-keyed SOL code object. English: 117, History &amp; SS: 75 (normalized from singular/plural variants), Math: 16, Science: 12. Sources: 8175 printable version (uploaded) + 8177 printable version (embedded in Canvas management cartridge at <code style="font-family:var(--mono);font-size:10px">web_resources/Uploaded Media/</code>). 24 CTSO/WBL tasks have no SOL by VDOE design.</td>
+      </tr>
+      <tr style="border-bottom:1px solid var(--border)">
+        <td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--violet)">definition</td>
+        <td style="padding:8px 14px">197 / 221</td>
+        <td style="padding:8px 14px">Official VDOE definition text (the "Demonstration includes..." block). Previously only available as <code style="font-family:var(--mono);font-size:10px">demonstration_indicators</code> array — now also present as the original prose form.</td>
+      </tr>
+      <tr>
+        <td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--violet)">required</td>
+        <td style="padding:8px 14px">221 / 221</td>
+        <td style="padding:8px 14px">"R" for required, "O" for optional. Optional tasks carry "(O)" in the VDOE task number column. 8175: 6 optional. 8177: 6 optional. Script 31's artifact competency bridge should weight required competencies more heavily than optional ones in coverage calculations.</td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="background:var(--surface);border-top:2px solid var(--amber);padding:48px;margin-top:0">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">PacingGuide v2 — new fields</div>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;max-width:800px">Use <code style="font-family:var(--mono);font-size:12px">PacingGuide_CAS_Context_v2.json</code> for all imports. Rebuilt from the ten Stage lesson cards — warm-up anchors are now the full teacher-authored prompts. New fields per unit: <code style="font-family:var(--mono);font-size:11px">chain_node</code> · <code style="font-family:var(--mono);font-size:11px">esports_connection</code> · <code style="font-family:var(--mono);font-size:11px">vocabulary_with_definitions</code> (array with definitions, not just term strings). Script 29 requires a schema patch before importing v2 — the PacingGuide tab column definitions and <code style="font-family:var(--mono);font-size:11px">validatePacingGuide()</code> need updating for the new fields.</p>
+</div>
+</body>
+</html>

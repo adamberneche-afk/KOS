@@ -18,6 +18,24 @@
 //   additive pattern as Module 2 and Module 4 — no existing field is
 //   renamed, removed, or repurposed.
 //
+// M6 ADDITION (marked ── M6 ──) — Known Gaps #2 (lesson_unit_id), fixed
+// per Round 2 reconciliation decision C1. One more column, appended after
+// the four M5 competency columns, same append-only convention:
+//   - 1 new TeacherMatrix column: LESSON_UNIT_ID
+//   - 1 new DraftUnits column: same
+//   - 1 new Confirmation Form field ("Lesson Unit" dropdown), added by
+//     16_UnifiedManualSetup_M6_ADDENDUM.js and 19_ClonedSheetConfig_M6_ADDENDUM.js
+//     — these two files remain unmerged patch addenda on top of their base
+//     files, same convention already used for M5 (see those files' own
+//     headers). This file (08) is the one file in the M5/M6 lineage where
+//     addenda ARE merged directly, matching how the M5 merge was already done here.
+//   - 1 new pre-fill entry in buildPrefilledUrl_(), also left BLANK —
+//     which unit a milestone belongs to is a teacher call, same reasoning
+//     as the M5 competency fields.
+//   "Module 6" here is a file-naming label only (matching the
+//   "_M6_ADDENDUM" suffix convention), not a new pedagogical module —
+//   there is no CAS_Module6_Documentation and none is planned.
+//
 // FIXED THIS VERSION:
 //   TM08 — missing comma after COURSE_NAME: 14, and COURSE_NAME was
 //   declared out of column order (listed first, indexed last). Both
@@ -117,6 +135,8 @@ const TM08 = {
   MILESTONE_2_COMPETENCY_ID: 16,
   MILESTONE_3_COMPETENCY_ID: 17,
   MILESTONE_4_COMPETENCY_ID: 18,
+  // ── M6 ── appended after the four M5 columns, same append-only pattern
+  LESSON_UNIT_ID: 19,
 };
 
 // ---------------------------------------------------------------------------
@@ -147,6 +167,8 @@ const DU08 = {
   MILESTONE_2_COMPETENCY_ID: 15,
   MILESTONE_3_COMPETENCY_ID: 16,
   MILESTONE_4_COMPETENCY_ID: 17,
+  // ── M6 ── appended after the four M5 columns, same append-only pattern
+  LESSON_UNIT_ID: 18,
 };
 
 // ---------------------------------------------------------------------------
@@ -212,6 +234,8 @@ function pollForNewDrafts() {
       "AWAITING_REVIEW",
       // ── M5 ── blank on creation, populated at confirmation
       "", "", "", "",
+      // ── M6 ── same — blank until the teacher picks a lesson unit
+      "",
     ]);
 
     // Build pre-filled confirmation form URL
@@ -282,6 +306,13 @@ function onTeacherConfirmSubmit(e) {
   const milestone3CompetencyId = r["Competency — Milestone 3"]?.[0]?.trim() || "";
   const milestone4CompetencyId = r["Competency — Milestone 4"]?.[0]?.trim() || "";
 
+  // ── M6 ── the lesson-unit tagging field, added by
+  // 16_UnifiedManualSetup_M6_ADDENDUM.js. Same storage shape as the four
+  // competency fields above — the raw "lesson_unit_id — lesson_unit_name"
+  // dropdown label is stored as-is, not split into id/name, matching how
+  // the M5 competency fields already do it.
+  const lessonUnitId = r["Lesson Unit"]?.[0]?.trim() || "";
+
   if (!draftId || !unitName) {
     Logger.log("[CONFIRM] Rejected — missing Draft ID or Unit Name.");
     return;
@@ -305,6 +336,12 @@ function onTeacherConfirmSubmit(e) {
       missingCompetencyFields.join(", ") +
       ". Evidence from this assignment will not be attributable to a " +
       "competency for the affected milestone(s) until corrected.");
+  }
+  // ── M6 ── same soft-validation treatment for the lesson unit field.
+  if (!lessonUnitId) {
+    Logger.log("[CONFIRM] WARNING — draft " + draftId +
+      " confirmed with no lesson unit selected. This assignment will not " +
+      "be attributable to a pacing-guide unit until corrected.");
   }
 
   const drafts = ss.getSheetByName("DraftUnits");
@@ -354,6 +391,8 @@ function onTeacherConfirmSubmit(e) {
       matrix.getRange(rowNum, TM08.MILESTONE_2_COMPETENCY_ID + 1).setValue(milestone2CompetencyId);
       matrix.getRange(rowNum, TM08.MILESTONE_3_COMPETENCY_ID + 1).setValue(milestone3CompetencyId);
       matrix.getRange(rowNum, TM08.MILESTONE_4_COMPETENCY_ID + 1).setValue(milestone4CompetencyId);
+      // ── M6 ──
+      matrix.getRange(rowNum, TM08.LESSON_UNIT_ID + 1).setValue(lessonUnitId);
       break;
     }
   }
@@ -366,6 +405,8 @@ function onTeacherConfirmSubmit(e) {
   drafts.getRange(draftRowIndex, DU08.MILESTONE_2_COMPETENCY_ID + 1).setValue(milestone2CompetencyId);
   drafts.getRange(draftRowIndex, DU08.MILESTONE_3_COMPETENCY_ID + 1).setValue(milestone3CompetencyId);
   drafts.getRange(draftRowIndex, DU08.MILESTONE_4_COMPETENCY_ID + 1).setValue(milestone4CompetencyId);
+  // ── M6 ──
+  drafts.getRange(draftRowIndex, DU08.LESSON_UNIT_ID + 1).setValue(lessonUnitId);
 
   // Notify teacher — plain language
   sendActivationEmail_(email, name, configId, unitName);
@@ -421,6 +462,13 @@ function buildPrefilledUrl_(formId, draftId, config) {
     [cfg.confirmEntryComp2, ""],
     [cfg.confirmEntryComp3, ""],
     [cfg.confirmEntryComp4, ""],
+    // ── M6 — same reasoning: which pacing-guide unit a milestone belongs
+    // to is the teacher's call, not inferred, so this is left blank too.
+    // Reads from cfg.confirmEntryLessonUnit, added by
+    // 19_ClonedSheetConfig_M6_ADDENDUM.js — degrades gracefully (omitted
+    // from the URL) until that addendum's key is configured, same as
+    // every other entry here.
+    [cfg.confirmEntryLessonUnit, ""],
   ];
 
   const params = entries
@@ -460,6 +508,8 @@ function sendReviewEmail_(email, name, configId, config, reviewUrl) {
     "Record (SCR) competency it addresses. This is required for all four\n" +
     "milestones — pick the closest match if a milestone covers more than one.\n" +
     "This selection is never guessed by the system; it's always your call.\n\n" +
+    "You'll also pick which pacing-guide lesson unit this assignment belongs\n" +
+    "to — also always your call, never guessed.\n\n" +
     "Looks right? Click below to confirm.\n" +
     "Need to change something? The form is pre-filled — just edit and submit.\n\n" +
     "REVIEW AND CONFIRM:\n" + reviewUrl + "\n\n" +

@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAS Module 2 — Warm-Up System · Data Schema v1.1</title>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08090a;--ink:#0f1115;--surface:#14171c;--surface2:#1c2028;
+  --border:#252b35;--border2:#2f3847;
+  --text:#cdd5e0;--text-dim:#6b7a8d;--text-bright:#e8eef5;
+  --amber:#e8b84b;--amber-bg:rgba(232,184,75,0.08);--amber-border:rgba(232,184,75,0.2);
+  --teal:#3ecfb8;--teal-bg:rgba(62,207,184,0.07);--teal-border:rgba(62,207,184,0.2);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,0.08);--violet-border:rgba(167,139,250,0.2);
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--green-border:rgba(74,222,128,0.2);
+  --rose:#f87171;--rose-bg:rgba(248,113,113,0.08);--rose-border:rgba(248,113,113,0.2);
+  --sky:#38bdf8;--sky-bg:rgba(56,189,248,0.07);--sky-border:rgba(56,189,248,0.2);
+  --display:'Anybody',system-ui,sans-serif;
+  --body:'Literata',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--void);color:var(--text);font-size:15px;line-height:1.75;min-height:100vh}
+
+/* ── NAV ── */
+.topnav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(8,9,10,0.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;display:flex;align-items:center;justify-content:space-between;height:54px}
+.topnav-brand{font-family:var(--display);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--sky)}
+.topnav-links{display:flex}
+.topnav-link{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:0 14px;height:54px;display:flex;align-items:center;text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s}
+.topnav-link:hover{color:var(--text-bright)}
+.topnav-link.active{color:var(--sky);border-bottom-color:var(--sky)}
+
+/* ── HERO ── */
+.hero{padding:130px 80px 80px;position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 15% 60%,rgba(56,189,248,0.05) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 85% 30%,rgba(167,139,250,0.04) 0%,transparent 50%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:72px 72px;opacity:0.2;pointer-events:none}
+.eyebrow{font-family:var(--mono);font-size:10px;color:var(--sky);letter-spacing:3px;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:24px;height:1px;background:var(--sky)}
+.hero h1{font-family:var(--display);font-size:clamp(40px,5.5vw,72px);font-weight:800;line-height:0.95;letter-spacing:-2px;color:var(--text-bright);margin-bottom:6px}
+.hero h1 em{color:var(--sky);font-style:normal;display:block}
+.hero-sub{font-family:var(--display);font-size:clamp(14px,1.6vw,18px);font-weight:300;color:var(--text-dim);max-width:560px;line-height:1.6;margin:24px 0 40px}
+.badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:10px;padding:4px 11px;border-radius:3px;font-weight:500}
+.badge-sky{background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-border)}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-violet{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border2)}
+
+/* ── LAYOUT ── */
+.page{max-width:1060px;margin:0 auto;padding:0 80px}
+.section{padding:60px 0;border-bottom:1px solid var(--border)}
+.section:last-child{border-bottom:none}
+.sec-eyebrow{font-family:var(--mono);font-size:10px;color:var(--sky);letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.sec-eyebrow::before{content:"";width:20px;height:1px;background:var(--sky)}
+.section h2{font-family:var(--display);font-size:clamp(26px,3.2vw,40px);font-weight:800;letter-spacing:-1px;color:var(--text-bright);line-height:1.05;margin-bottom:12px}
+.section-intro{font-size:14.5px;color:var(--text-dim);max-width:640px;line-height:1.8;margin-bottom:36px}
+
+/* ── CRON MAP ── */
+.cron-block{background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:28px 32px;font-family:var(--mono);font-size:12px;color:var(--text-dim);line-height:2.4;overflow-x:auto;margin:20px 0}
+.cron-block .k{color:var(--amber)}
+.cron-block .v{color:var(--teal)}
+.cron-block .h{color:var(--sky)}
+.cron-block .g{color:var(--green)}
+.cron-block .r{color:var(--rose)}
+.cron-block .c{color:var(--text-dim);font-style:italic}
+.cron-block .p{color:var(--violet)}
+
+/* ── SCORING TABLE ── */
+.score-table{width:100%;border-collapse:collapse;margin:20px 0;font-size:13.5px}
+.score-table th{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:10px 16px;border-bottom:2px solid var(--border);text-align:left}
+.score-table td{padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text-dim);vertical-align:top}
+.score-table tr:last-child td{border-bottom:none}
+.score-table tr.group-row td{background:var(--surface);font-family:var(--display);font-weight:700;color:var(--text-bright);font-size:13px;padding-top:14px}
+.score-table .pts{font-family:var(--mono);font-size:12px;color:var(--amber);font-weight:600}
+.score-table .total-row td{background:var(--surface2);font-family:var(--display);font-weight:800;color:var(--text-bright);border-top:2px solid var(--border)}
+.judge{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:3px}
+.judge-script{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.judge-ai{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+
+/* ── SCHEMA TABLES ── */
+.tab-block{margin-bottom:48px}
+.tab-header{margin-bottom:6px}
+.tab-header h3{font-family:var(--display);font-size:20px;font-weight:700;color:var(--text-bright);letter-spacing:-0.3px}
+.tab-header .tab-meta{font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-top:4px}
+.schema{background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;width:100%;margin:12px 0}
+.schema-head{background:var(--surface2);border-bottom:1px solid var(--border);padding:11px 20px;display:flex;justify-content:space-between;align-items:center}
+.schema-head h4{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright)}
+.schema-head span{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+.sr{display:grid;padding:9px 20px;border-bottom:1px solid rgba(37,43,53,0.5);font-size:12.5px;align-items:baseline;gap:12px;grid-template-columns:210px 90px 90px 1fr}
+.sr:last-child{border-bottom:none}
+.sr.hdr{background:rgba(28,32,40,0.5);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+.sr.grp{background:rgba(28,32,40,0.3);padding-top:12px;padding-bottom:4px}
+.sr.grp .cf{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
+.cf{font-family:var(--mono);font-size:12px;color:var(--teal)}
+.ct{font-family:var(--mono);font-size:11px;color:var(--violet)}
+.cw{font-family:var(--mono);font-size:11px;color:var(--amber)}
+.cd{color:var(--text-dim);font-size:13px}
+.cd code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+
+/* ── ENUM BLOCK ── */
+.enum-block{background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:14px 18px;margin:12px 0;font-family:var(--mono);font-size:12px;line-height:2.2;color:var(--text-dim)}
+.enum-block .ev{color:var(--amber)}
+.enum-block .ec{color:var(--text-dim);font-style:italic;margin-left:8px}
+
+/* ── CALLOUTS ── */
+.callout{border-radius:4px;padding:14px 18px;margin:18px 0;display:flex;gap:12px;font-size:13.5px;line-height:1.65}
+.callout-icon{flex-shrink:0;margin-top:1px}
+.callout-teal{background:var(--teal-bg);border-left:3px solid var(--teal);color:#2aaa96}
+.callout-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8a040}
+.callout-violet{background:var(--violet-bg);border-left:3px solid var(--violet);color:#9a7ef5}
+.callout-sky{background:var(--sky-bg);border-left:3px solid var(--sky);color:#29a8d8}
+.callout-rose{background:var(--rose-bg);border-left:3px solid var(--rose);color:#e06060}
+.callout-body strong{color:inherit;font-weight:600}
+
+/* ── JSON EXAMPLE ── */
+.json-block{background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:20px 24px;font-family:var(--mono);font-size:12px;line-height:1.9;overflow-x:auto;margin:14px 0}
+.json-block .jk{color:var(--sky)}
+.json-block .jv{color:var(--green)}
+.json-block .js{color:var(--amber)}
+.json-block .jc{color:var(--text-dim);font-style:italic}
+
+/* ── RELATIONSHIP MAP ── */
+.rel-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--border);margin:20px 0}
+.rel-card{background:var(--surface);padding:20px 22px}
+.rel-card h4{font-family:var(--display);font-size:13px;font-weight:700;color:var(--text-bright);margin-bottom:8px;letter-spacing:-0.2px}
+.rel-card ul{list-style:none;font-size:12.5px;color:var(--text-dim);line-height:1.9}
+.rel-card ul li::before{content:"→  ";color:var(--border2)}
+.rel-card .rc-tag{font-family:var(--mono);font-size:9px;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px}
+.rc-reads{color:var(--teal)}.rc-writes{color:var(--amber)}.rc-calls{color:var(--violet)}
+
+/* ── FOOTER ── */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:36px 80px;font-size:12px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+
+@media(max-width:900px){
+  .topnav{padding:0 20px}.topnav-links{display:none}
+  .hero,.page{padding-left:24px;padding-right:24px}
+  .rel-grid{grid-template-columns:1fr}
+  .sr{grid-template-columns:1fr 1fr}
+  footer{padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<div style="max-width:900px;margin:24px auto 0;padding:18px 24px;border:2px solid #c0392b;border-radius:8px;background:#fdecea;color:#7b241c;font-family:system-ui,sans-serif;font-size:14px;line-height:1.6">
+  <strong>⚠ RECONCILIATION NOTE —</strong> Every "Script 29" / "Script 30" /
+  "Script 31" reference in this document uses this module's own
+  pre-renumbering scheme. The actual checked-in files are
+  <code>scripts/31_PacingGuideManager.js</code>,
+  <code>scripts/32_CompetencyRubricImporter.js</code>, and
+  <code>scripts/33_ArtifactCompetencyBridge.js</code> — read every "29" as
+  31, "30" as 32, and "31" as 33. See the banner at the top of
+  <code>CAS_Module2_Documentation_v2.0.html</code> and
+  <code>cas-ccps/README.md</code> for the full reconciliation record.
+</div>
+
+
+<nav class="topnav">
+  <span class="topnav-brand">CAS · Module 2 · Warm-Up</span>
+  <div class="topnav-links">
+    <a class="topnav-link active" href="#overview">Overview</a>
+    <a class="topnav-link" href="#scoring">Scoring</a>
+    <a class="topnav-link" href="#crons">Cron Jobs</a>
+    <a class="topnav-link" href="#schema">Schema</a>
+    <a class="topnav-link" href="#profiles">Student Profiles</a>
+    <a class="topnav-link" href="#flows">Studio Flows</a>
+    <a class="topnav-link" href="#relationships">Relationships</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="eyebrow">Module 2 · Full Build · Data Schema</div>
+  <h1>Generative<em>Warm-Ups</em></h1>
+  <p class="hero-sub">Student-specific cognitive entry points generated overnight from lesson context and individual learning history. Scored nightly by AI against a 10-point rubric.</p>
+  <div class="badges">
+    <span class="badge badge-sky">4 New Tabs</span>
+    <span class="badge badge-teal">3 New Scripts</span>
+    <span class="badge badge-violet">2 Studio Flows</span>
+    <span class="badge badge-amber">10-Point Scoring Rubric</span>
+    <span class="badge badge-ghost">Depends on M1 + M2 Lightweight</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- OVERVIEW -->
+<div class="section" id="overview">
+  <div class="sec-eyebrow">What this builds</div>
+  <h2>The system in plain language</h2>
+  <p class="section-intro">Each evening, the teacher submits a lesson context for the next class. At 3am, student profiles are updated from evaluation history and competency logs. At 6am on class days, Studio Flow 3 generates one personalized warm-up doc per student and delivers it to their Drive. Students arrive to a prompt shaped by their own learning history. Class discussion follows. That night, the 3am cron evaluates their responses against a 10-point rubric and writes brief feedback back into each doc.</p>
+
+  <div class="rel-grid">
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Reads from M1</div>
+      <h4>Ledger · ReviewQueue · STAGING_PIPELINE</h4>
+      <ul>
+        <li>Student roster per teacher/period</li>
+        <li>Evaluation outcomes and timestamps</li>
+        <li>Assignment feedback history</li>
+      </ul>
+    </div>
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Reads from M2 Lightweight</div>
+      <h4>LessonContext · AlignmentLog · CompetencyRegistry</h4>
+      <ul>
+        <li>Tomorrow's lesson objective and vocabulary</li>
+        <li>Competencies addressed per lesson</li>
+        <li>Full competency text for Flow 3 context</li>
+      </ul>
+    </div>
+    <div class="rel-card">
+      <div class="rc-tag rc-writes">Writes new</div>
+      <h4>StudentProfiles · WarmUpQueue · WarmUpRegistry · ClassSchedule</h4>
+      <ul>
+        <li>Aggregated student learning signals</li>
+        <li>Per-student pipeline state per lesson</li>
+        <li>Doc registry for all warm-up artifacts</li>
+        <li>Block schedule day-type configuration</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-sky">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Block schedule awareness:</strong> Classes meet on odd or even calendar days (derived from the date's parity), except first period which meets daily. Period day types are configured once in the ClassSchedule tab during setup. The 3am cron checks tomorrow's date parity, identifies which periods meet, and only builds WarmUpQueue rows for classes that have a LessonContext submitted for that date.</div>
+  </div>
+</div>
+
+<!-- SCORING -->
+<div class="section" id="scoring">
+  <div class="sec-eyebrow">Evaluation rubric</div>
+  <h2>10-point scoring system</h2>
+  <p class="section-intro">Word count is computed deterministically by Script 25 before Flow 4 runs. Grammar and engagement are evaluated by Flow 4. The AI never counts words — it only judges quality.</p>
+
+  <table class="score-table">
+    <thead>
+      <tr>
+        <th>Component</th>
+        <th>Criteria</th>
+        <th>Points</th>
+        <th>Judge</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr class="group-row"><td colspan="4">Word Count — 6 pts maximum</td></tr>
+      <tr>
+        <td>30+ words</td>
+        <td>Meets full threshold</td>
+        <td class="pts">6</td>
+        <td><span class="judge judge-script">Script 25</span></td>
+      </tr>
+      <tr>
+        <td>25–29 words</td>
+        <td>Near threshold — partial credit</td>
+        <td class="pts">5</td>
+        <td><span class="judge judge-script">Script 25</span></td>
+      </tr>
+      <tr>
+        <td>15–24 words</td>
+        <td>Minimal attempt</td>
+        <td class="pts">3</td>
+        <td><span class="judge judge-script">Script 25</span></td>
+      </tr>
+      <tr>
+        <td>Under 15 words</td>
+        <td>Insufficient</td>
+        <td class="pts">0</td>
+        <td><span class="judge judge-script">Script 25</span></td>
+      </tr>
+      <tr class="group-row"><td colspan="4">Grammar &amp; Sentence Structure — 1 pt maximum</td></tr>
+      <tr>
+        <td>Meets standard</td>
+        <td>Cohesive sentences, no significant errors</td>
+        <td class="pts">1</td>
+        <td><span class="judge judge-ai">Flow 4</span></td>
+      </tr>
+      <tr>
+        <td>Does not meet</td>
+        <td>Significant errors impede comprehension</td>
+        <td class="pts">0</td>
+        <td><span class="judge judge-ai">Flow 4</span></td>
+      </tr>
+      <tr class="group-row"><td colspan="4">Engagement — 3 pts maximum</td></tr>
+      <tr>
+        <td>Genuine</td>
+        <td>Directly addresses the prompt with original thought</td>
+        <td class="pts">3</td>
+        <td><span class="judge judge-ai">Flow 4</span></td>
+      </tr>
+      <tr>
+        <td>Surface</td>
+        <td>On-topic but formulaic or thin</td>
+        <td class="pts">2</td>
+        <td><span class="judge judge-ai">Flow 4</span></td>
+      </tr>
+      <tr>
+        <td>Minimal</td>
+        <td>Tangentially related or very thin</td>
+        <td class="pts">1</td>
+        <td><span class="judge judge-ai">Flow 4</span></td>
+      </tr>
+      <tr>
+        <td>Off-topic / filler</td>
+        <td>Does not engage with the prompt</td>
+        <td class="pts">0</td>
+        <td><span class="judge judge-ai">Flow 4</span></td>
+      </tr>
+      <tr class="group-row"><td colspan="4">Extra Credit</td></tr>
+      <tr>
+        <td>Feedback reply</td>
+        <td>Student wrote a reply to Flow 4's feedback before next class</td>
+        <td class="pts">+1</td>
+        <td><span class="judge judge-script">Script 25</span></td>
+      </tr>
+      <tr class="total-row">
+        <td colspan="2">Maximum per warm-up (without extra credit)</td>
+        <td class="pts">10</td>
+        <td></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Extra credit detection:</strong> Flow 4 stamps its feedback with a delimiter marker (<code>── FEEDBACK ──</code>) when writing to the warm-up doc. Script 25's 3am run checks for any text written after that marker. If text exists and is at least 10 words, <code>extra_credit = 1</code>. This is stored in WarmUpQueue and added to the student's WarmUpRegistry score. The extra credit reply is also captured as a signal in StudentProfiles — students who consistently engage with feedback receive harder provocations in subsequent warm-ups.</div>
+  </div>
+
+  <div class="callout callout-violet">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Zero-response handling:</strong> If Script 25 finds no text in the response zone (word count = 0), it stamps the doc INCOMPLETE with score 0 and skips Flow 4 entirely. Flow 4 is never called with an empty response. This prevents wasted API calls and avoids Flow 4 generating feedback for a student who simply wasn't present.</div>
+  </div>
+</div>
+
+<!-- CRON JOBS -->
+<div class="section" id="crons">
+  <div class="sec-eyebrow">Execution schedule</div>
+  <h2>Two cron jobs, four stages</h2>
+  <p class="section-intro">The 3am job runs three stages in sequence. The 6am job is Studio Flow 3. Together they form a pipeline that completes before students arrive.</p>
+
+  <div class="cron-block">
+<span class="c">// ── 3AM NIGHTLY CRON ─────────────────────────────────────────────────────────</span>
+<span class="c">// Runs every night. Three stages execute in sequence.</span>
+
+<span class="k">STAGE 1 — Script 23</span> (StudentProfileManager)
+  → reads <span class="v">Ledger</span> for all students (email, name, google_id, period)
+  → reads <span class="v">AlignmentLog</span> for competency coverage per student
+  → reads <span class="v">STAGING_PIPELINE</span> + <span class="v">ReviewQueue</span> for evaluation outcomes
+  → reads previous <span class="v">WarmUpQueue</span> rows for warm-up score history
+  → detects extra credit replies in warm-up docs (text after FEEDBACK stamp)
+  → upserts one row per student in <span class="v">StudentProfiles</span>
+      structured analytic indicators + one-sentence feedback note per eval
+      competency coverage map, warm-up score history, extra credit count
+
+<span class="k">STAGE 2 — Script 25</span> (WarmUpWriter — evaluation job)
+  → scans <span class="v">WarmUpRegistry</span> for yesterday's rows where <span class="p">score IS NULL</span>
+  → for each: opens warm-up doc, extracts RESPONSE zone text
+  → counts words deterministically → computes word count score (0/3/5/6)
+  → if word count = 0: stamp INCOMPLETE, score = 0, skip Flow 4
+  → if word count > 0: write word count score, set status <span class="g">PENDING_EVAL</span>
+  → <span class="h">Studio Flow 4</span> picks up PENDING_EVAL rows
+      evaluates grammar (0/1) + engagement (0/1/2/3)
+      writes { grammar, engagement, feedback } to WarmUpQueue row
+  → Script 25 receives result, computes total score
+  → writes score to <span class="v">WarmUpQueue</span> + <span class="v">WarmUpRegistry</span>
+  → writes brief feedback into warm-up doc below student response
+  → marks WarmUpQueue row <span class="g">SCORED</span>
+
+<span class="k">STAGE 3 — Script 24</span> (WarmUpBridge — queue builder)
+  → determines tomorrow's date → checks parity (ODD / EVEN)
+  → reads <span class="v">ClassSchedule</span> for periods matching tomorrow's day type + DAILY
+  → reads <span class="v">LessonContext</span> for lessons with lesson_date = tomorrow
+      skips if no LessonContext found for that period (no class = no warm-up)
+  → reads <span class="v">Ledger</span> for enrolled students per teacher + period
+  → reads <span class="v">StudentProfiles</span> for each student (fresh from Stage 1)
+  → writes one row per student to <span class="v">WarmUpQueue</span>
+      lesson_context_snapshot (JSON), student_profile_snapshot (JSON)
+      status: <span class="g">PENDING</span>
+  → deduplication: skips if lesson_id + student_email already exists
+
+<span class="c">// ── 6AM CLASS-DAY CRON ───────────────────────────────────────────────────────</span>
+<span class="c">// Runs every morning. Studio Flow 3 is the only actor.</span>
+
+<span class="h">Studio Flow 3</span> (Warm-Up Generation)
+  → reads <span class="v">WarmUpQueue</span> for PENDING rows
+  → for each student: generates personalized warm-up prompt
+      reads lesson_context_snapshot + student_profile_snapshot from queue row
+      generates prompt — topically anchored, student-specifically angled
+  → creates Google Doc in student warm-up folder
+      <span class="v">[Admin Root]/[Subject]/[Teacher]/[Period]/Warm-Ups/[Student Name]/</span>
+      stamps doc: PROMPT zone + RESPONSE zone (student writes here)
+  → shares doc with student as editor
+  → marks WarmUpQueue row <span class="g">DELIVERED</span> + writes doc_id
+  → Script 25 (post-generation job) registers doc in <span class="v">WarmUpRegistry</span>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Why stages run in sequence:</strong> Stage 1 must complete before Stage 3 so that WarmUpQueue rows are built with fresh StudentProfile snapshots. Stage 2 (scoring yesterday's warm-ups) runs between them so the extra credit detection in Stage 1 has the previous night's scored data available. Flow 3 runs at 6am rather than 3am to ensure profile snapshots are as current as possible and to minimize the window where a doc sits in a student's Drive before class.</div>
+  </div>
+</div>
+
+<!-- SCHEMA -->
+<div class="section" id="schema">
+  <div class="sec-eyebrow">Data model</div>
+  <h2>Four new tabs</h2>
+  <p class="section-intro">All four tabs live on the Central Ledger spreadsheet. ClassSchedule is set once during setup. The other three are operational — written continuously by the pipeline.</p>
+
+  <!-- ClassSchedule -->
+  <div class="tab-block">
+    <div class="tab-header">
+      <h3>ClassSchedule</h3>
+      <div class="tab-meta">Set once during Module 2 setup · Never written by operational scripts · Read by Script 24</div>
+    </div>
+    <div class="schema">
+      <div class="schema-head"><h4>5 columns</h4><span>One row per class period per teacher</span></div>
+      <div class="sr hdr"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
+      <div class="sr"><span class="cf">teacher_email</span><span class="ct">String</span><span class="cw">Manual / S28</span><span class="cd">Teacher this schedule row applies to. Matches <code>TEACHER_EMAIL</code> Script Property.</span></div>
+      <div class="sr"><span class="cf">period</span><span class="ct">String</span><span class="cw">Manual / S28</span><span class="cd">Period identifier. e.g. <code>1</code>, <code>2</code>, <code>3</code>, <code>4</code>. Must match <code>period_or_class</code> values in LessonContext.</span></div>
+      <div class="sr"><span class="cf">day_type</span><span class="ct">Enum</span><span class="cw">Manual / S28</span><span class="cd">When this period meets. <code>ODD</code> = odd calendar days, <code>EVEN</code> = even calendar days, <code>DAILY</code> = every school day (first period).</span></div>
+      <div class="sr"><span class="cf">course_name</span><span class="ct">String</span><span class="cw">Manual / S28</span><span class="cd">Full course name. Must match <code>subject</code> in CompetencyRegistry for correct competency filtering.</span></div>
+      <div class="sr"><span class="cf">active</span><span class="ct">Boolean</span><span class="cw">Manual</span><span class="cd">TRUE = active this term. FALSE = retired. Allows carrying forward prior-term rows without deleting them.</span></div>
+    </div>
+
+    <div style="margin-top:10px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">day_type enum</div>
+      <div class="enum-block">
+        <div><span class="ev">DAILY</span><span class="ec">→ Meets every school day. First period always uses this value.</span></div>
+        <div><span class="ev">ODD</span><span class="ec">→ Meets when tomorrow.getDate() % 2 === 1.</span></div>
+        <div><span class="ev">EVEN</span><span class="ec">→ Meets when tomorrow.getDate() % 2 === 0.</span></div>
+      </div>
+    </div>
+
+    <div class="callout callout-amber">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Holiday handling:</strong> If the teacher doesn't submit a LessonContext for tomorrow, Script 24 finds no matching lesson_date and writes no WarmUpQueue rows — regardless of what ClassSchedule says. The teacher's lesson context submission is the authoritative signal that class is happening. ClassSchedule only determines which periods to check.</div>
+    </div>
+  </div>
+
+  <!-- StudentProfiles -->
+  <div class="tab-block" id="profiles">
+    <div class="tab-header">
+      <h3>StudentProfiles</h3>
+      <div class="tab-meta">One row per student · Upserted nightly at 3am by Script 23 · Read by Script 24 for queue snapshots</div>
+    </div>
+    <div class="schema">
+      <div class="schema-head"><h4>12 columns</h4><span>JSON fields serialized as strings — parsed by Script 24 when building queue snapshots</span></div>
+      <div class="sr hdr"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
+      <div class="sr grp"><span class="cf">── IDENTITY ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">student_email</span><span class="ct">String</span><span class="cw">S23</span><span class="cd">Primary key. Google account email. Matches <code>google_id</code> field in Ledger col 1.</span></div>
+      <div class="sr"><span class="cf">student_name</span><span class="ct">String</span><span class="cw">S23</span><span class="cd">Display name from Ledger. Denormalized for report readability.</span></div>
+      <div class="sr"><span class="cf">google_id</span><span class="ct">String</span><span class="cw">S23</span><span class="cd">Google account email (same as student_email in this system). Explicit field for M1 ledger compatibility.</span></div>
+      <div class="sr"><span class="cf">teacher_email</span><span class="ct">String</span><span class="cw">S23</span><span class="cd">Teacher this student is assigned to. Used to scope profile reads to the correct teacher's class.</span></div>
+      <div class="sr"><span class="cf">period</span><span class="ct">String</span><span class="cw">S23</span><span class="cd">Period identifier from Ledger. Used by Script 24 to match students to the correct class section.</span></div>
+      <div class="sr grp"><span class="cf">── COMPETENCY HISTORY ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">competencies_addressed</span><span class="ct">JSON</span><span class="cw">S23</span><span class="cd">Array of competency IDs addressed in lessons this student attended. e.g. <code>["8177-12","8175-5"]</code>. Built from AlignmentLog filtered to this teacher + term.</span></div>
+      <div class="sr"><span class="cf">competency_gaps</span><span class="ct">JSON</span><span class="cw">S23</span><span class="cd">Competency IDs in today's lesson that this student has NOT yet encountered this term. Computed at profile update time as set difference. Flow 3 uses this to angle the warm-up toward unaddressed material.</span></div>
+      <div class="sr grp"><span class="cf">── EVALUATION SIGNALS ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">evaluation_signals</span><span class="ct">JSON</span><span class="cw">S23</span><span class="cd">Array of last 3 evaluation outcomes. Each: <code>{ assignment_id, date, indicators: { strengths: [], gaps: [] }, note: "one sentence" }</code>. Indicators are structured tags extracted from Flow 2 feedback. See JSON example below.</span></div>
+      <div class="sr grp"><span class="cf">── WARM-UP HISTORY ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">warmup_scores</span><span class="ct">JSON</span><span class="cw">S23</span><span class="cd">Array of last 10 warm-up scores. Each: <code>{ lesson_id, date, word_count_score, grammar, engagement, extra_credit, total }</code>. Used by Flow 3 to calibrate prompt difficulty.</span></div>
+      <div class="sr"><span class="cf">extra_credit_count</span><span class="ct">Integer</span><span class="cw">S23</span><span class="cd">Running total of extra credit replies this term. Incremented each time Script 25 detects a reply to Flow 4 feedback.</span></div>
+      <div class="sr"><span class="cf">avg_engagement_score</span><span class="ct">Float</span><span class="cw">S23</span><span class="cd">Rolling average of engagement scores (0–3) across all warm-ups this term. Computed by S23. Flow 3 uses this to calibrate prompt complexity — higher average = harder provocation.</span></div>
+      <div class="sr grp"><span class="cf">── METADATA ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">last_updated</span><span class="ct">DateTime</span><span class="cw">S23</span><span class="cd">Server timestamp of last upsert. Allows detecting stale profiles if the 3am cron fails.</span></div>
+      <div style="margin-top:6px"><span class="cn" style="color:var(--teal)">shadow_matrix</span><span class="ct">JSON String</span><span class="cw">S23</span><span class="cd">Per-student × per-unit archetype confidence model. Keys are pacing guide unit IDs. Tracks archetype_history, best_archetype, within_confidence (0–1), cross_confidence (decayed, 0–1), and trend. Drives archetype selection in Flow 3 when cross_confidence ≥ 0.75. Included in the student_profile_snapshot embedded in WarmUpQueue at 3:30am by Script 24.</span></div>
+      <div style="margin-top:6px"><span class="cn" style="color:var(--teal)">unit_current</span><span class="ct">String</span><span class="cw">S23</span><span class="cd">Pacing guide unit_id active as of last nightly update. Resolved by Script 29 resolveUnitForDate_(). Included in profile snapshot for unit-scoped shadow matrix lookups.</span></div>
+      <div style="margin-top:6px"><span class="cn" style="color:var(--teal)">shadow_archetype_note</span><span class="ct">String | null</span><span class="cw">S23</span><span class="cd">Pre-formatted plain-text note computed by getStudentProfileSnapshot_() at 3:30am. Example: "Shadow matrix suggests PARADOX (72% confidence, 5 warm-ups in unit S1-U3, trend: rising)." Null when cross_confidence &lt; 0.75 or no shadow history exists. Read by Flow 3 as {shadow_archetype_note} placeholder in the Mode A system prompt. Computed once at snapshot time — no runtime Sheets reads at generation.</span></div>
+    </div>
+
+    <div style="margin-top:14px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">evaluation_signals JSON structure — example</div>
+      <div class="json-block">
+[
+  {
+    <span class="jk">"assignment_id"</span>: <span class="js">"VDOE-ABC123-2026"</span>,
+    <span class="jk">"date"</span>:          <span class="js">"2026-01-14"</span>,
+    <span class="jk">"indicators"</span>: {
+      <span class="jk">"strengths"</span>: [<span class="js">"analysis"</span>, <span class="js">"industry_terminology"</span>],
+      <span class="jk">"gaps"</span>:      [<span class="js">"application"</span>, <span class="js">"supporting_evidence"</span>]
+    },
+    <span class="jk">"note"</span>: <span class="js">"Strong conceptual grasp but struggles to apply terminology to real scenarios."</span>
+  },
+  <span class="jc">// ... up to 3 most recent evaluations</span>
+]
+      </div>
+    </div>
+
+    <div style="margin-top:14px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">warmup_scores JSON structure — example</div>
+      <div class="json-block">
+[
+  {
+    <span class="jk">"lesson_id"</span>:          <span class="js">"LES-20260114-A3F2"</span>,
+    <span class="jk">"date"</span>:               <span class="js">"2026-01-14"</span>,
+    <span class="jk">"word_count_score"</span>:   <span class="jv">6</span>,
+    <span class="jk">"grammar"</span>:           <span class="jv">1</span>,
+    <span class="jk">"engagement"</span>:        <span class="jv">2</span>,
+    <span class="jk">"extra_credit"</span>:      <span class="jv">1</span>,
+    <span class="jk">"total"</span>:             <span class="jv">10</span>
+  },
+  <span class="jc">// ... up to 10 most recent warm-ups</span>
+]
+      </div>
+    </div>
+
+    <div class="callout callout-sky">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Upsert pattern:</strong> Script 23 searches for an existing row by <code>student_email</code>. If found, it updates in place. If not found, it appends. This means the StudentProfiles tab stays at exactly one row per student regardless of how many times the 3am cron runs. The upsert is a targeted range write — not a full row rewrite — to minimize Sheets API quota usage.</div>
+    </div>
+  </div>
+
+  <!-- WarmUpQueue -->
+  <div class="tab-block">
+    <div class="tab-header">
+      <h3>WarmUpQueue</h3>
+      <div class="tab-meta">One row per student per lesson · Pipeline state table · Written by S24, consumed by Flow 3, updated by S25 and Flow 4</div>
+    </div>
+    <div class="schema">
+      <div class="schema-head"><h4>16 columns</h4><span>Snapshot-based — profile data embedded at queue-write time</span></div>
+      <div class="sr hdr"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
+      <div class="sr grp"><span class="cf">── IDENTITY ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">queue_id</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Auto-generated. Format: <code>WUQ-YYYYMMDD-XXXX</code>. Primary key.</span></div>
+      <div class="sr"><span class="cf">lesson_id</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Foreign key → LessonContext.lesson_id. Identifies which lesson this warm-up is for.</span></div>
+      <div class="sr"><span class="cf">student_email</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Student's Google account email. Deduplication key with lesson_id.</span></div>
+      <div class="sr"><span class="cf">student_name</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Denormalized from Ledger. Used for doc naming and report display.</span></div>
+      <div class="sr"><span class="cf">google_id</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Google account email for Drive sharing (<code>addEditor()</code>).</span></div>
+      <div class="sr"><span class="cf">lesson_date</span><span class="ct">Date</span><span class="cw">S24</span><span class="cd">Denormalized from LessonContext. Used by Script 25 to find yesterday's rows at evaluation time.</span></div>
+      <div class="sr grp"><span class="cf">── SNAPSHOTS ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">lesson_context_snapshot</span><span class="ct">JSON</span><span class="cw">S24</span><span class="cd">Serialized lesson context at queue-write time: <code>{ objective, activity, vocabulary, prior_connection, competency_ids, competency_texts }</code>. Self-contained — Flow 3 never needs to re-read LessonContext.</span></div>
+      <div class="sr"><span class="cf">student_profile_snapshot</span><span class="ct">JSON</span><span class="cw">S24</span><span class="cd">Serialized StudentProfile at queue-write time. Full profile JSON embedded. Flow 3 reads this directly — never reads StudentProfiles tab. Snapshot isolation: late profile changes don't affect in-flight generation.</span></div>
+      <div class="sr grp"><span class="cf">── PIPELINE STATE ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">status</span><span class="ct">Enum</span><span class="cw">S24, Flow 3, S25, Flow 4</span><span class="cd">Pipeline lifecycle. See enum below.</span></div>
+      <div class="sr"><span class="cf">doc_id</span><span class="ct">String</span><span class="cw">Flow 3</span><span class="cd">Google Drive file ID of the generated warm-up doc. Written by Flow 3 on DELIVERED. Null until then.</span></div>
+      <div class="sr"><span class="cf">doc_url</span><span class="ct">String</span><span class="cw">Flow 3</span><span class="cd">Full edit URL. Convenience field for dashboard display and WarmUpRegistry.</span></div>
+      <div class="sr grp"><span class="cf">── SCORING ──</span><span></span><span></span><span></span></div>
+      <div class="sr"><span class="cf">word_count</span><span class="ct">Integer</span><span class="cw">S25</span><span class="cd">Actual word count of student's response zone text. Computed by Script 25 at evaluation time.</span></div>
+      <div class="sr"><span class="cf">word_count_score</span><span class="ct">Integer</span><span class="cw">S25</span><span class="cd">Points awarded for word count (0, 3, 5, or 6). Written before Flow 4 is called.</span></div>
+      <div class="sr"><span class="cf">grammar_score</span><span class="ct">Integer</span><span class="cw">Flow 4</span><span class="cd">0 or 1. Written by Flow 4 after evaluation.</span></div>
+      <div class="sr"><span class="cf">engagement_score</span><span class="ct">Integer</span><span class="cw">Flow 4</span><span class="cd">0, 1, 2, or 3. Written by Flow 4 after evaluation.</span></div>
+      <div class="sr"><span class="cf">extra_credit</span><span class="ct">Integer</span><span class="cw">S25</span><span class="cd">0 or 1. Set by Script 25 at next 3am run if student replied to Flow 4 feedback.</span></div>
+      <div class="sr"><span class="cf">total_score</span><span class="ct">Integer</span><span class="cw">S25</span><span class="cd">Sum of all component scores including extra credit. Written by S25 after Flow 4 returns. Maximum 11 (10 + 1 extra credit).</span></div>
+      <div class="sr"><span class="cf">flow4_feedback</span><span class="ct">Text</span><span class="cw">Flow 4</span><span class="cd">Brief qualitative feedback written by Flow 4. Also written into the warm-up doc below the student's response.</span></div>
+      <div style="margin-top:6px"><span class="cn">response_text</span><span class="ct">Text</span><span class="cw">S25</span><span class="cd">Student's response text extracted from warm-up doc by Script 25.</span></div>
+      <div style="margin-top:6px"><span class="cn">archetype</span><span class="ct">String</span><span class="cw">Flow 3</span><span class="cd">Archetype selected by Flow 3 — written back to queue row for shadow matrix tracking in S23. Values: BRIDGE · CONCRETE_SCENARIO · PARADOX · PROVOCATION.</span></div>
+      <div style="margin-top:6px"><span class="cn" style="color:var(--teal)">bridge_output</span><span class="ct">Text</span><span class="cw">Flow 5</span><span class="cd">2–3 sentence bridge from student's prior warm-up to today's lesson. Written by Flow 5 before Flow 3. Prepended to warm-up doc by Flow 3 when present. Null for students with no prior history.</span></div>
+    </div>
+
+    <div style="margin-top:10px">
+      <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">status enum — WarmUpQueue</div>
+      <div class="enum-block">
+        <div><span class="ev">PENDING</span><span class="ec">→ Written by S24 at 3am. Awaiting Flow 3 at 6am.</span></div>
+        <div><span class="ev">IN_PROGRESS</span><span class="ec">→ Flow 3 is currently generating this warm-up.</span></div>
+        <div><span class="ev">DELIVERED</span><span class="ec">→ Flow 3 has created and shared the doc. S25 has registered it in WarmUpRegistry.</span></div>
+        <div><span class="ev">PENDING_EVAL</span><span class="ec">→ S25 has counted words and computed word_count_score. Awaiting Flow 4.</span></div>
+        <div><span class="ev">SCORED</span><span class="ec">→ Flow 4 has returned scores. S25 has written total_score and feedback.</span></div>
+        <div><span class="ev">INCOMPLETE</span><span class="ec">→ No response detected (word count = 0). Score = 0. Flow 4 not called.</span></div>
+        <div><span class="ev">ERROR</span><span class="ec">→ Any script or Flow failure. See error_notes. Retryable.</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WarmUpRegistry -->
+  <div class="tab-block">
+    <div class="tab-header">
+      <h3>WarmUpRegistry</h3>
+      <div class="tab-meta">One row per warm-up doc · Append-only · Written by Script 25 · Never updated or deleted</div>
+    </div>
+
+    <div class="callout callout-teal" style="margin-bottom:14px">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Same pattern as ReportRegistry.</strong> Every warm-up doc is registered here when Script 25 processes the DELIVERED queue row. Scores are updated in-place (this is the one exception to append-only — score columns are written after Flow 4 returns, not at registration time). The tab is the permanent record for term-end grade calculation.</div>
+    </div>
+
+    <div class="schema">
+      <div class="schema-head"><h4>13 columns</h4><span>Term-end grade calculation reads directly from this tab</span></div>
+      <div class="sr hdr"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
+      <div class="sr"><span class="cf">warmup_id</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Auto-generated. Format: <code>WUP-YYYYMMDD-XXXX</code>. Primary key.</span></div>
+      <div class="sr"><span class="cf">queue_id</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Foreign key → WarmUpQueue.queue_id. Enables row-level lookup without scanning the full queue.</span></div>
+      <div class="sr"><span class="cf">lesson_id</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Foreign key → LessonContext.lesson_id.</span></div>
+      <div class="sr"><span class="cf">lesson_date</span><span class="ct">Date</span><span class="cw">S25</span><span class="cd">Denormalized. Used for chronological ordering in grade report.</span></div>
+      <div class="sr"><span class="cf">student_email</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Student identifier. Primary filter for grade report generation.</span></div>
+      <div class="sr"><span class="cf">student_name</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Denormalized for report readability.</span></div>
+      <div class="sr"><span class="cf">teacher_email</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Denormalized from LessonContext. Scopes grade reports to the correct teacher.</span></div>
+      <div class="sr"><span class="cf">doc_id</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Google Drive file ID. Stable reference to the warm-up doc.</span></div>
+      <div class="sr"><span class="cf">doc_url</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Full edit URL. Direct link for teacher to open individual warm-up docs.</span></div>
+      <div class="sr"><span class="cf">generated_at</span><span class="ct">DateTime</span><span class="cw">S25</span><span class="cd">When Script 25 registered this doc (after Flow 3 DELIVERED).</span></div>
+      <div class="sr"><span class="cf">total_score</span><span class="ct">Integer</span><span class="cw">S25</span><span class="cd">Final score 0–11. Written after Flow 4 returns. Null until scored. Term report reads this column.</span></div>
+      <div class="sr"><span class="cf">extra_credit</span><span class="ct">Integer</span><span class="cw">S25</span><span class="cd">0 or 1. Updated at next 3am run after feedback reply detected.</span></div>
+      <div class="sr"><span class="cf">term</span><span class="ct">String</span><span class="cw">S25</span><span class="cd">Value of <code>CURRENT_TERM</code> Script Property at generation time. Term filter for grade reports.</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- STUDIO FLOWS -->
+<div class="section" id="flows">
+  <div class="sec-eyebrow">AI layer</div>
+  <h2>Two Studio Flows</h2>
+  <p class="section-intro">Flow 3 generates. Flow 4 evaluates. Neither touches data structures directly — they read from and write to WarmUpQueue rows via the Sheets connector. Scripts handle all tab management.</p>
+
+  <!-- Flow 3 -->
+  <div style="margin-bottom:40px">
+    <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin-bottom:6px">Studio Flow 3 — Warm-Up Generation</h3>
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px">Trigger: WarmUpQueue row with status PENDING · Runs at 6am · Per-teacher lane architecture from Module 1</p>
+
+    <div class="callout callout-violet">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Prompt architecture — four student archetypes:</strong> Flow 3 receives the lesson context and student profile snapshot. Based on the student's <code>avg_engagement_score</code>, <code>evaluation_signals</code>, and <code>competency_gaps</code>, it selects one of four prompt angles: (1) <strong>Paradox</strong> — for students strong conceptually but weak on application; surfaces a genuine contradiction in the subject matter that the lesson resolves. (2) <strong>Concrete scenario</strong> — for students strong on application but weak conceptually; grounds the abstraction in a real industry situation. (3) <strong>Bridge</strong> — for students with competency gaps in today's duty area; connects today's lesson to prior work they have covered. (4) <strong>Provocation</strong> — for students strong across the board; a genuine intellectual challenge that has no easy answer and rewards prior knowledge. The prompt is always 3–5 sentences, never a list, never a fill-in-the-blank.</div>
+    </div>
+
+    <div class="callout callout-sky">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Doc structure Flow 3 must stamp:</strong> The warm-up doc needs two clearly delimited zones so Script 25 can reliably extract the response. Zone 1: <code>── WARM-UP PROMPT ──</code> ... <code>── END PROMPT ──</code>. Zone 2: <code>── YOUR RESPONSE ──</code> (student writes below this line). Script 25 extracts everything after the response delimiter for word count and evaluation. Flow 3 must not put any text after the response delimiter.</div>
+    </div>
+  </div>
+
+  <!-- Flow 4 -->
+  <div>
+    <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin-bottom:6px">Studio Flow 4 — Warm-Up Evaluation</h3>
+    <p style="font-family:var(--mono);font-size:11px;color:var(--text-dim);margin-bottom:16px">Trigger: WarmUpQueue row with status PENDING_EVAL · Runs as part of 3am cron Stage 2</p>
+
+    <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Flow 4 receives three inputs: the original warm-up prompt, the student's response text, and the word count score already computed by Script 25. It evaluates only grammar/structure (0 or 1) and engagement (0, 1, 2, or 3). It must return a structured JSON response — no prose, no markdown.</p>
+
+    <div style="font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">Flow 4 expected JSON response</div>
+    <div class="json-block">
+{
+  <span class="jk">"grammar"</span>:     <span class="jv">1</span>,            <span class="jc">// 0 or 1</span>
+  <span class="jk">"engagement"</span>:  <span class="jv">2</span>,            <span class="jc">// 0, 1, 2, or 3</span>
+  <span class="jk">"feedback"</span>:    <span class="js">"Strong connection to branding concepts but the application to event sponsorship could go deeper. Consider how exclusivity affects perceived value."</span>
+  <span class="jc">// feedback: 1-3 sentences. Written into warm-up doc. Student reads before next class.</span>
+  <span class="jc">// Never reveals the score. Never says "you got X points". Pedagogical, not evaluative in tone.</span>
+}
+    </div>
+
+    <div class="callout callout-rose">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Feedback tone constraint:</strong> Flow 4's feedback must never mention points, scores, or grades. It is pedagogical — it advances the student's thinking, not their grade anxiety. The feedback is what the student sees when they open their doc before next class. It should make them want to think more about the topic, not calculate their percentage. The score is stored in the system; the feedback is for the student.</div>
+    </div>
+
+    <div class="callout callout-amber">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Extra credit reply detection:</strong> Flow 4 stamps its feedback with <code>── FEEDBACK ──</code> at the start and <code>── END FEEDBACK ──</code> at the end when writing to the doc. Script 25's next 3am run reads the doc and checks for any text after <code>── END FEEDBACK ──</code>. If 10+ words exist there, extra credit = 1. The student never sees instructions to reply — the invitation is implicit in the feedback quality.</div>
+    </div>
+  </div>
+</div>
+
+<!-- RELATIONSHIPS -->
+<div class="section" id="relationships">
+  <div class="sec-eyebrow">Data relationships</div>
+  <h2>How scripts connect to tabs</h2>
+  <p class="section-intro">Every read and write relationship in the warm-up pipeline. No script reads from a tab it doesn't own — all cross-tab data flows through queue row snapshots.</p>
+
+  <div class="rel-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Script 23 reads</div>
+      <h4>StudentProfileManager</h4>
+      <ul>
+        <li>Ledger (roster, eval timestamps)</li>
+        <li>AlignmentLog (competency history)</li>
+        <li>STAGING_PIPELINE (eval outcomes)</li>
+        <li>ReviewQueue (eval status)</li>
+        <li>WarmUpQueue (score history)</li>
+        <li>WarmUp docs (extra credit reply)</li>
+      </ul>
+      <div class="rc-tag rc-writes" style="margin-top:10px">Writes</div>
+      <ul><li>StudentProfiles (upsert)</li></ul>
+    </div>
+
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Script 24 reads</div>
+      <h4>WarmUpBridge</h4>
+      <ul>
+        <li>ClassSchedule (day type)</li>
+        <li>LessonContext (tomorrow's lessons)</li>
+        <li>Ledger (enrolled students)</li>
+        <li>StudentProfiles (snapshots)</li>
+        <li>CompetencyRegistry (comp texts)</li>
+      </ul>
+      <div class="rc-tag rc-writes" style="margin-top:10px">Writes</div>
+      <ul><li>WarmUpQueue (new PENDING rows)</li></ul>
+    </div>
+
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Script 25 reads</div>
+      <h4>WarmUpWriter</h4>
+      <ul>
+        <li>WarmUpQueue (DELIVERED + PENDING_EVAL rows)</li>
+        <li>WarmUp docs (response text, reply detection)</li>
+        <li>LessonContext (teacher_email, term)</li>
+      </ul>
+      <div class="rc-tag rc-writes" style="margin-top:10px">Writes</div>
+      <ul>
+        <li>WarmUpRegistry (registration + scores)</li>
+        <li>WarmUpQueue (scores, status)</li>
+        <li>LessonContext (warm_up_generated)</li>
+        <li>WarmUp docs (feedback stamp)</li>
+      </ul>
+    </div>
+
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Flow 3 reads</div>
+      <h4>Warm-Up Generation</h4>
+      <ul>
+        <li>WarmUpQueue (PENDING rows)</li>
+        <li>lesson_context_snapshot (embedded)</li>
+        <li>student_profile_snapshot (embedded)</li>
+      </ul>
+      <div class="rc-tag rc-writes" style="margin-top:10px">Writes</div>
+      <ul>
+        <li>WarmUpQueue (doc_id, status DELIVERED)</li>
+        <li>Student Drive folder (new warm-up doc)</li>
+      </ul>
+    </div>
+
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Flow 4 reads</div>
+      <h4>Warm-Up Evaluation</h4>
+      <ul>
+        <li>WarmUpQueue (PENDING_EVAL rows)</li>
+        <li>Warm-up prompt (from queue snapshot)</li>
+        <li>Student response text (from queue)</li>
+        <li>word_count_score (pre-computed)</li>
+      </ul>
+      <div class="rc-tag rc-writes" style="margin-top:10px">Writes</div>
+      <ul>
+        <li>WarmUpQueue (grammar, engagement, feedback)</li>
+        <li>Warm-up doc (feedback stamp)</li>
+      </ul>
+    </div>
+
+    <div class="rel-card">
+      <div class="rc-tag rc-reads">Term Report reads</div>
+      <h4>generateWarmUpReport() in S25</h4>
+      <ul>
+        <li>WarmUpRegistry (all rows this term)</li>
+        <li>StudentProfiles (names, context)</li>
+        <li>ClassSchedule (total possible warm-ups)</li>
+      </ul>
+      <div class="rc-tag rc-writes" style="margin-top:10px">Writes</div>
+      <ul>
+        <li>Google Doc (grade report)</li>
+        <li>ReportRegistry (type: WARMUP_TERM)</li>
+        <li>Script Properties (last report pointer)</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-sky" style="margin-top:8px">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Snapshot isolation is the key architectural decision.</strong> Script 24 embeds the full lesson context and student profile into each WarmUpQueue row at 3am. Flow 3 reads only from the queue row — never from LessonContext or StudentProfiles directly. This means a late profile update or lesson context edit after 3am has no effect on that night's warm-up generation. The snapshot is the contract between the pipeline stages.</div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<footer>
+  <span>Classroom Agency System · Module 2 Full Build · Warm-Up Schema v1.0</span>
+  <span style="font-family:var(--mono);font-size:11px">Scripts: 23 · 24 · 25 · Flows: 3 · 4 · Tabs: StudentProfiles · WarmUpQueue · WarmUpRegistry · ClassSchedule</span>
+</footer>
+
+<script>
+const links    = document.querySelectorAll('.topnav-link');
+const sections = ['overview','scoring','crons','schema','profiles','flows','relationships'];
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    links.forEach(l => l.classList.remove('active'));
+    const match = document.querySelector('.topnav-link[href="#'+e.target.id+'"]');
+    if (match) match.classList.add('active');
+  });
+}, { rootMargin:'-15% 0px -75% 0px' });
+sections.forEach(id => { const el = document.getElementById(id); if(el) obs.observe(el); });
+</script>
+<div style="background:var(--surface);border-top:2px solid var(--amber);padding:32px 48px;margin-top:40px">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">PacingGuide v2 — new fields per unit</div>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;max-width:800px;margin-bottom:12px">PacingGuide_CAS_Context_v2.json adds four fields not present in the original JSON. Script 29 must be patched to import these before running <code style="font-family:var(--mono);font-size:12px">importPacingGuide()</code>.</p>
+  <table style="width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:8px">
+    <thead><tr style="background:var(--surface2)">
+      <th style="padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;font-family:var(--display);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Field</th>
+      <th style="padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;font-family:var(--display);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Type</th>
+      <th style="padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;font-family:var(--display);font-size:10px;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim)">Description</th>
+    </tr></thead>
+    <tbody style="color:var(--text-dim)">
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--amber)">chain_node</td><td style="padding:8px 14px">String</td><td style="padding:8px 14px">Supply-chain positioning label for the unit (e.g. "Producer / Distributor — how value is monetized")</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--amber)">esports_connection</td><td style="padding:8px 14px">String</td><td style="padding:8px 14px">Esports/gaming industry application of the unit's competencies. Used by Flow 3 for industry-grounded examples.</td></tr>
+      <tr style="border-bottom:1px solid var(--border)"><td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--amber)">vocabulary_with_definitions</td><td style="padding:8px 14px">Array</td><td style="padding:8px 14px">Array of <code style="font-family:var(--mono);font-size:10px">{term, definition}</code> objects. More useful to Flow 3 than the flat <code style="font-family:var(--mono);font-size:10px">key_vocabulary</code> string — allows definition-aware scaffolding.</td></tr>
+      <tr><td style="padding:8px 14px;font-family:var(--mono);font-size:11px;color:var(--amber)">warmup_anchor (enriched)</td><td style="padding:8px 14px">String</td><td style="padding:8px 14px">Now the full teacher-authored prompt from the lesson card, not a compressed summary. Script 29 cache truncates to 200 chars for property storage — full text always read from sheet for Flow 3 payloads.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div style="background:var(--surface);border-top:2px solid var(--violet);padding:32px 48px;margin-top:0">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--violet);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">CompetencyRubrics — SOL correlations added</div>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;max-width:800px">Each rubric now carries <code style="font-family:var(--mono);font-size:12px">sol_correlations</code> — a subject-keyed object of SOL codes (e.g. <code style="font-family:var(--mono);font-size:11px">{"English": ["9.C","9.DSR","9.RI"], "Mathematics": ["A.1"]}</code>). 197 of 221 competencies have SOL data. The 24 without are CTSO/WBL tasks, holistically assessed by VDOE design. Also added: <code style="font-family:var(--mono);font-size:12px">definition</code> (official VDOE definition text) and <code style="font-family:var(--mono);font-size:12px">required</code> (R or O). Flow 3 can reference SOL subject areas as personalization signals — a student whose shadow matrix shows low engagement on History & Social Sciences-correlated competencies is a different target than one strong there.</p>
+</div>
+
+<div style="background:var(--surface);border-top:2px solid var(--teal);padding:32px 48px;margin-top:0">
+  <div style="font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px">Flow 5 — Bridging Flow (new)</div>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;max-width:800px">Flow 5 runs at 6am before Flow 3 on PENDING queue rows that have a <code style="font-family:var(--mono);font-size:12px;color:var(--teal)">flow5_prior_response</code> in their snapshot. Temperature 0.4 · Max tokens 150. Generates a 2–3 sentence bridge between the student's most recent scored response and today's lesson using <code style="font-family:var(--mono)">pacing_prior_connection</code> from the pacing guide. Output written to <code style="font-family:var(--mono)">bridge_output</code> (col 20 of WarmUpQueue). Flow 3 prepends when present. Skips students with no prior history — strictly additive. Full specification in <code style="font-family:var(--mono)">CAS_Flow3_Flow4_Specification.html</code> v1.2.</p>
+  <p style="font-size:13px;color:var(--text-dim);margin-top:12px;font-family:var(--mono)">Updated cron sequence: 3:00am S23 → 3:05am S31 → 3:15am S25 → 3:30am S24 → 6:00am Flow 5 → 6:00am Flow 3 → Flow 4</p>
+</div>
+</body>
+</html>

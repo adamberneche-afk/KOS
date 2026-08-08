@@ -1,0 +1,966 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CAS Module 2 — Lesson Intelligence · Documentation v2.0</title>
+<link href="https://fonts.googleapis.com/css2?family=Anybody:wght@300;400;600;800&family=Literata:ital,wght@0,300;0,400;0,500;1,300;1,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --void:#08090a;--ink:#0f1115;--surface:#14171c;--surface2:#1c2028;
+  --border:#252b35;--border2:#2f3847;
+  --text:#cdd5e0;--text-dim:#6b7a8d;--text-bright:#e8eef5;
+  --amber:#e8b84b;--amber-d:#c49a30;--amber-bg:rgba(232,184,75,0.08);--amber-border:rgba(232,184,75,0.2);
+  --teal:#3ecfb8;--teal-d:#28a090;--teal-bg:rgba(62,207,184,0.07);--teal-border:rgba(62,207,184,0.2);
+  --violet:#a78bfa;--violet-bg:rgba(167,139,250,0.08);--violet-border:rgba(167,139,250,0.2);
+  --green:#4ade80;--green-bg:rgba(74,222,128,0.08);--green-border:rgba(74,222,128,0.2);
+  --rose:#f87171;--rose-bg:rgba(248,113,113,0.08);--rose-border:rgba(248,113,113,0.2);
+  --sky:#38bdf8;--sky-bg:rgba(56,189,248,0.07);--sky-border:rgba(56,189,248,0.2);
+  --orange:#fb923c;--orange-bg:rgba(251,146,60,0.08);--orange-border:rgba(251,146,60,0.2);
+  --display:'Anybody',system-ui,sans-serif;
+  --body:'Literata',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
+}
+html{scroll-behavior:smooth}
+body{font-family:var(--body);background:var(--void);color:var(--text);font-size:15px;line-height:1.75;min-height:100vh}
+
+/* ── NAV ── */
+.topnav{position:fixed;top:0;left:0;right:0;z-index:200;background:rgba(8,9,10,0.94);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:0 48px;display:flex;align-items:center;justify-content:space-between;height:54px}
+.topnav-brand{font-family:var(--display);font-size:12px;font-weight:800;letter-spacing:2px;text-transform:uppercase;color:var(--teal)}
+.topnav-links{display:flex}
+.topnav-link{font-family:var(--display);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:0 14px;height:54px;display:flex;align-items:center;text-decoration:none;border-bottom:2px solid transparent;transition:all 0.15s}
+.topnav-link:hover{color:var(--text-bright)}
+.topnav-link.active{color:var(--teal);border-bottom-color:var(--teal)}
+
+/* ── HERO ── */
+.hero{padding:130px 80px 90px;position:relative;overflow:hidden;border-bottom:1px solid var(--border)}
+.hero-bg{position:absolute;inset:0;background:radial-gradient(ellipse 70% 50% at 10% 60%,rgba(62,207,184,0.05) 0%,transparent 60%),radial-gradient(ellipse 50% 40% at 85% 30%,rgba(167,139,250,0.04) 0%,transparent 50%);pointer-events:none}
+.hero-grid{position:absolute;inset:0;background-image:linear-gradient(var(--border) 1px,transparent 1px),linear-gradient(90deg,var(--border) 1px,transparent 1px);background-size:72px 72px;opacity:0.25;pointer-events:none}
+.eyebrow{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:3px;text-transform:uppercase;margin-bottom:24px;display:flex;align-items:center;gap:10px}
+.eyebrow::before{content:"";width:24px;height:1px;background:var(--teal)}
+.hero h1{font-family:var(--display);font-size:clamp(44px,6vw,80px);font-weight:800;line-height:0.95;letter-spacing:-2px;color:var(--text-bright);margin-bottom:6px}
+.hero h1 em{color:var(--teal);font-style:normal;display:block}
+.hero-sub{font-family:var(--display);font-size:clamp(15px,1.8vw,19px);font-weight:300;color:var(--text-dim);max-width:580px;line-height:1.55;margin:24px 0 44px}
+.hero-badges{display:flex;gap:8px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:10px;padding:4px 11px;border-radius:3px;font-weight:500}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-violet{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-sky{background:var(--sky-bg);color:var(--sky);border:1px solid var(--sky-border)}
+.badge-orange{background:var(--orange-bg);color:var(--orange);border:1px solid var(--orange-border)}
+.badge-ghost{background:transparent;color:var(--text-dim);border:1px solid var(--border2)}
+
+/* ── BUILD PHASE TABS ── */
+.build-tabs{display:flex;gap:0;margin-bottom:0;border-bottom:2px solid var(--border)}
+.build-tab{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;padding:12px 20px;cursor:pointer;color:var(--text-dim);border-bottom:3px solid transparent;margin-bottom:-2px;transition:all 0.15s;background:none;border-top:none;border-left:none;border-right:none}
+.build-tab.active-lw{color:var(--teal);border-bottom-color:var(--teal)}
+.build-tab.active-wu{color:var(--orange);border-bottom-color:var(--orange)}
+.build-pane{display:none}.build-pane.active{display:block}
+
+/* ── LAYOUT ── */
+.page{max-width:1060px;margin:0 auto;padding:0 80px}
+.section{padding:64px 0;border-bottom:1px solid var(--border)}
+.section:last-child{border-bottom:none}
+.section-eyebrow{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:3px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:10px}
+.section-eyebrow::before{content:"";width:20px;height:1px;background:var(--teal)}
+.section-eyebrow.warm{color:var(--orange)}
+.section-eyebrow.warm::before{background:var(--orange)}
+.section h2{font-family:var(--display);font-size:clamp(28px,3.5vw,44px);font-weight:800;letter-spacing:-1px;color:var(--text-bright);line-height:1.05;margin-bottom:16px}
+.section-intro{font-size:15px;color:var(--text-dim);max-width:640px;line-height:1.8;margin-bottom:40px}
+
+/* ── FLOW DIAGRAM ── */
+.flow{background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:28px 32px;font-family:var(--mono);font-size:12px;color:var(--text-dim);line-height:2.4;overflow-x:auto;margin:24px 0}
+.flow .k{color:var(--amber)}.flow .v{color:var(--teal)}.flow .h{color:var(--violet)}
+.flow .g{color:var(--green)}.flow .r{color:var(--rose)}.flow .c{color:var(--text-dim);font-style:italic}
+.flow .o{color:var(--orange)}.flow .s{color:var(--sky)}
+
+/* ── SCHEMA TABLES ── */
+.schema{background:var(--ink);border:1px solid var(--border);border-radius:4px;overflow:hidden;width:100%;margin:16px 0}
+.schema-head{background:var(--surface2);border-bottom:1px solid var(--border);padding:11px 20px;display:flex;justify-content:space-between;align-items:center}
+.schema-head h4{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--text-bright)}
+.schema-head span{font-family:var(--mono);font-size:10px;color:var(--text-dim)}
+.sr{display:grid;padding:9px 20px;border-bottom:1px solid rgba(37,43,53,0.5);font-size:12.5px;align-items:baseline;gap:12px;grid-template-columns:210px 90px 90px 1fr}
+.sr:last-child{border-bottom:none}
+.sr.hdr{background:rgba(28,32,40,0.5);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+.sr.grp{background:rgba(28,32,40,0.3);padding-top:12px;padding-bottom:4px}
+.sr.grp .cf{font-family:var(--mono);font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text-dim)}
+.cf{font-family:var(--mono);font-size:12px;color:var(--teal)}
+.ct{font-family:var(--mono);font-size:11px;color:var(--violet)}
+.cw{font-family:var(--mono);font-size:11px;color:var(--amber)}
+.cd{color:var(--text-dim);font-size:13px}
+.cd code{font-family:var(--mono);font-size:11px;background:var(--surface2);border:1px solid var(--border2);padding:1px 5px;border-radius:3px;color:var(--teal)}
+
+/* ── SCRIPT CARDS ── */
+.script-grid{display:grid;gap:1px;background:var(--border);margin:24px 0}
+.script-card{background:var(--surface);padding:28px 32px;position:relative}
+.script-card::before{content:"";position:absolute;top:0;left:0;bottom:0;width:3px}
+.sc-teal::before{background:var(--teal)}.sc-amber::before{background:var(--amber)}
+.sc-violet::before{background:var(--violet)}.sc-green::before{background:var(--green)}
+.sc-orange::before{background:var(--orange)}.sc-sky::before{background:var(--sky)}
+.script-num{font-family:var(--mono);font-size:10px;color:var(--text-dim);letter-spacing:2px;margin-bottom:10px}
+.script-card h3{font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin-bottom:6px;letter-spacing:-0.2px}
+.script-card .sc-sub{font-size:12.5px;color:var(--text-dim);margin-bottom:16px;font-family:var(--mono)}
+.script-card .sc-body{font-size:13.5px;color:var(--text-dim);line-height:1.75}
+.script-card .sc-fns{margin-top:14px;display:flex;flex-wrap:wrap;gap:6px}
+.fn-tag{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:3px;background:var(--surface2);border:1px solid var(--border2);color:var(--text-dim)}
+.fn-tag.entry{background:var(--teal-bg);border-color:var(--teal-border);color:var(--teal)}
+.fn-tag.manual{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
+.fn-tag.hook{background:var(--violet-bg);border-color:var(--violet-border);color:var(--violet)}
+.fn-tag.export{background:var(--sky-bg);border-color:var(--sky-border);color:var(--sky)}
+
+/* ── STEP LIST ── */
+.step-list{margin:24px 0;display:grid;gap:1px;background:var(--border)}
+.step{background:var(--ink);padding:22px 28px;display:grid;grid-template-columns:48px 1fr;gap:20px;align-items:start}
+.step-n{font-family:var(--display);font-size:28px;font-weight:800;color:var(--border2);line-height:1}
+.step-body h4{font-family:var(--display);font-size:15px;font-weight:700;color:var(--text-bright);margin-bottom:6px}
+.step-body p{font-size:13.5px;color:var(--text-dim);line-height:1.7;margin-bottom:8px}
+.step-body p:last-child{margin-bottom:0}
+.step-body code{font-family:var(--mono);font-size:11.5px;background:var(--surface2);border:1px solid var(--border2);padding:1px 6px;border-radius:3px;color:var(--teal)}
+.step-body .step-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+
+/* ── CALLOUTS ── */
+.callout{border-radius:4px;padding:14px 18px;margin:20px 0;display:flex;gap:12px;font-size:13.5px;line-height:1.65}
+.callout-icon{flex-shrink:0;margin-top:1px}
+.callout-teal{background:var(--teal-bg);border-left:3px solid var(--teal);color:#2aaa96}
+.callout-amber{background:var(--amber-bg);border-left:3px solid var(--amber);color:#c8a040}
+.callout-violet{background:var(--violet-bg);border-left:3px solid var(--violet);color:#9a7ef5}
+.callout-orange{background:var(--orange-bg);border-left:3px solid var(--orange);color:#d97a30}
+.callout-rose{background:var(--rose-bg);border-left:3px solid var(--rose);color:#e06060}
+.callout-sky{background:var(--sky-bg);border-left:3px solid var(--sky);color:#29a8d8}
+.callout-body strong{color:inherit;font-weight:600}
+
+/* ── DECISIONS ── */
+.decision-list{list-style:none;margin:20px 0}
+.decision-item{padding:14px 0;border-bottom:1px solid var(--border);display:grid;grid-template-columns:120px 1fr;gap:20px;font-size:13.5px}
+.decision-item:last-child{border-bottom:none}
+.decision-key{font-family:var(--mono);font-size:10px;color:var(--teal);font-weight:500;padding-top:2px;letter-spacing:.5px}
+.decision-val{color:var(--text-dim);line-height:1.65}
+.decision-val strong{color:var(--text-bright);font-weight:500}
+
+/* ── ENUM BLOCK ── */
+.enum-block{background:var(--surface2);border:1px solid var(--border2);border-radius:4px;padding:14px 18px;margin:10px 0;font-family:var(--mono);font-size:12px;line-height:2.2;color:var(--text-dim)}
+.enum-block .ev{color:var(--amber)}.enum-block .ec{color:var(--text-dim);font-style:italic;margin-left:8px}
+
+/* ── COURSE CARDS ── */
+.course-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--border);margin:24px 0}
+.course-card{background:var(--surface);padding:24px 28px}
+.course-card h4{font-family:var(--display);font-size:16px;font-weight:700;color:var(--text-bright);margin-bottom:4px}
+.course-card .course-code{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px}
+.course-card ul{list-style:none;font-size:12.5px;color:var(--text-dim);line-height:2}
+.course-card ul li::before{content:"—  ";color:var(--border2)}
+
+/* ── SCORING TABLE ── */
+.score-table{width:100%;border-collapse:collapse;margin:20px 0;font-size:13px}
+.score-table th{font-family:var(--display);font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-dim);padding:10px 16px;border-bottom:2px solid var(--border);text-align:left;background:var(--surface2)}
+.score-table td{padding:10px 16px;border-bottom:1px solid var(--border);color:var(--text-dim);vertical-align:top;line-height:1.6}
+.score-table tr:last-child td{border-bottom:none}
+.score-table tr.group-row td{background:var(--surface);font-family:var(--display);font-weight:700;color:var(--text-bright);font-size:13px;padding-top:14px}
+.score-table tr.total-row td{background:var(--surface2);font-family:var(--display);font-weight:800;color:var(--text-bright);border-top:2px solid var(--border)}
+.score-table .pts{font-family:var(--mono);font-size:12px;color:var(--amber);font-weight:600}
+.judge{font-family:var(--mono);font-size:10px;padding:2px 7px;border-radius:3px}
+.judge-script{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.judge-ai{background:var(--violet-bg);color:var(--violet);border:1px solid var(--violet-border)}
+
+/* ── HOOKS TABLE ── */
+.hooks-grid{display:grid;gap:1px;background:var(--border);margin:24px 0}
+.hook-row{background:var(--ink);padding:18px 24px;display:grid;grid-template-columns:180px 100px 1fr;gap:16px;align-items:start;font-size:13px}
+.hook-row.hdr{background:var(--surface2);font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim)}
+.hook-file{font-family:var(--mono);font-size:11px;color:var(--teal)}
+.hook-status.live{color:var(--green)}.hook-status.dormant{color:var(--text-dim)}
+.hook-status{font-family:var(--mono);font-size:10px}
+.hook-desc{color:var(--text-dim);line-height:1.6}
+
+/* ── TAB INVENTORY ── */
+.tab-inv{width:100%;border-collapse:collapse;margin:20px 0;font-size:12.5px}
+.tab-inv th{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-dim);padding:8px 14px;border-bottom:2px solid var(--border);text-align:left;background:var(--surface2)}
+.tab-inv td{padding:8px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+.tab-inv tr:last-child td{border-bottom:none}
+.tab-inv .tn{font-family:var(--mono);color:var(--teal)}
+.tab-inv .tm{font-family:var(--mono);font-size:11px;color:var(--text-dim)}
+.tab-inv .tw{font-family:var(--mono);font-size:11px;color:var(--amber)}
+.tab-inv .ta{font-family:var(--mono);font-size:11px}
+.tab-inv .yes{color:var(--green)}.tab-inv .no{color:var(--text-dim)}
+
+/* ── CRON BLOCK ── */
+.cron-block{background:var(--ink);border:1px solid var(--border);border-radius:4px;padding:28px 32px;font-family:var(--mono);font-size:12px;color:var(--text-dim);line-height:2.4;overflow-x:auto;margin:24px 0}
+.cron-block .k{color:var(--amber)}.cron-block .v{color:var(--teal)}.cron-block .h{color:var(--sky)}
+.cron-block .g{color:var(--green)}.cron-block .r{color:var(--rose)}.cron-block .c{color:var(--text-dim);font-style:italic}
+.cron-block .o{color:var(--orange)}.cron-block .p{color:var(--violet)}
+
+/* ── FOOTER ── */
+footer{background:var(--surface);border-top:1px solid var(--border);padding:40px 80px;font-size:12px;color:var(--text-dim);display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px}
+
+@media(max-width:900px){
+  .topnav{padding:0 20px}.topnav-links{display:none}
+  .hero,.page{padding-left:24px;padding-right:24px}
+  .course-grid{grid-template-columns:1fr}
+  .hook-row,.sr{grid-template-columns:1fr}
+  footer{padding:32px 24px}
+}
+</style>
+</head>
+<body>
+
+<div style="max-width:900px;margin:24px auto 0;padding:18px 24px;border:2px solid #c0392b;border-radius:8px;background:#fdecea;color:#7b241c;font-family:system-ui,sans-serif;font-size:14px;line-height:1.6">
+  <strong>⚠ RECONCILIATION NOTE (post-upload, repo-wide numbering decision) —</strong>
+  This document's own "Numbering Collision" section (Scripts section, and the
+  Deployment checklist below) argues for the <em>opposite</em> resolution from
+  what is actually implemented in this repo: it says Module 2 should keep
+  29/PacingGuideManager and 30/CompetencyRubricImporter, and that Module 3/4
+  (the already-built Student Context Aggregator / SCR Suggestion &amp;
+  Remediation Engine) should renumber to 32/33/33b instead. <strong>That is
+  not what happened.</strong> The repo kept the already-shipped Module 4/5
+  numbering unchanged (Script 29 = StudentContextAggregator, Script 30 /
+  30b = SCRSuggestionEngine / SCRRetryRemediation — both cross-referenced
+  throughout the rest of this repo already) and instead renumbered
+  <em>this</em> module's three utility scripts to
+  <strong>31 = PacingGuideManager, 32 = CompetencyRubricImporter,
+  33 = ArtifactCompetencyBridge</strong> — the direction opposite to what this
+  document recommends. See <code>cas-ccps/README.md</code> for the full
+  reconciliation record. The actual checked-in files
+  (<code>scripts/31_PacingGuideManager.js</code>,
+  <code>scripts/32_CompetencyRubricImporter.js</code>,
+  <code>scripts/33_ArtifactCompetencyBridge.js</code>) use the 31/32/33
+  numbers and log tags (<code>[S31]</code>/<code>[S32]</code>/<code>[S33]</code>)
+  — every "Script 29" / "Script 30" / "Script 31" reference below, in this
+  document only, means this module's own pre-renumbering scheme and should
+  be read as 31/32/33 respectively. Left unedited below (rather than
+  rewriting a 938-line generated document) so this note is the single
+  source of the correction rather than a partial, error-prone find/replace.
+</div>
+
+<nav class="topnav">
+  <span class="topnav-brand">CAS · Module 2</span>
+  <div class="topnav-links">
+    <a class="topnav-link active" href="#overview">Overview</a>
+    <a class="topnav-link" href="#lightweight">Lightweight Build</a>
+    <a class="topnav-link" href="#warmups">Warm-Up System</a>
+    <a class="topnav-link" href="#scoring">Scoring</a>
+    <a class="topnav-link" href="#scripts">Scripts</a>
+    <a class="topnav-link" href="#schema">Schema</a>
+    <a class="topnav-link" href="#deployment">Deployment</a>
+    <a class="topnav-link" href="#hooks">Forward Hooks</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="eyebrow">Classroom Agency System · Module 2 · Documentation v2.0</div>
+  <h1>Lesson<em>Intelligence</em></h1>
+  <p class="hero-sub">Two deployable builds. Lightweight automates competency alignment documentation. Full build adds personalized warm-up generation scored overnight by AI.</p>
+  <div class="hero-badges">
+    <span class="badge badge-green">LIGHTWEIGHT: PRODUCTION READY</span>
+    <span class="badge badge-orange">WARM-UPS: SPECIFIED</span>
+    <span class="badge badge-teal">10 New Tabs</span>
+    <span class="badge badge-teal">11 New Scripts</span>
+    <span class="badge badge-violet">4 Studio Flows</span>
+    <span class="badge badge-amber">221 Competencies · 221 Rubrics · 197 SOL</span>
+    <span class="badge badge-sky">Shadow Matrix · Pacing Guide</span>
+    <span class="badge badge-ghost">Additive · No M1 Changes</span>
+  </div>
+</div>
+
+<div class="page">
+
+<!-- OVERVIEW -->
+<div class="section" id="overview">
+  <div class="section-eyebrow">What this module does</div>
+  <h2>The prerequisite for instruction</h2>
+  <p class="section-intro">Module 1 automates the prerequisite for student submission. Module 2 automates the prerequisite for instruction — the documentation and alignment work that happens before class, and the cognitive priming that happens as students walk in.</p>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Two independent builds.</strong> The lightweight build is deployable today and produces immediate value: automatic competency alignment documentation from lesson context submissions, with a term-end report generated on demand. The full warm-up build layers on top and adds student-specific cognitive entry points generated overnight, scored nightly by AI, and feeding a longitudinal student profile. Either build runs independently. The full build requires the lightweight build to be in place first.</div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Module independence from Module 1.</strong> Module 2 adds tabs and scripts to an existing Module 1 installation. No existing scripts are modified. Module 2 can be disabled by setting <code>M2_ENABLED = false</code> in Script Properties. Module 1 continues running identically.</div>
+  </div>
+</div>
+
+<!-- LIGHTWEIGHT BUILD -->
+<div class="section" id="lightweight">
+  <div class="section-eyebrow">Build 1 — Production Ready</div>
+  <h2>Lightweight: Lesson Framing + Alignment</h2>
+  <p class="section-intro">Teacher submits a lesson context via the Teacher Dashboard modal. System logs competency alignment automatically. Term-end documentation report generated on demand.</p>
+
+  <div class="flow">
+<span class="c">// LESSON CONTEXT SUBMISSION — complete lightweight flow</span>
+
+<span class="k">Teacher</span> → clicks "New Lesson" in Teacher Dashboard header
+  → modal opens · competency tabs load from <span class="v">CompetencyRegistry</span>
+  → two tabs: 8175 Marketing · 8177 Management
+  → competencies sorted by task number within each course tab
+  → teacher fills required fields · selects competencies · clicks "Log lesson"
+
+<span class="k">Script 07</span> (Teacher Dashboard web app)
+  → <span class="v">submitLessonContext(payload)</span>
+  → injects teacherEmail + teacherName from Script Properties
+  → calls <span class="v">onLessonContextSubmit_(payload)</span> in Script 22
+
+<span class="k">Script 22</span> (LessonContextHandler)
+  → M2_ENABLED guard · tab availability check
+  → <span class="v">validateLessonPayload_()</span>: required fields · date · competency IDs
+  → <span class="v">supersedeDuplicates_()</span>: mark SUPERSEDED if same teacher+date+period
+  → write row to <span class="v">LessonContext</span> · status: <span class="h">RECEIVED</span>
+  → call <span class="v">logAlignmentForLesson_(lessonId)</span> in Script 26
+
+<span class="k">Script 26</span> (CompetencyAlignmentLog)
+  → build <span class="v">CompetencyMap</span> from registry
+  → for each competency ID: write one row to <span class="v">AlignmentLog</span> (denormalized)
+  → update <span class="v">LessonContext</span> status → <span class="g">ALIGNMENT_LOGGED</span>
+  → Script 07 receives { success: true } → toast + <span class="h">S27 hook</span> (dormant)
+
+<span class="c">// SAFETY NET</span>
+<span class="k">runAlignmentLogBackfill_</span> (every 5 min)
+  → catches RECEIVED rows where S26 failed silently
+
+<span class="c">// TERM-END REPORT (manual)</span>
+<span class="k">generateAlignmentReport()</span> from Script 26
+  → Google Doc in teacher folder: competencies by course then duty area
+  → ✓ addressed (with lesson dates) · ○ not yet addressed
+  → registers in <span class="v">ReportRegistry</span> + writes Script Properties
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Architectural decisions</h3>
+  <ul class="decision-list">
+    <li class="decision-item">
+      <span class="decision-key">NO QUEUE</span>
+      <span class="decision-val"><strong>Script 22 calls Script 26 directly.</strong> No queue needed — no Studio Flows, no async latency. The entire submission pipeline completes synchronously within one web app request. The 5-minute backfill trigger catches any silent failures.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">MODAL IN S07</span>
+      <span class="decision-val"><strong>Lesson Context form lives inside the Teacher Dashboard.</strong> Same deployment, same URL, teacher identity injected server-side from Script Properties. Competency dropdown filtered by course — two tabs, sorted by task number, discovered dynamically from the registry.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">APPEND-ONLY LOG</span>
+      <span class="decision-val"><strong>AlignmentLog rows are never updated or deleted.</strong> Resubmissions append new rows; the old LessonContext row is SUPERSEDED. The log is an audit record, not a live state table. Reports filter by <code>logged_at</code> for the most recent mapping per lesson.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">DENORMALIZED</span>
+      <span class="decision-val"><strong>AlignmentLog copies lesson fields at write time.</strong> The tab is self-contained — an administrator reading an export sees a complete record without cross-referencing other tabs.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">PER-COURSE DUPES</span>
+      <span class="decision-val"><strong>Foundation competencies (tasks 1–38) are logged separately per course.</strong> <code>8175-5</code> and <code>8177-5</code> are distinct IDs. Each course's coverage is independently tracked and reported in separate sections of the AlignmentReport. Intentional and settled.</span>
+    </li>
+    <li class="decision-item">
+      <span class="decision-key">MULTI-TEACHER</span>
+      <span class="decision-val"><strong>Each colleague gets their own Central Ledger installation.</strong> Script 28 (setup wizard extension) handles cloning. <code>M2_ENABLED</code> defaults to <code>false</code> — explicit opt-in required per installation.</span>
+    </li>
+  </ul>
+</div>
+
+<!-- WARM-UP SYSTEM -->
+<div class="section" id="warmups">
+  <div class="section-eyebrow warm">Build 2 — Warm-Up System</div>
+  <h2>Full Build: Generative Warm-Ups</h2>
+  <p class="section-intro">Student-specific cognitive entry points generated overnight from lesson context and individual learning history. Scored nightly by AI. Feeds a longitudinal student profile.</p>
+
+  <div class="cron-block">
+<span class="c">// ── 3AM NIGHTLY CRON — three stages in sequence ────────────────────────────</span>
+
+<span class="k">STAGE 1 — 3:00am — Script 23</span> (StudentProfileManager)
+  → reads <span class="v">Ledger</span> + <span class="v">AlignmentLog</span> + <span class="v">STAGING_PIPELINE</span> + <span class="v">WarmUpQueue</span> in bulk
+  → for each student: compiles class-level competency history
+  → extracts structured analytic indicators from Flow 2 feedback (MAX 50 doc opens)
+  → reads warm-up scores + extra credit flags from WarmUpQueue (no doc opens)
+  → upserts one row per student in <span class="v">StudentProfiles</span>
+  → batch writes new students · targeted range writes for updates
+
+<span class="k">STAGE 2 — 3:15am — Script 25</span> (WarmUpWriter — evaluation job)
+  → scans <span class="v">WarmUpRegistry</span> for yesterday's rows where total_score IS NULL
+  → for each: opens warm-up doc ONCE
+      extracts response text + checks for extra credit reply in same pass
+      counts words deterministically → word count score (0/3/5/6)
+  → if word count = 0: stamp INCOMPLETE · score 0 · skip Flow 4
+  → if word count > 0: write response_text + status <span class="g">PENDING_EVAL</span>
+  → <span class="h">Studio Flow 4</span> evaluates grammar (0/1) + engagement (0/1/2/3)
+      returns { grammar, engagement, feedback } as JSON
+  → Script 25 computes total · writes scores to queue + registry + doc
+
+<span class="k">STAGE 3 — 3:30am — Script 24</span> (WarmUpBridge)
+  → determines tomorrow's date → parity check (ODD / EVEN)
+  → reads <span class="v">ClassSchedule</span> for periods meeting tomorrow (DAILY + day type)
+  → for each matching period with a LessonContext submitted:
+      reads enrolled students from <span class="v">Ledger</span>
+      calls <span class="o">getStudentProfileSnapshot_()</span> per student
+        → computes competency_gaps against today's lesson on the fly
+      builds all queue rows in memory
+      writes ONE batch setValues() call per period (not appendRow)
+  → marks LessonContext warm_up_generated = QUEUED
+
+<span class="c">// ── 6AM CLASS-DAY CRON ─────────────────────────────────────────────────────</span>
+
+<span class="h">Studio Flow 3</span> (Warm-Up Generation)
+  → reads WarmUpQueue PENDING rows
+  → selects archetype: PROVOCATION → PARADOX → CONCRETE SCENARIO → BRIDGE
+  → generates personalized 3-5 sentence warm-up prompt
+  → creates Google Doc in student warm-up folder
+      <span class="v">[Admin Root] / [Course] / [Teacher] / [Period] / Warm-Ups / [Student] /</span>
+      folder IDs sourced from Script Properties via snapshot — no hardcoding
+  → stamps doc: PROMPT zone · RESPONSE zone
+  → shares with student as editor
+  → marks queue row <span class="g">DELIVERED</span>
+  → Script 25 Job 1 registers doc in <span class="v">WarmUpRegistry</span> (5-min safety trigger)
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Block schedule awareness</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Classes meet on odd or even calendar days (derived from date parity). First period meets daily. Period day types configured once in the ClassSchedule tab. Holiday handling is implicit — if no LessonContext is submitted for tomorrow, no warm-ups are generated regardless of the schedule.</p>
+
+  <div class="callout callout-sky">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Throughput at 150 students across 4 periods:</strong> ~40 students per period. Flow 3 at 40 students × 30s = ~2–4 minutes with Studio parallelism. Script 25 evaluation at 40 doc opens × 2s = ~80 seconds per period batch. All stages complete within the 3am–6am window. Batch writes in Script 24 (single <code>setValues()</code> per period) keep queue-build time under 10 seconds total.</div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Ambient onboarding — shadow matrix</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Derived from the KOS probabilistic state matrix pattern. The system quietly learns which warm-up archetype produces the best engagement trajectory for each student at the granularity of each unit — without asking the teacher anything. The shadow matrix lives as a JSON field in the teacher profile row of the StudentProfiles tab, updated nightly by Script 23.</p>
+
+  <div class="callout callout-violet">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Two confidence layers:</strong> Within-unit confidence builds across warm-ups in the current unit (history length / 8 expected warm-ups per 3-week unit). Cross-unit confidence is a decayed weighted average across all prior units using a 0.85 decay factor — recent units weighted more heavily. When cross-unit confidence crosses 0.75 for a given student × archetype combination, Script 25 sends the teacher a batched email digest. The teacher can reply OVERRIDE to keep the default selection; otherwise the system locks to the confident archetype for that student's remaining warm-ups in the unit. At 3:30am, <code>getStudentProfileSnapshot_()</code> in Script 23 computes a pre-formatted <code>shadow_archetype_note</code> string for each student — e.g. "Shadow matrix suggests PARADOX (72% confidence, 5 warm-ups in unit S1-U3, trend: rising)" — and embeds it in the <code>student_profile_snapshot</code> JSON on the WarmUpQueue row. Flow 3 reads it as the <code>{shadow_archetype_note}</code> placeholder in the Mode A system prompt. Null when confidence is below threshold. Computed once at snapshot time — no Sheets reads at generation.</div>
+  </div>
+
+  <div class="callout callout-orange">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Pacing guide as the unit clock:</strong> Script 29 resolves any lesson date to its pacing guide unit by matching against <code>approx_start</code> and <code>approx_end</code> date ranges. The 20-unit pacing guide covers the full academic year. The shadow matrix resets its within-unit confidence at each new unit boundary while retaining cross-unit history. The teacher never tags lessons with unit names — the date is the only input.</div>
+  </div>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Warm-up anchor — two-mode generation:</strong> Each pacing guide unit contains a teacher-authored <code>warmup_anchor</code> seed prompt. When present, Flow 3 runs in Mode A: personalizing the anchor for each student rather than generating from scratch. The anchor guarantees pedagogical quality; Flow 3 applies the archetype angle and student personalization. When absent (pacing guide not yet imported), Flow 3 runs in Mode B: generative from the lesson context and competency rubrics alone. Both modes are valid — Mode A produces consistently higher quality.</div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Competency rubric enrichment — weak point 2 resolved:</strong> Each selected competency's rubric (from Script 30) is embedded in the WarmUpQueue lesson context snapshot via <code>addRubricsToSnapshot_()</code>. The rubric includes 1–11 skill questions pre-mapped to the four archetypes via <code>archetype_question_map</code>. Flow 3 receives structured question options for every competency regardless of how minimal the teacher's lesson context submission is. A teacher who submits a one-line objective still gives Flow 3 enough material for a quality prompt — the competency rubric carries the pedagogical substance.</div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Artifact-based competency tracking — Script 31</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Script 31 runs at 3:05am — between Script 23 (class-level baseline) and Script 25 (evaluation). It reads STAGING_PIPELINE for COMPLETE assignments, joins to the Teacher Matrix's new <code>competency_ids</code> column, and writes per-student competency coverage to StudentProfiles. The result: <code>competencies_addressed</code> reflects work actually produced, not just lessons attended. The warm-up competency gap computation in Script 24 becomes genuinely per-student.</p>
+
+  <div class="callout callout-green">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>The artifact evidence model:</strong> Completion of a work artifact = demonstrated competency exposure. A student who was present but disengaged has no artifact. A student who was absent but completed makeup work has one. Script 31's merge is strictly additive — it never removes competencies from a student's profile, only adds. The Teacher Matrix needs one new column: <code>competency_ids</code> (comma-separated IDs). Run <code>addCompetencyIdsColumn_()</code> from Script 31 once to add it. Run <code>installArtifactSyncTrigger_()</code> to install the 3:05am trigger.</div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Flow 5 — Bridging Flow</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Flow 5 generates a 2–3 sentence connector between a student's most recent warm-up response and today's lesson. It runs before Flow 3 on the same PENDING queue row. Script 24 embeds the student's prior response (<code>flow5_prior_response</code>, capped at 800 chars) in the per-student lesson context snapshot at 3:30am. Flow 5 reads this at 6am and writes a bridge paragraph to <code>bridge_output</code> (WarmUpQueue column 21). Flow 3 prepends it to the warm-up doc when present. Students with no prior history receive no bridge — strictly additive.</p>
+
+  <div class="callout callout-violet">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Temperature 0.4 — lower than Flow 3's 0.7.</strong> Flow 3 generates — it needs variation and creative framing. Flow 5 connects — it needs accuracy. A bridge that misrepresents what the student wrote is worse than no bridge. Lower temperature keeps Flow 5 close to what the student actually expressed. Max tokens: 150. One paragraph. Full specification in <code>CAS_Flow3_Flow4_Specification.html</code> v1.2.</div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Data files — what's in them now</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Both data files were significantly enriched during the July 2026 build session using the ten Stage lesson cards and both Canvas Common Cartridges.</p>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>CompetencyRubrics.json — now includes SOL correlations.</strong> 197 of 221 competencies have Virginia Standards of Learning correlations across four subject areas: English (117 competencies), History and Social Sciences (75), Mathematics (16), Science (12). Data sourced from the official VDOE printable versions for both courses — the 8175 file was uploaded directly; the 8177 file was discovered embedded in the Canvas management cartridge at <code>web_resources/Uploaded Media/8177 Printable Version with Standards Correlations.docx</code>. The 24 without SOL correlations are CTSO/WBL/foundation tasks (8175 tasks 24–38 and equivalents) — no SOL by VDOE design, assessed holistically. Each rubric now also carries the official VDOE <code>definition</code> field alongside the existing <code>demonstration_indicators</code> and <code>skill_questions</code>. Flow 3 can use SOL subject area as an additional personalization signal.</div>
+  </div>
+
+  <div class="callout callout-sky">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>PacingGuide_CAS_Context_v2.json — rebuilt from lesson cards.</strong> The original pacing guide JSON was a compressed derivative of the ten Stage lesson cards. v2 restores the full source data: warm-up anchors are the complete teacher-authored prompts (not summaries), vocabulary entries have definitions, prior lesson connections are verbatim from the cards. New fields added per unit: <code>chain_node</code> (supply-chain positioning label), <code>esports_connection</code> (esports/gaming industry application), <code>vocabulary_with_definitions</code> (array of term + definition objects). The lesson card structure was verified against Canvas module task ranges for all 20 units — exact matches confirmed for 8175-66/67 (Stage 4), 8177-85–88 (Stage 4), 8177-39–48 (Stage 1), and 8177-63–66 (Stage 5). <strong>Use v2 going forward.</strong> Script 29 needs a minor schema patch before import — see next steps.</div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Module 3/4 integration — script number collision</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">A separately-developed Module 3/4 codebase uses script numbers 29 and 30 for different scripts than this build. This is a hard deployment blocker for multi-module installs.</p>
+
+  <div class="callout callout-rose">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Script number collision — must resolve before combined deployment.</strong>
+    This build: Script 29 = PacingGuideManager · Script 30 = CompetencyRubricImporter.
+    Module 3/4 build: Script 29 = StudentContextAggregator · Script 30 = SCRSuggestionEngine.
+    Resolution: renumber Module 3/4 scripts to 32 and 33 (with 33b for SCRRetryRemediation).
+    No function name conflicts exist — the collision is file-number only. Update all cross-references in the Module 3/4 addendum files before pasting into the same project.
+    Master script number map: S07 Dashboard · S16 UnifiedSetup · S19 ClonedSheetConfig · S22 LessonContextHandler · S22b CompetencyRegistryImporter · S23 StudentProfileManager · S24 WarmUpBridge · S25 WarmUpWriter · S26 CompetencyAlignmentLog · S28 Module2Setup · S29 PacingGuideManager · S30 CompetencyRubricImporter · S31 ArtifactCompetencyBridge · S32 StudentContextAggregator · S33 SCRSuggestionEngine · S33b SCRRetryRemediation · S08 TeacherConfirmationStep.</div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Setup wizard — contextual gates</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Script 28 implements the <strong>Contextual Gates</strong> design philosophy throughout. Every setup step verifies its own output before declaring success. Every failure surfaces at the point of action with an exact path forward. No instruction is deferred to a document the teacher won't read. The teacher never types something the system already knows. A "complete" state means verified complete — not "the script ran without errors." This philosophy is documented in full in <code>CAS_ContextualGates_DesignPrinciples.html</code> and applies to every deployment-adjacent flow in the system.</p>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Cron health monitoring — weak point 3 resolved</h3>
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Each cron stage writes a health stamp to Script Properties on completion. The subsequent stage reads that stamp at startup and checks whether it's within the expected window. If a stage ran more than 45 minutes ago, Script 25's <code>_checkCronHealth_()</code> sends one email alert to the teacher (or admin) and sets a flag to prevent repeat alerts for the same stale event.</p>
+
+  <div class="callout callout-rose">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Health stamps written:</strong> <code>M2_STAGE1_LAST_RUN</code> / <code>M2_STAGE1_STATUS</code> by Script 23 · <code>M2_STAGE2_LAST_RUN</code> / <code>M2_STAGE2_STATUS</code> by Script 25 · <code>M2_STAGE3_LAST_RUN</code> / <code>M2_STAGE3_STATUS</code> by Script 24. Health checks are non-fatal — the current stage continues regardless. The alert is the signal, not the gate. A teacher who sees the alert knows to check the execution log and can manually trigger the missed stage from the Script Editor.</div>
+  </div>
+</div>
+
+<!-- SCORING -->
+<div class="section" id="scoring">
+  <div class="section-eyebrow warm">Warm-Up Evaluation</div>
+  <h2>10-point scoring rubric</h2>
+  <p class="section-intro">Word count computed deterministically by Script 25 before Flow 4 runs. Grammar and engagement evaluated by Flow 4. The AI never counts words — it only judges quality.</p>
+
+  <table class="score-table">
+    <thead><tr><th>Component</th><th>Criteria</th><th>Points</th><th>Judge</th></tr></thead>
+    <tbody>
+      <tr class="group-row"><td colspan="4">Word Count — 6 pts maximum</td></tr>
+      <tr><td>30+ words</td><td>Meets full threshold</td><td class="pts">6</td><td><span class="judge judge-script">Script 25</span></td></tr>
+      <tr><td>25–29 words</td><td>Near threshold</td><td class="pts">5</td><td><span class="judge judge-script">Script 25</span></td></tr>
+      <tr><td>15–24 words</td><td>Minimal attempt</td><td class="pts">3</td><td><span class="judge judge-script">Script 25</span></td></tr>
+      <tr><td>Under 15 words</td><td>Insufficient</td><td class="pts">0</td><td><span class="judge judge-script">Script 25</span></td></tr>
+      <tr class="group-row"><td colspan="4">Grammar &amp; Sentence Structure — 1 pt maximum</td></tr>
+      <tr><td>Meets standard</td><td>Cohesive sentences, no significant errors</td><td class="pts">1</td><td><span class="judge judge-ai">Flow 4</span></td></tr>
+      <tr><td>Does not meet</td><td>Significant errors impede comprehension</td><td class="pts">0</td><td><span class="judge judge-ai">Flow 4</span></td></tr>
+      <tr class="group-row"><td colspan="4">Engagement — 3 pts maximum</td></tr>
+      <tr><td>Genuine</td><td>Directly addresses the prompt with original thought</td><td class="pts">3</td><td><span class="judge judge-ai">Flow 4</span></td></tr>
+      <tr><td>Surface</td><td>On-topic but formulaic or thin</td><td class="pts">2</td><td><span class="judge judge-ai">Flow 4</span></td></tr>
+      <tr><td>Minimal</td><td>Tangentially related or very thin</td><td class="pts">1</td><td><span class="judge judge-ai">Flow 4</span></td></tr>
+      <tr><td>Off-topic / filler</td><td>Does not engage with the prompt</td><td class="pts">0</td><td><span class="judge judge-ai">Flow 4</span></td></tr>
+      <tr class="group-row"><td colspan="4">Extra Credit</td></tr>
+      <tr><td>Feedback reply</td><td>Student wrote 10+ words after Flow 4 feedback stamp</td><td class="pts">+1</td><td><span class="judge judge-script">Script 25</span></td></tr>
+      <tr class="total-row"><td colspan="2">Maximum per warm-up</td><td class="pts">11</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-violet">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Flow 4 feedback is pedagogical only — no scores mentioned.</strong> Students see 1–3 sentences that advance their thinking about the topic. The score lives in WarmUpQueue and WarmUpRegistry. Extra credit is detected the following night — student replies to feedback after class, Script 25 detects it at the next 3:15am run and updates both the queue row and WarmUpRegistry.</div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Term-end grade report.</strong> Run <code>generateWarmUpReport()</code> from Script 25 manually at end of term. Produces a Google Doc with per-student summary: warm-ups generated, completed, points earned, points possible, percentage. Registered in ReportRegistry (type: <code>WARMUP_TERM</code>). Script Properties updated with <code>M2_LAST_WARMUP_REPORT_*</code> keys.</div>
+  </div>
+</div>
+
+<!-- SCRIPTS -->
+<div class="section" id="scripts">
+  <div class="section-eyebrow">Codebase</div>
+  <h2>Ten scripts across two builds</h2>
+  <p class="section-intro">All scripts bound to the Central Ledger spreadsheet project except Script 07 (standalone web app). Scripts 29 and 30 are import utilities — run once manually, then serve as runtime lookup libraries called by Scripts 23 and 24. Function tags: <span style="font-family:var(--mono);font-size:11px;color:var(--teal)">ENTRY</span> = called by another script or client · <span style="font-family:var(--mono);font-size:11px;color:var(--amber)">MANUAL</span> = run once from Script Editor · <span style="font-family:var(--mono);font-size:11px;color:var(--sky)">EXPORT</span> = called by another script file · <span style="font-family:var(--mono);font-size:11px;color:var(--violet)">HOOK</span> = live but dormant.</p>
+
+  <h3 style="font-family:var(--display);font-size:16px;font-weight:600;color:var(--teal);letter-spacing:1px;text-transform:uppercase;margin:0 0 16px">Lightweight Build</h3>
+  <div class="script-grid">
+    <div class="script-card sc-teal">
+      <div class="script-num">SCRIPT 07 — MODIFIED</div>
+      <h3>Teacher Dashboard</h3>
+      <p class="sc-sub">Standalone Web App · Execute as: Me · Redeploy existing deployment</p>
+      <p class="sc-body">Existing dashboard extended with the Lesson Context modal. Competency dropdown auto-discovers courses from the registry by teacher email — two tabbed course panels, competencies sorted by task number. Teacher identity injected server-side. All original dashboard code unchanged.</p>
+      <div class="sc-fns">
+        <span class="fn-tag entry">getCompetencies()</span>
+        <span class="fn-tag entry">submitLessonContext(payload)</span>
+        <span class="fn-tag hook">S27 hook: frameDocUrl</span>
+        <span class="fn-tag hook">M3 hook: scaffold spans</span>
+      </div>
+    </div>
+    <div class="script-card sc-teal">
+      <div class="script-num">SCRIPT 22</div>
+      <h3>LessonContextHandler</h3>
+      <p class="sc-sub">Central Ledger · Called by Script 07</p>
+      <p class="sc-body">Validates payload, supersedes duplicate submissions for same teacher+date+period, writes to LessonContext tab, calls Script 26 directly. If Script 26 fails, writes error note and returns success — backfill trigger retries. Contains one-time setup functions for use before Script 28 exists.</p>
+      <div class="sc-fns">
+        <span class="fn-tag entry">onLessonContextSubmit_(payload)</span>
+        <span class="fn-tag manual">createModule2Tabs_()</span>
+        <span class="fn-tag manual">installModule2Triggers_()</span>
+        <span class="fn-tag">runAlignmentLogBackfill_()</span>
+      </div>
+    </div>
+    <div class="script-card sc-amber">
+      <div class="script-num">SCRIPT 22b</div>
+      <h3>CompetencyRegistryImporter</h3>
+      <p class="sc-sub">Central Ledger · Run once manually</p>
+      <p class="sc-body">One-time CSV importer. Searches teacher Drive folder first, then all of Drive for <code>CompetencyRegistry.csv</code>. Full RFC 4180 CSV parser. Skips duplicate IDs on re-run. Batch writes all new rows in a single <code>setValues()</code> call.</p>
+      <div class="sc-fns">
+        <span class="fn-tag manual">importCompetencyRegistry()</span>
+        <span class="fn-tag manual">validateRegistryImport()</span>
+      </div>
+    </div>
+    <div class="script-card sc-violet">
+      <div class="script-num">SCRIPT 26</div>
+      <h3>CompetencyAlignmentLog</h3>
+      <p class="sc-sub">Central Ledger · Called by Script 22</p>
+      <p class="sc-body">Append-only alignment logger. Writes one AlignmentLog row per competency per lesson with denormalized fields. Term-end report groups by course then duty area, registers in ReportRegistry, writes Script Properties. <code>buildCompetencyMap_()</code> for pipeline; <code>buildCourseMap_()</code> for reports — two separate map structures, not redundant.</p>
+      <div class="sc-fns">
+        <span class="fn-tag entry">logAlignmentForLesson_(lessonId)</span>
+        <span class="fn-tag manual">generateAlignmentReport()</span>
+        <span class="fn-tag manual">getLastReport()</span>
+        <span class="fn-tag">registerReport_()</span>
+      </div>
+    </div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:16px;font-weight:600;color:var(--orange);letter-spacing:1px;text-transform:uppercase;margin:32px 0 16px">Full Warm-Up Build</h3>
+  <div class="script-grid">
+    <div class="script-card sc-sky">
+      <div class="script-num">SCRIPT 23</div>
+      <h3>StudentProfileManager</h3>
+      <p class="sc-sub">Central Ledger · 3:00am trigger · 13 functions</p>
+      <p class="sc-body">Stage 1 of the 3am cron. Reads Ledger, AlignmentLog, STAGING_PIPELINE, and WarmUpQueue in bulk — zero doc opens for extra credit (flags already written by Script 25). Opens up to 50 assignment docs to extract structured analytic indicators from Flow 2 feedback. Upserts StudentProfiles: batch append for new students, targeted range writes for updates. Exports <code>getStudentProfileSnapshot_()</code> for Script 24.</p>
+      <div class="sc-fns">
+        <span class="fn-tag entry">updateAllStudentProfiles()</span>
+        <span class="fn-tag export">getStudentProfileSnapshot_()</span>
+        <span class="fn-tag manual">createWarmUpTabs_()</span>
+        <span class="fn-tag manual">installWarmUpTriggers_()</span>
+        <span class="fn-tag manual">validateStudentProfiles()</span>
+      </div>
+    </div>
+    <div class="script-card sc-sky">
+      <div class="script-num">SCRIPT 24</div>
+      <h3>WarmUpBridge</h3>
+      <p class="sc-sub">Central Ledger · 3:30am trigger · 13 functions</p>
+      <p class="sc-body">Stage 3 of the 3am cron. Computes tomorrow's day type from date parity. Reads ClassSchedule for matching periods. For each period with a LessonContext: reads enrolled students, calls Script 23's <code>getStudentProfileSnapshot_()</code> (computes competency gaps on the fly), builds all queue rows in memory, writes ONE batch <code>setValues()</code> per period. Lesson context snapshot embeds <code>admin_root_folder_id</code>, <code>teacher_name</code>, and <code>teacher_email</code> from Script Properties — no hardcoded IDs in Flow 3.</p>
+      <div class="sc-fns">
+        <span class="fn-tag entry">buildWarmUpQueues()</span>
+        <span class="fn-tag manual">createLessonContextWarmUpColumn_()</span>
+        <span class="fn-tag manual">validateQueueBuild()</span>
+      </div>
+    </div>
+    <div class="script-card sc-orange">
+      <div class="script-num">SCRIPT 25</div>
+      <h3>WarmUpWriter</h3>
+      <p class="sc-sub">Central Ledger · 3:15am trigger + 5-min safety net · 19 functions</p>
+      <p class="sc-body">Two jobs. Job 1 (5-min trigger): registers Flow 3 DELIVERED docs in WarmUpRegistry, marks LessonContext DELIVERED when all students complete. Job 2 (3:15am): opens each warm-up doc once — extracts response text and checks for extra credit reply in the same pass. Writes <code>response_text</code> to queue so Flow 4 never opens docs. Computes word count score, queues PENDING_EVAL for Flow 4, receives scores, writes feedback into doc, updates registry. Term-end grade report registered in ReportRegistry as <code>WARMUP_TERM</code>.</p>
+      <div class="sc-fns">
+        <span class="fn-tag entry">registerDeliveredWarmUps()</span>
+        <span class="fn-tag entry">runWarmUpEvaluation()</span>
+        <span class="fn-tag manual">generateWarmUpReport()</span>
+        <span class="fn-tag manual">installRegistrationTrigger_()</span>
+        <span class="fn-tag manual">validateWarmUpEvaluation()</span>
+      </div>
+    </div>
+
+    <div class="script-card sc-sky">
+      <div class="script-num">SCRIPT 29 — NEW</div>
+      <h3>PacingGuideManager</h3>
+      <p class="sc-sub">Central Ledger · Import once · Runtime lookup for S23 + S24 · 8 functions</p>
+      <p class="sc-body">Imports the 20-unit pacing guide JSON into the PacingGuide tab. Two runtime functions exported: <code>resolveUnitForDate_()</code> maps any lesson date to its pacing guide unit (Script 23 uses this for shadow matrix unit assignment), and <code>getWarmUpAnchor_()</code> returns the teacher-authored seed prompt for that unit and course (Script 24 embeds this in every WarmUpQueue snapshot). Caches pacing guide data in Script Properties to reduce nightly Sheets API reads. Cache invalidated on re-import.</p>
+      <div class="sc-fns">
+        <span class="fn-tag manual">importPacingGuide()</span>
+        <span class="fn-tag manual">validatePacingGuide()</span>
+        <span class="fn-tag export">resolveUnitForDate_(dateStr)</span>
+        <span class="fn-tag export">getWarmUpAnchor_(dateStr, courseName)</span>
+        <span class="fn-tag export">getAllUnits_()</span>
+        <span class="fn-tag export">getUnitById_(unitId)</span>
+      </div>
+    </div>
+
+    <div class="script-card sc-sky">
+      <div class="script-num">SCRIPT 30 — NEW</div>
+      <h3>CompetencyRubricImporter</h3>
+      <p class="sc-sub">Central Ledger · Import once · Runtime lookup for S24 · 9 functions</p>
+      <p class="sc-body">Imports 220 competency rubrics extracted from two Canvas Common Cartridges into the CompetencyRubrics tab. Each rubric contains a demonstration standard, 1–14 indicators, and 1–11 skill questions pre-mapped to the four warm-up archetypes via <code>archetype_question_map</code>. Script 24 calls <code>addRubricsToSnapshot_()</code> to embed this in every WarmUpQueue snapshot — giving Flow 3 structured skill questions per competency regardless of how minimal the teacher's lesson context submission is. Resolves weak point 2: sparse context is no longer a failure mode.</p>
+      <div class="sc-fns">
+        <span class="fn-tag manual">importCompetencyRubrics()</span>
+        <span class="fn-tag manual">validateRubricImport()</span>
+        <span class="fn-tag export">getRubricForCompetency_(compId)</span>
+        <span class="fn-tag export">getRubricsForLesson_(compIds)</span>
+        <span class="fn-tag export">addRubricsToSnapshot_(obj, compIds)</span>
+      </div>
+    </div>
+
+    <div class="script-card sc-sky">
+      <div class="script-num">SCRIPT 31 — NEW</div>
+      <h3>ArtifactCompetencyBridge</h3>
+      <p class="sc-sub">Central Ledger · 3:05am nightly · Called after S23 · 5 functions</p>
+      <p class="sc-body">Connects Module 1 work artifacts to Module 2 competency tracking. When a student completes an assignment (STAGING_PIPELINE status = COMPLETE), this script reads the competency IDs tagged on that assignment's Teacher Matrix row and adds them to that student's <code>competencies_addressed</code> in StudentProfiles. Runs at 3:05am — after Script 23's class-level baseline pass at 3:00am and before Script 25's evaluation pass at 3:15am. Strictly additive — never removes class-level coverage. The artifact-based evidence model: completion of work = demonstrated competency exposure. Stronger than attendance because a present-but-disengaged student has no artifact; a student who completed makeup work gets credit.</p>
+      <div class="sc-fns">
+        <span class="fn-tag entry">syncArtifactCompetencies()</span>
+        <span class="fn-tag manual">addCompetencyIdsColumn_()</span>
+        <span class="fn-tag manual">installArtifactSyncTrigger_()</span>
+        <span class="fn-tag manual">validateArtifactSync()</span>
+        <span class="fn-tag export">getStudentCompetenciesFromArtifacts_(ss, cfg, email)</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- SCHEMA -->
+<div class="section" id="schema">
+  <div class="section-eyebrow">Data model</div>
+  <h2>Complete tab inventory</h2>
+  <p class="section-intro">All tabs live on the Central Ledger spreadsheet. Eight new tabs across both builds. No existing tabs modified.</p>
+
+  <table class="tab-inv">
+    <thead>
+      <tr><th>Tab</th><th>Build</th><th>Primary Writer(s)</th><th>Append-Only</th><th>Columns</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="tn">LessonContext</td><td class="tm">Lightweight</td><td class="tw">S22</td><td class="ta no">No (status updates)</td><td class="tm">15 (14 + warm_up_generated)</td></tr>
+      <tr><td class="tn">CompetencyRegistry</td><td class="tm">Lightweight</td><td class="tw">S22b / Manual</td><td class="ta no">No (active flag)</td><td class="tm">7</td></tr>
+      <tr><td class="tn">AlignmentLog</td><td class="tm">Lightweight</td><td class="tw">S26</td><td class="ta yes">Yes</td><td class="tm">9</td></tr>
+      <tr><td class="tn">ReportRegistry</td><td class="tm">Lightweight</td><td class="tw">S26, S25</td><td class="ta yes">Yes</td><td class="tm">7</td></tr>
+      <tr><td class="tn">StudentProfiles</td><td class="tm">Full</td><td class="tw">S23</td><td class="ta no">No (upsert)</td><td class="tm">12</td></tr>
+      <tr><td class="tn">WarmUpQueue</td><td class="tm">Full</td><td class="tw">S24, Flow 3, S25, Flow 4</td><td class="ta no">No (status + score updates)</td><td class="tm">19</td></tr>
+      <tr><td class="tn">WarmUpRegistry</td><td class="tm">Full</td><td class="tw">S25</td><td class="ta no">Mostly (scores updated post-eval)</td><td class="tm">13</td></tr>
+      <tr><td class="tn">ClassSchedule</td><td class="tm">Full</td><td class="tw">Manual / S28</td><td class="ta no">No</td><td class="tm">5</td></tr>
+      <tr><td class="tn">PacingGuide</td><td class="tm">Full</td><td class="tw">S29 (import)</td><td class="ta no">No (read-only)</td><td class="tm">16</td></tr>
+      <tr><td class="tn">CompetencyRubrics</td><td class="tm">Full</td><td class="tw">S30 (import)</td><td class="ta no">No (read-only)</td><td class="tm">8</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-teal">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>Snapshot isolation in WarmUpQueue.</strong> Script 24 embeds the full lesson context and student profile as JSON into each queue row at 3:30am. Studio Flow 3 reads only from the queue row — never from LessonContext or StudentProfiles directly. Late profile changes or lesson edits after 3:30am have no effect on that night's generation. The snapshot is the contract between pipeline stages.</div>
+  </div>
+
+  <div class="callout callout-orange">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>No hardcoded Drive IDs anywhere.</strong> The lesson context snapshot embeds <code>admin_root_folder_id</code>, <code>teacher_name</code>, and <code>teacher_email</code> sourced from Script Properties via <code>getConfig_()</code> at queue-build time. Flow 3 resolves the warm-up folder path entirely from the snapshot. Each teacher's deployment uses their own properties — the same codebase works for any teacher without modification.</div>
+  </div>
+
+  <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:36px 0 12px">Competency Registry</h3>
+  <div class="course-grid">
+    <div class="course-card">
+      <div class="course-code">Course 8177 · 108 competencies · 18 duty areas</div>
+      <h4>Sports, Entertainment, and Event Management</h4>
+      <ul>
+        <li>Demonstrating Personal Qualities and Abilities</li>
+        <li>Demonstrating Interpersonal Skills</li>
+        <li>Demonstrating Professional Competencies</li>
+        <li>Examining All Aspects of an Industry</li>
+        <li>Exploring Sports, Entertainment, and Event Management</li>
+        <li>Describing the Economics of the Industries</li>
+        <li>Explaining the Structure of Businesses</li>
+        <li>Exploring Entrepreneurship</li>
+        <li>Developing Customer Service Skills</li>
+        <li>Exploring Ethical Issues · Exploring Legal Aspects</li>
+        <li>Understanding Market Research</li>
+        <li>Exploring Revenues and Expenditures</li>
+        <li>Managing Safety and Security</li>
+        <li>Understanding Event Management</li>
+        <li>Developing Career Goals · + 3 more</li>
+      </ul>
+    </div>
+    <div class="course-card">
+      <div class="course-code">Course 8175 · 113 competencies · 25 duty areas</div>
+      <h4>Sports, Entertainment, and Event Marketing</h4>
+      <ul>
+        <li>Demonstrating Personal Qualities and Abilities</li>
+        <li>Demonstrating Interpersonal Skills</li>
+        <li>Demonstrating Professional Competencies</li>
+        <li>Developing an Overview of Marketing</li>
+        <li>Understanding the Importance of SEEM Marketing</li>
+        <li>Exploring the Concept of Branding</li>
+        <li>Describing Product Development</li>
+        <li>Exploring Pricing Strategies</li>
+        <li>Developing a Promotional Mix</li>
+        <li>Using Digital Media</li>
+        <li>Exploring Sponsorship and Endorsements</li>
+        <li>Describing the Sales Process</li>
+        <li>Exploring the Marketing Plan</li>
+        <li>Developing Job Search Skills · + 11 more</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- DEPLOYMENT -->
+<div class="section" id="deployment">
+  <div class="section-eyebrow">Setup</div>
+  <h2>Deployment checklist</h2>
+
+  <div class="build-tabs" style="margin-bottom:28px">
+    <button class="build-tab active-lw" onclick="showBuild('lw',this)">Lightweight Build — Steps 1–9</button>
+    <button class="build-tab" onclick="showBuild('wu',this)">Full Warm-Up Build — Steps 10–17</button>
+  </div>
+
+  <div id="pane-lw" class="build-pane active">
+    <div class="step-list">
+      <div class="step"><div class="step-n">1</div><div class="step-body">
+        <h4>Add Scripts 22, 22b, 26 to Central Ledger project</h4>
+        <p>Same project as Scripts 02–06. Three new script files: <code>22_LessonContextHandler</code>, <code>22b_CompetencyRegistryImporter</code>, <code>26_CompetencyAlignmentLog</code>.</p>
+      </div></div>
+      <div class="step"><div class="step-n">2</div><div class="step-body">
+        <h4>Update Script 00 in Central Ledger AND Script 07 projects</h4>
+        <p>Replace the existing <code>tabs</code> object with the complete version from <code>00_SharedConfig_M2_ADDENDUM.js</code> Section A. Add <code>m2Enabled</code> key from Section B.</p>
+      </div></div>
+      <div class="step"><div class="step-n">3</div><div class="step-body">
+        <h4>Set Script Properties — Central Ledger project</h4>
+        <p>Script Editor → Project Settings → Script Properties. Add <code>M2_ENABLED = true</code>. Required — Module 2 handlers are disabled by default when absent.</p>
+      </div></div>
+      <div class="step"><div class="step-n">4</div><div class="step-body">
+        <h4>Create lightweight tabs — run <code>createModule2Tabs_()</code> from Script 22</h4>
+        <p>Creates: LessonContext · CompetencyRegistry · AlignmentLog · ReportRegistry. Safe to re-run.</p>
+        <div class="step-tags">
+          <span class="badge badge-teal">LessonContext — 14 cols</span>
+          <span class="badge badge-teal">CompetencyRegistry — 7 cols</span>
+          <span class="badge badge-teal">AlignmentLog — 9 cols</span>
+          <span class="badge badge-teal">ReportRegistry — 7 cols</span>
+        </div>
+      </div></div>
+      <div class="step"><div class="step-n">5</div><div class="step-body">
+        <h4>Import competency data — run <code>importCompetencyRegistry()</code> from Script 22b</h4>
+        <p>Upload <code>CompetencyRegistry.csv</code> to teacher Drive folder. Run importer. Then run <code>validateRegistryImport()</code> — expect 221 rows: 108 for course 8177, 113 for course 8175.</p>
+      </div></div>
+      <div class="step"><div class="step-n">6</div><div class="step-body">
+        <h4>Install lightweight trigger — run <code>installModule2Triggers_()</code> from Script 22</h4>
+        <p>Installs <code>runAlignmentLogBackfill_</code> every 5 minutes. Safe to re-run. Also logs status of all required tabs.</p>
+      </div></div>
+      <div class="step"><div class="step-n">7</div><div class="step-body">
+        <h4>Update and redeploy Script 07</h4>
+        <p>Replace Script 07 project contents with updated file. Manage deployments → existing deployment → Edit → New version → Deploy. URL unchanged. Teachers need no new link.</p>
+      </div></div>
+      <div class="step"><div class="step-n">8</div><div class="step-body">
+        <h4>Verify Script Properties — teacher identity</h4>
+        <p>Confirm <code>TEACHER_EMAIL</code> and <code>TEACHER_NAME</code> are set in the Central Ledger project's Script Properties (written by Script 16 during M1 setup). Script 22 reads these to inject teacher identity into every LessonContext row.</p>
+      </div></div>
+      <div class="step"><div class="step-n">9</div><div class="step-body">
+        <h4>Smoke test — lightweight end-to-end</h4>
+        <p>Open Teacher Dashboard · click "New Lesson" · confirm both course tabs load with competencies in task-number order · fill required fields · select 2–3 competencies · submit. Then: LessonContext tab → one row, status <code>ALIGNMENT_LOGGED</code> · AlignmentLog tab → one row per competency, <code>competency_text</code> populated. Run <code>generateAlignmentReport()</code> from Script 26 → confirm doc created · ReportRegistry row written · <code>M2_LAST_REPORT_DOC_ID</code> in Script Properties.</p>
+        <div class="step-tags">
+          <span class="badge badge-green">LessonContext: ALIGNMENT_LOGGED</span>
+          <span class="badge badge-green">AlignmentLog: N rows = N competencies</span>
+          <span class="badge badge-green">ReportRegistry: doc_id populated</span>
+        </div>
+      </div></div>
+    </div>
+  </div>
+
+  <div id="pane-wu" class="build-pane">
+    <div class="callout callout-amber" style="margin-bottom:24px">
+      <span class="callout-icon">◈</span>
+      <div class="callout-body"><strong>Prerequisite:</strong> Lightweight build (steps 1–9) must be complete and running before starting the warm-up build. Steps 10–17 add to an existing working installation.</div>
+    </div>
+    <div class="step-list">
+      <div class="step"><div class="step-n">10</div><div class="step-body">
+        <h4>Add Scripts 23, 24, 25 to Central Ledger project</h4>
+        <p>Same project. Three new files: <code>23_StudentProfileManager</code>, <code>24_WarmUpBridge</code>, <code>25_WarmUpWriter</code>.</p>
+      </div></div>
+      <div class="step"><div class="step-n">11</div><div class="step-body">
+        <h4>Extend LessonContext tab — run <code>createLessonContextWarmUpColumn_()</code> from Script 24</h4>
+        <p>Adds <code>warm_up_generated</code> as column 15 to the existing LessonContext tab. Safe to re-run — checks for column before adding.</p>
+      </div></div>
+      <div class="step"><div class="step-n">12</div><div class="step-body">
+        <h4>Create warm-up tabs — run <code>createWarmUpTabs_()</code> from Script 23</h4>
+        <p>Creates: StudentProfiles · WarmUpQueue · WarmUpRegistry · ClassSchedule. Safe to re-run.</p>
+        <div class="step-tags">
+          <span class="badge badge-orange">StudentProfiles — 12 cols</span>
+          <span class="badge badge-orange">WarmUpQueue — 19 cols</span>
+          <span class="badge badge-orange">WarmUpRegistry — 13 cols</span>
+          <span class="badge badge-orange">ClassSchedule — 5 cols</span>
+        </div>
+      </div></div>
+      <div class="step"><div class="step-n">12b</div><div class="step-body">
+        <h4>Import pacing guide — run <code>importPacingGuide()</code> from Script 29</h4>
+        <p>Upload <code>PacingGuide_CAS_Context.json</code> to your teacher Drive folder. Run <code>importPacingGuide()</code> — creates PacingGuide tab with 20 units. Run <code>validatePacingGuide()</code> to confirm all units have anchors. Enables warm-up anchor seeds and unit-level shadow matrix tracking.</p>
+      </div></div>
+      <div class="step"><div class="step-n">12c</div><div class="step-body">
+        <h4>Import competency rubrics — run <code>importCompetencyRubrics()</code> from Script 30</h4>
+        <p>Upload <code>CompetencyRubrics.json</code> to your teacher Drive folder. Run <code>importCompetencyRubrics()</code> — creates CompetencyRubrics tab with 220 rubrics. Run <code>validateRubricImport()</code> — expect 113 for 8175, 107 for 8177. Enables skill question enrichment in all warm-up snapshots.</p>
+      </div></div>
+      <div class="step"><div class="step-n">13</div><div class="step-body">
+        <h4>Populate ClassSchedule tab</h4>
+        <p>Manually enter one row per period. Columns: <code>teacher_email</code> · <code>period</code> · <code>day_type</code> · <code>course_name</code> · <code>active</code>. Day type values: <code>DAILY</code> (Period 1) · <code>ODD</code> · <code>EVEN</code>. Course name must match exactly the <code>subject</code> column in CompetencyRegistry.</p>
+      </div></div>
+      <div class="step"><div class="step-n">12d</div><div class="step-body">
+        <h4>Add Script 31 — artifact competency bridge</h4>
+        <p>Add <code>31_ArtifactCompetencyBridge.js</code> to the Central Ledger project. Run <code>addCompetencyIdsColumn_()</code> to extend the Teacher Matrix with a <code>competency_ids</code> column. Run <code>installArtifactSyncTrigger_()</code> to install the 3:05am nightly trigger. Tag assignments with competency IDs in the Teacher Matrix. Run <code>validateArtifactSync()</code> to confirm per-student coverage is being tracked. Full cron sequence: 3:00am S23 → 3:05am S31 → 3:15am S25 → 3:30am S24.</p>
+      </div></div>
+      <div class="step"><div class="step-n">14</div><div class="step-body">
+        <h4>Install warm-up triggers — run <code>installWarmUpTriggers_()</code> from Script 23</h4>
+        <p>Installs three nightly triggers: <code>updateAllStudentProfiles</code> at 3:00am · <code>runWarmUpEvaluation</code> at 3:15am · <code>buildWarmUpQueues</code> at 3:30am. Safe to re-run.</p>
+      </div></div>
+      <div class="step"><div class="step-n">15</div><div class="step-body">
+        <h4>Install registration trigger — run <code>installRegistrationTrigger_()</code> from Script 25</h4>
+        <p>Installs <code>registerDeliveredWarmUps</code> every 5 minutes. Registers Flow 3 DELIVERED docs in WarmUpRegistry and updates LessonContext when all students in a lesson are delivered.</p>
+      </div></div>
+      <div class="step"><div class="step-n">16</div><div class="step-body">
+        <h4>Configure Studio Flows 3 and 4</h4>
+        <p><strong>Flow 3 — Warm-Up Generation:</strong> Trigger: WarmUpQueue status = PENDING. Temperature: 0.7. Max tokens: 400. System prompt and archetype selection logic from <code>CAS_Flow3_Flow4_Specification.html</code>. Output connector creates doc in student folder (path from snapshot), shares with student, writes <code>doc_id</code> + status DELIVERED to queue row.</p>
+        <p><strong>Flow 4 — Warm-Up Evaluation:</strong> Trigger: WarmUpQueue status = PENDING_EVAL. Temperature: 0.2. Max tokens: 256. Returns <code>{ grammar, engagement, feedback }</code> JSON only. Writes grammar_score, engagement_score, flow4_feedback to queue row, sets status SCORED.</p>
+      </div></div>
+      <div class="step"><div class="step-n">17</div><div class="step-body">
+        <h4>Smoke test — warm-up end-to-end</h4>
+        <p>Submit a lesson context for tomorrow's date. Run <code>buildWarmUpQueues()</code> manually — WarmUpQueue should have one row per enrolled student, status PENDING. Run <code>updateAllStudentProfiles()</code> manually — StudentProfiles populated. Trigger Flow 3 — warm-up docs appear in student Drive folders, WarmUpQueue rows → DELIVERED. Write a 30+ word test response in one doc. Run <code>runWarmUpEvaluation()</code> manually — WarmUpQueue → SCORED, WarmUpRegistry → total_score populated, feedback written into doc. Run <code>generateWarmUpReport()</code> — grade report doc created, ReportRegistry row written (type: WARMUP_TERM).</p>
+        <div class="step-tags">
+          <span class="badge badge-green">WarmUpQueue: SCORED</span>
+          <span class="badge badge-green">WarmUpRegistry: total_score set</span>
+          <span class="badge badge-green">Feedback in doc</span>
+          <span class="badge badge-green">ReportRegistry: WARMUP_TERM row</span>
+        </div>
+      </div></div>
+    </div>
+  </div>
+</div>
+
+<!-- FORWARD HOOKS -->
+<div class="section" id="hooks">
+  <div class="section-eyebrow">Forward hooks</div>
+  <h2>What's wired but dormant</h2>
+  <p class="section-intro">Every future integration point is already present in the codebase. Nothing needs to be retrofitted — only populated.</p>
+
+  <div class="hooks-grid">
+    <div class="hook-row hdr"><span>Location</span><span>Status</span><span>Description</span></div>
+    <div class="hook-row">
+      <span class="hook-file">07_TeacherDashboard.js<br>submitLesson() client</span>
+      <span class="hook-status dormant">DORMANT</span>
+      <span class="hook-desc"><strong>S27 hook — Lesson Frame doc.</strong> <code>if (result.frameDocUrl) window.open(...)</code>. When Script 27 populates <code>frameDocUrl</code>, the generated Lesson Frame opens automatically. No frontend change required.</span>
+    </div>
+    <div class="hook-row">
+      <span class="hook-file">07_TeacherDashboard.js<br>loadCompetencies() render</span>
+      <span class="hook-status dormant">DORMANT</span>
+      <span class="hook-desc"><strong>M3 hook — student scaffolding.</strong> Each competency item renders <code>&lt;span class="c-scaffold" id="scaffold-{id}"&gt;</code>. When Module 3 student profiles exist, <code>getStudentScaffoldingData()</code> populates these spans with prior-exposure indicators per competency.</span>
+    </div>
+    <div class="hook-row">
+      <span class="hook-file">22_LessonContextHandler.js<br>onLessonContextSubmit_()</span>
+      <span class="hook-status dormant">DORMANT</span>
+      <span class="hook-desc"><strong>S27 hook — frameDocUrl return field.</strong> Server response always includes <code>frameDocUrl: null</code>. Script 27 populates this field when the Lesson Frame Generator is built.</span>
+    </div>
+    <div class="hook-row">
+      <span class="hook-file">22_LessonContextHandler.js<br>LessonContext tab</span>
+      <span class="hook-status live">LIVE</span>
+      <span class="hook-desc"><strong>key_vocabulary column collecting now.</strong> Studio Flow 3 will read this to personalize warm-up prompts with lesson vocabulary. Data accumulates from every submission even before Flow 3 exists.</span>
+    </div>
+    <div class="hook-row">
+      <span class="hook-file">24_WarmUpBridge.js<br>lesson_context_snapshot</span>
+      <span class="hook-status live">LIVE</span>
+      <span class="hook-desc"><strong>admin_root_folder_id embedded from Script Properties.</strong> Flow 3 resolves the warm-up folder path from the snapshot. Teacher name and email also embedded. No hardcoded Drive IDs — any teacher's deployment works without code changes.</span>
+    </div>
+    <div class="hook-row">
+      <span class="hook-file">23_StudentProfileManager.js<br>StudentProfiles tab</span>
+      <span class="hook-status live">LIVE</span>
+      <span class="hook-desc"><strong>Module 3 competency history foundation.</strong> StudentProfiles accumulate competency coverage and evaluation signals from day one. When Module 3 is built, the longitudinal learning record already exists.</span>
+    </div>
+    <div class="hook-row">
+      <span class="hook-file">26_CompetencyAlignmentLog.js<br>AlignmentLog tab</span>
+      <span class="hook-status live">LIVE</span>
+      <span class="hook-desc"><strong>Module 3 class-level competency history.</strong> Script 23 reads AlignmentLog to build the class-level addressed set. Module 3's Script 23 extension will compute per-student coverage when individual attendance tracking is added.</span>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<footer>
+  <span>Classroom Agency System · Module 2 Lesson Intelligence · Documentation v2.3</span>
+  <span style="font-family:var(--mono);font-size:11px">S07 · S22 · S22b · S23 · S24 · S25 · S26 · Config · CompetencyRegistry.csv · Flow 3+4 Spec</span>
+</footer>
+
+<script>
+// ── Nav scroll spy ──
+const links    = document.querySelectorAll('.topnav-link');
+const sections = ['overview','lightweight','warmups','scoring','scripts','schema','deployment','hooks'];
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (!e.isIntersecting) return;
+    links.forEach(l => l.classList.remove('active'));
+    const match = document.querySelector('.topnav-link[href="#'+e.target.id+'"]');
+    if (match) match.classList.add('active');
+  });
+}, { rootMargin:'-15% 0px -75% 0px' });
+sections.forEach(id => { const el = document.getElementById(id); if(el) obs.observe(el); });
+
+// ── Build phase tabs ──
+function showBuild(id, btn) {
+  document.querySelectorAll('.build-pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.build-tab').forEach(b => {
+    b.classList.remove('active-lw','active-wu');
+  });
+  document.getElementById('pane-' + id).classList.add('active');
+  btn.classList.add(id === 'lw' ? 'active-lw' : 'active-wu');
+}
+</script>
+</body>
+</html>
