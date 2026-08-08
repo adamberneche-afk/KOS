@@ -1,7 +1,7 @@
 # Knowledge Operating System v8.0
 ### The Headless Studio Edition
 
-KOS is a personal intelligence infrastructure built on Google Apps Script. It captures your AI working sessions, extracts structured knowledge from them, and routes that knowledge to the right places in a system you own. Everything — your data, your processing logic, your folder hierarchy — lives in your Google account. Nothing is on a vendor server.
+KOS is a personal intelligence infrastructure built on Google Apps Script. It captures your AI working sessions, extracts structured knowledge from them, and routes that knowledge to the right places in a system you own. Everything — your data, your processing logic, your folder hierarchy — lives in your Google account. **By default**, nothing is on a vendor server — see "Inference modes" below for the one explicit, opt-in exception.
 
 The core problem it solves: you spend hours in AI sessions making decisions, building expertise, and generating insight. At the end of each session, almost all of that value disappears. You might copy a few action items. KOS routes everything — vector weights, state updates, action items, pivots, cog verdicts — automatically, so your system gets smarter with every session rather than resetting to zero.
 
@@ -87,10 +87,12 @@ picking this project up later who wants to know what changed and when.
    activates the bootstrap/operational split (`mode` is `'BOOTSTRAP'`
    whenever `INDEX_ID` isn't set yet, `'OPERATIONAL'` otherwise).
 9. **The "managed_service" credits/subscription panel was removed
-   entirely** from `8_WebApp_UI.html` (`renderServiceStatus()` and its call
-   site) — nothing in this system has ever had a vendor billing
-   relationship, and the panel directly contradicted this README's own
-   "Nothing is on a vendor server" positioning.
+   entirely, then later revived gated behind an explicit opt-in** — see
+   "Round 3 — the managed inference service" below. At the time of this
+   original fix, nothing in the repo supported the panel and it
+   contradicted this README's "Nothing is on a vendor server" framing;
+   the real backend later turned up in a reupload batch and the framing
+   was updated to "by default," not reversed.
 10. **The council-simulation UI copy was corrected** to describe what
     `triggerCouncilSimulation()` actually does — one shared review document
     covering ARCHITECT, AUDITOR, and MUSE together — instead of the
@@ -110,6 +112,112 @@ property key — none matching the `CFG.STAGING_COLS` map or
 uses. It read as a leftover from an earlier v5.4-era draft. The new
 `10_Turnstile.gs` (`runMatrixTurnstile()`) is a clean rebuild against the
 real schema — see "What was fixed," item 1, above.
+
+---
+
+## Round 3 — large reupload batch
+
+A later reupload batch (18 zip files, mostly duplicating what's already
+reconciled above) contained real, previously-missing material for this
+system too: two concrete legacy fixes, ten governance/protocol docs, and
+— solving a question this README didn't know it had — the real backend
+behind the "managed_service" panel removed in fix 9 above.
+
+### Two backported fixes
+
+Found in an earlier pre-reconciliation draft, absent from the delivered
+code, confirmed by direct grep before backporting:
+
+1. **`2_Ingestion_Sensors.gs` — `sensor3_externalTelemetry` now scans by
+   cursor.** Previously re-read the entire `EXTERNAL_TELEMETRY` sheet on
+   every trigger fire; now tracks a `KOS_SENSOR3_LAST_ROW` Script Property
+   high-water mark and only reads rows added since the last run, with a
+   reset guard for manual sheet truncation. A real scaling fix — the old
+   behavior gets slower every time a new external-data row is added,
+   forever.
+2. **`4_Vector_Router.gs` — two fixes to `_routeVectorWeightsInternal` /
+   `_writeMatrixRow`.** (a) When a theme is promoted from the incubator
+   during the same session that triggered the promotion, the triggering
+   session's own `VECTOR_MATRIX` row is now back-filled with its real
+   score instead of the 0 that `_writeMatrixRow` necessarily wrote before
+   the promotion happened (columns are resolved before promotion runs).
+   (b) `_writeMatrixRow` now has a defensive `NO_HEADERS` guard — if
+   `VECTOR_MATRIX` somehow has no theme columns (manual intervention, a
+   sheet that missed initialization), it logs a clear error and skips the
+   write instead of silently appending a malformed row.
+
+### Governance/protocol docs filed
+
+Ten files — `COLD_BOOT_PROTOCOL.md`, `COLD_START_ORIENTATION.md`, three
+`CURRENT_STATE_DRAFT*.md` variants, `HEREDITARY_WATCHLIST.md`,
+`KILL_SWITCH_PROTOCOL.md`, `RULE_CONFLICT_RESOLUTION_PROTOCOL.md`,
+`ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md`, and
+`Drive_Steward_Methodology_and_Prompt.md` — confirmed as real
+RTP_CORE_ROUTER governance material (same vocabulary as the live system:
+`BRAIN_TRUST_INDEX`, `CURRENT_STATE`, the 6-cog personas, SMP proposals).
+Filed under `rtp-core-router/protocols/`. `Drive_Steward_Methodology_and_Prompt.md`
+is also cross-referenced from the root-level `meta/` directory (see the
+repo root README) since its methodology applies beyond just this system.
+
+**Naming collision, flagged so it's never conflated:** "SMP-002" means two
+different things across this repo's material. The **real, live** SMP-002
+is the "Seven Bridges" 7-persona sequestered council design referenced in
+`9_UI_Diagnostics.gs`'s `sevenBridgesReview()` (see "What was fixed," item
+10, above) — still `PENDING USER APPROVAL`, not yet built.
+`ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md` (filed above) references an
+**unrelated, superseded** "Mirror Matrix" zone-folder taxonomy concept
+that has zero footprint in the real repo and occupies a conceptual slot
+the real 5-question Shadow Matrix now fills — a same-name, different-thing
+collision from an earlier design generation, not a contradiction in the
+live system. A short banner was added to that file itself for the same
+reason.
+
+### The managed inference service — revived as an optional path
+
+The reupload batch's `files_37`/`files_38` clusters (confirmed
+byte-identical) turned out to be a complete, separate Node.js/Express
+service — `Dockerfile`, `server.js`, `billing.js`, `db.js`, `google.js`,
+`inference.js`, `logger.js`, `worker.js`, `schema.sql` — a Postgres- and
+Stripe-backed, multi-tenant, credit-metered alternative to native
+Workspace Studio inference. Its `GET /api/v1/account` endpoint returns
+exactly the `credit_balance` / `subscription_tier` shape the
+"managed_service" panel removed in fix 9 (above) expected — this is
+confirmed to be that panel's real, previously-unexplained backend, not a
+coincidence.
+
+**Decision: revive it as a real, documented, opt-in alternative — not
+just file the code in inert.** This walks back part of this README's
+"nothing is on a vendor server" framing to **"nothing on a vendor server
+by default — an explicit opt-in path exists."** Concretely:
+
+- The service itself is filed at `inference-service/` (see that
+  directory's own `README.md` for layout, a known gap — `sql/migrate.js`
+  was referenced but never uploaded — and exactly what is and isn't
+  wired up yet).
+- `1_Config_And_Deploy.gs` gained `CFG.INFERENCE_MODE` (`'STUDIO'` default,
+  `'MANAGED_SERVICE'` opt-in) and two new `CFG.PROP` keys for the
+  service's URL/API key (deployment-specific Script Properties, never
+  hardcoded).
+- `3_Queue_Processor.gs`'s `getQueueMetrics()` gained a `managed_service`
+  field, populated by the new `_getManagedServiceStatus_()` helper — it
+  calls the service's `/api/v1/account` endpoint and returns `null`
+  (panel stays hidden) unless `CFG.INFERENCE_MODE` is `'MANAGED_SERVICE'`
+  **and** both Script Properties are set. In the default `STUDIO` mode
+  this is always `null` — the "nothing on a vendor server by default"
+  claim is enforced in code, not just prose.
+- `8_WebApp_UI.html`'s `renderServiceStatus()` and its call site are
+  restored, gated the same way — it was already written to hide itself
+  when passed a falsy account, so no new gating logic was needed there,
+  only a non-null `managed_service` value to react to.
+
+**What is explicitly NOT wired up**: the service's `POST /api/v1/jobs`
+webhook — the actual inference hand-off — has no caller anywhere in this
+repo's `.gs` files. `10_Turnstile.gs` still only knows about native
+Studio inference. `MANAGED_SERVICE` mode today gets you a working
+account-status panel if you deploy the service and paste in credentials;
+it does not yet make `STUDIO_ACTIVE` rows actually route to this service
+instead of Studio. That integration is real, unbuilt work, tracked here
+so it isn't assumed to already exist.
 
 ---
 
@@ -137,6 +245,8 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 10_Turnstile.gs            Matrix turnstile state machine                 ✅ in repo — rebuilt against the real schema (original in archived/)
 KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) — not needed
 KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)   — not needed
+inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see Round 3 above + its own README
+rtp-core-router/protocols/ 10 governance/protocol docs                    ✅ filed in — see Round 3 above
 ```
 
 All 7 persona cog docs are now in `rtp-core-router/` (`ARCHITECT`, `AUDITOR`,
@@ -174,6 +284,7 @@ Council cog stimulus       COG_STIMULUS  (separate payload type)
 | `TURNSTILE_STALE_MINS` | 30 | Minutes before stuck STUDIO_ACTIVE resets |
 | `SHADOW_VERIFY_THRESHOLD` | 0.75 | Confidence to mark a shadow question VERIFIED |
 | `COUNCIL_AUTO_TRIGGER_SESSIONS` | 5 | Sessions between auto-council checks |
+| `INFERENCE_MODE` | `'STUDIO'` | `'STUDIO'` (default, no vendor server) or `'MANAGED_SERVICE'` (opt-in — see Round 3 above) |
 
 ---
 

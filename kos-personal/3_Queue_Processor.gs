@@ -461,15 +461,20 @@ function getQueueStatus() {
  * either name (`c.queued ?? c.pending`, `c.needs_review ?? c.needs_curator`).
  * FAILED_PARSE rows are intentionally excluded, same as getQueueStatus().
  *
- * No `managed_service` field — see reconciliation decision 3: no vendor
- * billing relationship exists anywhere in this system, so the HTML's
- * former "Managed Inference" credits panel has been removed entirely
- * rather than given a fake data source.
+ * `managed_service` field: reconciliation decision 3 originally removed
+ * the HTML's "Managed Inference" credits panel entirely because no vendor
+ * billing relationship existed anywhere in this system. Round 3
+ * reconciliation revived that path as an explicit opt-in — see
+ * CFG.INFERENCE_MODE. `managed_service` is `null` (panel stays hidden)
+ * unless CFG.INFERENCE_MODE is 'MANAGED_SERVICE' AND the deployment has
+ * configured CFG.PROP.MANAGED_SERVICE_BASE_URL / _API_KEY as Script
+ * Properties — in the default 'STUDIO' mode this is always null, so the
+ * "nothing on a vendor server by default" framing still holds.
  *
  * Called by the web app via:
  *   google.script.run.withSuccessHandler(renderQueue).getQueueMetrics()
  *
- * @returns {Object} { success, counts, needs_curator[], total, last_updated }
+ * @returns {Object} { success, counts, needs_curator[], total, last_updated, managed_service }
  */
 function getQueueMetrics() {
   try {
@@ -512,16 +517,67 @@ function getQueueMetrics() {
     };
 
     return {
-      success:       true,
+      success:         true,
       counts,
-      needs_curator: needsCuratorRows,
-      total:         queued + active + needsReview + processed,
-      last_updated:  new Date().toLocaleTimeString(),
+      needs_curator:   needsCuratorRows,
+      total:           queued + active + needsReview + processed,
+      last_updated:    new Date().toLocaleTimeString(),
+      managed_service: _getManagedServiceStatus_(),
     };
 
   } catch (e) {
     _reportError('getQueueMetrics', e, null);
     return { success: false, message: e.message };
+  }
+}
+
+
+/**
+ * _getManagedServiceStatus_ — optional inference-service account lookup.
+ *
+ * Returns null (panel hidden client-side, see renderServiceStatus() in
+ * 8_WebApp_UI.html) unless ALL of the following hold:
+ *   - CFG.INFERENCE_MODE === 'MANAGED_SERVICE' (default is 'STUDIO' — see
+ *     1_Config_And_Deploy.gs for the full explanation of both paths)
+ *   - CFG.PROP.MANAGED_SERVICE_BASE_URL and _API_KEY are both set as
+ *     Script Properties for this deployment
+ *
+ * Calls GET {base}/api/v1/account on the standalone Node.js service at
+ * kos-personal/inference-service/ (see that directory's
+ * INFERENCE_SERVICE_DEPLOYMENT.md — a separate Cloud Run / Postgres /
+ * Stripe deployment, not part of this Apps Script project). Any failure
+ * (unset properties, network error, non-200 response) is non-fatal and
+ * returns null — a managed-service outage should never break the rest of
+ * the queue dashboard.
+ *
+ * @returns {Object|null} { credit_balance, subscription_tier } or null
+ */
+function _getManagedServiceStatus_() {
+  if (CFG.INFERENCE_MODE !== 'MANAGED_SERVICE') return null;
+
+  const props   = PropertiesService.getScriptProperties();
+  const baseUrl = props.getProperty(CFG.PROP.MANAGED_SERVICE_BASE_URL);
+  const apiKey  = props.getProperty(CFG.PROP.MANAGED_SERVICE_API_KEY);
+  if (!baseUrl || !apiKey) return null;
+
+  try {
+    const resp = UrlFetchApp.fetch(baseUrl.replace(/\/$/, '') + '/api/v1/account', {
+      method: 'get',
+      headers: { 'X-KOS-API-Key': apiKey },
+      muteHttpExceptions: true,
+    });
+    if (resp.getResponseCode() !== 200) return null;
+
+    const body = JSON.parse(resp.getContentText());
+    if (typeof body.credit_balance !== 'number' || !body.subscription_tier) return null;
+
+    return {
+      credit_balance:    body.credit_balance,
+      subscription_tier: body.subscription_tier,
+    };
+  } catch (e) {
+    // Non-fatal — a managed-service outage should never break the queue tab.
+    return null;
   }
 }
 

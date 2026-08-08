@@ -359,7 +359,35 @@ function sensor3_externalTelemetry(e) {
     const telSheet  = ss.getSheetByName(CFG.EXTERNAL_TELEMETRY_SHEET);
     if (!telSheet || telSheet.getLastRow() <= 1) return;
 
-    const data    = telSheet.getRange(2, 1, telSheet.getLastRow() - 1, 5).getValues();
+    // Cursor-based scan: only read rows added since the last successful run.
+    // Without this, sensor3 reads the entire EXTERNAL_TELEMETRY sheet on
+    // every onChange event across the whole spreadsheet — including edits
+    // to unrelated tabs — and scales with total row count over time.
+    // Backported from an earlier draft found in the reupload batch; the
+    // rest of this system's sensors already avoid full-sheet rescans, this
+    // one just hadn't been updated to match.
+    const cursorKey   = 'KOS_SENSOR3_LAST_ROW';
+    const lastKnown   = parseInt(props.getProperty(cursorKey) || '1');
+    const currentLast = telSheet.getLastRow();
+
+    // Cursor reset guard: if the sheet was manually cleared or truncated,
+    // currentLast will be less than the stored lastKnown high-water mark.
+    // Without resetting, the early-return below fires forever and sensor3
+    // goes permanently silent after any manual sheet truncation.
+    const effectiveLast = currentLast < lastKnown ? 1 : lastKnown;
+    if (effectiveLast !== lastKnown) {
+      props.setProperty(cursorKey, '1');
+      console.log('[Sensor3] Cursor reset: sheet appears cleared ' +
+        '(currentLast=' + currentLast + ' < lastKnown=' + lastKnown + ').');
+    }
+
+    // Nothing new since last scan
+    if (currentLast <= effectiveLast) return;
+
+    // Read only unscanned rows (from lastKnown+1 to currentLast)
+    const scanFrom = Math.max(2, effectiveLast + 1);
+    const scanRows = currentLast - scanFrom + 1;
+    const data    = telSheet.getRange(scanFrom, 1, scanRows, 5).getValues();
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const ts      = Utilities.formatDate(
       new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
@@ -367,12 +395,13 @@ function sensor3_externalTelemetry(e) {
 
     for (let i = 0; i < data.length; i++) {
       const [, title, content, status] = data[i];
+      // Row offset in sheet = scanFrom + i (1-indexed)
       if (String(status).trim() !== '') continue;  // already handled
 
       const contentStr = String(content || '').trim();
       if (!contentStr) continue;
 
-      const sheetRow = i + 2;
+      const sheetRow = scanFrom + i;  // absolute sheet row (1-indexed)
       try {
         const uid       = _generateLogUUID(contentStr + sheetRow);
         const safeTitle = String(title || 'Untitled')
@@ -408,6 +437,10 @@ function sensor3_externalTelemetry(e) {
         _reportError('sensor3:row' + sheetRow, rowErr, null);
       }
     }
+
+    // Advance cursor to the last row we scanned, regardless of whether
+    // rows were queued — prevents re-scanning already-processed empty rows.
+    props.setProperty(cursorKey, String(currentLast));
 
     if (queued > 0) {
       SpreadsheetApp.flush();

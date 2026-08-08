@@ -129,6 +129,34 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
     const routedDocs   = _routeToVectorDocs(pd, known, sessionUid, timestamp);
     const promotions   = _checkPromotionCandidates(incubSheet, matrixSheet);
 
+    // Back-fill promoted column scores for the triggering session.
+    // _writeMatrixRow resolves headers before _checkPromotionCandidates
+    // inserts the new column, so the triggering session always writes
+    // a zero for the newly promoted theme. If that theme had a signal
+    // in this session's unknown weights, patch the row now. Backported
+    // from an earlier draft found in the reupload batch — without this,
+    // the session that actually earned a theme's promotion is the one
+    // session whose row for it reads 0.
+    if (promotions.length > 0) {
+      try {
+        const updatedHeaders = matrixSheet
+          .getRange(1, 1, 1, matrixSheet.getLastColumn()).getValues()[0];
+        const lastDataRow    = matrixSheet.getLastRow();
+        if (lastDataRow > 1) {
+          promotions.forEach(theme => {
+            const colIdx = updatedHeaders.indexOf(theme);
+            if (colIdx === -1) return;
+            const sessionScore = parseFloat(unknown[theme]) || 0;
+            if (sessionScore > 0) {
+              matrixSheet.getRange(lastDataRow, colIdx + 1).setValue(
+                parseFloat(sessionScore.toFixed(4))
+              );
+            }
+          });
+        }
+      } catch (_) {}  // non-fatal — next session will score normally
+    }
+
     SpreadsheetApp.flush();
     return {
       status: 'SUCCESS',
@@ -169,6 +197,26 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
 function _writeMatrixRow(sheet, known, sessionUid, timestamp) {
   const headers    = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
   const themeStart = 2;  // cols 0=Session_UID, 1=Timestamp, 2+=themes
+
+  // Guard: if the sheet has no header columns beyond the first two, it
+  // was likely created without the correct schema (e.g. manual
+  // intervention or a fresh sheet that missed initialisation). Writing a
+  // malformed row here would silently corrupt the matrix. Backported
+  // from an earlier draft found in the reupload batch.
+  if (headers.length <= themeStart + 1) {
+    _reportError(
+      '_writeMatrixRow:NO_HEADERS',
+      new Error(
+        'VECTOR_MATRIX has no theme columns. Expected at least one theme column ' +
+        'followed by INCUBATOR_SIGNALS. Run setupRoutingProperties() or ' +
+        'deployFullSystem() to reinitialise the sheet headers. Session ' +
+        sessionUid + ' not written.'
+      ),
+      null
+    );
+    return {};
+  }
+
   const themes     = headers.slice(themeStart, -1);  // exclude trailing INCUBATOR_SIGNALS
 
   // Read last row for decay baseline
