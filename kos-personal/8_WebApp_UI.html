@@ -996,38 +996,10 @@ function loadQueueStatus() {
       return;
     }
     renderQueue(res);
-    renderServiceStatus(res.managed_service);
   }, (err) => {
     if (btn) btn.disabled = false;
     list.innerHTML = '<div class="empty-state"><div class="empty-state-title">Server error.</div></div>';
   });
-}
-
-function renderServiceStatus(account) {
-  let el = document.getElementById('service-status');
-  if (!account) {
-    if (el) el.style.display = 'none';
-    return;
-  }
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'service-status';
-    el.style.cssText = 'margin-top:12px;padding:10px 12px;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);font-size:12px;';
-    const syncEl = document.getElementById('queue-sync');
-    if (syncEl) syncEl.before(el);
-  }
-  el.style.display = 'block';
-  const tierLabel = account.subscription_tier
-    ? account.subscription_tier.charAt(0).toUpperCase() + account.subscription_tier.slice(1)
-    : 'Free';
-  el.innerHTML =
-    '<div style="display:flex;justify-content:space-between;align-items:center">' +
-    '<span style="color:var(--text3);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em">Managed Inference · ' + tierLabel + '</span>' +
-    '<span style="color:var(--amber-light);font-family:var(--mono)">' + account.credit_balance + ' credits</span>' +
-    '</div>' +
-    (account.credit_balance < 20
-      ? '<div style="color:var(--warn);font-size:11px;margin-top:4px">⚠ Low credits — sessions will pause when credits run out.</div>'
-      : '');
 }
 
 function renderQueue(res) {
@@ -1379,14 +1351,19 @@ function handleCouncil() {
   councilConfirm = false;
   btn.disabled = true;
   resetBtn('btn-council', 'ti-brain', 'Run full council review');
-  showDiagStatus('Queuing ' + (window._councilPersonaCount || 7) + ' isolated cog stimuli…');
+  // NOTE (reconciliation decision 3): triggerCouncilSimulation() creates one
+  // shared doc instructing the model to act as ARCHITECT, AUDITOR, and MUSE
+  // together — not 7 isolated, sequestered per-persona stimulus docs. The
+  // fuller "Seven Bridges" design (SMP-002) is still PENDING USER APPROVAL
+  // per 9_UI_Diagnostics.gs's sevenBridgesReview(), so this copy describes
+  // what actually runs today rather than the aspirational 7-cog version.
+  showDiagStatus('Queuing a combined council review (ARCHITECT · AUDITOR · MUSE)…');
   callServer('triggerCouncilSimulation', [], (res) => {
     btn.disabled = false;
     if (res && res.success) {
-      const n = (res.queued || []).length || 7;
       showDiagStatus(
-        n + ' cog' + (n !== 1 ? 's' : '') + ' queued for independent review. ' +
-        'Verdicts appear in the <strong>COG_REGISTRY</strong> sheet of your BRAIN_TRUST_INDEX as they arrive.'
+        'Council review queued in one shared document. ' +
+        'Verdicts appear in the <strong>COG_REGISTRY</strong> sheet of your BRAIN_TRUST_INDEX once Studio processes it.'
       );
     } else {
       showDiagStatus((res && res.message) || 'Could not start council.', 'danger');

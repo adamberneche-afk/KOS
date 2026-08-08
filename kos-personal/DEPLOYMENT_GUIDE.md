@@ -94,13 +94,38 @@ To verify: press **Ctrl+S** (or **Cmd+S**). If GAS shows a red error about a dup
 
 ## Phase 5 — First Deploy as Web App
 
+**Two separate deployments, both restricted to yourself** (reconciliation
+decision 4). Earlier guidance suggested one deployment doubling as both
+the dashboard UI and the Sensor 2 webhook, opened to "Anyone with Google
+account" if you wanted the webhook reachable. That's no longer the
+recommendation: **`appsscript.json`'s `webapp.access` stays `"MYSELF"` for
+both deployments — no anonymous endpoint is opened at all.** Whatever
+originates a `COG_EXHAUST` payload must authenticate as the same Google
+account that deployed the script (an OAuth-authenticated call, a
+same-account trigger, or a Gemini/Apps Script integration running as that
+identity) — this isn't compatible with a generic public third-party
+webhook source, but it means no shared-secret validation is needed either:
+Google's own OAuth layer enforces the identity check for you.
+
+**Deployment A — Dashboard (Ingest/Queue/Diagnostics UI):**
 1. Click **Deploy** → **New deployment**
 2. Click the gear icon next to **Type** → select **Web app**
-3. Set **Description** to `KOS v8.0 initial`
+3. Set **Description** to `KOS v8.0 — Dashboard`
 4. Set **Execute as** to `Me`
-5. Set **Who has access** to `Only myself` (change to `Anyone with Google account` if you want to share the URL)
+5. Set **Who has access** to `Only myself`
 6. Click **Deploy**
-7. **Copy the web app URL** — this is your permanent entry point and your Sensor 2 webhook endpoint. Save it somewhere.
+7. **Copy this URL** — this is the one you open in your own browser day to day.
+
+**Deployment B — Sensor 2 webhook (COG_EXHAUST):**
+1. Click **Deploy** → **New deployment** again (same project, second deployment)
+2. Type: **Web app** · Description: `KOS v8.0 — Webhook` · Execute as: `Me` · Access: `Only myself`
+3. Click **Deploy**
+4. **Copy this second URL** — this is the one whatever authenticated caller sends `COG_EXHAUST` POSTs to.
+
+Both deployments run the exact same `doGet`/`doPost` code — they differ
+only in which URL you hand to which caller. If you don't have anything
+that needs to POST to Sensor 2 yet, Deployment B can wait; nothing else
+in the system depends on it existing.
 
 ---
 
