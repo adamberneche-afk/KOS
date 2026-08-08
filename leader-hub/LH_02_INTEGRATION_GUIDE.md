@@ -1,0 +1,500 @@
+# LeaderHub Integration Guide
+## For LLMs, Apps Scripts, and Cross-Platform Automation
+
+**Version:** 2.0 · 2025–26  
+**Companion docs:** `LH_01_NAMING_CONVENTIONS.md` · `LH_03_CANVAS_INTEGRATION_IDEAS.md`
+
+> **For LLMs:** This document tells you what every piece of LeaderHub data looks like, where it lives, and how events flow from Canvas into the app. Read this before generating Apps Script code, writing pacing calendar entries, or building any integration.
+
+---
+
+## System Architecture
+
+```
+┌─────────────────────┐  naming convention  ┌──────────────────────┐
+│     Canvas LMS      │ ──────────────────▶ │   Google Calendar    │
+│  (assignments,      │   iCal / sync       │  (schedule source    │
+│   modules,          │                     │   of truth)          │
+│   rubrics, pages)   │                     │                      │
+└─────────────────────┘                     └──────────┬───────────┘
+                                                       │
+                                            Apps Script syncCalendar()
+                                            nightly 11 PM — reads all
+                                            calendars user has access to
+                                                       │
+                                            ┌──────────▼───────────┐
+                                            │  Google Sheet        │
+                                            │  "Inbox" tab         │
+                                            │  (relay buffer)      │
+                                            └──────────┬───────────┘
+                                                       │
+                                            Apps Script doGet() Web App
+                                            polled on LeaderHub load
+                                            + every 10 minutes
+                                                       │
+                                            ┌──────────▼───────────┐
+                                            │     LeaderHub        │
+                                            │  student-leader-     │
+                                            │  hub.html            │
+                                            │  (localStorage)      │
+                                            └──────────────────────┘
+```
+
+**Data flows in one direction only.** LeaderHub reads; it never writes back to Canvas or Calendar.
+
+---
+
+## Core Constraints — Never Violate These
+
+| # | Constraint | Why |
+|---|-----------|-----|
+| 1 | LeaderHub is a single `.html` file | No server, no build step, no npm |
+| 2 | All persistence is `localStorage` with `lh_` prefix | Use `LS.get()` / `LS.set()` — never raw `localStorage` |
+| 3 | All AI calls go through `callAI()` | Model: `gemini-2.5-pro`; key in `localStorage` as `lh_api_key` |
+| 4 | No `console.group()` or `%c` logging | School browser blocks these; plain `console.log()` only |
+| 5 | FERPA — no student names in AI prompts | Anonymize with tokens (e.g., `STUDENT_1`) before sending |
+| 6 | Dashboard is `overflow:hidden` | Never add scrollable content to `#view-dashboard` |
+| 7 | `LESSON_PLANS` and `SCR_COURSES` are hardcoded | They live in the JS source, not in localStorage |
+
+---
+
+## Data Schema Reference
+
+### `trips` — Field trip records (`lh_trips`)
+
+```javascript
+{
+  id:        3,                           // int, auto-increment via nextId.trip
+  name:      'DECA State Leadership Conference (SLC)',
+  sub:       'overnight',                 // 'same-day' | 'overnight' | 'out-of-state'
+  date:      '2026-02-27',               // YYYY-MM-DD departure
+  retDate:   '2026-03-01',               // YYYY-MM-DD return (same as date if day trip)
+  dest1:     'Virginia Beach Convention Center',
+  dest2:     '',
+  grade:     '9-12',
+  classMem:  'DECA Members',
+  invited:   30,
+  stuAtt:    15,
+  adultAtt:  2,
+  stuMF:     '8F/7M',
+  adultMF:   '1M/1F',
+  costStu:   350,
+  costAdult: 350,
+  chap:      '1/1',                      // chaperones M/F
+  wc:        0,                          // wheelchair count
+  depTime:   '9:00 AM',
+  retTime:   '5:00 PM',
+  transport: 'Charter Bus — Winn Transportation',
+  parentTx:  'NO',                       // 'YES' | 'NO'
+  fund:      '4280',
+  po:        '26-0368-2559',
+  sponsor:   'Adam Berneche',
+  cell:      '(804) 833-8869',
+  coord:     'Adam Berneche',
+  acctNotes: 'DECA Account 4280',
+  why:       'CTSO competition...',
+  pre:       'Preparation activities...',
+  post:      'Follow-up activities...',
+  status:    'complete',                 // 'upcoming' | 'active' | 'complete' | 'cancelled'
+  reason:    'DECA CTSO — Student Competition Conference',
+  acttype:   'Student Conference',
+  housing:   'Hampton Inn...',
+  notes:     '',
+}
+```
+
+### `students` — DECA member roster (`lh_students`)
+
+```javascript
+{
+  id:           1,
+  first:        'Jordan',
+  last:         'Rivera',
+  grade:        12,
+  position:     'President',
+  competEvent:  'Business Management',
+  memberStatus: 'active',    // 'active' | 'unpaid' | 'slc' | 'icdc' | 'alumni'
+  paid:         true,
+  duesDate:     '2025-10-15',
+  email:        'jrivera@student.ccpsnet.net',
+  phone:        '(804) 555-0101',
+  parentEmail:  'mrivera@email.com',
+  parentPhone:  '(804) 555-0100',
+  address:      '1234 Oak St, Midlothian VA 23114',
+  shirtSize:    'M',
+  dietaryNeeds: '',
+  ev:           5,           // linked otherEvent id (null if none)
+  notes:        '',
+  alumniYear:   null,        // graduation year — alumni only
+  alumniPref:   null,        // 'mentoring' | 'newsletter' — alumni only
+}
+```
+
+**`memberStatus` progression:**
+```
+unpaid → active → slc (DLC qualifier) → icdc (SLC Top 8) → alumni
+```
+
+### `slipRosters` — Permission slip tracker (`lh_slip_rosters`)
+
+```javascript
+// Object keyed by tripId (int). Each value is an array:
+[
+  // DECA member — resolved via students.find(s => s.id === slip.studentId)
+  { id: 101, studentId: 1, source: 'deca',   tx: 'ccps',   status: 'returned', notes: '' },
+
+  // Class roster — resolved via SCR_COURSES[code].periods[period]
+  { id: 102, classRef: { code: '8177', period: '3rd Odd', name: 'Gonzalez Torres, Erik' },
+    source: 'class', tx: 'ccps', status: 'pending', notes: '' },
+
+  // Manual entry — name/phone stored directly on the slip
+  { id: 103, first: 'Taylor', last: 'Brooks', phone: '(804) 555-0000',
+    source: 'manual', tx: 'parent', status: 'returned', notes: 'Parent driving' },
+]
+```
+
+`tx`: `'ccps'` = school bus, `'parent'` = parent-provided transport  
+`status`: `'pending'` | `'returned'` | `'missing'`
+
+### `otherEvents` — DECA/leadership/community events (`lh_events`)
+
+```javascript
+{
+  id:         13,
+  name:       'DECA State Leadership Conference (SLC)',
+  type:       'deca',          // 'deca' | 'leadership' | 'community'
+  date:       '2026-02-27',
+  endDate:    '2026-03-01',    // empty string if single day
+  loc:        'Virginia Beach Convention Center, VA',
+  stu:        15,
+  adults:     2,
+  stuMF:      '8F/7M',
+  adultMF:    '1M/1F',
+  status:     'active',        // 'upcoming' | 'urgent' | 'active' | 'complete' | 'planned'
+  cost:       '~$350/student',
+  transport:  'Charter Bus...',
+  chaperones: 'Adam Berneche · Amanda Berneche',
+  po:         '26-0368-2559',
+  account:    'DECA 4280',
+  contact:    'Shannon Tual (703) 860-5000',
+  housing:    'Hampton Inn...',
+  notes:      '',
+}
+```
+
+### `DEADLINES` — Deadline items (`lh_deadlines`)
+
+```javascript
+{
+  id:    'dl_8',
+  title: 'Tournament Sponsorship Proposal — 8177 Q3',
+  date:  '2026-03-14',    // YYYY-MM-DD due date
+  role:  'teach',         // see role codes below
+}
+```
+
+**Role codes:**
+
+| Role | Assigned when |
+|------|--------------|
+| `teach` | Canvas classroom event (TEACH / DUE / ASSESS) |
+| `deca` | DECA event (REG / PAYMENT / CONF) |
+| `trips` | Field trip deadline or blackout date |
+| `store` | School store / inventory item |
+| `esports` | Esports match or tournament |
+| `general` | Everything else |
+
+### `LESSON_PLANS` — Hardcoded in JS source (not in localStorage)
+
+```javascript
+{
+  id:       'lp_8177_16',
+  course:   '8177',
+  q:        3,                   // 1 | 2 | 3 | 4
+  title:    'Market Research & Survey Design',
+  subtitle: 'Target Market, Bias & Google Forms',
+  comps:    [2, 18, 42, 46, 93], // competency numbers — see SCR_COURSES
+  docId:    '1r5NOu0wy8oTicILis_Ycvc3z20hVzw_dzM6mWbaDm7c', // Google Doc ID
+}
+```
+
+### `SCR_COURSES` — Class rosters + competencies (hardcoded in JS source)
+
+```javascript
+{
+  '8177': {
+    code:   '8177',
+    name:   'Sports, Entertainment, and Event Management',
+    competencies: [
+      { num: 1, req: 'Required', text: 'Demonstrate creativity and innovation.',
+        duty: 'Demonstrating Personal Qualities and Abilities' },
+      // ... 108 total competencies
+    ],
+    periods: {
+      '3rd Odd': [
+        { name: 'Gonzalez Torres, Erik', scores: {} },
+        // ... 22 students; format is always "Last, First"
+      ]
+    }
+  },
+  '8175': { periods: { '2nd Even': [...], '3rd Even': [...], '4th Even': [...] } },
+  '6115': { periods: { '4th Odd': [...] } },
+}
+```
+
+---
+
+## Google Sheet Relay — Schema
+
+**Sheet ID:** `1iTit6ygtvyl9mAVYE5ZhpdM4CRNoJq-paEIiM3vKwc0`  
+**Tab:** `Inbox`
+
+| Col | Field | Type | Notes |
+|-----|-------|------|-------|
+| A | `id` | string | Deterministic hash — see below |
+| B | `source` | string | Human-readable label ("My Calendar", "LeaderHub") |
+| C | `received_at` | ISO 8601 | When written to sheet |
+| D | `urgency` | string | `high` \| `medium` \| `low` |
+| E | `horizon` | string | `short` \| `mid` \| `long` |
+| F | `text` | string | The event title (full naming-convention string) |
+| G | `deadline_date` | YYYY-MM-DD | Empty string if no date |
+| H | `role` | string | See role codes above |
+| I | `consumed` | boolean | `TRUE` once LeaderHub has processed |
+| J | `channel` | string | `calendar` \| `email` \| `lh-shortcut` |
+
+**Deterministic ID generation** (prevents duplicate rows on re-sync):
+```javascript
+function makeId(prefix, seed) {
+  let hash = 0;
+  const s = String(seed).slice(0, 200);
+  for (let i = 0; i < s.length; i++) {
+    hash = ((hash << 5) - hash) + s.charCodeAt(i);
+    hash |= 0; // 32-bit int
+  }
+  return prefix + '_' + Math.abs(hash).toString(36);
+}
+// Calendar events:   cal_[hash of calendarId + eventId]
+// Emails:            em_[hash of messageId]
+// LH shortcuts:      lh_[hash of messageId]
+```
+
+---
+
+## Apps Script — EmailBridge.gs Function Reference
+
+### `runAll()` — Every 10 minutes via time-driven trigger
+Calls `processInbox()` then `processLHShortcuts()`.
+
+### `syncCalendar()` — Nightly at 11 PM via time-driven trigger
+Reads all Google Calendars the authenticated user can access. For each event in the next 30 days:
+1. Skips birthday and holiday calendars
+2. Parses event title with naming convention regex
+3. Infers `urgency`, `horizon`, and `role` from title and event date
+4. Writes one row to Inbox tab (skips if deterministic ID already exists and is unconsumed)
+
+### `processInbox()` — Gmail label "LeaderHub"
+Watches for emails with the label `LeaderHub` (applied via Gmail filters). Applies 8 keyword rules to determine role and urgency. Extracts dates with regex from body text.
+
+### `processLHShortcuts()` — Self-email shortcut
+Watches for emails FROM your address TO your address with subject beginning `LH:`. The text after `LH:` becomes the task. Example:
+```
+Subject: LH: deca icdc hotel deposit by Friday
+```
+
+---
+
+## Processing Logic — How LeaderHub Handles Incoming Items
+
+When `EMAIL_BRIDGE.poll()` fetches items from the Sheet Web App:
+
+```
+for each item in items:
+
+  if item.channel === 'calendar':
+    
+    parsed = parseConvention(item.text)
+    // { system: 'classroom'|'deca', course, quarter, level, type, label }
+    
+    if parsed.system === 'classroom':
+      
+      lesson = LESSON_PLANS.find(lp =>
+        lp.course === parsed.course &&
+        normalize(lp.title) === normalize(parsed.label)
+      )
+      
+      if lesson && parsed.type === 'TEACH':
+        write pacing calendar entry for lesson on item.deadline_date
+        mark lesson as "scheduled"
+      
+      if parsed.type in ['DUE', 'ASSESS', 'PRESENT', 'REVIEW', 'INTRO']:
+        write to DEADLINES[] with role='teach'
+        show in horizon tracker
+    
+    if parsed.system === 'deca':
+      
+      if parsed.type === 'CONF':
+        trip = trips.find by LEVEL keyword (B-first)
+        if trip:
+          update trip.date, trip.status
+        else:
+          create new trip record (A-fallback)
+          preloadSlipRoster(newTrip.id, parsed.level)
+          // seeds from students filtered by memberStatus
+      
+      if parsed.type in ['REG', 'PAYMENT']:
+        write to DEADLINES[] with role='deca', urgency='high'
+      
+      if parsed.type === 'TEST':
+        write multi-day marker to otherEvents[]
+      
+      if parsed.type === 'RESULTS':
+        write pending horizon item
+  
+  if item.channel in ['email', 'lh-shortcut']:
+    write to tasks[] or DEADLINES[] based on urgency and horizon
+  
+  POST consumed IDs back to Sheet Web App
+```
+
+---
+
+## Urgency and Horizon Calculation
+
+Scripts must compute these values consistently with LeaderHub's internal logic:
+
+```javascript
+function calcUrgencyHorizon(eventDate) {
+  const daysUntil = Math.ceil((new Date(eventDate) - new Date()) / 86400000);
+  const urgency = daysUntil <= 2 ? 'high' : daysUntil <= 7 ? 'medium' : 'low';
+  const horizon  = daysUntil <= 7 ? 'short' : daysUntil <= 30 ? 'mid' : 'long';
+  return { urgency, horizon };
+}
+```
+
+---
+
+## Role Inference — Keyword Matching
+
+When a script must assign a `role` without an explicit naming-convention parse:
+
+```javascript
+function inferRole(text) {
+  const t = text.toLowerCase();
+  if (/deca|competition|slc|icdc|chapter|officer/.test(t))   return 'deca';
+  if (/field trip|triptracker|excursion|bus|chaperone|permission slip|blackout/.test(t)) return 'trips';
+  if (/store|inventory|purchase order|procurement|reorder|wbl|sbe/.test(t)) return 'store';
+  if (/esports|smash|mario kart|gaming|match|tournament/.test(t)) return 'esports';
+  if (/lesson|competency|scr|curriculum|pacing|grade|gradebook|synergy|sub plan|observation|dsp/.test(t)) return 'teach';
+  return 'general';
+}
+```
+
+---
+
+## Title Normalization — Fuzzy Matching
+
+Used when comparing Calendar event labels to `LESSON_PLANS[].title`:
+
+```javascript
+function normalize(s) {
+  return s
+    .toLowerCase()
+    .replace(/[""'']/g, '"')     // smart quotes → straight
+    .replace(/[^a-z0-9 &]/g, '') // strip punctuation except & 
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function findLesson(course, label) {
+  const norm = normalize(label);
+  return LESSON_PLANS.find(lp =>
+    lp.course === course && normalize(lp.title) === norm
+  ) || null;
+}
+```
+
+---
+
+## Apps Script Web App Endpoints
+
+**URL stored in:** `localStorage` key `lh_bridge_url`  
+**Script Properties key:** `SHEET_URL`
+
+### GET / — Fetch unconsumed items
+```json
+{
+  "ok": true,
+  "items": [
+    {
+      "id": "cal_1abc23",
+      "source": "My Calendar",
+      "received_at": "2026-03-12T00:00:00.000Z",
+      "urgency": "medium",
+      "horizon": "mid",
+      "text": "8177 | Q3 | DUE | Tournament Sponsorship Proposal",
+      "deadline_date": "2026-03-20",
+      "role": "teach",
+      "channel": "calendar"
+    }
+  ]
+}
+```
+
+### POST / — Mark items consumed
+```json
+// Request body:
+{ "consumed": ["cal_1abc23", "cal_def456"] }
+
+// Response:
+{ "ok": true }
+```
+
+---
+
+## Trigger Setup Reference
+
+| Trigger | Function | Schedule |
+|---------|----------|---------|
+| Time-driven | `runAll()` | Every 10 minutes |
+| Time-driven | `syncCalendar()` | Day timer, 11 PM–midnight |
+
+Both triggers are created once in the Apps Script editor under **Triggers → Add Trigger**.
+
+---
+
+## Gmail Filter Setup
+
+Create these one-time filters in Gmail to auto-label relevant emails with `LeaderHub`:
+
+| From / Contains | Condition | Action |
+|----------------|-----------|--------|
+| Your supervisor's email address | any message | Apply label: LeaderHub |
+| `@ccpsnet.net` (if not you) | subject/body contains: `deadline` OR `field trip` OR `please submit` OR `please sign` OR `action required` OR `DECA` OR `TripTracker` | Apply label: LeaderHub |
+| Any sender | subject contains: `field trip` OR `TripTracker` OR `excursion` | Apply label: LeaderHub |
+| Any sender | subject contains: `DocuSign` OR `please sign` | Apply label: LeaderHub |
+
+---
+
+## localStorage Keys — Complete Reference
+
+| Key | Type | Contents |
+|-----|------|----------|
+| `lh_trips` | array | Field trip records |
+| `lh_events` | array | DECA/leadership/community events |
+| `lh_students` | array | DECA member roster |
+| `lh_slip_rosters` | object | `{tripId: slipEntry[]}` |
+| `lh_next_slip_id` | int | Auto-increment ID for slip entries |
+| `lh_next_id` | object | `{trip, ev, st, gl, tk}` — next IDs per type |
+| `lh_deadlines` | array | Deadline items |
+| `lh_horizon` | object | `{short:[], mid:[], long:[]}` |
+| `lh_tasks` | array | Dashboard task checklist |
+| `lh_goals` | array | Goals tracker |
+| `lh_lp_edits` | object | Teacher notes on lesson plans (keyed by docId) |
+| `lh_unit_notes` | object | Notes on unit plans (keyed by unit id) |
+| `lh_unit_expanded` | array | Which unit plan cards are expanded |
+| `lh_api_key` | string | Gemini API key |
+| `lh_bridge_url` | string | Apps Script Web App URL |
+| `lh_journal` | array | Brain dump / journal entries |
+| `lh_inventory_transactions` | array | School store transaction log |
+| `lh_wbl_students` | array | WBL student records |
+| `lh_inventory` | array | School store product catalog |
