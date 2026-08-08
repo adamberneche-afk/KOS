@@ -1,0 +1,2155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeaderHub — CHHS CTE</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --font:'DM Sans',system-ui,sans-serif;
+  --mono:'DM Mono',monospace;
+  --bg:#f7f6f2;
+  --surface:#ffffff;
+  --surface2:#f0efe9;
+  --border:#e2e0d6;
+  --border2:#cccac0;
+  --text:#1a1a18;
+  --text2:#5a5955;
+  --text3:#9b9890;
+  --red:#c53030;--red-bg:#fff5f5;--red-border:#feb2b2;
+  --amber:#92600a;--amber-bg:#fffbeb;--amber-border:#f6c142;
+  --green:#276749;--green-bg:#f0fff4;--green-border:#9ae6b4;
+  --blue:#1a56a3;--blue-bg:#ebf4ff;--blue-border:#90cdf4;
+  --purple:#5b41c5;--purple-bg:#f3efff;--purple-border:#b794f4;
+  --teal:#0c7a6e;--teal-bg:#e6fffa;--teal-border:#81e6d9;
+  --dsp-end:2026-05-15;
+  --radius:8px;--radius-lg:12px;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.5}
+
+/* ─── TOP NAV ─── */
+#topbar{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  background:var(--surface);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;
+  padding:0 12px;
+  height:52px;
+  gap:2px;
+}
+#topbar .logo{
+  font-family:var(--mono);font-weight:500;font-size:13px;
+  color:var(--text2);margin-right:8px;white-space:nowrap;
+  flex-shrink:0;
+}
+#topbar .logo span{color:var(--blue);font-weight:500}
+.nav-tabs{display:flex;gap:2px;overflow-x:auto;flex:1}
+.nav-tabs::-webkit-scrollbar{display:none}
+.nav-tab{
+  border:none;background:none;cursor:pointer;
+  font-family:var(--font);font-size:13px;font-weight:500;
+  color:var(--text2);
+  padding:6px 10px;border-radius:6px;
+  white-space:nowrap;
+  transition:background .12s,color .12s;
+}
+.nav-tab:hover{background:var(--surface2);color:var(--text)}
+.nav-tab.active{background:var(--blue-bg);color:var(--blue)}
+#dsp-badge{
+  flex-shrink:0;
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  background:var(--red-bg);color:var(--red);
+  border:1px solid var(--red-border);
+  padding:3px 8px;border-radius:20px;
+  margin-left:8px;
+  white-space:nowrap;
+}
+
+/* ─── MAIN CONTENT ─── */
+#main{margin-top:52px;min-height:calc(100vh - 52px)}
+.view{display:none;padding:16px;max-width:900px;margin:0 auto}
+.view.active{display:block}
+
+/* ─── CARDS ─── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:16px;margin-bottom:12px}
+.card-sm{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;margin-bottom:8px}
+.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text2);margin-bottom:10px}
+
+/* ─── GRID LAYOUTS ─── */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.grid-4{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media(max-width:600px){.grid-2,.grid-4{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr}}
+
+/* ─── BUTTONS ─── */
+.btn{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:var(--font);font-size:13px;font-weight:500;
+  padding:7px 13px;border-radius:var(--radius);
+  cursor:pointer;border:1px solid var(--border2);
+  background:var(--surface);color:var(--text);
+  transition:background .12s,border-color .12s;
+  white-space:nowrap;
+}
+.btn:hover{background:var(--surface2);border-color:var(--text3)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:#1448a3;border-color:#1448a3}
+.btn-danger{background:var(--red-bg);color:var(--red);border-color:var(--red-border)}
+.btn-danger:hover{background:#fed7d7}
+.btn-success{background:var(--green-bg);color:var(--green);border-color:var(--green-border)}
+.btn-sm{padding:4px 9px;font-size:12px}
+.btn-xs{padding:2px 7px;font-size:11px;border-radius:5px}
+
+/* ─── FORMS ─── */
+input[type=text],input[type=date],input[type=number],textarea,select{
+  font-family:var(--font);font-size:13px;
+  border:1px solid var(--border2);border-radius:var(--radius);
+  padding:7px 10px;background:var(--surface);color:var(--text);
+  width:100%;outline:none;
+  transition:border-color .12s;
+}
+input[type=text]:focus,input[type=date]:focus,input[type=number]:focus,textarea:focus,select:focus{
+  border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,86,163,.1);
+}
+textarea{resize:vertical;min-height:80px}
+.form-row{margin-bottom:10px}
+.form-row label{display:block;font-size:12px;font-weight:500;color:var(--text2);margin-bottom:4px}
+.form-row-inline{display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap}
+
+/* ─── BADGES / TAGS ─── */
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;letter-spacing:.03em}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.badge-purple{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border)}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border:1px solid var(--teal-border)}
+.badge-gray{background:var(--surface2);color:var(--text2);border:1px solid var(--border)}
+
+/* ─── PRIORITY / NEXT ACTION ─── */
+#na-card{
+  background:linear-gradient(135deg,var(--blue-bg) 0%,#e8f0fe 100%);
+  border:1.5px solid var(--blue);
+  border-radius:var(--radius-lg);padding:16px;margin-bottom:12px;
+}
+#na-eyebrow{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--blue);display:flex;align-items:center;gap:6px;margin-bottom:4px}
+.pulse-dot{width:7px;height:7px;border-radius:50%;background:var(--blue);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
+#na-text{font-size:18px;font-weight:600;color:var(--text);margin-bottom:8px;line-height:1.3}
+#na-meta{display:flex;gap:6px;flex-wrap:wrap}
+
+/* ─── ROLE TILES ─── */
+.role-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:12px}
+@media(max-width:550px){.role-grid{grid-template-columns:repeat(3,1fr)}}
+.role-tile{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius-lg);padding:10px 8px;
+  text-align:center;cursor:pointer;
+  transition:border-color .12s,transform .1s,box-shadow .12s;
+  position:relative;
+}
+.role-tile:hover{border-color:var(--blue);transform:translateY(-1px);box-shadow:0 3px 10px rgba(0,0,0,.07)}
+.role-tile .role-icon{font-size:22px;margin-bottom:4px}
+.role-tile .role-name{font-size:10px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.role-tile .role-status{font-size:10px;color:var(--text3)}
+.role-alert{position:absolute;top:5px;right:5px;width:14px;height:14px;border-radius:50%;font-size:8px;font-weight:700;display:flex;align-items:center;justify-content:center;color:#fff}
+.role-alert.red{background:var(--red)}
+.role-alert.amber{background:var(--amber)}
+
+/* ─── RING PROGRESS ─── */
+.ring-wrap{margin:0 auto;width:40px;height:40px}
+
+/* ─── SCHEDULE STRIP ─── */
+.period-row{
+  display:flex;align-items:center;gap:8px;
+  padding:7px 10px;border-radius:var(--radius);
+  margin-bottom:4px;
+  border:1px solid var(--border);background:var(--surface);
+}
+.period-row.now{background:var(--amber-bg);border-color:var(--amber-border)}
+.period-row.done{opacity:.55}
+.period-name{font-size:12px;font-weight:500;flex:1}
+.period-time{font-family:var(--mono);font-size:11px;color:var(--text2);white-space:nowrap}
+.period-course{font-size:10px;font-weight:600;padding:2px 6px;border-radius:4px;margin-left:auto}
+
+/* ─── DEADLINE LIST ─── */
+.dl-row{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-bottom:1px solid var(--border);
+}
+.dl-row:last-child{border-bottom:none}
+.dl-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dl-info{flex:1;min-width:0}
+.dl-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dl-sub{font-size:11px;color:var(--text2)}
+.dl-days{font-family:var(--mono);font-size:11px;font-weight:500;white-space:nowrap;margin-left:auto}
+.dl-row.done .dl-title{text-decoration:line-through;color:var(--text3)}
+
+/* ─── TASK ROWS ─── */
+.task-row{
+  display:flex;align-items:flex-start;gap:8px;
+  padding:8px 12px;border-bottom:1px solid var(--border);
+}
+.task-row:last-child{border-bottom:none}
+.task-check{
+  width:16px;height:16px;border-radius:4px;
+  border:1.5px solid var(--border2);background:var(--surface);
+  cursor:pointer;flex-shrink:0;margin-top:1px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .1s,border-color .1s;
+}
+.task-check.checked{background:var(--green);border-color:var(--green);color:#fff;font-size:9px}
+.task-body{flex:1;min-width:0}
+.task-text{font-size:13px;font-weight:500}
+.task-row.done .task-text{text-decoration:line-through;color:var(--text3)}
+.task-actions{display:flex;gap:4px;flex-shrink:0}
+
+/* ─── LESSON CARDS ─── */
+.lesson-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:6px;
+  overflow:hidden;
+}
+.lesson-header{
+  display:flex;align-items:center;gap:8px;
+  padding:10px 12px;cursor:pointer;
+  transition:background .1s;
+}
+.lesson-header:hover{background:var(--surface2)}
+.lesson-type-badge{font-size:9px;font-weight:700;letter-spacing:.05em;padding:2px 6px;border-radius:4px;flex-shrink:0}
+.lesson-title{font-size:13px;font-weight:500;flex:1}
+.lesson-detail{
+  padding:12px 14px;
+  border-top:1px solid var(--border);
+  background:var(--surface2);
+  display:none;
+}
+.lesson-detail.open{display:block}
+.canvas-name{
+  font-family:var(--mono);font-size:11px;
+  background:var(--surface);border:1px solid var(--border2);
+  border-radius:5px;padding:6px 10px;
+  color:var(--text2);margin-bottom:8px;
+  word-break:break-all;
+  cursor:pointer;
+}
+.canvas-name:hover{border-color:var(--blue);color:var(--blue)}
+
+/* ─── SCR TABLE ─── */
+.scr-container{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-lg)}
+.scr-table{border-collapse:collapse;min-width:100%}
+.scr-table th,.scr-table td{border:1px solid var(--border);padding:0}
+.scr-table th{background:var(--surface2);font-size:11px;font-weight:600;color:var(--text2);padding:6px 8px;white-space:nowrap;position:sticky;top:0;z-index:2}
+.scr-name-col{min-width:130px;max-width:150px;position:sticky;left:0;z-index:3;background:var(--surface2) !important}
+.scr-table td.scr-name-cell{position:sticky;left:0;z-index:2;background:var(--surface);padding:5px 8px;font-size:12px;font-weight:500;white-space:nowrap}
+.scr-score-cell{
+  width:34px;min-width:34px;height:32px;
+  text-align:center;cursor:pointer;
+  font-family:var(--mono);font-size:12px;font-weight:500;
+  transition:background .1s;
+}
+.scr-score-cell:hover{background:var(--blue-bg) !important}
+.score-1{background:#c6f6d5;color:#22543d}
+.score-2{background:#e9f7c8;color:#2d6a0a}
+.score-3{background:#fefcbf;color:#744210}
+.score-4{background:#feebc8;color:#7b341e}
+.score-5{background:#fed7d7;color:#742a2a}
+.area-header-row th{background:#e8e6dc !important;font-size:10px;text-align:left;padding:4px 8px;color:var(--text2)}
+
+/* ─── JOURNAL ─── */
+.mood-row{display:flex;gap:8px;margin-bottom:10px}
+.mood-btn{
+  flex:1;padding:8px 4px;border:1.5px solid var(--border);
+  border-radius:var(--radius);background:var(--surface);
+  cursor:pointer;text-align:center;font-size:18px;
+  transition:border-color .12s,background .12s;
+}
+.mood-btn.selected{border-color:var(--blue);background:var(--blue-bg)}
+.energy-row{display:flex;gap:6px;margin-bottom:10px}
+.energy-btn{
+  flex:1;padding:6px;border:1.5px solid var(--border);
+  border-radius:var(--radius);background:var(--surface);
+  cursor:pointer;text-align:center;font-size:13px;font-weight:600;
+  transition:border-color .12s,background .12s;
+}
+.energy-btn.selected{border-color:var(--amber);background:var(--amber-bg);color:var(--amber)}
+
+/* ─── TRIP WIZARD ─── */
+.wizard-step{display:none}.wizard-step.active{display:block}
+.wizard-nav{display:flex;gap:8px;margin-bottom:16px}
+.wizard-dot{
+  width:28px;height:28px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;font-weight:600;cursor:pointer;
+  border:2px solid var(--border2);color:var(--text2);
+  transition:all .15s;
+}
+.wizard-dot.active{border-color:var(--blue);background:var(--blue);color:#fff}
+.wizard-dot.done{border-color:var(--green);background:var(--green);color:#fff}
+.approval-row{
+  display:flex;align-items:center;gap:10px;
+  padding:8px 12px;border:1px solid var(--border);
+  border-radius:var(--radius);margin-bottom:6px;
+  background:var(--surface);
+}
+.approval-role{font-size:13px;font-weight:500;flex:1}
+.approval-status{font-size:12px;padding:3px 8px;border-radius:5px;cursor:pointer;border:none;font-family:var(--font);font-weight:500}
+.approval-pending{background:var(--amber-bg);color:var(--amber)}
+.approval-approved{background:var(--green-bg);color:var(--green)}
+
+/* ─── BRAG BOARD ─── */
+.audience-tabs{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.audience-tab{
+  padding:5px 12px;border-radius:20px;
+  font-size:12px;font-weight:500;cursor:pointer;
+  border:1px solid var(--border2);background:var(--surface);color:var(--text2);
+  transition:all .12s;
+}
+.audience-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.brag-content{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius);padding:14px;
+  font-size:13px;line-height:1.7;
+  min-height:200px;white-space:pre-wrap;
+}
+
+/* ─── TOAST ─── */
+#toast-container{
+  position:fixed;bottom:20px;right:20px;z-index:999;
+  display:flex;flex-direction:column;gap:8px;
+}
+.toast{
+  background:var(--text);color:#fff;
+  padding:10px 16px;border-radius:var(--radius);
+  font-size:13px;max-width:320px;
+  animation:toastIn .2s ease;
+  box-shadow:0 4px 16px rgba(0,0,0,.2);
+}
+.toast.success{background:var(--green)}
+.toast.error{background:var(--red)}
+.toast.warning{background:var(--amber)}
+@keyframes toastIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+/* ─── MODAL ─── */
+#modal-overlay{
+  display:none;position:fixed;inset:0;z-index:200;
+  background:rgba(0,0,0,.4);
+  align-items:center;justify-content:center;
+  padding:16px;
+}
+#modal-overlay.open{display:flex}
+#modal-box{
+  background:var(--surface);border-radius:var(--radius-lg);
+  padding:20px;max-width:480px;width:100%;
+  max-height:80vh;overflow-y:auto;
+}
+.modal-title{font-size:16px;font-weight:600;margin-bottom:14px}
+
+/* ─── STAT CARDS ─── */
+.stat-card{
+  background:var(--surface2);border-radius:var(--radius);
+  padding:12px;text-align:center;
+}
+.stat-val{font-family:var(--mono);font-size:24px;font-weight:500;line-height:1;margin-bottom:3px}
+.stat-lbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--text2)}
+
+/* ─── SECTION HEADER ─── */
+.section-header{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:10px;
+}
+.section-title{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text2)}
+
+/* ─── MISC ─── */
+.divider{border:none;border-top:1px solid var(--border);margin:12px 0}
+.text-muted{color:var(--text2);font-size:12px}
+.text-small{font-size:12px}
+.flex{display:flex;align-items:center;gap:8px}
+.flex-wrap{display:flex;flex-wrap:wrap;gap:6px}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mb-8{margin-bottom:8px}
+.w-full{width:100%}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <div class="logo">Leader<span>Hub</span></div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showView('dashboard')">🏠 Dashboard</button>
+    <button class="nav-tab" onclick="showView('tasks')">✅ Tasks</button>
+    <button class="nav-tab" onclick="showView('lessons')">📚 Lessons</button>
+    <button class="nav-tab" onclick="showView('scr')">📊 SCR</button>
+    <button class="nav-tab" onclick="showView('trips')">🚌 Trips</button>
+    <button class="nav-tab" onclick="showView('journal')">✏️ Journal</button>
+    <button class="nav-tab" onclick="showView('brag')">🏆 Brag Board</button>
+    <button class="nav-tab" onclick="showView('settings')">⚙️ Settings</button>
+  </div>
+  <div id="dsp-badge">— days to DSP</div>
+</div>
+
+<div id="main">
+  <div class="view active" id="view-dashboard"><div class="spinner">Loading…</div></div>
+  <div class="view" id="view-tasks"></div>
+  <div class="view" id="view-lessons"></div>
+  <div class="view" id="view-scr"></div>
+  <div class="view" id="view-trips"></div>
+  <div class="view" id="view-journal"></div>
+  <div class="view" id="view-brag"></div>
+  <div class="view" id="view-settings"></div>
+</div>
+
+<div id="toast-container"></div>
+<div id="modal-overlay" onclick="closeModal(event)"><div id="modal-box"></div></div>
+
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// LOCAL STORAGE HELPERS
+// ════════════════════════════════════════════
+const LS={
+  get(k){try{return JSON.parse(localStorage.getItem('lh_'+k))}catch(e){return null}},
+  set(k,v){localStorage.setItem('lh_'+k,JSON.stringify(v))},
+  del(k){localStorage.removeItem('lh_'+k)}
+};
+
+// ════════════════════════════════════════════
+// BELL SCHEDULE — A/B Day block schedule
+// ════════════════════════════════════════════
+const BELL={
+  A:[
+    {slot:1,name:'Block 1',start:'07:20',end:'08:50',course:null,label:'Planning'},
+    {slot:2,name:'Block 2',start:'08:54',end:'10:24',course:null,label:'Planning'},
+    {slot:'lunch',name:'Lunch',start:'10:24',end:'11:10',course:null,label:''},
+    {slot:3,name:'Block 3',start:'11:14',end:'12:44',course:'8177',label:'8177'},
+    {slot:4,name:'Block 4',start:'12:48',end:'14:18',course:'6115',label:'6115'}
+  ],
+  B:[
+    {slot:1,name:'Block 1',start:'07:20',end:'08:50',course:null,label:'Planning'},
+    {slot:2,name:'Block 2',start:'08:54',end:'10:24',course:'8175',label:'8175 §1'},
+    {slot:3,name:'Block 3',start:'10:28',end:'11:58',course:'8175',label:'8175 §2'},
+    {slot:'lunch',name:'Lunch',start:'11:58',end:'12:43',course:null,label:''},
+    {slot:4,name:'Block 4',start:'12:47',end:'14:17',course:'8175',label:'8175 §3'}
+  ],
+  E:[  // Early release
+    {slot:1,name:'Block 1',start:'07:20',end:'08:20',course:null,label:'Planning'},
+    {slot:2,name:'Block 2',start:'08:24',end:'09:24',course:'8177',label:'8177'},
+    {slot:3,name:'Block 3',start:'09:28',end:'10:28',course:'6115',label:'6115'},
+    {slot:4,name:'Block 4',start:'10:32',end:'11:32',course:null,label:''}
+  ]
+};
+
+// ════════════════════════════════════════════
+// CCPS NO-SCHOOL DATES (remaining SY 2025-26)
+// ════════════════════════════════════════════
+const NO_SCHOOL=new Set([
+  '2026-04-07','2026-04-08','2026-04-09','2026-04-10', // spring break
+  '2026-05-25' // Memorial Day (after DSP but included)
+]);
+
+// ════════════════════════════════════════════
+// SEED DEADLINES
+// ════════════════════════════════════════════
+const SEED_DEADLINES=[
+  {id:'dl_green3',title:'Meeting w/ Ms. Green (DSP check-in)',date:'2026-04-15',type:'dl_green',dsp:'standard2',done:false},
+  {id:'dl4',title:'SBE Business Plan — Principal Sign-Off',date:'2026-04-15',type:'task',dsp:'standard2',done:false},
+  {id:'dl_plc_apr',title:'CTE PLC — Monthly Meeting',date:'2026-04-16',type:'dl_plc',dsp:'standard2',done:false},
+  {id:'dl_syn3',title:'Synergy Grades — 2-Week Update Due',date:'2026-04-18',type:'synergy',dsp:'standard1',done:false},
+  {id:'dl5',title:'Field Trip Form Submission Deadline',date:'2026-04-22',type:'trip',dsp:'standard2',done:false},
+  {id:'dl_green4',title:'Meeting w/ Ms. Green (DSP check-in)',date:'2026-04-25',type:'dl_green',dsp:'standard2',done:false},
+  {id:'dl6',title:'DECA ICDC Atlanta',date:'2026-04-25',type:'deca',dsp:'standard2',done:false},
+  {id:'dl_syn4',title:'Synergy Grades — 2-Week Update Due',date:'2026-05-02',type:'synergy',dsp:'standard1',done:false},
+  {id:'dl_green5',title:'Meeting w/ Ms. Green (DSP check-in)',date:'2026-05-09',type:'dl_green',dsp:'standard2',done:false},
+  {id:'dl_dsp_end',title:'DSP End Date — All Standards Must Be Met',date:'2026-05-15',type:'dsp',dsp:'both',done:false}
+];
+
+// ════════════════════════════════════════════
+// LESSON PLANS (all 119 — Q4 active)
+// ════════════════════════════════════════════
+const LESSONS=[
+  // 8177 Q1
+  {id:'lp_8177_01',course:'8177',q:'Q1',type:'TEACH',title:'The Business of the Game',active:false},
+  {id:'lp_8177_02',course:'8177',q:'Q1',type:'DUE',title:'The Brand Board',summative:true,pct:20,active:false},
+  {id:'lp_8177_03',course:'8177',q:'Q1',type:'TEACH',title:'The 4 Ps of the Fan Experience',active:false},
+  {id:'lp_8177_04',course:'8177',q:'Q1',type:'TEACH',title:'The Battle for the Entertainment Dollar',active:false},
+  {id:'lp_8177_05',course:'8177',q:'Q1',type:'DUE',title:'The Millionaire\'s Strike',summative:true,pct:20,active:false},
+  {id:'lp_8177_06',course:'8177',q:'Q1',type:'PRESENT',title:'Franchise Analysis Presentation',summative:true,pct:20,active:false},
+  // 8177 Q2
+  {id:'lp_8177_07',course:'8177',q:'Q2',type:'TEACH',title:'Promotional Flyer Design',active:false},
+  {id:'lp_8177_08',course:'8177',q:'Q2',type:'TEACH',title:'The Hype Machine',active:false},
+  {id:'lp_8177_09',course:'8177',q:'Q2',type:'TEACH',title:'School Store Planogram',active:false},
+  {id:'lp_8177_10',course:'8177',q:'Q2',type:'DUE',title:'CHHS School Store Company Description',summative:true,pct:20,active:false},
+  {id:'lp_8177_11',course:'8177',q:'Q2',type:'PRESENT',title:'The Product Pitch & Financial Analysis',summative:true,pct:20,active:false},
+  {id:'lp_8177_12',course:'8177',q:'Q2',type:'TEACH',title:'The Economics of the Arena',active:false},
+  {id:'lp_8177_13',course:'8177',q:'Q2',type:'TEACH',title:'The Front Lines',active:false},
+  {id:'lp_8177_14',course:'8177',q:'Q2',type:'TEACH',title:'The Franchise Evolution',active:false},
+  {id:'lp_8177_15',course:'8177',q:'Q2',type:'DUE',title:'Employee Handbook & Venue Operations',summative:true,pct:20,active:false},
+  {id:'lp_8177_16',course:'8177',q:'Q2',type:'TEACH',title:'The NIL Deal',active:false},
+  // 8177 Q3
+  {id:'lp_8177_17',course:'8177',q:'Q3',type:'TEACH',title:'Market Research & Survey Design',active:false},
+  {id:'lp_8177_18',course:'8177',q:'Q3',type:'TEACH',title:'Survey Deployment & Statistical Significance',active:false},
+  {id:'lp_8177_19',course:'8177',q:'Q3',type:'DUE',title:'Survey Results Analysis',summative:true,pct:20,active:false},
+  {id:'lp_8177_20',course:'8177',q:'Q3',type:'TEACH',title:'The Back Room',active:false},
+  {id:'lp_8177_21',course:'8177',q:'Q3',type:'TEACH',title:'The Richmond Festival Blueprint',active:false},
+  {id:'lp_8177_22',course:'8177',q:'Q3',type:'TEACH',title:'Secure the Perimeter',active:false},
+  {id:'lp_8177_23',course:'8177',q:'Q3',type:'TEACH',title:'The Sponsorship Negotiation',active:false},
+  {id:'lp_8177_24',course:'8177',q:'Q3',type:'DUE',title:'Tournament Sponsorship Proposal',summative:true,pct:20,active:false},
+  {id:'lp_8177_25',course:'8177',q:'Q3',type:'TEACH',title:'The Ticket Office',active:false},
+  {id:'lp_8177_26x',course:'8177',q:'Q3',type:'DUE',title:'The Bottom Line',summative:true,pct:20,active:false},
+  // 8177 Q4
+  {id:'lp_8177_26',course:'8177',q:'Q4',type:'TEACH',title:'The Stadium Economy',canvas:'8177 | Q4 | TEACH | The Stadium Economy',active:true},
+  {id:'lp_8177_27',course:'8177',q:'Q4',type:'DUE',title:'The Global Expansion',canvas:'8177 | Q4 | DUE | The Global Expansion',summative:true,pct:20,active:true},
+  {id:'lp_8177_28',course:'8177',q:'Q4',type:'DUE',title:'"What is Branding?" Reflection Essay',canvas:'8177 | Q4 | DUE | "What is Branding?" Reflection Essay',summative:true,pct:20,active:true},
+  {id:'lp_8177_29',course:'8177',q:'Q4',type:'ASSESS',title:'The Final Whistle',canvas:'8177 | Q4 | ASSESS | The Final Whistle',summative:true,pct:20,active:true},
+  // 8175 Q1
+  {id:'lp_8175_01',course:'8175',q:'Q1',type:'TEACH',title:'Evolution of Marketing',active:false},
+  {id:'lp_8175_02',course:'8175',q:'Q1',type:'TEACH',title:'Intrinsic Motivation',active:false},
+  {id:'lp_8175_03',course:'8175',q:'Q1',type:'TEACH',title:'Personal Branding',active:false},
+  {id:'lp_8175_04',course:'8175',q:'Q1',type:'DUE',title:'Personal Brand Analysis',summative:true,pct:20,active:false},
+  {id:'lp_8175_05',course:'8175',q:'Q1',type:'TEACH',title:'Sources of Support',active:false},
+  {id:'lp_8175_06',course:'8175',q:'Q1',type:'TEACH',title:'Skill Development Plan',active:false},
+  {id:'lp_8175_07',course:'8175',q:'Q1',type:'TEACH',title:'Ethical Dilemmas Discussion',active:false},
+  {id:'lp_8175_08',course:'8175',q:'Q1',type:'TEACH',title:'Effective PowerPoint Presentations',active:false},
+  {id:'lp_8175_00',course:'8175',q:'Q1',type:'TEACH',title:'Rebranding the Washington Football Team',active:false},
+  {id:'lp_8175_09',course:'8175',q:'Q1',type:'TEACH',title:'Defining Branding',active:false},
+  {id:'lp_8175_10',course:'8175',q:'Q1',type:'TEACH',title:'Service Experience Reflection',active:false},
+  {id:'lp_8175_11',course:'8175',q:'Q1',type:'TEACH',title:'CHHS Brand Audit',active:false},
+  {id:'lp_8175_12',course:'8175',q:'Q1',type:'TEACH',title:'SWOT Analysis (Company Edition)',active:false},
+  {id:'lp_8175_13',course:'8175',q:'Q1',type:'PRESENT',title:'CHHS Rebrand Pitch',summative:true,pct:20,active:false},
+  {id:'lp_8175_14',course:'8175',q:'Q1',type:'DUE',title:'Local Business Research Project',summative:true,pct:20,active:false},
+  // 8175 Q2
+  {id:'lp_8175_15',course:'8175',q:'Q2',type:'TEACH',title:'Olymponomics',active:false},
+  {id:'lp_8175_16',course:'8175',q:'Q2',type:'TEACH',title:'Pricing Strategies',active:false},
+  {id:'lp_8175_17',course:'8175',q:'Q2',type:'TEACH',title:'Distribution Channels',active:false},
+  {id:'lp_8175_18',course:'8175',q:'Q2',type:'DUE',title:'Make an Olympic Sport',summative:true,pct:15,active:false},
+  {id:'lp_8175_19',course:'8175',q:'Q2',type:'DUE',title:'Album Release Project',summative:true,pct:15,active:false},
+  {id:'lp_8175_20',course:'8175',q:'Q2',type:'TEACH',title:'My Cause My Cleats (Analysis)',active:false},
+  {id:'lp_8175_21',course:'8175',q:'Q2',type:'TEACH',title:'Licensing and Law',active:false},
+  {id:'lp_8175_22',course:'8175',q:'Q2',type:'PRESENT',title:'My Cause My Cleats (Pitch)',summative:true,pct:15,active:false},
+  {id:'lp_8175_23',course:'8175',q:'Q2',type:'DUE',title:'Industry Publication Project',summative:true,pct:15,active:false},
+  // 8175 Q3
+  {id:'lp_8175_24',course:'8175',q:'Q3',type:'TEACH',title:'The Art of the Sale',active:false},
+  {id:'lp_8175_25',course:'8175',q:'Q3',type:'DUE',title:'BHM Entrepreneur Valentine',summative:true,pct:20,active:false},
+  {id:'lp_8175_26',course:'8175',q:'Q3',type:'PRESENT',title:'Elevator Pitch',summative:true,pct:20,active:false},
+  {id:'lp_8175_27',course:'8175',q:'Q3',type:'TEACH',title:'Spring Break Field Report',active:false},
+  {id:'lp_8175_28',course:'8175',q:'Q3',type:'TEACH',title:'Market Research (Survey Design)',active:false},
+  {id:'lp_8175_29',course:'8175',q:'Q3',type:'TEACH',title:'Survey Reflection',active:false},
+  {id:'lp_8175_30',course:'8175',q:'Q3',type:'TEACH',title:'Survey Creation',active:false},
+  {id:'lp_8175_31',course:'8175',q:'Q3',type:'DUE',title:'Survey Analysis',summative:true,pct:20,active:false},
+  // 8175 Q4
+  {id:'lp_8175_32',course:'8175',q:'Q4',type:'TEACH',title:'AI and the Future of Work',canvas:'8175 | Q4 | TEACH | AI and the Future of Work',active:true},
+  {id:'lp_8175_33',course:'8175',q:'Q4',type:'DUE',title:'The Paper Trail',canvas:'8175 | Q4 | DUE | The Paper Trail',summative:true,pct:20,active:true},
+  {id:'lp_8175_34',course:'8175',q:'Q4',type:'TEACH',title:'Interview Skills Practice Plan',canvas:'8175 | Q4 | TEACH | Interview Skills Practice Plan',active:true},
+  {id:'lp_8175_35',course:'8175',q:'Q4',type:'ASSESS',title:'Google Interview Simulation',canvas:'8175 | Q4 | ASSESS | Google Interview Simulation',summative:true,pct:20,active:true},
+  {id:'lp_8175_36',course:'8175',q:'Q4',type:'DUE',title:'Course Evaluation Brochure',canvas:'8175 | Q4 | DUE | Course Evaluation Brochure',summative:true,pct:20,active:true},
+  // 6115 Q1
+  {id:'lp_6115_01',course:'6115',q:'Q1',type:'TEACH',title:'Value is Personal',active:false},
+  {id:'lp_6115_02',course:'6115',q:'Q1',type:'TEACH',title:'Marketing is Creating Value & Utility',active:false},
+  {id:'lp_6115_03',course:'6115',q:'Q1',type:'TEACH',title:'Economic Foundations & Competition',active:false},
+  {id:'lp_6115_04',course:'6115',q:'Q1',type:'ASSESS',title:'Business Structures & The Cycle',summative:true,pct:20,active:false},
+  {id:'lp_6115_05',course:'6115',q:'Q1',type:'TEACH',title:'Consumer Power & Historic Boycotts Pt. 1',active:false},
+  {id:'lp_6115_06',course:'6115',q:'Q1',type:'TEACH',title:'Anatomy of a Boycott Pt. 2',active:false},
+  {id:'lp_6115_07',course:'6115',q:'Q1',type:'TEACH',title:'The Invisible Hand',active:false},
+  {id:'lp_6115_08',course:'6115',q:'Q1',type:'TEACH',title:'Market Relationships',active:false},
+  {id:'lp_6115_09',course:'6115',q:'Q1',type:'ASSESS',title:'Diagnosing the Economy',summative:true,pct:20,active:false},
+  {id:'lp_6115_10',course:'6115',q:'Q1',type:'DUE',title:'Marketing Through the Storm',summative:true,pct:20,active:false},
+  // 6115 Q2
+  {id:'lp_6115_11',course:'6115',q:'Q2',type:'TEACH',title:'The Magnificent Seven',active:false},
+  {id:'lp_6115_12',course:'6115',q:'Q2',type:'TEACH',title:'Functions in Action',active:false},
+  {id:'lp_6115_13',course:'6115',q:'Q2',type:'TEACH',title:'The Corporate Autopsy',active:false},
+  {id:'lp_6115_14',course:'6115',q:'Q2',type:'TEACH',title:'Diagnosing the Patient',active:false},
+  {id:'lp_6115_15',course:'6115',q:'Q2',type:'PRESENT',title:'The Turnaround Plan',summative:true,pct:20,active:false},
+  {id:'lp_6115_16',course:'6115',q:'Q2',type:'TEACH',title:'Brand Identity & The Taste Test',active:false},
+  {id:'lp_6115_17',course:'6115',q:'Q2',type:'TEACH',title:'Brand Strategies',active:false},
+  {id:'lp_6115_18',course:'6115',q:'Q2',type:'DUE',title:'Brand Creation Lab',summative:true,pct:20,active:false},
+  {id:'lp_6115_19',course:'6115',q:'Q2',type:'TEACH',title:'The Ad Autopsy',active:false},
+  {id:'lp_6115_20',course:'6115',q:'Q2',type:'TEACH',title:'The Creative Studio',active:false},
+  {id:'lp_6115_21',course:'6115',q:'Q2',type:'TEACH',title:'The Medium is the Message',active:false},
+  {id:'lp_6115_22',course:'6115',q:'Q2',type:'TEACH',title:'The Price of Eyeballs',active:false},
+  {id:'lp_6115_23',course:'6115',q:'Q2',type:'TEACH',title:'The Sensory Store',active:false},
+  {id:'lp_6115_24',course:'6115',q:'Q2',type:'TEACH',title:'The Architect',active:false},
+  {id:'lp_6115_25',course:'6115',q:'Q2',type:'TEACH',title:'The Perfect Recipe',active:false},
+  {id:'lp_6115_26',course:'6115',q:'Q2',type:'DUE',title:'Mix Masters',summative:true,pct:20,active:false},
+  // 6115 Q3
+  {id:'lp_6115_27',course:'6115',q:'Q3',type:'TEACH',title:'The Multi-Million Dollar Minute',active:false},
+  {id:'lp_6115_28',course:'6115',q:'Q3',type:'DUE',title:'The Pitch Room',summative:true,pct:20,active:false},
+  {id:'lp_6115_29',course:'6115',q:'Q3',type:'TEACH',title:'The Better Mousetrap',active:false},
+  {id:'lp_6115_30',course:'6115',q:'Q3',type:'TEACH',title:'The Disruption Detectives',active:false},
+  {id:'lp_6115_31',course:'6115',q:'Q3',type:'TEACH',title:'The Revolution Will Be Televised',active:false},
+  {id:'lp_6115_32',course:'6115',q:'Q3',type:'TEACH',title:'The Extended Marketing Mix',active:false},
+  {id:'lp_6115_33',course:'6115',q:'Q3',type:'TEACH',title:'The Price is Right',active:false},
+  {id:'lp_6115_34',course:'6115',q:'Q3',type:'TEACH',title:'Pricing Psychology & Analysis',active:false},
+  {id:'lp_6115_35',course:'6115',q:'Q3',type:'TEACH',title:'The Golden Rule of Business',active:false},
+  {id:'lp_6115_36',course:'6115',q:'Q3',type:'TEACH',title:'The Value Equation',active:false},
+  {id:'lp_6115_37',course:'6115',q:'Q3',type:'ASSESS',title:'The Sales Dojo',summative:true,pct:20,active:false},
+  {id:'lp_6115_38',course:'6115',q:'Q3',type:'TEACH',title:'The Submarine Sonar',active:false},
+  {id:'lp_6115_39',course:'6115',q:'Q3',type:'TEACH',title:'Garbage In, Garbage Out',active:false},
+  {id:'lp_6115_40',course:'6115',q:'Q3',type:'TEACH',title:'The Middleman Paradox',active:false},
+  {id:'lp_6115_41',course:'6115',q:'Q3',type:'DUE',title:'Solving the Supply Chain',summative:true,pct:20,active:false},
+  // 6115 Q4
+  {id:'lp_6115_42',course:'6115',q:'Q4',type:'TEACH',title:'The Time Traveler',canvas:'6115 | Q4 | TEACH | The Time Traveler',active:true},
+  {id:'lp_6115_43',course:'6115',q:'Q4',type:'DUE',title:'You, Inc.',canvas:'6115 | Q4 | DUE | You, Inc.',summative:true,pct:12,active:true},
+  {id:'lp_6115_44',course:'6115',q:'Q4',type:'TEACH',title:'The Architecture of You',canvas:'6115 | Q4 | TEACH | The Architecture of You',active:true},
+  {id:'lp_6115_45',course:'6115',q:'Q4',type:'DUE',title:'The Hype Man',canvas:'6115 | Q4 | DUE | The Hype Man',summative:true,pct:12,active:true},
+  {id:'lp_6115_46',course:'6115',q:'Q4',type:'TEACH',title:'The Professional Breakup',canvas:'6115 | Q4 | TEACH | The Professional Breakup',active:true},
+  {id:'lp_6115_47',course:'6115',q:'Q4',type:'TEACH',title:'The "Adulting" Crash Course',canvas:'6115 | Q4 | TEACH | The "Adulting" Crash Course',active:true},
+  {id:'lp_6115_48',course:'6115',q:'Q4',type:'PRESENT',title:'The Big Idea',canvas:'6115 | Q4 | PRESENT | The Big Idea',summative:true,pct:12,active:true},
+  {id:'lp_6115_49',course:'6115',q:'Q4',type:'TEACH',title:'Know Your Enemy',canvas:'6115 | Q4 | TEACH | Know Your Enemy',active:true},
+  {id:'lp_6115_50',course:'6115',q:'Q4',type:'TEACH',title:'The Structure',canvas:'6115 | Q4 | TEACH | The Structure',active:true},
+  {id:'lp_6115_51',course:'6115',q:'Q4',type:'TEACH',title:'Show Me the Money',canvas:'6115 | Q4 | TEACH | Show Me the Money',active:true},
+  {id:'lp_6115_52',course:'6115',q:'Q4',type:'PRESENT',title:'The Final Sell',canvas:'6115 | Q4 | PRESENT | The Final Sell',summative:true,pct:12,active:true},
+  {id:'lp_6115_53',course:'6115',q:'Q4',type:'ASSESS',title:'Full Business Plan',canvas:'6115 | Q4 | ASSESS | Full Business Plan',summative:true,pct:12,active:true}
+];
+const COMPETENCIES = {
+  "8177": [
+    {n:1,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate creativity and innovation.",req:true},
+    {n:2,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate critical thinking and problem solving.",req:true},
+    {n:3,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate initiative and self-direction.",req:true},
+    {n:4,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate integrity.",req:true},
+    {n:5,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate work ethic.",req:true},
+    {n:6,area:"Demonstrating Interpersonal Skills",text:"Demonstrate conflict-resolution skills.",req:true},
+    {n:7,area:"Demonstrating Interpersonal Skills",text:"Demonstrate listening and speaking skills.",req:true},
+    {n:8,area:"Demonstrating Interpersonal Skills",text:"Demonstrate respect for diversity.",req:true},
+    {n:9,area:"Demonstrating Interpersonal Skills",text:"Demonstrate customer service skills.",req:true},
+    {n:10,area:"Demonstrating Interpersonal Skills",text:"Collaborate with team members.",req:true},
+    {n:11,area:"Demonstrating Professional Competencies",text:"Demonstrate big-picture thinking.",req:true},
+    {n:12,area:"Demonstrating Professional Competencies",text:"Demonstrate career- and life-management skills.",req:true},
+    {n:13,area:"Demonstrating Professional Competencies",text:"Demonstrate continuous learning and adaptability.",req:true},
+    {n:14,area:"Demonstrating Professional Competencies",text:"Manage time and resources.",req:true},
+    {n:15,area:"Demonstrating Professional Competencies",text:"Demonstrate information-literacy skills.",req:true},
+    {n:16,area:"Demonstrating Professional Competencies",text:"Demonstrate an understanding of information security.",req:true},
+    {n:17,area:"Demonstrating Professional Competencies",text:"Maintain working knowledge of current information-technology (IT) systems.",req:true},
+    {n:18,area:"Demonstrating Professional Competencies",text:"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.",req:true},
+    {n:19,area:"Demonstrating Professional Competencies",text:"Apply mathematical skills to job-specific tasks.",req:true},
+    {n:20,area:"Demonstrating Professional Competencies",text:"Demonstrate professionalism.",req:true},
+    {n:21,area:"Demonstrating Professional Competencies",text:"Demonstrate reading and writing skills.",req:true},
+    {n:22,area:"Demonstrating Professional Competencies",text:"Demonstrate workplace safety.",req:true},
+    {n:23,area:"Examining All Aspects of an Industry",text:"Examine aspects of planning within an industry/organization.",req:true},
+    {n:24,area:"Examining All Aspects of an Industry",text:"Examine aspects of management within an industry/organization.",req:true},
+    {n:25,area:"Examining All Aspects of an Industry",text:"Examine aspects of financial responsibility within an industry/organization.",req:true},
+    {n:26,area:"Examining All Aspects of an Industry",text:"Examine technical and production skills required of workers within an industry/organization.",req:true},
+    {n:27,area:"Examining All Aspects of an Industry",text:"Examine principles of technology that underlie an industry/organization.",req:true},
+    {n:28,area:"Examining All Aspects of an Industry",text:"Examine labor issues related to an industry/organization.",req:true},
+    {n:29,area:"Examining All Aspects of an Industry",text:"Examine community issues related to an industry/organization.",req:true},
+    {n:30,area:"Examining All Aspects of an Industry",text:"Examine health, safety, and environmental issues related to an industry/organization.",req:true},
+    {n:31,area:"Addressing Elements of Student Life",text:"Identify the purposes and goals of the student organization.",req:true},
+    {n:32,area:"Addressing Elements of Student Life",text:"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.",req:true},
+    {n:33,area:"Addressing Elements of Student Life",text:"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.",req:true},
+    {n:34,area:"Addressing Elements of Student Life",text:"Identify Internet safety issues and procedures for complying with acceptable use standards.",req:true},
+    {n:35,area:"Exploring Work-Based Learning",text:"Identify the types of work-based learning (WBL) opportunities.",req:true},
+    {n:36,area:"Exploring Work-Based Learning",text:"Reflect on lessons learned during the WBL experience.",req:false},
+    {n:37,area:"Exploring Work-Based Learning",text:"Explore career opportunities related to the WBL experience.",req:true},
+    {n:38,area:"Exploring Work-Based Learning",text:"Participate in a WBL experience, when appropriate.",req:false},
+    {n:39,area:"Exploring Sports, Entertainment, and Event Management",text:"Define the role of the sports, entertainment, and event manager.",req:true},
+    {n:40,area:"Exploring Sports, Entertainment, and Event Management",text:"Examine the traits and skills that successful sports, entertainment, and event managers possess.",req:true},
+    {n:41,area:"Exploring Sports, Entertainment, and Event Management",text:"Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees.",req:true},
+    {n:42,area:"Exploring Sports, Entertainment, and Event Management",text:"Evaluate the sports, entertainment, and event manager’s role in decision-making for campaigns, employees, and partners.",req:true},
+    {n:43,area:"Exploring Sports, Entertainment, and Event Management",text:"Evaluate career opportunities in sports, entertainment, and event management.",req:true},
+    {n:44,area:"Exploring Sports, Entertainment, and Event Management",text:"Document the different roles in sports, entertainment, and event management using an organizational chart.",req:true},
+    {n:45,area:"Exploring Sports, Entertainment, and Event Management",text:"Explain facilities management as it relates to the sports, entertainment, and event industries.",req:true},
+    {n:46,area:"Exploring Sports, Entertainment, and Event Management",text:"Explain on-site revenue streams as they relate to sports, entertainment, and event facilities.",req:true},
+    {n:47,area:"Exploring Sports, Entertainment, and Event Management",text:"Identify how e-commerce and digital transactions affect sports, entertainment, and event businesses.",req:true},
+    {n:48,area:"Exploring Sports, Entertainment, and Event Management",text:"Analyze the effect of niche or emerging events in the sports, entertainment, and event industries.",req:true},
+    {n:49,area:"Describing the Economics of the Sports, Entertainment, and Event Industries",text:"Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries.",req:true},
+    {n:50,area:"Describing the Economics of the Sports, Entertainment, and Event Industries",text:"Examine how sports, entertainment, and events affect local, state, and national economies.",req:true},
+    {n:51,area:"Describing the Economics of the Sports, Entertainment, and Event Industries",text:"(Optional) Identify cultural and political environmental factors and their economic impact on the global sports, entertainment, and event industries.",req:false},
+    {n:52,area:"Explaining the Structure of Sports, Entertainment, and Event Businesses",text:"Explore the organizational structures within the sports, entertainment, and event industries.",req:true},
+    {n:53,area:"Explaining the Structure of Sports, Entertainment, and Event Businesses",text:"Explain the advantages and disadvantages of operating as a for-profit or nonprofit organization.",req:true},
+    {n:54,area:"Exploring Entrepreneurship in Sports, Entertainment, and Event Management",text:"Identify entrepreneurship opportunities related to sports, entertainment, and event management.",req:true},
+    {n:55,area:"Exploring Entrepreneurship in Sports, Entertainment, and Event Management",text:"Describe the entrepreneurial mindset.",req:true},
+    {n:56,area:"Exploring Entrepreneurship in Sports, Entertainment, and Event Management",text:"Identify the steps involved in starting a new business, using the Business Model Canvas (BMC).",req:true},
+    {n:57,area:"Exploring Entrepreneurship in Sports, Entertainment, and Event Management",text:"Describe how small businesses drive job creation, income generation, and economic growth.",req:true},
+    {n:58,area:"Developing Customer Service Skills",text:"Demonstrate customer-service techniques.",req:true},
+    {n:59,area:"Developing Customer Service Skills",text:"Describe methods used to encourage customer retention.",req:true},
+    {n:60,area:"Developing Customer Service Skills",text:"Respond to inquiries and suggestions from customers, coworkers, and supervisors in a sports, entertainment, and event context.",req:true},
+    {n:61,area:"Developing Customer Service Skills",text:"Explain company policy to a customer in a sports, entertainment, and event context.",req:true},
+    {n:62,area:"Developing Customer Service Skills",text:"Explain the importance of constructive feedback in personal and professional growth.",req:true},
+    {n:63,area:"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries",text:"Identify ethical issues related to the sports, entertainment, and event industries.",req:true},
+    {n:64,area:"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries",text:"Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries.",req:true},
+    {n:65,area:"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries",text:"Examine the effect of media bias on public perception and opinion.",req:true},
+    {n:66,area:"Exploring Ethical Issues in the Sports, Entertainment, and Event Industries",text:"Describe the value of the sports, entertainment, and event industries to the community.",req:true},
+    {n:67,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Examine the importance of risk assessment and management strategies in the sports, entertainment, and event industries.",req:true},
+    {n:68,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Examine the challenges posed by uncontrollable variables in the sports, entertainment, and event industries.",req:true},
+    {n:69,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Identify purposes, types, and terms of contracts.",req:true},
+    {n:70,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Examine the role of labor and antitrust law in the sports, entertainment, and event industries.",req:true},
+    {n:71,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Identify unions relevant to labor relations in the sports, entertainment, and event industries.",req:true},
+    {n:72,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Explain how the Americans with Disabilities Act (ADA) has influenced the planning of events and design of facilities.",req:true},
+    {n:73,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Explain how legal requirements influence operations in the sports, entertainment, and event industries.",req:true},
+    {n:74,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Describe external factors affecting the sports, entertainment, and event marketing process.",req:true},
+    {n:75,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Describe the effects of national, state, and local laws and regulations on the sports, entertainment, and event industries.",req:true},
+    {n:76,area:"Exploring the Legal Aspects of Sports, Entertainment, and Event Industries",text:"Identify the purposes of licensing.",req:true},
+    {n:77,area:"Understanding Market Research",text:"Explain market research and its use in the sports, entertainment, and event industries.",req:true},
+    {n:78,area:"Understanding Market Research",text:"Explain the need for market research for all functions of marketing.",req:true},
+    {n:79,area:"Understanding Market Research",text:"Identify sources of data for market research in the sports, entertainment, and event industries.",req:true},
+    {n:80,area:"Understanding Market Research",text:"Describe external factors affecting the sports, entertainment, and event marketing process.",req:true},
+    {n:81,area:"Understanding Market Research",text:"Develop a market segmentation analysis.",req:true},
+    {n:82,area:"Understanding Market Research",text:"Describe the steps in developing a market research project.",req:true},
+    {n:83,area:"Understanding Market Research",text:"Develop a market research project.",req:true},
+    {n:84,area:"Understanding Market Research",text:"Evaluate the results of a market research project.",req:true},
+    {n:85,area:"Exploring Revenues and Expenditures",text:"Identify the components of a budget.",req:true},
+    {n:86,area:"Exploring Revenues and Expenditures",text:"Identify revenue sources related to the sports, entertainment, and event industries.",req:true},
+    {n:87,area:"Exploring Revenues and Expenditures",text:"Identify expenditures related to the sports, entertainment, and event industries.",req:true},
+    {n:88,area:"Exploring Revenues and Expenditures",text:"Analyze financial statements.",req:true},
+    {n:89,area:"Managing Safety and Security",text:"Explain the importance and types of indoor and outdoor security (i.e., life and property safety).",req:true},
+    {n:90,area:"Managing Safety and Security",text:"Explain the security needs of a venue and/or event.",req:true},
+    {n:91,area:"Managing Safety and Security",text:"Explain the use of emergency preparedness plans to address threats to a venue and/or event.",req:true},
+    {n:92,area:"Understanding Event Management",text:"Explain the process for planning an event.",req:true},
+    {n:93,area:"Understanding Event Management",text:"Describe factors that motivate consumers to attend sports, entertainment, and event occasions.",req:true},
+    {n:94,area:"Understanding Event Management",text:"Explain how event popularity and competitive factors relate to attendance.",req:true},
+    {n:95,area:"Understanding Event Management",text:"Analyze personnel needs for an event.",req:true},
+    {n:96,area:"Understanding Event Management",text:"Analyze the financial resources required for each event activity.",req:true},
+    {n:97,area:"Understanding Event Management",text:"Develop a marketing plan for an event.",req:true},
+    {n:98,area:"Understanding Event Management",text:"Develop a budget for an event.",req:true},
+    {n:99,area:"Understanding Event Management",text:"Develop follow-up activities to recognize and thank participants after an event.",req:true},
+    {n:100,area:"Understanding Event Management",text:"(Optional) Manage a sports, entertainment, and event occasion.",req:false},
+    {n:101,area:"Understanding Event Management",text:"(Optional) Evaluate the event’s overall success.",req:false},
+    {n:102,area:"Developing Career Goals",text:"Identify career and employment-related information sources.",req:true},
+    {n:103,area:"Developing Career Goals",text:"Identify career opportunities at different levels in sports, entertainment, and event management.",req:true},
+    {n:104,area:"Developing Career Goals",text:"Describe education and training needed for a sports, entertainment, and event management career.",req:true},
+    {n:105,area:"Developing Career Goals",text:"(Optional) Identify barriers to employment and strategies to overcome them.",req:false},
+    {n:106,area:"Developing Career Goals",text:"Identify professional development opportunities in the sports, entertainment, and event industries.",req:true},
+    {n:107,area:"Developing Career Goals",text:"Collect information about a prospective employer.",req:true},
+    {n:108,area:"Developing Career Goals",text:"Develop a career plan.",req:true},
+  ],
+  "8175": [
+    {n:1,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate creativity and innovation.",req:true},
+    {n:2,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate critical thinking and problem solving.",req:true},
+    {n:3,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate initiative and self-direction.",req:true},
+    {n:4,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate integrity.",req:true},
+    {n:5,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate work ethic.",req:true},
+    {n:6,area:"Demonstrating Interpersonal Skills",text:"Demonstrate conflict-resolution skills.",req:true},
+    {n:7,area:"Demonstrating Interpersonal Skills",text:"Demonstrate listening and speaking skills.",req:true},
+    {n:8,area:"Demonstrating Interpersonal Skills",text:"Demonstrate respect for diversity.",req:true},
+    {n:9,area:"Demonstrating Interpersonal Skills",text:"Demonstrate customer service skills.",req:true},
+    {n:10,area:"Demonstrating Interpersonal Skills",text:"Collaborate with team members.",req:true},
+    {n:11,area:"Demonstrating Professional Competencies",text:"Demonstrate big-picture thinking.",req:true},
+    {n:12,area:"Demonstrating Professional Competencies",text:"Demonstrate career- and life-management skills.",req:true},
+    {n:13,area:"Demonstrating Professional Competencies",text:"Demonstrate continuous learning and adaptability.",req:true},
+    {n:14,area:"Demonstrating Professional Competencies",text:"Manage time and resources.",req:true},
+    {n:15,area:"Demonstrating Professional Competencies",text:"Demonstrate information-literacy skills.",req:true},
+    {n:16,area:"Demonstrating Professional Competencies",text:"Demonstrate an understanding of information security.",req:true},
+    {n:17,area:"Demonstrating Professional Competencies",text:"Maintain working knowledge of current information-technology (IT) systems.",req:true},
+    {n:18,area:"Demonstrating Professional Competencies",text:"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.",req:true},
+    {n:19,area:"Demonstrating Professional Competencies",text:"Apply mathematical skills to job-specific tasks.",req:true},
+    {n:20,area:"Demonstrating Professional Competencies",text:"Demonstrate professionalism.",req:true},
+    {n:21,area:"Demonstrating Professional Competencies",text:"Demonstrate reading and writing skills.",req:true},
+    {n:22,area:"Demonstrating Professional Competencies",text:"Demonstrate workplace safety.",req:true},
+    {n:23,area:"Examining All Aspects of an Industry",text:"Examine aspects of planning within an industry/organization.",req:true},
+    {n:24,area:"Examining All Aspects of an Industry",text:"Examine aspects of management within an industry/organization.",req:true},
+    {n:25,area:"Examining All Aspects of an Industry",text:"Examine aspects of financial responsibility within an industry/organization.",req:true},
+    {n:26,area:"Examining All Aspects of an Industry",text:"Examine technical and production skills required of workers within an industry/organization.",req:true},
+    {n:27,area:"Examining All Aspects of an Industry",text:"Examine principles of technology that underlie an industry/organization.",req:true},
+    {n:28,area:"Examining All Aspects of an Industry",text:"Examine labor issues related to an industry/organization.",req:true},
+    {n:29,area:"Examining All Aspects of an Industry",text:"Examine community issues related to an industry/organization.",req:true},
+    {n:30,area:"Examining All Aspects of an Industry",text:"Examine health, safety, and environmental issues related to an industry/organization.",req:true},
+    {n:31,area:"Addressing Elements of Student Life",text:"Identify the purposes and goals of the student organization.",req:true},
+    {n:32,area:"Addressing Elements of Student Life",text:"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.",req:true},
+    {n:33,area:"Addressing Elements of Student Life",text:"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.",req:true},
+    {n:34,area:"Addressing Elements of Student Life",text:"Identify Internet safety issues and procedures for complying with acceptable use standards.",req:true},
+    {n:35,area:"Exploring Work-Based Learning",text:"Identify the types of work-based learning (WBL) opportunities.",req:true},
+    {n:36,area:"Exploring Work-Based Learning",text:"Reflect on lessons learned during the WBL experience.",req:false},
+    {n:37,area:"Exploring Work-Based Learning",text:"Explore career opportunities related to the WBL experience.",req:true},
+    {n:38,area:"Exploring Work-Based Learning",text:"Participate in a WBL experience, when appropriate.",req:false},
+    {n:39,area:"Developing an Overview of Marketing",text:"Explain marketing as it relates to the sports, entertainment, and event industries.",req:true},
+    {n:40,area:"Developing an Overview of Marketing",text:"Identify the components (the Ps) of the marketing mix as they relate to sports, entertainment, and event marketing.",req:true},
+    {n:41,area:"Developing an Overview of Marketing",text:"Describe the marketing concept as related to the sports, entertainment, and event industries.",req:true},
+    {n:42,area:"Developing an Overview of Marketing",text:"Explain the concept of target marketing.",req:true},
+    {n:43,area:"Developing an Overview of Marketing",text:"Describe the marketing functions.",req:true},
+    {n:44,area:"Understanding the Importance of Sports, Entertainment, and Event Marketing",text:"Explain the importance of the sports, entertainment, and event industries.",req:true},
+    {n:45,area:"Understanding the Importance of Sports, Entertainment, and Event Marketing",text:"Describe the past, present, and future of the sports, entertainment, and event industries.",req:true},
+    {n:46,area:"Understanding the Importance of Sports, Entertainment, and Event Marketing",text:"Explain hospitality as it relates to the sports, entertainment, and event industries.",req:true},
+    {n:47,area:"Understanding the Importance of Sports, Entertainment, and Event Marketing",text:"Analyze trends and innovations in the sports, entertainment, and event industries.",req:true},
+    {n:48,area:"Developing Interpersonal Skills",text:"Identify types of communication used in the sports, entertainment, and event industries.",req:true},
+    {n:49,area:"Developing Interpersonal Skills",text:"Identify the role of communication in work relationships.",req:true},
+    {n:50,area:"Developing Interpersonal Skills",text:"Develop presentation skills as a form of business communication.",req:true},
+    {n:51,area:"Developing Interpersonal Skills",text:"Identify ethical and unethical business practices.",req:true},
+    {n:52,area:"Developing Customer Service Skills",text:"Explain the importance of customer service as it relates to the sports, entertainment, and event industries.",req:true},
+    {n:53,area:"Developing Customer Service Skills",text:"Compare various types of customer interaction.",req:true},
+    {n:54,area:"Developing Customer Service Skills",text:"Translate technical language into commonly understood language.",req:true},
+    {n:55,area:"Developing Customer Service Skills",text:"Describe procedures for handling a customer complaint.",req:true},
+    {n:56,area:"Exploring the Concept of Branding",text:"Explain branding.",req:true},
+    {n:57,area:"Exploring the Concept of Branding",text:"Explain the concept of branding as it relates to sports, entertainment, and event marketing.",req:true},
+    {n:58,area:"Exploring the Concept of Branding",text:"Explain product licensing and brand protection.",req:true},
+    {n:59,area:"Exploring the Concept of Branding",text:"Explain the concept of and reasons for rebranding.",req:true},
+    {n:60,area:"Describing Product Development",text:"Explain product and service planning in sports, entertainment, and events.",req:true},
+    {n:61,area:"Describing Product Development",text:"Explain product life cycle.",req:true},
+    {n:62,area:"Describing Product Development",text:"Describe the role of market research.",req:true},
+    {n:63,area:"Describing Product Development",text:"Create a survey to conduct primary research.",req:true},
+    {n:64,area:"Describing Product Development",text:"Explain the role of product positioning.",req:true},
+    {n:65,area:"Describing Product Development",text:"Describe the impact of uncontrollable factors on sports, entertainment, and event product development.",req:true},
+    {n:66,area:"Exploring Pricing Strategies",text:"Explain pricing and the factors that affect pricing decisions.",req:true},
+    {n:67,area:"Exploring Pricing Strategies",text:"Identify pricing strategies as they relate to the sports, entertainment, and event industries.",req:true},
+    {n:68,area:"Understanding the Business Structure of Sports, Entertainment, and Event Marketing",text:"Explain business as it relates to the sports, entertainment, and event industries.",req:true},
+    {n:69,area:"Understanding the Business Structure of Sports, Entertainment, and Event Marketing",text:"Compare the types of business ownership and their roles in the sports, entertainment, and event industries.",req:true},
+    {n:70,area:"Exploring Distribution Strategies",text:"Explain distribution and how it relates to the sports, entertainment, and event industries.",req:true},
+    {n:71,area:"Exploring Distribution Strategies",text:"Identify challenges for distributing sports, entertainment, and event services.",req:true},
+    {n:72,area:"Developing a Promotional Mix",text:"Explain promotion and promotional mix.",req:true},
+    {n:73,area:"Developing a Promotional Mix",text:"Identify the roles of advertising, publicity, sales promotion, direct marketing, and personal selling in the sports, entertainment, and event industries.",req:true},
+    {n:74,area:"Developing a Promotional Mix",text:"Identify methods of communication used in sports, entertainment, and event promotion.",req:true},
+    {n:75,area:"Exploring the Forms and Techniques of Advertising",text:"Describe the elements of an advertisement.",req:true},
+    {n:76,area:"Exploring the Forms and Techniques of Advertising",text:"Explain advertising as related to the sports, entertainment, and event industries.",req:true},
+    {n:77,area:"Exploring the Forms and Techniques of Advertising",text:"Identify the goals of advertising and the methods of evaluating an advertisement’s success.",req:true},
+    {n:78,area:"Using Digital Media",text:"Define current electronic marketing tools and platforms.",req:true},
+    {n:79,area:"Using Digital Media",text:"Identify methods for attracting customers and establishing and maintaining customer relationships.",req:true},
+    {n:80,area:"Using Digital Media",text:"Identify target markets’ preferred platforms for various electronic marketing tools.",req:true},
+    {n:81,area:"Using Digital Media",text:"Compare traditional marketing and digital media marketing.",req:true},
+    {n:82,area:"Using Digital Media",text:"Explain how digital media can be used to generate revenue.",req:true},
+    {n:83,area:"Exploring Public Relations and Media Relations",text:"Explain public relations as related to the sports, entertainment, and event industries.",req:true},
+    {n:84,area:"Exploring Public Relations and Media Relations",text:"Describe public relations (PR) tools.",req:true},
+    {n:85,area:"Exploring Public Relations and Media Relations",text:"(Optional) Explain the internal and external aspects of public relations.",req:false},
+    {n:86,area:"Exploring Public Relations and Media Relations",text:"Analyze the effects of negative media.",req:true},
+    {n:87,area:"Exploring Sponsorship and Endorsements",text:"Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.",req:true},
+    {n:88,area:"Exploring Sponsorship and Endorsements",text:"Compare the reasons for using sponsorships vs. endorsements.",req:true},
+    {n:89,area:"Exploring Sponsorship and Endorsements",text:"Identify legal restrictions placed on endorsements and sponsorships.",req:true},
+    {n:90,area:"Exploring Sponsorship and Endorsements",text:"Identify current trends in sponsorship within the sports, entertainment, and event industries.",req:true},
+    {n:91,area:"Exploring Sponsorship and Endorsements",text:"Describe the components and relationships between stakeholders.",req:true},
+    {n:92,area:"Exploring Sales Promotion",text:"Explain the advantages and disadvantages of using various forms of sales promotion in the sports, entertainment, and event industries.",req:true},
+    {n:93,area:"Exploring Sales Promotion",text:"Describe the elements of sports, entertainment, and event promotional campaigns.",req:true},
+    {n:94,area:"Describing the Sales Process",text:"Explain the types of selling and why they are important in the sports, entertainment, and event industries.",req:true},
+    {n:95,area:"Describing the Sales Process",text:"Explain the concept of bundling products and/or services.",req:true},
+    {n:96,area:"Describing the Sales Process",text:"Explain the steps of the selling process.",req:true},
+    {n:97,area:"Describing the Sales Process",text:"Explain on-site merchandising and concessions as they relate to sports, entertainment, and event facilities.",req:true},
+    {n:98,area:"Describing the Economics of the Sports, Entertainment, and Event Industries",text:"Explain economic concepts and their relationship to the sports, entertainment, and event industries.",req:true},
+    {n:99,area:"Describing the Economics of the Sports, Entertainment, and Event Industries",text:"(Optional) Explain how the phases in the business cycle affect the sports, entertainment, and event industries.",req:false},
+    {n:100,area:"Describing the Economics of the Sports, Entertainment, and Event Industries",text:"Explain the concept of supply and demand.",req:true},
+    {n:101,area:"Describing the Economics of the Sports, Entertainment, and Event Industries",text:"Explain competition as it relates to the sports, entertainment, and event industries.",req:true},
+    {n:102,area:"Exploring the Marketing Plan",text:"Explain the components of the marketing plan.",req:true},
+    {n:103,area:"Exploring the Marketing Plan",text:"Describe the importance of research in developing a marketing plan.",req:true},
+    {n:104,area:"Exploring the Marketing Plan",text:"Describe the importance of analyzing the marketing plan to determine ROI of the spend.",req:true},
+    {n:105,area:"Exploring the Marketing Plan",text:"Identify the components of a SWOT analysis.",req:true},
+    {n:106,area:"Developing Job Search Skills",text:"Identify occupations within the sports, entertainment, and event industries.",req:true},
+    {n:107,area:"Developing Job Search Skills",text:"Identify personal skills and interests applicable to the sports, entertainment, and event industries.",req:true},
+    {n:108,area:"Developing Job Search Skills",text:"Identify resources for a job search in the sports, entertainment, and event industries.",req:true},
+    {n:109,area:"Developing Job Search Skills",text:"Create a networking plan in the sports, entertainment, and event industries.",req:true},
+    {n:110,area:"Developing Job Search Skills",text:"Develop a résumé and cover letter.",req:true},
+    {n:111,area:"Developing Job Search Skills",text:"Complete a job application.",req:true},
+    {n:112,area:"Developing Job Search Skills",text:"Describe the job interview process.",req:true},
+    {n:113,area:"Developing Job Search Skills",text:"(Optional) Participate in a mock interview or an informational interview with a local employer.",req:false},
+  ],
+  "6115": [
+    {n:1,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate creativity and innovation.",req:true},
+    {n:2,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate critical thinking and problem solving.",req:true},
+    {n:3,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate initiative and self-direction.",req:true},
+    {n:4,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate integrity.",req:true},
+    {n:5,area:"Demonstrating Personal Qualities and Abilities",text:"Demonstrate work ethic.",req:true},
+    {n:6,area:"Demonstrating Interpersonal Skills",text:"Demonstrate conflict-resolution skills.",req:true},
+    {n:7,area:"Demonstrating Interpersonal Skills",text:"Demonstrate listening and speaking skills.",req:true},
+    {n:8,area:"Demonstrating Interpersonal Skills",text:"Demonstrate respect for diversity.",req:true},
+    {n:9,area:"Demonstrating Interpersonal Skills",text:"Demonstrate customer service skills.",req:true},
+    {n:10,area:"Demonstrating Interpersonal Skills",text:"Collaborate with team members.",req:true},
+    {n:11,area:"Demonstrating Professional Competencies",text:"Demonstrate big-picture thinking.",req:true},
+    {n:12,area:"Demonstrating Professional Competencies",text:"Demonstrate career- and life-management skills.",req:true},
+    {n:13,area:"Demonstrating Professional Competencies",text:"Demonstrate continuous learning and adaptability.",req:true},
+    {n:14,area:"Demonstrating Professional Competencies",text:"Manage time and resources.",req:true},
+    {n:15,area:"Demonstrating Professional Competencies",text:"Demonstrate information-literacy skills.",req:true},
+    {n:16,area:"Demonstrating Professional Competencies",text:"Demonstrate an understanding of information security.",req:true},
+    {n:17,area:"Demonstrating Professional Competencies",text:"Maintain working knowledge of current information-technology (IT) systems.",req:true},
+    {n:18,area:"Demonstrating Professional Competencies",text:"Demonstrate proficiency with technologies, tools, and machines common to a specific occupation.",req:true},
+    {n:19,area:"Demonstrating Professional Competencies",text:"Apply mathematical skills to job-specific tasks.",req:true},
+    {n:20,area:"Demonstrating Professional Competencies",text:"Demonstrate professionalism.",req:true},
+    {n:21,area:"Demonstrating Professional Competencies",text:"Demonstrate reading and writing skills.",req:true},
+    {n:22,area:"Demonstrating Professional Competencies",text:"Demonstrate workplace safety.",req:true},
+    {n:23,area:"Examining All Aspects of an Industry",text:"Examine aspects of planning within an industry/organization.",req:true},
+    {n:24,area:"Examining All Aspects of an Industry",text:"Examine aspects of management within an industry/organization.",req:true},
+    {n:25,area:"Examining All Aspects of an Industry",text:"Examine aspects of financial responsibility within an industry/organization.",req:true},
+    {n:26,area:"Examining All Aspects of an Industry",text:"Examine technical and production skills required of workers within an industry/organization.",req:true},
+    {n:27,area:"Examining All Aspects of an Industry",text:"Examine principles of technology that underlie an industry/organization.",req:true},
+    {n:28,area:"Examining All Aspects of an Industry",text:"Examine labor issues related to an industry/organization.",req:true},
+    {n:29,area:"Examining All Aspects of an Industry",text:"Examine community issues related to an industry/organization.",req:true},
+    {n:30,area:"Examining All Aspects of an Industry",text:"Examine health, safety, and environmental issues related to an industry/organization.",req:true},
+    {n:31,area:"Addressing Elements of Student Life",text:"Identify the purposes and goals of the student organization.",req:true},
+    {n:32,area:"Addressing Elements of Student Life",text:"Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.",req:true},
+    {n:33,area:"Addressing Elements of Student Life",text:"Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.",req:true},
+    {n:34,area:"Addressing Elements of Student Life",text:"Identify Internet safety issues and procedures for complying with acceptable use standards.",req:true},
+    {n:35,area:"Exploring Work-Based Learning",text:"Identify the types of work-based learning (WBL) opportunities.",req:true},
+    {n:36,area:"Exploring Work-Based Learning",text:"Reflect on lessons learned during the WBL experience.",req:false},
+    {n:37,area:"Exploring Work-Based Learning",text:"Explore career opportunities related to the WBL experience.",req:true},
+    {n:38,area:"Exploring Work-Based Learning",text:"Participate in a WBL experience, when appropriate.",req:false},
+    {n:39,area:"Understanding the Role of Economics in a Global Economy",text:"Identify the difference between needs and wants.",req:true},
+    {n:40,area:"Understanding the Role of Economics in a Global Economy",text:"Distinguish among the factors of production.",req:true},
+    {n:41,area:"Understanding the Role of Economics in a Global Economy",text:"Explain the relevance of scarcity to economics.",req:true},
+    {n:42,area:"Understanding the Role of Economics in a Global Economy",text:"Identify the three basic economic questions answered by any economy.",req:true},
+    {n:43,area:"Understanding the Role of Economics in a Global Economy",text:"Describe a decision-making process.",req:true},
+    {n:44,area:"Understanding the Role of Economics in a Global Economy",text:"Distinguish between economic systems.",req:true},
+    {n:45,area:"Understanding the Role of Economics in a Global Economy",text:"Identify characteristics of free enterprise.",req:true},
+    {n:46,area:"Understanding the Role of Economics in a Global Economy",text:"Explain supply, law of supply, demand, law of demand, and economic equilibrium.",req:true},
+    {n:47,area:"Understanding the Role of Economics in a Global Economy",text:"Describe the effect of supply and demand on a free enterprise system.",req:false},
+    {n:48,area:"Understanding the Role of Economics in a Global Economy",text:"Explain the positive and negative effects of emerging economies on the global market.",req:false},
+    {n:49,area:"Understanding the Role of Economics in a Global Economy",text:"Illustrate the phases of the business cycle.",req:true},
+    {n:50,area:"Understanding the Role of Economics in a Global Economy",text:"Identify the measures or indicators of economic activity.",req:true},
+    {n:51,area:"Understanding the Role of Economics in a Global Economy",text:"Describe possible outcomes and other important aspects of global trade.",req:false},
+    {n:52,area:"Exploring the Core Concepts of Business and Marketing",text:"Identify the four types of businesses.",req:true},
+    {n:53,area:"Exploring the Core Concepts of Business and Marketing",text:"Compare major types of business structures.",req:true},
+    {n:54,area:"Exploring the Core Concepts of Business and Marketing",text:"Identify the functions of management.",req:false},
+    {n:55,area:"Exploring the Core Concepts of Business and Marketing",text:"Explore leadership styles.",req:false},
+    {n:56,area:"Exploring the Core Concepts of Business and Marketing",text:"Explain the marketing concept.",req:true},
+    {n:57,area:"Exploring the Core Concepts of Business and Marketing",text:"Describe the marketing functions.",req:true},
+    {n:58,area:"Exploring the Core Concepts of Business and Marketing",text:"Define target market.",req:true},
+    {n:59,area:"Exploring the Core Concepts of Business and Marketing",text:"Explain market segmentation and how it is used to identify a target market.",req:true},
+    {n:60,area:"Exploring the Core Concepts of Business and Marketing",text:"Describe the elements of the marketing mix.",req:true},
+    {n:61,area:"Exploring the Core Concepts of Business and Marketing",text:"Describe the selling process.",req:true},
+    {n:62,area:"Exploring the Core Concepts of Business and Marketing",text:"Explain the market research process.",req:true},
+    {n:63,area:"Exploring the Core Concepts of Business and Marketing",text:"Create a business plan.",req:false},
+    {n:64,area:"Exploring the Core Concepts of Business and Marketing",text:"Investigate technological trends in business and marketing.",req:true},
+    {n:65,area:"Exploring Interrelated Social, Environmental, and Ethical Responsibilities",text:"Determine the social responsibilities of a business to the community and of the community to a business.",req:true},
+    {n:66,area:"Exploring Interrelated Social, Environmental, and Ethical Responsibilities",text:"Determine the environmental responsibilities of a business to the community and of the community to a business.",req:true},
+    {n:67,area:"Exploring Interrelated Social, Environmental, and Ethical Responsibilities",text:"Identify ethical and unethical business practices.",req:true},
+    {n:68,area:"Developing Communication and Interpersonal Skills",text:"Describe communication tools and ways they are used in the workplace.",req:true},
+    {n:69,area:"Developing Communication and Interpersonal Skills",text:"Demonstrate professional communication.",req:true},
+    {n:70,area:"Developing Communication and Interpersonal Skills",text:"Explain the importance of nonverbal communication in the workplace.",req:true},
+    {n:71,area:"Making Decisions as a Consumer",text:"Identify the rights and responsibilities of consumers.",req:false},
+    {n:72,area:"Making Decisions as a Consumer",text:"Describe how purchasing motives affect consumer choices.",req:true},
+    {n:73,area:"Making Decisions as a Consumer",text:"Demonstrate comparison shopping.",req:true},
+    {n:74,area:"Making Decisions as a Consumer",text:"Identify major consumer protection agencies and their purposes.",req:false},
+    {n:75,area:"Making Decisions as a Consumer",text:"Identify the characteristics of a valid contract.",req:true},
+    {n:76,area:"Making Decisions as a Consumer",text:"Examine product labels.",req:true},
+    {n:77,area:"Exploring Financial Concepts",text:"Label parts of a paycheck.",req:true},
+    {n:78,area:"Exploring Financial Concepts",text:"Identify basic banking services for individuals and businesses.",req:true},
+    {n:79,area:"Exploring Financial Concepts",text:"Explain taxation.",req:true},
+    {n:80,area:"Exploring Financial Concepts",text:"Explain the purpose of insurance.",req:true},
+    {n:81,area:"Exploring Financial Concepts",text:"Create financial statements.",req:true},
+    {n:82,area:"Exploring Financial Concepts",text:"Explain potential financial resources for businesses.",req:true},
+    {n:83,area:"Preparing for Industry Certification",text:"Describe the requirements for obtaining industry certifications related to the Principles of Business and Marketing course.",req:true},
+    {n:84,area:"Preparing for Industry Certification",text:"Identify testing skills and strategies for a certification examination.",req:false},
+    {n:85,area:"Preparing for Industry Certification",text:"Demonstrate the ability to complete selected practice examinations.",req:false},
+    {n:86,area:"Preparing for Industry Certification",text:"Complete an industry certification examination representative of skills learned in this course.",req:false},
+    {n:87,area:"Developing Employability Skills",text:"Assess personal interests, aptitudes, and abilities.",req:true},
+    {n:88,area:"Developing Employability Skills",text:"Identify sources of employment information.",req:true},
+    {n:89,area:"Developing Employability Skills",text:"Research business and marketing career opportunities.",req:true},
+    {n:90,area:"Developing Employability Skills",text:"Complete a job application.",req:true},
+    {n:91,area:"Developing Employability Skills",text:"Develop or update a résumé.",req:true},
+    {n:92,area:"Developing Employability Skills",text:"Write a cover letter.",req:true},
+    {n:93,area:"Developing Employability Skills",text:"Design an employment portfolio.",req:false},
+    {n:94,area:"Developing Employability Skills",text:"Describe professional behavior appropriate for a job interview.",req:true},
+    {n:95,area:"Developing Employability Skills",text:"Participate in a mock job interview.",req:true},
+    {n:96,area:"Developing Employability Skills",text:"Complete interview follow-up.",req:true},
+  ],
+};
+
+// ════════════════════════════════════════════
+// UTILITIES
+// ════════════════════════════════════════════
+function today(){return new Date().toISOString().slice(0,10)}
+function daysUntil(d){
+  const diff=new Date(d+'T00:00:00')-new Date(new Date().toDateString());
+  return Math.ceil(diff/(1000*60*60*24));
+}
+function fmtDate(d){
+  return new Date(d+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',weekday:'short'});
+}
+function isSchoolDay(d){
+  const dt=new Date(d+'T12:00:00');
+  if(dt.getDay()===0||dt.getDay()===6) return false;
+  return !NO_SCHOOL.has(d);
+}
+function urgencyClass(days){
+  if(days<0) return 'red';
+  if(days<=3) return 'red';
+  if(days<=7) return 'amber';
+  return 'blue';
+}
+function typeColor(type){
+  const m={TEACH:'badge-blue',DUE:'badge-amber',ASSESS:'badge-red',PRESENT:'badge-purple',REVIEW:'badge-gray',INTRO:'badge-teal'};
+  return m[type]||'badge-gray';
+}
+function copyText(text){
+  navigator.clipboard.writeText(text).then(()=>showToast('Copied to clipboard','success')).catch(()=>showToast('Could not copy'));
+}
+function showToast(msg,type=''){
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:'');
+  t.textContent=msg;
+  document.getElementById('toast-container').appendChild(t);
+  setTimeout(()=>t.remove(),3200);
+}
+function openModal(html){
+  document.getElementById('modal-box').innerHTML=html;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+function closeModal(e){
+  if(!e||e.target===document.getElementById('modal-overlay'))
+    document.getElementById('modal-overlay').classList.remove('open');
+}
+function el(id){return document.getElementById(id)}
+function setHTML(id,html){const e=el(id);if(e)e.innerHTML=html}
+
+// ════════════════════════════════════════════
+// SCHEDULE HELPERS
+// ════════════════════════════════════════════
+function getDayType(){
+  const override=LS.get('schedule_override');
+  if(override&&override.date===today()) return override.type;
+  // Simple A/B alternation from a known reference date
+  // April 14, 2026 = A day (reference)
+  const ref=new Date('2026-04-14');
+  const now=new Date(new Date().toDateString());
+  let diff=0;
+  const d=new Date(ref);
+  while(d<now){d.setDate(d.getDate()+1);if(d.getDay()!==0&&d.getDay()!==6&&!NO_SCHOOL.has(d.toISOString().slice(0,10)))diff++;}
+  while(d>now){d.setDate(d.getDate()-1);if(d.getDay()!==0&&d.getDay()!==6&&!NO_SCHOOL.has(d.toISOString().slice(0,10)))diff--;}
+  return diff%2===0?'A':'B';
+}
+function getCurrentPeriod(type){
+  const sched=BELL[type]||BELL.A;
+  const now=new Date();
+  const hm=now.getHours()*60+now.getMinutes();
+  for(const p of sched){
+    const[sh,sm]=p.start.split(':').map(Number);
+    const[eh,em]=p.end.split(':').map(Number);
+    if(hm>=sh*60+sm&&hm<eh*60+em) return p;
+  }
+  return null;
+}
+
+// ════════════════════════════════════════════
+// PRIORITY ENGINE
+// ════════════════════════════════════════════
+function buildNextAction(){
+  const deadlines=LS.get('deadlines')||[];
+  const tasks=(LS.get('tasks')||[]).filter(t=>!t.done);
+  const journalToday=LS.get('journal_'+today());
+  const synUpdate=LS.get('synergy_last_update');
+  const scrUpdate=LS.get('scr_last_update');
+  const queue=[];
+  const td=today();
+
+  // P100 — overdue deadlines (non-green, non-plc, non-dsp-info)
+  deadlines.filter(d=>!d.done&&daysUntil(d.date)<0&&!['dl_green','dl_plc','dsp'].includes(d.type)).forEach(d=>{
+    queue.push({priority:100,text:`OVERDUE: ${d.title}`,sub:fmtDate(d.date),badge:'badge-red',badgeText:'Overdue',nav:'tasks'});
+  });
+  // P90 — Green meeting today
+  const greenToday=deadlines.find(d=>!d.done&&d.type==='dl_green'&&d.date===td);
+  if(greenToday) queue.push({priority:90,text:'Green check-in meeting TODAY — have your evidence ready',badge:'badge-purple',badgeText:'Meeting Today',nav:'brag'});
+  // P85 — PLC today
+  const plcToday=deadlines.find(d=>!d.done&&d.type==='dl_plc'&&d.date===td);
+  if(plcToday) queue.push({priority:85,text:'CTE PLC meeting today',badge:'badge-teal',badgeText:'Meeting Today',nav:'tasks'});
+  // P80 — Synergy staleness >14d
+  if(synUpdate){
+    const staleDays=daysUntil(synUpdate)*-1;
+    if(staleDays>14) queue.push({priority:80,text:`Synergy grades are ${staleDays} days stale — update needed`,badge:'badge-amber',badgeText:'Standard 1',nav:'lessons'});
+  } else {
+    queue.push({priority:80,text:'Log your Synergy grade update date in Lesson Plans',badge:'badge-amber',badgeText:'Standard 1',nav:'lessons'});
+  }
+  // P75 — SCR not updated >14d
+  if(scrUpdate){
+    const staleSCR=Math.ceil((new Date()-new Date(scrUpdate))/(1000*60*60*24));
+    if(staleSCR>14) queue.push({priority:75,text:`SCR last updated ${staleSCR} days ago — CCPS requires ≤14 days`,badge:'badge-amber',badgeText:'SCR',nav:'scr'});
+  } else {
+    queue.push({priority:75,text:'No SCR update logged yet — open the SCR tracker',badge:'badge-amber',badgeText:'SCR',nav:'scr'});
+  }
+  // P70 — deadlines ≤3d
+  deadlines.filter(d=>!d.done&&daysUntil(d.date)>=0&&daysUntil(d.date)<=3).forEach(d=>{
+    queue.push({priority:70,text:`${d.title} is due ${daysUntil(d.date)===0?'TODAY':daysUntil(d.date)+'d away'}`,badge:'badge-red',badgeText:'Due Soon',nav:'tasks'});
+  });
+  // P60 — deadlines ≤7d
+  deadlines.filter(d=>!d.done&&daysUntil(d.date)>3&&daysUntil(d.date)<=7).forEach(d=>{
+    queue.push({priority:60,text:`${d.title} due in ${daysUntil(d.date)} days`,badge:'badge-amber',badgeText:'This Week',nav:'tasks'});
+  });
+  // P50 — open tasks
+  if(tasks.length>0) queue.push({priority:50,text:`${tasks.length} open task${tasks.length===1?'':'s'} in your queue`,badge:'badge-blue',badgeText:'Tasks',nav:'tasks'});
+  // P30 — journal not done
+  if(!journalToday&&isSchoolDay(td)) queue.push({priority:30,text:'Journal not completed for today',badge:'badge-gray',badgeText:'Reflection',nav:'journal'});
+  // P0 — all clear
+  queue.push({priority:0,text:'All caught up — great work!',badge:'badge-green',badgeText:'All Clear',nav:'dashboard'});
+
+  queue.sort((a,b)=>b.priority-a.priority);
+  return queue[0];
+}
+
+// ════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════
+let currentView='dashboard';
+function showView(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  el('view-'+name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>{
+    if(t.getAttribute('onclick')===`showView('${name}')`) t.classList.add('active');
+  });
+  currentView=name;
+  const renders={dashboard:renderDashboard,tasks:renderTasks,lessons:renderLessons,scr:renderSCR,trips:renderTrips,journal:renderJournal,brag:renderBragBoard,settings:renderSettings};
+  if(renders[name]) renders[name]();
+}
+
+// ════════════════════════════════════════════
+// VIEW: DASHBOARD
+// ════════════════════════════════════════════
+function renderDashboard(){
+  const na=buildNextAction();
+  const deadlines=(LS.get('deadlines')||[]).filter(d=>!d.done).sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,6);
+  const tasks=(LS.get('tasks')||[]).filter(t=>!t.done).slice(0,3);
+  const dayType=getDayType();
+  const curPeriod=getCurrentPeriod(dayType);
+  const sched=BELL[dayType]||BELL.A;
+  const synUpdate=LS.get('synergy_last_update');
+  const synDays=synUpdate?Math.ceil((new Date()-new Date(synUpdate))/(1000*60*60*24)):999;
+  const scrUpdate=LS.get('scr_last_update');
+  const scrDays=scrUpdate?Math.ceil((new Date()-new Date(scrUpdate))/(1000*60*60*24)):999;
+  const dspDays=daysUntil('2026-05-15');
+  const journalDone=!!LS.get('journal_'+today());
+  const openTasks=(LS.get('tasks')||[]).filter(t=>!t.done).length;
+  const openDL=(LS.get('deadlines')||[]).filter(d=>!d.done&&daysUntil(d.date)<=7&&daysUntil(d.date)>=0).length;
+
+  // Cron morning briefing
+  const cron=LS.get('cron_brief');
+  let cronBanner='';
+  if(cron&&cron.date===today()&&!LS.get('cron_dismissed_'+today())){
+    cronBanner=`<div class="card" style="background:var(--amber-bg);border-color:var(--amber-border);margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start">
+        <div>
+          <div class="card-title" style="color:var(--amber)">🌅 Morning Briefing</div>
+          <div style="font-size:13px;line-height:1.6">${cron.message}</div>
+        </div>
+        <button class="btn btn-sm" onclick="LS.set('cron_dismissed_'+today()+'_X',true);renderDashboard()">✕</button>
+      </div>
+    </div>`;
+  }
+
+  // Build schedule HTML
+  const now=new Date();
+  const hm=now.getHours()*60+now.getMinutes();
+  let schedHTML=sched.map(p=>{
+    const[sh,sm]=p.start.split(':').map(Number);
+    const[eh,em]=p.end.split(':').map(Number);
+    const isPast=hm>eh*60+em;
+    const isNow=hm>=sh*60+sm&&hm<eh*60+em;
+    let courseTag='';
+    if(p.course){
+      const colors={'8177':'badge-blue','8175':'badge-purple','6115':'badge-green'};
+      courseTag=`<span class="badge ${colors[p.course]||'badge-gray'}">${p.label}</span>`;
+    }
+    return `<div class="period-row${isNow?' now':isPast?' done':''}">
+      <span class="period-name">${p.name}${isNow?' <span style="color:var(--amber);font-size:10px">● NOW</span>':''}</span>
+      <span class="period-time">${p.start}–${p.end}</span>
+      ${courseTag}
+    </div>`;
+  }).join('');
+
+  el('view-dashboard').innerHTML=`
+    ${cronBanner}
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:200px">
+        <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text2);margin-bottom:2px">Days to DSP End</div>
+        <div style="font-family:var(--mono);font-size:36px;font-weight:500;color:${dspDays<=14?'var(--red)':dspDays<=30?'var(--amber)':'var(--text)'};">${dspDays}</div>
+        <div style="font-size:11px;color:var(--text2)">May 15, 2026 · Standards 1 & 2</div>
+      </div>
+      <div class="grid-4" style="flex:2;min-width:240px">
+        <div class="stat-card"><div class="stat-val" style="color:${openDL>0?`var(--red)`:`var(--green)`}">${openDL}</div><div class="stat-lbl">Due &le;7d</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:${openTasks>0?`var(--amber)`:`var(--green)`}">${openTasks}</div><div class="stat-lbl">Open Tasks</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:${synDays>14?`var(--red)`:`var(--green)`}">${synDays>999?'--':synDays+'d'}</div><div class="stat-lbl">Synergy Age</div></div>
+        <div class="stat-card"><div class="stat-val" style="color:${scrDays>14?`var(--red)`:`var(--green)`}">${scrDays>999?'--':scrDays+'d'}</div><div class="stat-lbl">SCR Age</div></div>
+      </div>
+    </div>
+
+    <div id="na-card">
+      <div id="na-eyebrow"><span class="pulse-dot"></span>Next action</div>
+      <div id="na-text">${na.text}</div>
+      <div id="na-meta">
+        <span class="badge ${na.badge}">${na.badgeText}</span>
+        ${na.sub?`<span class="badge badge-gray">${na.sub}</span>`:''}
+        <button class="btn btn-sm btn-primary" onclick="showView('${na.nav}')">Open →</button>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:12px">
+      <div>
+        <div class="section-header"><span class="section-title">Today — ${dayType}-Day</span><button class="btn btn-xs" onclick="overrideDayType()">Override</button></div>
+        ${schedHTML}
+      </div>
+      <div>
+        <div class="section-header"><span class="section-title">Upcoming Deadlines</span><button class="btn btn-xs" onclick="showView('tasks')">All →</button></div>
+        ${deadlines.length?deadlines.map(d=>{
+          const days=daysUntil(d.date);
+          const uc=urgencyClass(days);
+          return `<div class="dl-row">
+            <div class="dl-dot" style="background:var(--${uc})"></div>
+            <div class="dl-info"><div class="dl-title">${d.title}</div><div class="dl-sub">${fmtDate(d.date)}</div></div>
+            <div class="dl-days" style="color:var(--${uc})">${days<0?days+'d':days===0?'TODAY':'+'+days+'d'}</div>
+          </div>`;
+        }).join(''):'<div class="text-muted" style="padding:12px">No upcoming deadlines</div>'}
+      </div>
+    </div>
+
+    <div class="section-header" style="margin-bottom:8px"><span class="section-title">Your Five Roles</span></div>
+    <div class="role-grid" id="role-grid">
+      ${buildRoleTiles()}
+    </div>
+
+    <div class="grid-3" style="margin-top:4px">
+      <button class="btn" onclick="showView('journal')">${journalDone?'✅':'✏️'} ${journalDone?'Journal done':'Write journal'}</button>
+      <button class="btn" onclick="showView('brag')">🏆 Brag Board</button>
+      <button class="btn" onclick="showView('scr')">📊 Update SCR</button>
+    </div>
+  `;
+}
+
+function buildRoleTiles(){
+  const tasks=(LS.get('tasks')||[]).filter(t=>!t.done).length;
+  const deadlines=LS.get('deadlines')||[];
+  const trips=LS.get('trips')||[];
+  const scrDays=LS.get('scr_last_update')?Math.ceil((new Date()-new Date(LS.get('scr_last_update')))/(1000*60*60*24)):999;
+  const decaTrip=deadlines.find(d=>d.type==='deca'&&!d.done);
+  const tripDL=deadlines.find(d=>d.type==='trip'&&!d.done);
+
+  const roles=[
+    {icon:'📚',name:'CTE Teacher',
+     alert:scrDays>14?'red':'',
+     status:scrDays>14?`SCR ${scrDays}d stale`:'SCR current',
+     ring:Math.min(100,Math.max(0,100-Math.round((scrDays/14)*30))),
+     nav:'lessons',color:'blue'},
+    {icon:'🏪',name:'School Store',
+     alert:'',status:'SBE tracker',ring:65,nav:'tasks',color:'amber'},
+    {icon:'🏆',name:'DECA',
+     alert:decaTrip&&daysUntil(decaTrip.date)<=7?'amber':'',
+     status:decaTrip?`ICDC in ${daysUntil(decaTrip.date)}d`:'Chapter active',
+     ring:85,nav:'tasks',color:'purple'},
+    {icon:'🎮',name:'E-Sports',
+     alert:'',status:'Rosters active',ring:60,nav:'tasks',color:'teal'},
+    {icon:'🚌',name:'Field Trip',
+     alert:tripDL&&daysUntil(tripDL.date)<=7?'red':'',
+     status:tripDL?`Form due in ${daysUntil(tripDL.date)}d`:'Wizard ready',
+     ring:trips.length?70:30,nav:'trips',color:'green'},
+  ];
+
+  return roles.map(r=>{
+    const alert=r.alert?`<div class="role-alert ${r.alert}">!</div>`:'';
+    const circ=2*Math.PI*16;
+    const used=circ*(1-r.ring/100);
+    return `<div class="role-tile" onclick="showView('${r.nav}')">
+      ${alert}
+      <div class="role-icon">${r.icon}</div>
+      <div class="role-name">${r.name}</div>
+      <svg width="40" height="40" viewBox="0 0 40 40" style="margin:0 auto 4px;display:block">
+        <circle cx="20" cy="20" r="16" fill="none" stroke="var(--border)" stroke-width="3"/>
+        <circle cx="20" cy="20" r="16" fill="none" stroke="var(--${r.color})" stroke-width="3"
+          stroke-dasharray="${circ.toFixed(1)}" stroke-dashoffset="${used.toFixed(1)}"
+          stroke-linecap="round" transform="rotate(-90 20 20)"/>
+        <text x="20" y="24" text-anchor="middle" font-size="10" font-weight="600" fill="var(--text2)">${r.ring}%</text>
+      </svg>
+      <div class="role-status">${r.status}</div>
+    </div>`;
+  }).join('');
+}
+
+// ════════════════════════════════════════════
+// VIEW: TASKS & DEADLINES
+// ════════════════════════════════════════════
+function renderTasks(){
+  const deadlines=(LS.get('deadlines')||[]).sort((a,b)=>new Date(a.date)-new Date(b.date));
+  const tasks=LS.get('tasks')||[];
+  const open=tasks.filter(t=>!t.done);
+  const done=tasks.filter(t=>t.done).slice(-5);
+
+  const dlIcon={dl_green:'🟢',dl_plc:'📋',synergy:'📝',trip:'🚌',deca:'🏆',dsp:'⚠️',task:'📌'};
+  const dlHTML=deadlines.map(d=>{
+    const days=daysUntil(d.date);
+    const uc=d.done?'gray':urgencyClass(days);
+    return `<div class="dl-row${d.done?' done':''}">
+      <div class="dl-dot" style="background:var(--${uc})"></div>
+      <div class="dl-info">
+        <div class="dl-title">${dlIcon[d.type]||'📌'} ${d.title}</div>
+        <div class="dl-sub">${fmtDate(d.date)} · <span class="badge badge-${d.dsp==='standard1'?'blue':d.dsp==='standard2'?'purple':'teal'}">${d.dsp==='both'?'Both Standards':d.dsp==='standard1'?'Std 1':'Std 2'}</span></div>
+      </div>
+      <div class="dl-days" style="color:var(--${uc})">${d.done?'✓':days<0?days+'d':days===0?'TODAY':'+'+days+'d'}</div>
+      <button class="btn btn-xs${d.done?' btn-success':''}" onclick="toggleDeadline('${d.id}')">${d.done?'Undo':'Done'}</button>
+    </div>`;
+  }).join('');
+
+  const taskHTML=(items,isDone)=>items.map(t=>`<div class="task-row${t.done?' done':''}">
+    <div class="task-check${t.done?' checked':''}" onclick="toggleTask('${t.id}')">${t.done?'✓':''}</div>
+    <div class="task-body"><div class="task-text">${t.text}</div>${t.due?`<div class="text-muted">${fmtDate(t.due)}</div>`:''}</div>
+    <div class="task-actions"><button class="btn btn-xs btn-danger" onclick="deleteTask('${t.id}')">✕</button></div>
+  </div>`).join('');
+
+  el('view-tasks').innerHTML=`
+    <div class="section-header"><span class="section-title">Deadlines</span></div>
+    <div class="card" style="padding:0;overflow:hidden">${dlHTML||'<div style="padding:16px;color:var(--text2)">No deadlines</div>'}</div>
+
+    <div class="section-header mt-12">
+      <span class="section-title">Tasks (${open.length} open)</span>
+      <button class="btn btn-sm btn-primary" onclick="showAddTask()">+ Add Task</button>
+    </div>
+    <div class="card" style="padding:0;overflow:hidden" id="task-list">
+      ${open.length?taskHTML(open):'<div style="padding:16px;color:var(--text2)">No open tasks — add one above</div>'}
+    </div>
+    ${done.length?`<details style="margin-top:8px"><summary class="text-muted" style="cursor:pointer;padding:6px 0">Completed tasks (${done.length})</summary><div class="card" style="padding:0;overflow:hidden;margin-top:6px">${taskHTML(done)}</div></details>`:''}
+  `;
+}
+
+function showAddTask(){
+  openModal(`<div class="modal-title">Add Task</div>
+    <div class="form-row"><label>Task</label><input type="text" id="new-task-text" placeholder="What needs to get done?" autofocus></div>
+    <div class="form-row"><label>Due date (optional)</label><input type="date" id="new-task-date"></div>
+    <div class="flex" style="gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="saveTask()">Add Task</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+    </div>`);
+  setTimeout(()=>el('new-task-text')&&el('new-task-text').focus(),100);
+}
+
+function saveTask(){
+  const text=el('new-task-text').value.trim();
+  if(!text){showToast('Enter a task description','error');return;}
+  const tasks=LS.get('tasks')||[];
+  tasks.push({id:'t'+Date.now(),text,due:el('new-task-date').value||null,done:false,created:today()});
+  LS.set('tasks',tasks);
+  closeModal();
+  renderTasks();
+  showToast('Task added','success');
+}
+
+function toggleTask(id){
+  const tasks=LS.get('tasks')||[];
+  const t=tasks.find(x=>x.id===id);
+  if(t){t.done=!t.done;t.doneDate=t.done?today():null;}
+  LS.set('tasks',tasks);
+  renderTasks();
+  if(currentView==='dashboard') renderDashboard();
+}
+
+function deleteTask(id){
+  const tasks=(LS.get('tasks')||[]).filter(x=>x.id!==id);
+  LS.set('tasks',tasks);
+  renderTasks();
+}
+
+function toggleDeadline(id){
+  const dls=LS.get('deadlines')||[];
+  const d=dls.find(x=>x.id===id);
+  if(d){d.done=!d.done;if(d.done){d.doneDate=today();showToast(`✓ "${d.title}" marked done`,'success');} }
+  LS.set('deadlines',dls);
+  renderTasks();
+  if(currentView==='dashboard') renderDashboard();
+}
+
+// ════════════════════════════════════════════
+// VIEW: LESSON PLANS
+// ════════════════════════════════════════════
+let lpFilter={course:'',quarter:'Q4',active:true};
+function renderLessons(){
+  const synUpdate=LS.get('synergy_last_update');
+  const synDays=synUpdate?Math.ceil((new Date()-new Date(synUpdate))/(1000*60*60*24)):null;
+
+  let lessons=LESSONS;
+  if(lpFilter.course) lessons=lessons.filter(l=>l.course===lpFilter.course);
+  if(lpFilter.quarter) lessons=lessons.filter(l=>l.q===lpFilter.quarter);
+  if(lpFilter.active) lessons=lessons.filter(l=>l.active);
+
+  const meta=LS.get('lp_meta')||{};
+  const delivered=LS.get('lp_delivered')||{};
+
+  const lessonHTML=lessons.map(l=>{
+    const m=meta[l.id]||{};
+    const isDelivered=!!delivered[l.id];
+    const canvasStr=l.canvas||(l.course+' | '+l.q+' | '+l.type+' | '+l.title);
+    return `<div class="lesson-card">
+      <div class="lesson-header" onclick="toggleLesson('${l.id}')">
+        <span class="lesson-type-badge ${typeColor(l.type)}">${l.type}</span>
+        <span class="lesson-title">${l.title}</span>
+        ${l.summative?`<span class="badge badge-amber">${l.pct}% Summative</span>`:''}
+        ${isDelivered?'<span class="badge badge-green">Delivered</span>':''}
+        <span style="color:var(--text3);font-size:12px">▾</span>
+      </div>
+      <div class="lesson-detail" id="lp-detail-${l.id}">
+        <div class="form-row"><label>Canvas title (click to copy)</label>
+          <div class="canvas-name" onclick="copyText('${canvasStr.replace(/'/g,"\\'")}')">📋 ${canvasStr}</div>
+        </div>
+        ${l.summative?`<div style="margin-bottom:8px;font-size:12px;color:var(--text2)">Synergy: <strong>${l.type==='ASSESS'?'Tests & Quizzes':l.type==='PRESENT'?'Major Assignments':'Major Assignments'}</strong> · ${l.pct}% of quarter</div>`:''}
+        <div class="form-row"><label>Notes (saved as DSP evidence)</label>
+          <textarea id="lp-notes-${l.id}" placeholder="Lesson notes, observations, differentiation strategies…">${m.notes||''}</textarea>
+        </div>
+        <div class="flex" style="gap:8px;flex-wrap:wrap">
+          <button class="btn btn-sm btn-primary" onclick="saveLPNotes('${l.id}')">Save Notes</button>
+          <button class="btn btn-sm ${isDelivered?'btn-success':''}" onclick="toggleDelivered('${l.id}')">
+            ${isDelivered?'✓ Delivered':'Mark Delivered'}
+          </button>
+          ${m.lastSaved?`<span class="text-muted">Saved ${m.lastSaved}</span>`:''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  el('view-lessons').innerHTML=`
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <div class="flex-wrap" style="flex:1">
+        ${['','8177','8175','6115'].map(c=>`<button class="btn btn-sm${lpFilter.course===c?' btn-primary':''}" onclick="lpFilter.course='${c}';renderLessons()">${c||'All Courses'}</button>`).join('')}
+        ${['Q1','Q2','Q3','Q4',''].map(q=>`<button class="btn btn-sm${lpFilter.quarter===q?' btn-primary':''}" onclick="lpFilter.quarter='${q}';renderLessons()">${q||'All Qtr'}</button>`).join('')}
+        <button class="btn btn-sm${lpFilter.active?' btn-primary':''}" onclick="lpFilter.active=!lpFilter.active;renderLessons()">${lpFilter.active?'Q4 Active':'All Lessons'}</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:12px;margin-bottom:12px;background:${synDays&&synDays>14?'var(--amber-bg)':'var(--green-bg)'};border-color:${synDays&&synDays>14?'var(--amber-border)':'var(--green-border)'}">
+      <div class="flex" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:12px;font-weight:600;color:var(--text2)">Synergy Grade Update</div>
+          <div style="font-size:13px">${synUpdate?`Last updated: ${fmtDate(synUpdate)} (${synDays} days ago)`:'Not yet logged this quarter'}</div>
+        </div>
+        <button class="btn btn-sm" onclick="logSynergyUpdate()">Mark Updated Today</button>
+      </div>
+    </div>
+
+    <div style="font-size:12px;color:var(--text2);margin-bottom:8px">${lessons.length} lesson${lessons.length===1?'':'s'}</div>
+    ${lessonHTML||'<div class="card text-muted">No lessons match filters</div>'}
+  `;
+}
+
+function toggleLesson(id){
+  const d=el('lp-detail-'+id);
+  if(d) d.classList.toggle('open');
+}
+
+function saveLPNotes(id){
+  const notes=el('lp-notes-'+id).value;
+  const meta=LS.get('lp_meta')||{};
+  meta[id]={notes,lastSaved:today(),evidence:true};
+  LS.set('lp_meta',meta);
+  showToast('Notes saved (DSP evidence logged)','success');
+}
+
+function toggleDelivered(id){
+  const delivered=LS.get('lp_delivered')||{};
+  if(delivered[id]) delete delivered[id];
+  else delivered[id]={date:today()};
+  LS.set('lp_delivered',delivered);
+  renderLessons();
+}
+
+function logSynergyUpdate(){
+  LS.set('synergy_last_update',today());
+  showToast('Synergy update logged for today','success');
+  renderLessons();
+  if(currentView==='dashboard') renderDashboard();
+}
+
+// ════════════════════════════════════════════
+// VIEW: SCR TRACKER
+// ════════════════════════════════════════════
+let scrCourse='8177';
+let scrAreaFilter='';
+function renderSCR(){
+  const courses=['8177','8175','6115'];
+  const courseNames={'8177':'SEEM 8177','8175':'SEM 8175','6115':'PBM 6115'};
+  const scrUpdate=LS.get('scr_last_update');
+  const scrDays=scrUpdate?Math.ceil((new Date()-new Date(scrUpdate))/(1000*60*60*24)):null;
+  const comps=COMPETENCIES[scrCourse]||[];
+  const areas=[...new Set(comps.map(c=>c.area))];
+  const filteredComps=scrAreaFilter?comps.filter(c=>c.area===scrAreaFilter):comps;
+  const students=LS.get('scr_students_'+scrCourse)||[];
+  const scores=LS.get('scr_scores_'+scrCourse)||{};
+
+  // Stats
+  const totalCells=students.length*filteredComps.length;
+  const scoredCells=students.reduce((acc,s)=>acc+filteredComps.filter(c=>(scores[s.id]||{})[c.n]).length,0);
+  const pct=totalCells?Math.round(scoredCells/totalCells*100):0;
+
+  const areaHTML=`<option value="">All Duty Areas (${comps.length})</option>`+
+    areas.map(a=>`<option value="${a.replace(/"/g,'&quot;')}"${scrAreaFilter===a?' selected':''}>${a} (${comps.filter(c=>c.area===a).length})</option>`).join('');
+
+  // Build table headers
+  const compHeaders=filteredComps.map(c=>`<th title="${c.text.replace(/"/g,'&quot;')}" style="min-width:34px;max-width:34px;width:34px;font-size:10px;text-align:center;cursor:help">${c.n}</th>`).join('');
+
+  // Group headers for areas
+  let prevArea='';
+  const rows=[];
+  if(!scrAreaFilter){
+    const areaGroups={};
+    filteredComps.forEach(c=>{if(!areaGroups[c.area])areaGroups[c.area]=[];areaGroups[c.area].push(c);});
+    // We'll add area separator rows
+  }
+
+  // Build student rows
+  const studentRows=students.map(s=>{
+    const sScores=scores[s.id]||{};
+    const cells=filteredComps.map(c=>{
+      const v=sScores[c.n]||'';
+      return `<td class="scr-score-cell${v?' score-'+v:''}" onclick="scrSetScore('${s.id}',${c.n})" title="C${c.n}: ${c.text.replace(/'/g,"\\'")||''}">${v||''}</td>`;
+    }).join('');
+    const done=filteredComps.filter(c=>sScores[c.n]).length;
+    return `<tr>
+      <td class="scr-name-cell">
+        <div style="display:flex;align-items:center;gap:4px;justify-content:space-between">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px" title="${s.name}">${s.name}</span>
+          <span style="font-size:9px;color:var(--text3);flex-shrink:0">${done}/${filteredComps.length}</span>
+        </div>
+      </td>
+      ${cells}
+    </tr>`;
+  }).join('');
+
+  el('view-scr').innerHTML=`
+    <div class="flex" style="gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      ${courses.map(c=>`<button class="btn${scrCourse===c?' btn-primary':''}" onclick="scrCourse='${c}';scrAreaFilter='';renderSCR()">${courseNames[c]}</button>`).join('')}
+      <div style="margin-left:auto;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:12px;color:${scrDays===null?'var(--red)':scrDays>14?'var(--red)':'var(--green)'}">
+          ${scrDays===null?'⚠ Never updated':scrDays>14?`⚠ ${scrDays}d since last update`:`✓ Updated ${scrDays}d ago`}
+        </span>
+        <button class="btn btn-sm btn-success" onclick="logSCRUpdate()">Log Update Today</button>
+      </div>
+    </div>
+
+    <div class="card" style="padding:10px;margin-bottom:10px">
+      <div class="flex" style="gap:12px;flex-wrap:wrap;justify-content:space-between">
+        <div>
+          <select onchange="scrAreaFilter=this.value;renderSCR()" style="max-width:320px">${areaHTML}</select>
+        </div>
+        <div class="flex" style="gap:8px">
+          ${totalCells>0?`<span class="badge badge-${pct>80?'green':pct>50?'amber':'red'}">${pct}% scored</span>`:''}
+          <button class="btn btn-sm btn-primary" onclick="scrAddStudent()">+ Add Student</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;color:var(--text2);margin-bottom:6px">
+      Click any score cell to enter/edit. Scores: <span class="badge" style="background:#c6f6d5;color:#22543d;border:none">1=Can teach others</span>
+      <span class="badge" style="background:#e9f7c8;color:#2d6a0a;border:none">2=Without supervision</span>
+      <span class="badge" style="background:#fefcbf;color:#744210;border:none">3=Limited supervision</span>
+      <span class="badge" style="background:#feebc8;color:#7b341e;border:none">4=With supervision</span>
+      <span class="badge" style="background:#fed7d7;color:#742a2a;border:none">5=Cannot perform</span>
+    </div>
+
+    ${students.length===0?`<div class="card text-muted" style="padding:16px">No students added yet for ${scrCourse}. Click "+ Add Student" to get started.</div>`:
+    `<div class="scr-container">
+      <table class="scr-table">
+        <thead>
+          <tr>
+            <th class="scr-name-col">Student</th>
+            ${compHeaders}
+          </tr>
+        </thead>
+        <tbody id="scr-tbody">
+          ${studentRows}
+        </tbody>
+      </table>
+    </div>`}
+  `;
+}
+
+function scrAddStudent(){
+  openModal(`<div class="modal-title">Add Student — ${scrCourse}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Student names are stored locally and never leave this device (FERPA-safe)</div>
+    <div class="form-row"><label>Student name</label><input type="text" id="new-student-name" placeholder="First Last" autofocus></div>
+    <div class="flex" style="gap:8px;margin-top:12px">
+      <button class="btn btn-primary" onclick="saveStudent()">Add</button>
+      <button class="btn" onclick="closeModal()">Cancel</button>
+    </div>`);
+  setTimeout(()=>el('new-student-name')&&el('new-student-name').focus(),100);
+}
+
+function saveStudent(){
+  const name=el('new-student-name').value.trim();
+  if(!name){showToast('Enter a name','error');return;}
+  const students=LS.get('scr_students_'+scrCourse)||[];
+  students.push({id:'s'+Date.now(),name,added:today()});
+  LS.set('scr_students_'+scrCourse,students);
+  closeModal();
+  renderSCR();
+  showToast('Student added','success');
+}
+
+function scrSetScore(studentId,compN){
+  openModal(`<div class="modal-title">Score — Competency ${compN}</div>
+    <div style="font-size:12px;color:var(--text2);margin-bottom:12px">${(COMPETENCIES[scrCourse]||[]).find(c=>c.n===compN)?.text||''}</div>
+    <div class="flex-wrap" style="gap:8px;margin-bottom:12px">
+      ${[1,2,3,4,5].map(n=>`<button class="btn" style="flex:1;min-width:80px;background:${['#c6f6d5','#e9f7c8','#fefcbf','#feebc8','#fed7d7'][n-1]}" onclick="saveSCRScore('${studentId}',${compN},${n})">${n} — ${['Can teach others','No supervision','Limited supervision','With supervision','Cannot perform'][n-1]}</button>`).join('')}
+    </div>
+    <button class="btn btn-sm btn-danger" onclick="saveSCRScore('${studentId}',${compN},0)">Clear score</button>
+    <button class="btn btn-sm" onclick="closeModal()" style="margin-left:8px">Cancel</button>`);
+}
+
+function saveSCRScore(studentId,compN,score){
+  const scores=LS.get('scr_scores_'+scrCourse)||{};
+  if(!scores[studentId]) scores[studentId]={};
+  if(score===0) delete scores[studentId][compN];
+  else scores[studentId][compN]=score;
+  LS.set('scr_scores_'+scrCourse,scores);
+  closeModal();
+  renderSCR();
+}
+
+function logSCRUpdate(){
+  LS.set('scr_last_update',today());
+  showToast('SCR update logged for today','success');
+  renderSCR();
+  if(currentView==='dashboard') renderDashboard();
+}
+
+// ════════════════════════════════════════════
+// VIEW: TRIP WIZARD
+// ════════════════════════════════════════════
+let tripStep=0;
+let editingTrip=null;
+function renderTrips(){
+  const trips=LS.get('trips')||[];
+  if(editingTrip!==null){renderTripForm();return;}
+  el('view-trips').innerHTML=`
+    <div class="section-header">
+      <span class="section-title">Field Trips (${trips.length})</span>
+      <button class="btn btn-sm btn-primary" onclick="startNewTrip()">+ New Trip</button>
+    </div>
+    ${trips.length===0?`<div class="card text-muted" style="padding:20px;text-align:center">
+      <div style="font-size:24px;margin-bottom:8px">🚌</div>
+      <div>No trips yet. Click "+ New Trip" to start the planning wizard.</div>
+    </div>`:trips.map((t,i)=>{
+      const slipsDone=t.slipsReturned||0;
+      const slipsTotal=t.headcount||0;
+      const approvals=t.approvals||{};
+      const steps=['principal','ap','transportation'];
+      const approvedCount=steps.filter(s=>approvals[s]==='approved').length;
+      return `<div class="card">
+        <div class="flex" style="justify-content:space-between;flex-wrap:wrap;gap:8px">
+          <div>
+            <div style="font-size:15px;font-weight:600">${t.destination}</div>
+            <div class="text-muted">${t.purpose} · ${t.date?fmtDate(t.date):'Date TBD'} · ${t.headcount||0} students</div>
+          </div>
+          <div class="flex" style="gap:6px">
+            <span class="badge ${approvedCount===3?'badge-green':approvedCount>0?'badge-amber':'badge-red'}">${approvedCount}/3 approved</span>
+            <span class="badge ${slipsTotal>0&&slipsDone===slipsTotal?'badge-green':slipsDone>0?'badge-amber':'badge-gray'}">${slipsDone}/${slipsTotal} slips</span>
+            <button class="btn btn-xs" onclick="editTrip(${i})">Edit</button>
+            <button class="btn btn-xs btn-danger" onclick="deleteTrip(${i})">✕</button>
+          </div>
+        </div>
+        <div style="margin-top:10px">
+          <div style="font-size:11px;font-weight:600;color:var(--text2);margin-bottom:6px">Approval Chain</div>
+          ${['principal','ap','transportation'].map(role=>{
+            const status=approvals[role]||'pending';
+            const labels={'principal':'Principal','ap':'Assistant Principal','transportation':'Transportation'};
+            return `<div class="approval-row">
+              <span class="approval-role">${labels[role]}</span>
+              <button class="approval-status approval-${status}" onclick="cycleApproval(${i},'${role}')">${status==='approved'?'✓ Approved':'⏳ Pending'}</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function startNewTrip(){
+  editingTrip={destination:'',purpose:'',date:'',headcount:0,grades:'',chaperoneRatio:'',approvals:{},slipsSent:0,slipsReturned:0,notes:''};
+  tripStep=0;
+  renderTripForm();
+}
+
+function editTrip(i){
+  editingTrip=JSON.parse(JSON.stringify((LS.get('trips')||[])[i]));
+  editingTrip._editIndex=i;
+  tripStep=0;
+  renderTripForm();
+}
+
+function deleteTrip(i){
+  if(!confirm('Delete this trip?')) return;
+  const trips=LS.get('trips')||[];
+  trips.splice(i,1);
+  LS.set('trips',trips);
+  renderTrips();
+}
+
+function cycleApproval(i,role){
+  const trips=LS.get('trips')||[];
+  if(!trips[i].approvals) trips[i].approvals={};
+  trips[i].approvals[role]=trips[i].approvals[role]==='approved'?'pending':'approved';
+  LS.set('trips',trips);
+  renderTrips();
+}
+
+function renderTripForm(){
+  const steps=['Basic Info','Approval Chain','Permission Slips'];
+  const navDots=steps.map((s,i)=>`<div class="wizard-dot${i===tripStep?' active':i<tripStep?' done':''}" onclick="tripStep=${i};renderTripForm()">${i<tripStep?'✓':i+1}</div><span style="font-size:12px;color:var(--text2);margin-right:12px">${s}</span>`).join('');
+  let formHTML='';
+  if(tripStep===0){
+    formHTML=`
+      <div class="form-row"><label>Destination</label><input type="text" id="t-dest" value="${editingTrip.destination||''}" placeholder="Museum, venue, business…"></div>
+      <div class="grid-2">
+        <div class="form-row"><label>Date</label><input type="date" id="t-date" value="${editingTrip.date||''}"></div>
+        <div class="form-row"><label>Student headcount</label><input type="number" id="t-head" value="${editingTrip.headcount||''}" min="1"></div>
+      </div>
+      <div class="form-row"><label>Educational purpose (for approval form)</label><textarea id="t-purpose" rows="2" placeholder="CCPS standard: educational alignment, curriculum connection…">${editingTrip.purpose||''}</textarea></div>
+      <div class="grid-2">
+        <div class="form-row"><label>Grades</label><input type="text" id="t-grades" value="${editingTrip.grades||''}" placeholder="e.g. 11th"></div>
+        <div class="form-row"><label>Chaperone ratio</label><input type="text" id="t-chap" value="${editingTrip.chaperoneRatio||''}" placeholder="e.g. 1:10"></div>
+      </div>`;
+  } else if(tripStep===1){
+    formHTML=`
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Track CCPS approval chain. Click each role to toggle approved.</div>
+      ${['principal','ap','transportation'].map(role=>{
+        const labels={'principal':'Principal','ap':'Assistant Principal','transportation':'Transportation Dept.'};
+        const status=(editingTrip.approvals||{})[role]||'pending';
+        return `<div class="approval-row">
+          <span class="approval-role">${labels[role]}</span>
+          <button class="approval-status approval-${status}" onclick="editingTrip.approvals=editingTrip.approvals||{};editingTrip.approvals['${role}']=editingTrip.approvals['${role}']==='approved'?'pending':'approved';renderTripForm()">${status==='approved'?'✓ Approved':'⏳ Pending — click to approve'}</button>
+        </div>`;
+      }).join('')}
+      <div class="form-row mt-12"><label>Notes</label><textarea id="t-notes" rows="2" placeholder="Any follow-up needed, contacts…">${editingTrip.notes||''}</textarea></div>`;
+  } else {
+    formHTML=`
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px">Track permission slip distribution and returns.</div>
+      <div class="grid-2">
+        <div class="form-row"><label>Slips sent home</label><input type="number" id="t-sent" value="${editingTrip.slipsSent||0}" min="0"></div>
+        <div class="form-row"><label>Slips returned</label><input type="number" id="t-returned" value="${editingTrip.slipsReturned||0}" min="0"></div>
+      </div>
+      ${editingTrip.headcount?`<div class="badge ${(editingTrip.slipsReturned||0)>=(editingTrip.headcount||0)?'badge-green':(editingTrip.slipsReturned||0)>0?'badge-amber':'badge-red'}" style="font-size:12px;padding:4px 10px">${editingTrip.slipsReturned||0} of ${editingTrip.headcount} returned (${Math.round(((editingTrip.slipsReturned||0)/(editingTrip.headcount||1))*100)}%)</div>`:''}
+    `;
+  }
+
+  el('view-trips').innerHTML=`
+    <div class="flex" style="gap:8px;align-items:center;margin-bottom:14px">
+      <button class="btn btn-sm" onclick="editingTrip=null;renderTrips()">← Back</button>
+      <span style="font-size:15px;font-weight:600">${editingTrip._editIndex!==undefined?'Edit Trip':'New Trip'}</span>
+    </div>
+    <div class="wizard-nav">${navDots}</div>
+    <div class="card">
+      ${formHTML}
+      <div class="flex" style="gap:8px;margin-top:16px">
+        ${tripStep>0?`<button class="btn" onclick="tripStep--;renderTripForm()">← Back</button>`:''}
+        ${tripStep<2?`<button class="btn btn-primary" onclick="saveCurrentTripStep()">Next →</button>`:`<button class="btn btn-primary" onclick="saveTrip()">Save Trip</button>`}
+        <button class="btn" onclick="editingTrip=null;renderTrips()">Cancel</button>
+      </div>
+    </div>`;
+}
+
+function saveCurrentTripStep(){
+  if(tripStep===0){
+    editingTrip.destination=el('t-dest').value.trim();
+    editingTrip.date=el('t-date').value;
+    editingTrip.headcount=parseInt(el('t-head').value)||0;
+    editingTrip.purpose=el('t-purpose').value.trim();
+    editingTrip.grades=el('t-grades').value.trim();
+    editingTrip.chaperoneRatio=el('t-chap').value.trim();
+    if(!editingTrip.destination){showToast('Enter a destination','error');return;}
+  } else if(tripStep===1){
+    editingTrip.notes=el('t-notes')?el('t-notes').value.trim():'';
+  }
+  tripStep++;
+  renderTripForm();
+}
+
+function saveTrip(){
+  editingTrip.slipsSent=parseInt(el('t-sent').value)||0;
+  editingTrip.slipsReturned=parseInt(el('t-returned').value)||0;
+  const trips=LS.get('trips')||[];
+  if(editingTrip._editIndex!==undefined){
+    const idx=editingTrip._editIndex;
+    delete editingTrip._editIndex;
+    trips[idx]=editingTrip;
+  } else {
+    delete editingTrip._editIndex;
+    trips.push(editingTrip);
+  }
+  LS.set('trips',trips);
+  editingTrip=null;
+  showToast('Trip saved','success');
+  renderTrips();
+}
+
+// ════════════════════════════════════════════
+// VIEW: JOURNAL
+// ════════════════════════════════════════════
+let journalMood=0;
+let journalEnergy=0;
+function renderJournal(){
+  const existing=LS.get('journal_'+today());
+  const history=(LS.get('journal_history')||[]).slice(-7).reverse();
+  const isSaved=!!existing;
+
+  if(isSaved){
+    const e=existing;
+    const histHTML=history.map(h=>`<div class="card-sm" style="margin-bottom:6px">
+      <div class="flex" style="justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:600">${fmtDate(h.date)}</span>
+        <span class="flex" style="gap:6px">
+          <span class="badge badge-${h.mood<=2?'red':h.mood<=3?'amber':'green'}">Mood ${h.mood}</span>
+          <span class="badge badge-blue">Energy ${h.energy}</span>
+        </span>
+      </div>
+      ${h.win?`<div style="font-size:12px"><strong>Win:</strong> ${h.win}</div>`:''}
+      ${h.avoided?`<div style="font-size:12px;color:var(--text2)"><strong>Avoided:</strong> ${h.avoided}</div>`:''}
+    </div>`).join('');
+
+    el('view-journal').innerHTML=`
+      <div class="card" style="background:var(--green-bg);border-color:var(--green-border)">
+        <div style="font-size:15px;font-weight:600;margin-bottom:8px">✅ Journal complete for today</div>
+        <div class="flex" style="gap:8px;flex-wrap:wrap;margin-bottom:10px">
+          <span class="badge badge-${e.mood<=2?'red':e.mood<=3?'amber':'green'}">Mood ${e.mood}/5</span>
+          <span class="badge badge-blue">Energy ${e.energy}/5</span>
+        </div>
+        ${e.win?`<div style="font-size:13px;margin-bottom:6px"><strong>Win:</strong> ${e.win}</div>`:''}
+        ${e.avoided?`<div style="font-size:13px;color:var(--text2)"><strong>Avoided:</strong> ${e.avoided}</div>`:''}
+        <button class="btn btn-sm btn-danger mt-8" onclick="LS.del('journal_${today()}');renderJournal()">Re-do today's entry</button>
+      </div>
+      ${history.length>1?`<div class="section-header mt-12"><span class="section-title">Recent Entries</span></div>${histHTML}`:''}
+    `;
+    return;
+  }
+
+  const moodEmoji=['','😞','😕','😐','🙂','😄'];
+  const moodHTML=[1,2,3,4,5].map(n=>`<button class="mood-btn${journalMood===n?' selected':''}" onclick="journalMood=${n};renderJournalForm()">${moodEmoji[n]}<div style="font-size:10px;margin-top:2px">${n}</div></button>`).join('');
+  const energyLabels=['','Drained','Low','Medium','High','Wired'];
+  const energyHTML=[1,2,3,4,5].map(n=>`<button class="energy-btn${journalEnergy===n?' selected':''}" onclick="journalEnergy=${n};renderJournalForm()">${energyLabels[n]}</button>`).join('');
+
+  el('view-journal').innerHTML=`
+    <div class="card">
+      <div class="card-title">Today's Reflection — ${fmtDate(today())}</div>
+      <div class="form-row">
+        <label>How did today feel?</label>
+        <div class="mood-row" id="mood-row">${moodHTML}</div>
+      </div>
+      <div class="form-row">
+        <label>Energy level</label>
+        <div class="energy-row" id="energy-row">${energyHTML}</div>
+      </div>
+      <div class="form-row">
+        <label>One win from today</label>
+        <input type="text" id="j-win" placeholder="Something that went well…">
+      </div>
+      <div class="form-row">
+        <label>One thing you avoided or pushed off</label>
+        <input type="text" id="j-avoided" placeholder="What didn't you get to?">
+      </div>
+      <button class="btn btn-primary w-full mt-8" onclick="saveJournal()">Save Journal Entry</button>
+    </div>
+    ${history.length?`<div class="section-header mt-12"><span class="section-title">Recent Entries</span></div>
+    ${history.map(h=>`<div class="card-sm" style="margin-bottom:6px">
+      <div class="flex" style="justify-content:space-between;margin-bottom:4px">
+        <span style="font-size:12px;font-weight:600">${fmtDate(h.date)}</span>
+        <span class="flex" style="gap:6px">
+          <span class="badge badge-${h.mood<=2?'red':h.mood<=3?'amber':'green'}">Mood ${h.mood}</span>
+          <span class="badge badge-blue">Energy ${h.energy}</span>
+        </span>
+      </div>
+      ${h.win?`<div style="font-size:12px"><strong>Win:</strong> ${h.win}</div>`:''}
+      ${h.avoided?`<div style="font-size:12px;color:var(--text2)"><strong>Avoided:</strong> ${h.avoided}</div>`:''}
+    </div>`).join('')}`:''}
+  `;
+}
+
+function renderJournalForm(){
+  const moodEmoji=['','😞','😕','😐','🙂','😄'];
+  const energyLabels=['','Drained','Low','Medium','High','Wired'];
+  const moodRow=el('mood-row');
+  const energyRow=el('energy-row');
+  if(moodRow) moodRow.innerHTML=[1,2,3,4,5].map(n=>`<button class="mood-btn${journalMood===n?' selected':''}" onclick="journalMood=${n};renderJournalForm()">${moodEmoji[n]}<div style="font-size:10px;margin-top:2px">${n}</div></button>`).join('');
+  if(energyRow) energyRow.innerHTML=[1,2,3,4,5].map(n=>`<button class="energy-btn${journalEnergy===n?' selected':''}" onclick="journalEnergy=${n};renderJournalForm()">${energyLabels[n]}</button>`).join('');
+}
+
+function saveJournal(){
+  if(!journalMood){showToast('Pick a mood score','error');return;}
+  if(!journalEnergy){showToast('Pick an energy level','error');return;}
+  const win=el('j-win').value.trim();
+  const avoided=el('j-avoided').value.trim();
+  const entry={date:today(),mood:journalMood,energy:journalEnergy,win,avoided,ts:Date.now()};
+  LS.set('journal_'+today(),entry);
+  const hist=(LS.get('journal_history')||[]).filter(h=>h.date!==today());
+  hist.push(entry);
+  if(hist.length>60) hist.splice(0,hist.length-60);
+  LS.set('journal_history',hist);
+  // Schedule cron brief for tomorrow
+  if(avoided){
+    LS.set('cron_pending',{entry,scheduledFor:tomorrow()});
+  }
+  journalMood=0;journalEnergy=0;
+  showToast('Journal saved ✓','success');
+  renderJournal();
+  if(currentView==='dashboard') renderDashboard();
+}
+
+function tomorrow(){
+  const d=new Date();d.setDate(d.getDate()+1);return d.toISOString().slice(0,10);
+}
+
+function checkCron(){
+  const pending=LS.get('cron_pending');
+  if(!pending) return;
+  const now=new Date();
+  const isNextDay=pending.scheduledFor&&pending.scheduledFor<=today()&&now.getHours()>=6;
+  if(isNextDay&&!LS.get('cron_brief_'+today())){
+    const entry=pending.entry;
+    const deadlines=(LS.get('deadlines')||[]).filter(d=>!d.done&&daysUntil(d.date)<=3).map(d=>d.title);
+    let msg='';
+    if(entry.mood<=2) msg+='Yesterday was rough. Take it one step at a time today. ';
+    else if(entry.mood>=4) msg+='Yesterday had good energy — carry that forward. ';
+    if(entry.avoided) msg+=`Yesterday you pushed off: <em>"${entry.avoided}"</em>. Today's the day. `;
+    if(deadlines.length) msg+=`Urgent: ${deadlines.join(', ')}.`;
+    if(!msg) msg='Good morning. Check your deadlines and have a strong day.';
+    const brief={date:today(),message:msg};
+    LS.set('cron_brief',brief);
+    LS.set('cron_brief_'+today(),true);
+    LS.del('cron_pending');
+  }
+}
+
+// ════════════════════════════════════════════
+// VIEW: BRAG BOARD
+// ════════════════════════════════════════════
+let bragAudience='green';
+function renderBragBoard(){
+  const gasUrl=LS.get('gas_url')||'';
+  const lastDoc=LS.get('last_brag_doc')||null;
+  const content=generateBragContent(bragAudience);
+  const audiences=[
+    {id:'green',label:'Ms. Green (DSP)',icon:'🟢'},
+    {id:'admin',label:'Admin (Formal)',icon:'🏫'},
+    {id:'deca',label:'DECA Parents',icon:'🏆'},
+    {id:'self',label:'Self Log',icon:'📓'}
+  ];
+  const tabsHTML=audiences.map(a=>`<button class="audience-tab${bragAudience===a.id?' active':''}" onclick="bragAudience='${a.id}';renderBragBoard()">${a.icon} ${a.label}</button>`).join('');
+
+  el('view-brag').innerHTML=`
+    <div style="margin-bottom:12px">
+      <div style="font-size:15px;font-weight:600;margin-bottom:4px">Weekly Brag Board</div>
+      <div class="text-muted">Auto-generated from your journal wins, completed tasks, and activity log. Customize before sending.</div>
+    </div>
+
+    <div class="audience-tabs">${tabsHTML}</div>
+    <div class="brag-content" contenteditable="true" id="brag-text">${content}</div>
+
+    <div class="card" style="margin-top:12px;padding:12px;background:var(--blue-bg);border-color:var(--blue-border)">
+      <div class="card-title">Create Google Doc</div>
+      <div class="form-row">
+        <label>Google Apps Script URL</label>
+        <input type="text" id="gas-url-input" value="${gasUrl}" placeholder="Paste your deployed GAS web app URL here…">
+      </div>
+      <div class="flex" style="gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="sendBragToGAS()">📄 Create Google Doc</button>
+        <button class="btn" onclick="saveBragDraft()">💾 Save Draft</button>
+        ${lastDoc?`<a href="${lastDoc.url}" target="_blank" class="btn btn-success">↗ Last Doc (${lastDoc.date})</a>`:''}
+      </div>
+    </div>
+
+    <div class="card mt-12" style="padding:12px">
+      <div class="card-title">Google Apps Script Setup</div>
+      <div style="font-size:12px;line-height:1.7;color:var(--text2)">
+        <strong>To enable Google Doc creation:</strong><br>
+        1. Open <a href="https://script.google.com" target="_blank" style="color:var(--blue)">script.google.com</a> and create a new project<br>
+        2. Paste the script from Settings → "View GAS Script"<br>
+        3. Deploy → New Deployment → Web App → Execute as: Me · Who has access: Anyone<br>
+        4. Copy the web app URL and paste it above
+      </div>
+    </div>
+  `;
+}
+
+function generateBragContent(audience){
+  const history=(LS.get('journal_history')||[]).slice(-7);
+  const tasks=(LS.get('tasks')||[]).filter(t=>t.done&&t.doneDate&&t.doneDate>=getWeekStart()).slice(-5);
+  const deadlines=(LS.get('deadlines')||[]).filter(d=>d.done&&d.doneDate&&d.doneDate>=getWeekStart());
+  const wins=history.filter(h=>h.win).map(h=>h.win);
+  const dspDays=daysUntil('2026-05-15');
+
+  const weekDates=`Week of ${fmtDate(getWeekStart())}`;
+
+  if(audience==='green'){
+    return `DSP Progress Update — ${weekDates}\n\nStandard 1 (Lesson Planning & Instruction):\n${LESSONS.filter(l=>l.active&&(LS.get('lp_delivered')||{})[l.id]).map(l=>`• ${l.course} | ${l.title} — delivered`).join('\n')||'• Ongoing Q4 instruction across 8177, 8175, and 6115'}\n\nStandard 2 (Professional Responsiveness):\n${wins.length?wins.map(w=>`• ${w}`).join('\n'):'• Daily communication triage completed\n• Collaborative duties maintained'}\n\nDSP Countdown: ${dspDays} days remaining until May 15\n\nUpcoming:\n${(LS.get('deadlines')||[]).filter(d=>!d.done&&daysUntil(d.date)<=14).slice(0,3).map(d=>`• ${d.title} — ${fmtDate(d.date)}`).join('\n')||'• Monitoring all deadlines'}`;
+  }
+  if(audience==='admin'){
+    return `CTE Department Update — ${weekDates}\n\nCourse Highlights:\n${wins.length?wins.map(w=>`• ${w}`).join('\n'):'• Q4 units in progress across three course sections'}\n\nCompleted This Week:\n${[...tasks.map(t=>`• ${t.text}`),...deadlines.map(d=>`• ${d.title}`)].join('\n')||'• Ongoing instructional and administrative duties'}\n\nStudent Engagement:\nSCR documentation current. DECA chapter activities ongoing.`;
+  }
+  if(audience==='deca'){
+    return `DECA Chapter Update — ${weekDates}\n\nWhat's Happening:\n${wins.length?wins.map(w=>`• ${w}`).join('\n'):'• Chapter members preparing for upcoming events'}\n\nUpcoming Events:\n${(LS.get('deadlines')||[]).filter(d=>d.type==='deca'&&!d.done).map(d=>`• ${d.title} — ${fmtDate(d.date)}`).join('\n')||'• Stay tuned for upcoming competitions'}\n\nReminders:\n• Permission slips and fees must be submitted on time\n• Check the chapter website for updates`;
+  }
+  return `Personal Log — ${weekDates}\n\nMood Trend: ${history.length?`Avg ${(history.reduce((a,h)=>a+h.mood,0)/history.length).toFixed(1)}/5`:'-'}\nEnergy Trend: ${history.length?`Avg ${(history.reduce((a,h)=>a+h.energy,0)/history.length).toFixed(1)}/5`:'-'}\n\nWins:\n${wins.length?wins.map(w=>`• ${w}`).join('\n'):'• [None logged this week]'}\n\nPushed Off (need to tackle):\n${history.filter(h=>h.avoided).map(h=>`• ${h.avoided}`).join('\n')||'• Nothing pushed off this week'}\n\nDSP: ${dspDays} days remaining`;
+}
+
+function getWeekStart(){
+  const d=new Date();
+  const day=d.getDay();
+  d.setDate(d.getDate()-(day===0?6:day-1));
+  return d.toISOString().slice(0,10);
+}
+
+function saveBragDraft(){
+  const text=el('brag-text').innerText;
+  LS.set('brag_draft_'+bragAudience,{text,date:today()});
+  showToast('Draft saved locally','success');
+}
+
+async function sendBragToGAS(){
+  const gasUrl=el('gas-url-input').value.trim();
+  if(!gasUrl){showToast('Enter your GAS URL in the field above','error');return;}
+  LS.set('gas_url',gasUrl);
+  const text=el('brag-text').innerText;
+  const title=`LeaderHub Brag Board — ${['','Ms. Green DSP Update','Admin Update','DECA Parent Update','Self Log'][['green','admin','deca','self'].indexOf(bragAudience)+1]||'Update'} — ${today()}`;
+  showToast('Creating Google Doc…');
+  try{
+    const r=await fetch(gasUrl,{method:'POST',headers:{'Content-Type':'text/plain'},body:JSON.stringify({action:'bragDoc',title,content:text,audience:bragAudience})});
+    const data=await r.json();
+    if(data.ok&&data.url){
+      LS.set('last_brag_doc',{url:data.url,date:today()});
+      showToast('Google Doc created!','success');
+      window.open(data.url,'_blank');
+      renderBragBoard();
+    } else {
+      showToast('GAS error: '+(data.error||'Unknown'),'error');
+    }
+  } catch(e){
+    showToast('Could not reach GAS URL. Check the URL and try again.','error');
+  }
+}
+
+// ════════════════════════════════════════════
+// VIEW: SETTINGS
+// ════════════════════════════════════════════
+const GAS_SCRIPT=`// LeaderHub EmailBridge.gs — paste in Google Apps Script
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    if (data.action === 'bragDoc') {
+      var doc = DocumentApp.create(data.title);
+      var body = doc.getBody();
+      body.setMarginTop(72); body.setMarginBottom(72);
+      body.setMarginLeft(72); body.setMarginRight(72);
+      // Title
+      var title = body.appendParagraph(data.title);
+      title.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+      body.appendHorizontalRule();
+      // Content — split into sections
+      var lines = data.content.split('\\n');
+      lines.forEach(function(line) {
+        if (line.trim() === '') { body.appendParagraph(''); return; }
+        if (line.match(/^[A-Z][^:]+:$/)) {
+          var h = body.appendParagraph(line);
+          h.setHeading(DocumentApp.ParagraphHeading.HEADING2);
+        } else {
+          body.appendParagraph(line);
+        }
+      });
+      doc.saveAndClose();
+      return ContentService.createTextOutput(
+        JSON.stringify({ok: true, url: doc.getUrl()})
+      ).setMimeType(ContentService.MimeType.JSON);
+    }
+    return ContentService.createTextOutput(
+      JSON.stringify({ok: false, error: 'Unknown action'})
+    ).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(
+      JSON.stringify({ok: false, error: err.toString()})
+    ).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({ok: true, msg: 'LeaderHub bridge active'}))
+    .setMimeType(ContentService.MimeType.JSON);
+}`;
+
+function renderSettings(){
+  const gasUrl=LS.get('gas_url')||'';
+  const dayType=getDayType();
+  const override=LS.get('schedule_override');
+  el('view-settings').innerHTML=`
+    <div class="card">
+      <div class="card-title">Schedule</div>
+      <div class="form-row">
+        <label>Today's schedule type (auto-detected: <strong>${dayType}-Day</strong>)</label>
+        <div class="flex" style="gap:8px">
+          ${['A','B','E'].map(t=>`<button class="btn${override&&override.date===today()&&override.type===t?' btn-primary':''}" onclick="setScheduleOverride('${t}')">${t}-Day</button>`).join('')}
+          ${override&&override.date===today()?`<button class="btn btn-danger" onclick="LS.del('schedule_override');renderSettings()">Clear override</button>`:''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Google Apps Script (Brag Board)</div>
+      <div class="form-row">
+        <label>Deployed GAS web app URL</label>
+        <input type="text" id="gas-url-setting" value="${gasUrl}" placeholder="https://script.google.com/macros/s/…/exec">
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="LS.set('gas_url',el('gas-url-setting').value.trim());showToast('URL saved','success')">Save URL</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Apps Script Code (copy & deploy)</div>
+      <div style="font-size:11px;color:var(--text2);margin-bottom:8px">1. Go to <a href="https://script.google.com" target="_blank" style="color:var(--blue)">script.google.com</a> → New Project<br>2. Replace all content with this code → Save → Deploy → Web App → Execute as Me → Anyone can access</div>
+      <pre style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:12px;font-size:11px;overflow-x:auto;white-space:pre-wrap;font-family:var(--mono)">${GAS_SCRIPT.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</pre>
+      <button class="btn btn-sm mt-8" onclick="copyText(GAS_SCRIPT)">Copy Script</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Data Management</div>
+      <div class="flex" style="gap:8px;flex-wrap:wrap">
+        <button class="btn" onclick="exportData()">📤 Export All Data</button>
+        <button class="btn btn-danger" onclick="clearData()">🗑 Clear All Data</button>
+      </div>
+      <div class="text-muted mt-8">All data is stored locally in your browser (localStorage). No data is sent to any server except through the GAS bridge when you explicitly send a Brag Board. Student names and scores never leave this device.</div>
+    </div>
+  `;
+}
+
+function setScheduleOverride(type){
+  LS.set('schedule_override',{type,date:today()});
+  showToast(`Schedule set to ${type}-Day for today`,'success');
+  renderSettings();
+}
+
+function exportData(){
+  const keys=['deadlines','tasks','trips','journal_history','lp_meta','lp_delivered','synergy_last_update','scr_last_update'];
+  const data={exported:today()};
+  keys.forEach(k=>data[k]=LS.get(k));
+  ['8177','8175','6115'].forEach(c=>{
+    data['scr_students_'+c]=LS.get('scr_students_'+c);
+    data['scr_scores_'+c]=LS.get('scr_scores_'+c);
+  });
+  const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');a.href=url;a.download='leaderhub-export-'+today()+'.json';a.click();
+  URL.revokeObjectURL(url);
+  showToast('Data exported','success');
+}
+
+function clearData(){
+  if(!confirm('Clear ALL LeaderHub data? This cannot be undone.')) return;
+  if(!confirm('Are you absolutely sure? All tasks, journal entries, SCR data, and settings will be deleted.')) return;
+  Object.keys(localStorage).filter(k=>k.startsWith('lh_')).forEach(k=>localStorage.removeItem(k));
+  showToast('All data cleared','success');
+  init();
+}
+
+function overrideDayType(){
+  const type=prompt('Set schedule type for today: A, B, or E (early release)');
+  if(type&&['A','B','E'].includes(type.toUpperCase())){
+    setScheduleOverride(type.toUpperCase());
+    renderDashboard();
+  }
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+function seedData(){
+  if(LS.get('initialized')) return;
+  LS.set('deadlines',SEED_DEADLINES);
+  LS.set('tasks',[]);
+  LS.set('trips',[]);
+  LS.set('initialized',true);
+}
+
+function updateDSPBadge(){
+  const days=daysUntil('2026-05-15');
+  const badge=el('dsp-badge');
+  if(badge){
+    badge.textContent=days+' days to DSP';
+    badge.style.background=days<=14?'var(--red-bg)':days<=30?'var(--amber-bg)':'var(--blue-bg)';
+    badge.style.color=days<=14?'var(--red)':days<=30?'var(--amber)':'var(--blue)';
+    badge.style.borderColor=days<=14?'var(--red-border)':days<=30?'var(--amber-border)':'var(--blue-border)';
+  }
+}
+
+function init(){
+  seedData();
+  checkCron();
+  updateDSPBadge();
+  renderDashboard();
+  // Refresh every 60s
+  setInterval(()=>{
+    updateDSPBadge();
+    checkCron();
+    if(currentView==='dashboard') renderDashboard();
+  },60000);
+}
+
+document.addEventListener('DOMContentLoaded',init);
+</script>
+</body>
+</html>
