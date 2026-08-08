@@ -7,7 +7,8 @@
 //          No longer called inline from Script 05 — Studio writes the DRAFT,
 //          this script detects and acts on it.
 //
-// MODULE 3 ADDITIONS (marked ── M3 ──):
+// MODULE 5 ADDITIONS (marked ── M5 ──) — renumbered from "Module 3" during
+// reconciliation decision 6; see cas-ccps/README.md for the full table:
 //   - 4 new TeacherMatrix columns: MILESTONE_1_COMPETENCY_ID..4
 //   - 4 new DraftUnits columns: same, mirrored for audit/debug visibility
 //   - 4 new Confirmation Form fields read in onTeacherConfirmSubmit()
@@ -33,14 +34,14 @@
 // Script Properties don't clone with makeCopy(). Script 16 writes a _CONFIG
 // tab to this sheet at creation time. getSheetConfig_() reads from there.
 //
-// ── M3 ── Script 16 must be extended to discover and write four new
+// ── M5 ── Script 16 must be extended to discover and write four new
 // properties: confirmEntryComp1, confirmEntryComp2, confirmEntryComp3,
 // confirmEntryComp4 — the entry IDs for the four new competency dropdown
 // questions on the Confirmation Form. This file reads those properties
 // defensively (see buildPrefilledUrl_) and degrades gracefully if they
 // are not yet set, but the new competency fields will not pre-fill or
 // validate correctly until Script 16's discovery logic is extended.
-// This is the one open dependency for Module 3's confirmation-step
+// This is the one open dependency for Module 5's confirmation-step
 // integration — tracked here, not silently assumed.
 // ---------------------------------------------------------------------------
 function getConfig_08() {
@@ -90,7 +91,7 @@ function registerTriggersIfNeeded_() {
 // nothing (object key order doesn't affect index values), but it removes
 // a real readability trap that likely caused the original comma error.
 //
-// ── M3 ── four new columns appended at indices 15–18, after the
+// ── M5 ── four new columns appended at indices 15–18, after the
 // pre-existing 0–14 range. Appending rather than inserting mid-object
 // avoids renumbering any existing column — no existing read/write in
 // this file or any other script needs to change its index references.
@@ -111,7 +112,7 @@ const TM08 = {
   PROMPT_TEMPLATE_ID: 12,
   SUBJECT: 13,
   COURSE_NAME: 14,
-  // ── M3 ──
+  // ── M5 ──
   MILESTONE_1_COMPETENCY_ID: 15,
   MILESTONE_2_COMPETENCY_ID: 16,
   MILESTONE_3_COMPETENCY_ID: 17,
@@ -121,7 +122,7 @@ const TM08 = {
 // ---------------------------------------------------------------------------
 // DraftUnits column indices (0-based)
 //
-// ── M3 ── same four-column addition, appended after the existing 0–13
+// ── M5 ── same four-column addition, appended after the existing 0–13
 // range, mirroring TeacherMatrix's shape. DraftUnits carries this data
 // through the AWAITING_REVIEW state for audit/debugging purposes even
 // though the authoritative copy ends up in TeacherMatrix once CONFIRMED.
@@ -141,7 +142,7 @@ const DU08 = {
   DOD: 11,
   CREATED: 12,
   STATUS: 13,               // AWAITING_REVIEW | CONFIRMED | ABANDONED
-  // ── M3 ──
+  // ── M5 ──
   MILESTONE_1_COMPETENCY_ID: 14,
   MILESTONE_2_COMPETENCY_ID: 15,
   MILESTONE_3_COMPETENCY_ID: 16,
@@ -188,7 +189,7 @@ function pollForNewDrafts() {
 
     // Register in DraftUnits tab for confirmation tracking
     const draftId = "DRAFT-" + configId;
-    // ── M3 ── competency IDs do not exist yet at this point — Flow 1
+    // ── M5 ── competency IDs do not exist yet at this point — Flow 1
     // (rubric extraction) has no knowledge of competencies, by design
     // (see architectural decision: competency tagging happens at human
     // confirmation, never via AI inference on compliance-relevant data).
@@ -209,7 +210,7 @@ function pollForNewDrafts() {
       config.definitionOfDone,
       new Date(),
       "AWAITING_REVIEW",
-      // ── M3 ── blank on creation, populated at confirmation
+      // ── M5 ── blank on creation, populated at confirmation
       "", "", "", "",
     ]);
 
@@ -235,7 +236,7 @@ function pollForNewDrafts() {
 // Fires when teacher submits their reviewed/corrected extraction
 // Promotes the draft to LIVE in TeacherMatrix
 //
-// ── M3 ── now also reads four new named fields — the teacher's chosen
+// ── M5 ── now also reads four new named fields — the teacher's chosen
 // competency_id for each of the 4 milestones. These fields are REQUIRED
 // on the live form (every milestone must map to exactly one competency —
 // confirmed design decision, no unmapped milestones permitted). If the
@@ -272,7 +273,7 @@ function onTeacherConfirmSubmit(e) {
   const dod = r["Passing Standard"]?.[0]?.trim() || "";
   const confirmEmail = r["Email Address"]?.[0]?.trim() || "";
 
-  // ── M3 ── the four new competency-tagging fields. Field names here
+  // ── M5 ── the four new competency-tagging fields. Field names here
   // must match exactly whatever labels are used when the four new
   // Dropdown questions are added to the live Confirmation Form (Piece 2a
   // — a manual Forms-UI edit, tracked separately from this script).
@@ -286,7 +287,7 @@ function onTeacherConfirmSubmit(e) {
     return;
   }
 
-  // ── M3 ── soft validation — log if any competency field arrived blank.
+  // ── M5 ── soft validation — log if any competency field arrived blank.
   // Not a hard reject: the form's own required-field setting is the
   // primary enforcement. This is a second line of defense, matching the
   // "defensive, non-fatal logging" pattern used throughout this codebase
@@ -348,7 +349,7 @@ function onTeacherConfirmSubmit(e) {
       matrix.getRange(rowNum, TM08.MILESTONE_4 + 1).setValue(milestone4);
       matrix.getRange(rowNum, TM08.DOD + 1).setValue(dod);
       matrix.getRange(rowNum, TM08.STATUS + 1).setValue("LIVE");
-      // ── M3 ──
+      // ── M5 ──
       matrix.getRange(rowNum, TM08.MILESTONE_1_COMPETENCY_ID + 1).setValue(milestone1CompetencyId);
       matrix.getRange(rowNum, TM08.MILESTONE_2_COMPETENCY_ID + 1).setValue(milestone2CompetencyId);
       matrix.getRange(rowNum, TM08.MILESTONE_3_COMPETENCY_ID + 1).setValue(milestone3CompetencyId);
@@ -359,7 +360,7 @@ function onTeacherConfirmSubmit(e) {
 
   // Mark draft as CONFIRMED
   drafts.getRange(draftRowIndex, DU08.STATUS + 1).setValue("CONFIRMED");
-  // ── M3 ── persist the confirmed competency mapping on the draft row too,
+  // ── M5 ── persist the confirmed competency mapping on the draft row too,
   // for audit visibility even after the matrix row has moved on
   drafts.getRange(draftRowIndex, DU08.MILESTONE_1_COMPETENCY_ID + 1).setValue(milestone1CompetencyId);
   drafts.getRange(draftRowIndex, DU08.MILESTONE_2_COMPETENCY_ID + 1).setValue(milestone2CompetencyId);
@@ -381,7 +382,7 @@ function onTeacherConfirmSubmit(e) {
 // Replace ENTRY_* values with actual entry IDs from your Confirmation Form
 // Get entry IDs: open the form in browser → Inspect → find input name="entry.XXXXXXXXX"
 //
-// ── M3 ── four new entries appended for the competency dropdowns.
+// ── M5 ── four new entries appended for the competency dropdowns.
 // IMPORTANT — these are intentionally NOT given a pre-fill value. Unlike
 // the milestone text fields (which Flow 1 already extracted and which
 // genuinely have a value to pre-fill), the competency mapping does not
@@ -433,7 +434,7 @@ function buildPrefilledUrl_(formId, draftId, config) {
 // ---------------------------------------------------------------------------
 // sendReviewEmail_
 //
-// ── M3 ── one new paragraph added to the email body, telling the teacher
+// ── M5 ── one new paragraph added to the email body, telling the teacher
 // to also tag each milestone with a competency before submitting. No
 // structural change to the function — same MailApp.sendEmail call shape.
 // ---------------------------------------------------------------------------

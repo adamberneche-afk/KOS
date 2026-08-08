@@ -302,26 +302,14 @@ function notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId) {
       teacherEmail,
       "⚠️ Evaluation Timeout — Student Assignment",
       "An automated evaluation did not complete within the expected time window " +
-      "and has been cleared from the queue.
-
-" +
-      "Assignment Config ID: " + configId + "
-" +
-      "Document ID: " + fileId + "
-
-" +
-      "What to do:
-" +
-      "  1. Ask the student to reopen their document
-" +
-      "  2. Have them click: 📊 AI Evaluation Panel → Run Assignment Check
-" +
-      "  3. Their request will be re-queued automatically
-
-" +
-      "If this keeps happening for the same student, contact your system admin.
-
-" +
+      "and has been cleared from the queue.\n\n" +
+      "Assignment Config ID: " + configId + "\n" +
+      "Document ID: " + fileId + "\n\n" +
+      "What to do:\n" +
+      "  1. Ask the student to reopen their document\n" +
+      "  2. Have them click: 📊 AI Evaluation Panel → Run Assignment Check\n" +
+      "  3. Their request will be re-queued automatically\n\n" +
+      "If this keeps happening for the same student, contact your system admin.\n\n" +
       "— Assignment System (automated alert)"
     );
   } catch (e) {

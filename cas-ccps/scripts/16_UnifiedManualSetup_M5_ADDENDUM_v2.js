@@ -1,6 +1,9 @@
 // =============================================================================
-// FILE: 16_UnifiedManualSetup_M3_ADDENDUM.js  (v2 -- reconciled)
-// PURPOSE: Module 3 additions to 16_UnifiedManualSetup.js
+// FILE: 16_UnifiedManualSetup_M5_ADDENDUM_v2.js  (v2 -- reconciled; renamed
+//       from _M3_ADDENDUM -- reconciliation decision 6: this addendum
+//       belongs to the SCR Suggestion & Remediation Engine, renumbered
+//       Module 3 -> Module 5)
+// PURPOSE: Module 5 additions to 16_UnifiedManualSetup.js
 //
 // v2 CHANGES FROM v1:
 //   This version additionally repairs the pre-existing Confirmation Form
@@ -86,7 +89,7 @@
     if (f.help) item.setHelpText(f.help);
   });
 
-  // -- M3 -- four new competency dropdown items, added after the eight
+  // -- M5 -- four new competency dropdown items, added after the eight
   // pre-existing items above. Item order on a Form determines display
   // order -- placing this call here means the dropdowns appear after
   // Milestone 4 and Passing Standard, matching the natural reading order
@@ -99,7 +102,7 @@
     "Timestamp","Email Address","Draft ID","Assignment Name",
     "AI Coach Persona","Milestone 1","Milestone 2",
     "Milestone 3","Milestone 4","Passing Standard",
-    // -- M3 -- four new trailing headers, matching the four new form items --
+    // -- M5 -- four new trailing headers, matching the four new form items --
     "Competency — Milestone 1","Competency — Milestone 2",
     "Competency — Milestone 3","Competency — Milestone 4"
   ]);
@@ -108,7 +111,7 @@
 */
 
 // ---------------------------------------------------------------------------
-// -- M3 -- addCompetencyDropdownItems_
+// -- M5 -- addCompetencyDropdownItems_
 // Unchanged from v1. Reproduced here so this file is a complete,
 // self-contained addendum rather than requiring v1 alongside it.
 // ---------------------------------------------------------------------------
@@ -116,7 +119,7 @@ function addCompetencyDropdownItems_(confirmForm, centralSsId) {
   const options = buildCompetencyDropdownOptions_(centralSsId);
 
   if (options.length === 0) {
-    Logger.log("[M3] WARNING -- CompetencyRegistry returned zero options. " +
+    Logger.log("[M5] WARNING -- CompetencyRegistry returned zero options. " +
       "Competency dropdowns will be created EMPTY. Run " +
       "importCompetencyRegistry() (Script 22b) before teacher setup, or " +
       "these four fields will block every future confirmation submission " +
@@ -143,14 +146,14 @@ function addCompetencyDropdownItems_(confirmForm, centralSsId) {
 }
 
 // ---------------------------------------------------------------------------
-// -- M3 -- buildCompetencyDropdownOptions_
+// -- M5 -- buildCompetencyDropdownOptions_
 // Unchanged from v1.
 // ---------------------------------------------------------------------------
 function buildCompetencyDropdownOptions_(centralSsId) {
   const ss = SpreadsheetApp.openById(centralSsId);
   const sheet = ss.getSheetByName("CompetencyRegistry");
   if (!sheet) {
-    Logger.log("[M3] CompetencyRegistry tab not found on Central Ledger -- " +
+    Logger.log("[M5] CompetencyRegistry tab not found on Central Ledger -- " +
       "cannot build dropdown options.");
     return [];
   }
@@ -164,7 +167,7 @@ function buildCompetencyDropdownOptions_(centralSsId) {
   const iActive = headers.indexOf("active");
 
   if (iId === -1 || iText === -1) {
-    Logger.log("[M3] CompetencyRegistry missing required columns " +
+    Logger.log("[M5] CompetencyRegistry missing required columns " +
       "(competency_id, competency_text).");
     return [];
   }
@@ -205,7 +208,7 @@ function buildCompetencyDropdownOptions_(centralSsId) {
 }
 
 // ---------------------------------------------------------------------------
-// -- M3 -- extractFormEntryIds_ -- EXTENDED. Unchanged from v1.
+// -- M5 -- extractFormEntryIds_ -- EXTENDED. Unchanged from v1.
 // REPLACES the original extractFormEntryIds_ function in
 // 16_UnifiedManualSetup.js -- paste this version over it.
 // ---------------------------------------------------------------------------
@@ -219,7 +222,7 @@ function extractFormEntryIds_(form) {
     "Milestone 3": "CONFIRM_ENTRY_MILESTONE_3",
     "Milestone 4": "CONFIRM_ENTRY_MILESTONE_4",
     "Passing Standard": "CONFIRM_ENTRY_DOD",
-    // -- M3 --
+    // -- M5 --
     "Competency — Milestone 1": "CONFIRM_ENTRY_COMP_1",
     "Competency — Milestone 2": "CONFIRM_ENTRY_COMP_2",
     "Competency — Milestone 3": "CONFIRM_ENTRY_COMP_3",
@@ -236,7 +239,7 @@ function extractFormEntryIds_(form) {
         ? item.asTextItem().getId()
         : type === FormApp.ItemType.PARAGRAPH_TEXT
         ? item.asParagraphTextItem().getId()
-        // -- M3 -- new branch for the competency dropdowns
+        // -- M5 -- new branch for the competency dropdowns
         : type === FormApp.ItemType.LIST
         ? item.asListItem().getId()
         : null;

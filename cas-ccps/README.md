@@ -25,100 +25,159 @@ defeat it — treated as a manual-review signal, not proof).
 
 ---
 
-## ⚠️ Architecture fork — two incompatible designs for how student feedback gets written
+## ✅ Reconciled: all 7 flagged conflicts resolved
 
-This is the most consequential finding in the repo. The very first file
-uploaded to this project (`scripts/09_StudentRevisionGuidance.js`) and the
-base system uploaded later (`scripts/09_StudentRevisionGuidance_M1Base.js`,
-part of a self-consistent 20+ file bundle) implement **two different,
-mutually incompatible answers to "who writes the evaluation report into the
-student's doc — Studio or GAS?"**
+Every conflict this README previously documented has been resolved via the
+CAS/KOS reconciliation decision log. What follows is a record of each
+resolution, kept for anyone picking this project up later.
 
-| | `09_StudentRevisionGuidance.js` (first upload) | `09_StudentRevisionGuidance_M1Base.js` + the rest of this batch |
+### 1. The Script 09 architecture fork — Studio writes the report
+
+**Confirmed: Studio writes the evaluation report directly; GAS does not.**
+Four independent, mutually corroborating sources agreed
+(`09_StudentRevisionGuidance_M1Base.js`, `15_StudioFlowPrompts.js` +
+`15b_StudioFlowPrompts_Flow2_Revised.js`, the real `03_QueueBridge.js`
+backup-only `processCompletedEvaluation_()`, `docs/STUDIO_FLOW_REFERENCE.html`,
+and the salvaged `docs/USER_EXPERIENCE_REFERENCE.html` Document Anatomy
+section) against one outlier — `scripts/09_StudentRevisionGuidance.js`, the
+very first file uploaded to this project, which assumed GAS writes the
+report via `prependFeedbackToHeader()`. That file is now archived at
+`scripts/archived/09_StudentRevisionGuidance_ORIGINAL_GAS_WRITES.js`
+(confirmed before archiving: nothing else in this repo calls
+`prependFeedbackToHeader()`). `09_StudentRevisionGuidance_M1Base.js` is the
+live design. This unblocks Flow 2 (still not built in Studio — see Known
+Gaps) with an unambiguous spec.
+
+### 2. Two confirmed bugs — both fixed
+
+1. **Turn-In Form field mismatch.** `04_Form2_TurnInGate.js` assumed
+   `setCollectEmail(true)` and read the auto-collected `"Email Address"`
+   field. `16_UnifiedManualSetup.js` (the actual form-builder) sets
+   `setCollectEmail(false)` and adds a manual text item titled **"Your
+   Google Account"** — confirmed directly in code — and
+   `18_FormSubmitDispatcher.js`'s own comment already agreed. As shipped,
+   every real Form 2 submission would have had `r["Email Address"]`
+   undefined, so `onTurnInSubmit` treated every real turn-in as "not a
+   Form 2 submission" and silently no-opped. Fixed `04` to match `16`/`18`
+   (`r["Your Google Account"]`); `16` and `18` were already correct and
+   are unchanged.
+2. **`16_UnifiedManualSetup.js`'s `onOpen()` `ReferenceError`.** Confirmed
+   directly in code: `onOpen()` referenced `props.getProperty(...)`
+   without ever declaring `props`, throwing on every doc open once setup
+   completed — likely breaking the operational menu for good after
+   first-time setup. Fixed: `props` declared once at the top of `onOpen()`,
+   reused for both property reads, matching every other function in the file.
+
+**A third, larger bug found while verifying the fix above:** several
+script files contained literal, unescaped newline characters inside
+double-quoted string literals — invalid JavaScript that would fail to save
+in the Apps Script editor at all, confirmed via `node --check` across the
+whole `scripts/` tree. Fixed in `16_UnifiedManualSetup.js`,
+`02_Form1_IntakeAndWorkspaceGenerator.js`, `03_QueueBridge.js`,
+`10_AdminRecoveryPanel.js`, and `25_WarmUpWriter.js` (the latter four were
+outside the original decision queue — found only because this pass
+actually ran a syntax check on every file, which nothing before it had
+done). `10_AdminRecoveryPanel.js` also had a related but distinct bug: two
+literal, unescaped quote characters meant to wrap a term name in a
+confirmation dialog (`"Archive "" + termToArchive + ""?"`), fixed by
+escaping them. Every `.js` file in `scripts/` (including `archived/`) now
+passes `node --check`.
+
+### 3. Module numbering — corrected during implementation, not just relabeled
+
+The originally-approved reconciliation decision called for renumbering the
+mislabeled "Module 3" (SCR Suggestion & Remediation Engine) to "Module 4,"
+and the existing "Module 4" (Student Context Aggregator) to "Module 5."
+**That specific mapping was wrong, caught while implementing it**, once
+`docs/CAS_Module4_Documentation_v1.0.docx` and `_v1.1.docx` — files not in
+view when the original decision was made — were read in full. Both
+versions of that document extensively, explicitly self-identify as
+**"Module 4"** ("PRODUCTION READY," title page, footer) and both
+independently state that future student-competency-coverage work (exactly
+what the SCR engine does) is **"Module 5 territory"** — v1.0: *"If a
+future Module 5 builds a genuine student-competency junction, it would
+likely sit alongside — not inside — Script 29."* `30_SCRSuggestionEngine.js`'s
+own header comment independently corroborates this: it already called
+itself *"The Module 3 threshold script"* while calling Script 29
+*"Module 4's Script 29"* three separate times.
+
+**Corrected, final numbering:**
+
+| Module | What it is | Status |
 |---|---|---|
-| Who writes the formatted evaluation block into the doc | **GAS** — `prependFeedbackToHeader(fileId, evaluationReport, configId, complianceResult)` takes the report text as a parameter and formats/inserts it itself | **Studio** — via a native "Google Docs → Insert text" connector step, writing the full `── EVALUATION … ── END EVALUATION ──` block directly |
-| GAS's role | Primary writer, "called by the admin evaluation engine (Script 03) after inference" | Backup only — `03_QueueBridge.js`'s `processCompletedEvaluation_(fileId, configId)` takes **no report-text parameter at all**, and only does placeholder cleanup (idempotent, in case Studio's step failed) plus the separately-designed "what to do next" append |
+| **1** | Base intake/grading pipeline | Production, ~20 files (see below) |
+| **2** | Lesson Intelligence (Lightweight + Full/Warm-Ups) | Production ready |
+| **3** | Student Profile — extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` |
+| **4** | Student Context Aggregator — Script 29 | **Unchanged, production ready** — this module's own numbering was always correct |
+| **5** | SCR Suggestion & Remediation Engine — Scripts 30, 30b | Renumbered from mislabeled "Module 3" |
 
-Three independently-uploaded, mutually-corroborating sources agree with each
-other and disagree with the first upload: `scripts/15_StudioFlowPrompts.js`
-(base Flow spec), `scripts/15b_StudioFlowPrompts_Flow2_Revised.js` (the M3
-revision of that same spec), and the real `scripts/03_QueueBridge.js` — all
-three describe Studio writing the report directly, with GAS explicitly
-*not* needing to. `docs/STUDIO_FLOW_REFERENCE.html` (the human-readable
-version of the same spec) states outright: *"Script 03's
-backPropagateCompletions() will append the 'What to do next' block
-automatically… Studio does NOT need to write that section."*
+**What actually changed on disk:**
+- `30_SCRSuggestionEngine.js` and `30b_SCRRetryRemediation.js`: "Module 3"
+  self-references corrected to "Module 5" (their own file numbers, 30 and
+  30b, are unaffected — only the module *label* moved).
+- `08_TeacherConfirmationStep.js`, `15b_StudioFlowPrompts_Flow2_Revised.js`:
+  same "Module 3" → "Module 5" label correction (their genuine "Module 2"
+  and "Module 4" references — e.g. `07_TeacherDashboard.js`'s "Module 3
+  student profiles," which correctly refers to the real Student Profile
+  module — were left untouched).
+- `scripts/19_ClonedSheetConfig_M3_ADDENDUM.js` → renamed
+  `19_ClonedSheetConfig_M5_ADDENDUM.js`.
+- `scripts/16_UnifiedManualSetup_M3_ADDENDUM_v2.js` → renamed
+  `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`.
+- `docs/CAS_Module3_Documentation_v1.0.docx` and `_v1.0_alt.docx` → merged
+  into `docs/CAS_Module5_Documentation_v1.1.docx` (see item 5 below); both
+  originals kept, archived, neither deleted.
 
-**This is strong, triangulated evidence that `09_StudentRevisionGuidance.js`
-(the very first file uploaded) describes a different, likely earlier or
-experimental design** — not a version bump, an incompatible one. Both files
-are kept, under distinct names, with nothing silently overwritten. Confirm
-which one is actually live before building anything else on top of either.
+`docs/PLATFORM_DOCUMENTATION.html`'s Module 3 (Student Profile) was never
+part of this collision and is untouched.
 
-## ⚠️ Two confirmed bugs (found by direct code reading, not inference)
+### 4. Script 29/30/31 numbering — also corrected against real code, not just docs
 
-1. **The Turn-In Form's actual field configuration doesn't match what reads it.** `16_UnifiedManualSetup.js`'s `createAdminAssets_()` builds the Turn-In Form with `setCollectEmail(false)` and a manual text item titled `"Your Google Account"`. But `04_Form2_TurnInGate.js`'s own header comment and its actual field read both assume `setCollectEmail(true)` and read Google's auto-collected `"Email Address"` field — and `18_FormSubmitDispatcher.js`'s comment independently describes the field as `"Your Google Account"`, agreeing with 16 and disagreeing with 04. All three files were uploaded together as one coherent bundle, yet disagree on one form's actual shape. As literally written, the form Script 16 generates would never populate `r["Email Address"]`, so `onTurnInSubmit` would silently no-op on every real student turn-in.
-2. **`16_UnifiedManualSetup.js`'s `onOpen()` references `props` without ever defining it** (`props.getProperty("INSTALLER_COMPLETE")`, expected to be `PropertiesService.getScriptProperties()`). Reads as a `ReferenceError` waiting to fire the first time a bound sheet is opened.
+The original decision assumed no code existed yet for scripts 29–31 and
+called it "a pure documentation fix." **That assumption was wrong** — real,
+substantial, already-implemented files exist: `29_StudentContextAggregator.js`
+(Module 4, "PRODUCTION READY") and `30_SCRSuggestionEngine.js` +
+`30b_SCRRetryRemediation.js` (Module 5). `00_SharedConfig_M2_ADDENDUM_v2.js`'s
+claim that Scripts 29/30/31 should be Module 2's `importPacingGuide()`,
+`importCompetencyRubrics()`, and `ArtifactCompetencyBridge` was itself
+unbuilt (confirmed: those three functions don't exist anywhere in this
+repo, only referenced by name in that addendum's setup checklist) — it
+collided with real code and lost. **Corrected: Module 2's import/bridge
+utilities move to 31/32/33** (not 29–31); 29, 30, and 30b keep their real,
+already-implemented numbers. `docs/PLATFORM_DOCUMENTATION.html`'s Module 2
+script-map table (previously stopping at 28) now lists 31–33 explicitly,
+each flagged not-yet-built.
 
-## ⚠️ A third numbering scheme for Scripts 29+ — and disagreement over whether they should exist at all
+### 5. Platform-level docs — `DEPLOYMENT_AND_UX_GUIDE.html` split, not kept whole
 
-Previously flagged: Module 3/4 docs assign `29 = StudentContextAggregator`,
-`30 = SCRSuggestionEngine`; `00_SharedConfig_M2_ADDENDUM_v2.js` assigns
-`29 = importPacingGuide()`, `30 = importCompetencyRubrics()`,
-`31 = ArtifactCompetencyBridge`. This batch adds a **third** position:
-`docs/PLATFORM_DOCUMENTATION.html` gives Module 2 a complete, clean script
-map — **22 LessonContextHandler · 23 StudentProfileManager · 24
-WarmUpBridge · 25 WarmUpWriter · 26 CompetencyAlignmentLog · 27
-LessonFrameGenerator · 28 Module2Setup** — that stops at 28 and explicitly
-states Module 3 ("Student Profile") needs **no new numbered scripts at
-all**, just an extension of Script 23. Three sources, three different
-answers for what (if anything) 29 and 30 are. Not resolved here — flagged
-for whoever maintains the source.
+Its four reference sections (Admin/Teacher/Student UX walkthroughs,
+Document Anatomy, Folder Structure, Full Pipeline) were confirmed unique —
+absent from all four previously-endorsed docs — and consistent with the
+rest of the repo. Extracted into `docs/USER_EXPERIENCE_REFERENCE.html`,
+now a fifth endorsed document (see `docs/PLATFORM_DEPLOYMENT_GUIDE_OUTDATED.md`'s
+updated list). The remainder of the original file — its Steps 1–9
+deployment walkthrough — is archived at
+`docs/archived/DEPLOYMENT_AND_UX_GUIDE_SUPERSEDED.html` with a banner
+explaining why: it self-contradicted on which script is the live setup
+wizard (Script 16 vs. the already-archived Script 14), branded the system
+"Decoupled AI Wrapper Engine v3.0" (a name used nowhere else in this
+repo), and repeated a stale "14 Script files" stat.
 
-**Related, and possibly the explanation:** `docs/PLATFORM_DOCUMENTATION.html`
-describes only **three** modules — 1 (Evaluation Engine, production ready),
-2 (Lesson Intelligence, specification), 3 (Student Profile, designed) — and
-never mentions a "Module 4" at all. Its "Module 3" (Student Profile, no new
-scripts) is not the same thing as this repo's `CAS_Module3_Documentation`
-("SCR Suggestion & Remediation Engine," scripts 08/16-addendum/19-addendum/
-30/30b — a much larger, unrelated-in-content module). This looks like two
-divergent documentation lineages that reused the same module numbers for
-different features, rather than one evolving roadmap — treat "Module 3" and
-"Module 4" as ambiguous terms in this codebase until reconciled with
-whoever's maintaining it.
+### 6. `CAS_Module3_Documentation` v1.0 vs. `_alt` — merged, not picked
 
-## ⚠️ Documentation lineage: some docs disagree about which docs are current
-
-`docs/PLATFORM_DEPLOYMENT_GUIDE_OUTDATED.md` (originally just
-`DEPLOYMENT_GUIDE.md`, renamed here to avoid confusion with the CAS module
-docs) **explicitly says not to follow it** and names exactly four documents
-as current: `ADMIN_DEPLOYMENT_WALKTHROUGH.html`, `SYSTEM_ARCHITECTURE.html`,
-`STUDIO_FLOW_REFERENCE.html`, `REGISTRY_SHEET_SETUP.md`. Notably absent from
-that endorsed list: `docs/DEPLOYMENT_AND_UX_GUIDE.html` — a full, seemingly
-current-looking "v3.0" guide that was uploaded in the same batch. It also
-carries a stray "14 Script files" stat card when every other doc in this
-batch counts 21 — a second signal that it's a leftover from an earlier,
-un-reconciled doc lineage rather than the current source of truth.
-
-## ⚠️ Documentation version drift — two different files both called "v1.0"
-
-`docs/CAS_Module3_Documentation_v1.0.docx` and
-`docs/CAS_Module3_Documentation_v1.0_alt.docx` are **not the same
-document** despite an identical version label in both the filename and the
-title page — they were uploaded in different batches and differ in real
-content:
-
-- `_alt` documents a **v3/v4** of `16_UnifiedManualSetup_M3_ADDENDUM_v2.js`
-  with a fourth repair note (a "Rubric Upload Form" block with two
-  truncated field titles) that **does not appear** in the actual
-  `16_UnifiedManualSetup_M3_ADDENDUM_v2.js` file in `scripts/` — meaning a
-  newer version of that addendum exists somewhere and hasn't been uploaded.
-- `_alt` also references a **`LessonPrimarySecondary_Seed.csv`** (a seed
-  file for the 7 parallel lesson units, derived from VDOE SOL correlation
-  documents) that has never been uploaded.
-
-Both copies are kept — neither was discarded — but treat `_alt` as the
-more current one for Module 3 questions.
+Diffing the actual document text (not just the already-known version/seed
+notes) turned up real content in both directions. `_alt` had a Rubric
+Upload Form repair (fixing "a pre-existing defect that would throw a
+syntax error on the first teacher setup run") and a seed-CSV-assisted
+`LessonPrimarySecondary` workflow that `v1.0` lacked. `v1.0` had a "TeacherMatrix
+needs a `lesson_unit_id` column" gap entry — independently, directly
+confirmed elsewhere in this repo (Known Gaps below) as still true — that
+`_alt` silently dropped. Resolution: `docs/CAS_Module5_Documentation_v1.1.docx`
+merges both, using `_alt` as the base (its guidance is strictly newer)
+with `v1.0`'s dropped gap entry restored. Both source `.docx` files stay
+archived, unchanged. The v3/v4 addendum file and the
+`LessonPrimarySecondary_Seed.csv` seed file referenced by the merged doc
+remain open known gaps — still not uploaded anywhere.
 
 ---
 
@@ -126,21 +185,20 @@ more current one for Module 3 questions.
 
 | Path | Contents |
 |---|---|
-| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, teacher/student/admin guides) + Module 2–4 documentation + IT/Admin security guide |
+| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide. `docs/archived/` holds superseded docs the source itself marks superseded. |
 | `scripts/` | Numbered Apps Script files, base + addenda. `scripts/archived/` holds files the source itself marks superseded. |
 | `data/` | Reference data imported into the Central Ledger at setup time |
 | `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks |
 | `forms/` | Setup spec for the Warm-Up Response Google Form |
 
-## What Module 1 (the base system) actually is — now mostly in hand
+## What Module 1 (the base system) actually is
 
-Previously entirely missing; now ~20 of its files are present. The base
-system is **6 separate Apps Script projects** working together:
+The base system is **6 separate Apps Script projects** working together:
 
 | Project | Bound to | Scripts |
 |---|---|---|
 | Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `20` (checkpoint) |
-| Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09`, `17` (doc-only setup notes) |
+| Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
 | Teacher Dashboard | standalone web app | `07` |
@@ -164,22 +222,24 @@ per-teacher-lane design, not the single global lane used elsewhere in this
 codebase — and auto-clears rows stuck `IN_PROCESS` for &gt;12 minutes.
 Studio's Flow 2 reads the doc, evaluates it against the teacher's
 milestones (set up via Script 05 → Flow 1 → Script 08's confirmation step),
-and writes the full formatted report directly into the doc (see the
-architecture-fork note above), then flips the staging row to `COMPLETE`.
-Script 03's `backPropagateCompletions` (2-min trigger) closes out the
-queue/ledger rows and appends the "what to do next" block. When the student
-turns in via the Turn-In Form, Script 04 runs a 3-point ledger match plus a
-forensic Drive-revision check before marking the row `COMPLIANT`.
+and writes the full formatted report directly into the doc (Script 09
+M1Base — see resolution 1 above), then flips the staging row to
+`COMPLETE`. Script 03's `backPropagateCompletions` (2-min trigger) closes
+out the queue/ledger rows and appends the "what to do next" block. When
+the student turns in via the Turn-In Form, Script 04 runs a 3-point ledger
+match plus a forensic Drive-revision check before marking the row
+`COMPLIANT`.
 
 ## Module status
 
 | Module | Purpose | Status |
 |---|---|---|
-| **M1** — base intake/grading | See above | **Now ~20 files in hand.** Two confirmed bugs (Turn-In Form field mismatch, `16`'s `onOpen()` ReferenceError) block a clean deploy. `CompetencyRegistry.csv` (the raw import source — distinct from the `CompetencyRegistry` *Sheet tab* it produces, which `PLATFORM_DOCUMENTATION.html` confirms has columns `competency_id, competency_text, subject, grade_band, strand`) is still not uploaded. |
-| **M2 Lightweight** — Lesson Intelligence | Teacher logs lesson context → `LessonContext` / `AlignmentLog` / `CompetencyRegistry` / `ReportRegistry`; generates term-end alignment reports | **Production ready.** Scripts 22 (`LessonContextHandler`), 22b, 26 (`CompetencyAlignmentLog`) still not uploaded as files, though their role is now clearly documented. |
-| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them for word count/grammar/engagement (Studio Flow 4), tracks a per-student "shadow matrix" of archetype confidence | `scripts/25_WarmUpWriter.js` in hand. Scripts 23 (`StudentProfileManager`), 24 (`WarmUpBridge`), 27 (`LessonFrameGenerator`), 28 (`Module2Setup`) named and scoped by `PLATFORM_DOCUMENTATION.html` but not yet uploaded as files. |
-| **M3** — ambiguous, see numbering note above | Either "SCR Suggestion & Remediation" (per `CAS_Module3_Documentation`) or "Student Profile, no new scripts" (per `PLATFORM_DOCUMENTATION.html`) — **these do not appear to be the same feature** despite sharing a module number | Mixed confidence regardless of which "Module 3" is meant — see gaps below |
-| **M4** — Student Context Aggregator | Weekly per-student living Google Doc; not mentioned anywhere in `PLATFORM_DOCUMENTATION.html`'s 3-module roadmap | **Production ready** per its own docs (v1.1), but its place in the overall module numbering is unclear — see numbering note above |
+| **M1** — base intake/grading | See above | ~20 files in hand. Both confirmed bugs (Turn-In Form field mismatch, `16`'s `onOpen()` `ReferenceError`) fixed — see resolution 2 above. `CompetencyRegistry.csv` (the raw import source) is still not uploaded. |
+| **M2 Lightweight** — Lesson Intelligence | Teacher logs lesson context → `LessonContext` / `AlignmentLog` / `CompetencyRegistry` / `ReportRegistry`; generates term-end alignment reports | Production ready. Scripts 22, 22b, 26 still not uploaded as files, though their role is documented. |
+| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `25_WarmUpWriter.js` in hand. Scripts 23, 24, 27, 28 named and scoped but not yet uploaded. |
+| **M3** — Student Profile | Extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` — unaffected by this reconciliation pass |
+| **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct, see resolution 3 above |
+| **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Cannot go fully live until Flow 2 is built in Studio. |
 
 `scripts/11_StudentFriendlyRejections_ARCHIVED.js` (merged into Script 04;
 kept in `scripts/archived/`) is itself informative: it emailed rejection
@@ -190,15 +250,38 @@ student email/only a GoogleID.
 
 ## Known gaps (carried forward so a future session doesn't re-derive them)
 
-1. **The Script 09 architecture fork** (see top of file) — resolve which design is live before writing more code against either.
-2. **Flow 2 has never been built in Studio** (confirmed again — both `09` designs and `03_QueueBridge.js` assume it exists), nor have Flows 3 (warm-up generation) or 4 (warm-up grading/grammar).
-3. **`TeacherMatrix` is confirmed (not just inferred) to be missing a `lesson_unit_id` column** — directly verified against Script 16's actual `createAdminAssets_()` column list (15 columns, no such field) and Module 2's `LessonContext` schema (8 columns, also no such field, and no `ConfigID` link either). Blocks M3's PRIMARY/SECONDARY evidence split regardless of which "Module 3" is meant.
-4. **`CompetencyRegistry.csv`** (the 221-row import source) is still not uploaded — only the Sheet-tab schema it produces is documented, and the already-present `data/CompetencyRubrics.json` (skill questions/rubric detail) is a different, complementary artifact.
-5. **`LessonPrimarySecondary_Seed.csv`** (VDOE-SOL-derived seed data) is referenced in the `_alt` Module 3 doc but not uploaded.
-6. **A v3/v4 of `16_UnifiedManualSetup_M3_ADDENDUM_v2.js`** exists (referenced by `_alt`'s "Repair Note 4," a Rubric Upload Form fix) but hasn't been uploaded.
-7. Retry thresholds in `30b_SCRRetryRemediation.js` (5 total MET evidence rows, 2× secondary-to-primary ratio) remain provisional, unvalidated defaults.
-8. Scripts `22`, `22b`, `23`, `24`, `26`, `27`, `28`, `31`, and `29_StudentContextAggregator_M4b_ADDENDUM.js` are all named and scoped by documentation now in this repo, but none have been uploaded as files yet.
-9. Two archived-file naming conventions coexist and disagree with each other: `11_StudentFriendlyRejections_ARCHIVED.js` (suffix) vs. `14_ARCHIVED_TeacherManualSetup.js` (prefix). `ADMIN_DEPLOYMENT_WALKTHROUGH.html` documents the convention as prefix-only ("files prefixed `ARCHIVED_`… ignore them"), which technically doesn't cover file 11's suffix form — a minor inconsistency, noted so an automated archival check doesn't miss file 11.
+1. **Flow 2 has never been built in Studio** — both `09_StudentRevisionGuidance_M1Base.js`
+   and `03_QueueBridge.js` assume it exists, and Module 5 cannot go fully
+   live without it. Flows 3 (warm-up generation) and 4 (warm-up
+   grading/grammar) are also unbuilt.
+2. **`TeacherMatrix` is confirmed missing a `lesson_unit_id` column** —
+   directly verified against Script 16's actual `createAdminAssets_()`
+   column list (15 columns, no such field) and Module 2's `LessonContext`
+   schema (8 columns, also no such field). Blocks M5's PRIMARY/SECONDARY
+   evidence split. Restored as an explicit gap entry in the merged
+   `CAS_Module5_Documentation_v1.1.docx` (see resolution 6 above).
+3. **`CompetencyRegistry.csv`** (the 221-row import source) is still not
+   uploaded — only the Sheet-tab schema it produces is documented, and the
+   already-present `data/CompetencyRubrics.json` (skill questions/rubric
+   detail) is a different, complementary artifact.
+4. **`LessonPrimarySecondary_Seed.csv`** (VDOE-SOL-derived seed data) is
+   referenced by `CAS_Module5_Documentation_v1.1.docx`'s deployment
+   checklist Step 6 but not uploaded — treat that step as blocked until it is.
+5. **A v3/v4 of `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`** exists
+   (referenced by the merged Module 5 doc's Repair Note 4, a Rubric Upload
+   Form fix) but hasn't been uploaded.
+6. Retry thresholds in `30b_SCRRetryRemediation.js` (5 total MET evidence
+   rows, 2× secondary-to-primary ratio) remain provisional, unvalidated
+   defaults.
+7. Scripts `22`, `22b`, `23`, `24`, `26`, `27`, `28` are named and scoped
+   by documentation now in this repo, but none have been uploaded as files
+   yet. Scripts `31`, `32`, `33` (Module 2's import/bridge utilities,
+   renumbered per resolution 4 above) are not implemented anywhere yet either.
+8. Two archived-file naming conventions coexist and disagree with each
+   other: `11_StudentFriendlyRejections_ARCHIVED.js` (suffix) vs.
+   `14_ARCHIVED_TeacherManualSetup.js` (prefix). `ADMIN_DEPLOYMENT_WALKTHROUGH.html`
+   documents the convention as prefix-only — a minor inconsistency, noted
+   so an automated archival check doesn't miss file 11.
 
 ## Naming note
 
@@ -206,11 +289,10 @@ Files prefixed `_ADDENDUM` (and `16_..._v2.js`, `15b_...Revised.js`,
 `00_..._v2.js`) are patches — instructions for editing a base script, not
 standalone deployable files. `scripts/09_StudentRevisionGuidance_M1Base.js`
 and `scripts/07_TeacherDashboard.js`/`08_TeacherConfirmationStep.js`'s
-pre-M2/M3 counterparts (uploaded in this same batch, byte-diffed against
-what's already here) were **not** added under their original filenames
+pre-M2/M3 counterparts were **not** added under their original filenames
 because this repo's existing `07`/`08` are strictly newer, additive
-supersets of them (M2/M3 features layered on, nothing removed or changed
-underneath) — keeping only the newer copies avoids two files silently
-claiming the same canonical name with one of them being stale. `09` is the
-one exception, kept under both names, because the difference there is
-architectural, not incremental — see the fork note at the top of this file.
+supersets of them — keeping only the newer copies avoids two files
+silently claiming the same canonical name with one of them being stale.
+`09` was the one exception, kept under both names (one archived), because
+the difference there was architectural, not incremental — see resolution
+1 above.

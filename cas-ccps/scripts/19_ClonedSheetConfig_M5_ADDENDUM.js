@@ -1,6 +1,8 @@
 // =============================================================================
-// FILE: 19_ClonedSheetConfig_M3_ADDENDUM.js
-// PURPOSE: Module 3 addition to 19_ClonedSheetConfig.js
+// FILE: 19_ClonedSheetConfig_M5_ADDENDUM.js (renamed from _M3_ADDENDUM —
+//       reconciliation decision 6: this addendum belongs to the SCR
+//       Suggestion & Remediation Engine, renumbered Module 3 -> Module 5)
+// PURPOSE: Module 5 addition to 19_ClonedSheetConfig.js
 //
 // THE GAP THIS CLOSES:
 // getSheetConfig_() is a hardcoded, explicit return object -- not a
@@ -8,7 +10,7 @@
 // (Script 16 writing them, Script 08 reading them) does nothing on its
 // own; this function must be told about each new key by name, in this
 // exact spot, or the corresponding cfg.* field is silently undefined.
-// This was flagged as an open assumption in the Module 3 work on Scripts
+// This was flagged as an open assumption in the Module 5 work on Scripts
 // 08 and 16, then verified against the real source: there is no
 // transform to inherit, only this explicit list to extend.
 //
@@ -42,7 +44,7 @@
     confirmEntryM4: map["CONFIRM_ENTRY_MILESTONE_4"] || "",
     confirmEntryDod: map["CONFIRM_ENTRY_DOD"] || "",
 
-    // -- M3 -- four new competency dropdown entry IDs. Same hardcoded
+    // -- M5 -- four new competency dropdown entry IDs. Same hardcoded
     // shape as the eight lines above -- there is no shortcut here by
     // design; this function does not generalize over key names, so
     // every new CONFIG key needs its own explicit line, permanently.
@@ -60,7 +62,7 @@
       teacherMatrix: "TeacherMatrix",
       draftUnits: "DraftUnits",
       matrixRegistry: "MatrixRegistry"
-      // -- M3 -- competencyRegistry is intentionally NOT added here.
+      // -- M5 -- competencyRegistry is intentionally NOT added here.
       // This tabs object is scoped to what Scripts 05 and 08 need inside
       // a CLONED per-teacher sheet project. CompetencyRegistry lives on
       // the shared Central Ledger, not on a cloned sheet, and is read
@@ -87,7 +89,7 @@
 //                          function exists specifically to work around
 //                          that by reading a _CONFIG tab instead)
 //
-// Any FUTURE Module 3 work that adds a new field to a CLONED sheet's
+// Any FUTURE Module 5 work that adds a new field to a CLONED sheet's
 // config (anything touching the Rubric Response Sheet or Teacher Matrix
 // Sheet specifically) must extend THIS function explicitly -- there is no
 // way to make it generic without rewriting it, and rewriting a working,
