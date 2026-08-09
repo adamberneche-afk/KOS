@@ -1,0 +1,122 @@
+{
+  "_comment": "Which files share a single Apps Script global scope. GAS concatenates every file bound to one project into one namespace, so two files in the same entry here that both declare a top-level `function foo()` or `const foo` will crash the whole project at parse time. Membership here is taken from each file's own header comment (BOUND TO: / INCLUDE IN: / INCLUDED IN:), not assumed from filename or README tables — those two disagreed at least once (see cas-ccps/README.md's Module 1 table vs. 20_SetupCheckpoint.js's own header) and the file's own header wins. A file can legitimately appear in more than one project (00_SharedConfig.js and 19_ClonedSheetConfig.js are each pasted into multiple projects by design).",
+
+  "kos-personal": {
+    "_bound_to": "Single standalone Apps Script project (web app + all triggers)",
+    "manifest": "kos-personal/appsscript.json",
+    "files": [
+      "kos-personal/1_Config_And_Deploy.gs",
+      "kos-personal/2_Ingestion_Sensors.gs",
+      "kos-personal/3_Queue_Processor.gs",
+      "kos-personal/4_Vector_Router.gs",
+      "kos-personal/5_Error_And_Utilities.gs",
+      "kos-personal/6_Governance.gs",
+      "kos-personal/7_WebApp.gs",
+      "kos-personal/9_UI_Diagnostics.gs",
+      "kos-personal/10_Turnstile.gs"
+    ],
+    "html": [
+      "kos-personal/8_WebApp_UI.html"
+    ]
+  },
+
+  "cas-ccps:central-ledger": {
+    "_bound_to": "Central Ledger spreadsheet",
+    "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/00_SharedConfig_M2_ADDENDUM_v2.js",
+      "cas-ccps/scripts/00_SharedConfig_M4_ADDENDUM.js",
+      "cas-ccps/scripts/02_Form1_IntakeAndWorkspaceGenerator.js",
+      "cas-ccps/scripts/03_QueueBridge.js",
+      "cas-ccps/scripts/04_Form2_TurnInGate.js",
+      "cas-ccps/scripts/06_StagingPipeline_Turnstile.js",
+      "cas-ccps/scripts/10_AdminRecoveryPanel.js",
+      "cas-ccps/scripts/18_FormSubmitDispatcher.js",
+      "cas-ccps/scripts/22_LessonContextHandler.js",
+      "cas-ccps/scripts/22b_CompetencyRegistryImporter.js",
+      "cas-ccps/scripts/23_StudentProfileManager.js",
+      "cas-ccps/scripts/24_WarmUpBridge.js",
+      "cas-ccps/scripts/25_WarmUpWriter.js",
+      "cas-ccps/scripts/26_CompetencyAlignmentLog.js",
+      "cas-ccps/scripts/29_StudentContextAggregator.js",
+      "cas-ccps/scripts/30_SCRSuggestionEngine.js",
+      "cas-ccps/scripts/30b_SCRRetryRemediation.js",
+      "cas-ccps/scripts/31_PacingGuideManager.js",
+      "cas-ccps/scripts/32_CompetencyRubricImporter.js",
+      "cas-ccps/scripts/33_ArtifactCompetencyBridge.js"
+    ]
+  },
+
+  "cas-ccps:unified-manual": {
+    "_bound_to": "Assignment System Manual Google Doc (container-bound) — the setup wizard's own project",
+    "files": [
+      "cas-ccps/scripts/16_UnifiedManualSetup.js",
+      "cas-ccps/scripts/16_UnifiedManualSetup_M5_ADDENDUM_v2.js",
+      "cas-ccps/scripts/16_UnifiedManualSetup_M6_ADDENDUM.js",
+      "cas-ccps/scripts/20_SetupCheckpoint.js",
+      "cas-ccps/scripts/21_AutoInstaller.js",
+      "cas-ccps/scripts/28_Module2Setup.js"
+    ]
+  },
+
+  "cas-ccps:master-student-template": {
+    "_bound_to": "Master Student Template Google Doc (container-bound)",
+    "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/01_StudentDoc_ContainerScript.js",
+      "cas-ccps/scripts/09_StudentRevisionGuidance_M1Base.js",
+      "cas-ccps/scripts/17_MasterStudentTemplate.js"
+    ]
+  },
+
+  "cas-ccps:rubric-response-sheet": {
+    "_bound_to": "Rubric Response Sheet (cloned per teacher)",
+    "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/05_TeacherIntakePipeline.js",
+      "cas-ccps/scripts/19_ClonedSheetConfig.js",
+      "cas-ccps/scripts/19_ClonedSheetConfig_M5_ADDENDUM.js",
+      "cas-ccps/scripts/19_ClonedSheetConfig_M6_ADDENDUM.js"
+    ]
+  },
+
+  "cas-ccps:teacher-matrix-sheet": {
+    "_bound_to": "Teacher Matrix Sheet (cloned per teacher)",
+    "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/08_TeacherConfirmationStep.js",
+      "cas-ccps/scripts/19_ClonedSheetConfig.js",
+      "cas-ccps/scripts/19_ClonedSheetConfig_M5_ADDENDUM.js",
+      "cas-ccps/scripts/19_ClonedSheetConfig_M6_ADDENDUM.js"
+    ]
+  },
+
+  "cas-ccps:teacher-dashboard": {
+    "_bound_to": "Standalone web app",
+    "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/07_TeacherDashboard.js",
+      "cas-ccps/scripts/07_TeacherDashboard_M4_ADDENDUM.js"
+    ]
+  },
+
+  "cas-ccps:student-dashboard": {
+    "_bound_to": "Standalone web app",
+    "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/13_StudentDashboard.js"
+    ]
+  },
+
+  "_excluded_not_deployed_scripts": [
+    "cas-ccps/scripts/15_StudioFlowPrompts.js",
+    "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js"
+  ],
+
+  "_excluded_standalone_projects": {
+    "leader-hub:email-bridge": {
+      "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything — no collision surface to check.",
+      "files": ["leader-hub/EmailBridge.gs"]
+    }
+  }
+}
