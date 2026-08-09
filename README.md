@@ -99,6 +99,22 @@ OAuth scopes used but not declared. Run `node tools/gas-lint/check.js`
 before trusting any change to `kos-personal/` or `cas-ccps/scripts/` is
 safe to deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
 
+## [`tools/clasp-sync/`](./tools/clasp-sync/) — bridges cas-ccps to clasp
+
+`kos-personal/` and `leader-hub/` are each already laid out the way
+[clasp](https://github.com/google/clasp) wants — a flat folder, one
+script ID. `cas-ccps/scripts/` isn't: it's actually 7 separate Apps
+Script projects sharing overlapping files. This tool generates a
+throwaway per-project push folder for each of the 7 from
+`tools/gas-lint/project-map.json`, so `cas-ccps/scripts/` itself never
+gets reorganized or duplicated in git. All 9 real projects across the
+repo now have a committed `appsscript.json` for the first time. Getting
+from here to an actual live push still needs `clasp login` against a
+real Google account — see
+[`meta/CLASP_AND_APPS_SCRIPT.md`](./meta/CLASP_AND_APPS_SCRIPT.md) for
+the full workflow and [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md)
+for the mechanics.
+
 ## Still pending
 
 Module 1 (`cas-ccps`) still needs Flow 2 built in Studio before it can run
@@ -108,4 +124,6 @@ duplicates and `sql/migrate.js` in kos-personal's optional inference
 service) — see each system's README for the specific list. Reconciliation
 work (resolving contradictions between what's here) is done twice over now
 (original pass + Round 3); filling remaining gaps (uploading what's still
-missing) is the open work.
+missing) is the open work. Clasp adoption is scaffolded (manifests,
+ignore-lists, the cas-ccps multi-project sync tool) but not yet connected
+to a live Google account — see `tools/clasp-sync/`.

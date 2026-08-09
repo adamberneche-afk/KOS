@@ -329,23 +329,28 @@ mv`, no content change).
 
 ## What Module 1 (the base system) actually is
 
-The base system is **6 separate Apps Script projects** working together:
+The base system is **7 separate Apps Script projects** working together
+(corrected from an earlier "6" here that put Script 20 on the wrong
+project — see `tools/gas-lint/project-map.json`'s header comment, which
+flagged this exact mismatch: `20_SetupCheckpoint.js`'s own `INCLUDED IN:`
+header says the Unified Manual project, not Central Ledger, and the
+file's own header wins):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `20` (checkpoint) |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher) |
+| Unified Manual | Assignment System Manual Doc | `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
 | Teacher Dashboard | standalone web app | `07` |
 | Student Dashboard | standalone web app | `13` |
 
-Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts), `16`
-(the unified admin+teacher setup wizard — `detectRole_()` picks admin vs.
-teacher automatically), `21` (an optional Apps Script API auto-installer
-that can bind all six projects and deploy both web apps in ~3 minutes
-instead of ~20 minutes of manual binding per project — see
-`REGISTRY_SHEET_SETUP.md`).
+Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
+
+Each of these 7 projects now has a real, committed `appsscript.json` and
+is a clasp-adoption target — see [Version control (clasp)](#version-control-clasp)
+below.
 
 **Pipeline in one paragraph:** A student's doc is created from the Master
 Student Template (Script 02) with four zones and invisible system-ID
@@ -365,6 +370,27 @@ out the queue/ledger rows and appends the "what to do next" block. When
 the student turns in via the Turn-In Form, Script 04 runs a 3-point ledger
 match plus a forensic Drive-revision check before marking the row
 `COMPLIANT`.
+
+## Version control (clasp)
+
+Scaffolded, not yet connected to a live account — see
+[`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
+the full rationale. The short version: `cas-ccps/scripts/` doesn't fit
+clasp's one-folder-one-project model, since it's the 7 projects above
+sharing overlapping files (`00_SharedConfig.js` alone is pasted into 5 of
+them). [`tools/clasp-sync/`](../tools/clasp-sync/README.md) reconciles
+that — a script reads `tools/gas-lint/project-map.json` and generates a
+throwaway per-project push folder for each of the 7 under
+`cas-ccps/.clasp-build/` (gitignored, regenerated on demand), so
+`cas-ccps/scripts/` itself never has to be reorganized or duplicated in
+git. `cas-ccps/clasp/manifests/` holds each project's real
+`appsscript.json` (new — none of these 7 had a committed manifest
+before), and `cas-ccps/clasp/templates/` holds `.clasp.json` placeholders
+to fill in with a real `scriptId` once you've run `clasp login` +
+`clasp clone`/`create` against the live projects. For
+`rubric-response-sheet`/`teacher-matrix-sheet` (cloned per teacher),
+target the *master template* — there's no single live script ID once
+teachers have their own copies.
 
 ## Module status
 
