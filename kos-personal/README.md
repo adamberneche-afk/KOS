@@ -429,6 +429,8 @@ Council cog stimulus       COG_STIMULUS  (separate payload type)
 | `INCUBATOR_PROMOTION_THRESHOLD` | 3.0 | Cumulative score needed to promote a theme out of the Incubator |
 | `INCUBATOR_HALF_LIFE_DAYS` | 14 | Days for an untouched Incubator theme's score to halve |
 | `INCUBATOR_DECAY_FLOOR` | 0.10 | Cumulative score below which a theme is marked DECAYED |
+| `REGISTRAR_MICROBATCH_SIZE` | 3 | Registrar/Cog Relay files released per 15-min gate pass |
+| `REGISTRAR_RETRY_LIMIT` | 3 | Consecutive bounce-backs before CRITICAL_FAILURE |
 
 ---
 
@@ -446,6 +448,9 @@ Council cog stimulus       COG_STIMULUS  (separate payload type)
 | `autoCouncilCheck` | Every 2 hours | Fires council when session threshold met |
 | `sensor3_externalTelemetry` | onChange | Watches BRAIN_TRUST_INDEX for external data |
 | `onGovernanceEdit` | onEdit | Watches Blackboard Deploy_Trigger checkbox |
+| `runRegistrarIntake` | Daily 01:00 | Scans 09_Unclassified_Curriculum_Drafts for new files |
+| `runRegistrarMicrobatch` | Every 15 min | Registrar concurrency gate + stale-row reset |
+| `runRegistrarProcessor` | Every 10 min | Registrar validation, translation, and routing |
 
 ---
 
@@ -520,6 +525,86 @@ dropped). Safe to re-run — it checks the current schema first and skips
 whatever's already migrated. See its header comment in
 `4_Vector_Router.gs` for exactly what it does and doesn't recover.
 
+## Registrar / Cog Relay — curriculum-drafts auditing pipeline
+
+A second, independent pipeline (`11_Registrar_CogRelay.gs`), built from 4
+uploaded design docs, unrelated to the session-log pipeline above —
+different intake ([UNC], not a Studio paste-in), a different ledger
+(`REGISTRAR_LEDGER`, not `STAGING_PIPELINE`), and a different purpose:
+auditing curriculum drafts for structural completeness and pedagogical
+dissonance, not distilling session logs.
+
+**What this plugs into that already existed.** The 7 "Calibration Silo"
+folders this pipeline deposits into (`04.1_ARCHITECT_SILO` …
+`04.7_RTP_SILO`) were already live — built by `_buildFolderTree()` and
+already wired into `6_Governance.gs`'s CE-tag router. What's new is the
+pipeline that actually produces per-persona JSON and deposits it there
+automatically, rather than relying on a file already being CE-tagged.
+
+**The pipeline, in one line per stage:** `runRegistrarIntake` (nightly,
+scans `09_Unclassified_Curriculum_Drafts`) → `runRegistrarMicrobatch`
+(every 15 min, turnstile-style concurrency gate — 2-3 files at a time, per
+the source docs) → a Studio flow (Stage 1, "Auditor") extracts a Master
+Schema → `runRegistrarProcessor` structurally validates it (JSON.parse +
+key presence — the "Quant Gate") → a second Studio flow (Stage 2,
+"Curator") verifies Stage 1's output against the source text and computes
+a `dissonance_delta_score` against `05_Vector_Repository` → GAS validates
+again, then builds a Markdown briefing, deposits each Cog's data block
+into its Calibration Silo, and routes the file. A malformed or judged-
+invalid output at any point bounces back to an earlier stage (the
+"Bounce-Back Mechanism"); 3 consecutive bounces on the same file escalates
+to `CRITICAL_FAILURE` and fires a Chat alert (Fail Loud Protocol) instead
+of retrying forever.
+
+**The Apollo Kill-Switch.** If Stage 1 sets
+`intervention_triage.human_intervention_required: true`, the pipeline
+halts that file at `AWAITING_CARBON`, moves it to `09.1_HOLD_FOR_REVIEW`,
+and fires an immediate Chat alert — no further automation touches that
+file until a teacher calls `clearInterventionTriage(fileId)` from the
+Apps Script editor.
+
+**Two synthesis decisions made building this, not specified by the source
+docs:**
+1. **Stage naming.** The two source docs disagreed on which cog does
+   which stage — `Master_Operations_Guide.pdf` calls Stage 1 "Formatter"
+   and Stage 2 "Auditor"; `Cog_data_flow.txt` calls them "Auditor" and
+   "Curator" respectively. This repo adopted `Cog_data_flow.txt`'s
+   naming (Stage 1 = Auditor, Stage 2 = Curator) since it matches this
+   repo's own persona definitions elsewhere. See
+   `REGISTRAR_STAGE1_AUDITOR_PROMPT.md`'s header if this needs revisiting
+   — it's a naming-only change, not structural.
+2. **Master Vector Primer.** The Ops Guide names a comparison corpus for
+   dissonance scoring without saying what it is; this repo pointed Stage
+   2 at the existing `05_Vector_Repository` docs rather than creating a
+   new, separate primer doc.
+
+Also undecided by the source docs, defaulted rather than guessed at:
+"target UID folders" for a successfully-routed file are never specified
+beyond "[HLD] for review" as the failure path — every successfully-routed
+file currently lands in `06_CLASSROOM_ASSETS` itself (not a subfolder)
+via `CFG.REGISTRAR_ROUTED_FOLDER`, pending a real per-type routing rule.
+
+**What this doesn't include yet:** the two Studio flows themselves aren't
+built — `REGISTRAR_STAGE1_AUDITOR_PROMPT.md` and
+`REGISTRAR_STAGE2_CURATOR_PROMPT.md` are what to build them against, same
+convention as `VECTOR_CLASSIFY_PROMPT.md`. Not wired into the web app UI
+yet — `getRegistrarStatus()` is the read surface a future Diagnostics tab
+would call.
+
+**Naming note (Aligner vs. Alignment).** The Calibration Silo folder is
+named `04.5_ALIGNER_SILO` / tagged `CE-ALIGN`, but every persona doc in
+this repo (`PERSONA_ALIGNMENT_V5.md`, the `LICENSE`'s Fidelity Clause,
+`CFG.FIDELITY_REQUIRED_PERSONA`) calls this cog ALIGNMENT. Same class of
+issue as the SMP-002 naming collision noted above — cosmetic, not two
+different cogs. `CFG.PERSONAS` used to list `PERSONA_ALIGNER` as if it
+were an 8th, separate persona to copy from Drive on deploy; no such file
+has ever existed, so `deployFullSystem()` silently logged "Not found in
+Drive — skipped" for it on every real run. Removed; see
+`1_Config_And_Deploy.gs`'s `PERSONAS` array for the fix note. The
+`ALIGNER` folder/property names themselves are left alone — renaming live
+Drive folders and PropertiesService keys is a bigger, riskier change than
+fixing this one list.
+
 ## Version control (clasp) — scaffolded, not yet connected
 
 This directory is already laid out exactly the way
@@ -552,6 +637,9 @@ overlapping Apps Script projects, not 1).
 - **Positioning / "why this exists":** See `KOS_WHITE_PAPER.md`
 - **Ideas parked for later, not in progress:** See
   `EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md`
+- **Curriculum-drafts auditing pipeline:** See
+  `11_Registrar_CogRelay.gs` and its two Studio prompt files
+  (`REGISTRAR_STAGE1_AUDITOR_PROMPT.md`, `REGISTRAR_STAGE2_CURATOR_PROMPT.md`)
 
 ---
 
