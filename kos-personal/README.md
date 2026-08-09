@@ -245,6 +245,43 @@ silently wiped the daily-digest admin email until someone noticed. Kept
 the more complete version in `5_Error_And_Utilities.gs`, removed the
 other.
 
+### The dedup checks never actually deduplicated
+
+`_generateLogUUID(text)` used to return `'LOG-{currentTimestamp}-{8-char
+MD5 hash}'`. Every duplicate-detection check that uses this ID
+(`sensor1_scanInboundSessions`, `submitSessionLog`) compares it against
+previously-stored IDs via `startsWith()` to answer "has this content
+already been queued?" — but two calls on identical text produced
+different timestamps, so the strings never shared a prefix and the check
+could never fire. The same session log submitted twice (double-click,
+retry after a timeout) was silently chunked, queued, and processed twice,
+duplicating `CURRENT_STATE` entries, pivots, action items, and vector
+scores. Fixed by dropping the timestamp entirely — the ID is now purely
+content-derived (`'LOG-{hash}'`), so identical content always produces
+the identical ID. Verified no other caller (`9_UI_Diagnostics.gs`'s
+council-session ID, `sensor3_externalTelemetry`'s per-row telemetry ID)
+depended on the embedded timestamp for its own uniqueness — both already
+supply time-varying input text of their own.
+
+While in there, also fixed `submitExternalData()`'s separate, unrelated
+dead-code duplicate-detection path: it relied on `_queuePayload`'s
+`fileId` check, which compares a brand-new Drive file ID (always unique,
+freshly created every call) against existing `FILE_ID` values, so its
+"Duplicate: this content has already been queued" branch could never
+fire. Added a real `PAYLOAD_UID`-based check (same pattern as the
+session-log paths, now that the UID is deterministic), checked before
+creating the Doc rather than after.
+
+### Dashboard "Pending" tile was double-counting active rows
+
+`renderQueue()` in `8_WebApp_UI.html` set the "Pending" tile (subtitle
+"waiting for AI engine") to `pending + active`, while the "Processing"
+tile right next to it (subtitle "AI running now") showed `active` alone —
+e.g. 2 `PENDING_FLOW` + 3 `STUDIO_ACTIVE` rows displayed as "Pending: 5,
+Processing: 3," so summing the two tiles double-counted the 3 rows
+already processing. Wrong numbers on the one surface an operator actually
+looks at day to day. Fixed to show each tile's own bucket only.
+
 ---
 
 ## Architecture in Two Paragraphs

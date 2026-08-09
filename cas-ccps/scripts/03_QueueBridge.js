@@ -37,85 +37,110 @@ const STG_STATUS          = 5;  // Shifted from 4 → 5 with TeacherEmail insert
 // bridgeQueue — moves PENDING ReviewQueue rows to STAGING_PIPELINE
 // Deduplication: checks both already-staged refs AND recent queue rows
 // for the same fileId to prevent duplicate evaluations from rapid clicks
+//
+// LOCKED: this runs on a 1-minute time trigger, same as
+// 06_StagingPipeline_Turnstile.js's runStagingTurnstile — which already
+// takes a lock for exactly this reason, but this function didn't. Apps
+// Script does not serialize overlapping trigger firings on its own; if
+// one run takes longer than 60 seconds (plausible as ReviewQueue/
+// STAGING_PIPELINE grow), a second fires on the same stale
+// pre-write snapshot, sees the same PENDING row as not-yet-staged, and
+// stages it twice — one student submission gets evaluated twice. Fixed
+// by taking the same document lock the Turnstile already uses; a
+// congested run stands down instead of racing.
 // ---------------------------------------------------------------------------
 function bridgeQueue() {
-  const cfg          = getConfig_();
-  const ss           = SpreadsheetApp.openById(cfg.adminSsId);
-  const queueSheet   = ss.getSheetByName(cfg.tabs.reviewQueue);
-  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
-
-  if (!queueSheet || !stagingSheet) {
-    Logger.log("[BRIDGE] Missing required tabs.");
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    Logger.log("[BRIDGE] Parallel run congestion — standing down.");
     return;
   }
 
-  const queueData   = queueSheet.getDataRange().getValues();
-  const stagingData = stagingSheet.getDataRange().getValues();
+  try {
+    const cfg          = getConfig_();
+    const ss           = SpreadsheetApp.openById(cfg.adminSsId);
+    const queueSheet   = ss.getSheetByName(cfg.tabs.reviewQueue);
+    const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
 
-  // Build set of already-staged QueueRowRefs
-  const alreadyStaged = new Set();
-  for (let i = 1; i < stagingData.length; i++) {
-    alreadyStaged.add(stagingData[i][STG_QUEUE_ROW_REF].toString());
-  }
-
-  // Build set of fileIds currently IN_PROCESS or PENDING_INFERENCE in staging
-  // This is the deduplication gate — if a doc is already being evaluated,
-  // don't stage another request for the same doc
-  const inFlight = new Set();
-  for (let i = 1; i < stagingData.length; i++) {
-    const st = String(stagingData[i][STG_STATUS]).trim();
-    // Also treat ERROR_TIMEOUT as in-flight for deduplication purposes
-    if (st === "IN_PROCESS" || st === "PENDING_INFERENCE") {
-      inFlight.add(stagingData[i][STG_STUDENT_FILE_ID].toString().trim());
-    }
-  }
-
-  for (let i = 1; i < queueData.length; i++) {
-    const row    = queueData[i];
-    const status = String(row[RQ_STATUS]).trim();
-    if (status !== "PENDING") continue;
-
-    const queueRowRef   = (i + 1).toString();
-    const studentFileId = String(row[RQ_FILE_ID]).trim();
-    const configId      = String(row[RQ_CONFIG_ID]).trim();
-    const googleId      = String(row[RQ_GOOGLE_ID]).trim();
-
-    if (alreadyStaged.has(queueRowRef)) continue;
-
-    // Deduplication: if this doc is already in the evaluation pipeline,
-    // mark this queue row as DUPLICATE and skip it
-    if (inFlight.has(studentFileId)) {
-      markQueueRow_(queueSheet, i + 1, "DUPLICATE");
-      Logger.log("[BRIDGE] Duplicate skipped — FileID: " + studentFileId);
-      continue;
+    if (!queueSheet || !stagingSheet) {
+      Logger.log("[BRIDGE] Missing required tabs.");
+      return;
     }
 
-    if (!studentFileId || !configId || !googleId) {
-      markQueueRow_(queueSheet, i + 1, "ERROR: Missing required fields");
-      continue;
+    const queueData   = queueSheet.getDataRange().getValues();
+    const stagingData = stagingSheet.getDataRange().getValues();
+
+    // Build set of already-staged QueueRowRefs
+    const alreadyStaged = new Set();
+    for (let i = 1; i < stagingData.length; i++) {
+      alreadyStaged.add(stagingData[i][STG_QUEUE_ROW_REF].toString());
     }
 
-    // Look up teacher email for per-teacher lane routing in Script 06
-    // Read from Ledger using configId as the key
-    const teacherEmail = lookupTeacherEmail_(cfg, configId);
+    // Build set of fileIds currently IN_PROCESS or PENDING_INFERENCE in staging
+    // This is the deduplication gate — if a doc is already being evaluated,
+    // don't stage another request for the same doc
+    const inFlight = new Set();
+    for (let i = 1; i < stagingData.length; i++) {
+      const st = String(stagingData[i][STG_STATUS]).trim();
+      // Also treat ERROR_TIMEOUT as in-flight for deduplication purposes
+      if (st === "IN_PROCESS" || st === "PENDING_INFERENCE") {
+        inFlight.add(stagingData[i][STG_STUDENT_FILE_ID].toString().trim());
+      }
+    }
 
-    stagingSheet.appendRow([
-      new Date(),    // Timestamp
-      queueRowRef,   // QueueRowRef
-      studentFileId, // StudentFileID
-      configId,      // ConfigID
-      teacherEmail,  // TeacherEmail — used by Script 06 per-teacher lane routing
-      "PENDING_INFERENCE" // Status
-    ]);
+    for (let i = 1; i < queueData.length; i++) {
+      const row    = queueData[i];
+      const status = String(row[RQ_STATUS]).trim();
+      if (status !== "PENDING") continue;
 
-    // Add to in-flight set immediately so subsequent rows in this same
-    // batch don't also get staged for the same doc
-    inFlight.add(studentFileId);
+      const queueRowRef   = (i + 1).toString();
+      const studentFileId = String(row[RQ_FILE_ID]).trim();
+      const configId      = String(row[RQ_CONFIG_ID]).trim();
+      const googleId      = String(row[RQ_GOOGLE_ID]).trim();
 
-    markQueueRow_(queueSheet, i + 1, "STAGED");
+      if (alreadyStaged.has(queueRowRef)) continue;
 
-    Logger.log("[BRIDGE] Staged — QueueRow: " + queueRowRef +
-               " | FileID: " + studentFileId);
+      // Deduplication: if this doc is already in the evaluation pipeline,
+      // mark this queue row as DUPLICATE and skip it
+      if (inFlight.has(studentFileId)) {
+        markQueueRow_(queueSheet, i + 1, "DUPLICATE");
+        Logger.log("[BRIDGE] Duplicate skipped — FileID: " + studentFileId);
+        continue;
+      }
+
+      if (!studentFileId || !configId || !googleId) {
+        markQueueRow_(queueSheet, i + 1, "ERROR: Missing required fields");
+        continue;
+      }
+
+      // Look up teacher email for per-teacher lane routing in Script 06
+      // Read from Ledger using configId as the key
+      const teacherEmail = lookupTeacherEmail_(cfg, configId);
+
+      stagingSheet.appendRow([
+        new Date(),    // Timestamp
+        queueRowRef,   // QueueRowRef
+        studentFileId, // StudentFileID
+        configId,      // ConfigID
+        teacherEmail,  // TeacherEmail — used by Script 06 per-teacher lane routing
+        "PENDING_INFERENCE" // Status
+      ]);
+
+      // Add to in-flight set immediately so subsequent rows in this same
+      // batch don't also get staged for the same doc
+      inFlight.add(studentFileId);
+
+      markQueueRow_(queueSheet, i + 1, "STAGED");
+
+      Logger.log("[BRIDGE] Staged — QueueRow: " + queueRowRef +
+                 " | FileID: " + studentFileId);
+    }
+  } catch (err) {
+    Logger.log("[BRIDGE] Critical failure: " + err.message);
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -123,63 +148,86 @@ function bridgeQueue() {
 // backPropagateCompletions — closes out queue/ledger rows and runs
 // post-evaluation doc processing (placeholder removal + next-steps)
 // This is a backup pass — Studio handles the primary feedback formatting.
+//
+// LOCKED: same 2-minute-trigger overlap risk as bridgeQueue() above. This
+// function already re-reads the queue row's LIVE status right before
+// acting (currentQStatus/currentStatus below) rather than trusting the
+// stale stagingData snapshot, which narrows the race window — but two
+// overlapping runs could still both read "STAGED" before either writes
+// "COMPLETE", double-running updateLedgerEvalTimestamp_/
+// processCompletedEvaluation_ for the same row. The lock closes that
+// window fully instead of narrowing it.
 // ---------------------------------------------------------------------------
 function backPropagateCompletions() {
-  const cfg          = getConfig_();
-  const ss           = SpreadsheetApp.openById(cfg.adminSsId);
-  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
-  const queueSheet   = ss.getSheetByName(cfg.tabs.reviewQueue);
-  const ledgerSs     = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const ledgerSheet  = ledgerSs.getSheetByName(cfg.tabs.ledger);
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    Logger.log("[BACKPROP] Parallel run congestion — standing down.");
+    return;
+  }
 
-  if (!stagingSheet || !queueSheet || !ledgerSheet) return;
+  try {
+    const cfg          = getConfig_();
+    const ss           = SpreadsheetApp.openById(cfg.adminSsId);
+    const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
+    const queueSheet   = ss.getSheetByName(cfg.tabs.reviewQueue);
+    const ledgerSs     = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const ledgerSheet  = ledgerSs.getSheetByName(cfg.tabs.ledger);
 
-  const stagingData = stagingSheet.getDataRange().getValues();
+    if (!stagingSheet || !queueSheet || !ledgerSheet) return;
 
-  for (let i = 1; i < stagingData.length; i++) {
-    const stagingStatus = String(stagingData[i][STG_STATUS]).trim();
-    const queueRowRef   = stagingData[i][STG_QUEUE_ROW_REF].toString();
-    const fileId        = stagingData[i][STG_STUDENT_FILE_ID].toString().trim();
-    const configId      = stagingData[i][STG_CONFIG_ID].toString().trim();
-    const teacherEmail  = String(stagingData[i][STG_TEACHER_EMAIL] || "").trim();
+    const stagingData = stagingSheet.getDataRange().getValues();
 
-    // Handle ERROR_TIMEOUT rows — close queue row and notify teacher
-    if (stagingStatus === "ERROR_TIMEOUT") {
-      const rowNum = parseInt(queueRowRef, 10);
-      if (!isNaN(rowNum) && rowNum >= 2) {
-        const currentQStatus = String(
-          queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
-        ).trim();
-        if (currentQStatus === "STAGED") {
-          markQueueRow_(queueSheet, rowNum, "ERROR_TIMEOUT");
-          notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId);
-          Logger.log("[BACKPROP] ERROR_TIMEOUT closed — row " + rowNum +
-                     " | Teacher: " + teacherEmail);
+    for (let i = 1; i < stagingData.length; i++) {
+      const stagingStatus = String(stagingData[i][STG_STATUS]).trim();
+      const queueRowRef   = stagingData[i][STG_QUEUE_ROW_REF].toString();
+      const fileId        = stagingData[i][STG_STUDENT_FILE_ID].toString().trim();
+      const configId      = stagingData[i][STG_CONFIG_ID].toString().trim();
+      const teacherEmail  = String(stagingData[i][STG_TEACHER_EMAIL] || "").trim();
+
+      // Handle ERROR_TIMEOUT rows — close queue row and notify teacher
+      if (stagingStatus === "ERROR_TIMEOUT") {
+        const rowNum = parseInt(queueRowRef, 10);
+        if (!isNaN(rowNum) && rowNum >= 2) {
+          const currentQStatus = String(
+            queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
+          ).trim();
+          if (currentQStatus === "STAGED") {
+            markQueueRow_(queueSheet, rowNum, "ERROR_TIMEOUT");
+            notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId);
+            Logger.log("[BACKPROP] ERROR_TIMEOUT closed — row " + rowNum +
+                       " | Teacher: " + teacherEmail);
+          }
         }
+        continue;
       }
-      continue;
+
+      if (stagingStatus !== "COMPLETE") continue;
+
+      const rowNum = parseInt(queueRowRef, 10);
+      if (isNaN(rowNum) || rowNum < 2) continue;
+
+      const currentStatus = String(
+        queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
+      ).trim();
+
+      if (currentStatus !== "STAGED") continue;
+
+      markQueueRow_(queueSheet, rowNum, "COMPLETE");
+      updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId);
+
+      // Post-processing: backup placeholder removal + next-steps block
+      // Studio should have handled these already in Flow 2 Steps 4-5,
+      // but this catches any cases where Studio's doc connector step failed
+      processCompletedEvaluation_(fileId, configId);
+
+      Logger.log("[BACKPROP] Processed row " + rowNum + " | FileID: " + fileId);
     }
-
-    if (stagingStatus !== "COMPLETE") continue;
-
-    const rowNum = parseInt(queueRowRef, 10);
-    if (isNaN(rowNum) || rowNum < 2) continue;
-
-    const currentStatus = String(
-      queueSheet.getRange(rowNum, RQ_STATUS + 1).getValue()
-    ).trim();
-
-    if (currentStatus !== "STAGED") continue;
-
-    markQueueRow_(queueSheet, rowNum, "COMPLETE");
-    updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId);
-
-    // Post-processing: backup placeholder removal + next-steps block
-    // Studio should have handled these already in Flow 2 Steps 4-5,
-    // but this catches any cases where Studio's doc connector step failed
-    processCompletedEvaluation_(fileId, configId);
-
-    Logger.log("[BACKPROP] Processed row " + rowNum + " | FileID: " + fileId);
+  } catch (err) {
+    Logger.log("[BACKPROP] Critical failure: " + err.message);
+  } finally {
+    lock.releaseLock();
   }
 }
 

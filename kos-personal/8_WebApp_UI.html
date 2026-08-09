@@ -1046,7 +1046,13 @@ function renderQueue(res) {
   const inReview  = c.needs_review ?? c.needs_curator ?? 0;
   const done      = c.processed ?? 0;
 
-  document.getElementById('cnt-pending').textContent = pending + active;
+  // FIXED: "Pending" (subtitle "waiting for AI engine") used to show
+  // pending + active, double-counting active rows that are also shown
+  // alone in "Processing" (subtitle "AI running now") right next to it —
+  // e.g. 2 PENDING_FLOW + 3 STUDIO_ACTIVE rows displayed as "Pending: 5,
+  // Processing: 3," summing the two tiles double-counts the 3 already-
+  // processing rows. Each tile now shows only its own bucket.
+  document.getElementById('cnt-pending').textContent = pending;
   document.getElementById('cnt-ready'  ).textContent = active;
   document.getElementById('cnt-curator').textContent = inReview;
   document.getElementById('cnt-done'   ).textContent = done;

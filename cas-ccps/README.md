@@ -451,6 +451,22 @@ GoogleID.
       one-line Lesson Unit extension on top. Both addendum files keep
       their now-inert content as commented-out historical record, not
       deleted.
+13. **`03_QueueBridge.js`'s `bridgeQueue()` and `backPropagateCompletions()`
+    now take a document lock** — closed. Both run on time triggers (1 min /
+    2 min) and mutate `STAGING_PIPELINE`/`ReviewQueue`/`Ledger`; neither
+    had any protection against Apps Script running two overlapping
+    invocations if a run takes longer than its trigger interval (a real
+    risk as those sheets grow), unlike their sibling
+    `06_StagingPipeline_Turnstile.js`'s `runStagingTurnstile()`, which
+    already locks for exactly this reason. Without a lock, two overlapping
+    `bridgeQueue()` runs could both stage the same student submission,
+    producing a duplicate AI evaluation; `backPropagateCompletions()` had
+    a partial mitigation already (it re-reads the queue row's live status
+    immediately before acting, rather than trusting its own stale read),
+    which narrowed but didn't close the same race. Both now take
+    `LockService.getDocumentLock()` with the same 15-second wait and
+    congestion-standdown pattern the Turnstile already used, so a busy run
+    stands down instead of racing.
 
 ## Naming note
 
