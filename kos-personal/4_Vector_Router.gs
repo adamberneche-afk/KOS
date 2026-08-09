@@ -9,26 +9,32 @@
 //
 // ARCHITECTURE NOTE — TWO PARALLEL SHEETS
 // ─────────────────────────────────────────────────────────────
+// Updated for the CE-SMP Vector Weight Calculation Engine v1.0
+// ("Bifurcation Boundary") — GAS computes all quantitative math;
+// Studio (THE_CURATOR / VECTOR_CLASSIFY) only classifies.
+//
 // MATRIX_LEDGER (written by processIntakePayload in 3_Queue_Processor.gs)
 //   Purpose : Append-only audit log of RAW scores per session.
 //   Schema  : Fixed columns — Session_UID, Timestamp,
 //             ARCHITECTURE, UI, SECURITY, PEDAGOGY,
-//             GAS_DEVELOPMENT, RELATIONAL, TOTAL
+//             GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLIANCE, TOTAL
 //   No decay. Never used for live state reads.
 //
 // VECTOR_MATRIX (written by _writeMatrixRow here)
 //   Purpose : Living state matrix. Current DECAYED scores.
 //   Schema  : Dynamic — Session_UID, Timestamp, [known themes...],
-//             INCUBATOR_SIGNALS. Grows when themes are promoted.
+//             INCUBATOR_SIGNALS, CHECKSUM. Grows when themes are
+//             promoted. CHECKSUM (row-integrity hash) is always last.
 //   Decay   : Each run applies CFG.DECAY_FACTOR to any theme
 //             not present in the current session's vector_weights.
 //   This is the sheet the Diagnostics tab reads for display.
 //
 // INCUBATOR (written by _logToIncubator here)
 //   Purpose : Staging area for emerging themes that haven't yet
-//             met promotion thresholds.
-//   Schema  : Theme, First_Seen, Last_Seen, Session_Count,
-//             Avg_Weight, Status
+//             met promotion thresholds. Cumulative-score + half-life
+//             decay lifecycle, not a running average.
+//   Schema  : Theme, First_Detected, Last_Touched, Session_Count,
+//             Cumulative_Score, Raw_Score_Log, Status
 //
 // DYNAMIC_STATE_MATRIX (written by _writeDynamicStateRow here)
 //   Purpose : Long-format version of VECTOR_MATRIX. One row per
@@ -40,8 +46,13 @@
 // PUBLIC ENTRY POINTS
 //   routeVectorWeights()     standalone caller (acquires lock)
 //   _routeVectorWeightsInternal()  lock-free (called by intake)
+//   processVectorClassificationPayload()  VECTOR_CLASSIFY flow entry
 //   getVectorState()         web app Diagnostics tab
 //   runPromotionCheck()      web app Diagnostics tab button
+//   migrateVectorSchema_v2() ONE-TIME manual run — upgrades an existing
+//                            live VECTOR_MATRIX/INCUBATOR sheet pair
+//                            created before this engine landed. See its
+//                            own header comment before running it.
 //
 // BUG FIXES CARRIED FROM PHASE 0
 //   BUG-01  Lock: _routeVectorWeightsInternal has no lock
@@ -984,6 +995,200 @@ function dumpVectorState() {
     console.log('  ' + state.promoted_themes.join(', '));
   }
   console.log('Session UID: ' + (state.session_uid || 'none'));
+}
+
+
+// ================================================================
+// ONE-TIME SCHEMA MIGRATION (CE-SMP Vector Weight Calculation Engine)
+// ================================================================
+
+/**
+ * ONE-TIME, MANUALLY-RUN migration for a live BRAIN_TRUST_INDEX
+ * spreadsheet whose VECTOR_MATRIX / INCUBATOR tabs pre-date the
+ * Bifurcation Boundary work (commit ff37fd5). Run this from the Apps
+ * Script editor once, before deploying the current `4_Vector_Router.gs`
+ * against an existing production sheet.
+ *
+ * WHY THIS EXISTS
+ * `_getOrCreateSheet()` only sets headers when it CREATES a sheet — it
+ * never touches one that already exists. A spreadsheet built before this
+ * engine landed has:
+ *   VECTOR_MATRIX : Session_UID, Timestamp, ARCHITECTURE, UI, SECURITY,
+ *                   PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL,
+ *                   INCUBATOR_SIGNALS               (no DOMAIN_COMPLIANCE,
+ *                                                     no CHECKSUM)
+ *   INCUBATOR     : Theme, First_Seen, Last_Seen, Session_Count,
+ *                   Avg_Weight, Status               (running-average
+ *                                                      lifecycle, not
+ *                                                      cumulative-score +
+ *                                                      half-life decay)
+ * Deploying the current code on top of that sheet as-is will misalign
+ * columns (`_writeMatrixRow`'s NO_HEADERS guard may even refuse to write
+ * at all) rather than self-heal. This function upgrades both tabs in
+ * place, non-destructively — no rows are deleted, no existing scores are
+ * discarded.
+ *
+ * WHAT IT DOES
+ *  VECTOR_MATRIX:
+ *   - Inserts a DOMAIN_COMPLIANCE column (if missing) immediately before
+ *     INCUBATOR_SIGNALS, backfilled to 0 for every existing row — there is
+ *     no historical signal to recover for a theme that didn't exist yet.
+ *   - Appends a CHECKSUM column (if missing) after INCUBATOR_SIGNALS,
+ *     backfilled with a real checksum computed from each row's existing
+ *     theme scores via `_computeMatrixRowChecksum_` — so integrity
+ *     auditing works retroactively too, not just for new rows.
+ *  INCUBATOR:
+ *   - Renames First_Seen → First_Detected, Last_Seen → Last_Touched
+ *     (labels only — values are unchanged, same meaning).
+ *   - Renames Avg_Weight → Cumulative_Score, and for each existing row
+ *     overwrites the value with `avg_weight * session_count` — a
+ *     best-effort reconstruction of a cumulative score from a running
+ *     average. This is an APPROXIMATION: the exact per-exchange history
+ *     (DECISION vs EXPLORATORY multipliers applied at the time) isn't
+ *     recoverable from an average alone. Flagged in the returned log.
+ *   - Inserts a Raw_Score_Log column (if missing) before Status,
+ *     populated with a single synthetic entry per row noting the
+ *     migration, so the column is valid JSON from the start rather than
+ *     empty.
+ *
+ * Safe to run more than once — every step checks for the target schema
+ * first and skips if already migrated.
+ *
+ * @returns {Object} { success, log: string[], errors: string[] }
+ */
+function migrateVectorSchema_v2() {
+  const log = [];
+  const errors = [];
+  try {
+    const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+
+    // ── VECTOR_MATRIX ──────────────────────────────────────────
+    const matrixSheet = ss.getSheetByName(CFG.VECTOR_MATRIX_SHEET);
+    if (!matrixSheet) {
+      log.push('VECTOR_MATRIX sheet does not exist yet — nothing to migrate. ' +
+                'It will be created with the current schema on first use.');
+    } else {
+      let headers = matrixSheet.getRange(1, 1, 1, matrixSheet.getLastColumn()).getValues()[0];
+      const incubIdx = headers.indexOf('INCUBATOR_SIGNALS');
+
+      if (incubIdx === -1) {
+        errors.push('VECTOR_MATRIX header has no INCUBATOR_SIGNALS column — ' +
+                     'this sheet does not match any known schema version. Skipped; review manually.');
+      } else {
+        const lastDataRow = matrixSheet.getLastRow();
+
+        if (!headers.includes('DOMAIN_COMPLIANCE')) {
+          matrixSheet.insertColumnBefore(incubIdx + 1);
+          matrixSheet.getRange(1, incubIdx + 1).setValue('DOMAIN_COMPLIANCE');
+          if (lastDataRow > 1) {
+            const fill = Array(lastDataRow - 1).fill([0]);
+            matrixSheet.getRange(2, incubIdx + 1, lastDataRow - 1, 1).setValues(fill);
+          }
+          log.push('VECTOR_MATRIX: inserted DOMAIN_COMPLIANCE column before INCUBATOR_SIGNALS, ' +
+                    'backfilled 0 for ' + Math.max(0, lastDataRow - 1) + ' existing row(s).');
+          headers = matrixSheet.getRange(1, 1, 1, matrixSheet.getLastColumn()).getValues()[0];
+        } else {
+          log.push('VECTOR_MATRIX: DOMAIN_COMPLIANCE column already present — skipped.');
+        }
+
+        if (!headers.includes('CHECKSUM')) {
+          const themeStart = 2;
+          const newIncubIdx = headers.indexOf('INCUBATOR_SIGNALS');
+          const themes = headers.slice(themeStart, newIncubIdx);
+          const checksumCol = headers.length + 1;
+          matrixSheet.getRange(1, checksumCol).setValue('CHECKSUM');
+
+          if (lastDataRow > 1) {
+            const data = matrixSheet.getRange(2, 1, lastDataRow - 1, headers.length).getValues();
+            const checksums = data.map(row => {
+              const sessionUid = row[0];
+              const scores = themes.map((_, i) => row[themeStart + i]);
+              return [_computeMatrixRowChecksum_(sessionUid, scores)];
+            });
+            matrixSheet.getRange(2, checksumCol, checksums.length, 1).setValues(checksums);
+          }
+          log.push('VECTOR_MATRIX: appended CHECKSUM column, backfilled real checksums for ' +
+                    Math.max(0, lastDataRow - 1) + ' existing row(s).');
+        } else {
+          log.push('VECTOR_MATRIX: CHECKSUM column already present — skipped.');
+        }
+      }
+    }
+
+    // ── INCUBATOR ──────────────────────────────────────────────
+    const incubSheet = ss.getSheetByName(CFG.INCUBATOR_SHEET);
+    if (!incubSheet) {
+      log.push('INCUBATOR sheet does not exist yet — nothing to migrate. ' +
+                'It will be created with the current schema on first use.');
+    } else {
+      let headers = incubSheet.getRange(1, 1, 1, incubSheet.getLastColumn()).getValues()[0];
+
+      if (headers.includes('Cumulative_Score')) {
+        log.push('INCUBATOR: already on the Cumulative_Score schema — skipped.');
+      } else if (!headers.includes('Avg_Weight')) {
+        errors.push('INCUBATOR header has neither Avg_Weight nor Cumulative_Score — ' +
+                     'this sheet does not match any known schema version. Skipped; review manually.');
+      } else {
+        const lastDataRow  = incubSheet.getLastRow();
+        const firstSeenCol = headers.indexOf('First_Seen') + 1;
+        const lastSeenCol  = headers.indexOf('Last_Seen') + 1;
+        const avgWeightCol = headers.indexOf('Avg_Weight') + 1;
+        const statusCol    = headers.indexOf('Status') + 1;
+        const sessCountCol = headers.indexOf('Session_Count') + 1;
+
+        if (firstSeenCol > 0) incubSheet.getRange(1, firstSeenCol).setValue('First_Detected');
+        if (lastSeenCol  > 0) incubSheet.getRange(1, lastSeenCol).setValue('Last_Touched');
+        if (avgWeightCol > 0) incubSheet.getRange(1, avgWeightCol).setValue('Cumulative_Score');
+
+        let approxNote = '';
+        if (lastDataRow > 1 && avgWeightCol > 0 && sessCountCol > 0) {
+          const data = incubSheet.getRange(2, 1, lastDataRow - 1, headers.length).getValues();
+          const newValues = data.map(row => {
+            const avg   = parseFloat(row[avgWeightCol - 1]) || 0;
+            const count = parseInt(row[sessCountCol - 1], 10) || 1;
+            return [parseFloat((avg * count).toFixed(4))];
+          });
+          incubSheet.getRange(2, avgWeightCol, newValues.length, 1).setValues(newValues);
+          approxNote = ' (Cumulative_Score approximated as avg_weight × session_count — ' +
+                       'exact per-exchange history is not recoverable from an average)';
+        }
+
+        // Insert Raw_Score_Log before Status, if missing.
+        headers = incubSheet.getRange(1, 1, 1, incubSheet.getLastColumn()).getValues()[0];
+        if (!headers.includes('Raw_Score_Log')) {
+          const statusIdx = headers.indexOf('Status');
+          incubSheet.insertColumnBefore(statusIdx + 1);
+          incubSheet.getRange(1, statusIdx + 1).setValue('Raw_Score_Log');
+
+          if (lastDataRow > 1) {
+            const cumulCol = headers.indexOf('Cumulative_Score') + 1;
+            const refreshed = incubSheet.getRange(2, 1, lastDataRow - 1, incubSheet.getLastColumn()).getValues();
+            const logValues = refreshed.map(row => {
+              const cumulative = parseFloat(row[cumulCol - 1]) || 0;
+              return [JSON.stringify([{
+                session_id: 'MIGRATED',
+                raw_score: cumulative,
+                note: 'Reconstructed during migrateVectorSchema_v2() from a pre-existing ' +
+                      'Avg_Weight value; original per-session raw-score history was not retained.',
+              }])];
+            });
+            incubSheet.getRange(2, statusIdx + 1, logValues.length, 1).setValues(logValues);
+          }
+        }
+
+        log.push('INCUBATOR: migrated ' + Math.max(0, lastDataRow - 1) + ' existing row(s) to the ' +
+                  'Cumulative_Score + Raw_Score_Log schema' + approxNote + '.');
+      }
+    }
+
+    SpreadsheetApp.flush();
+    log.forEach(l => console.log(l));
+    errors.forEach(e => console.log('ERROR: ' + e));
+    return { success: errors.length === 0, log, errors };
+  } catch (e) {
+    _reportError('migrateVectorSchema_v2', e, null);
+    return { success: false, log, errors: errors.concat(e.message) };
+  }
 }
 
 
