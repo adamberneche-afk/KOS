@@ -507,6 +507,19 @@ is flagged as an open integration question in the spec doc — it depends
 on how session consolidation actually works against the real, multi-chunk
 Studio setup, which isn't visible from this repo.
 
+**Migrating an existing live sheet.** If your `BRAIN_TRUST_INDEX`
+spreadsheet already has `VECTOR_MATRIX`/`INCUBATOR` tabs from before this
+engine landed, `_getOrCreateSheet()` will NOT upgrade their headers on its
+own — it only sets headers when it creates a sheet, never when one already
+exists. Run `migrateVectorSchema_v2()` once from the Apps Script editor
+before deploying this code against a pre-existing sheet — it adds the
+`DOMAIN_COMPLIANCE`/`CHECKSUM` columns to `VECTOR_MATRIX` and migrates
+`INCUBATOR` to the `Cumulative_Score`/`Raw_Score_Log` schema in place,
+non-destructively (existing scores are approximated forward, never
+dropped). Safe to re-run — it checks the current schema first and skips
+whatever's already migrated. See its header comment in
+`4_Vector_Router.gs` for exactly what it does and doesn't recover.
+
 ## Version control (clasp) — scaffolded, not yet connected
 
 This directory is already laid out exactly the way
@@ -535,6 +548,10 @@ overlapping Apps Script projects, not 1).
 - **Building the Studio integration:** See `STUDIO_INTEGRATION_SPEC.md`
 - **Understanding the data model:** See `SCHEMA_REFERENCE.md`
 - **Debugging a specific issue:** Check ERROR_LOG sheet in BRAIN_TRUST_INDEX
+- **Licensing:** See `LICENSE` (Polyform Noncommercial 1.0.0 + Fidelity Clause)
+- **Positioning / "why this exists":** See `KOS_WHITE_PAPER.md`
+- **Ideas parked for later, not in progress:** See
+  `EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md`
 
 ---
 
@@ -550,6 +567,20 @@ KOS is not finished. The Studio integration that closes the loop between STAGING
 
 ## License
 
-Polyform Noncommercial 1.0.0. Free for personal, educational, and research use.  
-Commercial use: honor system with attribution — "Built on KOS."  
-Fidelity clause: preserve PERSONA_ALIGNMENT and the HITL Firewall in any adaptation.
+[Polyform Noncommercial 1.0.0](LICENSE). Free for personal, educational, and
+research use. Commercial entities must negotiate a separate commercial
+license — see `LICENSE` for the full text and contact terms.
+
+**Fidelity Clause** — any commercial license requires preserving three
+architectural elements in the derivative deployment, unmodified:
+
+1. **The Alignment Cog** — the ALIGNMENT persona (or functional equivalent)
+   stays active, retains authority to pause a session sequence when human
+   relational bandwidth is threatened, and cannot be suppressed, weighted
+   below 0.10 RID, or removed.
+2. **The HITL Firewall** — no autonomous writes to canonical documents, no
+   external communications, no mutations to persistent state without
+   explicit human verification.
+3. **The Cold Engine Protocol** — the system stays inert until the user has
+   articulated their own `CORE_THESIS`; no pre-loaded generic or
+   vendor-defined thesis.
