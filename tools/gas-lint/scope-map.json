@@ -1,0 +1,25 @@
+{
+  "_comment": "Which GAS global services require which OAuth scope, for projects that declare an explicit oauthScopes list in appsscript.json. GAS only auto-detects required scopes when the manifest has NO oauthScopes key at all — the moment a project lists any scopes explicitly, it stops auto-detecting and grants exactly what's listed, so a used-but-undeclared scope fails silently at the API call site (this is exactly the bug this tool was built to catch, after it happened once during Round 3 reconciliation: UrlFetchApp was added without adding script.external_request). This table is NOT exhaustive — it covers the global objects actually used somewhere in this repo. Extend it if a project starts using a new advanced service.",
+
+  "services": {
+    "UrlFetchApp":     ["https://www.googleapis.com/auth/script.external_request"],
+    "DriveApp":        ["https://www.googleapis.com/auth/drive"],
+    "SpreadsheetApp":  ["https://www.googleapis.com/auth/spreadsheets"],
+    "DocumentApp":     ["https://www.googleapis.com/auth/documents"],
+    "FormApp":         ["https://www.googleapis.com/auth/forms"],
+    "MailApp":         ["https://www.googleapis.com/auth/script.send_mail"],
+    "GmailApp":        ["https://mail.google.com/"],
+    "CalendarApp":     ["https://www.googleapis.com/auth/calendar"],
+    "ScriptApp":       ["https://www.googleapis.com/auth/script.scriptapp"],
+    "Session":         ["https://www.googleapis.com/auth/userinfo.email"]
+  },
+
+  "_not_scope_gated": [
+    "PropertiesService", "Utilities", "Logger", "console",
+    "ContentService", "HtmlService", "LockService", "CacheService"
+  ],
+
+  "_notes": {
+    "Session": "Only actually needs userinfo.email if the code calls Session.getActiveUser()/getEffectiveUser() and reads .getEmail(); Session.getScriptTimeZone() needs no scope. This tool flags any Session.* usage conservatively (may over-flag getScriptTimeZone() calls as needing the scope when they don't) — check.js documents this in its own output rather than silently guessing which method was called."
+  }
+}

@@ -423,6 +423,20 @@ GoogleID.
     7), but nothing has run `importCompetencyRegistry()` (Script `22b`)
     against them in a live deployment. This is a deployment-time action,
     not a repo-file gap, listed here so it isn't mistaken for "already live."
+12. **Confirmed duplicate top-level declarations across files sharing a
+    GAS project** — caught by `tools/gas-lint/check.js`, not yet fixed:
+    `SP_STUDENT_EMAIL`/`SP_TEACHER_EMAIL`/`SP_STUDENT_NAME`/`SP_SHADOW_MATRIX`
+    across `23_StudentProfileManager.js`/`25_WarmUpWriter.js`/`03_QueueBridge.js`;
+    `formatDateYMD_` across `23`/`24`/`25` (three near-identical copies,
+    harmless but wasteful); and — the serious one —
+    **`buildStudentRoster_` defined differently in `23_StudentProfileManager.js`
+    (signature `(ledgerData, teacherEmail, currentTerm)`) and
+    `29_StudentContextAggregator.js` (signature `(ledgerSheet)`)** — these
+    are two unrelated functions that happen to share a name, not a
+    harmless duplicate; whichever definition GAS resolves last silently
+    overrides the other's call sites with the wrong signature. All of
+    Module 2/4/5 sharing the Central Ledger project means this is a live
+    landmine, not a theoretical one — see `tools/gas-lint/README.md`.
 
 ## Naming note
 

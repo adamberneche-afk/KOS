@@ -305,6 +305,18 @@ Council cog stimulus       COG_STIMULUS  (separate payload type)
 
 ---
 
+## Before deploying a change — run gas-lint
+
+`node tools/gas-lint/check.js` at the repo root checks for the exact bug
+class that's hit this system before: duplicate top-level declarations,
+undefined `CFG`/`CFG.PROP` keys, `google.script.run` calls with no
+matching server function, and OAuth scopes used but not declared in
+`appsscript.json` (this is how the Round 3 `UrlFetchApp` regression —
+added without adding `script.external_request` — was caught). See
+[`tools/gas-lint/README.md`](../tools/gas-lint/README.md).
+
+---
+
 ## Where to Start
 
 - **First deploy:** See `DEPLOYMENT_GUIDE.md`
