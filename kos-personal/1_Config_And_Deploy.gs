@@ -143,11 +143,54 @@ const CFG = {
   INCUBATOR_HALF_LIFE_DAYS:      14,
   INCUBATOR_DECAY_FLOOR:         0.10,
 
+  // ── Registrar / Cog Relay (Automated Registrar Ledger) ─────────
+  // Curriculum-drafts auditing pipeline — see 11_Registrar_CogRelay.gs
+  // for the full state machine. Distinct from EXECUTION_LEDGER (which
+  // drives runSemanticSweeper()'s CE-tag file routing) — different
+  // schema, different purpose, despite similar naming in the source
+  // design docs ("Automated Execution Ledger").
+  REGISTRAR_LEDGER_SHEET:     'REGISTRAR_LEDGER',
+  REGISTRAR_UNC_FOLDER:       '09_Unclassified_Curriculum_Drafts',  // [UNC]
+  REGISTRAR_HLD_FOLDER:       '09.1_HOLD_FOR_REVIEW',                // [HLD]
+  REGISTRAR_ROUTED_FOLDER:    '06_CLASSROOM_ASSETS',  // successfully-routed default target —
+                                                        // the source docs describe "target UID
+                                                        // folders" without specifying how a UID
+                                                        // maps to one of the existing 06.x
+                                                        // subfolders, so this routes to the
+                                                        // parent folder pending that decision.
+  REGISTRAR_MAX_CHARS:        25000,  // Cog 1 (Auditor) input limit, per Ops Guide Phase 1
+  REGISTRAR_MICROBATCH_SIZE:  3,      // "2 to 3 UIDs every 15 minutes" — Calibration Silos doc
+  REGISTRAR_RETRY_LIMIT:      3,      // Fail Loud Protocol: 3 consecutive bounce-backs → CRITICAL_FAILURE
+  REGISTRAR_STALE_MINS:       30,     // stuck *_ACTIVE row reset, mirrors CFG.TURNSTILE_STALE_MINS
+  REGISTRAR_COLS: {
+    FILE_ID:      0,
+    FILE_NAME:    1,
+    STATE:        2,
+    COG1_JSON:    3,
+    COG2_JSON:    4,
+    TRANSLATION:  5,
+    ATTEMPT:      6,
+    ERROR_LOG:    7,
+    TS_INTAKE:    8,
+    TS_FINAL:     9,
+  },
+
   // ── Personas to copy from Drive on Deploy ─────────────────────
+  // NAMING NOTE: this cog is ALIGNMENT everywhere else in this repo
+  // (PERSONA_ALIGNMENT_V5.md, FIDELITY_REQUIRED_PERSONA above, the
+  // LICENSE's Fidelity Clause, every persona doc). 'PERSONA_ALIGNER' —
+  // the name the Calibration Silos design docs use for the same cog's
+  // Drive folder (04.5_ALIGNER_SILO / CE-ALIGN) — used to be listed here
+  // too, as if it were an 8th, separate persona. No such file has ever
+  // existed; _copyPersonas() silently logged "Not found in Drive —
+  // skipped" for it on every real deploy. Removed — one real persona,
+  // one real entry. The ALIGNER folder/tag names themselves are left
+  // alone (renaming live Drive folders and PropertiesService keys is a
+  // bigger, riskier change than fixing this list) — just don't read
+  // "Aligner" anywhere as a cog distinct from Alignment.
   PERSONAS: [
     'PERSONA_ARCHITECT', 'PERSONA_AUDITOR', 'PERSONA_MUSE',
-    'PERSONA_DEVELOPER', 'PERSONA_ALIGNER', 'PERSONA_CURATOR',
-    'PERSONA_ALIGNMENT',
+    'PERSONA_DEVELOPER', 'PERSONA_CURATOR', 'PERSONA_ALIGNMENT',
   ],
 
   // ── Vector primer docs to scaffold on Deploy ──────────────────
@@ -184,6 +227,12 @@ const CFG = {
     // hardcoded into this file.
     MANAGED_SERVICE_BASE_URL: 'KOS_MANAGED_SERVICE_BASE_URL',
     MANAGED_SERVICE_API_KEY:  'KOS_MANAGED_SERVICE_API_KEY',
+
+    // Google Chat incoming webhook (optional). Unset by default — every
+    // caller of _sendChatAlert() in 5_Error_And_Utilities.gs degrades to
+    // a console.log no-op if this isn't configured. Set as a Script
+    // Property, never hardcoded, same convention as the two keys above.
+    CHAT_WEBHOOK_URL: 'KOS_CHAT_WEBHOOK_URL',
   },
 };
 
@@ -374,6 +423,9 @@ function setupAllTriggers() {
     'autoCouncilCheck',
     'sensor3_externalTelemetry',
     'onGovernanceEdit',
+    'runRegistrarIntake',
+    'runRegistrarMicrobatch',
+    'runRegistrarProcessor',
   ];
 
   // ── Clear existing KOS triggers ────────────────────────────
@@ -440,6 +492,24 @@ function setupAllTriggers() {
   tryInstall('autoCouncilCheck', () =>
     ScriptApp.newTrigger('autoCouncilCheck')
       .timeBased().everyHours(2).create()
+  );
+
+  // ── Registrar Intake — 01:00 (11_Registrar_CogRelay.gs) ────
+  tryInstall('runRegistrarIntake', () =>
+    ScriptApp.newTrigger('runRegistrarIntake')
+      .timeBased().atHour(1).everyDays(1).create()
+  );
+
+  // ── Registrar Micro-Batch gate — every 15 min ──────────────
+  tryInstall('runRegistrarMicrobatch', () =>
+    ScriptApp.newTrigger('runRegistrarMicrobatch')
+      .timeBased().everyMinutes(15).create()
+  );
+
+  // ── Registrar Processor (validate + translate + route) — every 10 min ──
+  tryInstall('runRegistrarProcessor', () =>
+    ScriptApp.newTrigger('runRegistrarProcessor')
+      .timeBased().everyMinutes(10).create()
   );
 
   // ── Sensor 3 — onChange on BRAIN_TRUST_INDEX ───────────────
@@ -554,11 +624,16 @@ function _buildFolderTree() {
   const ccps    = _getOrCreateFolder('CCPS_MASTER_TEMPLATES',    root);
   _getOrCreateFolder('01_Pending_Tagging', ccps);
 
+  // Registrar / Cog Relay intake + hold-for-review — 11_Registrar_CogRelay.gs
+  const f09     = _getOrCreateFolder(CFG.REGISTRAR_UNC_FOLDER,   root);
+  const f09_hld = _getOrCreateFolder(CFG.REGISTRAR_HLD_FOLDER,   f09);
+
   return {
     root, f01, f01_1, f01_2, f01_3, f02,
     f03, f03_1, f03_2, f03_3, f03_raw, f03_in,
     f04, f04_1, f04_2, f04_3, f04_4, f04_5, f04_6, f04_7, f04_8,
     f05, f06, f06_1, f06_2, f06_3, f06_4, f07, f08, ccps,
+    f09, f09_hld,
   };
 }
 
@@ -591,6 +666,7 @@ function _registerAllProperties(folders, ss) {
     'ID_04_7_RTP':              folders.f04_7,
     'ID_04_8_GRAVEYARD':        folders.f04_8,
     'ID_05_VECTOR_REPOSITORY':  folders.f05,
+    'ID_06_CLASSROOM_ASSETS':   folders.f06,  // Registrar/Cog Relay default routing target
     'ID_06_1_LESSON_PLANS':     folders.f06_1,
     'ID_06_2_STUDENT_FACING':   folders.f06_2,
     'ID_06_3_ASSESSMENTS':      folders.f06_3,
@@ -598,6 +674,8 @@ function _registerAllProperties(folders, ss) {
     'ID_07_MEMORY_VAULT':       folders.f07,
     'ID_08_PROJECT_AUTOPSIES':  folders.f08,
     'ID_CCPS_MASTER_TEMPLATES': folders.ccps,
+    'ID_09_UNC':                folders.f09,
+    'ID_09_1_HLD':              folders.f09_hld,
   };
   Object.entries(map).forEach(([k, f]) => {
     if (f) props.setProperty(k, f.getId());
@@ -657,6 +735,7 @@ function setupRoutingProperties() {
     'ID_04_7_RTP':              fetchId('04.7_RTP_SILO',             true),
     'ID_04_8_GRAVEYARD':        fetchId('04.8_COG_GRAVEYARD',        true),
     'ID_05_VECTOR_REPOSITORY':  fetchId('05_Vector_Repository',      true),
+    'ID_06_CLASSROOM_ASSETS':   fetchId('06_CLASSROOM_ASSETS',       true),
     'ID_06_1_LESSON_PLANS':     fetchId('06.1_LESSON_PLANS',         true),
     'ID_06_2_STUDENT_FACING':   fetchId('06.2_STUDENT_FACING',       true),
     'ID_06_3_ASSESSMENTS':      fetchId('06.3_ASSESSMENTS',          true),
@@ -664,6 +743,8 @@ function setupRoutingProperties() {
     'ID_07_MEMORY_VAULT':       fetchId('07_Memory_Vault',           true),
     'ID_08_PROJECT_AUTOPSIES':  fetchId('08_Project_Autopsies',      true),
     'ID_CCPS_MASTER_TEMPLATES': fetchId('CCPS_MASTER_TEMPLATES',     true),
+    'ID_09_UNC':                fetchId(CFG.REGISTRAR_UNC_FOLDER,    true),
+    'ID_09_1_HLD':              fetchId(CFG.REGISTRAR_HLD_FOLDER,    true),
     'INDEX_ID':                 fetchId('BRAIN_TRUST_INDEX',         false),
     'ID_CURRENT_STATE':         fetchId('CURRENT_STATE',             false),
     'ID_PIVOTS_AND_LESSONS':    fetchId('PIVOTS_AND_LESSONS_V1.0',   false),
