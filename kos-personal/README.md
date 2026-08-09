@@ -224,6 +224,27 @@ it does not yet make `STUDIO_ACTIVE` rows actually route to this service
 instead of Studio. That integration is real, unbuilt work, tracked here
 so it isn't assumed to already exist.
 
+### A duplicate `resetProperties()` gas-lint's first version missed
+
+After fixing the errors gas-lint's first release found (see
+`tools/gas-lint/README.md`), a manual double-check of an earlier code
+review's findings turned up a real duplicate `resetProperties()` — one
+copy in `1_Config_And_Deploy.gs`, one in `5_Error_And_Utilities.gs` — that
+gas-lint itself had reported zero errors for. Root cause: its
+comment/string stripper didn't recognize regex literals as a token type,
+so a `{`/`}`-containing regex somewhere earlier in
+`5_Error_And_Utilities.gs` threw off the brace-depth counter for the rest
+of the file, hiding every top-level declaration after that point from the
+duplicate-declaration check. Fixed in the tool (regex-literal detection
+added to `stripCommentsAndStrings`), which then correctly caught this
+exact case on re-run. The two `resetProperties()` copies weren't just
+redundant — `1_Config_And_Deploy.gs`'s version was missing
+`'KOS_ADMIN_EMAIL'` from its preserved-key list, so if GAS's load order
+had resolved to that definition, calling `resetProperties()` would have
+silently wiped the daily-digest admin email until someone noticed. Kept
+the more complete version in `5_Error_And_Utilities.gs`, removed the
+other.
+
 ---
 
 ## Architecture in Two Paragraphs
