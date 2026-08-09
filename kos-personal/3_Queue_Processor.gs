@@ -153,7 +153,16 @@ function processInferenceQueue() {
         }
 
         // ── Intake ──────────────────────────────────────────────
-        const result = processIntakePayload(JSON.stringify(parsed));
+        // VECTOR_CLASSIFY rows carry sentence-level classification
+        // output (Bifurcation Boundary — see 4_Vector_Router.gs) and
+        // route to a dedicated handler instead of the full Curator
+        // intake path; every other payload type is unchanged.
+        const payloadUid  = String(data[i][SC.PAYLOAD_UID] || '');
+        const payloadType = String(data[i][SC.PAYLOAD_TYPE] || '');
+        const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+        const result = (payloadType === 'VECTOR_CLASSIFY')
+          ? processVectorClassificationPayload(JSON.stringify(parsed), payloadUid, nowFormatted)
+          : processIntakePayload(JSON.stringify(parsed), payloadUid);
 
         if (result.status === 'SUCCESS') {
           staging.getRange(sheetRow, SC.STATUS + 1).setValue('PROCESSED');
@@ -237,10 +246,19 @@ function processInferenceQueue() {
  *
  * Called by: processInferenceQueue (this file)
  *
- * @param  {string} rawJSONPayload  JSON string (Studio inference output).
+ * @param  {string} rawJSONPayload    JSON string (Studio inference output).
+ * @param  {string} [stagingPayloadUid]  The STAGING_PIPELINE row's own
+ *   Payload_UID, generated at ingestion time — pass this whenever the
+ *   caller has it (processInferenceQueue always does). It takes priority
+ *   over anything the Curator invented, so that this session's SESSION_LOG
+ *   row and its paired VECTOR_CLASSIFY row (see 4_Vector_Router.gs's
+ *   processVectorClassificationPayload, queued with the same original
+ *   Payload_UID by 2_Ingestion_Sensors.gs) land under the same uid in
+ *   VECTOR_MATRIX — two independent Studio flows for the same session
+ *   would otherwise have no shared key to correlate on.
  * @returns {Object} { status: 'SUCCESS'|'LOCKED'|'ERROR', uid, vectorRouting?, message? }
  */
-function processIntakePayload(rawJSONPayload) {
+function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(15000)) return { status: 'LOCKED', message: 'System busy.' };
 
@@ -268,8 +286,8 @@ function processIntakePayload(rawJSONPayload) {
     // top-level session_uid field. Reading the wrong key meant every real
     // session got a random LOG_<timestamp> fallback UID instead of its real
     // session ID, breaking any downstream matching keyed on session identity.
-    // pd.session_uid kept as a secondary fallback for backward compatibility.
-    const uid        = pd.session_metadata?.session_id || pd.session_uid || ('LOG_' + new Date().getTime());
+    // stagingPayloadUid now takes priority over both — see JSDoc above.
+    const uid        = stagingPayloadUid || pd.session_metadata?.session_id || pd.session_uid || ('LOG_' + new Date().getTime());
     const stateDoc   = DocumentApp.openById(stateId);
     const pivotDoc   = DocumentApp.openById(pivotId);
     const ss         = SpreadsheetApp.openById(indexId);
