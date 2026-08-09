@@ -225,6 +225,11 @@ Studio must write the complete inference output as JSON to the document body, re
 
 **Empty sections** — If a section has no data, use an empty array `[]` or `null`. Do not omit keys entirely — the queue processor checks for key existence in some branches.
 
+**Known drift between this spec and the live Curator (found by diffing 5 real processed-log outputs against this doc):**
+- `alignment_observations` is documented above and required by `_updateShadowMatrix()`, but the live Curator prompt was not producing it as of this writing — confirm your Curator's actual instructions include it verbatim, not just this spec.
+- `session_uid` is documented here as a top-level `LOG-{unix_ms}-{8_char_hash}` field, but the live Curator instead nests the real session identifier at `session_metadata.session_id` in ISO-datetime form. `processIntakePayload()` now checks `session_metadata.session_id` first, then `session_uid`, so either convention works — but pick one and update whichever side (spec or prompt) is wrong, rather than leaving both alive indefinitely.
+- Real output also carries `schema_version`, `build_state` (component-level health/status tracking), `session_delta.changes` (a change log distinct from `smp_proposals_filed`), and `cog_registry.cogs_active`/`apex_lead`/`inter_cog_disputes` — none of which are documented above. The queue processor currently ignores all of these safely (no crash, just unused). `build_state.components` in particular looks like a legitimate future write-target if KOS should ever track live code health, not just session history — not built, just flagged as real, structured data currently going nowhere.
+
 ---
 
 ## Step 6 — Writing Output Back to the Document
