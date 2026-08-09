@@ -22,6 +22,7 @@
 
   "cas-ccps:central-ledger": {
     "_bound_to": "Central Ledger spreadsheet",
+    "manifest": "cas-ccps/clasp/manifests/central-ledger.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/00_SharedConfig_M2_ADDENDUM_v2.js",
@@ -49,6 +50,7 @@
 
   "cas-ccps:unified-manual": {
     "_bound_to": "Assignment System Manual Google Doc (container-bound) — the setup wizard's own project",
+    "manifest": "cas-ccps/clasp/manifests/unified-manual.appsscript.json",
     "files": [
       "cas-ccps/scripts/16_UnifiedManualSetup.js",
       "cas-ccps/scripts/16_UnifiedManualSetup_M5_ADDENDUM_v2.js",
@@ -61,6 +63,7 @@
 
   "cas-ccps:master-student-template": {
     "_bound_to": "Master Student Template Google Doc (container-bound)",
+    "manifest": "cas-ccps/clasp/manifests/master-student-template.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/01_StudentDoc_ContainerScript.js",
@@ -71,6 +74,7 @@
 
   "cas-ccps:rubric-response-sheet": {
     "_bound_to": "Rubric Response Sheet (cloned per teacher)",
+    "manifest": "cas-ccps/clasp/manifests/rubric-response-sheet.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/05_TeacherIntakePipeline.js",
@@ -82,6 +86,7 @@
 
   "cas-ccps:teacher-matrix-sheet": {
     "_bound_to": "Teacher Matrix Sheet (cloned per teacher)",
+    "manifest": "cas-ccps/clasp/manifests/teacher-matrix-sheet.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/08_TeacherConfirmationStep.js",
@@ -93,6 +98,7 @@
 
   "cas-ccps:teacher-dashboard": {
     "_bound_to": "Standalone web app",
+    "manifest": "cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/07_TeacherDashboard.js",
@@ -102,21 +108,21 @@
 
   "cas-ccps:student-dashboard": {
     "_bound_to": "Standalone web app",
+    "manifest": "cas-ccps/clasp/manifests/student-dashboard.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/13_StudentDashboard.js"
     ]
   },
 
+  "leader-hub:email-bridge": {
+    "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything — no collision surface to check, but promoted to a top-level entry (not '_excluded') anyway so Check E (OAuth scope coverage) still runs against it now that it has a real manifest.",
+    "manifest": "leader-hub/appsscript.json",
+    "files": ["leader-hub/EmailBridge.gs"]
+  },
+
   "_excluded_not_deployed_scripts": [
     "cas-ccps/scripts/15_StudioFlowPrompts.js",
     "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js"
-  ],
-
-  "_excluded_standalone_projects": {
-    "leader-hub:email-bridge": {
-      "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything — no collision surface to check.",
-      "files": ["leader-hub/EmailBridge.gs"]
-    }
-  }
+  ]
 }

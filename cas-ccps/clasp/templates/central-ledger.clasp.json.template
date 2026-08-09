@@ -1,0 +1,5 @@
+{
+  "_comment": "Template only — clasp will not read a file with this name. After running 'clasp login' and either 'clasp clone <scriptId>' (existing project) or 'clasp create' (new project) for the real central-ledger Apps Script project, copy this file to .clasp.json (dropping the .template suffix and this comment) with the real scriptId filled in. tools/clasp-sync/sync.js reads THIS file (not a real .clasp.json) as its source when generating the per-project push folder — fill in the real scriptId here, not in a hand-created .clasp.json, so the sync stays reproducible from tracked files.",
+  "scriptId": "REPLACE_WITH_REAL_SCRIPT_ID",
+  "rootDir": "."
+}
