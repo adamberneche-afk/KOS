@@ -1,0 +1,5 @@
+{
+  "_comment": "Template only — clasp will not read a file with this name. After running 'clasp login' and either 'clasp clone <scriptId>' (pulls the existing live EmailBridge project) or 'clasp create' (only if no live project exists yet), copy this file to .clasp.json (dropping the .template suffix and this comment) with the real scriptId filled in. See meta/CLASP_AND_APPS_SCRIPT.md for the full workflow.",
+  "scriptId": "REPLACE_WITH_REAL_SCRIPT_ID",
+  "rootDir": "."
+}
