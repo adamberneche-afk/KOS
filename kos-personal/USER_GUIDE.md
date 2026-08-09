@@ -150,16 +150,15 @@ You can also generate a fresh primer on demand from the Diagnostics tab: **Gener
 
 ## The Council Review
 
-The council is a structured advisory process where seven AI personas evaluate a decision or body of work independently. Unlike asking one AI for advice, the sequestered council ensures each persona forms its verdict without knowing what the others said.
-
-The seven personas are:
+The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than convened on demand):
 - **ARCHITECT** — Systems thinking, structural decisions, long-term planning
 - **AUDITOR** — Verification, consistency, risk identification
 - **MUSE** — Creative connections, unexpected approaches
 - **DEVELOPER** — Implementation, technical execution
-- **ALIGNER** — Relational stakes, ethical dimensions
 - **CURATOR** — Organisation, synthesis, information retrieval
-- **ALIGNMENT** — Always active, monitors for boundary drift
+- **ALIGNMENT** — Always active, monitors for boundary drift (also the cog behind the `04.5_ALIGNER_SILO` Calibration Silo folder and `CE-ALIGN` tag — same cog, older folder-naming convention)
+
+**What "Run full council review" does today:** it assembles current state + pivots into one shared review document instructing the model to act as **ARCHITECT, AUDITOR, and MUSE together** and return a verdict from each — not a fully sequestered, independent-per-persona review. The verdicts appear in the COG_REGISTRY sheet of your BRAIN_TRUST_INDEX once Studio processes the document. A fuller sequestered design — all personas isolated from each other's verdicts ("Seven Bridges," SMP-002) — is specified but not yet built.
 
 **When to use it:**
 - Before a major decision that affects multiple stakeholders
@@ -167,7 +166,7 @@ The seven personas are:
 - When you're in a planning loop and want external challenge
 
 **How to trigger it:**
-Go to Diagnostics → **Run full council review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, 7 isolated stimulus documents are queued for Studio to process. As each cog verdict arrives, it appears in the COG_REGISTRY sheet of your BRAIN_TRUST_INDEX.
+Go to Diagnostics → **Run full council review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, the shared review document above is routed to RAW_EXHAUST for Studio to pick up.
 
 The council runs automatically every 5 sessions (configurable). You'll see the button pulse in Diagnostics when an auto-trigger fires.
 
@@ -175,7 +174,7 @@ The council runs automatically every 5 sessions (configurable). You'll see the b
 
 ## The Vector Weights
 
-The vector weights in the Diagnostics tab show how strongly each knowledge domain featured in your last processed session. Six domains are tracked by default:
+The vector weights in the Diagnostics tab show how strongly each knowledge domain featured in your last processed session. Seven domains are tracked by default:
 
 | Domain | What it captures |
 |---|---|
@@ -185,6 +184,7 @@ The vector weights in the Diagnostics tab show how strongly each knowledge domai
 | PEDAGOGY | Teaching, learning design, student outcomes |
 | GAS_DEVELOPMENT | Google Apps Script, automation, technical implementation |
 | RELATIONAL | Relationships, communication, interpersonal dynamics |
+| DOMAIN_COMPLIANCE | Regulatory/domain-specific compliance signals |
 
 Scores run from 0.0 to 1.0. A score of 0.82 in ARCHITECTURE means that domain was strongly present in your last session. Scores decay over time if a domain isn't mentioned — the system models where your current attention actually is, not just your career history.
 
