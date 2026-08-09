@@ -425,6 +425,10 @@ Council cog stimulus       COG_STIMULUS  (separate payload type)
 | `SHADOW_VERIFY_THRESHOLD` | 0.75 | Confidence to mark a shadow question VERIFIED |
 | `COUNCIL_AUTO_TRIGGER_SESSIONS` | 5 | Sessions between auto-council checks |
 | `INFERENCE_MODE` | `'STUDIO'` | `'STUDIO'` (default, no vendor server) or `'MANAGED_SERVICE'` (opt-in — see Round 3 above) |
+| `DECISION_MULTIPLIER` / `EXPLORATORY_MULTIPLIER` | 1.5 / 1.0 | Exchange-type weight in sentence-level vector aggregation |
+| `INCUBATOR_PROMOTION_THRESHOLD` | 3.0 | Cumulative score needed to promote a theme out of the Incubator |
+| `INCUBATOR_HALF_LIFE_DAYS` | 14 | Days for an untouched Incubator theme's score to halve |
+| `INCUBATOR_DECAY_FLOOR` | 0.10 | Cumulative score below which a theme is marked DECAYED |
 
 ---
 
@@ -454,6 +458,54 @@ matching server function, and OAuth scopes used but not declared in
 `appsscript.json` (this is how the Round 3 `UrlFetchApp` regression —
 added without adding `script.external_request` — was caught). See
 [`tools/gas-lint/README.md`](../tools/gas-lint/README.md).
+
+## Vector weight calculation — a second Studio flow, GAS does the math
+
+Operator decision (CE-SMP Vector Weight Calculation Engine v1.0): the
+Inference Flow is a qualitative classifier only, never trusted to
+compute a session-level vector weight itself. Concretely:
+
+- A new, independent Studio flow (`Payload_Type = VECTOR_CLASSIFY`) reads
+  a session and classifies it at sentence granularity — each sentence
+  gets a 0.0–1.0 relevance signal per known vector, plus an
+  `unmapped_signals` list for anything outside the known set. Each
+  human+AI exchange is also flagged `DECISION` or `EXPLORATORY`. That's
+  the entire scope of what the LLM is asked to do here — see
+  `STUDIO_INTEGRATION_SPEC.md`'s "Inference Flow — Sentence
+  Classification" section for the exact contract.
+- `4_Vector_Router.gs`'s `_aggregateSentenceVectors_()` does every
+  quantitative step deterministically in GAS: multiply each sentence's
+  score by its exchange's multiplier (`DECISION` = 1.5×, `EXPLORATORY` =
+  1.0×), sum, and normalize against the total possible score. The same
+  session always produces the same weights, regardless of who runs it or
+  when — verified against a standalone Node simulation before this
+  landed (order-independence, threshold-dropping, zero-division safety).
+- The Incubator moved from a simple session-count/average-weight
+  threshold to cumulative score + 14-day half-life decay
+  (`CFG.INCUBATOR_PROMOTION_THRESHOLD`/`INCUBATOR_HALF_LIFE_DAYS`/
+  `INCUBATOR_DECAY_FLOOR`) — an emerging theme that goes quiet for a
+  while genuinely loses ground toward promotion rather than accumulating
+  forever. `INCUBATOR`'s schema changed accordingly (`Raw_Score_Log`,
+  `Cumulative_Score` replace the old rolling average).
+- `VECTOR_MATRIX` rows now carry a trailing `CHECKSUM` column (MD5 of
+  the session UID + every theme score) — a corruption-detection check,
+  not a security control, per Law 5 (Matrix Row Integrity) — one row per
+  session, and a mismatch on audit means something wrote to this sheet
+  outside the normal path.
+- `KNOWN_VECTORS` grew to 7: `DOMAIN_COMPLIANCE` joins the original 6
+  (kept alongside `RELATIONAL` rather than replacing it — the SMP's own
+  audit example used `DOMAIN_COMPLIANCE`, real live sessions had already
+  shipped using `RELATIONAL`, and there was no reason to force a choice
+  between two live conventions when tracking both costs nothing).
+
+**What this doesn't include yet:** the Studio-side Inference Flow itself
+isn't built — the spec above is what to build it against. Once it
+exists, wiring `2_Ingestion_Sensors.gs` to queue a paired
+`VECTOR_CLASSIFY` row alongside each `SESSION_LOG` chunk (sharing the
+same `Payload_UID` so the two flows' outputs correlate to one session)
+is flagged as an open integration question in the spec doc — it depends
+on how session consolidation actually works against the real, multi-chunk
+Studio setup, which isn't visible from this repo.
 
 ## Version control (clasp) — scaffolded, not yet connected
 

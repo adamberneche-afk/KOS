@@ -55,7 +55,7 @@ Studio polls STAGING_PIPELINE on a schedule. Recommended polling interval: every
 |---|---|---|
 | 0 | Timestamp | ISO datetime when the row was created |
 | 1 | Payload_UID | Unique identifier for this chunk |
-| 2 | Payload_Type | `SESSION_LOG`, `EXTERNAL_DATA`, or `COG_STIMULUS` |
+| 2 | Payload_Type | `SESSION_LOG`, `EXTERNAL_DATA`, `COG_STIMULUS`, or `VECTOR_CLASSIFY` |
 | 3 | Doc_URL | Full Google Drive URL of the chunk document |
 | 4 | File_ID | Google Drive file ID of the chunk document |
 | 5 | Status | Current pipeline status |
@@ -343,6 +343,61 @@ The output JSON for `COG_STIMULUS` should contain only the `cog_registry` sectio
   }
 }
 ```
+
+---
+
+## Inference Flow — Sentence Classification (`VECTOR_CLASSIFY`)
+
+**This is a second, independent Studio flow — not a mode of the SESSION_LOG flow above.** It exists specifically to enforce the Bifurcation Boundary (CE-SMP Vector Weight Calculation Engine v1.0, adopted as an operator decision): the Inference Flow is a *qualitative classifier only*. It is never trusted to compute a session-level vector weight — that arithmetic is 100% GAS, in `4_Vector_Router.gs`'s `_aggregateSentenceVectors_()`. If this flow's own guess at a session-level float ever leaked into VECTOR_MATRIX, that would defeat the entire point of building it.
+
+**Trigger:** identical mechanics to the flows above — poll `STAGING_PIPELINE` for `Status = STUDIO_ACTIVE` rows where `Payload_Type = VECTOR_CLASSIFY`. Same Turnstile gating, same staleness guard.
+
+**Known vectors to classify against** (pass this list into your prompt — do not hardcode it, it grows as themes get promoted from the Incubator):
+```
+ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLIANCE
+```
+
+**What the flow does:**
+1. Read the source document (same mechanics as Step 3 above).
+2. Split the text into exchanges (a human turn + the following AI turn) and, within each exchange, into individual sentences.
+3. For each exchange, classify it as `DECISION` (produced a binding decision, approved artifact, system law, or locked architectural direction) or `EXPLORATORY` (discussion, clarification, ideation, Q&A with no binding output).
+4. For each sentence, assign a relevance float 0.0–1.0 to each of the seven known vectors above, plus any additional theme signals you detect that aren't in that list (`unmapped_signals`) — this is how new themes eventually reach the Incubator. A sentence commonly carries several vectors at once ("the script must never execute if the status is changed by an API" is simultaneously SECURITY, GAS_DEVELOPMENT, and ARCHITECTURE) — assign all of them, don't force a single dominant theme.
+5. **Do not sum, average, weight, or otherwise combine these into a session-level score.** That step does not belong to this flow.
+
+**Output schema** — a top-level JSON array of exchanges:
+
+```json
+[
+  {
+    "exchange_type": "DECISION",
+    "sentences": [
+      {
+        "sentence_id": 1,
+        "vectors": {
+          "ARCHITECTURE": 0.3,
+          "GAS_DEVELOPMENT": 0.8,
+          "SECURITY": 0.5,
+          "PEDAGOGY": 0.0,
+          "UI": 0.0,
+          "RELATIONAL": 0.0,
+          "DOMAIN_COMPLIANCE": 0.0
+        },
+        "unmapped_signals": [
+          { "theme": "ECONOMICS", "weight": 0.6 }
+        ]
+      }
+    ]
+  },
+  {
+    "exchange_type": "EXPLORATORY",
+    "sentences": [ ]
+  }
+]
+```
+
+Write this array as the document body (replacing the source text entirely — same convention as every other flow: JSON only, no markdown fences, no preamble). Then set `Status` to `FLOW_COMPLETE`, exactly like the other flows. `processInferenceQueue()` detects `Payload_Type = VECTOR_CLASSIFY` and routes to `processVectorClassificationPayload()` instead of the Curator intake path — everything downstream (aggregation, decay, Incubator promotion, the checksum) is GAS-only from there.
+
+**Open integration question — not yet resolved in this repo:** for a `VECTOR_CLASSIFY` row's VECTOR_MATRIX write to land under the same `session_uid` as its paired `SESSION_LOG` row (so the two independently-completing flows correlate to one session), both rows need to share the same `Payload_UID` at the moment they're queued. `2_Ingestion_Sensors.gs`'s existing `_chunkAndQueue()` queues one `SESSION_LOG` row per chunk today and has not been modified to also queue a paired `VECTOR_CLASSIFY` row — that wiring depends on how session consolidation actually works in your live Studio setup (multiple raw chunk docs appear to already merge into one Curator output per the processed-log examples reviewed), which isn't something this repo can see. Decide and wire this once the Inference Flow itself is built and you can see the real shape of a completed classification against a real multi-chunk session.
 
 ---
 

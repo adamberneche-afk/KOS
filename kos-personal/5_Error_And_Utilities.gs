@@ -432,10 +432,14 @@ function _getOrCreateSheet(ss, name) {
     // ── Vector & matrix ───────────────────────────────────────
     // MATRIX_LEDGER: fixed audit log of raw scores per session.
     // v8.0 adds GAS_DEVELOPMENT + RELATIONAL to match CFG.KNOWN_VECTORS.
+    // DOMAIN_COMPLIANCE added when the 7th known vector was adopted
+    // (tracked alongside RELATIONAL rather than replacing it — the SMP's
+    // audit example used DOMAIN_COMPLIANCE, real live sessions use
+    // RELATIONAL; both are kept as known vectors going forward).
     [CFG.MATRIX_LEDGER_SHEET]: [
       'Session_UID','Timestamp',
       'ARCHITECTURE','UI','SECURITY','PEDAGOGY',
-      'GAS_DEVELOPMENT','RELATIONAL',
+      'GAS_DEVELOPMENT','RELATIONAL','DOMAIN_COMPLIANCE',
       'TOTAL',
     ],
     // DYNAMIC_STATE_MATRIX: long-format decayed scores per theme/session.
@@ -445,13 +449,23 @@ function _getOrCreateSheet(ss, name) {
     ],
     // VECTOR_MATRIX: wide-format living state with decay.
     // Columns grow when themes are promoted from the incubator.
+    // CHECKSUM (row-integrity hash, CFG.MATRIX_ROW_CHECKSUM_ALGO) is
+    // always the last column, after INCUBATOR_SIGNALS — see
+    // _writeMatrixRow's header-parsing guard in 4_Vector_Router.gs,
+    // which must keep excluding exactly these two trailing columns.
     [CFG.VECTOR_MATRIX_SHEET]: [
       'Session_UID','Timestamp',
       ...CFG.KNOWN_VECTORS,
       'INCUBATOR_SIGNALS',
+      'CHECKSUM',
     ],
+    // INCUBATOR: cumulative-score + half-life-decay lifecycle (CE-SMP
+    // Vector Weight Calculation Engine v1.0). Raw_Score_Log is a JSON
+    // array of {session_id, raw_score} — the historical record migrated
+    // verbatim into VECTOR_MATRIX on promotion, never re-normalized.
     [CFG.INCUBATOR_SHEET]: [
-      'Theme','First_Seen','Last_Seen','Session_Count','Avg_Weight','Status',
+      'Theme','First_Detected','Last_Touched',
+      'Session_Count','Cumulative_Score','Raw_Score_Log','Status',
     ],
 
     // ── Governance ────────────────────────────────────────────

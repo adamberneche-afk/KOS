@@ -115,13 +115,33 @@ const CFG = {
   // ── Vector Router ─────────────────────────────────────────────
   VECTOR_THRESHOLD:         0.7,
   DECAY_FACTOR:             0.92,
-  INCUBATOR_THRESHOLD:      0.10,
-  PROMOTION_MIN_SESSIONS:   3,
-  PROMOTION_MIN_AVG_WEIGHT: 0.35,
+  INCUBATOR_THRESHOLD:      0.10,  // min per-sentence signal to log to Incubator at all
   KNOWN_VECTORS: [
-    'ARCHITECTURE', 'UI', 'SECURITY',
-    'PEDAGOGY', 'GAS_DEVELOPMENT', 'RELATIONAL',
+    'ARCHITECTURE', 'UI', 'SECURITY', 'PEDAGOGY',
+    'GAS_DEVELOPMENT', 'RELATIONAL', 'DOMAIN_COMPLIANCE',
   ],
+
+  // ── Sentence-level vector classification (Bifurcation Boundary) ──
+  // Operator decision: the Inference Flow (Studio) only classifies —
+  // assigns qualitative per-sentence relevance signals. It is never
+  // trusted to compute a session-level float itself. GAS performs all
+  // aggregation, decay, and promotion math deterministically from those
+  // classifications. See STUDIO_INTEGRATION_SPEC.md's "Inference Flow —
+  // Sentence Classification" section for the Studio-side contract.
+  DECISION_MULTIPLIER:        1.5,  // weight for DECISION-type exchanges
+  EXPLORATORY_MULTIPLIER:     1.0,  // weight for EXPLORATORY-type exchanges
+  MATRIX_ROW_CHECKSUM_ALGO:   'MD5',  // corruption-detection only, not security
+
+  // ── Incubator lifecycle (cumulative score + half-life decay) ────
+  // Replaces the old min-sessions/avg-weight promotion check. An
+  // incubating theme's cumulative_score decays by half every
+  // INCUBATOR_HALF_LIFE_DAYS if it isn't touched again; it promotes to
+  // a known vector once cumulative_score clears the threshold, and is
+  // marked DECAYED (not deleted — kept for audit) once it drops below
+  // the floor.
+  INCUBATOR_PROMOTION_THRESHOLD: 3.0,
+  INCUBATOR_HALF_LIFE_DAYS:      14,
+  INCUBATOR_DECAY_FLOOR:         0.10,
 
   // ── Personas to copy from Drive on Deploy ─────────────────────
   PERSONAS: [
