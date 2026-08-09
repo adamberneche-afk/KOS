@@ -104,6 +104,42 @@ function _reportError(context, error, ui) {
 
 
 /**
+ * Fires a message to a Google Chat incoming webhook, if one is
+ * configured. Used for high-priority, real-time alerts that shouldn't
+ * wait for sendDailyErrorReport()'s once-a-day digest — the Registrar/
+ * Cog Relay pipeline's Fail Loud Protocol (CRITICAL_FAILURE) and Apollo
+ * Kill-Switch (human_intervention_required) both call this.
+ *
+ * Gracefully degrades to a console.log no-op if CFG.PROP.CHAT_WEBHOOK_URL
+ * isn't set as a Script Property — this is an optional integration, same
+ * pattern as CFG.INFERENCE_MODE's MANAGED_SERVICE path. Never throws;
+ * a failed alert must not block the caller's own state transition.
+ *
+ * @param  {string} message  Plain-text message body.
+ * @returns {boolean} true if a webhook call was actually attempted.
+ */
+function _sendChatAlert(message) {
+  try {
+    const url = PropertiesService.getScriptProperties().getProperty(CFG.PROP.CHAT_WEBHOOK_URL);
+    if (!url) {
+      console.log('[ChatAlert] No CHAT_WEBHOOK_URL configured — logging only: ' + message);
+      return false;
+    }
+    UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify({ text: message }),
+      muteHttpExceptions: true,
+    });
+    return true;
+  } catch (e) {
+    console.error('[ChatAlert] Failed to send: ' + e.message);
+    return false;
+  }
+}
+
+
+/**
  * Reads all unreported rows from ERROR_LOG, sends a grouped
  * digest email to the admin, and marks rows as REPORTED.
  *
@@ -491,6 +527,14 @@ function _getOrCreateSheet(ss, name) {
     // ── Onboarding ────────────────────────────────────────────
     [CFG.ONBOARDING_SHEET]: [
       'Day','Date','Event','Note','Vision_90_Day',
+    ],
+
+    // ── Registrar / Cog Relay (11_Registrar_CogRelay.gs) ───────
+    // Column order matches CFG.REGISTRAR_COLS exactly — keep in sync.
+    [CFG.REGISTRAR_LEDGER_SHEET]: [
+      'File_ID','File_Name','Current_State',
+      'Cog_1_JSON_Output','Cog_2_JSON_Output','Final_Human_Translation',
+      'Attempt_Tracker','Error_Log','Timestamp_Intake','Timestamp_Finalized',
     ],
 
     // ── v8.0 additions ────────────────────────────────────────
