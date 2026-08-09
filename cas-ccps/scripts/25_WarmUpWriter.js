@@ -57,11 +57,14 @@ const SP25_TEACHER_EMAIL  = 3;
 const SP25_STUDENT_NAME   = 1;
 const SP25_SHADOW_MATRIX  = 12; // JSON — per-student × per-unit confidence
 
-// Alias for readability in checkShadowMatrixInterrupts_
-const SP_STUDENT_EMAIL  = SP25_STUDENT_EMAIL;
-const SP_TEACHER_EMAIL  = SP25_TEACHER_EMAIL;
-const SP_STUDENT_NAME   = SP25_STUDENT_NAME;
-const SP_SHADOW_MATRIX  = SP25_SHADOW_MATRIX;
+// NOTE: this file used to also declare unprefixed SP_STUDENT_EMAIL /
+// SP_TEACHER_EMAIL / SP_STUDENT_NAME / SP_SHADOW_MATRIX as "aliases for
+// readability" in checkShadowMatrixInterrupts_ below. Those unprefixed
+// names collided with 23_StudentProfileManager.js's real (also
+// unprefixed) StudentProfiles column constants — both files are bound to
+// the Central Ledger project, so GAS's shared global scope treated that
+// as an illegal redeclaration. Removed; checkShadowMatrixInterrupts_ now
+// reads the SP25_* names directly (caught by tools/gas-lint/check.js).
 
 // ── WarmUpQueue column indices (0-based) — must match Scripts 23 + 24 ─────────
 const WQ25_QUEUE_ID          = 0;
@@ -463,15 +466,15 @@ function checkShadowMatrixInterrupts_(ss, cfg) {
   const interrupts = []; // { studentName, email, unitId, unitName, bestArchetype, confidence }
 
   for (let i = 1; i < data.length; i++) {
-    const rowEmail   = String(data[i][SP_STUDENT_EMAIL]  || "").trim().toLowerCase();
-    const rowTeacher = String(data[i][SP_TEACHER_EMAIL]  || "").trim().toLowerCase();
-    const rowName    = String(data[i][SP_STUDENT_NAME]   || "").trim();
+    const rowEmail   = String(data[i][SP25_STUDENT_EMAIL]  || "").trim().toLowerCase();
+    const rowTeacher = String(data[i][SP25_TEACHER_EMAIL]  || "").trim().toLowerCase();
+    const rowName    = String(data[i][SP25_STUDENT_NAME]   || "").trim();
 
     if (rowEmail === teacherEmail.toLowerCase()) continue; // skip teacher row
     if (rowTeacher !== teacherEmail.toLowerCase()) continue;
 
     let matrix = {};
-    try { matrix = JSON.parse(data[i][SP_SHADOW_MATRIX] || "{}"); }
+    try { matrix = JSON.parse(data[i][SP25_SHADOW_MATRIX] || "{}"); }
     catch(e) { continue; }
 
     for (const unitId of Object.keys(matrix)) {
@@ -1135,11 +1138,11 @@ function getYesterday_() {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
 }
 
-function formatDateYMD_(date) {
-  return date.getFullYear() + "-" +
-    String(date.getMonth() + 1).padStart(2, "0") + "-" +
-    String(date.getDate()).padStart(2, "0");
-}
+// formatDateYMD_(date) is defined in 23_StudentProfileManager.js — both
+// files are bound to the Central Ledger project, so it's already in
+// scope here. A second copy used to live here (and a third in
+// 24_WarmUpBridge.js) — same behavior, just duplicated; removed as a
+// duplicate-declaration fix (tools/gas-lint/check.js), not a behavior change.
 
 function generateWarmUpId_() {
   const now = new Date();

@@ -389,12 +389,11 @@ function getDayType_(date) {
 // Returns "YYYY-MM-DD" string for a Date object.
 // Used for LessonContext lesson_date comparison.
 // ---------------------------------------------------------------------------
-function formatDateYMD_(date) {
-  const yyyy = date.getFullYear();
-  const mm   = String(date.getMonth() + 1).padStart(2, "0");
-  const dd   = String(date.getDate()).padStart(2, "0");
-  return yyyy + "-" + mm + "-" + dd;
-}
+// formatDateYMD_(date) is defined in 23_StudentProfileManager.js — both
+// files are bound to the Central Ledger project, so it's already in
+// scope here. A second copy used to live in this file (and a third in
+// 25_WarmUpWriter.js) — same behavior, just duplicated; removed as a
+// duplicate-declaration fix (tools/gas-lint/check.js), not a behavior change.
 
 // ---------------------------------------------------------------------------
 // getPeriodsForDay_

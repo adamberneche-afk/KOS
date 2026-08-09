@@ -22,11 +22,16 @@ const RQ_STATUS    = 5;
 
 // STAGING_PIPELINE column indices (0-based)
 // Schema: Timestamp | QueueRowRef | StudentFileID | ConfigID | TeacherEmail | Status
-const SP_QUEUE_ROW_REF   = 1;
-const SP_STUDENT_FILE_ID = 2;
-const SP_CONFIG_ID       = 3;
-const SP_TEACHER_EMAIL   = 4;  // Added for per-teacher lane routing in Script 06
-const SP_STATUS          = 5;  // Shifted from 4 → 5 with TeacherEmail insertion
+// Prefixed STG_ (not SP_) — SP_ is 23_StudentProfileManager.js's prefix for
+// the unrelated StudentProfiles sheet, and both files share the Central
+// Ledger project's global scope. SP_TEACHER_EMAIL=4 here vs. SP_TEACHER_EMAIL=3
+// there was a real duplicate-declaration crash, caught by
+// tools/gas-lint/check.js, not just a naming coincidence.
+const STG_QUEUE_ROW_REF   = 1;
+const STG_STUDENT_FILE_ID = 2;
+const STG_CONFIG_ID       = 3;
+const STG_TEACHER_EMAIL   = 4;  // Added for per-teacher lane routing in Script 06
+const STG_STATUS          = 5;  // Shifted from 4 → 5 with TeacherEmail insertion
 
 // ---------------------------------------------------------------------------
 // bridgeQueue — moves PENDING ReviewQueue rows to STAGING_PIPELINE
@@ -50,7 +55,7 @@ function bridgeQueue() {
   // Build set of already-staged QueueRowRefs
   const alreadyStaged = new Set();
   for (let i = 1; i < stagingData.length; i++) {
-    alreadyStaged.add(stagingData[i][SP_QUEUE_ROW_REF].toString());
+    alreadyStaged.add(stagingData[i][STG_QUEUE_ROW_REF].toString());
   }
 
   // Build set of fileIds currently IN_PROCESS or PENDING_INFERENCE in staging
@@ -58,10 +63,10 @@ function bridgeQueue() {
   // don't stage another request for the same doc
   const inFlight = new Set();
   for (let i = 1; i < stagingData.length; i++) {
-    const st = String(stagingData[i][SP_STATUS]).trim();
+    const st = String(stagingData[i][STG_STATUS]).trim();
     // Also treat ERROR_TIMEOUT as in-flight for deduplication purposes
     if (st === "IN_PROCESS" || st === "PENDING_INFERENCE") {
-      inFlight.add(stagingData[i][SP_STUDENT_FILE_ID].toString().trim());
+      inFlight.add(stagingData[i][STG_STUDENT_FILE_ID].toString().trim());
     }
   }
 
@@ -132,11 +137,11 @@ function backPropagateCompletions() {
   const stagingData = stagingSheet.getDataRange().getValues();
 
   for (let i = 1; i < stagingData.length; i++) {
-    const stagingStatus = String(stagingData[i][SP_STATUS]).trim();
-    const queueRowRef   = stagingData[i][SP_QUEUE_ROW_REF].toString();
-    const fileId        = stagingData[i][SP_STUDENT_FILE_ID].toString().trim();
-    const configId      = stagingData[i][SP_CONFIG_ID].toString().trim();
-    const teacherEmail  = String(stagingData[i][SP_TEACHER_EMAIL] || "").trim();
+    const stagingStatus = String(stagingData[i][STG_STATUS]).trim();
+    const queueRowRef   = stagingData[i][STG_QUEUE_ROW_REF].toString();
+    const fileId        = stagingData[i][STG_STUDENT_FILE_ID].toString().trim();
+    const configId      = stagingData[i][STG_CONFIG_ID].toString().trim();
+    const teacherEmail  = String(stagingData[i][STG_TEACHER_EMAIL] || "").trim();
 
     // Handle ERROR_TIMEOUT rows — close queue row and notify teacher
     if (stagingStatus === "ERROR_TIMEOUT") {

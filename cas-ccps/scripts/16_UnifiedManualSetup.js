@@ -929,6 +929,16 @@ function createTeacherAssets_(teacherName, teacherEmail, subject, props) {
 // ---------------------------------------------------------------------------
 // extractFormEntryIds_
 // ---------------------------------------------------------------------------
+// M5/M6 note: this function used to also exist, nearly identically, as a
+// "paste this version over it" replacement in
+// 16_UnifiedManualSetup_M5_ADDENDUM_v2.js — that addendum's own header
+// said as much, but nobody had actually done the paste, so both files
+// declared extractFormEntryIds_ as literal top-level code while sharing
+// this project's global scope. Caught by tools/gas-lint/check.js. Merged
+// here now, per that addendum's own instruction, plus the one-line M6
+// extension (16_UnifiedManualSetup_M6_ADDENDUM.js) for the Lesson Unit
+// dropdown. The addendum files are left in place as the historical
+// record of what changed and why — see their own headers — not deleted.
 function extractFormEntryIds_(form) {
   const titleToKey = {
     "Draft ID":         "CONFIRM_ENTRY_DRAFT_ID",
@@ -938,7 +948,14 @@ function extractFormEntryIds_(form) {
     "Milestone 2":      "CONFIRM_ENTRY_MILESTONE_2",
     "Milestone 3":      "CONFIRM_ENTRY_MILESTONE_3",
     "Milestone 4":      "CONFIRM_ENTRY_MILESTONE_4",
-    "Passing Standard": "CONFIRM_ENTRY_DOD"
+    "Passing Standard": "CONFIRM_ENTRY_DOD",
+    // -- M5 --
+    "Competency — Milestone 1": "CONFIRM_ENTRY_COMP_1",
+    "Competency — Milestone 2": "CONFIRM_ENTRY_COMP_2",
+    "Competency — Milestone 3": "CONFIRM_ENTRY_COMP_3",
+    "Competency — Milestone 4": "CONFIRM_ENTRY_COMP_4",
+    // -- M6 --
+    "Lesson Unit": "CONFIRM_ENTRY_LESSON_UNIT",
   };
 
   const map = {};
@@ -951,7 +968,10 @@ function extractFormEntryIds_(form) {
         ? item.asTextItem().getId()
         : type === FormApp.ItemType.PARAGRAPH_TEXT
           ? item.asParagraphTextItem().getId()
-          : null;
+          // -- M5 -- new branch for the competency (and M6's lesson-unit) dropdowns
+          : type === FormApp.ItemType.LIST
+            ? item.asListItem().getId()
+            : null;
       if (id) map[key] = "entry." + id;
     } catch (e) { /* skip */ }
   }

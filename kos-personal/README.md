@@ -19,10 +19,15 @@ this README, `DEPLOYMENT_GUIDE.md`, `STUDIO_INTEGRATION_SPEC.md`, and
 `PERSONA_*` cog docs are also now in `rtp-core-router/` (previously only
 `PERSONA_DEVELOPER` was present).
 
-`appsscript.json`'s 6 OAuth scopes (`drive`, `spreadsheets`, `documents`,
-`script.scriptapp`, `script.send_mail`, `userinfo.email`) match what the
-code actually calls, with no `UrlFetchApp`/`CalendarApp`/`GmailApp`/advanced-service
-usage anywhere that would need a scope this manifest doesn't have.
+`appsscript.json`'s original 6 OAuth scopes (`drive`, `spreadsheets`,
+`documents`, `script.scriptapp`, `script.send_mail`, `userinfo.email`)
+matched what the code called with no `UrlFetchApp`/`CalendarApp`/`GmailApp`/advanced-service
+usage anywhere — true when this was first written. Round 3 reconciliation
+added `UrlFetchApp` (for `_getManagedServiceStatus_()`'s optional
+managed-inference lookup) without adding its scope, a real regression
+caught by `tools/gas-lint/check.js` and fixed by adding
+`script.external_request` — now 7 scopes, still verified against actual
+code usage by that same tool going forward instead of by memory.
 `executeAs: "USER_DEPLOYING"` and `runtimeVersion: "V8"` are both correct
 and required as-is.
 

@@ -76,7 +76,7 @@ function runWeeklyStudentAggregation_() {
   // GoogleID with a StudentName attached. This is intentionally NOT a
   // separate roster sheet; the Ledger already accumulates this as students
   // submit work, and duplicating it would create a second source of truth.
-  const roster = buildStudentRoster_(ledgerSheet);
+  const roster = buildValidatedStudentRoster_(ledgerSheet);
   Logger.log("[S29] Roster built: " + roster.size + " valid student(s) found in Ledger.");
 
   if (roster.size === 0) {
@@ -102,8 +102,8 @@ function runWeeklyStudentAggregation_() {
 
   for (const [email, name] of roster.entries()) {
     if (!ID_PATTERN.test(email)) {
-      // Defensive — buildStudentRoster_ already filters, but never trust
-      // a single validation point when writing to permanent Docs.
+      // Defensive — buildValidatedStudentRoster_ already filters, but never
+      // trust a single validation point when writing to permanent Docs.
       Logger.log("[S29] Skipping invalid student identifier at write stage: " + email);
       docsSkippedInvalidId++;
       continue;
@@ -148,13 +148,23 @@ function runWeeklyStudentAggregation_() {
 }
 
 // ---------------------------------------------------------------------------
-// buildStudentRoster_
+// buildValidatedStudentRoster_
 // Scans the Ledger for unique GoogleID + StudentName pairs. Validates every
 // GoogleID against ID_PATTERN. Invalid IDs are logged and excluded — they
 // never reach the registry or get a Doc created for them.
 // Returns Map<email, name>
+//
+// Renamed from buildStudentRoster_ — that name collided with a genuinely
+// different function of the same name in 23_StudentProfileManager.js
+// (different signature, different return shape, different filtering
+// logic; both files share the Central Ledger project's global scope).
+// GAS's load order silently decided which implementation every caller
+// actually got — caught by tools/gas-lint/check.js, fixed by renaming
+// this one rather than 23's (23's version is the more general-purpose
+// one: any future third caller wanting "the roster" almost certainly
+// means 23's shape, not this file's validation-specific one).
 // ---------------------------------------------------------------------------
-function buildStudentRoster_(ledgerSheet) {
+function buildValidatedStudentRoster_(ledgerSheet) {
   const data = ledgerSheet.getDataRange().getValues();
   const roster = new Map();
   const invalidSeen = new Set();

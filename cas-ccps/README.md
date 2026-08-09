@@ -423,20 +423,34 @@ GoogleID.
     7), but nothing has run `importCompetencyRegistry()` (Script `22b`)
     against them in a live deployment. This is a deployment-time action,
     not a repo-file gap, listed here so it isn't mistaken for "already live."
-12. **Confirmed duplicate top-level declarations across files sharing a
-    GAS project** — caught by `tools/gas-lint/check.js`, not yet fixed:
-    `SP_STUDENT_EMAIL`/`SP_TEACHER_EMAIL`/`SP_STUDENT_NAME`/`SP_SHADOW_MATRIX`
-    across `23_StudentProfileManager.js`/`25_WarmUpWriter.js`/`03_QueueBridge.js`;
-    `formatDateYMD_` across `23`/`24`/`25` (three near-identical copies,
-    harmless but wasteful); and — the serious one —
-    **`buildStudentRoster_` defined differently in `23_StudentProfileManager.js`
-    (signature `(ledgerData, teacherEmail, currentTerm)`) and
-    `29_StudentContextAggregator.js` (signature `(ledgerSheet)`)** — these
-    are two unrelated functions that happen to share a name, not a
-    harmless duplicate; whichever definition GAS resolves last silently
-    overrides the other's call sites with the wrong signature. All of
-    Module 2/4/5 sharing the Central Ledger project means this is a live
-    landmine, not a theoretical one — see `tools/gas-lint/README.md`.
+12. ~~Confirmed duplicate top-level declarations across files sharing a
+    GAS project~~ — **closed.** `gas-lint` found 6 distinct collisions;
+    all 6 fixed and re-verified clean (0 errors, `node --check` passes
+    repo-wide):
+    - `SP_STUDENT_EMAIL`/`SP_TEACHER_EMAIL`/`SP_STUDENT_NAME`/`SP_SHADOW_MATRIX`:
+      `25_WarmUpWriter.js`'s redundant "alias for readability" block
+      deleted, its call sites now use the file's own already-unique
+      `SP25_*` names directly.
+    - `03_QueueBridge.js`'s `SP_QUEUE_ROW_REF`/`SP_STUDENT_FILE_ID`/`SP_CONFIG_ID`/`SP_TEACHER_EMAIL`/`SP_STATUS`
+      (STAGING_PIPELINE columns) renamed to `STG_*` — these collided with
+      `23_StudentProfileManager.js`'s StudentProfiles-column `SP_*`
+      constants of the *same names but different values/meanings*
+      (`SP_TEACHER_EMAIL` was 4 in one, 3 in the other).
+    - `formatDateYMD_` (three identical copies in `23`/`24`/`25`):
+      de-duplicated to the one definition in `23`, relied on via the
+      shared Central Ledger project scope from `24`/`25`.
+    - **`buildStudentRoster_`** (the serious one — two genuinely different
+      functions sharing a name, `23_StudentProfileManager.js`'s
+      `(ledgerData, teacherEmail, currentTerm)` vs.
+      `29_StudentContextAggregator.js`'s `(ledgerSheet)`): `29`'s renamed
+      to `buildValidatedStudentRoster_`, its one call site updated.
+    - `extractFormEntryIds_` (`16_UnifiedManualSetup.js` vs.
+      `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`, which explicitly
+      documented itself as replacing the base version but had never
+      actually been merged): merged for real, plus the M6 addendum's
+      one-line Lesson Unit extension on top. Both addendum files keep
+      their now-inert content as commented-out historical record, not
+      deleted.
 
 ## Naming note
 

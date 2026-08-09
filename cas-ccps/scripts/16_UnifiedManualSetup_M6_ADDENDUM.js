@@ -133,8 +133,10 @@ function buildLessonUnitDropdownOptions_(centralSsId) {
 
 // ---------------------------------------------------------------------------
 // -- M6 -- extractFormEntryIds_ titleToKey extension.
-// Add this ONE line to the M5 addendum's titleToKey map (which itself
-// extends the base file's map) — no other change to that function.
+//
+// APPLIED — this one line, plus the M5 addendum's full replacement, are
+// both now merged directly into 16_UnifiedManualSetup.js's
+// extractFormEntryIds_(). Kept here as historical record only.
 // ---------------------------------------------------------------------------
 
 /*

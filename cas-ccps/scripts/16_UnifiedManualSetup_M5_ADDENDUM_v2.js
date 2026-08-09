@@ -209,45 +209,51 @@ function buildCompetencyDropdownOptions_(centralSsId) {
 
 // ---------------------------------------------------------------------------
 // -- M5 -- extractFormEntryIds_ -- EXTENDED. Unchanged from v1.
-// REPLACES the original extractFormEntryIds_ function in
-// 16_UnifiedManualSetup.js -- paste this version over it.
+//
+// APPLIED — this replacement has now actually been merged into
+// 16_UnifiedManualSetup.js (plus the M6 addendum's one-line Lesson Unit
+// extension on top). This block is kept as a comment for the historical
+// record only; it is NOT live code — as an uncommented top-level function
+// it collided with the real, merged version, since both files share this
+// project's global scope (caught by tools/gas-lint/check.js).
+//
+// function extractFormEntryIds_(form) {
+//   const titleToKey = {
+//     "Draft ID": "CONFIRM_ENTRY_DRAFT_ID",
+//     "Assignment Name": "CONFIRM_ENTRY_UNIT_NAME",
+//     "AI Coach Persona": "CONFIRM_ENTRY_PERSONA",
+//     "Milestone 1": "CONFIRM_ENTRY_MILESTONE_1",
+//     "Milestone 2": "CONFIRM_ENTRY_MILESTONE_2",
+//     "Milestone 3": "CONFIRM_ENTRY_MILESTONE_3",
+//     "Milestone 4": "CONFIRM_ENTRY_MILESTONE_4",
+//     "Passing Standard": "CONFIRM_ENTRY_DOD",
+//     // -- M5 --
+//     "Competency — Milestone 1": "CONFIRM_ENTRY_COMP_1",
+//     "Competency — Milestone 2": "CONFIRM_ENTRY_COMP_2",
+//     "Competency — Milestone 3": "CONFIRM_ENTRY_COMP_3",
+//     "Competency — Milestone 4": "CONFIRM_ENTRY_COMP_4",
+//   };
+//
+//   const map = {};
+//   for (const item of form.getItems()) {
+//     const key = titleToKey[item.getTitle()];
+//     if (!key) continue;
+//     try {
+//       const type = item.getType();
+//       const id = type === FormApp.ItemType.TEXT
+//         ? item.asTextItem().getId()
+//         : type === FormApp.ItemType.PARAGRAPH_TEXT
+//         ? item.asParagraphTextItem().getId()
+//         // -- M5 -- new branch for the competency dropdowns
+//         : type === FormApp.ItemType.LIST
+//         ? item.asListItem().getId()
+//         : null;
+//       if (id) map[key] = "entry." + id;
+//     } catch (e) { /* skip */ }
+//   }
+//   return map;
+// }
 // ---------------------------------------------------------------------------
-function extractFormEntryIds_(form) {
-  const titleToKey = {
-    "Draft ID": "CONFIRM_ENTRY_DRAFT_ID",
-    "Assignment Name": "CONFIRM_ENTRY_UNIT_NAME",
-    "AI Coach Persona": "CONFIRM_ENTRY_PERSONA",
-    "Milestone 1": "CONFIRM_ENTRY_MILESTONE_1",
-    "Milestone 2": "CONFIRM_ENTRY_MILESTONE_2",
-    "Milestone 3": "CONFIRM_ENTRY_MILESTONE_3",
-    "Milestone 4": "CONFIRM_ENTRY_MILESTONE_4",
-    "Passing Standard": "CONFIRM_ENTRY_DOD",
-    // -- M5 --
-    "Competency — Milestone 1": "CONFIRM_ENTRY_COMP_1",
-    "Competency — Milestone 2": "CONFIRM_ENTRY_COMP_2",
-    "Competency — Milestone 3": "CONFIRM_ENTRY_COMP_3",
-    "Competency — Milestone 4": "CONFIRM_ENTRY_COMP_4",
-  };
-
-  const map = {};
-  for (const item of form.getItems()) {
-    const key = titleToKey[item.getTitle()];
-    if (!key) continue;
-    try {
-      const type = item.getType();
-      const id = type === FormApp.ItemType.TEXT
-        ? item.asTextItem().getId()
-        : type === FormApp.ItemType.PARAGRAPH_TEXT
-        ? item.asParagraphTextItem().getId()
-        // -- M5 -- new branch for the competency dropdowns
-        : type === FormApp.ItemType.LIST
-        ? item.asListItem().getId()
-        : null;
-      if (id) map[key] = "entry." + id;
-    } catch (e) { /* skip */ }
-  }
-  return map;
-}
 
 // =============================================================================
 // REMAINING OPEN ITEM -- unchanged from v1
