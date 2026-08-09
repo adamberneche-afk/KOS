@@ -896,27 +896,17 @@ function _seedBlackboardTemplateRow(ss) {
 // ADMIN
 // ================================================================
 
-/**
- * Clears routing pointer cache while preserving all calibration,
- * onboarding, and promoted vector data. Re-index Drive by running
- * setupRoutingProperties() after this.
- */
-function resetProperties() {
-  const props = PropertiesService.getScriptProperties();
-  const keep  = {};
-  [
-    ...CFG.CALIBRATION_KEYS,
-    'IDENTITY_KEY',
-    'KOS_PROMOTED_VECTORS',      // v8.0 — vector promotion persistence
-    ...Object.values(CFG.PROP),
-    'KOS_OPERATOR_ROLE', 'KOS_OPERATOR_AUDIENCE', 'KOS_ADMIN_GHOST',
-    'KOS_NECESSARY_STRUGGLE', 'KOS_RELATIONAL_TARGETS', 'KOS_VISION_90_DAY',
-  ].forEach(k => { const v = props.getProperty(k); if (v) keep[k] = v; });
-  props.deleteAllProperties();
-  if (Object.keys(keep).length > 0) props.setProperties(keep);
-  console.log('[resetProperties] Routing cache cleared. Calibration and promotion state preserved. Run setupRoutingProperties() to re-index.');
-  return { kept: Object.keys(keep).length };
-}
+// resetProperties() is defined in 5_Error_And_Utilities.gs, not here.
+// This file used to have its own, near-identical copy — a real
+// duplicate top-level declaration (both files are bound to this single
+// kos-personal project's global scope), caught by tools/gas-lint/check.js.
+// The two versions weren't just redundant: this one was missing
+// 'KOS_ADMIN_EMAIL' from its preserved-key list, so if GAS's load order
+// had happened to resolve to this definition, calling resetProperties()
+// would have silently wiped the daily-digest admin email
+// (sendDailyErrorReport() in 5_Error_And_Utilities.gs reads it) until
+// someone noticed and manually re-set it. Removed in favor of the
+// strictly more complete version.
 
 
 // ================================================================
