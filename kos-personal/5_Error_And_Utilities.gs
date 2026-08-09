@@ -1073,7 +1073,10 @@ function archiveStagingPipeline() {
  * Run setupRoutingProperties() (1_Config_And_Deploy.gs) afterwards
  * to re-index Drive IDs.
  *
- * v8.0: also preserves KOS_PROMOTED_VECTORS.
+ * v8.0: also preserves KOS_PROMOTED_VECTORS and KOS_ADMIN_EMAIL (the
+ * latter is what sendDailyErrorReport(), above, reads as its digest
+ * target — this is the canonical resetProperties(); a stale duplicate
+ * missing KOS_ADMIN_EMAIL used to also exist in 1_Config_And_Deploy.gs).
  *
  * @returns {{ kept: number }}
  */
