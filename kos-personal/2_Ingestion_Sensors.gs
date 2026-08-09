@@ -490,6 +490,26 @@ function submitExternalData(text, title) {
       return { success: false, message: 'RAW_EXHAUST folder not set. Run deployFullSystem().' };
     }
 
+    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+
+    // Duplicate guard — checked BEFORE creating a Doc, same pattern as
+    // sensor1_scanInboundSessions/submitSessionLog. FIXED: this used to
+    // rely on _queuePayload's fileId check below, which compares the
+    // brand-new Doc's Drive file ID (always unique — freshly created
+    // every call) against existing FILE_ID values, so it could never
+    // fire; the "Duplicate" branch was unreachable dead code. Now checks
+    // PAYLOAD_UID directly against this content's deterministic hash,
+    // same as the session-log dedup checks.
+    if (staging.getLastRow() > 1) {
+      const existingUids = staging
+        .getRange(2, CFG.STAGING_COLS.PAYLOAD_UID + 1, staging.getLastRow() - 1, 1)
+        .getValues().flat().map(String);
+      if (existingUids.includes(uid)) {
+        return { success: false, message: 'Duplicate: this content has already been queued.' };
+      }
+    }
+
     const rawFolder = DriveApp.getFolderById(rawId);
     const safeTitle = titleStr.replace(/[^a-zA-Z0-9 _-]/g, '').substring(0, 40);
     const docName   = '[EXT]_' + uid + '_' + safeTitle;
@@ -511,11 +531,12 @@ function submitExternalData(text, title) {
     DriveApp.getFileById(dId).moveTo(rawFolder);
 
     const docUrl  = DriveApp.getFileById(dId).getUrl();
-    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
-    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const queued  = _queuePayload(uid, 'EXTERNAL_DATA', docUrl, dId, staging);
 
     if (!queued) {
+      // Defensive fallback — should be unreachable now that the PAYLOAD_UID
+      // check above runs first, but _queuePayload's own fileId check stays
+      // in place as a second line of defense, same as everywhere else it's used.
       return { success: false, message: 'Duplicate: this content has already been queued.' };
     }
 

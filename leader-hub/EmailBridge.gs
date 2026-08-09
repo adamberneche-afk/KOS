@@ -128,11 +128,22 @@ function scanHorizonLabel_() {
 
 // ── Mark consumed (POST) — unchanged ─────────────────────────────────────────
 
+// PropertiesService caps each property VALUE at 9216 bytes. Gmail message
+// IDs are ~16 hex chars; JSON-array-encoded with quotes/comma that's
+// ~19 bytes/entry, so the old cap of 500 entries (~9.5KB) was already
+// over the limit — prop.setProperty() would start throwing
+// "Argument too large" once the list grew past ~450-480 entries,
+// permanently breaking markConsumed_ from that point on (compounding the
+// payload-shape bug fixed in student-leader-hub.html — items would
+// reappear on every poll AND the fix for that would eventually fail
+// too). 300 entries (~5.7KB) leaves real margin for ID-length variance.
+const CONSUMED_ID_CAP = 300;
+
 function markConsumed_(ids) {
   if (!ids.length) return { ok: true, consumed: 0 };
   const prop    = PropertiesService.getScriptProperties();
   const existing = JSON.parse(prop.getProperty('consumed') || '[]');
-  prop.setProperty('consumed', JSON.stringify([...new Set([...existing, ...ids])].slice(-500)));
+  prop.setProperty('consumed', JSON.stringify([...new Set([...existing, ...ids])].slice(-CONSUMED_ID_CAP)));
   return { ok: true, consumed: ids.length };
 }
 

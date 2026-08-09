@@ -234,20 +234,39 @@ function sendDailyErrorReport() {
 // ================================================================
 
 /**
- * Generates a unique log ID: LOG-{timestamp}-{8-char MD5 hash}.
- * The hash is derived from the payload text to enable duplicate
- * detection across sessions.
+ * Generates a content-derived log ID: LOG-{8-char MD5 hash}.
+ * Deterministic — the same text always produces the same ID — because
+ * every duplicate-detection check that uses this ID's output
+ * (sensor1_scanInboundSessions, submitSessionLog, submitExternalData)
+ * compares it against previously-stored IDs to answer "has this exact
+ * content already been queued?" That comparison only works if calling
+ * this twice on the same text returns the same string.
+ *
+ * FIXED: a prior version prefixed the hash with the current
+ * timestamp (`LOG-{ts}-{hash}`), which made every call's output unique
+ * regardless of content — the dedup checks compared two different
+ * per-call strings and could never match, so the exact same session log
+ * (or external-data paste) submitted twice was silently chunked, queued,
+ * and processed twice. Caught during a full codebase review, fixed by
+ * dropping the timestamp from the ID entirely rather than reordering it
+ * — a per-call-varying value anywhere in the compared string breaks an
+ * exact/prefix match regardless of position.
+ *
+ * Known accepted tradeoff, unchanged by this fix: 8 hex chars is 32 bits
+ * of MD5, so two genuinely different texts could in principle collide
+ * and get misdiagnosed as a duplicate (skipped, not corrupted) — this
+ * was already the design's collision surface before this fix; only the
+ * comparison itself was broken, not the hash length.
  *
  * @param  {string}  text  Source text to derive hash from.
- * @returns {string}       e.g. "LOG-1747391234567-a3f2c891"
+ * @returns {string}       e.g. "LOG-a3f2c891"
  */
 function _generateLogUUID(text) {
-  const ts   = new Date().getTime();
   const hash = Utilities.computeDigest(Utilities.DigestAlgorithm.MD5, String(text))
     .map(b => (b < 0 ? b + 256 : b).toString(16).padStart(2, '0'))
     .join('')
     .substring(0, 8);
-  return 'LOG-' + ts + '-' + hash;
+  return 'LOG-' + hash;
 }
 
 

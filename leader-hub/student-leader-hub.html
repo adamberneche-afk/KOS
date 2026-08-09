@@ -10759,7 +10759,17 @@ async function callGAS(action, payload) {
   }
   const resp = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    // FIXED: was 'application/json', which makes this a non-simple CORS
+    // request — the browser sends an OPTIONS preflight first, and Apps
+    // Script Web Apps don't answer preflights (no doOptions handler),
+    // so the browser blocked the real POST and every callGAS() call
+    // (subPlan, bragEmail, and anything else routed through here) failed
+    // silently into its catch block, always falling back to "saved
+    // locally." 'text/plain' is a CORS-"simple" content type — no
+    // preflight — and EmailBridge.gs's doPost() already reads the raw
+    // body via JSON.parse(e.postData.contents), which doesn't care what
+    // Content-Type header was declared.
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ action, ...payload }),
   });
   if (!resp.ok) throw new Error('GAS HTTP ' + resp.status);
@@ -13588,11 +13598,26 @@ const EMAIL_BRIDGE = {
 
     if (consumed.length) {
       try {
-        await fetch(url, {
+        // FIXED — two independent bugs, both silent:
+        // (1) payload shape: EmailBridge.gs's doPost() expects
+        //     {action: 'markConsumed', ids: [...]}; this sent
+        //     {consumed: [...]} with no action field at all, so the
+        //     server always fell through to "Unknown action: " and
+        //     never actually persisted anything — items marked done/
+        //     deleted here would reappear on the next poll forever.
+        // (2) 'Content-Type': 'application/json' triggers a CORS
+        //     preflight Apps Script Web Apps don't answer (see callGAS()
+        //     above) — the request would have failed outright even with
+        //     the payload shape fixed.
+        const resp = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ consumed }),
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action: 'markConsumed', ids: consumed }),
         });
+        const result = await resp.json().catch(() => null);
+        if (!result || !result.ok) {
+          console.warn('[EmailBridge] Mark-consumed rejected by server:', result && result.error);
+        }
       } catch (e) { console.warn('[EmailBridge] Mark-consumed failed:', e.message); }
     }
 
