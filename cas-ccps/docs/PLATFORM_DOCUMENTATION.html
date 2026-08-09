@@ -189,7 +189,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
       <div class="dot dot-teal"></div>
       <div>
         <div class="mod-name">Module 2 — Lesson Intelligence</div>
-        <div class="mod-status">SPECIFICATION · Build ready</div>
+        <div class="mod-status">Lightweight: PRODUCTION READY · Full: IN HAND, one script (27) pending</div>
       </div>
     </div>
     <div class="hero-module">
@@ -424,15 +424,16 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
   <h3 style="font-family:var(--display);font-size:18px;font-weight:700;color:var(--text-bright);margin:40px 0 16px">New Scripts Required</h3>
 
   <div class="schema-block">
-    <div class="schema-head"><h4>Module 2 Scripts — ~11 new files</h4><span>Extends Central Ledger project</span></div>
+    <div class="schema-head"><h4>Module 2 Scripts — all but one now in hand</h4><span>Extends Central Ledger project</span></div>
     <div class="schema-row header"><span>File</span><span>Project</span><span>Purpose</span></div>
-    <div class="schema-row"><span class="col-n">22_LessonContextHandler</span><span class="col-t">Central Ledger</span><span class="col-d">Processes Lesson Context Form submissions, validates, writes to LessonContext tab, queues warm-up generation</span></div>
-    <div class="schema-row"><span class="col-n">23_StudentProfileManager</span><span class="col-t">Central Ledger</span><span class="col-d">Updates StudentProfiles after evaluations. Extracts concept-level outcomes. Tags mastered vs fragile concepts per student.</span></div>
-    <div class="schema-row"><span class="col-n">24_WarmUpBridge</span><span class="col-t">Central Ledger</span><span class="col-d">Routes warm-up generation requests through staging. One request per student per lesson day. Deduplication.</span></div>
-    <div class="schema-row"><span class="col-n">25_WarmUpWriter</span><span class="col-t">Central Ledger</span><span class="col-d">Writes generated warm-up content to student documents. Called by backprop after Studio Flow 3 completes.</span></div>
-    <div class="schema-row"><span class="col-n">26_CompetencyAlignmentLog</span><span class="col-t">Central Ledger</span><span class="col-d">Accumulates lesson-to-competency mappings. Generates term coverage report. Feeds admin documentation export.</span></div>
-    <div class="schema-row"><span class="col-n">27_LessonFrameGenerator</span><span class="col-t">Admin Manual</span><span class="col-d">Creates formatted lesson frame Google Doc from lesson context. Teacher reviews and approves before class.</span></div>
-    <div class="schema-row"><span class="col-n">28_Module2Setup</span><span class="col-t">Admin Manual</span><span class="col-d">Extends Script 16 wizard for Module 2 setup — creates new tabs, competency registry form, lesson context form.</span></div>
+    <div class="schema-row"><span class="col-n">22_LessonContextHandler</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Processes Lesson Context Form submissions, validates, writes to LessonContext tab, queues warm-up generation</span></div>
+    <div class="schema-row"><span class="col-n">22b_CompetencyRegistryImporter</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Imports CompetencyRegistry.csv (221 competencies) into the CompetencyRegistry tab. Same project as Script 22.</span></div>
+    <div class="schema-row"><span class="col-n">23_StudentProfileManager</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Updates StudentProfiles after evaluations. Extracts concept-level outcomes. Tags mastered vs fragile concepts per student.</span></div>
+    <div class="schema-row"><span class="col-n">24_WarmUpBridge</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Routes warm-up generation requests through staging. One request per student per lesson day. Deduplication.</span></div>
+    <div class="schema-row"><span class="col-n">25_WarmUpWriter</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Writes generated warm-up content to student documents. Called by backprop after Studio Flow 3 completes.</span></div>
+    <div class="schema-row"><span class="col-n">26_CompetencyAlignmentLog</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Accumulates lesson-to-competency mappings. Generates term coverage report. Feeds admin documentation export.</span></div>
+    <div class="schema-row"><span class="col-n">27_LessonFrameGenerator</span><span class="col-t">Admin Manual</span><span class="col-d">Still not uploaded — the one Module 2 Full script that remains a genuine open gap. Creates formatted lesson frame Google Doc from lesson context. Teacher reviews and approves before class.</span></div>
+    <div class="schema-row"><span class="col-n">28_Module2Setup</span><span class="col-t">Admin Manual</span><span class="col-d">In hand. Extends Script 16 wizard for Module 2 setup — creates new tabs, competency registry form, lesson context form.</span></div>
     <div class="schema-row"><span class="col-n">31_PacingGuideManager</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Imports PacingGuide_CAS_Context.json into a PacingGuide tab (20 units); resolves lesson dates to unit IDs for Scripts 23/24. Renumbered from a conflicting "Script 29" claim in 00_SharedConfig_M2_ADDENDUM_v2.js — see cas-ccps/README.md reconciliation record. 29 and 30 stay Module 4 and Module 5's own scripts.</span></div>
     <div class="schema-row"><span class="col-n">32_CompetencyRubricImporter</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Imports CompetencyRubrics.json (221 rubrics, now with SOL correlation metadata) into a CompetencyRubrics tab; supplies skill-question lookups to Script 24. Renumbered from a conflicting "Script 30" claim — same note as above.</span></div>
     <div class="schema-row"><span class="col-n">33_ArtifactCompetencyBridge</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Adds a competency_ids column to TeacherMatrix and syncs per-student artifact-evidenced competency coverage nightly (3:05am, after Script 23). Renumbered from a conflicting "Script 31" claim — same note as above.</span></div>

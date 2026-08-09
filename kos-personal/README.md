@@ -383,6 +383,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   ✅ in repo — all server calls now backed; managed_service panel removed
 9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, menu       ✅ in repo
 10_Turnstile.gs            Matrix turnstile state machine                 ✅ in repo — rebuilt against the real schema (original in archived/)
+11_Registrar_CogRelay.gs   Curriculum-drafts auditing pipeline (Registrar) ✅ in repo — see "Registrar / Cog Relay" below
 KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) — not needed
 KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)   — not needed
 inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see Round 3 above + its own README
