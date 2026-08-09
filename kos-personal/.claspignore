@@ -1,0 +1,23 @@
+# clasp push allowlist for kos-personal.
+#
+# clasp's default behavior recurses through the whole rootDir, and this
+# directory has grown legacy/archived subfolders (archived/, three rounds
+# of reupload reconciliation) and a whole separate Node.js service
+# (inference-service/) that must never reach the live Apps Script project.
+# Rather than deny-list each new addition (which failed to scale across
+# three reconciliation rounds already), this ignores everything by default
+# and explicitly un-ignores only the files that are actually part of the
+# live bound project. New legacy dumps land ignored by default, safely.
+**/**
+
+!appsscript.json
+!1_Config_And_Deploy.gs
+!2_Ingestion_Sensors.gs
+!3_Queue_Processor.gs
+!4_Vector_Router.gs
+!5_Error_And_Utilities.gs
+!6_Governance.gs
+!7_WebApp.gs
+!8_WebApp_UI.html
+!9_UI_Diagnostics.gs
+!10_Turnstile.gs

@@ -107,3 +107,20 @@ both now fixed:
    offset into the correct destination child + local offset before calling
    `setAttributes()` — correct regardless of how either side's runs are
    split.
+
+## Version control (clasp) — scaffolded, not yet connected
+
+`EmailBridge.gs` is a single Apps Script project, laid out exactly the
+way [clasp](https://github.com/google/clasp) wants — a flat folder. It
+now has its first-ever committed `appsscript.json` (derived from actual
+service usage: `GmailApp`, `DriveApp`, `DocumentApp`, plus the `webapp`
+`executeAs`/`access` its own header comment already specifies — "Execute
+as: Me · Access: Anyone in CCPS domain"), a `.claspignore` that
+allowlists only `EmailBridge.gs` + `appsscript.json` (everything else
+here — the `LEADERHUB_*`/`LH_0*` docs, `student-leader-hub.html/.jsx`,
+`archived/`, and `drive-tools/`'s one-off paste-and-run utilities — is
+excluded), and a `.clasp.json.template` to fill in with a real
+`scriptId` once you've run `clasp login` + `clasp clone`/`create` against
+the live project. See
+[`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
+the full workflow.

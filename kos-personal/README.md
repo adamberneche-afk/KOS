@@ -455,6 +455,25 @@ matching server function, and OAuth scopes used but not declared in
 added without adding `script.external_request` — was caught). See
 [`tools/gas-lint/README.md`](../tools/gas-lint/README.md).
 
+## Version control (clasp) — scaffolded, not yet connected
+
+This directory is already laid out exactly the way
+[clasp](https://github.com/google/clasp) wants — a single flat folder,
+one Apps Script project, `appsscript.json` already present. A
+`.clasp.json.template` and `.claspignore` (allowlisting only the real
+`.gs`/`.html`/`appsscript.json` files — everything else here, including
+`archived/` and the separate Node.js `inference-service/`, is excluded)
+are now in place. What's left is entirely credentialed and can't be done
+from a repo session: run `clasp login` against the real Google account,
+then `clasp clone <scriptId>` (pulls the actual live project down,
+byte-for-byte) or `clasp create` if starting fresh, and drop the real
+`scriptId` into a `.clasp.json` copied from the template — never
+committed, same convention as real Sheet/Doc IDs living in Script
+Properties, not source. See
+[`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
+the full rationale and cas-ccps's harder version of this problem (7
+overlapping Apps Script projects, not 1).
+
 ---
 
 ## Where to Start

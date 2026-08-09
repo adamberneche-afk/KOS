@@ -86,3 +86,37 @@ clasp and git together solve *where the code's history lives*. They don't,
 by themselves, stop the instinct that produced seven codebase copies in
 the first place — that's a habit, not a tooling gap, and worth watching
 for even once the tooling exists to make the old habit unnecessary.
+
+## Status: scaffolded, not yet connected to a live account
+
+Everything above was written while this was still a proposal. It's now
+real tooling, sitting one credentialed step away from actually pushing:
+
+- **`kos-personal/`** and **`leader-hub/`** are each a single Apps Script
+  project already laid out exactly the way clasp wants — a flat folder.
+  Both now carry a `.clasp.json.template` (copy to `.clasp.json` with a
+  real `scriptId` once you've run `clasp login` + `clasp clone`/`create`)
+  and a `.claspignore` that allowlists only the real script files, so the
+  legacy/archived material and (for kos-personal) the separate Node.js
+  `inference-service/` never get swept into a push.
+- **`cas-ccps/scripts/`** doesn't fit the one-folder-one-project model —
+  it's actually 7 separate bound/standalone projects sharing overlapping
+  files (`00_SharedConfig.js` alone is pasted into 5 of them). See
+  [`tools/clasp-sync/README.md`](../tools/clasp-sync/README.md) for how
+  that's reconciled: a small script generates a throwaway per-project
+  push folder for each of the 7, from the same `project-map.json`
+  gas-lint already uses, so `cas-ccps/scripts/` itself never gets
+  reorganized or duplicated in git.
+- Every one of the 9 real projects (1 + 7 + 1) now has a committed
+  `appsscript.json` — `cas-ccps` and `leader-hub` had none before this;
+  `oauthScopes` were derived from actual code usage against
+  `tools/gas-lint/scope-map.json`, and `gas-lint`'s existing OAuth-scope
+  check now validates all 9 of them, not just `kos-personal`.
+- **What's left is entirely credentialed and can't be done from a repo
+  session**: run `clasp login` against the real Google account, then
+  `clasp clone` (or `clasp create`, for the two "cloned per teacher"
+  projects — target the *master* template, not any individual teacher's
+  copy) for each of the 9 projects, and drop the resulting `scriptId`
+  into the matching template. Real script IDs are deliberately never
+  committed (`.gitignore`d) — same convention this repo already uses for
+  real Sheet/Doc IDs living in Script Properties, not source.

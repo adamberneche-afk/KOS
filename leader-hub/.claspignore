@@ -1,0 +1,12 @@
+# clasp push allowlist for leader-hub's single Apps Script project
+# (EmailBridge.gs). Everything else here — the LEADERHUB_*/LH_0* docs,
+# student-leader-hub.html/.jsx (a 100%-localStorage local app, not Apps
+# Script), archived/, and drive-tools/ (one-off paste-and-run admin
+# utilities, never a persistent deployment — see drive-tools/LH_Drive_
+# README.md) — must never reach the live script. Allowlist style, same
+# rationale as kos-personal/.claspignore: safer against future additions
+# than a denylist that has to be kept in sync by hand.
+**/**
+
+!appsscript.json
+!EmailBridge.gs
