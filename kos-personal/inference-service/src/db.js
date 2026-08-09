@@ -159,18 +159,28 @@ async function markJobCompleted(jobId, { inputTokens, outputTokens, modelUsed })
 
 async function markJobFailed(jobId, errorMessage, retry = false) {
   const maxRetries = parseInt(process.env.MAX_JOB_RETRIES || '3');
+  // FIXED: `retry` in the CASE expression was a bare, unbound SQL
+  // identifier — Postgres parsed it as a reference to a column named
+  // "retry", which doesn't exist on `jobs` (only `retry_count` does).
+  // This failed with "column \"retry\" does not exist" on every single
+  // call to markJobFailed (the CASE is parsed/planned regardless of the
+  // JS boolean's value), which is every failure path in worker.js —
+  // the UPDATE never ran, so a failed job's status was never set to
+  // 'failed' or 'queued' and started_at was never cleared, leaving it
+  // stuck in 'processing' forever with no error_message recorded. Bound
+  // the JS `retry` parameter as $4 instead of interpolating it as SQL.
   const { rows } = await pool.query(
     `UPDATE jobs
      SET retry_count  = retry_count + 1,
          error_message = $2,
          status = CASE
-           WHEN retry AND retry_count < $3 THEN 'queued'
+           WHEN $4 AND retry_count < $3 THEN 'queued'
            ELSE 'failed'
          END,
          started_at = NULL
      WHERE id = $1
      RETURNING *`,
-    [jobId, errorMessage, maxRetries]
+    [jobId, errorMessage, maxRetries, retry]
   );
   return rows[0];
 }

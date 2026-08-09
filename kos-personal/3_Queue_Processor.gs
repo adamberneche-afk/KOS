@@ -41,6 +41,14 @@
 //   FLOW_COMPLETE → [bad JSON] → NEEDS_CURATOR (retry 1–2)
 //   NEEDS_CURATOR → [next queue run] → PENDING_FLOW (requeue)
 //   NEEDS_CURATOR (retry 3) → FAILED_PARSE + _reportError()
+//   FLOW_COMPLETE → [no File_ID on row] → MISSING_FILE_ID (terminal,
+//     non-retryable — nothing to read regardless of retry count)
+//   FLOW_COMPLETE → [exception reading/processing doc] → stays
+//     FLOW_COMPLETE, retry count bumped (retried automatically next run)
+//   → (retry 3) → PROCESSING_ERROR + _reportError()
+//   Both MISSING_FILE_ID and PROCESSING_ERROR are recognized terminal
+//   statuses in archiveStagingPipeline() (5_Error_And_Utilities.gs), so
+//   they get archived out on the next sweep instead of accumulating.
 //
 // WEB APP CALLABLE
 //   getQueueStatus() → Queue tab status counts + curator list
@@ -103,8 +111,14 @@ function processInferenceQueue() {
 
       const fileId = data[i][SC.FILE_ID];
       if (!fileId) {
-        staging.getRange(sheetRow, SC.STATUS + 1)
-               .setValue('ERROR: No File_ID — cannot read payload doc');
+        // Non-retryable — there's no File_ID to read regardless of how
+        // many times this runs again. FIXED: this used to be a bare
+        // 'ERROR: ...' string, which archiveStagingPipeline()'s terminal
+        // list never matched (it only recognizes specific named
+        // statuses), so rows like this accumulated in STAGING_PIPELINE
+        // forever with no cleanup path. Renamed to a named terminal
+        // status and added to that list — see 5_Error_And_Utilities.gs.
+        staging.getRange(sheetRow, SC.STATUS + 1).setValue('MISSING_FILE_ID');
         failed++;
         continue;
       }
@@ -160,8 +174,26 @@ function processInferenceQueue() {
         }
 
       } catch (rowErr) {
-        staging.getRange(sheetRow, SC.STATUS + 1)
-               .setValue('ERROR: ' + rowErr.message.substring(0, 120));
+        // FIXED: this used to unconditionally set a bare 'ERROR: ...'
+        // status with no retry — a transient failure here (Drive API
+        // hiccup, temporary permission issue, quota limit) permanently
+        // stuck the row, since 'ERROR: ...' also isn't one of
+        // archiveStagingPipeline()'s recognized terminal statuses, so it
+        // was never even cleaned up. Now retries like the JSON-parse
+        // failure path above: leaving the status as FLOW_COMPLETE (its
+        // value going into this try block) means the next run's
+        // `if (status !== 'FLOW_COMPLETE') continue` naturally picks it
+        // back up — no explicit reset needed, just bump the retry count.
+        // Only escalates to a genuinely terminal, named status after
+        // CFG.MAX_RETRIES, matching the FAILED_PARSE pattern.
+        const newRetries = retries + 1;
+        if (newRetries >= CFG.MAX_RETRIES) {
+          staging.getRange(sheetRow, SC.STATUS      + 1)
+                 .setValue('PROCESSING_ERROR: ' + rowErr.message.substring(0, 100));
+          staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+        } else {
+          staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+        }
         _reportError('processInferenceQueue:row' + sheetRow, rowErr, null);
         failed++;
       }
@@ -412,8 +444,8 @@ function getQueueStatus() {
         else if (s === 'FLOW_COMPLETE')                              counts.ready++;
         else if (s === 'NEEDS_CURATOR')                              counts.needs_curator++;
         else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      counts.processed++;
-        // FAILED_PARSE, ERROR rows intentionally excluded from counts
-        // so the operator focuses on the curator list
+        // FAILED_PARSE, MISSING_FILE_ID, PROCESSING_ERROR rows intentionally
+        // excluded from counts so the operator focuses on the curator list
 
         if (s === 'NEEDS_CURATOR') {
           needsCuratorRows.push({
@@ -459,7 +491,8 @@ function getQueueStatus() {
  * `pending` and `needs_curator` are included as aliases of `queued` and
  * `needs_review` respectively — 8_WebApp_UI.html's renderQueue() reads
  * either name (`c.queued ?? c.pending`, `c.needs_review ?? c.needs_curator`).
- * FAILED_PARSE rows are intentionally excluded, same as getQueueStatus().
+ * FAILED_PARSE, MISSING_FILE_ID, and PROCESSING_ERROR rows are
+ * intentionally excluded, same as getQueueStatus().
  *
  * `managed_service` field: reconciliation decision 3 originally removed
  * the HTML's "Managed Inference" credits panel entirely because no vendor
@@ -496,7 +529,8 @@ function getQueueMetrics() {
         else if (s === 'STUDIO_ACTIVE' || s === 'FLOW_COMPLETE')     active++;
         else if (s === 'NEEDS_CURATOR')                              needsReview++;
         else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      processed++;
-        // FAILED_PARSE, ERROR rows intentionally excluded — same as getQueueStatus()
+        // FAILED_PARSE, MISSING_FILE_ID, PROCESSING_ERROR rows intentionally
+        // excluded — same as getQueueStatus()
 
         if (s === 'NEEDS_CURATOR') {
           needsCuratorRows.push({

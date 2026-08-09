@@ -69,6 +69,42 @@ const OUTPUT_SCHEMA = {
 
 const validate = ajv.compile(OUTPUT_SCHEMA);
 
+// FIXED: runInference() used to validate every payload type against the
+// one OUTPUT_SCHEMA above, but buildCouncilSystemPrompt (below)
+// explicitly instructs COG_STIMULUS jobs to return only
+// {session_uid, cog_registry} — a materially smaller shape that's
+// missing session_summary/dynamic_state/vector_weights/alignment_report,
+// all required by OUTPUT_SCHEMA. The model followed its instructions
+// correctly and every COG_STIMULUS job failed validation anyway. This
+// schema matches exactly what buildCouncilSystemPrompt asks for.
+const COG_STIMULUS_OUTPUT_SCHEMA = {
+  type: 'object',
+  required: ['session_uid', 'cog_registry'],
+  properties: {
+    session_uid: { type: 'string' },
+    cog_registry: {
+      type: 'object',
+      required: ['cog_verdicts'],
+      properties: {
+        cog_verdicts: {
+          type: 'array',
+          items: {
+            type: 'object',
+            required: ['cog', 'final_status', 'summary'],
+            properties: {
+              cog:          { type: 'string' },
+              final_status: { type: 'string', enum: ['APPROVED', 'FLAG', 'VETO'] },
+              summary:      { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+const validateCogStimulus = ajv.compile(COG_STIMULUS_OUTPUT_SCHEMA);
+
 
 // ── Prompt assembly ───────────────────────────────────────────────
 
@@ -277,10 +313,12 @@ async function runInference({ sessionText, payloadUid, payloadType, operatorMeta
     parsed.session_uid = payloadUid;
   }
 
-  // Validate against schema
-  const valid = validate(parsed);
+  // Validate against schema — COG_STIMULUS uses its own, much smaller
+  // schema, matching what buildCouncilSystemPrompt actually asks for.
+  const validator = payloadType === 'COG_STIMULUS' ? validateCogStimulus : validate;
+  const valid = validator(parsed);
   if (!valid) {
-    const errors = validate.errors.map(e => `${e.instancePath} ${e.message}`).join('; ');
+    const errors = validator.errors.map(e => `${e.instancePath} ${e.message}`).join('; ');
     throw new Error(`Output schema validation failed: ${errors}`);
   }
 
@@ -311,4 +349,5 @@ module.exports = {
   runInference,
   getCreditCost,
   OUTPUT_SCHEMA,
+  COG_STIMULUS_OUTPUT_SCHEMA,
 };
