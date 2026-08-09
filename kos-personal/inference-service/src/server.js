@@ -32,7 +32,17 @@ const PORT = process.env.PORT || 8080;
 
 // Stripe webhooks need the raw body — must be before express.json()
 app.use('/webhooks/stripe', express.raw({ type: 'application/json' }));
-app.use(express.json());
+// FIXED: validateWebhookSignature (below) used to recompute the HMAC over
+// JSON.stringify(req.body) — a re-serialization of the already-parsed
+// object, not the bytes the sender actually sent. Any difference between
+// the sender's serialization and Node's (key order, number formatting,
+// unicode escaping) broke the signature match for a legitimate request.
+// The verify callback captures the exact raw bytes alongside the normal
+// parsed body, so signature validation can be computed over what was
+// actually transmitted.
+app.use(express.json({
+  verify: (req, res, buf) => { req.rawBody = buf; },
+}));
 app.use(express.urlencoded({ extended: false }));
 
 // Request logging
@@ -68,9 +78,12 @@ function validateWebhookSignature(req, res, next) {
   const secret    = process.env.WEBHOOK_SECRET;
   if (!secret) return next(); // Skip in dev if not configured
 
+  // Sign the actual raw request bytes (captured by express.json()'s
+  // verify callback above), not a re-serialization of the parsed body —
+  // see the FIXED note above for why that broke real signatures.
   const expected = crypto
     .createHmac('sha256', secret)
-    .update(JSON.stringify(req.body))
+    .update(req.rawBody || Buffer.alloc(0))
     .digest('hex');
 
   if (signature !== `sha256=${expected}`) {

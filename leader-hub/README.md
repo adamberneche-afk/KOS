@@ -74,3 +74,36 @@ both now fixed:
    throwing well before reaching the cap, breaking mark-consumed
    permanently from that point on. Lowered to 300 (~5.7KB), with real
    margin.
+
+## Fixed: two more narrow-blast-radius bugs
+
+1. **`student-leader-hub.jsx`'s leaderboard mutated React state directly.**
+   The top-3 leaderboard render called
+   `data.leaders.sort((a, b) => b.hours - a.hours).slice(0, 3).map(...)`
+   directly on `data.leaders` — `Array.prototype.sort()` sorts in place,
+   so this silently reordered the component's own state array as a render
+   side effect instead of just computing a sorted view of it. Harmless by
+   luck as long as nothing else depended on `data.leaders`'s original
+   order, but a real landmine for the next feature that does. Fixed to
+   sort a shallow copy — `[...data.leaders].sort(...)`. Note: this file is
+   an explicitly-labeled React/JSX exploration draft, not the deployed
+   artifact (see Status above), so this was verified by careful manual
+   review rather than `node --check`, which can't parse JSX.
+2. **`drive-tools/LH_DriveDocSplitter.gs`'s `copyTextRunFormatting` could
+   lose or misapply character formatting.** It walked the source and
+   destination paragraph's child `Text` elements in parallel by index,
+   copying attributes range-by-range from `srcElem.getChild(i)` to
+   `destElem.getChild(i)`. Google Docs splits a paragraph's text into
+   multiple `Text` children whenever formatting changes mid-paragraph
+   (e.g. one bolded word), so source and destination can end up with a
+   different number of children, or children of different lengths, even
+   when their combined text is identical — `Text.setAttributes()` also
+   takes child-local offsets, not whole-paragraph offsets, so index-paired
+   copying could apply the wrong attributes to the wrong text, or throw
+   entirely once the two elements' child counts diverged. Rewritten to
+   walk the source paragraph by absolute character offset (accumulating a
+   running `globalOffset` across all of its `Text` children) and use a new
+   helper, `_setDestAttributesAtOffset_()`, to translate each global
+   offset into the correct destination child + local offset before calling
+   `setAttributes()` — correct regardless of how either side's runs are
+   split.

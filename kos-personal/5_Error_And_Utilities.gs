@@ -273,10 +273,14 @@ function _generateLogUUID(text) {
 /**
  * Splits raw session log text into chunks of at most
  * CFG.MAX_CHUNK_SIZE characters, respecting the CFG.DELIMITER
- * boundary so semantic blocks are never split mid-entry.
- *
- * Falls back to returning the entire text as a single-element
- * array if no delimiters are found.
+ * boundary so semantic blocks are never split mid-entry — unless a
+ * single delimiter-bounded block (or the whole text, if no delimiter is
+ * found at all) is itself bigger than CFG.MAX_CHUNK_SIZE, in which case
+ * _splitOversizedBlock_ divides it further (by paragraph, then by raw
+ * length as a last resort) so every returned chunk actually honors the
+ * limit. FIXED: this guarantee used to be aspirational, not enforced —
+ * an oversized block was previously returned whole as its own
+ * over-limit chunk.
  *
  * @param  {string}   text  Raw session log text.
  * @returns {string[]}      Array of chunk strings, each ≤ MAX_CHUNK_SIZE chars.
@@ -293,7 +297,21 @@ function _semanticChunker(text) {
       : CFG.DELIMITER + s;
     if ((cur.length + block.length) > CFG.MAX_CHUNK_SIZE) {
       if (cur) chunks.push(cur.trim());
-      cur = block;
+      // FIXED: a single CFG.DELIMITER-bounded block bigger than
+      // CFG.MAX_CHUNK_SIZE on its own used to become `cur` here
+      // unchanged, then get pushed as one over-limit chunk — this
+      // function's own doc/callers assume "already chunked to under
+      // CFG.MAX_CHUNK_SIZE" (see STUDIO_INTEGRATION_SPEC.md), so an
+      // oversized block silently broke that guarantee and produced
+      // truncated/failed inference that got misdiagnosed as a
+      // Studio-side problem rather than an unsplit chunk. Split it
+      // further instead of carrying it forward whole.
+      if (block.length > CFG.MAX_CHUNK_SIZE) {
+        chunks.push(..._splitOversizedBlock_(block));
+        cur = '';
+      } else {
+        cur = block;
+      }
     } else {
       cur += (cur ? '\n\n' : '') + block;
     }
@@ -301,6 +319,47 @@ function _semanticChunker(text) {
 
   if (cur) chunks.push(cur.trim());
   return chunks.length ? chunks : [text];
+}
+
+/**
+ * Splits a single block already known to exceed CFG.MAX_CHUNK_SIZE into
+ * multiple sub-chunks, each within the limit. Two-tier fallback:
+ *   1. Greedily accumulate by paragraph (\n\n) — same algorithm as
+ *      _semanticChunker's own delimiter-block accumulation, just one
+ *      level down, so paragraph boundaries are preserved where possible.
+ *   2. If a single paragraph is itself still oversized (pathological —
+ *      one unbroken wall of text with no paragraph breaks at all), fall
+ *      back to raw fixed-size character slicing so the
+ *      ≤ CFG.MAX_CHUNK_SIZE guarantee holds unconditionally.
+ *
+ * @param  {string} block  A single block, block.length > CFG.MAX_CHUNK_SIZE.
+ * @returns {string[]} One or more sub-chunks, each ≤ CFG.MAX_CHUNK_SIZE.
+ */
+function _splitOversizedBlock_(block) {
+  const paragraphs = block.split('\n\n');
+  const subChunks   = [];
+  let   cur         = '';
+
+  paragraphs.forEach(p => {
+    if (!p.trim()) return;
+    if (p.length > CFG.MAX_CHUNK_SIZE) {
+      // Tier 2 — a single paragraph alone exceeds the limit.
+      if (cur) { subChunks.push(cur.trim()); cur = ''; }
+      for (let i = 0; i < p.length; i += CFG.MAX_CHUNK_SIZE) {
+        subChunks.push(p.substring(i, i + CFG.MAX_CHUNK_SIZE));
+      }
+    } else if ((cur.length + p.length) > CFG.MAX_CHUNK_SIZE) {
+      if (cur) subChunks.push(cur.trim());
+      cur = p;
+    } else {
+      cur += (cur ? '\n\n' : '') + p;
+    }
+  });
+
+  if (cur) subChunks.push(cur.trim());
+  console.log('[_splitOversizedBlock_] Oversized block (' + block.length +
+    ' chars) split into ' + subChunks.length + ' sub-chunk(s).');
+  return subChunks;
 }
 
 
@@ -1032,7 +1091,15 @@ function getRelationalTargets() {
  * STAGING_ARCHIVE. Fully headless — no ui.alert.
  *
  * Terminal statuses: PROCESSED, INTAKE_PROCESSED, PARTITIONED,
- *   CONSOLIDATED, FAILED_PARSE, PHASE_2_ERROR, INTAKE_ERROR.
+ *   CONSOLIDATED, FAILED_PARSE, PHASE_2_ERROR, INTAKE_ERROR,
+ *   MISSING_FILE_ID, PROCESSING_ERROR.
+ *
+ * FIXED: MISSING_FILE_ID and PROCESSING_ERROR (3_Queue_Processor.gs)
+ * used to be set as a bare 'ERROR: ...' string, which matched none of
+ * these named prefixes (startsWith() below is a genuine prefix match,
+ * not a substring search) — those rows accumulated in STAGING_PIPELINE
+ * forever with no path to this archive. Both are real, named statuses
+ * now and recognized here.
  *
  * Called by the web app Diagnostics tab:
  *   google.script.run.withSuccessHandler(fn).archiveStagingPipeline()
@@ -1058,6 +1125,7 @@ function archiveStagingPipeline() {
     const terminal = [
       'PROCESSED','INTAKE_PROCESSED','PARTITIONED','CONSOLIDATED',
       'FAILED_PARSE','PHASE_2_ERROR','INTAKE_ERROR',
+      'MISSING_FILE_ID','PROCESSING_ERROR',
     ];
     const data = staging.getDataRange().getValues();
     const now  = new Date();

@@ -186,7 +186,15 @@ export default function App() {
             <div style={{ background: "#1E293B", borderRadius: 16, padding: 24, border: "1px solid #1E3A5F" }}>
               <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#F8FAFC" }}>🌟 Leader Spotlight</h3>
               <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-                {data.leaders.sort((a, b) => b.hours - a.hours).slice(0, 3).map(l => (
+                {/* FIXED: Array.prototype.sort() mutates in place and
+                    returns the same array — calling it directly on
+                    data.leaders (React state) reordered the actual state
+                    array as a side effect of rendering this Dashboard
+                    tab, so the separate "Student Leaders" tab below
+                    (which also maps over data.leaders, unsorted) would
+                    silently show a different order after a Dashboard
+                    visit than before one. Sort a copy instead. */}
+                {[...data.leaders].sort((a, b) => b.hours - a.hours).slice(0, 3).map(l => (
                   <div key={l.id} style={{ flex: 1, minWidth: 160, padding: 16, background: "#0F172A", borderRadius: 12, border: "1px solid #1E3A5F", textAlign: "center" }}>
                     <div style={{ fontSize: 28, marginBottom: 8 }}>
                       {l.badge === "gold" ? "🥇" : l.badge === "silver" ? "🥈" : "🥉"}

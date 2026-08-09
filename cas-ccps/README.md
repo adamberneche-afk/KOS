@@ -467,6 +467,21 @@ GoogleID.
     `LockService.getDocumentLock()` with the same 15-second wait and
     congestion-standdown pattern the Turnstile already used, so a busy run
     stands down instead of racing.
+14. **`31_PacingGuideManager.js`'s warm-up anchor cache was silently
+    truncating text** — closed. `_loadPacingGuide_()` caches the whole
+    pacing guide in Script Properties, and — because a single property
+    value is capped at ~9KB — trimmed each unit's `warmup_anchor` to 200
+    characters before caching, with no way to tell a genuinely-short
+    anchor from one that got cut off mid-sentence. Every warm-up prompt
+    built from a cache hit (the common case) silently used the truncated
+    200-char version forever, even after the cache warmed up and a fuller
+    read would have been cheap. Fixed by tagging each cached unit with a
+    `warmup_anchor_truncated` flag at write time; `resolveUnitForDate_()`
+    now threads that flag through, and `getWarmUpAnchor_()` checks it
+    before returning — if set, it calls new helper
+    `_getFullWarmupAnchor_()` to re-read that one unit's untruncated
+    `warmup_anchor` directly from the `PacingGuide` sheet, so only the
+    (rare) truncated case pays the extra read instead of every call.
 
 ## Naming note
 

@@ -258,6 +258,10 @@ function resolveUnitForDate_(dateStr) {
     end:                   result.approx_end,
     overlap_type:          result.overlap_type,
     warmup_anchor:         result.warmup_anchor,
+    // Present (true) only on a cache-hit unit whose anchor was actually
+    // cut to fit the cache — see _loadPacingGuide_. Absent/undefined on
+    // a fresh sheet read, which is already full text.
+    warmup_anchor_truncated: result.warmup_anchor_truncated || false,
     key_vocabulary:        result.key_vocabulary,
     prior_connection:      result.prior_lesson_connection,
     objective_8175:        result.objective_8175,
@@ -305,8 +309,20 @@ function getWarmUpAnchor_(dateStr, courseName) {
     return null;
   }
 
+  // If this unit's anchor came from the cache truncated, fetch the real
+  // full text before handing it to Flow 3 — this is the one caller that
+  // actually needs it (per this function's own docstring: "Called by
+  // Script 24 when building the lessonContextSnapshot"). getAllUnits_()/
+  // getUnitById_() callers that only need metadata (stage, dates, etc.)
+  // are unaffected and keep the fast cached path.
+  let anchorText = unit.warmup_anchor;
+  if (unit.warmup_anchor_truncated) {
+    const full = _getFullWarmupAnchor_(unit.unit_id);
+    if (full) anchorText = full;
+  }
+
   return {
-    anchor:           unit.warmup_anchor,
+    anchor:           anchorText,
     unit_id:          unit.unit_id,
     unit_name:        unit.unit_name,
     stage:            unit.stage,
@@ -315,6 +331,37 @@ function getWarmUpAnchor_(dateStr, courseName) {
     key_vocabulary:   unit.key_vocabulary,
     course_objective: courseObjective
   };
+}
+
+// ---------------------------------------------------------------------------
+// _getFullWarmupAnchor_
+// Targeted re-read of one unit's full-text warmup_anchor straight from
+// the PacingGuide sheet, bypassing the (possibly-truncated) cache. Only
+// called when getWarmUpAnchor_ detects unit.warmup_anchor_truncated.
+// ---------------------------------------------------------------------------
+function _getFullWarmupAnchor_(unitId) {
+  try {
+    const cfg   = getConfig_();
+    const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const sheet = ss.getSheetByName("PacingGuide");
+    if (!sheet || sheet.getLastRow() < 2) return "";
+
+    const data    = sheet.getDataRange().getValues();
+    const headers = data[0].map(h => String(h).trim());
+    const idIdx     = headers.indexOf("lesson_unit_id");
+    const anchorIdx = headers.indexOf("warmup_anchor");
+    if (idIdx === -1 || anchorIdx === -1) return "";
+
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][idIdx] || "").trim() === unitId) {
+        return String(data[i][anchorIdx] || "").trim();
+      }
+    }
+    return "";
+  } catch (e) {
+    Logger.log("[S31] _getFullWarmupAnchor_ failed for " + unitId + ": " + e.message);
+    return "";
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -407,11 +454,19 @@ function _loadPacingGuide_() {
   // ── Write to cache ────────────────────────────────────────────────────────
   // Script Properties has a 9KB limit per property.
   // At ~500 bytes per unit × 20 units = ~10KB — at the limit.
-  // Truncate warmup_anchor to 200 chars for cache storage;
-  // full text is read from sheet when needed for Flow 3 payloads.
+  // Truncate warmup_anchor to 200 chars for cache storage. FIXED: this
+  // comment used to claim "full text is read from sheet when needed for
+  // Flow 3 payloads," but nothing did that — the cache-hit branch above
+  // (line ~356) returned the truncated cached copy directly, so every
+  // call after the first (until the next re-import) silently fed Flow 3
+  // a chopped warm-up seed prompt. warmup_anchor_truncated marks exactly
+  // which units were actually cut (not all anchors are >200 chars); only
+  // those trigger a targeted full-text re-fetch in getWarmUpAnchor_()
+  // below, so the cache still stays fast for units that don't need it.
   const cacheUnits = units.map(u => ({
     ...u,
-    warmup_anchor: u.warmup_anchor.substring(0, 200)
+    warmup_anchor: u.warmup_anchor.substring(0, 200),
+    warmup_anchor_truncated: u.warmup_anchor.length > 200,
   }));
 
   try {
