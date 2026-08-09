@@ -10,7 +10,7 @@ Estimated time: 20–30 minutes for first deploy. 5 minutes for subsequent deplo
 
 You need:
 - A Google account (personal Gmail or Google Workspace)
-- The 11 project files (1–10 numbered .gs files + appsscript.json + 8_WebApp_UI.html)
+- The 12 project files (1–11 numbered .gs files + appsscript.json + 8_WebApp_UI.html)
 - A Workspace Studio subscription or equivalent AI inference tool for the processing step
 
 You do not need:
@@ -68,6 +68,7 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
 7_WebApp
 9_UI_Diagnostics
 10_Turnstile
+11_Registrar_CogRelay
 ```
 
 **Add the HTML file:**
@@ -172,7 +173,7 @@ The daily error digest sends to the email address stored as `KOS_ADMIN_EMAIL` in
 2. Run `setupAllTriggers()` (select it from the function dropdown → click Run)
 3. Authorize any new permission prompts
 4. Go to **Triggers** (clock icon in the left sidebar)
-5. Confirm you see 10 triggers installed
+5. Confirm you see 13 triggers installed
 
 Expected trigger list:
 - sensor1_scanInboundSessions (every 5 min)
@@ -185,6 +186,9 @@ Expected trigger list:
 - autoCouncilCheck (every 2 hours)
 - sensor3_externalTelemetry (onChange on BRAIN_TRUST_INDEX)
 - onGovernanceEdit (onEdit on BRAIN_TRUST_INDEX)
+- runRegistrarIntake (daily 01:00)
+- runRegistrarMicrobatch (every 15 min)
+- runRegistrarProcessor (every 10 min)
 
 ---
 
@@ -229,7 +233,7 @@ If you have a live v5.4 system, do not deploy v8.0 into the same Apps Script pro
 **"Something went wrong" on Bootstrap**
 Click "Show technical detail" and look for the first red line. Common causes:
 - Drive API not enabled: go to GCP Console → APIs & Services → Enable APIs → search "Drive API" → enable
-- Insufficient permissions: check `appsscript.json` has all six OAuth scopes
+- Insufficient permissions: check `appsscript.json` has all seven OAuth scopes
 - Timeout: click "Try again" — large folder trees occasionally time out on first run
 
 **"Could not acquire lock" in triggers**

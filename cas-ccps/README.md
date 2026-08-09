@@ -126,7 +126,8 @@ itself *"The Module 3 threshold script"* while calling Script 29
   `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`.
 - `docs/CAS_Module3_Documentation_v1.0.docx` and `_v1.0_alt.docx` → merged
   into `docs/CAS_Module5_Documentation_v1.1.docx` (see item 5 below); both
-  originals kept, archived, neither deleted.
+  originals kept in `docs/`, neither deleted (not moved into
+  `docs/archived/` — see item 6 below).
 
 `docs/PLATFORM_DOCUMENTATION.html`'s Module 3 (Student Profile) was never
 part of this collision and is untouched.
@@ -175,7 +176,8 @@ confirmed elsewhere in this repo (Known Gaps below) as still true — that
 `_alt` silently dropped. Resolution: `docs/CAS_Module5_Documentation_v1.1.docx`
 merges both, using `_alt` as the base (its guidance is strictly newer)
 with `v1.0`'s dropped gap entry restored. Both source `.docx` files stay
-archived, unchanged. The v3/v4 addendum file and the
+in `docs/` unchanged (not physically moved into `docs/archived/`, unlike
+the other superseded docs this pass touched). The v3/v4 addendum file and the
 `LessonPrimarySecondary_Seed.csv` seed file referenced by the merged doc
 remain open known gaps — still not uploaded anywhere.
 
@@ -338,12 +340,12 @@ file's own header wins):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher) |
+| Central Ledger | Central Ledger spreadsheet | `00` (+ its M2/M4 addenda), `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
-| Teacher Dashboard | standalone web app | `07` |
+| Teacher Dashboard | standalone web app | `07` (+ `07_TeacherDashboard_M4_ADDENDUM.js`, adding a Student Context tab) |
 | Student Dashboard | standalone web app | `13` |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
@@ -438,11 +440,13 @@ GoogleID.
 9. **`31_PacingGuideManager.js` doesn't yet read the v2 pacing guide's 4
    new fields** (`chain_node`, `esports_connection`,
    `vocabulary_with_definitions`, `studio_flow_hooks`) — see resolution 8
-   above. It will import and run against `PacingGuide_CAS_Context_v2.json`
-   without erroring, just silently drop the new fields, until its
+   above. It will import and run against `PacingGuide_CAS_Context.json`
+   (the file holding the adopted v2 content — there is no file literally
+   named `_v2.json`) without erroring, just silently drop the new fields,
+   until its
    `PG_HEADERS`/`PG_COL_COUNT`/row-mapping are extended.
 10. **`curriculum/PacingGuide_CAS_Context.csv` and `.docx`** are now stale
-    relative to the adopted `PacingGuide_CAS_Context_v2.json` — not
+    relative to the adopted `PacingGuide_CAS_Context.json` (v2 content) — not
     regenerated as part of this pass.
 11. **`data/CompetencyRegistry.csv` and `data/sol-correlations/` are not
     yet imported into any Sheet** — the files exist in the repo (resolution

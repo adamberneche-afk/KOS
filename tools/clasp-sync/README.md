@@ -38,7 +38,7 @@ contents — every run).
 
 | Project | Bound to | Files |
 |---|---|---|
-| `central-ledger` | Central Ledger spreadsheet | 22 |
+| `central-ledger` | Central Ledger spreadsheet | 21 |
 | `unified-manual` | Assignment System Manual Doc (setup wizard) | 6 |
 | `master-student-template` | Master Student Template Doc | 4 |
 | `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 5 |

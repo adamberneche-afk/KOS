@@ -25,13 +25,13 @@ built to it).
 
 | Path | Contents |
 |---|---|
-| `student-leader-hub.html` | The live app (15,148 lines) — open directly in a browser |
+| `student-leader-hub.html` | The live app (15,173 lines) — open directly in a browser |
 | `student-leader-hub.jsx` | A React/JSX exploration draft, not the deployed artifact |
 | `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling) — see `LEADERHUB_EMAIL_SETUP.md` |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup) |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
 | `drive-tools/` | Later, **not-yet-executed** Drive-cleanup tooling (`LH_DriveDocSplitter.gs`, `LH_8177_Rename.gs`, `LH_AppManifestUpdater.py`) for splitting/renaming 8177 lesson docs |
-| `archived/studentleaderhub_EARLY_PROTOTYPE.html` | A much earlier prototype (2,155 lines, 8 views, no DECA/WBL/E-Sports/trips modules, no Gemini integration) — genuinely different from the live app, not a duplicate, kept for history |
+| `archived/studentleaderhub_EARLY_PROTOTYPE.html` | A much earlier prototype (2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board, SCR, trips, settings — with a working trips module already present, but no dedicated DECA/WBL/E-Sports modules and no Gemini integration) — genuinely different from the live app, not a duplicate, kept for history |
 
 ## Status
 

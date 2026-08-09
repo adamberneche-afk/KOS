@@ -28,6 +28,7 @@ The central queue. Every session chunk passes through this sheet.
 | `EXTERNAL_DATA` | Research or context submitted via web app Research tab |
 | `COG_STIMULUS` | Sequestered council stimulus doc (one per cog per council run) |
 | `EXTERNAL_TELEMETRY` | Data from Sensor 3 (onChange on BRAIN_TRUST_INDEX) |
+| `VECTOR_CLASSIFY` | Sentence-level vector classification flow, paired with a SESSION_LOG chunk — see STUDIO_INTEGRATION_SPEC.md's "Inference Flow — Sentence Classification" |
 
 **Status Lifecycle**
 
@@ -39,6 +40,8 @@ The central queue. Every session chunk passes through this sheet.
 | `NEEDS_CURATOR` | Queue Processor | JSON parse failed, retry 1 or 2 |
 | `FAILED_PARSE` | Queue Processor | Retry cap hit, manual intervention required |
 | `PROCESSED` | Queue Processor | Successfully routed to all ledgers |
+| `MISSING_FILE_ID` | Queue Processor | Row has no File_ID — terminal, non-retryable, archives on next sweep |
+| `PROCESSING_ERROR` | Queue Processor | Catch-all read/parse failure — retries like NEEDS_CURATOR, escalates to terminal after CFG.MAX_RETRIES |
 | `INTAKE_PROCESSED` | Queue Processor (legacy) | Alias for PROCESSED, used in v5.4 migration |
 | `INTAKE_ERROR` | Studio (error path) | Studio couldn't open or process the document |
 | `PARTITIONED` | Legacy | v5.4 chunking status, not used in v8.0 |
@@ -75,9 +78,10 @@ Calibrated vector scores per session. Primary audit trail for domain weighting.
 | F | PEDAGOGY | Float | 0.0–1.0, calibrated score |
 | G | GAS_DEVELOPMENT | Float | 0.0–1.0, calibrated score |
 | H | RELATIONAL | Float | 0.0–1.0, calibrated score |
-| I | TOTAL | Float | Sum of all domain scores |
+| I | DOMAIN_COMPLIANCE | Float | 0.0–1.0, calibrated score — 7th known vector, added alongside RELATIONAL (CE-SMP Vector Weight Calculation Engine v1.0) |
+| J | TOTAL | Float | Sum of all domain scores |
 
-Note: v5.4 had 7 columns (no GAS_DEVELOPMENT or RELATIONAL). `runPhase0Migration()` adds these columns to existing sheets.
+Note: v5.4 had 7 columns (no GAS_DEVELOPMENT or RELATIONAL). `runPhase0Migration()` adds these columns to existing sheets. DOMAIN_COMPLIANCE was added later still, as the 7th `CFG.KNOWN_VECTORS` entry.
 
 ---
 
@@ -105,23 +109,46 @@ Wide-format living vector state. One row per session, one column per known vecto
 |---|---|---|---|
 | A | Session_UID | String | Payload_UID |
 | B | Timestamp | DateTime | Processing timestamp |
-| C–H | [Known vectors] | Float | Decayed score per domain (columns expand on promotion) |
-| Last | INCUBATOR_SIGNALS | String | Comma-separated emerging themes observed this session |
+| C–I | [Known vectors] | Float | Decayed score per domain — 7 columns today (`CFG.KNOWN_VECTORS`: ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLIANCE); columns expand further on future promotion |
+| Second-to-last | INCUBATOR_SIGNALS | String | Comma-separated emerging themes observed this session |
+| Last | CHECKSUM | String | MD5 (default; `CFG.MATRIX_ROW_CHECKSUM_ALGO`) of the session UID + every theme score — corruption detection only, not a security control (Law 5, Matrix Row Integrity) |
 
 ---
 
 ### INCUBATOR
 
-Tracks themes that appear consistently but haven't been promoted to known vectors.
+Tracks themes that appear consistently but haven't been promoted to known vectors. Cumulative-score + half-life-decay lifecycle (CE-SMP Vector Weight Calculation Engine v1.0) — replaces the earlier rolling-average design.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
 | A | Theme | String | Emerging theme name |
-| B | First_Seen | DateTime | First session where this theme appeared |
-| C | Last_Seen | DateTime | Most recent session |
+| B | First_Detected | DateTime | First session where this theme appeared |
+| C | Last_Touched | DateTime | Most recent session that scored this theme |
 | D | Session_Count | Integer | Number of sessions this theme has appeared in |
-| E | Avg_Weight | Float | Average score when present |
-| F | Status | String | INCUBATING, PROMOTED, ARCHIVED |
+| E | Cumulative_Score | Float | Running score, decayed by half every `CFG.INCUBATOR_HALF_LIFE_DAYS` if untouched; promotes at `CFG.INCUBATOR_PROMOTION_THRESHOLD` |
+| F | Raw_Score_Log | String | JSON array of `{session_id, raw_score}` — migrated verbatim into VECTOR_MATRIX on promotion, never re-normalized |
+| G | Status | String | INCUBATING, PROMOTED, DECAYED (below `CFG.INCUBATOR_DECAY_FLOOR` — kept for audit, not deleted) |
+
+---
+
+### REGISTRAR_LEDGER
+
+Curriculum-drafts auditing pipeline ledger (`11_Registrar_CogRelay.gs`) — a second, independent pipeline from the session-log flow above. Created lazily on first use, not part of `deployFullSystem()`'s initial sheet provisioning.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | File_ID | String | Google Drive file ID of the curriculum draft |
+| B | File_Name | String | Original filename |
+| C | Current_State | String | State-machine status (e.g. AWAITING_COG1, AWAITING_COG2, AWAITING_CARBON, CRITICAL_FAILURE) |
+| D | Cog_1_JSON_Output | String | Stage 1 "Auditor" Master Schema extraction |
+| E | Cog_2_JSON_Output | String | Stage 2 "Curator" verification + dissonance score |
+| F | Final_Human_Translation | String | Markdown briefing deposited into the Calibration Silo |
+| G | Attempt_Tracker | Integer | Consecutive bounce-back count — 3 hits `CRITICAL_FAILURE` (`CFG.REGISTRAR_RETRY_LIMIT`) |
+| H | Error_Log | String | Bounce-back / validation error detail |
+| I | Timestamp_Intake | DateTime | When `runRegistrarIntake` picked up the file |
+| J | Timestamp_Finalized | DateTime | When the file was routed or terminally failed |
+
+Column order matches `CFG.REGISTRAR_COLS` exactly.
 
 ---
 
@@ -353,6 +380,14 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_ONBOARDING_DAY` | `CFG.PROP.ONBOARDING_DAY` | Current day number (1–21) |
 | `KOS_ONBOARDING_START` | `CFG.PROP.ONBOARDING_START` | ISO timestamp of onboarding completion |
 | `KOS_ADMIN_EMAIL` | — | Email address for daily error digests |
+
+### Optional Integration Keys (never hardcoded, unset by default)
+
+| Key | CFG.PROP reference | Description |
+|---|---|---|
+| `KOS_MANAGED_SERVICE_BASE_URL` | `CFG.PROP.MANAGED_SERVICE_BASE_URL` | Base URL of the optional `inference-service/` deployment — only read when `CFG.INFERENCE_MODE = 'MANAGED_SERVICE'` |
+| `KOS_MANAGED_SERVICE_API_KEY` | `CFG.PROP.MANAGED_SERVICE_API_KEY` | API key for the optional `inference-service/` deployment |
+| `KOS_CHAT_WEBHOOK_URL` | `CFG.PROP.CHAT_WEBHOOK_URL` | Google Chat incoming webhook for `_sendChatAlert()` (Registrar Fail Loud Protocol, Apollo Kill-Switch). Degrades to a console.log no-op if unset |
 
 ### Runtime State
 

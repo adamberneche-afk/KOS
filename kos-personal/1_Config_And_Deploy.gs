@@ -392,7 +392,7 @@ function executeBootstrap() {
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed (10 total — matches DEPLOYMENT_GUIDE.md's
+ * Triggers installed (13 total — matches DEPLOYMENT_GUIDE.md's
  * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
  *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
@@ -404,6 +404,9 @@ function executeBootstrap() {
  *   autoCouncilCheck              → every 2 hours (time-driven) — 6_Governance.gs
  *   sensor3_externalTelemetry     → onChange on BRAIN_TRUST_INDEX
  *   onGovernanceEdit              → onEdit on BRAIN_TRUST_INDEX — 6_Governance.gs
+ *   runRegistrarIntake            → daily 01:00  (time-driven) — 11_Registrar_CogRelay.gs
+ *   runRegistrarMicrobatch        → every 15 min (time-driven) — 11_Registrar_CogRelay.gs
+ *   runRegistrarProcessor         → every 10 min (time-driven) — 11_Registrar_CogRelay.gs
  *
  * Note: Sensor 2 (COG_EXHAUST) is the doPost() web app endpoint —
  * it requires no installable trigger.
@@ -558,6 +561,7 @@ function teardownAllTriggers() {
     'sweepRootForExhaust', 'sendDailyErrorReport',
     'generateDailyPrimer', 'autoCouncilCheck',
     'sensor3_externalTelemetry', 'onGovernanceEdit',
+    'runRegistrarIntake', 'runRegistrarMicrobatch', 'runRegistrarProcessor',
   ];
   let count = 0;
   ScriptApp.getProjectTriggers().forEach(t => {
