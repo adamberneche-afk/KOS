@@ -282,6 +282,83 @@ Processing: 3," so summing the two tiles double-counted the 3 rows
 already processing. Wrong numbers on the one surface an operator actually
 looks at day to day. Fixed to show each tile's own bucket only.
 
+### Stuck `ERROR:` rows now retry or archive instead of accumulating forever
+
+`processInferenceQueue()` had two paths that wrote a bare `'ERROR: ...'`
+status onto a `STAGING_PIPELINE` row: a missing-`File_ID` case, and a
+catch-all around reading/parsing the payload doc. Neither path had any
+retry logic, and `archiveStagingPipeline()`'s terminal-status list (in
+`5_Error_And_Utilities.gs`) only recognizes specific named prefixes —
+`FAILED_PARSE`, `PHASE_2_ERROR`, `INTAKE_ERROR`, etc. — none of which a
+plain `'ERROR:'` string matches via `startsWith()`. So these rows were
+both unretryable and un-archivable: permanently stuck in
+`STAGING_PIPELINE`, accumulating forever. Fixed with two named,
+purpose-built statuses:
+- **`MISSING_FILE_ID`** — genuinely non-retryable (there's nothing to
+  read regardless of retry count), set immediately, added to the
+  terminal list so it archives on the next sweep.
+- **`PROCESSING_ERROR`** — the catch-all case now retries like the
+  existing JSON-parse-failure path: the row's status is left as
+  `FLOW_COMPLETE` (already true going into the failed attempt) with its
+  retry count bumped, so the next queue run picks it back up
+  automatically; only after `CFG.MAX_RETRIES` does it escalate to the
+  named terminal `PROCESSING_ERROR` status, which is also now recognized
+  by `archiveStagingPipeline()`.
+
+### `_semanticChunker` now actually honors its own size limit
+
+`_semanticChunker()` is documented to return chunks each `≤
+CFG.MAX_CHUNK_SIZE` characters, but a single `CFG.DELIMITER`-bounded
+block bigger than the limit on its own (or the whole text, if no
+delimiter is present at all) was returned as one over-limit chunk
+unchanged — the guarantee was aspirational, not enforced. `STUDIO_INTEGRATION_SPEC.md`
+explicitly assumes chunks are already under the limit when diagnosing
+truncated Studio output, so an oversized chunk produced truncated/failed
+inference that got misdiagnosed as a Studio-side problem rather than an
+unsplit chunk. Fixed with a new `_splitOversizedBlock_()` helper: greedily
+accumulates by paragraph (`\n\n`) first to preserve natural breaks, and
+falls back to raw fixed-length slicing only if a single paragraph is
+itself still oversized (a pathological, one-unbroken-wall-of-text case).
+Verified against several synthetic cases (normal chunking, an oversized
+delimiter-bounded block with internal paragraphs, a no-delimiter
+oversized blob, and an empty-string edge case) standalone before landing —
+every returned chunk honors the limit and no content is lost.
+
+### `inference-service`'s four bugs — fixed even though it's still not wired to Turnstile
+
+Found during the same review that found everything else above, fixed
+opportunistically since they were cheap and self-contained:
+- **`db.js`'s `markJobFailed`** referenced the JS parameter `retry`
+  as a bare SQL identifier inside a `CASE` expression instead of binding
+  it — Postgres parsed it as a reference to a nonexistent `retry` column,
+  so the query failed with "column \"retry\" does not exist" on every
+  single call (every failure path in `worker.js`), leaving failed jobs
+  stuck in `'processing'` forever with no error recorded. Bound as a
+  query parameter instead.
+- **`inference.js`** validated every job's output — including
+  `COG_STIMULUS` jobs — against one `OUTPUT_SCHEMA` requiring
+  `session_summary`/`dynamic_state`/`vector_weights`/`alignment_report`,
+  but `buildCouncilSystemPrompt` explicitly instructs `COG_STIMULUS` jobs
+  to return only `{session_uid, cog_registry}`. The model followed
+  instructions correctly and validation failed anyway — no
+  `COG_STIMULUS` job could ever succeed. Added a dedicated
+  `COG_STIMULUS_OUTPUT_SCHEMA` matching what's actually requested.
+- **`billing.js`**'s Stripe webhook handler read
+  `session.subscription?.plan?.id` to determine which tier a customer
+  just subscribed to, but `session.subscription` in a Checkout Session
+  webhook payload is a plain string ID, not an expanded object — `.plan`
+  on a string is always `undefined`. Every subscription (including paid
+  "professional"/"creator" tiers) silently fell back to `'starter'` and
+  500 credits, and every monthly renewal after that reset credits to the
+  same wrong amount. Fixed by retrieving the real subscription object via
+  a separate Stripe API call and reading its actual price ID.
+- **`server.js`**'s webhook signature check recomputed the HMAC over
+  `JSON.stringify(req.body)` — a re-serialization of the already-parsed
+  body, not the bytes actually sent — so any difference in serialization
+  between the sender and Node broke a legitimate signature. Fixed using
+  Express's standard `verify` callback to capture the real raw bytes
+  alongside the parsed body, and signing those instead.
+
 ---
 
 ## Architecture in Two Paragraphs

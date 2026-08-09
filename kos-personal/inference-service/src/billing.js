@@ -149,8 +149,21 @@ async function handleWebhook(rawBody, signature) {
 
       if (session.mode === 'subscription') {
         // Subscription activated — grant monthly credits
-        const tier    = PRICE_TO_TIER[session.subscription?.plan?.id] || 'starter';
-        const credits = TIER_CREDITS[tier] || 500;
+        // FIXED: session.subscription is a plain string ID in the
+        // Checkout Session webhook payload (Stripe does not expand it by
+        // default), so session.subscription?.plan?.id — accessing .plan
+        // on a string — was always undefined. Every subscription
+        // (including the paid "professional"/"creator" tiers) silently
+        // fell back to 'starter' and 500 credits regardless of what was
+        // actually purchased, and every monthly renewal after that
+        // reset credits to the same wrong tier amount (invoice.payment_
+        // succeeded below just re-reads whatever subscription_tier was
+        // stored here). Retrieve the real subscription object to read
+        // its actual price ID.
+        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        const priceId       = subscription.items?.data?.[0]?.price?.id;
+        const tier          = PRICE_TO_TIER[priceId] || 'starter';
+        const credits       = TIER_CREDITS[tier] || 500;
         await db.pool.query(
           `UPDATE users SET subscription_status = 'active', subscription_tier = $1 WHERE id = $2`,
           [tier, userId]

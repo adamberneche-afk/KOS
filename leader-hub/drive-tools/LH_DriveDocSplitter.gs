@@ -538,20 +538,31 @@ function applyParagraphFormatting(src, dest) {
  * from each child text element in source to destination.
  * Apps Script maps runs by index within the paragraph.
  */
+// FIXED: this used to match source and destination Text children by
+// index (source child c -> dest child c, `if (c >= destChildren) break`)
+// — but the destination paragraph is built via a single
+// `newBody.appendParagraph(text)` call (one Text child spanning the
+// whole string), while the source paragraph can have several Text
+// children when it has mixed formatting (e.g. plain text followed by a
+// bolded phrase). Once c reached destChildren (1), the loop broke
+// immediately, so only the source's FIRST run's formatting was ever
+// applied — any bold/italic/underline carried by a 2nd+ run was
+// silently dropped. Rewritten to track a global character offset across
+// all of the source's runs and map each offset into whichever
+// destination Text child actually contains it — correct regardless of
+// how many Text children either side has, since both source and
+// destination always contain the exact same total text (destElem was
+// built from srcElem.getText() itself).
 function copyTextRunFormatting(srcElem, destElem) {
   try {
     const numChildren = srcElem.getNumChildren();
+    let globalOffset = 0; // position within the whole paragraph's text
+
     for (let c = 0; c < numChildren; c++) {
       const srcChild = srcElem.getChild(c);
       if (srcChild.getType() !== DocumentApp.ElementType.TEXT) continue;
 
       const srcText = srcChild.asText();
-      const destChildren = destElem.getNumChildren();
-      if (c >= destChildren) break;
-      const destChild = destElem.getChild(c);
-      if (destChild.getType() !== DocumentApp.ElementType.TEXT) continue;
-      const destText = destChild.asText();
-
       const text = srcText.getText();
       if (!text) continue;
 
@@ -559,13 +570,40 @@ function copyTextRunFormatting(srcElem, destElem) {
       for (let pos = 0; pos < text.length; pos++) {
         try {
           const attrs = srcText.getAttributes(pos);
-          destText.setAttributes(pos, pos, attrs);
+          _setDestAttributesAtOffset_(destElem, globalOffset + pos, attrs);
         } catch(e) { /* non-fatal — some attributes may not transfer */ }
       }
+
+      globalOffset += text.length;
     }
   } catch(e) {
     // Non-fatal: formatting copy is best-effort
   }
+}
+
+/**
+ * Sets text attributes at a single character position identified by its
+ * offset into the destination element's FULL concatenated text (across
+ * all of its Text children), not a per-child offset. Finds which child
+ * actually contains that position and applies the attributes there,
+ * using the local (within-child) offset.
+ */
+function _setDestAttributesAtOffset_(destElem, globalOffset, attrs) {
+  let consumed = 0;
+  const destChildren = destElem.getNumChildren();
+  for (let c = 0; c < destChildren; c++) {
+    const destChild = destElem.getChild(c);
+    if (destChild.getType() !== DocumentApp.ElementType.TEXT) continue;
+    const destText = destChild.asText();
+    const len = destText.getText().length;
+    if (globalOffset < consumed + len) {
+      const localOffset = globalOffset - consumed;
+      destText.setAttributes(localOffset, localOffset, attrs);
+      return;
+    }
+    consumed += len;
+  }
+  // globalOffset is beyond the end of all destination text — nothing to set
 }
 
 // ============================================================
