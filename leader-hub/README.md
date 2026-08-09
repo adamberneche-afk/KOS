@@ -39,3 +39,38 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 `drive-tools/` scripts are flagged in their own filenames' origin as
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
+
+## Fixed: the Apps Script bridge was completely non-functional
+
+A full codebase review found the `EmailBridge.gs` integration — sub-plan
+Doc creation, brag-email Gmail drafts, and mark-consumed for horizon
+items — silently failed 100% of the time, for two independent reasons,
+both now fixed:
+
+1. **CORS preflight.** Every `fetch()` call to the bridge (`callGAS()`,
+   used by sub-plan/brag-email, and the separate mark-consumed call in
+   `EMAIL_BRIDGE.poll()`) set `Content-Type: application/json`, which
+   makes it a non-simple CORS request — the browser sends an OPTIONS
+   preflight first, and Apps Script Web Apps don't answer preflights.
+   Every call failed before it ever reached the server, always falling
+   into the UI's "saved locally" fallback with no indication the
+   automation wasn't actually running. Fixed by switching to
+   `text/plain;charset=utf-8` (a CORS-"simple" content type — no
+   preflight) — `EmailBridge.gs`'s `doPost()` already reads the raw body
+   via `JSON.parse(e.postData.contents)` regardless of the declared
+   Content-Type, so this required no server-side change.
+2. **Payload shape mismatch.** Independent of the CORS bug,
+   `EMAIL_BRIDGE.poll()`'s mark-consumed call sent `{consumed: [...]}`
+   with no `action` field; `EmailBridge.gs`'s `doPost()` requires
+   `{action: 'markConsumed', ids: [...]}`. Even with CORS fixed, this
+   call always hit the server's `"Unknown action: "` fallback and never
+   persisted anything — a horizon item marked done or deleted client-side
+   would reappear on the next 10-minute poll, forever. Fixed to send the
+   shape the server actually expects.
+3. **Bonus, found while fixing #2**: `markConsumed_`'s stored ID list was
+   capped at 500 entries via `slice(-500)`, but 500 JSON-encoded Gmail
+   message IDs (~19 bytes each) already exceeds PropertiesService's
+   9216-byte per-value limit (~9.5KB) — `setProperty()` would have started
+   throwing well before reaching the cap, breaking mark-consumed
+   permanently from that point on. Lowered to 300 (~5.7KB), with real
+   margin.
