@@ -87,6 +87,18 @@ Governance/design material that spans systems, including the actual
 Product Specification Document proposing this repo's git-based structure
 in the first place. See [`meta/README.md`](./meta/README.md).
 
+## [`tools/gas-lint/`](./tools/gas-lint/) — static checks for the GAS systems
+
+Built after a full codebase review kept turning up the same failure
+pattern: bugs that only exist because nothing checks for them
+automatically. Catches duplicate top-level declarations across files that
+share an Apps Script project (a parse-time crash, or worse, a silent
+wrong-function-wins if the duplicates actually differ), undefined config
+keys, `google.script.run` calls with no matching server function, and
+OAuth scopes used but not declared. Run `node tools/gas-lint/check.js`
+before trusting any change to `kos-personal/` or `cas-ccps/scripts/` is
+safe to deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
+
 ## Still pending
 
 Module 1 (`cas-ccps`) still needs Flow 2 built in Studio before it can run
