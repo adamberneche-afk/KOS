@@ -56,6 +56,18 @@ function stripCommentsAndStrings(src) {
   let out = '';
   let i = 0;
   const n = src.length;
+  // Tracks the last non-whitespace character/token emitted, so a `/` can
+  // be told apart from division: a `/` starts a regex literal only where
+  // a value can't legally precede it (after an operator, `(`, `,`, `[`,
+  // `{`, `;`, `return`, `typeof`, or at the very start of the file).
+  // Without this, a regex containing `{`/`}` (e.g. a `{2,4}` quantifier)
+  // is left un-stripped and its braces get counted as real code braces,
+  // throwing off every top-level-declaration check for the rest of the
+  // file — this is exactly what let a real duplicate `resetProperties()`
+  // (1_Config_And_Deploy.gs vs. 5_Error_And_Utilities.gs) go undetected
+  // on gas-lint's first release.
+  let lastSig = '';
+  const REGEX_CONTEXT = /[=(:,[!&|?{};\n]|return|typeof|^$/;
   while (i < n) {
     const c = src[i], c2 = src[i + 1];
     if (c === '/' && c2 === '/') {
@@ -80,9 +92,32 @@ function stripCommentsAndStrings(src) {
         i++;
       }
       if (i < n) { out += ' '; i++; }
+      lastSig = quote;
       continue;
     }
-    out += c; i++;
+    if (c === '/' && REGEX_CONTEXT.test(lastSig)) {
+      let j = i + 1, inClass = false, closed = false;
+      while (j < n && src[j] !== '\n') {
+        if (src[j] === '\\') { j += 2; continue; }
+        if (src[j] === '[') inClass = true;
+        else if (src[j] === ']') inClass = false;
+        else if (src[j] === '/' && !inClass) { closed = true; break; }
+        j++;
+      }
+      if (closed) {
+        let k = j + 1;
+        while (k < n && /[a-z]/i.test(src[k])) k++; // flags (g, i, m, ...)
+        for (let m = i; m < k; m++) out += ' ';
+        i = k;
+        lastSig = '/';
+        continue;
+      }
+      // Not actually a regex (no closing `/` before end of line) — fall
+      // through and treat `/` as an ordinary character (division).
+    }
+    out += c;
+    if (!/\s/.test(c)) lastSig = c;
+    i++;
   }
   return out;
 }
