@@ -352,7 +352,9 @@ The output JSON for `COG_STIMULUS` should contain only the `cog_registry` sectio
 
 **Trigger:** identical mechanics to the flows above — poll `STAGING_PIPELINE` for `Status = STUDIO_ACTIVE` rows where `Payload_Type = VECTOR_CLASSIFY`. Same Turnstile gating, same staleness guard.
 
-**Known vectors to classify against** (pass this list into your prompt — do not hardcode it, it grows as themes get promoted from the Incubator):
+**System prompt:** the full, paste-verbatim text lives in [`VECTOR_CLASSIFY_PROMPT.md`](./VECTOR_CLASSIFY_PROMPT.md) — same convention as cas-ccps's `15_StudioFlowPrompts.js`: paste it exactly, don't paraphrase.
+
+**Known vectors to classify against** — hardcoded directly into the prompt rather than passed as a trigger-row variable, since `STAGING_PIPELINE`'s columns (unlike cas-ccps's per-teacher `RubricQueue` rows) carry no natural place to source a dynamic value from. This is a real, accepted tradeoff: the prompt's list must be updated by hand every time a theme promotes out of the Incubator, or that theme misclassifies as `unmapped_signals` until someone notices and fixes it (this is exactly the "known_vectors configuration array becomes a system dependency" risk the SMP itself flags). Current list, must match `VECTOR_MATRIX`'s live column headers:
 ```
 ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLIANCE
 ```
@@ -397,6 +399,16 @@ ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLI
 
 Write this array as the document body (replacing the source text entirely — same convention as every other flow: JSON only, no markdown fences, no preamble). Then set `Status` to `FLOW_COMPLETE`, exactly like the other flows. `processInferenceQueue()` detects `Payload_Type = VECTOR_CLASSIFY` and routes to `processVectorClassificationPayload()` instead of the Curator intake path — everything downstream (aggregation, decay, Incubator promotion, the checksum) is GAS-only from there.
 
+**Connector configuration, step by step** (kos-personal is single-user, so unlike cas-ccps's per-teacher flows there's no trigger-row variable to map — every value below is either static or comes straight off the `STAGING_PIPELINE` row itself):
+
+| # | Connector | Configuration | Notes |
+|---|---|---|---|
+| T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `STAGING_PIPELINE` · Condition: `Status = STUDIO_ACTIVE` AND `Payload_Type = VECTOR_CLASSIFY` | The `Payload_Type` condition is what separates this flow from the `SESSION_LOG` Curator flow polling the same sheet — without it, both flows would race to claim every `STUDIO_ACTIVE` row. |
+| 1 | Google Docs — Get document | Document ID: `@trigger.File_ID` (column 4) | Same source text the paired `SESSION_LOG` row for this session reads — this flow does not modify it before writing its own output. |
+| 2 | Gemini — Generate content | System prompt: full text of `VECTOR_CLASSIFY_PROMPT.md`, pasted verbatim · No variable mappings needed — the known-vectors list is hardcoded into the prompt itself (see above) · Output format: JSON only, no preamble or markdown | Malformed output here fails the same way every other flow's malformed output does — `NEEDS_CURATOR`, then retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
+| 3 | Google Docs — Insert text (or overwrite body) | Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`, replacing the entire body | Same "JSON only, nothing else" contract as Step 6 in the main handshake above. |
+| 4 | Google Sheets — Update row | Row: `@trigger.row` · Status column (6): `FLOW_COMPLETE` | Must always run, even on a Step 2/3 failure path — leave `Status` at `STUDIO_ACTIVE` on failure instead (do **not** write `FLOW_COMPLETE` for malformed output) so the staleness guard resets it for retry rather than the queue processor trying to parse garbage. |
+
 **Open integration question — not yet resolved in this repo:** for a `VECTOR_CLASSIFY` row's VECTOR_MATRIX write to land under the same `session_uid` as its paired `SESSION_LOG` row (so the two independently-completing flows correlate to one session), both rows need to share the same `Payload_UID` at the moment they're queued. `2_Ingestion_Sensors.gs`'s existing `_chunkAndQueue()` queues one `SESSION_LOG` row per chunk today and has not been modified to also queue a paired `VECTOR_CLASSIFY` row — that wiring depends on how session consolidation actually works in your live Studio setup (multiple raw chunk docs appear to already merge into one Curator output per the processed-log examples reviewed), which isn't something this repo can see. Decide and wire this once the Inference Flow itself is built and you can see the real shape of a completed classification against a real multi-chunk session.
 
 ---
@@ -419,7 +431,7 @@ Write this array as the document body (replacing the source text entirely — sa
   "session_summary": "Test session.",
   "session_metadata": {"session_type": "WORKING", "cold_start": false, "rtp_version": "v8.0"},
   "dynamic_state": {"next_steps": ["Review integration"], "deferred_decisions": [], "pivots_and_lessons": []},
-  "vector_weights": {"ARCHITECTURE": 0.5, "UI": 0.5, "SECURITY": 0.5, "PEDAGOGY": 0.5, "GAS_DEVELOPMENT": 0.5, "RELATIONAL": 0.5},
+  "vector_weights": null,
   "cog_registry": {"cog_verdicts": []},
   "action_exhaust": [],
   "session_delta": {"smp_proposals_filed": []},
@@ -427,6 +439,33 @@ Write this array as the document body (replacing the source text entirely — sa
   "alignment_observations": {"confidence_deltas": {"admin_ghost": 0.0, "relational_targets": 0.0, "necessary_struggle": 0.0, "prime_directive": 0.0, "temporal_constraints": 0.0}}
 }
 ```
+
+`vector_weights` is `null` here deliberately, not a placeholder oversight — see the Curator prompt patch (Section 4.2) that made this the only correct value the Curator flow ever emits. Real weights only ever come from a completed `VECTOR_CLASSIFY` row, tested separately below.
+
+### Minimum viable test — `VECTOR_CLASSIFY`
+
+1. Queue a `STAGING_PIPELINE` row by hand with `Payload_Type = VECTOR_CLASSIFY`, pointing at any short test document, `Status = STUDIO_ACTIVE`.
+2. Replace that document's body with the minimum valid JSON below.
+3. Set the row's `Status` to `FLOW_COMPLETE`.
+4. Run `processInferenceQueue()` manually.
+
+**Minimum valid JSON for testing:**
+```json
+[
+  {
+    "exchange_type": "DECISION",
+    "sentences": [
+      {
+        "sentence_id": 1,
+        "vectors": {"ARCHITECTURE": 0.9, "UI": 0.0, "SECURITY": 0.0, "PEDAGOGY": 0.0, "GAS_DEVELOPMENT": 0.5, "RELATIONAL": 0.0, "DOMAIN_COMPLIANCE": 0.0},
+        "unmapped_signals": []
+      }
+    ]
+  }
+]
+```
+
+**Verifying success:** a new row should appear in `VECTOR_MATRIX` for this row's `Payload_UID`, with `ARCHITECTURE` and `GAS_DEVELOPMENT` both at `0.9` and `0.5` respectively (a single `DECISION` sentence means `totalPossible = 1.5`, and each theme's raw score equals its own weight × 1.5, which normalizes back to exactly that weight) and a `CHECKSUM` value in the trailing column. Run `dumpVectorState()` from the Apps Script editor to confirm — it prints the live matrix state and any Incubator entries to the console.
 
 ### Verifying success
 
