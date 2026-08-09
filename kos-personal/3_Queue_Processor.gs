@@ -263,7 +263,13 @@ function processIntakePayload(rawJSONPayload) {
     }
 
     const ts         = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-    const uid        = pd.session_uid || ('LOG_' + new Date().getTime());
+    // FIX: real THE_CURATOR output (schema_version 5.0) nests the session's
+    // real, deterministic ID at session_metadata.session_id — there is no
+    // top-level session_uid field. Reading the wrong key meant every real
+    // session got a random LOG_<timestamp> fallback UID instead of its real
+    // session ID, breaking any downstream matching keyed on session identity.
+    // pd.session_uid kept as a secondary fallback for backward compatibility.
+    const uid        = pd.session_metadata?.session_id || pd.session_uid || ('LOG_' + new Date().getTime());
     const stateDoc   = DocumentApp.openById(stateId);
     const pivotDoc   = DocumentApp.openById(pivotId);
     const ss         = SpreadsheetApp.openById(indexId);
@@ -299,8 +305,15 @@ function processIntakePayload(rawJSONPayload) {
 
     // ── MATRIX_LEDGER — raw vector scores ───────────────────────
     const ledger = ss.getSheetByName(CFG.MATRIX_LEDGER_SHEET);
-    if (ledger) {
-      const w    = pd.vector_weights || {};
+    // FIX: real THE_CURATOR output sends vector_weights as the literal
+    // string "UNAVAILABLE — Vector_Router.gs output missing" (not an
+    // object) whenever the router hasn't run yet — a genuinely common case
+    // in real logs, not an edge case. `pd.vector_weights || {}` doesn't
+    // catch this, since a non-empty string is truthy, so every field read
+    // off it came back undefined and this silently wrote a fake all-zero
+    // row into the ledger instead of skipping a session with no real data.
+    if (ledger && pd.vector_weights && typeof pd.vector_weights === 'object') {
+      const w    = pd.vector_weights;
       const arch = parseFloat(w.ARCHITECTURE)    || 0;
       const ui_  = parseFloat(w.UI)              || 0;
       const sec  = parseFloat(w.SECURITY)        || 0;
@@ -342,7 +355,12 @@ function processIntakePayload(rawJSONPayload) {
         a.type  || '',
         a.item  || '',
         a.owner || 'unassigned',
-        a.protected_time_risk ? 'YES' : 'NO',
+        // FIX: real output inconsistently sends this as a JS boolean
+        // (true/false) or as a string ("true"/"false") depending on the
+        // session. Any non-empty string — including the literal "false" —
+        // is truthy in JS, so the old check silently recorded every
+        // string-typed "false" as a "YES" protected-time risk.
+        (a.protected_time_risk === true || a.protected_time_risk === 'true') ? 'YES' : 'NO',
         'OPEN',
       ]));
     }
