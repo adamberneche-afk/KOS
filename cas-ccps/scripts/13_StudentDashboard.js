@@ -128,11 +128,16 @@ function getStudentDashboardData(termFilter) {
 }
 
 function resolveStudentStatus_(status) {
+  // Wording here deliberately echoes the teacher dashboard's status labels
+  // (Queued/Evaluated/Compliant/Flagged) so the same underlying pipeline
+  // stage reads as the same word on both sides of a conversation — a
+  // student saying "it's flagged" should mean the same thing a teacher
+  // sees as FLAGGED, not require translation.
   switch (status) {
     case "ACTIVE":              return "Not started yet";
-    case "PENDING": case "STAGED": return "Evaluation in progress…";
-    case "COMPLETE":            return "Feedback ready — check your document";
-    case "COMPLIANT":           return "Submitted ✓";
+    case "PENDING": case "STAGED": return "Queued for evaluation…";
+    case "COMPLETE":            return "Evaluated — feedback ready, check your document";
+    case "COMPLIANT":           return "Submitted — compliant ✓";
     default:
       // Never show a raw Ledger status string to a student — a blank cell
       // or an unrecognized/future status code both land here. ERROR-
@@ -140,7 +145,7 @@ function resolveStudentStatus_(status) {
       // just unexpected/blank data, worded distinctly so a teacher can
       // tell the two apart when a student reports it.
       return status.startsWith("ERROR")
-        ? "Issue — see your teacher"
+        ? "Flagged — see your teacher"
         : "Status unavailable — check with your teacher";
   }
 }
@@ -235,24 +240,63 @@ function buildStudentDashboardHtml_() {
 <div id="main" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 <script>
+// Per-term client cache — switching the term filter back and forth used to
+// refetch and rebuild the whole assignment list from scratch every time,
+// even though the previous term's data was still sitting in memory. A cache
+// hit renders instantly and still revalidates in the background, so stale
+// data never lingers past the next successful fetch.
+let _dashCache = {};
+let _loadGen = 0;
+
+// A round-trip that happens to finish in well under this many ms would
+// otherwise flash the spinner on and off almost instantly, which reads as
+// a glitch rather than "fast." Holding it up for a floor of MIN_SPINNER_MS
+// makes quick responses feel deliberate instead of jarring.
+const MIN_SPINNER_MS = 400;
+function _afterMinSpinnerDelay(shownAt, myGen, fn) {
+  const run = function() { if (myGen === _loadGen) fn(); };
+  if (!shownAt) { run(); return; }
+  const remaining = MIN_SPINNER_MS - (Date.now() - shownAt);
+  if (remaining > 0) { setTimeout(run, remaining); } else { run(); }
+}
+
 function loadData() {
   const sel     = document.getElementById("term-filter");
   const term    = sel ? sel.value : "ALL";
   const loading = document.getElementById("loading");
-  // Reset to the spinner state on every call — including a retry after a
-  // failure — so the error screen never lingers behind a fresh attempt.
-  loading.innerHTML = '<div class="spinner"></div><p>Loading your assignments…</p>';
-  loading.style.display = "block";
-  document.getElementById("main").style.display = "none";
+  const main    = document.getElementById("main");
+  const myGen   = ++_loadGen;
+  const cached  = _dashCache[term];
+  let shownSpinnerAt = 0;
+
+  if (cached) {
+    render(cached);
+  } else {
+    // Reset to the spinner state on every fresh (uncached) call — including
+    // a retry after a failure — so the error screen never lingers behind it.
+    loading.innerHTML = '<div class="spinner"></div><p>Loading your assignments…</p>';
+    loading.style.display = "block";
+    main.style.display = "none";
+    shownSpinnerAt = Date.now();
+  }
+
   google.script.run
-    .withSuccessHandler(render)
+    .withSuccessHandler(function(data) {
+      if (myGen !== _loadGen) return; // a newer request already superseded this one
+      if (!data || !data.error) _dashCache[term] = data;
+      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); });
+    })
     .withFailureHandler(function(e) {
+      if (myGen !== _loadGen) return;
+      if (cached) return; // still showing valid (if slightly stale) cached data
       // Plain-language message for the student; the real e.message is
       // already logged server-side by whatever threw it, so it isn't
       // repeated here — a stack-trace fragment isn't actionable for them.
-      loading.innerHTML =
-        '<p style="color:#d93025;padding:24px 24px 8px;">Something went wrong loading your assignments. Try refreshing.</p>' +
-        '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
+        loading.innerHTML =
+          '<p style="color:#d93025;padding:24px 24px 8px;">Something went wrong loading your assignments. Try refreshing.</p>' +
+          '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+      });
     })
     .getStudentDashboardData(term);
 }
@@ -260,6 +304,10 @@ function loadData() {
 function render(data) {
   const loading = document.getElementById("loading");
   const main    = document.getElementById("main");
+  // Any refresh (manual, term change, or a cache revalidation) rebuilds the
+  // whole card list via innerHTML — preserve scroll position instead of
+  // dumping the student back to the top of the list.
+  const _scrollTop = main.scrollTop;
 
   if (data.error) {
     loading.innerHTML = '<p style="color:#d93025;padding:24px;">' + esc(data.error) + '</p>';
@@ -305,7 +353,7 @@ function render(data) {
           <div class="pill pill-\${a.statusClass}">\${esc(a.displayStatus)}</div>
         </div>
         <div class="card-meta">Period \${esc(a.period)} &nbsp;·&nbsp; \${esc(a.subject)}</div>
-        <div class="eval-line">Last feedback: \${esc(a.lastEval)}</div>
+        <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
         \${a.docUrl
           ? \`<a href="\${a.docUrl}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
           : '<span style="color:#80868b;font-size:13px;">Document not yet available</span>'
@@ -325,6 +373,7 @@ function render(data) {
   main.innerHTML = html;
   loading.style.display = "none";
   main.style.display    = "block";
+  main.scrollTop = _scrollTop;
   document.getElementById("footer").textContent =
     "Last refreshed: " + data.generatedAt + "  ·  " + data.googleId;
 

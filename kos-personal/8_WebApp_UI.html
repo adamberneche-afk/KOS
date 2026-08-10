@@ -203,9 +203,13 @@ textarea { line-height: 1.55; }
   font-size: 13px; margin-top: 12px;
   border: 1px solid;
 }
-.toast.show { display: flex; }
+.toast.show { display: flex; animation: toastIn .18s ease; }
 .toast-ok   { background: var(--success-bg); border-color: var(--success); color: var(--success); }
 .toast-err  { background: var(--danger-bg);  border-color: var(--danger);  color: var(--danger);  }
+@keyframes toastIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+@media (prefers-reduced-motion: reduce) {
+  .toast.show { animation: none; }
+}
 
 /* ── Queue metrics ─────────────────────────────────────────── */
 .metric-grid {
@@ -350,6 +354,15 @@ textarea { line-height: 1.55; }
   .prog-step.active .p-icon { animation: none; }
 }
 
+/* ti-loader-2 is used everywhere as the "in progress" icon (submit, queue
+   refresh, arm-modal save) but never actually rotated — a static "loading"
+   glyph reads as frozen rather than working. */
+.ti-loader-2 { display: inline-block; animation: tiSpin .8s linear infinite; }
+@keyframes tiSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .ti-loader-2 { animation: none; }
+}
+
 /* ── Stepper dots (arm modal) ────────────────────────────────── */
 .sdot { height: 6px; border-radius: 3px; background: var(--border2); transition: all .25s; width: 6px; }
 .sdot.s-active { background: var(--amber); width: 22px; }
@@ -416,7 +429,7 @@ textarea { line-height: 1.55; }
   background: rgba(0,0,0,.65); z-index: 100;
   -webkit-tap-highlight-color: transparent;
 }
-.bs-backdrop.show { display: block; }
+.bs-backdrop.show { display: block; animation: bsBackdropIn .18s ease; }
 .bottom-sheet {
   position: fixed; bottom: 0; left: 50%;
   transform: translateX(-50%);
@@ -427,6 +440,17 @@ textarea { line-height: 1.55; }
   padding: 20px 20px 36px;
   max-height: 88vh; overflow-y: auto;
   z-index: 101;
+  /* Restarts on every display:none → block toggle (handleArmEngine),
+     giving the sheet a slide-up entrance instead of popping in place. */
+  animation: bsSheetUp .22s ease;
+}
+@keyframes bsBackdropIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes bsSheetUp {
+  from { transform: translateX(-50%) translateY(24px); opacity: .4; }
+  to   { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .bs-backdrop.show, .bottom-sheet { animation: none; }
 }
 .bs-handle {
   width: 32px; height: 4px; border-radius: 2px;
@@ -561,7 +585,7 @@ textarea { line-height: 1.55; }
     <div id="fields-research" style="display:none">
       <div class="field-group">
         <div class="field-lbl">Title / source</div>
-        <input type="text" id="research-title" placeholder="e.g. Nielsen UX Report 2024">
+        <input type="text" id="research-title" placeholder="e.g. Nielsen UX Report 2024" oninput="scheduleIngestDraftSave()">
       </div>
       <div class="field-group">
         <div class="field-lbl">Content</div>
@@ -744,7 +768,9 @@ textarea { line-height: 1.55; }
     <div class="url-box" id="webhook-url" onclick="copyWebhookUrl()"
          role="button" tabindex="0" aria-label="Copy webhook URL"
          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyWebhookUrl();}">Loading URL…</div>
-    <div class="hint">Tap to copy · POST: { cog_name, task_id, verdict, artifact_text }</div>
+    <div class="hint">Tap to copy · POST: { cog_name, task_id, verdict, artifact_text }
+      <span id="webhook-copy-confirm" style="display:none;color:var(--success);font-weight:600;margin-left:6px">✓ Copied</span>
+    </div>
 
   </div><!-- /tab-diag -->
 
@@ -817,6 +843,7 @@ let deployTimer   = null;
 let councilConfirm = false;
 let councilTimer   = null;
 let inboundFolderUrl = null;  // cached on first load
+let webhookUrl = null;        // cached on first load — immutable for the deployment's lifetime, no need to refetch every Diagnostics open
 
 // ── GAS bridge — falls back to dev stubs when loaded outside GAS
 const gsr = (typeof google !== 'undefined' && google.script)
@@ -843,7 +870,53 @@ function onServerError(err) {
 let draftSession = '', draftResearch = '', draftResearchTitle = '';
 let shadowRefreshTimer = null;
 
+// ── Ingest draft persistence (survives refresh/accidental close) ───────────
+// The in-memory draftSession/draftResearch vars above only ever survived a
+// tab switch — a paste this size (up to 150k chars) is real effort to lose
+// to a reload or a fat-fingered nav-back.
+const INGEST_DRAFT_KEY = 'kos_ingest_draft';
+function _safeLS(fn) { try { return fn(); } catch (e) { return null; } }
+function persistIngestDraft() {
+  if (!draftSession && !draftResearch && !draftResearchTitle) { clearIngestDraft(); return; }
+  _safeLS(() => localStorage.setItem(INGEST_DRAFT_KEY, JSON.stringify(
+    { session: draftSession, research: draftResearch, researchTitle: draftResearchTitle })));
+}
+function restoreIngestDraft() {
+  const raw = _safeLS(() => localStorage.getItem(INGEST_DRAFT_KEY));
+  if (!raw) return;
+  const d = _safeLS(() => JSON.parse(raw));
+  if (!d) return;
+  draftSession = d.session || '';
+  draftResearch = d.research || '';
+  draftResearchTitle = d.researchTitle || '';
+  const st = document.getElementById('session-text');
+  const rt = document.getElementById('research-text');
+  const rtl = document.getElementById('research-title');
+  if (st && draftSession)   { st.value = draftSession;   updateCount('session-text','session-count'); }
+  if (rt && draftResearch)  { rt.value = draftResearch;  updateCount('research-text','research-count'); }
+  if (rtl && draftResearchTitle) rtl.value = draftResearchTitle;
+}
+function clearIngestDraft() { _safeLS(() => localStorage.removeItem(INGEST_DRAFT_KEY)); }
+
+let _ingestDraftSaveTimer = null;
+function scheduleIngestDraftSave() {
+  clearTimeout(_ingestDraftSaveTimer);
+  _ingestDraftSaveTimer = setTimeout(() => {
+    const st = document.getElementById('session-text');
+    const rt = document.getElementById('research-text');
+    const rtl = document.getElementById('research-title');
+    if (st)  draftSession       = st.value;
+    if (rt)  draftResearch      = rt.value;
+    if (rtl) draftResearchTitle = rtl.value;
+    persistIngestDraft();
+  }, 600);
+}
+
 function switchTab(id) {
+  // Re-tapping the tab you're already on used to reset scroll position and
+  // refetch everything (queue status, diagnostics) for no reason.
+  if (id === currentTab) return;
+
   // Preserve ingest draft before leaving
   if (currentTab === 'ingest') {
     draftSession       = document.getElementById('session-text')?.value  || '';
@@ -893,12 +966,21 @@ function updateCount(textareaId, countId) {
   const n   = document.getElementById(textareaId).value.length;
   const el  = document.getElementById(countId);
   const fmt = n.toLocaleString() + ' chars';
+  scheduleIngestDraftSave();
+
+  // Same floor submitLessonContext()/submitExternalData() actually enforce
+  // server-side — surfaced here so a too-short paste is caught before
+  // Submit, not after, in a round-trip error toast.
+  const minLength = currentType === 'session' ? 50 : 20;
 
   if (n > LARGE_PAYLOAD_THRESHOLD) {
     el.innerHTML = '<span class="char-warn"><i class="ti ti-alert-triangle" style="font-size:11px"></i> ' + fmt + ' — too large for direct paste</span>';
     if (currentType === 'session') showDropPanel(n);
   } else if (n > LARGE_PAYLOAD_THRESHOLD * 0.8) {
     el.innerHTML = '<span class="char-warn">' + fmt + ' · approaching limit</span>';
+    hideDropPanel();
+  } else if (n > 0 && n < minLength) {
+    el.innerHTML = fmt + ' <span style="color:var(--text3)">· minimum ' + minLength + '</span>';
     hideDropPanel();
   } else {
     el.textContent = fmt;
@@ -982,10 +1064,14 @@ function handleSubmit() {
     label.textContent = 'Queue Payload';
     icon.className = 'ti ti-send';
     if (res && res.success) {
+      // The toast is a brief confirmation; #next-hint (below) is the
+      // persistent block that explains what happens next and where to
+      // check on it — these used to say almost the same thing twice,
+      // stacked in the same view.
       const chunks  = res.chunks || 1;
       const msgText = currentType === 'session'
-        ? chunks + ' chunk' + (chunks !== 1 ? 's' : '') + ' queued. The AI engine will process ' + (chunks !== 1 ? 'them' : 'it') + ' within 5 minutes.'
-        : 'Research filed and queued for pattern matching.';
+        ? '✅ ' + chunks + ' chunk' + (chunks !== 1 ? 's' : '') + ' queued.'
+        : '✅ Research filed and queued.';
       showIngestToast(msgText, true);
       document.getElementById('next-hint').classList.add('show');
       // Clear the form and discard the draft
@@ -999,6 +1085,7 @@ function handleSubmit() {
         document.getElementById('research-count').textContent = '0 chars';
         draftResearch = ''; draftResearchTitle = '';
       }
+      clearIngestDraft();
     } else {
       showIngestToast((res && res.message) || 'Something went wrong. Try again.', false);
     }
@@ -1243,9 +1330,14 @@ const ARM_STEPS = [
       <div class="field-group"><div class="field-lbl">Admin email</div><input type="email" id="arm-email" placeholder="your@email.com"></div>` },
 ];
 let armStep = 0;
+// Answers captured across steps within one modal session — renderArmStep()
+// used to rebuild each step's HTML from scratch with no memory of anything
+// typed earlier, so Continue then Back then Continue again came back blank.
+let armAnswers = {};
 
 function handleArmEngine() {
   armStep = 0;
+  armAnswers = {};
   document.getElementById('arm-backdrop').classList.add('show');
   document.getElementById('arm-sheet').style.display = 'block';
   renderArmStep();
@@ -1255,6 +1347,40 @@ function closeArmModal() {
   document.getElementById('arm-backdrop').classList.remove('show');
   document.getElementById('arm-sheet').style.display = 'none';
   armStep = 0;
+  armAnswers = {};
+}
+
+function _armCaptureStep() {
+  const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
+  const checked = document.querySelector('input[name="armDT"]:checked');
+  Object.assign(armAnswers, {
+    armDT: checked ? checked.value : armAnswers.armDT,
+    role: g('arm-role'), audience: g('arm-audience'), vision: g('arm-vision'),
+    adminGhost: g('arm-ghost'), struggle: g('arm-struggle'), targets: g('arm-targets'),
+    passphrase: g('arm-passphrase'), adminEmail: g('arm-email'),
+  });
+}
+
+function _armRestoreStep() {
+  const set = (id, val) => { const e = document.getElementById(id); if (e && val !== undefined) e.value = val; };
+  set('arm-role', armAnswers.role);
+  set('arm-audience', armAnswers.audience);
+  set('arm-vision', armAnswers.vision);
+  set('arm-ghost', armAnswers.adminGhost);
+  set('arm-struggle', armAnswers.struggle);
+  set('arm-targets', armAnswers.targets);
+  set('arm-passphrase', armAnswers.passphrase);
+  set('arm-email', armAnswers.adminEmail);
+  if (armAnswers.armDT) {
+    const radio = document.querySelector('input[name="armDT"][value="' + armAnswers.armDT + '"]');
+    if (radio) {
+      radio.checked = true;
+      const group = radio.closest('.radio-group');
+      if (group) group.querySelectorAll('.radio-item').forEach(r => r.classList.remove('selected'));
+      const item = radio.closest('.radio-item');
+      if (item) item.classList.add('selected');
+    }
+  }
 }
 
 function renderArmStep() {
@@ -1267,6 +1393,7 @@ function renderArmStep() {
     ? 'Save & Personalise <i class="ti ti-bolt"></i>'
     : 'Continue <i class="ti ti-arrow-right"></i>';
   document.getElementById('arm-err').style.display = 'none';
+  _armRestoreStep();
   // Update stepper dots
   for (let i = 1; i <= ARM_STEPS.length; i++) {
     const d = document.getElementById('asdot-' + i);
@@ -1281,11 +1408,12 @@ function armNext() {
     document.getElementById('arm-err').style.display = 'flex';
     return;
   }
+  _armCaptureStep();
   if (armStep < ARM_STEPS.length - 1) { armStep++; renderArmStep(); }
   else { submitArmEngine(); }
 }
 
-function armPrev() { if (armStep > 0) { armStep--; renderArmStep(); } }
+function armPrev() { if (armStep > 0) { _armCaptureStep(); armStep--; renderArmStep(); } }
 
 function toggleArmPassVisibility() {
   const input = document.getElementById('arm-passphrase');
@@ -1302,14 +1430,18 @@ function submitArmEngine() {
   const btn = document.getElementById('arm-next');
   btn.disabled = true;
   btn.innerHTML = '<i class="ti ti-loader-2"></i>Saving…';
-  const g = id => { const e = document.getElementById(id); return e ? e.value.trim() : ''; };
-  const checked = document.querySelector('input[name="armDT"]:checked');
+  // armNext() already called _armCaptureStep() for every step including this
+  // one, so armAnswers holds all 4 steps' values — read from there, not the
+  // DOM. Reading document.getElementById() here would only ever see step 4's
+  // fields (targets/passphrase/email), since steps 1-3's elements were long
+  // since replaced by renderArmStep()'s innerHTML swaps.
+  const trim = v => (v || '').trim();
   callServer('completeOnboarding', [{
-    deployType: checked ? checked.value : 'INDIVIDUAL',
-    role: g('arm-role'), audience: g('arm-audience'), vision: g('arm-vision'),
-    adminGhost: g('arm-ghost'), struggle: g('arm-struggle'), targets: g('arm-targets'),
-    passphrase: document.getElementById('arm-passphrase').value,
-    adminEmail: g('arm-email'),
+    deployType: armAnswers.armDT || 'INDIVIDUAL',
+    role: trim(armAnswers.role), audience: trim(armAnswers.audience), vision: trim(armAnswers.vision),
+    adminGhost: trim(armAnswers.adminGhost), struggle: trim(armAnswers.struggle), targets: trim(armAnswers.targets),
+    passphrase: armAnswers.passphrase || '',
+    adminEmail: trim(armAnswers.adminEmail),
   }], (res) => {
     if (res && res.success) {
       btn.innerHTML = '<i class="ti ti-check"></i>Saved!';
@@ -1342,12 +1474,20 @@ function loadHealthSummary() {
       ? 'Day ' + res.onboardingDay + ' of ' + res.onboardingCap
       : 'Learning from sessions';
 
+    // Engine/admin-email rows below use the app's shared dot/icon-font
+    // vocabulary (same as the header's engine-dot and the alert-triangle
+    // used everywhere else) instead of ad-hoc emoji (🟢/📡/⚠) — two visual
+    // languages for the same "armed/warning" signals in the same tab.
     el.innerHTML =
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">' +
-      healthRow('Engine',      res.engineArmed ? '🟢 Personalised' : '📡 Learning') +
+      healthRowHtml('Engine', res.engineArmed
+        ? '<span class="dot dot-armed" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Personalised'
+        : '<span class="dot dot-cold" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Learning') +
       healthRow('Triggers',    res.triggersActive + ' active') +
       healthRow('Progress',    obText) +
-      healthRow('Admin email', res.adminEmail || '⚠ not set') +
+      (res.adminEmail
+        ? healthRow('Admin email', res.adminEmail)
+        : healthRowHtml('Admin email', '<i class="ti ti-alert-triangle" style="font-size:12px;margin-right:4px"></i>not set')) +
       (res.promotedVectors && res.promotedVectors.length
         ? healthRow('Promoted themes', res.promotedVectors.join(', '))
         : '') +
@@ -1360,9 +1500,16 @@ function loadHealthSummary() {
 }
 
 function healthRow(label, val) {
+  return healthRowHtml(label, esc(String(val)));
+}
+
+// Like healthRow() but takes pre-built HTML for the value instead of escaping
+// it — only ever called with hardcoded icon markup (never server-supplied
+// text), so this doesn't reopen the escaping that healthRow() still does.
+function healthRowHtml(label, html) {
   return '<div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 10px;">' +
     '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:2px;">' + esc(label) + '</div>' +
-    '<div style="color:var(--text2);">' + esc(String(val)) + '</div>' +
+    '<div style="color:var(--text2);">' + html + '</div>' +
     '</div>';
 }
 
@@ -1405,14 +1552,23 @@ function renderVectors(res) {
     const pct     = Math.round(clamped * 100);
     const isPromo = promd.includes(v.name);
     const fillCls = isPromo ? 'bar-fill promoted' : 'bar-fill';
+    // Bars start at width:0 and grow to their real width just below — set
+    // directly to the final width here, the CSS transition has nothing to
+    // interpolate from and never visibly plays.
     return '<div class="vec-row">' +
       '<div class="vec-hdr">' +
       '<span class="vec-name">' + esc(v.name) + (isPromo ? ' ✦' : '') + '</span>' +
       '<span class="vec-score">' + clamped.toFixed(2) + '</span>' +
       '</div>' +
-      '<div class="bar-bg"><div class="' + fillCls + '" style="width:' + pct + '%"></div></div>' +
+      '<div class="bar-bg"><div class="' + fillCls + '" data-w="' + pct + '" style="width:0%"></div></div>' +
       '</div>';
   }).join('');
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.querySelectorAll('.bar-fill[data-w]').forEach(bar => {
+      bar.style.width = bar.getAttribute('data-w') + '%';
+    });
+  }));
 
   // Show session provenance so the user knows what these numbers reflect
   if (meta) {
@@ -1448,11 +1604,12 @@ function renderIncubating(res) {
 }
 
 function loadWebhookUrl() {
+  const el = document.getElementById('webhook-url');
+  if (webhookUrl) { if (el) el.textContent = webhookUrl; return; }
   callServer('getWebAppUrl', [], (url) => {
-    const el = document.getElementById('webhook-url');
-    if (el) el.textContent = String(url);
+    webhookUrl = String(url);
+    if (el) el.textContent = webhookUrl;
   }, (err) => {
-    const el = document.getElementById('webhook-url');
     if (el) el.textContent = 'Couldn\'t load URL — ' + err.message;
   });
 }
@@ -1460,7 +1617,15 @@ function loadWebhookUrl() {
 function copyWebhookUrl() {
   const txt = document.getElementById('webhook-url').textContent;
   if (navigator.clipboard) {
-    navigator.clipboard.writeText(txt).then(() => showDiagStatus('Webhook URL copied.'));
+    // Confirm right next to the box the user tapped — showDiagStatus()
+    // writes into #diag-status at the top of the tab, which isn't visible
+    // without scrolling back up from here at the bottom of Diagnostics.
+    navigator.clipboard.writeText(txt).then(() => {
+      const el = document.getElementById('webhook-copy-confirm');
+      if (!el) return;
+      el.style.display = 'inline';
+      setTimeout(() => { el.style.display = 'none'; }, 2200);
+    });
   }
 }
 
@@ -1679,11 +1844,18 @@ function handleBootstrap() {
     clearInterval(bsStepTimer);
 
     if (res && res.success) {
-      // Complete all remaining steps
-      steps.forEach(s => {
-        s.querySelector('.p-icon').textContent = '✅';
-        s.classList.remove('active'); s.classList.add('done');
+      // Complete remaining steps in a quick stagger rather than all at once —
+      // real deploys regularly finish well inside the ~50s animation
+      // estimate, and snapping 3+ steps to done() simultaneously looked
+      // like they'd been skipped rather than actually finished.
+      const remaining = Array.from(steps).filter(s => !s.classList.contains('done'));
+      remaining.forEach((s, i) => {
+        setTimeout(() => {
+          s.querySelector('.p-icon').textContent = '✅';
+          s.classList.remove('active'); s.classList.add('done');
+        }, i * 220);
       });
+      const staggerMs = remaining.length * 220;
       // Append tech detail (collapsed by default)
       const detail = document.getElementById('deploy-detail');
       if (detail && res.log && res.log.length) {
@@ -1691,13 +1863,13 @@ function handleBootstrap() {
           '<div class="' + (l.startsWith('✔') || l.startsWith('✅') ? 'l-ok' : l.startsWith('⚠') ? 'l-warn' : '') + '">' + esc(l) + '</div>'
         ).join('');
       }
-      // Transition: active → done
+      // Transition: active → done (after the stagger above finishes)
       setTimeout(() => {
         document.getElementById('bs-active').style.display = 'none';
         document.getElementById('bs-done').style.display   = 'block';
-      }, 600);
+      }, 600 + staggerMs);
       // Reload after user has a moment to read the success message
-      setTimeout(() => window.location.reload(), 3500);
+      setTimeout(() => window.location.reload(), 3500 + staggerMs);
 
     } else {
       clearInterval(bsStepTimer);
@@ -1767,6 +1939,7 @@ function selectDeploy(el) {
     document.getElementById('op-header').style.display = '';
     document.getElementById('main-content').style.display = '';
     document.getElementById('op-nav').style.display = '';
+    restoreIngestDraft();
 
     // Shadow matrix ping — sets header engine mode dot on load
     if (gsr) {
