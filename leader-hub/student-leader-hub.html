@@ -107,6 +107,24 @@ nav button.active{color:var(--gold);background:rgba(232,184,75,.15);}
 @media(max-width:760px){
   #dash-lower-grid { grid-template-columns:1fr !important; }
 }
+/* SIDEBAR — mobile collapse. The dashboard's internal grid already stacks
+   and scrolls below these breakpoints, but the 220px sidebar itself had no
+   matching rule, so on a phone it permanently ate over half the screen no
+   matter which view was open. Below 760px it becomes an off-canvas panel
+   toggled by a hamburger button in the header, with a tap-to-close backdrop. */
+#sidebar-toggle-btn{ display:none; }
+.sidebar-backdrop{ display:none; }
+@media(max-width:760px){
+  #sidebar-toggle-btn{ display:inline-flex; align-items:center; justify-content:center; }
+  .sidebar{
+    position:fixed; top:64px; left:0; bottom:0; z-index:150; width:260px; max-width:80vw;
+    transform:translateX(-100%); transition:transform .2s ease; box-shadow:var(--shadow-lg);
+  }
+  .app.sidebar-open .sidebar{ transform:translateX(0); }
+  .app.sidebar-open .sidebar-backdrop{
+    display:block; position:fixed; inset:64px 0 0 0; background:rgba(0,0,0,.35); z-index:140;
+  }
+}
 /* CARDS — reference-style: generous padding, larger radius, softer shadow, hover lift */
 .card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow);transition:box-shadow var(--t-base),transform var(--t-base);}
 .card:hover{box-shadow:var(--shadow-md);}
@@ -183,7 +201,17 @@ input.missing{border-color:var(--red);background:#fff8f8;}
 input.ok{border-color:var(--green);background:var(--green-light);}
 /* MODAL */
 .mo{display:none;position:fixed;inset:0;background:rgba(15,32,68,.4);z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
-.mo.open{display:flex!important;}
+/* The 13+ modals sharing this system used to hard-cut into view with no
+   transition at all, while the older Journal modal (predating this system)
+   got its own rise-in animation — the newest, most-reused modal chrome was
+   the least polished, motion-wise. Applying it here (an animation on the
+   .open class replays every time display flips from none to flex, since
+   the browser treats that as a fresh insertion) brings all of them in line. */
+.mo.open{display:flex!important;animation:moBackdropIn .18s ease;}
+.mo.open .modal{animation:moPopIn .2s ease;}
+@keyframes moBackdropIn{from{opacity:0}to{opacity:1}}
+@keyframes moPopIn{from{opacity:.5;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.mo.open,.mo.open .modal{animation:none}}
 .modal{background:#fff;border-radius:var(--radius);width:700px;max-width:97vw;max-height:93vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.2);}
 .mhdr{padding:1.1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;}
 .mtitle{font-family:'Bebas Neue',cursive;font-size:1.35rem;letter-spacing:1px;color:var(--navy);}
@@ -632,6 +660,7 @@ window.onerror = function(msg, src, line, col, err) {
 };
 </script>
 <header>
+  <button id="sidebar-toggle-btn" onclick="toggleSidebar()" aria-label="Toggle menu" aria-expanded="false" aria-controls="app-sidebar" style="background:none;border:none;color:#fff;font-size:1.3rem;cursor:pointer;padding:.25rem .6rem;margin-right:.35rem;border-radius:6px">☰</button>
   <div class="logo">Leader<span>Hub</span> <span style="font-size:.62rem;color:rgba(255,255,255,.32);font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:1px">CCPS</span></div>
   <nav>
     <button class="active" onclick="showView('dashboard',this)">🏠 Home</button>
@@ -647,7 +676,8 @@ window.onerror = function(msg, src, line, col, err) {
 </header>
 
 <div class="app">
-<aside class="sidebar">
+<div class="sidebar-backdrop" onclick="toggleSidebar()"></div>
+<aside class="sidebar" id="app-sidebar">
 
   <!-- Sidebar Brand Header -->
   <div style="padding:.25rem .5rem 1.1rem;border-bottom:1px solid var(--border);margin-bottom:.75rem">
@@ -787,13 +817,16 @@ window.onerror = function(msg, src, line, col, err) {
   <div id="dash-lower-grid" style="flex:1;display:grid;grid-template-columns:1fr 1fr 1fr 280px;gap:.45rem;min-height:0">
 
     <!-- D1: Deadlines — full height left col -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem .9rem;display:flex;flex-direction:column;overflow:hidden">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:.75rem .9rem;display:flex;flex-direction:column;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0;margin-bottom:.45rem">
         <div style="font-size:.9rem;font-weight:700;color:var(--ink)">📅 Deadlines</div>
+        <!-- Colors match .st-urgent/.st-pending/.st-approved exactly (not just
+             visually close) so "urgent"/"resolved" reads as the same color
+             everywhere in the app, not a near-but-not-quite hex of its own. -->
         <div style="display:flex;gap:.2rem">
-          <span style="font-size:.68rem;background:#fee2e2;color:#991b1b;padding:2px 7px;border-radius:var(--r-full);font-weight:700">🔴≤3d</span>
+          <span style="font-size:.68rem;background:var(--red-light);color:#b91c1c;padding:2px 7px;border-radius:var(--r-full);font-weight:700">🔴≤3d</span>
           <span style="font-size:.68rem;background:#fef9c3;color:#854d0e;padding:2px 7px;border-radius:var(--r-full);font-weight:700">🟡≤7d</span>
-          <span style="font-size:.68rem;background:#f0fdf4;color:#166534;padding:2px 7px;border-radius:var(--r-full);font-weight:700">🟢8d+</span>
+          <span style="font-size:.68rem;background:#d1fae5;color:#065f46;padding:2px 7px;border-radius:var(--r-full);font-weight:700">🟢8d+</span>
         </div>
       </div>
       <div id="deadline-list" style="flex:1;overflow-y:auto;min-height:0"></div>
@@ -801,7 +834,7 @@ window.onerror = function(msg, src, line, col, err) {
     </div>
 
     <!-- D2: Brain Dump -->
-    <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem .9rem;display:flex;flex-direction:column;gap:.38rem;overflow:hidden">
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:.75rem .9rem;display:flex;flex-direction:column;gap:.38rem;overflow:hidden">
       <div style="display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
         <div style="display:flex;align-items:center;gap:.5rem">
           <div style="background:#eff6ff;width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:1.05rem;flex-shrink:0" id="brain-icon">🧠</div>
@@ -823,7 +856,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div style="display:grid;grid-template-rows:1fr 1fr 1fr;gap:.45rem;min-height:0;overflow:hidden">
 
       <!-- This Week -->
-      <div style="background:var(--surface);border:2px solid #fecaca;border-radius:12px;padding:.6rem .75rem;display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:var(--surface);border:2px solid #fecaca;border-radius:var(--radius-sm);padding:.6rem .75rem;display:flex;flex-direction:column;overflow:hidden">
         <div id="horizon-hdr-short" style="font-size:.74rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#dc2626;margin-bottom:.3rem;flex-shrink:0">🔴 This Week</div>
         <div id="horizon-short" style="flex:1;overflow-y:auto;min-height:0"></div>
         <div style="margin-top:.28rem;display:flex;gap:.2rem;flex-shrink:0">
@@ -833,7 +866,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
 
       <!-- This Month -->
-      <div style="background:var(--surface);border:2px solid #fde68a;border-radius:12px;padding:.6rem .75rem;display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:var(--surface);border:2px solid #fde68a;border-radius:var(--radius-sm);padding:.6rem .75rem;display:flex;flex-direction:column;overflow:hidden">
         <div id="horizon-hdr-mid" style="font-size:.74rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#b45309;margin-bottom:.3rem;flex-shrink:0">🟡 Month</div>
         <div id="horizon-mid" style="flex:1;overflow-y:auto;min-height:0"></div>
         <div style="margin-top:.28rem;display:flex;gap:.2rem;flex-shrink:0">
@@ -843,7 +876,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
 
       <!-- Semester -->
-      <div style="background:var(--surface);border:2px solid #bbf7d0;border-radius:12px;padding:.6rem .75rem;display:flex;flex-direction:column;overflow:hidden">
+      <div style="background:var(--surface);border:2px solid #bbf7d0;border-radius:var(--radius-sm);padding:.6rem .75rem;display:flex;flex-direction:column;overflow:hidden">
         <div id="horizon-hdr-long" style="font-size:.74rem;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:#15803d;margin-bottom:.3rem;flex-shrink:0">🟢 Semester</div>
         <div id="horizon-long" style="flex:1;overflow-y:auto;min-height:0"></div>
         <div style="margin-top:.28rem;display:flex;gap:.2rem;flex-shrink:0">
@@ -858,7 +891,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div style="display:flex;flex-direction:column;gap:.45rem;min-height:0;overflow:hidden">
 
       <!-- Synergy / Canvas Currency Tracker — DSP Standard 2.6 -->
-      <div id="sync-tracker" style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.65rem .9rem;flex-shrink:0">
+      <div id="sync-tracker" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:.65rem .9rem;flex-shrink:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem">
           <div style="font-size:.82rem;font-weight:700;color:var(--ink)">📊 Grade & Platform Currency</div>
           <span style="font-size:.6rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:20px;font-weight:700;border:1px solid #fde68a">DSP 2.6</span>
@@ -867,7 +900,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
 
       <!-- Recent Wins strip — last 5 completed This Week items -->
-      <div id="recent-wins-strip" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:12px;padding:.55rem .75rem;flex-shrink:0;display:none">
+      <div id="recent-wins-strip" style="background:linear-gradient(135deg,#f0fdf4,#dcfce7);border:1px solid #86efac;border-radius:var(--radius-sm);padding:.55rem .75rem;flex-shrink:0;display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
           <div style="font-size:.75rem;font-weight:800;color:#166534;letter-spacing:.5px;text-transform:uppercase">✅ Won This Week</div>
           <span id="wins-count-badge" style="background:#dcfce7;color:#15803d;font-size:.65rem;font-weight:800;padding:1px 7px;border-radius:20px;border:1px solid #86efac"></span>
@@ -876,7 +909,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
 
       <!-- Quick Log -->
-      <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem .9rem;display:flex;flex-direction:column;gap:.35rem;overflow:hidden;flex:1">
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:.75rem .9rem;display:flex;flex-direction:column;gap:.35rem;overflow:hidden;flex:1">
         <div style="font-size:.9rem;font-weight:700;color:var(--ink);flex-shrink:0">⚡ Quick Log</div>
         <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:.42rem .55rem;flex-shrink:0">
           <div style="font-size:.75rem;font-weight:700;color:#15803d;margin-bottom:.22rem">📊 WBL Hours</div>
@@ -898,7 +931,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
 
       <!-- Journal CTA -->
-      <div id="journal-cta" style="background:linear-gradient(135deg,var(--navy) 0%,#1a3560 100%);border-radius:12px;padding:.7rem .9rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;cursor:pointer;flex-shrink:0" onclick="openJournal()">
+      <div id="journal-cta" style="background:linear-gradient(135deg,var(--navy) 0%,#1a3560 100%);border-radius:var(--radius-sm);padding:.7rem .9rem;display:flex;align-items:center;justify-content:space-between;gap:.5rem;cursor:pointer;flex-shrink:0" onclick="openJournal()">
         <div style="display:flex;align-items:center;gap:.55rem;min-width:0">
           <span style="font-size:1.3rem;flex-shrink:0">📓</span>
           <div style="min-width:0">
@@ -2343,7 +2376,7 @@ window.onerror = function(msg, src, line, col, err) {
             <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Vendor</th>
             <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Qty</th>
             <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Unit Cost</th>
-            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Total</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Total / Margin</th>
             <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Stage</th>
             <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Actions</th>
           </tr>
@@ -2381,9 +2414,19 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
       <!-- Inventory snapshot -->
       <div>
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap">
           <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Live Inventory</div>
           <button class="btn btn-outline btn-sm" onclick="openInventoryModal()">+ Add SKU</button>
+        </div>
+        <!-- The PO table and Sales log rendered in insertion order too, but
+             Inventory is the one that gets checked under time pressure
+             ("what's low right now?") — WBL/E-Sports already have a search
+             box for their rosters, this brings Inventory in line. -->
+        <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+          <input id="inv-search" oninput="renderFinance()" placeholder="🔍  Search SKU or category…" style="font-size:.76rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;flex:1">
+          <label style="font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer">
+            <input type="checkbox" id="inv-sort-low" onchange="renderFinance()"> Low stock first
+          </label>
         </div>
         <div style="max-height:320px;overflow-y:auto" id="inventory-list"></div>
       </div>
@@ -4531,6 +4574,53 @@ function _findVisibleRawModalId() {
   return null;
 }
 
+// ── Raw modal focus management ───────────────────────────────────────────
+// The .mo system's openModal()/closeModal() already capture the triggering
+// element and move focus in/out on open/close; the raw modals above only
+// got Escape/Tab-trap coverage, not this. Rather than touch each raw
+// modal's own open/close function (14 different implementations, some
+// toggling display, some creating/removing the element entirely), a single
+// MutationObserver watches for any of them becoming visible or vanishing
+// and handles focus the same way the .mo system does.
+const _rawModalReturnFocus = {};
+const _rawModalWasVisible = {};
+function _isRawModalVisible(el) {
+  return !!el && document.body.contains(el) && getComputedStyle(el).display !== 'none';
+}
+function _handleRawModalVisibility(id) {
+  const el = document.getElementById(id);
+  const nowVisible = _isRawModalVisible(el);
+  const wasVisible = !!_rawModalWasVisible[id];
+  if (nowVisible && !wasVisible) {
+    _rawModalReturnFocus[id] = document.activeElement;
+    const focusable = _moFocusables(el);
+    if (focusable.length) focusable[0].focus();
+  } else if (!nowVisible && wasVisible) {
+    const toFocus = _rawModalReturnFocus[id];
+    if (toFocus && typeof toFocus.focus === 'function' && document.body.contains(toFocus)) toFocus.focus();
+    delete _rawModalReturnFocus[id];
+  }
+  _rawModalWasVisible[id] = nowVisible;
+}
+const _rawModalObserver = new MutationObserver(() => {
+  Object.keys(RAW_MODAL_CLOSERS).forEach(_handleRawModalVisibility);
+});
+_rawModalObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+
+// ── beforeunload guard ────────────────────────────────────────────────────
+// The in-app discard-confirmations already built for the Lesson Plan editor
+// and Journal only intercept in-app close actions (Escape, ✕, backdrop) —
+// an accidental tab close or refresh mid-edit bypasses all of them and
+// loses the draft with zero warning, the exact failure mode those
+// confirmations exist to prevent. This reuses the same has-unsaved-changes
+// checks at the browser level. Other views can opt in later by pushing
+// their own check onto this array.
+const _unsavedWorkChecks = [_lpHasUnsavedChanges, _journalHasUnsavedChanges, _bragHasUnsavedChanges];
+window.addEventListener('beforeunload', (e) => {
+  const hasUnsaved = _unsavedWorkChecks.some(fn => { try { return fn(); } catch (err) { return false; } });
+  if (hasUnsaved) { e.preventDefault(); e.returnValue = ''; }
+});
+
 function _moTrapKeydown(e) {
   let modalEl, onEscape;
   if (_activeMoName) {
@@ -4560,7 +4650,17 @@ function openModal(name){
   const focusable = _moFocusables(modalEl);
   if (focusable.length) focusable[0].focus();
 }
+// Optional per-modal guard checked before a .mo modal actually closes — lets
+// a single modal (e.g. Brag Board's unsaved-draft check) require
+// confirmation without every other .mo modal needing to know about it.
+// Covers all three close paths uniformly since Escape, the backdrop click,
+// and each modal's own "✕ Close" button all funnel through closeModal().
+const MO_CLOSE_GUARDS = {
+  bragboard: () => !_bragHasUnsavedChanges() || confirm('Discard this email draft? It hasn\'t been saved to the log.'),
+};
 function closeModal(name){
+  const guard = MO_CLOSE_GUARDS[name];
+  if (guard && !guard()) return;
   const modalEl = document.getElementById('modal-'+name);
   if (modalEl) modalEl.classList.remove('open');
   if (_activeMoName === name) {
@@ -4592,17 +4692,28 @@ const WZ_STEPS = [
 ];
 
 let _wzStep  = 1;
+// The furthest step ever reached this session — "done" on the step bar
+// used to mean purely "before the current index," so going back to fix
+// something on step 2 immediately un-checkmarked steps 3-6 even though
+// _wzDraft still held all their data, reading as if those answers were
+// lost. Tracked separately so going back never visually erases progress
+// that's still there.
+let _wzMaxStepReached = 1;
 let _wzDraft = {};
 
 // ── Open wizard (new or edit) ──────────────────────────────────────────────
 function openTripWizard(tripId) {
   _wzStep = 1;
+  _wzMaxStepReached = 1;
   const existing = tripId ? trips.find(t => t.id === tripId) : null;
 
   if (existing) {
     // Populate draft from existing trip
     _wzDraft = { _editId: existing.id, ...tripToDraft(existing) };
     document.getElementById('nt-modal-title').textContent = 'Edit: ' + existing.name;
+    // Every step already has data from the existing trip, so all of them
+    // should be reachable/checked from the start, not just step 1.
+    _wzMaxStepReached = WZ_STEPS.length;
   } else {
     const blankDraft = {
       origin:  'Clover Hill High School',
@@ -4631,6 +4742,19 @@ function openTripWizard(tripId) {
       _wzDraft = saved || blankDraft;
     }
     document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
+  }
+
+  // wzUpdate() only writes to localStorage for brand-new trips (lh_trip_draft
+  // is specifically the "resume an unfinished new trip" slot — reusing it for
+  // edits would leak a half-finished edit into the next unrelated new-trip
+  // draft, the same class of bug already fixed above). The banner used to
+  // claim auto-save protection unconditionally, which was simply false while
+  // editing — closing mid-edit with unsaved changes loses them silently.
+  const draftMsgEl = document.getElementById('wz-draft-msg');
+  if (draftMsgEl) {
+    draftMsgEl.textContent = existing
+      ? "Editing — changes save when you click Save Changes. Closing without saving will discard them."
+      : "Draft auto-saved — your progress won't be lost if you close this.";
   }
 
   renderWizardStep();
@@ -4663,7 +4787,10 @@ function renderWizardStepBar() {
   bar.innerHTML = `<div style="display:flex;align-items:center;gap:0;width:100%">
     ${WZ_STEPS.map((s, i) => {
       const active  = s.id === _wzStep;
-      const done    = s.id < _wzStep;
+      // Reflects "reached, and still has its data" rather than purely
+      // "before the current step" — going back to fix an earlier step no
+      // longer un-checkmarks later ones whose answers are still in _wzDraft.
+      const done    = !active && s.id <= _wzMaxStepReached;
       const last    = i === WZ_STEPS.length - 1;
       return `<div style="display:flex;align-items:center;flex:1;min-width:0">
         <div onclick="wzJumpTo(${s.id})" style="display:flex;flex-direction:column;align-items:center;cursor:${done||active?'pointer':'default'};flex-shrink:0;min-width:0">
@@ -4795,10 +4922,12 @@ function renderWizardStep() {
           field('nt-ret-date','Return Date', inp('nt-ret-date','date')),
           field('nt-ret-time','Return Time ⏰', inp('nt-ret-time','time'), 'Bus back at school', !isOvernightOrOOS)
         )}
-        ${row2(
-          field('nt-oneway','One-Way Trip?', sel('nt-oneway', [['NO','No — Round Trip'],['YES','Yes — One Way Only']])),
-          field('nt-status','Status', sel('nt-status', [['planned','📋 Planned'],['active','🔵 Active — In TripTracker'],['approved','✅ Approved'],['complete','🏁 Complete']]))
-        )}
+        <!-- Status lives on Step 1 ("Current Status") only — this used to
+             duplicate the exact same field under a different label here,
+             reading like a copy/paste leftover from before the wizard split
+             (both selects wrote the same d.status key with no indication
+             they were linked). -->
+        ${field('nt-oneway','One-Way Trip?', sel('nt-oneway', [['NO','No — Round Trip'],['YES','Yes — One Way Only']]))}
         ${sec('📍 Destinations')}
         ${field('nt-dest1','Destination #1 — Full Name & Address', inp('nt-dest1','text','Full venue name and complete street address (no abbreviations)'), 'Required. No abbreviations — write out the full address as it appears on a map.', true)}
         ${row2(
@@ -5045,6 +5174,7 @@ function wzNext() {
     wzSaveTrip();
   } else {
     _wzStep++;
+    if (_wzStep > _wzMaxStepReached) _wzMaxStepReached = _wzStep;
     renderWizardStep();
     document.getElementById('wz-body').scrollTop = 0;
   }
@@ -5061,7 +5191,10 @@ function wzBack() {
 }
 
 function wzJumpTo(stepId) {
-  if (stepId >= _wzStep) return; // only allow jumping back
+  // Allow jumping to any step already reached (forward or back) — not just
+  // strictly-earlier ones, since a later step can be reached-but-not-current
+  // after going back to fix something on an earlier step.
+  if (stepId === _wzStep || stepId > _wzMaxStepReached) return;
   wzCollectStep();
   wzClearErrors();
   _wzStep = stepId;
@@ -5866,6 +5999,7 @@ function addDecaResult() {
   lastDecaConf = conf; lastDecaPlace = place;
   renderDECAHub();
   refreshNextAction();
+  _showToast(`✅ Result logged for ${student}${_placeStr}`, 2800, '#065f46');
 }
 
 function deleteDecaResult(id) {
@@ -9871,6 +10005,13 @@ async function openLPModal(id) {
   }
 }
 
+// NOTE: despite the `async` signature and the "Loading from Google Drive…"
+// spinner shown while this is awaited, this never actually performs any
+// I/O — it's a synchronous swap to a static "open in Drive" panel. The
+// `async`/spinner exist as a placeholder for real Drive-fetch behavior that
+// hasn't been implemented (Drive requires auth Gemini can't do); if that's
+// ever added, make sure real error/timeout handling comes with it — none
+// exists today because there's nothing yet that can actually fail.
 async function lpFetchDoc(lp) {
   // If already edited/cached locally, show that immediately
   if (LP_EDITS[lp.docId]) {
@@ -10378,6 +10519,11 @@ function renderPOTable() {
   };
   tbody.innerHTML = PURCHASE_ORDERS.map(po => {
     const total = (po.qty * po.cost).toFixed(2);
+    // po.price (Sell Price) was captured on every PO but never read anywhere
+    // — no column, no margin calc, nothing carried into a matching
+    // Inventory SKU. Surfacing it here as a margin% is the same calc the
+    // Inventory SKU list already does, so it's at least visible somewhere.
+    const margin = po.price > 0 ? Math.round(((po.price - po.cost) / po.price) * 100) : null;
     const ss = STAGE_STATUS[po.stage] || { bg:'#f1f5f9', fg:'#6b7280' };
     const stages = ['Market Research','Requisition Filed','Awaiting Approval','Approved / Ordered','Received','Discrepancy'];
     const opts = stages.map(s=>`<option ${po.stage===s?'selected':''}>${s}</option>`).join('');
@@ -10388,7 +10534,7 @@ function renderPOTable() {
       <td style="padding:.45rem .7rem;font-size:.76rem">${po.vendor}</td>
       <td style="padding:.45rem .7rem;text-align:center;font-size:.78rem">${po.qty}</td>
       <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.76rem">$${Number(po.cost).toFixed(2)}</td>
-      <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.76rem;font-weight:700;color:var(--navy)">$${total}</td>
+      <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.76rem;font-weight:700;color:var(--navy)">$${total}${margin !== null ? `<div style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:inherit">Margin: ${margin}%</div>` : ''}</td>
       <td style="padding:.45rem .7rem">
         <select onchange="updatePOStage('${po.id}',this.value)" class="status" style="border:none;background:${ss.bg};color:${ss.fg};cursor:pointer">${opts}</select>
       </td>
@@ -10495,10 +10641,24 @@ function renderFinance() {
 
   // Inventory
   const invEl = document.getElementById('inventory-list');
+  const invSearch = (document.getElementById('inv-search')?.value || '').toLowerCase();
+  const invSortLow = document.getElementById('inv-sort-low')?.checked;
+  let invFiltered = INVENTORY.filter(item => {
+    if (!invSearch) return true;
+    return item.name.toLowerCase().includes(invSearch) || item.cat.toLowerCase().includes(invSearch);
+  });
+  if (invSortLow) {
+    // Low-stock-first, but stable within each group — as the SKU count grows,
+    // this is the one question ("what's low right now?") that matters most
+    // and previously required scrolling the whole insertion-order list.
+    invFiltered = [...invFiltered].sort((a, b) => (b.qty <= b.reorder ? 1 : 0) - (a.qty <= a.reorder ? 1 : 0));
+  }
   if (!INVENTORY.length) {
     invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs yet — click "+ Add SKU" to start tracking inventory.</div>`;
+  } else if (!invFiltered.length) {
+    invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs match "${invSearch}".</div>`;
   } else {
-    invEl.innerHTML = INVENTORY.map(item => {
+    invEl.innerHTML = invFiltered.map(item => {
       const low    = item.qty <= item.reorder;
       const margin = item.price > 0 ? Math.round(((item.price-item.cost)/item.price)*100) : 0;
       return `<div style="background:${low?'#fff7ed':'#fff'};border:1px solid ${low?'#fed7aa':'var(--border)'};border-radius:8px;padding:.65rem .85rem;margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center">
@@ -10927,28 +11087,57 @@ function _logDaily(entry) {
   LS.set('lh_daily_log', log.slice(-500)); // keep most recent 500 — ~1 full school year
 }
 
+// Toasts used to all render at the same fixed bottom position, so checking
+// off several Horizon items (or logging several lessons) within a few
+// seconds stacked them directly on top of each other — the older one's
+// Undo button became unclickable and its own countdown kept running,
+// invisibly, underneath. This registry stacks active toasts bottom-up
+// instead, newest closest to the original position, and reflows the rest
+// whenever one is added or removed.
+const _activeToasts = [];
+function _repositionToasts() {
+  let offset = 24; // 1.5rem, matches the original single-toast position
+  const gap = 10;
+  for (let i = _activeToasts.length - 1; i >= 0; i--) {
+    const el = _activeToasts[i];
+    el.style.bottom = offset + 'px';
+    offset += el.offsetHeight + gap;
+  }
+}
+function _registerToast(el) {
+  document.body.appendChild(el);
+  _activeToasts.push(el);
+  _repositionToasts();
+}
+function _removeToast(el) {
+  const idx = _activeToasts.indexOf(el);
+  if (idx !== -1) _activeToasts.splice(idx, 1);
+  el.remove();
+  _repositionToasts();
+}
+
 function _undoToast(msg, onUndo) {
   const t = document.createElement('div');
-  t.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:.5rem .75rem .5rem 1.1rem;border-radius:8px;font-size:.8rem;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;gap:.65rem;white-space:nowrap';
+  t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:.5rem .75rem .5rem 1.1rem;border-radius:8px;font-size:.8rem;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;gap:.65rem;white-space:nowrap;transition:bottom .18s ease';
   const label = document.createElement('span');
   label.textContent = msg;
   const btn = document.createElement('button');
   btn.textContent = 'Undo';
   btn.style.cssText = 'background:#f59e0b;color:#1e293b;border:none;border-radius:5px;padding:.22rem .65rem;font-size:.78rem;font-weight:800;cursor:pointer;flex-shrink:0';
   let undone = false;
-  btn.onclick = () => { undone=true; onUndo(); t.remove(); };
+  btn.onclick = () => { undone=true; onUndo(); _removeToast(t); };
   t.appendChild(label);
   t.appendChild(btn);
-  document.body.appendChild(t);
-  setTimeout(() => { if(!undone) t.remove(); }, 5000);
+  _registerToast(t);
+  setTimeout(() => { if(!undone) _removeToast(t); }, 5000);
 }
 
 function _showToast(msg, duration=2800, bg='#1a3560') {
   const t = document.createElement('div');
-  t.style.cssText = `position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.8rem;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap`;
+  t.style.cssText = `position:fixed;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.8rem;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;transition:bottom .18s ease`;
   t.textContent = msg;
-  document.body.appendChild(t);
-  setTimeout(() => t.remove(), duration);
+  _registerToast(t);
+  setTimeout(() => _removeToast(t), duration);
 }
 
 // ── Runtime data constants (restored) ──────────────────────────────────────
@@ -11670,6 +11859,21 @@ Thank you for covering my classes.`;
 
 // ── 12. generateBragEmail → Apps Script creates Gmail draft ──────────────────
 async function generateBragEmail() {
+  // The Gmail-draft creation below is a real network round-trip with only a
+  // small status-text change to show it's in flight — easy to miss, and a
+  // second click before it resolves used to fire a second concurrent
+  // request, which the bridge would happily turn into a second duplicate
+  // draft. Guard re-entrancy for the whole call, not just the network leg.
+  const genBtn = document.getElementById('brag-generate-btn');
+  if (genBtn) { if (genBtn.disabled) return; genBtn.disabled = true; }
+  try {
+    await _generateBragEmailInner();
+  } finally {
+    if (genBtn) genBtn.disabled = false;
+  }
+}
+
+async function _generateBragEmailInner() {
   const aud      = BRAG_AUDIENCE[_bragTab];
   const statusEl = document.getElementById('brag-ai-status');
   const bodyEl   = document.getElementById('brag-body');
@@ -11709,6 +11913,7 @@ async function generateBragEmail() {
   const _subj = document.getElementById('brag-subject')?.value || '';
   _bLog.unshift({ date: new Date().toISOString(), week: weekLabel, audience: _bragTab, subject: _subj, body: emailBody });
   LS.set('lh_brag_log', _bLog.slice(0, 52));
+  _bragBodySnapshot = emailBody; // this exact text is now persisted — only further hand-edits are at risk
   refreshNextAction();
 
   // Optionally send to Apps Script to create Gmail draft
@@ -11995,6 +12200,10 @@ function openDeadlineModal(id) {
     if(savBtn) savBtn.textContent='Add Deadline';
   }
   document.getElementById('deadline-modal').style.display='block';
+  // "+ Deadline" is one of the most-repeated actions on the Dashboard —
+  // without this, keyboard users land with focus nowhere specific and have
+  // to Tab from the top of the modal every single time.
+  if (titleEl) titleEl.focus();
 }
 function editDeadline(id){ openDeadlineModal(id); }
 function closeDeadlineModal(){ document.getElementById('deadline-modal').style.display='none'; _editingDeadlineId=null; }
@@ -12893,6 +13102,17 @@ function openJournal(){
     _journalMood = null;
   }
 
+  // A draft from an interrupted session (tab closed/crashed mid-reflection)
+  // takes priority over whatever was just set above — it represents more
+  // recent typing than either the fully-saved entry or a blank form.
+  const draft = LS.get(JOURNAL_DRAFT_KEY);
+  if (draft && draft.date === today) {
+    const set = (id, val) => { const el=document.getElementById(id); if(el && val) el.value=val; };
+    set('jq1',draft.jq1); set('jq2',draft.jq2);
+    set('jq4',draft.jq4); set('jq5',draft.jq5); set('jq6',draft.jq6);
+    if (draft.mood) _journalMood = draft.mood;
+  }
+
   renderMoodButtons();
   goToJournalStep(0);
 
@@ -12920,6 +13140,31 @@ function _journalHasUnsavedChanges(){
   const now = _journalCurrentValues();
   return Object.keys(now).some(k => (now[k]||'') !== (_journalOpenSnapshot[k]||''));
 }
+
+// ── Journal draft autosave ──────────────────────────────────────────────
+// The discard-confirmation above only catches in-app close (Escape, ✕,
+// backdrop) — it can't help if the tab dies mid-reflection. This debounced
+// autosave gives a real recovery path for that case: in-progress answers
+// land in localStorage as the user types, restored on next open if they're
+// newer than whatever's already saved for today.
+const JOURNAL_DRAFT_KEY = 'lh_journal_draft';
+function saveJournalDraft(){
+  const d = _journalCurrentValues();
+  d.date = new Date().toDateString();
+  if (!(d.jq1 || d.jq2 || d.jq4 || d.jq5 || d.jq6)) { LS.set(JOURNAL_DRAFT_KEY, null); return; }
+  LS.set(JOURNAL_DRAFT_KEY, d);
+}
+let _journalDraftTimer = null;
+function scheduleJournalDraftSave(){
+  clearTimeout(_journalDraftTimer);
+  _journalDraftTimer = setTimeout(saveJournalDraft, 500);
+}
+function clearJournalDraft(){ LS.set(JOURNAL_DRAFT_KEY, null); }
+// Delegated rather than wired onto each of the 5 textareas individually —
+// works for all of them (and any added later) without touching their markup.
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('journal-ta')) scheduleJournalDraftSave();
+});
 
 function closeJournal(){
   // If journal was auto-triggered at 2:30pm, block closing until complete
@@ -13038,6 +13283,7 @@ function renderMoodButtons(){
 function selectMood(n){
   _journalMood = n;
   renderMoodButtons();
+  saveJournalDraft();
 }
 
 function getLastMoodScore(){
@@ -13090,6 +13336,7 @@ async function saveJournalEntry(){
   // Already persisted above — clear the open-time snapshot so the
   // save-triggered close below doesn't itself get flagged as "unsaved changes."
   _journalOpenSnapshot = null;
+  clearJournalDraft();
   closeJournal();
   if(btn){ btn.textContent='Save & Set Tomorrow ✦'; btn.disabled=false; }
   // The most reflective, highest-effort save in the app was also the one
@@ -13692,21 +13939,55 @@ function toggleAcc(id) {
   _ACC_IDS.forEach(k => {
     const h = document.getElementById('acc-'+k);
     const b = document.getElementById('accb-'+k);
-    if (h && b) { h.classList.remove('open'); b.classList.remove('open'); }
+    if (h && b) { h.classList.remove('open'); b.classList.remove('open'); h.setAttribute('aria-expanded', 'false'); }
   });
   // If we were closed, open this one
-  if (opening) { hd.classList.add('open'); body.classList.add('open'); }
+  if (opening) { hd.classList.add('open'); body.classList.add('open'); hd.setAttribute('aria-expanded', 'true'); }
 }
 
 function restoreAccState() {
-  // Always start fully collapsed — nothing open on load
+  // Always start fully collapsed — nothing open on load. Also where
+  // aria-controls/aria-expanded get set up: the buttons visually rotate an
+  // arrow and animate open/closed, but had no ARIA semantics at all, so a
+  // screen reader had no way to know these are expandable regions or which
+  // one is currently open.
   _ACC_IDS.forEach(k => {
     const h = document.getElementById('acc-'+k);
     const b = document.getElementById('accb-'+k);
-    if (h && b) { h.classList.remove('open'); b.classList.remove('open'); }
+    if (h && b) {
+      h.classList.remove('open'); b.classList.remove('open');
+      h.setAttribute('aria-controls', 'accb-'+k);
+      h.setAttribute('aria-expanded', 'false');
+    }
   });
 }
 // (accordion logic inlined into showView)
+
+// ── Sidebar mobile collapse ────────────────────────────────
+// Below 760px (see the .sidebar-open/.sidebar-backdrop rules) the sidebar
+// becomes an off-canvas panel instead of permanently eating over half the
+// screen; this toggles it and keeps the hamburger button's ARIA state in
+// sync with which state it's in.
+function toggleSidebar() {
+  const app = document.querySelector('.app');
+  if (!app) return;
+  const isOpen = app.classList.toggle('sidebar-open');
+  const btn = document.getElementById('sidebar-toggle-btn');
+  if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+// Picking a destination should also close the panel on mobile — delegated
+// so it works for every current and future .si link without wiring each
+// one's onclick individually.
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  sidebar.addEventListener('click', (e) => {
+    if (window.innerWidth <= 760 && e.target.closest('.si')) {
+      document.querySelector('.app')?.classList.remove('sidebar-open');
+      document.getElementById('sidebar-toggle-btn')?.setAttribute('aria-expanded', 'false');
+    }
+  });
+});
 
 // ── Improvements + Survey stubs ───────────────────────────
 const IMPROVEMENTS={
@@ -15240,6 +15521,16 @@ function saveSubPlanToLog() {
 // scratch (green) every time.
 let _bragTab = LS.get('lh_brag_last_tab', 'green');
 let _bragData = {};
+// A generated draft is already auto-logged (see generateBragEmail), so
+// that part is never at risk — but a hand-edit made *after* generating, or
+// typed from scratch, lives only in the textarea until "Save to Log" is
+// clicked. This tracks the last-persisted body so closing the modal with
+// un-persisted edits can warn instead of silently discarding them.
+let _bragBodySnapshot = '';
+function _bragHasUnsavedChanges() {
+  const el = document.getElementById('brag-body');
+  return !!el && el.value !== _bragBodySnapshot;
+}
 
 const BRAG_AUDIENCE = {
   green: {
@@ -15307,6 +15598,7 @@ function setBragTab(tab, btn) {
   document.getElementById('brag-body').value = '';
   document.getElementById('brag-ai-status').textContent = '';
   document.getElementById('brag-copy-confirm').textContent = '';
+  _bragBodySnapshot = ''; // a deliberate reset, not an edit to warn about
 }
 
 function gatherBragData() {
@@ -15522,6 +15814,7 @@ function saveBragToLog() {
   const log = LS.get('lh_brag_log', []);
   log.unshift({ id: 'brag'+Date.now(), audience: _bragTab, subject, body, savedAt: new Date().toISOString() });
   LS.set('lh_brag_log', log.slice(0, 52)); // keep ~1 year of weekly entries
+  _bragBodySnapshot = body;
   const el = document.getElementById('brag-copy-confirm');
   el.textContent = '✓ Saved to log';
   setTimeout(() => { el.textContent = ''; }, 2500);
@@ -15894,7 +16187,7 @@ function showBragBoardPromptBanner() {
         </div>
 
         <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap">
-          <button class="btn btn-gold btn-sm" style="flex:1" onclick="generateBragEmail()">✨ Generate</button>
+          <button id="brag-generate-btn" class="btn btn-gold btn-sm" style="flex:1" onclick="generateBragEmail()">✨ Generate</button>
           <button class="btn btn-primary btn-sm" onclick="copyBragEmail()" style="flex:1">📋 Copy</button>
           <button class="btn btn-outline btn-sm" onclick="openBragInMail()">📬 Open in Mail</button>
           <button class="btn btn-outline btn-sm" onclick="saveBragToLog()">💾 Save to Log</button>
