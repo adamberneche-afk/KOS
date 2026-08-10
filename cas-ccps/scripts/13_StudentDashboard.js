@@ -84,12 +84,14 @@ function getStudentDashboardData(termFilter) {
     });
   }
 
-  // Sort: needs action first, then by block order, then by class
+  // Sort: ISSUE first (a student needs to see "talk to your teacher" before
+  // anything else, including already-finished work), then needs-action,
+  // then by block order, then by class.
   // Block sort order — uses system default, gracefully handles unknown values
   // Admins can customize this via the BLOCK_ORDER Script Property
   const blockOrder = ["1","2O","2E","3O","3E","4O","4E"];
-  const priority   = { "NEEDS_ACTION": 0, "IN_PROGRESS": 1,
-                        "NOT_STARTED": 2, "DONE": 3, "ISSUE": 4 };
+  const priority   = { "ISSUE": 0, "NEEDS_ACTION": 1, "IN_PROGRESS": 2,
+                        "NOT_STARTED": 3, "DONE": 4 };
 
   assignments.sort((a, b) => {
     const pa = priority[a.statusClass] ?? 5;
@@ -130,7 +132,15 @@ function resolveStudentStatus_(status) {
     case "PENDING": case "STAGED": return "Evaluation in progress…";
     case "COMPLETE":            return "Feedback ready — check your document";
     case "COMPLIANT":           return "Submitted ✓";
-    default: return status.startsWith("ERROR") ? "Issue — see your teacher" : status;
+    default:
+      // Never show a raw Ledger status string to a student — a blank cell
+      // or an unrecognized/future status code both land here. ERROR-
+      // prefixed statuses are real pipeline failures; anything else is
+      // just unexpected/blank data, worded distinctly so a teacher can
+      // tell the two apart when a student reports it.
+      return status.startsWith("ERROR")
+        ? "Issue — see your teacher"
+        : "Status unavailable — check with your teacher";
   }
 }
 
@@ -215,13 +225,23 @@ function buildStudentDashboardHtml_() {
 <footer id="footer"></footer>
 <script>
 function loadData() {
-  const sel  = document.getElementById("term-filter");
-  const term = sel ? sel.value : "ALL";
+  const sel     = document.getElementById("term-filter");
+  const term    = sel ? sel.value : "ALL";
+  const loading = document.getElementById("loading");
+  // Reset to the spinner state on every call — including a retry after a
+  // failure — so the error screen never lingers behind a fresh attempt.
+  loading.innerHTML = '<div class="spinner"></div><p>Loading your assignments…</p>';
+  loading.style.display = "block";
+  document.getElementById("main").style.display = "none";
   google.script.run
     .withSuccessHandler(render)
     .withFailureHandler(function(e) {
-      document.getElementById("loading").innerHTML =
-        '<p style="color:#d93025;padding:24px;">Could not load: ' + (e.message||e) + '</p>';
+      // Plain-language message for the student; the real e.message is
+      // already logged server-side by whatever threw it, so it isn't
+      // repeated here — a stack-trace fragment isn't actionable for them.
+      loading.innerHTML =
+        '<p style="color:#d93025;padding:24px 24px 8px;">Something went wrong loading your assignments. Try refreshing.</p>' +
+        '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
     })
     .getStudentDashboardData(term);
 }
