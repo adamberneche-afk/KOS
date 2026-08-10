@@ -91,9 +91,14 @@ function getDashboardData(termFilter) {
 
     if (!unitMap[unitCode]) unitMap[unitCode] = { total:0, compliant:0, pending:0, flagged:0 };
     unitMap[unitCode].total++;
-    if (displayStatus === "COMPLIANT ✓")                         unitMap[unitCode].compliant++;
-    else if (["QUEUED","EVALUATING NOW"].includes(displayStatus)) unitMap[unitCode].pending++;
-    else if (displayStatus.includes("FLAGGED"))                   unitMap[unitCode].flagged++;
+    // These three buckets must exactly partition every statusClass so the
+    // unit header's displayed sum always matches `total` — the previous
+    // version only recognized "QUEUED"/"EVALUATING NOW" as pending, so
+    // "NOT STARTED" and "EVALUATED" rows (both real, common states) fell
+    // into no bucket at all and the numbers silently didn't add up.
+    if (statusClass === "compliant")    unitMap[unitCode].compliant++;
+    else if (statusClass === "flagged") unitMap[unitCode].flagged++;
+    else                                 unitMap[unitCode].pending++;
   }
 
   students.sort((a, b) => {
@@ -708,8 +713,13 @@ If you expect to see students here:
 
   const total     = data.students.length;
   const compliant = data.students.filter(s => s.statusClass === "compliant").length;
-  const pending   = data.students.filter(s => ["queued","active"].includes(s.statusClass)).length;
   const flagged   = data.students.filter(s => s.statusClass === "flagged").length;
+  // "In progress" is everything not yet compliant or flagged (queued,
+  // evaluating now, evaluated, not started, unknown) — computed as the
+  // remainder rather than an explicit allowlist so it can never silently
+  // exclude a real status and leave the three cards short of the total,
+  // the exact bug that made "NOT STARTED"/"EVALUATED" students vanish before.
+  const pending   = total - compliant - flagged;
 
   let html = \`<div class="summary-grid">
     <div class="summary-card card-total"><div class="count">\${total}</div><div class="label">Students</div></div>

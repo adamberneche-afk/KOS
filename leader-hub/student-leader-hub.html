@@ -3267,7 +3267,7 @@ trips.push(
    ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
   },
   // DECA State Leadership Conference — Feb 27–Mar 2, 2026 — COMPLETE
-  {id:5, name:'DECA State Leadership Conference', sub:'overnight', date:'2026-02-27',
+  {id:5, name:'DECA State Leadership Conference', sub:'overnight-is', date:'2026-02-27',
    origin:'Meadowbrook High School (bus origin)', depTime:'09:00', retTime:'14:00', depDate:'2026-02-27', retDate:'2026-03-02',
    dest1:'Virginia Beach Convention Center, 1000 19th St, Virginia Beach, VA 23451', arr1:'12:00', dep1:'11:00',
    dest2:'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach, VA 23451', arr2:'13:00', dep2:'07:00',
@@ -3288,7 +3288,7 @@ trips.push(
    ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
   },
   // DECA ICDC — Apr 25–29, 2026 — PLANNED ⚠️ URGENT
-  {id:6, name:'DECA ICDC — International Career Development Conference', sub:'out-of-state', date:'2026-04-25',
+  {id:6, name:'DECA ICDC — International Career Development Conference', sub:'overnight-oos', date:'2026-04-25',
    origin:'Clover Hill High School', depTime:'', retTime:'', depDate:'2026-04-25', retDate:'2026-04-29',
    dest1:'Atlanta, GA — Atlanta Hilton + Convention Center', arr1:'', dep1:'',
    dest2:'', arr2:'', dep2:'',
@@ -3578,7 +3578,17 @@ function getReadinessPct(trip) {
 const fd = d => { if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
 const du = d => { if(!d) return ''; const diff=Math.ceil((new Date(d+'T00:00:00')-new Date())/86400000); if(diff<0)return'Past'; if(diff===0)return'Today!'; return diff+' day'+(diff===1?'':'s')+' away'; };
 const dn = d => { if(!d) return 9999; return Math.ceil((new Date(d+'T00:00:00')-new Date())/86400000); };
-const leadDays = sub => { if(sub==='international')return 365; if(['out-of-state','overnight','grant','rental'].includes(sub))return 45; return 30; };
+// 'out-of-state'/'overnight'/'grant'/'rental' are pre-wizard trip-type
+// strings — no trip made through the current wizard (same-day/overnight-is/
+// overnight-oos/multi-day/international) can ever produce them, so every
+// wizard-created overnight/multi-day trip was silently getting the 30-day
+// same-day lead time instead of the intended 45.
+const leadDays = sub => { if(sub==='international')return 365; if(['overnight-is','overnight-oos','multi-day'].includes(sub))return 45; return 30; };
+// Shared "is this trip overnight/multi-day/international" check — the same
+// dead-string list ('overnight'/'out-of-state') was duplicated inline in
+// several email templates below; centralizing it means the next taxonomy
+// change only needs to happen once.
+const isOvernightTrip = t => ['overnight-is','overnight-oos','multi-day','international'].includes(t?.sub || '');
 const subDeadline = t => { const lead=leadDays(t.sub||'same-day'); if(!t.date)return null; const d=new Date(t.date+'T00:00:00'); d.setDate(d.getDate()-lead); return d; };
 const fmtDeadline = t => { const dl=subDeadline(t); if(!dl)return null; return dl.toISOString().split('T')[0]; };
 const tagClass = {fieldtrip:'tag-ft',deca:'tag-deca',leadership:'tag-lead',community:'tag-comm'};
@@ -3961,7 +3971,11 @@ function renderDashPriorityActions() {
     }
 
     // ── APPROVALS pending ──
-    const apSteps = ['out-of-state','overnight','international'].includes(t.sub||'same-day')
+    // Same dead-string bug as leadDays() above — 'out-of-state'/'overnight'
+    // never match anything the wizard can produce, so no wizard-created
+    // overnight/multi-day trip ever got the Director/Chief-of-Schools
+    // approval steps added.
+    const apSteps = ['overnight-is','overnight-oos','multi-day','international'].includes(t.sub||'same-day')
       ? ['coord','principal','bookkeeper','risk','director','chief','transport']
       : ['coord','principal','bookkeeper','risk','transport'];
     const pendingAp = apSteps.filter(k => !t.ap?.[k]);
@@ -4198,8 +4212,8 @@ function renderTripDetail(t) {
     if(phases[0].state!=='done' && getMissingFields(t).length>0) { phases[0].state='active'; phases[1].state='future'; }
   }
 
-  // Build approval tracker
-  const apSteps = ['out-of-state','overnight','international'].includes(t.sub||'same-day')
+  // Build approval tracker — same dead-string bug as leadDays() above.
+  const apSteps = ['overnight-is','overnight-oos','multi-day','international'].includes(t.sub||'same-day')
     ? [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'director',l:'Level Director'},{k:'chief',l:'Chief of Schools'},{k:'transport',l:'Transportation'}]
     : [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'transport',l:'Transportation'}];
   const apDone = apSteps.filter(s=>t.ap&&t.ap[s.k]).length;
@@ -4553,6 +4567,8 @@ const RAW_MODAL_CLOSERS = {
   'deadline-modal':        () => closeDeadlineModal(),
   'journal-modal':         () => closeJournal(),
   'journal-history-modal': () => { const el = document.getElementById('journal-history-modal'); if (el) el.style.display = 'none'; },
+  'lp-modal':              () => closeLPModal(),
+  'dsp-report-modal':      () => closeDSPReport(),
   'obs-log-modal':         () => closeObsLog(),
   'po-modal':              () => closePOModal(),
   'sales-modal':           () => closeSalesModal(),
@@ -4567,6 +4583,18 @@ const RAW_MODAL_CLOSERS = {
 };
 
 function _findVisibleRawModalId() {
+  // Most-recently-opened visible raw modal wins — e.g. Journal History is
+  // opened as a sibling overlay on top of the still-visible Journal modal,
+  // and Escape/Tab-trap should act on History, not on whichever modal
+  // happens to come first in RAW_MODAL_CLOSERS's declaration order.
+  // _rawModalOpenStack (populated by _handleRawModalVisibility below) tracks
+  // real open order; fall back to key order for anything the stack hasn't
+  // caught yet (defensive only — shouldn't normally be reached).
+  for (let i = _rawModalOpenStack.length - 1; i >= 0; i--) {
+    const id = _rawModalOpenStack[i];
+    const el = document.getElementById(id);
+    if (el && getComputedStyle(el).display !== 'none') return id;
+  }
   for (const id of Object.keys(RAW_MODAL_CLOSERS)) {
     const el = document.getElementById(id);
     if (el && getComputedStyle(el).display !== 'none') return id;
@@ -4584,6 +4612,9 @@ function _findVisibleRawModalId() {
 // and handles focus the same way the .mo system does.
 const _rawModalReturnFocus = {};
 const _rawModalWasVisible = {};
+// Real open order, most-recent last — lets _findVisibleRawModalId() target
+// the topmost raw modal instead of the first RAW_MODAL_CLOSERS key.
+const _rawModalOpenStack = [];
 function _isRawModalVisible(el) {
   return !!el && document.body.contains(el) && getComputedStyle(el).display !== 'none';
 }
@@ -4595,10 +4626,15 @@ function _handleRawModalVisibility(id) {
     _rawModalReturnFocus[id] = document.activeElement;
     const focusable = _moFocusables(el);
     if (focusable.length) focusable[0].focus();
+    const stackIdx = _rawModalOpenStack.indexOf(id);
+    if (stackIdx !== -1) _rawModalOpenStack.splice(stackIdx, 1);
+    _rawModalOpenStack.push(id);
   } else if (!nowVisible && wasVisible) {
     const toFocus = _rawModalReturnFocus[id];
     if (toFocus && typeof toFocus.focus === 'function' && document.body.contains(toFocus)) toFocus.focus();
     delete _rawModalReturnFocus[id];
+    const stackIdx = _rawModalOpenStack.indexOf(id);
+    if (stackIdx !== -1) _rawModalOpenStack.splice(stackIdx, 1);
   }
   _rawModalWasVisible[id] = nowVisible;
 }
@@ -5430,7 +5466,7 @@ const EMAIL_TEMPLATES = {
       subject: (t) => `DECA Field Trip: ${t ? t.name : '[Trip Name]'} — Permission & Payment`,
       body: (t) => {
         if(!t) return `Dear DECA Families,\n\nOur DECA chapter has an exciting trip coming up. Please watch for details and the permission form that will be sent home soon.\n\nIf you have any questions, please contact me at the information below.\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`;
-        const overnight = t.sub === 'overnight' || t.sub === 'out-of-state' || t.sub === 'international';
+        const overnight = isOvernightTrip(t);
         return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || 'Adam Berneche'}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to Mr. Berneche by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`;
       }
     },
@@ -5448,7 +5484,7 @@ const EMAIL_TEMPLATES = {
     },
     { id:'par-chaperone-request', label:'🙋 Chaperone Request',
       subject: (t) => `Seeking Chaperones: ${t ? t.name : 'Upcoming DECA Trip'}`,
-      body: (t) => `Dear DECA Families,\n\nWe are looking for parent/guardian volunteers to serve as chaperones for our upcoming trip!\n\n📅 EVENT: ${t ? t.name : '[Trip Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nChaperones are responsible for supervising students and supporting the advisor during the trip. ${t && (t.sub === 'overnight' || t.sub === 'out-of-state') ? 'This is an overnight trip and chaperones will need to arrange overnight accommodations.' : ''}\n\nIf you are interested in chaperoning or have questions, please contact me at:\n\nAdam Berneche\n(804) 833-8869 | adam_berneche@ccpsnet.net\n\nThank you for your support!`
+      body: (t) => `Dear DECA Families,\n\nWe are looking for parent/guardian volunteers to serve as chaperones for our upcoming trip!\n\n📅 EVENT: ${t ? t.name : '[Trip Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nChaperones are responsible for supervising students and supporting the advisor during the trip. ${t && isOvernightTrip(t) ? 'This is an overnight trip and chaperones will need to arrange overnight accommodations.' : ''}\n\nIf you are interested in chaperoning or have questions, please contact me at:\n\nAdam Berneche\n(804) 833-8869 | adam_berneche@ccpsnet.net\n\nThank you for your support!`
     },
   ],
   school: [
@@ -5461,7 +5497,7 @@ const EMAIL_TEMPLATES = {
     },
     { id:'sch-sub-coverage', label:'🧑‍🏫 Substitute Coverage Request',
       subject: (t) => `Substitute Coverage Request — ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}`,
-      body: (t) => `Dear ${t && (t.sub === 'overnight' || t.sub === 'out-of-state') ? 'Administration' : '[Department Head / Admin]'},\n\nI am requesting substitute coverage for my classes during the following dates due to a DECA field trip:\n\n📅 DATES OUT: ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n\nCLASSES NEEDING COVERAGE:\n• [Period #] — [Course Name] — [Room #]\n• [Period #] — [Course Name] — [Room #]\n\nI will prepare sub plans and have them ready by [DATE]. All materials will be left on my desk clearly labeled.\n\nPlease let me know if any additional paperwork is needed for the Professional Leave / Conference Request form.\n\nThank you,\nAdam Berneche\n(804) 833-8869`
+      body: (t) => `Dear ${t && isOvernightTrip(t) ? 'Administration' : '[Department Head / Admin]'},\n\nI am requesting substitute coverage for my classes during the following dates due to a DECA field trip:\n\n📅 DATES OUT: ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n\nCLASSES NEEDING COVERAGE:\n• [Period #] — [Course Name] — [Room #]\n• [Period #] — [Course Name] — [Room #]\n\nI will prepare sub plans and have them ready by [DATE]. All materials will be left on my desk clearly labeled.\n\nPlease let me know if any additional paperwork is needed for the Professional Leave / Conference Request form.\n\nThank you,\nAdam Berneche\n(804) 833-8869`
     },
     { id:'sch-finance-po', label:'💰 Finance / PO Request',
       subject: (t) => `Purchase Order / Payment Request — ${t ? t.name : '[Event]'}`,
@@ -5491,7 +5527,7 @@ const EMAIL_TEMPLATES = {
     },
     { id:'fac-thank-you', label:'🙏 Chaperone / Support Thank You',
       subject: (t) => `Thank You — ${t ? t.name : 'Recent DECA Trip'}`,
-      body: (t) => `Dear [Name],\n\nI wanted to take a moment to sincerely thank you for your support${t ? ' during ' + t.name : ' on our recent DECA trip'}.\n\nYour willingness to give your time${t && (t.sub === 'overnight' || t.sub === 'out-of-state') ? ' — including overnight — ' : ' '}made this trip possible and ensured our students had a safe, positive, and memorable experience.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.name) + '\n\n' : ''}Our students truly benefit from having caring adults who invest in their growth, and I could not do this without people like you.\n\nWith gratitude,\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869`
+      body: (t) => `Dear [Name],\n\nI wanted to take a moment to sincerely thank you for your support${t ? ' during ' + t.name : ' on our recent DECA trip'}.\n\nYour willingness to give your time${t && isOvernightTrip(t) ? ' — including overnight — ' : ' '}made this trip possible and ensured our students had a safe, positive, and memorable experience.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.name) + '\n\n' : ''}Our students truly benefit from having caring adults who invest in their growth, and I could not do this without people like you.\n\nWith gratitude,\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869`
     },
     { id:'fac-dept-update', label:'📣 Dept / Team DECA Update',
       subject: () => `DECA Program Update — [Month] [Year]`,
@@ -9328,6 +9364,10 @@ function deleteWBLStudent(id) {
 // ── SBE CHECKLIST ─────────────────────────────────────────
 function renderSBEChecklist() {
   const container = document.getElementById('sbe-checklist');
+  // sbeToggle() now also fires from the Dashboard's Quick Log widget, where
+  // this element isn't mounted — every other lookup in this function was
+  // already null-guarded, this one wasn't.
+  if (!container) return;
   const done      = SBE_ELEMENTS.filter(e=>(SBE_STATUS[e.id]||{}).done).length;
   const pct       = Math.round((done/SBE_ELEMENTS.length)*100);
 
@@ -9372,6 +9412,7 @@ function sbeToggle(id) {
   SBE_STATUS[id].done = !SBE_STATUS[id].done;
   persistSBE();
   renderSBEChecklist();
+  renderQuickLog(); // no-op if the Dashboard's Quick Log isn't in the DOM right now
 }
 
 function sbeNote(id, val) {
@@ -12796,7 +12837,7 @@ function renderQuickLog(){
   const sbeEl=document.getElementById('ql-sbe-items');
   if(sbeEl&&typeof SBE_ELEMENTS!=='undefined'){
     const items=SBE_ELEMENTS.filter(e=>!(SBE_STATUS[e.id]||{}).done).slice(0,4);
-    sbeEl.innerHTML=items.length?items.map(e=>`<div onclick="SBE_STATUS['${e.id}']={done:true};renderQuickLog();refreshNextAction();" style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.86rem;color:#1d4ed8;padding:.12rem 0">
+    sbeEl.innerHTML=items.length?items.map(e=>`<div onclick="sbeToggle('${e.id}');refreshNextAction();" style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.86rem;color:#1d4ed8;padding:.12rem 0">
       <div style="width:16px;height:16px;border:2px solid #93c5fd;border-radius:3px;flex-shrink:0;background:#fff"></div>
       <span>${e.label||e.id}</span></div>`).join(''):`<div style="font-size:.86rem;color:#15803d;font-weight:600">All 10 elements done ✓</div>`;
   }
@@ -13930,6 +13971,18 @@ function renderWeekStrip(){}
 // ── Accordion ─────────────────────────────────────────────
 const _ACC_IDS = ['dashboard','class','trips','deca','wbl','esports','tools'];
 
+// Collapsed accordion sections are hidden via max-height:0, but that leaves
+// every .si button inside still in the Tab order — a sighted keyboard user
+// tabs through ~26 invisible buttons before reaching whatever's actually on
+// screen. Toggling tabindex alongside the open/closed state keeps focus
+// order matching what's visible.
+function _setAccBodyTabbable(body, tabbable) {
+  body.querySelectorAll('.si').forEach(btn => {
+    if (tabbable) btn.removeAttribute('tabindex');
+    else btn.setAttribute('tabindex', '-1');
+  });
+}
+
 function toggleAcc(id) {
   const hd   = document.getElementById('acc-'+id);
   const body = document.getElementById('accb-'+id);
@@ -13939,10 +13992,10 @@ function toggleAcc(id) {
   _ACC_IDS.forEach(k => {
     const h = document.getElementById('acc-'+k);
     const b = document.getElementById('accb-'+k);
-    if (h && b) { h.classList.remove('open'); b.classList.remove('open'); h.setAttribute('aria-expanded', 'false'); }
+    if (h && b) { h.classList.remove('open'); b.classList.remove('open'); h.setAttribute('aria-expanded', 'false'); _setAccBodyTabbable(b, false); }
   });
   // If we were closed, open this one
-  if (opening) { hd.classList.add('open'); body.classList.add('open'); hd.setAttribute('aria-expanded', 'true'); }
+  if (opening) { hd.classList.add('open'); body.classList.add('open'); hd.setAttribute('aria-expanded', 'true'); _setAccBodyTabbable(body, true); }
 }
 
 function restoreAccState() {
@@ -13958,6 +14011,7 @@ function restoreAccState() {
       h.classList.remove('open'); b.classList.remove('open');
       h.setAttribute('aria-controls', 'accb-'+k);
       h.setAttribute('aria-expanded', 'false');
+      _setAccBodyTabbable(b, false);
     }
   });
 }
