@@ -218,7 +218,11 @@ function getSystemHealth() {
       engineArmed,
       onboardingDay:    obDay,
       onboardingCap:    CFG.ONBOARDING_DAYS,
-      adminEmail:       adminEmail ? adminEmail.replace(/(.{3}).*@/, '$1…@') : 'not set',
+      // Empty string (falsy) when unset, not the literal 'not set' — the
+      // client's own `res.adminEmail ? ... : ...` branch already renders a
+      // "not set" warning icon, but a truthy placeholder string here made
+      // that branch unreachable.
+      adminEmail:       adminEmail ? _maskEmailLocal_(adminEmail) : '',
       promotedVectors:  promoted,
       triggersActive:   triggers.length,
       triggerList:      triggers,
@@ -226,6 +230,22 @@ function getSystemHealth() {
   } catch (e) {
     return { success: false, message: e.message };
   }
+}
+
+/**
+ * Masks an email's local part for display, e.g. "adam@x.com" -> "ada…@x.com".
+ * The previous regex (`/(.{3}).*@/`) required a *second* "@" to appear
+ * after the first 3 characters, so it silently failed to match — and
+ * `.replace()` returned the address completely unmasked — whenever the
+ * local part was under 3 characters (e.g. "ab@example.com"). Splitting on
+ * the actual "@" handles local parts of any length.
+ */
+function _maskEmailLocal_(email) {
+  const at = email.indexOf('@');
+  if (at === -1) return email;
+  const local  = email.slice(0, at);
+  const domain = email.slice(at);
+  return local.slice(0, Math.min(3, local.length)) + '…' + domain;
 }
 
 
