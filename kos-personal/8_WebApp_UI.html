@@ -21,7 +21,9 @@
   --amber-dim:   rgba(186,117,23,.15);
   --text:        #efefef;
   --text2:       #888;
-  --text3:       #505050;
+  --text3:       #808080;  /* was #505050 — ~2.4:1 against --bg, fails WCAG AA (4.5:1) at the
+                               small sizes (9-11px) this token is used for across field labels,
+                               timestamps, and hints. #808080 clears ~4.6:1. */
   --success:     #4ade80;
   --success-bg:  rgba(74,222,128,.1);
   --danger:      #f87171;
@@ -237,6 +239,7 @@ textarea { line-height: 1.55; }
 .badge-danger { background: var(--danger-bg);  color: var(--danger); }
 .badge-warn   { background: var(--warn-bg);    color: var(--warn); }
 .badge-ok     { background: var(--success-bg); color: var(--success); }
+.badge-gray   { background: var(--surface2);   color: var(--text3); }
 .ext-link { font-size: 11px; color: var(--amber); text-decoration: none; display: flex; align-items: center; gap: 3px; }
 
 .empty { text-align: center; padding: 28px 0; color: var(--text3); font-size: 13px; }
@@ -337,6 +340,15 @@ textarea { line-height: 1.55; }
 .prog-step.err    { color: var(--danger); }
 .prog-step .p-icon { width: 18px; text-align: center; flex-shrink: 0; }
 .prog-step .p-label { flex: 1; }
+/* The active step's icon pulses for as long as it's waiting — without
+   this, a deploy that runs past the animated step timing (real deploys
+   regularly do) leaves a static hourglass sitting still, which reads as
+   hung rather than "still working." */
+.prog-step.active .p-icon { animation: bsPulse 1.1s ease-in-out infinite; }
+@keyframes bsPulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+@media (prefers-reduced-motion: reduce) {
+  .prog-step.active .p-icon { animation: none; }
+}
 
 /* ── Stepper dots (arm modal) ────────────────────────────────── */
 .sdot { height: 6px; border-radius: 3px; background: var(--border2); transition: all .25s; width: 6px; }
@@ -467,7 +479,7 @@ textarea { line-height: 1.55; }
   </div>
   <p class="setup-tagline">
     Your personal AI system learns how you work and<br>
-    builds itself around your context. About 30 seconds.
+    builds itself around your context. Usually under two minutes.
   </p>
   <div class="setup-card">
     <div id="bs-idle">
@@ -486,8 +498,6 @@ textarea { line-height: 1.55; }
         <div class="prog-step" id="pstep-3"><span class="p-icon">⬜</span><span class="p-label">Installing background automation</span></div>
         <div class="prog-step" id="pstep-4"><span class="p-icon">⬜</span><span class="p-label">Finishing up</span></div>
       </div>
-      <button class="detail-toggle" style="margin-top:10px" onclick="toggleDeployDetail()">Show technical detail</button>
-      <div class="deploy-detail" id="deploy-detail"></div>
     </div>
     <div id="bs-done" style="display:none;text-align:center;padding:8px 0">
       <div style="font-size:28px;margin-bottom:8px">✅</div>
@@ -502,6 +512,12 @@ textarea { line-height: 1.55; }
       <div><div id="bs-err-msg" style="font-weight:500"></div>
       <div style="font-size:11px;margin-top:2px">Check your Google account permissions and try again.</div></div>
     </div>
+    <!-- Lives outside #bs-active on purpose — a failed deploy hides
+         #bs-active a second later to show the retry button, which used to
+         take this technical detail (the only real diagnostic info) with
+         it. Kept reachable alongside #bs-err instead, for both outcomes. -->
+    <button class="detail-toggle" style="margin-top:10px" onclick="toggleDeployDetail()">Show technical detail</button>
+    <div class="deploy-detail" id="deploy-detail"></div>
   </div>
 </div>
 
@@ -620,7 +636,7 @@ textarea { line-height: 1.55; }
       <div class="metric-card m-success">
         <div class="metric-lbl">Processing</div>
         <div class="metric-val" id="cnt-ready">—</div>
-        <div class="metric-sub">AI running now</div>
+        <div class="metric-sub">in the pipeline</div>
       </div>
       <div class="metric-card m-danger">
         <div class="metric-lbl">Needs your help</div>
@@ -683,6 +699,13 @@ textarea { line-height: 1.55; }
       </div>
     </div>
     <div class="vec-meta" id="vec-meta"></div>
+    <div id="incubating-wrap" style="display:none;margin-top:10px">
+      <div class="sec-lbl has-tip" style="margin-bottom:6px;font-size:11px">
+        Incubating themes
+        <span class="tip-icon" title="Emerging topics that aren't yet an established vector weight. Once a theme accumulates enough signal, it's promoted to the list above.">?</span>
+      </div>
+      <div id="incubating-list"></div>
+    </div>
     <div class="sec-divider"></div>
 
     <!-- ④ ACTIONS ────────────────────────────────────────── -->
@@ -718,7 +741,9 @@ textarea { line-height: 1.55; }
       Sensor 2 webhook
       <span class="tip-icon" title="POST structured JSON here from any external tool to queue it for AI processing. Used for COG exhaust and automated council verdicts.">?</span>
     </div>
-    <div class="url-box" id="webhook-url" onclick="copyWebhookUrl()" title="Tap to copy">Loading URL…</div>
+    <div class="url-box" id="webhook-url" onclick="copyWebhookUrl()"
+         role="button" tabindex="0" aria-label="Copy webhook URL"
+         onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyWebhookUrl();}">Loading URL…</div>
     <div class="hint">Tap to copy · POST: { cog_name, task_id, verdict, artifact_text }</div>
 
   </div><!-- /tab-diag -->
@@ -912,8 +937,17 @@ function handleSubmit() {
   const title = currentType === 'research'
     ? document.getElementById('research-title').value.trim() : '';
 
-  if (text.length < 20) {
-    showIngestToast('Nothing to send — paste your session log or article first.', false);
+  // Mirrors each server function's real minimum — submitSessionLog()
+  // requires 50 chars, submitExternalData() requires 20. A shorter paste
+  // used to round-trip to the server before failing on this exact check.
+  const minLength = currentType === 'session' ? 50 : 20;
+  if (text.length < minLength) {
+    showIngestToast(
+      currentType === 'session'
+        ? 'Too short to be a real session log (minimum 50 characters) — paste the full session.'
+        : 'Nothing to send — paste your article or data first.',
+      false
+    );
     return;
   }
 
@@ -1061,10 +1095,14 @@ function renderQueue(res) {
 
   // FIXED: "Pending" (subtitle "waiting for AI engine") used to show
   // pending + active, double-counting active rows that are also shown
-  // alone in "Processing" (subtitle "AI running now") right next to it —
+  // alone in "Processing" (subtitle "in the pipeline") right next to it —
   // e.g. 2 PENDING_FLOW + 3 STUDIO_ACTIVE rows displayed as "Pending: 5,
   // Processing: 3," summing the two tiles double-counts the 3 already-
   // processing rows. Each tile now shows only its own bucket.
+  // NOTE: "Processing" counts both STUDIO_ACTIVE (genuinely running) and
+  // FLOW_COMPLETE (finished inference, waiting on a later pipeline stage)
+  // rows together (3_Queue_Processor.gs) — subtitle says "in the
+  // pipeline," not "AI running now," so it doesn't overstate live activity.
   document.getElementById('cnt-pending').textContent = pending;
   document.getElementById('cnt-ready'  ).textContent = active;
   document.getElementById('cnt-curator').textContent = inReview;
@@ -1134,7 +1172,7 @@ function loadShadowMatrix() {
     const dot = document.getElementById('engine-dot');
     const lbl = document.getElementById('engine-label');
     if (dot) dot.className = 'dot ' + (modeColors[res.engine_mode] || 'dot-unk');
-    if (lbl) lbl.textContent = res.engine_mode || 'v8.0';
+    if (lbl) lbl.textContent = friendlyEngineMode(res.engine_mode);
 
     el.innerHTML = res.questions.map(q => {
       const pct    = Math.round(q.confidence * 100);
@@ -1143,7 +1181,7 @@ function loadShadowMatrix() {
       return '<div class="vec-row" style="margin-bottom:10px">' +
         '<div class="vec-hdr">' +
         '<span class="vec-name" style="font-size:11px">' + esc(q.label) + '</span>' +
-        '<span class="badge ' + badge + '" style="font-size:9px">' + q.status + ' · ' + pct + '%</span>' +
+        '<span class="badge ' + badge + '" style="font-size:9px">' + esc(friendlyShadowStatus(q.status)) + ' · ' + pct + '%</span>' +
         '</div><div class="bar-bg"><div class="bar-fill" style="width:' + pct + '%;background:' + barCol + '"></div></div>' +
         (q.inferred ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)">' + esc(q.inferred.substring(0,60)) + (q.inferred.length>60?'…':'') + '</div>' : '') +
         '</div>';
@@ -1189,11 +1227,19 @@ const ARM_STEPS = [
     html: `<div class="field-group"><div class="field-lbl">Who you serve</div><input type="text" id="arm-audience" placeholder="e.g. High school students"></div>
       <div class="field-group"><div class="field-lbl">90-Day Vision</div><textarea id="arm-vision" rows="3" placeholder="What does success look like?"></textarea></div>` },
   { label:'Step 3 of 4', title:'Your Constraints', validate: () => true,
-    html: `<div class="field-group"><div class="field-lbl">Admin Ghost</div><textarea id="arm-ghost" rows="2" placeholder="What steals your time?"></textarea></div>
-      <div class="field-group"><div class="field-lbl">Necessary Struggle</div><textarea id="arm-struggle" rows="2" placeholder="What won't you automate?"></textarea></div>` },
+    html: `<div class="field-group"><div class="field-lbl has-tip">Admin Ghost
+        <span class="tip-icon" title="The recurring administrative busywork you want KOS to absorb for you — grading logistics, status updates, routine emails, anything that eats time without needing your judgment.">?</span>
+      </div><textarea id="arm-ghost" rows="2" placeholder="What steals your time?"></textarea></div>
+      <div class="field-group"><div class="field-lbl has-tip">Necessary Struggle
+        <span class="tip-icon" title="The parts of your work that matter precisely because they're effortful — thinking, relationship-building, judgment calls. KOS is designed to protect these, not automate them away.">?</span>
+      </div><textarea id="arm-struggle" rows="2" placeholder="What won't you automate?"></textarea></div>` },
   { label:'Step 4 of 4', title:'Security', validate: () => document.getElementById('arm-passphrase')?.value ? true : 'Passphrase is required.',
     html: `<div class="field-group"><div class="field-lbl">Relational Targets</div><input type="text" id="arm-targets" placeholder="3–5 names, comma separated"></div>
-      <div class="field-group"><div class="field-lbl">Private passphrase <span style="color:var(--danger)">★</span></div><input type="password" id="arm-passphrase" autocomplete="off" placeholder="Memorable · write it down first"></div>
+      <div class="field-group"><div class="field-lbl">Private passphrase <span style="color:var(--danger)">★</span></div>
+      <div style="display:flex;gap:6px">
+        <input type="password" id="arm-passphrase" autocomplete="off" placeholder="Memorable · write it down first" style="flex:1">
+        <button type="button" class="btn btn-sm" onclick="toggleArmPassVisibility()" id="arm-pass-toggle" aria-label="Show passphrase"><i class="ti ti-eye" id="arm-pass-toggle-icon"></i></button>
+      </div></div>
       <div class="field-group"><div class="field-lbl">Admin email</div><input type="email" id="arm-email" placeholder="your@email.com"></div>` },
 ];
 let armStep = 0;
@@ -1240,6 +1286,17 @@ function armNext() {
 }
 
 function armPrev() { if (armStep > 0) { armStep--; renderArmStep(); } }
+
+function toggleArmPassVisibility() {
+  const input = document.getElementById('arm-passphrase');
+  const icon  = document.getElementById('arm-pass-toggle-icon');
+  const btn   = document.getElementById('arm-pass-toggle');
+  if (!input) return;
+  const showing = input.type === 'text';
+  input.type = showing ? 'password' : 'text';
+  if (icon) icon.className = showing ? 'ti ti-eye' : 'ti ti-eye-off';
+  if (btn)  btn.setAttribute('aria-label', showing ? 'Show passphrase' : 'Hide passphrase');
+}
 
 function submitArmEngine() {
   const btn = document.getElementById('arm-next');
@@ -1316,6 +1373,9 @@ function loadVectorState() {
       el.innerHTML = '<div class="empty" style="padding:8px 0">' +
         '<i class="ti ti-chart-bar" style="font-size:18px;opacity:.4"></i>' +
         (res && res.message ? esc(res.message) : 'Process your first session to see theme data.') + '</div>';
+      // A theme can be incubating toward promotion even before any vector
+      // has fully promoted — still worth showing.
+      if (res && res.success) renderIncubating(res);
       return;
     }
     renderVectors(res);
@@ -1332,6 +1392,8 @@ function renderVectors(res) {
   const meta  = document.getElementById('vec-meta');
   const vecs  = res.vectors || [];
   const promd = res.promoted_themes || [];
+
+  renderIncubating(res); // independent of whether any theme has promoted yet
 
   if (vecs.length === 0) {
     el.innerHTML = '<div class="empty" style="padding:8px 0">No theme data yet.</div>';
@@ -1358,6 +1420,31 @@ function renderVectors(res) {
     const date = res.last_updated  ? '  ·  ' + res.last_updated   : '';
     meta.textContent = uid + date || 'Source session unknown';
   }
+}
+
+// Themes not yet promoted to a full vector weight, building toward it.
+// This data was already fetched by every getVectorState() call and simply
+// had no UI at all — a user could trigger "check for promotions" with
+// zero visibility into what was actually building toward one.
+function renderIncubating(res) {
+  const wrap = document.getElementById('incubating-wrap');
+  const list = document.getElementById('incubating-list');
+  if (!wrap || !list) return;
+  const items = (res.incubating || []).filter(v => v.status !== 'DECAYED');
+  if (items.length === 0) { wrap.style.display = 'none'; return; }
+
+  const threshold = res.promotion_threshold || 3.0;
+  wrap.style.display = '';
+  list.innerHTML = items.map(v => {
+    const pct = Math.round(Math.min(v.cumulative_score / threshold, 1) * 100);
+    return '<div class="vec-row" style="margin-bottom:6px">' +
+      '<div class="vec-hdr">' +
+      '<span class="vec-name" style="font-size:11px">' + esc(v.name) + '</span>' +
+      '<span class="vec-score" style="font-size:10px">' + v.cumulative_score.toFixed(2) + ' / ' + threshold.toFixed(1) + '</span>' +
+      '</div>' +
+      '<div class="bar-bg" style="height:4px"><div class="bar-fill" style="width:' + pct + '%;background:var(--text3)"></div></div>' +
+      '</div>';
+  }).join('');
 }
 
 function loadWebhookUrl() {
@@ -1454,7 +1541,17 @@ function handleCouncil() {
     } else {
       showDiagStatus((res && res.message) || 'Could not start council.', 'danger');
     }
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger'); });
+  }, (err) => {
+    btn.disabled = false;
+    // _coldEngineGate's TIER_2 throw leaks its internal function name, tier
+    // label, and "Socratic Onboarding" (a term this UI doesn't otherwise
+    // use — the button here says "Personalize your advisor"). Translate
+    // that one specific case; anything else still shows Server error as-is.
+    const msg = /COLD_ENGINE_TIER_2/.test(err.message)
+      ? 'Your advisor isn\'t personalized yet — tap "Personalize your advisor" in Diagnostics first.'
+      : 'Error: ' + err.message;
+    showDiagStatus(msg, 'danger');
+  });
 }
 
 
@@ -1481,7 +1578,7 @@ function handleDeploy() {
   deployConfirm = false;
   btn.disabled = true;
   resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
-  showDiagStatus('Rebuilding system infrastructure… (30–60 seconds)');
+  showDiagStatus('Rebuilding system infrastructure… (usually under two minutes)');
   callServer('deployFullSystem', [], (res) => {
     btn.disabled = false;
     if (res && res.success) {
@@ -1519,6 +1616,14 @@ function showDiagStatus(html, type) {
 
 
 // ── Utilities ───────────────────────────────────────────────────
+// Internal state/enum names → plain-language labels. Never print an
+// engine_mode/status enum straight into the DOM — a user reads "COLD" or
+// "HYPOTHESIZED" as backend jargon, not a status they can act on.
+const ENGINE_MODE_LABELS = { CALIBRATED: 'Personalized', LEARNING: 'Learning you', COLD: 'Not started' };
+const SHADOW_STATUS_LABELS = { VERIFIED: 'Confirmed', HYPOTHESIZED: 'Best guess', UNKNOWN: 'Not started' };
+function friendlyEngineMode(mode) { return ENGINE_MODE_LABELS[mode] || mode || 'v8.0'; }
+function friendlyShadowStatus(status) { return SHADOW_STATUS_LABELS[status] || status; }
+
 function esc(str) {
   return String(str)
     .replace(/&/g,'&amp;')
@@ -1608,6 +1713,18 @@ function handleBootstrap() {
       if (msgEl) msgEl.textContent = (res && res.message) || 'Something went wrong.';
       if (errEl) errEl.style.display = 'flex';
 
+      // deployFullSystem() has no top-level `message` field — the real
+      // per-step detail lives in res.errors[]/res.log[], which the success
+      // path already surfaces via this same element. Show it here too,
+      // instead of leaving the user with only the generic fallback above.
+      const detail = document.getElementById('deploy-detail');
+      if (detail && ((res && res.errors && res.errors.length) || (res && res.log && res.log.length))) {
+        const lines = [].concat(res.log || [], res.errors || []);
+        detail.innerHTML = lines.map(l =>
+          '<div class="' + (String(l).startsWith('✔') || String(l).startsWith('✅') ? 'l-ok' : String(l).startsWith('⚠') || String(l).startsWith('❌') ? 'l-err' : '') + '">' + esc(l) + '</div>'
+        ).join('');
+      }
+
       // Show retry option
       setTimeout(() => {
         document.getElementById('bs-active').style.display = 'none';
@@ -1659,7 +1776,7 @@ function selectDeploy(el) {
         const dot = document.getElementById('engine-dot');
         const lbl = document.getElementById('engine-label');
         if (dot) dot.className = 'dot ' + (modeColors[res.engine_mode] || 'dot-unk');
-        if (lbl) lbl.textContent = res.engine_mode || 'v8.0';
+        if (lbl) lbl.textContent = friendlyEngineMode(res.engine_mode);
       });
 
       // Pre-fetch inbound folder URL for the large-payload drop panel

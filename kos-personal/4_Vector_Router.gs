@@ -917,12 +917,13 @@ function getVectorState() {
       .filter(v => !CFG.KNOWN_VECTORS.includes(v));
 
     return {
-      success:         true,
+      success:             true,
       vectors,
       incubating,
-      promoted_themes: promotedThemes,
-      session_uid:     String(lastRow[0] || ''),
-      last_updated:    String(lastRow[1] || ''),
+      promotion_threshold: CFG.INCUBATOR_PROMOTION_THRESHOLD,
+      promoted_themes:     promotedThemes,
+      session_uid:         String(lastRow[0] || ''),
+      last_updated:        String(lastRow[1] || ''),
     };
 
   } catch (e) {

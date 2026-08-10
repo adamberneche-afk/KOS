@@ -86,7 +86,7 @@ function getDashboardData(termFilter) {
       submittedAt: row[13] ? formatDate_(row[13]) : "—",
       docUrl:      fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
-        : "#"
+        : null
     });
 
     if (!unitMap[unitCode]) unitMap[unitCode] = { total:0, compliant:0, pending:0, flagged:0 };
@@ -377,7 +377,7 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .status-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap}
 .badge-compliant{background:#e6f4ea;color:#1e8e3e}
 .badge-active{background:#e8f0fe;color:#1a73e8}
-.badge-queued{background:#fef3e2;color:#e37400}
+.badge-queued{background:#fef3e2;color:#9c5000}
 .badge-evaluated{background:#f3e8fd;color:#9334e6}
 .badge-not-started{background:#f1f3f4;color:#5f6368}
 .badge-flagged{background:#fce8e6;color:#d93025}
@@ -461,7 +461,8 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
   <!-- ── M2: New Lesson button ── -->
   <button id="new-lesson-btn" onclick="openModal()">+ New Lesson</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
-  <select id="term-filter" onchange="loadData()">
+  <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
+  <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
     <option value="ALL">All Terms</option>
   </select>
 </header>
@@ -613,7 +614,15 @@ function loadData() {
 function render(data) {
   const main = document.getElementById("main");
   if (!data || !data.students || data.students.length === 0) {
-    main.innerHTML = '<div style="text-align:center;padding:40px;color:#5f6368">No students registered yet.</div>';
+    main.innerHTML = \`<div style="text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line">
+      <div style="font-size:48px;margin-bottom:16px">📋</div>
+      <p>No students registered yet.
+
+If you expect to see students here:
+• Confirm the Turn-In/Confirmation form has been set up for this class
+• Check the TeacherMatrix sheet for this class's roster
+• Give it a few minutes if students were just registered</p>
+    </div>\`;
     document.getElementById("loading").style.display = "none";
     main.style.display = "block";
     return;
@@ -646,14 +655,17 @@ function render(data) {
   Object.keys(units).sort().forEach(unit => {
     const u = data.unitSummary[unit] || {};
     html += \`<div class="unit-section">
-      <div class="unit-header">\${esc(unit)} <span style="font-weight:400;margin-left:8px;">\${u.total||0} students · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
+      <div class="unit-header">\${esc(unit) || "Unassigned unit"} <span style="font-weight:400;margin-left:8px;">\${u.total||0} students · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
     units[unit].forEach(s => {
       html += \`<div class="student-row \${s.statusClass}">
         <div>
           <div class="student-name">\${esc(s.name)}</div>
-          <div class="student-meta">Block \${esc(s.block)} · Period \${esc(s.period)} · \${esc(s.subject)}</div>
+          <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
           <div class="last-eval">Last evaluation: \${esc(s.lastEval)}</div>
-          <a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>
+          \${s.docUrl
+            ? \`<a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>\`
+            : '<span style="color:#80868b;font-size:13px;">Document not yet available</span>'
+          }
         </div>
         <div><div class="status-badge \${badgeMap[s.statusClass]||'badge-unknown'}">\${esc(s.status)}</div></div>
       </div>\`;
@@ -689,6 +701,30 @@ function esc(s) {
 
 let competenciesLoaded = false;
 let activeCourseTab    = null; // tracks which course tab is currently visible
+let _modalReturnFocus  = null; // element to restore focus to when the modal closes
+
+function _modalFocusableEls() {
+  const modal = document.querySelector(".modal");
+  if (!modal) return [];
+  return Array.from(modal.querySelectorAll(
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => el.offsetParent !== null);
+}
+
+function _modalTrapKeydown(e) {
+  if (e.key !== "Tab") return;
+  const focusable = _modalFocusableEls();
+  if (!focusable.length) return;
+  const first = focusable[0];
+  const last  = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) {
+    e.preventDefault();
+    last.focus();
+  } else if (!e.shiftKey && document.activeElement === last) {
+    e.preventDefault();
+    first.focus();
+  }
+}
 
 function openModal() {
   const today = new Date();
@@ -698,14 +734,36 @@ function openModal() {
   document.getElementById("f-date").value = yyyy+"-"+mm+"-"+dd;
 
   document.getElementById("form-error").style.display = "none";
+  _modalReturnFocus = document.activeElement;
   document.getElementById("modal-backdrop").classList.add("open");
   document.getElementById("f-objective").focus();
+  document.addEventListener("keydown", _modalTrapKeydown);
 
   if (!competenciesLoaded) loadCompetencies();
 }
 
-function closeModal() {
+function _hasUnsavedLessonForm() {
+  const filled = ["f-period","f-objective","f-activity","f-prior","f-vocab"].some(id => {
+    const el = document.getElementById(id);
+    return el && el.value.trim();
+  });
+  const checked = document.querySelectorAll('.course-panel input[type="checkbox"]:checked').length > 0;
+  return filled || checked;
+}
+
+function closeModal(skipConfirm) {
+  // A backdrop click or Escape used to discard a fully-filled-in, multi-
+  // field lesson log with no warning. skipConfirm is passed true only
+  // from the post-submit-success path, where the form's own data has
+  // already been saved and clearing it here is expected, not a loss.
+  if (!skipConfirm && _hasUnsavedLessonForm() &&
+      !confirm("Discard this lesson log entry? What you've entered hasn't been saved.")) {
+    return;
+  }
   document.getElementById("modal-backdrop").classList.remove("open");
+  document.removeEventListener("keydown", _modalTrapKeydown);
+  if (_modalReturnFocus && typeof _modalReturnFocus.focus === "function") _modalReturnFocus.focus();
+  _modalReturnFocus = null;
   clearForm();
 }
 
@@ -929,7 +987,7 @@ function submitLesson() {
         return;
       }
 
-      closeModal();
+      closeModal(true); // already saved — nothing to confirm discarding
       showToast("Lesson logged. Alignment will be recorded automatically.");
 
       // ── S27 hook: open Lesson Frame doc when Script 27 exists ──
@@ -964,9 +1022,11 @@ function showToast(msg, isError) {
   setTimeout(() => t.classList.remove("show"), 4000);
 }
 
-// Escape key closes modal
+// Escape key closes modal (only when it's actually open)
 document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape") closeModal();
+  if (e.key === "Escape" && document.getElementById("modal-backdrop").classList.contains("open")) {
+    closeModal();
+  }
 });
 
 loadData();
