@@ -4300,6 +4300,7 @@ function _applyApDetail(t, key, next, note) {
   t.apDetail = t.apDetail || {};
   t.apDetail[key] = { status: next, note, at: new Date().toISOString() };
   t.ap[key] = (next === 'approved'); // keep the legacy boolean field in sync
+  persistTrips(); // was in-memory only — a refresh used to silently revert every approval/rejection
   renderTripDetail(t);
 }
 
@@ -5073,7 +5074,13 @@ function wzSaveTrip() {
   const d = _wzDraft;
   if (!d.name?.trim()) { wzShowErrors(['Trip Name is required']); _wzStep=1; renderWizardStep(); return; }
 
-  const ap = {coord:false, principal:false, bookkeeper:false, risk:false, transport:false};
+  // Editing a trip must never reset its approval chain — tripToDraft() only
+  // ever copies the form-editable fields, so the sign-off history has to be
+  // pulled back from the trip actually being replaced below, not defaulted.
+  const existingTrip = d._editId ? trips.find(t => t.id === d._editId) : null;
+  const ap = existingTrip?.ap
+    ? { ...existingTrip.ap }
+    : {coord:false, principal:false, bookkeeper:false, risk:false, transport:false};
   const trip = {
     id: d._editId || nextId.trip++,
     name:d.name||'', sub:d.sub||'same-day', date:d.date||'',
@@ -5098,6 +5105,7 @@ function wzSaveTrip() {
     coord:d.coord||'', acctNotes:d.acctNotes||'',
     why:d.why||'', pre:d.pre||'', post:d.post||'', notes:d.notes||'', ap,
   };
+  if (existingTrip?.apDetail) trip.apDetail = { ...existingTrip.apDetail };
 
   if (d._editId) {
     trips = trips.filter(t => t.id !== d._editId);
@@ -5840,7 +5848,15 @@ function addDecaResult() {
   results.push({ id:'dr'+Date.now(), student, event, eventId:conf, place, notes, addedAt: new Date().toISOString() });
   LS.set('lh_deca_results', results);
   // Log as DSP evidence — makes result visible in Recent Wins strip and daily activity log
-  const _placeStr = place ? ` — ${place === '1' ? '1st' : place === '2' ? '2nd' : place === '3' ? '3rd' : place + 'th'} place` : '';
+  // `place` is already a fully-formatted DECA_PLACE_OPTIONS value ("1st",
+  // "Top 10", "Qualified", "Did Not Place", ...) — it was being compared
+  // against raw digit strings ('1'/'2'/'3') that never matched, so every
+  // placement fell through to `place + 'th'` (e.g. "1stth place",
+  // "Qualifiedth place"). Only ordinal placements read naturally with
+  // " place" appended; the label placements ("Top 10", "Qualified", etc.)
+  // stand on their own.
+  const _ordinalPlacements = new Set(['1st','2nd','3rd','4th','5th','6th','7th','8th']);
+  const _placeStr = place ? ` — ${place}${_ordinalPlacements.has(place) ? ' place' : ''}` : '';
   _logDaily({ date: new Date().toISOString(), type: 'deca_result',
     note: `DECA result logged: ${event}${_placeStr} (${student})` });
   // Clear fields — conference/placement are intentionally left as-is (see
@@ -6402,7 +6418,6 @@ function saveStudent(){
   students.push(s);
   persistNextId();
   persistStudents();
-  persistStudents();
   closeModal('addStudent');
   renderStudents();
 }
@@ -6452,6 +6467,7 @@ function updateStudent(id){
   s.shirtSize   = document.getElementById('st-shirt')?.value||'';
   s.dietaryNeeds= document.getElementById('st-dietary')?.value.trim()||'';
   s.notes       = document.getElementById('st-notes').value;
+  persistStudents(); // was missing — edits (dues paid, contact info, etc.) never survived a reload
   closeModal('addStudent');
   renderStudents();
 }
@@ -8024,7 +8040,11 @@ function renderArchive() {
 
   // Filter
   if(archiveFilterCurrent === 'deca') list = list.filter(a => a.trip.name && a.trip.name.toLowerCase().includes('deca'));
-  if(archiveFilterCurrent === 'overnight') list = list.filter(a => a.trip.sub === 'overnight' || a.trip.sub === 'out-of-state');
+  // Trip Type values are 'same-day'/'overnight-is'/'overnight-oos'/'multi-day'/
+  // 'international' (see the wizard's nt-sub options) — this used to check
+  // 'overnight'/'out-of-state', which never matched anything, so the filter
+  // always returned an empty list.
+  if(archiveFilterCurrent === 'overnight') list = list.filter(a => ['overnight-is','overnight-oos','multi-day','international'].includes(a.trip.sub));
   if(archiveFilterCurrent === 'sameday') list = list.filter(a => a.trip.sub === 'same-day');
 
   // Search
@@ -8058,7 +8078,7 @@ function renderArchiveCard(a) {
   const stars = a.rating ? '⭐'.repeat(a.rating) : '';
   const outcomeColors = { exceeded:'#dcfce7', met:'#f0f9ff', below:'#fef9c3', cancelled:'#fee2e2' };
   const outcomeLabels = { exceeded:'Exceeded expectations', met:'Met expectations', below:'Below expectations', cancelled:'Partially cancelled' };
-  const subLabel = { 'overnight':'🌙 Overnight','same-day':'☀️ Same Day','out-of-state':'✈️ Out of State','international':'🌍 International' };
+  const subLabel = { 'same-day':'☀️ Same Day','overnight-is':'🌙 Overnight — In State','overnight-oos':'✈️ Overnight — Out of State','multi-day':'📆 Multi-Day','international':'🌍 International' };
 
   return `<div class="arch-card">
     <!-- Card Header -->
@@ -10803,14 +10823,19 @@ function renderMatchLog() {
   }
   const totalW = ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length;
   const totalL = ES_MATCHES.filter(m=>Number(m.us)<Number(m.them)).length;
+  const totalT = ES_MATCHES.filter(m=>Number(m.us)===Number(m.them)).length;
   el.innerHTML = `<div style="display:flex;gap:.75rem;margin-bottom:.85rem;flex-wrap:wrap">
     <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#15803d">${totalW}W</strong> <span style="color:var(--muted)">Wins</span></div>
     <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#dc2626">${totalL}L</strong> <span style="color:var(--muted)">Losses</span></div>
+    ${totalT ? `<div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#475569">${totalT}T</strong> <span style="color:var(--muted)">Ties</span></div>` : ''}
     <div style="background:#f1f5f9;border:1px solid var(--border);border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong>${ES_MATCHES.length}</strong> <span style="color:var(--muted)">Total</span></div>
   </div>` + [...ES_MATCHES].reverse().map(m => {
-    const win = Number(m.us) > Number(m.them);
+    const us = Number(m.us), them = Number(m.them);
+    const result = us > them ? 'win' : us < them ? 'loss' : 'tie';
+    const color = result==='win' ? '#15803d' : result==='loss' ? '#dc2626' : '#64748b';
+    const label = result==='win' ? 'WIN' : result==='loss' ? 'LOSS' : 'TIE';
     const game = m.game==='ssbu'?'🥊 Smash Bros':'🏎️ Mario Kart 8';
-    return `<div style="background:#fff;border:1px solid var(--border);border-left:5px solid ${win?'#15803d':'#dc2626'};border-radius:8px;padding:.8rem 1rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+    return `<div style="background:#fff;border:1px solid var(--border);border-left:5px solid ${color};border-radius:8px;padding:.8rem 1rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
       <div>
         <div style="font-weight:700;font-size:.84rem;color:var(--navy)">vs ${m.opp}</div>
         <div style="font-size:.72rem;color:var(--muted)">${m.date} · ${game}</div>
@@ -10818,8 +10843,8 @@ function renderMatchLog() {
       </div>
       <div style="display:flex;align-items:center;gap:.75rem">
         <div style="text-align:center">
-          <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:${win?'#15803d':'#dc2626'};line-height:1">${m.us} – ${m.them}</div>
-          <div style="font-size:.68rem;font-weight:700;color:${win?'#15803d':'#dc2626'}">${win?'WIN':'LOSS'}</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:${color};line-height:1">${m.us} – ${m.them}</div>
+          <div style="font-size:.68rem;font-weight:700;color:${color}">${label}</div>
         </div>
         <button onclick="deleteMatch('${m.id}')" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
       </div>
@@ -11354,7 +11379,10 @@ function finAnalysis(type) {
   const shifts    = SALES_LOG.length;
   const avgSale   = shifts > 0 ? (totalRev/shifts).toFixed(2) : '0.00';
   const lowStock  = INVENTORY.filter(i=>i.qty<=i.reorder);
-  const totalInv  = INVENTORY.reduce((a,i)=>a+(i.qty*i.price),0);
+  // "Value" here means dollars tied up in stock, so it has to be cost basis —
+  // the SKU list's own Margin% a few lines away already distinguishes cost
+  // vs. price; using price here overstated inventory value by the margin.
+  const totalInv  = INVENTORY.reduce((a,i)=>a+(i.qty*i.cost),0);
 
   const reports = {
     profitloss: `<h3 style="margin:0 0 .75rem">📊 Profit & Loss — The Cavalier Shop</h3>
@@ -11369,8 +11397,8 @@ function finAnalysis(type) {
     inventory: `<h3 style="margin:0 0 .75rem">📦 Inventory Status — The Cavalier Shop</h3>
       <div style="font-size:.82rem;margin-bottom:.5rem">Total inventory value: <strong>$${totalInv.toFixed(2)}</strong> | Low stock items: <strong>${lowStock.length}</strong></div>
       <table style="width:100%;font-size:.78rem;border-collapse:collapse">
-        <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Item</th><th style="padding:.25rem .4rem;background:#f8fafc">Qty</th><th style="padding:.25rem .4rem;background:#f8fafc">Reorder</th><th style="padding:.25rem .4rem;background:#f8fafc">Value</th><th style="padding:.25rem .4rem;background:#f8fafc">Status</th></tr>
-        ${INVENTORY.map(i=>`<tr><td style="padding:.2rem .4rem">${i.name}</td><td style="padding:.2rem .4rem;text-align:center">${i.qty}</td><td style="padding:.2rem .4rem;text-align:center">${i.reorder}</td><td style="padding:.2rem .4rem;text-align:right">$${(i.qty*i.price).toFixed(2)}</td><td style="padding:.2rem .4rem;text-align:center">${i.qty<=i.reorder?'⚠️ Low':'✅'}</td></tr>`).join('')}
+        <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Item</th><th style="padding:.25rem .4rem;background:#f8fafc">Qty</th><th style="padding:.25rem .4rem;background:#f8fafc">Reorder</th><th style="padding:.25rem .4rem;background:#f8fafc">Value (cost)</th><th style="padding:.25rem .4rem;background:#f8fafc">Status</th></tr>
+        ${INVENTORY.map(i=>`<tr><td style="padding:.2rem .4rem">${i.name}</td><td style="padding:.2rem .4rem;text-align:center">${i.qty}</td><td style="padding:.2rem .4rem;text-align:center">${i.reorder}</td><td style="padding:.2rem .4rem;text-align:right">$${(i.qty*i.cost).toFixed(2)}</td><td style="padding:.2rem .4rem;text-align:center">${i.qty<=i.reorder?'⚠️ Low':'✅'}</td></tr>`).join('')}
       </table>`,
     cashflow: `<h3 style="margin:0 0 .75rem">💰 Cash Flow Summary — The Cavalier Shop</h3>
       <table style="width:100%;font-size:.82rem;border-collapse:collapse">
