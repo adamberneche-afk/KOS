@@ -8844,47 +8844,46 @@ function initScrScores() {
 }
 
 // ── Smart sidebar helpers ──────────────────────────────────────────────────
-// Opens the SCR tab for whichever course is currently in session based on
-// the live odd/even day and the current block. Falls back to 8177 if unclear.
-function openCurrentClass(btn) {
-  showView('competency', btn);
-  setTimeout(() => {
-    const schedType = getTodayScheduleType(); // from bell schedule module
-    const now = new Date();
-    const dow = now.getDay(); // 1=Mon…5=Fri
-    const isOdd  = schedType ? (buildOddEvenMap('2025-08-18', now.toISOString().slice(0,10))[now.toISOString().slice(0,10)] === 'Odd')  : (dow % 2 === 1);
-    const isEven = !isOdd;
-    const mins   = now.getHours() * 60 + now.getMinutes();
-    // Block detection: use Schedule A times as baseline
-    // 2nd block: 9:25–11:05 → Even courses (8175 2nd Even, 8177 N/A)
-    // 3rd block: 11:10–13:15 → Odd: 8177 3rd Odd  / Even: 8175 3rd Even
-    // 4th block: 13:20–15:00 → Odd: 6115 4th Odd  / Even: 8175 4th Even
-    let course = '8177'; // default
-    if (isEven && mins >= 9*60+25  && mins < 11*60+5)  course = '8175'; // 2nd Even
-    if (isOdd  && mins >= 11*60+10 && mins < 13*60+15) course = '8177'; // 3rd Odd
-    if (isEven && mins >= 11*60+10 && mins < 13*60+15) course = '8175'; // 3rd Even
-    if (isOdd  && mins >= 13*60+20 && mins < 15*60)    course = '6115'; // 4th Odd
-    if (isEven && mins >= 13*60+20 && mins < 15*60)    course = '8175'; // 4th Even
-    setCourseTab(course);
-  }, 80);
-}
-
-// Opens lesson plans filtered to the current course (same logic as above)
-function openCurrentLessons() {
-  const schedType = getTodayScheduleType();
+// Resolves whichever course is currently in session, based on the live
+// odd/even day and the current block. Shared by openCurrentClass() and
+// openCurrentLessons() below — both used to carry an identical copy of
+// this block-time/course-code logic, a drift risk if the bell schedule or
+// course assignments ever change and only one copy gets updated. Falls
+// back to 8177 if unclear.
+function _resolveCurrentCourse() {
+  const schedType = getTodayScheduleType(); // from bell schedule module
   const now = new Date();
-  const dow = now.getDay();
-  const oeKey = now.toISOString().slice(0,10);
-  const oeVal = buildOddEvenMap('2025-08-18', oeKey)[oeKey];
-  const isOdd  = oeVal === 'Odd';
+  const dow = now.getDay(); // 1=Mon…5=Fri
+  const todayKey = now.toISOString().slice(0,10);
+  // LP_QUARTERS[1].start is the same school-year-start date the pacing
+  // calendar itself uses as Q1's first day — previously duplicated here
+  // (and 8 other call sites) as a separate '2025-08-18' literal that could
+  // silently diverge from the pacing calendar's own quarter definitions.
+  const isOdd  = schedType ? (buildOddEvenMap(LP_QUARTERS[1].start, todayKey)[todayKey] === 'Odd') : (dow % 2 === 1);
   const isEven = !isOdd;
   const mins   = now.getHours() * 60 + now.getMinutes();
-  let course = '8177';
-  if (isEven && mins >= 9*60+25  && mins < 11*60+5)  course = '8175';
-  if (isOdd  && mins >= 11*60+10 && mins < 13*60+15) course = '8177';
-  if (isEven && mins >= 11*60+10 && mins < 13*60+15) course = '8175';
-  if (isOdd  && mins >= 13*60+20 && mins < 15*60)    course = '6115';
-  if (isEven && mins >= 13*60+20 && mins < 15*60)    course = '8175';
+  // Block detection: use Schedule A times as baseline
+  // 2nd block: 9:25–11:05 → Even courses (8175 2nd Even, 8177 N/A)
+  // 3rd block: 11:10–13:15 → Odd: 8177 3rd Odd  / Even: 8175 3rd Even
+  // 4th block: 13:20–15:00 → Odd: 6115 4th Odd  / Even: 8175 4th Even
+  let course = '8177'; // default
+  if (isEven && mins >= 9*60+25  && mins < 11*60+5)  course = '8175'; // 2nd Even
+  if (isOdd  && mins >= 11*60+10 && mins < 13*60+15) course = '8177'; // 3rd Odd
+  if (isEven && mins >= 11*60+10 && mins < 13*60+15) course = '8175'; // 3rd Even
+  if (isOdd  && mins >= 13*60+20 && mins < 15*60)    course = '6115'; // 4th Odd
+  if (isEven && mins >= 13*60+20 && mins < 15*60)    course = '8175'; // 4th Even
+  return course;
+}
+
+// Opens the SCR tab for whichever course is currently in session.
+function openCurrentClass(btn) {
+  showView('competency', btn);
+  setTimeout(() => setCourseTab(_resolveCurrentCourse()), 80);
+}
+
+// Opens lesson plans filtered to the current course (same logic as above).
+function openCurrentLessons() {
+  const course = _resolveCurrentCourse();
   lpSetView('lessons');
   const sel = document.getElementById('lp-filter-course');
   if (sel) { sel.value = course; renderLessonPlans(); }
@@ -12141,7 +12140,7 @@ function updateLessonStrip() {
   // ── Outside-block lesson context pill ───────────────────────────────────────
   // Before/between/after blocks: show what's coming up next today
   if (!info.block && info.schedType && info.schedType !== null) {
-    const oeMap2   = buildOddEvenMap('2025-08-18', dateStr);
+    const oeMap2   = buildOddEvenMap(LP_QUARTERS[1].start, dateStr);
     const oddEven2 = oeMap2[dateStr] || 'Odd';
     const sched2   = BELL_SCHEDULES[info.schedType];
     const nowMins  = now.getHours() * 60 + now.getMinutes();
@@ -12172,7 +12171,7 @@ function updateLessonStrip() {
 
   // ── Lesson pill (only during a teaching block) ──────────────────────────────
   if (info.block && info.schedType) {
-    const oeMap   = buildOddEvenMap('2025-08-18', dateStr);
+    const oeMap   = buildOddEvenMap(LP_QUARTERS[1].start, dateStr);
     const oddEven = oeMap[dateStr] || 'Odd';
     const searchKey = `${_ord(info.block)} ${oddEven}`;
     const hits = [];
@@ -12905,7 +12904,7 @@ function getPulseData(){
     }
     const _qr = LP_QUARTERS[_q];
     const _lpMeta = LS.get('lh_lp_edit_meta', {});
-    const _oeMap  = buildOddEvenMap('2025-08-18', _pNow);
+    const _oeMap  = buildOddEvenMap(LP_QUARTERS[1].start, _pNow);
     let _totalDue = 0, _totalEdited = 0;
     for (const [code, c] of Object.entries(SCR_COURSES)) {
       const oe = getCourseOddEven(code);
@@ -14856,7 +14855,7 @@ function renderPacingCalendar() {
 
   // All school days in this quarter
   const schoolDays = getSchoolDays(qRange.start, qRange.end);
-  const oeMap      = buildOddEvenMap('2025-08-18', qRange.end);
+  const oeMap      = buildOddEvenMap(LP_QUARTERS[1].start, qRange.end);
   const oe         = getCourseOddEven(course);
 
   // Days this course actually meets
@@ -15200,7 +15199,7 @@ function generateDSPReport(){
       let q=1;
       for(const [qn,r] of Object.entries(LP_QUARTERS)){ if(_pacingNow>=r.start&&_pacingNow<=r.end){q=parseInt(qn);break;} }
       const qr = LP_QUARTERS[q];
-      const oeMap = buildOddEvenMap('2025-08-18', _pacingNow);
+      const oeMap = buildOddEvenMap(LP_QUARTERS[1].start, _pacingNow);
       const schoolDays = getSchoolDays(qr.start, _pacingNow);
       const meetingDays = schoolDays.filter(d=>{
         const p=oeMap[d];
@@ -15447,7 +15446,7 @@ function getSubPlanPeriodsForDay(schedType, oddEven) {
 function getTodayLessonForCourse(course, dateStr) {
   // Use the pacing calendar logic to find which lesson falls on dateStr
   if (!course || !dateStr) return null;
-  const oeMap = buildOddEvenMap('2025-08-18', dateStr);
+  const oeMap = buildOddEvenMap(LP_QUARTERS[1].start, dateStr);
   const oe    = getCourseOddEven(course);
   // Find current quarter
   let q = 1;
@@ -15503,7 +15502,7 @@ function onSubPlanDateChange() {
   document.getElementById('sp-schedule').value = schedType || 'A';
 
   // Auto-detect odd/even
-  const oeMap = buildOddEvenMap('2025-08-18', dateStr);
+  const oeMap = buildOddEvenMap(LP_QUARTERS[1].start, dateStr);
   const oe    = oeMap[dateStr] || 'Odd';
   document.getElementById(oe === 'Odd' ? 'sp-odd' : 'sp-even').checked = true;
   document.getElementById('sp-oddeven-note').textContent = oe === 'Odd'
