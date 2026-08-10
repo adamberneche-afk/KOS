@@ -194,6 +194,14 @@ function validateLessonPayload_(payload, cfg, ss) {
   if (dateObj < thirtyDaysAgo) {
     return { valid: false, error: "Lesson date is more than 30 days in the past. Please check the date." };
   }
+  // Symmetric guard for the other direction — only the past-date case was
+  // checked before, so a fat-fingered year (e.g. 2027 instead of 2026) was
+  // silently accepted with no warning either client- or server-side.
+  const sevenDaysAhead = new Date();
+  sevenDaysAhead.setDate(sevenDaysAhead.getDate() + 7);
+  if (dateObj > sevenDaysAhead) {
+    return { valid: false, error: "Lesson date is more than 7 days in the future. Please check the date." };
+  }
 
   // ── Competency ID validation ──────────────────────────────────────────────
   const rawIds = payload.competencyIds.split(",").map(id => id.trim()).filter(Boolean);

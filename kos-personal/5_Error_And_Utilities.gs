@@ -1073,8 +1073,18 @@ function completeOnboarding(payload) {
       props.setProperty('KOS_ADMIN_EMAIL', p.adminEmail.trim());
     }
 
+    // The `!props.getProperty(k)` guard exists so a genuinely-armed engine's
+    // weights (which drift over time as the engine learns) aren't reset by
+    // a later re-onboarding. But it also meant: if this call throws below
+    // (before THESIS_VERIFIED is ever set to 'true') after already writing
+    // these properties, a retry with a *different* role would see the keys
+    // already populated from the failed attempt and silently keep the
+    // stale role's weights forever. Onboarding hasn't genuinely completed
+    // until THESIS_VERIFIED is 'true', so treat anything before that as
+    // still safe to (re)compute fresh.
+    const onboardingNotYetComplete = props.getProperty(CFG.PROP.THESIS_VERIFIED) !== 'true';
     Object.entries(_inferCalibrationWeights(p.role)).forEach(([k, v]) => {
-      if (!props.getProperty(k)) props.setProperty(k, String(v));
+      if (onboardingNotYetComplete || !props.getProperty(k)) props.setProperty(k, String(v));
     });
 
     _seedCoreThesisDoc({
