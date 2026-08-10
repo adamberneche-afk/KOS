@@ -362,7 +362,8 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .card-flagged .count{color:#d93025}.card-total .count{color:#1a73e8}
 .unit-section{margin-bottom:28px}
 .unit-header{font-size:13px;font-weight:600;color:#5f6368;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
-.student-row{background:white;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.08);border-left:4px solid #dadce0}
+.student-row{background:white;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.08);border-left:4px solid #dadce0;transition:box-shadow .15s,transform .1s}
+.student-row:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
 .student-row.compliant{border-left-color:#1e8e3e}
 .student-row.active{border-left-color:#1a73e8}
 .student-row.queued{border-left-color:#e37400}
@@ -386,7 +387,11 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 
 /* ── M2: MODAL ── */
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
-.modal-backdrop.open{display:flex}
+.modal-backdrop.open{display:flex;animation:modalBackdropIn .18s ease}
+.modal-backdrop.open .modal{animation:modalPopIn .18s ease}
+@keyframes modalBackdropIn{from{opacity:0}to{opacity:1}}
+@keyframes modalPopIn{from{opacity:.6;transform:translateY(10px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
+@media(prefers-reduced-motion:reduce){.modal-backdrop.open,.modal-backdrop.open .modal{animation:none}}
 .modal{background:white;border-radius:12px;width:100%;max-width:640px;box-shadow:0 8px 32px rgba(0,0,0,0.22);overflow:hidden;margin:auto}
 .modal-header{background:#1a73e8;color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
 .modal-header h2{font-size:16px;font-weight:500}
@@ -593,26 +598,69 @@ function renderWarmUpReadiness(r) {
     : "";
 }
 
+// Per-term client cache — switching the term filter back and forth used to
+// refetch and rebuild the whole dashboard from scratch every time, even
+// though the previous term's data was still sitting in memory. A cache hit
+// renders instantly and still revalidates in the background, so stale data
+// never lingers past the next successful fetch.
+let _dashCache = {};
+let _loadGen = 0;
+
+// A round-trip that happens to finish in well under this many ms would
+// otherwise flash the spinner on and off almost instantly, which reads as
+// a glitch rather than "fast." Holding it up for a floor of MIN_SPINNER_MS
+// makes quick responses feel deliberate instead of jarring.
+const MIN_SPINNER_MS = 400;
+function _afterMinSpinnerDelay(shownAt, myGen, fn) {
+  const run = function() { if (myGen === _loadGen) fn(); };
+  if (!shownAt) { run(); return; }
+  const remaining = MIN_SPINNER_MS - (Date.now() - shownAt);
+  if (remaining > 0) { setTimeout(run, remaining); } else { run(); }
+}
+
 function loadData() {
   const loading = document.getElementById("loading");
-  // Reset to the spinner state on every call — including a retry after a
-  // failure — so the error screen never lingers behind a fresh attempt.
-  loading.innerHTML = '<div class="spinner"></div><p>Loading class data…</p>';
-  loading.style.display = "block";
-  document.getElementById("main").style.display = "none";
+  const main = document.getElementById("main");
   const term = document.getElementById("term-filter").value || "ALL";
+  const myGen = ++_loadGen;
+  const cached = _dashCache[term];
+  let shownSpinnerAt = 0;
+
+  if (cached) {
+    render(cached);
+  } else {
+    // Reset to the spinner state on every fresh (uncached) call — including
+    // a retry after a failure — so the error screen never lingers behind it.
+    loading.innerHTML = '<div class="spinner"></div><p>Loading class data…</p>';
+    loading.style.display = "block";
+    main.style.display = "none";
+    shownSpinnerAt = Date.now();
+  }
+
   google.script.run
-    .withSuccessHandler(render)
+    .withSuccessHandler(function(data) {
+      if (myGen !== _loadGen) return; // a newer request already superseded this one
+      _dashCache[term] = data;
+      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); });
+    })
     .withFailureHandler(function(e) {
-      loading.innerHTML =
-        '<p style="color:#d93025;padding:24px 24px 8px;">⚠ Something went wrong loading your class data. Try refreshing.</p>' +
-        '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+      if (myGen !== _loadGen) return;
+      if (cached) return; // still showing valid (if slightly stale) cached data
+      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
+        loading.innerHTML =
+          '<p style="color:#d93025;padding:24px 24px 8px;">⚠ Something went wrong loading your class data. Try refreshing.</p>' +
+          '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+      });
     })
     .getDashboardData(term);
 }
 
 function render(data) {
   const main = document.getElementById("main");
+  // Any refresh (manual, term change, or a cache revalidation) rebuilds the
+  // whole list via innerHTML — preserve where the teacher was scrolled to
+  // instead of dumping them back to the top of a long roster.
+  const _scrollTop = main.scrollTop;
   if (!data || !data.students || data.students.length === 0) {
     main.innerHTML = \`<div style="text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line">
       <div style="font-size:48px;margin-bottom:16px">📋</div>
@@ -676,6 +724,7 @@ If you expect to see students here:
   main.innerHTML = html;
   document.getElementById("loading").style.display = "none";
   main.style.display = "block";
+  main.scrollTop = _scrollTop;
   document.getElementById("footer").textContent = "Last refreshed: " + data.generatedAt;
 
   // ── M2: Render warm-up readiness panel ───────────────────────────────────
@@ -726,12 +775,63 @@ function _modalTrapKeydown(e) {
   }
 }
 
+// Remembers the period/class from the last logged lesson (a teacher logging
+// several lessons in a row for the same class shouldn't have to retype it
+// every time), and keeps a debounced draft of the open form so an accidental
+// refresh or tab close doesn't lose a typed-out objective/activity.
+let lastUsedPeriod = _safeSessionGet_("casLastPeriod") || "";
+const LESSON_DRAFT_KEY = "casLessonDraft";
+
+function _safeSessionGet_(key) {
+  try { return sessionStorage.getItem(key); } catch (e) { return null; }
+}
+function _safeSessionSet_(key, val) {
+  try { sessionStorage.setItem(key, val); } catch (e) {}
+}
+function _safeSessionRemove_(key) {
+  try { sessionStorage.removeItem(key); } catch (e) {}
+}
+
+function saveLessonDraft() {
+  const get = id => { const el = document.getElementById(id); return el ? el.value : ""; };
+  const draft = {
+    date: get("f-date"), period: get("f-period"), objective: get("f-objective"),
+    activity: get("f-activity"), prior: get("f-prior"), vocab: get("f-vocab"),
+  };
+  _safeSessionSet_(LESSON_DRAFT_KEY, JSON.stringify(draft));
+}
+
+let _lessonDraftTimer = null;
+function scheduleLessonDraftSave() {
+  clearTimeout(_lessonDraftTimer);
+  _lessonDraftTimer = setTimeout(saveLessonDraft, 500);
+}
+
+function restoreLessonDraft() {
+  const raw = _safeSessionGet_(LESSON_DRAFT_KEY);
+  if (!raw) return false;
+  let d;
+  try { d = JSON.parse(raw); } catch (e) { return false; }
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
+  set("f-date", d.date); set("f-period", d.period); set("f-objective", d.objective);
+  set("f-activity", d.activity); set("f-prior", d.prior); set("f-vocab", d.vocab);
+  return !!(d.objective || d.activity || d.prior || d.vocab);
+}
+
+function clearLessonDraft() { _safeSessionRemove_(LESSON_DRAFT_KEY); }
+
 function openModal() {
   const today = new Date();
   const yyyy  = today.getFullYear();
   const mm    = String(today.getMonth()+1).padStart(2,"0");
   const dd    = String(today.getDate()).padStart(2,"0");
   document.getElementById("f-date").value = yyyy+"-"+mm+"-"+dd;
+  if (lastUsedPeriod) document.getElementById("f-period").value = lastUsedPeriod;
+
+  // A restored draft (real, unsaved typing) takes priority over the date/
+  // period defaults just set above — restoreLessonDraft() only overwrites
+  // fields it actually has a saved value for.
+  restoreLessonDraft();
 
   document.getElementById("form-error").style.display = "none";
   _modalReturnFocus = document.activeElement;
@@ -776,6 +876,7 @@ function clearForm() {
     const el = document.getElementById(id);
     if (el) el.value = "";
   });
+  clearLessonDraft();
   // Uncheck all competencies across all course panels
   document.querySelectorAll('.course-panel input[type="checkbox"]')
     .forEach(cb => cb.checked = false);
@@ -952,6 +1053,12 @@ document.addEventListener("DOMContentLoaded", function() {
     if (el) el.addEventListener("input", updateSubmitBtn);
   });
   document.getElementById("f-date").addEventListener("change", updateSubmitBtn);
+
+  // Debounced draft persistence — see saveLessonDraft()/restoreLessonDraft()
+  ["f-date","f-period","f-objective","f-activity","f-prior","f-vocab"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener("input", scheduleLessonDraftSave);
+  });
 });
 
 // ── submitLesson ──────────────────────────────────────────────────────────
@@ -987,12 +1094,20 @@ function submitLesson() {
         return;
       }
 
+      lastUsedPeriod = payload.periodOrClass;
+      _safeSessionSet_("casLastPeriod", lastUsedPeriod);
       closeModal(true); // already saved — nothing to confirm discarding
       showToast("Lesson logged. Alignment will be recorded automatically.");
 
       // ── S27 hook: open Lesson Frame doc when Script 27 exists ──
       if (result.frameDocUrl) {
-        window.open(result.frameDocUrl, "_blank");
+        // Popup blockers silently swallow this in most browsers rather than
+        // erroring — window.open returns null/undefined when that happens,
+        // so fall back to a dismissible link instead of losing the doc.
+        const opened = window.open(result.frameDocUrl, "_blank");
+        if (!opened) {
+          _showFrameLinkFallback(result.frameDocUrl);
+        }
       }
     })
     .withFailureHandler(function(e) {
@@ -1020,6 +1135,36 @@ function showToast(msg, isError) {
   t.className   = "toast" + (isError ? " error" : "");
   t.classList.add("show");
   setTimeout(() => t.classList.remove("show"), 4000);
+}
+
+// Sits above the toast (which auto-dismisses at 4s) and stays until the
+// teacher dismisses it — the whole point is giving them time to notice a
+// silently-blocked popup and still get to the doc it was trying to open.
+function _showFrameLinkFallback(url) {
+  let el = document.getElementById("frame-link-fallback");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "frame-link-fallback";
+    el.style.cssText = "position:fixed;bottom:84px;left:50%;transform:translateX(-50%);background:#202124;color:#fff;padding:12px 20px;border-radius:8px;font-size:14px;z-index:401;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(0,0,0,0.25)";
+    document.body.appendChild(el);
+  }
+  el.innerHTML = "";
+  const span = document.createElement("span");
+  span.textContent = "Pop-up blocked —";
+  const link = document.createElement("a");
+  link.href = url;
+  link.target = "_blank";
+  link.rel = "noopener";
+  link.textContent = "open the Lesson Frame doc";
+  link.style.cssText = "color:#8ab4f8;font-weight:600;text-decoration:underline";
+  const closeBtn = document.createElement("button");
+  closeBtn.textContent = "✕";
+  closeBtn.setAttribute("aria-label", "Dismiss");
+  closeBtn.style.cssText = "background:none;border:none;color:#fff;opacity:.7;cursor:pointer;font-size:14px;padding:0 2px";
+  closeBtn.onclick = function() { el.remove(); };
+  el.appendChild(span);
+  el.appendChild(link);
+  el.appendChild(closeBtn);
 }
 
 // Escape key closes modal (only when it's actually open)

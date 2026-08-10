@@ -3552,6 +3552,10 @@ function showView(name, btn) {
     const viewEl = document.getElementById('view-'+name);
     if (!viewEl) { console.warn('showView: no view-'+name); return; }
     viewEl.classList.add('active');
+    // Remembered on next boot — see the restore call at the bottom of the
+    // script. A deep session in, say, Lessons used to always get thrown
+    // back to the Dashboard on every refresh.
+    if (!window._appBooting) LS.set('lh_last_view', name);
     document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.si').forEach(b=>b.classList.remove('active'));
     if(btn && btn.classList) btn.classList.add('active');
@@ -4277,23 +4281,53 @@ function apStatus(t, key) {
 
 function togApDetail(id, key) {
   const t = trips.find(t=>t.id===id); if(!t) return;
-  t.ap = t.ap || {};
-  t.apDetail = t.apDetail || {};
   const current = apStatus(t, key);
   const next = current === 'pending' ? 'approved' : current === 'approved' ? 'rejected' : 'pending';
 
-  let note = (t.apDetail[key] && t.apDetail[key].note) || '';
   if (next === 'rejected') {
-    const entered = prompt('Note for this rejection (what needs to change before it can be approved?):', note);
-    if (entered === null) return; // cancelled — leave the step exactly as it was
-    note = entered.trim();
-  } else {
-    note = '';
+    // A rejection needs a note — this used to be a raw browser prompt(),
+    // the only one in the app and a jarring break from everything else's
+    // styled modals (it also skipped the app's Escape/focus-trap handling).
+    const existingNote = (t.apDetail && t.apDetail[key] && t.apDetail[key].note) || '';
+    _showApRejectModal(existingNote, note => _applyApDetail(t, key, next, note));
+    return; // cancelling the modal leaves the step exactly as it was
   }
+  _applyApDetail(t, key, next, '');
+}
 
+function _applyApDetail(t, key, next, note) {
+  t.ap = t.ap || {};
+  t.apDetail = t.apDetail || {};
   t.apDetail[key] = { status: next, note, at: new Date().toISOString() };
   t.ap[key] = (next === 'approved'); // keep the legacy boolean field in sync
   renderTripDetail(t);
+}
+
+function _showApRejectModal(existingNote, onSubmit) {
+  const existing = document.getElementById('ap-reject-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ap-reject-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem">
+    <div style="font-weight:800;margin-bottom:.35rem">Note for this rejection</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:.6rem">What needs to change before it can be approved?</div>
+    <textarea id="ap-reject-note" rows="3" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.82rem"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('ap-reject-modal').remove()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="ap-reject-submit">Mark Rejected</button>
+    </div>
+  </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+  const ta = document.getElementById('ap-reject-note');
+  ta.value = existingNote;
+  ta.focus();
+  document.getElementById('ap-reject-submit').onclick = () => {
+    const note = ta.value.trim();
+    modal.remove();
+    onSubmit(note);
+  };
 }
 
 // ============================================================
@@ -4465,11 +4499,48 @@ function _moFocusables(modalEl) {
   )).filter(el => el.offsetParent !== null);
 }
 
+// ── Raw modals ────────────────────────────────────────────────────────────
+// These predate the shared .mo/openModal() system, or need their own close
+// logic (e.g. Journal's unsaved-changes confirm) that a markup migration
+// would risk disturbing. Rather than rewrite each one's markup and every
+// call site, the same Escape/focus-trap watcher below is generalized to
+// recognize them too — same protection, far less risk of regression.
+const RAW_MODAL_CLOSERS = {
+  'deadline-modal':        () => closeDeadlineModal(),
+  'journal-modal':         () => closeJournal(),
+  'journal-history-modal': () => { const el = document.getElementById('journal-history-modal'); if (el) el.style.display = 'none'; },
+  'obs-log-modal':         () => closeObsLog(),
+  'po-modal':              () => closePOModal(),
+  'sales-modal':           () => closeSalesModal(),
+  'inventory-modal':       () => closeInventoryModal(),
+  'wbl-student-modal':     () => closeWBLStudentModal(),
+  'es-player-modal':       () => closeESModal(),
+  'es-match-modal':        () => closeMatchModal(),
+  'survey-modal':          () => { const el = document.getElementById('survey-modal'); if (el) el.remove(); },
+  'ap-reject-modal':       () => { const el = document.getElementById('ap-reject-modal'); if (el) el.remove(); },
+  'deca-season-editor':    () => { const el = document.getElementById('deca-season-editor'); if (el) el.remove(); },
+  'import-confirm-modal':  () => { const el = document.getElementById('import-confirm-modal'); if (el) el.remove(); },
+};
+
+function _findVisibleRawModalId() {
+  for (const id of Object.keys(RAW_MODAL_CLOSERS)) {
+    const el = document.getElementById(id);
+    if (el && getComputedStyle(el).display !== 'none') return id;
+  }
+  return null;
+}
+
 function _moTrapKeydown(e) {
-  if (!_activeMoName) return;
-  const modalEl = document.getElementById('modal-' + _activeMoName);
+  let modalEl, onEscape;
+  if (_activeMoName) {
+    modalEl = document.getElementById('modal-' + _activeMoName);
+    onEscape = () => closeModal(_activeMoName);
+  } else {
+    const rawId = _findVisibleRawModalId();
+    if (rawId) { modalEl = document.getElementById(rawId); onEscape = RAW_MODAL_CLOSERS[rawId]; }
+  }
   if (!modalEl) return;
-  if (e.key === 'Escape') { closeModal(_activeMoName); return; }
+  if (e.key === 'Escape') { onEscape(); return; }
   if (e.key !== 'Tab') return;
   const focusable = _moFocusables(modalEl);
   if (!focusable.length) return;
@@ -5042,38 +5113,55 @@ function wzSaveTrip() {
   document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
   currentTripId = null;
 
-  // Flash success toast
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#166534;color:#fff;padding:.6rem 1.3rem;border-radius:10px;font-size:.84rem;font-weight:700;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.2);animation:fi .2s ease';
-  toast.textContent = d._editId ? `✅ Trip updated: ${trip.name}` : `✅ Trip saved: ${trip.name}`;
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 3500);
+  _showToast(d._editId ? `✅ Trip updated: ${trip.name}` : `✅ Trip saved: ${trip.name}`, 3500, '#065f46');
 
   renderDashboard(); renderTrips();
 }
 
 // ── Delete trip ───────────────────────────────────────────────────────────
 function deleteTrip(id) {
-  const t = trips.find(t=>t.id===id);
-  if (!t) return;
+  const idx = trips.findIndex(t=>t.id===id);
+  if (idx === -1) return;
   // Check whether trip was archived — if so, data survives in lh_trip_archive
   const isArchived = (typeof tripArchive !== 'undefined') && tripArchive.some(a => a.trip && a.trip.id === id);
-  const msg = isArchived
-    ? `Delete "${t.name}" from the active list? A reflection is saved in the Archive.`
-    : `Delete "${t.name}"? This trip has no archive entry — all data will be lost.`;
-  if (!confirm(msg)) return;
-  trips = trips.filter(t=>t.id!==id);
+
+  const [removedTrip] = trips.splice(idx, 1);
   persistTrips();
-  // Clean up orphaned slip roster entries for this trip
+
+  // Clean up orphaned slip roster entries for this trip — captured for undo
+  let removedSlipRoster = null;
   if (typeof slipRosters !== 'undefined' && slipRosters[id]) {
+    removedSlipRoster = slipRosters[id];
     delete slipRosters[id];
     persistSlips();
   }
-  // Clean up any DEADLINES entries tied to this trip id
-  const beforeLen = DEADLINES.length;
-  DEADLINES = DEADLINES.filter(d => d.tripId !== id);
-  if (DEADLINES.length !== beforeLen) LS.set('lh_deadlines', DEADLINES);
+
+  // Clean up any DEADLINES entries tied to this trip id — captured for undo
+  const removedDeadlines = DEADLINES.filter(d => d.tripId === id);
+  if (removedDeadlines.length) {
+    DEADLINES = DEADLINES.filter(d => d.tripId !== id);
+    LS.set('lh_deadlines', DEADLINES);
+  }
+
   renderDashboard(); renderTrips();
+
+  // Trip deletion is the highest-stakes delete in the app (cascades into
+  // slips + deadlines), yet it was the one holdout still using a blocking
+  // confirm() with no way back. Unify onto the same undo-toast pattern as
+  // every other delete, restoring all three pieces together.
+  const msg = isArchived
+    ? `Deleted "${removedTrip.name}" — a reflection is still saved in the Archive`
+    : `Deleted "${removedTrip.name}"`;
+  _undoToast(msg, () => {
+    trips.splice(idx, 0, removedTrip);
+    persistTrips();
+    if (removedSlipRoster) { slipRosters[id] = removedSlipRoster; persistSlips(); }
+    if (removedDeadlines.length) {
+      DEADLINES = DEADLINES.concat(removedDeadlines);
+      LS.set('lh_deadlines', DEADLINES);
+    }
+    renderDashboard(); renderTrips();
+  });
 }
 
 // ── Escape HTML helper for values in inputs ───────────────────────────────
@@ -5155,7 +5243,7 @@ function delEv(id){
   const _saved=[...otherEvents];
   otherEvents=otherEvents.filter(e=>e.id!==id);
   persistEvents(); renderEvents();
-  _undoToast(`Event removed`,()=>{otherEvents=_saved;persistEvents();renderEvents();});
+  _undoToast(`"${ev.name}" removed`,()=>{otherEvents=_saved;persistEvents();renderEvents();});
 }
 
 // ============================================================
@@ -5623,6 +5711,13 @@ const DECA_RESULT_EVENTS = [
 
 const DECA_PLACE_OPTIONS = ['1st','2nd','3rd','4th','5th','6th','7th','8th','Top 10','Top 12','Finalist','Award','Qualified','Did Not Place'];
 
+// Sticky conference/placement selection — logging a whole roster's results
+// is usually all the same conference and often a run of similar placements;
+// re-defaulting these dropdowns after every single add (the whole "+ Log a
+// Result" form gets rebuilt by renderDECAHub()) made re-picking them the
+// most repetitive part of the flow.
+let lastDecaConf = null, lastDecaPlace = null;
+
 function renderDecaResults() {
   const results = LS.get('lh_deca_results', []);
   // Group by event
@@ -5714,13 +5809,13 @@ function renderDecaResults() {
         <div>
           <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Conference</div>
           <select id="deca-res-conf" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
-            ${DECA_RESULT_EVENTS.map(e=>`<option value="${e.id}">${e.short}</option>`).join('')}
+            ${DECA_RESULT_EVENTS.map(e=>`<option value="${e.id}"${e.id===lastDecaConf?' selected':''}>${e.short}</option>`).join('')}
           </select>
         </div>
         <div>
           <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
           <select id="deca-res-place" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
-            ${DECA_PLACE_OPTIONS.map(p=>`<option>${p}</option>`).join('')}
+            ${DECA_PLACE_OPTIONS.map(p=>`<option${p===lastDecaPlace?' selected':''}>${p}</option>`).join('')}
           </select>
         </div>
         <button onclick="addDecaResult()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
@@ -5748,8 +5843,11 @@ function addDecaResult() {
   const _placeStr = place ? ` — ${place === '1' ? '1st' : place === '2' ? '2nd' : place === '3' ? '3rd' : place + 'th'} place` : '';
   _logDaily({ date: new Date().toISOString(), type: 'deca_result',
     note: `DECA result logged: ${event}${_placeStr} (${student})` });
-  // Clear fields
+  // Clear fields — conference/placement are intentionally left as-is (see
+  // lastDecaConf/lastDecaPlace) since a whole roster is usually entered from
+  // the same conference with similar placements.
   ['deca-res-student','deca-res-event','deca-res-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  lastDecaConf = conf; lastDecaPlace = place;
   renderDECAHub();
   refreshNextAction();
 }
@@ -5760,7 +5858,7 @@ function deleteDecaResult(id) {
   LS.set('lh_deca_results', all.filter(r => r.id !== id));
   renderDECAHub();
   if (removed) {
-    _undoToast('DECA result removed', () => {
+    _undoToast(`${removed.student} — ${removed.event} removed`, () => {
       LS.set('lh_deca_results', [...LS.get('lh_deca_results', []), removed]);
       renderDECAHub();
     });
@@ -5851,10 +5949,12 @@ function renderDecaApprovalChecklist() {
     </div>`;
   }).join('');
 
-  return `<div style="font-size:.75rem;color:var(--muted);margin-bottom:.65rem;padding:.4rem .6rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px">
-    <strong>DSP Standard 7.1</strong> — Complete all required CCPS forms and meet all stated deadlines for DECA activities and events. Required by Directed Support Plan, deadline May 15, 2026.
-  </div>
-  ${eventRows}`;
+  return `<div id="deca-checklist-body">
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:.65rem;padding:.4rem .6rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px">
+      <strong>DSP Standard 7.1</strong> — Complete all required CCPS forms and meet all stated deadlines for DECA activities and events. Required by Directed Support Plan, deadline May 15, 2026.
+    </div>
+    ${eventRows}
+  </div>`;
 }
 
 function toggleDecaCheck(eventId, stepKey, val) {
@@ -5862,13 +5962,17 @@ function toggleDecaCheck(eventId, stepKey, val) {
   if (!saved[eventId]) saved[eventId] = {};
   saved[eventId][stepKey] = val;
   LS.set('lh_deca_approvals', saved);
-  renderDECAHub();
-  // Scroll checklist into view
-  setTimeout(()=>{
-    const hub = document.getElementById('deca-hub-content');
-    const cards = hub?.querySelectorAll('.card');
-    if(cards && cards[1]) cards[1].scrollIntoView({behavior:'smooth', block:'nearest'});
-  }, 50);
+  // Refresh just this card's body, not the whole hub (timeline/results/
+  // contacts/fees don't depend on approval state) — the old full
+  // renderDECAHub() call needed a 50ms scrollIntoView hack afterward just
+  // to put the checkbox the user clicked back on screen, which replacing
+  // only this element (title bar untouched) makes unnecessary.
+  const body = document.getElementById('deca-checklist-body');
+  if (body) {
+    body.outerHTML = renderDecaApprovalChecklist();
+  } else {
+    renderDECAHub();
+  }
 }
 
 // The season pipeline used to be a hardcoded array baked into this function —
@@ -6014,10 +6118,11 @@ function saveEvent(){
 }
 
 function deleteEvent(id) {
+  const ev = otherEvents.find(e => e.id === id);
   const _saved=[...otherEvents];
   otherEvents = otherEvents.filter(e => e.id !== id);
   persistEvents(); renderEvents();
-  _undoToast('Event removed', ()=>{otherEvents=_saved;persistEvents();renderEvents();});
+  _undoToast(ev ? `"${ev.name}" removed` : 'Event removed', ()=>{otherEvents=_saved;persistEvents();renderEvents();});
 }
 
 
@@ -6352,10 +6457,11 @@ function updateStudent(id){
 }
 
 function delStu(id){
+  const stu = students.find(s=>s.id===id);
   const _saved=[...students];
   students=students.filter(s=>s.id!==id);
   persistStudents(); renderStudents();
-  _undoToast('Member removed',()=>{students=_saved;persistStudents();renderStudents();});
+  _undoToast(stu ? `${stu.first} ${stu.last} removed` : 'Member removed',()=>{students=_saved;persistStudents();renderStudents();});
 }
 
 // ── Parent Communication Log ──────────────────────────────────────────────────
@@ -6718,10 +6824,11 @@ function renderGoals(){
 }
 function updGoal(id,val){const g=goals.find(g=>g.id===id);if(g){g.progress=parseInt(val);g.updatedAt=new Date().toISOString();}persistGoals();renderGoals();refreshNextAction();}
 function delGoal(id){
+  const g = goals.find(g=>g.id===id);
   const _saved=[...goals];
   goals=goals.filter(g=>g.id!==id);
   persistGoals(); renderGoals();
-  _undoToast('Goal removed',()=>{goals=_saved;persistGoals();renderGoals();refreshNextAction();});
+  _undoToast(g ? `"${g.title}" removed` : 'Goal removed',()=>{goals=_saved;persistGoals();renderGoals();refreshNextAction();});
   refreshNextAction();
 }
 function saveGoal(){
@@ -8010,7 +8117,7 @@ function deleteArchiveEntry(archiveId) {
   const [removed] = tripArchive.splice(idx, 1);
   persistTripArchive(); // was previously never persisted — reload would undo the delete
   renderArchive();
-  _undoToast('Archive entry removed', () => {
+  _undoToast(`"${removed.trip?.name || 'Archive entry'}" removed`, () => {
     tripArchive.splice(idx, 0, removed);
     persistTripArchive();
     renderArchive();
@@ -8897,7 +9004,10 @@ function renderWBLTracker() {
     const pct      = Math.min(100, Math.round((Number(s.hours)/90)*100));
     const agColor  = s.agreement==='signed'||s.agreement==='returned' ? '#15803d' : '#d97706';
     const agLabel  = {pending:'⬜ Pending', signed:'✅ Signed', returned:'📬 Returned'}[s.agreement] || s.agreement;
-    const stColor  = {ontrack:'#15803d','on-track':'#15803d','needs-attention':'#d97706','not-started':'#dc2626'}[status] || '#6b7280';
+    // Reuse the app's shared .status st-* pill classes (Trips/Slips use the
+    // same ones) instead of one-off colored text — "on track"/"at risk"/
+    // "not started" is the same semantic shape as a trip's status badge.
+    const stClass  = {ontrack:'st-approved','on-track':'st-approved','needs-attention':'st-pending','not-started':'st-urgent'}[status] || 'st-planned';
     const stLabel  = {'on-track':'✅ On Track','needs-attention':'⚠️ Needs Attention','not-started':'🔴 Not Started'}[status] || status;
     const rColor   = ROLE_COLORS[s.role] || '#6b7280';
     return `<tr style="border-bottom:1px solid #f1f5f9">
@@ -8915,7 +9025,7 @@ function renderWBLTracker() {
       <td style="padding:.55rem .75rem;text-align:center">
         <span style="font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;color:${s.reflects>=1?'#15803d':'#dc2626'}">${s.reflects}</span>
       </td>
-      <td style="padding:.55rem .75rem"><span style="font-size:.7rem;font-weight:700;color:${stColor}">${stLabel}</span></td>
+      <td style="padding:.55rem .75rem"><span class="status ${stClass}" style="font-size:.65rem">${stLabel}</span></td>
       <td style="padding:.55rem .75rem;white-space:nowrap">
         <button onclick="openWBLEditStudent('${s.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:var(--navy);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:3px">Edit</button>
         <button onclick="wblLogHours('${s.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0369a1;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:3px">+ Hours</button>
@@ -8982,6 +9092,7 @@ function saveWBLStudent() {
   persistWBL();
   closeWBLStudentModal();
   renderWBLTracker();
+  _showToast(id ? `✅ ${data.fname} ${data.lname} updated` : `✅ ${data.fname} ${data.lname} added to WBL tracker`);
 }
 
 function closeWBLStudentModal() {
@@ -9094,7 +9205,7 @@ function renderSBEChecklist() {
         </div>
         <div style="font-size:.74rem;color:var(--muted);margin-top:.2rem;line-height:1.5">${el.desc}</div>
         <div style="margin-top:.5rem;display:flex;gap:.5rem;align-items:center">
-          <input placeholder="Add a note…" value="${st.notes||''}" onchange="sbeNote('${el.id}',this.value)" style="flex:1;font-size:.72rem;padding:.25rem .5rem;border:1px solid var(--border);border-radius:4px;max-width:320px">
+          <input placeholder="Add a note…" value="${st.notes||''}" oninput="sbeNoteInput('${el.id}',this.value)" style="flex:1;font-size:.72rem;padding:.25rem .5rem;border:1px solid var(--border);border-radius:4px;max-width:320px">
           <button onclick="sbeToggle('${el.id}')" style="font-size:.7rem;padding:.25rem .6rem;background:${isDone?'#fee2e2':'#dcfce7'};color:${isDone?'#dc2626':'#15803d'};border:none;border-radius:4px;cursor:pointer;white-space:nowrap">${isDone?'Mark Incomplete':'Mark Complete'}</button>
         </div>
       </div>
@@ -9113,6 +9224,16 @@ function sbeNote(id, val) {
   SBE_STATUS[id] = SBE_STATUS[id] || {};
   SBE_STATUS[id].notes = val;
   persistSBE();
+}
+
+// Debounced on every keystroke rather than committing only on blur — a
+// checkbox click on a different row (sbeToggle()) rebuilds this whole
+// checklist via renderSBEChecklist(), which used to silently discard
+// whatever hadn't been blurred yet in another row's note field.
+let _sbeNoteTimer = null;
+function sbeNoteInput(id, val) {
+  clearTimeout(_sbeNoteTimer);
+  _sbeNoteTimer = setTimeout(() => sbeNote(id, val), 300);
 }
 
 function sbeCheckAll() {
@@ -9712,6 +9833,10 @@ async function openLPModal(id) {
   }
   document.getElementById('lp-ai-output').textContent   = 'Choose a prompt above or ask a custom question to get AI assistance with this lesson plan.';
   document.getElementById('lp-ai-custom').value         = '';
+  // Clear any leftover text from a previously opened (and possibly
+  // discarded-without-saving) plan — otherwise it can resurface as if it
+  // belonged to this plan the first time the Edit tab is opened.
+  document.getElementById('lp-edit-area').value = LP_EDITS[lp.docId] || '';
 
   // Switch to view tab and load content
   lpSwitchTab('view', document.getElementById('lptab-view'));
@@ -9804,12 +9929,7 @@ function lpSaveEdit() {
   document.getElementById('lp-pane-view').innerHTML = lpMarkdownToHTML(text);
   lpSwitchTab('view', document.getElementById('lptab-view'));
   renderLessonPlans(); // refresh cards to show "Edited" badge
-  // Show brief success toast
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:2rem;right:2rem;background:#15803d;color:#fff;padding:.7rem 1.2rem;border-radius:8px;font-size:.8rem;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.2)';
-  toast.textContent = '✅ Lesson plan saved locally';
-  document.body.appendChild(toast);
-  setTimeout(()=>toast.remove(), 2800);
+  _showToast('✅ Lesson plan saved locally');
   refreshNextAction();
 }
 
@@ -9851,7 +9971,20 @@ async function lpAIAssist() {
 
 
 
-function closeLPModal() {
+function _lpHasUnsavedChanges() {
+  if (!lpActivePlan) return false;
+  const ta = document.getElementById('lp-edit-area');
+  if (!ta) return false;
+  const current = ta.value.trim();
+  const saved = (LP_EDITS[lpActivePlan.docId] || '').trim();
+  return current !== saved && !!current;
+}
+
+function closeLPModal(skipConfirm) {
+  if (!skipConfirm && _lpHasUnsavedChanges() &&
+      !confirm('Discard unsaved changes to this lesson plan?')) {
+    return;
+  }
   document.getElementById('lp-modal').style.display = 'none';
   lpActivePlan = null;
 }
@@ -10212,13 +10345,20 @@ function renderPOTable() {
     tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.78rem">No purchase orders yet. Click "+ New PO" to create one.</td></tr>`;
     return;
   }
-  const STAGE_COLORS = {
-    'Market Research':'#1a3560','Requisition Filed':'#0369a1','Awaiting Approval':'#d97706',
-    'Approved / Ordered':'#7c3aed','Received':'#15803d','Discrepancy':'#dc2626'
+  // Same visual language as the shared .status st-* pills used for Trips/
+  // Slips/WBL — this one stays a <select> (it's also how the stage gets
+  // changed), but styled to read as the same "status" concept everywhere.
+  const STAGE_STATUS = {
+    'Market Research':   { bg:'var(--blue-light)', fg:'#0369a1' },
+    'Requisition Filed':  { bg:'var(--blue-light)', fg:'#0369a1' },
+    'Awaiting Approval':  { bg:'#fef9c3',           fg:'#854d0e' },
+    'Approved / Ordered': { bg:'#dcfce7',           fg:'#166534' },
+    'Received':           { bg:'#d1fae5',           fg:'#065f46' },
+    'Discrepancy':        { bg:'var(--red-light)',  fg:'#b91c1c' },
   };
   tbody.innerHTML = PURCHASE_ORDERS.map(po => {
     const total = (po.qty * po.cost).toFixed(2);
-    const sc = STAGE_COLORS[po.stage]||'#6b7280';
+    const ss = STAGE_STATUS[po.stage] || { bg:'#f1f5f9', fg:'#6b7280' };
     const stages = ['Market Research','Requisition Filed','Awaiting Approval','Approved / Ordered','Received','Discrepancy'];
     const opts = stages.map(s=>`<option ${po.stage===s?'selected':''}>${s}</option>`).join('');
     return `<tr style="border-bottom:1px solid #f1f5f9">
@@ -10230,7 +10370,7 @@ function renderPOTable() {
       <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.76rem">$${Number(po.cost).toFixed(2)}</td>
       <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.76rem;font-weight:700;color:var(--navy)">$${total}</td>
       <td style="padding:.45rem .7rem">
-        <select onchange="updatePOStage('${po.id}',this.value)" style="font-size:.7rem;padding:.2rem .4rem;border:1px solid ${sc};border-radius:4px;color:${sc};font-weight:700;background:#fff;cursor:pointer">${opts}</select>
+        <select onchange="updatePOStage('${po.id}',this.value)" class="status" style="border:none;background:${ss.bg};color:${ss.fg};cursor:pointer">${opts}</select>
       </td>
       <td style="padding:.45rem .7rem">
         <button onclick="deletePO('${po.id}')" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
@@ -10239,7 +10379,18 @@ function renderPOTable() {
   }).join('');
 }
 
-function openPOModal() { document.getElementById('po-modal').style.display='block'; }
+function openPOModal() {
+  // openPOModal() used to reset nothing at all — every field, including
+  // cost/price/qty, silently carried over the last PO entered.
+  document.getElementById('po-item').value   = '';
+  document.getElementById('po-cat').value    = 'Apparel';
+  document.getElementById('po-vendor').value = '';
+  document.getElementById('po-qty').value    = '1';
+  document.getElementById('po-cost').value   = '0';
+  document.getElementById('po-price').value  = '0';
+  document.getElementById('po-buyer').value  = '';
+  document.getElementById('po-modal').style.display='block';
+}
 function closePOModal() { document.getElementById('po-modal').style.display='none'; }
 
 function savePO() {
@@ -10258,6 +10409,7 @@ function savePO() {
   persistPO();
   closePOModal();
   renderPOTable();
+  _showToast(`✅ PO created: ${item}`);
 }
 
 function updatePOStage(id, stage) {
@@ -10266,11 +10418,12 @@ function updatePOStage(id, stage) {
 }
 
 function deletePO(id) {
+  const po = PURCHASE_ORDERS.find(p=>String(p.id)===String(id));
   const _saved = [...PURCHASE_ORDERS];
   PURCHASE_ORDERS = PURCHASE_ORDERS.filter(p=>String(p.id)!==String(id));
   persistPO();
   renderPOTable();
-  _undoToast('Purchase order removed', () => { PURCHASE_ORDERS = _saved; persistPO(); renderPOTable(); });
+  _undoToast(po ? `"${po.item}" PO removed` : 'Purchase order removed', () => { PURCHASE_ORDERS = _saved; persistPO(); renderPOTable(); });
 }
 
 // ============================================================
@@ -10298,7 +10451,7 @@ function renderFinance() {
   // Sales log
   const logEl = document.getElementById('sales-log-list');
   if (!SALES_LOG.length) {
-    logEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No shifts logged yet.</div>`;
+    logEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No shifts logged yet — click "+ Log Shift" after each shift.</div>`;
   } else {
     logEl.innerHTML = [...SALES_LOG].reverse().map(s => {
       const rev = Number(s.cash)+Number(s.card);
@@ -10323,7 +10476,7 @@ function renderFinance() {
   // Inventory
   const invEl = document.getElementById('inventory-list');
   if (!INVENTORY.length) {
-    invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs yet.</div>`;
+    invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs yet — click "+ Add SKU" to start tracking inventory.</div>`;
   } else {
     invEl.innerHTML = INVENTORY.map(item => {
       const low    = item.qty <= item.reorder;
@@ -10348,15 +10501,26 @@ function renderFinance() {
 }
 
 function deleteSale(id) {
+  const sale = SALES_LOG.find(s => s.id === id);
   const _saved = [...SALES_LOG];
   SALES_LOG = SALES_LOG.filter(s => s.id !== id);
   persistSales();
   renderFinance();
-  _undoToast('Sales entry removed', () => { SALES_LOG = _saved; persistSales(); renderFinance(); });
+  _undoToast(sale ? `Sale from ${sale.date} removed` : 'Sales entry removed', () => { SALES_LOG = _saved; persistSales(); renderFinance(); });
 }
 
 function openSalesModal() {
   document.getElementById('sales-date').valueAsDate = new Date();
+  // Reset everything except float, which genuinely is sticky (same drawer
+  // float shift to shift) — cash/card/units/cogs/notes used to silently
+  // carry over the last entry's numbers, an easy way to resubmit a stale
+  // shift's figures without noticing.
+  document.getElementById('sales-staff').value = '';
+  document.getElementById('sales-cash').value  = '0';
+  document.getElementById('sales-card').value  = '0';
+  document.getElementById('sales-units').value = '0';
+  document.getElementById('sales-cogs').value  = '0';
+  document.getElementById('sales-notes').value = '';
   document.getElementById('sales-modal').style.display='block';
 }
 function closeSalesModal() { document.getElementById('sales-modal').style.display='none'; }
@@ -10377,6 +10541,7 @@ function saveSales() {
   closeSalesModal();
   persistSales();
   renderFinance();
+  _showToast('✅ Sale logged');
 }
 
 function openInventoryModal(id) {
@@ -10412,6 +10577,7 @@ function saveInventorySKU() {
   persistInventory();
   closeInventoryModal();
   renderFinance();
+  _showToast(id ? `✅ "${name}" updated` : `✅ "${name}" added to inventory`);
 }
 
 function deleteInventorySKU(id) {
@@ -10578,6 +10744,7 @@ function saveESPlayer() {
   persistESPlayers();
   closeESModal();
   renderESRoster();
+  _showToast(id ? `✅ ${fname} ${lname} updated` : `✅ ${fname} ${lname} added to roster`);
 }
 
 function deleteESPlayer(id) {
@@ -10696,15 +10863,17 @@ function saveMatch() {
   renderMatchLog();
   renderESRoster(); // refresh win count
   refreshNextAction();
+  _showToast(`✅ Match logged: ${_result} ${_usScore}–${_themScore} vs ${opp}`);
 }
 
 function deleteMatch(id) {
+  const m = ES_MATCHES.find(m=>m.id===id);
   const _saved = [...ES_MATCHES];
   ES_MATCHES = ES_MATCHES.filter(m=>m.id!==id);
   persistESMatches();
   renderMatchLog();
   renderESRoster();
-  _undoToast('Match removed', () => { ES_MATCHES = _saved; persistESMatches(); renderMatchLog(); renderESRoster(); });
+  _undoToast(m ? `Match vs ${m.opp} removed` : 'Match removed', () => { ES_MATCHES = _saved; persistESMatches(); renderMatchLog(); renderESRoster(); });
 }
 
 
@@ -11819,12 +11988,13 @@ function saveDeadline(){
   refreshNextAction();
 }
 function deleteDeadline(id){
+  const dl = DEADLINES.find(d=>d.id===id);
   const _saved = [...DEADLINES];
   DEADLINES=DEADLINES.filter(d=>d.id!==id);
   LS.set('lh_deadlines',DEADLINES);
   renderDeadlines();
   refreshNextAction();
-  _undoToast('Deadline removed', () => {
+  _undoToast(dl ? `"${dl.title}" removed` : 'Deadline removed', () => {
     DEADLINES = _saved;
     LS.set('lh_deadlines', DEADLINES);
     renderDeadlines();
@@ -12079,16 +12249,20 @@ function buildActionQueue(){
 }
 
 // ── Dual Choice Cards ──────────────────────────────────────
+let _lastChoiceCardsSig = null;
 function renderChoiceCards(){
   const container=document.getElementById('choice-cards'); if(!container) return;
   const q=buildActionQueue();
   const top2=q.slice(0,2);
   if(!top2.length){
-    container.innerHTML=`<div style="grid-column:1/-1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:2rem;text-align:center">
-      <div style="font-size:1.5rem;margin-bottom:.5rem">✅</div>
-      <div style="font-weight:700;font-size:.88rem;color:var(--ink);margin-bottom:.25rem">All priorities handled</div>
-      <div style="font-size:.75rem;color:var(--muted)">Great work — check the horizon lists for what's next.</div>
-    </div>`;
+    if (_lastChoiceCardsSig !== '__empty__') {
+      _lastChoiceCardsSig = '__empty__';
+      container.innerHTML=`<div style="grid-column:1/-1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:2rem;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:.5rem">✅</div>
+        <div style="font-weight:700;font-size:.88rem;color:var(--ink);margin-bottom:.25rem">All priorities handled</div>
+        <div style="font-size:.75rem;color:var(--muted)">Great work — check the horizon lists for what's next.</div>
+      </div>`;
+    }
     return;
   }
 
@@ -12109,6 +12283,16 @@ function renderChoiceCards(){
     countBadge.style.background = total > 5 ? '#fef2f2' : total > 2 ? '#fefce8' : '#f0fdf4';
     countBadge.style.color = total > 5 ? '#dc2626' : total > 2 ? '#ca8a04' : '#16a34a';
   }
+
+  // Skip the innerHTML rebuild (and its .choice-card fadeUp entrance
+  // animation) when the top-2 priorities haven't actually changed — a small
+  // dashboard action elsewhere (e.g. ticking one Quick Log checkbox) used to
+  // trigger refreshNextAction()'s full cascade and replay this card's
+  // entrance animation for no reason every single time.
+  const sig = top2.map(i => i.text + '|' + i.days).join('::');
+  if (sig === _lastChoiceCardsSig) return;
+  _lastChoiceCardsSig = sig;
+
   container.innerHTML=top2.map((item,i)=>{
     const r=DB_ROLES[item.role]||DB_ROLES.general;
     const u=item.days!==null?urgencyClass(item.days):{bg:'#f1f5f9',text:'#475569',dot:'•',label:'Ongoing'};
@@ -12397,8 +12581,9 @@ function qlLogHours(){
   const sid=document.getElementById('ql-wbl-student').value;
   const hrs=parseFloat(document.getElementById('ql-wbl-hrs').value)||0;
   if(!sid||hrs<=0){ _showToast('Select a student and enter hours.', 2500, '#991b1b'); return; }
+  let s = null;
   if(typeof WBL_STUDENTS!=='undefined'){
-    const s=WBL_STUDENTS.find(x=>x.id===sid);
+    s=WBL_STUDENTS.find(x=>x.id===sid);
     if(s){
       s.hours=Number(s.hours)+hrs;
       // Log for Brag Board weekly wins
@@ -12410,6 +12595,9 @@ function qlLogHours(){
   persistWBL(); renderQuickLog(); refreshNextAction();
   const btn=event.target; btn.textContent='✓';
   setTimeout(()=>btn.textContent='+h',1200);
+  // Same feedback richness as wblLogHoursConfirm() for the identical action —
+  // this quick-log path used to only flash the button, with no running total.
+  if (s) _showToast(`+${hrs}h logged for ${s.fname} — total ${s.hours}h`, 2800, '#0369a1');
 }
 
 // ── Horizon lists ─────────────────────────────────────────
@@ -12457,8 +12645,20 @@ function renderHorizons(){
 function addHorizon(h){
   const inp=document.getElementById('h-'+h+'-inp');
   const text=(inp.value||'').trim(); if(!text) return;
-  HORIZON[h].push({id:'h'+Date.now(),text,done:false});
+  const newId = 'h'+Date.now();
+  HORIZON[h].push({id:newId,text,done:false});
   inp.value=''; LS.set('lh_horizon',HORIZON); renderHorizons();
+  // Completing an item fades out deliberately (see horizonToggle) — adding
+  // one used to just snap into place with no equivalent entrance.
+  const row = document.querySelector('[data-hid="'+newId+'"]');
+  if (row) {
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(-6px)';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      row.style.opacity = '1';
+      row.style.transform = 'translateX(0)';
+    }));
+  }
 }
 function horizonToggle(h,id){
   const item=HORIZON[h].find(x=>x.id===id); if(!item) return;
@@ -12864,6 +13064,9 @@ async function saveJournalEntry(){
   _journalOpenSnapshot = null;
   closeJournal();
   if(btn){ btn.textContent='Save & Set Tomorrow ✦'; btn.disabled=false; }
+  // The most reflective, highest-effort save in the app was also the one
+  // with zero confirmation that it actually landed.
+  _showToast('✅ Reflection saved — see you tomorrow');
   refreshNextAction();
   updateJournalCTA();
 }
@@ -13603,19 +13806,42 @@ function lhImportBackup(fileInput){
   reader.onload = (e) => {
     let parsed;
     try { parsed = JSON.parse(e.target.result); }
-    catch(err){ alert('Could not read this file — make sure it\'s a LeaderHub backup export (.json).'); return; }
+    catch(err){ _showToast('Could not read this file — make sure it\'s a LeaderHub backup export (.json).', 4000, '#991b1b'); return; }
 
     const data = (parsed && parsed.data) || parsed;
     const keys = Object.keys(data || {}).filter(k => k.startsWith('lh_'));
-    if (!keys.length){ alert('This doesn\'t look like a LeaderHub backup — no lh_ data keys found.'); return; }
-    if (!confirm('Import ' + keys.length + ' data key(s) from this backup? This overwrites anything currently saved under the same names — consider exporting your current data first.')) return;
+    if (!keys.length){ _showToast('This doesn\'t look like a LeaderHub backup — no lh_ data keys found.', 4000, '#991b1b'); return; }
 
-    keys.forEach(k => localStorage.setItem(k, data[k]));
-    alert('Import complete. Reloading LeaderHub…');
-    location.reload();
+    // Native alert()/confirm() used to interrupt with raw OS dialogs here —
+    // a jarring break from the app's own toast/modal vocabulary, right in
+    // the middle of a genuinely destructive action worth getting right.
+    _showImportConfirmModal(keys.length, () => {
+      keys.forEach(k => localStorage.setItem(k, data[k]));
+      _showToast('✅ Import complete — reloading…');
+      setTimeout(() => location.reload(), 900);
+    });
   };
   reader.readAsText(file);
   fileInput.value = '';
+}
+
+function _showImportConfirmModal(count, onConfirm) {
+  const existing = document.getElementById('import-confirm-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'import-confirm-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem">
+    <div style="font-weight:800;margin-bottom:.5rem">Import backup?</div>
+    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Import ${count} data key(s) from this backup? This overwrites anything currently saved under the same names — consider exporting your current data first.</div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-confirm-modal').remove()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="import-confirm-submit">Import &amp; Overwrite</button>
+    </div>
+  </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+  document.getElementById('import-confirm-submit').onclick = () => { modal.remove(); onConfirm(); };
 }
 
 // ── Synergy / Canvas Currency Tracker ────────────────────────────────────────
@@ -13865,7 +14091,7 @@ function deleteObsLog(id) {
   LS.set('lh_obs_history', all.filter(o => o.id !== id));
   renderObsChecklist();
   if (removed) {
-    _undoToast('Observation log entry removed', () => {
+    _undoToast(`${removed.type || 'Observation'} log (${removed.date}) removed`, () => {
       LS.set('lh_obs_history', [...LS.get('lh_obs_history', []), removed]);
       renderObsChecklist();
     });
@@ -14331,6 +14557,20 @@ window._appBooting = true;
 renderDashboard(); calcCost(); updateArchiveBadge(); renderStudents(); initCockpit(); migrateSlipRosters();
 restoreAccState();
 window._appBooting = false;
+// Restore whatever section was open last session (and its sidebar group)
+// instead of always landing back on the Dashboard with everything collapsed.
+try {
+  const _lastView = LS.get('lh_last_view', 'dashboard');
+  if (_lastView && _lastView !== 'dashboard' && document.getElementById('view-'+_lastView)) {
+    const _lastBtn = document.querySelector('.si[onclick*="showView(\'' + _lastView + '\'"]') || null;
+    showView(_lastView, _lastBtn);
+  } else {
+    // Still on Dashboard — its own accordion group was skipped above
+    // (window._appBooting was true), so open it explicitly.
+    const h = document.getElementById('acc-dashboard'), b = document.getElementById('accb-dashboard');
+    if (h && b) { h.classList.add('open'); b.classList.add('open'); }
+  }
+} catch (e) {}
 // Email bridge: poll on boot, then every 10 minutes
 EMAIL_BRIDGE.poll();
 setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
@@ -14895,7 +15135,7 @@ function removeSubStudentNote(i) {
   LS.set('lh_sub_student_notes', notes);
   renderSubStudentNotes(notes);
   if (removed) {
-    _undoToast('Note removed', () => {
+    _undoToast(removed.name ? `Note on ${removed.name} removed` : 'Note removed', () => {
       const current = LS.get('lh_sub_student_notes', []);
       current.splice(i, 0, removed);
       LS.set('lh_sub_student_notes', current);
@@ -14967,7 +15207,10 @@ function saveSubPlanToLog() {
 // Auto-prompts Friday afternoons. Manual trigger via Tools → Weekly Wins.
 // ══════════════════════════════════════════════════════════════════════════════
 
-let _bragTab = 'green';
+// Remembers the last audience used — it's a weekly-repeated action almost
+// always sent to the same 1-2 people, not something worth re-picking from
+// scratch (green) every time.
+let _bragTab = LS.get('lh_brag_last_tab', 'green');
 let _bragData = {};
 
 const BRAG_AUDIENCE = {
@@ -15006,8 +15249,7 @@ function openBragBoard(autoPrompt) {
   const iso = d.toISOString().slice(0, 10);
   document.getElementById('brag-week-start').value = iso;
 
-  _bragTab = 'green';
-  setBragTab('green', document.getElementById('brag-tab-green'));
+  setBragTab(_bragTab, document.getElementById('brag-tab-' + _bragTab));
   gatherBragData();
   openModal('bragboard');
 
@@ -15016,17 +15258,24 @@ function openBragBoard(autoPrompt) {
   }
 }
 
+function _bragSubjectForWeek() {
+  const aud = BRAG_AUDIENCE[_bragTab];
+  const weekStart = document.getElementById('brag-week-start').value;
+  const weekLabel = weekStart ? new Date(weekStart + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
+  return aud.subjectPrefix + (weekLabel ? ' — Week of ' + weekLabel : '');
+}
+
 function setBragTab(tab, btn) {
+  // A genuine audience switch — resets everything, including any drafted
+  // body, since the audience is what the draft was written for.
   _bragTab = tab;
+  LS.set('lh_brag_last_tab', tab);
   document.querySelectorAll('#modal-bragboard .email-tab').forEach(b => b.classList.remove('active'));
   if (btn) btn.classList.add('active');
   const aud = BRAG_AUDIENCE[tab];
   document.getElementById('brag-to').value = aud.to;
   document.getElementById('brag-cc').value = '';
-  // Update subject with current week
-  const weekStart = document.getElementById('brag-week-start').value;
-  const weekLabel = weekStart ? new Date(weekStart + 'T12:00:00').toLocaleDateString('en-US', { month:'short', day:'numeric' }) : '';
-  document.getElementById('brag-subject').value = aud.subjectPrefix + (weekLabel ? ' — Week of ' + weekLabel : '');
+  document.getElementById('brag-subject').value = _bragSubjectForWeek();
   document.getElementById('brag-body').value = '';
   document.getElementById('brag-ai-status').textContent = '';
   document.getElementById('brag-copy-confirm').textContent = '';
@@ -15171,8 +15420,12 @@ function gatherBragData() {
   const totalWins = completedTasks.length + decaResults.length + archivedTrips.length + emailItems.length + logEntries.length + scrWins.length + wblWins.length + esMatchWins.length + journalWins.length + manualWins.length;
   document.getElementById('brag-empty-state').style.display = totalWins ? 'none' : 'block';
 
-  // Refresh subject line with current week
-  setBragTab(_bragTab, document.getElementById('brag-tab-' + _bragTab));
+  // Refresh the subject line's week label only — this used to call
+  // setBragTab(), which also wipes the "to"/"cc"/body fields, so adding a
+  // manual win or changing the week silently erased an already-drafted or
+  // AI-generated email with no warning.
+  const subjEl = document.getElementById('brag-subject');
+  if (subjEl) subjEl.value = _bragSubjectForWeek();
 }
 
 
@@ -15194,7 +15447,7 @@ function deleteBragManualWin(id) {
   LS.set('lh_brag_manual_wins', all.filter(w => w.id !== id));
   gatherBragData();
   if (removed) {
-    _undoToast('Win removed', () => {
+    _undoToast(`"${(removed.text||'').slice(0,40)}" removed`, () => {
       LS.set('lh_brag_manual_wins', [...LS.get('lh_brag_manual_wins', []), removed]);
       gatherBragData();
     });
