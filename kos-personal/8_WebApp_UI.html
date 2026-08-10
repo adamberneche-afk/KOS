@@ -926,6 +926,19 @@ function handleSubmit() {
     return;
   }
 
+  // Research/Context has no folder-drop path (submitExternalData writes
+  // one Doc in a single call, with no chunking) — so unlike Session Log,
+  // there's nowhere to redirect the user to. Block clearly instead of
+  // letting an oversized paste hit a raw, confusing failure.
+  if (currentType === 'research' && text.length > LARGE_PAYLOAD_THRESHOLD) {
+    showIngestToast(
+      text.length.toLocaleString() + ' chars — too large to submit at once. Split it into smaller sections (under ' +
+      LARGE_PAYLOAD_THRESHOLD.toLocaleString() + ' chars) and submit each separately.',
+      false
+    );
+    return;
+  }
+
   btn.disabled = true;
   label.textContent = 'Sending…';
   icon.className = 'ti ti-loader-2';
@@ -1113,7 +1126,8 @@ function loadShadowMatrix() {
     const el = document.getElementById('shadow-matrix-list');
     if (!el) return;
     if (!res || !res.success) {
-      el.innerHTML = '<div class="empty" style="padding:4px 0">Shadow matrix unavailable.</div>';
+      el.innerHTML = '<div class="empty" style="padding:4px 0">' +
+        esc((res && res.message) || 'Shadow matrix unavailable.') + '</div>';
       return;
     }
     const modeColors = { CALIBRATED:'dot-armed', LEARNING:'dot-cold', COLD:'dot-unk' };
@@ -1134,8 +1148,16 @@ function loadShadowMatrix() {
         (q.inferred ? '<div style="font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)">' + esc(q.inferred.substring(0,60)) + (q.inferred.length>60?'…':'') + '</div>' : '') +
         '</div>';
     }).join('');
+    // Gate on engine_armed (has completeOnboarding() actually run?), not
+    // all_verified (the ambient shadow matrix can fully resolve before
+    // onboarding ever runs) — otherwise the only entry point into
+    // onboarding can vanish while the engine is still cold.
     const armBtn = document.getElementById('btn-arm');
-    if (armBtn) armBtn.style.display = res.all_verified ? 'none' : '';
+    if (armBtn) armBtn.style.display = res.engine_armed ? 'none' : '';
+  }, (err) => {
+    const el = document.getElementById('shadow-matrix-list');
+    if (el) el.innerHTML = '<div class="empty" style="padding:4px 0">' +
+      'Couldn\'t load — ' + esc(err.message) + '</div>';
   });
 }
 
@@ -1144,9 +1166,13 @@ function loadShadowMatrix() {
 function handlePrimer() {
   const btn = document.getElementById('btn-primer');
   btn.disabled = true; showDiagStatus('Generating primer…');
-  callServer('generateDailyPrimer', [], () => {
+  callServer('generateDailyPrimer', [], (res) => {
     btn.disabled = false;
-    showDiagStatus('Daily primer saved to 03.1_CURRENT_STATE.');
+    if (res && res.success) {
+      showDiagStatus('Daily primer saved to 03.1_CURRENT_STATE.');
+    } else {
+      showDiagStatus('Error: ' + ((res && res.message) || 'Primer generation failed.'), 'danger');
+    }
   }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger'); });
 }
 
@@ -1249,7 +1275,11 @@ function submitArmEngine() {
 function loadHealthSummary() {
   callServer('getSystemHealth', [], (res) => {
     const el = document.getElementById('health-summary');
-    if (!res || !res.success) { el.innerHTML = ''; return; }
+    if (!res || !res.success) {
+      el.innerHTML = '<div class="empty" style="padding:4px 0">' +
+        esc((res && res.message) || 'System state unavailable.') + '</div>';
+      return;
+    }
 
     const obText = res.onboardingDay > 0
       ? 'Day ' + res.onboardingDay + ' of ' + res.onboardingCap
@@ -1265,6 +1295,10 @@ function loadHealthSummary() {
         ? healthRow('Promoted themes', res.promotedVectors.join(', '))
         : '') +
       '</div>';
+  }, (err) => {
+    const el = document.getElementById('health-summary');
+    if (el) el.innerHTML = '<div class="empty" style="padding:4px 0">' +
+      'Couldn\'t load — ' + esc(err.message) + '</div>';
   });
 }
 
@@ -1285,6 +1319,11 @@ function loadVectorState() {
       return;
     }
     renderVectors(res);
+  }, (err) => {
+    const el = document.getElementById('vec-list');
+    if (el) el.innerHTML = '<div class="empty" style="padding:8px 0">' +
+      '<i class="ti ti-alert-triangle" style="font-size:18px;opacity:.4"></i>' +
+      'Couldn\'t load — ' + esc(err.message) + '</div>';
   });
 }
 
@@ -1300,13 +1339,14 @@ function renderVectors(res) {
   }
 
   el.innerHTML = vecs.map(v => {
-    const pct     = Math.round(Math.min(v.score, 1) * 100);
+    const clamped = Math.min(v.score, 1);
+    const pct     = Math.round(clamped * 100);
     const isPromo = promd.includes(v.name);
     const fillCls = isPromo ? 'bar-fill promoted' : 'bar-fill';
     return '<div class="vec-row">' +
       '<div class="vec-hdr">' +
       '<span class="vec-name">' + esc(v.name) + (isPromo ? ' ✦' : '') + '</span>' +
-      '<span class="vec-score">' + v.score.toFixed(2) + '</span>' +
+      '<span class="vec-score">' + clamped.toFixed(2) + '</span>' +
       '</div>' +
       '<div class="bar-bg"><div class="' + fillCls + '" style="width:' + pct + '%"></div></div>' +
       '</div>';
@@ -1324,6 +1364,9 @@ function loadWebhookUrl() {
   callServer('getWebAppUrl', [], (url) => {
     const el = document.getElementById('webhook-url');
     if (el) el.textContent = String(url);
+  }, (err) => {
+    const el = document.getElementById('webhook-url');
+    if (el) el.textContent = 'Couldn\'t load URL — ' + err.message;
   });
 }
 
