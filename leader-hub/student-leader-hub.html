@@ -626,7 +626,7 @@ window.onerror = function(msg, src, line, col, err) {
     <button onclick="showView('competency',this)">📐 SCR</button>
     <button onclick="showView('wbl',this)">🏪 Store</button>
     <button onclick="showView('esports',this)">🎮 E-Sports</button>
-    <button onclick="openSurveyModal()" style="background:rgba(232,184,75,.2);color:var(--gold);border:1px solid rgba(232,184,75,.4);border-radius:4px">⚙️ Setup</button>
+    <button onclick="openSurveyModal()" style="background:rgba(232,184,75,.2);color:var(--gold);border:1px solid rgba(232,184,75,.4);border-radius:4px">⚙️ Settings</button>
   </nav>
   <button class="btn btn-gold btn-sm" onclick="openModal('newTrip')">+ New Trip</button>
 </header>
@@ -646,7 +646,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="acc-body" id="accb-dashboard">
     <button class="si" onclick="showView('dashboard',this)"><span class="ic">📊</span>Command Center</button>
     <button class="si" onclick="openDeadlineModal()"><span class="ic">⏱️</span>Add Deadline</button>
-    <button class="si" onclick="openSurveyModal()"><span class="ic">⚙️</span>Workflow Setup</button>
+    <button class="si" onclick="openSurveyModal()"><span class="ic">⚙️</span>Settings</button>
     <button class="si" onclick="openModal('emailbridge');openEmailBridgeModal_();"><span class="ic">📧</span>Email Bridge <span id="email-bridge-status" style="font-size:.6rem;margin-left:auto;font-weight:700;color:#b45309">⚠️ Off</span></button>
     <button class="si" onclick="openEmailComposer()"><span class="ic">✉️</span>Compose Email</button>
   </div>
@@ -1287,6 +1287,9 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div id="tf-process">
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px">
+      📖 General process reference — a personal checklist for learning/remembering the steps. Checking a box here does <strong>not</strong> approve any specific trip; that lives on each trip's own Approval Chain in its Trip Detail view.
+    </div>
     <div class="grid g2" style="align-items:start">
       <div class="card cal"><div class="stitle">I. Sponsor Steps</div><ul class="cl" id="sponsor-cl"></ul></div>
       <div class="card cal blue"><div class="stitle">II. Coordinator Steps</div><ul class="cl" id="coord-cl"></ul></div>
@@ -1295,6 +1298,9 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div id="tf-approvals" style="display:none">
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px">
+      📖 Reference diagram showing who's in each approval chain and why — not clickable, and not tied to any specific trip. To approve or reject a step for a real trip, use that trip's own Approval Chain in Trip Detail.
+    </div>
     <div class="grid g3" style="align-items:start">
       <div class="card cal green"><div class="stitle">Athletics — Same Day</div><div id="ap-ath" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
       <div class="card cal blue"><div class="stitle">Academic — Same Day</div><div id="ap-acad" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
@@ -2124,7 +2130,7 @@ window.onerror = function(msg, src, line, col, err) {
           <button onclick="lpAIPrompt('Write a pacing breakdown for this lesson across a 90-minute block period and a 50-minute period.')" class="btn btn-outline btn-sm" style="text-align:left">⏱️ Pacing Guide</button>
         </div>
         <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
-          <input id="lp-ai-custom" placeholder="Ask anything about this lesson plan…" style="flex:1;font-size:.8rem;padding:.45rem .7rem;border:1px solid var(--border);border-radius:6px" onkeydown="if(event.key==='Enter')lpAICustom()">
+          <input id="lp-ai-custom" placeholder="Ask about differentiation, objectives, or assessment…" style="flex:1;font-size:.8rem;padding:.45rem .7rem;border:1px solid var(--border);border-radius:6px" onkeydown="if(event.key==='Enter')lpAICustom()">
           <button onclick="lpAICustom()" class="btn btn-primary btn-sm">Ask →</button>
         </div>
         <div id="lp-ai-output" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:200px;font-size:.82rem;line-height:1.7;white-space:pre-wrap"></div>
@@ -4291,9 +4297,22 @@ function renderTripDetail(t) {
       <div class="card cal blue">
         <div class="stitle">✅ Approval Chain</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem">
-          ${apSteps.map(s=>{const done=t.ap&&t.ap[s.k];return`<div style="display:flex;flex-direction:column;align-items:center;min-width:68px"><div onclick="togApDetail(${t.id},'${s.k}')" style="width:32px;height:32px;border-radius:50%;border:2px solid ${done?'var(--green)':'var(--border)'};background:${done?'var(--green)':'#fff'};color:${done?'#fff':'#888'};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem">${done?'✓':'○'}</div><div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.25rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div></div>`;}).join('')}
+          ${apSteps.map(s=>{
+            const st = apStatus(t, s.k);
+            const detail = (t.apDetail && t.apDetail[s.k]) || null;
+            const look = st === 'approved' ? {bd:'var(--green)',bg:'var(--green)',fg:'#fff',glyph:'✓'}
+                       : st === 'rejected' ? {bd:'var(--red)',bg:'var(--red)',fg:'#fff',glyph:'✕'}
+                       : {bd:'var(--border)',bg:'#fff',fg:'#888',glyph:'○'};
+            const tip = detail
+              ? `${s.l}: ${st} — ${new Date(detail.at).toLocaleDateString()}${detail.note?' — '+detail.note:''}`
+              : `${s.l}: pending`;
+            return `<div style="display:flex;flex-direction:column;align-items:center;min-width:68px">
+              <div onclick="togApDetail(${t.id},'${s.k}')" title="${tip.replace(/"/g,'&quot;')}" style="width:32px;height:32px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem">${look.glyph}</div>
+              <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.25rem;color:${st==='rejected'?'var(--red)':'#555'};max-width:65px;line-height:1.2">${s.l}</div>
+            </div>`;
+          }).join('')}
         </div>
-        <div style="font-size:.73rem;color:var(--muted)">${apDone}/${apSteps.length} approved · Click to toggle</div>
+        <div style="font-size:.73rem;color:var(--muted)">${apDone}/${apSteps.length} approved · Click to cycle pending → approved → rejected</div>
       </div>
     </div>
 
@@ -4362,9 +4381,39 @@ function fieldRow(label, val) {
   return `<div class="field-row"><div class="field-dot ${empty?'fd-miss':'fd-ok'}"></div><div class="field-name" style="color:${empty?'var(--red)':'inherit'}">${label}</div><span style="font-size:.75rem;color:${empty?'var(--red)':'#333'};font-weight:${empty?700:400}">${empty?'⚠ Missing':val}</span></div>`;
 }
 
+// Approval status is stored two ways for backward compatibility:
+//   t.ap[key]      — legacy boolean (true = approved), kept in sync so
+//                    every existing read of it (apDone counts, etc.)
+//                    keeps working unchanged.
+//   t.apDetail[key] — { status: 'approved'|'rejected'|'pending', note, at }
+//                    the real tri-state record, with a note and timestamp,
+//                    that t.ap alone could never represent — "not yet
+//                    approved" and "actively rejected, needs revision"
+//                    used to look identical (an empty circle).
+function apStatus(t, key) {
+  if (t.apDetail && t.apDetail[key] && t.apDetail[key].status) return t.apDetail[key].status;
+  return (t.ap && t.ap[key]) ? 'approved' : 'pending';
+}
+
 function togApDetail(id, key) {
-  const t = trips.find(t=>t.id===id); if(!t||!t.ap) return;
-  t.ap[key]=!t.ap[key]; renderTripDetail(t);
+  const t = trips.find(t=>t.id===id); if(!t) return;
+  t.ap = t.ap || {};
+  t.apDetail = t.apDetail || {};
+  const current = apStatus(t, key);
+  const next = current === 'pending' ? 'approved' : current === 'approved' ? 'rejected' : 'pending';
+
+  let note = (t.apDetail[key] && t.apDetail[key].note) || '';
+  if (next === 'rejected') {
+    const entered = prompt('Note for this rejection (what needs to change before it can be approved?):', note);
+    if (entered === null) return; // cancelled — leave the step exactly as it was
+    note = entered.trim();
+  } else {
+    note = '';
+  }
+
+  t.apDetail[key] = { status: next, note, at: new Date().toISOString() };
+  t.ap[key] = (next === 'approved'); // keep the legacy boolean field in sync
+  renderTripDetail(t);
 }
 
 // ============================================================
@@ -4561,14 +4610,32 @@ function openTripWizard(tripId) {
     _wzDraft = { _editId: existing.id, ...tripToDraft(existing) };
     document.getElementById('nt-modal-title').textContent = 'Edit: ' + existing.name;
   } else {
-    // Load saved draft or start fresh with defaults
-    const saved = LS.get('lh_trip_draft', null);
-    _wzDraft = saved || {
+    const blankDraft = {
       origin:  'Clover Hill High School',
       sponsor: 'Adam Berneche',
       sub:     'same-day',
       status:  'planned',
     };
+    // A saved draft used to repopulate silently — including weeks later,
+    // for a completely unrelated new trip, with stale dates/destinations/
+    // medical-staff names and no way to tell it happened. Only auto-load
+    // when the draft actually has real content beyond the same defaults
+    // every fresh wizard starts with, and ask first even then.
+    const saved = LS.get('lh_trip_draft', null);
+    const hasRealContent = saved && Object.keys(saved).some(
+      k => !(k in blankDraft) && saved[k] !== '' && saved[k] !== 0 && saved[k] != null
+    );
+    if (hasRealContent) {
+      const label = saved.name ? `"${saved.name}"` : 'an unfinished trip';
+      if (confirm(`You have a saved draft for ${label}. Resume it?\n\nChoose Cancel to start a new, blank trip request instead — the saved draft will be discarded.`)) {
+        _wzDraft = saved;
+      } else {
+        _wzDraft = blankDraft;
+        LS.set('lh_trip_draft', {});
+      }
+    } else {
+      _wzDraft = saved || blankDraft;
+    }
     document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
   }
 
@@ -5766,18 +5833,29 @@ function deleteDecaResult(id) {
   renderDECAHub();
 }
 
-function renderDecaApprovalChecklist() {
-  // Each event has a set of required CCPS administrative steps
-  const DECA_APPROVAL_EVENTS = [
-    { id:'icdc26', label:'ICDC 2026 — Atlanta (Apr 25–29)', type:'Overnight Out-of-State', urgent:true },
-    { id:'powertip25', label:'Ultimate Power Trip — Arlington (Nov 21–23)', type:'Overnight Out-of-State', urgent:false },
-    { id:'slc26', label:'State Leadership Conference — VA Beach (Feb 27–Mar 1)', type:'Overnight In-State', urgent:false },
-    { id:'dlc25', label:'District Leadership Conference — Dec 3', type:'Day Trip', urgent:false },
-  ];
+// tripId links each DECA event to its real record in `trips[]` — these
+// are the SAME four trips (Ultimate Power Trip, DLC, SLC, ICDC), not a
+// separate set. Two of the 8 steps below (form_submitted, admin_approved)
+// used to be tracked here as their own independent checkboxes, which
+// could read "done" while the real Trip Detail approval chain for the
+// exact same trip still showed the Coordinator/Principal step outstanding
+// — or vice versa. Those two steps now read directly from the real trip's
+// approval chain instead of keeping a second, driftable copy.
+const DECA_APPROVAL_EVENTS = [
+  { id:'icdc26', tripId:6, label:'ICDC 2026 — Atlanta (Apr 25–29)', type:'Overnight Out-of-State', urgent:true },
+  { id:'powertip25', tripId:3, label:'Ultimate Power Trip — Arlington (Nov 21–23)', type:'Overnight Out-of-State', urgent:false },
+  { id:'slc26', tripId:5, label:'State Leadership Conference — VA Beach (Feb 27–Mar 1)', type:'Overnight In-State', urgent:false },
+  { id:'dlc25', tripId:4, label:'District Leadership Conference — Dec 3', type:'Day Trip', urgent:false },
+];
 
+function renderDecaApprovalChecklist() {
+  // form_submitted/admin_approved are synced from the matched trip's real
+  // approval chain (t.ap.coord / t.ap.principal) — see the note above.
+  // The remaining steps are DECA-specific compliance items with no Trip
+  // Detail equivalent and stay independently tracked here.
   const APPROVAL_STEPS = [
-    { key:'form_submitted', label:'Field Trip Permission Request submitted to Zyglocke', critical:true },
-    { key:'admin_approved', label:'Written admin approval received', critical:true },
+    { key:'form_submitted', label:'Field Trip Permission Request submitted to Zyglocke', critical:true, synced:'coord' },
+    { key:'admin_approved', label:'Written admin approval received', critical:true, synced:'principal' },
     { key:'overnight_form', label:'Overnight/Out-of-State form submitted (if applicable)', critical:false },
     { key:'fundraiser_form', label:'Fundraiser Request form submitted (if trip fundraiser involved)', critical:false },
     { key:'medical_forms', label:'Student medical/emergency forms collected', critical:true },
@@ -5790,16 +5868,34 @@ function renderDecaApprovalChecklist() {
 
   const eventRows = DECA_APPROVAL_EVENTS.map(ev => {
     const checks = saved[ev.id] || {};
+    const trip   = trips.find(t => t.id === ev.tripId) || null;
+
+    const isChecked = step => step.synced
+      ? !!(trip && apStatus(trip, step.synced) === 'approved')
+      : !!checks[step.key];
+
     const total = APPROVAL_STEPS.length;
-    const done = APPROVAL_STEPS.filter(s => checks[s.key]).length;
+    const done = APPROVAL_STEPS.filter(isChecked).length;
     const critical = APPROVAL_STEPS.filter(s => s.critical);
-    const critDone = critical.filter(s => checks[s.key]).length;
+    const critDone = critical.filter(isChecked).length;
     const allCritical = critDone === critical.length;
     const pct = Math.round(done / total * 100);
     const barColor = allCritical ? '#22c55e' : done > 0 ? '#f59e0b' : '#e5e7eb';
 
     const steps = APPROVAL_STEPS.map(step => {
-      const checked = !!checks[step.key];
+      const checked = isChecked(step);
+      if (step.synced) {
+        // Read-only — this is a mirror of Trip Detail's approval chain,
+        // not an independent record. Editing it here would recreate the
+        // exact drift this unification exists to remove.
+        return `<div style="display:flex;align-items:flex-start;gap:.45rem;padding:.22rem 0;font-size:.75rem;color:${checked?'var(--muted)':'inherit'};${checked?'text-decoration:line-through':''}">
+          <span style="margin-top:1px;flex-shrink:0">${checked?'✅':'⬜'}</span>
+          <span><strong>${step.label}</strong> <span style="font-size:.62rem;color:#b91c1c">★ Required</span>
+            ${trip ? `<a href="javascript:void(0)" onclick="showView('trips');openTripDetail(${trip.id})" style="font-size:.62rem;color:var(--navy);margin-left:.3rem">synced from Trip Detail →</a>`
+                   : `<span style="font-size:.62rem;color:var(--red)"> — no matching trip found</span>`}
+          </span>
+        </div>`;
+      }
       return `<label style="display:flex;align-items:flex-start;gap:.45rem;cursor:pointer;padding:.22rem 0;font-size:.75rem;color:${checked?'var(--muted)':'inherit'};${checked?'text-decoration:line-through':''}">
         <input type="checkbox" ${checked?'checked':''} onchange="toggleDecaCheck('${ev.id}','${step.key}',this.checked)" style="margin-top:2px;accent-color:var(--navy);flex-shrink:0">
         <span>${step.critical?'<strong>':''} ${step.label} ${step.critical?'</strong>':''}${step.critical?' <span style="font-size:.62rem;color:#b91c1c">★ Required</span>':''}</span>
@@ -6925,6 +7021,10 @@ function markAllSlips(status) {
   const tripId = parseInt(document.getElementById('slip-trip-sel').value);
   const roster = slipRosters[tripId];
   if(!roster) return;
+  // Compliance data, whole-roster impact — a misclick here shouldn't be
+  // able to mark real permission slips "returned" for every student with
+  // no confirmation, unlike every other single-student action on this page.
+  if(!confirm(`Mark all ${roster.length} student(s) on this trip as "${status}"? This changes every student's permission-slip status at once.`)) return;
   roster.forEach(s=>s.status=status);
   persistSlips();
   renderSlipView();
@@ -8996,6 +9096,10 @@ function sbeNote(id, val) {
 }
 
 function sbeCheckAll() {
+  // Compliance checklist, whole-list impact — sbeReset() right below
+  // already confirms before clearing everything; marking everything
+  // "done" at once deserves the same guard.
+  if (!confirm('Mark all SBE checklist items as done? This affects every item on the list.')) return;
   SBE_ELEMENTS.forEach(e => { SBE_STATUS[e.id] = SBE_STATUS[e.id]||{}; SBE_STATUS[e.id].done = true; });
   persistSBE();
   renderSBEChecklist();
@@ -10896,8 +11000,30 @@ function lpRunAI(userPrompt, forceSection) {
   const output = document.getElementById('lp-ai-output');
   if (!output) return;
 
-  const section = forceSection || 'general';
-  const plan    = lpActivePlan;
+  // This box has no model behind it — no Gemini/AI API call is made
+  // anywhere in this app (see "AI Insights" note near generateBragEmail).
+  // A typed question used to be silently discarded and always produced
+  // the generic tip list regardless of what was asked. Since there's no
+  // real free-form answering capability to wire in, keyword-match the
+  // typed question to the closest fixed tip category instead of ignoring
+  // it outright, and say plainly that's what happened.
+  let section = forceSection;
+  let matchNote = '';
+  if (!section && userPrompt) {
+    const p = userPrompt.toLowerCase();
+    if (/differenti|sped|iep|ell|accommodat|tier/.test(p))            section = 'diff';
+    else if (/objective|goal|standard|outcome/.test(p))               section = 'obj';
+    else if (/assess|grade|rubric|score|checkpoint|formative|exit/.test(p)) section = 'assess';
+    if (section) {
+      matchNote = `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">` +
+        `This box doesn't answer free-form questions — it matched "${escH(userPrompt)}" to the closest topic below.</div>`;
+    } else {
+      matchNote = `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">` +
+        `This box doesn't answer free-form questions — couldn't match "${escH(userPrompt)}" to a specific topic, showing general tips.</div>`;
+    }
+  }
+  section = section || 'general';
+  const plan = lpActivePlan;
 
   const tips = {
     diff: [
@@ -10925,7 +11051,7 @@ function lpRunAI(userPrompt, forceSection) {
   };
 
   const selected = tips[section] || tips.general;
-  output.innerHTML = selected.map(t => `<div style="padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem">${t}</div>`).join('');
+  output.innerHTML = matchNote + selected.map(t => `<div style="padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem">${t}</div>`).join('');
 }
 
 // ── 6. openAISCRInsights → SCR data summary ───────────────────────────────────
@@ -11809,10 +11935,14 @@ function buildActionQueue(){
       const _staleDays = _updated ? Math.floor((_now - _updated) / 86400000) : null;
       const _staleTxt  = _staleDays !== null && _staleDays >= 14 ? ` (no update in ${_staleDays}d)` : '';
       const _catTag    = _g.cat !== 'Leadership Development' ? ` [${_g.cat}]` : '';
+      // Defensive: an older-schema goal record missing `title` must not
+      // throw here — this function feeds the dashboard's action queue,
+      // and a thrown error here used to abort every render after it.
+      const _gTitle    = (_g.title || 'Untitled goal').substring(0,40);
       q.push({
         priority: 62,
         icon: '🎯',
-        text: `DSP Goal needs attention: "${_g.title.substring(0,40)}"${_catTag} at ${_g.progress||0}%${_staleTxt}`,
+        text: `DSP Goal needs attention: "${_gTitle}"${_catTag} at ${_g.progress||0}%${_staleTxt}`,
         role: 'teach',
         nav: 'goals',
         days: _daysLeft
@@ -11961,36 +12091,56 @@ function choiceSnooze(idx, encodedText){
 
 // ── Next Action banner ────────────────────────────────────
 function refreshNextAction(){
-  const q=buildActionQueue();
-  const top=q[0];
-  _naNav=top.nav;
-  const textEl=document.getElementById('na-text');
-  const roleEl=document.getElementById('na-role');
-  const iconEl=document.getElementById('na-icon');
-  const timerEl=document.getElementById('na-timer');
-  const timerLb=document.getElementById('na-timer-lbl');
-  const bar=document.getElementById('na-bar');
-  if(!textEl) return;
-  textEl.textContent=top.text;
-  iconEl.textContent=top.icon;
-  const r=DB_ROLES[top.role]||DB_ROLES.general;
-  roleEl.textContent=r.label;
-  if(top.days!==null&&top.days!==undefined){
-    const u=urgencyClass(top.days);
-    timerEl.textContent=top.days<0?`${Math.abs(top.days)}d OVERDUE`:top.days===0?'TODAY':`${top.days}d`;
-    timerLb.textContent=top.days<0?'Overdue':'Days Left';
-    if(bar) bar.style.background=top.days<0?'#dc2626':top.days<=3?'#f87171':top.days<=7?'#fbbf24':'#4ade80';
-  } else {
-    timerEl.textContent='—'; timerLb.textContent='No Deadline';
-    if(bar) bar.style.background='#4ade80';
+  // Every sub-render below is independent — one throwing (malformed data,
+  // an older-schema record) must not silently cancel the rest, which is
+  // what happened when this whole function ran as one unguarded block.
+  let top;
+  try {
+    const q = buildActionQueue();
+    // buildActionQueue() always pushes a fallback item before the snooze
+    // filter runs, but the snooze filter itself can still remove it —
+    // e.g. the fallback text happens to match an already-snoozed entry —
+    // leaving q empty. Never assume q[0] exists.
+    top = (q && q[0]) || { text:'All caught up', icon:'✅', role:'general', nav:'dashboard', days:null };
+  } catch (e) {
+    console.error('buildActionQueue failed:', e);
+    top = { text:'Could not load your priorities', icon:'⚠️', role:'general', nav:'dashboard', days:null };
   }
-  renderPulseRow();
-  renderDeadlines();
-  renderQuickLog();
-  renderHorizons();
-  renderChoiceCards();
-  updateJournalCTA();
-  renderRecentWins();
+
+  try {
+    _naNav=top.nav;
+    const textEl=document.getElementById('na-text');
+    const roleEl=document.getElementById('na-role');
+    const iconEl=document.getElementById('na-icon');
+    const timerEl=document.getElementById('na-timer');
+    const timerLb=document.getElementById('na-timer-lbl');
+    const bar=document.getElementById('na-bar');
+    if(!textEl) return;
+    textEl.textContent=top.text;
+    iconEl.textContent=top.icon;
+    const r=DB_ROLES[top.role]||DB_ROLES.general;
+    roleEl.textContent=r.label;
+    if(top.days!==null&&top.days!==undefined){
+      const u=urgencyClass(top.days);
+      timerEl.textContent=top.days<0?`${Math.abs(top.days)}d OVERDUE`:top.days===0?'TODAY':`${top.days}d`;
+      timerLb.textContent=top.days<0?'Overdue':'Days Left';
+      if(bar) bar.style.background=top.days<0?'#dc2626':top.days<=3?'#f87171':top.days<=7?'#fbbf24':'#4ade80';
+    } else {
+      timerEl.textContent='—'; timerLb.textContent='No Deadline';
+      if(bar) bar.style.background='#4ade80';
+    }
+  } catch (e) { console.error('Next Action banner render failed:', e); }
+
+  // Each of these owns its own DOM section — isolate them from each other
+  // so one bad record (a goal, a task, a win) can't blank the whole dashboard.
+  const _safeRender = (fn, label) => { try { fn(); } catch (e) { console.error(label + ' failed:', e); } };
+  _safeRender(renderPulseRow,   'renderPulseRow');
+  _safeRender(renderDeadlines,  'renderDeadlines');
+  _safeRender(renderQuickLog,   'renderQuickLog');
+  _safeRender(renderHorizons,   'renderHorizons');
+  _safeRender(renderChoiceCards,'renderChoiceCards');
+  _safeRender(updateJournalCTA, 'updateJournalCTA');
+  _safeRender(renderRecentWins, 'renderRecentWins');
 }
 
 function cockpitGo(){ if(_naNav) showView(_naNav); }
@@ -12377,6 +12527,7 @@ const MOOD_COLORS = {
 // Step state
 let _journalMood = null;
 let _journalStep = 0;
+let _journalOpenSnapshot = null;   // field values captured on open, to detect unsaved changes on close
 const JOURNAL_TOTAL_STEPS = 7; // 6 questions + summary
 
 function openJournal(){
@@ -12412,6 +12563,22 @@ function openJournal(){
     else if(last){ badge.className='cron-badge cron-warn'; badge.textContent='⏰ 2am'; }
     else { badge.className='cron-badge cron-idle'; badge.textContent='⏰ 2am'; }
   }
+
+  // Snapshot the just-loaded values so closeJournal() can tell whether the
+  // user changed anything since opening — closing used to silently discard
+  // a fully-answered reflection with zero warning.
+  _journalOpenSnapshot = _journalCurrentValues();
+}
+
+function _journalCurrentValues(){
+  const get = id => { const el=document.getElementById(id); return el ? el.value : ''; };
+  return { jq1:get('jq1'), jq2:get('jq2'), jq4:get('jq4'), jq5:get('jq5'), jq6:get('jq6'), mood:_journalMood };
+}
+
+function _journalHasUnsavedChanges(){
+  if(!_journalOpenSnapshot) return false;
+  const now = _journalCurrentValues();
+  return Object.keys(now).some(k => (now[k]||'') !== (_journalOpenSnapshot[k]||''));
 }
 
 function closeJournal(){
@@ -12427,6 +12594,14 @@ function closeJournal(){
     }
     return;
   }
+  // A backdrop click or the ✕ button used to discard a fully-answered
+  // reflection with no warning at all — this is the one place in the app
+  // where that's especially costly, since there's no autosave for it.
+  if(_journalHasUnsavedChanges() &&
+     !confirm('You have unsaved reflection answers. Close without saving?')){
+    return;
+  }
+  _journalOpenSnapshot = null;
   document.getElementById('journal-modal').style.display='none';
 }
 
@@ -12572,6 +12747,9 @@ async function saveJournalEntry(){
   // Unlock forced mode (if this was a 2:30pm auto-prompt)
   unlockJournalModal();
 
+  // Already persisted above — clear the open-time snapshot so the
+  // save-triggered close below doesn't itself get flagged as "unsaved changes."
+  _journalOpenSnapshot = null;
   closeJournal();
   if(btn){ btn.textContent='Save & Set Tomorrow ✦'; btn.disabled=false; }
   refreshNextAction();
@@ -13260,12 +13438,21 @@ function openSurveyModal(){
   m.id='survey-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto;padding:2rem 1rem';
   m.innerHTML=`<div style="background:var(--surface);max-width:600px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl)">
     <div style="background:var(--navy);padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center">
-      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:var(--gold);letter-spacing:2px">Workflow Setup</div>
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:var(--gold);letter-spacing:2px">Settings</div>
       <button onclick="document.getElementById('survey-modal').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
-    <div style="padding:1.5rem;text-align:center;color:var(--muted);font-size:.8rem">
-      Open your daily reflection journal for a deeper workflow check-in, or browse the improvement ideas below.
-      <div style="margin-top:1rem;display:flex;gap:.6rem;justify-content:center">
+    <div style="padding:1.5rem">
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
+        Everything in LeaderHub lives only in this browser — there's no server and no automatic backup. Export a copy regularly, especially before clearing your browser data or switching devices.
+      </div>
+      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+        <button onclick="lhExportBackup()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬇️ Export All Data</button>
+        <button onclick="document.getElementById('lh-import-file').click()" style="flex:1;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">⬆️ Import Backup</button>
+        <input type="file" id="lh-import-file" accept="application/json" style="display:none" onchange="lhImportBackup(this)">
+      </div>
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Quick Links</div>
+      <div style="display:flex;gap:.6rem;justify-content:center">
         <button onclick="document.getElementById('survey-modal').remove();openJournal()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:600;cursor:pointer">📓 Open Journal</button>
         <button onclick="document.getElementById('survey-modal').remove();openImprovementsModal()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;cursor:pointer">💡 Ideas</button>
       </div>
@@ -13273,6 +13460,50 @@ function openSurveyModal(){
   </div>`;
   document.body.appendChild(m);
   m.onclick=e=>{ if(e.target===m) m.remove(); };
+}
+
+// ── Whole-app backup — every lh_* localStorage key, in one file ─────────────
+// This is the only backup mechanism a 100%-local, no-server app like this
+// one can have. Without it, a cleared cache or a device switch is silent,
+// unrecoverable data loss for a full year of tasks/journal/trip records.
+function lhExportBackup(){
+  const data = {};
+  for (let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if (k && k.startsWith('lh_')) data[k] = localStorage.getItem(k);
+  }
+  const payload = { app:'LeaderHub', version:1, exportedAt:new Date().toISOString(), data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'leaderhub-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function lhImportBackup(fileInput){
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let parsed;
+    try { parsed = JSON.parse(e.target.result); }
+    catch(err){ alert('Could not read this file — make sure it\'s a LeaderHub backup export (.json).'); return; }
+
+    const data = (parsed && parsed.data) || parsed;
+    const keys = Object.keys(data || {}).filter(k => k.startsWith('lh_'));
+    if (!keys.length){ alert('This doesn\'t look like a LeaderHub backup — no lh_ data keys found.'); return; }
+    if (!confirm('Import ' + keys.length + ' data key(s) from this backup? This overwrites anything currently saved under the same names — consider exporting your current data first.')) return;
+
+    keys.forEach(k => localStorage.setItem(k, data[k]));
+    alert('Import complete. Reloading LeaderHub…');
+    location.reload();
+  };
+  reader.readAsText(file);
+  fileInput.value = '';
 }
 
 // ── Synergy / Canvas Currency Tracker ────────────────────────────────────────

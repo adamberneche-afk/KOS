@@ -593,14 +593,19 @@ function renderWarmUpReadiness(r) {
 }
 
 function loadData() {
-  document.getElementById("loading").style.display = "block";
-  document.getElementById("main").style.display    = "none";
+  const loading = document.getElementById("loading");
+  // Reset to the spinner state on every call — including a retry after a
+  // failure — so the error screen never lingers behind a fresh attempt.
+  loading.innerHTML = '<div class="spinner"></div><p>Loading class data…</p>';
+  loading.style.display = "block";
+  document.getElementById("main").style.display = "none";
   const term = document.getElementById("term-filter").value || "ALL";
   google.script.run
     .withSuccessHandler(render)
     .withFailureHandler(function(e) {
-      document.getElementById("loading").innerHTML =
-        '<p style="color:#d93025;padding:24px;">⚠ Could not load data: ' + e.message + '</p>';
+      loading.innerHTML =
+        '<p style="color:#d93025;padding:24px 24px 8px;">⚠ Something went wrong loading your class data. Try refreshing.</p>' +
+        '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
     })
     .getDashboardData(term);
 }
@@ -821,7 +826,8 @@ function loadCompetencies() {
     .withFailureHandler(function(e) {
       document.getElementById("comp-loading").style.display = "none";
       document.getElementById("competency-tabs-shell").innerHTML =
-        '<div class="competency-empty">Could not load competencies: ' + esc(e.message||e) + '</div>';
+        '<div class="competency-empty">Something went wrong loading competencies. ' +
+        '<button onclick="loadCompetencies()" style="margin-left:8px;padding:6px 14px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:13px;cursor:pointer;">Try Again</button></div>';
     })
     .getCompetencies();
 }
@@ -934,7 +940,7 @@ function submitLesson() {
     .withFailureHandler(function(e) {
       btn.textContent = "Log lesson";
       btn.disabled    = false;
-      showFormError("Could not reach the server: " + (e.message || e));
+      showFormError("Something went wrong submitting this lesson. Your entries are still filled in above — try again.");
     })
     .submitLessonContext(payload);
 }
