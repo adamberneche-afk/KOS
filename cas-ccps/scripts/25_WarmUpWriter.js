@@ -214,7 +214,10 @@ function registerDeliveredWarmUps() {
     regRow[WR_WARMUP_ID]     = generateWarmUpId_();
     regRow[WR_QUEUE_ID]      = queueId;
     regRow[WR_LESSON_ID]     = lessonId;
-    regRow[WR_LESSON_DATE]   = String(row[WQ25_LESSON_DATE] || "").trim();
+    // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — without this,
+    // a coerced Date value read from WarmUpQueue would propagate its
+    // non-"YYYY-MM-DD" String() form straight into WarmUpRegistry.
+    regRow[WR_LESSON_DATE]   = _normalizeLessonDateCell_(row[WQ25_LESSON_DATE]);
     regRow[WR_STUDENT_EMAIL] = String(row[WQ25_STUDENT_EMAIL] || "").trim();
     regRow[WR_STUDENT_NAME]  = String(row[WQ25_STUDENT_NAME]  || "").trim();
     regRow[WR_TEACHER_EMAIL] = teacherEmail;
