@@ -1008,7 +1008,14 @@ function getShadowMatrixStatus() {
 
     const engineMode = armed ? 'CALIBRATED' : (hasEvidence ? 'LEARNING' : 'COLD');
 
-    return { success: true, engine_mode: engineMode, all_verified: allVerified, questions };
+    // engine_armed reflects whether completeOnboarding() has actually run
+    // (IDENTITY_KEY + THESIS_VERIFIED) — distinct from all_verified, which
+    // only means the ambient shadow-matrix questions have individually
+    // resolved. The web app's Arm button must gate on THIS field, not
+    // all_verified — all_verified can reach true before onboarding ever
+    // runs, which would hide the only UI path into completeOnboarding()
+    // while the engine is still cold. See 8_WebApp_UI.html's loadShadowMatrix().
+    return { success: true, engine_mode: engineMode, engine_armed: armed, all_verified: allVerified, questions };
 
   } catch (e) {
     _reportError('getShadowMatrixStatus', e, null);
