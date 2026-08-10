@@ -466,7 +466,7 @@ function getQueueStatus() {
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const SC      = CFG.STAGING_COLS;
 
-    const counts = { pending: 0, ready: 0, needs_curator: 0, processed: 0 };
+    const counts = { pending: 0, ready: 0, needs_curator: 0, processed: 0, failed: 0 };
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -480,8 +480,15 @@ function getQueueStatus() {
         else if (s === 'FLOW_COMPLETE')                              counts.ready++;
         else if (s === 'NEEDS_CURATOR')                              counts.needs_curator++;
         else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      counts.processed++;
-        // FAILED_PARSE, MISSING_FILE_ID, PROCESSING_ERROR rows intentionally
-        // excluded from counts so the operator focuses on the curator list
+        // FIXED: these used to be silently excluded from every count, so a
+        // row that hit a terminal failure (e.g. a brand-new user's very
+        // first submission) was invisible everywhere in the Queue tab —
+        // including making totalActivity read 0, which showed the "your
+        // queue is empty, get started" onboarding message instead of any
+        // indication something had actually failed. See TERMINAL_FAILED_STATUSES
+        // (5_Error_And_Utilities.gs), the same list archiveStagingPipeline()
+        // uses to identify these rows for cleanup.
+        else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  counts.failed++;
 
         if (s === 'NEEDS_CURATOR') {
           needsCuratorRows.push({
@@ -527,8 +534,11 @@ function getQueueStatus() {
  * `pending` and `needs_curator` are included as aliases of `queued` and
  * `needs_review` respectively — 8_WebApp_UI.html's renderQueue() reads
  * either name (`c.queued ?? c.pending`, `c.needs_review ?? c.needs_curator`).
- * FAILED_PARSE, MISSING_FILE_ID, and PROCESSING_ERROR rows are
- * intentionally excluded, same as getQueueStatus().
+ * `failed` = any TERMINAL_FAILED_STATUSES row (5_Error_And_Utilities.gs) —
+ * FAILED_PARSE, PHASE_2_ERROR, INTAKE_ERROR, MISSING_FILE_ID, PROCESSING_ERROR.
+ * These used to be silently excluded from every count; now they're a
+ * visible tile so a permanently-stuck row is never mistaken for an empty
+ * queue.
  *
  * `managed_service` field: reconciliation decision 3 originally removed
  * the HTML's "Managed Inference" credits panel entirely because no vendor
@@ -551,7 +561,7 @@ function getQueueMetrics() {
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const SC      = CFG.STAGING_COLS;
 
-    let queued = 0, active = 0, needsReview = 0, processed = 0;
+    let queued = 0, active = 0, needsReview = 0, processed = 0, failed = 0;
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -565,8 +575,13 @@ function getQueueMetrics() {
         else if (s === 'STUDIO_ACTIVE' || s === 'FLOW_COMPLETE')     active++;
         else if (s === 'NEEDS_CURATOR')                              needsReview++;
         else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      processed++;
-        // FAILED_PARSE, MISSING_FILE_ID, PROCESSING_ERROR rows intentionally
-        // excluded — same as getQueueStatus()
+        // FIXED: these used to be silently excluded — see the matching
+        // comment in getQueueStatus() above. A row stuck in one of these
+        // terminal-failure statuses was invisible in every Queue tab tile,
+        // and could make totalActivity read 0 (renderQueue(), 8_WebApp_UI.html),
+        // showing the "empty queue, get started" message even when the
+        // user's very first submission had actually failed.
+        else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  failed++;
 
         if (s === 'NEEDS_CURATOR') {
           needsCuratorRows.push({
@@ -584,13 +599,14 @@ function getQueueMetrics() {
       active,
       needs_review: needsReview, needs_curator: needsReview,
       processed,
+      failed,
     };
 
     return {
       success:         true,
       counts,
       needs_curator:   needsCuratorRows,
-      total:           queued + active + needsReview + processed,
+      total:           queued + active + needsReview + processed + failed,
       last_updated:    new Date().toLocaleTimeString(),
       managed_service: _getManagedServiceStatus_(),
     };

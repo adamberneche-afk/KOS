@@ -3644,12 +3644,20 @@ function showView(name, btn) {
     };
     const accKey = _accMap[name];
     if(accKey && !window._appBooting) {
+      // FIXED: this only ever toggled the .open class — toggleAcc() (a
+      // direct sidebar-header click) also syncs aria-expanded and each
+      // section's .si buttons' tabindex via _setAccBodyTabbable(). Any
+      // navigation that reaches showView() another way (Dashboard's Next
+      // Action "Go" button, Current-Class/Lessons shortcuts, inline
+      // showView() links elsewhere) used to visually open the owning
+      // section while leaving its links untabbable and its header still
+      // announced as collapsed to a screen reader.
       _accKeys.forEach(k=>{
         const h=document.getElementById('acc-'+k), b=document.getElementById('accb-'+k);
-        if(h&&b){ h.classList.remove('open'); b.classList.remove('open'); }
+        if(h&&b){ h.classList.remove('open'); b.classList.remove('open'); h.setAttribute('aria-expanded','false'); _setAccBodyTabbable(b, false); }
       });
       const th=document.getElementById('acc-'+accKey), tb=document.getElementById('accb-'+accKey);
-      if(th&&tb){ th.classList.add('open'); tb.classList.add('open'); }
+      if(th&&tb){ th.classList.add('open'); tb.classList.add('open'); th.setAttribute('aria-expanded','true'); _setAccBodyTabbable(tb, true); }
     }
   } catch(e) {
     console.error('showView('+name+') crashed:', e);
@@ -4097,7 +4105,7 @@ function renderReadinessCard(t, compact=false) {
   return `<div class="rcard">
     <div class="rcard-top">
       <div>
-        <div class="rcard-name">${t.name}</div>
+        <div class="rcard-name">${t.name}${t.archived?' <span title="This trip has an Archive snapshot — editing it does not update the snapshot" style="font-size:.62rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">📦 ARCHIVED</span>':''}</div>
         <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)}</div>
         ${dtd<0&&t.status==='planned'?`<div class="alert ad" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">🚨</span>Deadline OVERDUE</div>`:dtd<=14&&dtd>=0&&t.status==='planned'?`<div class="alert aw" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">⚠️</span>Submit in ${dtd} days</div>`:''}
       </div>
@@ -4118,7 +4126,7 @@ function renderReadinessCard(t, compact=false) {
       <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})">✏️ Fill In</button>
       <button class="btn btn-outline btn-xs" onclick="showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)">📝 Slips</button>
       <button class="btn btn-outline btn-xs" onclick="openEmailComposerForTrip(${t.id},'parents')">✉️ Email</button>
-      <button class="btn btn-outline btn-xs" onclick="openArchiveModal(${t.id})" style="color:#7c3aed;border-color:#c4b5fd">📦 Archive</button>
+      <button class="btn btn-outline btn-xs" onclick="openArchiveModal(${t.id})" style="color:#7c3aed;border-color:#c4b5fd">${t.archived?'🔄 Update Archive':'📦 Archive'}</button>
       ${pct===100?`<button class="btn btn-green btn-xs" onclick="generateFormPreview(${t.id})">📄 Preview Form</button>`:''}
       <button class="btn btn-xs" onclick="deleteTrip(${t.id})" style="color:#dc2626;border-color:#fecaca;background:#fff;border:1px solid #fecaca;border-radius:5px;font-size:.68rem;padding:.18rem .5rem;cursor:pointer;font-weight:700">✕ Delete</button>
     </div>
@@ -4158,7 +4166,7 @@ function openTripDetail(id) {
   currentTripId = id;
   const t = trips.find(t=>t.id===id);
   if(!t) return;
-  document.getElementById('td-title').textContent = t.name;
+  document.getElementById('td-title').textContent = t.name + (t.archived ? ' 📦 (Archived)' : '');
   document.getElementById('td-sub').textContent = `${fd(t.date)} · ${t.dest1||'Destination TBD'}`;
   renderTripDetail(t);
   showView('tripdetail');
@@ -4498,7 +4506,9 @@ const postSteps=[
 function renderTripFlow() {
   ['sponsor-cl','coord-cl','post-cl'].forEach((id,li)=>{
     const lists=[sponsorSteps,coordSteps,postSteps];
-    document.getElementById(id).innerHTML=lists[li].map((s,i)=>`<li class="${s.done?'done':''}"><div class="cb ${s.done?'checked':''}" onclick="togProc(${li},${i})">${s.done?'✓':''}</div><span class="clt">${s.t}${s.s?`<span class="clsub">${s.s}</span>`:''}</span></li>`).join('');
+    // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
+    // had until an earlier round added role/tabindex/onkeydown to them.
+    document.getElementById(id).innerHTML=lists[li].map((s,i)=>`<li class="${s.done?'done':''}"><div class="cb ${s.done?'checked':''}" role="checkbox" aria-checked="${!!s.done}" tabindex="0" aria-label="${s.t.replace(/"/g,'&quot;')}" onclick="togProc(${li},${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togProc(${li},${i})}">${s.done?'✓':''}</div><span class="clt">${s.t}${s.s?`<span class="clsub">${s.s}</span>`:''}</span></li>`).join('');
   });
   // Approval chains
   const chains={'ap-ath':[{i:'🏃',l:'Athletic Director'},{i:'🚌',l:'Transportation'}],'ap-acad':[{i:'📋',l:'Coordinator'},{i:'🏫',l:'Principal'},{i:'💰',l:'Bookkeeper'},{i:'⚖️',l:'Risk Mgmt'},{i:'🚌',l:'Transportation'}],'ap-on':[{i:'📋',l:'Coordinator'},{i:'🏫',l:'Principal'},{i:'💰',l:'Bookkeeper'},{i:'⚖️',l:'Risk Mgmt'},{i:'📊',l:'Level Director'},{i:'🎓',l:'Chief of Schools'},{i:'🚌',l:'Transportation'}]};
@@ -5301,6 +5311,10 @@ function wzSaveTrip() {
     why:d.why||'', pre:d.pre||'', post:d.post||'', notes:d.notes||'', ap,
   };
   if (existingTrip?.apDetail) trip.apDetail = { ...existingTrip.apDetail };
+  // FIXED: this rebuild used to silently drop .archived — every edit to an
+  // already-archived trip un-archived it with no indication, even though
+  // its old snapshot was still sitting in tripArchive looking current.
+  if (existingTrip?.archived) trip.archived = true;
 
   if (d._editId) {
     trips = trips.filter(t => t.id !== d._editId);
@@ -5316,7 +5330,14 @@ function wzSaveTrip() {
   document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
   currentTripId = null;
 
-  _showToast(d._editId ? `✅ Trip updated: ${trip.name}` : `✅ Trip saved: ${trip.name}`, 3500, '#065f46');
+  if (d._editId && trip.archived) {
+    // The archive snapshot (tripArchive) is a frozen copy from whenever it
+    // was last archived — an edit here doesn't touch it, so it's now
+    // showing stale data until someone reopens Archive and updates it.
+    _showToast(`✅ Trip updated — its Archive snapshot is now out of date. Reopen 📦 Archive to update it.`, 5000, '#92400e');
+  } else {
+    _showToast(d._editId ? `✅ Trip updated: ${trip.name}` : `✅ Trip saved: ${trip.name}`, 3500, '#065f46');
+  }
 
   renderDashboard(); renderTrips();
 }
@@ -5723,17 +5744,31 @@ function renderDECAHub() {
     `<span style="display:inline-block;background:${color};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;margin:2px">${txt}</span>`;
 
   // ── Season Timeline ───────────────────────────────────────────────────────
-  const stages = [
-    {label:'Power Trip',    dates:'Nov 21–23',  status:'done',   icon:'🚂', detail:'Arlington, VA · 13 students · Amtrak · PO# 26-316-3418'},
-    {label:'DLC Testing',   dates:'Nov 17–25',  status:'done',   icon:'📝', detail:'In-school · no test = no compete'},
-    {label:'DLC',           dates:'Dec 3',      status:'done',   icon:'🏆', detail:'CTC · 15 students · free w/membership'},
-    {label:'SLC Registration', dates:'by Jan 16', status:'done', icon:'📋', detail:'Reg closed · payment was due Feb 2'},
-    {label:'SLC Testing',   dates:'Feb 9–13',   status:'done',   icon:'📝', detail:'70% required · NO make-ups'},
-    {label:'SLC',           dates:'Feb 27–Mar 1', status:'done', icon:'🎤', detail:'VA Beach · 15 students · Winn Charter · PO# 26-0368-2559'},
-    {label:'ICDC Reg',      dates:'Mar 2–13',   status: today > new Date('2026-03-13') ? 'done' : today >= new Date('2026-03-02') ? 'active' : 'urgent', icon:'📋', detail:'$155/student · Top 8 + bumps · 70% test req.', urgent:true},
-    {label:'ICDC Pay',      dates:'Apr 1',      status:'upcoming', icon:'💳', detail:'$155/student due'},
-    {label:'ICDC Atlanta',  dates:'Apr 25–29',  status:'upcoming', icon:'✈️', detail:'Atlanta · ~$1,000/student', urgent:true},
-  ];
+  // FIXED: this used to be a second, hardcoded stages array — a completely
+  // separate data model from DECA_SEASON (the one openDecaSeasonEditor()
+  // actually updates and renderDECAPipeline() on the Events view already
+  // reads). Editing next year's season via "Edit Season" updated the
+  // Events pipeline but left this card frozen on the old year forever,
+  // since it never read DECA_SEASON at all. Now derived from the same
+  // source of truth, so there's only ever one season timeline to keep
+  // current.
+  const _monthDay = iso => new Date(iso+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const _dateRangeLabel = s => {
+    if (!s.date) return '';
+    if (!s.endDate || s.endDate === s.date) return _monthDay(s.date);
+    const sameMonth = s.date.slice(0,7) === s.endDate.slice(0,7);
+    return sameMonth
+      ? `${_monthDay(s.date)}–${new Date(s.endDate+'T00:00:00').getDate()}`
+      : `${_monthDay(s.date)} – ${_monthDay(s.endDate)}`;
+  };
+  const stages = (DECA_SEASON.stages || []).map(s => {
+    const computed = _decaStageStatus(s, today);
+    // DECA_SEASON only tracks done/active/upcoming plus a separate `urgent`
+    // flag; this card's own visual language additionally distinguishes an
+    // "urgent" (open + flagged) stage with its own red styling below.
+    const status = (s.urgent && computed !== 'done') ? 'urgent' : computed;
+    return { label: s.label, dates: _dateRangeLabel(s), status, icon: s.icon, detail: s.detail };
+  });
 
   const timeline = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:.4rem">
     ${stages.map(s => {
@@ -9188,6 +9223,21 @@ function persistPO()        { LS.set('lh_purchase_orders', PURCHASE_ORDERS); }
 { const sp = LS.get('lh_purchase_orders', null); if (sp && sp.length) PURCHASE_ORDERS = sp; }
 
 function renderWBLTracker() {
+  // wblLogHours() inserts an inline "+ Hours" popover directly into this
+  // tbody, outside the normal render cycle — the search/filter controls
+  // above both call this function on every keystroke/change, and the
+  // innerHTML rebuild below used to silently wipe an open popover (and
+  // whatever hours the user had already typed) with no warning. Capture
+  // it here and reopen it after the rebuild if that student is still
+  // visible under the new filter.
+  const openPopover = document.querySelector('[id^="wbl-hrs-popover-"]');
+  let reopenId = null, reopenVal = '';
+  if (openPopover) {
+    reopenId = openPopover.id.slice('wbl-hrs-popover-'.length);
+    const inp = document.getElementById('wbl-hrs-input-' + reopenId);
+    reopenVal = inp ? inp.value : '';
+  }
+
   const statusF = document.getElementById('wbl-filter-status').value;
   const search  = (document.getElementById('wbl-search').value||'').toLowerCase();
 
@@ -9252,6 +9302,15 @@ function renderWBLTracker() {
       </td>
     </tr>`;
   }).join('');
+
+  // Reopen the popover captured at the top of this function, restoring
+  // whatever the user had already typed — only if that student is still
+  // visible under the current filter/search.
+  if (reopenId && filtered.some(s => String(s.id) === reopenId)) {
+    wblLogHours(reopenId);
+    const inp = document.getElementById('wbl-hrs-input-' + reopenId);
+    if (inp) inp.value = reopenVal;
+  }
 }
 
 function wblStudentStatus(s) {
@@ -9437,6 +9496,12 @@ function renderSBEChecklist() {
 }
 
 function sbeToggle(id) {
+  // A checkbox click on one row used to be able to win a race against
+  // another row's still-debouncing note (see _flushSbeNote()) — the
+  // renderSBEChecklist() rebuild below reads straight from SBE_STATUS, so
+  // a note typed within the last 300ms and not yet committed was silently
+  // discarded when it rebuilt from the stale value.
+  _flushSbeNote();
   SBE_STATUS[id] = SBE_STATUS[id] || {};
   SBE_STATUS[id].done = !SBE_STATUS[id].done;
   persistSBE();
@@ -9455,9 +9520,22 @@ function sbeNote(id, val) {
 // checklist via renderSBEChecklist(), which used to silently discard
 // whatever hadn't been blurred yet in another row's note field.
 let _sbeNoteTimer = null;
+let _sbeNotePending = null; // {id, val} — not yet committed to SBE_STATUS
 function sbeNoteInput(id, val) {
+  _sbeNotePending = { id, val };
   clearTimeout(_sbeNoteTimer);
-  _sbeNoteTimer = setTimeout(() => sbeNote(id, val), 300);
+  _sbeNoteTimer = setTimeout(() => { sbeNote(id, val); _sbeNotePending = null; }, 300);
+}
+
+// Commits a pending debounced note immediately — call this before anything
+// that rebuilds the checklist from SBE_STATUS (sbeToggle, sbeCheckAll,
+// sbeReset), so a fast click within the 300ms debounce window can no
+// longer discard a note that just hasn't committed yet.
+function _flushSbeNote() {
+  if (!_sbeNotePending) return;
+  clearTimeout(_sbeNoteTimer);
+  sbeNote(_sbeNotePending.id, _sbeNotePending.val);
+  _sbeNotePending = null;
 }
 
 function sbeCheckAll() {
@@ -9465,6 +9543,7 @@ function sbeCheckAll() {
   // already confirms before clearing everything; marking everything
   // "done" at once deserves the same guard.
   if (!confirm('Mark all SBE checklist items as done? This affects every item on the list.')) return;
+  _flushSbeNote();
   SBE_ELEMENTS.forEach(e => { SBE_STATUS[e.id] = SBE_STATUS[e.id]||{}; SBE_STATUS[e.id].done = true; });
   persistSBE();
   renderSBEChecklist();
@@ -9472,6 +9551,7 @@ function sbeCheckAll() {
 
 function sbeReset() {
   if (!confirm('Reset all SBE checklist items?')) return;
+  _flushSbeNote();
   SBE_STATUS = {};
   persistSBE();
   renderSBEChecklist();
@@ -10322,8 +10402,19 @@ function renderScrTable(course, students, myScores) {
                 </td>
                 ${students.map(stu => {
                   const score = (myScores[stu.name] || {})[comp.num];
+                  // FIXED: Grid is the default scrViewMode, but its score
+                  // cell never got the keyboard support (role/tabindex/
+                  // onkeydown/aria-label) an earlier round already added
+                  // to the List view's identical cell — Grid was the one
+                  // place in the whole app where the core scoring workflow
+                  // was keyboard-inaccessible.
                   return `<td style="text-align:center">
-                    <span class="scr-score scr-s${score||0}" onclick="cycleScore('${stu.name}',${comp.num},this)" title="${stu.name} — #${comp.num}">${score || '·'}</span>
+                    <span class="scr-score scr-s${score||0}" role="button" tabindex="0"
+                      onclick="cycleScore('${stu.name}',${comp.num},this)"
+                      onkeydown="scrScoreKeydown(event,'${stu.name}',${comp.num},this)"
+                      title="${stu.name} — #${comp.num}"
+                      aria-label="${stu.name}, competency ${comp.num}, ${score?(SCR_SCORE_LABELS[score]||score)+' ('+score+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+                    >${score || '·'}</span>
                   </td>`;
                 }).join('')}
                 <td style="text-align:center">
@@ -10553,9 +10644,11 @@ function renderProcurement() {
   // Receiving checklist
   const rc = document.getElementById('receiving-checklist');
   if (rc) {
+    // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
+    // had until an earlier round added keyboard support to them.
     rc.innerHTML = RECEIVING_CHECKS.map((c,i) => {
       const done = !!RECEIVING_STATUS[i];
-      return `<div onclick="toggleReceiving(${i})" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:8px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;font-size:.77rem;transition:all .2s">
+      return `<div onclick="toggleReceiving(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleReceiving(${i})}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:8px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;font-size:.77rem;transition:all .2s">
         <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.62rem;color:#fff">${done?'✓':''}</div>
         <span style="color:${done?'#15803d':'#374151'}">${c}</span>
       </div>`;
@@ -11064,7 +11157,15 @@ function renderMatchLog() {
     <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#dc2626">${totalL}L</strong> <span style="color:var(--muted)">Losses</span></div>
     ${totalT ? `<div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#475569">${totalT}T</strong> <span style="color:var(--muted)">Ties</span></div>` : ''}
     <div style="background:#f1f5f9;border:1px solid var(--border);border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong>${ES_MATCHES.length}</strong> <span style="color:var(--muted)">Total</span></div>
-  </div>` + [...ES_MATCHES].reverse().map(m => {
+  </div>` + [...ES_MATCHES].sort((a, b) => {
+    // FIXED: this used to be a plain .reverse() — "most recently logged"
+    // order, not "most recent match date" order. Logging a missed match
+    // late (e.g. Tuesday's match entered on Thursday, after Wednesday's
+    // was already logged) showed it below a match that actually happened
+    // after it.
+    if (a.date !== b.date) return (b.date||'').localeCompare(a.date||'');
+    return String(b.id).localeCompare(String(a.id)); // tiebreak: same-day matches, most recently logged first
+  }).map(m => {
     const us = Number(m.us), them = Number(m.them);
     const result = us > them ? 'win' : us < them ? 'loss' : 'tie';
     const color = result==='win' ? '#15803d' : result==='loss' ? '#dc2626' : '#64748b';
@@ -15632,6 +15733,11 @@ function _bragHasUnsavedChanges() {
   const el = document.getElementById('brag-body');
   return !!el && el.value !== _bragBodySnapshot;
 }
+// Same idea as _bragBodySnapshot, for the subject line — gatherBragData()
+// refreshes the subject's week label on every re-gather/add-win/week-change
+// and used to overwrite it unconditionally, silently replacing a subject
+// the user had customized by hand with no warning.
+let _bragSubjectSnapshot = '';
 
 const BRAG_AUDIENCE = {
   green: {
@@ -15695,7 +15801,8 @@ function setBragTab(tab, btn) {
   const aud = BRAG_AUDIENCE[tab];
   document.getElementById('brag-to').value = aud.to;
   document.getElementById('brag-cc').value = '';
-  document.getElementById('brag-subject').value = _bragSubjectForWeek();
+  _bragSubjectSnapshot = _bragSubjectForWeek();
+  document.getElementById('brag-subject').value = _bragSubjectSnapshot;
   document.getElementById('brag-body').value = '';
   document.getElementById('brag-ai-status').textContent = '';
   document.getElementById('brag-copy-confirm').textContent = '';
@@ -15844,9 +15951,16 @@ function gatherBragData() {
   // Refresh the subject line's week label only — this used to call
   // setBragTab(), which also wipes the "to"/"cc"/body fields, so adding a
   // manual win or changing the week silently erased an already-drafted or
-  // AI-generated email with no warning.
+  // AI-generated email with no warning. FIXED: this refresh itself was
+  // still unconditional — a subject the user had hand-edited (e.g. to
+  // name a specific event) got silently replaced with the generic
+  // template on the next re-gather/add-win/week-change. Only overwrite
+  // while the field still holds whatever this code last put there.
   const subjEl = document.getElementById('brag-subject');
-  if (subjEl) subjEl.value = _bragSubjectForWeek();
+  if (subjEl && subjEl.value === _bragSubjectSnapshot) {
+    _bragSubjectSnapshot = _bragSubjectForWeek();
+    subjEl.value = _bragSubjectSnapshot;
+  }
 }
 
 

@@ -946,12 +946,17 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
 // =============================================================================
 
 function _createM2LightweightTabs_(ss) {
+  // lesson_date (col 4) forced to text format on both tabs below — Sheets
+  // otherwise silently auto-detects the "YYYY-MM-DD" strings this column
+  // is written with and stores them as real Date values instead, which
+  // broke supersedeDuplicates_()/findLesson_()'s string comparisons
+  // (22_LessonContextHandler.js / 24_WarmUpBridge.js).
   _createTabIfMissing28_(ss, "LessonContext", [
     "lesson_id","teacher_email","submitted_at","lesson_date",
     "period_or_class","activity_description","learning_objective",
     "key_vocabulary","prior_lesson_connection","competency_ids",
     "status","alignment_logged_at","error_notes","term"
-  ]);
+  ], [4]);
   _createTabIfMissing28_(ss, "CompetencyRegistry", [
     "competency_id","competency_text","subject","grade_band",
     "strand","teacher_email","active"
@@ -960,7 +965,7 @@ function _createM2LightweightTabs_(ss) {
     "log_id","lesson_id","logged_at","lesson_date",
     "teacher_email","learning_objective","competency_id",
     "competency_text","strand"
-  ]);
+  ], [4]);
   _createTabIfMissing28_(ss, "ReportRegistry", [
     "report_id","generated_at","term","teacher_email",
     "doc_id","doc_url","report_type"
@@ -980,12 +985,12 @@ function _createM2WarmUpTabs_(ss) {
     "status","doc_id","doc_url","word_count","word_count_score",
     "grammar_score","engagement_score","extra_credit","total_score",
     "flow4_feedback","response_text","archetype","bridge_output"
-  ]);
+  ], [6]);
   _createTabIfMissing28_(ss, "WarmUpRegistry", [
     "warmup_id","queue_id","lesson_id","lesson_date","student_email",
     "student_name","teacher_email","doc_id","doc_url","generated_at",
     "total_score","extra_credit","term"
-  ]);
+  ], [4]);
   _createTabIfMissing28_(ss, "ClassSchedule", [
     "teacher_email","period","day_type","course_name","active"
   ]);
@@ -1021,7 +1026,12 @@ function _addWarmUpGeneratedColumn_(ss) {
   Logger.log("[S28] warm_up_generated column added.");
 }
 
-function _createTabIfMissing28_(ss, tabName, headers) {
+// textColumns: optional array of 1-based column indices to force to plain
+// text format, so ISO-date-shaped strings ("YYYY-MM-DD") written into them
+// later never get silently auto-converted to a real Date value by Sheets —
+// see 22_LessonContextHandler.js's _normalizeLessonDateCell_ for the bug
+// this prevents.
+function _createTabIfMissing28_(ss, tabName, headers, textColumns) {
   if (ss.getSheetByName(tabName)) return;
   const sheet = ss.insertSheet(tabName);
   sheet.getRange(1, 1, 1, headers.length)
@@ -1029,6 +1039,9 @@ function _createTabIfMissing28_(ss, tabName, headers) {
     .setFontWeight("bold")
     .setBackground("#f3f3f3");
   sheet.setFrozenRows(1);
+  (textColumns || []).forEach(col => {
+    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
+  });
   Logger.log("[S28] Created tab: " + tabName);
 }
 

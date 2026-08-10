@@ -145,7 +145,7 @@ body {
 
 /* ── Labels & fields ───────────────────────────────────────── */
 .field-lbl {
-  font-size: 10px; text-transform: uppercase;
+  display: block; font-size: 10px; text-transform: uppercase;
   letter-spacing: .09em; color: var(--text3);
   font-family: var(--mono); margin-bottom: 6px;
 }
@@ -578,7 +578,7 @@ textarea { line-height: 1.55; }
     <!-- Session Log fields -->
     <div id="fields-session">
       <div class="field-group">
-        <div class="field-lbl">Session transcript</div>
+        <label class="field-lbl" for="session-text">Session transcript</label>
         <textarea id="session-text" rows="10"
           placeholder="Paste full session log here…"
           oninput="updateCount('session-text','session-count')"></textarea>
@@ -589,7 +589,7 @@ textarea { line-height: 1.55; }
     <!-- Research / Context fields -->
     <div id="fields-research" style="display:none">
       <div class="field-group">
-        <div class="field-lbl">Title / source</div>
+        <label class="field-lbl" for="research-title">Title / source</label>
         <!-- maxlength matches the server's silent 100-char truncation
              (2_Ingestion_Sensors.gs) — without this, a longer title was
              accepted, submitted, and quietly cut down with no indication
@@ -597,7 +597,7 @@ textarea { line-height: 1.55; }
         <input type="text" id="research-title" maxlength="100" placeholder="e.g. Nielsen UX Report 2024" oninput="scheduleIngestDraftSave()">
       </div>
       <div class="field-group">
-        <div class="field-lbl">Content</div>
+        <label class="field-lbl" for="research-text">Content</label>
         <textarea id="research-text" rows="8"
           placeholder="Paste article text, data, or notes…"
           oninput="updateCount('research-text','research-count')"></textarea>
@@ -680,6 +680,16 @@ textarea { line-height: 1.55; }
         <div class="metric-lbl">Processed</div>
         <div class="metric-val" id="cnt-done">—</div>
         <div class="metric-sub">complete</div>
+      </div>
+      <!-- Hidden unless failed > 0 — these rows used to be silently
+           excluded from every tile here, so a permanently-stuck row (e.g.
+           a brand-new user's very first submission) was invisible and
+           could even make the queue look empty. Only shown when relevant
+           so the common zero-failures case stays uncluttered. -->
+      <div class="metric-card m-danger" id="metric-failed" style="display:none">
+        <div class="metric-lbl">Failed</div>
+        <div class="metric-val" id="cnt-failed">—</div>
+        <div class="metric-sub">couldn't be processed — see Diagnostics</div>
       </div>
     </div>
 
@@ -1224,6 +1234,7 @@ function renderQueue(res) {
   const active    = c.active    ?? 0;
   const inReview  = c.needs_review ?? c.needs_curator ?? 0;
   const done      = c.processed ?? 0;
+  const failed    = c.failed    ?? 0;
 
   // FIXED: "Pending" (subtitle "waiting for AI engine") used to show
   // pending + active, double-counting active rows that are also shown
@@ -1240,10 +1251,18 @@ function renderQueue(res) {
   document.getElementById('cnt-curator').textContent = inReview;
   document.getElementById('cnt-done'   ).textContent = done;
 
+  // FIXED: failed (terminal-status) rows used to be silently excluded from
+  // every tile and from totalActivity below, so a permanently-stuck row —
+  // even a brand-new user's very first submission — was invisible, and
+  // could make the whole queue read as empty. Only shown when nonzero.
+  const failedTile = document.getElementById('metric-failed');
+  if (failedTile) failedTile.style.display = failed > 0 ? '' : 'none';
+  document.getElementById('cnt-failed').textContent = failed;
+
   const list = document.getElementById('curator-list');
   const rows = res.needs_curator || [];
 
-  const totalActivity = pending + active + inReview + done;
+  const totalActivity = pending + active + inReview + done + failed;
 
   if (totalActivity === 0) {
     // True empty state — brand new user
@@ -1375,21 +1394,21 @@ function handlePrimer() {
 // ── Arm Engine modal ────────────────────────────────────────────
 const ARM_STEPS = [
   { label:'Step 1 of 4', title:'Your Role', validate: () => document.getElementById('arm-role')?.value.trim() ? true : 'Role is required.',
-    html: `<div class="field-group"><div class="field-lbl">Deployment type</div><div class="radio-group">
+    html: `<div class="field-group"><div class="field-lbl" id="arm-dt-label">Deployment type</div><div class="radio-group" role="radiogroup" aria-labelledby="arm-dt-label">
       <label class="radio-item selected" onclick="selectDeploy(this)"><input type="radio" name="armDT" value="INDIVIDUAL" checked><div class="radio-meta"><div class="rl">Individual</div><div class="rd">Personal productivity</div></div></label>
       <label class="radio-item" onclick="selectDeploy(this)"><input type="radio" name="armDT" value="EDUCATOR"><div class="radio-meta"><div class="rl">Educator</div><div class="rd">Teaching &amp; curriculum</div></div></label>
       <label class="radio-item" onclick="selectDeploy(this)"><input type="radio" name="armDT" value="COMMERCIAL"><div class="radio-meta"><div class="rl">Commercial</div><div class="rd">Client work &amp; business</div></div></label>
-      </div></div><div class="field-group"><div class="field-lbl">Primary role</div><input type="text" id="arm-role" placeholder="e.g. Marketing Teacher"></div>` },
+      </div></div><div class="field-group"><label class="field-lbl" for="arm-role">Primary role</label><input type="text" id="arm-role" placeholder="e.g. Marketing Teacher"></div>` },
   { label:'Step 2 of 4', title:'Your Mission', validate: () => document.getElementById('arm-vision')?.value.trim() ? true : '90-Day Vision is required.',
-    html: `<div class="field-group"><div class="field-lbl">Who you serve</div><input type="text" id="arm-audience" placeholder="e.g. High school students"></div>
-      <div class="field-group"><div class="field-lbl">90-Day Vision</div><textarea id="arm-vision" rows="3" placeholder="What does success look like?"></textarea></div>` },
+    html: `<div class="field-group"><label class="field-lbl" for="arm-audience">Who you serve</label><input type="text" id="arm-audience" placeholder="e.g. High school students"></div>
+      <div class="field-group"><label class="field-lbl" for="arm-vision">90-Day Vision</label><textarea id="arm-vision" rows="3" placeholder="What does success look like?"></textarea></div>` },
   { label:'Step 3 of 4', title:'Your Constraints', validate: () => true,
-    html: `<div class="field-group"><div class="field-lbl has-tip">Admin Ghost
+    html: `<div class="field-group"><label class="field-lbl has-tip" for="arm-ghost">Admin Ghost
         <span class="tip-icon" title="The recurring administrative busywork you want KOS to absorb for you — grading logistics, status updates, routine emails, anything that eats time without needing your judgment.">?</span>
-      </div><textarea id="arm-ghost" rows="2" placeholder="What steals your time?"></textarea></div>
-      <div class="field-group"><div class="field-lbl has-tip">Necessary Struggle
+      </label><textarea id="arm-ghost" rows="2" placeholder="What steals your time?"></textarea></div>
+      <div class="field-group"><label class="field-lbl has-tip" for="arm-struggle">Necessary Struggle
         <span class="tip-icon" title="The parts of your work that matter precisely because they're effortful — thinking, relationship-building, judgment calls. KOS is designed to protect these, not automate them away.">?</span>
-      </div><textarea id="arm-struggle" rows="2" placeholder="What won't you automate?"></textarea></div>` },
+      </label><textarea id="arm-struggle" rows="2" placeholder="What won't you automate?"></textarea></div>` },
   { label:'Step 4 of 4', title:'Security', validate: () => {
       const p = document.getElementById('arm-passphrase')?.value;
       const c = document.getElementById('arm-passphrase-confirm')?.value;
@@ -1400,15 +1419,15 @@ const ARM_STEPS = [
       if (p !== c) return 'Passphrases don\'t match.';
       return true;
     },
-    html: `<div class="field-group"><div class="field-lbl">Relational Targets</div><input type="text" id="arm-targets" placeholder="3–5 names, comma separated"></div>
-      <div class="field-group"><div class="field-lbl">Private passphrase <span style="color:var(--danger)">★</span></div>
+    html: `<div class="field-group"><label class="field-lbl" for="arm-targets">Relational Targets</label><input type="text" id="arm-targets" placeholder="3–5 names, comma separated"></div>
+      <div class="field-group"><label class="field-lbl" for="arm-passphrase">Private passphrase <span style="color:var(--danger)">★</span></label>
       <div style="display:flex;gap:6px">
         <input type="password" id="arm-passphrase" autocomplete="off" placeholder="Memorable · write it down first" style="flex:1">
         <button type="button" class="btn btn-sm" onclick="toggleArmPassVisibility()" id="arm-pass-toggle" aria-label="Show passphrase"><i class="ti ti-eye" id="arm-pass-toggle-icon"></i></button>
       </div></div>
-      <div class="field-group"><div class="field-lbl">Confirm passphrase <span style="color:var(--danger)">★</span></div>
+      <div class="field-group"><label class="field-lbl" for="arm-passphrase-confirm">Confirm passphrase <span style="color:var(--danger)">★</span></label>
         <input type="password" id="arm-passphrase-confirm" autocomplete="off" placeholder="Type it again"></div>
-      <div class="field-group"><div class="field-lbl">Admin email</div><input type="email" id="arm-email" placeholder="your@email.com"></div>` },
+      <div class="field-group"><label class="field-lbl" for="arm-email">Admin email</label><input type="email" id="arm-email" placeholder="your@email.com"></div>` },
 ];
 let armStep = 0;
 // Answers captured across steps within one modal session — renderArmStep()
@@ -1809,7 +1828,10 @@ function handleSendReport() {
     if (res && res.sent) {
       showDiagStatus('Report sent (' + (res.count || 0) + ' error(s) to ' + (res.to || 'admin') + ').', undefined, gen);
     } else {
-      showDiagStatus((res && res.reason) || 'Nothing new to report.', undefined, gen);
+      // error:true marks a genuine exception (5_Error_And_Utilities.gs) —
+      // distinct from the benign no-op cases (empty log, nothing new,
+      // admin email unset), which used to render identically.
+      showDiagStatus((res && res.reason) || 'Nothing new to report.', (res && res.error) ? 'danger' : undefined, gen);
     }
   }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
 }
@@ -1821,6 +1843,13 @@ function handleArchive() {
   showDiagStatus('Archiving…', undefined, gen);
   callServer('archiveStagingPipeline', [], (res) => {
     btn.disabled = false;
+    // A genuine exception (res.success === false) used to return the exact
+    // same {archived:0,...} shape as a routine "nothing to archive" run,
+    // so a real backend failure rendered identically to a benign no-op.
+    if (res && res.success === false) {
+      showDiagStatus('Error: ' + (res.message || 'Archive failed.'), 'danger', gen);
+      return;
+    }
     // archiveStagingPipeline() also sweeps up rows that failed intake and
     // were never shown anywhere else in the Queue UI — this button's label
     // ("Archive completed queue rows") used to imply it only touched
@@ -1840,9 +1869,13 @@ function handlePromotion() {
   const gen = beginDiagAction();
   btn.disabled = true;
   showDiagStatus('Checking incubator…', undefined, gen);
-  callServer('runPromotionCheck', [], (msg) => {
+  callServer('runPromotionCheck', [], (res) => {
     btn.disabled = false;
-    showDiagStatus(String(msg), undefined, gen);
+    // runPromotionCheck() used to return a bare string for both the error
+    // and no-op cases, so the web app couldn't tell a real failure from
+    // "nothing to promote" and always rendered both in neutral gray.
+    const isError = res && res.success === false;
+    showDiagStatus((res && res.message) || String(res), isError ? 'danger' : undefined, gen);
     loadVectorState(); // refresh vector display
   }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
 }

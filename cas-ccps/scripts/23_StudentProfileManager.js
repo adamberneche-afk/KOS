@@ -544,7 +544,12 @@ function buildWarmupData_(wqData) {
 
     const email      = String(row[WQ23_STUDENT_EMAIL]  || "").trim().toLowerCase();
     const lessonId   = String(row[WQ23_LESSON_ID]      || "").trim();
-    const date       = String(row[WQ23_LESSON_DATE]    || "").trim();
+    // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — WarmUpQueue's
+    // lesson_date column has the same Sheets auto-coercion risk as
+    // LessonContext's; String() on a coerced Date value would produce a
+    // non-"YYYY-MM-DD" string that breaks the .localeCompare() chronological
+    // sort below and resolveUnitForDate_()'s lookup further down.
+    const date       = _normalizeLessonDateCell_(row[WQ23_LESSON_DATE]);
     const wcScore    = Number(row[WQ23_WORD_COUNT_SCORE]  || 0);
     const grammar    = Number(row[WQ23_GRAMMAR_SCORE]     || 0);
     const engagement = Number(row[WQ23_ENGAGEMENT_SCORE]  || 0);
@@ -789,6 +794,15 @@ function buildShadowMatrixSummary_(ss, cfg) {
       }
     } catch(e) {}
   }
+
+  // Same null-vs-zeroed-object fix as the sheet-missing/near-empty branch
+  // above, for the other way this can be legitimately empty: a
+  // StudentProfiles sheet with real rows, just none belonging to this
+  // teacher (e.g. right after M2_ENABLED is flipped on for them, while
+  // other teachers already have profiled students). That case fell
+  // through to here and returned a truthy {total:0,...} object, so
+  // renderWarmUpReadiness() still rendered a fake "0 of 0 students" panel.
+  if (total === 0) return null;
 
   return {
     total,

@@ -943,7 +943,12 @@ function getVectorState() {
  *     .withSuccessHandler(fn)
  *     .runPromotionCheck()
  *
- * @returns {string} Human-readable result for the web app status line.
+ * @returns {{success: boolean, message: string}} `success` distinguishes a
+ *   genuine exception from a routine "nothing to promote" result — this
+ *   used to return a bare string in both the error and no-op cases
+ *   ('Error: ...' vs. 'No promotion candidates...'), and the web app
+ *   rendered both in the same neutral color since there was no field to
+ *   tell them apart.
  */
 function runPromotionCheck() {
   try {
@@ -952,19 +957,22 @@ function runPromotionCheck() {
     const incubSheet  = _getOrCreateSheet(ss, CFG.INCUBATOR_SHEET);
 
     const lock = LockService.getScriptLock();
-    if (!lock.tryLock(10000)) return 'System busy — try again in a moment.';
+    if (!lock.tryLock(10000)) return { success: true, message: 'System busy — try again in a moment.' };
     try {
       const promoted = _checkPromotionCandidates(incubSheet, matrixSheet);
       if (promoted.length > 0) SpreadsheetApp.flush();
-      return promoted.length > 0
-        ? promoted.length + ' vector(s) promoted: ' + promoted.join(', ')
-        : 'No promotion candidates at this time.';
+      return {
+        success: true,
+        message: promoted.length > 0
+          ? promoted.length + ' vector(s) promoted: ' + promoted.join(', ')
+          : 'No promotion candidates at this time.',
+      };
     } finally {
       lock.releaseLock();
     }
   } catch (e) {
     _reportError('runPromotionCheck', e, null);
-    return 'Error: ' + e.message;
+    return { success: false, message: e.message };
   }
 }
 

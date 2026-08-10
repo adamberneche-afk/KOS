@@ -828,7 +828,18 @@ let _modalReturnFocus  = null; // element to restore focus to when the modal clo
 let _pendingDiscardConfirm = null; // callback to run if the discard-confirm dialog is accepted
 
 function _modalFocusableEls() {
-  const modal = document.querySelector(".modal");
+  // Target whichever modal is actually visible on top, not just the first
+  // .modal in DOM order — document.querySelector(".modal") always grabbed
+  // the lesson modal even while the discard-confirm dialog was showing on
+  // top of it, so Tab could escape from "Keep editing" into the still-open
+  // (but visually obscured) lesson form underneath instead of cycling
+  // within the dialog actually on screen. The discard-confirm backdrop is
+  // only ever opened as a second layer on top of an already-open modal and
+  // is declared after it in the markup, so the last .open backdrop in DOM
+  // order is reliably the topmost one.
+  const openBackdrops = document.querySelectorAll(".modal-backdrop.open");
+  if (!openBackdrops.length) return [];
+  const modal = openBackdrops[openBackdrops.length - 1].querySelector(".modal");
   if (!modal) return [];
   return Array.from(modal.querySelectorAll(
     'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -900,7 +911,11 @@ function restoreLessonDraft() {
   if (dateMatches) set("f-date", d.date);
   set("f-period", d.period); set("f-objective", d.objective);
   set("f-activity", d.activity); set("f-prior", d.prior); set("f-vocab", d.vocab);
-  const restored = !!(d.objective || d.activity || d.prior || d.vocab);
+  // d.period is included here too — it's still unconditionally restored
+  // above like the other text fields, so a stale draft containing only a
+  // period value (nothing else) used to compute restored=false and
+  // silently clobber the fresh lastUsedPeriod default with no hint shown.
+  const restored = !!(d.objective || d.activity || d.prior || d.vocab || d.period);
   // The date field was already guarded against staleness, but the text
   // fields weren't — a draft from a previous day silently repopulated the
   // form with zero indication it wasn't what was just typed. Surface it
