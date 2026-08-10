@@ -93,6 +93,20 @@ nav button.active{color:var(--gold);background:rgba(232,184,75,.15);}
 .g2{grid-template-columns:repeat(2,1fr);} .g3{grid-template-columns:repeat(3,1fr);} .g4{grid-template-columns:repeat(4,1fr);}
 @media(max-width:900px){.g3,.g4{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:640px){.g2,.g3,.g4{grid-template-columns:1fr;}}
+
+/* Command Center dashboard — built for a full desktop viewport (fixed 4- and
+   5-column rows, no scroll by design). Below 1200px those columns get too
+   narrow to read; fall back to a stacked, scrollable layout instead. */
+@media(max-width:1200px){
+  .main { overflow-y:auto !important; }
+  #view-dashboard { height:auto !important; overflow:visible !important; }
+  #choice-cards { grid-template-columns:1fr !important; }
+  #pulse-row { grid-template-columns:repeat(auto-fit,minmax(150px,1fr)) !important; }
+  #dash-lower-grid { grid-template-columns:1fr 1fr !important; flex:none !important; }
+}
+@media(max-width:760px){
+  #dash-lower-grid { grid-template-columns:1fr !important; }
+}
 /* CARDS — reference-style: generous padding, larger radius, softer shadow, hover lift */
 .card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow);transition:box-shadow var(--t-base),transform var(--t-base);}
 .card:hover{box-shadow:var(--shadow-md);}
@@ -624,6 +638,7 @@ window.onerror = function(msg, src, line, col, err) {
     <button onclick="showView('trips',this)">🚌 Trips</button>
     <button onclick="showView('deca',this)">🏆 DECA</button>
     <button onclick="showView('competency',this)">📐 SCR</button>
+    <button onclick="showView('lessons',this)">📚 Lessons</button>
     <button onclick="showView('wbl',this)">🏪 Store</button>
     <button onclick="showView('esports',this)">🎮 E-Sports</button>
     <button onclick="openSurveyModal()" style="background:rgba(232,184,75,.2);color:var(--gold);border:1px solid rgba(232,184,75,.4);border-radius:4px">⚙️ Settings</button>
@@ -769,7 +784,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.45rem;flex-shrink:0;margin-bottom:.5rem" id="pulse-row"></div>
 
   <!-- ══ ROW D: lower grid — fills remaining height, no scroll ══ -->
-  <div style="flex:1;display:grid;grid-template-columns:1fr 1fr 1fr 280px;gap:.45rem;min-height:0">
+  <div id="dash-lower-grid" style="flex:1;display:grid;grid-template-columns:1fr 1fr 1fr 280px;gap:.45rem;min-height:0">
 
     <!-- D1: Deadlines — full height left col -->
     <div style="background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:.75rem .9rem;display:flex;flex-direction:column;overflow:hidden">
@@ -795,7 +810,7 @@ window.onerror = function(msg, src, line, col, err) {
             <div style="font-size:.73rem;color:var(--muted)">Fuzzy → auto-sorted into lists</div>
           </div>
         </div>
-        <span style="background:var(--blue-light);color:var(--blue);font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px">AI</span>
+        <span title="Keyword-matched and sorted by rule, not a language model" style="background:var(--blue-light);color:var(--blue);font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:4px;text-transform:uppercase;letter-spacing:.5px">AUTO</span>
       </div>
       <textarea id="thought-inp" rows="3" placeholder="e.g. DECA fees, store low stock, email that parent…" style="flex:1;font-size:.86rem;padding:.48rem .62rem;border:1.5px solid var(--border);border-radius:9px;font-family:inherit;resize:none;line-height:1.5;background:var(--muted-light);min-height:0" onfocus="this.style.borderColor='var(--navy)';this.style.background='#fff'" onblur="this.style.borderColor='var(--border)';this.style.background='var(--muted-light)'"></textarea>
       <button id="thought-btn" onclick="organizeThought()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.48rem .75rem;font-size:.88rem;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:.3rem;justify-content:center;font-family:inherit;flex-shrink:0" onmouseover="this.style.background='var(--navy2)'" onmouseout="this.style.background='var(--navy)'">
@@ -906,9 +921,8 @@ window.onerror = function(msg, src, line, col, err) {
     <div id="dont-forget-strip"></div><div id="dash-alerts"></div><div id="strip-evs"></div>
     <div id="dash-priority-actions"></div><div id="dash-form-hub"></div>
     <div id="dash-week-strip"></div><div id="dash-slips"></div>
-    <ul id="master-cl"></ul><input id="new-task">
     <div id="block-morning"></div><div id="block-planning"></div><div id="block-after"></div>
-    <div id="d-trips">2</div><div id="d-ready">0</div><div id="d-miss">0</div><div id="d-tasks">4</div>
+    <div id="d-trips">2</div><div id="d-ready">0</div><div id="d-miss">0</div>
     <input id="task-morning"><input id="task-planning"><input id="task-after">
     <select id="role-morning"></select><select id="role-planning"></select><select id="role-after"></select>
     <div id="pulse-grid"></div>
@@ -1427,7 +1441,7 @@ window.onerror = function(msg, src, line, col, err) {
     </div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center">
       <button class="btn btn-outline btn-sm" onclick="exportSCR()">📋 Export CSV</button>
-      <button class="btn btn-gold btn-sm" onclick="openAISCRInsights()">✨ AI Insights</button>
+      <button class="btn btn-gold btn-sm" onclick="openAISCRInsights()">📊 Summary Table</button>
     </div>
   </div>
   <!-- Course Tabs -->
@@ -1639,7 +1653,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div class="mftr">
       <button class="btn btn-outline" onclick="closeModal('memberReg')">Cancel</button>
       <div style="display:flex;gap:.5rem">
-        <button class="btn btn-outline" onclick="generateRegEmail()" style="color:var(--gold);border-color:var(--gold)">✨ AI Generate</button>
+        <button class="btn btn-outline" onclick="generateRegEmail()" style="color:var(--gold);border-color:var(--gold)">✨ Draft Email</button>
         <button class="btn btn-primary" onclick="loadRegTemplate()">Load Template →</button>
       </div>
     </div>
@@ -1649,7 +1663,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ADD EVENT (non-field-trip) -->
 <div class="mo" id="modal-newEvent">
   <div class="modal" style="width:520px">
-    <div class="mhdr"><div class="mtitle">New Event</div><button class="mclose" onclick="closeModal('newEvent')">✕</button></div>
+    <div class="mhdr"><div class="mtitle">New Event</div><button class="mclose" onclick="closeModal('newEvent')" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="fgrid">
         <div class="fg"><label>Event Name *</label><input id="ne-name" placeholder="e.g. DECA District Competition"></div>
@@ -1671,7 +1685,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ADD GOAL -->
 <div class="mo" id="modal-addGoal">
   <div class="modal" style="width:480px">
-    <div class="mhdr"><div class="mtitle">Add Leadership Goal</div><button class="mclose" onclick="closeModal('addGoal')">✕</button></div>
+    <div class="mhdr"><div class="mtitle">Add Leadership Goal</div><button class="mclose" onclick="closeModal('addGoal')" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="fgrid">
         <div class="fg"><label>Goal Title</label><input id="gl-title" placeholder="e.g. Qualify 5 for State"></div>
@@ -1687,7 +1701,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- PRINT AUTH FORM -->
 <div class="mo" id="modal-printSlip">
   <div class="modal" style="width:680px">
-    <div class="mhdr"><div class="mtitle">🖨 Print Parent Authorization Form</div><button class="mclose" onclick="closeModal('printSlip')">✕</button></div>
+    <div class="mhdr"><div class="mtitle">🖨 Print Parent Authorization Form</div><button class="mclose" onclick="closeModal('printSlip')" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="alert ai" style="margin-bottom:1rem"><span class="aico">ℹ️</span>Select a trip to auto-fill the Trip Name. Print one copy per student — parents sign and return before the trip.</div>
       <div class="fgrid fg2" style="margin-bottom:1rem">
@@ -1710,7 +1724,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ADD SLIP STUDENT -->
 <div class="mo" id="modal-addSlipStudent">
   <div class="modal" style="width:560px">
-    <div class="mhdr"><div class="mtitle">Add Student to Slip Tracker</div><button class="mclose" onclick="closeModal('addSlipStudent')">✕</button></div>
+    <div class="mhdr"><div class="mtitle">Add Student to Slip Tracker</div><button class="mclose" onclick="closeModal('addSlipStudent')" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="fgrid">
         <div class="fg"><label>Trip</label><select id="as-trip"></select></div>
@@ -1805,7 +1819,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- FORM PREVIEW -->
 <div class="mo" id="modal-preview">
   <div class="modal" style="width:750px">
-    <div class="mhdr"><div class="mtitle">📄 Permission Request Form Preview</div><button class="mclose" onclick="closeModal('preview')">✕</button></div>
+    <div class="mhdr"><div class="mtitle">📄 Permission Request Form Preview</div><button class="mclose" onclick="closeModal('preview')" aria-label="Close">✕</button></div>
     <div class="mbody" id="preview-body"></div>
     <div class="mftr"><button class="btn btn-outline" onclick="closeModal('preview')">Close</button><button class="btn btn-primary" onclick="window.print()">🖨 Print</button></div>
   </div>
@@ -1814,7 +1828,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- FTPERM FILL-IN MODAL -->
 <div class="mo" id="modal-ftperm-fill">
   <div class="modal" style="width:560px">
-    <div class="mhdr"><div class="mtitle">✏️ Fill In — FT Permission Form</div><button class="mclose" onclick="closeModal('ftperm-fill')">✕</button></div>
+    <div class="mhdr"><div class="mtitle">✏️ Fill In — FT Permission Form</div><button class="mclose" onclick="closeModal('ftperm-fill')" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="alert ai" style="margin-bottom:.85rem"><span class="aico">ℹ️</span>These fields auto-fill from your trip data. Update the trip record to change them. Student-specific medical info is completed by parents on printed forms.</div>
       <div class="fgrid">
@@ -1840,7 +1854,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- CONF LEAVE FILL-IN MODAL -->
 <div class="mo" id="modal-conf-fill">
   <div class="modal" style="width:600px">
-    <div class="mhdr"><div class="mtitle">✏️ Fill In — Conference/Leave Request</div><button class="mclose" onclick="closeModal('conf-fill')">✕</button></div>
+    <div class="mhdr"><div class="mtitle">✏️ Fill In — Conference/Leave Request</div><button class="mclose" onclick="closeModal('conf-fill')" aria-label="Close">✕</button></div>
     <div class="mbody">
       <div class="fgrid">
         <div class="fsec">Employee Info</div>
@@ -2093,7 +2107,7 @@ window.onerror = function(msg, src, line, col, err) {
       <div id="lp-modal-grading" style="margin:.6rem 0 .2rem;display:none"></div>
       <div style="display:flex;gap:.5rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
         <button id="lp-modal-gdoc-btn" onclick="" style="font-size:.72rem;padding:.3rem .7rem;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;cursor:pointer;white-space:nowrap">↗ Open in Drive</button>
-        <button onclick="lpAIAssist()" style="font-size:.72rem;padding:.3rem .7rem;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap">✨ AI Assist</button>
+        <button onclick="lpAIAssist()" style="font-size:.72rem;padding:.3rem .7rem;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap">✨ Lesson Helper</button>
         <button onclick="closeLPModal()" style="font-size:.72rem;padding:.3rem .7rem;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;cursor:pointer">✕ Close</button>
       </div>
     </div>
@@ -2101,7 +2115,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div style="display:flex;border-bottom:2px solid var(--border);background:#f9fafb">
       <button class="lp-tab lp-tab-active" id="lptab-view" onclick="lpSwitchTab('view',this)">📄 View</button>
       <button class="lp-tab" id="lptab-edit" onclick="lpSwitchTab('edit',this)">✏️ Edit</button>
-      <button class="lp-tab" id="lptab-ai" onclick="lpSwitchTab('ai',this)">✨ AI Assist</button>
+      <button class="lp-tab" id="lptab-ai" onclick="lpSwitchTab('ai',this)">✨ Lesson Helper</button>
     </div>
     <!-- Modal body -->
     <div id="lp-modal-body" style="flex:1;padding:1.4rem 1.6rem;overflow-y:auto;max-height:72vh">
@@ -2150,7 +2164,7 @@ window.onerror = function(msg, src, line, col, err) {
     </div>
     <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
       <button class="btn btn-outline btn-sm" onclick="wblExport()">📋 Export Report</button>
-      <button class="btn btn-gold btn-sm" onclick="wblAIInsights()">✨ AI Insights</button>
+      <button class="btn btn-gold btn-sm" onclick="wblAIInsights()">📊 Program Summary</button>
     </div>
   </div>
 
@@ -2582,7 +2596,7 @@ window.onerror = function(msg, src, line, col, err) {
     </div>
     <div style="display:flex;gap:.5rem;align-items:center">
       <button class="btn btn-outline btn-sm" onclick="esExportRoster()">📋 Export Roster</button>
-      <button class="btn btn-gold btn-sm" onclick="esAIScout()">✨ AI Scout Report</button>
+      <button class="btn btn-gold btn-sm" onclick="esAIScout()">📊 Season Report</button>
     </div>
   </div>
 
@@ -2881,7 +2895,7 @@ window.onerror = function(msg, src, line, col, err) {
       <div class="ps">Completed trips · Three Glows & a Grow · Knowledge Base</div>
     </div>
     <div style="display:flex;gap:.5rem;align-items:center">
-      <button class="btn btn-gold btn-sm" onclick="openAIInsights()">✨ AI Insights</button>
+      <button class="btn btn-gold btn-sm" onclick="openAIInsights()">📊 Archive Insights</button>
       <button class="btn btn-outline btn-sm" onclick="renderArchive()">↺ Refresh</button>
     </div>
   </div>
@@ -2974,7 +2988,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div class="mftr" style="display:flex;justify-content:space-between;align-items:center">
       <button class="btn btn-outline" onclick="closeModal('archiveTrip')">Cancel</button>
       <div style="display:flex;gap:.5rem">
-        <button class="btn btn-outline" onclick="archiveWithAI()" style="color:var(--gold);border-color:var(--gold)">✨ AI Fill Glows & Grow</button>
+        <button class="btn btn-outline" onclick="archiveWithAI()" style="color:var(--gold);border-color:var(--gold)">✏️ Pre-fill from Trip</button>
         <button class="btn btn-primary" onclick="confirmArchive()" id="arch-confirm-btn">📦 Archive Trip</button>
       </div>
     </div>
@@ -3455,20 +3469,12 @@ let goals = [
 function persistGoals() { LS.set('lh_goals', goals); }
 { const saved = LS.get('lh_goals', null); if (saved && Array.isArray(saved)) goals = saved; }
 
-let tasks = [
-  {id:1,text:'🚨 Start ICDC Field Trip Form NOW (deadline ~Mar 11 for Apr 25 trip)',done:false},
-  {id:2,text:'Confirm SLC qualifiers — Top 8 + bumps, 70%+ test score required for ICDC',done:false},
-  {id:3,text:'Register for ICDC Mar 2–13 ($155/student)',done:false},
-  {id:4,text:'Coordinate ICDC rooming & flights with other CCPS advisors',done:false},
-  {id:5,text:'ICDC Payment due April 1',done:false},
-  {id:6,text:'Get PO/budget code for Science Center Trip',done:false},
-  {id:7,text:'Add med staff cell numbers for Science Center Trip',done:false},
-  {id:8,text:'Get M/F student split for Science Center Trip',done:false},
-  {id:9,text:'Submit permission slips — City Museum Trip',done:true,status:'ontime',resolvedAt:1741305600000},
-  {id:10,text:'Enter DECA District into TripTracker',done:true,status:'ontime',resolvedAt:1741305600000},
-];
-function persistTasks() { LS.set('lh_tasks', tasks); }
-{ const st = LS.get('lh_tasks', null); if (st && Array.isArray(st)) tasks = st; }
+// Note: the standalone task list (add/resolve/pause a flat to-do) that used
+// to live here was replaced by the Horizon system (This Week/Month/Semester)
+// — its UI was removed but the dead functions lingered pointing at hidden
+// stub elements. Removed for real; the 'lh_tasks' storage key itself is still
+// live (Horizon's own check-off flow writes completed items into it, and the
+// Brag Board reads them back out), so that key and its readers are untouched.
 
 const TRIPS_SEED = null; // seed already inline above
 function persistEvents()       { LS.set('lh_events', otherEvents); }
@@ -3613,7 +3619,6 @@ function renderDashboard() {
   const readyCount = trips.filter(t => getMissingFields(t).length === 0).length;
   safeSet('d-ready', readyCount);
   safeSet('d-miss', totalMissing);
-  safeSet('d-tasks', tasks.filter(t=>!t.done&&t.status!=='paused').length);
 
   // ── SIDEBAR BADGES ──
   safeSet('cnt-ft', trips.length);
@@ -3648,9 +3653,6 @@ function renderDashboard() {
 
   // ── PRIORITY ACTIONS ──
   renderDashPriorityActions();
-
-  // ── MASTER CHECKLIST ──
-  renderTasks();
 
   // ── SLIP STATUS PANEL ──
   renderDashSlips();
@@ -4065,131 +4067,9 @@ function renderReadinessCard(t, compact=false) {
 // ============================================================
 // TASKS
 // ============================================================
-function renderTasks() {
-  const el = document.getElementById('master-cl');
-  if (!el) return;
-  const STATUS_META = {
-    ontime: { label:'✅ Done',    bg:'#dcfce7', color:'#15803d' },
-    late:   { label:'⏰ Late',    bg:'#fef9c3', color:'#92400e' },
-    missed: { label:'❌ Blocked', bg:'#fee2e2', color:'#b91c1c' },
-    paused: { label:'⏸ Later',   bg:'#e0f2fe', color:'#0369a1' },
-  };
-
-  const openTasks   = tasks.filter(t => !t.done && t.status !== 'paused');
-  const pausedTasks = tasks.filter(t => t.status === 'paused');
-  const doneTasks   = tasks.filter(t => t.done);
-
-  const renderItem = t => {
-    const isDone   = t.done;
-    const isPaused = t.status === 'paused';
-    const sm       = STATUS_META[t.status];
-    const rowBg    = isDone ? '#f9fafb' : isPaused ? '#f0f9ff' : '#fff';
-    const borderC  = isDone ? '#f3f4f6' : isPaused ? '#bae6fd' : 'var(--border)';
-    const textStyle = isDone ? 'opacity:.45;text-decoration:line-through;' : isPaused ? 'opacity:.7;color:#0369a1;' : '';
-    return `<li style="display:flex;align-items:center;gap:.3rem;padding:.35rem .45rem;border-radius:7px;margin-bottom:.2rem;font-size:.74rem;background:${rowBg};border:1px solid ${borderC}">
-      <span style="flex:1;${textStyle}">${t.text}</span>
-      ${sm ? `<span style="font-size:.58rem;background:${sm.bg};color:${sm.color};padding:1px 6px;border-radius:10px;font-weight:700;flex-shrink:0;white-space:nowrap">${sm.label}</span>` : ''}
-      <div style="display:flex;gap:.18rem;flex-shrink:0">
-        ${!isDone ? `<button onclick="resolveTask(${t.id},'ontime')" title="Mark done" style="background:#dcfce7;color:#15803d;border:1px solid #86efac;border-radius:5px;width:24px;height:24px;cursor:pointer;font-size:.82rem;display:flex;align-items:center;justify-content:center">✓</button>` : ''}
-        ${!isDone ? `<button onclick="pauseTask(${t.id})" title="${isPaused ? 'Un-pause' : 'Push to later'}" style="background:${isPaused ? '#bae6fd' : '#f1f5f9'};color:${isPaused ? '#0369a1' : '#64748b'};border:1px solid ${isPaused ? '#7dd3fc' : '#e2e8f0'};border-radius:5px;width:24px;height:24px;cursor:pointer;font-size:.75rem;display:flex;align-items:center;justify-content:center">⏸</button>` : ''}
-        ${!isDone ? `<button onclick="resolveTask(${t.id},'missed')" title="Can't complete" style="background:#fee2e2;color:#b91c1c;border:1px solid #fca5a5;border-radius:5px;width:24px;height:24px;cursor:pointer;font-size:.85rem;display:flex;align-items:center;justify-content:center">✕</button>` : `<button onclick="resolveTask(${t.id},'delete')" title="Remove" style="background:none;color:#d1d5db;border:none;border-radius:5px;width:24px;height:24px;cursor:pointer;font-size:.72rem;display:flex;align-items:center;justify-content:center">🗑</button>`}
-      </div>
-    </li>`;
-  };
-
-  let html = openTasks.map(renderItem).join('');
-  if (pausedTasks.length) {
-    html += `<li style="font-size:.62rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:.5rem .2rem .15rem;list-style:none">⏸ Pushed to Later</li>`;
-    html += pausedTasks.map(renderItem).join('');
-  }
-  if (doneTasks.length) {
-    html += `<li style="font-size:.62rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);padding:.5rem .2rem .15rem;list-style:none">Completed (${doneTasks.length})</li>`;
-    html += doneTasks.map(renderItem).join('');
-  }
-  el.innerHTML = html;
-}
-function showTaskMenu(id, btn) {
-  // Close any open menus first
-  document.querySelectorAll('.task-menu').forEach(m => m.remove());
-  const menu = document.createElement('div');
-  menu.className = 'task-menu';
-  menu.style.cssText = 'position:absolute;right:0;top:100%;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15);z-index:9999;min-width:160px;overflow:hidden';
-  const opts = [
-    { label:'✅  Completed on time', status:'ontime' },
-    { label:'⏰  Completed late',    status:'late'   },
-    { label:'❌  Did not complete',  status:'missed' },
-    { label:'🗑  Remove (no log)',   status:'delete' },
-  ];
-  opts.forEach(o => {
-    const div = document.createElement('div');
-    div.textContent = o.label;
-    div.style.cssText = 'padding:.45rem .85rem;font-size:.74rem;cursor:pointer;color:#1e293b';
-    div.onmouseenter = () => div.style.background = '#f8fafc';
-    div.onmouseleave = () => div.style.background = '';
-    div.onclick = () => { resolveTask(id, o.status); menu.remove(); };
-    menu.appendChild(div);
-  });
-  btn.parentElement.style.position = 'relative';
-  btn.parentElement.appendChild(menu);
-  // Close on outside click
-  setTimeout(() => document.addEventListener('click', function h(e){
-    if (!menu.contains(e.target)) { menu.remove(); document.removeEventListener('click',h); }
-  }), 10);
-}
-function resolveTask(id, status) {
-  if (status === 'delete') {
-    _undoToast('Task removed', () => { persistTasks(); renderTasks(); });
-    tasks = tasks.filter(t => t.id !== id);
-  } else {
-    const t = tasks.find(t => t.id === id);
-    if (t) {
-      t.done = true; t.status = status; t.resolvedAt = Date.now();
-      if (status === 'ontime' || status === 'late') {
-        _logDaily({ date: new Date().toISOString(), type: 'task_complete',
-          role: t.role || 'general', note: `Task ${status === 'late' ? '(late) ' : ''}completed: "${t.text.substring(0,80)}"` });
-      }
-    }
-  }
-  persistTasks(); renderTasks();
-  const el = document.getElementById('d-tasks');
-  if (el) el.textContent = tasks.filter(t => !t.done && t.status !== 'paused').length;
-  refreshNextAction();
-}
-
-function pauseTask(id) {
-  const t = tasks.find(t => t.id === id);
-  if (!t) return;
-  if (t.status === 'paused') {
-    // Un-pause: restore to open
-    t.status = 'open';
-    t.done   = false;
-  } else {
-    // Pause: push to later
-    t.status = 'paused';
-    t.done   = false;
-  }
-  persistTasks(); renderTasks();
-  const el = document.getElementById('d-tasks');
-  if (el) el.textContent = tasks.filter(t => !t.done && t.status !== 'paused').length;
-  refreshNextAction();
-}
-function toggleTask(id){
-  const t=tasks.find(t=>t.id===id);
-  if(!t)return;
-  if(t.done){
-    t.done=false;t.status='open';t.resolvedAt=null;
-  } else {
-    t.done=true;t.status='ontime';t.resolvedAt=Date.now();
-    _logDaily({date:new Date().toISOString(),type:'task_complete',role:t.role||'general',
-      note:`Task completed: "${t.text.substring(0,80)}"`});
-  }
-  persistTasks();renderTasks();
-  const el=document.getElementById('d-tasks');
-  if(el)el.textContent=tasks.filter(t=>!t.done&&t.status!=='paused').length;
-  refreshNextAction();
-}
-function delTask(id){tasks=tasks.filter(t=>t.id!==id);persistTasks();renderTasks();const el=document.getElementById('d-tasks');if(el)el.textContent=tasks.filter(t=>!t.done).length;}
-function addTask(){const inp=document.getElementById('new-task');if(!inp||!inp.value.trim())return;tasks.push({id:nextId.tk++,text:inp.value.trim(),done:false,status:'open'});inp.value='';persistTasks();persistNextId();renderTasks();const el=document.getElementById('d-tasks');if(el)el.textContent=tasks.filter(t=>!t.done&&t.status!=='paused').length;}
+// (renderTasks/addTask/delTask/resolveTask/pauseTask/toggleTask/showTaskMenu
+// — the old flat to-do list's supporting functions — removed with the seed
+// data above; see the note there.)
 
 // ============================================================
 // TRIPS VIEW
@@ -4307,7 +4187,7 @@ function renderTripDetail(t) {
               ? `${s.l}: ${st} — ${new Date(detail.at).toLocaleDateString()}${detail.note?' — '+detail.note:''}`
               : `${s.l}: pending`;
             return `<div style="display:flex;flex-direction:column;align-items:center;min-width:68px">
-              <div onclick="togApDetail(${t.id},'${s.k}')" title="${tip.replace(/"/g,'&quot;')}" style="width:32px;height:32px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem">${look.glyph}</div>
+              <div onclick="togApDetail(${t.id},'${s.k}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togApDetail(${t.id},'${s.k}')}" role="button" tabindex="0" title="${tip.replace(/"/g,'&quot;')}" aria-label="${tip.replace(/"/g,'&quot;')}" style="width:32px;height:32px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem">${look.glyph}</div>
               <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.25rem;color:${st==='rejected'?'var(--red)':'#555'};max-width:65px;line-height:1.2">${s.l}</div>
             </div>`;
           }).join('')}
@@ -4573,9 +4453,51 @@ function checkBlackout(){
 // ============================================================
 // MODALS — core open/close
 // ============================================================
-function openModal(name){ document.getElementById('modal-'+name).classList.add('open'); }
-function closeModal(name){ document.getElementById('modal-'+name).classList.remove('open'); }
-document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');}));
+// Escape-to-close and a basic Tab focus trap, added once here rather than
+// per-modal — every modal built on the shared .mo/openModal()/closeModal()
+// pattern gets both automatically.
+let _activeMoName = null;
+let _activeMoReturnFocus = null;
+
+function _moFocusables(modalEl) {
+  return Array.from(modalEl.querySelectorAll(
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => el.offsetParent !== null);
+}
+
+function _moTrapKeydown(e) {
+  if (!_activeMoName) return;
+  const modalEl = document.getElementById('modal-' + _activeMoName);
+  if (!modalEl) return;
+  if (e.key === 'Escape') { closeModal(_activeMoName); return; }
+  if (e.key !== 'Tab') return;
+  const focusable = _moFocusables(modalEl);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+document.addEventListener('keydown', _moTrapKeydown);
+
+function openModal(name){
+  const modalEl = document.getElementById('modal-'+name);
+  if (!modalEl) return;
+  modalEl.classList.add('open');
+  _activeMoName = name;
+  _activeMoReturnFocus = document.activeElement;
+  const focusable = _moFocusables(modalEl);
+  if (focusable.length) focusable[0].focus();
+}
+function closeModal(name){
+  const modalEl = document.getElementById('modal-'+name);
+  if (modalEl) modalEl.classList.remove('open');
+  if (_activeMoName === name) {
+    _activeMoName = null;
+    if (_activeMoReturnFocus && typeof _activeMoReturnFocus.focus === 'function') _activeMoReturnFocus.focus();
+    _activeMoReturnFocus = null;
+  }
+}
+document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id.replace(/^modal-/,''));}));
 
 // Deprecated — kept as fallback stub; wizard now handles all trip saves
 function saveTrip() { wzSaveTrip(); }
@@ -5449,13 +5371,18 @@ function copyEmail() {
     setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 2500);
   }).catch(() => {
     // fallback
-    const ta = document.createElement('textarea');
-    ta.value = full;
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    document.getElementById('email-copy-confirm').textContent = '✅ Copied!';
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = full;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      document.getElementById('email-copy-confirm').textContent = '✅ Copied!';
+    } catch (e) {
+      document.getElementById('email-copy-confirm').textContent = '⚠ Could not copy — select and copy the text manually';
+    }
+    setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 3500);
   });
 }
 
@@ -5517,7 +5444,7 @@ function renderDECAHub() {
     {label:'ICDC Atlanta',  dates:'Apr 25–29',  status:'upcoming', icon:'✈️', detail:'Atlanta · ~$1,000/student', urgent:true},
   ];
 
-  const timeline = `<div style="display:grid;grid-template-columns:repeat(9,1fr);gap:.4rem">
+  const timeline = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:.4rem">
     ${stages.map(s => {
       const done = s.status==='done', act = s.status==='active', urg = s.status==='urgent';
       const bg = done ? 'rgba(42,122,75,.1)' : act ? 'rgba(232,184,75,.15)' : urg ? 'rgba(214,61,47,.1)' : 'var(--surface)';
@@ -5828,9 +5755,16 @@ function addDecaResult() {
 }
 
 function deleteDecaResult(id) {
-  const results = LS.get('lh_deca_results', []).filter(r => r.id !== id);
-  LS.set('lh_deca_results', results);
+  const all = LS.get('lh_deca_results', []);
+  const removed = all.find(r => r.id === id);
+  LS.set('lh_deca_results', all.filter(r => r.id !== id));
   renderDECAHub();
+  if (removed) {
+    _undoToast('DECA result removed', () => {
+      LS.set('lh_deca_results', [...LS.get('lh_deca_results', []), removed]);
+      renderDECAHub();
+    });
+  }
 }
 
 // tripId links each DECA event to its real record in `trips[]` — these
@@ -5937,12 +5871,14 @@ function toggleDecaCheck(eventId, stepKey, val) {
   }, 50);
 }
 
-function renderDECAPipeline() {
-  const el = document.getElementById('deca-pipeline');
-  if(!el) return;
-  const today = new Date();
-
-  const stages = [
+// The season pipeline used to be a hardcoded array baked into this function —
+// accurate for 25–26, permanently stale (and permanently showing the old
+// ICDC alert) the moment that season ended. It's now app data instead: seeded
+// once with the same 25–26 content, persisted to localStorage, and editable
+// from the pipeline header each year without touching code.
+const DECA_SEASON_DEFAULT = {
+  title: 'DECA 25–26 Season Pipeline',
+  stages: [
     { label:'Ultimate Power Trip', date:'2025-11-21', endDate:'2025-11-23', icon:'🚂', status:'done',
       detail:'13 students · Arlington, VA · Amtrak · PO# 26-316-3418', color:'var(--green)' },
     { label:'DLC', date:'2025-12-03', icon:'🏆', status:'done',
@@ -5951,33 +5887,60 @@ function renderDECAPipeline() {
       detail:'Feb 9–13 · 70% required for ICDC · No make-up days', color:'var(--green)' },
     { label:'State (SLC)', date:'2026-02-27', endDate:'2026-03-02', icon:'🎤', status:'done',
       detail:'15 students · Virginia Beach · Charter: Winn · PO# 26-0368-2559', color:'var(--green)' },
-    { label:'ICDC Registration', date:'2026-03-02', endDate:'2026-03-13', icon:'📋',
-      status: today > new Date('2026-03-13') ? 'done' : today >= new Date('2026-03-02') ? 'active' : 'upcoming',
+    { label:'ICDC Registration', date:'2026-03-02', endDate:'2026-03-13', icon:'📋', statusAuto:true,
       detail:'Mar 2–13 · $155/student · Top 8 + bumps · 70% test required', color:'var(--gold)', urgent:true },
-    { label:'ICDC Payment', date:'2026-04-01', icon:'💳',
-      status: today > new Date('2026-04-01') ? 'done' : 'upcoming',
+    { label:'ICDC Payment', date:'2026-04-01', icon:'💳', statusAuto:true,
       detail:'$155/student due Apr 1 · Atlanta Hilton $260/night · 4/room', color:'var(--orange)' },
-    { label:'ICDC Atlanta', date:'2026-04-25', endDate:'2026-04-29', icon:'✈️',
-      status: today > new Date('2026-04-29') ? 'done' : 'upcoming',
+    { label:'ICDC Atlanta', date:'2026-04-25', endDate:'2026-04-29', icon:'✈️', statusAuto:true,
       detail:'Apr 25–29 · Atlanta, GA · ~$1,000/student · Start field trip form NOW!', color:'var(--navy)', urgent:true },
-  ];
+  ],
+  notice: {
+    text: '<strong>ICDC Field Trip Form is due NOW.</strong> Out-of-state overnight trips require 45 days lead time — deadline to submit is <strong>~March 11, 2026</strong>. Registration opens March 2 and closes March 13. Confirm SLC qualifiers (Top 8 + possible bumps to Top 10) and their 70% test scores before registering.',
+    ctaLabel: '+ Start ICDC Field Trip Form',
+  },
+};
+let DECA_SEASON = LS.get('lh_deca_season', DECA_SEASON_DEFAULT);
+function persistDecaSeason() { LS.set('lh_deca_season', DECA_SEASON); }
+
+function _decaStageStatus(s, today) {
+  // statusAuto stages compute done/active/upcoming from their own dates
+  // (so a season loaded from a prior year doesn't need its statuses
+  // hand-updated); stages with an explicit status (or none) just use it.
+  if (!s.statusAuto) return s.status || 'upcoming';
+  const start = s.date ? new Date(s.date) : null;
+  const end = s.endDate ? new Date(s.endDate) : start;
+  if (!start) return 'upcoming';
+  if (end && today > end) return 'done';
+  if (today >= start) return 'active';
+  return 'upcoming';
+}
+
+function renderDECAPipeline() {
+  const el = document.getElementById('deca-pipeline');
+  if(!el) return;
+  const today = new Date();
+  const stages = DECA_SEASON.stages || [];
+  const doneCount = stages.filter(s => _decaStageStatus(s, today) === 'done').length;
+  const hasUrgentOpen = stages.some(s => s.urgent && _decaStageStatus(s, today) !== 'done');
 
   el.innerHTML = `
     <div class="card" style="background:var(--navy);color:#fff;padding:1rem 1.25rem;border:none">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem">
         <div>
-          <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px;color:var(--gold)">🏆 DECA 25–26 Season Pipeline</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px;color:var(--gold)">🏆 ${DECA_SEASON.title || 'DECA Season Pipeline'}</div>
           <div style="font-size:.72rem;color:rgba(255,255,255,.5)">Clover Hill High School · DECA Account 4280 · Advisor: Adam Berneche</div>
         </div>
-        <div style="display:flex;gap:.5rem">
-          <span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--green);color:#fff;font-weight:700">4 events complete</span>
-          <span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--red);color:#fff;font-weight:700">⚠️ ICDC action needed</span>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--green);color:#fff;font-weight:700">${doneCount} event${doneCount!==1?'s':''} complete</span>
+          ${hasUrgentOpen ? `<span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--red);color:#fff;font-weight:700">⚠️ Action needed</span>` : ''}
+          <button class="btn btn-sm btn-outline" onclick="openDecaSeasonEditor()" style="color:#fff;border-color:rgba(255,255,255,.4)" title="Update next year's season timeline">✏️ Edit Season</button>
         </div>
       </div>
-      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:.5rem;align-items:start">
-        ${stages.map((s,i) => {
-          const isDone = s.status==='done';
-          const isActive = s.status==='active';
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem;align-items:start">
+        ${stages.map((s) => {
+          const status = _decaStageStatus(s, today);
+          const isDone = status==='done';
+          const isActive = status==='active';
           const isUrgent = s.urgent && !isDone;
           const bg = isDone ? 'rgba(42,122,75,.35)' : isActive ? 'rgba(232,184,75,.25)' : isUrgent ? 'rgba(214,61,47,.3)' : 'rgba(255,255,255,.08)';
           const border = isDone ? 'var(--green)' : isActive ? 'var(--gold)' : isUrgent ? 'var(--red)' : 'rgba(255,255,255,.15)';
@@ -5986,20 +5949,59 @@ function renderDECAPipeline() {
             <div style="font-size:1.1rem;margin-bottom:.18rem">${isDone?'✅':isActive?'🔵':s.icon}</div>
             <div style="font-size:.68rem;font-weight:700;color:${isDone?'rgba(255,255,255,.6)':'#fff'};line-height:1.25;margin-bottom:.2rem">${s.label}</div>
             <div style="font-size:.61rem;color:rgba(255,255,255,.5);margin-bottom:.25rem">${s.date?fd(s.date):''}</div>
-            <div style="font-size:.61rem;color:${isUrgent?'#fca5a5':'rgba(255,255,255,.45)'};line-height:1.35">${s.detail}</div>
-          </div>
-          ${i<stages.length-1?`<div style="display:none"></div>`:''}`;
+            <div style="font-size:.61rem;color:${isUrgent?'#fca5a5':'rgba(255,255,255,.45)'};line-height:1.35">${s.detail||''}</div>
+          </div>`;
         }).join('')}
       </div>
+      ${DECA_SEASON.notice && DECA_SEASON.notice.text ? `
       <div style="margin-top:.85rem;padding-top:.7rem;border-top:1px solid rgba(255,255,255,.12)">
         <div class="alert ad" style="font-size:.75rem;background:rgba(214,61,47,.25);border-color:rgba(214,61,47,.5);color:#fca5a5">
           <span class="aico">🚨</span>
-          <div><strong>ICDC Field Trip Form is due NOW.</strong> Out-of-state overnight trips require 45 days lead time — deadline to submit is <strong>~March 11, 2026</strong>.
-          Registration opens March 2 and closes March 13. Confirm SLC qualifiers (Top 8 + possible bumps to Top 10) and their 70% test scores before registering.
-          <button class="btn btn-sm" onclick="openModal('newTrip')" style="margin-left:.75rem;background:var(--red);color:#fff;border:none">+ Start ICDC Field Trip Form</button></div>
+          <div>${DECA_SEASON.notice.text}
+          <button class="btn btn-sm" onclick="openModal('newTrip')" style="margin-left:.75rem;background:var(--red);color:#fff;border:none">${DECA_SEASON.notice.ctaLabel || '+ Start Field Trip Form'}</button></div>
         </div>
-      </div>
+      </div>` : ''}
     </div>`;
+}
+
+// ── Season editor — raw-JSON edit so next year's advisor can update the whole
+// pipeline (stages + notice) in one place without a code change. ──────────────
+function openDecaSeasonEditor() {
+  const existing = document.getElementById('deca-season-editor');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'deca-season-editor';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:640px;width:92%;border-radius:12px;padding:1.5rem;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-weight:800">Edit DECA Season</div>
+      <button onclick="this.closest('#deca-season-editor').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:.76rem;color:var(--muted);margin-bottom:.6rem">Edit as JSON — title, an array of stages ({label, date, endDate, icon, status or statusAuto:true, detail, color, urgent}), and an optional notice banner. Used at the start of each new season.</div>
+    <textarea id="deca-season-json" style="width:100%;height:340px;font-family:'DM Mono',monospace;font-size:.76rem;border:1px solid var(--border);border-radius:8px;padding:.6rem">${JSON.stringify(DECA_SEASON, null, 2).replace(/</g,"&lt;")}</textarea>
+    <div id="deca-season-err" style="color:#dc2626;font-size:.75rem;margin-top:.4rem"></div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
+      <button class="btn btn-outline" onclick="this.closest('#deca-season-editor').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDecaSeasonEditor()">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('deca-season-json').focus();
+}
+function saveDecaSeasonEditor() {
+  const ta = document.getElementById('deca-season-json');
+  const errEl = document.getElementById('deca-season-err');
+  try {
+    const parsed = JSON.parse(ta.value);
+    if (!parsed || !Array.isArray(parsed.stages)) throw new Error('Expected an object with a "stages" array.');
+    DECA_SEASON = parsed;
+    persistDecaSeason();
+    document.getElementById('deca-season-editor').remove();
+    renderDECAPipeline();
+    _showToast('✅ Season updated');
+  } catch (e) {
+    errEl.textContent = '⚠ ' + e.message;
+  }
 }
 
 function saveEvent(){
@@ -6927,9 +6929,9 @@ function renderSlipView() {
               <td style="font-size:.75rem;color:#666">${escH(s.notes||'')}</td>
               <td>
                 <div style="display:flex;gap:.3rem;flex-wrap:wrap">
-                  ${s.status!=='returned'?`<button class="btn btn-green btn-xs" onclick="markSlip(${tripId},${s.id},'returned')">✓</button>`:''}
-                  ${s.status==='returned'?`<button class="btn btn-outline btn-xs" onclick="markSlip(${tripId},${s.id},'pending')">↩</button>`:''}
-                  <button class="btn btn-danger btn-xs" onclick="delSlipStudent(${tripId},${s.id})">✕</button>
+                  ${s.status!=='returned'?`<button class="btn btn-green btn-xs" onclick="markSlip(${tripId},${s.id},'returned')" aria-label="Mark slip returned">✓</button>`:''}
+                  ${s.status==='returned'?`<button class="btn btn-outline btn-xs" onclick="markSlip(${tripId},${s.id},'pending')" aria-label="Mark slip not returned">↩</button>`:''}
+                  <button class="btn btn-danger btn-xs" onclick="delSlipStudent(${tripId},${s.id})" aria-label="Remove student from slip tracker">✕</button>
                 </div>
               </td>
             </tr>`;
@@ -8003,9 +8005,16 @@ function renderArchiveCard(a) {
 }
 
 function deleteArchiveEntry(archiveId) {
-  if(!confirm('Remove this archive entry? The trip will remain in Field Trips but the reflection will be lost.')) return;
-  tripArchive = tripArchive.filter(a => a.id !== archiveId);
+  const idx = tripArchive.findIndex(a => a.id === archiveId);
+  if (idx === -1) return;
+  const [removed] = tripArchive.splice(idx, 1);
+  persistTripArchive(); // was previously never persisted — reload would undo the delete
   renderArchive();
+  _undoToast('Archive entry removed', () => {
+    tripArchive.splice(idx, 0, removed);
+    persistTripArchive();
+    renderArchive();
+  });
 }
 
 // ── Knowledge Base Summary Strip ─────────────────────────────────────────────
@@ -8044,7 +8053,7 @@ function renderArchiveKBStrip() {
     </div>
     <div style="width:1px;background:rgba(255,255,255,.15);align-self:stretch"></div>
     <div style="margin-left:auto">
-      <button class="btn btn-gold btn-sm" onclick="openAIInsights()" style="white-space:nowrap">✨ AI Insights</button>
+      <button class="btn btn-gold btn-sm" onclick="openAIInsights()" style="white-space:nowrap">📊 Archive Insights</button>
     </div>
   </div>`;
 }
@@ -8452,6 +8461,12 @@ let scrActiveCourse  = LS.get('lh_scr_active_course', '6115');
 let scrActivePeriod  = LS.get('lh_scr_active_period', null);
 let scrScores = LS.get('lh_scr_scores', {});
 function persistSCR() { LS.set('lh_scr_scores', scrScores); }
+
+// Virginia CTE SCR scale runs 1 (best) → 5 (worst) — the opposite direction
+// most 1–5 ratings default to, which reads as counter-intuitive at a glance.
+// Surfaced in cell titles/aria-labels so the direction doesn't have to be
+// memorized or guessed from color alone.
+const SCR_SCORE_LABELS = {1:'Can teach others',2:'Without supervision',3:'Limited supervision',4:'With supervision',5:'Cannot perform'};
 
 // Initialize scores - merge LS-saved scores with course roster (non-destructive)
 function initScrScores() {
@@ -9034,10 +9049,15 @@ function wblLogHoursConfirm(id) {
 function deleteWBLStudent(id) {
   const s = WBL_STUDENTS.find(x=>x.id===id);
   if (!s) return;
-  if (!confirm(`Remove ${s.fname} ${s.lname} from WBL tracker?`)) return;
+  const _saved = [...WBL_STUDENTS];
   WBL_STUDENTS = WBL_STUDENTS.filter(x=>x.id!==id);
   persistWBL();
   renderWBLTracker();
+  _undoToast(`${s.fname} ${s.lname} removed from WBL tracker`, () => {
+    WBL_STUDENTS = _saved;
+    persistWBL();
+    renderWBLTracker();
+  });
 }
 
 // ── SBE CHECKLIST ─────────────────────────────────────────
@@ -9672,9 +9692,22 @@ async function openLPModal(id) {
   }
   const gdocBtn = document.getElementById('lp-modal-gdoc-btn');
   if (lp.docId && lp.docId.startsWith('new_')) {
-    gdocBtn.style.display = 'none';
+    // Plans created inside LeaderHub live only in this browser — there's no
+    // backing Google Doc to open. Rather than hiding the button (which read
+    // as a silent dead end), explain the state instead.
+    gdocBtn.style.display = '';
+    gdocBtn.disabled = false; // keep clickable so the explanation is reachable
+    gdocBtn.style.opacity = '.7';
+    gdocBtn.style.cursor = 'default';
+    gdocBtn.textContent = '📝 Local only';
+    gdocBtn.title = "This lesson plan was created in LeaderHub and isn't backed by a Google Doc.";
+    gdocBtn.onclick = () => _showToast("This lesson plan lives only in LeaderHub — there's no Google Doc to open.", 3200);
   } else {
     gdocBtn.style.display = '';
+    gdocBtn.style.opacity = '';
+    gdocBtn.style.cursor = 'pointer';
+    gdocBtn.textContent = '↗ Open in Drive';
+    gdocBtn.title = '';
     gdocBtn.onclick = ()=>window.open(`https://docs.google.com/document/d/${lp.docId}/edit`,'_blank');
   }
   document.getElementById('lp-ai-output').textContent   = 'Choose a prompt above or ask a custom question to get AI assistance with this lesson plan.';
@@ -9988,29 +10021,59 @@ function renderStudentCard(stu, course, scores) {
         ${course.competencies.map(c => {
           const s = scores[c.num];
           const cls = `scr-s${s||0}`;
-          return `<span class="scr-score ${cls}" style="width:22px;height:18px;font-size:.62rem" onclick="cycleScore('${stu.name}',${c.num},this)" title="#${c.num}: ${c.text.substring(0,50)}">${s||'·'}</span>`;
+          return `<span class="scr-score ${cls}" style="width:22px;height:18px;font-size:.62rem" role="button" tabindex="0"
+            data-scr-key="${stu.name}::${c.num}"
+            onclick="cycleScore('${stu.name}',${c.num},this)"
+            onkeydown="scrScoreKeydown(event,'${stu.name}',${c.num},this)"
+            title="#${c.num}: ${c.text.substring(0,50)}${s?' — '+(SCR_SCORE_LABELS[s]||s):''}"
+            aria-label="${stu.name}, competency ${c.num}, ${s?SCR_SCORE_LABELS[s]+' ('+s+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+          >${s||'·'}</span>`;
         }).join('')}
       </div>
     </div>
   </div>`;
 }
 
+// Keyboard support for the score cells: Enter/Space cycles forward (same as
+// a click), Backspace/⌫ cycles backward, and typing a digit 0-5 jumps straight
+// to that score — a click-only cycle meant setting a 5 took 5 clicks per cell,
+// which doesn't scale across a roster × competency list.
+function scrScoreKeydown(e, stuName, compNum, el) {
+  if (e.key >= '0' && e.key <= '5') {
+    e.preventDefault();
+    setScore(stuName, compNum, el, Number(e.key));
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    cycleScore(stuName, compNum, el);
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    const course = scrActiveCourse, period = scrActivePeriod;
+    const current = (scrScores[course]?.[period]?.[stuName]?.[compNum]) || 0;
+    setScore(stuName, compNum, el, current <= 0 ? 5 : current - 1);
+  }
+}
+
 function cycleScore(stuName, compNum, el) {
+  const course = scrActiveCourse;
+  const period = scrActivePeriod;
+  const current = (scrScores[course]?.[period]?.[stuName]?.[compNum]) || 0;
+  const next = current >= 5 ? 0 : current + 1;
+  setScore(stuName, compNum, el, next);
+}
+
+function setScore(stuName, compNum, el, next) {
   const course = scrActiveCourse;
   const period = scrActivePeriod;
   if (!scrScores[course]) scrScores[course] = {};
   if (!scrScores[course][period]) scrScores[course][period] = {};
   if (!scrScores[course][period][stuName]) scrScores[course][period][stuName] = {};
-  
-  const current = scrScores[course][period][stuName][compNum] || 0;
-  const next = current >= 5 ? 0 : current + 1;
-  
+
   if (next === 0) {
     delete scrScores[course][period][stuName][compNum];
   } else {
     scrScores[course][period][stuName][compNum] = next;
   }
-  
+
   persistSCR();
   // Log SCR session for Brag Board — one entry per day per course (deduped by date+course)
   const _scrLog = LS.get('lh_scr_session_log', []);
@@ -10027,17 +10090,24 @@ function cycleScore(stuName, compNum, el) {
   // Update cell in place
   el.className = `scr-score scr-s${next}`;
   el.textContent = next || '·';
-  
+
   // Update column % without full re-render
-  updateCompRowPct(compNum);
+  updateCompRowPct(compNum, `${stuName}::${compNum}`);
   refreshNextAction();
 }
 
-function updateCompRowPct(compNum) {
+function updateCompRowPct(compNum, refocusKey) {
   // lightweight: just re-render the view (fast enough at this scale)
   // For a true optimization we'd update only the pct cell — keep simple
   const topbarContent = document.getElementById('scr-top-bar').innerHTML;
   renderCompetencyView();
+  // The re-render above replaces the whole grid, which would otherwise drop
+  // focus after every keyboard-driven score change — refocus the same cell
+  // so scoring an entire row by keyboard stays uninterrupted.
+  if (refocusKey) {
+    const cell = document.querySelector(`[data-scr-key="${CSS.escape(refocusKey)}"]`);
+    if (cell) cell.focus();
+  }
 }
 
 function exportSCR() {
@@ -10196,10 +10266,11 @@ function updatePOStage(id, stage) {
 }
 
 function deletePO(id) {
-  if (!confirm('Delete this purchase order?')) return;
+  const _saved = [...PURCHASE_ORDERS];
   PURCHASE_ORDERS = PURCHASE_ORDERS.filter(p=>String(p.id)!==String(id));
   persistPO();
   renderPOTable();
+  _undoToast('Purchase order removed', () => { PURCHASE_ORDERS = _saved; persistPO(); renderPOTable(); });
 }
 
 // ============================================================
@@ -10277,10 +10348,11 @@ function renderFinance() {
 }
 
 function deleteSale(id) {
-  if (!confirm('Delete this sales entry?')) return;
+  const _saved = [...SALES_LOG];
   SALES_LOG = SALES_LOG.filter(s => s.id !== id);
   persistSales();
   renderFinance();
+  _undoToast('Sales entry removed', () => { SALES_LOG = _saved; persistSales(); renderFinance(); });
 }
 
 function openSalesModal() {
@@ -10345,10 +10417,11 @@ function saveInventorySKU() {
 function deleteInventorySKU(id) {
   const item = INVENTORY.find(i => i.id === id);
   if (!item) return;
-  if (!confirm(`Delete "${item.name}" from inventory?`)) return;
+  const _saved = [...INVENTORY];
   INVENTORY = INVENTORY.filter(i => i.id !== id);
   persistInventory();
   renderFinance();
+  _undoToast(`"${item.name}" removed from inventory`, () => { INVENTORY = _saved; persistInventory(); renderFinance(); });
 }
 
 
@@ -10626,11 +10699,12 @@ function saveMatch() {
 }
 
 function deleteMatch(id) {
-  if (!confirm('Delete this match?')) return;
+  const _saved = [...ES_MATCHES];
   ES_MATCHES = ES_MATCHES.filter(m=>m.id!==id);
   persistESMatches();
   renderMatchLog();
   renderESRoster();
+  _undoToast('Match removed', () => { ES_MATCHES = _saved; persistESMatches(); renderMatchLog(); renderESRoster(); });
 }
 
 
@@ -10977,7 +11051,7 @@ function wblAIInsights() {
   modal.innerHTML = `<div style="background:#fff;max-width:600px;width:90%;border-radius:12px;padding:1.5rem;max-height:80vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
       <div style="font-weight:800;font-size:1rem">WBL Program Summary</div>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem">
       <div style="background:#f0f9ff;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${WBL_STUDENTS.length}</div><div style="font-size:.68rem;color:var(--muted)">Students</div></div>
@@ -11063,7 +11137,10 @@ function openAISCRInsights() {
 
   // Build per-student, per-competency summary table
   const compHeaders = comps.map(c => `<th style="padding:.2rem .35rem;font-size:.65rem;max-width:50px;overflow:hidden">${c.num}</th>`).join('');
-  const RATING_LABELS = {'4':'Exceeds','3':'Meets','2':'Approaching','1':'Below','·':'Not scored'};
+  // Same 1 (best) → 5 (worst) scale and color direction as the grading grid
+  // (.scr-s1 green … .scr-s5 red) — see SCR_SCORE_LABELS. This modal used to
+  // color 4 green / 1 red, the opposite direction from the grid it summarizes.
+  const RATING_BG = {'1':'#dcfce7','2':'var(--blue-light)','3':'#e0f2fe','4':'#fef9c3','5':'var(--red-light)'};
 
   const rows = students.map(stu => {
     const stuScores = myScores[stu.name] || {};
@@ -11071,8 +11148,8 @@ function openAISCRInsights() {
     const avg   = rated ? (comps.reduce((s,c)=>s+(Number(stuScores[c.num])||0),0)/rated).toFixed(1) : '—';
     const cells = comps.map(c => {
       const v = stuScores[c.num] || '·';
-      const bg = v==='4'?'#dcfce7':v==='3'?'#dbeafe':v==='2'?'#fef3c7':v==='1'?'#fee2e2':'#f8fafc';
-      return `<td style="padding:.15rem .3rem;text-align:center;background:${bg};font-size:.72rem">${v}</td>`;
+      const bg = RATING_BG[v] || '#f8fafc';
+      return `<td style="padding:.15rem .3rem;text-align:center;background:${bg};font-size:.72rem" title="${SCR_SCORE_LABELS[v]||'Not scored'}">${v}</td>`;
     }).join('');
     return `<tr><td style="padding:.2rem .4rem;font-size:.75rem;font-weight:600">${stu.name}</td>${cells}<td style="padding:.2rem .4rem;font-size:.75rem;text-align:center">${avg}</td></tr>`;
   }).join('');
@@ -11082,9 +11159,9 @@ function openAISCRInsights() {
   modal.innerHTML = `<div style="background:#fff;max-width:700px;width:95%;border-radius:12px;padding:1.5rem;max-height:85vh;overflow:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
       <div style="font-weight:800">SCR Summary — ${course.name} · ${scrActivePeriod}</div>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
     </div>
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">4=Exceeds · 3=Meets · 2=Approaching · 1=Below · ·=Not scored</div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">1=Can teach others · 2=Without supervision · 3=Limited supervision · 4=With supervision · 5=Cannot perform · ·=Not scored</div>
     <div style="overflow-x:auto">
       <table style="width:100%;border-collapse:collapse">
         <tr><th style="text-align:left;padding:.2rem .4rem;font-size:.75rem">Student</th>${compHeaders}<th style="padding:.2rem .35rem;font-size:.65rem">Avg</th></tr>
@@ -11160,7 +11237,7 @@ function esAIScout() {
   modal.innerHTML = `<div style="background:#fff;max-width:560px;width:90%;border-radius:12px;padding:1.5rem;max-height:80vh;overflow-y:auto">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
       <div style="font-weight:800">🎮 E-Sports Season Report</div>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem">
       <div style="background:#f0fdf4;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:#16a34a">${wins}</div><div style="font-size:.68rem;color:var(--muted)">Wins</div></div>
@@ -11399,10 +11476,10 @@ async function generateBragEmail() {
   const aud      = BRAG_AUDIENCE[_bragTab];
   const statusEl = document.getElementById('brag-ai-status');
   const bodyEl   = document.getElementById('brag-body');
-  const { completedTasks, decaResults, trips, emailItems, logEntries, scrWins, wblWins, esMatchWins } = _bragData;
+  const { completedTasks, decaResults, trips, emailItems, logEntries, scrWins, wblWins, esMatchWins, journalWins, manualWins } = _bragData;
   const totalWins = (completedTasks||[]).length + (decaResults||[]).length + (trips||[]).length +
                     (emailItems||[]).length + (logEntries||[]).length + (scrWins||[]).length +
-                    (wblWins||[]).length + (esMatchWins||[]).length;
+                    (wblWins||[]).length + (esMatchWins||[]).length + (journalWins||[]).length + (manualWins||[]).length;
 
   if (!totalWins) {
     if (bodyEl) bodyEl.value = '';
@@ -11422,6 +11499,8 @@ async function generateBragEmail() {
   if ((wblWins||[]).length)        sections.push('WBL/Store:\n' + wblWins.map(w=>`• ${w.text}`).join('\n'));
   if ((esMatchWins||[]).length)    sections.push('E-Sports:\n' + esMatchWins.map(e=>`• ${e.text}`).join('\n'));
   if ((logEntries||[]).length)     sections.push('Other highlights:\n' + logEntries.map(l=>`• ${l.text}`).join('\n'));
+  if ((journalWins||[]).length)    sections.push('Moments worth remembering:\n' + journalWins.map(j=>`• ${j.text}`).join('\n'));
+  if ((manualWins||[]).length)     sections.push('Also worth mentioning:\n' + manualWins.map(m=>`• ${m.text}`).join('\n'));
 
   const emailBody = `Week of ${weekDisplay} — Highlights\n\n${sections.join('\n\n')}\n\nBest,\nAdam Berneche\nCTE Business & Marketing | Clover Hill High School`;
 
@@ -11740,10 +11819,17 @@ function saveDeadline(){
   refreshNextAction();
 }
 function deleteDeadline(id){
+  const _saved = [...DEADLINES];
   DEADLINES=DEADLINES.filter(d=>d.id!==id);
   LS.set('lh_deadlines',DEADLINES);
   renderDeadlines();
   refreshNextAction();
+  _undoToast('Deadline removed', () => {
+    DEADLINES = _saved;
+    LS.set('lh_deadlines', DEADLINES);
+    renderDeadlines();
+    refreshNextAction();
+  });
 }
 
 // ── Progress Ring SVG ─────────────────────────────────────
@@ -12360,10 +12446,10 @@ function renderHorizons(){
       return;
     }
     el.innerHTML=HORIZON[h].map(item=>`
-      <div style="display:flex;align-items:flex-start;gap:.42rem;margin-bottom:.3rem;${item.pinned?'background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 4px;margin-left:-4px;':''}">
-        <div onclick="horizonToggle('${h}','${item.id}')" style="width:17px;height:17px;border-radius:3px;border:2px solid ${m.border};background:${item.done?m.tick:'#fff'};flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:.66rem;color:#fff">${item.done?'✓':''}</div>
+      <div data-hid="${item.id}" style="display:flex;align-items:flex-start;gap:.42rem;margin-bottom:.3rem;transition:opacity .7s ease,transform .7s ease;${item.pinned?'background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 4px;margin-left:-4px;':''}">
+        <div onclick="horizonToggle('${h}','${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();horizonToggle('${h}','${item.id}')}" role="checkbox" aria-checked="${item.done}" aria-label="${item.done?'Done — ':''}${(item.text||'').replace(/"/g,'&quot;')}" tabindex="0" style="width:17px;height:17px;border-radius:3px;border:2px solid ${m.border};background:${item.done?m.tick:'#fff'};flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:.66rem;color:#fff">${item.done?'✓':''}</div>
         <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${item.id}')">${item.pinned?'📌 ':''}${item.text}</span>
-        <button onclick="horizonDelete('${h}','${item.id}')" style="background:none;border:none;color:#d1d5db;font-size:.74rem;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px">✕</button>
+        <button onclick="horizonDelete('${h}','${item.id}')" aria-label="Delete this item" style="background:none;border:none;color:#d1d5db;font-size:.74rem;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px">✕</button>
       </div>`).join('');
   });
 }
@@ -12384,7 +12470,7 @@ function horizonToggle(h,id){
   // This feeds Brag Board completedTasks and preserves the resolvedAt timestamp.
   // Only fires on 'short' (This Week) items — these are the active work items.
   if (!wasDone && item.done && h === 'short') {
-    const _htasks = LS.get('lh_tasks', tasks);
+    const _htasks = LS.get('lh_tasks', []);
     const alreadyLogged = _htasks.some(t => t.horizonId === item.id);
     if (!alreadyLogged) {
       const newTask = {
@@ -12397,8 +12483,6 @@ function horizonToggle(h,id){
         source: 'horizon',
       };
       _htasks.push(newTask);
-      // Keep tasks array in sync
-      if (typeof tasks !== 'undefined') tasks.push(newTask);
       LS.set('lh_tasks', _htasks);
     }
   }
@@ -12407,18 +12491,46 @@ function horizonToggle(h,id){
   refreshNextAction(); // re-score priority queue
 
   // ── Auto-remove done items after 1s — keeps lists clean ──────────────────
-  // Unchecking is still possible via the ✕ button; done items briefly show ✓
-  // then fade out, and the evidence is already captured in lh_tasks above.
+  // Unchecking is still possible via the ✕ button while it's still visible;
+  // a visible fade (not an instant vanish) gives a beat of warning, and an
+  // undo toast covers the case where the removal happens before you react.
   if (!wasDone && item.done) {
+    const rowEl = document.querySelector(`[data-hid="${id}"]`);
+    setTimeout(() => { if (rowEl) { rowEl.style.opacity = '0'; rowEl.style.transform = 'translateX(6px)'; } }, 150);
     setTimeout(() => {
-      HORIZON[h] = HORIZON[h].filter(x => x.id !== id);
+      const removedIdx = HORIZON[h].findIndex(x => x.id === id);
+      if (removedIdx === -1) return;
+      const [removedItem] = HORIZON[h].splice(removedIdx, 1);
       LS.set('lh_horizon', HORIZON);
       renderHorizons();
       refreshNextAction();
+      _undoToast(`Marked done: "${(removedItem.text||'').slice(0,40)}"`, () => {
+        HORIZON[h].splice(removedIdx, 0, removedItem);
+        HORIZON[h][removedIdx].done = false;
+        LS.set('lh_horizon', HORIZON);
+        renderHorizons();
+        refreshNextAction();
+      });
     }, 1000);
   }
 }
-function horizonDelete(h,id){ HORIZON[h]=HORIZON[h].filter(x=>x.id!==id); LS.set('lh_horizon',HORIZON); renderHorizons(); refreshNextAction(); }
+function horizonDelete(h,id){
+  const idx = HORIZON[h].findIndex(x=>x.id===id);
+  if (idx === -1) return;
+  const [removed] = HORIZON[h].splice(idx,1);
+  LS.set('lh_horizon',HORIZON);
+  renderHorizons();
+  refreshNextAction();
+  // Non-blocking undo (reuses the app's existing toast helper — see LEADERHUB
+  // COMMAND ENGINE section) rather than a confirm() dialog, since this is a
+  // frequent, routine action where a brief undo window fits better.
+  _undoToast(`Deleted "${(removed.text||'').slice(0,40)}"`, () => {
+    HORIZON[h].splice(idx,0,removed);
+    LS.set('lh_horizon',HORIZON);
+    renderHorizons();
+    refreshNextAction();
+  });
+}
 
 // ── Recent Wins Strip — shows completed This Week items in D4 column ──────────
 // Reads from lh_tasks (source:'horizon') for this week.
@@ -12457,7 +12569,7 @@ function renderRecentWins() {
     .slice(0, 8);
 
   // Also pull completed tasks not yet in daily_log (legacy / no-log tasks)
-  const allTasks = LS.get('lh_tasks', typeof tasks !== 'undefined' ? tasks : []);
+  const allTasks = LS.get('lh_tasks', []);
   const taskWins = allTasks
     .filter(t => t.done && t.resolvedAt && new Date(t.resolvedAt) >= weekStart
                  && !logWins.some(e => e.note?.includes(t.text?.substring(0,30))))
@@ -12681,7 +12793,7 @@ function renderMoodButtons(){
     const n = i+1;
     const isSel = _journalMood === n;
     const style = isSel ? `background:${MOOD_COLORS[n]};border-color:${MOOD_COLORS[n]}` : '';
-    return `<button class="mood-btn${isSel?' selected':''}" data-n="${n}" style="${style}" onclick="selectMood(${n})">${n}</button>`;
+    return `<button class="mood-btn${isSel?' selected':''}" data-n="${n}" style="${style}" onclick="selectMood(${n})" aria-label="Energy level ${n} of 10" aria-pressed="${isSel}">${n}</button>`;
   }).join('');
   const desc = document.getElementById('mood-desc');
   if(desc && _journalMood){
@@ -13410,7 +13522,7 @@ function openImprovementsModal(){
   m.innerHTML=`<div style="background:var(--surface);max-width:780px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl,0 24px 64px rgba(0,0,0,.2))">
     <div style="background:var(--navy);padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.5rem;color:var(--gold);letter-spacing:2px">5 Ideas per Work Area</div>
-      <button onclick="this.closest('[style*=fixed]').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem">
       ${Object.entries(IMPROVEMENTS).map(([key,items])=>{
@@ -13748,9 +13860,16 @@ function saveObsLog() {
 }
 
 function deleteObsLog(id) {
-  const history = LS.get('lh_obs_history', []).filter(o => o.id !== id);
-  LS.set('lh_obs_history', history);
+  const all = LS.get('lh_obs_history', []);
+  const removed = all.find(o => o.id === id);
+  LS.set('lh_obs_history', all.filter(o => o.id !== id));
   renderObsChecklist();
+  if (removed) {
+    _undoToast('Observation log entry removed', () => {
+      LS.set('lh_obs_history', [...LS.get('lh_obs_history', []), removed]);
+      renderObsChecklist();
+    });
+  }
 }
 
 // ── Resolve obs action item — marks it resolved so P95 stops firing ───────────
@@ -14772,9 +14891,17 @@ function updateSubStudentNote(i, field, val) {
 
 function removeSubStudentNote(i) {
   const notes = LS.get('lh_sub_student_notes', []);
-  notes.splice(i, 1);
+  const [removed] = notes.splice(i, 1);
   LS.set('lh_sub_student_notes', notes);
   renderSubStudentNotes(notes);
+  if (removed) {
+    _undoToast('Note removed', () => {
+      const current = LS.get('lh_sub_student_notes', []);
+      current.splice(i, 0, removed);
+      LS.set('lh_sub_student_notes', current);
+      renderSubStudentNotes(current);
+    });
+  }
 }
 
 // ── AI Generation ─────────────────────────────────────────────────────────────
@@ -14783,10 +14910,23 @@ function removeSubStudentNote(i) {
 function copySubPlan() {
   const text = document.getElementById('sp-preview-output').textContent;
   if (!text || text.startsWith('Click') || text.startsWith('⚠')) return;
+  const el = document.getElementById('sp-copy-confirm');
   navigator.clipboard.writeText(text).then(() => {
-    const el = document.getElementById('sp-copy-confirm');
     el.textContent = '✓ Copied to clipboard';
     setTimeout(() => { el.textContent = ''; }, 2500);
+  }).catch(() => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      el.textContent = '✓ Copied to clipboard';
+    } catch (e) {
+      el.textContent = '⚠ Could not copy — select and copy the text manually';
+    }
+    setTimeout(() => { el.textContent = ''; }, 3500);
   });
 }
 
@@ -14949,6 +15089,22 @@ function gatherBragData() {
     }
   } catch(e) {}
 
+  // ── Journal moments this week (proud / kindness witnessed / kindness given) ──
+  const journalWins = (LS.get('lh_journal_history', []) || [])
+    .filter(e => inRange(e.savedAt))
+    .flatMap(e => {
+      const items = [];
+      if ((e.q4 || '').trim()) items.push({ text: (e.q4||'').trim(), kind: '🏅' });
+      if ((e.q5 || '').trim()) items.push({ text: (e.q5||'').trim(), kind: '👀' });
+      if ((e.q6 || '').trim()) items.push({ text: (e.q6||'').trim(), kind: '🤝' });
+      return items;
+    });
+
+  // ── Manually added wins ("something we might have missed") ──────────────────
+  const manualWins = (LS.get('lh_brag_manual_wins', []) || [])
+    .filter(w => inRange(w.addedAt))
+    .map(w => ({ text: w.text, id: w.id }));
+
   // ── SCR scoring sessions this week ─────────────────────────────────────────
   // Uses lh_scr_session_log written by cycleScore() — one entry per day per course
   const scrWins = [];
@@ -14974,7 +15130,7 @@ function gatherBragData() {
     }
   } catch(e) {}
 
-  _bragData = { completedTasks, decaResults, trips: archivedTrips, emailItems, logEntries, scrWins, wblWins, esMatchWins };
+  _bragData = { completedTasks, decaResults, trips: archivedTrips, emailItems, logEntries, scrWins, wblWins, esMatchWins, journalWins, manualWins };
 
   // Render left panel
   const renderList = (sectionId, listId, items, fmt) => {
@@ -14995,8 +15151,24 @@ function gatherBragData() {
   renderList('brag-section-scr',   'brag-list-scr',   scrWins,         i => `📊 ${i.text}`);
   renderList('brag-section-wbl',     'brag-list-wbl',     wblWins,         i => `⏱ ${i.text}`);
   renderList('brag-section-esports', 'brag-list-esports', esMatchWins,     i => `🎮 ${i.text}`);
+  renderList('brag-section-journal', 'brag-list-journal', journalWins,     i => `${i.kind} ${i.text}`);
 
-  const totalWins = completedTasks.length + decaResults.length + archivedTrips.length + emailItems.length + logEntries.length + scrWins.length + wblWins.length + esMatchWins.length;
+  // Manual wins get delete buttons — rendered separately from the shared renderList helper
+  const manualSec = document.getElementById('brag-section-manual');
+  const manualLst = document.getElementById('brag-list-manual');
+  if (!manualWins.length) {
+    manualSec.style.display = 'none';
+  } else {
+    manualSec.style.display = 'block';
+    manualLst.innerHTML = manualWins.map(w =>
+      `<div style="font-size:.72rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;justify-content:space-between;gap:.3rem;align-items:flex-start">
+        <span>✍️ ${w.text}</span>
+        <button onclick="deleteBragManualWin('${w.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;flex-shrink:0" title="Remove" aria-label="Remove this win">✕</button>
+      </div>`
+    ).join('');
+  }
+
+  const totalWins = completedTasks.length + decaResults.length + archivedTrips.length + emailItems.length + logEntries.length + scrWins.length + wblWins.length + esMatchWins.length + journalWins.length + manualWins.length;
   document.getElementById('brag-empty-state').style.display = totalWins ? 'none' : 'block';
 
   // Refresh subject line with current week
@@ -15005,14 +15177,52 @@ function gatherBragData() {
 
 
 
+function addBragManualWin() {
+  const inp = document.getElementById('brag-manual-input');
+  const text = (inp?.value || '').trim();
+  if (!text) return;
+  const wins = LS.get('lh_brag_manual_wins', []);
+  wins.unshift({ id: 'bm' + Date.now(), text, addedAt: new Date().toISOString() });
+  LS.set('lh_brag_manual_wins', wins.slice(0, 200)); // plenty of headroom, avoid unbounded growth
+  if (inp) inp.value = '';
+  gatherBragData();
+}
+
+function deleteBragManualWin(id) {
+  const all = LS.get('lh_brag_manual_wins', []);
+  const removed = all.find(w => w.id === id);
+  LS.set('lh_brag_manual_wins', all.filter(w => w.id !== id));
+  gatherBragData();
+  if (removed) {
+    _undoToast('Win removed', () => {
+      LS.set('lh_brag_manual_wins', [...LS.get('lh_brag_manual_wins', []), removed]);
+      gatherBragData();
+    });
+  }
+}
+
 function copyBragEmail() {
   const subject = document.getElementById('brag-subject').value;
   const body    = document.getElementById('brag-body').value;
   if (!body) return;
-  navigator.clipboard.writeText(subject + '\n\n' + body).then(() => {
-    const el = document.getElementById('brag-copy-confirm');
+  const full = subject + '\n\n' + body;
+  const el = document.getElementById('brag-copy-confirm');
+  navigator.clipboard.writeText(full).then(() => {
     el.textContent = '✓ Copied to clipboard';
     setTimeout(() => { el.textContent = ''; }, 2500);
+  }).catch(() => {
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = full;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      el.textContent = '✓ Copied to clipboard';
+    } catch (e) {
+      el.textContent = '⚠ Could not copy — select and copy the text manually';
+    }
+    setTimeout(() => { el.textContent = ''; }, 3500);
   });
 }
 
@@ -15080,7 +15290,7 @@ function showBragBoardPromptBanner() {
   <div class="modal-box" style="max-width:520px">
     <div class="modal-header">
       <span>📧 Email Bridge Setup</span>
-      <button class="modal-close" onclick="closeModal('emailbridge')">✕</button>
+      <button class="modal-close" onclick="closeModal('emailbridge')" aria-label="Close">✕</button>
     </div>
     <div style="padding:1.2rem 1.4rem;display:flex;flex-direction:column;gap:1rem">
 
@@ -15355,8 +15565,23 @@ function showBragBoardPromptBanner() {
           <div id="brag-list-esports" style="display:flex;flex-direction:column;gap:.2rem"></div>
         </div>
 
+        <div id="brag-section-journal" style="display:none">
+          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">🏅 Journal Moments</div>
+          <div id="brag-list-journal" style="display:flex;flex-direction:column;gap:.2rem"></div>
+        </div>
+
+        <div id="brag-section-manual" style="display:none">
+          <div style="font-size:.7rem;font-weight:700;color:var(--navy);margin-bottom:.25rem">✍️ Added by You</div>
+          <div id="brag-list-manual" style="display:flex;flex-direction:column;gap:.2rem"></div>
+        </div>
+
         <div id="brag-empty-state" style="font-size:.78rem;color:var(--muted);font-style:italic;text-align:center;padding:1rem 0">
           No wins found yet — try selecting a different week.
+        </div>
+
+        <div style="display:flex;gap:.3rem;margin-top:.25rem">
+          <input id="brag-manual-input" placeholder="Add a win we might have missed…" style="flex:1;font-size:.72rem;border:1px solid var(--border);border-radius:6px;padding:.35rem .4rem" onkeydown="if(event.key==='Enter'){event.preventDefault();addBragManualWin();}">
+          <button class="btn btn-outline btn-sm" style="font-size:.73rem" onclick="addBragManualWin()">+ Add</button>
         </div>
 
         <button class="btn btn-outline btn-sm" style="margin-top:auto;font-size:.73rem" onclick="gatherBragData()">🔄 Re-gather</button>

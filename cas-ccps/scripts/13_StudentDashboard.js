@@ -67,6 +67,7 @@ function getStudentDashboardData(termFilter) {
       block:         String(row[5]).trim(),
       className:     String(row[6]).trim(),
       teacherName:   String(row[7]).trim(),
+      teacherEmail:  String(row[8] || "").trim(),
       period:        String(row[11]).trim(),
       subject:       String(row[9]).trim(),
       term:          rowTerm2,
@@ -174,9 +175,17 @@ function buildStudentDashboardHtml_() {
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:15px;min-height:100vh}
-  header{background:linear-gradient(135deg,#1e8e3e,#137333);color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between}
+  header{background:linear-gradient(135deg,#1e8e3e,#137333);color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
   header h1{font-size:19px;font-weight:500}
   #account-label{font-size:12px;opacity:.85;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .refresh-btn{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.4);color:white;border-radius:4px;padding:5px 10px;font-size:12px;cursor:pointer}
+  .refresh-btn:hover{background:rgba(255,255,255,0.25)}
+  @media (max-width:480px){
+    header{padding:14px 16px}
+    header h1{font-size:17px}
+    .main{padding:16px}
+    .card{padding:14px 16px}
+  }
   #loading{text-align:center;padding:80px 24px;color:#5f6368}
   .spinner{width:40px;height:40px;border:3px solid #e8eaed;border-top-color:#1e8e3e;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -195,7 +204,7 @@ function buildStudentDashboardHtml_() {
   .pill{font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;white-space:nowrap;flex-shrink:0}
   .pill-NOT_STARTED{background:#f1f3f4;color:#5f6368}
   .pill-IN_PROGRESS{background:#e8f0fe;color:#1a73e8}
-  .pill-NEEDS_ACTION{background:#fef3e2;color:#e37400}
+  .pill-NEEDS_ACTION{background:#fef3e2;color:#9c5000}
   .pill-DONE{background:#e6f4ea;color:#1e8e3e}
   .pill-ISSUE{background:#fce8e6;color:#d93025}
   .card-meta{font-size:13px;color:#5f6368;margin-bottom:10px}
@@ -213,10 +222,12 @@ function buildStudentDashboardHtml_() {
 <body>
 <header>
   <h1>📚 My Assignments</h1>
-  <div style="display:flex;align-items:center;gap:10px;">
-    <select id="term-filter" onchange="loadData()" style="padding:5px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:12px;">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+    <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
+    <select id="term-filter" onchange="loadData()" aria-label="Filter by term" style="padding:5px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:12px;">
       <option value="ALL">All Terms</option>
     </select>
+    <button class="refresh-btn" onclick="loadData()" aria-label="Refresh assignments">↻ Refresh</button>
     <div id="account-label">Loading…</div>
   </div>
 </header>
@@ -301,6 +312,10 @@ function render(data) {
         }
         \${isDone && a.submittedAt
           ? \`<div class="submitted-note">Submitted \${esc(a.submittedAt)}</div>\`
+          : ""
+        }
+        \${a.statusClass === "ISSUE" && a.teacherEmail
+          ? \`<div style="margin-top:8px"><a href="mailto:\${esc(a.teacherEmail)}?subject=\${encodeURIComponent("Question about: " + a.unitName)}" style="font-size:13px;color:#1a73e8;text-decoration:none;font-weight:500">✉ Email \${esc(a.teacherName || "your teacher")}</a></div>\`
           : ""
         }
       </div>\`;
