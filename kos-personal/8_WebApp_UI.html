@@ -194,6 +194,9 @@ textarea { line-height: 1.55; }
 }
 
 .btn-confirm { background: var(--warn-bg); border-color: var(--warn); color: var(--warn); }
+/* Was referenced (Diagnostics panel-error Retry button) with no rule defined anywhere — a lighter-weight treatment for a secondary action next to an error message. */
+.btn-outline { background: transparent; border-color: var(--border2); color: var(--text3); }
+.btn-outline:hover:not(:disabled) { background: var(--surface); color: var(--text); }
 .btn-danger  { background: var(--danger-bg); border-color: var(--danger); color: var(--danger); }
 
 /* ── Toast ─────────────────────────────────────────────────── */
@@ -921,18 +924,26 @@ function restoreIngestDraft() {
 function clearIngestDraft() { _safeLS(() => localStorage.removeItem(INGEST_DRAFT_KEY)); }
 
 let _ingestDraftSaveTimer = null;
+function _flushIngestDraftSave() {
+  clearTimeout(_ingestDraftSaveTimer);
+  const st = document.getElementById('session-text');
+  const rt = document.getElementById('research-text');
+  const rtl = document.getElementById('research-title');
+  if (st)  draftSession       = st.value;
+  if (rt)  draftResearch      = rt.value;
+  if (rtl) draftResearchTitle = rtl.value;
+  persistIngestDraft();
+}
 function scheduleIngestDraftSave() {
   clearTimeout(_ingestDraftSaveTimer);
-  _ingestDraftSaveTimer = setTimeout(() => {
-    const st = document.getElementById('session-text');
-    const rt = document.getElementById('research-text');
-    const rtl = document.getElementById('research-title');
-    if (st)  draftSession       = st.value;
-    if (rt)  draftResearch      = rt.value;
-    if (rtl) draftResearchTitle = rtl.value;
-    persistIngestDraft();
-  }, 600);
+  _ingestDraftSaveTimer = setTimeout(_flushIngestDraftSave, 600);
 }
+// The whole point of this draft is guarding against an accidental close
+// losing a big paste — but the 600ms debounce itself left up to 600ms of
+// keystrokes unsaved if the tab closed/reloaded inside that window. Flush
+// immediately on the way out instead of waiting for the timer.
+window.addEventListener('pagehide', _flushIngestDraftSave);
+window.addEventListener('beforeunload', _flushIngestDraftSave);
 
 function switchTab(id) {
   // Re-tapping the tab you're already on used to reset scroll position and
@@ -987,6 +998,12 @@ function switchType(type) {
   // got hidden by a subsequent submit, never by leaving the type it was
   // about.
   document.getElementById('next-hint').classList.remove('show');
+  // hideDropPanel() above unconditionally hid it — switching Session Log →
+  // Research → Session Log again with an oversized paste still sitting in
+  // the textarea left it hidden (and stuck that way until the user typed
+  // again or hit Submit, both of which independently re-check length).
+  // Re-running updateCount() re-derives the correct state immediately.
+  if (type === 'session') updateCount('session-text', 'session-count');
 }
 
 function updateCount(textareaId, countId) {

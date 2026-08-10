@@ -931,6 +931,13 @@ function openModal() {
   const mm    = String(today.getMonth()+1).padStart(2,"0");
   const dd    = String(today.getDate()).padStart(2,"0");
   document.getElementById("f-date").value = yyyy+"-"+mm+"-"+dd;
+  // Symmetric with the server's 30-days-in-the-past guard
+  // (22_LessonContextHandler.js) — only the past direction had a bound
+  // anywhere, so a fat-fingered future year was accepted with no warning
+  // until the server round-trip caught it.
+  const maxDate = new Date(today); maxDate.setDate(maxDate.getDate() + 7);
+  document.getElementById("f-date").max = maxDate.getFullYear() + "-" +
+    String(maxDate.getMonth()+1).padStart(2,"0") + "-" + String(maxDate.getDate()).padStart(2,"0");
   if (lastUsedPeriod) document.getElementById("f-period").value = lastUsedPeriod;
 
   // A restored draft (real, unsaved typing) takes priority over the date/
