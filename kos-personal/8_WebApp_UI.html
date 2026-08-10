@@ -977,7 +977,12 @@ function switchType(type) {
 }
 
 function updateCount(textareaId, countId) {
-  const n   = document.getElementById(textareaId).value.length;
+  const raw = document.getElementById(textareaId).value;
+  const n   = raw.length;
+  // handleSubmit()/the server both validate trim().length, not the raw
+  // length — a whitespace-heavy paste (leading/trailing blank lines, etc.)
+  // used to show a passing counter here and then still bounce at Submit.
+  const trimmedLen = raw.trim().length;
   const el  = document.getElementById(countId);
   const fmt = n.toLocaleString() + ' chars';
   scheduleIngestDraftSave();
@@ -993,7 +998,7 @@ function updateCount(textareaId, countId) {
   } else if (n > LARGE_PAYLOAD_THRESHOLD * 0.8) {
     el.innerHTML = '<span class="char-warn">' + fmt + ' · approaching limit</span>';
     hideDropPanel();
-  } else if (n > 0 && n < minLength) {
+  } else if (n > 0 && trimmedLen < minLength) {
     el.innerHTML = fmt + ' <span style="color:var(--text3)">· minimum ' + minLength + '</span>';
     hideDropPanel();
   } else {
