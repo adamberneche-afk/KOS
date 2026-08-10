@@ -4692,7 +4692,17 @@ function openModal(name){
 // Covers all three close paths uniformly since Escape, the backdrop click,
 // and each modal's own "✕ Close" button all funnel through closeModal().
 const MO_CLOSE_GUARDS = {
-  bragboard: () => !_bragHasUnsavedChanges() || confirm('Discard this email draft? It hasn\'t been saved to the log.'),
+  bragboard: () => {
+    if (!_bragHasUnsavedChanges()) return true;
+    if (!confirm('Discard this email draft? It hasn\'t been saved to the log.')) return false;
+    // Confirmed discard — resync the snapshot to the (about to be
+    // abandoned) textarea value so beforeunload doesn't still think there's
+    // unsaved work and re-warn about a draft the user just said to throw
+    // away.
+    const el = document.getElementById('brag-body');
+    if (el) _bragBodySnapshot = el.value;
+    return true;
+  },
 };
 function closeModal(name){
   const guard = MO_CLOSE_GUARDS[name];
@@ -4828,8 +4838,13 @@ function renderWizardStepBar() {
       // longer un-checkmarks later ones whose answers are still in _wzDraft.
       const done    = !active && s.id <= _wzMaxStepReached;
       const last    = i === WZ_STEPS.length - 1;
+      // Mouse-only before this — the approval-chain circles elsewhere in
+      // the app already carry role/tabindex/onkeydown for this same
+      // "circle acts like a button" pattern; applied here too so a
+      // keyboard user can jump between reached steps the same way.
+      const canJump = done || active;
       return `<div style="display:flex;align-items:center;flex:1;min-width:0">
-        <div onclick="wzJumpTo(${s.id})" style="display:flex;flex-direction:column;align-items:center;cursor:${done||active?'pointer':'default'};flex-shrink:0;min-width:0">
+        <div ${canJump ? `onclick="wzJumpTo(${s.id})" onkeydown="if((event.key==='Enter'||event.key===' ')){event.preventDefault();wzJumpTo(${s.id})}" role="button" tabindex="0" aria-label="Go to step ${s.id}: ${s.label}"` : 'aria-hidden="true"'} style="display:flex;flex-direction:column;align-items:center;cursor:${done||active?'pointer':'default'};flex-shrink:0;min-width:0">
           <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${done?'.75rem':'.8rem'};font-weight:700;
             background:${active?'var(--gold)':done?'rgba(255,255,255,.9)':'rgba(255,255,255,.15)'};
             color:${active?'var(--navy)':done?'var(--navy)':'rgba(255,255,255,.5)'};
@@ -5153,8 +5168,15 @@ function wzValidateStep() {
       if (!d.sponsor?.trim()) errs.push('Trip Sponsor Name is required');
       break;
     case 2:
-      if (!d.dest1?.trim()) errs.push('Destination #1 is required');
-      if (!d.depTime)       errs.push('Departure Time is required');
+      // isOvernightTrip() mirrors the same-day/overnight-is/overnight-oos/
+      // multi-day/international taxonomy used to render these fields — an
+      // overnight-or-longer trip's return time is often TBD across days,
+      // so nt-ret-time is only marked required in the markup (and checked
+      // here) for same-day trips.
+      if (!d.origin?.trim()) errs.push('Origin School is required');
+      if (!d.dest1?.trim())  errs.push('Destination #1 is required');
+      if (!d.depTime)        errs.push('Departure Time is required');
+      if (!isOvernightTrip(d) && !d.retTime) errs.push('Return Time is required');
       break;
     case 3:
       if (!parseInt(d.ccpsBus) && !parseInt(d.charter) && !parseInt(d.rental) && d.walk!=='YES' && d.parentTx!=='YES' && d.train!=='YES')
@@ -5163,6 +5185,10 @@ function wzValidateStep() {
     case 4:
       if (!d.stuAtt || parseInt(d.stuAtt) < 1)
         errs.push('Number of attending students is required (must be ≥ 1)');
+      if (!d.adultAtt || parseInt(d.adultAtt) < 1)
+        errs.push('Number of adults attending is required (must be ≥ 1)');
+      if (!d.chap?.trim())
+        errs.push('Chaperone count (M / F) is required');
       break;
     case 5:
       if (!d.med)           errs.push('Confirm medically trained staff status');
@@ -6590,6 +6616,7 @@ function saveStudent(){
   persistStudents();
   closeModal('addStudent');
   renderStudents();
+  _showToast('✅ Member added');
 }
 
 function saveStudentAndEmail(){
@@ -6640,6 +6667,7 @@ function updateStudent(id){
   persistStudents(); // was missing — edits (dues paid, contact info, etc.) never survived a reload
   closeModal('addStudent');
   renderStudents();
+  _showToast('✅ Member updated');
 }
 
 function delStu(id){
@@ -7454,6 +7482,7 @@ function saveSlipStudent() {
   closeModal('addSlipStudent');
   document.getElementById('slip-trip-sel').value = tripId;
   renderSlipView();
+  _showToast(added === 1 ? '✅ Student added to roster' : `✅ ${added} students added to roster`);
 }
 
 function exportSlipList() {
@@ -10997,7 +11026,11 @@ function renderSSBUChecklist() {
   const el = document.getElementById('ssbu-checklist-render'); if (!el) return;
   el.innerHTML = SSBU_CHECKLIST.map((c,i)=>{
     const done = !!SSBU_CHECK_STATUS[i];
-    return `<div onclick="SSBU_CHECK_STATUS[${i}]=!SSBU_CHECK_STATUS[${i}];persistESChecklists();renderSSBUChecklist()" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
+    // Mouse-only before this — unlike the SBE checklist (which has a real
+    // <button> alongside its clickable div as a keyboard fallback), these
+    // items had no way to toggle without a pointer at all.
+    const toggle = `SSBU_CHECK_STATUS[${i}]=!SSBU_CHECK_STATUS[${i}];persistESChecklists();renderSSBUChecklist()`;
+    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
       <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
       <span style="color:${done?'#15803d':'#374151'}">${c}</span>
     </div>`;
@@ -11008,7 +11041,8 @@ function renderMK8Checklist() {
   const el = document.getElementById('mk8-checklist-render'); if (!el) return;
   el.innerHTML = MK8_CHECKLIST.map((c,i)=>{
     const done = !!MK8_CHECK_STATUS[i];
-    return `<div onclick="MK8_CHECK_STATUS[${i}]=!MK8_CHECK_STATUS[${i}];persistESChecklists();renderMK8Checklist()" style="cursor:pointer;background:${done?'#fff7ed':'#fff'};border:1px solid ${done?'#fed7aa':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
+    const toggle = `MK8_CHECK_STATUS[${i}]=!MK8_CHECK_STATUS[${i}];persistESChecklists();renderMK8Checklist()`;
+    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#fff7ed':'#fff'};border:1px solid ${done?'#fed7aa':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
       <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?'#e67e22':'#d1d5db'};background:${done?'#e67e22':'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
       <span style="color:${done?'#92400e':'#374151'}">${c}</span>
     </div>`;
@@ -11066,10 +11100,13 @@ function closeMatchModal() { document.getElementById('es-match-modal').style.dis
 function saveMatch() {
   const opp = document.getElementById('match-opp').value.trim();
   if (!opp) { _showToast('Please enter opponent school.', 2500, '#991b1b'); return; }
+  // Falls back to today when the date field is left blank — was computed
+  // here but never actually used below, so a blank date field silently
+  // saved an empty date instead of falling back.
   const matchDateVal = document.getElementById('match-date')?.value || new Date().toISOString().slice(0,10);
   ES_MATCHES.push({
     id:'m'+Date.now(),
-    date:  document.getElementById('match-date').value,
+    date:  matchDateVal,
     game:  document.getElementById('match-game').value,
     opp,
     us:    Number(document.getElementById('match-us').value)||0,
@@ -12260,10 +12297,12 @@ function saveDeadline(){
     DEADLINES.push({id:'dl'+Date.now(),title,date,role});
   }
   LS.set('lh_deadlines',DEADLINES);
+  const wasEditing = !!_editingDeadlineId;
   document.getElementById('dl-title').value='';
   closeDeadlineModal();
   renderDeadlines();
   refreshNextAction();
+  _showToast(wasEditing ? '✅ Deadline updated' : '✅ Deadline added');
 }
 function deleteDeadline(id){
   const dl = DEADLINES.find(d=>d.id===id);
@@ -13200,7 +13239,15 @@ function scheduleJournalDraftSave(){
   clearTimeout(_journalDraftTimer);
   _journalDraftTimer = setTimeout(saveJournalDraft, 500);
 }
-function clearJournalDraft(){ LS.set(JOURNAL_DRAFT_KEY, null); }
+function clearJournalDraft(){
+  // Also cancel any pending debounced autosave — without this, a keystroke
+  // just before Save leaves _journalDraftTimer armed, and it fires ~500ms
+  // later (reading the still-live textarea values) and re-writes the exact
+  // draft this call just cleared, resurrecting a "recover your draft?"
+  // prompt for an entry that already saved successfully.
+  clearTimeout(_journalDraftTimer);
+  LS.set(JOURNAL_DRAFT_KEY, null);
+}
 // Delegated rather than wired onto each of the 5 textareas individually —
 // works for all of them (and any added later) without touching their markup.
 document.addEventListener('input', (e) => {

@@ -280,7 +280,7 @@ function buildStudentDashboardHtml_() {
     <div id="account-label">Loading…</div>
   </div>
 </header>
-<div id="loading"><div class="spinner"></div><p>Loading your assignments…</p></div>
+<div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading your assignments…</p></div>
 <div id="main" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 <script>
@@ -373,7 +373,15 @@ function render(data) {
   const _scrollTop = main.scrollTop;
 
   if (data.error) {
-    loading.innerHTML = '<p style="color:#d93025;padding:24px;">' + esc(data.error) + '</p>';
+    // This is an application-level error (e.g. identity not found) — a
+    // separate path from the network-failure branch in loadData(), which
+    // already gets both of these. Without them, the header's account
+    // label stayed stuck on "Loading…" forever, and there was no way to
+    // retry without a full page refresh.
+    document.getElementById("account-label").textContent = "—";
+    loading.innerHTML =
+      '<p style="color:#d93025;padding:24px 24px 8px;">' + esc(data.error) + '</p>' +
+      '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
     return;
   }
 
