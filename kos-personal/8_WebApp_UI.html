@@ -532,7 +532,7 @@ textarea { line-height: 1.55; }
         Paste your first session log in the Ingest tab.
       </div>
     </div>
-    <div id="bs-err" class="toast toast-err" style="display:none;margin-top:10px">
+    <div id="bs-err" class="toast toast-err" style="display:none;margin-top:10px" role="alert" aria-live="assertive">
       <i class="ti ti-alert-circle"></i>
       <div><div id="bs-err-msg" style="font-weight:500"></div>
       <div style="font-size:11px;margin-top:2px">Check your Google account permissions and try again.</div></div>
@@ -639,7 +639,7 @@ textarea { line-height: 1.55; }
       </div>
     </div>
 
-    <div id="ingest-toast" class="toast">
+    <div id="ingest-toast" class="toast" role="status" aria-live="polite">
       <i class="ti ti-circle-check"></i>
       <span id="ingest-msg"></span>
     </div>
@@ -701,7 +701,10 @@ textarea { line-height: 1.55; }
   <div id="tab-diag" class="section">
 
     <!-- ① CALIBRATION STATUS ─────────────────────────────── -->
-    <div class="sec-lbl has-tip" style="margin-bottom:8px">
+    <!-- No inline margin-bottom override — .sec-lbl's own 10px default
+         matches the Queue tab's "Needs review" header; these used to
+         override to 8px, a stray 2px inconsistency between tabs. -->
+    <div class="sec-lbl has-tip">
       Ambient Calibration
       <span class="tip-icon" title="The system learns your context passively from sessions. Each question builds confidence over time — no manual setup required.">?</span>
     </div>
@@ -713,7 +716,7 @@ textarea { line-height: 1.55; }
     <div class="sec-divider"></div>
 
     <!-- ② SYSTEM STATE ───────────────────────────────────── -->
-    <div class="sec-lbl" style="margin-bottom:8px">System state</div>
+    <div class="sec-lbl">System state</div>
     <div id="health-summary" style="margin-bottom:4px">
       <div class="empty" style="padding:8px 0">
         <i class="ti ti-activity" style="font-size:18px;opacity:.4"></i>Loading…
@@ -722,7 +725,7 @@ textarea { line-height: 1.55; }
     <div class="sec-divider"></div>
 
     <!-- ③ VECTOR WEIGHTS ─────────────────────────────────── -->
-    <div class="sec-lbl has-tip" style="margin-bottom:8px">
+    <div class="sec-lbl has-tip">
       Vector weights
       <span class="tip-icon" title="How strongly each knowledge domain featured in your last processed session. Scores decay over time if a domain isn't mentioned.">?</span>
     </div>
@@ -742,7 +745,7 @@ textarea { line-height: 1.55; }
     <div class="sec-divider"></div>
 
     <!-- ④ ACTIONS ────────────────────────────────────────── -->
-    <div class="sec-lbl" style="margin-bottom:8px">Actions</div>
+    <div class="sec-lbl">Actions</div>
     <div class="diag-actions">
       <button class="btn btn-sm" id="btn-arm" onclick="handleArmEngine()" style="display:none">
         <i class="ti ti-bolt"></i>Personalize your advisor
@@ -766,11 +769,11 @@ textarea { line-height: 1.55; }
         <i class="ti ti-rocket"></i>Re-run full deploy
       </button>
     </div>
-    <div class="status-line" id="diag-status"></div>
+    <div class="status-line" id="diag-status" role="status" aria-live="polite"></div>
     <div class="sec-divider"></div>
 
     <!-- ⑤ INTEGRATION ────────────────────────────────────── -->
-    <div class="sec-lbl has-tip" style="margin-bottom:8px">
+    <div class="sec-lbl has-tip">
       Sensor 2 webhook
       <span class="tip-icon" title="POST structured JSON here from any external tool to queue it for AI processing. Used for COG exhaust and automated council verdicts.">?</span>
     </div>
@@ -778,7 +781,7 @@ textarea { line-height: 1.55; }
          role="button" tabindex="0" aria-label="Copy webhook URL"
          onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();copyWebhookUrl();}">Loading URL…</div>
     <div class="hint">Tap to copy · POST: { cog_name, task_id, verdict, artifact_text }
-      <span id="webhook-copy-confirm" style="display:none;color:var(--success);font-weight:600;margin-left:6px">✓ Copied</span>
+      <span id="webhook-copy-confirm" style="display:none;color:var(--success);font-weight:600;margin-left:6px" role="status" aria-live="polite">✓ Copied</span>
     </div>
 
   </div><!-- /tab-diag -->
@@ -787,7 +790,7 @@ textarea { line-height: 1.55; }
 
 <!-- ── Bottom sheet backdrop (arm engine modal) ───────────────── -->
 <div class="bs-backdrop" id="arm-backdrop" onclick="closeArmModal()"></div>
-<div class="bottom-sheet" id="arm-sheet" style="display:none">
+<div class="bottom-sheet" id="arm-sheet" style="display:none" role="dialog" aria-modal="true" aria-labelledby="arm-step-title">
   <div class="bs-handle"></div>
   <div class="step-label" id="arm-step-lbl">Step 1 of 4</div>
   <div class="step-title" id="arm-step-title">Tell us about yourself</div>
@@ -798,7 +801,7 @@ textarea { line-height: 1.55; }
     <div class="sdot" id="asdot-4"></div>
   </div>
   <div id="arm-step-body"></div>
-  <div id="arm-err" class="toast toast-err" style="display:none;margin-top:8px">
+  <div id="arm-err" class="toast toast-err" style="display:none;margin-top:8px" role="alert" aria-live="assertive">
     <i class="ti ti-alert-circle"></i><span id="arm-err-msg"></span>
   </div>
   <div class="setup-nav" style="margin-top:14px">
@@ -1356,15 +1359,16 @@ function loadShadowMatrix() {
 // ── Daily primer handler ────────────────────────────────────────
 function handlePrimer() {
   const btn = document.getElementById('btn-primer');
-  btn.disabled = true; showDiagStatus('Generating primer…');
+  const gen = beginDiagAction();
+  btn.disabled = true; showDiagStatus('Generating primer…', undefined, gen);
   callServer('generateDailyPrimer', [], (res) => {
     btn.disabled = false;
     if (res && res.success) {
-      showDiagStatus('Daily primer saved to 03.1_CURRENT_STATE.');
+      showDiagStatus('Daily primer saved to 03.1_CURRENT_STATE.', undefined, gen);
     } else {
-      showDiagStatus('Error: ' + ((res && res.message) || 'Primer generation failed.'), 'danger');
+      showDiagStatus('Error: ' + ((res && res.message) || 'Primer generation failed.'), 'danger', gen);
     }
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger'); });
+  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
 }
 
 
@@ -1416,6 +1420,7 @@ let _armReturnFocus = null;
 function handleArmEngine() {
   armStep = 0;
   armAnswers = {};
+  _armPassVisible = false;
   // Opening never moved focus into the sheet, so keyboard/screen-reader
   // users stayed wherever they were — notionally still "on" the trigger
   // button behind the now-open sheet — and there was no keyboard
@@ -1437,8 +1442,25 @@ function closeArmModal() {
   _armReturnFocus = null;
 }
 
+// The sheet had role/focus-in/Escape but no real Tab-trap — Tab could
+// still walk focus out into the page behind the (visually blocking)
+// backdrop, which a screen-reader/keyboard user would have no way to
+// tell apart from the modal simply ending early.
+function _armFocusables() {
+  const sheet = document.getElementById('arm-sheet');
+  if (!sheet) return [];
+  return Array.from(sheet.querySelectorAll(
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => el.offsetParent !== null);
+}
 function _armEscHandler(e) {
-  if (e.key === 'Escape') closeArmModal();
+  if (e.key === 'Escape') { closeArmModal(); return; }
+  if (e.key !== 'Tab') return;
+  const focusable = _armFocusables();
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
 function _armCaptureStep() {
@@ -1473,6 +1495,11 @@ function _armRestoreStep() {
       if (item) item.classList.add('selected');
     }
   }
+  // Reapplies the show/hide state from toggleArmPassVisibility() — the
+  // fields above were just recreated from scratch via innerHTML and
+  // default back to type="password" every time, regardless of what the
+  // user had set before navigating away from this step.
+  _armApplyPassVisibility();
 }
 
 function renderArmStep() {
@@ -1509,20 +1536,30 @@ function armNext() {
 
 function armPrev() { if (armStep > 0) { _armCaptureStep(); armStep--; renderArmStep(); } }
 
+// Tracked separately from the input's own .type — renderArmStep() rebuilds
+// #arm-step-body's innerHTML on every step change (including stepping back
+// to step 3 and forward to step 4 again), which recreates the passphrase
+// inputs from scratch at their default type="password" regardless of
+// whether they'd been revealed before. _armRestoreStep() reapplies this
+// after every render so the toggle survives navigating the wizard.
+let _armPassVisible = false;
 function toggleArmPassVisibility() {
+  _armPassVisible = !_armPassVisible;
+  _armApplyPassVisibility();
+}
+function _armApplyPassVisibility() {
   const input   = document.getElementById('arm-passphrase');
   const confirm = document.getElementById('arm-passphrase-confirm');
   const icon    = document.getElementById('arm-pass-toggle-icon');
   const btn     = document.getElementById('arm-pass-toggle');
   if (!input) return;
-  const showing = input.type === 'text';
-  const newType = showing ? 'password' : 'text';
+  const newType = _armPassVisible ? 'text' : 'password';
   input.type = newType;
   // Reveal both fields together — the whole point of the confirm field is
   // catching a mismatch, which is easiest to spot with both shown plainly.
   if (confirm) confirm.type = newType;
-  if (icon) icon.className = showing ? 'ti ti-eye' : 'ti ti-eye-off';
-  if (btn)  btn.setAttribute('aria-label', showing ? 'Show passphrase' : 'Hide passphrase');
+  if (icon) icon.className = _armPassVisible ? 'ti ti-eye-off' : 'ti ti-eye';
+  if (btn)  btn.setAttribute('aria-label', _armPassVisible ? 'Hide passphrase' : 'Show passphrase');
 }
 
 function submitArmEngine() {
@@ -1764,22 +1801,24 @@ function _fallbackCopy(txt, showConfirm) {
 // ── Diagnostics action handlers ────────────────────────────────
 function handleSendReport() {
   const btn = document.getElementById('btn-report');
+  const gen = beginDiagAction();
   btn.disabled = true;
-  showDiagStatus('Sending…');
+  showDiagStatus('Sending…', undefined, gen);
   callServer('sendDailyErrorReport', [], (res) => {
     btn.disabled = false;
     if (res && res.sent) {
-      showDiagStatus('Report sent (' + (res.count || 0) + ' error(s) to ' + (res.to || 'admin') + ').');
+      showDiagStatus('Report sent (' + (res.count || 0) + ' error(s) to ' + (res.to || 'admin') + ').', undefined, gen);
     } else {
-      showDiagStatus((res && res.reason) || 'Nothing new to report.');
+      showDiagStatus((res && res.reason) || 'Nothing new to report.', undefined, gen);
     }
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger'); });
+  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
 }
 
 function handleArchive() {
   const btn = document.getElementById('btn-archive');
+  const gen = beginDiagAction();
   btn.disabled = true;
-  showDiagStatus('Archiving…');
+  showDiagStatus('Archiving…', undefined, gen);
   callServer('archiveStagingPipeline', [], (res) => {
     btn.disabled = false;
     // archiveStagingPipeline() also sweeps up rows that failed intake and
@@ -1792,19 +1831,20 @@ function handleArchive() {
     const msg = failed > 0
       ? archived + ' row(s) archived (' + failed + ' were failed-intake rows, not successes).'
       : archived + ' row(s) archived to STAGING_ARCHIVE.';
-    showDiagStatus(msg, failed > 0 ? 'warn' : undefined);
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger'); });
+    showDiagStatus(msg, failed > 0 ? 'warn' : undefined, gen);
+  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
 }
 
 function handlePromotion() {
   const btn = document.getElementById('btn-promote');
+  const gen = beginDiagAction();
   btn.disabled = true;
-  showDiagStatus('Checking incubator…');
+  showDiagStatus('Checking incubator…', undefined, gen);
   callServer('runPromotionCheck', [], (msg) => {
     btn.disabled = false;
-    showDiagStatus(String(msg));
+    showDiagStatus(String(msg), undefined, gen);
     loadVectorState(); // refresh vector display
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger'); });
+  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
 }
 
 function handleCouncil() {
@@ -1830,22 +1870,24 @@ function handleCouncil() {
   councilConfirm = false;
   btn.disabled = true;
   resetBtn('btn-council', 'ti-brain', 'Run full council review');
+  const gen = beginDiagAction();
   // NOTE (reconciliation decision 3): triggerCouncilSimulation() creates one
   // shared doc instructing the model to act as ARCHITECT, AUDITOR, and MUSE
   // together — not 7 isolated, sequestered per-persona stimulus docs. The
   // fuller "Seven Bridges" design (SMP-002) is still PENDING USER APPROVAL
   // per 9_UI_Diagnostics.gs's sevenBridgesReview(), so this copy describes
   // what actually runs today rather than the aspirational 7-cog version.
-  showDiagStatus('Queuing a combined council review (ARCHITECT · AUDITOR · MUSE)…');
+  showDiagStatus('Queuing a combined council review (ARCHITECT · AUDITOR · MUSE)…', undefined, gen);
   callServer('triggerCouncilSimulation', [], (res) => {
     btn.disabled = false;
     if (res && res.success) {
       showDiagStatus(
         'Council review queued in one shared document. ' +
-        'Verdicts appear in the <strong>COG_REGISTRY</strong> sheet of your BRAIN_TRUST_INDEX once Studio processes it.'
+        'Verdicts appear in the <strong>COG_REGISTRY</strong> sheet of your BRAIN_TRUST_INDEX once Studio processes it.',
+        undefined, gen
       );
     } else {
-      showDiagStatus((res && res.message) || 'Could not start council.', 'danger');
+      showDiagStatus((res && res.message) || 'Could not start council.', 'danger', gen);
     }
   }, (err) => {
     btn.disabled = false;
@@ -1856,7 +1898,7 @@ function handleCouncil() {
     const msg = /COLD_ENGINE_TIER_2/.test(err.message)
       ? 'Your advisor isn\'t personalized yet — tap "Personalize your advisor" in Diagnostics first.'
       : 'Error: ' + err.message;
-    showDiagStatus(msg, 'danger');
+    showDiagStatus(msg, 'danger', gen);
   });
 }
 
@@ -1884,19 +1926,21 @@ function handleDeploy() {
   deployConfirm = false;
   btn.disabled = true;
   resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
-  showDiagStatus('Rebuilding system infrastructure… (usually under two minutes)');
+  const gen = beginDiagAction();
+  showDiagStatus('Rebuilding system infrastructure… (usually under two minutes)', undefined, gen);
   callServer('deployFullSystem', [], (res) => {
     btn.disabled = false;
     if (res && res.success) {
       const errs = res.errors && res.errors.length;
       showDiagStatus(
-        'Deploy complete.' + (errs ? ' ' + errs + ' non-fatal issue(s) — check ERROR_LOG sheet.' : ' All systems verified.')
+        'Deploy complete.' + (errs ? ' ' + errs + ' non-fatal issue(s) — check ERROR_LOG sheet.' : ' All systems verified.'),
+        undefined, gen
       );
     } else {
-      showDiagStatus('Deploy finished with errors. Check the ERROR_LOG sheet in BRAIN_TRUST_INDEX.', 'danger');
+      showDiagStatus('Deploy finished with errors. Check the ERROR_LOG sheet in BRAIN_TRUST_INDEX.', 'danger', gen);
     }
     loadDiagnostics();
-  }, (err) => { btn.disabled = false; showDiagStatus('Deploy error: ' + err.message, 'danger'); });
+  }, (err) => { btn.disabled = false; showDiagStatus('Deploy error: ' + err.message, 'danger', gen); });
 }
 
 
@@ -1913,7 +1957,18 @@ function resetBtn(id, icon, label) {
   btn.innerHTML = '<i class="ti ' + icon + '"></i>' + label;
 }
 
-function showDiagStatus(html, type) {
+// All 7 Diagnostics action buttons write into this one shared status line
+// with no ordering guarantee otherwise — if a slower call's response lands
+// after a faster, more recently-started action's response, it would
+// silently overwrite the newer (and more relevant) message. beginDiagAction()
+// hands each action handler a token; showDiagStatus() only applies a call
+// if its token still matches the most recently started action (or the
+// caller didn't pass one, e.g. the generic onServerError() fallback).
+let _diagActionGen = 0;
+function beginDiagAction() { return ++_diagActionGen; }
+
+function showDiagStatus(html, type, token) {
+  if (token !== undefined && token !== _diagActionGen) return; // superseded by a newer action
   const el = document.getElementById('diag-status');
   el.innerHTML = html;
   if (type === 'danger') el.style.color = 'var(--danger)';
