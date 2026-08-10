@@ -247,6 +247,7 @@ function buildStudentDashboardHtml_() {
 // data never lingers past the next successful fetch.
 let _dashCache = {};
 let _loadGen = 0;
+let _isFirstLoad = true;
 
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
@@ -262,7 +263,17 @@ function _afterMinSpinnerDelay(shownAt, myGen, fn) {
 
 function loadData() {
   const sel     = document.getElementById("term-filter");
-  const term    = sel ? sel.value : "ALL";
+  const rawTerm = sel ? sel.value : "ALL";
+  // The dropdown only ever has the hardcoded "All Terms" option until this
+  // very first response fills in the real list, so the very first call
+  // would otherwise send the literal string "ALL" — which is truthy, so
+  // the server's termFilter-or-CURRENT_TERM-or-"ALL" fallback never
+  // actually consulted the admin-configured CURRENT_TERM. Sending "" only
+  // on this one automatic first call lets that fallback do its job; any
+  // later call (refresh, or the student genuinely picking "All Terms")
+  // still sends the real selected value.
+  const term    = (_isFirstLoad && rawTerm === "ALL") ? "" : (rawTerm || "ALL");
+  _isFirstLoad  = false;
   const loading = document.getElementById("loading");
   const main    = document.getElementById("main");
   const myGen   = ++_loadGen;
