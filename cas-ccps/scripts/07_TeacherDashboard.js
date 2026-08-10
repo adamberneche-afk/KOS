@@ -622,6 +622,13 @@ function _afterMinSpinnerDelay(shownAt, myGen, fn) {
 function loadData() {
   const loading = document.getElementById("loading");
   const main = document.getElementById("main");
+  const refreshBtn = document.getElementById("refresh-btn");
+  // The generation counter already prevents a stale response from ever
+  // rendering, so rapid re-clicks never glitch the UI — but they still fire
+  // redundant concurrent Apps Script executions that are immediately
+  // thrown away. Disabling for the duration of this call's own round-trip
+  // avoids that waste.
+  if (refreshBtn) refreshBtn.disabled = true;
   const rawTerm = document.getElementById("term-filter").value || "ALL";
   // The dropdown only ever has the hardcoded "All Terms" option until this
   // very first response fills in the real list, so the very first call
@@ -652,15 +659,16 @@ function loadData() {
     .withSuccessHandler(function(data) {
       if (myGen !== _loadGen) return; // a newer request already superseded this one
       _dashCache[term] = data;
-      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); });
+      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); if (refreshBtn) refreshBtn.disabled = false; });
     })
     .withFailureHandler(function(e) {
       if (myGen !== _loadGen) return;
-      if (cached) return; // still showing valid (if slightly stale) cached data
+      if (cached) { if (refreshBtn) refreshBtn.disabled = false; return; } // still showing valid (if slightly stale) cached data
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
         loading.innerHTML =
           '<p style="color:#d93025;padding:24px 24px 8px;">⚠ Something went wrong loading your class data. Try refreshing.</p>' +
-          '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+          '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+        if (refreshBtn) refreshBtn.disabled = false;
       });
     })
     .getDashboardData(term);
@@ -673,7 +681,18 @@ function render(data) {
   // instead of dumping them back to the top of a long roster.
   const _scrollTop = main.scrollTop;
   if (!data || !data.students || data.students.length === 0) {
-    main.innerHTML = \`<div style="text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line">
+    // "No results" from picking a term with nothing in it is a completely
+    // different situation from "this class genuinely has no roster yet" —
+    // the setup-troubleshooting copy below used to show for both, which is
+    // actively misleading the moment term filtering is used for anything
+    // other than "All Terms."
+    const filteredByTerm = data && data.activeTerm && data.activeTerm !== "ALL" && (data.availableTerms || []).length > 0;
+    main.innerHTML = filteredByTerm
+      ? \`<div style="text-align:center;padding:60px 24px;color:#5f6368">
+        <div style="font-size:48px;margin-bottom:16px">📋</div>
+        <p>No students for \${esc(data.activeTerm)}.<br>Try "All Terms" to see records from other terms.</p>
+      </div>\`
+      : \`<div style="text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line">
       <div style="font-size:48px;margin-bottom:16px">📋</div>
       <p>No students registered yet.
 
@@ -721,6 +740,7 @@ If you expect to see students here:
           <div class="student-name">\${esc(s.name)}</div>
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
           <div class="last-eval">Last evaluation: \${esc(s.lastEval)}</div>
+          \${s.submittedAt && s.submittedAt !== "—" ? \`<div class="last-eval">Submitted: \${esc(s.submittedAt)}</div>\` : ""}
           \${s.docUrl
             ? \`<a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>\`
             : '<span style="color:#80868b;font-size:13px;">Document not yet available</span>'
@@ -929,13 +949,21 @@ function loadCompetencies() {
       }
 
       // ── Build tab bar ──
-      let tabBarHtml = '<div class="course-tabs" id="course-tab-bar">';
+      // role="tablist"/"tab"/"tabpanel" + aria-selected/aria-controls below:
+      // these were plain buttons with only a CSS .active class — functional
+      // for mouse/keyboard Tab-through, but a screen reader had no way to
+      // know this was a tabbed interface or which tab was selected.
+      let tabBarHtml = '<div class="course-tabs" id="course-tab-bar" role="tablist">';
       courses.forEach((course, idx) => {
         const isFirst = idx === 0;
         tabBarHtml += \`<button
           class="course-tab\${isFirst ? " active" : ""}"
           id="tab-\${esc(course.code)}"
+          role="tab"
+          aria-selected="\${isFirst ? "true" : "false"}"
+          aria-controls="panel-\${esc(course.code)}"
           onclick="switchCourseTab('\${esc(course.code)}')"
+          onkeydown="courseTabKeydown(event,'\${esc(course.code)}')"
           title="\${esc(course.name)}"
         >
           \${esc(course.code)}
@@ -949,7 +977,7 @@ function loadCompetencies() {
       courses.forEach((course, idx) => {
         const isFirst = idx === 0;
         panelsHtml += \`<div class="course-panel\${isFirst ? " active" : ""}"
-          id="panel-\${esc(course.code)}"\>\`;
+          id="panel-\${esc(course.code)}" role="tabpanel" aria-labelledby="tab-\${esc(course.code)}"\>\`;
 
         // Group competencies by strand — preserve taskNum order within strand
         const strands = {};
@@ -1005,7 +1033,7 @@ function loadCompetencies() {
       document.getElementById("comp-loading").style.display = "none";
       document.getElementById("competency-tabs-shell").innerHTML =
         '<div class="competency-empty">Something went wrong loading competencies. ' +
-        '<button onclick="loadCompetencies()" style="margin-left:8px;padding:6px 14px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:13px;cursor:pointer;">Try Again</button></div>';
+        '<button onclick="this.disabled=true;loadCompetencies()" style="margin-left:8px;padding:6px 14px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:13px;cursor:pointer;">Try Again</button></div>';
     })
     .getCompetencies();
 }
@@ -1013,16 +1041,35 @@ function loadCompetencies() {
 // ── switchCourseTab ───────────────────────────────────────────────────────
 function switchCourseTab(code) {
   // Deactivate all tabs and panels
-  document.querySelectorAll(".course-tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".course-tab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
   document.querySelectorAll(".course-panel").forEach(p => p.classList.remove("active"));
 
   // Activate selected
   const tab   = document.getElementById("tab-"   + code);
   const panel = document.getElementById("panel-" + code);
-  if (tab)   tab.classList.add("active");
+  if (tab)   { tab.classList.add("active"); tab.setAttribute("aria-selected", "true"); }
   if (panel) panel.classList.add("active");
 
   activeCourseTab = code;
+}
+
+// Standard tabs pattern: Left/Right (or Home/End) move both focus and
+// selection between tabs, matching what a screen reader user expects once
+// role="tab" is present — without this, arrow keys did nothing here.
+function courseTabKeydown(e, code) {
+  if (!["ArrowLeft","ArrowRight","Home","End"].includes(e.key)) return;
+  e.preventDefault();
+  const tabs = Array.from(document.querySelectorAll(".course-tab"));
+  const i = tabs.findIndex(t => t.id === "tab-" + code);
+  if (i === -1) return;
+  let next;
+  if (e.key === "Home") next = 0;
+  else if (e.key === "End") next = tabs.length - 1;
+  else if (e.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+  else next = (i + 1) % tabs.length;
+  const nextCode = tabs[next].id.replace(/^tab-/, "");
+  switchCourseTab(nextCode);
+  tabs[next].focus();
 }
 
 // ── onCompetencyChange ────────────────────────────────────────────────────
@@ -1148,12 +1195,18 @@ function hideFormError() {
   document.getElementById("form-error").style.display = "none";
 }
 
+let _toastTimer = null;
 function showToast(msg, isError) {
   const t = document.getElementById("toast");
   t.textContent = msg;
   t.className   = "toast" + (isError ? " error" : "");
   t.classList.add("show");
-  setTimeout(() => t.classList.remove("show"), 4000);
+  // Without clearing the prior timer, a second toast within 4s of the
+  // first (easy to hit — the modal auto-closes on save, so logging two
+  // lessons back to back is a normal flow) got hidden early by the first
+  // call's own timeout instead of showing its own full duration.
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => t.classList.remove("show"), 4000);
 }
 
 // Sits above the toast (which auto-dismisses at 4s) and stays until the

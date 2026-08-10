@@ -1169,7 +1169,11 @@ function getRelationalTargets() {
  * Called by the web app Diagnostics tab:
  *   google.script.run.withSuccessHandler(fn).archiveStagingPipeline()
  *
- * @returns {number}  Rows archived (displayed by web app).
+ * @returns {{archived: number, succeeded: number, failed: number}}
+ *   archived = total rows moved; failed = of those, how many were
+ *   unrecoverable intake failures rather than genuine successes
+ *   (displayed by the web app so archiving never silently disposes of
+ *   failures the UI never showed anywhere).
  */
 function archiveStagingPipeline() {
   try {
@@ -1187,14 +1191,20 @@ function archiveStagingPipeline() {
       archive.setFrozenRows(1);
     }
 
-    const terminal = [
-      'PROCESSED','INTAKE_PROCESSED','PARTITIONED','CONSOLIDATED',
-      'FAILED_PARSE','PHASE_2_ERROR','INTAKE_ERROR',
-      'MISSING_FILE_ID','PROCESSING_ERROR',
-    ];
+    // These two groups are both "terminal" (never revisited by the
+    // pipeline) but very differently worth knowing about: succeeded rows
+    // are just housekeeping, failed-intake rows are unrecoverable data the
+    // web app UI never surfaces anywhere else. Archiving them together is
+    // still correct, but the caller needs the breakdown — a button labeled
+    // "Archive completed queue rows" silently sweeping up never-shown
+    // failures with zero indication was the actual problem, not the
+    // archiving itself.
+    const succeededStatuses = ['PROCESSED','INTAKE_PROCESSED','PARTITIONED','CONSOLIDATED'];
+    const failedStatuses    = ['FAILED_PARSE','PHASE_2_ERROR','INTAKE_ERROR','MISSING_FILE_ID','PROCESSING_ERROR'];
+    const terminal = succeededStatuses.concat(failedStatuses);
     const data = staging.getDataRange().getValues();
     const now  = new Date();
-    let   done = 0;
+    let   done = 0, succeeded = 0, failed = 0;
 
     // Reverse iteration: row deletions don't shift unprocessed indices
     for (let i = data.length - 1; i >= 1; i--) {
@@ -1203,16 +1213,17 @@ function archiveStagingPipeline() {
         archive.appendRow([now, ...data[i]]);
         staging.deleteRow(i + 1);
         done++;
+        if (failedStatuses.some(s => rowStatus.startsWith(s))) failed++; else succeeded++;
       }
     }
 
     if (done > 0) SpreadsheetApp.flush();
-    console.log('[archiveStagingPipeline] Archived ' + done + ' row(s).');
-    return done;
+    console.log('[archiveStagingPipeline] Archived ' + done + ' row(s) (' + succeeded + ' succeeded, ' + failed + ' failed intake).');
+    return { archived: done, succeeded: succeeded, failed: failed };
 
   } catch (e) {
     _reportError('archiveStagingPipeline', e, null);
-    return 0;
+    return { archived: 0, succeeded: 0, failed: 0 };
   }
 }
 

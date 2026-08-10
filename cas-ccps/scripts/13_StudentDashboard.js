@@ -34,6 +34,23 @@ function getStudentDashboardData(termFilter) {
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
   const data  = sheet.getDataRange().getValues();
 
+  // Same staging-pipeline lookup the teacher dashboard already uses —
+  // without it, a student whose work is actively mid-evaluation looked
+  // identical to one who hadn't entered the queue at all ("Queued for
+  // evaluation…" the whole time), even though the teacher's own dashboard
+  // already shows that difference live.
+  const staging        = ss.getSheetByName(cfg.tabs.stagingPipeline);
+  const stagingData    = staging ? staging.getDataRange().getValues() : [];
+  const pipelineStatus = {};
+  const stagingHeaders = stagingData[0] ? stagingData[0].map(h => String(h).trim()) : [];
+  const spFileIdx      = stagingHeaders.indexOf("StudentFileID");
+  const spStatusIdx    = stagingHeaders.indexOf("Status");
+  for (let i = 1; i < stagingData.length; i++) {
+    const fid = spFileIdx   !== -1 ? String(stagingData[i][spFileIdx]).trim()   : "";
+    const st  = spStatusIdx !== -1 ? String(stagingData[i][spStatusIdx]).trim() : "";
+    if (fid) pipelineStatus[fid] = st;
+  }
+
   const assignments    = [];
   const availableTerms = new Set();
 
@@ -63,7 +80,10 @@ function getStudentDashboardData(termFilter) {
     const rowTerm2 = String(row[18] || "").trim();
     assignments.push({
       configId:      String(row[2]).trim(),
-      unitName:      String(row[10]).trim() || "Assignment",
+      // Same fallback wording as the teacher dashboard's identical gap
+      // (blank column 10) — a teacher and student comparing notes about a
+      // "missing unit" record should recognize it as the same thing.
+      unitName:      String(row[10]).trim() || "Unassigned unit",
       block:         String(row[5]).trim(),
       className:     String(row[6]).trim(),
       teacherName:   String(row[7]).trim(),
@@ -72,8 +92,8 @@ function getStudentDashboardData(termFilter) {
       subject:       String(row[9]).trim(),
       term:          rowTerm2,
       status:        status,
-      displayStatus: resolveStudentStatus_(status),
-      statusClass:   resolveStudentClass_(status),
+      displayStatus: resolveStudentStatus_(status, pipelineStatus[fileId]),
+      statusClass:   resolveStudentClass_(status, pipelineStatus[fileId]),
       lastEval:      lastEval     || "No evaluations yet",
       submittedAt:   submittedAt  || null,
       docUrl:        fileId
@@ -104,16 +124,25 @@ function getStudentDashboardData(termFilter) {
     return a.className.localeCompare(b.className);
   });
 
-  // Empty state with helpful context
+  // Empty state with helpful context. "No results" from picking a term
+  // with nothing in it is a completely different situation from "not
+  // registered at all" — the account-troubleshooting copy below used to
+  // show for both, actively misleading the moment term filtering is used
+  // for anything other than "All Terms."
   if (assignments.length === 0) {
+    const filteredByTerm = activeTerm !== "ALL" && availableTerms.size > 0;
     return {
       googleId:    googleId,
       assignments: [],
-      emptyReason: "No assignments found for " + googleId + ".\n\n" +
-                   "If you expect to see assignments here:\n" +
-                   "• Make sure you are signed in with the correct Google account\n" +
-                   "• Check with your teacher that they have registered you\n" +
-                   "• Wait a few minutes if you were just registered",
+      emptyReason: filteredByTerm
+        ? "No assignments for " + activeTerm + ".\n\nTry \"All Terms\" to see records from other terms."
+        : "No assignments found for " + googleId + ".\n\n" +
+          "If you expect to see assignments here:\n" +
+          "• Make sure you are signed in with the correct Google account\n" +
+          "• Check with your teacher that they have registered you\n" +
+          "• Wait a few minutes if you were just registered",
+      activeTerm:     activeTerm,
+      availableTerms: [...availableTerms].sort().reverse(),
       generatedAt: formatDate_(new Date())
     };
   }
@@ -127,12 +156,18 @@ function getStudentDashboardData(termFilter) {
   };
 }
 
-function resolveStudentStatus_(status) {
+function resolveStudentStatus_(status, pipeline) {
   // Wording here deliberately echoes the teacher dashboard's status labels
-  // (Queued/Evaluated/Compliant/Flagged) so the same underlying pipeline
-  // stage reads as the same word on both sides of a conversation — a
-  // student saying "it's flagged" should mean the same thing a teacher
+  // (Queued/Evaluating/Evaluated/Compliant/Flagged) so the same underlying
+  // pipeline stage reads as the same word on both sides of a conversation —
+  // a student saying "it's flagged" should mean the same thing a teacher
   // sees as FLAGGED, not require translation.
+  // `pipeline` (from StagingPipeline, same lookup the teacher dashboard
+  // uses) distinguishes actively-processing from merely-queued — without
+  // it a student's work looked "Queued for evaluation…" the entire time
+  // it was in the pipeline, even while the teacher's own dashboard already
+  // showed EVALUATING NOW.
+  if (pipeline === "IN_PROCESS") return "Evaluating now…";
   switch (status) {
     case "ACTIVE":              return "Not started yet";
     case "PENDING": case "STAGED": return "Queued for evaluation…";
@@ -150,7 +185,12 @@ function resolveStudentStatus_(status) {
   }
 }
 
-function resolveStudentClass_(status) {
+function resolveStudentClass_(status, pipeline) {
+  // Evaluating-now shares IN_PROGRESS's visual bucket (same pill/border
+  // color) — the distinction is carried by displayStatus's text, not a
+  // separate color, since it's still fundamentally "in progress" to a
+  // student with no action to take.
+  if (pipeline === "IN_PROCESS") return "IN_PROGRESS";
   switch (status) {
     case "ACTIVE":              return "NOT_STARTED";
     case "PENDING": case "STAGED": return "IN_PROGRESS";
@@ -199,17 +239,21 @@ function buildStudentDashboardHtml_() {
   .group-header:first-child{margin-top:0}
   .card{background:white;border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:5px solid #dadce0;transition:box-shadow .15s,transform .1s}
   .card:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
+  /* Colors match the teacher dashboard's equivalent statusClass exactly
+     (not-started/compliant/flagged already coincided; queued and evaluated
+     were swapped here, so "orange" meant two different pipeline stages
+     depending on which dashboard you were looking at). */
   .card.NOT_STARTED{border-left-color:#dadce0}
-  .card.IN_PROGRESS{border-left-color:#1a73e8}
-  .card.NEEDS_ACTION{border-left-color:#f29900}
+  .card.IN_PROGRESS{border-left-color:#e37400}
+  .card.NEEDS_ACTION{border-left-color:#9334e6}
   .card.DONE{border-left-color:#1e8e3e}
   .card.ISSUE{border-left-color:#d93025}
   .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
   .unit-name{font-size:16px;font-weight:600}
   .pill{font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;white-space:nowrap;flex-shrink:0}
   .pill-NOT_STARTED{background:#f1f3f4;color:#5f6368}
-  .pill-IN_PROGRESS{background:#e8f0fe;color:#1a73e8}
-  .pill-NEEDS_ACTION{background:#fef3e2;color:#9c5000}
+  .pill-IN_PROGRESS{background:#fef3e2;color:#9c5000}
+  .pill-NEEDS_ACTION{background:#f3e8fd;color:#9334e6}
   .pill-DONE{background:#e6f4ea;color:#1e8e3e}
   .pill-ISSUE{background:#fce8e6;color:#d93025}
   .card-meta{font-size:13px;color:#5f6368;margin-bottom:10px}
@@ -232,7 +276,7 @@ function buildStudentDashboardHtml_() {
     <select id="term-filter" onchange="loadData()" aria-label="Filter by term" style="padding:5px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:12px;">
       <option value="ALL">All Terms</option>
     </select>
-    <button class="refresh-btn" onclick="loadData()" aria-label="Refresh assignments">↻ Refresh</button>
+    <button id="refresh-btn" class="refresh-btn" onclick="loadData()" aria-label="Refresh assignments">↻ Refresh</button>
     <div id="account-label">Loading…</div>
   </div>
 </header>
@@ -262,6 +306,13 @@ function _afterMinSpinnerDelay(shownAt, myGen, fn) {
 }
 
 function loadData() {
+  const refreshBtn = document.getElementById("refresh-btn");
+  // The generation counter already prevents a stale response from ever
+  // rendering, so rapid re-clicks never glitch the UI — but they still fire
+  // redundant concurrent Apps Script executions that are immediately
+  // thrown away. Disabling for the duration of this call's own round-trip
+  // avoids that waste.
+  if (refreshBtn) refreshBtn.disabled = true;
   const sel     = document.getElementById("term-filter");
   const rawTerm = sel ? sel.value : "ALL";
   // The dropdown only ever has the hardcoded "All Terms" option until this
@@ -295,18 +346,19 @@ function loadData() {
     .withSuccessHandler(function(data) {
       if (myGen !== _loadGen) return; // a newer request already superseded this one
       if (!data || !data.error) _dashCache[term] = data;
-      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); });
+      _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); if (refreshBtn) refreshBtn.disabled = false; });
     })
     .withFailureHandler(function(e) {
       if (myGen !== _loadGen) return;
-      if (cached) return; // still showing valid (if slightly stale) cached data
+      if (cached) { if (refreshBtn) refreshBtn.disabled = false; return; } // still showing valid (if slightly stale) cached data
       // Plain-language message for the student; the real e.message is
       // already logged server-side by whatever threw it, so it isn't
       // repeated here — a stack-trace fragment isn't actionable for them.
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
         loading.innerHTML =
           '<p style="color:#d93025;padding:24px 24px 8px;">Something went wrong loading your assignments. Try refreshing.</p>' +
-          '<button onclick="loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+          '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
+        if (refreshBtn) refreshBtn.disabled = false;
       });
     })
     .getStudentDashboardData(term);
@@ -334,6 +386,7 @@ function render(data) {
     </div>\`;
     loading.style.display = "none";
     main.style.display    = "block";
+    _populateTermDropdown(data);
     return;
   }
 
@@ -388,7 +441,13 @@ function render(data) {
   document.getElementById("footer").textContent =
     "Last refreshed: " + data.generatedAt + "  ·  " + data.googleId;
 
-  // Populate term dropdown
+  _populateTermDropdown(data);
+}
+
+// Was only ever called from the end of the full-render path, so the term
+// dropdown never got populated with real options when a filtered view came
+// back empty — factored out so both branches can call it.
+function _populateTermDropdown(data) {
   const sel = document.getElementById("term-filter");
   if (sel && data.availableTerms) {
     const existing = [...sel.options].map(o => o.value);

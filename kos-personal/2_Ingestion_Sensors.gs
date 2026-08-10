@@ -209,7 +209,10 @@ function submitSessionLog(text) {
         .getRange(2, CFG.STAGING_COLS.PAYLOAD_UID + 1, staging.getLastRow() - 1, 1)
         .getValues().flat().map(String);
       if (existingUids.some(u => u.startsWith(logUUID))) {
-        return { success: false, message: 'Duplicate: this session log has already been queued.' };
+        // duplicate:true lets the web app style this as "already handled,
+        // no action needed" rather than a real failure — the pipeline did
+        // exactly what it should here, this isn't an error.
+        return { success: false, duplicate: true, message: 'Duplicate: this session log has already been queued.' };
       }
     }
 
@@ -506,7 +509,9 @@ function submitExternalData(text, title) {
         .getRange(2, CFG.STAGING_COLS.PAYLOAD_UID + 1, staging.getLastRow() - 1, 1)
         .getValues().flat().map(String);
       if (existingUids.includes(uid)) {
-        return { success: false, message: 'Duplicate: this content has already been queued.' };
+        // duplicate:true lets the web app style this as "already handled,
+        // no action needed" rather than a real failure.
+        return { success: false, duplicate: true, message: 'Duplicate: this content has already been queued.' };
       }
     }
 
@@ -537,7 +542,7 @@ function submitExternalData(text, title) {
       // Defensive fallback — should be unreachable now that the PAYLOAD_UID
       // check above runs first, but _queuePayload's own fileId check stays
       // in place as a second line of defense, same as everywhere else it's used.
-      return { success: false, message: 'Duplicate: this content has already been queued.' };
+      return { success: false, duplicate: true, message: 'Duplicate: this content has already been queued.' };
     }
 
     // Audit row in EXTERNAL_TELEMETRY — Status=QUEUED prevents sensor3 re-processing
