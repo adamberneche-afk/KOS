@@ -435,7 +435,13 @@ function findLesson_(lcData, teacherEmail, period, dateStr) {
   for (let i = lcData.length - 1; i >= 1; i--) {
     const row = lcData[i];
     const tEmail  = String(row[LC24_TEACHER_EMAIL]   || "").trim().toLowerCase();
-    const lDate   = String(row[LC24_LESSON_DATE]     || "").trim();
+    // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — the
+    // lesson_date column can silently hold a real Date object (Sheets
+    // auto-coerces ISO date strings on write) instead of the plain
+    // "YYYY-MM-DD" string this was written as, which used to make this
+    // comparison fail for every such row and silently stop the nightly
+    // warm-up queue from ever finding tomorrow's lesson.
+    const lDate   = _normalizeLessonDateCell_(row[LC24_LESSON_DATE]);
     const lPeriod = String(row[LC24_PERIOD_OR_CLASS] || "").trim();
     const status  = String(row[LC24_STATUS]          || "").trim();
 
@@ -596,7 +602,11 @@ function getPriorWarmUpResponse_(wqData, studentEmail, currentLessonId) {
     const rowEmail    = String(row[WQ24_STUDENT_EMAIL] || "").trim().toLowerCase();
     const rowStatus   = String(row[WQ24_STATUS]        || "").trim();
     const rowLessonId = String(row[WQ24_LESSON_ID]     || "").trim();
-    const rowDate     = String(row[WQ24_LESSON_DATE]   || "").trim();
+    // _normalizeLessonDateCell_ — see 22_LessonContextHandler.js. The
+    // "most recent" comparison below (`rowDate > best.lessonDate`) relies
+    // on lexicographic YYYY-MM-DD ordering also being chronological
+    // ordering, which breaks if this cell got silently coerced to a Date.
+    const rowDate     = _normalizeLessonDateCell_(row[WQ24_LESSON_DATE]);
     const rowResponse = String(row[WQ24_RESPONSE_TEXT] || "").trim();
 
     if (rowEmail    !== emailLower)    continue;
@@ -691,7 +701,8 @@ function validateQueueBuild() {
     const row         = data[i];
     const studentEmail = String(row[WQ24_STUDENT_EMAIL] || "").trim();
     const status       = String(row[WQ24_STATUS]        || "").trim();
-    const lessonDate   = String(row[WQ24_LESSON_DATE]   || "").trim();
+    // _normalizeLessonDateCell_ — see 22_LessonContextHandler.js.
+    const lessonDate   = _normalizeLessonDateCell_(row[WQ24_LESSON_DATE]);
 
     // Check if this row's lesson_date is tomorrow
     const tomorrow = formatDateYMD_(getTomorrow_());

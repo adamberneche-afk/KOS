@@ -153,7 +153,13 @@ function _sendChatAlert(message) {
  *   2. Session.getEffectiveUser().getEmail()
  *      (works in installable triggers; getActiveUser() does not)
  *
- * @returns {Object} { sent, count?, to?, reason? }
+ * @returns {Object} { sent, count?, to?, reason?, error? }
+ *   `error: true` marks the catch-block case (a genuine MailApp/Sheets
+ *   exception) — distinct from the three benign `sent:false` cases above
+ *   it (empty log, everything already reported, no admin email configured),
+ *   which all returned the identical `{sent:false, reason}` shape a real
+ *   failure did, so the web app couldn't tell them apart and always
+ *   rendered neutral (never danger) styling.
  */
 function sendDailyErrorReport() {
   try {
@@ -260,7 +266,7 @@ function sendDailyErrorReport() {
   } catch (e) {
     // Do NOT call _reportError here — would cause infinite loop
     console.error('[DailyReport] Failed: ' + e.message);
-    return { sent: false, reason: e.message };
+    return { sent: false, reason: e.message, error: true };
   }
 }
 
@@ -1151,6 +1157,15 @@ function getRelationalTargets() {
 // PIPELINE ADMIN
 // ================================================================
 
+// Canonical list of permanently-stuck / failed-intake status prefixes —
+// shared with getQueueMetrics()/getQueueStatus() (3_Queue_Processor.gs) so
+// the Queue tab can count and surface these rows instead of silently
+// excluding them from every visible total, the same way archiveStagingPipeline()
+// below already recognizes them for cleanup. Matched via startsWith(), not
+// exact equality, since PROCESSING_ERROR/INTAKE_ERROR statuses carry a
+// ': <message>' suffix.
+const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR', 'MISSING_FILE_ID', 'PROCESSING_ERROR'];
+
 /**
  * Moves all terminal-status rows from STAGING_PIPELINE to
  * STAGING_ARCHIVE. Fully headless — no ui.alert.
@@ -1169,11 +1184,16 @@ function getRelationalTargets() {
  * Called by the web app Diagnostics tab:
  *   google.script.run.withSuccessHandler(fn).archiveStagingPipeline()
  *
- * @returns {{archived: number, succeeded: number, failed: number}}
+ * @returns {{success: boolean, archived: number, succeeded: number, failed: number, message: ?string}}
  *   archived = total rows moved; failed = of those, how many were
  *   unrecoverable intake failures rather than genuine successes
  *   (displayed by the web app so archiving never silently disposes of
- *   failures the UI never showed anywhere).
+ *   failures the UI never showed anywhere). `success` distinguishes a
+ *   genuine exception (`false`, `message` set) from a routine run that
+ *   simply had nothing to archive (`true`, `archived: 0`) — these used to
+ *   return the identical `{archived:0,succeeded:0,failed:0}` shape, so a
+ *   real backend failure rendered in the Diagnostics tab exactly like
+ *   "there was nothing to do."
  */
 function archiveStagingPipeline() {
   try {
@@ -1200,7 +1220,7 @@ function archiveStagingPipeline() {
     // failures with zero indication was the actual problem, not the
     // archiving itself.
     const succeededStatuses = ['PROCESSED','INTAKE_PROCESSED','PARTITIONED','CONSOLIDATED'];
-    const failedStatuses    = ['FAILED_PARSE','PHASE_2_ERROR','INTAKE_ERROR','MISSING_FILE_ID','PROCESSING_ERROR'];
+    const failedStatuses    = TERMINAL_FAILED_STATUSES;
     const terminal = succeededStatuses.concat(failedStatuses);
     const data = staging.getDataRange().getValues();
     const now  = new Date();
@@ -1219,11 +1239,11 @@ function archiveStagingPipeline() {
 
     if (done > 0) SpreadsheetApp.flush();
     console.log('[archiveStagingPipeline] Archived ' + done + ' row(s) (' + succeeded + ' succeeded, ' + failed + ' failed intake).');
-    return { archived: done, succeeded: succeeded, failed: failed };
+    return { success: true, archived: done, succeeded: succeeded, failed: failed };
 
   } catch (e) {
     _reportError('archiveStagingPipeline', e, null);
-    return { archived: 0, succeeded: 0, failed: 0 };
+    return { success: false, message: e.message, archived: 0, succeeded: 0, failed: 0 };
   }
 }
 

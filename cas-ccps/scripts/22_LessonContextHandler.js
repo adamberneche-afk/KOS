@@ -257,6 +257,25 @@ function validateCompetencyIds_(ids, cfg, ss) {
 }
 
 // ---------------------------------------------------------------------------
+// _normalizeLessonDateCell_ — the lesson_date column is written as a plain
+// "YYYY-MM-DD" string, but Sheets auto-detects ISO-formatted date strings
+// written via appendRow()/setValues() and silently stores them as a real
+// Date value instead (no tab-creation path ever forces this column to text
+// format). String(dateCell) on a Date object produces something like
+// "Thu Jan 15 2026 00:00:00 GMT-0500…", which never equals a plain
+// "2026-01-15" comparison string — this used to make supersedeDuplicates_()
+// (here) and findLesson_() (24_WarmUpBridge.js) silently fail to match rows
+// whose date cell had been coerced, breaking dedup and the nightly warm-up
+// queue with no visible error. Normalizing both sides to a canonical
+// YYYY-MM-DD string, regardless of the cell's actual stored type, fixes
+// this for both already-coerced (existing) rows and any future ones.
+// Shared with 24_WarmUpBridge.js's findLesson_().
+function _normalizeLessonDateCell_(value) {
+  if (value instanceof Date) return formatDateYMD_(value);
+  return String(value || "").trim();
+}
+
+// ---------------------------------------------------------------------------
 // supersedeDuplicates_
 // Marks any existing RECEIVED rows for the same teacher+date+period slot
 // as SUPERSEDED. Called before writing the new row.
@@ -264,16 +283,17 @@ function validateCompetencyIds_(ids, cfg, ss) {
 function supersedeDuplicates_(lcSheet, teacherEmail, lessonDate, periodOrClass) {
   const data = lcSheet.getDataRange().getValues();
   const period = (periodOrClass || "").trim().toLowerCase();
+  const targetDate = _normalizeLessonDateCell_(lessonDate);
 
   for (let i = 1; i < data.length; i++) {
     const rowEmail  = String(data[i][LC_TEACHER_EMAIL]).trim().toLowerCase();
-    const rowDate   = String(data[i][LC_LESSON_DATE]).trim();
+    const rowDate   = _normalizeLessonDateCell_(data[i][LC_LESSON_DATE]);
     const rowPeriod = String(data[i][LC_PERIOD_OR_CLASS]).trim().toLowerCase();
     const rowStatus = String(data[i][LC_STATUS]).trim();
 
     if (
       rowEmail  === teacherEmail.toLowerCase() &&
-      rowDate   === lessonDate &&
+      rowDate   === targetDate &&
       rowPeriod === period &&
       rowStatus === LC_STATUS_RECEIVED
     ) {
@@ -408,13 +428,18 @@ function createModule2Tabs_() {
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
 
-  // LessonContext
+  // LessonContext — lesson_date (col 4) forced to text format: Sheets
+  // otherwise silently auto-detects the "YYYY-MM-DD" strings this column
+  // is written with and stores them as real Date values instead, which
+  // broke supersedeDuplicates_()/findLesson_()'s string comparisons (see
+  // _normalizeLessonDateCell_ below — that fix handles rows written before
+  // this format existed; this prevents new rows from needing it at all).
   _createTabIfMissing_(ss, cfg.tabs.lessonContext, [
     "lesson_id", "teacher_email", "submitted_at", "lesson_date",
     "period_or_class", "activity_description", "learning_objective",
     "key_vocabulary", "prior_lesson_connection", "competency_ids",
     "status", "alignment_logged_at", "error_notes", "term"
-  ]);
+  ], [4]);
 
   // CompetencyRegistry
   _createTabIfMissing_(ss, cfg.tabs.competencyRegistry, [
@@ -422,12 +447,12 @@ function createModule2Tabs_() {
     "strand", "teacher_email", "active"
   ]);
 
-  // AlignmentLog
+  // AlignmentLog — same lesson_date risk, same fix (col 4).
   _createTabIfMissing_(ss, cfg.tabs.alignmentLog, [
     "log_id", "lesson_id", "logged_at", "lesson_date",
     "teacher_email", "learning_objective", "competency_id",
     "competency_text", "strand"
-  ]);
+  ], [4]);
 
   // ReportRegistry — append-only record of every generated alignment report
   _createTabIfMissing_(ss, cfg.tabs.reportRegistry, [
@@ -438,7 +463,10 @@ function createModule2Tabs_() {
   Logger.log("[S22] Module 2 tab creation complete.");
 }
 
-function _createTabIfMissing_(ss, tabName, headers) {
+// textColumns: optional array of 1-based column indices to force to plain
+// text format, so ISO-date-shaped strings written into them later never
+// get silently auto-converted to a real Date value by Sheets.
+function _createTabIfMissing_(ss, tabName, headers, textColumns) {
   if (ss.getSheetByName(tabName)) {
     Logger.log("[S22] Tab '" + tabName + "' already exists — skipping.");
     return;
@@ -449,5 +477,8 @@ function _createTabIfMissing_(ss, tabName, headers) {
     .setFontWeight("bold")
     .setBackground("#f3f3f3");
   sheet.setFrozenRows(1);
+  (textColumns || []).forEach(col => {
+    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
+  });
   Logger.log("[S22] Created tab: " + tabName);
 }
