@@ -740,8 +740,11 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
 function buildShadowMatrixSummary_(ss, cfg) {
   const spSheet = ss.getSheetByName(cfg.tabs.studentProfiles);
   if (!spSheet || spSheet.getLastRow() < 2) {
-    return { total: 0, withEvalHistory: 0, withWarmUpHistory: 0,
-             withShadowConfidence: 0, locked: 0, currentUnit: "" };
+    // null, not a zeroed-out object — the caller (renderWarmUpReadiness on
+    // the client) treats any truthy return as "there's real data, show the
+    // panel," so a {total:0,...} stand-in used to render a fake "0 of 0
+    // students" panel instead of hiding it like the no-data case should.
+    return null;
   }
 
   const data         = spSheet.getDataRange().getValues();

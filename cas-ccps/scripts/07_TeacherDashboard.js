@@ -130,7 +130,8 @@ function getDashboardData(termFilter) {
     activeTerm:     activeTerm,
     availableTerms: [...allTerms].sort().reverse(),
     generatedAt:    formatDate_(new Date()),
-    warmUpReadiness: warmUpReadiness  // null if M2 not enabled
+    warmUpReadiness: warmUpReadiness,  // null if M2 not enabled
+    m2Enabled:      m2Enabled === "true"
   };
 }
 
@@ -469,7 +470,8 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 <header>
   <h1>📊 Assignment Dashboard</h1>
   <!-- ── M2: New Lesson button ── -->
-  <button id="new-lesson-btn" onclick="openModal()">+ New Lesson</button>
+  <!-- Hidden until loadData() confirms M2_ENABLED — see the m2Enabled toggle below. -->
+  <button id="new-lesson-btn" onclick="openModal()" style="display:none">+ New Lesson</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -485,7 +487,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
   <span id="wr-confidence"></span>
   <span id="wr-locked"></span>
 </div>
-<div id="loading"><div class="spinner"></div><p>Loading class data…</p></div>
+<div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading class data…</p></div>
 <div id="main" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 
@@ -499,7 +501,8 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
     </div>
 
     <div class="modal-body">
-      <div class="form-error" id="form-error"></div>
+      <div class="form-error" id="form-error" role="alert" aria-live="assertive"></div>
+      <div id="draft-stale-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
 
       <!-- Row 1: Date + Period -->
       <div class="field-row">
@@ -557,8 +560,27 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
   </div>
 </div>
 
+<!-- Discard-confirm dialog — replaces a native confirm() so an unsaved-work
+     warning looks and behaves like the rest of the app instead of a
+     browser-chrome popup. Sits above the lesson modal (higher z-index),
+     since it's confirming whether to close that modal. -->
+<div class="modal-backdrop" id="discard-confirm-backdrop" style="z-index:300" onclick="if(event.target===this)_cancelDiscardConfirm()">
+  <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="discard-confirm-title" style="max-width:380px">
+    <div class="modal-header">
+      <h2 id="discard-confirm-title" style="font-size:16px">Discard this lesson log entry?</h2>
+    </div>
+    <div class="modal-body" style="padding-top:0">
+      <p style="font-size:13px;color:#5f6368;margin:0">What you've entered hasn't been saved.</p>
+    </div>
+    <div class="modal-footer">
+      <button id="discard-cancel-btn" onclick="_cancelDiscardConfirm()">Keep editing</button>
+      <button id="discard-confirm-btn" onclick="_confirmDiscard()" style="background:#d93025;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer">Discard</button>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
-<div class="toast" id="toast"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <script>
 // ── DASHBOARD ───────────────────────────────────────────────────────────────
@@ -590,16 +612,19 @@ function renderWarmUpReadiness(r) {
   const wuEl = document.getElementById("wr-warmup");
   if (wuEl) wuEl.textContent = r.withWarmUpHistory + " with warm-up responses";
 
-  // Shadow confidence
+  // Was "building archetype confidence" / "ready for personalized
+  // archetype" — internal engine vocabulary ("archetype", "shadow
+  // confidence") a teacher has no context for. Reworded to describe what
+  // it actually means for their students.
   const confEl = document.getElementById("wr-confidence");
   if (confEl) confEl.textContent = r.withShadowConfidence
-    ? r.withShadowConfidence + " building archetype confidence"
+    ? r.withShadowConfidence + " building a personalized learning profile"
     : "";
 
   // Locked (high confidence)
   const lockEl = document.getElementById("wr-locked");
   if (lockEl) lockEl.textContent = r.locked
-    ? r.locked + " ready for personalized archetype"
+    ? r.locked + " ready for fully personalized feedback"
     : "";
 }
 
@@ -771,6 +796,14 @@ If you expect to see students here:
   // ── M2: Render warm-up readiness panel ───────────────────────────────────
   renderWarmUpReadiness(data.warmUpReadiness || null);
 
+  // "+ New Lesson" opens a form that posts to submitLessonContext(), which
+  // is entirely a Module 2 feature — previously always rendered, so a
+  // teacher without M2 enabled could fill out the whole form and only find
+  // out it doesn't work from an internal "Module 2 is not enabled" error
+  // at submit time.
+  const newLessonBtn = document.getElementById("new-lesson-btn");
+  if (newLessonBtn) newLessonBtn.style.display = data.m2Enabled ? "" : "none";
+
   const sel = document.getElementById("term-filter");
   const currentOptions = [...sel.options].map(o => o.value);
   (data.availableTerms || []).forEach(t => {
@@ -792,6 +825,7 @@ function esc(s) {
 let competenciesLoaded = false;
 let activeCourseTab    = null; // tracks which course tab is currently visible
 let _modalReturnFocus  = null; // element to restore focus to when the modal closes
+let _pendingDiscardConfirm = null; // callback to run if the discard-confirm dialog is accepted
 
 function _modalFocusableEls() {
   const modal = document.querySelector(".modal");
@@ -849,10 +883,11 @@ function scheduleLessonDraftSave() {
 }
 
 function restoreLessonDraft() {
+  const empty = { restored: false, stale: false, draftDate: null };
   const raw = _safeSessionGet_(LESSON_DRAFT_KEY);
-  if (!raw) return false;
+  if (!raw) return empty;
   let d;
-  try { d = JSON.parse(raw); } catch (e) { return false; }
+  try { d = JSON.parse(raw); } catch (e) { return empty; }
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
   // sessionStorage drafts survive for the life of the tab, not just until
   // the next reopen the same day. Restoring a stale date here would
@@ -861,10 +896,16 @@ function restoreLessonDraft() {
   // today before calling this, so only restore the draft's date when it
   // actually still matches today.
   const dateEl = document.getElementById("f-date");
-  if (d.date && dateEl && d.date === dateEl.value) set("f-date", d.date);
+  const dateMatches = !!(d.date && dateEl && d.date === dateEl.value);
+  if (dateMatches) set("f-date", d.date);
   set("f-period", d.period); set("f-objective", d.objective);
   set("f-activity", d.activity); set("f-prior", d.prior); set("f-vocab", d.vocab);
-  return !!(d.objective || d.activity || d.prior || d.vocab);
+  const restored = !!(d.objective || d.activity || d.prior || d.vocab);
+  // The date field was already guarded against staleness, but the text
+  // fields weren't — a draft from a previous day silently repopulated the
+  // form with zero indication it wasn't what was just typed. Surface it
+  // instead so the teacher can tell "restored" from "carried over."
+  return { restored, stale: restored && !dateMatches, draftDate: d.date || null };
 }
 
 function clearLessonDraft() { _safeSessionRemove_(LESSON_DRAFT_KEY); }
@@ -880,7 +921,16 @@ function openModal() {
   // A restored draft (real, unsaved typing) takes priority over the date/
   // period defaults just set above — restoreLessonDraft() only overwrites
   // fields it actually has a saved value for.
-  restoreLessonDraft();
+  const draftResult = restoreLessonDraft();
+  const staleHint = document.getElementById("draft-stale-hint");
+  if (staleHint) {
+    if (draftResult.stale) {
+      staleHint.textContent = "Restored unsaved text from " + (draftResult.draftDate || "an earlier session") + " — review before logging, or clear the fields to start fresh.";
+      staleHint.style.display = "block";
+    } else {
+      staleHint.style.display = "none";
+    }
+  }
 
   document.getElementById("form-error").style.display = "none";
   _modalReturnFocus = document.activeElement;
@@ -905,15 +955,40 @@ function closeModal(skipConfirm) {
   // field lesson log with no warning. skipConfirm is passed true only
   // from the post-submit-success path, where the form's own data has
   // already been saved and clearing it here is expected, not a loss.
-  if (!skipConfirm && _hasUnsavedLessonForm() &&
-      !confirm("Discard this lesson log entry? What you've entered hasn't been saved.")) {
+  // Uses the in-app discard-confirm dialog instead of a native confirm() —
+  // matches the rest of the app's modal styling and doesn't block the tab
+  // with browser chrome.
+  if (!skipConfirm && _hasUnsavedLessonForm()) {
+    _showDiscardConfirm(_reallyCloseModal);
     return;
   }
+  _reallyCloseModal();
+}
+
+function _reallyCloseModal() {
   document.getElementById("modal-backdrop").classList.remove("open");
   document.removeEventListener("keydown", _modalTrapKeydown);
   if (_modalReturnFocus && typeof _modalReturnFocus.focus === "function") _modalReturnFocus.focus();
   _modalReturnFocus = null;
   clearForm();
+}
+
+function _showDiscardConfirm(onConfirm) {
+  _pendingDiscardConfirm = onConfirm;
+  document.getElementById("discard-confirm-backdrop").classList.add("open");
+  document.getElementById("discard-cancel-btn").focus();
+}
+
+function _cancelDiscardConfirm() {
+  _pendingDiscardConfirm = null;
+  document.getElementById("discard-confirm-backdrop").classList.remove("open");
+}
+
+function _confirmDiscard() {
+  const fn = _pendingDiscardConfirm;
+  _pendingDiscardConfirm = null;
+  document.getElementById("discard-confirm-backdrop").classList.remove("open");
+  if (fn) fn();
 }
 
 function handleBackdropClick(e) {
@@ -1249,9 +1324,14 @@ function _showFrameLinkFallback(url) {
   el.appendChild(closeBtn);
 }
 
-// Escape key closes modal (only when it's actually open)
+// Escape key closes modal (only when it's actually open) — checked first
+// against the discard-confirm dialog, since it can be showing on top of the
+// lesson modal and should back out of just itself, not re-trigger closeModal().
 document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape" && document.getElementById("modal-backdrop").classList.contains("open")) {
+  if (e.key !== "Escape") return;
+  if (document.getElementById("discard-confirm-backdrop").classList.contains("open")) {
+    _cancelDiscardConfirm();
+  } else if (document.getElementById("modal-backdrop").classList.contains("open")) {
     closeModal();
   }
 });
