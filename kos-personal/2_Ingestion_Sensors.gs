@@ -482,7 +482,11 @@ function submitExternalData(text, title) {
     }
 
     const contentStr = text.trim();
-    const titleStr   = (title || 'Untitled').trim().substring(0, 100);
+    // (title || 'Untitled').trim() only catches a falsy title — a
+    // whitespace-only title (e.g. pasted from a form that always sends a
+    // string) survives the `||` check, then trims down to '', bypassing
+    // the 'Untitled' fallback entirely. Trim first, then fall back.
+    const titleStr   = ((title || '').trim() || 'Untitled').substring(0, 100);
     const uid        = _generateLogUUID(contentStr);
     const ts         = Utilities.formatDate(
       new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
