@@ -605,6 +605,7 @@ function renderWarmUpReadiness(r) {
 // never lingers past the next successful fetch.
 let _dashCache = {};
 let _loadGen = 0;
+let _isFirstLoad = true;
 
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
@@ -621,7 +622,17 @@ function _afterMinSpinnerDelay(shownAt, myGen, fn) {
 function loadData() {
   const loading = document.getElementById("loading");
   const main = document.getElementById("main");
-  const term = document.getElementById("term-filter").value || "ALL";
+  const rawTerm = document.getElementById("term-filter").value || "ALL";
+  // The dropdown only ever has the hardcoded "All Terms" option until this
+  // very first response fills in the real list, so the very first call
+  // would otherwise send the literal string "ALL" — which is truthy, so
+  // the server's termFilter-or-CURRENT_TERM-or-"ALL" fallback never
+  // actually consulted the admin-configured CURRENT_TERM. Sending "" only
+  // on this one automatic first call lets that fallback do its job; any
+  // later call (refresh, or the user genuinely picking "All Terms") still
+  // sends the real selected value.
+  const term = (_isFirstLoad && rawTerm === "ALL") ? "" : rawTerm;
+  _isFirstLoad = false;
   const myGen = ++_loadGen;
   const cached = _dashCache[term];
   let shownSpinnerAt = 0;
@@ -813,7 +824,15 @@ function restoreLessonDraft() {
   let d;
   try { d = JSON.parse(raw); } catch (e) { return false; }
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.value = val; };
-  set("f-date", d.date); set("f-period", d.period); set("f-objective", d.objective);
+  // sessionStorage drafts survive for the life of the tab, not just until
+  // the next reopen the same day. Restoring a stale date here would
+  // silently backdate today's log (e.g. a Monday draft resumed on Tuesday)
+  // with no indication it happened — openModal() already set f-date to
+  // today before calling this, so only restore the draft's date when it
+  // actually still matches today.
+  const dateEl = document.getElementById("f-date");
+  if (d.date && dateEl && d.date === dateEl.value) set("f-date", d.date);
+  set("f-period", d.period); set("f-objective", d.objective);
   set("f-activity", d.activity); set("f-prior", d.prior); set("f-vocab", d.vocab);
   return !!(d.objective || d.activity || d.prior || d.vocab);
 }
