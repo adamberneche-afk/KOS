@@ -206,6 +206,7 @@ textarea { line-height: 1.55; }
 .toast.show { display: flex; animation: toastIn .18s ease; }
 .toast-ok   { background: var(--success-bg); border-color: var(--success); color: var(--success); }
 .toast-err  { background: var(--danger-bg);  border-color: var(--danger);  color: var(--danger);  }
+.toast-warn { background: var(--warn-bg);    border-color: var(--warn);    color: var(--warn);    }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
 @media (prefers-reduced-motion: reduce) {
   .toast.show { animation: none; }
@@ -540,7 +541,11 @@ textarea { line-height: 1.55; }
          #bs-active a second later to show the retry button, which used to
          take this technical detail (the only real diagnostic info) with
          it. Kept reachable alongside #bs-err instead, for both outcomes. -->
-    <button class="detail-toggle" style="margin-top:10px" onclick="toggleDeployDetail()">Show technical detail</button>
+    <!-- Hidden until a deploy actually populates #deploy-detail below —
+         this sat clickable from the very first screen a brand-new user
+         sees, before "Build My Studio" had ever been clicked, opening an
+         empty, oddly-spaced box with nothing in it. -->
+    <button class="detail-toggle" id="detail-toggle-btn" style="margin-top:10px;display:none" onclick="toggleDeployDetail()">Show technical detail</button>
     <div class="deploy-detail" id="deploy-detail"></div>
   </div>
 </div>
@@ -585,7 +590,11 @@ textarea { line-height: 1.55; }
     <div id="fields-research" style="display:none">
       <div class="field-group">
         <div class="field-lbl">Title / source</div>
-        <input type="text" id="research-title" placeholder="e.g. Nielsen UX Report 2024" oninput="scheduleIngestDraftSave()">
+        <!-- maxlength matches the server's silent 100-char truncation
+             (2_Ingestion_Sensors.gs) — without this, a longer title was
+             accepted, submitted, and quietly cut down with no indication
+             anything was shortened. -->
+        <input type="text" id="research-title" maxlength="100" placeholder="e.g. Nielsen UX Report 2024" oninput="scheduleIngestDraftSave()">
       </div>
       <div class="field-group">
         <div class="field-lbl">Content</div>
@@ -960,6 +969,11 @@ function switchType(type) {
   document.getElementById('fields-research').style.display = type === 'research' ? 'block' : 'none';
   clearIngestToast();
   hideDropPanel();
+  // A stale "your session is in the queue" hint used to stay visible after
+  // switching to an unrelated form (e.g. Research/Context) — it only ever
+  // got hidden by a subsequent submit, never by leaving the type it was
+  // about.
+  document.getElementById('next-hint').classList.remove('show');
 }
 
 function updateCount(textareaId, countId) {
@@ -1086,6 +1100,25 @@ function handleSubmit() {
         draftResearch = ''; draftResearchTitle = '';
       }
       clearIngestDraft();
+    } else if (res && res.duplicate) {
+      // The pipeline did exactly what it should here (caught a resubmit of
+      // already-queued content) — this used to render with the same
+      // red/error toast as a genuine failure, which reads as "something's
+      // wrong" when nothing is. Since the content really is already
+      // queued, clear the form the same way a fresh success would instead
+      // of leaving stale, already-processed text sitting in the box.
+      showIngestToast('Already queued — no action needed', 'warn');
+      if (currentType === 'session') {
+        document.getElementById('session-text').value = '';
+        document.getElementById('session-count').textContent = '0 chars';
+        draftSession = '';
+      } else {
+        document.getElementById('research-text').value  = '';
+        document.getElementById('research-title').value = '';
+        document.getElementById('research-count').textContent = '0 chars';
+        draftResearch = ''; draftResearchTitle = '';
+      }
+      clearIngestDraft();
     } else {
       showIngestToast((res && res.message) || 'Something went wrong. Try again.', false);
     }
@@ -1103,12 +1136,16 @@ function handleSubmit() {
     : callServer('submitExternalData', [text, title],  onOk, onErr);
 }
 
-function showIngestToast(msg, ok) {
+// `state` is true (success), false (error), or 'warn' (a duplicate — the
+// pipeline behaved correctly, but it's not a fresh success either).
+function showIngestToast(msg, state) {
   const el  = document.getElementById('ingest-toast');
   const txt = document.getElementById('ingest-msg');
   txt.textContent = msg;
-  el.className = 'toast show ' + (ok ? 'toast-ok' : 'toast-err');
-  el.querySelector('i').className = ok ? 'ti ti-circle-check' : 'ti ti-alert-circle';
+  const cls  = state === 'warn' ? 'toast-warn' : state ? 'toast-ok' : 'toast-err';
+  const icon = state === 'warn' ? 'ti-info-circle' : state ? 'ti-circle-check' : 'ti-alert-circle';
+  el.className = 'toast show ' + cls;
+  el.querySelector('i').className = 'ti ' + icon;
 }
 
 function clearIngestToast() {
@@ -1233,7 +1270,19 @@ function renderQueue(res) {
   }
 
   const sync = document.getElementById('queue-sync');
-  if (sync) sync.textContent = 'Updated ' + new Date().toLocaleTimeString();
+  if (sync) sync.textContent = 'Updated ' + _fmtSyncTime(new Date());
+}
+
+// Shared "how fresh is this" formatting — Queue's "Updated" line used to be
+// a client-generated, locale-default time-only string (toLocaleTimeString)
+// while Diagnostics' vec-meta showed a raw server "yyyy-MM-dd HH:mm:ss"
+// string a few taps away — two different date grammars for the same
+// "when was this current" concept in one small app.
+function _fmtSyncTime(d) {
+  const date = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(date.getTime())) return String(d);
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+         date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
 }
 
 
@@ -1245,14 +1294,28 @@ function loadDiagnostics() {
   loadWebhookUrl();
 }
 
+// A failed Diagnostics panel used to be a dead end: the only thing that
+// ever re-fired these loaders was loadDiagnostics() on tab switch, and the
+// tab re-tap guard means leaving and re-entering the tab is the only way
+// to trigger that — non-obvious, and impossible while already sitting on
+// the tab that just failed. Every panel's failure state gets an inline
+// Retry that just re-calls its own loader.
+function _diagPanelError(elId, msg, retryFn, icon) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.innerHTML = '<div class="empty" style="padding:4px 0">' +
+    (icon ? '<i class="ti ' + icon + '" style="font-size:18px;opacity:.4;margin-right:4px"></i>' : '') +
+    esc(msg) +
+    ' <button onclick="' + retryFn + '()" class="btn btn-sm btn-outline" style="margin-left:6px;padding:2px 10px;font-size:11px;display:inline-block;width:auto">Retry</button></div>';
+}
+
 // ── Shadow Matrix display ───────────────────────────────────────
 function loadShadowMatrix() {
   callServer('getShadowMatrixStatus', [], (res) => {
     const el = document.getElementById('shadow-matrix-list');
     if (!el) return;
     if (!res || !res.success) {
-      el.innerHTML = '<div class="empty" style="padding:4px 0">' +
-        esc((res && res.message) || 'Shadow matrix unavailable.') + '</div>';
+      _diagPanelError('shadow-matrix-list', (res && res.message) || 'Shadow matrix unavailable.', 'loadShadowMatrix');
       return;
     }
     const modeColors = { CALIBRATED:'dot-armed', LEARNING:'dot-cold', COLD:'dot-unk' };
@@ -1280,9 +1343,7 @@ function loadShadowMatrix() {
     const armBtn = document.getElementById('btn-arm');
     if (armBtn) armBtn.style.display = res.engine_armed ? 'none' : '';
   }, (err) => {
-    const el = document.getElementById('shadow-matrix-list');
-    if (el) el.innerHTML = '<div class="empty" style="padding:4px 0">' +
-      'Couldn\'t load — ' + esc(err.message) + '</div>';
+    _diagPanelError('shadow-matrix-list', 'Couldn\'t load — ' + err.message, 'loadShadowMatrix');
   });
 }
 
@@ -1320,13 +1381,24 @@ const ARM_STEPS = [
       <div class="field-group"><div class="field-lbl has-tip">Necessary Struggle
         <span class="tip-icon" title="The parts of your work that matter precisely because they're effortful — thinking, relationship-building, judgment calls. KOS is designed to protect these, not automate them away.">?</span>
       </div><textarea id="arm-struggle" rows="2" placeholder="What won't you automate?"></textarea></div>` },
-  { label:'Step 4 of 4', title:'Security', validate: () => document.getElementById('arm-passphrase')?.value ? true : 'Passphrase is required.',
+  { label:'Step 4 of 4', title:'Security', validate: () => {
+      const p = document.getElementById('arm-passphrase')?.value;
+      const c = document.getElementById('arm-passphrase-confirm')?.value;
+      if (!p) return 'Passphrase is required.';
+      // A single-entry field means one typo silently produces a different
+      // Identity Key than the user thinks they set, discoverable only
+      // later when "their" passphrase doesn't work.
+      if (p !== c) return 'Passphrases don\'t match.';
+      return true;
+    },
     html: `<div class="field-group"><div class="field-lbl">Relational Targets</div><input type="text" id="arm-targets" placeholder="3–5 names, comma separated"></div>
       <div class="field-group"><div class="field-lbl">Private passphrase <span style="color:var(--danger)">★</span></div>
       <div style="display:flex;gap:6px">
         <input type="password" id="arm-passphrase" autocomplete="off" placeholder="Memorable · write it down first" style="flex:1">
         <button type="button" class="btn btn-sm" onclick="toggleArmPassVisibility()" id="arm-pass-toggle" aria-label="Show passphrase"><i class="ti ti-eye" id="arm-pass-toggle-icon"></i></button>
       </div></div>
+      <div class="field-group"><div class="field-lbl">Confirm passphrase <span style="color:var(--danger)">★</span></div>
+        <input type="password" id="arm-passphrase-confirm" autocomplete="off" placeholder="Type it again"></div>
       <div class="field-group"><div class="field-lbl">Admin email</div><input type="email" id="arm-email" placeholder="your@email.com"></div>` },
 ];
 let armStep = 0;
@@ -1335,12 +1407,19 @@ let armStep = 0;
 // typed earlier, so Continue then Back then Continue again came back blank.
 let armAnswers = {};
 
+let _armReturnFocus = null;
 function handleArmEngine() {
   armStep = 0;
   armAnswers = {};
+  // Opening never moved focus into the sheet, so keyboard/screen-reader
+  // users stayed wherever they were — notionally still "on" the trigger
+  // button behind the now-open sheet — and there was no keyboard
+  // equivalent to the mouse-only backdrop-click dismissal.
+  _armReturnFocus = document.activeElement;
   document.getElementById('arm-backdrop').classList.add('show');
   document.getElementById('arm-sheet').style.display = 'block';
   renderArmStep();
+  document.addEventListener('keydown', _armEscHandler);
 }
 
 function closeArmModal() {
@@ -1348,6 +1427,13 @@ function closeArmModal() {
   document.getElementById('arm-sheet').style.display = 'none';
   armStep = 0;
   armAnswers = {};
+  document.removeEventListener('keydown', _armEscHandler);
+  if (_armReturnFocus && typeof _armReturnFocus.focus === 'function') _armReturnFocus.focus();
+  _armReturnFocus = null;
+}
+
+function _armEscHandler(e) {
+  if (e.key === 'Escape') closeArmModal();
 }
 
 function _armCaptureStep() {
@@ -1357,7 +1443,7 @@ function _armCaptureStep() {
     armDT: checked ? checked.value : armAnswers.armDT,
     role: g('arm-role'), audience: g('arm-audience'), vision: g('arm-vision'),
     adminGhost: g('arm-ghost'), struggle: g('arm-struggle'), targets: g('arm-targets'),
-    passphrase: g('arm-passphrase'), adminEmail: g('arm-email'),
+    passphrase: g('arm-passphrase'), passphraseConfirm: g('arm-passphrase-confirm'), adminEmail: g('arm-email'),
   });
 }
 
@@ -1370,6 +1456,7 @@ function _armRestoreStep() {
   set('arm-struggle', armAnswers.struggle);
   set('arm-targets', armAnswers.targets);
   set('arm-passphrase', armAnswers.passphrase);
+  set('arm-passphrase-confirm', armAnswers.passphraseConfirm);
   set('arm-email', armAnswers.adminEmail);
   if (armAnswers.armDT) {
     const radio = document.querySelector('input[name="armDT"][value="' + armAnswers.armDT + '"]');
@@ -1399,6 +1486,8 @@ function renderArmStep() {
     const d = document.getElementById('asdot-' + i);
     if (d) d.className = 'sdot' + (i < armStep + 1 ? ' s-done' : i === armStep + 1 ? ' s-active' : '');
   }
+  const firstFocusable = document.querySelector('#arm-step-body input, #arm-step-body select, #arm-step-body textarea, #arm-step-body button');
+  if (firstFocusable) firstFocusable.focus();
 }
 
 function armNext() {
@@ -1416,12 +1505,17 @@ function armNext() {
 function armPrev() { if (armStep > 0) { _armCaptureStep(); armStep--; renderArmStep(); } }
 
 function toggleArmPassVisibility() {
-  const input = document.getElementById('arm-passphrase');
-  const icon  = document.getElementById('arm-pass-toggle-icon');
-  const btn   = document.getElementById('arm-pass-toggle');
+  const input   = document.getElementById('arm-passphrase');
+  const confirm = document.getElementById('arm-passphrase-confirm');
+  const icon    = document.getElementById('arm-pass-toggle-icon');
+  const btn     = document.getElementById('arm-pass-toggle');
   if (!input) return;
   const showing = input.type === 'text';
-  input.type = showing ? 'password' : 'text';
+  const newType = showing ? 'password' : 'text';
+  input.type = newType;
+  // Reveal both fields together — the whole point of the confirm field is
+  // catching a mismatch, which is easiest to spot with both shown plainly.
+  if (confirm) confirm.type = newType;
   if (icon) icon.className = showing ? 'ti ti-eye' : 'ti ti-eye-off';
   if (btn)  btn.setAttribute('aria-label', showing ? 'Show passphrase' : 'Hide passphrase');
 }
@@ -1465,8 +1559,7 @@ function loadHealthSummary() {
   callServer('getSystemHealth', [], (res) => {
     const el = document.getElementById('health-summary');
     if (!res || !res.success) {
-      el.innerHTML = '<div class="empty" style="padding:4px 0">' +
-        esc((res && res.message) || 'System state unavailable.') + '</div>';
+      _diagPanelError('health-summary', (res && res.message) || 'System state unavailable.', 'loadHealthSummary');
       return;
     }
 
@@ -1493,9 +1586,7 @@ function loadHealthSummary() {
         : '') +
       '</div>';
   }, (err) => {
-    const el = document.getElementById('health-summary');
-    if (el) el.innerHTML = '<div class="empty" style="padding:4px 0">' +
-      'Couldn\'t load — ' + esc(err.message) + '</div>';
+    _diagPanelError('health-summary', 'Couldn\'t load — ' + err.message, 'loadHealthSummary');
   });
 }
 
@@ -1516,21 +1607,25 @@ function healthRowHtml(label, html) {
 function loadVectorState() {
   callServer('getVectorState', [], (res) => {
     const el = document.getElementById('vec-list');
-    if (!res || !res.success || !res.vectors || res.vectors.length === 0) {
+    // A genuine failure (res.success === false) used to render identically
+    // to "no theme data yet" — same empty-icon treatment, no indication
+    // anything was actually wrong, and no way to retry either case.
+    if (!res || !res.success) {
+      _diagPanelError('vec-list', (res && res.message) || 'Vector state unavailable.', 'loadVectorState', 'ti-alert-triangle');
+      return;
+    }
+    if (!res.vectors || res.vectors.length === 0) {
       el.innerHTML = '<div class="empty" style="padding:8px 0">' +
         '<i class="ti ti-chart-bar" style="font-size:18px;opacity:.4"></i>' +
-        (res && res.message ? esc(res.message) : 'Process your first session to see theme data.') + '</div>';
+        (res.message ? esc(res.message) : 'Process your first session to see theme data.') + '</div>';
       // A theme can be incubating toward promotion even before any vector
       // has fully promoted — still worth showing.
-      if (res && res.success) renderIncubating(res);
+      renderIncubating(res);
       return;
     }
     renderVectors(res);
   }, (err) => {
-    const el = document.getElementById('vec-list');
-    if (el) el.innerHTML = '<div class="empty" style="padding:8px 0">' +
-      '<i class="ti ti-alert-triangle" style="font-size:18px;opacity:.4"></i>' +
-      'Couldn\'t load — ' + esc(err.message) + '</div>';
+    _diagPanelError('vec-list', 'Couldn\'t load — ' + err.message, 'loadVectorState', 'ti-alert-triangle');
   });
 }
 
@@ -1573,7 +1668,7 @@ function renderVectors(res) {
   // Show session provenance so the user knows what these numbers reflect
   if (meta) {
     const uid  = res.session_uid   ? 'Session ' + res.session_uid : '';
-    const date = res.last_updated  ? '  ·  ' + res.last_updated   : '';
+    const date = res.last_updated  ? '  ·  ' + _fmtSyncTime(res.last_updated) : '';
     meta.textContent = uid + date || 'Source session unknown';
   }
 }
@@ -1610,22 +1705,53 @@ function loadWebhookUrl() {
     webhookUrl = String(url);
     if (el) el.textContent = webhookUrl;
   }, (err) => {
-    if (el) el.textContent = 'Couldn\'t load URL — ' + err.message;
+    // This box is already the tap-to-copy affordance — reused as the retry
+    // affordance too instead of adding a separate control (see
+    // copyWebhookUrl(), which checks webhookUrl to decide which one applies).
+    if (el) el.textContent = 'Couldn\'t load URL — tap to retry';
   });
 }
 
 function copyWebhookUrl() {
+  if (!webhookUrl) { loadWebhookUrl(); return; }
   const txt = document.getElementById('webhook-url').textContent;
-  if (navigator.clipboard) {
+  const showConfirm = (label, ok) => {
     // Confirm right next to the box the user tapped — showDiagStatus()
     // writes into #diag-status at the top of the tab, which isn't visible
     // without scrolling back up from here at the bottom of Diagnostics.
-    navigator.clipboard.writeText(txt).then(() => {
-      const el = document.getElementById('webhook-copy-confirm');
-      if (!el) return;
-      el.style.display = 'inline';
-      setTimeout(() => { el.style.display = 'none'; }, 2200);
-    });
+    const el = document.getElementById('webhook-copy-confirm');
+    if (!el) return;
+    el.textContent = label;
+    el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+    el.style.display = 'inline';
+    setTimeout(() => { el.style.display = 'none'; }, 2200);
+  };
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(txt).then(() => showConfirm('✓ Copied', true), () => _fallbackCopy(txt, showConfirm));
+  } else {
+    // navigator.clipboard is missing in some in-app/webview browsers and
+    // any non-HTTPS embed — this used to make the whole "tap to copy" box
+    // a silent no-op with no error, no confirmation, nothing, despite
+    // looking (role="button", keyboard handling) like it should give
+    // feedback either way.
+    _fallbackCopy(txt, showConfirm);
+  }
+}
+
+function _fallbackCopy(txt, showConfirm) {
+  try {
+    const ta = document.createElement('textarea');
+    ta.value = txt;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    const ok = document.execCommand('copy');
+    document.body.removeChild(ta);
+    showConfirm(ok ? '✓ Copied' : 'Couldn\'t copy — select and copy manually', ok);
+  } catch (e) {
+    showConfirm('Couldn\'t copy — select and copy manually', false);
   }
 }
 
@@ -1649,9 +1775,19 @@ function handleArchive() {
   const btn = document.getElementById('btn-archive');
   btn.disabled = true;
   showDiagStatus('Archiving…');
-  callServer('archiveStagingPipeline', [], (n) => {
+  callServer('archiveStagingPipeline', [], (res) => {
     btn.disabled = false;
-    showDiagStatus(Number(n) + ' row(s) archived to STAGING_ARCHIVE.');
+    // archiveStagingPipeline() also sweeps up rows that failed intake and
+    // were never shown anywhere else in the Queue UI — this button's label
+    // ("Archive completed queue rows") used to imply it only touched
+    // finished/successful work, so a failure count is called out
+    // explicitly instead of folding silently into one total.
+    const archived  = (res && res.archived)  || 0;
+    const failed    = (res && res.failed)    || 0;
+    const msg = failed > 0
+      ? archived + ' row(s) archived (' + failed + ' were failed-intake rows, not successes).'
+      : archived + ' row(s) archived to STAGING_ARCHIVE.';
+    showDiagStatus(msg, failed > 0 ? 'warn' : undefined);
   }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger'); });
 }
 
@@ -1776,6 +1912,7 @@ function showDiagStatus(html, type) {
   const el = document.getElementById('diag-status');
   el.innerHTML = html;
   if (type === 'danger') el.style.color = 'var(--danger)';
+  else if (type === 'warn') el.style.color = 'var(--amber)';
   else el.style.color = 'var(--text3)';
 }
 
@@ -1862,6 +1999,8 @@ function handleBootstrap() {
         detail.innerHTML = res.log.map(l =>
           '<div class="' + (l.startsWith('✔') || l.startsWith('✅') ? 'l-ok' : l.startsWith('⚠') ? 'l-warn' : '') + '">' + esc(l) + '</div>'
         ).join('');
+        const toggleBtn = document.getElementById('detail-toggle-btn');
+        if (toggleBtn) toggleBtn.style.display = '';
       }
       // Transition: active → done (after the stagger above finishes)
       setTimeout(() => {
@@ -1891,6 +2030,8 @@ function handleBootstrap() {
       // instead of leaving the user with only the generic fallback above.
       const detail = document.getElementById('deploy-detail');
       if (detail && ((res && res.errors && res.errors.length) || (res && res.log && res.log.length))) {
+        const toggleBtn = document.getElementById('detail-toggle-btn');
+        if (toggleBtn) toggleBtn.style.display = '';
         const lines = [].concat(res.log || [], res.errors || []);
         detail.innerHTML = lines.map(l =>
           '<div class="' + (String(l).startsWith('✔') || String(l).startsWith('✅') ? 'l-ok' : String(l).startsWith('⚠') || String(l).startsWith('❌') ? 'l-err' : '') + '">' + esc(l) + '</div>'
