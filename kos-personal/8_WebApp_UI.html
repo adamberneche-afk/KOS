@@ -1209,14 +1209,19 @@ function loadQueueStatus() {
   callServer('getQueueMetrics', [], (res) => {
     if (btn) btn.disabled = false;
     if (!res || !res.success) {
-      list.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><i class="ti ti-alert-triangle"></i></div><div class="empty-state-title">Could not load queue</div></div>';
+      // FIXED: this branch and the network-failure branch below used to
+      // render two different messages (one with an icon, one bare text),
+      // and neither offered a Retry button — unlike every Diagnostics
+      // panel, which was specifically given _diagPanelError()'s inline
+      // Retry for the identical "couldn't load, tap Retry" scenario.
+      _diagPanelError('curator-list', (res && res.message) || 'Could not load queue.', 'loadQueueStatus', 'ti-alert-triangle');
       return;
     }
     renderQueue(res);
     renderServiceStatus(res.managed_service);
   }, (err) => {
     if (btn) btn.disabled = false;
-    list.innerHTML = '<div class="empty-state"><div class="empty-state-title">Server error.</div></div>';
+    _diagPanelError('curator-list', 'Server error.', 'loadQueueStatus', 'ti-alert-triangle');
   });
 }
 
@@ -1806,8 +1811,16 @@ function renderIncubating(res) {
 function loadWebhookUrl() {
   const el = document.getElementById('webhook-url');
   if (webhookUrl) { if (el) el.textContent = webhookUrl; return; }
-  callServer('getWebAppUrl', [], (url) => {
-    webhookUrl = String(url);
+  callServer('getWebAppUrl', [], (res) => {
+    // getWebAppUrl() now reports its own failure via success:false instead
+    // of returning a fallback sentence in place of a URL — this branch used
+    // to blindly String()-coerce whatever came back, including that
+    // sentence, and treat it as a real, copyable webhook URL.
+    if (!res || !res.success) {
+      if (el) el.textContent = res && res.message ? res.message : 'Couldn\'t load URL — tap to retry';
+      return;
+    }
+    webhookUrl = res.url;
     if (el) el.textContent = webhookUrl;
   }, (err) => {
     // This box is already the tap-to-copy affordance — reused as the retry
@@ -1961,7 +1974,11 @@ function handleCouncil() {
   showDiagStatus('Queuing a combined council review (ARCHITECT · AUDITOR · MUSE)…', undefined, gen);
   callServer('triggerCouncilSimulation', [], (res) => {
     btn.disabled = false;
-    if (res && res.success) {
+    if (res && res.success && (res.busy || res.noop)) {
+      // Lock contention or "nothing changed since last run" — both routine,
+      // expected outcomes, not failures. Render neutrally instead of red.
+      showDiagStatus(res.message, undefined, gen);
+    } else if (res && res.success) {
       showDiagStatus(
         'Council review queued in one shared document. ' +
         'Verdicts appear in the <strong>COG_REGISTRY</strong> sheet of your BRAIN_TRUST_INDEX once Studio processes it.',

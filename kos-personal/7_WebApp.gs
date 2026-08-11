@@ -176,10 +176,19 @@ function doPost(e) {
  * @returns {string}  The deployed web app URL.
  */
 function getWebAppUrl() {
+  // FIXED: this used to return a bare string in both branches — including
+  // the failure branch, whose fallback text ("URL unavailable — deploy as
+  // web app first.") is not a URL at all. Since GAS never threw here,
+  // 8_WebApp_UI.html's onErr handler could never fire for this failure, so
+  // the client treated that fallback string as a real URL: it rendered in
+  // the tap-to-copy box, and tapping it produced a "✓ Copied" confirmation
+  // for having copied that literal sentence, with no way to recover short
+  // of a full reload. Shaped like every other server call the UI consumes.
   try {
-    return ScriptApp.getService().getUrl();
+    const url = ScriptApp.getService().getUrl();
+    return { success: true, url: url };
   } catch (e) {
-    return 'URL unavailable — deploy as web app first.';
+    return { success: false, message: 'URL unavailable — deploy as web app first.' };
   }
 }
 
