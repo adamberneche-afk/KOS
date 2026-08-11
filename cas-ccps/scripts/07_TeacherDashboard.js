@@ -646,6 +646,14 @@ function renderWarmUpReadiness(r) {
 let _dashCache = {};
 let _loadGen = 0;
 let _isFirstLoad = true;
+// m2Enabled is a global admin setting, not per-term data — but it rides
+// along inside each cached term's response blob. Reading it straight off
+// whichever blob happens to be rendered meant switching between two
+// already-cached terms after an admin toggled M2_ENABLED could flicker
+// the "+ New Lesson" button based on stale per-term snapshots instead of
+// the actual current setting. Tracked here, independent of the cache,
+// and updated on every real fetch (never on a cache-hit render).
+let _m2Enabled = false;
 
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
@@ -706,6 +714,7 @@ function loadData() {
       // activeTerm instead so that first response is actually reusable.
       const cacheKey = (data && data.activeTerm) ? data.activeTerm : term;
       _dashCache[cacheKey] = data;
+      if (data) _m2Enabled = !!data.m2Enabled;
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); if (refreshBtn) refreshBtn.disabled = false; });
     })
     .withFailureHandler(function(e) {
@@ -819,7 +828,9 @@ If you expect to see students here:
   // out it doesn't work from an internal "Module 2 is not enabled" error
   // at submit time.
   const newLessonBtn = document.getElementById("new-lesson-btn");
-  if (newLessonBtn) newLessonBtn.style.display = data.m2Enabled ? "" : "none";
+  // Reads the standalone _m2Enabled tracker, not data.m2Enabled off
+  // whichever (possibly stale, cached) blob is being rendered right now.
+  if (newLessonBtn) newLessonBtn.style.display = _m2Enabled ? "" : "none";
 
   const sel = document.getElementById("term-filter");
   const currentOptions = [...sel.options].map(o => o.value);
@@ -1012,8 +1023,16 @@ function _reallyCloseModal() {
   clearForm();
 }
 
+// FIXED: _reallyCloseModal() restores _modalReturnFocus when the lesson
+// modal itself closes, but choosing "Keep editing" here (canceling the
+// discard confirm) had no equivalent — the backdrop just goes to
+// display:none, and since discard-cancel-btn was the focused element,
+// the browser dropped focus to <body> instead of back into the still-open
+// lesson form.
+let _discardConfirmReturnFocus = null;
 function _showDiscardConfirm(onConfirm) {
   _pendingDiscardConfirm = onConfirm;
+  _discardConfirmReturnFocus = document.activeElement;
   document.getElementById("discard-confirm-backdrop").classList.add("open");
   document.getElementById("discard-cancel-btn").focus();
 }
@@ -1021,11 +1040,16 @@ function _showDiscardConfirm(onConfirm) {
 function _cancelDiscardConfirm() {
   _pendingDiscardConfirm = null;
   document.getElementById("discard-confirm-backdrop").classList.remove("open");
+  if (_discardConfirmReturnFocus && typeof _discardConfirmReturnFocus.focus === "function") {
+    _discardConfirmReturnFocus.focus();
+  }
+  _discardConfirmReturnFocus = null;
 }
 
 function _confirmDiscard() {
   const fn = _pendingDiscardConfirm;
   _pendingDiscardConfirm = null;
+  _discardConfirmReturnFocus = null; // discarding — fn() (_reallyCloseModal) handles focus itself
   document.getElementById("discard-confirm-backdrop").classList.remove("open");
   if (fn) fn();
 }
