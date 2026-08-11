@@ -688,7 +688,14 @@ function loadData() {
   google.script.run
     .withSuccessHandler(function(data) {
       if (myGen !== _loadGen) return; // a newer request already superseded this one
-      _dashCache[term] = data;
+      // The first automatic call sends term === "" so the server's
+      // CURRENT_TERM fallback resolves it, but render() below then syncs the
+      // dropdown to that resolved data.activeTerm — so a manual Refresh right
+      // after page load sends that resolved term, not "", and always missed
+      // the cache stored under the "" key. Cache under the resolved
+      // activeTerm instead so that first response is actually reusable.
+      const cacheKey = (data && data.activeTerm) ? data.activeTerm : term;
+      _dashCache[cacheKey] = data;
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() { render(data); if (refreshBtn) refreshBtn.disabled = false; });
     })
     .withFailureHandler(function(e) {
