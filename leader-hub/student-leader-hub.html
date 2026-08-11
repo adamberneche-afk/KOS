@@ -4696,6 +4696,34 @@ function openModal(name){
   const focusable = _moFocusables(modalEl);
   if (focusable.length) focusable[0].focus();
 }
+// Shared discard-confirmation dialog — replaces native confirm() for
+// "discard unsaved work?" guards (Brag Board draft, Lesson Plan editor,
+// Journal reflection) with the app's own modal/toast visual language
+// instead of a raw OS dialog interrupting mid-action. Async by nature
+// (a click comes back later, not synchronously like confirm()), so every
+// call site below shows the dialog and performs the discard itself from
+// onConfirm, rather than branching on a returned boolean.
+function _showDiscardConfirm(message, onConfirm) {
+  const existing = document.getElementById('discard-confirm-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'discard-confirm-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:400px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="Discard unsaved changes">
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">${escH(message)}</div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn btn-outline btn-sm" id="discard-confirm-cancel">Cancel</button>
+      <button class="btn btn-danger btn-sm" id="discard-confirm-submit">Discard</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('discard-confirm-cancel').onclick = closeIt;
+  document.getElementById('discard-confirm-submit').onclick = () => { closeIt(); onConfirm(); };
+  document.getElementById('discard-confirm-submit').focus();
+}
+
 // Optional per-modal guard checked before a .mo modal actually closes — lets
 // a single modal (e.g. Brag Board's unsaved-draft check) require
 // confirmation without every other .mo modal needing to know about it.
@@ -4704,19 +4732,24 @@ function openModal(name){
 const MO_CLOSE_GUARDS = {
   bragboard: () => {
     if (!_bragHasUnsavedChanges()) return true;
-    if (!confirm('Discard this email draft? It hasn\'t been saved to the log.')) return false;
-    // Confirmed discard — resync the snapshot to the (about to be
-    // abandoned) textarea value so beforeunload doesn't still think there's
-    // unsaved work and re-warn about a draft the user just said to throw
-    // away.
-    const el = document.getElementById('brag-body');
-    if (el) _bragBodySnapshot = el.value;
-    return true;
+    // Guard can only ever answer synchronously, but the dialog's answer
+    // comes back later — block this close attempt (return false) and, if
+    // confirmed, resync the snapshot and force the close directly rather
+    // than re-running the guard.
+    _showDiscardConfirm('Discard this email draft? It hasn\'t been saved to the log.', () => {
+      // Resync the snapshot to the (about to be abandoned) textarea value so
+      // beforeunload doesn't still think there's unsaved work and re-warn
+      // about a draft the user just said to throw away.
+      const el = document.getElementById('brag-body');
+      if (el) _bragBodySnapshot = el.value;
+      closeModal('bragboard', true);
+    });
+    return false;
   },
 };
-function closeModal(name){
+function closeModal(name, force){
   const guard = MO_CLOSE_GUARDS[name];
-  if (guard && !guard()) return;
+  if (!force && guard && !guard()) return;
   const modalEl = document.getElementById('modal-'+name);
   if (modalEl) modalEl.classList.remove('open');
   if (_activeMoName === name) {
@@ -10328,8 +10361,8 @@ function _lpHasUnsavedChanges() {
 }
 
 function closeLPModal(skipConfirm) {
-  if (!skipConfirm && _lpHasUnsavedChanges() &&
-      !confirm('Discard unsaved changes to this lesson plan?')) {
+  if (!skipConfirm && _lpHasUnsavedChanges()) {
+    _showDiscardConfirm('Discard unsaved changes to this lesson plan?', () => closeLPModal(true));
     return;
   }
   document.getElementById('lp-modal').style.display = 'none';
@@ -11940,10 +11973,10 @@ function runCronAdjustment(entry) {
               : prios.push(p);
   }
   // 2. Overdue deadlines
-  const overdue = DEADLINES.filter(d => daysUntil(d.date) < 0 && !d.id.startsWith('cal_') && !d.id.startsWith('dl_green') && !d.id.startsWith('dl_plc'));
+  const overdue = DEADLINES.filter(d => daysUntil(d.date) < 0 && _isActionable(d));
   overdue.slice(0,2).forEach(d => prios.push({ order:prios.length+1, task:`Address overdue: ${d.title}`, role:d.role||'general', why:`${Math.abs(daysUntil(d.date))}d overdue` }));
   // 3. Upcoming deadlines ≤3 days
-  const soon = DEADLINES.filter(d => { const x=daysUntil(d.date); return x>=0&&x<=3&&!d.id.startsWith('cal_')&&!d.id.startsWith('dl_green')&&!d.id.startsWith('dl_plc'); });
+  const soon = DEADLINES.filter(d => { const x=daysUntil(d.date); return x>=0&&x<=3&&_isActionable(d); });
   soon.slice(0,2).forEach(d => prios.push({ order:prios.length+1, task:`Complete: ${d.title}`, role:d.role||'general', why:`Due in ${daysUntil(d.date)}d` }));
   // 4. Stalled DSP goal
   const stalledGoal = typeof goals !== 'undefined' ? goals.find(g => g.progress < 60 && g.date && daysUntil(g.date) >= 0) : null;
@@ -12360,28 +12393,44 @@ function urgencyClass(days) {
   return        {bg:'#f0fdf4',text:'#166534',dot:'🟢',label:`${days}d left`};
 }
 
+// Shared by runCronAdjustment(), renderDeadlines(), and buildActionQueue()
+// — previously reimplemented separately at each of those 4 call sites
+// (including a locally-scoped copy inside buildActionQueue) instead of
+// defined once, risking exactly the kind of drift a filter list like this
+// invites (a new cal_/dl_ prefix added in one copy and missed in another).
+// cal_* = calendar reference entries (quarter ends, early release, breaks).
+// dl_green/dl_plc = meeting attendance records (logged if attended) —
+// once past, they're history, not open tasks.
+function _isActionable(d) {
+  return !d.id.startsWith('cal_') && !d.id.startsWith('dl_green') && !d.id.startsWith('dl_plc');
+}
+
 function renderDeadlines() {
   const list=document.getElementById('deadline-list');
   const empty=document.getElementById('deadline-empty');
   if(!list) return;
-  // Filter out past reference/meeting deadlines — they're informational, not open tasks.
-  // cal_* = calendar reference entries (quarter ends, early release, breaks)
-  // dl_green/dl_plc = meeting attendance records (logged if attended)
-  // _isActionable() already excludes all of these from the choice cards.
-  const visible = DEADLINES.filter(d => {
-    if (daysUntil(d.date) < 0 &&
-        (d.id.startsWith('cal_') ||
-         d.id.startsWith('dl_green') ||
-         d.id.startsWith('dl_plc'))) return false;
-    return true;
-  });
+  // Filter out past reference/meeting deadlines — they're informational, not
+  // open tasks. _isActionable() already excludes all of these from the
+  // choice cards (buildActionQueue()) and the priority list
+  // (runCronAdjustment()).
+  const visible = DEADLINES.filter(d => daysUntil(d.date) >= 0 || _isActionable(d));
   const sorted=[...visible].sort((a,b)=>daysUntil(a.date)-daysUntil(b.date));
   if(!sorted.length){ list.innerHTML=''; if(empty) empty.style.display='block'; return; }
   if(empty) empty.style.display='none';
   list.innerHTML=sorted.map(dl=>{
     const days=daysUntil(dl.date), u=urgencyClass(days);
     const r=DB_ROLES[dl.role]||DB_ROLES.deca;
-    return `<div style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'" onclick="${(dl.role==='teach'||dl.role==='meeting')?'':'showView(\''+( dl.role==='store'?'wbl':dl.role)+'\')'}">
+    // FIXED: every row got cursor:pointer and an onclick, even teach/meeting
+    // rows whose onclick was the empty string — a misleading no-op cursor
+    // promising a click that does nothing. Rows that do navigate had zero
+    // keyboard access (no tabindex, no role, no Enter/Space handler) — same
+    // mouse-only gap already fixed for the checklists elsewhere in this app.
+    const navigates = !(dl.role==='teach'||dl.role==='meeting');
+    const target = dl.role==='store'?'wbl':dl.role;
+    const navAttrs = navigates
+      ? `onclick="showView('${target}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showView('${target}')}" role="button" tabindex="0" style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"`
+      : `style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem"`;
+    return `<div ${navAttrs}>
       <span style="font-size:1.05rem;flex-shrink:0">${u.dot}</span>
       <span style="font-size:1.05rem;flex-shrink:0">${r.icon}</span>
       <span style="flex:1;font-size:.9rem;font-weight:600;color:${u.text};line-height:1.3">${dl.title}</span>
@@ -12480,9 +12529,8 @@ function buildActionQueue(){
   const lastMood = getLastMoodScore();
 
   const dlNav = r => r==='store'?'wbl':r==='teach'?'lessons':r==='meeting'?'dashboard':r;
-  // cal_* are calendar reference entries (early release, quarter end, breaks) — not actionable tasks
-  // dl_green past meetings: already happened, logged if attended — no longer overdue
-  const _isActionable = d => !d.id.startsWith('cal_') && !d.id.startsWith('dl_green') && !d.id.startsWith('dl_plc');
+  // _isActionable() (shared, defined near daysUntil/urgencyClass above) —
+  // excludes cal_* reference entries and past dl_green/dl_plc meetings.
   DEADLINES.filter(d=>daysUntil(d.date)<0 && _isActionable(d)).forEach(d=>
     q.push({priority:100,icon:'💀',text:`OVERDUE: ${d.title}`,role:d.role,nav:dlNav(d.role),days:daysUntil(d.date)}));
 
@@ -13396,7 +13444,7 @@ document.addEventListener('input', (e) => {
   if (e.target && e.target.classList && e.target.classList.contains('journal-ta')) scheduleJournalDraftSave();
 });
 
-function closeJournal(){
+function closeJournal(skipConfirm){
   // If journal was auto-triggered at 2:30pm, block closing until complete
   if(_journalForced){
     // Shake the modal to indicate it can't be dismissed
@@ -13412,8 +13460,8 @@ function closeJournal(){
   // A backdrop click or the ✕ button used to discard a fully-answered
   // reflection with no warning at all — this is the one place in the app
   // where that's especially costly, since there's no autosave for it.
-  if(_journalHasUnsavedChanges() &&
-     !confirm('You have unsaved reflection answers. Close without saving?')){
+  if(!skipConfirm && _journalHasUnsavedChanges()){
+    _showDiscardConfirm('You have unsaved reflection answers. Close without saving?', () => closeJournal(true));
     return;
   }
   _journalOpenSnapshot = null;

@@ -424,8 +424,19 @@ textarea { line-height: 1.55; }
   background: var(--surface2); border: 1px solid var(--border2);
   color: var(--text3); font-size: 9px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  cursor: help; flex-shrink: 0; line-height: 1;
+  cursor: pointer; flex-shrink: 0; line-height: 1;
 }
+/* Tap/click-to-toggle popover — see _tipInit()/toggleTip(). The native
+   `title` attribute this replaces needs a mouse hover, which mobile/touch
+   has no equivalent for, and exposes little to assistive tech. */
+.tip-popover {
+  position: fixed; z-index: 200; max-width: 260px;
+  background: var(--surface); color: var(--text);
+  border: 1px solid var(--border2); border-radius: 8px;
+  padding: 8px 10px; font-size: 11px; line-height: 1.5;
+  box-shadow: 0 4px 16px rgba(0,0,0,.18);
+}
+.tip-popover[hidden] { display: none; }
 
 /* ── Bottom sheet backdrop & sheet ───────────────────────────── */
 .bs-backdrop {
@@ -1464,13 +1475,29 @@ function handleArmEngine() {
   _armReturnFocus = document.activeElement;
   document.getElementById('arm-backdrop').classList.add('show');
   document.getElementById('arm-sheet').style.display = 'block';
+  // The Tab-trap above stops keyboard focus from leaving the sheet, but a
+  // screen reader's virtual cursor doesn't follow Tab order — without
+  // aria-hidden/inert on the content behind the backdrop, that content was
+  // still fully readable and interactive to assistive tech while visually
+  // covered and inert to sighted mouse users.
+  _armSetBackgroundInert(true);
   renderArmStep();
   document.addEventListener('keydown', _armEscHandler);
+}
+
+function _armSetBackgroundInert(on) {
+  ['op-header', 'main-content'].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (on) { el.setAttribute('aria-hidden', 'true'); el.setAttribute('inert', ''); }
+    else    { el.removeAttribute('aria-hidden'); el.removeAttribute('inert'); }
+  });
 }
 
 function closeArmModal() {
   document.getElementById('arm-backdrop').classList.remove('show');
   document.getElementById('arm-sheet').style.display = 'none';
+  _armSetBackgroundInert(false);
   armStep = 0;
   armAnswers = {};
   document.removeEventListener('keydown', _armEscHandler);
@@ -2183,8 +2210,65 @@ function selectDeploy(el) {
 }
 
 
+// ── Mobile-friendly tooltips ────────────────────────────────────────────
+// .tip-icon instances only ever exposed their help text via the native
+// `title` attribute — hover-only, so unreachable on any touch device, and
+// not real ARIA wiring for screen readers either. Converts each one to a
+// tap/click-to-toggle popover, keyboard-operable, with one shared popover
+// element reused across all icons.
+let _tipOpenIcon = null;
+function _tipInit() {
+  document.querySelectorAll('.tip-icon[title]').forEach(el => {
+    el.dataset.tip = el.getAttribute('title');
+    el.removeAttribute('title');
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('aria-haspopup', 'true');
+    el.setAttribute('aria-expanded', 'false');
+    el.addEventListener('click', (e) => { e.stopPropagation(); toggleTip(el); });
+    el.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTip(el); }
+    });
+  });
+  document.addEventListener('click', () => closeTip());
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); });
+}
+function toggleTip(el) {
+  if (_tipOpenIcon === el) { closeTip(); return; }
+  closeTip();
+  let pop = document.getElementById('shared-tip-popover');
+  if (!pop) {
+    pop = document.createElement('div');
+    pop.id = 'shared-tip-popover';
+    pop.className = 'tip-popover';
+    pop.setAttribute('role', 'tooltip');
+    pop.hidden = true;
+    document.body.appendChild(pop);
+  }
+  pop.textContent = el.dataset.tip || '';
+  el.setAttribute('aria-describedby', pop.id);
+  el.setAttribute('aria-expanded', 'true');
+  pop.hidden = false;
+  const r = el.getBoundingClientRect();
+  const maxW = 260;
+  let left = r.left;
+  if (left + maxW > window.innerWidth - 12) left = Math.max(12, window.innerWidth - maxW - 12);
+  pop.style.left = left + 'px';
+  pop.style.top  = (r.bottom + 6) + 'px';
+  _tipOpenIcon = el;
+}
+function closeTip() {
+  if (!_tipOpenIcon) return;
+  const pop = document.getElementById('shared-tip-popover');
+  if (pop) pop.hidden = true;
+  _tipOpenIcon.setAttribute('aria-expanded', 'false');
+  _tipOpenIcon.removeAttribute('aria-describedby');
+  _tipOpenIcon = null;
+}
+
 // ── Boot ────────────────────────────────────────────────────────
 (function init() {
+  _tipInit();
   if (SERVER_MODE === 'BOOTSTRAP') {
     document.getElementById('screen-bootstrap').classList.add('show');
 
