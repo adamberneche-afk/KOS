@@ -179,8 +179,10 @@ function resolveStudentStatus_(status, pipeline) {
       // prefixed statuses are real pipeline failures; anything else is
       // just unexpected/blank data, worded distinctly so a teacher can
       // tell the two apart when a student reports it.
+      // FIXED: the teacher side keeps its ⚠ icon on FLAGGED (the one status
+      // that most needs an attention-grabber); this dropped it.
       return status.startsWith("ERROR")
-        ? "Flagged — see your teacher"
+        ? "Flagged ⚠ — see your teacher"
         : "Status unavailable — check with your teacher";
   }
 }
@@ -232,7 +234,11 @@ function buildStudentDashboardHtml_() {
     .card{padding:14px 16px}
   }
   #loading{text-align:center;padding:80px 24px;color:#5f6368}
-  .spinner{width:40px;height:40px;border:3px solid #e8eaed;border-top-color:#1e8e3e;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+  /* FIXED: was 40px vs the teacher dashboard's 36px — same border weight,
+     same animation, same purpose, just a needless 4px drift between the
+     two "app shells." Border color intentionally stays green (this
+     dashboard's own accent) vs the teacher side's blue. */
+  .spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1e8e3e;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .main{padding:24px;max-width:700px;margin:0 auto}
   .group-header{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5f6368;padding:4px 0 10px;border-bottom:2px solid #e8eaed;margin:28px 0 14px}
@@ -250,7 +256,11 @@ function buildStudentDashboardHtml_() {
   .card.ISSUE{border-left-color:#d93025}
   .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:10px}
   .unit-name{font-size:16px;font-weight:600}
-  .pill{font-size:12px;font-weight:600;padding:5px 12px;border-radius:20px;white-space:nowrap;flex-shrink:0}
+  /* FIXED: matches 07_TeacherDashboard.js's .status-badge geometry exactly
+     (font-size/padding/border-radius) — this renders the identical
+     "current status" chip concept, but used to be a fully-rounded pill at
+     a different size, a visible seam between the two dashboards. */
+  .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap;flex-shrink:0}
   .pill-NOT_STARTED{background:#f1f3f4;color:#5f6368}
   .pill-IN_PROGRESS{background:#fef3e2;color:#9c5000}
   .pill-NEEDS_ACTION{background:#f3e8fd;color:#9334e6}
@@ -363,7 +373,7 @@ function loadData() {
       // repeated here — a stack-trace fragment isn't actionable for them.
       _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
         loading.innerHTML =
-          '<p style="color:#d93025;padding:24px 24px 8px;">Something went wrong loading your assignments. Try refreshing.</p>' +
+          '<p style="color:#d93025;padding:24px 24px 8px;">⚠ Something went wrong loading your assignments. Try refreshing.</p>' +
           '<button onclick="this.disabled=true;loadData()" style="padding:9px 22px;border-radius:6px;border:none;background:#1a73e8;color:#fff;font-size:14px;font-weight:500;cursor:pointer;">Try Again</button>';
         if (refreshBtn) refreshBtn.disabled = false;
       });
