@@ -107,10 +107,13 @@ const SP33_COMPETENCIES_ADDRESSED = 5; // per-student after this script runs
 function syncArtifactCompetencies() {
   const cfg = getConfig_();
 
+  // FIXED: unified to strict opt-in (`=== "true"`) — see
+  // 22_LessonContextHandler.js's onLessonContextSubmit_() for the full
+  // rationale.
   const m2Enabled = PropertiesService.getScriptProperties()
     .getProperty("M2_ENABLED");
-  if (m2Enabled && m2Enabled.toLowerCase() === "false") {
-    Logger.log("[S33] M2_ENABLED is false — skipping artifact sync.");
+  if (m2Enabled !== "true") {
+    Logger.log("[S33] M2_ENABLED is not \"true\" — skipping artifact sync.");
     return;
   }
 

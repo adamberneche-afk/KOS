@@ -67,9 +67,16 @@ function onLessonContextSubmit_(payload) {
   const cfg = getConfig_();
 
   // ── Guard: Module 2 enabled check ────────────────────────────────────────
+  // FIXED: was opt-out (`=== "false"`, so an unset/blank property let Module 2
+  // run) — the only backend guard out of step with 07_TeacherDashboard.js's
+  // strict opt-in (`m2Enabled === "true"`), which decides whether the "+ New
+  // Lesson" button (the sole path that calls this handler) even renders. An
+  // installation that never explicitly set M2_ENABLED could reach this
+  // handler with a hidden UI on every other Module 2 surface. Unified to the
+  // same strict opt-in check used everywhere else in Module 2.
   const m2Enabled = PropertiesService.getScriptProperties()
     .getProperty("M2_ENABLED");
-  if (m2Enabled && m2Enabled.toLowerCase() === "false") {
+  if (m2Enabled !== "true") {
     return { success: false, error: "Module 2 is not enabled on this installation." };
   }
 
