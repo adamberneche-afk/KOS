@@ -353,8 +353,20 @@ function deployFullSystem() {
       SpreadsheetApp.flush();
     } catch (_) {} // non-critical
 
-    const success = errors.length === 0;
-    emit(success
+    // FIXED: this used to be `errors.length === 0`, tying success to whether
+    // ANY sub-step failed at all — but every sub-step above is deliberately
+    // wrapped in its own try/catch specifically so one failure doesn't abort
+    // the rest (see the "non-fatal" design this function documents). Tying
+    // success to that non-fatal error count meant the client's dedicated
+    // "Deploy complete. N non-fatal issue(s)" neutral-message branch
+    // (8_WebApp_UI.html, gated on res.success && res.errors.length) could
+    // never actually be reached — any partial failure always rendered the
+    // harsher red "Deploy finished with errors" message instead. Reaching
+    // this point at all means no FATAL (outer-catch) error occurred, so
+    // success is true regardless of how many non-fatal sub-step errors were
+    // collected; errors.length still carries that count for the caller.
+    const success = true;
+    emit(errors.length === 0
       ? '🚀 Deploy complete — no errors.'
       : '⚠ Deploy finished with ' + errors.length + ' non-fatal error(s). Check error log.');
 
