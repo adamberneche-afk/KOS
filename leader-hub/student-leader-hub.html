@@ -4635,7 +4635,13 @@ const RAW_MODAL_CLOSERS = {
   // content still hidden behind the backdrop. Registering it gets both
   // Escape-to-close and the Tab-trap for free, the same way every other
   // bespoke dialog here does.
-  'discard-confirm-modal': () => { const el = document.getElementById('discard-confirm-modal'); if (el) el.remove(); },
+  // FIXED: this originally just removed the element, skipping opts.onCancel
+  // — fine for callers where "cancel" just means "do nothing," but the
+  // trip-draft resume prompt relies on onCancel to discard the stale draft.
+  // Pressing Escape used to leave the draft in place with no wizard open.
+  // _showConfirm() stashes its real closeIt (which does invoke onCancel) on
+  // the element so Escape and the Cancel button behave identically.
+  'discard-confirm-modal': () => { const el = document.getElementById('discard-confirm-modal'); if (el) { if (el._onCancel) el._onCancel(); else el.remove(); } },
 };
 
 function _findVisibleRawModalId() {
@@ -4778,6 +4784,10 @@ function _showConfirm(message, onConfirm, opts) {
   // but a couple (e.g. the trip-draft resume prompt) need to run cleanup on
   // "no" too, not just on "yes".
   const closeIt = () => { modal.remove(); if (opts.onCancel) opts.onCancel(); };
+  // Stashed so RAW_MODAL_CLOSERS['discard-confirm-modal'] (Escape key) can
+  // invoke the exact same cleanup the Cancel button/backdrop click do,
+  // instead of a bare el.remove() that silently skips opts.onCancel.
+  modal._onCancel = closeIt;
   modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
   document.getElementById('discard-confirm-cancel').onclick = closeIt;
   document.getElementById('discard-confirm-submit').onclick = () => { modal.remove(); onConfirm(); };

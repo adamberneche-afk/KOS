@@ -2023,7 +2023,11 @@ function handleCouncil() {
     // that it silently reverted after 5s. One announcement into the
     // existing aria-live status line when arming is enough; re-announcing
     // every second would be noise.
-    showDiagStatus('Tap "Run full council review" again within 5 seconds to confirm.', undefined);
+    // FIXED: this used to pass no token and skip beginDiagAction() entirely,
+    // bypassing the generation-token race guard every other showDiagStatus()
+    // call site respects — a stray Diagnostics response landing during the
+    // 5s countdown could silently clobber (or be clobbered by) this line.
+    showDiagStatus('Tap "Run full council review" again within 5 seconds to confirm.', undefined, beginDiagAction());
     let count = 5;
     councilTimer = setInterval(() => {
       count--;
@@ -2087,8 +2091,9 @@ function handleDeploy() {
     deployConfirm = true;
     btn.className = 'btn btn-sm btn-danger btn-countdown';
     btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to re-deploy · 5s';
-    // Same aria-live gap as handleCouncil()'s countdown — see its comment.
-    showDiagStatus('Tap "Re-run full deploy" again within 5 seconds to confirm.', undefined);
+    // Same aria-live gap as handleCouncil()'s countdown — see its comment,
+    // including the same FIXED token-guard note.
+    showDiagStatus('Tap "Re-run full deploy" again within 5 seconds to confirm.', undefined, beginDiagAction());
     let count = 5;
     deployTimer = setInterval(() => {
       count--;
