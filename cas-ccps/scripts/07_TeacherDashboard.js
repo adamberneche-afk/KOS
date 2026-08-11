@@ -486,7 +486,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 </header>
 
 <!-- ── M2: Warm-Up Readiness Panel ── -->
-<div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:#5f6368;display:flex;gap:24px;align-items:center;flex-wrap:wrap">
+<div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:#5f6368;gap:24px;align-items:center;flex-wrap:wrap">
   <span id="wr-unit" style="font-weight:600;color:#1a73e8"></span>
   <span id="wr-eval"></span>
   <span id="wr-warmup"></span>
@@ -769,6 +769,12 @@ If you expect to see students here:
     </div>\`;
     document.getElementById("loading").style.display = "none";
     main.style.display = "block";
+    // FIXED: this early return used to skip straight past the term-dropdown
+    // population/sync logic at the end of this function, so a teacher who
+    // hit a genuinely empty roster (or an empty filtered term) never got
+    // real term options in the dropdown at all — mirrors the same fix
+    // already applied to _populateTermDropdown() in 13_StudentDashboard.js.
+    _populateTermDropdown(data);
     return;
   }
 
@@ -842,7 +848,16 @@ If you expect to see students here:
   // whichever (possibly stale, cached) blob is being rendered right now.
   if (newLessonBtn) newLessonBtn.style.display = _m2Enabled ? "" : "none";
 
+  _populateTermDropdown(data);
+}
+
+// Was only ever called from the end of the full-render path, so the term
+// dropdown never got populated with real options when a filtered view came
+// back empty — factored out so both branches can call it (same fix as
+// 13_StudentDashboard.js's helper of the same name).
+function _populateTermDropdown(data) {
   const sel = document.getElementById("term-filter");
+  if (!sel) return;
   const currentOptions = [...sel.options].map(o => o.value);
   (data.availableTerms || []).forEach(t => {
     if (!currentOptions.includes(t)) {
