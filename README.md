@@ -33,9 +33,11 @@ against the real schema (original archived), and all 7 `PERSONA_*` cog
 docs are now filed under `rtp-core-router/`. A later reupload batch added
 two backported fixes, ten governance/protocol docs, and a real optional
 managed-inference-service alternative to native Studio (opt-in, gated
-behind `CFG.INFERENCE_MODE`, off by default). See
-[`kos-personal/README.md`](./kos-personal/README.md) for the full
-before/after record.
+behind `CFG.INFERENCE_MODE`, off by default). Since then, nine further
+rounds of dedicated UI/UX auditing (see
+[`kos-personal/README.md`](./kos-personal/README.md#uiux-hardening--rounds-19))
+have fixed real bugs including a race condition, an unguarded status-line
+race, and a data-loss bug where Escape could wipe an in-progress wizard.
 
 ## [`cas-ccps/`](./cas-ccps/) — Classroom Agency System (CCPS)
 
@@ -59,8 +61,13 @@ always correctly "Module 4"; the SCR engine moved to "Module 5," not "Module 4")
 A later reupload batch closed most of the remaining Known Gaps (the two
 missing data files, the `lesson_unit_id` column, and 6 of 7 missing Module
 2 scripts) and resolved a second, genuine numbering collision inside
-Module 2 itself. See [`cas-ccps/README.md`](./cas-ccps/README.md) for the
-full record.
+Module 2 itself. Since then, nine further rounds of dedicated UI/UX
+auditing (see
+[`cas-ccps/README.md`](./cas-ccps/README.md#uiux-hardening--rounds-19))
+have fixed real bugs including a CRITICAL silent date-type-coercion bug
+that stopped the nightly warm-up queue from ever matching a lesson, and a
+double-counting bug in the warm-up readiness dashboard. See
+[`cas-ccps/README.md`](./cas-ccps/README.md) for the full record.
 
 ## [`leader-hub/`](./leader-hub/) — LeaderHub
 
@@ -69,8 +76,14 @@ above during Round 3 reconciliation, not a cas-ccps companion despite
 covering the same course numbers. A personal, single-file HTML command
 center for one teacher's full multi-role workload (classroom, DECA,
 school store, E-Sports, field trips). Client-side only — no server, no
-shared data model with `kos-personal/` or `cas-ccps/`. See
-[`leader-hub/README.md`](./leader-hub/README.md).
+shared data model with `kos-personal/` or `cas-ccps/`. It also went
+through the same nine rounds of UI/UX auditing as the two systems above —
+see
+[`leader-hub/README.md`](./leader-hub/README.md#uiux-hardening--rounds-19)
+for its record, including the most severe bug found in any round: 8
+places where raw JavaScript was rendering as visible garbage text because
+it sat outside any `<script>` tag, silently disabling a rating widget
+since it was first added.
 
 ## [`drive-curation/`](./drive-curation/) — filed for reference, not a system
 

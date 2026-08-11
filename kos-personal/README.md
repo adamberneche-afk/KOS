@@ -361,6 +361,126 @@ opportunistically since they were cheap and self-contained:
 
 ---
 
+## UI/UX Hardening — Rounds 1–9
+
+After the reconciliation work above landed, this codebase went through nine
+further rounds of dedicated UI/UX auditing — each round re-examined the
+whole UI against everything already fixed, then split its findings into a
+bugs commit and a separate polish commit. What follows is kos-personal's
+share of that record; see cas-ccps's and leader-hub's own READMEs for
+theirs. Commit hashes are given so any item's full diff/rationale can be
+looked up directly.
+
+**Round 1** (`d37f3c4`, `1a51e22`, `a6b74d5`) — the initial pass. Notable
+bugs: `handlePrimer()` reported success unconditionally on any resolved
+RPC, regardless of `res.success`; the Arm button's visibility gated on
+`all_verified`, which could reach true before onboarding ever ran, hiding
+the only path into it (fixed via a new `engine_armed` field); three
+Diagnostics loaders (`loadShadowMatrix`/`loadVectorState`/`loadWebhookUrl`)
+had no error handler and stuck on "Loading…" forever on failure; and
+**`submitArmEngine()` read wizard answers via `getElementById` after
+`renderArmStep()` had already replaced the DOM, silently submitting every
+answer from steps 1–3 empty** — now captured into a persistent object
+across step transitions. Also: Research/Context ingestion gained the
+oversized-payload guard Session Log already had; a vector-score display
+clamp bug (label could exceed 100% while its bar capped at 100%) was
+fixed; and a broad polish sweep covered bootstrap time-estimate copy,
+plain-language engine-mode labels, WCAG-AA contrast, keyboard-operable
+webhook-copy, an ingest-draft localStorage autosave, and motion polish
+(spinner, vector bars, bootstrap stagger) with `prefers-reduced-motion`
+overrides throughout.
+
+**Round 2** (`3a8ebf7`) — every Diagnostics panel's failure state gained
+an inline Retry button; `archiveStagingPipeline()` started returning a
+success/failure breakdown instead of a bare count (previously silently
+swept up intake-failed rows with no indication); webhook-copy gained an
+`execCommand` fallback; the Arm modal gained real focus management,
+Escape-to-close, and a confirm-passphrase field (a single-entry passphrase
+field meant one typo silently produced a different Identity Key); research
+title got `maxlength="100"` matching the server's existing silent
+truncation; and several small consistency/feedback gaps (timestamp
+format, stale hints, duplicate-submission styling) were closed.
+
+**Round 3** (`f63bcae`, `4bb4491`) — fixed the admin-email health check
+returning the truthy literal `'not set'` (dead client warning branch); an
+email-masking regex that left short local-parts (under 3 chars) fully
+unmasked; an ingest character counter measuring untrimmed length while
+the server validated trimmed length; and whitespace-only research titles
+bypassing the "Untitled" fallback. Also added: real dialog semantics
+(`role="dialog"`, Tab-trap) to the Arm modal; aria-live regions to 5
+previously-silent status elements; and, notably, **fixed a race where all
+7 Diagnostics action buttons shared one unguarded status line, so a
+slower call's response could overwrite a faster, more-recently-started
+action's result** — closed with a generation-token guard
+(`beginDiagAction()`/`showDiagStatus(...,token)`) that every later round's
+new status-line code was required to follow (see Rounds 7–9 below for two
+places that convention was violated by mistake and then caught).
+
+**Round 4** (`641633c`, `ce39d09`) — **fixed failed-queue-row invisibility**:
+`getQueueMetrics()`/`getQueueStatus()` excluded every terminal-failure
+status from all counts, so a stuck row — even a new user's very first
+submission — was invisible everywhere and could make the whole queue
+read as empty; added a shared `TERMINAL_FAILED_STATUSES` list and a
+visible "Failed" tile. Also fixed 3 Diagnostics actions that caught their
+own exceptions and returned the same shape a benign no-op did, rendering
+real failures with neutral styling; added real `<label for>` associations
+across the Ingest tab and Arm modal; fixed a calibration-weight guard bug
+in `completeOnboarding()` that could keep stale weights forever after a
+failed-then-retried onboarding attempt; and fixed `switchType()`
+unconditionally hiding the large-paste guard panel on tab-switch.
+
+**Round 5** (`40229bd`, `a5dd7fd`) — **added `LockService.getScriptLock()`
+to `archiveStagingPipeline()`**, the only `STAGING_PIPELINE` row-deleting
+writer with no lock; a concurrent trigger run could hold a stale row
+number across a delete-induced row shift and write a status onto the
+wrong row. Also locked `submitSessionLog`/`submitExternalData`/
+`handleCogExhaust`'s check-then-append sequences against a
+duplicate-submission race, and converted `.tip-icon` from hover-only
+native tooltips to a tap/click-to-toggle popover with real ARIA wiring
+(no touch equivalent existed before).
+
+**Round 6** (`8273ed4`, `803ba1f`) — fixed `getWebAppUrl()` returning a
+bare fallback *string* on failure that the client then treated as a real,
+copyable webhook URL; fixed `triggerCouncilSimulation()` rendering lock
+contention and "nothing changed since last run" as red errors instead of
+neutral, routine outcomes; standardized Personalize/Personalized spelling
+(mixed US/UK across 4 sites in one flow); fixed 4+ instances of lazy
+`"(s)"` pluralization; and added pending-state (icon/label swap) to the 6
+Diagnostics action buttons that hadn't gotten it yet.
+
+**Round 7** (`5f1c4d2`, `12730fb`) — **found that Round 5's own tip-icon
+fix hadn't reached the Arm modal's Step-3 tip-icons** (Admin Ghost /
+Necessary Struggle) — they're injected via `renderArmStep()`'s innerHTML
+swap after `_tipInit()`'s one-time boot pass already ran; made `_tipInit()`
+idempotent and re-invoked per step. Also fixed 2 more `"(s)"`
+pluralization instances, tip-popover position going stale on scroll/resize,
+and — a real regression this round caught in itself —
+**`.btn:disabled`'s blanket opacity was dimming the very "Sending…/
+Saving…" pending-state labels it was supposed to make legible.**
+
+**Round 8** (`3fd08da`, `cef3700`) — **found that the prior round's own
+aria-live countdown announcement bypassed the Round-3 generation-token
+guard** (passed no token, never called `beginDiagAction()`); fixed. Also
+fixed `deployFullSystem()`'s `success` flag being tied to whether *any*
+sub-step failed, fatal or not, even though each sub-step is deliberately
+non-fatal by design — this made the client's dedicated "N non-fatal
+issues" neutral-message branch permanently unreachable, so any partial
+failure always rendered the harsher red "finished with errors" message.
+Renamed the jargon "Queue Payload" submit button to "Submit."
+
+**Round 9** (`0d433eb`, `513424f`) — **fixed a real data-loss bug**: the
+tip-popover's Escape handler and the Arm-modal's Escape handler both
+lived on `document` with no `stopImmediatePropagation`, so pressing
+Escape while a Step-3 tip popover was open closed the tip *and*
+immediately closed the whole Arm wizard in the same keystroke —
+`closeArmModal()` unconditionally resets `armStep`/`armAnswers`, silently
+wiping every answer entered across all 4 steps. Also fixed
+`handleBootstrap()` never clearing stale `active`/`done`/`err` classes
+before a retry, so a step that failed once and then succeeded on retry
+could render with a success checkmark in error-red text.
+
+---
+
 ## Architecture in Two Paragraphs
 
 Sessions flow through a five-stage pipeline. Sensor 1 scans a Drive folder for new session documents every 5 minutes and creates rows in STAGING_PIPELINE with status `PENDING_FLOW`. The Turnstile (running every 5 minutes) releases rows one at a time to `STUDIO_ACTIVE`. Workspace Studio picks up `STUDIO_ACTIVE` rows, runs inference on the session text, writes structured JSON back to the document, and sets status to `FLOW_COMPLETE`. The Queue Processor (running every 10 minutes) finds `FLOW_COMPLETE` rows, parses the JSON, and fans the data out to ten downstream ledgers via the JSON Drip architecture. Each branch — current state, pivots, session log, cog registry, action register, vector routing, shadow matrix — is isolated so a failure in one doesn't stop the others.
@@ -380,7 +500,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 5_Error_And_Utilities.gs   Error log, daily digest, utilities              ✅ in repo — shadow matrix + completeOnboarding() added
 6_Governance.gs            Mutations, sweepers, council simulation         ✅ in repo — daily primer + auto-council check added
 7_WebApp.gs                doGet, doPost, server functions                 ✅ in repo — doGet() template-evaluates mode; getInboundFolderUrl() added
-8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   ✅ in repo — all server calls now backed; managed_service panel removed
+8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   ✅ in repo — all server calls now backed; managed_service panel restored, gated behind CFG.INFERENCE_MODE (see Round 3 below)
 9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, menu       ✅ in repo
 10_Turnstile.gs            Matrix turnstile state machine                 ✅ in repo — rebuilt against the real schema (original in archived/)
 11_Registrar_CogRelay.gs   Curriculum-drafts auditing pipeline (Registrar) ✅ in repo — see "Registrar / Cog Relay" below
