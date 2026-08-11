@@ -111,10 +111,14 @@ function buildWarmUpQueues() {
   const cfg = getConfig_();
 
   // ── M2 guard ──────────────────────────────────────────────────────────────
+  // FIXED: unified to strict opt-in (`=== "true"`) — see
+  // 22_LessonContextHandler.js's onLessonContextSubmit_() for the full
+  // rationale (matches 07_TeacherDashboard.js's gate instead of silently
+  // running when M2_ENABLED was never set).
   const m2Enabled = PropertiesService.getScriptProperties()
     .getProperty("M2_ENABLED");
-  if (m2Enabled && m2Enabled.toLowerCase() === "false") {
-    Logger.log("[S24] M2_ENABLED is false — skipping queue build.");
+  if (m2Enabled !== "true") {
+    Logger.log("[S24] M2_ENABLED is not \"true\" — skipping queue build.");
     return;
   }
 

@@ -153,9 +153,12 @@ const MAX_FEEDBACK_CHARS     = 500; // cap Flow 4 feedback stored in queue row
 function registerDeliveredWarmUps() {
   const cfg = getConfig_();
 
+  // FIXED: unified to strict opt-in (`=== "true"`) — see
+  // 22_LessonContextHandler.js's onLessonContextSubmit_() for the full
+  // rationale.
   const m2Enabled = PropertiesService.getScriptProperties()
     .getProperty("M2_ENABLED");
-  if (m2Enabled && m2Enabled.toLowerCase() === "false") return;
+  if (m2Enabled !== "true") return;
 
   const ss           = SpreadsheetApp.openById(cfg.ledgerSsId);
   const teacherEmail = cfg.teacherEmail;
@@ -282,9 +285,12 @@ function markLessonContextDelivered_(lcSheet, lcData, lessonId) {
 function runWarmUpEvaluation() {
   const cfg = getConfig_();
 
+  // FIXED: unified to strict opt-in (`=== "true"`) — see
+  // 22_LessonContextHandler.js's onLessonContextSubmit_() for the full
+  // rationale.
   const m2Enabled = PropertiesService.getScriptProperties()
     .getProperty("M2_ENABLED");
-  if (m2Enabled && m2Enabled.toLowerCase() === "false") return;
+  if (m2Enabled !== "true") return;
 
   const ss           = SpreadsheetApp.openById(cfg.ledgerSsId);
   const teacherEmail = cfg.teacherEmail;
@@ -321,7 +327,13 @@ function runWarmUpEvaluation() {
 
   for (let i = 1; i < wrData.length; i++) {
     const row        = wrData[i];
-    const lessonDate = String(row[WR_LESSON_DATE]   || "").trim();
+    // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — this was the
+    // one remaining raw String() cast on a lesson_date cell in the pipeline.
+    // If WarmUpRegistry's lesson_date cell ever gets Sheets-coerced to a
+    // real Date, String() on it produces a non-"YYYY-MM-DD" string that
+    // never equals yesterdayStr, silently and permanently stopping the
+    // nightly warm-up evaluation job from finding anything to score.
+    const lessonDate = _normalizeLessonDateCell_(row[WR_LESSON_DATE]);
     const tEmail     = String(row[WR_TEACHER_EMAIL] || "").trim().toLowerCase();
     const totalScore = String(row[WR_TOTAL_SCORE]   || "").trim();
     const docId      = String(row[WR_DOC_ID]        || "").trim();
@@ -527,8 +539,11 @@ function checkShadowMatrixInterrupts_(ss, cfg) {
     rows + "\n\n" +
     "The system will automatically weight toward the best archetype for " +
     "each student's next warm-up.\n\n" +
-    "Reply OVERRIDE to any individual student name above if you want to " +
-    "keep the default archetype selection for that student.\n\n" +
+    // FIXED: this used to invite "Reply OVERRIDE" — nothing in cas-ccps
+    // reads Gmail replies (no reply-scanning trigger exists anywhere in
+    // this codebase, unlike leader-hub's EmailBridge.gs, which does have
+    // one). A teacher following this instruction would get no response and
+    // no override, with no indication anything was wrong.
     "This digest is sent once per student per unit. You will not receive " +
     "repeat notifications for the same student and unit.\n\n" +
     "— Classroom Agency System";

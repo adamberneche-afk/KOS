@@ -1206,6 +1206,24 @@ const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR
  *   "there was nothing to do."
  */
 function archiveStagingPipeline() {
+  // FIXED: this is the only function that ever calls staging.deleteRow() on
+  // STAGING_PIPELINE, but unlike every other writer (processIntakePayload,
+  // runMatrixTurnstile, sensor1_scanInboundSensors) it took no lock. Both
+  // processIntakePayload() and runMatrixTurnstile() take this exact same
+  // script-wide lock already, so this now genuinely serializes against
+  // them: without it, a delete here mid-run could shift every row below it
+  // up by one right as a trigger elsewhere was holding an absolute row
+  // number captured before the shift, silently writing a status (e.g.
+  // PROCESSED) onto a completely different, unrelated row.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    // Not a genuine failure (success stays true, matching runPromotionCheck's
+    // "system busy" case) — just contention with a concurrent trigger run,
+    // which is exactly the scenario this lock exists to make safe instead of
+    // silently corrupting a row. `busy: true` lets the client show this
+    // distinctly from both a real error and a normal "nothing to archive" run.
+    return { success: true, busy: true, message: 'System busy — try again in a moment.', archived: 0, succeeded: 0, failed: 0 };
+  }
   try {
     const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
@@ -1254,6 +1272,8 @@ function archiveStagingPipeline() {
   } catch (e) {
     _reportError('archiveStagingPipeline', e, null);
     return { success: false, message: e.message, archived: 0, succeeded: 0, failed: 0 };
+  } finally {
+    lock.releaseLock();
   }
 }
 

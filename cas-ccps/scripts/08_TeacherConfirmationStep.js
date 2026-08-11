@@ -185,6 +185,30 @@ function pollForNewDrafts() {
   const drafts = ss.getSheetByName("DraftUnits");
   if (!matrix || !drafts) throw new Error("TeacherMatrix or DraftUnits tab not found.");
 
+  // LOCKED: this trigger fires every 2 minutes, but the STATUS flip to
+  // REVIEW_SENT (below) only happens *after* drafts.appendRow() and the
+  // network-bound sendReviewEmail_() call for every DRAFT row in this same
+  // pass. A run that's still working through a slow/rate-limited email send
+  // can still be inside this loop when the next scheduled run starts — that
+  // second run reads its own fresh matrixData snapshot, still sees the same
+  // row as STATUS === "DRAFT" (the first run hasn't reached the setValue()
+  // yet), and reprocesses it: a duplicate confirmation email plus a second
+  // DraftUnits row sharing the same deterministic draftId ("DRAFT-" +
+  // configId), which onTeacherConfirmSubmit()'s promotion lookup would then
+  // find sitting orphaned once the first copy is confirmed. Same fix already
+  // applied to 03_QueueBridge.js's bridgeQueue() and
+  // 26_CompetencyAlignmentLog.js's logAlignmentForLesson_() for the
+  // identical race shape; standing down (rather than blocking indefinitely)
+  // matches that precedent.
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    Logger.log("[DRAFT] Parallel run congestion — standing down.");
+    return;
+  }
+
+  try {
   const matrixData = matrix.getDataRange().getValues();
 
   for (let i = 1; i < matrixData.length; i++) {
@@ -252,6 +276,9 @@ function pollForNewDrafts() {
       " | ConfigID: " + configId +
       " | Unit: " + config.unitName
     );
+  }
+  } finally {
+    lock.releaseLock();
   }
 }
 

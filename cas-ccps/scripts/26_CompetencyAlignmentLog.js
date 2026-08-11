@@ -45,6 +45,25 @@ function logAlignmentForLesson_(lessonId) {
     return { success: false, error: "No lessonId provided." };
   }
 
+  // LOCKED: this is invoked two ways on the same LessonContext row —
+  // synchronously from Script 22's onLessonContextSubmit_(), and every 5
+  // minutes by runAlignmentLogBackfill_(). Neither took a lock, so a slow
+  // direct call still in flight when the backfill trigger fires on the
+  // same still-RECEIVED row could pass both guards below in both
+  // executions and double-append AlignmentLog rows for the same lesson —
+  // silently doubling the competency-coverage numbers a teacher's
+  // alignment report shows. Same fix already applied to 03_QueueBridge.js's
+  // bridgeQueue() for the identical race shape; standing down (rather than
+  // blocking indefinitely) matches that precedent.
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    Logger.log("[S26] Parallel run congestion for " + lessonId + " — standing down.");
+    return { success: false, error: "System busy — try again in a moment." };
+  }
+
+  try {
   const cfg     = getConfig_();
   const ss      = SpreadsheetApp.openById(cfg.ledgerSsId);
   const lcSheet = ss.getSheetByName(cfg.tabs.lessonContext);
@@ -160,6 +179,9 @@ function logAlignmentForLesson_(lessonId) {
 
   Logger.log("[S26] Logged " + rowsToAppend.length + " alignment row(s) for " + lessonId);
   return { success: true, rowsWritten: rowsToAppend.length };
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -1867,6 +1867,10 @@ function handleArchive() {
       showDiagStatus('Error: ' + (res.message || 'Archive failed.'), 'danger', gen);
       return;
     }
+    if (res && res.busy) {
+      showDiagStatus(res.message, undefined, gen);
+      return;
+    }
     // archiveStagingPipeline() also sweeps up rows that failed intake and
     // were never shown anywhere else in the Queue UI — this button's label
     // ("Archive completed queue rows") used to imply it only touched
