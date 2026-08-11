@@ -183,6 +183,18 @@ function sensor1_scanInboundSessions() {
  * @returns {Object} { success, uid, chunks, message }
  */
 function submitSessionLog(text) {
+  // FIXED: the duplicate-guard read (below) and the eventual STAGING_PIPELINE
+  // append (inside _chunkAndQueue) were unlocked — two near-simultaneous
+  // submissions of the same content (a retried google.script.run call, the
+  // same session pasted from two open tabs) could both pass the "not a
+  // duplicate" check before either had appended, creating two queued copies
+  // of what's meant to be deduplicated as one. Held for the whole
+  // check-through-queue span, same as processIntakePayload's lock in
+  // 3_Queue_Processor.gs.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { success: false, message: 'System busy — try again in a moment.' };
+  }
   try {
     if (!text || text.trim().length < 50) {
       return { success: false, message: 'Payload too short. Paste a full session log.' };
@@ -241,6 +253,8 @@ function submitSessionLog(text) {
   } catch (e) {
     _reportError('submitSessionLog', e, null);
     return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -265,6 +279,16 @@ function submitSessionLog(text) {
  * @returns {Object} { success, uid, docUrl, message }
  */
 function handleCogExhaust(payload) {
+  // Same unlocked check-then-append race as submitSessionLog/
+  // submitExternalData — see the comment on submitSessionLog. This
+  // endpoint's own duplicate check (_queuePayload's fileId match) is
+  // weaker since every call creates a fresh Drive doc first, but the
+  // lock at least makes whatever check does run atomic against a
+  // concurrent webhook delivery of the same payload.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { success: false, message: 'System busy — try again in a moment.' };
+  }
   try {
     const { cog_name, task_id, verdict, artifact_text } = payload;
     if (!cog_name || !artifact_text) {
@@ -318,6 +342,8 @@ function handleCogExhaust(payload) {
   } catch (e) {
     _reportError('handleCogExhaust', e, null);
     return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -476,6 +502,12 @@ function sensor3_externalTelemetry(e) {
  * @returns {Object} { success, uid, docUrl, message }
  */
 function submitExternalData(text, title) {
+  // Same unlocked check-then-append race as submitSessionLog — see the
+  // comment there. Held across the whole duplicate-check-through-queue span.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { success: false, message: 'System busy — try again in a moment.' };
+  }
   try {
     if (!text || text.trim().length < 20) {
       return { success: false, message: 'Content too short. Paste a full article or data block.' };
@@ -565,6 +597,8 @@ function submitExternalData(text, title) {
   } catch (e) {
     _reportError('submitExternalData', e, null);
     return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
   }
 }
 

@@ -132,10 +132,17 @@ function updateAllStudentProfiles() {
   const cfg = getConfig_();
 
   // ── M2 guard ──────────────────────────────────────────────────────────────
+  // FIXED: unified to strict opt-in (`=== "true"`), matching
+  // 07_TeacherDashboard.js's gate on the UI surfaces that depend on this
+  // nightly job having actually run. The previous opt-out check
+  // (`=== "false"`) let this run on an installation that never explicitly
+  // set M2_ENABLED at all — see the identical fix in
+  // 22_LessonContextHandler.js's onLessonContextSubmit_() for the full
+  // rationale.
   const m2Enabled = PropertiesService.getScriptProperties()
     .getProperty("M2_ENABLED");
-  if (m2Enabled && m2Enabled.toLowerCase() === "false") {
-    Logger.log("[S23] M2_ENABLED is false — skipping profile update.");
+  if (m2Enabled !== "true") {
+    Logger.log("[S23] M2_ENABLED is not \"true\" — skipping profile update.");
     return;
   }
 
@@ -933,7 +940,16 @@ function buildDefaultSnapshot_(studentEmail, lessonCompIds) {
     warmup_scores:          [],
     extra_credit_count:     0,
     avg_engagement_score:   0,
-    last_updated:           ""
+    last_updated:           "",
+    // FIXED: the full snapshot above always carries these three shadow-matrix
+    // fields, but this default (returned for both "no StudentProfiles tab"
+    // and "no row for this student yet") previously omitted them entirely —
+    // so a brand-new student's very first warm-up snapshot handed Flow 3 an
+    // object missing keys every other snapshot has, instead of the "no
+    // history yet" values a new learner should actually carry.
+    shadow_matrix:          {},
+    unit_current:           "",
+    shadow_archetype_note:  null
   };
 }
 
@@ -1012,19 +1028,25 @@ function createWarmUpTabs_() {
     "shadow_matrix", "unit_current"
   ]);
 
+  // lesson_date (col 6) forced to text format — see the textColumns comment
+  // on _createTabIfAbsent_ below. This is a documented fallback tab-creation
+  // path (run manually when Script 28's setup wizard hasn't run yet) that
+  // otherwise reintroduces the exact Sheets-auto-coercion bug already fixed
+  // for 22_LessonContextHandler.js's and 28_Module2Setup.js's tab creators.
   _createTabIfAbsent_(ss, cfg.tabs.warmUpQueue, [
     "queue_id", "lesson_id", "student_email", "student_name", "google_id",
     "lesson_date", "lesson_context_snapshot", "student_profile_snapshot",
     "status", "doc_id", "doc_url", "word_count", "word_count_score",
     "grammar_score", "engagement_score", "extra_credit", "total_score",
     "flow4_feedback", "response_text", "archetype", "bridge_output"
-  ]);
+  ], [6]);
 
+  // lesson_date (col 4) — same reasoning as above.
   _createTabIfAbsent_(ss, cfg.tabs.warmUpRegistry, [
     "warmup_id", "queue_id", "lesson_id", "lesson_date", "student_email",
     "student_name", "teacher_email", "doc_id", "doc_url", "generated_at",
     "total_score", "extra_credit", "term"
-  ]);
+  ], [4]);
 
   _createTabIfAbsent_(ss, cfg.tabs.classSchedule, [
     "teacher_email", "period", "day_type", "course_name", "active"
@@ -1051,7 +1073,15 @@ function createWarmUpTabs_() {
   Logger.log("[S23] Warm-up tab creation complete.");
 }
 
-function _createTabIfAbsent_(ss, tabName, headers) {
+// textColumns: optional array of 1-based column indices to force to plain
+// text format, so ISO-date-shaped strings ("YYYY-MM-DD") written into them
+// later never get silently auto-converted to a real Date value by Sheets —
+// mirrors 22_LessonContextHandler.js's _createTabIfMissing_ and
+// 28_Module2Setup.js's _createTabIfMissing28_. This function previously had
+// no such parameter at all, so tabs created through this fallback path
+// (used when Script 28's setup wizard hasn't run yet) had zero protection
+// against the exact lesson_date coercion bug fixed everywhere else.
+function _createTabIfAbsent_(ss, tabName, headers, textColumns) {
   if (ss.getSheetByName(tabName)) {
     Logger.log("[S23] Tab '" + tabName + "' already exists — skipping.");
     return;
@@ -1062,6 +1092,9 @@ function _createTabIfAbsent_(ss, tabName, headers) {
     .setFontWeight("bold")
     .setBackground("#f3f3f3");
   sheet.setFrozenRows(1);
+  (textColumns || []).forEach(col => {
+    sheet.getRange(2, col, Math.max(sheet.getMaxRows() - 1, 1), 1).setNumberFormat("@");
+  });
   Logger.log("[S23] Created tab: " + tabName);
 }
 
