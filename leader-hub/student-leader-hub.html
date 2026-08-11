@@ -125,8 +125,11 @@ nav button.active{color:var(--gold);background:rgba(232,184,75,.15);}
     display:block; position:fixed; inset:64px 0 0 0; background:rgba(0,0,0,.35); z-index:140;
   }
 }
-/* CARDS — reference-style: generous padding, larger radius, softer shadow, hover lift */
-.card{background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:1.5rem;box-shadow:var(--shadow);transition:box-shadow var(--t-base),transform var(--t-base);}
+/* CARDS — hover lift; the base .card box model itself is defined once,
+   below, under "DESIGN SYSTEM — CLEAN COMPONENT TOKENS" (a second .card
+   rule used to live here too, with different border/padding values —
+   harmless in effect since the later rule always won on source order, but
+   a live trap for anyone editing this one expecting it to apply). */
 .card:hover{box-shadow:var(--shadow-md);}
 .card-lift:hover{transform:translateY(-2px);box-shadow:var(--shadow-md);}
 .cal{border-left:4px solid var(--gold);} .cal.blue{border-left-color:var(--blue);} .cal.red{border-left-color:var(--red);} .cal.green{border-left-color:var(--green);} .cal.orange{border-left-color:var(--orange);}
@@ -194,6 +197,13 @@ nav button.active{color:var(--gold);background:rgba(232,184,75,.15);}
 label{font-size:.72rem;font-weight:600;color:var(--muted);letter-spacing:.2px;}
 input,select,textarea{border:1.5px solid var(--border);border-radius:var(--radius-xs);padding:.5rem .75rem;font-family:'Outfit',sans-serif;font-size:.82rem;background:#fff;color:var(--ink);transition:border-color .15s,box-shadow .15s;width:100%;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy);box-shadow:0 0 0 3px rgba(15,32,68,.08);}
+/* Custom role="button" elements (approval-chain circles, wizard step-bar
+   dots, SCR grid cells, dashboard shortcut rows, etc.) were made keyboard
+   -operable in earlier a11y passes but never got a matching focus
+   indicator — keyboard users tabbing to them saw whatever the browser's
+   native default outline looks like, visually inconsistent with the navy
+   ring every real form control gets above. */
+.btn:focus-visible,[role="button"]:focus-visible,.scr-score:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(15,32,68,.35);}
 textarea{resize:vertical;min-height:70px;}
 .fgrid{display:grid;gap:.82rem;}
 .fg2{grid-template-columns:1fr 1fr;} .fg3{grid-template-columns:1fr 1fr 1fr;}
@@ -386,7 +396,7 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
   ══════════════════════════════════════════════════ */
 
   /* Cards */
-  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; box-shadow:var(--shadow); }
+  .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); padding:1.25rem; box-shadow:var(--shadow); transition:box-shadow var(--t-base), transform var(--t-base); }
   .card-sm { padding:.85rem 1rem; }
   .card-hover { transition:box-shadow var(--t-base), transform var(--t-base); cursor:pointer; }
   .card-hover:hover { box-shadow:var(--shadow-lg); transform:translateY(-1px); }
@@ -3701,9 +3711,17 @@ function renderDashboard() {
     const dl = subDeadline(t); if(!dl) return;
     const dtd = Math.ceil((dl-new Date())/86400000);
     const miss = getMissingFields(t).length;
-    if(dtd < 0 && t.status==='planned') alts.push(`<div class="alert ad"><span class="aico">🚨</span><div><strong>${t.name}</strong> — TripTracker deadline <strong>OVERDUE</strong> by ${Math.abs(dtd)} days. Submit immediately.</div></div>`);
-    else if(dtd<=7 && dtd>=0 && t.status==='planned') alts.push(`<div class="alert aw"><span class="aico">⚠️</span><div><strong>${t.name}</strong> — TripTracker submission in <strong>${dtd} day${dtd===1?'':'s'}</strong> (${fd(fmtDeadline(t))}). ${miss>0?`<strong>${miss} fields still missing!</strong>`:''}</div></div>`);
-    if(miss > 0 && dtd > 7) alts.push(`<div class="alert aw"><span class="aico">📋</span><strong>${t.name}</strong> — <strong>${miss} required field${miss===1?'':'s'}</strong> missing. <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})" style="margin-left:.5rem">Fill In →</button></div>`);
+    // FIXED: was dtd<=7 here — the sidebar's own "deadlines soon" badge
+    // count (cnt-dl, above) and the Trips Hub/readiness-card urgency
+    // signals all use a 14-day window. The same trip 8-14 days out used to
+    // count toward that badge without ever appearing in this alert list,
+    // and separately showed "urgent" on its readiness card while this
+    // banner (and the Trip Detail header, below) stayed calm — unified to
+    // 14 days everywhere so one trip can't read as urgent on one screen and
+    // fine on another.
+    if(dtd < 0 && t.status==='planned') alts.push(`<div class="alert ad"><span class="aico">🚨</span><div><strong>${t.name}</strong> — TripTracker deadline <strong>OVERDUE</strong> by ${Math.abs(dtd)} day${Math.abs(dtd)===1?'':'s'}. Submit immediately.</div></div>`);
+    else if(dtd<=14 && dtd>=0 && t.status==='planned') alts.push(`<div class="alert aw"><span class="aico">⚠️</span><div><strong>${t.name}</strong> — TripTracker submission in <strong>${dtd} day${dtd===1?'':'s'}</strong> (${fd(fmtDeadline(t))}). ${miss>0?`<strong>${miss} fields still missing!</strong>`:''}</div></div>`);
+    if(miss > 0 && dtd > 14) alts.push(`<div class="alert aw"><span class="aico">📋</span><strong>${t.name}</strong> — <strong>${miss} required field${miss===1?'':'s'}</strong> missing. <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})" style="margin-left:.5rem">Fill In →</button></div>`);
   });
   const dashAlerts = document.getElementById('dash-alerts');
   if(dashAlerts) dashAlerts.innerHTML = alts.slice(0,4).join('');
@@ -3847,9 +3865,12 @@ function renderFormHub() {
       badgeCls: tripDone ? 'st-complete' : daysToTrip<=1 ? 'st-urgent' : 'st-planned',
     });
 
-    // Urgency color for the trip card header
-    const urgColor = dtd<0&&t.status==='planned' ? 'var(--red)' : dtd<=7&&t.status==='planned' ? 'var(--orange)' : 'var(--green)';
-    const urgLabel = dtd<0&&t.status==='planned' ? '🚨 OVERDUE' : dtd<=7&&t.status==='planned' ? `⏰ ${dtd}d to submit` : rfDone&&fpDone&&clDone ? '✅ Forms Ready' : `${lead}d lead rule`;
+    // Urgency color for the trip card header. FIXED: was a 7-day cutoff,
+    // out of step with the Dashboard alert banner and readiness card, which
+    // both flag the same trip's deadline urgency at 14 days — see the fix
+    // note above renderDashboard()'s alert-banner logic.
+    const urgColor = dtd<0&&t.status==='planned' ? 'var(--red)' : dtd<=14&&t.status==='planned' ? 'var(--orange)' : 'var(--green)';
+    const urgLabel = dtd<0&&t.status==='planned' ? '🚨 OVERDUE' : dtd<=14&&t.status==='planned' ? `⏰ ${dtd}d to submit` : rfDone&&fpDone&&clDone ? '✅ Forms Ready' : `${lead}d lead rule`;
 
     return `<div class="card" style="border-left:4px solid ${urgColor};padding:0;overflow:hidden">
       <!-- Trip header -->
@@ -3859,7 +3880,7 @@ function renderFormHub() {
           <div style="font-size:.71rem;color:rgba(255,255,255,.55)">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)} &nbsp;·&nbsp; ${t.sub?.replace('-',' ')||'same day'} &nbsp;·&nbsp; ${t.dest1||'Destination TBD'}</div>
         </div>
         <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
-          <span style="font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:20px;background:${dtd<0&&t.status==='planned'?'var(--red)':dtd<=7&&t.status==='planned'?'var(--orange)':'rgba(255,255,255,.15)'};color:#fff">${urgLabel}</span>
+          <span style="font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:20px;background:${dtd<0&&t.status==='planned'?'var(--red)':dtd<=14&&t.status==='planned'?'var(--orange)':'rgba(255,255,255,.15)'};color:#fff">${urgLabel}</span>
           <div style="font-size:.68rem;text-align:center"><div style="font-family:'Bebas Neue',cursive;font-size:1.5rem;line-height:1;color:${overallPct===100?'#4ade80':'var(--gold)'}">${overallPct}%</div><div style="color:rgba(255,255,255,.45)">forms done</div></div>
         </div>
       </div>
@@ -3922,7 +3943,7 @@ function renderDashPriorityActions() {
         trip: t.name,
         title: `Complete TripTracker Form — ${rfMissing.length} field${rfMissing.length===1?'':'s'} missing`,
         detail: `Missing: ${rfMissing.slice(0,3).map(f=>f.label).join(', ')}${rfMissing.length>3?' + '+(rfMissing.length-3)+' more':''}`,
-        deadline: dl ? `Submit by ${fd(dl.toISOString().split('T')[0])} (${lead}-day rule · ${dtd<0?Math.abs(dtd)+' days OVERDUE':dtd+'d left'})` : 'No trip date set',
+        deadline: dl ? `Submit by ${fd(dl.toISOString().split('T')[0])} (${lead}-day rule · ${dtd<0?Math.abs(dtd)+' day'+(Math.abs(dtd)===1?'':'s')+' OVERDUE':dtd+'d left'})` : 'No trip date set',
         btnLabel: '✏️ Fill In Form',
         btnFn: `openEditModal(${t.id})`,
         btn2Label: rfMissing.length < 5 ? '📄 Preview' : null,
@@ -4107,7 +4128,7 @@ function renderReadinessCard(t, compact=false) {
       <div>
         <div class="rcard-name">${t.name}${t.archived?' <span title="This trip has an Archive snapshot — editing it does not update the snapshot" style="font-size:.62rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">📦 ARCHIVED</span>':''}</div>
         <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)}</div>
-        ${dtd<0&&t.status==='planned'?`<div class="alert ad" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">🚨</span>Deadline OVERDUE</div>`:dtd<=14&&dtd>=0&&t.status==='planned'?`<div class="alert aw" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">⚠️</span>Submit in ${dtd} days</div>`:''}
+        ${dtd<0&&t.status==='planned'?`<div class="alert ad" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">🚨</span>Deadline OVERDUE</div>`:dtd<=14&&dtd>=0&&t.status==='planned'?`<div class="alert aw" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">⚠️</span>Submit in ${dtd} day${dtd===1?'':'s'}</div>`:''}
       </div>
       <div style="text-align:center">
         <div class="rcard-pct">${pct}%</div>
@@ -4253,7 +4274,7 @@ function renderTripDetail(t) {
                        : st === 'rejected' ? {bd:'var(--red)',bg:'var(--red)',fg:'#fff',glyph:'✕'}
                        : {bd:'var(--border)',bg:'#fff',fg:'#888',glyph:'○'};
             const tip = detail
-              ? `${s.l}: ${st} — ${new Date(detail.at).toLocaleDateString()}${detail.note?' — '+detail.note:''}`
+              ? `${s.l}: ${st} — ${fd(new Date(detail.at).toISOString().slice(0,10))}${detail.note?' — '+detail.note:''}`
               : `${s.l}: pending`;
             return `<div style="display:flex;flex-direction:column;align-items:center;min-width:68px">
               <div onclick="togApDetail(${t.id},'${s.k}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togApDetail(${t.id},'${s.k}')}" role="button" tabindex="0" title="${tip.replace(/"/g,'&quot;')}" aria-label="${tip.replace(/"/g,'&quot;')}" style="width:32px;height:32px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem">${look.glyph}</div>
@@ -4404,6 +4425,10 @@ function generateFormPreview(id) {
   const t = trips.find(t=>t.id===tid); if(!t) return;
   const missing = getMissingFields(t);
 
+  // "Date Request Entered" below used to be a bare toLocaleDateString()
+  // (e.g. "8/11/2026") sitting right next to "Trip Date" via fd() (e.g.
+  // "Aug 11, 2026") — two date formats side by side on the one printed/
+  // exported form a school actually submits. Now both go through fd().
   document.getElementById('preview-body').innerHTML = `
     <div style="font-family:'DM Sans',sans-serif;font-size:.82rem;line-height:1.6">
       ${missing.length?`<div class="alert aw" style="margin-bottom:1rem"><span class="aico">⚠️</span><strong>${missing.length} required field${missing.length===1?'':'s'} still missing.</strong> Form may be incomplete. Fill in fields before submitting to TripTracker.</div>`:'<div class="alert as" style="margin-bottom:1rem"><span class="aico">✅</span>All required fields complete. Form ready for TripTracker attachment.</div>'}
@@ -4411,7 +4436,7 @@ function generateFormPreview(id) {
         <div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:.25rem">Field Trip Permission Request Attachment</div>
         <div style="text-align:center;font-size:.75rem;color:#666;margin-bottom:1rem">(Revised 7-17-23) — CCPS</div>
         <div class="excl" style="margin-bottom:.75rem">🚫 Field Trip Exclusions: Laser Tag · Trampoline Parks · Go-Karts · Zip Lines</div>
-        ${prow2('Date Request Entered', new Date().toLocaleDateString(), 'Trip Sponsor', t.sponsor)}
+        ${prow2('Date Request Entered', fd(new Date().toISOString().slice(0,10)), 'Trip Sponsor', t.sponsor)}
         ${prow2('School Trip Coordinator', t.coord, 'Contact Phone', t.cell)}
         ${prow2('Trip Name', t.name, 'Trip Date', fd(t.date))}
         ${prow2('Trip Type', t.sub?.replace('-',' '), 'Activity Type', t.acttype)}
@@ -4965,7 +4990,7 @@ function renderWizardStep() {
     const icon = dtd<0?'🚨':dtd<=7?'⏰':'✅';
     return `<div class="alert ${cls}" style="margin-top:.5rem"><span class="aico">${icon}</span>
       TripTracker deadline: <strong>${fd(dl.toISOString().split('T')[0])}</strong> (${lead}-day rule) —
-      ${dtd<0?Math.abs(dtd)+' days OVERDUE':dtd===0?'DUE TODAY':dtd+' days away'}
+      ${dtd<0?Math.abs(dtd)+' day'+(Math.abs(dtd)===1?'':'s')+' OVERDUE':dtd===0?'DUE TODAY':dtd+' day'+(dtd===1?'':'s')+' away'}
     </div>`;
   };
 
@@ -5500,7 +5525,10 @@ function delEv(id){
   const _saved=[...otherEvents];
   otherEvents=otherEvents.filter(e=>e.id!==id);
   persistEvents(); renderEvents();
-  _undoToast(`"${ev.name}" removed`,()=>{otherEvents=_saved;persistEvents();renderEvents();});
+  // Truncated to match the Journal/Brag Board undo-toast convention — toasts
+  // have no max-width/wrap CSS, so an unbounded free-text event name can
+  // overflow off-screen.
+  _undoToast(`"${(ev.name||'').slice(0,40)}" removed`,()=>{otherEvents=_saved;persistEvents();renderEvents();});
 }
 
 // ============================================================
@@ -6138,7 +6166,10 @@ function deleteDecaResult(id) {
   LS.set('lh_deca_results', all.filter(r => r.id !== id));
   renderDECAHub();
   if (removed) {
-    _undoToast(`${removed.student} — ${removed.event} removed`, () => {
+    // removed.event is free text (e.g. "Principles of Hospitality and
+    // Tourism Team Decision Making") — truncated for the same reason as
+    // the Journal/Brag Board undo-toasts.
+    _undoToast(`${(removed.student||'').slice(0,40)} — ${(removed.event||'').slice(0,40)} removed`, () => {
       LS.set('lh_deca_results', [...LS.get('lh_deca_results', []), removed]);
       renderDECAHub();
     });
@@ -6402,7 +6433,7 @@ function deleteEvent(id) {
   const _saved=[...otherEvents];
   otherEvents = otherEvents.filter(e => e.id !== id);
   persistEvents(); renderEvents();
-  _undoToast(ev ? `"${ev.name}" removed` : 'Event removed', ()=>{otherEvents=_saved;persistEvents();renderEvents();});
+  _undoToast(ev ? `"${(ev.name||'').slice(0,40)}" removed` : 'Event removed', ()=>{otherEvents=_saved;persistEvents();renderEvents();});
 }
 
 
@@ -7301,7 +7332,7 @@ function renderSlipView() {
   if(stats.missing > 0) alerts.push(`<div class="alert ad"><span class="aico">🚨</span><strong>${stats.missing} student${stats.missing===1?'':'s'} still need to return signed slips.</strong> Contact parents before announcing the trip officially.</div>`);
   if(stats.pending > 0) alerts.push(`<div class="alert aw"><span class="aico">⏰</span><strong>${stats.pending} slip${stats.pending===1?'':'s'} pending</strong> — distributed but not yet returned. Follow up!</div>`);
   if(trip.parentTx==='YES' || stats.parent > 0) alerts.push(`<div class="alert ai"><span class="aico">ℹ️</span>Students using <strong>parent transportation</strong> require a signed waiver on file in TripTracker per CCPS policy.</div>`);
-  if(dtd>0 && dtd<=7 && stats.returned < stats.total) alerts.push(`<div class="alert aw"><span class="aico">⏰</span>TripTracker submission deadline in <strong>${dtd} days</strong>. Collect all signed slips before notifying students officially (Policy 3090).</div>`);
+  if(dtd>0 && dtd<=7 && stats.returned < stats.total) alerts.push(`<div class="alert aw"><span class="aico">⏰</span>TripTracker submission deadline in <strong>${dtd} day${dtd===1?'':'s'}</strong>. Collect all signed slips before notifying students officially (Policy 3090).</div>`);
   document.getElementById('slip-alerts').innerHTML = alerts.join('');
 
   // Roster table
@@ -7577,7 +7608,7 @@ function exportSlipList() {
   const tripId = parseInt(document.getElementById('slip-trip-sel').value);
   const roster = getSlipRoster(tripId).filter(s=>s.status!=='returned');
   const trip = trips.find(t=>t.id===tripId);
-  const text = `MISSING/PENDING SLIPS — ${trip?.name||'Trip'}\n${new Date().toLocaleDateString()}\n\n`
+  const text = `MISSING/PENDING SLIPS — ${trip?.name||'Trip'}\n${fd(new Date().toISOString().slice(0,10))}\n\n`
     + roster.map((s,i)=>{
         const p = resolveSlipStudent(s);
         return `${i+1}. ${p.first} ${p.last} — ${s.status.toUpperCase()}${p.parentPhone?' — '+p.parentPhone:p.phone?' — '+p.phone:''}${s.notes?' ('+s.notes+')':''}`;
@@ -8431,7 +8462,7 @@ function deleteArchiveEntry(archiveId) {
   const [removed] = tripArchive.splice(idx, 1);
   persistTripArchive(); // was previously never persisted — reload would undo the delete
   renderArchive();
-  _undoToast(`"${removed.trip?.name || 'Archive entry'}" removed`, () => {
+  _undoToast(`"${(removed.trip?.name || 'Archive entry').slice(0,40)}" removed`, () => {
     tripArchive.splice(idx, 0, removed);
     persistTripArchive();
     renderArchive();
@@ -9501,7 +9532,7 @@ function deleteWBLStudent(id) {
   WBL_STUDENTS = WBL_STUDENTS.filter(x=>x.id!==id);
   persistWBL();
   renderWBLTracker();
-  _undoToast(`${s.fname} ${s.lname} removed from WBL tracker`, () => {
+  _undoToast(`${(s.fname+' '+s.lname).slice(0,40)} removed from WBL tracker`, () => {
     WBL_STUDENTS = _saved;
     persistWBL();
     renderWBLTracker();
@@ -9630,7 +9661,7 @@ function sbePrintChecklist() {
   const w = window.open('','_blank');
   w.document.write(`<html><head><title>SBE Checklist — Cavalier Shop</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;font-size:13px}table{width:100%;border-collapse:collapse}th{background:#1a3560;color:#fff;padding:8px;text-align:left}</style></head><body>
     <h2 style="color:#1a3560">🏪 SBE Approval Checklist — Cavalier Shop (8177)</h2>
-    <p style="color:#666">Progress: ${done}/${SBE_ELEMENTS.length} elements complete | Printed: ${new Date().toLocaleDateString()}</p>
+    <p style="color:#666">Progress: ${done}/${SBE_ELEMENTS.length} elements complete | Printed: ${fd(new Date().toISOString().slice(0,10))}</p>
     <table><thead><tr><th style="width:60px">Done</th><th>Element</th><th style="width:180px">Owner</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <p style="margin-top:1.5rem;font-size:11px;color:#999">Per CCPS SBE Tool Kit — Group III Procedures. Approval required by school principal.</p>
@@ -10999,7 +11030,7 @@ function deleteInventorySKU(id) {
   INVENTORY = INVENTORY.filter(i => i.id !== id);
   persistInventory();
   renderFinance();
-  _undoToast(`"${item.name}" removed from inventory`, () => { INVENTORY = _saved; persistInventory(); renderFinance(); });
+  _undoToast(`"${(item.name||'').slice(0,40)}" removed from inventory`, () => { INVENTORY = _saved; persistInventory(); renderFinance(); });
 }
 
 
@@ -11164,7 +11195,7 @@ function deleteESPlayer(id) {
   const _saved=[...ES_PLAYERS];
   ES_PLAYERS = ES_PLAYERS.filter(x=>x.id!==id);
   persistESPlayers(); renderESRoster();
-  _undoToast(`${p.fname} ${p.lname} removed`,()=>{ES_PLAYERS=_saved;persistESPlayers();renderESRoster();});
+  _undoToast(`${(p.fname+' '+p.lname).slice(0,40)} removed`,()=>{ES_PLAYERS=_saved;persistESPlayers();renderESRoster();});
 }
 
 function closeESModal() { document.getElementById('es-player-modal').style.display='none'; }

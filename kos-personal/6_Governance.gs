@@ -427,7 +427,13 @@ function sweepRootForExhaust() {
 function triggerCouncilSimulation() {
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) {
-    return { success: false, message: 'System busy — try again in a moment.' };
+    // FIXED: was success:false, so the client's handleCouncil() rendered
+    // ordinary lock contention as a red error — inconsistent with the
+    // busy:true-on-success:true convention established for
+    // archiveStagingPipeline()/runPromotionCheck() specifically so this
+    // kind of routine, expected "try again in a moment" case doesn't look
+    // like a failure.
+    return { success: true, busy: true, message: 'System busy — try again in a moment.' };
   }
   try {
     _coldEngineGate('triggerCouncilSimulation', 'TIER_2');
@@ -445,8 +451,13 @@ function triggerCouncilSimulation() {
     const stateFile   = DriveApp.getFileById(stateId);
     const lastRunMs   = parseInt(props.getProperty('COUNCIL_LAST_RUN') || '0', 10);
     if (stateFile.getLastUpdated().getTime() <= lastRunMs) {
+      // FIXED: was success:false — "nothing has changed since last time" is
+      // a routine no-op, not a failure, but the client had no way to tell
+      // it apart from a real error and painted it red. noop:true lets the
+      // client render this neutrally, same reasoning as busy:true above.
       return {
-        success: false,
+        success: true,
+        noop: true,
         message: 'No new data in CURRENT_STATE since last council run. Update the state doc first.',
       };
     }

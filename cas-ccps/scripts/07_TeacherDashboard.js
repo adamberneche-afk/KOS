@@ -420,7 +420,13 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
 /* ── M2: COURSE TABS ── */
-.course-tabs{display:flex;gap:0;border-bottom:2px solid #e8eaed;margin-bottom:16px}
+/* FIXED: had no overflow handling at all, and sits inside .modal's
+   overflow:hidden — a teacher with more course preps than fit on one line
+   had the extra tabs clipped outside the modal with no visual indication
+   they existed, reachable only via the (undiscoverable) arrow-key cycling
+   in courseTabKeydown(). overflow-x:auto scopes scrolling to this element
+   itself, so it isn't clipped by the parent's overflow:hidden. */
+.course-tabs{display:flex;gap:0;border-bottom:2px solid #e8eaed;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .course-tab{font-size:13px;font-weight:500;color:#5f6368;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;background:none;border-top:none;border-left:none;border-right:none}
 .course-tab:hover{color:#202124;background:#f8f9fa}
 .course-tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
@@ -605,8 +611,12 @@ function renderWarmUpReadiness(r) {
 
   // Eval history
   const evalEl = document.getElementById("wr-eval");
+  // FIXED: was always "students have" — with r.total === 1 this rendered
+  // "1 of 1 students have evaluation history," breaking both the noun and
+  // the verb agreement in the same sentence.
   if (evalEl) evalEl.textContent =
-    r.withEvalHistory + " of " + r.total + " students have evaluation history";
+    r.withEvalHistory + " of " + r.total + " student" +
+    (r.total === 1 ? " has" : "s have") + " evaluation history";
 
   // Warm-up history
   const wuEl = document.getElementById("wr-warmup");
@@ -775,7 +785,7 @@ If you expect to see students here:
   Object.keys(units).sort().forEach(unit => {
     const u = data.unitSummary[unit] || {};
     html += \`<div class="unit-section">
-      <div class="unit-header">\${esc(unit) || "Unassigned unit"} <span style="font-weight:400;margin-left:8px;">\${u.total||0} students · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
+      <div class="unit-header">\${esc(unit) || "Unassigned unit"} <span style="font-weight:400;margin-left:8px;">\${u.total||0} student\${(u.total||0)===1?'':'s'} · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
     units[unit].forEach(s => {
       html += \`<div class="student-row \${s.statusClass}">
         <div>
