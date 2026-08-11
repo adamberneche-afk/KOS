@@ -964,7 +964,7 @@ function runPromotionCheck() {
       return {
         success: true,
         message: promoted.length > 0
-          ? promoted.length + ' vector(s) promoted: ' + promoted.join(', ')
+          ? promoted.length + ' vector' + (promoted.length === 1 ? '' : 's') + ' promoted: ' + promoted.join(', ')
           : 'No promotion candidates at this time.',
       };
     } finally {

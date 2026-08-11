@@ -6540,7 +6540,7 @@ function renderOfficerGrid(list){
         </div>
       </div>
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.4rem;flex-wrap:wrap">
-        ${s.email?`<a href="mailto:${s.email}" style="font-size:.68rem;color:var(--navy)">✉ Student</a><span style="color:var(--border)">|</span>`:''}
+        ${s.email?`<a href="mailto:${s.email}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
         ${s.parentEmail?`<a href="mailto:${s.parentEmail}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
         ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${s.phone}</span><span style="color:var(--border)">|</span>`:''}
         <button class="btn btn-outline btn-xs" style="font-size:.63rem;margin-left:auto" onclick="openEditMember(${s.id})">✏️</button>
@@ -6560,7 +6560,7 @@ function renderMemberTable(list){
       </div>
     </div>
     <table>
-      <thead><tr><th>Student</th><th>Grade</th><th>Position</th><th>Event</th><th>Status</th><th>Dues</th><th>Contact</th><th></th></tr></thead>
+      <thead><tr><th>Member</th><th>Grade</th><th>Position</th><th>Event</th><th>Status</th><th>Dues</th><th>Contact</th><th></th></tr></thead>
       <tbody>${list.map(s=>`<tr>
         <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.7rem;flex-shrink:0">${s.first[0]}${s.last[0]}</div><strong>${s.first} ${s.last}</strong></div></td>
         <td style="font-size:.78rem">${s.grade?s.grade+'th':''}</td>

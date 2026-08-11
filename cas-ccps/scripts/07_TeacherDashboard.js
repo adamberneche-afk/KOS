@@ -11,7 +11,7 @@
 // MODULE 2 ADDITIONS (marked ── M2 ──):
 //   submitLessonContext()    — server-side handler called by modal form
 //   getCompetencies()        — returns filtered competency list for dropdown
-//   buildModalHtml_()        — modal markup injected into dashboard shell
+//   Lesson Context modal markup — inlined directly inside buildDashboardHtml_()
 //   All existing functions unchanged.
 // =============================================================================
 
@@ -502,7 +502,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
   <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
 
     <div class="modal-header">
-      <h2 id="modal-title">Log a Lesson</h2>
+      <h2 id="modal-title">Log a lesson</h2>
       <button class="modal-close" onclick="closeModal()" aria-label="Close">×</button>
     </div>
 
@@ -573,7 +573,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 <div class="modal-backdrop" id="discard-confirm-backdrop" style="z-index:300" onclick="if(event.target===this)_cancelDiscardConfirm()">
   <div class="modal" role="alertdialog" aria-modal="true" aria-labelledby="discard-confirm-title" style="max-width:380px">
     <div class="modal-header">
-      <h2 id="discard-confirm-title" style="font-size:16px">Discard this lesson log entry?</h2>
+      <h2 id="discard-confirm-title" style="font-size:16px">Discard this lesson?</h2>
     </div>
     <div class="modal-body" style="padding-top:0">
       <p style="font-size:13px;color:#5f6368;margin:0">What you've entered hasn't been saved.</p>

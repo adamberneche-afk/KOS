@@ -432,7 +432,7 @@ textarea { line-height: 1.55; }
 .tip-popover {
   position: fixed; z-index: 200; max-width: 260px;
   background: var(--surface); color: var(--text);
-  border: 1px solid var(--border2); border-radius: 8px;
+  border: 1px solid var(--border2); border-radius: var(--r);
   padding: 8px 10px; font-size: 11px; line-height: 1.5;
   box-shadow: 0 4px 16px rgba(0,0,0,.18);
 }
@@ -592,7 +592,7 @@ textarea { line-height: 1.55; }
     <!-- Session Log fields -->
     <div id="fields-session">
       <div class="field-group">
-        <label class="field-lbl" for="session-text">Session transcript</label>
+        <label class="field-lbl" for="session-text">Session log</label>
         <textarea id="session-text" rows="10"
           placeholder="Paste full session log here…"
           oninput="updateCount('session-text','session-count')"></textarea>
@@ -729,7 +729,7 @@ textarea { line-height: 1.55; }
          matches the Queue tab's "Needs review" header; these used to
          override to 8px, a stray 2px inconsistency between tabs. -->
     <div class="sec-lbl has-tip">
-      Ambient Calibration
+      Ambient calibration
       <span class="tip-icon" title="The system learns your context passively from sessions. Each question builds confidence over time — no manual setup required.">?</span>
     </div>
     <div id="shadow-matrix-list" style="margin-bottom:4px">
@@ -1308,9 +1308,15 @@ function renderQueue(res) {
       '</div>';
   } else if (rows.length === 0) {
     list.innerHTML =
+      // FIXED: was ad hoc inline sizing (20px/.5 icon, 13px title) matching
+      // neither the shared .empty-state-icon/.empty-state-title defaults
+      // (32px/.35, 14px) nor the smaller inline-loading-icon convention
+      // used elsewhere — flipping between this and the "queue is empty"
+      // state below made the icon/title visibly shrink and brighten for
+      // no reason.
       '<div class="empty-state" style="padding:16px 0">' +
-      '<div style="font-size:20px;opacity:.5"><i class="ti ti-circle-check"></i></div>' +
-      '<div class="empty-state-title" style="font-size:13px">Nothing needs your attention</div>' +
+      '<div class="empty-state-icon"><i class="ti ti-circle-check"></i></div>' +
+      '<div class="empty-state-title">Nothing needs your attention</div>' +
       '</div>';
   } else {
     list.innerHTML = rows.map(r => {
@@ -1375,7 +1381,7 @@ function loadShadowMatrix() {
     const el = document.getElementById('shadow-matrix-list');
     if (!el) return;
     if (!res || !res.success) {
-      _diagPanelError('shadow-matrix-list', (res && res.message) || 'Shadow matrix unavailable.', 'loadShadowMatrix');
+      _diagPanelError('shadow-matrix-list', (res && res.message) || 'Shadow matrix unavailable.', 'loadShadowMatrix', 'ti-alert-triangle');
       return;
     }
     const modeColors = { CALIBRATED:'dot-armed', LEARNING:'dot-cold', COLD:'dot-unk' };
@@ -1403,7 +1409,7 @@ function loadShadowMatrix() {
     const armBtn = document.getElementById('btn-arm');
     if (armBtn) armBtn.style.display = res.engine_armed ? 'none' : '';
   }, (err) => {
-    _diagPanelError('shadow-matrix-list', 'Couldn\'t load — ' + err.message, 'loadShadowMatrix');
+    _diagPanelError('shadow-matrix-list', 'Couldn\'t load — ' + err.message, 'loadShadowMatrix', 'ti-alert-triangle');
   });
 }
 
@@ -1413,14 +1419,25 @@ function handlePrimer() {
   const btn = document.getElementById('btn-primer');
   const gen = beginDiagAction();
   btn.disabled = true; showDiagStatus('Generating primer…', undefined, gen);
+  // FIXED: previously only disabled the button and relied on the shared
+  // status line further down the tab for any sign something was
+  // happening — a user watching the button they just tapped saw it gray
+  // out with no other feedback. Matches handleSubmit()/submitArmEngine()'s
+  // existing loader-icon treatment.
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Generating…';
   callServer('generateDailyPrimer', [], (res) => {
     btn.disabled = false;
+    resetBtn('btn-primer', 'ti-file-text', "Generate today's session starter");
     if (res && res.success) {
       showDiagStatus('Daily primer saved to 03.1_CURRENT_STATE.', undefined, gen);
     } else {
       showDiagStatus('Error: ' + ((res && res.message) || 'Primer generation failed.'), 'danger', gen);
     }
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
+  }, (err) => {
+    btn.disabled = false;
+    resetBtn('btn-primer', 'ti-file-text', "Generate today's session starter");
+    showDiagStatus('Error: ' + err.message, 'danger', gen);
+  });
 }
 
 
@@ -1577,7 +1594,7 @@ function renderArmStep() {
   document.getElementById('arm-step-body').innerHTML     = s.html;
   document.getElementById('arm-prev').style.display      = armStep > 0 ? '' : 'none';
   document.getElementById('arm-next').innerHTML          = armStep === ARM_STEPS.length - 1
-    ? 'Save & Personalise <i class="ti ti-bolt"></i>'
+    ? 'Save & Personalize <i class="ti ti-bolt"></i>'
     : 'Continue <i class="ti ti-arrow-right"></i>';
   document.getElementById('arm-err').style.display = 'none';
   _armRestoreStep();
@@ -1652,13 +1669,13 @@ function submitArmEngine() {
       setTimeout(() => { closeArmModal(); loadDiagnostics(); }, 1000);
     } else {
       btn.disabled = false;
-      btn.innerHTML = 'Save & Personalise <i class="ti ti-bolt"></i>';
+      btn.innerHTML = 'Save & Personalize <i class="ti ti-bolt"></i>';
       document.getElementById('arm-err-msg').textContent = (res && res.message) || 'Saving failed.';
       document.getElementById('arm-err').style.display = 'flex';
     }
   }, (err) => {
     btn.disabled = false;
-    btn.innerHTML = 'Save & Personalise <i class="ti ti-bolt"></i>';
+    btn.innerHTML = 'Save & Personalize <i class="ti ti-bolt"></i>';
     document.getElementById('arm-err-msg').textContent = 'Server error: ' + err.message;
     document.getElementById('arm-err').style.display = 'flex';
   });
@@ -1669,7 +1686,7 @@ function loadHealthSummary() {
   callServer('getSystemHealth', [], (res) => {
     const el = document.getElementById('health-summary');
     if (!res || !res.success) {
-      _diagPanelError('health-summary', (res && res.message) || 'System state unavailable.', 'loadHealthSummary');
+      _diagPanelError('health-summary', (res && res.message) || 'System state unavailable.', 'loadHealthSummary', 'ti-alert-triangle');
       return;
     }
 
@@ -1684,7 +1701,7 @@ function loadHealthSummary() {
     el.innerHTML =
       '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">' +
       healthRowHtml('Engine', res.engineArmed
-        ? '<span class="dot dot-armed" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Personalised'
+        ? '<span class="dot dot-armed" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Personalized'
         : '<span class="dot dot-cold" style="display:inline-block;margin-right:5px;vertical-align:middle"></span>Learning') +
       healthRow('Triggers',    res.triggersActive + ' active') +
       healthRow('Progress',    obText) +
@@ -1696,7 +1713,7 @@ function loadHealthSummary() {
         : '') +
       '</div>';
   }, (err) => {
-    _diagPanelError('health-summary', 'Couldn\'t load — ' + err.message, 'loadHealthSummary');
+    _diagPanelError('health-summary', 'Couldn\'t load — ' + err.message, 'loadHealthSummary', 'ti-alert-triangle');
   });
 }
 
@@ -1801,7 +1818,10 @@ function renderIncubating(res) {
     return '<div class="vec-row" style="margin-bottom:6px">' +
       '<div class="vec-hdr">' +
       '<span class="vec-name" style="font-size:11px">' + esc(v.name) + '</span>' +
-      '<span class="vec-score" style="font-size:10px">' + v.cumulative_score.toFixed(2) + ' / ' + threshold.toFixed(1) + '</span>' +
+      // FIXED: was toFixed(2) on one side and toFixed(1) on the other for
+      // the same score/threshold unit (e.g. "1.85 / 3.0") — matched to the
+      // more precise of the two rather than dropping precision.
+      '<span class="vec-score" style="font-size:10px">' + v.cumulative_score.toFixed(2) + ' / ' + threshold.toFixed(2) + '</span>' +
       '</div>' +
       '<div class="bar-bg" style="height:4px"><div class="bar-fill" style="width:' + pct + '%;background:var(--text3)"></div></div>' +
       '</div>';
@@ -1880,17 +1900,23 @@ function handleSendReport() {
   const gen = beginDiagAction();
   btn.disabled = true;
   showDiagStatus('Sending…', undefined, gen);
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Sending…';
   callServer('sendDailyErrorReport', [], (res) => {
     btn.disabled = false;
+    resetBtn('btn-report', 'ti-mail', 'Send error digest now');
     if (res && res.sent) {
-      showDiagStatus('Report sent (' + (res.count || 0) + ' error(s) to ' + (res.to || 'admin') + ').', undefined, gen);
+      showDiagStatus('Report sent (' + (res.count || 0) + ' error' + ((res.count || 0) === 1 ? '' : 's') + ' to ' + (res.to || 'admin') + ').', undefined, gen);
     } else {
       // error:true marks a genuine exception (5_Error_And_Utilities.gs) —
       // distinct from the benign no-op cases (empty log, nothing new,
       // admin email unset), which used to render identically.
       showDiagStatus((res && res.reason) || 'Nothing new to report.', (res && res.error) ? 'danger' : undefined, gen);
     }
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
+  }, (err) => {
+    btn.disabled = false;
+    resetBtn('btn-report', 'ti-mail', 'Send error digest now');
+    showDiagStatus('Error: ' + err.message, 'danger', gen);
+  });
 }
 
 function handleArchive() {
@@ -1898,8 +1924,10 @@ function handleArchive() {
   const gen = beginDiagAction();
   btn.disabled = true;
   showDiagStatus('Archiving…', undefined, gen);
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Archiving…';
   callServer('archiveStagingPipeline', [], (res) => {
     btn.disabled = false;
+    resetBtn('btn-archive', 'ti-archive', 'Archive completed queue rows');
     // A genuine exception (res.success === false) used to return the exact
     // same {archived:0,...} shape as a routine "nothing to archive" run,
     // so a real backend failure rendered identically to a benign no-op.
@@ -1918,11 +1946,16 @@ function handleArchive() {
     // explicitly instead of folding silently into one total.
     const archived  = (res && res.archived)  || 0;
     const failed    = (res && res.failed)    || 0;
+    const rowWord = archived + ' row' + (archived === 1 ? '' : 's');
     const msg = failed > 0
-      ? archived + ' row(s) archived (' + failed + ' were failed-intake rows, not successes).'
-      : archived + ' row(s) archived to STAGING_ARCHIVE.';
+      ? rowWord + ' archived (' + failed + ' were failed-intake rows, not successes).'
+      : rowWord + ' archived to STAGING_ARCHIVE.';
     showDiagStatus(msg, failed > 0 ? 'warn' : undefined, gen);
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
+  }, (err) => {
+    btn.disabled = false;
+    resetBtn('btn-archive', 'ti-archive', 'Archive completed queue rows');
+    showDiagStatus('Error: ' + err.message, 'danger', gen);
+  });
 }
 
 function handlePromotion() {
@@ -1930,15 +1963,21 @@ function handlePromotion() {
   const gen = beginDiagAction();
   btn.disabled = true;
   showDiagStatus('Checking incubator…', undefined, gen);
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Checking…';
   callServer('runPromotionCheck', [], (res) => {
     btn.disabled = false;
+    resetBtn('btn-promote', 'ti-trending-up', 'Check for new themes to promote');
     // runPromotionCheck() used to return a bare string for both the error
     // and no-op cases, so the web app couldn't tell a real failure from
     // "nothing to promote" and always rendered both in neutral gray.
     const isError = res && res.success === false;
     showDiagStatus((res && res.message) || String(res), isError ? 'danger' : undefined, gen);
     loadVectorState(); // refresh vector display
-  }, (err) => { btn.disabled = false; showDiagStatus('Error: ' + err.message, 'danger', gen); });
+  }, (err) => {
+    btn.disabled = false;
+    resetBtn('btn-promote', 'ti-trending-up', 'Check for new themes to promote');
+    showDiagStatus('Error: ' + err.message, 'danger', gen);
+  });
 }
 
 function handleCouncil() {
@@ -1963,7 +2002,8 @@ function handleCouncil() {
   clearInterval(councilTimer);
   councilConfirm = false;
   btn.disabled = true;
-  resetBtn('btn-council', 'ti-brain', 'Run full council review');
+  btn.className = 'btn btn-sm';
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Queuing…';
   const gen = beginDiagAction();
   // NOTE (reconciliation decision 3): triggerCouncilSimulation() creates one
   // shared doc instructing the model to act as ARCHITECT, AUDITOR, and MUSE
@@ -1974,6 +2014,7 @@ function handleCouncil() {
   showDiagStatus('Queuing a combined council review (ARCHITECT · AUDITOR · MUSE)…', undefined, gen);
   callServer('triggerCouncilSimulation', [], (res) => {
     btn.disabled = false;
+    resetBtn('btn-council', 'ti-brain', 'Run full council review');
     if (res && res.success && (res.busy || res.noop)) {
       // Lock contention or "nothing changed since last run" — both routine,
       // expected outcomes, not failures. Render neutrally instead of red.
@@ -1989,6 +2030,7 @@ function handleCouncil() {
     }
   }, (err) => {
     btn.disabled = false;
+    resetBtn('btn-council', 'ti-brain', 'Run full council review');
     // _coldEngineGate's TIER_2 throw leaks its internal function name, tier
     // label, and "Socratic Onboarding" (a term this UI doesn't otherwise
     // use — the button here says "Personalize your advisor"). Translate
@@ -2023,22 +2065,28 @@ function handleDeploy() {
   clearInterval(deployTimer);
   deployConfirm = false;
   btn.disabled = true;
-  resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
+  btn.className = 'btn btn-sm';
+  btn.innerHTML = '<i class="ti ti-loader-2"></i>Deploying…';
   const gen = beginDiagAction();
   showDiagStatus('Rebuilding system infrastructure… (usually under two minutes)', undefined, gen);
   callServer('deployFullSystem', [], (res) => {
     btn.disabled = false;
+    resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
     if (res && res.success) {
       const errs = res.errors && res.errors.length;
       showDiagStatus(
-        'Deploy complete.' + (errs ? ' ' + errs + ' non-fatal issue(s) — check ERROR_LOG sheet.' : ' All systems verified.'),
+        'Deploy complete.' + (errs ? ' ' + errs + ' non-fatal issue' + (errs === 1 ? '' : 's') + ' — check ERROR_LOG sheet.' : ' All systems verified.'),
         undefined, gen
       );
     } else {
       showDiagStatus('Deploy finished with errors. Check the ERROR_LOG sheet in BRAIN_TRUST_INDEX.', 'danger', gen);
     }
     loadDiagnostics();
-  }, (err) => { btn.disabled = false; showDiagStatus('Deploy error: ' + err.message, 'danger', gen); });
+  }, (err) => {
+    btn.disabled = false;
+    resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
+    showDiagStatus('Deploy error: ' + err.message, 'danger', gen);
+  });
 }
 
 
