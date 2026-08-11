@@ -1459,7 +1459,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div><div class="pt">Leadership Goals</div><div class="ps">Competition, community &amp; growth — DSP progress tracked here</div></div>
     <div style="display:flex;gap:.5rem">
       <button class="btn btn-outline" onclick="generateDSPReport()" style="font-size:.78rem">📄 Export DSP Report</button>
-      <button class="btn btn-primary" onclick="openModal('addGoal')">+ Add Goal</button>
+      <button class="btn btn-primary" onclick="openAddGoalModal()">+ Add Goal</button>
     </div>
   </div>
   <div id="goals-dsp-bar" style="margin-bottom:1rem"></div>
@@ -6676,6 +6676,13 @@ function openEditMember(id){
     set('st-pemail',s.parentEmail); set('st-pphone',s.parentPhone);
     set('st-address',s.address); set('st-shirt',s.shirtSize);
     set('st-dietary',s.dietaryNeeds);
+    // FIXED: openModal_addStudent() (called above) already populates
+    // st-event's options from trips+otherEvents, but nothing ever set its
+    // value back to the member's own s.ev — every edit silently reset a
+    // student's Assigned Trip/Event to "— None —" unless the person editing
+    // happened to re-pick it, even when they were only fixing a typo in the
+    // phone number.
+    set('st-event',s.ev);
     set('st-notes',s.notes);
   }, 80);
 }
@@ -6698,6 +6705,10 @@ function updateStudent(id){
   s.address     = document.getElementById('st-address')?.value.trim()||'';
   s.shirtSize   = document.getElementById('st-shirt')?.value||'';
   s.dietaryNeeds= document.getElementById('st-dietary')?.value.trim()||'';
+  // FIXED: paired with the openEditMember() fix above — updateStudent()
+  // never read st-event back into s.ev, so even after that field displayed
+  // correctly on open, saving the edit dropped it regardless.
+  s.ev          = parseInt(document.getElementById('st-event')?.value)||null;
   s.notes       = document.getElementById('st-notes').value;
   persistStudents(); // was missing — edits (dues paid, contact info, etc.) never survived a reload
   closeModal('addStudent');
@@ -7079,6 +7090,15 @@ function delGoal(id){
   persistGoals(); renderGoals();
   _undoToast(g ? `"${g.title}" removed` : 'Goal removed',()=>{goals=_saved;persistGoals();renderGoals();refreshNextAction();});
   refreshNextAction();
+}
+// FIXED: the "+ Add Goal" button used to call openModal('addGoal') directly,
+// so gl-date/gl-cat kept whatever the previous goal (or a cancelled draft)
+// last had — a Target Date left over from a goal added weeks ago silently
+// carried onto the next one unless the user happened to overwrite it.
+function openAddGoalModal(){
+  document.getElementById('gl-date').value = '';
+  document.getElementById('gl-cat').selectedIndex = 0;
+  openModal('addGoal');
 }
 function saveGoal(){
   const title=document.getElementById('gl-title').value.trim();if(!title)return _showToast('Enter goal title.', 2500, '#991b1b');
@@ -7533,8 +7553,15 @@ function exportSlipList() {
 }
 
 function openPrintSlipFor(tripId) {
-  const trip = trips.find(t=>t.id===tripId);
   const el = document.getElementById('ps-trip');
+  // FIXED: #ps-trip's <option>s are only ever populated by initSlipView()
+  // (Slips view) or openPrintSlipModal() (sidebar button) — opening this
+  // straight from Trip Detail without visiting either first left the
+  // select empty, so el.value = tripId below matched no option and
+  // silently stayed blank, printing a form with no trip name at all.
+  // Reuse the same population logic openPrintSlipModal() uses.
+  el.innerHTML = '<option value="">— Select Trip —</option>' +
+    trips.map(t=>`<option value="${t.id}">${escH(t.name)}</option>`).join('');
   el.value = tripId;
   document.getElementById('ps-custom').value = '';
   updateAuthPreview();
@@ -9906,12 +9933,22 @@ function lpSetView(view) {
     // Auto-select current quarter on first open
     const qSel = document.getElementById('lpcal-q');
     if (qSel && !qSel.dataset.initialized) {
-      const now = new Date();
-      const mo  = now.getFullYear()*100 + (now.getMonth()+1);
-      let curQ = '1';
-      if (mo >= 202510 && mo <= 202601) curQ = '2';
-      else if (mo >= 202601 && mo <= 202603) curQ = '3';
-      else if (mo >= 202603 && mo <= 202605) curQ = '4';
+      // FIXED: was a hardcoded year*100+month range comparison, duplicating
+      // (and silently able to drift out of sync with) LP_QUARTERS' actual
+      // start/end dates below — every school year this range needs updating
+      // by hand in a second place, and a month-only comparison also can't
+      // tell "3 days before Q2 starts" from "in Q2." Look up the real
+      // quarter dates instead; outside the whole defined range, fall back
+      // to whichever end is closer (before Q1 → Q1, after Q4 → Q4) rather
+      // than silently defaulting to Q1 regardless of which side we're on.
+      const todayKey = new Date().toISOString().slice(0, 10);
+      let curQ = null;
+      for (const [qn, r] of Object.entries(LP_QUARTERS)) {
+        if (todayKey >= r.start && todayKey <= r.end) { curQ = qn; break; }
+      }
+      if (!curQ) {
+        curQ = todayKey < LP_QUARTERS[1].start ? '1' : '4';
+      }
       qSel.value = curQ;
       qSel.dataset.initialized = '1';
     }
@@ -11193,6 +11230,11 @@ function openMatchModal() {
   ['match-opp','match-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   const us=document.getElementById('match-us'); if(us) us.value=0;
   const them=document.getElementById('match-them'); if(them) them.value=0;
+  // FIXED: was left out of the reset above, so whatever game the previous
+  // match logged stayed selected — logging an SSBU match, closing, then
+  // opening again to log an MK8 match would silently save it as SSBU
+  // unless the coach happened to notice and re-pick it.
+  const game=document.getElementById('match-game'); if(game) game.selectedIndex=0;
   document.getElementById('es-match-modal').style.display='block';
 }
 function closeMatchModal() { document.getElementById('es-match-modal').style.display='none'; }
@@ -13515,7 +13557,10 @@ async function saveJournalEntry(){
   if(hour >= 20 || hour < 5){
     await runCronAdjustment(entry);
   } else {
-    LS.set('lh_cron_pending', { entryId: entry.id, scheduledFor:'02:00' });
+    // createdAt lets checkCron() compute the actual target 2am occurrence
+    // (the next one after this moment) instead of only ever matching
+    // today's clock hour — see checkCron()'s catch-up comment.
+    LS.set('lh_cron_pending', { entryId: entry.id, scheduledFor:'02:00', createdAt: new Date().toISOString() });
   }
 
   // Unlock forced mode (if this was a 2:30pm auto-prompt)
@@ -13553,8 +13598,25 @@ function checkCron(){
   if(!pending) return;
   const now = new Date();
   const [th, tm] = pending.scheduledFor.split(':').map(Number);
-  // Fire within a 10-minute window of the scheduled time
-  if(now.getHours()===th && now.getMinutes()>=tm && now.getMinutes()<tm+10){
+  // Compute the actual target moment: the next occurrence of scheduledFor
+  // after the pending entry was created. Anchoring to createdAt (rather
+  // than always re-deriving "today at th:tm" from `now`) is what makes the
+  // catch-up check below safe — without it, a pending entry created at 3pm
+  // for tonight's 2am would look "missed" the instant checkCron ran later
+  // that same afternoon.
+  const created = pending.createdAt ? new Date(pending.createdAt) : now;
+  const target  = new Date(created);
+  target.setHours(th, tm, 0, 0);
+  if(target <= created) target.setDate(target.getDate() + 1);
+  const windowEnd    = new Date(target.getTime() + 10*60000);
+  const withinWindow = now >= target && now < windowEnd;
+  // Catch-up: the 10-minute window already passed without firing (laptop
+  // asleep, tab closed at 2am, etc.) — previously this just sat pending
+  // forever, since the hour-of-day check above could only ever match again
+  // a full day later. Fire as soon as the app is next open instead of
+  // silently skipping a night's priority adjustment.
+  const missedWindow = now >= windowEnd;
+  if(withinWindow || missedWindow){
     if(_cronChecked) return;
     _cronChecked = true;
     const entry = LS.get('lh_journal_last');
@@ -13564,6 +13626,8 @@ function checkCron(){
         updateJournalCTA();
         _cronChecked = false; // reset so it can be manually triggered again
       });
+    } else {
+      _cronChecked = false;
     }
   }
 }
