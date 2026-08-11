@@ -25,7 +25,7 @@ built to it).
 
 | Path | Contents |
 |---|---|
-| `student-leader-hub.html` | The live app (15,173 lines) — open directly in a browser |
+| `student-leader-hub.html` | The live app (16,682 lines as of the UI/UX hardening rounds below — grew from 15,173 lines through 9 rounds of fixes/comments) — open directly in a browser |
 | `student-leader-hub.jsx` | A React/JSX exploration draft, not the deployed artifact |
 | `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling) — see `LEADERHUB_EMAIL_SETUP.md` |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup) |
@@ -107,6 +107,138 @@ both now fixed:
    offset into the correct destination child + local offset before calling
    `setAttributes()` — correct regardless of how either side's runs are
    split.
+
+## UI/UX Hardening — Rounds 1–9
+
+After the reconciliation work that filed this system into the repo, it
+went through nine further rounds of dedicated UI/UX auditing alongside
+`kos-personal/` and `cas-ccps/` — each round re-examined the whole app
+against everything already fixed, then split its findings into a bugs
+commit and a separate polish commit. What follows is this system's share
+of that record (by far the largest of the three, since this is the
+biggest single file in the repo); see the other two systems' READMEs for
+theirs. Commit hashes are given so any item's full diff/rationale can be
+looked up directly.
+
+**Round 1** (`d37f3c4`, `1a51e22`, `a6b74d5`) — the initial pass. Made
+`refreshNextAction()`/`buildActionQueue()` defensive against malformed
+records (one bad record used to silently abort every dashboard render
+after it); turned the Approval Chain into a real tri-state
+(approved/rejected/pending) with a note and timestamp per step, replacing
+a boolean that couldn't distinguish "not yet approved" from "actively
+rejected"; **unified the two most dangerous duplicate approval trackers**
+— the DECA Hub checklist's approval steps now read directly from the
+matching trip's real Approval Chain instead of keeping an independently-
+toggleable copy that could silently drift from it; fixed the SCR rating
+scale rendering backwards from the actual VA CTE rubric (Insights table
+colored 4 as best, 1 as worst — the grading grid and the rubric both say
+1 is best); converted the DECA season pipeline from a hardcoded array
+that went stale every year to editable app data; made SCR grading cells
+and the Horizon checkbox keyboard-operable; and added a shared
+Escape-to-close + Tab-trap to the app's `openModal()`/`closeModal()`,
+covering all 17 modals built on it at the time.
+
+**Round 2** (`c329ccf`, `3a8ebf7`) — **fixed three real data-loss bugs in
+one pass**: editing a trip through the wizard silently wiped its entire
+approval chain (the edit draft never carried the existing sign-offs
+forward); approval-chain approve/reject clicks were never persisted to
+storage, so a page refresh silently reverted every decision; and DECA
+roster edits never saved at all (`updateStudent()` mutated the in-memory
+object but never called `persistStudents()`, unlike its sibling
+`saveStudent()`). Also fixed E-Sports match ties rendering as "LOSS" and
+excluded from both win/loss tallies; the Trip Archive "Overnight" filter
+checking for values the wizard had never actually written (the filter
+always returned an empty list); DECA placement text garbling into
+strings like "1stth place"; and Total Inventory Value being computed at
+retail price instead of cost. Toasts gained proper bottom-up stacking;
+13 legacy "raw" modals got real focus management; and a `beforeunload`
+guard was added to catch an accidental tab close, not just an in-app
+close action.
+
+**Round 3** (`f63bcae`, `4bb4491`) — fixed `leadDays()`/`apSteps` trip-type
+comparisons checking against dead pre-refactor strings instead of the
+wizard's real taxonomy, producing wrong deadline lead times and missing
+required approval steps for every real trip; fixed the Dashboard Quick
+Log's SBE checkbox mutating state directly instead of calling
+`sbeToggle()`, so checks never actually persisted; and fixed the Journal
+History modal's Escape/Tab-trap acting on the wrong modal when opened on
+top of Journal. Added wizard required-field validation for 4 fields that
+were marked required in markup but never actually validated, and keyboard
+access to the wizard step-bar and E-Sports checklists.
+
+**Round 4** (`641633c`, `ce39d09`) — fixed the Trip Archive's `.archived`
+flag being set but never read anywhere (no indicator on the trip
+card/detail) and silently dropped on every edit; the DECA Hub's "Season
+Timeline" card reading from its own hardcoded stages array instead of the
+data the season editor actually updates; the WBL Tracker's inline
+"+ Hours" popover being silently destroyed, with unsaved input, by the
+search/filter re-render; a debounce race where a fast checkbox click
+could discard an unsaved SBE note on a *different* row within the commit
+window; and the default SCR Grid view being entirely keyboard-
+inaccessible (an earlier round's keyboard support had only landed on the
+secondary List view).
+
+**Round 5** (`c8a0169`, `a5dd7fd`) — fixed the 2am priority-adjustment
+cron job's catch-up logic: it only ever fired inside an exact 10-minute
+window keyed to the current clock hour, so a run missed while the app was
+closed at 2am sat stale for a full extra day before it could match again;
+fixed opening Print Auth Forms from Trip Detail printing a **blank trip
+name** (the trip selector's options were never populated on that entry
+path); and fixed editing any DECA member detail silently resetting their
+Assigned Trip/Event field to "— None —". Replaced the last native
+`confirm()` calls in 3 discard guards with the app's own styled dialog.
+
+**Round 6** (`8273ed4`, `803ba1f`) — **unified a real cross-screen
+inconsistency**: the Dashboard alert banner and Trip Detail header used a
+7-day urgency cutoff while the Trips Hub deadline filter and readiness
+card used 14 days, so the identical trip could read "urgent" on one
+screen and calm on another — standardized on 14 days across all 4 call
+sites (see Round 7 below for a 5th spot this missed). Also fixed
+missing-singular day-count bugs ("1 days OVERDUE"), 7 previously-
+unbounded undo-toast interpolations, and 4 inconsistent date-format call
+sites — including the printed Field Trip Permission Request form, which
+was showing two different date formats side by side on the same page.
+
+**Round 7** (`5f1c4d2`, `12730fb`) — **found two of Round 6's own fixes
+had gaps**: the `_showDiscardConfirm()` dialog it introduced was never
+registered in `RAW_MODAL_CLOSERS`, so Escape re-invoked the *underlying*
+modal's close function instead of dismissing the dialog itself; and the
+trip-readiness step tiles (Phase 1/Phase 4) were still using the old
+7-day cutoff after Round 6 unified the card's own header banner to 14
+days — the exact contradiction that fix was meant to prevent, one level
+deeper in the same card. Replaced the app's last 8 native `confirm()`
+dialogs with a generalized `_showConfirm()`, and added `aria-label` to 17
+previously-unlabeled icon-only buttons.
+
+**Round 8** (`3fd08da`, `cef3700`) — **found that Round 7's own
+`RAW_MODAL_CLOSERS` registration for the discard-confirm dialog only did
+`el.remove()`, skipping `opts.onCancel`** — Escape on the trip-draft
+resume prompt left no wizard open and never cleared the stale draft,
+where clicking Cancel did both correctly. Fixed by stashing the dialog's
+real close handler on the element itself. Extended the navy-background
+focus ring to 12 more modal close buttons + DECA's Edit Season button via
+a new `.btn-on-navy` class, and fixed the trip-draft-resume message's
+`\n\n` rendering as literal characters instead of a line break.
+
+**Round 9** (`0d433eb`) — **found the single most severe bug of any
+round, pre-dating this series entirely**: 8 raw
+`${...}.map().join('')` template-literal expressions were sitting
+directly in static page HTML, *outside any `<script>` tag*, dating back
+to the original Round 3 reconciliation filing — the browser had no way to
+evaluate them, so it rendered the literal JS source as visible garbage
+text (E-Sports rules/stages, DECA registration-info field chips), and
+**the Archive Trip star-rating widget's buttons never existed as real DOM
+elements at all**, making that entire rating control silently unclickable
+since the day it was added. Fixed by moving all 8 into a proper render
+function called once at boot. Also fixed `.mbox` — the CSS class backing
+8 modals (Register DECA Member, Archive Trip, Email Composer, Brag Board,
+and others) — having *zero* matching CSS rules anywhere in the file, so
+those modal bodies rendered fully transparent over the blurred backdrop
+with invisible white-on-white header text; and gave the Trip Wizard close
+button (the single most-used modal in the app) the `aria-label`/focus-ring
+treatment two prior rounds had both missed.
+
+---
 
 ## Version control (clasp) — scaffolded, not yet connected
 
