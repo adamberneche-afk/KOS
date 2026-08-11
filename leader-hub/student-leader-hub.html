@@ -209,6 +209,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy);bo
    directly on var(--navy), so they need a light-colored ring instead of
    more navy-on-navy. */
 header button:focus-visible{box-shadow:0 0 0 3px rgba(255,255,255,.65);}
+/* Same navy-on-navy problem as the header buttons above, but for close
+   buttons (and DECA's Edit Season button) sitting on a navy modal header
+   or navy card elsewhere in the page — .btn-on-navy marks those so they
+   get the same light-colored ring instead of an invisible navy one. */
+.btn-on-navy:focus-visible{box-shadow:0 0 0 3px rgba(255,255,255,.65);}
 textarea{resize:vertical;min-height:70px;}
 .fgrid{display:grid;gap:.82rem;}
 .fg2{grid-template-columns:1fr 1fr;} .fg3{grid-template-columns:1fr 1fr 1fr;}
@@ -985,7 +990,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:440px;margin:4rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div id="deadline-modal-hdr" style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:1.5px">Add Deadline</div>
-      <button onclick="closeDeadlineModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.25rem .65rem;border-radius:5px;cursor:pointer">✕</button>
+      <button onclick="closeDeadlineModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.25rem .65rem;border-radius:5px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.25rem;display:flex;flex-direction:column;gap:.65rem">
       <div><label style="font-size:.73rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">What is it?</label>
@@ -1131,7 +1136,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:var(--surface);max-width:580px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl,0 24px 64px rgba(0,0,0,.2))">
     <div style="background:var(--navy);padding:1rem 1.4rem;display:flex;align-items:center;justify-content:space-between">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;color:var(--gold);letter-spacing:2px">Reflection History</div>
-      <button onclick="document.getElementById('journal-history-modal').style.display='none'" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.25rem .65rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('journal-history-modal').style.display='none'" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.25rem .65rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div id="journal-history-body" style="padding:1.25rem;max-height:70vh;overflow-y:auto"></div>
   </div>
@@ -2049,7 +2054,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:1.5px">📋 Log Observation / Walkthrough</div>
         <div style="font-size:.72rem;color:rgba(255,255,255,.5)">DSP Standard 1 evidence — saved to observation history</div>
       </div>
-      <button onclick="closeObsLog()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.25rem .65rem;border-radius:5px;cursor:pointer">✕</button>
+      <button onclick="closeObsLog()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.25rem .65rem;border-radius:5px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.25rem 1.4rem;display:flex;flex-direction:column;gap:.75rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
@@ -2107,7 +2112,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35);width:420px;max-width:95vw">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:1.5px">New Lesson Plan</div>
-      <button onclick="lpNewPickerClose()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.28rem .65rem;border-radius:6px;cursor:pointer;font-size:.82rem">✕</button>
+      <button onclick="lpNewPickerClose()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.28rem .65rem;border-radius:6px;cursor:pointer;font-size:.82rem">✕</button>
     </div>
     <div style="padding:1.2rem;display:flex;flex-direction:column;gap:.75rem">
       <div>
@@ -2468,7 +2473,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:540px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">New Purchase Order</div>
-      <button onclick="closePOModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closePOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Item / Description</label>
@@ -2504,7 +2509,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:480px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Log Shift Sales</div>
-      <button onclick="closeSalesModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeSalesModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
@@ -2542,7 +2547,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:480px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Add / Update SKU</div>
-      <button onclick="closeInventoryModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeInventoryModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <input type="hidden" id="inv-edit-id">
@@ -2577,7 +2582,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:560px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px" id="wbl-modal-title">Add WBL Student</div>
-      <button onclick="closeWBLStudentModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeWBLStudentModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem">
       <input type="hidden" id="wbl-edit-id">
@@ -2868,7 +2873,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:520px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px" id="es-modal-title">Add Player</div>
-      <button onclick="closeESModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeESModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <input type="hidden" id="es-edit-id">
@@ -2915,7 +2920,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:500px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Log Match Result</div>
-      <button onclick="closeMatchModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeMatchModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
@@ -3180,7 +3185,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
       <div style="display:flex;gap:.5rem;align-items:center">
         <button onclick="window.print()" style="background:var(--gold);color:var(--navy);border:none;border-radius:6px;padding:.35rem .8rem;font-size:.75rem;font-weight:800;cursor:pointer">🖨 Print</button>
-        <button onclick="closeDSPReport()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:5px;cursor:pointer;font-size:.9rem">✕</button>
+        <button onclick="closeDSPReport()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:5px;cursor:pointer;font-size:.9rem">✕</button>
       </div>
     </div>
     <div id="dsp-report-body" style="padding:1.4rem;font-size:.82rem;line-height:1.6;max-height:78vh;overflow-y:auto"></div>
@@ -4772,7 +4777,7 @@ function _showConfirm(message, onConfirm, opts) {
   modal.id = 'discard-confirm-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
   modal.innerHTML = `<div style="background:#fff;max-width:400px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="${escH(ariaLabel)}">
-    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">${escH(message)}</div>
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5;white-space:pre-line">${escH(message)}</div>
     <div style="display:flex;justify-content:flex-end;gap:.5rem">
       <button class="btn btn-outline btn-sm" id="discard-confirm-cancel">${escH(cancelLabel)}</button>
       <button class="${btnClass}" id="discard-confirm-submit">${escH(confirmLabel)}</button>
@@ -6410,7 +6415,7 @@ function renderDECAPipeline() {
         <div style="display:flex;gap:.5rem;align-items:center">
           <span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--green);color:#fff;font-weight:700">${doneCount} event${doneCount!==1?'s':''} complete</span>
           ${hasUrgentOpen ? `<span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--red);color:#fff;font-weight:700">⚠️ Action needed</span>` : ''}
-          <button class="btn btn-sm btn-outline" onclick="openDecaSeasonEditor()" style="color:#fff;border-color:rgba(255,255,255,.4)" title="Update next year's season timeline">✏️ Edit Season</button>
+          <button class="btn btn-sm btn-outline btn-on-navy" onclick="openDecaSeasonEditor()" style="color:#fff;border-color:rgba(255,255,255,.4)" title="Update next year's season timeline">✏️ Edit Season</button>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem;align-items:start">
@@ -14474,7 +14479,7 @@ function openSurveyModal(){
   m.innerHTML=`<div style="background:var(--surface);max-width:600px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl)">
     <div style="background:var(--navy);padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:var(--gold);letter-spacing:2px">Settings</div>
-      <button onclick="document.getElementById('survey-modal').remove()" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('survey-modal').remove()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.5rem">
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
