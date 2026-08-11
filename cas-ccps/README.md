@@ -319,6 +319,137 @@ mv`, no content change).
 
 ---
 
+## UI/UX Hardening — Rounds 1–9
+
+After the reconciliation work above landed, this codebase went through nine
+further rounds of dedicated UI/UX auditing — each round re-examined the
+whole UI against everything already fixed, then split its findings into a
+bugs commit and a separate polish commit. What follows is cas-ccps's share
+of that record; see kos-personal's and leader-hub's own READMEs for
+theirs. Commit hashes are given so any item's full diff/rationale can be
+looked up directly.
+
+**Round 1** (`d37f3c4`, `1a51e22`, `a6b74d5`) — the initial pass. Fixed
+`resolveStudentStatus_`/`resolveStudentClass_` falling through to showing
+a raw Ledger status string to a student on blank/unexpected data; ISSUE-
+status cards sorting last instead of first (the one status telling a
+student to contact their teacher was buried below finished work); and
+both dashboards' failure paths showing raw exception text with no
+recovery path. Also: a mobile-responsive header, a lesson-log discard
+warning with a real focus trap, and — found while fixing the discard
+guard — **an escaping bug where unescaped backticks in a new empty-state
+message broke the outer client-HTML template literal.** The lesson-log
+form gained a 500ms-debounced autosave draft and last-used-period memory;
+dashboards gained a per-term client cache (background-revalidating, never
+clobbering good cached data with a revalidation-failure screen) and
+scroll-position preservation across re-renders; and teacher/student
+wording was aligned so both dashboards describe the same pipeline stage
+the same way.
+
+**Round 2** (`c329ccf`, `3a8ebf7`) — **fixed `CURRENT_TERM`'s smart
+default being dead code**: the term dropdown always sent the literal
+string `"ALL"` on first load, which is truthy, so the server's fallback
+chain never actually consulted the admin-configured term — every
+teacher/student always opened on the unfiltered, all-terms view no
+matter what was configured. Also fixed lesson-log draft restore silently
+backdating today's log with a stale date from an abandoned prior-day
+draft; unified status colors so the same pipeline stage renders
+identically on both dashboards; gave the student dashboard the same
+staging-pipeline lookup the teacher side already had (so "evaluating
+now" became visible instead of a static "queued" the whole time); added
+real ARIA tablist/tab/tabpanel semantics + keyboard nav to the course
+tabs; and split "no results for this term filter" empty-state copy from
+"genuinely no roster yet" (previously showed identical setup-
+troubleshooting copy for both, which was actively misleading).
+
+**Round 3** (`f63bcae`, `4bb4491`) — fixed the teacher dashboard's
+summary numbers not reconciling: both the unit-header tally and the top
+summary cards excluded `EVALUATED` and `NOT STARTED` students from every
+bucket, so the displayed counts never summed to the real total. Also
+gated "+ New Lesson" behind `M2_ENABLED` (previously always rendered, so
+a teacher without Module 2 could fill out the whole form before hitting
+an internal error at submit); replaced a native `confirm()` with an
+in-app dialog; fixed `buildShadowMatrixSummary_()` returning a truthy
+zeroed-out object instead of `null` when there's no profile data yet,
+which rendered a fake "0 of 0 students" panel instead of hiding it; and
+fixed the student dashboard staying stuck on "Loading…" with no retry on
+an application-level error (only the network-failure path had one).
+
+**Round 4** (`641633c`, `ce39d09`) — **the most severe bug found in any
+round: `LessonContext`'s `lesson_date` column was silently getting
+type-coerced by Sheets from a `"YYYY-MM-DD"` string into a real `Date`
+object**, which broke every string-comparison-based duplicate/lookup
+check downstream and silently stopped the nightly warm-up queue from
+ever matching a lesson — while the teacher dashboard still showed a
+success toast, giving no indication anything had gone wrong. Fixed by
+forcing the column to text format on every writing tab and normalizing
+every read-side comparison to be resilient regardless of the cell's
+underlying type. Same commit also closed the same
+truthy-zeroed-object bug class for the zero-profiled-students case, fixed
+a draft-staleness hint omitting the `period` field, and fixed the
+discard-confirm dialog's focus trap always targeting the first `.modal`
+in DOM order instead of whichever one was actually open on top.
+
+**Round 5** (`40229bd`) — added `LockService.getDocumentLock()` to
+`26_CompetencyAlignmentLog.js` and `08_TeacherConfirmationStep.js`,
+matching `03_QueueBridge.js`'s existing precedent, closing a duplicate-
+AlignmentLog-row / duplicate-confirmation-email race on overlapping
+trigger runs; normalized the last unfixed raw `String()` cast on a
+`lesson_date` cell; unified `M2_ENABLED` guard polarity to strict opt-in
+across 6 files (the prior opt-out check let Module 2 backend jobs run on
+an installation that never explicitly set the property); and fixed a
+dashboard per-term cache-key mismatch that made a manual Refresh
+immediately after page load miss the cache it should have hit.
+
+**Round 6** (`8273ed4`, `803ba1f`) — fixed `.course-tabs` clipping extra
+tabs with no way for mouse/touch users to reach them (no
+`overflow-x:auto`, sitting inside a parent with `overflow:hidden`); fixed
+two pluralization/grammar bugs; restored the `FLAGGED` status's ⚠ icon on
+the student dashboard (present on the teacher side, lost on the
+student's); and unified status-badge/pill geometry and loading-spinner
+diameter between the two dashboards.
+
+**Round 7** (`5f1c4d2`, `12730fb`) — fixed the discard-confirm "Keep
+editing" action dropping keyboard focus to `<body>` instead of restoring
+it; fixed `m2Enabled` (a global admin setting) being read off whichever
+per-term cached dashboard blob happened to be rendered, which could
+flicker the "+ New Lesson" button based on a stale snapshot; mirrored a
+dangling `"Period ·"` fix from the teacher dashboard onto the student
+side; and added roving tabindex to the course tab bar, completing the
+ARIA tabs pattern started two rounds earlier.
+
+**Round 8** (`3fd08da`, `cef3700`) — fixed `#warmup-readiness-panel`
+carrying two conflicting `display` declarations in one style attribute
+(`display:none` then `display:flex` later in the same string — the later
+one wins per CSS cascade rules, so the panel was visible from page load
+contrary to its own apparent intent); fixed the teacher dashboard's
+empty-roster early-return path never reaching the term-dropdown
+population logic, mirroring a fix the student dashboard already had; and
+moved the competency-loading `aria-live` region onto a persistent
+container, since the registry-error/zero-competencies/network-failure
+paths were all replacing (and thereby destroying) the element that
+originally carried it, right when there was something worth announcing.
+
+**Round 9** (`0d433eb`, `513424f`) — fixed `buildShadowMatrixSummary_()`'s
+two confidence buckets not being mutually exclusive: every "locked"
+student (≥0.75 confidence) was also being counted in "building
+confidence" (>0.5), so the dashboard's two stat lines double-counted the
+same students. Fixed `saveLessonDraft()` never persisting checked
+competency checkboxes — even though submission requires at least one
+checked competency — so a crash/tab-close mid-entry restored every typed
+field but silently dropped every competency selection, forcing a full
+re-check with no indication that was expected. Also added proper
+`role="group"`/`aria-required` semantics to the competency checkbox
+group (missed by Round 8's otherwise-complete `aria-required` sweep of
+the lesson form), and removed a `\n`-to-`<br>` conversion from the
+student dashboard's `esc()` that the teacher dashboard's identically-named
+`esc()` never had — since `esc()` is the general-purpose escaper for
+every field on the page, a Sheet cell with an embedded newline was
+rendering a line break on one dashboard but not the other for identical
+data.
+
+---
+
 ## Directory map
 
 | Path | Contents |
