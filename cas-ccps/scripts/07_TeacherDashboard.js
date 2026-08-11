@@ -938,11 +938,37 @@ function _safeSessionRemove_(key) {
 
 function saveLessonDraft() {
   const get = id => { const el = document.getElementById(id); return el ? el.value : ""; };
+  // FIXED: this used to only persist the text fields — never the checked
+  // competency checkboxes, even though updateSubmitBtn() requires at least
+  // one checked competency before "Log lesson" can be clicked at all. After
+  // a crash/tab-close mid-entry, the draft faithfully restored every typed
+  // field but silently dropped every competency selection, forcing a full
+  // re-check with no hint that this was expected.
+  const compIds = Array.from(document.querySelectorAll(
+    '.course-panel input[type="checkbox"]:checked'
+  )).map(el => el.value);
   const draft = {
     date: get("f-date"), period: get("f-period"), objective: get("f-objective"),
     activity: get("f-activity"), prior: get("f-prior"), vocab: get("f-vocab"),
+    compIds: compIds,
   };
   _safeSessionSet_(LESSON_DRAFT_KEY, JSON.stringify(draft));
+}
+
+// Competency checkboxes are built asynchronously by loadCompetencies() and
+// may not exist yet the first time a draft is restored in a fresh tab —
+// stashed here so loadCompetencies()'s success handler can apply them once
+// the checkboxes actually exist in the DOM.
+let _pendingDraftCompIds = null;
+function _applyPendingDraftCompIds() {
+  if (!_pendingDraftCompIds || !_pendingDraftCompIds.length) return;
+  const ids = _pendingDraftCompIds;
+  _pendingDraftCompIds = null;
+  document.querySelectorAll('.course-panel input[type="checkbox"]').forEach(cb => {
+    if (ids.includes(cb.value)) cb.checked = true;
+  });
+  updateAllTabBadges();
+  updateSubmitBtn();
 }
 
 let _lessonDraftTimer = null;
@@ -969,11 +995,20 @@ function restoreLessonDraft() {
   if (dateMatches) set("f-date", d.date);
   set("f-period", d.period); set("f-objective", d.objective);
   set("f-activity", d.activity); set("f-prior", d.prior); set("f-vocab", d.vocab);
+  // Competency checkboxes are built asynchronously and may not exist in the
+  // DOM yet (first modal open in a fresh tab) — apply now if they're
+  // already there (competenciesLoaded), otherwise stash for
+  // _applyPendingDraftCompIds() to pick up once loadCompetencies() finishes.
+  const hasCompIds = Array.isArray(d.compIds) && d.compIds.length > 0;
+  if (hasCompIds) {
+    if (competenciesLoaded) { _pendingDraftCompIds = d.compIds; _applyPendingDraftCompIds(); }
+    else _pendingDraftCompIds = d.compIds;
+  }
   // d.period is included here too — it's still unconditionally restored
   // above like the other text fields, so a stale draft containing only a
   // period value (nothing else) used to compute restored=false and
   // silently clobber the fresh lastUsedPeriod default with no hint shown.
-  const restored = !!(d.objective || d.activity || d.prior || d.vocab || d.period);
+  const restored = !!(d.objective || d.activity || d.prior || d.vocab || d.period || hasCompIds);
   // The date field was already guarded against staleness, but the text
   // fields weren't — a draft from a previous day silently repopulated the
   // form with zero indication it wasn't what was just typed. Surface it
@@ -1207,6 +1242,7 @@ function loadCompetencies() {
 
       competenciesLoaded = true;
       updateSubmitBtn();
+      _applyPendingDraftCompIds();
     })
     .withFailureHandler(function(e) {
       document.getElementById("comp-loading").style.display = "none";
@@ -1264,6 +1300,7 @@ function courseTabKeydown(e, code) {
 function onCompetencyChange(courseCode) {
   updateTabBadge(courseCode);
   updateSubmitBtn();
+  scheduleLessonDraftSave();
 }
 
 // ── updateTabBadge ────────────────────────────────────────────────────────

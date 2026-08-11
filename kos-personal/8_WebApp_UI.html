@@ -2042,6 +2042,11 @@ function handleCouncil() {
         clearInterval(councilTimer);
         resetBtn('btn-council', 'ti-brain', 'Run full council review');
         councilConfirm = false;
+        // FIXED: the aria-live line above kept asserting "tap again within
+        // 5 seconds" indefinitely after the window actually closed — a
+        // screen-reader user (or anyone reading the status line late) had
+        // no way to tell the countdown had lapsed and the button reverted.
+        showDiagStatus('', undefined, beginDiagAction());
       } else {
         btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to confirm · ' + count + 's';
       }
@@ -2108,6 +2113,8 @@ function handleDeploy() {
         clearInterval(deployTimer);
         resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
         deployConfirm = false;
+        // Same stale-status fix as handleCouncil()'s countdown — see its comment.
+        showDiagStatus('', undefined, beginDiagAction());
       } else {
         btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to re-deploy · ' + count + 's';
       }
@@ -2213,6 +2220,18 @@ function handleBootstrap() {
   // Animate progress steps while deploy runs server-side
   let current = 0;
   const steps = document.querySelectorAll('.prog-step');
+  // FIXED: a retry ("Try again" after a failed attempt) never cleared the
+  // active/done/err classes or icon left over from the previous run —
+  // advanceStep() below only ever adds active/done, it never removes err.
+  // A step that failed on attempt 1 and then succeeded on retry could end
+  // up with both .done (✅ icon) and the stale .err class still attached;
+  // since .err is declared after .active/.done in the stylesheet, it won
+  // the cascade and rendered the label in error-red despite the checkmark.
+  steps.forEach(s => {
+    s.classList.remove('active', 'done', 'err');
+    const icon = s.querySelector('.p-icon');
+    if (icon) icon.textContent = '⬜';
+  });
 
   const advanceStep = () => {
     if (current < steps.length) {
@@ -2356,7 +2375,21 @@ function _tipInit() {
   });
 }
 document.addEventListener('click', () => closeTip());
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); });
+// FIXED: this used to be `if (e.key === 'Escape') closeTip();` with no
+// stopImmediatePropagation — since this listener is registered at script
+// load (before any modal-specific Escape handler, e.g. _armEscHandler,
+// which is only added once a modal opens), it always ran first but never
+// stopped the same keypress from also reaching those later handlers. On
+// the Arm wizard's Step 3, dismissing a tip popover with Escape therefore
+// also closed the whole modal in the same keystroke (closeArmModal()
+// unconditionally resets armStep/armAnswers), silently wiping every
+// answer entered so far. Escape should be "spent" on the topmost open
+// thing — stop it here only when there was actually a tip to close.
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape' || !_tipOpenIcon) return;
+  closeTip();
+  e.stopImmediatePropagation();
+});
 // toggleTip() computes the popover's position once, at open time, from
 // the icon's getBoundingClientRect() — with no scroll/resize handling,
 // scrolling .content (the tab body's own internal scroll container) after

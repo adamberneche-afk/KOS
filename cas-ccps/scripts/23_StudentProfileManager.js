@@ -744,8 +744,12 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
 //     total:                N,  // total students
 //     withEvalHistory:      N,  // have M1 evaluation signals
 //     withWarmUpHistory:    N,  // have scored warm-ups
-//     withShadowConfidence: N,  // have cross_confidence > 0.5 in any unit
-//     locked:               N,  // have cross_confidence > 0.75 (email sent)
+//     withShadowConfidence: N,  // have cross_confidence > 0.5 in any unit,
+//                                  but not yet locked (see below) — the two
+//                                  buckets are mutually exclusive so the
+//                                  dashboard's two stat lines never double-
+//                                  count the same student
+//     locked:               N,  // have cross_confidence >= 0.75 (email sent)
 //     currentUnit:          "S1-U2 — Business Structure & Organization"
 //   }
 // ---------------------------------------------------------------------------
@@ -796,8 +800,15 @@ function buildShadowMatrixSummary_(ss, cfg) {
         const maxConf = Math.max(...unitIds.map(uid =>
           matrix[uid].cross_confidence || 0
         ));
-        if (maxConf > 0.5)  withConf++;
-        if (maxConf >= 0.75) locked++;
+        // FIXED: these used to be independent checks, so every "locked"
+        // student (>=0.75) was also counted in withConf (>0.5) — the
+        // dashboard's two stat lines ("N building a personalized learning
+        // profile" / "M ready for fully personalized feedback") showed the
+        // same student in both buckets with no way for a teacher to tell
+        // they overlapped. Made mutually exclusive: withConf now means
+        // "building confidence but not yet locked."
+        if (maxConf >= 0.75)      locked++;
+        else if (maxConf > 0.5)  withConf++;
       }
     } catch(e) {}
   }

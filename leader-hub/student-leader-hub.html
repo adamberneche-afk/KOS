@@ -228,12 +228,26 @@ input.ok{border-color:var(--green);background:var(--green-light);}
    .open class replays every time display flips from none to flex, since
    the browser treats that as a fresh insertion) brings all of them in line. */
 .mo.open{display:flex!important;animation:moBackdropIn .18s ease;}
-.mo.open .modal{animation:moPopIn .2s ease;}
+.mo.open .modal,.mo.open .mbox{animation:moPopIn .2s ease;}
 @keyframes moBackdropIn{from{opacity:0}to{opacity:1}}
 @keyframes moPopIn{from{opacity:.5;transform:translateY(14px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-@media(prefers-reduced-motion:reduce){.mo.open,.mo.open .modal{animation:none}}
-.modal{background:#fff;border-radius:var(--radius);width:700px;max-width:97vw;max-height:93vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.2);}
+@media(prefers-reduced-motion:reduce){.mo.open,.mo.open .modal,.mo.open .mbox{animation:none}}
+/* FIXED: .mbox (used by 8 modals — Register DECA Member, Send Registration
+   Info Request, Archive Trip, AI Knowledge Base Insights, SCR Class
+   Insights, Email Composer, Sub Plan Generator, Brag Board) had zero
+   matching CSS rules anywhere in the file, unlike its sibling .modal —
+   those modal bodies rendered fully transparent over the blurred backdrop,
+   with their navy-header-assuming subtitle/close-button colors landing on
+   an invisible/white background instead. */
+.modal,.mbox{background:#fff;border-radius:var(--radius);width:700px;max-width:97vw;max-height:93vh;overflow-y:auto;box-shadow:0 32px 80px rgba(0,0,0,.2);}
 .mhdr{padding:1.1rem 1.5rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:#fff;z-index:1;}
+/* All 8 .mbox modals write their .mhdr title in default (dark) text and
+   their subtitle/close-button in rgba(255,255,255,…) — they were authored
+   assuming a navy header like the file's raw one-off modals, but .mhdr's
+   own default background is white, so that white-on-white text was
+   invisible until .mbox had any CSS at all. */
+.mbox .mhdr{background:var(--navy);color:#fff;}
+.mbox .mtitle{color:#fff;}
 .mtitle{font-family:'Bebas Neue',cursive;font-size:1.35rem;letter-spacing:1px;color:var(--navy);}
 .mclose{background:none;border:none;font-size:1.2rem;cursor:pointer;color:var(--muted);padding:.2rem .4rem;border-radius:4px;}
 .mbody{padding:1.4rem;}
@@ -1525,7 +1539,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.35rem;letter-spacing:2px;color:#fff" id="nt-modal-title">New Field Trip Request</div>
         <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-top:.1rem">CCPS Field Trip Form · Clover Hill HS</div>
       </div>
-      <button onclick="closeModal('newTrip')" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">✕</button>
+      <button onclick="closeModal('newTrip')" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">✕</button>
     </div>
 
     <!-- Step indicator -->
@@ -1698,9 +1712,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
       <div style="margin-top:.85rem">
         <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem">FIELDS THIS EMAIL WILL REQUEST:</div>
-        <div style="display:flex;flex-wrap:wrap;gap:.3rem">
-          ${['Full legal name','Grade','CCPS Student ID','Home address','Student email','Student cell','Parent name','Parent email','Parent cell','Competitive event selection','Shirt size','Dietary restrictions / allergies','Emergency contact','Dues payment ($20)','Signed membership agreement'].map(f=>`<span style="font-size:.68rem;background:#f0f4ff;border:1px solid #bdd;color:#1e3a6e;padding:2px 7px;border-radius:20px">${f}</span>`).join('')}
-        </div>
+        <div style="display:flex;flex-wrap:wrap;gap:.3rem" id="reg-field-chips"></div>
       </div>
     </div>
     <div class="mftr">
@@ -2725,15 +2737,15 @@ window.onerror = function(msg, src, line, col, err) {
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
       <div class="card">
         <div style="font-size:.72rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">✅ Starter Stages (Game 1 only)</div>
-        <div style="display:flex;flex-direction:column;gap:.3rem">
-          ${['Battlefield','Pokémon Stadium 2','Small Battlefield','Smashville','Town and City'].map(s=>`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#15803d">${s}</div>`).join('')}
-        </div>
+        <!-- FIXED: this used to be a raw ${...}.map().join('') expression sitting
+             directly in static HTML (outside any <script> tag) — the browser
+             rendered it as literal text instead of executing it. Populated by
+             renderStaticEmbeddedContent() at boot instead. -->
+        <div style="display:flex;flex-direction:column;gap:.3rem" id="ssbu-starter-stages"></div>
       </div>
       <div class="card">
         <div style="font-size:.72rem;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">🔄 Counterpick Stages (Game 2+)</div>
-        <div style="display:flex;flex-direction:column;gap:.3rem">
-          ${['Final Destination','Kalos Pokémon League','Hollow Bastion (DLC required)'].map(s=>`<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#0369a1">${s}</div>`).join('')}
-        </div>
+        <div style="display:flex;flex-direction:column;gap:.3rem" id="ssbu-counterpick-stages"></div>
         <div style="font-size:.7rem;color:var(--muted);margin-top:.5rem">Omega/Battlefield variants NOT allowed.</div>
       </div>
     </div>
@@ -2764,29 +2776,12 @@ window.onerror = function(msg, src, line, col, err) {
     <!-- Match flow -->
     <div class="card" style="margin-bottom:1rem">
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">Bo5 Match Flow</div>
-      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;text-align:center;font-size:.73rem">
-        ${[1,2,3,4,5].map(n=>`<div style="background:${n<=3?'#eff6ff':'#fef3c7'};border:1px solid ${n<=3?'#93c5fd':'#fcd34d'};border-radius:8px;padding:.5rem .3rem">
-          <div style="font-family:'Bebas Neue',cursive;font-size:1rem;color:var(--navy)">Set ${n}</div>
-          <div style="color:var(--muted);font-size:.67rem">${n<=3?'Each team fields one unique player':(n===4?'Rosters reset — any 3 eligible':'Player from set 4 CANNOT play set 5')}</div>
-        </div>`).join('')}
-      </div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;text-align:center;font-size:.73rem" id="ssbu-match-flow"></div>
     </div>
 
     <!-- Key rules -->
     <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Key Rules & Situations</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.5rem">
-      ${[
-        {icon:'⏸️', title:'Pausing',         text:'Only allowed on your own respawn platform at live events. Pause elsewhere = stock loss. Opponent loses stock = you lose 2 stocks.'},
-        {icon:'🔌', title:'Disconnect',       text:'10 min window to return. Recreate game to same state (stock count, same fighters/stage). Damage % resets are OK.'},
-        {icon:'💀', title:'Sudden Death',     text:'Sudden death does NOT count. Higher stock = winner. Tie in stocks → lower % wins. Both tied → 1-stock, 2-min match.'},
-        {icon:'🎭', title:'Mii Fighters',     text:'Default costume, Guest Mii, name = move code (e.g. "1213"). Must declare in lobby chat before the set begins.'},
-        {icon:'📸', title:'Screenshots',      text:'Take screenshots at end of every game. Required if Match Assistant fails — results must be submitted within 1 hour.'},
-        {icon:'🎵', title:'Streaming Music',  text:'If broadcasting, set in-game music to ZERO (0). Nintendo copyright rules apply to all streams.'},
-      ].map(r=>`<div class="card" style="border-left:4px solid var(--navy);padding:.7rem .9rem">
-        <div style="font-weight:700;font-size:.79rem;margin-bottom:.2rem">${r.icon} ${r.title}</div>
-        <div style="font-size:.73rem;color:#4b5563;line-height:1.55">${r.text}</div>
-      </div>`).join('')}
-    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.5rem" id="ssbu-key-rules"></div>
 
     <!-- Match day checklist -->
     <div style="margin-top:1rem">
@@ -2831,26 +2826,14 @@ window.onerror = function(msg, src, line, col, err) {
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">Scoring System</div>
       <div style="font-size:.79rem;line-height:1.7;margin-bottom:.5rem">Points are earned based on finishing place within each race. All 4 players' points are combined each race. After all 4 races (6 in playoffs), the team with the highest total wins the game.</div>
       <div style="display:flex;gap:.4rem;flex-wrap:wrap;font-size:.72rem">
-        ${[['1st','15'],['2nd','12'],['3rd','10'],['4th','9'],['5th','8'],['6th','7'],['7th','6'],['8th','5']].map(([p,pts])=>`<div style="background:${p==='1st'?'#1a3560':p==='2nd'?'#374151':p==='3rd'?'#7c3aed':'#f1f5f9'};color:${['1st','2nd','3rd'].includes(p)?'#fff':'var(--navy)'};border-radius:6px;padding:.3rem .6rem;text-align:center;min-width:50px"><div style="font-weight:700">${p}</div><div>${pts} pts</div></div>`).join('')}
+        <div id="mk8-scoring-points" style="display:contents"></div>
         <div style="align-self:center;font-size:.7rem;color:var(--muted)">…down to 1pt for 12th</div>
       </div>
     </div>
 
     <!-- Key rules MK8 -->
     <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Key Rules & Situations</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.5rem;margin-bottom:1rem">
-      ${[
-        {icon:'🎲', title:'Track Selection',   text:'EVERYONE must pick RANDOM. If a player picks a specific track and it gets chosen → 15 point penalty per violation. Screenshot the violation + final score immediately.'},
-        {icon:'🔌', title:'Host Disconnect',   text:'Entire lobby drops. Screenshot scores after each race! If you have screenshots, tally from old + new lobby. No screenshots = replay the full game.'},
-        {icon:'🔄', title:'Player Changes',    text:'Press Y between races to change character/kart. Do NOT leave the lobby by accident. Substitutions allowed between games, not mid-game.'},
-        {icon:'🐛', title:'Glitching',         text:'Zero tolerance. Video/screenshot proof required for disputes. Penalty = game loss + possible further sanctions from League Officials.'},
-        {icon:'⚖️', title:'Tie-Breaker',       text:'If teams are tied after 4 races, play 1 additional race immediately. Highest team total in that race wins the game.'},
-        {icon:'📸', title:'Screenshots',       text:'Capture button after EVERY race. Non-negotiable. Required for dispute resolution and score submission if Match Assistant fails.'},
-      ].map(r=>`<div class="card" style="border-left:4px solid #e67e22;padding:.7rem .9rem">
-        <div style="font-weight:700;font-size:.79rem;margin-bottom:.2rem">${r.icon} ${r.title}</div>
-        <div style="font-size:.73rem;color:#4b5563;line-height:1.55">${r.text}</div>
-      </div>`).join('')}
-    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.5rem;margin-bottom:1rem" id="mk8-key-rules"></div>
 
     <!-- Match day checklist MK8 -->
     <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">🗒️ Match Day Checklist — Mario Kart 8</div>
@@ -3026,9 +3009,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
           <div>
             <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">OVERALL TRIP RATING</label>
-            <div id="arch-star-picker" style="display:flex;gap:.25rem">
-              ${[1,2,3,4,5].map(n=>`<button onclick="setArchiveStar(${n})" id="arch-star-${n}" style="font-size:1.4rem;background:none;border:none;cursor:pointer;padding:0;opacity:.35" title="${n} star${n>1?'s':''}">⭐</button>`).join('')}
-            </div>
+            <div id="arch-star-picker" style="display:flex;gap:.25rem"></div>
             <input type="hidden" id="arch-rating" value="0">
           </div>
           <div>
@@ -11286,6 +11267,65 @@ function resetMK8Checklist() {
   }, { confirmLabel: 'Reset', ariaLabel: 'Reset Mario Kart checklist' });
 }
 
+// FIXED: these 8 lists (E-Sports rules/stages, DECA registration-info
+// field chips, and the Archive Trip star-rating picker) used to be raw
+// ${...}.map().join('') template-literal expressions sitting directly in
+// static page HTML, outside any <script> tag — the browser had no way to
+// evaluate them, so it rendered the literal JS source as visible text
+// instead of a formatted list. Worse, the Archive star-rating buttons
+// never existed as real DOM elements, so the whole rating widget was
+// unclickable (setArchiveStar() silently no-ops when the button is
+// missing). Moved into this function, called once at boot, using the
+// exact same data/markup as before — just executed instead of printed.
+function renderStaticEmbeddedContent() {
+  const ssbuStarter = document.getElementById('ssbu-starter-stages');
+  if (ssbuStarter) ssbuStarter.innerHTML = ['Battlefield','Pokémon Stadium 2','Small Battlefield','Smashville','Town and City'].map(s=>`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#15803d">${s}</div>`).join('');
+
+  const ssbuCounterpick = document.getElementById('ssbu-counterpick-stages');
+  if (ssbuCounterpick) ssbuCounterpick.innerHTML = ['Final Destination','Kalos Pokémon League','Hollow Bastion (DLC required)'].map(s=>`<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#0369a1">${s}</div>`).join('');
+
+  const ssbuMatchFlow = document.getElementById('ssbu-match-flow');
+  if (ssbuMatchFlow) ssbuMatchFlow.innerHTML = [1,2,3,4,5].map(n=>`<div style="background:${n<=3?'#eff6ff':'#fef3c7'};border:1px solid ${n<=3?'#93c5fd':'#fcd34d'};border-radius:8px;padding:.5rem .3rem">
+    <div style="font-family:'Bebas Neue',cursive;font-size:1rem;color:var(--navy)">Set ${n}</div>
+    <div style="color:var(--muted);font-size:.67rem">${n<=3?'Each team fields one unique player':(n===4?'Rosters reset — any 3 eligible':'Player from set 4 CANNOT play set 5')}</div>
+  </div>`).join('');
+
+  const ssbuKeyRules = document.getElementById('ssbu-key-rules');
+  if (ssbuKeyRules) ssbuKeyRules.innerHTML = [
+    {icon:'⏸️', title:'Pausing',         text:'Only allowed on your own respawn platform at live events. Pause elsewhere = stock loss. Opponent loses stock = you lose 2 stocks.'},
+    {icon:'🔌', title:'Disconnect',       text:'10 min window to return. Recreate game to same state (stock count, same fighters/stage). Damage % resets are OK.'},
+    {icon:'💀', title:'Sudden Death',     text:'Sudden death does NOT count. Higher stock = winner. Tie in stocks → lower % wins. Both tied → 1-stock, 2-min match.'},
+    {icon:'🎭', title:'Mii Fighters',     text:'Default costume, Guest Mii, name = move code (e.g. "1213"). Must declare in lobby chat before the set begins.'},
+    {icon:'📸', title:'Screenshots',      text:'Take screenshots at end of every game. Required if Match Assistant fails — results must be submitted within 1 hour.'},
+    {icon:'🎵', title:'Streaming Music',  text:'If broadcasting, set in-game music to ZERO (0). Nintendo copyright rules apply to all streams.'},
+  ].map(r=>`<div class="card" style="border-left:4px solid var(--navy);padding:.7rem .9rem">
+    <div style="font-weight:700;font-size:.79rem;margin-bottom:.2rem">${r.icon} ${r.title}</div>
+    <div style="font-size:.73rem;color:#4b5563;line-height:1.55">${r.text}</div>
+  </div>`).join('');
+
+  const mk8Scoring = document.getElementById('mk8-scoring-points');
+  if (mk8Scoring) mk8Scoring.innerHTML = [['1st','15'],['2nd','12'],['3rd','10'],['4th','9'],['5th','8'],['6th','7'],['7th','6'],['8th','5']].map(([p,pts])=>`<div style="background:${p==='1st'?'#1a3560':p==='2nd'?'#374151':p==='3rd'?'#7c3aed':'#f1f5f9'};color:${['1st','2nd','3rd'].includes(p)?'#fff':'var(--navy)'};border-radius:6px;padding:.3rem .6rem;text-align:center;min-width:50px"><div style="font-weight:700">${p}</div><div>${pts} pts</div></div>`).join('');
+
+  const mk8KeyRules = document.getElementById('mk8-key-rules');
+  if (mk8KeyRules) mk8KeyRules.innerHTML = [
+    {icon:'🎲', title:'Track Selection',   text:'EVERYONE must pick RANDOM. If a player picks a specific track and it gets chosen → 15 point penalty per violation. Screenshot the violation + final score immediately.'},
+    {icon:'🔌', title:'Host Disconnect',   text:'Entire lobby drops. Screenshot scores after each race! If you have screenshots, tally from old + new lobby. No screenshots = replay the full game.'},
+    {icon:'🔄', title:'Player Changes',    text:'Press Y between races to change character/kart. Do NOT leave the lobby by accident. Substitutions allowed between games, not mid-game.'},
+    {icon:'🐛', title:'Glitching',         text:'Zero tolerance. Video/screenshot proof required for disputes. Penalty = game loss + possible further sanctions from League Officials.'},
+    {icon:'⚖️', title:'Tie-Breaker',       text:'If teams are tied after 4 races, play 1 additional race immediately. Highest team total in that race wins the game.'},
+    {icon:'📸', title:'Screenshots',       text:'Capture button after EVERY race. Non-negotiable. Required for dispute resolution and score submission if Match Assistant fails.'},
+  ].map(r=>`<div class="card" style="border-left:4px solid #e67e22;padding:.7rem .9rem">
+    <div style="font-weight:700;font-size:.79rem;margin-bottom:.2rem">${r.icon} ${r.title}</div>
+    <div style="font-size:.73rem;color:#4b5563;line-height:1.55">${r.text}</div>
+  </div>`).join('');
+
+  const regChips = document.getElementById('reg-field-chips');
+  if (regChips) regChips.innerHTML = ['Full legal name','Grade','CCPS Student ID','Home address','Student email','Student cell','Parent name','Parent email','Parent cell','Competitive event selection','Shirt size','Dietary restrictions / allergies','Emergency contact','Dues payment ($20)','Signed membership agreement'].map(f=>`<span style="font-size:.68rem;background:#f0f4ff;border:1px solid #bdd;color:#1e3a6e;padding:2px 7px;border-radius:20px">${f}</span>`).join('');
+
+  const archStars = document.getElementById('arch-star-picker');
+  if (archStars) archStars.innerHTML = [1,2,3,4,5].map(n=>`<button onclick="setArchiveStar(${n})" id="arch-star-${n}" style="font-size:1.4rem;background:none;border:none;cursor:pointer;padding:0;opacity:.35" title="${n} star${n>1?'s':''}">⭐</button>`).join('');
+}
+
 // ── Checklists ────────────────────────────────────────────
 function renderSSBUChecklist() {
   const el = document.getElementById('ssbu-checklist-render'); if (!el) return;
@@ -13912,7 +13952,7 @@ function showWorkdayReminderBanner(){
         ↗ Open Workday
       </a>
       <button onclick="markWorkdayDone()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer">✅ Done</button>
-      <button onclick="document.getElementById('workday-reminder-banner').remove()" style="background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('workday-reminder-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -13974,7 +14014,7 @@ function showCommsTriageBanner(){
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="markCommsDone()" style="background:#fff;color:#1e3a5f;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Checked</button>
-      <button onclick="document.getElementById('comms-triage-banner').remove()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('comms-triage-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -14062,7 +14102,7 @@ function showPLCBanner() {
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="logPLCAttended();document.getElementById('plc-banner').remove()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✓ Attended</button>
-      <button onclick="document.getElementById('plc-banner').remove()" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('plc-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -14091,7 +14131,7 @@ function showGreenCheckinBanner(dl) {
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="logGreenMeetingAttended();generateDSPReport();document.getElementById('green-checkin-banner').remove()" style="background:#fff;color:#064e3b;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📊 Open Report</button>
       <button onclick="logGreenMeetingAttended();document.getElementById('green-checkin-banner').remove()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✓ Attended</button>
-      <button onclick="document.getElementById('green-checkin-banner').remove()" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('green-checkin-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -14125,7 +14165,7 @@ function showEsportsMatchBanner(match) {
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="showView('esports');document.getElementById('esports-match-banner').remove()" style="background:#fff;color:#4c1d95;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📋 Checklist</button>
-      <button onclick="document.getElementById('esports-match-banner').remove()" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('esports-match-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -14158,7 +14198,7 @@ function showDECATomorrowBanner(dl) {
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="showView('deca');document.getElementById('deca-tomorrow-banner').remove()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">🏆 DECA Hub</button>
-      <button onclick="document.getElementById('deca-tomorrow-banner').remove()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+      <button onclick="document.getElementById('deca-tomorrow-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
 }
@@ -15287,6 +15327,7 @@ function renderPacingCalendar() {
 })();
 
 window._appBooting = true;
+renderStaticEmbeddedContent();
 renderDashboard(); calcCost(); updateArchiveBadge(); renderStudents(); initCockpit(); migrateSlipRosters();
 restoreAccState();
 window._appBooting = false;
@@ -16289,6 +16330,7 @@ function showBragBoardPromptBanner() {
         🏆 Open Brag Board
       </button>
       <button onclick="document.getElementById('brag-prompt-banner').remove()"
+        aria-label="Dismiss" class="btn-on-navy"
         style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
