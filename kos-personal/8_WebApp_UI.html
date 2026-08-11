@@ -184,6 +184,12 @@ textarea { line-height: 1.55; }
   font-family: var(--sans);
 }
 .btn:disabled { opacity: .45; cursor: not-allowed; }
+/* A disabled button showing the ti-loader-2 spinner is mid-action, not
+   inert — the blanket .45 opacity above was dimming the very "Sending…"/
+   "Saving…"/"Archiving…" labels the pending-state convention exists to
+   make legible in the first place, right when a user is checking whether
+   their tap registered. */
+.btn:disabled:has(.ti-loader-2) { opacity: 1; }
 .btn-primary  { background: var(--amber-bg); border-color: var(--amber); color: var(--amber-light); }
 .btn-primary:hover:not(:disabled) { background: rgba(186,117,23,.25); }
 .btn:hover:not(.btn-primary):not(:disabled) { background: var(--surface2); }
@@ -219,6 +225,13 @@ textarea { line-height: 1.55; }
 .metric-grid {
   display: grid; grid-template-columns: 1fr 1fr;
   gap: 10px; margin-bottom: 16px;
+}
+/* #metric-failed is a 5th tile in this 2-column grid, appearing only when
+   there's something to show — landing alone in a 3rd row's first column
+   otherwise, leaving the second column visibly empty beside the one tile
+   that most needs attention. Span it full-width instead. */
+#metric-failed {
+  grid-column: 1 / -1;
 }
 .metric-card {
   background: var(--surface); border: 1px solid var(--border);
@@ -1203,11 +1216,17 @@ function clearIngestToast() {
 function loadQueueStatus() {
   const btn = document.getElementById('btn-refresh');
   if (btn) btn.disabled = true;
+  // FIXED: was the one action button left out when the loader-icon
+  // pending-state convention was rolled out everywhere else — it just
+  // dimmed to 45% opacity with the same static icon/label, no visual sign
+  // anything was happening.
+  if (btn) btn.innerHTML = '<i class="ti ti-loader-2"></i>Refreshing…';
   const list = document.getElementById('curator-list');
   list.innerHTML = '<div class="empty"><i class="ti ti-loader-2"></i>Loading…</div>';
 
   callServer('getQueueMetrics', [], (res) => {
     if (btn) btn.disabled = false;
+    resetBtn('btn-refresh', 'ti-refresh', 'Refresh queue');
     if (!res || !res.success) {
       // FIXED: this branch and the network-failure branch below used to
       // render two different messages (one with an icon, one bare text),
@@ -1221,6 +1240,7 @@ function loadQueueStatus() {
     renderServiceStatus(res.managed_service);
   }, (err) => {
     if (btn) btn.disabled = false;
+    resetBtn('btn-refresh', 'ti-refresh', 'Refresh queue');
     _diagPanelError('curator-list', 'Server error.', 'loadQueueStatus', 'ti-alert-triangle');
   });
 }
@@ -1997,6 +2017,13 @@ function handleCouncil() {
     councilConfirm = true;
     btn.className = 'btn btn-sm btn-confirm btn-countdown';
     btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to confirm · 5s';
+    // The per-second countdown re-render below has no aria-live announcement
+    // anywhere — a screen-reader user who activates this button hears its
+    // initial label once and gets no indication a countdown is running or
+    // that it silently reverted after 5s. One announcement into the
+    // existing aria-live status line when arming is enough; re-announcing
+    // every second would be noise.
+    showDiagStatus('Tap "Run full council review" again within 5 seconds to confirm.', undefined);
     let count = 5;
     councilTimer = setInterval(() => {
       count--;
@@ -2060,6 +2087,8 @@ function handleDeploy() {
     deployConfirm = true;
     btn.className = 'btn btn-sm btn-danger btn-countdown';
     btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to re-deploy · 5s';
+    // Same aria-live gap as handleCouncil()'s countdown — see its comment.
+    showDiagStatus('Tap "Re-run full deploy" again within 5 seconds to confirm.', undefined);
     let count = 5;
     deployTimer = setInterval(() => {
       count--;
@@ -2316,6 +2345,15 @@ function _tipInit() {
 }
 document.addEventListener('click', () => closeTip());
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); });
+// toggleTip() computes the popover's position once, at open time, from
+// the icon's getBoundingClientRect() — with no scroll/resize handling,
+// scrolling .content (the tab body's own internal scroll container) after
+// opening a tip left the popover pinned to its original screen position
+// while the icon it was anchored to scrolled away underneath it. Simplest
+// correct fix is to close on either event rather than try to keep a
+// fixed-position popover glued to a moving target.
+document.addEventListener('scroll', () => closeTip(), true);
+window.addEventListener('resize', () => closeTip());
 function toggleTip(el) {
   if (_tipOpenIcon === el) { closeTip(); return; }
   closeTip();
