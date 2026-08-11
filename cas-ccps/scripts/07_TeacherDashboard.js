@@ -548,8 +548,16 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
       </div>
 
       <!-- Competencies — course tabs -->
-      <div class="field">
-        <label>Competencies addressed <span class="req">*</span></label>
+      <!-- FIXED: Round 8 added aria-required to f-date/f-objective/f-activity
+           but missed this 4th required field — a checkbox group with no
+           fieldset/legend, no role="group", and a label with no "for"
+           attribute linking it to anything. role="group" lives here (the
+           whole field), not on #competency-tabs-shell below, since that
+           element already carries role="status" aria-live="polite" for the
+           loading/error announcement and an element can't sensibly carry
+           both roles. -->
+      <div class="field" role="group" aria-required="true" aria-labelledby="comp-group-label">
+        <label id="comp-group-label">Competencies addressed <span class="req">*</span></label>
         <!-- role/aria-live moved here from #comp-loading: the registry-error,
              zero-competencies, and network-failure paths in loadCompetencies()
              all replace this container's entire innerHTML (including
