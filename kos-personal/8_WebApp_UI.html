@@ -464,7 +464,11 @@ textarea { line-height: 1.55; }
   width: 100%; max-width: 420px;
   background: var(--surface);
   border-top: 1px solid var(--border);
-  border-radius: 12px 12px 0 0;
+  /* Derived from --r (8px) rather than a hardcoded 12px so this stays in
+     sync with the shared --r/--r-sm design tokens used everywhere else
+     (cards, panels, popovers) — same visual size as before, just no longer
+     a one-off magic number. */
+  border-radius: calc(var(--r) * 1.5) calc(var(--r) * 1.5) 0 0;
   padding: 20px 20px 36px;
   max-height: 88vh; overflow-y: auto;
   z-index: 101;
@@ -488,6 +492,9 @@ textarea { line-height: 1.55; }
 /* ── Countdown button variant ────────────────────────────────── */
 .btn-countdown { animation: pulse-warn 1s infinite; }
 @keyframes pulse-warn { 0%,100%{opacity:1} 50%{opacity:.7} }
+@media (prefers-reduced-motion: reduce) {
+  .btn-countdown { animation: none; }
+}
 
 /* ── Post-submit next-step hint ──────────────────────────────── */
 .next-hint {
@@ -679,7 +686,7 @@ textarea { line-height: 1.55; }
 
     <button class="btn btn-primary" id="btn-submit" onclick="handleSubmit()">
       <i class="ti ti-send" id="submit-icon"></i>
-      <span id="submit-label">Queue Payload</span>
+      <span id="submit-label">Submit</span>
     </button>
 
   </div><!-- /tab-ingest -->
@@ -1134,7 +1141,7 @@ function handleSubmit() {
 
   const onOk = (res) => {
     btn.disabled = false;
-    label.textContent = 'Queue Payload';
+    label.textContent = 'Submit';
     icon.className = 'ti ti-send';
     if (res && res.success) {
       // The toast is a brief confirmation; #next-hint (below) is the
@@ -1185,7 +1192,7 @@ function handleSubmit() {
 
   const onErr = (err) => {
     btn.disabled = false;
-    label.textContent = 'Queue Payload';
+    label.textContent = 'Submit';
     icon.className = 'ti ti-send';
     showIngestToast('Server error: ' + (err.message || String(err)), false);
   };

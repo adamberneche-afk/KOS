@@ -514,7 +514,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
       <div class="field-row">
         <div class="field">
           <label for="f-date">Lesson date <span class="req">*</span></label>
-          <input type="date" id="f-date">
+          <input type="date" id="f-date" aria-required="true">
         </div>
         <div class="field">
           <label for="f-period">Period / class</label>
@@ -525,13 +525,13 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
       <!-- Learning objective -->
       <div class="field">
         <label for="f-objective">Learning objective <span class="req">*</span></label>
-        <textarea id="f-objective" rows="2" placeholder="What can students do by the end of this lesson that they couldn't at the start?"></textarea>
+        <textarea id="f-objective" rows="2" aria-required="true" placeholder="What can students do by the end of this lesson that they couldn't at the start?"></textarea>
       </div>
 
       <!-- Activity description -->
       <div class="field">
         <label for="f-activity">What students are doing <span class="req">*</span></label>
-        <textarea id="f-activity" rows="2" placeholder="Describe the activity, task, or experience."></textarea>
+        <textarea id="f-activity" rows="2" aria-required="true" placeholder="Describe the activity, task, or experience."></textarea>
       </div>
 
       <!-- Prior lesson connection -->
@@ -550,8 +550,13 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
       <!-- Competencies — course tabs -->
       <div class="field">
         <label>Competencies addressed <span class="req">*</span></label>
-        <div id="competency-tabs-shell">
-          <div class="competency-loading" id="comp-loading" role="status" aria-live="polite">Loading competencies…</div>
+        <!-- role/aria-live moved here from #comp-loading: the registry-error,
+             zero-competencies, and network-failure paths in loadCompetencies()
+             all replace this container's entire innerHTML (including
+             #comp-loading itself), which was silently destroying the
+             aria-live region right when it had something worth announcing. -->
+        <div id="competency-tabs-shell" role="status" aria-live="polite">
+          <div class="competency-loading" id="comp-loading">Loading competencies…</div>
           <!-- Course tabs injected here by loadCompetencies() -->
         </div>
         <div class="hint" id="comp-hint" style="margin-top:6px"></div>
