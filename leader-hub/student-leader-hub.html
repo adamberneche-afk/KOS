@@ -3795,11 +3795,17 @@ function renderFormHub() {
       label:'Complete TripTracker Form',
       sub: p1Done ? `All ${REQUIRED_FIELDS.length} required fields filled` : `${rfMissing.length} field${rfMissing.length===1?'':'s'} still missing`,
       dueLabel: dl ? `Submit by ${fd(fmtDeadline(t))}` : 'No date set',
-      state: p1Done ? 'done' : dtd<0 ? 'warn' : dtd<=7 ? 'active' : 'future',
+      // FIXED: was dtd<=7 — out of step with this same card's header banner
+      // (urgColor/urgLabel below), which Round 6 unified to a 14-day
+      // cutoff for the identical TripTracker submit deadline. A trip 8-14
+      // days out showed an orange "urgent" header while this tile — for
+      // the step most directly tied to that same deadline — stayed gray
+      // "future" right underneath it.
+      state: p1Done ? 'done' : dtd<0 ? 'warn' : dtd<=14 ? 'active' : 'future',
       action: p1Done ? null : {label:'✏️ Fill In', fn:`openEditModal(${t.id})`},
       action2: p1Done ? {label:'📄 Preview', fn:`generateFormPreview(${t.id})`} : null,
       badge: p1Done ? '✓ Complete' : rfMissing.length+' missing',
-      badgeCls: p1Done ? 'st-approved' : dtd<=7 ? 'st-urgent' : 'st-pending',
+      badgeCls: p1Done ? 'st-approved' : dtd<=14 ? 'st-urgent' : 'st-pending',
     });
 
     // Phase 2: Fill FT Permission Form (parent handout)
@@ -3833,10 +3839,11 @@ function renderFormHub() {
       label:'Submit to TripTracker System',
       sub: dtd<0&&t.status==='planned' ? '⚠ OVERDUE — submit immediately' : rfDone ? `Ready to submit — deadline ${fd(fmtDeadline(t))}` : 'Complete form first',
       dueLabel: dl ? fd(fmtDeadline(t)) + ` (${lead}-day rule)` : 'No date set',
-      state: t.status==='active'||t.status==='approved'||t.status==='complete' ? 'done' : !rfDone ? 'future' : dtd<0 ? 'warn' : dtd<=7 ? 'active' : 'future',
+      // FIXED: same 7-day-vs-14-day mismatch as Phase 1 above.
+      state: t.status==='active'||t.status==='approved'||t.status==='complete' ? 'done' : !rfDone ? 'future' : dtd<0 ? 'warn' : dtd<=14 ? 'active' : 'future',
       action: null,
-      badge: t.status==='active'||t.status==='approved' ? '✓ Submitted' : dtd<0&&t.status==='planned' ? 'OVERDUE' : dtd<=7&&t.status==='planned' ? dtd+'d left' : rfDone ? 'Ready' : 'Waiting',
-      badgeCls: t.status==='active'||t.status==='approved' ? 'st-approved' : dtd<0&&t.status==='planned' ? 'st-urgent' : dtd<=7&&t.status==='planned' ? 'st-urgent' : 'st-planned',
+      badge: t.status==='active'||t.status==='approved' ? '✓ Submitted' : dtd<0&&t.status==='planned' ? 'OVERDUE' : dtd<=14&&t.status==='planned' ? dtd+'d left' : rfDone ? 'Ready' : 'Waiting',
+      badgeCls: t.status==='active'||t.status==='approved' ? 'st-approved' : dtd<0&&t.status==='planned' ? 'st-urgent' : dtd<=14&&t.status==='planned' ? 'st-urgent' : 'st-planned',
     });
 
     // Phase 5: Collect Permission Slips
@@ -4615,6 +4622,15 @@ const RAW_MODAL_CLOSERS = {
   'ap-reject-modal':       () => { const el = document.getElementById('ap-reject-modal'); if (el) el.remove(); },
   'deca-season-editor':    () => { const el = document.getElementById('deca-season-editor'); if (el) el.remove(); },
   'import-confirm-modal':  () => { const el = document.getElementById('import-confirm-modal'); if (el) el.remove(); },
+  // FIXED: _showDiscardConfirm() (Brag Board/Lesson Plan/Journal discard
+  // guards) was never registered here — Escape re-invoked the *underlying*
+  // modal's own close function instead of dismissing this dialog, and the
+  // Tab-trap below computed focusables from the modal behind it rather
+  // than from this dialog's own buttons, so Tab could walk focus out into
+  // content still hidden behind the backdrop. Registering it gets both
+  // Escape-to-close and the Tab-trap for free, the same way every other
+  // bespoke dialog here does.
+  'discard-confirm-modal': () => { const el = document.getElementById('discard-confirm-modal'); if (el) el.remove(); },
 };
 
 function _findVisibleRawModalId() {
