@@ -203,7 +203,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--navy);bo
    indicator — keyboard users tabbing to them saw whatever the browser's
    native default outline looks like, visually inconsistent with the navy
    ring every real form control gets above. */
-.btn:focus-visible,[role="button"]:focus-visible,.scr-score:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(15,32,68,.35);}
+.btn:focus-visible,[role="button"]:focus-visible,.scr-score:focus-visible,button:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(15,32,68,.35);}
+/* The navy ring above is unreadable on the header's own navy background —
+   the top nav bar and sidebar toggle are plain <button> elements sitting
+   directly on var(--navy), so they need a light-colored ring instead of
+   more navy-on-navy. */
+header button:focus-visible{box-shadow:0 0 0 3px rgba(255,255,255,.65);}
 textarea{resize:vertical;min-height:70px;}
 .fgrid{display:grid;gap:.82rem;}
 .fg2{grid-template-columns:1fr 1fr;} .fg3{grid-template-columns:1fr 1fr 1fr;}
@@ -2463,7 +2468,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:540px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">New Purchase Order</div>
-      <button onclick="closePOModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closePOModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Item / Description</label>
@@ -2499,7 +2504,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:480px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Log Shift Sales</div>
-      <button onclick="closeSalesModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeSalesModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
@@ -2537,7 +2542,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:480px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Add / Update SKU</div>
-      <button onclick="closeInventoryModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeInventoryModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <input type="hidden" id="inv-edit-id">
@@ -2572,7 +2577,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:560px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px" id="wbl-modal-title">Add WBL Student</div>
-      <button onclick="closeWBLStudentModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeWBLStudentModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem">
       <input type="hidden" id="wbl-edit-id">
@@ -2863,7 +2868,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:520px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px" id="es-modal-title">Add Player</div>
-      <button onclick="closeESModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeESModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <input type="hidden" id="es-edit-id">
@@ -2910,7 +2915,7 @@ window.onerror = function(msg, src, line, col, err) {
   <div style="background:#fff;max-width:500px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Log Match Result</div>
-      <button onclick="closeMatchModal()" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+      <button onclick="closeMatchModal()" aria-label="Close" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
@@ -4744,25 +4749,42 @@ function openModal(name){
 // (a click comes back later, not synchronously like confirm()), so every
 // call site below shows the dialog and performs the discard itself from
 // onConfirm, rather than branching on a returned boolean.
-function _showDiscardConfirm(message, onConfirm) {
+// Generalized from the original discard-only dialog so the same styled,
+// keyboard-correct (see RAW_MODAL_CLOSERS registration) confirmation can
+// back every "are you sure?" in the app, not just discard guards — bulk/
+// destructive actions (mark-all, reset-all, remove-connection) were still
+// popping a raw OS confirm() despite this dialog already existing.
+function _showConfirm(message, onConfirm, opts) {
+  opts = opts || {};
+  const confirmLabel = opts.confirmLabel || 'Discard';
+  const cancelLabel = opts.cancelLabel || 'Cancel';
+  const btnClass = opts.danger === false ? 'btn btn-primary btn-sm' : 'btn btn-danger btn-sm';
+  const ariaLabel = opts.ariaLabel || confirmLabel + ' confirmation';
   const existing = document.getElementById('discard-confirm-modal');
   if (existing) existing.remove();
   const modal = document.createElement('div');
   modal.id = 'discard-confirm-modal';
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
-  modal.innerHTML = `<div style="background:#fff;max-width:400px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="Discard unsaved changes">
+  modal.innerHTML = `<div style="background:#fff;max-width:400px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="${escH(ariaLabel)}">
     <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">${escH(message)}</div>
     <div style="display:flex;justify-content:flex-end;gap:.5rem">
-      <button class="btn btn-outline btn-sm" id="discard-confirm-cancel">Cancel</button>
-      <button class="btn btn-danger btn-sm" id="discard-confirm-submit">Discard</button>
+      <button class="btn btn-outline btn-sm" id="discard-confirm-cancel">${escH(cancelLabel)}</button>
+      <button class="${btnClass}" id="discard-confirm-submit">${escH(confirmLabel)}</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
-  const closeIt = () => modal.remove();
+  // onCancel fires for every non-confirm dismissal (Cancel button, backdrop
+  // click) — most callers don't need it (canceling is just "do nothing"),
+  // but a couple (e.g. the trip-draft resume prompt) need to run cleanup on
+  // "no" too, not just on "yes".
+  const closeIt = () => { modal.remove(); if (opts.onCancel) opts.onCancel(); };
   modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
   document.getElementById('discard-confirm-cancel').onclick = closeIt;
-  document.getElementById('discard-confirm-submit').onclick = () => { closeIt(); onConfirm(); };
+  document.getElementById('discard-confirm-submit').onclick = () => { modal.remove(); onConfirm(); };
   document.getElementById('discard-confirm-submit').focus();
+}
+function _showDiscardConfirm(message, onConfirm) {
+  _showConfirm(message, onConfirm, { confirmLabel: 'Discard', danger: true, ariaLabel: 'Discard unsaved changes' });
 }
 
 // Optional per-modal guard checked before a .mo modal actually closes — lets
@@ -4844,36 +4866,50 @@ function openTripWizard(tripId) {
     // Every step already has data from the existing trip, so all of them
     // should be reachable/checked from the start, not just step 1.
     _wzMaxStepReached = WZ_STEPS.length;
-  } else {
-    const blankDraft = {
-      origin:  'Clover Hill High School',
-      sponsor: 'Adam Berneche',
-      sub:     'same-day',
-      status:  'planned',
-    };
-    // A saved draft used to repopulate silently — including weeks later,
-    // for a completely unrelated new trip, with stale dates/destinations/
-    // medical-staff names and no way to tell it happened. Only auto-load
-    // when the draft actually has real content beyond the same defaults
-    // every fresh wizard starts with, and ask first even then.
-    const saved = LS.get('lh_trip_draft', null);
-    const hasRealContent = saved && Object.keys(saved).some(
-      k => !(k in blankDraft) && saved[k] !== '' && saved[k] !== 0 && saved[k] != null
-    );
-    if (hasRealContent) {
-      const label = saved.name ? `"${saved.name}"` : 'an unfinished trip';
-      if (confirm(`You have a saved draft for ${label}. Resume it?\n\nChoose Cancel to start a new, blank trip request instead — the saved draft will be discarded.`)) {
-        _wzDraft = saved;
-      } else {
-        _wzDraft = blankDraft;
-        LS.set('lh_trip_draft', {});
-      }
-    } else {
-      _wzDraft = saved || blankDraft;
-    }
-    document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
+    _finishOpenTripWizard(existing);
+    return;
   }
+  const blankDraft = {
+    origin:  'Clover Hill High School',
+    sponsor: 'Adam Berneche',
+    sub:     'same-day',
+    status:  'planned',
+  };
+  // A saved draft used to repopulate silently — including weeks later,
+  // for a completely unrelated new trip, with stale dates/destinations/
+  // medical-staff names and no way to tell it happened. Only auto-load
+  // when the draft actually has real content beyond the same defaults
+  // every fresh wizard starts with, and ask first even then.
+  const saved = LS.get('lh_trip_draft', null);
+  const hasRealContent = saved && Object.keys(saved).some(
+    k => !(k in blankDraft) && saved[k] !== '' && saved[k] !== 0 && saved[k] != null
+  );
+  if (hasRealContent) {
+    const label = saved.name ? `"${saved.name}"` : 'an unfinished trip';
+    // FIXED: was a blocking confirm() — routed through the app's own
+    // styled dialog instead, so the shared tail (below) now runs from
+    // each async branch rather than after a synchronous if/else.
+    _showConfirm(
+      `You have a saved draft for ${label}. Resume it?\n\nChoose Cancel to start a new, blank trip request instead — the saved draft will be discarded.`,
+      () => { _wzDraft = saved; document.getElementById('nt-modal-title').textContent = 'New Field Trip Request'; _finishOpenTripWizard(null); },
+      {
+        confirmLabel: 'Resume Draft', danger: false, ariaLabel: 'Resume saved trip draft',
+        onCancel: () => {
+          _wzDraft = blankDraft;
+          LS.set('lh_trip_draft', {});
+          document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
+          _finishOpenTripWizard(null);
+        },
+      }
+    );
+    return;
+  }
+  _wzDraft = saved || blankDraft;
+  document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
+  _finishOpenTripWizard(null);
+}
 
+function _finishOpenTripWizard(existing) {
   // wzUpdate() only writes to localStorage for brand-new trips (lh_trip_draft
   // is specifically the "resume an unfinished new trip" slot — reusing it for
   // edits would leak a half-finished edit into the next unrelated new-trip
@@ -6559,8 +6595,8 @@ function renderOfficerGrid(list){
         ${s.email?`<a href="mailto:${s.email}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
         ${s.parentEmail?`<a href="mailto:${s.parentEmail}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
         ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${s.phone}</span><span style="color:var(--border)">|</span>`:''}
-        <button class="btn btn-outline btn-xs" style="font-size:.63rem;margin-left:auto" onclick="openEditMember(${s.id})">✏️</button>
-        <button class="btn btn-danger btn-xs" style="font-size:.63rem" onclick="delStu(${s.id})">✕</button>
+        <button class="btn btn-outline btn-xs" style="font-size:.63rem;margin-left:auto" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
+        <button class="btn btn-danger btn-xs" style="font-size:.63rem" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
       </div>
       ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.72rem;color:var(--muted);font-style:italic">${s.notes}</div>`:''}    </div>`).join('')}
   </div>`;
@@ -6586,8 +6622,8 @@ function renderMemberTable(list){
         <td>${s.paid?'<span style="color:#15803d;font-size:.75rem;font-weight:700">✓ Paid</span>':'<span style="color:#d97706;font-size:.75rem;font-weight:700">⚠ Owed</span>'}</td>
         <td style="font-size:.72rem">${s.email?`<a href="mailto:${s.email}" style="color:var(--navy)">${s.email}</a>`:''}</td>
         <td style="white-space:nowrap">
-          <button class="btn btn-outline btn-xs" onclick="openEditMember(${s.id})">✏️</button>
-          <button class="btn btn-danger btn-xs" onclick="delStu(${s.id})">✕</button>
+          <button class="btn btn-outline btn-xs" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
+          <button class="btn btn-danger btn-xs" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
         </td>
       </tr>`).join('')}</tbody>
     </table>
@@ -7482,10 +7518,11 @@ function markAllSlips(status) {
   // Compliance data, whole-roster impact — a misclick here shouldn't be
   // able to mark real permission slips "returned" for every student with
   // no confirmation, unlike every other single-student action on this page.
-  if(!confirm(`Mark all ${roster.length} student(s) on this trip as "${status}"? This changes every student's permission-slip status at once.`)) return;
-  roster.forEach(s=>s.status=status);
-  persistSlips();
-  renderSlipView();
+  _showConfirm(`Mark all ${roster.length} student(s) on this trip as "${status}"? This changes every student's permission-slip status at once.`, () => {
+    roster.forEach(s=>s.status=status);
+    persistSlips();
+    renderSlipView();
+  }, { confirmLabel: 'Mark All', danger: false, ariaLabel: 'Mark all permission slips' });
 }
 
 function delSlipStudent(tripId, studentId) {
@@ -8438,7 +8475,7 @@ function renderArchiveCard(a) {
         ${stars ? `<span style="font-size:.85rem">${stars}</span>` : ''}
         ${a.outcome ? `<span style="font-size:.68rem;font-weight:700;padding:2px 8px;border-radius:20px;background:${outcomeColors[a.outcome]||'#f3f4f6'}">${outcomeLabels[a.outcome]||''}</span>` : ''}
         <button class="btn btn-outline btn-xs" onclick="openArchiveModal(${t.id})" style="font-size:.65rem">✏️ Edit</button>
-        <button class="btn btn-outline btn-xs" onclick="deleteArchiveEntry(${a.id})" style="font-size:.65rem;color:var(--red);border-color:var(--red)">✕</button>
+        <button class="btn btn-outline btn-xs" onclick="deleteArchiveEntry(${a.id})" aria-label="Remove ${escH(t.name)} from archive" style="font-size:.65rem;color:var(--red);border-color:var(--red)">✕</button>
       </div>
     </div>
     <!-- Glows & Grow -->
@@ -9404,7 +9441,7 @@ function renderWBLTracker() {
       <td style="padding:.55rem .75rem;white-space:nowrap">
         <button onclick="openWBLEditStudent('${s.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:var(--navy);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:3px">Edit</button>
         <button onclick="wblLogHours('${s.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0369a1;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:3px">+ Hours</button>
-        <button onclick="deleteWBLStudent('${s.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
+        <button onclick="deleteWBLStudent('${s.id}')" aria-label="Remove ${escH(s.fname)} ${escH(s.lname)} from WBL tracker" style="font-size:.7rem;padding:.2rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -9648,19 +9685,21 @@ function sbeCheckAll() {
   // Compliance checklist, whole-list impact — sbeReset() right below
   // already confirms before clearing everything; marking everything
   // "done" at once deserves the same guard.
-  if (!confirm('Mark all SBE checklist items as done? This affects every item on the list.')) return;
-  _flushSbeNote();
-  SBE_ELEMENTS.forEach(e => { SBE_STATUS[e.id] = SBE_STATUS[e.id]||{}; SBE_STATUS[e.id].done = true; });
-  persistSBE();
-  renderSBEChecklist();
+  _showConfirm('Mark all SBE checklist items as done? This affects every item on the list.', () => {
+    _flushSbeNote();
+    SBE_ELEMENTS.forEach(e => { SBE_STATUS[e.id] = SBE_STATUS[e.id]||{}; SBE_STATUS[e.id].done = true; });
+    persistSBE();
+    renderSBEChecklist();
+  }, { confirmLabel: 'Mark All Done', danger: false, ariaLabel: 'Mark all SBE checklist items done' });
 }
 
 function sbeReset() {
-  if (!confirm('Reset all SBE checklist items?')) return;
-  _flushSbeNote();
-  SBE_STATUS = {};
-  persistSBE();
-  renderSBEChecklist();
+  _showConfirm('Reset all SBE checklist items?', () => {
+    _flushSbeNote();
+    SBE_STATUS = {};
+    persistSBE();
+    renderSBEChecklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset SBE checklist' });
 }
 
 function sbePrintChecklist() {
@@ -10818,7 +10857,7 @@ function renderPOTable() {
         <select onchange="updatePOStage('${po.id}',this.value)" class="status" style="border:none;background:${ss.bg};color:${ss.fg};cursor:pointer">${opts}</select>
       </td>
       <td style="padding:.45rem .7rem">
-        <button onclick="deletePO('${po.id}')" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
+        <button onclick="deletePO('${po.id}')" aria-label="Remove purchase order for ${escH(po.item)}" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
       </td>
     </tr>`;
   }).join('');
@@ -10951,7 +10990,7 @@ function renderFinance() {
           <div style="font-size:.68rem;color:var(--muted)">units</div>
           <div style="display:flex;gap:.3rem;margin-top:.2rem">
             <button onclick="openInventoryModal('${item.id}')" style="font-size:.65rem;padding:.15rem .4rem;background:var(--navy);color:#fff;border:none;border-radius:3px;cursor:pointer">Edit</button>
-            <button onclick="deleteInventorySKU('${item.id}')" style="font-size:.65rem;padding:.15rem .4rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:3px;cursor:pointer">✕</button>
+            <button onclick="deleteInventorySKU('${item.id}')" aria-label="Remove ${escH(item.name)} from inventory" style="font-size:.65rem;padding:.15rem .4rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:3px;cursor:pointer">✕</button>
           </div>
         </div>
       </div>`;
@@ -11156,7 +11195,7 @@ function renderESRoster() {
       ${p.notes ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;font-style:italic">${p.notes}</div>` : ''}
       <div style="display:flex;gap:.35rem;margin-top:.6rem">
         <button onclick="openESEditPlayer('${p.id}')" style="flex:1;font-size:.7rem;padding:.25rem;background:var(--navy);color:#fff;border:none;border-radius:5px;cursor:pointer">Edit</button>
-        <button onclick="deleteESPlayer('${p.id}')" style="font-size:.7rem;padding:.25rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:5px;cursor:pointer">✕</button>
+        <button onclick="deleteESPlayer('${p.id}')" aria-label="Remove ${escH(p.fname)} ${escH(p.lname)}" style="font-size:.7rem;padding:.25rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:5px;cursor:pointer">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -11217,17 +11256,19 @@ function deleteESPlayer(id) {
 function closeESModal() { document.getElementById('es-player-modal').style.display='none'; }
 
 function resetSSBUChecklist() {
-  if (!confirm('Reset all Smash Bros pre-match checklist items?')) return;
-  SSBU_CHECK_STATUS = {};
-  persistESChecklists();
-  renderSSBUChecklist();
+  _showConfirm('Reset all Smash Bros pre-match checklist items?', () => {
+    SSBU_CHECK_STATUS = {};
+    persistESChecklists();
+    renderSSBUChecklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset Smash Bros checklist' });
 }
 
 function resetMK8Checklist() {
-  if (!confirm('Reset all Mario Kart pre-match checklist items?')) return;
-  MK8_CHECK_STATUS = {};
-  persistESChecklists();
-  renderMK8Checklist();
+  _showConfirm('Reset all Mario Kart pre-match checklist items?', () => {
+    MK8_CHECK_STATUS = {};
+    persistESChecklists();
+    renderMK8Checklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset Mario Kart checklist' });
 }
 
 // ── Checklists ────────────────────────────────────────────
@@ -11298,7 +11339,7 @@ function renderMatchLog() {
           <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:${color};line-height:1">${m.us} – ${m.them}</div>
           <div style="font-size:.68rem;font-weight:700;color:${color}">${label}</div>
         </div>
-        <button onclick="deleteMatch('${m.id}')" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
+        <button onclick="deleteMatch('${m.id}')" aria-label="Remove match vs ${escH(m.opp)}" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -14645,7 +14686,7 @@ function renderObsChecklist() {
       <span style="font-size:.65rem;padding:1px 7px;border-radius:20px;font-weight:700;margin-left:auto;${st}">${o.outcome==='pending'?'⏳ Pending':o.outcome==='positive'?'✅ Positive':o.outcome==='concern'?'⚠️ Concern':'🔴 Action'}</span>
       ${o.followup?`<span style="font-size:.63rem;color:#b91c1c;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.followup}">↳ ${o.followup}</span>`:''}
       ${(o.outcome==='action'||o.outcome==='concern')?`<button onclick="resolveObsAction('${o.id}')" style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:5px;padding:1px 6px;font-size:.63rem;font-weight:700;cursor:pointer;flex-shrink:0" title="Mark follow-up complete — removes from priority queue">✅ Resolve</button>`:''}
-      <button onclick="deleteObsLog('${o.id}')" style="background:none;border:none;color:#d1d5db;cursor:pointer;font-size:.72rem;flex-shrink:0">✕</button>
+      <button onclick="deleteObsLog('${o.id}')" aria-label="Remove observation log entry from ${escH(o.date)}" style="background:none;border:none;color:#d1d5db;cursor:pointer;font-size:.72rem;flex-shrink:0">✕</button>
     </div>`;
   }).join('');
 
@@ -14715,11 +14756,12 @@ function toggleObsCheck(key, val) {
 }
 
 function resetObsPrep() {
-  if (!confirm('Reset all checklist items? This clears today\'s prep — observation history is kept.')) return;
-  const saved = LS.get('lh_obs_prep', {});
-  const next = { _expanded: saved._expanded };
-  LS.set('lh_obs_prep', next);
-  renderObsChecklist();
+  _showConfirm('Reset all checklist items? This clears today\'s prep — observation history is kept.', () => {
+    const saved = LS.get('lh_obs_prep', {});
+    const next = { _expanded: saved._expanded };
+    LS.set('lh_obs_prep', next);
+    renderObsChecklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset observation prep checklist' });
 }
 
 function openObsLog() {
@@ -14901,6 +14943,13 @@ function setEmailBridgeUrl(url) {
 function clearEmailBridgeUrl() {
   LS.set('lh_email_bridge_url', null);
   updateEmailBridgeBadge_();
+}
+
+function _removeEmailBridge() {
+  _showConfirm('Remove email bridge connection?', () => {
+    clearEmailBridgeUrl();
+    closeModal('emailbridge');
+  }, { confirmLabel: 'Remove', ariaLabel: 'Remove email bridge connection' });
 }
 
 function updateEmailBridgeBadge_() {
@@ -16262,7 +16311,7 @@ function showBragBoardPromptBanner() {
           🔄 Poll Now
         </button>
         <button class="btn btn-outline" style="color:#dc2626;border-color:#dc2626;margin-left:auto"
-          onclick="if(confirm('Remove email bridge connection?')){clearEmailBridgeUrl();closeModal('emailbridge')}">
+          onclick="_removeEmailBridge()">
           Remove
         </button>
       </div>

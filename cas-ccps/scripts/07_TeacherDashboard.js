@@ -551,7 +551,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
       <div class="field">
         <label>Competencies addressed <span class="req">*</span></label>
         <div id="competency-tabs-shell">
-          <div class="competency-loading" id="comp-loading">Loading competencies…</div>
+          <div class="competency-loading" id="comp-loading" role="status" aria-live="polite">Loading competencies…</div>
           <!-- Course tabs injected here by loadCompetencies() -->
         </div>
         <div class="hint" id="comp-hint" style="margin-top:6px"></div>
@@ -627,15 +627,25 @@ function renderWarmUpReadiness(r) {
   // confidence") a teacher has no context for. Reworded to describe what
   // it actually means for their students.
   const confEl = document.getElementById("wr-confidence");
-  if (confEl) confEl.textContent = r.withShadowConfidence
-    ? r.withShadowConfidence + " building a personalized learning profile"
-    : "";
+  // FIXED: clearing textContent alone left an empty flex item still taking
+  // up this row's gap — with 0 students building confidence (common early
+  // in a term), the panel showed a stray blank gap where this span used
+  // to be instead of collapsing cleanly.
+  if (confEl) {
+    confEl.style.display = r.withShadowConfidence ? "" : "none";
+    confEl.textContent = r.withShadowConfidence
+      ? r.withShadowConfidence + " building a personalized learning profile"
+      : "";
+  }
 
   // Locked (high confidence)
   const lockEl = document.getElementById("wr-locked");
-  if (lockEl) lockEl.textContent = r.locked
-    ? r.locked + " ready for fully personalized feedback"
-    : "";
+  if (lockEl) {
+    lockEl.style.display = r.locked ? "" : "none";
+    lockEl.textContent = r.locked
+      ? r.locked + " ready for fully personalized feedback"
+      : "";
+  }
 }
 
 // Per-term client cache — switching the term filter back and forth used to
@@ -1110,6 +1120,7 @@ function loadCompetencies() {
           role="tab"
           aria-selected="\${isFirst ? "true" : "false"}"
           aria-controls="panel-\${esc(course.code)}"
+          tabindex="\${isFirst ? "0" : "-1"}"
           onclick="switchCourseTab('\${esc(course.code)}')"
           onkeydown="courseTabKeydown(event,'\${esc(course.code)}')"
           title="\${esc(course.name)}"
@@ -1189,13 +1200,20 @@ function loadCompetencies() {
 // ── switchCourseTab ───────────────────────────────────────────────────────
 function switchCourseTab(code) {
   // Deactivate all tabs and panels
-  document.querySelectorAll(".course-tab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); });
+  // FIXED: roving tabindex added — every tab was individually Tab-
+  // stoppable (all left at the browser's default focusable tabindex),
+  // defeating the standard ARIA tabs pattern this role="tab"/aria-selected
+  // markup otherwise implements: only the active tab should sit in the
+  // page's Tab order, with arrow keys (courseTabKeydown) moving among the
+  // rest. With more than a couple of course preps this made tabbing
+  // through the lesson form noticeably longer than intended.
+  document.querySelectorAll(".course-tab").forEach(t => { t.classList.remove("active"); t.setAttribute("aria-selected", "false"); t.setAttribute("tabindex", "-1"); });
   document.querySelectorAll(".course-panel").forEach(p => p.classList.remove("active"));
 
   // Activate selected
   const tab   = document.getElementById("tab-"   + code);
   const panel = document.getElementById("panel-" + code);
-  if (tab)   { tab.classList.add("active"); tab.setAttribute("aria-selected", "true"); }
+  if (tab)   { tab.classList.add("active"); tab.setAttribute("aria-selected", "true"); tab.setAttribute("tabindex", "0"); }
   if (panel) panel.classList.add("active");
 
   activeCourseTab = code;
