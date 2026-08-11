@@ -1254,7 +1254,7 @@ function renderServiceStatus(account) {
   el.innerHTML =
     '<div style="display:flex;justify-content:space-between;align-items:center">' +
     '<span style="color:var(--text3);font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.07em">Managed Inference · ' + tierLabel + '</span>' +
-    '<span style="color:var(--amber-light);font-family:var(--mono)">' + account.credit_balance + ' credits</span>' +
+    '<span style="color:var(--amber-light);font-family:var(--mono)">' + account.credit_balance + ' credit' + (account.credit_balance === 1 ? '' : 's') + '</span>' +
     '</div>' +
     (account.credit_balance < 20
       ? '<div style="color:var(--warn);font-size:11px;margin-top:4px">⚠ Low credits — sessions will pause when credits run out.</div>'
@@ -1592,6 +1592,11 @@ function renderArmStep() {
   document.getElementById('arm-step-lbl').textContent   = s.label;
   document.getElementById('arm-step-title').textContent  = s.title;
   document.getElementById('arm-step-body').innerHTML     = s.html;
+  // Step 3's Admin Ghost / Necessary Struggle tip-icons are injected here,
+  // after _tipInit()'s one-time boot pass already ran — without this
+  // they'd keep their raw title attribute forever and never get the
+  // tap-to-toggle popover/ARIA wiring every other tip-icon on the page has.
+  _tipInit();
   document.getElementById('arm-prev').style.display      = armStep > 0 ? '' : 'none';
   document.getElementById('arm-next').innerHTML          = armStep === ARM_STEPS.length - 1
     ? 'Save & Personalize <i class="ti ti-bolt"></i>'
@@ -1947,8 +1952,14 @@ function handleArchive() {
     const archived  = (res && res.archived)  || 0;
     const failed    = (res && res.failed)    || 0;
     const rowWord = archived + ' row' + (archived === 1 ? '' : 's');
+    // FIXED: the outer rowWord was pluralized in an earlier round, but this
+    // nested clause wasn't — failed === 1 rendered "1 were failed-intake
+    // rows, not successes."
+    const failedClause = failed === 1
+      ? '1 was a failed-intake row, not a success'
+      : failed + ' were failed-intake rows, not successes';
     const msg = failed > 0
-      ? rowWord + ' archived (' + failed + ' were failed-intake rows, not successes).'
+      ? rowWord + ' archived (' + failedClause + ').'
       : rowWord + ' archived to STAGING_ARCHIVE.';
     showDiagStatus(msg, failed > 0 ? 'warn' : undefined, gen);
   }, (err) => {
@@ -2282,6 +2293,13 @@ function selectDeploy(el) {
 // tap/click-to-toggle popover, keyboard-operable, with one shared popover
 // element reused across all icons.
 let _tipOpenIcon = null;
+// Idempotent by design (only ever matches elements still carrying a raw
+// `title`, which get it stripped as their very first step below) — safe
+// to call again any time new .tip-icon markup is injected into the page
+// after the initial boot pass, e.g. Arm modal step HTML swapped in by
+// renderArmStep() (see call below). The two document-level listeners are
+// registered once, outside this function, so calling it repeatedly never
+// piles up duplicate click/Escape handlers.
 function _tipInit() {
   document.querySelectorAll('.tip-icon[title]').forEach(el => {
     el.dataset.tip = el.getAttribute('title');
@@ -2295,9 +2313,9 @@ function _tipInit() {
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleTip(el); }
     });
   });
-  document.addEventListener('click', () => closeTip());
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); });
 }
+document.addEventListener('click', () => closeTip());
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTip(); });
 function toggleTip(el) {
   if (_tipOpenIcon === el) { closeTip(); return; }
   closeTip();

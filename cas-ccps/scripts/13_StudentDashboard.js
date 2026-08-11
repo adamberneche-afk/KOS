@@ -441,7 +441,11 @@ function render(data) {
           <div class="unit-name">\${esc(a.unitName)}</div>
           <div class="pill pill-\${a.statusClass}">\${esc(a.displayStatus)}</div>
         </div>
-        <div class="card-meta">Period \${esc(a.period)} &nbsp;·&nbsp; \${esc(a.subject)}</div>
+        <!-- FIXED: was a fixed "Period X · Subject" template — a blank
+             period rendered as a dangling "Period  ·" (empty label, double
+             space). Mirrors the teacher dashboard's conditional-join
+             pattern (07_TeacherDashboard.js's student-meta line). -->
+        <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
         <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
         \${a.docUrl
           ? \`<a href="\${a.docUrl}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
