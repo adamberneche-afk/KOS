@@ -14,12 +14,14 @@ field-trip coordinator. Despite the name and its coverage of courses
 only, covers a materially wider scope than cas-ccps's two-course pair
 (DECA, E-Sports, trips, a third course), and has no code-level integration
 with cas-ccps beyond referencing the same course numbers. 100%
-client-side: opens as a local HTML file, all state in `localStorage`, AI
-calls go directly from the browser to the Gemini API with a
-user-supplied key — no server, no build step, no relation to either other
-system's "no API keys on any user-facing surface" architecture (that
-constraint is specific to kos-personal/cas-ccps; this tool was never
-built to it).
+client-side: opens as a local HTML file, all state in `localStorage`, no
+server, no build step. The app's original design called for AI features
+calling Gemini directly from the browser with a user-supplied API key —
+that key was never obtainable, so every "AI"-branded feature shipped as
+deterministic local logic instead (see "AI drafting" below for the one
+feature that now has a real backend, added later via the same
+GAS+Workspace-Flow bifurcation kos-personal/cas-ccps use, requiring no API
+key at all).
 
 ## Layout
 
@@ -27,8 +29,8 @@ built to it).
 |---|---|
 | `student-leader-hub.html` | The live app (16,682 lines as of the UI/UX hardening rounds below — grew from 15,173 lines through 9 rounds of fixes/comments) — open directly in a browser |
 | `student-leader-hub.jsx` | A React/JSX exploration draft, not the deployed artifact |
-| `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling) — see `LEADERHUB_EMAIL_SETUP.md` |
-| `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup) |
+| `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling, sub-plan/brag-email creation, and — see below — the AI-drafting job queue) — see `LEADERHUB_EMAIL_SETUP.md` and `LEADERHUB_AI_FLOW_SETUP.md` |
+| `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup, Brag Board Flow prompt) |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
 | `drive-tools/` | Later, **not-yet-executed** Drive-cleanup tooling (`LH_DriveDocSplitter.gs`, `LH_8177_Rename.gs`, `LH_AppManifestUpdater.py`) for splitting/renaming 8177 lesson docs |
 | `archived/studentleaderhub_EARLY_PROTOTYPE.html` | A much earlier prototype (2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board, SCR, trips, settings — with a working trips module already present, but no dedicated DECA/WBL/E-Sports modules and no Gemini integration) — genuinely different from the live app, not a duplicate, kept for history |
@@ -107,6 +109,65 @@ both now fixed:
    offset into the correct destination child + local offset before calling
    `setAttributes()` — correct regardless of how either side's runs are
    split.
+
+## AI drafting — bifurcated GAS + Workspace Flow backend
+
+The app's original design called for direct browser→Gemini calls with a
+user-supplied API key — never obtainable, so every "AI"-branded feature
+(`aiComposeEmail`, `generateAIInsights`, `wblAIInsights`, `lpRunAI`,
+`generateBragEmail`) shipped as deterministic local logic instead, with no
+model call anywhere (see the "Removed: Gemini AI infrastructure" comment
+in `student-leader-hub.html`).
+
+**Real AI drafting is now built for one of those five — Brag Board's
+"✨ Generate"** — using the same **Bifurcation Boundary** architecture
+kos-personal/cas-ccps already use for their own AI integrations: GAS does
+100% of the deterministic work (assembling the wins list, queuing a job,
+polling for the result, cleaning up old rows), and a separate **Google
+Workspace Flow** — a no-code automation built in the Workspace UI, using
+its own "Gemini — Generate content" connector — does 100% of the actual
+generation. That connector runs on the Workspace account's own built-in
+Gemini access, not a developer API key, which is exactly what solves the
+original "can't get an API" blocker.
+
+**What's new:**
+- `EmailBridge.gs` gained two actions — `aiDraft` (queues a job into a
+  lazily-created "LeaderHub AI Queue" spreadsheet) and `checkAiJob` (polls
+  for and returns a completed result, sweeping stale rows on every call so
+  an unbuilt or broken Flow can't leak rows forever).
+- `student-leader-hub.html`'s `_generateBragEmailInner()` tries the AI
+  path first (when an Apps Script bridge URL is configured), polling for
+  up to ~90 seconds via a new `pollAiJob_()` helper, and **always falls
+  back to the existing deterministic draft** on any failure, timeout, or
+  when no bridge is configured at all — this feature is purely additive;
+  Brag Board keeps working exactly as it always has if the Flow is never
+  built.
+- `leader-hub/appsscript.json` gained the `spreadsheets` OAuth scope
+  (caught by `tools/gas-lint/check.js` before it could become a silent
+  runtime authorization failure).
+- Two new docs: `LEADERHUB_AI_FLOW_SETUP.md` (the full handshake spec —
+  sheet schema, Flow trigger/connector configuration, payload shape —
+  same convention as `kos-personal/STUDIO_INTEGRATION_SPEC.md`) and
+  `BRAG_EMAIL_FLOW_PROMPT.md` (the exact system prompt to paste into the
+  Flow's Gemini step).
+
+**What this doesn't include yet:** the Workspace Flow itself isn't built
+— building a no-code Flow happens in the live Google Workspace UI, not a
+file this repo can contain, same limitation kos-personal/cas-ccps's own
+unbuilt Studio flows already live with. `LEADERHUB_AI_FLOW_SETUP.md` is
+the complete spec to build it against. The other four "AI"-branded
+features (`aiComposeEmail`, `generateAIInsights`, `wblAIInsights`,
+`lpRunAI`) remain deterministic local logic — not extended to this
+backend, by explicit scope decision, not oversight.
+
+**A deliberate privacy choice, not an oversight:** unlike kos-personal/
+cas-ccps (which anonymize before any AI call, per their FERPA-scoped
+design), this feature sends the wins list to Gemini as-is, which may
+include real student names (e.g. a DECA placement) — the whole point of a
+"brag" email is naming real achievements, and this is Adam's personal
+professional-communications tool, not a student-education-record system.
+See `LEADERHUB_AI_FLOW_SETUP.md`'s "What data this sends through Gemini"
+section for the full rationale.
 
 ## UI/UX Hardening — Rounds 1–9
 

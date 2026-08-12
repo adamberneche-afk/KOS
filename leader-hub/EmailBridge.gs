@@ -6,6 +6,8 @@
  *   action: "subPlan"      → Create Google Doc sub plan  → {ok, docUrl}
  *   action: "bragEmail"    → Create Gmail draft           → {ok}
  *   action: "markConsumed" → Mark horizon items consumed  → {ok, consumed}
+ *   action: "aiDraft"      → Queue an AI drafting job      → {ok, jobId}
+ *   action: "checkAiJob"   → Poll a queued AI job          → {ok, status, result|error}
  *
  * GET endpoint (unchanged):
  *   Returns pending horizon items from Gmail label "LeaderHub"
@@ -15,6 +17,15 @@
  *   2. Deploy → New Deployment → Web App
  *      Execute as: Me | Access: Anyone in CCPS domain
  *   3. Copy /exec URL → LeaderHub Settings → Email Bridge URL
+ *
+ * AI drafting (optional): see LEADERHUB_AI_FLOW_SETUP.md for how "aiDraft"/
+ * "checkAiJob" bifurcate into a GAS-side job queue (this file) plus a
+ * separate Google Workspace Flow that does the actual Gemini call — no
+ * developer API key involved anywhere, same pattern kos-personal/cas-ccps
+ * use for their own Studio/Flow integrations. This file works exactly as
+ * before with zero setup if you never touch that doc — aiDraft/checkAiJob
+ * just sit in a PENDING queue forever with no Flow watching them, and the
+ * client already falls back to its own local draft when that happens.
  */
 
 const CONFIG = {
@@ -40,6 +51,8 @@ function doPost(e) {
     if (action === 'markConsumed') return jsonResponse_(markConsumed_(body.ids || []));
     if (action === 'subPlan')      return jsonResponse_(createSubPlanDoc_(body));
     if (action === 'bragEmail')    return jsonResponse_(createBragDraft_(body));
+    if (action === 'aiDraft')      return jsonResponse_(queueAiJob_(body));
+    if (action === 'checkAiJob')   return jsonResponse_(checkAiJob_(body));
     return jsonResponse_({ ok: false, error: 'Unknown action: ' + action });
   } catch (err) {
     return jsonResponse_({ ok: false, error: err.message });
@@ -92,6 +105,101 @@ function createBragDraft_(body) {
   const text    = body.body    || '(No content)';
   GmailApp.createDraft(to, subject, text);
   return { ok: true };
+}
+
+// ── AI job queue — bifurcated backend for AI drafting ─────────────────────────
+// This file (GAS) only ever does deterministic work: create the job row,
+// hand back a jobId, and later read whatever row a Flow wrote into.
+// It never calls Gemini itself and never holds an API key. The actual
+// generation happens in a separate Google Workspace Flow (built by hand in
+// the Workspace UI, not code — see LEADERHUB_AI_FLOW_SETUP.md) that polls
+// this sheet for PENDING rows, calls Gemini via its own "Generate content"
+// connector step (using the Workspace account's built-in Gemini access,
+// not a developer API key), and writes the result back. Same Bifurcation
+// Boundary kos-personal/cas-ccps already use for their own Studio/Flow
+// integrations — GAS orchestrates state, the Flow only ever generates text.
+
+const AI_QUEUE_SHEET_PROP = 'AI_QUEUE_SHEET_ID';
+const AI_QUEUE_SHEET_NAME = 'AI_Queue';
+const AI_QUEUE_HEADERS    = ['Timestamp', 'JobId', 'Type', 'Payload', 'Status', 'Result', 'Error'];
+// Column indices (0-based) matching the header row above.
+const AIQ_COL = { TIMESTAMP: 0, JOB_ID: 1, TYPE: 2, PAYLOAD: 3, STATUS: 4, RESULT: 5, ERROR: 6 };
+// Rows older than this are swept on every checkAiJob_ call, whether or not
+// they were ever claimed — a Flow that's never been built (or is
+// mid-setup) would otherwise let PENDING rows accumulate forever with
+// nothing ever reading them back out.
+const AI_QUEUE_MAX_AGE_MS = 2 * 60 * 60 * 1000; // 2 hours
+
+function _getAiQueueSheet_() {
+  const prop = PropertiesService.getScriptProperties();
+  let id = prop.getProperty(AI_QUEUE_SHEET_PROP);
+  let ss;
+  if (id) {
+    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } // deleted/moved — rebuild below
+  }
+  if (!ss) {
+    ss = SpreadsheetApp.create('LeaderHub AI Queue');
+    prop.setProperty(AI_QUEUE_SHEET_PROP, ss.getId());
+  }
+  let sheet = ss.getSheetByName(AI_QUEUE_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.getSheets()[0];
+    sheet.setName(AI_QUEUE_SHEET_NAME);
+    sheet.appendRow(AI_QUEUE_HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function queueAiJob_(body) {
+  const type    = body.type    || '';
+  const payload = body.payload || {};
+  if (!type) return { ok: false, error: 'Missing job type' };
+
+  const jobId = Utilities.getUuid();
+  const sheet = _getAiQueueSheet_();
+  sheet.appendRow([new Date(), jobId, type, JSON.stringify(payload), 'PENDING', '', '']);
+  return { ok: true, jobId };
+}
+
+function checkAiJob_(body) {
+  const jobId = body.jobId || '';
+  if (!jobId) return { ok: false, error: 'Missing jobId' };
+
+  const sheet = _getAiQueueSheet_();
+  const data  = sheet.getDataRange().getValues();
+  const now   = Date.now();
+  // Sweep stale rows (any status — a never-claimed PENDING row is just as
+  // much a leak as an orphaned COMPLETE one) from the bottom up so deleting
+  // a row doesn't shift the index of rows still to be checked. Deliberately
+  // skips the target jobId's own row here — deleting it (if applicable)
+  // happens below, against a fresh read, to avoid computing its row number
+  // from indices this loop may have already invalidated by deleting rows
+  // that sat between it and the rows already swept.
+  for (let i = data.length - 1; i >= 1; i--) {
+    const row = data[i];
+    if (row[AIQ_COL.JOB_ID] === jobId) continue;
+    const age = now - new Date(row[AIQ_COL.TIMESTAMP]).getTime();
+    if (age > AI_QUEUE_MAX_AGE_MS) sheet.deleteRow(i + 1);
+  }
+
+  // Fresh read — the sweep above may have shifted every row's real sheet
+  // position, so a jobId's index has to be looked up again, not reused
+  // from the pre-sweep `data` array.
+  const data2     = sheet.getDataRange().getValues();
+  const rowIndex2 = data2.findIndex(r => r[AIQ_COL.JOB_ID] === jobId); // 0-based within data2, -1 if absent
+  if (rowIndex2 < 1) return { ok: true, status: 'NOT_FOUND' };
+  const found = data2[rowIndex2];
+
+  const status = found[AIQ_COL.STATUS] || 'PENDING';
+  if (status === 'PENDING') return { ok: true, status: 'PENDING' };
+
+  // COMPLETE or ERROR — hand it back once, then remove the row. The client
+  // is the only reader; there's nothing left to keep this row around for.
+  sheet.deleteRow(rowIndex2 + 1);
+
+  if (status === 'ERROR') return { ok: true, status: 'ERROR', error: found[AIQ_COL.ERROR] || 'Unknown error' };
+  return { ok: true, status: 'COMPLETE', result: found[AIQ_COL.RESULT] || '' };
 }
 
 // ── Horizon label scanner (GET) — unchanged ───────────────────────────────────
