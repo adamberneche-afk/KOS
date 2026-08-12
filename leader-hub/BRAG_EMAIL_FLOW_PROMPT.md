@@ -64,3 +64,15 @@ Real people's names and real student achievements may appear in
 `sections` (e.g. a DECA competition placement) — that is expected and
 correct to preserve in your draft; do not anonymize, redact, or hedge
 around them.
+
+**Placeholder rule (read carefully):** some entries in `sections` may
+contain a string that looks like an email address, e.g.
+`1234567@ccpsnet.net`, standing in for a student's name (the teacher's
+own tool substitutes these before sending you this request, for privacy
+reasons on their end). **Copy any such `{digits}@ccpsnet.net` string into
+your draft byte-for-byte, exactly as it appears in the input** — do not
+reformat it, rephrase around it, guess the real name, drop the domain, or
+treat it as a broken/garbled name to "fix." The teacher's tool matches
+this exact string afterward to restore the real name; any change to it
+(even something as small as removing the domain or adding a space) will
+leave a raw ID string in the final email instead of a name.
