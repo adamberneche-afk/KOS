@@ -12,15 +12,15 @@
   ║  on this device. The only network calls this page ever makes go to   ║
   ║  script.google.com — your own Apps Script Web App (EmailBridge.gs).  ║
   ║  No direct Gemini/AI API call is ever made from the browser. Optional║
-  ║  AI drafting (Brag Board, Archive Insights narrative) hands off to   ║
-  ║  that same Apps Script, which queues a job for a separate Google     ║
-  ║  Workspace Flow to fulfill — see LEADERHUB_AI_FLOW_SETUP.md. Not a   ║
-  ║  FERPA-scoped data path, since this content is personal professional ║
-  ║  communication, not student education records. If a student ID      ║
-  ║  roster CSV has been uploaded (Settings), matched student names are  ║
-  ║  substituted for their CCPS ID before that request leaves the        ║
-  ║  browser; unmapped names are sent as-is — see                        ║
-  ║  LEADERHUB_AI_FLOW_SETUP.md.                                         ║
+  ║  AI drafting (Brag Board, Archive Insights, WBL Program Summary)     ║
+  ║  hands off to that same Apps Script, which queues a job for a        ║
+  ║  separate Google Workspace Flow to fulfill — see                     ║
+  ║  LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data path, since     ║
+  ║  this content is personal professional communication, not student    ║
+  ║  education records. If a student ID roster CSV has been uploaded     ║
+  ║  (Settings), matched student names are substituted for their CCPS    ║
+  ║  ID before that request leaves the browser; unmapped names are sent  ║
+  ║  as-is — see LEADERHUB_AI_FLOW_SETUP.md.                             ║
   ║  The Content-Security-Policy meta tag below enforces the             ║
   ║  script.google.com-only constraint.                                  ║
   ╚══════════════════════════════════════════════════════════════════════╝
@@ -11910,16 +11910,42 @@ async function generateAIInsights() {
   if (btn) btn.disabled = false;
 }
 
-// ── 4. wblAIInsights → WBL stats panel ───────────────────────────────────────
-function wblAIInsights() {
-  const done    = SBE_ELEMENTS.filter(e=>(SBE_STATUS[e.id]||{}).done).length;
-  const onTrack = WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='on-track').length;
-  const atRisk  = WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='at-risk').length;
+// ── 4. wblAIInsights → WBL stats panel + optional AI narrative ───────────────
+// Same split as generateAIInsights(): the stats grid/table is pure local
+// arithmetic, computed always, never handed to a model. The narrative
+// synthesis (patterns across which students need attention and why, plus
+// any free-text SBE checklist notes) optionally routes through the same
+// GAS+Workspace-Flow backend — see LEADERHUB_AI_FLOW_SETUP.md.
+//
+// FIXED while wiring this up: the stat tile and per-student badge below
+// used to check wblStudentStatus(s)==='at-risk', a status string that
+// function never actually returns (it returns 'not-started',
+// 'needs-attention', or 'on-track') — so the "At Risk" tile always read 0
+// and every non-on-track student showed a ❌ regardless of which of the
+// two real statuses applied. Fixed to match the real status values and to
+// build a specific reason per flagged student (missing agreement, hours
+// short of the 30 required, no reflections logged) instead of just a
+// pass/fail badge.
+function _wblAttentionReason(s) {
+  const hrs = Number(s.hours);
+  const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
+  const reasons = [];
+  if (!hasAgreement) reasons.push('no signed work agreement on file');
+  if (hrs < 30) reasons.push(`${hrs} of 30 required hours logged`);
+  if (Number(s.reflects) < 1) reasons.push('no reflections logged yet');
+  return reasons.join('; ');
+}
+
+async function wblAIInsights() {
+  const done      = SBE_ELEMENTS.filter(e=>(SBE_STATUS[e.id]||{}).done).length;
+  const onTrack   = WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='on-track').length;
+  const attention = WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='needs-attention');
+  const notStarted= WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='not-started');
   const avgH    = WBL_STUDENTS.length ? (WBL_STUDENTS.reduce((a,s)=>a+Number(s.hours),0)/WBL_STUDENTS.length).toFixed(1) : '—';
   const totalH  = WBL_STUDENTS.reduce((a,s)=>a+Number(s.hours),0).toFixed(1);
   const rows    = WBL_STUDENTS.map(s => {
     const status = wblStudentStatus(s);
-    const badge  = status==='on-track'?'✅':status==='at-risk'?'⚠️':'❌';
+    const badge  = status==='on-track'?'✅':status==='needs-attention'?'⚠️':'❌';
     return `<tr><td style="padding:.2rem .4rem">${s.fname} ${s.lname}</td><td style="padding:.2rem .4rem">${s.hours}h</td><td style="padding:.2rem .4rem">${badge} ${status}</td></tr>`;
   }).join('');
 
@@ -11933,16 +11959,89 @@ function wblAIInsights() {
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem">
       <div style="background:#f0f9ff;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${WBL_STUDENTS.length}</div><div style="font-size:.68rem;color:var(--muted)">Students</div></div>
       <div style="background:#f0fdf4;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${onTrack}</div><div style="font-size:.68rem;color:var(--muted)">On Track</div></div>
-      <div style="background:#fef3c7;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${atRisk}</div><div style="font-size:.68rem;color:var(--muted)">At Risk</div></div>
+      <div style="background:#fef3c7;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${attention.length}</div><div style="font-size:.68rem;color:var(--muted)">Needs Attention</div></div>
       <div style="background:#f8fafc;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${done}/${SBE_ELEMENTS.length}</div><div style="font-size:.68rem;color:var(--muted)">SBE Done</div></div>
     </div>
     <div style="font-size:.78rem;margin-bottom:.5rem"><strong>Total hours logged: ${totalH}h | Avg: ${avgH}h/student</strong></div>
-    <table style="width:100%;font-size:.76rem;border-collapse:collapse">
+    <table style="width:100%;font-size:.76rem;border-collapse:collapse;margin-bottom:1rem">
       <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Student</th><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Hours</th><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Status</th></tr>
       ${rows}
     </table>
+    <div style="padding-top:.85rem;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap">
+      <button id="wbl-ai-btn" class="btn btn-gold btn-sm" onclick="_wblGenerateNarrative()" style="flex:1">✨ Generate AI Summary</button>
+    </div>
+    <div id="wbl-ai-narrative"></div>
   </div>`;
   document.body.appendChild(modal);
+
+  // Stash the deterministic pieces the AI narrative needs so the button's
+  // handler (which has no closure over this call's locals) can read them.
+  window._wblInsightsSnapshot = {
+    totalStudents: WBL_STUDENTS.length,
+    onTrack, notStartedCount: notStarted.length,
+    sbeDone: done, sbeTotal: SBE_ELEMENTS.length,
+    avgHours: avgH, totalHours: totalH,
+    attentionDetails: attention.map(s => `${s.fname} ${s.lname}: ${_wblAttentionReason(s)}`),
+    sbeNotes: SBE_ELEMENTS.filter(e => !(SBE_STATUS[e.id]||{}).done && (SBE_STATUS[e.id]||{}).notes)
+                          .map(e => `${e.label}: ${SBE_STATUS[e.id].notes}`),
+  };
+}
+
+// Optional AI narrative — additive only, same Bifurcation Boundary pattern
+// as Brag Board / Archive Insights (see LEADERHUB_AI_FLOW_SETUP.md). The
+// stats above are already a complete, correct result on their own; this
+// just tries to surface real patterns across who needs attention and why,
+// plus any open SBE blockers, in prose.
+async function _wblGenerateNarrative() {
+  const btn = document.getElementById('wbl-ai-btn');
+  const narrativeEl = document.getElementById('wbl-ai-narrative');
+  const snap = window._wblInsightsSnapshot;
+  if (!btn || !narrativeEl || !snap) return;
+  if (btn.disabled) return;
+  const url = EMAIL_BRIDGE.url();
+  if (!url) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">AI drafting needs an Apps Script bridge URL configured in Settings.</div>'; return; }
+  if (!snap.attentionDetails.length && !snap.sbeNotes.length) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">Nothing flagged right now — no pattern to summarize.</div>'; return; }
+
+  btn.disabled = true;
+  narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)" id="wbl-ai-status">⏳ Drafting summary with AI…</div>`;
+  const statusEl = document.getElementById('wbl-ai-status');
+  try {
+    // Privacy: same roster-based substitution Brag Board/Archive Insights
+    // use (Settings → Student ID Lookup) — swap any known student name in
+    // attentionDetails for their CCPS ID before this leaves the browser.
+    const jobRes = await callGAS('aiDraft', {
+      type: 'WBL_INSIGHTS',
+      payload: {
+        totalStudents: snap.totalStudents,
+        onTrack: snap.onTrack,
+        notStarted: snap.notStartedCount,
+        sbeDone: snap.sbeDone,
+        sbeTotal: snap.sbeTotal,
+        avgHours: snap.avgHours,
+        totalHours: snap.totalHours,
+        attentionDetails: snap.attentionDetails.map(_substituteNamesForIds),
+        sbeNotes: snap.sbeNotes,
+      },
+    });
+    if (jobRes && jobRes.ok && jobRes.jobId) {
+      const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
+      const curNarrativeEl = document.getElementById('wbl-ai-narrative'); // modal may have closed while polling
+      if (draft && curNarrativeEl) {
+        curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Summary</div>
+          <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${_restoreNamesFromIds(draft)}</div>
+        </div>`;
+      } else if (curNarrativeEl) {
+        curNarrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">No summary came back — try again in a moment.</div>';
+      }
+    } else if (narrativeEl) {
+      narrativeEl.innerHTML = '';
+    }
+  } catch (e) {
+    const curNarrativeEl = document.getElementById('wbl-ai-narrative');
+    if (curNarrativeEl) curNarrativeEl.innerHTML = ''; // stats above already rendered — narrative is additive only
+  }
+  if (btn) btn.disabled = false;
 }
 
 // ── 5. lpRunAI → lesson plan suggestion panel ─────────────────────────────────
@@ -15625,16 +15724,17 @@ function renderPacingCalendar() {
 (function ferpaBootCheck() {
   console.log('[LeaderHub] 🔒 FERPA DATA HANDLING');
   console.log('  • Student records stored ONLY in this browser (localStorage)');
-  // Brag Board's AI drafting and Archive Insights' AI narrative both send
-  // real names by default (see LEADERHUB_AI_FLOW_SETUP.md — a "brag"
-  // email naming real students is the point). If a student ID roster CSV
-  // has been uploaded in Settings, matched names are substituted for a
-  // CCPS ID before the request leaves the browser and restored afterward
-  // — for both features; names not in the roster still go through as-is.
-  // Not a FERPA data path either way — this is personal professional
-  // communication, not an education record.
+  // Brag Board's AI drafting, Archive Insights' AI narrative, and WBL
+  // Program Summary's AI summary all send real names by default (see
+  // LEADERHUB_AI_FLOW_SETUP.md — a "brag" email naming real students is
+  // the point). If a student ID roster CSV has been uploaded in Settings,
+  // matched names are substituted for a CCPS ID before the request leaves
+  // the browser and restored afterward — for all three features; names
+  // not in the roster still go through as-is. Not a FERPA data path
+  // either way — this is personal professional communication, not an
+  // education record.
   const _idMapLen = (LS.get('lh_student_id_map', []) || []).length;
-  console.log('  • Optional AI drafting (Brag Board, Archive Insights narrative) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
+  console.log('  • Optional AI drafting (Brag Board, Archive Insights, WBL Program Summary) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
     (_idMapLen ? `${_idMapLen} roster name(s) substituted for a CCPS ID before sending; unmapped names sent as-is.` : 'No student ID roster uploaded — names are NOT substituted (see LEADERHUB_AI_FLOW_SETUP.md).'));
   console.log('  • CSP enforces: connect-src restricted to script.google.com only');
   console.log('  • No analytics, no telemetry, no third-party scripts receive student data');

@@ -31,7 +31,7 @@ key at all).
 | `student-leader-hub.jsx` | A React/JSX exploration draft, not the deployed artifact |
 | `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling, sub-plan/brag-email creation, and — see below — the AI-drafting job queue) — see `LEADERHUB_EMAIL_SETUP.md` and `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
-| `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
+| `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
 | `drive-tools/` | Later, **not-yet-executed** Drive-cleanup tooling (`LH_DriveDocSplitter.gs`, `LH_8177_Rename.gs`, `LH_AppManifestUpdater.py`) for splitting/renaming 8177 lesson docs |
 | `archived/studentleaderhub_EARLY_PROTOTYPE.html` | A much earlier prototype (2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board, SCR, trips, settings — with a working trips module already present, but no dedicated DECA/WBL/E-Sports modules and no Gemini integration) — genuinely different from the live app, not a duplicate, kept for history |
@@ -120,9 +120,10 @@ user-supplied API key — never obtainable, so every "AI"-branded feature
 model call anywhere (see the "Removed: Gemini AI infrastructure" comment
 in `student-leader-hub.html`).
 
-**Real AI drafting is now built for two of those five** — Brag Board's
-"✨ Generate" (`BRAG_EMAIL`) and the Trip Archive's "✨ Generate Insights
-from Archive" narrative (`ARCHIVE_INSIGHTS`) — using the same
+**Real AI drafting is now built for three of those five** — Brag Board's
+"✨ Generate" (`BRAG_EMAIL`), the Trip Archive's "✨ Generate Insights
+from Archive" narrative (`ARCHIVE_INSIGHTS`), and the WBL Program
+Summary's "✨ Generate AI Summary" (`WBL_INSIGHTS`) — using the same
 **Bifurcation Boundary** architecture kos-personal/cas-ccps already use
 for their own AI integrations: GAS does 100% of the deterministic work
 (assembling the payload, queuing a job, polling for the result, cleaning
@@ -131,15 +132,18 @@ automation built in the Workspace UI, using its own "Gemini — Generate
 content" connector — does 100% of the actual generation. That connector
 runs on the Workspace account's own built-in Gemini access, not a
 developer API key, which is exactly what solves the original "can't get
-an API" blocker. The job queue is generic to job `type`, so
-`ARCHIVE_INSIGHTS` needed zero changes to `EmailBridge.gs` — only a new
-client-side payload and a second Flow watching the same sheet.
+an API" blocker. The job queue is generic to job `type`, so neither
+`ARCHIVE_INSIGHTS` nor `WBL_INSIGHTS` needed any change to
+`EmailBridge.gs` — only a new client-side payload and another Flow
+watching the same sheet.
 
-For Archive Insights specifically, the split follows the Bifurcation
-Boundary the other direction too: the stats grid (trip counts, average
-cost, type breakdown) is pure arithmetic, computed locally, always — too
+For Archive Insights and WBL Program Summary specifically, the split
+follows the Bifurcation Boundary the other direction too: each feature's
+stats grid (trip counts/cost/type breakdown; student counts/hours/SBE
+progress) is pure arithmetic, computed locally, always — too
 correctness-critical to ever hand to a model — and only the qualitative
-half (a short narrative surfacing real patterns across glows/grows)
+half (a short narrative surfacing real patterns across free-text content:
+trip glows/grows, or WBL attention reasons and SBE checklist notes)
 optionally routes through the Flow, additively, below the always-present
 stats.
 
@@ -148,48 +152,58 @@ stats.
   lazily-created "LeaderHub AI Queue" spreadsheet) and `checkAiJob` (polls
   for and returns a completed result, sweeping stale rows on every call so
   an unbuilt or broken Flow can't leak rows forever).
-- `student-leader-hub.html`'s `_generateBragEmailInner()` and
-  `generateAIInsights()` both try the AI path first (when an Apps Script
-  bridge URL is configured), polling for up to ~90 seconds via a shared
-  `pollAiJob_()` helper, and **always fall back to the existing
-  deterministic result** on any failure, timeout, or when no bridge is
-  configured at all — both features are purely additive; each keeps
-  working exactly as it always has if its Flow is never built.
+- `student-leader-hub.html`'s `_generateBragEmailInner()`,
+  `generateAIInsights()`, and `_wblGenerateNarrative()` all try the AI
+  path first (when an Apps Script bridge URL is configured), polling for
+  up to ~90 seconds via a shared `pollAiJob_()` helper, and **always fall
+  back to the existing deterministic result** on any failure, timeout, or
+  when no bridge is configured at all — all three are purely additive;
+  each keeps working exactly as it always has if its Flow is never built.
 - `leader-hub/appsscript.json` gained the `spreadsheets` OAuth scope
   (caught by `tools/gas-lint/check.js` before it could become a silent
   runtime authorization failure).
-- Three docs: `LEADERHUB_AI_FLOW_SETUP.md` (the full handshake spec —
+- Four docs: `LEADERHUB_AI_FLOW_SETUP.md` (the full handshake spec —
   sheet schema, one-Flow-per-job-type trigger/connector configuration,
-  both payload shapes — same convention as
+  all three payload shapes — same convention as
   `kos-personal/STUDIO_INTEGRATION_SPEC.md`), `BRAG_EMAIL_FLOW_PROMPT.md`,
-  and `ARCHIVE_INSIGHTS_FLOW_PROMPT.md` (the exact system prompts to paste
-  into each Flow's Gemini step).
+  `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, and `WBL_INSIGHTS_FLOW_PROMPT.md`
+  (the exact system prompts to paste into each Flow's Gemini step).
+- **Found and fixed while wiring up `WBL_INSIGHTS`:** `wblAIInsights()`'s
+  stat tile and per-student badge checked
+  `wblStudentStatus(s)==='at-risk'`, a status string that function never
+  actually returns (it returns `'not-started'`, `'needs-attention'`, or
+  `'on-track'`) — so the "At Risk" tile always read 0 and every
+  non-on-track student showed a ❌ regardless of which real status
+  applied. Fixed to match the real status values and to build a specific
+  reason per flagged student (`_wblAttentionReason()`: missing agreement,
+  hours short of the 30 required, no reflections logged) instead of just
+  a pass/fail badge.
 
-**What this doesn't include yet:** neither Workspace Flow is built —
-building a no-code Flow happens in the live Google Workspace UI, not a
-file this repo can contain, same limitation kos-personal/cas-ccps's own
-unbuilt Studio flows already live with. `LEADERHUB_AI_FLOW_SETUP.md` is
-the complete spec to build both against. The remaining three
-"AI"-branded features (`aiComposeEmail`, `wblAIInsights`, `lpRunAI`)
-remain deterministic local logic — not extended to this backend, by
-explicit scope decision, not oversight.
+**What this doesn't include yet:** none of the three Workspace Flows are
+built — building a no-code Flow happens in the live Google Workspace UI,
+not a file this repo can contain, same limitation kos-personal/cas-ccps's
+own unbuilt Studio flows already live with. `LEADERHUB_AI_FLOW_SETUP.md`
+is the complete spec to build all three against. The remaining two
+"AI"-branded features (`aiComposeEmail`, `lpRunAI`) remain deterministic
+local logic — not extended to this backend, by explicit scope decision,
+not oversight.
 
 **Names by default, with an opt-in substitution path:** unlike
 kos-personal/cas-ccps (which anonymize before any AI call, per their
-FERPA-scoped design), both features send free-text content to Gemini
-as-is by default, which may include real student names (e.g. a DECA
-placement, or a student named in a trip reflection) — Brag Board's whole
-point is naming real achievements, and this is Adam's personal
-professional-communications tool, not a student-education-record system.
-Settings → "Student ID Lookup — AI Privacy" adds an optional layer on
-top: upload a roster CSV (Name + CCPS ID/login) and **both** features
-substitute each matched student's name for `{7-digit ID}@ccpsnet.net`
-before the request leaves the browser, then restore the real name once
-the result comes back — a client-side, two-way text substitution, not a
-schema change. Names not on the uploaded roster still go through as-is
-(fail-open, disclosed in the UI, not a silent gap). See
-`LEADERHUB_AI_FLOW_SETUP.md`'s "What data this sends through Gemini"
-section for the full rationale.
+FERPA-scoped design), all three features send free-text content to
+Gemini as-is by default, which may include real student names (e.g. a
+DECA placement, a student named in a trip reflection, or a student named
+in a WBL attention item) — Brag Board's whole point is naming real
+achievements, and this is Adam's personal professional-communications
+tool, not a student-education-record system. Settings → "Student ID
+Lookup — AI Privacy" adds an optional layer on top: upload a roster CSV
+(Name + CCPS ID/login) and **all three** features substitute each matched
+student's name for `{7-digit ID}@ccpsnet.net` before the request leaves
+the browser, then restore the real name once the result comes back — a
+client-side, two-way text substitution, not a schema change. Names not on
+the uploaded roster still go through as-is (fail-open, disclosed in the
+UI, not a silent gap). See `LEADERHUB_AI_FLOW_SETUP.md`'s "What data this
+sends through Gemini" section for the full rationale.
 
 ## UI/UX Hardening — Rounds 1–9
 
