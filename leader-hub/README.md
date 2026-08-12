@@ -160,14 +160,21 @@ features (`aiComposeEmail`, `generateAIInsights`, `wblAIInsights`,
 `lpRunAI`) remain deterministic local logic — not extended to this
 backend, by explicit scope decision, not oversight.
 
-**A deliberate privacy choice, not an oversight:** unlike kos-personal/
-cas-ccps (which anonymize before any AI call, per their FERPA-scoped
-design), this feature sends the wins list to Gemini as-is, which may
-include real student names (e.g. a DECA placement) — the whole point of a
-"brag" email is naming real achievements, and this is Adam's personal
-professional-communications tool, not a student-education-record system.
-See `LEADERHUB_AI_FLOW_SETUP.md`'s "What data this sends through Gemini"
-section for the full rationale.
+**Names by default, with an opt-in substitution path:** unlike
+kos-personal/cas-ccps (which anonymize before any AI call, per their
+FERPA-scoped design), this feature sends the wins list to Gemini as-is by
+default, which may include real student names (e.g. a DECA placement) —
+the whole point of a "brag" email is naming real achievements, and this is
+Adam's personal professional-communications tool, not a
+student-education-record system. Settings → "Student ID Lookup — AI
+Privacy" adds an optional layer on top: upload a roster CSV (Name + CCPS
+ID/login) and Brag Board's AI drafting substitutes each matched student's
+name for `{7-digit ID}@ccpsnet.net` before the request leaves the browser,
+then restores the real name once the draft comes back — a client-side,
+two-way text substitution, not a schema change. Names not on the uploaded
+roster still go through as-is (fail-open, disclosed in the UI, not a
+silent gap). See `LEADERHUB_AI_FLOW_SETUP.md`'s "What data this sends
+through Gemini" section for the full rationale.
 
 ## UI/UX Hardening — Rounds 1–9
 

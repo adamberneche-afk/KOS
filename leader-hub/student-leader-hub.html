@@ -16,7 +16,10 @@
   ║  queues a job for a separate Google Workspace Flow to fulfill — see  ║
   ║  LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data path, since     ║
   ║  Brag Board content is personal professional communication, not      ║
-  ║  student education records.                                         ║
+  ║  student education records. If a student ID roster CSV has been     ║
+  ║  uploaded (Settings), matched student names are substituted for      ║
+  ║  their CCPS ID before that request leaves the browser; unmapped      ║
+  ║  names are sent as-is — see LEADERHUB_AI_FLOW_SETUP.md.              ║
   ║  The Content-Security-Policy meta tag below enforces the             ║
   ║  script.google.com-only constraint.                                  ║
   ╚══════════════════════════════════════════════════════════════════════╝
@@ -12348,13 +12351,19 @@ async function _generateBragEmailInner() {
   if (url) {
     try {
       if (statusEl) statusEl.textContent = '⏳ Drafting with AI…';
+      // Privacy: if a student ID roster has been uploaded (Settings →
+      // Student ID Lookup), swap known student names for their CCPS ID
+      // before this leaves the browser — see _substituteNamesForIds. The
+      // local sections[]/localBody above keep real names; only this
+      // network payload is affected.
+      const privSections = sections.map(_substituteNamesForIds);
       const jobRes = await callGAS('aiDraft', {
         type: 'BRAG_EMAIL',
-        payload: { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections },
+        payload: { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections: privSections },
       });
       if (jobRes && jobRes.ok && jobRes.jobId) {
         const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting with AI…');
-        if (draft) { emailBody = draft; usedAi = true; }
+        if (draft) { emailBody = _restoreNamesFromIds(draft); usedAi = true; }
       }
     } catch (e) { /* fall through to localBody — status line below still reports a result */ }
   }
@@ -14586,6 +14595,18 @@ function openSurveyModal(){
         <button onclick="document.getElementById('lh-import-file').click()" style="flex:1;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">⬆️ Import Backup</button>
         <input type="file" id="lh-import-file" accept="application/json" style="display:none" onchange="lhImportBackup(this)">
       </div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Student ID Lookup — AI Privacy</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Upload a roster CSV (Name + CCPS ID/login columns) to have Brag Board's AI drafting substitute each matched student's real name with their CCPS ID (e.g. <code>1234567@ccpsnet.net</code>) before that content ever reaches Gemini. The AI-drafted email still shows real names — only the network request is affected. Names not in the uploaded roster are sent as-is.
+      </div>
+      <div id="student-id-status" style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem">No roster uploaded — student names will be sent to Gemini as-is.</div>
+      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+        <button onclick="document.getElementById('lh-student-id-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Upload Roster CSV</button>
+        <input type="file" id="lh-student-id-file" accept=".csv,text/csv" style="display:none" onchange="lhImportStudentIdCsv(this)">
+        <button onclick="lhClearStudentIdMap()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;color:#dc2626;cursor:pointer">Clear</button>
+      </div>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Quick Links</div>
       <div style="display:flex;gap:.6rem;justify-content:center">
         <button onclick="document.getElementById('survey-modal').remove();openJournal()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:600;cursor:pointer">📓 Open Journal</button>
@@ -14594,6 +14615,7 @@ function openSurveyModal(){
     </div>
   </div>`;
   document.body.appendChild(m);
+  _renderStudentIdStatus();
   m.onclick=e=>{ if(e.target===m) m.remove(); };
 }
 
@@ -14662,6 +14684,170 @@ function _showImportConfirmModal(count, onConfirm) {
   modal.onclick = e => { if (e.target === modal) modal.remove(); };
   document.body.appendChild(modal);
   document.getElementById('import-confirm-submit').onclick = () => { modal.remove(); onConfirm(); };
+}
+
+// ── Student ID Lookup — CSV upload for AI-drafting privacy ──────────────────
+// Maps a student's full name (as typed elsewhere in the app — DECA results,
+// WBL roster, journal notes, etc.) to their CCPS ID number, so Brag Board's
+// AI-drafting payload (see LEADERHUB_AI_FLOW_SETUP.md) can substitute the ID
+// for the name before any of that text ever leaves this browser for Gemini.
+// A name not found in the uploaded roster is sent as-is — this is an
+// opt-in improvement over the default (nothing substituted), not a
+// guarantee that no name can ever reach Gemini; see the setup doc's
+// "What data this sends through Gemini" section for the full rationale.
+
+function _studentIdMap() {
+  return LS.get('lh_student_id_map', []);
+}
+
+// Minimal CSV line splitter — handles double-quoted fields (with "" as an
+// escaped literal quote), which a plain split(',') would break on any
+// field containing a comma (e.g. a "Last, First" formatted name column).
+function _parseCsvLine_(line) {
+  const out = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQuotes = false; }
+      else cur += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// Header-driven column detection rather than assuming a fixed layout, since
+// this reads whatever CSV export the teacher actually has. Looks for a
+// "Name" column, or separate "First"/"Last" columns to combine; and an
+// "ID"/"Number" column, or an "Email"/"Login"/"Username" column to pull the
+// leading digits out of (covers a CSV that exports the CCPS login directly
+// as e.g. "1234567@ccpsnet.net" instead of a bare ID column).
+function _parseStudentIdCsv_(text) {
+  const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim());
+  if (lines.length < 2) return { rows: [], skipped: [], error: 'File has no data rows.' };
+
+  const header  = _parseCsvLine_(lines[0]).map(h => h.toLowerCase());
+  const findCol = (...keywords) => header.findIndex(h => keywords.some(k => h.includes(k)));
+
+  const firstCol = findCol('first');
+  const lastCol  = findCol('last');
+  const nameCol  = (firstCol === -1 || lastCol === -1) ? findCol('name', 'student') : -1;
+  const idCol    = findCol('id', 'number');
+  const emailCol = findCol('email', 'login', 'username');
+
+  if (nameCol === -1 && (firstCol === -1 || lastCol === -1)) {
+    return { rows: [], skipped: [], error: 'Could not find a name column (looked for "Name", "First"/"Last", or "Student"). Check your CSV’s header row.' };
+  }
+  if (idCol === -1 && emailCol === -1) {
+    return { rows: [], skipped: [], error: 'Could not find an ID or email column (looked for "ID", "Number", "Email", "Login", or "Username"). Check your CSV’s header row.' };
+  }
+
+  const rows = [], skipped = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = _parseCsvLine_(lines[i]);
+    const name = nameCol !== -1 ? cells[nameCol] : `${cells[firstCol] || ''} ${cells[lastCol] || ''}`.trim();
+    let id = '';
+    if (idCol !== -1) {
+      const digits = (cells[idCol] || '').replace(/\D/g, '');
+      if (digits) id = digits;
+    }
+    if (!id && emailCol !== -1) {
+      const m = (cells[emailCol] || '').match(/(\d{5,})/);
+      if (m) id = m[1];
+    }
+    if (!name || !id) { skipped.push(lines[i]); continue; }
+    rows.push({ name, id });
+  }
+  return { rows, skipped };
+}
+
+function lhImportStudentIdCsv(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const { rows, error, skipped } = _parseStudentIdCsv_(String(e.target.result || ''));
+    fileInput.value = ''; // allow re-selecting the identical file later
+    if (error) { _showToast('⚠ ' + error, 5000, '#991b1b'); return; }
+    if (!rows.length) { _showToast('⚠ No valid name/ID pairs found in this file.', 4000, '#991b1b'); return; }
+
+    const preview = rows.slice(0, 5).map(r => `${r.name} → ${r.id}`).join('\n');
+    const skippedNote = skipped && skipped.length ? `\n\n${skipped.length} row(s) skipped (missing name or ID).` : '';
+    _showConfirm(
+      `Import ${rows.length} student${rows.length !== 1 ? 's' : ''}?\n\n${preview}${rows.length > 5 ? '\n…' : ''}${skippedNote}\n\nThis replaces any previously uploaded roster.`,
+      () => {
+        LS.set('lh_student_id_map', rows);
+        LS.set('lh_student_id_map_updated', new Date().toISOString());
+        _renderStudentIdStatus();
+        _showToast(`✅ ${rows.length} student${rows.length !== 1 ? 's' : ''} mapped for AI privacy`, 3500, '#166534');
+      },
+      { confirmLabel: 'Import', danger: false, ariaLabel: 'Import student ID roster' }
+    );
+  };
+  reader.onerror = () => { _showToast('⚠ Could not read that file.', 4000, '#991b1b'); fileInput.value = ''; };
+  reader.readAsText(file);
+}
+
+function lhClearStudentIdMap() {
+  _showConfirm(
+    'Clear the uploaded student ID roster? Brag Board AI drafting will no longer substitute names before sending to Gemini.',
+    () => {
+      LS.set('lh_student_id_map', []);
+      LS.set('lh_student_id_map_updated', null);
+      _renderStudentIdStatus();
+      _showToast('Student ID roster cleared.', 2500, '#0369a1');
+    },
+    { confirmLabel: 'Clear', danger: true, ariaLabel: 'Clear student ID roster' }
+  );
+}
+
+function _renderStudentIdStatus() {
+  const el = document.getElementById('student-id-status');
+  if (!el) return;
+  const map = _studentIdMap();
+  if (!map.length) {
+    el.textContent = 'No roster uploaded — student names will be sent to Gemini as-is.';
+    el.style.color = 'var(--muted)';
+    return;
+  }
+  const updated = LS.get('lh_student_id_map_updated', null);
+  el.textContent = `✅ ${map.length} student${map.length !== 1 ? 's' : ''} mapped` +
+    (updated ? ' — updated ' + new Date(updated).toLocaleDateString() : '');
+  el.style.color = '#166534';
+}
+
+// Forward substitution — applied to a COPY of the Brag Board wins text used
+// only for the network payload sent to Gemini; the local draft shown in the
+// UI and the eventual Gmail draft always keep real names (see
+// _restoreNamesFromIds below, which undoes this on the way back).
+// Longest-name-first so e.g. "Jane Smith-Doe" isn't partially shadowed by a
+// shorter "Jane Smith" entry matching first; \b-anchored so a name can't
+// match as a substring of an unrelated longer word.
+function _substituteNamesForIds(text) {
+  const map = _studentIdMap();
+  if (!map.length || !text) return text;
+  let out = text;
+  [...map].sort((a, b) => b.name.length - a.name.length).forEach(({ name, id }) => {
+    if (!name) return;
+    const re = new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    out = out.replace(re, `${id}@ccpsnet.net`);
+  });
+  return out;
+}
+
+function _restoreNamesFromIds(text) {
+  const map = _studentIdMap();
+  if (!map.length || !text) return text;
+  let out = text;
+  map.forEach(({ name, id }) => {
+    out = out.replace(new RegExp(id + '@ccpsnet\\.net', 'gi'), name);
+  });
+  return out;
 }
 
 // ── Synergy / Canvas Currency Tracker ────────────────────────────────────────
@@ -15376,13 +15562,16 @@ function renderPacingCalendar() {
 (function ferpaBootCheck() {
   console.log('[LeaderHub] 🔒 FERPA DATA HANDLING');
   console.log('  • Student records stored ONLY in this browser (localStorage)');
-  // FIXED: this used to claim "AI features send ANONYMIZED data only (no
-  // names to Gemini API)" — stale even before this feature existed (no AI
-  // call was made anywhere), and now actively wrong: Brag Board AI
-  // drafting deliberately does NOT anonymize (see LEADERHUB_AI_FLOW_SETUP.md
-  // — real student names in a "brag" email are the point). Not a FERPA
-  // data path either way — see LEADERHUB_AI_FLOW_SETUP.md's rationale.
-  console.log('  • Optional AI drafting (Brag Board) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. Content is NOT anonymized (see LEADERHUB_AI_FLOW_SETUP.md).');
+  // Brag Board AI drafting sends real names by default (see
+  // LEADERHUB_AI_FLOW_SETUP.md — a "brag" email naming real students is
+  // the point). If a student ID roster CSV has been uploaded in Settings,
+  // matched names are substituted for a CCPS ID before the request leaves
+  // the browser and restored afterward; names not in the roster still go
+  // through as-is. Not a FERPA data path either way — Brag Board is
+  // personal professional communication, not an education record.
+  const _idMapLen = (LS.get('lh_student_id_map', []) || []).length;
+  console.log('  • Optional AI drafting (Brag Board) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
+    (_idMapLen ? `${_idMapLen} roster name(s) substituted for a CCPS ID before sending; unmapped names sent as-is.` : 'No student ID roster uploaded — names are NOT substituted (see LEADERHUB_AI_FLOW_SETUP.md).'));
   console.log('  • CSP enforces: connect-src restricted to script.google.com only');
   console.log('  • No analytics, no telemetry, no third-party scripts receive student data');
 })();
