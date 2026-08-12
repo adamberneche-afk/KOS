@@ -12,14 +12,15 @@
   ║  on this device. The only network calls this page ever makes go to   ║
   ║  script.google.com — your own Apps Script Web App (EmailBridge.gs).  ║
   ║  No direct Gemini/AI API call is ever made from the browser. Optional║
-  ║  AI drafting (Brag Board) hands off to that same Apps Script, which  ║
-  ║  queues a job for a separate Google Workspace Flow to fulfill — see  ║
-  ║  LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data path, since     ║
-  ║  Brag Board content is personal professional communication, not      ║
-  ║  student education records. If a student ID roster CSV has been     ║
-  ║  uploaded (Settings), matched student names are substituted for      ║
-  ║  their CCPS ID before that request leaves the browser; unmapped      ║
-  ║  names are sent as-is — see LEADERHUB_AI_FLOW_SETUP.md.              ║
+  ║  AI drafting (Brag Board, Archive Insights narrative) hands off to   ║
+  ║  that same Apps Script, which queues a job for a separate Google     ║
+  ║  Workspace Flow to fulfill — see LEADERHUB_AI_FLOW_SETUP.md. Not a   ║
+  ║  FERPA-scoped data path, since this content is personal professional ║
+  ║  communication, not student education records. If a student ID      ║
+  ║  roster CSV has been uploaded (Settings), matched student names are  ║
+  ║  substituted for their CCPS ID before that request leaves the        ║
+  ║  browser; unmapped names are sent as-is — see                        ║
+  ║  LEADERHUB_AI_FLOW_SETUP.md.                                         ║
   ║  The Content-Security-Policy meta tag below enforces the             ║
   ║  script.google.com-only constraint.                                  ║
   ╚══════════════════════════════════════════════════════════════════════╝
@@ -3068,7 +3069,7 @@ window.onerror = function(msg, src, line, col, err) {
       </div>
     </div>
     <div style="padding:.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap">
-      <button class="btn btn-gold btn-sm" onclick="generateAIInsights()" style="flex:1">✨ Generate Insights from Archive</button>
+      <button id="archive-ai-btn" class="btn btn-gold btn-sm" onclick="generateAIInsights()" style="flex:1">✨ Generate Insights from Archive</button>
       <button class="btn btn-outline btn-sm" onclick="closeModal('aiInsights')">Close</button>
     </div>
   </div>
@@ -11801,15 +11802,26 @@ function archiveWithAI() {
   _showToast('Fields pre-filled from trip data — edit and save', 3000, '#0369a1');
 }
 
-// ── 3. generateAIInsights → trip archive stats summary ───────────────────────
-function generateAIInsights() {
-  const btn  = document.querySelector('[onclick="generateAIInsights()"]');
+// ── 3. generateAIInsights → trip archive stats + optional AI narrative ───────
+// The stats grid/table below is pure arithmetic — computed locally, always,
+// with no model involved, same Bifurcation Boundary principle as the rest
+// of this app's AI features: numbers are too correctness-critical to ever
+// hand to a model. The narrative synthesis appended after it (patterns
+// across glows/grows) is the qualitative half, and that part optionally
+// routes through the same GAS+Workspace-Flow backend Brag Board uses — see
+// LEADERHUB_AI_FLOW_SETUP.md. No developer API key either way.
+async function generateAIInsights() {
+  const btn  = document.getElementById('archive-ai-btn');
   const body = document.getElementById('ai-insights-body');
   if (!tripArchive.length) {
     if (body) body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Archive at least one trip to see insights.</div>';
     return;
   }
-  if (btn) btn.textContent = '📊 Stats';
+  // Guard re-entrancy for the whole call — the AI narrative leg below is a
+  // real network round-trip; a second click before it resolves would queue
+  // a second concurrent job for the same stats. Same pattern as
+  // generateBragEmail()/_generateBragEmailInner().
+  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = '📊 Stats'; }
 
   const total   = tripArchive.length;
   const stuTotal= tripArchive.reduce((s,a) => s + Number(a.trip?.stuAtt || 0), 0);
@@ -11817,8 +11829,10 @@ function generateAIInsights() {
   const types   = {};
   tripArchive.forEach(a => { const t = a.trip?.sub || 'same-day'; types[t] = (types[t]||0)+1; });
   const typeRows = Object.entries(types).map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
-  const glows   = tripArchive.filter(a => a.glows).map(a => `<li><strong>${a.trip?.name||'Trip'}:</strong> ${a.glows}</li>`).slice(0,5).join('');
-  const grows   = tripArchive.filter(a => a.grow).map(a => `<li><strong>${a.trip?.name||'Trip'}:</strong> ${a.grow}</li>`).slice(0,5).join('');
+  const glowList = tripArchive.filter(a => a.glows).map(a => ({ name: a.trip?.name||'Trip', text: a.glows }));
+  const growList = tripArchive.filter(a => a.grow).map(a => ({ name: a.trip?.name||'Trip', text: a.grow }));
+  const glows   = glowList.slice(0,5).map(g => `<li><strong>${g.name}:</strong> ${g.text}</li>`).join('');
+  const grows   = growList.slice(0,5).map(g => `<li><strong>${g.name}:</strong> ${g.text}</li>`).join('');
 
   if (body) body.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1rem">
@@ -11843,8 +11857,57 @@ function generateAIInsights() {
       </table>
     </div>
     ${glows ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">✅ Recent Glows</div><ul style="font-size:.76rem;margin:0;padding-left:1.2rem">${glows}</ul></div>` : ''}
-    ${grows ? `<div><div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">📈 Recent Grows</div><ul style="font-size:.76rem;margin:0;padding-left:1.2rem">${grows}</ul></div>` : ''}`;
-  if (btn) { btn.textContent = '📊 Refresh Stats'; btn.disabled = false; }
+    ${grows ? `<div><div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">📈 Recent Grows</div><ul style="font-size:.76rem;margin:0;padding-left:1.2rem">${grows}</ul></div>` : ''}
+    <div id="archive-ai-narrative"></div>`;
+  if (btn) btn.textContent = '📊 Refresh Stats';
+
+  // Optional AI narrative — additive only. The stats above are already a
+  // complete, correct result on their own; this just tries to surface
+  // patterns across glows/grows in prose. Silently skipped (narrative area
+  // stays empty) if no bridge is configured, the Flow errors, or the
+  // ~90s poll times out — never blocks or replaces the stats.
+  const narrativeEl = document.getElementById('archive-ai-narrative');
+  const url = EMAIL_BRIDGE.url();
+  if (url && narrativeEl && (glowList.length || growList.length)) {
+    narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)" id="archive-ai-status">⏳ Drafting narrative with AI…</div>`;
+    const statusEl = document.getElementById('archive-ai-status');
+    try {
+      // Privacy: same roster-based substitution Brag Board's AI drafting
+      // uses (Settings → Student ID Lookup) — swap any known student name
+      // in glows/grows for their CCPS ID before this leaves the browser.
+      // See _substituteNamesForIds / LEADERHUB_AI_FLOW_SETUP.md.
+      const jobRes = await callGAS('aiDraft', {
+        type: 'ARCHIVE_INSIGHTS',
+        payload: {
+          totalTrips: total,
+          totalStudents: stuTotal,
+          avgCostPerStudent: Number(costAvg.toFixed(0)) || 0,
+          tripTypes: Object.entries(types).map(([type, count]) => ({ type, count })),
+          glows: glowList.map(g => _substituteNamesForIds(`${g.name}: ${g.text}`)),
+          grows: growList.map(g => _substituteNamesForIds(`${g.name}: ${g.text}`)),
+        },
+      });
+      if (jobRes && jobRes.ok && jobRes.jobId) {
+        const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting narrative with AI…');
+        const curNarrativeEl = document.getElementById('archive-ai-narrative'); // modal may have re-rendered while polling
+        if (draft && curNarrativeEl) {
+          curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
+            <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Narrative</div>
+            <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${_restoreNamesFromIds(draft)}</div>
+          </div>`;
+        } else if (curNarrativeEl) {
+          curNarrativeEl.innerHTML = '';
+        }
+      } else if (narrativeEl) {
+        narrativeEl.innerHTML = '';
+      }
+    } catch (e) {
+      const curNarrativeEl = document.getElementById('archive-ai-narrative');
+      if (curNarrativeEl) curNarrativeEl.innerHTML = ''; // stats above already rendered — narrative is additive only
+    }
+  }
+
+  if (btn) btn.disabled = false;
 }
 
 // ── 4. wblAIInsights → WBL stats panel ───────────────────────────────────────
@@ -15562,15 +15625,16 @@ function renderPacingCalendar() {
 (function ferpaBootCheck() {
   console.log('[LeaderHub] 🔒 FERPA DATA HANDLING');
   console.log('  • Student records stored ONLY in this browser (localStorage)');
-  // Brag Board AI drafting sends real names by default (see
-  // LEADERHUB_AI_FLOW_SETUP.md — a "brag" email naming real students is
-  // the point). If a student ID roster CSV has been uploaded in Settings,
-  // matched names are substituted for a CCPS ID before the request leaves
-  // the browser and restored afterward; names not in the roster still go
-  // through as-is. Not a FERPA data path either way — Brag Board is
-  // personal professional communication, not an education record.
+  // Brag Board's AI drafting and Archive Insights' AI narrative both send
+  // real names by default (see LEADERHUB_AI_FLOW_SETUP.md — a "brag"
+  // email naming real students is the point). If a student ID roster CSV
+  // has been uploaded in Settings, matched names are substituted for a
+  // CCPS ID before the request leaves the browser and restored afterward
+  // — for both features; names not in the roster still go through as-is.
+  // Not a FERPA data path either way — this is personal professional
+  // communication, not an education record.
   const _idMapLen = (LS.get('lh_student_id_map', []) || []).length;
-  console.log('  • Optional AI drafting (Brag Board) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
+  console.log('  • Optional AI drafting (Brag Board, Archive Insights narrative) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
     (_idMapLen ? `${_idMapLen} roster name(s) substituted for a CCPS ID before sending; unmapped names sent as-is.` : 'No student ID roster uploaded — names are NOT substituted (see LEADERHUB_AI_FLOW_SETUP.md).'));
   console.log('  • CSP enforces: connect-src restricted to script.google.com only');
   console.log('  • No analytics, no telemetry, no third-party scripts receive student data');
