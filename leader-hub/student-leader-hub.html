@@ -12,9 +12,9 @@
   ║  on this device. The only network calls this page ever makes go to   ║
   ║  script.google.com — your own Apps Script Web App (EmailBridge.gs).  ║
   ║  No direct Gemini/AI API call is ever made from the browser. Optional║
-  ║  AI drafting (Brag Board, Archive Insights, WBL Program Summary)     ║
-  ║  hands off to that same Apps Script, which queues a job for a        ║
-  ║  separate Google Workspace Flow to fulfill — see                     ║
+  ║  AI drafting (Brag Board, Archive Insights, WBL Program Summary,     ║
+  ║  Lesson Plan Helper) hands off to that same Apps Script, which       ║
+  ║  queues a job for a separate Google Workspace Flow to fulfill — see  ║
   ║  LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data path, since     ║
   ║  this content is personal professional communication, not student    ║
   ║  education records. If a student ID roster CSV has been uploaded     ║
@@ -12044,36 +12044,39 @@ async function _wblGenerateNarrative() {
   if (btn) btn.disabled = false;
 }
 
-// ── 5. lpRunAI → lesson plan suggestion panel ─────────────────────────────────
-function lpRunAI(userPrompt, forceSection) {
+// ── 5. lpRunAI → lesson plan assistant, optional real AI drafting ────────────
+// Unlike the other three optional-AI features, this one has no arithmetic
+// half worth keeping local — the whole point of this panel is free-form
+// written content from a prompt (a warm-up, an exit ticket, a full
+// differentiation section), so it follows Brag Board's shape (a full
+// AI-drafted answer, or a local deterministic fallback), not Archive
+// Insights/WBL's stats-grid-plus-narrative split. See
+// LEADERHUB_AI_FLOW_SETUP.md / LP_ASSIST_FLOW_PROMPT.md.
+//
+// The keyword-matched tip lists below are the fallback, not the feature —
+// they're what this panel showed before any backend existed, kept as the
+// guaranteed result when no bridge is configured, the Flow errors, or the
+// poll times out. Before this, a typed question was silently discarded
+// and always produced the generic tip list; matching it to the closest
+// fixed topic (and saying so) was already an improvement over that, and
+// still applies whenever the real answer isn't available.
+let _lpAiReqId = 0;
+async function lpRunAI(userPrompt, forceSection) {
   if (!lpActivePlan) return;
   const output = document.getElementById('lp-ai-output');
   if (!output) return;
+  const plan = lpActivePlan;
+  const reqId = ++_lpAiReqId; // guards against a slower, stale request overwriting a newer one's result
 
-  // This box has no model behind it — no Gemini/AI API call is made
-  // anywhere in this app (see "AI Insights" note near generateBragEmail).
-  // A typed question used to be silently discarded and always produced
-  // the generic tip list regardless of what was asked. Since there's no
-  // real free-form answering capability to wire in, keyword-match the
-  // typed question to the closest fixed tip category instead of ignoring
-  // it outright, and say plainly that's what happened.
   let section = forceSection;
-  let matchNote = '';
+  let matchedTopic = !!section;
   if (!section && userPrompt) {
     const p = userPrompt.toLowerCase();
-    if (/differenti|sped|iep|ell|accommodat|tier/.test(p))            section = 'diff';
-    else if (/objective|goal|standard|outcome/.test(p))               section = 'obj';
-    else if (/assess|grade|rubric|score|checkpoint|formative|exit/.test(p)) section = 'assess';
-    if (section) {
-      matchNote = `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">` +
-        `This box doesn't answer free-form questions — it matched "${escH(userPrompt)}" to the closest topic below.</div>`;
-    } else {
-      matchNote = `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">` +
-        `This box doesn't answer free-form questions — couldn't match "${escH(userPrompt)}" to a specific topic, showing general tips.</div>`;
-    }
+    if (/differenti|sped|iep|ell|accommodat|tier/.test(p))            { section = 'diff';   matchedTopic = true; }
+    else if (/objective|goal|standard|outcome/.test(p))               { section = 'obj';    matchedTopic = true; }
+    else if (/assess|grade|rubric|score|checkpoint|formative|exit/.test(p)) { section = 'assess'; matchedTopic = true; }
   }
   section = section || 'general';
-  const plan = lpActivePlan;
 
   const tips = {
     diff: [
@@ -12099,9 +12102,60 @@ function lpRunAI(userPrompt, forceSection) {
       `DSP reminder: lesson plans are Standard 1 evidence — save edits frequently using the Save button.`,
     ],
   };
+  const localHtml = (tips[section] || tips.general)
+    .map(t => `<div style="padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem">${t}</div>`).join('');
 
-  const selected = tips[section] || tips.general;
-  output.innerHTML = matchNote + selected.map(t => `<div style="padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem">${t}</div>`).join('');
+  const url = EMAIL_BRIDGE.url();
+  if (!url) {
+    // No bridge configured at all — this box genuinely cannot attempt a
+    // real answer, so say that plainly rather than pretending it tried.
+    const note = userPrompt
+      ? `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">` +
+        (matchedTopic
+          ? `AI drafting isn't configured — matched "${escH(userPrompt)}" to the closest topic below instead.`
+          : `AI drafting isn't configured, and couldn't match "${escH(userPrompt)}" to a specific topic — showing general tips.`) +
+        `</div>`
+      : '';
+    output.innerHTML = note + localHtml;
+    return;
+  }
+
+  output.innerHTML = `<div id="lp-ai-status" style="font-size:.78rem;color:var(--muted);padding:.4rem 0">⏳ Thinking…</div>`;
+  const statusEl = document.getElementById('lp-ai-status');
+  try {
+    // Privacy: a typed custom question can plausibly name a specific
+    // student (e.g. "how do I accommodate Jane's IEP in this lesson?") —
+    // same roster-based substitution the other AI features use (Settings
+    // → Student ID Lookup) applied to both the prompt and the lesson body.
+    const jobRes = await callGAS('aiDraft', {
+      type: 'LP_ASSIST',
+      payload: {
+        prompt: _substituteNamesForIds(userPrompt || 'Give general lesson-planning tips for this lesson.'),
+        lessonTitle: plan.title,
+        course: LP_C_LABELS[plan.course] || plan.course,
+        quarter: plan.q,
+        competencies: plan.comps || [],
+        // The lesson's actual content is only available in-browser once
+        // it's been edited/saved locally (see lpFetchDoc's note — real
+        // Drive content requires auth Gemini can't do) — empty is a real,
+        // expected state, not a bug; the prompt file handles it.
+        planBody: _substituteNamesForIds(LP_EDITS[plan.docId] || ''),
+      },
+    });
+    if (jobRes && jobRes.ok && jobRes.jobId) {
+      const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Thinking…');
+      if (reqId !== _lpAiReqId) return; // a newer request already superseded this one
+      const curOutput = document.getElementById('lp-ai-output'); // tab/modal may have changed while polling
+      if (draft && curOutput) { curOutput.innerHTML = lpMarkdownToHTML(_restoreNamesFromIds(draft)); return; }
+    }
+  } catch (e) { /* fall through to local tips below */ }
+
+  if (reqId !== _lpAiReqId) return;
+  const curOutput = document.getElementById('lp-ai-output');
+  if (curOutput) {
+    const note = `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">Couldn't get an AI answer just now — showing related tips instead.</div>`;
+    curOutput.innerHTML = note + localHtml;
+  }
 }
 
 // ── 6. openAISCRInsights → SCR data summary ───────────────────────────────────
@@ -15724,17 +15778,17 @@ function renderPacingCalendar() {
 (function ferpaBootCheck() {
   console.log('[LeaderHub] 🔒 FERPA DATA HANDLING');
   console.log('  • Student records stored ONLY in this browser (localStorage)');
-  // Brag Board's AI drafting, Archive Insights' AI narrative, and WBL
-  // Program Summary's AI summary all send real names by default (see
-  // LEADERHUB_AI_FLOW_SETUP.md — a "brag" email naming real students is
-  // the point). If a student ID roster CSV has been uploaded in Settings,
-  // matched names are substituted for a CCPS ID before the request leaves
-  // the browser and restored afterward — for all three features; names
-  // not in the roster still go through as-is. Not a FERPA data path
-  // either way — this is personal professional communication, not an
-  // education record.
+  // Brag Board's AI drafting, Archive Insights' AI narrative, WBL Program
+  // Summary's AI summary, and the Lesson Plan Helper's AI answers all
+  // send real names by default (see LEADERHUB_AI_FLOW_SETUP.md — a
+  // "brag" email naming real students is the point). If a student ID
+  // roster CSV has been uploaded in Settings, matched names are
+  // substituted for a CCPS ID before the request leaves the browser and
+  // restored afterward — for all four features; names not in the roster
+  // still go through as-is. Not a FERPA data path either way — this is
+  // personal professional communication, not an education record.
   const _idMapLen = (LS.get('lh_student_id_map', []) || []).length;
-  console.log('  • Optional AI drafting (Brag Board, Archive Insights, WBL Program Summary) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
+  console.log('  • Optional AI drafting (Brag Board, Archive Insights, WBL Program Summary, Lesson Plan Helper) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
     (_idMapLen ? `${_idMapLen} roster name(s) substituted for a CCPS ID before sending; unmapped names sent as-is.` : 'No student ID roster uploaded — names are NOT substituted (see LEADERHUB_AI_FLOW_SETUP.md).'));
   console.log('  • CSP enforces: connect-src restricted to script.google.com only');
   console.log('  • No analytics, no telemetry, no third-party scripts receive student data');
