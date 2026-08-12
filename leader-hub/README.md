@@ -220,13 +220,34 @@ point is naming real achievements, and this is Adam's personal
 professional-communications tool, not a student-education-record system.
 Settings → "Student ID Lookup — AI Privacy" adds an optional layer on
 top: upload a roster CSV (Name + CCPS ID/login) and **all five** features
-substitute each matched student's name for `{7-digit ID}@ccpsnet.net`
-before the request leaves the browser, then restore the real name once
-the result comes back — a client-side, two-way text substitution, not a
-schema change. Names not on the uploaded roster still go through as-is
+substitute each matched student's name for `{7-digit ID}@{your email
+domain}` before the request leaves the browser, then restore the real name
+once the result comes back — a client-side, two-way text substitution, not
+a schema change. Names not on the uploaded roster still go through as-is
 (fail-open, disclosed in the UI, not a silent gap). See
 `LEADERHUB_AI_FLOW_SETUP.md`'s "What data this sends through Gemini"
 section for the full rationale.
+
+## Settings → My Profile & School
+
+Per `LEADERHUB_PRINCIPLES.md`, this was never designed to scale to other
+teachers — but every outbound string in it (email-template signatures,
+sub-plan headers, Brag Board recipients, the AI-privacy email domain) used
+to be a name/phone/email/school literal baked into the source, meaning a
+colleague who wanted to fork this for themselves had to hand-edit dozens of
+strings across a 17,000-line file before a single email went out under
+their own name instead of Adam's.
+
+Settings now has a "My Profile & School" panel — name, title(s), school,
+phone, email, email domain, and the DECA-specific Brag Board recipients
+(supervisor/admin/attendance-coordinator) — backed by a `PROFILE` object
+(`lh_profile` in localStorage) that every one of those templates reads from
+instead. Fields save as you leave them and take effect immediately, no
+reload required. This closes the identity/signature gap specifically; the
+bell schedule/school calendar, per-module (DECA/WBL/E-Sports) visibility,
+and the Virginia-CTE-specific `SCR_COURSES` course catalog are still
+hardcoded and would need their own settings layer for a full "hand this to
+any teacher" experience.
 
 ## UI/UX Hardening — Rounds 1–9
 
