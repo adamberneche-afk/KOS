@@ -9,12 +9,19 @@
   ║  FERPA DATA HANDLING NOTICE                                          ║
   ║  This file processes student education records locally in-browser.   ║
   ║  Student PII (names, grades, scores) is stored only in localStorage  ║
-  ║  on this device and is NEVER transmitted to external servers except   ║
-  ║  the Gemini API (script.google.com (Apps Script bridge only). ║
-  ║  The Content-Security-Policy meta tag below enforces this constraint. ║
+  ║  on this device. The only network calls this page ever makes go to   ║
+  ║  script.google.com — your own Apps Script Web App (EmailBridge.gs).  ║
+  ║  No direct Gemini/AI API call is ever made from the browser. Optional║
+  ║  AI drafting (Brag Board) hands off to that same Apps Script, which  ║
+  ║  queues a job for a separate Google Workspace Flow to fulfill — see  ║
+  ║  LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data path, since     ║
+  ║  Brag Board content is personal professional communication, not      ║
+  ║  student education records.                                         ║
+  ║  The Content-Security-Policy meta tag below enforces the             ║
+  ║  script.google.com-only constraint.                                  ║
   ╚══════════════════════════════════════════════════════════════════════╝
 -->
-<!-- CSP: block all external connections except Anthropic API + Google Fonts (display only) -->
+<!-- CSP: only allow connections to your own Apps Script Web App (script.google.com) + Google Fonts (display only) -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:;
   connect-src 'self' https://script.google.com https://script.googleusercontent.com;
@@ -11705,8 +11712,8 @@ function getCurrentPeriodInfo() {
 // ── Apps Script Bridge — replaces all Gemini AI calls ───────────────────────
 // All "AI" features now route through the existing EmailBridge Apps Script.
 // Set the bridge URL once in Settings → Email Bridge.
-// GAS endpoints: action=subPlan, action=bragEmail, action=cronPlan,
-//   action=organizeThought (all POST with JSON body)
+// GAS endpoints: action=subPlan, action=bragEmail, action=markConsumed,
+//   action=aiDraft, action=checkAiJob (all POST with JSON body)
 
 async function callGAS(action, payload) {
   const url = EMAIL_BRIDGE.url();
@@ -11731,6 +11738,31 @@ async function callGAS(action, payload) {
   });
   if (!resp.ok) throw new Error('GAS HTTP ' + resp.status);
   return resp.json();
+}
+
+// ── AI job polling — bifurcated backend, see LEADERHUB_AI_FLOW_SETUP.md ────
+// GAS only ever queues/reads job rows; the actual generation happens in a
+// separate Google Workspace Flow polling the same sheet, using the
+// Workspace account's own Gemini access — no API key anywhere in this app.
+// Polls until COMPLETE/ERROR or a ~90s timeout, then gives up quietly.
+// Never throws — every caller already has a deterministic local fallback,
+// so a null return just means "use that instead," not a failure to surface.
+async function pollAiJob_(jobId, statusEl, labelPrefix) {
+  const POLL_MS    = 3000;
+  const TIMEOUT_MS = 90000;
+  const start = Date.now();
+  while (Date.now() - start < TIMEOUT_MS) {
+    await new Promise(r => setTimeout(r, POLL_MS));
+    let res;
+    try { res = await callGAS('checkAiJob', { jobId }); }
+    catch (e) { continue; } // transient network blip — keep polling until the overall timeout
+    if (!res || !res.ok) continue;
+    if (res.status === 'COMPLETE') return res.result || null;
+    if (res.status === 'ERROR' || res.status === 'NOT_FOUND') return null;
+    // Still PENDING — surface elapsed time so a 30-90s wait doesn't read as frozen.
+    if (statusEl) statusEl.textContent = `${labelPrefix || '⏳ Drafting with AI…'} (${Math.round((Date.now() - start) / 1000)}s)`;
+  }
+  return null; // timed out — no Flow built yet, or it's just slow this time
 }
 
 // ── 1. aiComposeEmail → template-populated email composer ────────────────────
@@ -12299,10 +12331,36 @@ async function _generateBragEmailInner() {
   if ((journalWins||[]).length)    sections.push('Moments worth remembering:\n' + journalWins.map(j=>`• ${j.text}`).join('\n'));
   if ((manualWins||[]).length)     sections.push('Also worth mentioning:\n' + manualWins.map(m=>`• ${m.text}`).join('\n'));
 
-  const emailBody = `Week of ${weekDisplay} — Highlights\n\n${sections.join('\n\n')}\n\nBest,\nAdam Berneche\nCTE Business & Marketing | Clover Hill High School`;
+  // This local, deterministic assembly is the guaranteed result — computed
+  // first and used outright whenever AI drafting is unavailable, times
+  // out, or errors, so this button never produces an empty box.
+  const localBody = `Week of ${weekDisplay} — Highlights\n\n${sections.join('\n\n')}\n\nBest,\nAdam Berneche\nCTE Business & Marketing | Clover Hill High School`;
+
+  let emailBody = localBody;
+  let usedAi    = false;
+  const url = EMAIL_BRIDGE.url();
+
+  // Try real AI drafting first if a bridge is configured — see
+  // LEADERHUB_AI_FLOW_SETUP.md for the GAS+Workspace-Flow backend this
+  // calls. Silently falls through to localBody on any failure: no Flow
+  // built yet, the Flow errors, or the ~90s poll times out. The status
+  // line below is the only place this distinction surfaces to the user.
+  if (url) {
+    try {
+      if (statusEl) statusEl.textContent = '⏳ Drafting with AI…';
+      const jobRes = await callGAS('aiDraft', {
+        type: 'BRAG_EMAIL',
+        payload: { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections },
+      });
+      if (jobRes && jobRes.ok && jobRes.jobId) {
+        const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting with AI…');
+        if (draft) { emailBody = draft; usedAi = true; }
+      }
+    } catch (e) { /* fall through to localBody — status line below still reports a result */ }
+  }
 
   if (bodyEl) bodyEl.value = emailBody;
-  if (statusEl) statusEl.textContent = '✏️ Draft ready — edit and copy';
+  if (statusEl) statusEl.textContent = usedAi ? '✨ AI draft ready — edit and copy' : '✏️ Draft ready — edit and copy';
 
   // Log evidence
   const _bLog = LS.get('lh_brag_log', []);
@@ -12313,32 +12371,29 @@ async function _generateBragEmailInner() {
   refreshNextAction();
 
   // Optionally send to Apps Script to create Gmail draft
-  const url = EMAIL_BRIDGE.url();
   if (url) {
     try {
-      if (statusEl) statusEl.textContent = '⏳ Creating Gmail draft…';
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Creating Gmail draft…';
       const to   = aud?.defaultTo || '';
       const subj = _subj || `Weekly Wins — Week of ${weekDisplay}`;
       const res  = await callGAS('bragEmail', { to, subject: subj, body: emailBody });
       if (res.ok) {
-        if (statusEl) statusEl.textContent = '✅ Gmail draft created — check Drafts folder';
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Gmail draft created — check Drafts folder';
       } else {
-        if (statusEl) statusEl.textContent = '✏️ Draft ready locally (Gmail draft failed)';
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (Gmail draft failed)';
       }
     } catch(e) {
-      if (statusEl) statusEl.textContent = '✏️ Draft ready — Gmail unavailable';
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — Gmail unavailable';
     }
   }
 }
 
 // ── Removed: Gemini AI infrastructure (getAPIKey, setAPIKey, callAI) ──────────
-function ferpaBootCheck() {
-  console.log('[LeaderHub] 🔒 FERPA DATA HANDLING');
-  console.log('  • Student records stored ONLY in this browser (localStorage)');
-  console.log('  • No AI API calls — all processing is local or via your Apps Script');
-  console.log('  • CSP enforces: connect-src restricted to script.google.com only');
-  console.log('  • No analytics, no telemetry, no third-party scripts receive student data');
-}
+// The real, live FERPA boot check is the IIFE further down this file (see
+// "── FERPA boot check ──") — this was a dead duplicate declaration with
+// the same name, never called anywhere, left over from the AI-removal
+// edit and never cleaned up. Removed rather than fixed in place: keeping
+// two functions with the same name (one dead) is worse than one.
 
 
 // ── Lesson Strip — shows today's active lesson plan on the dashboard clock row ─
@@ -15321,7 +15376,13 @@ function renderPacingCalendar() {
 (function ferpaBootCheck() {
   console.log('[LeaderHub] 🔒 FERPA DATA HANDLING');
   console.log('  • Student records stored ONLY in this browser (localStorage)');
-  console.log('  • AI features send ANONYMIZED data only (no names to Gemini API)');
+  // FIXED: this used to claim "AI features send ANONYMIZED data only (no
+  // names to Gemini API)" — stale even before this feature existed (no AI
+  // call was made anywhere), and now actively wrong: Brag Board AI
+  // drafting deliberately does NOT anonymize (see LEADERHUB_AI_FLOW_SETUP.md
+  // — real student names in a "brag" email are the point). Not a FERPA
+  // data path either way — see LEADERHUB_AI_FLOW_SETUP.md's rationale.
+  console.log('  • Optional AI drafting (Brag Board) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. Content is NOT anonymized (see LEADERHUB_AI_FLOW_SETUP.md).');
   console.log('  • CSP enforces: connect-src restricted to script.google.com only');
   console.log('  • No analytics, no telemetry, no third-party scripts receive student data');
 })();
@@ -16389,6 +16450,9 @@ function showBragBoardPromptBanner() {
         <div style="margin-top:.5rem;padding:.45rem .65rem;background:#fefce8;border:1px solid #fde68a;border-radius:6px">
           No <code>GEMINI_API_KEY</code> needed. The only property is <code>SHEET_URL</code>.<br>
           Full guide: <strong>LEADERHUB_EMAIL_SETUP.md</strong>
+        </div>
+        <div style="margin-top:.5rem;padding:.45rem .65rem;background:#f0f4ff;border:1px solid #bfdbfe;border-radius:6px">
+          <strong>Optional: real AI drafting for Brag Board</strong> — once the Apps Script above is deployed, "✨ Generate" can produce an actual AI-written draft instead of a template, via a separate Google Workspace Flow (no API key — uses your Workspace account's own Gemini access). Fully optional: without it, Brag Board keeps working exactly as it does today. See <strong>LEADERHUB_AI_FLOW_SETUP.md</strong>.
         </div>
       </div>
 
