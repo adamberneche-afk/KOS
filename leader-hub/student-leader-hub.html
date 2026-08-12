@@ -13,14 +13,14 @@
   ║  script.google.com — your own Apps Script Web App (EmailBridge.gs).  ║
   ║  No direct Gemini/AI API call is ever made from the browser. Optional║
   ║  AI drafting (Brag Board, Archive Insights, WBL Program Summary,     ║
-  ║  Lesson Plan Helper) hands off to that same Apps Script, which       ║
-  ║  queues a job for a separate Google Workspace Flow to fulfill — see  ║
-  ║  LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data path, since     ║
-  ║  this content is personal professional communication, not student    ║
-  ║  education records. If a student ID roster CSV has been uploaded     ║
-  ║  (Settings), matched student names are substituted for their CCPS    ║
-  ║  ID before that request leaves the browser; unmapped names are sent  ║
-  ║  as-is — see LEADERHUB_AI_FLOW_SETUP.md.                             ║
+  ║  Lesson Plan Helper, Email Composer) hands off to that same Apps     ║
+  ║  Script, which queues a job for a separate Google Workspace Flow to  ║
+  ║  fulfill — see LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data    ║
+  ║  path, since this content is personal professional communication,    ║
+  ║  not student education records. If a student ID roster CSV has been  ║
+  ║  uploaded (Settings), matched student names are substituted for      ║
+  ║  their CCPS ID before that request leaves the browser; unmapped      ║
+  ║  names are sent as-is — see LEADERHUB_AI_FLOW_SETUP.md.              ║
   ║  The Content-Security-Policy meta tag below enforces the             ║
   ║  script.google.com-only constraint.                                  ║
   ╚══════════════════════════════════════════════════════════════════════╝
@@ -11769,19 +11769,84 @@ async function pollAiJob_(jobId, statusEl, labelPrefix) {
   return null; // timed out — no Flow built yet, or it's just slow this time
 }
 
-// ── 1. aiComposeEmail → template-populated email composer ────────────────────
-function aiComposeEmail() {
+// ── 1. aiComposeEmail → real AI drafting, with a deterministic fallback ──────
+// FIXED: this always wrote to document.getElementById('email-output'),
+// which doesn't exist anywhere in this file — the real compose textarea
+// is #email-body (see the "EMAIL COMPOSER MODAL" markup). `out` was
+// therefore always null and the function returned immediately, every
+// time — clicking "✨ Generate with AI" silently did nothing at all, and
+// neither did generateRegEmail()'s programmatic call into this function.
+// Wiring the real AI backend surfaced this dead button; fixed the id so
+// the deterministic fallback template actually reaches the screen
+// regardless of whether AI drafting is ever configured.
+let _emailAiReqId = 0;
+async function aiComposeEmail() {
   const prompt = (document.getElementById('email-ai-prompt')?.value || '').trim();
   const status = document.getElementById('email-ai-status');
-  const trip = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
-  const out  = document.getElementById('email-output');
+  const trip   = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+  const out    = document.getElementById('email-body');
   if (!out) return;
+  const reqId = ++_emailAiReqId; // guards against a slower, stale request overwriting a newer one's result
 
-  // Build a structured template from the existing chapter context
+  // Deterministic fallback — the app's original behavior, now actually
+  // reachable. Used outright when nothing was typed, no bridge is
+  // configured, the Flow errors, or the poll times out.
   const tripLine = trip ? `\nTrip: ${trip.name} — ${fd(trip.date)}` : '';
-  const template = `Dear [Recipient],\n\n${prompt || '[Your message here]'}${tripLine}\n\nPlease feel free to reach out with any questions.\n\nBest,\nAdam Berneche\nCTE Business & Marketing | Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net\nDECA Chapter Advisor`;
-  out.value = template;
-  if (status) status.textContent = '✏️ Template populated — edit as needed';
+  const localTemplate = `Dear [Recipient],\n\n${prompt || '[Your message here]'}${tripLine}\n\nPlease feel free to reach out with any questions.\n\nBest,\nAdam Berneche\nCTE Business & Marketing | Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net\nDECA Chapter Advisor`;
+
+  if (!prompt) {
+    out.value = localTemplate;
+    if (status) status.textContent = '✏️ Template populated — describe what you need above for a real AI draft';
+    return;
+  }
+
+  const url = EMAIL_BRIDGE.url();
+  if (!url) {
+    out.value = localTemplate;
+    if (status) status.textContent = "✏️ Template populated — AI drafting isn't configured (see Settings)";
+    return;
+  }
+
+  // Real AI path — see LEADERHUB_AI_FLOW_SETUP.md / EMAIL_COMPOSE_FLOW_PROMPT.md.
+  if (status) status.textContent = '⏳ Drafting with AI…';
+  try {
+    const AUDIENCE_LABELS = { students: 'Students', parents: 'Parents/Families', school: 'School Administration', faculty: 'Faculty/Colleagues' };
+    // Privacy: same roster-based substitution the other AI features use
+    // (Settings → Student ID Lookup) — a typed instruction can plausibly
+    // name a specific student (e.g. "remind ___ her slip is late").
+    const jobRes = await callGAS('aiDraft', {
+      type: 'EMAIL_COMPOSE',
+      payload: {
+        prompt: _substituteNamesForIds(prompt),
+        audience: emailTab,
+        audienceLabel: AUDIENCE_LABELS[emailTab] || emailTab,
+        trip: trip ? {
+          name: trip.name,
+          date: fd(trip.date),
+          returnDate: (trip.retDate && trip.retDate !== trip.date) ? fd(trip.retDate) : '',
+          destination: trip.dest1 || '',
+          costPerStudent: trip.costStu || 0,
+          transportation: trip.charterCo || trip.train || (trip.ccpsBus ? 'CCPS Bus' : trip.parentTx ? 'Parent Transport' : ''),
+          chaperones: trip.chaperones || '',
+        } : null,
+      },
+    });
+    if (jobRes && jobRes.ok && jobRes.jobId) {
+      const draft = await pollAiJob_(jobRes.jobId, status, '⏳ Drafting with AI…');
+      if (reqId !== _emailAiReqId) return; // a newer request already superseded this one
+      const curOut = document.getElementById('email-body'); // modal/tab may have changed while polling
+      if (draft && curOut) {
+        curOut.value = _restoreNamesFromIds(draft);
+        if (status) status.textContent = '✨ AI draft ready — edit as needed';
+        return;
+      }
+    }
+  } catch (e) { /* fall through to local template below */ }
+
+  if (reqId !== _emailAiReqId) return;
+  const curOut = document.getElementById('email-body');
+  if (curOut) curOut.value = localTemplate;
+  if (status) status.textContent = "⚠ Couldn't get an AI draft just now — showing a basic template instead";
 }
 
 // ── 2. archiveWithAI → structured reflection form (no AI) ────────────────────
@@ -15779,16 +15844,17 @@ function renderPacingCalendar() {
   console.log('[LeaderHub] 🔒 FERPA DATA HANDLING');
   console.log('  • Student records stored ONLY in this browser (localStorage)');
   // Brag Board's AI drafting, Archive Insights' AI narrative, WBL Program
-  // Summary's AI summary, and the Lesson Plan Helper's AI answers all
-  // send real names by default (see LEADERHUB_AI_FLOW_SETUP.md — a
-  // "brag" email naming real students is the point). If a student ID
-  // roster CSV has been uploaded in Settings, matched names are
-  // substituted for a CCPS ID before the request leaves the browser and
-  // restored afterward — for all four features; names not in the roster
-  // still go through as-is. Not a FERPA data path either way — this is
-  // personal professional communication, not an education record.
+  // Summary's AI summary, the Lesson Plan Helper's AI answers, and the
+  // Email Composer's AI drafts all send real names by default (see
+  // LEADERHUB_AI_FLOW_SETUP.md — a "brag" email naming real students is
+  // the point). If a student ID roster CSV has been uploaded in
+  // Settings, matched names are substituted for a CCPS ID before the
+  // request leaves the browser and restored afterward — for all five
+  // features; names not in the roster still go through as-is. Not a
+  // FERPA data path either way — this is personal professional
+  // communication, not an education record.
   const _idMapLen = (LS.get('lh_student_id_map', []) || []).length;
-  console.log('  • Optional AI drafting (Brag Board, Archive Insights, WBL Program Summary, Lesson Plan Helper) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
+  console.log('  • Optional AI drafting (Brag Board, Archive Insights, WBL Program Summary, Lesson Plan Helper, Email Composer) routes through your own Apps Script + a Google Workspace Flow — never a third-party API key. ' +
     (_idMapLen ? `${_idMapLen} roster name(s) substituted for a CCPS ID before sending; unmapped names sent as-is.` : 'No student ID roster uploaded — names are NOT substituted (see LEADERHUB_AI_FLOW_SETUP.md).'));
   console.log('  • CSP enforces: connect-src restricted to script.google.com only');
   console.log('  • No analytics, no telemetry, no third-party scripts receive student data');
