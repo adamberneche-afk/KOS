@@ -1202,7 +1202,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ===== DECA CHAPTER HUB ===== -->
 <div id="view-deca" class="view">
   <div class="ph">
-    <div><div class="pt">🏆 DECA Chapter Hub</div><div class="ps">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div></div>
+    <div><div class="pt">🏆 DECA Chapter Hub</div><div class="ps" id="deca-hub-subtitle">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div></div>
     <button class="btn btn-primary" onclick="showView('events')">All Events →</button>
   </div>
   <div id="deca-hub-content"></div>
@@ -1589,7 +1589,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between">
       <div>
         <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px" id="addstu-modal-title">Register DECA Member</div>
-        <div style="font-size:.72rem;color:rgba(255,255,255,.45)">Clover Hill High School DECA · Chapter 4280</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.45)" id="addstu-modal-subtitle">Clover Hill High School DECA · Chapter 4280</div>
       </div>
       <button class="btn btn-outline btn-sm" onclick="closeModal('addStudent')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
     </div>
@@ -3438,6 +3438,54 @@ const decaChapterInfo = {
   icdcTotalCost: '~$1,000/student',
   dlcCost: '$0 (included with membership)',
 };
+// Note: decaChapterInfo above is reference data only — nothing in the app
+// currently reads from it. Its identity fields (school/advisor/phone/email)
+// now duplicate PROFILE below; PROFILE is the one that's actually wired
+// into email templates, sub plans, and Brag Board.
+
+// ─── TEACHER / SCHOOL PROFILE — Settings → My Profile & School ─────────────
+// Every outbound email template, sub-plan header, and Brag Board recipient
+// below reads from this instead of a name baked into the source, so a
+// different teacher can make LeaderHub theirs by filling in Settings once
+// instead of hand-editing dozens of strings in this file. Defaults below
+// are Adam's own values — a fresh adopter overwrites them in Settings and
+// nothing else in the app needs to change.
+const PROFILE_DEFAULTS = {
+  name: 'Adam Berneche',
+  courtesyName: 'Mr. Berneche',        // casual mid-email references ("see Mr. Berneche")
+  title: 'DECA Advisor',                // signature line + BRAG_AUDIENCE-adjacent copy
+  classroomTitle: 'CTE Business & Marketing', // non-DECA templates (Email Composer, Brag Board)
+  school: 'Clover Hill High School',
+  phone: '(804) 833-8869',
+  email: 'adam_berneche@ccpsnet.net',
+  emailDomain: 'ccpsnet.net',           // AI-privacy ID substitution + placeholder examples
+  chapterName: 'Clover Hill DECA',      // "payable to ___" dues lines
+  supervisorName: 'Ms. Green',          // Brag Board "green" tab recipient
+  supervisorEmail: 'renee_green@ccpsnet.net',
+  adminName: 'Admin (Altizer / White)', // Brag Board "admin" tab recipient
+  adminEmail: 'david_altizer@ccpsnet.net',
+  attendanceCoordFirstName: 'Nykia',    // sub-plan email greeting
+  attendanceCoordEmail: 'nykia_ward@ccpsnet.net',
+};
+function getProfile() { return Object.assign({}, PROFILE_DEFAULTS, LS.get('lh_profile', {})); }
+function saveProfile(updates) {
+  const merged = Object.assign({}, LS.get('lh_profile', {}), updates);
+  LS.set('lh_profile', merged);
+  Object.assign(PROFILE, PROFILE_DEFAULTS, merged); // live-update the in-memory object, no reload needed
+  _applyProfileToStaticDOM();
+}
+let PROFILE = getProfile();
+
+// A couple of subtitle strings are static page HTML (not JS-rendered), so
+// PROFILE changes can't reach them just by reading PROFILE at generation
+// time the way every email template does. Patch them by id instead — once
+// at boot (see renderStaticEmbeddedContent) and again on every Settings save.
+function _applyProfileToStaticDOM() {
+  const decaSub = document.getElementById('deca-hub-subtitle');
+  if (decaSub) decaSub.textContent = `${PROFILE.school} · 25–26 Season · All data sourced from Google Drive`;
+  const addStuSub = document.getElementById('addstu-modal-subtitle');
+  if (addStuSub) addStuSub.textContent = `${PROFILE.school} DECA · Chapter 4280`;
+}
 
 // ── DECA OFFICER POSITIONS (official chapter structure) ──────────────────────
 const DECA_POSITIONS = [
@@ -4877,8 +4925,8 @@ function openTripWizard(tripId) {
     return;
   }
   const blankDraft = {
-    origin:  'Clover Hill High School',
-    sponsor: 'Adam Berneche',
+    origin:  PROFILE.school,
+    sponsor: PROFILE.name,
     sub:     'same-day',
     status:  'planned',
   };
@@ -4938,7 +4986,7 @@ function _finishOpenTripWizard(existing) {
 function tripToDraft(t) {
   return {
     name:t.name, date:t.date, sub:t.sub||'same-day', reason:t.reason||'', acttype:t.acttype||'', status:t.status||'planned',
-    origin:t.origin||'Clover Hill High School', depDate:t.depDate||'', depTime:t.depTime||'', retDate:t.retDate||'', retTime:t.retTime||'',
+    origin:t.origin||PROFILE.school, depDate:t.depDate||'', depTime:t.depTime||'', retDate:t.retDate||'', retTime:t.retTime||'',
     oneway:t.oneway||'NO', dest1:t.dest1||'', arr1:t.arr1||'', dep1:t.dep1||'', dest2:t.dest2||'', arr2:t.arr2||'', dep2:t.dep2||'',
     ccpsBus:t.ccpsBus||0, charter:t.charter||0, rental:t.rental||0,
     walk:t.walk||'', parentTx:t.parentTx||'', train:t.train||'', charterCo:t.charterCo||'', rentalCo:t.rentalCo||'',
@@ -4948,7 +4996,7 @@ function tripToDraft(t) {
     costStu:t.costStu||0, costAdult:t.costAdult||0, chap:t.chap||'', wc:t.wc||0,
     afford:t.afford||'Financial hardship funds available through school SAF.', nonatt:t.nonatt||'', sped:t.sped||'',
     med:t.med||'', allergy:t.allergy||'', med1:t.med1||'', med2:t.med2||'',
-    fund:t.fund||'', po:t.po||'', sponsor:t.sponsor||'Adam Berneche', cell:t.cell||'', coord:t.coord||'', acctNotes:t.acctNotes||'',
+    fund:t.fund||'', po:t.po||'', sponsor:t.sponsor||PROFILE.name, cell:t.cell||'', coord:t.coord||'', acctNotes:t.acctNotes||'',
     why:t.why||'', pre:t.pre||'', post:t.post||'', notes:t.notes||''
   };
 }
@@ -5091,7 +5139,7 @@ function renderWizardStep() {
       body.innerHTML = `
         ${info('Fill all times using school clock. Departure = when bus leaves school. Return = when bus is back at school.')}
         ${sec('🏫 Origin & Schedule')}
-        ${field('nt-origin','Origin School', inp('nt-origin','text','e.g. Clover Hill High School'), '', true)}
+        ${field('nt-origin','Origin School', inp('nt-origin','text',`e.g. ${PROFILE.school}`), '', true)}
         ${row2(
           field('nt-dep-date','Departure Date', inp('nt-dep-date','date')),
           field('nt-dep-time','Departure Time ⏰', inp('nt-dep-time','time'), 'Bus leaves school', true)
@@ -5603,102 +5651,102 @@ const EMAIL_TEMPLATES = {
     { id:'stu-trip-announcement', label:'📢 Trip Announcement',
       subject: (t) => `Upcoming Field Trip: ${t ? t.name : '[Trip Name]'}`,
       body: (t) => {
-        if(!t) return `Hi DECA Team,\n\nWe have an exciting field trip coming up! More details will be shared soon.\n\nPlease watch for further communications and reach out with any questions.\n\nMr. Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869`;
-        return `Hi DECA Team,\n\nExciting news — we have an upcoming trip and I want to make sure you have all the details!\n\n📅 EVENT: ${t.name}\n📆 DATE: ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination TBD]'}\n🚌 TRANSPORTATION: ${t.charterCo || t.train || (t.ccpsBus ? 'CCPS Bus' : t.parentTx ? 'Parent Transport' : 'TBD')}\n💰 COST: $${t.costStu || 0}/student\n\nWHAT YOU NEED TO DO:\n1. Return your signed permission slip to Mr. Berneche\n2. Make sure your tuition and fees are current\n3. Confirm your spot by [DATE]\n\nEligibility reminder: you must be in good academic standing and have no outstanding obligations to participate.\n\nQuestions? See me before/after class or email me.\n\nMr. Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`;
+        if(!t) return `Hi DECA Team,\n\nWe have an exciting field trip coming up! More details will be shared soon.\n\nPlease watch for further communications and reach out with any questions.\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`;
+        return `Hi DECA Team,\n\nExciting news — we have an upcoming trip and I want to make sure you have all the details!\n\n📅 EVENT: ${t.name}\n📆 DATE: ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination TBD]'}\n🚌 TRANSPORTATION: ${t.charterCo || t.train || (t.ccpsBus ? 'CCPS Bus' : t.parentTx ? 'Parent Transport' : 'TBD')}\n💰 COST: $${t.costStu || 0}/student\n\nWHAT YOU NEED TO DO:\n1. Return your signed permission slip to ${PROFILE.courtesyName}\n2. Make sure your tuition and fees are current\n3. Confirm your spot by [DATE]\n\nEligibility reminder: you must be in good academic standing and have no outstanding obligations to participate.\n\nQuestions? See me before/after class or email me.\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
       }
     },
     { id:'stu-icdc-qualify', label:'🏆 ICDC Qualifier Notification',
       subject: () => `CONGRATULATIONS — You Qualified for ICDC!`,
-      body: (t) => `Hi [Student Name],\n\nCONGRATULATIONS! Based on your performance at the DECA State Leadership Conference, you have qualified to compete at the DECA International Career Development Conference (ICDC) in Atlanta, GA!\n\n📅 ICDC DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n💰 ESTIMATED COST: ~$1,000/student\n\nIMPORTANT NEXT STEPS:\n1. ✅ Confirm your participation with Mr. Berneche by [DATE]\n2. 💰 First installment (~$400) due March 13\n3. 📋 ICDC permission form due [DATE]\n4. 📝 Complete the ICDC commitment letter packet\n\nREQUIREMENT REMINDER: You must have scored 70%+ on the SLC written test to attend ICDC. I will confirm your test score with you directly.\n\nRegistration window: March 2–13 ($155). I cannot register you after March 13 — no exceptions.\n\nThis is a huge achievement. I am incredibly proud of you. Let's make ICDC count!\n\nMr. Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`
+      body: (t) => `Hi [Student Name],\n\nCONGRATULATIONS! Based on your performance at the DECA State Leadership Conference, you have qualified to compete at the DECA International Career Development Conference (ICDC) in Atlanta, GA!\n\n📅 ICDC DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n💰 ESTIMATED COST: ~$1,000/student\n\nIMPORTANT NEXT STEPS:\n1. ✅ Confirm your participation with ${PROFILE.courtesyName} by [DATE]\n2. 💰 First installment (~$400) due March 13\n3. 📋 ICDC permission form due [DATE]\n4. 📝 Complete the ICDC commitment letter packet\n\nREQUIREMENT REMINDER: You must have scored 70%+ on the SLC written test to attend ICDC. I will confirm your test score with you directly.\n\nRegistration window: March 2–13 ($155). I cannot register you after March 13 — no exceptions.\n\nThis is a huge achievement. I am incredibly proud of you. Let's make ICDC count!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
     },
     { id:'stu-permission-reminder', label:'📝 Permission Slip Reminder',
       subject: (t) => `REMINDER: Permission Slip Needed — ${t ? t.name : 'Upcoming Trip'}`,
-      body: (t) => `Hi [Student Name],\n\nThis is a friendly reminder that your signed permission slip for the ${t ? t.name : 'upcoming trip'} has NOT yet been returned.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  DEADLINE: Please return your slip by [DATE] or your spot may be given to another student.\n\nYou can pick up a new form from Mr. Berneche (Room [#]) if you need one.\n\nIf you have decided not to attend, please let me know as soon as possible so I can adjust the roster.\n\nMr. Berneche\n(804) 833-8869`
+      body: (t) => `Hi [Student Name],\n\nThis is a friendly reminder that your signed permission slip for the ${t ? t.name : 'upcoming trip'} has NOT yet been returned.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  DEADLINE: Please return your slip by [DATE] or your spot may be given to another student.\n\nYou can pick up a new form from ${PROFILE.courtesyName} (Room [#]) if you need one.\n\nIf you have decided not to attend, please let me know as soon as possible so I can adjust the roster.\n\n${PROFILE.courtesyName}\n${PROFILE.phone}`
     },
     { id:'stu-deadline-reminder', label:'⏰ General Deadline Reminder',
       subject: (t) => `Action Required: Deadline Approaching — ${t ? t.name : 'DECA'}`,
-      body: (t) => `Hi DECA Team,\n\nJust a reminder that there is an important deadline coming up${t ? ' for ' + t.name : ''}.\n\n⚠️  DEADLINE: [DATE]\n📋 WHAT'S NEEDED: [Describe what students need to submit/return]\n\nIf you have any questions or need help, please reach out before the deadline — I cannot make exceptions after the cutoff.\n\nMr. Berneche\nDECA Advisor | (804) 833-8869`
+      body: (t) => `Hi DECA Team,\n\nJust a reminder that there is an important deadline coming up${t ? ' for ' + t.name : ''}.\n\n⚠️  DEADLINE: [DATE]\n📋 WHAT'S NEEDED: [Describe what students need to submit/return]\n\nIf you have any questions or need help, please reach out before the deadline — I cannot make exceptions after the cutoff.\n\n${PROFILE.courtesyName}\n${PROFILE.title} | ${PROFILE.phone}`
     },
     { id:'stu-post-trip', label:'🎉 Post-Trip Thank You',
       subject: (t) => `Thank You — ${t ? t.name : 'Recent DECA Trip'} Recap`,
-      body: (t) => `Hi DECA Team,\n\nWhat an incredible experience! Thank you all for representing Clover Hill DECA with such professionalism and enthusiasm${t ? ' at ' + t.name : ''}.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.loc || '') + '\n\n' : ''}Your preparation, attitude, and performance made this trip a success. I am proud of each and every one of you.\n\n[Add specific highlights / results here]\n\nThank you also to our chaperones${t && t.chaperones ? ' — ' + t.chaperones : ''} for giving their time to support our chapter.\n\nLooking forward to our next adventure together!\n\nMr. Berneche\nDECA Advisor — Clover Hill High School`
+      body: (t) => `Hi DECA Team,\n\nWhat an incredible experience! Thank you all for representing ${PROFILE.chapterName} with such professionalism and enthusiasm${t ? ' at ' + t.name : ''}.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.loc || '') + '\n\n' : ''}Your preparation, attitude, and performance made this trip a success. I am proud of each and every one of you.\n\n[Add specific highlights / results here]\n\nThank you also to our chaperones${t && t.chaperones ? ' — ' + t.chaperones : ''} for giving their time to support our chapter.\n\nLooking forward to our next adventure together!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}`
     },
     { id:'stu-meeting-agenda', label:'📋 Meeting Announcement',
       subject: () => `DECA Chapter Meeting — [Date] @ [Time]`,
-      body: () => `Hi DECA Team,\n\nWe have an important chapter meeting coming up!\n\n📅 DATE: [Date]\n⏰ TIME: [Time]\n📍 LOCATION: [Room/Location]\n\nAGENDA:\n• [Item 1]\n• [Item 2]\n• [Item 3]\n• Open Q&A\n\nAttendance is [required / strongly encouraged]. Please plan to arrive a few minutes early.\n\nSee you there!\n\nMr. Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869`
+      body: () => `Hi DECA Team,\n\nWe have an important chapter meeting coming up!\n\n📅 DATE: [Date]\n⏰ TIME: [Time]\n📍 LOCATION: [Room/Location]\n\nAGENDA:\n• [Item 1]\n• [Item 2]\n• [Item 3]\n• Open Q&A\n\nAttendance is [required / strongly encouraged]. Please plan to arrive a few minutes early.\n\nSee you there!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`
     },
   ],
   parents: [
     { id:'par-trip-overview', label:'📢 Trip Overview & Permission',
       subject: (t) => `DECA Field Trip: ${t ? t.name : '[Trip Name]'} — Permission & Payment`,
       body: (t) => {
-        if(!t) return `Dear DECA Families,\n\nOur DECA chapter has an exciting trip coming up. Please watch for details and the permission form that will be sent home soon.\n\nIf you have any questions, please contact me at the information below.\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`;
+        if(!t) return `Dear DECA Families,\n\nOur DECA chapter has an exciting trip coming up. Please watch for details and the permission form that will be sent home soon.\n\nIf you have any questions, please contact me at the information below.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
         const overnight = isOvernightTrip(t);
-        return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || 'Adam Berneche'}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to Mr. Berneche by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`;
+        return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || '${PROFILE.name}'}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to ${PROFILE.courtesyName} by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
       }
     },
     { id:'par-icdc-info', label:'✈️ ICDC Qualifier Letter',
       subject: () => `DECA ICDC — Your Student Qualified! Information & Next Steps`,
-      body: () => `Dear [Student] Families,\n\nI am thrilled to share that your student has qualified to compete at the DECA International Career Development Conference (ICDC)!\n\n📅 EVENT: DECA ICDC\n📆 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n🚌 TRANSPORTATION: Airline (details to follow)\n🏨 HOUSING: Atlanta Hilton — $260/night, 4 to a room\n💰 ESTIMATED TOTAL COST: ~$1,000/student\n\nPAYMENT SCHEDULE:\n• Installment #1: ~$400 due March 13\n• Installment #2: ~$300 due March 27\n• Installment #3: ~$300 + forms due April 17\n\nIMPORTANT: ICDC is open only to students who placed in the Top 8 at the State Leadership Conference AND scored 70%+ on the SLC written test. I will confirm eligibility with each family individually.\n\nPlease contact me as soon as possible to confirm whether your student will attend, as the registration window closes March 13.\n\nThank you for your continued support of our DECA chapter!\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`
+      body: () => `Dear [Student] Families,\n\nI am thrilled to share that your student has qualified to compete at the DECA International Career Development Conference (ICDC)!\n\n📅 EVENT: DECA ICDC\n📆 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n🚌 TRANSPORTATION: Airline (details to follow)\n🏨 HOUSING: Atlanta Hilton — $260/night, 4 to a room\n💰 ESTIMATED TOTAL COST: ~$1,000/student\n\nPAYMENT SCHEDULE:\n• Installment #1: ~$400 due March 13\n• Installment #2: ~$300 due March 27\n• Installment #3: ~$300 + forms due April 17\n\nIMPORTANT: ICDC is open only to students who placed in the Top 8 at the State Leadership Conference AND scored 70%+ on the SLC written test. I will confirm eligibility with each family individually.\n\nPlease contact me as soon as possible to confirm whether your student will attend, as the registration window closes March 13.\n\nThank you for your continued support of our DECA chapter!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
     },
     { id:'par-permission-followup', label:'📝 Unsigned Permission Slip Followup',
       subject: (t) => `URGENT: Missing Permission Slip — ${t ? t.name : 'Upcoming Trip'}`,
-      body: (t) => `Dear [Student]'s Family,\n\nThis is a follow-up regarding the permission slip for ${t ? t.name : 'the upcoming DECA trip'}.\n\nAs of today, we have not received a signed permission form for your student. Without a completed permission slip, your student WILL NOT be able to participate.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  Permission Deadline: [DATE]\n💰 Payment Remaining: $[AMOUNT]\n\nPlease return the signed form and any remaining payment to Mr. Berneche (Room [#]) by the deadline above.\n\nIf you have questions or need a new form, please contact me directly.\n\nAdam Berneche\n(804) 833-8869 | adam_berneche@ccpsnet.net`
+      body: (t) => `Dear [Student]'s Family,\n\nThis is a follow-up regarding the permission slip for ${t ? t.name : 'the upcoming DECA trip'}.\n\nAs of today, we have not received a signed permission form for your student. Without a completed permission slip, your student WILL NOT be able to participate.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  Permission Deadline: [DATE]\n💰 Payment Remaining: $[AMOUNT]\n\nPlease return the signed form and any remaining payment to ${PROFILE.courtesyName} (Room [#]) by the deadline above.\n\nIf you have questions or need a new form, please contact me directly.\n\n${PROFILE.name}\n${PROFILE.phone} | ${PROFILE.email}`
     },
     { id:'par-season-update', label:'📅 Season / Calendar Update',
       subject: () => `DECA 25-26 Season Update — Key Dates & Upcoming Events`,
-      body: () => `Dear DECA Families,\n\nI wanted to send a quick update on our DECA chapter's 25-26 season and share some important upcoming dates.\n\n✅ COMPLETED THIS SEASON:\n• Ultimate Power Trip — Nov 21–23, 2025 (Arlington, VA)\n• District Leadership Conference — Dec 3, 2025 (Chesterfield Towne Center)\n• State Leadership Conference — Feb 27–Mar 1, 2026 (Virginia Beach)\n\n📅 UPCOMING:\n• ICDC Registration: March 2–13, 2026 ($155/student — qualifiers only)\n• ICDC Payment Due: April 1, 2026\n• ICDC Atlanta: April 25–29, 2026\n\nMembership in DECA is $20 and accepted all year. If your student is not yet a paid member and would like to be involved in future activities, please have them see Mr. Berneche.\n\nThank you for your ongoing support!\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net\nInstagram: @cloverhillsdeca`
+      body: () => `Dear DECA Families,\n\nI wanted to send a quick update on our DECA chapter's 25-26 season and share some important upcoming dates.\n\n✅ COMPLETED THIS SEASON:\n• Ultimate Power Trip — Nov 21–23, 2025 (Arlington, VA)\n• District Leadership Conference — Dec 3, 2025 (Chesterfield Towne Center)\n• State Leadership Conference — Feb 27–Mar 1, 2026 (Virginia Beach)\n\n📅 UPCOMING:\n• ICDC Registration: March 2–13, 2026 ($155/student — qualifiers only)\n• ICDC Payment Due: April 1, 2026\n• ICDC Atlanta: April 25–29, 2026\n\nMembership in DECA is $20 and accepted all year. If your student is not yet a paid member and would like to be involved in future activities, please have them see ${PROFILE.courtesyName}.\n\nThank you for your ongoing support!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\nInstagram: @cloverhillsdeca`
     },
     { id:'par-chaperone-request', label:'🙋 Chaperone Request',
       subject: (t) => `Seeking Chaperones: ${t ? t.name : 'Upcoming DECA Trip'}`,
-      body: (t) => `Dear DECA Families,\n\nWe are looking for parent/guardian volunteers to serve as chaperones for our upcoming trip!\n\n📅 EVENT: ${t ? t.name : '[Trip Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nChaperones are responsible for supervising students and supporting the advisor during the trip. ${t && isOvernightTrip(t) ? 'This is an overnight trip and chaperones will need to arrange overnight accommodations.' : ''}\n\nIf you are interested in chaperoning or have questions, please contact me at:\n\nAdam Berneche\n(804) 833-8869 | adam_berneche@ccpsnet.net\n\nThank you for your support!`
+      body: (t) => `Dear DECA Families,\n\nWe are looking for parent/guardian volunteers to serve as chaperones for our upcoming trip!\n\n📅 EVENT: ${t ? t.name : '[Trip Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nChaperones are responsible for supervising students and supporting the advisor during the trip. ${t && isOvernightTrip(t) ? 'This is an overnight trip and chaperones will need to arrange overnight accommodations.' : ''}\n\nIf you are interested in chaperoning or have questions, please contact me at:\n\n${PROFILE.name}\n${PROFILE.phone} | ${PROFILE.email}\n\nThank you for your support!`
     },
   ],
   school: [
     { id:'sch-trip-approval-request', label:'📋 Trip Approval Request',
       subject: (t) => `Field Trip Approval Request: ${t ? t.name : '[Trip Name]'}`,
       body: (t) => {
-        if(!t) return `Dear Administration,\n\nI am writing to request approval for an upcoming DECA field trip. I will follow up with the full Permission Request Attachment form through TripTracker.\n\nPlease let me know if you need any additional information.\n\nAdam Berneche\nDECA Advisor | Room [#]\n(804) 833-8869`;
-        return `Dear Administration,\n\nI am writing to request approval for the following field trip:\n\n📋 TRIP: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORT: ${t.charterCo ? 'Charter — ' + t.charterCo : t.train ? 'Amtrak' : t.parentTx ? 'Parent Transport' : 'CCPS Bus'}\n👥 STUDENTS: ${t.stuAtt || '[#]'} students, ${t.adultAtt || 2} adults\n💰 COST/STUDENT: $${t.costStu || 0}\n📁 ACCOUNT: ${t.fund || 'DECA 4280'}\n📑 PO #: ${t.po || '[Pending]'}\n\nEDUCATIONAL JUSTIFICATION:\n${t.why || 'This trip supports DECA, the CTSO associated with the Marketing program of study, as required by the Virginia Department of Education.'}\n\nPRE-TRIP PREPARATION:\n${t.pre || 'Students will prepare through chapter meetings and classroom instruction.'}\n\nPOST-TRIP FOLLOW-UP:\n${t.post || 'Students will debrief and apply learning to future events.'}\n\nThe full Permission Request Attachment has been submitted through TripTracker. Please let me know if you need any additional documentation.\n\nThank you,\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`;
+        if(!t) return `Dear Administration,\n\nI am writing to request approval for an upcoming DECA field trip. I will follow up with the full Permission Request Attachment form through TripTracker.\n\nPlease let me know if you need any additional information.\n\n${PROFILE.name}\n${PROFILE.title} | Room [#]\n${PROFILE.phone}`;
+        return `Dear Administration,\n\nI am writing to request approval for the following field trip:\n\n📋 TRIP: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORT: ${t.charterCo ? 'Charter — ' + t.charterCo : t.train ? 'Amtrak' : t.parentTx ? 'Parent Transport' : 'CCPS Bus'}\n👥 STUDENTS: ${t.stuAtt || '[#]'} students, ${t.adultAtt || 2} adults\n💰 COST/STUDENT: $${t.costStu || 0}\n📁 ACCOUNT: ${t.fund || 'DECA 4280'}\n📑 PO #: ${t.po || '[Pending]'}\n\nEDUCATIONAL JUSTIFICATION:\n${t.why || 'This trip supports DECA, the CTSO associated with the Marketing program of study, as required by the Virginia Department of Education.'}\n\nPRE-TRIP PREPARATION:\n${t.pre || 'Students will prepare through chapter meetings and classroom instruction.'}\n\nPOST-TRIP FOLLOW-UP:\n${t.post || 'Students will debrief and apply learning to future events.'}\n\nThe full Permission Request Attachment has been submitted through TripTracker. Please let me know if you need any additional documentation.\n\nThank you,\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
       }
     },
     { id:'sch-sub-coverage', label:'🧑‍🏫 Substitute Coverage Request',
       subject: (t) => `Substitute Coverage Request — ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}`,
-      body: (t) => `Dear ${t && isOvernightTrip(t) ? 'Administration' : '[Department Head / Admin]'},\n\nI am requesting substitute coverage for my classes during the following dates due to a DECA field trip:\n\n📅 DATES OUT: ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n\nCLASSES NEEDING COVERAGE:\n• [Period #] — [Course Name] — [Room #]\n• [Period #] — [Course Name] — [Room #]\n\nI will prepare sub plans and have them ready by [DATE]. All materials will be left on my desk clearly labeled.\n\nPlease let me know if any additional paperwork is needed for the Professional Leave / Conference Request form.\n\nThank you,\nAdam Berneche\n(804) 833-8869`
+      body: (t) => `Dear ${t && isOvernightTrip(t) ? 'Administration' : '[Department Head / Admin]'},\n\nI am requesting substitute coverage for my classes during the following dates due to a DECA field trip:\n\n📅 DATES OUT: ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n\nCLASSES NEEDING COVERAGE:\n• [Period #] — [Course Name] — [Room #]\n• [Period #] — [Course Name] — [Room #]\n\nI will prepare sub plans and have them ready by [DATE]. All materials will be left on my desk clearly labeled.\n\nPlease let me know if any additional paperwork is needed for the Professional Leave / Conference Request form.\n\nThank you,\n${PROFILE.name}\n${PROFILE.phone}`
     },
     { id:'sch-finance-po', label:'💰 Finance / PO Request',
       subject: (t) => `Purchase Order / Payment Request — ${t ? t.name : '[Event]'}`,
-      body: (t) => `Dear Finance Office,\n\nI am writing to request a purchase order / payment processing for the following:\n\n📋 EVENT: ${t ? t.name : '[Event Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n💰 AMOUNT: $[AMOUNT]\n📁 ACCOUNT CODE: ${t ? (t.fund || 'DECA 4280') : 'DECA 4280'}\n📤 PAYABLE TO: [Vendor Name]\n\nDETAILS:\n[Brief description of what is being purchased — e.g., transportation, registration fees, hotel]\n\nPlease let me know what documentation you need to process this request.\n\nThank you,\nAdam Berneche\nRoom [#] | (804) 833-8869`
+      body: (t) => `Dear Finance Office,\n\nI am writing to request a purchase order / payment processing for the following:\n\n📋 EVENT: ${t ? t.name : '[Event Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n💰 AMOUNT: $[AMOUNT]\n📁 ACCOUNT CODE: ${t ? (t.fund || 'DECA 4280') : 'DECA 4280'}\n📤 PAYABLE TO: [Vendor Name]\n\nDETAILS:\n[Brief description of what is being purchased — e.g., transportation, registration fees, hotel]\n\nPlease let me know what documentation you need to process this request.\n\nThank you,\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
     },
     { id:'sch-icdc-notification', label:'✈️ ICDC Admin Notification',
       subject: () => `DECA ICDC — Students Advancing to Nationals — April 25–29, 2026`,
-      body: () => `Dear Administration,\n\nI am pleased to share that [#] Clover Hill DECA students have qualified to represent our school at the DECA International Career Development Conference (ICDC) — a national competition attended by approximately 20,000 students.\n\n📅 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA\n💰 STUDENT COST: ~$1,000/student (funded through SAF/student payments)\n🚌 TRANSPORT: Airline\n📁 ACCOUNT: DECA 4280\n\nQUALIFICATION: Students placed in the Top 8 at the Virginia DECA State Leadership Conference (Feb 27–Mar 1) AND scored 70%+ on the written assessment.\n\nThis is a tremendous achievement for our students and for Clover Hill High School. I will be submitting the field trip form through TripTracker and the Conference/Leave Request (PR3) form for administrative approval.\n\nPlease let me know if you need any additional information.\n\nThank you for your continued support of our DECA program!\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net`
+      body: () => `Dear Administration,\n\nI am pleased to share that [#] ${PROFILE.chapterName} students have qualified to represent our school at the DECA International Career Development Conference (ICDC) — a national competition attended by approximately 20,000 students.\n\n📅 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA\n💰 STUDENT COST: ~$1,000/student (funded through SAF/student payments)\n🚌 TRANSPORT: Airline\n📁 ACCOUNT: DECA 4280\n\nQUALIFICATION: Students placed in the Top 8 at the Virginia DECA State Leadership Conference (Feb 27–Mar 1) AND scored 70%+ on the written assessment.\n\nThis is a tremendous achievement for our students and for ${PROFILE.school}. I will be submitting the field trip form through TripTracker and the Conference/Leave Request (PR3) form for administrative approval.\n\nPlease let me know if you need any additional information.\n\nThank you for your continued support of our DECA program!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
     },
     { id:'sch-season-report', label:'📊 Season Report / Summary',
-      subject: () => `DECA 25-26 Season Report — Clover Hill High School`,
-      body: () => `Dear Administration,\n\nI wanted to share a brief summary of the Clover Hill DECA chapter's 25-26 competitive season.\n\n✅ SEASON HIGHLIGHTS:\n\n1. Ultimate Power Trip (Nov 21–23, 2025)\n   • Location: Arlington, VA (Renaissance Arlington Capital View)\n   • 13 students attended · Transport: Amtrak\n   • PO# 26-316-3418\n\n2. District Leadership Conference (Dec 3, 2025)\n   • Location: Chesterfield Towne Center\n   • 15 students competed (23 invited)\n   • No transportation cost\n\n3. State Leadership Conference (Feb 27–Mar 1, 2026)\n   • Location: Virginia Beach Convention Center\n   • 15 students competed · Charter bus (Winn)\n   • PO# 26-0368-2559\n   • Results: [Add SLC results]\n\n4. ICDC — International Career Development Conference (Apr 25–29, 2026)\n   • [# qualifiers advancing]\n   • Atlanta, GA\n\nThe DECA program continues to grow in both membership and competitive achievement. I look forward to sharing full results at the end of the season.\n\nThank you for your support!\n\nAdam Berneche\nDECA Advisor\n(804) 833-8869`
+      subject: () => `DECA 25-26 Season Report — ${PROFILE.school}`,
+      body: () => `Dear Administration,\n\nI wanted to share a brief summary of the ${PROFILE.chapterName} chapter's 25-26 competitive season.\n\n✅ SEASON HIGHLIGHTS:\n\n1. Ultimate Power Trip (Nov 21–23, 2025)\n   • Location: Arlington, VA (Renaissance Arlington Capital View)\n   • 13 students attended · Transport: Amtrak\n   • PO# 26-316-3418\n\n2. District Leadership Conference (Dec 3, 2025)\n   • Location: Chesterfield Towne Center\n   • 15 students competed (23 invited)\n   • No transportation cost\n\n3. State Leadership Conference (Feb 27–Mar 1, 2026)\n   • Location: Virginia Beach Convention Center\n   • 15 students competed · Charter bus (Winn)\n   • PO# 26-0368-2559\n   • Results: [Add SLC results]\n\n4. ICDC — International Career Development Conference (Apr 25–29, 2026)\n   • [# qualifiers advancing]\n   • Atlanta, GA\n\nThe DECA program continues to grow in both membership and competitive achievement. I look forward to sharing full results at the end of the season.\n\nThank you for your support!\n\n${PROFILE.name}\n${PROFILE.title}\n${PROFILE.phone}`
     },
   ],
   faculty: [
     { id:'fac-student-missing-class', label:'📚 Student Absence Notification',
       subject: (t) => `Student Absence — DECA Trip — ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? '–' + fd(t.retDate) : '') : '[Dates]'}`,
-      body: (t) => `Dear Colleagues,\n\nPlease be advised that the following students will be absent from school on ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' through ' + fd(t.retDate) : '') : '[Dates]'} due to an approved DECA field trip.\n\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nABSENT STUDENTS:\n[List student names here — or see attached roster]\n\nPer school policy, these are EXCUSED absences. Please allow students to make up any missed work, tests, or assignments within [#] days of their return.\n\nIf a student has a major assessment or obligation on these dates, please reach out to me in advance so we can coordinate.\n\nThank you for your flexibility and support of our DECA program!\n\nAdam Berneche\nRoom [#] | (804) 833-8869 | adam_berneche@ccpsnet.net`
+      body: (t) => `Dear Colleagues,\n\nPlease be advised that the following students will be absent from school on ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' through ' + fd(t.retDate) : '') : '[Dates]'} due to an approved DECA field trip.\n\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nABSENT STUDENTS:\n[List student names here — or see attached roster]\n\nPer school policy, these are EXCUSED absences. Please allow students to make up any missed work, tests, or assignments within [#] days of their return.\n\nIf a student has a major assessment or obligation on these dates, please reach out to me in advance so we can coordinate.\n\nThank you for your flexibility and support of our DECA program!\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone} | ${PROFILE.email}`
     },
     { id:'fac-student-eligibility', label:'✅ Student Eligibility Check',
       subject: (t) => `DECA Trip Eligibility Check — ${t ? t.name : 'Upcoming Trip'}`,
-      body: (t) => `Dear Colleagues,\n\nI am preparing the student roster for our upcoming DECA trip and need to confirm current academic standing and eligibility for the following students.\n\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n📆 DATE: ${t ? fd(t.date) : '[Date]'}\n\nSTUDENTS TO VERIFY:\n[List student names]\n\nIf any of the students listed above have eligibility concerns (grade, attendance, behavior) that would prevent participation, please let me know by [DATE]. Otherwise, I will assume all listed students are cleared.\n\nThank you for your help!\n\nAdam Berneche\nRoom [#] | (804) 833-8869`
+      body: (t) => `Dear Colleagues,\n\nI am preparing the student roster for our upcoming DECA trip and need to confirm current academic standing and eligibility for the following students.\n\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n📆 DATE: ${t ? fd(t.date) : '[Date]'}\n\nSTUDENTS TO VERIFY:\n[List student names]\n\nIf any of the students listed above have eligibility concerns (grade, attendance, behavior) that would prevent participation, please let me know by [DATE]. Otherwise, I will assume all listed students are cleared.\n\nThank you for your help!\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
     },
     { id:'fac-recruitment', label:'🎓 DECA Recruitment Ask',
       subject: () => `DECA Student Recruitment — Can You Help?`,
-      body: () => `Dear Colleagues,\n\nI am reaching out to ask for your help in recruiting students for our Clover Hill DECA chapter!\n\nDECA is the Career & Technical Student Organization (CTSO) associated with the Marketing and Business programs. Membership is open to all students and costs just $20 for the year.\n\nWHAT DECA OFFERS STUDENTS:\n• Real-world competitive events (written tests + role-play simulations)\n• Leadership development and networking\n• Travel to District, State, and National conferences\n• Scholarship opportunities\n• College application standout experience\n\nIF YOU HAVE STUDENTS WHO:\n• Are in Business, Marketing, Finance, or Entrepreneurship classes\n• Are confident communicators or natural leaders\n• Would benefit from a career-focused extracurricular\n\n…please encourage them to see me or visit [room/location].\n\nMembership forms are available from me or at our chapter email: cloverhillsdeca@gmail.com\n\nThank you!\n\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869`
+      body: () => `Dear Colleagues,\n\nI am reaching out to ask for your help in recruiting students for our ${PROFILE.chapterName} chapter!\n\nDECA is the Career & Technical Student Organization (CTSO) associated with the Marketing and Business programs. Membership is open to all students and costs just $20 for the year.\n\nWHAT DECA OFFERS STUDENTS:\n• Real-world competitive events (written tests + role-play simulations)\n• Leadership development and networking\n• Travel to District, State, and National conferences\n• Scholarship opportunities\n• College application standout experience\n\nIF YOU HAVE STUDENTS WHO:\n• Are in Business, Marketing, Finance, or Entrepreneurship classes\n• Are confident communicators or natural leaders\n• Would benefit from a career-focused extracurricular\n\n…please encourage them to see me or visit [room/location].\n\nMembership forms are available from me or at our chapter email: cloverhillsdeca@gmail.com\n\nThank you!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`
     },
     { id:'fac-thank-you', label:'🙏 Chaperone / Support Thank You',
       subject: (t) => `Thank You — ${t ? t.name : 'Recent DECA Trip'}`,
-      body: (t) => `Dear [Name],\n\nI wanted to take a moment to sincerely thank you for your support${t ? ' during ' + t.name : ' on our recent DECA trip'}.\n\nYour willingness to give your time${t && isOvernightTrip(t) ? ' — including overnight — ' : ' '}made this trip possible and ensured our students had a safe, positive, and memorable experience.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.name) + '\n\n' : ''}Our students truly benefit from having caring adults who invest in their growth, and I could not do this without people like you.\n\nWith gratitude,\nAdam Berneche\nDECA Advisor — Clover Hill High School\n(804) 833-8869`
+      body: (t) => `Dear [Name],\n\nI wanted to take a moment to sincerely thank you for your support${t ? ' during ' + t.name : ' on our recent DECA trip'}.\n\nYour willingness to give your time${t && isOvernightTrip(t) ? ' — including overnight — ' : ' '}made this trip possible and ensured our students had a safe, positive, and memorable experience.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.name) + '\n\n' : ''}Our students truly benefit from having caring adults who invest in their growth, and I could not do this without people like you.\n\nWith gratitude,\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`
     },
     { id:'fac-dept-update', label:'📣 Dept / Team DECA Update',
       subject: () => `DECA Program Update — [Month] [Year]`,
-      body: () => `Hi Team,\n\nJust a quick update on where DECA is at this season and what's on the horizon.\n\nSEASON SO FAR:\n• Ultimate Power Trip ✅ — Nov 21–23 (Arlington, VA · 13 students)\n• DLC ✅ — Dec 3 (Chesterfield Towne Center · 15 students)\n• SLC ✅ — Feb 27–Mar 1 (Virginia Beach · 15 students · results pending)\n\nUPCOMING:\n• ICDC Registration: March 2–13 ($155 — qualifiers only)\n• ICDC Atlanta: April 25–29, 2026\n\nSTUDENTS TO WATCH: [Add names of strong performers]\n\nLet me know if you have any questions or if there's anything I can do to support your students who are in DECA.\n\nAdam Berneche\nRoom [#] | (804) 833-8869`
+      body: () => `Hi Team,\n\nJust a quick update on where DECA is at this season and what's on the horizon.\n\nSEASON SO FAR:\n• Ultimate Power Trip ✅ — Nov 21–23 (Arlington, VA · 13 students)\n• DLC ✅ — Dec 3 (Chesterfield Towne Center · 15 students)\n• SLC ✅ — Feb 27–Mar 1 (Virginia Beach · 15 students · results pending)\n\nUPCOMING:\n• ICDC Registration: March 2–13 ($155 — qualifiers only)\n• ICDC Atlanta: April 25–29, 2026\n\nSTUDENTS TO WATCH: [Add names of strong performers]\n\nLet me know if you have any questions or if there's anything I can do to support your students who are in DECA.\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
     },
   ]
 };
@@ -5784,7 +5832,7 @@ function loadEmailTemplate(tplId) {
   if(!document.getElementById('email-to').value) {
     document.getElementById('email-to').value = toDefaults[emailTab] || '';
   }
-  const ccDefaults = { school:'adam_berneche@ccpsnet.net', faculty:'adam_berneche@ccpsnet.net' };
+  const ccDefaults = { school:PROFILE.email, faculty:PROFILE.email };
   if(!document.getElementById('email-cc').value && ccDefaults[emailTab]) {
     document.getElementById('email-cc').value = ccDefaults[emailTab];
   }
@@ -6402,7 +6450,7 @@ function renderDECAPipeline() {
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem">
         <div>
           <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px;color:var(--gold)">🏆 ${DECA_SEASON.title || 'DECA Season Pipeline'}</div>
-          <div style="font-size:.72rem;color:rgba(255,255,255,.5)">Clover Hill High School · DECA Account 4280 · Advisor: Adam Berneche</div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.5)">${PROFILE.school} · DECA Account 4280 · Advisor: ${PROFILE.name}</div>
         </div>
         <div style="display:flex;gap:.5rem;align-items:center">
           <span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--green);color:#fff;font-weight:700">${doneCount} event${doneCount!==1?'s':''} complete</span>
@@ -6901,15 +6949,15 @@ DECA SPECIFICS:
 • Emergency contact on file: [Confirm with front office if needed]
 
 DUES:
-$20 membership fee is due to Mr. Berneche by [DATE].
-Checks payable to "Clover Hill DECA."
+$20 membership fee is due to ${PROFILE.courtesyName} by [DATE].
+Checks payable to "${PROFILE.chapterName}."
 
 Questions? Reply to this email or stop by Room [#].
 
 Thank you!
-Adam Berneche
-DECA Advisor — Clover Hill High School
-(804) 833-8869 | adam_berneche@ccpsnet.net`;
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}`;
   openModal('emailComposer');
 }
 
@@ -6953,16 +7001,16 @@ DECA-SPECIFIC:
 □ Dietary restrictions / allergies noted with chaperones
 
 MEMBERSHIP DUES:
-□ $20 membership fee — cash or check payable to "Clover Hill DECA"
+□ $20 membership fee — cash or check payable to "${PROFILE.chapterName}"
 □ $2 state dues — due to Kristen Wettstein by November 1
 □ Signed membership agreement form${addl?'\n\nADDITIONAL NOTES:\n'+addl:''}
 
 Questions? Contact me directly or stop by Room [#].
 
 Thank you,
-Adam Berneche
-DECA Advisor — Clover Hill High School
-(804) 833-8869 | adam_berneche@ccpsnet.net`;
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}`;
   openModal('emailComposer');
 }
 
@@ -6982,11 +7030,11 @@ async function generateRegEmail(){
 function loadAlumniExitTemplate(){
   setEmailTab('students', document.getElementById('etab-students'));
   document.getElementById('email-to').value = 'DECA Alumni';
-  document.getElementById('email-subject').value = 'DECA Exit Interview & Alumni Connection — Clover Hill DECA';
+  document.getElementById('email-subject').value = `DECA Exit Interview & Alumni Connection — ${PROFILE.chapterName}`;
   document.getElementById('email-body').value =
 `Dear [Student Name],
 
-Congratulations on completing your Clover Hill DECA journey! Whether you competed at districts, state, or even ICDC — you made our chapter better, and we are proud of everything you accomplished.
+Congratulations on completing your ${PROFILE.chapterName} journey! Whether you competed at districts, state, or even ICDC — you made our chapter better, and we are proud of everything you accomplished.
 
 As you move forward, I would love to take a few minutes to hear your thoughts on your experience and stay connected with you as a DECA alum.
 
@@ -7008,7 +7056,7 @@ EXIT INTERVIEW — A Few Questions
 ALUMNI CONNECTION
 ─────────────────────────────
 
-Please let me know how you'd like to stay connected with Clover Hill DECA:
+Please let me know how you'd like to stay connected with ${PROFILE.chapterName}:
 
 □ Yes — I am open to mentoring current members (job interview prep, event practice, general advice)
 □ Yes — I would like to receive the DECA chapter newsletter and updates
@@ -7030,9 +7078,9 @@ You can reply directly to this email or fill out the Google Form at [LINK]. This
 Thank you for everything you gave to this chapter. Once DECA, always DECA. 🏆
 
 With pride,
-Adam Berneche
-DECA Advisor — Clover Hill High School
-(804) 833-8869 | adam_berneche@ccpsnet.net
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}
 Instagram: @cloverhillsdeca`;
   openModal('emailComposer');
 }
@@ -7075,14 +7123,14 @@ WHAT I NEED FROM YOU:
 
 DUES:
 $20 membership fee is due by [DATE].
-Cash or check payable to "Clover Hill DECA."
+Cash or check payable to "${PROFILE.chapterName}."
 $2 state dues due to Kristen Wettstein by November 1.
 
 Missing info = missing from event rosters and field trip forms.
 Please get this to me ASAP — don't miss your spot!
 
-Mr. Berneche
-(804) 833-8869 | adam_berneche@ccpsnet.net`
+${PROFILE.courtesyName}
+${PROFILE.phone} | ${PROFILE.email}`
     },
     { id:'stu-exit-interview', label:'🎓 Exit Interview (Alumni)',
       subject: ()=>'DECA Exit Interview & Alumni Connection',
@@ -7117,16 +7165,16 @@ DECA SPECIFICS:
 □ Dietary restrictions / allergies noted with chaperones
 
 MEMBERSHIP DUES:
-$20 due to Mr. Berneche by [DATE] (cash or check — "Clover Hill DECA")
+$20 due to ${PROFILE.courtesyName} by [DATE] (cash or check — "${PROFILE.chapterName}")
 
 This information is used for DECA Connect registration, field trip permission forms, and emergency contacts at all events. Having accurate, complete records is essential for your student's participation.
 
 Please reply to this email or have your student deliver the information directly.
 
 Thank you,
-Adam Berneche
-DECA Advisor — Clover Hill High School
-(804) 833-8869 | adam_berneche@ccpsnet.net`
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}`
     }
   );
 }
@@ -11289,6 +11337,7 @@ function resetMK8Checklist() {
 // missing). Moved into this function, called once at boot, using the
 // exact same data/markup as before — just executed instead of printed.
 function renderStaticEmbeddedContent() {
+  _applyProfileToStaticDOM();
   const ssbuStarter = document.getElementById('ssbu-starter-stages');
   if (ssbuStarter) ssbuStarter.innerHTML = ['Battlefield','Pokémon Stadium 2','Small Battlefield','Smashville','Town and City'].map(s=>`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#15803d">${s}</div>`).join('');
 
@@ -11792,7 +11841,7 @@ async function aiComposeEmail() {
   // reachable. Used outright when nothing was typed, no bridge is
   // configured, the Flow errors, or the poll times out.
   const tripLine = trip ? `\nTrip: ${trip.name} — ${fd(trip.date)}` : '';
-  const localTemplate = `Dear [Recipient],\n\n${prompt || '[Your message here]'}${tripLine}\n\nPlease feel free to reach out with any questions.\n\nBest,\nAdam Berneche\nCTE Business & Marketing | Clover Hill High School\n(804) 833-8869 | adam_berneche@ccpsnet.net\nDECA Chapter Advisor`;
+  const localTemplate = `Dear [Recipient],\n\n${prompt || '[Your message here]'}${tripLine}\n\nPlease feel free to reach out with any questions.\n\nBest,\n${PROFILE.name}\n${PROFILE.classroomTitle} | ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\n${PROFILE.title}`;
 
   if (!prompt) {
     out.value = localTemplate;
@@ -12525,7 +12574,7 @@ async function generateSubPlan() {
 
   const planText = `SUBSTITUTE TEACHER PLAN
 Date: ${dateLabel}
-Teacher: Adam Berneche — CTE Business & Marketing, Clover Hill High School
+Teacher: ${PROFILE.name} — ${PROFILE.classroomTitle}, ${PROFILE.school}
 Reason: ${reasonLabels[reason]||reason}
 Schedule: ${schedLabel} · ${oddEven} Day
 
@@ -12618,7 +12667,7 @@ async function _generateBragEmailInner() {
   // This local, deterministic assembly is the guaranteed result — computed
   // first and used outright whenever AI drafting is unavailable, times
   // out, or errors, so this button never produces an empty box.
-  const localBody = `Week of ${weekDisplay} — Highlights\n\n${sections.join('\n\n')}\n\nBest,\nAdam Berneche\nCTE Business & Marketing | Clover Hill High School`;
+  const localBody = `Week of ${weekDisplay} — Highlights\n\n${sections.join('\n\n')}\n\nBest,\n${PROFILE.name}\n${PROFILE.classroomTitle} | ${PROFILE.school}`;
 
   let emailBody = localBody;
   let usedAi    = false;
@@ -14867,6 +14916,44 @@ function openSurveyModal(){
       <button onclick="document.getElementById('survey-modal').remove()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.5rem">
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">My Profile &amp; School</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Every email template, sub plan, and Brag Board recipient below reads from these fields instead of a name built into the app — fill these in once to make LeaderHub yours. Values save as you leave each field.
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Your Name</label><input id="prof-name" value="${escH(PROFILE.name)}" onblur="lhSaveProfileField('name',this.value)" placeholder="e.g. Jordan Lee"></div>
+        <div class="fg"><label>Courtesy Title (mid-email mentions)</label><input id="prof-courtesyName" value="${escH(PROFILE.courtesyName)}" onblur="lhSaveProfileField('courtesyName',this.value)" placeholder="e.g. Ms. Lee"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Your Title (DECA emails)</label><input id="prof-title" value="${escH(PROFILE.title)}" onblur="lhSaveProfileField('title',this.value)" placeholder="e.g. DECA Advisor"></div>
+        <div class="fg"><label>Your Title (non-DECA emails)</label><input id="prof-classroomTitle" value="${escH(PROFILE.classroomTitle)}" onblur="lhSaveProfileField('classroomTitle',this.value)" placeholder="e.g. Business Teacher"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>School Name</label><input id="prof-school" value="${escH(PROFILE.school)}" onblur="lhSaveProfileField('school',this.value)" placeholder="e.g. Jefferson High School"></div>
+        <div class="fg"><label>Chapter/Org Name ("payable to")</label><input id="prof-chapterName" value="${escH(PROFILE.chapterName)}" onblur="lhSaveProfileField('chapterName',this.value)" placeholder="e.g. Jefferson DECA"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Phone</label><input id="prof-phone" value="${escH(PROFILE.phone)}" onblur="lhSaveProfileField('phone',this.value)" placeholder="e.g. (555) 123-4567"></div>
+        <div class="fg"><label>Email</label><input id="prof-email" type="email" value="${escH(PROFILE.email)}" onblur="lhSaveProfileField('email',this.value)" placeholder="e.g. you@yourdistrict.org"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Email Domain (AI-privacy ID lookup)</label><input id="prof-emailDomain" value="${escH(PROFILE.emailDomain)}" onblur="lhSaveProfileField('emailDomain',this.value)" placeholder="e.g. yourdistrict.org"></div>
+        <div></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Supervisor Name (Brag Board)</label><input id="prof-supervisorName" value="${escH(PROFILE.supervisorName)}" onblur="lhSaveProfileField('supervisorName',this.value)"></div>
+        <div class="fg"><label>Supervisor Email</label><input id="prof-supervisorEmail" type="email" value="${escH(PROFILE.supervisorEmail)}" onblur="lhSaveProfileField('supervisorEmail',this.value)"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Admin Contact Name (Brag Board)</label><input id="prof-adminName" value="${escH(PROFILE.adminName)}" onblur="lhSaveProfileField('adminName',this.value)"></div>
+        <div class="fg"><label>Admin Contact Email</label><input id="prof-adminEmail" type="email" value="${escH(PROFILE.adminEmail)}" onblur="lhSaveProfileField('adminEmail',this.value)"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.9rem">
+        <div class="fg"><label>Attendance Coordinator (sub plans)</label><input id="prof-attendanceCoordFirstName" value="${escH(PROFILE.attendanceCoordFirstName)}" onblur="lhSaveProfileField('attendanceCoordFirstName',this.value)" placeholder="First name"></div>
+        <div class="fg"><label>Attendance Coordinator Email</label><input id="prof-attendanceCoordEmail" type="email" value="${escH(PROFILE.attendanceCoordEmail)}" onblur="lhSaveProfileField('attendanceCoordEmail',this.value)"></div>
+      </div>
+      <div id="prof-save-status" style="font-size:.74rem;color:#166534;margin-bottom:1.2rem;min-height:1.1em"></div>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
         Everything in LeaderHub lives only in this browser — there's no server and no automatic backup. Export a copy regularly, especially before clearing your browser data or switching devices.
@@ -14879,7 +14966,7 @@ function openSurveyModal(){
 
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Student ID Lookup — AI Privacy</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
-        Upload a roster CSV (Name + CCPS ID/login columns) to have Brag Board's AI drafting substitute each matched student's real name with their CCPS ID (e.g. <code>1234567@ccpsnet.net</code>) before that content ever reaches Gemini. The AI-drafted email still shows real names — only the network request is affected. Names not in the uploaded roster are sent as-is.
+        Upload a roster CSV (Name + CCPS ID/login columns) to have Brag Board's AI drafting substitute each matched student's real name with their CCPS ID (e.g. <code>1234567@${PROFILE.emailDomain}</code>) before that content ever reaches Gemini. The AI-drafted email still shows real names — only the network request is affected. Names not in the uploaded roster are sent as-is.
       </div>
       <div id="student-id-status" style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem">No roster uploaded — student names will be sent to Gemini as-is.</div>
       <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
@@ -14898,6 +14985,20 @@ function openSurveyModal(){
   document.body.appendChild(m);
   _renderStudentIdStatus();
   m.onclick=e=>{ if(e.target===m) m.remove(); };
+}
+
+// Saves one Profile field on blur (not a single "Save" button — same
+// as-you-go pattern as the Email Bridge URL field below) and updates
+// PROFILE in memory immediately, so the very next email/sub-plan/Brag
+// Board generated in this session already reflects it.
+let _profSaveStatusTimer = null;
+function lhSaveProfileField(key, value) {
+  saveProfile({ [key]: value });
+  const el = document.getElementById('prof-save-status');
+  if (!el) return;
+  el.textContent = '✓ Saved';
+  clearTimeout(_profSaveStatusTimer);
+  _profSaveStatusTimer = setTimeout(() => { if (el) el.textContent = ''; }, 2000);
 }
 
 // ── Whole-app backup — every lh_* localStorage key, in one file ─────────────
@@ -15116,7 +15217,7 @@ function _substituteNamesForIds(text) {
   [...map].sort((a, b) => b.name.length - a.name.length).forEach(({ name, id }) => {
     if (!name) return;
     const re = new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
-    out = out.replace(re, `${id}@ccpsnet.net`);
+    out = out.replace(re, `${id}@${PROFILE.emailDomain}`);
   });
   return out;
 }
@@ -15125,8 +15226,9 @@ function _restoreNamesFromIds(text) {
   const map = _studentIdMap();
   if (!map.length || !text) return text;
   let out = text;
+  const domainRe = PROFILE.emailDomain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   map.forEach(({ name, id }) => {
-    out = out.replace(new RegExp(id + '@ccpsnet\\.net', 'gi'), name);
+    out = out.replace(new RegExp(id + '@' + domainRe, 'gi'), name);
   });
   return out;
 }
@@ -16487,8 +16589,8 @@ function emailSubPlanToNykia() {
   const reasonLabels = { sick:'Sick Day', deca:'DECA Trip', conference:'Conference/PD Day', personal:'Personal Day' };
   const body = document.getElementById('sp-preview-output').textContent;
   const subject = encodeURIComponent(`Sub Plan — ${reasonLabels[reason] || reason} — ${dateLabel}`);
-  const bodyEnc = encodeURIComponent(`Hi Nykia,\n\nPlease find my sub plan attached below for my absence on ${dateLabel}.\n\n---\n\n${body}\n\n---\n\nThank you,\nAdam Berneche`);
-  window.open(`mailto:nykia_ward@ccpsnet.net?subject=${subject}&body=${bodyEnc}`);
+  const bodyEnc = encodeURIComponent(`Hi ${PROFILE.attendanceCoordFirstName},\n\nPlease find my sub plan attached below for my absence on ${dateLabel}.\n\n---\n\n${body}\n\n---\n\nThank you,\n${PROFILE.name}`);
+  window.open(`mailto:${PROFILE.attendanceCoordEmail}?subject=${subject}&body=${bodyEnc}`);
 }
 
 function printSubPlan() {
@@ -16498,7 +16600,7 @@ function printSubPlan() {
   win.document.write(`<!DOCTYPE html><html><head><title>Sub Plan</title>
     <style>body{font-family:Arial,sans-serif;font-size:12pt;line-height:1.6;margin:1in;color:#111}
     h2{font-size:14pt}pre{white-space:pre-wrap;font-family:inherit}</style></head>
-    <body><h2>CLOVER HILL HIGH SCHOOL — SUBSTITUTE TEACHER PLAN</h2><pre>${text.replace(/</g,'&lt;')}</pre></body></html>`);
+    <body><h2>${PROFILE.school.toUpperCase()} — SUBSTITUTE TEACHER PLAN</h2><pre>${text.replace(/</g,'&lt;')}</pre></body></html>`);
   win.document.close();
   win.print();
 }
@@ -16536,16 +16638,19 @@ function _bragHasUnsavedChanges() {
 // the user had customized by hand with no warning.
 let _bragSubjectSnapshot = '';
 
+// label/to are getters (not plain strings) so a Settings → My Profile edit
+// takes effect on the very next Brag Board open, without needing a reload —
+// unlike a plain string baked in at page-load time.
 const BRAG_AUDIENCE = {
   green: {
-    label: 'Ms. Green',
-    to: 'renee_green@ccpsnet.net',
+    get label(){ return PROFILE.supervisorName; },
+    get to(){ return PROFILE.supervisorEmail; },
     tone: 'professional supervisor update with DSP evidence framing — reference Standard 1 (Instructional Planning) and Standard 2 (Professionalism/CTSO) where applicable. Be specific and evidence-oriented.',
     subjectPrefix: 'Weekly Update',
   },
   admin: {
-    label: 'Admin (Altizer / White)',
-    to: 'david_altizer@ccpsnet.net',
+    get label(){ return PROFILE.adminName; },
+    get to(){ return PROFILE.adminEmail; },
     tone: 'formal and concise administrative update. Highlight student outcomes, program visibility, and anything that reflects positively on the school. Two to three short paragraphs maximum.',
     subjectPrefix: 'Program Update',
   },
@@ -16557,7 +16662,7 @@ const BRAG_AUDIENCE = {
   },
   self: {
     label: 'Personal Log',
-    to: 'adam_berneche@ccpsnet.net',
+    get to(){ return PROFILE.email; },
     tone: 'honest personal reflection log. Celebrate wins plainly, note what went well, identify anything to carry forward next week. Informal tone, first person, no fluff.',
     subjectPrefix: 'Weekly Wins Log',
   },
