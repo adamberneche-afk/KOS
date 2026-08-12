@@ -131,15 +131,41 @@ Personal Log) each with their own tone description.
 
 ## What data this sends through Gemini
 
-Unlike `kos-personal`/`cas-ccps` (which anonymize before any AI call, per
-their own FERPA-scoped design), this feature sends the wins list
-**as-is**, which may include real student names (e.g. a DECA placement).
-That's a deliberate choice, not an oversight: LeaderHub is Adam's personal
-professional-communications tool, not a student-education-record system,
-and the whole point of a "brag" email is naming real student
-achievements. If that's ever not the right call for a specific audience,
-edit the generated draft before sending — nothing here auto-sends
-anything; every path ends in an editable textarea.
+By default, this feature sends the wins list **as-is**, which may include
+real student names (e.g. a DECA placement). That's a deliberate choice,
+not an oversight: LeaderHub is Adam's personal professional-communications
+tool, not a student-education-record system, and the whole point of a
+"brag" email is naming real student achievements.
+
+**Optional roster-based substitution.** Settings → "Student ID Lookup —
+AI Privacy" lets you upload a CSV roster (any header naming a name column
+— `Name`, `Student`, or `First`/`Last` — and an ID/email/login column).
+When a roster is uploaded, Brag Board's AI drafting swaps every matched
+student's name for their CCPS ID in the form `{7-digit ID}@ccpsnet.net`
+**before that content ever leaves the browser** — the request Gemini
+actually sees never contains the real name. The response comes back with
+those same ID strings, which the browser then swaps back to the real name
+before showing you the draft — so the final email you edit and send still
+reads naturally, only the network payload in between was substituted.
+This is client-side text substitution (`_substituteNamesForIds`/
+`_restoreNamesFromIds` in `student-leader-hub.html`), not a schema field
+or a server-side feature — no student ID is ever stored anywhere but this
+browser's `localStorage`, same as everything else in LeaderHub.
+
+Substitution is **fail-open**, not fail-closed: any name not found in the
+uploaded roster (typos, students not yet added, non-student names) is
+sent through unchanged. There's no attempt to heuristically detect and
+redact unrecognized names — a general-purpose name detector on free text
+would be unreliable and could just as easily mangle a legitimate sentence
+as protect a real one. The Settings panel says this plainly so it's never
+an assumed guarantee. If a specific audience shouldn't see a real name at
+all — mapped or not — edit the generated draft before sending; nothing
+here auto-sends anything, every path ends in an editable textarea.
+
+See `BRAG_EMAIL_FLOW_PROMPT.md`'s "Placeholder rule" for the corresponding
+instruction that keeps the Flow's Gemini step from reformatting those
+`{id}@ccpsnet.net` strings — the reverse-substitution above only works if
+the exact string comes back unchanged.
 
 ## Testing the integration
 
