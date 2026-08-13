@@ -846,7 +846,6 @@ window.onerror = function(msg, src, line, col, err) {
     </div>
     <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
       <div id="db-period-badge" style="background:var(--navy);color:var(--gold);font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:2px;padding:.3rem 1.1rem;border-radius:20px;border:1.5px solid var(--gold)"></div>
-      <div id="dsp-countdown-pill" onclick="generateDSPReport()" title="DSP ends May 15 — click for Evidence Report" style="cursor:pointer;display:inline-flex;align-items:center;gap:.35rem;padding:.28rem .75rem;border-radius:20px;border:1.5px solid #fca5a5;background:#fef2f2;font-size:.75rem;font-weight:700;color:#991b1b;white-space:nowrap"><span>⏱</span><span id="dsp-countdown-text">DSP</span></div>
       <button onclick="openDeadlineModal()" style="background:none;border:1.5px solid var(--border);border-radius:7px;padding:.35rem 1rem;font-size:.88rem;font-weight:600;cursor:pointer;color:var(--ink)">＋ Deadline</button>
       <span id="cron-status-badge" class="cron-badge cron-idle" style="cursor:pointer;font-size:.82rem" onclick="openJournal()" title="Journal">⏰ Cron idle</span>
     </div>
@@ -943,11 +942,10 @@ window.onerror = function(msg, src, line, col, err) {
     <!-- D4: Quick Log + Journal CTA stacked — right col -->
     <div style="display:flex;flex-direction:column;gap:.45rem;min-height:0;overflow:hidden">
 
-      <!-- Synergy / Canvas Currency Tracker — DSP Standard 2.6 -->
+      <!-- Synergy / Canvas Currency Tracker -->
       <div id="sync-tracker" style="background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);box-shadow:var(--shadow);padding:.65rem .9rem;flex-shrink:0">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.45rem">
           <div style="font-size:.82rem;font-weight:700;color:var(--ink)">📊 Grade & Platform Currency</div>
-          <span style="font-size:.6rem;background:#fef3c7;color:#92400e;padding:1px 7px;border-radius:20px;font-weight:700;border:1px solid #fde68a">DSP 2.6</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.4rem" id="sync-tracker-grid"></div>
       </div>
@@ -1033,7 +1031,7 @@ window.onerror = function(msg, src, line, col, err) {
           <input id="dl-date" type="date" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
         <div><label style="font-size:.73rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Role</label>
           <select id="dl-role" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
-            <option value="teach">📘 Teaching / DSP</option>
+            <option value="teach">📘 Teaching</option>
             <option value="deca">🏆 DECA</option>
             <option value="store">🏪 Store / WBL</option>
             <option value="esports">🎮 E-Sports</option>
@@ -1509,13 +1507,11 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ===== GOALS ===== -->
 <div id="view-goals" class="view">
   <div class="ph">
-    <div><div class="pt">Leadership Goals</div><div class="ps">Competition, community &amp; growth — DSP progress tracked here</div></div>
+    <div><div class="pt">Leadership Goals</div><div class="ps">Competition, community &amp; growth</div></div>
     <div style="display:flex;gap:.5rem">
-      <button class="btn btn-outline" onclick="generateDSPReport()" style="font-size:.78rem">📄 Export DSP Report</button>
       <button class="btn btn-primary" onclick="openAddGoalModal()">+ Add Goal</button>
     </div>
   </div>
-  <div id="goals-dsp-bar" style="margin-bottom:1rem"></div>
   <div id="goals-grid"></div>
 </div>
 <!-- ===== COMPETENCY TRACKER ===== -->
@@ -2083,7 +2079,7 @@ window.onerror = function(msg, src, line, col, err) {
     <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
       <div>
         <div style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:1.5px">📋 Log Observation / Walkthrough</div>
-        <div style="font-size:.72rem;color:rgba(255,255,255,.5)">DSP Standard 1 evidence — saved to observation history</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.5)">Saved to observation history</div>
       </div>
       <button onclick="closeObsLog()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.25rem .65rem;border-radius:5px;cursor:pointer">✕</button>
     </div>
@@ -2096,7 +2092,6 @@ window.onerror = function(msg, src, line, col, err) {
             <option value="formal">Formal Observation</option>
             <option value="walkthrough">Informal Walkthrough</option>
             <option value="pop">Unannounced (Pop-in)</option>
-            <option value="dsp">DSP Check-in w/ Ms. Green</option>
             <option value="plc">CTE PLC Meeting</option>
           </select></div>
       </div>
@@ -2170,7 +2165,7 @@ window.onerror = function(msg, src, line, col, err) {
         </div>
       </div>
       <div style="font-size:.71rem;color:var(--muted);background:#f9fafb;border-radius:6px;padding:.5rem .7rem;line-height:1.5">
-        💡 The plan will open pre-filled with a standard template including Differentiation and ELL sections (DSP Standard 1.4). Title and metadata can be edited inside the modal.
+        💡 The plan will open pre-filled with a standard template including Differentiation and ELL sections. Title and metadata can be edited inside the modal.
       </div>
       <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.2rem">
         <button onclick="lpNewPickerClose()" class="btn btn-outline btn-sm">Cancel</button>
@@ -2212,10 +2207,10 @@ window.onerror = function(msg, src, line, col, err) {
         </div>
       </div>
       <div id="lp-pane-ai" class="lp-pane" style="display:none">
-        <!-- DSP COMPLIANCE BUTTON — always first and visually distinct -->
+        <!-- Differentiation generator — always first and visually distinct -->
         <button onclick="lpAIDiff()" style="width:100%;margin-bottom:.75rem;padding:.6rem 1rem;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:.6rem">
           <span style="font-size:1.1rem">♿</span>
-          <span>Generate SPED / ELL / Assessment Differentiation Section <span style="font-size:.7rem;opacity:.8;font-weight:400;margin-left:.3rem">— Required for compliant lesson plan</span></span>
+          <span>Generate SPED / ELL / Assessment Differentiation Section</span>
         </button>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
           <button onclick="lpAIPrompt('Create a detailed warm-up activity (10 minutes) that activates prior knowledge for this lesson.')" class="btn btn-outline btn-sm" style="text-align:left">🔥 Write a Warm-Up</button>
@@ -3175,23 +3170,6 @@ window.onerror = function(msg, src, line, col, err) {
 </div>
 
 
-<!-- ===== DSP EVIDENCE REPORT MODAL ===== -->
-<div id="dsp-report-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto" onclick="if(event.target===this)closeDSPReport()">
-  <div style="background:#fff;max-width:740px;margin:2.5rem auto;border-radius:16px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35)">
-    <div style="background:linear-gradient(135deg,#1a3560,#2563eb);color:#fff;padding:1.1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
-      <div>
-        <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px">📄 DSP Evidence Summary</div>
-        <div style="font-size:.72rem;opacity:.8;margin-top:.1rem">Adam Berneche · Clover Hill HS · CCPS ID# 27827 · Due May 15, 2026</div>
-      </div>
-      <div style="display:flex;gap:.5rem;align-items:center">
-        <button onclick="window.print()" style="background:var(--gold);color:var(--navy);border:none;border-radius:6px;padding:.35rem .8rem;font-size:.75rem;font-weight:800;cursor:pointer">🖨 Print</button>
-        <button onclick="closeDSPReport()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:5px;cursor:pointer;font-size:.9rem">✕</button>
-      </div>
-    </div>
-    <div id="dsp-report-body" style="padding:1.4rem;font-size:.82rem;line-height:1.6;max-height:78vh;overflow-y:auto"></div>
-  </div>
-</div>
-
 <script>
 const LS = {
   get: (k, def=null) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch{ return def; } },
@@ -3597,14 +3575,6 @@ let goals = [
   {id:5,title:'Grow Chapter Membership to 60+',cat:'Membership Growth',date:'2026-11-01',progress:20,desc:'Per DLC agenda: membership was at 12, needed 60 more. Membership form due Dec 1, dues to Kristen W by Nov 1.'},
   {id:6,title:'100 Hours Community Service',cat:'Community Service',date:'2026-05-30',progress:38,desc:'Coordinate with nonprofits. Shoe Drive: goal of 2,500 shoes — track progress.'},
   {id:7,title:'Annual Report Submission at SLC',cat:'DECA Competition',date:'2026-02-27',progress:100,desc:'Must register for Annual Report when registering for SLC. Complete.'},
-  // ── DSP Standard 1 Goals ───────────────────────────────────────────────────
-  {id:8,title:'DSP Standard 1: All Unit Plans Completed',cat:'Leadership Development',date:'2026-05-15',progress:15,desc:'DSP Standard 1.2 — All three courses (8177, 8175, 6115) must have documented unit plans with essential questions, major assessments, and lesson sequencing. Use Lesson Plans → Units view to build and save notes for each unit.'},
-  {id:9,title:'DSP Standard 1: Differentiation Documented for All Lessons',cat:'Leadership Development',date:'2026-05-15',progress:10,desc:'DSP Standard 1.4 — Every lesson plan must include a documented differentiation section (SPED/IEP accommodations and ELL supports). Use the AI Differentiation button in each lesson plan modal.'},
-  {id:10,title:'DSP Standard 1: Pacing Aligned Across All Courses',cat:'Leadership Development',date:'2026-05-15',progress:20,desc:'DSP Standard 1.3 — Lesson plans must reflect coherent pacing (no large gaps or skips). Use the Pacing Guide view in SCR to verify competency coverage aligns with planned lessons.'},
-  // ── DSP Standard 2 Goals ───────────────────────────────────────────────────
-  {id:11,title:'DSP Standard 2: All CCPS Forms Submitted On Time',cat:'Leadership Development',date:'2026-05-15',progress:35,desc:'DSP Standard 2.1 — Adherence to procedural guidelines. All field trip forms, DECA event forms, and TripTracker submissions must be completed before deadlines. Check the Admin Approval Checklist in DECA Hub and the Deadlines widget on Dashboard.'},
-  {id:12,title:'DSP Standard 2: Timely Communication Maintained',cat:'Leadership Development',date:'2026-05-15',progress:40,desc:'DSP Standard 2.2 — All parent/admin communications responded to within 24 hours. Check email, voicemail, and mailbox every morning. Use the Morning Comms Check banner (fires at 7:30 AM on school days) to log completion.'},
-  {id:13,title:'DSP: Observation-Ready All Remaining Walkthroughs',cat:'Leadership Development',date:'2026-05-15',progress:0,desc:'All remaining walkthroughs and formal observations by Ms. Green require posted objectives, warm-up activity, structured instructional sequence, and visible differentiation. Use Lesson Plans → Observation Prep Checklist before each class visit.'},
 ];
 
 function persistGoals() { LS.set('lh_goals', goals); }
@@ -4702,7 +4672,6 @@ const RAW_MODAL_CLOSERS = {
   'journal-modal':         () => closeJournal(),
   'journal-history-modal': () => { const el = document.getElementById('journal-history-modal'); if (el) el.style.display = 'none'; },
   'lp-modal':              () => closeLPModal(),
-  'dsp-report-modal':      () => closeDSPReport(),
   'obs-log-modal':         () => closeObsLog(),
   'po-modal':              () => closePOModal(),
   'sales-modal':           () => closeSalesModal(),
@@ -6287,7 +6256,7 @@ function addDecaResult() {
   const results = LS.get('lh_deca_results', []);
   results.push({ id:'dr'+Date.now(), student, event, eventId:conf, place, notes, addedAt: new Date().toISOString() });
   LS.set('lh_deca_results', results);
-  // Log as DSP evidence — makes result visible in Recent Wins strip and daily activity log
+  // Makes result visible in Recent Wins strip and daily activity log
   // `place` is already a fully-formatted DECA_PLACE_OPTIONS value ("1st",
   // "Top 10", "Qualified", "Did Not Place", ...) — it was being compared
   // against raw digit strings ('1'/'2'/'3') that never matched, so every
@@ -6411,7 +6380,7 @@ function renderDecaApprovalChecklist() {
 
   return `<div id="deca-checklist-body">
     <div style="font-size:.75rem;color:var(--muted);margin-bottom:.65rem;padding:.4rem .6rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px">
-      <strong>DSP Standard 7.1</strong> — Complete all required CCPS forms and meet all stated deadlines for DECA activities and events. Required by Directed Support Plan, deadline May 15, 2026.
+      <strong>Stay on top of deadlines</strong> — complete all required CCPS forms and meet all stated deadlines for DECA activities and events.
     </div>
     ${eventRows}
   </div>`;
@@ -7225,28 +7194,6 @@ ${PROFILE.phone} | ${PROFILE.email}`
 // GOALS
 // ============================================================
 function renderGoals(){
-  // ── DSP progress bar ──────────────────────────────────────────────────────
-  const dspGoals = goals.filter(g => g.cat === 'Leadership Development');
-  const dspAvg   = dspGoals.length ? Math.round(dspGoals.reduce((s,g)=>s+g.progress,0)/dspGoals.length) : 0;
-  const dspDays  = Math.ceil((new Date('2026-05-15') - new Date()) / 86400000);
-  const dspColor = dspDays < 14 ? 'var(--red)' : dspDays < 30 ? '#d97706' : 'var(--navy)';
-  const barEl = document.getElementById('goals-dsp-bar');
-  if (barEl) barEl.innerHTML = `
-    <div style="background:linear-gradient(135deg,#1a3560,#2563eb);color:#fff;border-radius:10px;padding:.85rem 1.1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
-      <div style="flex:1;min-width:200px">
-        <div style="font-family:'Bebas Neue',cursive;font-size:.85rem;letter-spacing:1.5px;opacity:.8;margin-bottom:.25rem">DSP OVERALL PROGRESS — DUE MAY 15, 2026</div>
-        <div style="background:rgba(255,255,255,.2);border-radius:20px;height:10px;overflow:hidden">
-          <div style="background:#e8b84b;height:100%;width:${dspAvg}%;border-radius:20px;transition:width .4s"></div>
-        </div>
-        <div style="font-size:.72rem;margin-top:.3rem;opacity:.85">${dspAvg}% avg across DSP standard goals · ${dspGoals.length} goal${dspGoals.length!==1?'s':''} tracked</div>
-      </div>
-      <div style="text-align:center;background:rgba(255,255,255,.15);border-radius:8px;padding:.5rem .9rem;white-space:nowrap">
-        <div style="font-family:'Bebas Neue',cursive;font-size:1.8rem;line-height:1;color:${dspDays<14?'#fca5a5':dspDays<30?'#fde68a':'#fff'}">${dspDays>0?dspDays:'PAST'}</div>
-        <div style="font-size:.62rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Days Left</div>
-      </div>
-      <a onclick="showView('lessons')" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;padding:.35rem .75rem;font-size:.73rem;font-weight:700;cursor:pointer;white-space:nowrap;text-decoration:none">📘 Lesson Plans →</a>
-    </div>`;
-
   // ── Group goals by category ───────────────────────────────────────────────
   const grouped = {};
   const catOrder = ['Leadership Development','DECA Competition','Field Trip','Community Service','Membership Growth','Fundraising'];
@@ -7260,11 +7207,9 @@ function renderGoals(){
 
   orderedCats.forEach(cat => {
     const catGoals = grouped[cat];
-    const isDSP = cat === 'Leadership Development';
     html += `<div style="margin-bottom:1.25rem">
       <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${gcColors[cat]||'#555'};margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem">
-        ${isDSP ? '🎯 DSP Standards Progress' : cat}
-        ${isDSP ? '<span style="font-size:.63rem;font-weight:600;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;padding:1px 7px;border-radius:20px">Due May 15</span>' : ''}
+        ${cat}
       </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.65rem">
         ${catGoals.map(g => {
@@ -8484,7 +8429,7 @@ function confirmArchive() {
   t.archived = true;
   persistTripArchive();
   persistTrips();
-  // Write to daily log as DSP evidence — trip archive reflects professional planning completion
+  // Write to daily log — trip archive reflects professional planning completion
   _logDaily({ date: new Date().toISOString(), type: 'trip_archived',
     note: `Trip archived: "${t.name}" — ${t.dest1||'destination'}. Glows: ${g1.substring(0,60)}` });
   closeModal('archiveTrip');
@@ -9670,7 +9615,7 @@ function wblLogHoursConfirm(id) {
   s.hours = Math.round((Number(s.hours) + add) * 10) / 10;
   persistWBL();
 
-  // Log for Brag Board weekly wins + DSP evidence
+  // Log for Brag Board weekly wins
   const _wblHLog = LS.get('lh_wbl_hours_log', []);
   _wblHLog.unshift({ student: `${s.fname} ${s.lname}`, added: add, total: s.hours, ts: new Date().toISOString() });
   LS.set('lh_wbl_hours_log', _wblHLog.slice(0, 200));
@@ -9976,7 +9921,7 @@ const LESSON_PLANS = [
 // ── Unit Plans ─────────────────────────────────────────────────────────────────
 // Each unit groups lesson plan IDs into a named instructional block with an
 // essential question, major assessment, and pacing window.
-// DSP Standard 1.2: Unit plans must show coherent sequencing and alignment.
+// Unit plans must show coherent sequencing and alignment.
 const UNIT_PLANS = [
   // ── 8177 SEEM MANAGEMENT ────────────────────────────────────────────────────
   {
@@ -10273,7 +10218,7 @@ function renderUnitPlans() {
 
   grid.innerHTML = `
     <div style="font-size:.73rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:.4rem .75rem;margin-bottom:.85rem">
-      <strong>DSP Standard 1.2:</strong> Unit plans must show coherent lesson sequencing, standards alignment across multiple days, and a clear major assessment. Click any unit to expand its lessons and add planning notes.
+      <strong>Unit Plans:</strong> should show coherent lesson sequencing, standards alignment across multiple days, and a clear major assessment. Click any unit to expand its lessons and add planning notes.
     </div>
     ${html}`;
 }
@@ -10489,7 +10434,7 @@ function lpSaveEdit() {
   const text = document.getElementById('lp-edit-area').value.trim();
   if (!text) return;
   LP_EDITS[lpActivePlan.docId] = text;
-  // Timestamp the edit for DSP evidence — readable in DSP Report
+  // Timestamp the edit — readable in the lesson plan's edit history
   const _lpMeta = LS.get('lh_lp_edit_meta', {});
   _lpMeta[lpActivePlan.docId] = { editedAt: new Date().toISOString(), title: lpActivePlan.title, course: lpActivePlan.course };
   LS.set('lh_lp_edit_meta', _lpMeta);
@@ -11540,7 +11485,7 @@ function saveMatch() {
     notes: document.getElementById('match-notes').value.trim(),
   });
   persistESMatches();
-  // Write to daily log as DSP evidence — e-sports coaching is a documented professional role
+  // Write to daily log — e-sports coaching is a documented professional role
   const _usScore = Number(document.getElementById('match-us')?.value)||0;
   const _themScore = Number(document.getElementById('match-them')?.value)||0;
   const _gameLabel = document.getElementById('match-game')?.value === 'ssbu' ? 'Smash Bros' :
@@ -12299,7 +12244,7 @@ async function lpRunAI(userPrompt, forceSection) {
       `🎯 Tiered tasks: create 3 versions of the main activity (foundational / grade-level / extension) for ${plan.title}.`,
       `📋 SPED accommodations to document: extended time, reduced questions, graphic organizer, preferential seating, chunked directions.`,
       `🌐 ELL strategies: visual vocabulary wall, sentence frames ("I know that ___ because ___"), bilingual glossary, partnered read-aloud.`,
-      `✅ DSP Standard 2.5: each lesson plan must explicitly name which students receive which accommodation — add a differentiation table.`,
+      `✅ Best practice: explicitly name which students receive which accommodation — add a differentiation table.`,
     ],
     obj: [
       `Use the format: "By the end of class, students will be able to [verb] [concept] by [evidence]."`,
@@ -12309,13 +12254,13 @@ async function lpRunAI(userPrompt, forceSection) {
     assess: [
       `Quick formative: exit ticket, thumbs up/down cold-call, whiteboard response, Kahoot.`,
       `Summative: SCR scoring, presentation rubric, project checklist, written reflection.`,
-      `For DSP evidence: note the assessment method and how you'll use data to adjust instruction.`,
+      `Note the assessment method and how you'll use data to adjust instruction.`,
     ],
     general: [
       `Lesson: "${plan.title}" | Course: ${plan.course} | Q${plan.q}`,
       `Competencies covered: ${(plan.comps||[]).join(', ')||'—'}`,
       `Tip: make sure your lesson plan includes objective, materials, procedure, differentiation, and assessment sections.`,
-      `DSP reminder: lesson plans are Standard 1 evidence — save edits frequently using the Save button.`,
+      `Reminder: save edits frequently using the Save button.`,
     ],
   };
   const localHtml = (tips[section] || tips.general)
@@ -12588,9 +12533,9 @@ function runCronAdjustment(entry) {
   // 3. Upcoming deadlines ≤3 days
   const soon = DEADLINES.filter(d => { const x=daysUntil(d.date); return x>=0&&x<=3&&_isActionable(d); });
   soon.slice(0,2).forEach(d => prios.push({ order:prios.length+1, task:`Complete: ${d.title}`, role:d.role||'general', why:`Due in ${daysUntil(d.date)}d` }));
-  // 4. Stalled DSP goal
+  // 4. Stalled goal
   const stalledGoal = typeof goals !== 'undefined' ? goals.find(g => g.progress < 60 && g.date && daysUntil(g.date) >= 0) : null;
-  if (stalledGoal && prios.length < maxTasks) prios.push({ order:prios.length+1, task:`Update progress on: ${stalledGoal.title}`, role:'teach', why:`DSP goal at ${stalledGoal.progress}%` });
+  if (stalledGoal && prios.length < maxTasks) prios.push({ order:prios.length+1, task:`Update progress on: ${stalledGoal.title}`, role:'teach', why:`Goal at ${stalledGoal.progress}%` });
   // 5. Pad to maxTasks with role-based defaults
   const defaults = [
     {task:'Review and respond to parent/admin emails',role:'teach',why:'Daily comms — Standard 2'},
@@ -12927,13 +12872,13 @@ function updateLessonStrip() {
       : done > 0
         ? ['#fffbeb', '#fde68a', '#92400e', '🟡']
         : ['#fef2f2', '#fca5a5', '#991b1b', '📋'];
-    // Log to daily_log when all critical items are checked — DSP Standard 1 observation evidence
+    // Log to daily_log when all critical items are checked — observation-readiness evidence
     if (allCrit && critical.length > 0) {
       const _opDate = new Date().toISOString().slice(0,10);
       const _opLog  = LS.get('lh_daily_log', []);
       if (!_opLog.some(e => e.type === 'obs_prep_ready' && (e.date||'').slice(0,10) === _opDate)) {
         _logDaily({ date: new Date().toISOString(), type: 'obs_prep_ready',
-          note: `Obs prep checklist complete — all ${critical.length} critical items ready (DSP Standard 1)` });
+          note: `Obs prep checklist complete — all ${critical.length} critical items ready` });
       }
     }
     html += `<div onclick="showView('lessons')" title="Observation Prep Checklist — click to open" style="display:inline-flex;align-items:center;gap:.35rem;background:${bg};border:1px solid ${border};border-radius:6px;padding:.18rem .6rem;font-size:.73rem;font-weight:600;color:${txtColor};cursor:pointer;margin-right:.35rem">
@@ -12968,14 +12913,12 @@ function dbTick() {
   }
   updateDeadlineTimers();
   updateLessonStrip();
-  updateDSPCountdown();
   checkCron();
   checkJournalAutoPrompt();
   checkDepositReminder();
   checkWorkdayReminder();
   checkBragBoardPrompt();
   checkCommsTriage();
-  checkGreenCheckinToday();
   checkPLCToday();
   checkEsportsMatchToday();
   checkDECAEventTomorrow();
@@ -12983,14 +12926,7 @@ function dbTick() {
 
 // ── Deadlines ─────────────────────────────────────────────
 let DEADLINES = LS.get('lh_deadlines', [
-  // ── DSP Required ───────────────────────────────────────────────────────────
-  { id:'dl_dsp_end',   title:'DSP End Date — All Standards Must Be Met',    date:'2026-05-15', role:'teach' },
-  // ── Scheduled meetings with Ms. Green (DSP support requirement) ────────────
-  { id:'dl_green2',    title:'Meeting w/ Ms. Green (DSP check-in)',          date:'2026-03-28', role:'meeting' },
-  { id:'dl_green3',    title:'Meeting w/ Ms. Green (DSP check-in)',          date:'2026-04-11', role:'meeting' },
-  { id:'dl_green4',    title:'Meeting w/ Ms. Green (DSP check-in)',          date:'2026-04-25', role:'meeting' },
-  { id:'dl_green5',    title:'Meeting w/ Ms. Green (DSP check-in)',          date:'2026-05-09', role:'meeting' },
-  // ── CTE PLC Monthly Meetings (DSP support requirement) ─────────────────────
+  // ── CTE PLC Monthly Meetings ─────────────────────────────────────────────
   { id:'dl_plc_mar',   title:'CTE PLC — Monthly Meeting',                    date:'2026-03-19', role:'meeting' },
   { id:'dl_plc_apr',   title:'CTE PLC — Monthly Meeting',                    date:'2026-04-16', role:'meeting' },
   { id:'dl_plc_may',   title:'CTE PLC — Monthly Meeting',                    date:'2026-05-14', role:'meeting' },
@@ -13243,37 +13179,6 @@ function buildActionQueue(){
   DEADLINES.filter(d=>{const x=daysUntil(d.date);return x>3&&x<=7&&_isActionable(d);}).forEach(d=>
     q.push({priority:70,icon:'🟡',text:`Due in ${daysUntil(d.date)}d: ${d.title}`,role:d.role,nav:dlNav(d.role),days:daysUntil(d.date)}));
 
-  // ── TODAY: Green check-in meeting ───────────────────────────────────────────
-  // Elevates to P88 on the day of the meeting so it surfaces in choice cards
-  const greenToday = DEADLINES.filter(d => d.id.startsWith('dl_green') && daysUntil(d.date) === 0);
-  if (greenToday.length) {
-    q.push({priority:88, icon:'📋', text:'TODAY: DSP check-in with Ms. Green — tap to open evidence report', role:'teach', nav:'dashboard', action:'openDSP', days:0});
-  }
-
-  // ── UPCOMING: Green check-in prep window (3–5 days before) ──────────────────
-  // dl_green* filtered from _isActionable so they never surface via P90/P70 deadlines.
-  // This dedicated signal gives Adam a prep window to review his DSP Report before
-  // walking into the room. Fires once per meeting at P72 — between Synergy overdue
-  // (P80/P72) and standard 7-day deadlines (P70) — so it's urgent but not panic.
-  const greenSoon = DEADLINES.filter(d => {
-    if (!d.id.startsWith('dl_green')) return false;
-    const dx = daysUntil(d.date);
-    return dx >= 1 && dx <= 5;
-  });
-  if (greenSoon.length) {
-    const _gd = greenSoon[0];
-    const _gDays = daysUntil(_gd.date);
-    q.push({
-      priority: 72,
-      icon: '📋',
-      text: `Green check-in in ${_gDays}d — review DSP Report & prep evidence`,
-      role: 'teach',
-      nav: 'dashboard',
-      action: 'openDSP',
-      days: _gDays
-    });
-  }
-
   // ── TODAY: PLC meeting ───────────────────────────────────────────────────────
   const plcToday = DEADLINES.filter(d => d.id.startsWith('dl_plc') && daysUntil(d.date) === 0);
   if (plcToday.length) {
@@ -13293,7 +13198,7 @@ function buildActionQueue(){
       q.push({
         priority: isGrades ? 80 : 72,
         icon: p.icon,
-        text: `${p.label} overdue — ${daysOver}d past ${p.maxDays}-day limit (DSP Standard 2)`,
+        text: `${p.label} overdue — ${daysOver}d past ${p.maxDays}-day limit`,
         role: 'teach', nav: 'lessons', days: 0
       });
     }
@@ -13304,15 +13209,13 @@ function buildActionQueue(){
     if(rem.length) q.push({priority:60,icon:'✅',text:`SBE Checklist: "${rem[0].label||rem[0].id}" — ${rem.length} element${rem.length>1?'s':''} left`,role:'store',nav:'wbl',days:14});
   }
 
-  // ── DSP Goals stalled — two triggers, all categories:
-  //   1. Progress below threshold (40% baseline, escalates to 60% inside 60 days)
+  // ── Goals stalled — two triggers, all categories:
+  //   1. Progress below threshold (40%)
   //   2. Goal not updated in 14+ days regardless of progress level (quiet neglect)
   // Covers all 5 goal categories (Leadership Development, Membership Growth, Field Trip,
-  // Community Service, DECA Competition) — prior version only scanned Leadership Development.
+  // Community Service, DECA Competition).
   if(typeof goals!=='undefined'){
-    const _dspEnd    = new Date('2026-05-15T23:59:59');
-    const _daysLeft  = Math.ceil((_dspEnd - new Date()) / 86400000);
-    const _threshold = _daysLeft < 60 ? 60 : 40;
+    const _threshold = 40;
     const _now       = Date.now();
     const _staleMs   = 14 * 24 * 60 * 60 * 1000; // 14 days
     const _stalledGoals = goals.filter(g => {
@@ -13325,18 +13228,13 @@ function buildActionQueue(){
       return _pct < _threshold || (_pct < 100 && _stale);
     });
     if (_stalledGoals.length) {
-      // Sort: prioritize Leadership Development (DSP core), then by lowest progress
-      _stalledGoals.sort((a, b) => {
-        const aCore = a.cat === 'Leadership Development' ? 0 : 1;
-        const bCore = b.cat === 'Leadership Development' ? 0 : 1;
-        if (aCore !== bCore) return aCore - bCore;
-        return (a.progress || 0) - (b.progress || 0);
-      });
+      // Sort by lowest progress first
+      _stalledGoals.sort((a, b) => (a.progress || 0) - (b.progress || 0));
       const _g = _stalledGoals[0];
       const _updated = _g.updatedAt ? new Date(_g.updatedAt).getTime() : 0;
       const _staleDays = _updated ? Math.floor((_now - _updated) / 86400000) : null;
       const _staleTxt  = _staleDays !== null && _staleDays >= 14 ? ` (no update in ${_staleDays}d)` : '';
-      const _catTag    = _g.cat !== 'Leadership Development' ? ` [${_g.cat}]` : '';
+      const _catTag    = ` [${_g.cat}]`;
       // Defensive: an older-schema goal record missing `title` must not
       // throw here — this function feeds the dashboard's action queue,
       // and a thrown error here used to abort every render after it.
@@ -13344,10 +13242,10 @@ function buildActionQueue(){
       q.push({
         priority: 62,
         icon: '🎯',
-        text: `DSP Goal needs attention: "${_gTitle}"${_catTag} at ${_g.progress||0}%${_staleTxt}`,
+        text: `Goal needs attention: "${_gTitle}"${_catTag} at ${_g.progress||0}%${_staleTxt}`,
         role: 'teach',
         nav: 'goals',
-        days: _daysLeft
+        days: _g.date ? daysUntil(_g.date) : 30
       });
     }
   }
@@ -13474,7 +13372,7 @@ function renderChoiceCards(){
 function choicePick(idx, nav, action){
   const card=document.getElementById('cc-'+idx);
   if(card){ card.classList.add('selected'); card.style.opacity='.7'; }
-  // Log the engagement as DSP evidence — "responded to priority signal"
+  // Log the engagement — "responded to priority signal"
   try {
     const q = buildActionQueue();
     const item = q[idx];
@@ -13486,10 +13384,6 @@ function choicePick(idx, nav, action){
   // Execute special action if present before navigating
   if (action === 'logPLC') {
     try { logPLCAttended(); } catch(_e) {}
-  }
-  if (action === 'openDSP') {
-    // Open DSP Report modal — the most useful destination for Green meeting prep
-    try { generateDSPReport(); } catch(_e) {}
   }
   // Immediately rebuild priority queue so completed card vanishes on return
   try { refreshNextAction(); } catch(_e) {}
@@ -13903,7 +13797,6 @@ function renderRecentWins() {
     comms:          { icon: '📬', label: t => 'Morning comms cleared' },
     task_complete:  { icon: '✅', label: t => t.note?.replace('Task completed: ','').replace(/^"|"$/g,'').substring(0,50) || 'Task completed' },
     trip_archived:  { icon: '🚌', label: t => t.note?.replace('Trip archived: ','').substring(0,50) || 'Trip archived' },
-    green_meeting:  { icon: '📋', label: () => 'DSP check-in with Ms. Green' },
     plc_meeting:    { icon: '🗓️', label: () => 'CTE PLC meeting attended' },
     workday_submit: { icon: '💼', label: () => 'Workday payroll submitted' },
     obs_prep_complete: { icon: '👁️', label: () => 'Obs prep checklist complete' },
@@ -14459,21 +14352,21 @@ function showWorkdayReminderBanner(){
 function markWorkdayDone(){
   const banner = document.getElementById('workday-reminder-banner');
   if(banner) banner.remove();
-  // Log payroll submission as DSP Standard 2 professionalism evidence
+  // Log payroll submission to the daily log
   _logDaily({ date: new Date().toISOString(), type: 'workday_submit',
-    note: 'Workday time submitted — payroll compliance (DSP Standard 2)' });
+    note: 'Workday time submitted — payroll compliance' });
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1d4ed8;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
-  toast.textContent = '✅ Workday time submitted — logged as DSP evidence';
+  toast.textContent = '✅ Workday time submitted';
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(), 3500);
   refreshNextAction();
 }
 
-// ── Communications Triage Reminder (DSP Standard 2) ───────────────────────────
+// ── Communications Triage Reminder ────────────────────────────────────────────
 // Fires once per day at 7:30 AM on school days — reminder to clear email,
-// voicemail, and mailbox before students arrive. Directly addresses DSP concern
-// about timely response to parent/admin communications.
+// voicemail, and mailbox before students arrive, and to respond promptly to
+// parent/admin communications.
 let _commsTriageShownDate = null;
 // ── isSchoolDay() — returns true if today is a regular school day ─────────────
 // Used by reminder checks to suppress banners on holidays, breaks, and in-service days.
@@ -14508,7 +14401,7 @@ function showCommsTriageBanner(){
   banner.innerHTML = `
     <span style="font-size:1.3rem">📬</span>
     <div style="flex:1">
-      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">🌅 MORNING COMMS CHECK — DSP Standard 2</div>
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">🌅 MORNING COMMS CHECK</div>
       <div style="font-size:.76rem;opacity:.9;margin-top:.15rem">Before students arrive: <strong>✉️ Check Outlook</strong> · <strong>📞 Check voicemail</strong> · <strong>📥 Check mailbox outside room</strong>. Reply to anything from admin or parents within 24 hrs. Log any actions in Brain Dump.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
@@ -14521,60 +14414,17 @@ function showCommsTriageBanner(){
 function markCommsDone(){
   const banner = document.getElementById('comms-triage-banner');
   if(banner) banner.remove();
-  // Write timestamped entry to daily log (DSP Standard 2 evidence)
+  // Write timestamped entry to daily log
   _logDaily({ date: new Date().toISOString(), type:'comms', note:'Morning comms triage completed: Outlook, voicemail, and mailbox checked.' });
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
-  toast.textContent = '✅ Comms triage logged — DSP Standard 2 evidence recorded';
+  toast.textContent = '✅ Comms triage logged';
   document.body.appendChild(toast);
   setTimeout(()=>toast.remove(), 4000);
   refreshNextAction();
 }
 
-// ── DSP Countdown — always-visible pill in ROW A ──────────────────────────────
-// Updates every 15s alongside the clock. Color-shifts as deadline approaches.
-function updateDSPCountdown() {
-  const el = document.getElementById('dsp-countdown-text');
-  const pill = document.getElementById('dsp-countdown-pill');
-  if (!el || !pill) return;
-  const now = new Date();
-  const end = new Date('2026-05-15T23:59:59');
-  const days = Math.ceil((end - now) / 86400000);
-  if (days < 0) {
-    el.textContent = 'DSP ENDED';
-    pill.style.background = '#7f1d1d';
-    pill.style.color = '#fff';
-    pill.style.borderColor = '#7f1d1d';
-    return;
-  }
-  el.textContent = `${days}d to DSP`;
-  // Color: red <30, amber <60, green otherwise
-  if (days <= 30) {
-    pill.style.background = '#fef2f2'; pill.style.color = '#991b1b'; pill.style.borderColor = '#fca5a5';
-  } else if (days <= 60) {
-    pill.style.background = '#fffbeb'; pill.style.color = '#92400e'; pill.style.borderColor = '#fde68a';
-  } else {
-    pill.style.background = '#f0fdf4'; pill.style.color = '#166534'; pill.style.borderColor = '#86efac';
-  }
-}
-
-// ── Green check-in day-of banner ─────────────────────────────────────────────
-// Fires once on school days where a Green DSP meeting is scheduled.
-// Uses DEADLINES to detect green check-ins by id prefix 'dl_green'.
-// Z-index 99996 — below all other banners.
-function checkGreenCheckinToday() {
-  const now   = new Date();
-  if (!isSchoolDay(now)) return;                // skip weekends + no-school days
-  const today = now.toDateString();
-  const shown = LS.get('lh_green_checkin_date', '');
-  if (shown === today) return;
-  const greenToday = DEADLINES.filter(d => d.id.startsWith('dl_green') && daysUntil(d.date) === 0);
-  if (!greenToday.length) return;
-  LS.set('lh_green_checkin_date', today);
-  showGreenCheckinBanner(greenToday[0]);
-}
-
-// ── PLC meeting day-of check — standalone, separate from Green check ──────────
+// ── PLC meeting day-of check ───────────────────────────────────────────────────
 function checkPLCToday() {
   const now   = new Date();
   if (!isSchoolDay(now)) return;                // skip weekends + no-school days
@@ -14597,7 +14447,7 @@ function showPLCBanner() {
     <span style="font-size:1.3rem">🗓️</span>
     <div style="flex:1">
       <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">TODAY — CTE PLC MEETING</div>
-      <div style="font-size:.76rem;opacity:.9;margin-top:.1rem">Attendance is DSP Standard 2 evidence. Bring your professional goals update.</div>
+      <div style="font-size:.76rem;opacity:.9;margin-top:.1rem">Bring your professional goals update.</div>
     </div>
     <div style="display:flex;gap:.5rem;flex-shrink:0">
       <button onclick="logPLCAttended();document.getElementById('plc-banner').remove()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✓ Attended</button>
@@ -14607,32 +14457,13 @@ function showPLCBanner() {
 }
 
 function logPLCAttended() {
-  _logDaily({ date: today, type: 'plc_meeting', note: 'CTE PLC Monthly Meeting — attended. DSP Standard 2 evidence.' });
+  _logDaily({ date: today, type: 'plc_meeting', note: 'CTE PLC Monthly Meeting — attended.' });
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a3560;color:#fff;padding:.7rem 1.2rem;border-radius:8px;font-size:.8rem;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.2)';
-  toast.textContent = '✅ PLC attendance logged — DSP Standard 2 evidence recorded';
+  toast.textContent = '✅ PLC attendance logged';
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
   refreshNextAction();
-}
-
-function showGreenCheckinBanner(dl) {
-  if (document.getElementById('green-checkin-banner')) return;
-  const banner = document.createElement('div');
-  banner.id = 'green-checkin-banner';
-  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99996;background:linear-gradient(135deg,#064e3b,#065f46);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
-  banner.innerHTML = `
-    <span style="font-size:1.3rem">📋</span>
-    <div style="flex:1">
-      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">TODAY — DSP CHECK-IN WITH MS. GREEN</div>
-      <div style="font-size:.76rem;opacity:.9;margin-top:.1rem">Bring: lesson plan docs, SCR progress, obs prep checklist, journal entries since last meeting. Use the DSP Evidence Report as your summary.</div>
-    </div>
-    <div style="display:flex;gap:.5rem;flex-shrink:0">
-      <button onclick="logGreenMeetingAttended();generateDSPReport();document.getElementById('green-checkin-banner').remove()" style="background:#fff;color:#064e3b;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📊 Open Report</button>
-      <button onclick="logGreenMeetingAttended();document.getElementById('green-checkin-banner').remove()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✓ Attended</button>
-      <button onclick="document.getElementById('green-checkin-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
-    </div>`;
-  document.body.prepend(banner);
 }
 
 // ── E-sports match day-of banner ─────────────────────────────────────────────
@@ -14700,20 +14531,6 @@ function showDECATomorrowBanner(dl) {
       <button onclick="document.getElementById('deca-tomorrow-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
     </div>`;
   document.body.prepend(banner);
-}
-
-function logGreenMeetingAttended() {
-  const _gmLog = LS.get('lh_daily_log', []);
-  const today = new Date().toISOString();
-  // Avoid double-logging same day
-  if (_gmLog.some(e => e.type === 'green_meeting' && e.date.slice(0,10) === today.slice(0,10))) return;
-  _logDaily({ date: today, type: 'green_meeting', note: 'DSP check-in with Ms. Green — attended, evidence report reviewed' });
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#064e3b;color:#fff;padding:.7rem 1.2rem;border-radius:8px;font-size:.8rem;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.2)';
-  toast.textContent = '✅ Green meeting logged — DSP Standard 2 evidence recorded';
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 4000);
-  refreshNextAction();
 }
 
 function openJournalForced(){
@@ -15481,8 +15298,8 @@ function _restoreNamesFromIds(text) {
 }
 
 // ── Synergy / Canvas Currency Tracker ────────────────────────────────────────
-// DSP Standard 2.6: Synergy grades must be updated every 2 weeks,
-// Canvas assignment calendar must be updated weekly.
+// Synergy grades should be updated every 2 weeks, and the Canvas assignment
+// calendar should be updated weekly.
 const SYNC_PLATFORMS = [
   { id:'synergy',  label:'Synergy Grades',     icon:'📗', maxDays:14, policy:'Update every 2 weeks' },
   { id:'canvas',   label:'Canvas Assignments',  icon:'🖥️', maxDays:7,  policy:'Update weekly' },
@@ -15538,29 +15355,30 @@ function markSyncDone(platformId) {
 }
 
 // ── Observation Prep Checklist ────────────────────────────────────────────────
-// DSP Standard 1: Lesson plans must be current, differentiation must be documented,
-// objectives must be posted and aligned. Evidence collected before/after each observation.
+// Lesson plans should be current, differentiation should be documented,
+// and objectives should be posted and aligned. Evidence collected before/after
+// each observation.
 
 const OBS_PREP_ITEMS = [
-  // Standard 1.1 — Lesson Plans
-  { key:'lp_current',    label:'Lesson plan for today is written and accessible in Google Drive',       std:'1.1', critical:true },
-  { key:'lp_objectives', label:'Learning objectives are posted / visible in the room',                  std:'1.1', critical:true },
-  { key:'lp_aligned',    label:'Lesson is aligned to SOL/SCR competencies (noted in plan)',             std:'1.2', critical:true },
-  { key:'lp_diff',       label:'Differentiation section is complete (SPED/ELL/Advanced/Formative)',     std:'1.3', critical:true },
-  { key:'lp_unit',       label:'Unit plan is current — today\'s lesson fits the pacing sequence',       std:'1.2', critical:false },
-  { key:'lp_pacing',     label:'Pacing is on track — no major gaps or compression in unit',             std:'1.2', critical:false },
-  // Standard 1.4 — Assessment Evidence
-  { key:'assess_warm',   label:'Warm-up or bell-ringer is planned and ready',                           std:'1.4', critical:false },
-  { key:'assess_form',   label:'Formative assessment checkpoint is built into the lesson',              std:'1.4', critical:true },
-  { key:'assess_exit',   label:'Exit ticket or closing activity is prepared',                           std:'1.4', critical:false },
-  // Standard 2 — Professionalism
-  { key:'grades_synergy','label':'Synergy grades are updated within the last 14 days',                  std:'2.6', critical:true },
-  { key:'grades_canvas', label:'Canvas assignments/materials are current and visible to students',      std:'2.6', critical:true },
-  { key:'deposit_clear', label:'No outstanding deposits — all collections deposited to Ms. Evans',      std:'2.5', critical:false },
-  { key:'deadlines_ok',  label:'No overdue CCPS forms or DECA deadlines',                               std:'2.3', critical:false },
+  // Instructional Readiness — Lesson Plans
+  { key:'lp_current',    label:'Lesson plan for today is written and accessible in Google Drive',       group:'Instructional Readiness', critical:true },
+  { key:'lp_objectives', label:'Learning objectives are posted / visible in the room',                  group:'Instructional Readiness', critical:true },
+  { key:'lp_aligned',    label:'Lesson is aligned to SOL/SCR competencies (noted in plan)',             group:'Instructional Readiness', critical:true },
+  { key:'lp_diff',       label:'Differentiation section is complete (SPED/ELL/Advanced/Formative)',     group:'Instructional Readiness', critical:true },
+  { key:'lp_unit',       label:'Unit plan is current — today\'s lesson fits the pacing sequence',       group:'Instructional Readiness', critical:false },
+  { key:'lp_pacing',     label:'Pacing is on track — no major gaps or compression in unit',             group:'Instructional Readiness', critical:false },
+  // Instructional Readiness — Assessment Evidence
+  { key:'assess_warm',   label:'Warm-up or bell-ringer is planned and ready',                           group:'Instructional Readiness', critical:false },
+  { key:'assess_form',   label:'Formative assessment checkpoint is built into the lesson',              group:'Instructional Readiness', critical:true },
+  { key:'assess_exit',   label:'Exit ticket or closing activity is prepared',                           group:'Instructional Readiness', critical:false },
+  // Professionalism & Records
+  { key:'grades_synergy','label':'Synergy grades are updated within the last 14 days',                  group:'Professionalism & Records', critical:true },
+  { key:'grades_canvas', label:'Canvas assignments/materials are current and visible to students',      group:'Professionalism & Records', critical:true },
+  { key:'deposit_clear', label:'No outstanding deposits — all collections deposited to Ms. Evans',      group:'Professionalism & Records', critical:false },
+  { key:'deadlines_ok',  label:'No overdue CCPS forms or DECA deadlines',                               group:'Professionalism & Records', critical:false },
   // Physical environment
-  { key:'room_ready',    label:'Room is organized, materials are staged, agenda visible',               std:'1.1', critical:false },
-  { key:'tech_working',  label:'Technology tested — projector, computer, any tools needed',             std:'1.1', critical:false },
+  { key:'room_ready',    label:'Room is organized, materials are staged, agenda visible',               group:'Instructional Readiness', critical:false },
+  { key:'tech_working',  label:'Technology tested — projector, computer, any tools needed',             group:'Instructional Readiness', critical:false },
 ];
 
 function renderObsChecklist() {
@@ -15578,10 +15396,10 @@ function renderObsChecklist() {
   const pct      = Math.round(done / total * 100);
   const barColor = allCrit ? '#22c55e' : done > critical.length ? '#f59e0b' : '#ef4444';
 
-  // Group by standard
+  // Group by category
   const groups = {};
   OBS_PREP_ITEMS.forEach(item => {
-    const g = item.std.startsWith('1') ? 'Standard 1 — Instructional Planning' : 'Standard 2 — Professionalism & Evidence';
+    const g = item.group;
     if (!groups[g]) groups[g] = [];
     groups[g].push(item);
   });
@@ -15591,7 +15409,7 @@ function renderObsChecklist() {
       const checked = !!saved[item.key];
       return `<label style="display:flex;align-items:flex-start;gap:.45rem;cursor:pointer;padding:.22rem 0;font-size:.76rem;color:${checked?'#9ca3af':'inherit'};${checked?'text-decoration:line-through':''}">
         <input type="checkbox" ${checked?'checked':''} onchange="toggleObsCheck('${item.key}',this.checked)" style="margin-top:2px;accent-color:var(--navy);flex-shrink:0">
-        <span>${item.critical?'<strong>':''}${item.label}${item.critical?'</strong>':''} <span style="font-size:.6rem;color:${item.critical?'#b91c1c':'#9ca3af'};margin-left:2px">${item.critical?'★ Critical':''} DSP ${item.std}</span></span>
+        <span>${item.critical?'<strong>':''}${item.label}${item.critical?'</strong>':''} ${item.critical?'<span style="font-size:.6rem;color:#b91c1c;margin-left:2px">★ Critical</span>':''}</span>
       </label>`;
     }).join('');
     return `<div style="margin-bottom:.6rem">
@@ -15602,7 +15420,7 @@ function renderObsChecklist() {
 
   // Recent observations strip
   const recent = history.slice(0,3).map(o => {
-    const typeLabel = {formal:'Formal Obs',walkthrough:'Walkthrough',pop:'Unannounced',dsp:'DSP Check-in',plc:'PLC Meeting'};
+    const typeLabel = {formal:'Formal Obs',walkthrough:'Walkthrough',pop:'Unannounced',plc:'PLC Meeting'};
     const outcomeStyle = {pending:'color:#92400e;background:#fef3c7',positive:'color:#166534;background:#dcfce7',concern:'color:#92400e;background:#fef3c7',action:'color:#991b1b;background:#fee2e2'};
     const st = outcomeStyle[o.outcome] || outcomeStyle.pending;
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:#f9fafb;border:1px solid var(--border);border-radius:7px;font-size:.72rem">
@@ -15623,7 +15441,7 @@ function renderObsChecklist() {
       <div style="font-size:1.1rem">${allCrit?'✅':'📋'}</div>
       <div style="flex:1">
         <div style="font-size:.85rem;font-weight:700;color:var(--navy)">Observation / Walkthrough Prep Checklist</div>
-        <div style="font-size:.7rem;color:var(--muted)">DSP Standards 1 & 2 — ${critDone}/${critical.length} critical items ready · ${done}/${total} total · click to ${saved._expanded?'collapse':'expand'}</div>
+        <div style="font-size:.7rem;color:var(--muted)">${critDone}/${critical.length} critical items ready · ${done}/${total} total · click to ${saved._expanded?'collapse':'expand'}</div>
       </div>
       <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
         <span style="font-size:.65rem;background:${allCrit?'#dcfce7':'#fef3c7'};color:${allCrit?'#15803d':'#92400e'};padding:2px 10px;border-radius:20px;font-weight:700;border:1px solid ${allCrit?'#86efac':'#fde68a'}">${allCrit?'🟢 READY':'🟡 '+pct+'% ready'}</span>
@@ -15639,7 +15457,7 @@ function renderObsChecklist() {
     <!-- Expandable body -->
     <div id="obs-checklist-body" style="display:${saved._expanded?'block':'none'};padding:.85rem 1rem 1rem">
       <div style="font-size:.72rem;color:#92400e;background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:.4rem .65rem;margin-bottom:.75rem">
-        <strong>How to use:</strong> Check off each item before any observation or walkthrough. Critical items (★) must be complete. Reset between observations. Log the observation after it happens — this creates your DSP evidence trail.
+        <strong>How to use:</strong> Check off each item before any observation or walkthrough. Critical items (★) must be complete. Reset between observations. Log the observation after it happens — this creates your evidence trail.
       </div>
       ${groupHtml}
       ${history.length ? `
@@ -15664,7 +15482,7 @@ function toggleObsCheck(key, val) {
   const saved = LS.get('lh_obs_prep', {});
   saved[key] = val;
   LS.set('lh_obs_prep', saved);
-  // If all critical items just became complete, log it as DSP evidence
+  // If all critical items just became complete, log it to the daily log
   const obsItems  = typeof OBS_PREP_ITEMS !== 'undefined' ? OBS_PREP_ITEMS : [];
   const critical  = obsItems.filter(i => i.critical);
   const critDone  = critical.filter(i => saved[i.key]).length;
@@ -15717,7 +15535,7 @@ function saveObsLog() {
 
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#0f2044;color:#fff;padding:.45rem 1.2rem;border-radius:8px;font-size:.8rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
-  toast.textContent = '📋 Observation logged — DSP evidence saved';
+  toast.textContent = '📋 Observation logged';
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 3000);
 }
@@ -15737,7 +15555,7 @@ function deleteObsLog(id) {
 
 // ── Resolve obs action item — marks it resolved so P95 stops firing ───────────
 // Changes outcome to 'resolved', which excludes it from the openActions filter
-// in buildActionQueue. The entry remains in the log as a DSP evidence record.
+// in buildActionQueue. The entry remains in the log as a historical record.
 function resolveObsAction(id) {
   const history = LS.get('lh_obs_history', []);
   const entry   = history.find(o => o.id === id);
@@ -16249,309 +16067,6 @@ setTimeout(updateEmailBridgeBadge_, 500);
   if (activeTab) activeTab.classList.add('active');
 })();
 
-
-// ══════════════════════════════════════════════════════════
-// DSP EVIDENCE REPORT
-// ══════════════════════════════════════════════════════════
-function closeDSPReport(){ document.getElementById('dsp-report-modal').style.display='none'; }
-
-function generateDSPReport(){
-  const modal = document.getElementById('dsp-report-modal');
-  const body  = document.getElementById('dsp-report-body');
-  if(!modal||!body) return;
-
-  const now      = new Date();
-  const generated= now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})+' at '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-  const dspDays  = Math.ceil((new Date('2026-05-15') - now)/86400000);
-
-  // ── Gather data ─────────────────────────────────────────
-  // Goals
-  const dspGoals = goals.filter(g=>g.cat==='Leadership Development');
-  const dspAvg   = dspGoals.length ? Math.round(dspGoals.reduce((s,g)=>s+g.progress,0)/dspGoals.length):0;
-
-  // SCR scores — correct structure: .competencies[] and .periods{}
-  let scrTotal=0, scrScored=0;
-  Object.entries(SCR_COURSES).forEach(([code, c])=>{
-    const comps   = c.competencies || [];
-    const allPers = Object.keys(c.periods || {});
-    const scoredPers = Object.keys((scrScores[code])||{});
-    const pers = scoredPers.length ? scoredPers : (allPers.length ? [allPers[0]] : []);
-    pers.forEach(per=>{
-      const ps = ((scrScores[code]||{})[per])||{};
-      const stuList = (c.periods[per]||[]).map(s=>s.name);
-      stuList.forEach(stuName=>{
-        comps.forEach(comp=>{
-          scrTotal++;
-          if(ps[stuName] && ps[stuName][comp.num]) scrScored++;
-        });
-      });
-    });
-  });
-  const scrPct = scrTotal ? Math.round((scrScored/scrTotal)*100):0;
-
-  // LP edits — with editedAt timestamps from lh_lp_edit_meta
-  const lpEditCount = Object.keys(LP_EDITS).length;
-  const lpNewCount  = Object.keys(LP_EDITS).filter(k=>k.startsWith('new_')).length;
-  const lpEditedCount = lpEditCount - lpNewCount;
-  const lpMeta = LS.get('lh_lp_edit_meta', {});
-  const lpMetaEntries = Object.values(lpMeta).sort((a,b)=>new Date(b.editedAt)-new Date(a.editedAt));
-  const lpLastEdit = lpMetaEntries[0];
-  const lpLastEditStr = lpLastEdit
-    ? `${lpLastEdit.title.substring(0,28)}… (${new Date(lpLastEdit.editedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})})`
-    : 'None yet';
-
-  // Obs prep
-  const obsPrep   = LS.get('lh_obs_prep',{});
-  const obsItems  = typeof OBS_PREP_ITEMS!=='undefined'?OBS_PREP_ITEMS:[];
-  const obsDone   = obsItems.filter(i => obsPrep[i.key]).length;
-  const obsHistory= LS.get('lh_obs_history',[]);
-
-  // Daily log
-  const dailyLog  = LS.get('lh_daily_log',[]);
-  const commsDone    = dailyLog.filter(e=>e.type==='comms');
-  const greenMeetings = dailyLog.filter(e=>e.type==='green_meeting');
-  const plcMeetings   = dailyLog.filter(e=>e.type==='plc_meeting');
-  const tasksDone     = dailyLog.filter(e=>e.type==='task_complete');
-  const matchesLogged = dailyLog.filter(e=>e.type==='esports_match');
-  const tripsArchived = dailyLog.filter(e=>e.type==='trip_archived');
-  const choicesPicked  = dailyLog.filter(e=>e.type==='choice_picked');
-  const decaResults    = dailyLog.filter(e=>e.type==='deca_result');
-  const workdayDone    = dailyLog.filter(e=>e.type==='workday_submit');
-  const obsPrepDone    = dailyLog.filter(e=>e.type==='obs_prep_complete');
-  const obsPrepReady   = dailyLog.filter(e=>e.type==='obs_prep_ready');
-  const journalH  = LS.get('lh_journal_history',[]);
-
-  // Brag emails + sub plans generated (new evidence sources)
-  const bragLog    = LS.get('lh_brag_log', []);
-  const subPlanLog = LS.get('lh_sub_plan_log', []);
-  const bragCount  = bragLog.length;
-  const subCount   = subPlanLog.length;
-  const bragLast   = bragLog[0] ? new Date(bragLog[0].savedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
-
-  // SCR session log — scoring sessions this school year
-  const scrSessionLog   = LS.get('lh_scr_session_log', []);
-  const scrSessionCount = scrSessionLog.length;
-  const scrSessionLast  = scrSessionLog[0]
-    ? new Date(scrSessionLog[0].ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})
-    : '—';
-
-  // WBL hours log — total hours added via app this school year
-  const wblHoursLog   = LS.get('lh_wbl_hours_log', []);
-  const wblHoursAdded = Math.round(wblHoursLog.reduce((s,e)=>s+Number(e.added||0),0)*10)/10;
-  const wblLogLast    = wblHoursLog[0]
-    ? new Date(wblHoursLog[0].ts).toLocaleDateString('en-US',{month:'short',day:'numeric'})
-    : '—';
-
-  // Unit notes
-  const unitNotes = LS.get('lh_unit_notes',{});
-  const unitNoteCount = Object.values(unitNotes).filter(n=>n&&n.trim()).length;
-
-  // Pacing position — days ahead/behind per course today
-  const _pacingNow = new Date().toISOString().slice(0,10);
-  const pacingStats = Object.entries(SCR_COURSES).map(([code, c])=>{
-    try {
-      const oe = getCourseOddEven(code);
-      // Find current quarter
-      let q=1;
-      for(const [qn,r] of Object.entries(LP_QUARTERS)){ if(_pacingNow>=r.start&&_pacingNow<=r.end){q=parseInt(qn);break;} }
-      const qr = LP_QUARTERS[q];
-      const oeMap = buildOddEvenMap(LP_QUARTERS[1].start, _pacingNow);
-      const schoolDays = getSchoolDays(qr.start, _pacingNow);
-      const meetingDays = schoolDays.filter(d=>{
-        const p=oeMap[d];
-        if(oe.odd&&oe.even) return true;
-        if(p==='Odd'&&oe.odd) return true;
-        if(p==='Even'&&oe.even) return true;
-        return false;
-      });
-      const lessonsQ = LESSON_PLANS.filter(lp=>lp.course===code&&lp.q===q);
-      const lessonsDue = Math.min(meetingDays.length, lessonsQ.length);
-      const lpEditsThisQ = lpMetaEntries.filter(e=>e.course===code&&e.editedAt>=qr.start).length;
-      const diff = lpEditsThisQ - lessonsDue;
-      return { code, name: (SCR_COURSES[code]||{}).name||code, lessonsDue, edited: lpEditsThisQ, diff };
-    } catch(e){ return null; }
-  }).filter(Boolean);
-
-  // Trips
-  const tripCount = trips.length;
-  const tripReady = trips.filter(t=>t.status==='ready'||t.status==='submitted').length;
-
-  // WBL
-  const wblStudents = typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS:[];
-  const wblSigned   = wblStudents.filter(s=>s.agreement!=='pending').length;
-  const wblAvgHrs   = wblStudents.length ? Math.round(wblStudents.reduce((a,s)=>a+Number(s.hours),0)/wblStudents.length):0;
-
-  // SBE
-  const sbeItems  = typeof SBE_ELEMENTS!=='undefined'?SBE_ELEMENTS:[];
-  const sbeDone   = sbeItems.filter(e=>(SBE_STATUS[e.id]||{}).done).length;
-
-  // E-Sports
-  const esTotal   = typeof ES_MATCHES!=='undefined'?ES_MATCHES.length:0;
-  const esWins    = typeof ES_MATCHES!=='undefined'?ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length:0;
-
-  // ── Render ──────────────────────────────────────────────
-  const section=(title,color,items)=>`
-    <div style="margin-bottom:1.4rem">
-      <div style="font-weight:800;font-size:.84rem;text-transform:uppercase;letter-spacing:1.2px;color:${color};border-bottom:2px solid ${color};padding-bottom:.3rem;margin-bottom:.65rem">${title}</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.5rem">
-        ${items.map(([label,val,sub])=>`<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:.55rem .75rem">
-          <div style="font-size:.67rem;color:#64748b;text-transform:uppercase;letter-spacing:.5px">${label}</div>
-          <div style="font-size:1.15rem;font-weight:800;color:#1e293b;line-height:1.2">${val}</div>
-          ${sub?`<div style="font-size:.67rem;color:#94a3b8;margin-top:.1rem">${sub}</div>`:''}
-        </div>`).join('')}
-      </div>
-    </div>`;
-
-  const goalRows = dspGoals.map(g=>{
-    const updated = g.updatedAt ? new Date(g.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
-    const bar = `<div style="background:#e2e8f0;border-radius:20px;height:6px;margin-top:4px"><div style="background:${g.progress>=100?'#16a34a':g.progress>50?'#2563eb':'#d97706'};height:100%;width:${g.progress}%;border-radius:20px"></div></div>`;
-    return `<tr style="border-bottom:1px solid #f1f5f9">
-      <td style="padding:.4rem .5rem;font-size:.78rem;font-weight:600">${g.title}</td>
-      <td style="padding:.4rem .5rem;text-align:center">${bar}<span style="font-size:.7rem;font-family:'DM Mono',monospace">${g.progress}%</span></td>
-      <td style="padding:.4rem .5rem;font-size:.72rem;color:#64748b;text-align:center">${updated}</td>
-    </tr>`;
-  }).join('');
-
-  const commsRows = commsDone.slice(-10).reverse().map(e=>`
-    <div style="font-size:.75rem;padding:.25rem .5rem;background:#f0fdf4;border-radius:4px;color:#166534">
-      ✅ ${new Date(e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})} at ${new Date(e.date).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}
-    </div>`).join('');
-
-  body.innerHTML = `
-    <div style="font-size:.72rem;color:#64748b;margin-bottom:1.1rem;padding:.45rem .7rem;background:#f8fafc;border-radius:6px;display:flex;justify-content:space-between">
-      <span>Generated: ${generated}</span>
-      <span style="font-weight:700;color:${dspDays<14?'#dc2626':dspDays<30?'#d97706':'#16a34a'}">⏱ ${dspDays} days until May 15, 2026</span>
-    </div>
-
-    ${section('Standard 1 — Instructional Planning','#1a3560',[
-      ['Lesson Plans Edited', lpEditedCount, `of ${LESSON_PLANS.length} plans`],
-      ['New Plans Created', lpNewCount, `custom additions`],
-      ['Last LP Edit', lpLastEditStr, ``],
-      ['Unit Notes Written', unitNoteCount, `of ${UNIT_PLANS.length} units`],
-      ['Obs Prep Checklist', `${obsDone}/${obsItems.length}`, `items completed`],
-      ['Obs Prep Ready Days', obsPrepReady.length, `days all critical items checked`],
-      ['Obs Log Entries', obsHistory.length, `formal observations`],
-      ['Sub Plans Generated', subCount, `logged in system`],
-    ])}
-
-    ${section('Standard 1 — SCR Competency Records','#0369a1',[
-      ['Total Scored', scrScored, `of ${scrTotal} cells`],
-      ['Score Coverage', scrPct+'%', `across all 3 courses`],
-      ['Scoring Sessions', scrSessionCount, `last: ${scrSessionLast}`],
-      ['Active Course', scrActiveCourse, `${(SCR_COURSES[scrActiveCourse]||{}).name||''}`],
-      ['Active Period', scrActivePeriod, ``],
-    ])}
-
-    <div style="margin-bottom:1.4rem">
-      <div style="font-weight:800;font-size:.84rem;text-transform:uppercase;letter-spacing:1.2px;color:#0369a1;border-bottom:2px solid #0369a1;padding-bottom:.3rem;margin-bottom:.65rem">Standard 1 — Pacing Position</div>
-      <table style="width:100%;border-collapse:collapse;font-size:.78rem">
-        <thead><tr style="background:#eff6ff">
-          <th style="padding:.4rem .5rem;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Course</th>
-          <th style="padding:.4rem .5rem;text-align:center;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Lessons Due</th>
-          <th style="padding:.4rem .5rem;text-align:center;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Plans Edited</th>
-          <th style="padding:.4rem .5rem;text-align:center;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Position</th>
-        </tr></thead>
-        <tbody>${pacingStats.map(p=>{
-          const diff = p.diff;
-          const posLabel = diff > 0 ? `▲ ${diff} ahead` : diff < 0 ? `▼ ${Math.abs(diff)} behind` : '✓ On track';
-          const posColor = diff > 0 ? '#16a34a' : diff < 0 ? '#dc2626' : '#0369a1';
-          return `<tr style="border-bottom:1px solid #f1f5f9">
-            <td style="padding:.4rem .5rem;font-size:.78rem;font-weight:600">${p.name.substring(0,32)}</td>
-            <td style="padding:.4rem .5rem;text-align:center;font-family:'DM Mono',monospace">${p.lessonsDue}</td>
-            <td style="padding:.4rem .5rem;text-align:center;font-family:'DM Mono',monospace">${p.edited}</td>
-            <td style="padding:.4rem .5rem;text-align:center;font-weight:700;color:${posColor}">${posLabel}</td>
-          </tr>`;
-        }).join('')||'<tr><td colspan="4" style="padding:.75rem;text-align:center;color:#94a3b8">No pacing data</td></tr>'}
-        </tbody>
-      </table>
-      <div style="font-size:.68rem;color:#94a3b8;margin-top:.35rem">Pacing position = lesson plans edited this quarter vs. class sessions held. Based on LP edit timestamps in lh_lp_edit_meta.</div>
-    </div>
-
-    ${section('Standard 2 — Professionalism & CTSO','#065f46',[
-      ['Morning Comms Logged', commsDone.length, `days on record`],
-      ['Workday Payroll Submitted', workdayDone.length, `Fridays — CCPS compliance`],
-      ['Obs Prep Completed', obsPrepDone.length, `all critical items checked`],
-      ['DSP Meetings w/ Ms. Green', greenMeetings.length, `of 5 scheduled`],
-      ['CTE PLC Meetings', plcMeetings.length, `of 3 scheduled`],
-      ['Priority Actions Engaged', choicesPicked.length, `choice cards acted on`],
-      ['Journal Entries', journalH.length, `reflections saved`],
-      ['Brag Emails Generated', bragCount, `last: ${bragLast}`],
-      ['Tasks Completed', tasksDone.length, `logged this year`],
-      ['Trips in System', tripCount, `${tripReady} ready/submitted`],
-      ['DECA Events Active', DEADLINES.filter(d=>d.role==='deca').length, `deadlines tracked`],
-      ['DECA Results Logged', decaResults.length, `competition results entered`],
-    ])}
-
-    ${section('WBL / School Store','#7c3aed',[
-      ['WBL Students', wblStudents.length, `${wblSigned} agreements signed`],
-      ['Avg WBL Hours', wblAvgHrs+'h', `per student`],
-      ['Hours Logged via App', wblHoursAdded+'h', `last: ${wblLogLast}`],
-      ['SBE Elements', `${sbeDone}/${sbeItems.length}`, `completed`],
-    ])}
-
-    ${section('E-Sports','#d97706',[
-      ['Matches Logged', esTotal, ``],
-      ['Win Rate', esTotal?Math.round(esWins/esTotal*100)+'%':'—', `${esWins}W–${esTotal-esWins}L`],
-    ])}
-
-    <div style="margin-bottom:1.4rem">
-      <div style="font-weight:800;font-size:.84rem;text-transform:uppercase;letter-spacing:1.2px;color:#1a3560;border-bottom:2px solid #1a3560;padding-bottom:.3rem;margin-bottom:.65rem">DSP Standard Goals — Detailed Progress</div>
-      <table style="width:100%;border-collapse:collapse;font-size:.78rem">
-        <thead><tr style="background:#f1f5f9">
-          <th style="padding:.4rem .5rem;text-align:left;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Goal</th>
-          <th style="padding:.4rem .5rem;text-align:center;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;min-width:120px">Progress</th>
-          <th style="padding:.4rem .5rem;text-align:center;font-size:.7rem;text-transform:uppercase;letter-spacing:.5px">Last Updated</th>
-        </tr></thead>
-        <tbody>${goalRows||'<tr><td colspan="3" style="padding:.75rem;text-align:center;color:#94a3b8">No DSP goals found</td></tr>'}</tbody>
-      </table>
-    </div>
-
-    ${commsDone.length?`<div style="margin-bottom:1.4rem">
-      <div style="font-weight:800;font-size:.84rem;text-transform:uppercase;letter-spacing:1.2px;color:#065f46;border-bottom:2px solid #065f46;padding-bottom:.3rem;margin-bottom:.65rem">Recent Morning Comms Log (last 10)</div>
-      <div style="display:flex;flex-wrap:wrap;gap:.3rem">${commsRows}</div>
-    </div>`:''}
-
-    ${obsHistory.length ? `<div style="margin-bottom:1.4rem">
-      <div style="font-weight:800;font-size:.84rem;text-transform:uppercase;letter-spacing:1.2px;color:#1a3560;border-bottom:2px solid #1a3560;padding-bottom:.3rem;margin-bottom:.65rem">Observation Timeline (last 5)</div>
-      <div style="display:flex;flex-direction:column;gap:.4rem">
-        ${obsHistory.slice(0,5).map(o=>{
-          const oc = o.outcome==='positive'?{bg:'#f0fdf4',c:'#15803d',dot:'✅'}:o.outcome==='action'?{bg:'#fef9c3',c:'#92400e',dot:'⚠️'}:o.outcome==='concern'?{bg:'#fef2f2',c:'#991b1b',dot:'🔴'}:{bg:'#f8fafc',c:'#475569',dot:'📋'};
-          return `<div style="background:${oc.bg};border-radius:8px;padding:.5rem .75rem;font-size:.78rem">
-            <div style="display:flex;justify-content:space-between;align-items:center">
-              <span style="font-weight:700;color:${oc.c}">${oc.dot} ${o.type||'Observation'} — ${o.observer||'Observer not noted'}</span>
-              <span style="color:#94a3b8;font-size:.7rem">${new Date(o.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>
-            </div>
-            ${o.notes?`<div style="color:#374151;margin-top:.2rem">${o.notes.substring(0,120)}${o.notes.length>120?'…':''}</div>`:''}
-            ${o.followup?`<div style="color:#6b7280;font-size:.72rem;margin-top:.15rem;font-style:italic">Follow-up: ${o.followup.substring(0,80)}</div>`:''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : ''}
-
-    ${journalH.length ? `<div style="margin-bottom:1.4rem">
-      <div style="font-weight:800;font-size:.84rem;text-transform:uppercase;letter-spacing:1.2px;color:#4c1d95;border-bottom:2px solid #4c1d95;padding-bottom:.3rem;margin-bottom:.65rem">Recent Reflections (last 3) — DSP Standard 2</div>
-      <div style="display:flex;flex-direction:column;gap:.4rem">
-        ${journalH.slice(0,3).map(e=>{
-          const moodColor = e.mood<=3?'#dc2626':e.mood<=6?'#d97706':'#16a34a';
-          return `<div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:8px;padding:.5rem .75rem;font-size:.78rem">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem">
-              <span style="font-weight:700;color:#4c1d95">${new Date(e.savedAt||e.date).toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}</span>
-              <span style="font-family:'DM Mono',monospace;font-size:.75rem;color:${moodColor};font-weight:700">Mood ${e.mood||'—'}/10</span>
-            </div>
-            ${e.q1?`<div style="color:#374151"><span style="color:#7c3aed;font-weight:600">Planning: </span>${e.q1.substring(0,80)}${e.q1.length>80?'…':''}</div>`:''}
-            ${e.q4?`<div style="color:#374151;margin-top:.15rem"><span style="color:#7c3aed;font-weight:600">Proud of: </span>${e.q4.substring(0,80)}${e.q4.length>80?'…':''}</div>`:''}
-          </div>`;
-        }).join('')}
-      </div>
-    </div>` : ''}
-
-    <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:.75rem 1rem;font-size:.74rem;color:#854d0e;margin-top:.5rem">
-      <strong>📌 Reminder:</strong> This report reflects in-app data only. Attach lesson plan PDFs, observation notes from Ms. Green, and any email correspondence separately. DSP due date: <strong>May 15, 2026</strong>. ${dspDays} days remaining.
-    </div>`;
-
-  modal.style.display='block';
-}
-
 // ══════════════════════════════════════════════════════════════════════════════
 // SUB PLAN GENERATOR
 // Pulls bell schedule, odd/even day, per-period class rosters from SCR_COURSES,
@@ -16901,7 +16416,7 @@ const BRAG_AUDIENCE = {
   green: {
     get label(){ return PROFILE.supervisorName; },
     get to(){ return PROFILE.supervisorEmail; },
-    tone: 'professional supervisor update with DSP evidence framing — reference Standard 1 (Instructional Planning) and Standard 2 (Professionalism/CTSO) where applicable. Be specific and evidence-oriented.',
+    tone: 'professional supervisor update — evidence-oriented, specific about instructional planning and professionalism accomplishments.',
     subjectPrefix: 'Weekly Update',
   },
   admin: {
@@ -17002,8 +16517,8 @@ function gatherBragData() {
 
   // ── Daily log ──────────────────────────────────────────────────────────────
   // Only surface genuinely brag-worthy log types — internal system events
-  // (choice_picked, obs_prep_*, fieldtrip) are DSP evidence but not email content
-  const _bragTypes = new Set(['comms','green_meeting','plc_meeting','trip_archived','workday_submit']);
+  // (choice_picked, obs_prep_*, fieldtrip) are useful evidence but not email content
+  const _bragTypes = new Set(['comms','plc_meeting','trip_archived','workday_submit']);
   const logEntries = (LS.get('lh_daily_log', []) || [])
     .filter(e => inRange(new Date(e.date || e.ts)) && _bragTypes.has(e.type))
     .map(e => ({ text: e.note || e.text || String(e) }));
