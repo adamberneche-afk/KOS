@@ -441,6 +441,90 @@ cas-ccps `cfg-key-pending-merge` warnings), and a small Node harness
 re-checking the checklist grouping and stalled-goal logic against the
 restructured data shapes.
 
+## Settings → Organizations (DECA generalized to any club/CTSO)
+
+DECA was the last hardcoded "extracurricular" concept in the app — a
+dedicated nav button, a fixed 12-title officer list, a hardcoded 3-conference
+(DLC/SLC/ICDC) results/qualification structure, and a `students` roster
+array that assumed every row was a DECA member. Adam's own DECA chapter is
+**completely unchanged** — same officer titles, same 3 conferences, same
+Hub content (season pipeline, approval checklist tied to real trips, chapter
+reference/contacts/email templates), same data. This round makes the
+underlying system generic so another teacher's club, CTSO, or student
+organization can be added the same way a Course Catalog course is:
+
+- **`ORGANIZATIONS`** (built-in `deca` + a `CUSTOM_ORGS` localStorage
+  overlay, same additive pattern as the Course Catalog) holds each
+  organization's name/icon, its own **officer position list**, its own
+  **competition/achievement levels** (DECA's are `DLC`/`SLC`/`ICDC`; a
+  differently-tiered CTSO or a non-competitive club can define its own, or
+  none at all), and its own placement vocabulary.
+- **Settings → Organizations**: lists every organization (built-in vs.
+  imported), an "Import Organization (JSON)" upload with a
+  preview-before-add confirmation, a downloadable blank template, and a
+  remove control for imported organizations only.
+- **The roster is now organization-scoped.** Every `students[]` row gained
+  an `org` field (existing rows silently backfilled to `'deca'` — nothing
+  to migrate by hand); the Members page grew an organization tab bar
+  (mirrors the SCR course tabs) and all its CRUD (add/edit/delete, officer
+  grid, stats strip, CSV export) filters by whichever organization tab is
+  active. The Add/Edit Member modal repopulates its Position and
+  Membership Status dropdowns from the active organization's own config —
+  DECA's exact original dropdowns (officer titles + competitive
+  categories, all 6 statuses including SLC/ICDC qualifier) are restored
+  byte-for-byte when DECA is active; another organization gets its own
+  officer titles, a plain "Member" option, and the 5 non-competition
+  statuses, with the DECA-specific Competitive Event field hidden.
+- **A new, separate, simpler Results Board** (`renderOrgResults()`,
+  storing to its own `lh_org_results` key) exists for organizations
+  besides DECA — a flat "Results Logged"/"Top Finishes" summary, then
+  either one table per configured level or a single flat table for a
+  non-competitive club. This is a parallel implementation, not a
+  refactor of DECA's own results board (`renderDecaResults()`/
+  `lh_deca_results`, still exactly as before) — keeping the two separate
+  means nothing about DECA's results/qualification tracking could
+  possibly be affected by this change.
+- **DECA's own Hub page (season pipeline, approval checklist, chapter
+  reference) is unchanged and still DECA-only** — that content is
+  hand-authored, CCPS/trip-specific material, not something a generic
+  config can stand in for. Any other organization gets a simpler
+  auto-generated hub (its officers + its results board), with a pointer
+  to the Members page for full roster management.
+- **The module toggle is renamed generically**: `MODULES.deca` →
+  `MODULES.orgs` (an existing on/off preference is carried over
+  automatically, not reset), and the nav button/sidebar accordion header
+  now show the one configured organization's own name, or "Organizations"
+  once more than one exists.
+- **Fixed a real bug found while wiring this up**: the "DECA event
+  tomorrow" banner fired unconditionally regardless of the module
+  toggle — even with Organizations turned off (nav/sidebar hidden), the
+  banner would still appear and its button would navigate to a hidden
+  view. Now gated behind `MODULES.orgs`.
+
+**Deliberately out of scope for this round** — a genuinely different,
+much larger undertaking, discussed with Adam and intentionally deferred:
+**sharing an organization between co-advisors.** Everything in LeaderHub
+today is single-browser localStorage; making an organization's roster/
+results genuinely shared means introducing a real synced datastore (a
+Google Sheet via an extended `EmailBridge.gs`, in the direction agreed
+on) with actual conflict-handling for simultaneous edits — a separate,
+substantial round on its own, not a corner of this one. Also deferred,
+narrower and lower-value: the long tail of hardcoded "DECA" references
+outside the Hub/Members/Results core — Brag Board's DECA-specific
+audience tone and win-source, the sub-plan absence-reason enum, the
+quick-thought keyword classifier, the permission-slip roster-source
+label, and the trip-archive name-matching filter all still say "DECA"
+specifically rather than reading the active organization's name.
+
+Verified with `node --check` on both `<script>` blocks, `node
+tools/gas-lint/check.js` (clean except the 2 pre-existing unrelated
+cas-ccps warnings), parsing the new `ORGANIZATIONS` config back out of
+the file to confirm it's intact, and a Node harness covering the
+organization-import validator (malformed JSON, duplicate id, missing
+fields, id sanitization, level-key derivation), roster organization-
+scoping (legacy-row backfill, per-org filtering), and the `MODULES.deca`
+→ `MODULES.orgs` migration.
+
 ## UI/UX Hardening — Rounds 1–9
 
 After the reconciliation work that filed this system into the repo, it

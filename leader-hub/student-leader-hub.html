@@ -1208,7 +1208,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ===== DECA CHAPTER HUB ===== -->
 <div id="view-deca" class="view">
   <div class="ph">
-    <div><div class="pt">🏆 DECA Chapter Hub</div><div class="ps" id="deca-hub-subtitle">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div></div>
+    <div><div class="pt" id="orghub-title">🏆 DECA Chapter Hub</div><div class="ps" id="deca-hub-subtitle">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div></div>
     <button class="btn btn-primary" onclick="showView('events')">All Events →</button>
   </div>
   <div id="deca-hub-content"></div>
@@ -1460,17 +1460,20 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ===== STUDENTS ===== -->
 <div id="view-students" class="view">
   <div class="ph">
-    <div><div class="pt">DECA Members</div><div class="ps">Officers · Members · Alumni · Registration</div></div>
+    <div><div class="pt" id="members-title">DECA Members</div><div class="ps">Officers · Members · Alumni · Registration</div></div>
     <div style="display:flex;gap:.5rem;flex-wrap:wrap">
       <button class="btn btn-gold btn-sm" onclick="openEmailComposer(null,'students');setTimeout(()=>loadEmailTemplate('stu-registration-info'),80)">✉️ Registration Email</button>
       <button class="btn btn-outline btn-sm" onclick="openMemberRegistrationModal()">📋 Register Member</button>
       <button class="btn btn-primary btn-sm" onclick="openModal('addStudent')">+ Add Member</button>
     </div>
   </div>
+  <!-- Organization Tabs — rendered by renderOrgTabs() from ORGANIZATIONS, so
+       an org added via Settings → Organizations gets a tab automatically. -->
+  <div id="org-tabs" style="display:flex;gap:.3rem;margin-bottom:.75rem;flex-wrap:wrap"></div>
   <!-- FERPA Notice -->
   <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:.5rem .85rem;margin-bottom:.75rem;font-size:.75rem;color:#78350f;display:flex;align-items:center;gap:.6rem">
     <span style="font-size:1.1rem;flex-shrink:0">🔒</span>
-    <span><strong>FERPA Reminder:</strong> Store only DECA program data here (membership, dues, competition, contact info for program communications). IEP/504 status, ELL designation, grades, disciplinary records, and medical information are educational records — keep those in Synergy only.</span>
+    <span><strong>FERPA Reminder:</strong> Store only <span id="ferpa-org-name">DECA</span> program data here (membership, dues, competition, contact info for program communications). IEP/504 status, ELL designation, grades, disciplinary records, and medical information are educational records — keep those in Synergy only.</span>
   </div>
   <!-- Stats strip -->
   <div class="strip" style="margin-bottom:1rem;flex-wrap:wrap">
@@ -1482,9 +1485,15 @@ window.onerror = function(msg, src, line, col, err) {
     <div style="width:1px;background:rgba(255,255,255,.15)"></div>
     <div><div class="strip-lbl">Unpaid</div><div style="font-size:1.5rem;font-family:'Bebas Neue',cursive;color:#f87171" id="mb-unpaid">0</div></div>
     <div style="width:1px;background:rgba(255,255,255,.15)"></div>
-    <div><div class="strip-lbl">SLC Qualifiers</div><div style="font-size:1.5rem;font-family:'Bebas Neue',cursive;color:#c4b5fd" id="mb-slc">0</div></div>
-    <div style="width:1px;background:rgba(255,255,255,.15)"></div>
-    <div><div class="strip-lbl">ICDC Qualifiers</div><div style="font-size:1.5rem;font-family:'Bebas Neue',cursive;color:var(--gold)" id="mb-icdc">0</div></div>
+    <!-- DECA-only qualifier tiles — SLC/ICDC are DECA's own competition tiers
+         (see MEMBER_STATUS_MAP). Hidden for other organizations by
+         _applyOrgUIVisibility() since they have no equivalent yet. -->
+    <span id="mb-quals-strip" style="display:contents">
+      <div style="width:1px;background:rgba(255,255,255,.15)"></div>
+      <div><div class="strip-lbl">SLC Qualifiers</div><div style="font-size:1.5rem;font-family:'Bebas Neue',cursive;color:#c4b5fd" id="mb-slc">0</div></div>
+      <div style="width:1px;background:rgba(255,255,255,.15)"></div>
+      <div><div class="strip-lbl">ICDC Qualifiers</div><div style="font-size:1.5rem;font-family:'Bebas Neue',cursive;color:var(--gold)" id="mb-icdc">0</div></div>
+    </span>
     <div style="width:1px;background:rgba(255,255,255,.15)"></div>
     <div><div class="strip-lbl">Alumni</div><div style="font-size:1.5rem;font-family:'Bebas Neue',cursive;color:#94a3b8" id="mb-alumni">0</div></div>
     <div style="margin-left:auto;display:flex;align-items:center;gap:.5rem">
@@ -1645,7 +1654,7 @@ window.onerror = function(msg, src, line, col, err) {
               </optgroup>
             </select>
           </div>
-          <div class="fg"><label>Competitive Event</label>
+          <div class="fg" id="st-compet-wrap"><label>Competitive Event</label>
             <select id="st-compet">
               <option value="">— Select Event —</option>
               <option>Accounting Applications</option><option>Business Finance</option>
@@ -3466,9 +3475,16 @@ let PROFILE = getProfile();
 // at boot (see renderStaticEmbeddedContent) and again on every Settings save.
 function _applyProfileToStaticDOM() {
   const decaSub = document.getElementById('deca-hub-subtitle');
-  if (decaSub) decaSub.textContent = `${PROFILE.school} · 25–26 Season · All data sourced from Google Drive`;
+  if (decaSub && (typeof activeOrgId === 'undefined' || activeOrgId === 'deca')) {
+    decaSub.textContent = `${PROFILE.school} · 25–26 Season · All data sourced from Google Drive`;
+  }
+  // Only DECA's own subtitle is PROFILE-bound here — a non-DECA org's
+  // subtitle is set by _populateMemberFormForOrg() instead, and would be
+  // clobbered by this running unconditionally on every Settings save.
   const addStuSub = document.getElementById('addstu-modal-subtitle');
-  if (addStuSub) addStuSub.textContent = `${PROFILE.school} DECA · Chapter 4280`;
+  if (addStuSub && (typeof activeOrgId === 'undefined' || activeOrgId === 'deca')) {
+    addStuSub.textContent = `${PROFILE.school} DECA · Chapter 4280`;
+  }
 }
 
 // ─── MODULE VISIBILITY — Settings → Modules ─────────────────────────────────
@@ -3477,8 +3493,16 @@ function _applyProfileToStaticDOM() {
 // anywhere. DECA/WBL-Store/E-Sports are singled out as optional since
 // they're role-specific extras on top of the core classroom/trips/tools
 // surface; Dashboard, Classroom, Field Trips, and Tools stay always-on.
-const MODULES_DEFAULT = { deca: true, wbl: true, esports: true };
-function getModules() { return Object.assign({}, MODULES_DEFAULT, LS.get('lh_modules', {})); }
+const MODULES_DEFAULT = { orgs: true, wbl: true, esports: true };
+function getModules() {
+  const saved = LS.get('lh_modules', {});
+  // One-time migration: this flag used to be named `deca` (back when DECA
+  // was the only organization the app could show). Carry an existing
+  // teacher's on/off preference over to the new generic name instead of
+  // silently resetting it to the default.
+  if (saved.deca !== undefined && saved.orgs === undefined) { saved.orgs = saved.deca; delete saved.deca; LS.set('lh_modules', saved); }
+  return Object.assign({}, MODULES_DEFAULT, saved);
+}
 function saveModules(updates) {
   const merged = Object.assign({}, LS.get('lh_modules', {}), updates);
   LS.set('lh_modules', merged);
@@ -3490,8 +3514,11 @@ let MODULES = getModules();
 // Hides the nav button + whole sidebar section (header+body+its trailing
 // separator, see the HTML — each is wrapped in a side-sec-<key> div) for
 // any disabled module, and re-filters the Dashboard pulse row to match.
+// (The DOM ids stay nav-deca/side-sec-deca/acc-deca — internal hooks, not
+// user-visible — while the flag/label they're driven by is now generic;
+// see _applyOrgNavLabels() for the visible "DECA" → org-name(s) text.)
 function _applyModuleVisibility() {
-  [['deca', 'nav-deca', 'side-sec-deca'], ['wbl', 'nav-wbl', 'side-sec-wbl'], ['esports', 'nav-esports', 'side-sec-esports']].forEach(([key, navId, sideId]) => {
+  [['orgs', 'nav-deca', 'side-sec-deca'], ['wbl', 'nav-wbl', 'side-sec-wbl'], ['esports', 'nav-esports', 'side-sec-esports']].forEach(([key, navId, sideId]) => {
     const show = MODULES[key] !== false;
     const navEl = document.getElementById(navId);
     if (navEl) navEl.style.display = show ? '' : 'none';
@@ -3499,57 +3526,68 @@ function _applyModuleVisibility() {
     if (sideEl) sideEl.style.display = show ? '' : 'none';
   });
   if (typeof renderPulseRow === 'function') renderPulseRow();
+  if (typeof _applyOrgNavLabels === 'function') _applyOrgNavLabels();
 }
 
-// ── DECA OFFICER POSITIONS (official chapter structure) ──────────────────────
-const DECA_POSITIONS = [
-  // Executive Officers
-  {value:'President',            label:'President',             tier:'officer', badge:'👑'},
-  {value:'Executive Vice President', label:'Executive VP',      tier:'officer', badge:'⭐'},
-  {value:'Vice President of Finance', label:'VP of Finance',   tier:'officer', badge:'💰'},
-  {value:'Vice President of Marketing', label:'VP of Marketing',tier:'officer', badge:'📣'},
-  {value:'Vice President of Community', label:'VP of Community',tier:'officer', badge:'🤝'},
-  {value:'Vice President of Competition', label:'VP of Competition',tier:'officer', badge:'🏆'},
-  {value:'Secretary',            label:'Secretary',             tier:'officer', badge:'📋'},
-  {value:'Treasurer',            label:'Treasurer',             tier:'officer', badge:'📊'},
-  {value:'Parliamentarian',      label:'Parliamentarian',       tier:'officer', badge:'⚖️'},
-  {value:'Reporter',             label:'Reporter / Historian',  tier:'officer', badge:'📰'},
-  {value:'Sergeant at Arms',     label:'Sergeant at Arms',      tier:'officer', badge:'🛡️'},
-  {value:'Webmaster',            label:'Webmaster / Social',    tier:'officer', badge:'💻'},
-  // Competitive Categories
-  {value:'Apparel & Accessories', label:'Apparel & Accessories',tier:'member', badge:'👗'},
-  {value:'Business Administration', label:'Business Administration',tier:'member', badge:'📁'},
-  {value:'Business Finance',     label:'Business Finance',      tier:'member', badge:'💼'},
-  {value:'Business Management',  label:'Business Management',   tier:'member', badge:'🏢'},
-  {value:'Entrepreneurship',     label:'Entrepreneurship',      tier:'member', badge:'🚀'},
-  {value:'Financial Literacy',   label:'Financial Literacy',    tier:'member', badge:'📈'},
-  {value:'Hospitality & Tourism', label:'Hospitality & Tourism',tier:'member', badge:'🏨'},
-  {value:'Marketing',            label:'Marketing',             tier:'member', badge:'📢'},
-  {value:'Sports & Entertainment', label:'Sports & Entertainment',tier:'member', badge:'🎭'},
-  {value:'Personal Financial Literacy', label:'Personal Financial Literacy',tier:'member', badge:'💳'},
-  {value:'Principles of Business', label:'Principles of Business',tier:'member', badge:'📚'},
-  {value:'Member',               label:'Member (General)',      tier:'member', badge:'🎯'},
-];
+// Keeps the nav button and sidebar accordion header's visible "DECA" text
+// honest once other organizations can be added: shows the one configured
+// organization's own name/icon, or "Organizations" once there's more than
+// one. Called at boot and after any org import/removal.
+function _applyOrgNavLabels() {
+  const ids = Object.keys(ORGANIZATIONS);
+  const single = ids.length === 1 ? ORGANIZATIONS[ids[0]] : null;
+  const icon = single ? (single.icon || '🏆') : '🏆';
+  const name = single ? single.name : 'Organizations';
+  const navBtn = document.getElementById('nav-deca');
+  if (navBtn) navBtn.textContent = `${icon} ${name}`;
+  const accHd = document.getElementById('acc-deca');
+  if (accHd) {
+    const arrowTxt = accHd.querySelector('.acc-arrow')?.textContent || '▶';
+    accHd.innerHTML = `<span>${icon}</span> ${escH(name)} <span class="acc-arrow">${arrowTxt}</span>`;
+  }
+}
 
-const COMPETITIVE_EVENTS = [
-  'Accounting Applications','Apparel & Accessories Marketing','Business Finance','Business Law & Ethics',
-  'Business Management','Buying & Merchandising','Entrepreneurship','Financial Consulting',
-  'Food Marketing','Hospitality & Tourism','Human Resources Management','International Marketing',
-  'Job Interview','Management Decision Making','Marketing Communications','Marketing Management',
-  'Personal Financial Literacy','Principles of Business Administration','Principles of Finance',
-  'Principles of Hospitality & Tourism','Principles of Marketing','Retail Merchandising',
-  'Sports & Entertainment Marketing Management','Travel & Tourism','Virtual Business Challenge',
-];
-
-const MEMBERSHIP_STATUSES = [
-  {value:'active',     label:'Active — Paid',       color:'#2a7a4b', bg:'#dcfce7'},
-  {value:'unpaid',     label:'Unpaid — Dues Owed',  color:'#b45309', bg:'#fef9c3'},
-  {value:'prospective',label:'Prospective',          color:'#0369a1', bg:'#e0f2fe'},
-  {value:'slc',        label:'SLC Qualifier',        color:'#7c3aed', bg:'#f3e8ff'},
-  {value:'icdc',       label:'ICDC Qualifier',       color:'#c9962a', bg:'#fef3c7'},
-  {value:'alumni',     label:'Alumni',               color:'#555',    bg:'#f3f4f6'},
-  {value:'inactive',   label:'Inactive',             color:'#9ca3af', bg:'#f9fafb'},
-];
+// ── Extracurricular Organizations — Settings → Organizations ─────────────────
+// Adam's own DECA chapter is the seeded built-in organization below — its
+// content is unchanged from what this file always shipped. A teacher running
+// a different club/CTSO (FBLA, HOSA, SkillsUSA, NHS, Key Club, Robotics, ...)
+// adds it via Settings → Organizations → Import Organization (JSON) instead
+// of editing this file — same additive-overlay pattern as the Course
+// Catalog. Officer titles and competition/achievement levels are now
+// per-organization config instead of hardcoded DECA-only constants, so a
+// non-competitive club can leave `levels` empty and a differently-tiered
+// CTSO can name its own levels instead of inheriting DECA's DLC → SLC → ICDC
+// structure. (This replaces DECA_POSITIONS/COMPETITIVE_EVENTS/
+// MEMBERSHIP_STATUSES, three richer constants that were defined here but
+// never actually referenced anywhere in the file — the app always ran on
+// the plainer OFFICER_POSITIONS array + MEMBER_STATUS_MAP defined further
+// down instead.)
+const ORG_DEFAULTS = {
+  deca: {
+    id: 'deca',
+    name: 'DECA',
+    // No `subtitle` here — DECA's subtitle is kept live off PROFILE.school
+    // by _applyProfileToStaticDOM(), not a fixed string (see there).
+    icon: '🏆',
+    officerPositions: ['President','Executive Vice President','Vice President of Finance',
+      'Vice President of Marketing','Vice President of Community','Vice President of Competition',
+      'Secretary','Treasurer','Parliamentarian','Reporter','Sergeant at Arms','Webmaster'],
+    levels: [
+      { key:'dlc',  label:'DLC — District' },
+      { key:'slc',  label:'SLC — State' },
+      { key:'icdc', label:'ICDC — International' },
+    ],
+    placeOptions: ['1st','2nd','3rd','4th','5th','6th','7th','8th','Top 10','Top 12','Finalist','Award','Qualified','Did Not Place'],
+    custom: false,
+  },
+};
+let CUSTOM_ORGS = LS.get('lh_custom_orgs', {});
+const ORGANIZATIONS = Object.assign({}, ORG_DEFAULTS, CUSTOM_ORGS);
+function persistCustomOrgs() { LS.set('lh_custom_orgs', CUSTOM_ORGS); }
+// Which organization's roster/results/officers the Members and Org Hub
+// views currently show — mirrors scrActiveCourse in the SCR tracker.
+let activeOrgId = LS.get('lh_active_org', 'deca');
+if (!ORGANIZATIONS[activeOrgId]) activeOrgId = Object.keys(ORGANIZATIONS)[0] || 'deca';
 
 const _studentsDefault = [
   {id:1, first:'Jordan',  last:'Rivera',    grade:12, position:'President',       competEvent:'Business Management',      memberStatus:'slc',    paid:true,  duesDate:'2025-10-15', email:'jrivera@student.ccpsnet.net',    phone:'(804) 555-0101', parentEmail:'mrivera@email.com',   parentPhone:'(804) 555-0100', address:'1234 Oak St, Midlothian VA 23114', shirtSize:'M', dietaryNeeds:'', ev:5, notes:'SLC placer — potential ICDC qualifier'},
@@ -3564,6 +3602,10 @@ const _studentsDefault = [
   {id:10,first:'Chloe',   last:'Davis',     grade:12, position:'Vice President of Finance', competEvent:'Financial Consulting', memberStatus:'alumni', paid:true, duesDate:'2024-10-12', email:'cdavis24@gmail.com', phone:'(804) 555-0119', parentEmail:'ndavis@email.com', parentPhone:'(804) 555-0118', address:'5566 Aspen Blvd, Chesterfield VA 23832', shirtSize:'S', dietaryNeeds:'', ev:null, notes:'24-25 VP Finance — graduated May 2025. SLC placer.', alumniYear:2025, alumniPref:'newsletter'},
 ];
 let students = LS.get('lh_students', _studentsDefault);
+// Backfill `org` on every roster row (built-in seed rows and anything saved
+// before Organizations existed) so the roster views can filter by
+// activeOrgId universally instead of assuming every row is DECA.
+students.forEach(s => { if (!s.org) s.org = 'deca'; });
 
 let goals = [
   {id:1,title:'Qualify students for ICDC',cat:'DECA Competition',date:'2026-03-02',progress:100,desc:'Top 8 SLC finishers (+ bumps to Top 10) with 70%+ test score qualify. SLC results pending — check for qualifiers and start ICDC registration Mar 2–13.'},
@@ -3687,7 +3729,7 @@ function showView(name, btn) {
     if(name==='trips')      renderTrips();
     if(name==='archive')    renderArchive();
     if(name==='students')   renderStudents();
-    if(name==='deca')       renderDECAHub();
+    if(name==='deca')       renderOrgHub();
     if(name==='competency') renderCompetencyView();
     if(name==='lessons') {
       const lf = LS.get('lh_lp_filter', null);
@@ -5899,6 +5941,46 @@ function openEmailComposerForTrip(tripId, audience) {
   openEmailComposer(tripId, audience || 'parents');
 }
 
+// ── ORGANIZATION HUB — routes to DECA's own rich hub, or a simpler generic
+// hub for any other configured organization ──────────────────────────────────
+// DECA keeps its exact original hub content (season pipeline, approval
+// checklist tied to real trips, chapter reference/contacts) — that content
+// is genuinely DECA/CCPS-specific hand-authored material, not something a
+// generic org config can stand in for. Any other organization gets a
+// simpler hub: its officer roster and its own results log, both already
+// fully data-driven off ORGANIZATIONS[orgId] — with a pointer to the
+// Members page for full roster management.
+function renderOrgHub() {
+  const titleEl = document.getElementById('orghub-title');
+  if (activeOrgId === 'deca') {
+    if (titleEl) titleEl.textContent = '🏆 DECA Chapter Hub';
+    renderDECAHub();
+    return;
+  }
+  const org = ORGANIZATIONS[activeOrgId] || ORGANIZATIONS.deca;
+  if (titleEl) titleEl.textContent = `${org.icon || '🧩'} ${org.name} Hub`;
+  renderGenericOrgHub(activeOrgId);
+}
+
+function renderGenericOrgHub(orgId) {
+  const el = document.getElementById('deca-hub-content');
+  if (!el) return;
+  const org = ORGANIZATIONS[orgId];
+  if (!org) { el.innerHTML = ''; return; }
+  const card = (title, icon, content) => `<div class="card" style="margin-bottom:1rem">
+    <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:var(--navy);margin-bottom:.75rem">${icon} ${title}</div>
+    ${content}
+  </div>`;
+  const officers = students.filter(s => s.org === orgId && isOfficer(s) && s.memberStatus !== 'alumni');
+  const officerHtml = officers.length
+    ? renderOfficerGrid(officers)
+    : `<div style="text-align:center;padding:1.5rem;color:var(--muted)">No officers added yet — use <strong>+ Add Member</strong> on the Members page.</div>`;
+  el.innerHTML =
+    card(`${escH(org.name)} Officers`, '👑', officerHtml) +
+    card('Results', '🏅', renderOrgResults(orgId)) +
+    card('Full Roster', '👥', `<div style="font-size:.82rem;color:var(--muted)">Manage the full ${escH(org.name)} roster, dues, and membership status on the <a href="#" onclick="showView('students');return false;" style="color:var(--navy);text-decoration:underline">Members</a> page.</div>`);
+}
+
 // ── DECA CHAPTER HUB ─────────────────────────────────────────────────────────
 function renderDECAHub() {
   const el = document.getElementById('deca-hub-content');
@@ -6292,6 +6374,158 @@ function deleteDecaResult(id) {
   }
 }
 
+// ── Generic Organization Results Board — any org besides DECA ────────────────
+// A simpler, un-tiered results log for organizations added via Settings →
+// Organizations: one flat "Results Logged" + "Top Finishes" summary, then
+// either a table per configured level (org.levels) or, for a non-competitive
+// club with no levels configured, a single flat table. Deliberately NOT a
+// drop-in replacement for renderDecaResults() above — DECA keeps its exact
+// original results board (3 hardcoded conferences, SLC/ICDC qualifier
+// tiles) untouched; this is a parallel, separate implementation storing to
+// its own lh_org_results key so nothing here can affect DECA's data.
+let ORG_RESULTS = LS.get('lh_org_results', {});
+function persistOrgResults() { LS.set('lh_org_results', ORG_RESULTS); }
+function getOrgResults(orgId) { return ORG_RESULTS[orgId] || []; }
+let _lastOrgResultLevel = {}, _lastOrgResultPlace = {};
+
+function renderOrgResults(orgId) {
+  const org = ORGANIZATIONS[orgId] || ORGANIZATIONS.deca;
+  const levels = org.levels || [];
+  const placeOptions = (org.placeOptions && org.placeOptions.length) ? org.placeOptions : ['1st','2nd','3rd','Award','Did Not Place'];
+  const results = getOrgResults(orgId);
+
+  const totalResults = results.length;
+  const topPlaces = results.filter(r => ['1st','2nd','3rd','4th','5th'].includes(r.place)).length;
+  const summary = `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem">
+    <div style="background:var(--navy);color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${totalResults}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Results Logged</div>
+    </div>
+    <div style="background:#15803d;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${topPlaces}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Top-5 Finishes</div>
+    </div>
+  </div>`;
+
+  const placeColor = p => {
+    if(p==='1st') return '#b45309';
+    if(p==='2nd') return '#6b7280';
+    if(p==='3rd') return '#92400e';
+    if(['4th','5th','6th','7th','8th'].includes(p)) return '#1a3560';
+    if(['Qualified','Finalist'].includes(p)) return '#15803d';
+    return '#374151';
+  };
+  const resultRow = r => `<tr>
+    <td style="padding:.35rem .5rem;font-size:.77rem;font-weight:600">${escH(r.student)}</td>
+    <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.event)}</td>
+    <td style="padding:.35rem .5rem">
+      <span style="background:${placeColor(r.place)};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
+    </td>
+    <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
+    <td style="padding:.35rem .5rem;text-align:right">
+      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove">✕</button>
+    </td>
+  </tr>`;
+  const resultTableHead = `<thead><tr style="background:#f3f4f6">
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Student</th>
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Event / Category</th>
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Place</th>
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Notes</th>
+    <th></th>
+  </tr></thead>`;
+
+  let resultTables;
+  if (levels.length) {
+    resultTables = levels.map(lv => {
+      const lvResults = results.filter(r => r.levelKey === lv.key);
+      const rows = lvResults.length ? lvResults.map(resultRow).join('')
+        : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
+      return `<div style="margin-bottom:.85rem">
+        <div style="font-size:.72rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;border-bottom:2px solid var(--navy);padding-bottom:.2rem">${escH(lv.label)}</div>
+        <table style="width:100%;border-collapse:collapse">${resultTableHead}<tbody>${rows}</tbody></table>
+      </div>`;
+    }).join('');
+  } else {
+    const rows = results.length ? results.map(resultRow).join('')
+      : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
+    resultTables = `<table style="width:100%;border-collapse:collapse">${resultTableHead}<tbody>${rows}</tbody></table>`;
+  }
+
+  const levelSelector = levels.length ? `
+    <div>
+      <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Level</div>
+      <select id="org-res-level" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        ${levels.map(lv=>`<option value="${escH(lv.key)}"${lv.key===_lastOrgResultLevel[orgId]?' selected':''}>${escH(lv.label)}</option>`).join('')}
+      </select>
+    </div>` : '';
+
+  const addForm = `
+    <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin-top:.5rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.5px">+ Log a Result</div>
+      <div style="display:grid;grid-template-columns:1.5fr 1.5fr ${levels.length?'1fr ':''}1fr auto;gap:.4rem;align-items:end">
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Student Name</div>
+          <input id="org-res-student" placeholder="Last, First" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        </div>
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Event / Category</div>
+          <input id="org-res-event" placeholder="e.g. Chapter Meeting Award" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        </div>
+        ${levelSelector}
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
+          <select id="org-res-place" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+            ${placeOptions.map(p=>`<option${p===_lastOrgResultPlace[orgId]?' selected':''}>${escH(p)}</option>`).join('')}
+          </select>
+        </div>
+        <button onclick="addOrgResult('${orgId}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
+      </div>
+      <div style="margin-top:.35rem">
+        <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
+        <input id="org-res-notes" placeholder="e.g. Qualified for next level" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+      </div>
+    </div>`;
+
+  return summary + resultTables + addForm;
+}
+
+function addOrgResult(orgId) {
+  const student = (document.getElementById('org-res-student')?.value||'').trim();
+  const event    = (document.getElementById('org-res-event')?.value||'').trim();
+  const levelKey = document.getElementById('org-res-level')?.value || null;
+  const place    = document.getElementById('org-res-place')?.value;
+  const notes    = (document.getElementById('org-res-notes')?.value||'').trim();
+  if(!student || !event) { _showToast('Student name and event are required.', 2500, '#991b1b'); return; }
+  if (!ORG_RESULTS[orgId]) ORG_RESULTS[orgId] = [];
+  ORG_RESULTS[orgId].push({ id:'or'+Date.now(), student, event, levelKey, place, notes, addedAt: new Date().toISOString() });
+  persistOrgResults();
+  const _ordinalPlacements = new Set(['1st','2nd','3rd','4th','5th','6th','7th','8th']);
+  const _placeStr = place ? ` — ${place}${_ordinalPlacements.has(place) ? ' place' : ''}` : '';
+  const orgName = (ORGANIZATIONS[orgId]||{}).name || orgId;
+  _logDaily({ date: new Date().toISOString(), type: 'org_result',
+    note: `${orgName} result logged: ${event}${_placeStr} (${student})` });
+  ['org-res-student','org-res-event','org-res-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  _lastOrgResultLevel[orgId] = levelKey; _lastOrgResultPlace[orgId] = place;
+  renderOrgHub();
+  refreshNextAction();
+  _showToast(`✅ Result logged for ${student}${_placeStr}`, 2800, '#065f46');
+}
+
+function deleteOrgResult(orgId, id) {
+  const all = getOrgResults(orgId);
+  const removed = all.find(r => r.id === id);
+  ORG_RESULTS[orgId] = all.filter(r => r.id !== id);
+  persistOrgResults();
+  renderOrgHub();
+  if (removed) {
+    _undoToast(`${(removed.student||'').slice(0,40)} — ${(removed.event||'').slice(0,40)} removed`, () => {
+      ORG_RESULTS[orgId] = [...getOrgResults(orgId), removed];
+      persistOrgResults();
+      renderOrgHub();
+    });
+  }
+}
+
 // tripId links each DECA event to its real record in `trips[]` — these
 // are the SAME four trips (Ultimate Power Trip, DLC, SLC, ICDC), not a
 // separate set. Two of the 8 steps below (form_submitted, admin_approved)
@@ -6569,11 +6803,65 @@ const MEMBER_STATUS_MAP = {
   inactive:    {label:'Inactive',         color:'#9ca3af', bg:'#f9fafb'},
 };
 
+// Legacy fallback list — used only for a roster row whose `org` doesn't
+// (or no longer) match a configured organization. Every real lookup below
+// prefers ORGANIZATIONS[<org id>].officerPositions instead, so an
+// organization added via Settings → Organizations can define its own
+// officer titles instead of inheriting DECA's.
 const OFFICER_POSITIONS = ['President','Executive Vice President','Vice President of Finance',
   'Vice President of Marketing','Vice President of Community','Vice President of Competition',
   'Secretary','Treasurer','Parliamentarian','Reporter','Sergeant at Arms','Webmaster'];
 
-function isOfficer(s){ return OFFICER_POSITIONS.includes(s.position); }
+function _officerPositionsFor(orgId){ return (ORGANIZATIONS[orgId] && ORGANIZATIONS[orgId].officerPositions) || OFFICER_POSITIONS; }
+function isOfficer(s){ return _officerPositionsFor(s.org).includes(s.position); }
+
+// Rebuilds the organization tab bar from ORGANIZATIONS — called at boot and
+// again after an organization is imported/removed via Settings →
+// Organizations, so a newly added org gets a tab without any hardcoded
+// markup change. Mirrors renderScrCourseTabs() in the SCR competency tracker.
+function renderOrgTabs() {
+  const wrap = document.getElementById('org-tabs');
+  if (!wrap) return;
+  wrap.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) =>
+    `<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${id}" onclick="setOrgTab('${id}',this)">${o.icon||'🧩'} ${escH(o.name)}</button>`
+  ).join('');
+}
+
+function setOrgTab(orgId, btn) {
+  activeOrgId = orgId;
+  LS.set('lh_active_org', orgId);
+  document.querySelectorAll('#org-tabs .scr-tab').forEach(b => b.classList.remove('active'));
+  const tabBtn = btn || document.getElementById('orgtab-' + orgId);
+  if (tabBtn) tabBtn.classList.add('active');
+  _applyOrgUIVisibility();
+  renderStudents();
+  if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+}
+
+// Hides DECA-only UI (Qualifiers tab, SLC/ICDC stat tiles, Registration Info
+// tab — all deeply tied to DECA's specific competition-tier structure and
+// chapter-specific registration process) when a different organization is
+// active, and updates the Members header/FERPA text to the active org's
+// name. Called at boot and on every org-tab switch.
+function _applyOrgUIVisibility() {
+  const isDeca = activeOrgId === 'deca';
+  const org = ORGANIZATIONS[activeOrgId] || ORGANIZATIONS.deca;
+  const setDisp = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+  setDisp('mtab-qualifiers', isDeca);
+  setDisp('mtab-registration', isDeca);
+  setDisp('mb-quals-strip', isDeca);
+  const titleEl = document.getElementById('members-title');
+  if (titleEl) titleEl.textContent = `${org.name} Members`;
+  const ferpaEl = document.getElementById('ferpa-org-name');
+  if (ferpaEl) ferpaEl.textContent = org.name;
+  // A DECA-only tab left active when switching away falls back to Officers
+  // rather than showing an empty/hidden tab as if it were still selected.
+  if (!isDeca && (memberTab === 'qualifiers' || memberTab === 'registration')) {
+    memberTab = 'officers';
+    document.querySelectorAll('#member-tab-bar .member-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById('mtab-officers')?.classList.add('active');
+  }
+}
 
 function setMemberTab(tab, btn){
   memberTab = tab;
@@ -6588,12 +6876,15 @@ function renderStudents(){
   const content = document.getElementById('member-tab-content');
   if(!content) return;
 
-  let list = [...students];
+  let list = students.filter(s => s.org === activeOrgId);
   if(search) list = list.filter(s=>[s.first,s.last,s.position,s.competEvent,s.email,s.phone].join(' ').toLowerCase().includes(search));
 
   if(memberTab === 'officers')     list = list.filter(s=>isOfficer(s) && s.memberStatus !== 'alumni');
   if(memberTab === 'members')      list = list.filter(s=>s.memberStatus !== 'alumni');
   if(memberTab === 'unpaid')       list = list.filter(s=>!s.paid && s.memberStatus !== 'alumni');
+  // "Qualifiers" is DECA's own competition-tier concept (SLC/ICDC memberStatus
+  // values) — the tab is hidden for other organizations (_applyOrgUIVisibility),
+  // but guard the filter too in case it's reached some other way.
   if(memberTab === 'qualifiers')   list = list.filter(s=>['slc','icdc'].includes(s.memberStatus));
   if(memberTab === 'alumni')       list = list.filter(s=>s.memberStatus === 'alumni');
   if(memberTab === 'registration') { renderRegistrationTab(content); return; }
@@ -6611,7 +6902,8 @@ function renderStudents(){
 }
 
 function updateMemberStats(){
-  const active = students.filter(s=>s.memberStatus!=='alumni');
+  const orgStudents = students.filter(s => s.org === activeOrgId);
+  const active = orgStudents.filter(s=>s.memberStatus!=='alumni');
   const el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
   el('mb-total',    active.length);
   el('mb-officers', active.filter(s=>isOfficer(s)).length);
@@ -6619,7 +6911,7 @@ function updateMemberStats(){
   el('mb-unpaid',   active.filter(s=>!s.paid).length);
   el('mb-slc',      active.filter(s=>s.memberStatus==='slc').length);
   el('mb-icdc',     active.filter(s=>s.memberStatus==='icdc').length);
-  el('mb-alumni',   students.filter(s=>s.memberStatus==='alumni').length);
+  el('mb-alumni',   orgStudents.filter(s=>s.memberStatus==='alumni').length);
 }
 
 function statusBadge(s){
@@ -6628,7 +6920,7 @@ function statusBadge(s){
 }
 
 function positionBadge(pos){
-  const isOff = OFFICER_POSITIONS.includes(pos);
+  const isOff = _officerPositionsFor(activeOrgId).includes(pos);
   return `<span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${pos}</span>`;
 }
 
@@ -6641,7 +6933,8 @@ function avatarBg(s){
 
 function renderOfficerGrid(list){
   // Sort by officer rank
-  const rank = pos => { const i=OFFICER_POSITIONS.indexOf(pos); return i<0?99:i; };
+  const officerPositions = _officerPositionsFor(activeOrgId);
+  const rank = pos => { const i=officerPositions.indexOf(pos); return i<0?99:i; };
   list = [...list].sort((a,b)=>rank(a.position)-rank(b.position));
   return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem">
     ${list.map(s=>`
@@ -6804,12 +7097,55 @@ function renderRegistrationTab(content){
   </div>`;
 }
 
+// Captured once at load, before any org-switching mutates these selects —
+// lets DECA's own Position/Membership Status dropdowns (written once as
+// static HTML, unchanged) be restored exactly when the active organization
+// switches back to 'deca' after showing another organization's simpler
+// generic options. See _populateMemberFormForOrg().
+const _DECA_ROLE_HTML   = document.getElementById('st-role')   ? document.getElementById('st-role').innerHTML   : '';
+const _DECA_STATUS_HTML = document.getElementById('st-status') ? document.getElementById('st-status').innerHTML : '';
+
+// Repopulates the org-dependent parts of the Add/Edit Member modal —
+// subtitle, officer-position options, membership-status options, and
+// whether the Competitive Event field applies — from ORGANIZATIONS[orgId].
+// DECA keeps its exact original dropdown content (officer titles + DECA's
+// specific competitive categories, all 6 status options including SLC/ICDC
+// qualifier); any other organization gets its own configured officer
+// titles, a plain "Member" option, the 5 non-competition statuses, and the
+// Competitive Event field hidden — not every club is structured around
+// individual competition categories the way DECA is.
+function _populateMemberFormForOrg(orgId) {
+  const org = ORGANIZATIONS[orgId] || ORGANIZATIONS.deca;
+  const roleSel   = document.getElementById('st-role');
+  const compWrap  = document.getElementById('st-compet-wrap');
+  const statusSel = document.getElementById('st-status');
+  if (orgId === 'deca') {
+    if (roleSel)   roleSel.innerHTML   = _DECA_ROLE_HTML;
+    if (statusSel) statusSel.innerHTML = _DECA_STATUS_HTML;
+    if (compWrap)  compWrap.style.display = '';
+    // DECA's own subtitle is already kept live off PROFILE.school by
+    // _applyProfileToStaticDOM() — don't fight that binding here.
+    _applyProfileToStaticDOM();
+  } else {
+    const subEl = document.getElementById('addstu-modal-subtitle');
+    if (subEl) subEl.textContent = org.subtitle || org.name;
+    if (roleSel)   roleSel.innerHTML   = org.officerPositions.map(p=>`<option>${escH(p)}</option>`).join('') + '<option>Member</option>';
+    if (statusSel) statusSel.innerHTML =
+      '<option value="active">Active — Paid</option>' +
+      '<option value="unpaid">Unpaid — Dues Owed</option>' +
+      '<option value="prospective">Prospective</option>' +
+      '<option value="alumni">Alumni</option>' +
+      '<option value="inactive">Inactive</option>';
+    if (compWrap)  compWrap.style.display = 'none';
+  }
+}
+
 function saveStudent(){
   const first = document.getElementById('st-first').value.trim();
   const last  = document.getElementById('st-last').value.trim();
   if(!first||!last) return _showToast('Enter student name.', 2500, '#991b1b');
   const s = {
-    id: nextId.st++, first, last,
+    id: nextId.st++, first, last, org: activeOrgId,
     grade:        parseInt(document.getElementById('st-grade')?.value)||null,
     position:     document.getElementById('st-role').value,
     competEvent:  document.getElementById('st-compet')?.value||'',
@@ -6845,6 +7181,10 @@ function openEditMember(id){
   if(!s) return;
   openModal_addStudent();
   setTimeout(()=>{
+    // Repopulate for the MEMBER'S OWN org, not whichever org tab happens to
+    // be active right now — editing someone shouldn't depend on which tab
+    // you last clicked.
+    _populateMemberFormForOrg(s.org || 'deca');
     document.getElementById('addstu-modal-title').textContent = 'Edit Member';
     document.getElementById('addstu-save-btn').textContent = 'Save Changes';
     document.getElementById('addstu-save-btn').onclick = ()=>{ updateStudent(id); };
@@ -6908,7 +7248,9 @@ function delStu(id){
 function openModal_addStudent(){
   document.getElementById('st-event').innerHTML = '<option value="">— None —</option>' +
     [...trips.map(t=>({id:t.id,name:t.name})),...otherEvents.map(e=>({id:e.id,name:e.name}))].map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
-  document.getElementById('addstu-modal-title').textContent = 'Register DECA Member';
+  _populateMemberFormForOrg(activeOrgId);
+  const org = ORGANIZATIONS[activeOrgId] || ORGANIZATIONS.deca;
+  document.getElementById('addstu-modal-title').textContent = `Register ${org.name} Member`;
   document.getElementById('addstu-save-btn').textContent = 'Register Member';
   document.getElementById('addstu-save-btn').onclick = saveStudent;
   openModal('addStudent');
@@ -6917,7 +7259,10 @@ function openModal_addStudent(){
 function openMemberRegistrationModal(){ openModal('memberReg'); }
 
 function exportMemberCSV(){
-  const active = students.filter(s=>s.memberStatus!=='alumni');
+  // Scoped to the active organization — otherwise every org's rosters
+  // would be exported mixed together in one CSV with no way to tell them
+  // apart (no `org`/organization column in the export).
+  const active = students.filter(s=>s.org===activeOrgId && s.memberStatus!=='alumni');
   const headers = ['Last','First','Grade','Position','Event','Status','Paid','Email','Phone','Parent Email','Parent Phone','Shirt','Dietary'];
   const rows = active.map(s=>[s.last,s.first,s.grade,s.position,s.competEvent,s.memberStatus,s.paid?'Yes':'No',s.email,s.phone,s.parentEmail,s.parentPhone,s.shirtSize,s.dietaryNeeds].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
   const csv = [headers.join(','),...rows].join('\n');
@@ -6930,7 +7275,8 @@ function openEmailComposerForMember(s){
   setEmailTab('parents', document.getElementById('etab-parents'));
   document.getElementById('email-to').value = s.parentEmail || '';
   document.getElementById('email-cc').value = s.email || '';
-  document.getElementById('email-subject').value = `DECA Registration Info Needed — ${s.first} ${s.last}`;
+  const _memberOrgName = (ORGANIZATIONS[s.org]||ORGANIZATIONS.deca).name;
+  document.getElementById('email-subject').value = `${_memberOrgName} Registration Info Needed — ${s.first} ${s.last}`;
   document.getElementById('email-body').value =
 `Dear ${s.first} ${s.last}'s Family,
 
@@ -13594,7 +13940,7 @@ function getPulseData(){
     {key:'deca',pct:decaDays!==null?Math.max(0,Math.min(100,Math.round((1-decaDays/90)*100))):50,nav:'deca',stat:nextDeca?`${urgencyClass(decaDays).dot} ${decaDays}d`:'No deadlines',next:nextDeca?nextDeca.title:'Add DECA deadlines',alert:decaDays!==null&&decaDays<=7},
     {key:'esports',pct:esTotal?Math.round((esWins/esTotal)*100):0,nav:'esports',stat:esTotal?`${esWins}W–${esTotal-esWins}L`:'No matches logged',next:nextMatchLabel?`Next: ${nextMatchLabel}`:esTotal?'Review lineup':'Log first match',alert:nextMatchDays!==null&&nextMatchDays<=1},
     {key:'trips',pct:tripsPct,nav:'trips',stat:tripDL?`${urgencyClass(daysUntil(tripDL.date)).dot} ${daysUntil(tripDL.date)}d`:'No trip deadlines',next:tripDL?tripDL.title:`${_readyTrips.length}/${_allTrips.length} ready`,alert:tripsAlert},
-  ].filter(d => (d.key!=='store' || MODULES.wbl) && (d.key!=='deca' || MODULES.deca) && (d.key!=='esports' || MODULES.esports));
+  ].filter(d => (d.key!=='store' || MODULES.wbl) && (d.key!=='deca' || MODULES.orgs) && (d.key!=='esports' || MODULES.esports));
 }
 
 function renderPulseRow(){
@@ -14533,6 +14879,10 @@ function showEsportsMatchBanner(match) {
 // Fires once when any DECA deadline (role:'deca') is exactly 1 day away.
 // Gives Adam time to prep travel docs, contact members, confirm logistics.
 function checkDECAEventTomorrow() {
+  // FIXED: this used to fire unconditionally — even with the Organizations
+  // module turned off in Settings, where its nav button/sidebar section
+  // (and the DECA Hub the banner's button navigates to) are hidden.
+  if (MODULES.orgs === false) return;
   const now   = new Date();
   const today = now.toDateString();
   const shown = LS.get('lh_deca_tomorrow_date', '');
@@ -14949,9 +15299,19 @@ function openSurveyModal(){
         Turn off any of these you don't run yourself — the nav button and sidebar section disappear immediately. Dashboard, Classroom, Field Trips, and Tools always stay on.
       </div>
       <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.2rem">
-        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-deca" ${MODULES.deca!==false?'checked':''} onchange="lhSaveModule('deca',this.checked)"> 🏆 DECA</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-orgs" ${MODULES.orgs!==false?'checked':''} onchange="lhSaveModule('orgs',this.checked)"> 🏆 Organizations (DECA, clubs, CTSOs)</label>
         <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-wbl" ${MODULES.wbl!==false?'checked':''} onchange="lhSaveModule('wbl',this.checked)"> 🏪 WBL / School Store</label>
         <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-esports" ${MODULES.esports!==false?'checked':''} onchange="lhSaveModule('esports',this.checked)"> 🎮 E-Sports</label>
+      </div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Organizations</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Adam's own DECA chapter ships built in. Add your own club, CTSO, or student organization — with its own officer titles, competition/achievement levels, and roster — as a JSON file instead of editing the app. Co-advisors sharing an organization can sync it via a shared Google Sheet (see leader-hub/README.md). <a href="#" onclick="lhDownloadOrgTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
+      </div>
+      <div id="org-catalog-list" style="margin-bottom:.6rem"></div>
+      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+        <button onclick="document.getElementById('lh-org-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Import Organization (JSON)</button>
+        <input type="file" id="lh-org-file" accept="application/json" style="display:none" onchange="lhImportOrgJson(this)">
       </div>
 
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Course Catalog</div>
@@ -14998,6 +15358,7 @@ function openSurveyModal(){
   </div>`;
   document.body.appendChild(m);
   renderCourseCatalogSettings();
+  renderOrgCatalogSettings();
   _renderStudentIdStatus();
   m.onclick=e=>{ if(e.target===m) m.remove(); };
 }
@@ -15228,6 +15589,145 @@ function renderCourseCatalogSettings() {
       <span style="flex:1"><strong>${escH(code)}</strong> — ${escH(c.name)} <span style="color:var(--muted)">(${c.competencies.length} ${escH((c.standardsLabel||'competencies').toLowerCase())})</span></span>
       ${c.custom
         ? `<button onclick="lhRemoveCustomCourse('${code}')" aria-label="Remove course ${escH(code)}" title="Remove course" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+        : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
+    </div>`).join('');
+}
+
+// ── Organizations — Settings → Organizations ──────────────────────────────────
+// Mirrors the Course Catalog import above: additive JSON import, template
+// download, and a remove control for anything besides Adam's built-in DECA.
+function lhDownloadOrgTemplate() {
+  const template = {
+    id: "fbla",
+    name: "Your Organization Name",
+    icon: "🎯",
+    officerPositions: ["President","Vice President","Secretary","Treasurer","Historian"],
+    levels: [
+      { key: "region", label: "Regional Competition" },
+      { key: "state",  label: "State Competition" }
+    ],
+    placeOptions: ["1st","2nd","3rd","Finalist","Award","Did Not Place"]
+  };
+  const blob = new Blob([JSON.stringify(template, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'leaderhub-organization-template.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Parses + validates an uploaded organization JSON. Returns {ok:true, id,
+// name, org} or {ok:false, error}. Never mutates ORGANIZATIONS itself —
+// that's the caller's job once the teacher confirms the preview. `levels`
+// and `placeOptions` are both optional — a non-competitive club (NHS, Key
+// Club) can omit `levels` entirely and its Results log falls back to a
+// flat, un-tiered list (see renderOrgResults()).
+function _parseOrgJson(raw) {
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(_err) { return { ok:false, error:'Could not read this file — make sure it\'s valid JSON.' }; }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { ok:false, error:'File must contain a single JSON object (see the template).' };
+
+  const id   = String(data.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+  const name = String(data.name || '').trim();
+  if (!id)   return { ok:false, error:'Organization is missing an "id" (short, letters/numbers only, e.g. "fbla").' };
+  if (!name) return { ok:false, error:'Organization is missing a "name".' };
+  if (ORGANIZATIONS[id]) return { ok:false, error:`An organization with id "${id}" already exists — remove it first, or use a different id.` };
+
+  let officerPositions = Array.isArray(data.officerPositions) ? data.officerPositions.map(p=>String(p).trim()).filter(Boolean) : [];
+  if (!officerPositions.length) officerPositions = ['President','Vice President','Secretary','Treasurer','Member'];
+
+  let levels = [];
+  if (Array.isArray(data.levels)) {
+    for (let i = 0; i < data.levels.length; i++) {
+      const raw2 = data.levels[i] || {};
+      const label = String(raw2.label || '').trim();
+      if (!label) return { ok:false, error:`Level #${i+1} is missing "label".` };
+      const key = String(raw2.key || label).trim().toLowerCase().replace(/[^a-z0-9_-]/g,'') || ('level'+(i+1));
+      levels.push({ key, label });
+    }
+  }
+
+  const placeOptions = Array.isArray(data.placeOptions) && data.placeOptions.length
+    ? data.placeOptions.map(p=>String(p).trim()).filter(Boolean)
+    : ['1st','2nd','3rd','Award','Did Not Place'];
+
+  const org = {
+    id, name,
+    icon: String(data.icon || '').trim() || '🧩',
+    officerPositions, levels, placeOptions,
+    custom: true,
+  };
+  return { ok:true, id, name, org };
+}
+
+function lhImportOrgJson(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = _parseOrgJson(String(e.target.result || ''));
+    fileInput.value = '';
+    if (!result.ok) { _showToast('⚠ ' + result.error, 5000, '#991b1b'); return; }
+    const { id, name, org } = result;
+    _showConfirm(
+      `Add organization ${name}?\n\n${org.officerPositions.length} officer position(s) · ${org.levels.length} level(s) configured.\n\nThis only adds a new organization — nothing you already have is changed.`,
+      () => {
+        ORGANIZATIONS[id] = org;
+        CUSTOM_ORGS[id] = org;
+        persistCustomOrgs();
+        renderOrgTabs();
+        _applyOrgNavLabels();
+        renderOrgCatalogSettings();
+        _showToast(`✅ Added organization: ${name}`, 3500, '#166534');
+      },
+      { confirmLabel: 'Add Organization', danger: false, ariaLabel: `Add organization ${name}` }
+    );
+  };
+  reader.onerror = () => { _showToast('⚠ Could not read that file.', 4000, '#991b1b'); fileInput.value = ''; };
+  reader.readAsText(file);
+}
+
+function lhRemoveCustomOrg(id) {
+  const org = CUSTOM_ORGS[id];
+  if (!org) return; // DECA has no remove control in the UI
+  _showConfirm(
+    `Remove organization ${org.name}? This deletes its roster, officers, and logged results. This can't be undone.`,
+    () => {
+      delete ORGANIZATIONS[id];
+      delete CUSTOM_ORGS[id];
+      persistCustomOrgs();
+      students = students.filter(s => s.org !== id);
+      persistStudents();
+      if (ORG_RESULTS[id]) { delete ORG_RESULTS[id]; persistOrgResults(); }
+      if (activeOrgId === id) {
+        activeOrgId = Object.keys(ORGANIZATIONS)[0] || 'deca';
+        LS.set('lh_active_org', activeOrgId);
+      }
+      renderOrgTabs();
+      _applyOrgUIVisibility();
+      _applyOrgNavLabels();
+      if (document.getElementById('member-tab-content')) renderStudents();
+      if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+      renderOrgCatalogSettings();
+      _showToast('🗑️ Organization removed');
+    },
+    { confirmLabel: 'Remove', ariaLabel: `Remove organization ${org.name}` }
+  );
+}
+
+function renderOrgCatalogSettings() {
+  const el = document.getElementById('org-catalog-list');
+  if (!el) return;
+  el.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) => `
+    <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
+      <span>${o.icon||'🧩'}</span>
+      <span style="flex:1"><strong>${escH(o.name)}</strong> <span style="color:var(--muted)">(${o.officerPositions.length} officer position(s)${o.levels && o.levels.length ? ', '+o.levels.length+' level(s)' : ''})</span></span>
+      ${o.custom
+        ? `<button onclick="lhRemoveCustomOrg('${id}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
         : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
     </div>`).join('');
 }
@@ -16232,6 +16732,7 @@ function renderPacingCalendar() {
 window._appBooting = true;
 renderStaticEmbeddedContent();
 renderDashboard(); calcCost(); updateArchiveBadge(); renderStudents(); initCockpit(); migrateSlipRosters(); renderScrCourseTabs();
+renderOrgTabs(); _applyOrgUIVisibility(); _applyOrgNavLabels();
 restoreAccState();
 window._appBooting = false;
 // Restore whatever section was open last session (and its sidebar group)
