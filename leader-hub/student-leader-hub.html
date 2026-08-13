@@ -710,11 +710,11 @@ window.onerror = function(msg, src, line, col, err) {
   <nav>
     <button class="active" onclick="showView('dashboard',this)">🏠 Home</button>
     <button onclick="showView('trips',this)">🚌 Trips</button>
-    <button onclick="showView('deca',this)">🏆 DECA</button>
+    <button id="nav-deca" onclick="showView('deca',this)">🏆 DECA</button>
     <button onclick="showView('competency',this)">📐 SCR</button>
     <button onclick="showView('lessons',this)">📚 Lessons</button>
-    <button onclick="showView('wbl',this)">🏪 Store</button>
-    <button onclick="showView('esports',this)">🎮 E-Sports</button>
+    <button id="nav-wbl" onclick="showView('wbl',this)">🏪 Store</button>
+    <button id="nav-esports" onclick="showView('esports',this)">🎮 E-Sports</button>
     <button onclick="openSurveyModal()" style="background:rgba(232,184,75,.2);color:var(--gold);border:1px solid rgba(232,184,75,.4);border-radius:4px">⚙️ Settings</button>
   </nav>
   <button class="btn btn-gold btn-sm" onclick="openModal('newTrip')">+ New Trip</button>
@@ -768,7 +768,10 @@ window.onerror = function(msg, src, line, col, err) {
 
   <div class="acc-sep"></div>
 
-  <!-- 4. DECA -->
+  <!-- 4. DECA — wrapped with its own trailing separator so hiding this
+       whole module (Settings → Modules) can't leave a stray/doubled
+       separator regardless of which other modules are also hidden. -->
+  <div id="side-sec-deca">
   <button class="acc-hd" id="acc-deca" onclick="toggleAcc('deca')">
     <span>🏆</span> DECA <span class="acc-arrow">▶</span>
   </button>
@@ -780,8 +783,10 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div class="acc-sep"></div>
+  </div>
 
   <!-- 5. WBL & SCHOOL STORE -->
+  <div id="side-sec-wbl">
   <button class="acc-hd" id="acc-wbl" onclick="toggleAcc('wbl')">
     <span>🏪</span> WBL / Store <span class="acc-arrow">▶</span>
   </button>
@@ -794,8 +799,10 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div class="acc-sep"></div>
+  </div>
 
   <!-- 6. E-SPORTS -->
+  <div id="side-sec-esports">
   <button class="acc-hd" id="acc-esports" onclick="toggleAcc('esports')">
     <span>🎮</span> E-Sports <span class="acc-arrow">▶</span>
   </button>
@@ -808,6 +815,7 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div class="acc-sep"></div>
+  </div>
 
   <!-- 7. TOOLS -->
   <button class="acc-hd" id="acc-tools" onclick="toggleAcc('tools')">
@@ -3485,6 +3493,36 @@ function _applyProfileToStaticDOM() {
   if (decaSub) decaSub.textContent = `${PROFILE.school} · 25–26 Season · All data sourced from Google Drive`;
   const addStuSub = document.getElementById('addstu-modal-subtitle');
   if (addStuSub) addStuSub.textContent = `${PROFILE.school} DECA · Chapter 4280`;
+}
+
+// ─── MODULE VISIBILITY — Settings → Modules ─────────────────────────────────
+// The nav + sidebar previously showed all 7 sections unconditionally, no
+// matter which of them a given teacher actually uses — no toggle existed
+// anywhere. DECA/WBL-Store/E-Sports are singled out as optional since
+// they're role-specific extras on top of the core classroom/trips/tools
+// surface; Dashboard, Classroom, Field Trips, and Tools stay always-on.
+const MODULES_DEFAULT = { deca: true, wbl: true, esports: true };
+function getModules() { return Object.assign({}, MODULES_DEFAULT, LS.get('lh_modules', {})); }
+function saveModules(updates) {
+  const merged = Object.assign({}, LS.get('lh_modules', {}), updates);
+  LS.set('lh_modules', merged);
+  Object.assign(MODULES, MODULES_DEFAULT, merged);
+  _applyModuleVisibility();
+}
+let MODULES = getModules();
+
+// Hides the nav button + whole sidebar section (header+body+its trailing
+// separator, see the HTML — each is wrapped in a side-sec-<key> div) for
+// any disabled module, and re-filters the Dashboard pulse row to match.
+function _applyModuleVisibility() {
+  [['deca', 'nav-deca', 'side-sec-deca'], ['wbl', 'nav-wbl', 'side-sec-wbl'], ['esports', 'nav-esports', 'side-sec-esports']].forEach(([key, navId, sideId]) => {
+    const show = MODULES[key] !== false;
+    const navEl = document.getElementById(navId);
+    if (navEl) navEl.style.display = show ? '' : 'none';
+    const sideEl = document.getElementById(sideId);
+    if (sideEl) sideEl.style.display = show ? '' : 'none';
+  });
+  if (typeof renderPulseRow === 'function') renderPulseRow();
 }
 
 // ── DECA OFFICER POSITIONS (official chapter structure) ──────────────────────
@@ -11338,6 +11376,7 @@ function resetMK8Checklist() {
 // exact same data/markup as before — just executed instead of printed.
 function renderStaticEmbeddedContent() {
   _applyProfileToStaticDOM();
+  _applyModuleVisibility();
   const ssbuStarter = document.getElementById('ssbu-starter-stages');
   if (ssbuStarter) ssbuStarter.innerHTML = ['Battlefield','Pokémon Stadium 2','Small Battlefield','Smashville','Town and City'].map(s=>`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#15803d">${s}</div>`).join('');
 
@@ -13614,13 +13653,16 @@ function getPulseData(){
   const tripsPct = _allTrips.length ? Math.round((_readyTrips.length / _allTrips.length) * 100) : 100;
   const tripsAlert = (tripDL && daysUntil(tripDL.date) <= 3) || (_allTrips.length > 0 && tripsPct < 50);
 
+  // 'store'/'deca'/'esports' cards drop out when their module is disabled
+  // in Settings — 'teach' and 'trips' stay, since Classroom and Field Trips
+  // are always-on (see MODULES / _applyModuleVisibility()).
   return [
     {key:'teach',pct:teachPct,nav:'competency',stat:teachStat,next:teachNext,alert:teachAlert},
     {key:'store',pct:Math.round((sbeDone/sbeTotal)*100)||0,nav:'wbl',stat:lowInv>0?`⚠ ${lowInv} low-stock SKU`:`${wblAvgHrs}h avg WBL`,next:lowInv>0?`Reorder items`:wblSigned<wblTotal?`${wblTotal-wblSigned} agreements unsigned`:`SBE ${sbeDone}/${sbeTotal}`,alert:lowInv>0||wblSigned<wblTotal},
     {key:'deca',pct:decaDays!==null?Math.max(0,Math.min(100,Math.round((1-decaDays/90)*100))):50,nav:'deca',stat:nextDeca?`${urgencyClass(decaDays).dot} ${decaDays}d`:'No deadlines',next:nextDeca?nextDeca.title:'Add DECA deadlines',alert:decaDays!==null&&decaDays<=7},
     {key:'esports',pct:esTotal?Math.round((esWins/esTotal)*100):0,nav:'esports',stat:esTotal?`${esWins}W–${esTotal-esWins}L`:'No matches logged',next:nextMatchLabel?`Next: ${nextMatchLabel}`:esTotal?'Review lineup':'Log first match',alert:nextMatchDays!==null&&nextMatchDays<=1},
     {key:'trips',pct:tripsPct,nav:'trips',stat:tripDL?`${urgencyClass(daysUntil(tripDL.date)).dot} ${daysUntil(tripDL.date)}d`:'No trip deadlines',next:tripDL?tripDL.title:`${_readyTrips.length}/${_allTrips.length} ready`,alert:tripsAlert},
-  ];
+  ].filter(d => (d.key!=='store' || MODULES.wbl) && (d.key!=='deca' || MODULES.deca) && (d.key!=='esports' || MODULES.esports));
 }
 
 function renderPulseRow(){
@@ -15047,6 +15089,16 @@ function openSurveyModal(){
       </details>
       <div id="sched-save-status" style="font-size:.74rem;margin-bottom:1.2rem;min-height:1.1em"></div>
 
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Modules</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Turn off any of these you don't run yourself — the nav button and sidebar section disappear immediately. Dashboard, Classroom, Field Trips, and Tools always stay on.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.2rem">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-deca" ${MODULES.deca!==false?'checked':''} onchange="lhSaveModule('deca',this.checked)"> 🏆 DECA</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-wbl" ${MODULES.wbl!==false?'checked':''} onchange="lhSaveModule('wbl',this.checked)"> 🏪 WBL / School Store</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-esports" ${MODULES.esports!==false?'checked':''} onchange="lhSaveModule('esports',this.checked)"> 🎮 E-Sports</label>
+      </div>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
         Everything in LeaderHub lives only in this browser — there's no server and no automatic backup. Export a copy regularly, especially before clearing your browser data or switching devices.
@@ -15151,6 +15203,10 @@ function lhSaveBellScheduleJson() {
   catch (e) { _schedSaveStatus('⚠ Invalid JSON — not saved', true); return; }
   saveScheduleConfig({ bellSchedules: parsed });
   _schedSaveStatus('✓ Saved');
+}
+
+function lhSaveModule(key, checked) {
+  saveModules({ [key]: checked });
 }
 
 // ── Whole-app backup — every lh_* localStorage key, in one file ─────────────
