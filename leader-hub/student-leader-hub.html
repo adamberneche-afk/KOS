@@ -11607,7 +11607,18 @@ const DB_ROLES = {
   general: { icon:'📌', label:'General',     color:'#374151', bg:'#f9fafb' },
 };
 
-const BELL_SCHEDULES = {
+// ─── SCHOOL CALENDAR / BELL SCHEDULE — Settings → School Calendar & Bell
+// Schedule ───────────────────────────────────────────────────────────────
+// Defaults below are Clover Hill's actual 2025-26 calendar and bell times —
+// every one of them expires at the end of a school year and none had a UI
+// path to update. The _DEFAULT consts stay as literal fallbacks; the live
+// bindings (BELL_SCHEDULES, CCPS_SCHEDULE_OVERRIDES, CCPS_NO_SCHOOL,
+// LP_QUARTERS, DAY_SCHEDULE_MAP) are populated by _applyScheduleConfig()
+// from lh_schedule_config in localStorage, falling back to these defaults
+// for anything not customized. Every call site below reads these same
+// four names/DAY_SCHEDULE_MAP exactly as before — only where their values
+// come from changed.
+const BELL_SCHEDULES_DEFAULT = {
   // ── Schedule A — Regular (Mon/Tue/Thu on non-B days) ──────────────────────
   A: {
     label: 'Schedule A',
@@ -11692,7 +11703,7 @@ const BELL_SCHEDULES = {
   },
 };
 
-const CCPS_SCHEDULE_OVERRIDES = {
+const SCHEDULE_OVERRIDES_DEFAULT = {
   // Early release days → EARLY3
   '2025-09-19': 'EARLY3',
   '2025-10-22': 'EARLY3',
@@ -11705,7 +11716,7 @@ const CCPS_SCHEDULE_OVERRIDES = {
   '2026-05-29': 'EARLY3',
 };
 
-const CCPS_NO_SCHOOL = new Set([
+const NO_SCHOOL_DEFAULT = [
   '2025-08-29','2025-09-01',
   '2025-10-02',
   '2025-11-03','2025-11-04','2025-11-26','2025-11-27','2025-11-28',
@@ -11716,10 +11727,55 @@ const CCPS_NO_SCHOOL = new Set([
   '2026-03-20','2026-03-30','2026-03-31',
   '2026-04-01','2026-04-02','2026-04-03',
   '2026-05-25',
-]);
+];
+
+// Sun=0..Sat=6 → schedule type key (null = no school that day of week).
+// Matches Clover Hill's actual rotation: Mon/Tue = A, Wed/Thu/Fri = B.
+const DAY_SCHEDULE_MAP_DEFAULT = { 0:null, 1:'A', 2:'A', 3:'B', 4:'B', 5:'B', 6:null };
 
 const SCHOOL_PERIODS = [];
 
+let BELL_SCHEDULES         = BELL_SCHEDULES_DEFAULT;
+let CCPS_SCHEDULE_OVERRIDES = SCHEDULE_OVERRIDES_DEFAULT;
+let CCPS_NO_SCHOOL         = new Set(NO_SCHOOL_DEFAULT);
+let DAY_SCHEDULE_MAP       = DAY_SCHEDULE_MAP_DEFAULT;
+
+function getScheduleConfig() { return LS.get('lh_schedule_config', {}); }
+// NOTE: this eager call only ever runs BELL_SCHEDULES/overrides/noSchool/
+// dayMap — never _applyQuartersConfig. At the moment this line first
+// executes (synchronous top-level parse), QUARTERS_DEFAULT/LP_QUARTERS
+// (Pacing Calendar section, ~4000 lines down) haven't been declared yet;
+// `const`/`let` bindings are in the temporal dead zone until their own
+// declaration runs, so touching them here would throw. LP_QUARTERS
+// self-initializes at its own declaration point instead. saveScheduleConfig
+// below only ever runs later, from a user's Settings edit — by then the
+// whole script has already executed once, so it's safe for it to refresh
+// quarters too.
+function _applyScheduleConfig() {
+  const cfg = getScheduleConfig();
+  BELL_SCHEDULES          = cfg.bellSchedules || BELL_SCHEDULES_DEFAULT;
+  CCPS_SCHEDULE_OVERRIDES = cfg.overrides     || SCHEDULE_OVERRIDES_DEFAULT;
+  CCPS_NO_SCHOOL          = new Set(cfg.noSchool || NO_SCHOOL_DEFAULT);
+  DAY_SCHEDULE_MAP        = cfg.dayOfWeekMap  || DAY_SCHEDULE_MAP_DEFAULT;
+}
+_applyScheduleConfig();
+
+function saveScheduleConfig(updates) {
+  const merged = Object.assign({}, getScheduleConfig(), updates);
+  LS.set('lh_schedule_config', merged);
+  _applyScheduleConfig();
+  if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
+}
+
+// <option> list for a schedule-type <select> in Settings — every configured
+// bell schedule plus "No School" for days/dates with none.
+function _schedTypeOptions(selectedKey) {
+  const opts = [`<option value="" ${!selectedKey ? 'selected' : ''}>No School</option>`];
+  Object.entries(BELL_SCHEDULES).forEach(([key, sched]) => {
+    opts.push(`<option value="${key}" ${selectedKey === key ? 'selected' : ''}>${escH(sched.label || key)}</option>`);
+  });
+  return opts.join('');
+}
 
 function getTodayScheduleType() {
   const now  = new Date();
@@ -11732,9 +11788,7 @@ function getTodayScheduleType() {
   if (CCPS_SCHEDULE_OVERRIDES[key]) return CCPS_SCHEDULE_OVERRIDES[key];
 
   const dow = now.getDay(); // 0=Sun,1=Mon,...6=Sat
-  if (dow === 0 || dow === 6) return null; // weekend
-  if (dow === 3 || dow === 4 || dow === 5) return 'B'; // Wed/Thu/Fri
-  return 'A'; // Mon/Tue
+  return DAY_SCHEDULE_MAP[dow] ?? null;
 }
 
 function getCurrentPeriodInfo() {
@@ -14954,6 +15008,45 @@ function openSurveyModal(){
       </div>
       <div id="prof-save-status" style="font-size:.74rem;color:#166534;margin-bottom:1.2rem;min-height:1.1em"></div>
 
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">School Calendar &amp; Bell Schedule</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.9rem">
+        These expire every school year and used to require editing the source file directly. Bell-schedule <em>times</em> themselves are still edited as raw JSON below — a full visual period builder is a bigger project than this round covers.
+      </div>
+
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Day-of-Week Default Schedule</div>
+      <div class="fgrid" style="grid-template-columns:repeat(7,1fr);gap:.35rem;margin-bottom:.9rem">
+        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`
+        <div class="fg"><label style="font-size:.66rem">${d}</label>
+          <select id="sched-dow-${i}" onchange="lhSaveDayMap()" style="width:100%;padding:.35rem .3rem;border:1px solid var(--border);border-radius:6px;font-size:.74rem;background:#fff">${_schedTypeOptions(DAY_SCHEDULE_MAP[i])}</select>
+        </div>`).join('')}
+      </div>
+
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Quarter Dates</div>
+      <div style="margin-bottom:.9rem">
+        ${[1,2,3,4].map(q=>{ const r = LP_QUARTERS[q] || {start:'',end:'',label:'Q'+q}; return `
+        <div class="fgrid fg2" style="margin-bottom:.4rem">
+          <div class="fg"><label style="font-size:.7rem">${escH(r.label)} Start</label><input type="date" id="sched-q${q}-start" value="${escH(r.start)}" onblur="lhSaveQuarters()"></div>
+          <div class="fg"><label style="font-size:.7rem">${escH(r.label)} End</label><input type="date" id="sched-q${q}-end" value="${escH(r.end)}" onblur="lhSaveQuarters()"></div>
+        </div>`; }).join('')}
+      </div>
+
+      <div class="fgrid fg2" style="margin-bottom:.9rem">
+        <div class="fg">
+          <label style="font-size:.72rem;font-weight:700;color:var(--muted)">No-School Dates (one per line)</label>
+          <textarea id="sched-noschool" onblur="lhSaveNoSchool()" rows="5" style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${[...CCPS_NO_SCHOOL].sort().join('\n')}</textarea>
+        </div>
+        <div class="fg">
+          <label style="font-size:.72rem;font-weight:700;color:var(--muted)">Early-Release Dates (one per line)</label>
+          <textarea id="sched-earlyrelease" onblur="lhSaveEarlyRelease()" rows="5" style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${Object.keys(CCPS_SCHEDULE_OVERRIDES).sort().join('\n')}</textarea>
+        </div>
+      </div>
+
+      <details style="margin-bottom:.5rem">
+        <summary style="cursor:pointer;font-size:.72rem;font-weight:700;color:var(--muted)">Advanced: Bell Schedule Times (JSON)</summary>
+        <textarea id="sched-bell-json" onblur="lhSaveBellScheduleJson()" rows="8" style="width:100%;margin-top:.5rem;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.72rem;font-family:monospace;resize:vertical">${escH(JSON.stringify(BELL_SCHEDULES, null, 2))}</textarea>
+      </details>
+      <div id="sched-save-status" style="font-size:.74rem;margin-bottom:1.2rem;min-height:1.1em"></div>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
         Everything in LeaderHub lives only in this browser — there's no server and no automatic backup. Export a copy regularly, especially before clearing your browser data or switching devices.
@@ -14999,6 +15092,65 @@ function lhSaveProfileField(key, value) {
   el.textContent = '✓ Saved';
   clearTimeout(_profSaveStatusTimer);
   _profSaveStatusTimer = setTimeout(() => { if (el) el.textContent = ''; }, 2000);
+}
+
+// ── School Calendar & Bell Schedule settings ─────────────────────────────────
+let _schedSaveStatusTimer = null;
+function _schedSaveStatus(msg, isError) {
+  const el = document.getElementById('sched-save-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#991b1b' : '#166534';
+  clearTimeout(_schedSaveStatusTimer);
+  _schedSaveStatusTimer = setTimeout(() => { if (el) el.textContent = ''; }, isError ? 5000 : 2000);
+}
+
+function lhSaveDayMap() {
+  const map = {};
+  for (let i = 0; i <= 6; i++) {
+    const sel = document.getElementById('sched-dow-' + i);
+    map[i] = sel && sel.value ? sel.value : null;
+  }
+  saveScheduleConfig({ dayOfWeekMap: map });
+  _schedSaveStatus('✓ Saved');
+}
+
+function lhSaveQuarters() {
+  const quarters = {};
+  [1, 2, 3, 4].forEach(q => {
+    const start = document.getElementById('sched-q' + q + '-start')?.value || '';
+    const end   = document.getElementById('sched-q' + q + '-end')?.value || '';
+    quarters[q] = { start, end, label: 'Q' + q };
+  });
+  saveScheduleConfig({ quarters });
+  _schedSaveStatus('✓ Saved');
+}
+
+// Accepts one date per line (or comma-separated); silently drops anything
+// that isn't YYYY-MM-DD rather than saving a calendar with junk entries.
+function _parseDateList(raw) {
+  return (raw || '').split(/[\n,]+/).map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
+}
+
+function lhSaveNoSchool() {
+  saveScheduleConfig({ noSchool: _parseDateList(document.getElementById('sched-noschool')?.value) });
+  _schedSaveStatus('✓ Saved');
+}
+
+function lhSaveEarlyRelease() {
+  const overrides = {};
+  _parseDateList(document.getElementById('sched-earlyrelease')?.value).forEach(d => { overrides[d] = 'EARLY3'; });
+  saveScheduleConfig({ overrides });
+  _schedSaveStatus('✓ Saved');
+}
+
+function lhSaveBellScheduleJson() {
+  const raw = document.getElementById('sched-bell-json')?.value || '';
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { _schedSaveStatus('⚠ Invalid JSON — not saved', true); return; }
+  saveScheduleConfig({ bellSchedules: parsed });
+  _schedSaveStatus('✓ Saved');
 }
 
 // ── Whole-app backup — every lh_* localStorage key, in one file ─────────────
@@ -15654,13 +15806,22 @@ function openEmailBridgeModal_() {
 // PACING CALENDAR — renders lessons across real school-day weeks for a quarter
 // ══════════════════════════════════════════════════════════════════════════════
 
-// CCPS quarter date ranges (from official 2025-26 calendar)
-const LP_QUARTERS = {
+// CCPS quarter date ranges (from official 2025-26 calendar). Also the
+// school-year-start date LP_QUARTERS[1].start feeds the Odd/Even day
+// calculation everywhere below — editable via Settings → School Calendar,
+// see _applyScheduleConfig()/saveScheduleConfig() above.
+const QUARTERS_DEFAULT = {
   1: { start: '2025-08-18', end: '2025-10-22', label: 'Q1' },
   2: { start: '2025-10-23', end: '2026-01-13', label: 'Q2' },
   3: { start: '2026-01-14', end: '2026-03-19', label: 'Q3' },
   4: { start: '2026-03-23', end: '2026-05-29', label: 'Q4' },
 };
+let LP_QUARTERS = QUARTERS_DEFAULT;
+function _applyQuartersConfig() {
+  const cfg = getScheduleConfig();
+  LP_QUARTERS = cfg.quarters || QUARTERS_DEFAULT;
+}
+_applyQuartersConfig(); // safe here: getScheduleConfig/QUARTERS_DEFAULT are both already defined above
 
 // CCPS no-school dates (holidays, breaks) — from CCPS_NO_SCHOOL already defined
 // We reuse that set. Early release days are still school days.
