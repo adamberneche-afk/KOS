@@ -281,9 +281,30 @@ Adam unless a field is edited. `getTodayScheduleType()`'s hardcoded
 "Wed/Thu/Fri → B" weekday logic is now a lookup against the same
 `DAY_SCHEDULE_MAP` the Settings panel edits.
 
-Not yet covered by any settings layer: per-module (DECA/WBL/E-Sports)
-visibility toggles and the Virginia-CTE-specific `SCR_COURSES` course
-catalog (course codes/competency lists) — both still hardcoded.
+## Settings → Modules
+
+The nav (7 buttons) and sidebar (7 accordion sections) showed every module
+unconditionally — a teacher with no DECA program, no school store, or no
+e-sports team got the full set regardless, with no toggle anywhere in the
+codebase.
+
+Settings now has a "Modules" panel with three checkboxes — DECA, WBL /
+School Store, E-Sports — backed by `lh_modules` in localStorage
+(`MODULES`/`getModules()`/`saveModules()`, same pattern as `PROFILE`).
+Unchecking one immediately hides its nav button, its whole sidebar section
+(header + body + the one separator between it and its neighbors — the
+three sections are each wrapped in a `side-sec-<key>` div carrying its own
+trailing separator, so hiding any subset never leaves a doubled or missing
+divider), and its card in the Dashboard pulse row. Dashboard, Classroom,
+Field Trips, and Tools always stay on — every teacher using this app
+presumably wants those regardless of which extras they run.
+
+Not gated by this toggle: deep links into a disabled module (e.g. a
+dashboard banner's "DECA Hub" button) still navigate there directly if
+something else triggers them — this hides the module from browsing, not
+from every code path that can call `showView()`. The Virginia-CTE-specific
+`SCR_COURSES` course catalog (course codes/competency lists) is still
+hardcoded and not covered by any settings layer.
 
 ## UI/UX Hardening — Rounds 1–9
 
