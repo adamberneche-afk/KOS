@@ -328,6 +328,73 @@ browser would silently resurrect the seed data — not just a blocker for
 this button, a real data-integrity bug on its own. `lh_students`/
 `lh_events`/`lh_goals` already used the correct check.
 
+## Settings → Course Catalog (customizable course data)
+
+The Student Competency Records (SCR) tracker's course catalog was the last
+hardcoded piece of the portability story: `SCR_COURSES` held Adam's own 3
+courses (6115/8175/8177) — name, competency list, class periods — as a
+single hand-written object literal, and the course tab bar was 3 static
+`<button>` elements wired to those exact codes. Adding a course meant
+editing this file directly.
+
+Adam's own 3 courses are unchanged — this is purely additive:
+
+- **`CUSTOM_COURSES`** (`lh_custom_courses`) is a new localStorage-backed
+  overlay merged into `SCR_COURSES` at boot via `Object.assign()`. It can
+  only ever add new course codes — `_parseCourseJson()` refuses to import
+  a code that already exists (built-in or previously imported), so this
+  can never overwrite anything.
+- **Settings → Course Catalog** lists every course (built-in courses
+  marked "built-in," no delete control; imported ones get a ✕ to remove)
+  and an "⬆️ Import Course (JSON)" button, plus a "Download a blank
+  template" link (`lhDownloadCourseTemplate()`) showing the expected
+  shape: `code`, `name`, `icon`, `standardsLabel`, `periods` (class period
+  names), and a `competencies` array of `{num, code, text, duty, req}`.
+  `code` on a competency is optional and free-text — it's meant for a
+  Virginia Standards of Learning identifier (e.g. `"11.1"`) or any other
+  district's standard code, displayed in place of the bare `#1` numbering
+  wherever competencies are listed; `num` still drives internal scoring
+  and stays a private implementation detail. `standardsLabel` lets an
+  imported course call its list "Standards of Learning" or anything else
+  instead of "Competencies" throughout its own UI.
+- **Course tabs are now data-driven.** The 3 static buttons in the SCR
+  view were replaced with an empty `<div id="scr-course-tabs">` that
+  `renderScrCourseTabs()` populates from `SCR_COURSES` — called once at
+  boot and again after any import/removal — so a new course gets a tab
+  automatically.
+- **Fixed a related latent bug while wiring this up**: the Pacing Guide
+  sub-view resolved its per-course lesson content via a 3-way ternary
+  (`scrActiveCourse==='8177' ? PACING_8177 : scrActiveCourse==='8175' ?
+  PACING_8175 : PACING_6115`) whose final `:` branch matched *any* other
+  course code — meaning a 4th course would have silently rendered 6115's
+  pacing guide instead of its own (harmless today since no 4th course
+  existed, but exactly the bug this feature would have hit immediately).
+  Replaced with `PACING_REGISTRY`/`getPacingForCourse()`, which returns
+  `null` for an unregistered course and now correctly falls through to
+  the pacing view's existing (previously dead) "No pacing data available"
+  empty state.
+
+**Deliberately out of scope**: the hand-authored day-by-day pacing guides
+(`PACING_8175`/`8177`/`6115` — objectives, materials, assessment, and
+"connections" prose per lesson) are original lesson-planning content, not
+catalog data, and aren't something a JSON import can reasonably stand in
+for. An imported course uses the Grid and Cards views normally (both are
+already fully data-driven off `SCR_COURSES`) and shows the empty state
+in the Pacing Guide sub-view. Class-period rosters are also unaffected —
+`SCR_COURSES[code].periods` has always been populated by hand (there's no
+in-app "add a student to a class roster" flow for any course, imported or
+built-in), so an imported course starts with the period names you specify
+and empty rosters, same as Adam's own courses today.
+
+Verified with `node --check` on both `<script>` blocks, `node
+tools/gas-lint/check.js` (clean except the 2 pre-existing unrelated
+cas-ccps warnings), parsing the `SCR_COURSES` literal back out of the
+file to confirm the icon-field edits didn't corrupt it, and a Node harness
+covering the import validator (malformed JSON, duplicate course code,
+missing name/competencies, auto-numbering, duplicate `num` within one
+import, a SOL-style course with explicit standard codes) and the
+`getPacingForCourse()` null-fallback.
+
 ## DSP framework content — removed
 
 Earlier versions of this app cited Adam's personal CCPS teacher-evaluation
