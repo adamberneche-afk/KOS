@@ -243,11 +243,47 @@ phone, email, email domain, and the DECA-specific Brag Board recipients
 (supervisor/admin/attendance-coordinator) — backed by a `PROFILE` object
 (`lh_profile` in localStorage) that every one of those templates reads from
 instead. Fields save as you leave them and take effect immediately, no
-reload required. This closes the identity/signature gap specifically; the
-bell schedule/school calendar, per-module (DECA/WBL/E-Sports) visibility,
-and the Virginia-CTE-specific `SCR_COURSES` course catalog are still
-hardcoded and would need their own settings layer for a full "hand this to
-any teacher" experience.
+reload required. This closes the identity/signature gap specifically.
+
+The seed data in `SCR_COURSES` also had a real-looking student roster (121
+names in "Last, First" format) hardcoded into its per-period arrays, with
+no UI to clear it — confirmed as dummy/placeholder data and removed; the
+period-slot structure and full Virginia CTE competency framework are
+untouched.
+
+## Settings → School Calendar & Bell Schedule
+
+The bell-schedule times, the day-of-week → schedule-type rotation, the
+school-year quarters, and the no-school/early-release calendars were all
+Clover Hill's actual 2025-26 values hardcoded into four consts
+(`BELL_SCHEDULES`, `CCPS_SCHEDULE_OVERRIDES`, `CCPS_NO_SCHOOL`,
+`LP_QUARTERS`) with no settings path — every one of them expires at the
+end of a school year.
+
+Settings now has a "School Calendar & Bell Schedule" panel backed by
+`lh_schedule_config` in localStorage:
+- **Day-of-Week Default Schedule** — 7 dropdowns (Sun–Sat), each picking a
+  configured bell-schedule type or "No School".
+- **Quarter Dates** — 4 start/end date pairs (Q1–Q4).
+- **No-School Dates** and **Early-Release Dates** — one date per line,
+  parsed and validated against `YYYY-MM-DD` before saving.
+- **Advanced: Bell Schedule Times (JSON)** — the actual period start/end
+  times, exposed as a raw JSON textarea rather than a bespoke visual
+  builder (a full drag-and-drop period editor is a bigger project than
+  this round covers; this still means no source edits are required, just
+  editing JSON instead of a form).
+
+All four consts are now `let` bindings populated by `_applyScheduleConfig()`
+(and `_applyQuartersConfig()` for quarters, kept separate to avoid a
+temporal-dead-zone crash — quarters are declared ~4,000 lines after the
+bell-schedule section) from `_DEFAULT` fallbacks, so nothing changes for
+Adam unless a field is edited. `getTodayScheduleType()`'s hardcoded
+"Wed/Thu/Fri → B" weekday logic is now a lookup against the same
+`DAY_SCHEDULE_MAP` the Settings panel edits.
+
+Not yet covered by any settings layer: per-module (DECA/WBL/E-Sports)
+visibility toggles and the Virginia-CTE-specific `SCR_COURSES` course
+catalog (course codes/competency lists) — both still hardcoded.
 
 ## UI/UX Hardening — Rounds 1–9
 
