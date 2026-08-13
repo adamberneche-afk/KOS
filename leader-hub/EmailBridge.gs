@@ -3,11 +3,14 @@
  * Deploy as: Web App → Execute as Me → Anyone in domain (or Anyone with link)
  *
  * POST endpoints (JSON body with "action" field):
- *   action: "subPlan"      → Create Google Doc sub plan  → {ok, docUrl}
- *   action: "bragEmail"    → Create Gmail draft           → {ok}
- *   action: "markConsumed" → Mark horizon items consumed  → {ok, consumed}
- *   action: "aiDraft"      → Queue an AI drafting job      → {ok, jobId}
- *   action: "checkAiJob"   → Poll a queued AI job          → {ok, status, result|error}
+ *   action: "subPlan"       → Create Google Doc sub plan  → {ok, docUrl}
+ *   action: "bragEmail"     → Create Gmail draft           → {ok}
+ *   action: "markConsumed"  → Mark horizon items consumed  → {ok, consumed}
+ *   action: "aiDraft"       → Queue an AI drafting job      → {ok, jobId}
+ *   action: "checkAiJob"    → Poll a queued AI job          → {ok, status, result|error}
+ *   action: "pushOrgSync"   → Publish an org snapshot       → {ok, updatedAt} | {ok:false, conflict:true, ...}
+ *   action: "pullOrgSync"   → Fetch an org's synced state   → {ok, found, ...}
+ *   action: "listOrgSyncs"  → List orgs shared on this bridge → {ok, orgs:[...]}
  *
  * GET endpoint (unchanged):
  *   Returns pending horizon items from Gmail label "LeaderHub"
@@ -26,6 +29,15 @@
  * before with zero setup if you never touch that doc — aiDraft/checkAiJob
  * just sit in a PENDING queue forever with no Flow watching them, and the
  * client already falls back to its own local draft when that happens.
+ *
+ * Co-advisor Organization sharing (optional): see the "Organization Sync"
+ * section below and leader-hub/README.md for the access model — because
+ * this Web App runs "Execute as Me," whichever advisor deploys it owns the
+ * backing Spreadsheet and a co-advisor never needs Google Drive sharing
+ * permissions of their own; they just need this same /exec URL. Nothing
+ * here is enabled until a teacher actually shares an organization from
+ * Settings → Organizations, and it's a separate spreadsheet from the AI
+ * Queue above — sharing one feature doesn't expose the other's data.
  */
 
 const CONFIG = {
@@ -53,6 +65,9 @@ function doPost(e) {
     if (action === 'bragEmail')    return jsonResponse_(createBragDraft_(body));
     if (action === 'aiDraft')      return jsonResponse_(queueAiJob_(body));
     if (action === 'checkAiJob')   return jsonResponse_(checkAiJob_(body));
+    if (action === 'pushOrgSync')  return jsonResponse_(pushOrgSync_(body));
+    if (action === 'pullOrgSync')  return jsonResponse_(pullOrgSync_(body));
+    if (action === 'listOrgSyncs') return jsonResponse_(listOrgSyncs_(body));
     return jsonResponse_({ ok: false, error: 'Unknown action: ' + action });
   } catch (err) {
     return jsonResponse_({ ok: false, error: err.message });
@@ -200,6 +215,200 @@ function checkAiJob_(body) {
 
   if (status === 'ERROR') return { ok: true, status: 'ERROR', error: found[AIQ_COL.ERROR] || 'Unknown error' };
   return { ok: true, status: 'COMPLETE', result: found[AIQ_COL.RESULT] || '' };
+}
+
+// ── Organization Sync (co-advisor sharing) ────────────────────────────────────
+// A second, independent Spreadsheet (never the AI Queue one above) acts as the
+// shared datastore for organizations a teacher chooses to share with a
+// co-advisor. Because this Web App runs "Execute as Me," whichever teacher
+// deploys it owns this Spreadsheet — a co-advisor never needs Drive sharing
+// permissions of their own; they just point their own LeaderHub Settings →
+// Organizations at this same /exec URL.
+//
+// Layout:
+//   "_org_meta" tab — one row per shared org: [OrgId, OrgName, ConfigJSON,
+//     UpdatedAt, UpdatedBy]. Used for discovery (listOrgSyncs_) and as the
+//     compare-and-swap conflict-detection source (UpdatedAt).
+//   "roster_<orgId>" / "results_<orgId>" tabs — real spreadsheet rows, not a
+//     JSON blob in one cell. Two reasons: (1) a 60-100+ member roster as one
+//     JSON cell risks Sheets' ~50,000-character cell limit; (2) a co-advisor
+//     can open the Sheet directly and read/edit rows by hand as a bonus.
+//     The client sends its own header row alongside the data rows on every
+//     push, so this file never needs to know student/result field shapes —
+//     schema changes on the client side never require touching this file.
+//
+// Conflict model: optimistic concurrency (compare-and-swap) on UpdatedAt.
+// pushOrgSync_ takes an `expectedUpdatedAt` — the pusher's last-known remote
+// UpdatedAt for this org. If that doesn't match the meta row's actual current
+// UpdatedAt (someone else pushed in between), the push is rejected with
+// {conflict:true} and nothing is written; the client then offers the user a
+// choice to pull first or push anyway (re-push with expectedUpdatedAt
+// dropped/updated). This is last-full-snapshot-wins-with-a-warning, not
+// field-level merging — sufficient for the low-concurrency 2-advisor case
+// this is built for, not a substitute for real-time collaboration.
+
+const ORG_SYNC_SHEET_PROP = 'ORG_SYNC_SHEET_ID';
+const ORG_META_SHEET_NAME = '_org_meta';
+const ORG_META_HEADERS    = ['OrgId', 'OrgName', 'ConfigJSON', 'UpdatedAt', 'UpdatedBy'];
+const OM_COL = { ORG_ID: 0, ORG_NAME: 1, CONFIG: 2, UPDATED_AT: 3, UPDATED_BY: 4 };
+
+function _getOrgSyncSpreadsheet_() {
+  const prop = PropertiesService.getScriptProperties();
+  let id = prop.getProperty(ORG_SYNC_SHEET_PROP);
+  let ss;
+  if (id) {
+    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } // deleted/moved — rebuild below
+  }
+  if (!ss) {
+    ss = SpreadsheetApp.create('LeaderHub Org Sync');
+    prop.setProperty(ORG_SYNC_SHEET_PROP, ss.getId());
+  }
+  return ss;
+}
+
+function _getOrgMetaSheet_() {
+  const ss = _getOrgSyncSpreadsheet_();
+  let sheet = ss.getSheetByName(ORG_META_SHEET_NAME);
+  if (!sheet) {
+    // First tab ever created in a brand-new Spreadsheet is the default
+    // "Sheet1" — repurpose it rather than leaving a stray empty tab around.
+    const existing = ss.getSheets();
+    sheet = (existing.length === 1 && existing[0].getLastRow() === 0) ? existing[0] : ss.insertSheet(ORG_META_SHEET_NAME);
+    sheet.setName(ORG_META_SHEET_NAME);
+    sheet.appendRow(ORG_META_HEADERS);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function _findOrgMetaRow_(sheet, orgId) {
+  const data = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][OM_COL.ORG_ID] === orgId) return { rowIndex1: i + 1, row: data[i] };
+  }
+  return null;
+}
+
+// Gets (creating if needed) a per-org data tab, and rewrites it wholesale
+// with the header + rows the client supplied. `rows` is a 2D array; `headers`
+// is a 1D array. Either may be empty (an org with no results yet, say).
+function _writeOrgDataTab_(ss, tabName, headers, rows) {
+  let sheet = ss.getSheetByName(tabName);
+  if (!sheet) sheet = ss.insertSheet(tabName);
+  sheet.clear();
+  if (headers && headers.length) {
+    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
+    sheet.setFrozenRows(1);
+  }
+  if (rows && rows.length) {
+    // Pad/trim every row to the header width so setValues doesn't throw on a
+    // ragged 2D array — the client is trusted to send matching widths, but a
+    // defensive normalize costs nothing and avoids an opaque GAS error.
+    const width = headers && headers.length ? headers.length : (rows[0] || []).length;
+    const normalized = rows.map(r => {
+      const row = r.slice(0, width);
+      while (row.length < width) row.push('');
+      return row;
+    });
+    sheet.getRange(2, 1, normalized.length, width).setValues(normalized);
+  }
+}
+
+function _readOrgDataTab_(ss, tabName) {
+  const sheet = ss.getSheetByName(tabName);
+  if (!sheet || sheet.getLastRow() < 1) return { headers: [], rows: [] };
+  const data = sheet.getDataRange().getValues();
+  return { headers: data[0] || [], rows: data.slice(1) };
+}
+
+function pushOrgSync_(body) {
+  const orgId = body.orgId || '';
+  if (!orgId) return { ok: false, error: 'Missing orgId' };
+
+  const ss        = _getOrgSyncSpreadsheet_();
+  const metaSheet = _getOrgMetaSheet_();
+  const existing  = _findOrgMetaRow_(metaSheet, orgId);
+
+  // Compare-and-swap: if the pusher's last-known remote UpdatedAt doesn't
+  // match what's actually there right now, someone else pushed in between —
+  // reject without writing anything so nothing is silently overwritten.
+  if (existing && body.expectedUpdatedAt) {
+    const remoteUpdatedAt = existing.row[OM_COL.UPDATED_AT];
+    const remoteMs   = new Date(remoteUpdatedAt).getTime();
+    const expectedMs = new Date(body.expectedUpdatedAt).getTime();
+    if (remoteMs !== expectedMs) {
+      return {
+        ok: false,
+        conflict: true,
+        remoteUpdatedAt: remoteUpdatedAt instanceof Date ? remoteUpdatedAt.toISOString() : remoteUpdatedAt,
+        remoteUpdatedBy: existing.row[OM_COL.UPDATED_BY] || '',
+      };
+    }
+  }
+
+  const now = new Date();
+  _writeOrgDataTab_(ss, 'roster_' + orgId, body.rosterHeaders || [], body.rosterRows || []);
+  _writeOrgDataTab_(ss, 'results_' + orgId, body.resultHeaders || [], body.resultRows || []);
+
+  const configJson = JSON.stringify(body.config || {});
+  const updatedBy  = body.updatedBy || Session.getActiveUser().getEmail() || '';
+  const newRow     = [orgId, body.orgName || orgId, configJson, now, updatedBy];
+  if (existing) {
+    metaSheet.getRange(existing.rowIndex1, 1, 1, ORG_META_HEADERS.length).setValues([newRow]);
+  } else {
+    metaSheet.appendRow(newRow);
+  }
+
+  return { ok: true, updatedAt: now.toISOString() };
+}
+
+function pullOrgSync_(body) {
+  const orgId = body.orgId || '';
+  if (!orgId) return { ok: false, error: 'Missing orgId' };
+
+  const ss        = _getOrgSyncSpreadsheet_();
+  const metaSheet = _getOrgMetaSheet_();
+  const existing  = _findOrgMetaRow_(metaSheet, orgId);
+  if (!existing) return { ok: true, found: false };
+
+  const roster  = _readOrgDataTab_(ss, 'roster_' + orgId);
+  const results = _readOrgDataTab_(ss, 'results_' + orgId);
+  const updatedAtRaw = existing.row[OM_COL.UPDATED_AT];
+
+  let config = {};
+  try { config = JSON.parse(existing.row[OM_COL.CONFIG] || '{}'); } catch (e) { config = {}; }
+
+  return {
+    ok: true,
+    found: true,
+    orgId,
+    orgName:        existing.row[OM_COL.ORG_NAME] || orgId,
+    config,
+    updatedAt:      updatedAtRaw instanceof Date ? updatedAtRaw.toISOString() : updatedAtRaw,
+    updatedBy:      existing.row[OM_COL.UPDATED_BY] || '',
+    rosterHeaders:  roster.headers,
+    rosterRows:     roster.rows,
+    resultHeaders:  results.headers,
+    resultRows:     results.rows,
+  };
+}
+
+function listOrgSyncs_(body) {
+  const metaSheet = _getOrgMetaSheet_();
+  const data = metaSheet.getDataRange().getValues();
+  const orgs = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (!row[OM_COL.ORG_ID]) continue;
+    const updatedAtRaw = row[OM_COL.UPDATED_AT];
+    orgs.push({
+      orgId:     row[OM_COL.ORG_ID],
+      orgName:   row[OM_COL.ORG_NAME] || row[OM_COL.ORG_ID],
+      updatedAt: updatedAtRaw instanceof Date ? updatedAtRaw.toISOString() : updatedAtRaw,
+      updatedBy: row[OM_COL.UPDATED_BY] || '',
+    });
+  }
+  return { ok: true, orgs };
 }
 
 // ── Horizon label scanner (GET) — unchanged ───────────────────────────────────

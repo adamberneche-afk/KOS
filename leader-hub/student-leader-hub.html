@@ -4738,6 +4738,11 @@ const RAW_MODAL_CLOSERS = {
   // _showConfirm() stashes its real closeIt (which does invoke onCancel) on
   // the element so Escape and the Cancel button behave identically.
   'discard-confirm-modal': () => { const el = document.getElementById('discard-confirm-modal'); if (el) { if (el._onCancel) el._onCancel(); else el.remove(); } },
+  // EE2 co-advisor sharing dialogs — same remove()-if-present pattern as
+  // the other bare raw modals above (no onCancel side effect needed;
+  // dismissing either one is just "do nothing").
+  'org-sync-conflict-modal': () => { const el = document.getElementById('org-sync-conflict-modal'); if (el) el.remove(); },
+  'org-join-modal':          () => { const el = document.getElementById('org-join-modal'); if (el) el.remove(); },
 };
 
 function _findVisibleRawModalId() {
@@ -6387,6 +6392,16 @@ let ORG_RESULTS = LS.get('lh_org_results', {});
 function persistOrgResults() { LS.set('lh_org_results', ORG_RESULTS); }
 function getOrgResults(orgId) { return ORG_RESULTS[orgId] || []; }
 let _lastOrgResultLevel = {}, _lastOrgResultPlace = {};
+
+// ── Co-advisor sharing (EE2) — see EmailBridge.gs's "Organization Sync"
+// section. `ORG_SYNC[orgId]` tracks whether an org is shared and the last
+// remote state this browser knows about — `lastKnownRemoteUpdatedAt` is
+// what gets sent back as `expectedUpdatedAt` on the next push, which is how
+// the server's compare-and-swap conflict check recognizes "have I seen
+// everything since my last pull?" Sharing/pushing/pulling always operates
+// on one organization at a time — nothing here is automatic or silent.
+let ORG_SYNC = LS.get('lh_org_sync', {});
+function persistOrgSync() { LS.set('lh_org_sync', ORG_SYNC); }
 
 function renderOrgResults(orgId) {
   const org = ORGANIZATIONS[orgId] || ORGANIZATIONS.deca;
@@ -15722,14 +15737,282 @@ function lhRemoveCustomOrg(id) {
 function renderOrgCatalogSettings() {
   const el = document.getElementById('org-catalog-list');
   if (!el) return;
-  el.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) => `
-    <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
-      <span>${o.icon||'🧩'}</span>
-      <span style="flex:1"><strong>${escH(o.name)}</strong> <span style="color:var(--muted)">(${o.officerPositions.length} officer position(s)${o.levels && o.levels.length ? ', '+o.levels.length+' level(s)' : ''})</span></span>
-      ${o.custom
-        ? `<button onclick="lhRemoveCustomOrg('${id}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
-        : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
-    </div>`).join('');
+  el.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) => {
+    const sync = ORG_SYNC[id];
+    const syncRow = (sync && sync.enabled)
+      ? `<div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;flex-wrap:wrap;padding-left:1.75rem">
+           <span style="font-size:.68rem;color:#166534;font-weight:600">🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.lastSyncedAt).toLocaleString()) : ''}</span>
+           <button onclick="lhPullOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
+           <button onclick="lhPushOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
+           <button onclick="lhStopSharingOrg('${id}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
+         </div>`
+      : `<div style="padding-left:1.75rem;margin-top:.3rem">
+           <button onclick="lhShareOrg('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.68rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
+         </div>`;
+    return `
+    <div style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span>${o.icon||'🧩'}</span>
+        <span style="flex:1"><strong>${escH(o.name)}</strong> <span style="color:var(--muted)">(${o.officerPositions.length} officer position(s)${o.levels && o.levels.length ? ', '+o.levels.length+' level(s)' : ''})</span></span>
+        ${o.custom
+          ? `<button onclick="lhRemoveCustomOrg('${id}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+          : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
+      </div>
+      ${syncRow}
+    </div>`;
+  }).join('') + `
+    <button onclick="lhOpenJoinOrgModal()" style="width:100%;background:none;border:1.5px dashed var(--border);border-radius:8px;padding:.5rem;font-size:.75rem;color:#1e3a6e;cursor:pointer;margin-top:.2rem">🔎 Join a Shared Organization…</button>`;
+}
+
+// ── Co-advisor sharing (EE2) — push/pull/join, all routed through the same
+// EmailBridge.gs "Organization Sync" endpoints an Email Bridge URL already
+// points at (Settings → Email Bridge). Nothing here runs automatically —
+// every push/pull is a deliberate button click, and a rejected push always
+// surfaces a conflict prompt rather than silently overwriting anyone's data.
+
+// Field lists define BOTH the header row sent to the sheet and the shape
+// read back on pull — keep these two in sync with each other, not with
+// EmailBridge.gs (which is intentionally schema-agnostic and never needs to
+// change when these lists do).
+const ORG_ROSTER_SYNC_FIELDS = ['id','first','last','grade','position','competEvent','memberStatus','paid','duesDate','email','phone','parentEmail','parentPhone','address','shirtSize','dietaryNeeds','ev','notes','alumniYear','alumniPref'];
+const ORG_RESULT_SYNC_FIELDS = ['id','student','event','level','place','notes','addedAt'];
+
+function _orgRosterRows(orgId) {
+  return students.filter(s => s.org === orgId).map(s =>
+    ORG_ROSTER_SYNC_FIELDS.map(f => (s[f] === undefined || s[f] === null) ? '' : s[f])
+  );
+}
+
+// DECA's own results (`lh_deca_results`) and generic ORG_RESULTS both use
+// slightly different field names for the qualification tier ('eventId' vs
+// 'levelKey') — normalized to 'level' on the wire so one shared row shape
+// covers both without EmailBridge.gs needing to know either name.
+function _orgResultRows(orgId) {
+  const raw = orgId === 'deca' ? LS.get('lh_deca_results', []) : getOrgResults(orgId);
+  return raw.map(r => ORG_RESULT_SYNC_FIELDS.map(f => {
+    if (f === 'level') return (orgId === 'deca' ? r.eventId : r.levelKey) || '';
+    return (r[f] === undefined || r[f] === null) ? '' : r[f];
+  }));
+}
+
+function lhShareOrg(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  if (!org) return;
+  _showConfirm(
+    `Share ${org.name} with a co-advisor?\n\nThis publishes its current roster, results, and settings to the shared Google Sheet behind your Email Bridge URL. Anyone with that same /exec URL can then join or sync this organization.`,
+    () => lhPushOrgSync(orgId),
+    { confirmLabel: 'Share', danger: false, ariaLabel: `Share organization ${org.name}` }
+  );
+}
+
+function lhStopSharingOrg(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  if (!org) return;
+  _showConfirm(
+    `Stop sharing ${org.name}? This only stops THIS browser from syncing — it doesn't delete anything from the shared Sheet, and a co-advisor still connected keeps their own copy.`,
+    () => {
+      delete ORG_SYNC[orgId];
+      persistOrgSync();
+      renderOrgCatalogSettings();
+      _showToast('Stopped sharing ' + org.name);
+    },
+    { confirmLabel: 'Stop Sharing', ariaLabel: `Stop sharing organization ${org.name}` }
+  );
+}
+
+async function lhPushOrgSync(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  if (!org) return;
+  if (!EMAIL_BRIDGE.url()) {
+    _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    return;
+  }
+  const state = ORG_SYNC[orgId];
+  let res;
+  try {
+    res = await callGAS('pushOrgSync', {
+      orgId,
+      orgName: org.name,
+      config: org,
+      rosterHeaders: ORG_ROSTER_SYNC_FIELDS,
+      rosterRows: _orgRosterRows(orgId),
+      resultHeaders: ORG_RESULT_SYNC_FIELDS,
+      resultRows: _orgResultRows(orgId),
+      updatedBy: PROFILE.email || '',
+      expectedUpdatedAt: state ? state.lastKnownRemoteUpdatedAt : undefined,
+    });
+  } catch (e) {
+    _showToast('⚠ Could not reach Apps Script bridge.', 4000, '#991b1b');
+    return;
+  }
+  if (res && res.conflict) { _showOrgSyncConflictModal(orgId, res); return; }
+  if (!res || !res.ok) { _showToast('⚠ Push failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '' };
+  persistOrgSync();
+  renderOrgCatalogSettings();
+  _showToast('✅ ' + org.name + ' pushed to the shared Sheet', 3200, '#166534');
+}
+
+// Pulls an org's current synced state and replaces this browser's local
+// roster/results for that org wholesale. For a non-DECA org this also
+// adopts the shared config (officer positions/levels/placeOptions) as
+// local — that's the point of sharing a custom org — but DECA's own
+// hardcoded config is never touched, matching the guarantee the rest of
+// this app makes about Adam's built-in DECA experience.
+async function lhPullOrgSync(orgId) {
+  if (!EMAIL_BRIDGE.url()) {
+    _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    return;
+  }
+  let res;
+  try {
+    res = await callGAS('pullOrgSync', { orgId });
+  } catch (e) {
+    _showToast('⚠ Could not reach Apps Script bridge.', 4000, '#991b1b');
+    return;
+  }
+  if (!res || !res.ok) { _showToast('⚠ Pull failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
+  if (!res.found) { _showToast('This organization has never been shared yet.', 3500, '#991b1b'); return; }
+
+  if (orgId !== 'deca' && res.config) {
+    const cfg = Object.assign({}, res.config, { id: orgId, custom: true });
+    ORGANIZATIONS[orgId] = cfg;
+    CUSTOM_ORGS[orgId] = cfg;
+    persistCustomOrgs();
+  }
+
+  students = students.filter(s => s.org !== orgId);
+  (res.rosterRows || []).forEach(row => {
+    const obj = { org: orgId };
+    ORG_ROSTER_SYNC_FIELDS.forEach((f, i) => { if (f !== 'id') obj[f] = row[i]; });
+    obj.id       = nextId.st++; // local ids are per-browser only — never trust a remote id back in
+    obj.grade    = (obj.grade === '' || obj.grade == null) ? null : parseInt(obj.grade) || null;
+    obj.ev       = (obj.ev === '' || obj.ev == null) ? null : parseInt(obj.ev) || null;
+    obj.paid     = obj.paid === true || obj.paid === 'true' || obj.paid === 'TRUE';
+    students.push(obj);
+  });
+  persistNextId();
+  persistStudents();
+
+  const resultRows = (res.resultRows || []).map(row => {
+    const obj = {};
+    ORG_RESULT_SYNC_FIELDS.forEach((f, i) => { obj[f] = row[i]; });
+    return obj;
+  });
+  if (orgId === 'deca') {
+    LS.set('lh_deca_results', resultRows.map(r => ({ id: r.id || ('dr' + Date.now() + Math.random().toString(36).slice(2,6)), student: r.student, event: r.event, eventId: r.level, place: r.place, notes: r.notes, addedAt: r.addedAt })));
+  } else {
+    ORG_RESULTS[orgId] = resultRows.map(r => ({ id: r.id || ('or' + Date.now() + Math.random().toString(36).slice(2,6)), student: r.student, event: r.event, levelKey: r.level, place: r.place, notes: r.notes, addedAt: r.addedAt }));
+    persistOrgResults();
+  }
+
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '' };
+  persistOrgSync();
+
+  renderOrgTabs();
+  _applyOrgNavLabels();
+  if (document.getElementById('member-tab-content')) renderStudents();
+  if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+  renderOrgCatalogSettings();
+  _showToast('✅ Pulled latest ' + (ORGANIZATIONS[orgId] ? ORGANIZATIONS[orgId].name : orgId) + ' data', 3200, '#166534');
+}
+
+// Shown when pushOrgSync_ rejects a push with {conflict:true} — someone
+// else pushed since this browser's last pull. Offers Pull-first (safe
+// default — see what changed, then re-push if still needed) or Push
+// Anyway (overwrite the newer remote state with this browser's local
+// data), never a silent auto-resolution either way.
+function _showOrgSyncConflictModal(orgId, res) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-sync-conflict-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  const whenStr = res.remoteUpdatedAt ? new Date(res.remoteUpdatedAt).toLocaleString() : 'unknown time';
+  const byStr   = res.remoteUpdatedBy ? escH(res.remoteUpdatedBy) : 'someone else';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="Sync conflict for ${escH(org.name)}">
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">⚠️ <strong>${escH(org.name)}</strong> was updated by ${byStr} on ${escH(whenStr)} — after the last time this browser synced. Pushing now would overwrite that change.</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <button class="btn btn-primary btn-sm" id="org-conflict-pull">⬇️ Pull Latest First (recommended)</button>
+      <button class="btn btn-danger btn-sm" id="org-conflict-push">⬆️ Push Anyway (overwrite their change)</button>
+      <button class="btn btn-outline btn-sm" id="org-conflict-cancel">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-conflict-cancel').onclick = closeIt;
+  document.getElementById('org-conflict-pull').onclick = () => { closeIt(); lhPullOrgSync(orgId); };
+  document.getElementById('org-conflict-push').onclick = () => {
+    closeIt();
+    // Re-push with expectedUpdatedAt cleared to the *server's* reported
+    // current value — this is the one deliberate override path, so it
+    // still goes through the same compare-and-swap on the server (against
+    // whatever's there right this instant), it just accepts the value the
+    // conflict response just told us about instead of our stale one.
+    ORG_SYNC[orgId] = Object.assign({}, ORG_SYNC[orgId], { lastKnownRemoteUpdatedAt: res.remoteUpdatedAt });
+    persistOrgSync();
+    lhPushOrgSync(orgId);
+  };
+  document.getElementById('org-conflict-pull').focus();
+}
+
+async function lhOpenJoinOrgModal() {
+  if (!EMAIL_BRIDGE.url()) {
+    _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    return;
+  }
+  const modalId = 'org-join-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:460px;width:92%;max-height:80vh;overflow-y:auto;border-radius:12px;padding:1.25rem" role="dialog" aria-modal="true" aria-label="Join a shared organization">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <h3 style="margin:0;font-size:1rem">Join a Shared Organization</h3>
+      <button id="org-join-close" aria-label="Close" style="background:none;border:none;font-size:1.1rem;cursor:pointer">✕</button>
+    </div>
+    <div id="org-join-list" style="font-size:.8rem;color:var(--muted)">Loading shared organizations…</div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-join-close').onclick = closeIt;
+
+  const listEl = document.getElementById('org-join-list');
+  let res;
+  try { res = await callGAS('listOrgSyncs', {}); }
+  catch (e) { listEl.textContent = '⚠ Could not reach Apps Script bridge.'; return; }
+  if (!res || !res.ok) { listEl.textContent = '⚠ Could not load: ' + ((res && res.error) || 'unknown error'); return; }
+  if (!res.orgs.length) { listEl.textContent = 'No organizations have been shared on this bridge yet.'; return; }
+  listEl.innerHTML = res.orgs.map(o => {
+    const existsLocally = !!ORGANIZATIONS[o.orgId];
+    const btnLabel = existsLocally ? 'Pull latest' : 'Join';
+    const whenStr = o.updatedAt ? new Date(o.updatedAt).toLocaleString() : 'unknown';
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem">
+      <span style="flex:1"><strong>${escH(o.orgName)}</strong><br><span style="font-size:.7rem;color:var(--muted)">Last updated ${escH(whenStr)}${o.updatedBy ? ' by ' + escH(o.updatedBy) : ''}</span></span>
+      <button onclick="lhJoinOrg('${o.orgId}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">${btnLabel}</button>
+    </div>`;
+  }).join('');
+}
+
+function lhJoinOrg(orgId) {
+  const existing = ORGANIZATIONS[orgId];
+  const doPull = () => { const m = document.getElementById('org-join-modal'); if (m) m.remove(); lhPullOrgSync(orgId); };
+  if (existing) {
+    _showConfirm(
+      `Pull the latest shared data for ${existing.name}? This replaces its roster and results in this browser with what's on the shared Sheet.`,
+      doPull,
+      { confirmLabel: 'Pull Latest', danger: false, ariaLabel: `Pull latest data for ${existing.name}` }
+    );
+  } else {
+    doPull();
+  }
 }
 
 // ── Whole-app backup — every lh_* localStorage key, in one file ─────────────
