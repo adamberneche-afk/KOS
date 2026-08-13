@@ -306,6 +306,28 @@ from every code path that can call `showView()`. The Virginia-CTE-specific
 `SCR_COURSES` course catalog (course codes/competency lists) is still
 hardcoded and not covered by any settings layer.
 
+## Settings → Clear Sample Data
+
+Six collections ship with real Adam-specific seed content baked into the
+file — Field Trips, DECA Members, DECA/Leadership Events, Goals, WBL
+Roster, and Store Inventory — and until now the only way for a new teacher
+to start clean was deleting every record one at a time through its own UI.
+
+Settings → Your Data has a "🧹 Clear Sample Data" button (behind the
+shared `_showConfirm()` danger dialog, matching every other destructive
+action in the app) that empties `lh_trips`/`lh_students`/`lh_events`/
+`lh_goals`/`lh_wbl_students`/`lh_inventory` and reloads — Profile, School
+Calendar, and Module settings are untouched.
+
+Building this surfaced a real pre-existing bug, fixed alongside it: the
+reload-time overlay for `lh_trips`, `lh_wbl_students`, and `lh_inventory`
+checked `saved.length` (truthy = non-empty) instead of `Array.isArray(saved)`
+before trusting localStorage over the hardcoded seed. That meant deleting
+every trip (or WBL student, or inventory item) by hand and refreshing the
+browser would silently resurrect the seed data — not just a blocker for
+this button, a real data-integrity bug on its own. `lh_students`/
+`lh_events`/`lh_goals` already used the correct check.
+
 ## UI/UX Hardening — Rounds 1–9
 
 After the reconciliation work that filed this system into the repo, it

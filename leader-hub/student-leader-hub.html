@@ -3622,8 +3622,12 @@ function persistEvents()       { LS.set('lh_events', otherEvents); }
 function persistStudents()     { LS.set('lh_students', students); }
 function persistTrips() { LS.set('lh_trips', trips); }
 function persistTripArchive() { LS.set('lh_trip_archive', tripArchive); }
-// Load persisted trips if available; else keep seed
-{ const saved = LS.get('lh_trips', null); if (saved && saved.length) trips = saved; }
+// Load persisted trips if available; else keep seed. Array.isArray (not
+// saved.length) so that deleting every trip and reloading actually shows
+// zero trips instead of silently resurrecting the seed — same bug class
+// fixed below for WBL_STUDENTS/INVENTORY, and the reason "Clear Sample
+// Data" in Settings works at all (see lhClearSampleData()).
+{ const saved = LS.get('lh_trips', null); if (saved && Array.isArray(saved)) trips = saved; }
 let nextId = LS.get('lh_next_id', {trip:24, ev:30, st:11, gl:14, tk:11});
 function persistNextId() { LS.set('lh_next_id', nextId); }
 let currentTripId = null;
@@ -9419,7 +9423,10 @@ let WBL_STUDENTS = [
 ];
 
 function persistWBL() { LS.set('lh_wbl_students', WBL_STUDENTS); }
-{ const saved = LS.get('lh_wbl_students', null); if (saved && Array.isArray(saved) && saved.length) WBL_STUDENTS = saved; }
+// Array.isArray only (not && saved.length) — see the lh_trips fix above;
+// an explicitly-emptied roster must stay empty on reload, not resurrect
+// the "Sample Student" seed.
+{ const saved = LS.get('lh_wbl_students', null); if (saved && Array.isArray(saved)) WBL_STUDENTS = saved; }
 
 const SBE_ELEMENTS = [
   {id:'sbe1',  label:'Lesson Plans & Competency List',           desc:'Full pacing guide with competency alignment for each SBE stage. Required starting point.',                owner:'Teacher'},
@@ -9454,7 +9461,9 @@ function wblTab(name, btn) {
 function persistInventory() { LS.set('lh_inventory', INVENTORY); }
 function persistSales()     { LS.set('lh_sales_log', SALES_LOG); }
 function persistPO()        { LS.set('lh_purchase_orders', PURCHASE_ORDERS); }
-{ const si = LS.get('lh_inventory', null); if (si && si.length) INVENTORY = si; }
+// Array.isArray only — see the lh_trips fix above; an explicitly-cleared
+// inventory must stay empty on reload, not resurrect the starter SKUs.
+{ const si = LS.get('lh_inventory', null); if (si && Array.isArray(si)) INVENTORY = si; }
 { const ss = LS.get('lh_sales_log', null); if (ss && ss.length) SALES_LOG = ss; }
 { const sp = LS.get('lh_purchase_orders', null); if (sp && sp.length) PURCHASE_ORDERS = sp; }
 
@@ -15108,6 +15117,10 @@ function openSurveyModal(){
         <button onclick="document.getElementById('lh-import-file').click()" style="flex:1;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">⬆️ Import Backup</button>
         <input type="file" id="lh-import-file" accept="application/json" style="display:none" onchange="lhImportBackup(this)">
       </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#7f1d1d;margin-bottom:.6rem">
+        This file ships with sample content — Field Trips, DECA Members, DECA/Leadership Events, Goals, WBL Roster, and Store Inventory — so a new teacher adopting LeaderHub can wipe it in one step instead of deleting each record by hand.
+      </div>
+      <button onclick="lhClearSampleData()" style="width:100%;background:none;border:1.5px solid #fca5a5;color:#991b1b;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;margin-bottom:1.4rem">🧹 Clear Sample Data</button>
 
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Student ID Lookup — AI Privacy</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
@@ -15274,6 +15287,32 @@ function _showImportConfirmModal(count, onConfirm) {
   modal.onclick = e => { if (e.target === modal) modal.remove(); };
   document.body.appendChild(modal);
   document.getElementById('import-confirm-submit').onclick = () => { modal.remove(); onConfirm(); };
+}
+
+// ── Clear Sample Data — Settings → Your Data ─────────────────────────────────
+// This file ships with real Adam-specific seed content in six collections
+// (trips, DECA roster, WBL roster, store inventory, DECA/leadership events,
+// goals) and — until this button existed — the only way for a new teacher
+// to start from a blank slate was deleting each record one at a time
+// through its own UI. Reloads afterward (same as lhImportBackup) so every
+// render path picks up the now-empty collections consistently instead of
+// trying to patch a dozen render functions live.
+//
+// Setting each key to [] only works because lh_trips/lh_wbl_students/
+// lh_inventory's reload-time overlay checks were just fixed to accept an
+// explicitly-empty array (Array.isArray) instead of requiring a non-empty
+// one (saved.length) — otherwise an empty array would silently fall back
+// to the hardcoded seed on the very reload this function triggers.
+function lhClearSampleData() {
+  _showConfirm(
+    "Clear all sample data?\n\nThis empties Field Trips, DECA Members, DECA/Leadership Events, Goals, WBL Roster, and Store Inventory — the content that shipped with this file. Your Profile, School Calendar, and Module settings are untouched.\n\nThis can't be undone — export a backup first if you're not sure.",
+    () => {
+      ['lh_trips', 'lh_students', 'lh_events', 'lh_goals', 'lh_wbl_students', 'lh_inventory'].forEach(k => LS.set(k, []));
+      _showToast('✅ Sample data cleared — reloading…');
+      setTimeout(() => location.reload(), 900);
+    },
+    { confirmLabel: 'Clear Sample Data', danger: true, ariaLabel: 'Clear sample data confirmation' }
+  );
 }
 
 // ── Student ID Lookup — CSV upload for AI-drafting privacy ──────────────────
