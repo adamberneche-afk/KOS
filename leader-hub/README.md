@@ -508,7 +508,9 @@ today is single-browser localStorage; making an organization's roster/
 results genuinely shared means introducing a real synced datastore (a
 Google Sheet via an extended `EmailBridge.gs`, in the direction agreed
 on) with actual conflict-handling for simultaneous edits — a separate,
-substantial round on its own, not a corner of this one. Also deferred,
+substantial round on its own, not a corner of this one. **Built in the
+very next round — see "Settings → Organizations — Co-advisor sharing
+(EE2)" below.** Also deferred,
 narrower and lower-value: the long tail of hardcoded "DECA" references
 outside the Hub/Members/Results core — Brag Board's DECA-specific
 audience tone and win-source, the sub-plan absence-reason enum, the
@@ -524,6 +526,95 @@ organization-import validator (malformed JSON, duplicate id, missing
 fields, id sanitization, level-key derivation), roster organization-
 scoping (legacy-row backfill, per-org filtering), and the `MODULES.deca`
 → `MODULES.orgs` migration.
+
+## Settings → Organizations — Co-advisor sharing (EE2)
+
+The "deliberately out of scope" item from the round above — sharing an
+organization's roster/results between co-advisors — is now built. It
+reuses `EmailBridge.gs`, the same optional Apps Script companion that
+already backs the Email Bridge and AI drafting features, extended with
+three new POST actions and a **second, independent Spreadsheet**
+("LeaderHub Org Sync" — never the AI Queue one) that acts as the shared
+datastore.
+
+**Access model.** Because the Web App is deployed "Execute as Me,"
+whichever teacher deploys it owns the backing Spreadsheet — a co-advisor
+never needs their own Google Drive sharing permissions on it. They only
+need the same `/exec` URL, pasted into their own Settings → Email Bridge,
+exactly like every other Email Bridge feature. Sharing one organization
+does not expose the AI Queue's data or vice versa — they're two separate
+Spreadsheets behind the same URL.
+
+**Layout on the Sheet side.** A `_org_meta` tab (one row per shared org:
+`OrgId, OrgName, ConfigJSON, UpdatedAt, UpdatedBy`) plus per-org
+`roster_<orgId>` / `results_<orgId>` tabs, written as **real spreadsheet
+rows**, not a JSON blob in one cell — a 60–100+ member roster as a single
+JSON cell risks Sheets' ~50,000-character cell limit, and real rows let a
+co-advisor open the Sheet directly and read (or, in a pinch, hand-edit)
+data without LeaderHub at all. The client sends its own header row
+alongside the data on every push, so `EmailBridge.gs` never needs to know
+student/result field shapes — a future schema change on the client side
+never requires touching the `.gs` file.
+
+**Conflict model: optimistic concurrency (compare-and-swap) on
+`UpdatedAt`, not field-level merging.** Every push carries
+`expectedUpdatedAt` — the pusher's last-known remote state for that org.
+If the Sheet's actual current `UpdatedAt` doesn't match, someone else
+pushed in between: the server rejects the push with `{conflict:true,
+remoteUpdatedAt, remoteUpdatedBy}` and writes nothing, and LeaderHub shows
+a conflict dialog with two explicit choices — **Pull Latest First**
+(recommended) or **Push Anyway** (overwrite the other advisor's change).
+There is no silent auto-merge in either direction. This is
+last-full-snapshot-wins-with-a-warning — sufficient for the low-
+concurrency, two-or-three-advisor case this is built for, not a
+substitute for real-time collaboration. Two advisors editing the *same*
+org at the literal same instant can still race past the check (the
+window between "read the current UpdatedAt" and "write the new one" is
+small but nonzero) — the compare-and-swap catches the much more common
+"someone pushed since your last pull" case, not every theoretically
+possible interleaving.
+
+**Client-side additions:**
+- `lh_org_sync` localStorage — per org, `{enabled, lastKnownRemoteUpdatedAt,
+  lastSyncedAt, lastSyncedBy}`.
+- Settings → Organizations gained, per org: a **Share with a co-advisor**
+  button (first push) when not yet shared, or **Pull** / **Push** /
+  **Stop sharing** controls once it is — deliberately separate Pull and
+  Push actions rather than one merged "Sync," so a teacher always knows
+  which direction data is about to move before it moves.
+- **Join a Shared Organization** — calls the new `listOrgSyncs` endpoint
+  and lists every org shared on that bridge deployment, with a Join (new
+  locally) or Pull Latest (already have it) button per row. A co-advisor
+  doesn't need to already know an org's exact id.
+- A conflict dialog (`_showOrgSyncConflictModal`) for the rejected-push
+  case described above.
+- Pulling a **non-DECA** org also adopts its shared config (officer
+  positions, levels, placement options) as local — that's the point of
+  sharing a custom org. **DECA's own hardcoded config is never touched**
+  by a pull, matching the guarantee the rest of this app makes about
+  Adam's built-in DECA experience; only DECA's roster/results sync.
+- Local roster/result IDs are never trusted back in from a pull — they're
+  per-browser bookkeeping, not a cross-device key, so a pulled roster row
+  gets a fresh local id from the existing `nextId.st` counter instead.
+
+**Not covered, by design:** true real-time collaboration (this is
+pull/push, not a live multiplayer document), and automatic background
+sync (nothing pushes or pulls without a teacher clicking a button —
+avoids a surprise overwrite from a stale tab left open in the
+background).
+
+Verified with `node --check` on `EmailBridge.gs` and both `<script>`
+blocks of the HTML file, `node tools/gas-lint/check.js` (clean except the
+2 pre-existing unrelated cas-ccps warnings), and a Node harness
+(`verify_ee2.js`) that loads the real `EmailBridge.gs` source into a
+sandboxed VM context with an in-memory Spreadsheet/PropertiesService mock
+and exercises the actual shipped `pushOrgSync_`/`pullOrgSync_`/
+`listOrgSyncs_` functions — first push, list, pull, in-sync push, stale-
+push rejection (conflict:true, and confirming the rejected push wrote
+nothing), pull-then-push recovery, two independent orgs not colliding on
+each other's tabs, ragged/mismatched row widths normalizing instead of
+throwing, and repeated pushes updating one meta row instead of appending
+duplicates (21 checks, all passing).
 
 ## UI/UX Hardening — Rounds 1–9
 
