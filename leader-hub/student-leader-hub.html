@@ -3533,6 +3533,18 @@ function _applyModuleVisibility() {
 // honest once other organizations can be added: shows the one configured
 // organization's own name/icon, or "Organizations" once there's more than
 // one. Called at boot and after any org import/removal.
+//
+// Also refreshes a handful of narrower, lower-value spots elsewhere in the
+// app that still show a literal "DECA" string rather than reading it from
+// config — the sub-plan absence-reason dropdown, the trip-archive filter
+// button, and the permission-slip roster-source button. Those three are
+// specifically about DECA's own built-in config (ORGANIZATIONS.deca —
+// there is no UI to rename the built-in org today, but a teacher forking
+// this file for their own club/CTSO can hand-edit ORG_DEFAULTS.deca once
+// and have every one of these follow, instead of hunting down each
+// hardcoded string individually). They intentionally do NOT track custom
+// imported organizations — those are covered by the separate, fully
+// generic ORG_RESULTS/renderOrgResults() system.
 function _applyOrgNavLabels() {
   const ids = Object.keys(ORGANIZATIONS);
   const single = ids.length === 1 ? ORGANIZATIONS[ids[0]] : null;
@@ -3545,6 +3557,19 @@ function _applyOrgNavLabels() {
     const arrowTxt = accHd.querySelector('.acc-arrow')?.textContent || '▶';
     accHd.innerHTML = `<span>${icon}</span> ${escH(name)} <span class="acc-arrow">${arrowTxt}</span>`;
   }
+
+  const decaOrg  = ORGANIZATIONS.deca;
+  const decaIcon = decaOrg ? (decaOrg.icon || '🏆') : '🏆';
+  const decaName = decaOrg ? decaOrg.name : 'DECA';
+
+  const reasonOpt = document.getElementById('sp-reason-deca-opt');
+  if (reasonOpt) reasonOpt.textContent = `${decaIcon} ${decaName} Trip`;
+
+  const archiveBtn = document.getElementById('af-deca');
+  if (archiveBtn) archiveBtn.textContent = `${decaIcon} ${decaName}`;
+
+  const slipSrcBtn = document.getElementById('as-src-deca');
+  if (slipSrcBtn) slipSrcBtn.textContent = `${decaIcon} ${decaName} Members`;
 }
 
 // ── Extracurricular Organizations — Settings → Organizations ─────────────────
@@ -7957,7 +7982,16 @@ function slipSourceTab(src) {
 function renderDecaPicklist() {
   const filter = document.getElementById('as-deca-filter').value;
   const list   = document.getElementById('as-deca-list');
+  // FIXED: this panel's filter options (SLC/ICDC Qualifiers, dues status)
+  // are DECA's own memberStatus vocabulary, but the roster pull never
+  // scoped to `s.org === 'deca'` — once EE1 gave every organization its
+  // own roster, adding a second club here silently mixed its members into
+  // what the UI still labels "DECA Members," with statuses that don't even
+  // apply to them. Scoped to DECA specifically (not activeOrgId) since
+  // this panel's filter semantics are DECA-only regardless of which
+  // organization tab happens to be showing elsewhere in the app.
   const active = students.filter(s => {
+    if (s.org !== 'deca') return false;
     if (s.memberStatus === 'alumni') return false;
     if (filter === 'all') return true;
     return s.memberStatus === filter || (filter === 'active' && s.paid);
@@ -8818,7 +8852,17 @@ function renderArchive() {
   let list = [...tripArchive];
 
   // Filter
-  if(archiveFilterCurrent === 'deca') list = list.filter(a => a.trip.name && a.trip.name.toLowerCase().includes('deca'));
+  // FIXED: this used to match the literal substring 'deca' — a different
+  // teacher's own org (or Adam renaming ORGANIZATIONS.deca in a fork) would
+  // silently break this filter since it never read config at all. Matches
+  // against the actual configured DECA org name instead — still narrower
+  // than the fully generic Organizations system (this only affects DECA's
+  // own name, not any custom imported org), same scope as the sub-plan/
+  // archive-button/slip-source label fixes above.
+  if(archiveFilterCurrent === 'deca') {
+    const decaName = ((ORGANIZATIONS.deca||{}).name || 'DECA').toLowerCase();
+    list = list.filter(a => a.trip.name && a.trip.name.toLowerCase().includes(decaName));
+  }
   // Trip Type values are 'same-day'/'overnight-is'/'overnight-oos'/'multi-day'/
   // 'international' (see the wizard's nt-sub options) — this used to check
   // 'overnight'/'out-of-state', which never matched anything, so the filter
@@ -12842,11 +12886,21 @@ function organizeThought() {
   const text   = (inp?.value || '').trim();
   if (!text) return;
 
-  // Rule-based classification by keyword
+  // Rule-based classification by keyword. The 'deca' role key stays as the
+  // stable internal identifier (matches DEADLINES/HORIZON role tagging and
+  // EmailBridge.gs's #role: hashtag convention — renaming it would be a
+  // real data migration, not a hardcoding cleanup), but the keyword LIST
+  // was hardcoded to DECA-only vocabulary — a teacher whose only
+  // organization is FBLA typing "FBLA fundraiser" or "regional conference"
+  // never matched. FIXED: every configured organization's own name and
+  // achievement-level labels are folded in dynamically, in addition to
+  // (never instead of) Adam's original DECA terms, so his own classifier
+  // behavior is unchanged and any other configured org gets covered too.
+  const _orgKeywords = Object.values(ORGANIZATIONS).flatMap(o => [o.name, ...((o.levels||[]).map(l => l.label))]).filter(Boolean);
   const ROLE_KEYWORDS = {
     teach:   ['lesson','plan','grade','score','gradebook','unit','synergy','obs','observation','IEP','student','class','period','pacing'],
     store:   ['store','inventory','PO','purchase','sales','SBE','deposit','cash','register','Cavalier'],
-    deca:    ['DECA','ICDC','competition','chapter','membership','SLC','DLC','conference','region'],
+    deca:    ['DECA','ICDC','competition','chapter','membership','SLC','DLC','conference','region', ..._orgKeywords],
     esports: ['esports','e-sports','Smash','Mario Kart','match','roster','game','bracket'],
     trips:   ['trip','field trip','TripTracker','permission','slip','chaperone','bus','approval'],
     general: [],
@@ -13075,8 +13129,8 @@ async function _generateBragEmailInner() {
   const aud      = BRAG_AUDIENCE[_bragTab];
   const statusEl = document.getElementById('brag-ai-status');
   const bodyEl   = document.getElementById('brag-body');
-  const { completedTasks, decaResults, trips, emailItems, logEntries, scrWins, wblWins, esMatchWins, journalWins, manualWins } = _bragData;
-  const totalWins = (completedTasks||[]).length + (decaResults||[]).length + (trips||[]).length +
+  const { completedTasks, decaResults, orgResults, trips, emailItems, logEntries, scrWins, wblWins, esMatchWins, journalWins, manualWins } = _bragData;
+  const totalWins = (completedTasks||[]).length + (decaResults||[]).length + (orgResults||[]).length + (trips||[]).length +
                     (emailItems||[]).length + (logEntries||[]).length + (scrWins||[]).length +
                     (wblWins||[]).length + (esMatchWins||[]).length + (journalWins||[]).length + (manualWins||[]).length;
 
@@ -13093,6 +13147,7 @@ async function _generateBragEmailInner() {
   const sections = [];
   if ((completedTasks||[]).length) sections.push('Tasks completed:\n' + completedTasks.map(t=>`• ${t.text}`).join('\n'));
   if ((decaResults||[]).length)    sections.push('DECA results:\n' + decaResults.map(r=>`• ${r.text}`).join('\n'));
+  if ((orgResults||[]).length)     sections.push('Organization results:\n' + orgResults.map(r=>`• ${r.text}`).join('\n'));
   if ((trips||[]).length)          sections.push('Field trips:\n' + trips.map(t=>`• ${t.text}`).join('\n'));
   if ((scrWins||[]).length)        sections.push('Instruction:\n' + scrWins.map(s=>`• ${s.text}`).join('\n'));
   if ((wblWins||[]).length)        sections.push('WBL/Store:\n' + wblWins.map(w=>`• ${w.text}`).join('\n'));
@@ -17334,7 +17389,7 @@ function emailSubPlanToNykia() {
     ? new Date(dateStr + 'T12:00:00').toLocaleDateString('en-US', { weekday:'long', month:'long', day:'numeric' })
     : 'upcoming absence';
   const reason = document.getElementById('sp-reason').value;
-  const reasonLabels = { sick:'Sick Day', deca:'DECA Trip', conference:'Conference/PD Day', personal:'Personal Day' };
+  const reasonLabels = { sick:'Sick Day', deca:`${(ORGANIZATIONS.deca||{}).name || 'DECA'} Trip`, conference:'Conference/PD Day', personal:'Personal Day' };
   const body = document.getElementById('sp-preview-output').textContent;
   const subject = encodeURIComponent(`Sub Plan — ${reasonLabels[reason] || reason} — ${dateLabel}`);
   const bodyEnc = encodeURIComponent(`Hi ${PROFILE.attendanceCoordFirstName},\n\nPlease find my sub plan attached below for my absence on ${dateLabel}.\n\n---\n\n${body}\n\n---\n\nThank you,\n${PROFILE.name}`);
@@ -17481,6 +17536,20 @@ function gatherBragData() {
     .filter(r => inRange(r.addedAt))
     .map(r => ({ text: `${r.student} — ${r.event}: ${r.place || 'participated'}`, notes: r.notes }));
 
+  // ── Other organizations' results (FIXED: this was DECA-only — any other
+  // organization added via Settings → Organizations never showed up in Brag
+  // Board at all, since gatherBragData() only ever read lh_deca_results.
+  // DECA's own section above is untouched; this is a separate, additive pull
+  // from ORG_RESULTS covering every non-DECA org.) ─────────────────────────
+  const orgResults = [];
+  Object.keys(ORGANIZATIONS).forEach(orgId => {
+    if (orgId === 'deca') return; // already covered by decaResults above
+    const orgName = ORGANIZATIONS[orgId].name || orgId;
+    getOrgResults(orgId)
+      .filter(r => inRange(r.addedAt))
+      .forEach(r => orgResults.push({ text: `${orgName}: ${r.student} — ${r.event}: ${r.place || 'participated'}`, notes: r.notes }));
+  });
+
   // ── Trip archive ───────────────────────────────────────────────────────────
   const archivedTrips = (LS.get('lh_trip_archive', []) || [])
     .filter(a => inRange(a.archivedAt))
@@ -17557,7 +17626,7 @@ function gatherBragData() {
     }
   } catch(e) {}
 
-  _bragData = { completedTasks, decaResults, trips: archivedTrips, emailItems, logEntries, scrWins, wblWins, esMatchWins, journalWins, manualWins };
+  _bragData = { completedTasks, decaResults, orgResults, trips: archivedTrips, emailItems, logEntries, scrWins, wblWins, esMatchWins, journalWins, manualWins };
 
   // Render left panel
   const renderList = (sectionId, listId, items, fmt) => {
@@ -17823,7 +17892,7 @@ function showBragBoardPromptBanner() {
             <label style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);display:block;margin-bottom:3px">Reason for Absence</label>
             <select id="sp-reason" style="width:100%;font-size:.82rem;border:1px solid var(--border);border-radius:6px;padding:.38rem">
               <option value="sick">🤒 Sick Day</option>
-              <option value="deca">🏆 DECA Trip</option>
+              <option value="deca" id="sp-reason-deca-opt">🏆 DECA Trip</option>
               <option value="conference">📚 Conference / PD Day</option>
               <option value="personal">🗓 Personal Day</option>
             </select>

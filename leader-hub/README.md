@@ -603,6 +603,70 @@ sync (nothing pushes or pulls without a teacher clicking a button —
 avoids a surprise overwrite from a stale tab left open in the
 background).
 
+## FF1 — the long tail of hardcoded "DECA" references, closed out
+
+EE1's own "deliberately out of scope" list named five narrower,
+lower-value spots outside the Hub/Members/Results core that still said
+"DECA" literally instead of reading it from `ORGANIZATIONS`. All five are
+now fixed — plus one real bug found while fixing them:
+
+- **Brag Board win-source.** `gatherBragData()` only ever read
+  `lh_deca_results` — any results logged for a non-DECA organization
+  (via `ORG_RESULTS`, EE1's generic results board) never showed up in a
+  weekly wins email at all. Now gathers an additional `orgResults` section
+  from every non-DECA organization, additive to (never replacing) DECA's
+  own "DECA results:" section.
+- **Sub-plan absence-reason enum.** The "Reason for Absence" dropdown had
+  a literal `🏆 DECA Trip` option and mailto subject line. Both now read
+  `ORGANIZATIONS.deca.name`/`.icon` — unchanged text for Adam today, but a
+  fork that renames its own org config has this follow automatically
+  instead of needing to be hunted down by hand.
+- **Quick-thought keyword classifier.** `organizeThought()`'s rule-based
+  role classifier had a `deca` keyword list hardcoded to DECA-specific
+  terms (`ICDC`/`SLC`/`DLC`/`chapter`/`membership`/...) — a teacher whose
+  only organization is FBLA typing "FBLA fundraiser" never classified into
+  that bucket. The internal role key stays `deca` (it's a stable
+  identifier shared with `DEADLINES`/`HORIZON` role tagging and
+  `EmailBridge.gs`'s `#role:` hashtag convention — renaming it would be a
+  real migration, not a hardcoding cleanup), but the keyword *list* now
+  folds in every configured organization's own name and achievement-level
+  labels, additive to the original DECA terms.
+- **Permission-slip roster-source label — plus a real latent bug.** The
+  "Add Student to Slip Tracker" panel's "🏆 DECA Members" button is now
+  driven by `ORGANIZATIONS.deca`. While fixing the label, found that
+  `renderDecaPicklist()` never actually scoped to `s.org === 'deca'` —
+  once EE1 gave every organization its own roster, adding a second club
+  silently mixed its members into a picker still labeled "DECA Members,"
+  offered against DECA-only status filters (SLC/ICDC Qualifier) that don't
+  even apply to them. Fixed by scoping the picklist to DECA specifically
+  (this panel's filter vocabulary is DECA-only by design, unlike the
+  fully generic `ORG_RESULTS` system).
+- **Trip-archive name-matching filter.** The Archive view's "🏆 DECA"
+  quick filter matched the literal substring `'deca'` against a trip's
+  name — fragile even for Adam (a trip named "SLC Weekend" wouldn't have
+  matched) and completely dead for any other org. Now matches against
+  `ORGANIZATIONS.deca.name` (case-insensitive), with the filter button's
+  own label following the same config.
+
+All five fixes read `ORGANIZATIONS.deca` rather than hardcoding a second
+"generic org" system for this narrow tail — DECA's own filter vocabulary
+(SLC/ICDC statuses, its season pipeline) stays DECA-specific by design,
+same as the Hub/Members/Results core EE1 already locked in. None of this
+changes what a custom imported organization can do; it only stops a
+handful of DECA-only conveniences from silently breaking (or leaking
+data) once a second organization exists.
+
+Verified with `node --check` on both `<script>` blocks, `node
+tools/gas-lint/check.js` (clean except the 2 pre-existing unrelated
+cas-ccps warnings), and a Node harness (`verify_ff1.js`, 18 checks) that
+re-exercises each fix's logic directly — the Brag Board org-results
+gather (in-range filtering, DECA never double-counted), the label-lookup
+fallback to `ORGANIZATIONS.deca`, the archive filter's config-driven
+match against both the real DECA config and a simulated renamed fork, the
+classifier's keyword generalization, and the slip-tracker picklist's
+org-scoping (confirming a non-DECA member no longer leaks into the "DECA
+Members" list).
+
 Verified with `node --check` on `EmailBridge.gs` and both `<script>`
 blocks of the HTML file, `node tools/gas-lint/check.js` (clean except the
 2 pre-existing unrelated cas-ccps warnings), and a Node harness
