@@ -217,13 +217,47 @@ superset rebuild (same 20 units, 16 fields → 20 fields — adds `chain_node`,
 `esports_connection`, `vocabulary_with_definitions`, `studio_flow_hooks`;
 warm-up anchors are now full teacher-authored prompts instead of
 compressed summaries). The prior version is kept at
-`curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.json`. **Known
-gap, not fixed here:** `scripts/31_PacingGuideManager.js` (see item 9)
-still only reads the original 16-field schema — it will silently ignore
-the 4 new v2 fields until its `PG_HEADERS`/`PG_COL_COUNT` and row-mapping
-are extended to carry them into the `PacingGuide` tab. `curriculum/PacingGuide_CAS_Context.csv`
-and `.docx` are now stale relative to the v2 JSON and were not
-regenerated — flagged, not silently left looking current.
+`curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.json`.
+
+**Update — gap closed:** `scripts/31_PacingGuideManager.js` now reads,
+writes, and caches all 20 v2 fields. `PG_HEADERS`/`PG_COL_COUNT` were
+extended (16 → 20, append-only) to carry `chain_node`, `esports_connection`,
+`vocabulary_with_definitions`, and `studio_flow_hooks` into the
+`PacingGuide` tab (the two structured fields are stored as a JSON string
+per cell and parsed back out on read, with a defensive fallback to `[]`/`{}`
+on a hand-edited cell). `resolveUnitForDate_`/`getWarmUpAnchor_`/
+`getAllUnits_`/`getUnitById_` all expose the 4 new fields now — no
+downstream consumer (Scripts 23/24) reads them yet, but they're no longer
+silently dropped at the point of import.
+
+Fixing this surfaced a real, pre-existing bug independent of the 4 new
+fields: the pacing guide cache (`_loadPacingGuide_`) wrote all 20 units as
+one JSON blob into a single Script Property, and PropertiesService caps a
+single property at 9216 bytes. Measured against the real 2026-27 data,
+that blob was already ~28KB with only the *original* 16 fields (the file's
+own comment claimed "~10KB — at the limit," which undersold it by ~3x) —
+meaning `setProperty()` was likely already failing silently into the
+existing non-fatal catch block in production, before this fix touched
+anything. Adding the 4 new fields in full would have pushed it to ~69KB.
+
+**Fix:** the cache is now split one Script Property per unit
+(`M2_PACING_UNIT_<lesson_unit_id>`) plus a small index property listing
+which unit IDs are cached (`M2_PACING_GUIDE_INDEX`, replacing the old
+`M2_PACING_GUIDE_CACHE` single-blob key). Every real unit's own row, even
+with all 20 fields, comes in well under the 9216-byte cap (largest
+observed unit: ~5.2KB) — no field needs blanket truncation for real data.
+A defensive safety valve still exists for a hypothetical future unit whose
+own content alone exceeds the cap: `warmup_anchor` (the one field this
+file already established as safe to cut) gets truncated for that unit only,
+flagged, and transparently recovered in full on demand by
+`_getFullPacingField_` (generalized from the old warmup_anchor-only
+`_getFullWarmupAnchor_`) — same mechanism, now reusable for any column.
+Verified with a Node harness against the real 20-unit JSON (all units
+cache without truncation) plus a simulated oversized-unit case (safety
+valve fires correctly, full text still recoverable).
+
+`curriculum/PacingGuide_CAS_Context.csv` and `.docx` are now stale
+relative to the v2 JSON — not regenerated (see next item).
 
 ### 9. Six missing Module 2 Full scripts filed in as real code
 
