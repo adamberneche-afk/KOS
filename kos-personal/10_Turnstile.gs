@@ -22,6 +22,19 @@
 //   STUDIO_ACTIVE → [stuck > CFG.TURNSTILE_STALE_MINS] → reset to
 //                    PENDING_FLOW, Retry_Count incremented
 //
+// MANAGED_SERVICE MODE (CFG.INFERENCE_MODE, 1_Config_And_Deploy.gs)
+// ─────────────────────────────────────────────────────────────
+// When INFERENCE_MODE is 'MANAGED_SERVICE' instead of the default
+// 'STUDIO', a row is handed off to the standalone inference-service
+// (3_Queue_Processor.gs's _submitManagedServiceJob_) immediately before
+// being released to STUDIO_ACTIVE, in place of native Studio inference.
+// A row only advances to STUDIO_ACTIVE if that hand-off succeeds — a
+// failed submission leaves it in PENDING_FLOW to retry on the next run,
+// same as any other transient failure. This closes a previously-real gap
+// (see kos-personal/README.md): MANAGED_SERVICE mode used to release rows
+// to STUDIO_ACTIVE with no Studio watching and nothing else ever
+// processing them.
+//
 // WHY RELEASE TIMESTAMPS LIVE IN PropertiesService, NOT A NEW COLUMN
 // ─────────────────────────────────────────────────────────────
 // Adding an 8th STAGING_PIPELINE column would mean touching every
@@ -110,6 +123,28 @@ function runMatrixTurnstile() {
         if (status !== 'PENDING_FLOW') continue;
 
         const uid = String(data[i][SC.PAYLOAD_UID]);
+
+        // MANAGED_SERVICE mode: hand the job off to the standalone
+        // inference-service before releasing — see _submitManagedServiceJob_
+        // in 3_Queue_Processor.gs for why this exists (was previously
+        // completely unwired; see kos-personal/README.md). In the default
+        // 'STUDIO' mode this block is skipped entirely and the release
+        // behaves exactly as it did before this fix.
+        if (CFG.INFERENCE_MODE === 'MANAGED_SERVICE') {
+          const fileId      = String(data[i][SC.FILE_ID]);
+          const docUrl      = String(data[i][SC.DOC_URL]);
+          const payloadType = String(data[i][SC.PAYLOAD_TYPE]);
+          const submission  = _submitManagedServiceJob_(uid, fileId, docUrl, payloadType);
+
+          if (!submission.ok) {
+            console.warn('[Turnstile] Row ' + sheetRow + ' (' + uid + ') not released — ' +
+              'managed-service submission failed: ' + submission.error);
+            continue; // leave PENDING_FLOW, retry on the next 5-min run
+          }
+          console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') submitted to managed service (job ' +
+            submission.job_id + ').');
+        }
+
         staging.getRange(sheetRow, SC.STATUS + 1).setValue('STUDIO_ACTIVE');
         released[uid] = nowMs;
         releasedCount++;

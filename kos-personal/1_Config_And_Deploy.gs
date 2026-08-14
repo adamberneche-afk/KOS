@@ -227,6 +227,13 @@ const CFG = {
     // hardcoded into this file.
     MANAGED_SERVICE_BASE_URL: 'KOS_MANAGED_SERVICE_BASE_URL',
     MANAGED_SERVICE_API_KEY:  'KOS_MANAGED_SERVICE_API_KEY',
+    // Shared HMAC secret matching inference-service's WEBHOOK_SECRET env
+    // var — signs POST /api/v1/jobs submissions so the service can reject
+    // forged job-submission requests (see server.js's validateWebhookSignature).
+    // Optional: if unset, job submission still runs, unsigned — matching
+    // the service's own "skip in dev if not configured" behavior. Only
+    // read by _submitManagedServiceJob_() in 3_Queue_Processor.gs.
+    MANAGED_SERVICE_WEBHOOK_SECRET: 'KOS_MANAGED_SERVICE_WEBHOOK_SECRET',
 
     // Google Chat incoming webhook (optional). Unset by default — every
     // caller of _sendChatAlert() in 5_Error_And_Utilities.gs degrades to
