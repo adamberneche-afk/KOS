@@ -2517,7 +2517,13 @@ function closeTip() {
     document.getElementById('op-nav').style.display = '';
     restoreIngestDraft();
 
-    // Shadow matrix ping — sets header engine mode dot on load
+    // Shadow matrix ping — sets header engine mode dot on load.
+    // Both calls here pass their own onErr (-> console only) instead of
+    // falling through to the untokened onServerError(), which writes
+    // unconditionally to #diag-status — these two boot-time pings aren't
+    // user-initiated Diagnostics actions and have no business overwriting
+    // a fresher, in-flight one (see beginDiagAction()/showDiagStatus()'s
+    // token mechanism above).
     if (gsr) {
       callServer('getShadowMatrixStatus', [], (res) => {
         if (!res || !res.success) return;
@@ -2526,6 +2532,8 @@ function closeTip() {
         const lbl = document.getElementById('engine-label');
         if (dot) dot.className = 'dot ' + (modeColors[res.engine_mode] || 'dot-unk');
         if (lbl) lbl.textContent = friendlyEngineMode(res.engine_mode);
+      }, (err) => {
+        console.warn('[Boot] getShadowMatrixStatus failed:', err);
       });
 
       // Pre-fetch inbound folder URL for the large-payload drop panel
@@ -2535,6 +2543,8 @@ function closeTip() {
           const link = document.getElementById('inbound-folder-link');
           if (link) link.href = res.url;
         }
+      }, (err) => {
+        console.warn('[Boot] getInboundFolderUrl failed:', err);
       });
     }
   }
