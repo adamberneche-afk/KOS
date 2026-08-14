@@ -71,9 +71,10 @@ picking this project up later who wants to know what changed and when.
 5. **`CFG` now has all four previously-missing keys**:
    `TURNSTILE_CONCURRENCY`, `TURNSTILE_STALE_MINS`, `SHADOW_VERIFY_THRESHOLD`,
    `COUNCIL_AUTO_TRIGGER_SESSIONS` — values match the defaults this README
-   already documented. (`MAX_CHUNK_SIZE` stays `8000`, not `25000` — that
-   mismatch was never part of the reconciliation scope and the delivered
-   value is retained; see the constants table below.)
+   already documented. (`MAX_CHUNK_SIZE` is `25000`, changed from `8000` in
+   the originally delivered file — see the Key Configuration table below,
+   which has always had this right; this note previously and incorrectly
+   said the opposite.)
 6. **`setupAllTriggers()` now installs all 10 documented triggers** in one
    pass, including `runMatrixTurnstile`, `generateDailyPrimer`,
    `autoCouncilCheck`, and `onGovernanceEdit` (previously only installable
