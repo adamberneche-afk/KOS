@@ -1529,10 +1529,48 @@ let armStep = 0;
 // typed earlier, so Continue then Back then Continue again came back blank.
 let armAnswers = {};
 
-let _armReturnFocus = null;
-function handleArmEngine() {
+// ── Arm-modal draft persistence (survives an accidental backdrop-click or
+// Escape dismissal) ──────────────────────────────────────────────────────
+// closeArmModal() used to force-clear armAnswers/armStep unconditionally
+// on every dismissal path — backdrop click and Escape both routed there —
+// with zero confirmation and zero recovery: a single misclick outside this
+// 4-step onboarding wizard silently wiped everything typed. Mirrors the
+// INGEST_DRAFT_KEY pattern above (persist to localStorage via the same
+// _safeLS() guard, restore on next open, clear only on a true
+// submit-success), with one deliberate difference: passphrase and
+// passphraseConfirm are never included in the persisted draft. Those are
+// secrets — they have no business sitting in localStorage even briefly.
+// A resumed draft just needs the passphrase re-typed, same as any
+// password field left empty on a closed form.
+const ARM_DRAFT_KEY = 'kos_arm_draft';
+function persistArmDraft() {
+  const { passphrase, passphraseConfirm, ...safeAnswers } = armAnswers;
+  const hasContent = armStep > 0 || Object.values(safeAnswers).some(v => v);
+  if (!hasContent) { clearArmDraft(); return; }
+  _safeLS(() => localStorage.setItem(ARM_DRAFT_KEY, JSON.stringify({ armStep, armAnswers: safeAnswers })));
+}
+function restoreArmDraft() {
+  const raw = _safeLS(() => localStorage.getItem(ARM_DRAFT_KEY));
+  if (!raw) return false;
+  const d = _safeLS(() => JSON.parse(raw));
+  if (!d) return false;
+  armAnswers = d.armAnswers || {};
+  armStep = Number.isInteger(d.armStep) ? Math.min(Math.max(d.armStep, 0), ARM_STEPS.length - 1) : 0;
+  return true;
+}
+function clearArmDraft() { _safeLS(() => localStorage.removeItem(ARM_DRAFT_KEY)); }
+// Only called after a genuine successful save (submitArmEngine) — every
+// dismissal path (closeArmModal) deliberately leaves the draft in place.
+function _armResetState() {
   armStep = 0;
   armAnswers = {};
+  clearArmDraft();
+}
+
+let _armReturnFocus = null;
+function handleArmEngine() {
+  const hadDraft = restoreArmDraft();
+  if (!hadDraft) { armStep = 0; armAnswers = {}; }
   _armPassVisible = false;
   // Opening never moved focus into the sheet, so keyboard/screen-reader
   // users stayed wherever they were — notionally still "on" the trigger
@@ -1560,12 +1598,19 @@ function _armSetBackgroundInert(on) {
   });
 }
 
-function closeArmModal() {
+// skipPersist is true only right after a successful save (submitArmEngine
+// already called _armResetState()) — every other caller (backdrop click,
+// Escape) omits it, so the in-progress answers get captured from whatever
+// is currently on screen and persisted before the sheet hides, instead of
+// being force-cleared the way this function used to.
+function closeArmModal(skipPersist) {
+  if (!skipPersist) {
+    _armCaptureStep();
+    persistArmDraft();
+  }
   document.getElementById('arm-backdrop').classList.remove('show');
   document.getElementById('arm-sheet').style.display = 'none';
   _armSetBackgroundInert(false);
-  armStep = 0;
-  armAnswers = {};
   document.removeEventListener('keydown', _armEscHandler);
   if (_armReturnFocus && typeof _armReturnFocus.focus === 'function') _armReturnFocus.focus();
   _armReturnFocus = null;
@@ -1715,7 +1760,9 @@ function submitArmEngine() {
   }], (res) => {
     if (res && res.success) {
       btn.innerHTML = '<i class="ti ti-check"></i>Saved!';
-      setTimeout(() => { closeArmModal(); loadDiagnostics(); }, 1000);
+      // Genuine completion — clear the draft instead of persisting it,
+      // unlike every other way this modal closes.
+      setTimeout(() => { _armResetState(); closeArmModal(true); loadDiagnostics(); }, 1000);
     } else {
       btn.disabled = false;
       btn.innerHTML = 'Save & Personalize <i class="ti ti-bolt"></i>';
@@ -2452,10 +2499,12 @@ document.addEventListener('click', () => closeTip());
 // which is only added once a modal opens), it always ran first but never
 // stopped the same keypress from also reaching those later handlers. On
 // the Arm wizard's Step 3, dismissing a tip popover with Escape therefore
-// also closed the whole modal in the same keystroke (closeArmModal()
-// unconditionally resets armStep/armAnswers), silently wiping every
-// answer entered so far. Escape should be "spent" on the topmost open
-// thing — stop it here only when there was actually a tip to close.
+// also closed the whole modal in the same keystroke. closeArmModal() no
+// longer force-clears armStep/armAnswers on any dismissal path (see
+// persistArmDraft()/restoreArmDraft() above), but Escape should still be
+// "spent" on the topmost open thing rather than also dismissing a wizard
+// the user didn't ask to close — stop it here only when there was
+// actually a tip to close.
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || !_tipOpenIcon) return;
   closeTip();
