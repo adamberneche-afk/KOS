@@ -83,6 +83,15 @@ function getConfig_() {
     masterRubricSsId:        p.MASTER_RUBRIC_RESPONSE_SS_ID || "",
     masterMatrixSsId:        p.MASTER_TEACHER_MATRIX_SS_ID  || "",
 
+    // ── Module 2 (merged from 00_SharedConfig_M2_ADDENDUM_v2.js —
+    // see cas-ccps/scripts/archived/ for the original) ──
+    // Default is "false" — explicit opt-in required per installation. Set
+    // M2_ENABLED = true in Script Properties to activate. A cloned ledger
+    // without this property skips all M2 handlers.
+    m2Enabled:                       p.M2_ENABLED || "false",
+    shadowMatrixConfidenceThreshold: 0.75,  // threshold for email interrupt
+    shadowMatrixDecayFactor:         0.85,  // KOS-derived cross-unit decay
+
     // ── Shared tab names (consistent across all projects) ──
     tabs: {
       ledger:          "Ledger",
@@ -91,7 +100,25 @@ function getConfig_() {
       rubricQueue:     "RubricQueue",      // Central Studio Flow 1 trigger tab
       teacherMatrix:   "TeacherMatrix",
       draftUnits:      "DraftUnits",
-      matrixRegistry:  "MatrixRegistry"   // Teacher Matrix SS ID lookup for Script 02
+      matrixRegistry:  "MatrixRegistry",   // Teacher Matrix SS ID lookup for Script 02
+
+      // ── M2 Lightweight (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
+      lessonContext:      "LessonContext",
+      competencyRegistry: "CompetencyRegistry",
+      alignmentLog:       "AlignmentLog",
+      reportRegistry:     "ReportRegistry",
+
+      // ── M2 Full / Warm-Ups (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
+      studentProfiles:    "StudentProfiles",
+      warmUpQueue:        "WarmUpQueue",
+      warmUpRegistry:     "WarmUpRegistry",
+      classSchedule:      "ClassSchedule",
+      pacingGuide:        "PacingGuide",
+      competencyRubrics:  "CompetencyRubrics",
+
+      // ── M4 (merged from 00_SharedConfig_M4_ADDENDUM.js) ──
+      studentDocRegistry: "StudentDocRegistry",
+      warmUpResponses:    "WarmUpResponses"
     }
   };
 }

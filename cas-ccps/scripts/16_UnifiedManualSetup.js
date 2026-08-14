@@ -852,12 +852,29 @@ function createTeacherAssets_(teacherName, teacherEmail, subject, props) {
     if (f.help) item.setHelpText(f.help);
   });
 
+  // -- M5 -- four competency dropdown items, added after the eight
+  // pre-existing items above (matching a teacher's natural reading order:
+  // review each milestone's text, then tag it). Merged from
+  // 16_UnifiedManualSetup_M5_ADDENDUM_v2.js — addCompetencyDropdownItems_()
+  // itself already lived in this project (see that addendum file, still
+  // present alongside this one), only this call site was unmerged.
+  addCompetencyDropdownItems_(confirmForm, centralSsId);
+  // -- M6 -- one more dropdown, placed after the four M5 competency
+  // dropdowns so the reading order is: review milestones, tag
+  // competencies, then tag the lesson unit. Merged from
+  // 16_UnifiedManualSetup_M6_ADDENDUM.js — same story as M5 above.
+  addLessonUnitDropdownItem_(confirmForm, centralSsId);
+
   const matrixSs        = SpreadsheetApp.openById(matrixSsId);
   const confirmRespSheet = matrixSs.insertSheet("ConfirmationResponses");
   setHeaders_(confirmRespSheet, [
     "Timestamp","Email Address","Draft ID","Assignment Name",
     "AI Coach Persona","Milestone 1","Milestone 2",
-    "Milestone 3","Milestone 4","Passing Standard"
+    "Milestone 3","Milestone 4","Passing Standard",
+    // -- M5/M6 -- five trailing headers matching the five new form items --
+    "Competency — Milestone 1","Competency — Milestone 2",
+    "Competency — Milestone 3","Competency — Milestone 4",
+    "Lesson Unit"
   ]);
   confirmForm.setDestination(FormApp.DestinationType.SPREADSHEET, matrixSsId);
   DriveApp.getFileById(confirmForm.getId()).moveTo(teacherFolder);

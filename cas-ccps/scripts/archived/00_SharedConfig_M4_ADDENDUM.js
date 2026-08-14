@@ -1,4 +1,9 @@
 // =============================================================================
+// ARCHIVED — the studentDocRegistry/warmUpResponses tab entries are merged
+// into 00_SharedConfig.js's getConfig_() return object. Do not paste from
+// here; those are live. The deployment checklist below remains useful
+// reference documentation and is why this file is kept rather than deleted.
+// =============================================================================
 // FILE: 00_SharedConfig_M4_ADDENDUM.js
 // PURPOSE: Module 4 additions to paste into getConfig_() in 00_SharedConfig.js
 //

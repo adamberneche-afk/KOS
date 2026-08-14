@@ -32,6 +32,12 @@
 // Paste this ONE line immediately after the M5 addendum's
 // "addCompetencyDropdownItems_(confirmForm, centralSsId);" call, still
 // inside createTeacherAssets_(), before "const matrixSs = ...":
+//
+// APPLIED — both this call site and the M5 addendum's are now merged into
+// createTeacherAssets_() in 16_UnifiedManualSetup.js. addLessonUnitDropdownItem_()
+// and buildLessonUnitDropdownOptions_() below were already live (same
+// shared-project-scope situation as the M5 addendum's functions) — only
+// the call site and the ConfirmationResponses header were unmerged.
 // ---------------------------------------------------------------------------
 
 /*
@@ -45,6 +51,8 @@
 // ---------------------------------------------------------------------------
 // Paste this REPLACEMENT over the M5 addendum's setHeaders_(confirmRespSheet, ...)
 // call — adds one more trailing header, matching the one new form item:
+//
+// APPLIED — merged into createTeacherAssets_() in 16_UnifiedManualSetup.js.
 // ---------------------------------------------------------------------------
 
 /*
