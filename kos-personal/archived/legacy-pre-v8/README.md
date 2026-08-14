@@ -7,6 +7,17 @@ referenced by the current `kos-personal/` system; it's kept for the
 historical record, same convention as every other `archived/` directory
 in this repo.
 
+**Reviewed again** during a later cleanup pass that flagged this
+directory's size (55K+ lines, 2.6MB — larger than the entire live
+system) as worth a retention decision. Conclusion: keep everything as
+documented below. This isn't undifferentiated copy-paste bloat — every
+subfolder's rationale below was independently verified at archival time
+(header inspection, byte-diffing where tooling allowed, one file
+confirmed genuinely meaningless and discarded rather than kept by
+default) — and 2.6MB of plain-text history is not a meaningful storage
+burden in a 16MB repo. Pruning any of it now would destroy real,
+already-completed investigative work for no material benefit.
+
 ## `kos-master-versions/`
 
 Pre-v8.0 KOS/RTP generations: `KOS_MASTER_v3.0.gs` through `v3.1`,

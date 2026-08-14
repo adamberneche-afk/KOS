@@ -16,6 +16,8 @@
 //   ADMIN_NOTIFY_EMAIL    — admin alert email address
 //   TEACHER_DASHBOARD_URL — deployed URL of Script 07 web app
 //   STUDENT_DASHBOARD_URL — deployed URL of Script 13 web app
+//   STUDENT_EMAIL_DOMAIN  — district student-account domain (Script 29's
+//                           ID validation); defaults to "ccpsnet.net" if unset
 //
 // TEACHER PROPERTIES (written automatically by Setup Script 16 — UnifiedManualSetup):
 //   TEACHER_NAME, TEACHER_EMAIL, TEACHER_SUBJECT
@@ -46,6 +48,11 @@ function getConfig_() {
     adminNotifyEmail:     p.ADMIN_NOTIFY_EMAIL       || "",
     teacherDashboardUrl:  p.TEACHER_DASHBOARD_URL    || "",
     studentDashboardUrl:  p.STUDENT_DASHBOARD_URL    || "",
+    // Was hardcoded directly into 29_StudentContextAggregator.js's ID
+    // validation regex — a district domain change would have silently
+    // dropped every student from that module. Defaults to the same value
+    // so behavior is unchanged unless a project sets STUDENT_EMAIL_DOMAIN.
+    studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || "ccpsnet.net",
 
     // ── Teacher identity (written by Setup Script 14) ──
     teacherName:          p.TEACHER_NAME             || "",

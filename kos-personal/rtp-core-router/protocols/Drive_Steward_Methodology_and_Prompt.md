@@ -1,5 +1,19 @@
 # Drive Steward: Context Harness Methodology & Recurring Prompt
 
+**Note on scope (added during a later review pass):** Part 2.5 (Weekly
+Confidence Calibration Loop) and Part 2.6 (The Batch Governor) below are
+a fair amount of statistical/process machinery — divergence intervals,
+target bands, batch sequencing gates — for what is, at its core, one
+person's personal Drive-filing habit. That's a genuine observation, not
+a fix applied here: whether this level of rigor is wanted is Fluffy's
+own call about his own workflow, not something to unilaterally simplify
+on his behalf. Flagged for consideration, left intact. (This file is
+intentionally filed in two places — see `meta/README.md` and
+`kos-personal/rtp-core-router/protocols/` — since its methodology
+applies across systems; that duplication is deliberate, not an
+oversight, so both copies should stay identical if this note or
+anything else here changes.)
+
 **Purpose:** A repeatable workflow that (1) predicts where new files *should* live based on Fluffy's own observed filing logic — not generic best practice — so the context harness can reliably find and pull what it needs, and (2) translates internal technical artifacts into legible output for external audiences (admins, colleagues, district). It never executes changes on its own; it proposes, with rationale, for human approval.
 
 ---
