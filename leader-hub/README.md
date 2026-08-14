@@ -603,6 +603,19 @@ sync (nothing pushes or pulls without a teacher clicking a button —
 avoids a surprise overwrite from a stale tab left open in the
 background).
 
+Verified with `node --check` on `EmailBridge.gs` and both `<script>`
+blocks of the HTML file, `node tools/gas-lint/check.js` (clean except the
+2 pre-existing unrelated cas-ccps warnings), and a Node harness
+(`verify_ee2.js`) that loads the real `EmailBridge.gs` source into a
+sandboxed VM context with an in-memory Spreadsheet/PropertiesService mock
+and exercises the actual shipped `pushOrgSync_`/`pullOrgSync_`/
+`listOrgSyncs_` functions — first push, list, pull, in-sync push, stale-
+push rejection (conflict:true, and confirming the rejected push wrote
+nothing), pull-then-push recovery, two independent orgs not colliding on
+each other's tabs, ragged/mismatched row widths normalizing instead of
+throwing, and repeated pushes updating one meta row instead of appending
+duplicates (21 checks, all passing).
+
 ## FF1 — the long tail of hardcoded "DECA" references, closed out
 
 EE1's own "deliberately out of scope" list named five narrower,
@@ -667,18 +680,94 @@ classifier's keyword generalization, and the slip-tracker picklist's
 org-scoping (confirming a non-DECA member no longer leaks into the "DECA
 Members" list).
 
-Verified with `node --check` on `EmailBridge.gs` and both `<script>`
-blocks of the HTML file, `node tools/gas-lint/check.js` (clean except the
-2 pre-existing unrelated cas-ccps warnings), and a Node harness
-(`verify_ee2.js`) that loads the real `EmailBridge.gs` source into a
-sandboxed VM context with an in-memory Spreadsheet/PropertiesService mock
-and exercises the actual shipped `pushOrgSync_`/`pullOrgSync_`/
-`listOrgSyncs_` functions — first push, list, pull, in-sync push, stale-
-push rejection (conflict:true, and confirming the rejected push wrote
-nothing), pull-then-push recovery, two independent orgs not colliding on
-each other's tabs, ragged/mismatched row widths normalizing instead of
-throwing, and repeated pushes updating one meta row instead of appending
-duplicates (21 checks, all passing).
+## GG1 — Weekly Schedule auto-populated from the real pacing guide + a CCPS/VDOE lesson template
+
+Two long-standing gaps closed together, since fixing one exposed the other:
+the Pacing Calendar (the real school-day weekly grid under Lesson Plan →
+Calendar) was already auto-populating a course's schedule from *something*
+— just not from real, current curriculum data, and 8175/8177 had no
+lesson-writing template that reflected actual VDOE/CCPS requirements.
+
+**What "the pacing guide" turned out to mean.** This file already had two
+separate, hand-authored lesson datasets per course (`PACING_8175`/
+`PACING_8177`/`PACING_6115`, feeding the SCR "Pacing Guide" sub-view; and
+`LESSON_PLANS`/`UNIT_PLANS`, feeding the Lesson Plan module's Units/Lessons
+views and — via even distribution across meeting days, not real dates —
+the Pacing Calendar) — and neither matched the actual, current 2026-27
+curriculum. Meanwhile `cas-ccps/curriculum/PacingGuide_CAS_Context.json`
+already existed as the real, currently-maintained pacing guide behind the
+CAS system's own weekly context pipeline, covering these exact same two
+courses (8175/8177) with real dates, VDOE/CCPS competency numbers, key
+vocabulary, warm-up anchors, and lesson-to-lesson connections. That's the
+real source this round imports — not a new dataset invented for this app.
+
+- **`CAS_PACING_UNITS`** — all 20 real units imported verbatim from that
+  file (competency-id strings like `"8177-23"` converted to the bare
+  numbers `SCR_COURSES` already uses; every other field name preserved).
+  **`PACING_8175`/`PACING_8177`/`LESSON_PLANS`/`UNIT_PLANS` are completely
+  untouched** — this is a parallel system, not a replacement, so the SCR
+  Pacing Guide sub-view and the Lesson Plan Units/Lessons views behave
+  exactly as before.
+- **The Pacing Calendar now places 8175/8177 units on their real
+  calendar dates** instead of guessing an even distribution across
+  meeting days — a unit's actual `startDate`/`endDate` from the imported
+  guide decides which days it covers, so "what am I teaching this week"
+  finally reflects the real schedule instead of an approximation. **6115
+  has no equivalent real external source** — its calendar keeps the
+  original even-distribution logic, byte-for-byte unchanged.
+- **Click any 8175/8177 calendar cell** to open a Lesson Unit detail
+  view: the real objective, VDOE/CCPS competency numbers with their real
+  text (looked up from `SCR_COURSES[code].competencies`, the same real
+  registry DD1 already established — never re-derived or guessed), key
+  vocabulary with definitions, the warm-up/bell-ringer anchor, and the
+  prior-lesson connection — all read-only, since it's real imported
+  content. Below that, an editable **CCPS-format delivery section**
+  (Materials / Assessment / Evidence of Learning / Differentiation /
+  Notes) a teacher fills in per course, saved via the same seed-then-
+  overlay pattern as everything else in this file (`lh_cas_pacing_notes`,
+  independent per unit *and* course — a shared CAS unit can carry
+  different delivery notes for 8175 vs 8177).
+- **The template this round asked for** is this same shape, offered two
+  ways for authoring outside the real CAS dataset (6115, or any future
+  lesson): **Settings → Course Catalog → "Weekly Schedule / Lesson Unit
+  Template"** has a downloadable blank JSON template (same field names —
+  id/name/dates/objective/competencyIds/vocabulary/warmupAnchor/
+  priorConnection/materials/assessment/differentiation) and a printable
+  blank paper template covering the same CCPS/VDOE-format fields. The
+  print button inside a real unit's detail modal prefills that same
+  template with the unit's real content instead of a blank one.
+- **Quarter boundaries are never hardcoded to a school year.**
+  `getQuarterForDate()` looks up whichever quarters are currently
+  configured (Settings → School Calendar) and falls back to the nearest
+  edge quarter for a date outside every configured range — so this stays
+  correct once a teacher updates the calendar for a new year, rather than
+  silently misfiling every unit into the wrong quarter. (Note: `LP_QUARTERS`
+  /`QUARTERS_DEFAULT` itself still needs updating in Settings for the
+  2026-27 year once CCPS publishes it — official calendar dates aren't
+  something this round fabricates.)
+
+**Deliberately not done:** authoring real 6115 curriculum content — there's
+no equivalent external real source for it in this repo, and inventing one
+would mean fabricating curriculum, not importing it. 6115 keeps its
+existing Lesson Plan/Pacing Guide content exactly as it was; the new
+template exists so it (or anything new) can be authored by hand in the
+same CCPS/VDOE-aligned shape once real content is ready.
+
+Verified with `node --check` on both `<script>` blocks, `node
+tools/gas-lint/check.js` (clean except the 2 pre-existing unrelated
+cas-ccps warnings), and a Node harness (`verify_gg1.js`, 26 checks) that
+loads the real embedded `CAS_PACING_UNITS` data and helper functions into
+a sandboxed VM and checks: all 20 real units present with correct
+first/last ids and dates; `getPacingUnitsForCourse` scoping (20 for
+8175/8177, 0 for 6115 — the legacy-path fallback); competency resolution
+against the real `SCR_COURSES` registry, including a unit with zero
+compIds for a course resolving to an empty list rather than erroring (the
+"no formal competency requirement" cross-division case); `getQuarterForDate`
+against real quarter ranges plus before/after-range fallbacks; the
+delivery-notes overlay's save/get round-trip staying independent per
+course; and the calendar's real-date placement logic (a unit's actual
+date range, not an even-distribution guess, decides which days belong to
+it, including the boundary into the next real unit).
 
 ## UI/UX Hardening — Rounds 1–9
 
