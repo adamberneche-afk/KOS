@@ -696,10 +696,29 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
 </head>
 <body>
 <script>
+// FIXED: this used to show every uncaught error as a raw, undismissable,
+// monospace stack-trace-style banner ("JS ERROR: ... at line N:M") — a
+// debug-mode leftover left permanently live, so any real user hitting any
+// bug saw developer-facing internals instead of a normal error message.
+// The raw detail still goes to the console (nothing lost for debugging);
+// the on-page banner is now a plain-language message with a dismiss
+// button, and won't stack a second banner on top of a repeated error.
 window.onerror = function(msg, src, line, col, err) {
+  console.error('[Uncaught error]', msg, 'at', src + ':' + line + ':' + col, err);
+  if (document.getElementById('js-error-banner')) return false;
   const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font-family:monospace;font-size:12px;z-index:99999;white-space:pre-wrap;';
-  d.textContent = '⚠️ JS ERROR: ' + msg + '\n  at line ' + line + ':' + col;
+  d.id = 'js-error-banner';
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font-family:system-ui,sans-serif;font-size:13px;z-index:99999;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  const msgSpan = document.createElement('span');
+  msgSpan.style.flex = '1';
+  msgSpan.textContent = '⚠️ Something went wrong. Try refreshing the page — your data is saved locally and won\'t be lost.';
+  const btn = document.createElement('button');
+  btn.textContent = '✕';
+  btn.setAttribute('aria-label', 'Dismiss');
+  btn.style.cssText = 'background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px;line-height:1';
+  btn.onclick = function() { d.remove(); };
+  d.appendChild(msgSpan);
+  d.appendChild(btn);
   document.body.appendChild(d);
   return false;
 };
@@ -8232,6 +8251,19 @@ function buildAuthFormHTML(tripName, tripDate, dest) {
   `;
 }
 
+// Shared by printAuthForm()/printFTPermForm()/printConfLeaveForm()/
+// lhPrintLessonUnitTemplate() below — these were four near-identical
+// window.open() + document.write(<!DOCTYPE html>...) blocks differing
+// only in title, CSS, body content, and window size.
+function _openPrintWindow(title, css, bodyHtml, features) {
+  const win = window.open('', '_blank', features || 'width=780,height=1000');
+  win.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>${css}</style></head><body>${bodyHtml}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  win.document.close();
+  return win;
+}
+
 function printAuthForm() {
   const sel = document.getElementById('ps-trip');
   const custom = document.getElementById('ps-custom').value.trim();
@@ -8240,18 +8272,12 @@ function printAuthForm() {
   const tripDate = trip ? fd(trip.date) : '';
   const dest = trip?.dest1 || '';
 
-  const win = window.open('','_blank','width=750,height=900');
-  win.document.write(`<!DOCTYPE html><html><head><title>Auth Form — ${tripName}</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    body{font-family:'DM Sans',sans-serif;font-size:12px;padding:2rem;max-width:680px;margin:0 auto;color:#111;}
-    @media print{body{padding:.5rem;}}
-    </style></head><body>
-  ${buildAuthFormHTML(tripName, tripDate, dest)}
-  <script>window.onload=()=>{window.print();}<\/script>
-  
-</body></html>`);
-  win.document.close();
+  _openPrintWindow(
+    `Auth Form — ${tripName}`,
+    `body{font-family:'DM Sans',sans-serif;font-size:12px;padding:2rem;max-width:680px;margin:0 auto;color:#111;}@media print{body{padding:.5rem;}}`,
+    buildAuthFormHTML(tripName, tripDate, dest),
+    'width=750,height=900'
+  );
 }
 
 // ============================================================
@@ -8497,13 +8523,12 @@ function printFTPermForm() {
   const tripId = parseInt(sel?.value);
   const html = buildFTPermHTML(tripId);
   if(!html) return _showToast('Select a trip first.', 2500, '#991b1b');
-  const win = window.open('','_blank','width=780,height:1000');
-  win.document.write(`<!DOCTYPE html><html><head><title>FT Permission Form</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}
-      </style>
-    </head><body>${html}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
-  win.document.close();
+  _openPrintWindow(
+    'FT Permission Form',
+    `body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}`,
+    html,
+    'width=780,height=1000' // was 'height:1000' (colon, not '=') — an invalid window-features token the browser silently dropped, so this window never actually got the intended height
+  );
 }
 
 // ---- CONFERENCE / LEAVE REQUEST FORM ----
@@ -8680,13 +8705,12 @@ function printConfLeaveForm() {
   const ev = getConfEvent();
   const r = getConfRecord();
   const html = buildConfLeaveHTML(ev, r);
-  const win = window.open('','_blank','width=780,height:1000');
-  win.document.write(`<!DOCTYPE html><html><head><title>Conf/Leave Request</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}
-      </style>
-    </head><body>${html}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
-  win.document.close();
+  _openPrintWindow(
+    'Conf/Leave Request',
+    `body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}`,
+    html,
+    'width=780,height=1000' // was 'height:1000' — same invalid-feature typo as printFTPermForm
+  );
 }
 
 // ---- WIRE UP showView for forms + slips (single combined override) ----
@@ -11839,31 +11863,35 @@ function renderStaticEmbeddedContent() {
 }
 
 // ── Checklists ────────────────────────────────────────────
-function renderSSBUChecklist() {
-  const el = document.getElementById('ssbu-checklist-render'); if (!el) return;
-  el.innerHTML = SSBU_CHECKLIST.map((c,i)=>{
-    const done = !!SSBU_CHECK_STATUS[i];
+// Shared by renderSSBUChecklist()/renderMK8Checklist() below — these were
+// two near-byte-identical functions differing only in element id, data
+// source, and color tokens. statusVarName/rerenderFnName are passed as
+// strings (not the objects themselves) because they need to end up
+// literally in the onclick attribute text, which is evaluated later
+// against the global scope, not against a closure over this call.
+function _renderEsChecklist(elId, list, statusArr, statusVarName, rerenderFnName, theme) {
+  const el = document.getElementById(elId); if (!el) return;
+  el.innerHTML = list.map((c,i)=>{
+    const done = !!statusArr[i];
     // Mouse-only before this — unlike the SBE checklist (which has a real
     // <button> alongside its clickable div as a keyboard fallback), these
     // items had no way to toggle without a pointer at all.
-    const toggle = `SSBU_CHECK_STATUS[${i}]=!SSBU_CHECK_STATUS[${i}];persistESChecklists();renderSSBUChecklist()`;
-    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
-      <span style="color:${done?'#15803d':'#374151'}">${c}</span>
+    const toggle = `${statusVarName}[${i}]=!${statusVarName}[${i}];persistESChecklists();${rerenderFnName}()`;
+    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?theme.doneBg:'#fff'};border:1px solid ${done?theme.doneBorder:'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?theme.accent:'#d1d5db'};background:${done?theme.accent:'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
+      <span style="color:${done?theme.text:'#374151'}">${c}</span>
     </div>`;
   }).join('');
 }
 
+function renderSSBUChecklist() {
+  _renderEsChecklist('ssbu-checklist-render', SSBU_CHECKLIST, SSBU_CHECK_STATUS, 'SSBU_CHECK_STATUS', 'renderSSBUChecklist',
+    { doneBg: '#f0fdf4', doneBorder: '#86efac', accent: '#15803d', text: '#15803d' });
+}
+
 function renderMK8Checklist() {
-  const el = document.getElementById('mk8-checklist-render'); if (!el) return;
-  el.innerHTML = MK8_CHECKLIST.map((c,i)=>{
-    const done = !!MK8_CHECK_STATUS[i];
-    const toggle = `MK8_CHECK_STATUS[${i}]=!MK8_CHECK_STATUS[${i}];persistESChecklists();renderMK8Checklist()`;
-    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#fff7ed':'#fff'};border:1px solid ${done?'#fed7aa':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?'#e67e22':'#d1d5db'};background:${done?'#e67e22':'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
-      <span style="color:${done?'#92400e':'#374151'}">${c}</span>
-    </div>`;
-  }).join('');
+  _renderEsChecklist('mk8-checklist-render', MK8_CHECKLIST, MK8_CHECK_STATUS, 'MK8_CHECK_STATUS', 'renderMK8Checklist',
+    { doneBg: '#fff7ed', doneBorder: '#fed7aa', accent: '#e67e22', text: '#92400e' });
 }
 
 // ── Match Log ─────────────────────────────────────────────
@@ -19398,15 +19426,7 @@ function lhPrintLessonUnitTemplate(unitId, course) {
     ? comps.map(c => `#${c.num} — ${escH(c.text)}`).join('<br>')
     : '';
 
-  const win = window.open('', '_blank', 'width=750,height=900');
-  win.document.write(`<!DOCTYPE html><html><head><title>${escH(title)} — Lesson Plan Template</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    body{font-family:'DM Sans',sans-serif;font-size:13px;padding:2rem;max-width:700px;margin:0 auto;color:#111;}
-    h1{font-size:1.3rem;margin:0 0 .2rem}
-    .meta{font-size:.8rem;color:#555;margin-bottom:1.2rem}
-    @media print{body{padding:.5rem;}}
-  </style></head><body>
+  const bodyHtml = `
   <h1>${escH(title)}</h1>
   <div class="meta">${unit ? `${unit.stageName?escH(unit.stageName)+' · ':''}${LP_C_LABELS[course]||course||''} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}` : 'CCPS / VDOE-format lesson plan template'}</div>
   ${field('Objective', cdata.objective)}
@@ -19418,10 +19438,14 @@ function lhPrintLessonUnitTemplate(unitId, course) {
   ${field('Instructional Sequence / Procedure', '', 6)}
   ${field('Assessment / Evidence of Learning', notes.assessment, 2)}
   ${field('Differentiation', notes.differentiation, 2)}
-  ${field('Notes', notes.notes, 2)}
-  <script>window.onload=()=>{window.print();}<\/script>
-</body></html>`);
-  win.document.close();
+  ${field('Notes', notes.notes, 2)}`;
+
+  _openPrintWindow(
+    `${escH(title)} — Lesson Plan Template`,
+    `body{font-family:'DM Sans',sans-serif;font-size:13px;padding:2rem;max-width:700px;margin:0 auto;color:#111;}h1{font-size:1.3rem;margin:0 0 .2rem}.meta{font-size:.8rem;color:#555;margin-bottom:1.2rem}@media print{body{padding:.5rem;}}`,
+    bodyHtml,
+    'width=750,height=900'
+  );
 }
 
 // ── FERPA boot check ──────────────────────────────────────────────────────
