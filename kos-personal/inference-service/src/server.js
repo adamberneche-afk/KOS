@@ -69,6 +69,57 @@ async function requireApiKey(req, res, next) {
   next();
 }
 
+// ── OAuth CSRF state ──────────────────────────────────────────────
+// Google's own authorization redirect only ever carries `code` (and
+// whatever `state` we asked it to echo back) — nothing about it proves
+// the callback landed on the same browser that started the flow. Without
+// a state check, an attacker can start their OWN OAuth flow, capture the
+// resulting `/auth/callback?code=...` URL (never following it themselves),
+// and get a victim to open it instead. The victim's browser would then
+// exchange the attacker's code, upsert a user row tied to the ATTACKER's
+// Google identity, and show the victim an API key for that account — if
+// the victim pastes it into their own KOS instance thinking they just
+// connected their own account, their session data gets processed under
+// (and inference output written into a spreadsheet controlled by) the
+// attacker's account instead. The state cookie below is httpOnly and set
+// only by this same origin, so an attacker cannot read or forge it —
+// only a callback that arrives on the exact browser that visited
+// /auth/connect can ever present a matching value.
+//
+// No session/cookie-parsing middleware exists in this app, and a single
+// short-lived random token round-tripped through the browser doesn't
+// need one — a tiny manual Cookie-header parse is all this needs.
+const OAUTH_STATE_COOKIE = 'kos_oauth_state';
+
+function parseCookies(req) {
+  const header = req.headers.cookie;
+  const out = {};
+  if (!header) return out;
+  header.split(';').forEach((pair) => {
+    const idx = pair.indexOf('=');
+    if (idx === -1) return;
+    const key = pair.slice(0, idx).trim();
+    if (key) out[key] = decodeURIComponent(pair.slice(idx + 1).trim());
+  });
+  return out;
+}
+
+function setOAuthStateCookie(res, value, maxAgeSeconds) {
+  const parts = [
+    `${OAUTH_STATE_COOKIE}=${encodeURIComponent(value)}`,
+    'Path=/auth',
+    'HttpOnly',
+    'SameSite=Lax',
+    `Max-Age=${maxAgeSeconds}`,
+  ];
+  if (process.env.NODE_ENV === 'production') parts.push('Secure');
+  res.setHeader('Set-Cookie', parts.join('; '));
+}
+
+function clearOAuthStateCookie(res) {
+  setOAuthStateCookie(res, '', 0);
+}
+
 /**
  * Validates the webhook signature from KOS Turnstile.
  * Prevents unauthorized job submissions.
@@ -113,7 +164,9 @@ app.get('/health', async (req, res) => {
  * that opens this URL.
  */
 app.get('/auth/connect', (req, res) => {
-  const url = google.getAuthUrl();
+  const state = crypto.randomBytes(24).toString('hex');
+  setOAuthStateCookie(res, state, 600); // 10 minutes — plenty for a consent-screen round trip
+  const url = google.getAuthUrl(state);
   res.redirect(url);
 });
 
@@ -123,7 +176,20 @@ app.get('/auth/connect', (req, res) => {
  * The API key is displayed to the user to paste into KOS Properties.
  */
 app.get('/auth/callback', async (req, res) => {
-  const { code, error } = req.query;
+  const { code, error, state } = req.query;
+  const cookies = parseCookies(req);
+  const expectedState = cookies[OAUTH_STATE_COOKIE];
+  clearOAuthStateCookie(res); // single-use regardless of outcome below
+
+  // Reject before ever exchanging a code if this callback didn't arrive on
+  // the same browser that started the flow — see the CSRF note above.
+  const stateOk = !!expectedState && !!state &&
+    expectedState.length === state.length &&
+    crypto.timingSafeEqual(Buffer.from(expectedState), Buffer.from(state));
+  if (!stateOk) {
+    logger.error('[Auth] Callback rejected — missing or mismatched state param.');
+    return res.status(400).send('This authorization link has expired or is invalid. Please start over from KOS.');
+  }
 
   if (error) {
     return res.status(400).send(`Authorization failed: ${error}`);

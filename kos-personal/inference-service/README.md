@@ -61,15 +61,19 @@ database until/unless a real `migrate.js` shows up.
 - `3_Queue_Processor.gs`: `_getManagedServiceStatus_()` — calls this
   service's `GET /api/v1/account` and feeds the result into
   `getQueueMetrics()`'s `managed_service` field, only in
-  `MANAGED_SERVICE` mode.
+  `MANAGED_SERVICE` mode. Also `_submitManagedServiceJob_()` — `POST`s to
+  `/api/v1/jobs` (this file's job-submission webhook), called from
+  `10_Turnstile.gs`.
 - `8_WebApp_UI.html`: `renderServiceStatus()` — renders the credits panel
   only when `managed_service` is non-null.
+- `10_Turnstile.gs`: when `CFG.INFERENCE_MODE === 'MANAGED_SERVICE'`,
+  calls `_submitManagedServiceJob_()` immediately before releasing a row,
+  handing the job to this service instead of relying on native Studio
+  inference. In the default `'STUDIO'` mode this is skipped entirely.
 
-Nothing else in `kos-personal/` calls into this service. In particular,
-the `POST /api/v1/jobs` webhook this service exposes for KOS Turnstile to
-submit work has **no corresponding caller anywhere in the `.gs` files** —
-wiring `10_Turnstile.gs` to actually submit jobs here (instead of relying
-on native Studio inference) is real, unbuilt integration work, not
-something this filing-in pass did. Treat `MANAGED_SERVICE` mode today as
-"the account-status panel works if you stand this service up and paste in
-its credentials" — the inference hand-off itself is not yet wired.
+This section previously said the `/api/v1/jobs` webhook had no caller
+anywhere in the `.gs` files and that wiring `10_Turnstile.gs` to submit
+jobs here was still unbuilt — that's now stale; the wiring above is live.
+Treat `MANAGED_SERVICE` mode today as fully wired end to end, gated
+behind `CFG.INFERENCE_MODE`, off by default — the remaining real gap in
+this service is `sql/migrate.js` (above), not the integration.
