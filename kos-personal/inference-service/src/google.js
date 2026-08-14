@@ -54,13 +54,20 @@ async function getAuthClientForUser(user) {
  * Generates the Google OAuth authorization URL.
  * The user is redirected here when they click "Connect to KOS Inference."
  *
+ * @param  {string} state  CSRF state token — generated and cookie-stored by
+ *                         the /auth/connect route, validated on /auth/callback
+ *                         before any code exchange. Required: without it,
+ *                         nothing binds the callback to the browser/session
+ *                         that started this flow (see server.js for the
+ *                         attack this closes).
  * @returns {string} Authorization URL
  */
-function getAuthUrl() {
+function getAuthUrl(state) {
   const oauth2 = makeOAuthClient();
   return oauth2.generateAuthUrl({
     access_type:   'offline',  // required for refresh_token
     prompt:        'consent',  // forces refresh_token to be returned every time
+    state:         state,
     scope: [
       'https://www.googleapis.com/auth/drive',
       'https://www.googleapis.com/auth/spreadsheets',
