@@ -35,7 +35,7 @@ two backported fixes, ten governance/protocol docs, and a real optional
 managed-inference-service alternative to native Studio (opt-in, gated
 behind `CFG.INFERENCE_MODE`, off by default). Since then, nine further
 rounds of dedicated UI/UX auditing (see
-[`kos-personal/README.md`](./kos-personal/README.md#uiux-hardening--rounds-19))
+[`kos-personal/CHANGELOG.md`](./kos-personal/CHANGELOG.md#uiux-hardening--rounds-19))
 have fixed real bugs including a race condition, an unguarded status-line
 race, and a data-loss bug where Escape could wipe an in-progress wizard.
 
