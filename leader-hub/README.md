@@ -27,7 +27,7 @@ key at all).
 
 | Path | Contents |
 |---|---|
-| `student-leader-hub.html` | The live app (16,682 lines as of the UI/UX hardening rounds below — grew from 15,173 lines through 9 rounds of fixes/comments) — open directly in a browser |
+| `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser |
 | `student-leader-hub.jsx` | A React/JSX exploration draft, not the deployed artifact |
 | `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling, sub-plan/brag-email creation, and — see below — the AI-drafting job queue) — see `LEADERHUB_EMAIL_SETUP.md` and `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
