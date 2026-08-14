@@ -79,9 +79,7 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/05_TeacherIntakePipeline.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M5_ADDENDUM.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M6_ADDENDUM.js"
+      "cas-ccps/scripts/19_ClonedSheetConfig.js"
     ]
   },
 
@@ -91,9 +89,7 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/08_TeacherConfirmationStep.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M5_ADDENDUM.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M6_ADDENDUM.js"
+      "cas-ccps/scripts/19_ClonedSheetConfig.js"
     ]
   },
 
