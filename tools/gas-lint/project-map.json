@@ -26,8 +26,6 @@
     "manifest": "cas-ccps/clasp/manifests/central-ledger.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
-      "cas-ccps/scripts/00_SharedConfig_M2_ADDENDUM_v2.js",
-      "cas-ccps/scripts/00_SharedConfig_M4_ADDENDUM.js",
       "cas-ccps/scripts/02_Form1_IntakeAndWorkspaceGenerator.js",
       "cas-ccps/scripts/03_QueueBridge.js",
       "cas-ccps/scripts/04_Form2_TurnInGate.js",
