@@ -136,3 +136,28 @@ outside what this repo's tooling can reach into. It also doesn't solve
 propagating an update to a teacher's already-cloned
 `rubric-response-sheet`/`teacher-matrix-sheet` copy — see the table note
 above.
+
+## Refuses to build an unmerged project
+
+Before writing any files for a project, this script checks every file
+in that project's `_ADDENDUM`-named list for live top-level code
+(a function/const/let/var declaration outside of comments). A file
+that's still 100% paste-instructions in a comment block — the pattern
+`tools/gas-lint/check.js`'s `cfg-key-pending-merge` warning already
+flags — means that project's base file is still missing whatever keys
+or functions the addendum documents. Building (and potentially pushing)
+that project folder anyway would ship that exact broken half-state, so
+the script refuses instead: it prints which addendum file(s) are still
+unmerged and exits non-zero for the whole run, leaving that project's
+`.clasp-build/` folder untouched (from a prior run, or absent).
+
+This doesn't fire on a file like
+`16_UnifiedManualSetup_M5_ADDENDUM_v2.js`, which legitimately keeps
+live functions shared into its project's global scope (multiple files
+can share one GAS project by design — see `project-map.json`'s own
+header comment) — only on a file that's genuinely still just notes.
+Merge the addendum into its base file, then remove the addendum's entry
+from `project-map.json`, to clear the refusal.
+
+This check — plus a plain `node tools/clasp-sync/sync.js` run — is part
+of `.github/workflows/gas-lint.yml`'s CI job, alongside gas-lint itself.
