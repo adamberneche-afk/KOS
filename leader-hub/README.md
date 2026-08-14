@@ -751,7 +751,9 @@ no equivalent external real source for it in this repo, and inventing one
 would mean fabricating curriculum, not importing it. 6115 keeps its
 existing Lesson Plan/Pacing Guide content exactly as it was; the new
 template exists so it (or anything new) can be authored by hand in the
-same CCPS/VDOE-aligned shape once real content is ready.
+same CCPS/VDOE-aligned shape once real content is ready. **Update:** at
+the time this was written, a filled-in template still had no way back
+into the app — see II1 below, which closes that gap.
 
 Verified with `node --check` on both `<script>` blocks, `node
 tools/gas-lint/check.js` (clean except the 2 pre-existing unrelated
@@ -839,6 +841,83 @@ early-release/no-school distinction never double-counting a day.
 still need to come from a real CCPS-published document via this import
 (or manual entry) — this round builds the tool, not the data; and true
 PDF parsing, for the reasons above.
+
+## II1 — 6115's pacing-guide import: a filled-in template now actually reaches the calendar
+
+Closes the gap GG1's own "Deliberately not done" note left open: the
+Weekly Schedule / Lesson Unit Template gave 6115 (or any course with no
+real external source like 8175/8177's CAS import) a place to download a
+blank CCPS/VDOE-format template and print it — but nothing ever fed a
+*filled-in* one back into the app. A teacher who did the work of writing
+real 6115 units in that template's shape had no way to get them onto the
+Pacing Calendar; the course was permanently stuck on the legacy
+even-distribution guess.
+
+- **New "⬆️ Import Filled-In Units (JSON)" control**, right next to the
+  existing download/print buttons in Settings → Weekly Schedule / Lesson
+  Unit Template, with a course selector scoped to `_customPacingImportCourses()`
+  — every course except 8175/8177 (which keep using the real CAS import,
+  untouched). Accepts either one unit object or a whole term as an array,
+  same flat field shape `lhDownloadLessonUnitTemplate()` already hands out
+  — no new format to learn.
+- **`CUSTOM_PACING_UNITS`** (new, `lh_custom_pacing_units` in localStorage)
+  holds the imported units per course. Each is wrapped into the exact same
+  shape `CAS_PACING_UNITS` already uses (`courses[course].objective/compIds`,
+  `vocabulary`, `warmupAnchor`, `priorConnection`) so every existing
+  consumer — the unit detail modal, competency resolution, the print
+  template — works unchanged for an imported unit; no CAS-vs-custom
+  branching needed anywhere except at the point of generalizing
+  `getPacingUnitsForCourse(course)` itself (CAS courses still read
+  `CAS_PACING_UNITS`; everything else now reads its own imported list
+  instead of always returning empty).
+- **The Pacing Calendar now places 6115 (or any imported course) on real
+  dates** too, the same way GG1 did for 8175/8177 — `renderPacingCalendar()`'s
+  branch condition is `hasRealDatedUnits` (CAS **or** has any imported
+  units) instead of CAS-only; a course with nothing imported still falls
+  back to the legacy even-distribution path exactly as before.
+- **Import is additive and non-destructive**: importing a unit whose id
+  already exists replaces it in place (so re-importing an edited file
+  updates the unit rather than duplicating it); a different id appends.
+  `materials`/`assessment`/`differentiation` from the file seed the same
+  delivery-notes overlay CAS units use (`CAS_PACING_NOTES`) — but **only**
+  when a teacher hasn't already typed something in-app for that unit, so
+  a later re-import never clobbers notes added since the last import.
+  Competency numbers are coerced to integers (a template author can type
+  `"3"` or `3`, both resolve) to match `getPacingUnitCompetencies()`'s
+  existing strict-equality lookup against the course's registry.
+- **Removing a course** (Settings → Course Catalog) now also clears its
+  imported units, so nothing orphaned lingers under a deleted course code.
+  **Clearing imported units for a course** is its own explicit action
+  (Settings → Weekly Schedule → the per-course list's ✕) — the calendar
+  falls back to the legacy path for that course again; delivery notes
+  already typed aren't deleted, so re-importing later finds them again.
+
+Verified with `node --check` on the real `<script>` block (the file's
+regex-based script-block splitter also matches a stray `<script>` inside
+an *HTML comment*'s prose text from an earlier round — confirmed
+pre-existing via `git show HEAD`, not something this round introduced;
+the actual script block containing all real code parses cleanly), `node
+tools/gas-lint/check.js` (clean, same pre-existing warnings), the
+existing `verify_gg1.js` re-run unchanged (26 checks, confirms no
+regression to the CAS-side pacing logic), and a new `verify_6115_pacing_import.js`
+(29 checks) that loads the real parsing/import/clear functions into a
+sandboxed VM and checks: `_parsePacingUnitsJson` validation (bad JSON,
+missing id, malformed dates, end-before-start, duplicate ids within one
+file all rejected with specific messages); a real template-shaped fixture
+parses correctly with competency-id coercion and the CAS-compatible
+wrapped shape; the full `lhImportPacingUnitsJson` flow via a stubbed
+`FileReader` — confirmation shown before anything's written, the imported
+unit retrievable afterward, a success toast, and delivery notes seeded
+from the file; re-importing the same unit id replaces rather than
+duplicates, and never overwrites delivery notes already edited in-app; a
+second distinct unit id appends and stays date-sorted; and
+`lhClearCustomPacingUnits` removes everything for a course and is a
+silent no-op on an already-empty one.
+
+**Deliberately not done:** authoring real 6115 curriculum content —
+still the same call GG1 made. This round builds the missing half of the
+pipeline (import), not the content; 6115's real units still need to come
+from a teacher filling in the template, same as it always would have.
 
 ## UI/UX Hardening — Rounds 1–9
 

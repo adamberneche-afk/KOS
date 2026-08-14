@@ -15409,12 +15409,18 @@ function openSurveyModal(){
 
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Weekly Schedule / Lesson Unit Template</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
-        8175/8177's Pacing Calendar auto-populates from the real, current CAS pacing guide (imported from cas-ccps) — click any unit cell there to see its VDOE/CCPS competencies, vocabulary, and warm-up, and to add your own materials/assessment/differentiation notes. 6115 has no equivalent real external source yet — use the same CCPS/VDOE-format template below to author its units by hand, structured or on paper.
+        8175/8177's Pacing Calendar auto-populates from the real, current CAS pacing guide (imported from cas-ccps) — click any unit cell there to see its VDOE/CCPS competencies, vocabulary, and warm-up, and to add your own materials/assessment/differentiation notes. 6115 (or any other course) has no equivalent real external source — download the same CCPS/VDOE-format template below, fill it in (structured or on paper), then import the finished JSON here to put it on that course's Pacing Calendar the same way.
       </div>
-      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+      <div style="display:flex;gap:.6rem;margin-bottom:.6rem">
         <button onclick="lhDownloadLessonUnitTemplate()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬇️ Download Blank Template (JSON)</button>
         <button onclick="lhPrintLessonUnitTemplate()" style="flex:1;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">🖨 Print Blank Template</button>
       </div>
+      <div style="display:flex;gap:.6rem;margin-bottom:.6rem">
+        <select id="lh-pacing-import-course" aria-label="Course to import lesson units into" style="flex:1;padding:.55rem .6rem;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem;font-family:inherit"></select>
+        <button onclick="document.getElementById('lh-pacing-import-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Import Filled-In Units (JSON)</button>
+        <input type="file" id="lh-pacing-import-file" accept="application/json" style="display:none" onchange="lhImportPacingUnitsJson(this)">
+      </div>
+      <div id="pacing-import-list" style="margin-bottom:1.4rem"></div>
 
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
@@ -15451,6 +15457,7 @@ function openSurveyModal(){
   document.body.appendChild(m);
   renderCourseCatalogSettings();
   renderOrgCatalogSettings();
+  renderPacingImportSettings();
   _renderStudentIdStatus();
   m.onclick=e=>{ if(e.target===m) m.remove(); };
 }
@@ -15977,6 +15984,7 @@ function lhImportCourseJson(fileInput) {
         initScrScores();
         renderScrCourseTabs();
         renderCourseCatalogSettings();
+        renderPacingImportSettings();
         _showToast(`✅ Added course ${code} — ${name}`, 3500, '#166534');
       },
       { confirmLabel: 'Add Course', danger: false, ariaLabel: `Add course ${code}` }
@@ -15996,6 +16004,7 @@ function lhRemoveCustomCourse(code) {
       delete CUSTOM_COURSES[code];
       persistCustomCourses();
       if (scrScores[code]) { delete scrScores[code]; persistSCR(); }
+      if (CUSTOM_PACING_UNITS[code]) { delete CUSTOM_PACING_UNITS[code]; persistCustomPacingUnits(); }
       if (scrActiveCourse === code) {
         scrActiveCourse = Object.keys(SCR_COURSES)[0] || '';
         LS.set('lh_scr_active_course', scrActiveCourse);
@@ -16003,6 +16012,7 @@ function lhRemoveCustomCourse(code) {
       renderScrCourseTabs();
       if (document.getElementById('scr-content')) renderCompetencyView();
       renderCourseCatalogSettings();
+      renderPacingImportSettings();
       _showToast('🗑️ Course removed');
     },
     { confirmLabel: 'Remove', ariaLabel: `Remove course ${code}` }
@@ -18660,7 +18670,8 @@ const CAS_PACING_COURSES = new Set(['8175', '8177']);
 // file (courses/organizations). Never overwrites the real imported content
 // above; keyed by `${unitId}_${course}` since a shared unit can carry
 // different delivery notes per course (e.g. different assessment for 8175
-// vs 8177 even on a shared week).
+// vs 8177 even on a shared week). Also used for hand-imported CUSTOM_PACING_UNITS
+// below (the key shape and seed-then-overlay behavior are identical either way).
 let CAS_PACING_NOTES = LS.get('lh_cas_pacing_notes', {});
 function persistCasPacingNotes() { LS.set('lh_cas_pacing_notes', CAS_PACING_NOTES); }
 function getCasPacingNotes(unitId, course) { return CAS_PACING_NOTES[unitId + '_' + course] || { materials: '', assessment: '', differentiation: '', notes: '' }; }
@@ -18669,10 +18680,25 @@ function saveCasPacingNotes(unitId, course, data) {
   persistCasPacingNotes();
 }
 
-// Every unit applies to both 8175 and 8177 (CAS is a shared cross-course
-// weekly structure) — this just hands back the whole list for either.
+// Hand-imported lesson units for any course that has no real external
+// pacing source (6115, or any future course added via DD1's course-catalog
+// import) — filled in via Settings → "Weekly Schedule / Lesson Unit
+// Template"'s Import button, using the same flat field shape
+// lhDownloadLessonUnitTemplate() hands out. Keyed by course code, one
+// array of units per course. Wrapped into the same {..., courses:{[course]:
+// {objective, compIds}}} shape CAS_PACING_UNITS uses (see
+// _parsePacingUnitsJson) so every consumer below (getPacingUnitCompetencies,
+// openCasPacingUnitModal, lhPrintLessonUnitTemplate) reads one shape
+// regardless of whether a unit came from the real CAS import or a
+// hand-authored file — no unit-shape branching needed anywhere else.
+let CUSTOM_PACING_UNITS = LS.get('lh_custom_pacing_units', {});
+function persistCustomPacingUnits() { LS.set('lh_custom_pacing_units', CUSTOM_PACING_UNITS); }
+
+// CAS courses share one cross-course unit list; any other course reads its
+// own hand-imported list (empty until something's been imported for it).
 function getPacingUnitsForCourse(course) {
-  return CAS_PACING_COURSES.has(course) ? CAS_PACING_UNITS : [];
+  if (CAS_PACING_COURSES.has(course)) return CAS_PACING_UNITS;
+  return CUSTOM_PACING_UNITS[course] || [];
 }
 
 // Resolves a unit's real compIds (numbers, e.g. 23) against SCR_COURSES'
@@ -18739,10 +18765,16 @@ function renderPacingCalendar() {
 
   const unitColors = ['#1a3560','#0369a1','#065f46','#7c3aed','#b45309','#be123c'];
   const isCasCourse = CAS_PACING_COURSES.has(course);
+  // True for CAS courses (real data from cas-ccps) AND any course with
+  // hand-imported units (see CUSTOM_PACING_UNITS above) — both use the
+  // same real-dated-unit render path below instead of the legacy
+  // even-distribution guess. isCasCourse stays separate since a couple of
+  // spots below need CAS-specific wording, not just "has real dates."
+  const hasRealDatedUnits = isCasCourse || getPacingUnitsForCourse(course).length > 0;
 
   let lessons, units, unitColorMap, lessonUnitMap, dateToLesson;
 
-  if (isCasCourse) {
+  if (hasRealDatedUnits) {
     // ── GG1: real-dated CAS pacing units (8175/8177) — see CAS_PACING_UNITS
     // above. No even-distribution guess needed: each unit already carries
     // its own real startDate/endDate from the imported pacing guide, so a
@@ -18830,7 +18862,7 @@ function renderPacingCalendar() {
           ${escH(u.title || u.name || '')}
         </span>`
       ).join('') +
-      `<span style="font-size:.68rem;color:var(--muted);margin-left:.25rem">${lessons.length} ${isCasCourse?'unit'+(lessons.length!==1?'s':''):'lesson'+(lessons.length!==1?'s':'')} · ${meetingDays.length} days${isCasCourse?' · real dates from the CAS pacing guide':''}</span>` +
+      `<span style="font-size:.68rem;color:var(--muted);margin-left:.25rem">${lessons.length} ${hasRealDatedUnits?'unit'+(lessons.length!==1?'s':''):'lesson'+(lessons.length!==1?'s':'')} · ${meetingDays.length} days${isCasCourse?' · real dates from the CAS pacing guide':(hasRealDatedUnits?' · real dates from your imported lesson units':'')}</span>` +
       progressHtml;
   }
 
@@ -18983,7 +19015,7 @@ function renderPacingCalendar() {
 // below for the standalone blank-template versions (for 6115, or any lesson
 // authored outside this real-dated CAS dataset).
 function openCasPacingUnitModal(unitId, course) {
-  const unit = CAS_PACING_UNITS.find(u => u.id === unitId);
+  const unit = getPacingUnitsForCourse(course).find(u => u.id === unitId);
   if (!unit) return;
   const cdata = unit.courses[course] || { objective: '', compIds: [] };
   const comps = getPacingUnitCompetencies(course, unit);
@@ -19007,13 +19039,15 @@ function openCasPacingUnitModal(unitId, course) {
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.75rem;margin-bottom:.9rem">
       <div>
         <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:.5px;color:var(--navy);line-height:1.15">${escH(unit.name)}</div>
-        <div style="font-size:.74rem;color:var(--muted);margin-top:.2rem">${escH(unit.stageName)} · ${LP_C_LABELS[course]||course} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}</div>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:.2rem">${unit.stageName?escH(unit.stageName)+' · ':''}${LP_C_LABELS[course]||course} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}</div>
       </div>
       <button id="cas-pacing-unit-close" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer;flex-shrink:0">✕</button>
     </div>
 
     <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.65rem .85rem;font-size:.72rem;color:#1e3a6e;margin-bottom:1rem">
-      Real curriculum content below is imported from the CAS pacing guide (cas-ccps/curriculum/PacingGuide_CAS_Context.json) — read-only here. Fill in the CCPS delivery fields underneath for your own records.
+      ${unit._custom
+        ? 'Real curriculum content below is from your own imported lesson unit (Settings → Weekly Schedule / Lesson Unit Template) — read-only here except the delivery notes further down. Re-import the same unit id to update it.'
+        : 'Real curriculum content below is imported from the CAS pacing guide (cas-ccps/curriculum/PacingGuide_CAS_Context.json) — read-only here. Fill in the CCPS delivery fields underneath for your own records.'}
     </div>
 
     <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.35rem">Objective</div>
@@ -19099,11 +19133,189 @@ function lhDownloadLessonUnitTemplate() {
   URL.revokeObjectURL(url);
 }
 
-// Prefills from a real CAS unit when called from its detail modal (unitId
-// given); prints a fully blank template when called with no arguments (e.g.
-// from Settings → Course Catalog).
+// Which courses can accept a hand-imported lesson unit — anything NOT
+// already covered by the real CAS import (8175/8177 keep using
+// CAS_PACING_UNITS untouched; see CAS_PACING_COURSES above). Includes 6115
+// and any custom course added via DD1's course-catalog import.
+function _customPacingImportCourses() {
+  return Object.keys(SCR_COURSES).filter(c => !CAS_PACING_COURSES.has(c));
+}
+
+// Parses + validates an uploaded lesson-unit JSON — accepts either a
+// single unit object (one lesson at a time) or an array of them (a whole
+// term imported at once), both using the exact flat field shape
+// lhDownloadLessonUnitTemplate() hands out. Returns {ok:true, units:[...]}
+// (each wrapped into the same {..., courses:{[course]:{objective,compIds}}}
+// shape CAS_PACING_UNITS uses) or {ok:false, error}. Never mutates
+// CUSTOM_PACING_UNITS itself — that's the caller's job once the teacher
+// confirms the preview, same convention as _parseCourseJson/_parseOrgJson.
+function _parsePacingUnitsJson(raw, course) {
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(_err) { return { ok:false, error:'Could not read this file — make sure it\'s valid JSON.' }; }
+
+  const arr = Array.isArray(data) ? data : [data];
+  if (!arr.length) return { ok:false, error:'File contains no lesson units.' };
+
+  const registry = (SCR_COURSES[course] || {}).competencies || [];
+  const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+  const units = [];
+  const seenIds = new Set();
+
+  for (let i = 0; i < arr.length; i++) {
+    const u = arr[i];
+    if (!u || typeof u !== 'object' || Array.isArray(u)) {
+      return { ok:false, error:`Unit #${i+1} must be a JSON object (see the template).` };
+    }
+    const id = String(u.id || '').trim();
+    const name = String(u.name || '').trim();
+    if (!id) return { ok:false, error:`Unit #${i+1} is missing an "id".` };
+    if (!name) return { ok:false, error:`Unit "${id || '#'+(i+1)}" is missing a "name".` };
+    if (seenIds.has(id)) return { ok:false, error:`Duplicate unit id "${id}" within this file — each id must be unique.` };
+    seenIds.add(id);
+    if (!dateRe.test(u.startDate || '') || !dateRe.test(u.endDate || '')) {
+      return { ok:false, error:`Unit "${id}" needs startDate/endDate in YYYY-MM-DD format.` };
+    }
+    if (u.endDate < u.startDate) {
+      return { ok:false, error:`Unit "${id}"'s endDate is before its startDate.` };
+    }
+
+    // competencyIds matched against this course's registry the same way
+    // getPacingUnitCompetencies() already does (num, coerced to an
+    // integer — competencies[].num is always parsed as one, see
+    // _parseCourseJson) — an id with no match just won't render a
+    // competency row later, same as a CAS unit with a typo'd id would.
+    const compIds = (Array.isArray(u.competencyIds) ? u.competencyIds : [])
+      .map(n => parseInt(n, 10)).filter(n => Number.isInteger(n));
+
+    units.push({
+      id, name, stageName: '',
+      weeks: u.weeks != null ? String(u.weeks) : '',
+      startDate: u.startDate, endDate: u.endDate,
+      vocabulary: Array.isArray(u.vocabulary)
+        ? u.vocabulary.filter(v => v && v.term).map(v => ({ term: String(v.term), definition: String(v.definition || '') }))
+        : [],
+      warmupAnchor: String(u.warmupAnchor || ''),
+      priorConnection: String(u.priorConnection || ''),
+      courses: { [course]: { objective: String(u.objective || ''), compIds } },
+      _custom: true,
+      _importNotes: {
+        materials: String(u.materials || ''),
+        assessment: String(u.assessment || ''),
+        differentiation: String(u.differentiation || ''),
+      },
+    });
+  }
+  return { ok:true, units };
+}
+
+// Reads the uploaded file, previews the count/date-range, and on
+// confirmation upserts into CUSTOM_PACING_UNITS[course] by id (replaces a
+// unit sharing an id with an existing one — re-importing the same unit
+// updates it in place — else appends). Delivery notes (materials/
+// assessment/differentiation) from the file only seed CAS_PACING_NOTES
+// where a teacher hasn't already typed something in-app for that unit, so
+// re-importing a file never clobbers notes added since the last import.
+function lhImportPacingUnitsJson(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const course = document.getElementById('lh-pacing-import-course')?.value || '';
+  if (!course) { _showToast('⚠ No course available to import into — add one in Course Catalog first.', 5000, '#991b1b'); fileInput.value = ''; return; }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = _parsePacingUnitsJson(String(e.target.result || ''), course);
+    fileInput.value = '';
+    if (!result.ok) { _showToast('⚠ ' + result.error, 5000, '#991b1b'); return; }
+
+    const { units } = result;
+    const dates = units.flatMap(u => [u.startDate, u.endDate]).sort();
+    const label = LP_C_LABELS[course] || course;
+    _showConfirm(
+      `Import ${units.length} lesson unit${units.length!==1?'s':''} into ${label}?\n\n${dates[0]} – ${dates[dates.length-1]}.\n\nA unit sharing an id with one already imported for ${label} will be replaced; anything else you have is untouched.`,
+      () => {
+        const existing = CUSTOM_PACING_UNITS[course] || [];
+        const byId = {}; existing.forEach(u => { byId[u.id] = u; });
+        units.forEach(u => {
+          byId[u.id] = u;
+          // Only seed delivery notes when nothing's been typed in-app yet —
+          // never overwrite a teacher's own edits with the file's version.
+          const current = getCasPacingNotes(u.id, course);
+          if (!current.materials && !current.assessment && !current.differentiation && !current.notes) {
+            saveCasPacingNotes(u.id, course, { ...current, ...u._importNotes });
+          }
+        });
+        CUSTOM_PACING_UNITS[course] = Object.values(byId).sort((a,b) => a.startDate < b.startDate ? -1 : 1);
+        persistCustomPacingUnits();
+        renderPacingImportSettings();
+        if (document.getElementById('lp-calendar-grid')) renderPacingCalendar();
+        _showToast(`✅ Imported ${units.length} unit${units.length!==1?'s':''} into ${label}`, 3500, '#166534');
+      },
+      { confirmLabel: 'Import', danger: false, ariaLabel: `Import ${units.length} lesson units into ${label}` }
+    );
+  };
+  reader.onerror = () => { _showToast('⚠ Could not read that file.', 4000, '#991b1b'); fileInput.value = ''; };
+  reader.readAsText(file);
+}
+
+// Clears every hand-imported unit for one course — the Pacing Calendar
+// falls back to the legacy even-distribution path for that course again,
+// same as before anything was ever imported. Delivery notes already
+// entered for those units are left alone (harmless orphan keys — a future
+// re-import with the same unit ids would find them again).
+function lhClearCustomPacingUnits(course) {
+  const count = (CUSTOM_PACING_UNITS[course] || []).length;
+  if (!count) return;
+  const label = LP_C_LABELS[course] || course;
+  _showConfirm(
+    `Remove all ${count} imported lesson unit${count!==1?'s':''} for ${label}? The Pacing Calendar goes back to its even-distribution guess for this course. Delivery notes you've typed in aren't deleted — re-importing the same unit ids later will find them again.`,
+    () => {
+      delete CUSTOM_PACING_UNITS[course];
+      persistCustomPacingUnits();
+      renderPacingImportSettings();
+      if (document.getElementById('lp-calendar-grid')) renderPacingCalendar();
+      _showToast(`🗑️ Removed imported units for ${label}`);
+    },
+    { confirmLabel: 'Remove', ariaLabel: `Remove imported lesson units for ${label}` }
+  );
+}
+
+// Renders the course selector + per-course imported-unit summary in
+// Settings → Weekly Schedule / Lesson Unit Template.
+function renderPacingImportSettings() {
+  const sel = document.getElementById('lh-pacing-import-course');
+  const list = document.getElementById('pacing-import-list');
+  if (!sel || !list) return;
+
+  const courses = _customPacingImportCourses();
+  const prev = sel.value;
+  sel.innerHTML = courses.map(c => `<option value="${escH(c)}">${escH(LP_C_LABELS[c]||c)}</option>`).join('');
+  if (courses.includes(prev)) sel.value = prev;
+
+  if (!courses.length) {
+    list.innerHTML = `<div style="font-size:.74rem;color:var(--muted);font-style:italic">Add a course in Course Catalog above (other than 8175/8177, which already use the real CAS pacing guide) to import lesson units for it.</div>`;
+    return;
+  }
+
+  const withUnits = courses.filter(c => (CUSTOM_PACING_UNITS[c] || []).length > 0);
+  if (!withUnits.length) {
+    list.innerHTML = `<div style="font-size:.74rem;color:var(--muted);font-style:italic">Nothing imported yet.</div>`;
+    return;
+  }
+  list.innerHTML = withUnits.map(c => {
+    const n = CUSTOM_PACING_UNITS[c].length;
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
+      <span style="flex:1"><strong>${escH(LP_C_LABELS[c]||c)}</strong> — ${n} lesson unit${n!==1?'s':''} imported</span>
+      <button onclick="lhClearCustomPacingUnits('${c}')" aria-label="Remove imported lesson units for ${escH(LP_C_LABELS[c]||c)}" title="Remove imported units" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>
+    </div>`;
+  }).join('');
+}
+
+// Prefills from a real CAS or hand-imported unit when called from its
+// detail modal (unitId + course given); prints a fully blank template when
+// called with no arguments (e.g. from Settings → Course Catalog).
 function lhPrintLessonUnitTemplate(unitId, course) {
-  const unit = unitId ? CAS_PACING_UNITS.find(u => u.id === unitId) : null;
+  const unit = unitId ? getPacingUnitsForCourse(course).find(u => u.id === unitId) : null;
   const cdata = unit ? (unit.courses[course] || {}) : {};
   const comps = unit ? getPacingUnitCompetencies(course, unit) : [];
   const notes = unit ? getCasPacingNotes(unitId, course) : { materials:'', assessment:'', differentiation:'', notes:'' };
@@ -19131,7 +19343,7 @@ function lhPrintLessonUnitTemplate(unitId, course) {
     @media print{body{padding:.5rem;}}
   </style></head><body>
   <h1>${escH(title)}</h1>
-  <div class="meta">${unit ? `${escH(unit.stageName)} · ${LP_C_LABELS[course]||course||''} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}` : 'CCPS / VDOE-format lesson plan template'}</div>
+  <div class="meta">${unit ? `${unit.stageName?escH(unit.stageName)+' · ':''}${LP_C_LABELS[course]||course||''} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}` : 'CCPS / VDOE-format lesson plan template'}</div>
   ${field('Objective', cdata.objective)}
   ${field('VDOE / CCPS Competencies Addressed', compsBlock, 3)}
   ${field('Key Vocabulary', (unit && unit.vocabulary && unit.vocabulary.length) ? unit.vocabulary.map(v=>`${v.term}: ${v.definition}`).join('\n') : '', 3)}
