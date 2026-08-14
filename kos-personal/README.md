@@ -49,8 +49,11 @@ PDF text and cross-checking each version's schema against what
 `3_Queue_Processor.gs` actually reads at runtime confirmed
 `PERSONA_DEVELOPER_V5_3.md` and `PERSONA_CURATOR_V5.pdf` (not `v5.3.pdf`,
 despite the higher-looking version number) are canonical; the other file
-in each pair is a superseded draft. See `rtp-core-router/README.md` for
-the full evidence. `PIVOTS_AND_LESSONS.gdoc` and
+in each pair is a superseded draft. The Curator PDF's exact content has
+since been confirmed against a clean-source copy and re-saved as
+`PERSONA_CURATOR_V5.md` (PDF retired), matching the Developer file's
+already-Markdown format. See `rtp-core-router/README.md` for the full
+evidence. `PIVOTS_AND_LESSONS.gdoc` and
 `CORE_THESIS` are still not pre-seeded — these are Drive documents the
 deployed system creates on first run (`deployFullSystem()` /
 `completeOnboarding()`), not code files, so this is expected, not a gap.
