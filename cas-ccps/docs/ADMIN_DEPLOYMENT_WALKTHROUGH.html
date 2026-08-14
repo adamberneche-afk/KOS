@@ -1433,19 +1433,26 @@ body {
     <div class="instruction">
       <div class="instr-num">1</div>
       <div class="instr-body">
-        <h4>Create the Teacher Dashboard project</h4>
-        <p>Go to <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Teacher Dashboard</strong>. Create two files:</p>
+        <h4>Create the Teacher Dashboard project — once per teacher</h4>
+        <div class="callout callout-warn">
+          <div class="callout-icon">⚠️</div>
+          <div class="callout-body"><strong>This project is deployed once per teacher, not once for the whole school</strong> — same convention as the Admin Manual (see the final checklist). Every server function on this dashboard scopes its data to whichever email is set below, and only lets that same person view it — so each teacher needs their own copy of this project, their own Script Property, and their own deployment URL. Deploying it once and sharing one URL across teachers will not work: the dashboard only ever shows (and only ever lets in) the one teacher named in <code>TEACHER_EMAIL</code>.</div>
+        </div>
+        <p>Go to <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Teacher Dashboard ([Teacher Name])</strong>. Create two files:</p>
         <div class="file-list">
           <div class="file-row"><div><div class="file-name">00_SharedConfig</div></div></div>
           <div class="file-row"><div><div class="file-name">07_TeacherDashboard</div></div></div>
+          <div class="file-row"><div><div class="file-name">29_StudentContextAggregator</div></div></div>
         </div>
         <p>Set Script Properties on this project:</p>
         <div class="code-block">
 <span class="k">CENTRAL_LEDGER_SS_ID</span> = <span class="v">[Central Ledger Spreadsheet ID]</span>
+<span class="k">TEACHER_EMAIL</span> = <span class="v">[this teacher's school email address]</span>
+<span class="k">TEACHER_NAME</span>  = <span class="v">[this teacher's display name]</span>
         </div>
         <p>Deploy: <strong>Deploy → New deployment → Web App</strong><br>
         Execute as: <strong>Me</strong> &nbsp;·&nbsp; Access: <strong>Anyone in your organization</strong><br>
-        Copy the deployment URL — this is your <strong>Teacher Dashboard URL</strong>.</p>
+        Copy the deployment URL — this is <strong>this teacher's</strong> Teacher Dashboard URL. Repeat this whole step for each additional teacher.</p>
       </div>
     </div>
 
@@ -1487,7 +1494,7 @@ body {
       <div class="instr-num">4</div>
       <div class="instr-body">
         <h4>Test both URLs</h4>
-        <p>Open the Teacher Dashboard URL — you should see a loading spinner followed by "No students registered yet." Open the Student Dashboard URL — you should see "No assignments found for [your email]." Both loading without errors confirms the deployment worked and <code>CENTRAL_LEDGER_SS_ID</code> is set correctly.</p>
+        <p>Open the Teacher Dashboard URL <strong>signed in as the teacher named in <code>TEACHER_EMAIL</code></strong> — you should see a loading spinner followed by "No students registered yet." If you instead see "This dashboard is only available to the teacher it's configured for," <code>TEACHER_EMAIL</code> is missing or doesn't match the signed-in account — fix the Script Property and reload. Open the Student Dashboard URL — you should see "No assignments found for [your email]." All of this loading without errors confirms the deployment worked and <code>CENTRAL_LEDGER_SS_ID</code>/<code>TEACHER_EMAIL</code> are set correctly.</p>
       </div>
     </div>
   </div>
@@ -1615,9 +1622,9 @@ body {
     <li>Master Teacher Matrix Sheet: 3 scripts bound (00, 08, 19) — no triggers set manually</li>
     <li>Master Student Template created, 4 scripts bound, 2 Script Properties set</li>
     <li>MASTER_STUDENT_TEMPLATE_ID added to Admin Manual Script Properties</li>
-    <li>Teacher Dashboard deployed as web app (Execute as: Me)</li>
+    <li>Teacher Dashboard deployed as web app (Execute as: Me) — once per teacher, each with its own <code>TEACHER_EMAIL</code>/<code>TEACHER_NAME</code> Script Properties and its own URL</li>
     <li>Student Dashboard deployed as web app (Execute as: User accessing the app)</li>
-    <li>TEACHER_DASHBOARD_URL and STUDENT_DASHBOARD_URL added to Admin Manual Script Properties</li>
+    <li>TEACHER_DASHBOARD_URL and STUDENT_DASHBOARD_URL added to Admin Manual Script Properties (one Teacher Dashboard URL per teacher)</li>
     <li>Both dashboard URLs load without errors in browser</li>
     <li>Current term set via ⚙️ Admin Controls → Set Current Term in Central Ledger</li>
     <li>Both personal workspace activation links opened and authorized</li>
