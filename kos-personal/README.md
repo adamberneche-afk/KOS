@@ -215,14 +215,11 @@ by default — an explicit opt-in path exists."** Concretely:
   when passed a falsy account, so no new gating logic was needed there,
   only a non-null `managed_service` value to react to.
 
-**What is explicitly NOT wired up**: the service's `POST /api/v1/jobs`
-webhook — the actual inference hand-off — has no caller anywhere in this
-repo's `.gs` files. `10_Turnstile.gs` still only knows about native
-Studio inference. `MANAGED_SERVICE` mode today gets you a working
-account-status panel if you deploy the service and paste in credentials;
-it does not yet make `STUDIO_ACTIVE` rows actually route to this service
-instead of Studio. That integration is real, unbuilt work, tracked here
-so it isn't assumed to already exist.
+**Update — this gap is now closed.** `10_Turnstile.gs` now actually
+routes to the managed service — see "`10_Turnstile.gs` now actually
+routes to the managed service" below for the full writeup. Left the
+original wording above (in the four-bugs section) as the historical
+record of what was true when those bugs were fixed.
 
 ### A duplicate `resetProperties()` gas-lint's first version missed
 
@@ -324,7 +321,12 @@ delimiter-bounded block with internal paragraphs, a no-delimiter
 oversized blob, and an empty-string edge case) standalone before landing —
 every returned chunk honors the limit and no content is lost.
 
-### `inference-service`'s four bugs — fixed even though it's still not wired to Turnstile
+### `inference-service`'s four bugs — fixed before it was wired to Turnstile
+
+**Update:** the wiring gap this heading originally referred to is now
+closed — see "`10_Turnstile.gs` now actually routes to the managed
+service" below. Left here unchanged as the historical record of the 4
+bugs found and fixed in this file before that wiring existed.
 
 Found during the same review that found everything else above, fixed
 opportunistically since they were cheap and self-contained:
@@ -358,6 +360,54 @@ opportunistically since they were cheap and self-contained:
   between the sender and Node broke a legitimate signature. Fixed using
   Express's standard `verify` callback to capture the real raw bytes
   alongside the parsed body, and signing those instead.
+
+### `10_Turnstile.gs` now actually routes to the managed service
+
+Closes the gap the section above and "The managed inference service —
+revived as an optional path" both flagged: `CFG.INFERENCE_MODE ===
+'MANAGED_SERVICE'` got you a working account-status panel, but nothing
+anywhere ever called the service's `POST /api/v1/jobs` webhook — a row
+released to `STUDIO_ACTIVE` in that mode just sat there forever, since
+there's no Studio watching it and nothing else ever submitted the job.
+(This item briefly also appeared mislabeled as a **cas-ccps** gap in an
+earlier planning pass — cas-ccps has no `inference-service`,
+`INFERENCE_MODE`, or `MANAGED_SERVICE` concept anywhere in it; this was
+always a kos-personal-only gap, and is fixed here once, not twice.)
+
+- New `_submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType)`
+  in `3_Queue_Processor.gs`, next to the existing `_getManagedServiceStatus_()`.
+  POSTs to the real `/api/v1/jobs` endpoint with the exact body shape
+  `server.js` expects (`payload_uid`/`file_id`/`doc_url`/`payload_type`),
+  sends `X-KOS-API-Key`, and — when the new `CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET`
+  Script Property is configured — signs the raw JSON body with HMAC-SHA256
+  and sends `X-KOS-Signature: sha256=<hex>`, matching `server.js`'s
+  `validateWebhookSignature` byte-for-byte (verified with a Node harness
+  that computes the same signature both ways and confirms they match
+  exactly). The secret is optional, same as the service's own "skip in
+  dev if not configured" behavior — job submission still runs unsigned if
+  it's unset.
+- `10_Turnstile.gs`'s `runMatrixTurnstile()` calls this immediately before
+  releasing a `PENDING_FLOW` row, but only when `CFG.INFERENCE_MODE ===
+  'MANAGED_SERVICE'` — in the default `'STUDIO'` mode this whole path is
+  skipped and the release loop is byte-for-byte unchanged from before this
+  fix. A row only advances to `STUDIO_ACTIVE` if the submission succeeds;
+  a failed submission (network error, unconfigured credentials, non-201
+  response) leaves the row in `PENDING_FLOW` to retry on the next 5-minute
+  run, rather than releasing it to a status nothing will ever pick up out
+  of. The existing staleness reset (`CFG.TURNSTILE_STALE_MINS`) remains
+  the safety net for a job the service accepted but never finished — no
+  new polling logic needed, since the service's own `worker.js` already
+  writes results back to Drive and sets `FLOW_COMPLETE` directly using
+  its stored OAuth connection, without GAS needing to ask.
+- Verified with a Node harness that loads the real `10_Turnstile.gs` +
+  `_submitManagedServiceJob_` code into a VM sandbox with mocked
+  `UrlFetchApp`/`PropertiesService`: confirms `STUDIO` mode makes zero
+  managed-service calls and releases exactly as before; `MANAGED_SERVICE`
+  mode submits the real row data and only releases on success; a failed
+  submission leaves the row `PENDING_FLOW` without burning a concurrency
+  slot; an unconfigured deployment makes no network call at all; and the
+  signature header is present only when a secret is configured, with the
+  exact `sha256=<64-hex>` format the service expects.
 
 ---
 
