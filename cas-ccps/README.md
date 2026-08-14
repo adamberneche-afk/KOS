@@ -14,14 +14,18 @@ with named divisions (Creative Studio, Apparel & Merch Co., School Store,
 Wholesale & Sourcing, Media & PR, Events Division, Esports Division) and
 management roles students rotate through. See `curriculum/lesson-cards/`.
 
-No file anywhere in this system uses the word "FERPA" or "COPPA" despite
-handling real student names, emails, and submitted work — the closest thing
-to a compliance statement is `docs/SYSTEM_ARCHITECTURE.html`'s Security
+`docs/KOS_Guide_IT__Admin_Security.pdf` has a section titled "FERPA & Data
+Privacy Compliance" (this README previously and incorrectly claimed no file
+anywhere used either word — that self-audit only checked HTML/JS files and
+missed the one PDF in `docs/`). The closest thing to a compliance statement
+among the live HTML/JS docs is `docs/SYSTEM_ARCHITECTURE.html`'s Security
 Model section (no API keys ever touch a student-facing surface,
 prompt-injection denylist, three-point turn-in validation, a forensic
 version-history check with an *honestly documented* bypass: a student who
 selects-all-and-pastes a pre-written fake report in one fast paste can
-defeat it — treated as a manual-review signal, not proof).
+defeat it — treated as a manual-review signal, not proof). The two
+documents haven't been reconciled into one canonical security statement —
+worth doing before relying on either alone.
 
 ---
 
