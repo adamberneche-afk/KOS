@@ -75,6 +75,17 @@ function getSheetConfig_() {
       confirmEntryM4:       map["CONFIRM_ENTRY_MILESTONE_4"] || "",
       confirmEntryDod:      map["CONFIRM_ENTRY_DOD"]         || "",
 
+      // -- M5 -- four competency dropdown entry IDs (merged from
+      // 19_ClonedSheetConfig_M5_ADDENDUM.js, see archived/ for the original).
+      confirmEntryComp1:    map["CONFIRM_ENTRY_COMP_1"]      || "",
+      confirmEntryComp2:    map["CONFIRM_ENTRY_COMP_2"]      || "",
+      confirmEntryComp3:    map["CONFIRM_ENTRY_COMP_3"]      || "",
+      confirmEntryComp4:    map["CONFIRM_ENTRY_COMP_4"]      || "",
+
+      // -- M6 -- lesson-unit dropdown entry ID (merged from
+      // 19_ClonedSheetConfig_M6_ADDENDUM.js, see archived/ for the original).
+      confirmEntryLessonUnit: map["CONFIRM_ENTRY_LESSON_UNIT"] || "",
+
       // Tab names — consistent across all projects
       tabs: {
         ledger:          "Ledger",

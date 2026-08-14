@@ -1,4 +1,8 @@
 // =============================================================================
+// ARCHIVED — merged into 19_ClonedSheetConfig.js's getSheetConfig_()
+// return object. Do not paste from here; this line is live. Retained
+// for reference only.
+// =============================================================================
 // FILE: 19_ClonedSheetConfig_M6_ADDENDUM.js
 // PURPOSE: M6 addition to 19_ClonedSheetConfig.js — Known Gaps #2
 //          (lesson_unit_id), Round 2 reconciliation decision C1.
