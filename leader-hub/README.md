@@ -769,6 +769,77 @@ course; and the calendar's real-date placement logic (a unit's actual
 date range, not an even-distribution guess, decides which days belong to
 it, including the boundary into the next real unit).
 
+## HH1 — Import a county calendar document into School Calendar settings
+
+Closes the other half of the "stale school-year dates" gap GG1 flagged:
+Settings → School Calendar already had quarter-date inputs (added in an
+earlier round, `lhSaveQuarters()`) but nothing helped a teacher fill them
+in each year besides typing four date pairs by hand from the official
+county calendar. This adds an import path — paste or upload text from
+that document and get the quarter dates, no-school dates, and
+early-release dates pre-filled for review.
+
+**Why this is text-paste/upload, not a PDF-upload button.** This app has
+no PDF-parsing library and a strict CSP (no third-party scripts,
+`connect-src` limited to `script.google.com`) — there's no way to read a
+PDF's content client-side without violating both. The honest, buildable
+version: open the county's calendar (PDF or webpage), select-all, copy,
+and paste the text into Settings — or upload a `.txt`/`.csv` file with
+the same content. The Settings copy says this explicitly rather than
+implying PDF support that doesn't exist.
+
+**The parser** (`parseCountyCalendarText()` + `extractDatesFromText()`/
+`extractDateRangeBounds()`) is a best-effort, regex-based reader for
+common district-calendar phrasing:
+- Quarter/nine-weeks date ranges ("Quarter 1: August 25 - October 23,
+  2026", "1st Nine Weeks", numeric `M/D/YYYY` ranges) — resolved via
+  `extractDateRangeBounds()`, which finds just the two boundary dates
+  without expanding every day in between. This matters: a real 9-week
+  quarter spans ~85-95 calendar days including weekends, and the
+  day-by-day expander used for holiday ranges caps at 25 days specifically
+  to catch parsing mistakes — reusing it for quarters would have silently
+  truncated every one of them.
+- No-school and early-release dates, pulled from lines under a
+  recognizable section header ("Holidays", "No School", "Early Release")
+  *or* any line naming a common holiday (Labor Day, Thanksgiving, Winter
+  Break, MLK Day, Presidents Day, Spring Break, Memorial Day, Teacher
+  Workday, and a dozen others) — catches named holidays even in a
+  document with no explicit section structure.
+- A running "year context" tracked line-by-line, since real calendars
+  state a year once per section and omit it on the next several entries
+  ("MLK Day — January 18" right after a line that said "...2027") — a
+  single constant reference year would get every undated entry in the
+  second half of a school-year-spanning document wrong.
+
+**Nothing is ever silently applied.** `lhParseCountyCalendar()` shows a
+`_showConfirm()` preview — exactly which quarter dates were found (or
+"not found — existing value kept" for ones it couldn't), how many
+no-school/early-release dates were found, and a warning for anything
+ambiguous — before `_lhApplyCountyCalendarParse()` touches a single
+Settings field. Quarters found are applied as a **replacement** (a stale
+date range isn't worth keeping); no-school and early-release dates are
+**merged** into whatever's already saved, never removing an entry a
+teacher already added by hand.
+
+Verified with `node --check` on both `<script>` blocks, `node
+tools/gas-lint/check.js` (clean except the 2 pre-existing unrelated
+cas-ccps warnings), and two Node harnesses: a standalone prototype test
+(27 checks) developed before transplanting the parser into the app, and
+`verify_hh1.js` (16 checks) that loads the real embedded parser functions
+out of the actual file and re-runs the same fixture-based checks —
+confirming the transplant matches exactly, not a second drifted
+implementation. Covers: full-document parsing against a structurally
+representative sample calendar (all 4 quarters, cross-year winter break,
+named holidays, early-release days — not a real official CCPS document,
+which wasn't available to this session), partial/degraded input recovering
+whatever it can find while warning about what it couldn't, and the
+early-release/no-school distinction never double-counting a day.
+
+**Deliberately not done:** the 2026-27 official quarter dates themselves
+still need to come from a real CCPS-published document via this import
+(or manual entry) — this round builds the tool, not the data; and true
+PDF parsing, for the reasons above.
+
 ## UI/UX Hardening — Rounds 1–9
 
 After the reconciliation work that filed this system into the repo, it
