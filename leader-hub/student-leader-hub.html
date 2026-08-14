@@ -3178,9 +3178,33 @@ window.onerror = function(msg, src, line, col, err) {
 
 
 <script>
+// Tracks whether a save-failed warning has already been shown this page
+// load — a full quota means EVERY subsequent LS.set() call fails too, and
+// nothing here should spam a toast on every single one of them.
+let _lsWriteFailWarned = false;
 const LS = {
   get: (k, def=null) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch{ return def; } },
-  set: (k, v)        => { try { localStorage.setItem(k,JSON.stringify(v)); } catch{} },
+  // FIXED: this used to swallow every write failure (including a full
+  // storage quota) with an empty catch block — no return value, no
+  // console log, no user-visible sign anything went wrong. With 78+ keys
+  // that only grow (trip history, journal entries, daily logs...), a full
+  // quota meant silent, permanent data loss with zero indication. Now
+  // returns whether the write actually succeeded, and surfaces one toast
+  // per page load if it didn't — callers that care can still check the
+  // return value, but the common case (fire-and-forget) is no longer silent.
+  set: (k, v) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+      return true;
+    } catch (e) {
+      console.error('[LS.set] write failed for key', k, e);
+      if (!_lsWriteFailWarned && typeof _showToast === 'function') {
+        _lsWriteFailWarned = true;
+        _showToast('⚠ Could not save — your device\'s storage may be full. Export a backup soon.', 6000, '#991b1b');
+      }
+      return false;
+    }
+  },
 };
 
 // ============================================================
@@ -20111,12 +20135,12 @@ function showBragBoardPromptBanner() {
 
 <!-- ══ EMAIL BRIDGE MODAL ══════════════════════════════════════════════════ -->
 <div id="modal-emailbridge" class="mo" onclick="if(event.target===this)closeModal('emailbridge')">
-  <div class="modal-box" style="max-width:520px">
-    <div class="modal-header">
-      <span>📧 Email Bridge Setup</span>
-      <button class="modal-close" onclick="closeModal('emailbridge')" aria-label="Close">✕</button>
+  <div class="mbox" style="max-width:520px">
+    <div class="mhdr">
+      <div class="mtitle">📧 Email Bridge Setup</div>
+      <button class="mclose" onclick="closeModal('emailbridge')" aria-label="Close">✕</button>
     </div>
-    <div style="padding:1.2rem 1.4rem;display:flex;flex-direction:column;gap:1rem">
+    <div class="mbody" style="display:flex;flex-direction:column;gap:1rem">
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.85rem;font-size:.8rem;color:#14532d;line-height:1.6">
         <strong>⭐ Star any email in Gmail</strong> — it appears on your dashboard within 5 minutes. No API key. No labeling. One tap on mobile or desktop.
