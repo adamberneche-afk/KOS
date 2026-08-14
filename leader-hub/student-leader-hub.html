@@ -16502,9 +16502,38 @@ function lhImportBackup(fileInput){
     // a jarring break from the app's own toast/modal vocabulary, right in
     // the middle of a genuinely destructive action worth getting right.
     _showImportConfirmModal(keys.length, () => {
-      keys.forEach(k => localStorage.setItem(k, data[k]));
-      _showToast('✅ Import complete — reloading…');
-      setTimeout(() => location.reload(), 900);
+      // FIXED: this used to be one bare `keys.forEach(k =>
+      // localStorage.setItem(...))` with no try/catch at all — a single
+      // key throwing (quota exceeded partway through, a malformed value)
+      // aborted the whole loop silently, leaving some keys imported and
+      // others not, yet the toast below still unconditionally said
+      // "Import complete" and reloaded anyway. A partial, silently
+      // corrupted import looked identical to a clean one. Now each key
+      // gets its own try/catch so one failure can't abort the rest, and
+      // the completion message (and whether to reload at all) depends on
+      // whether anything actually failed.
+      const failedKeys = [];
+      keys.forEach(k => {
+        try { localStorage.setItem(k, data[k]); }
+        catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
+      });
+
+      if (failedKeys.length === 0) {
+        _showToast('✅ Import complete — reloading…');
+        setTimeout(() => location.reload(), 900);
+      } else {
+        // A long duration rather than the usual ~3-4s default — this
+        // message is longer and more consequential than a normal toast,
+        // and critically, this branch does NOT reload. Reloading now
+        // would make this half-imported state look identical to a clean
+        // success, the exact failure mode this fix closes.
+        _showToast(
+          `⚠ Import partially failed — ${keys.length - failedKeys.length} of ${keys.length} key(s) imported, ` +
+          `${failedKeys.length} failed (likely storage full). Not reloading — export a backup and free up ` +
+          `storage before trying again.`,
+          15000, '#991b1b'
+        );
+      }
     });
   };
   reader.readAsText(file);
