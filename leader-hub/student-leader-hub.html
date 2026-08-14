@@ -6986,7 +6986,7 @@ function statusBadge(s){
 
 function positionBadge(pos){
   const isOff = _officerPositionsFor(activeOrgId).includes(pos);
-  return `<span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${pos}</span>`;
+  return `<span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${escH(pos)}</span>`;
 }
 
 function avatarBg(s){
@@ -7005,22 +7005,22 @@ function renderOfficerGrid(list){
     ${list.map(s=>`
     <div class="mb-card" style="${s.memberStatus==='slc'?'border:2px solid #7c3aed':s.memberStatus==='icdc'?'border:2px solid var(--gold)':''}">
       <div style="padding:.85rem 1rem;display:flex;gap:.75rem;align-items:flex-start">
-        <div class="ava" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;background:${avatarBg(s)}">${s.first[0]}${s.last[0]}</div>
+        <div class="ava" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;background:${avatarBg(s)}">${escH(s.first[0])}${escH(s.last[0])}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:.9rem">${s.first} ${s.last}</div>
+          <div style="font-weight:700;font-size:.9rem">${escH(s.first)} ${escH(s.last)}</div>
           <div style="margin:.2rem 0">${positionBadge(s.position)}</div>
           <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">${statusBadge(s)}${s.paid?'<span style="font-size:.63rem;background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:20px;font-weight:700">✓ Paid</span>':'<span style="font-size:.63rem;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:20px;font-weight:700">⚠ Dues Owed</span>'}</div>
-          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">🏆 ${s.competEvent}</div>`:''}
+          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">🏆 ${escH(s.competEvent)}</div>`:''}
         </div>
       </div>
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.4rem;flex-wrap:wrap">
-        ${s.email?`<a href="mailto:${s.email}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
-        ${s.parentEmail?`<a href="mailto:${s.parentEmail}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
-        ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${s.phone}</span><span style="color:var(--border)">|</span>`:''}
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
+        ${s.parentEmail?`<a href="mailto:${escH(s.parentEmail)}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
+        ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${escH(s.phone)}</span><span style="color:var(--border)">|</span>`:''}
         <button class="btn btn-outline btn-xs" style="font-size:.63rem;margin-left:auto" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
         <button class="btn btn-danger btn-xs" style="font-size:.63rem" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
       </div>
-      ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.72rem;color:var(--muted);font-style:italic">${s.notes}</div>`:''}    </div>`).join('')}
+      ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.72rem;color:var(--muted);font-style:italic">${escH(s.notes)}</div>`:''}    </div>`).join('')}
   </div>`;
 }
 
@@ -7036,13 +7036,13 @@ function renderMemberTable(list){
     <table>
       <thead><tr><th>Member</th><th>Grade</th><th>Position</th><th>Event</th><th>Status</th><th>Dues</th><th>Contact</th><th></th></tr></thead>
       <tbody>${list.map(s=>`<tr>
-        <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.7rem;flex-shrink:0">${s.first[0]}${s.last[0]}</div><strong>${s.first} ${s.last}</strong></div></td>
+        <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.7rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div><strong>${escH(s.first)} ${escH(s.last)}</strong></div></td>
         <td style="font-size:.78rem">${s.grade?s.grade+'th':''}</td>
         <td>${positionBadge(s.position)}</td>
-        <td style="font-size:.75rem;max-width:160px">${s.competEvent||'—'}</td>
+        <td style="font-size:.75rem;max-width:160px">${escH(s.competEvent)||'—'}</td>
         <td>${statusBadge(s)}</td>
         <td>${s.paid?'<span style="color:#15803d;font-size:.75rem;font-weight:700">✓ Paid</span>':'<span style="color:#d97706;font-size:.75rem;font-weight:700">⚠ Owed</span>'}</td>
-        <td style="font-size:.72rem">${s.email?`<a href="mailto:${s.email}" style="color:var(--navy)">${s.email}</a>`:''}</td>
+        <td style="font-size:.72rem">${s.email?`<a href="mailto:${escH(s.email)}" style="color:var(--navy)">${escH(s.email)}</a>`:''}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-outline btn-xs" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
           <button class="btn btn-danger btn-xs" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
@@ -7066,16 +7066,16 @@ function renderAlumniGrid(list){
     ${list.map(s=>`
     <div class="mb-card" style="border-left:4px solid #94a3b8">
       <div style="padding:.85rem 1rem;display:flex;gap:.75rem;align-items:flex-start">
-        <div class="ava" style="background:#64748b;width:42px;height:42px;font-size:.9rem;flex-shrink:0">${s.first[0]}${s.last[0]}</div>
+        <div class="ava" style="background:#64748b;width:42px;height:42px;font-size:.9rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div>
         <div style="flex:1">
-          <div style="font-weight:700">${s.first} ${s.last}</div>
-          <div style="font-size:.72rem;color:var(--muted);margin:.15rem 0">Class of ${s.alumniYear||'—'} · Former ${s.position}</div>
-          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted)">🏆 ${s.competEvent}</div>`:''}
-          ${s.alumniPref?`<div style="margin-top:.3rem"><span style="font-size:.65rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:2px 7px;border-radius:20px;font-weight:600">${prefLabel[s.alumniPref]||s.alumniPref}</span></div>`:''}
+          <div style="font-weight:700">${escH(s.first)} ${escH(s.last)}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin:.15rem 0">Class of ${s.alumniYear||'—'} · Former ${escH(s.position)}</div>
+          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted)">🏆 ${escH(s.competEvent)}</div>`:''}
+          ${s.alumniPref?`<div style="margin-top:.3rem"><span style="font-size:.65rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:2px 7px;border-radius:20px;font-weight:600">${escH(prefLabel[s.alumniPref]||s.alumniPref)}</span></div>`:''}
         </div>
       </div>
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.5rem;flex-wrap:wrap">
-        ${s.email?`<a href="mailto:${s.email}" style="font-size:.7rem;color:var(--navy)">✉ ${s.email}</a>`:'<span style="font-size:.7rem;color:var(--muted);font-style:italic">No email on file</span>'}
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.7rem;color:var(--navy)">✉ ${escH(s.email)}</a>`:'<span style="font-size:.7rem;color:var(--muted);font-style:italic">No email on file</span>'}
         <button class="btn btn-outline btn-xs" style="margin-left:auto;font-size:.63rem" onclick="sendAlumniExitEmail(${s.id})">📋 Exit Interview</button>
         <button class="btn btn-outline btn-xs" style="font-size:.63rem" onclick="openEditMember(${s.id})">✏️</button>
       </div>
@@ -7154,7 +7154,7 @@ function renderRegistrationTab(content){
           </div>
           ${missing.length?`<div style="font-size:.75rem;color:#92400e;background:#fef3c7;border-radius:6px;padding:.55rem .7rem;border:1px solid #fde68a">
             <strong>⚠ ${missing.length} member${missing.length>1?'s':''} missing info:</strong><br>
-            ${missing.map(s=>`${s.first} ${s.last} — ${[!s.email&&'email',!s.parentEmail&&'parent email',!s.competEvent&&'event',!s.shirtSize&&'shirt size'].filter(Boolean).join(', ')}`).join('<br>')}
+            ${missing.map(s=>`${escH(s.first)} ${escH(s.last)} — ${[!s.email&&'email',!s.parentEmail&&'parent email',!s.competEvent&&'event',!s.shirtSize&&'shirt size'].filter(Boolean).join(', ')}`).join('<br>')}
           </div>`:'<div style="font-size:.75rem;color:#15803d;background:#dcfce7;border-radius:6px;padding:.55rem .7rem;">✅ All member profiles are complete</div>'}`;
         })()}
       </div>
@@ -12511,9 +12511,16 @@ async function generateAIInsights() {
         const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting narrative with AI…');
         const curNarrativeEl = document.getElementById('archive-ai-narrative'); // modal may have re-rendered while polling
         if (draft && curNarrativeEl) {
+          // FIXED: draft is AI-drafted text that round-trips through
+          // Gemini and back — escH() here (same helper already used
+          // throughout this file for user text) prevents it from being
+          // interpreted as HTML if the model ever echoes back a stray
+          // tag-like sequence. white-space:pre-wrap already renders plain
+          // text with its original line breaks, so escaping doesn't
+          // change how a normal narrative looks.
           curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
             <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Narrative</div>
-            <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${_restoreNamesFromIds(draft)}</div>
+            <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${escH(_restoreNamesFromIds(draft))}</div>
           </div>`;
         } else if (curNarrativeEl) {
           curNarrativeEl.innerHTML = '';
@@ -12647,9 +12654,14 @@ async function _wblGenerateNarrative() {
       const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
       const curNarrativeEl = document.getElementById('wbl-ai-narrative'); // modal may have closed while polling
       if (draft && curNarrativeEl) {
+        // FIXED: same escaping fix as generateAIInsights()'s narrative —
+        // draft is AI-drafted text round-tripped through Gemini; escH()
+        // prevents a stray tag-like sequence from being interpreted as
+        // HTML. white-space:pre-wrap already preserves plain-text
+        // line breaks, so this doesn't change how a normal summary looks.
         curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
           <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Summary</div>
-          <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${_restoreNamesFromIds(draft)}</div>
+          <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${escH(_restoreNamesFromIds(draft))}</div>
         </div>`;
       } else if (curNarrativeEl) {
         curNarrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">No summary came back — try again in a moment.</div>';
