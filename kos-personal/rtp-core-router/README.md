@@ -15,10 +15,15 @@ up versus still prose.
 | `PERSONA_ALIGNMENT_V5.md` | Canonical — only version present |
 | `PERSONA_MUSE_V5.pdf` | Canonical — only version present |
 | `RTP_CORE_ROUTER_V5_5.pdf` | Canonical — only version present |
-| `PERSONA_DEVELOPER_V5_3.md` vs. `PERSONA_DEVELOPER_V5.pdf` | **Unreconciled duplicate pair.** The `_5_3` suffix reads as a point-release increment over plain `V5`, so the `.md` is the more likely canonical/current version — but this is an inference from the filename, not a confirmed content diff (no PDF text-extraction tooling was available to actually compare them). Treat `PERSONA_DEVELOPER_V5.pdf` as probably-stale until someone verifies by reading both. |
-| `PERSONA_CURATOR_v5.3.pdf` vs. `PERSONA_CURATOR_V5.pdf` | **Unreconciled duplicate pair**, same situation as above — `v5.3` is probably the newer/canonical one, `V5` probably stale, unconfirmed by content. |
+| `PERSONA_CURATOR_V5.pdf` | **Canonical, confirmed.** Its schema (`schema_version: "5.0"`, `dynamic_state.deferred_decisions`, `session_delta`, `build_state`) matches the live pipeline exactly — `3_Queue_Processor.gs` reads `pd.dynamic_state?.deferred_decisions` and `pd.session_delta?.smp_proposals_filed` verbatim, fields that only exist in this file. |
+| `PERSONA_CURATOR_v5.3.pdf` | **Superseded — confirmed stale, despite the higher version number.** Extracted its text (via `pdfminer.six`) and compared schemas directly: it's a much shorter (2,395 vs. 17,293 chars), simplified draft with a different, smaller schema (`session_summary`/`vector_weights`/`dynamic_state.next_steps`/`dynamic_state.pivots_and_lessons`/`action_exhaust` — no `deferred_decisions`, no `session_delta`, no `build_state`). None of that matches what the live code actually reads. The naming (`v5.3` reading as newer than `V5`) is misleading here — don't infer canonicality from the version number alone; the schema-vs-code check is what actually settled it. |
+| `PERSONA_DEVELOPER_V5_3.md` | **Canonical, confirmed.** Its Section 14 ("Session Artifact Protocol") explicitly hands off `build_state`/`session_delta` to the Curator's schema — consistent with the confirmed-live `PERSONA_CURATOR_V5.pdf` above. |
+| `PERSONA_DEVELOPER_V5.pdf` | **Superseded, confirmed.** Its Section 14 ("README & Changelog Protocol") has the Developer producing independent `[README UPDATE]`/`[CHANGELOG ENTRY]` blocks — the older, pre-consolidation design the Curator's own canonical schema says no longer applies ("The Developer's CHANGELOG and Architect's README no longer exist as independent artifacts"). Same section number, same position in both documents, genuinely different content — not just a reformat. |
 
-See `kos-personal/README.md`'s own note on these two pairs ("low-stakes,
-revisit if it ever matters which is live") — this table exists so that
-"which one do I paste into Studio" has a documented best-guess answer
-instead of a 50/50 pick, without overstating the confidence behind it.
+Both pairs were fully resolved (not guessed) by extracting PDF text with
+`pdfminer.six` and cross-checking each candidate's internal schema
+against what `kos-personal/*.gs` actually reads at runtime. The earlier
+version of this table guessed canonicality from version numbers alone
+and got the Curator pair backwards — `v5.3` looked newer but was
+actually the abandoned draft. Treat the two "Superseded" files as
+historical reference only; do not paste them into a live Studio flow.
