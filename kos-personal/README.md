@@ -197,9 +197,8 @@ just file the code in inert.** This walks back part of this README's
 by default — an explicit opt-in path exists."** Concretely:
 
 - The service itself is filed at `inference-service/` (see that
-  directory's own `README.md` for layout, a known gap — `sql/migrate.js`
-  was referenced but never uploaded — and exactly what is and isn't
-  wired up yet).
+  directory's own `README.md` for layout and exactly what is and isn't
+  wired up).
 - `1_Config_And_Deploy.gs` gained `CFG.INFERENCE_MODE` (`'STUDIO'` default,
   `'MANAGED_SERVICE'` opt-in) and two new `CFG.PROP` keys for the
   service's URL/API key (deployment-specific Script Properties, never

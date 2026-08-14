@@ -45,14 +45,16 @@ inference-service/
     └── schema.sql        Postgres schema (users, jobs, credit ledger)
 ```
 
-## Known gap
+## Migrations
 
-`package.json`'s `"migrate"` script points at `sql/migrate.js`, which was
-**not** part of the uploaded batch — only `sql/schema.sql` (the schema
-itself, presumably meant to be applied directly) came with this service.
-Nothing else in this repo can reconstruct a migration runner that was
-never uploaded. Apply `schema.sql` directly against a fresh Postgres
-database until/unless a real `migrate.js` shows up.
+`npm run migrate` (`sql/migrate.js`) applies `schema.sql` against
+`DATABASE_URL`, reusing `src/db.js`'s connection pool (so it inherits
+that file's TLS/CA handling). `schema.sql` is entirely idempotent
+(`CREATE TABLE IF NOT EXISTS` throughout), so this is a thin wrapper
+around what running `psql $DATABASE_URL -f schema.sql` by hand already
+did — no real migration-versioning machinery is needed at this schema's
+current size. This file previously didn't exist despite `package.json`
+referencing it (a documented, longstanding gap) — it's filed in now.
 
 ## What actually integrates with kos-personal
 
@@ -75,5 +77,4 @@ This section previously said the `/api/v1/jobs` webhook had no caller
 anywhere in the `.gs` files and that wiring `10_Turnstile.gs` to submit
 jobs here was still unbuilt — that's now stale; the wiring above is live.
 Treat `MANAGED_SERVICE` mode today as fully wired end to end, gated
-behind `CFG.INFERENCE_MODE`, off by default — the remaining real gap in
-this service is `sql/migrate.js` (above), not the integration.
+behind `CFG.INFERENCE_MODE`, off by default.
