@@ -758,9 +758,25 @@ via `CFG.REGISTRAR_ROUTED_FOLDER`, pending a real per-type routing rule.
 **What this doesn't include yet:** the two Studio flows themselves aren't
 built — `REGISTRAR_STAGE1_AUDITOR_PROMPT.md` and
 `REGISTRAR_STAGE2_CURATOR_PROMPT.md` are what to build them against, same
-convention as `VECTOR_CLASSIFY_PROMPT.md`. Not wired into the web app UI
-yet — `getRegistrarStatus()` is the read surface a future Diagnostics tab
-would call.
+convention as `VECTOR_CLASSIFY_PROMPT.md`. Building them is a Workspace
+Studio UI action (pasting the prompt into a Studio flow there), not a
+repo-file task — nothing in this codebase can do that step for you.
+
+**Update — `getRegistrarStatus()` is now wired into the web app UI.**
+`8_WebApp_UI.html`'s Diagnostics tab has a "Curriculum auditing" panel
+(hidden entirely until a deployment's `REGISTRAR_LEDGER` has any rows, so
+it's not diagnostics-tab noise for the majority of installs that never
+touch this second pipeline) showing a friendly `in_progress`/`needs_review`/
+`routed`/`failed` breakdown — `getRegistrarStatus()` itself was extended
+to compute that `groups` breakdown server-side alongside its existing raw
+per-state `counts`, same dual-shape convention `getQueueMetrics()` already
+uses. This is read-only: no trigger-now/retry button was added, since the
+one write action this pipeline exposes (`clearInterventionTriage(fileId)`)
+still requires calling it from the Apps Script editor by File_ID, same as
+before this fix — a real UI for that is future work, not assumed done
+here. (This item briefly also appeared mislabeled as a **cas-ccps** gap in
+an earlier planning pass — cas-ccps has no Registrar/Cog Relay concept
+anywhere in it; this was always a kos-personal-only gap.)
 
 **Naming note (Aligner vs. Alignment).** The Calibration Silo folder is
 named `04.5_ALIGNER_SILO` / tagged `CE-ALIGN`, but every persona doc in
