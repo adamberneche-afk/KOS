@@ -89,9 +89,17 @@
 //   The two Studio flows themselves (Stage 1 Auditor, Stage 2 Curator)
 //   aren't built — REGISTRAR_STAGE1_AUDITOR_PROMPT.md and
 //   REGISTRAR_STAGE2_CURATOR_PROMPT.md are what to build them against,
-//   same convention as VECTOR_CLASSIFY_PROMPT.md. Not wired into the web
-//   app UI (7_WebApp.gs) yet — getRegistrarStatus() below is the read
-//   surface a future Diagnostics tab would call.
+//   same convention as VECTOR_CLASSIFY_PROMPT.md. Building the Studio
+//   flows themselves is a Workspace Studio UI action, not a repo file
+//   this codebase can contain — nothing here builds or replaces that.
+//
+//   getRegistrarStatus() IS now wired into the web app's Diagnostics tab
+//   (8_WebApp_UI.html's "Curriculum auditing" panel) as a read-only
+//   status summary — see that file's loadRegistrarStatus(). No GAS-side
+//   *actions* were added for this pipeline beyond the read (no
+//   trigger-now/retry button) — clearInterventionTriage(fileId) above
+//   still requires calling it from the Apps Script editor by File_ID,
+//   same as before this fix.
 // ================================================================
 
 
@@ -620,12 +628,29 @@ function clearInterventionTriage(fileId) {
   }
 }
 
+// States that represent a file still moving through Cog 1/Cog 2 —
+// grouped here once so getRegistrarStatus()'s "in_progress" count and any
+// future caller stay in sync with the state machine documented at the
+// top of this file, instead of each re-deriving the list.
+const REGISTRAR_IN_PROGRESS_STATES = [
+  'QUEUED_FOR_COG_1', 'COG_1_ACTIVE', 'PENDING_VALIDATION_1',
+  'READY_FOR_COG_2', 'COG_2_ACTIVE', 'PENDING_VALIDATION_2',
+  'READY_FOR_TRANSLATION',
+];
+
 /**
- * Read-only status summary — counts per Current_State. Safe to run from
- * the Apps Script editor at any time; also the shape a future web app
- * Diagnostics tab would call.
+ * Read-only status summary — counts per Current_State, plus a friendly
+ * `groups` breakdown for a Diagnostics-tab display (same
+ * detailed-counts-plus-grouped-summary shape as getQueueMetrics() in
+ * 3_Queue_Processor.gs). Safe to run from the Apps Script editor at any
+ * time.
  *
- * @returns {Object} { success, counts: { [state]: number }, total }
+ * Called by the web app via:
+ *   google.script.run.withSuccessHandler(renderRegistrarStatus).getRegistrarStatus()
+ *
+ * @returns {Object} { success, counts: { [state]: number },
+ *                      groups: { in_progress, needs_review, routed, failed },
+ *                      total }
  */
 function getRegistrarStatus() {
   try {
@@ -633,12 +658,25 @@ function getRegistrarStatus() {
     const ledger = _getOrCreateSheet(ss, CFG.REGISTRAR_LEDGER_SHEET);
     const RC     = CFG.REGISTRAR_COLS;
     const lastRow = ledger.getLastRow();
-    if (lastRow <= 1) return { success: true, counts: {}, total: 0 };
+    if (lastRow <= 1) {
+      return {
+        success: true, counts: {}, total: 0,
+        groups: { in_progress: 0, needs_review: 0, routed: 0, failed: 0 },
+      };
+    }
 
     const states = ledger.getRange(2, RC.STATE + 1, lastRow - 1, 1).getValues();
     const counts = {};
     states.forEach(([s]) => { counts[s] = (counts[s] || 0) + 1; });
-    return { success: true, counts, total: lastRow - 1 };
+
+    const groups = {
+      in_progress:  REGISTRAR_IN_PROGRESS_STATES.reduce((sum, s) => sum + (counts[s] || 0), 0),
+      needs_review: counts['AWAITING_CARBON']   || 0,
+      routed:       counts['COMPLETELY_ROUTED'] || 0,
+      failed:       counts['CRITICAL_FAILURE']  || 0,
+    };
+
+    return { success: true, counts, groups, total: lastRow - 1 };
   } catch (e) {
     _reportError('getRegistrarStatus', e, null);
     return { success: false, message: e.message };

@@ -768,6 +768,22 @@ textarea { line-height: 1.55; }
     </div>
     <div class="sec-divider"></div>
 
+    <!-- ②b CURRICULUM AUDITING (Registrar/Cog Relay) ─────── -->
+    <!-- Read-only — no trigger-now/retry button here. This pipeline's
+         two Studio flows (Stage 1 Auditor, Stage 2 Curator) still need to
+         be built in Workspace Studio's own UI before any row can actually
+         move past QUEUED_FOR_COG_1 — this panel surfaces getRegistrarStatus()
+         so that's visible without opening the Apps Script editor, not a
+         claim that the pipeline is fully autonomous yet. Hidden entirely
+         when the ledger has never been used (total === 0) — most
+         deployments won't touch this second, independent pipeline. -->
+    <div class="sec-lbl has-tip" id="registrar-lbl" style="display:none">
+      Curriculum auditing
+      <span class="tip-icon" title="A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab.">?</span>
+    </div>
+    <div id="registrar-summary" style="display:none;margin-bottom:4px"></div>
+    <div class="sec-divider" id="registrar-divider" style="display:none"></div>
+
     <!-- ③ VECTOR WEIGHTS ─────────────────────────────────── -->
     <div class="sec-lbl has-tip">
       Vector weights
@@ -1383,6 +1399,7 @@ function _fmtSyncTime(d) {
 function loadDiagnostics() {
   loadShadowMatrix();
   loadHealthSummary();
+  loadRegistrarStatus();
   loadVectorState();
   loadWebhookUrl();
 }
@@ -1761,6 +1778,60 @@ function healthRowHtml(label, html) {
     '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text3);font-family:var(--mono);margin-bottom:2px;">' + esc(label) + '</div>' +
     '<div style="color:var(--text2);">' + html + '</div>' +
     '</div>';
+}
+
+// ── Registrar / Cog Relay status (curriculum-drafts auditing pipeline) ──
+// Read-only summary — this pipeline has no Diagnostics action buttons of
+// its own (see 11_Registrar_CogRelay.gs's header comment for why:
+// clearInterventionTriage(fileId) is still an Apps Script editor action).
+// The whole panel stays hidden (see the HTML's display:none defaults)
+// until a deployment has actually put something through this ledger —
+// most kos-personal installs never touch this second, independent
+// pipeline, and an always-visible "0 of everything" panel would just be
+// diagnostics-tab noise for them.
+function loadRegistrarStatus() {
+  callServer('getRegistrarStatus', [], (res) => {
+    const lbl  = document.getElementById('registrar-lbl');
+    const el   = document.getElementById('registrar-summary');
+    const div  = document.getElementById('registrar-divider');
+    if (!el) return;
+
+    if (!res || !res.success) {
+      // Non-fatal by design: unlike the primary session-log panels above,
+      // a Registrar failure shouldn't block the rest of Diagnostics from
+      // rendering, and showing an error for a pipeline most deployments
+      // never use would be its own kind of noise. Log for anyone who does
+      // use it and is debugging via the browser console.
+      console.warn('[Diagnostics] getRegistrarStatus failed:', res && res.message);
+      return;
+    }
+
+    if (!res.total) {
+      lbl.style.display = 'none';
+      el.style.display = 'none';
+      div.style.display = 'none';
+      return;
+    }
+
+    lbl.style.display = '';
+    el.style.display = '';
+    div.style.display = '';
+
+    const g = res.groups || {};
+    el.innerHTML =
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:12px;">' +
+      healthRow('In progress', g.in_progress || 0) +
+      (g.needs_review
+        ? healthRowHtml('Needs review', '<i class="ti ti-alert-triangle" style="font-size:12px;margin-right:4px;color:var(--danger)"></i>' + g.needs_review + ' held for a teacher')
+        : healthRow('Needs review', 0)) +
+      healthRow('Routed', g.routed || 0) +
+      (g.failed
+        ? healthRowHtml('Failed', '<i class="ti ti-alert-triangle" style="font-size:12px;margin-right:4px;color:var(--danger)"></i>' + g.failed)
+        : healthRow('Failed', 0)) +
+      '</div>';
+  }, (err) => {
+    console.warn('[Diagnostics] getRegistrarStatus error:', err.message);
+  });
 }
 
 function loadVectorState() {
