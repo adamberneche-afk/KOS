@@ -13,7 +13,44 @@
 //   getCompetencies()        — returns filtered competency list for dropdown
 //   Lesson Context modal markup — inlined directly inside buildDashboardHtml_()
 //   All existing functions unchanged.
+//
+// MODULE 4 ADDITIONS (marked ── M4 ──, merged in from
+// 07_TeacherDashboard_M4_ADDENDUM.js — see cas-ccps/scripts/archived/ for
+// the original addendum file):
+//   getMyStudentContext()      — student-facing, own-data-only
+//   getStudentContextRoster()  — teacher-facing, full roster
+//   "My Context" nav tab + #student-context-view container + client JS
+//
+// ACCESS MODEL — read this before touching any server function below:
+//   This dashboard is deployed "Execute as: Me" (the teacher), which means
+//   every server function here runs with the TEACHER's permissions
+//   regardless of who opened the URL — and "Access" is "Anyone in
+//   organization," not "teacher only," because Module 4 added the first
+//   STUDENT-facing surface to this same dashboard (My Context). That
+//   combination means every exported function MUST gate on caller
+//   identity itself; nothing about the deployment does it for you.
+//   _isAuthorizedTeacher_() below is that gate — every function that
+//   returns or accepts data scoped to "the teacher" calls it first and
+//   fails closed (returns an error, not partial data) if the caller isn't
+//   the configured teacher. getMyStudentContext() is the one exception by
+//   design: it's intentionally open to any signed-in user, because it
+//   scopes itself to the CALLER's own identity (Session.getActiveUser()),
+//   never the teacher's.
 // =============================================================================
+
+// ---------------------------------------------------------------------------
+// _isAuthorizedTeacher_ — true only if the active session belongs to the
+// teacher this dashboard is configured for (cfg.teacherEmail, a Script
+// Property set during deployment — see ADMIN_DEPLOYMENT_WALKTHROUGH.html
+// Step 10). Fails closed: an unset/blank teacherEmail can never match a
+// real signed-in caller, so a misconfigured deployment denies everyone
+// instead of silently granting access.
+// ---------------------------------------------------------------------------
+function _isAuthorizedTeacher_(cfg) {
+  const viewerEmail = Session.getActiveUser().getEmail();
+  return !!(viewerEmail && cfg.teacherEmail &&
+    viewerEmail.toLowerCase() === cfg.teacherEmail.toLowerCase());
+}
 
 function doGet() {
   return HtmlService
@@ -29,6 +66,12 @@ function doGet() {
 function getDashboardData(termFilter) {
   const cfg = getConfig_();
   const teacherEmail = cfg.teacherEmail;
+
+  if (!_isAuthorizedTeacher_(cfg)) {
+    Logger.log("[S07] getDashboardData denied — caller was " +
+      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + teacherEmail);
+    return { error: "This dashboard is only available to the teacher it's configured for." };
+  }
 
   const activeTerm = termFilter ||
     PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "ALL";
@@ -158,6 +201,12 @@ function getCompetencies() {
   const cfg   = getConfig_();
   const email = cfg.teacherEmail || "";
 
+  if (!_isAuthorizedTeacher_(cfg)) {
+    Logger.log("[M2] getCompetencies denied — caller was " +
+      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + email);
+    return { error: "This dashboard is only available to the teacher it's configured for." };
+  }
+
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
 
@@ -278,8 +327,15 @@ function getCompetencies() {
 // ── M2 ──────────────────────────────────────────────────────────────────────
 function submitLessonContext(payload) {
   try {
-    // Attach teacher identity from Script Properties — not from client payload
     const cfg = getConfig_();
+
+    if (!_isAuthorizedTeacher_(cfg)) {
+      Logger.log("[M2] submitLessonContext denied — caller was " +
+        (Session.getActiveUser().getEmail() || "unknown") + ", expected " + cfg.teacherEmail);
+      return { success: false, error: "This dashboard is only available to the teacher it's configured for." };
+    }
+
+    // Attach teacher identity from Script Properties — not from client payload
     payload.teacherEmail = cfg.teacherEmail;
     payload.teacherName  = cfg.teacherName;
 
@@ -291,6 +347,66 @@ function submitLessonContext(payload) {
     Logger.log("[M2] submitLessonContext error: " + err.message);
     return { success: false, error: "Submission failed: " + err.message };
   }
+}
+
+// ── M4 ────────────────────────────────────────────────────────────────────
+// getMyStudentContext — student-facing. Returns ONLY the calling user's
+// own doc info. Identity is taken from the active session, never from a
+// client-supplied parameter — a student cannot pass someone else's email
+// and see their data. Deliberately NOT gated by _isAuthorizedTeacher_ —
+// this function's whole point is to serve non-teacher callers, scoped to
+// their own identity.
+// ── M4 ────────────────────────────────────────────────────────────────────
+function getMyStudentContext() {
+  const viewerEmail = Session.getActiveUser().getEmail();
+  if (!viewerEmail) {
+    return { error: "Could not determine your identity. Make sure you're signed in with your school account." };
+  }
+
+  const docInfo = getStudentDocForViewer_(viewerEmail); // from Script 29
+  if (!docInfo) {
+    return {
+      hasContent: false,
+      viewerEmail: viewerEmail,
+      message: "No context recorded yet. This updates weekly — check back after your first graded assignment or warm-up response."
+    };
+  }
+
+  return {
+    hasContent: true,
+    viewerEmail: viewerEmail,
+    docUrl: docInfo.docUrl,
+    lastUpdatedAt: docInfo.lastUpdatedAt ? formatDate_(docInfo.lastUpdatedAt) : "Not yet updated"
+  };
+}
+
+// ── M4 ────────────────────────────────────────────────────────────────────
+// getStudentContextRoster — teacher-facing. Returns the full student
+// roster with doc links. Gated: only returns data if the active session's
+// email matches cfg.teacherEmail. Anyone else gets an error, not a
+// truncated or empty list — the distinction matters for debugging vs.
+// security, and this is a security boundary.
+// ── M4 ────────────────────────────────────────────────────────────────────
+function getStudentContextRoster() {
+  const cfg = getConfig_();
+
+  if (!_isAuthorizedTeacher_(cfg)) {
+    Logger.log("[M4] getStudentContextRoster denied — caller was " +
+      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + cfg.teacherEmail);
+    return { error: "This view is only available to the teacher." };
+  }
+
+  const roster = getAllStudentDocsForTeacher_(); // from Script 29
+  return {
+    roster: roster.map(r => ({
+      name: r.name,
+      email: r.email,
+      docUrl: r.docUrl,
+      lastUpdatedAt: r.lastUpdatedAt ? formatDate_(r.lastUpdatedAt) : "Never",
+      hasRecentActivity: r.lastRunHadContent
+    })),
+    generatedAt: formatDate_(new Date())
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -478,6 +594,11 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
   <!-- ── M2: New Lesson button ── -->
   <!-- Hidden until loadData() confirms M2_ENABLED — see the m2Enabled toggle below. -->
   <button id="new-lesson-btn" onclick="openModal()" style="display:none">+ New Lesson</button>
+  <!-- ── M4: My Context tab — same button/handler serves both the teacher
+       (full roster) and a student (their own doc only); showStudentContext()
+       tries the teacher path first and falls back based on the server's
+       response, so the client never needs to know in advance who's looking. ── -->
+  <button id="context-tab-btn" onclick="showStudentContext()">My Context</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -495,6 +616,8 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 </div>
 <div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading class data…</p></div>
 <div id="main" class="main" style="display:none"></div>
+<!-- ── M4: Student Context view — shown instead of #main while active ── -->
+<div id="student-context-view" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 
 <!-- ── M2: LESSON CONTEXT MODAL ── -->
@@ -694,6 +817,10 @@ function loadData() {
   const loading = document.getElementById("loading");
   const main = document.getElementById("main");
   const refreshBtn = document.getElementById("refresh-btn");
+  // Returning to the main dashboard (Refresh, or just page load) should
+  // leave the M4 Student Context view, if it happened to be open.
+  const contextView = document.getElementById("student-context-view");
+  if (contextView) contextView.style.display = "none";
   // The generation counter already prevents a stale response from ever
   // rendering, so rapid re-clicks never glitch the UI — but they still fire
   // redundant concurrent Apps Script executions that are immediately
@@ -729,6 +856,21 @@ function loadData() {
   google.script.run
     .withSuccessHandler(function(data) {
       if (myGen !== _loadGen) return; // a newer request already superseded this one
+      // getDashboardData() returns { error } instead of throwing when the
+      // caller isn't the configured teacher — this must render as a
+      // distinct "access denied" state, not the generic empty-roster
+      // message render() shows for {students:[]}, since those look
+      // identical to a teacher otherwise and mean very different things.
+      if (data && data.error) {
+        if (cached) { if (refreshBtn) refreshBtn.disabled = false; return; }
+        _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
+          loading.innerHTML = '<p style="color:#d93025;padding:24px 24px 8px;">⚠ ' + esc(data.error) + '</p>';
+          loading.style.display = "block";
+          main.style.display = "none";
+          if (refreshBtn) refreshBtn.disabled = false;
+        });
+        return;
+      }
       // The first automatic call sends term === "" so the server's
       // CURRENT_TERM fallback resolves it, but render() below then syncs the
       // dropdown to that resolved data.activeTerm — so a manual Refresh right
@@ -884,6 +1026,81 @@ function _populateTermDropdown(data) {
 
 function esc(s) {
   return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ── M4: STUDENT CONTEXT TAB ───────────────────────────────────────────────
+// One button/handler serves both audiences: try the teacher-only roster
+// first, and if the server denies it (the caller isn't the teacher), fall
+// back to the caller's own context. The client never needs to know in
+// advance who's looking — the server-side identity gates (see
+// _isAuthorizedTeacher_ in 07_TeacherDashboard.js) are what actually decide.
+function showStudentContext() {
+  document.getElementById("main").style.display = "none";
+  document.getElementById("loading").style.display = "none";
+  const view = document.getElementById("student-context-view");
+  view.style.display = "block";
+  view.innerHTML = '<div class="spinner"></div><p style="text-align:center;color:#5f6368">Loading your context…</p>';
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.error) {
+        // Not the teacher (or the roster function otherwise denied) —
+        // render the caller's own context instead.
+        renderOwnContext();
+        return;
+      }
+      renderTeacherRoster(result);
+    })
+    .withFailureHandler(function(e) {
+      renderOwnContext();
+    })
+    .getStudentContextRoster();
+}
+
+function renderTeacherRoster(result) {
+  const view = document.getElementById("student-context-view");
+  let html = '<h2 style="font-size:16px;margin-bottom:12px;">Student Context — Full Roster</h2>';
+  html += '<p style="font-size:12px;color:#5f6368;margin-bottom:16px;">Generated ' + esc(result.generatedAt) + ' · Updates weekly via time trigger, not live.</p>';
+  if (result.roster.length === 0) {
+    html += '<p style="color:#5f6368;">No student docs yet. They are created automatically the first week a student has a completed assignment or warm-up response.</p>';
+  } else {
+    result.roster.forEach(function(s) {
+      const dotColor = s.hasRecentActivity ? '#1e8e3e' : '#dadce0';
+      html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
+      html += '<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:8px;"></span>';
+      html += '<strong>' + esc(s.name) + '</strong><div style="font-size:11px;color:#80868b;margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
+      html += '<a href="' + s.docUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>';
+      html += '</div>';
+    });
+  }
+  view.innerHTML = html;
+}
+
+function renderOwnContext() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      const view = document.getElementById("student-context-view");
+      if (result.error) {
+        view.innerHTML = '<p style="color:#d93025;padding:24px;">' + esc(result.error) + '</p>';
+        return;
+      }
+      if (!result.hasContent) {
+        view.innerHTML = '<div style="text-align:center;padding:40px;color:#5f6368;">' +
+          '<p style="font-size:14px;">' + esc(result.message) + '</p></div>';
+        return;
+      }
+      view.innerHTML =
+        '<div style="text-align:center;padding:40px;">' +
+        '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
+        '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
+        '<a href="' + result.docUrl + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>' +
+        '</div>';
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById("student-context-view").innerHTML =
+        '<p style="color:#d93025;padding:24px;">Could not load your context: ' + esc(e.message || e) + '</p>';
+    })
+    .getMyStudentContext();
 }
 
 // ── M2: MODAL ───────────────────────────────────────────────────────────────
