@@ -256,8 +256,21 @@ Verified with a Node harness against the real 20-unit JSON (all units
 cache without truncation) plus a simulated oversized-unit case (safety
 valve fires correctly, full text still recoverable).
 
-`curriculum/PacingGuide_CAS_Context.csv` and `.docx` are now stale
-relative to the v2 JSON — not regenerated (see next item).
+**Update — gap closed:** `curriculum/PacingGuide_CAS_Context.csv` and
+`.docx` have been regenerated from the v2 JSON. The CSV was rebuilt
+mechanically (20 columns, matching `PG_HEADERS` exactly — the two
+structured fields are JSON-encoded per cell, same convention as the
+`PacingGuide` sheet). The `.docx` was updated with a surgical text-only
+edit of its `word/document.xml` (every style/formatting tag left
+untouched, cloned from the real `division_context` schema-reference row
+for the 4 new rows) rather than regenerated from scratch, since no
+docx-authoring tool was available in this environment — verified via
+zip-integrity check, XML well-formedness, open/close tag balance, and a
+byte-for-byte diff confirming every non-`document.xml` part of the
+archive is unchanged. It now correctly describes 20 columns (not 16),
+lists the 4 new v2 fields in its schema-reference table, and its version
+footer is bumped to v1.1. The prior versions are kept at
+`curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.csv`/`.docx`.
 
 ### 9. Six missing Module 2 Full scripts filed in as real code
 
@@ -602,17 +615,20 @@ GoogleID.
    shipped because its Module 2 Full siblings did.
 8. ~~Two archived-file naming conventions coexist~~ — **closed**, see
    resolution 13 above.
-9. **`31_PacingGuideManager.js` doesn't yet read the v2 pacing guide's 4
-   new fields** (`chain_node`, `esports_connection`,
-   `vocabulary_with_definitions`, `studio_flow_hooks`) — see resolution 8
-   above. It will import and run against `PacingGuide_CAS_Context.json`
-   (the file holding the adopted v2 content — there is no file literally
-   named `_v2.json`) without erroring, just silently drop the new fields,
-   until its
-   `PG_HEADERS`/`PG_COL_COUNT`/row-mapping are extended.
-10. **`curriculum/PacingGuide_CAS_Context.csv` and `.docx`** are now stale
-    relative to the adopted `PacingGuide_CAS_Context.json` (v2 content) — not
-    regenerated as part of this pass.
+9. ~~`31_PacingGuideManager.js` doesn't yet read the v2 pacing guide's 4
+   new fields~~ — **closed.** `PG_HEADERS`/`PG_COL_COUNT`/row-mapping
+   extended (16 → 20, append-only); `chain_node`, `esports_connection`,
+   `vocabulary_with_definitions`, `studio_flow_hooks` are now read,
+   written, cached, and exposed on `resolveUnitForDate_`/`getWarmUpAnchor_`/
+   `getAllUnits_`/`getUnitById_`. Fixing this also surfaced and fixed a
+   real pre-existing bug: the pacing guide cache was already silently
+   overflowing PropertiesService's 9216-byte-per-property limit with just
+   the original 16 fields (~28KB measured against real data) — see
+   resolution 8 above for the full writeup and the per-unit-cache fix.
+10. ~~`curriculum/PacingGuide_CAS_Context.csv` and `.docx` are stale~~ —
+    **closed.** Both regenerated from the adopted v2 JSON — see resolution
+    8 above for how each was rebuilt/verified. Prior versions archived at
+    `curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.csv`/`.docx`.
 11. **`data/CompetencyRegistry.csv` and `data/sol-correlations/` are not
     yet imported into any Sheet** — the files exist in the repo (resolution
     7), but nothing has run `importCompetencyRegistry()` (Script `22b`)
