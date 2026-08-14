@@ -103,7 +103,7 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/07_TeacherDashboard.js",
-      "cas-ccps/scripts/07_TeacherDashboard_M4_ADDENDUM.js"
+      "cas-ccps/scripts/29_StudentContextAggregator.js"
     ]
   },
 

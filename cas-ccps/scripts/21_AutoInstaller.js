@@ -235,7 +235,7 @@ function runInstallation_(props) {
   const teacherDashResult = deployWebApp_("TEACHER_DASHBOARD", {
     name:       "Assignment System — Teacher Dashboard",
     files:      registry["TEACHER_DASHBOARD"] || [],
-    properties: buildDashboardProps_(assetIds),
+    properties: buildTeacherDashboardProps_(assetIds),
     executeAs:  "USER_DEPLOYING",   // Me
     access:     "DOMAIN"            // Anyone in organization
   });
@@ -243,9 +243,14 @@ function runInstallation_(props) {
   const studentDashResult = deployWebApp_("STUDENT_DASHBOARD", {
     name:       "Assignment System — Student Dashboard",
     files:      registry["STUDENT_DASHBOARD"] || [],
-    properties: buildDashboardProps_(assetIds),
+    properties: buildStudentDashboardProps_(assetIds),
     executeAs:  "USER_ACCESSING",   // User accessing the web app
-    access:     "ANYONE_ANONYMOUS"  // Anyone with Google account
+    // ANYONE means "anyone with a Google account" (sign-in required) — this
+    // was previously ANYONE_ANONYMOUS, which actually means no sign-in at
+    // all, on a FERPA-scoped student platform. Matches the checked-in
+    // clasp/manifests/student-dashboard.appsscript.json, which has always
+    // had this right; only this generated-deployment path was wrong.
+    access:     "ANYONE"
   });
 
   projectResults.push(teacherDashResult);
@@ -728,7 +733,27 @@ function buildStudentTemplateProps_(ids) {
   };
 }
 
-function buildDashboardProps_(ids) {
+// The Teacher Dashboard is deployed once per teacher (see
+// ADMIN_DEPLOYMENT_WALKTHROUGH.html Step 10) — every server function on
+// it gates on TEACHER_EMAIL matching the signed-in caller
+// (_isAuthorizedTeacher_ in 07_TeacherDashboard.js), so an unset property
+// here means the installer's dashboard denies everyone, not "works for
+// anyone." This automated installer path only ever deploys ONE dashboard,
+// scoped to whoever ran it (ids.adminNotifyEmail) — additional teachers
+// must be deployed manually per Step 10, same as the Admin Manual itself.
+function buildTeacherDashboardProps_(ids) {
+  return {
+    CENTRAL_LEDGER_SS_ID: ids.ledgerSsId,
+    ADMIN_SS_ID:          ids.ledgerSsId,
+    TEACHER_EMAIL:        ids.adminNotifyEmail || ""
+    // TEACHER_NAME intentionally left unset here — it's cosmetic (only
+    // used to attribute logged lessons), not a security boundary, and
+    // this installer doesn't collect a display name. Set it manually in
+    // Script Properties if desired.
+  };
+}
+
+function buildStudentDashboardProps_(ids) {
   return {
     CENTRAL_LEDGER_SS_ID: ids.ledgerSsId,
     ADMIN_SS_ID:          ids.ledgerSsId
