@@ -6,11 +6,28 @@
 const { Pool } = require('pg');
 const crypto   = require('crypto');
 
+// FIXED: this used to be `{ rejectUnauthorized: false }` unconditionally in
+// production — Dockerfile sets NODE_ENV=production in every deployed
+// container, so that wasn't a dev-only fallback, it was the deployed
+// default. rejectUnauthorized: false means the connection is encrypted but
+// not authenticated (no certificate-chain or hostname check) — MITM-able.
+// Most managed Postgres providers (Cloud SQL, RDS, etc.) present a
+// certificate chain the system CA store already trusts, so the common case
+// needs nothing beyond `rejectUnauthorized: true`. If the target provider
+// uses a private/self-signed CA instead, set DATABASE_CA_CERT to that CA's
+// PEM contents (the cert text itself, not a file path — simplest to hold
+// as a Cloud Run env var with no volume mount needed) and it's used to
+// validate the chain instead of the system trust store.
+function buildSslConfig() {
+  if (process.env.NODE_ENV !== 'production') return false;
+  return process.env.DATABASE_CA_CERT
+    ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT }
+    : { rejectUnauthorized: true };
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: buildSslConfig(),
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
