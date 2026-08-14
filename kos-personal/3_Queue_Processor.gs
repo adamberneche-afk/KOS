@@ -669,6 +669,105 @@ function _getManagedServiceStatus_() {
 
 
 /**
+ * _submitManagedServiceJob_ — hands a released row off to the managed
+ * inference service instead of native Workspace Studio.
+ *
+ * Fixes the gap kos-personal/README.md flagged: CFG.INFERENCE_MODE ===
+ * 'MANAGED_SERVICE' got you a working account-status panel, but nothing
+ * anywhere ever called the service's POST /api/v1/jobs webhook — a row
+ * released to STUDIO_ACTIVE in that mode would just sit there forever,
+ * since there's no Studio watching it and nothing else submits the job.
+ *
+ * Called from runMatrixTurnstile() (10_Turnstile.gs) immediately before
+ * a PENDING_FLOW row is flipped to STUDIO_ACTIVE, ONLY when
+ * CFG.INFERENCE_MODE === 'MANAGED_SERVICE'. In the default 'STUDIO' mode
+ * this is never called — Turnstile's release loop is unchanged from
+ * before this fix.
+ *
+ * The service does the rest itself once the job is queued: its worker
+ * reads the session doc, runs inference, writes results back to Drive,
+ * and calls back into this same spreadsheet to set FLOW_COMPLETE (see
+ * inference-service/src/worker.js's setFlowComplete call) using its own
+ * stored OAuth connection for this user — this function's only job is
+ * the initial hand-off, not polling for completion. Turnstile's existing
+ * staleness reset (CFG.TURNSTILE_STALE_MINS) is the safety net if the
+ * service never finishes a job, exactly as it already is for a stalled
+ * Studio flow.
+ *
+ * @param {string} payloadUid
+ * @param {string} fileId
+ * @param {string} docUrl
+ * @param {string} payloadType
+ * @returns {Object} { ok: true, job_id } or { ok: false, error }
+ */
+function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType) {
+  if (CFG.INFERENCE_MODE !== 'MANAGED_SERVICE') {
+    return { ok: false, error: 'CFG.INFERENCE_MODE is not MANAGED_SERVICE' };
+  }
+
+  const props   = PropertiesService.getScriptProperties();
+  const baseUrl = props.getProperty(CFG.PROP.MANAGED_SERVICE_BASE_URL);
+  const apiKey  = props.getProperty(CFG.PROP.MANAGED_SERVICE_API_KEY);
+  if (!baseUrl || !apiKey) {
+    return { ok: false, error: 'MANAGED_SERVICE_BASE_URL/API_KEY not configured' };
+  }
+
+  const bodyString = JSON.stringify({
+    payload_uid:  payloadUid,
+    file_id:      fileId,
+    doc_url:      docUrl,
+    payload_type: payloadType,
+  });
+
+  const headers = { 'X-KOS-API-Key': apiKey };
+
+  // Signature is optional server-side ("skip in dev if not configured" —
+  // see server.js's validateWebhookSignature) but always sent when a
+  // secret is configured here, matching the service's own HMAC-SHA256
+  // over the raw request body scheme.
+  const secret = props.getProperty(CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET);
+  if (secret) {
+    const sigBytes = Utilities.computeHmacSha256Signature(bodyString, secret);
+    const sigHex = sigBytes.map(b => {
+      const v = (b < 0 ? b + 256 : b).toString(16);
+      return v.length === 1 ? '0' + v : v;
+    }).join('');
+    headers['X-KOS-Signature'] = 'sha256=' + sigHex;
+  }
+
+  try {
+    const resp = UrlFetchApp.fetch(baseUrl.replace(/\/$/, '') + '/api/v1/jobs', {
+      method: 'post',
+      contentType: 'application/json',
+      headers,
+      payload: bodyString,
+      muteHttpExceptions: true,
+    });
+
+    const code = resp.getResponseCode();
+    if (code !== 201) {
+      let message = 'HTTP ' + code;
+      try {
+        const errBody = JSON.parse(resp.getContentText());
+        if (errBody.error) message = errBody.error;
+      } catch (parseErr) {
+        // Response body wasn't JSON — keep the plain HTTP-code message.
+      }
+      return { ok: false, error: message };
+    }
+
+    const body = JSON.parse(resp.getContentText());
+    return { ok: true, job_id: body.job_id };
+
+  } catch (e) {
+    // Network error, timeout, etc. — non-fatal to the caller, which
+    // leaves the row in PENDING_FLOW to retry on the next Turnstile run.
+    return { ok: false, error: e.message };
+  }
+}
+
+
+/**
  * Manually promotes a single STAGING_PIPELINE row from
  * PENDING_FLOW to FLOW_COMPLETE for testing the queue processor
  * without needing Workspace Studio to set the status.
