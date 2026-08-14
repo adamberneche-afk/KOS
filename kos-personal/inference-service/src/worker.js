@@ -122,19 +122,47 @@ async function processNextJob() {
     }
 
     // ── Record billing ────────────────────────────────────────────
-    try {
-      // Deduct credits for subscribed users OR free tier within limit
-      if (user.subscription_status !== 'unlimited') {
+    // FIXED: this used to be one try/catch around both deductCredits()
+    // and recordBillingEvent(), with the catch treating ANY failure —
+    // including deductCredits()'s atomic credit_balance >= amount guard
+    // genuinely failing — as merely "non-fatal," logging it and falling
+    // through to markJobCompleted() below regardless. Since the
+    // expensive work (inference, the Drive write, the FLOW_COMPLETE
+    // signal) already happened by this point, that meant a job could
+    // complete and deliver its full output while never actually being
+    // billed — the credit-balance pre-check earlier in this function
+    // isn't atomic with this deduction, so two workers racing on the
+    // same low-balance user (this service's documented multi-instance
+    // Cloud Run deployment model) could both pass it. A genuine
+    // deduction failure now marks the job failed instead of completed,
+    // so it surfaces for manual billing reconciliation instead of being
+    // silently absorbed. retry=false: the work already succeeded —
+    // retrying would redo the expensive inference/Drive write for
+    // nothing and could re-signal FLOW_COMPLETE a second time.
+    if (user.subscription_status !== 'unlimited') {
+      try {
         await db.deductCredits(user.id, creditCost);
+      } catch (deductErr) {
+        const msg = `Billing failed after successful processing — credits not deducted: ${deductErr.message}`;
+        await db.markJobFailed(job.id, msg, false);
+        logger.error(`[Worker] Job ${job.id}: ${msg} (output already generated and written — needs manual billing reconciliation)`);
+        return;
       }
+    }
+
+    // recordBillingEvent() is the audit-log write, not the deduction
+    // itself — credits are already moved by this point (or the user is
+    // unlimited-tier), so a failure here stays non-fatal, same as the
+    // FLOW_COMPLETE signal above.
+    try {
       await db.recordBillingEvent({
         userId:         user.id,
         jobId:          job.id,
         eventType:      `${job.payload_type.toLowerCase()}_processed`,
         creditsCharged: creditCost,
       });
-    } catch (billingErr) {
-      logger.error(`[Worker] Job ${job.id}: billing error (non-fatal): ${billingErr.message}`);
+    } catch (billingEventErr) {
+      logger.error(`[Worker] Job ${job.id}: recordBillingEvent failed (non-fatal, credits already settled): ${billingEventErr.message}`);
     }
 
     // ── Mark job complete ─────────────────────────────────────────
