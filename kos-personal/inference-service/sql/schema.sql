@@ -38,8 +38,18 @@ CREATE TABLE IF NOT EXISTS jobs (
   payload_type     VARCHAR(50)  DEFAULT 'SESSION_LOG',
   -- Job lifecycle
   status           VARCHAR(50)  DEFAULT 'queued',
-  -- queued → processing → completed | failed | retrying
+  -- queued → processing → completed | failed
+  -- FIXED: comment used to list "retrying" as a valid status; nothing
+  -- anywhere ever writes it -- a retried job goes back to 'queued'.
   retry_count      INTEGER      DEFAULT 0,
+  -- FIXED: a failed job used to retry at the very next 15s poll with no
+  -- delay at all -- for a genuinely rate-limited/overloaded upstream,
+  -- retrying seconds later compounds the problem instead of relieving
+  -- it. NULL for a job's first attempt; set to an exponential backoff
+  -- from retry_count on each retry (see markJobFailed in db.js) and
+  -- consulted by getNextQueuedJob's query so a backed-off job is
+  -- skipped until it elapses.
+  next_retry_at    TIMESTAMPTZ,
   error_message    TEXT,
   -- Inference metadata
   input_tokens     INTEGER,
@@ -51,6 +61,12 @@ CREATE TABLE IF NOT EXISTS jobs (
   started_at       TIMESTAMPTZ,
   completed_at     TIMESTAMPTZ
 );
+
+-- Idempotent column addition for an already-deployed database that
+-- predates next_retry_at -- CREATE TABLE IF NOT EXISTS above is a no-op
+-- on a table that already exists, so re-running this file alone
+-- wouldn't otherwise add a column introduced after first deploy.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS next_retry_at TIMESTAMPTZ;
 
 -- Billing events (one per processed job)
 CREATE TABLE IF NOT EXISTS billing_events (
