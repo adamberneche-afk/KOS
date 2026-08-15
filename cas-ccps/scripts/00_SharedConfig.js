@@ -54,7 +54,7 @@ function getConfig_() {
     // so behavior is unchanged unless a project sets STUDENT_EMAIL_DOMAIN.
     studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || "ccpsnet.net",
 
-    // ── Teacher identity (written by Setup Script 14) ──
+    // ── Teacher identity (written by the setup wizard, 16_UnifiedManualSetup.js, during teacher registration) ──
     teacherName:          p.TEACHER_NAME             || "",
     teacherEmail:         p.TEACHER_EMAIL            || "",
     teacherSubject:       p.TEACHER_SUBJECT          || "",
@@ -137,7 +137,8 @@ function getConfig_() {
 // Flow 1 a stable, single trigger point, all teacher rubric submissions are
 // funneled through one normalized tab: "RubricQueue" on the central admin
 // spreadsheet. Script 05 writes to this tab. The per-teacher queue tab
-// ([TeacherName]_RubricQueue) created by Script 14 is retained as an audit
+// ([TeacherName]_RubricQueue) created by 16_UnifiedManualSetup.js (the setup
+// wizard) at teacher-registration time is retained as an audit
 // log — Script 05 writes to BOTH: the central RubricQueue (for Studio) and
 // the teacher's personal tab (for their own records).
 //
