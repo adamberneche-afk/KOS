@@ -124,6 +124,8 @@
 
   "_excluded_not_deployed_scripts": [
     "cas-ccps/scripts/15_StudioFlowPrompts.js",
-    "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js"
+    "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js",
+    "leader-hub/drive-tools/LH_8177_Rename.gs",
+    "leader-hub/drive-tools/LH_DriveDocSplitter.gs"
   ]
 }

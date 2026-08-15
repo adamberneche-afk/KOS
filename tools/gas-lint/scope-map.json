@@ -11,7 +11,8 @@
     "GmailApp":        ["https://mail.google.com/"],
     "CalendarApp":     ["https://www.googleapis.com/auth/calendar"],
     "ScriptApp":       ["https://www.googleapis.com/auth/script.scriptapp"],
-    "Session":         ["https://www.googleapis.com/auth/userinfo.email"]
+    "Session":         ["https://www.googleapis.com/auth/userinfo.email"],
+    "Drive":           ["https://www.googleapis.com/auth/drive"]
   },
 
   "_not_scope_gated": [
