@@ -296,7 +296,10 @@ function createAdminAssets_(adminEmail, orgName) {
     "   File 1: name it '00_SharedConfig' — paste contents of 00_SharedConfig.js\n" +
     "   File 2: name it '05_TeacherIntakePipeline' — paste contents of 05_TeacherIntakePipeline.js\n" +
     "3. Save the project\n" +
-    "4. Do NOT set any triggers — Script 14 sets them when cloning\n\n" +
+    "4. Do NOT set up a trigger on THIS master sheet — each teacher's cloned\n" +
+    "   copy needs its own trigger added manually after registration; the\n" +
+    "   generated teacher setup summary walks them through it (see\n" +
+    "   'Activate Your Rubric Trigger').\n\n" +
     "This sheet will be cloned for each teacher by the setup wizard.\n" +
     "The bound scripts clone with it automatically."
   );
@@ -332,7 +335,7 @@ function createAdminAssets_(adminEmail, orgName) {
     "   File 1: name it '00_SharedConfig' — paste contents of 00_SharedConfig.js\n" +
     "   File 2: name it '08_TeacherConfirmationStep' — paste contents of 08_TeacherConfirmationStep.js\n" +
     "3. Save the project\n" +
-    "4. Do NOT set any triggers — Script 16 sets them automatically when cloning\n\n" +
+    "4. Do NOT set any triggers — Script 08's onOpen() registers them automatically the first time the cloned sheet is opened\n\n" +
     "This sheet will be cloned for each teacher by the setup wizard.\n" +
     "The bound scripts clone with it automatically."
   );
@@ -378,8 +381,8 @@ function createAdminAssets_(adminEmail, orgName) {
   // For now, insert a placeholder property — admin updates after manual creation.
 
   // ── 7. CENTRAL SCRIPTS PROJECT PLACEHOLDER ────────────────────────────────
-  // Scripts 00 + 02 + 03 + 06 + 10 need to be bound to the ledger spreadsheet.
-  // Create an instruction sheet on the ledger to guide the admin.
+  // Scripts 00 + 02 + 03 + 04 + 06 + 10 + 18 need to be bound to the ledger
+  // spreadsheet. Create an instruction sheet on the ledger to guide the admin.
   const scriptInstSheet = ledgerSs.insertSheet("SETUP INSTRUCTIONS");
   scriptInstSheet.getRange("A1").setValue(
     "ADMIN ACTION REQUIRED — bind central scripts to THIS spreadsheet:\n\n" +
@@ -388,15 +391,17 @@ function createAdminAssets_(adminEmail, orgName) {
     "   00_SharedConfig.js\n" +
     "   02_Form1_IntakeAndWorkspaceGenerator.js\n" +
     "   03_QueueBridge.js\n" +
+    "   04_Form2_TurnInGate.js\n" +
     "   06_StagingPipeline_Turnstile.js\n" +
-    "   10_AdminRecoveryPanel.js\n\n" +
+    "   10_AdminRecoveryPanel.js\n" +
+    "   18_FormSubmitDispatcher.js\n\n" +
     "3. In Project Settings → Script Properties, add:\n" +
     "   ID_ADMIN_SPREADSHEET = " + ledgerSs.getId() + "\n\n" +
     "4. Set these triggers:\n" +
     "   bridgeQueue              → Time-driven, every 1 minute\n" +
     "   backPropagateCompletions → Time-driven, every 2 minutes\n" +
     "   runStagingTurnstile      → Time-driven, every 1 minute\n" +
-    "   dispatchFormSubmit       → From spreadsheet, On form submit\n\n" +
+    "   dispatchFormSubmit       → From spreadsheet, On form submit (handler lives in 18_FormSubmitDispatcher.js)\n\n" +
     "NOTE: The Ledger tab includes an AcademicYear column (column S, index 18).\n" +
     "Script 02 populates this automatically from the CURRENT_TERM property.\n" +
     "Set CURRENT_TERM in Script Properties (e.g. '2025-26 S1') before registering students.\n\n" +
@@ -568,7 +573,7 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
   body.appendParagraph(result.ledgerSsUrl);
   body.appendParagraph(
     "Open the SETUP INSTRUCTIONS tab in this sheet for the exact steps.\n" +
-    "Scripts to bind: 00_SharedConfig.js, 02, 03, 06, 10.\n" +
+    "Scripts to bind: 00_SharedConfig.js, 02, 03, 04, 06, 10, 18.\n" +
     "Triggers to set: bridgeQueue (1 min), backPropagateCompletions (2 min),\n" +
     "runStagingTurnstile (1 min), onFormSubmit (Form 1 responses)."
   );
