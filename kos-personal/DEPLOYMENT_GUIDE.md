@@ -83,13 +83,13 @@ Click `appsscript.json` in the file list. Replace the entire contents with the p
 
 ---
 
-## Phase 4 — Remove the Duplicate Function
+## Phase 4 — Check for Duplicate Functions
 
-Before saving, you must remove one duplicate function that would cause a compile error.
+This phase used to require manually deleting a duplicate `_getOrCreateSheet` from `1_Config_And_Deploy.gs` — that duplicate no longer exists in the current codebase; the function is defined once, in `5_Error_And_Utilities.gs`, and `1_Config_And_Deploy.gs` only calls it. Nothing to do here for a fresh checkout.
 
-In `1_Config_And_Deploy.gs`, search for `function _getOrCreateSheet` and delete the entire function body if it exists. The canonical version lives in `5_Error_And_Utilities.gs`. Having it in both files prevents the project from saving.
+This class of error (duplicate top-level function/variable declarations across files sharing one Apps Script project) is now caught automatically by `node tools/gas-lint/check.js` before you ever open the Script Editor — run it from the repo root if you want to double-check before saving.
 
-To verify: press **Ctrl+S** (or **Cmd+S**). If GAS shows a red error about a duplicate identifier, search all files for any function name it names and remove the duplicate.
+To verify inside the Script Editor anyway: press **Ctrl+S** (or **Cmd+S**). If GAS shows a red error about a duplicate identifier, search all files for that function name and remove the duplicate.
 
 ---
 

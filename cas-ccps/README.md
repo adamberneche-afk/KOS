@@ -522,12 +522,12 @@ file's own header wins):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00` (+ its M2/M4 addenda), `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
-| Teacher Dashboard | standalone web app | `07` (+ `07_TeacherDashboard_M4_ADDENDUM.js`, adding a Student Context tab) |
+| Teacher Dashboard | standalone web app | `07` (includes the Student Context tab and the teacher-identity gate), `29` (student context data read by that tab) |
 | Student Dashboard | standalone web app | `13` |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
