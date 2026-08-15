@@ -479,15 +479,44 @@ function getStudentDocForViewer_(viewerEmail) {
 // configured teacher (Script 07 checks this before calling, same pattern
 // as every other teacher-only function in this codebase).
 // ---------------------------------------------------------------------------
-function getAllStudentDocsForTeacher_() {
+// FIXED (FERPA leak): this function used to return every row in
+// StudentDocRegistry with no teacher filter at all — any authorized
+// teacher saw every student in the district. StudentDocRegistry itself
+// has no teacher-identity column (it's a flat student->doc index), so
+// the per-teacher scoping has to come from a join against the Ledger
+// tab, which does carry a real-time TeacherEmail column (index 8,
+// populated at Form-1 intake — see 02_Form1_IntakeAndWorkspaceGenerator.js)
+// and is the same tab this file already treats as its roster source of
+// truth elsewhere (buildValidatedStudentRoster_ above). This mirrors
+// 23_StudentProfileManager.js's buildShadowMatrixSummary_(), which
+// filters the same way against its own teacher-scoped tab.
+function getAllStudentDocsForTeacher_(teacherEmail) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const registrySheet = ss.getSheetByName(cfg.tabs.studentDocRegistry);
   if (!registrySheet) return [];
 
+  const normalizedTeacherEmail = String(teacherEmail || "").trim().toLowerCase();
+  if (!normalizedTeacherEmail) return []; // no teacher identity — no roster
+
+  const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
+  const allowedStudentEmails = new Set();
+  if (ledgerSheet) {
+    const ledgerData = ledgerSheet.getDataRange().getValues();
+    for (let i = 1; i < ledgerData.length; i++) {
+      const rowStudentEmail = String(ledgerData[i][1] /* GoogleID */ || "").trim().toLowerCase();
+      const rowTeacherEmail = String(ledgerData[i][8] /* TeacherEmail */ || "").trim().toLowerCase();
+      if (rowStudentEmail && rowTeacherEmail === normalizedTeacherEmail) {
+        allowedStudentEmails.add(rowStudentEmail);
+      }
+    }
+  }
+
   const data = registrySheet.getDataRange().getValues();
   const results = [];
   for (let i = 1; i < data.length; i++) {
+    const rowEmail = String(data[i][SDR_STUDENT_EMAIL]).trim().toLowerCase();
+    if (!allowedStudentEmails.has(rowEmail)) continue; // not this teacher's student
     results.push({
       email: String(data[i][SDR_STUDENT_EMAIL]).trim(),
       name: String(data[i][SDR_STUDENT_NAME]).trim(),

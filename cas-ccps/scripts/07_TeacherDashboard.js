@@ -396,7 +396,7 @@ function getStudentContextRoster() {
     return { error: "This view is only available to the teacher." };
   }
 
-  const roster = getAllStudentDocsForTeacher_(); // from Script 29
+  const roster = getAllStudentDocsForTeacher_(cfg.teacherEmail); // from Script 29, scoped to this teacher only
   return {
     roster: roster.map(r => ({
       name: r.name,
