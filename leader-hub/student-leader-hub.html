@@ -1621,7 +1621,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px" id="addstu-modal-title">Register DECA Member</div>
         <div style="font-size:.72rem;color:rgba(255,255,255,.45)" id="addstu-modal-subtitle">Clover Hill High School DECA · Chapter 4280</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="closeModal('addStudent')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('addStudent')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding:1.1rem 1.4rem;display:flex;flex-direction:column;gap:.85rem">
       <!-- Personal Info -->
@@ -3087,7 +3087,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">✨ Knowledge Base Insights</div>
         <div style="font-size:.72rem;color:rgba(255,255,255,.5)">AI analysis across all archived trips</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="closeModal('aiInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('aiInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:1.25rem">
       <div id="ai-insights-body">
@@ -3112,7 +3112,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">✨ SCR Class Insights</div>
         <div style="font-size:.72rem;color:rgba(255,255,255,.5)" id="scr-insights-subtitle">AI analysis of competency performance</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="closeModal('scrInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('scrInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:1.1rem">
       <div id="ai-insights-content">
@@ -3201,8 +3201,31 @@ window.onerror = function(msg, src, line, col, err) {
 // load — a full quota means EVERY subsequent LS.set() call fails too, and
 // nothing here should spam a toast on every single one of them.
 let _lsWriteFailWarned = false;
+let _lsReadFailWarned = false;
 const LS = {
-  get: (k, def=null) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch{ return def; } },
+  // FIXED: this used to swallow every read failure silently — no
+  // console log, no distinction between "key never existed" (normal,
+  // returns def) and "key exists but is corrupted JSON" (a real
+  // problem). If any of the 78+ persisted keys gets truncated (quota
+  // pressure mid-write, a bad hand-edited import, a browser crash),
+  // the app silently falls back to the default and looks exactly like
+  // the user's trips/journal/roster vanished, with no indication why —
+  // the same failure mode LS.set()'s fix (below) was written to close,
+  // just on the read side. Own sentinel, not LS.set's: a read failure
+  // and a write failure are different problems (corrupted data vs.
+  // inaccessible storage) worth telling apart in the log even though
+  // both use the same one-toast-per-page-load convention.
+  get: (k, def=null) => {
+    try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; }
+    catch (e) {
+      console.error('[LS.get] read failed for key', k, e);
+      if (!_lsReadFailWarned && typeof _showToast === 'function') {
+        _lsReadFailWarned = true;
+        _showToast('⚠ Could not read saved data — some information may not have loaded.', 6000, '#991b1b');
+      }
+      return def;
+    }
+  },
   // FIXED: this used to swallow every write failure (including a full
   // storage quota) with an empty catch block — no return value, no
   // console log, no user-visible sign anything went wrong. With 78+ keys
@@ -6342,7 +6365,7 @@ function renderDecaResults() {
           </td>
           <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${r.notes||''}</td>
           <td style="padding:.35rem .5rem;text-align:right">
-            <button onclick="deleteDecaResult('${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove">✕</button>
+            <button onclick="deleteDecaResult('${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
           </td>
         </tr>`).join('')
       : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
@@ -6507,7 +6530,7 @@ function renderOrgResults(orgId) {
     </td>
     <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
     <td style="padding:.35rem .5rem;text-align:right">
-      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove">✕</button>
+      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
     </td>
   </tr>`;
   const resultTableHead = `<thead><tr style="background:#f3f4f6">
@@ -7096,7 +7119,7 @@ function renderAlumniGrid(list){
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.5rem;flex-wrap:wrap">
         ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.7rem;color:var(--navy)">✉ ${escH(s.email)}</a>`:'<span style="font-size:.7rem;color:var(--muted);font-style:italic">No email on file</span>'}
         <button class="btn btn-outline btn-xs" style="margin-left:auto;font-size:.63rem" onclick="sendAlumniExitEmail(${s.id})">📋 Exit Interview</button>
-        <button class="btn btn-outline btn-xs" style="font-size:.63rem" onclick="openEditMember(${s.id})">✏️</button>
+        <button class="btn btn-outline btn-xs" style="font-size:.63rem" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
       </div>
     </div>`).join('')}
     </div>
@@ -7658,7 +7681,7 @@ function renderGoals(){
             ${g.updatedAt?`<div style="font-size:.63rem;color:var(--muted);margin-bottom:.25rem">Updated ${new Date(g.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`:''}
             <div style="display:flex;align-items:center;gap:.4rem">
               <input type="range" min="0" max="100" value="${g.progress}" style="flex:1;cursor:pointer" oninput="updGoal(${g.id},this.value)">
-              <button class="btn btn-danger btn-xs" onclick="delGoal(${g.id})" title="Remove goal">✕</button>
+              <button class="btn btn-danger btn-xs" onclick="delGoal(${g.id})" title="Remove goal" aria-label="Remove goal">✕</button>
             </div>
           </div>`;
         }).join('')}
@@ -8192,7 +8215,7 @@ function buildAuthFormHTML(tripName, tripDate, dest) {
       <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem">
         <div style="display:flex;align-items:baseline;gap:.4rem;border-bottom:1px solid #ccc;padding-bottom:.15rem">
           <span style="font-weight:600;font-size:11px;white-space:nowrap">Name of Trip:</span>
-          <span style="flex:1;color:#0f2044;font-weight:600">${tripName}</span>
+          <span style="flex:1;color:#0f2044;font-weight:600">${escH(tripName)}</span>
         </div>
         <div style="display:flex;align-items:baseline;gap:.4rem;border-bottom:1px solid #ccc;padding-bottom:.15rem">
           <span style="font-weight:600;font-size:11px;white-space:nowrap">Name of Student:</span>
@@ -8273,7 +8296,7 @@ function printAuthForm() {
   const dest = trip?.dest1 || '';
 
   _openPrintWindow(
-    `Auth Form — ${tripName}`,
+    `Auth Form — ${escH(tripName)}`,
     `body{font-family:'DM Sans',sans-serif;font-size:12px;padding:2rem;max-width:680px;margin:0 auto;color:#111;}@media print{body{padding:.5rem;}}`,
     buildAuthFormHTML(tripName, tripDate, dest),
     'width=750,height=900'
@@ -13520,8 +13543,8 @@ function renderDeadlines() {
       <span style="font-size:1.05rem;flex-shrink:0">${r.icon}</span>
       <span style="flex:1;font-size:.9rem;font-weight:600;color:${u.text};line-height:1.3">${dl.title}</span>
       <span id="dltimer-${dl.id}" style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:${u.text};white-space:nowrap">${u.label}</span>
-      <button onclick="event.stopPropagation();editDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit">✏️</button>
-      <button onclick="event.stopPropagation();deleteDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete">✕</button>
+      <button onclick="event.stopPropagation();editDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit" aria-label="Edit deadline">✏️</button>
+      <button onclick="event.stopPropagation();deleteDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete" aria-label="Delete deadline">✕</button>
     </div>`;
   }).join('');
 }
@@ -16361,6 +16384,15 @@ async function lhPullOrgSync(orgId) {
   }
   if (!res || !res.ok) { _showToast('⚠ Pull failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
   if (!res.found) { _showToast('This organization has never been shared yet.', 3500, '#991b1b'); return; }
+  // FIXED: the roster wipe below used to run unconditionally, even if
+  // the remote pull came back with zero rows — a transient Sheet-read
+  // glitch, or a co-advisor who'd just cleared the tab by mistake, would
+  // silently erase this organization's entire local roster with no
+  // confirmation and no undo. Bail out before the wipe instead.
+  if (!res.rosterRows || !res.rosterRows.length) {
+    _showToast('⚠ Pull returned no roster rows — keeping your existing roster rather than clearing it.', 5500, '#991b1b');
+    return;
+  }
 
   if (orgId !== 'deca' && res.config) {
     const cfg = Object.assign({}, res.config, { id: orgId, custom: true });
@@ -16484,7 +16516,7 @@ async function lhOpenJoinOrgModal() {
     const whenStr = o.updatedAt ? new Date(o.updatedAt).toLocaleString() : 'unknown';
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem">
       <span style="flex:1"><strong>${escH(o.orgName)}</strong><br><span style="font-size:.7rem;color:var(--muted)">Last updated ${escH(whenStr)}${o.updatedBy ? ' by ' + escH(o.updatedBy) : ''}</span></span>
-      <button onclick="lhJoinOrg('${o.orgId}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">${btnLabel}</button>
+      <button onclick="lhJoinOrg('${String(o.orgId||'').trim().toLowerCase().replace(/[^a-z0-9_-]/g,'')}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">${btnLabel}</button>
     </div>`;
   }).join('');
 }
@@ -17021,7 +17053,11 @@ function saveObsLog() {
 
   const history = LS.get('lh_obs_history', []);
   history.unshift({ id:'obs'+Date.now(), date, type, observer, period, outcome, notes, followup, loggedAt: new Date().toISOString() });
-  LS.set('lh_obs_history', history);
+  // FIXED: this was the one persisted log with no cap — every sibling
+  // log (lh_daily_log, lh_wbl_hours_log, lh_journal_history, ...) is
+  // capped in the same style. Matches lh_wbl_hours_log's precedent
+  // (irregular, per-event entries with no fixed calendar cadence).
+  LS.set('lh_obs_history', history.slice(0, 200));
 
   closeObsLog();
   renderObsChecklist();
@@ -20271,7 +20307,7 @@ function showBragBoardPromptBanner() {
       </div>
       <div style="display:flex;gap:.5rem;align-items:center">
         <button class="btn btn-gold btn-sm" onclick="generateSubPlan()" id="subplan-gen-btn">✨ Generate Plan</button>
-        <button class="btn btn-outline btn-sm" onclick="closeModal('subplan')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('subplan')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
       </div>
     </div>
 
