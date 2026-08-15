@@ -124,14 +124,36 @@ async function addCredits(userId, amount, description, stripeEventId = null) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // FIXED: Stripe redelivers webhooks at-least-once; nothing here used
+    // to check whether stripeEventId had already been processed, so a
+    // redelivered checkout.session.completed event double-granted
+    // credits. Insert first: the partial unique index on
+    // billing_events.stripe_event_id (see schema.sql) makes this a
+    // no-op INSERT if the event was already recorded, and the balance
+    // update below is skipped entirely in that case rather than
+    // crediting twice. stripeEventId is null for non-Stripe grants
+    // (e.g. an admin adjustment), which the partial index deliberately
+    // doesn't cover -- ON CONFLICT only ever applies when it's set.
+    const inserted = await client.query(
+      `INSERT INTO billing_events (user_id, event_type, credits_added, description, stripe_event_id)
+       VALUES ($1, 'credits_added', $2, $3, $4)
+       ON CONFLICT (stripe_event_id) WHERE stripe_event_id IS NOT NULL DO NOTHING
+       RETURNING id`,
+      [userId, amount, description, stripeEventId]
+    );
+
+    if (stripeEventId && inserted.rowCount === 0) {
+      const { rows: existing } = await client.query(
+        'SELECT credit_balance FROM users WHERE id = $1', [userId]
+      );
+      await client.query('COMMIT');
+      return existing[0].credit_balance;
+    }
+
     const { rows } = await client.query(
       'UPDATE users SET credit_balance = credit_balance + $1 WHERE id = $2 RETURNING credit_balance',
       [amount, userId]
-    );
-    await client.query(
-      `INSERT INTO billing_events (user_id, event_type, credits_added, description, stripe_event_id)
-       VALUES ($1, 'credits_added', $2, $3, $4)`,
-      [userId, amount, description, stripeEventId]
     );
     await client.query('COMMIT');
     return rows[0].credit_balance;
