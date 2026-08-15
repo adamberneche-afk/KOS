@@ -55,68 +55,96 @@ function onTurnInSubmit(e) {
     return;
   }
 
-  // STEP 1 — Parse File ID from URL
-  const fileId = extractFileId_(submittedDocUrl);
-  if (!fileId) {
-    flagRejection_(cfg, googleId, null, "INVALID_URL",
-      "Could not parse a Drive File ID from: " + submittedDocUrl);
+  // FIXED: this function used to have no LockService guard at all, unlike
+  // every other script writing to the shared Ledger (03_QueueBridge.js,
+  // 06_StagingPipeline_Turnstile.js, 08_TeacherConfirmationStep.js,
+  // 26_CompetencyAlignmentLog.js) — a rapid double-submit, or two students'
+  // Form 2 submissions landing in the same execution window, had no
+  // serialization guard on the ledger read/match/write below. Mirrors the
+  // same two-tier try/catch/finally shape 06_StagingPipeline_Turnstile.js
+  // already uses. Unlike that time-driven poll — which can just wait for
+  // its next 1-minute run — a form-submit trigger that stands down on lock
+  // contention has no automatic retry, so a submission arriving during
+  // contention is lost silently rather than merely delayed. Accepted
+  // trade-off given form submissions are far lower-concurrency than the
+  // 1-minute turnstile poll; flagging here rather than fixing silently,
+  // since a requeue mechanism would be a separate, larger change.
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (lockErr) {
+    Logger.log("[TURN-IN] Parallel submission congestion — standing down.");
     return;
   }
 
-  // STEP 2 — Open doc, scan footer for CONFIG_ID
-  let docText, configId;
   try {
-    const doc = DocumentApp.openById(fileId);
-    docText   = doc.getBody().getText();
-    const m   = docText.match(/\[CONFIG_ID:\s*([A-Z0-9\-]+)\]/);
-    if (!m) {
-      flagRejection_(cfg, googleId, fileId, "MISSING_CONFIG_ID",
-        "No CONFIG_ID found in document footer.");
+    // STEP 1 — Parse File ID from URL
+    const fileId = extractFileId_(submittedDocUrl);
+    if (!fileId) {
+      flagRejection_(cfg, googleId, null, "INVALID_URL",
+        "Could not parse a Drive File ID from: " + submittedDocUrl);
       return;
     }
-    configId = m[1];
+
+    // STEP 2 — Open doc, scan footer for CONFIG_ID
+    let docText, configId;
+    try {
+      const doc = DocumentApp.openById(fileId);
+      docText   = doc.getBody().getText();
+      const m   = docText.match(/\[CONFIG_ID:\s*([A-Z0-9\-]+)\]/);
+      if (!m) {
+        flagRejection_(cfg, googleId, fileId, "MISSING_CONFIG_ID",
+          "No CONFIG_ID found in document footer.");
+        return;
+      }
+      configId = m[1];
+    } catch (err) {
+      flagRejection_(cfg, googleId, fileId, "DOC_ACCESS_ERROR",
+        "Could not open submitted document: " + err.message);
+      return;
+    }
+
+    // STEP 3 — Three-point ledger match
+    const ledgerRow = findLedgerRow_(cfg, googleId, fileId, configId);
+    if (!ledgerRow) {
+      flagRejection_(cfg, googleId, fileId, "LEDGER_MISMATCH",
+        "No ledger row matched GoogleID: " + googleId +
+        " | FileID: " + fileId + " | ConfigID: " + configId);
+      return;
+    }
+
+    // STEP 4 — Compliance stamp check
+    const compliance = scanCompliance_(docText);
+    if (compliance === "NONE") {
+      flagRejection_(cfg, googleId, fileId, "NO_EVALUATION_FOUND",
+        "No automated evaluation stamp found in document.");
+      return;
+    }
+    if (compliance === "REVISION_REQUIRED") {
+      flagRejection_(cfg, googleId, fileId, "REVISION_REQUIRED",
+        "Document contains REVISION_REQUIRED stamp — revisions still needed.");
+      return;
+    }
+
+    // STEP 5 — Forensic version history check
+    // Checks for a rapid automated block write (Studio's signature) rather than
+    // matching an email identity, since Studio service account email is variable.
+    const forensic = runForensicCheck_(fileId);
+    if (!forensic.passed) {
+      flagRejection_(cfg, googleId, fileId, "FORENSIC_FAILURE", forensic.reason);
+      return;
+    }
+
+    // STEP 6 — All checks passed
+    markCompliant_(cfg, ledgerRow.rowIndex);
+    notifyTeacher_(ledgerRow, submittedDocUrl);
+
+    Logger.log("Turn-in APPROVED — GoogleID: " + googleId + " | ConfigID: " + configId);
   } catch (err) {
-    flagRejection_(cfg, googleId, fileId, "DOC_ACCESS_ERROR",
-      "Could not open submitted document: " + err.message);
-    return;
+    Logger.log("[TURN-IN] Critical failure: " + err.message);
+  } finally {
+    lock.releaseLock();
   }
-
-  // STEP 3 — Three-point ledger match
-  const ledgerRow = findLedgerRow_(cfg, googleId, fileId, configId);
-  if (!ledgerRow) {
-    flagRejection_(cfg, googleId, fileId, "LEDGER_MISMATCH",
-      "No ledger row matched GoogleID: " + googleId +
-      " | FileID: " + fileId + " | ConfigID: " + configId);
-    return;
-  }
-
-  // STEP 4 — Compliance stamp check
-  const compliance = scanCompliance_(docText);
-  if (compliance === "NONE") {
-    flagRejection_(cfg, googleId, fileId, "NO_EVALUATION_FOUND",
-      "No automated evaluation stamp found in document.");
-    return;
-  }
-  if (compliance === "REVISION_REQUIRED") {
-    flagRejection_(cfg, googleId, fileId, "REVISION_REQUIRED",
-      "Document contains REVISION_REQUIRED stamp — revisions still needed.");
-    return;
-  }
-
-  // STEP 5 — Forensic version history check
-  // Checks for a rapid automated block write (Studio's signature) rather than
-  // matching an email identity, since Studio service account email is variable.
-  const forensic = runForensicCheck_(fileId);
-  if (!forensic.passed) {
-    flagRejection_(cfg, googleId, fileId, "FORENSIC_FAILURE", forensic.reason);
-    return;
-  }
-
-  // STEP 6 — All checks passed
-  markCompliant_(cfg, ledgerRow.rowIndex);
-  notifyTeacher_(ledgerRow, submittedDocUrl);
-
-  Logger.log("Turn-in APPROVED — GoogleID: " + googleId + " | ConfigID: " + configId);
 }
 
 // ---------------------------------------------------------------------------
