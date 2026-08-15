@@ -84,6 +84,7 @@ Paste the complete contents of each script file into column C.
 |---|---|
 | 00_SharedConfig | TEACHER_DASHBOARD |
 | 07_TeacherDashboard | TEACHER_DASHBOARD |
+| 29_StudentContextAggregator | TEACHER_DASHBOARD |
 
 ### STUDENT_DASHBOARD
 | FileName | ProjectTarget |
