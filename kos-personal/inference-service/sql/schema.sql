@@ -72,6 +72,15 @@ CREATE INDEX IF NOT EXISTS idx_jobs_user_status   ON jobs(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_jobs_status_queued ON jobs(status, queued_at) WHERE status = 'queued';
 CREATE INDEX IF NOT EXISTS idx_billing_user       ON billing_events(user_id, created_at DESC);
 
+-- FIXED: Stripe's webhook delivery is explicitly at-least-once -- nothing
+-- stopped a redelivered checkout.session.completed or invoice.payment_succeeded
+-- event from double-granting/double-resetting credits. Partial (not a
+-- blanket UNIQUE) since stripe_event_id is legitimately NULL for
+-- non-Stripe billing_events rows (e.g. db.js's recordBillingEvent(),
+-- which logs a per-job credit charge with no Stripe event behind it).
+CREATE UNIQUE INDEX IF NOT EXISTS uq_billing_events_stripe_event_id
+  ON billing_events(stripe_event_id) WHERE stripe_event_id IS NOT NULL;
+
 -- FIXED: idx_jobs_payload_uid used to be a plain (non-unique) index, so
 -- nothing stopped a resubmitted payload_uid from creating a duplicate,
 -- billable job row (see the index_spreadsheet_id fix in server.js's
