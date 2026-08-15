@@ -105,6 +105,26 @@ function autoHealthAlert() {
     }
   }
 
+  // --- Check that the Drive Advanced Service is actually enabled ---
+  // FIXED: 04_Form2_TurnInGate.js's runForensicCheck_() calls Drive.Revisions.list()
+  // (the Advanced Service, not DriveApp) and silently treats "Drive is undefined"
+  // as a passed check — meaning the anti-cheating forensic check quietly no-ops
+  // for every submission if this service was never enabled, with no alert
+  // anywhere until now. This checks the same global the forensic function
+  // depends on, so it catches drift regardless of whether the project was set
+  // up via clasp push of the checked-in manifest or manually in the Script Editor.
+  if (typeof Drive === "undefined") {
+    issues.push(
+      "🚨 DRIVE ADVANCED SERVICE NOT ENABLED\n" +
+      "   The anti-cheating forensic check (version-history scan) is silently\n" +
+      "   passing every submission because it can't reach the Drive Advanced\n" +
+      "   Service.\n" +
+      "   Action: Extensions → Apps Script → Services (+) → add \"Drive API\",\n" +
+      "   or redeploy this project from the checked-in manifest, which now\n" +
+      "   declares it."
+    );
+  }
+
   // --- Send alert only if issues exist ---
   if (issues.length === 0) {
     Logger.log("[AUTO-HEALTH] All systems healthy — no alert sent.");
@@ -337,7 +357,15 @@ function runSystemHealthCheck() {
     "   Archived:     " + lArchived,
     (lFlagged > 0 ? "🚩  Flagged: " + lFlagged : "✅  No flagged students"),
     "",
-    (stuck === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0
+    "FORENSIC CHECK",
+    // FIXED: 04_Form2_TurnInGate.js's runForensicCheck_() calls the Drive
+    // Advanced Service and silently treats "unavailable" as a passed check —
+    // this makes that failure visible instead of invisible.
+    (typeof Drive === "undefined"
+      ? "🚨  Drive Advanced Service NOT enabled — anti-cheating check is silently passing every submission. Enable it via Extensions → Apps Script → Services."
+      : "✅  Drive Advanced Service enabled — forensic check is active."),
+    "",
+    (stuck === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && typeof Drive !== "undefined"
       ? "✅ All systems healthy." + (timeouts > 0 ? " (" + timeouts + " timeout(s) auto-resolved.)" : "")
       : "⚠️ Action may be required. See flags above.")
   ].filter(l => l !== "").join("\n"), ui.ButtonSet.OK);
