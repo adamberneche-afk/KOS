@@ -265,20 +265,55 @@ app.get('/auth/callback', async (req, res) => {
  * to STUDIO_ACTIVE. Creates a job in the queue.
  *
  * Body: {
- *   payload_uid:   string,
- *   file_id:       string,
- *   doc_url:       string,
- *   payload_type:  'SESSION_LOG' | 'COG_STIMULUS' | 'EXTERNAL_DATA'
+ *   payload_uid:          string,
+ *   file_id:              string,
+ *   doc_url:              string,
+ *   payload_type:         'SESSION_LOG' | 'COG_STIMULUS' | 'EXTERNAL_DATA',
+ *   index_spreadsheet_id: string  (this GAS instance's own Index spreadsheet
+ *                                  ID — see setIndexSpreadsheetIdIfMissing)
  * }
  */
 app.post('/api/v1/jobs', requireApiKey, validateWebhookSignature, async (req, res) => {
-  const { payload_uid, file_id, doc_url, payload_type } = req.body;
+  const { payload_uid, file_id, doc_url, payload_type, index_spreadsheet_id } = req.body;
 
   if (!payload_uid || !file_id) {
     return res.status(400).json({ error: 'payload_uid and file_id are required' });
   }
 
   try {
+    // FIXED: previously nothing ever populated users.index_spreadsheet_id
+    // for MANAGED_SERVICE users, so setFlowComplete() below always failed
+    // and every job resubmitted as a "new" one on the next Turnstile
+    // staleness reset — silently re-charging credits and re-running
+    // inference on a document the previous run had already overwritten.
+    // Backfilling here (only when currently empty) closes that gap.
+    if (index_spreadsheet_id) {
+      await db.setIndexSpreadsheetIdIfMissing(req.user.id, index_spreadsheet_id);
+    }
+
+    // Idempotency guard: if GAS is resubmitting a payload_uid we've
+    // already accepted, don't create a duplicate, billable job.
+    const existing = await db.findActiveOrCompletedJob(req.user.id, payload_uid);
+    if (existing) {
+      if (existing.status === 'completed') {
+        // The job actually finished on our side — GAS just never saw
+        // FLOW_COMPLETE (this exact index_spreadsheet_id bug, or a
+        // transient Sheets API error). Re-attempt only the completion
+        // signal; do not re-run inference or re-charge credits.
+        const spreadsheetId = index_spreadsheet_id || req.user.index_spreadsheet_id;
+        if (spreadsheetId) {
+          google.setFlowComplete(req.user, spreadsheetId, payload_uid).catch(e => {
+            logger.error(`[Server] Re-signal FLOW_COMPLETE failed for ${payload_uid}: ${e.message}`);
+          });
+        }
+        logger.info(`[Server] Job ${existing.id} already completed for ${payload_uid} — re-signaling only.`);
+        return res.status(200).json({ job_id: existing.id, status: 'completed' });
+      }
+      // queued or processing — already in flight, don't duplicate.
+      logger.info(`[Server] Job ${existing.id} already ${existing.status} for ${payload_uid} — not duplicating.`);
+      return res.status(200).json({ job_id: existing.id, status: existing.status });
+    }
+
     const job = await db.createJob({
       userId:      req.user.id,
       payloadUid:  payload_uid,
