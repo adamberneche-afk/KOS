@@ -7,6 +7,16 @@
 
 > **Read this entire document before touching any file.** Everything the previous instance learned through trial and error is captured here. Do not infer — use the exact strings, patterns, and rules below.
 
+> **⚠ HISTORICAL — this is a point-in-time session handoff from April 9,
+> 2026, not living documentation.** The current architecture reference
+> is `README.md` in this same directory. In particular, every DSP-era
+> claim here is stale: the DSP framework content (`openDSP`,
+> `generateDSPReport()`, the DSP countdown pill, and related
+> DSP-specific framing) was deliberately removed from the shipped app —
+> see `README.md`'s "DSP framework content — removed" section. Treat
+> this file as a record of build decisions made at the time, not a
+> description of what ships today.
+
 ---
 
 ## Who This Is For
