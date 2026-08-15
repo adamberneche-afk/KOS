@@ -5706,6 +5706,21 @@ function escH(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
+// Safe for interpolating a value into a single-quoted JS string literal that
+// itself sits inside an HTML attribute (e.g. onclick="fn('${x}')"). escH()
+// alone only protects the HTML-attribute boundary (", <, >, &) — it doesn't
+// stop a bare ' or \ in the value from breaking out of the JS string. Escape
+// the JS string first, then escH() the result so the surrounding
+// double-quoted attribute stays safe too (a value containing " must not end
+// the attribute early either).
+function escJsAttr(str) {
+  return escH(String(str||'')
+    .replace(/\\/g,'\\\\')
+    .replace(/'/g,"\\'")
+    .replace(/\n/g,'\\n')
+    .replace(/\r/g,'\\r'));
+}
+
 // ── Patch openModal for newTrip to open wizard instead ────────────────────
 const _origOpenModal = openModal;
 window.openModal = function(name) {
@@ -9501,6 +9516,22 @@ function persistSCR() { LS.set('lh_scr_scores', scrScores); }
 const SCR_SCORE_LABELS = {1:'Can teach others',2:'Without supervision',3:'Limited supervision',4:'With supervision',5:'Cannot perform'};
 
 // Initialize scores - merge LS-saved scores with course roster (non-destructive)
+//
+// Keyed by stu.name (a plain string), not a stable id — there is no id field
+// anywhere in the SCR_COURSES roster schema (each student object here has
+// only .name and .scores; unlike the main students[] array, which gets a
+// real numeric .id from nextId.st++). Two known, accepted trade-offs from
+// that: two students who share the exact same name string within one
+// course/period would share one scrScores bucket, and hand-renaming a
+// student in the SCR_COURSES literal orphans their prior scores under the
+// old name. Both are deliberately left as-is rather than "fixed" by keying
+// on each student's array position instead — position is exactly as fragile
+// (silently reattributes scores to the wrong student the moment the
+// hand-edited roster array is reordered) and this structure has no UI path
+// today that adds/renames/imports students, so there's no live bug to force
+// a migration for. If a real UI for editing this roster is ever added,
+// give students a genuine persisted id at that point and migrate then —
+// not a position-derived surrogate now, before anything actually needs it.
 function initScrScores() {
   for (const [code, course] of Object.entries(SCR_COURSES)) {
     if (!scrScores[code]) scrScores[code] = {};
@@ -11082,7 +11113,7 @@ function renderScrTable(course, students, myScores) {
             <tr>
               <th class="comp-h" style="position:sticky;left:0;z-index:20;background:var(--navy)">#  Competency</th>
               <th style="position:sticky;left:0" class="comp-h" style="min-width:60px">Req</th>
-              ${students.map(s => `<th style="width:${colWidth}px;max-width:${colWidth}px;overflow:hidden;text-overflow:ellipsis" title="${s.name}">${s.name.split(',')[0]}</th>`).join('')}
+              ${students.map(s => `<th style="width:${colWidth}px;max-width:${colWidth}px;overflow:hidden;text-overflow:ellipsis" title="${escH(s.name)}">${escH(s.name.split(',')[0])}</th>`).join('')}
               <th style="width:70px">Class %</th>
             </tr>
           </thead>
@@ -11118,10 +11149,10 @@ function renderScrTable(course, students, myScores) {
                   // was keyboard-inaccessible.
                   return `<td style="text-align:center">
                     <span class="scr-score scr-s${score||0}" role="button" tabindex="0"
-                      onclick="cycleScore('${stu.name}',${comp.num},this)"
-                      onkeydown="scrScoreKeydown(event,'${stu.name}',${comp.num},this)"
-                      title="${stu.name} — #${comp.num}"
-                      aria-label="${stu.name}, competency ${comp.num}, ${score?(SCR_SCORE_LABELS[score]||score)+' ('+score+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+                      onclick="cycleScore('${escJsAttr(stu.name)}',${comp.num},this)"
+                      onkeydown="scrScoreKeydown(event,'${escJsAttr(stu.name)}',${comp.num},this)"
+                      title="${escH(stu.name)} — #${comp.num}"
+                      aria-label="${escH(stu.name)}, competency ${comp.num}, ${score?(SCR_SCORE_LABELS[score]||score)+' ('+score+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
                     >${score || '·'}</span>
                   </td>`;
                 }).join('')}
@@ -11162,9 +11193,9 @@ function renderStudentCard(stu, course, scores) {
   return `<div class="mb-card">
     <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem">
-        <div class="ava" style="width:32px;height:32px;font-size:.75rem;background:var(--navy);flex-shrink:0">${stu.name.split(',').map(p=>p.trim()[0]).join('')}</div>
+        <div class="ava" style="width:32px;height:32px;font-size:.75rem;background:var(--navy);flex-shrink:0">${escH(stu.name.split(',').map(p=>p.trim()[0]).join(''))}</div>
         <div>
-          <div style="font-weight:700;font-size:.85rem">${stu.name}</div>
+          <div style="font-weight:700;font-size:.85rem">${escH(stu.name)}</div>
           <div style="font-size:.68rem;color:var(--muted)">${scored}/${total} scored · ${sat} satisfactory</div>
         </div>
         <div style="margin-left:auto;text-align:right">
@@ -11185,11 +11216,11 @@ function renderStudentCard(stu, course, scores) {
           const s = scores[c.num];
           const cls = `scr-s${s||0}`;
           return `<span class="scr-score ${cls}" style="width:22px;height:18px;font-size:.62rem" role="button" tabindex="0"
-            data-scr-key="${stu.name}::${c.num}"
-            onclick="cycleScore('${stu.name}',${c.num},this)"
-            onkeydown="scrScoreKeydown(event,'${stu.name}',${c.num},this)"
+            data-scr-key="${escH(stu.name)}::${c.num}"
+            onclick="cycleScore('${escJsAttr(stu.name)}',${c.num},this)"
+            onkeydown="scrScoreKeydown(event,'${escJsAttr(stu.name)}',${c.num},this)"
             title="#${c.num}: ${c.text.substring(0,50)}${s?' — '+(SCR_SCORE_LABELS[s]||s):''}"
-            aria-label="${stu.name}, competency ${c.num}, ${s?SCR_SCORE_LABELS[s]+' ('+s+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+            aria-label="${escH(stu.name)}, competency ${c.num}, ${s?SCR_SCORE_LABELS[s]+' ('+s+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
           >${s||'·'}</span>`;
         }).join('')}
       </div>
@@ -12878,7 +12909,7 @@ function openAISCRInsights() {
       const bg = RATING_BG[v] || '#f8fafc';
       return `<td style="padding:.15rem .3rem;text-align:center;background:${bg};font-size:.72rem" title="${SCR_SCORE_LABELS[v]||'Not scored'}">${v}</td>`;
     }).join('');
-    return `<tr><td style="padding:.2rem .4rem;font-size:.75rem;font-weight:600">${stu.name}</td>${cells}<td style="padding:.2rem .4rem;font-size:.75rem;text-align:center">${avg}</td></tr>`;
+    return `<tr><td style="padding:.2rem .4rem;font-size:.75rem;font-weight:600">${escH(stu.name)}</td>${cells}<td style="padding:.2rem .4rem;font-size:.75rem;text-align:center">${avg}</td></tr>`;
   }).join('');
 
   const modal = document.createElement('div');
