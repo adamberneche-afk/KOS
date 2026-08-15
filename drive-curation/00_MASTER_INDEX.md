@@ -32,7 +32,10 @@ Everything below is real — created via Drive tools, confirmed in responses. **
 | **DELETION_MANIFEST.md** | The click-through checklist for everything verified as duplicate/deprecated/personal — direct links, organized by confidence level. Superseded as an execution tool by GEMINI_HANDOFF_INSTRUCTIONS.md (same content, but phased with recovery steps); kept as the underlying source reference. | Current |
 | **Unit_Cross_Reference_Links.md** | Smart-chip-ready links from 4 of the 9 Marketing Exploration units to their real, matching activity folders in the Legacy Archive (2025-26 only). | Current |
 | **Curriculum_Cross_Year_Index.xlsx** | The deeper version of the above — 33 recurring activities traced across 2021-2026, plus pacing guide cross-references and a gap analysis. | Current |
-| **unit_lesson_plans/** (9 files) | The actual split content for each of the 9 Marketing Exploration units — objectives, competencies, activities, assessment. Ready to paste into the matching Drive folder. | Current, not yet placed in Drive (content-writing tool is broken — see §4) |
+| **curriculum/** (9 files) | The actual split content for each of the 9 Marketing Exploration units — objectives, competencies, activities, assessment. Ready to paste into the matching Drive folder. | Current, not yet placed in Drive (content-writing tool is broken — see §4) |
+| **Assumptions_Deep_Dive.md** | A structural audit of "The Economics of Depth" white paper's load-bearing claims — first pass, general web sourcing. Superseded by `Assumptions_Deep_Dive_v2.md`, which redoes the same audit against primary-source academic citations after Adam's corrections narrowed several assumptions to what the paper actually argues. Kept for the record of how the audit evolved. | Superseded — see `_v2.md` |
+| **Assumptions_Deep_Dive_v2.md** | The current version of the same structural audit — peer-reviewed/institutional citations, a direct verdict per assumption, and the corrections that sharpened the first pass. Read this one, not v1. | Current, final version |
+| **Economics_of_Depth_White_Paper.md** | The white paper itself ("The Economics of Depth") — the source document both Assumptions Deep Dive files are auditing. Distilled from an April 2026 working conversation; prepared for colleague/administrator review. | Current |
 
 ---
 

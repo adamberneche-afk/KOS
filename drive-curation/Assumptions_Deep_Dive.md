@@ -1,5 +1,14 @@
 # Assumptions Deep Dive — "The Economics of Depth"
 
+> **⚠ SUPERSEDED — kept for the record of how this audit evolved.** The
+> current version is `Assumptions_Deep_Dive_v2.md` in this same
+> directory: it redoes this same structural audit against
+> primary-source academic citations rather than general web summaries,
+> and folds in three rounds of corrections from Adam that narrowed
+> several assumptions to what the paper actually argues rather than a
+> flatter version of it. Read `_v2.md`, not this file, for the current
+> verdict on any of the five assumptions below.
+
 *A structural audit of the white paper's load-bearing claims. For each assumption: why it's structural (the argument collapses or weakens significantly if it's false), what Adam's own Drive contains that bears on it, what external literature says, and a steel-manned case for both sides. This document does not resolve the assumptions — it's meant to inform Part I's Open Question A1 and A2, and to give a colleague/administrator audience a fair sense of what's solid ground and what's live debate.*
 
 ---
