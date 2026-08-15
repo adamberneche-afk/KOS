@@ -476,7 +476,7 @@ function deployWebApp_(targetKey, config) {
       {
         name:   "appsscript",
         type:   "JSON",
-        source: buildWebAppManifest_(config.executeAs, config.access)
+        source: buildWebAppManifest_(targetKey, config.executeAs, config.access)
       },
       ...config.files.map(f => ({
         name:   f.name,
@@ -660,16 +660,45 @@ function buildManifest_(triggers) {
 }
 
 // ---------------------------------------------------------------------------
+// WEB_APP_SCOPES — per-project-target OAuth scope lists.
+// FIXED: buildWebAppManifest_() used to hardcode one 2-scope list for every
+// web app it deployed. That happened to match STUDENT_DASHBOARD, but
+// TEACHER_DASHBOARD's real files (07, 22, 23, 26, 29, 31 — see
+// tools/gas-lint/project-map.json) call DriveApp/DocumentApp/ScriptApp and
+// need 5 scopes — already correctly listed in the checked-in
+// cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json, which an
+// AutoInstaller-driven deploy was silently under-scoping relative to.
+// Keep these two lists in sync with their checked-in manifest counterparts;
+// there's no way for this in-Apps-Script code to read the repo's manifest
+// files at runtime, so this table has to be maintained by hand until a
+// gas-lint check exists to catch drift between the two (see the
+// checkUndefinedFunctionCalls-style tooling work in the same commit series).
+// ---------------------------------------------------------------------------
+const WEB_APP_SCOPES = {
+  TEACHER_DASHBOARD: [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/userinfo.email"
+  ],
+  STUDENT_DASHBOARD: [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/userinfo.email"
+  ]
+};
+
+// ---------------------------------------------------------------------------
 // buildWebAppManifest_ — generates appsscript.json for web app deployments
 // ---------------------------------------------------------------------------
-function buildWebAppManifest_(executeAs, access) {
+function buildWebAppManifest_(targetKey, executeAs, access) {
   return JSON.stringify({
     timeZone: Session.getScriptTimeZone(),
     webapp: {
       executeAs: executeAs,
       access:    access
     },
-    oauthScopes: [
+    oauthScopes: WEB_APP_SCOPES[targetKey] || [
       "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/userinfo.email"
     ],
