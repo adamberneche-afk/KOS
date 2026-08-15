@@ -1438,11 +1438,15 @@ body {
           <div class="callout-icon">⚠️</div>
           <div class="callout-body"><strong>This project is deployed once per teacher, not once for the whole school</strong> — same convention as the Admin Manual (see the final checklist). Every server function on this dashboard scopes its data to whichever email is set below, and only lets that same person view it — so each teacher needs their own copy of this project, their own Script Property, and their own deployment URL. Deploying it once and sharing one URL across teachers will not work: the dashboard only ever shows (and only ever lets in) the one teacher named in <code>TEACHER_EMAIL</code>.</div>
         </div>
-        <p>Go to <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Teacher Dashboard ([Teacher Name])</strong>. Create two files:</p>
+        <p>Go to <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Teacher Dashboard ([Teacher Name])</strong>. Create these files:</p>
         <div class="file-list">
           <div class="file-row"><div><div class="file-name">00_SharedConfig</div></div></div>
           <div class="file-row"><div><div class="file-name">07_TeacherDashboard</div></div></div>
+          <div class="file-row"><div><div class="file-name">22_LessonContextHandler</div></div></div>
+          <div class="file-row"><div><div class="file-name">23_StudentProfileManager</div></div></div>
+          <div class="file-row"><div><div class="file-name">26_CompetencyAlignmentLog</div></div></div>
           <div class="file-row"><div><div class="file-name">29_StudentContextAggregator</div></div></div>
+          <div class="file-row"><div><div class="file-name">31_PacingGuideManager</div></div></div>
         </div>
         <p>Set Script Properties on this project:</p>
         <div class="code-block">
