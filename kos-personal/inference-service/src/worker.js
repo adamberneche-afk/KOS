@@ -214,6 +214,52 @@ async function processNextJob() {
 }
 
 
+// ── Stuck-job recovery ──────────────────────────────────────────────
+// FIXED: credits are deducted before any expensive work starts (see the
+// "Charge credits" block in processNextJob above), but nothing ever
+// recovered a job left stuck in 'processing' if the worker process
+// crashed mid-job (OOM-killed, redeployed, etc.) -- the user stayed
+// permanently charged for a job that would never complete, with no
+// automated way to notice. Runs from this same worker's poll loop
+// (STUCK_JOB_TIMEOUT_MINUTES, default 10) so it can reuse db.addCredits
+// directly for the refund instead of standing up a separate process
+// with its own DB pool and its own copy of the refund logic.
+
+const STUCK_JOB_TIMEOUT_MINUTES = parseInt(process.env.STUCK_JOB_TIMEOUT_MINUTES || '10');
+
+async function sweepStuckJobs() {
+  let stuck;
+  try {
+    stuck = await db.findStuckJobs(STUCK_JOB_TIMEOUT_MINUTES);
+  } catch (e) {
+    logger.error('[Worker] sweepStuckJobs: could not query for stuck jobs:', e);
+    return;
+  }
+  if (stuck.length === 0) return;
+
+  for (const job of stuck) {
+    logger.warn(`[Worker] Job ${job.id} stuck in 'processing' since ${job.started_at} — recovering.`);
+    if (job.subscription_status !== 'unlimited') {
+      const creditCost = inference.getCreditCost(job.payload_type);
+      try {
+        await db.addCredits(
+          job.user_id, creditCost,
+          `Refund — job ${job.id} was stuck in processing (worker likely crashed) and auto-recovered`
+        );
+      } catch (refundErr) {
+        logger.error(`[Worker] Job ${job.id}: STUCK-JOB REFUND FAILED (needs manual reconciliation): ${refundErr.message}`);
+      }
+    }
+    // Reuses the existing retry-vs-fail decision in markJobFailed (based
+    // on the job's own retry_count/MAX_JOB_RETRIES) — a stuck job gets
+    // one more chance to run cleanly before being marked permanently
+    // failed, same as any other retryable failure.
+    await db.markJobFailed(job.id, 'Stuck in processing — worker likely crashed', true)
+      .catch((e) => logger.error(`[Worker] Job ${job.id}: markJobFailed during sweep failed:`, e));
+  }
+}
+
+
 // ── Entry point ───────────────────────────────────────────────────
 
 async function startWorker() {
@@ -225,6 +271,7 @@ async function startWorker() {
   setInterval(async () => {
     try {
       await processNextJob();
+      await sweepStuckJobs();
     } catch (e) {
       logger.error('[Worker] Poll error:', e);
     }
@@ -239,4 +286,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { startWorker, processNextJob };
+module.exports = { startWorker, processNextJob, sweepStuckJobs };
