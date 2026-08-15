@@ -1,6 +1,10 @@
 // =============================================================================
 // FILE: 26_CompetencyAlignmentLog.js
-// BOUND TO: Central Ledger spreadsheet
+// BOUND TO: Central Ledger spreadsheet AND the Teacher Dashboard standalone
+//   web app — called synchronously from Script 22's onLessonContextSubmit_(),
+//   which itself runs in the Teacher Dashboard project (see that file's
+//   header). See tools/gas-lint/project-map.json's
+//   cas-ccps:teacher-dashboard entry.
 // PURPOSE: Reads LessonContext rows with status=RECEIVED and writes one
 //          AlignmentLog row per competency. Denormalizes lesson fields into
 //          each row so the log is self-contained for export.

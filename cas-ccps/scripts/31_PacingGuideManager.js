@@ -3,7 +3,11 @@
 //       — Module 2's own numbering collided with the already-pushed
 //       Module 4/5 scripts 29/30/30b; Module 2 moved to 31/32/33 per
 //       repo reconciliation decision 1 (see cas-ccps/README.md).
-// BOUND TO: Central Ledger spreadsheet
+// BOUND TO: Central Ledger spreadsheet AND the Teacher Dashboard standalone
+//   web app — Script 23's buildShadowMatrixSummary_() calls
+//   resolveUnitForDate_() below directly, and that function runs in the
+//   Teacher Dashboard project too (see Script 23's header). See
+//   tools/gas-lint/project-map.json's cas-ccps:teacher-dashboard entry.
 // PURPOSE: Manages the PacingGuide tab — imports the JSON pacing guide,
 //          resolves lesson dates to unit IDs, and supplies warmup_anchor
 //          seeds to Script 24 for inclusion in WarmUpQueue snapshots.
