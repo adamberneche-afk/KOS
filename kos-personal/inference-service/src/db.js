@@ -205,6 +205,7 @@ async function getNextQueuedJob() {
      WHERE id = (
        SELECT id FROM jobs
        WHERE status = 'queued'
+         AND (next_retry_at IS NULL OR next_retry_at <= NOW())
        ORDER BY queued_at ASC
        FOR UPDATE SKIP LOCKED
        LIMIT 1
@@ -243,6 +244,15 @@ async function markJobFailed(jobId, errorMessage, retry = false) {
   // 'failed' or 'queued' and started_at was never cleared, leaving it
   // stuck in 'processing' forever with no error_message recorded. Bound
   // the JS `retry` parameter as $4 instead of interpolating it as SQL.
+  // FIXED: a retried job used to go straight back to 'queued' with no
+  // delay, so it was picked up again at the very next 15s poll — for a
+  // genuinely rate-limited/overloaded upstream, retrying seconds later
+  // compounds the problem. next_retry_at gets an exponential backoff
+  // (30s * 2^retry_count) on a retry, NULL on a final failure. Note
+  // `retry_count` on the right-hand side of every SET expression here
+  // refers to the PRE-increment value — Postgres evaluates all SET
+  // expressions in one UPDATE against the row as it was before the
+  // statement, same as the existing retry-vs-fail CASE already relies on.
   const { rows } = await pool.query(
     `UPDATE jobs
      SET retry_count  = retry_count + 1,
@@ -251,12 +261,37 @@ async function markJobFailed(jobId, errorMessage, retry = false) {
            WHEN $4 AND retry_count < $3 THEN 'queued'
            ELSE 'failed'
          END,
+         next_retry_at = CASE
+           WHEN $4 AND retry_count < $3
+             THEN NOW() + (INTERVAL '30 seconds' * POWER(2, retry_count))
+           ELSE NULL
+         END,
          started_at = NULL
      WHERE id = $1
      RETURNING *`,
     [jobId, errorMessage, maxRetries, retry]
   );
   return rows[0];
+}
+
+// FIXED: nothing ever recovered a job stuck in 'processing' if the
+// worker process crashed mid-job (e.g. OOM-killed, redeployed) —
+// credits are deducted before any expensive work starts, so a crash
+// left the user permanently charged with a job stuck forever and no
+// automated way to notice. Call this periodically from the worker's own
+// poll loop (see worker.js's sweepStuckJobs), not as a separate process,
+// so it can reuse addCredits() directly for the refund.
+async function findStuckJobs(timeoutMinutes = 10) {
+  const { rows } = await pool.query(
+    `SELECT jobs.*, users.subscription_status
+     FROM jobs
+     JOIN users ON users.id = jobs.user_id
+     WHERE jobs.status = 'processing'
+       AND jobs.started_at < NOW() - ($1 || ' minutes')::INTERVAL
+     ORDER BY jobs.started_at ASC`,
+    [timeoutMinutes]
+  );
+  return rows;
 }
 
 async function getJobsByUser(userId, limit = 20) {
@@ -307,6 +342,7 @@ module.exports = {
   getNextQueuedJob,
   markJobCompleted,
   markJobFailed,
+  findStuckJobs,
   getJobsByUser,
   recordBillingEvent,
   getUserStats,
