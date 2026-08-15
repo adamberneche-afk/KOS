@@ -1,10 +1,16 @@
 // =============================================================================
 // FILE: 19_ClonedSheetConfig.js
-// INCLUDED IN: Both cloned sheet projects:
+// INCLUDED IN:
 //   - Master Rubric Response Sheet (with Scripts 00 + 05)
 //   - Master Teacher Matrix Sheet  (with Scripts 00 + 08)
+//   - Unified Manual / Admin Manual project (with Scripts 00 + 16 + 20)
+//     — required by 16_UnifiedManualSetup.js's createTeacherAssets_(),
+//     which calls writeConfigTab_() below. See
+//     cas-ccps/docs/ADMIN_DEPLOYMENT_WALKTHROUGH.html's file lists for
+//     this project, which already document this dependency correctly.
 //
-// PURPOSE: Config persistence for cloned sheet projects.
+// PURPOSE: Config persistence for cloned sheet projects, and the
+// _CONFIG-tab writer used by the Unified Manual setup wizard.
 //
 // PROBLEM:
 //   Script Properties are per-project and do NOT clone with makeCopy().
