@@ -9525,7 +9525,7 @@ function _resolveCurrentCourse() {
   const schedType = getTodayScheduleType(); // from bell schedule module
   const now = new Date();
   const dow = now.getDay(); // 1=Mon…5=Fri
-  const todayKey = now.toISOString().slice(0,10);
+  const todayKey = _localDateStr_(now);
   // LP_QUARTERS[1].start is the same school-year-start date the pacing
   // calendar itself uses as Q1's first day — previously duplicated here
   // (and 8 other call sites) as a separate '2025-08-18' literal that could
@@ -11240,7 +11240,7 @@ function setScore(stuName, compNum, el, next) {
   persistSCR();
   // Log SCR session for Brag Board — one entry per day per course (deduped by date+course)
   const _scrLog = LS.get('lh_scr_session_log', []);
-  const _scrToday = new Date().toISOString().slice(0,10);
+  const _scrToday = _localDateStr_();
   const _scrKey   = `${_scrToday}|${course}`;
   if (!_scrLog.some(e => e.key === _scrKey)) {
     const _cname = (SCR_COURSES[course] || {}).name || course;
@@ -12280,12 +12280,26 @@ function _schedTypeOptions(selectedKey) {
   return opts.join('');
 }
 
+// Shared local-calendar-date string builder (YYYY-MM-DD). FIXED: several
+// "what day is it" call sites below used to build this key via
+// `date.toISOString().slice(0,10)`, which converts to UTC first — in a
+// negative-UTC-offset timezone (e.g. US Eastern, what this app is built
+// for), that silently rolls the date forward in the evening, hours
+// before local midnight, causing a mismatch with a same-day lookup (a
+// schedule/holiday/match "today" check reading tomorrow's date
+// instead — every evening the app is left open, not an edge case).
+// getTodayScheduleType() below used to build this correctly inline with
+// its own copy of the same three lines; extracted here so every other
+// site with the same bug can share one correct implementation instead
+// of re-deriving it (or re-introducing the bug) separately.
+function _localDateStr_(date) {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 function getTodayScheduleType() {
-  const now  = new Date();
-  const yyyy = now.getFullYear();
-  const mm   = String(now.getMonth()+1).padStart(2,'0');
-  const dd   = String(now.getDate()).padStart(2,'0');
-  const key  = yyyy+'-'+mm+'-'+dd;
+  const now = new Date();
+  const key = _localDateStr_(now);
 
   if (CCPS_NO_SCHOOL.has(key)) return null; // no school
   if (CCPS_SCHEDULE_OVERRIDES[key]) return CCPS_SCHEDULE_OVERRIDES[key];
@@ -13999,7 +14013,7 @@ function getPulseData(){
   const esTotal=typeof ES_MATCHES!=='undefined'?ES_MATCHES.length:0;
   const esWins=typeof ES_MATCHES!=='undefined'?ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length:0;
   // Next upcoming match — future-dated entries sorted ascending
-  const _todayStr = new Date().toISOString().slice(0,10);
+  const _todayStr = _localDateStr_();
   const _futureMatches = typeof ES_MATCHES!=='undefined'
     ? ES_MATCHES.filter(m=>m.date && m.date >= _todayStr).sort((a,b)=>a.date.localeCompare(b.date))
     : [];
@@ -14908,7 +14922,7 @@ function isSchoolDay(d) {
   const dt = d || new Date();
   const dow = dt.getDay();
   if (dow === 0 || dow === 6) return false; // weekend
-  const iso = dt.toISOString().slice(0, 10);
+  const iso = _localDateStr_(dt);
   if (typeof CCPS_NO_SCHOOL !== 'undefined' && CCPS_NO_SCHOOL.has(iso)) return false;
   return true;
 }
@@ -15004,7 +15018,7 @@ function logPLCAttended() {
 function checkEsportsMatchToday() {
   const now   = new Date();
   if (!isSchoolDay(now)) return;                // skip on holidays + spring break
-  const today = now.toISOString().slice(0,10);
+  const today = _localDateStr_(now);
   const shown = LS.get('lh_esports_match_banner_date', '');
   if (shown === today) return;
   if (typeof ES_MATCHES === 'undefined') return;
