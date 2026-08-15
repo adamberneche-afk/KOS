@@ -125,12 +125,30 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
     // BUG-04 FIX: _getKnownVectors() merges CFG base + promoted
     const knownList = _getKnownVectors();
 
+    // FIXED: an explicit 0.0 score for a known theme used to be treated
+    // as "scored this session" by _writeMatrixRow, hard-resetting that
+    // theme's value instead of decaying it from history — the design
+    // _writeMatrixRow's own header describes ("Otherwise → apply
+    // DECAY_FACTOR to the previous row's score"). The model's own
+    // extraction-rule prompt defines 0.0 as meaning "not present" (see
+    // inference-service/src/inference.js's system prompt), and the
+    // output schema requires every base theme present on every
+    // response — so an explicit 0.0 for a known theme is the model's
+    // *only* way to say "not present," never a genuine near-zero score
+    // worth preserving as a hard value. Skip it here instead (don't add
+    // it to `known`) so _writeMatrixRow's existing
+    // `known[t] !== undefined` check naturally falls through to its
+    // decay branch, with no change needed to that function itself.
     Object.entries(raw).forEach(([t, v]) => {
       const score = parseFloat(v);
       if (isNaN(score) || score < 0) return;
       const upper = t.toUpperCase().trim();
-      if      (knownList.includes(upper))    known[upper]   = score;
-      else if (score >= CFG.INCUBATOR_THRESHOLD) unknown[upper] = score;
+      if (knownList.includes(upper)) {
+        if (score > 0) known[upper] = score;
+        // score === 0 for a known theme: treated as absent, decays instead.
+      } else if (score >= CFG.INCUBATOR_THRESHOLD) {
+        unknown[upper] = score;
+      }
     });
 
     // ── Write to sheets ─────────────────────────────────────────
