@@ -5,8 +5,8 @@
  * =========================
  * cas-ccps is not one Apps Script project — it's 7 (see
  * tools/gas-lint/project-map.json), several of which share files (e.g.
- * 00_SharedConfig.js is pasted into 5 of them, 19_ClonedSheetConfig.js
- * into 2). clasp's model is strictly one local folder <-> one script ID,
+ * 00_SharedConfig.js is pasted into all 7 of them, 19_ClonedSheetConfig.js
+ * into 3). clasp's model is strictly one local folder <-> one script ID,
  * so there's no single directory that can `clasp push` cleanly for
  * cas-ccps the way kos-personal's flat folder can.
  *
