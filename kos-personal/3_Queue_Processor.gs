@@ -698,9 +698,15 @@ function _getManagedServiceStatus_() {
  * @param {string} fileId
  * @param {string} docUrl
  * @param {string} payloadType
+ * @param {string} indexSpreadsheetId - this instance's own Index spreadsheet
+ *   ID. FIXED: this used to never be sent, so the service's
+ *   users.index_spreadsheet_id stayed permanently empty and
+ *   setFlowComplete()/readOperatorContext() always failed — see
+ *   INFERENCE_SERVICE_DEPLOYMENT.md's integration-status note and the
+ *   commit that added this parameter for the full failure trace.
  * @returns {Object} { ok: true, job_id } or { ok: false, error }
  */
-function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType) {
+function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType, indexSpreadsheetId) {
   if (CFG.INFERENCE_MODE !== 'MANAGED_SERVICE') {
     return { ok: false, error: 'CFG.INFERENCE_MODE is not MANAGED_SERVICE' };
   }
@@ -713,10 +719,11 @@ function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType) {
   }
 
   const bodyString = JSON.stringify({
-    payload_uid:  payloadUid,
-    file_id:      fileId,
-    doc_url:      docUrl,
-    payload_type: payloadType,
+    payload_uid:          payloadUid,
+    file_id:              fileId,
+    doc_url:              docUrl,
+    payload_type:         payloadType,
+    index_spreadsheet_id: indexSpreadsheetId,
   });
 
   const headers = { 'X-KOS-API-Key': apiKey };
@@ -745,7 +752,11 @@ function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType) {
     });
 
     const code = resp.getResponseCode();
-    if (code !== 201) {
+    // 201 = a fresh job was created. 200 = the service already had a job
+    // for this payload_uid (idempotency guard — see server.js's
+    // POST /api/v1/jobs) and returned that existing job's status instead
+    // of creating a duplicate; either code is a successful submission.
+    if (code !== 201 && code !== 200) {
       let message = 'HTTP ' + code;
       try {
         const errBody = JSON.parse(resp.getContentText());

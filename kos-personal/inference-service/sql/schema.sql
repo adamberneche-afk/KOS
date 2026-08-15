@@ -70,8 +70,24 @@ CREATE TABLE IF NOT EXISTS billing_events (
 -- Indexes for common query patterns
 CREATE INDEX IF NOT EXISTS idx_jobs_user_status   ON jobs(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_jobs_status_queued ON jobs(status, queued_at) WHERE status = 'queued';
-CREATE INDEX IF NOT EXISTS idx_jobs_payload_uid   ON jobs(payload_uid);
 CREATE INDEX IF NOT EXISTS idx_billing_user       ON billing_events(user_id, created_at DESC);
+
+-- FIXED: idx_jobs_payload_uid used to be a plain (non-unique) index, so
+-- nothing stopped a resubmitted payload_uid from creating a duplicate,
+-- billable job row (see the index_spreadsheet_id fix in server.js's
+-- POST /api/v1/jobs and db.js's findActiveOrCompletedJob for the full
+-- failure this closes). Superseded by the partial unique index below;
+-- dropped here so re-running this file (schema.sql is applied
+-- idempotently via sql/migrate.js) cleans it up on an already-deployed
+-- database instead of leaving it orphaned.
+DROP INDEX IF EXISTS idx_jobs_payload_uid;
+
+-- Partial, not a blanket UNIQUE(user_id, payload_uid): a payload_uid
+-- whose only prior rows are 'failed' must still be allowed to create a
+-- new row for a legitimate retry-as-new-job.
+CREATE UNIQUE INDEX IF NOT EXISTS uq_jobs_user_payload_uid_active
+  ON jobs(user_id, payload_uid)
+  WHERE status IN ('queued', 'processing', 'completed');
 
 -- Auto-update updated_at on users
 CREATE OR REPLACE FUNCTION update_updated_at()

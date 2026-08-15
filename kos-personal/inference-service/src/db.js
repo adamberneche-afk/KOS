@@ -92,6 +92,22 @@ async function updateUserTokens(userId, { accessToken, tokenExpiry }) {
   );
 }
 
+// FIXED: nothing ever populated index_spreadsheet_id for MANAGED_SERVICE
+// users (the OAuth callback's req.query.spreadsheet_id read was dead code
+// — Google never echoes back arbitrary query params from /auth/connect).
+// Backfilled instead from the job-submission payload, which does carry it
+// now (see POST /api/v1/jobs). Only ever fills an empty value — never
+// overwrites an already-set one, so a stale or misbehaving caller can't
+// silently repoint a connected user's target spreadsheet.
+async function setIndexSpreadsheetIdIfMissing(userId, spreadsheetId) {
+  if (!spreadsheetId) return;
+  await pool.query(
+    `UPDATE users SET index_spreadsheet_id = $1
+     WHERE id = $2 AND (index_spreadsheet_id IS NULL OR index_spreadsheet_id = '')`,
+    [spreadsheetId, userId]
+  );
+}
+
 async function deductCredits(userId, amount) {
   const { rows } = await pool.query(
     `UPDATE users
@@ -138,6 +154,25 @@ async function createJob({ userId, payloadUid, fileId, docUrl, payloadType }) {
     [userId, payloadUid, fileId, docUrl, payloadType || 'SESSION_LOG']
   );
   return rows[0];
+}
+
+// FIXED: closes the resubmit-as-new-job loop caused by index_spreadsheet_id
+// always being empty (see setIndexSpreadsheetIdIfMissing above) — without
+// this, a GAS instance whose FLOW_COMPLETE signal never landed would have
+// its Turnstile staleness reset resubmit the same payload_uid as a brand
+// new job every run, re-charging credits and re-running inference on a
+// document already overwritten by the previous run. Checked before every
+// insert in POST /api/v1/jobs; matches the partial unique index in
+// schema.sql as defense-in-depth against the check-then-insert race.
+async function findActiveOrCompletedJob(userId, payloadUid) {
+  const { rows } = await pool.query(
+    `SELECT * FROM jobs
+     WHERE user_id = $1 AND payload_uid = $2 AND status IN ('queued', 'processing', 'completed')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [userId, payloadUid]
+  );
+  return rows[0] || null;
 }
 
 async function getNextQueuedJob() {
@@ -242,9 +277,11 @@ module.exports = {
   findUserByApiKey,
   upsertUser,
   updateUserTokens,
+  setIndexSpreadsheetIdIfMissing,
   deductCredits,
   addCredits,
   createJob,
+  findActiveOrCompletedJob,
   getNextQueuedJob,
   markJobCompleted,
   markJobFailed,
