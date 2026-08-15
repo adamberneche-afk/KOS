@@ -527,7 +527,7 @@ file's own header wins):
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
-| Teacher Dashboard | standalone web app | `07` (includes the Student Context tab and the teacher-identity gate), `29` (student context data read by that tab) |
+| Teacher Dashboard | standalone web app | `07` (includes the Student Context tab and the teacher-identity gate), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`) |
 | Student Dashboard | standalone web app | `13` |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).

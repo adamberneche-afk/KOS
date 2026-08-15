@@ -1,6 +1,11 @@
 // =============================================================================
 // FILE: 23_StudentProfileManager.js
-// BOUND TO: Central Ledger spreadsheet
+// BOUND TO: Central Ledger spreadsheet AND the Teacher Dashboard standalone
+//   web app — Script 07's getDashboardData() calls
+//   buildShadowMatrixSummary_() below directly for the Module 2
+//   warm-up-readiness panel, so this file (and its Script 31 dependency)
+//   must be physically present in the Teacher Dashboard project too.
+//   See tools/gas-lint/project-map.json's cas-ccps:teacher-dashboard entry.
 // PURPOSE: Nightly batch update of the StudentProfiles tab.
 //          Runs as Stage 1 of the 3am cron, before Script 24 (3:30am)
 //          builds WarmUpQueue rows. Profiles must be current before
