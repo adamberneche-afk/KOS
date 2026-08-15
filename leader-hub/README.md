@@ -1049,6 +1049,52 @@ with invisible white-on-white header text; and gave the Trip Wizard close
 button (the single most-used modal in the app) the `aria-label`/focus-ring
 treatment two prior rounds had both missed.
 
+**Round 10** (`40e4055`, `722fd65`, `c124dd3`, `307fc27`) — a
+whole-repo audit pass, not triggered by a bug report. `40e4055` escaped
+`renderHorizons()`'s email-sourced text with the existing `escH()`
+helper (it was already used three lines above for the same value's
+`aria-label`, just not for the visible text). `722fd65` bundled six
+independent small fixes: `LS.get()` now mirrors `LS.set()`'s
+toast-on-failure convention (its own sentinel, since a read failure —
+corrupted JSON — is a different cause than a write failure); the
+co-advisor-synced `orgId` gets the same slug-sanitizer already used for
+locally-created orgs before it's interpolated into the Join button's
+`onclick`; `lhPullOrgSync()` now warns and keeps the existing roster
+instead of wiping it when a sync returns zero roster rows; `lh_obs_history`
+is capped at 200 entries, matching the `lh_wbl_hours_log` precedent;
+8 icon-only buttons that relied on `title` alone (the Alumni edit button
+had neither) got matching `aria-label`s; and the printed trip name in
+`buildAuthFormHTML()`/`printAuthForm()` is now `escH()`'d, since unlike
+the Auth Form's other static-title callers this one is genuinely
+user-entered text. `c124dd3` fixed a UTC-vs-local date bug present at 6
+call sites — `date.toISOString().slice(0,10)` converts to UTC first,
+which silently rolls the calendar date forward in the evening for
+US Eastern — by adding one shared `_localDateStr_()` helper (mirroring
+`getTodayScheduleType()`'s already-correct inline pattern) and
+collapsing all 6 sites onto it, including the SCR daily-session dedup
+key, the E-Sports next-match filter, and the school-day/holiday check.
+
+`307fc27` closed an inline-handler JS-injection gap in the SCR grading
+grid: `renderScrTable()`/`renderStudentCard()` interpolated a raw
+student name straight into `onclick`/`onkeydown` handlers with no
+escaping at all, so a name containing a stray `'` could break out of
+the JS string argument. `escH()` alone doesn't close this — it only
+guards the HTML-attribute boundary, not the JS-string-literal boundary
+a bare `'` or `\` breaks out of inside `onclick="fn('${x}')"` — so this
+added a second helper, `escJsAttr()`, that escapes for the JS string
+first and then runs the result through `escH()` so the surrounding
+attribute stays safe too. The audit that flagged this also assumed
+fixing it required switching the grading grid from name-keyed to
+id-keyed scores, since the SCR roster schema has no id field for
+students. It doesn't need one — escaping alone fully closes the
+injection — and rekeying onto each student's array position instead
+would trade name-collision fragility for a live one (scores silently
+misattributed the moment the hand-edited roster array is reordered),
+for a data structure with no UI path that adds/renames/imports students
+and currently holds none. Left name-keyed, with a comment on
+`initScrScores()` explaining the trade-off for whoever adds a real
+roster-editing UI later.
+
 ---
 
 ## Version control (clasp) — scaffolded, not yet connected
