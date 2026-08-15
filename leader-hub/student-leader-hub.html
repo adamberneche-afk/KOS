@@ -14189,7 +14189,7 @@ function renderHorizons(){
     el.innerHTML=HORIZON[h].map(item=>`
       <div data-hid="${item.id}" style="display:flex;align-items:flex-start;gap:.42rem;margin-bottom:.3rem;transition:opacity .7s ease,transform .7s ease;${item.pinned?'background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 4px;margin-left:-4px;':''}">
         <div onclick="horizonToggle('${h}','${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();horizonToggle('${h}','${item.id}')}" role="checkbox" aria-checked="${item.done}" aria-label="${item.done?'Done — ':''}${(item.text||'').replace(/"/g,'&quot;')}" tabindex="0" style="width:17px;height:17px;border-radius:3px;border:2px solid ${m.border};background:${item.done?m.tick:'#fff'};flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:.66rem;color:#fff">${item.done?'✓':''}</div>
-        <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${item.id}')">${item.pinned?'📌 ':''}${item.text}</span>
+        <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${item.id}')">${item.pinned?'📌 ':''}${escH(item.text)}</span>
         <button onclick="horizonDelete('${h}','${item.id}')" aria-label="Delete this item" style="background:none;border:none;color:#d1d5db;font-size:.74rem;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px">✕</button>
       </div>`).join('');
   });
