@@ -196,18 +196,38 @@ function onGovernanceEdit(e) {
  * @returns {boolean}          true on success.
  * @throws  {Error}            If doc cannot be opened or tag not found.
  */
+// FIXED: DocumentApp's findText()/replaceText() both treat their string
+// arguments as regular expressions — searchTag containing regex
+// metacharacters (`.`, `(`, `)`, `$`, `\`, `+`, etc., all realistic in
+// operator-typed Blackboard-sheet values) either failed to match text
+// visibly present in the doc (surfacing as a confusing "Strict Match
+// Failed" error), or a payload containing `$1`/`$&`-style sequences
+// silently substituted the wrong text on replacement. Escapes the
+// search side and, for the replacement side, avoids replaceText's
+// regex-replacement-string path entirely — once findText locates the
+// match, the substitution is done via deleteText/insertText on the
+// exact matched range, making payload a true literal with no
+// regex-replacement interpretation possible.
+function _escapeRegexForFindText_(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function applyMutation(docId, searchTag, payload) {
   if (!docId || !searchTag) {
     throw new Error('applyMutation: Missing docId or searchTag.');
   }
   const body = DocumentApp.openById(docId).getBody();
-  const el   = body.findText(searchTag);
+  const el   = body.findText(_escapeRegexForFindText_(searchTag));
   if (!el) {
     throw new Error(
       'Strict Match Failed: "' + searchTag + '" not found in doc ' + docId + '.'
     );
   }
-  el.getElement().asText().replaceText(searchTag, payload);
+  const textEl = el.getElement().asText();
+  const start  = el.getStartOffset();
+  const end    = el.getEndOffsetInclusive();
+  textEl.deleteText(start, end);
+  textEl.insertText(start, payload);
   console.log('[applyMutation] Deployed: "' + searchTag + '" → doc ' + docId);
   return true;
 }
