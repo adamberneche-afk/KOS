@@ -421,6 +421,23 @@ function getStudentContextRoster() {
 }
 
 // ---------------------------------------------------------------------------
+// getStudentShadowProfile — NEW (Say/Do Ledger cas-ccps finding #13).
+// Client-callable wrapper around Script 23's getStudentShadowProfile_() —
+// the destination for the warm-up readiness panel's "ready for
+// personalized feedback" students once clicked. Same identity gate every
+// other per-teacher server function on this dashboard uses.
+// ---------------------------------------------------------------------------
+function getStudentShadowProfile(studentEmail) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) {
+    return { error: "This view is only available to the teacher this dashboard is configured for." };
+  }
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const profile = getStudentShadowProfile_(ss, cfg, studentEmail); // Script 23
+  return profile || { error: "No profile data found for this student yet." };
+}
+
+// ---------------------------------------------------------------------------
 // Existing helper functions — unchanged
 // ---------------------------------------------------------------------------
 function resolveDisplay_(ledger, pipeline) {
@@ -741,6 +758,23 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
   </div>
 </div>
 
+<!-- Student shadow-profile detail modal — NEW (Say/Do Ledger cas-ccps
+     finding #13). Destination for the warm-up readiness panel's "ready for
+     personalized feedback" (locked) roster rows' "View Profile →" button.
+     Read-only — no form, no discard-confirm needed. Same modal-backdrop/
+     modal/modal-header/modal-body convention as the lesson modal above. -->
+<div class="modal-backdrop" id="profile-modal-backdrop" onclick="if(event.target===this)closeStudentProfileModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" style="max-width:480px">
+    <div class="modal-header">
+      <h2 id="profile-modal-title">Student profile</h2>
+      <button class="modal-close" onclick="closeStudentProfileModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="profile-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
 <!-- Toast -->
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
@@ -765,43 +799,143 @@ function renderWarmUpReadiness(r) {
     ? "📅 " + r.currentUnit
     : "📅 No active unit";
 
+  // NEW (Say/Do Ledger cas-ccps finding #13): each stat below is now a
+  // clickable filter into the roster instead of a static number — see
+  // applyWrFilter()/clearWrFilter(). Made a real <button> (not just a
+  // styled span) whenever its count is > 0, so it's keyboard-reachable
+  // and reads as interactive, not just decorated text.
+  function wrButton(el, count, label, bucket) {
+    if (!el) return;
+    if (!count) { el.style.display = "none"; el.removeAttribute("onclick"); return; }
+    el.style.display = "";
+    el.textContent = label;
+    if (el.tagName === "BUTTON") {
+      el.onclick = function() { applyWrFilter(bucket); };
+    }
+  }
+
   // Eval history
-  const evalEl = document.getElementById("wr-eval");
   // FIXED: was always "students have" — with r.total === 1 this rendered
   // "1 of 1 students have evaluation history," breaking both the noun and
   // the verb agreement in the same sentence.
-  if (evalEl) evalEl.textContent =
+  wrButton(document.getElementById("wr-eval"), r.withEvalHistory,
     r.withEvalHistory + " of " + r.total + " student" +
-    (r.total === 1 ? " has" : "s have") + " evaluation history";
+    (r.total === 1 ? " has" : "s have") + " evaluation history",
+    "eval");
 
   // Warm-up history
-  const wuEl = document.getElementById("wr-warmup");
-  if (wuEl) wuEl.textContent = r.withWarmUpHistory + " with warm-up responses";
+  wrButton(document.getElementById("wr-warmup"), r.withWarmUpHistory,
+    r.withWarmUpHistory + " with warm-up responses", "warmup");
 
   // Was "building archetype confidence" / "ready for personalized
   // archetype" — internal engine vocabulary ("archetype", "shadow
   // confidence") a teacher has no context for. Reworded to describe what
   // it actually means for their students.
-  const confEl = document.getElementById("wr-confidence");
-  // FIXED: clearing textContent alone left an empty flex item still taking
-  // up this row's gap — with 0 students building confidence (common early
-  // in a term), the panel showed a stray blank gap where this span used
-  // to be instead of collapsing cleanly.
-  if (confEl) {
-    confEl.style.display = r.withShadowConfidence ? "" : "none";
-    confEl.textContent = r.withShadowConfidence
-      ? r.withShadowConfidence + " building a personalized learning profile"
-      : "";
-  }
+  wrButton(document.getElementById("wr-confidence"), r.withShadowConfidence,
+    r.withShadowConfidence + " building a personalized learning profile", "conf");
 
   // Locked (high confidence)
-  const lockEl = document.getElementById("wr-locked");
-  if (lockEl) {
-    lockEl.style.display = r.locked ? "" : "none";
-    lockEl.textContent = r.locked
-      ? r.locked + " ready for fully personalized feedback"
-      : "";
+  wrButton(document.getElementById("wr-locked"), r.locked,
+    r.locked + " ready for fully personalized feedback", "locked");
+}
+
+// NEW (finding #13): filter state + the click handlers wrButton() wires
+// up above. _lastDashData is populated by render() below every time it
+// runs, so a filter click can re-render without a fresh round-trip.
+let _activeWrFilter = null; // 'eval' | 'warmup' | 'conf' | 'locked' | null
+let _lastDashData = null;
+const WR_FILTER_EMAIL_KEY = { eval: "withEvalEmails", warmup: "withWarmupEmails", conf: "withConfEmails", locked: "lockedEmails" };
+const WR_FILTER_LABEL = { eval: "students with evaluation history", warmup: "students with warm-up responses", conf: "students building a personalized learning profile", locked: "students ready for fully personalized feedback" };
+
+function applyWrFilter(bucket) {
+  _activeWrFilter = bucket;
+  if (_lastDashData) render(_lastDashData);
+}
+function clearWrFilter() {
+  _activeWrFilter = null;
+  if (_lastDashData) render(_lastDashData);
+}
+
+// ── Student shadow-profile detail modal ─────────────────────────────────────
+// NEW (Say/Do Ledger cas-ccps finding #13). Opened from a "locked" roster
+// row's "View Profile →" button (see render() above). Read-only — no form
+// state, so it reuses the modal-backdrop convention but not the lesson
+// modal's discard-confirm/focus-restore machinery beyond focus trapping.
+let _profileModalReturnFocus = null;
+
+function openStudentProfile(email, name) {
+  const backdrop = document.getElementById("profile-modal-backdrop");
+  const body     = document.getElementById("profile-modal-body");
+  const title    = document.getElementById("profile-modal-title");
+  if (!backdrop || !body || !title) return;
+
+  title.textContent = name ? name + "'s profile" : "Student profile";
+  body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
+
+  _profileModalReturnFocus = document.activeElement;
+  backdrop.classList.add("open");
+  document.addEventListener("keydown", _modalTrapKeydown);
+  const closeBtn = backdrop.querySelector(".modal-close");
+  if (closeBtn) closeBtn.focus();
+
+  google.script.run
+    .withSuccessHandler(function(profile) {
+      // Guard against a slow response landing after the teacher already
+      // closed the modal (or opened a different student's) — only render
+      // if this is still the profile actually on screen.
+      if (!backdrop.classList.contains("open")) return;
+      renderStudentProfileModal(profile, name);
+    })
+    .withFailureHandler(function(e) {
+      if (!backdrop.classList.contains("open")) return;
+      body.innerHTML = '<p style="font-size:13px;color:#d93025">Could not load this profile: ' +
+        esc(e && e.message ? e.message : "unknown error") + '</p>';
+    })
+    .getStudentShadowProfile(email);
+}
+
+function renderStudentProfileModal(profile, fallbackName) {
+  const body = document.getElementById("profile-modal-body");
+  if (!body) return;
+  if (!profile || profile.error) {
+    body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">' +
+      esc((profile && profile.error) || "No profile data available yet.") + '</p>';
+    return;
   }
+
+  let html = '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
+    esc(profile.evalHistoryCount || 0) + ' evaluation' + ((profile.evalHistoryCount||0)===1?"":"s") +
+    ' logged · ' + esc(profile.warmupHistoryCount || 0) + ' warm-up response' +
+    ((profile.warmupHistoryCount||0)===1?"":"s") + ' · last updated ' + esc(profile.lastUpdated || "Never") +
+    '</div>';
+
+  const units = profile.unitConfidence || [];
+  if (!units.length) {
+    html += '<p style="font-size:13px;color:var(--text-secondary)">No per-unit confidence data yet — this builds up as evaluation and warm-up history accumulates.</p>';
+  } else {
+    const statusClass = { "Ready for personalized feedback": "badge-compliant",
+      "Building confidence": "badge-queued", "Not yet enough data": "badge-unknown" };
+    html += '<div style="display:flex;flex-direction:column;gap:10px">';
+    units.forEach(function(u) {
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#f8f9fa;border-radius:8px">' +
+        '<div style="font-size:13px">' + esc(u.unitLabel || "") + '</div>' +
+        '<div class="status-badge ' + (statusClass[u.status] || "badge-unknown") + '">' + esc(u.status || "") + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+  body.innerHTML = html;
+}
+
+function closeStudentProfileModal() {
+  const backdrop = document.getElementById("profile-modal-backdrop");
+  if (!backdrop) return;
+  backdrop.classList.remove("open");
+  document.removeEventListener("keydown", _modalTrapKeydown);
+  if (_profileModalReturnFocus && typeof _profileModalReturnFocus.focus === "function") {
+    _profileModalReturnFocus.focus();
+  }
+  _profileModalReturnFocus = null;
 }
 
 // Per-term client cache — switching the term filter back and forth used to
@@ -917,6 +1051,9 @@ function loadData() {
 
 function render(data) {
   const main = document.getElementById("main");
+  // NEW (finding #13): cache so a warm-up-readiness filter click can
+  // re-render without a fresh round-trip — see applyWrFilter()/clearWrFilter().
+  _lastDashData = data;
   // Any refresh (manual, term change, or a cache revalidation) rebuilds the
   // whole list via innerHTML — preserve where the teacher was scrolled to
   // instead of dumping them back to the top of a long roster.
@@ -970,8 +1107,23 @@ If you expect to see students here:
     <div class="summary-card card-flagged"><div class="count">\${flagged}</div><div class="label">Needs attention</div></div>
   </div>\`;
 
+  // NEW (finding #13): the warm-up readiness panel's stats are clickable
+  // filters into this roster — apply the active one (if any) before
+  // building the unit groups below. Summary cards above stay whole-class;
+  // only the roster list is filtered, with a visible banner explaining why.
+  let studentsToShow = data.students;
+  if (_activeWrFilter && data.warmUpReadiness) {
+    const emailKey = WR_FILTER_EMAIL_KEY[_activeWrFilter];
+    const emailSet = new Set((data.warmUpReadiness[emailKey] || []).map(e => e.toLowerCase()));
+    studentsToShow = data.students.filter(s => emailSet.has(String(s.googleId||"").toLowerCase()));
+    html += \`<div style="background:#e8f0fe;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;color:#1a73e8">Showing \${studentsToShow.length} \${esc(WR_FILTER_LABEL[_activeWrFilter]||"")}</span>
+      <button onclick="clearWrFilter()" style="background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
+    </div>\`;
+  }
+
   const units = {};
-  data.students.forEach(s => {
+  studentsToShow.forEach(s => {
     if (!units[s.unitCode]) units[s.unitCode] = [];
     units[s.unitCode].push(s);
   });
@@ -982,11 +1134,36 @@ If you expect to see students here:
     flagged:"badge-flagged", unknown:"badge-unknown"
   };
 
+  if (_activeWrFilter && studentsToShow.length === 0) {
+    html += \`<div style="text-align:center;padding:40px 24px;color:var(--text-secondary)">No students match this filter right now.</div>\`;
+  }
+
   Object.keys(units).sort().forEach(unit => {
     const u = data.unitSummary[unit] || {};
     html += \`<div class="unit-section">
       <div class="unit-header">\${esc(unit) || "Unassigned unit"} <span style="font-weight:400;margin-left:8px;">\${u.total||0} student\${(u.total||0)===1?'':'s'} · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
     units[unit].forEach(s => {
+      // NEW (finding #13): a bucket-appropriate next step per filtered row —
+      // "building profile" students get a note to log more lesson context
+      // (that's what actually grows this signal); "ready" students get a
+      // link into their new per-student shadow-profile detail view.
+      let wrNextStep = "";
+      if (_activeWrFilter === "conf") {
+        wrNextStep = '<div style="font-size:12px;color:#1a73e8;margin-top:4px">💡 Log more Lesson Context for this class to help build a fuller profile faster.</div>';
+      } else if (_activeWrFilter === "locked") {
+        // Two independent escape passes, in this order: HTML-attribute-
+        // escape " first (the onclick attribute itself is double-quoted —
+        // an unescaped " here would close the attribute early and let
+        // whatever follows in a student's name run as raw markup/script,
+        // not just a JS-string-escaping bug), then JS-string-escape '
+        // (the browser decodes &quot; back to " before handing this
+        // attribute's text to the JS parser, so the ' escape still has to
+        // survive that decode — hence &quot; here, not \\", which the JS
+        // parser would see literally instead of as a quote).
+        const wrIdSafe   = s.googleId.replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const wrNameSafe = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
+      }
       html += \`<div class="student-row \${s.statusClass}">
         <div>
           <div class="student-name">\${esc(s.name)}</div>
@@ -997,6 +1174,7 @@ If you expect to see students here:
             ? \`<a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>\`
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
+          \${wrNextStep}
         </div>
         <div><div class="status-badge \${badgeMap[s.statusClass]||'badge-unknown'}">\${esc(s.status)}</div></div>
       </div>\`;
