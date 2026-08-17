@@ -2883,10 +2883,16 @@ window.onerror = function(msg, src, line, col, err) {
 
   <!-- ── MATCH LOG PANE ── -->
   <div id="es-pane-matches" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem;flex-wrap:wrap;gap:.5rem">
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Season Match Log</div>
       <button class="btn btn-primary btn-sm" onclick="openMatchModal()">+ Log Match</button>
     </div>
+    <!-- Reframed per Say/Do Ledger leader-hub finding #14: this is a personal
+         results log (a flat W/L/T history), not a tournament-management
+         system — seeding, brackets, and official standings are tracked by
+         PlayVS itself, and duplicating that here would be a second,
+         unofficial copy of data PlayVS already owns. -->
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.8rem">A personal results log — not an official bracket. For seeding, standings, and playoff brackets, see <a href="https://playvs.com" target="_blank" rel="noopener">PlayVS</a>.</div>
     <div id="es-match-list"></div>
   </div>
 </div>
