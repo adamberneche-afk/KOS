@@ -13235,7 +13235,19 @@ function openAISCRInsights() {
 }
 
 // ── 7. finAnalysis → formatted financial report ────────────────────────────────
-function finAnalysis(type) {
+// FIXED (Say/Do Ledger leader-hub finding #3): 'roi' and 'decisions' used
+// to be undefined report keys — reports[type] || reports.profitloss meant
+// the ROI Analysis and Operational Decisions buttons silently rendered
+// the exact same P&L table under a mismatched heading. Both now have
+// real, distinct content built from the same real data the other reports
+// already use (no fabricated per-item sales figures — SALES_LOG only
+// tracks per-shift aggregates, not per-item sales). finAnalysis() also
+// becomes the 6th consumer of the app's one real AI-drafting mechanism
+// (callGAS('aiDraft', ...) → pollAiJob_(), same as Archive Insights/WBL
+// Insights/etc.) — an optional, additive AI narrative on top of the
+// always-correct local report, honestly hedged the same way its siblings
+// are if no Workspace Flow is configured.
+async function finAnalysis(type) {
   const outEl = document.getElementById('fin-analysis-out');
   if (!outEl) return;
   outEl.style.display = 'block';
@@ -13251,6 +13263,7 @@ function finAnalysis(type) {
   // the SKU list's own Margin% a few lines away already distinguishes cost
   // vs. price; using price here overstated inventory value by the margin.
   const totalInv  = INVENTORY.reduce((a,i)=>a+(i.qty*i.cost),0);
+  const totalOrderedCost = PURCHASE_ORDERS.reduce((a,po)=>a+(Number(po.qty)*Number(po.cost)),0);
 
   const reports = {
     profitloss: `<h3 style="margin:0 0 .75rem">📊 Profit & Loss — The Cavalier Shop</h3>
@@ -13275,9 +13288,87 @@ function finAnalysis(type) {
         <tr style="border-top:2px solid #e2e8f0"><td style="padding:.3rem 0;font-weight:700">Total Revenue</td><td style="text-align:right;font-weight:700">$${totalRev.toFixed(2)}</td></tr>
         <tr><td style="padding:.3rem 0;color:var(--muted)">Gross Profit</td><td style="text-align:right;color:${profit>=0?'#16a34a':'#dc2626'}">$${profit.toFixed(2)}</td></tr>
       </table>`,
+    roi: (() => {
+      const roiPct = totalOrderedCost > 0 ? Math.round((profit/totalOrderedCost)*100) : null;
+      // Grouped by category from Inventory's own cost/price — the only
+      // real per-category signal available; there's no per-item sales
+      // data to compute a true per-item ROI from.
+      const byCat = {};
+      INVENTORY.forEach(i => {
+        if (!(i.price > 0)) return;
+        const m = (i.price - i.cost) / i.price;
+        (byCat[i.cat] = byCat[i.cat] || []).push(m);
+      });
+      const catRows = Object.entries(byCat)
+        .map(([cat, ms]) => ({ cat, avg: Math.round((ms.reduce((a,b)=>a+b,0)/ms.length)*100) }))
+        .sort((a,b)=>b.avg-a.avg)
+        .map(r => `<tr><td style="padding:.25rem .4rem">${r.cat}</td><td style="padding:.25rem .4rem;text-align:right">${r.avg}%</td></tr>`)
+        .join('');
+      return `<h3 style="margin:0 0 .75rem">📈 Return on Investment — The Cavalier Shop</h3>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse;margin-bottom:.75rem">
+          <tr><td style="padding:.3rem 0">Total Invested (cost of all Purchase Orders)</td><td style="text-align:right;font-weight:700">$${totalOrderedCost.toFixed(2)}</td></tr>
+          <tr><td style="padding:.3rem 0">Gross Profit to Date</td><td style="text-align:right;font-weight:700;color:${profit>=0?'#16a34a':'#dc2626'}">$${profit.toFixed(2)}</td></tr>
+          <tr style="border-top:2px solid #e2e8f0"><td style="padding:.3rem 0;font-weight:800">ROI</td><td style="text-align:right;font-weight:800">${roiPct===null?'—':(roiPct+'%')}</td></tr>
+          <tr><td style="padding:.3rem 0;color:var(--muted)">Inventory On Hand (at cost, not yet sold)</td><td style="text-align:right;color:var(--muted)">$${totalInv.toFixed(2)}</td></tr>
+        </table>
+        ${catRows ? `<div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">Average margin by category</div>
+        <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+          <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Category</th><th style="text-align:right;padding:.25rem .4rem;background:#f8fafc">Avg Margin</th></tr>
+          ${catRows}
+        </table>` : ''}
+        <div style="font-size:.72rem;color:var(--muted);margin-top:.6rem">ROI is computed from total order cost vs. gross profit — sales aren't tracked per item, so this can't show which specific SKUs are driving it.</div>`;
+    })(),
+    decisions: (() => {
+      const reorderList = lowStock.map(i=>`<li>${i.name} — ${i.qty} on hand (reorder at ${i.reorder})</li>`).join('');
+      const marginOf = i => Math.round(((i.price-i.cost)/i.price)*100);
+      const lowMargin = INVENTORY.filter(i => i.price > 0 && marginOf(i) < 20);
+      const strong = [...INVENTORY].filter(i=>i.price>0).sort((a,b)=>marginOf(b)-marginOf(a)).slice(0,3);
+      return `<h3 style="margin:0 0 .75rem">🧠 Operational Decisions — The Cavalier Shop</h3>
+        ${reorderList
+          ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;color:#b45309;margin-bottom:.3rem">⚠️ Reorder now (${lowStock.length})</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${reorderList}</ul></div>`
+          : `<div style="margin-bottom:.75rem;color:var(--muted);font-size:.79rem">✅ Nothing at or below its reorder threshold right now.</div>`}
+        ${lowMargin.length ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;color:#b91c1c;margin-bottom:.3rem">📉 Consider re-pricing (margin under 20%)</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${lowMargin.map(i=>`<li>${i.name} — ${marginOf(i)}% margin</li>`).join('')}</ul></div>` : ''}
+        ${strong.length ? `<div><div style="font-weight:700;font-size:.8rem;color:#166534;margin-bottom:.3rem">✅ Strongest margins — keep stocking</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${strong.map(i=>`<li>${i.name} — ${marginOf(i)}% margin</li>`).join('')}</ul></div>` : ''}`;
+    })(),
   };
 
-  outEl.innerHTML = reports[type] || reports.profitloss;
+  outEl.innerHTML = (reports[type] || reports.profitloss) + '<div id="fin-ai-narrative"></div>';
+
+  // Optional AI narrative — additive only, same pattern as
+  // generateAIInsights()/Archive Insights: the report above is already a
+  // complete, correct result on its own (real data, computed locally);
+  // this just tries to add a prose summary on top. Silently skipped
+  // (narrative area stays empty) if no bridge is configured, the Flow
+  // errors, or the ~90s poll times out — never blocks or replaces the
+  // report above.
+  const narrativeEl = document.getElementById('fin-ai-narrative');
+  const url = EMAIL_BRIDGE.url();
+  if (url && narrativeEl) {
+    narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe;font-size:.78rem;color:var(--muted)" id="fin-ai-status">⏳ Drafting summary with AI…</div>`;
+    const statusEl = document.getElementById('fin-ai-status');
+    try {
+      const jobRes = await callGAS('aiDraft', {
+        type: 'FIN_ANALYSIS',
+        payload: { reportType: type, totalRev, totalCOGS, profit, margin, shifts, totalInv, totalOrderedCost, lowStockCount: lowStock.length },
+      });
+      let draft = null;
+      if (jobRes && jobRes.ok && jobRes.jobId) draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
+      const curNarrativeEl = document.getElementById('fin-ai-narrative'); // panel may have re-rendered while polling
+      if (draft && curNarrativeEl) {
+        // draft is AI-drafted text round-tripped through Gemini — escH()
+        // prevents a stray tag-like sequence from being interpreted as
+        // HTML, same convention as every sibling AI-narrative render.
+        curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Summary</div>
+          <div style="font-size:.79rem;line-height:1.6">${escH(draft)}</div>
+        </div>`;
+      } else if (curNarrativeEl) {
+        curNarrativeEl.innerHTML = ''; // no Flow built yet, errored, or timed out — the local report above already stands on its own
+      }
+    } catch (e) {
+      const el = document.getElementById('fin-ai-narrative'); if (el) el.innerHTML = '';
+    }
+  }
 }
 
 // ── 8. esAIScout → e-sports stats panel ───────────────────────────────────────
