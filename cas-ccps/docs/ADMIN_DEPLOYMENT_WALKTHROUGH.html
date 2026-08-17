@@ -689,6 +689,22 @@ body {
   </div>
 </div>
 
+<!-- NEW: rollout-planning callout — Say/Do Ledger cas-ccps finding #12.
+     Steps 1-9 plus most of Step 10 are one-time district setup; only
+     Step 10's "Create the Teacher Dashboard project" instruction (and
+     copying/sharing the Admin Manual — see the final checklist) repeat
+     for every teacher. This wasn't stated anywhere before you actually
+     reached Step 10 — an admin planning a multi-teacher rollout couldn't
+     budget for it up front. -->
+<div class="callout callout-tip" style="margin:0 0 32px">
+  <span class="callout-icon">📋</span>
+  <div class="callout-body">
+    <strong>Planning a rollout to multiple teachers?</strong> Steps 1–9 below (plus the Student Dashboard, Final Properties, and Test steps) are <strong>one-time district setup</strong> — roughly <strong>~2 hours</strong> total, done once no matter how many teachers use the system. Only one instruction, inside Step 10 ("Create the Teacher Dashboard project"), repeats — once per teacher, roughly <strong>~10 minutes</strong> each — plus copying and sharing the Admin Manual with each teacher (see the final checklist).
+    <br><br>
+    <strong>Budget: ~2 hours + (~10 min × number of teachers).</strong> Planning for 8 teachers? That's about 3 hours and 20 minutes total, not 8 separate 2-hour deployments.
+  </div>
+</div>
+
 <!-- PHASE 1 DIVIDER -->
 <div class="phase-divider">
   <span class="phase-divider-label">Phase 1 — Prepare</span>
@@ -1415,6 +1431,26 @@ body {
         </div>
       </div>
     </div>
+
+    <!-- NEW: manual self-check — Say/Do Ledger cas-ccps finding #16. This
+         step previously had no way to confirm either flow actually works
+         before moving on to Step 10 — a real gap since Studio Flows are
+         built and tested by hand, outside this repo, with nothing here
+         verifying them. This is a one-time check per flow (Studio Flows
+         are shared, not deployed per teacher), not a recurring cost. -->
+    <div class="instruction">
+      <div class="instr-num">4</div>
+      <div class="instr-body">
+        <h4>Test both flows now</h4>
+        <p>Don't wait until Step 12 to find out whether these flows actually run — test each one directly, right now:</p>
+        <p><strong>Flow 1:</strong> In the Central Ledger's <code>RubricQueue</code> tab, add one test row with real-looking rubric text and <code>Status = PENDING_EXTRACTION</code>. Within about a minute, its <code>Status</code> should flip to <code>COMPLETE</code> and a new <code>DRAFT</code> row should appear in the <code>TeacherMatrix</code> tab. If neither happens after 2 minutes, re-check Flow 1's trigger condition and the pasted <code>FLOW_1_SYSTEM_PROMPT</code> for typos before moving on.</p>
+        <p><strong>Flow 2:</strong> In <code>STAGING_PIPELINE</code>, add one test row pointing at a real (test) student document with <code>Status = IN_PROCESS</code>. Within about a minute, that row's <code>Status</code> should flip to <code>COMPLETE</code> and the student document should have real feedback text inserted after <code>── FEEDBACK ──</code>, ending in <code>[SYSTEM: APPROVED]</code> or <code>[SYSTEM: REVISION_REQUIRED]</code> and <code>── END EVALUATION ──</code>. If not, re-check Flow 2's trigger condition and prompt mapping.</p>
+        <div class="callout callout-tip">
+          <span class="callout-icon">✅</span>
+          <div class="callout-body">Delete both test rows once confirmed — they aren't real data. Catching a flow misconfiguration here, before Step 10, is much easier to fix than discovering it during Step 12's full end-to-end test with a real test student.</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1425,7 +1461,7 @@ body {
     <div class="step-header-text">
       <h2>Deploy the Two Web App Dashboards</h2>
       <span class="step-subtitle">Teacher dashboard and student dashboard — standalone projects</span>
-      <span class="time-badge time-manual">15 min</span>
+      <span class="time-badge time-manual">~10 min (one-time) + ~10 min per teacher</span>
     </div>
   </div>
 
@@ -1433,7 +1469,12 @@ body {
     <div class="instruction">
       <div class="instr-num">1</div>
       <div class="instr-body">
-        <h4>Create the Teacher Dashboard project — once per teacher</h4>
+        <!-- Marked distinctly per Say/Do Ledger cas-ccps finding #12 — this
+             is the ONE instruction in the whole walkthrough that repeats
+             per teacher; everything else in this step (and every other
+             step) is one-time district setup. See the rollout callout
+             near the top of this page. -->
+        <h4>🔁 Create the Teacher Dashboard project — <em>repeats once per teacher</em></h4>
         <div class="callout callout-warn">
           <div class="callout-icon">⚠️</div>
           <div class="callout-body"><strong>This project is deployed once per teacher, not once for the whole school</strong> — same convention as the Admin Manual (see the final checklist). Every server function on this dashboard scopes its data to whichever email is set below, and only lets that same person view it — so each teacher needs their own copy of this project, their own Script Property, and their own deployment URL. Deploying it once and sharing one URL across teachers will not work: the dashboard only ever shows (and only ever lets in) the one teacher named in <code>TEACHER_EMAIL</code>.</div>
@@ -1463,7 +1504,7 @@ body {
     <div class="instruction">
       <div class="instr-num">2</div>
       <div class="instr-body">
-        <h4>Create the Student Dashboard project</h4>
+        <h4>✅ Create the Student Dashboard project — <em>one-time</em></h4>
         <p>Back at <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Student Dashboard</strong>. Create two files:</p>
         <div class="file-list">
           <div class="file-row"><div><div class="file-name">00_SharedConfig</div></div></div>
