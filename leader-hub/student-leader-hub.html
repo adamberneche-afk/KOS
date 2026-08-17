@@ -1395,6 +1395,20 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="ph">
     <div><div class="pt">CCPS Trip Workflow</div><div class="ps">Process map · CCPS Field Trip Policy (Revised 7-22-24)</div></div>
   </div>
+
+  <!-- Trip selector — FIXED per Say/Do Ledger leader-hub finding #6: this
+       checklist's progress used to live in three global, unscoped module
+       constants (no persistence, and shared across every trip at once —
+       checking a box for Trip A silently checked it for Trip B too). Each
+       trip now gets its own saved checklist state (t.procSteps), matching
+       the Slip view's own trip-selector pattern (#slip-trip-sel). -->
+  <div class="card" style="margin-bottom:1rem;padding:.8rem 1rem">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <span style="font-weight:600;font-size:.85rem;white-space:nowrap">Trip:</span>
+      <select id="tripflow-trip-sel" onchange="renderTripFlow()" style="flex:1;min-width:200px" title="Each trip keeps its own saved checklist progress and its own real approval status — switch trips here to see or update a different one."></select>
+    </div>
+  </div>
+
   <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
     <button class="btn btn-primary btn-sm" id="tab-process" onclick="tfTab('process',this)">📋 Process Steps</button>
     <button class="btn btn-outline btn-sm" id="tab-approvals" onclick="tfTab('approvals',this)">✅ Approvals</button>
@@ -1404,8 +1418,8 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div id="tf-process">
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px">
-      📖 General process reference — a personal checklist for learning/remembering the steps. Checking a box here does <strong>not</strong> approve any specific trip; that lives on each trip's own Approval Chain in its Trip Detail view.
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px" title="Checked boxes are saved against the trip selected above — pick a different trip in the selector to see or update its own progress, separate from every other trip's.">
+      📋 Checklist for the trip selected above — progress is saved per trip, so switching trips shows that trip's own checked/unchecked state.
     </div>
     <div class="grid g2" style="align-items:start">
       <div class="card cal"><div class="stitle">I. Sponsor Steps</div><ul class="cl" id="sponsor-cl"></ul></div>
@@ -1415,13 +1429,14 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div id="tf-approvals" style="display:none">
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px">
-      📖 Reference diagram showing who's in each approval chain and why — not clickable, and not tied to any specific trip. To approve or reject a step for a real trip, use that trip's own Approval Chain in Trip Detail.
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px" title="This reads the same real approval data as the trip's own Approval Chain in Trip Detail — it's not a separate copy.">
+      ✅ Live status for the trip selected above (read-only here). To approve or reject a step, use the button below to open that trip's own Approval Chain in Trip Detail.
     </div>
-    <div class="grid g3" style="align-items:start">
-      <div class="card cal green"><div class="stitle">Athletics — Same Day</div><div id="ap-ath" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-      <div class="card cal blue"><div class="stitle">Academic — Same Day</div><div id="ap-acad" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-      <div class="card cal red"><div class="stitle">Out-of-State / Overnight / Intl</div><div id="ap-on" style="display:flex;gap:8px;flex-wrap:wrap"></div><div class="alert aw" style="margin-top:.75rem;font-size:.73rem"><span class="aico">⚠️</span>45-day lead required. International = 1 year.</div></div>
+    <div class="card cal blue" style="margin-bottom:1rem">
+      <div class="stitle" id="tf-live-ap-title">Approval Chain</div>
+      <div id="tf-live-ap" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem"></div>
+      <div id="tf-live-ap-note" class="alert aw" style="margin-bottom:.75rem;font-size:.73rem;display:none"><span class="aico">⚠️</span>45-day lead required. International = 1 year.</div>
+      <button class="btn btn-outline btn-sm" id="tf-live-ap-btn" onclick="">📋 Manage in Trip Detail</button>
     </div>
     <div class="card" style="margin-top:1rem"><div class="stitle">Approver Responsibilities</div><div id="approver-det"></div></div>
   </div>
@@ -3840,7 +3855,7 @@ function showView(name, btn) {
     if(name==='esports') { renderESRoster(); renderSSBUChecklist(); renderMK8Checklist(); renderMatchLog(); }
     if(name==='events')  { renderEvents(); renderDECAPipeline(); }
     if(name==='goals')   renderGoals();
-    if(name==='tripflow') renderTripFlow();
+    if(name==='tripflow') initTripFlowView();
     if(name==='forms')   initFormsView();
     if(name==='slips')   initSlipView();
     // ── Accordion: open the section that owns this view ───────────────────
@@ -4701,49 +4716,129 @@ function prow2(l1, v1, l2, v2) {
 // ============================================================
 // TRIP WORKFLOW
 // ============================================================
+// FIXED (Say/Do Ledger leader-hub finding #6): these three arrays used to
+// carry each step's `done` flag directly, as one shared, unpersisted,
+// trip-agnostic state — checking a box for one trip silently checked it
+// for every other trip too, and a page refresh reverted all of it. They're
+// now pure step templates (label + optional detail); done-state lives on
+// each trip's own t.procSteps (see _getTripProcSteps()), the same
+// per-trip-object-plus-persistTrips() pattern the real Approval Chain
+// (t.ap/t.apDetail, see apStatus()/_applyApDetail() below) already uses.
 const sponsorSteps=[
-  {t:'Fill out Field Trip Permission Request Attachment',s:'All fields — handwritten not accepted',done:false},
-  {t:'Set Departure Time = bus loads & departs from school',s:'NOT the time you leave the destination',done:false},
-  {t:'Set Return Time = bus arrives back at school',s:'NOT the time you leave the venue',done:false},
-  {t:'List ALL stops — no unauthorized deviations allowed',done:false},
-  {t:'Note Special Accommodations / SPED bus requirements',done:false},
-  {t:'Save as PDF (File → Make a Copy → Rename → Download PDF)',s:'SchoolName_Date_Destination',done:false},
-  {t:'Submit PDF to Field Trip Coordinator electronically',done:false},
+  {t:'Fill out Field Trip Permission Request Attachment',s:'All fields — handwritten not accepted'},
+  {t:'Set Departure Time = bus loads & departs from school',s:'NOT the time you leave the destination'},
+  {t:'Set Return Time = bus arrives back at school',s:'NOT the time you leave the venue'},
+  {t:'List ALL stops — no unauthorized deviations allowed'},
+  {t:'Note Special Accommodations / SPED bus requirements'},
+  {t:'Save as PDF (File → Make a Copy → Rename → Download PDF)',s:'SchoolName_Date_Destination'},
+  {t:'Submit PDF to Field Trip Coordinator electronically'},
 ];
 const coordSteps=[
-  {t:'Review process with Trip Sponsor',s:'Forms, steps, timeline',done:false},
-  {t:'Check school & county calendars for Blackout Dates',done:false},
-  {t:'Obtain completed Permission Request PDF from sponsor',done:false},
-  {t:'Enter Transportation request in TripTracker',s:'Bookmark: chesterfield.tylertech.com/Triptracker',done:false},
-  {t:'Record TripTracker ID # — use on all correspondence & PO',done:false},
-  {t:'Use TripTracker mapping/estimate feature — save the estimate',done:false},
-  {t:'Enter ALL stops in TripTracker request',done:false},
-  {t:'Submit trip in TripTracker (status → "Requested")',done:false},
-  {t:'Attach PDF in TripTracker Attachment tab',done:false},
-  {t:'Complete First Approval Level (Coordinator)',done:false},
-  {t:'Ensure teacher\'s name & cell (NOT central office) in request',done:false},
+  {t:'Review process with Trip Sponsor',s:'Forms, steps, timeline'},
+  {t:'Check school & county calendars for Blackout Dates'},
+  {t:'Obtain completed Permission Request PDF from sponsor'},
+  {t:'Enter Transportation request in TripTracker',s:'Bookmark: chesterfield.tylertech.com/Triptracker'},
+  {t:'Record TripTracker ID # — use on all correspondence & PO'},
+  {t:'Use TripTracker mapping/estimate feature — save the estimate'},
+  {t:'Enter ALL stops in TripTracker request'},
+  {t:'Submit trip in TripTracker (status → "Requested")'},
+  {t:'Attach PDF in TripTracker Attachment tab'},
+  {t:'Complete First Approval Level (Coordinator)'},
+  {t:'Ensure teacher\'s name & cell (NOT central office) in request'},
 ];
 const postSteps=[
-  {t:'Receive Transportation approval via TripTracker email',done:false},
-  {t:'Notify Trip Sponsor, Principal, and Bookkeeper of approval',done:false},
-  {t:'Print Driver Trip Sheet no more than 1 day before trip',s:'Confirm driver name, phone & teacher cell on sheet',done:false},
-  {t:'Notify students & parents',s:'ONLY after all approvals received — Policy 3090',done:false},
-  {t:'Review PBIS Trip Expectations with students',done:false},
-  {t:'Deliver Driver Trip Sheet to driver at start of trip',s:'Driver WILL NOT depart without TripTracker Trip Ticket',done:false},
-  {t:'Lead teacher signs Driver Trip Sheet at trip end',done:false},
-  {t:'Bookkeeper pays invoice within 30 days',s:'10201 Courthouse Rd, Chesterfield VA 23832, Attn Deanna Ayscue',done:false},
+  {t:'Receive Transportation approval via TripTracker email'},
+  {t:'Notify Trip Sponsor, Principal, and Bookkeeper of approval'},
+  {t:'Print Driver Trip Sheet no more than 1 day before trip',s:'Confirm driver name, phone & teacher cell on sheet'},
+  {t:'Notify students & parents',s:'ONLY after all approvals received — Policy 3090'},
+  {t:'Review PBIS Trip Expectations with students'},
+  {t:'Deliver Driver Trip Sheet to driver at start of trip',s:'Driver WILL NOT depart without TripTracker Trip Ticket'},
+  {t:'Lead teacher signs Driver Trip Sheet at trip end'},
+  {t:'Bookkeeper pays invoice within 30 days',s:'10201 Courthouse Rd, Chesterfield VA 23832, Attn Deanna Ayscue'},
 ];
 
+// Returns (initializing/re-sizing if needed) a trip's own per-step
+// done/undone state — one boolean array per checklist, kept in sync with
+// the current templates above so a template edit never leaves an index
+// reading past the end of an older saved array.
+function _getTripProcSteps(t) {
+  if (!t.procSteps) t.procSteps = {};
+  [['sponsor', sponsorSteps], ['coord', coordSteps], ['post', postSteps]].forEach(([key, tmpl]) => {
+    if (!Array.isArray(t.procSteps[key]) || t.procSteps[key].length !== tmpl.length) {
+      const prev = Array.isArray(t.procSteps[key]) ? t.procSteps[key] : [];
+      t.procSteps[key] = tmpl.map((_, i) => !!prev[i]);
+    }
+  });
+  return t.procSteps;
+}
+
+// Populates the trip selector (mirrors initSlipView()'s pattern) and does
+// the first render — called from showView() instead of renderTripFlow()
+// directly so the selector always has options before anything reads it.
+function initTripFlowView() {
+  const sel = document.getElementById('tripflow-trip-sel');
+  if (!sel) return;
+  const prevVal = sel.value;
+  sel.innerHTML = trips.map(t => `<option value="${t.id}">${escH(t.name)} — ${fd(t.date)}</option>`).join('');
+  if (prevVal && trips.some(t => String(t.id) === prevVal)) sel.value = prevVal;
+  else if (trips.length) sel.value = trips[0].id;
+  renderTripFlow();
+}
+
 function renderTripFlow() {
+  const sel = document.getElementById('tripflow-trip-sel');
+  const tripId = sel ? parseInt(sel.value) : NaN;
+  const t = trips.find(x => x.id === tripId);
+
+  if (!t) {
+    const emptyMsg = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.79rem">Create a trip first — this checklist tracks progress per trip.</div>';
+    ['sponsor-cl','coord-cl','post-cl'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = emptyMsg; });
+    const apEl = document.getElementById('tf-live-ap'); if (apEl) apEl.innerHTML = '';
+    const apNote = document.getElementById('tf-live-ap-note'); if (apNote) apNote.style.display = 'none';
+    const apBtn = document.getElementById('tf-live-ap-btn'); if (apBtn) apBtn.onclick = null;
+    const apTitle = document.getElementById('tf-live-ap-title'); if (apTitle) apTitle.textContent = 'Approval Chain';
+    document.getElementById('approver-det').innerHTML = '';
+    return;
+  }
+
+  const steps = _getTripProcSteps(t);
   ['sponsor-cl','coord-cl','post-cl'].forEach((id,li)=>{
     const lists=[sponsorSteps,coordSteps,postSteps];
+    const key = ['sponsor','coord','post'][li];
     // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
     // had until an earlier round added role/tabindex/onkeydown to them.
-    document.getElementById(id).innerHTML=lists[li].map((s,i)=>`<li class="${s.done?'done':''}"><div class="cb ${s.done?'checked':''}" role="checkbox" aria-checked="${!!s.done}" tabindex="0" aria-label="${s.t.replace(/"/g,'&quot;')}" onclick="togProc(${li},${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togProc(${li},${i})}">${s.done?'✓':''}</div><span class="clt">${s.t}${s.s?`<span class="clsub">${s.s}</span>`:''}</span></li>`).join('');
+    document.getElementById(id).innerHTML=lists[li].map((s,i)=>{
+      const done = !!steps[key][i];
+      return `<li class="${done?'done':''}"><div class="cb ${done?'checked':''}" role="checkbox" aria-checked="${done}" tabindex="0" aria-label="${s.t.replace(/"/g,'&quot;')}" onclick="togProc('${key}',${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togProc('${key}',${i})}">${done?'✓':''}</div><span class="clt">${s.t}${s.s?`<span class="clsub">${s.s}</span>`:''}</span></li>`;
+    }).join('');
   });
-  // Approval chains
-  const chains={'ap-ath':[{i:'🏃',l:'Athletic Director'},{i:'🚌',l:'Transportation'}],'ap-acad':[{i:'📋',l:'Coordinator'},{i:'🏫',l:'Principal'},{i:'💰',l:'Bookkeeper'},{i:'⚖️',l:'Risk Mgmt'},{i:'🚌',l:'Transportation'}],'ap-on':[{i:'📋',l:'Coordinator'},{i:'🏫',l:'Principal'},{i:'💰',l:'Bookkeeper'},{i:'⚖️',l:'Risk Mgmt'},{i:'📊',l:'Level Director'},{i:'🎓',l:'Chief of Schools'},{i:'🚌',l:'Transportation'}]};
-  Object.entries(chains).forEach(([id,steps])=>{ document.getElementById(id).innerHTML=steps.map(s=>`<div style="display:flex;flex-direction:column;align-items:center;min-width:70px;margin-bottom:.4rem"><div style="width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;font-size:.88rem">${s.i}</div><div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.22rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div></div>`).join(''); });
+
+  // Live Approval Chain summary — FIXED (finding #6): this used to render
+  // a static, non-interactive diagram of three generic example trip types
+  // with no connection to any real trip's data. Now reads the same real
+  // t.ap/t.apDetail the selected trip's actual Approval Chain (Trip
+  // Detail) tracks — same source of truth, read-only here, edited there —
+  // via the same apStatus() helper Trip Detail itself uses.
+  const isExtended = ['overnight-is','overnight-oos','multi-day','international'].includes(t.sub||'same-day');
+  const apSteps = isExtended
+    ? [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'director',l:'Level Director'},{k:'chief',l:'Chief of Schools'},{k:'transport',l:'Transportation'}]
+    : [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'transport',l:'Transportation'}];
+  document.getElementById('tf-live-ap-title').textContent = `Approval Chain — ${t.name}`;
+  document.getElementById('tf-live-ap').innerHTML = apSteps.map(s => {
+    const st = apStatus(t, s.k);
+    const look = st === 'approved' ? {bd:'var(--green)',bg:'var(--green)',fg:'#fff',glyph:'✓'}
+               : st === 'rejected' ? {bd:'var(--red)',bg:'var(--red)',fg:'#fff',glyph:'✕'}
+               : {bd:'var(--border)',bg:'#fff',fg:'#888',glyph:'○'};
+    return `<div style="display:flex;flex-direction:column;align-items:center;min-width:70px;margin-bottom:.4rem">
+      <div style="width:30px;height:30px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;font-size:.88rem">${look.glyph}</div>
+      <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.22rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div>
+    </div>`;
+  }).join('');
+  const apNote = document.getElementById('tf-live-ap-note');
+  if (apNote) apNote.style.display = isExtended ? 'flex' : 'none';
+  const apBtn = document.getElementById('tf-live-ap-btn');
+  if (apBtn) apBtn.onclick = () => openTripDetail(t.id);
+
   // Approver details
   document.getElementById('approver-det').innerHTML=[
     {r:'📋 Field Trip Coordinator',t:'Attaches PDF at first approval. Ensures teacher cell (not central office) is in request.'},
@@ -4755,7 +4850,16 @@ function renderTripFlow() {
   calcCost();
 }
 
-function togProc(li,i){const l=[sponsorSteps,coordSteps,postSteps];l[li][i].done=!l[li][i].done;renderTripFlow();}
+function togProc(key,i){
+  const sel = document.getElementById('tripflow-trip-sel');
+  const tripId = sel ? parseInt(sel.value) : NaN;
+  const t = trips.find(x => x.id === tripId);
+  if (!t) return;
+  const steps = _getTripProcSteps(t);
+  steps[key][i] = !steps[key][i];
+  persistTrips(); // was in-memory only — see finding #6
+  renderTripFlow();
+}
 
 function tfTab(name,btn){
   ['process','approvals','deadlines','costs','blackout'].forEach(t=>{const el=document.getElementById('tf-'+t);if(el)el.style.display=t===name?'block':'none';const tb=document.getElementById('tab-'+t);if(tb){tb.classList.remove('btn-primary');tb.classList.add('btn-outline');}});
