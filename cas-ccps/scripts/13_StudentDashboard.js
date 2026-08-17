@@ -234,6 +234,13 @@ function buildStudentDashboardHtml_() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Assignments</title>
 <style>
+  /* FIXED (Say/Do Ledger cas-ccps finding #14): #80868b (used for
+     secondary/meta text) is ~3.68:1 against white — below WCAG AA's
+     4.5:1 minimum for normal text. #5f6368 (already used elsewhere in
+     this file for the identical "muted meta text" role) is ~6.05:1 —
+     verified passing — so both are consolidated into this one token,
+     matching the same fix in 07_TeacherDashboard.js. */
+  :root{--text-secondary:#5f6368}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:15px;min-height:100vh}
   header{background:linear-gradient(135deg,#1e8e3e,#137333);color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
@@ -247,7 +254,7 @@ function buildStudentDashboardHtml_() {
     .main{padding:16px}
     .card{padding:14px 16px}
   }
-  #loading{text-align:center;padding:80px 24px;color:#5f6368}
+  #loading{text-align:center;padding:80px 24px;color:var(--text-secondary)}
   /* FIXED: was 40px vs the teacher dashboard's 36px — same border weight,
      same animation, same purpose, just a needless 4px drift between the
      two "app shells." Border color intentionally stays green (this
@@ -263,7 +270,7 @@ function buildStudentDashboardHtml_() {
   .info-card .info-row b{color:#202124;font-weight:600}
   .info-card .correction-link{display:inline-block;margin-top:8px;font-size:12.5px;color:#1a73e8;text-decoration:none;font-weight:500}
   .info-card .correction-link:hover{text-decoration:underline}
-  .group-header{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5f6368;padding:4px 0 10px;border-bottom:2px solid #e8eaed;margin:28px 0 14px}
+  .group-header{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-secondary);padding:4px 0 10px;border-bottom:2px solid #e8eaed;margin:28px 0 14px}
   .group-header:first-child{margin-top:0}
   .card{background:white;border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:5px solid #dadce0;transition:box-shadow .15s,transform .1s}
   .card:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
@@ -283,21 +290,21 @@ function buildStudentDashboardHtml_() {
      "current status" chip concept, but used to be a fully-rounded pill at
      a different size, a visible seam between the two dashboards. */
   .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap;flex-shrink:0}
-  .pill-NOT_STARTED{background:#f1f3f4;color:#5f6368}
+  .pill-NOT_STARTED{background:#f1f3f4;color:var(--text-secondary)}
   .pill-IN_PROGRESS{background:#fef3e2;color:#9c5000}
   .pill-NEEDS_ACTION{background:#f3e8fd;color:#9334e6}
   .pill-DONE{background:#e6f4ea;color:#1e8e3e}
   .pill-ISSUE{background:#fce8e6;color:#d93025}
-  .card-meta{font-size:13px;color:#5f6368;margin-bottom:10px}
-  .eval-line{font-size:12px;color:#80868b;margin-bottom:12px}
+  .card-meta{font-size:13px;color:var(--text-secondary);margin-bottom:10px}
+  .eval-line{font-size:12px;color:var(--text-secondary);margin-bottom:12px}
   .open-btn{display:inline-block;background:#1a73e8;color:white;text-decoration:none;padding:9px 20px;border-radius:6px;font-size:14px;font-weight:500;transition:background .15s}
   .open-btn:hover{background:#1557b0}
   .open-btn.done-btn{background:#1e8e3e}
   .open-btn.done-btn:hover{background:#137333}
   .submitted-note{font-size:12px;color:#1e8e3e;margin-top:8px;font-weight:500}
-  .empty-state{text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line}
+  .empty-state{text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line}
   .empty-state .icon{font-size:48px;margin-bottom:16px}
-  footer{text-align:center;padding:20px;font-size:12px;color:#80868b;border-top:1px solid #e8eaed;margin-top:32px}
+  footer{text-align:center;padding:20px;font-size:12px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
 </style>
 </head>
 <body>
@@ -492,7 +499,7 @@ function render(data) {
         <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
         \${a.docUrl
           ? \`<a href="\${a.docUrl}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
-          : '<span style="color:#80868b;font-size:13px;">Document not yet available</span>'
+          : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
         }
         \${isDone && a.submittedAt
           ? \`<div class="submitted-note">Submitted \${esc(a.submittedAt)}</div>\`
