@@ -10044,7 +10044,15 @@ function wblStudentStatus(s) {
   const hrs = Number(s.hours);
   const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
   if (hrs === 0 && !hasAgreement) return 'not-started';
-  if (!hasAgreement || hrs < 30 || s.reflects < 1) return 'needs-attention';
+  // FIXED: was hrs < 30 — a stale threshold with no stated rationale that
+  // contradicted the HQWBL card and progress bar a few screens over, both
+  // of which already correctly use the real program requirement (90 logged
+  // hours across 4 semesters, confirmed with the program owner). A static
+  // 30-hour gate also can't represent a real per-semester pacing check —
+  // WBL_STUDENTS carries no enrollment-date/semester field to prorate
+  // against — so this was never doing partial-progress pacing, just
+  // disagreeing with the real requirement. See leader-hub finding #4.
+  if (!hasAgreement || hrs < 90 || s.reflects < 1) return 'needs-attention';
   return 'on-track';
 }
 
@@ -12647,14 +12655,17 @@ async function generateAIInsights() {
 // and every non-on-track student showed a ❌ regardless of which of the
 // two real statuses applied. Fixed to match the real status values and to
 // build a specific reason per flagged student (missing agreement, hours
-// short of the 30 required, no reflections logged) instead of just a
+// short of the 90 required, no reflections logged) instead of just a
 // pass/fail badge.
 function _wblAttentionReason(s) {
   const hrs = Number(s.hours);
   const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
   const reasons = [];
   if (!hasAgreement) reasons.push('no signed work agreement on file');
-  if (hrs < 30) reasons.push(`${hrs} of 30 required hours logged`);
+  // FIXED: was hrs < 30, disagreeing with the real 90-hour/4-semester HQWBL
+  // requirement the progress bar and HQWBL card already use correctly —
+  // see wblStudentStatus() above and leader-hub finding #4.
+  if (hrs < 90) reasons.push(`${hrs} of 90 required hours logged`);
   if (Number(s.reflects) < 1) reasons.push('no reflections logged yet');
   return reasons.join('; ');
 }
