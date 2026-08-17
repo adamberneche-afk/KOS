@@ -2475,6 +2475,22 @@ window.onerror = function(msg, src, line, col, err) {
     <!-- Receiving checklist -->
     <div style="margin-top:1.25rem">
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">📋 Back Room Receiving Checklist (per Back Room lesson SOP)</div>
+      <!-- PO selector — FIXED per Say/Do Ledger leader-hub finding #8: this
+           checklist used to be one shared, index-keyed state for every PO
+           at once — checking a box for the first shipment of the year left
+           it checked for every later one, reading as verified for a
+           shipment never actually checked. Each PO now gets its own saved
+           checklist, mirroring the Trip Process Map / Slip view
+           trip-selector pattern. -->
+      <div class="card" style="margin-bottom:.6rem;padding:.7rem .9rem">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:.82rem;white-space:nowrap">Purchase Order:</span>
+          <select id="receiving-po-sel" onchange="renderReceivingChecklist()" style="flex:1;min-width:200px" title="Each purchase order keeps its own saved receiving checklist — switch POs here to check a different shipment."></select>
+          <button class="btn btn-outline btn-sm" onclick="resetReceivingChecklist()" title="Clear this PO's checklist and start over — for example, if it receives a second real shipment.">↺ Reset Checklist</button>
+        </div>
+        <input id="receiving-note-input" placeholder="Note (optional) — e.g. discrepancy details" style="width:100%;margin-top:.5rem;padding:.35rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.76rem" onblur="saveReceivingNote(this.value)">
+        <div id="receiving-verified-note" style="font-size:.72rem;color:var(--muted);margin-top:.4rem"></div>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.5rem" id="receiving-checklist"></div>
     </div>
   </div>
@@ -11476,7 +11492,24 @@ const RECEIVING_CHECKS = [
   'Entered verified quantities into inventory sheet',
   'Stored items using FIFO method in back room',
 ];
+// FIXED (Say/Do Ledger leader-hub finding #8): RECEIVING_STATUS used to be
+// a flat object keyed only by checklist-item index ({0: true, 1: false,
+// ...}), shared by every Purchase Order — checking a box for the first
+// shipment of the year silently left it checked for every later one.
+// Now keyed by PO id: { [poId]: { checks: [bool,...], verifiedAt, note } }.
 let RECEIVING_STATUS = LS.get('lh_receiving_status', {});
+
+// Returns (initializing/re-sizing if needed) one PO's own receiving state.
+function _getPOReceivingState(poId) {
+  const cur = RECEIVING_STATUS[poId];
+  if (!cur || !Array.isArray(cur.checks)) {
+    RECEIVING_STATUS[poId] = { checks: RECEIVING_CHECKS.map(()=>false), verifiedAt: null, note: '' };
+  } else if (cur.checks.length !== RECEIVING_CHECKS.length) {
+    // Defensive re-size if RECEIVING_CHECKS' own length ever changes.
+    RECEIVING_STATUS[poId] = { ...cur, checks: RECEIVING_CHECKS.map((_,i)=>!!cur.checks[i]) };
+  }
+  return RECEIVING_STATUS[poId];
+}
 
 function renderProcurement() {
   // Flow steps
@@ -11498,25 +11531,91 @@ function renderProcurement() {
   // PO table
   renderPOTable();
 
-  // Receiving checklist
+  // Receiving checklist — populate the PO selector (mirrors initSlipView()/
+  // initTripFlowView()'s pattern), preserving the current selection if it's
+  // still a real PO.
+  const sel = document.getElementById('receiving-po-sel');
+  if (sel) {
+    const prevVal = sel.value;
+    sel.innerHTML = PURCHASE_ORDERS.map(po => `<option value="${po.id}">#${po.id} — ${escH(po.item)}</option>`).join('');
+    if (prevVal && PURCHASE_ORDERS.some(po => String(po.id) === prevVal)) sel.value = prevVal;
+    else if (PURCHASE_ORDERS.length) sel.value = PURCHASE_ORDERS[0].id;
+  }
+  renderReceivingChecklist();
+}
+
+function renderReceivingChecklist() {
   const rc = document.getElementById('receiving-checklist');
-  if (rc) {
-    // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
-    // had until an earlier round added keyboard support to them.
-    rc.innerHTML = RECEIVING_CHECKS.map((c,i) => {
-      const done = !!RECEIVING_STATUS[i];
-      return `<div onclick="toggleReceiving(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleReceiving(${i})}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:8px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;font-size:.77rem;transition:all .2s">
-        <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.62rem;color:#fff">${done?'✓':''}</div>
-        <span style="color:${done?'#15803d':'#374151'}">${c}</span>
-      </div>`;
-    }).join('');
+  if (!rc) return;
+  const noteInput = document.getElementById('receiving-note-input');
+  const verifiedEl = document.getElementById('receiving-verified-note');
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+
+  if (!po) {
+    rc.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted);font-size:.78rem">No purchase orders yet — create one above to start a receiving checklist.</div>';
+    if (noteInput) noteInput.value = '';
+    if (verifiedEl) verifiedEl.textContent = '';
+    return;
+  }
+
+  const state = _getPOReceivingState(po.id);
+  // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
+  // had until an earlier round added keyboard support to them.
+  rc.innerHTML = RECEIVING_CHECKS.map((c,i) => {
+    const done = !!state.checks[i];
+    return `<div onclick="toggleReceiving(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleReceiving(${i})}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:8px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;font-size:.77rem;transition:all .2s">
+      <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.62rem;color:#fff">${done?'✓':''}</div>
+      <span style="color:${done?'#15803d':'#374151'}">${c}</span>
+    </div>`;
+  }).join('');
+  if (noteInput) noteInput.value = state.note || '';
+  // Lightweight audit record — FIXED (finding #8): a timestamp + optional
+  // note now accompanies completion instead of just checkbox state.
+  if (verifiedEl) {
+    verifiedEl.textContent = state.verifiedAt
+      ? `✅ Fully verified ${fd(state.verifiedAt.split('T')[0])}${state.note ? ' — ' + state.note : ''}`
+      : '';
   }
 }
 
 function toggleReceiving(i) {
-  RECEIVING_STATUS[i] = !RECEIVING_STATUS[i];
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  const state = _getPOReceivingState(po.id);
+  state.checks[i] = !state.checks[i];
+  // verifiedAt means "fully verified as of this timestamp" — stamped the
+  // moment every item is checked, cleared the moment any item is
+  // unchecked again, so it never survives as a stale claim about a
+  // checklist that's since been reopened.
+  state.verifiedAt = state.checks.every(Boolean) ? new Date().toISOString() : null;
   LS.set('lh_receiving_status', RECEIVING_STATUS);
-  renderProcurement();
+  renderReceivingChecklist();
+}
+
+function saveReceivingNote(val) {
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  const state = _getPOReceivingState(po.id);
+  state.note = (val || '').trim();
+  LS.set('lh_receiving_status', RECEIVING_STATUS);
+  renderReceivingChecklist(); // refreshes the "Fully verified..." line if shown
+}
+
+function resetReceivingChecklist() {
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  if (!confirm(`Reset the receiving checklist for PO #${po.id} (${po.item})? This clears all checked items — use this if the PO receives a new, separate shipment.`)) return;
+  RECEIVING_STATUS[po.id] = { checks: RECEIVING_CHECKS.map(()=>false), verifiedAt: null, note: '' };
+  LS.set('lh_receiving_status', RECEIVING_STATUS);
+  renderReceivingChecklist();
 }
 
 function renderPOTable() {
