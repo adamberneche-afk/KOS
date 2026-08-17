@@ -465,6 +465,14 @@ function buildDashboardHtml_() {
 <title>Assignment Dashboard</title>
 <style>
 /* ── RESET + BASE ── */
+/* FIXED (Say/Do Ledger cas-ccps finding #14): #80868b (used throughout
+   this file for secondary/meta text) is ~3.68:1 against white — below
+   WCAG AA's 4.5:1 minimum for normal text. #5f6368 (already used
+   elsewhere in this same file for the identical "muted meta text" role)
+   is ~6.05:1 — verified passing — so both are consolidated into this one
+   token instead of two inconsistent shades of "muted," one of which
+   silently failed contrast. */
+:root{--text-secondary:#5f6368}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
 
@@ -481,7 +489,7 @@ header h1{font-size:18px;font-weight:500;flex:1}
 #new-lesson-btn:hover{background:#e8f0fe}
 
 /* ── LOADING ── */
-#loading{text-align:center;padding:60px 24px;color:#5f6368}
+#loading{text-align:center;padding:60px 24px;color:var(--text-secondary)}
 .spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -490,11 +498,11 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
 .summary-card{background:white;border-radius:8px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .summary-card .count{font-size:32px;font-weight:600;line-height:1;margin-bottom:6px}
-.summary-card .label{font-size:12px;color:#5f6368;text-transform:uppercase;letter-spacing:.5px}
+.summary-card .label{font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
 .card-compliant .count{color:#1e8e3e}.card-pending .count{color:#e37400}
 .card-flagged .count{color:#d93025}.card-total .count{color:#1a73e8}
 .unit-section{margin-bottom:28px}
-.unit-header{font-size:13px;font-weight:600;color:#5f6368;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
+.unit-header{font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
 .student-row{background:white;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.08);border-left:4px solid #dadce0;transition:box-shadow .15s,transform .1s}
 .student-row:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
 .student-row.compliant{border-left-color:#1e8e3e}
@@ -504,8 +512,8 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .student-row.not-started{border-left-color:#dadce0}
 .student-row.flagged{border-left-color:#d93025;background:#fef7f7}
 .student-name{font-weight:500;font-size:14px;margin-bottom:3px}
-.student-meta{font-size:12px;color:#5f6368}
-.last-eval{font-size:11px;color:#80868b;margin-top:2px}
+.student-meta{font-size:12px;color:var(--text-secondary)}
+.last-eval{font-size:11px;color:var(--text-secondary);margin-top:2px}
 .doc-link{display:block;font-size:11px;color:#1a73e8;margin-top:4px;text-decoration:none}
 .doc-link:hover{text-decoration:underline}
 .status-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap}
@@ -513,10 +521,10 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .badge-active{background:#e8f0fe;color:#1a73e8}
 .badge-queued{background:#fef3e2;color:#9c5000}
 .badge-evaluated{background:#f3e8fd;color:#9334e6}
-.badge-not-started{background:#f1f3f4;color:#5f6368}
+.badge-not-started{background:#f1f3f4;color:var(--text-secondary)}
 .badge-flagged{background:#fce8e6;color:#d93025}
-.badge-unknown{background:#f1f3f4;color:#5f6368}
-footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
+.badge-unknown{background:#f1f3f4;color:var(--text-secondary)}
+footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)}
 
 /* ── M2: MODAL ── */
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
@@ -543,7 +551,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 .field select{width:100%;padding:9px 12px;border:1px solid #dadce0;border-radius:6px;font-size:14px;font-family:inherit;color:#202124;background:white;transition:border-color 0.15s}
 .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,0.15)}
 .field textarea{resize:vertical;min-height:80px;line-height:1.5}
-.field .hint{font-size:11px;color:#80868b;margin-top:4px}
+.field .hint{font-size:11px;color:var(--text-secondary);margin-top:4px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
 /* ── M2: COURSE TABS ── */
@@ -554,7 +562,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
    in courseTabKeydown(). overflow-x:auto scopes scrolling to this element
    itself, so it isn't clipped by the parent's overflow:hidden. */
 .course-tabs{display:flex;gap:0;border-bottom:2px solid #e8eaed;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.course-tab{font-size:13px;font-weight:500;color:#5f6368;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;background:none;border-top:none;border-left:none;border-right:none}
+.course-tab{font-size:13px;font-weight:500;color:var(--text-secondary);padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;background:none;border-top:none;border-left:none;border-right:none}
 .course-tab:hover{color:#202124;background:#f8f9fa}
 .course-tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
 .course-tab .tab-badge{font-size:11px;background:#1a73e8;color:white;border-radius:10px;padding:1px 6px;font-weight:600;display:none}
@@ -564,23 +572,23 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 .course-panel.active{display:block}
 
 /* ── M2: COMPETENCY CHECKLIST ── */
-.competency-loading{color:#80868b;font-size:13px;padding:8px 0}
+.competency-loading{color:var(--text-secondary);font-size:13px;padding:8px 0}
 .strand-group{margin-bottom:14px}
-.strand-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#80868b;margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f1f3f4}
+.strand-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f1f3f4}
 .competency-item{display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background 0.1s}
 .competency-item:hover{background:#f8f9fa}
 .competency-item input[type="checkbox"]{margin-top:2px;flex-shrink:0;accent-color:#1a73e8;width:15px;height:15px;cursor:pointer}
 .competency-item .c-num{font-family:monospace;font-size:11px;color:#1a73e8;font-weight:700;white-space:nowrap;min-width:32px}
 .competency-item .c-text{font-size:13px;color:#3c4043;line-height:1.45}
 .competency-item .c-scaffold{font-size:10px;color:#1e8e3e;margin-top:2px}
-.competency-empty{font-size:13px;color:#80868b;padding:8px 0}
+.competency-empty{font-size:13px;color:var(--text-secondary);padding:8px 0}
 .comp-container{max-height:260px;overflow-y:auto;border:1px solid #e8eaed;border-radius:6px;padding:8px 4px}
 
 /* ── M2: SUBMIT BUTTON ── */
 #submit-btn{background:#1a73e8;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.15s}
 #submit-btn:hover{background:#1557b0}
-#submit-btn:disabled{background:#dadce0;color:#80868b;cursor:not-allowed}
-#cancel-btn{background:none;border:none;color:#5f6368;font-size:14px;cursor:pointer;padding:9px 14px}
+#submit-btn:disabled{background:#dadce0;color:var(--text-secondary);cursor:not-allowed}
+#cancel-btn{background:none;border:none;color:var(--text-secondary);font-size:14px;cursor:pointer;padding:9px 14px}
 #cancel-btn:hover{color:#202124}
 
 /* ── M2: TOAST ── */
@@ -619,7 +627,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 </header>
 
 <!-- ── M2: Warm-Up Readiness Panel ── -->
-<div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:#5f6368;gap:24px;align-items:center;flex-wrap:wrap">
+<div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:var(--text-secondary);gap:24px;align-items:center;flex-wrap:wrap">
   <span id="wr-unit" style="font-weight:600;color:#1a73e8"></span>
   <span id="wr-eval"></span>
   <span id="wr-warmup"></span>
@@ -724,7 +732,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
       <h2 id="discard-confirm-title" style="font-size:16px">Discard this lesson?</h2>
     </div>
     <div class="modal-body" style="padding-top:0">
-      <p style="font-size:13px;color:#5f6368;margin:0">What you've entered hasn't been saved.</p>
+      <p style="font-size:13px;color:var(--text-secondary);margin:0">What you've entered hasn't been saved.</p>
     </div>
     <div class="modal-footer">
       <button id="discard-cancel-btn" onclick="_cancelDiscardConfirm()">Keep editing</button>
@@ -921,11 +929,11 @@ function render(data) {
     // other than "All Terms."
     const filteredByTerm = data && data.activeTerm && data.activeTerm !== "ALL" && (data.availableTerms || []).length > 0;
     main.innerHTML = filteredByTerm
-      ? \`<div style="text-align:center;padding:60px 24px;color:#5f6368">
+      ? \`<div style="text-align:center;padding:60px 24px;color:var(--text-secondary)">
         <div style="font-size:48px;margin-bottom:16px">📋</div>
         <p>No students for \${esc(data.activeTerm)}.<br>Try "All Terms" to see records from other terms.</p>
       </div>\`
-      : \`<div style="text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line">
+      : \`<div style="text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line">
       <div style="font-size:48px;margin-bottom:16px">📋</div>
       <p>No students registered yet.
 
@@ -987,7 +995,7 @@ If you expect to see students here:
           \${s.submittedAt && s.submittedAt !== "—" ? \`<div class="last-eval">Submitted: \${esc(s.submittedAt)}</div>\` : ""}
           \${s.docUrl
             ? \`<a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>\`
-            : '<span style="color:#80868b;font-size:13px;">Document not yet available</span>'
+            : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
         </div>
         <div><div class="status-badge \${badgeMap[s.statusClass]||'badge-unknown'}">\${esc(s.status)}</div></div>
@@ -1051,7 +1059,7 @@ function showStudentContext() {
   document.getElementById("loading").style.display = "none";
   const view = document.getElementById("student-context-view");
   view.style.display = "block";
-  view.innerHTML = '<div class="spinner"></div><p style="text-align:center;color:#5f6368">Loading your context…</p>';
+  view.innerHTML = '<div class="spinner"></div><p style="text-align:center;color:var(--text-secondary)">Loading your context…</p>';
 
   google.script.run
     .withSuccessHandler(function(result) {
@@ -1074,15 +1082,21 @@ function showStudentContext() {
 function renderTeacherRoster(result) {
   const view = document.getElementById("student-context-view");
   let html = '<h2 style="font-size:16px;margin-bottom:12px;">Student Context — Full Roster</h2>';
-  html += '<p style="font-size:12px;color:#5f6368;margin-bottom:16px;">Generated ' + esc(result.generatedAt) + ' · Updates weekly via time trigger, not live.</p>';
+  html += '<p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Generated ' + esc(result.generatedAt) + ' · Updates weekly via time trigger, not live.</p>';
   if (result.roster.length === 0) {
-    html += '<p style="color:#5f6368;">No student docs yet. They are created automatically the first week a student has a completed assignment or warm-up response.</p>';
+    html += '<p style="color:var(--text-secondary);">No student docs yet. They are created automatically the first week a student has a completed assignment or warm-up response.</p>';
   } else {
     result.roster.forEach(function(s) {
-      const dotColor = s.hasRecentActivity ? '#1e8e3e' : '#dadce0';
+      // FIXED (Say/Do Ledger cas-ccps finding #15): was a bare color-only
+      // dot (green/gray) with no text label — reuses the same
+      // .status-badge/.badge-* text+color convention every other status
+      // indicator on this dashboard already uses, instead of a second,
+      // bespoke color-only pattern.
+      const activityBadge = s.hasRecentActivity
+        ? '<span class="status-badge badge-compliant">Active</span>'
+        : '<span class="status-badge badge-not-started">No recent activity</span>';
       html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
-      html += '<div><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + dotColor + ';margin-right:8px;"></span>';
-      html += '<strong>' + esc(s.name) + '</strong><div style="font-size:11px;color:#80868b;margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
+      html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:11px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
       html += '<a href="' + s.docUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>';
       html += '</div>';
     });
@@ -1716,7 +1730,7 @@ body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:
 header{background:#1a73e8;color:white;padding:16px 24px}
 header h1{font-size:18px;font-weight:500}
 .main{padding:20px 24px;max-width:640px;margin:0 auto}
-#loading{text-align:center;padding:60px 24px;color:#5f6368}
+#loading{text-align:center;padding:60px 24px;color:var(--text-secondary)}
 .spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 </style>
@@ -1743,7 +1757,7 @@ function loadOwnContext() {
         return;
       }
       if (!result.hasContent) {
-        view.innerHTML = '<div style="text-align:center;padding:40px 0;color:#5f6368;">' +
+        view.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-secondary);">' +
           '<p style="font-size:14px;">' + esc(result.message) + '</p></div>';
         return;
       }
