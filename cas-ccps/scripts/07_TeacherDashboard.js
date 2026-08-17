@@ -52,9 +52,20 @@ function _isAuthorizedTeacher_(cfg) {
     viewerEmail.toLowerCase() === cfg.teacherEmail.toLowerCase());
 }
 
+// FIXED (Say/Do Ledger cas-ccps finding #9): doGet() used to build and
+// send the exact same teacher-shaped HTML (dashboard stats, Lesson
+// Context modal, "+ New Lesson" button, term filter — none of it
+// meaningful or reachable for a student) to every caller, and relied on
+// the CLIENT discovering after the fact, via a failed server call, that
+// it should fall back to a different view. The identity check now
+// happens here, before any HTML is built, so a non-teacher caller never
+// has teacher-shaped markup built for them at all — just the small,
+// focused page their own role actually needs.
 function doGet() {
+  const cfg  = getConfig_();
+  const html = _isAuthorizedTeacher_(cfg) ? buildDashboardHtml_() : buildMyContextHtml_();
   return HtmlService
-    .createHtmlOutput(buildDashboardHtml_())
+    .createHtmlOutput(html)
     .setTitle("Assignment Dashboard")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
@@ -594,10 +605,11 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
   <!-- ── M2: New Lesson button ── -->
   <!-- Hidden until loadData() confirms M2_ENABLED — see the m2Enabled toggle below. -->
   <button id="new-lesson-btn" onclick="openModal()" style="display:none">+ New Lesson</button>
-  <!-- ── M4: My Context tab — same button/handler serves both the teacher
-       (full roster) and a student (their own doc only); showStudentContext()
-       tries the teacher path first and falls back based on the server's
-       response, so the client never needs to know in advance who's looking. ── -->
+  <!-- ── M4: My Context tab — this template is only ever built for the
+       authorized teacher now (doGet() branches by identity before
+       building any HTML — see finding #9), so this always shows the full
+       roster via getStudentContextRoster(). A student caller gets an
+       entirely separate, small buildMyContextHtml_() page instead. ── -->
   <button id="context-tab-btn" onclick="showStudentContext()">My Context</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
@@ -1029,11 +1041,11 @@ function esc(s) {
 }
 
 // ── M4: STUDENT CONTEXT TAB ───────────────────────────────────────────────
-// One button/handler serves both audiences: try the teacher-only roster
-// first, and if the server denies it (the caller isn't the teacher), fall
-// back to the caller's own context. The client never needs to know in
-// advance who's looking — the server-side identity gates (see
-// _isAuthorizedTeacher_ in 07_TeacherDashboard.js) are what actually decide.
+// FIXED (finding #9): this page is only ever built for the authorized
+// teacher now (doGet() decides server-side before building any HTML), so
+// this always shows the full roster — no more try-the-teacher-path,
+// fall-back-on-error ambiguity, and no more renderOwnContext() dead code
+// sitting in a template a student never actually receives.
 function showStudentContext() {
   document.getElementById("main").style.display = "none";
   document.getElementById("loading").style.display = "none";
@@ -1044,15 +1056,17 @@ function showStudentContext() {
   google.script.run
     .withSuccessHandler(function(result) {
       if (result.error) {
-        // Not the teacher (or the roster function otherwise denied) —
-        // render the caller's own context instead.
-        renderOwnContext();
+        // Shouldn't happen for this template's caller — getStudentContextRoster()
+        // only ever errors on a failed identity check, and doGet() already
+        // verified that before this page was built. Shown plainly rather
+        // than assumed unreachable, in case config drifts between the two checks.
+        view.innerHTML = '<p style="color:#d93025;padding:24px;">' + esc(result.error) + '</p>';
         return;
       }
       renderTeacherRoster(result);
     })
     .withFailureHandler(function(e) {
-      renderOwnContext();
+      view.innerHTML = '<p style="color:#d93025;padding:24px;">Could not load roster: ' + esc(e.message || e) + '</p>';
     })
     .getStudentContextRoster();
 }
@@ -1074,33 +1088,6 @@ function renderTeacherRoster(result) {
     });
   }
   view.innerHTML = html;
-}
-
-function renderOwnContext() {
-  google.script.run
-    .withSuccessHandler(function(result) {
-      const view = document.getElementById("student-context-view");
-      if (result.error) {
-        view.innerHTML = '<p style="color:#d93025;padding:24px;">' + esc(result.error) + '</p>';
-        return;
-      }
-      if (!result.hasContent) {
-        view.innerHTML = '<div style="text-align:center;padding:40px;color:#5f6368;">' +
-          '<p style="font-size:14px;">' + esc(result.message) + '</p></div>';
-        return;
-      }
-      view.innerHTML =
-        '<div style="text-align:center;padding:40px;">' +
-        '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
-        '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
-        '<a href="' + result.docUrl + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>' +
-        '</div>';
-    })
-    .withFailureHandler(function(e) {
-      document.getElementById("student-context-view").innerHTML =
-        '<p style="color:#d93025;padding:24px;">Could not load your context: ' + esc(e.message || e) + '</p>';
-    })
-    .getMyStudentContext();
 }
 
 // ── M2: MODAL ───────────────────────────────────────────────────────────────
@@ -1700,6 +1687,83 @@ document.addEventListener("keydown", function(e) {
 });
 
 loadData();
+</script>
+</body>
+</html>`;
+}
+
+// ---------------------------------------------------------------------------
+// buildMyContextHtml_ — NEW (Say/Do Ledger cas-ccps finding #9). A small,
+// self-contained page for a non-teacher caller (a student). Deliberately
+// shares no markup/CSS/JS with buildDashboardHtml_() above — no dashboard
+// stats, no Lesson Context modal, no term filter, no "+ New Lesson"
+// button, none of it meaningful to this audience. Calls getMyStudentContext()
+// directly on load; that function scopes itself to the caller's own
+// identity (Session.getActiveUser()), never the teacher's, so there's no
+// identity ambiguity here to resolve client-side the way the old shared
+// template needed to.
+// ---------------------------------------------------------------------------
+function buildMyContextHtml_() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Context</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
+header{background:#1a73e8;color:white;padding:16px 24px}
+header h1{font-size:18px;font-weight:500}
+.main{padding:20px 24px;max-width:640px;margin:0 auto}
+#loading{text-align:center;padding:60px 24px;color:#5f6368}
+.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header><h1>📄 My Context</h1></header>
+<div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading your context…</p></div>
+<div id="main" class="main" style="display:none"></div>
+
+<script>
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function loadOwnContext() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById("loading").style.display = "none";
+      const view = document.getElementById("main");
+      view.style.display = "block";
+      if (result.error) {
+        view.innerHTML = '<p style="color:#d93025;padding:24px 0;">' + esc(result.error) + '</p>';
+        return;
+      }
+      if (!result.hasContent) {
+        view.innerHTML = '<div style="text-align:center;padding:40px 0;color:#5f6368;">' +
+          '<p style="font-size:14px;">' + esc(result.message) + '</p></div>';
+        return;
+      }
+      view.innerHTML =
+        '<div style="text-align:center;padding:40px 0;">' +
+        '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
+        '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
+        '<a href="' + result.docUrl + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>' +
+        '</div>';
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById("loading").style.display = "none";
+      const view = document.getElementById("main");
+      view.style.display = "block";
+      view.innerHTML = '<p style="color:#d93025;padding:24px 0;">Could not load your context: ' + esc(e.message || e) + '</p>';
+    })
+    .getMyStudentContext();
+}
+
+loadOwnContext();
 </script>
 </body>
 </html>`;
