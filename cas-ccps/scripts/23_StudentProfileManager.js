@@ -774,6 +774,10 @@ function buildShadowMatrixSummary_(ss, cfg) {
   const currentUnit  = resolveUnitForDate_(todayStr); // Script 31
 
   let total = 0, withEval = 0, withWarmup = 0, withConf = 0, locked = 0;
+  // NEW (Say/Do Ledger cas-ccps finding #13): per-bucket student emails,
+  // not just counts — this is what lets the dashboard turn these stats
+  // into clickable filters into the roster instead of static numbers.
+  const withEvalEmails = [], withWarmupEmails = [], withConfEmails = [], lockedEmails = [];
 
   for (let i = 1; i < data.length; i++) {
     const rowEmail = String(data[i][SP_STUDENT_EMAIL] || "").trim().toLowerCase();
@@ -788,13 +792,13 @@ function buildShadowMatrixSummary_(ss, cfg) {
     // Has eval history?
     try {
       const signals = JSON.parse(data[i][SP_EVALUATION_SIGNALS] || "[]");
-      if (signals.length > 0) withEval++;
+      if (signals.length > 0) { withEval++; withEvalEmails.push(rowEmail); }
     } catch(e) {}
 
     // Has warm-up history?
     try {
       const scores = JSON.parse(data[i][SP_WARMUP_SCORES] || "[]");
-      if (scores.length > 0) withWarmup++;
+      if (scores.length > 0) { withWarmup++; withWarmupEmails.push(rowEmail); }
     } catch(e) {}
 
     // Has shadow matrix confidence?
@@ -812,8 +816,8 @@ function buildShadowMatrixSummary_(ss, cfg) {
         // same student in both buckets with no way for a teacher to tell
         // they overlapped. Made mutually exclusive: withConf now means
         // "building confidence but not yet locked."
-        if (maxConf >= 0.75)      locked++;
-        else if (maxConf > 0.5)  withConf++;
+        if (maxConf >= 0.75)      { locked++;   lockedEmails.push(rowEmail); }
+        else if (maxConf > 0.5)  { withConf++; withConfEmails.push(rowEmail); }
       }
     } catch(e) {}
   }
@@ -833,10 +837,91 @@ function buildShadowMatrixSummary_(ss, cfg) {
     withWarmUpHistory:    withWarmup,
     withShadowConfidence: withConf,
     locked,
+    // NEW (finding #13): per-bucket email lists — lets the dashboard
+    // filter the roster to exactly these students when a stat is clicked.
+    withEvalEmails:   withEvalEmails,
+    withWarmupEmails: withWarmupEmails,
+    withConfEmails:   withConfEmails,
+    lockedEmails:     lockedEmails,
     currentUnit: currentUnit
       ? (currentUnit.unit_id + " — " + currentUnit.unit_name)
       : ""
   };
+}
+
+// ---------------------------------------------------------------------------
+// getStudentShadowProfile_ — NEW (Say/Do Ledger cas-ccps finding #13).
+// Read-only per-student detail for the dashboard's new profile view — the
+// destination for the warm-up readiness panel's "ready for personalized
+// feedback" (locked) students. Presents the same signals
+// buildShadowMatrixSummary_() already aggregates, but for one student,
+// with per-unit confidence resolved to a real unit name via Script 31's
+// getUnitById_() where possible.
+// ---------------------------------------------------------------------------
+function getStudentShadowProfile_(ss, cfg, studentEmail) {
+  const spSheet = ss.getSheetByName(cfg.tabs.studentProfiles);
+  if (!spSheet) return null;
+
+  const data  = spSheet.getDataRange().getValues();
+  const email = String(studentEmail || "").trim().toLowerCase();
+  const teacherEmail = cfg.teacherEmail.toLowerCase();
+
+  for (let i = 1; i < data.length; i++) {
+    const rowEmail   = String(data[i][SP_STUDENT_EMAIL] || "").trim().toLowerCase();
+    const rowTeacher = String(data[i][SP_TEACHER_EMAIL] || "").trim().toLowerCase();
+    if (rowEmail !== email) continue;
+    // Same ownership check every other per-student read in this file
+    // applies — a teacher can only view profiles for their own students.
+    if (rowTeacher !== teacherEmail) return null;
+
+    let evalSignals = [], warmupScores = [], shadowMatrix = {};
+    try { evalSignals   = JSON.parse(data[i][SP_EVALUATION_SIGNALS] || "[]"); } catch(e) {}
+    try { warmupScores  = JSON.parse(data[i][SP_WARMUP_SCORES]      || "[]"); } catch(e) {}
+    try { shadowMatrix  = JSON.parse(data[i][SP_SHADOW_MATRIX]      || "{}"); } catch(e) {}
+
+    const unitConfidence = Object.keys(shadowMatrix).map(unitId => {
+      let unitLabel = unitId;
+      try {
+        const unit = getUnitById_(unitId);
+        if (unit && unit.unit_name) unitLabel = unitId + " — " + unit.unit_name;
+      } catch (e) { /* Script 31 not bound in this project — fall back to raw ID */ }
+      const conf = shadowMatrix[unitId].cross_confidence || 0;
+      return {
+        unitLabel: unitLabel,
+        confidence: conf,
+        // Same 0.75/0.5 thresholds buildShadowMatrixSummary_() uses, so a
+        // unit's status here always agrees with which bucket got this
+        // student onto this view in the first place.
+        status: conf >= 0.75 ? "Ready for personalized feedback"
+              : conf > 0.5   ? "Building confidence"
+              : "Not yet enough data"
+      };
+    }).sort((a, b) => b.confidence - a.confidence);
+
+    // Utilities.formatDate() directly, not the shared formatDate_() helper
+    // — that helper only exists in 07_TeacherDashboard.js/13_StudentDashboard.js,
+    // neither of which is bound to the Central Ledger project this file is
+    // also part of, so calling it here would be undefined in that context.
+    let lastUpdated = "Never";
+    if (data[i][SP_LAST_UPDATED]) {
+      try {
+        lastUpdated = Utilities.formatDate(
+          new Date(data[i][SP_LAST_UPDATED]), Session.getScriptTimeZone(), "MMM d, yyyy h:mm a"
+        );
+      } catch (e) { lastUpdated = String(data[i][SP_LAST_UPDATED]); }
+    }
+
+    return {
+      name:  String(data[i][SP_STUDENT_NAME] || "").trim() || studentEmail,
+      email: studentEmail,
+      evalHistoryCount:   evalSignals.length,
+      warmupHistoryCount: warmupScores.length,
+      lastUpdated: lastUpdated,
+      unitConfidence: unitConfidence
+    };
+  }
+
+  return null; // no profile row for this student yet
 }
 
 // ---------------------------------------------------------------------------
