@@ -371,6 +371,16 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
 .scr-table{width:100%;border-collapse:collapse;font-size:.73rem}
 .scr-table th{background:var(--navy);color:#fff;padding:.42rem .48rem;text-align:center;font-size:.65rem;white-space:nowrap;position:sticky;top:0;z-index:10}
 .scr-table th.comp-h{text-align:left;max-width:280px;min-width:200px}
+/* FIXED (Say/Do Ledger leader-hub finding #13): the Req header used to
+   carry two `style` attributes on one element, so the browser kept only
+   the first (position:sticky;left:0) and silently dropped the second
+   (min-width) — Req ended up pinned at the same offset as the Competency
+   column instead of stacked beside it. --scr-comp-w is set at render time
+   (renderScrTable()) from Competency's actual measured width, so Req
+   always stacks correctly even as that width changes with viewport size. */
+.scr-table th.scr-req-col,.scr-table td.scr-req-col{position:sticky;left:var(--scr-comp-w,200px);min-width:60px;z-index:15}
+.scr-table th.scr-req-col{background:var(--navy);z-index:20}
+.scr-table td.scr-req-col{background:#fff;border-right:1px solid #e5e7eb}
 .scr-table td{padding:.3rem .42rem;border-bottom:1px solid var(--border-soft);vertical-align:middle}
 .scr-table tr:hover td{background:var(--muted-light)}
 .scr-duty{background:var(--muted-light);font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--navy);padding:.48rem .65rem}
@@ -384,6 +394,13 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
 .scr-score:hover{transform:scale(1.15);z-index:5}
 .scr-opt{font-style:italic;color:#9ca3af}
 .scr-pct-bar{height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;margin-top:2px}
+/* Real horizontal-scroll affordance (Say/Do Ledger leader-hub finding #2)
+   — the scroll container had overflow:auto but nothing visually hinting
+   this table scrolls, so a phone user had to discover it by accident. A
+   persistent right-edge fade plus the text hint above the table (see
+   renderScrTable()) together replace that with a real, visible cue. */
+.scr-scroll-wrap{position:relative}
+.scr-scroll-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:22px;pointer-events:none;background:linear-gradient(to right,transparent,rgba(0,0,0,.10))}
 .scr-pct-fill{height:100%;border-radius:3px;background:var(--navy);transition:width .3s}
 
     .lp-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.12); }
@@ -9773,7 +9790,7 @@ function renderCompetencyView() {
   const classPct = totalPossible ? Math.round(totalScored / totalPossible * 100) : 0;
   const satPct = totalScored ? Math.round(satisfactory / totalScored * 100) : 0;
 
-  const pacingBtn = `<button class="scr-tab${scrViewMode==='pacing'?' active':''}" onclick="scrViewMode='pacing';renderCompetencyView()">📅 Pacing Guide</button>`;
+  const pacingBtn = `<button class="scr-tab${scrViewMode==='pacing'?' active':''}" onclick="setScrViewMode('pacing')">📅 Pacing Guide</button>`;
 
   document.getElementById('scr-top-bar').innerHTML = `
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.65rem">
@@ -9790,8 +9807,8 @@ function renderCompetencyView() {
       <div style="width:1px;background:rgba(255,255,255,.15)"></div>
       <div><div class="strip-lbl">Not Yet Scored</div><div style="font-size:1.4rem;font-family:'Bebas Neue',cursive;color:#f87171">${totalPossible - totalScored}</div></div>
       <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-        <button class="scr-tab${scrViewMode==='grid'?' active':''}" style="font-size:.68rem" onclick="scrViewMode='grid';renderCompetencyView()">⊞ Grid</button>
-        <button class="scr-tab${scrViewMode==='list'?' active':''}" style="font-size:.68rem" onclick="scrViewMode='list';renderCompetencyView()">☰ Cards</button>
+        <button class="scr-tab${scrViewMode==='grid'?' active':''}" style="font-size:.68rem" onclick="setScrViewMode('grid')">⊞ Grid</button>
+        <button class="scr-tab${scrViewMode==='list'?' active':''}" style="font-size:.68rem" onclick="setScrViewMode('list')">☰ Cards</button>
         ${pacingBtn}
         <button class="btn btn-outline btn-xs" style="color:var(--gold);border-color:rgba(255,255,255,.3)" onclick="exportSCR()">📋 Export</button>
         <span id="scr-last-saved" style="font-size:.63rem;color:rgba(255,255,255,.5);font-style:italic;opacity:.5;transition:opacity .5s;white-space:nowrap">Not saved yet</span>
@@ -11213,8 +11230,22 @@ function lpNewPickerCreate() {
   renderLessonPlans();
 }
 
-let scrViewMode = 'grid'; // 'grid', 'list', or 'pacing'
-function toggleScrView() { scrViewMode = scrViewMode === 'grid' ? 'list' : 'grid'; renderCompetencyView(); }
+// Default view mode — FIXED per Say/Do Ledger leader-hub finding #2: Grid
+// used to be the hardcoded default even on a phone, where its fixed
+// desktop-width columns push the table far past the screen edge with no
+// visible way back short of accidentally discovering horizontal scroll.
+// A saved preference always wins; absent one, start in Cards below a
+// mobile breakpoint and Grid on desktop.
+let scrViewMode = LS.get('lh_scr_view_mode', null) || (window.innerWidth < 700 ? 'list' : 'grid');
+function toggleScrView() { setScrViewMode(scrViewMode === 'grid' ? 'list' : 'grid'); }
+// A manual choice always overrides the auto-default afterward — this is
+// the one place scrViewMode should ever be assigned from (all view-tab
+// buttons route through it) so the persisted preference stays accurate.
+function setScrViewMode(mode) {
+  scrViewMode = mode;
+  LS.set('lh_scr_view_mode', mode);
+  renderCompetencyView();
+}
 function setPeriod(p, btn) { scrActivePeriod = p; renderCompetencyView(); }
 
 function renderScrTable(course, students, myScores) {
@@ -11234,8 +11265,14 @@ function renderScrTable(course, students, myScores) {
   }
 
   // Grid view: competencies as rows, students as columns
-  const colWidth = Math.max(38, Math.floor(700 / (students.length + 1)));
-  
+  // FIXED (Say/Do Ledger leader-hub finding #2): was a hardcoded desktop
+  // assumption (700px) that forced 800px+ of table width regardless of
+  // the real viewport — computed against the actual container width now,
+  // so a phone gets narrower (still usable, still real) columns instead
+  // of a table that's silently 2-3x wider than the screen.
+  const availWidth = Math.max(280, (el.clientWidth || window.innerWidth) - 90); // minus the two pinned label columns
+  const colWidth = Math.max(38, Math.floor(availWidth / (students.length + 1)));
+
   // Group competencies by duty area
   const byDuty = [];
   let currentDuty = null;
@@ -11247,14 +11284,18 @@ function renderScrTable(course, students, myScores) {
     byDuty.push({ type: 'comp', comp });
   }
 
+  // FIXED (finding #2): a real horizontal-scroll affordance — a small
+  // hint line plus a persistent right-edge fade (.scr-scroll-wrap in the
+  // stylesheet) — instead of nothing indicating this table scrolls at all.
   el.innerHTML = `
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="overflow:auto;max-height:72vh">
+      <div style="font-size:.68rem;color:var(--muted);padding:.4rem .6rem;border-bottom:1px solid var(--border-soft)">↔ Scroll to see all students and scores</div>
+      <div class="scr-scroll-wrap" style="overflow:auto;max-height:72vh">
         <table class="scr-table">
           <thead>
             <tr>
               <th class="comp-h" style="position:sticky;left:0;z-index:20;background:var(--navy)">#  Competency</th>
-              <th style="position:sticky;left:0" class="comp-h" style="min-width:60px">Req</th>
+              <th class="scr-req-col">Req</th>
               ${students.map(s => `<th style="width:${colWidth}px;max-width:${colWidth}px;overflow:hidden;text-overflow:ellipsis" title="${escH(s.name)}">${escH(s.name.split(',')[0])}</th>`).join('')}
               <th style="width:70px">Class %</th>
             </tr>
@@ -11271,14 +11312,14 @@ function renderScrTable(course, students, myScores) {
               const satCount = scored.filter(v => v <= 3).length;
               const pct = scored.length ? Math.round(satCount / scored.length * 100) : null;
               const pctColor = pct === null ? '#ccc' : pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
-              
+
               return `<tr>
                 <td style="position:sticky;left:0;background:#fff;border-right:1px solid #e5e7eb;max-width:300px">
                   <span style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-right:.3rem">${comp.code||comp.num}</span>
                   <span class="${isOpt?'scr-opt':''}" style="font-size:.73rem">${comp.text}</span>
                   ${renderLessonTags(comp.num)}
                 </td>
-                <td style="text-align:center">
+                <td class="scr-req-col" style="text-align:center">
                   <span style="font-size:.62rem;font-weight:700;padding:1px 5px;border-radius:10px;background:${isOpt?'#f3f4f6':'#dbeafe'};color:${isOpt?'#9ca3af':'#1d4ed8'}">${isOpt?'Opt':'Req'}</span>
                 </td>
                 ${students.map(stu => {
@@ -11318,6 +11359,18 @@ function renderScrTable(course, students, myScores) {
         <span style="font-size:.68rem;color:var(--muted);margin-left:.5rem">Click any cell to cycle score · 1-3 = Satisfactory</span>
       </div>
     </div>`;
+
+  // FIXED (finding #13): the Req header used to carry two `style`
+  // attributes on one element — the browser keeps the first and silently
+  // drops the second, so Req kept position:sticky;left:0 (matching the
+  // Competency column) instead of the min-width it was meant to get,
+  // overlapping the Competency column on horizontal scroll. Req is now a
+  // real second pinned column, stacked right after Competency rather than
+  // sharing its offset — measured here (not hardcoded) so it always
+  // matches Competency's actual rendered width, including on a narrower
+  // viewport where that width itself changes.
+  const compHeader = el.querySelector('.comp-h');
+  if (compHeader) el.style.setProperty('--scr-comp-w', compHeader.offsetWidth + 'px');
 }
 
 function renderStudentCard(stu, course, scores) {
