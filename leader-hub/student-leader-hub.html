@@ -20088,15 +20088,27 @@ function gatherBragData() {
   } catch(e) {}
 
   // ── Journal moments this week (proud / kindness witnessed / kindness given) ──
-  const journalWins = (LS.get('lh_journal_history', []) || [])
+  // FIXED: journal reflections used to be pulled unconditionally into every
+  // audience's draft (Students, Parents, Central Administration, Faculty
+  // alike) with no way to exclude a specific vulnerable entry — see Say/Do
+  // Ledger leader-hub finding #11. Each entry now requires an explicit
+  // opt-in, remembered per entry (keyed by the journal entry's own stable
+  // id + question, e.g. "j173..._q4") so a reflection isn't re-decided
+  // every time the board is re-gathered within the same week. Candidates
+  // are still all shown in the left panel (with a checkbox) so nothing is
+  // silently hidden from review — only journalWins (the included subset)
+  // ever reaches _bragData and the actual generated draft.
+  const journalIncludes = LS.get('lh_brag_journal_includes', {});
+  const journalCandidates = (LS.get('lh_journal_history', []) || [])
     .filter(e => inRange(e.savedAt))
     .flatMap(e => {
       const items = [];
-      if ((e.q4 || '').trim()) items.push({ text: (e.q4||'').trim(), kind: '🏅' });
-      if ((e.q5 || '').trim()) items.push({ text: (e.q5||'').trim(), kind: '👀' });
-      if ((e.q6 || '').trim()) items.push({ text: (e.q6||'').trim(), kind: '🤝' });
+      if ((e.q4 || '').trim()) items.push({ id: e.id + '_q4', text: (e.q4||'').trim(), kind: '🏅' });
+      if ((e.q5 || '').trim()) items.push({ id: e.id + '_q5', text: (e.q5||'').trim(), kind: '👀' });
+      if ((e.q6 || '').trim()) items.push({ id: e.id + '_q6', text: (e.q6||'').trim(), kind: '🤝' });
       return items;
     });
+  const journalWins = journalCandidates.filter(w => journalIncludes[w.id] === true);
 
   // ── Manually added wins ("something we might have missed") ──────────────────
   const manualWins = (LS.get('lh_brag_manual_wins', []) || [])
@@ -20149,7 +20161,24 @@ function gatherBragData() {
   renderList('brag-section-scr',   'brag-list-scr',   scrWins,         i => `📊 ${i.text}`);
   renderList('brag-section-wbl',     'brag-list-wbl',     wblWins,         i => `⏱ ${i.text}`);
   renderList('brag-section-esports', 'brag-list-esports', esMatchWins,     i => `🎮 ${i.text}`);
-  renderList('brag-section-journal', 'brag-list-journal', journalWins,     i => `${i.kind} ${i.text}`);
+
+  // Journal moments get an opt-in checkbox instead of the shared renderList
+  // helper — every candidate for the week is shown (nothing hidden from
+  // review), but only checked ones count toward totalWins/join _bragData.
+  const journalSec = document.getElementById('brag-section-journal');
+  const journalLst = document.getElementById('brag-list-journal');
+  if (!journalCandidates.length) {
+    journalSec.style.display = 'none';
+  } else {
+    journalSec.style.display = 'block';
+    journalLst.innerHTML = journalCandidates.map(w => {
+      const included = journalIncludes[w.id] === true;
+      return `<div style="font-size:.72rem;background:${included?'#fff':'#f9fafb'};border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start">
+        <input type="checkbox" ${included?'checked':''} onchange="toggleBragJournalInclude('${w.id}',this.checked)" style="margin-top:.15rem;flex-shrink:0" aria-label="Include this reflection in the Brag Board draft">
+        <span style="${included?'':'color:var(--muted)'}">${w.kind} ${w.text}</span>
+      </div>`;
+    }).join('');
+  }
 
   // Manual wins get delete buttons — rendered separately from the shared renderList helper
   const manualSec = document.getElementById('brag-section-manual');
@@ -20185,6 +20214,17 @@ function gatherBragData() {
 }
 
 
+
+// Toggles one journal reflection's include-in-Brag-Board decision. Keyed by
+// the journal entry's own stable id + question (see gatherBragData()'s
+// journalCandidates) so the decision survives a re-gather within the same
+// week instead of resetting to the opt-in default every time.
+function toggleBragJournalInclude(id, included) {
+  const map = LS.get('lh_brag_journal_includes', {});
+  if (included) map[id] = true; else delete map[id];
+  LS.set('lh_brag_journal_includes', map);
+  gatherBragData();
+}
 
 function addBragManualWin() {
   const inp = document.getElementById('brag-manual-input');
