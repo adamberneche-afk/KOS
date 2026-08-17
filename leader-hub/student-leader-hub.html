@@ -12481,8 +12481,8 @@ async function aiComposeEmail() {
     // name a specific student (e.g. "remind ___ her slip is late").
     const jobRes = await callGAS('aiDraft', {
       type: 'EMAIL_COMPOSE',
-      payload: {
-        prompt: _substituteNamesForIds(prompt),
+      payload: _privacySafeAiPayload({
+        prompt,
         audience: emailTab,
         audienceLabel: AUDIENCE_LABELS[emailTab] || emailTab,
         trip: trip ? {
@@ -12494,7 +12494,7 @@ async function aiComposeEmail() {
           transportation: trip.charterCo || trip.train || (trip.ccpsBus ? 'CCPS Bus' : trip.parentTx ? 'Parent Transport' : ''),
           chaperones: trip.chaperones || '',
         } : null,
-      },
+      }, ['prompt']),
     });
     if (jobRes && jobRes.ok && jobRes.jobId) {
       const draft = await pollAiJob_(jobRes.jobId, status, '⏳ Drafting with AI…');
@@ -12608,14 +12608,14 @@ async function generateAIInsights() {
       // See _substituteNamesForIds / LEADERHUB_AI_FLOW_SETUP.md.
       const jobRes = await callGAS('aiDraft', {
         type: 'ARCHIVE_INSIGHTS',
-        payload: {
+        payload: _privacySafeAiPayload({
           totalTrips: total,
           totalStudents: stuTotal,
           avgCostPerStudent: Number(costAvg.toFixed(0)) || 0,
           tripTypes: Object.entries(types).map(([type, count]) => ({ type, count })),
-          glows: glowList.map(g => _substituteNamesForIds(`${g.name}: ${g.text}`)),
-          grows: growList.map(g => _substituteNamesForIds(`${g.name}: ${g.text}`)),
-        },
+          glows: glowList.map(g => `${g.name}: ${g.text}`),
+          grows: growList.map(g => `${g.name}: ${g.text}`),
+        }, ['glows', 'grows']),
       });
       if (jobRes && jobRes.ok && jobRes.jobId) {
         const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting narrative with AI…');
@@ -12748,10 +12748,14 @@ async function _wblGenerateNarrative() {
   try {
     // Privacy: same roster-based substitution Brag Board/Archive Insights
     // use (Settings → Student ID Lookup) — swap any known student name in
-    // attentionDetails for their CCPS ID before this leaves the browser.
+    // attentionDetails/sbeNotes for their CCPS ID before this leaves the
+    // browser. FIXED: sbeNotes (teacher-entered free-text notes, which can
+    // plausibly mention a student by name) used to be sent unsubstituted
+    // in this exact payload while its sibling field, attentionDetails, was
+    // already protected — see Say/Do Ledger leader-hub finding #12.
     const jobRes = await callGAS('aiDraft', {
       type: 'WBL_INSIGHTS',
-      payload: {
+      payload: _privacySafeAiPayload({
         totalStudents: snap.totalStudents,
         onTrack: snap.onTrack,
         notStarted: snap.notStartedCount,
@@ -12759,9 +12763,9 @@ async function _wblGenerateNarrative() {
         sbeTotal: snap.sbeTotal,
         avgHours: snap.avgHours,
         totalHours: snap.totalHours,
-        attentionDetails: snap.attentionDetails.map(_substituteNamesForIds),
+        attentionDetails: snap.attentionDetails,
         sbeNotes: snap.sbeNotes,
-      },
+      }, ['attentionDetails', 'sbeNotes']),
     });
     if (jobRes && jobRes.ok && jobRes.jobId) {
       const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
@@ -12874,8 +12878,8 @@ async function lpRunAI(userPrompt, forceSection) {
     // → Student ID Lookup) applied to both the prompt and the lesson body.
     const jobRes = await callGAS('aiDraft', {
       type: 'LP_ASSIST',
-      payload: {
-        prompt: _substituteNamesForIds(userPrompt || 'Give general lesson-planning tips for this lesson.'),
+      payload: _privacySafeAiPayload({
+        prompt: userPrompt || 'Give general lesson-planning tips for this lesson.',
         lessonTitle: plan.title,
         course: LP_C_LABELS[plan.course] || plan.course,
         quarter: plan.q,
@@ -12884,8 +12888,8 @@ async function lpRunAI(userPrompt, forceSection) {
         // it's been edited/saved locally (see lpFetchDoc's note — real
         // Drive content requires auth Gemini can't do) — empty is a real,
         // expected state, not a bug; the prompt file handles it.
-        planBody: _substituteNamesForIds(LP_EDITS[plan.docId] || ''),
-      },
+        planBody: LP_EDITS[plan.docId] || '',
+      }, ['prompt', 'planBody']),
     });
     if (jobRes && jobRes.ok && jobRes.jobId) {
       const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Thinking…');
@@ -13325,13 +13329,15 @@ async function _generateBragEmailInner() {
       if (statusEl) statusEl.textContent = '⏳ Drafting with AI…';
       // Privacy: if a student ID roster has been uploaded (Settings →
       // Student ID Lookup), swap known student names for their CCPS ID
-      // before this leaves the browser — see _substituteNamesForIds. The
-      // local sections[]/localBody above keep real names; only this
-      // network payload is affected.
-      const privSections = sections.map(_substituteNamesForIds);
+      // before this leaves the browser — see _privacySafeAiPayload /
+      // _substituteNamesForIds. The local sections[]/localBody above keep
+      // real names; only this network payload is affected.
       const jobRes = await callGAS('aiDraft', {
         type: 'BRAG_EMAIL',
-        payload: { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections: privSections },
+        payload: _privacySafeAiPayload(
+          { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections },
+          ['sections']
+        ),
       });
       if (jobRes && jobRes.ok && jobRes.jobId) {
         const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting with AI…');
@@ -16869,6 +16875,25 @@ function _substituteNamesForIds(text) {
     if (!name) return;
     const re = new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
     out = out.replace(re, `${id}@${PROFILE.emailDomain}`);
+  });
+  return out;
+}
+
+// Runs _substituteNamesForIds over every named free-text field of a
+// callGAS('aiDraft', ...) payload before it leaves the browser, in one
+// place — so a future call site can't independently forget a field the
+// way sbeNotes did for months while its sibling field, attentionDetails,
+// already had this exact protection (Say/Do Ledger leader-hub finding
+// #12). Callers declare which keys are free text; string values are
+// substituted directly, array values are substituted per-item — anything
+// else (numbers, trip facts, structural strings like a course/quarter
+// label) is left untouched.
+function _privacySafeAiPayload(payload, freeTextKeys) {
+  const out = { ...payload };
+  (freeTextKeys || []).forEach(key => {
+    const v = out[key];
+    if (Array.isArray(v)) out[key] = v.map(_substituteNamesForIds);
+    else if (typeof v === 'string') out[key] = _substituteNamesForIds(v);
   });
   return out;
 }
