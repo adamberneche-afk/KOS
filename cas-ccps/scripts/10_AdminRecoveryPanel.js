@@ -23,6 +23,24 @@ function onOpen() {
 }
 
 // ---------------------------------------------------------------------------
+// _stuckRowContext_ — shared identifying-context line for one stuck
+// STAGING_PIPELINE row. Consolidated so autoHealthAlert() (the daily
+// email), resetStuckRow() (the manual reset confirmation), and
+// runSystemHealthCheck() (the on-demand summary) all describe a stuck row
+// the same way — file ID + how long it's been stuck — instead of three
+// independently-formatted strings that could drift apart. A future new
+// health check inherits this pattern automatically by calling it, rather
+// than needing to remember to copy the format by hand.
+// See Say/Do Ledger cas-ccps finding #11.
+// ---------------------------------------------------------------------------
+function _stuckRowContext_(rowNumber, fileId, elapsedMinutes) {
+  return "Row " + rowNumber + " — File ID: " + (fileId || "unknown") +
+         (elapsedMinutes !== null && elapsedMinutes !== undefined
+           ? " (stuck " + elapsedMinutes + " min)"
+           : "");
+}
+
+// ---------------------------------------------------------------------------
 // autoHealthAlert — runs daily on a time-driven trigger.
 // Checks for stuck IN_PROCESS rows and RubricQueue PENDING_EXTRACTION rows
 // older than the alert thresholds. Emails the admin if issues are found.
@@ -62,9 +80,8 @@ function autoHealthAlert() {
       if (elapsed !== null && elapsed >= STUCK_PIPELINE_MINUTES) {
         const fileId = fileIdx !== -1 ? String(stagingData[i][fileIdx]).trim() : "unknown";
         issues.push(
-          "⏱️ STUCK EVALUATION (row " + (i + 1) + ")\n" +
-          "   File ID: " + fileId + "\n" +
-          "   Stuck for: " + elapsed + " minutes\n" +
+          "⏱️ STUCK EVALUATION\n" +
+          "   " + _stuckRowContext_(i + 1, fileId, elapsed) + "\n" +
           "   Action: Use ⚙️ Admin Controls → Reset Stuck Pipeline Row"
         );
       }
@@ -191,25 +208,32 @@ function resetStuckRow() {
   const headers = data[0].map(h => String(h).trim());
   const stIdx   = headers.indexOf("Status");
   const tsIdx   = headers.indexOf("Timestamp");
+  const fileIdx = headers.indexOf("StudentFileID");
   const now     = new Date();
   const cutoff  = 10 * 60 * 1000;
-  let   count   = 0;
+  const reset   = []; // identifying context for each row actually reset — finding #11
 
   for (let i = 1; i < data.length; i++) {
     const rowStatus = String(data[i][stIdx]).trim();
     // Reset both stuck IN_PROCESS rows and ERROR_TIMEOUT rows to re-queue them
     if (rowStatus !== "IN_PROCESS" && rowStatus !== "ERROR_TIMEOUT") continue;
+    let elapsedMin = null;
     if (rowStatus === "IN_PROCESS") {
       const rowTs = tsIdx !== -1 ? new Date(data[i][tsIdx]) : null;
+      if (rowTs) elapsedMin = Math.round((now - rowTs) / 60000);
       if (rowTs && (now - rowTs) < cutoff) continue;
     }
+    const fileId = fileIdx !== -1 ? String(data[i][fileIdx]).trim() : "unknown";
+    reset.push(_stuckRowContext_(i + 1, fileId, elapsedMin));
     sheet.getRange(i + 1, stIdx + 1).setValue("PENDING_INFERENCE");
-    count++;
   }
 
   SpreadsheetApp.flush();
-  ui.alert(count > 0
-    ? "✅ " + count + " stuck row(s) reset to queue."
+  // FIXED (finding #11): used to just report a count with no identifying
+  // context — brought up to the same standard autoHealthAlert() already
+  // uses, via the shared _stuckRowContext_() helper.
+  ui.alert(reset.length > 0
+    ? "✅ " + reset.length + " stuck row(s) reset to queue:\n\n" + reset.join("\n")
     : "✅ No stuck rows found.");
 }
 
@@ -298,9 +322,15 @@ function runSystemHealthCheck() {
   const sHeaders  = sd[0] ? sd[0].map(h => String(h).trim()) : [];
   const stIdx     = sHeaders.indexOf("Status");
   const tsIdx     = sHeaders.indexOf("Timestamp");
+  const fileIdx   = sHeaders.indexOf("StudentFileID");
   const now       = new Date();
 
-  let inProcess = 0, pending = 0, complete = 0, stuck = 0, sErrors = 0, timeouts = 0;
+  // FIXED (finding #11): stuckRows now collects identifying context (file
+  // ID, elapsed minutes) via the shared _stuckRowContext_() helper instead
+  // of just a bare count — brought up to the standard autoHealthAlert()
+  // already sets for describing a stuck row.
+  let inProcess = 0, pending = 0, complete = 0, sErrors = 0, timeouts = 0;
+  const stuckRows = [];
   for (let i = 1; i < sd.length; i++) {
     const s = String(sd[i][stIdx] || "").trim();
     if (s === "IN_PROCESS")        inProcess++;
@@ -309,9 +339,14 @@ function runSystemHealthCheck() {
     if (s === "ERROR_TIMEOUT")     timeouts++;
     if (s.startsWith("ERROR") && s !== "ERROR_TIMEOUT") sErrors++;
     if (s === "IN_PROCESS" && tsIdx !== -1) {
-      if ((now - new Date(sd[i][tsIdx])) > 10 * 60 * 1000) stuck++;
+      const elapsedMin = Math.round((now - new Date(sd[i][tsIdx])) / 60000);
+      if (elapsedMin > 10) {
+        const fileId = fileIdx !== -1 ? String(sd[i][fileIdx]).trim() : "unknown";
+        stuckRows.push(_stuckRowContext_(i + 1, fileId, elapsedMin));
+      }
     }
   }
+  const stuck = stuckRows.length;
 
   let qPending = 0, qStaged = 0, qComplete = 0, qErrors = 0;
   for (let i = 1; i < qd.length; i++) {
@@ -337,7 +372,9 @@ function runSystemHealthCheck() {
   ui.alert("System Health Check", [
     "SYSTEM HEALTH CHECK — " + ts + "\n",
     "STAGING PIPELINE",
-    (stuck > 0 ? "⚠️  " + stuck + " stuck row(s) — use Reset Stuck Row" : "✅  No stuck rows"),
+    (stuck > 0
+      ? "⚠️  " + stuck + " stuck row(s) — use Reset Stuck Row:\n      " + stuckRows.join("\n      ")
+      : "✅  No stuck rows"),
     "   Evaluating:   " + inProcess,
     "   Queued:       " + pending,
     "   Complete:     " + complete,
