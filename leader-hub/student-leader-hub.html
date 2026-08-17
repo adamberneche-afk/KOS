@@ -2559,7 +2559,15 @@ window.onerror = function(msg, src, line, col, err) {
       <button onclick="closePOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
-      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Item / Description</label>
+      <!-- FIXED per Say/Do Ledger leader-hub finding #9: this used to be a
+           free-text item name with no link to any real Inventory SKU, so
+           receiving an order never updated or created its Inventory
+           record — a real, separate data-entry step every time. Linking a
+           PO to a SKU here is what lets receiving auto-increment it. -->
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Inventory Item</label>
+        <select id="po-sku-sel" onchange="onPoSkuChange()" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff"></select></div>
+      <div id="po-item-new-wrap" style="display:none">
+        <label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">New Item Name</label>
         <input id="po-item" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Cavalier Hoodies — S/M/L"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
         <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Category</label>
@@ -11586,14 +11594,33 @@ function toggleReceiving(i) {
   const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
   if (!po) return;
   const state = _getPOReceivingState(po.id);
+  const wasVerified = !!state.verifiedAt;
   state.checks[i] = !state.checks[i];
   // verifiedAt means "fully verified as of this timestamp" — stamped the
   // moment every item is checked, cleared the moment any item is
   // unchecked again, so it never survives as a stale claim about a
   // checklist that's since been reopened.
-  state.verifiedAt = state.checks.every(Boolean) ? new Date().toISOString() : null;
+  const nowVerified = state.checks.every(Boolean);
+  state.verifiedAt = nowVerified ? new Date().toISOString() : null;
+  // Auto-increment Inventory the moment this PO's checklist first becomes
+  // fully verified — the trigger event connecting procurement to
+  // inventory (Say/Do Ledger leader-hub finding #9). Reversing back out of
+  // full verification (unchecking one item after all were checked)
+  // reverses the increment too, so re-checking it later doesn't double-count.
+  if (nowVerified && !wasVerified) { _applyPOToInventory(po, 1); persistInventory(); }
+  else if (!nowVerified && wasVerified) { _applyPOToInventory(po, -1); persistInventory(); }
   LS.set('lh_receiving_status', RECEIVING_STATUS);
   renderReceivingChecklist();
+}
+
+// Adds (sign=1) or removes (sign=-1) a PO's ordered quantity from its
+// linked Inventory SKU. No-op if the PO has no linked SKU (older data from
+// before finding #9's fix, or a malformed record) instead of throwing.
+function _applyPOToInventory(po, sign) {
+  if (!po.skuId) return;
+  const sku = INVENTORY.find(i => i.id === po.skuId);
+  if (!sku) return;
+  sku.qty = Math.max(0, Number(sku.qty || 0) + sign * Number(po.qty || 0));
 }
 
 function saveReceivingNote(val) {
@@ -11613,6 +11640,11 @@ function resetReceivingChecklist() {
   const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
   if (!po) return;
   if (!confirm(`Reset the receiving checklist for PO #${po.id} (${po.item})? This clears all checked items — use this if the PO receives a new, separate shipment.`)) return;
+  // Keep Inventory consistent with the reset — if this PO's quantity was
+  // already added (checklist was fully verified), remove it now so a
+  // second real shipment's later completion doesn't double-count it.
+  const wasVerified = !!(RECEIVING_STATUS[po.id] && RECEIVING_STATUS[po.id].verifiedAt);
+  if (wasVerified) { _applyPOToInventory(po, -1); persistInventory(); }
   RECEIVING_STATUS[po.id] = { checks: RECEIVING_CHECKS.map(()=>false), verifiedAt: null, note: '' };
   LS.set('lh_receiving_status', RECEIVING_STATUS);
   renderReceivingChecklist();
@@ -11674,27 +11706,75 @@ function openPOModal() {
   document.getElementById('po-cost').value   = '0';
   document.getElementById('po-price').value  = '0';
   document.getElementById('po-buyer').value  = '';
+  // Populate the Inventory-item link selector — see savePO()/finding #9.
+  const skuSel = document.getElementById('po-sku-sel');
+  skuSel.innerHTML = '<option value="">— Select existing SKU —</option>' +
+    INVENTORY.map(i => `<option value="${i.id}">${escH(i.name)}</option>`).join('') +
+    '<option value="__new__">➕ New item (not yet in Inventory)</option>';
+  document.getElementById('po-item-new-wrap').style.display = 'none';
   document.getElementById('po-modal').style.display='block';
 }
 function closePOModal() { document.getElementById('po-modal').style.display='none'; }
 
+// Shows the New Item Name field only when "create new" is chosen, and
+// otherwise keeps po-item (hidden) mirroring the selected SKU's own name
+// so the rest of savePO()/the PO table keep working off one field.
+function onPoSkuChange() {
+  const val  = document.getElementById('po-sku-sel').value;
+  const wrap = document.getElementById('po-item-new-wrap');
+  if (val === '__new__') {
+    wrap.style.display = '';
+    document.getElementById('po-item').value = '';
+  } else {
+    wrap.style.display = 'none';
+    const sku = INVENTORY.find(i => i.id === val);
+    document.getElementById('po-item').value = sku ? sku.name : '';
+  }
+}
+
 function savePO() {
-  const item = document.getElementById('po-item').value.trim();
-  if (!item) { _showToast('Please enter an item description.', 2500, '#991b1b'); return; }
+  // FIXED (Say/Do Ledger leader-hub finding #9): a PO used to carry only
+  // a free-text item name with no link to any real Inventory SKU, so
+  // receiving an order never updated or created its Inventory record —
+  // Adam had to manually re-type every received order as a brand-new SKU
+  // entry in a completely separate tab. Every PO now resolves to a real
+  // skuId — either an existing SKU or one created here at qty 0 (the
+  // ordered quantity is only actually added once the order is really
+  // received — see toggleReceiving()/_applyPOToInventory()).
+  const skuSel = document.getElementById('po-sku-sel').value;
+  const item   = document.getElementById('po-item').value.trim();
+  if (!skuSel) { _showToast('Please select an Inventory item, or choose "New item".', 2500, '#991b1b'); return; }
+  if (skuSel === '__new__' && !item) { _showToast('Please enter a name for the new item.', 2500, '#991b1b'); return; }
+
+  const cat   = document.getElementById('po-cat').value;
+  const cost  = Number(document.getElementById('po-cost').value)||0;
+  const price = Number(document.getElementById('po-price').value)||0;
+
+  let skuId = skuSel;
+  let itemName = item;
+  if (skuSel === '__new__') {
+    skuId = 'sku' + Date.now();
+    INVENTORY.push({ id: skuId, name: item, cat, qty: 0, cost, price, reorder: 5 });
+    persistInventory();
+  } else {
+    const sku = INVENTORY.find(i => i.id === skuId);
+    itemName = sku ? sku.name : item;
+  }
+
   PURCHASE_ORDERS.push({
     id: ++poCounter,
-    item, vendor: document.getElementById('po-vendor').value.trim()||'TBD',
-    cat:  document.getElementById('po-cat').value,
+    item: itemName, skuId,
+    vendor: document.getElementById('po-vendor').value.trim()||'TBD',
+    cat,
     qty:  Number(document.getElementById('po-qty').value)||1,
-    cost: Number(document.getElementById('po-cost').value)||0,
-    price:Number(document.getElementById('po-price').value)||0,
+    cost, price,
     buyer:document.getElementById('po-buyer').value.trim()||'Unassigned',
     stage:'Market Research',
   });
   persistPO();
   closePOModal();
   renderPOTable();
-  _showToast(`✅ PO created: ${item}`);
+  _showToast(`✅ PO created: ${itemName}`);
 }
 
 function updatePOStage(id, stage) {
