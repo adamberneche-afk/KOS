@@ -950,11 +950,21 @@ function formatDateYMD_(date) {
 //
 // Returns: profile object, or a minimal default if student not found.
 // ---------------------------------------------------------------------------
-function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
+// scrStanding (Say/Do Ledger cas-ccps Extension 1: SCR-to-warmup bridge) —
+// optional array from 30_SCRSuggestionEngine.js's
+// getStudentScrStandingForCompetencies_(), computed by the CALLER
+// (24_WarmUpBridge.js) and passed in here rather than fetched by this
+// function directly — Script 30 is bound only to cas-ccps:central-ledger,
+// not to cas-ccps:teacher-dashboard, but this file (23) is bound to BOTH
+// (see tools/gas-lint/project-map.json), so this file must never itself
+// reference a Script-30-only symbol. Defaults to [] so every existing
+// caller (there is currently exactly one, 24_WarmUpBridge.js, which now
+// passes it) keeps working unchanged if it's ever omitted.
+function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds, scrStanding) {
   const spSheet = ss.getSheetByName(cfg.tabs.studentProfiles);
   if (!spSheet) {
     Logger.log("[S23] StudentProfiles tab not found in getStudentProfileSnapshot_.");
-    return buildDefaultSnapshot_(studentEmail, lessonCompIds);
+    return buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding);
   }
 
   const data  = spSheet.getDataRange().getValues();
@@ -1039,14 +1049,40 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
       // ── Shadow matrix — drives archetype selection in Flow 3 ─────────────
       shadow_matrix:          shadowMatrix,
       unit_current:           unitCurrent,
-      shadow_archetype_note:  shadowArchetypeNote  // null when below threshold
+      shadow_archetype_note:  shadowArchetypeNote,  // null when below threshold
+      // NEW (Say/Do Ledger cas-ccps Extension 1: SCR-to-warmup bridge) — a
+      // soft signal/tie-breaker only, never overriding evaluation_signals or
+      // shadow_archetype_note above. Not yet consumed by any Flow 3 prompt
+      // template — passed through so a future prompt-template change can use
+      // it without another Script 23 edit, same precedent already set for
+      // 31_PacingGuideManager.js's chain_node/esports_connection fields (see
+      // docs/CAS_Flow3_Flow4_Specification.html).
+      scr_standing_note:      _buildScrStandingNote_(scrStanding)
     };
   }
 
   // No profile found — student registered after last 3am run
   Logger.log("[S23] No profile found for " + studentEmail +
              " — using default snapshot. Profile will exist after tonight's 3am run.");
-  return buildDefaultSnapshot_(studentEmail, lessonCompIds);
+  return buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding);
+}
+
+// ---------------------------------------------------------------------------
+// _buildScrStandingNote_ (Say/Do Ledger cas-ccps Extension 1)
+// Turns getStudentScrStandingForCompetencies_()'s array into one
+// plain-language sentence, mirroring shadow_archetype_note's own
+// null-or-single-string shape above — easy for a prompt template to drop in
+// as a single line, easy to leave out entirely (null) when there's nothing
+// to say. Distinguishes a teacher-confirmed/overridden rating from an
+// unconfirmed AI suggestion, since the former is a much stronger signal.
+// ---------------------------------------------------------------------------
+function _buildScrStandingNote_(scrStanding) {
+  if (!scrStanding || !scrStanding.length) return null;
+  const parts = scrStanding.map(function(s) {
+    const basis = s.decided ? "teacher-confirmed" : "AI-suggested, not yet reviewed by the teacher";
+    return s.competencyId + ": " + s.rating + "/5 (" + basis + ")";
+  });
+  return "Current SCR standing on today's competencies — " + parts.join("; ") + ".";
 }
 
 // ---------------------------------------------------------------------------
@@ -1055,7 +1091,7 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
 // All gaps default to all of today's lesson competencies (nothing addressed).
 // Flow 3 will treat this student as a new learner with no prior history.
 // ---------------------------------------------------------------------------
-function buildDefaultSnapshot_(studentEmail, lessonCompIds) {
+function buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding) {
   return {
     student_email:          studentEmail,
     student_name:           "",
@@ -1075,7 +1111,13 @@ function buildDefaultSnapshot_(studentEmail, lessonCompIds) {
     // history yet" values a new learner should actually carry.
     shadow_matrix:          {},
     unit_current:           "",
-    shadow_archetype_note:  null
+    shadow_archetype_note:  null,
+    // Say/Do Ledger cas-ccps Extension 1 — same reasoning as above: a
+    // brand-new student can still have real SCR standing (SCR evidence
+    // predates the StudentProfiles nightly rebuild), so this default still
+    // computes a real note from whatever was passed in rather than
+    // hardcoding null.
+    scr_standing_note:      _buildScrStandingNote_(scrStanding)
   };
 }
 

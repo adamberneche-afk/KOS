@@ -780,6 +780,12 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
 
     <div class="modal-body">
       <div class="form-error" id="form-error" role="alert" aria-live="assertive"></div>
+      <!-- NEW (Say/Do Ledger cas-ccps finding #8): in-modal payoff banner —
+           populated in openModal() from the already-loaded dashboard's
+           warm-up readiness data (no extra round-trip). Hidden entirely if
+           that data isn't available yet (M2 not enabled, or dashboard hasn't
+           loaded) rather than showing a confusing placeholder. -->
+      <div id="lesson-payoff-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
       <div id="draft-stale-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
 
       <!-- Row 1: Date + Period -->
@@ -789,8 +795,17 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
           <input type="date" id="f-date" aria-required="true">
         </div>
         <div class="field">
-          <label for="f-period">Period / class</label>
-          <input type="text" id="f-period" placeholder="e.g. Period 3  (optional)">
+          <!-- FIXED (Say/Do Ledger cas-ccps finding #8): logging the exact
+               same lesson for 3 periods used to mean filling out this whole
+               form 3 separate times. A teacher can now enter several periods
+               at once here (comma-separated) and submitLesson() below fires
+               one submission per period automatically — same underlying
+               data model as before (one LessonContext row per period), just
+               without re-typing the objective/activity/vocabulary/
+               competencies 3 times. -->
+          <label for="f-period">Period(s) / class</label>
+          <input type="text" id="f-period" placeholder="e.g. Period 3, or Period 1, Period 3, Period 5  (optional)">
+          <div class="hint">Teaching the same lesson to several periods today? List them separated by commas — one lesson log is created for each.</div>
         </div>
       </div>
 
@@ -1756,6 +1771,23 @@ function openModal() {
     }
   }
 
+  // NEW (Say/Do Ledger cas-ccps finding #8): the payoff banner, sourced from
+  // whatever warm-up-readiness data the dashboard already has cached — no
+  // new server call just to populate a caption. withWarmUpHistory is the
+  // closest existing count to "students getting profile-based questions."
+  const payoffHint = document.getElementById("lesson-payoff-hint");
+  if (payoffHint) {
+    const wr = _lastDashData && _lastDashData.warmUpReadiness;
+    if (wr && wr.total) {
+      payoffHint.textContent = "💡 This is what powers personalized warm-ups — " +
+        wr.withWarmUpHistory + " of " + wr.total + " students across your classes are " +
+        "already getting profile-based questions because of logs like this one.";
+      payoffHint.style.display = "block";
+    } else {
+      payoffHint.style.display = "none";
+    }
+  }
+
   document.getElementById("form-error").style.display = "none";
   _modalReturnFocus = document.activeElement;
   document.getElementById("modal-backdrop").classList.add("open");
@@ -2060,6 +2092,12 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // ── submitLesson ──────────────────────────────────────────────────────────
+// NEW (Say/Do Ledger cas-ccps finding #8): a comma-separated Period field
+// now fires one submitLessonContext() call per period, in sequence — same
+// underlying data model as before (one LessonContext row per period, see
+// 22_LessonContextHandler.js), just without re-filling the whole form once
+// per period. A blank/single-value period field behaves exactly as before
+// (one submission, periodOrClass either "" or the one value entered).
 function submitLesson() {
   const btn = document.getElementById("submit-btn");
   btn.disabled    = true;
@@ -2072,9 +2110,13 @@ function submitLesson() {
   );
   const competencyIds = [...checkedBoxes].map(cb => cb.value).join(",");
 
-  const payload = {
+  const periodRaw = document.getElementById("f-period").value.trim();
+  const periods = periodRaw
+    ? periodRaw.split(",").map(p => p.trim()).filter(Boolean)
+    : [""];
+
+  const basePayload = {
     lessonDate:            document.getElementById("f-date").value,
-    periodOrClass:         document.getElementById("f-period").value.trim(),
     learningObjective:     document.getElementById("f-objective").value.trim(),
     activityDescription:   document.getElementById("f-activity").value.trim(),
     priorLessonConnection: document.getElementById("f-prior").value.trim(),
@@ -2082,38 +2124,76 @@ function submitLesson() {
     competencyIds:         competencyIds
   };
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      btn.textContent = "Log lesson";
+  const succeeded = [];
+  const failed    = []; // { period, error } — error is null for a network-level failure
+  let firstFrameDocUrl = null;
 
-      if (!result.success) {
-        showFormError(result.error || "Submission failed. Please try again.");
-        btn.disabled = false;
-        return;
-      }
+  function finish() {
+    btn.textContent = "Log lesson";
 
-      lastUsedPeriod = payload.periodOrClass;
-      _safeSessionSet_("casLastPeriod", lastUsedPeriod);
-      closeModal(true); // already saved — nothing to confirm discarding
-      showToast("Lesson logged. Alignment will be recorded automatically.");
+    if (succeeded.length === 0) {
+      // Every submission failed — nothing was saved, so leave the form
+      // filled in exactly like the original single-submission failure path
+      // did, rather than discarding what the teacher typed.
+      const distinctErrors = [...new Set(failed.map(f => f.error).filter(Boolean))];
+      showFormError(distinctErrors.length
+        ? distinctErrors.join(" ")
+        : "Something went wrong submitting this lesson. Your entries are still filled in above — try again.");
+      btn.disabled = false;
+      return;
+    }
 
-      // ── S27 hook: open Lesson Frame doc when Script 27 exists ──
-      if (result.frameDocUrl) {
-        // Popup blockers silently swallow this in most browsers rather than
-        // erroring — window.open returns null/undefined when that happens,
-        // so fall back to a dismissible link instead of losing the doc.
-        const opened = window.open(result.frameDocUrl, "_blank");
-        if (!opened) {
-          _showFrameLinkFallback(result.frameDocUrl);
+    lastUsedPeriod = periodRaw;
+    _safeSessionSet_("casLastPeriod", lastUsedPeriod);
+    closeModal(true); // at least one save succeeded — nothing left to discard
+
+    if (failed.length === 0) {
+      showToast(periods.length > 1
+        ? "Logged for " + succeeded.length + " periods. Alignment will be recorded automatically."
+        : "Lesson logged. Alignment will be recorded automatically.");
+    } else {
+      // Partial failure — say plainly which periods didn't go through
+      // instead of a blanket "done" that hides a real gap.
+      showToast("Logged for " + succeeded.join(", ") + ". Could not log for " +
+        failed.map(f => f.period).join(", ") + " — try those again.", true);
+    }
+
+    // ── S27 hook: open Lesson Frame doc when Script 27 exists ──
+    // Only the first one, even across multiple periods — opening one per
+    // period would be a popup storm, and the frame doc's content doesn't
+    // vary meaningfully by period for the same lesson.
+    if (firstFrameDocUrl) {
+      // Popup blockers silently swallow this in most browsers rather than
+      // erroring — window.open returns null/undefined when that happens,
+      // so fall back to a dismissible link instead of losing the doc.
+      const opened = window.open(firstFrameDocUrl, "_blank");
+      if (!opened) _showFrameLinkFallback(firstFrameDocUrl);
+    }
+  }
+
+  function submitNext(i) {
+    if (i >= periods.length) { finish(); return; }
+    const period  = periods[i];
+    const payload = Object.assign({}, basePayload, { periodOrClass: period });
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          succeeded.push(period || "(no period)");
+          if (!firstFrameDocUrl && result.frameDocUrl) firstFrameDocUrl = result.frameDocUrl;
+        } else {
+          failed.push({ period: period || "(no period)", error: result && result.error });
         }
-      }
-    })
-    .withFailureHandler(function(e) {
-      btn.textContent = "Log lesson";
-      btn.disabled    = false;
-      showFormError("Something went wrong submitting this lesson. Your entries are still filled in above — try again.");
-    })
-    .submitLessonContext(payload);
+        submitNext(i + 1);
+      })
+      .withFailureHandler(function(e) {
+        failed.push({ period: period || "(no period)", error: null });
+        submitNext(i + 1);
+      })
+      .submitLessonContext(payload);
+  }
+
+  submitNext(0);
 }
 
 function showFormError(msg) {
