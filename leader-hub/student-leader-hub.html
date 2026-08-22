@@ -1244,7 +1244,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ===== DECA CHAPTER HUB ===== -->
 <div id="view-deca" class="view">
   <div class="ph">
-    <div><div class="pt" id="orghub-title">🏆 DECA Chapter Hub</div><div class="ps" id="deca-hub-subtitle">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div></div>
+    <div><div class="pt" id="orghub-title">🏆 DECA Chapter Hub</div><div class="ps" id="deca-hub-subtitle">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div><div id="orghub-sync-badge" style="margin-top:.2rem"></div></div>
     <button class="btn btn-primary" onclick="showView('events')">All Events →</button>
   </div>
   <div id="deca-hub-content"></div>
@@ -1521,6 +1521,7 @@ window.onerror = function(msg, src, line, col, err) {
   <!-- Organization Tabs — rendered by renderOrgTabs() from ORGANIZATIONS, so
        an org added via Settings → Organizations gets a tab automatically. -->
   <div id="org-tabs" style="display:flex;gap:.3rem;margin-bottom:.75rem;flex-wrap:wrap"></div>
+  <div id="member-sync-badge" style="margin-bottom:.5rem"></div>
   <!-- FERPA Notice -->
   <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:.5rem .85rem;margin-bottom:.75rem;font-size:.75rem;color:#78350f;display:flex;align-items:center;gap:.6rem">
     <span style="font-size:1.1rem;flex-shrink:0">🔒</span>
@@ -6215,6 +6216,12 @@ function openEmailComposerForTrip(tripId, audience) {
 // Members page for full roster management.
 function renderOrgHub() {
   const titleEl = document.getElementById('orghub-title');
+  // Say/Do Ledger leader-hub #1: "last synced" used to be visible ONLY in
+  // Settings → Organizations — nowhere a co-advisor is actually looking
+  // while they work. Shown here (and in Members, see renderStudents) too,
+  // using the same _orgSyncStatusLine_ helper Settings itself now calls.
+  const badgeEl = document.getElementById('orghub-sync-badge');
+  if (badgeEl) badgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
   if (activeOrgId === 'deca') {
     if (titleEl) titleEl.textContent = '🏆 DECA Chapter Hub';
     renderDECAHub();
@@ -7145,6 +7152,11 @@ function setMemberTab(tab, btn){
 
 function renderStudents(){
   updateMemberStats();
+  // Say/Do Ledger leader-hub #1: same "last synced" indicator as
+  // renderOrgHub() — Members is the other place a co-advisor is actually
+  // working with this organization's synced data.
+  const syncBadgeEl = document.getElementById('member-sync-badge');
+  if (syncBadgeEl) syncBadgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
   const search = (document.getElementById('member-search')?.value||'').toLowerCase();
   const content = document.getElementById('member-tab-content');
   if(!content) return;
@@ -16747,7 +16759,7 @@ function renderOrgCatalogSettings() {
     const sync = ORG_SYNC[id];
     const syncRow = (sync && sync.enabled)
       ? `<div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;flex-wrap:wrap;padding-left:1.75rem">
-           <span style="font-size:.68rem;color:#166534;font-weight:600">🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.lastSyncedAt).toLocaleString()) : ''}</span>
+           <span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
            <button onclick="lhPullOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
            <button onclick="lhPushOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
            <button onclick="lhStopSharingOrg('${id}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
@@ -16799,6 +16811,28 @@ function _orgResultRows(orgId) {
     if (f === 'level') return (orgId === 'deca' ? r.eventId : r.levelKey) || '';
     return (r[f] === undefined || r[f] === null) ? '' : r[f];
   }));
+}
+
+// ── Sync safety helper (Say/Do Ledger leader-hub #1) ─────────────────────────
+// One shared, deterministic snapshot of an org's current local roster+results
+// — the same rows a push would send. Both push (to record "this is what I
+// just synced") and pull (to detect "has this browser changed anything since
+// the last time it synced?") call this, so there's exactly one definition of
+// "in sync" instead of two separately-maintained ideas of it.
+function _orgSyncSnapshot_(orgId) {
+  const payload = JSON.stringify({ r: _orgRosterRows(orgId), o: _orgResultRows(orgId) });
+  let h = 0;
+  for (let i = 0; i < payload.length; i++) { h = ((h << 5) - h + payload.charCodeAt(i)) | 0; }
+  return String(h);
+}
+
+// One shared "last synced" line, used everywhere a co-advisor is actually
+// looking at a shared org's data — not just Settings → Organizations, which
+// used to be the only place this was visible at all.
+function _orgSyncStatusLine_(orgId) {
+  const sync = ORG_SYNC[orgId];
+  if (!sync || !sync.enabled) return '';
+  return `🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.lastSyncedAt).toLocaleString()) : ''}`;
 }
 
 function lhShareOrg(orgId) {
@@ -16853,10 +16887,34 @@ async function lhPushOrgSync(orgId) {
   }
   if (res && res.conflict) { _showOrgSyncConflictModal(orgId, res); return; }
   if (!res || !res.ok) { _showToast('⚠ Push failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
-  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '' };
+  // localSnapshotHash records what THIS browser's local data looked like at
+  // the moment it was last confirmed to match the shared Sheet — pull uses
+  // it afterward to detect local edits made since, before ever overwriting
+  // them (see _doPullOrgSync).
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
   persistOrgSync();
   renderOrgCatalogSettings();
+  if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+  if (document.getElementById('member-tab-content')) renderStudents();
   _showToast('✅ ' + org.name + ' pushed to the shared Sheet', 3200, '#166534');
+}
+
+// lhPullOrgSync() is the confirming, user-facing entry point (the "⬇️ Pull"
+// button in Settings → Organizations) — it always asks first, mirroring
+// lhJoinOrg()'s existing confirm pattern (Say/Do Ledger leader-hub #1: this
+// button used to skip confirmation entirely, unlike Join). Call sites that
+// already got explicit, in-context confirmation from their own dialog
+// (lhJoinOrg's own confirm, the conflict modal's "Pull Latest First" button)
+// call _doPullOrgSync() directly instead, so nobody confirms the same pull
+// twice.
+function lhPullOrgSync(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  const orgName = org ? org.name : orgId;
+  _showConfirm(
+    `Pull the latest ${orgName} data from the shared Sheet?\n\nThis replaces this browser's local roster and results for ${orgName} with what's on the Sheet.`,
+    () => _doPullOrgSync(orgId),
+    { confirmLabel: 'Pull', danger: false, ariaLabel: `Pull organization ${orgName}` }
+  );
 }
 
 // Pulls an org's current synced state and replaces this browser's local
@@ -16865,9 +16923,21 @@ async function lhPushOrgSync(orgId) {
 // local — that's the point of sharing a custom org — but DECA's own
 // hardcoded config is never touched, matching the guarantee the rest of
 // this app makes about Adam's built-in DECA experience.
-async function lhPullOrgSync(orgId) {
+//
+// Before any of that, checks this browser's current local data against the
+// snapshot hash recorded the last time this org was synced (push OR pull) —
+// mirroring pushOrgSync_'s own compare-and-swap on the server, just against
+// a local baseline instead of a remote timestamp (Say/Do Ledger leader-hub
+// #1: pull used to have no equivalent check at all, so a browser with real
+// unpushed local edits would silently lose them to any pull).
+async function _doPullOrgSync(orgId) {
   if (!EMAIL_BRIDGE.url()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    return;
+  }
+  const priorState = ORG_SYNC[orgId];
+  if (priorState && priorState.localSnapshotHash !== undefined && priorState.localSnapshotHash !== _orgSyncSnapshot_(orgId)) {
+    _showOrgPullDriftModal(orgId);
     return;
   }
   let res;
@@ -16921,7 +16991,12 @@ async function lhPullOrgSync(orgId) {
     persistOrgResults();
   }
 
-  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '' };
+  // localSnapshotHash is computed here, AFTER the pulled data has just been
+  // written into `students`/results above — it must reflect what this
+  // browser's data looks like right now (which now matches the remote),
+  // not the pre-pull state, so a later pull's drift check compares against
+  // the right baseline.
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
   persistOrgSync();
 
   renderOrgTabs();
@@ -16960,7 +17035,10 @@ function _showOrgSyncConflictModal(orgId, res) {
   modal._onCancel = closeIt;
   modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
   document.getElementById('org-conflict-cancel').onclick = closeIt;
-  document.getElementById('org-conflict-pull').onclick = () => { closeIt(); lhPullOrgSync(orgId); };
+  // Goes straight to _doPullOrgSync, not lhPullOrgSync — the user already
+  // made an explicit, informed choice by clicking this button; a second
+  // "are you sure?" confirm right after would just be an extra click.
+  document.getElementById('org-conflict-pull').onclick = () => { closeIt(); _doPullOrgSync(orgId); };
   document.getElementById('org-conflict-push').onclick = () => {
     closeIt();
     // Re-push with expectedUpdatedAt cleared to the *server's* reported
@@ -16973,6 +17051,44 @@ function _showOrgSyncConflictModal(orgId, res) {
     lhPushOrgSync(orgId);
   };
   document.getElementById('org-conflict-pull').focus();
+}
+
+// Shown when _doPullOrgSync's own local-vs-last-synced-snapshot check finds
+// this browser has edits (new members, results, dues changes) that were
+// never pushed — pulling would silently throw them away otherwise. Mirrors
+// _showOrgSyncConflictModal's shape (never a silent auto-resolution either
+// way), just for the opposite direction of the same underlying risk.
+function _showOrgPullDriftModal(orgId) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-pull-drift-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="Unsynced local changes for ${escH(org.name)}">
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">⚠️ This browser has local changes to <strong>${escH(org.name)}</strong> that haven't been pushed to the shared Sheet yet. Pulling now would discard them.</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <button class="btn btn-primary btn-sm" id="org-drift-push">⬆️ Push My Changes First</button>
+      <button class="btn btn-danger btn-sm" id="org-drift-discard">⬇️ Discard Local Changes & Pull</button>
+      <button class="btn btn-outline btn-sm" id="org-drift-cancel">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-drift-cancel').onclick = closeIt;
+  document.getElementById('org-drift-push').onclick = () => { closeIt(); lhPushOrgSync(orgId); };
+  document.getElementById('org-drift-discard').onclick = () => {
+    closeIt();
+    // The one deliberate override path — clear the stored hash so
+    // _doPullOrgSync's comparison can't fire again for this same pull, then
+    // proceed exactly as if there were no local edits to protect.
+    if (ORG_SYNC[orgId]) { ORG_SYNC[orgId] = Object.assign({}, ORG_SYNC[orgId], { localSnapshotHash: undefined }); persistOrgSync(); }
+    _doPullOrgSync(orgId);
+  };
+  document.getElementById('org-drift-cancel').focus();
 }
 
 async function lhOpenJoinOrgModal() {
@@ -17018,7 +17134,12 @@ async function lhOpenJoinOrgModal() {
 
 function lhJoinOrg(orgId) {
   const existing = ORGANIZATIONS[orgId];
-  const doPull = () => { const m = document.getElementById('org-join-modal'); if (m) m.remove(); lhPullOrgSync(orgId); };
+  // Calls _doPullOrgSync directly, not lhPullOrgSync — this function's own
+  // _showConfirm below (or the immediate doPull() for a brand-new org) is
+  // already the confirmation step; a second one right after would just be
+  // a redundant extra click. The drift check inside _doPullOrgSync still
+  // applies either way.
+  const doPull = () => { const m = document.getElementById('org-join-modal'); if (m) m.remove(); _doPullOrgSync(orgId); };
   if (existing) {
     _showConfirm(
       `Pull the latest shared data for ${existing.name}? This replaces its roster and results in this browser with what's on the shared Sheet.`,

@@ -246,6 +246,15 @@ function checkAiJob_(body) {
 // dropped/updated). This is last-full-snapshot-wins-with-a-warning, not
 // field-level merging — sufficient for the low-concurrency 2-advisor case
 // this is built for, not a substitute for real-time collaboration.
+//
+// FIXED (Say/Do Ledger leader-hub #1): a missing expectedUpdatedAt against an
+// org that already has a remote meta row is now ALSO treated as a conflict,
+// not skipped. A browser that has never synced this org at all — a built-in
+// org (DECA) that was never explicitly "enabled" for sync locally, or a
+// brand-new device — sends no expectedUpdatedAt; this used to sail straight
+// past the compare-and-swap and silently overwrite whatever a co-advisor had
+// already published. This browser genuinely doesn't know what's already
+// there, so it can't be allowed to blindly overwrite it either.
 
 const ORG_SYNC_SHEET_PROP = 'ORG_SYNC_SHEET_ID';
 const ORG_META_SHEET_NAME = '_org_meta';
@@ -332,8 +341,19 @@ function pushOrgSync_(body) {
   // Compare-and-swap: if the pusher's last-known remote UpdatedAt doesn't
   // match what's actually there right now, someone else pushed in between —
   // reject without writing anything so nothing is silently overwritten.
-  if (existing && body.expectedUpdatedAt) {
+  if (existing) {
     const remoteUpdatedAt = existing.row[OM_COL.UPDATED_AT];
+    if (!body.expectedUpdatedAt) {
+      // See the "FIXED" note above this function — no expectedUpdatedAt at
+      // all against an org that already has remote data is treated the same
+      // as a real mismatch, not skipped.
+      return {
+        ok: false,
+        conflict: true,
+        remoteUpdatedAt: remoteUpdatedAt instanceof Date ? remoteUpdatedAt.toISOString() : remoteUpdatedAt,
+        remoteUpdatedBy: existing.row[OM_COL.UPDATED_BY] || '',
+      };
+    }
     const remoteMs   = new Date(remoteUpdatedAt).getTime();
     const expectedMs = new Date(body.expectedUpdatedAt).getTime();
     if (remoteMs !== expectedMs) {
