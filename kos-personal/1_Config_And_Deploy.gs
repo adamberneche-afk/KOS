@@ -79,6 +79,14 @@ const CFG = {
   // ── Turnstile (reconciliation decision 2 / 10_Turnstile.gs) ────
   TURNSTILE_CONCURRENCY: 1,   // max concurrent STUDIO_ACTIVE rows
   TURNSTILE_STALE_MINS:  30,  // minutes before a stuck STUDIO_ACTIVE row resets
+  // Say/Do Ledger kos-personal finding #2: unlike Registrar's
+  // REGISTRAR_RETRY_LIMIT, Turnstile has no escalate-to-failure ceiling —
+  // a row with no Studio flow ever completing it just cycles
+  // PENDING_FLOW → STUDIO_ACTIVE → (stale reset) forever, Retry_Count
+  // climbing without bound. This threshold is a UI-only "call this row
+  // stuck" signal for getQueueMetrics()/8_WebApp_UI.html — it doesn't
+  // change Turnstile's own state machine (10_Turnstile.gs untouched).
+  TURNSTILE_STUCK_THRESHOLD: 3,
 
   // ── Shadow Matrix (reconciliation decision 1 / 5_Error_And_Utilities.gs) ──
   SHADOW_VERIFY_THRESHOLD: 0.75,  // confidence to mark a shadow question VERIFIED
