@@ -6668,6 +6668,14 @@ let _lastOrgResultLevel = {}, _lastOrgResultPlace = {};
 let ORG_SYNC = LS.get('lh_org_sync', {});
 function persistOrgSync() { LS.set('lh_org_sync', ORG_SYNC); }
 
+// Say/Do Ledger leader-hub #10: which orgs this browser has already seen the
+// one-time "Welcome, co-advisor" disclosure for, keyed by orgId so joining a
+// second shared org still gets its own welcome. Separate from ORG_SYNC so
+// stopping and re-joining the same org (ORG_SYNC[orgId] deleted, then
+// recreated) doesn't show the welcome a second time.
+let ORG_WELCOME_SEEN = LS.get('lh_org_welcome_seen', {});
+function persistOrgWelcomeSeen() { LS.set('lh_org_welcome_seen', ORG_WELCOME_SEEN); }
+
 function renderOrgResults(orgId) {
   const org = ORGANIZATIONS[orgId] || ORGANIZATIONS.deca;
   const levels = org.levels || [];
@@ -15991,6 +15999,18 @@ function openSurveyModal(){
         <input type="file" id="lh-org-file" accept="application/json" style="display:none" onchange="lhImportOrgJson(this)">
       </div>
 
+      <!-- Say/Do Ledger leader-hub #10: permanent counterpart to the one-time
+           "Welcome, co-advisor" modal (_showOrgWelcomeModal) — discoverable
+           any time, not just on first join, matching the persistent-view
+           pattern already used elsewhere (cas-ccps #7's "My Info" view). -->
+      <details style="margin-bottom:1.4rem">
+        <summary style="cursor:pointer;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">ℹ️ About This Tool &amp; Syncing</summary>
+        <div style="margin-top:.6rem;font-size:.78rem;color:#333;line-height:1.6;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.8rem .95rem">
+          <p style="margin-bottom:.6rem"><strong>What this is:</strong> LeaderHub is a personal tool Adam Berneche built and maintains for his own workload — it isn't a district-provisioned or IT-supported product. There's no uptime guarantee and no support desk; if something breaks, it gets fixed on Adam's own time. If you're a co-advisor sharing an organization here, keep your own backup of anything you can't afford to lose (dues records, competition results) — this is a convenience layer, not a system of record.</p>
+          <p style="margin:0"><strong>How syncing works:</strong> Nothing syncs automatically. ⬆️ Push sends your copy to the shared Sheet; ⬇️ Pull brings in what's on the Sheet — both always ask you to confirm first. If a push tells you someone else updated it since you last synced, or a pull tells you that you have local changes that haven't been pushed yet, that's this app catching a real conflict before it happens, not a bug — pick pull-first or push-anyway; it's never resolved silently behind your back.</p>
+        </div>
+      </details>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Course Catalog</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         The Student Competency Records tracker ships with Adam's own 3 courses built in. Add your own — with their competency list or Standards of Learning — as a JSON file instead of editing the app. <a href="#" onclick="lhDownloadCourseTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
@@ -16930,25 +16950,31 @@ function lhPullOrgSync(orgId) {
 // a local baseline instead of a remote timestamp (Say/Do Ledger leader-hub
 // #1: pull used to have no equivalent check at all, so a browser with real
 // unpushed local edits would silently lose them to any pull).
+// Returns true on a completed pull, false/undefined on every early-return
+// path (bridge not configured, drift detected, network failure, server
+// error, nothing shared yet, empty roster guard) — lhJoinOrg uses this to
+// know whether to show the one-time welcome disclosure (Say/Do Ledger
+// leader-hub #10), since that should only ever follow a real, completed
+// first sync, never a failed attempt.
 async function _doPullOrgSync(orgId) {
   if (!EMAIL_BRIDGE.url()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
-    return;
+    return false;
   }
   const priorState = ORG_SYNC[orgId];
   if (priorState && priorState.localSnapshotHash !== undefined && priorState.localSnapshotHash !== _orgSyncSnapshot_(orgId)) {
     _showOrgPullDriftModal(orgId);
-    return;
+    return false;
   }
   let res;
   try {
     res = await callGAS('pullOrgSync', { orgId });
   } catch (e) {
     _showToast('⚠ Could not reach Apps Script bridge.', 4000, '#991b1b');
-    return;
+    return false;
   }
-  if (!res || !res.ok) { _showToast('⚠ Pull failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
-  if (!res.found) { _showToast('This organization has never been shared yet.', 3500, '#991b1b'); return; }
+  if (!res || !res.ok) { _showToast('⚠ Pull failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return false; }
+  if (!res.found) { _showToast('This organization has never been shared yet.', 3500, '#991b1b'); return false; }
   // FIXED: the roster wipe below used to run unconditionally, even if
   // the remote pull came back with zero rows — a transient Sheet-read
   // glitch, or a co-advisor who'd just cleared the tab by mistake, would
@@ -16956,7 +16982,7 @@ async function _doPullOrgSync(orgId) {
   // confirmation and no undo. Bail out before the wipe instead.
   if (!res.rosterRows || !res.rosterRows.length) {
     _showToast('⚠ Pull returned no roster rows — keeping your existing roster rather than clearing it.', 5500, '#991b1b');
-    return;
+    return false;
   }
 
   if (orgId !== 'deca' && res.config) {
@@ -17005,6 +17031,7 @@ async function _doPullOrgSync(orgId) {
   if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
   renderOrgCatalogSettings();
   _showToast('✅ Pulled latest ' + (ORGANIZATIONS[orgId] ? ORGANIZATIONS[orgId].name : orgId) + ' data', 3200, '#166534');
+  return true;
 }
 
 // Shown when pushOrgSync_ rejects a push with {conflict:true} — someone
@@ -17091,6 +17118,42 @@ function _showOrgPullDriftModal(orgId) {
   document.getElementById('org-drift-cancel').focus();
 }
 
+// Say/Do Ledger leader-hub #10 — shown once per org, right after a co-advisor's
+// first successful join (see lhJoinOrg's doPull). Covers what this tool
+// actually is, the practical reliability implication of that, and — folded in
+// per the decision's own sequencing note, now that #1 has shipped — the real
+// sync-safety behavior a co-advisor will actually see going forward. The same
+// content lives permanently in Settings → Organizations (see the "About This
+// Tool & Syncing" block in renderOrgCatalogSettings' surrounding markup) so
+// it's not just a one-time modal a co-advisor can never find again.
+function _showOrgWelcomeModal(orgId) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-welcome-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:460px;width:92%;max-height:85vh;overflow-y:auto;border-radius:12px;padding:1.25rem" role="dialog" aria-modal="true" aria-label="Welcome, co-advisor">
+    <h3 style="margin:0 0 .6rem;font-size:1.05rem">👋 Welcome, co-advisor</h3>
+    <div style="font-size:.82rem;color:#333;line-height:1.6">
+      <p style="margin-bottom:.7rem">You just joined <strong>${escH(org.name)}</strong>. A couple of things worth knowing before you use this alongside your co-advisor:</p>
+      <p style="margin-bottom:.7rem"><strong>What this is:</strong> LeaderHub is a personal tool Adam Berneche built and maintains for his own workload — it isn't a district-provisioned or IT-supported product. There's no uptime guarantee and no support desk; if something breaks, it gets fixed on Adam's own time. Keep your own backup of anything you can't afford to lose (dues records, competition results) — this is a convenience layer, not a system of record.</p>
+      <p style="margin-bottom:.7rem"><strong>How syncing works:</strong> Nothing syncs automatically. <strong>⬆️ Push</strong> sends your copy to the shared Sheet; <strong>⬇️ Pull</strong> brings in your co-advisor's copy — both always ask you to confirm first. If a push says someone else updated it since you last synced, or a pull says you have local changes that haven't been pushed yet, that's this app catching a real conflict before it happens — pick pull-first or push-anyway, it's never resolved silently behind your back.</p>
+      <p style="margin:0;color:var(--muted);font-size:.76rem">This same explanation lives permanently under Settings → Organizations, so you can find it again any time.</p>
+    </div>
+    <div style="margin-top:1rem;text-align:right">
+      <button class="btn btn-primary btn-sm" id="org-welcome-close">Got it</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-welcome-close').onclick = closeIt;
+  document.getElementById('org-welcome-close').focus();
+}
+
 async function lhOpenJoinOrgModal() {
   if (!EMAIL_BRIDGE.url()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
@@ -17139,7 +17202,21 @@ function lhJoinOrg(orgId) {
   // already the confirmation step; a second one right after would just be
   // a redundant extra click. The drift check inside _doPullOrgSync still
   // applies either way.
-  const doPull = () => { const m = document.getElementById('org-join-modal'); if (m) m.remove(); _doPullOrgSync(orgId); };
+  const doPull = () => {
+    const m = document.getElementById('org-join-modal'); if (m) m.remove();
+    // Say/Do Ledger leader-hub #10: a one-time "Welcome, co-advisor"
+    // disclosure the first time a join actually completes for this org —
+    // gated on the pull's real success (not just on clicking Join) and on
+    // ORG_WELCOME_SEEN so it never shows twice for the same org, even across
+    // a stop-sharing/rejoin cycle.
+    _doPullOrgSync(orgId).then(ok => {
+      if (ok && !ORG_WELCOME_SEEN[orgId]) {
+        ORG_WELCOME_SEEN[orgId] = true;
+        persistOrgWelcomeSeen();
+        _showOrgWelcomeModal(orgId);
+      }
+    });
+  };
   if (existing) {
     _showConfirm(
       `Pull the latest shared data for ${existing.name}? This replaces its roster and results in this browser with what's on the shared Sheet.`,
