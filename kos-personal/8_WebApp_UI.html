@@ -803,8 +803,19 @@ textarea { line-height: 1.55; }
          override to 8px, a stray 2px inconsistency between tabs. -->
     <div class="sec-lbl has-tip">
       Ambient calibration
-      <span class="tip-icon" title="The system learns your context passively from sessions. Each question builds confidence over time — no manual setup required.">?</span>
+      <!-- FIXED (Say/Do Ledger kos-personal finding #4): "no manual setup
+           required" was true about day-to-day use (no per-session
+           logging beyond your normal pastes) but false about the
+           one-time setup wizard — calibration genuinely doesn't start
+           until that completes (processInferenceQueue() is TIER_2,
+           hard-gated cold — 1_Config_And_Deploy.gs's _coldEngineGate()).
+           Narrowed to only the true claim; the state-aware note below
+           (loadShadowMatrix()) carries the setup-dependent part instead
+           of burying it in a hover tooltip easy to miss. -->
+      <span class="tip-icon" title="The system learns your context passively from sessions — no need to log anything beyond your normal session pastes. Each question builds confidence over time.">?</span>
     </div>
+    <!-- NEW (finding #4): hidden unless cold — see loadShadowMatrix(). -->
+    <div id="calib-state-note" class="empty" style="display:none;padding:4px 0 8px"></div>
     <!-- FIXED (finding #8): same aria-live gap/fix as #curator-list above. -->
     <div id="shadow-matrix-list" style="margin-bottom:4px" role="status" aria-live="polite">
       <div class="empty" style="padding:8px 0">
@@ -1606,6 +1617,20 @@ function loadShadowMatrix() {
     if (dot) dot.className = 'dot ' + (modeColors[res.engine_mode] || 'dot-unk');
     if (lbl) lbl.textContent = friendlyEngineMode(res.engine_mode);
 
+    // NEW (finding #4): state-aware note replacing the tip-icon's old
+    // blanket "no manual setup required" claim — true once armed, false
+    // before the one-time setup wizard has run.
+    const stateNote = document.getElementById('calib-state-note');
+    if (stateNote) {
+      if (res.engine_armed) {
+        stateNote.style.display = 'none';
+      } else {
+        stateNote.style.display = '';
+        stateNote.innerHTML = '<i class="ti ti-info-circle" style="font-size:14px;opacity:.5;margin-right:4px"></i>' +
+          'Calibration hasn\'t started — finish the one-time setup wizard below to activate it.';
+      }
+    }
+
     el.innerHTML = res.questions.map(q => {
       const pct    = Math.round(q.confidence * 100);
       const barCol = q.status==='VERIFIED' ? 'var(--success)' : q.status==='HYPOTHESIZED' ? 'var(--amber)' : 'var(--text3)';
@@ -2085,7 +2110,16 @@ function loadVectorState() {
       _diagPanelError('vec-list', (res && res.message) || 'Vector state unavailable.', 'loadVectorState', 'ti-alert-triangle');
       return;
     }
-    if (!res.vectors || res.vectors.length === 0) {
+    // FIXED (Say/Do Ledger kos-personal finding #4): getVectorState()'s
+    // "nothing processed yet" branch still returns a full vectors array
+    // (one zero-score entry per known theme, so the list always shows
+    // every category name) — checking vectors.length here was dead code,
+    // since that array is never actually empty. !res.session_uid is the
+    // real "has anything ever written to the matrix" signal (only set
+    // once a real session updates it), and is what makes res.message's
+    // state-aware text (armed vs. cold-with-sessions-queued vs.
+    // cold-with-nothing-queued — see getVectorState()) actually reachable.
+    if (!res.vectors || res.vectors.length === 0 || !res.session_uid) {
       el.innerHTML = '<div class="empty" style="padding:8px 0">' +
         '<i class="ti ti-chart-bar" style="font-size:18px;opacity:.4"></i>' +
         (res.message ? esc(res.message) : 'Process your first session to see theme data.') + '</div>';
