@@ -16130,6 +16130,17 @@ function openSurveyModal(){
         <button onclick="lhClearStudentIdMap()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;color:#dc2626;cursor:pointer">Clear</button>
       </div>
 
+      <!-- Say/Do Ledger cross-portfolio Flow Health &amp; Inventory extension:
+           every AI-drafting feature routes through the same Email Bridge
+           job queue (see callGAS('aiDraft',...) sites) but has no visible
+           signal today for "is any Flow actually built for this yet" —
+           see renderAiFlowHealthSettings() below. -->
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">AI Flow Health</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Every AI-drafting feature (Brag Board, Email Composer, Lesson Plan assist, Financial analysis, Archive/WBL insights) submits a job through your Email Bridge, but only actually produces AI output once you've built the matching Google Workspace Flow for it (see LEADERHUB_AI_FLOW_SETUP.md) — until then it falls back to a template, silently. This shows which types have ever actually completed a job.
+      </div>
+      <div id="ai-flow-health-list" style="margin-bottom:1.4rem"></div>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Quick Links</div>
       <div style="display:flex;gap:.6rem;justify-content:center">
         <button onclick="document.getElementById('survey-modal').remove();openJournal()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:600;cursor:pointer">📓 Open Journal</button>
@@ -16142,6 +16153,7 @@ function openSurveyModal(){
   renderOrgCatalogSettings();
   renderPacingImportSettings();
   _renderStudentIdStatus();
+  renderAiFlowHealthSettings();
   m.onclick=e=>{ if(e.target===m) m.remove(); };
 }
 
@@ -17552,6 +17564,70 @@ function _renderStudentIdStatus() {
   el.textContent = `✅ ${map.length} student${map.length !== 1 ? 's' : ''} mapped` +
     (updated ? ' — updated ' + new Date(updated).toLocaleDateString() : '');
   el.style.color = '#166534';
+}
+
+// ── AI Flow Health panel (Say/Do Ledger cross-portfolio Flow Health &amp;
+// Inventory extension) — Settings → AI Flow Health. Same "make correctness
+// the only easy path" instinct as #6/#7/#8's shared UI primitives: one
+// shared three-state read of the server's lifetime per-type counters
+// (getFlowHealth_(), EmailBridge.gs), rather than each of this file's 6 AI-
+// drafting features independently guessing whether its own Flow is built.
+// Mirrors kos-personal's own Turnstile/Registrar "healthy vs never-
+// completed-a-job vs no-jobs-yet" convention (8_WebApp_UI.html) adapted to
+// this system's actual signal: AI_Queue rows are always deleted (no
+// durable row history), so "healthy" here means the LIFETIME counter has
+// ever recorded a completed or errored job for that type — either counts,
+// since even an error proves a Flow is actually running and responding.
+const AI_FLOW_LABELS = {
+  EMAIL_COMPOSE:    '✉️ Email Composer',
+  ARCHIVE_INSIGHTS: '📦 Archive Insights',
+  WBL_INSIGHTS:     '🏪 WBL Insights',
+  LP_ASSIST:        '📝 Lesson Plan Assist',
+  FIN_ANALYSIS:     '💰 Financial Analysis',
+  BRAG_EMAIL:       '🎉 Brag Board Email',
+};
+
+async function renderAiFlowHealthSettings() {
+  const el = document.getElementById('ai-flow-health-list');
+  if (!el) return;
+
+  if (!EMAIL_BRIDGE.url()) {
+    el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Connect an Email Bridge URL (above) to see Flow status here.</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Checking…</div>`;
+
+  let res;
+  try {
+    res = await callGAS('flowHealth', {});
+  } catch (e) {
+    el.innerHTML = `<div style="font-size:.75rem;color:#991b1b">Couldn't reach Email Bridge — ${escH(e.message || String(e))}</div>`;
+    return;
+  }
+  if (!res || !res.ok) {
+    el.innerHTML = `<div style="font-size:.75rem;color:#991b1b">${escH((res && res.error) || 'Unknown error')}</div>`;
+    return;
+  }
+
+  const types = res.types && res.types.length ? res.types : Object.keys(AI_FLOW_LABELS);
+  el.innerHTML = types.map(type => {
+    const s = (res.stats && res.stats[type]) || { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0 };
+    const label = AI_FLOW_LABELS[type] || type;
+    let icon, color, text;
+    if (!s.submitted) {
+      icon = '⚪'; color = 'var(--muted)'; text = 'No jobs submitted yet';
+    } else if (s.completed || s.errored) {
+      icon = '✅'; color = '#166534';
+      text = s.completed + ' completed' + (s.errored ? ', ' + s.errored + ' errored' : '') + ' — Flow is connected';
+    } else {
+      icon = '⚠️'; color = '#b45309';
+      text = s.submitted + ' submitted, none ever finished — Flow may not be built yet';
+    }
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.78rem">
+      <span>${escH(label)}</span>
+      <span style="color:${color};text-align:right">${escH(text)}</span>
+    </div>`;
+  }).join('');
 }
 
 // Forward substitution — applied to a COPY of the Brag Board wins text used
