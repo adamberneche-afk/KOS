@@ -13,15 +13,26 @@ Compliance" section — that document has not yet been reconciled with this one
 into a single canonical statement, which remains a known open item (see
 `README.md`'s own note on this).
 
-**Retention policy — not yet defined.** Data in every tab below persists
-indefinitely today; there is no deletion/archival mechanism anywhere in
-cas-ccps. A configurable retention period (`SCR_RETENTION_YEARS`, defaulting
-to 5 pending direct confirmation with VDOE/central-office records staff) plus
-an audit-export mechanism for `SCRDecisionLog` specifically is planned as a
-separate, later fix (Say/Do Ledger cas-ccps Extension 3 / this plan's Phase C
-item C3). Until that lands, treat "retention: indefinite, no policy" as the
-honest answer for every tab in this document — this document does not assert
-a retention period that isn't actually enforced anywhere.
+**Retention policy — partially defined, `SCRDecisionLog` only.** Every other
+tab in this document still persists indefinitely, with no deletion/archival
+mechanism at all. `SCRDecisionLog` — the one tab with an actual VDOE/Perkins
+legal retention obligation — is the exception, built as Say/Do Ledger cas-ccps
+Extension 3: a configurable `SCR_RETENTION_YEARS` Script Property (default 5
+years, **still unconfirmed against a primary source** — direct confirmation
+with VDOE/central-office records staff remains outstanding) drives an
+automated archival routine (`_archiveExpiredScrDecisions_()` in
+`30_SCRSuggestionEngine.js`) that flips a row's `archive_status` column to
+"ARCHIVED — pending disposition review" once it's older than the configured
+window — run automatically every time `autoHealthAlert()`'s daily trigger
+fires or an admin runs `runSystemHealthCheck()` on demand. This never deletes
+anything — actual permanent deletion still always requires a human to look at
+the archived rows and decide by hand; no script here automates that step. A
+new admin-triggered "📤 Export SCRDecisionLog for Audit" menu item
+(`exportScrDecisionLogForAudit()`) shares an audit export directly with
+specific central-office accounts, restricted to the admin's own school domain.
+For every other tab, treat "retention: indefinite, no policy" as the honest
+answer — this document does not assert a retention period that isn't actually
+enforced anywhere.
 
 ---
 
@@ -104,11 +115,11 @@ SCRDecisionLog once a teacher actually confirms a rating.
 ### SCRDecisionLog
 | | |
 |---|---|
-| **Fields** | Decision ID, student email, competency ID, suggested rating, final rating, decision type, decided-at, decided-by, evidence snapshot |
-| **Why collected** | **The actual legally-retained record** — this is the one tab in cas-ccps whose retention obligation is named in a code comment already (VDOE's General Schedule GS-21 / 8VAC20-120-120), append-only, never deleted by any code path today. |
-| **Read by** | `exportToWorkbookGrid_()` (Script 30) for admin-triggered exports |
-| **Visible to** | Admin (via export — see below) |
-| **Retention** | **This is the tab Extension 3 (Phase C item C3) will actually apply `SCR_RETENTION_YEARS` and the archival/deletion workflow to, once built.** Today: indefinite, no policy enforced. |
+| **Fields** | Decision ID, student email, competency ID, suggested rating, final rating, decision type, decided-at, decided-by, evidence snapshot, archive status |
+| **Why collected** | **The actual legally-retained record** — this is the one tab in cas-ccps whose retention obligation is named in a code comment already (VDOE's General Schedule GS-21 / 8VAC20-120-120), append-only — rows are never deleted by any code path, though a row can now be marked archived (see Retention below). |
+| **Read by** | `exportToWorkbookGrid_()` (Script 30), via the admin-facing `exportScrDecisionLogForAudit()` menu item |
+| **Visible to** | Admin (via export, now shared directly with specific central-office accounts on the same domain — see Extension 3 note above) |
+| **Retention** | `SCR_RETENTION_YEARS` (Script Property, default 5 — see the Extension 3 note above) via `_archiveExpiredScrDecisions_()`, run automatically on every daily health check and every on-demand admin health check. A row past the window gets `archive_status` set to "ARCHIVED — pending disposition review"; actual deletion is never automatic. |
 
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness
@@ -147,11 +158,11 @@ payload. Investigated options:
   `"true"`. An intentional, auditable escape hatch, not a silent gap — the
   admin health check (below) alerts if it's ever turned on.
 
-## Health checks (Bonus 1 — added)
+## Health checks (Bonus 1 — added; item 4 added later, Extension 3)
 
 `10_AdminRecoveryPanel.js`'s `_ferpaHealthChecks_()` (shared by both
 `autoHealthAlert()`'s daily email and `runSystemHealthCheck()`'s on-demand
-dialog) now checks three things:
+dialog) now checks four things:
 
 1. **`GEMINI_API_KEY` is not set** — this property existing would mean the
    dead direct-Gemini-API code path in `25_WarmUpWriter.js`'s `callFlow4_()`
@@ -160,6 +171,11 @@ dialog) now checks three things:
 3. **No file matching `exportToWorkbookGrid_()`'s "SCR Export — " naming
    pattern is shared broader than the organization's domain** — a spot-check
    against ordinary Drive sharing being changed by hand after export.
+4. **No `SCRDecisionLog` rows are past the `SCR_RETENTION_YEARS` window
+   without being archived** — both callers already run
+   `_archiveExpiredScrDecisions_()` immediately before this check, so a
+   nonzero result here means automated archival itself failed to run, not
+   just that it hasn't happened yet (Say/Do Ledger cas-ccps Extension 3).
 
 ## Newly-discovered gap (fixed alongside this document)
 
