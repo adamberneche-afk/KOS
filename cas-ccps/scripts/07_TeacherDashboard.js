@@ -125,6 +125,15 @@ function getDashboardData(termFilter) {
     const displayStatus = resolveDisplay_(ledgerStatus, pipelineStatus[fileId]);
     const statusClass  = resolveClass_(displayStatus);
 
+    // Say/Do Ledger cas-ccps finding #1: column 20 (index 19) is the new
+    // SuggestedScore column — may not exist yet on a Ledger where no
+    // submission has ever gone through markPendingReview_() (which self-heals
+    // the column via _ensureTurnInReviewColumns_), so row[19] can genuinely
+    // be undefined here, not just an empty string.
+    const suggestedScoreRaw = row[19];
+    const suggestedScore = (suggestedScoreRaw === undefined || suggestedScoreRaw === "")
+      ? null : Number(suggestedScoreRaw);
+
     students.push({
       name:        String(row[4]).trim()  || "—",
       googleId:    String(row[1]).trim(),
@@ -138,6 +147,7 @@ function getDashboardData(termFilter) {
       statusClass: statusClass,
       lastEval:    row[15] ? formatDate_(row[15]) : "Never",
       submittedAt: row[13] ? formatDate_(row[13]) : "—",
+      suggestedScore: suggestedScore,
       docUrl:      fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
         : null
@@ -187,6 +197,93 @@ function getDashboardData(termFilter) {
     warmUpReadiness: warmUpReadiness,  // null if M2 not enabled
     m2Enabled:      m2Enabled === "true"
   };
+}
+
+// ── TURN-IN REVIEW (Say/Do Ledger cas-ccps finding #1) ──────────────────────
+// The teacher's own confirm/override decision on a PENDING_TEACHER_REVIEW
+// submission — this is what finally makes the auto-approval terminal,
+// closing the North Star violation the finding was about ("the turn-in gate
+// auto-approves silently, and the only override lives outside the teacher's
+// own dashboard"). Mirrors 30_SCRSuggestionEngine.js's recordConfirmation_/
+// recordOverride_/recordDecision_ shape exactly, per the decision's own
+// instruction to reuse that pattern — freeze the row on decision, reject
+// re-deciding an already-decided row, restrict overrides to a valid 1-5
+// integer. This writes into the same Ledger tab as SCRSuggestions/
+// SCRDecisionLog live alongside, but is a separate, Ledger-row-keyed
+// decision (turn-in scores), not a write into Module 5's own
+// competency-SCR bookkeeping.
+//
+// CROSS-PROJECT NOTE: this logic lives here, not in 04_Form2_TurnInGate.js
+// (which writes the PENDING_TEACHER_REVIEW half of the lifecycle) — that
+// file is bound to cas-ccps:central-ledger, a DIFFERENT Apps Script project
+// from this standalone web app (cas-ccps:teacher-dashboard), with no shared
+// runtime (see tools/gas-lint/project-map.json). Both projects independently
+// call _ensureTurnInReviewColumns_ so either one can self-heal a Ledger
+// created before this feature existed, regardless of which project touches
+// it first.
+function _ensureTurnInReviewColumns_(sheet) {
+  const headerRange = sheet.getRange(1, 20, 1, 4);
+  const existing     = headerRange.getValues()[0];
+  if (existing[0] !== "SuggestedScore") {
+    headerRange.setValues([["SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt"]]);
+  }
+}
+
+function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, decisionType) {
+  const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  _ensureTurnInReviewColumns_(sheet);
+  const data  = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][2]).trim() !== configId) continue; // column C = ConfigID
+
+    const currentStatus = String(data[i][12]).trim();
+    if (currentStatus !== "PENDING_TEACHER_REVIEW") {
+      return { success: false, error: "This submission is not awaiting review (current status: " + currentStatus + ")." };
+    }
+
+    const rowSuggested = data[i][19];
+    const suggestedScore = (rowSuggested === "" || rowSuggested === undefined) ? null : Number(rowSuggested);
+    if (decisionType === "CONFIRMED" && suggestedScore === null) {
+      return { success: false, error: "No suggested score to confirm — use Override to assign a score directly." };
+    }
+
+    const finalScore = decisionType === "CONFIRMED" ? suggestedScore : Number(overrideScore);
+    if (!Number.isInteger(finalScore) || finalScore < 1 || finalScore > 5) {
+      return { success: false, error: "Score must be an integer from 1 to 5." };
+    }
+
+    const rowIndex = i + 1;
+    sheet.getRange(rowIndex, 13).setValue("COMPLIANT"); // terminal — same status every other health check/report already expects
+    sheet.getRange(rowIndex, 15).setValue(
+      "Reviewed by teacher — final score " + finalScore + "/5 (" + decisionType.toLowerCase() + ")."
+    );
+    sheet.getRange(rowIndex, 21).setValue(finalScore);
+    sheet.getRange(rowIndex, 22).setValue(teacherEmail);
+    sheet.getRange(rowIndex, 23).setValue(new Date());
+    SpreadsheetApp.flush();
+
+    return { success: true, finalScore: finalScore };
+  }
+
+  return { success: false, error: "No ledger row found with ConfigID: " + configId };
+}
+
+// Exposed entry points, called via google.script.run from the Pending
+// Review modal's client JS below. Both gate on _isAuthorizedTeacher_ before
+// touching anything, matching every other exported function in this file
+// (see the ACCESS MODEL note at the top of this file).
+function teacherConfirmTurnInScore(configId) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _recordTurnInDecision_(cfg, configId, cfg.teacherEmail, null, "CONFIRMED");
+}
+
+function teacherOverrideTurnInScore(configId, score) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _recordTurnInDecision_(cfg, configId, cfg.teacherEmail, score, "OVERRIDDEN");
 }
 
 // ── M2 ──────────────────────────────────────────────────────────────────────
@@ -447,6 +544,10 @@ function resolveDisplay_(ledger, pipeline) {
     case "ACTIVE":    return "NOT STARTED";
     case "STAGED":    return "QUEUED";
     case "COMPLETE":  return "EVALUATED";
+    // NEW (Say/Do Ledger cas-ccps finding #1): a genuine-complete submission
+    // no longer lands directly on COMPLIANT — it stops here first, awaiting
+    // the teacher's own confirm/override.
+    case "PENDING_TEACHER_REVIEW": return "PENDING REVIEW";
     case "COMPLIANT": return "COMPLIANT ✓";
     default:          return ledger.startsWith("ERROR") ? "FLAGGED ⚠" : (ledger || "UNKNOWN");
   }
@@ -458,6 +559,7 @@ function resolveClass_(display) {
   if (display === "QUEUED")         return "queued";
   if (display === "EVALUATED")      return "evaluated";
   if (display === "NOT STARTED")    return "not-started";
+  if (display === "PENDING REVIEW") return "pending-review";
   if (display.includes("FLAGGED"))  return "flagged";
   return "unknown";
 }
@@ -518,6 +620,14 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .summary-card .label{font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
 .card-compliant .count{color:#1e8e3e}.card-pending .count{color:#e37400}
 .card-flagged .count{color:#d93025}.card-total .count{color:#1a73e8}
+/* NEW (Say/Do Ledger cas-ccps finding #1): Pending Review is a distinct
+   color (purple, matching .badge-evaluated's family) from both the
+   "in progress" (amber) and "needs attention" (red) cards — it isn't
+   trouble, it's a fast, deliberate step the teacher takes. Clickable, like
+   the warm-up-readiness stats already are — see .card-pending-review:hover. */
+.card-pending-review .count{color:#9334e6}
+.card-pending-review{cursor:pointer;transition:box-shadow .15s}
+.card-pending-review:hover{box-shadow:0 3px 10px rgba(0,0,0,.15)}
 .unit-section{margin-bottom:28px}
 .unit-header{font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
 .student-row{background:white;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.08);border-left:4px solid #dadce0;transition:box-shadow .15s,transform .1s}
@@ -527,6 +637,7 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .student-row.queued{border-left-color:#e37400}
 .student-row.evaluated{border-left-color:#9334e6}
 .student-row.not-started{border-left-color:#dadce0}
+.student-row.pending-review{border-left-color:#9334e6}
 .student-row.flagged{border-left-color:#d93025;background:#fef7f7}
 .student-name{font-weight:500;font-size:14px;margin-bottom:3px}
 .student-meta{font-size:12px;color:var(--text-secondary)}
@@ -541,6 +652,7 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .badge-not-started{background:#f1f3f4;color:var(--text-secondary)}
 .badge-flagged{background:#fce8e6;color:#d93025}
 .badge-unknown{background:#f1f3f4;color:var(--text-secondary)}
+.badge-pending-review{background:#f3e8fd;color:#9334e6}
 footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)}
 
 /* ── M2: MODAL ── */
@@ -728,6 +840,12 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
           <!-- Course tabs injected here by loadCompetencies() -->
         </div>
         <div class="hint" id="comp-hint" style="margin-top:6px"></div>
+        <!-- NEW (Say/Do Ledger cas-ccps finding #10): in-context payoff
+             caption, same convention as the warm-up readiness panel's
+             wrNextStep captions (💡, blue, 12px, margin-top:4px) — this
+             checklist is what feeds SCR competency evidence and the warm-up
+             readiness signal, not a form field with no visible purpose. -->
+        <div style="font-size:12px;color:#1a73e8;margin-top:4px">💡 Checking these off is what lets the system connect this lesson to a student's SCR competency record and personalized warm-up readiness.</div>
       </div>
     </div>
 
@@ -770,6 +888,25 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
       <button class="modal-close" onclick="closeStudentProfileModal()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="profile-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Pending Review modal — NEW (Say/Do Ledger cas-ccps finding #1). Where a
+     teacher confirms or overrides a genuine-complete submission's AI-suggested
+     score — the step that finally makes the turn-in gate's decision terminal,
+     instead of the silent auto-approval this finding was about. Same
+     modal-backdrop/modal/modal-header/modal-body convention as the two
+     modals above, but with real controls (not read-only like the profile
+     modal, and not a long form like the lesson modal). -->
+<div class="modal-backdrop" id="score-review-modal-backdrop" onclick="if(event.target===this)closeScoreReviewModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="score-review-modal-title" style="max-width:440px">
+    <div class="modal-header">
+      <h2 id="score-review-modal-title">Review submission</h2>
+      <button class="modal-close" onclick="closeScoreReviewModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="score-review-modal-body">
       <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
   </div>
@@ -856,6 +993,16 @@ function clearWrFilter() {
   if (_lastDashData) render(_lastDashData);
 }
 
+// NEW (Say/Do Ledger cas-ccps finding #1): the Pending Review summary card's
+// filter toggle — a simple boolean rather than a bucket key, since there's
+// only ever one thing to filter to (mirrors applyWrFilter()/clearWrFilter()'s
+// re-render-from-cache shape, just simpler since there's no bucket to pick).
+let _activePendingReviewFilter = false;
+function togglePendingReviewFilter() {
+  _activePendingReviewFilter = !_activePendingReviewFilter;
+  if (_lastDashData) render(_lastDashData);
+}
+
 // ── Student shadow-profile detail modal ─────────────────────────────────────
 // NEW (Say/Do Ledger cas-ccps finding #13). Opened from a "locked" roster
 // row's "View Profile →" button (see render() above). Read-only — no form
@@ -936,6 +1083,121 @@ function closeStudentProfileModal() {
     _profileModalReturnFocus.focus();
   }
   _profileModalReturnFocus = null;
+}
+
+// ── Pending Review modal ─────────────────────────────────────────────────────
+// NEW (Say/Do Ledger cas-ccps finding #1). Opened from a PENDING_TEACHER_REVIEW
+// roster row's "Review Submission" button (see render() below). Unlike the
+// read-only profile modal above, this one has real controls — accept the
+// AI-suggested score as-is, or override it — either action round-trips to
+// teacherConfirmTurnInScore()/teacherOverrideTurnInScore() and, on success,
+// closes the modal and refreshes the roster.
+let _scoreReviewReturnFocus = null;
+
+function openScoreReview(configId, name, suggestedScore) {
+  const backdrop = document.getElementById("score-review-modal-backdrop");
+  const body     = document.getElementById("score-review-modal-body");
+  const title    = document.getElementById("score-review-modal-title");
+  if (!backdrop || !body || !title) return;
+
+  title.textContent = name ? "Review — " + name : "Review submission";
+  renderScoreReviewModal(configId, suggestedScore);
+
+  _scoreReviewReturnFocus = document.activeElement;
+  backdrop.classList.add("open");
+  document.addEventListener("keydown", _modalTrapKeydown);
+  const closeBtn = backdrop.querySelector(".modal-close");
+  if (closeBtn) closeBtn.focus();
+}
+
+function renderScoreReviewModal(configId, suggestedScore) {
+  const body = document.getElementById("score-review-modal-body");
+  if (!body) return;
+  // Two independent escape passes, same order and same reason as the
+  // "locked" bucket's View Profile button above: HTML-attribute-escape "
+  // first (this onclick attribute is double-quoted), then JS-string-escape '
+  // (the browser decodes &quot; back to " before the JS parser ever sees this
+  // attribute's text, so the ' escape has to survive that decode). ConfigIDs
+  // are actually always [A-Z0-9-]+ (see extractFileId_/scanCompliance_'s
+  // regex in 04_Form2_TurnInGate.js), so neither pass is reachable in
+  // practice — done anyway so this function is safe on its own terms, not
+  // dependent on staying in sync with a regex defined in a different file.
+  const safeConfigId = String(configId).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+
+  let html = '<div id="score-review-error" class="form-error" role="alert" aria-live="assertive"></div>';
+
+  if (suggestedScore) {
+    html += '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
+      'This submission passed all automated checks. The AI-suggested score is <strong>' +
+      esc(suggestedScore) + '/5</strong>.</p>' +
+      '<button id="score-review-accept-btn" onclick="submitTurnInConfirm(\\'' + safeConfigId + '\\')" ' +
+      'style="width:100%;background:#1a73e8;color:white;border:none;padding:10px;border-radius:6px;' +
+      'font-size:14px;font-weight:500;cursor:pointer;margin-bottom:14px">Accept ' +
+      esc(suggestedScore) + '/5 as final score</button>';
+  } else {
+    html += '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
+      'This submission passed all automated checks, but was evaluated before AI scoring was ' +
+      'added to Flow 2 — assign a score directly below.</p>';
+  }
+
+  html += '<div class="field" style="margin-bottom:10px">' +
+    '<label for="score-review-override">Or enter a different score (1–5)</label>' +
+    '<input type="number" id="score-review-override" min="1" max="5" step="1" placeholder="1–5" style="width:100px">' +
+    '<div class="hint">5 is reserved for your own judgment — the system never suggests it.</div>' +
+    '</div>' +
+    '<button id="score-review-override-btn" onclick="submitTurnInOverride(\\'' + safeConfigId + '\\')" ' +
+    'style="width:100%;background:none;border:1px solid #1a73e8;color:#1a73e8;padding:9px;border-radius:6px;' +
+    'font-size:14px;font-weight:500;cursor:pointer">Submit this score instead</button>';
+
+  body.innerHTML = html;
+}
+
+function closeScoreReviewModal() {
+  const backdrop = document.getElementById("score-review-modal-backdrop");
+  if (!backdrop) return;
+  backdrop.classList.remove("open");
+  document.removeEventListener("keydown", _modalTrapKeydown);
+  if (_scoreReviewReturnFocus && typeof _scoreReviewReturnFocus.focus === "function") {
+    _scoreReviewReturnFocus.focus();
+  }
+  _scoreReviewReturnFocus = null;
+}
+
+function _scoreReviewError(msg) {
+  const el = document.getElementById("score-review-error");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function submitTurnInConfirm(configId) {
+  google.script.run
+    .withSuccessHandler(_handleTurnInDecisionResult)
+    .withFailureHandler(function(e) { _scoreReviewError(e && e.message ? e.message : "Could not save — try again."); })
+    .teacherConfirmTurnInScore(configId);
+}
+
+function submitTurnInOverride(configId) {
+  const input = document.getElementById("score-review-override");
+  const val   = input ? parseInt(input.value, 10) : NaN;
+  if (!Number.isInteger(val) || val < 1 || val > 5) {
+    _scoreReviewError("Enter a whole number from 1 to 5.");
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(_handleTurnInDecisionResult)
+    .withFailureHandler(function(e) { _scoreReviewError(e && e.message ? e.message : "Could not save — try again."); })
+    .teacherOverrideTurnInScore(configId, val);
+}
+
+function _handleTurnInDecisionResult(res) {
+  if (!res || !res.success) {
+    _scoreReviewError((res && res.error) || "Could not save — try again.");
+    return;
+  }
+  closeScoreReviewModal();
+  showToast("✅ Score recorded — " + res.finalScore + "/5");
+  loadData();
 }
 
 // Per-term client cache — switching the term filter back and forth used to
@@ -1099,11 +1361,18 @@ If you expect to see students here:
   // exclude a real status and leave the three cards short of the total,
   // the exact bug that made "NOT STARTED"/"EVALUATED" students vanish before.
   const pending   = total - compliant - flagged;
+  // NEW (Say/Do Ledger cas-ccps finding #1): a slice of "In progress" above
+  // — every pending-review row is already counted there too (the remainder
+  // formula doesn't exclude it), so this doesn't change what "In progress"
+  // means. It's a separate, clickable card into the same roster, the same
+  // relationship the warm-up-readiness stats already have to the roster below.
+  const pendingReview = data.students.filter(s => s.statusClass === "pending-review").length;
 
   let html = \`<div class="summary-grid">
     <div class="summary-card card-total"><div class="count">\${total}</div><div class="label">Students</div></div>
     <div class="summary-card card-compliant"><div class="count">\${compliant}</div><div class="label">Submitted</div></div>
     <div class="summary-card card-pending"><div class="count">\${pending}</div><div class="label">In progress</div></div>
+    \${pendingReview ? \`<div class="summary-card card-pending-review" onclick="togglePendingReviewFilter()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePendingReviewFilter();}"><div class="count">\${pendingReview}</div><div class="label">Pending Review</div></div>\` : ""}
     <div class="summary-card card-flagged"><div class="count">\${flagged}</div><div class="label">Needs attention</div></div>
   </div>\`;
 
@@ -1115,10 +1384,21 @@ If you expect to see students here:
   if (_activeWrFilter && data.warmUpReadiness) {
     const emailKey = WR_FILTER_EMAIL_KEY[_activeWrFilter];
     const emailSet = new Set((data.warmUpReadiness[emailKey] || []).map(e => e.toLowerCase()));
-    studentsToShow = data.students.filter(s => emailSet.has(String(s.googleId||"").toLowerCase()));
+    studentsToShow = studentsToShow.filter(s => emailSet.has(String(s.googleId||"").toLowerCase()));
     html += \`<div style="background:#e8f0fe;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
       <span style="font-size:13px;color:#1a73e8">Showing \${studentsToShow.length} \${esc(WR_FILTER_LABEL[_activeWrFilter]||"")}</span>
       <button onclick="clearWrFilter()" style="background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
+    </div>\`;
+  }
+  // NEW (finding #1): a second, independent filter toggle — the Pending
+  // Review card above. Combines with the warm-up-readiness filter above if
+  // both happen to be active (each just narrows studentsToShow further),
+  // though in practice a teacher would only ever use one at a time.
+  if (_activePendingReviewFilter) {
+    studentsToShow = studentsToShow.filter(s => s.statusClass === "pending-review");
+    html += \`<div style="background:#f3e8fd;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;color:#9334e6">Showing \${studentsToShow.length} awaiting your review</span>
+      <button onclick="togglePendingReviewFilter()" style="background:none;border:1px solid #9334e6;color:#9334e6;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
     </div>\`;
   }
 
@@ -1131,10 +1411,11 @@ If you expect to see students here:
   const badgeMap = {
     compliant:"badge-compliant", active:"badge-active", queued:"badge-queued",
     evaluated:"badge-evaluated", "not-started":"badge-not-started",
+    "pending-review":"badge-pending-review",
     flagged:"badge-flagged", unknown:"badge-unknown"
   };
 
-  if (_activeWrFilter && studentsToShow.length === 0) {
+  if ((_activeWrFilter || _activePendingReviewFilter) && studentsToShow.length === 0) {
     html += \`<div style="text-align:center;padding:40px 24px;color:var(--text-secondary)">No students match this filter right now.</div>\`;
   }
 
@@ -1164,6 +1445,24 @@ If you expect to see students here:
         const wrNameSafe = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
         wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
       }
+      // NEW (Say/Do Ledger cas-ccps finding #1): shown on every
+      // PENDING_TEACHER_REVIEW row regardless of which (if any) warm-up
+      // readiness filter is active — a separate variable from wrNextStep
+      // above since these are independent concerns, not mutually exclusive
+      // bucket states. Same double-escape pattern as the "locked" bucket's
+      // View Profile button just above, for the same reason (onclick
+      // attribute — see that comment).
+      let reviewNextStep = "";
+      if (s.statusClass === "pending-review") {
+        const rvConfigSafe = String(s.configId||"").replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const rvNameSafe   = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const rvScoreArg   = s.suggestedScore == null ? "null" : String(s.suggestedScore);
+        const rvScoreNote  = s.suggestedScore == null
+          ? "No AI-suggested score — assign one directly."
+          : "AI-suggested score: " + s.suggestedScore + "/5.";
+        reviewNextStep = '<div style="font-size:12px;color:#9334e6;margin-top:4px">' + rvScoreNote + '</div>' +
+          '<button onclick="openScoreReview(\\'' + rvConfigSafe + '\\', \\'' + rvNameSafe + '\\', ' + rvScoreArg + ')" style="margin-top:6px;background:#9334e6;color:white;border:none;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">Review Submission →</button>';
+      }
       html += \`<div class="student-row \${s.statusClass}">
         <div>
           <div class="student-name">\${esc(s.name)}</div>
@@ -1175,6 +1474,7 @@ If you expect to see students here:
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
           \${wrNextStep}
+          \${reviewNextStep}
         </div>
         <div><div class="status-badge \${badgeMap[s.statusClass]||'badge-unknown'}">\${esc(s.status)}</div></div>
       </div>\`;
@@ -1260,7 +1560,12 @@ function showStudentContext() {
 function renderTeacherRoster(result) {
   const view = document.getElementById("student-context-view");
   let html = '<h2 style="font-size:16px;margin-bottom:12px;">Student Context — Full Roster</h2>';
-  html += '<p style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;">Generated ' + esc(result.generatedAt) + ' · Updates weekly via time trigger, not live.</p>';
+  html += '<p style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Generated ' + esc(result.generatedAt) + ' · Updates weekly via time trigger, not live.</p>';
+  // NEW (Say/Do Ledger cas-ccps finding #10): in-context payoff caption,
+  // same convention used elsewhere in this file — this roster is the
+  // aggregated view of every student doc's context (lesson history,
+  // evaluation/warm-up activity), not just a read-only listing.
+  html += '<p style="font-size:12px;color:#1a73e8;margin-bottom:16px;">💡 This feeds every student’s warm-up personalization and shadow-profile confidence — the more Lesson Context logged, the richer this gets.</p>';
   if (result.roster.length === 0) {
     html += '<p style="color:var(--text-secondary);">No student docs yet. They are created automatically the first week a student has a completed assignment or warm-up response.</p>';
   } else {

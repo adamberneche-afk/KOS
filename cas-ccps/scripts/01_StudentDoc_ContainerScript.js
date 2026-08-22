@@ -320,6 +320,18 @@ function buildStatusMessage_(info, configId) {
         "If it says your work passed → use the Turn-In Form to submit.\n" +
         "If it says revisions are needed → fix your work and run another check.";
 
+    // NEW (Say/Do Ledger cas-ccps finding #1): a genuine-complete submission
+    // no longer jumps straight to COMPLIANT — it waits here for the teacher's
+    // own review first. Deliberately doesn't mention a score at all (matching
+    // the Warm-Up pipeline's "never mention points/scores" convention), since
+    // nothing is final until the teacher confirms or overrides it.
+    case "PENDING_TEACHER_REVIEW":
+      return header + "\n\n" +
+        "✅  Submitted — Awaiting Teacher Review\n\n" +
+        "Submitted: " + (info.submittedAt || "—") + "\n\n" +
+        "Your submission passed all automated checks and is now waiting for " +
+        "your teacher to take a look. You'll hear back once they've reviewed it.";
+
     case "COMPLIANT":
       return header + "\n\n" +
         "✅  Submitted and Verified\n\n" +

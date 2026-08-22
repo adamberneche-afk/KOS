@@ -451,10 +451,16 @@ function runSystemHealthCheck() {
     if (s.startsWith("ERROR")) qErrors++;
   }
 
-  let lActive = 0, lCompliant = 0, lFlagged = 0, lArchived = 0;
+  let lActive = 0, lCompliant = 0, lPendingReview = 0, lFlagged = 0, lArchived = 0;
   for (let i = 1; i < ld.length; i++) {
     const s = String(ld[i][12] || "").trim();
     if (s === "ACTIVE")    lActive++;
+    // NEW (Say/Do Ledger cas-ccps finding #1): visibility into how many
+    // genuine-complete submissions are sitting in the new intermediate
+    // state, awaiting a teacher's own confirm/override — a normal, expected
+    // state, not folded into "all healthy" below, since a healthy system can
+    // (and should) have some of these at any given moment.
+    if (s === "PENDING_TEACHER_REVIEW") lPendingReview++;
     if (s === "COMPLIANT") lCompliant++;
     if (s === "ARCHIVED")  lArchived++;
     if (s.startsWith("ERROR") || s === "FLAGGED") lFlagged++;
@@ -490,6 +496,7 @@ function runSystemHealthCheck() {
     "STUDENT LEDGER",
     "   Current term: " + currentTerm,
     "   Active:       " + lActive,
+    "   Pending review: " + lPendingReview,
     "   Compliant:    " + lCompliant,
     "   Archived:     " + lArchived,
     (lFlagged > 0 ? "🚩  Flagged: " + lFlagged : "✅  No flagged students"),
@@ -691,6 +698,15 @@ function viewTermSummary() {
 
 // ---------------------------------------------------------------------------
 // manuallyMarkCompliant
+//
+// NOTE (Say/Do Ledger cas-ccps finding #1): the normal path for a
+// genuine-complete submission is no longer straight to COMPLIANT — it stops
+// at PENDING_TEACHER_REVIEW first, and the teacher's own Pending Review
+// queue (07_TeacherDashboard.js) is what finally confirms/overrides it. This
+// admin action still exists as a separate, explicit escape hatch — e.g. a
+// submission stuck in an error state that never reached the normal
+// ledger-matched flow at all — not as the routine override the finding was
+// originally about (that gap is what the Pending Review queue now closes).
 // ---------------------------------------------------------------------------
 function manuallyMarkCompliant() {
   const ui = SpreadsheetApp.getUi();
