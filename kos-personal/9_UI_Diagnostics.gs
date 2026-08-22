@@ -736,17 +736,42 @@ function verifyFidelityClause() {
 }
 
 
+/**
+ * Menu-driven compiler for one Seven Bridges council review. Prompts for
+ * a council ID, compiles its recorded COG_REGISTRY verdicts via
+ * compileCouncilVerdict_() (6_Governance.gs), and shows the result.
+ *
+ * SUPERSEDED the old "PENDING USER APPROVAL" stub (Say/Do Ledger
+ * kos-personal finding #1) — the execution layer this used to point
+ * readers toward requesting is now actually built: see
+ * triggerSevenBridgesReview()/compileCouncilVerdict_() in
+ * 6_Governance.gs and submitCogVerdict() in 2_Ingestion_Sensors.gs.
+ */
 function sevenBridgesReview() {
-  _getUi().alert('🌉 SMP-002: Seven Bridges Reconciliation Protocol',
-    'Status: PENDING USER APPROVAL\n\n' +
-    '3/7 TRIGGER: 3+ non-APPROVED verdicts halt execution.\n' +
-    'BRIDGE_FIDELITY_001: A verdict produced with knowledge of another\n' +
-    "cog's verdict is VOID.\n\n" +
-    'To approve:\n' +
-    '1. Open SMP-002 in 01.3_SMP_PROPOSALS\n' +
-    '2. Update Status to APPROVED\n' +
-    '3. Notify Developer to build the execution layer.',
-    _getUi().ButtonSet.OK);
+  const ui = _getUi();
+  const r  = ui.prompt('🌉 Seven Bridges — Compile Council Verdict',
+    'Enter the Council ID to compile (shown when you ran "Run full ' +
+    'council review" in the web app, and reused for every verdict ' +
+    'submitted under it via Ingest → Cog Verdict).',
+    ui.ButtonSet.OK_CANCEL);
+  if (r.getSelectedButton() !== ui.Button.OK) return;
+
+  const councilId = r.getResponseText().trim();
+  if (!councilId) {
+    ui.alert('A Council ID is required.');
+    return;
+  }
+
+  const result = compileCouncilVerdict_(councilId);
+  if (!result.success) {
+    ui.alert('Error', result.message, ui.ButtonSet.OK);
+    return;
+  }
+
+  const lines = result.verdicts.map(v => '• ' + v.cog + ': ' + v.status + (v.summary ? ' — ' + v.summary : ''));
+  ui.alert('🌉 Council ' + councilId,
+    result.message + (lines.length ? '\n\n' + lines.join('\n') : ''),
+    ui.ButtonSet.OK);
 }
 
 
