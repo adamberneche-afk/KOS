@@ -490,6 +490,109 @@ function getSCRDashboardData_() {
 }
 
 // ---------------------------------------------------------------------------
+// getStudentScrStandingForCompetencies_ — NEW (Say/Do Ledger cas-ccps
+// Extension 1: SCR-to-warmup bridge). Feeds a student's current SCR
+// standing into warm-up generation as a soft signal/tie-breaker — called by
+// 24_WarmUpBridge.js (also central-ledger-only — see the cross-project note
+// below) right before it calls getStudentProfileSnapshot_() in Script 23,
+// which is what actually threads this into the student_profile_snapshot
+// Flow 3 reads. Deliberately does NOT touch or reference the "reopen a
+// frozen CONFIRMED/OVERRIDDEN decision" gap documented above in this same
+// file (lines ~703-733) — consumed as-is, stale or not, per this
+// extension's own scoping.
+//
+// Unlike getSCRDashboardData_() above (which exists to show a teacher what
+// still needs a decision, so it deliberately EXCLUDES CONFIRMED/OVERRIDDEN
+// rows), this function's job is "what does the record actually say about
+// this student on these competencies right now" — so a teacher's already-
+// confirmed rating counts here, not just an unconfirmed AI suggestion.
+//
+// CROSS-PROJECT NOTE: this function (and the SCRS column-index constants it
+// reads) is bound only to cas-ccps:central-ledger — NOT to
+// cas-ccps:teacher-dashboard (see tools/gas-lint/project-map.json). It must
+// only ever be called from a central-ledger-bound file (24_WarmUpBridge.js
+// qualifies); never reference this from 23_StudentProfileManager.js or
+// 07_TeacherDashboard.js directly, since Script 30 isn't present in the
+// teacher-dashboard project and a call from there would be a real, silent
+// cross-project bug of exactly the kind tools/gas-lint/check.js's
+// possibly-undefined-in-project rule exists to catch.
+//
+// Returns an array of { competencyId, competencyText, rating, decided }
+// — one entry per competency in competencyIds that has a real rating on
+// record (SUGGESTED with a non-blank suggestedRating, or CONFIRMED/
+// OVERRIDDEN), skipping INSUFFICIENT_EVIDENCE rows (nothing to report) and
+// any competency with no SCRSuggestions row at all. Returns [] (never null)
+// if suggestionsSheet is missing or competencyIds is empty, so callers never
+// need a null-check.
+// ---------------------------------------------------------------------------
+// Memoized across calls within the same script execution — 24_WarmUpBridge.js
+// calls this once PER STUDENT (its own loop structure, already established
+// for other per-student lookups like getPriorWarmUpResponse_ against a
+// pre-loaded dataset), and a full SCRSuggestions + CompetencyRegistry sheet
+// read on every single student in a roster would be a real, avoidable
+// performance cost in the nightly batch run. Reset naturally on every fresh
+// execution since GAS reinitializes top-level state each run — this is not
+// a persistent cache across separate trigger firings.
+let _scrStandingRawCache_ = null;
+
+function getStudentScrStandingForCompetencies_(studentEmail, competencyIds) {
+  if (!competencyIds || !competencyIds.length) return [];
+
+  if (!_scrStandingRawCache_) {
+    const cfg = getConfig_();
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+    if (!suggestionsSheet) { _scrStandingRawCache_ = { data: [], compTextMap: {} }; }
+    else {
+      const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
+      const compTextMap = {};
+      if (registrySheet) {
+        const regData = registrySheet.getDataRange().getValues();
+        const regHeaders = regData[0].map(h => String(h).trim());
+        const iId = regHeaders.indexOf("competency_id");
+        const iText = regHeaders.indexOf("competency_text");
+        if (iId !== -1 && iText !== -1) {
+          for (let i = 1; i < regData.length; i++) {
+            compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
+          }
+        }
+      }
+      _scrStandingRawCache_ = { data: suggestionsSheet.getDataRange().getValues(), compTextMap: compTextMap };
+    }
+  }
+
+  const idSet = new Set(competencyIds.map(id => String(id).trim()));
+  const email = String(studentEmail || "").trim().toLowerCase();
+  const data         = _scrStandingRawCache_.data;
+  const compTextMap  = _scrStandingRawCache_.compTextMap;
+  const results = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[SCRS.STUDENT_EMAIL]).trim().toLowerCase() !== email) continue;
+    const competencyId = String(row[SCRS.COMPETENCY_ID]).trim();
+    if (!idSet.has(competencyId)) continue;
+
+    const status  = String(row[SCRS.STATUS]).trim();
+    const decided = status === "CONFIRMED" || status === "OVERRIDDEN";
+    const rating  = decided
+      ? Number(row[SCRS.CONFIRMED_RATING])
+      : (row[SCRS.SUGGESTED_RATING] === "" ? null : Number(row[SCRS.SUGGESTED_RATING]));
+    if (rating == null || !Number.isFinite(rating)) continue; // INSUFFICIENT_EVIDENCE or blank — nothing to report
+
+    results.push({
+      competencyId:   competencyId,
+      competencyText: compTextMap[competencyId] || "(text not found in registry)",
+      rating:         rating,
+      decided:        decided // true = teacher-confirmed/overridden; false = AI suggestion only, not yet reviewed
+    });
+  }
+
+  results.sort((a, b) => a.competencyId.localeCompare(b.competencyId));
+  return results;
+}
+
+// ---------------------------------------------------------------------------
 // exportToWorkbookGrid_ — MANUAL. Produces a Google Sheet matching the
 // official SCR Excel workbook shape described in the original
 // specification: one tab per class, student names as rows, competency
