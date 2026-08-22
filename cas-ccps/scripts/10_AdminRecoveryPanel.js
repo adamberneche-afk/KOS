@@ -41,6 +41,97 @@ function _stuckRowContext_(rowNumber, fileId, elapsedMinutes) {
 }
 
 // ---------------------------------------------------------------------------
+// _ferpaHealthChecks_ — shared FERPA-adjacent health signals, consolidated
+// so autoHealthAlert() (daily email) and runSystemHealthCheck() (on-demand
+// dialog) check the same three things the same way instead of each growing
+// its own copy that could drift — same pattern _stuckRowContext_() already
+// established for finding #11. See Say/Do Ledger cas-ccps finding #5,
+// Bonus 1.
+//
+// Returns an array of { ok, alertText, displayLine }:
+//   ok          — false means this check found a real problem
+//   alertText   — daily-email wording (only used when !ok)
+//   displayLine — on-demand dialog's one-line summary (always shown)
+// ---------------------------------------------------------------------------
+function _ferpaHealthChecks_() {
+  const checks = [];
+  const scriptProps = PropertiesService.getScriptProperties();
+
+  // (a) 25_WarmUpWriter.js's callFlow4_() has a dead direct-Gemini-API
+  // code path (documented placeholder, returns null) that would go live —
+  // bypassing the Walled Garden's Studio-Flow-only boundary entirely — the
+  // moment a GEMINI_API_KEY Script Property exists. This key should never
+  // be set in a correctly-configured deployment.
+  const geminiKeySet = !!scriptProps.getProperty("GEMINI_API_KEY");
+  checks.push({
+    ok: !geminiKeySet,
+    alertText:
+      "🚨 GEMINI_API_KEY IS SET\n" +
+      "   A direct-Gemini-API Script Property exists. The Walled Garden design\n" +
+      "   requires all AI processing to go through Google Workspace Studio\n" +
+      "   Flows, never a direct API call — this property should not exist in a\n" +
+      "   correctly-configured deployment.\n" +
+      "   Action: Delete the GEMINI_API_KEY Script Property (Project Settings →\n" +
+      "   Script Properties) unless you have a specific, reviewed reason to keep it.",
+    displayLine: geminiKeySet
+      ? "🚨  GEMINI_API_KEY is set — direct-API bypass risk, see admin alert"
+      : "✅  No direct-Gemini-API key configured",
+  });
+
+  // (b) getStudentProfileSnapshot_() (23_StudentProfileManager.js) redacts
+  // full student names to first-name-only by default before Flow 3 ever
+  // sees them. FERPA_FLOW3_FULL_NAME_OVERRIDE is the one Script Property
+  // that can turn that safety default back off — alert if it's ever set.
+  const nameOverride = scriptProps.getProperty("FERPA_FLOW3_FULL_NAME_OVERRIDE") === "true";
+  checks.push({
+    ok: !nameOverride,
+    alertText:
+      "🚨 FLOW 3 FULL-NAME OVERRIDE IS ON\n" +
+      "   FERPA_FLOW3_FULL_NAME_OVERRIDE is set to true — warm-up generation is\n" +
+      "   sending each student's full name to Studio Flow 3 instead of the\n" +
+      "   first-name-only default.\n" +
+      "   Action: Remove this Script Property unless there's a specific,\n" +
+      "   reviewed reason the override is needed.",
+    displayLine: nameOverride
+      ? "🚨  Flow 3 full-name override is ON — sending full names, see admin alert"
+      : "✅  Flow 3 sends first-name-only (safety default active)",
+  });
+
+  // (c) exportToWorkbookGrid_() (30_SCRSuggestionEngine.js) restricts its
+  // export spreadsheet's sharing at creation time, but sharing can always
+  // be widened by hand afterward — spot-check any file matching its naming
+  // pattern for sharing broader than the organization's own domain.
+  let overShared = [];
+  try {
+    const files = DriveApp.searchFiles('title contains "SCR Export — "');
+    while (files.hasNext()) {
+      const f = files.next();
+      const access = f.getSharingAccess();
+      if (access === DriveApp.Access.ANYONE || access === DriveApp.Access.ANYONE_WITH_LINK) {
+        overShared.push(f.getName());
+      }
+    }
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] SCR export sharing scan failed: " + e.message);
+  }
+  checks.push({
+    ok: overShared.length === 0,
+    alertText: overShared.length
+      ? "🚨 SCR EXPORT SHARED BEYOND THE ORGANIZATION\n" +
+        "   " + overShared.length + " file(s) matching \"SCR Export — \" are shared\n" +
+        "   with anyone, not just your organization:\n" +
+        overShared.map(n => "     • " + n).join("\n") + "\n" +
+        "   Action: Open each file → Share → restrict access to your organization."
+      : "",
+    displayLine: overShared.length
+      ? "🚨  " + overShared.length + " SCR export file(s) shared beyond the org — see admin alert"
+      : "✅  No SCR export files shared beyond the organization",
+  });
+
+  return checks;
+}
+
+// ---------------------------------------------------------------------------
 // autoHealthAlert — runs daily on a time-driven trigger.
 // Checks for stuck IN_PROCESS rows and RubricQueue PENDING_EXTRACTION rows
 // older than the alert thresholds. Emails the admin if issues are found.
@@ -141,6 +232,9 @@ function autoHealthAlert() {
       "   declares it."
     );
   }
+
+  // --- FERPA-adjacent checks (Say/Do Ledger finding #5, Bonus 1) ---
+  _ferpaHealthChecks_().forEach(c => { if (!c.ok && c.alertText) issues.push(c.alertText); });
 
   // --- Send alert only if issues exist ---
   if (issues.length === 0) {
@@ -367,6 +461,12 @@ function runSystemHealthCheck() {
   }
   const currentTerm = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "(not set)";
 
+  // FIXED (finding #5, Bonus 1): folded into the final "all healthy" &&
+  // condition below, not just appended as a display line — a display-only
+  // addition wouldn't have affected the actual pass/fail result.
+  const ferpaChecks = _ferpaHealthChecks_();
+  const ferpaOk     = ferpaChecks.every(c => c.ok);
+
   const ts = Utilities.formatDate(now, Session.getScriptTimeZone(), "MMM d, h:mm a");
 
   ui.alert("System Health Check", [
@@ -402,7 +502,10 @@ function runSystemHealthCheck() {
       ? "🚨  Drive Advanced Service NOT enabled — anti-cheating check is silently passing every submission. Enable it via Extensions → Apps Script → Services."
       : "✅  Drive Advanced Service enabled — forensic check is active."),
     "",
-    (stuck === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && typeof Drive !== "undefined"
+    "FERPA",
+    ...ferpaChecks.map(c => c.displayLine),
+    "",
+    (stuck === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && typeof Drive !== "undefined" && ferpaOk
       ? "✅ All systems healthy." + (timeouts > 0 ? " (" + timeouts + " timeout(s) auto-resolved.)" : "")
       : "⚠️ Action may be required. See flags above.")
   ].filter(l => l !== "").join("\n"), ui.ButtonSet.OK);

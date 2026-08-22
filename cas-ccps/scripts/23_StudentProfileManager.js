@@ -1000,9 +1000,34 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
         unitCurrent + ", trend: " + (unitMatrixEntry.trend || "flat") + ").";
     }
 
+    // FIXED (Say/Do Ledger cas-ccps finding #5, Bonus 2): this snapshot is
+    // the one place in cas-ccps that sends a real student name into a
+    // Studio Flow prompt (Flow 3, warm-up generation) — every other flow
+    // is already opaque-ID/content-only. A full stable-ID substitution
+    // (student ID in, real name restored server-side after Gemini) was
+    // investigated and doesn't fit these mechanics: Flow 3 needs the name
+    // *during* generation, to address the student by name inside the
+    // question text it writes, entirely inside the external Studio Flow —
+    // there's no "restore after Gemini" step this repo's own code could
+    // perform. Flow 3's own prompt templates only ever use the student's
+    // first name ("Name: {first_name}" — docs/CAS_Flow3_Flow4_
+    // Specification.html), so redacting the full name down to first-name-
+    // only here closes almost all of the real exposure (no last name ever
+    // leaves this sheet cell) while preserving the personalization the
+    // feature is actually for. FERPA_FLOW3_FULL_NAME_OVERRIDE (Script
+    // Property, default unset/off) is an explicit, auditable escape hatch —
+    // _ferpaHealthChecks_() in 10_AdminRecoveryPanel.js alerts if it's ever
+    // turned on.
+    const fullStudentName = String(data[i][SP_STUDENT_NAME]).trim();
+    const fullNameOverride = PropertiesService.getScriptProperties()
+      .getProperty("FERPA_FLOW3_FULL_NAME_OVERRIDE") === "true";
+    const snapshotStudentName = fullNameOverride
+      ? fullStudentName
+      : (fullStudentName.split(/\s+/)[0] || fullStudentName);
+
     return {
       student_email:          studentEmail,
-      student_name:           String(data[i][SP_STUDENT_NAME]).trim(),
+      student_name:           snapshotStudentName,
       period:                 String(data[i][SP_PERIOD]).trim(),
       competencies_addressed: competenciesAddressed,
       competency_gaps:        gaps,
