@@ -209,6 +209,14 @@ function buildWarmUpQueues() {
     // warmup_anchor is the teacher-authored seed prompt for this unit.
     // Flow 3 personalizes the anchor rather than generating from scratch.
     const anchorData = getWarmUpAnchor_(tomorrowStr, courseName); // Script 31
+    // Say/Do Ledger cas-ccps Extension 1 (SCR-to-warmup bridge): today's
+    // resolved pacing-unit's own competency IDs (a different signal from
+    // compIds above, which is what the TEACHER checked off for this lesson —
+    // see getWarmUpAnchor_()'s own comment on this distinction). Used below,
+    // per student, to look up SCR standing via Script 30 (same
+    // central-ledger project — see the cross-project note on
+    // getStudentScrStandingForCompetencies_() in 30_SCRSuggestionEngine.js).
+    const pacingCompIds = (anchorData && anchorData.pacing_competency_ids) || [];
 
     // ── Build lesson context snapshot object ──────────────────────────────
     // Rubric data added by addRubricsToSnapshot_() from Script 32.
@@ -286,9 +294,19 @@ function buildWarmUpQueues() {
         continue;
       }
 
+      // Say/Do Ledger cas-ccps Extension 1: this student's current SCR
+      // standing on today's pacing-unit competencies, computed fresh per
+      // student (Script 30, same central-ledger project) — a soft
+      // signal/tie-breaker only, folded into the profile snapshot below,
+      // never overriding the evaluation-signals/shadow-archetype logic
+      // getStudentProfileSnapshot_() already does.
+      const scrStanding = getStudentScrStandingForCompetencies_(
+        student.email, pacingCompIds
+      );
+
       // Get student profile snapshot (computes gaps for today's lesson)
       const profileSnapshot = getStudentProfileSnapshot_(
-        ss, cfg, student.email, compIds
+        ss, cfg, student.email, compIds, scrStanding
       );
 
       const queueId = generateQueueId_();

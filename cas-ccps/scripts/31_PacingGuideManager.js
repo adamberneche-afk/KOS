@@ -384,6 +384,20 @@ function getWarmUpAnchor_(dateStr, courseName) {
     if (full) anchorText = full;
   }
 
+  // Say/Do Ledger cas-ccps Extension 1 (SCR-to-warmup bridge): the same
+  // course-specific selection this function already does for
+  // course_objective above, applied to the unit's competency IDs — this is
+  // "today's resolved pacing-unit's competency IDs" the bridge needs,
+  // reusing is8175/is8177 rather than re-deriving course selection a second
+  // time somewhere else.
+  let pacingCompetencyIds = [];
+  const compIdsField = is8175 ? unit.competency_ids_8175
+    : is8177 ? unit.competency_ids_8177
+    : (unit.competency_ids_8175 || unit.competency_ids_8177);
+  if (compIdsField) {
+    pacingCompetencyIds = String(compIdsField).split(",").map(s => s.trim()).filter(Boolean);
+  }
+
   return {
     anchor:           anchorText,
     unit_id:          unit.unit_id,
@@ -393,6 +407,13 @@ function getWarmUpAnchor_(dateStr, courseName) {
     prior_connection: unit.prior_connection,
     key_vocabulary:   unit.key_vocabulary,
     course_objective: courseObjective,
+    // Say/Do Ledger cas-ccps Extension 1 — the pacing unit's own
+    // course-specific competency list, distinct from a LessonContext row's
+    // teacher-checked competency IDs (a different, already-existing signal
+    // — see 24_WarmUpBridge.js's compIds). Used to scope the SCR-standing
+    // bridge to competencies the pacing guide itself says are "in play"
+    // today, not just whatever a teacher happened to check off.
+    pacing_competency_ids: pacingCompetencyIds,
     // v2 pacing guide fields — see cas-ccps/README.md item 8. Not yet
     // consumed by any Flow 3 prompt template; passed through so a future
     // prompt-template change can use them without another Script 31 edit.
