@@ -87,9 +87,17 @@ function onOpen() {
     ui.createMenu('🧠 KOS v8.0')
       .addItem('🌐 Open Web App', 'openWebApp')
       .addSeparator()
+      // FIXED (Say/Do Ledger kos-personal finding #5): two labels here
+      // used unexplained internal jargon ("HITL", "Socratic Onboarding")
+      // that the web app already translates into plain language for the
+      // exact same underlying action — reconciled so both surfaces read
+      // the same fact the same way, instead of one being friendlier than
+      // the other for no reason. "(HITL)" dropped rather than expanded —
+      // spelling out "Human-In-The-Loop" wouldn't have meant anything
+      // more to a non-technical reader than dropping it.
       .addSubMenu(ui.createMenu('📥 Ingest & Context')
         .addItem('Build Session Context', 'buildSessionContext')
-        .addItem('Generate Council Payload (HITL)', 'generateCouncilInputPayload')
+        .addItem('Generate Council Payload (Human Review)', 'generateCouncilInputPayload')
         .addItem('Consolidate Inference Chunks', 'consolidateInferenceChunks'))
       .addSubMenu(ui.createMenu('📊 Diagnostics')
         .addItem('Check Onboarding Progress', 'checkOnboardingProgress')
@@ -99,7 +107,7 @@ function onOpen() {
         .addItem('Dump All Properties',       'dumpAllPropertiesUI')
         .addItem('Seven Bridges Review',      'sevenBridgesReview'))
       .addSubMenu(ui.createMenu('⚙ Admin')
-        .addItem('🧠 Begin Socratic Onboarding',  'runSocraticOnboarding')
+        .addItem('🧠 Personalize Your Advisor',    'runSocraticOnboarding')
         .addItem('Update Relational Targets',      'updateRelationalTargets')
         .addItem('Generate License Report',        'generateLicenseReport')
         .addItem('Re-run Full Deploy',             'deployFullSystem')
@@ -168,7 +176,8 @@ function runSocraticOnboarding() {
 
   a.role = ask(1, 'WHAT IS YOUR ROLE?',
     'Your primary role or domain.\nExamples: Marketing Teacher, Business Coach, Software Developer');
-  if (!a.role) return ui.alert('Paused', 'Resume anytime with 🧠 Admin → Begin Socratic Onboarding.', ui.ButtonSet.OK);
+  // FIXED (finding #5): menu path updated to match onOpen()'s rename above.
+  if (!a.role) return ui.alert('Paused', 'Resume anytime with 🧠 Admin → Personalize Your Advisor.', ui.ButtonSet.OK);
 
   a.audience = ask(2, 'WHO DO YOU SERVE?',
     'The people whose growth your work directly affects.\nExamples: High school students, Small business owners');
@@ -232,7 +241,11 @@ function runSocraticOnboarding() {
     'NEXT STEPS:\n' +
     '1. Open the KOS web app → Ingest tab\n' +
     '2. Paste your first session log → Queue Payload\n' +
-    '3. Let Studio process it → check Queue tab for FLOW_COMPLETE\n\n' +
+    // FIXED (finding #5): "FLOW_COMPLETE" is the raw pipeline status name
+    // — the web app's own Queue tab never shows it to a user either
+    // (getQueueMetrics() folds it into the plain "Processing" tile).
+    // Described here the same way instead of surfacing the internal term.
+    '3. Let Studio process it → check the Queue tab to see it marked complete\n\n' +
     'Day 1 of ' + CFG.ONBOARDING_DAYS + '. The system is live.',
     ui.ButtonSet.OK);
 }
@@ -403,9 +416,12 @@ function generateCouncilInputPayload() {
     DriveApp.getFileById(dId).moveTo(DriveApp.getFolderById(exhaustId));
     props.setProperty('COUNCIL_LAST_RUN', new Date().getTime().toString());
 
+    // FIXED (finding #5): "PENDING_FLOW scan" is the raw pipeline status
+    // name — reworded to describe what actually happens, matching how the
+    // web app's own copy never surfaces this term to a user.
     ui.alert('✅ Council Payload Created',
       docName + '\n\nSaved to 03.4_RAW_EXHAUST.\n' +
-      'Studio will pick it up on the next PENDING_FLOW scan.\n\n' +
+      'Studio checks for new documents every few minutes and will pick this up automatically.\n\n' +
       'URL: ' + DriveApp.getFileById(dId).getUrl(),
       ui.ButtonSet.OK);
 
@@ -510,8 +526,12 @@ function checkOnboardingProgress() {
   const armed = props.getProperty(CFG.PROP.THESIS_VERIFIED) === 'true';
 
   if (!armed) {
-    ui.alert('🔒 Engine COLD',
-      'Thesis not verified.\n\nRun 🧠 Admin → Begin Socratic Onboarding.',
+    // FIXED (finding #5): "Engine COLD"/"Thesis not verified" is the raw
+    // internal state name — the web app's own engine-mode dot already
+    // translates this exact state to "Not started" for the same reason.
+    // Menu path updated to match this file's onOpen() rename above.
+    ui.alert('🔒 Not Started Yet',
+      'Setup hasn\'t been completed.\n\nRun 🧠 Admin → Personalize Your Advisor.',
       ui.ButtonSet.OK);
     return;
   }
@@ -542,10 +562,14 @@ function auditCalibrationHealth() {
   const props  = PropertiesService.getScriptProperties();
 
   if (!status.armed) {
-    ui.alert('⚠ Engine COLD',
+    // FIXED (finding #5): header/menu reference reconciled with
+    // checkOnboardingProgress()'s equivalent alert above — the
+    // "Expected keys" list stays technical on purpose, since this menu
+    // item is itself an explicit diagnostic/debug tool.
+    ui.alert('⚠ Not Started Yet',
       'No calibration data found.\n\nExpected keys:\n' +
       CFG.CALIBRATION_KEYS.map(k => '  • ' + k).join('\n') +
-      '\n\nRun setupCalibration() or complete Socratic Onboarding.',
+      '\n\nRun setupCalibration() or Admin → Personalize Your Advisor.',
       ui.ButtonSet.OK);
     return;
   }
