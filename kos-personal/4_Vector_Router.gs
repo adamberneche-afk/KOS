@@ -878,6 +878,22 @@ function getVectorState() {
     const matrix = ss.getSheetByName(CFG.VECTOR_MATRIX_SHEET);
 
     if (!matrix || matrix.getLastRow() <= 1) {
+      // FIXED (Say/Do Ledger kos-personal finding #4): this message used
+      // to read identically whether the user genuinely hadn't submitted
+      // anything yet, or had submitted sessions that are sitting queued
+      // in STAGING_PIPELINE but can't be processed while the engine is
+      // cold — processInferenceQueue() is TIER_2 (_coldEngineGate(),
+      // 1_Config_And_Deploy.gs), hard-gated until Socratic Onboarding
+      // completes. Nothing already queued is lost; it's just deferred
+      // until setup finishes. Computed here (same two-property check
+      // getShadowMatrixStatus() already uses) so the web app doesn't need
+      // its own separate cold-detection logic for this panel.
+      const props   = PropertiesService.getScriptProperties();
+      const armed   = !!props.getProperty('IDENTITY_KEY') &&
+                       props.getProperty(CFG.PROP.THESIS_VERIFIED) === 'true';
+      const staging = ss.getSheetByName(CFG.STAGING_SHEET);
+      const hasQueuedSessions = !!staging && staging.getLastRow() > 1;
+
       return {
         success:    true,
         vectors:    _getKnownVectors().map(n => ({ name: n, score: 0 })),
@@ -885,7 +901,12 @@ function getVectorState() {
         promoted_themes: [],
         session_uid:  '',
         last_updated: '',
-        message:    'No sessions processed yet — scores initialised to 0.',
+        engine_armed: armed,
+        message: (!armed && hasQueuedSessions)
+          ? 'Sessions are queued but won’t be processed until you finish the one-time setup wizard — nothing is lost.'
+          : (!armed
+            ? 'No sessions processed yet. Calibration starts once you finish the one-time setup wizard.'
+            : 'No sessions processed yet — scores initialised to 0.'),
       };
     }
 
