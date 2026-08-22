@@ -226,11 +226,11 @@ textarea { line-height: 1.55; }
   display: grid; grid-template-columns: 1fr 1fr;
   gap: 10px; margin-bottom: 16px;
 }
-/* #metric-failed is a 5th tile in this 2-column grid, appearing only when
-   there's something to show — landing alone in a 3rd row's first column
-   otherwise, leaving the second column visibly empty beside the one tile
-   that most needs attention. Span it full-width instead. */
-#metric-failed {
+/* #metric-failed and #metric-cycling are extra tiles in this 2-column
+   grid, appearing only when there's something to show — landing alone in
+   a row's first column otherwise, leaving the second column visibly
+   empty beside the one tile that most needs attention. Span each full-width instead. */
+#metric-failed, #metric-cycling {
   grid-column: 1 / -1;
 }
 .metric-card {
@@ -678,9 +678,18 @@ textarea { line-height: 1.55; }
       <span id="ingest-msg"></span>
     </div>
 
+    <!-- FIXED (Say/Do Ledger kos-personal finding #2): "processes within
+         5 minutes" overstated what's actually guaranteed. Turnstile
+         (10_Turnstile.gs) really does check every 5 minutes, but it can
+         only hand a row off to Studio for processing — it can't complete
+         one itself. Without a Studio flow connected, a row cycles
+         PENDING_FLOW ↔ STUDIO_ACTIVE indefinitely, retrying forever
+         rather than finishing or failing outright. Says so honestly. -->
     <div id="next-hint" class="next-hint">
       <strong>What happens now:</strong> Your session is in the queue.
-      The AI engine processes it within 5 minutes.
+      Turnstile checks it every 5 minutes and hands it to the AI engine —
+      but it only actually completes once a Studio flow is connected to
+      process it. Without one, it keeps retrying rather than finishing.
       Check the <strong>Queue tab</strong> to track progress — or just come back later.
     </div>
 
@@ -724,6 +733,18 @@ textarea { line-height: 1.55; }
         <div class="metric-lbl">Failed</div>
         <div class="metric-val" id="cnt-failed">—</div>
         <div class="metric-sub">couldn't be processed — see Diagnostics</div>
+      </div>
+      <!-- NEW (Say/Do Ledger kos-personal finding #2). Hidden unless
+           counts.cycling > 0 — a PENDING_FLOW/STUDIO_ACTIVE row whose
+           Retry_Count has crossed CFG.TURNSTILE_STUCK_THRESHOLD
+           (3_Queue_Processor.gs's getQueueMetrics()), meaning Turnstile
+           keeps handing it off but nothing is completing it. Distinct
+           from "Failed" — this isn't a terminal state, just an honest
+           signal that a Studio flow likely isn't connected yet. -->
+      <div class="metric-card m-warn" id="metric-cycling" style="display:none">
+        <div class="metric-lbl">Still waiting on Studio</div>
+        <div class="metric-val" id="cnt-cycling">—</div>
+        <div class="metric-sub">retrying — no Studio flow has completed it yet</div>
       </div>
     </div>
 
@@ -779,7 +800,15 @@ textarea { line-height: 1.55; }
          deployments won't touch this second, independent pipeline. -->
     <div class="sec-lbl has-tip" id="registrar-lbl" style="display:none">
       Curriculum auditing
-      <span class="tip-icon" title="A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab.">?</span>
+      <!-- FIXED (Say/Do Ledger kos-personal finding #9): this title used
+           to be static, generic text with no connection to whether the
+           Stage 1/2 Studio flows this pipeline depends on are actually
+           built — loadRegistrarStatus() (below) now sets it dynamically
+           each refresh, self-updating once flows exist and a row
+           actually completes, instead of needing a manual edit to remove
+           a stale caveat later. This attribute is just the pre-JS
+           fallback shown for the instant before the first load resolves. -->
+      <span class="tip-icon" id="registrar-tip" title="A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab.">?</span>
     </div>
     <div id="registrar-summary" style="display:none;margin-bottom:4px"></div>
     <div class="sec-divider" id="registrar-divider" style="display:none"></div>
@@ -1335,6 +1364,15 @@ function renderQueue(res) {
   if (failedTile) failedTile.style.display = failed > 0 ? '' : 'none';
   document.getElementById('cnt-failed').textContent = failed;
 
+  // NEW (finding #2): same hidden-unless-nonzero convention as "Failed"
+  // above — cycling is a subset of pending/active, not an additional
+  // bucket, so it isn't added into totalActivity below.
+  const cycling     = c.cycling ?? 0;
+  const cyclingTile = document.getElementById('metric-cycling');
+  if (cyclingTile) cyclingTile.style.display = cycling > 0 ? '' : 'none';
+  const cyclingCnt = document.getElementById('cnt-cycling');
+  if (cyclingCnt) cyclingCnt.textContent = cycling;
+
   const list = document.getElementById('curator-list');
   const rows = res.needs_curator || [];
 
@@ -1876,6 +1914,28 @@ function loadRegistrarStatus() {
         ? healthRowHtml('Failed', '<i class="ti ti-alert-triangle" style="font-size:12px;margin-right:4px;color:var(--danger)"></i>' + g.failed)
         : healthRow('Failed', 0)) +
       '</div>';
+
+    // FIXED (Say/Do Ledger kos-personal finding #9): the tooltip used to
+    // be static, generic text regardless of whether this pipeline had
+    // ever actually finished anything. Made state-aware instead of a
+    // caveat someone has to remember to edit out once the Stage 1/2
+    // Studio flows are built: once at least one file has ever reached a
+    // terminal state (routed OR escalated to CRITICAL_FAILURE — either
+    // one proves the pipeline is really moving rows, not just
+    // accumulating attempts with nothing built to process them), it
+    // stops hedging. Before that point, every "in progress" row is
+    // genuinely ambiguous — it could be seconds into a normal audit, or
+    // it could be bouncing forever (Attempt_Tracker climbing toward
+    // CFG.REGISTRAR_RETRY_LIMIT with no Studio flow ever actually
+    // validating it) — so the caveat stays up.
+    const tip = document.getElementById('registrar-tip');
+    if (tip) {
+      const everCompleted = (g.routed || 0) > 0 || (g.failed || 0) > 0;
+      tip.title = everCompleted
+        ? 'A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab. ' +
+          (g.routed || 0) + ' file' + ((g.routed || 0) === 1 ? '' : 's') + ' routed so far.'
+        : 'A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance. No file has finished routing yet — if its two Studio flows (Stage 1 Auditor, Stage 2 Curator) aren\'t built yet, files here will keep retrying until they exceed the attempt limit and move to Failed for review.';
+    }
   }, (err) => {
     console.warn('[Diagnostics] getRegistrarStatus error:', err.message);
   });
