@@ -157,56 +157,145 @@ function runSocraticOnboarding() {
       ' of ' + CFG.ONBOARDING_DAYS + '.\n\nRestart and reset your thesis?',
       ui.ButtonSet.YES_NO);
     if (restart !== ui.Button.YES) return;
-    ['IDENTITY_KEY', CFG.PROP.THESIS_VERIFIED, CFG.PROP.ONBOARDING_DAY, CFG.PROP.ONBOARDING_START]
-      .forEach(k => props.deleteProperty(k));
+    // FIXED (Say/Do Ledger kos-personal finding #10): this used to only
+    // clear the "armed" markers, leaving every per-question answer
+    // (role, audience, targets, etc.) sitting in Script Properties from
+    // before — a genuine restart now clears those too, so it's an actual
+    // clean slate instead of silently pre-filling stale answers via the
+    // resume logic below.
+    [
+      'IDENTITY_KEY', 'IDENTITY_KEY_SALT',
+      CFG.PROP.THESIS_VERIFIED, CFG.PROP.ONBOARDING_DAY, CFG.PROP.ONBOARDING_START,
+      CFG.PROP.OPERATOR_ROLE, CFG.PROP.OPERATOR_AUDIENCE, CFG.PROP.ADMIN_GHOST,
+      CFG.PROP.NECESSARY_STRUGGLE, CFG.PROP.RELATIONAL_TARGETS, CFG.PROP.VISION_90_DAY,
+      CFG.PROP.DEPLOYMENT_TYPE,
+    ].forEach(k => props.deleteProperty(k));
   }
 
-  ui.alert('🧠 Welcome to KOS Socratic Onboarding',
-    '8 questions. ~10 minutes.\n\nThe system ships with no philosophy pre-installed.\n' +
+  // FIXED (finding #10): the doc comment and the welcome alert both
+  // promised "cancel at any time and resume later," but `a` used to be a
+  // fresh, empty object every call, and every props.setProperty() write
+  // happened only after all 8 questions completed — cancelling partway
+  // silently discarded every prior answer. Each answer below is now
+  // persisted to Script Properties the moment it's given (PERSIST_MAP),
+  // and a resumed run reads back whatever's already there instead of
+  // re-asking for it — "resume" and the running recap below are both
+  // real now, not aspirational copy.
+  const PERSIST_MAP = {
+    role:       CFG.PROP.OPERATOR_ROLE,
+    audience:   CFG.PROP.OPERATOR_AUDIENCE,
+    adminGhost: CFG.PROP.ADMIN_GHOST,
+    struggle:   CFG.PROP.NECESSARY_STRUGGLE,
+    targets:    CFG.PROP.RELATIONAL_TARGETS,
+    vision:     CFG.PROP.VISION_90_DAY,
+  };
+  const RECAP_LABELS = {
+    role: 'Role', audience: 'Audience', adminGhost: 'Admin Ghost',
+    struggle: 'Necessary Struggle', targets: 'Relational Targets', vision: '90-Day Vision',
+  };
+
+  const a = {};
+  Object.keys(PERSIST_MAP).forEach(key => { a[key] = props.getProperty(PERSIST_MAP[key]) || null; });
+  a.salt       = props.getProperty('IDENTITY_KEY_SALT')        || null;
+  a.deployType = props.getProperty(CFG.PROP.DEPLOYMENT_TYPE)   || null;
+  const resuming = Object.keys(PERSIST_MAP).some(k => a[k]);
+
+  ui.alert(
+    resuming ? '🧠 Resuming KOS Socratic Onboarding' : '🧠 Welcome to KOS Socratic Onboarding',
+    (resuming
+      ? 'Picking up where you left off — already-answered questions won\'t be asked again.\n\n'
+      : '8 questions. ~10 minutes.\n\n') +
+    'The system ships with no philosophy pre-installed.\n' +
     'What you define here is yours alone — it cannot be replicated without your\n' +
     'answers and passphrase.\n\nYou can cancel at any time and resume later.',
     ui.ButtonSet.OK);
 
-  const a   = {};
-  const ask = (step, title, body) => {
-    const r = ui.prompt('Step ' + step + ' of ' + CFG.TOTAL_ONBOARDING_STEPS + ' — ' + title, body, ui.ButtonSet.OK_CANCEL);
-    if (r.getSelectedButton() !== ui.Button.OK) return null;
-    return r.getResponseText().trim() || null;
+  // A short running summary of what's already answered, prepended into
+  // each remaining question's prompt — real now that answers persist
+  // immediately instead of only existing in memory for one uninterrupted
+  // run.
+  const recap = () => {
+    const answered = Object.keys(PERSIST_MAP).filter(k => a[k]);
+    if (!answered.length) return '';
+    return 'So far — ' + answered.map(k => RECAP_LABELS[k] + ': ' + a[k]).join(' · ') + '\n\n';
   };
 
-  a.role = ask(1, 'WHAT IS YOUR ROLE?',
+  const ask = (step, field, title, body) => {
+    if (PERSIST_MAP[field] && a[field]) return a[field]; // already answered on a prior run — skip
+    const r = ui.prompt('Step ' + step + ' of ' + CFG.TOTAL_ONBOARDING_STEPS + ' — ' + title, recap() + body, ui.ButtonSet.OK_CANCEL);
+    if (r.getSelectedButton() !== ui.Button.OK) return null;
+    const val = r.getResponseText().trim() || null;
+    if (val && PERSIST_MAP[field]) {
+      props.setProperty(PERSIST_MAP[field], val);
+      a[field] = val;
+    }
+    return val;
+  };
+
+  a.role = ask(1, 'role', 'WHAT IS YOUR ROLE?',
     'Your primary role or domain.\nExamples: Marketing Teacher, Business Coach, Software Developer');
   // FIXED (finding #5): menu path updated to match onOpen()'s rename above.
   if (!a.role) return ui.alert('Paused', 'Resume anytime with 🧠 Admin → Personalize Your Advisor.', ui.ButtonSet.OK);
 
-  a.audience = ask(2, 'WHO DO YOU SERVE?',
+  a.audience = ask(2, 'audience', 'WHO DO YOU SERVE?',
     'The people whose growth your work directly affects.\nExamples: High school students, Small business owners');
   if (!a.audience) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
 
-  a.adminGhost = ask(3, 'NAME YOUR ADMIN GHOST',
+  a.adminGhost = ask(3, 'adminGhost', 'NAME YOUR ADMIN GHOST',
     'What does administrative drag steal from you specifically, and how many hours per week?\nExamples: Grading formatting 4hr/wk. Parent email management 3hr/wk.');
   if (!a.adminGhost) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
 
-  a.struggle = ask(4, 'THE NECESSARY STRUGGLE',
+  a.struggle = ask(4, 'struggle', 'THE NECESSARY STRUGGLE',
     'What cognitive friction do you REFUSE to automate?\nExamples: Students must write their own business plan.');
   if (!a.struggle) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
 
-  a.targets = ask(5, 'RELATIONAL TARGETS',
+  a.targets = ask(5, 'targets', 'RELATIONAL TARGETS',
     'Your top 3–5 Carbon-to-Carbon relationships (comma separated).\nThese are the people this system exists to protect time for.');
   if (!a.targets) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
 
-  a.vision = ask(6, '90-DAY VISION',
+  a.vision = ask(6, 'vision', '90-DAY VISION',
     'In one sentence: what does success look like in 90 days if KOS is working perfectly?\nBe specific. Vague visions produce vague results.');
   if (!a.vision) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
 
-  a.salt = ask(7, 'IDENTITY KEY PASSPHRASE',
-    '⚠ CRITICAL — READ CAREFULLY\n\nCreate a private passphrase (anything memorable).\n' +
-    'This combines with your thesis to generate a unique Identity Key.\n\n' +
-    'YOU WILL NOT BE ASKED AGAIN. Write it down first.');
-  if (!a.salt) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
+  if (!a.salt) {
+    // FIXED (finding #10): added a confirmation field — no platform
+    // limitation prevents this (unlike ui.prompt()'s missing default-
+    // value parameter, worked around in updateRelationalTargets() above),
+    // and "YOU WILL NOT BE ASKED AGAIN" makes a typo here unusually
+    // costly. Retries in place up to 3 times on a mismatch — same
+    // Contextual Gates retry convention used elsewhere in this repo —
+    // rather than silently sealing a passphrase the operator may have
+    // mistyped.
+    let confirmedSalt = null;
+    for (let attempt = 0; attempt < 3 && !confirmedSalt; attempt++) {
+      const first = ask(7, 'salt', 'IDENTITY KEY PASSPHRASE' + (attempt > 0 ? ' — Retry' : ''),
+        '⚠ CRITICAL — READ CAREFULLY\n\nCreate a private passphrase (anything memorable).\n' +
+        'This combines with your thesis to generate a unique Identity Key.\n\n' +
+        'YOU WILL NOT BE ASKED AGAIN. Write it down first.');
+      if (!first) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
+
+      const confirmResp = ui.prompt('Step 7 of ' + CFG.TOTAL_ONBOARDING_STEPS + ' — CONFIRM PASSPHRASE',
+        'Type your passphrase again to confirm it.', ui.ButtonSet.OK_CANCEL);
+      if (confirmResp.getSelectedButton() !== ui.Button.OK) return ui.alert('Paused', 'Resume anytime.', ui.ButtonSet.OK);
+      const second = confirmResp.getResponseText().trim();
+
+      if (first === second) {
+        confirmedSalt = first;
+      } else if (attempt === 2) {
+        ui.alert('⚠ Passphrase Mismatch — Setup Paused',
+          'The two entries didn\'t match after 3 attempts.\n\n' +
+          'Resume anytime with 🧠 Admin → Personalize Your Advisor to try again.',
+          ui.ButtonSet.OK);
+        return;
+      } else {
+        ui.alert('⚠ Passphrase Mismatch — Try Again', 'The two entries didn\'t match.', ui.ButtonSet.OK);
+      }
+    }
+    a.salt = confirmedSalt;
+  }
   props.setProperty('IDENTITY_KEY_SALT', a.salt);
 
-  a.deployType = ask(8, 'DEPLOYMENT TYPE',
+  a.deployType = ask(8, 'deployType', 'DEPLOYMENT TYPE',
     'License: Polyform Noncommercial 1.0.0 — free for noncommercial use.\n' +
     'Commercial use: honor system with attribution.\n\n' +
     'Type one of: INDIVIDUAL, EDUCATOR, COMMERCIAL');
@@ -215,13 +304,11 @@ function runSocraticOnboarding() {
   const dt = ['INDIVIDUAL','EDUCATOR','COMMERCIAL'].includes((a.deployType||'').toUpperCase())
     ? a.deployType.toUpperCase() : 'INDIVIDUAL';
 
-  props.setProperty(CFG.PROP.DEPLOYMENT_TYPE,    dt);
-  props.setProperty(CFG.PROP.OPERATOR_ROLE,      a.role);
-  props.setProperty(CFG.PROP.OPERATOR_AUDIENCE,  a.audience);
-  props.setProperty(CFG.PROP.ADMIN_GHOST,         a.adminGhost);
-  props.setProperty(CFG.PROP.NECESSARY_STRUGGLE,  a.struggle);
-  props.setProperty(CFG.PROP.RELATIONAL_TARGETS,  a.targets);
-  props.setProperty(CFG.PROP.VISION_90_DAY,       a.vision);
+  // role/audience/adminGhost/struggle/targets/vision are already
+  // persisted incrementally above (see PERSIST_MAP inside ask()) —
+  // only the normalized deployType still needs writing here, since its
+  // raw (possibly-lowercase) text form isn't what should end up stored.
+  props.setProperty(CFG.PROP.DEPLOYMENT_TYPE, dt);
 
   Object.entries(_inferCalibrationWeights(a.role)).forEach(([k, v]) => {
     if (!props.getProperty(k)) props.setProperty(k, String(v));
@@ -668,7 +755,18 @@ function sevenBridgesReview() {
 // ================================================================
 
 function updateRelationalTargets() {
-  const ui = _getUi();
+  const ui  = _getUi();
+  const cur = PropertiesService.getScriptProperties().getProperty(CFG.PROP.RELATIONAL_TARGETS);
+  // FIXED (Say/Do Ledger kos-personal finding #10): ui.prompt() has no
+  // default-value/pre-fill parameter — a real Apps Script platform
+  // limitation, not a skipped detail. This is the buildable substitute
+  // already used elsewhere in this file (e.g. checkOnboardingProgress()'s
+  // own read-only "Relational Targets" display): show the current value
+  // in a preceding alert, then prompt for the replacement, rather than
+  // silently asking the operator to retype something from memory.
+  if (cur) {
+    ui.alert('Current Relational Targets', cur, ui.ButtonSet.OK);
+  }
   const r  = ui.prompt('Update Relational Targets',
     'List your Carbon-to-Carbon relationships (comma separated).\n' +
     'These are the people this system exists to protect time for.',
