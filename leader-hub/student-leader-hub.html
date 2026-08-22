@@ -5513,6 +5513,12 @@ function renderWizardStep() {
     // ── STEP 4: PEOPLE ──────────────────────────────────────────────────────
     case 4:
       const hasCost = (parseFloat(d.costStu)||0) > 0;
+      // Say/Do Ledger leader-hub finding #7: once a roster has been built
+      // for this trip, stuAtt is derived from it (see _syncTripStuAttFromRoster()),
+      // not typed here — disable the field rather than letting a typed
+      // number get silently discarded (or worse, fight the derived value)
+      // at save time, and say where the real number now comes from.
+      const hasRoster = d._editId != null && _tripHasRoster(d._editId);
       body.innerHTML = `
         ${sec('👥 Group Composition')}
         ${row3(
@@ -5521,7 +5527,10 @@ function renderWizardStep() {
           field('nt-invited','Students Invited', inp('nt-invited','number','0','min="0"'))
         )}
         ${row3(
-          field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0"'), '', true),
+          hasRoster
+            ? field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0" disabled'),
+                `Derived from the permission-slip roster (${slipRosters[d._editId].length} student${slipRosters[d._editId].length===1?'':'s'}) — manage headcount in 🎫 Slips, not here.`, true)
+            : field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0"'), '', true),
           field('nt-adult-att','Adults Attending', inp('nt-adult-att','number','0','min="0"'), '', true),
           field('nt-chap','Chaperones (M / F)', inp('nt-chap','text','e.g. 2 / 2'), 'Required ratio: 1 adult per 10 students', true)
         )}
@@ -5751,8 +5760,11 @@ function wzSaveTrip() {
   const ap = existingTrip?.ap
     ? { ...existingTrip.ap }
     : {coord:false, principal:false, bookkeeper:false, risk:false, transport:false};
+  // Resolved once — nextId.trip++ has a side effect, so it must only run
+  // one time regardless of how many places below need the final id.
+  const finalTripId = d._editId || nextId.trip++;
   const trip = {
-    id: d._editId || nextId.trip++,
+    id: finalTripId,
     name:d.name||'', sub:d.sub||'same-day', date:d.date||'',
     reason:d.reason||'', acttype:d.acttype||'', origin:d.origin||'',
     depDate:d.depDate||'', depTime:d.depTime||'', retDate:d.retDate||'', retTime:d.retTime||'',
@@ -5765,7 +5777,14 @@ function wzSaveTrip() {
     isOn:d.isOn||'', oos:d.oos||'', oosOn:d.oosOn||'', intl:d.intl||'',
     flight:d.flight||'', waivers:d.waivers||'',
     grade:d.grade||'', classMem:d.classMem||'',
-    invited:parseInt(d.invited)||0, stuAtt:parseInt(d.stuAtt)||0, adultAtt:parseInt(d.adultAtt)||0,
+    invited:parseInt(d.invited)||0,
+    // Say/Do Ledger leader-hub finding #7: once a roster exists for this
+    // trip, it wins over whatever the (disabled, in this case) draft field
+    // holds — the field-level disable above stops a user from typing a
+    // conflicting number, but this is the real guard, in case a draft with
+    // a stale value ever reaches this function some other way.
+    stuAtt: _tripHasRoster(finalTripId) ? slipRosters[finalTripId].length : (parseInt(d.stuAtt)||0),
+    adultAtt:parseInt(d.adultAtt)||0,
     stuMF:d.stuMF||'', adultMF:d.adultMF||'',
     costStu:parseFloat(d.costStu)||0, costAdult:parseFloat(d.costAdult)||0,
     chap:d.chap||'', wc:parseInt(d.wc)||0,
@@ -7997,6 +8016,54 @@ function getSlipRoster(tripId) {
   return slipRosters[tripId] || [];
 }
 
+// ── Say/Do Ledger leader-hub finding #7 — stuAtt derives from slipRosters ──
+// `slipRosters[tripId] || []` (getSlipRoster, above) can't tell "no roster
+// built yet" apart from "a roster was built and is now empty" — both look
+// like []. This does, via hasOwnProperty — needed so a trip whose roster
+// was fully cleared (delSlipStudent() down to 0) still counts as "roster
+// built" rather than silently reverting to the Wizard's stale typed number.
+function _tripHasRoster(tripId) {
+  return Object.prototype.hasOwnProperty.call(slipRosters, tripId);
+}
+
+// Keeps t.stuAtt itself in sync the moment a roster's headcount actually
+// changes — not just at render time — so every existing reader of
+// t.stuAtt (email templates, the Wizard's edit pre-fill, Archive's {...t}
+// snapshot) sees the same number with no changes needed at those sites.
+// Call this from every mutation that changes roster LENGTH (adds/removes),
+// never from status-only edits (markSlip()/markAllSlips() don't change
+// headcount).
+//
+// Resolves the open question flagged in the finding #7 decision: what
+// happens if the roster count changes after stuAtt was already used
+// elsewhere (e.g. an already-submitted TripTracker request)? There's no
+// stored "request" object in this app that a roster change could corrupt
+// — the Permission Request Attachment preview (generateFormPreview) is
+// always rebuilt fresh from live trip data, never snapshotted at
+// submission time. The real risk is a paperwork mismatch: the teacher may
+// have already carried a printed attachment, with the old count, to the
+// real external TripTracker system. Once a trip's status shows it's past
+// 'planned' (see nt-status's own "🔵 Active — In TripTracker" label —
+// i.e. genuinely submitted), a headcount change surfaces a warning toast
+// instead of silently changing the number out from under already-filed
+// paperwork — the same "flag it, don't hide it" pattern wzSaveTrip()
+// already uses when an edit makes an Archive snapshot go stale.
+function _syncTripStuAttFromRoster(tripId) {
+  const t = trips.find(tr => tr.id === tripId);
+  if (!t || !_tripHasRoster(tripId)) return;
+  const newCount = slipRosters[tripId].length;
+  if (t.stuAtt === newCount) return;
+  const alreadySubmitted = t.status && t.status !== 'planned';
+  t.stuAtt = newCount;
+  persistTrips();
+  if (alreadySubmitted) {
+    _showToast(
+      `⚠ Roster now ${newCount} student${newCount===1?'':'s'} — this trip was already submitted to TripTracker. Re-check the Permission Request Attachment before relying on the old count.`,
+      4500, '#b45309'
+    );
+  }
+}
+
 function getSlipStats(tripId) {
   const roster = getSlipRoster(tripId);
   return {
@@ -8208,7 +8275,8 @@ function delSlipStudent(tripId, studentId) {
   const _saved=(slipRosters[tripId]||[]).slice();
   slipRosters[tripId]=(slipRosters[tripId]||[]).filter(s=>s.id!==studentId);
   persistSlips(); renderSlipView();
-  _undoToast('Student removed from tracker',()=>{slipRosters[tripId]=_saved;persistSlips();renderSlipView();});
+  _syncTripStuAttFromRoster(tripId);
+  _undoToast('Student removed from tracker',()=>{slipRosters[tripId]=_saved;persistSlips();renderSlipView();_syncTripStuAttFromRoster(tripId);});
 }
 
 function setSlipFilter(filter, btn) {
@@ -8339,6 +8407,7 @@ function saveSlipStudent() {
 
   if (!added) return _showToast('All selected students are already on this roster.', 2800, '#991b1b');
   persistSlips(); persistNextSlipId();
+  _syncTripStuAttFromRoster(tripId);
   closeModal('addSlipStudent');
   document.getElementById('slip-trip-sel').value = tripId;
   renderSlipView();
