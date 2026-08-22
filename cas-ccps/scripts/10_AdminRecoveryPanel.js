@@ -19,6 +19,10 @@ function onOpen() {
     .addSeparator()
     .addItem("📧 Re-Send Student Document Link",      "resendStudentDocLink")
     .addItem("✅ Manually Mark Student Compliant",    "manuallyMarkCompliant")
+    .addSeparator()
+    // Say/Do Ledger cas-ccps Extension 3 — exportScrDecisionLogForAudit()
+    // is defined in 30_SCRSuggestionEngine.js, same central-ledger project.
+    .addItem("📤 Export SCRDecisionLog for Audit",    "exportScrDecisionLogForAudit")
     .addToUi();
 }
 
@@ -128,6 +132,35 @@ function _ferpaHealthChecks_() {
       : "✅  No SCR export files shared beyond the organization",
   });
 
+  // (d) SCRDecisionLog rows past the configured retention window that
+  // haven't moved to the restricted "Archived — pending disposition review"
+  // state (Say/Do Ledger cas-ccps Extension 3). Both callers of this
+  // function (autoHealthAlert() and runSystemHealthCheck()) already run
+  // _archiveExpiredScrDecisions_() immediately before calling this, so a
+  // nonzero count here means archival itself failed or didn't run — a
+  // genuine signal, not a tautology.
+  let pastRetentionUnarchived = 0;
+  try {
+    pastRetentionUnarchived = _countScrDecisionsPastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] SCRDecisionLog retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: pastRetentionUnarchived === 0,
+    alertText: pastRetentionUnarchived
+      ? "🚨 SCRDecisionLog RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + pastRetentionUnarchived + " row(s) are past the configured retention\n" +
+        "   window (SCR_RETENTION_YEARS Script Property, default 5 years) and have\n" +
+        "   not moved to the archived state — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: pastRetentionUnarchived
+      ? "🚨  " + pastRetentionUnarchived + " SCRDecisionLog row(s) past retention, not archived — see admin alert"
+      : "✅  No SCRDecisionLog rows past retention awaiting archival",
+  });
+
   return checks;
 }
 
@@ -232,6 +265,13 @@ function autoHealthAlert() {
       "   declares it."
     );
   }
+
+  // --- SCRDecisionLog retention archival (Say/Do Ledger cas-ccps Extension 3) ---
+  // Runs before the FERPA checks below so the "past retention, not archived"
+  // check right after almost always reads zero — it's a genuine health
+  // signal (did archival actually run?) precisely because this call
+  // normally makes it true, not a tautology.
+  _archiveExpiredScrDecisions_();
 
   // --- FERPA-adjacent checks (Say/Do Ledger finding #5, Bonus 1) ---
   _ferpaHealthChecks_().forEach(c => { if (!c.ok && c.alertText) issues.push(c.alertText); });
@@ -466,6 +506,11 @@ function runSystemHealthCheck() {
     if (s.startsWith("ERROR") || s === "FLAGGED") lFlagged++;
   }
   const currentTerm = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "(not set)";
+
+  // Same reasoning as autoHealthAlert() above — archive first, so the
+  // retention health check below reflects current-after-archival reality
+  // (Say/Do Ledger cas-ccps Extension 3).
+  _archiveExpiredScrDecisions_();
 
   // FIXED (finding #5, Bonus 1): folded into the final "all healthy" &&
   // condition below, not just appended as a display line — a display-only

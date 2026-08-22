@@ -125,7 +125,16 @@ function getConfig_() {
 
       // ── M4 (merged from 00_SharedConfig_M4_ADDENDUM.js) ──
       studentDocRegistry: "StudentDocRegistry",
-      warmUpResponses:    "WarmUpResponses"
+      warmUpResponses:    "WarmUpResponses",
+
+      // ── Module 5 (30_SCRSuggestionEngine.js) — documented as expected by
+      // that file's own architectural notes but never actually added here
+      // until now; every existing reference already falls back to these
+      // exact same literal names via `|| "SCRSuggestions"`/`|| "SCRDecisionLog"`,
+      // so adding them is a no-op for current behavior, just makes the
+      // fallback unnecessary going forward.
+      scrSuggestions:     "SCRSuggestions",
+      scrDecisionLog:     "SCRDecisionLog"
     }
   };
 }
