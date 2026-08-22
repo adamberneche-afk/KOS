@@ -343,14 +343,27 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
     }
 
     // ── SESSION_LOG ──────────────────────────────────────────────
+    // FIX (Say/Do Ledger kos-personal finding #1, surfaced while building
+    // the Cog Verdict pipeline below): this used to append a row on EVERY
+    // call, even when the payload had neither session_metadata nor
+    // session_summary — a payload containing only cog_registry.cog_verdicts
+    // (a Seven Bridges submission) still wrote a near-empty SESSION_LOG row
+    // every time, unlike every other block in this function, which already
+    // correctly gates on its own section being present. Not a problem in
+    // practice while COG_VERDICT was a hypothetical payload type, but real
+    // now that submitCogVerdict() sends exactly this shape — a single
+    // council review would otherwise pollute SESSION_LOG with 7 near-empty
+    // rows. Gate on presence, matching every sibling block below.
     const meta = pd.session_metadata || {};
-    _getOrCreateSheet(ss, CFG.SESSION_LOG_SHEET).appendRow([
-      uid, ts,
-      meta.session_type    || '',
-      String(meta.cold_start     || ''),
-      meta.rtp_version     || '',
-      pd.session_summary   || '',
-    ]);
+    if (pd.session_metadata || pd.session_summary) {
+      _getOrCreateSheet(ss, CFG.SESSION_LOG_SHEET).appendRow([
+        uid, ts,
+        meta.session_type    || '',
+        String(meta.cold_start     || ''),
+        meta.rtp_version     || '',
+        pd.session_summary   || '',
+      ]);
+    }
 
     // ── COG_REGISTRY ─────────────────────────────────────────────
     const verdicts = pd.cog_registry?.cog_verdicts;

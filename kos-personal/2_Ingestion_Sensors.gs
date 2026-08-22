@@ -603,6 +603,144 @@ function submitExternalData(text, title) {
 }
 
 
+/**
+ * SENSOR 3 — WEB APP ENTRY POINT: COG VERDICT (Seven Bridges council review)
+ *
+ * Records one cog's independent verdict on a shared council review
+ * (SMP-002 — see 1_Config_And_Deploy.gs's scaffold doc + 6_Governance.gs's
+ * compileCouncilVerdict_()/triggerSevenBridgesReview()). Sequestration in
+ * the Seven Bridges design comes entirely from the product boundary
+ * between separate Gemini Gem conversations — this function's only job is
+ * recording a verdict the operator already has in hand after running the
+ * same stimulus document through one such isolated conversation. It never
+ * reads or compares against any other cog's verdict for the same council;
+ * that's compileCouncilVerdict_()'s job, run only once all verdicts are in.
+ *
+ * Deliberately does NOT reuse submitSessionLog()/submitExternalData()'s
+ * content-hash duplicate guard (_generateLogUUID() + "does this uid
+ * already exist" check) — that logic assumes same-uid-means-duplicate-
+ * content, which is backwards here: multiple verdicts are meant to SHARE
+ * one council ID by design (BRIDGE_FIDELITY_001's "3+ non-APPROVED halts"
+ * rule only means anything once several verdicts are grouped under the
+ * same uid). The uid is the caller-supplied councilId directly, never a
+ * content hash.
+ *
+ * Also intentionally skips the PENDING_FLOW → Studio → FLOW_COMPLETE
+ * round-trip every other sensor in this file uses: a cog verdict arrives
+ * already structured (the web app has the operator pick cogName/status
+ * from a field/dropdown, not paste a blob of raw text needing AI
+ * extraction), so there is nothing for Studio to do with it. The
+ * STAGING_PIPELINE row is still written — queued straight into
+ * FLOW_COMPLETE rather than PENDING_FLOW — purely so this submission shows
+ * up in the same Queue tab / audit trail as every other payload type.
+ * processInferenceQueue()'s regular sweep (3_Queue_Processor.gs) picks it
+ * up on its next run like any other FLOW_COMPLETE row and appends the
+ * COG_REGISTRY row via the normal processIntakePayload() path — no
+ * special-casing needed there, since 'COG_VERDICT' isn't 'VECTOR_CLASSIFY'
+ * and already falls through to processIntakePayload() as-is.
+ *
+ * Called by the web app via:
+ *   google.script.run
+ *     .withSuccessHandler(fn)
+ *     .submitCogVerdict(councilId, cogName, status, summary)
+ *
+ * @param  {string} councilId  Shared ID for one council review run — the
+ *   operator enters it once and reuses it for every verdict from that run.
+ * @param  {string} cogName    Cog/persona name (the web app suggests
+ *   CFG.PERSONAS via a datalist, not a hardcoded 7-option dropdown — the
+ *   real persona count has drifted from "seven" at least once already;
+ *   see CFG.PERSONAS's own naming note).
+ * @param  {string} status     APPROVED | FLAG | VETO — the real documented
+ *   Final_Status vocabulary (not "REJECTED").
+ * @param  {string} summary    Free-text rationale for the verdict.
+ * @returns {Object} { success, uid, docUrl, message }
+ */
+function submitCogVerdict(councilId, cogName, status, summary) {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { success: false, message: 'System busy — try again in a moment.' };
+  }
+  try {
+    const councilIdStr = String(councilId || '').trim();
+    const cogNameStr   = String(cogName   || '').trim();
+    const statusStr    = String(status    || '').trim().toUpperCase();
+    const summaryStr   = String(summary   || '').trim();
+
+    if (!councilIdStr) {
+      return { success: false, message: 'Council ID is required — use the same ID for every verdict from one review.' };
+    }
+    if (!cogNameStr) {
+      return { success: false, message: 'Cog name is required.' };
+    }
+    if (['APPROVED', 'FLAG', 'VETO'].indexOf(statusStr) === -1) {
+      return { success: false, message: 'Status must be APPROVED, FLAG, or VETO.' };
+    }
+
+    const props = PropertiesService.getScriptProperties();
+    const rawId = props.getProperty('ID_00_RAW_EXHAUST');
+    if (!rawId) {
+      return { success: false, message: 'RAW_EXHAUST folder not set. Run deployFullSystem().' };
+    }
+
+    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+
+    // councilId IS the uid — shared on purpose across every verdict for
+    // this review. See the function doc comment above for why this is
+    // correct here even though it's backwards for every other sensor.
+    const payload = {
+      cog_registry: {
+        cog_verdicts: [{ cog: cogNameStr, final_status: statusStr, summary: summaryStr }],
+      },
+    };
+    const payloadJson = JSON.stringify(payload, null, 2);
+
+    const rawFolder = DriveApp.getFolderById(rawId);
+    const safeCog   = cogNameStr.replace(/[^a-zA-Z0-9 _-]/g, '').substring(0, 40);
+    const docName   = '[COG_VERDICT]_' + councilIdStr + '_' + safeCog;
+
+    const doc = DocumentApp.create(docName);
+    const dId = doc.getId();
+    // Doc content IS the final structured JSON, not raw text — no Studio
+    // pass needed, since processInferenceQueue() reads FLOW_COMPLETE rows'
+    // doc bodies as JSON directly (3_Queue_Processor.gs).
+    doc.getBody().setText(payloadJson);
+    doc.saveAndClose();
+    DriveApp.getFileById(dId).moveTo(rawFolder);
+
+    const docUrl = DriveApp.getFileById(dId).getUrl();
+
+    // Queued directly as FLOW_COMPLETE (skipping PENDING_FLOW) — see the
+    // function doc comment above. Not routed through _queuePayload(),
+    // since that helper hardcodes PENDING_FLOW.
+    staging.appendRow([
+      new Date(),
+      councilIdStr,
+      'COG_VERDICT',
+      docUrl,
+      dId,
+      'FLOW_COMPLETE',
+      0,
+    ]);
+
+    SpreadsheetApp.flush();
+
+    return {
+      success: true,
+      uid: councilIdStr,
+      docUrl,
+      message: 'Verdict recorded for council ' + councilIdStr + '. Will land in COG_REGISTRY on the next queue run.',
+    };
+
+  } catch (e) {
+    _reportError('submitCogVerdict', e, null);
+    return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
 // ================================================================
 // SHARED PIPELINE HELPERS
 // ================================================================

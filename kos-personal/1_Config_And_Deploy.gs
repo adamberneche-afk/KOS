@@ -201,6 +201,18 @@ const CFG = {
     'PERSONA_DEVELOPER', 'PERSONA_CURATOR', 'PERSONA_ALIGNMENT',
   ],
 
+  // ── Seven Bridges (SMP-002 — Say/Do Ledger kos-personal finding #1) ──
+  // Real execution layer for the sequestered-review design scaffolded (but
+  // never built) at deploy time — see the SMP-002 doc content below and
+  // 6_Governance.gs's compileCouncilVerdict_()/triggerSevenBridgesReview().
+  // "Seven Bridges" names the design's target cog count, but this
+  // threshold is deliberately NOT hardcoded to 7 — PERSONAS above has 6
+  // real entries today (see the NAMING NOTE just above it), and the
+  // compiler groups whatever verdicts actually arrive under one council
+  // ID rather than assuming a fixed submission count. 3+ non-APPROVED
+  // verdicts halts execution regardless of how many cogs actually voted.
+  COG_HALT_THRESHOLD: 3,
+
   // ── Vector primer docs to scaffold on Deploy ──────────────────
   VECTORS_TO_CREATE: [
     'VECTOR_ARCHITECTURE', 'VECTOR_PEDAGOGY',
