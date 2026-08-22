@@ -408,7 +408,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
     <div class="kpi-card gold">
       <div class="kpi-val" id="kpi-hours">—</div>
       <div class="kpi-label">Teacher Hours Recovered</div>
-      <div class="kpi-sub">Estimated, annualized</div>
+      <div class="kpi-sub">Self-reported, annualized</div>
     </div>
   </div>
 
@@ -445,12 +445,14 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
   <div class="outcomes-two-col">
     <div class="outcome-block">
       <h3>Aggregate Metrics</h3>
+      <p style="font-size:12px;color:var(--dim);margin-bottom:10px">The day-to-day numbers behind the bigger-picture case made in Admin View → "The Case Beyond the Classroom."</p>
       <div id="aggregate-metrics">
         <p class="no-data">Metrics will appear as outcomes data is added to deployments.</p>
       </div>
     </div>
     <div class="outcome-block">
       <h3>Teacher Voices</h3>
+      <p style="font-size:12px;color:var(--dim);margin-bottom:10px">Self-reported by each teacher, in their own words — not independently verified.</p>
       <div id="teacher-quotes">
         <p class="no-data">Quotes will appear as teachers add their reflections.</p>
       </div>
@@ -503,9 +505,37 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
       <h3>Why It Matters</h3>
       <div style="font-size:14px;color:var(--mid);line-height:1.75">
         <p style="margin-bottom:10px"><strong style="color:var(--ink)">For students:</strong> Feedback within minutes, not days. Specific, actionable revisions. No penalty for iterating. Students who previously submitted one draft now submit 2–3.</p>
-        <p style="margin-bottom:10px"><strong style="color:var(--ink)">For teachers:</strong> Formative grading burden eliminated for assignments running through the system. Estimated 90+ hours recovered per teacher per year.</p>
+        <!-- FIXED (Say/Do Ledger cas-ccps finding #6): "Estimated 90+ hours
+             recovered per teacher per year" used to be a static claim with
+             no connection to any entered data — an assertion, not a
+             measurement. Now shows the actual self-reported average across
+             whichever teachers have logged outcomes (see #why-hours-note in
+             render()), and says plainly that it's self-reported, not
+             independently verified — no dashboard visitor could previously
+             tell this number apart from a real measured result. -->
+        <p style="margin-bottom:10px"><strong style="color:var(--ink)">For teachers:</strong> Formative grading burden eliminated for assignments running through the system. <span id="why-hours-note">No teacher-reported hours data yet — this will show the self-reported average once outcomes are logged.</span></p>
         <p><strong style="color:var(--ink)">For the district:</strong> No new vendor contract. No DPA negotiation. No procurement process. Deployed inside existing infrastructure in approximately one hour.</p>
       </div>
+    </div>
+  </div>
+
+  <!-- ADDED (Say/Do Ledger cas-ccps finding #4, decided B+C combined): the
+       "cause" case (1:1/presence-driven education as the actual goal, not
+       efficiency for its own sake) and the "effect" case (the researched
+       chain from school quality to local economic impact) that gives the
+       KPIs above a reason to matter beyond a bare efficiency pitch. -->
+  <div class="outcome-block" style="margin-bottom:20px">
+    <h3>The Case Beyond the Classroom</h3>
+    <div style="font-size:14px;color:var(--mid);line-height:1.75">
+      <p style="margin-bottom:10px"><strong style="color:var(--ink)">Why this isn't just an efficiency story.</strong> This system's own design principle is that "the goal is never efficiency — it's presence": automate the prerequisite, protect the human moment, never replace judgment. Every hour of formative-grading burden this system removes is an hour a teacher gets back for the thing an algorithm can't do — sustained, individual attention to a specific student.</p>
+      <p style="margin-bottom:10px"><strong style="color:var(--ink)">That connects to a real, measurable community stake.</strong> A better-resourced school — the kind that comes from teachers who have time to give students real attention — is one of the most consistently documented drivers of local home values, which in turn support the property-tax base that funds schools and local government:</p>
+      <ul style="margin:0 0 10px 20px;padding:0">
+        <li style="margin-bottom:6px">Barrow &amp; Rouse (2004), "Using Market Valuation to Assess Public School Spending," <em>Journal of Public Economics</em> 88(9–10):1747–1769 (also circulated as NBER Working Paper 9054) — found roughly a $20 increase in per-pupil housing value for every $1 increase in per-pupil school spending capitalized by local housing markets.</li>
+        <li style="margin-bottom:6px">Cellini, Ferreira &amp; Rothstein, "The Value of School Facility Investments: Evidence from a Dynamic Regression Discontinuity Design" (NBER Working Paper 14516) — found school-facility bond passage produces measurable local house-price appreciation.</li>
+        <li style="margin-bottom:6px">The National Association of Realtors' own buyer-preference research consistently ranks school quality among the top factors home buyers weigh, with measurable price premiums in higher-performing school districts.</li>
+        <li>Lincoln Institute of Land Policy, "The Property Tax–School Funding Dilemma" — documents property taxes as the primary funding link between local home values and school/government funding capacity.</li>
+      </ul>
+      <p style="font-size:12px;color:var(--dim);font-style:italic">Verification note: this dashboard's authoring environment could not directly fetch the NBER/NAR source documents to re-verify their full text. Each citation above was instead cross-checked against multiple independent secondary indices (ScienceDirect, RePEc/IDEAS, and the authors' own institutional publication pages) to confirm the paper, authors, year, and venue are real and accurately described. Treat these as pointers worth checking directly, not as independently re-verified primary-source quotes.</p>
     </div>
   </div>
 
@@ -526,7 +556,7 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
 
   <div class="sheets-callout">
     <span style="font-size:18px;flex-shrink:0">📊</span>
-    <div><strong>Create one Google Sheet with two tabs:</strong> "Deployments" and "Outcomes". Share edit access with teachers you onboard. This dashboard reads from data you paste into the "Import Data" panel below — or connect it live via the Apps Script snippet at the bottom of this page.</div>
+    <div><strong>Create one Google Sheet with two tabs:</strong> "Deployments" and "Outcomes". Share edit access with teachers you onboard. Use this Sheet as your working copy, then bring the data into this dashboard as described below — see "How Data Gets Into This Dashboard."</div>
   </div>
 
   <div class="schema-block">
@@ -566,14 +596,16 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
   </div>
 
   <div class="outcome-block" style="margin-top:8px">
-    <h3>How to Connect Live Data</h3>
+    <h3>How Data Gets Into This Dashboard</h3>
+    <!-- FIXED (Say/Do Ledger cas-ccps finding #6): this section used to
+         promise a "publish to CSV, paste the URL" live-sync feature. No such
+         import field exists anywhere in this dashboard — the only two ways
+         data actually gets in are the manual entry form and the JSON
+         bulk-import box, both on the + Add Entry tab. Rather than build a new
+         live-sync feature in this pass, this section now honestly describes
+         what's actually here instead of a promise nothing implements. -->
     <div style="font-size:14px;color:var(--mid);line-height:1.75;margin-bottom:16px">
-      To have this dashboard read live from your Google Sheet, publish the sheet as a CSV and paste the URL into the import field below. Or use the manual JSON import in the Add Entry tab to paste data directly.
-    </div>
-    <div style="background:#f5f4f0;border:1px solid var(--rule);border-radius:2px;padding:16px;font-family:monospace;font-size:12px;color:var(--mid);line-height:2">
-      <span style="color:var(--teal)">// In your Google Sheet: File → Share → Publish to web</span><br>
-      <span style="color:var(--teal)">// Choose the Deployments tab → CSV format → Publish</span><br>
-      <span style="color:var(--teal)">// Paste the resulting URL into the Import field in the Add Entry tab</span>
+      There is no live connection to a Google Sheet today. Two ways to get data in, both on the <strong>+ Add Entry</strong> tab: fill in the form for one deployment at a time, or export your Sheet data to JSON and paste it into the Bulk Import box. Everything is stored in this browser's local storage — it does not sync across devices or teachers, and it will be lost if this browser's site data is cleared.
     </div>
   </div>
 </div>
@@ -780,9 +812,9 @@ function render() {
           <div class="meta-item"><div class="ml">Deployed</div><div class="mv">${x.date_deployed ? fmtDate(x.date_deployed) : '—'}</div></div>
         </div>
         <div class="deploy-outcomes">
-          ${x.hours_saved_weekly ? `<span class="outcome-tag positive">⏱ ${x.hours_saved_weekly}h/week saved</span>` : ''}
-          ${x.avg_drafts_after && x.avg_drafts_before ? `<span class="outcome-tag positive">📝 ${x.avg_drafts_before}→${x.avg_drafts_after} drafts/student</span>` : ''}
-          ${x.would_recommend === 'Yes' ? `<span class="outcome-tag positive">✓ Recommends</span>` : ''}
+          ${x.hours_saved_weekly ? `<span class="outcome-tag positive" title="Self-reported by the teacher">⏱ ${x.hours_saved_weekly}h/week saved</span>` : ''}
+          ${x.avg_drafts_after && x.avg_drafts_before ? `<span class="outcome-tag positive" title="Self-reported by the teacher">📝 ${x.avg_drafts_before}→${x.avg_drafts_after} drafts/student</span>` : ''}
+          ${x.would_recommend === 'Yes' ? `<span class="outcome-tag positive" title="Self-reported by the teacher">✓ Recommends</span>` : ''}
           ${x.deployer_notes ? `<div style="margin-top:10px;font-size:13px;color:var(--mid)">${x.deployer_notes}</div>` : ''}
           ${!x.hours_saved_weekly && !x.avg_drafts_after && !x.deployer_notes ? '<span class="no-data">Outcomes data pending</span>' : ''}
         </div>
@@ -806,11 +838,25 @@ function render() {
 
   document.getElementById('aggregate-metrics').innerHTML = d.length === 0
     ? '<p class="no-data">Metrics will appear as outcomes data is added.</p>'
-    : `<div class="metric-row"><span class="metric-label">Avg hours saved / teacher / week</span><span class="metric-val">${withHours.length ? (withHours.reduce((a,x)=>a+(parseFloat(x.hours_saved_weekly)||0),0)/withHours.length).toFixed(1) : '—'}</span></div>
-       <div class="metric-row"><span class="metric-label">Avg drafts before system</span><span class="metric-val">${withDrafts.length ? (withDrafts.reduce((a,x)=>a+(parseFloat(x.avg_drafts_before)||0),0)/withDrafts.length).toFixed(1) : '—'}</span></div>
-       <div class="metric-row"><span class="metric-label">Avg drafts with system</span><span class="metric-val">${withDrafts.length ? (withDrafts.reduce((a,x)=>a+(parseFloat(x.avg_drafts_after)||0),0)/withDrafts.length).toFixed(1) : '—'}</span></div>
-       <div class="metric-row"><span class="metric-label">Teachers who recommend</span><span class="metric-val gold">${d.length ? Math.round(recommends/d.length*100)+'%' : '—'}</span></div>
-       <div class="metric-row"><span class="metric-label">Estimated annual hours recovered (system-wide)</span><span class="metric-val">${hoursAnnual ? hoursAnnual.toLocaleString() : '—'}</span></div>`;
+    : `<div class="metric-row"><span class="metric-label">Avg hours saved / teacher / week (self-reported)</span><span class="metric-val">${withHours.length ? (withHours.reduce((a,x)=>a+(parseFloat(x.hours_saved_weekly)||0),0)/withHours.length).toFixed(1) : '—'}</span></div>
+       <div class="metric-row"><span class="metric-label">Avg drafts before system (self-reported)</span><span class="metric-val">${withDrafts.length ? (withDrafts.reduce((a,x)=>a+(parseFloat(x.avg_drafts_before)||0),0)/withDrafts.length).toFixed(1) : '—'}</span></div>
+       <div class="metric-row"><span class="metric-label">Avg drafts with system (self-reported)</span><span class="metric-val">${withDrafts.length ? (withDrafts.reduce((a,x)=>a+(parseFloat(x.avg_drafts_after)||0),0)/withDrafts.length).toFixed(1) : '—'}</span></div>
+       <div class="metric-row"><span class="metric-label">Teachers who recommend (self-reported)</span><span class="metric-val gold">${d.length ? Math.round(recommends/d.length*100)+'%' : '—'}</span></div>
+       <div class="metric-row"><span class="metric-label">Estimated annual hours recovered (system-wide, self-reported average × annualized)</span><span class="metric-val">${hoursAnnual ? hoursAnnual.toLocaleString() : '—'}</span></div>`;
+
+  // FIXED (Say/Do Ledger cas-ccps finding #6): the "For teachers" line in the
+  // Admin View's "Why It Matters" block used to hardcode a static "90+ hours
+  // recovered per teacher per year" claim with no connection to any entered
+  // data. Now it shows the real self-reported average across teachers who
+  // have actually logged outcomes, framed plainly as self-reported.
+  const whyHoursNoteEl = document.getElementById('why-hours-note');
+  if (whyHoursNoteEl) {
+    whyHoursNoteEl.textContent = withHours.length
+      ? 'Averaging ' + (withHours.reduce((a,x)=>a+(parseFloat(x.hours_saved_weekly)||0),0)/withHours.length).toFixed(1) +
+        ' self-reported hours/week recovered, across ' + withHours.length + ' teacher' + (withHours.length !== 1 ? 's' : '') +
+        ' who have logged outcomes so far. Self-reported by teachers, not independently measured.'
+      : 'No teacher-reported hours data yet — this will show the self-reported average once outcomes are logged.';
+  }
 
   const notes = d.filter(x => x.observations).map(x =>
     `<div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--warm)">
