@@ -136,10 +136,23 @@ function onTurnInSubmit(e) {
     }
 
     // STEP 6 — All checks passed
-    markCompliant_(cfg, ledgerRow.rowIndex);
-    notifyTeacher_(ledgerRow, submittedDocUrl);
+    // FIXED (Say/Do Ledger cas-ccps finding #1, decided the refined Option B):
+    // this used to write a terminal COMPLIANT status here — auto-approving
+    // silently, with the only override living outside the teacher's own
+    // dashboard (10_AdminRecoveryPanel.js's manuallyMarkCompliant()). Now a
+    // genuine-complete submission (this compliance branch, unchanged) lands
+    // in a PENDING_TEACHER_REVIEW state with an AI-suggested score instead —
+    // see markPendingReview_(). Nothing here changes for a genuine-partial or
+    // not-a-real-attempt submission: Flow 2 continues to stamp those
+    // REVISION_REQUIRED (or omit a stamp entirely), which the STEP 4 check
+    // above already rejects before this point is ever reached.
+    const suggestedScore = extractSuggestedScore_(docText);
+    markPendingReview_(cfg, ledgerRow.rowIndex, suggestedScore);
+    notifyTeacher_(ledgerRow, submittedDocUrl, suggestedScore);
 
-    Logger.log("Turn-in APPROVED — GoogleID: " + googleId + " | ConfigID: " + configId);
+    Logger.log("Turn-in PENDING TEACHER REVIEW — GoogleID: " + googleId +
+      " | ConfigID: " + configId +
+      " | Suggested score: " + (suggestedScore == null ? "none" : suggestedScore));
   } catch (err) {
     Logger.log("[TURN-IN] Critical failure: " + err.message);
   } finally {
@@ -186,6 +199,31 @@ function scanCompliance_(docText) {
   if (docText.indexOf("[SYSTEM: APPROVED]")          !== -1) return "APPROVED";
   if (docText.indexOf("[SYSTEM: REVISION_REQUIRED]") !== -1) return "REVISION_REQUIRED";
   return "NONE";
+}
+
+// ---------------------------------------------------------------------------
+// extractSuggestedScore_ (Say/Do Ledger cas-ccps finding #1)
+//
+// Reads Flow 2's new [SUGGESTED_SCORE: N] marker — a completeness/effort read
+// adapted from the Warm-Up pipeline's 0-3 ENGAGEMENT band (25_WarmUpWriter.js),
+// scoped to N ∈ {2,3,4} for an already-APPROVED submission (1 and 5 are
+// reserved for a teacher's own judgment — see 30_SCRSuggestionEngine.js's
+// identical reserved-tier convention for competency SCR ratings — Flow 2's
+// prompt spec is written to never emit either).
+//
+// Returns the integer score, or null if the marker isn't present — which is
+// the expected, handled case for every submission evaluated before this
+// marker existed in the live Studio Flow (the prompt-text change in
+// 15_StudioFlowPrompts.js/15b_StudioFlowPrompts_Flow2_Revised.js only takes
+// effect once someone manually re-pastes it into the deployed Flow 2 — see
+// those files' own "NOT A DEPLOYED SCRIPT" banners). A submission with no
+// suggested score still lands in PENDING_TEACHER_REVIEW; the teacher just
+// has no "accept as suggested" fast path and must enter a score directly via
+// Override.
+// ---------------------------------------------------------------------------
+function extractSuggestedScore_(docText) {
+  const m = docText.match(/\[SUGGESTED_SCORE:\s*([2-4])\]/);
+  return m ? Number(m[1]) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -257,36 +295,79 @@ function runForensicCheck_(fileId) {
 }
 
 // ---------------------------------------------------------------------------
-// markCompliant_
+// _ensureTurnInReviewColumns_ (Say/Do Ledger cas-ccps finding #1)
+//
+// Idempotently adds the 4 columns the turn-in review flow needs (columns
+// 20-23) if they aren't already there — self-heals an already-deployed
+// Ledger created before this feature existed, rather than requiring every
+// admin to manually re-run a migration step. Safe to call on every write;
+// a no-op once the header row already has them.
 // ---------------------------------------------------------------------------
-function markCompliant_(cfg, rowIndex) {
+function _ensureTurnInReviewColumns_(sheet) {
+  const headerRange = sheet.getRange(1, 20, 1, 4);
+  const existing     = headerRange.getValues()[0];
+  if (existing[0] !== "SuggestedScore") {
+    headerRange.setValues([["SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt"]]);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// markPendingReview_ (Say/Do Ledger cas-ccps finding #1 — was markCompliant_)
+//
+// Renamed from markCompliant_: a genuine-complete submission no longer
+// auto-approves to a terminal status. It now lands in PENDING_TEACHER_REVIEW
+// with an AI-suggested score (columns 13/14/15/20) — the teacher's own
+// confirm/override decision (recordTurnInConfirmation_/recordTurnInOverride_
+// in 07_TeacherDashboard.js — a DIFFERENT Apps Script project from this file,
+// see the cross-project note below) is what finally writes the terminal
+// COMPLIANT status, matching every other place in the codebase that already
+// treats "COMPLIANT" as done (health checks, term archiving, the student's
+// own status message).
+//
+// CROSS-PROJECT NOTE: this file is bound to cas-ccps:central-ledger;
+// 07_TeacherDashboard.js is a separate standalone-web-app project
+// (cas-ccps:teacher-dashboard) with no shared runtime — see
+// tools/gas-lint/project-map.json. The confirm/override decision functions
+// therefore live entirely in 07_TeacherDashboard.js, not here, even though
+// they operate on the same Ledger tab; this file only ever writes the
+// PENDING_TEACHER_REVIEW half of the lifecycle.
+// ---------------------------------------------------------------------------
+function markPendingReview_(cfg, rowIndex, suggestedScore) {
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
-  sheet.getRange(rowIndex, 13).setValue("COMPLIANT");
+  _ensureTurnInReviewColumns_(sheet);
+  sheet.getRange(rowIndex, 13).setValue("PENDING_TEACHER_REVIEW");
   sheet.getRange(rowIndex, 14).setValue(new Date());
-  sheet.getRange(rowIndex, 15).setValue("All checks passed — auto-approved.");
+  sheet.getRange(rowIndex, 15).setValue(suggestedScore
+    ? "All checks passed — awaiting teacher review. AI-suggested score: " + suggestedScore + "/5."
+    : "All checks passed — awaiting teacher review. No AI-suggested score available " +
+      "(this submission was evaluated before scoring was added to Flow 2 — assign a score directly via Override).");
+  sheet.getRange(rowIndex, 20).setValue(suggestedScore == null ? "" : suggestedScore);
 }
 
 // ---------------------------------------------------------------------------
 // notifyTeacher_
 // ---------------------------------------------------------------------------
-function notifyTeacher_(row, docUrl) {
+function notifyTeacher_(row, docUrl, suggestedScore) {
   if (!row.teacherEmail) return;
   MailApp.sendEmail(
     row.teacherEmail,
-    "✅ Verified Submission — " + row.studentName +
+    "📋 Ready For Your Review — " + row.studentName +
     " | " + row.courseName + " Period " + row.period,
-    "A student submission has passed all automated checks.\n\n" +
+    "A student submission has passed all automated checks and is ready for your review.\n\n" +
     "Student:   " + row.studentName + "\n" +
     "Block:     " + row.block + "\n" +
     "Class:     " + row.className + " — " + row.teacherName + "\n" +
     "Period:    " + row.period + "\n" +
     "ConfigID:  " + row.configId + "\n" +
-    "Document:  " + docUrl + "\n\n" +
+    "Document:  " + docUrl + "\n" +
+    (suggestedScore ? "AI-suggested score: " + suggestedScore + "/5\n" : "") + "\n" +
     "Checks passed:\n" +
     "  ✓ Google ID + File ID + CONFIG_ID ledger match\n" +
     "  ✓ SYSTEM: APPROVED stamp present\n" +
     "  ✓ Version history automated block write confirmed\n\n" +
+    "This is not yet final — review it on your Teacher Dashboard's Pending Review " +
+    "queue and confirm or adjust the score to make it official.\n\n" +
     "— Assignment System"
   );
 }
