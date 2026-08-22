@@ -620,6 +620,9 @@ textarea { line-height: 1.55; }
     <div class="toggle" role="tablist" aria-label="Content type">
       <button class="toggle-btn active" id="btn-type-session" role="tab" aria-selected="true" aria-controls="fields-session" tabindex="0" onclick="switchType('session')">Session Log</button>
       <button class="toggle-btn" id="btn-type-research" role="tab" aria-selected="false" aria-controls="fields-research" tabindex="-1" onclick="switchType('research')">Research / Context</button>
+      <!-- NEW (Say/Do Ledger kos-personal finding #1): Seven Bridges council
+           verdict logging — see submitCogVerdict() (2_Ingestion_Sensors.gs). -->
+      <button class="toggle-btn" id="btn-type-cogverdict" role="tab" aria-selected="false" aria-controls="fields-cogverdict" tabindex="-1" onclick="switchType('cogverdict')">Cog Verdict</button>
     </div>
 
     <!-- Session Log fields -->
@@ -656,6 +659,40 @@ textarea { line-height: 1.55; }
           oninput="updateCount('research-text','research-count')"></textarea>
         <div class="char-count" id="research-count">0 chars</div>
         <span id="research-count-announce" class="sr-only"></span>
+      </div>
+    </div>
+
+    <!-- Cog Verdict fields (Say/Do Ledger kos-personal finding #1) -->
+    <div id="fields-cogverdict" style="display:none" role="tabpanel" aria-labelledby="btn-type-cogverdict">
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-council">Council ID</label>
+        <input type="text" id="cogverdict-council" placeholder="e.g. SB_1234567890 — shown by Run full council review"
+          oninput="scheduleIngestDraftSave()">
+        <div class="char-count">Same ID for every verdict from one review — this is what groups them.</div>
+      </div>
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-cog">Cog</label>
+        <input type="text" id="cogverdict-cog" list="cog-personas-list" placeholder="e.g. PERSONA_ARCHITECT"
+          oninput="scheduleIngestDraftSave()">
+        <datalist id="cog-personas-list">
+          <? personas.forEach(function(p) { ?>
+          <option value="<?= p ?>"></option>
+          <? }); ?>
+        </datalist>
+      </div>
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-status">Verdict</label>
+        <select id="cogverdict-status" oninput="scheduleIngestDraftSave()">
+          <option value="APPROVED">APPROVED</option>
+          <option value="FLAG">FLAG</option>
+          <option value="VETO">VETO</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-summary">Summary / rationale</label>
+        <textarea id="cogverdict-summary" rows="6"
+          placeholder="Why this cog reached this verdict…"
+          oninput="scheduleIngestDraftSave()"></textarea>
       </div>
     </div>
 
@@ -1036,6 +1073,12 @@ function announceStatus(elId, msg, isError) {
 // ── Tab navigation ─────────────────────────────────────────────
 // ── Draft state (preserved across tab switches) ────────────────
 let draftSession = '', draftResearch = '', draftResearchTitle = '';
+// Cog Verdict draft state (Say/Do Ledger kos-personal finding #1). Council
+// ID deliberately persists across submits (see handleSubmit()'s onOk) —
+// the whole point is reusing it for every verdict from one review — while
+// cog/status/summary clear after each successful submit like every other
+// type's fields do.
+let draftCogCouncil = '', draftCogName = '', draftCogSummary = '';
 let shadowRefreshTimer = null;
 
 // ── Ingest draft persistence (survives refresh/accidental close) ───────────
@@ -1045,9 +1088,11 @@ let shadowRefreshTimer = null;
 const INGEST_DRAFT_KEY = 'kos_ingest_draft';
 function _safeLS(fn) { try { return fn(); } catch (e) { return null; } }
 function persistIngestDraft() {
-  if (!draftSession && !draftResearch && !draftResearchTitle) { clearIngestDraft(); return; }
+  if (!draftSession && !draftResearch && !draftResearchTitle &&
+      !draftCogCouncil && !draftCogName && !draftCogSummary) { clearIngestDraft(); return; }
   _safeLS(() => localStorage.setItem(INGEST_DRAFT_KEY, JSON.stringify(
-    { session: draftSession, research: draftResearch, researchTitle: draftResearchTitle })));
+    { session: draftSession, research: draftResearch, researchTitle: draftResearchTitle,
+      cogCouncil: draftCogCouncil, cogName: draftCogName, cogSummary: draftCogSummary })));
 }
 function restoreIngestDraft() {
   const raw = _safeLS(() => localStorage.getItem(INGEST_DRAFT_KEY));
@@ -1057,12 +1102,21 @@ function restoreIngestDraft() {
   draftSession = d.session || '';
   draftResearch = d.research || '';
   draftResearchTitle = d.researchTitle || '';
+  draftCogCouncil = d.cogCouncil || '';
+  draftCogName    = d.cogName    || '';
+  draftCogSummary = d.cogSummary || '';
   const st = document.getElementById('session-text');
   const rt = document.getElementById('research-text');
   const rtl = document.getElementById('research-title');
+  const cc = document.getElementById('cogverdict-council');
+  const cn = document.getElementById('cogverdict-cog');
+  const cs = document.getElementById('cogverdict-summary');
   if (st && draftSession)   { st.value = draftSession;   updateCount('session-text','session-count'); }
   if (rt && draftResearch)  { rt.value = draftResearch;  updateCount('research-text','research-count'); }
   if (rtl && draftResearchTitle) rtl.value = draftResearchTitle;
+  if (cc && draftCogCouncil) cc.value = draftCogCouncil;
+  if (cn && draftCogName)    cn.value = draftCogName;
+  if (cs && draftCogSummary) cs.value = draftCogSummary;
 }
 function clearIngestDraft() { _safeLS(() => localStorage.removeItem(INGEST_DRAFT_KEY)); }
 
@@ -1072,9 +1126,15 @@ function _flushIngestDraftSave() {
   const st = document.getElementById('session-text');
   const rt = document.getElementById('research-text');
   const rtl = document.getElementById('research-title');
+  const cc = document.getElementById('cogverdict-council');
+  const cn = document.getElementById('cogverdict-cog');
+  const cs = document.getElementById('cogverdict-summary');
   if (st)  draftSession       = st.value;
   if (rt)  draftResearch      = rt.value;
   if (rtl) draftResearchTitle = rtl.value;
+  if (cc)  draftCogCouncil    = cc.value;
+  if (cn)  draftCogName       = cn.value;
+  if (cs)  draftCogSummary    = cs.value;
   persistIngestDraft();
 }
 function scheduleIngestDraftSave() {
@@ -1106,8 +1166,9 @@ const NAV_TABS  = [
   { id: 'diag',   btnId: 'nav-diag'   },
 ];
 const TYPE_TABS = [
-  { id: 'session',  btnId: 'btn-type-session'  },
-  { id: 'research', btnId: 'btn-type-research' },
+  { id: 'session',    btnId: 'btn-type-session'    },
+  { id: 'research',   btnId: 'btn-type-research'   },
+  { id: 'cogverdict', btnId: 'btn-type-cogverdict' },
 ];
 
 function _wireTabGroup_(tabs, activateFn) {
@@ -1149,6 +1210,9 @@ function switchTab(id) {
     draftSession       = document.getElementById('session-text')?.value  || '';
     draftResearch      = document.getElementById('research-text')?.value || '';
     draftResearchTitle = document.getElementById('research-title')?.value || '';
+    draftCogCouncil    = document.getElementById('cogverdict-council')?.value || '';
+    draftCogName       = document.getElementById('cogverdict-cog')?.value     || '';
+    draftCogSummary    = document.getElementById('cogverdict-summary')?.value || '';
   }
 
   ['ingest','queue','diag'].forEach(t => {
@@ -1164,9 +1228,15 @@ function switchTab(id) {
     const st = document.getElementById('session-text');
     const rt = document.getElementById('research-text');
     const rtl = document.getElementById('research-title');
+    const cc = document.getElementById('cogverdict-council');
+    const cn = document.getElementById('cogverdict-cog');
+    const cs = document.getElementById('cogverdict-summary');
     if (st  && draftSession)       { st.value  = draftSession;       updateCount('session-text','session-count'); }
     if (rt  && draftResearch)      { rt.value  = draftResearch;      updateCount('research-text','research-count'); }
     if (rtl && draftResearchTitle) { rtl.value = draftResearchTitle; }
+    if (cc  && draftCogCouncil)    { cc.value  = draftCogCouncil; }
+    if (cn  && draftCogName)       { cn.value  = draftCogName; }
+    if (cs  && draftCogSummary)    { cs.value  = draftCogSummary; }
   }
 
   // Shadow matrix auto-refresh every 5 min while on Diagnostics
@@ -1182,11 +1252,13 @@ function switchTab(id) {
 // ── Ingest — type toggle ───────────────────────────────────────
 function switchType(type) {
   currentType = type;
-  document.getElementById('btn-type-session' ).classList.toggle('active', type === 'session');
-  document.getElementById('btn-type-research').classList.toggle('active', type === 'research');
+  document.getElementById('btn-type-session'   ).classList.toggle('active', type === 'session');
+  document.getElementById('btn-type-research'  ).classList.toggle('active', type === 'research');
+  document.getElementById('btn-type-cogverdict').classList.toggle('active', type === 'cogverdict');
   _setTabAria_(TYPE_TABS, 'btn-type-' + type);
-  document.getElementById('fields-session' ).style.display = type === 'session'  ? 'block' : 'none';
-  document.getElementById('fields-research').style.display = type === 'research' ? 'block' : 'none';
+  document.getElementById('fields-session'   ).style.display = type === 'session'    ? 'block' : 'none';
+  document.getElementById('fields-research'  ).style.display = type === 'research'   ? 'block' : 'none';
+  document.getElementById('fields-cogverdict').style.display = type === 'cogverdict' ? 'block' : 'none';
   clearIngestToast();
   hideDropPanel();
   // A stale "your session is in the queue" hint used to stay visible after
@@ -1283,6 +1355,16 @@ function handleSubmit() {
   const btn   = document.getElementById('btn-submit');
   const label = document.getElementById('submit-label');
   const icon  = document.getElementById('submit-icon');
+
+  // Cog Verdict is a genuinely different shape (4 short structured fields,
+  // no single free-text blob with a char-count/large-payload concern), so
+  // it's handled as its own branch rather than folded into the
+  // text/title-shaped logic the rest of this function assumes.
+  if (currentType === 'cogverdict') {
+    handleCogVerdictSubmit_(btn, label, icon);
+    return;
+  }
+
   const text  = currentType === 'session'
     ? document.getElementById('session-text').value.trim()
     : document.getElementById('research-text').value.trim();
@@ -1390,6 +1472,60 @@ function handleSubmit() {
   currentType === 'session'
     ? callServer('submitSessionLog',  [text],         onOk, onErr)
     : callServer('submitExternalData', [text, title],  onOk, onErr);
+}
+
+/**
+ * Cog Verdict submit path (Say/Do Ledger kos-personal finding #1) — split
+ * out of handleSubmit() since the shape (4 short structured fields, no
+ * char-count/large-payload concern) doesn't fit the text/title logic the
+ * rest of that function is built around.
+ */
+function handleCogVerdictSubmit_(btn, label, icon) {
+  const councilId = document.getElementById('cogverdict-council').value.trim();
+  const cogName   = document.getElementById('cogverdict-cog').value.trim();
+  const status    = document.getElementById('cogverdict-status').value;
+  const summary   = document.getElementById('cogverdict-summary').value.trim();
+
+  if (!councilId) {
+    showIngestToast('Council ID is required — reuse the one shown by "Run full council review."', false);
+    return;
+  }
+  if (!cogName) {
+    showIngestToast('Cog name is required.', false);
+    return;
+  }
+
+  btn.disabled = true;
+  label.textContent = 'Sending…';
+  icon.className = 'ti ti-loader-2';
+
+  const onOk = (res) => {
+    btn.disabled = false;
+    label.textContent = 'Submit';
+    icon.className = 'ti ti-send';
+    if (res && res.success) {
+      showIngestToast('✅ Verdict recorded for council ' + (res.uid || councilId) + '.', true);
+      // Council ID deliberately survives the clear — the operator submits
+      // several verdicts in a row under the same ID. Only the per-cog
+      // fields reset.
+      document.getElementById('cogverdict-cog').value = '';
+      document.getElementById('cogverdict-status').value = 'APPROVED';
+      document.getElementById('cogverdict-summary').value = '';
+      draftCogName = ''; draftCogSummary = '';
+      persistIngestDraft();
+    } else {
+      showIngestToast((res && res.message) || 'Something went wrong. Try again.', false);
+    }
+  };
+
+  const onErr = (err) => {
+    btn.disabled = false;
+    label.textContent = 'Submit';
+    icon.className = 'ti ti-send';
+    showIngestToast('Server error: ' + (err.message || String(err)), false);
+  };
+
+  callServer('submitCogVerdict', [councilId, cogName, status, summary], onOk, onErr);
 }
 
 // `state` is true (success), false (error), or 'warn' (a duplicate — the
@@ -2461,14 +2597,16 @@ function handleCouncil() {
       btn.className = 'btn btn-sm';
       btn.innerHTML = '<i class="ti ti-loader-2"></i>Queuing…';
       const gen = beginDiagAction();
-      // NOTE (reconciliation decision 3): triggerCouncilSimulation() creates one
-      // shared doc instructing the model to act as ARCHITECT, AUDITOR, and MUSE
-      // together — not 7 isolated, sequestered per-persona stimulus docs. The
-      // fuller "Seven Bridges" design (SMP-002) is still PENDING USER APPROVAL
-      // per 9_UI_Diagnostics.gs's sevenBridgesReview(), so this copy describes
-      // what actually runs today rather than the aspirational 7-cog version.
-      showDiagStatus('Queuing a combined council review (ARCHITECT · AUDITOR · MUSE)…', undefined, gen);
-      callServer('triggerCouncilSimulation', [], (res) => {
+      // FIXED (Say/Do Ledger kos-personal finding #1): this used to call
+      // triggerCouncilSimulation(), which asks one Studio flow to role-play
+      // ARCHITECT/AUDITOR/MUSE together in a single shared-context pass —
+      // exactly the cross-contamination BRIDGE_FIDELITY_001 forbids. The
+      // real Seven Bridges execution layer (SMP-002) is now built —
+      // triggerSevenBridgesReview() generates one stimulus doc and a fresh
+      // council ID; the operator sends that doc to each cog independently
+      // and logs each verdict via Ingest → Cog Verdict under that ID.
+      showDiagStatus('Preparing a Seven Bridges review stimulus…', undefined, gen);
+      callServer('triggerSevenBridgesReview', [], (res) => {
         btn.disabled = false;
         resetBtn('btn-council', 'ti-brain', 'Run full council review');
         if (res && res.success && (res.busy || res.noop)) {
@@ -2477,8 +2615,10 @@ function handleCouncil() {
           showDiagStatus(res.message, undefined, gen);
         } else if (res && res.success) {
           showDiagStatus(
-            'Council review queued in one shared document. ' +
-            'Verdicts appear in the <strong>COG_REGISTRY</strong> sheet of your BRAIN_TRUST_INDEX once Studio processes it.',
+            'Stimulus ready — Council ID <strong>' + res.councilId + '</strong>. ' +
+            'Send it to each cog independently (separate Gemini conversation per cog, ' +
+            'no shared context), then log each verdict under this Council ID via ' +
+            '<strong>Ingest → Cog Verdict</strong>.',
             undefined, gen
           );
         } else {
