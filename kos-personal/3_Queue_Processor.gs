@@ -562,6 +562,15 @@ function getQueueMetrics() {
     const SC      = CFG.STAGING_COLS;
 
     let queued = 0, active = 0, needsReview = 0, processed = 0, failed = 0;
+    // NEW (Say/Do Ledger kos-personal finding #2): a row cycling
+    // PENDING_FLOW ↔ STUDIO_ACTIVE with no Studio flow ever completing it
+    // isn't a distinct STATUS — it's a PENDING_FLOW/STUDIO_ACTIVE row
+    // whose Retry_Count (10_Turnstile.gs's stale-reset counter) has
+    // crossed CFG.TURNSTILE_STUCK_THRESHOLD. Counted separately here so
+    // the client can surface it, but still folds into queued/active above
+    // for the existing bucket totals — this is a UI signal layered on top,
+    // not a new pipeline state.
+    let cycling = 0;
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -583,6 +592,11 @@ function getQueueMetrics() {
         // user's very first submission had actually failed.
         else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  failed++;
 
+        if ((s === 'PENDING_FLOW' || s === 'STUDIO_ACTIVE') &&
+            (parseInt(row[SC.RETRY_COUNT]) || 0) >= CFG.TURNSTILE_STUCK_THRESHOLD) {
+          cycling++;
+        }
+
         if (s === 'NEEDS_CURATOR') {
           needsCuratorRows.push({
             uid:     String(row[SC.PAYLOAD_UID]),
@@ -600,6 +614,7 @@ function getQueueMetrics() {
       needs_review: needsReview, needs_curator: needsReview,
       processed,
       failed,
+      cycling,
     };
 
     return {
