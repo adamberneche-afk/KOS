@@ -45,6 +45,82 @@ function _stuckRowContext_(rowNumber, fileId, elapsedMinutes) {
 }
 
 // ---------------------------------------------------------------------------
+// _stagingPipelineHealthChecks_ — Say/Do Ledger cross-portfolio Flow Health
+// &amp; Inventory extension. Scans STAGING_PIPELINE once and returns both the
+// existing IN_PROCESS-stuck-row check (moved here from being duplicated,
+// with two DIFFERENT thresholds, inline in autoHealthAlert() and
+// runSystemHealthCheck()) and a new check this extension actually asked
+// for: PENDING_INFERENCE rows stuck past a threshold with no evaluation
+// ever having started.
+//
+// The two thresholds below were previously 15 (autoHealthAlert's own local
+// STUCK_PIPELINE_MINUTES) vs. a hardcoded 10 (runSystemHealthCheck) for the
+// exact same "IN_PROCESS too long" question — a real drift this pass fixes
+// by unifying both callers onto one shared constant, same as the
+// _stuckRowContext_()/_ferpaHealthChecks_() consolidations already did for
+// their own findings.
+//
+// A PENDING_INFERENCE row is queued but hasn't been promoted to IN_PROCESS
+// yet — 06_StagingPipeline_Turnstile.js's 1-minute trigger is what promotes
+// these into a free per-teacher lane. A row sitting PENDING_INFERENCE far
+// longer than one promotion cycle means either that trigger isn't
+// installed/running, or every lane for that teacher has been busy the
+// whole time — genuinely different from "actively being evaluated" and,
+// before this extension, invisible: runSystemHealthCheck() only ever
+// counted PENDING_INFERENCE rows, never aged them.
+const STAGING_STUCK_IN_PROCESS_MINUTES = 15;
+const STAGING_STUCK_PENDING_MINUTES    = 20;
+
+function _stagingPipelineHealthChecks_(ss, cfg) {
+  const result = {
+    inProcessStuckRows: [],
+    pendingStuckRows: [],
+    counts: { inProcess: 0, pending: 0, complete: 0, timeouts: 0, otherErrors: 0 },
+  };
+
+  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
+  if (!stagingSheet) return result;
+
+  const data    = stagingSheet.getDataRange().getValues();
+  const headers = data[0] ? data[0].map(h => String(h).trim()) : [];
+  const stIdx   = headers.indexOf("Status");
+  const tsIdx   = headers.indexOf("Timestamp");
+  const fileIdx = headers.indexOf("StudentFileID");
+  const teachIdx= headers.indexOf("TeacherEmail");
+  const now     = new Date();
+
+  for (let i = 1; i < data.length; i++) {
+    const status = String(data[i][stIdx] || "").trim();
+    const rowTs   = tsIdx !== -1 ? new Date(data[i][tsIdx]) : null;
+    const elapsed = rowTs ? Math.round((now - rowTs) / 60000) : null;
+    const fileId  = fileIdx !== -1 ? String(data[i][fileIdx]).trim() : "unknown";
+
+    if (status === "IN_PROCESS") {
+      result.counts.inProcess++;
+      if (elapsed !== null && elapsed >= STAGING_STUCK_IN_PROCESS_MINUTES) {
+        result.inProcessStuckRows.push(_stuckRowContext_(i + 1, fileId, elapsed));
+      }
+    } else if (status === "PENDING_INFERENCE") {
+      result.counts.pending++;
+      if (elapsed !== null && elapsed >= STAGING_STUCK_PENDING_MINUTES) {
+        const teacher = teachIdx !== -1 ? String(data[i][teachIdx]).trim() : "unknown";
+        result.pendingStuckRows.push(
+          _stuckRowContext_(i + 1, fileId, elapsed) + " — Teacher: " + (teacher || "unknown")
+        );
+      }
+    } else if (status === "COMPLETE") {
+      result.counts.complete++;
+    } else if (status === "ERROR_TIMEOUT") {
+      result.counts.timeouts++;
+    } else if (status.startsWith("ERROR")) {
+      result.counts.otherErrors++;
+    }
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // _ferpaHealthChecks_ — shared FERPA-adjacent health signals, consolidated
 // so autoHealthAlert() (daily email) and runSystemHealthCheck() (on-demand
 // dialog) check the same three things the same way instead of each growing
@@ -175,7 +251,6 @@ function _ferpaHealthChecks_() {
 // The AutoInstaller sets this trigger automatically.
 // ---------------------------------------------------------------------------
 function autoHealthAlert() {
-  const STUCK_PIPELINE_MINUTES  = 15;  // Alert if IN_PROCESS row older than this
   const STUCK_EXTRACTION_HOURS  = 2;   // Alert if PENDING_EXTRACTION row older than this
 
   const cfg = getConfig_();
@@ -185,32 +260,25 @@ function autoHealthAlert() {
   const now = new Date();
   const issues = [];
 
-  // --- Check STAGING_PIPELINE for stuck IN_PROCESS rows ---
-  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
-  if (stagingSheet) {
-    const stagingData = stagingSheet.getDataRange().getValues();
-    const headers     = stagingData[0] ? stagingData[0].map(h => String(h).trim()) : [];
-    const stIdx       = headers.indexOf("Status");
-    const tsIdx       = headers.indexOf("Timestamp");
-    const fileIdx     = headers.indexOf("StudentFileID");
-
-    for (let i = 1; i < stagingData.length; i++) {
-      const status = String(stagingData[i][stIdx] || "").trim();
-      if (status !== "IN_PROCESS") continue;
-
-      const rowTs   = tsIdx !== -1 ? new Date(stagingData[i][tsIdx]) : null;
-      const elapsed = rowTs ? Math.round((now - rowTs) / 60000) : null;
-
-      if (elapsed !== null && elapsed >= STUCK_PIPELINE_MINUTES) {
-        const fileId = fileIdx !== -1 ? String(stagingData[i][fileIdx]).trim() : "unknown";
-        issues.push(
-          "⏱️ STUCK EVALUATION\n" +
-          "   " + _stuckRowContext_(i + 1, fileId, elapsed) + "\n" +
-          "   Action: Use ⚙️ Admin Controls → Reset Stuck Pipeline Row"
-        );
-      }
-    }
-  }
+  // --- Check STAGING_PIPELINE for stuck IN_PROCESS / PENDING_INFERENCE rows ---
+  // (Say/Do Ledger cross-portfolio Flow Health extension: both checks now
+  // share one scan + one pair of thresholds with runSystemHealthCheck(),
+  // via _stagingPipelineHealthChecks_() — see its own doc comment above.)
+  const staging = _stagingPipelineHealthChecks_(ss, cfg);
+  staging.inProcessStuckRows.forEach(ctx => {
+    issues.push(
+      "⏱️ STUCK EVALUATION\n" +
+      "   " + ctx + "\n" +
+      "   Action: Use ⚙️ Admin Controls → Reset Stuck Pipeline Row"
+    );
+  });
+  staging.pendingStuckRows.forEach(ctx => {
+    issues.push(
+      "🕓 QUEUED SUBMISSION NEVER STARTED EVALUATION\n" +
+      "   " + ctx + "\n" +
+      "   Action: Confirm the Turnstile time-driven trigger (06_StagingPipeline_Turnstile.js) is installed and running — a queued row this old with no evaluation started usually means it isn't."
+    );
+  });
 
   // --- Check RubricQueue for stuck PENDING_EXTRACTION rows ---
   const rubricSheet = ss.getSheetByName(cfg.tabs.rubricQueue);
@@ -444,43 +512,30 @@ function runSystemHealthCheck() {
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.adminSsId);
 
-  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
   const queueSheet   = ss.getSheetByName(cfg.tabs.reviewQueue);
   const ledgerSs     = SpreadsheetApp.openById(cfg.ledgerSsId);
   const ledgerSheet  = ledgerSs.getSheetByName(cfg.tabs.ledger);
 
-  const sd = stagingSheet ? stagingSheet.getDataRange().getValues() : [];
-  const qd = queueSheet   ? queueSheet.getDataRange().getValues()   : [];
-  const ld = ledgerSheet  ? ledgerSheet.getDataRange().getValues()  : [];
+  const qd  = queueSheet   ? queueSheet.getDataRange().getValues()   : [];
+  const ld  = ledgerSheet  ? ledgerSheet.getDataRange().getValues()  : [];
+  const now = new Date();
 
-  const sHeaders  = sd[0] ? sd[0].map(h => String(h).trim()) : [];
-  const stIdx     = sHeaders.indexOf("Status");
-  const tsIdx     = sHeaders.indexOf("Timestamp");
-  const fileIdx   = sHeaders.indexOf("StudentFileID");
-  const now       = new Date();
-
-  // FIXED (finding #11): stuckRows now collects identifying context (file
-  // ID, elapsed minutes) via the shared _stuckRowContext_() helper instead
-  // of just a bare count — brought up to the standard autoHealthAlert()
-  // already sets for describing a stuck row.
-  let inProcess = 0, pending = 0, complete = 0, sErrors = 0, timeouts = 0;
-  const stuckRows = [];
-  for (let i = 1; i < sd.length; i++) {
-    const s = String(sd[i][stIdx] || "").trim();
-    if (s === "IN_PROCESS")        inProcess++;
-    if (s === "PENDING_INFERENCE") pending++;
-    if (s === "COMPLETE")          complete++;
-    if (s === "ERROR_TIMEOUT")     timeouts++;
-    if (s.startsWith("ERROR") && s !== "ERROR_TIMEOUT") sErrors++;
-    if (s === "IN_PROCESS" && tsIdx !== -1) {
-      const elapsedMin = Math.round((now - new Date(sd[i][tsIdx])) / 60000);
-      if (elapsedMin > 10) {
-        const fileId = fileIdx !== -1 ? String(sd[i][fileIdx]).trim() : "unknown";
-        stuckRows.push(_stuckRowContext_(i + 1, fileId, elapsedMin));
-      }
-    }
-  }
-  const stuck = stuckRows.length;
+  // FIXED (Say/Do Ledger cross-portfolio Flow Health extension): this used
+  // to hardcode a 10-minute IN_PROCESS threshold, drifting from
+  // autoHealthAlert()'s own 15-minute one for the exact same question — now
+  // both callers share one scan and one pair of thresholds via
+  // _stagingPipelineHealthChecks_() (see its doc comment). Also adds the
+  // PENDING_INFERENCE-stuck check that function was actually built for —
+  // previously this function only ever counted those rows, never aged them.
+  const staging       = _stagingPipelineHealthChecks_(ss, cfg);
+  const inProcess     = staging.counts.inProcess;
+  const pending       = staging.counts.pending;
+  const complete      = staging.counts.complete;
+  const timeouts      = staging.counts.timeouts;
+  const sErrors       = staging.counts.otherErrors;
+  const stuckRows     = staging.inProcessStuckRows;
+  const pendingStuck  = staging.pendingStuckRows;
+  const stuck         = stuckRows.length;
 
   let qPending = 0, qStaged = 0, qComplete = 0, qErrors = 0;
   for (let i = 1; i < qd.length; i++) {
@@ -531,6 +586,12 @@ function runSystemHealthCheck() {
     "   Complete:     " + complete,
     (timeouts > 0 ? "⏱️  Timeouts auto-cleared: " + timeouts + " (teachers notified)" : "✅  No timeouts"),
     (sErrors > 0 ? "⚠️  Other errors: " + sErrors : ""),
+    // NEW (Say/Do Ledger cross-portfolio Flow Health extension): a queued
+    // row that's never even been promoted to IN_PROCESS was previously
+    // invisible here — only counted, never aged.
+    (pendingStuck.length > 0
+      ? "🕓  " + pendingStuck.length + " queued row(s) never started evaluation:\n      " + pendingStuck.join("\n      ")
+      : "✅  No queued rows stuck without starting"),
     "",
     "REVIEW QUEUE",
     "   Pending:      " + qPending,
@@ -557,7 +618,7 @@ function runSystemHealthCheck() {
     "FERPA",
     ...ferpaChecks.map(c => c.displayLine),
     "",
-    (stuck === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && typeof Drive !== "undefined" && ferpaOk
+    (stuck === 0 && pendingStuck.length === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && typeof Drive !== "undefined" && ferpaOk
       ? "✅ All systems healthy." + (timeouts > 0 ? " (" + timeouts + " timeout(s) auto-resolved.)" : "")
       : "⚠️ Action may be required. See flags above.")
   ].filter(l => l !== "").join("\n"), ui.ButtonSet.OK);
