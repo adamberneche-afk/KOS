@@ -1475,7 +1475,21 @@ function renderServiceStatus(account) {
     '</div>' +
     (account.credit_balance < 20
       ? '<div style="color:var(--warn);font-size:11px;margin-top:4px">⚠ Low credits — sessions will pause when credits run out.</div>'
-      : '');
+      : '') +
+    // NEW (Say/Do Ledger kos-personal finding #3): this is the only
+    // place credit balance/subscription tier is ever shown to a user.
+    // The backend has real Stripe checkout routes
+    // (inference-service/src/billing.js's createSubscriptionCheckout()/
+    // createCreditPurchaseCheckout()), but nothing anywhere calls them —
+    // no purchase/upgrade UI exists in this web app or the Sheets menu.
+    // Stating that plainly here rather than letting a low-credit warning
+    // imply a "buy more" option exists just off-screen. Whether this
+    // billing backend should become a real self-serve feature, or stay
+    // speculative scaffolding, is a separate, open product decision —
+    // not resolved by this disclosure.
+    '<div style="color:var(--text3);font-size:10px;margin-top:6px;line-height:1.4">' +
+    'Purchasing more credits isn’t available here yet — this deployment mode isn’t set up for public self-serve use. Credits are provisioned manually by whoever runs this deployment.' +
+    '</div>';
 }
 
 function renderQueue(res) {
