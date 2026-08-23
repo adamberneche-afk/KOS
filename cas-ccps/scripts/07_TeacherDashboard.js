@@ -70,6 +70,170 @@ function doGet() {
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
+// =============================================================================
+// LEADER-HUB JSON API (D1 — shared-core merge, Say/Do Ledger, Addendum 24)
+// =============================================================================
+//
+// leader-hub's SCR grading grid and Pacing Calendar becoming live clients of
+// this project's pacing-guide/competency-registry data, instead of leader-hub
+// keeping its own frozen local copy. The identity model here is deliberately
+// NOT Session.getActiveUser()/_isAuthorizedTeacher_() — this project deploys
+// "Execute as: Me," so Session.getActiveUser() inside doPost() always
+// resolves to the deploying teacher regardless of who actually made the HTTP
+// request; it cannot distinguish a genuine leader-hub caller from anyone else
+// who reaches this endpoint. Real caller identity comes from a Google
+// Identity Services ID token leader-hub obtains client-side (its own "Sign In
+// With Google" button — see student-leader-hub.html), verified HERE,
+// server-side, via UrlFetchApp against Google's own tokeninfo endpoint —
+// checking the token's email matches this exact deployment's configured
+// teacher, its audience matches leader-hub's registered OAuth Client ID (so a
+// token issued to some other app can't be replayed here), and it hasn't
+// expired. This requires its own web-app deployment, separate from the one
+// this doGet() serves the human-facing dashboard from — see
+// docs/LEADERHUB_CONNECTION_SETUP.md for why and how to create it; a
+// Domain-restricted deployment's edge-level sign-in gate would otherwise
+// block leader-hub's cross-origin POST before this code ever ran.
+//
+// Only read endpoints are implemented so far (pacing guide, competency
+// registry). SCR read+write is a deliberately separate, later phase — it
+// needs cross-project access to 30_SCRSuggestionEngine.js (bound to
+// central-ledger, not this project) plus real per-teacher scoping and
+// caller-ownership checks that engine doesn't have today, and leader-hub's
+// own SCR roster still has no student-email field to match against. Not
+// silently scoped out — flagged here and in the plan file for when that
+// groundwork is ready.
+
+/**
+ * Verifies a Google ID token against this deployment's configured teacher
+ * and leader-hub's registered OAuth Client ID. Real UrlFetchApp round trip
+ * to Google's own tokeninfo endpoint — never trusts a client-side decode.
+ *
+ * @param {string} idToken  Raw ID token JWT from leader-hub's GIS sign-in.
+ * @param {Object} cfg      getConfig_() result.
+ * @returns {Object} { ok: true, email } | { ok: false, message }
+ */
+function _verifyLeaderHubToken_(idToken, cfg) {
+  if (!idToken) {
+    return { ok: false, message: "Missing ID token." };
+  }
+  if (!cfg.leaderHubOauthClientId) {
+    return { ok: false, message: "LEADER_HUB_OAUTH_CLIENT_ID not configured on this deployment. See docs/LEADERHUB_CONNECTION_SETUP.md." };
+  }
+
+  let info;
+  try {
+    const resp = UrlFetchApp.fetch(
+      "https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(idToken),
+      { muteHttpExceptions: true }
+    );
+    if (resp.getResponseCode() !== 200) {
+      return { ok: false, message: "Token verification failed (Google returned HTTP " + resp.getResponseCode() + ") — sign in again." };
+    }
+    info = JSON.parse(resp.getContentText());
+  } catch (e) {
+    return { ok: false, message: "Token verification error: " + e.message };
+  }
+
+  if (String(info.aud || "") !== cfg.leaderHubOauthClientId) {
+    return { ok: false, message: "Token audience mismatch — this token wasn't issued to the expected app." };
+  }
+  if (String(info.email_verified) !== "true") {
+    return { ok: false, message: "Token's email is not verified." };
+  }
+  const email = String(info.email || "").trim().toLowerCase();
+  if (!cfg.teacherEmail || email !== cfg.teacherEmail.toLowerCase()) {
+    return { ok: false, message: "Signed-in Google account doesn't match the teacher this dashboard is configured for." };
+  }
+  const exp = parseInt(info.exp, 10);
+  if (!exp || Date.now() / 1000 > exp) {
+    return { ok: false, message: "Token expired — sign in again." };
+  }
+
+  return { ok: true, email: email };
+}
+
+/**
+ * JSON API entry point for leader-hub. Every action requires a verified
+ * ID token in the request body (see _verifyLeaderHubToken_ above) — there
+ * is no unauthenticated action.
+ *
+ * Expected POST body (JSON, sent as text/plain to avoid a CORS preflight
+ * Apps Script can't answer — same convention leader-hub's own EmailBridge.gs
+ * already uses):
+ *   { idToken: "<Google ID token>", action: "getPacingGuide" | "getCompetencyRegistry" }
+ *
+ * @param {GoogleAppsScript.Events.DoPost} e
+ * @returns {TextOutput} JSON response, always HTTP 200 (success/failure is
+ *   in the body — ContentService doesn't support custom status codes).
+ */
+function doPost(e) {
+  const out = ContentService.createTextOutput().setMimeType(ContentService.MimeType.JSON);
+
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      out.setContent(JSON.stringify({ success: false, message: "Empty request body." }));
+      return out;
+    }
+
+    let body;
+    try {
+      body = JSON.parse(e.postData.contents);
+    } catch (parseErr) {
+      out.setContent(JSON.stringify({ success: false, message: "Invalid JSON body: " + parseErr.message }));
+      return out;
+    }
+
+    const cfg  = getConfig_();
+    const auth = _verifyLeaderHubToken_(body.idToken, cfg);
+    if (!auth.ok) {
+      out.setContent(JSON.stringify({ success: false, message: auth.message }));
+      return out;
+    }
+
+    const action = body.action || "";
+    let result;
+    if (action === "getPacingGuide") {
+      result = _apiGetPacingGuide_();
+    } else if (action === "getCompetencyRegistry") {
+      result = _apiGetCompetencyRegistry_(cfg, auth.email);
+    } else {
+      result = { success: false, message: "Unknown action: " + action };
+    }
+
+    out.setContent(JSON.stringify(result));
+    return out;
+
+  } catch (err) {
+    Logger.log("[doPost] " + err.message + "\n" + err.stack);
+    out.setContent(JSON.stringify({ success: false, message: "Server error: " + err.message }));
+    return out;
+  }
+}
+
+/**
+ * Returns the full pacing guide (every unit, not just "today's anchor") —
+ * getAllUnits_() already exists in 31_PacingGuideManager.js (shared with
+ * this project per project-map.json) but was never client-exposed before.
+ */
+function _apiGetPacingGuide_() {
+  try {
+    const units = getAllUnits_(); // 31_PacingGuideManager.js
+    return { success: true, units: units };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Wraps _getCompetenciesForEmail_() (extracted from getCompetencies() below)
+ * for the OAuth-token-verified caller — auth.email (already verified by
+ * doPost()'s caller against cfg.teacherEmail) is passed through rather than
+ * re-deriving it, so this function has no gate of its own to get wrong.
+ */
+function _apiGetCompetencyRegistry_(cfg, email) {
+  return { success: true, data: _getCompetenciesForEmail_(cfg, email) };
+}
+
 // ---------------------------------------------------------------------------
 // getDashboardData — called client-side via google.script.run
 // Filters Ledger to the requesting teacher's email and optionally by term
@@ -315,6 +479,18 @@ function getCompetencies() {
     return { error: "This dashboard is only available to the teacher it's configured for." };
   }
 
+  return _getCompetenciesForEmail_(cfg, email);
+}
+
+// Core logic extracted from getCompetencies() so a second caller can reuse
+// it with a different identity gate — doPost()'s OAuth-token-verified
+// leader-hub API (D1, Addendum 24) calls this directly, since
+// Session.getActiveUser() reflects the deploying teacher regardless of who
+// actually made the HTTP request (this project deploys "Execute as: Me"),
+// making it useless for distinguishing a genuine leader-hub caller from
+// anyone else who reaches this endpoint — _verifyLeaderHubToken_() is
+// doPost()'s real gate, applied before this function is ever reached.
+function _getCompetenciesForEmail_(cfg, email) {
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
 
