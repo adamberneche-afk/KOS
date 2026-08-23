@@ -173,6 +173,16 @@ textarea { line-height: 1.55; }
   color: var(--text3); text-align: right; margin-top: 4px;
 }
 
+/* Standard clip-based visually-hidden pattern — content is still in the
+   accessibility tree (so a live region on it is announced) but invisible
+   on screen. Used for state-transition-only announcements that would be
+   too chatty if the always-visible text itself were the live region
+   (e.g. char-count updates on every keystroke — see announceStatus()). */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
 /* ── Buttons ───────────────────────────────────────────────── */
 .btn {
   width: 100%; padding: 12px 16px;
@@ -226,11 +236,11 @@ textarea { line-height: 1.55; }
   display: grid; grid-template-columns: 1fr 1fr;
   gap: 10px; margin-bottom: 16px;
 }
-/* #metric-failed is a 5th tile in this 2-column grid, appearing only when
-   there's something to show — landing alone in a 3rd row's first column
-   otherwise, leaving the second column visibly empty beside the one tile
-   that most needs attention. Span it full-width instead. */
-#metric-failed {
+/* #metric-failed and #metric-cycling are extra tiles in this 2-column
+   grid, appearing only when there's something to show — landing alone in
+   a row's first column otherwise, leaving the second column visibly
+   empty beside the one tile that most needs attention. Span each full-width instead. */
+#metric-failed, #metric-cycling {
   grid-column: 1 / -1;
 }
 .metric-card {
@@ -602,26 +612,38 @@ textarea { line-height: 1.55; }
 <main class="content" id="main-content" style="display:none">
 
   <!-- ─── INGEST ─────────────────────────────────────────── -->
-  <div id="tab-ingest" class="section active">
+  <div id="tab-ingest" class="section active" role="tabpanel" aria-labelledby="nav-ingest" tabindex="0">
 
-    <div class="toggle" role="group">
-      <button class="toggle-btn active" id="btn-type-session" onclick="switchType('session')">Session Log</button>
-      <button class="toggle-btn" id="btn-type-research" onclick="switchType('research')">Research / Context</button>
+    <!-- FIXED (finding #6): same WAI-ARIA Tabs retrofit as the bottom
+         nav above — role="group" only conveyed "these buttons are
+         related," not that they're tabs switching a panel below them. -->
+    <div class="toggle" role="tablist" aria-label="Content type">
+      <button class="toggle-btn active" id="btn-type-session" role="tab" aria-selected="true" aria-controls="fields-session" tabindex="0" onclick="switchType('session')">Session Log</button>
+      <button class="toggle-btn" id="btn-type-research" role="tab" aria-selected="false" aria-controls="fields-research" tabindex="-1" onclick="switchType('research')">Research / Context</button>
+      <!-- NEW (Say/Do Ledger kos-personal finding #1): Seven Bridges council
+           verdict logging — see submitCogVerdict() (2_Ingestion_Sensors.gs). -->
+      <button class="toggle-btn" id="btn-type-cogverdict" role="tab" aria-selected="false" aria-controls="fields-cogverdict" tabindex="-1" onclick="switchType('cogverdict')">Cog Verdict</button>
     </div>
 
     <!-- Session Log fields -->
-    <div id="fields-session">
+    <div id="fields-session" role="tabpanel" aria-labelledby="btn-type-session">
       <div class="field-group">
         <label class="field-lbl" for="session-text">Session log</label>
         <textarea id="session-text" rows="10"
           placeholder="Paste full session log here…"
           oninput="updateCount('session-text','session-count')"></textarea>
         <div class="char-count" id="session-count">0 chars</div>
+        <!-- NEW (Say/Do Ledger kos-personal finding #8): the visible
+             char-count updates on every keystroke, so it can't be the
+             live region itself (that would announce constantly) —
+             announceStatus() writes into this hidden sibling only on a
+             warn-state transition (see updateCount()). -->
+        <span id="session-count-announce" class="sr-only"></span>
       </div>
     </div>
 
     <!-- Research / Context fields -->
-    <div id="fields-research" style="display:none">
+    <div id="fields-research" style="display:none" role="tabpanel" aria-labelledby="btn-type-research">
       <div class="field-group">
         <label class="field-lbl" for="research-title">Title / source</label>
         <!-- maxlength matches the server's silent 100-char truncation
@@ -636,11 +658,53 @@ textarea { line-height: 1.55; }
           placeholder="Paste article text, data, or notes…"
           oninput="updateCount('research-text','research-count')"></textarea>
         <div class="char-count" id="research-count">0 chars</div>
+        <span id="research-count-announce" class="sr-only"></span>
       </div>
     </div>
 
-    <!-- Large-payload folder-drop fallback (shown when > LARGE_PAYLOAD_THRESHOLD) -->
-    <div id="drop-panel" class="drop-panel">
+    <!-- Cog Verdict fields (Say/Do Ledger kos-personal finding #1) -->
+    <div id="fields-cogverdict" style="display:none" role="tabpanel" aria-labelledby="btn-type-cogverdict">
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-council">Council ID</label>
+        <input type="text" id="cogverdict-council" placeholder="e.g. SB_1234567890 — shown by Run full council review"
+          oninput="scheduleIngestDraftSave()">
+        <div class="char-count">Same ID for every verdict from one review — this is what groups them.</div>
+      </div>
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-cog">Cog</label>
+        <input type="text" id="cogverdict-cog" list="cog-personas-list" placeholder="e.g. PERSONA_ARCHITECT"
+          oninput="scheduleIngestDraftSave()">
+        <datalist id="cog-personas-list">
+          <? personas.forEach(function(p) { ?>
+          <option value="<?= p ?>"></option>
+          <? }); ?>
+        </datalist>
+      </div>
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-status">Verdict</label>
+        <select id="cogverdict-status" oninput="scheduleIngestDraftSave()">
+          <option value="APPROVED">APPROVED</option>
+          <option value="FLAG">FLAG</option>
+          <option value="VETO">VETO</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-lbl" for="cogverdict-summary">Summary / rationale</label>
+        <textarea id="cogverdict-summary" rows="6"
+          placeholder="Why this cog reached this verdict…"
+          oninput="scheduleIngestDraftSave()"></textarea>
+      </div>
+    </div>
+
+    <!-- Large-payload folder-drop fallback (shown when > LARGE_PAYLOAD_THRESHOLD).
+         FIXED (finding #8): had no aria-live/role at all — a screen-reader
+         user pasting an oversized payload got no indication this panel
+         had appeared at all. Discrete, infrequent state change (shown/
+         hidden once per paste, not on every keystroke), so the panel
+         itself can safely be the live region — same reasoning
+         showIngestToast()/showDiagStatus() already rely on for their own
+         show/hide-then-set-text panels. -->
+    <div id="drop-panel" class="drop-panel" role="status" aria-live="polite">
       <div class="drop-panel-title">
         <i class="ti ti-alert-triangle"></i>
         Payload too large for direct paste
@@ -678,9 +742,18 @@ textarea { line-height: 1.55; }
       <span id="ingest-msg"></span>
     </div>
 
+    <!-- FIXED (Say/Do Ledger kos-personal finding #2): "processes within
+         5 minutes" overstated what's actually guaranteed. Turnstile
+         (10_Turnstile.gs) really does check every 5 minutes, but it can
+         only hand a row off to Studio for processing — it can't complete
+         one itself. Without a Studio flow connected, a row cycles
+         PENDING_FLOW ↔ STUDIO_ACTIVE indefinitely, retrying forever
+         rather than finishing or failing outright. Says so honestly. -->
     <div id="next-hint" class="next-hint">
       <strong>What happens now:</strong> Your session is in the queue.
-      The AI engine processes it within 5 minutes.
+      Turnstile checks it every 5 minutes and hands it to the AI engine —
+      but it only actually completes once a Studio flow is connected to
+      process it. Without one, it keeps retrying rather than finishing.
       Check the <strong>Queue tab</strong> to track progress — or just come back later.
     </div>
 
@@ -692,7 +765,7 @@ textarea { line-height: 1.55; }
   </div><!-- /tab-ingest -->
 
   <!-- ─── QUEUE ──────────────────────────────────────────── -->
-  <div id="tab-queue" class="section">
+  <div id="tab-queue" class="section" role="tabpanel" aria-labelledby="nav-queue" tabindex="0">
 
     <div class="metric-grid" id="metric-grid">
       <div class="metric-card m-warn">
@@ -725,10 +798,27 @@ textarea { line-height: 1.55; }
         <div class="metric-val" id="cnt-failed">—</div>
         <div class="metric-sub">couldn't be processed — see Diagnostics</div>
       </div>
+      <!-- NEW (Say/Do Ledger kos-personal finding #2). Hidden unless
+           counts.cycling > 0 — a PENDING_FLOW/STUDIO_ACTIVE row whose
+           Retry_Count has crossed CFG.TURNSTILE_STUCK_THRESHOLD
+           (3_Queue_Processor.gs's getQueueMetrics()), meaning Turnstile
+           keeps handing it off but nothing is completing it. Distinct
+           from "Failed" — this isn't a terminal state, just an honest
+           signal that a Studio flow likely isn't connected yet. -->
+      <div class="metric-card m-warn" id="metric-cycling" style="display:none">
+        <div class="metric-lbl">Still waiting on Studio</div>
+        <div class="metric-val" id="cnt-cycling">—</div>
+        <div class="metric-sub">retrying — no Studio flow has completed it yet</div>
+      </div>
     </div>
 
     <div class="sec-lbl">Needs review</div>
-    <div class="queue-list" id="curator-list">
+    <!-- FIXED (finding #8): renderQueue()/_diagPanelError() both replace
+         this panel's entire content on every refresh with no aria-live
+         at all — refreshes every 5 min or on manual "Refresh queue"
+         only, not continuously, so marking the whole panel live doesn't
+         create the every-keystroke chattiness a char-count would. -->
+    <div class="queue-list" id="curator-list" role="status" aria-live="polite">
       <div class="empty"><i class="ti ti-list-check"></i>Loading queue…</div>
     </div>
 
@@ -742,7 +832,7 @@ textarea { line-height: 1.55; }
   </div><!-- /tab-queue -->
 
   <!-- ─── DIAGNOSTICS ────────────────────────────────────── -->
-  <div id="tab-diag" class="section">
+  <div id="tab-diag" class="section" role="tabpanel" aria-labelledby="nav-diag" tabindex="0">
 
     <!-- ① CALIBRATION STATUS ─────────────────────────────── -->
     <!-- No inline margin-bottom override — .sec-lbl's own 10px default
@@ -750,9 +840,21 @@ textarea { line-height: 1.55; }
          override to 8px, a stray 2px inconsistency between tabs. -->
     <div class="sec-lbl has-tip">
       Ambient calibration
-      <span class="tip-icon" title="The system learns your context passively from sessions. Each question builds confidence over time — no manual setup required.">?</span>
+      <!-- FIXED (Say/Do Ledger kos-personal finding #4): "no manual setup
+           required" was true about day-to-day use (no per-session
+           logging beyond your normal pastes) but false about the
+           one-time setup wizard — calibration genuinely doesn't start
+           until that completes (processInferenceQueue() is TIER_2,
+           hard-gated cold — 1_Config_And_Deploy.gs's _coldEngineGate()).
+           Narrowed to only the true claim; the state-aware note below
+           (loadShadowMatrix()) carries the setup-dependent part instead
+           of burying it in a hover tooltip easy to miss. -->
+      <span class="tip-icon" title="The system learns your context passively from sessions — no need to log anything beyond your normal session pastes. Each question builds confidence over time.">?</span>
     </div>
-    <div id="shadow-matrix-list" style="margin-bottom:4px">
+    <!-- NEW (finding #4): hidden unless cold — see loadShadowMatrix(). -->
+    <div id="calib-state-note" class="empty" style="display:none;padding:4px 0 8px"></div>
+    <!-- FIXED (finding #8): same aria-live gap/fix as #curator-list above. -->
+    <div id="shadow-matrix-list" style="margin-bottom:4px" role="status" aria-live="polite">
       <div class="empty" style="padding:8px 0">
         <i class="ti ti-brain" style="font-size:18px;opacity:.4"></i>Loading calibration…
       </div>
@@ -761,7 +863,8 @@ textarea { line-height: 1.55; }
 
     <!-- ② SYSTEM STATE ───────────────────────────────────── -->
     <div class="sec-lbl">System state</div>
-    <div id="health-summary" style="margin-bottom:4px">
+    <!-- FIXED (finding #8): same aria-live gap/fix as #curator-list above. -->
+    <div id="health-summary" style="margin-bottom:4px" role="status" aria-live="polite">
       <div class="empty" style="padding:8px 0">
         <i class="ti ti-activity" style="font-size:18px;opacity:.4"></i>Loading…
       </div>
@@ -779,7 +882,15 @@ textarea { line-height: 1.55; }
          deployments won't touch this second, independent pipeline. -->
     <div class="sec-lbl has-tip" id="registrar-lbl" style="display:none">
       Curriculum auditing
-      <span class="tip-icon" title="A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab.">?</span>
+      <!-- FIXED (Say/Do Ledger kos-personal finding #9): this title used
+           to be static, generic text with no connection to whether the
+           Stage 1/2 Studio flows this pipeline depends on are actually
+           built — loadRegistrarStatus() (below) now sets it dynamically
+           each refresh, self-updating once flows exist and a row
+           actually completes, instead of needing a manual edit to remove
+           a stale caveat later. This attribute is just the pre-JS
+           fallback shown for the instant before the first load resolves. -->
+      <span class="tip-icon" id="registrar-tip" title="A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab.">?</span>
     </div>
     <div id="registrar-summary" style="display:none;margin-bottom:4px"></div>
     <div class="sec-divider" id="registrar-divider" style="display:none"></div>
@@ -789,7 +900,8 @@ textarea { line-height: 1.55; }
       Vector weights
       <span class="tip-icon" title="How strongly each knowledge domain featured in your last processed session. Scores decay over time if a domain isn't mentioned.">?</span>
     </div>
-    <div class="vec-list" id="vec-list">
+    <!-- FIXED (finding #8): same aria-live gap/fix as #curator-list above. -->
+    <div class="vec-list" id="vec-list" role="status" aria-live="polite">
       <div class="empty" style="padding:8px 0">
         <i class="ti ti-chart-bar" style="font-size:18px;opacity:.4"></i>No sessions processed yet.
       </div>
@@ -877,15 +989,21 @@ textarea { line-height: 1.55; }
   </p>
 </div>
 
-<!-- ═══ BOTTOM NAV ════════════════════════════════════════════ -->
-<nav class="nav" id="op-nav" style="display:none">
-  <button class="nav-btn active" id="nav-ingest" onclick="switchTab('ingest')">
+<!-- ═══ BOTTOM NAV ════════════════════════════════════════════
+     FIXED (Say/Do Ledger kos-personal finding #6): full WAI-ARIA Tabs
+     pattern — role="tablist"/"tab"/"tabpanel", aria-selected,
+     aria-controls/aria-labelledby, roving tabindex, Left/Right/Home/End
+     key nav — wired up once by _wireTabGroup_() (see the script block),
+     shared with the Ingest type-toggle below instead of each hand-rolling
+     its own class-toggle logic with no ARIA at all. -->
+<nav class="nav" id="op-nav" style="display:none" role="tablist" aria-label="Sections">
+  <button class="nav-btn active" id="nav-ingest" role="tab" aria-selected="true" aria-controls="tab-ingest" tabindex="0" onclick="switchTab('ingest')">
     <i class="ti ti-upload"></i>Ingest
   </button>
-  <button class="nav-btn" id="nav-queue" onclick="switchTab('queue')">
+  <button class="nav-btn" id="nav-queue" role="tab" aria-selected="false" aria-controls="tab-queue" tabindex="-1" onclick="switchTab('queue')">
     <i class="ti ti-list-check"></i>Queue
   </button>
-  <button class="nav-btn" id="nav-diag" onclick="switchTab('diag')">
+  <button class="nav-btn" id="nav-diag" role="tab" aria-selected="false" aria-controls="tab-diag" tabindex="-1" onclick="switchTab('diag')">
     <i class="ti ti-activity"></i>Diagnostics
   </button>
 </nav>
@@ -910,10 +1028,8 @@ const LARGE_PAYLOAD_THRESHOLD = 150000;
 // ── State ──────────────────────────────────────────────────────
 let currentType  = 'session';
 let currentTab   = 'ingest';
-let deployConfirm = false;
-let deployTimer   = null;
-let councilConfirm = false;
-let councilTimer   = null;
+// deployConfirm/deployTimer/councilConfirm/councilTimer removed — their
+// state now lives in _confirmTapState (finding #7's shared helper).
 let inboundFolderUrl = null;  // cached on first load
 let webhookUrl = null;        // cached on first load — immutable for the deployment's lifetime, no need to refetch every Diagnostics open
 
@@ -936,10 +1052,33 @@ function onServerError(err) {
   showDiagStatus('Server error: ' + (err.message || String(err)), 'danger');
 }
 
+// ── Shared status-announcement helper (Say/Do Ledger kos-personal
+// finding #8) ────────────────────────────────────────────────────────────
+// Matches the convention already established by showIngestToast()/
+// showDiagStatus() and the two static error toasts (#bs-err/#arm-err):
+// role="status"/aria-live="polite" for info, role="alert"/aria-live=
+// "assertive" for anything that needs immediate attention. Written once
+// so a future status-writing site gets the right announcement type by
+// construction, rather than each call site independently deciding (or
+// forgetting to decide) it.
+function announceStatus(elId, msg, isError) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  el.setAttribute('role', isError ? 'alert' : 'status');
+  el.setAttribute('aria-live', isError ? 'assertive' : 'polite');
+  el.textContent = msg;
+}
+
 
 // ── Tab navigation ─────────────────────────────────────────────
 // ── Draft state (preserved across tab switches) ────────────────
 let draftSession = '', draftResearch = '', draftResearchTitle = '';
+// Cog Verdict draft state (Say/Do Ledger kos-personal finding #1). Council
+// ID deliberately persists across submits (see handleSubmit()'s onOk) —
+// the whole point is reusing it for every verdict from one review — while
+// cog/status/summary clear after each successful submit like every other
+// type's fields do.
+let draftCogCouncil = '', draftCogName = '', draftCogSummary = '';
 let shadowRefreshTimer = null;
 
 // ── Ingest draft persistence (survives refresh/accidental close) ───────────
@@ -949,9 +1088,11 @@ let shadowRefreshTimer = null;
 const INGEST_DRAFT_KEY = 'kos_ingest_draft';
 function _safeLS(fn) { try { return fn(); } catch (e) { return null; } }
 function persistIngestDraft() {
-  if (!draftSession && !draftResearch && !draftResearchTitle) { clearIngestDraft(); return; }
+  if (!draftSession && !draftResearch && !draftResearchTitle &&
+      !draftCogCouncil && !draftCogName && !draftCogSummary) { clearIngestDraft(); return; }
   _safeLS(() => localStorage.setItem(INGEST_DRAFT_KEY, JSON.stringify(
-    { session: draftSession, research: draftResearch, researchTitle: draftResearchTitle })));
+    { session: draftSession, research: draftResearch, researchTitle: draftResearchTitle,
+      cogCouncil: draftCogCouncil, cogName: draftCogName, cogSummary: draftCogSummary })));
 }
 function restoreIngestDraft() {
   const raw = _safeLS(() => localStorage.getItem(INGEST_DRAFT_KEY));
@@ -961,12 +1102,21 @@ function restoreIngestDraft() {
   draftSession = d.session || '';
   draftResearch = d.research || '';
   draftResearchTitle = d.researchTitle || '';
+  draftCogCouncil = d.cogCouncil || '';
+  draftCogName    = d.cogName    || '';
+  draftCogSummary = d.cogSummary || '';
   const st = document.getElementById('session-text');
   const rt = document.getElementById('research-text');
   const rtl = document.getElementById('research-title');
+  const cc = document.getElementById('cogverdict-council');
+  const cn = document.getElementById('cogverdict-cog');
+  const cs = document.getElementById('cogverdict-summary');
   if (st && draftSession)   { st.value = draftSession;   updateCount('session-text','session-count'); }
   if (rt && draftResearch)  { rt.value = draftResearch;  updateCount('research-text','research-count'); }
   if (rtl && draftResearchTitle) rtl.value = draftResearchTitle;
+  if (cc && draftCogCouncil) cc.value = draftCogCouncil;
+  if (cn && draftCogName)    cn.value = draftCogName;
+  if (cs && draftCogSummary) cs.value = draftCogSummary;
 }
 function clearIngestDraft() { _safeLS(() => localStorage.removeItem(INGEST_DRAFT_KEY)); }
 
@@ -976,9 +1126,15 @@ function _flushIngestDraftSave() {
   const st = document.getElementById('session-text');
   const rt = document.getElementById('research-text');
   const rtl = document.getElementById('research-title');
+  const cc = document.getElementById('cogverdict-council');
+  const cn = document.getElementById('cogverdict-cog');
+  const cs = document.getElementById('cogverdict-summary');
   if (st)  draftSession       = st.value;
   if (rt)  draftResearch      = rt.value;
   if (rtl) draftResearchTitle = rtl.value;
+  if (cc)  draftCogCouncil    = cc.value;
+  if (cn)  draftCogName       = cn.value;
+  if (cs)  draftCogSummary    = cs.value;
   persistIngestDraft();
 }
 function scheduleIngestDraftSave() {
@@ -992,6 +1148,58 @@ function scheduleIngestDraftSave() {
 window.addEventListener('pagehide', _flushIngestDraftSave);
 window.addEventListener('beforeunload', _flushIngestDraftSave);
 
+// ── Shared tab-component helper (Say/Do Ledger kos-personal finding #6)
+// ──────────────────────────────────────────────────────────────────────
+// Full WAI-ARIA Tabs pattern (https://www.w3.org/WAI/ARIA/apg/patterns/tabs/):
+// roving tabindex + Left/Right/Up/Down/Home/End key navigation, layered
+// on top of switchTab()/switchType()'s own existing panel-switching logic
+// rather than replacing it — each keeps its own side effects (draft
+// preservation, panel loads, toast clearing), _wireTabGroup_() only adds
+// the keyboard mechanics, and _setTabAria_() keeps aria-selected/tabindex
+// in sync with whichever tab is actually active. One implementation
+// instead of switchTab()/switchType() each needing to reinvent it — this
+// same convention is worth adopting for leader-hub's and cas-ccps's own
+// independent tab-like patterns too (not built here — flagged only).
+const NAV_TABS  = [
+  { id: 'ingest', btnId: 'nav-ingest' },
+  { id: 'queue',  btnId: 'nav-queue'  },
+  { id: 'diag',   btnId: 'nav-diag'   },
+];
+const TYPE_TABS = [
+  { id: 'session',    btnId: 'btn-type-session'    },
+  { id: 'research',   btnId: 'btn-type-research'   },
+  { id: 'cogverdict', btnId: 'btn-type-cogverdict' },
+];
+
+function _wireTabGroup_(tabs, activateFn) {
+  tabs.forEach((t, i) => {
+    const btn = document.getElementById(t.btnId);
+    if (!btn) return;
+    btn.addEventListener('keydown', (e) => {
+      let idx;
+      if      (e.key === 'ArrowRight' || e.key === 'ArrowDown') idx = (i + 1) % tabs.length;
+      else if (e.key === 'ArrowLeft'  || e.key === 'ArrowUp')   idx = (i - 1 + tabs.length) % tabs.length;
+      else if (e.key === 'Home') idx = 0;
+      else if (e.key === 'End')  idx = tabs.length - 1;
+      else return;
+      e.preventDefault();
+      const nextBtn = document.getElementById(tabs[idx].btnId);
+      if (nextBtn) nextBtn.focus();
+      activateFn(tabs[idx].id);
+    });
+  });
+}
+
+function _setTabAria_(tabs, activeBtnId) {
+  tabs.forEach(t => {
+    const btn = document.getElementById(t.btnId);
+    if (!btn) return;
+    const active = t.btnId === activeBtnId;
+    btn.setAttribute('aria-selected', active ? 'true' : 'false');
+    btn.setAttribute('tabindex', active ? '0' : '-1');
+  });
+}
+
 function switchTab(id) {
   // Re-tapping the tab you're already on used to reset scroll position and
   // refetch everything (queue status, diagnostics) for no reason.
@@ -1002,6 +1210,9 @@ function switchTab(id) {
     draftSession       = document.getElementById('session-text')?.value  || '';
     draftResearch      = document.getElementById('research-text')?.value || '';
     draftResearchTitle = document.getElementById('research-title')?.value || '';
+    draftCogCouncil    = document.getElementById('cogverdict-council')?.value || '';
+    draftCogName       = document.getElementById('cogverdict-cog')?.value     || '';
+    draftCogSummary    = document.getElementById('cogverdict-summary')?.value || '';
   }
 
   ['ingest','queue','diag'].forEach(t => {
@@ -1009,6 +1220,7 @@ function switchTab(id) {
     document.getElementById('nav-' + t).classList.toggle('active', t === id);
   });
   currentTab = id;
+  _setTabAria_(NAV_TABS, 'nav-' + id);
   document.getElementById('main-content').scrollTop = 0;
 
   // Restore ingest draft on return
@@ -1016,9 +1228,15 @@ function switchTab(id) {
     const st = document.getElementById('session-text');
     const rt = document.getElementById('research-text');
     const rtl = document.getElementById('research-title');
+    const cc = document.getElementById('cogverdict-council');
+    const cn = document.getElementById('cogverdict-cog');
+    const cs = document.getElementById('cogverdict-summary');
     if (st  && draftSession)       { st.value  = draftSession;       updateCount('session-text','session-count'); }
     if (rt  && draftResearch)      { rt.value  = draftResearch;      updateCount('research-text','research-count'); }
     if (rtl && draftResearchTitle) { rtl.value = draftResearchTitle; }
+    if (cc  && draftCogCouncil)    { cc.value  = draftCogCouncil; }
+    if (cn  && draftCogName)       { cn.value  = draftCogName; }
+    if (cs  && draftCogSummary)    { cs.value  = draftCogSummary; }
   }
 
   // Shadow matrix auto-refresh every 5 min while on Diagnostics
@@ -1034,10 +1252,13 @@ function switchTab(id) {
 // ── Ingest — type toggle ───────────────────────────────────────
 function switchType(type) {
   currentType = type;
-  document.getElementById('btn-type-session' ).classList.toggle('active', type === 'session');
-  document.getElementById('btn-type-research').classList.toggle('active', type === 'research');
-  document.getElementById('fields-session' ).style.display = type === 'session'  ? 'block' : 'none';
-  document.getElementById('fields-research').style.display = type === 'research' ? 'block' : 'none';
+  document.getElementById('btn-type-session'   ).classList.toggle('active', type === 'session');
+  document.getElementById('btn-type-research'  ).classList.toggle('active', type === 'research');
+  document.getElementById('btn-type-cogverdict').classList.toggle('active', type === 'cogverdict');
+  _setTabAria_(TYPE_TABS, 'btn-type-' + type);
+  document.getElementById('fields-session'   ).style.display = type === 'session'    ? 'block' : 'none';
+  document.getElementById('fields-research'  ).style.display = type === 'research'   ? 'block' : 'none';
+  document.getElementById('fields-cogverdict').style.display = type === 'cogverdict' ? 'block' : 'none';
   clearIngestToast();
   hideDropPanel();
   // A stale "your session is in the queue" hint used to stay visible after
@@ -1052,6 +1273,14 @@ function switchType(type) {
   // Re-running updateCount() re-derives the correct state immediately.
   if (type === 'session') updateCount('session-text', 'session-count');
 }
+
+// FIXED (Say/Do Ledger kos-personal finding #8): tracks the last-announced
+// warn state per char-count field so announceStatus() below only fires on
+// an actual state *transition* (entering/leaving "too large"/"approaching
+// limit"/"below minimum"), not on every keystroke — the visible count
+// updates constantly, but a live region announcing every single keystroke
+// would be unusable noise for a screen-reader user.
+const _lastCharState = {};
 
 function updateCount(textareaId, countId) {
   const raw = document.getElementById(textareaId).value;
@@ -1069,19 +1298,36 @@ function updateCount(textareaId, countId) {
   // Submit, not after, in a round-trip error toast.
   const minLength = currentType === 'session' ? 50 : 20;
 
+  let state, announceMsg;
   if (n > LARGE_PAYLOAD_THRESHOLD) {
+    state = 'too-large';
     el.innerHTML = '<span class="char-warn"><i class="ti ti-alert-triangle" style="font-size:11px"></i> ' + fmt + ' — too large for direct paste</span>';
     if (currentType === 'session') showDropPanel(n);
+    announceMsg = fmt + ' — too large for direct paste. Use the folder-drop option below.';
   } else if (n > LARGE_PAYLOAD_THRESHOLD * 0.8) {
+    state = 'approaching';
     el.innerHTML = '<span class="char-warn">' + fmt + ' · approaching limit</span>';
     hideDropPanel();
+    announceMsg = fmt + ', approaching the paste limit.';
   } else if (n > 0 && trimmedLen < minLength) {
+    state = 'short';
     el.innerHTML = fmt + ' <span style="color:var(--text3)">· minimum ' + minLength + '</span>';
     hideDropPanel();
+    announceMsg = fmt + ', below the ' + minLength + '-character minimum.';
   } else {
+    state = 'normal';
     el.textContent = fmt;
     hideDropPanel();
+    announceMsg = 'Back to a normal length.';
   }
+
+  // Only announce on an actual state transition, not every keystroke —
+  // the field starts in 'normal' with nothing announced yet, so the very
+  // first keystroke of a normal-length paste correctly stays silent too.
+  if (_lastCharState[countId] !== state && !(state === 'normal' && !_lastCharState[countId])) {
+    announceStatus(countId + '-announce', announceMsg, state === 'too-large');
+  }
+  _lastCharState[countId] = state;
 }
 
 function showDropPanel(charCount) {
@@ -1109,6 +1355,16 @@ function handleSubmit() {
   const btn   = document.getElementById('btn-submit');
   const label = document.getElementById('submit-label');
   const icon  = document.getElementById('submit-icon');
+
+  // Cog Verdict is a genuinely different shape (4 short structured fields,
+  // no single free-text blob with a char-count/large-payload concern), so
+  // it's handled as its own branch rather than folded into the
+  // text/title-shaped logic the rest of this function assumes.
+  if (currentType === 'cogverdict') {
+    handleCogVerdictSubmit_(btn, label, icon);
+    return;
+  }
+
   const text  = currentType === 'session'
     ? document.getElementById('session-text').value.trim()
     : document.getElementById('research-text').value.trim();
@@ -1218,6 +1474,60 @@ function handleSubmit() {
     : callServer('submitExternalData', [text, title],  onOk, onErr);
 }
 
+/**
+ * Cog Verdict submit path (Say/Do Ledger kos-personal finding #1) — split
+ * out of handleSubmit() since the shape (4 short structured fields, no
+ * char-count/large-payload concern) doesn't fit the text/title logic the
+ * rest of that function is built around.
+ */
+function handleCogVerdictSubmit_(btn, label, icon) {
+  const councilId = document.getElementById('cogverdict-council').value.trim();
+  const cogName   = document.getElementById('cogverdict-cog').value.trim();
+  const status    = document.getElementById('cogverdict-status').value;
+  const summary   = document.getElementById('cogverdict-summary').value.trim();
+
+  if (!councilId) {
+    showIngestToast('Council ID is required — reuse the one shown by "Run full council review."', false);
+    return;
+  }
+  if (!cogName) {
+    showIngestToast('Cog name is required.', false);
+    return;
+  }
+
+  btn.disabled = true;
+  label.textContent = 'Sending…';
+  icon.className = 'ti ti-loader-2';
+
+  const onOk = (res) => {
+    btn.disabled = false;
+    label.textContent = 'Submit';
+    icon.className = 'ti ti-send';
+    if (res && res.success) {
+      showIngestToast('✅ Verdict recorded for council ' + (res.uid || councilId) + '.', true);
+      // Council ID deliberately survives the clear — the operator submits
+      // several verdicts in a row under the same ID. Only the per-cog
+      // fields reset.
+      document.getElementById('cogverdict-cog').value = '';
+      document.getElementById('cogverdict-status').value = 'APPROVED';
+      document.getElementById('cogverdict-summary').value = '';
+      draftCogName = ''; draftCogSummary = '';
+      persistIngestDraft();
+    } else {
+      showIngestToast((res && res.message) || 'Something went wrong. Try again.', false);
+    }
+  };
+
+  const onErr = (err) => {
+    btn.disabled = false;
+    label.textContent = 'Submit';
+    icon.className = 'ti ti-send';
+    showIngestToast('Server error: ' + (err.message || String(err)), false);
+  };
+
+  callServer('submitCogVerdict', [councilId, cogName, status, summary], onOk, onErr);
+}
+
 // `state` is true (success), false (error), or 'warn' (a duplicate — the
 // pipeline behaved correctly, but it's not a fresh success either).
 function showIngestToast(msg, state) {
@@ -1301,7 +1611,21 @@ function renderServiceStatus(account) {
     '</div>' +
     (account.credit_balance < 20
       ? '<div style="color:var(--warn);font-size:11px;margin-top:4px">⚠ Low credits — sessions will pause when credits run out.</div>'
-      : '');
+      : '') +
+    // NEW (Say/Do Ledger kos-personal finding #3): this is the only
+    // place credit balance/subscription tier is ever shown to a user.
+    // The backend has real Stripe checkout routes
+    // (inference-service/src/billing.js's createSubscriptionCheckout()/
+    // createCreditPurchaseCheckout()), but nothing anywhere calls them —
+    // no purchase/upgrade UI exists in this web app or the Sheets menu.
+    // Stating that plainly here rather than letting a low-credit warning
+    // imply a "buy more" option exists just off-screen. Whether this
+    // billing backend should become a real self-serve feature, or stay
+    // speculative scaffolding, is a separate, open product decision —
+    // not resolved by this disclosure.
+    '<div style="color:var(--text3);font-size:10px;margin-top:6px;line-height:1.4">' +
+    'Purchasing more credits isn’t available here yet — this deployment mode isn’t set up for public self-serve use. Credits are provisioned manually by whoever runs this deployment.' +
+    '</div>';
 }
 
 function renderQueue(res) {
@@ -1334,6 +1658,15 @@ function renderQueue(res) {
   const failedTile = document.getElementById('metric-failed');
   if (failedTile) failedTile.style.display = failed > 0 ? '' : 'none';
   document.getElementById('cnt-failed').textContent = failed;
+
+  // NEW (finding #2): same hidden-unless-nonzero convention as "Failed"
+  // above — cycling is a subset of pending/active, not an additional
+  // bucket, so it isn't added into totalActivity below.
+  const cycling     = c.cycling ?? 0;
+  const cyclingTile = document.getElementById('metric-cycling');
+  if (cyclingTile) cyclingTile.style.display = cycling > 0 ? '' : 'none';
+  const cyclingCnt = document.getElementById('cnt-cycling');
+  if (cyclingCnt) cyclingCnt.textContent = cycling;
 
   const list = document.getElementById('curator-list');
   const rows = res.needs_curator || [];
@@ -1434,6 +1767,20 @@ function loadShadowMatrix() {
     if (dot) dot.className = 'dot ' + (modeColors[res.engine_mode] || 'dot-unk');
     if (lbl) lbl.textContent = friendlyEngineMode(res.engine_mode);
 
+    // NEW (finding #4): state-aware note replacing the tip-icon's old
+    // blanket "no manual setup required" claim — true once armed, false
+    // before the one-time setup wizard has run.
+    const stateNote = document.getElementById('calib-state-note');
+    if (stateNote) {
+      if (res.engine_armed) {
+        stateNote.style.display = 'none';
+      } else {
+        stateNote.style.display = '';
+        stateNote.innerHTML = '<i class="ti ti-info-circle" style="font-size:14px;opacity:.5;margin-right:4px"></i>' +
+          'Calibration hasn\'t started — finish the one-time setup wizard below to activate it.';
+      }
+    }
+
     el.innerHTML = res.questions.map(q => {
       const pct    = Math.round(q.confidence * 100);
       const barCol = q.status==='VERIFIED' ? 'var(--success)' : q.status==='HYPOTHESIZED' ? 'var(--amber)' : 'var(--text3)';
@@ -1529,10 +1876,48 @@ let armStep = 0;
 // typed earlier, so Continue then Back then Continue again came back blank.
 let armAnswers = {};
 
-let _armReturnFocus = null;
-function handleArmEngine() {
+// ── Arm-modal draft persistence (survives an accidental backdrop-click or
+// Escape dismissal) ──────────────────────────────────────────────────────
+// closeArmModal() used to force-clear armAnswers/armStep unconditionally
+// on every dismissal path — backdrop click and Escape both routed there —
+// with zero confirmation and zero recovery: a single misclick outside this
+// 4-step onboarding wizard silently wiped everything typed. Mirrors the
+// INGEST_DRAFT_KEY pattern above (persist to localStorage via the same
+// _safeLS() guard, restore on next open, clear only on a true
+// submit-success), with one deliberate difference: passphrase and
+// passphraseConfirm are never included in the persisted draft. Those are
+// secrets — they have no business sitting in localStorage even briefly.
+// A resumed draft just needs the passphrase re-typed, same as any
+// password field left empty on a closed form.
+const ARM_DRAFT_KEY = 'kos_arm_draft';
+function persistArmDraft() {
+  const { passphrase, passphraseConfirm, ...safeAnswers } = armAnswers;
+  const hasContent = armStep > 0 || Object.values(safeAnswers).some(v => v);
+  if (!hasContent) { clearArmDraft(); return; }
+  _safeLS(() => localStorage.setItem(ARM_DRAFT_KEY, JSON.stringify({ armStep, armAnswers: safeAnswers })));
+}
+function restoreArmDraft() {
+  const raw = _safeLS(() => localStorage.getItem(ARM_DRAFT_KEY));
+  if (!raw) return false;
+  const d = _safeLS(() => JSON.parse(raw));
+  if (!d) return false;
+  armAnswers = d.armAnswers || {};
+  armStep = Number.isInteger(d.armStep) ? Math.min(Math.max(d.armStep, 0), ARM_STEPS.length - 1) : 0;
+  return true;
+}
+function clearArmDraft() { _safeLS(() => localStorage.removeItem(ARM_DRAFT_KEY)); }
+// Only called after a genuine successful save (submitArmEngine) — every
+// dismissal path (closeArmModal) deliberately leaves the draft in place.
+function _armResetState() {
   armStep = 0;
   armAnswers = {};
+  clearArmDraft();
+}
+
+let _armReturnFocus = null;
+function handleArmEngine() {
+  const hadDraft = restoreArmDraft();
+  if (!hadDraft) { armStep = 0; armAnswers = {}; }
   _armPassVisible = false;
   // Opening never moved focus into the sheet, so keyboard/screen-reader
   // users stayed wherever they were — notionally still "on" the trigger
@@ -1560,12 +1945,19 @@ function _armSetBackgroundInert(on) {
   });
 }
 
-function closeArmModal() {
+// skipPersist is true only right after a successful save (submitArmEngine
+// already called _armResetState()) — every other caller (backdrop click,
+// Escape) omits it, so the in-progress answers get captured from whatever
+// is currently on screen and persisted before the sheet hides, instead of
+// being force-cleared the way this function used to.
+function closeArmModal(skipPersist) {
+  if (!skipPersist) {
+    _armCaptureStep();
+    persistArmDraft();
+  }
   document.getElementById('arm-backdrop').classList.remove('show');
   document.getElementById('arm-sheet').style.display = 'none';
   _armSetBackgroundInert(false);
-  armStep = 0;
-  armAnswers = {};
   document.removeEventListener('keydown', _armEscHandler);
   if (_armReturnFocus && typeof _armReturnFocus.focus === 'function') _armReturnFocus.focus();
   _armReturnFocus = null;
@@ -1715,7 +2107,9 @@ function submitArmEngine() {
   }], (res) => {
     if (res && res.success) {
       btn.innerHTML = '<i class="ti ti-check"></i>Saved!';
-      setTimeout(() => { closeArmModal(); loadDiagnostics(); }, 1000);
+      // Genuine completion — clear the draft instead of persisting it,
+      // unlike every other way this modal closes.
+      setTimeout(() => { _armResetState(); closeArmModal(true); loadDiagnostics(); }, 1000);
     } else {
       btn.disabled = false;
       btn.innerHTML = 'Save & Personalize <i class="ti ti-bolt"></i>';
@@ -1829,6 +2223,28 @@ function loadRegistrarStatus() {
         ? healthRowHtml('Failed', '<i class="ti ti-alert-triangle" style="font-size:12px;margin-right:4px;color:var(--danger)"></i>' + g.failed)
         : healthRow('Failed', 0)) +
       '</div>';
+
+    // FIXED (Say/Do Ledger kos-personal finding #9): the tooltip used to
+    // be static, generic text regardless of whether this pipeline had
+    // ever actually finished anything. Made state-aware instead of a
+    // caveat someone has to remember to edit out once the Stage 1/2
+    // Studio flows are built: once at least one file has ever reached a
+    // terminal state (routed OR escalated to CRITICAL_FAILURE — either
+    // one proves the pipeline is really moving rows, not just
+    // accumulating attempts with nothing built to process them), it
+    // stops hedging. Before that point, every "in progress" row is
+    // genuinely ambiguous — it could be seconds into a normal audit, or
+    // it could be bouncing forever (Attempt_Tracker climbing toward
+    // CFG.REGISTRAR_RETRY_LIMIT with no Studio flow ever actually
+    // validating it) — so the caveat stays up.
+    const tip = document.getElementById('registrar-tip');
+    if (tip) {
+      const everCompleted = (g.routed || 0) > 0 || (g.failed || 0) > 0;
+      tip.title = everCompleted
+        ? 'A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance — distinct from the session-log pipeline above it on this tab. ' +
+          (g.routed || 0) + ' file' + ((g.routed || 0) === 1 ? '' : 's') + ' routed so far.'
+        : 'A separate pipeline (11_Registrar_CogRelay.gs) that audits curriculum drafts for structural completeness and pedagogical dissonance. No file has finished routing yet — if its two Studio flows (Stage 1 Auditor, Stage 2 Curator) aren\'t built yet, files here will keep retrying until they exceed the attempt limit and move to Failed for review.';
+    }
   }, (err) => {
     console.warn('[Diagnostics] getRegistrarStatus error:', err.message);
   });
@@ -1844,7 +2260,16 @@ function loadVectorState() {
       _diagPanelError('vec-list', (res && res.message) || 'Vector state unavailable.', 'loadVectorState', 'ti-alert-triangle');
       return;
     }
-    if (!res.vectors || res.vectors.length === 0) {
+    // FIXED (Say/Do Ledger kos-personal finding #4): getVectorState()'s
+    // "nothing processed yet" branch still returns a full vectors array
+    // (one zero-score entry per known theme, so the list always shows
+    // every category name) — checking vectors.length here was dead code,
+    // since that array is never actually empty. !res.session_uid is the
+    // real "has anything ever written to the matrix" signal (only set
+    // once a real session updates it), and is what makes res.message's
+    // state-aware text (armed vs. cold-with-sessions-queued vs.
+    // cold-with-nothing-queued — see getVectorState()) actually reachable.
+    if (!res.vectors || res.vectors.length === 0 || !res.session_uid) {
       el.innerHTML = '<div class="empty" style="padding:8px 0">' +
         '<i class="ti ti-chart-bar" style="font-size:18px;opacity:.4"></i>' +
         (res.message ? esc(res.message) : 'Process your first session to see theme data.') + '</div>';
@@ -2089,133 +2514,170 @@ function handlePromotion() {
   });
 }
 
-function handleCouncil() {
-  const btn = document.getElementById('btn-council');
-  if (!councilConfirm) {
-    councilConfirm = true;
-    btn.className = 'btn btn-sm btn-confirm btn-countdown';
-    btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to confirm · 5s';
-    // The per-second countdown re-render below has no aria-live announcement
-    // anywhere — a screen-reader user who activates this button hears its
-    // initial label once and gets no indication a countdown is running or
-    // that it silently reverted after 5s. One announcement into the
-    // existing aria-live status line when arming is enough; re-announcing
-    // every second would be noise.
-    // FIXED: this used to pass no token and skip beginDiagAction() entirely,
-    // bypassing the generation-token race guard every other showDiagStatus()
-    // call site respects — a stray Diagnostics response landing during the
-    // 5s countdown could silently clobber (or be clobbered by) this line.
-    showDiagStatus('Tap "Run full council review" again within 5 seconds to confirm.', undefined, beginDiagAction());
-    let count = 5;
-    councilTimer = setInterval(() => {
-      count--;
-      if (count <= 0) {
-        clearInterval(councilTimer);
-        resetBtn('btn-council', 'ti-brain', 'Run full council review');
-        councilConfirm = false;
-        // FIXED: the aria-live line above kept asserting "tap again within
-        // 5 seconds" indefinitely after the window actually closed — a
-        // screen-reader user (or anyone reading the status line late) had
-        // no way to tell the countdown had lapsed and the button reverted.
-        showDiagStatus('', undefined, beginDiagAction());
+// ── Shared confirm-tap helper (Say/Do Ledger kos-personal finding #7)
+// ──────────────────────────────────────────────────────────────────────
+// handleCouncil() and handleDeploy() used to each hand-roll their own
+// armed/timer/count state and 5s countdown loop — identical shape, only
+// the copy and the confirmed action differed. Consolidated into one
+// helper so the WCAG 2.2.1 (Timing Adjustable) fix below only has to be
+// written once: a bare auto-revert with no way to ask for more time
+// fails that criterion. Pausing the countdown while the button has
+// hover or keyboard focus is a genuine "need more time" affordance that
+// needs no extra UI of its own — anyone reading the countdown just
+// keeps their pointer/focus on it; the clock only resumes once they
+// actually look away. A second tap while armed still confirms
+// immediately (that's the whole point of the pattern), so hover/focus
+// pausing doesn't conflict with the confirm gesture.
+const _confirmTapState = {}; // keyed by btnId
+
+function _confirmTap_(btnId, opts) {
+  // opts: { armedClass, armedIcon, armedLabel(count), onArm(), onExpire(), onConfirm() }
+  const btn = document.getElementById(btnId);
+  if (!btn) return;
+  let st = _confirmTapState[btnId];
+
+  if (!st || !st.armed) {
+    st = _confirmTapState[btnId] = { armed: true, timer: null, count: 5, hovering: false, focused: false };
+    btn.className = opts.armedClass;
+    btn.innerHTML = opts.armedIcon + opts.armedLabel(st.count);
+
+    if (!btn._confirmTapWired) {
+      btn._confirmTapWired = true;
+      const cur = () => _confirmTapState[btnId];
+      btn.addEventListener('mouseenter', () => { const x = cur(); if (x) x.hovering = true; });
+      btn.addEventListener('mouseleave', () => { const x = cur(); if (x) x.hovering = false; });
+      btn.addEventListener('focus',      () => { const x = cur(); if (x) x.focused  = true; });
+      btn.addEventListener('blur',       () => { const x = cur(); if (x) x.focused  = false; });
+    }
+
+    if (opts.onArm) opts.onArm();
+
+    st.timer = setInterval(() => {
+      const s = _confirmTapState[btnId];
+      if (!s || !s.armed) return;
+      if (s.hovering || s.focused) return; // paused — genuine "more time"
+      s.count--;
+      if (s.count <= 0) {
+        clearInterval(s.timer);
+        s.armed = false;
+        opts.onExpire();
       } else {
-        btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to confirm · ' + count + 's';
+        btn.innerHTML = opts.armedIcon + opts.armedLabel(s.count);
       }
     }, 1000);
     return;
   }
-  clearInterval(councilTimer);
-  councilConfirm = false;
-  btn.disabled = true;
-  btn.className = 'btn btn-sm';
-  btn.innerHTML = '<i class="ti ti-loader-2"></i>Queuing…';
-  const gen = beginDiagAction();
-  // NOTE (reconciliation decision 3): triggerCouncilSimulation() creates one
-  // shared doc instructing the model to act as ARCHITECT, AUDITOR, and MUSE
-  // together — not 7 isolated, sequestered per-persona stimulus docs. The
-  // fuller "Seven Bridges" design (SMP-002) is still PENDING USER APPROVAL
-  // per 9_UI_Diagnostics.gs's sevenBridgesReview(), so this copy describes
-  // what actually runs today rather than the aspirational 7-cog version.
-  showDiagStatus('Queuing a combined council review (ARCHITECT · AUDITOR · MUSE)…', undefined, gen);
-  callServer('triggerCouncilSimulation', [], (res) => {
-    btn.disabled = false;
-    resetBtn('btn-council', 'ti-brain', 'Run full council review');
-    if (res && res.success && (res.busy || res.noop)) {
-      // Lock contention or "nothing changed since last run" — both routine,
-      // expected outcomes, not failures. Render neutrally instead of red.
-      showDiagStatus(res.message, undefined, gen);
-    } else if (res && res.success) {
-      showDiagStatus(
-        'Council review queued in one shared document. ' +
-        'Verdicts appear in the <strong>COG_REGISTRY</strong> sheet of your BRAIN_TRUST_INDEX once Studio processes it.',
-        undefined, gen
-      );
-    } else {
-      showDiagStatus((res && res.message) || 'Could not start council.', 'danger', gen);
+
+  clearInterval(st.timer);
+  st.armed = false;
+  opts.onConfirm();
+}
+
+function handleCouncil() {
+  _confirmTap_('btn-council', {
+    armedClass: 'btn btn-sm btn-confirm btn-countdown',
+    armedIcon:  '<i class="ti ti-alert-triangle"></i>',
+    armedLabel: (n) => 'Tap again to confirm · ' + n + 's',
+    // FIXED: this used to pass no token and skip beginDiagAction() entirely,
+    // bypassing the generation-token race guard every other showDiagStatus()
+    // call site respects — a stray Diagnostics response landing during the
+    // 5s countdown could silently clobber (or be clobbered by) this line.
+    onArm: () => showDiagStatus('Tap "Run full council review" again within 5 seconds to confirm.', undefined, beginDiagAction()),
+    onExpire: () => {
+      resetBtn('btn-council', 'ti-brain', 'Run full council review');
+      // FIXED: the aria-live line above kept asserting "tap again within
+      // 5 seconds" indefinitely after the window actually closed — a
+      // screen-reader user (or anyone reading the status line late) had
+      // no way to tell the countdown had lapsed and the button reverted.
+      showDiagStatus('', undefined, beginDiagAction());
+    },
+    onConfirm: () => {
+      const btn = document.getElementById('btn-council');
+      btn.disabled = true;
+      btn.className = 'btn btn-sm';
+      btn.innerHTML = '<i class="ti ti-loader-2"></i>Queuing…';
+      const gen = beginDiagAction();
+      // FIXED (Say/Do Ledger kos-personal finding #1): this used to call
+      // triggerCouncilSimulation(), which asks one Studio flow to role-play
+      // ARCHITECT/AUDITOR/MUSE together in a single shared-context pass —
+      // exactly the cross-contamination BRIDGE_FIDELITY_001 forbids. The
+      // real Seven Bridges execution layer (SMP-002) is now built —
+      // triggerSevenBridgesReview() generates one stimulus doc and a fresh
+      // council ID; the operator sends that doc to each cog independently
+      // and logs each verdict via Ingest → Cog Verdict under that ID.
+      showDiagStatus('Preparing a Seven Bridges review stimulus…', undefined, gen);
+      callServer('triggerSevenBridgesReview', [], (res) => {
+        btn.disabled = false;
+        resetBtn('btn-council', 'ti-brain', 'Run full council review');
+        if (res && res.success && (res.busy || res.noop)) {
+          // Lock contention or "nothing changed since last run" — both routine,
+          // expected outcomes, not failures. Render neutrally instead of red.
+          showDiagStatus(res.message, undefined, gen);
+        } else if (res && res.success) {
+          showDiagStatus(
+            'Stimulus ready — Council ID <strong>' + res.councilId + '</strong>. ' +
+            'Send it to each cog independently (separate Gemini conversation per cog, ' +
+            'no shared context), then log each verdict under this Council ID via ' +
+            '<strong>Ingest → Cog Verdict</strong>.',
+            undefined, gen
+          );
+        } else {
+          showDiagStatus((res && res.message) || 'Could not start council.', 'danger', gen);
+        }
+      }, (err) => {
+        btn.disabled = false;
+        resetBtn('btn-council', 'ti-brain', 'Run full council review');
+        // _coldEngineGate's TIER_2 throw leaks its internal function name, tier
+        // label, and "Socratic Onboarding" (a term this UI doesn't otherwise
+        // use — the button here says "Personalize your advisor"). Translate
+        // that one specific case; anything else still shows Server error as-is.
+        const msg = /COLD_ENGINE_TIER_2/.test(err.message)
+          ? 'Your advisor isn\'t personalized yet — tap "Personalize your advisor" in Diagnostics first.'
+          : 'Error: ' + err.message;
+        showDiagStatus(msg, 'danger', gen);
+      });
     }
-  }, (err) => {
-    btn.disabled = false;
-    resetBtn('btn-council', 'ti-brain', 'Run full council review');
-    // _coldEngineGate's TIER_2 throw leaks its internal function name, tier
-    // label, and "Socratic Onboarding" (a term this UI doesn't otherwise
-    // use — the button here says "Personalize your advisor"). Translate
-    // that one specific case; anything else still shows Server error as-is.
-    const msg = /COLD_ENGINE_TIER_2/.test(err.message)
-      ? 'Your advisor isn\'t personalized yet — tap "Personalize your advisor" in Diagnostics first.'
-      : 'Error: ' + err.message;
-    showDiagStatus(msg, 'danger', gen);
   });
 }
 
 
 function handleDeploy() {
-  const btn = document.getElementById('btn-deploy');
-  if (!deployConfirm) {
-    deployConfirm = true;
-    btn.className = 'btn btn-sm btn-danger btn-countdown';
-    btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to re-deploy · 5s';
-    // Same aria-live gap as handleCouncil()'s countdown — see its comment,
-    // including the same FIXED token-guard note.
-    showDiagStatus('Tap "Re-run full deploy" again within 5 seconds to confirm.', undefined, beginDiagAction());
-    let count = 5;
-    deployTimer = setInterval(() => {
-      count--;
-      if (count <= 0) {
-        clearInterval(deployTimer);
+  _confirmTap_('btn-deploy', {
+    armedClass: 'btn btn-sm btn-danger btn-countdown',
+    armedIcon:  '<i class="ti ti-alert-triangle"></i>',
+    armedLabel: (n) => 'Tap again to re-deploy · ' + n + 's',
+    // Same aria-live convention as handleCouncil() above.
+    onArm: () => showDiagStatus('Tap "Re-run full deploy" again within 5 seconds to confirm.', undefined, beginDiagAction()),
+    onExpire: () => {
+      resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
+      showDiagStatus('', undefined, beginDiagAction());
+    },
+    onConfirm: () => {
+      const btn = document.getElementById('btn-deploy');
+      btn.disabled = true;
+      btn.className = 'btn btn-sm';
+      btn.innerHTML = '<i class="ti ti-loader-2"></i>Deploying…';
+      const gen = beginDiagAction();
+      showDiagStatus('Rebuilding system infrastructure… (usually under two minutes)', undefined, gen);
+      callServer('deployFullSystem', [], (res) => {
+        btn.disabled = false;
         resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
-        deployConfirm = false;
-        // Same stale-status fix as handleCouncil()'s countdown — see its comment.
-        showDiagStatus('', undefined, beginDiagAction());
-      } else {
-        btn.innerHTML = '<i class="ti ti-alert-triangle"></i>Tap again to re-deploy · ' + count + 's';
-      }
-    }, 1000);
-    return;
-  }
-  clearInterval(deployTimer);
-  deployConfirm = false;
-  btn.disabled = true;
-  btn.className = 'btn btn-sm';
-  btn.innerHTML = '<i class="ti ti-loader-2"></i>Deploying…';
-  const gen = beginDiagAction();
-  showDiagStatus('Rebuilding system infrastructure… (usually under two minutes)', undefined, gen);
-  callServer('deployFullSystem', [], (res) => {
-    btn.disabled = false;
-    resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
-    if (res && res.success) {
-      const errs = res.errors && res.errors.length;
-      showDiagStatus(
-        'Deploy complete.' + (errs ? ' ' + errs + ' non-fatal issue' + (errs === 1 ? '' : 's') + ' — check ERROR_LOG sheet.' : ' All systems verified.'),
-        undefined, gen
-      );
-    } else {
-      showDiagStatus('Deploy finished with errors. Check the ERROR_LOG sheet in BRAIN_TRUST_INDEX.', 'danger', gen);
+        if (res && res.success) {
+          const errs = res.errors && res.errors.length;
+          showDiagStatus(
+            'Deploy complete.' + (errs ? ' ' + errs + ' non-fatal issue' + (errs === 1 ? '' : 's') + ' — check ERROR_LOG sheet.' : ' All systems verified.'),
+            undefined, gen
+          );
+        } else {
+          showDiagStatus('Deploy finished with errors. Check the ERROR_LOG sheet in BRAIN_TRUST_INDEX.', 'danger', gen);
+        }
+        loadDiagnostics();
+      }, (err) => {
+        btn.disabled = false;
+        resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
+        showDiagStatus('Deploy error: ' + err.message, 'danger', gen);
+      });
     }
-    loadDiagnostics();
-  }, (err) => {
-    btn.disabled = false;
-    resetBtn('btn-deploy', 'ti-rocket', 'Re-run full deploy');
-    showDiagStatus('Deploy error: ' + err.message, 'danger', gen);
   });
 }
 
@@ -2452,10 +2914,12 @@ document.addEventListener('click', () => closeTip());
 // which is only added once a modal opens), it always ran first but never
 // stopped the same keypress from also reaching those later handlers. On
 // the Arm wizard's Step 3, dismissing a tip popover with Escape therefore
-// also closed the whole modal in the same keystroke (closeArmModal()
-// unconditionally resets armStep/armAnswers), silently wiping every
-// answer entered so far. Escape should be "spent" on the topmost open
-// thing — stop it here only when there was actually a tip to close.
+// also closed the whole modal in the same keystroke. closeArmModal() no
+// longer force-clears armStep/armAnswers on any dismissal path (see
+// persistArmDraft()/restoreArmDraft() above), but Escape should still be
+// "spent" on the topmost open thing rather than also dismissing a wizard
+// the user didn't ask to close — stop it here only when there was
+// actually a tip to close.
 document.addEventListener('keydown', (e) => {
   if (e.key !== 'Escape' || !_tipOpenIcon) return;
   closeTip();
@@ -2506,6 +2970,9 @@ function closeTip() {
 // ── Boot ────────────────────────────────────────────────────────
 (function init() {
   _tipInit();
+  // Finding #6 — arrow/Home/End key navigation for both tab groups.
+  _wireTabGroup_(NAV_TABS, switchTab);
+  _wireTabGroup_(TYPE_TABS, switchType);
   if (SERVER_MODE === 'BOOTSTRAP') {
     document.getElementById('screen-bootstrap').classList.add('show');
 
@@ -2517,7 +2984,13 @@ function closeTip() {
     document.getElementById('op-nav').style.display = '';
     restoreIngestDraft();
 
-    // Shadow matrix ping — sets header engine mode dot on load
+    // Shadow matrix ping — sets header engine mode dot on load.
+    // Both calls here pass their own onErr (-> console only) instead of
+    // falling through to the untokened onServerError(), which writes
+    // unconditionally to #diag-status — these two boot-time pings aren't
+    // user-initiated Diagnostics actions and have no business overwriting
+    // a fresher, in-flight one (see beginDiagAction()/showDiagStatus()'s
+    // token mechanism above).
     if (gsr) {
       callServer('getShadowMatrixStatus', [], (res) => {
         if (!res || !res.success) return;
@@ -2526,6 +2999,8 @@ function closeTip() {
         const lbl = document.getElementById('engine-label');
         if (dot) dot.className = 'dot ' + (modeColors[res.engine_mode] || 'dot-unk');
         if (lbl) lbl.textContent = friendlyEngineMode(res.engine_mode);
+      }, (err) => {
+        console.warn('[Boot] getShadowMatrixStatus failed:', err);
       });
 
       // Pre-fetch inbound folder URL for the large-payload drop panel
@@ -2535,6 +3010,8 @@ function closeTip() {
           const link = document.getElementById('inbound-folder-link');
           if (link) link.href = res.url;
         }
+      }, (err) => {
+        console.warn('[Boot] getInboundFolderUrl failed:', err);
       });
     }
   }

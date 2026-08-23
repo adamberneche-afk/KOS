@@ -9,10 +9,16 @@
   ║  FERPA DATA HANDLING NOTICE                                          ║
   ║  This file processes student education records locally in-browser.   ║
   ║  Student PII (names, grades, scores) is stored only in localStorage  ║
-  ║  on this device. The only network calls this page ever makes go to   ║
-  ║  script.google.com — your own Apps Script Web App (EmailBridge.gs).  ║
-  ║  No direct Gemini/AI API call is ever made from the browser. Optional║
-  ║  AI drafting (Brag Board, Archive Insights, WBL Program Summary,     ║
+  ║  on this device. Network calls this page makes go to: script.google.com║
+  ║  — your own Apps Script Web App(s) (EmailBridge.gs, and optionally a  ║
+  ║  connected cas-ccps Teacher Dashboard, D1/Addendum 24) — and, only if ║
+  ║  a cas-ccps connection is configured (Settings), accounts.google.com  ║
+  ║  for Google's own "Sign In With Google" widget, used solely to prove  ║
+  ║  identity to that Teacher Dashboard (a verified ID token, checked     ║
+  ║  server-side there) — no student PII is ever sent to Google's         ║
+  ║  identity endpoints, only this browser's own sign-in. No direct       ║
+  ║  Gemini/AI API call is ever made from the browser. Optional AI        ║
+  ║  drafting (Brag Board, Archive Insights, WBL Program Summary,        ║
   ║  Lesson Plan Helper, Email Composer) hands off to that same Apps     ║
   ║  Script, which queues a job for a separate Google Workspace Flow to  ║
   ║  fulfill — see LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data    ║
@@ -21,23 +27,30 @@
   ║  uploaded (Settings), matched student names are substituted for      ║
   ║  their CCPS ID before that request leaves the browser; unmapped      ║
   ║  names are sent as-is — see LEADERHUB_AI_FLOW_SETUP.md.              ║
-  ║  The Content-Security-Policy meta tag below enforces the             ║
-  ║  script.google.com-only constraint.                                  ║
+  ║  The Content-Security-Policy meta tag below enforces this exact      ║
+  ║  destination allowlist.                                              ║
   ╚══════════════════════════════════════════════════════════════════════╝
 -->
-<!-- CSP: only allow connections to your own Apps Script Web App (script.google.com) + Google Fonts (display only) -->
+<!-- CSP: your own Apps Script Web App(s) (script.google.com) + Google Fonts (display only)
+     + accounts.google.com (Sign In With Google, only if a cas-ccps connection is configured) -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:;
-  connect-src 'self' https://script.google.com https://script.googleusercontent.com;
+  connect-src 'self' https://script.google.com https://script.googleusercontent.com https://accounts.google.com;
   font-src 'self' https://fonts.gstatic.com data:;
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
   img-src 'self' data: blob:;
-  script-src 'self' 'unsafe-inline' 'unsafe-eval';
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com;
   form-action 'none';
-  frame-src 'none';
+  frame-src https://accounts.google.com;
   object-src 'none';
 ">
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Google Identity Services (D1/Addendum 24) — only used if a cas-ccps
+     connection is configured (Settings → Connect to cas-ccps). Loads
+     unconditionally (a <script> tag can't be conditional) but renders
+     nothing until CAS_CCPS_BRIDGE.renderSignInButton() is actually
+     called, which only happens once a Client ID is on file. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <style>
 :root {
   --ink:#1e293b; --paper:#f8f9fa; --surface:#ffffff;
@@ -371,6 +384,16 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
 .scr-table{width:100%;border-collapse:collapse;font-size:.73rem}
 .scr-table th{background:var(--navy);color:#fff;padding:.42rem .48rem;text-align:center;font-size:.65rem;white-space:nowrap;position:sticky;top:0;z-index:10}
 .scr-table th.comp-h{text-align:left;max-width:280px;min-width:200px}
+/* FIXED (Say/Do Ledger leader-hub finding #13): the Req header used to
+   carry two `style` attributes on one element, so the browser kept only
+   the first (position:sticky;left:0) and silently dropped the second
+   (min-width) — Req ended up pinned at the same offset as the Competency
+   column instead of stacked beside it. --scr-comp-w is set at render time
+   (renderScrTable()) from Competency's actual measured width, so Req
+   always stacks correctly even as that width changes with viewport size. */
+.scr-table th.scr-req-col,.scr-table td.scr-req-col{position:sticky;left:var(--scr-comp-w,200px);min-width:60px;z-index:15}
+.scr-table th.scr-req-col{background:var(--navy);z-index:20}
+.scr-table td.scr-req-col{background:#fff;border-right:1px solid #e5e7eb}
 .scr-table td{padding:.3rem .42rem;border-bottom:1px solid var(--border-soft);vertical-align:middle}
 .scr-table tr:hover td{background:var(--muted-light)}
 .scr-duty{background:var(--muted-light);font-weight:700;font-size:.68rem;text-transform:uppercase;letter-spacing:.8px;color:var(--navy);padding:.48rem .65rem}
@@ -384,6 +407,13 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
 .scr-score:hover{transform:scale(1.15);z-index:5}
 .scr-opt{font-style:italic;color:#9ca3af}
 .scr-pct-bar{height:5px;border-radius:3px;background:#e5e7eb;overflow:hidden;margin-top:2px}
+/* Real horizontal-scroll affordance (Say/Do Ledger leader-hub finding #2)
+   — the scroll container had overflow:auto but nothing visually hinting
+   this table scrolls, so a phone user had to discover it by accident. A
+   persistent right-edge fade plus the text hint above the table (see
+   renderScrTable()) together replace that with a real, visible cue. */
+.scr-scroll-wrap{position:relative}
+.scr-scroll-wrap::after{content:'';position:absolute;top:0;right:0;bottom:0;width:22px;pointer-events:none;background:linear-gradient(to right,transparent,rgba(0,0,0,.10))}
 .scr-pct-fill{height:100%;border-radius:3px;background:var(--navy);transition:width .3s}
 
     .lp-card:hover { transform:translateY(-2px); box-shadow:0 8px 28px rgba(0,0,0,.12); }
@@ -696,10 +726,29 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
 </head>
 <body>
 <script>
+// FIXED: this used to show every uncaught error as a raw, undismissable,
+// monospace stack-trace-style banner ("JS ERROR: ... at line N:M") — a
+// debug-mode leftover left permanently live, so any real user hitting any
+// bug saw developer-facing internals instead of a normal error message.
+// The raw detail still goes to the console (nothing lost for debugging);
+// the on-page banner is now a plain-language message with a dismiss
+// button, and won't stack a second banner on top of a repeated error.
 window.onerror = function(msg, src, line, col, err) {
+  console.error('[Uncaught error]', msg, 'at', src + ':' + line + ':' + col, err);
+  if (document.getElementById('js-error-banner')) return false;
   const d = document.createElement('div');
-  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font-family:monospace;font-size:12px;z-index:99999;white-space:pre-wrap;';
-  d.textContent = '⚠️ JS ERROR: ' + msg + '\n  at line ' + line + ':' + col;
+  d.id = 'js-error-banner';
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font-family:system-ui,sans-serif;font-size:13px;z-index:99999;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  const msgSpan = document.createElement('span');
+  msgSpan.style.flex = '1';
+  msgSpan.textContent = '⚠️ Something went wrong. Try refreshing the page — your data is saved locally and won\'t be lost.';
+  const btn = document.createElement('button');
+  btn.textContent = '✕';
+  btn.setAttribute('aria-label', 'Dismiss');
+  btn.style.cssText = 'background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px;line-height:1';
+  btn.onclick = function() { d.remove(); };
+  d.appendChild(msgSpan);
+  d.appendChild(btn);
   document.body.appendChild(d);
   return false;
 };
@@ -739,6 +788,7 @@ window.onerror = function(msg, src, line, col, err) {
     <button class="si" onclick="openSurveyModal()"><span class="ic">⚙️</span>Settings</button>
     <button class="si" onclick="openModal('emailbridge');openEmailBridgeModal_();"><span class="ic">📧</span>Email Bridge <span id="email-bridge-status" style="font-size:.6rem;margin-left:auto;font-weight:700;color:#b45309">⚠️ Off</span></button>
     <button class="si" onclick="openEmailComposer()"><span class="ic">✉️</span>Compose Email</button>
+    <button class="si" onclick="openModal('casccps');openCasCcpsModal_();"><span class="ic">🔗</span>Connect to cas-ccps <span id="cas-ccps-status" style="font-size:.6rem;margin-left:auto;font-weight:700;color:#b45309">⚠️ Off</span></button>
   </div>
 
   <div class="acc-sep"></div>
@@ -1208,7 +1258,7 @@ window.onerror = function(msg, src, line, col, err) {
 <!-- ===== DECA CHAPTER HUB ===== -->
 <div id="view-deca" class="view">
   <div class="ph">
-    <div><div class="pt" id="orghub-title">🏆 DECA Chapter Hub</div><div class="ps" id="deca-hub-subtitle">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div></div>
+    <div><div class="pt" id="orghub-title">🏆 DECA Chapter Hub</div><div class="ps" id="deca-hub-subtitle">Clover Hill High School · 25–26 Season · All data sourced from Google Drive</div><div id="orghub-sync-badge" style="margin-top:.2rem"></div></div>
     <button class="btn btn-primary" onclick="showView('events')">All Events →</button>
   </div>
   <div id="deca-hub-content"></div>
@@ -1376,6 +1426,20 @@ window.onerror = function(msg, src, line, col, err) {
   <div class="ph">
     <div><div class="pt">CCPS Trip Workflow</div><div class="ps">Process map · CCPS Field Trip Policy (Revised 7-22-24)</div></div>
   </div>
+
+  <!-- Trip selector — FIXED per Say/Do Ledger leader-hub finding #6: this
+       checklist's progress used to live in three global, unscoped module
+       constants (no persistence, and shared across every trip at once —
+       checking a box for Trip A silently checked it for Trip B too). Each
+       trip now gets its own saved checklist state (t.procSteps), matching
+       the Slip view's own trip-selector pattern (#slip-trip-sel). -->
+  <div class="card" style="margin-bottom:1rem;padding:.8rem 1rem">
+    <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+      <span style="font-weight:600;font-size:.85rem;white-space:nowrap">Trip:</span>
+      <select id="tripflow-trip-sel" onchange="renderTripFlow()" style="flex:1;min-width:200px" title="Each trip keeps its own saved checklist progress and its own real approval status — switch trips here to see or update a different one."></select>
+    </div>
+  </div>
+
   <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap">
     <button class="btn btn-primary btn-sm" id="tab-process" onclick="tfTab('process',this)">📋 Process Steps</button>
     <button class="btn btn-outline btn-sm" id="tab-approvals" onclick="tfTab('approvals',this)">✅ Approvals</button>
@@ -1385,8 +1449,8 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div id="tf-process">
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px">
-      📖 General process reference — a personal checklist for learning/remembering the steps. Checking a box here does <strong>not</strong> approve any specific trip; that lives on each trip's own Approval Chain in its Trip Detail view.
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px" title="Checked boxes are saved against the trip selected above — pick a different trip in the selector to see or update its own progress, separate from every other trip's.">
+      📋 Checklist for the trip selected above — progress is saved per trip, so switching trips shows that trip's own checked/unchecked state.
     </div>
     <div class="grid g2" style="align-items:start">
       <div class="card cal"><div class="stitle">I. Sponsor Steps</div><ul class="cl" id="sponsor-cl"></ul></div>
@@ -1396,13 +1460,14 @@ window.onerror = function(msg, src, line, col, err) {
   </div>
 
   <div id="tf-approvals" style="display:none">
-    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px">
-      📖 Reference diagram showing who's in each approval chain and why — not clickable, and not tied to any specific trip. To approve or reject a step for a real trip, use that trip's own Approval Chain in Trip Detail.
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.7rem;padding:.4rem .6rem;background:var(--surface);border:1px solid var(--border);border-radius:6px" title="This reads the same real approval data as the trip's own Approval Chain in Trip Detail — it's not a separate copy.">
+      ✅ Live status for the trip selected above (read-only here). To approve or reject a step, use the button below to open that trip's own Approval Chain in Trip Detail.
     </div>
-    <div class="grid g3" style="align-items:start">
-      <div class="card cal green"><div class="stitle">Athletics — Same Day</div><div id="ap-ath" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-      <div class="card cal blue"><div class="stitle">Academic — Same Day</div><div id="ap-acad" style="display:flex;gap:8px;flex-wrap:wrap"></div></div>
-      <div class="card cal red"><div class="stitle">Out-of-State / Overnight / Intl</div><div id="ap-on" style="display:flex;gap:8px;flex-wrap:wrap"></div><div class="alert aw" style="margin-top:.75rem;font-size:.73rem"><span class="aico">⚠️</span>45-day lead required. International = 1 year.</div></div>
+    <div class="card cal blue" style="margin-bottom:1rem">
+      <div class="stitle" id="tf-live-ap-title">Approval Chain</div>
+      <div id="tf-live-ap" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem"></div>
+      <div id="tf-live-ap-note" class="alert aw" style="margin-bottom:.75rem;font-size:.73rem;display:none"><span class="aico">⚠️</span>45-day lead required. International = 1 year.</div>
+      <button class="btn btn-outline btn-sm" id="tf-live-ap-btn" onclick="">📋 Manage in Trip Detail</button>
     </div>
     <div class="card" style="margin-top:1rem"><div class="stitle">Approver Responsibilities</div><div id="approver-det"></div></div>
   </div>
@@ -1470,6 +1535,7 @@ window.onerror = function(msg, src, line, col, err) {
   <!-- Organization Tabs — rendered by renderOrgTabs() from ORGANIZATIONS, so
        an org added via Settings → Organizations gets a tab automatically. -->
   <div id="org-tabs" style="display:flex;gap:.3rem;margin-bottom:.75rem;flex-wrap:wrap"></div>
+  <div id="member-sync-badge" style="margin-bottom:.5rem"></div>
   <!-- FERPA Notice -->
   <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:.5rem .85rem;margin-bottom:.75rem;font-size:.75rem;color:#78350f;display:flex;align-items:center;gap:.6rem">
     <span style="font-size:1.1rem;flex-shrink:0">🔒</span>
@@ -1602,7 +1668,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px" id="addstu-modal-title">Register DECA Member</div>
         <div style="font-size:.72rem;color:rgba(255,255,255,.45)" id="addstu-modal-subtitle">Clover Hill High School DECA · Chapter 4280</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="closeModal('addStudent')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('addStudent')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
     </div>
     <div style="overflow-y:auto;flex:1;padding:1.1rem 1.4rem;display:flex;flex-direction:column;gap:.85rem">
       <!-- Personal Info -->
@@ -2441,6 +2507,22 @@ window.onerror = function(msg, src, line, col, err) {
     <!-- Receiving checklist -->
     <div style="margin-top:1.25rem">
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">📋 Back Room Receiving Checklist (per Back Room lesson SOP)</div>
+      <!-- PO selector — FIXED per Say/Do Ledger leader-hub finding #8: this
+           checklist used to be one shared, index-keyed state for every PO
+           at once — checking a box for the first shipment of the year left
+           it checked for every later one, reading as verified for a
+           shipment never actually checked. Each PO now gets its own saved
+           checklist, mirroring the Trip Process Map / Slip view
+           trip-selector pattern. -->
+      <div class="card" style="margin-bottom:.6rem;padding:.7rem .9rem">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:.82rem;white-space:nowrap">Purchase Order:</span>
+          <select id="receiving-po-sel" onchange="renderReceivingChecklist()" style="flex:1;min-width:200px" title="Each purchase order keeps its own saved receiving checklist — switch POs here to check a different shipment."></select>
+          <button class="btn btn-outline btn-sm" onclick="resetReceivingChecklist()" title="Clear this PO's checklist and start over — for example, if it receives a second real shipment.">↺ Reset Checklist</button>
+        </div>
+        <input id="receiving-note-input" placeholder="Note (optional) — e.g. discrepancy details" style="width:100%;margin-top:.5rem;padding:.35rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.76rem" onblur="saveReceivingNote(this.value)">
+        <div id="receiving-verified-note" style="font-size:.72rem;color:var(--muted);margin-top:.4rem"></div>
+      </div>
       <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.5rem" id="receiving-checklist"></div>
     </div>
   </div>
@@ -2509,7 +2591,15 @@ window.onerror = function(msg, src, line, col, err) {
       <button onclick="closePOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
     </div>
     <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
-      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Item / Description</label>
+      <!-- FIXED per Say/Do Ledger leader-hub finding #9: this used to be a
+           free-text item name with no link to any real Inventory SKU, so
+           receiving an order never updated or created its Inventory
+           record — a real, separate data-entry step every time. Linking a
+           PO to a SKU here is what lets receiving auto-increment it. -->
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Inventory Item</label>
+        <select id="po-sku-sel" onchange="onPoSkuChange()" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff"></select></div>
+      <div id="po-item-new-wrap" style="display:none">
+        <label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">New Item Name</label>
         <input id="po-item" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Cavalier Hoodies — S/M/L"></div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
         <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Category</label>
@@ -2864,10 +2954,16 @@ window.onerror = function(msg, src, line, col, err) {
 
   <!-- ── MATCH LOG PANE ── -->
   <div id="es-pane-matches" style="display:none">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem;flex-wrap:wrap;gap:.5rem">
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Season Match Log</div>
       <button class="btn btn-primary btn-sm" onclick="openMatchModal()">+ Log Match</button>
     </div>
+    <!-- Reframed per Say/Do Ledger leader-hub finding #14: this is a personal
+         results log (a flat W/L/T history), not a tournament-management
+         system — seeding, brackets, and official standings are tracked by
+         PlayVS itself, and duplicating that here would be a second,
+         unofficial copy of data PlayVS already owns. -->
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.8rem">A personal results log — not an official bracket. For seeding, standings, and playoff brackets, see <a href="https://playvs.com" target="_blank" rel="noopener">PlayVS</a>.</div>
     <div id="es-match-list"></div>
   </div>
 </div>
@@ -3068,7 +3164,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">✨ Knowledge Base Insights</div>
         <div style="font-size:.72rem;color:rgba(255,255,255,.5)">AI analysis across all archived trips</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="closeModal('aiInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('aiInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:1.25rem">
       <div id="ai-insights-body">
@@ -3093,7 +3189,7 @@ window.onerror = function(msg, src, line, col, err) {
         <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">✨ SCR Class Insights</div>
         <div style="font-size:.72rem;color:rgba(255,255,255,.5)" id="scr-insights-subtitle">AI analysis of competency performance</div>
       </div>
-      <button class="btn btn-outline btn-sm" onclick="closeModal('scrInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('scrInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
     </div>
     <div style="flex:1;overflow-y:auto;padding:1.1rem">
       <div id="ai-insights-content">
@@ -3178,9 +3274,56 @@ window.onerror = function(msg, src, line, col, err) {
 
 
 <script>
+// Tracks whether a save-failed warning has already been shown this page
+// load — a full quota means EVERY subsequent LS.set() call fails too, and
+// nothing here should spam a toast on every single one of them.
+let _lsWriteFailWarned = false;
+let _lsReadFailWarned = false;
 const LS = {
-  get: (k, def=null) => { try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; } catch{ return def; } },
-  set: (k, v)        => { try { localStorage.setItem(k,JSON.stringify(v)); } catch{} },
+  // FIXED: this used to swallow every read failure silently — no
+  // console log, no distinction between "key never existed" (normal,
+  // returns def) and "key exists but is corrupted JSON" (a real
+  // problem). If any of the 78+ persisted keys gets truncated (quota
+  // pressure mid-write, a bad hand-edited import, a browser crash),
+  // the app silently falls back to the default and looks exactly like
+  // the user's trips/journal/roster vanished, with no indication why —
+  // the same failure mode LS.set()'s fix (below) was written to close,
+  // just on the read side. Own sentinel, not LS.set's: a read failure
+  // and a write failure are different problems (corrupted data vs.
+  // inaccessible storage) worth telling apart in the log even though
+  // both use the same one-toast-per-page-load convention.
+  get: (k, def=null) => {
+    try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; }
+    catch (e) {
+      console.error('[LS.get] read failed for key', k, e);
+      if (!_lsReadFailWarned && typeof _showToast === 'function') {
+        _lsReadFailWarned = true;
+        _showToast('⚠ Could not read saved data — some information may not have loaded.', 6000, '#991b1b');
+      }
+      return def;
+    }
+  },
+  // FIXED: this used to swallow every write failure (including a full
+  // storage quota) with an empty catch block — no return value, no
+  // console log, no user-visible sign anything went wrong. With 78+ keys
+  // that only grow (trip history, journal entries, daily logs...), a full
+  // quota meant silent, permanent data loss with zero indication. Now
+  // returns whether the write actually succeeded, and surfaces one toast
+  // per page load if it didn't — callers that care can still check the
+  // return value, but the common case (fire-and-forget) is no longer silent.
+  set: (k, v) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+      return true;
+    } catch (e) {
+      console.error('[LS.set] write failed for key', k, e);
+      if (!_lsWriteFailWarned && typeof _showToast === 'function') {
+        _lsWriteFailWarned = true;
+        _showToast('⚠ Could not save — your device\'s storage may be full. Export a backup soon.', 6000, '#991b1b');
+      }
+      return false;
+    }
+  },
 };
 
 // ============================================================
@@ -3768,7 +3911,7 @@ function showView(name, btn) {
     if(name==='esports') { renderESRoster(); renderSSBUChecklist(); renderMK8Checklist(); renderMatchLog(); }
     if(name==='events')  { renderEvents(); renderDECAPipeline(); }
     if(name==='goals')   renderGoals();
-    if(name==='tripflow') renderTripFlow();
+    if(name==='tripflow') initTripFlowView();
     if(name==='forms')   initFormsView();
     if(name==='slips')   initSlipView();
     // ── Accordion: open the section that owns this view ───────────────────
@@ -4629,49 +4772,129 @@ function prow2(l1, v1, l2, v2) {
 // ============================================================
 // TRIP WORKFLOW
 // ============================================================
+// FIXED (Say/Do Ledger leader-hub finding #6): these three arrays used to
+// carry each step's `done` flag directly, as one shared, unpersisted,
+// trip-agnostic state — checking a box for one trip silently checked it
+// for every other trip too, and a page refresh reverted all of it. They're
+// now pure step templates (label + optional detail); done-state lives on
+// each trip's own t.procSteps (see _getTripProcSteps()), the same
+// per-trip-object-plus-persistTrips() pattern the real Approval Chain
+// (t.ap/t.apDetail, see apStatus()/_applyApDetail() below) already uses.
 const sponsorSteps=[
-  {t:'Fill out Field Trip Permission Request Attachment',s:'All fields — handwritten not accepted',done:false},
-  {t:'Set Departure Time = bus loads & departs from school',s:'NOT the time you leave the destination',done:false},
-  {t:'Set Return Time = bus arrives back at school',s:'NOT the time you leave the venue',done:false},
-  {t:'List ALL stops — no unauthorized deviations allowed',done:false},
-  {t:'Note Special Accommodations / SPED bus requirements',done:false},
-  {t:'Save as PDF (File → Make a Copy → Rename → Download PDF)',s:'SchoolName_Date_Destination',done:false},
-  {t:'Submit PDF to Field Trip Coordinator electronically',done:false},
+  {t:'Fill out Field Trip Permission Request Attachment',s:'All fields — handwritten not accepted'},
+  {t:'Set Departure Time = bus loads & departs from school',s:'NOT the time you leave the destination'},
+  {t:'Set Return Time = bus arrives back at school',s:'NOT the time you leave the venue'},
+  {t:'List ALL stops — no unauthorized deviations allowed'},
+  {t:'Note Special Accommodations / SPED bus requirements'},
+  {t:'Save as PDF (File → Make a Copy → Rename → Download PDF)',s:'SchoolName_Date_Destination'},
+  {t:'Submit PDF to Field Trip Coordinator electronically'},
 ];
 const coordSteps=[
-  {t:'Review process with Trip Sponsor',s:'Forms, steps, timeline',done:false},
-  {t:'Check school & county calendars for Blackout Dates',done:false},
-  {t:'Obtain completed Permission Request PDF from sponsor',done:false},
-  {t:'Enter Transportation request in TripTracker',s:'Bookmark: chesterfield.tylertech.com/Triptracker',done:false},
-  {t:'Record TripTracker ID # — use on all correspondence & PO',done:false},
-  {t:'Use TripTracker mapping/estimate feature — save the estimate',done:false},
-  {t:'Enter ALL stops in TripTracker request',done:false},
-  {t:'Submit trip in TripTracker (status → "Requested")',done:false},
-  {t:'Attach PDF in TripTracker Attachment tab',done:false},
-  {t:'Complete First Approval Level (Coordinator)',done:false},
-  {t:'Ensure teacher\'s name & cell (NOT central office) in request',done:false},
+  {t:'Review process with Trip Sponsor',s:'Forms, steps, timeline'},
+  {t:'Check school & county calendars for Blackout Dates'},
+  {t:'Obtain completed Permission Request PDF from sponsor'},
+  {t:'Enter Transportation request in TripTracker',s:'Bookmark: chesterfield.tylertech.com/Triptracker'},
+  {t:'Record TripTracker ID # — use on all correspondence & PO'},
+  {t:'Use TripTracker mapping/estimate feature — save the estimate'},
+  {t:'Enter ALL stops in TripTracker request'},
+  {t:'Submit trip in TripTracker (status → "Requested")'},
+  {t:'Attach PDF in TripTracker Attachment tab'},
+  {t:'Complete First Approval Level (Coordinator)'},
+  {t:'Ensure teacher\'s name & cell (NOT central office) in request'},
 ];
 const postSteps=[
-  {t:'Receive Transportation approval via TripTracker email',done:false},
-  {t:'Notify Trip Sponsor, Principal, and Bookkeeper of approval',done:false},
-  {t:'Print Driver Trip Sheet no more than 1 day before trip',s:'Confirm driver name, phone & teacher cell on sheet',done:false},
-  {t:'Notify students & parents',s:'ONLY after all approvals received — Policy 3090',done:false},
-  {t:'Review PBIS Trip Expectations with students',done:false},
-  {t:'Deliver Driver Trip Sheet to driver at start of trip',s:'Driver WILL NOT depart without TripTracker Trip Ticket',done:false},
-  {t:'Lead teacher signs Driver Trip Sheet at trip end',done:false},
-  {t:'Bookkeeper pays invoice within 30 days',s:'10201 Courthouse Rd, Chesterfield VA 23832, Attn Deanna Ayscue',done:false},
+  {t:'Receive Transportation approval via TripTracker email'},
+  {t:'Notify Trip Sponsor, Principal, and Bookkeeper of approval'},
+  {t:'Print Driver Trip Sheet no more than 1 day before trip',s:'Confirm driver name, phone & teacher cell on sheet'},
+  {t:'Notify students & parents',s:'ONLY after all approvals received — Policy 3090'},
+  {t:'Review PBIS Trip Expectations with students'},
+  {t:'Deliver Driver Trip Sheet to driver at start of trip',s:'Driver WILL NOT depart without TripTracker Trip Ticket'},
+  {t:'Lead teacher signs Driver Trip Sheet at trip end'},
+  {t:'Bookkeeper pays invoice within 30 days',s:'10201 Courthouse Rd, Chesterfield VA 23832, Attn Deanna Ayscue'},
 ];
 
+// Returns (initializing/re-sizing if needed) a trip's own per-step
+// done/undone state — one boolean array per checklist, kept in sync with
+// the current templates above so a template edit never leaves an index
+// reading past the end of an older saved array.
+function _getTripProcSteps(t) {
+  if (!t.procSteps) t.procSteps = {};
+  [['sponsor', sponsorSteps], ['coord', coordSteps], ['post', postSteps]].forEach(([key, tmpl]) => {
+    if (!Array.isArray(t.procSteps[key]) || t.procSteps[key].length !== tmpl.length) {
+      const prev = Array.isArray(t.procSteps[key]) ? t.procSteps[key] : [];
+      t.procSteps[key] = tmpl.map((_, i) => !!prev[i]);
+    }
+  });
+  return t.procSteps;
+}
+
+// Populates the trip selector (mirrors initSlipView()'s pattern) and does
+// the first render — called from showView() instead of renderTripFlow()
+// directly so the selector always has options before anything reads it.
+function initTripFlowView() {
+  const sel = document.getElementById('tripflow-trip-sel');
+  if (!sel) return;
+  const prevVal = sel.value;
+  sel.innerHTML = trips.map(t => `<option value="${t.id}">${escH(t.name)} — ${fd(t.date)}</option>`).join('');
+  if (prevVal && trips.some(t => String(t.id) === prevVal)) sel.value = prevVal;
+  else if (trips.length) sel.value = trips[0].id;
+  renderTripFlow();
+}
+
 function renderTripFlow() {
+  const sel = document.getElementById('tripflow-trip-sel');
+  const tripId = sel ? parseInt(sel.value) : NaN;
+  const t = trips.find(x => x.id === tripId);
+
+  if (!t) {
+    const emptyMsg = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.79rem">Create a trip first — this checklist tracks progress per trip.</div>';
+    ['sponsor-cl','coord-cl','post-cl'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = emptyMsg; });
+    const apEl = document.getElementById('tf-live-ap'); if (apEl) apEl.innerHTML = '';
+    const apNote = document.getElementById('tf-live-ap-note'); if (apNote) apNote.style.display = 'none';
+    const apBtn = document.getElementById('tf-live-ap-btn'); if (apBtn) apBtn.onclick = null;
+    const apTitle = document.getElementById('tf-live-ap-title'); if (apTitle) apTitle.textContent = 'Approval Chain';
+    document.getElementById('approver-det').innerHTML = '';
+    return;
+  }
+
+  const steps = _getTripProcSteps(t);
   ['sponsor-cl','coord-cl','post-cl'].forEach((id,li)=>{
     const lists=[sponsorSteps,coordSteps,postSteps];
+    const key = ['sponsor','coord','post'][li];
     // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
     // had until an earlier round added role/tabindex/onkeydown to them.
-    document.getElementById(id).innerHTML=lists[li].map((s,i)=>`<li class="${s.done?'done':''}"><div class="cb ${s.done?'checked':''}" role="checkbox" aria-checked="${!!s.done}" tabindex="0" aria-label="${s.t.replace(/"/g,'&quot;')}" onclick="togProc(${li},${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togProc(${li},${i})}">${s.done?'✓':''}</div><span class="clt">${s.t}${s.s?`<span class="clsub">${s.s}</span>`:''}</span></li>`).join('');
+    document.getElementById(id).innerHTML=lists[li].map((s,i)=>{
+      const done = !!steps[key][i];
+      return `<li class="${done?'done':''}"><div class="cb ${done?'checked':''}" role="checkbox" aria-checked="${done}" tabindex="0" aria-label="${s.t.replace(/"/g,'&quot;')}" onclick="togProc('${key}',${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togProc('${key}',${i})}">${done?'✓':''}</div><span class="clt">${s.t}${s.s?`<span class="clsub">${s.s}</span>`:''}</span></li>`;
+    }).join('');
   });
-  // Approval chains
-  const chains={'ap-ath':[{i:'🏃',l:'Athletic Director'},{i:'🚌',l:'Transportation'}],'ap-acad':[{i:'📋',l:'Coordinator'},{i:'🏫',l:'Principal'},{i:'💰',l:'Bookkeeper'},{i:'⚖️',l:'Risk Mgmt'},{i:'🚌',l:'Transportation'}],'ap-on':[{i:'📋',l:'Coordinator'},{i:'🏫',l:'Principal'},{i:'💰',l:'Bookkeeper'},{i:'⚖️',l:'Risk Mgmt'},{i:'📊',l:'Level Director'},{i:'🎓',l:'Chief of Schools'},{i:'🚌',l:'Transportation'}]};
-  Object.entries(chains).forEach(([id,steps])=>{ document.getElementById(id).innerHTML=steps.map(s=>`<div style="display:flex;flex-direction:column;align-items:center;min-width:70px;margin-bottom:.4rem"><div style="width:30px;height:30px;border-radius:50%;border:2px solid var(--border);background:#fff;display:flex;align-items:center;justify-content:center;font-size:.88rem">${s.i}</div><div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.22rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div></div>`).join(''); });
+
+  // Live Approval Chain summary — FIXED (finding #6): this used to render
+  // a static, non-interactive diagram of three generic example trip types
+  // with no connection to any real trip's data. Now reads the same real
+  // t.ap/t.apDetail the selected trip's actual Approval Chain (Trip
+  // Detail) tracks — same source of truth, read-only here, edited there —
+  // via the same apStatus() helper Trip Detail itself uses.
+  const isExtended = ['overnight-is','overnight-oos','multi-day','international'].includes(t.sub||'same-day');
+  const apSteps = isExtended
+    ? [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'director',l:'Level Director'},{k:'chief',l:'Chief of Schools'},{k:'transport',l:'Transportation'}]
+    : [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'transport',l:'Transportation'}];
+  document.getElementById('tf-live-ap-title').textContent = `Approval Chain — ${t.name}`;
+  document.getElementById('tf-live-ap').innerHTML = apSteps.map(s => {
+    const st = apStatus(t, s.k);
+    const look = st === 'approved' ? {bd:'var(--green)',bg:'var(--green)',fg:'#fff',glyph:'✓'}
+               : st === 'rejected' ? {bd:'var(--red)',bg:'var(--red)',fg:'#fff',glyph:'✕'}
+               : {bd:'var(--border)',bg:'#fff',fg:'#888',glyph:'○'};
+    return `<div style="display:flex;flex-direction:column;align-items:center;min-width:70px;margin-bottom:.4rem">
+      <div style="width:30px;height:30px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;font-size:.88rem">${look.glyph}</div>
+      <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.22rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div>
+    </div>`;
+  }).join('');
+  const apNote = document.getElementById('tf-live-ap-note');
+  if (apNote) apNote.style.display = isExtended ? 'flex' : 'none';
+  const apBtn = document.getElementById('tf-live-ap-btn');
+  if (apBtn) apBtn.onclick = () => openTripDetail(t.id);
+
   // Approver details
   document.getElementById('approver-det').innerHTML=[
     {r:'📋 Field Trip Coordinator',t:'Attaches PDF at first approval. Ensures teacher cell (not central office) is in request.'},
@@ -4683,7 +4906,16 @@ function renderTripFlow() {
   calcCost();
 }
 
-function togProc(li,i){const l=[sponsorSteps,coordSteps,postSteps];l[li][i].done=!l[li][i].done;renderTripFlow();}
+function togProc(key,i){
+  const sel = document.getElementById('tripflow-trip-sel');
+  const tripId = sel ? parseInt(sel.value) : NaN;
+  const t = trips.find(x => x.id === tripId);
+  if (!t) return;
+  const steps = _getTripProcSteps(t);
+  steps[key][i] = !steps[key][i];
+  persistTrips(); // was in-memory only — see finding #6
+  renderTripFlow();
+}
 
 function tfTab(name,btn){
   ['process','approvals','deadlines','costs','blackout'].forEach(t=>{const el=document.getElementById('tf-'+t);if(el)el.style.display=t===name?'block':'none';const tb=document.getElementById('tab-'+t);if(tb){tb.classList.remove('btn-primary');tb.classList.add('btn-outline');}});
@@ -5295,6 +5527,12 @@ function renderWizardStep() {
     // ── STEP 4: PEOPLE ──────────────────────────────────────────────────────
     case 4:
       const hasCost = (parseFloat(d.costStu)||0) > 0;
+      // Say/Do Ledger leader-hub finding #7: once a roster has been built
+      // for this trip, stuAtt is derived from it (see _syncTripStuAttFromRoster()),
+      // not typed here — disable the field rather than letting a typed
+      // number get silently discarded (or worse, fight the derived value)
+      // at save time, and say where the real number now comes from.
+      const hasRoster = d._editId != null && _tripHasRoster(d._editId);
       body.innerHTML = `
         ${sec('👥 Group Composition')}
         ${row3(
@@ -5303,7 +5541,10 @@ function renderWizardStep() {
           field('nt-invited','Students Invited', inp('nt-invited','number','0','min="0"'))
         )}
         ${row3(
-          field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0"'), '', true),
+          hasRoster
+            ? field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0" disabled'),
+                `Derived from the permission-slip roster (${slipRosters[d._editId].length} student${slipRosters[d._editId].length===1?'':'s'}) — manage headcount in 🎫 Slips, not here.`, true)
+            : field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0"'), '', true),
           field('nt-adult-att','Adults Attending', inp('nt-adult-att','number','0','min="0"'), '', true),
           field('nt-chap','Chaperones (M / F)', inp('nt-chap','text','e.g. 2 / 2'), 'Required ratio: 1 adult per 10 students', true)
         )}
@@ -5533,8 +5774,11 @@ function wzSaveTrip() {
   const ap = existingTrip?.ap
     ? { ...existingTrip.ap }
     : {coord:false, principal:false, bookkeeper:false, risk:false, transport:false};
+  // Resolved once — nextId.trip++ has a side effect, so it must only run
+  // one time regardless of how many places below need the final id.
+  const finalTripId = d._editId || nextId.trip++;
   const trip = {
-    id: d._editId || nextId.trip++,
+    id: finalTripId,
     name:d.name||'', sub:d.sub||'same-day', date:d.date||'',
     reason:d.reason||'', acttype:d.acttype||'', origin:d.origin||'',
     depDate:d.depDate||'', depTime:d.depTime||'', retDate:d.retDate||'', retTime:d.retTime||'',
@@ -5547,7 +5791,14 @@ function wzSaveTrip() {
     isOn:d.isOn||'', oos:d.oos||'', oosOn:d.oosOn||'', intl:d.intl||'',
     flight:d.flight||'', waivers:d.waivers||'',
     grade:d.grade||'', classMem:d.classMem||'',
-    invited:parseInt(d.invited)||0, stuAtt:parseInt(d.stuAtt)||0, adultAtt:parseInt(d.adultAtt)||0,
+    invited:parseInt(d.invited)||0,
+    // Say/Do Ledger leader-hub finding #7: once a roster exists for this
+    // trip, it wins over whatever the (disabled, in this case) draft field
+    // holds — the field-level disable above stops a user from typing a
+    // conflicting number, but this is the real guard, in case a draft with
+    // a stale value ever reaches this function some other way.
+    stuAtt: _tripHasRoster(finalTripId) ? slipRosters[finalTripId].length : (parseInt(d.stuAtt)||0),
+    adultAtt:parseInt(d.adultAtt)||0,
     stuMF:d.stuMF||'', adultMF:d.adultMF||'',
     costStu:parseFloat(d.costStu)||0, costAdult:parseFloat(d.costAdult)||0,
     chap:d.chap||'', wc:parseInt(d.wc)||0,
@@ -5638,6 +5889,21 @@ function deleteTrip(id) {
 // ── Escape HTML helper for values in inputs ───────────────────────────────
 function escH(str) {
   return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Safe for interpolating a value into a single-quoted JS string literal that
+// itself sits inside an HTML attribute (e.g. onclick="fn('${x}')"). escH()
+// alone only protects the HTML-attribute boundary (", <, >, &) — it doesn't
+// stop a bare ' or \ in the value from breaking out of the JS string. Escape
+// the JS string first, then escH() the result so the surrounding
+// double-quoted attribute stays safe too (a value containing " must not end
+// the attribute early either).
+function escJsAttr(str) {
+  return escH(String(str||'')
+    .replace(/\\/g,'\\\\')
+    .replace(/'/g,"\\'")
+    .replace(/\n/g,'\\n')
+    .replace(/\r/g,'\\r'));
 }
 
 // ── Patch openModal for newTrip to open wizard instead ────────────────────
@@ -5983,6 +6249,12 @@ function openEmailComposerForTrip(tripId, audience) {
 // Members page for full roster management.
 function renderOrgHub() {
   const titleEl = document.getElementById('orghub-title');
+  // Say/Do Ledger leader-hub #1: "last synced" used to be visible ONLY in
+  // Settings → Organizations — nowhere a co-advisor is actually looking
+  // while they work. Shown here (and in Members, see renderStudents) too,
+  // using the same _orgSyncStatusLine_ helper Settings itself now calls.
+  const badgeEl = document.getElementById('orghub-sync-badge');
+  if (badgeEl) badgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
   if (activeOrgId === 'deca') {
     if (titleEl) titleEl.textContent = '🏆 DECA Chapter Hub';
     renderDECAHub();
@@ -6299,7 +6571,7 @@ function renderDecaResults() {
           </td>
           <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${r.notes||''}</td>
           <td style="padding:.35rem .5rem;text-align:right">
-            <button onclick="deleteDecaResult('${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove">✕</button>
+            <button onclick="deleteDecaResult('${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
           </td>
         </tr>`).join('')
       : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
@@ -6429,6 +6701,14 @@ let _lastOrgResultLevel = {}, _lastOrgResultPlace = {};
 let ORG_SYNC = LS.get('lh_org_sync', {});
 function persistOrgSync() { LS.set('lh_org_sync', ORG_SYNC); }
 
+// Say/Do Ledger leader-hub #10: which orgs this browser has already seen the
+// one-time "Welcome, co-advisor" disclosure for, keyed by orgId so joining a
+// second shared org still gets its own welcome. Separate from ORG_SYNC so
+// stopping and re-joining the same org (ORG_SYNC[orgId] deleted, then
+// recreated) doesn't show the welcome a second time.
+let ORG_WELCOME_SEEN = LS.get('lh_org_welcome_seen', {});
+function persistOrgWelcomeSeen() { LS.set('lh_org_welcome_seen', ORG_WELCOME_SEEN); }
+
 function renderOrgResults(orgId) {
   const org = ORGANIZATIONS[orgId] || ORGANIZATIONS.deca;
   const levels = org.levels || [];
@@ -6464,7 +6744,7 @@ function renderOrgResults(orgId) {
     </td>
     <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
     <td style="padding:.35rem .5rem;text-align:right">
-      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove">✕</button>
+      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
     </td>
   </tr>`;
   const resultTableHead = `<thead><tr style="background:#f3f4f6">
@@ -6913,6 +7193,11 @@ function setMemberTab(tab, btn){
 
 function renderStudents(){
   updateMemberStats();
+  // Say/Do Ledger leader-hub #1: same "last synced" indicator as
+  // renderOrgHub() — Members is the other place a co-advisor is actually
+  // working with this organization's synced data.
+  const syncBadgeEl = document.getElementById('member-sync-badge');
+  if (syncBadgeEl) syncBadgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
   const search = (document.getElementById('member-search')?.value||'').toLowerCase();
   const content = document.getElementById('member-tab-content');
   if(!content) return;
@@ -6962,7 +7247,7 @@ function statusBadge(s){
 
 function positionBadge(pos){
   const isOff = _officerPositionsFor(activeOrgId).includes(pos);
-  return `<span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${pos}</span>`;
+  return `<span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${escH(pos)}</span>`;
 }
 
 function avatarBg(s){
@@ -6981,22 +7266,22 @@ function renderOfficerGrid(list){
     ${list.map(s=>`
     <div class="mb-card" style="${s.memberStatus==='slc'?'border:2px solid #7c3aed':s.memberStatus==='icdc'?'border:2px solid var(--gold)':''}">
       <div style="padding:.85rem 1rem;display:flex;gap:.75rem;align-items:flex-start">
-        <div class="ava" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;background:${avatarBg(s)}">${s.first[0]}${s.last[0]}</div>
+        <div class="ava" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;background:${avatarBg(s)}">${escH(s.first[0])}${escH(s.last[0])}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-weight:700;font-size:.9rem">${s.first} ${s.last}</div>
+          <div style="font-weight:700;font-size:.9rem">${escH(s.first)} ${escH(s.last)}</div>
           <div style="margin:.2rem 0">${positionBadge(s.position)}</div>
           <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">${statusBadge(s)}${s.paid?'<span style="font-size:.63rem;background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:20px;font-weight:700">✓ Paid</span>':'<span style="font-size:.63rem;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:20px;font-weight:700">⚠ Dues Owed</span>'}</div>
-          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">🏆 ${s.competEvent}</div>`:''}
+          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">🏆 ${escH(s.competEvent)}</div>`:''}
         </div>
       </div>
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.4rem;flex-wrap:wrap">
-        ${s.email?`<a href="mailto:${s.email}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
-        ${s.parentEmail?`<a href="mailto:${s.parentEmail}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
-        ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${s.phone}</span><span style="color:var(--border)">|</span>`:''}
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
+        ${s.parentEmail?`<a href="mailto:${escH(s.parentEmail)}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
+        ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${escH(s.phone)}</span><span style="color:var(--border)">|</span>`:''}
         <button class="btn btn-outline btn-xs" style="font-size:.63rem;margin-left:auto" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
         <button class="btn btn-danger btn-xs" style="font-size:.63rem" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
       </div>
-      ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.72rem;color:var(--muted);font-style:italic">${s.notes}</div>`:''}    </div>`).join('')}
+      ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.72rem;color:var(--muted);font-style:italic">${escH(s.notes)}</div>`:''}    </div>`).join('')}
   </div>`;
 }
 
@@ -7012,13 +7297,13 @@ function renderMemberTable(list){
     <table>
       <thead><tr><th>Member</th><th>Grade</th><th>Position</th><th>Event</th><th>Status</th><th>Dues</th><th>Contact</th><th></th></tr></thead>
       <tbody>${list.map(s=>`<tr>
-        <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.7rem;flex-shrink:0">${s.first[0]}${s.last[0]}</div><strong>${s.first} ${s.last}</strong></div></td>
+        <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.7rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div><strong>${escH(s.first)} ${escH(s.last)}</strong></div></td>
         <td style="font-size:.78rem">${s.grade?s.grade+'th':''}</td>
         <td>${positionBadge(s.position)}</td>
-        <td style="font-size:.75rem;max-width:160px">${s.competEvent||'—'}</td>
+        <td style="font-size:.75rem;max-width:160px">${escH(s.competEvent)||'—'}</td>
         <td>${statusBadge(s)}</td>
         <td>${s.paid?'<span style="color:#15803d;font-size:.75rem;font-weight:700">✓ Paid</span>':'<span style="color:#d97706;font-size:.75rem;font-weight:700">⚠ Owed</span>'}</td>
-        <td style="font-size:.72rem">${s.email?`<a href="mailto:${s.email}" style="color:var(--navy)">${s.email}</a>`:''}</td>
+        <td style="font-size:.72rem">${s.email?`<a href="mailto:${escH(s.email)}" style="color:var(--navy)">${escH(s.email)}</a>`:''}</td>
         <td style="white-space:nowrap">
           <button class="btn btn-outline btn-xs" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
           <button class="btn btn-danger btn-xs" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
@@ -7042,18 +7327,18 @@ function renderAlumniGrid(list){
     ${list.map(s=>`
     <div class="mb-card" style="border-left:4px solid #94a3b8">
       <div style="padding:.85rem 1rem;display:flex;gap:.75rem;align-items:flex-start">
-        <div class="ava" style="background:#64748b;width:42px;height:42px;font-size:.9rem;flex-shrink:0">${s.first[0]}${s.last[0]}</div>
+        <div class="ava" style="background:#64748b;width:42px;height:42px;font-size:.9rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div>
         <div style="flex:1">
-          <div style="font-weight:700">${s.first} ${s.last}</div>
-          <div style="font-size:.72rem;color:var(--muted);margin:.15rem 0">Class of ${s.alumniYear||'—'} · Former ${s.position}</div>
-          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted)">🏆 ${s.competEvent}</div>`:''}
-          ${s.alumniPref?`<div style="margin-top:.3rem"><span style="font-size:.65rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:2px 7px;border-radius:20px;font-weight:600">${prefLabel[s.alumniPref]||s.alumniPref}</span></div>`:''}
+          <div style="font-weight:700">${escH(s.first)} ${escH(s.last)}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin:.15rem 0">Class of ${s.alumniYear||'—'} · Former ${escH(s.position)}</div>
+          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted)">🏆 ${escH(s.competEvent)}</div>`:''}
+          ${s.alumniPref?`<div style="margin-top:.3rem"><span style="font-size:.65rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:2px 7px;border-radius:20px;font-weight:600">${escH(prefLabel[s.alumniPref]||s.alumniPref)}</span></div>`:''}
         </div>
       </div>
       <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.5rem;flex-wrap:wrap">
-        ${s.email?`<a href="mailto:${s.email}" style="font-size:.7rem;color:var(--navy)">✉ ${s.email}</a>`:'<span style="font-size:.7rem;color:var(--muted);font-style:italic">No email on file</span>'}
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.7rem;color:var(--navy)">✉ ${escH(s.email)}</a>`:'<span style="font-size:.7rem;color:var(--muted);font-style:italic">No email on file</span>'}
         <button class="btn btn-outline btn-xs" style="margin-left:auto;font-size:.63rem" onclick="sendAlumniExitEmail(${s.id})">📋 Exit Interview</button>
-        <button class="btn btn-outline btn-xs" style="font-size:.63rem" onclick="openEditMember(${s.id})">✏️</button>
+        <button class="btn btn-outline btn-xs" style="font-size:.63rem" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
       </div>
     </div>`).join('')}
     </div>
@@ -7130,7 +7415,7 @@ function renderRegistrationTab(content){
           </div>
           ${missing.length?`<div style="font-size:.75rem;color:#92400e;background:#fef3c7;border-radius:6px;padding:.55rem .7rem;border:1px solid #fde68a">
             <strong>⚠ ${missing.length} member${missing.length>1?'s':''} missing info:</strong><br>
-            ${missing.map(s=>`${s.first} ${s.last} — ${[!s.email&&'email',!s.parentEmail&&'parent email',!s.competEvent&&'event',!s.shirtSize&&'shirt size'].filter(Boolean).join(', ')}`).join('<br>')}
+            ${missing.map(s=>`${escH(s.first)} ${escH(s.last)} — ${[!s.email&&'email',!s.parentEmail&&'parent email',!s.competEvent&&'event',!s.shirtSize&&'shirt size'].filter(Boolean).join(', ')}`).join('<br>')}
           </div>`:'<div style="font-size:.75rem;color:#15803d;background:#dcfce7;border-radius:6px;padding:.55rem .7rem;">✅ All member profiles are complete</div>'}`;
         })()}
       </div>
@@ -7615,7 +7900,7 @@ function renderGoals(){
             ${g.updatedAt?`<div style="font-size:.63rem;color:var(--muted);margin-bottom:.25rem">Updated ${new Date(g.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`:''}
             <div style="display:flex;align-items:center;gap:.4rem">
               <input type="range" min="0" max="100" value="${g.progress}" style="flex:1;cursor:pointer" oninput="updGoal(${g.id},this.value)">
-              <button class="btn btn-danger btn-xs" onclick="delGoal(${g.id})" title="Remove goal">✕</button>
+              <button class="btn btn-danger btn-xs" onclick="delGoal(${g.id})" title="Remove goal" aria-label="Remove goal">✕</button>
             </div>
           </div>`;
         }).join('')}
@@ -7743,6 +8028,54 @@ function resolveSlipStudent(slip) {
 
 function getSlipRoster(tripId) {
   return slipRosters[tripId] || [];
+}
+
+// ── Say/Do Ledger leader-hub finding #7 — stuAtt derives from slipRosters ──
+// `slipRosters[tripId] || []` (getSlipRoster, above) can't tell "no roster
+// built yet" apart from "a roster was built and is now empty" — both look
+// like []. This does, via hasOwnProperty — needed so a trip whose roster
+// was fully cleared (delSlipStudent() down to 0) still counts as "roster
+// built" rather than silently reverting to the Wizard's stale typed number.
+function _tripHasRoster(tripId) {
+  return Object.prototype.hasOwnProperty.call(slipRosters, tripId);
+}
+
+// Keeps t.stuAtt itself in sync the moment a roster's headcount actually
+// changes — not just at render time — so every existing reader of
+// t.stuAtt (email templates, the Wizard's edit pre-fill, Archive's {...t}
+// snapshot) sees the same number with no changes needed at those sites.
+// Call this from every mutation that changes roster LENGTH (adds/removes),
+// never from status-only edits (markSlip()/markAllSlips() don't change
+// headcount).
+//
+// Resolves the open question flagged in the finding #7 decision: what
+// happens if the roster count changes after stuAtt was already used
+// elsewhere (e.g. an already-submitted TripTracker request)? There's no
+// stored "request" object in this app that a roster change could corrupt
+// — the Permission Request Attachment preview (generateFormPreview) is
+// always rebuilt fresh from live trip data, never snapshotted at
+// submission time. The real risk is a paperwork mismatch: the teacher may
+// have already carried a printed attachment, with the old count, to the
+// real external TripTracker system. Once a trip's status shows it's past
+// 'planned' (see nt-status's own "🔵 Active — In TripTracker" label —
+// i.e. genuinely submitted), a headcount change surfaces a warning toast
+// instead of silently changing the number out from under already-filed
+// paperwork — the same "flag it, don't hide it" pattern wzSaveTrip()
+// already uses when an edit makes an Archive snapshot go stale.
+function _syncTripStuAttFromRoster(tripId) {
+  const t = trips.find(tr => tr.id === tripId);
+  if (!t || !_tripHasRoster(tripId)) return;
+  const newCount = slipRosters[tripId].length;
+  if (t.stuAtt === newCount) return;
+  const alreadySubmitted = t.status && t.status !== 'planned';
+  t.stuAtt = newCount;
+  persistTrips();
+  if (alreadySubmitted) {
+    _showToast(
+      `⚠ Roster now ${newCount} student${newCount===1?'':'s'} — this trip was already submitted to TripTracker. Re-check the Permission Request Attachment before relying on the old count.`,
+      4500, '#b45309'
+    );
+  }
 }
 
 function getSlipStats(tripId) {
@@ -7956,7 +8289,8 @@ function delSlipStudent(tripId, studentId) {
   const _saved=(slipRosters[tripId]||[]).slice();
   slipRosters[tripId]=(slipRosters[tripId]||[]).filter(s=>s.id!==studentId);
   persistSlips(); renderSlipView();
-  _undoToast('Student removed from tracker',()=>{slipRosters[tripId]=_saved;persistSlips();renderSlipView();});
+  _syncTripStuAttFromRoster(tripId);
+  _undoToast('Student removed from tracker',()=>{slipRosters[tripId]=_saved;persistSlips();renderSlipView();_syncTripStuAttFromRoster(tripId);});
 }
 
 function setSlipFilter(filter, btn) {
@@ -8087,6 +8421,7 @@ function saveSlipStudent() {
 
   if (!added) return _showToast('All selected students are already on this roster.', 2800, '#991b1b');
   persistSlips(); persistNextSlipId();
+  _syncTripStuAttFromRoster(tripId);
   closeModal('addSlipStudent');
   document.getElementById('slip-trip-sel').value = tripId;
   renderSlipView();
@@ -8149,7 +8484,7 @@ function buildAuthFormHTML(tripName, tripDate, dest) {
       <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:.75rem">
         <div style="display:flex;align-items:baseline;gap:.4rem;border-bottom:1px solid #ccc;padding-bottom:.15rem">
           <span style="font-weight:600;font-size:11px;white-space:nowrap">Name of Trip:</span>
-          <span style="flex:1;color:#0f2044;font-weight:600">${tripName}</span>
+          <span style="flex:1;color:#0f2044;font-weight:600">${escH(tripName)}</span>
         </div>
         <div style="display:flex;align-items:baseline;gap:.4rem;border-bottom:1px solid #ccc;padding-bottom:.15rem">
           <span style="font-weight:600;font-size:11px;white-space:nowrap">Name of Student:</span>
@@ -8208,6 +8543,19 @@ function buildAuthFormHTML(tripName, tripDate, dest) {
   `;
 }
 
+// Shared by printAuthForm()/printFTPermForm()/printConfLeaveForm()/
+// lhPrintLessonUnitTemplate() below — these were four near-identical
+// window.open() + document.write(<!DOCTYPE html>...) blocks differing
+// only in title, CSS, body content, and window size.
+function _openPrintWindow(title, css, bodyHtml, features) {
+  const win = window.open('', '_blank', features || 'width=780,height=1000');
+  win.document.write(`<!DOCTYPE html><html><head><title>${title}</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>${css}</style></head><body>${bodyHtml}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
+  win.document.close();
+  return win;
+}
+
 function printAuthForm() {
   const sel = document.getElementById('ps-trip');
   const custom = document.getElementById('ps-custom').value.trim();
@@ -8216,18 +8564,12 @@ function printAuthForm() {
   const tripDate = trip ? fd(trip.date) : '';
   const dest = trip?.dest1 || '';
 
-  const win = window.open('','_blank','width=750,height=900');
-  win.document.write(`<!DOCTYPE html><html><head><title>Auth Form — ${tripName}</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    body{font-family:'DM Sans',sans-serif;font-size:12px;padding:2rem;max-width:680px;margin:0 auto;color:#111;}
-    @media print{body{padding:.5rem;}}
-    </style></head><body>
-  ${buildAuthFormHTML(tripName, tripDate, dest)}
-  <script>window.onload=()=>{window.print();}<\/script>
-  
-</body></html>`);
-  win.document.close();
+  _openPrintWindow(
+    `Auth Form — ${escH(tripName)}`,
+    `body{font-family:'DM Sans',sans-serif;font-size:12px;padding:2rem;max-width:680px;margin:0 auto;color:#111;}@media print{body{padding:.5rem;}}`,
+    buildAuthFormHTML(tripName, tripDate, dest),
+    'width=750,height=900'
+  );
 }
 
 // ============================================================
@@ -8473,13 +8815,12 @@ function printFTPermForm() {
   const tripId = parseInt(sel?.value);
   const html = buildFTPermHTML(tripId);
   if(!html) return _showToast('Select a trip first.', 2500, '#991b1b');
-  const win = window.open('','_blank','width=780,height:1000');
-  win.document.write(`<!DOCTYPE html><html><head><title>FT Permission Form</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}
-      </style>
-    </head><body>${html}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
-  win.document.close();
+  _openPrintWindow(
+    'FT Permission Form',
+    `body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}`,
+    html,
+    'width=780,height=1000' // was 'height:1000' (colon, not '=') — an invalid window-features token the browser silently dropped, so this window never actually got the intended height
+  );
 }
 
 // ---- CONFERENCE / LEAVE REQUEST FORM ----
@@ -8656,13 +8997,12 @@ function printConfLeaveForm() {
   const ev = getConfEvent();
   const r = getConfRecord();
   const html = buildConfLeaveHTML(ev, r);
-  const win = window.open('','_blank','width=780,height:1000');
-  win.document.write(`<!DOCTYPE html><html><head><title>Conf/Leave Request</title>
-    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-    <style>body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}
-      </style>
-    </head><body>${html}<script>window.onload=()=>{window.print();}<\/script></body></html>`);
-  win.document.close();
+  _openPrintWindow(
+    'Conf/Leave Request',
+    `body{font-family:'DM Sans',sans-serif;padding:1.5rem 2rem;max-width:720px;margin:0 auto;font-size:12px;}@media print{body{padding:.5rem;}}`,
+    html,
+    'width=780,height=1000' // was 'height:1000' — same invalid-feature typo as printFTPermForm
+  );
 }
 
 // ---- WIRE UP showView for forms + slips (single combined override) ----
@@ -9051,6 +9391,43 @@ let CUSTOM_COURSES = LS.get('lh_custom_courses', {});
 Object.assign(SCR_COURSES, CUSTOM_COURSES);
 function persistCustomCourses() { LS.set('lh_custom_courses', CUSTOM_COURSES); }
 
+// ── Student-email linking (Say/Do Ledger, Addendum 26 — "one source of
+// truth for both systems") ───────────────────────────────────────────────
+// SCR_COURSES' built-in courses are a hardcoded const literal — there's
+// nowhere on the object itself to durably persist a `.email` a sync ever
+// attaches to a student, since a page reload rebuilds SCR_COURSES fresh
+// from source every time. This overlay is that persistence layer, mirroring
+// CUSTOM_COURSES' own "persisted, merged onto the hardcoded literal at
+// boot" pattern immediately above. Shape: { [course]: { [period]:
+// { [name]: email } } } — keyed by the student's CURRENT name in the
+// SCR_COURSES literal at the time they were matched (see
+// syncCasCcpsRoster()'s own known-limitation note: renaming a student
+// after matching orphans this entry, same trade-off already accepted for
+// name-keying in general, not newly introduced here).
+let SCR_STUDENT_EMAILS = LS.get('lh_scr_student_emails', {});
+function persistScrStudentEmails() { LS.set('lh_scr_student_emails', SCR_STUDENT_EMAILS); }
+function _applyScrStudentEmails_() {
+  for (const code in SCR_STUDENT_EMAILS) {
+    const course = SCR_COURSES[code];
+    if (!course) continue;
+    const byPeriod = SCR_STUDENT_EMAILS[code];
+    for (const period in byPeriod) {
+      const list = course.periods[period];
+      if (!list) continue;
+      const nameToEmail = byPeriod[period];
+      for (const stu of list) {
+        if (!stu.email && nameToEmail[stu.name]) stu.email = nameToEmail[stu.name];
+      }
+    }
+  }
+}
+_applyScrStudentEmails_(); // safe here: SCR_COURSES/CUSTOM_COURSES merge is already done above
+
+// The single point every scrScores read/write should key off from here on
+// — resolves to the linked email once one exists, falls back to the plain
+// name string otherwise (unchanged behavior for anyone not yet matched).
+function _scrStudentKey(stu) { return stu.email || stu.name; }
+
 
 // ── Pacing Guide Cross-Reference: 8175 lesson → competencies ─────────────────
 // Existing lesson competencies taken verbatim from authoritative pacing guide doc.
@@ -9430,13 +9807,30 @@ function persistSCR() { LS.set('lh_scr_scores', scrScores); }
 const SCR_SCORE_LABELS = {1:'Can teach others',2:'Without supervision',3:'Limited supervision',4:'With supervision',5:'Cannot perform'};
 
 // Initialize scores - merge LS-saved scores with course roster (non-destructive)
+//
+// Keyed by stu.name (a plain string), not a stable id — there is no id field
+// anywhere in the SCR_COURSES roster schema (each student object here has
+// only .name and .scores; unlike the main students[] array, which gets a
+// real numeric .id from nextId.st++). Two known, accepted trade-offs from
+// that: two students who share the exact same name string within one
+// course/period would share one scrScores bucket, and hand-renaming a
+// student in the SCR_COURSES literal orphans their prior scores under the
+// old name. Both are deliberately left as-is rather than "fixed" by keying
+// on each student's array position instead — position is exactly as fragile
+// (silently reattributes scores to the wrong student the moment the
+// hand-edited roster array is reordered) and this structure has no UI path
+// today that adds/renames/imports students, so there's no live bug to force
+// a migration for. If a real UI for editing this roster is ever added,
+// give students a genuine persisted id at that point and migrate then —
+// not a position-derived surrogate now, before anything actually needs it.
 function initScrScores() {
   for (const [code, course] of Object.entries(SCR_COURSES)) {
     if (!scrScores[code]) scrScores[code] = {};
     for (const [period, students] of Object.entries(course.periods)) {
       if (!scrScores[code][period]) scrScores[code][period] = {};
       for (const stu of students) {
-        if (!scrScores[code][period][stu.name]) scrScores[code][period][stu.name] = { ...stu.scores };
+        const key = _scrStudentKey(stu);
+        if (!scrScores[code][period][key]) scrScores[code][period][key] = { ...stu.scores };
       }
     }
   }
@@ -9454,7 +9848,7 @@ function _resolveCurrentCourse() {
   const schedType = getTodayScheduleType(); // from bell schedule module
   const now = new Date();
   const dow = now.getDay(); // 1=Mon…5=Fri
-  const todayKey = now.toISOString().slice(0,10);
+  const todayKey = _localDateStr_(now);
   // LP_QUARTERS[1].start is the same school-year-start date the pacing
   // calendar itself uses as Q1's first day — previously duplicated here
   // (and 8 other call sites) as a separate '2025-08-18' literal that could
@@ -9526,7 +9920,7 @@ function renderCompetencyView() {
   // Compute class stats
   let totalScored = 0, totalPossible = 0, satisfactory = 0, stuStats = [];
   for (const stu of students) {
-    const s = myScores[stu.name] || {};
+    const s = myScores[_scrStudentKey(stu)] || {};
     const scored = Object.keys(s).length;
     const sat = Object.values(s).filter(v => v >= 1 && v <= 3).length;
     totalScored += scored;
@@ -9537,7 +9931,7 @@ function renderCompetencyView() {
   const classPct = totalPossible ? Math.round(totalScored / totalPossible * 100) : 0;
   const satPct = totalScored ? Math.round(satisfactory / totalScored * 100) : 0;
 
-  const pacingBtn = `<button class="scr-tab${scrViewMode==='pacing'?' active':''}" onclick="scrViewMode='pacing';renderCompetencyView()">📅 Pacing Guide</button>`;
+  const pacingBtn = `<button class="scr-tab${scrViewMode==='pacing'?' active':''}" onclick="setScrViewMode('pacing')">📅 Pacing Guide</button>`;
 
   document.getElementById('scr-top-bar').innerHTML = `
     <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.65rem">
@@ -9554,8 +9948,8 @@ function renderCompetencyView() {
       <div style="width:1px;background:rgba(255,255,255,.15)"></div>
       <div><div class="strip-lbl">Not Yet Scored</div><div style="font-size:1.4rem;font-family:'Bebas Neue',cursive;color:#f87171">${totalPossible - totalScored}</div></div>
       <div style="margin-left:auto;display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
-        <button class="scr-tab${scrViewMode==='grid'?' active':''}" style="font-size:.68rem" onclick="scrViewMode='grid';renderCompetencyView()">⊞ Grid</button>
-        <button class="scr-tab${scrViewMode==='list'?' active':''}" style="font-size:.68rem" onclick="scrViewMode='list';renderCompetencyView()">☰ Cards</button>
+        <button class="scr-tab${scrViewMode==='grid'?' active':''}" style="font-size:.68rem" onclick="setScrViewMode('grid')">⊞ Grid</button>
+        <button class="scr-tab${scrViewMode==='list'?' active':''}" style="font-size:.68rem" onclick="setScrViewMode('list')">☰ Cards</button>
         ${pacingBtn}
         <button class="btn btn-outline btn-xs" style="color:var(--gold);border-color:rgba(255,255,255,.3)" onclick="exportSCR()">📋 Export</button>
         <span id="scr-last-saved" style="font-size:.63rem;color:rgba(255,255,255,.5);font-style:italic;opacity:.5;transition:opacity .5s;white-space:nowrap">Not saved yet</span>
@@ -9628,7 +10022,7 @@ function renderPacingView(course, students, myScores) {
               const compNums = entry.comps;
               let totalCells = 0, satCells = 0, scoredCells = 0;
               for(const stu of students){
-                const s = myScores[stu.name] || {};
+                const s = myScores[_scrStudentKey(stu)] || {};
                 for(const c of compNums){
                   totalCells++;
                   if(s[c] != null){ scoredCells++; if(s[c]<=3) satCells++; }
@@ -9698,7 +10092,7 @@ function renderPacingView(course, students, myScores) {
                 <!-- Competency chips -->
                 <div style="display:flex;flex-wrap:wrap;gap:.3rem">
                   ${compNums.map(c => {
-                    const scored = students.map(s=>(myScores[s.name]||{})[c]).filter(v=>v!=null);
+                    const scored = students.map(s=>(myScores[_scrStudentKey(s)]||{})[c]).filter(v=>v!=null);
                     const avgSat = scored.length ? Math.round(scored.filter(v=>v<=3).length/scored.length*100) : null;
                     const chipBg = avgSat===null?'#f3f4f6':avgSat>=80?'#dcfce7':avgSat>=60?'#fef9c3':'#fee2e2';
                     const chipColor = avgSat===null?'#6b7280':avgSat>=80?'#15803d':avgSat>=60?'#92400e':'#b91c1c';
@@ -9710,7 +10104,7 @@ function renderPacingView(course, students, myScores) {
                 <!-- Comp text detail -->
                 <div style="margin-top:.5rem;border-top:1px dashed ${Q_COLORS_BDR[q]};padding-top:.45rem">
                   ${compNums.map(c => {
-                    const scores = students.map(s=>(myScores[s.name]||{})[c]).filter(v=>v!=null);
+                    const scores = students.map(s=>(myScores[_scrStudentKey(s)]||{})[c]).filter(v=>v!=null);
                     const sat = scores.filter(v=>v<=3).length;
                     const pct = scores.length ? Math.round(sat/scores.length*100) : null;
                     const bar = pct !== null ? `<div style="display:inline-block;width:40px;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;vertical-align:middle;margin-left:4px"><div style="height:100%;width:${pct}%;background:${pct>=80?'#22c55e':pct>=60?'#f59e0b':'#ef4444'}"></div></div>` : '';
@@ -9942,7 +10336,15 @@ function wblStudentStatus(s) {
   const hrs = Number(s.hours);
   const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
   if (hrs === 0 && !hasAgreement) return 'not-started';
-  if (!hasAgreement || hrs < 30 || s.reflects < 1) return 'needs-attention';
+  // FIXED: was hrs < 30 — a stale threshold with no stated rationale that
+  // contradicted the HQWBL card and progress bar a few screens over, both
+  // of which already correctly use the real program requirement (90 logged
+  // hours across 4 semesters, confirmed with the program owner). A static
+  // 30-hour gate also can't represent a real per-semester pacing check —
+  // WBL_STUDENTS carries no enrollment-date/semester field to prorate
+  // against — so this was never doing partial-progress pacing, just
+  // disagreeing with the real requirement. See leader-hub finding #4.
+  if (!hasAgreement || hrs < 90 || s.reflects < 1) return 'needs-attention';
   return 'on-track';
 }
 
@@ -10969,8 +11371,22 @@ function lpNewPickerCreate() {
   renderLessonPlans();
 }
 
-let scrViewMode = 'grid'; // 'grid', 'list', or 'pacing'
-function toggleScrView() { scrViewMode = scrViewMode === 'grid' ? 'list' : 'grid'; renderCompetencyView(); }
+// Default view mode — FIXED per Say/Do Ledger leader-hub finding #2: Grid
+// used to be the hardcoded default even on a phone, where its fixed
+// desktop-width columns push the table far past the screen edge with no
+// visible way back short of accidentally discovering horizontal scroll.
+// A saved preference always wins; absent one, start in Cards below a
+// mobile breakpoint and Grid on desktop.
+let scrViewMode = LS.get('lh_scr_view_mode', null) || (window.innerWidth < 700 ? 'list' : 'grid');
+function toggleScrView() { setScrViewMode(scrViewMode === 'grid' ? 'list' : 'grid'); }
+// A manual choice always overrides the auto-default afterward — this is
+// the one place scrViewMode should ever be assigned from (all view-tab
+// buttons route through it) so the persisted preference stays accurate.
+function setScrViewMode(mode) {
+  scrViewMode = mode;
+  LS.set('lh_scr_view_mode', mode);
+  renderCompetencyView();
+}
 function setPeriod(p, btn) { scrActivePeriod = p; renderCompetencyView(); }
 
 function renderScrTable(course, students, myScores) {
@@ -10979,7 +11395,7 @@ function renderScrTable(course, students, myScores) {
   if (scrViewMode === 'list') {
     // Student-focused list view
     el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.75rem">
-      ${students.map(stu => renderStudentCard(stu, course, myScores[stu.name] || {})).join('')}
+      ${students.map(stu => renderStudentCard(stu, course, myScores[_scrStudentKey(stu)] || {})).join('')}
     </div>`;
     return;
   }
@@ -10990,8 +11406,14 @@ function renderScrTable(course, students, myScores) {
   }
 
   // Grid view: competencies as rows, students as columns
-  const colWidth = Math.max(38, Math.floor(700 / (students.length + 1)));
-  
+  // FIXED (Say/Do Ledger leader-hub finding #2): was a hardcoded desktop
+  // assumption (700px) that forced 800px+ of table width regardless of
+  // the real viewport — computed against the actual container width now,
+  // so a phone gets narrower (still usable, still real) columns instead
+  // of a table that's silently 2-3x wider than the screen.
+  const availWidth = Math.max(280, (el.clientWidth || window.innerWidth) - 90); // minus the two pinned label columns
+  const colWidth = Math.max(38, Math.floor(availWidth / (students.length + 1)));
+
   // Group competencies by duty area
   const byDuty = [];
   let currentDuty = null;
@@ -11003,15 +11425,19 @@ function renderScrTable(course, students, myScores) {
     byDuty.push({ type: 'comp', comp });
   }
 
+  // FIXED (finding #2): a real horizontal-scroll affordance — a small
+  // hint line plus a persistent right-edge fade (.scr-scroll-wrap in the
+  // stylesheet) — instead of nothing indicating this table scrolls at all.
   el.innerHTML = `
     <div class="card" style="padding:0;overflow:hidden">
-      <div style="overflow:auto;max-height:72vh">
+      <div style="font-size:.68rem;color:var(--muted);padding:.4rem .6rem;border-bottom:1px solid var(--border-soft)">↔ Scroll to see all students and scores</div>
+      <div class="scr-scroll-wrap" style="overflow:auto;max-height:72vh">
         <table class="scr-table">
           <thead>
             <tr>
               <th class="comp-h" style="position:sticky;left:0;z-index:20;background:var(--navy)">#  Competency</th>
-              <th style="position:sticky;left:0" class="comp-h" style="min-width:60px">Req</th>
-              ${students.map(s => `<th style="width:${colWidth}px;max-width:${colWidth}px;overflow:hidden;text-overflow:ellipsis" title="${s.name}">${s.name.split(',')[0]}</th>`).join('')}
+              <th class="scr-req-col">Req</th>
+              ${students.map(s => `<th style="width:${colWidth}px;max-width:${colWidth}px;overflow:hidden;text-overflow:ellipsis" title="${escH(s.name)}">${escH(s.name.split(',')[0])}</th>`).join('')}
               <th style="width:70px">Class %</th>
             </tr>
           </thead>
@@ -11023,22 +11449,22 @@ function renderScrTable(course, students, myScores) {
               const comp = item.comp;
               const isOpt = comp.req !== 'Required';
               // Compute class average for this comp
-              const scored = students.map(s => (myScores[s.name] || {})[comp.num]).filter(v => v != null);
+              const scored = students.map(s => (myScores[_scrStudentKey(s)] || {})[comp.num]).filter(v => v != null);
               const satCount = scored.filter(v => v <= 3).length;
               const pct = scored.length ? Math.round(satCount / scored.length * 100) : null;
               const pctColor = pct === null ? '#ccc' : pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
-              
+
               return `<tr>
                 <td style="position:sticky;left:0;background:#fff;border-right:1px solid #e5e7eb;max-width:300px">
                   <span style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-right:.3rem">${comp.code||comp.num}</span>
                   <span class="${isOpt?'scr-opt':''}" style="font-size:.73rem">${comp.text}</span>
                   ${renderLessonTags(comp.num)}
                 </td>
-                <td style="text-align:center">
+                <td class="scr-req-col" style="text-align:center">
                   <span style="font-size:.62rem;font-weight:700;padding:1px 5px;border-radius:10px;background:${isOpt?'#f3f4f6':'#dbeafe'};color:${isOpt?'#9ca3af':'#1d4ed8'}">${isOpt?'Opt':'Req'}</span>
                 </td>
                 ${students.map(stu => {
-                  const score = (myScores[stu.name] || {})[comp.num];
+                  const score = (myScores[_scrStudentKey(stu)] || {})[comp.num];
                   // FIXED: Grid is the default scrViewMode, but its score
                   // cell never got the keyboard support (role/tabindex/
                   // onkeydown/aria-label) an earlier round already added
@@ -11047,10 +11473,10 @@ function renderScrTable(course, students, myScores) {
                   // was keyboard-inaccessible.
                   return `<td style="text-align:center">
                     <span class="scr-score scr-s${score||0}" role="button" tabindex="0"
-                      onclick="cycleScore('${stu.name}',${comp.num},this)"
-                      onkeydown="scrScoreKeydown(event,'${stu.name}',${comp.num},this)"
-                      title="${stu.name} — #${comp.num}"
-                      aria-label="${stu.name}, competency ${comp.num}, ${score?(SCR_SCORE_LABELS[score]||score)+' ('+score+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+                      onclick="cycleScore('${escJsAttr(_scrStudentKey(stu))}',${comp.num},this)"
+                      onkeydown="scrScoreKeydown(event,'${escJsAttr(_scrStudentKey(stu))}',${comp.num},this)"
+                      title="${escH(stu.name)} — #${comp.num}"
+                      aria-label="${escH(stu.name)}, competency ${comp.num}, ${score?(SCR_SCORE_LABELS[score]||score)+' ('+score+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
                     >${score || '·'}</span>
                   </td>`;
                 }).join('')}
@@ -11074,6 +11500,18 @@ function renderScrTable(course, students, myScores) {
         <span style="font-size:.68rem;color:var(--muted);margin-left:.5rem">Click any cell to cycle score · 1-3 = Satisfactory</span>
       </div>
     </div>`;
+
+  // FIXED (finding #13): the Req header used to carry two `style`
+  // attributes on one element — the browser keeps the first and silently
+  // drops the second, so Req kept position:sticky;left:0 (matching the
+  // Competency column) instead of the min-width it was meant to get,
+  // overlapping the Competency column on horizontal scroll. Req is now a
+  // real second pinned column, stacked right after Competency rather than
+  // sharing its offset — measured here (not hardcoded) so it always
+  // matches Competency's actual rendered width, including on a narrower
+  // viewport where that width itself changes.
+  const compHeader = el.querySelector('.comp-h');
+  if (compHeader) el.style.setProperty('--scr-comp-w', compHeader.offsetWidth + 'px');
 }
 
 function renderStudentCard(stu, course, scores) {
@@ -11091,9 +11529,9 @@ function renderStudentCard(stu, course, scores) {
   return `<div class="mb-card">
     <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem">
-        <div class="ava" style="width:32px;height:32px;font-size:.75rem;background:var(--navy);flex-shrink:0">${stu.name.split(',').map(p=>p.trim()[0]).join('')}</div>
+        <div class="ava" style="width:32px;height:32px;font-size:.75rem;background:var(--navy);flex-shrink:0">${escH(stu.name.split(',').map(p=>p.trim()[0]).join(''))}</div>
         <div>
-          <div style="font-weight:700;font-size:.85rem">${stu.name}</div>
+          <div style="font-weight:700;font-size:.85rem">${escH(stu.name)}</div>
           <div style="font-size:.68rem;color:var(--muted)">${scored}/${total} scored · ${sat} satisfactory</div>
         </div>
         <div style="margin-left:auto;text-align:right">
@@ -11114,11 +11552,11 @@ function renderStudentCard(stu, course, scores) {
           const s = scores[c.num];
           const cls = `scr-s${s||0}`;
           return `<span class="scr-score ${cls}" style="width:22px;height:18px;font-size:.62rem" role="button" tabindex="0"
-            data-scr-key="${stu.name}::${c.num}"
-            onclick="cycleScore('${stu.name}',${c.num},this)"
-            onkeydown="scrScoreKeydown(event,'${stu.name}',${c.num},this)"
+            data-scr-key="${escH(_scrStudentKey(stu))}::${c.num}"
+            onclick="cycleScore('${escJsAttr(_scrStudentKey(stu))}',${c.num},this)"
+            onkeydown="scrScoreKeydown(event,'${escJsAttr(_scrStudentKey(stu))}',${c.num},this)"
             title="#${c.num}: ${c.text.substring(0,50)}${s?' — '+(SCR_SCORE_LABELS[s]||s):''}"
-            aria-label="${stu.name}, competency ${c.num}, ${s?SCR_SCORE_LABELS[s]+' ('+s+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+            aria-label="${escH(stu.name)}, competency ${c.num}, ${s?SCR_SCORE_LABELS[s]+' ('+s+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
           >${s||'·'}</span>`;
         }).join('')}
       </div>
@@ -11169,7 +11607,7 @@ function setScore(stuName, compNum, el, next) {
   persistSCR();
   // Log SCR session for Brag Board — one entry per day per course (deduped by date+course)
   const _scrLog = LS.get('lh_scr_session_log', []);
-  const _scrToday = new Date().toISOString().slice(0,10);
+  const _scrToday = _localDateStr_();
   const _scrKey   = `${_scrToday}|${course}`;
   if (!_scrLog.some(e => e.key === _scrKey)) {
     const _cname = (SCR_COURSES[course] || {}).name || course;
@@ -11209,7 +11647,7 @@ function exportSCR() {
   
   const headers = ['Student', ...course.competencies.map(c => `#${c.num} ${c.req==='Required'?'(R)':'(O)'}: ${c.text.substring(0,40)}`)];
   const rows = students.map(stu => {
-    const s = myScores[stu.name] || {};
+    const s = myScores[_scrStudentKey(stu)] || {};
     return [stu.name, ...course.competencies.map(c => s[c.num] || '')];
   });
   
@@ -11256,7 +11694,24 @@ const RECEIVING_CHECKS = [
   'Entered verified quantities into inventory sheet',
   'Stored items using FIFO method in back room',
 ];
+// FIXED (Say/Do Ledger leader-hub finding #8): RECEIVING_STATUS used to be
+// a flat object keyed only by checklist-item index ({0: true, 1: false,
+// ...}), shared by every Purchase Order — checking a box for the first
+// shipment of the year silently left it checked for every later one.
+// Now keyed by PO id: { [poId]: { checks: [bool,...], verifiedAt, note } }.
 let RECEIVING_STATUS = LS.get('lh_receiving_status', {});
+
+// Returns (initializing/re-sizing if needed) one PO's own receiving state.
+function _getPOReceivingState(poId) {
+  const cur = RECEIVING_STATUS[poId];
+  if (!cur || !Array.isArray(cur.checks)) {
+    RECEIVING_STATUS[poId] = { checks: RECEIVING_CHECKS.map(()=>false), verifiedAt: null, note: '' };
+  } else if (cur.checks.length !== RECEIVING_CHECKS.length) {
+    // Defensive re-size if RECEIVING_CHECKS' own length ever changes.
+    RECEIVING_STATUS[poId] = { ...cur, checks: RECEIVING_CHECKS.map((_,i)=>!!cur.checks[i]) };
+  }
+  return RECEIVING_STATUS[poId];
+}
 
 function renderProcurement() {
   // Flow steps
@@ -11278,25 +11733,115 @@ function renderProcurement() {
   // PO table
   renderPOTable();
 
-  // Receiving checklist
+  // Receiving checklist — populate the PO selector (mirrors initSlipView()/
+  // initTripFlowView()'s pattern), preserving the current selection if it's
+  // still a real PO.
+  const sel = document.getElementById('receiving-po-sel');
+  if (sel) {
+    const prevVal = sel.value;
+    sel.innerHTML = PURCHASE_ORDERS.map(po => `<option value="${po.id}">#${po.id} — ${escH(po.item)}</option>`).join('');
+    if (prevVal && PURCHASE_ORDERS.some(po => String(po.id) === prevVal)) sel.value = prevVal;
+    else if (PURCHASE_ORDERS.length) sel.value = PURCHASE_ORDERS[0].id;
+  }
+  renderReceivingChecklist();
+}
+
+function renderReceivingChecklist() {
   const rc = document.getElementById('receiving-checklist');
-  if (rc) {
-    // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
-    // had until an earlier round added keyboard support to them.
-    rc.innerHTML = RECEIVING_CHECKS.map((c,i) => {
-      const done = !!RECEIVING_STATUS[i];
-      return `<div onclick="toggleReceiving(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleReceiving(${i})}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:8px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;font-size:.77rem;transition:all .2s">
-        <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.62rem;color:#fff">${done?'✓':''}</div>
-        <span style="color:${done?'#15803d':'#374151'}">${c}</span>
-      </div>`;
-    }).join('');
+  if (!rc) return;
+  const noteInput = document.getElementById('receiving-note-input');
+  const verifiedEl = document.getElementById('receiving-verified-note');
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+
+  if (!po) {
+    rc.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted);font-size:.78rem">No purchase orders yet — create one above to start a receiving checklist.</div>';
+    if (noteInput) noteInput.value = '';
+    if (verifiedEl) verifiedEl.textContent = '';
+    return;
+  }
+
+  const state = _getPOReceivingState(po.id);
+  // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
+  // had until an earlier round added keyboard support to them.
+  rc.innerHTML = RECEIVING_CHECKS.map((c,i) => {
+    const done = !!state.checks[i];
+    return `<div onclick="toggleReceiving(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleReceiving(${i})}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:8px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;font-size:.77rem;transition:all .2s">
+      <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.62rem;color:#fff">${done?'✓':''}</div>
+      <span style="color:${done?'#15803d':'#374151'}">${c}</span>
+    </div>`;
+  }).join('');
+  if (noteInput) noteInput.value = state.note || '';
+  // Lightweight audit record — FIXED (finding #8): a timestamp + optional
+  // note now accompanies completion instead of just checkbox state.
+  if (verifiedEl) {
+    verifiedEl.textContent = state.verifiedAt
+      ? `✅ Fully verified ${fd(state.verifiedAt.split('T')[0])}${state.note ? ' — ' + state.note : ''}`
+      : '';
   }
 }
 
 function toggleReceiving(i) {
-  RECEIVING_STATUS[i] = !RECEIVING_STATUS[i];
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  const state = _getPOReceivingState(po.id);
+  const wasVerified = !!state.verifiedAt;
+  state.checks[i] = !state.checks[i];
+  // verifiedAt means "fully verified as of this timestamp" — stamped the
+  // moment every item is checked, cleared the moment any item is
+  // unchecked again, so it never survives as a stale claim about a
+  // checklist that's since been reopened.
+  const nowVerified = state.checks.every(Boolean);
+  state.verifiedAt = nowVerified ? new Date().toISOString() : null;
+  // Auto-increment Inventory the moment this PO's checklist first becomes
+  // fully verified — the trigger event connecting procurement to
+  // inventory (Say/Do Ledger leader-hub finding #9). Reversing back out of
+  // full verification (unchecking one item after all were checked)
+  // reverses the increment too, so re-checking it later doesn't double-count.
+  if (nowVerified && !wasVerified) { _applyPOToInventory(po, 1); persistInventory(); }
+  else if (!nowVerified && wasVerified) { _applyPOToInventory(po, -1); persistInventory(); }
   LS.set('lh_receiving_status', RECEIVING_STATUS);
-  renderProcurement();
+  renderReceivingChecklist();
+}
+
+// Adds (sign=1) or removes (sign=-1) a PO's ordered quantity from its
+// linked Inventory SKU. No-op if the PO has no linked SKU (older data from
+// before finding #9's fix, or a malformed record) instead of throwing.
+function _applyPOToInventory(po, sign) {
+  if (!po.skuId) return;
+  const sku = INVENTORY.find(i => i.id === po.skuId);
+  if (!sku) return;
+  sku.qty = Math.max(0, Number(sku.qty || 0) + sign * Number(po.qty || 0));
+}
+
+function saveReceivingNote(val) {
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  const state = _getPOReceivingState(po.id);
+  state.note = (val || '').trim();
+  LS.set('lh_receiving_status', RECEIVING_STATUS);
+  renderReceivingChecklist(); // refreshes the "Fully verified..." line if shown
+}
+
+function resetReceivingChecklist() {
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  if (!confirm(`Reset the receiving checklist for PO #${po.id} (${po.item})? This clears all checked items — use this if the PO receives a new, separate shipment.`)) return;
+  // Keep Inventory consistent with the reset — if this PO's quantity was
+  // already added (checklist was fully verified), remove it now so a
+  // second real shipment's later completion doesn't double-count it.
+  const wasVerified = !!(RECEIVING_STATUS[po.id] && RECEIVING_STATUS[po.id].verifiedAt);
+  if (wasVerified) { _applyPOToInventory(po, -1); persistInventory(); }
+  RECEIVING_STATUS[po.id] = { checks: RECEIVING_CHECKS.map(()=>false), verifiedAt: null, note: '' };
+  LS.set('lh_receiving_status', RECEIVING_STATUS);
+  renderReceivingChecklist();
 }
 
 function renderPOTable() {
@@ -11355,27 +11900,75 @@ function openPOModal() {
   document.getElementById('po-cost').value   = '0';
   document.getElementById('po-price').value  = '0';
   document.getElementById('po-buyer').value  = '';
+  // Populate the Inventory-item link selector — see savePO()/finding #9.
+  const skuSel = document.getElementById('po-sku-sel');
+  skuSel.innerHTML = '<option value="">— Select existing SKU —</option>' +
+    INVENTORY.map(i => `<option value="${i.id}">${escH(i.name)}</option>`).join('') +
+    '<option value="__new__">➕ New item (not yet in Inventory)</option>';
+  document.getElementById('po-item-new-wrap').style.display = 'none';
   document.getElementById('po-modal').style.display='block';
 }
 function closePOModal() { document.getElementById('po-modal').style.display='none'; }
 
+// Shows the New Item Name field only when "create new" is chosen, and
+// otherwise keeps po-item (hidden) mirroring the selected SKU's own name
+// so the rest of savePO()/the PO table keep working off one field.
+function onPoSkuChange() {
+  const val  = document.getElementById('po-sku-sel').value;
+  const wrap = document.getElementById('po-item-new-wrap');
+  if (val === '__new__') {
+    wrap.style.display = '';
+    document.getElementById('po-item').value = '';
+  } else {
+    wrap.style.display = 'none';
+    const sku = INVENTORY.find(i => i.id === val);
+    document.getElementById('po-item').value = sku ? sku.name : '';
+  }
+}
+
 function savePO() {
-  const item = document.getElementById('po-item').value.trim();
-  if (!item) { _showToast('Please enter an item description.', 2500, '#991b1b'); return; }
+  // FIXED (Say/Do Ledger leader-hub finding #9): a PO used to carry only
+  // a free-text item name with no link to any real Inventory SKU, so
+  // receiving an order never updated or created its Inventory record —
+  // Adam had to manually re-type every received order as a brand-new SKU
+  // entry in a completely separate tab. Every PO now resolves to a real
+  // skuId — either an existing SKU or one created here at qty 0 (the
+  // ordered quantity is only actually added once the order is really
+  // received — see toggleReceiving()/_applyPOToInventory()).
+  const skuSel = document.getElementById('po-sku-sel').value;
+  const item   = document.getElementById('po-item').value.trim();
+  if (!skuSel) { _showToast('Please select an Inventory item, or choose "New item".', 2500, '#991b1b'); return; }
+  if (skuSel === '__new__' && !item) { _showToast('Please enter a name for the new item.', 2500, '#991b1b'); return; }
+
+  const cat   = document.getElementById('po-cat').value;
+  const cost  = Number(document.getElementById('po-cost').value)||0;
+  const price = Number(document.getElementById('po-price').value)||0;
+
+  let skuId = skuSel;
+  let itemName = item;
+  if (skuSel === '__new__') {
+    skuId = 'sku' + Date.now();
+    INVENTORY.push({ id: skuId, name: item, cat, qty: 0, cost, price, reorder: 5 });
+    persistInventory();
+  } else {
+    const sku = INVENTORY.find(i => i.id === skuId);
+    itemName = sku ? sku.name : item;
+  }
+
   PURCHASE_ORDERS.push({
     id: ++poCounter,
-    item, vendor: document.getElementById('po-vendor').value.trim()||'TBD',
-    cat:  document.getElementById('po-cat').value,
+    item: itemName, skuId,
+    vendor: document.getElementById('po-vendor').value.trim()||'TBD',
+    cat,
     qty:  Number(document.getElementById('po-qty').value)||1,
-    cost: Number(document.getElementById('po-cost').value)||0,
-    price:Number(document.getElementById('po-price').value)||0,
+    cost, price,
     buyer:document.getElementById('po-buyer').value.trim()||'Unassigned',
     stage:'Market Research',
   });
   persistPO();
   closePOModal();
   renderPOTable();
-  _showToast(`✅ PO created: ${item}`);
+  _showToast(`✅ PO created: ${itemName}`);
 }
 
 function updatePOStage(id, stage) {
@@ -11815,31 +12408,35 @@ function renderStaticEmbeddedContent() {
 }
 
 // ── Checklists ────────────────────────────────────────────
-function renderSSBUChecklist() {
-  const el = document.getElementById('ssbu-checklist-render'); if (!el) return;
-  el.innerHTML = SSBU_CHECKLIST.map((c,i)=>{
-    const done = !!SSBU_CHECK_STATUS[i];
+// Shared by renderSSBUChecklist()/renderMK8Checklist() below — these were
+// two near-byte-identical functions differing only in element id, data
+// source, and color tokens. statusVarName/rerenderFnName are passed as
+// strings (not the objects themselves) because they need to end up
+// literally in the onclick attribute text, which is evaluated later
+// against the global scope, not against a closure over this call.
+function _renderEsChecklist(elId, list, statusArr, statusVarName, rerenderFnName, theme) {
+  const el = document.getElementById(elId); if (!el) return;
+  el.innerHTML = list.map((c,i)=>{
+    const done = !!statusArr[i];
     // Mouse-only before this — unlike the SBE checklist (which has a real
     // <button> alongside its clickable div as a keyboard fallback), these
     // items had no way to toggle without a pointer at all.
-    const toggle = `SSBU_CHECK_STATUS[${i}]=!SSBU_CHECK_STATUS[${i}];persistESChecklists();renderSSBUChecklist()`;
-    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
-      <span style="color:${done?'#15803d':'#374151'}">${c}</span>
+    const toggle = `${statusVarName}[${i}]=!${statusVarName}[${i}];persistESChecklists();${rerenderFnName}()`;
+    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?theme.doneBg:'#fff'};border:1px solid ${done?theme.doneBorder:'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?theme.accent:'#d1d5db'};background:${done?theme.accent:'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
+      <span style="color:${done?theme.text:'#374151'}">${c}</span>
     </div>`;
   }).join('');
 }
 
+function renderSSBUChecklist() {
+  _renderEsChecklist('ssbu-checklist-render', SSBU_CHECKLIST, SSBU_CHECK_STATUS, 'SSBU_CHECK_STATUS', 'renderSSBUChecklist',
+    { doneBg: '#f0fdf4', doneBorder: '#86efac', accent: '#15803d', text: '#15803d' });
+}
+
 function renderMK8Checklist() {
-  const el = document.getElementById('mk8-checklist-render'); if (!el) return;
-  el.innerHTML = MK8_CHECKLIST.map((c,i)=>{
-    const done = !!MK8_CHECK_STATUS[i];
-    const toggle = `MK8_CHECK_STATUS[${i}]=!MK8_CHECK_STATUS[${i}];persistESChecklists();renderMK8Checklist()`;
-    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#fff7ed':'#fff'};border:1px solid ${done?'#fed7aa':'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
-      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?'#e67e22':'#d1d5db'};background:${done?'#e67e22':'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
-      <span style="color:${done?'#92400e':'#374151'}">${c}</span>
-    </div>`;
-  }).join('');
+  _renderEsChecklist('mk8-checklist-render', MK8_CHECKLIST, MK8_CHECK_STATUS, 'MK8_CHECK_STATUS', 'renderMK8Checklist',
+    { doneBg: '#fff7ed', doneBorder: '#fed7aa', accent: '#e67e22', text: '#92400e' });
 }
 
 // ── Match Log ─────────────────────────────────────────────
@@ -12205,12 +12802,26 @@ function _schedTypeOptions(selectedKey) {
   return opts.join('');
 }
 
+// Shared local-calendar-date string builder (YYYY-MM-DD). FIXED: several
+// "what day is it" call sites below used to build this key via
+// `date.toISOString().slice(0,10)`, which converts to UTC first — in a
+// negative-UTC-offset timezone (e.g. US Eastern, what this app is built
+// for), that silently rolls the date forward in the evening, hours
+// before local midnight, causing a mismatch with a same-day lookup (a
+// schedule/holiday/match "today" check reading tomorrow's date
+// instead — every evening the app is left open, not an edge case).
+// getTodayScheduleType() below used to build this correctly inline with
+// its own copy of the same three lines; extracted here so every other
+// site with the same bug can share one correct implementation instead
+// of re-deriving it (or re-introducing the bug) separately.
+function _localDateStr_(date) {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
 function getTodayScheduleType() {
-  const now  = new Date();
-  const yyyy = now.getFullYear();
-  const mm   = String(now.getMonth()+1).padStart(2,'0');
-  const dd   = String(now.getDate()).padStart(2,'0');
-  const key  = yyyy+'-'+mm+'-'+dd;
+  const now = new Date();
+  const key = _localDateStr_(now);
 
   if (CCPS_NO_SCHOOL.has(key)) return null; // no school
   if (CCPS_SCHEDULE_OVERRIDES[key]) return CCPS_SCHEDULE_OVERRIDES[key];
@@ -12347,8 +12958,8 @@ async function aiComposeEmail() {
     // name a specific student (e.g. "remind ___ her slip is late").
     const jobRes = await callGAS('aiDraft', {
       type: 'EMAIL_COMPOSE',
-      payload: {
-        prompt: _substituteNamesForIds(prompt),
+      payload: _privacySafeAiPayload({
+        prompt,
         audience: emailTab,
         audienceLabel: AUDIENCE_LABELS[emailTab] || emailTab,
         trip: trip ? {
@@ -12360,7 +12971,7 @@ async function aiComposeEmail() {
           transportation: trip.charterCo || trip.train || (trip.ccpsBus ? 'CCPS Bus' : trip.parentTx ? 'Parent Transport' : ''),
           chaperones: trip.chaperones || '',
         } : null,
-      },
+      }, ['prompt']),
     });
     if (jobRes && jobRes.ok && jobRes.jobId) {
       const draft = await pollAiJob_(jobRes.jobId, status, '⏳ Drafting with AI…');
@@ -12474,22 +13085,29 @@ async function generateAIInsights() {
       // See _substituteNamesForIds / LEADERHUB_AI_FLOW_SETUP.md.
       const jobRes = await callGAS('aiDraft', {
         type: 'ARCHIVE_INSIGHTS',
-        payload: {
+        payload: _privacySafeAiPayload({
           totalTrips: total,
           totalStudents: stuTotal,
           avgCostPerStudent: Number(costAvg.toFixed(0)) || 0,
           tripTypes: Object.entries(types).map(([type, count]) => ({ type, count })),
-          glows: glowList.map(g => _substituteNamesForIds(`${g.name}: ${g.text}`)),
-          grows: growList.map(g => _substituteNamesForIds(`${g.name}: ${g.text}`)),
-        },
+          glows: glowList.map(g => `${g.name}: ${g.text}`),
+          grows: growList.map(g => `${g.name}: ${g.text}`),
+        }, ['glows', 'grows']),
       });
       if (jobRes && jobRes.ok && jobRes.jobId) {
         const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting narrative with AI…');
         const curNarrativeEl = document.getElementById('archive-ai-narrative'); // modal may have re-rendered while polling
         if (draft && curNarrativeEl) {
+          // FIXED: draft is AI-drafted text that round-trips through
+          // Gemini and back — escH() here (same helper already used
+          // throughout this file for user text) prevents it from being
+          // interpreted as HTML if the model ever echoes back a stray
+          // tag-like sequence. white-space:pre-wrap already renders plain
+          // text with its original line breaks, so escaping doesn't
+          // change how a normal narrative looks.
           curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
             <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Narrative</div>
-            <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${_restoreNamesFromIds(draft)}</div>
+            <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${escH(_restoreNamesFromIds(draft))}</div>
           </div>`;
         } else if (curNarrativeEl) {
           curNarrativeEl.innerHTML = '';
@@ -12520,14 +13138,17 @@ async function generateAIInsights() {
 // and every non-on-track student showed a ❌ regardless of which of the
 // two real statuses applied. Fixed to match the real status values and to
 // build a specific reason per flagged student (missing agreement, hours
-// short of the 30 required, no reflections logged) instead of just a
+// short of the 90 required, no reflections logged) instead of just a
 // pass/fail badge.
 function _wblAttentionReason(s) {
   const hrs = Number(s.hours);
   const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
   const reasons = [];
   if (!hasAgreement) reasons.push('no signed work agreement on file');
-  if (hrs < 30) reasons.push(`${hrs} of 30 required hours logged`);
+  // FIXED: was hrs < 30, disagreeing with the real 90-hour/4-semester HQWBL
+  // requirement the progress bar and HQWBL card already use correctly —
+  // see wblStudentStatus() above and leader-hub finding #4.
+  if (hrs < 90) reasons.push(`${hrs} of 90 required hours logged`);
   if (Number(s.reflects) < 1) reasons.push('no reflections logged yet');
   return reasons.join('; ');
 }
@@ -12604,10 +13225,14 @@ async function _wblGenerateNarrative() {
   try {
     // Privacy: same roster-based substitution Brag Board/Archive Insights
     // use (Settings → Student ID Lookup) — swap any known student name in
-    // attentionDetails for their CCPS ID before this leaves the browser.
+    // attentionDetails/sbeNotes for their CCPS ID before this leaves the
+    // browser. FIXED: sbeNotes (teacher-entered free-text notes, which can
+    // plausibly mention a student by name) used to be sent unsubstituted
+    // in this exact payload while its sibling field, attentionDetails, was
+    // already protected — see Say/Do Ledger leader-hub finding #12.
     const jobRes = await callGAS('aiDraft', {
       type: 'WBL_INSIGHTS',
-      payload: {
+      payload: _privacySafeAiPayload({
         totalStudents: snap.totalStudents,
         onTrack: snap.onTrack,
         notStarted: snap.notStartedCount,
@@ -12615,17 +13240,22 @@ async function _wblGenerateNarrative() {
         sbeTotal: snap.sbeTotal,
         avgHours: snap.avgHours,
         totalHours: snap.totalHours,
-        attentionDetails: snap.attentionDetails.map(_substituteNamesForIds),
+        attentionDetails: snap.attentionDetails,
         sbeNotes: snap.sbeNotes,
-      },
+      }, ['attentionDetails', 'sbeNotes']),
     });
     if (jobRes && jobRes.ok && jobRes.jobId) {
       const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
       const curNarrativeEl = document.getElementById('wbl-ai-narrative'); // modal may have closed while polling
       if (draft && curNarrativeEl) {
+        // FIXED: same escaping fix as generateAIInsights()'s narrative —
+        // draft is AI-drafted text round-tripped through Gemini; escH()
+        // prevents a stray tag-like sequence from being interpreted as
+        // HTML. white-space:pre-wrap already preserves plain-text
+        // line breaks, so this doesn't change how a normal summary looks.
         curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
           <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Summary</div>
-          <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${_restoreNamesFromIds(draft)}</div>
+          <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${escH(_restoreNamesFromIds(draft))}</div>
         </div>`;
       } else if (curNarrativeEl) {
         curNarrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">No summary came back — try again in a moment.</div>';
@@ -12725,8 +13355,8 @@ async function lpRunAI(userPrompt, forceSection) {
     // → Student ID Lookup) applied to both the prompt and the lesson body.
     const jobRes = await callGAS('aiDraft', {
       type: 'LP_ASSIST',
-      payload: {
-        prompt: _substituteNamesForIds(userPrompt || 'Give general lesson-planning tips for this lesson.'),
+      payload: _privacySafeAiPayload({
+        prompt: userPrompt || 'Give general lesson-planning tips for this lesson.',
         lessonTitle: plan.title,
         course: LP_C_LABELS[plan.course] || plan.course,
         quarter: plan.q,
@@ -12735,8 +13365,8 @@ async function lpRunAI(userPrompt, forceSection) {
         // it's been edited/saved locally (see lpFetchDoc's note — real
         // Drive content requires auth Gemini can't do) — empty is a real,
         // expected state, not a bug; the prompt file handles it.
-        planBody: _substituteNamesForIds(LP_EDITS[plan.docId] || ''),
-      },
+        planBody: LP_EDITS[plan.docId] || '',
+      }, ['prompt', 'planBody']),
     });
     if (jobRes && jobRes.ok && jobRes.jobId) {
       const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Thinking…');
@@ -12769,7 +13399,7 @@ function openAISCRInsights() {
   const RATING_BG = {'1':'#dcfce7','2':'var(--blue-light)','3':'#e0f2fe','4':'#fef9c3','5':'var(--red-light)'};
 
   const rows = students.map(stu => {
-    const stuScores = myScores[stu.name] || {};
+    const stuScores = myScores[_scrStudentKey(stu)] || {};
     const rated = comps.filter(c => stuScores[c.num] && stuScores[c.num] !== '·').length;
     const avg   = rated ? (comps.reduce((s,c)=>s+(Number(stuScores[c.num])||0),0)/rated).toFixed(1) : '—';
     const cells = comps.map(c => {
@@ -12777,7 +13407,7 @@ function openAISCRInsights() {
       const bg = RATING_BG[v] || '#f8fafc';
       return `<td style="padding:.15rem .3rem;text-align:center;background:${bg};font-size:.72rem" title="${SCR_SCORE_LABELS[v]||'Not scored'}">${v}</td>`;
     }).join('');
-    return `<tr><td style="padding:.2rem .4rem;font-size:.75rem;font-weight:600">${stu.name}</td>${cells}<td style="padding:.2rem .4rem;font-size:.75rem;text-align:center">${avg}</td></tr>`;
+    return `<tr><td style="padding:.2rem .4rem;font-size:.75rem;font-weight:600">${escH(stu.name)}</td>${cells}<td style="padding:.2rem .4rem;font-size:.75rem;text-align:center">${avg}</td></tr>`;
   }).join('');
 
   const modal = document.createElement('div');
@@ -12799,7 +13429,19 @@ function openAISCRInsights() {
 }
 
 // ── 7. finAnalysis → formatted financial report ────────────────────────────────
-function finAnalysis(type) {
+// FIXED (Say/Do Ledger leader-hub finding #3): 'roi' and 'decisions' used
+// to be undefined report keys — reports[type] || reports.profitloss meant
+// the ROI Analysis and Operational Decisions buttons silently rendered
+// the exact same P&L table under a mismatched heading. Both now have
+// real, distinct content built from the same real data the other reports
+// already use (no fabricated per-item sales figures — SALES_LOG only
+// tracks per-shift aggregates, not per-item sales). finAnalysis() also
+// becomes the 6th consumer of the app's one real AI-drafting mechanism
+// (callGAS('aiDraft', ...) → pollAiJob_(), same as Archive Insights/WBL
+// Insights/etc.) — an optional, additive AI narrative on top of the
+// always-correct local report, honestly hedged the same way its siblings
+// are if no Workspace Flow is configured.
+async function finAnalysis(type) {
   const outEl = document.getElementById('fin-analysis-out');
   if (!outEl) return;
   outEl.style.display = 'block';
@@ -12815,6 +13457,7 @@ function finAnalysis(type) {
   // the SKU list's own Margin% a few lines away already distinguishes cost
   // vs. price; using price here overstated inventory value by the margin.
   const totalInv  = INVENTORY.reduce((a,i)=>a+(i.qty*i.cost),0);
+  const totalOrderedCost = PURCHASE_ORDERS.reduce((a,po)=>a+(Number(po.qty)*Number(po.cost)),0);
 
   const reports = {
     profitloss: `<h3 style="margin:0 0 .75rem">📊 Profit & Loss — The Cavalier Shop</h3>
@@ -12839,9 +13482,87 @@ function finAnalysis(type) {
         <tr style="border-top:2px solid #e2e8f0"><td style="padding:.3rem 0;font-weight:700">Total Revenue</td><td style="text-align:right;font-weight:700">$${totalRev.toFixed(2)}</td></tr>
         <tr><td style="padding:.3rem 0;color:var(--muted)">Gross Profit</td><td style="text-align:right;color:${profit>=0?'#16a34a':'#dc2626'}">$${profit.toFixed(2)}</td></tr>
       </table>`,
+    roi: (() => {
+      const roiPct = totalOrderedCost > 0 ? Math.round((profit/totalOrderedCost)*100) : null;
+      // Grouped by category from Inventory's own cost/price — the only
+      // real per-category signal available; there's no per-item sales
+      // data to compute a true per-item ROI from.
+      const byCat = {};
+      INVENTORY.forEach(i => {
+        if (!(i.price > 0)) return;
+        const m = (i.price - i.cost) / i.price;
+        (byCat[i.cat] = byCat[i.cat] || []).push(m);
+      });
+      const catRows = Object.entries(byCat)
+        .map(([cat, ms]) => ({ cat, avg: Math.round((ms.reduce((a,b)=>a+b,0)/ms.length)*100) }))
+        .sort((a,b)=>b.avg-a.avg)
+        .map(r => `<tr><td style="padding:.25rem .4rem">${r.cat}</td><td style="padding:.25rem .4rem;text-align:right">${r.avg}%</td></tr>`)
+        .join('');
+      return `<h3 style="margin:0 0 .75rem">📈 Return on Investment — The Cavalier Shop</h3>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse;margin-bottom:.75rem">
+          <tr><td style="padding:.3rem 0">Total Invested (cost of all Purchase Orders)</td><td style="text-align:right;font-weight:700">$${totalOrderedCost.toFixed(2)}</td></tr>
+          <tr><td style="padding:.3rem 0">Gross Profit to Date</td><td style="text-align:right;font-weight:700;color:${profit>=0?'#16a34a':'#dc2626'}">$${profit.toFixed(2)}</td></tr>
+          <tr style="border-top:2px solid #e2e8f0"><td style="padding:.3rem 0;font-weight:800">ROI</td><td style="text-align:right;font-weight:800">${roiPct===null?'—':(roiPct+'%')}</td></tr>
+          <tr><td style="padding:.3rem 0;color:var(--muted)">Inventory On Hand (at cost, not yet sold)</td><td style="text-align:right;color:var(--muted)">$${totalInv.toFixed(2)}</td></tr>
+        </table>
+        ${catRows ? `<div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">Average margin by category</div>
+        <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+          <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Category</th><th style="text-align:right;padding:.25rem .4rem;background:#f8fafc">Avg Margin</th></tr>
+          ${catRows}
+        </table>` : ''}
+        <div style="font-size:.72rem;color:var(--muted);margin-top:.6rem">ROI is computed from total order cost vs. gross profit — sales aren't tracked per item, so this can't show which specific SKUs are driving it.</div>`;
+    })(),
+    decisions: (() => {
+      const reorderList = lowStock.map(i=>`<li>${i.name} — ${i.qty} on hand (reorder at ${i.reorder})</li>`).join('');
+      const marginOf = i => Math.round(((i.price-i.cost)/i.price)*100);
+      const lowMargin = INVENTORY.filter(i => i.price > 0 && marginOf(i) < 20);
+      const strong = [...INVENTORY].filter(i=>i.price>0).sort((a,b)=>marginOf(b)-marginOf(a)).slice(0,3);
+      return `<h3 style="margin:0 0 .75rem">🧠 Operational Decisions — The Cavalier Shop</h3>
+        ${reorderList
+          ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;color:#b45309;margin-bottom:.3rem">⚠️ Reorder now (${lowStock.length})</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${reorderList}</ul></div>`
+          : `<div style="margin-bottom:.75rem;color:var(--muted);font-size:.79rem">✅ Nothing at or below its reorder threshold right now.</div>`}
+        ${lowMargin.length ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;color:#b91c1c;margin-bottom:.3rem">📉 Consider re-pricing (margin under 20%)</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${lowMargin.map(i=>`<li>${i.name} — ${marginOf(i)}% margin</li>`).join('')}</ul></div>` : ''}
+        ${strong.length ? `<div><div style="font-weight:700;font-size:.8rem;color:#166534;margin-bottom:.3rem">✅ Strongest margins — keep stocking</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${strong.map(i=>`<li>${i.name} — ${marginOf(i)}% margin</li>`).join('')}</ul></div>` : ''}`;
+    })(),
   };
 
-  outEl.innerHTML = reports[type] || reports.profitloss;
+  outEl.innerHTML = (reports[type] || reports.profitloss) + '<div id="fin-ai-narrative"></div>';
+
+  // Optional AI narrative — additive only, same pattern as
+  // generateAIInsights()/Archive Insights: the report above is already a
+  // complete, correct result on its own (real data, computed locally);
+  // this just tries to add a prose summary on top. Silently skipped
+  // (narrative area stays empty) if no bridge is configured, the Flow
+  // errors, or the ~90s poll times out — never blocks or replaces the
+  // report above.
+  const narrativeEl = document.getElementById('fin-ai-narrative');
+  const url = EMAIL_BRIDGE.url();
+  if (url && narrativeEl) {
+    narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe;font-size:.78rem;color:var(--muted)" id="fin-ai-status">⏳ Drafting summary with AI…</div>`;
+    const statusEl = document.getElementById('fin-ai-status');
+    try {
+      const jobRes = await callGAS('aiDraft', {
+        type: 'FIN_ANALYSIS',
+        payload: { reportType: type, totalRev, totalCOGS, profit, margin, shifts, totalInv, totalOrderedCost, lowStockCount: lowStock.length },
+      });
+      let draft = null;
+      if (jobRes && jobRes.ok && jobRes.jobId) draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
+      const curNarrativeEl = document.getElementById('fin-ai-narrative'); // panel may have re-rendered while polling
+      if (draft && curNarrativeEl) {
+        // draft is AI-drafted text round-tripped through Gemini — escH()
+        // prevents a stray tag-like sequence from being interpreted as
+        // HTML, same convention as every sibling AI-narrative render.
+        curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Summary</div>
+          <div style="font-size:.79rem;line-height:1.6">${escH(draft)}</div>
+        </div>`;
+      } else if (curNarrativeEl) {
+        curNarrativeEl.innerHTML = ''; // no Flow built yet, errored, or timed out — the local report above already stands on its own
+      }
+    } catch (e) {
+      const el = document.getElementById('fin-ai-narrative'); if (el) el.innerHTML = '';
+    }
+  }
 }
 
 // ── 8. esAIScout → e-sports stats panel ───────────────────────────────────────
@@ -13176,13 +13897,15 @@ async function _generateBragEmailInner() {
       if (statusEl) statusEl.textContent = '⏳ Drafting with AI…';
       // Privacy: if a student ID roster has been uploaded (Settings →
       // Student ID Lookup), swap known student names for their CCPS ID
-      // before this leaves the browser — see _substituteNamesForIds. The
-      // local sections[]/localBody above keep real names; only this
-      // network payload is affected.
-      const privSections = sections.map(_substituteNamesForIds);
+      // before this leaves the browser — see _privacySafeAiPayload /
+      // _substituteNamesForIds. The local sections[]/localBody above keep
+      // real names; only this network payload is affected.
       const jobRes = await callGAS('aiDraft', {
         type: 'BRAG_EMAIL',
-        payload: { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections: privSections },
+        payload: _privacySafeAiPayload(
+          { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections },
+          ['sections']
+        ),
       });
       if (jobRes && jobRes.ok && jobRes.jobId) {
         const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting with AI…');
@@ -13456,8 +14179,8 @@ function renderDeadlines() {
       <span style="font-size:1.05rem;flex-shrink:0">${r.icon}</span>
       <span style="flex:1;font-size:.9rem;font-weight:600;color:${u.text};line-height:1.3">${dl.title}</span>
       <span id="dltimer-${dl.id}" style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:${u.text};white-space:nowrap">${u.label}</span>
-      <button onclick="event.stopPropagation();editDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit">✏️</button>
-      <button onclick="event.stopPropagation();deleteDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete">✕</button>
+      <button onclick="event.stopPropagation();editDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit" aria-label="Edit deadline">✏️</button>
+      <button onclick="event.stopPropagation();deleteDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete" aria-label="Delete deadline">✕</button>
     </div>`;
   }).join('');
 }
@@ -13912,7 +14635,7 @@ function getPulseData(){
   const esTotal=typeof ES_MATCHES!=='undefined'?ES_MATCHES.length:0;
   const esWins=typeof ES_MATCHES!=='undefined'?ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length:0;
   // Next upcoming match — future-dated entries sorted ascending
-  const _todayStr = new Date().toISOString().slice(0,10);
+  const _todayStr = _localDateStr_();
   const _futureMatches = typeof ES_MATCHES!=='undefined'
     ? ES_MATCHES.filter(m=>m.date && m.date >= _todayStr).sort((a,b)=>a.date.localeCompare(b.date))
     : [];
@@ -13933,7 +14656,7 @@ function getPulseData(){
     Object.entries(SCR_COURSES).forEach(([code, c]) => {
       const comps = c.competencies || [];
       Object.keys(c.periods || {}).forEach(per => {
-        const stuList = (c.periods[per] || []).map(s => s.name);
+        const stuList = (c.periods[per] || []).map(s => _scrStudentKey(s));
         const perScores = ((_allScores[code] || {})[per]) || {};
         stuList.forEach(name => {
           comps.forEach(comp => {
@@ -14125,7 +14848,7 @@ function renderHorizons(){
     el.innerHTML=HORIZON[h].map(item=>`
       <div data-hid="${item.id}" style="display:flex;align-items:flex-start;gap:.42rem;margin-bottom:.3rem;transition:opacity .7s ease,transform .7s ease;${item.pinned?'background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 4px;margin-left:-4px;':''}">
         <div onclick="horizonToggle('${h}','${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();horizonToggle('${h}','${item.id}')}" role="checkbox" aria-checked="${item.done}" aria-label="${item.done?'Done — ':''}${(item.text||'').replace(/"/g,'&quot;')}" tabindex="0" style="width:17px;height:17px;border-radius:3px;border:2px solid ${m.border};background:${item.done?m.tick:'#fff'};flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:.66rem;color:#fff">${item.done?'✓':''}</div>
-        <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${item.id}')">${item.pinned?'📌 ':''}${item.text}</span>
+        <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${item.id}')">${item.pinned?'📌 ':''}${escH(item.text)}</span>
         <button onclick="horizonDelete('${h}','${item.id}')" aria-label="Delete this item" style="background:none;border:none;color:#d1d5db;font-size:.74rem;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px">✕</button>
       </div>`).join('');
   });
@@ -14821,7 +15544,7 @@ function isSchoolDay(d) {
   const dt = d || new Date();
   const dow = dt.getDay();
   if (dow === 0 || dow === 6) return false; // weekend
-  const iso = dt.toISOString().slice(0, 10);
+  const iso = _localDateStr_(dt);
   if (typeof CCPS_NO_SCHOOL !== 'undefined' && CCPS_NO_SCHOOL.has(iso)) return false;
   return true;
 }
@@ -14917,7 +15640,7 @@ function logPLCAttended() {
 function checkEsportsMatchToday() {
   const now   = new Date();
   if (!isSchoolDay(now)) return;                // skip on holidays + spring break
-  const today = now.toISOString().slice(0,10);
+  const today = _localDateStr_(now);
   const shown = LS.get('lh_esports_match_banner_date', '');
   if (shown === today) return;
   if (typeof ES_MATCHES === 'undefined') return;
@@ -15397,6 +16120,18 @@ function openSurveyModal(){
         <input type="file" id="lh-org-file" accept="application/json" style="display:none" onchange="lhImportOrgJson(this)">
       </div>
 
+      <!-- Say/Do Ledger leader-hub #10: permanent counterpart to the one-time
+           "Welcome, co-advisor" modal (_showOrgWelcomeModal) — discoverable
+           any time, not just on first join, matching the persistent-view
+           pattern already used elsewhere (cas-ccps #7's "My Info" view). -->
+      <details style="margin-bottom:1.4rem">
+        <summary style="cursor:pointer;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">ℹ️ About This Tool &amp; Syncing</summary>
+        <div style="margin-top:.6rem;font-size:.78rem;color:#333;line-height:1.6;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.8rem .95rem">
+          <p style="margin-bottom:.6rem"><strong>What this is:</strong> LeaderHub is a personal tool Adam Berneche built and maintains for his own workload — it isn't a district-provisioned or IT-supported product. There's no uptime guarantee and no support desk; if something breaks, it gets fixed on Adam's own time. If you're a co-advisor sharing an organization here, keep your own backup of anything you can't afford to lose (dues records, competition results) — this is a convenience layer, not a system of record.</p>
+          <p style="margin:0"><strong>How syncing works:</strong> Nothing syncs automatically. ⬆️ Push sends your copy to the shared Sheet; ⬇️ Pull brings in what's on the Sheet — both always ask you to confirm first. If a push tells you someone else updated it since you last synced, or a pull tells you that you have local changes that haven't been pushed yet, that's this app catching a real conflict before it happens, not a bug — pick pull-first or push-anyway; it's never resolved silently behind your back.</p>
+        </div>
+      </details>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Course Catalog</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         The Student Competency Records tracker ships with Adam's own 3 courses built in. Add your own — with their competency list or Standards of Learning — as a JSON file instead of editing the app. <a href="#" onclick="lhDownloadCourseTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
@@ -15447,6 +16182,17 @@ function openSurveyModal(){
         <button onclick="lhClearStudentIdMap()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;color:#dc2626;cursor:pointer">Clear</button>
       </div>
 
+      <!-- Say/Do Ledger cross-portfolio Flow Health &amp; Inventory extension:
+           every AI-drafting feature routes through the same Email Bridge
+           job queue (see callGAS('aiDraft',...) sites) but has no visible
+           signal today for "is any Flow actually built for this yet" —
+           see renderAiFlowHealthSettings() below. -->
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">AI Flow Health</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Every AI-drafting feature (Brag Board, Email Composer, Lesson Plan assist, Financial analysis, Archive/WBL insights) submits a job through your Email Bridge, but only actually produces AI output once you've built the matching Google Workspace Flow for it (see LEADERHUB_AI_FLOW_SETUP.md) — until then it falls back to a template, silently. This shows which types have ever actually completed a job.
+      </div>
+      <div id="ai-flow-health-list" style="margin-bottom:1.4rem"></div>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Quick Links</div>
       <div style="display:flex;gap:.6rem;justify-content:center">
         <button onclick="document.getElementById('survey-modal').remove();openJournal()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:600;cursor:pointer">📓 Open Journal</button>
@@ -15459,6 +16205,7 @@ function openSurveyModal(){
   renderOrgCatalogSettings();
   renderPacingImportSettings();
   _renderStudentIdStatus();
+  renderAiFlowHealthSettings();
   m.onclick=e=>{ if(e.target===m) m.remove(); };
 }
 
@@ -16165,7 +16912,7 @@ function renderOrgCatalogSettings() {
     const sync = ORG_SYNC[id];
     const syncRow = (sync && sync.enabled)
       ? `<div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;flex-wrap:wrap;padding-left:1.75rem">
-           <span style="font-size:.68rem;color:#166534;font-weight:600">🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.lastSyncedAt).toLocaleString()) : ''}</span>
+           <span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
            <button onclick="lhPullOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
            <button onclick="lhPushOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
            <button onclick="lhStopSharingOrg('${id}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
@@ -16217,6 +16964,28 @@ function _orgResultRows(orgId) {
     if (f === 'level') return (orgId === 'deca' ? r.eventId : r.levelKey) || '';
     return (r[f] === undefined || r[f] === null) ? '' : r[f];
   }));
+}
+
+// ── Sync safety helper (Say/Do Ledger leader-hub #1) ─────────────────────────
+// One shared, deterministic snapshot of an org's current local roster+results
+// — the same rows a push would send. Both push (to record "this is what I
+// just synced") and pull (to detect "has this browser changed anything since
+// the last time it synced?") call this, so there's exactly one definition of
+// "in sync" instead of two separately-maintained ideas of it.
+function _orgSyncSnapshot_(orgId) {
+  const payload = JSON.stringify({ r: _orgRosterRows(orgId), o: _orgResultRows(orgId) });
+  let h = 0;
+  for (let i = 0; i < payload.length; i++) { h = ((h << 5) - h + payload.charCodeAt(i)) | 0; }
+  return String(h);
+}
+
+// One shared "last synced" line, used everywhere a co-advisor is actually
+// looking at a shared org's data — not just Settings → Organizations, which
+// used to be the only place this was visible at all.
+function _orgSyncStatusLine_(orgId) {
+  const sync = ORG_SYNC[orgId];
+  if (!sync || !sync.enabled) return '';
+  return `🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.lastSyncedAt).toLocaleString()) : ''}`;
 }
 
 function lhShareOrg(orgId) {
@@ -16271,10 +17040,34 @@ async function lhPushOrgSync(orgId) {
   }
   if (res && res.conflict) { _showOrgSyncConflictModal(orgId, res); return; }
   if (!res || !res.ok) { _showToast('⚠ Push failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
-  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '' };
+  // localSnapshotHash records what THIS browser's local data looked like at
+  // the moment it was last confirmed to match the shared Sheet — pull uses
+  // it afterward to detect local edits made since, before ever overwriting
+  // them (see _doPullOrgSync).
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
   persistOrgSync();
   renderOrgCatalogSettings();
+  if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+  if (document.getElementById('member-tab-content')) renderStudents();
   _showToast('✅ ' + org.name + ' pushed to the shared Sheet', 3200, '#166534');
+}
+
+// lhPullOrgSync() is the confirming, user-facing entry point (the "⬇️ Pull"
+// button in Settings → Organizations) — it always asks first, mirroring
+// lhJoinOrg()'s existing confirm pattern (Say/Do Ledger leader-hub #1: this
+// button used to skip confirmation entirely, unlike Join). Call sites that
+// already got explicit, in-context confirmation from their own dialog
+// (lhJoinOrg's own confirm, the conflict modal's "Pull Latest First" button)
+// call _doPullOrgSync() directly instead, so nobody confirms the same pull
+// twice.
+function lhPullOrgSync(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  const orgName = org ? org.name : orgId;
+  _showConfirm(
+    `Pull the latest ${orgName} data from the shared Sheet?\n\nThis replaces this browser's local roster and results for ${orgName} with what's on the Sheet.`,
+    () => _doPullOrgSync(orgId),
+    { confirmLabel: 'Pull', danger: false, ariaLabel: `Pull organization ${orgName}` }
+  );
 }
 
 // Pulls an org's current synced state and replaces this browser's local
@@ -16283,20 +17076,47 @@ async function lhPushOrgSync(orgId) {
 // local — that's the point of sharing a custom org — but DECA's own
 // hardcoded config is never touched, matching the guarantee the rest of
 // this app makes about Adam's built-in DECA experience.
-async function lhPullOrgSync(orgId) {
+//
+// Before any of that, checks this browser's current local data against the
+// snapshot hash recorded the last time this org was synced (push OR pull) —
+// mirroring pushOrgSync_'s own compare-and-swap on the server, just against
+// a local baseline instead of a remote timestamp (Say/Do Ledger leader-hub
+// #1: pull used to have no equivalent check at all, so a browser with real
+// unpushed local edits would silently lose them to any pull).
+// Returns true on a completed pull, false/undefined on every early-return
+// path (bridge not configured, drift detected, network failure, server
+// error, nothing shared yet, empty roster guard) — lhJoinOrg uses this to
+// know whether to show the one-time welcome disclosure (Say/Do Ledger
+// leader-hub #10), since that should only ever follow a real, completed
+// first sync, never a failed attempt.
+async function _doPullOrgSync(orgId) {
   if (!EMAIL_BRIDGE.url()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
-    return;
+    return false;
+  }
+  const priorState = ORG_SYNC[orgId];
+  if (priorState && priorState.localSnapshotHash !== undefined && priorState.localSnapshotHash !== _orgSyncSnapshot_(orgId)) {
+    _showOrgPullDriftModal(orgId);
+    return false;
   }
   let res;
   try {
     res = await callGAS('pullOrgSync', { orgId });
   } catch (e) {
     _showToast('⚠ Could not reach Apps Script bridge.', 4000, '#991b1b');
-    return;
+    return false;
   }
-  if (!res || !res.ok) { _showToast('⚠ Pull failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
-  if (!res.found) { _showToast('This organization has never been shared yet.', 3500, '#991b1b'); return; }
+  if (!res || !res.ok) { _showToast('⚠ Pull failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return false; }
+  if (!res.found) { _showToast('This organization has never been shared yet.', 3500, '#991b1b'); return false; }
+  // FIXED: the roster wipe below used to run unconditionally, even if
+  // the remote pull came back with zero rows — a transient Sheet-read
+  // glitch, or a co-advisor who'd just cleared the tab by mistake, would
+  // silently erase this organization's entire local roster with no
+  // confirmation and no undo. Bail out before the wipe instead.
+  if (!res.rosterRows || !res.rosterRows.length) {
+    _showToast('⚠ Pull returned no roster rows — keeping your existing roster rather than clearing it.', 5500, '#991b1b');
+    return false;
+  }
 
   if (orgId !== 'deca' && res.config) {
     const cfg = Object.assign({}, res.config, { id: orgId, custom: true });
@@ -16330,7 +17150,12 @@ async function lhPullOrgSync(orgId) {
     persistOrgResults();
   }
 
-  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '' };
+  // localSnapshotHash is computed here, AFTER the pulled data has just been
+  // written into `students`/results above — it must reflect what this
+  // browser's data looks like right now (which now matches the remote),
+  // not the pre-pull state, so a later pull's drift check compares against
+  // the right baseline.
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
   persistOrgSync();
 
   renderOrgTabs();
@@ -16339,6 +17164,7 @@ async function lhPullOrgSync(orgId) {
   if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
   renderOrgCatalogSettings();
   _showToast('✅ Pulled latest ' + (ORGANIZATIONS[orgId] ? ORGANIZATIONS[orgId].name : orgId) + ' data', 3200, '#166534');
+  return true;
 }
 
 // Shown when pushOrgSync_ rejects a push with {conflict:true} — someone
@@ -16369,7 +17195,10 @@ function _showOrgSyncConflictModal(orgId, res) {
   modal._onCancel = closeIt;
   modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
   document.getElementById('org-conflict-cancel').onclick = closeIt;
-  document.getElementById('org-conflict-pull').onclick = () => { closeIt(); lhPullOrgSync(orgId); };
+  // Goes straight to _doPullOrgSync, not lhPullOrgSync — the user already
+  // made an explicit, informed choice by clicking this button; a second
+  // "are you sure?" confirm right after would just be an extra click.
+  document.getElementById('org-conflict-pull').onclick = () => { closeIt(); _doPullOrgSync(orgId); };
   document.getElementById('org-conflict-push').onclick = () => {
     closeIt();
     // Re-push with expectedUpdatedAt cleared to the *server's* reported
@@ -16382,6 +17211,80 @@ function _showOrgSyncConflictModal(orgId, res) {
     lhPushOrgSync(orgId);
   };
   document.getElementById('org-conflict-pull').focus();
+}
+
+// Shown when _doPullOrgSync's own local-vs-last-synced-snapshot check finds
+// this browser has edits (new members, results, dues changes) that were
+// never pushed — pulling would silently throw them away otherwise. Mirrors
+// _showOrgSyncConflictModal's shape (never a silent auto-resolution either
+// way), just for the opposite direction of the same underlying risk.
+function _showOrgPullDriftModal(orgId) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-pull-drift-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="Unsynced local changes for ${escH(org.name)}">
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">⚠️ This browser has local changes to <strong>${escH(org.name)}</strong> that haven't been pushed to the shared Sheet yet. Pulling now would discard them.</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <button class="btn btn-primary btn-sm" id="org-drift-push">⬆️ Push My Changes First</button>
+      <button class="btn btn-danger btn-sm" id="org-drift-discard">⬇️ Discard Local Changes & Pull</button>
+      <button class="btn btn-outline btn-sm" id="org-drift-cancel">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-drift-cancel').onclick = closeIt;
+  document.getElementById('org-drift-push').onclick = () => { closeIt(); lhPushOrgSync(orgId); };
+  document.getElementById('org-drift-discard').onclick = () => {
+    closeIt();
+    // The one deliberate override path — clear the stored hash so
+    // _doPullOrgSync's comparison can't fire again for this same pull, then
+    // proceed exactly as if there were no local edits to protect.
+    if (ORG_SYNC[orgId]) { ORG_SYNC[orgId] = Object.assign({}, ORG_SYNC[orgId], { localSnapshotHash: undefined }); persistOrgSync(); }
+    _doPullOrgSync(orgId);
+  };
+  document.getElementById('org-drift-cancel').focus();
+}
+
+// Say/Do Ledger leader-hub #10 — shown once per org, right after a co-advisor's
+// first successful join (see lhJoinOrg's doPull). Covers what this tool
+// actually is, the practical reliability implication of that, and — folded in
+// per the decision's own sequencing note, now that #1 has shipped — the real
+// sync-safety behavior a co-advisor will actually see going forward. The same
+// content lives permanently in Settings → Organizations (see the "About This
+// Tool & Syncing" block in renderOrgCatalogSettings' surrounding markup) so
+// it's not just a one-time modal a co-advisor can never find again.
+function _showOrgWelcomeModal(orgId) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-welcome-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:460px;width:92%;max-height:85vh;overflow-y:auto;border-radius:12px;padding:1.25rem" role="dialog" aria-modal="true" aria-label="Welcome, co-advisor">
+    <h3 style="margin:0 0 .6rem;font-size:1.05rem">👋 Welcome, co-advisor</h3>
+    <div style="font-size:.82rem;color:#333;line-height:1.6">
+      <p style="margin-bottom:.7rem">You just joined <strong>${escH(org.name)}</strong>. A couple of things worth knowing before you use this alongside your co-advisor:</p>
+      <p style="margin-bottom:.7rem"><strong>What this is:</strong> LeaderHub is a personal tool Adam Berneche built and maintains for his own workload — it isn't a district-provisioned or IT-supported product. There's no uptime guarantee and no support desk; if something breaks, it gets fixed on Adam's own time. Keep your own backup of anything you can't afford to lose (dues records, competition results) — this is a convenience layer, not a system of record.</p>
+      <p style="margin-bottom:.7rem"><strong>How syncing works:</strong> Nothing syncs automatically. <strong>⬆️ Push</strong> sends your copy to the shared Sheet; <strong>⬇️ Pull</strong> brings in your co-advisor's copy — both always ask you to confirm first. If a push says someone else updated it since you last synced, or a pull says you have local changes that haven't been pushed yet, that's this app catching a real conflict before it happens — pick pull-first or push-anyway, it's never resolved silently behind your back.</p>
+      <p style="margin:0;color:var(--muted);font-size:.76rem">This same explanation lives permanently under Settings → Organizations, so you can find it again any time.</p>
+    </div>
+    <div style="margin-top:1rem;text-align:right">
+      <button class="btn btn-primary btn-sm" id="org-welcome-close">Got it</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-welcome-close').onclick = closeIt;
+  document.getElementById('org-welcome-close').focus();
 }
 
 async function lhOpenJoinOrgModal() {
@@ -16420,14 +17323,33 @@ async function lhOpenJoinOrgModal() {
     const whenStr = o.updatedAt ? new Date(o.updatedAt).toLocaleString() : 'unknown';
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem">
       <span style="flex:1"><strong>${escH(o.orgName)}</strong><br><span style="font-size:.7rem;color:var(--muted)">Last updated ${escH(whenStr)}${o.updatedBy ? ' by ' + escH(o.updatedBy) : ''}</span></span>
-      <button onclick="lhJoinOrg('${o.orgId}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">${btnLabel}</button>
+      <button onclick="lhJoinOrg('${String(o.orgId||'').trim().toLowerCase().replace(/[^a-z0-9_-]/g,'')}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">${btnLabel}</button>
     </div>`;
   }).join('');
 }
 
 function lhJoinOrg(orgId) {
   const existing = ORGANIZATIONS[orgId];
-  const doPull = () => { const m = document.getElementById('org-join-modal'); if (m) m.remove(); lhPullOrgSync(orgId); };
+  // Calls _doPullOrgSync directly, not lhPullOrgSync — this function's own
+  // _showConfirm below (or the immediate doPull() for a brand-new org) is
+  // already the confirmation step; a second one right after would just be
+  // a redundant extra click. The drift check inside _doPullOrgSync still
+  // applies either way.
+  const doPull = () => {
+    const m = document.getElementById('org-join-modal'); if (m) m.remove();
+    // Say/Do Ledger leader-hub #10: a one-time "Welcome, co-advisor"
+    // disclosure the first time a join actually completes for this org —
+    // gated on the pull's real success (not just on clicking Join) and on
+    // ORG_WELCOME_SEEN so it never shows twice for the same org, even across
+    // a stop-sharing/rejoin cycle.
+    _doPullOrgSync(orgId).then(ok => {
+      if (ok && !ORG_WELCOME_SEEN[orgId]) {
+        ORG_WELCOME_SEEN[orgId] = true;
+        persistOrgWelcomeSeen();
+        _showOrgWelcomeModal(orgId);
+      }
+    });
+  };
   if (existing) {
     _showConfirm(
       `Pull the latest shared data for ${existing.name}? This replaces its roster and results in this browser with what's on the shared Sheet.`,
@@ -16478,9 +17400,38 @@ function lhImportBackup(fileInput){
     // a jarring break from the app's own toast/modal vocabulary, right in
     // the middle of a genuinely destructive action worth getting right.
     _showImportConfirmModal(keys.length, () => {
-      keys.forEach(k => localStorage.setItem(k, data[k]));
-      _showToast('✅ Import complete — reloading…');
-      setTimeout(() => location.reload(), 900);
+      // FIXED: this used to be one bare `keys.forEach(k =>
+      // localStorage.setItem(...))` with no try/catch at all — a single
+      // key throwing (quota exceeded partway through, a malformed value)
+      // aborted the whole loop silently, leaving some keys imported and
+      // others not, yet the toast below still unconditionally said
+      // "Import complete" and reloaded anyway. A partial, silently
+      // corrupted import looked identical to a clean one. Now each key
+      // gets its own try/catch so one failure can't abort the rest, and
+      // the completion message (and whether to reload at all) depends on
+      // whether anything actually failed.
+      const failedKeys = [];
+      keys.forEach(k => {
+        try { localStorage.setItem(k, data[k]); }
+        catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
+      });
+
+      if (failedKeys.length === 0) {
+        _showToast('✅ Import complete — reloading…');
+        setTimeout(() => location.reload(), 900);
+      } else {
+        // A long duration rather than the usual ~3-4s default — this
+        // message is longer and more consequential than a normal toast,
+        // and critically, this branch does NOT reload. Reloading now
+        // would make this half-imported state look identical to a clean
+        // success, the exact failure mode this fix closes.
+        _showToast(
+          `⚠ Import partially failed — ${keys.length - failedKeys.length} of ${keys.length} key(s) imported, ` +
+          `${failedKeys.length} failed (likely storage full). Not reloading — export a backup and free up ` +
+          `storage before trying again.`,
+          15000, '#991b1b'
+        );
+      }
     });
   };
   reader.readAsText(file);
@@ -16667,6 +17618,70 @@ function _renderStudentIdStatus() {
   el.style.color = '#166534';
 }
 
+// ── AI Flow Health panel (Say/Do Ledger cross-portfolio Flow Health &amp;
+// Inventory extension) — Settings → AI Flow Health. Same "make correctness
+// the only easy path" instinct as #6/#7/#8's shared UI primitives: one
+// shared three-state read of the server's lifetime per-type counters
+// (getFlowHealth_(), EmailBridge.gs), rather than each of this file's 6 AI-
+// drafting features independently guessing whether its own Flow is built.
+// Mirrors kos-personal's own Turnstile/Registrar "healthy vs never-
+// completed-a-job vs no-jobs-yet" convention (8_WebApp_UI.html) adapted to
+// this system's actual signal: AI_Queue rows are always deleted (no
+// durable row history), so "healthy" here means the LIFETIME counter has
+// ever recorded a completed or errored job for that type — either counts,
+// since even an error proves a Flow is actually running and responding.
+const AI_FLOW_LABELS = {
+  EMAIL_COMPOSE:    '✉️ Email Composer',
+  ARCHIVE_INSIGHTS: '📦 Archive Insights',
+  WBL_INSIGHTS:     '🏪 WBL Insights',
+  LP_ASSIST:        '📝 Lesson Plan Assist',
+  FIN_ANALYSIS:     '💰 Financial Analysis',
+  BRAG_EMAIL:       '🎉 Brag Board Email',
+};
+
+async function renderAiFlowHealthSettings() {
+  const el = document.getElementById('ai-flow-health-list');
+  if (!el) return;
+
+  if (!EMAIL_BRIDGE.url()) {
+    el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Connect an Email Bridge URL (above) to see Flow status here.</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Checking…</div>`;
+
+  let res;
+  try {
+    res = await callGAS('flowHealth', {});
+  } catch (e) {
+    el.innerHTML = `<div style="font-size:.75rem;color:#991b1b">Couldn't reach Email Bridge — ${escH(e.message || String(e))}</div>`;
+    return;
+  }
+  if (!res || !res.ok) {
+    el.innerHTML = `<div style="font-size:.75rem;color:#991b1b">${escH((res && res.error) || 'Unknown error')}</div>`;
+    return;
+  }
+
+  const types = res.types && res.types.length ? res.types : Object.keys(AI_FLOW_LABELS);
+  el.innerHTML = types.map(type => {
+    const s = (res.stats && res.stats[type]) || { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0 };
+    const label = AI_FLOW_LABELS[type] || type;
+    let icon, color, text;
+    if (!s.submitted) {
+      icon = '⚪'; color = 'var(--muted)'; text = 'No jobs submitted yet';
+    } else if (s.completed || s.errored) {
+      icon = '✅'; color = '#166534';
+      text = s.completed + ' completed' + (s.errored ? ', ' + s.errored + ' errored' : '') + ' — Flow is connected';
+    } else {
+      icon = '⚠️'; color = '#b45309';
+      text = s.submitted + ' submitted, none ever finished — Flow may not be built yet';
+    }
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.78rem">
+      <span>${escH(label)}</span>
+      <span style="color:${color};text-align:right">${escH(text)}</span>
+    </div>`;
+  }).join('');
+}
+
 // Forward substitution — applied to a COPY of the Brag Board wins text used
 // only for the network payload sent to Gemini; the local draft shown in the
 // UI and the eventual Gmail draft always keep real names (see
@@ -16682,6 +17697,25 @@ function _substituteNamesForIds(text) {
     if (!name) return;
     const re = new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
     out = out.replace(re, `${id}@${PROFILE.emailDomain}`);
+  });
+  return out;
+}
+
+// Runs _substituteNamesForIds over every named free-text field of a
+// callGAS('aiDraft', ...) payload before it leaves the browser, in one
+// place — so a future call site can't independently forget a field the
+// way sbeNotes did for months while its sibling field, attentionDetails,
+// already had this exact protection (Say/Do Ledger leader-hub finding
+// #12). Callers declare which keys are free text; string values are
+// substituted directly, array values are substituted per-item — anything
+// else (numbers, trip facts, structural strings like a course/quarter
+// label) is left untouched.
+function _privacySafeAiPayload(payload, freeTextKeys) {
+  const out = { ...payload };
+  (freeTextKeys || []).forEach(key => {
+    const v = out[key];
+    if (Array.isArray(v)) out[key] = v.map(_substituteNamesForIds);
+    else if (typeof v === 'string') out[key] = _substituteNamesForIds(v);
   });
   return out;
 }
@@ -16928,7 +17962,11 @@ function saveObsLog() {
 
   const history = LS.get('lh_obs_history', []);
   history.unshift({ id:'obs'+Date.now(), date, type, observer, period, outcome, notes, followup, loggedAt: new Date().toISOString() });
-  LS.set('lh_obs_history', history);
+  // FIXED: this was the one persisted log with no cap — every sibling
+  // log (lh_daily_log, lh_wbl_hours_log, lh_journal_history, ...) is
+  // capped in the same style. Matches lh_wbl_hours_log's precedent
+  // (irregular, per-event entries with no fixed calendar cadence).
+  LS.set('lh_obs_history', history.slice(0, 200));
 
   closeObsLog();
   renderObsChecklist();
@@ -17061,6 +18099,415 @@ const EMAIL_BRIDGE = {
     }
   },
 };
+
+// ══════════════════════════════════════════════════════════════════════════════
+// cas-ccps CONNECTION (D1 — shared-core merge, Say/Do Ledger, Addendum 24)
+// ══════════════════════════════════════════════════════════════════════════════
+// A live client of a connected cas-ccps Teacher Dashboard's pacing-guide/
+// competency-registry data, replacing the frozen local CAS_PACING_UNITS copy
+// (below) once a teacher configures this in Settings. Deliberately a
+// SEPARATE bridge from EMAIL_BRIDGE above, not a second action on the same
+// one — cas-ccps's Teacher Dashboard is a different Apps Script project
+// than a teacher's own EmailBridge.gs, needs its own URL, and (unlike
+// EmailBridge, which has zero identity check of its own) requires a real
+// Google Identity Services sign-in per session, since cas-ccps verifies a
+// caller's ID token server-side rather than trusting bare possession of a
+// URL — see cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md for why.
+//
+// The ID token itself is deliberately kept in memory only (never
+// localStorage) — it's short-lived (about an hour) and sensitive; losing it
+// on page reload just means signing in again, which GIS makes a one-click
+// affair once a Google session already exists in this browser.
+const CAS_CCPS_BRIDGE = {
+  apiUrl()   { return LS.get('lh_cas_ccps_api_url', null); },
+  clientId() { return LS.get('lh_cas_ccps_oauth_client_id', null); },
+
+  _idToken: null,
+  _idTokenExp: 0, // unix seconds
+
+  // A cheap, client-side check only — real verification always happens
+  // server-side on cas-ccps (UrlFetchApp against Google's tokeninfo
+  // endpoint). This is purely "do we need to re-prompt sign-in before
+  // bothering to make a request," not a security boundary.
+  hasValidToken() {
+    return !!this._idToken && (Date.now() / 1000) < (this._idTokenExp - 30);
+  },
+
+  // Renders a real "Sign in with Google" button into the given element ID
+  // — GIS handles the actual OAuth/OIDC flow; _handleCasCcpsCredential
+  // below is the callback once a user completes it.
+  renderSignInButton(elId) {
+    const clientId = this.clientId();
+    if (!clientId || typeof google === 'undefined' || !google.accounts) return false;
+    google.accounts.id.initialize({
+      client_id: clientId,
+      callback: _handleCasCcpsCredential,
+    });
+    const el = document.getElementById(elId);
+    if (el) {
+      el.innerHTML = '';
+      google.accounts.id.renderButton(el, { theme: 'outline', size: 'medium', text: 'signin_with' });
+    }
+    return true;
+  },
+};
+
+// GIS callback — response.credential is the raw ID token JWT. Decoded here
+// purely to cache its expiry client-side (see hasValidToken() above); this
+// decode is NOT how the token is trusted — cas-ccps's own doPost() always
+// re-verifies it for real via a server-side call to Google's tokeninfo
+// endpoint before returning any data.
+function _handleCasCcpsCredential(response) {
+  try {
+    const payload = JSON.parse(
+      atob(response.credential.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))
+    );
+    CAS_CCPS_BRIDGE._idToken    = response.credential;
+    CAS_CCPS_BRIDGE._idTokenExp = payload.exp || 0;
+    _showToast('✅ Signed in to cas-ccps as ' + (payload.email || 'unknown'));
+    if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
+  } catch (e) {
+    console.warn('[CasCcpsBridge] Could not decode credential:', e.message);
+  }
+}
+
+/**
+ * POSTs to the connected cas-ccps Teacher Dashboard's leader-hub API,
+ * mirroring callGAS()'s text/plain-body convention (same reason: avoids a
+ * CORS preflight Apps Script can't answer). Always includes the current
+ * ID token — cas-ccps's doPost() rejects the request entirely without a
+ * valid one; there is no unauthenticated action on that side.
+ */
+async function callCasCcps(action, payload) {
+  const url = CAS_CCPS_BRIDGE.apiUrl();
+  if (!url) throw new Error('NO_CAS_CCPS_URL');
+  if (!CAS_CCPS_BRIDGE.hasValidToken()) throw new Error('NOT_SIGNED_IN');
+  const resp = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ idToken: CAS_CCPS_BRIDGE._idToken, action, ...payload }),
+  });
+  if (!resp.ok) throw new Error('cas-ccps HTTP ' + resp.status);
+  return resp.json();
+}
+
+function setCasCcpsConnection(apiUrl, clientId) {
+  if (!apiUrl || !apiUrl.startsWith('https://script.google.com/')) {
+    _showToast('Invalid URL — must start with https://script.google.com/', 3000, '#991b1b');
+    return;
+  }
+  if (!clientId) {
+    _showToast('OAuth Client ID is required.', 3000, '#991b1b');
+    return;
+  }
+  LS.set('lh_cas_ccps_api_url', apiUrl.trim());
+  LS.set('lh_cas_ccps_oauth_client_id', clientId.trim());
+  if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
+  CAS_CCPS_BRIDGE.renderSignInButton('cas-ccps-signin-btn');
+  _showToast('✅ Connection saved — sign in below to finish connecting.');
+}
+
+// Enables the modal's Save button only once both fields have something in
+// them — mirrors setEmailBridgeUrl's own oninput-driven enable pattern
+// (bridge-url-input/bridge-url-save), applied to a two-field form instead
+// of one.
+function _casCcpsInputCheck_() {
+  const url = document.getElementById('casccps-url-input');
+  const cid = document.getElementById('casccps-clientid-input');
+  const btn = document.getElementById('casccps-save');
+  if (btn) btn.disabled = !(url && url.value.trim() && cid && cid.value.trim());
+}
+
+// Populates the modal with whatever's already saved (URL/Client ID inputs,
+// the "already connected" info line, the sign-in button if a Client ID is
+// on file) every time the modal opens — mirrors openEmailBridgeModal_().
+function openCasCcpsModal_() {
+  const url  = CAS_CCPS_BRIDGE.apiUrl();
+  const cid  = CAS_CCPS_BRIDGE.clientId();
+  const uInp = document.getElementById('casccps-url-input');
+  const cInp = document.getElementById('casccps-clientid-input');
+  const info = document.getElementById('casccps-current-info');
+  if (uInp) uInp.value = url || '';
+  if (cInp) cInp.value = cid || '';
+  _casCcpsInputCheck_();
+  if (info) {
+    info.textContent = url ? 'Connected to: ' + url : '';
+    info.style.display = url ? 'block' : 'none';
+  }
+  if (cid) CAS_CCPS_BRIDGE.renderSignInButton('cas-ccps-signin-btn');
+  _updateCasCcpsStatus_();
+}
+
+// Updates both the sidebar nav badge (#cas-ccps-status, mirroring
+// updateEmailBridgeBadge_()) and, when the modal is open, its own
+// sync-status line — one function does both, called from every place the
+// connection/sign-in/sync state can change.
+function _updateCasCcpsStatus_() {
+  const badge = document.getElementById('cas-ccps-status');
+  const url = CAS_CCPS_BRIDGE.apiUrl();
+  const signedIn = CAS_CCPS_BRIDGE.hasValidToken();
+  if (badge) {
+    badge.textContent = !url ? '⚠️ Off' : (signedIn ? '✅ Signed in' : '⚠️ Not signed in');
+    badge.style.color = !url ? '#b45309' : (signedIn ? '#16a34a' : '#b45309');
+  }
+  const line = document.getElementById('casccps-sync-status');
+  if (line) {
+    if (!url) {
+      line.textContent = 'Not connected yet.';
+    } else if (!signedIn) {
+      line.textContent = '⚠️ Connected, but not signed in — use the button above.';
+    } else {
+      const syncedAt = LS.get('lh_cas_ccps_pacing_synced_at', null);
+      line.textContent = syncedAt
+        ? '✅ Signed in · pacing guide last refreshed ' + new Date(syncedAt).toLocaleString()
+        : '✅ Signed in · pacing guide not refreshed yet this session';
+    }
+  }
+}
+
+function _removeCasCcpsConnection() {
+  _showConfirm('Remove cas-ccps connection?', () => {
+    LS.set('lh_cas_ccps_api_url', null);
+    LS.set('lh_cas_ccps_oauth_client_id', null);
+    CAS_CCPS_BRIDGE._idToken = null;
+    CAS_CCPS_BRIDGE._idTokenExp = 0;
+    const btn = document.getElementById('cas-ccps-signin-btn');
+    if (btn) btn.innerHTML = '';
+    if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
+    _showToast('cas-ccps connection removed.');
+    closeModal('casccps');
+  }, { confirmLabel: 'Remove', ariaLabel: 'Remove cas-ccps connection' });
+}
+
+/**
+ * Fetches the full pacing guide from a connected cas-ccps Teacher Dashboard
+ * and replaces the local CAS_PACING_UNITS fallback with it, transformed
+ * into that array's existing shape so renderPacingCalendar() and
+ * getPacingUnitCompetencies() need no changes at all. A deliberate,
+ * button-triggered action — nothing here fetches automatically, same
+ * "always a deliberate click" convention as Organization Sync's push/pull.
+ */
+async function refreshCasCcpsPacingGuide() {
+  if (!CAS_CCPS_BRIDGE.apiUrl()) {
+    _showToast('⚙️ Connect to cas-ccps first — Settings → Connect to cas-ccps', 4000, '#991b1b');
+    return;
+  }
+  if (!CAS_CCPS_BRIDGE.hasValidToken()) {
+    _showToast('Sign in to cas-ccps first (Settings → Connect to cas-ccps).', 4000, '#991b1b');
+    return;
+  }
+  try {
+    const res = await callCasCcps('getPacingGuide', {});
+    if (!res || !res.success) {
+      _showToast('⚠ ' + ((res && res.message) || 'Could not fetch pacing guide.'), 4000, '#991b1b');
+      return;
+    }
+    const units = (res.units || []).map(_transformCasCcpsPacingUnit_);
+    CAS_PACING_UNITS = units;
+    LS.set('lh_cas_ccps_live_pacing_units', units);
+    LS.set('lh_cas_ccps_pacing_synced_at', new Date().toISOString());
+    if (typeof renderPacingCalendar === 'function') renderPacingCalendar();
+    if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
+    _showToast('✅ Pacing guide refreshed — ' + units.length + ' unit(s) from cas-ccps.');
+  } catch (e) {
+    _showToast('⚠ Refresh failed: ' + e.message, 4000, '#991b1b');
+  }
+}
+
+// cas-ccps's live unit shape (31_PacingGuideManager.js) -> the shape
+// CAS_PACING_UNITS/renderPacingCalendar()/getPacingUnitCompetencies()
+// already expect (originally hand-transformed once from a JSON export —
+// see CAS_PACING_UNITS's own header comment). "weeks" has no live-data
+// equivalent (cas-ccps tracks real dates, not a week-range label) — left
+// blank rather than guessed; it's cosmetic display text only.
+function _transformCasCcpsPacingUnit_(u) {
+  const parseIds = s => String(s || '').split(',').map(x => parseInt(x.trim(), 10)).filter(n => !isNaN(n));
+  return {
+    id: u.lesson_unit_id,
+    stage: u.stage,
+    stageName: u.stage_name,
+    name: u.lesson_unit_name,
+    startDate: u.approx_start,
+    endDate: u.approx_end,
+    weeks: '',
+    overlapType: u.overlap_type,
+    courses: {
+      '8175': { objective: u.objective_8175, compIds: parseIds(u.competency_ids_8175) },
+      '8177': { objective: u.objective_8177, compIds: parseIds(u.competency_ids_8177) },
+    },
+  };
+}
+
+// ── SCR roster/email sync (Say/Do Ledger, Addendum 26 — "one source of
+// truth for both systems") ───────────────────────────────────────────────
+// Pulls this teacher's real student roster (name+email+period) from
+// cas-ccps and links it onto leader-hub's own SCR_COURSES roster by name —
+// the only key that exists on both sides today. Scoped to the two courses
+// cas-ccps actually tracks (CAS_PACING_COURSES: 8175/8177); '6115' has no
+// cas-ccps counterpart and is left entirely alone. A deliberate,
+// button-triggered action — same "always a deliberate click" convention as
+// refreshCasCcpsPacingGuide() and Org Sync's push/pull.
+async function syncCasCcpsRoster() {
+  if (!CAS_CCPS_BRIDGE.apiUrl()) {
+    _showToast('⚙️ Connect to cas-ccps first — Settings → Connect to cas-ccps', 4000, '#991b1b');
+    return;
+  }
+  if (!CAS_CCPS_BRIDGE.hasValidToken()) {
+    _showToast('Sign in to cas-ccps first (Settings → Connect to cas-ccps).', 4000, '#991b1b');
+    return;
+  }
+  try {
+    const res = await callCasCcps('getRoster', {});
+    if (!res || !res.success) {
+      _showToast('⚠ ' + ((res && res.message) || 'Could not fetch roster.'), 4000, '#991b1b');
+      return;
+    }
+    const report = _reconcileCasCcpsRoster_(res.students || []);
+    persistScrStudentEmails();
+    persistSCR();
+    if (document.getElementById('scr-content')) renderCompetencyView();
+    if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
+    _showCasCcpsRosterReport_(report);
+  } catch (e) {
+    _showToast('⚠ Roster sync failed: ' + e.message, 4000, '#991b1b');
+  }
+}
+
+function _normalizeStudentName_(name) {
+  return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// cas-ccps's Period field is free text (Form 1's own help text is literally
+// "e.g. 3") — a bare number, not leader-hub's "3rd Odd"/"3rd Even" format.
+// Extracting the leading digit sequence from either side gives a rough,
+// same-vocabulary comparison usable only as a disambiguation signal, never
+// a primary key — see _reconcileCasCcpsRoster_'s own comment on why.
+function _periodNumber_(periodStr) {
+  const m = String(periodStr || '').match(/(\d+)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Matches cas-ccps's flat, per-teacher roster (no period bucketing of its
+ * own — Ledger has no equivalent to leader-hub's period-keyed rosters, see
+ * cas-ccps's own _getRosterForEmail_ comment) against every still-unmatched
+ * student already hand-placed into a period roster for the two eligible
+ * courses. Name-matched only (no better key exists on either side); when
+ * more than one same-named candidate is found, cas-ccps's own `period`
+ * value is used only to try to narrow to exactly one — if it doesn't
+ * resolve the tie, the pair is left for manual review, never guessed.
+ *
+ * Idempotent by construction: a student who already carries `.email` is
+ * excluded from the matching pool entirely (their cas-ccps row is counted
+ * as "already synced" and skipped), so re-running this after a successful
+ * match never re-matches by name a second time and can't attach a
+ * conflicting email.
+ */
+function _reconcileCasCcpsRoster_(casStudents) {
+  const report = { matchedNow: [], alreadySynced: 0, ambiguous: [], casUnmatched: [], leaderHubUnmatched: [] };
+
+  const alreadyMatchedEmails = new Set();
+  const unmatchedPool = []; // { code, period, stu }
+  for (const code of CAS_PACING_COURSES) {
+    const course = SCR_COURSES[code];
+    if (!course) continue;
+    for (const [period, list] of Object.entries(course.periods || {})) {
+      for (const stu of list) {
+        if (stu.email) alreadyMatchedEmails.add(stu.email.toLowerCase());
+        else unmatchedPool.push({ code, period, stu });
+      }
+    }
+  }
+
+  for (const casRow of casStudents) {
+    const casEmail = String(casRow.email || '').trim();
+    if (!casEmail) continue;
+    if (alreadyMatchedEmails.has(casEmail.toLowerCase())) { report.alreadySynced++; continue; }
+
+    const normCasName = _normalizeStudentName_(casRow.name);
+    const candidates = unmatchedPool.filter(e => _normalizeStudentName_(e.stu.name) === normCasName);
+
+    if (!candidates.length) { report.casUnmatched.push(casRow); continue; }
+
+    let winner = candidates.length === 1 ? candidates[0] : null;
+    if (!winner) {
+      const casPeriodNum = _periodNumber_(casRow.period);
+      const narrowed = casPeriodNum ? candidates.filter(e => _periodNumber_(e.period) === casPeriodNum) : [];
+      if (narrowed.length === 1) winner = narrowed[0];
+    }
+    if (!winner) {
+      report.ambiguous.push({ name: casRow.name, entries: candidates.map(e => ({ code: e.code, period: e.period })) });
+      continue;
+    }
+
+    winner.stu.email = casEmail;
+    SCR_STUDENT_EMAILS[winner.code] = SCR_STUDENT_EMAILS[winner.code] || {};
+    SCR_STUDENT_EMAILS[winner.code][winner.period] = SCR_STUDENT_EMAILS[winner.code][winner.period] || {};
+    SCR_STUDENT_EMAILS[winner.code][winner.period][winner.stu.name] = casEmail;
+    _rekeyScrScoresForMatch_(winner.code, winner.period, winner.stu.name, casEmail);
+    report.matchedNow.push({ code: winner.code, period: winner.period, name: winner.stu.name, email: casEmail });
+    unmatchedPool.splice(unmatchedPool.indexOf(winner), 1);
+  }
+
+  for (const { code, period, stu } of unmatchedPool) {
+    report.leaderHubUnmatched.push({ code, period, name: stu.name });
+  }
+
+  return report;
+}
+
+// The non-destructive migration itself: renames a scrScores bucket key from
+// a student's old name to their newly-linked email. Never deletes — merges
+// defensively if both keys somehow already exist (favoring the email-keyed
+// side's own values on conflict, since that's the side being kept going
+// forward), and only removes the old key after a successful copy.
+function _rekeyScrScoresForMatch_(course, period, oldName, newKey) {
+  const bucket = scrScores[course] && scrScores[course][period];
+  if (!bucket || oldName === newKey || !bucket[oldName]) return;
+  bucket[newKey] = bucket[newKey] ? Object.assign({}, bucket[oldName], bucket[newKey]) : bucket[oldName];
+  delete bucket[oldName];
+}
+
+// One-shot reconciliation report — mirrors openAISCRInsights()'s own ad-hoc
+// full-screen-overlay modal convention (not a persistent .mo-registered
+// modal, since this is a dismissible report, not a reopenable dialog).
+function _showCasCcpsRosterReport_(report) {
+  const needsReview = report.ambiguous.length + report.casUnmatched.length + report.leaderHubUnmatched.length;
+
+  const section = (title, caption, rows) => rows.length ? `
+    <div style="margin-top:.85rem">
+      <div style="font-size:.75rem;font-weight:700;margin-bottom:.2rem">${title} (${rows.length})</div>
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">${caption}</div>
+      <div style="max-height:160px;overflow:auto;border:1px solid var(--border);border-radius:6px">
+        ${rows.map(r => `<div style="padding:.3rem .5rem;font-size:.75rem;border-bottom:1px solid var(--border-soft)">${r}</div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:560px;width:95%;border-radius:12px;padding:1.5rem;max-height:85vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-weight:800">✅ Roster sync complete</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:.8rem;color:var(--ink)">
+      ${report.matchedNow.length} newly matched · ${report.alreadySynced} already synced${needsReview ? ` · ${needsReview} need review` : ''}
+    </div>
+    ${section('cas-ccps has these students, but no leader-hub period roster entry matched',
+      'Add them to a period roster by hand, then sync again — leader-hub has no way to know which period they belong in.',
+      report.casUnmatched.map(r => `${escH(r.name)} — ${escH(r.email)}`))}
+    ${section("leader-hub has these students, but cas-ccps's roster has no match",
+      'Stays name-keyed — nothing is lost, just not yet linked to an email.',
+      report.leaderHubUnmatched.map(r => `${escH(SCR_COURSES[r.code] ? SCR_COURSES[r.code].name : r.code)} · ${escH(r.period)} · ${escH(r.name)}`))}
+    ${section('Ambiguous — more than one student shares this name',
+      'Not matched automatically. Resolve by renaming one, or hand-verify, then re-sync.',
+      report.ambiguous.map(r => `${escH(r.name)} — ${r.entries.map(e => escH((SCR_COURSES[e.code] ? SCR_COURSES[e.code].name : e.code) + ' · ' + e.period)).join(', ')}`))}
+    <div style="margin-top:1rem;text-align:right">
+      <button class="btn btn-primary" onclick="this.closest('[style*=fixed]').remove()">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
 
 function emailBridgeToast_(h, d) {
   const old = document.getElementById('eb-toast'); if (old) old.remove();
@@ -17222,7 +18669,9 @@ function getCourseOddEven(course) {
 // other field name as-is) and replace the array below — see
 // leader-hub/README.md's "Weekly Schedule" section for the exact field
 // mapping.
-const CAS_PACING_UNITS = 
+// `let`, not `const` — refreshCasCcpsPacingGuide() (D1/Addendum 24) reassigns
+// this wholesale once a live cas-ccps connection is configured and signed in.
+let CAS_PACING_UNITS =
 [
   {
     "id": "S0-U1",
@@ -18660,6 +20109,17 @@ const CAS_PACING_UNITS =
 ]
 ;
 
+// If a live cas-ccps connection already fetched a pacing guide in a prior
+// session, use that cached copy instead of the hardcoded array above — kept
+// fresh only by an explicit "Refresh pacing guide" click (see
+// refreshCasCcpsPacingGuide(), D1/Addendum 24), never auto-fetched on load.
+{
+  const _casCachedUnits = LS.get('lh_cas_ccps_live_pacing_units', null);
+  if (Array.isArray(_casCachedUnits) && _casCachedUnits.length) {
+    CAS_PACING_UNITS = _casCachedUnits;
+  }
+}
+
 // Only 8175/8177 have real CAS pacing data today — this list is the single
 // place that decides which courses use it vs. the legacy LESSON_PLANS path.
 const CAS_PACING_COURSES = new Set(['8175', '8177']);
@@ -19333,15 +20793,7 @@ function lhPrintLessonUnitTemplate(unitId, course) {
     ? comps.map(c => `#${c.num} — ${escH(c.text)}`).join('<br>')
     : '';
 
-  const win = window.open('', '_blank', 'width=750,height=900');
-  win.document.write(`<!DOCTYPE html><html><head><title>${escH(title)} — Lesson Plan Template</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700&display=swap" rel="stylesheet">
-  <style>
-    body{font-family:'DM Sans',sans-serif;font-size:13px;padding:2rem;max-width:700px;margin:0 auto;color:#111;}
-    h1{font-size:1.3rem;margin:0 0 .2rem}
-    .meta{font-size:.8rem;color:#555;margin-bottom:1.2rem}
-    @media print{body{padding:.5rem;}}
-  </style></head><body>
+  const bodyHtml = `
   <h1>${escH(title)}</h1>
   <div class="meta">${unit ? `${unit.stageName?escH(unit.stageName)+' · ':''}${LP_C_LABELS[course]||course||''} · Weeks ${escH(unit.weeks)} · ${escH(unit.startDate)} – ${escH(unit.endDate)}` : 'CCPS / VDOE-format lesson plan template'}</div>
   ${field('Objective', cdata.objective)}
@@ -19353,10 +20805,14 @@ function lhPrintLessonUnitTemplate(unitId, course) {
   ${field('Instructional Sequence / Procedure', '', 6)}
   ${field('Assessment / Evidence of Learning', notes.assessment, 2)}
   ${field('Differentiation', notes.differentiation, 2)}
-  ${field('Notes', notes.notes, 2)}
-  <script>window.onload=()=>{window.print();}<\/script>
-</body></html>`);
-  win.document.close();
+  ${field('Notes', notes.notes, 2)}`;
+
+  _openPrintWindow(
+    `${escH(title)} — Lesson Plan Template`,
+    `body{font-family:'DM Sans',sans-serif;font-size:13px;padding:2rem;max-width:700px;margin:0 auto;color:#111;}h1{font-size:1.3rem;margin:0 0 .2rem}.meta{font-size:.8rem;color:#555;margin-bottom:1.2rem}@media print{body{padding:.5rem;}}`,
+    bodyHtml,
+    'width=750,height=900'
+  );
 }
 
 // ── FERPA boot check ──────────────────────────────────────────────────────
@@ -19407,6 +20863,16 @@ EMAIL_BRIDGE.poll();
 setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
 // Initialize badge state
 setTimeout(updateEmailBridgeBadge_, 500);
+// cas-ccps connection badge (D1/Addendum 24) — also renders the sign-in
+// button if the page reloaded with a Client ID already on file, so a
+// still-valid Google session can silently re-issue a token via GIS without
+// the teacher needing to reopen the modal.
+setTimeout(() => {
+  if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
+  if (typeof CAS_CCPS_BRIDGE !== 'undefined' && CAS_CCPS_BRIDGE.clientId()) {
+    CAS_CCPS_BRIDGE.renderSignInButton('cas-ccps-signin-btn');
+  }
+}, 500);
 // Sync SCR tab highlight with restored active course
 (function() {
   document.querySelectorAll('.scr-tab').forEach(b => b.classList.remove('active'));
@@ -19901,15 +21367,27 @@ function gatherBragData() {
   } catch(e) {}
 
   // ── Journal moments this week (proud / kindness witnessed / kindness given) ──
-  const journalWins = (LS.get('lh_journal_history', []) || [])
+  // FIXED: journal reflections used to be pulled unconditionally into every
+  // audience's draft (Students, Parents, Central Administration, Faculty
+  // alike) with no way to exclude a specific vulnerable entry — see Say/Do
+  // Ledger leader-hub finding #11. Each entry now requires an explicit
+  // opt-in, remembered per entry (keyed by the journal entry's own stable
+  // id + question, e.g. "j173..._q4") so a reflection isn't re-decided
+  // every time the board is re-gathered within the same week. Candidates
+  // are still all shown in the left panel (with a checkbox) so nothing is
+  // silently hidden from review — only journalWins (the included subset)
+  // ever reaches _bragData and the actual generated draft.
+  const journalIncludes = LS.get('lh_brag_journal_includes', {});
+  const journalCandidates = (LS.get('lh_journal_history', []) || [])
     .filter(e => inRange(e.savedAt))
     .flatMap(e => {
       const items = [];
-      if ((e.q4 || '').trim()) items.push({ text: (e.q4||'').trim(), kind: '🏅' });
-      if ((e.q5 || '').trim()) items.push({ text: (e.q5||'').trim(), kind: '👀' });
-      if ((e.q6 || '').trim()) items.push({ text: (e.q6||'').trim(), kind: '🤝' });
+      if ((e.q4 || '').trim()) items.push({ id: e.id + '_q4', text: (e.q4||'').trim(), kind: '🏅' });
+      if ((e.q5 || '').trim()) items.push({ id: e.id + '_q5', text: (e.q5||'').trim(), kind: '👀' });
+      if ((e.q6 || '').trim()) items.push({ id: e.id + '_q6', text: (e.q6||'').trim(), kind: '🤝' });
       return items;
     });
+  const journalWins = journalCandidates.filter(w => journalIncludes[w.id] === true);
 
   // ── Manually added wins ("something we might have missed") ──────────────────
   const manualWins = (LS.get('lh_brag_manual_wins', []) || [])
@@ -19962,7 +21440,24 @@ function gatherBragData() {
   renderList('brag-section-scr',   'brag-list-scr',   scrWins,         i => `📊 ${i.text}`);
   renderList('brag-section-wbl',     'brag-list-wbl',     wblWins,         i => `⏱ ${i.text}`);
   renderList('brag-section-esports', 'brag-list-esports', esMatchWins,     i => `🎮 ${i.text}`);
-  renderList('brag-section-journal', 'brag-list-journal', journalWins,     i => `${i.kind} ${i.text}`);
+
+  // Journal moments get an opt-in checkbox instead of the shared renderList
+  // helper — every candidate for the week is shown (nothing hidden from
+  // review), but only checked ones count toward totalWins/join _bragData.
+  const journalSec = document.getElementById('brag-section-journal');
+  const journalLst = document.getElementById('brag-list-journal');
+  if (!journalCandidates.length) {
+    journalSec.style.display = 'none';
+  } else {
+    journalSec.style.display = 'block';
+    journalLst.innerHTML = journalCandidates.map(w => {
+      const included = journalIncludes[w.id] === true;
+      return `<div style="font-size:.72rem;background:${included?'#fff':'#f9fafb'};border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start">
+        <input type="checkbox" ${included?'checked':''} onchange="toggleBragJournalInclude('${w.id}',this.checked)" style="margin-top:.15rem;flex-shrink:0" aria-label="Include this reflection in the Brag Board draft">
+        <span style="${included?'':'color:var(--muted)'}">${w.kind} ${w.text}</span>
+      </div>`;
+    }).join('');
+  }
 
   // Manual wins get delete buttons — rendered separately from the shared renderList helper
   const manualSec = document.getElementById('brag-section-manual');
@@ -19998,6 +21493,17 @@ function gatherBragData() {
 }
 
 
+
+// Toggles one journal reflection's include-in-Brag-Board decision. Keyed by
+// the journal entry's own stable id + question (see gatherBragData()'s
+// journalCandidates) so the decision survives a re-gather within the same
+// week instead of resetting to the opt-in default every time.
+function toggleBragJournalInclude(id, included) {
+  const map = LS.get('lh_brag_journal_includes', {});
+  if (included) map[id] = true; else delete map[id];
+  LS.set('lh_brag_journal_includes', map);
+  gatherBragData();
+}
 
 function addBragManualWin() {
   const inp = document.getElementById('brag-manual-input');
@@ -20111,12 +21617,12 @@ function showBragBoardPromptBanner() {
 
 <!-- ══ EMAIL BRIDGE MODAL ══════════════════════════════════════════════════ -->
 <div id="modal-emailbridge" class="mo" onclick="if(event.target===this)closeModal('emailbridge')">
-  <div class="modal-box" style="max-width:520px">
-    <div class="modal-header">
-      <span>📧 Email Bridge Setup</span>
-      <button class="modal-close" onclick="closeModal('emailbridge')" aria-label="Close">✕</button>
+  <div class="mbox" style="max-width:520px">
+    <div class="mhdr">
+      <div class="mtitle">📧 Email Bridge Setup</div>
+      <button class="mclose" onclick="closeModal('emailbridge')" aria-label="Close">✕</button>
     </div>
-    <div style="padding:1.2rem 1.4rem;display:flex;flex-direction:column;gap:1rem">
+    <div class="mbody" style="display:flex;flex-direction:column;gap:1rem">
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.85rem;font-size:.8rem;color:#14532d;line-height:1.6">
         <strong>⭐ Star any email in Gmail</strong> — it appears on your dashboard within 5 minutes. No API key. No labeling. One tap on mobile or desktop.
@@ -20170,6 +21676,82 @@ function showBragBoardPromptBanner() {
   </div>
 </div>
 
+<!-- ══ CAS-CCPS CONNECTION MODAL (D1 — shared-core merge, Addendum 24) ════════ -->
+<div id="modal-casccps" class="mo" onclick="if(event.target===this)closeModal('casccps')">
+  <div class="mbox" style="max-width:520px">
+    <div class="mhdr">
+      <div class="mtitle">🔗 Connect to cas-ccps</div>
+      <button class="mclose" onclick="closeModal('casccps')" aria-label="Close">✕</button>
+    </div>
+    <div class="mbody" style="display:flex;flex-direction:column;gap:1rem">
+
+      <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.85rem;font-size:.8rem;color:#14532d;line-height:1.6">
+        <strong>⭐ Live pacing guide &amp; competency data</strong> — once connected and signed in, "Refresh pacing guide" pulls the real, current guide straight from your cas-ccps Teacher Dashboard instead of the frozen copy built into this page. "Sync Student Roster" links your SCR grading grid's students (for 8175/8177) to their real cas-ccps email — closing the student-email mismatch between the two systems, so cas-ccps stays the one source of truth for who's who. Nothing syncs automatically — you choose when to refresh or sync.
+      </div>
+
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">cas-ccps API URL</label>
+        <input id="casccps-url-input" type="url" placeholder="https://script.google.com/macros/s/..."
+          style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
+          oninput="_casCcpsInputCheck_()">
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">The <strong>second</strong> deployment URL from LEADERHUB_CONNECTION_SETUP.md — not the same URL you open the Teacher Dashboard from day-to-day.</div>
+      </div>
+
+      <div>
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">OAuth Client ID</label>
+        <input id="casccps-clientid-input" type="text" placeholder="123456789-abc...apps.googleusercontent.com"
+          style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
+          oninput="_casCcpsInputCheck_()">
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">Same value on file for every teacher — ask whoever set up the district's cas-ccps deployment if you don't have it.</div>
+      </div>
+
+      <div style="display:flex;gap:.6rem;flex-wrap:wrap">
+        <button id="casccps-save" class="btn btn-primary" disabled
+          onclick="setCasCcpsConnection(document.getElementById('casccps-url-input').value, document.getElementById('casccps-clientid-input').value)">
+          ✅ Save Connection
+        </button>
+        <button class="btn btn-outline" style="color:#dc2626;border-color:#dc2626;margin-left:auto"
+          onclick="_removeCasCcpsConnection()">
+          Remove
+        </button>
+      </div>
+
+      <div id="casccps-current-info" style="font-size:.72rem;color:var(--muted);word-break:break-all;display:none"></div>
+
+      <div id="cas-ccps-signin-btn" style="min-height:2.5rem"></div>
+
+      <div id="casccps-sync-status" style="font-size:.78rem;color:var(--ink)"></div>
+
+      <button class="btn btn-outline" onclick="refreshCasCcpsPacingGuide()">
+        🔄 Refresh Pacing Guide Now
+      </button>
+
+      <button class="btn btn-outline" onclick="syncCasCcpsRoster()">
+        🔗 Sync Student Roster Now
+      </button>
+      <div style="font-size:.7rem;color:var(--muted)">Links your SCR grading grid's students (8175/8177 only — 6115 has no cas-ccps counterpart) to their real cas-ccps email, by name. Reconciles both ways when a name doesn't match — nothing is added, removed, or renamed automatically.</div>
+
+      <hr style="border:none;border-top:1px solid var(--border)">
+
+      <div style="font-size:.78rem;color:var(--ink);line-height:1.7">
+        <strong style="display:block;margin-bottom:.3rem">One-time setup (ask your cas-ccps admin):</strong>
+        <ol style="margin:0;padding-left:1.2rem">
+          <li>cas-ccps registers one OAuth Client ID for leader-hub (district-wide, done once)</li>
+          <li>Your Teacher Dashboard gets a second, machine-readable deployment URL</li>
+          <li>Paste both values above, click Save, then sign in with your Google account</li>
+        </ol>
+        <div style="margin-top:.5rem;padding:.45rem .65rem;background:#fefce8;border:1px solid #fde68a;border-radius:6px">
+          Your sign-in is verified <strong>server-side by cas-ccps itself</strong> against Google's own identity service — it only ever accepts data back once it confirms you're signed in as the exact teacher that dashboard is configured for.
+        </div>
+        <div style="margin-top:.5rem;padding:.45rem .65rem;background:#f0f4ff;border:1px solid #bfdbfe;border-radius:6px">
+          Full guide: <strong>cas-ccps/docs/LEADERHUB_CONNECTION_SETUP.md</strong>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
 <!-- ══ SUB PLAN MODAL ════════════════════════════════════════════════════════ -->
 <div id="modal-subplan" class="mo" onclick="if(event.target===this)closeModal('subplan')">
   <div class="mbox" style="max-width:920px;width:96vw;max-height:96vh;display:flex;flex-direction:column">
@@ -20182,7 +21764,7 @@ function showBragBoardPromptBanner() {
       </div>
       <div style="display:flex;gap:.5rem;align-items:center">
         <button class="btn btn-gold btn-sm" onclick="generateSubPlan()" id="subplan-gen-btn">✨ Generate Plan</button>
-        <button class="btn btn-outline btn-sm" onclick="closeModal('subplan')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕</button>
+        <button class="btn btn-outline btn-sm" onclick="closeModal('subplan')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
       </div>
     </div>
 

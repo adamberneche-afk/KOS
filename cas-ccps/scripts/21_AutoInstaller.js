@@ -44,7 +44,7 @@
 //   RUBRIC_SHEET        — Master Rubric Response Sheet (Scripts 00,05,19)
 //   MATRIX_SHEET        — Master Teacher Matrix Sheet (Scripts 00,08,19)
 //   STUDENT_TEMPLATE    — Master Student Template Doc (Scripts 00,01,09,17)
-//   TEACHER_DASHBOARD   — Standalone web app (Scripts 00,07)
+//   TEACHER_DASHBOARD   — Standalone web app (Scripts 00,07,22,23,26,29,31)
 //   STUDENT_DASHBOARD   — Standalone web app (Scripts 00,13)
 // =============================================================================
 
@@ -235,7 +235,7 @@ function runInstallation_(props) {
   const teacherDashResult = deployWebApp_("TEACHER_DASHBOARD", {
     name:       "Assignment System — Teacher Dashboard",
     files:      registry["TEACHER_DASHBOARD"] || [],
-    properties: buildDashboardProps_(assetIds),
+    properties: buildTeacherDashboardProps_(assetIds),
     executeAs:  "USER_DEPLOYING",   // Me
     access:     "DOMAIN"            // Anyone in organization
   });
@@ -243,9 +243,14 @@ function runInstallation_(props) {
   const studentDashResult = deployWebApp_("STUDENT_DASHBOARD", {
     name:       "Assignment System — Student Dashboard",
     files:      registry["STUDENT_DASHBOARD"] || [],
-    properties: buildDashboardProps_(assetIds),
+    properties: buildStudentDashboardProps_(assetIds),
     executeAs:  "USER_ACCESSING",   // User accessing the web app
-    access:     "ANYONE_ANONYMOUS"  // Anyone with Google account
+    // ANYONE means "anyone with a Google account" (sign-in required) — this
+    // was previously ANYONE_ANONYMOUS, which actually means no sign-in at
+    // all, on a FERPA-scoped student platform. Matches the checked-in
+    // clasp/manifests/student-dashboard.appsscript.json, which has always
+    // had this right; only this generated-deployment path was wrong.
+    access:     "ANYONE"
   });
 
   projectResults.push(teacherDashResult);
@@ -471,7 +476,7 @@ function deployWebApp_(targetKey, config) {
       {
         name:   "appsscript",
         type:   "JSON",
-        source: buildWebAppManifest_(config.executeAs, config.access)
+        source: buildWebAppManifest_(targetKey, config.executeAs, config.access)
       },
       ...config.files.map(f => ({
         name:   f.name,
@@ -655,16 +660,45 @@ function buildManifest_(triggers) {
 }
 
 // ---------------------------------------------------------------------------
+// WEB_APP_SCOPES — per-project-target OAuth scope lists.
+// FIXED: buildWebAppManifest_() used to hardcode one 2-scope list for every
+// web app it deployed. That happened to match STUDENT_DASHBOARD, but
+// TEACHER_DASHBOARD's real files (07, 22, 23, 26, 29, 31 — see
+// tools/gas-lint/project-map.json) call DriveApp/DocumentApp/ScriptApp and
+// need 5 scopes — already correctly listed in the checked-in
+// cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json, which an
+// AutoInstaller-driven deploy was silently under-scoping relative to.
+// Keep these two lists in sync with their checked-in manifest counterparts;
+// there's no way for this in-Apps-Script code to read the repo's manifest
+// files at runtime, so this table has to be maintained by hand until a
+// gas-lint check exists to catch drift between the two (see the
+// checkUndefinedFunctionCalls-style tooling work in the same commit series).
+// ---------------------------------------------------------------------------
+const WEB_APP_SCOPES = {
+  TEACHER_DASHBOARD: [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+    "https://www.googleapis.com/auth/documents",
+    "https://www.googleapis.com/auth/script.scriptapp",
+    "https://www.googleapis.com/auth/userinfo.email"
+  ],
+  STUDENT_DASHBOARD: [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/userinfo.email"
+  ]
+};
+
+// ---------------------------------------------------------------------------
 // buildWebAppManifest_ — generates appsscript.json for web app deployments
 // ---------------------------------------------------------------------------
-function buildWebAppManifest_(executeAs, access) {
+function buildWebAppManifest_(targetKey, executeAs, access) {
   return JSON.stringify({
     timeZone: Session.getScriptTimeZone(),
     webapp: {
       executeAs: executeAs,
       access:    access
     },
-    oauthScopes: [
+    oauthScopes: WEB_APP_SCOPES[targetKey] || [
       "https://www.googleapis.com/auth/spreadsheets",
       "https://www.googleapis.com/auth/userinfo.email"
     ],
@@ -728,7 +762,27 @@ function buildStudentTemplateProps_(ids) {
   };
 }
 
-function buildDashboardProps_(ids) {
+// The Teacher Dashboard is deployed once per teacher (see
+// ADMIN_DEPLOYMENT_WALKTHROUGH.html Step 10) — every server function on
+// it gates on TEACHER_EMAIL matching the signed-in caller
+// (_isAuthorizedTeacher_ in 07_TeacherDashboard.js), so an unset property
+// here means the installer's dashboard denies everyone, not "works for
+// anyone." This automated installer path only ever deploys ONE dashboard,
+// scoped to whoever ran it (ids.adminNotifyEmail) — additional teachers
+// must be deployed manually per Step 10, same as the Admin Manual itself.
+function buildTeacherDashboardProps_(ids) {
+  return {
+    CENTRAL_LEDGER_SS_ID: ids.ledgerSsId,
+    ADMIN_SS_ID:          ids.ledgerSsId,
+    TEACHER_EMAIL:        ids.adminNotifyEmail || ""
+    // TEACHER_NAME intentionally left unset here — it's cosmetic (only
+    // used to attribute logged lessons), not a security boundary, and
+    // this installer doesn't collect a display name. Set it manually in
+    // Script Properties if desired.
+  };
+}
+
+function buildStudentDashboardProps_(ids) {
   return {
     CENTRAL_LEDGER_SS_ID: ids.ledgerSsId,
     ADMIN_SS_ID:          ids.ledgerSsId

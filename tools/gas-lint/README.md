@@ -18,6 +18,15 @@ node tools/gas-lint/check.js --json     # machine-readable
 Exit code is `1` if any error-level finding exists, `0` otherwise
 (warnings don't fail the run). No dependencies — plain Node.
 
+## CI
+
+`.github/workflows/gas-lint.yml` runs this (plus
+`tools/clasp-sync/sync.js`, which now also refuses to build a project
+with an unmerged addendum — see that tool's README) on every push and
+pull request. Previously this was purely a "run before trusting any
+change" README instruction with nothing enforcing it — that gap is
+closed now.
+
 ## What it checks
 
 1. **Duplicate top-level declarations within a shared Apps Script

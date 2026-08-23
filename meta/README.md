@@ -22,6 +22,14 @@ why this repo exists at all.
   and from `kos-personal/rtp-core-router/protocols/` (same file, filed in
   both places) since its methodology applies across systems, not just to
   kos-personal's own governance.
+- **`FLOW_INVENTORY.md`** — a single reference listing every "Flow"
+  dependency (a human-built Google Workspace Studio/Flow or Gemini Gem
+  conversation this repo's own code hands off to and cannot see or
+  control) across all three systems, where to check whether each is
+  actually built, and the shared three-state signal semantics ("no jobs
+  yet" / "never completed a job" / "healthy") every system's own health
+  panel renders to. Say/Do Ledger cross-portfolio Flow Health & Inventory
+  extension.
 
 ## Why these are here and not under a system subtree
 

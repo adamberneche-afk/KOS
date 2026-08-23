@@ -239,13 +239,20 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
   ],
   <span class="jk">"extra_credit_count"</span>:     <span class="jv">1</span>,
   <span class="jk">"avg_engagement_score"</span>:   <span class="jv">2.5</span>,
-  <span class="jk">"last_updated"</span>:           <span class="js">"Fri Jan 13 2026 03:00:12 GMT-0500"</span>
+  <span class="jk">"last_updated"</span>:           <span class="js">"Fri Jan 13 2026 03:00:12 GMT-0500"</span>,
+  <span class="jc">// Say/Do Ledger cas-ccps Extension 1 (SCR-to-warmup bridge) — added after this example was last updated:</span>
+  <span class="jk">"scr_standing_note"</span>:      <span class="js">"Current SCR standing on today's competencies — 8175-47: 3/5 (teacher-confirmed); 8175-52: 4/5 (AI-suggested, not yet reviewed by the teacher)."</span>
 }
   </div>
 
   <div class="callout callout-teal">
     <span class="callout-icon">◈</span>
     <div class="callout-body"><strong>First name only in the prompt.</strong> Flow 3 addresses the student by first name in the warm-up doc header. The profile snapshot contains the full name — Flow 3 extracts the first word. This makes the doc feel personal without being surveillance-adjacent. The full name appears only in the doc filename, not in the prompt text itself.</div>
+  </div>
+
+  <div class="callout callout-amber">
+    <span class="callout-icon">◈</span>
+    <div class="callout-body"><strong>SCR standing note (Say/Do Ledger cas-ccps Extension 1) — added, not yet consumed.</strong> <code>scr_standing_note</code> is computed by <code>getStudentProfileSnapshot_()</code> in Script 23 from a new bridge function in Script 30 (<code>getStudentScrStandingForCompetencies_()</code>), scoped to today's resolved pacing unit's own competency IDs — a different signal from <code>competencies_addressed</code>/<code>competency_gaps</code> above, which come from teacher-checked Lesson Context entries. Null when the student has no SCR rating on record for any of today's competencies. Same "passed through, no prompt-template placeholder yet" status as <code>getWarmUpAnchor_()</code>'s own <code>chain_node</code>/<code>esports_connection</code> v2 fields (31_PacingGuideManager.js) — intended as a soft signal/tie-breaker in a future Mode A/B prompt update, not something Flow 3 currently reads.</div>
   </div>
 </div>
 

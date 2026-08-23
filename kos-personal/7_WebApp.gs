@@ -40,6 +40,8 @@
 //   Ingest tab:
 //     submitSessionLog(text)          → 2_Ingestion_Sensors.gs
 //     submitExternalData(text, title) → 2_Ingestion_Sensors.gs
+//     submitCogVerdict(councilId, cogName, status, summary)
+//                                      → 2_Ingestion_Sensors.gs
 //     getInboundFolderUrl()           → this file
 //
 //   Queue tab:
@@ -53,7 +55,8 @@
 //     completeOnboarding(payload)     → 5_Error_And_Utilities.gs
 //     sendDailyErrorReport()          → 5_Error_And_Utilities.gs
 //     archiveStagingPipeline()        → 5_Error_And_Utilities.gs
-//     triggerCouncilSimulation()      → 6_Governance.gs
+//     triggerCouncilSimulation()      → 6_Governance.gs (superseded — see its doc comment)
+//     triggerSevenBridgesReview()     → 6_Governance.gs
 //     generateDailyPrimer()           → 6_Governance.gs
 //     deployFullSystem()              → 1_Config_And_Deploy.gs
 // ================================================================
@@ -84,6 +87,11 @@ function doGet(e) {
   const indexId  = PropertiesService.getScriptProperties().getProperty('INDEX_ID');
   const template = HtmlService.createTemplateFromFile('8_WebApp_UI');
   template.mode  = indexId ? 'OPERATIONAL' : 'BOOTSTRAP';
+  // Cog Verdict form's cog-name datalist (Say/Do Ledger kos-personal
+  // finding #1) — sourced from CFG.PERSONAS, not duplicated as a separate
+  // hardcoded client-side list, so it can't drift the way the "seven"
+  // persona count already has once (see CFG.PERSONAS's own naming note).
+  template.personas = CFG.PERSONAS;
 
   return template.evaluate()
     .setTitle('KOS v8.0 — Active Brain Trust')

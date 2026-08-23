@@ -84,6 +84,11 @@ Paste the complete contents of each script file into column C.
 |---|---|
 | 00_SharedConfig | TEACHER_DASHBOARD |
 | 07_TeacherDashboard | TEACHER_DASHBOARD |
+| 22_LessonContextHandler | TEACHER_DASHBOARD |
+| 23_StudentProfileManager | TEACHER_DASHBOARD |
+| 26_CompetencyAlignmentLog | TEACHER_DASHBOARD |
+| 29_StudentContextAggregator | TEACHER_DASHBOARD |
+| 31_PacingGuideManager | TEACHER_DASHBOARD |
 
 ### STUDENT_DASHBOARD
 | FileName | ProjectTarget |

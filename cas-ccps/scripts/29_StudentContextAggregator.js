@@ -26,7 +26,22 @@
 //
 // =============================================================================
 
-const ID_PATTERN = /^\d{7}@ccpsnet\.net$/;
+// FIXED: the district email domain used to be hardcoded here as a regex
+// literal (`/^\d{7}@ccpsnet\.net$/`) and again as a string literal further
+// below (email normalization) — a domain change (district rebrand or
+// migration) would have silently dropped every student from this module,
+// with the only failure signal being an unread Logger.log line (see
+// docsSkippedInvalidId in runWeeklyStudentAggregation_ below). Both now
+// read cfg.studentEmailDomain (00_SharedConfig.js), defaulting to the
+// same "ccpsnet.net" value so behavior is unchanged unless a project
+// explicitly configures a different domain.
+function _studentEmailDomain_() {
+  return getConfig_().studentEmailDomain || "ccpsnet.net";
+}
+function _studentIdPattern_() {
+  const escapedDomain = _studentEmailDomain_().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp("^\\d{7}@" + escapedDomain + "$");
+}
 
 // StudentDocRegistry column indices (0-based) — canonical order
 const SDR_STUDENT_EMAIL = 0;
@@ -101,7 +116,7 @@ function runWeeklyStudentAggregation_() {
   let docsSkippedInvalidId = 0;
 
   for (const [email, name] of roster.entries()) {
-    if (!ID_PATTERN.test(email)) {
+    if (!_studentIdPattern_().test(email)) {
       // Defensive — buildValidatedStudentRoster_ already filters, but never
       // trust a single validation point when writing to permanent Docs.
       Logger.log("[S29] Skipping invalid student identifier at write stage: " + email);
@@ -176,7 +191,7 @@ function buildValidatedStudentRoster_(ledgerSheet) {
 
     if (!email) continue; // blank row, skip silently — not an error
 
-    if (!ID_PATTERN.test(email)) {
+    if (!_studentIdPattern_().test(email)) {
       if (!invalidSeen.has(email)) {
         Logger.log("[S29] Invalid GoogleID format, excluded from roster: '" + email +
           "' (expected 7 digits @ccpsnet.net)");
@@ -211,7 +226,7 @@ function getWeeklyAssignments_(ledgerSheet, windowStart) {
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const email = String(row[1] || "").trim();
-    if (!email || !ID_PATTERN.test(email)) continue;
+    if (!email || !_studentIdPattern_().test(email)) continue;
 
     const submissionTs = row[13]; // SubmissionTS
     const fallbackTs = row[0];    // Timestamp
@@ -260,10 +275,10 @@ function getWeeklyWarmUps_(warmUpSheet, windowStart) {
     // any Apps Script. Normalize to the full school address here, before
     // validation, rather than requiring the form to produce it.
     if (/^\d{7}$/.test(email)) {
-      email = email + "@ccpsnet.net";
+      email = email + "@" + _studentEmailDomain_();
     }
 
-    if (!email || !ID_PATTERN.test(email)) continue;
+    if (!email || !_studentIdPattern_().test(email)) continue;
     if (!(ts instanceof Date) || ts < windowStart) continue;
 
     const entry = {
@@ -464,15 +479,44 @@ function getStudentDocForViewer_(viewerEmail) {
 // configured teacher (Script 07 checks this before calling, same pattern
 // as every other teacher-only function in this codebase).
 // ---------------------------------------------------------------------------
-function getAllStudentDocsForTeacher_() {
+// FIXED (FERPA leak): this function used to return every row in
+// StudentDocRegistry with no teacher filter at all — any authorized
+// teacher saw every student in the district. StudentDocRegistry itself
+// has no teacher-identity column (it's a flat student->doc index), so
+// the per-teacher scoping has to come from a join against the Ledger
+// tab, which does carry a real-time TeacherEmail column (index 8,
+// populated at Form-1 intake — see 02_Form1_IntakeAndWorkspaceGenerator.js)
+// and is the same tab this file already treats as its roster source of
+// truth elsewhere (buildValidatedStudentRoster_ above). This mirrors
+// 23_StudentProfileManager.js's buildShadowMatrixSummary_(), which
+// filters the same way against its own teacher-scoped tab.
+function getAllStudentDocsForTeacher_(teacherEmail) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const registrySheet = ss.getSheetByName(cfg.tabs.studentDocRegistry);
   if (!registrySheet) return [];
 
+  const normalizedTeacherEmail = String(teacherEmail || "").trim().toLowerCase();
+  if (!normalizedTeacherEmail) return []; // no teacher identity — no roster
+
+  const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
+  const allowedStudentEmails = new Set();
+  if (ledgerSheet) {
+    const ledgerData = ledgerSheet.getDataRange().getValues();
+    for (let i = 1; i < ledgerData.length; i++) {
+      const rowStudentEmail = String(ledgerData[i][1] /* GoogleID */ || "").trim().toLowerCase();
+      const rowTeacherEmail = String(ledgerData[i][8] /* TeacherEmail */ || "").trim().toLowerCase();
+      if (rowStudentEmail && rowTeacherEmail === normalizedTeacherEmail) {
+        allowedStudentEmails.add(rowStudentEmail);
+      }
+    }
+  }
+
   const data = registrySheet.getDataRange().getValues();
   const results = [];
   for (let i = 1; i < data.length; i++) {
+    const rowEmail = String(data[i][SDR_STUDENT_EMAIL]).trim().toLowerCase();
+    if (!allowedStudentEmails.has(rowEmail)) continue; // not this teacher's student
     results.push({
       email: String(data[i][SDR_STUDENT_EMAIL]).trim(),
       name: String(data[i][SDR_STUDENT_NAME]).trim(),

@@ -37,5 +37,5 @@ material. Do not merge or cross-reference this content with
 | `Assumptions_Deep_Dive.md` / `_v2.md` | Working notes, two iterations |
 | `Economics_of_Depth_White_Paper.md` | Standalone write-up |
 | `DELETION_MANIFEST.md`, `Watch_List.md` | Candidate deletions and items flagged for review — **nothing has been deleted or acted on**; both files are proposals awaiting the user's own review, per this project's own stated principle that all changes be discussed first |
-| `Drive_Curriculum_Catalog*.xlsx` (6 versions), `Curriculum_Cross_Year_Index.xlsx` | Drive-wide curriculum inventory spreadsheets |
+| `Drive_Curriculum_Catalog*.xlsx` (6 versions), `Curriculum_Cross_Year_Index.xlsx` | Drive-wide curriculum inventory spreadsheets. A later cleanup pass checked whether these 6 versions were worth pruning to just the latest — file sizes grow monotonically (22K → 36K bytes across v1-v6), confirming real content growth over time rather than identical re-saves, so all 6 are kept as a genuine audit trail of the underlying Drive inventory's evolution, not accidental duplication |
 | `curriculum/Unit_1..9_*.md`, `Unit_Cross_Reference_Links.md` | The "Marketing Exploration" course content described above |

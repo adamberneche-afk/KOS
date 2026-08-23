@@ -125,12 +125,30 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
     // BUG-04 FIX: _getKnownVectors() merges CFG base + promoted
     const knownList = _getKnownVectors();
 
+    // FIXED: an explicit 0.0 score for a known theme used to be treated
+    // as "scored this session" by _writeMatrixRow, hard-resetting that
+    // theme's value instead of decaying it from history — the design
+    // _writeMatrixRow's own header describes ("Otherwise → apply
+    // DECAY_FACTOR to the previous row's score"). The model's own
+    // extraction-rule prompt defines 0.0 as meaning "not present" (see
+    // inference-service/src/inference.js's system prompt), and the
+    // output schema requires every base theme present on every
+    // response — so an explicit 0.0 for a known theme is the model's
+    // *only* way to say "not present," never a genuine near-zero score
+    // worth preserving as a hard value. Skip it here instead (don't add
+    // it to `known`) so _writeMatrixRow's existing
+    // `known[t] !== undefined` check naturally falls through to its
+    // decay branch, with no change needed to that function itself.
     Object.entries(raw).forEach(([t, v]) => {
       const score = parseFloat(v);
       if (isNaN(score) || score < 0) return;
       const upper = t.toUpperCase().trim();
-      if      (knownList.includes(upper))    known[upper]   = score;
-      else if (score >= CFG.INCUBATOR_THRESHOLD) unknown[upper] = score;
+      if (knownList.includes(upper)) {
+        if (score > 0) known[upper] = score;
+        // score === 0 for a known theme: treated as absent, decays instead.
+      } else if (score >= CFG.INCUBATOR_THRESHOLD) {
+        unknown[upper] = score;
+      }
     });
 
     // ── Write to sheets ─────────────────────────────────────────
@@ -860,6 +878,22 @@ function getVectorState() {
     const matrix = ss.getSheetByName(CFG.VECTOR_MATRIX_SHEET);
 
     if (!matrix || matrix.getLastRow() <= 1) {
+      // FIXED (Say/Do Ledger kos-personal finding #4): this message used
+      // to read identically whether the user genuinely hadn't submitted
+      // anything yet, or had submitted sessions that are sitting queued
+      // in STAGING_PIPELINE but can't be processed while the engine is
+      // cold — processInferenceQueue() is TIER_2 (_coldEngineGate(),
+      // 1_Config_And_Deploy.gs), hard-gated until Socratic Onboarding
+      // completes. Nothing already queued is lost; it's just deferred
+      // until setup finishes. Computed here (same two-property check
+      // getShadowMatrixStatus() already uses) so the web app doesn't need
+      // its own separate cold-detection logic for this panel.
+      const props   = PropertiesService.getScriptProperties();
+      const armed   = !!props.getProperty('IDENTITY_KEY') &&
+                       props.getProperty(CFG.PROP.THESIS_VERIFIED) === 'true';
+      const staging = ss.getSheetByName(CFG.STAGING_SHEET);
+      const hasQueuedSessions = !!staging && staging.getLastRow() > 1;
+
       return {
         success:    true,
         vectors:    _getKnownVectors().map(n => ({ name: n, score: 0 })),
@@ -867,7 +901,12 @@ function getVectorState() {
         promoted_themes: [],
         session_uid:  '',
         last_updated: '',
-        message:    'No sessions processed yet — scores initialised to 0.',
+        engine_armed: armed,
+        message: (!armed && hasQueuedSessions)
+          ? 'Sessions are queued but won’t be processed until you finish the one-time setup wizard — nothing is lost.'
+          : (!armed
+            ? 'No sessions processed yet. Calibration starts once you finish the one-time setup wizard.'
+            : 'No sessions processed yet — scores initialised to 0.'),
       };
     }
 
