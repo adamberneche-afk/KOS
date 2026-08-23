@@ -54,6 +54,19 @@ function getConfig_() {
     // so behavior is unchanged unless a project sets STUDENT_EMAIL_DOMAIN.
     studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || "ccpsnet.net",
 
+    // ── leader-hub OAuth connection (D1 — shared-core merge, Addendum 24) ──
+    // The Google OAuth Client ID leader-hub's "Sign In With Google" button
+    // is registered under. Same real value across every teacher's Teacher
+    // Dashboard deployment (leader-hub is one app, not one per teacher) —
+    // still a per-deployment Script Property, not hardcoded here, since
+    // this shared config file has no reliable single place to hardcode a
+    // real value into and 00_SharedConfig.js's own stated purpose is
+    // reading everything from Script Properties. Set once per teacher
+    // deployment during setup; see docs/LEADERHUB_CONNECTION_SETUP.md.
+    // Empty means the leader-hub JSON API (doPost) fails closed — no
+    // token can ever verify against an empty expected audience.
+    leaderHubOauthClientId: p.LEADER_HUB_OAUTH_CLIENT_ID || "",
+
     // ── Teacher identity (written by the setup wizard, 16_UnifiedManualSetup.js, during teacher registration) ──
     teacherName:          p.TEACHER_NAME             || "",
     teacherEmail:         p.TEACHER_EMAIL            || "",
