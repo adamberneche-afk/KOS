@@ -7,10 +7,25 @@ name: CodeQL
 # own. Nothing here existed before this workflow — this repo had zero
 # automated security scanning of its ~57,000 lines of JS across
 # kos-personal/, cas-ccps/, leader-hub/, and tools/.
+# NOT YET on push/pull_request, unlike a normal CodeQL setup - the real
+# first run here got past both the scan itself (63/63 JS files extracted
+# fine) and the `actions: read` permission this file's own history
+# already fixed once, then failed a second, different way on the SARIF
+# upload step: "Code scanning is not enabled for this repository. Please
+# enable code scanning in the repository settings." That's a repository
+# Settings toggle (Settings -> Code security and analysis -> Code
+# scanning; on a private repo this may also require GitHub Advanced
+# Security to be enabled first), not a workflow bug - no commit to this
+# file can fix it, and leaving push/pull_request wired up in the meantime
+# would put a permanently-red, unfixable-by-code check on every future
+# PR. Same "don't add a check that fails for reasons no commit can
+# address" reasoning doctor.yml already documents for itself.
+#
+# Once Code scanning is confirmed enabled (run this workflow once via
+# workflow_dispatch and confirm the Actions tab shows success, not this
+# same error), restore `push`/`pull_request` here so it actually gates
+# PRs going forward.
 on:
-  push:
-    branches: ['main']
-  pull_request:
   schedule:
     # Weekly, independent of any push — catches a newly-disclosed advisory
     # in an existing pattern even on a week nobody touches this repo.
