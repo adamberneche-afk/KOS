@@ -99,7 +99,15 @@ function checkFile(filePath) {
 
   let ok = true;
   blocks.forEach((content, i) => {
-    const tmpFile = path.join(os.tmpdir(), `html-lint-${path.basename(filePath)}-${i}-${process.pid}.js`);
+    // A predictable path under the shared os.tmpdir() (the previous
+    // `html-lint-${basename}-${i}-${pid}.js`) is a symlink-attack /
+    // TOCTOU risk on any multi-user machine: something else could
+    // pre-create that exact name before writeFileSync gets to it, or
+    // race the write/exec/unlink sequence. mkdtempSync() gives each run
+    // its own private, unpredictable directory instead (flagged by
+    // CodeQL as js/insecure-temporary-file).
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-lint-'));
+    const tmpFile = path.join(tmpDir, `block-${i}.js`);
     fs.writeFileSync(tmpFile, content);
     try {
       execFileSync(process.execPath, ['--check', tmpFile], { stdio: 'pipe' });
@@ -109,7 +117,7 @@ function checkFile(filePath) {
       console.error(`${filePath}: <script> block ${i + 1}/${blocks.length} — SYNTAX ERROR`);
       console.error(e.stderr ? e.stderr.toString() : e.message);
     } finally {
-      fs.unlinkSync(tmpFile);
+      fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
   return ok;
