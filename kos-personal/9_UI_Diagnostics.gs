@@ -364,8 +364,11 @@ function buildSessionContext() {
       try {
         const text = DocumentApp.openById(id).getBody().getText();
         if (text.length > 50) {
-          sections.push('## ' + label + '\n' + text.substring(0, maxChars) +
-            (text.length > maxChars ? '\n[...truncated...]' : ''));
+          // Refactored onto the shared helper (5_Error_And_Utilities.gs) —
+          // this was already correct (marker included), just duplicated
+          // inline instead of sharing the one implementation every other
+          // truncation call site now also uses (Addendum 22 R2).
+          sections.push('## ' + label + '\n' + _truncateWithMarker_(text, maxChars));
           loaded.push(label);
         }
       } catch (_) { console.warn('[buildSessionContext] Could not load ' + label); }
@@ -488,10 +491,10 @@ function generateCouncilInputPayload() {
     body.appendParagraph('System State: ' + ts);
     body.appendParagraph('1. THE CONTEXT (Recent Session Summary)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(stateText.substring(0, 8000));
+    body.appendParagraph(_truncateWithMarker_(stateText, 8000));
     body.appendParagraph('2. THE LAWS (Active Constraints & Pivots)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(pivotText.substring(0, 4000));
+    body.appendParagraph(_truncateWithMarker_(pivotText, 4000));
     body.appendParagraph('3. INFERENCE INSTRUCTIONS')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
     body.appendParagraph(
