@@ -70,13 +70,24 @@ For each teacher's Teacher Dashboard project:
 
 ## What this actually exposes
 
-`doPost()`'s only two actions today are `getPacingGuide` (every pacing
-unit — dates, objectives, competency IDs, vocabulary) and
-`getCompetencyRegistry` (this teacher's visible competency rows) — both
-read-only, both require a verified ID token whose email matches this
-deployment's own `TEACHER_EMAIL` before anything is returned. SCR read/write
-is deliberately not implemented yet — see `07_TeacherDashboard.js`'s own
-comment on why, and the plan file's Addendum 24 for the tracked follow-up.
+`doPost()`'s three actions today are `getPacingGuide` (every pacing
+unit — dates, objectives, competency IDs, vocabulary), `getCompetencyRegistry`
+(this teacher's visible competency rows), and `getRoster` (this teacher's
+student **name + email + period** — see below) — all read-only, all require
+a verified ID token whose email matches this deployment's own `TEACHER_EMAIL`
+before anything is returned. SCR read/write is deliberately not implemented
+yet — see `07_TeacherDashboard.js`'s own comment on why, and the plan file's
+Addendum 24 for the tracked follow-up.
+
+`getRoster` is the **first** of these three actions to return student PII
+(name, email, and a free-text period field) rather than curriculum data —
+see `FERPA_DATA_MAP.md` for how this trust surface is tracked. It exists to
+fix a real gap (Addendum 26): leader-hub's own SCR grading grid had no
+student-email field at all and no way to link its roster to cas-ccps's
+email-keyed records. leader-hub links its own roster to this data by
+name-matching, entirely client-side — nothing about how leader-hub stores
+or uses this data is controlled from this end beyond the OAuth-token gate
+already described above.
 
 ## Re-consent note
 
