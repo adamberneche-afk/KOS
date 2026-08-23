@@ -152,7 +152,9 @@ code, confirmed by direct grep before backporting:
 ### Governance/protocol docs filed
 
 Ten files — `COLD_BOOT_PROTOCOL.md`, `COLD_START_ORIENTATION.md`, three
-`CURRENT_STATE_DRAFT*.md` variants, `HEREDITARY_WATCHLIST.md`,
+`CURRENT_STATE_DRAFT*.md` variants (two of the three — v1 and fresh_pass —
+were later archived to `rtp-core-router/archived/`; `_v2.md` remains the
+live copy), `HEREDITARY_WATCHLIST.md`,
 `KILL_SWITCH_PROTOCOL.md`, `RULE_CONFLICT_RESOLUTION_PROTOCOL.md`,
 `ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md`, and
 `Drive_Steward_Methodology_and_Prompt.md` — confirmed as real
