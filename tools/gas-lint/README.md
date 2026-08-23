@@ -20,12 +20,20 @@ Exit code is `1` if any error-level finding exists, `0` otherwise
 
 ## CI
 
-`.github/workflows/gas-lint.yml` runs this (plus
+`.github/workflows/gas-lint.yml`'s `gas-lint` job runs this check (plus
 `tools/clasp-sync/sync.js`, which now also refuses to build a project
-with an unmerged addendum — see that tool's README) on every push and
-pull request. Previously this was purely a "run before trusting any
-change" README instruction with nothing enforcing it — that gap is
-closed now.
+with an unmerged addendum — see that tool's README, and an `actionlint`
+self-check on the workflow file itself — GitHub Actions' schema has real
+rules a generic YAML parser can't catch, e.g. `secrets.*` isn't allowed
+inside an `if:` conditional; this caught exactly that bug once) on every
+push and pull request. That same workflow file has grown a second,
+unrelated job pair (`sandbox-deploy`/`sandbox-deploy-not-configured`,
+gated on `main` only — see `tools/clasp-sync/SANDBOX_CI_SETUP.md`) that
+pushes HEAD to sandbox Apps Script copies once configured; unrelated to
+what this tool checks, mentioned here only so "what runs in CI" is
+findable from either doc. Previously gas-lint itself was purely a "run
+before trusting any change" README instruction with nothing enforcing
+it — that gap is closed now.
 
 ## What it checks
 
@@ -67,6 +75,21 @@ closed now.
    `try/catch` (which is exactly how the `UrlFetchApp` regression from
    Round 3 reconciliation hid — this tool exists partly because of that
    specific incident). See `scope-map.json` for the service→scope table.
+
+6. **Cross-project undefined function calls** (`checkUndefinedFunctionCalls`).
+   For each project in `project-map.json`, flags any identifier called as
+   a function (`foo(...)`, not `x.foo(...)` — method calls are excluded)
+   that isn't declared anywhere in that project's own file set and isn't
+   on a built-in-globals allowlist. This is exactly the bug class that
+   motivated adding it: a function defined in one GAS project silently
+   fails at runtime if called from a file bound to a different project,
+   since GAS's per-project global scope means there's nothing to catch it
+   at "compile" time otherwise. Reported as `possibly-undefined-in-project`
+   **warnings**, not errors — heuristic by nature (a real allowlist gap or
+   a function passed in as a parameter, e.g. `fn`/`createFn`/`validateFn`,
+   both look identical to a real cross-project bug from this check's
+   point of view), so every warning is worth reading once, not
+   auto-fixing.
 
 ## What this is NOT
 

@@ -1,12 +1,20 @@
 # rtp-core-router/
 
-The 7 persona "cog" docs plus the Core Router spec itself — the prompt-level
-specifications pasted into Workspace Studio flows for the sequestered
-council review (`triggerCouncilSimulation()` / `sevenBridgesReview()` in
-`kos-personal/6_Governance.gs` / `9_UI_Diagnostics.gs`). Nothing in this
-directory is executable code — see `kos-personal/README.md`'s own
-assessment of how much of the documented council design is actually wired
-up versus still prose.
+The 6 persona "cog" docs plus the Core Router spec itself (7 files total —
+see the "V5.1" note below on why that's not "7 personas") — the
+prompt-level specifications each persona's own Gemini Gem is configured
+with for the real sequestered council review ("Seven Bridges," SMP-002).
+`triggerSevenBridgesReview()`/`compileCouncilVerdict_()` (both in
+`kos-personal/6_Governance.gs`) and `submitCogVerdict()`
+(`kos-personal/2_Ingestion_Sensors.gs`) are the actual, current execution
+layer this feeds — `9_UI_Diagnostics.gs`'s `sevenBridgesReview()` is only
+the menu wrapper that compiles verdicts already submitted, not a stimulus
+generator itself. `triggerCouncilSimulation()` (also in `6_Governance.gs`)
+is a different, explicitly-**superseded** shared-context shortcut, kept
+only for reference — not interchangeable with the real pipeline above.
+Nothing in this directory is executable code — see `kos-personal/README.md`'s
+"Architecture in Two Paragraphs" section for how the built pipeline
+actually works today.
 
 ## A note on "V5.1" before reading the table below
 
