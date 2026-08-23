@@ -17,7 +17,7 @@ This README documents the system as it is today. The full history of what was fo
 
 Sessions flow through a five-stage pipeline. Sensor 1 scans a Drive folder for new session documents every 5 minutes and creates rows in STAGING_PIPELINE with status `PENDING_FLOW`. The Turnstile (running every 5 minutes) releases rows one at a time to `STUDIO_ACTIVE`. Workspace Studio picks up `STUDIO_ACTIVE` rows, runs inference on the session text, writes structured JSON back to the document, and sets status to `FLOW_COMPLETE`. The Queue Processor (running every 10 minutes) finds `FLOW_COMPLETE` rows, parses the JSON, and fans the data out to ten downstream ledgers via the JSON Drip architecture. Each branch — current state, pivots, session log, cog registry, action register, vector routing, shadow matrix — is isolated so a failure in one doesn't stop the others.
 
-The shadow matrix is the system's calibration model. It maintains confidence intervals for five operator values (admin ghost, relational targets, necessary struggle, prime directive, temporal constraints) and updates them passively from each processed session's alignment observations. At 0.75 confidence, a value is marked VERIFIED and auto-populated into the system's operator properties. The daily primer assembles current vector state, shadow matrix status, and the operator's 90-day vision into a session-ready context document every morning at 06:00. The sequestered council (SMP-002) creates one isolated stimulus document per AI persona, queues them through the same pipeline, and collects independent verdicts in the COG_REGISTRY.
+The shadow matrix is the system's calibration model. It maintains confidence intervals for five operator values (admin ghost, relational targets, necessary struggle, prime directive, temporal constraints) and updates them passively from each processed session's alignment observations. At 0.75 confidence, a value is marked VERIFIED and auto-populated into the system's operator properties. The daily primer assembles current vector state, shadow matrix status, and the operator's 90-day vision into a session-ready context document every morning at 06:00. The sequestered council ("Seven Bridges," SMP-002 — now actually built, see `triggerSevenBridgesReview()`/`compileCouncilVerdict_()` in `6_Governance.gs`) assembles **one shared stimulus document**, not one per persona — real sequestration comes from sending that single document to each of the `CFG.PERSONAS` (6 real personas, not 7 — see that file's own naming-collision note) as a **separate Gemini Gem conversation**, entirely outside this pipeline. Each Gem's verdict is submitted back via `submitCogVerdict()` (`2_Ingestion_Sensors.gs`) as a `COG_VERDICT` payload, which deliberately skips the normal `PENDING_FLOW`/`STUDIO_ACTIVE` queue and writes straight to a `FLOW_COMPLETE`-equivalent state — collected in `COG_REGISTRY`, with a halt-execution rule (`CFG.COG_HALT_THRESHOLD`, `1_Config_And_Deploy.gs`) tripping once enough verdicts come back non-APPROVED. The older `triggerCouncilSimulation()` (one shared-context prompt asking the model to role-play all personas at once) is explicitly superseded by this and kept only for reference.
 
 ---
 
@@ -42,8 +42,13 @@ inference-service/         Optional Node.js managed-inference backend     ✅ fi
 rtp-core-router/protocols/ 10 governance/protocol docs                    ✅ filed in — see CHANGELOG.md
 ```
 
-All 7 persona cog docs are now in `rtp-core-router/` (`ARCHITECT`, `AUDITOR`,
-`MUSE`, `DEVELOPER`, `CURATOR`, `ALIGNMENT`, plus the Core Router itself).
+All 6 persona cog docs, plus the Core Router doc itself (7 files total —
+6 personas, not 7, correcting an earlier miscount here), are now in
+`rtp-core-router/` (`ARCHITECT`, `AUDITOR`, `MUSE`, `DEVELOPER`, `CURATOR`,
+`ALIGNMENT`, plus the Core Router). `CFG.PERSONAS` (`1_Config_And_Deploy.gs`)
+is the real, current source of truth for this — 6 entries, matching this
+list exactly; "Seven Bridges" (the sequestered-council feature's own name,
+see line 20 above) is aspirational branding, not a literal persona count.
 Two of them carried duplicate versions — **now reconciled**: extracting the
 PDF text and cross-checking each version's schema against what
 `3_Queue_Processor.gs` actually reads at runtime confirmed
@@ -75,7 +80,7 @@ Studio processes           STUDIO_ACTIVE →  FLOW_COMPLETE
 Queue processor            FLOW_COMPLETE →  PROCESSED
 JSON parse failure         FLOW_COMPLETE →  NEEDS_CURATOR (retry 1-2)
 Retry cap hit              NEEDS_CURATOR →  FAILED_PARSE
-Council cog stimulus       COG_STIMULUS  (separate payload type)
+Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/STUDIO_ACTIVE entirely)
 ```
 
 ---
@@ -276,8 +281,9 @@ anywhere in it; this was always a kos-personal-only gap.)
 named `04.5_ALIGNER_SILO` / tagged `CE-ALIGN`, but every persona doc in
 this repo (`PERSONA_ALIGNMENT_V5_1.md`, the `LICENSE`'s Fidelity Clause,
 `CFG.FIDELITY_REQUIRED_PERSONA`) calls this cog ALIGNMENT. Same class of
-issue as the SMP-002 naming collision noted above — cosmetic, not two
-different cogs. `CFG.PERSONAS` used to list `PERSONA_ALIGNER` as if it
+issue as the Seven Bridges persona-count naming mismatch noted above (the
+"7" in the feature's own name vs. `CFG.PERSONAS`'s real 6 entries) —
+cosmetic, not two different cogs. `CFG.PERSONAS` used to list `PERSONA_ALIGNER` as if it
 were an 8th, separate persona to copy from Drive on deploy; no such file
 has ever existed, so `deployFullSystem()` silently logged "Not found in
 Drive — skipped" for it on every real run. Removed; see
