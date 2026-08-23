@@ -22,6 +22,22 @@ jobs:
         run: node tools/gas-lint/check.js
       - name: Verify cas-ccps clasp-sync builds cleanly
         run: node tools/clasp-sync/sync.js
+      - name: Run the leader-hub + tooling regression suite (tests/)
+        # Rebuilds the coverage leader-hub/README.md describes past
+        # sessions getting from ad hoc, never-committed Node harnesses
+        # (verify_ee2.js, verify_gg1.js, etc.) as a permanent, CI-enforced
+        # asset instead — see tests/leaderhub/*.test.js and
+        # tests/harness/*.js. Zero dependencies (Node's built-in test
+        # runner + vm module only), so no install step is needed here.
+        run: node --test "tests/**/*.test.js"
+      - name: Syntax-check student-leader-hub.html's inline <script> blocks
+        # The enforced version of the "Verified with node --check on both
+        # <script> blocks" note leader-hub/README.md repeats after nearly
+        # every round of changes to this file — see tools/html-lint/.
+        run: |
+          node tools/html-lint/check.js \
+            leader-hub/student-leader-hub.html \
+            leader-hub/archived/studentleaderhub_EARLY_PROTOTYPE.html
       - name: Lint this repo's own GitHub Actions workflow files
         # Catches exactly the class of bug that broke this file once already
         # (a bare `secrets.X` reference inside an `if:` conditional, which
@@ -32,6 +48,35 @@ jobs:
         run: |
           bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           ./actionlint
+
+  # kos-personal/inference-service is the one real Node service in this
+  # repo (Postgres + Stripe + OAuth) and, until this job, had zero
+  # automated tests and zero CI coverage of any kind — nothing here
+  # installed its dependencies, let alone ran anything against them.
+  # Independent of gas-lint (no `needs:`) since it's unrelated to the GAS
+  # systems that job/the sandbox-deploy chain below cover — this way a
+  # failure in one doesn't block investigating the other, and both run in
+  # parallel rather than one waiting on the other.
+  test-inference-service:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: kos-personal/inference-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: kos-personal/inference-service/package-lock.json
+      - name: Install dependencies
+        run: npm ci
+      - name: Run tests
+        # See test/credits.test.js's own header comment for how this
+        # exercises real db.js logic (deductCredits/addCredits/
+        # markJobFailed) against an in-memory fake Postgres pool, with no
+        # real DATABASE_URL, Stripe key, or network access needed.
+        run: npm test
 
   # ── Sandbox deploy (R10 — tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5) ──
   # Pushes HEAD to disconnected *sandbox* copies of the cas-ccps/kos-personal
