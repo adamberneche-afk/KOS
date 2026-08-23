@@ -22,3 +22,147 @@ jobs:
         run: node tools/gas-lint/check.js
       - name: Verify cas-ccps clasp-sync builds cleanly
         run: node tools/clasp-sync/sync.js
+      - name: Lint this repo's own GitHub Actions workflow files
+        # Catches exactly the class of bug that broke this file once already
+        # (a bare `secrets.X` reference inside an `if:` conditional, which
+        # GitHub rejects at parse time with zero jobs ever running — a
+        # generic YAML parser like PyYAML/js-yaml doesn't catch this, since
+        # it's a GitHub Actions expression-context rule, not a YAML syntax
+        # error). Official install method, no third-party marketplace action.
+        run: |
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint
+
+  # ── Sandbox deploy (R10 — tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5) ──
+  # Pushes HEAD to disconnected *sandbox* copies of the cas-ccps/kos-personal
+  # projects — never the real district-owned production projects (see the
+  # runbook's own "practice field vs. real stadium" framing). Chained after
+  # gas-lint via `needs:` (only possible because this job lives in the same
+  # workflow file, not a separate one) so a lint failure blocks a sandbox
+  # push. Only fires on a push to main — not every branch/PR, to avoid
+  # sandbox-pushing work-in-progress code.
+  #
+  # Needs two repo secrets, NEITHER of which exists yet as of this commit —
+  # see the sandbox-deploy-not-configured job below for the visible status
+  # this shows in the meantime:
+  #   CLASP_SANDBOX_CREDENTIALS — the *contents* of a sandbox-only Google
+  #     account's ~/.clasprc.json (from running `clasp login` on that
+  #     account, never the district/production account). Treat like a
+  #     password; rotate periodically (re-run clasp login, update the
+  #     secret).
+  #   CAS_SANDBOX_SCRIPT_IDS — one JSON object mapping every project this
+  #     job pushes to its own *sandbox* Script ID, e.g.:
+  #       {"central-ledger":"...", "unified-manual":"...",
+  #        "master-student-template":"...", "rubric-response-sheet":"...",
+  #        "teacher-matrix-sheet":"...", "teacher-dashboard":"...",
+  #        "student-dashboard":"...", "kos-personal":"..."}
+  #     Each ID comes from the runbook's §3.2 sandbox-copy process (Drive →
+  #     Make a copy → Extensions → Apps Script → Project Settings → Script
+  #     ID) — none of these sandbox copies exist yet either; build them
+  #     before this secret means anything. A project missing from this map
+  #     is skipped (logged, not a failure) rather than blocking the rest.
+  #     One combined secret instead of one-per-project purely to keep repo
+  #     secrets management from growing to 8+ entries — the runbook's own
+  #     illustrative job didn't spell out where these files come from in
+  #     CI (cas-ccps/clasp/local/ is gitignored, so a fresh checkout never
+  #     has them); this fills that gap.
+  #
+  # GitHub Actions does not allow a bare `secrets.X` reference inside an
+  # `if:` conditional (only inside `env:`/step bodies) — an earlier version
+  # of this file tried that directly and GitHub rejected the whole workflow
+  # at parse time (0 jobs ever ran, both pushes showed "failure" with no
+  # job list). This job below reads the secrets into a plain string output
+  # instead, and every `if:` downstream compares against that output, never
+  # against `secrets.*` directly.
+  check-sandbox-secrets:
+    needs: [gas-lint]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "$HAS_CREDS" ] && [ -n "$HAS_IDS" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          HAS_CREDS: ${{ secrets.CLASP_SANDBOX_CREDENTIALS }}
+          HAS_IDS: ${{ secrets.CAS_SANDBOX_SCRIPT_IDS }}
+
+  sandbox-deploy:
+    needs: [gas-lint, check-sandbox-secrets]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.check-sandbox-secrets.outputs.configured == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install -g @google/clasp
+      - name: Restore sandbox-account clasp credentials
+        run: echo "$CLASP_SANDBOX_CREDENTIALS" > "$HOME/.clasprc.json"
+        env:
+          CLASP_SANDBOX_CREDENTIALS: ${{ secrets.CLASP_SANDBOX_CREDENTIALS }}
+      - name: Materialize sandbox .clasp.json files from the ID map secret
+        run: |
+          node -e '
+            const fs = require("fs");
+            const path = require("path");
+            const ids = JSON.parse(process.env.CAS_SANDBOX_SCRIPT_IDS);
+            const casNames = ["central-ledger","unified-manual","master-student-template","rubric-response-sheet","teacher-matrix-sheet","teacher-dashboard","student-dashboard"];
+            fs.mkdirSync("cas-ccps/clasp/local", { recursive: true });
+            for (const name of casNames) {
+              if (!ids[name]) { console.warn("No sandbox Script ID for " + name + " in CAS_SANDBOX_SCRIPT_IDS — that project will be skipped."); continue; }
+              fs.writeFileSync(
+                path.join("cas-ccps/clasp/local", name + ".clasp.json"),
+                JSON.stringify({ scriptId: ids[name], rootDir: "." }, null, 2)
+              );
+            }
+            if (ids["kos-personal"]) {
+              fs.writeFileSync("kos-personal/.clasp.json", JSON.stringify({ scriptId: ids["kos-personal"], rootDir: "." }, null, 2));
+            } else {
+              console.warn("No sandbox Script ID for kos-personal in CAS_SANDBOX_SCRIPT_IDS — that push will be skipped.");
+            }
+          '
+        env:
+          CAS_SANDBOX_SCRIPT_IDS: ${{ secrets.CAS_SANDBOX_SCRIPT_IDS }}
+      - name: Rebuild and push HEAD-safe web apps (teacher-dashboard, student-dashboard)
+        run: |
+          for p in teacher-dashboard student-dashboard; do
+            if [ ! -f "cas-ccps/clasp/local/$p.clasp.json" ]; then echo "Skipping $p — no sandbox Script ID configured."; continue; fi
+            node tools/clasp-sync/sync.js "$p"
+            (cd "cas-ccps/.clasp-build/$p" && clasp push --force)
+          done
+      - name: Rebuild and push sandbox copies of the five trigger-driven projects
+        run: |
+          for p in central-ledger unified-manual master-student-template rubric-response-sheet teacher-matrix-sheet; do
+            if [ ! -f "cas-ccps/clasp/local/$p.clasp.json" ]; then echo "Skipping $p — no sandbox Script ID configured."; continue; fi
+            node tools/clasp-sync/sync.js "$p"
+            (cd "cas-ccps/.clasp-build/$p" && clasp push --force)
+          done
+      - name: kos-personal (no live audience — safe to fold in here too)
+        run: |
+          if [ -f "kos-personal/.clasp.json" ]; then
+            (cd kos-personal && clasp push)
+          else
+            echo "Skipping kos-personal — no sandbox Script ID configured."
+          fi
+
+  # A visible, always-green placeholder so "the sandbox-deploy job doesn't
+  # even show up" doesn't get mistaken for "it's broken" — runs only when
+  # the real job above would be skipped for lack of configuration, and
+  # just says so plainly, with a pointer to what to add.
+  sandbox-deploy-not-configured:
+    needs: [gas-lint, check-sandbox-secrets]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.check-sandbox-secrets.outputs.configured == 'false'
+    runs-on: ubuntu-latest
+    steps:
+      - run: |
+          echo "sandbox-deploy is not configured yet — two repo secrets are missing:"
+          echo "  CLASP_SANDBOX_CREDENTIALS  (a sandbox-only account's clasp login)"
+          echo "  CAS_SANDBOX_SCRIPT_IDS     (a JSON map of project name -> sandbox Script ID)"
+          echo "See this workflow file's own comment above the sandbox-deploy job, and"
+          echo "tools/clasp-sync/DEPLOYMENT_RUNBOOK.md sections 3.2 and 3.5, for how to set these up."

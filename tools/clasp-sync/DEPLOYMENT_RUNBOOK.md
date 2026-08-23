@@ -247,6 +247,19 @@ pair to production.
 
 ### 3.5 The automated test layer (the robot's part)
 
+**Update: this job now actually exists** — `.github/workflows/gas-lint.yml`'s
+`sandbox-deploy` job, added after this runbook was written. It differs from
+the illustrative sketch originally drafted here in one real way: rather than
+one `CLASP_SANDBOX_CREDENTIALS`-style secret per project, it reads a single
+`CAS_SANDBOX_SCRIPT_IDS` secret (one JSON object mapping project name →
+sandbox Script ID) and materializes each project's `.clasp.json` from it at
+runtime — this runbook's own draft never addressed where those (gitignored)
+files would come from inside a fresh CI checkout. **See
+`tools/clasp-sync/SANDBOX_CI_SETUP.md` for the actual, current setup
+steps** — the walkthrough below is kept for the conceptual picture (why a
+sandbox-only credential, why it's safe to automate) but isn't the literal
+job in the repo anymore.
+
 Once you have sandbox Script IDs for all 7, this is safe to fully
 automate — the CI credential only ever has keys to the sandbox copies,
 never to the real district-owned projects.
@@ -260,9 +273,9 @@ file *is* a working login — treat it exactly like a password. Rotate it
 (re-run `clasp login`, copy the new file, update the secret) periodically,
 and never let it anywhere near a district-account login.
 
-Add a job to `.github/workflows/gas-lint.yml` (or a new sibling workflow —
-either is fine, but chaining it after the existing lint job via `needs:`
-means a lint failure blocks a sandbox push, which is the right order):
+The illustrative job sketch below predates the real implementation (kept
+for the conceptual shape only — `tools/clasp-sync/SANDBOX_CI_SETUP.md` has
+the actual, current steps):
 
 ```yaml
 sandbox-deploy:
