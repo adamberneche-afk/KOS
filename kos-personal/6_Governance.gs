@@ -509,10 +509,10 @@ function triggerCouncilSimulation() {
     body.appendParagraph('System State: ' + ts);
     body.appendParagraph('1. THE CONTEXT (Recent Session Summary)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(stateText.substring(0, 8000));
+    body.appendParagraph(_truncateWithMarker_(stateText, 8000));
     body.appendParagraph('2. THE LAWS (Active Constraints & Pivots)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(pivotText.substring(0, 4000));
+    body.appendParagraph(_truncateWithMarker_(pivotText, 4000));
     body.appendParagraph('3. INFERENCE INSTRUCTIONS')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
     body.appendParagraph(
@@ -621,10 +621,10 @@ function triggerSevenBridgesReview() {
     body.appendParagraph('Generated: ' + ts);
     body.appendParagraph('1. THE CONTEXT (Recent Session Summary)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(stateText.substring(0, 8000));
+    body.appendParagraph(_truncateWithMarker_(stateText, 8000));
     body.appendParagraph('2. THE LAWS (Active Constraints & Pivots)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(pivotText.substring(0, 4000));
+    body.appendParagraph(_truncateWithMarker_(pivotText, 4000));
     body.appendParagraph('3. REVIEW INSTRUCTIONS — READ BEFORE SENDING')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
     body.appendParagraph(
