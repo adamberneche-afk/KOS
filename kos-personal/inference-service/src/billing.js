@@ -198,15 +198,33 @@ async function handleWebhook(rawBody, signature) {
       const tier    = user.subscription_tier || 'starter';
       const credits = TIER_CREDITS[tier] || 500;
 
+      // FIXED: this reset-and-log used to run unconditionally on every
+      // delivery — non-additive (a straight balance reset, not a credit
+      // grant) doesn't make double-processing harmless the way it might
+      // look: a duplicate delivery would reset-and-log the renewal twice,
+      // which is still wrong (e.g. it would silently overwrite a balance
+      // the user had already partly spent between the two deliveries).
+      // Insert first — the partial unique index on
+      // billing_events.stripe_event_id (see schema.sql) makes this a
+      // no-op if this exact event was already recorded — and only reset
+      // the balance if this is genuinely a new event.
+      const inserted = await db.pool.query(
+        `INSERT INTO billing_events (user_id, event_type, credits_added, description, stripe_event_id)
+         VALUES ($1, 'subscription_renewal', $2, $3, $4)
+         ON CONFLICT (stripe_event_id) WHERE stripe_event_id IS NOT NULL DO NOTHING
+         RETURNING id`,
+        [user.id, credits, `Monthly renewal: ${tier}`, event.id]
+      );
+
+      if (inserted.rowCount === 0) {
+        logger.info(`[Billing] Duplicate invoice.payment_succeeded for user ${user.id} (event ${event.id}) — skipping.`);
+        break;
+      }
+
       // Reset credits to tier amount (not additive — prevents hoarding)
       await db.pool.query(
         'UPDATE users SET credit_balance = $1 WHERE id = $2',
         [credits, user.id]
-      );
-      await db.pool.query(
-        `INSERT INTO billing_events (user_id, event_type, credits_added, description, stripe_event_id)
-         VALUES ($1, 'subscription_renewal', $2, $3, $4)`,
-        [user.id, credits, `Monthly renewal: ${tier}`, event.id]
       );
       logger.info(`[Billing] User ${user.id} renewal: ${credits} credits reset`);
       break;

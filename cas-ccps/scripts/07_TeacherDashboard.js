@@ -13,13 +13,293 @@
 //   getCompetencies()        — returns filtered competency list for dropdown
 //   Lesson Context modal markup — inlined directly inside buildDashboardHtml_()
 //   All existing functions unchanged.
+//
+// MODULE 4 ADDITIONS (marked ── M4 ──, merged in from
+// 07_TeacherDashboard_M4_ADDENDUM.js — see cas-ccps/scripts/archived/ for
+// the original addendum file):
+//   getMyStudentContext()      — student-facing, own-data-only
+//   getStudentContextRoster()  — teacher-facing, full roster
+//   "My Context" nav tab + #student-context-view container + client JS
+//
+// ACCESS MODEL — read this before touching any server function below:
+//   This dashboard is deployed "Execute as: Me" (the teacher), which means
+//   every server function here runs with the TEACHER's permissions
+//   regardless of who opened the URL — and "Access" is "Anyone in
+//   organization," not "teacher only," because Module 4 added the first
+//   STUDENT-facing surface to this same dashboard (My Context). That
+//   combination means every exported function MUST gate on caller
+//   identity itself; nothing about the deployment does it for you.
+//   _isAuthorizedTeacher_() below is that gate — every function that
+//   returns or accepts data scoped to "the teacher" calls it first and
+//   fails closed (returns an error, not partial data) if the caller isn't
+//   the configured teacher. getMyStudentContext() is the one exception by
+//   design: it's intentionally open to any signed-in user, because it
+//   scopes itself to the CALLER's own identity (Session.getActiveUser()),
+//   never the teacher's.
 // =============================================================================
 
+// ---------------------------------------------------------------------------
+// _isAuthorizedTeacher_ — true only if the active session belongs to the
+// teacher this dashboard is configured for (cfg.teacherEmail, a Script
+// Property set during deployment — see ADMIN_DEPLOYMENT_WALKTHROUGH.html
+// Step 10). Fails closed: an unset/blank teacherEmail can never match a
+// real signed-in caller, so a misconfigured deployment denies everyone
+// instead of silently granting access.
+// ---------------------------------------------------------------------------
+function _isAuthorizedTeacher_(cfg) {
+  const viewerEmail = Session.getActiveUser().getEmail();
+  return !!(viewerEmail && cfg.teacherEmail &&
+    viewerEmail.toLowerCase() === cfg.teacherEmail.toLowerCase());
+}
+
+// FIXED (Say/Do Ledger cas-ccps finding #9): doGet() used to build and
+// send the exact same teacher-shaped HTML (dashboard stats, Lesson
+// Context modal, "+ New Lesson" button, term filter — none of it
+// meaningful or reachable for a student) to every caller, and relied on
+// the CLIENT discovering after the fact, via a failed server call, that
+// it should fall back to a different view. The identity check now
+// happens here, before any HTML is built, so a non-teacher caller never
+// has teacher-shaped markup built for them at all — just the small,
+// focused page their own role actually needs.
 function doGet() {
+  const cfg  = getConfig_();
+  const html = _isAuthorizedTeacher_(cfg) ? buildDashboardHtml_() : buildMyContextHtml_();
   return HtmlService
-    .createHtmlOutput(buildDashboardHtml_())
+    .createHtmlOutput(html)
     .setTitle("Assignment Dashboard")
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// =============================================================================
+// LEADER-HUB JSON API (D1 — shared-core merge, Say/Do Ledger, Addendum 24)
+// =============================================================================
+//
+// leader-hub's SCR grading grid and Pacing Calendar becoming live clients of
+// this project's pacing-guide/competency-registry data, instead of leader-hub
+// keeping its own frozen local copy. The identity model here is deliberately
+// NOT Session.getActiveUser()/_isAuthorizedTeacher_() — this project deploys
+// "Execute as: Me," so Session.getActiveUser() inside doPost() always
+// resolves to the deploying teacher regardless of who actually made the HTTP
+// request; it cannot distinguish a genuine leader-hub caller from anyone else
+// who reaches this endpoint. Real caller identity comes from a Google
+// Identity Services ID token leader-hub obtains client-side (its own "Sign In
+// With Google" button — see student-leader-hub.html), verified HERE,
+// server-side, via UrlFetchApp against Google's own tokeninfo endpoint —
+// checking the token's email matches this exact deployment's configured
+// teacher, its audience matches leader-hub's registered OAuth Client ID (so a
+// token issued to some other app can't be replayed here), and it hasn't
+// expired. This requires its own web-app deployment, separate from the one
+// this doGet() serves the human-facing dashboard from — see
+// docs/LEADERHUB_CONNECTION_SETUP.md for why and how to create it; a
+// Domain-restricted deployment's edge-level sign-in gate would otherwise
+// block leader-hub's cross-origin POST before this code ever ran.
+//
+// Only read endpoints are implemented so far (pacing guide, competency
+// registry). SCR read+write is a deliberately separate, later phase — it
+// needs cross-project access to 30_SCRSuggestionEngine.js (bound to
+// central-ledger, not this project) plus real per-teacher scoping and
+// caller-ownership checks that engine doesn't have today, and leader-hub's
+// own SCR roster still has no student-email field to match against. Not
+// silently scoped out — flagged here and in the plan file for when that
+// groundwork is ready.
+
+/**
+ * Verifies a Google ID token against this deployment's configured teacher
+ * and leader-hub's registered OAuth Client ID. Real UrlFetchApp round trip
+ * to Google's own tokeninfo endpoint — never trusts a client-side decode.
+ *
+ * @param {string} idToken  Raw ID token JWT from leader-hub's GIS sign-in.
+ * @param {Object} cfg      getConfig_() result.
+ * @returns {Object} { ok: true, email } | { ok: false, message }
+ */
+function _verifyLeaderHubToken_(idToken, cfg) {
+  if (!idToken) {
+    return { ok: false, message: "Missing ID token." };
+  }
+  if (!cfg.leaderHubOauthClientId) {
+    return { ok: false, message: "LEADER_HUB_OAUTH_CLIENT_ID not configured on this deployment. See docs/LEADERHUB_CONNECTION_SETUP.md." };
+  }
+
+  let info;
+  try {
+    const resp = UrlFetchApp.fetch(
+      "https://oauth2.googleapis.com/tokeninfo?id_token=" + encodeURIComponent(idToken),
+      { muteHttpExceptions: true }
+    );
+    if (resp.getResponseCode() !== 200) {
+      return { ok: false, message: "Token verification failed (Google returned HTTP " + resp.getResponseCode() + ") — sign in again." };
+    }
+    info = JSON.parse(resp.getContentText());
+  } catch (e) {
+    return { ok: false, message: "Token verification error: " + e.message };
+  }
+
+  if (String(info.aud || "") !== cfg.leaderHubOauthClientId) {
+    return { ok: false, message: "Token audience mismatch — this token wasn't issued to the expected app." };
+  }
+  if (String(info.email_verified) !== "true") {
+    return { ok: false, message: "Token's email is not verified." };
+  }
+  const email = String(info.email || "").trim().toLowerCase();
+  if (!cfg.teacherEmail || email !== cfg.teacherEmail.toLowerCase()) {
+    return { ok: false, message: "Signed-in Google account doesn't match the teacher this dashboard is configured for." };
+  }
+  const exp = parseInt(info.exp, 10);
+  if (!exp || Date.now() / 1000 > exp) {
+    return { ok: false, message: "Token expired — sign in again." };
+  }
+
+  return { ok: true, email: email };
+}
+
+/**
+ * JSON API entry point for leader-hub. Every action requires a verified
+ * ID token in the request body (see _verifyLeaderHubToken_ above) — there
+ * is no unauthenticated action.
+ *
+ * Expected POST body (JSON, sent as text/plain to avoid a CORS preflight
+ * Apps Script can't answer — same convention leader-hub's own EmailBridge.gs
+ * already uses):
+ *   { idToken: "<Google ID token>", action: "getPacingGuide" | "getCompetencyRegistry" | "getRoster" }
+ *
+ * @param {GoogleAppsScript.Events.DoPost} e
+ * @returns {TextOutput} JSON response, always HTTP 200 (success/failure is
+ *   in the body — ContentService doesn't support custom status codes).
+ */
+function doPost(e) {
+  const out = ContentService.createTextOutput().setMimeType(ContentService.MimeType.JSON);
+
+  try {
+    if (!e || !e.postData || !e.postData.contents) {
+      out.setContent(JSON.stringify({ success: false, message: "Empty request body." }));
+      return out;
+    }
+
+    let body;
+    try {
+      body = JSON.parse(e.postData.contents);
+    } catch (parseErr) {
+      out.setContent(JSON.stringify({ success: false, message: "Invalid JSON body: " + parseErr.message }));
+      return out;
+    }
+
+    const cfg  = getConfig_();
+    const auth = _verifyLeaderHubToken_(body.idToken, cfg);
+    if (!auth.ok) {
+      out.setContent(JSON.stringify({ success: false, message: auth.message }));
+      return out;
+    }
+
+    const action = body.action || "";
+    let result;
+    if (action === "getPacingGuide") {
+      result = _apiGetPacingGuide_();
+    } else if (action === "getCompetencyRegistry") {
+      result = _apiGetCompetencyRegistry_(cfg, auth.email);
+    } else if (action === "getRoster") {
+      result = _apiGetRoster_(cfg, auth.email);
+    } else {
+      result = { success: false, message: "Unknown action: " + action };
+    }
+
+    out.setContent(JSON.stringify(result));
+    return out;
+
+  } catch (err) {
+    Logger.log("[doPost] " + err.message + "\n" + err.stack);
+    out.setContent(JSON.stringify({ success: false, message: "Server error: " + err.message }));
+    return out;
+  }
+}
+
+/**
+ * Returns the full pacing guide (every unit, not just "today's anchor") —
+ * getAllUnits_() already exists in 31_PacingGuideManager.js (shared with
+ * this project per project-map.json) but was never client-exposed before.
+ */
+function _apiGetPacingGuide_() {
+  try {
+    const units = getAllUnits_(); // 31_PacingGuideManager.js
+    return { success: true, units: units };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Wraps _getCompetenciesForEmail_() (extracted from getCompetencies() below)
+ * for the OAuth-token-verified caller — auth.email (already verified by
+ * doPost()'s caller against cfg.teacherEmail) is passed through rather than
+ * re-deriving it, so this function has no gate of its own to get wrong.
+ */
+function _apiGetCompetencyRegistry_(cfg, email) {
+  return { success: true, data: _getCompetenciesForEmail_(cfg, email) };
+}
+
+/**
+ * Student-email-linking fix (Say/Do Ledger, Addendum 26 — "one source of
+ * truth for both systems"). leader-hub's SCR grading grid has never had a
+ * student-email field; cas-ccps's Ledger is the one place a student's real
+ * email is captured (Form 1 intake, column "GoogleID" — misleadingly named,
+ * holds the actual email address everywhere it's used). This is the first
+ * doPost() action that returns student PII (name+email+period), unlike
+ * getPacingGuide/getCompetencyRegistry — see LEADERHUB_CONNECTION_SETUP.md
+ * and FERPA_DATA_MAP.md, both updated alongside this.
+ *
+ * auth.email is the OAuth-token-verified caller (already checked by
+ * doPost() above) — passed straight through, never re-derived, same
+ * pattern _apiGetCompetencyRegistry_ already uses.
+ */
+function _apiGetRoster_(cfg, email) {
+  try {
+    return { success: true, students: _getRosterForEmail_(cfg, email) };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Builds this teacher's student roster from the Ledger directly — NOT a
+ * reuse of exportToWorkbookGrid_() (30_SCRSuggestionEngine.js: different
+ * GAS project, cas-ccps:central-ledger, not callable from this project's
+ * doPost(); also loops every teacher's students with no per-teacher filter,
+ * unsafe to reuse verbatim) and NOT a reuse of getAllStudentDocsForTeacher_()
+ * (29_StudentContextAggregator.js: same project as this file, but joins
+ * through StudentDocRegistry — under-reports any student who doesn't yet
+ * have a Module-4 context doc). Same Ledger-join *pattern* both of those
+ * already use (row[1]=GoogleID/email, row[4]=StudentName, row[6]=ClassName,
+ * row[8]=TeacherEmail — see getDashboardData() below), but a fresh,
+ * correctly-scoped implementation.
+ *
+ * `className` is included for display context only — Form 1's "Course
+ * Name" field is free text with no enum/validation at capture time, so it
+ * cannot be reliably cross-referenced against leader-hub's own "8175"/
+ * "8177" course codes. `period` (row[11], also free text — Form 1's help
+ * text is literally "e.g. 3") is included as a secondary disambiguation
+ * signal for leader-hub's name-matching, not a hard join key — the two
+ * systems use different period vocabularies ("3" here vs. "3rd Odd" there).
+ */
+function _getRosterForEmail_(cfg, teacherEmail) {
+  const ss     = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet  = ss.getSheetByName(cfg.tabs.ledger);
+  const data   = sheet ? sheet.getDataRange().getValues() : [];
+  const wanted = String(teacherEmail || "").trim().toLowerCase();
+
+  const byEmail = new Map(); // dedup — a student can have multiple Ledger rows (one per assignment)
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[8] || "").trim().toLowerCase() !== wanted) continue;
+    const email = String(row[1] || "").trim();
+    if (!email || byEmail.has(email.toLowerCase())) continue;
+    byEmail.set(email.toLowerCase(), {
+      name:      String(row[4] || "").trim(),
+      email:     email,
+      className: String(row[6] || "").trim(),
+      period:    String(row[11] || "").trim(),
+    });
+  }
+
+  return [...byEmail.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ---------------------------------------------------------------------------
@@ -29,6 +309,12 @@ function doGet() {
 function getDashboardData(termFilter) {
   const cfg = getConfig_();
   const teacherEmail = cfg.teacherEmail;
+
+  if (!_isAuthorizedTeacher_(cfg)) {
+    Logger.log("[S07] getDashboardData denied — caller was " +
+      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + teacherEmail);
+    return { error: "This dashboard is only available to the teacher it's configured for." };
+  }
 
   const activeTerm = termFilter ||
     PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "ALL";
@@ -71,6 +357,15 @@ function getDashboardData(termFilter) {
     const displayStatus = resolveDisplay_(ledgerStatus, pipelineStatus[fileId]);
     const statusClass  = resolveClass_(displayStatus);
 
+    // Say/Do Ledger cas-ccps finding #1: column 20 (index 19) is the new
+    // SuggestedScore column — may not exist yet on a Ledger where no
+    // submission has ever gone through markPendingReview_() (which self-heals
+    // the column via _ensureTurnInReviewColumns_), so row[19] can genuinely
+    // be undefined here, not just an empty string.
+    const suggestedScoreRaw = row[19];
+    const suggestedScore = (suggestedScoreRaw === undefined || suggestedScoreRaw === "")
+      ? null : Number(suggestedScoreRaw);
+
     students.push({
       name:        String(row[4]).trim()  || "—",
       googleId:    String(row[1]).trim(),
@@ -84,6 +379,7 @@ function getDashboardData(termFilter) {
       statusClass: statusClass,
       lastEval:    row[15] ? formatDate_(row[15]) : "Never",
       submittedAt: row[13] ? formatDate_(row[13]) : "—",
+      suggestedScore: suggestedScore,
       docUrl:      fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
         : null
@@ -135,6 +431,93 @@ function getDashboardData(termFilter) {
   };
 }
 
+// ── TURN-IN REVIEW (Say/Do Ledger cas-ccps finding #1) ──────────────────────
+// The teacher's own confirm/override decision on a PENDING_TEACHER_REVIEW
+// submission — this is what finally makes the auto-approval terminal,
+// closing the North Star violation the finding was about ("the turn-in gate
+// auto-approves silently, and the only override lives outside the teacher's
+// own dashboard"). Mirrors 30_SCRSuggestionEngine.js's recordConfirmation_/
+// recordOverride_/recordDecision_ shape exactly, per the decision's own
+// instruction to reuse that pattern — freeze the row on decision, reject
+// re-deciding an already-decided row, restrict overrides to a valid 1-5
+// integer. This writes into the same Ledger tab as SCRSuggestions/
+// SCRDecisionLog live alongside, but is a separate, Ledger-row-keyed
+// decision (turn-in scores), not a write into Module 5's own
+// competency-SCR bookkeeping.
+//
+// CROSS-PROJECT NOTE: this logic lives here, not in 04_Form2_TurnInGate.js
+// (which writes the PENDING_TEACHER_REVIEW half of the lifecycle) — that
+// file is bound to cas-ccps:central-ledger, a DIFFERENT Apps Script project
+// from this standalone web app (cas-ccps:teacher-dashboard), with no shared
+// runtime (see tools/gas-lint/project-map.json). Both projects independently
+// call _ensureTurnInReviewColumns_ so either one can self-heal a Ledger
+// created before this feature existed, regardless of which project touches
+// it first.
+function _ensureTurnInReviewColumns_(sheet) {
+  const headerRange = sheet.getRange(1, 20, 1, 4);
+  const existing     = headerRange.getValues()[0];
+  if (existing[0] !== "SuggestedScore") {
+    headerRange.setValues([["SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt"]]);
+  }
+}
+
+function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, decisionType) {
+  const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  _ensureTurnInReviewColumns_(sheet);
+  const data  = sheet.getDataRange().getValues();
+
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][2]).trim() !== configId) continue; // column C = ConfigID
+
+    const currentStatus = String(data[i][12]).trim();
+    if (currentStatus !== "PENDING_TEACHER_REVIEW") {
+      return { success: false, error: "This submission is not awaiting review (current status: " + currentStatus + ")." };
+    }
+
+    const rowSuggested = data[i][19];
+    const suggestedScore = (rowSuggested === "" || rowSuggested === undefined) ? null : Number(rowSuggested);
+    if (decisionType === "CONFIRMED" && suggestedScore === null) {
+      return { success: false, error: "No suggested score to confirm — use Override to assign a score directly." };
+    }
+
+    const finalScore = decisionType === "CONFIRMED" ? suggestedScore : Number(overrideScore);
+    if (!Number.isInteger(finalScore) || finalScore < 1 || finalScore > 5) {
+      return { success: false, error: "Score must be an integer from 1 to 5." };
+    }
+
+    const rowIndex = i + 1;
+    sheet.getRange(rowIndex, 13).setValue("COMPLIANT"); // terminal — same status every other health check/report already expects
+    sheet.getRange(rowIndex, 15).setValue(
+      "Reviewed by teacher — final score " + finalScore + "/5 (" + decisionType.toLowerCase() + ")."
+    );
+    sheet.getRange(rowIndex, 21).setValue(finalScore);
+    sheet.getRange(rowIndex, 22).setValue(teacherEmail);
+    sheet.getRange(rowIndex, 23).setValue(new Date());
+    SpreadsheetApp.flush();
+
+    return { success: true, finalScore: finalScore };
+  }
+
+  return { success: false, error: "No ledger row found with ConfigID: " + configId };
+}
+
+// Exposed entry points, called via google.script.run from the Pending
+// Review modal's client JS below. Both gate on _isAuthorizedTeacher_ before
+// touching anything, matching every other exported function in this file
+// (see the ACCESS MODEL note at the top of this file).
+function teacherConfirmTurnInScore(configId) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _recordTurnInDecision_(cfg, configId, cfg.teacherEmail, null, "CONFIRMED");
+}
+
+function teacherOverrideTurnInScore(configId, score) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _recordTurnInDecision_(cfg, configId, cfg.teacherEmail, score, "OVERRIDDEN");
+}
+
 // ── M2 ──────────────────────────────────────────────────────────────────────
 // getCompetencies — discovers all courses for this teacher from the registry,
 // returns competencies grouped by course, sorted by task number within each.
@@ -158,6 +541,24 @@ function getCompetencies() {
   const cfg   = getConfig_();
   const email = cfg.teacherEmail || "";
 
+  if (!_isAuthorizedTeacher_(cfg)) {
+    Logger.log("[M2] getCompetencies denied — caller was " +
+      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + email);
+    return { error: "This dashboard is only available to the teacher it's configured for." };
+  }
+
+  return _getCompetenciesForEmail_(cfg, email);
+}
+
+// Core logic extracted from getCompetencies() so a second caller can reuse
+// it with a different identity gate — doPost()'s OAuth-token-verified
+// leader-hub API (D1, Addendum 24) calls this directly, since
+// Session.getActiveUser() reflects the deploying teacher regardless of who
+// actually made the HTTP request (this project deploys "Execute as: Me"),
+// making it useless for distinguishing a genuine leader-hub caller from
+// anyone else who reaches this endpoint — _verifyLeaderHubToken_() is
+// doPost()'s real gate, applied before this function is ever reached.
+function _getCompetenciesForEmail_(cfg, email) {
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
 
@@ -278,8 +679,15 @@ function getCompetencies() {
 // ── M2 ──────────────────────────────────────────────────────────────────────
 function submitLessonContext(payload) {
   try {
-    // Attach teacher identity from Script Properties — not from client payload
     const cfg = getConfig_();
+
+    if (!_isAuthorizedTeacher_(cfg)) {
+      Logger.log("[M2] submitLessonContext denied — caller was " +
+        (Session.getActiveUser().getEmail() || "unknown") + ", expected " + cfg.teacherEmail);
+      return { success: false, error: "This dashboard is only available to the teacher it's configured for." };
+    }
+
+    // Attach teacher identity from Script Properties — not from client payload
     payload.teacherEmail = cfg.teacherEmail;
     payload.teacherName  = cfg.teacherName;
 
@@ -293,6 +701,83 @@ function submitLessonContext(payload) {
   }
 }
 
+// ── M4 ────────────────────────────────────────────────────────────────────
+// getMyStudentContext — student-facing. Returns ONLY the calling user's
+// own doc info. Identity is taken from the active session, never from a
+// client-supplied parameter — a student cannot pass someone else's email
+// and see their data. Deliberately NOT gated by _isAuthorizedTeacher_ —
+// this function's whole point is to serve non-teacher callers, scoped to
+// their own identity.
+// ── M4 ────────────────────────────────────────────────────────────────────
+function getMyStudentContext() {
+  const viewerEmail = Session.getActiveUser().getEmail();
+  if (!viewerEmail) {
+    return { error: "Could not determine your identity. Make sure you're signed in with your school account." };
+  }
+
+  const docInfo = getStudentDocForViewer_(viewerEmail); // from Script 29
+  if (!docInfo) {
+    return {
+      hasContent: false,
+      viewerEmail: viewerEmail,
+      message: "No context recorded yet. This updates weekly — check back after your first graded assignment or warm-up response."
+    };
+  }
+
+  return {
+    hasContent: true,
+    viewerEmail: viewerEmail,
+    docUrl: docInfo.docUrl,
+    lastUpdatedAt: docInfo.lastUpdatedAt ? formatDate_(docInfo.lastUpdatedAt) : "Not yet updated"
+  };
+}
+
+// ── M4 ────────────────────────────────────────────────────────────────────
+// getStudentContextRoster — teacher-facing. Returns the full student
+// roster with doc links. Gated: only returns data if the active session's
+// email matches cfg.teacherEmail. Anyone else gets an error, not a
+// truncated or empty list — the distinction matters for debugging vs.
+// security, and this is a security boundary.
+// ── M4 ────────────────────────────────────────────────────────────────────
+function getStudentContextRoster() {
+  const cfg = getConfig_();
+
+  if (!_isAuthorizedTeacher_(cfg)) {
+    Logger.log("[M4] getStudentContextRoster denied — caller was " +
+      (Session.getActiveUser().getEmail() || "unknown") + ", expected " + cfg.teacherEmail);
+    return { error: "This view is only available to the teacher." };
+  }
+
+  const roster = getAllStudentDocsForTeacher_(cfg.teacherEmail); // from Script 29, scoped to this teacher only
+  return {
+    roster: roster.map(r => ({
+      name: r.name,
+      email: r.email,
+      docUrl: r.docUrl,
+      lastUpdatedAt: r.lastUpdatedAt ? formatDate_(r.lastUpdatedAt) : "Never",
+      hasRecentActivity: r.lastRunHadContent
+    })),
+    generatedAt: formatDate_(new Date())
+  };
+}
+
+// ---------------------------------------------------------------------------
+// getStudentShadowProfile — NEW (Say/Do Ledger cas-ccps finding #13).
+// Client-callable wrapper around Script 23's getStudentShadowProfile_() —
+// the destination for the warm-up readiness panel's "ready for
+// personalized feedback" students once clicked. Same identity gate every
+// other per-teacher server function on this dashboard uses.
+// ---------------------------------------------------------------------------
+function getStudentShadowProfile(studentEmail) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) {
+    return { error: "This view is only available to the teacher this dashboard is configured for." };
+  }
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const profile = getStudentShadowProfile_(ss, cfg, studentEmail); // Script 23
+  return profile || { error: "No profile data found for this student yet." };
+}
+
 // ---------------------------------------------------------------------------
 // Existing helper functions — unchanged
 // ---------------------------------------------------------------------------
@@ -303,6 +788,10 @@ function resolveDisplay_(ledger, pipeline) {
     case "ACTIVE":    return "NOT STARTED";
     case "STAGED":    return "QUEUED";
     case "COMPLETE":  return "EVALUATED";
+    // NEW (Say/Do Ledger cas-ccps finding #1): a genuine-complete submission
+    // no longer lands directly on COMPLIANT — it stops here first, awaiting
+    // the teacher's own confirm/override.
+    case "PENDING_TEACHER_REVIEW": return "PENDING REVIEW";
     case "COMPLIANT": return "COMPLIANT ✓";
     default:          return ledger.startsWith("ERROR") ? "FLAGGED ⚠" : (ledger || "UNKNOWN");
   }
@@ -314,6 +803,7 @@ function resolveClass_(display) {
   if (display === "QUEUED")         return "queued";
   if (display === "EVALUATED")      return "evaluated";
   if (display === "NOT STARTED")    return "not-started";
+  if (display === "PENDING REVIEW") return "pending-review";
   if (display.includes("FLAGGED"))  return "flagged";
   return "unknown";
 }
@@ -338,6 +828,14 @@ function buildDashboardHtml_() {
 <title>Assignment Dashboard</title>
 <style>
 /* ── RESET + BASE ── */
+/* FIXED (Say/Do Ledger cas-ccps finding #14): #80868b (used throughout
+   this file for secondary/meta text) is ~3.68:1 against white — below
+   WCAG AA's 4.5:1 minimum for normal text. #5f6368 (already used
+   elsewhere in this same file for the identical "muted meta text" role)
+   is ~6.05:1 — verified passing — so both are consolidated into this one
+   token instead of two inconsistent shades of "muted," one of which
+   silently failed contrast. */
+:root{--text-secondary:#5f6368}
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
 
@@ -354,7 +852,7 @@ header h1{font-size:18px;font-weight:500;flex:1}
 #new-lesson-btn:hover{background:#e8f0fe}
 
 /* ── LOADING ── */
-#loading{text-align:center;padding:60px 24px;color:#5f6368}
+#loading{text-align:center;padding:60px 24px;color:var(--text-secondary)}
 .spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
 @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -363,11 +861,19 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:24px}
 .summary-card{background:white;border-radius:8px;padding:16px;text-align:center;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .summary-card .count{font-size:32px;font-weight:600;line-height:1;margin-bottom:6px}
-.summary-card .label{font-size:12px;color:#5f6368;text-transform:uppercase;letter-spacing:.5px}
+.summary-card .label{font-size:12px;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px}
 .card-compliant .count{color:#1e8e3e}.card-pending .count{color:#e37400}
 .card-flagged .count{color:#d93025}.card-total .count{color:#1a73e8}
+/* NEW (Say/Do Ledger cas-ccps finding #1): Pending Review is a distinct
+   color (purple, matching .badge-evaluated's family) from both the
+   "in progress" (amber) and "needs attention" (red) cards — it isn't
+   trouble, it's a fast, deliberate step the teacher takes. Clickable, like
+   the warm-up-readiness stats already are — see .card-pending-review:hover. */
+.card-pending-review .count{color:#9334e6}
+.card-pending-review{cursor:pointer;transition:box-shadow .15s}
+.card-pending-review:hover{box-shadow:0 3px 10px rgba(0,0,0,.15)}
 .unit-section{margin-bottom:28px}
-.unit-header{font-size:13px;font-weight:600;color:#5f6368;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
+.unit-header{font-size:13px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e8eaed}
 .student-row{background:white;border-radius:8px;padding:14px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:flex-start;box-shadow:0 1px 2px rgba(0,0,0,.08);border-left:4px solid #dadce0;transition:box-shadow .15s,transform .1s}
 .student-row:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
 .student-row.compliant{border-left-color:#1e8e3e}
@@ -375,10 +881,11 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .student-row.queued{border-left-color:#e37400}
 .student-row.evaluated{border-left-color:#9334e6}
 .student-row.not-started{border-left-color:#dadce0}
+.student-row.pending-review{border-left-color:#9334e6}
 .student-row.flagged{border-left-color:#d93025;background:#fef7f7}
 .student-name{font-weight:500;font-size:14px;margin-bottom:3px}
-.student-meta{font-size:12px;color:#5f6368}
-.last-eval{font-size:11px;color:#80868b;margin-top:2px}
+.student-meta{font-size:12px;color:var(--text-secondary)}
+.last-eval{font-size:11px;color:var(--text-secondary);margin-top:2px}
 .doc-link{display:block;font-size:11px;color:#1a73e8;margin-top:4px;text-decoration:none}
 .doc-link:hover{text-decoration:underline}
 .status-badge{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap}
@@ -386,10 +893,11 @@ header h1{font-size:18px;font-weight:500;flex:1}
 .badge-active{background:#e8f0fe;color:#1a73e8}
 .badge-queued{background:#fef3e2;color:#9c5000}
 .badge-evaluated{background:#f3e8fd;color:#9334e6}
-.badge-not-started{background:#f1f3f4;color:#5f6368}
+.badge-not-started{background:#f1f3f4;color:var(--text-secondary)}
 .badge-flagged{background:#fce8e6;color:#d93025}
-.badge-unknown{background:#f1f3f4;color:#5f6368}
-footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
+.badge-unknown{background:#f1f3f4;color:var(--text-secondary)}
+.badge-pending-review{background:#f3e8fd;color:#9334e6}
+footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)}
 
 /* ── M2: MODAL ── */
 .modal-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;align-items:flex-start;justify-content:center;padding:40px 16px;overflow-y:auto}
@@ -416,7 +924,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 .field select{width:100%;padding:9px 12px;border:1px solid #dadce0;border-radius:6px;font-size:14px;font-family:inherit;color:#202124;background:white;transition:border-color 0.15s}
 .field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 2px rgba(26,115,232,0.15)}
 .field textarea{resize:vertical;min-height:80px;line-height:1.5}
-.field .hint{font-size:11px;color:#80868b;margin-top:4px}
+.field .hint{font-size:11px;color:var(--text-secondary);margin-top:4px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 
 /* ── M2: COURSE TABS ── */
@@ -427,7 +935,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
    in courseTabKeydown(). overflow-x:auto scopes scrolling to this element
    itself, so it isn't clipped by the parent's overflow:hidden. */
 .course-tabs{display:flex;gap:0;border-bottom:2px solid #e8eaed;margin-bottom:16px;overflow-x:auto;-webkit-overflow-scrolling:touch}
-.course-tab{font-size:13px;font-weight:500;color:#5f6368;padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;background:none;border-top:none;border-left:none;border-right:none}
+.course-tab{font-size:13px;font-weight:500;color:var(--text-secondary);padding:10px 16px;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:all 0.15s;white-space:nowrap;display:flex;align-items:center;gap:6px;background:none;border-top:none;border-left:none;border-right:none}
 .course-tab:hover{color:#202124;background:#f8f9fa}
 .course-tab.active{color:#1a73e8;border-bottom-color:#1a73e8;font-weight:600}
 .course-tab .tab-badge{font-size:11px;background:#1a73e8;color:white;border-radius:10px;padding:1px 6px;font-weight:600;display:none}
@@ -437,23 +945,23 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 .course-panel.active{display:block}
 
 /* ── M2: COMPETENCY CHECKLIST ── */
-.competency-loading{color:#80868b;font-size:13px;padding:8px 0}
+.competency-loading{color:var(--text-secondary);font-size:13px;padding:8px 0}
 .strand-group{margin-bottom:14px}
-.strand-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:#80868b;margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f1f3f4}
+.strand-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:6px;padding:4px 0;border-bottom:1px solid #f1f3f4}
 .competency-item{display:flex;align-items:flex-start;gap:10px;padding:6px 8px;border-radius:6px;cursor:pointer;transition:background 0.1s}
 .competency-item:hover{background:#f8f9fa}
 .competency-item input[type="checkbox"]{margin-top:2px;flex-shrink:0;accent-color:#1a73e8;width:15px;height:15px;cursor:pointer}
 .competency-item .c-num{font-family:monospace;font-size:11px;color:#1a73e8;font-weight:700;white-space:nowrap;min-width:32px}
 .competency-item .c-text{font-size:13px;color:#3c4043;line-height:1.45}
 .competency-item .c-scaffold{font-size:10px;color:#1e8e3e;margin-top:2px}
-.competency-empty{font-size:13px;color:#80868b;padding:8px 0}
+.competency-empty{font-size:13px;color:var(--text-secondary);padding:8px 0}
 .comp-container{max-height:260px;overflow-y:auto;border:1px solid #e8eaed;border-radius:6px;padding:8px 4px}
 
 /* ── M2: SUBMIT BUTTON ── */
 #submit-btn{background:#1a73e8;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;transition:background 0.15s}
 #submit-btn:hover{background:#1557b0}
-#submit-btn:disabled{background:#dadce0;color:#80868b;cursor:not-allowed}
-#cancel-btn{background:none;border:none;color:#5f6368;font-size:14px;cursor:pointer;padding:9px 14px}
+#submit-btn:disabled{background:#dadce0;color:var(--text-secondary);cursor:not-allowed}
+#cancel-btn{background:none;border:none;color:var(--text-secondary);font-size:14px;cursor:pointer;padding:9px 14px}
 #cancel-btn:hover{color:#202124}
 
 /* ── M2: TOAST ── */
@@ -478,6 +986,12 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
   <!-- ── M2: New Lesson button ── -->
   <!-- Hidden until loadData() confirms M2_ENABLED — see the m2Enabled toggle below. -->
   <button id="new-lesson-btn" onclick="openModal()" style="display:none">+ New Lesson</button>
+  <!-- ── M4: My Context tab — this template is only ever built for the
+       authorized teacher now (doGet() branches by identity before
+       building any HTML — see finding #9), so this always shows the full
+       roster via getStudentContextRoster(). A student caller gets an
+       entirely separate, small buildMyContextHtml_() page instead. ── -->
+  <button id="context-tab-btn" onclick="showStudentContext()">My Context</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -486,7 +1000,7 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 </header>
 
 <!-- ── M2: Warm-Up Readiness Panel ── -->
-<div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:#5f6368;gap:24px;align-items:center;flex-wrap:wrap">
+<div id="warmup-readiness-panel" style="display:none;background:#f8f9fa;border-bottom:1px solid #e8eaed;padding:10px 24px;font-size:12.5px;color:var(--text-secondary);gap:24px;align-items:center;flex-wrap:wrap">
   <span id="wr-unit" style="font-weight:600;color:#1a73e8"></span>
   <span id="wr-eval"></span>
   <span id="wr-warmup"></span>
@@ -495,6 +1009,8 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 </div>
 <div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading class data…</p></div>
 <div id="main" class="main" style="display:none"></div>
+<!-- ── M4: Student Context view — shown instead of #main while active ── -->
+<div id="student-context-view" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 
 <!-- ── M2: LESSON CONTEXT MODAL ── -->
@@ -508,6 +1024,12 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
 
     <div class="modal-body">
       <div class="form-error" id="form-error" role="alert" aria-live="assertive"></div>
+      <!-- NEW (Say/Do Ledger cas-ccps finding #8): in-modal payoff banner —
+           populated in openModal() from the already-loaded dashboard's
+           warm-up readiness data (no extra round-trip). Hidden entirely if
+           that data isn't available yet (M2 not enabled, or dashboard hasn't
+           loaded) rather than showing a confusing placeholder. -->
+      <div id="lesson-payoff-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
       <div id="draft-stale-hint" role="status" aria-live="polite" style="display:none;background:#e8f0fe;color:#1a73e8;padding:10px 14px;border-radius:6px;font-size:13px;margin-bottom:16px"></div>
 
       <!-- Row 1: Date + Period -->
@@ -517,8 +1039,17 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
           <input type="date" id="f-date" aria-required="true">
         </div>
         <div class="field">
-          <label for="f-period">Period / class</label>
-          <input type="text" id="f-period" placeholder="e.g. Period 3  (optional)">
+          <!-- FIXED (Say/Do Ledger cas-ccps finding #8): logging the exact
+               same lesson for 3 periods used to mean filling out this whole
+               form 3 separate times. A teacher can now enter several periods
+               at once here (comma-separated) and submitLesson() below fires
+               one submission per period automatically — same underlying
+               data model as before (one LessonContext row per period), just
+               without re-typing the objective/activity/vocabulary/
+               competencies 3 times. -->
+          <label for="f-period">Period(s) / class</label>
+          <input type="text" id="f-period" placeholder="e.g. Period 3, or Period 1, Period 3, Period 5  (optional)">
+          <div class="hint">Teaching the same lesson to several periods today? List them separated by commas — one lesson log is created for each.</div>
         </div>
       </div>
 
@@ -568,6 +1099,12 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
           <!-- Course tabs injected here by loadCompetencies() -->
         </div>
         <div class="hint" id="comp-hint" style="margin-top:6px"></div>
+        <!-- NEW (Say/Do Ledger cas-ccps finding #10): in-context payoff
+             caption, same convention as the warm-up readiness panel's
+             wrNextStep captions (💡, blue, 12px, margin-top:4px) — this
+             checklist is what feeds SCR competency evidence and the warm-up
+             readiness signal, not a form field with no visible purpose. -->
+        <div style="font-size:12px;color:#1a73e8;margin-top:4px">💡 Checking these off is what lets the system connect this lesson to a student's SCR competency record and personalized warm-up readiness.</div>
       </div>
     </div>
 
@@ -589,11 +1126,47 @@ footer{text-align:center;padding:16px;font-size:11px;color:#80868b}
       <h2 id="discard-confirm-title" style="font-size:16px">Discard this lesson?</h2>
     </div>
     <div class="modal-body" style="padding-top:0">
-      <p style="font-size:13px;color:#5f6368;margin:0">What you've entered hasn't been saved.</p>
+      <p style="font-size:13px;color:var(--text-secondary);margin:0">What you've entered hasn't been saved.</p>
     </div>
     <div class="modal-footer">
       <button id="discard-cancel-btn" onclick="_cancelDiscardConfirm()">Keep editing</button>
       <button id="discard-confirm-btn" onclick="_confirmDiscard()" style="background:#d93025;color:white;border:none;padding:9px 22px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer">Discard</button>
+    </div>
+  </div>
+</div>
+
+<!-- Student shadow-profile detail modal — NEW (Say/Do Ledger cas-ccps
+     finding #13). Destination for the warm-up readiness panel's "ready for
+     personalized feedback" (locked) roster rows' "View Profile →" button.
+     Read-only — no form, no discard-confirm needed. Same modal-backdrop/
+     modal/modal-header/modal-body convention as the lesson modal above. -->
+<div class="modal-backdrop" id="profile-modal-backdrop" onclick="if(event.target===this)closeStudentProfileModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title" style="max-width:480px">
+    <div class="modal-header">
+      <h2 id="profile-modal-title">Student profile</h2>
+      <button class="modal-close" onclick="closeStudentProfileModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="profile-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Pending Review modal — NEW (Say/Do Ledger cas-ccps finding #1). Where a
+     teacher confirms or overrides a genuine-complete submission's AI-suggested
+     score — the step that finally makes the turn-in gate's decision terminal,
+     instead of the silent auto-approval this finding was about. Same
+     modal-backdrop/modal/modal-header/modal-body convention as the two
+     modals above, but with real controls (not read-only like the profile
+     modal, and not a long form like the lesson modal). -->
+<div class="modal-backdrop" id="score-review-modal-backdrop" onclick="if(event.target===this)closeScoreReviewModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="score-review-modal-title" style="max-width:440px">
+    <div class="modal-header">
+      <h2 id="score-review-modal-title">Review submission</h2>
+      <button class="modal-close" onclick="closeScoreReviewModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="score-review-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
   </div>
 </div>
@@ -622,43 +1195,268 @@ function renderWarmUpReadiness(r) {
     ? "📅 " + r.currentUnit
     : "📅 No active unit";
 
+  // NEW (Say/Do Ledger cas-ccps finding #13): each stat below is now a
+  // clickable filter into the roster instead of a static number — see
+  // applyWrFilter()/clearWrFilter(). Made a real <button> (not just a
+  // styled span) whenever its count is > 0, so it's keyboard-reachable
+  // and reads as interactive, not just decorated text.
+  function wrButton(el, count, label, bucket) {
+    if (!el) return;
+    if (!count) { el.style.display = "none"; el.removeAttribute("onclick"); return; }
+    el.style.display = "";
+    el.textContent = label;
+    if (el.tagName === "BUTTON") {
+      el.onclick = function() { applyWrFilter(bucket); };
+    }
+  }
+
   // Eval history
-  const evalEl = document.getElementById("wr-eval");
   // FIXED: was always "students have" — with r.total === 1 this rendered
   // "1 of 1 students have evaluation history," breaking both the noun and
   // the verb agreement in the same sentence.
-  if (evalEl) evalEl.textContent =
+  wrButton(document.getElementById("wr-eval"), r.withEvalHistory,
     r.withEvalHistory + " of " + r.total + " student" +
-    (r.total === 1 ? " has" : "s have") + " evaluation history";
+    (r.total === 1 ? " has" : "s have") + " evaluation history",
+    "eval");
 
   // Warm-up history
-  const wuEl = document.getElementById("wr-warmup");
-  if (wuEl) wuEl.textContent = r.withWarmUpHistory + " with warm-up responses";
+  wrButton(document.getElementById("wr-warmup"), r.withWarmUpHistory,
+    r.withWarmUpHistory + " with warm-up responses", "warmup");
 
   // Was "building archetype confidence" / "ready for personalized
   // archetype" — internal engine vocabulary ("archetype", "shadow
   // confidence") a teacher has no context for. Reworded to describe what
   // it actually means for their students.
-  const confEl = document.getElementById("wr-confidence");
-  // FIXED: clearing textContent alone left an empty flex item still taking
-  // up this row's gap — with 0 students building confidence (common early
-  // in a term), the panel showed a stray blank gap where this span used
-  // to be instead of collapsing cleanly.
-  if (confEl) {
-    confEl.style.display = r.withShadowConfidence ? "" : "none";
-    confEl.textContent = r.withShadowConfidence
-      ? r.withShadowConfidence + " building a personalized learning profile"
-      : "";
-  }
+  wrButton(document.getElementById("wr-confidence"), r.withShadowConfidence,
+    r.withShadowConfidence + " building a personalized learning profile", "conf");
 
   // Locked (high confidence)
-  const lockEl = document.getElementById("wr-locked");
-  if (lockEl) {
-    lockEl.style.display = r.locked ? "" : "none";
-    lockEl.textContent = r.locked
-      ? r.locked + " ready for fully personalized feedback"
-      : "";
+  wrButton(document.getElementById("wr-locked"), r.locked,
+    r.locked + " ready for fully personalized feedback", "locked");
+}
+
+// NEW (finding #13): filter state + the click handlers wrButton() wires
+// up above. _lastDashData is populated by render() below every time it
+// runs, so a filter click can re-render without a fresh round-trip.
+let _activeWrFilter = null; // 'eval' | 'warmup' | 'conf' | 'locked' | null
+let _lastDashData = null;
+const WR_FILTER_EMAIL_KEY = { eval: "withEvalEmails", warmup: "withWarmupEmails", conf: "withConfEmails", locked: "lockedEmails" };
+const WR_FILTER_LABEL = { eval: "students with evaluation history", warmup: "students with warm-up responses", conf: "students building a personalized learning profile", locked: "students ready for fully personalized feedback" };
+
+function applyWrFilter(bucket) {
+  _activeWrFilter = bucket;
+  if (_lastDashData) render(_lastDashData);
+}
+function clearWrFilter() {
+  _activeWrFilter = null;
+  if (_lastDashData) render(_lastDashData);
+}
+
+// NEW (Say/Do Ledger cas-ccps finding #1): the Pending Review summary card's
+// filter toggle — a simple boolean rather than a bucket key, since there's
+// only ever one thing to filter to (mirrors applyWrFilter()/clearWrFilter()'s
+// re-render-from-cache shape, just simpler since there's no bucket to pick).
+let _activePendingReviewFilter = false;
+function togglePendingReviewFilter() {
+  _activePendingReviewFilter = !_activePendingReviewFilter;
+  if (_lastDashData) render(_lastDashData);
+}
+
+// ── Student shadow-profile detail modal ─────────────────────────────────────
+// NEW (Say/Do Ledger cas-ccps finding #13). Opened from a "locked" roster
+// row's "View Profile →" button (see render() above). Read-only — no form
+// state, so it reuses the modal-backdrop convention but not the lesson
+// modal's discard-confirm/focus-restore machinery beyond focus trapping.
+let _profileModalReturnFocus = null;
+
+function openStudentProfile(email, name) {
+  const backdrop = document.getElementById("profile-modal-backdrop");
+  const body     = document.getElementById("profile-modal-body");
+  const title    = document.getElementById("profile-modal-title");
+  if (!backdrop || !body || !title) return;
+
+  title.textContent = name ? name + "'s profile" : "Student profile";
+  body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
+
+  _profileModalReturnFocus = document.activeElement;
+  backdrop.classList.add("open");
+  document.addEventListener("keydown", _modalTrapKeydown);
+  const closeBtn = backdrop.querySelector(".modal-close");
+  if (closeBtn) closeBtn.focus();
+
+  google.script.run
+    .withSuccessHandler(function(profile) {
+      // Guard against a slow response landing after the teacher already
+      // closed the modal (or opened a different student's) — only render
+      // if this is still the profile actually on screen.
+      if (!backdrop.classList.contains("open")) return;
+      renderStudentProfileModal(profile, name);
+    })
+    .withFailureHandler(function(e) {
+      if (!backdrop.classList.contains("open")) return;
+      body.innerHTML = '<p style="font-size:13px;color:#d93025">Could not load this profile: ' +
+        esc(e && e.message ? e.message : "unknown error") + '</p>';
+    })
+    .getStudentShadowProfile(email);
+}
+
+function renderStudentProfileModal(profile, fallbackName) {
+  const body = document.getElementById("profile-modal-body");
+  if (!body) return;
+  if (!profile || profile.error) {
+    body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">' +
+      esc((profile && profile.error) || "No profile data available yet.") + '</p>';
+    return;
   }
+
+  let html = '<div style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
+    esc(profile.evalHistoryCount || 0) + ' evaluation' + ((profile.evalHistoryCount||0)===1?"":"s") +
+    ' logged · ' + esc(profile.warmupHistoryCount || 0) + ' warm-up response' +
+    ((profile.warmupHistoryCount||0)===1?"":"s") + ' · last updated ' + esc(profile.lastUpdated || "Never") +
+    '</div>';
+
+  const units = profile.unitConfidence || [];
+  if (!units.length) {
+    html += '<p style="font-size:13px;color:var(--text-secondary)">No per-unit confidence data yet — this builds up as evaluation and warm-up history accumulates.</p>';
+  } else {
+    const statusClass = { "Ready for personalized feedback": "badge-compliant",
+      "Building confidence": "badge-queued", "Not yet enough data": "badge-unknown" };
+    html += '<div style="display:flex;flex-direction:column;gap:10px">';
+    units.forEach(function(u) {
+      html += '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;background:#f8f9fa;border-radius:8px">' +
+        '<div style="font-size:13px">' + esc(u.unitLabel || "") + '</div>' +
+        '<div class="status-badge ' + (statusClass[u.status] || "badge-unknown") + '">' + esc(u.status || "") + '</div>' +
+        '</div>';
+    });
+    html += '</div>';
+  }
+  body.innerHTML = html;
+}
+
+function closeStudentProfileModal() {
+  const backdrop = document.getElementById("profile-modal-backdrop");
+  if (!backdrop) return;
+  backdrop.classList.remove("open");
+  document.removeEventListener("keydown", _modalTrapKeydown);
+  if (_profileModalReturnFocus && typeof _profileModalReturnFocus.focus === "function") {
+    _profileModalReturnFocus.focus();
+  }
+  _profileModalReturnFocus = null;
+}
+
+// ── Pending Review modal ─────────────────────────────────────────────────────
+// NEW (Say/Do Ledger cas-ccps finding #1). Opened from a PENDING_TEACHER_REVIEW
+// roster row's "Review Submission" button (see render() below). Unlike the
+// read-only profile modal above, this one has real controls — accept the
+// AI-suggested score as-is, or override it — either action round-trips to
+// teacherConfirmTurnInScore()/teacherOverrideTurnInScore() and, on success,
+// closes the modal and refreshes the roster.
+let _scoreReviewReturnFocus = null;
+
+function openScoreReview(configId, name, suggestedScore) {
+  const backdrop = document.getElementById("score-review-modal-backdrop");
+  const body     = document.getElementById("score-review-modal-body");
+  const title    = document.getElementById("score-review-modal-title");
+  if (!backdrop || !body || !title) return;
+
+  title.textContent = name ? "Review — " + name : "Review submission";
+  renderScoreReviewModal(configId, suggestedScore);
+
+  _scoreReviewReturnFocus = document.activeElement;
+  backdrop.classList.add("open");
+  document.addEventListener("keydown", _modalTrapKeydown);
+  const closeBtn = backdrop.querySelector(".modal-close");
+  if (closeBtn) closeBtn.focus();
+}
+
+function renderScoreReviewModal(configId, suggestedScore) {
+  const body = document.getElementById("score-review-modal-body");
+  if (!body) return;
+  // Two independent escape passes, same order and same reason as the
+  // "locked" bucket's View Profile button above: HTML-attribute-escape "
+  // first (this onclick attribute is double-quoted), then JS-string-escape '
+  // (the browser decodes &quot; back to " before the JS parser ever sees this
+  // attribute's text, so the ' escape has to survive that decode). ConfigIDs
+  // are actually always [A-Z0-9-]+ (see extractFileId_/scanCompliance_'s
+  // regex in 04_Form2_TurnInGate.js), so neither pass is reachable in
+  // practice — done anyway so this function is safe on its own terms, not
+  // dependent on staying in sync with a regex defined in a different file.
+  const safeConfigId = String(configId).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+
+  let html = '<div id="score-review-error" class="form-error" role="alert" aria-live="assertive"></div>';
+
+  if (suggestedScore) {
+    html += '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
+      'This submission passed all automated checks. The AI-suggested score is <strong>' +
+      esc(suggestedScore) + '/5</strong>.</p>' +
+      '<button id="score-review-accept-btn" onclick="submitTurnInConfirm(\\'' + safeConfigId + '\\')" ' +
+      'style="width:100%;background:#1a73e8;color:white;border:none;padding:10px;border-radius:6px;' +
+      'font-size:14px;font-weight:500;cursor:pointer;margin-bottom:14px">Accept ' +
+      esc(suggestedScore) + '/5 as final score</button>';
+  } else {
+    html += '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:14px">' +
+      'This submission passed all automated checks, but was evaluated before AI scoring was ' +
+      'added to Flow 2 — assign a score directly below.</p>';
+  }
+
+  html += '<div class="field" style="margin-bottom:10px">' +
+    '<label for="score-review-override">Or enter a different score (1–5)</label>' +
+    '<input type="number" id="score-review-override" min="1" max="5" step="1" placeholder="1–5" style="width:100px">' +
+    '<div class="hint">5 is reserved for your own judgment — the system never suggests it.</div>' +
+    '</div>' +
+    '<button id="score-review-override-btn" onclick="submitTurnInOverride(\\'' + safeConfigId + '\\')" ' +
+    'style="width:100%;background:none;border:1px solid #1a73e8;color:#1a73e8;padding:9px;border-radius:6px;' +
+    'font-size:14px;font-weight:500;cursor:pointer">Submit this score instead</button>';
+
+  body.innerHTML = html;
+}
+
+function closeScoreReviewModal() {
+  const backdrop = document.getElementById("score-review-modal-backdrop");
+  if (!backdrop) return;
+  backdrop.classList.remove("open");
+  document.removeEventListener("keydown", _modalTrapKeydown);
+  if (_scoreReviewReturnFocus && typeof _scoreReviewReturnFocus.focus === "function") {
+    _scoreReviewReturnFocus.focus();
+  }
+  _scoreReviewReturnFocus = null;
+}
+
+function _scoreReviewError(msg) {
+  const el = document.getElementById("score-review-error");
+  if (!el) return;
+  el.textContent = msg;
+  el.style.display = "block";
+}
+
+function submitTurnInConfirm(configId) {
+  google.script.run
+    .withSuccessHandler(_handleTurnInDecisionResult)
+    .withFailureHandler(function(e) { _scoreReviewError(e && e.message ? e.message : "Could not save — try again."); })
+    .teacherConfirmTurnInScore(configId);
+}
+
+function submitTurnInOverride(configId) {
+  const input = document.getElementById("score-review-override");
+  const val   = input ? parseInt(input.value, 10) : NaN;
+  if (!Number.isInteger(val) || val < 1 || val > 5) {
+    _scoreReviewError("Enter a whole number from 1 to 5.");
+    return;
+  }
+  google.script.run
+    .withSuccessHandler(_handleTurnInDecisionResult)
+    .withFailureHandler(function(e) { _scoreReviewError(e && e.message ? e.message : "Could not save — try again."); })
+    .teacherOverrideTurnInScore(configId, val);
+}
+
+function _handleTurnInDecisionResult(res) {
+  if (!res || !res.success) {
+    _scoreReviewError((res && res.error) || "Could not save — try again.");
+    return;
+  }
+  closeScoreReviewModal();
+  showToast("✅ Score recorded — " + res.finalScore + "/5");
+  loadData();
 }
 
 // Per-term client cache — switching the term filter back and forth used to
@@ -694,6 +1492,10 @@ function loadData() {
   const loading = document.getElementById("loading");
   const main = document.getElementById("main");
   const refreshBtn = document.getElementById("refresh-btn");
+  // Returning to the main dashboard (Refresh, or just page load) should
+  // leave the M4 Student Context view, if it happened to be open.
+  const contextView = document.getElementById("student-context-view");
+  if (contextView) contextView.style.display = "none";
   // The generation counter already prevents a stale response from ever
   // rendering, so rapid re-clicks never glitch the UI — but they still fire
   // redundant concurrent Apps Script executions that are immediately
@@ -729,6 +1531,21 @@ function loadData() {
   google.script.run
     .withSuccessHandler(function(data) {
       if (myGen !== _loadGen) return; // a newer request already superseded this one
+      // getDashboardData() returns { error } instead of throwing when the
+      // caller isn't the configured teacher — this must render as a
+      // distinct "access denied" state, not the generic empty-roster
+      // message render() shows for {students:[]}, since those look
+      // identical to a teacher otherwise and mean very different things.
+      if (data && data.error) {
+        if (cached) { if (refreshBtn) refreshBtn.disabled = false; return; }
+        _afterMinSpinnerDelay(shownSpinnerAt, myGen, function() {
+          loading.innerHTML = '<p style="color:#d93025;padding:24px 24px 8px;">⚠ ' + esc(data.error) + '</p>';
+          loading.style.display = "block";
+          main.style.display = "none";
+          if (refreshBtn) refreshBtn.disabled = false;
+        });
+        return;
+      }
       // The first automatic call sends term === "" so the server's
       // CURRENT_TERM fallback resolves it, but render() below then syncs the
       // dropdown to that resolved data.activeTerm — so a manual Refresh right
@@ -755,6 +1572,9 @@ function loadData() {
 
 function render(data) {
   const main = document.getElementById("main");
+  // NEW (finding #13): cache so a warm-up-readiness filter click can
+  // re-render without a fresh round-trip — see applyWrFilter()/clearWrFilter().
+  _lastDashData = data;
   // Any refresh (manual, term change, or a cache revalidation) rebuilds the
   // whole list via innerHTML — preserve where the teacher was scrolled to
   // instead of dumping them back to the top of a long roster.
@@ -767,11 +1587,11 @@ function render(data) {
     // other than "All Terms."
     const filteredByTerm = data && data.activeTerm && data.activeTerm !== "ALL" && (data.availableTerms || []).length > 0;
     main.innerHTML = filteredByTerm
-      ? \`<div style="text-align:center;padding:60px 24px;color:#5f6368">
+      ? \`<div style="text-align:center;padding:60px 24px;color:var(--text-secondary)">
         <div style="font-size:48px;margin-bottom:16px">📋</div>
         <p>No students for \${esc(data.activeTerm)}.<br>Try "All Terms" to see records from other terms.</p>
       </div>\`
-      : \`<div style="text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line">
+      : \`<div style="text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line">
       <div style="font-size:48px;margin-bottom:16px">📋</div>
       <p>No students registered yet.
 
@@ -800,16 +1620,49 @@ If you expect to see students here:
   // exclude a real status and leave the three cards short of the total,
   // the exact bug that made "NOT STARTED"/"EVALUATED" students vanish before.
   const pending   = total - compliant - flagged;
+  // NEW (Say/Do Ledger cas-ccps finding #1): a slice of "In progress" above
+  // — every pending-review row is already counted there too (the remainder
+  // formula doesn't exclude it), so this doesn't change what "In progress"
+  // means. It's a separate, clickable card into the same roster, the same
+  // relationship the warm-up-readiness stats already have to the roster below.
+  const pendingReview = data.students.filter(s => s.statusClass === "pending-review").length;
 
   let html = \`<div class="summary-grid">
     <div class="summary-card card-total"><div class="count">\${total}</div><div class="label">Students</div></div>
     <div class="summary-card card-compliant"><div class="count">\${compliant}</div><div class="label">Submitted</div></div>
     <div class="summary-card card-pending"><div class="count">\${pending}</div><div class="label">In progress</div></div>
+    \${pendingReview ? \`<div class="summary-card card-pending-review" onclick="togglePendingReviewFilter()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePendingReviewFilter();}"><div class="count">\${pendingReview}</div><div class="label">Pending Review</div></div>\` : ""}
     <div class="summary-card card-flagged"><div class="count">\${flagged}</div><div class="label">Needs attention</div></div>
   </div>\`;
 
+  // NEW (finding #13): the warm-up readiness panel's stats are clickable
+  // filters into this roster — apply the active one (if any) before
+  // building the unit groups below. Summary cards above stay whole-class;
+  // only the roster list is filtered, with a visible banner explaining why.
+  let studentsToShow = data.students;
+  if (_activeWrFilter && data.warmUpReadiness) {
+    const emailKey = WR_FILTER_EMAIL_KEY[_activeWrFilter];
+    const emailSet = new Set((data.warmUpReadiness[emailKey] || []).map(e => e.toLowerCase()));
+    studentsToShow = studentsToShow.filter(s => emailSet.has(String(s.googleId||"").toLowerCase()));
+    html += \`<div style="background:#e8f0fe;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;color:#1a73e8">Showing \${studentsToShow.length} \${esc(WR_FILTER_LABEL[_activeWrFilter]||"")}</span>
+      <button onclick="clearWrFilter()" style="background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
+    </div>\`;
+  }
+  // NEW (finding #1): a second, independent filter toggle — the Pending
+  // Review card above. Combines with the warm-up-readiness filter above if
+  // both happen to be active (each just narrows studentsToShow further),
+  // though in practice a teacher would only ever use one at a time.
+  if (_activePendingReviewFilter) {
+    studentsToShow = studentsToShow.filter(s => s.statusClass === "pending-review");
+    html += \`<div style="background:#f3e8fd;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;color:#9334e6">Showing \${studentsToShow.length} awaiting your review</span>
+      <button onclick="togglePendingReviewFilter()" style="background:none;border:1px solid #9334e6;color:#9334e6;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
+    </div>\`;
+  }
+
   const units = {};
-  data.students.forEach(s => {
+  studentsToShow.forEach(s => {
     if (!units[s.unitCode]) units[s.unitCode] = [];
     units[s.unitCode].push(s);
   });
@@ -817,14 +1670,58 @@ If you expect to see students here:
   const badgeMap = {
     compliant:"badge-compliant", active:"badge-active", queued:"badge-queued",
     evaluated:"badge-evaluated", "not-started":"badge-not-started",
+    "pending-review":"badge-pending-review",
     flagged:"badge-flagged", unknown:"badge-unknown"
   };
+
+  if ((_activeWrFilter || _activePendingReviewFilter) && studentsToShow.length === 0) {
+    html += \`<div style="text-align:center;padding:40px 24px;color:var(--text-secondary)">No students match this filter right now.</div>\`;
+  }
 
   Object.keys(units).sort().forEach(unit => {
     const u = data.unitSummary[unit] || {};
     html += \`<div class="unit-section">
       <div class="unit-header">\${esc(unit) || "Unassigned unit"} <span style="font-weight:400;margin-left:8px;">\${u.total||0} student\${(u.total||0)===1?'':'s'} · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
     units[unit].forEach(s => {
+      // NEW (finding #13): a bucket-appropriate next step per filtered row —
+      // "building profile" students get a note to log more lesson context
+      // (that's what actually grows this signal); "ready" students get a
+      // link into their new per-student shadow-profile detail view.
+      let wrNextStep = "";
+      if (_activeWrFilter === "conf") {
+        wrNextStep = '<div style="font-size:12px;color:#1a73e8;margin-top:4px">💡 Log more Lesson Context for this class to help build a fuller profile faster.</div>';
+      } else if (_activeWrFilter === "locked") {
+        // Two independent escape passes, in this order: HTML-attribute-
+        // escape " first (the onclick attribute itself is double-quoted —
+        // an unescaped " here would close the attribute early and let
+        // whatever follows in a student's name run as raw markup/script,
+        // not just a JS-string-escaping bug), then JS-string-escape '
+        // (the browser decodes &quot; back to " before handing this
+        // attribute's text to the JS parser, so the ' escape still has to
+        // survive that decode — hence &quot; here, not \\", which the JS
+        // parser would see literally instead of as a quote).
+        const wrIdSafe   = s.googleId.replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const wrNameSafe = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
+      }
+      // NEW (Say/Do Ledger cas-ccps finding #1): shown on every
+      // PENDING_TEACHER_REVIEW row regardless of which (if any) warm-up
+      // readiness filter is active — a separate variable from wrNextStep
+      // above since these are independent concerns, not mutually exclusive
+      // bucket states. Same double-escape pattern as the "locked" bucket's
+      // View Profile button just above, for the same reason (onclick
+      // attribute — see that comment).
+      let reviewNextStep = "";
+      if (s.statusClass === "pending-review") {
+        const rvConfigSafe = String(s.configId||"").replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const rvNameSafe   = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const rvScoreArg   = s.suggestedScore == null ? "null" : String(s.suggestedScore);
+        const rvScoreNote  = s.suggestedScore == null
+          ? "No AI-suggested score — assign one directly."
+          : "AI-suggested score: " + s.suggestedScore + "/5.";
+        reviewNextStep = '<div style="font-size:12px;color:#9334e6;margin-top:4px">' + rvScoreNote + '</div>' +
+          '<button onclick="openScoreReview(\\'' + rvConfigSafe + '\\', \\'' + rvNameSafe + '\\', ' + rvScoreArg + ')" style="margin-top:6px;background:#9334e6;color:white;border:none;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">Review Submission →</button>';
+      }
       html += \`<div class="student-row \${s.statusClass}">
         <div>
           <div class="student-name">\${esc(s.name)}</div>
@@ -833,8 +1730,10 @@ If you expect to see students here:
           \${s.submittedAt && s.submittedAt !== "—" ? \`<div class="last-eval">Submitted: \${esc(s.submittedAt)}</div>\` : ""}
           \${s.docUrl
             ? \`<a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>\`
-            : '<span style="color:#80868b;font-size:13px;">Document not yet available</span>'
+            : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
+          \${wrNextStep}
+          \${reviewNextStep}
         </div>
         <div><div class="status-badge \${badgeMap[s.statusClass]||'badge-unknown'}">\${esc(s.status)}</div></div>
       </div>\`;
@@ -884,6 +1783,67 @@ function _populateTermDropdown(data) {
 
 function esc(s) {
   return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+// ── M4: STUDENT CONTEXT TAB ───────────────────────────────────────────────
+// FIXED (finding #9): this page is only ever built for the authorized
+// teacher now (doGet() decides server-side before building any HTML), so
+// this always shows the full roster — no more try-the-teacher-path,
+// fall-back-on-error ambiguity, and no more renderOwnContext() dead code
+// sitting in a template a student never actually receives.
+function showStudentContext() {
+  document.getElementById("main").style.display = "none";
+  document.getElementById("loading").style.display = "none";
+  const view = document.getElementById("student-context-view");
+  view.style.display = "block";
+  view.innerHTML = '<div class="spinner"></div><p style="text-align:center;color:var(--text-secondary)">Loading your context…</p>';
+
+  google.script.run
+    .withSuccessHandler(function(result) {
+      if (result.error) {
+        // Shouldn't happen for this template's caller — getStudentContextRoster()
+        // only ever errors on a failed identity check, and doGet() already
+        // verified that before this page was built. Shown plainly rather
+        // than assumed unreachable, in case config drifts between the two checks.
+        view.innerHTML = '<p style="color:#d93025;padding:24px;">' + esc(result.error) + '</p>';
+        return;
+      }
+      renderTeacherRoster(result);
+    })
+    .withFailureHandler(function(e) {
+      view.innerHTML = '<p style="color:#d93025;padding:24px;">Could not load roster: ' + esc(e.message || e) + '</p>';
+    })
+    .getStudentContextRoster();
+}
+
+function renderTeacherRoster(result) {
+  const view = document.getElementById("student-context-view");
+  let html = '<h2 style="font-size:16px;margin-bottom:12px;">Student Context — Full Roster</h2>';
+  html += '<p style="font-size:12px;color:var(--text-secondary);margin-bottom:4px;">Generated ' + esc(result.generatedAt) + ' · Updates weekly via time trigger, not live.</p>';
+  // NEW (Say/Do Ledger cas-ccps finding #10): in-context payoff caption,
+  // same convention used elsewhere in this file — this roster is the
+  // aggregated view of every student doc's context (lesson history,
+  // evaluation/warm-up activity), not just a read-only listing.
+  html += '<p style="font-size:12px;color:#1a73e8;margin-bottom:16px;">💡 This feeds every student’s warm-up personalization and shadow-profile confidence — the more Lesson Context logged, the richer this gets.</p>';
+  if (result.roster.length === 0) {
+    html += '<p style="color:var(--text-secondary);">No student docs yet. They are created automatically the first week a student has a completed assignment or warm-up response.</p>';
+  } else {
+    result.roster.forEach(function(s) {
+      // FIXED (Say/Do Ledger cas-ccps finding #15): was a bare color-only
+      // dot (green/gray) with no text label — reuses the same
+      // .status-badge/.badge-* text+color convention every other status
+      // indicator on this dashboard already uses, instead of a second,
+      // bespoke color-only pattern.
+      const activityBadge = s.hasRecentActivity
+        ? '<span class="status-badge badge-compliant">Active</span>'
+        : '<span class="status-badge badge-not-started">No recent activity</span>';
+      html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
+      html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:11px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
+      html += '<a href="' + s.docUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>';
+      html += '</div>';
+    });
+  }
+  view.innerHTML = html;
 }
 
 // ── M2: MODAL ───────────────────────────────────────────────────────────────
@@ -1052,6 +2012,23 @@ function openModal() {
       staleHint.style.display = "block";
     } else {
       staleHint.style.display = "none";
+    }
+  }
+
+  // NEW (Say/Do Ledger cas-ccps finding #8): the payoff banner, sourced from
+  // whatever warm-up-readiness data the dashboard already has cached — no
+  // new server call just to populate a caption. withWarmUpHistory is the
+  // closest existing count to "students getting profile-based questions."
+  const payoffHint = document.getElementById("lesson-payoff-hint");
+  if (payoffHint) {
+    const wr = _lastDashData && _lastDashData.warmUpReadiness;
+    if (wr && wr.total) {
+      payoffHint.textContent = "💡 This is what powers personalized warm-ups — " +
+        wr.withWarmUpHistory + " of " + wr.total + " students across your classes are " +
+        "already getting profile-based questions because of logs like this one.";
+      payoffHint.style.display = "block";
+    } else {
+      payoffHint.style.display = "none";
     }
   }
 
@@ -1359,6 +2336,12 @@ document.addEventListener("DOMContentLoaded", function() {
 });
 
 // ── submitLesson ──────────────────────────────────────────────────────────
+// NEW (Say/Do Ledger cas-ccps finding #8): a comma-separated Period field
+// now fires one submitLessonContext() call per period, in sequence — same
+// underlying data model as before (one LessonContext row per period, see
+// 22_LessonContextHandler.js), just without re-filling the whole form once
+// per period. A blank/single-value period field behaves exactly as before
+// (one submission, periodOrClass either "" or the one value entered).
 function submitLesson() {
   const btn = document.getElementById("submit-btn");
   btn.disabled    = true;
@@ -1371,9 +2354,13 @@ function submitLesson() {
   );
   const competencyIds = [...checkedBoxes].map(cb => cb.value).join(",");
 
-  const payload = {
+  const periodRaw = document.getElementById("f-period").value.trim();
+  const periods = periodRaw
+    ? periodRaw.split(",").map(p => p.trim()).filter(Boolean)
+    : [""];
+
+  const basePayload = {
     lessonDate:            document.getElementById("f-date").value,
-    periodOrClass:         document.getElementById("f-period").value.trim(),
     learningObjective:     document.getElementById("f-objective").value.trim(),
     activityDescription:   document.getElementById("f-activity").value.trim(),
     priorLessonConnection: document.getElementById("f-prior").value.trim(),
@@ -1381,38 +2368,76 @@ function submitLesson() {
     competencyIds:         competencyIds
   };
 
-  google.script.run
-    .withSuccessHandler(function(result) {
-      btn.textContent = "Log lesson";
+  const succeeded = [];
+  const failed    = []; // { period, error } — error is null for a network-level failure
+  let firstFrameDocUrl = null;
 
-      if (!result.success) {
-        showFormError(result.error || "Submission failed. Please try again.");
-        btn.disabled = false;
-        return;
-      }
+  function finish() {
+    btn.textContent = "Log lesson";
 
-      lastUsedPeriod = payload.periodOrClass;
-      _safeSessionSet_("casLastPeriod", lastUsedPeriod);
-      closeModal(true); // already saved — nothing to confirm discarding
-      showToast("Lesson logged. Alignment will be recorded automatically.");
+    if (succeeded.length === 0) {
+      // Every submission failed — nothing was saved, so leave the form
+      // filled in exactly like the original single-submission failure path
+      // did, rather than discarding what the teacher typed.
+      const distinctErrors = [...new Set(failed.map(f => f.error).filter(Boolean))];
+      showFormError(distinctErrors.length
+        ? distinctErrors.join(" ")
+        : "Something went wrong submitting this lesson. Your entries are still filled in above — try again.");
+      btn.disabled = false;
+      return;
+    }
 
-      // ── S27 hook: open Lesson Frame doc when Script 27 exists ──
-      if (result.frameDocUrl) {
-        // Popup blockers silently swallow this in most browsers rather than
-        // erroring — window.open returns null/undefined when that happens,
-        // so fall back to a dismissible link instead of losing the doc.
-        const opened = window.open(result.frameDocUrl, "_blank");
-        if (!opened) {
-          _showFrameLinkFallback(result.frameDocUrl);
+    lastUsedPeriod = periodRaw;
+    _safeSessionSet_("casLastPeriod", lastUsedPeriod);
+    closeModal(true); // at least one save succeeded — nothing left to discard
+
+    if (failed.length === 0) {
+      showToast(periods.length > 1
+        ? "Logged for " + succeeded.length + " periods. Alignment will be recorded automatically."
+        : "Lesson logged. Alignment will be recorded automatically.");
+    } else {
+      // Partial failure — say plainly which periods didn't go through
+      // instead of a blanket "done" that hides a real gap.
+      showToast("Logged for " + succeeded.join(", ") + ". Could not log for " +
+        failed.map(f => f.period).join(", ") + " — try those again.", true);
+    }
+
+    // ── S27 hook: open Lesson Frame doc when Script 27 exists ──
+    // Only the first one, even across multiple periods — opening one per
+    // period would be a popup storm, and the frame doc's content doesn't
+    // vary meaningfully by period for the same lesson.
+    if (firstFrameDocUrl) {
+      // Popup blockers silently swallow this in most browsers rather than
+      // erroring — window.open returns null/undefined when that happens,
+      // so fall back to a dismissible link instead of losing the doc.
+      const opened = window.open(firstFrameDocUrl, "_blank");
+      if (!opened) _showFrameLinkFallback(firstFrameDocUrl);
+    }
+  }
+
+  function submitNext(i) {
+    if (i >= periods.length) { finish(); return; }
+    const period  = periods[i];
+    const payload = Object.assign({}, basePayload, { periodOrClass: period });
+
+    google.script.run
+      .withSuccessHandler(function(result) {
+        if (result && result.success) {
+          succeeded.push(period || "(no period)");
+          if (!firstFrameDocUrl && result.frameDocUrl) firstFrameDocUrl = result.frameDocUrl;
+        } else {
+          failed.push({ period: period || "(no period)", error: result && result.error });
         }
-      }
-    })
-    .withFailureHandler(function(e) {
-      btn.textContent = "Log lesson";
-      btn.disabled    = false;
-      showFormError("Something went wrong submitting this lesson. Your entries are still filled in above — try again.");
-    })
-    .submitLessonContext(payload);
+        submitNext(i + 1);
+      })
+      .withFailureHandler(function(e) {
+        failed.push({ period: period || "(no period)", error: null });
+        submitNext(i + 1);
+      })
+      .submitLessonContext(payload);
+  }
+
+  submitNext(0);
 }
 
 function showFormError(msg) {
@@ -1483,6 +2508,83 @@ document.addEventListener("keydown", function(e) {
 });
 
 loadData();
+</script>
+</body>
+</html>`;
+}
+
+// ---------------------------------------------------------------------------
+// buildMyContextHtml_ — NEW (Say/Do Ledger cas-ccps finding #9). A small,
+// self-contained page for a non-teacher caller (a student). Deliberately
+// shares no markup/CSS/JS with buildDashboardHtml_() above — no dashboard
+// stats, no Lesson Context modal, no term filter, no "+ New Lesson"
+// button, none of it meaningful to this audience. Calls getMyStudentContext()
+// directly on load; that function scopes itself to the caller's own
+// identity (Session.getActiveUser()), never the teacher's, so there's no
+// identity ambiguity here to resolve client-side the way the old shared
+// template needed to.
+// ---------------------------------------------------------------------------
+function buildMyContextHtml_() {
+  return `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Context</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:14px}
+header{background:#1a73e8;color:white;padding:16px 24px}
+header h1{font-size:18px;font-weight:500}
+.main{padding:20px 24px;max-width:640px;margin:0 auto}
+#loading{text-align:center;padding:60px 24px;color:var(--text-secondary)}
+.spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1a73e8;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header><h1>📄 My Context</h1></header>
+<div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading your context…</p></div>
+<div id="main" class="main" style="display:none"></div>
+
+<script>
+function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+function loadOwnContext() {
+  google.script.run
+    .withSuccessHandler(function(result) {
+      document.getElementById("loading").style.display = "none";
+      const view = document.getElementById("main");
+      view.style.display = "block";
+      if (result.error) {
+        view.innerHTML = '<p style="color:#d93025;padding:24px 0;">' + esc(result.error) + '</p>';
+        return;
+      }
+      if (!result.hasContent) {
+        view.innerHTML = '<div style="text-align:center;padding:40px 0;color:var(--text-secondary);">' +
+          '<p style="font-size:14px;">' + esc(result.message) + '</p></div>';
+        return;
+      }
+      view.innerHTML =
+        '<div style="text-align:center;padding:40px 0;">' +
+        '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
+        '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
+        '<a href="' + result.docUrl + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>' +
+        '</div>';
+    })
+    .withFailureHandler(function(e) {
+      document.getElementById("loading").style.display = "none";
+      const view = document.getElementById("main");
+      view.style.display = "block";
+      view.innerHTML = '<p style="color:#d93025;padding:24px 0;">Could not load your context: ' + esc(e.message || e) + '</p>';
+    })
+    .getMyStudentContext();
+}
+
+loadOwnContext();
 </script>
 </body>
 </html>`;

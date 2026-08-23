@@ -151,6 +151,34 @@ const MAX_FEEDBACK_CHARS     = 500; // cap Flow 4 feedback stored in queue row
 // rows faster or slower depending on Studio concurrency).
 // ---------------------------------------------------------------------------
 function registerDeliveredWarmUps() {
+  // FIXED: this 5-minute safety-net trigger had no lock at all, unlike
+  // every comparable job in this codebase (03_QueueBridge.js,
+  // 06_StagingPipeline_Turnstile.js, 26_CompetencyAlignmentLog.js,
+  // 08_TeacherConfirmationStep.js) — two overlapping runs (a real risk if
+  // doc-processing ever takes longer than 5 minutes) could both read the
+  // same pre-write WarmUpRegistry snapshot, see the same DELIVERED rows as
+  // unregistered, and double-register them, double-firing the
+  // "lesson fully delivered" LessonContext update below. Same two-tier
+  // lock pattern as 06_StagingPipeline_Turnstile.js: a short, separate
+  // wait for the lock itself (stand down and retry next run rather than
+  // block), then the real work under try/finally so the lock always
+  // releases.
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    Logger.log("[S25-J1] Parallel block congestion — standing down.");
+    return;
+  }
+
+  try {
+    _registerDeliveredWarmUps_();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _registerDeliveredWarmUps_() {
   const cfg = getConfig_();
 
   // FIXED: unified to strict opt-in (`=== "true"`) — see
@@ -676,6 +704,18 @@ function callFlow4_(responseText, promptText, wordCountScore) {
   // For direct synchronous evaluation (if using Gemini API directly rather
   // than Studio), the implementation below can replace the queue-based approach.
   // Uncomment and configure if direct API access is available.
+  //
+  // NOTE on the OAuth scope this needs: a prior audit flagged
+  // script.external_request as an unused, over-broad scope in
+  // central-ledger.appsscript.json, since nothing live calls UrlFetchApp
+  // — only this commented-out block does. Deliberately NOT removed:
+  // tools/gas-lint/check.js's OAuth-scope check reads raw file text (by
+  // design — see its Session.* note) and doesn't distinguish commented
+  // code from live code, so it already treats this reference
+  // implementation as "using" the scope. Stripping the scope to satisfy
+  // that check would just make the linter blind to the real requirement
+  // the moment someone uncomments this block — worse than the modest,
+  // inert over-grant of keeping it declared today.
 
   /*
   // ── Direct Gemini API call (alternative to Studio Flow queue) ─────────────

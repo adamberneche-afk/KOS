@@ -62,6 +62,19 @@
 // "DriveApp.getFileById(confirmForm.getId()).moveTo(teacherFolder);"
 // inclusive. Everything before and after this block in that function is
 // unchanged.
+//
+// APPLIED -- the live base file's Confirmation Form block was NOT actually
+// damaged the way this addendum's own pasted source was (repair notes 1-3
+// below describe damage in THIS file's paste, not in 16_UnifiedManualSetup.js
+// itself) -- so only the two genuinely-missing pieces were merged: the
+// addCompetencyDropdownItems_()/addLessonUnitDropdownItem_() call sites
+// (M5 + M6), and the five trailing ConfirmationResponses headers. See
+// createTeacherAssets_() in 16_UnifiedManualSetup.js. addCompetencyDropdownItems_()
+// and buildCompetencyDropdownOptions_() below were already live (this file
+// shares the same bound project, so file boundary != scope boundary in
+// GAS) -- only their call site was unmerged. This file is kept in place,
+// not archived: it's a legitimate source file in this project, not inert
+// prose.
 // =============================================================================
 
 /*
