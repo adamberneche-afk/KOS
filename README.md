@@ -121,12 +121,15 @@ Script projects sharing overlapping files. This tool generates a
 throwaway per-project push folder for each of the 7 from
 `tools/gas-lint/project-map.json`, so `cas-ccps/scripts/` itself never
 gets reorganized or duplicated in git. All 9 real projects across the
-repo now have a committed `appsscript.json` for the first time. Getting
-from here to an actual live push still needs `clasp login` against a
-real Google account — see
+repo now have a committed `appsscript.json` for the first time. `clasp
+login` against a real Google account is now working — see
 [`meta/CLASP_AND_APPS_SCRIPT.md`](./meta/CLASP_AND_APPS_SCRIPT.md) for
-the full workflow and [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md)
-for the mechanics.
+the conceptual workflow, [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md)
+for `sync.js`'s own mechanics, and
+[`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md`](./tools/clasp-sync/DEPLOYMENT_RUNBOOK.md)
+for the actual command-by-command runbook (all three systems, sandbox-first
+for cas-ccps, human-gated production promotion — folded in from an
+external review pass, Addendum 22 R9).
 
 ## Still pending
 
