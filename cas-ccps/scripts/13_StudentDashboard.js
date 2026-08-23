@@ -77,9 +77,21 @@ function getStudentDashboardData(termFilter) {
     const lastEval    = row[15] ? formatDate_(row[15]) : null;
     const submittedAt = row[13] ? formatDate_(row[13]) : null;
 
+    // NEW (Say/Do Ledger cas-ccps finding #7): a student previously had no
+    // way to see what's actually on file for them (name, class, period,
+    // teacher) or to know a registration just happened at all — the only
+    // notice was a one-time email, easy to miss. registeredAt/isNew feed
+    // an in-app "just registered" notice; studentName feeds the persistent
+    // "My Info" view below.
+    const registeredAtRaw = row[0] || null;
+    const isNewRegistration = registeredAtRaw
+      ? (Date.now() - new Date(registeredAtRaw).getTime()) < (3 * 24 * 60 * 60 * 1000)
+      : false;
+
     const rowTerm2 = String(row[18] || "").trim();
     assignments.push({
       configId:      String(row[2]).trim(),
+      studentName:   String(row[4]).trim(),
       // Same fallback wording as the teacher dashboard's identical gap
       // (blank column 10) — a teacher and student comparing notes about a
       // "missing unit" record should recognize it as the same thing.
@@ -91,6 +103,8 @@ function getStudentDashboardData(termFilter) {
       period:        String(row[11]).trim(),
       subject:       String(row[9]).trim(),
       term:          rowTerm2,
+      registeredAt:      registeredAtRaw ? formatDate_(registeredAtRaw) : null,
+      isNewRegistration: isNewRegistration,
       status:        status,
       displayStatus: resolveStudentStatus_(status, pipelineStatus[fileId]),
       statusClass:   resolveStudentClass_(status, pipelineStatus[fileId]),
@@ -220,6 +234,13 @@ function buildStudentDashboardHtml_() {
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>My Assignments</title>
 <style>
+  /* FIXED (Say/Do Ledger cas-ccps finding #14): #80868b (used for
+     secondary/meta text) is ~3.68:1 against white — below WCAG AA's
+     4.5:1 minimum for normal text. #5f6368 (already used elsewhere in
+     this file for the identical "muted meta text" role) is ~6.05:1 —
+     verified passing — so both are consolidated into this one token,
+     matching the same fix in 07_TeacherDashboard.js. */
+  :root{--text-secondary:#5f6368}
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Google Sans",Roboto,Arial,sans-serif;background:#f8f9fa;color:#202124;font-size:15px;min-height:100vh}
   header{background:linear-gradient(135deg,#1e8e3e,#137333);color:white;padding:18px 24px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
@@ -233,7 +254,7 @@ function buildStudentDashboardHtml_() {
     .main{padding:16px}
     .card{padding:14px 16px}
   }
-  #loading{text-align:center;padding:80px 24px;color:#5f6368}
+  #loading{text-align:center;padding:80px 24px;color:var(--text-secondary)}
   /* FIXED: was 40px vs the teacher dashboard's 36px — same border weight,
      same animation, same purpose, just a needless 4px drift between the
      two "app shells." Border color intentionally stays green (this
@@ -241,7 +262,15 @@ function buildStudentDashboardHtml_() {
   .spinner{width:36px;height:36px;border:3px solid #e8eaed;border-top-color:#1e8e3e;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
   @keyframes spin{to{transform:rotate(360deg)}}
   .main{padding:24px;max-width:700px;margin:0 auto}
-  .group-header{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:#5f6368;padding:4px 0 10px;border-bottom:2px solid #e8eaed;margin:28px 0 14px}
+  /* NEW (finding #7): "just registered" notice + My Info panel */
+  .new-reg-notice{background:#e6f4ea;border:1px solid #b7e1c4;color:#0d652d;border-radius:10px;padding:14px 18px;margin-bottom:16px;font-size:13.5px;line-height:1.5}
+  .new-reg-notice strong{font-weight:600}
+  .info-card{background:white;border-radius:12px;padding:16px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:5px solid #1a73e8}
+  .info-card .info-row{font-size:13.5px;color:#3c4043;margin-bottom:4px}
+  .info-card .info-row b{color:#202124;font-weight:600}
+  .info-card .correction-link{display:inline-block;margin-top:8px;font-size:12.5px;color:#1a73e8;text-decoration:none;font-weight:500}
+  .info-card .correction-link:hover{text-decoration:underline}
+  .group-header{font-size:12px;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--text-secondary);padding:4px 0 10px;border-bottom:2px solid #e8eaed;margin:28px 0 14px}
   .group-header:first-child{margin-top:0}
   .card{background:white;border-radius:12px;padding:18px 20px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.1);border-left:5px solid #dadce0;transition:box-shadow .15s,transform .1s}
   .card:hover{box-shadow:0 3px 10px rgba(0,0,0,.15);transform:translateY(-1px)}
@@ -261,21 +290,21 @@ function buildStudentDashboardHtml_() {
      "current status" chip concept, but used to be a fully-rounded pill at
      a different size, a visible seam between the two dashboards. */
   .pill{font-size:11px;font-weight:600;padding:4px 10px;border-radius:12px;white-space:nowrap;flex-shrink:0}
-  .pill-NOT_STARTED{background:#f1f3f4;color:#5f6368}
+  .pill-NOT_STARTED{background:#f1f3f4;color:var(--text-secondary)}
   .pill-IN_PROGRESS{background:#fef3e2;color:#9c5000}
   .pill-NEEDS_ACTION{background:#f3e8fd;color:#9334e6}
   .pill-DONE{background:#e6f4ea;color:#1e8e3e}
   .pill-ISSUE{background:#fce8e6;color:#d93025}
-  .card-meta{font-size:13px;color:#5f6368;margin-bottom:10px}
-  .eval-line{font-size:12px;color:#80868b;margin-bottom:12px}
+  .card-meta{font-size:13px;color:var(--text-secondary);margin-bottom:10px}
+  .eval-line{font-size:12px;color:var(--text-secondary);margin-bottom:12px}
   .open-btn{display:inline-block;background:#1a73e8;color:white;text-decoration:none;padding:9px 20px;border-radius:6px;font-size:14px;font-weight:500;transition:background .15s}
   .open-btn:hover{background:#1557b0}
   .open-btn.done-btn{background:#1e8e3e}
   .open-btn.done-btn:hover{background:#137333}
   .submitted-note{font-size:12px;color:#1e8e3e;margin-top:8px;font-weight:500}
-  .empty-state{text-align:center;padding:60px 24px;color:#5f6368;white-space:pre-line}
+  .empty-state{text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line}
   .empty-state .icon{font-size:48px;margin-bottom:16px}
-  footer{text-align:center;padding:20px;font-size:12px;color:#80868b;border-top:1px solid #e8eaed;margin-top:32px}
+  footer{text-align:center;padding:20px;font-size:12px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
 </style>
 </head>
 <body>
@@ -286,11 +315,21 @@ function buildStudentDashboardHtml_() {
     <select id="term-filter" onchange="loadData()" aria-label="Filter by term" style="padding:5px 10px;border-radius:4px;border:1px solid rgba(255,255,255,0.4);background:rgba(255,255,255,0.15);color:white;font-size:12px;">
       <option value="ALL">All Terms</option>
     </select>
+    <button id="my-info-btn" class="refresh-btn" onclick="toggleMyInfo()" aria-expanded="false" aria-controls="my-info-panel">ℹ️ My Info</button>
     <button id="refresh-btn" class="refresh-btn" onclick="loadData()" aria-label="Refresh assignments">↻ Refresh</button>
     <div id="account-label">Loading…</div>
   </div>
 </header>
 <div id="loading" role="status" aria-live="polite"><div class="spinner"></div><p>Loading your assignments…</p></div>
+<!-- NEW (finding #7): persistent "My Info" view — what's actually on file
+     for this student (name, class, period, teacher), available any time
+     via the header button, not just a one-time notice. -->
+<div id="my-info-panel" class="main" style="display:none;padding-bottom:0"></div>
+<!-- NEW (finding #7): in-app notice for a recent registration, replacing
+     the easy-to-miss one-time email — visible for a few days after a new
+     registration is recorded, then fades out on its own as it ages past
+     the "recent" window computed server-side (isNewRegistration). -->
+<div id="new-registration-banner" class="main" style="display:none;padding-bottom:0"></div>
 <div id="main" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 <script>
@@ -302,6 +341,11 @@ function buildStudentDashboardHtml_() {
 let _dashCache = {};
 let _loadGen = 0;
 let _isFirstLoad = true;
+// NEW (finding #7): cached from the last successful render() so
+// toggleMyInfo() can rebuild the panel without a fresh round-trip, and so
+// a term-filter change doesn't need to re-derive "what's on file."
+let _lastDashData = null;
+let _myInfoOpen = false;
 
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
@@ -404,6 +448,12 @@ function render(data) {
 
   document.getElementById("account-label").textContent = data.googleId || "";
 
+  // NEW (finding #7): cache for toggleMyInfo(), then render the "just
+  // registered" notice and (if already open) refresh the My Info panel.
+  _lastDashData = data;
+  renderNewRegistrationBanner(data);
+  if (_myInfoOpen) renderMyInfo(data);
+
   if (!data.assignments || data.assignments.length === 0) {
     main.innerHTML = \`<div class="empty-state">
       <div class="icon">📋</div>
@@ -449,7 +499,7 @@ function render(data) {
         <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
         \${a.docUrl
           ? \`<a href="\${a.docUrl}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
-          : '<span style="color:#80868b;font-size:13px;">Document not yet available</span>'
+          : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
         }
         \${isDone && a.submittedAt
           ? \`<div class="submitted-note">Submitted \${esc(a.submittedAt)}</div>\`
@@ -471,6 +521,66 @@ function render(data) {
     "Last refreshed: " + data.generatedAt + "  ·  " + data.googleId;
 
   _populateTermDropdown(data);
+}
+
+// NEW (finding #7): an immediate, in-app "just registered" notice —
+// replacing the original easy-to-miss one-time email — for every
+// registration flagged isNewRegistration by the server (within the last
+// few days). Naturally stops showing once that window passes; no
+// separate "seen it" state to track.
+function renderNewRegistrationBanner(data) {
+  const el = document.getElementById("new-registration-banner");
+  const fresh = (data.assignments || []).filter(a => a.isNewRegistration);
+  if (!fresh.length) { el.style.display = "none"; el.innerHTML = ""; return; }
+  el.style.display = "block";
+  el.innerHTML = fresh.map(a =>
+    \`<div class="new-reg-notice">🎉 You were just registered for <strong>\${esc(a.className)}</strong> with <strong>\${esc(a.teacherName || "your teacher")}</strong>\${a.registeredAt ? " on " + esc(a.registeredAt) : ""}. Check <strong>My Info</strong> above to confirm what's on file.</div>\`
+  ).join("");
+}
+
+// NEW (finding #7): a persistent "My Info" view — every registration on
+// file for this student (name, class, period, teacher), with a way to
+// flag a correction, available any time via the header button rather
+// than only appearing once.
+function toggleMyInfo() {
+  _myInfoOpen = !_myInfoOpen;
+  const btn   = document.getElementById("my-info-btn");
+  const panel = document.getElementById("my-info-panel");
+  btn.setAttribute("aria-expanded", String(_myInfoOpen));
+  panel.style.display = _myInfoOpen ? "block" : "none";
+  if (_myInfoOpen && _lastDashData) renderMyInfo(_lastDashData);
+}
+
+function renderMyInfo(data) {
+  const panel = document.getElementById("my-info-panel");
+  const regs  = data.assignments || [];
+  if (!regs.length) {
+    panel.innerHTML = '<div class="empty-state"><p>No registration on file yet.</p></div>';
+    return;
+  }
+  panel.innerHTML =
+    '<div class="group-header">My Info — What Is On File</div>' +
+    regs.map(a => {
+      const correctionSubject = encodeURIComponent("Correction request: my info on file");
+      const correctionBody = encodeURIComponent(
+        "Hi " + (a.teacherName || "") + ",\\n\\n" +
+        "I'd like to flag something that may be incorrect in what's on file for me:\\n\\n" +
+        "Name: " + a.studentName + "\\n" +
+        "Class: " + a.className + "\\n" +
+        "Period: " + (a.period || "(not on file)") + "\\n\\n" +
+        "What should be corrected: \\n"
+      );
+      return \`<div class="info-card">
+        <div class="info-row"><b>Name:</b> \${esc(a.studentName || "(not on file)")}</div>
+        <div class="info-row"><b>Class:</b> \${esc(a.className)}</div>
+        <div class="info-row"><b>Period:</b> \${esc(a.period || "(not on file)")}</div>
+        <div class="info-row"><b>Teacher:</b> \${esc(a.teacherName || "(not on file)")}</div>
+        \${a.teacherEmail
+          ? \`<a class="correction-link" href="mailto:\${esc(a.teacherEmail)}?subject=\${correctionSubject}&body=\${correctionBody}">✉ Request a correction</a>\`
+          : ""
+        }
+      </div>\`;
+    }).join("");
 }
 
 // Was only ever called from the end of the full-render path, so the term

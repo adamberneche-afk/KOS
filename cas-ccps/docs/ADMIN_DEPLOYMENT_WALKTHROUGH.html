@@ -689,6 +689,22 @@ body {
   </div>
 </div>
 
+<!-- NEW: rollout-planning callout — Say/Do Ledger cas-ccps finding #12.
+     Steps 1-9 plus most of Step 10 are one-time district setup; only
+     Step 10's "Create the Teacher Dashboard project" instruction (and
+     copying/sharing the Admin Manual — see the final checklist) repeat
+     for every teacher. This wasn't stated anywhere before you actually
+     reached Step 10 — an admin planning a multi-teacher rollout couldn't
+     budget for it up front. -->
+<div class="callout callout-tip" style="margin:0 0 32px">
+  <span class="callout-icon">📋</span>
+  <div class="callout-body">
+    <strong>Planning a rollout to multiple teachers?</strong> Steps 1–9 below (plus the Student Dashboard, Final Properties, and Test steps) are <strong>one-time district setup</strong> — roughly <strong>~2 hours</strong> total, done once no matter how many teachers use the system. Only one instruction, inside Step 10 ("Create the Teacher Dashboard project"), repeats — once per teacher, roughly <strong>~10 minutes</strong> each — plus copying and sharing the Admin Manual with each teacher (see the final checklist).
+    <br><br>
+    <strong>Budget: ~2 hours + (~10 min × number of teachers).</strong> Planning for 8 teachers? That's about 3 hours and 20 minutes total, not 8 separate 2-hour deployments.
+  </div>
+</div>
+
 <!-- PHASE 1 DIVIDER -->
 <div class="phase-divider">
   <span class="phase-divider-label">Phase 1 — Prepare</span>
@@ -1415,6 +1431,26 @@ body {
         </div>
       </div>
     </div>
+
+    <!-- NEW: manual self-check — Say/Do Ledger cas-ccps finding #16. This
+         step previously had no way to confirm either flow actually works
+         before moving on to Step 10 — a real gap since Studio Flows are
+         built and tested by hand, outside this repo, with nothing here
+         verifying them. This is a one-time check per flow (Studio Flows
+         are shared, not deployed per teacher), not a recurring cost. -->
+    <div class="instruction">
+      <div class="instr-num">4</div>
+      <div class="instr-body">
+        <h4>Test both flows now</h4>
+        <p>Don't wait until Step 12 to find out whether these flows actually run — test each one directly, right now:</p>
+        <p><strong>Flow 1:</strong> In the Central Ledger's <code>RubricQueue</code> tab, add one test row with real-looking rubric text and <code>Status = PENDING_EXTRACTION</code>. Within about a minute, its <code>Status</code> should flip to <code>COMPLETE</code> and a new <code>DRAFT</code> row should appear in the <code>TeacherMatrix</code> tab. If neither happens after 2 minutes, re-check Flow 1's trigger condition and the pasted <code>FLOW_1_SYSTEM_PROMPT</code> for typos before moving on.</p>
+        <p><strong>Flow 2:</strong> In <code>STAGING_PIPELINE</code>, add one test row pointing at a real (test) student document with <code>Status = IN_PROCESS</code>. Within about a minute, that row's <code>Status</code> should flip to <code>COMPLETE</code> and the student document should have real feedback text inserted after <code>── FEEDBACK ──</code>, ending in <code>[SYSTEM: APPROVED]</code> or <code>[SYSTEM: REVISION_REQUIRED]</code> and <code>── END EVALUATION ──</code>. If not, re-check Flow 2's trigger condition and prompt mapping.</p>
+        <div class="callout callout-tip">
+          <span class="callout-icon">✅</span>
+          <div class="callout-body">Delete both test rows once confirmed — they aren't real data. Catching a flow misconfiguration here, before Step 10, is much easier to fix than discovering it during Step 12's full end-to-end test with a real test student.</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1425,7 +1461,7 @@ body {
     <div class="step-header-text">
       <h2>Deploy the Two Web App Dashboards</h2>
       <span class="step-subtitle">Teacher dashboard and student dashboard — standalone projects</span>
-      <span class="time-badge time-manual">15 min</span>
+      <span class="time-badge time-manual">~10 min (one-time) + ~10 min per teacher</span>
     </div>
   </div>
 
@@ -1433,26 +1469,42 @@ body {
     <div class="instruction">
       <div class="instr-num">1</div>
       <div class="instr-body">
-        <h4>Create the Teacher Dashboard project</h4>
-        <p>Go to <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Teacher Dashboard</strong>. Create two files:</p>
+        <!-- Marked distinctly per Say/Do Ledger cas-ccps finding #12 — this
+             is the ONE instruction in the whole walkthrough that repeats
+             per teacher; everything else in this step (and every other
+             step) is one-time district setup. See the rollout callout
+             near the top of this page. -->
+        <h4>🔁 Create the Teacher Dashboard project — <em>repeats once per teacher</em></h4>
+        <div class="callout callout-warn">
+          <div class="callout-icon">⚠️</div>
+          <div class="callout-body"><strong>This project is deployed once per teacher, not once for the whole school</strong> — same convention as the Admin Manual (see the final checklist). Every server function on this dashboard scopes its data to whichever email is set below, and only lets that same person view it — so each teacher needs their own copy of this project, their own Script Property, and their own deployment URL. Deploying it once and sharing one URL across teachers will not work: the dashboard only ever shows (and only ever lets in) the one teacher named in <code>TEACHER_EMAIL</code>.</div>
+        </div>
+        <p>Go to <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Teacher Dashboard ([Teacher Name])</strong>. Create these files:</p>
         <div class="file-list">
           <div class="file-row"><div><div class="file-name">00_SharedConfig</div></div></div>
           <div class="file-row"><div><div class="file-name">07_TeacherDashboard</div></div></div>
+          <div class="file-row"><div><div class="file-name">22_LessonContextHandler</div></div></div>
+          <div class="file-row"><div><div class="file-name">23_StudentProfileManager</div></div></div>
+          <div class="file-row"><div><div class="file-name">26_CompetencyAlignmentLog</div></div></div>
+          <div class="file-row"><div><div class="file-name">29_StudentContextAggregator</div></div></div>
+          <div class="file-row"><div><div class="file-name">31_PacingGuideManager</div></div></div>
         </div>
         <p>Set Script Properties on this project:</p>
         <div class="code-block">
 <span class="k">CENTRAL_LEDGER_SS_ID</span> = <span class="v">[Central Ledger Spreadsheet ID]</span>
+<span class="k">TEACHER_EMAIL</span> = <span class="v">[this teacher's school email address]</span>
+<span class="k">TEACHER_NAME</span>  = <span class="v">[this teacher's display name]</span>
         </div>
         <p>Deploy: <strong>Deploy → New deployment → Web App</strong><br>
         Execute as: <strong>Me</strong> &nbsp;·&nbsp; Access: <strong>Anyone in your organization</strong><br>
-        Copy the deployment URL — this is your <strong>Teacher Dashboard URL</strong>.</p>
+        Copy the deployment URL — this is <strong>this teacher's</strong> Teacher Dashboard URL. Repeat this whole step for each additional teacher.</p>
       </div>
     </div>
 
     <div class="instruction">
       <div class="instr-num">2</div>
       <div class="instr-body">
-        <h4>Create the Student Dashboard project</h4>
+        <h4>✅ Create the Student Dashboard project — <em>one-time</em></h4>
         <p>Back at <strong>script.google.com</strong> → <strong>New project</strong>. Name it <strong>Assignment System — Student Dashboard</strong>. Create two files:</p>
         <div class="file-list">
           <div class="file-row"><div><div class="file-name">00_SharedConfig</div></div></div>
@@ -1487,7 +1539,7 @@ body {
       <div class="instr-num">4</div>
       <div class="instr-body">
         <h4>Test both URLs</h4>
-        <p>Open the Teacher Dashboard URL — you should see a loading spinner followed by "No students registered yet." Open the Student Dashboard URL — you should see "No assignments found for [your email]." Both loading without errors confirms the deployment worked and <code>CENTRAL_LEDGER_SS_ID</code> is set correctly.</p>
+        <p>Open the Teacher Dashboard URL <strong>signed in as the teacher named in <code>TEACHER_EMAIL</code></strong> — you should see a loading spinner followed by "No students registered yet." If you instead see "This dashboard is only available to the teacher it's configured for," <code>TEACHER_EMAIL</code> is missing or doesn't match the signed-in account — fix the Script Property and reload. Open the Student Dashboard URL — you should see "No assignments found for [your email]." All of this loading without errors confirms the deployment worked and <code>CENTRAL_LEDGER_SS_ID</code>/<code>TEACHER_EMAIL</code> are set correctly.</p>
       </div>
     </div>
   </div>
@@ -1615,9 +1667,9 @@ body {
     <li>Master Teacher Matrix Sheet: 3 scripts bound (00, 08, 19) — no triggers set manually</li>
     <li>Master Student Template created, 4 scripts bound, 2 Script Properties set</li>
     <li>MASTER_STUDENT_TEMPLATE_ID added to Admin Manual Script Properties</li>
-    <li>Teacher Dashboard deployed as web app (Execute as: Me)</li>
+    <li>Teacher Dashboard deployed as web app (Execute as: Me) — once per teacher, each with its own <code>TEACHER_EMAIL</code>/<code>TEACHER_NAME</code> Script Properties and its own URL</li>
     <li>Student Dashboard deployed as web app (Execute as: User accessing the app)</li>
-    <li>TEACHER_DASHBOARD_URL and STUDENT_DASHBOARD_URL added to Admin Manual Script Properties</li>
+    <li>TEACHER_DASHBOARD_URL and STUDENT_DASHBOARD_URL added to Admin Manual Script Properties (one Teacher Dashboard URL per teacher)</li>
     <li>Both dashboard URLs load without errors in browser</li>
     <li>Current term set via ⚙️ Admin Controls → Set Current Term in Central Ledger</li>
     <li>Both personal workspace activation links opened and authorized</li>

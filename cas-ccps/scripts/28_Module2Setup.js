@@ -410,8 +410,32 @@ function _runRegistryImportWithGate_(ui, props, ss, courseNames) {
 function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
   // Run the importer
   let importedCount = 0;
+  // FIXED (external review pass, folded in — Addendum 22 R1): importCompetencyRegistry()
+  // is defined in Script 22b, which is bound to the Central Ledger project, not this
+  // one (Assignment System Manual / unified-manual). Apps Script doesn't share scope
+  // across projects, so this call would throw ReferenceError on every attempt — caught
+  // by the gas-lint tool's checkUndefinedFunctionCalls check (commit dd339b4) and
+  // explicitly deferred there for a dedicated follow-up. This is that follow-up: check
+  // for the function's existence up front and direct the operator to the project
+  // where the import actually works, instead of letting it fail into a bare
+  // "Import Failed" / err.message dialog that never explains why it always fails.
+  if (typeof importCompetencyRegistry !== "function") {
+    ui.alert(
+      "⚠ Import Not Available From This Sheet",
+      "The competency registry importer (Script 22b) is bound to the " +
+      "Central Ledger project, not the Assignment System Manual.\n\n" +
+      "To import:\n" +
+      "  1. Open the Central Ledger spreadsheet\n" +
+      "  2. Run: Assignment System → Import Competency Registry\n\n" +
+      "This step can't be completed from this menu — it has to run from " +
+      "Central Ledger directly.",
+      ui.ButtonSet.OK
+    );
+    return { success: false, deferred: true, rowCount: 0,
+             message: "Import must be run from the Central Ledger project directly." };
+  }
   try {
-    importCompetencyRegistry(); // Script 22b — same project
+    importCompetencyRegistry(); // Script 22b — Central Ledger project
   } catch (err) {
     ui.alert(
       "✗ Import Failed",
@@ -612,9 +636,26 @@ function _runPhaseB_(ui, props, ss) {
       ui.ButtonSet.OK
     );
     props.setProperty("M2_PACING_GUIDE_IMPORTED", "false");
+  } else if (typeof importPacingGuide !== "function") {
+    // FIXED (external review pass, folded in — Addendum 22 R1): importPacingGuide()
+    // is defined in Script 31, bound to the Central Ledger project — a cross-project
+    // call that will never resolve from here. Same issue as the registry import in
+    // _executeImportAndVerify_() above.
+    ui.alert(
+      "⚠ Import Not Available From This Sheet",
+      "The pacing guide importer (Script 31) is bound to the Central Ledger " +
+      "project, not the Assignment System Manual.\n\n" +
+      "To import:\n" +
+      "  1. Open the Central Ledger spreadsheet\n" +
+      "  2. Run importPacingGuide() from Script 31 in that project's Script Editor\n\n" +
+      "This step can't be completed from this menu — it has to run from " +
+      "Central Ledger directly.",
+      ui.ButtonSet.OK
+    );
+    props.setProperty("M2_PACING_GUIDE_IMPORTED", "false");
   } else {
     try {
-      importPacingGuide(); // Script 31
+      importPacingGuide(); // Script 31 — Central Ledger project
       props.setProperty("M2_PACING_GUIDE_IMPORTED", "true");
       Logger.log("[S28] Pacing guide imported successfully.");
     } catch(pgErr) {
@@ -641,9 +682,25 @@ function _runPhaseB_(ui, props, ss) {
       ui.ButtonSet.OK
     );
     props.setProperty("M2_RUBRICS_IMPORTED", "false");
+  } else if (typeof importCompetencyRubrics !== "function") {
+    // FIXED (external review pass, folded in — Addendum 22 R1): importCompetencyRubrics()
+    // is defined in Script 32, bound to the Central Ledger project — same cross-project
+    // issue as the two imports above.
+    ui.alert(
+      "⚠ Import Not Available From This Sheet",
+      "The competency rubrics importer (Script 32) is bound to the Central " +
+      "Ledger project, not the Assignment System Manual.\n\n" +
+      "To import:\n" +
+      "  1. Open the Central Ledger spreadsheet\n" +
+      "  2. Run importCompetencyRubrics() from Script 32 in that project's Script Editor\n\n" +
+      "This step can't be completed from this menu — it has to run from " +
+      "Central Ledger directly.",
+      ui.ButtonSet.OK
+    );
+    props.setProperty("M2_RUBRICS_IMPORTED", "false");
   } else {
     try {
-      importCompetencyRubrics(); // Script 32
+      importCompetencyRubrics(); // Script 32 — Central Ledger project
       props.setProperty("M2_RUBRICS_IMPORTED", "true");
       Logger.log("[S28] Competency rubrics imported successfully.");
     } catch(crErr) {

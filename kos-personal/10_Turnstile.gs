@@ -134,7 +134,7 @@ function runMatrixTurnstile() {
           const fileId      = String(data[i][SC.FILE_ID]);
           const docUrl      = String(data[i][SC.DOC_URL]);
           const payloadType = String(data[i][SC.PAYLOAD_TYPE]);
-          const submission  = _submitManagedServiceJob_(uid, fileId, docUrl, payloadType);
+          const submission  = _submitManagedServiceJob_(uid, fileId, docUrl, payloadType, ss.getId());
 
           if (!submission.ok) {
             console.warn('[Turnstile] Row ' + sheetRow + ' (' + uid + ') not released — ' +

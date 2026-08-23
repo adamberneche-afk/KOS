@@ -26,8 +26,6 @@
     "manifest": "cas-ccps/clasp/manifests/central-ledger.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
-      "cas-ccps/scripts/00_SharedConfig_M2_ADDENDUM_v2.js",
-      "cas-ccps/scripts/00_SharedConfig_M4_ADDENDUM.js",
       "cas-ccps/scripts/02_Form1_IntakeAndWorkspaceGenerator.js",
       "cas-ccps/scripts/03_QueueBridge.js",
       "cas-ccps/scripts/04_Form2_TurnInGate.js",
@@ -53,9 +51,11 @@
     "_bound_to": "Assignment System Manual Google Doc (container-bound) — the setup wizard's own project",
     "manifest": "cas-ccps/clasp/manifests/unified-manual.appsscript.json",
     "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/16_UnifiedManualSetup.js",
       "cas-ccps/scripts/16_UnifiedManualSetup_M5_ADDENDUM_v2.js",
       "cas-ccps/scripts/16_UnifiedManualSetup_M6_ADDENDUM.js",
+      "cas-ccps/scripts/19_ClonedSheetConfig.js",
       "cas-ccps/scripts/20_SetupCheckpoint.js",
       "cas-ccps/scripts/21_AutoInstaller.js",
       "cas-ccps/scripts/28_Module2Setup.js"
@@ -79,9 +79,7 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/05_TeacherIntakePipeline.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M5_ADDENDUM.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M6_ADDENDUM.js"
+      "cas-ccps/scripts/19_ClonedSheetConfig.js"
     ]
   },
 
@@ -91,9 +89,7 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/08_TeacherConfirmationStep.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M5_ADDENDUM.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig_M6_ADDENDUM.js"
+      "cas-ccps/scripts/19_ClonedSheetConfig.js"
     ]
   },
 
@@ -103,7 +99,11 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/07_TeacherDashboard.js",
-      "cas-ccps/scripts/07_TeacherDashboard_M4_ADDENDUM.js"
+      "cas-ccps/scripts/22_LessonContextHandler.js",
+      "cas-ccps/scripts/23_StudentProfileManager.js",
+      "cas-ccps/scripts/26_CompetencyAlignmentLog.js",
+      "cas-ccps/scripts/29_StudentContextAggregator.js",
+      "cas-ccps/scripts/31_PacingGuideManager.js"
     ]
   },
 
@@ -124,6 +124,8 @@
 
   "_excluded_not_deployed_scripts": [
     "cas-ccps/scripts/15_StudioFlowPrompts.js",
-    "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js"
+    "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js",
+    "leader-hub/drive-tools/LH_8177_Rename.gs",
+    "leader-hub/drive-tools/LH_DriveDocSplitter.gs"
   ]
 }

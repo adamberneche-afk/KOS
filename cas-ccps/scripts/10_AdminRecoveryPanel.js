@@ -19,7 +19,225 @@ function onOpen() {
     .addSeparator()
     .addItem("📧 Re-Send Student Document Link",      "resendStudentDocLink")
     .addItem("✅ Manually Mark Student Compliant",    "manuallyMarkCompliant")
+    .addSeparator()
+    // Say/Do Ledger cas-ccps Extension 3 — exportScrDecisionLogForAudit()
+    // is defined in 30_SCRSuggestionEngine.js, same central-ledger project.
+    .addItem("📤 Export SCRDecisionLog for Audit",    "exportScrDecisionLogForAudit")
     .addToUi();
+}
+
+// ---------------------------------------------------------------------------
+// _stuckRowContext_ — shared identifying-context line for one stuck
+// STAGING_PIPELINE row. Consolidated so autoHealthAlert() (the daily
+// email), resetStuckRow() (the manual reset confirmation), and
+// runSystemHealthCheck() (the on-demand summary) all describe a stuck row
+// the same way — file ID + how long it's been stuck — instead of three
+// independently-formatted strings that could drift apart. A future new
+// health check inherits this pattern automatically by calling it, rather
+// than needing to remember to copy the format by hand.
+// See Say/Do Ledger cas-ccps finding #11.
+// ---------------------------------------------------------------------------
+function _stuckRowContext_(rowNumber, fileId, elapsedMinutes) {
+  return "Row " + rowNumber + " — File ID: " + (fileId || "unknown") +
+         (elapsedMinutes !== null && elapsedMinutes !== undefined
+           ? " (stuck " + elapsedMinutes + " min)"
+           : "");
+}
+
+// ---------------------------------------------------------------------------
+// _stagingPipelineHealthChecks_ — Say/Do Ledger cross-portfolio Flow Health
+// &amp; Inventory extension. Scans STAGING_PIPELINE once and returns both the
+// existing IN_PROCESS-stuck-row check (moved here from being duplicated,
+// with two DIFFERENT thresholds, inline in autoHealthAlert() and
+// runSystemHealthCheck()) and a new check this extension actually asked
+// for: PENDING_INFERENCE rows stuck past a threshold with no evaluation
+// ever having started.
+//
+// The two thresholds below were previously 15 (autoHealthAlert's own local
+// STUCK_PIPELINE_MINUTES) vs. a hardcoded 10 (runSystemHealthCheck) for the
+// exact same "IN_PROCESS too long" question — a real drift this pass fixes
+// by unifying both callers onto one shared constant, same as the
+// _stuckRowContext_()/_ferpaHealthChecks_() consolidations already did for
+// their own findings.
+//
+// A PENDING_INFERENCE row is queued but hasn't been promoted to IN_PROCESS
+// yet — 06_StagingPipeline_Turnstile.js's 1-minute trigger is what promotes
+// these into a free per-teacher lane. A row sitting PENDING_INFERENCE far
+// longer than one promotion cycle means either that trigger isn't
+// installed/running, or every lane for that teacher has been busy the
+// whole time — genuinely different from "actively being evaluated" and,
+// before this extension, invisible: runSystemHealthCheck() only ever
+// counted PENDING_INFERENCE rows, never aged them.
+const STAGING_STUCK_IN_PROCESS_MINUTES = 15;
+const STAGING_STUCK_PENDING_MINUTES    = 20;
+
+function _stagingPipelineHealthChecks_(ss, cfg) {
+  const result = {
+    inProcessStuckRows: [],
+    pendingStuckRows: [],
+    counts: { inProcess: 0, pending: 0, complete: 0, timeouts: 0, otherErrors: 0 },
+  };
+
+  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
+  if (!stagingSheet) return result;
+
+  const data    = stagingSheet.getDataRange().getValues();
+  const headers = data[0] ? data[0].map(h => String(h).trim()) : [];
+  const stIdx   = headers.indexOf("Status");
+  const tsIdx   = headers.indexOf("Timestamp");
+  const fileIdx = headers.indexOf("StudentFileID");
+  const teachIdx= headers.indexOf("TeacherEmail");
+  const now     = new Date();
+
+  for (let i = 1; i < data.length; i++) {
+    const status = String(data[i][stIdx] || "").trim();
+    const rowTs   = tsIdx !== -1 ? new Date(data[i][tsIdx]) : null;
+    const elapsed = rowTs ? Math.round((now - rowTs) / 60000) : null;
+    const fileId  = fileIdx !== -1 ? String(data[i][fileIdx]).trim() : "unknown";
+
+    if (status === "IN_PROCESS") {
+      result.counts.inProcess++;
+      if (elapsed !== null && elapsed >= STAGING_STUCK_IN_PROCESS_MINUTES) {
+        result.inProcessStuckRows.push(_stuckRowContext_(i + 1, fileId, elapsed));
+      }
+    } else if (status === "PENDING_INFERENCE") {
+      result.counts.pending++;
+      if (elapsed !== null && elapsed >= STAGING_STUCK_PENDING_MINUTES) {
+        const teacher = teachIdx !== -1 ? String(data[i][teachIdx]).trim() : "unknown";
+        result.pendingStuckRows.push(
+          _stuckRowContext_(i + 1, fileId, elapsed) + " — Teacher: " + (teacher || "unknown")
+        );
+      }
+    } else if (status === "COMPLETE") {
+      result.counts.complete++;
+    } else if (status === "ERROR_TIMEOUT") {
+      result.counts.timeouts++;
+    } else if (status.startsWith("ERROR")) {
+      result.counts.otherErrors++;
+    }
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
+// _ferpaHealthChecks_ — shared FERPA-adjacent health signals, consolidated
+// so autoHealthAlert() (daily email) and runSystemHealthCheck() (on-demand
+// dialog) check the same three things the same way instead of each growing
+// its own copy that could drift — same pattern _stuckRowContext_() already
+// established for finding #11. See Say/Do Ledger cas-ccps finding #5,
+// Bonus 1.
+//
+// Returns an array of { ok, alertText, displayLine }:
+//   ok          — false means this check found a real problem
+//   alertText   — daily-email wording (only used when !ok)
+//   displayLine — on-demand dialog's one-line summary (always shown)
+// ---------------------------------------------------------------------------
+function _ferpaHealthChecks_() {
+  const checks = [];
+  const scriptProps = PropertiesService.getScriptProperties();
+
+  // (a) 25_WarmUpWriter.js's callFlow4_() has a dead direct-Gemini-API
+  // code path (documented placeholder, returns null) that would go live —
+  // bypassing the Walled Garden's Studio-Flow-only boundary entirely — the
+  // moment a GEMINI_API_KEY Script Property exists. This key should never
+  // be set in a correctly-configured deployment.
+  const geminiKeySet = !!scriptProps.getProperty("GEMINI_API_KEY");
+  checks.push({
+    ok: !geminiKeySet,
+    alertText:
+      "🚨 GEMINI_API_KEY IS SET\n" +
+      "   A direct-Gemini-API Script Property exists. The Walled Garden design\n" +
+      "   requires all AI processing to go through Google Workspace Studio\n" +
+      "   Flows, never a direct API call — this property should not exist in a\n" +
+      "   correctly-configured deployment.\n" +
+      "   Action: Delete the GEMINI_API_KEY Script Property (Project Settings →\n" +
+      "   Script Properties) unless you have a specific, reviewed reason to keep it.",
+    displayLine: geminiKeySet
+      ? "🚨  GEMINI_API_KEY is set — direct-API bypass risk, see admin alert"
+      : "✅  No direct-Gemini-API key configured",
+  });
+
+  // (b) getStudentProfileSnapshot_() (23_StudentProfileManager.js) redacts
+  // full student names to first-name-only by default before Flow 3 ever
+  // sees them. FERPA_FLOW3_FULL_NAME_OVERRIDE is the one Script Property
+  // that can turn that safety default back off — alert if it's ever set.
+  const nameOverride = scriptProps.getProperty("FERPA_FLOW3_FULL_NAME_OVERRIDE") === "true";
+  checks.push({
+    ok: !nameOverride,
+    alertText:
+      "🚨 FLOW 3 FULL-NAME OVERRIDE IS ON\n" +
+      "   FERPA_FLOW3_FULL_NAME_OVERRIDE is set to true — warm-up generation is\n" +
+      "   sending each student's full name to Studio Flow 3 instead of the\n" +
+      "   first-name-only default.\n" +
+      "   Action: Remove this Script Property unless there's a specific,\n" +
+      "   reviewed reason the override is needed.",
+    displayLine: nameOverride
+      ? "🚨  Flow 3 full-name override is ON — sending full names, see admin alert"
+      : "✅  Flow 3 sends first-name-only (safety default active)",
+  });
+
+  // (c) exportToWorkbookGrid_() (30_SCRSuggestionEngine.js) restricts its
+  // export spreadsheet's sharing at creation time, but sharing can always
+  // be widened by hand afterward — spot-check any file matching its naming
+  // pattern for sharing broader than the organization's own domain.
+  let overShared = [];
+  try {
+    const files = DriveApp.searchFiles('title contains "SCR Export — "');
+    while (files.hasNext()) {
+      const f = files.next();
+      const access = f.getSharingAccess();
+      if (access === DriveApp.Access.ANYONE || access === DriveApp.Access.ANYONE_WITH_LINK) {
+        overShared.push(f.getName());
+      }
+    }
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] SCR export sharing scan failed: " + e.message);
+  }
+  checks.push({
+    ok: overShared.length === 0,
+    alertText: overShared.length
+      ? "🚨 SCR EXPORT SHARED BEYOND THE ORGANIZATION\n" +
+        "   " + overShared.length + " file(s) matching \"SCR Export — \" are shared\n" +
+        "   with anyone, not just your organization:\n" +
+        overShared.map(n => "     • " + n).join("\n") + "\n" +
+        "   Action: Open each file → Share → restrict access to your organization."
+      : "",
+    displayLine: overShared.length
+      ? "🚨  " + overShared.length + " SCR export file(s) shared beyond the org — see admin alert"
+      : "✅  No SCR export files shared beyond the organization",
+  });
+
+  // (d) SCRDecisionLog rows past the configured retention window that
+  // haven't moved to the restricted "Archived — pending disposition review"
+  // state (Say/Do Ledger cas-ccps Extension 3). Both callers of this
+  // function (autoHealthAlert() and runSystemHealthCheck()) already run
+  // _archiveExpiredScrDecisions_() immediately before calling this, so a
+  // nonzero count here means archival itself failed or didn't run — a
+  // genuine signal, not a tautology.
+  let pastRetentionUnarchived = 0;
+  try {
+    pastRetentionUnarchived = _countScrDecisionsPastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] SCRDecisionLog retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: pastRetentionUnarchived === 0,
+    alertText: pastRetentionUnarchived
+      ? "🚨 SCRDecisionLog RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + pastRetentionUnarchived + " row(s) are past the configured retention\n" +
+        "   window (SCR_RETENTION_YEARS Script Property, default 5 years) and have\n" +
+        "   not moved to the archived state — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: pastRetentionUnarchived
+      ? "🚨  " + pastRetentionUnarchived + " SCRDecisionLog row(s) past retention, not archived — see admin alert"
+      : "✅  No SCRDecisionLog rows past retention awaiting archival",
+  });
+
+  return checks;
 }
 
 // ---------------------------------------------------------------------------
@@ -33,7 +251,6 @@ function onOpen() {
 // The AutoInstaller sets this trigger automatically.
 // ---------------------------------------------------------------------------
 function autoHealthAlert() {
-  const STUCK_PIPELINE_MINUTES  = 15;  // Alert if IN_PROCESS row older than this
   const STUCK_EXTRACTION_HOURS  = 2;   // Alert if PENDING_EXTRACTION row older than this
 
   const cfg = getConfig_();
@@ -43,33 +260,25 @@ function autoHealthAlert() {
   const now = new Date();
   const issues = [];
 
-  // --- Check STAGING_PIPELINE for stuck IN_PROCESS rows ---
-  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
-  if (stagingSheet) {
-    const stagingData = stagingSheet.getDataRange().getValues();
-    const headers     = stagingData[0] ? stagingData[0].map(h => String(h).trim()) : [];
-    const stIdx       = headers.indexOf("Status");
-    const tsIdx       = headers.indexOf("Timestamp");
-    const fileIdx     = headers.indexOf("StudentFileID");
-
-    for (let i = 1; i < stagingData.length; i++) {
-      const status = String(stagingData[i][stIdx] || "").trim();
-      if (status !== "IN_PROCESS") continue;
-
-      const rowTs   = tsIdx !== -1 ? new Date(stagingData[i][tsIdx]) : null;
-      const elapsed = rowTs ? Math.round((now - rowTs) / 60000) : null;
-
-      if (elapsed !== null && elapsed >= STUCK_PIPELINE_MINUTES) {
-        const fileId = fileIdx !== -1 ? String(stagingData[i][fileIdx]).trim() : "unknown";
-        issues.push(
-          "⏱️ STUCK EVALUATION (row " + (i + 1) + ")\n" +
-          "   File ID: " + fileId + "\n" +
-          "   Stuck for: " + elapsed + " minutes\n" +
-          "   Action: Use ⚙️ Admin Controls → Reset Stuck Pipeline Row"
-        );
-      }
-    }
-  }
+  // --- Check STAGING_PIPELINE for stuck IN_PROCESS / PENDING_INFERENCE rows ---
+  // (Say/Do Ledger cross-portfolio Flow Health extension: both checks now
+  // share one scan + one pair of thresholds with runSystemHealthCheck(),
+  // via _stagingPipelineHealthChecks_() — see its own doc comment above.)
+  const staging = _stagingPipelineHealthChecks_(ss, cfg);
+  staging.inProcessStuckRows.forEach(ctx => {
+    issues.push(
+      "⏱️ STUCK EVALUATION\n" +
+      "   " + ctx + "\n" +
+      "   Action: Use ⚙️ Admin Controls → Reset Stuck Pipeline Row"
+    );
+  });
+  staging.pendingStuckRows.forEach(ctx => {
+    issues.push(
+      "🕓 QUEUED SUBMISSION NEVER STARTED EVALUATION\n" +
+      "   " + ctx + "\n" +
+      "   Action: Confirm the Turnstile time-driven trigger (06_StagingPipeline_Turnstile.js) is installed and running — a queued row this old with no evaluation started usually means it isn't."
+    );
+  });
 
   // --- Check RubricQueue for stuck PENDING_EXTRACTION rows ---
   const rubricSheet = ss.getSheetByName(cfg.tabs.rubricQueue);
@@ -104,6 +313,36 @@ function autoHealthAlert() {
       }
     }
   }
+
+  // --- Check that the Drive Advanced Service is actually enabled ---
+  // FIXED: 04_Form2_TurnInGate.js's runForensicCheck_() calls Drive.Revisions.list()
+  // (the Advanced Service, not DriveApp) and silently treats "Drive is undefined"
+  // as a passed check — meaning the anti-cheating forensic check quietly no-ops
+  // for every submission if this service was never enabled, with no alert
+  // anywhere until now. This checks the same global the forensic function
+  // depends on, so it catches drift regardless of whether the project was set
+  // up via clasp push of the checked-in manifest or manually in the Script Editor.
+  if (typeof Drive === "undefined") {
+    issues.push(
+      "🚨 DRIVE ADVANCED SERVICE NOT ENABLED\n" +
+      "   The anti-cheating forensic check (version-history scan) is silently\n" +
+      "   passing every submission because it can't reach the Drive Advanced\n" +
+      "   Service.\n" +
+      "   Action: Extensions → Apps Script → Services (+) → add \"Drive API\",\n" +
+      "   or redeploy this project from the checked-in manifest, which now\n" +
+      "   declares it."
+    );
+  }
+
+  // --- SCRDecisionLog retention archival (Say/Do Ledger cas-ccps Extension 3) ---
+  // Runs before the FERPA checks below so the "past retention, not archived"
+  // check right after almost always reads zero — it's a genuine health
+  // signal (did archival actually run?) precisely because this call
+  // normally makes it true, not a tautology.
+  _archiveExpiredScrDecisions_();
+
+  // --- FERPA-adjacent checks (Say/Do Ledger finding #5, Bonus 1) ---
+  _ferpaHealthChecks_().forEach(c => { if (!c.ok && c.alertText) issues.push(c.alertText); });
 
   // --- Send alert only if issues exist ---
   if (issues.length === 0) {
@@ -171,25 +410,32 @@ function resetStuckRow() {
   const headers = data[0].map(h => String(h).trim());
   const stIdx   = headers.indexOf("Status");
   const tsIdx   = headers.indexOf("Timestamp");
+  const fileIdx = headers.indexOf("StudentFileID");
   const now     = new Date();
   const cutoff  = 10 * 60 * 1000;
-  let   count   = 0;
+  const reset   = []; // identifying context for each row actually reset — finding #11
 
   for (let i = 1; i < data.length; i++) {
     const rowStatus = String(data[i][stIdx]).trim();
     // Reset both stuck IN_PROCESS rows and ERROR_TIMEOUT rows to re-queue them
     if (rowStatus !== "IN_PROCESS" && rowStatus !== "ERROR_TIMEOUT") continue;
+    let elapsedMin = null;
     if (rowStatus === "IN_PROCESS") {
       const rowTs = tsIdx !== -1 ? new Date(data[i][tsIdx]) : null;
+      if (rowTs) elapsedMin = Math.round((now - rowTs) / 60000);
       if (rowTs && (now - rowTs) < cutoff) continue;
     }
+    const fileId = fileIdx !== -1 ? String(data[i][fileIdx]).trim() : "unknown";
+    reset.push(_stuckRowContext_(i + 1, fileId, elapsedMin));
     sheet.getRange(i + 1, stIdx + 1).setValue("PENDING_INFERENCE");
-    count++;
   }
 
   SpreadsheetApp.flush();
-  ui.alert(count > 0
-    ? "✅ " + count + " stuck row(s) reset to queue."
+  // FIXED (finding #11): used to just report a count with no identifying
+  // context — brought up to the same standard autoHealthAlert() already
+  // uses, via the shared _stuckRowContext_() helper.
+  ui.alert(reset.length > 0
+    ? "✅ " + reset.length + " stuck row(s) reset to queue:\n\n" + reset.join("\n")
     : "✅ No stuck rows found.");
 }
 
@@ -266,32 +512,30 @@ function runSystemHealthCheck() {
   const cfg = getConfig_();
   const ss  = SpreadsheetApp.openById(cfg.adminSsId);
 
-  const stagingSheet = ss.getSheetByName(cfg.tabs.stagingPipeline);
   const queueSheet   = ss.getSheetByName(cfg.tabs.reviewQueue);
   const ledgerSs     = SpreadsheetApp.openById(cfg.ledgerSsId);
   const ledgerSheet  = ledgerSs.getSheetByName(cfg.tabs.ledger);
 
-  const sd = stagingSheet ? stagingSheet.getDataRange().getValues() : [];
-  const qd = queueSheet   ? queueSheet.getDataRange().getValues()   : [];
-  const ld = ledgerSheet  ? ledgerSheet.getDataRange().getValues()  : [];
+  const qd  = queueSheet   ? queueSheet.getDataRange().getValues()   : [];
+  const ld  = ledgerSheet  ? ledgerSheet.getDataRange().getValues()  : [];
+  const now = new Date();
 
-  const sHeaders  = sd[0] ? sd[0].map(h => String(h).trim()) : [];
-  const stIdx     = sHeaders.indexOf("Status");
-  const tsIdx     = sHeaders.indexOf("Timestamp");
-  const now       = new Date();
-
-  let inProcess = 0, pending = 0, complete = 0, stuck = 0, sErrors = 0, timeouts = 0;
-  for (let i = 1; i < sd.length; i++) {
-    const s = String(sd[i][stIdx] || "").trim();
-    if (s === "IN_PROCESS")        inProcess++;
-    if (s === "PENDING_INFERENCE") pending++;
-    if (s === "COMPLETE")          complete++;
-    if (s === "ERROR_TIMEOUT")     timeouts++;
-    if (s.startsWith("ERROR") && s !== "ERROR_TIMEOUT") sErrors++;
-    if (s === "IN_PROCESS" && tsIdx !== -1) {
-      if ((now - new Date(sd[i][tsIdx])) > 10 * 60 * 1000) stuck++;
-    }
-  }
+  // FIXED (Say/Do Ledger cross-portfolio Flow Health extension): this used
+  // to hardcode a 10-minute IN_PROCESS threshold, drifting from
+  // autoHealthAlert()'s own 15-minute one for the exact same question — now
+  // both callers share one scan and one pair of thresholds via
+  // _stagingPipelineHealthChecks_() (see its doc comment). Also adds the
+  // PENDING_INFERENCE-stuck check that function was actually built for —
+  // previously this function only ever counted those rows, never aged them.
+  const staging       = _stagingPipelineHealthChecks_(ss, cfg);
+  const inProcess     = staging.counts.inProcess;
+  const pending       = staging.counts.pending;
+  const complete      = staging.counts.complete;
+  const timeouts      = staging.counts.timeouts;
+  const sErrors       = staging.counts.otherErrors;
+  const stuckRows     = staging.inProcessStuckRows;
+  const pendingStuck  = staging.pendingStuckRows;
+  const stuck         = stuckRows.length;
 
   let qPending = 0, qStaged = 0, qComplete = 0, qErrors = 0;
   for (let i = 1; i < qd.length; i++) {
@@ -302,27 +546,52 @@ function runSystemHealthCheck() {
     if (s.startsWith("ERROR")) qErrors++;
   }
 
-  let lActive = 0, lCompliant = 0, lFlagged = 0, lArchived = 0;
+  let lActive = 0, lCompliant = 0, lPendingReview = 0, lFlagged = 0, lArchived = 0;
   for (let i = 1; i < ld.length; i++) {
     const s = String(ld[i][12] || "").trim();
     if (s === "ACTIVE")    lActive++;
+    // NEW (Say/Do Ledger cas-ccps finding #1): visibility into how many
+    // genuine-complete submissions are sitting in the new intermediate
+    // state, awaiting a teacher's own confirm/override — a normal, expected
+    // state, not folded into "all healthy" below, since a healthy system can
+    // (and should) have some of these at any given moment.
+    if (s === "PENDING_TEACHER_REVIEW") lPendingReview++;
     if (s === "COMPLIANT") lCompliant++;
     if (s === "ARCHIVED")  lArchived++;
     if (s.startsWith("ERROR") || s === "FLAGGED") lFlagged++;
   }
   const currentTerm = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "(not set)";
 
+  // Same reasoning as autoHealthAlert() above — archive first, so the
+  // retention health check below reflects current-after-archival reality
+  // (Say/Do Ledger cas-ccps Extension 3).
+  _archiveExpiredScrDecisions_();
+
+  // FIXED (finding #5, Bonus 1): folded into the final "all healthy" &&
+  // condition below, not just appended as a display line — a display-only
+  // addition wouldn't have affected the actual pass/fail result.
+  const ferpaChecks = _ferpaHealthChecks_();
+  const ferpaOk     = ferpaChecks.every(c => c.ok);
+
   const ts = Utilities.formatDate(now, Session.getScriptTimeZone(), "MMM d, h:mm a");
 
   ui.alert("System Health Check", [
     "SYSTEM HEALTH CHECK — " + ts + "\n",
     "STAGING PIPELINE",
-    (stuck > 0 ? "⚠️  " + stuck + " stuck row(s) — use Reset Stuck Row" : "✅  No stuck rows"),
+    (stuck > 0
+      ? "⚠️  " + stuck + " stuck row(s) — use Reset Stuck Row:\n      " + stuckRows.join("\n      ")
+      : "✅  No stuck rows"),
     "   Evaluating:   " + inProcess,
     "   Queued:       " + pending,
     "   Complete:     " + complete,
     (timeouts > 0 ? "⏱️  Timeouts auto-cleared: " + timeouts + " (teachers notified)" : "✅  No timeouts"),
     (sErrors > 0 ? "⚠️  Other errors: " + sErrors : ""),
+    // NEW (Say/Do Ledger cross-portfolio Flow Health extension): a queued
+    // row that's never even been promoted to IN_PROCESS was previously
+    // invisible here — only counted, never aged.
+    (pendingStuck.length > 0
+      ? "🕓  " + pendingStuck.length + " queued row(s) never started evaluation:\n      " + pendingStuck.join("\n      ")
+      : "✅  No queued rows stuck without starting"),
     "",
     "REVIEW QUEUE",
     "   Pending:      " + qPending,
@@ -333,11 +602,23 @@ function runSystemHealthCheck() {
     "STUDENT LEDGER",
     "   Current term: " + currentTerm,
     "   Active:       " + lActive,
+    "   Pending review: " + lPendingReview,
     "   Compliant:    " + lCompliant,
     "   Archived:     " + lArchived,
     (lFlagged > 0 ? "🚩  Flagged: " + lFlagged : "✅  No flagged students"),
     "",
-    (stuck === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0
+    "FORENSIC CHECK",
+    // FIXED: 04_Form2_TurnInGate.js's runForensicCheck_() calls the Drive
+    // Advanced Service and silently treats "unavailable" as a passed check —
+    // this makes that failure visible instead of invisible.
+    (typeof Drive === "undefined"
+      ? "🚨  Drive Advanced Service NOT enabled — anti-cheating check is silently passing every submission. Enable it via Extensions → Apps Script → Services."
+      : "✅  Drive Advanced Service enabled — forensic check is active."),
+    "",
+    "FERPA",
+    ...ferpaChecks.map(c => c.displayLine),
+    "",
+    (stuck === 0 && pendingStuck.length === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && typeof Drive !== "undefined" && ferpaOk
       ? "✅ All systems healthy." + (timeouts > 0 ? " (" + timeouts + " timeout(s) auto-resolved.)" : "")
       : "⚠️ Action may be required. See flags above.")
   ].filter(l => l !== "").join("\n"), ui.ButtonSet.OK);
@@ -523,6 +804,15 @@ function viewTermSummary() {
 
 // ---------------------------------------------------------------------------
 // manuallyMarkCompliant
+//
+// NOTE (Say/Do Ledger cas-ccps finding #1): the normal path for a
+// genuine-complete submission is no longer straight to COMPLIANT — it stops
+// at PENDING_TEACHER_REVIEW first, and the teacher's own Pending Review
+// queue (07_TeacherDashboard.js) is what finally confirms/overrides it. This
+// admin action still exists as a separate, explicit escape hatch — e.g. a
+// submission stuck in an error state that never reached the normal
+// ledger-matched flow at all — not as the routine override the finding was
+// originally about (that gap is what the Pending Review queue now closes).
 // ---------------------------------------------------------------------------
 function manuallyMarkCompliant() {
   const ui = SpreadsheetApp.getUi();

@@ -110,16 +110,52 @@ or insufficient. If all milestones are fully met, write exactly:
 
 4. COMPLIANCE STAMP
 End your response with exactly one of these two lines and nothing after it
-except the machine-readable line described below:
+except the two machine-readable lines described below:
   [SYSTEM: REVISION_REQUIRED]
   [SYSTEM: APPROVED]
 Use [SYSTEM: APPROVED] only if every milestone is MET and the Definition of Done
 is fully satisfied. Use [SYSTEM: REVISION_REQUIRED] in all other cases.
 
-5. MACHINE-READABLE OUTCOME LINE -- REQUIRED, MUST BE THE VERY LAST LINE
-Immediately after the compliance stamp line, on its own new line, output
-exactly one line in this exact format -- no extra spaces, no extra
-punctuation, no explanation before or after it:
+5. SUGGESTED SCORE -- REQUIRED ONLY IF APPROVED (Say/Do Ledger cas-ccps
+finding #1 -- added after this file's original design; if you are working
+from an older cached copy of this prompt, add this section)
+If -- and only if -- your compliance stamp above is [SYSTEM: APPROVED], add
+one more line immediately after it, on its own new line, rating how strong
+this approved submission is:
+  [SUGGESTED_SCORE: 2]  -- Adequate. Meets the Definition of Done at a basic,
+                           minimum level.
+  [SUGGESTED_SCORE: 3]  -- Solid. Fully meets the Definition of Done with good
+                           quality throughout.
+  [SUGGESTED_SCORE: 4]  -- Exceptional. Exceeds the Definition of Done --
+                           demonstrates clear mastery beyond minimum
+                           requirements.
+Never write [SUGGESTED_SCORE: 1] or [SUGGESTED_SCORE: 5] -- those two values
+are reserved entirely for the teacher's own judgment, never for you to
+suggest (the same reserved-tier convention this system already uses for
+competency SCR ratings -- see 30_SCRSuggestionEngine.js). If your compliance
+stamp is [SYSTEM: REVISION_REQUIRED], do not include a SUGGESTED_SCORE line
+at all -- go straight to the MACHINE-READABLE OUTCOME LINE below instead.
+
+This line is read directly out of the submitted document by
+04_Form2_TurnInGate.js's extractSuggestedScore_() at turn-in time, so it has
+to survive in the document text the same way [SYSTEM: APPROVED] already does
+-- Step 3b below strips [MILESTONE_OUTCOMES: {...}] from what the student
+sees, but this line is NOT stripped, matching the compliance stamp's own
+existing visibility. Be honest about what that means: a student who reads
+closely will see this raw bracketed tag, same as they already can with
+[SYSTEM: APPROVED] today. What actually matters -- and what this DOES fully
+control -- is the STUDENT-FACING PROSE in sections 1-3 above: never mention
+points, scores, or grades anywhere in the OVERALL ASSESSMENT, MILESTONE
+BREAKDOWN, or REQUIRED REVISIONS text a student actually reads as feedback
+(matching the same convention the Warm-Up pipeline's Flow 4 prompt already
+uses -- see 25_WarmUpWriter.js). The narrative feedback should read the same
+whether the suggested score ends up being 2, 3, or 4.
+
+6. MACHINE-READABLE OUTCOME LINE -- REQUIRED, MUST BE THE VERY LAST LINE
+Immediately after the compliance stamp line (and the SUGGESTED_SCORE line,
+if this submission was approved), on its own new line, output exactly one
+line in this exact format -- no extra spaces, no extra punctuation, no
+explanation before or after it:
 
 [MILESTONE_OUTCOMES: {"1":"MET","2":"NOT_MET","3":"PARTIALLY_MET","4":"MET"}]
 
@@ -200,7 +236,10 @@ nothing after it.
 //   Connector: Gemini (native, no API key)
 //   Prompt:    FLOW_2_SYSTEM_PROMPT (above -- paste verbatim, map variables)
 //   Output:    Full evaluation report text, ENDING with the compliance
-//              stamp followed by the new [MILESTONE_OUTCOMES: {...}] line.
+//              stamp -- followed by [SUGGESTED_SCORE: N] if approved (Say/Do
+//              Ledger cas-ccps finding #1, section 5 of the prompt above) --
+//              followed by the [MILESTONE_OUTCOMES: {...}] line, which is
+//              still always the very last line regardless.
 //   Output variable: GEMINI_FULL_OUTPUT
 //
 // -- Step 3b -- RELAY / SPLIT STEP (NEW) -------------------------------------
@@ -215,16 +254,22 @@ nothing after it.
 //     select from what's actually available in the editor.
 //   Input:     @step3.GEMINI_FULL_OUTPUT
 //   Required behavior:
-//     1. Locate the line matching the pattern
-//        [MILESTONE_OUTCOMES: {...}] -- this is always the last line of
-//        the output, immediately after the compliance stamp line.
+//     1. Locate the line matching the pattern [MILESTONE_OUTCOMES: {...}] --
+//        this is always the VERY LAST line of the output. It is immediately
+//        after the compliance stamp line UNLESS a [SUGGESTED_SCORE: N] line
+//        (Say/Do Ledger cas-ccps finding #1) is also present, in which case
+//        it's immediately after that instead -- match on the
+//        [MILESTONE_OUTCOMES: ...] bracket text itself, not on position
+//        relative to the compliance stamp.
 //     2. Produce TWO output variables:
-//        STUDENT_FACING_REPORT -- the full Gemini output with the
+//        STUDENT_FACING_REPORT -- the full Gemini output with ONLY the
 //          [MILESTONE_OUTCOMES: {...}] line REMOVED (every other line,
-//          including the compliance stamp itself, is kept exactly as
-//          Gemini wrote it). This is what the student will see -- it
-//          must be byte-for-byte identical to what Flow 2 would have
-//          produced under the ORIGINAL design, before this revision.
+//          including the compliance stamp and any [SUGGESTED_SCORE: N] line,
+//          is kept exactly as Gemini wrote it -- see the prompt's own note on
+//          why SUGGESTED_SCORE has to stay). This is what the student will
+//          see -- it must be byte-for-byte identical to what Flow 2 would
+//          have produced under the ORIGINAL design, before this revision,
+//          plus the SUGGESTED_SCORE line when the submission is approved.
 //          The student-facing report does not change because of this
 //          revision; only what happens to the trailing line changes.
 //        MILESTONE_OUTCOMES_PARSED -- the JSON object inside the

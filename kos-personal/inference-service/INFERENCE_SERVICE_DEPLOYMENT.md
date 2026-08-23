@@ -2,7 +2,7 @@
 
 This guide takes the inference service from source code to a running Cloud Run instance connected to a KOS deployment. Estimated time: 45–60 minutes for first deploy.
 
-**Current integration status:** this guide describes the intended end state. As of today, `10_Turnstile.gs` does not call this service's `POST /api/v1/jobs` webhook anywhere — see this directory's `README.md` "What actually integrates with kos-personal" section. Deploying this service today gets you a working account-status panel in the KOS web app (`getQueueMetrics()`'s `managed_service` field) if you set `CFG.INFERENCE_MODE = 'MANAGED_SERVICE'` and configure credentials; it does **not** yet make `STUDIO_ACTIVE` rows actually route to this service for inference. Phase 7c below describes that end-to-end hand-off as future/target behavior, not something you can verify today.
+**Current integration status:** the wiring this guide describes is live. `10_Turnstile.gs` calls this service's `POST /api/v1/jobs` webhook (via `_submitManagedServiceJob_()` in `3_Queue_Processor.gs`) immediately before releasing a `STUDIO_ACTIVE` row, whenever `CFG.INFERENCE_MODE === 'MANAGED_SERVICE'` — see this directory's `README.md` "What actually integrates with kos-personal" section. In the default `'STUDIO'` mode this hand-off is skipped and native Studio inference handles the row instead. Deploying this service and setting `CFG.INFERENCE_MODE = 'MANAGED_SERVICE'` (with credentials configured) gets you both the account-status panel in the KOS web app (`getQueueMetrics()`'s `managed_service` field) and actual end-to-end job routing. Phase 7c below is a reproducible test of that real hand-off, not target/future behavior.
 
 ---
 
@@ -279,7 +279,7 @@ Account: {"email":"user@example.com","credit_balance":50,"subscription_status":"
 
 ### 7c. Test a full job
 
-**Not wired up yet — see the integration-status note at the top of this guide.** `10_Turnstile.gs` has no caller for this service's `POST /api/v1/jobs` webhook, so a `STUDIO_ACTIVE` row will not be picked up by this service no matter how it's deployed or configured; the steps below describe the target behavior once that hand-off is built, not something you can currently reproduce.
+**Wired up and testable — see the integration-status note at the top of this guide.** `10_Turnstile.gs` calls this service's `POST /api/v1/jobs` webhook whenever `CFG.INFERENCE_MODE === 'MANAGED_SERVICE'`, so a `STUDIO_ACTIVE` row will be picked up by this service once it's deployed and that mode is set. The steps below are a real, reproducible test of that hand-off.
 
 1. Submit a short session via the KOS web app Ingest tab
 2. Wait up to 5 minutes for the Turnstile to release it (or run `runMatrixTurnstile()` manually)

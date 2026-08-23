@@ -5,8 +5,8 @@
  * =========================
  * cas-ccps is not one Apps Script project — it's 7 (see
  * tools/gas-lint/project-map.json), several of which share files (e.g.
- * 00_SharedConfig.js is pasted into 5 of them, 19_ClonedSheetConfig.js
- * into 2). clasp's model is strictly one local folder <-> one script ID,
+ * 00_SharedConfig.js is pasted into all 7 of them, 19_ClonedSheetConfig.js
+ * into 3). clasp's model is strictly one local folder <-> one script ID,
  * so there's no single directory that can `clasp push` cleanly for
  * cas-ccps the way kos-personal's flat folder can.
  *
@@ -56,13 +56,52 @@ const BUILD_DIR    = path.join(REPO_ROOT, 'cas-ccps/.clasp-build');
 const PREFIX = 'cas-ccps:';
 const requestedName = process.argv[2]; // optional single-project filter
 
+// A prior audit found clasp-sync would happily bundle a fully-unmerged
+// "_ADDENDUM" file — pure paste-instructions in a comment, no live code —
+// into a generated push folder right next to the base file it patches,
+// which would still be missing whatever keys/functions that addendum
+// documents. Pushing that folder ships the exact broken half-state
+// tools/gas-lint/check.js's cfg-key-pending-merge warning already flags,
+// with nothing here stopping it. This is a cheap, conservative guard
+// against that specific failure mode: a merged addendum (like
+// 16_UnifiedManualSetup_M5_ADDENDUM_v2.js, which legitimately still has
+// live functions shared into its project's scope) has real top-level
+// code and passes; a file that's still 100% comments does not.
+function hasLiveTopLevelCode(absPath) {
+  const raw = fs.readFileSync(absPath, 'utf8');
+  const stripped = raw
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .replace(/\/\/.*$/gm, '');
+  return /^\s*(function\s+\w|const\s+\w|let\s+\w|var\s+\w)/m.test(stripped);
+}
+
 let built = 0;
 let missingRealId = 0;
+let refusedUnmerged = 0;
 
 for (const [projectKey, def] of Object.entries(PROJECT_MAP)) {
   if (!projectKey.startsWith(PREFIX)) continue;
   const shortName = projectKey.slice(PREFIX.length);
   if (requestedName && requestedName !== shortName) continue;
+
+  // Refuse to build this project at all if any of its listed addendum
+  // files are still pure paste-instructions — merge them first.
+  const candidateFiles = [...(def.files || []), ...(def.html || [])];
+  const unmergedAddenda = candidateFiles.filter(relPath => {
+    if (!relPath.includes('_ADDENDUM')) return false;
+    const abs = path.join(REPO_ROOT, relPath);
+    return fs.existsSync(abs) && !hasLiveTopLevelCode(abs);
+  });
+  if (unmergedAddenda.length > 0) {
+    console.error(
+      `[${shortName}] REFUSED to build — still lists unmerged addendum file(s) with no live code: ` +
+      `${unmergedAddenda.join(', ')}. Merge each into its base file (see any tools/gas-lint ` +
+      `cfg-key-pending-merge warnings), then remove it from project-map.json, before this ` +
+      `project is safe to push.`
+    );
+    refusedUnmerged++;
+    continue;
+  }
 
   const outDir = path.join(BUILD_DIR, shortName);
   fs.rmSync(outDir, { recursive: true, force: true });
@@ -120,7 +159,7 @@ for (const [projectKey, def] of Object.entries(PROJECT_MAP)) {
   if (!hasRealId) missingRealId++;
 }
 
-if (built === 0) {
+if (built === 0 && refusedUnmerged === 0) {
   console.error(
     requestedName
       ? `No cas-ccps project named "${requestedName}" found in project-map.json.`
@@ -135,3 +174,8 @@ console.log(
     ? ` ${missingRealId} still need a real scriptId — copy the matching cas-ccps/clasp/templates/*.clasp.json.template to cas-ccps/clasp/local/*.clasp.json and fill it in before pushing.`
     : '')
 );
+
+if (refusedUnmerged > 0) {
+  console.error(`\n${refusedUnmerged} project(s) refused — see REFUSED lines above. Fix those before trusting any push.`);
+  process.exit(1);
+}

@@ -1,4 +1,23 @@
 // =============================================================================
+// ARCHIVED — merged into 07_TeacherDashboard.js. Do not paste from here.
+//
+// Both server functions (getMyStudentContext, getStudentContextRoster) and
+// the HTML/CSS/JS additions below are now live in 07_TeacherDashboard.js.
+// While merging, a real bug in this addendum's own design was found and
+// fixed: getStudentDocForViewer_()/getAllStudentDocsForTeacher_() live in
+// Script 29 (29_StudentContextAggregator.js), which this addendum's own
+// deployment checklist (see 00_SharedConfig_M4_ADDENDUM.js) only ever
+// added to the Central Ledger project — never to the standalone Teacher
+// Dashboard project these two functions actually run in. As written, this
+// addendum would have thrown a ReferenceError the first time either
+// function ran. Fixed by adding 29_StudentContextAggregator.js to the
+// "cas-ccps:teacher-dashboard" project's file list in
+// tools/gas-lint/project-map.json — Script 29 is now bundled into both
+// projects, same pattern already used for 00_SharedConfig.js.
+//
+// This file is retained for reference only. Do not bind, deploy, or paste
+// from it.
+// =============================================================================
 // FILE: 07_TeacherDashboard_M4_ADDENDUM.js
 // PURPOSE: Additions to 07_TeacherDashboard.js for Module 4 — adds a
 //          "Student Context" tab to the existing dashboard shell.

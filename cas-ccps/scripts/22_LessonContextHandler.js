@@ -1,6 +1,11 @@
 // =============================================================================
 // FILE: 22_LessonContextHandler.js
-// BOUND TO: Central Ledger spreadsheet
+// BOUND TO: Central Ledger spreadsheet AND the Teacher Dashboard standalone
+//   web app — Script 07's submitLessonContext() calls onLessonContextSubmit_()
+//   below directly, so this file (and its Script 26 dependency) must be
+//   physically present in the Teacher Dashboard project too, not just
+//   Central Ledger. See tools/gas-lint/project-map.json's
+//   cas-ccps:teacher-dashboard entry.
 // PURPOSE: Handles Lesson Context submissions routed from Script 07's
 //          submitLessonContext() server function. Validates input, writes
 //          to LessonContext tab, calls Script 26 directly to log alignment.

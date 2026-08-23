@@ -24,6 +24,11 @@ const POLL_INTERVAL_MS = parseInt(process.env.WORKER_POLL_MS || '15000'); // 15s
 
 async function processNextJob() {
   let jobRecord = null;
+  // Hoisted so the outer catch-all (unexpected errors anywhere below) can
+  // still attempt a best-effort refund — see that catch block.
+  let creditCost = 0;
+  let creditsDeducted = false;
+
   try {
     // Atomically claim the next queued job
     jobRecord = await db.getNextQueuedJob();
@@ -32,13 +37,48 @@ async function processNextJob() {
     const { job, user } = jobRecord;
     logger.info(`[Worker] Processing job ${job.id} | ${job.payload_type} | user ${user.email}`);
 
-    // ── Check credits before starting ────────────────────────────
-    const creditCost = inference.getCreditCost(job.payload_type);
-    if (user.credit_balance < creditCost && user.subscription_status === 'free') {
-      await db.markJobFailed(job.id, 'Insufficient credits. User needs to purchase more.', false);
-      logger.warn(`[Worker] Job ${job.id} failed: insufficient credits (${user.credit_balance} < ${creditCost})`);
-      return;
+    creditCost = inference.getCreditCost(job.payload_type);
+    const isUnlimited = user.subscription_status === 'unlimited';
+
+    // ── Charge credits BEFORE doing any expensive work ────────────
+    // FIXED (part 2 of the billing-race fix — see part 1's commit for
+    // the fall-through fix this builds on): deduction used to happen
+    // after inference, the Drive write, and the FLOW_COMPLETE signal —
+    // by the time a failed deduction was caught, the expensive work was
+    // already done and delivered, so a failed charge could only be
+    // reacted to after the fact. Moved here instead, using
+    // deductCredits()'s atomic `WHERE credit_balance >= $1` guard as the
+    // real gate — replacing the old non-atomic `user.credit_balance <
+    // creditCost` pre-check, which read a stale snapshot from job-claim
+    // time and couldn't stop two workers racing on the same low-balance
+    // user. If any downstream step now fails, the deducted credits are
+    // refunded via refundAndFail() before marking the job failed.
+    if (!isUnlimited) {
+      try {
+        await db.deductCredits(user.id, creditCost);
+        creditsDeducted = true;
+      } catch (deductErr) {
+        await db.markJobFailed(job.id, 'Insufficient credits. User needs to purchase more.', false);
+        logger.warn(`[Worker] Job ${job.id} failed: insufficient credits (${deductErr.message})`);
+        return;
+      }
     }
+
+    // Refunds the just-deducted credits (no-op for unlimited-tier users,
+    // who were never charged) before marking the job failed — every
+    // downstream failure path below routes through this so a job that
+    // doesn't actually complete never leaves the user permanently
+    // charged for it.
+    const refundAndFail = async (msg, retry) => {
+      if (creditsDeducted) {
+        try {
+          await db.addCredits(user.id, creditCost, `Refund — job ${job.id} did not complete: ${msg}`);
+        } catch (refundErr) {
+          logger.error(`[Worker] Job ${job.id}: CREDIT REFUND FAILED (needs manual reconciliation): ${refundErr.message}`);
+        }
+      }
+      await db.markJobFailed(job.id, msg, retry);
+    };
 
     // ── Read session document from user's Drive ───────────────────
     let sessionText;
@@ -46,13 +86,13 @@ async function processNextJob() {
       sessionText = await google.readDocumentText(user, job.file_id);
     } catch (driveErr) {
       const msg = `Could not read Drive document: ${driveErr.message}`;
-      await db.markJobFailed(job.id, msg, true);
+      await refundAndFail(msg, true);
       logger.error(`[Worker] Job ${job.id} drive error: ${msg}`);
       return;
     }
 
     if (!sessionText || sessionText.trim().length < 20) {
-      await db.markJobFailed(job.id, 'Document is empty or too short to process.', false);
+      await refundAndFail('Document is empty or too short to process.', false);
       return;
     }
 
@@ -97,7 +137,7 @@ async function processNextJob() {
       const msg = `Inference failed: ${inferErr.message}`;
       // Retry if it looks like a transient API error
       const isTransient = /rate limit|timeout|overloaded|503|529/i.test(inferErr.message);
-      await db.markJobFailed(job.id, msg, isTransient);
+      await refundAndFail(msg, isTransient);
       logger.error(`[Worker] Job ${job.id} inference error (retry=${isTransient}): ${msg}`);
       return;
     }
@@ -107,7 +147,7 @@ async function processNextJob() {
       await google.writeDocumentContent(user, job.file_id, result.outputString);
     } catch (writeErr) {
       const msg = `Could not write to Drive document: ${writeErr.message}`;
-      await db.markJobFailed(job.id, msg, true);
+      await refundAndFail(msg, true);
       logger.error(`[Worker] Job ${job.id} write error: ${msg}`);
       return;
     }
@@ -122,19 +162,19 @@ async function processNextJob() {
     }
 
     // ── Record billing ────────────────────────────────────────────
+    // Credits were already deducted up front, before any expensive work
+    // ran (see the "Charge credits" block above) — this is just the
+    // audit-log write, so a failure here stays non-fatal, same as the
+    // FLOW_COMPLETE signal above.
     try {
-      // Deduct credits for subscribed users OR free tier within limit
-      if (user.subscription_status !== 'unlimited') {
-        await db.deductCredits(user.id, creditCost);
-      }
       await db.recordBillingEvent({
         userId:         user.id,
         jobId:          job.id,
         eventType:      `${job.payload_type.toLowerCase()}_processed`,
         creditsCharged: creditCost,
       });
-    } catch (billingErr) {
-      logger.error(`[Worker] Job ${job.id}: billing error (non-fatal): ${billingErr.message}`);
+    } catch (billingEventErr) {
+      logger.error(`[Worker] Job ${job.id}: recordBillingEvent failed (non-fatal, credits already settled): ${billingEventErr.message}`);
     }
 
     // ── Mark job complete ─────────────────────────────────────────
@@ -154,9 +194,68 @@ async function processNextJob() {
     // Catch-all for anything not handled above
     logger.error(`[Worker] Unexpected error processing job:`, unexpectedErr);
     if (jobRecord?.job?.id) {
+      // Best-effort refund: an unexpected error thrown after credits were
+      // deducted (creditsDeducted is set right after that call succeeds)
+      // but before this catch-all's own try/catch machinery could route
+      // through refundAndFail() means the user would otherwise be
+      // charged for a job that never completed.
+      if (creditsDeducted) {
+        await db.addCredits(
+          jobRecord.user.id, creditCost,
+          `Refund — job ${jobRecord.job.id} hit an unexpected error: ${unexpectedErr.message}`
+        ).catch((refundErr) => {
+          logger.error(`[Worker] Job ${jobRecord.job.id}: CREDIT REFUND FAILED (needs manual reconciliation): ${refundErr.message}`);
+        });
+      }
       await db.markJobFailed(jobRecord.job.id, `Unexpected error: ${unexpectedErr.message}`, true)
         .catch(() => {});
     }
+  }
+}
+
+
+// ── Stuck-job recovery ──────────────────────────────────────────────
+// FIXED: credits are deducted before any expensive work starts (see the
+// "Charge credits" block in processNextJob above), but nothing ever
+// recovered a job left stuck in 'processing' if the worker process
+// crashed mid-job (OOM-killed, redeployed, etc.) -- the user stayed
+// permanently charged for a job that would never complete, with no
+// automated way to notice. Runs from this same worker's poll loop
+// (STUCK_JOB_TIMEOUT_MINUTES, default 10) so it can reuse db.addCredits
+// directly for the refund instead of standing up a separate process
+// with its own DB pool and its own copy of the refund logic.
+
+const STUCK_JOB_TIMEOUT_MINUTES = parseInt(process.env.STUCK_JOB_TIMEOUT_MINUTES || '10');
+
+async function sweepStuckJobs() {
+  let stuck;
+  try {
+    stuck = await db.findStuckJobs(STUCK_JOB_TIMEOUT_MINUTES);
+  } catch (e) {
+    logger.error('[Worker] sweepStuckJobs: could not query for stuck jobs:', e);
+    return;
+  }
+  if (stuck.length === 0) return;
+
+  for (const job of stuck) {
+    logger.warn(`[Worker] Job ${job.id} stuck in 'processing' since ${job.started_at} — recovering.`);
+    if (job.subscription_status !== 'unlimited') {
+      const creditCost = inference.getCreditCost(job.payload_type);
+      try {
+        await db.addCredits(
+          job.user_id, creditCost,
+          `Refund — job ${job.id} was stuck in processing (worker likely crashed) and auto-recovered`
+        );
+      } catch (refundErr) {
+        logger.error(`[Worker] Job ${job.id}: STUCK-JOB REFUND FAILED (needs manual reconciliation): ${refundErr.message}`);
+      }
+    }
+    // Reuses the existing retry-vs-fail decision in markJobFailed (based
+    // on the job's own retry_count/MAX_JOB_RETRIES) — a stuck job gets
+    // one more chance to run cleanly before being marked permanently
+    // failed, same as any other retryable failure.
+    await db.markJobFailed(job.id, 'Stuck in processing — worker likely crashed', true)
+      .catch((e) => logger.error(`[Worker] Job ${job.id}: markJobFailed during sweep failed:`, e));
   }
 }
 
@@ -172,6 +271,7 @@ async function startWorker() {
   setInterval(async () => {
     try {
       await processNextJob();
+      await sweepStuckJobs();
     } catch (e) {
       logger.error('[Worker] Poll error:', e);
     }
@@ -186,4 +286,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { startWorker, processNextJob };
+module.exports = { startWorker, processNextJob, sweepStuckJobs };

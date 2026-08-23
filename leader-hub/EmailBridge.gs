@@ -8,6 +8,7 @@
  *   action: "markConsumed"  → Mark horizon items consumed  → {ok, consumed}
  *   action: "aiDraft"       → Queue an AI drafting job      → {ok, jobId}
  *   action: "checkAiJob"    → Poll a queued AI job          → {ok, status, result|error}
+ *   action: "flowHealth"    → Lifetime per-type AI job stats → {ok, stats, types}
  *   action: "pushOrgSync"   → Publish an org snapshot       → {ok, updatedAt} | {ok:false, conflict:true, ...}
  *   action: "pullOrgSync"   → Fetch an org's synced state   → {ok, found, ...}
  *   action: "listOrgSyncs"  → List orgs shared on this bridge → {ok, orgs:[...]}
@@ -65,6 +66,7 @@ function doPost(e) {
     if (action === 'bragEmail')    return jsonResponse_(createBragDraft_(body));
     if (action === 'aiDraft')      return jsonResponse_(queueAiJob_(body));
     if (action === 'checkAiJob')   return jsonResponse_(checkAiJob_(body));
+    if (action === 'flowHealth')   return jsonResponse_(getFlowHealth_());
     if (action === 'pushOrgSync')  return jsonResponse_(pushOrgSync_(body));
     if (action === 'pullOrgSync')  return jsonResponse_(pullOrgSync_(body));
     if (action === 'listOrgSyncs') return jsonResponse_(listOrgSyncs_(body));
@@ -174,6 +176,7 @@ function queueAiJob_(body) {
   const jobId = Utilities.getUuid();
   const sheet = _getAiQueueSheet_();
   sheet.appendRow([new Date(), jobId, type, JSON.stringify(payload), 'PENDING', '', '']);
+  _bumpFlowStat_(type, 'submitted');
   return { ok: true, jobId };
 }
 
@@ -191,11 +194,24 @@ function checkAiJob_(body) {
   // happens below, against a fresh read, to avoid computing its row number
   // from indices this loop may have already invalidated by deleting rows
   // that sat between it and the rows already swept.
+  //
+  // Say/Do Ledger cross-portfolio Flow Health extension: this sweep is the
+  // ONLY place a swept-but-never-claimed job is ever seen again — the row
+  // is gone immediately after. Count it here (sweptUnclaimed), against
+  // whatever status it happened to still be in, or that job type's whole
+  // history is invisible to the AI Flow Health panel: a job stuck PENDING
+  // forever because no Flow is built for its type would otherwise vanish
+  // with zero trace, indistinguishable from a type nobody's ever used.
   for (let i = data.length - 1; i >= 1; i--) {
     const row = data[i];
     if (row[AIQ_COL.JOB_ID] === jobId) continue;
     const age = now - new Date(row[AIQ_COL.TIMESTAMP]).getTime();
-    if (age > AI_QUEUE_MAX_AGE_MS) sheet.deleteRow(i + 1);
+    if (age > AI_QUEUE_MAX_AGE_MS) {
+      if (String(row[AIQ_COL.STATUS] || 'PENDING') === 'PENDING') {
+        _bumpFlowStat_(row[AIQ_COL.TYPE], 'sweptUnclaimed');
+      }
+      sheet.deleteRow(i + 1);
+    }
   }
 
   // Fresh read — the sweep above may have shifted every row's real sheet
@@ -212,9 +228,65 @@ function checkAiJob_(body) {
   // COMPLETE or ERROR — hand it back once, then remove the row. The client
   // is the only reader; there's nothing left to keep this row around for.
   sheet.deleteRow(rowIndex2 + 1);
+  _bumpFlowStat_(found[AIQ_COL.TYPE], status === 'ERROR' ? 'errored' : 'completed');
 
   if (status === 'ERROR') return { ok: true, status: 'ERROR', error: found[AIQ_COL.ERROR] || 'Unknown error' };
   return { ok: true, status: 'COMPLETE', result: found[AIQ_COL.RESULT] || '' };
+}
+
+// ── AI Flow Health (Say/Do Ledger cross-portfolio Flow Health & Inventory
+// extension) ──────────────────────────────────────────────────────────────
+// AI_Queue rows are always eventually deleted (see the sweep/hand-back logic
+// above) — there is no durable row history to compute health stats from at
+// read time, unlike cas-ccps's STAGING_PIPELINE (which keeps terminal rows
+// indefinitely) or kos-personal's Turnstile/Registrar retry counters (which
+// live on the row itself). So this is a genuinely new, small persistent
+// counter, incremented at write-time (queueAiJob_) and at the two points a
+// row's outcome is learned before it disappears (checkAiJob_'s sweep and
+// hand-back) — the only two moments this file ever knows a job's fate.
+//
+// AI_FLOW_TYPES: the real literal type strings created by student-leader-
+// hub.html's own callGAS('aiDraft', {type:...}) call sites. FIN_ANALYSIS
+// (finAnalysis()) is real, shipping traffic today but was never added to
+// LEADERHUB_AI_FLOW_SETUP.md alongside its 5 documented siblings — listed
+// here so it isn't invisible to this health panel the way it's invisible
+// to that doc; the doc gap itself is a separate, smaller fix.
+const AI_FLOW_TYPES = ['EMAIL_COMPOSE', 'ARCHIVE_INSIGHTS', 'WBL_INSIGHTS', 'LP_ASSIST', 'FIN_ANALYSIS', 'BRAG_EMAIL'];
+const AI_FLOW_STATS_PROP = 'AI_FLOW_STATS';
+
+function _getFlowStats_() {
+  const raw = PropertiesService.getScriptProperties().getProperty(AI_FLOW_STATS_PROP);
+  let stats = {};
+  if (raw) { try { stats = JSON.parse(raw) || {}; } catch (e) { stats = {}; } }
+  return stats;
+}
+
+function _saveFlowStats_(stats) {
+  PropertiesService.getScriptProperties().setProperty(AI_FLOW_STATS_PROP, JSON.stringify(stats));
+}
+
+// field: 'submitted' | 'completed' | 'errored' | 'sweptUnclaimed'
+function _bumpFlowStat_(type, field) {
+  if (!type) return; // defensive — a malformed row should never throw here
+  const stats = _getFlowStats_();
+  if (!stats[type]) stats[type] = { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0 };
+  stats[type][field] = (stats[type][field] || 0) + 1;
+  _saveFlowStats_(stats);
+}
+
+/**
+ * Returns lifetime per-type AI job stats for the Settings → AI Flow Health
+ * panel. Every entry in AI_FLOW_TYPES is always present in the response
+ * (zeroed if never used) so the client can render one row per known type
+ * without needing to know which types happen to have accumulated stats.
+ */
+function getFlowHealth_() {
+  const stats = _getFlowStats_();
+  const out = {};
+  AI_FLOW_TYPES.forEach(type => {
+    out[type] = stats[type] || { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0 };
+  });
+  return { ok: true, stats: out, types: AI_FLOW_TYPES };
 }
 
 // ── Organization Sync (co-advisor sharing) ────────────────────────────────────
@@ -246,6 +318,15 @@ function checkAiJob_(body) {
 // dropped/updated). This is last-full-snapshot-wins-with-a-warning, not
 // field-level merging — sufficient for the low-concurrency 2-advisor case
 // this is built for, not a substitute for real-time collaboration.
+//
+// FIXED (Say/Do Ledger leader-hub #1): a missing expectedUpdatedAt against an
+// org that already has a remote meta row is now ALSO treated as a conflict,
+// not skipped. A browser that has never synced this org at all — a built-in
+// org (DECA) that was never explicitly "enabled" for sync locally, or a
+// brand-new device — sends no expectedUpdatedAt; this used to sail straight
+// past the compare-and-swap and silently overwrite whatever a co-advisor had
+// already published. This browser genuinely doesn't know what's already
+// there, so it can't be allowed to blindly overwrite it either.
 
 const ORG_SYNC_SHEET_PROP = 'ORG_SYNC_SHEET_ID';
 const ORG_META_SHEET_NAME = '_org_meta';
@@ -332,8 +413,19 @@ function pushOrgSync_(body) {
   // Compare-and-swap: if the pusher's last-known remote UpdatedAt doesn't
   // match what's actually there right now, someone else pushed in between —
   // reject without writing anything so nothing is silently overwritten.
-  if (existing && body.expectedUpdatedAt) {
+  if (existing) {
     const remoteUpdatedAt = existing.row[OM_COL.UPDATED_AT];
+    if (!body.expectedUpdatedAt) {
+      // See the "FIXED" note above this function — no expectedUpdatedAt at
+      // all against an org that already has remote data is treated the same
+      // as a real mismatch, not skipped.
+      return {
+        ok: false,
+        conflict: true,
+        remoteUpdatedAt: remoteUpdatedAt instanceof Date ? remoteUpdatedAt.toISOString() : remoteUpdatedAt,
+        remoteUpdatedBy: existing.row[OM_COL.UPDATED_BY] || '',
+      };
+    }
     const remoteMs   = new Date(remoteUpdatedAt).getTime();
     const expectedMs = new Date(body.expectedUpdatedAt).getTime();
     if (remoteMs !== expectedMs) {

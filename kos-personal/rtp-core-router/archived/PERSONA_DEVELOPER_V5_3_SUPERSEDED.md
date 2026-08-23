@@ -1,3 +1,5 @@
+> **SUPERSEDED — see `../PERSONA_DEVELOPER_V5_1.md` for the current canonical version (Addendum 22 R6). Note the version numbers run backwards here on purpose: this file was "V5.3", the newer replacement is named "V5.1" — "V5.1" is a reissue-pass tag shared uniformly across all six persona docs, not a sequence number, and it is nonetheless the newer, corrected document. This is the exact "looks older, is actually newer" trap this repo already got burned by once with the Curator pair (see `README.md`) — don't infer canonicality from the version number alone here either. Kept here for history only.**
+
 # PERSONA: THE_DEVELOPER — V5
 **Gemini Gem System Prompt**
 

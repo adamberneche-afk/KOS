@@ -119,6 +119,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
     <a class="sb-link" href="#register">Registering Students</a>
     <a class="sb-link" href="#dashboard">Your Dashboard</a>
     <a class="sb-link" href="#status">Understanding Status</a>
+    <a class="sb-link" href="#module2">What Module 2 Does</a>
   </div>
   <div class="sb-section">
     <span class="sb-section-label">Student Support</span>
@@ -378,8 +379,12 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
       <div class="status-desc">Feedback has been delivered. Student either passed or needs to revise. Open their document to see the result.</div>
     </div>
     <div class="status-row">
+      <div><span class="status-badge" style="background:#f3e8fd;color:#9334e6;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">PENDING REVIEW</span></div>
+      <div class="status-desc"><strong>New:</strong> student submitted via the Turn-In Form and passed all automated checks — but this is no longer the final step. Your dashboard's <strong>Pending Review</strong> card shows every submission waiting here, each with an AI-suggested score. Click a student's "Review Submission →" button to accept the suggested score as-is, or enter your own — either action is what finally makes it COMPLIANT. Nothing becomes final without you.</div>
+    </div>
+    <div class="status-row">
       <div><span class="status-badge s-compliant">COMPLIANT ✓</span></div>
-      <div class="status-desc">Student submitted via the Turn-In Form and passed all verification checks. You received a notification email. Work is complete.</div>
+      <div class="status-desc">You've reviewed and confirmed (or overridden) the submission's final score. Work is complete.</div>
     </div>
     <div class="status-row">
       <div><span class="status-badge s-archived">ARCHIVED</span></div>
@@ -389,6 +394,33 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
       <div><span class="status-badge s-error">FLAGGED ⚠</span></div>
       <div class="status-desc">Something went wrong — submission error, processing failure, or a turn-in rejection that needs investigation. Open the student's document to read the error notice.</div>
     </div>
+  </div>
+</div>
+
+<!-- MODULE 2 (Say/Do Ledger cas-ccps finding #10) -->
+<div class="topic" id="module2">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-gold">🧭</div>
+    <h2>What Module 2 Does and Why</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">Module 2 is the one part of this system that gets more useful the more you use it — it's what lets warm-up questions and feedback personalize to each student over time, instead of treating every student identically. Three pieces work together:</p>
+
+  <p style="color:var(--mid);margin-bottom:8px"><strong>Competency checkboxes.</strong> Every time you log Lesson Context, you check off which state competencies that lesson addressed. This is the only place that connects a specific day's teaching to a specific competency — checking these is what feeds a student's SCR (Student Competency Record) evidence and, downstream, the warm-up personalization below.</p>
+
+  <div class="callout callout-teal" style="margin-bottom:20px">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">If you skip the checkboxes for a lesson, that lesson simply doesn't count toward any competency's evidence — there's no way to recover it later. Logging Lesson Context without checking competencies still works for the roster/context features below, just not for SCR evidence.</div>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:8px"><strong>"My Context" tab.</strong> A roster view of every student's document, aggregating their lesson history, evaluation activity, and warm-up responses in one place — regenerated weekly, not live. Use it to see what a student's document actually contains without opening each one individually.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Warm-up readiness.</strong> The panel at the top of your dashboard shows how many students have enough history (evaluation results, warm-up responses, logged lesson context) for the system to generate a genuinely personalized warm-up question, versus a generic one. Click any of those numbers to filter your roster to exactly those students — the "building a personalized learning profile" group's next step is always the same: log more Lesson Context for that class.</p>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon">🔗</span>
+    <div class="callout-body">The throughline: Lesson Context + competency checkboxes → SCR evidence and warm-up readiness → more personalized questions and feedback for that class. Skipping the checkboxes doesn't break anything today, but it's the one habit that determines how much value Module 2 actually delivers later.</div>
   </div>
 </div>
 

@@ -154,6 +154,24 @@ function findTopLevelDecls(relPath) {
   return decls;
 }
 
+// Same DECL_RE, but at ANY brace depth — used by Check F below to avoid
+// flagging a local closure (e.g. `const emit = msg => {...}` inside a
+// function) as an undefined cross-project call. Check A intentionally
+// stays top-level-only (that's the real collision surface for GAS's
+// shared-scope crash); Check F cares about "is this name callable from
+// where it's used," which a same-file local declaration always answers
+// yes to regardless of depth.
+function findAnyDepthDeclNames(relPath) {
+  const raw = readFile(relPath);
+  const stripped = stripCommentsAndStrings(raw);
+  const names = new Set();
+  for (const line of stripped.split('\n')) {
+    const m = line.match(DECL_RE);
+    if (m) names.add(m[1] || m[2]);
+  }
+  return names;
+}
+
 function checkDuplicateDeclarations() {
   for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
     if (projectName.startsWith('_')) continue;
@@ -296,12 +314,19 @@ function checkCasCcpsConfigKeys() {
   const liveGetSheetConfig = extractObjectKeys(readFile(clonedFile), /function getSheetConfig_\s*\([^)]*\)\s*\{[\s\S]*?return\s*\{/);
   const liveKeys = new Set([...liveGetConfig, ...liveGetSheetConfig]);
 
-  const addendaFiles = [
-    'cas-ccps/scripts/00_SharedConfig_M2_ADDENDUM_v2.js',
-    'cas-ccps/scripts/00_SharedConfig_M4_ADDENDUM.js',
-    'cas-ccps/scripts/19_ClonedSheetConfig_M5_ADDENDUM.js',
-    'cas-ccps/scripts/19_ClonedSheetConfig_M6_ADDENDUM.js',
-  ].filter(exists);
+  // FIXED: this used to be a hardcoded list of 4 specific addendum paths.
+  // All 4 got merged and archived by a later commit, so the list quietly
+  // went stale (`.filter(exists)` just silently dropped all 4 — no error,
+  // no warning, the middle "cfg-key-pending-merge" tier simply stopped
+  // being able to fire for anything). Discovered dynamically now instead,
+  // so a *future* unmerged addendum is picked up automatically rather than
+  // requiring this file to be hand-edited every time one appears or gets
+  // merged.
+  const scriptsDirForAddenda = path.join(REPO_ROOT, 'cas-ccps/scripts');
+  const addendaFiles = fs.readdirSync(scriptsDirForAddenda)
+    .filter(f => f.endsWith('.js') && f.includes('_ADDENDUM') &&
+      (f.startsWith('00_SharedConfig') || f.startsWith('19_ClonedSheetConfig')))
+    .map(f => `cas-ccps/scripts/${f}`);
 
   const addendumKeys = new Map(); // key -> addendum file that documents it
   for (const f of addendaFiles) {
@@ -354,41 +379,51 @@ function checkCasCcpsConfigKeys() {
 
 // -----------------------------------------------------------------------
 // Check D — google.script.run <-> server function cross-reference
-// (kos-personal's 8_WebApp_UI.html is the only HTML in this repo that
-// calls google.script.run; see tools/gas-lint/README.md)
+//
+// FIXED: this used to hardcode kos-personal/8_WebApp_UI.html as the only
+// file ever scanned for google.script.run calls. cas-ccps's own web apps
+// (07_TeacherDashboard.js, 13_StudentDashboard.js) embed google.script.run
+// calls inline in plain .js files instead of a separate .html — a
+// different structural pattern this check simply never looked at. Now
+// iterates every PROJECT_MAP entry so any project's calls get checked
+// against that same project's declared server functions, regardless of
+// whether the client-side code lives in an .html file or inline in .js.
 // -----------------------------------------------------------------------
 function checkGoogleScriptRunCalls() {
-  const htmlFile = 'kos-personal/8_WebApp_UI.html';
-  if (!exists(htmlFile)) return;
-  const html = readFile(htmlFile);
-  const called = new Map(); // fnName -> [{line}]
-  const lines = html.split('\n');
-  lines.forEach((line, i) => {
-    const re = /google\.script\.run(?:\.\w+\([^)]*\))*\.(\w+)\s*\(/g;
-    let m;
-    while ((m = re.exec(line))) {
-      const name = m[1];
-      if (['withSuccessHandler', 'withFailureHandler', 'withUserObject'].includes(name)) continue;
-      if (!called.has(name)) called.set(name, []);
-      called.get(name).push(i + 1);
+  for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
+    if (projectName.startsWith('_')) continue;
+    const files = (def.files || []).concat(def.html || []);
+
+    const called = new Map(); // fnName -> [{file, line}]
+    const declared = new Set();
+
+    for (const relPath of files) {
+      if (!exists(relPath)) continue;
+      const raw = readFile(relPath);
+      const lines = raw.split('\n');
+      lines.forEach((line, i) => {
+        const re = /google\.script\.run(?:\.\w+\([^)]*\))*\.(\w+)\s*\(/g;
+        let m;
+        while ((m = re.exec(line))) {
+          const name = m[1];
+          if (['withSuccessHandler', 'withFailureHandler', 'withUserObject'].includes(name)) continue;
+          if (!called.has(name)) called.set(name, []);
+          called.get(name).push({ file: relPath, line: i + 1 });
+        }
+      });
+      if (!relPath.endsWith('.html')) {
+        for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
+      }
     }
-  });
 
-  const gsFiles = fs.readdirSync(path.join(REPO_ROOT, 'kos-personal'))
-    .filter(f => f.endsWith('.gs'))
-    .map(f => `kos-personal/${f}`);
-  const declared = new Set();
-  for (const relPath of gsFiles) {
-    for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
-  }
-
-  for (const [name, callLines] of called.entries()) {
-    if (!declared.has(name)) {
-      err(
-        'missing-server-function',
-        `google.script.run.${name}(...) is called from ${htmlFile}:${callLines[0]} but no top-level function "${name}" exists in any kos-personal .gs file.`,
-        htmlFile
-      );
+    for (const [name, locs] of called.entries()) {
+      if (!declared.has(name)) {
+        err(
+          'missing-server-function',
+          `google.script.run.${name}(...) is called from ${locs[0].file}:${locs[0].line} (+${locs.length - 1} more) but no top-level function "${name}" exists anywhere in project "${projectName}"'s file set.`,
+          locs[0].file
+        );
+      }
     }
   }
 }
@@ -430,6 +465,89 @@ function checkOAuthScopes() {
 }
 
 // -----------------------------------------------------------------------
+// Check F — cross-project undefined function calls.
+//
+// The exact bug class that shipped three times in cas-ccps before this
+// check existed: a file bound to project A calls a bare function that's
+// only defined in a file bound to project B. GAS's per-project global
+// scope means that's a ReferenceError at runtime, and nothing before this
+// caught it — Check A only flags the OPPOSITE problem (the same name
+// declared twice in one project's scope), not a name called-but-undefined.
+//
+// This is inherently heuristic (dynamic dispatch, computed property
+// access, and any built-in global not yet in the allowlist below can all
+// look like a "possibly undefined" call that isn't really a bug), so
+// findings are WARNINGS, not errors — this check should never fail a
+// build on a false positive. Grow ALLOWLIST from real findings as they
+// come up, the same way scope-map.json documents its own gaps, rather
+// than trying to enumerate every legitimate global up front.
+//
+// Known residual false-positive class, not worth chasing: a callback
+// passed as a function PARAMETER (e.g. `const tryInstall = (name, fn) =>
+// { fn(); ... }`) isn't a `const`/`let`/`var`/`function` declaration, so
+// findAnyDepthDeclNames won't see it and this check will flag the call.
+// Real cases seen on this check's first run: `fn`/`createFn` in
+// kos-personal/1_Config_And_Deploy.gs and cas-ccps/20_SetupCheckpoint.js.
+// Tracking parameter names would need real scope analysis, not worth it
+// for a heuristic warning-only check — read each new warning once and
+// judge for yourself rather than expecting zero false positives.
+// -----------------------------------------------------------------------
+const ALLOWLIST = new Set([
+  // GAS built-in globals/services
+  'SpreadsheetApp', 'DriveApp', 'DocumentApp', 'FormApp', 'MailApp', 'GmailApp',
+  'CalendarApp', 'ScriptApp', 'Session', 'PropertiesService', 'Utilities',
+  'Logger', 'console', 'ContentService', 'HtmlService', 'LockService',
+  'CacheService', 'UrlFetchApp', 'Drive',
+  // JS/ECMAScript built-ins commonly called as bare identifiers
+  'Array', 'Object', 'JSON', 'Math', 'Date', 'String', 'Number', 'Boolean',
+  'parseInt', 'parseFloat', 'isNaN', 'isFinite', 'encodeURIComponent',
+  'decodeURIComponent', 'Set', 'Map', 'Promise', 'Symbol', 'RegExp', 'Error',
+  // JS keywords the naive call-site regex below can mistake for a call
+  // (e.g. `if (...)`, `function foo(...)`, `return (...)`)
+  'if', 'for', 'while', 'switch', 'catch', 'function', 'return', 'typeof', 'new',
+]);
+
+function checkUndefinedFunctionCalls() {
+  for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
+    if (projectName.startsWith('_')) continue;
+    const files = (def.files || []).filter(f => !f.endsWith('.html'));
+
+    const declared = new Set();
+    for (const relPath of files) {
+      if (!exists(relPath)) continue;
+      // Top-level names (visible cross-file, within this project) plus
+      // any-depth names (visible within their own file, e.g. a local
+      // closure) — see findAnyDepthDeclNames's comment for why both.
+      for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
+      for (const name of findAnyDepthDeclNames(relPath)) declared.add(name);
+    }
+
+    for (const relPath of files) {
+      if (!exists(relPath)) continue;
+      const stripped = stripCommentsAndStrings(readFile(relPath));
+      const lines = stripped.split('\n');
+      // Requires the identifier NOT be preceded by `.` (excludes method
+      // calls like `sheet.getRange(...)`) — this check only cares about
+      // bare, top-level-scope function calls, which is exactly the shape
+      // of bug it exists to catch.
+      const callRe = /(?<!\.)\b([A-Za-z_$][\w$]*)\s*\(/g;
+      lines.forEach((line, i) => {
+        let m;
+        while ((m = callRe.exec(line))) {
+          const name = m[1];
+          if (declared.has(name) || ALLOWLIST.has(name)) continue;
+          warn(
+            'possibly-undefined-in-project',
+            `"${name}(...)" is called at ${relPath}:${i + 1} but is not declared in any file of project "${projectName}" and is not in check.js's built-in allowlist. May be a cross-project call bug (the class of bug this check exists for), or a legitimate global/allowlist gap.`,
+            relPath
+          );
+        }
+      });
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Run everything
 // -----------------------------------------------------------------------
 checkDuplicateDeclarations();
@@ -437,6 +555,7 @@ checkKosPersonalCfgKeys();
 checkCasCcpsConfigKeys();
 checkGoogleScriptRunCalls();
 checkOAuthScopes();
+checkUndefinedFunctionCalls();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

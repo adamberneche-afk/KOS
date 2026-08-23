@@ -196,18 +196,38 @@ function onGovernanceEdit(e) {
  * @returns {boolean}          true on success.
  * @throws  {Error}            If doc cannot be opened or tag not found.
  */
+// FIXED: DocumentApp's findText()/replaceText() both treat their string
+// arguments as regular expressions — searchTag containing regex
+// metacharacters (`.`, `(`, `)`, `$`, `\`, `+`, etc., all realistic in
+// operator-typed Blackboard-sheet values) either failed to match text
+// visibly present in the doc (surfacing as a confusing "Strict Match
+// Failed" error), or a payload containing `$1`/`$&`-style sequences
+// silently substituted the wrong text on replacement. Escapes the
+// search side and, for the replacement side, avoids replaceText's
+// regex-replacement-string path entirely — once findText locates the
+// match, the substitution is done via deleteText/insertText on the
+// exact matched range, making payload a true literal with no
+// regex-replacement interpretation possible.
+function _escapeRegexForFindText_(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 function applyMutation(docId, searchTag, payload) {
   if (!docId || !searchTag) {
     throw new Error('applyMutation: Missing docId or searchTag.');
   }
   const body = DocumentApp.openById(docId).getBody();
-  const el   = body.findText(searchTag);
+  const el   = body.findText(_escapeRegexForFindText_(searchTag));
   if (!el) {
     throw new Error(
       'Strict Match Failed: "' + searchTag + '" not found in doc ' + docId + '.'
     );
   }
-  el.getElement().asText().replaceText(searchTag, payload);
+  const textEl = el.getElement().asText();
+  const start  = el.getStartOffset();
+  const end    = el.getEndOffsetInclusive();
+  textEl.deleteText(start, end);
+  textEl.insertText(start, payload);
   console.log('[applyMutation] Deployed: "' + searchTag + '" → doc ' + docId);
   return true;
 }
@@ -417,6 +437,18 @@ function sweepRootForExhaust() {
  * The HITL version (with ui.alert confirmations and prompts) is in
  * 9_UI_Diagnostics.gs as generateCouncilInputPayload().
  *
+ * SUPERSEDED (Say/Do Ledger kos-personal finding #1): this is the
+ * shared-context shortcut the CHANGELOG already named as a known gap
+ * against the real SMP-002 "Seven Bridges" design — it asks one Studio
+ * flow to role-play as ARCHITECT/AUDITOR/MUSE together in a single pass,
+ * which is exactly the cross-contamination BRIDGE_FIDELITY_001 forbids.
+ * Left in place, unremoved, as a low-risk choice (no confirmed absence of
+ * a second caller) rather than deleted outright — but the "Run full
+ * council review" button in 8_WebApp_UI.html now calls
+ * triggerSevenBridgesReview() (below) instead of this function. Use that
+ * one for any new integration; this one is kept only for whatever else
+ * may still call it directly.
+ *
  * Called by the web app via:
  *   google.script.run
  *     .withSuccessHandler(fn)
@@ -477,10 +509,10 @@ function triggerCouncilSimulation() {
     body.appendParagraph('System State: ' + ts);
     body.appendParagraph('1. THE CONTEXT (Recent Session Summary)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(stateText.substring(0, 8000));
+    body.appendParagraph(_truncateWithMarker_(stateText, 8000));
     body.appendParagraph('2. THE LAWS (Active Constraints & Pivots)')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(pivotText.substring(0, 4000));
+    body.appendParagraph(_truncateWithMarker_(pivotText, 4000));
     body.appendParagraph('3. INFERENCE INSTRUCTIONS')
         .setHeading(DocumentApp.ParagraphHeading.HEADING2);
     body.appendParagraph(
@@ -508,6 +540,198 @@ function triggerCouncilSimulation() {
     return { success: false, message: e.message };
   } finally {
     lock.releaseLock();
+  }
+}
+
+
+// ================================================================
+// SEVEN BRIDGES — REAL SEQUESTERED-REVIEW EXECUTION LAYER
+// (SMP-002 — Say/Do Ledger kos-personal finding #1)
+// ================================================================
+
+/**
+ * Headless web app entry point for the real Seven Bridges design.
+ * Generates ONE shared stimulus document from CURRENT_STATE and
+ * PIVOTS_AND_LESSONS — the same document every cog reviews — and routes
+ * it to RAW_EXHAUST. Reuses triggerCouncilSimulation()'s doc-assembly
+ * shape (same two source docs, same guard against re-generating when
+ * nothing has changed) but with its own "last run" property, so this
+ * flow and the older shared-context one (still callable directly, see
+ * that function's doc comment) don't stomp on each other's guard state.
+ *
+ * Sequestration itself is NOT this function's job — it comes entirely
+ * from the operator sending this one document to N separate Gemini Gem
+ * conversations (one cog per conversation, per BRIDGE_FIDELITY_001: "a
+ * verdict produced with knowledge of another cog's verdict is VOID").
+ * This function's whole contribution is generating a fresh, shared
+ * council ID and handing back clear next-step instructions; each verdict
+ * gets recorded afterward via submitCogVerdict() (2_Ingestion_Sensors.gs).
+ *
+ * Called by the web app via:
+ *   google.script.run
+ *     .withSuccessHandler(fn)
+ *     .triggerSevenBridgesReview()
+ *
+ * @returns {Object} { success, docName, docUrl, councilId, message }
+ */
+function triggerSevenBridgesReview() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    return { success: true, busy: true, message: 'System busy — try again in a moment.' };
+  }
+  try {
+    _coldEngineGate('triggerSevenBridgesReview', 'TIER_2');
+
+    const props     = PropertiesService.getScriptProperties();
+    const stateId   = props.getProperty('ID_CURRENT_STATE');
+    const pivotId   = props.getProperty('ID_PIVOTS_AND_LESSONS');
+    const exhaustId = props.getProperty('ID_00_RAW_EXHAUST');
+
+    if (!stateId || !pivotId || !exhaustId) {
+      throw new Error('Core pointers missing (CURRENT_STATE, PIVOTS, RAW_EXHAUST). Run deployFullSystem().');
+    }
+
+    // Own guard property — SEVEN_BRIDGES_LAST_RUN, distinct from
+    // triggerCouncilSimulation()'s COUNCIL_LAST_RUN — so running one flow
+    // doesn't block the other from noticing the same CURRENT_STATE update.
+    const stateFile = DriveApp.getFileById(stateId);
+    const lastRunMs = parseInt(props.getProperty('SEVEN_BRIDGES_LAST_RUN') || '0', 10);
+    if (stateFile.getLastUpdated().getTime() <= lastRunMs) {
+      return {
+        success: true,
+        noop: true,
+        message: 'No new data in CURRENT_STATE since the last Seven Bridges review. Update the state doc first.',
+      };
+    }
+
+    const stateText = DocumentApp.openById(stateId).getBody().getText();
+    const pivotText = DocumentApp.openById(pivotId).getBody().getText();
+    const ts        = Utilities.formatDate(
+      new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    const councilId = 'SB_' + new Date().getTime();
+
+    const docName = 'CE: SEVEN_BRIDGES_STIMULUS_' + councilId;
+    const doc     = DocumentApp.create(docName);
+    const dId     = doc.getId();
+    const body    = doc.getBody();
+
+    body.appendParagraph('[🌉 SMP-002: SEVEN BRIDGES STIMULUS]')
+        .setHeading(DocumentApp.ParagraphHeading.HEADING1);
+    body.appendParagraph('Council ID: ' + councilId);
+    body.appendParagraph('Generated: ' + ts);
+    body.appendParagraph('1. THE CONTEXT (Recent Session Summary)')
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph(_truncateWithMarker_(stateText, 8000));
+    body.appendParagraph('2. THE LAWS (Active Constraints & Pivots)')
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph(_truncateWithMarker_(pivotText, 4000));
+    body.appendParagraph('3. REVIEW INSTRUCTIONS — READ BEFORE SENDING')
+        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    body.appendParagraph(
+      'BRIDGE_FIDELITY_001: A verdict produced with knowledge of another ' +
+      "cog's verdict is VOID. Send this exact document to EACH cog " +
+      'independently — a fresh, separate Gemini Gem conversation per cog, ' +
+      'with no shared context between them. Do not paste more than one ' +
+      "cog's response into the same conversation, and do not summarize " +
+      'one verdict into another cog\'s prompt.'
+    ).setBold(true);
+    body.appendParagraph(
+      'For each cog, ask it to review the Context against the Laws above ' +
+      'and respond with a verdict: APPROVED, FLAG, or VETO, plus a short ' +
+      'rationale. Then record that verdict via the web app\'s Ingest tab → ' +
+      'Cog Verdict, using Council ID ' + councilId + ' for every submission ' +
+      'from this review. 3 or more non-APPROVED verdicts halts execution.'
+    );
+
+    doc.saveAndClose();
+    DriveApp.getFileById(dId).moveTo(DriveApp.getFolderById(exhaustId));
+
+    const docUrl = DriveApp.getFileById(dId).getUrl();
+    props.setProperty('SEVEN_BRIDGES_LAST_RUN', new Date().getTime().toString());
+
+    console.log('[triggerSevenBridgesReview] Stimulus created: ' + docName + ' (council ' + councilId + ')');
+    return {
+      success: true,
+      docName,
+      docUrl,
+      councilId,
+      message: 'Stimulus document ready. Send it to each cog independently, then log each verdict under Council ID ' + councilId + '.',
+    };
+
+  } catch (e) {
+    _reportError('triggerSevenBridgesReview', e, null);
+    return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+/**
+ * Groups COG_REGISTRY rows by council ID and evaluates the 3/7 halt rule:
+ * 3 or more non-APPROVED verdicts (FLAG or VETO — any status string other
+ * than APPROVED, matching the real documented Final_Status vocabulary)
+ * halts execution. Deliberately NOT hardcoded to exactly 7 verdicts —
+ * CFG.PERSONAS has 6 real entries today (see its own naming note), and a
+ * partial council (fewer verdicts submitted so far) should still compile
+ * to an honest in-progress read, not assume 7 are coming.
+ *
+ * Called from the menu wrapper below (9_UI_Diagnostics.gs's
+ * sevenBridgesReview()) and available for any future caller that needs
+ * a programmatic compiled result — e.g. a future auto-halt trigger.
+ *
+ * @param  {string} councilId  The shared council ID to compile.
+ * @returns {Object} {
+ *   success, councilId, verdicts: [{cog, status, summary, ts}],
+ *   total, nonApprovedCount, halted, message
+ * }
+ */
+function compileCouncilVerdict_(councilId) {
+  try {
+    const idStr = String(councilId || '').trim();
+    if (!idStr) {
+      return { success: false, message: 'Council ID is required.' };
+    }
+
+    const props   = PropertiesService.getScriptProperties();
+    const indexId = props.getProperty('INDEX_ID');
+    if (!indexId) {
+      return { success: false, message: 'Core pointers missing. Run deployFullSystem().' };
+    }
+
+    const ss = SpreadsheetApp.openById(indexId);
+    const cs = ss.getSheetByName(CFG.COG_REGISTRY_SHEET);
+    const verdicts = [];
+
+    if (cs && cs.getLastRow() > 1) {
+      const rows = cs.getRange(2, 1, cs.getLastRow() - 1, 5).getValues();
+      rows.forEach(r => {
+        if (String(r[0]) === idStr) {
+          verdicts.push({ cog: String(r[2] || ''), status: String(r[3] || ''), summary: String(r[4] || ''), ts: r[1] });
+        }
+      });
+    }
+
+    const nonApprovedCount = verdicts.filter(v => v.status !== 'APPROVED').length;
+    const halted = nonApprovedCount >= CFG.COG_HALT_THRESHOLD;
+
+    return {
+      success: true,
+      councilId: idStr,
+      verdicts,
+      total: verdicts.length,
+      nonApprovedCount,
+      halted,
+      message: verdicts.length === 0
+        ? 'No verdicts recorded yet for council ' + idStr + '.'
+        : (halted
+            ? 'HALTED: ' + nonApprovedCount + ' of ' + verdicts.length + ' verdicts are non-APPROVED (threshold ' + CFG.COG_HALT_THRESHOLD + ').'
+            : verdicts.length + ' verdict(s) recorded, ' + nonApprovedCount + ' non-APPROVED — below the halt threshold.'),
+    };
+
+  } catch (e) {
+    _reportError('compileCouncilVerdict_', e, null);
+    return { success: false, message: e.message };
   }
 }
 

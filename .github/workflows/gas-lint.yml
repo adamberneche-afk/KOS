@@ -1,0 +1,24 @@
+name: gas-lint
+
+# tools/gas-lint/check.js is a repo-owned static analyzer for the
+# Google Apps Script systems in this repo (kos-personal, cas-ccps). It
+# already exits non-zero on any error-level finding — this workflow is
+# the only thing missing to make "run before trusting any change" an
+# enforced gate instead of a README instruction someone has to remember.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+jobs:
+  gas-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Run gas-lint
+        run: node tools/gas-lint/check.js
+      - name: Verify cas-ccps clasp-sync builds cleanly
+        run: node tools/clasp-sync/sync.js

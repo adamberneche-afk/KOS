@@ -6,11 +6,28 @@
 const { Pool } = require('pg');
 const crypto   = require('crypto');
 
+// FIXED: this used to be `{ rejectUnauthorized: false }` unconditionally in
+// production — Dockerfile sets NODE_ENV=production in every deployed
+// container, so that wasn't a dev-only fallback, it was the deployed
+// default. rejectUnauthorized: false means the connection is encrypted but
+// not authenticated (no certificate-chain or hostname check) — MITM-able.
+// Most managed Postgres providers (Cloud SQL, RDS, etc.) present a
+// certificate chain the system CA store already trusts, so the common case
+// needs nothing beyond `rejectUnauthorized: true`. If the target provider
+// uses a private/self-signed CA instead, set DATABASE_CA_CERT to that CA's
+// PEM contents (the cert text itself, not a file path — simplest to hold
+// as a Cloud Run env var with no volume mount needed) and it's used to
+// validate the chain instead of the system trust store.
+function buildSslConfig() {
+  if (process.env.NODE_ENV !== 'production') return false;
+  return process.env.DATABASE_CA_CERT
+    ? { rejectUnauthorized: true, ca: process.env.DATABASE_CA_CERT }
+    : { rejectUnauthorized: true };
+}
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production'
-    ? { rejectUnauthorized: false }
-    : false,
+  ssl: buildSslConfig(),
   max: 10,
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 5000,
@@ -75,6 +92,22 @@ async function updateUserTokens(userId, { accessToken, tokenExpiry }) {
   );
 }
 
+// FIXED: nothing ever populated index_spreadsheet_id for MANAGED_SERVICE
+// users (the OAuth callback's req.query.spreadsheet_id read was dead code
+// — Google never echoes back arbitrary query params from /auth/connect).
+// Backfilled instead from the job-submission payload, which does carry it
+// now (see POST /api/v1/jobs). Only ever fills an empty value — never
+// overwrites an already-set one, so a stale or misbehaving caller can't
+// silently repoint a connected user's target spreadsheet.
+async function setIndexSpreadsheetIdIfMissing(userId, spreadsheetId) {
+  if (!spreadsheetId) return;
+  await pool.query(
+    `UPDATE users SET index_spreadsheet_id = $1
+     WHERE id = $2 AND (index_spreadsheet_id IS NULL OR index_spreadsheet_id = '')`,
+    [spreadsheetId, userId]
+  );
+}
+
 async function deductCredits(userId, amount) {
   const { rows } = await pool.query(
     `UPDATE users
@@ -91,14 +124,36 @@ async function addCredits(userId, amount, description, stripeEventId = null) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // FIXED: Stripe redelivers webhooks at-least-once; nothing here used
+    // to check whether stripeEventId had already been processed, so a
+    // redelivered checkout.session.completed event double-granted
+    // credits. Insert first: the partial unique index on
+    // billing_events.stripe_event_id (see schema.sql) makes this a
+    // no-op INSERT if the event was already recorded, and the balance
+    // update below is skipped entirely in that case rather than
+    // crediting twice. stripeEventId is null for non-Stripe grants
+    // (e.g. an admin adjustment), which the partial index deliberately
+    // doesn't cover -- ON CONFLICT only ever applies when it's set.
+    const inserted = await client.query(
+      `INSERT INTO billing_events (user_id, event_type, credits_added, description, stripe_event_id)
+       VALUES ($1, 'credits_added', $2, $3, $4)
+       ON CONFLICT (stripe_event_id) WHERE stripe_event_id IS NOT NULL DO NOTHING
+       RETURNING id`,
+      [userId, amount, description, stripeEventId]
+    );
+
+    if (stripeEventId && inserted.rowCount === 0) {
+      const { rows: existing } = await client.query(
+        'SELECT credit_balance FROM users WHERE id = $1', [userId]
+      );
+      await client.query('COMMIT');
+      return existing[0].credit_balance;
+    }
+
     const { rows } = await client.query(
       'UPDATE users SET credit_balance = credit_balance + $1 WHERE id = $2 RETURNING credit_balance',
       [amount, userId]
-    );
-    await client.query(
-      `INSERT INTO billing_events (user_id, event_type, credits_added, description, stripe_event_id)
-       VALUES ($1, 'credits_added', $2, $3, $4)`,
-      [userId, amount, description, stripeEventId]
     );
     await client.query('COMMIT');
     return rows[0].credit_balance;
@@ -123,6 +178,25 @@ async function createJob({ userId, payloadUid, fileId, docUrl, payloadType }) {
   return rows[0];
 }
 
+// FIXED: closes the resubmit-as-new-job loop caused by index_spreadsheet_id
+// always being empty (see setIndexSpreadsheetIdIfMissing above) — without
+// this, a GAS instance whose FLOW_COMPLETE signal never landed would have
+// its Turnstile staleness reset resubmit the same payload_uid as a brand
+// new job every run, re-charging credits and re-running inference on a
+// document already overwritten by the previous run. Checked before every
+// insert in POST /api/v1/jobs; matches the partial unique index in
+// schema.sql as defense-in-depth against the check-then-insert race.
+async function findActiveOrCompletedJob(userId, payloadUid) {
+  const { rows } = await pool.query(
+    `SELECT * FROM jobs
+     WHERE user_id = $1 AND payload_uid = $2 AND status IN ('queued', 'processing', 'completed')
+     ORDER BY created_at DESC
+     LIMIT 1`,
+    [userId, payloadUid]
+  );
+  return rows[0] || null;
+}
+
 async function getNextQueuedJob() {
   // Atomic fetch-and-lock: grab the oldest queued job and mark it processing
   const { rows } = await pool.query(
@@ -131,6 +205,7 @@ async function getNextQueuedJob() {
      WHERE id = (
        SELECT id FROM jobs
        WHERE status = 'queued'
+         AND (next_retry_at IS NULL OR next_retry_at <= NOW())
        ORDER BY queued_at ASC
        FOR UPDATE SKIP LOCKED
        LIMIT 1
@@ -169,6 +244,15 @@ async function markJobFailed(jobId, errorMessage, retry = false) {
   // 'failed' or 'queued' and started_at was never cleared, leaving it
   // stuck in 'processing' forever with no error_message recorded. Bound
   // the JS `retry` parameter as $4 instead of interpolating it as SQL.
+  // FIXED: a retried job used to go straight back to 'queued' with no
+  // delay, so it was picked up again at the very next 15s poll — for a
+  // genuinely rate-limited/overloaded upstream, retrying seconds later
+  // compounds the problem. next_retry_at gets an exponential backoff
+  // (30s * 2^retry_count) on a retry, NULL on a final failure. Note
+  // `retry_count` on the right-hand side of every SET expression here
+  // refers to the PRE-increment value — Postgres evaluates all SET
+  // expressions in one UPDATE against the row as it was before the
+  // statement, same as the existing retry-vs-fail CASE already relies on.
   const { rows } = await pool.query(
     `UPDATE jobs
      SET retry_count  = retry_count + 1,
@@ -177,12 +261,37 @@ async function markJobFailed(jobId, errorMessage, retry = false) {
            WHEN $4 AND retry_count < $3 THEN 'queued'
            ELSE 'failed'
          END,
+         next_retry_at = CASE
+           WHEN $4 AND retry_count < $3
+             THEN NOW() + (INTERVAL '30 seconds' * POWER(2, retry_count))
+           ELSE NULL
+         END,
          started_at = NULL
      WHERE id = $1
      RETURNING *`,
     [jobId, errorMessage, maxRetries, retry]
   );
   return rows[0];
+}
+
+// FIXED: nothing ever recovered a job stuck in 'processing' if the
+// worker process crashed mid-job (e.g. OOM-killed, redeployed) —
+// credits are deducted before any expensive work starts, so a crash
+// left the user permanently charged with a job stuck forever and no
+// automated way to notice. Call this periodically from the worker's own
+// poll loop (see worker.js's sweepStuckJobs), not as a separate process,
+// so it can reuse addCredits() directly for the refund.
+async function findStuckJobs(timeoutMinutes = 10) {
+  const { rows } = await pool.query(
+    `SELECT jobs.*, users.subscription_status
+     FROM jobs
+     JOIN users ON users.id = jobs.user_id
+     WHERE jobs.status = 'processing'
+       AND jobs.started_at < NOW() - ($1 || ' minutes')::INTERVAL
+     ORDER BY jobs.started_at ASC`,
+    [timeoutMinutes]
+  );
+  return rows;
 }
 
 async function getJobsByUser(userId, limit = 20) {
@@ -225,12 +334,15 @@ module.exports = {
   findUserByApiKey,
   upsertUser,
   updateUserTokens,
+  setIndexSpreadsheetIdIfMissing,
   deductCredits,
   addCredits,
   createJob,
+  findActiveOrCompletedJob,
   getNextQueuedJob,
   markJobCompleted,
   markJobFailed,
+  findStuckJobs,
   getJobsByUser,
   recordBillingEvent,
   getUserStats,
