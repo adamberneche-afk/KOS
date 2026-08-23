@@ -28,13 +28,13 @@ key at all).
 | Path | Contents |
 |---|---|
 | `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser |
-| `student-leader-hub.jsx` | A React/JSX exploration draft, not the deployed artifact |
 | `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling, sub-plan/brag-email creation, and — see below — the AI-drafting job queue) — see `LEADERHUB_EMAIL_SETUP.md` and `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
 | `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md`, `LP_ASSIST_FLOW_PROMPT.md`, `EMAIL_COMPOSE_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
 | `drive-tools/` | Later, **not-yet-executed** Drive-cleanup tooling (`LH_DriveDocSplitter.gs`, `LH_8177_Rename.gs`, `LH_AppManifestUpdater.py`) for splitting/renaming 8177 lesson docs |
 | `archived/studentleaderhub_EARLY_PROTOTYPE.html` | A much earlier prototype (2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board, SCR, trips, settings — with a working trips module already present, but no dedicated DECA/WBL/E-Sports modules and no Gemini integration) — genuinely different from the live app, not a duplicate, kept for history |
+| `archived/studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx` | A React/JSX exploration draft, not the deployed artifact — moved here (was previously at the `leader-hub/` top level) for the same reason every other non-deployed design lives under `archived/` |
 
 ## Status
 
@@ -80,7 +80,7 @@ both now fixed:
 
 ## Fixed: two more narrow-blast-radius bugs
 
-1. **`student-leader-hub.jsx`'s leaderboard mutated React state directly.**
+1. **`archived/studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx`'s leaderboard mutated React state directly.**
    The top-3 leaderboard render called
    `data.leaders.sort((a, b) => b.hours - a.hours).slice(0, 3).map(...)`
    directly on `data.leaders` — `Array.prototype.sort()` sorts in place,
