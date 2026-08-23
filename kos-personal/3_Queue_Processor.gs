@@ -575,14 +575,19 @@ function getQueueMetrics() {
     const SC      = CFG.STAGING_COLS;
 
     let queued = 0, active = 0, needsReview = 0, processed = 0, failed = 0;
-    // NEW (Say/Do Ledger kos-personal finding #2): a row cycling
-    // PENDING_FLOW ↔ STUDIO_ACTIVE with no Studio flow ever completing it
-    // isn't a distinct STATUS — it's a PENDING_FLOW/STUDIO_ACTIVE row
-    // whose Retry_Count (10_Turnstile.gs's stale-reset counter) has
-    // crossed CFG.TURNSTILE_STUCK_THRESHOLD. Counted separately here so
-    // the client can surface it, but still folds into queued/active above
-    // for the existing bucket totals — this is a UI signal layered on top,
-    // not a new pipeline state.
+    // Say/Do Ledger kos-personal finding #2: a row cycling PENDING_FLOW ↔
+    // STUDIO_ACTIVE with no Studio flow ever completing it isn't a distinct
+    // STATUS — it's a PENDING_FLOW/STUDIO_ACTIVE row whose Retry_Count
+    // (10_Turnstile.gs's stale-reset counter) has crossed
+    // CFG.TURNSTILE_STUCK_THRESHOLD. Counted separately here so the client
+    // can surface it as an early warning, but still folds into
+    // queued/active above for the existing bucket totals — this is a UI
+    // signal layered on top, not a new pipeline state. Once a row actually
+    // exceeds the threshold, 10_Turnstile.gs now escalates it to the
+    // terminal STUDIO_TIMEOUT status instead of resetting it again, so it
+    // naturally drops out of this "cycling" count and into `failed`
+    // (TERMINAL_FAILED_STATUSES, 5_Error_And_Utilities.gs) below — this
+    // counter only ever sees rows still short of that ceiling.
     let cycling = 0;
     const needsCuratorRows = [];
 

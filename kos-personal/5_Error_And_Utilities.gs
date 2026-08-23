@@ -1174,7 +1174,7 @@ function getRelationalTargets() {
 // below already recognizes them for cleanup. Matched via startsWith(), not
 // exact equality, since PROCESSING_ERROR/INTAKE_ERROR statuses carry a
 // ': <message>' suffix.
-const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR', 'MISSING_FILE_ID', 'PROCESSING_ERROR'];
+const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR', 'MISSING_FILE_ID', 'PROCESSING_ERROR', 'STUDIO_TIMEOUT'];
 
 /**
  * Moves all terminal-status rows from STAGING_PIPELINE to
