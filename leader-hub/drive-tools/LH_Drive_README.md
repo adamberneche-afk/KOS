@@ -2,7 +2,10 @@
 ## Complete Step-by-Step Instructions
 
 **Last updated:** April 20, 2026  
-**DSP end:** May 15, 2026  
+**DSP end:** May 15, 2026 (stale — the main app removed all DSP framework
+content; see `../README.md`'s "DSP framework content — removed" section.
+This date is left here only because it doesn't affect what these
+Drive-doc-renaming scripts actually do — none of them reference DSP.)  
 **Files in this package:**
 - `LH_DriveDocSplitter.gs` — splits compilation docs + creates 6115 Q1 stubs
 - `LH_8177_Rename.gs` — renames 28 existing 8177 individual docs

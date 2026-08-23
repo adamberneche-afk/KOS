@@ -90,7 +90,13 @@ const SCRS = {
 // SCRDecisionLog column indices (0-based) — canonical order
 // Append-only. One row per confirm/override action ever taken. This is
 // the actual legally-retained record — see 8VAC20-120-120 retention
-// requirement noted in the original SCR specification. Never deleted.
+// requirement noted in the original SCR specification.
+//
+// Say/Do Ledger cas-ccps Extension 3: rows are still never deleted
+// automatically (see _archiveExpiredScrDecisions_() below) — ARCHIVE_STATUS
+// only marks a row "restricted, pending disposition review" once it's past
+// the configured retention window. Actual permanent deletion always
+// requires an explicit human decision, never a script.
 const SCRDL = {
   DECISION_ID: 0,
   STUDENT_EMAIL: 1,
@@ -104,6 +110,9 @@ const SCRDL = {
   EVIDENCE_SNAPSHOT: 8,      // met/notMet/partial counts at decision time,
                              // denormalized for audit — same rationale as
                              // AlignmentLog's denormalized competency_text
+  ARCHIVE_STATUS: 9,         // "" = active; "ARCHIVED — pending disposition
+                             // review" once past SCR_RETENTION_YEARS — see
+                             // _archiveExpiredScrDecisions_() below
 };
 
 const VALID_OUTCOMES = ["MET", "PARTIALLY_MET", "NOT_MET"];
@@ -414,6 +423,7 @@ function recordDecision_(studentEmail, competencyId, teacherEmail, overrideRatin
     now,
     teacherEmail,
     evidenceSnapshot,
+    "", // archive_status — blank until _archiveExpiredScrDecisions_() ages it out
   ]);
 
   Logger.log("[S30] Decision recorded — " + decisionType + " | " + studentEmail +
@@ -490,18 +500,261 @@ function getSCRDashboardData_() {
 }
 
 // ---------------------------------------------------------------------------
-// exportToWorkbookGrid_ — MANUAL. Produces a Google Sheet matching the
-// official SCR Excel workbook shape described in the original
-// specification: one tab per class, student names as rows, competency
-// numbers (not full IDs — just the trailing -N) as the header row,
-// confirmed/overridden ratings as cell values. Only CONFIRMED and
-// OVERRIDDEN decisions appear — a suggestion that was never acted on by
-// a teacher has no place in the official record, by design, since the
-// SCR is fundamentally a record of teacher judgment, not system output.
+// getStudentScrStandingForCompetencies_ — NEW (Say/Do Ledger cas-ccps
+// Extension 1: SCR-to-warmup bridge). Feeds a student's current SCR
+// standing into warm-up generation as a soft signal/tie-breaker — called by
+// 24_WarmUpBridge.js (also central-ledger-only — see the cross-project note
+// below) right before it calls getStudentProfileSnapshot_() in Script 23,
+// which is what actually threads this into the student_profile_snapshot
+// Flow 3 reads. Deliberately does NOT touch or reference the "reopen a
+// frozen CONFIRMED/OVERRIDDEN decision" gap documented above in this same
+// file (lines ~703-733) — consumed as-is, stale or not, per this
+// extension's own scoping.
+//
+// Unlike getSCRDashboardData_() above (which exists to show a teacher what
+// still needs a decision, so it deliberately EXCLUDES CONFIRMED/OVERRIDDEN
+// rows), this function's job is "what does the record actually say about
+// this student on these competencies right now" — so a teacher's already-
+// confirmed rating counts here, not just an unconfirmed AI suggestion.
+//
+// CROSS-PROJECT NOTE: this function (and the SCRS column-index constants it
+// reads) is bound only to cas-ccps:central-ledger — NOT to
+// cas-ccps:teacher-dashboard (see tools/gas-lint/project-map.json). It must
+// only ever be called from a central-ledger-bound file (24_WarmUpBridge.js
+// qualifies); never reference this from 23_StudentProfileManager.js or
+// 07_TeacherDashboard.js directly, since Script 30 isn't present in the
+// teacher-dashboard project and a call from there would be a real, silent
+// cross-project bug of exactly the kind tools/gas-lint/check.js's
+// possibly-undefined-in-project rule exists to catch.
+//
+// Returns an array of { competencyId, competencyText, rating, decided }
+// — one entry per competency in competencyIds that has a real rating on
+// record (SUGGESTED with a non-blank suggestedRating, or CONFIRMED/
+// OVERRIDDEN), skipping INSUFFICIENT_EVIDENCE rows (nothing to report) and
+// any competency with no SCRSuggestions row at all. Returns [] (never null)
+// if suggestionsSheet is missing or competencyIds is empty, so callers never
+// need a null-check.
+// ---------------------------------------------------------------------------
+// Memoized across calls within the same script execution — 24_WarmUpBridge.js
+// calls this once PER STUDENT (its own loop structure, already established
+// for other per-student lookups like getPriorWarmUpResponse_ against a
+// pre-loaded dataset), and a full SCRSuggestions + CompetencyRegistry sheet
+// read on every single student in a roster would be a real, avoidable
+// performance cost in the nightly batch run. Reset naturally on every fresh
+// execution since GAS reinitializes top-level state each run — this is not
+// a persistent cache across separate trigger firings.
+let _scrStandingRawCache_ = null;
+
+function getStudentScrStandingForCompetencies_(studentEmail, competencyIds) {
+  if (!competencyIds || !competencyIds.length) return [];
+
+  if (!_scrStandingRawCache_) {
+    const cfg = getConfig_();
+    const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+    const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+    if (!suggestionsSheet) { _scrStandingRawCache_ = { data: [], compTextMap: {} }; }
+    else {
+      const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
+      const compTextMap = {};
+      if (registrySheet) {
+        const regData = registrySheet.getDataRange().getValues();
+        const regHeaders = regData[0].map(h => String(h).trim());
+        const iId = regHeaders.indexOf("competency_id");
+        const iText = regHeaders.indexOf("competency_text");
+        if (iId !== -1 && iText !== -1) {
+          for (let i = 1; i < regData.length; i++) {
+            compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
+          }
+        }
+      }
+      _scrStandingRawCache_ = { data: suggestionsSheet.getDataRange().getValues(), compTextMap: compTextMap };
+    }
+  }
+
+  const idSet = new Set(competencyIds.map(id => String(id).trim()));
+  const email = String(studentEmail || "").trim().toLowerCase();
+  const data         = _scrStandingRawCache_.data;
+  const compTextMap  = _scrStandingRawCache_.compTextMap;
+  const results = [];
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[SCRS.STUDENT_EMAIL]).trim().toLowerCase() !== email) continue;
+    const competencyId = String(row[SCRS.COMPETENCY_ID]).trim();
+    if (!idSet.has(competencyId)) continue;
+
+    const status  = String(row[SCRS.STATUS]).trim();
+    const decided = status === "CONFIRMED" || status === "OVERRIDDEN";
+    const rating  = decided
+      ? Number(row[SCRS.CONFIRMED_RATING])
+      : (row[SCRS.SUGGESTED_RATING] === "" ? null : Number(row[SCRS.SUGGESTED_RATING]));
+    if (rating == null || !Number.isFinite(rating)) continue; // INSUFFICIENT_EVIDENCE or blank — nothing to report
+
+    results.push({
+      competencyId:   competencyId,
+      competencyText: compTextMap[competencyId] || "(text not found in registry)",
+      rating:         rating,
+      decided:        decided // true = teacher-confirmed/overridden; false = AI suggestion only, not yet reviewed
+    });
+  }
+
+  results.sort((a, b) => a.competencyId.localeCompare(b.competencyId));
+  return results;
+}
+
+// =============================================================================
+// RETENTION + ARCHIVAL (Say/Do Ledger cas-ccps Extension 3)
+//
+// SCR_RETENTION_YEARS (Script Property, default 5) is UNCONFIRMED against a
+// primary source — VDOE/central-office records staff have not yet directly
+// confirmed the real retention period for these records (see
+// docs/FERPA_DATA_MAP.md's own note on this same open question). It ships
+// as a configurable property, not a hardcoded number, specifically so it's
+// correctable the moment that confirmation comes in, without a code change.
+//
+// Archival never deletes anything — it only flips ARCHIVE_STATUS on a row
+// past the retention window to a restricted "pending disposition review"
+// state. Actual permanent deletion is a decision this codebase deliberately
+// never automates; it always requires a human to look at the archived rows
+// and decide, by hand, outside of any script here.
+// =============================================================================
+
+// ---------------------------------------------------------------------------
+// _scrRetentionYears_ — reads SCR_RETENTION_YEARS, defaulting to 5.
+// Same direct-PropertiesService-read style as CURRENT_TERM elsewhere in this
+// codebase (10_AdminRecoveryPanel.js), just numeric instead of a display
+// string — this is the first numeric Script-Property-driven config value
+// in cas-ccps, so there's no exact prior convention to match beyond that.
+// ---------------------------------------------------------------------------
+function _scrRetentionYears_() {
+  const raw = PropertiesService.getScriptProperties().getProperty("SCR_RETENTION_YEARS");
+  const n = Number(raw);
+  return (n && n > 0) ? n : 5;
+}
+
+// ---------------------------------------------------------------------------
+// _ensureScrDecisionLogArchiveColumn_ — idempotently adds the
+// "archive_status" header (column 10) if it's missing, same self-healing
+// pattern already established for the turn-in review columns in
+// 04_Form2_TurnInGate.js/07_TeacherDashboard.js (Say/Do Ledger cas-ccps
+// finding #1) — an already-deployed SCRDecisionLog created before this
+// extension existed gets the column added on first use, no separate
+// migration step required.
+// ---------------------------------------------------------------------------
+function _ensureScrDecisionLogArchiveColumn_(sheet) {
+  const headerCell = sheet.getRange(1, SCRDL.ARCHIVE_STATUS + 1);
+  if (String(headerCell.getValue()).trim() !== "archive_status") {
+    headerCell.setValue("archive_status");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _archiveExpiredScrDecisions_ — scans SCRDecisionLog for rows whose
+// DECIDED_AT is older than _scrRetentionYears_() and whose ARCHIVE_STATUS
+// is still blank, and marks them archived. Called from both
+// autoHealthAlert() and runSystemHealthCheck() (10_AdminRecoveryPanel.js,
+// same central-ledger project) immediately before they compute
+// _ferpaHealthChecks_(), so archival runs automatically on both the daily
+// trigger and any on-demand check — never something an admin has to
+// remember to click.
+//
+// Returns { archived, checked } — checked is total rows scanned (excluding
+// header), archived is how many were newly archived this run. Safe to call
+// with SCRDecisionLog missing (returns zeros) or already fully archived
+// (returns archived: 0).
+// ---------------------------------------------------------------------------
+function _archiveExpiredScrDecisions_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  if (!sheet) return { archived: 0, checked: 0 };
+
+  _ensureScrDecisionLogArchiveColumn_(sheet);
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _scrRetentionYears_());
+
+  const data = sheet.getDataRange().getValues();
+  let archived = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[SCRDL.ARCHIVE_STATUS] || "").trim()) continue; // already archived
+
+    const decidedAt = row[SCRDL.DECIDED_AT];
+    if (!decidedAt) continue;
+    const decidedDate = new Date(decidedAt);
+    if (isNaN(decidedDate.getTime())) continue;
+
+    if (decidedDate < cutoff) {
+      sheet.getRange(i + 1, SCRDL.ARCHIVE_STATUS + 1).setValue("ARCHIVED — pending disposition review");
+      archived++;
+    }
+  }
+
+  if (archived > 0) {
+    SpreadsheetApp.flush();
+    Logger.log("[S30] Archived " + archived + " SCRDecisionLog row(s) past the " +
+      _scrRetentionYears_() + "-year retention window.");
+  }
+
+  return { archived: archived, checked: data.length - 1 };
+}
+
+// ---------------------------------------------------------------------------
+// _countScrDecisionsPastRetentionUnarchived_ — read-only companion to
+// _archiveExpiredScrDecisions_(), used by _ferpaHealthChecks_()
+// (10_AdminRecoveryPanel.js) as a pure check with no side effects of its
+// own. Since both callers of that function already run
+// _archiveExpiredScrDecisions_() first, this should almost always return 0
+// — a nonzero result means archival itself failed or the daily trigger
+// isn't actually firing, which is the real thing worth alerting on.
+// ---------------------------------------------------------------------------
+function _countScrDecisionsPastRetentionUnarchived_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  if (!sheet) return 0;
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _scrRetentionYears_());
+
+  const data = sheet.getDataRange().getValues();
+  let count = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[SCRDL.ARCHIVE_STATUS] || "").trim()) continue; // already archived
+    const decidedAt = row[SCRDL.DECIDED_AT];
+    if (!decidedAt) continue;
+    const decidedDate = new Date(decidedAt);
+    if (isNaN(decidedDate.getTime())) continue;
+    if (decidedDate < cutoff) count++;
+  }
+  return count;
+}
+
+// ---------------------------------------------------------------------------
+// exportToWorkbookGrid_ — produces a Google Sheet matching the official SCR
+// Excel workbook shape described in the original specification: one tab per
+// class, student names as rows, competency numbers (not full IDs — just the
+// trailing -N) as the header row, confirmed/overridden ratings as cell
+// values. Only CONFIRMED and OVERRIDDEN decisions appear — a suggestion
+// that was never acted on by a teacher has no place in the official
+// record, by design, since the SCR is fundamentally a record of teacher
+// judgment, not system output. Includes archived rows (archival restricts
+// sharing/visibility going forward — see the RETENTION + ARCHIVAL section
+// above — it does not remove a decision from the official record an audit
+// export exists to produce).
 //
 // Groups by ClassName, sourced from the Ledger tab (joining on
 // student_email = GoogleID) — the same Ledger Module 4 already reads
 // for its student roster.
+//
+// FIXED (Say/Do Ledger cas-ccps Extension 3): this used to be reachable
+// only by opening the Script Editor and running it directly — no menu item
+// called it at all. exportScrDecisionLogForAudit() below is the real,
+// menu-driven entry point now; this function stays the core builder either
+// way (still callable directly for a script-editor run, unchanged).
 // ---------------------------------------------------------------------------
 function exportToWorkbookGrid_() {
   const cfg = getConfig_();
@@ -569,6 +822,21 @@ function exportToWorkbookGrid_() {
   const exportSs = SpreadsheetApp.create(
     "SCR Export — " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd")
   );
+  // FIXED (Say/Do Ledger cas-ccps finding #5 — newly-discovered gap): this
+  // spreadsheet holds real student names + competency ratings and used to
+  // land with Sheets' default (private-to-creator) sharing — meaning
+  // ordinary Drive sharing (a well-meaning "share with the whole team"
+  // click) was the one place student data could actually leave the org,
+  // with nothing in this codebase stopping it. Restricted at creation time
+  // instead of trusting whoever exports it to remember to restrict it by
+  // hand; DriveApp.Access.DOMAIN scopes to the file owner's own Workspace
+  // domain automatically, so there's no domain string to hardcode or drift.
+  try {
+    DriveApp.getFileById(exportSs.getId())
+      .setSharing(DriveApp.Access.DOMAIN, DriveApp.Permission.VIEW);
+  } catch (e) {
+    Logger.log("[S30] Could not restrict SCR export sharing: " + e.message);
+  }
   // Remove the default blank sheet once real ones exist
   const defaultSheet = exportSs.getActiveSheet();
   let firstClass = true;
@@ -604,6 +872,80 @@ function exportToWorkbookGrid_() {
 }
 
 // ---------------------------------------------------------------------------
+// exportScrDecisionLogForAudit — Say/Do Ledger cas-ccps Extension 3. The
+// real, menu-driven entry point for exportToWorkbookGrid_() above (wired
+// into ⚙️ Admin Controls in 10_AdminRecoveryPanel.js's onOpen(), same
+// central-ledger project). Prompts for the central-office recipient
+// address(es), builds the export (unchanged core logic), then shares it
+// with each recipient directly — on top of, not instead of, the existing
+// org-domain VIEW restriction exportToWorkbookGrid_() already applies at
+// creation. Only addresses on the admin's own school domain are accepted,
+// so this can never become the "leaves the org via ordinary Drive sharing"
+// vector the domain-restriction fix (Say/Do Ledger finding #5) was built to
+// close in the first place.
+// ---------------------------------------------------------------------------
+function exportScrDecisionLogForAudit() {
+  const ui = SpreadsheetApp.getUi();
+  const res = ui.prompt(
+    "Export SCRDecisionLog for Audit",
+    "Enter the central-office email address(es) to share this export with, " +
+    "separated by commas.\n\n" +
+    "Only addresses on your own school domain are accepted — this keeps the " +
+    "export inside the Walled Garden the same way every other FERPA-sensitive " +
+    "surface in this system does.",
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (res.getSelectedButton() !== ui.Button.OK) return;
+
+  const rawEmails = res.getResponseText().split(",")
+    .map(function(s) { return s.trim().toLowerCase(); })
+    .filter(Boolean);
+  if (!rawEmails.length) { ui.alert("Enter at least one email address."); return; }
+
+  const myEmail  = Session.getActiveUser().getEmail();
+  const myDomain = (myEmail.split("@")[1] || "").toLowerCase();
+  const validEmails = [];
+  const rejected    = [];
+  rawEmails.forEach(function(e) {
+    const domain = (e.split("@")[1] || "").toLowerCase();
+    if (domain && myDomain && domain === myDomain) validEmails.push(e);
+    else rejected.push(e);
+  });
+
+  if (!validEmails.length) {
+    ui.alert("None of the entered addresses are on your organization's domain (" +
+      (myDomain || "unknown") + ") — nothing was shared, and no export was created.");
+    return;
+  }
+
+  const result = exportToWorkbookGrid_();
+  if (!result) {
+    ui.alert("⚠️ Export failed — SCRDecisionLog or Ledger tab not found. See the Executions log for detail.");
+    return;
+  }
+
+  const failedShares = [];
+  validEmails.forEach(function(email) {
+    try {
+      DriveApp.getFileById(result.exportSsId).addViewer(email);
+    } catch (e) {
+      failedShares.push(email);
+      Logger.log("[S30] Could not share SCR export with " + email + ": " + e.message);
+    }
+  });
+  const sharedOk = validEmails.filter(function(e) { return failedShares.indexOf(e) === -1; });
+
+  ui.alert(
+    "✅ Export Complete",
+    "Export created: " + result.exportSsUrl + "\n\n" +
+    "Shared with: " + (sharedOk.length ? sharedOk.join(", ") : "(no one)") + "\n" +
+    (rejected.length ? "\nNot shared (outside your organization's domain): " + rejected.join(", ") + "\n" : "") +
+    (failedShares.length ? "\n⚠️ Could not share with: " + failedShares.join(", ") + " — share manually if needed.\n" : ""),
+    ui.ButtonSet.OK
+  );
+}
+
+// ---------------------------------------------------------------------------
 // createSCRTabs_ — MANUAL, one-time setup. Creates SCRSuggestions and
 // SCRDecisionLog with correct headers. Safe to re-run — skips tabs that
 // already exist.
@@ -622,7 +964,7 @@ function createSCRTabs_() {
   _createTabIfMissingS30_(ss, cfg.tabs.scrDecisionLog || "SCRDecisionLog", [
     "decision_id", "student_email", "competency_id", "suggested_rating",
     "final_rating", "decision_type", "decided_at", "decided_by",
-    "evidence_snapshot"
+    "evidence_snapshot", "archive_status"
   ]);
 
   Logger.log("[S30] SCR tab creation complete.");

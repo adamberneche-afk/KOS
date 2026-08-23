@@ -1361,6 +1361,34 @@ function dumpAllProperties() {
 }
 
 
+/**
+ * Truncates text to maxChars, appending a visible marker if truncation
+ * actually occurred. Never truncates silently — a caller that checks only
+ * the returned string still gets the correct content; a caller (or a
+ * downstream inference pass) that reads the marker knows the read was
+ * incomplete.
+ *
+ * Single source of truth for this pattern — previously reimplemented
+ * inline, without a marker, in triggerCouncilSimulation() and
+ * triggerSevenBridgesReview() (6_Governance.gs) and
+ * generateCouncilInputPayload() (9_UI_Diagnostics.gs).
+ * buildSessionContext()'s local readDoc() already did this correctly on
+ * its own; this extracts that same logic so every caller gets it, not
+ * just one (folded in from an external parallel review pass — Addendum
+ * 22 R2).
+ *
+ * @param {string} text - Full source text.
+ * @param {number} maxChars - Maximum characters to keep.
+ * @return {string} Truncated text, with '\n[...truncated...]' appended
+ *     if text.length exceeded maxChars.
+ */
+function _truncateWithMarker_(text, maxChars) {
+  if (!text) return '';
+  return text.substring(0, maxChars) +
+    (text.length > maxChars ? '\n[...truncated...]' : '');
+}
+
+
 // ================================================================
 // END 5_Error_And_Utilities.gs
 // KOS v8.0 — The Headless Studio Edition

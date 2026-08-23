@@ -1,5 +1,38 @@
 # Drive Steward: Context Harness Methodology & Recurring Prompt
 
+**Note on scope (added during a later review pass):** Part 2.5 (Weekly
+Confidence Calibration Loop) and Part 2.6 (The Batch Governor) below are
+a fair amount of statistical/process machinery — divergence intervals,
+target bands, batch sequencing gates — for what is, at its core, one
+person's personal Drive-filing habit. That's a genuine observation, not
+a fix applied here: whether this level of rigor is wanted is Fluffy's
+own call about his own workflow, not something to unilaterally simplify
+on his behalf. Flagged for consideration, left intact. (This file is
+intentionally filed in two places — see `meta/README.md` and
+`kos-personal/rtp-core-router/protocols/` — since its methodology
+applies across systems; that duplication is deliberate, not an
+oversight, so both copies should stay identical if this note or
+anything else here changes.)
+
+**Two specific gaps worth naming, added during a further review pass —
+so this reads as a methodology document, not calibrated rigor already
+in place:** (1) Part 2.5 describes computing a "divergence interval"
+that widens with smaller sample sizes, but never specifies which
+interval — no formula, no named method (e.g. Wilson score, a normal
+approximation, or anything else) is given anywhere in this document.
+As written, "compute the interval" isn't yet an instruction a Gem or
+Flow could actually execute; it names the shape of the right approach
+without the substance. (2) The `Calibration_Log` tab (and the File
+Registry / `Export_Log` it sits alongside) is a proposed schema, not a
+running one — nothing in this document, or anywhere else in this repo,
+persists per-pattern confidence tiers or weekly divergence numbers
+across sessions. Every run of the Part 3 prompt starts from the same
+static text with no memory of prior weeks' calibration, so "cold start,
+earn looseness" describes an intended lifecycle this document doesn't
+yet have the machinery to actually carry out. Both are real gaps to
+close before treating this as calibrated, not just self-aware prose —
+flagged, not fixed here, for the same reason as the scope note above.
+
 **Purpose:** A repeatable workflow that (1) predicts where new files *should* live based on Fluffy's own observed filing logic — not generic best practice — so the context harness can reliably find and pull what it needs, and (2) translates internal technical artifacts into legible output for external audiences (admins, colleagues, district). It never executes changes on its own; it proposes, with rationale, for human approval.
 
 ---

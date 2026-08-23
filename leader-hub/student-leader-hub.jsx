@@ -1,3 +1,11 @@
+// ============================================================================
+// NOT THE DEPLOYED APP — exploratory React/JSX draft only.
+// The live, actively-maintained app is student-leader-hub.html (a single
+// static file, no build step, no React). This file uses placeholder data
+// ("Maya Chen" etc.) and isn't wired into anything — kept for reference,
+// not maintained alongside the real app. See leader-hub/README.md's
+// Layout table.
+// ============================================================================
 import { useState, useEffect } from "react";
 
 const initialData = {

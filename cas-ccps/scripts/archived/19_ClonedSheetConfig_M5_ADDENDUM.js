@@ -1,4 +1,8 @@
 // =============================================================================
+// ARCHIVED — merged into 19_ClonedSheetConfig.js's getSheetConfig_()
+// return object. Do not paste from here; the four lines below are live.
+// This file is retained for reference only.
+// =============================================================================
 // FILE: 19_ClonedSheetConfig_M5_ADDENDUM.js (renamed from _M3_ADDENDUM —
 //       reconciliation decision 6: this addendum belongs to the SCR
 //       Suggestion & Remediation Engine, renumbered Module 3 -> Module 5)

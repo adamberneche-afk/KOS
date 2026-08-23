@@ -1,6 +1,19 @@
 # LeaderHub — Student Leadership Command Center
 ### README & Project Reference
 
+> **⚠ SUPERSEDED — kept for historical reference only.** The actively
+> maintained reference is `README.md` in this same directory. Several
+> specific claims below are stale: the line count (this doc says
+> 13,214; the file is now 20,545+ lines), the AI architecture (this doc
+> describes calling the Gemini API directly from the browser via a
+> `callAI()` helper and an `lh_api_key` localStorage key — that design
+> was abandoned; neither exists in the code anymore, and the CSP no
+> longer allows the Gemini domain), and the FERPA section (this doc
+> says anonymization before AI calls is mandatory; it's actually
+> opt-in and off by default per `README.md`'s Privacy section). Don't
+> treat anything below as current without checking it against
+> `README.md` first.
+
 ---
 
 ## What This Is

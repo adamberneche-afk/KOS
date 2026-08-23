@@ -1,4 +1,11 @@
 // =============================================================================
+// ARCHIVED — Sections A and B (the tabs object additions and the
+// m2Enabled/shadowMatrix* config keys) are merged into 00_SharedConfig.js's
+// getConfig_() return object. Do not paste from here; those are live.
+// Sections C-E (Script Properties reference, deployment checklist, tab
+// summary) remain useful reference documentation and are why this file is
+// kept rather than deleted.
+// =============================================================================
 // FILE: 00_SharedConfig_M2_ADDENDUM.js
 // VERSION: 2.0 — covers Module 2 Lightweight + Module 2 Full (Warm-Ups)
 //

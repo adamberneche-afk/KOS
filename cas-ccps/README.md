@@ -14,14 +14,28 @@ with named divisions (Creative Studio, Apparel & Merch Co., School Store,
 Wholesale & Sourcing, Media & PR, Events Division, Esports Division) and
 management roles students rotate through. See `curriculum/lesson-cards/`.
 
-No file anywhere in this system uses the word "FERPA" or "COPPA" despite
-handling real student names, emails, and submitted work — the closest thing
-to a compliance statement is `docs/SYSTEM_ARCHITECTURE.html`'s Security
-Model section (no API keys ever touch a student-facing surface,
+**Correction (folded in from an external review pass):** `docs/
+KOS_Guide_IT__Admin_Security.pdf` — the file this README used to cite here
+as having a "FERPA & Data Privacy Compliance" section — was investigated
+and confirmed to describe an entirely different, abandoned architecture:
+"The Lobed Knowledge Operating System," an April-era, pre-v8 design
+(Compaction Engine, Circuit Breaker, Transaction IDs, a "Narrative
+Sanitization" regex scrub of a `STUDY_LOG.txt` file) that predates the
+current Cog/Council model and Studio Flows entirely and was never carried
+forward into the live system (`kos-personal/rtp-core-router/protocols/
+HEREDITARY_WATCHLIST.md` independently confirms this lineage). None of its
+described mechanisms exist anywhere in the actual codebase. It has been
+archived to `docs/archived/KOS_Guide_IT__Admin_Security_PRE_V8_ARCHITECTURE.pdf`
+— **do not hand this to district IT as a current security statement.**
+The real, current compliance reference is `docs/SYSTEM_ARCHITECTURE.html`'s
+Security Model section (no API keys ever touch a student-facing surface,
 prompt-injection denylist, three-point turn-in validation, a forensic
 version-history check with an *honestly documented* bypass: a student who
 selects-all-and-pastes a pre-written fake report in one fast paste can
-defeat it — treated as a manual-review signal, not proof).
+defeat it — treated as a manual-review signal, not proof) together with
+`docs/FERPA_DATA_MAP.md` (the actual field-by-field FERPA inventory, Say/Do
+Ledger finding #5) — these two are the canonical pair now, not the archived
+PDF.
 
 ---
 
@@ -518,12 +532,12 @@ file's own header wins):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00` (+ its M2/M4 addenda), `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
-| Teacher Dashboard | standalone web app | `07` (+ `07_TeacherDashboard_M4_ADDENDUM.js`, adding a Student Context tab) |
+| Teacher Dashboard | standalone web app | `07` (includes the Student Context tab and the teacher-identity gate), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`) |
 | Student Dashboard | standalone web app | `13` |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).

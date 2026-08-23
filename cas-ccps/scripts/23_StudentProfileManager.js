@@ -1,6 +1,11 @@
 // =============================================================================
 // FILE: 23_StudentProfileManager.js
-// BOUND TO: Central Ledger spreadsheet
+// BOUND TO: Central Ledger spreadsheet AND the Teacher Dashboard standalone
+//   web app — Script 07's getDashboardData() calls
+//   buildShadowMatrixSummary_() below directly for the Module 2
+//   warm-up-readiness panel, so this file (and its Script 31 dependency)
+//   must be physically present in the Teacher Dashboard project too.
+//   See tools/gas-lint/project-map.json's cas-ccps:teacher-dashboard entry.
 // PURPOSE: Nightly batch update of the StudentProfiles tab.
 //          Runs as Stage 1 of the 3am cron, before Script 24 (3:30am)
 //          builds WarmUpQueue rows. Profiles must be current before
@@ -769,6 +774,10 @@ function buildShadowMatrixSummary_(ss, cfg) {
   const currentUnit  = resolveUnitForDate_(todayStr); // Script 31
 
   let total = 0, withEval = 0, withWarmup = 0, withConf = 0, locked = 0;
+  // NEW (Say/Do Ledger cas-ccps finding #13): per-bucket student emails,
+  // not just counts — this is what lets the dashboard turn these stats
+  // into clickable filters into the roster instead of static numbers.
+  const withEvalEmails = [], withWarmupEmails = [], withConfEmails = [], lockedEmails = [];
 
   for (let i = 1; i < data.length; i++) {
     const rowEmail = String(data[i][SP_STUDENT_EMAIL] || "").trim().toLowerCase();
@@ -783,13 +792,13 @@ function buildShadowMatrixSummary_(ss, cfg) {
     // Has eval history?
     try {
       const signals = JSON.parse(data[i][SP_EVALUATION_SIGNALS] || "[]");
-      if (signals.length > 0) withEval++;
+      if (signals.length > 0) { withEval++; withEvalEmails.push(rowEmail); }
     } catch(e) {}
 
     // Has warm-up history?
     try {
       const scores = JSON.parse(data[i][SP_WARMUP_SCORES] || "[]");
-      if (scores.length > 0) withWarmup++;
+      if (scores.length > 0) { withWarmup++; withWarmupEmails.push(rowEmail); }
     } catch(e) {}
 
     // Has shadow matrix confidence?
@@ -807,8 +816,8 @@ function buildShadowMatrixSummary_(ss, cfg) {
         // same student in both buckets with no way for a teacher to tell
         // they overlapped. Made mutually exclusive: withConf now means
         // "building confidence but not yet locked."
-        if (maxConf >= 0.75)      locked++;
-        else if (maxConf > 0.5)  withConf++;
+        if (maxConf >= 0.75)      { locked++;   lockedEmails.push(rowEmail); }
+        else if (maxConf > 0.5)  { withConf++; withConfEmails.push(rowEmail); }
       }
     } catch(e) {}
   }
@@ -828,10 +837,91 @@ function buildShadowMatrixSummary_(ss, cfg) {
     withWarmUpHistory:    withWarmup,
     withShadowConfidence: withConf,
     locked,
+    // NEW (finding #13): per-bucket email lists — lets the dashboard
+    // filter the roster to exactly these students when a stat is clicked.
+    withEvalEmails:   withEvalEmails,
+    withWarmupEmails: withWarmupEmails,
+    withConfEmails:   withConfEmails,
+    lockedEmails:     lockedEmails,
     currentUnit: currentUnit
       ? (currentUnit.unit_id + " — " + currentUnit.unit_name)
       : ""
   };
+}
+
+// ---------------------------------------------------------------------------
+// getStudentShadowProfile_ — NEW (Say/Do Ledger cas-ccps finding #13).
+// Read-only per-student detail for the dashboard's new profile view — the
+// destination for the warm-up readiness panel's "ready for personalized
+// feedback" (locked) students. Presents the same signals
+// buildShadowMatrixSummary_() already aggregates, but for one student,
+// with per-unit confidence resolved to a real unit name via Script 31's
+// getUnitById_() where possible.
+// ---------------------------------------------------------------------------
+function getStudentShadowProfile_(ss, cfg, studentEmail) {
+  const spSheet = ss.getSheetByName(cfg.tabs.studentProfiles);
+  if (!spSheet) return null;
+
+  const data  = spSheet.getDataRange().getValues();
+  const email = String(studentEmail || "").trim().toLowerCase();
+  const teacherEmail = cfg.teacherEmail.toLowerCase();
+
+  for (let i = 1; i < data.length; i++) {
+    const rowEmail   = String(data[i][SP_STUDENT_EMAIL] || "").trim().toLowerCase();
+    const rowTeacher = String(data[i][SP_TEACHER_EMAIL] || "").trim().toLowerCase();
+    if (rowEmail !== email) continue;
+    // Same ownership check every other per-student read in this file
+    // applies — a teacher can only view profiles for their own students.
+    if (rowTeacher !== teacherEmail) return null;
+
+    let evalSignals = [], warmupScores = [], shadowMatrix = {};
+    try { evalSignals   = JSON.parse(data[i][SP_EVALUATION_SIGNALS] || "[]"); } catch(e) {}
+    try { warmupScores  = JSON.parse(data[i][SP_WARMUP_SCORES]      || "[]"); } catch(e) {}
+    try { shadowMatrix  = JSON.parse(data[i][SP_SHADOW_MATRIX]      || "{}"); } catch(e) {}
+
+    const unitConfidence = Object.keys(shadowMatrix).map(unitId => {
+      let unitLabel = unitId;
+      try {
+        const unit = getUnitById_(unitId);
+        if (unit && unit.unit_name) unitLabel = unitId + " — " + unit.unit_name;
+      } catch (e) { /* Script 31 not bound in this project — fall back to raw ID */ }
+      const conf = shadowMatrix[unitId].cross_confidence || 0;
+      return {
+        unitLabel: unitLabel,
+        confidence: conf,
+        // Same 0.75/0.5 thresholds buildShadowMatrixSummary_() uses, so a
+        // unit's status here always agrees with which bucket got this
+        // student onto this view in the first place.
+        status: conf >= 0.75 ? "Ready for personalized feedback"
+              : conf > 0.5   ? "Building confidence"
+              : "Not yet enough data"
+      };
+    }).sort((a, b) => b.confidence - a.confidence);
+
+    // Utilities.formatDate() directly, not the shared formatDate_() helper
+    // — that helper only exists in 07_TeacherDashboard.js/13_StudentDashboard.js,
+    // neither of which is bound to the Central Ledger project this file is
+    // also part of, so calling it here would be undefined in that context.
+    let lastUpdated = "Never";
+    if (data[i][SP_LAST_UPDATED]) {
+      try {
+        lastUpdated = Utilities.formatDate(
+          new Date(data[i][SP_LAST_UPDATED]), Session.getScriptTimeZone(), "MMM d, yyyy h:mm a"
+        );
+      } catch (e) { lastUpdated = String(data[i][SP_LAST_UPDATED]); }
+    }
+
+    return {
+      name:  String(data[i][SP_STUDENT_NAME] || "").trim() || studentEmail,
+      email: studentEmail,
+      evalHistoryCount:   evalSignals.length,
+      warmupHistoryCount: warmupScores.length,
+      lastUpdated: lastUpdated,
+      unitConfidence: unitConfidence
+    };
+  }
+
+  return null; // no profile row for this student yet
 }
 
 // ---------------------------------------------------------------------------
@@ -860,11 +950,21 @@ function formatDateYMD_(date) {
 //
 // Returns: profile object, or a minimal default if student not found.
 // ---------------------------------------------------------------------------
-function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
+// scrStanding (Say/Do Ledger cas-ccps Extension 1: SCR-to-warmup bridge) —
+// optional array from 30_SCRSuggestionEngine.js's
+// getStudentScrStandingForCompetencies_(), computed by the CALLER
+// (24_WarmUpBridge.js) and passed in here rather than fetched by this
+// function directly — Script 30 is bound only to cas-ccps:central-ledger,
+// not to cas-ccps:teacher-dashboard, but this file (23) is bound to BOTH
+// (see tools/gas-lint/project-map.json), so this file must never itself
+// reference a Script-30-only symbol. Defaults to [] so every existing
+// caller (there is currently exactly one, 24_WarmUpBridge.js, which now
+// passes it) keeps working unchanged if it's ever omitted.
+function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds, scrStanding) {
   const spSheet = ss.getSheetByName(cfg.tabs.studentProfiles);
   if (!spSheet) {
     Logger.log("[S23] StudentProfiles tab not found in getStudentProfileSnapshot_.");
-    return buildDefaultSnapshot_(studentEmail, lessonCompIds);
+    return buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding);
   }
 
   const data  = spSheet.getDataRange().getValues();
@@ -910,9 +1010,34 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
         unitCurrent + ", trend: " + (unitMatrixEntry.trend || "flat") + ").";
     }
 
+    // FIXED (Say/Do Ledger cas-ccps finding #5, Bonus 2): this snapshot is
+    // the one place in cas-ccps that sends a real student name into a
+    // Studio Flow prompt (Flow 3, warm-up generation) — every other flow
+    // is already opaque-ID/content-only. A full stable-ID substitution
+    // (student ID in, real name restored server-side after Gemini) was
+    // investigated and doesn't fit these mechanics: Flow 3 needs the name
+    // *during* generation, to address the student by name inside the
+    // question text it writes, entirely inside the external Studio Flow —
+    // there's no "restore after Gemini" step this repo's own code could
+    // perform. Flow 3's own prompt templates only ever use the student's
+    // first name ("Name: {first_name}" — docs/CAS_Flow3_Flow4_
+    // Specification.html), so redacting the full name down to first-name-
+    // only here closes almost all of the real exposure (no last name ever
+    // leaves this sheet cell) while preserving the personalization the
+    // feature is actually for. FERPA_FLOW3_FULL_NAME_OVERRIDE (Script
+    // Property, default unset/off) is an explicit, auditable escape hatch —
+    // _ferpaHealthChecks_() in 10_AdminRecoveryPanel.js alerts if it's ever
+    // turned on.
+    const fullStudentName = String(data[i][SP_STUDENT_NAME]).trim();
+    const fullNameOverride = PropertiesService.getScriptProperties()
+      .getProperty("FERPA_FLOW3_FULL_NAME_OVERRIDE") === "true";
+    const snapshotStudentName = fullNameOverride
+      ? fullStudentName
+      : (fullStudentName.split(/\s+/)[0] || fullStudentName);
+
     return {
       student_email:          studentEmail,
-      student_name:           String(data[i][SP_STUDENT_NAME]).trim(),
+      student_name:           snapshotStudentName,
       period:                 String(data[i][SP_PERIOD]).trim(),
       competencies_addressed: competenciesAddressed,
       competency_gaps:        gaps,
@@ -924,14 +1049,40 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
       // ── Shadow matrix — drives archetype selection in Flow 3 ─────────────
       shadow_matrix:          shadowMatrix,
       unit_current:           unitCurrent,
-      shadow_archetype_note:  shadowArchetypeNote  // null when below threshold
+      shadow_archetype_note:  shadowArchetypeNote,  // null when below threshold
+      // NEW (Say/Do Ledger cas-ccps Extension 1: SCR-to-warmup bridge) — a
+      // soft signal/tie-breaker only, never overriding evaluation_signals or
+      // shadow_archetype_note above. Not yet consumed by any Flow 3 prompt
+      // template — passed through so a future prompt-template change can use
+      // it without another Script 23 edit, same precedent already set for
+      // 31_PacingGuideManager.js's chain_node/esports_connection fields (see
+      // docs/CAS_Flow3_Flow4_Specification.html).
+      scr_standing_note:      _buildScrStandingNote_(scrStanding)
     };
   }
 
   // No profile found — student registered after last 3am run
   Logger.log("[S23] No profile found for " + studentEmail +
              " — using default snapshot. Profile will exist after tonight's 3am run.");
-  return buildDefaultSnapshot_(studentEmail, lessonCompIds);
+  return buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding);
+}
+
+// ---------------------------------------------------------------------------
+// _buildScrStandingNote_ (Say/Do Ledger cas-ccps Extension 1)
+// Turns getStudentScrStandingForCompetencies_()'s array into one
+// plain-language sentence, mirroring shadow_archetype_note's own
+// null-or-single-string shape above — easy for a prompt template to drop in
+// as a single line, easy to leave out entirely (null) when there's nothing
+// to say. Distinguishes a teacher-confirmed/overridden rating from an
+// unconfirmed AI suggestion, since the former is a much stronger signal.
+// ---------------------------------------------------------------------------
+function _buildScrStandingNote_(scrStanding) {
+  if (!scrStanding || !scrStanding.length) return null;
+  const parts = scrStanding.map(function(s) {
+    const basis = s.decided ? "teacher-confirmed" : "AI-suggested, not yet reviewed by the teacher";
+    return s.competencyId + ": " + s.rating + "/5 (" + basis + ")";
+  });
+  return "Current SCR standing on today's competencies — " + parts.join("; ") + ".";
 }
 
 // ---------------------------------------------------------------------------
@@ -940,7 +1091,7 @@ function getStudentProfileSnapshot_(ss, cfg, studentEmail, lessonCompIds) {
 // All gaps default to all of today's lesson competencies (nothing addressed).
 // Flow 3 will treat this student as a new learner with no prior history.
 // ---------------------------------------------------------------------------
-function buildDefaultSnapshot_(studentEmail, lessonCompIds) {
+function buildDefaultSnapshot_(studentEmail, lessonCompIds, scrStanding) {
   return {
     student_email:          studentEmail,
     student_name:           "",
@@ -960,7 +1111,13 @@ function buildDefaultSnapshot_(studentEmail, lessonCompIds) {
     // history yet" values a new learner should actually carry.
     shadow_matrix:          {},
     unit_current:           "",
-    shadow_archetype_note:  null
+    shadow_archetype_note:  null,
+    // Say/Do Ledger cas-ccps Extension 1 — same reasoning as above: a
+    // brand-new student can still have real SCR standing (SCR evidence
+    // predates the StudentProfiles nightly rebuild), so this default still
+    // computes a real note from whatever was passed in rather than
+    // hardcoding null.
+    scr_standing_note:      _buildScrStandingNote_(scrStanding)
   };
 }
 
