@@ -3989,9 +3989,9 @@ function renderDashboard() {
     // banner (and the Trip Detail header, below) stayed calm — unified to
     // 14 days everywhere so one trip can't read as urgent on one screen and
     // fine on another.
-    if(dtd < 0 && t.status==='planned') alts.push(`<div class="alert ad"><span class="aico">🚨</span><div><strong>${t.name}</strong> — TripTracker deadline <strong>OVERDUE</strong> by ${Math.abs(dtd)} day${Math.abs(dtd)===1?'':'s'}. Submit immediately.</div></div>`);
-    else if(dtd<=14 && dtd>=0 && t.status==='planned') alts.push(`<div class="alert aw"><span class="aico">⚠️</span><div><strong>${t.name}</strong> — TripTracker submission in <strong>${dtd} day${dtd===1?'':'s'}</strong> (${fd(fmtDeadline(t))}). ${miss>0?`<strong>${miss} fields still missing!</strong>`:''}</div></div>`);
-    if(miss > 0 && dtd > 14) alts.push(`<div class="alert aw"><span class="aico">📋</span><strong>${t.name}</strong> — <strong>${miss} required field${miss===1?'':'s'}</strong> missing. <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})" style="margin-left:.5rem">Fill In →</button></div>`);
+    if(dtd < 0 && t.status==='planned') alts.push(`<div class="alert ad"><span class="aico">🚨</span><div><strong>${escH(t.name)}</strong> — TripTracker deadline <strong>OVERDUE</strong> by ${Math.abs(dtd)} day${Math.abs(dtd)===1?'':'s'}. Submit immediately.</div></div>`);
+    else if(dtd<=14 && dtd>=0 && t.status==='planned') alts.push(`<div class="alert aw"><span class="aico">⚠️</span><div><strong>${escH(t.name)}</strong> — TripTracker submission in <strong>${dtd} day${dtd===1?'':'s'}</strong> (${fd(fmtDeadline(t))}). ${miss>0?`<strong>${miss} fields still missing!</strong>`:''}</div></div>`);
+    if(miss > 0 && dtd > 14) alts.push(`<div class="alert aw"><span class="aico">📋</span><strong>${escH(t.name)}</strong> — <strong>${miss} required field${miss===1?'':'s'}</strong> missing. <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})" style="margin-left:.5rem">Fill In →</button></div>`);
   });
   const dashAlerts = document.getElementById('dash-alerts');
   if(dashAlerts) dashAlerts.innerHTML = alts.slice(0,4).join('');
@@ -3999,7 +3999,7 @@ function renderDashboard() {
   // ── UPCOMING STRIP ──
   const allEvs = [...trips.map(t=>({name:t.name,date:t.date,type:'fieldtrip'})), ...otherEvents.map(e=>({name:e.name,date:e.date,type:e.type}))].sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,6);
   const stripEvs = document.getElementById('strip-evs');
-  if(stripEvs) stripEvs.innerHTML = allEvs.map(e=>{ const d=dn(e.date);const w=d<=7&&d>=0; return`<div class="se${w?' warn':''}"><strong>${e.name}</strong><span>${fd(e.date)} · ${du(e.date)}</span></div>`; }).join('');
+  if(stripEvs) stripEvs.innerHTML = allEvs.map(e=>{ const d=dn(e.date);const w=d<=7&&d>=0; return`<div class="se${w?' warn':''}"><strong>${escH(e.name)}</strong><span>${fd(e.date)} · ${du(e.date)}</span></div>`; }).join('');
 
   // ── FORM COMPLETION HUB ──
   renderFormHub();
@@ -4153,8 +4153,8 @@ function renderFormHub() {
       <!-- Trip header -->
       <div style="background:var(--navy);color:#fff;padding:.7rem 1.1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
         <div>
-          <div style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:2px">${t.name}</div>
-          <div style="font-size:.71rem;color:rgba(255,255,255,.55)">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)} &nbsp;·&nbsp; ${t.sub?.replace('-',' ')||'same day'} &nbsp;·&nbsp; ${t.dest1||'Destination TBD'}</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:2px">${escH(t.name)}</div>
+          <div style="font-size:.71rem;color:rgba(255,255,255,.55)">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)} &nbsp;·&nbsp; ${t.sub?.replace('-',' ')||'same day'} &nbsp;·&nbsp; ${escH(t.dest1||'Destination TBD')}</div>
         </div>
         <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
           <span style="font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:20px;background:${dtd<0&&t.status==='planned'?'var(--red)':dtd<=14&&t.status==='planned'?'var(--orange)':'rgba(255,255,255,.15)'};color:#fff">${urgLabel}</span>
@@ -4322,7 +4322,7 @@ function renderDashPriorityActions() {
             <div class="alert ${a.sev}" style="padding:.6rem .85rem;align-items:flex-start;gap:.6rem">
               <span class="aico" style="font-size:1rem">${a.icon}</span>
               <div style="flex:1">
-                <div style="font-size:.69rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:inherit;opacity:.7;margin-bottom:.1rem">${a.trip}</div>
+                <div style="font-size:.69rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:inherit;opacity:.7;margin-bottom:.1rem">${escH(a.trip)}</div>
                 <div style="font-weight:700;font-size:.81rem;margin-bottom:.18rem">${a.title}</div>
                 <div style="font-size:.74rem;opacity:.85;line-height:1.45;margin-bottom:.28rem">${a.detail}</div>
                 <div style="font-size:.67rem;opacity:.7;margin-bottom:.35rem">📅 ${a.deadline}</div>
@@ -4374,7 +4374,7 @@ function renderDashSlips() {
     const cls = pct===100?'pf-ok':pct>=50?'pf-warn':'pf-danger';
     return `<div style="margin-bottom:.7rem">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.18rem">
-        <span style="font-size:.79rem;font-weight:600">${t.name}</span>
+        <span style="font-size:.79rem;font-weight:600">${escH(t.name)}</span>
         <button class="btn btn-outline btn-xs" onclick="showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)">Manage</button>
       </div>
       ${s.total ? `
@@ -4403,7 +4403,7 @@ function renderReadinessCard(t, compact=false) {
   return `<div class="rcard">
     <div class="rcard-top">
       <div>
-        <div class="rcard-name">${t.name}${t.archived?' <span title="This trip has an Archive snapshot — editing it does not update the snapshot" style="font-size:.62rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">📦 ARCHIVED</span>':''}</div>
+        <div class="rcard-name">${escH(t.name)}${t.archived?' <span title="This trip has an Archive snapshot — editing it does not update the snapshot" style="font-size:.62rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">📦 ARCHIVED</span>':''}</div>
         <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)}</div>
         ${dtd<0&&t.status==='planned'?`<div class="alert ad" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">🚨</span>Deadline OVERDUE</div>`:dtd<=14&&dtd>=0&&t.status==='planned'?`<div class="alert aw" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">⚠️</span>Submit in ${dtd} day${dtd===1?'':'s'}</div>`:''}
       </div>
@@ -4614,9 +4614,9 @@ function renderTripDetail(t) {
           })()}
         </div>
         <div class="card"><div class="stitle">📚 Instructional Justification</div>
-          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Why Necessary</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.why||'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
-          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Pre-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.pre||'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
-          <div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Post-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.post||'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Why Necessary</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.why?escH(t.why):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Pre-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.pre?escH(t.pre):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Post-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.post?escH(t.post):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
         </div>
       </div>
     </div>
@@ -4625,7 +4625,11 @@ function renderTripDetail(t) {
 
 function fieldRow(label, val) {
   const empty = !val || val===0;
-  return `<div class="field-row"><div class="field-dot ${empty?'fd-miss':'fd-ok'}"></div><div class="field-name" style="color:${empty?'var(--red)':'inherit'}">${label}</div><span style="font-size:.75rem;color:${empty?'var(--red)':'#333'};font-weight:${empty?700:400}">${empty?'⚠ Missing':val}</span></div>`;
+  // escH() here (rather than at each of fieldRow()'s ~14 call sites in
+  // renderTripDetail()) covers every trip field it's ever handed —
+  // origin, destination, sponsor, PO#, funding, med staff, etc. — in one
+  // place. Safe for numeric fields too: escH() stringifies before escaping.
+  return `<div class="field-row"><div class="field-dot ${empty?'fd-miss':'fd-ok'}"></div><div class="field-name" style="color:${empty?'var(--red)':'inherit'}">${escH(label)}</div><span style="font-size:.75rem;color:${empty?'var(--red)':'#333'};font-weight:${empty?700:400}">${empty?'⚠ Missing':escH(val)}</span></div>`;
 }
 
 // Approval status is stored two ways for backward compatibility:
@@ -6564,14 +6568,14 @@ function renderDecaResults() {
     const rows = evResults.length
       ? evResults.map(r => `
         <tr>
-          <td style="padding:.35rem .5rem;font-size:.77rem;font-weight:600">${r.student}</td>
-          <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${r.event}</td>
+          <td style="padding:.35rem .5rem;font-size:.77rem;font-weight:600">${escH(r.student)}</td>
+          <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.event)}</td>
           <td style="padding:.35rem .5rem">
-            <span style="background:${placeColor(r.place)};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px">${r.place}</span>
+            <span style="background:${placeColor(r.place)};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
           </td>
-          <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${r.notes||''}</td>
+          <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
           <td style="padding:.35rem .5rem;text-align:right">
-            <button onclick="deleteDecaResult('${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
+            <button onclick="deleteDecaResult('${escJsAttr(r.id)}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
           </td>
         </tr>`).join('')
       : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
@@ -7573,7 +7577,7 @@ function delStu(id){
 // ── Parent Communication Log ──────────────────────────────────────────────────
 function openModal_addStudent(){
   document.getElementById('st-event').innerHTML = '<option value="">— None —</option>' +
-    [...trips.map(t=>({id:t.id,name:t.name})),...otherEvents.map(e=>({id:e.id,name:e.name}))].map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+    [...trips.map(t=>({id:t.id,name:t.name})),...otherEvents.map(e=>({id:e.id,name:e.name}))].map(e=>`<option value="${escH(e.id)}">${escH(e.name)}</option>`).join('');
   _populateMemberFormForOrg(activeOrgId);
   const org = ORGANIZATIONS[activeOrgId] || ORGANIZATIONS.deca;
   document.getElementById('addstu-modal-title').textContent = `Register ${org.name} Member`;
@@ -8696,7 +8700,7 @@ function buildFTPermHTML(tripId, forPrint) {
   if(!d) return '';
   const isOvernight = (trips.find(t=>t.id===tripId)?.sub||'').includes('overnight') || (trips.find(t=>t.id===tripId)?.isOn==='X');
   const blank = (w) => `<span style="border-bottom:1px solid #333;min-width:${w||'160px'};display:inline-block">&nbsp;</span>`;
-  const val = (v) => v ? `<strong style="color:#0f2044">${v}</strong>` : blank();
+  const val = (v) => v ? `<strong style="color:#0f2044">${escH(v)}</strong>` : blank();
 
   const frontPage = `<div style="font-family:'DM Sans',sans-serif;font-size:11.5px;line-height:1.7;color:#111;${forPrint?'max-width:680px;margin:0 auto;padding:0':''}">
     <div style="text-align:center;font-weight:700;font-size:13.5px;margin-bottom:.15rem">CCPS Field Trip Permission Form and Assumption of Risk Agreement</div>
@@ -8885,7 +8889,7 @@ function buildConfLeaveHTML(ev, r) {
   const bk = `<span style="border-bottom:1px solid #333;display:inline-block;min-width:120px">&nbsp;</span>`;
   const v = (key, fallback) => {
     const val = r[key] || (fallback||'');
-    return val ? `<strong style="color:#0f2044">${val}</strong>` : bk;
+    return val ? `<strong style="color:#0f2044">${escH(val)}</strong>` : bk;
   };
   const costs = ['reg','air','mi','hotel','meals','other'];
   const costLabels = ['Registration Fee','Air Fare','Mileage','Hotel','Meals','Other'];
@@ -9248,10 +9252,10 @@ function renderArchiveCard(a) {
     <!-- Card Header -->
     <div style="padding:.85rem 1.1rem;display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;border-bottom:1px solid var(--border);background:#faf9f6">
       <div>
-        <div style="font-weight:700;font-size:.95rem;margin-bottom:.2rem">${t.name}</div>
+        <div style="font-weight:700;font-size:.95rem;margin-bottom:.2rem">${escH(t.name)}</div>
         <div style="font-size:.75rem;color:var(--muted);display:flex;gap:.75rem;flex-wrap:wrap">
           <span>📅 ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}</span>
-          <span>📍 ${(t.dest1 || '').split(',')[0] || 'Destination TBD'}</span>
+          <span>📍 ${escH((t.dest1 || '').split(',')[0] || 'Destination TBD')}</span>
           ${t.stuAtt ? `<span>👥 ${t.stuAtt} students</span>` : ''}
           ${subLabel[t.sub] ? `<span>${subLabel[t.sub]}</span>` : ''}
           ${t.po ? `<span>PO# ${t.po}</span>` : ''}
@@ -9273,7 +9277,7 @@ function renderArchiveCard(a) {
         <div style="display:flex;flex-direction:column;gap:.4rem">
           ${a.glows.map((g,i) => g ? `<div style="display:flex;gap:.4rem;align-items:flex-start;font-size:.78rem">
             <span style="background:#22c55e;color:#fff;border-radius:50%;width:16px;height:16px;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;flex-shrink:0;margin-top:1px">${i+1}</span>
-            <span style="color:#166534">${g}</span>
+            <span style="color:#166534">${escH(g)}</span>
           </div>` : '').join('')}
         </div>
       </div>
@@ -9281,8 +9285,8 @@ function renderArchiveCard(a) {
         <div style="display:flex;align-items:center;gap:.35rem;margin-bottom:.5rem">
           <span class="arch-grow-badge">🌱 A Grow</span>
         </div>
-        <div style="font-size:.78rem;color:#854d0e;line-height:1.5">${a.grow}</div>
-        ${a.notes ? `<div style="margin-top:.65rem;padding:.55rem .65rem;background:#f8f7f4;border-radius:6px;font-size:.73rem;color:var(--muted);border:1px solid var(--border)"><span style="font-weight:700;color:var(--ink)">📝 Notes: </span>${a.notes}</div>` : ''}
+        <div style="font-size:.78rem;color:#854d0e;line-height:1.5">${escH(a.grow)}</div>
+        ${a.notes ? `<div style="margin-top:.65rem;padding:.55rem .65rem;background:#f8f7f4;border-radius:6px;font-size:.73rem;color:var(--muted);border:1px solid var(--border)"><span style="font-weight:700;color:var(--ink)">📝 Notes: </span>${escH(a.notes)}</div>` : ''}
       </div>
     </div>
     <!-- Footer actions -->
@@ -10299,8 +10303,8 @@ function renderWBLTracker() {
     const stLabel  = {'on-track':'✅ On Track','needs-attention':'⚠️ Needs Attention','not-started':'🔴 Not Started'}[status] || status;
     const rColor   = ROLE_COLORS[s.role] || '#6b7280';
     return `<tr style="border-bottom:1px solid #f1f5f9">
-      <td style="padding:.55rem .75rem;font-weight:600;color:var(--navy)">${s.fname} ${s.lname}<div style="font-size:.68rem;color:var(--muted)">Period ${s.period}</div></td>
-      <td style="padding:.55rem .75rem"><span style="background:${rColor};color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap">${s.role}</span></td>
+      <td style="padding:.55rem .75rem;font-weight:600;color:var(--navy)">${escH(s.fname)} ${escH(s.lname)}<div style="font-size:.68rem;color:var(--muted)">Period ${escH(s.period)}</div></td>
+      <td style="padding:.55rem .75rem"><span style="background:${rColor};color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap">${escH(s.role)}</span></td>
       <td style="padding:.55rem .75rem;font-size:.78rem;color:${agColor};font-weight:600">${agLabel}</td>
       <td style="padding:.55rem .75rem">
         <div style="display:flex;align-items:center;gap:.4rem">
@@ -10419,10 +10423,10 @@ function wblLogHours(id) {
   pop.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;margin-left:.4rem;' +
     'background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:.2rem .4rem;vertical-align:middle';
   pop.innerHTML =
-    `<span style="font-size:.68rem;color:#0369a1;white-space:nowrap">${s.fname}:</span>` +
-    `<input id="wbl-hrs-input-${id}" type="number" min="0" step="0.5" placeholder="hrs"` +
+    `<span style="font-size:.68rem;color:#0369a1;white-space:nowrap">${escH(s.fname)}:</span>` +
+    `<input id="wbl-hrs-input-${escH(id)}" type="number" min="0" step="0.5" placeholder="hrs"` +
     ` style="width:52px;font-size:.75rem;border:1px solid #7dd3fc;border-radius:4px;padding:.1rem .3rem;text-align:center" />` +
-    `<button onclick="wblLogHoursConfirm('${id}')"` +
+    `<button onclick="wblLogHoursConfirm('${escJsAttr(id)}')"` +
     ` style="background:#0369a1;color:#fff;border:none;border-radius:4px;padding:.15rem .4rem;font-size:.72rem;cursor:pointer">✓</button>` +
     `<button onclick="document.getElementById('wbl-hrs-popover-${id}').remove()"` +
     ` style="background:none;border:none;color:#64748b;cursor:pointer;font-size:.8rem;padding:0 .1rem">✕</button>`;
@@ -12259,18 +12263,18 @@ function renderESRoster() {
     return `<div class="card" style="border-top:4px solid ${rc};position:relative">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
         <div>
-          <div style="font-weight:700;font-size:.9rem;color:var(--navy)">${p.fname} ${p.lname}</div>
-          <div style="font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace">${p.tag||'No tag set'}</div>
+          <div style="font-weight:700;font-size:.9rem;color:var(--navy)">${escH(p.fname)} ${escH(p.lname)}</div>
+          <div style="font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace">${escH(p.tag||'No tag set')}</div>
         </div>
-        <span style="font-size:.65rem;background:${rc};color:#fff;padding:2px 8px;border-radius:8px;font-weight:700;white-space:nowrap">${ROLE_LABELS[p.role]||p.role}</span>
+        <span style="font-size:.65rem;background:${rc};color:#fff;padding:2px 8px;border-radius:8px;font-weight:700;white-space:nowrap">${escH(ROLE_LABELS[p.role]||p.role)}</span>
       </div>
       <div style="font-size:.73rem;background:#f1f5f9;border-radius:6px;padding:.4rem .6rem;margin-bottom:.4rem">${gl}</div>
-      ${p.main ? `<div style="font-size:.73rem;color:#374151"><strong>SSBU Main:</strong> ${p.main}</div>` : ''}
-      ${p.kart ? `<div style="font-size:.73rem;color:#374151"><strong>MK8 Setup:</strong> ${p.kart}</div>` : ''}
-      ${p.notes ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;font-style:italic">${p.notes}</div>` : ''}
+      ${p.main ? `<div style="font-size:.73rem;color:#374151"><strong>SSBU Main:</strong> ${escH(p.main)}</div>` : ''}
+      ${p.kart ? `<div style="font-size:.73rem;color:#374151"><strong>MK8 Setup:</strong> ${escH(p.kart)}</div>` : ''}
+      ${p.notes ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;font-style:italic">${escH(p.notes)}</div>` : ''}
       <div style="display:flex;gap:.35rem;margin-top:.6rem">
-        <button onclick="openESEditPlayer('${p.id}')" style="flex:1;font-size:.7rem;padding:.25rem;background:var(--navy);color:#fff;border:none;border-radius:5px;cursor:pointer">Edit</button>
-        <button onclick="deleteESPlayer('${p.id}')" aria-label="Remove ${escH(p.fname)} ${escH(p.lname)}" style="font-size:.7rem;padding:.25rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:5px;cursor:pointer">✕</button>
+        <button onclick="openESEditPlayer('${escJsAttr(p.id)}')" style="flex:1;font-size:.7rem;padding:.25rem;background:var(--navy);color:#fff;border:none;border-radius:5px;cursor:pointer">Edit</button>
+        <button onclick="deleteESPlayer('${escJsAttr(p.id)}')" aria-label="Remove ${escH(p.fname)} ${escH(p.lname)}" style="font-size:.7rem;padding:.25rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:5px;cursor:pointer">✕</button>
       </div>
     </div>`;
   }).join('');
@@ -13038,8 +13042,8 @@ async function generateAIInsights() {
   const typeRows = Object.entries(types).map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
   const glowList = tripArchive.filter(a => a.glows).map(a => ({ name: a.trip?.name||'Trip', text: a.glows }));
   const growList = tripArchive.filter(a => a.grow).map(a => ({ name: a.trip?.name||'Trip', text: a.grow }));
-  const glows   = glowList.slice(0,5).map(g => `<li><strong>${g.name}:</strong> ${g.text}</li>`).join('');
-  const grows   = growList.slice(0,5).map(g => `<li><strong>${g.name}:</strong> ${g.text}</li>`).join('');
+  const glows   = glowList.slice(0,5).map(g => `<li><strong>${escH(g.name)}:</strong> ${escH(g.text)}</li>`).join('');
+  const grows   = growList.slice(0,5).map(g => `<li><strong>${escH(g.name)}:</strong> ${escH(g.text)}</li>`).join('');
 
   if (body) body.innerHTML = `
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1rem">
@@ -13163,7 +13167,7 @@ async function wblAIInsights() {
   const rows    = WBL_STUDENTS.map(s => {
     const status = wblStudentStatus(s);
     const badge  = status==='on-track'?'✅':status==='needs-attention'?'⚠️':'❌';
-    return `<tr><td style="padding:.2rem .4rem">${s.fname} ${s.lname}</td><td style="padding:.2rem .4rem">${s.hours}h</td><td style="padding:.2rem .4rem">${badge} ${status}</td></tr>`;
+    return `<tr><td style="padding:.2rem .4rem">${escH(s.fname)} ${escH(s.lname)}</td><td style="padding:.2rem .4rem">${s.hours}h</td><td style="padding:.2rem .4rem">${badge} ${status}</td></tr>`;
   }).join('');
 
   const modal = document.createElement('div');
@@ -14177,10 +14181,10 @@ function renderDeadlines() {
     return `<div ${navAttrs}>
       <span style="font-size:1.05rem;flex-shrink:0">${u.dot}</span>
       <span style="font-size:1.05rem;flex-shrink:0">${r.icon}</span>
-      <span style="flex:1;font-size:.9rem;font-weight:600;color:${u.text};line-height:1.3">${dl.title}</span>
+      <span style="flex:1;font-size:.9rem;font-weight:600;color:${u.text};line-height:1.3">${escH(dl.title)}</span>
       <span id="dltimer-${dl.id}" style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:${u.text};white-space:nowrap">${u.label}</span>
-      <button onclick="event.stopPropagation();editDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit" aria-label="Edit deadline">✏️</button>
-      <button onclick="event.stopPropagation();deleteDeadline('${dl.id}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete" aria-label="Delete deadline">✕</button>
+      <button onclick="event.stopPropagation();editDeadline('${escJsAttr(dl.id)}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit" aria-label="Edit deadline">✏️</button>
+      <button onclick="event.stopPropagation();deleteDeadline('${escJsAttr(dl.id)}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete" aria-label="Delete deadline">✕</button>
     </div>`;
   }).join('');
 }
@@ -14523,7 +14527,7 @@ function renderChoiceCards(){
       <div style="display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.35rem">
         <div class="cc-icon-box" style="background:${ic.bg}"><span>${item.icon}</span></div>
         <div style="flex:1;min-width:0">
-          <div class="cc-title">${item.text}</div>
+          <div class="cc-title">${escH(item.text)}</div>
           <div class="cc-meta">
             <span class="cc-urgency" style="background:${u.bg};color:${u.text}">${u.dot} ${u.label}</span>
             <span class="cc-role-tag" style="background:${r.bg};color:${r.color}">${r.icon} ${r.label}</span>
@@ -14999,7 +15003,7 @@ function renderRecentWins() {
     const def = LOG_WIN[e.type];
     return `<div style="display:flex;align-items:baseline;gap:.3rem;font-size:.72rem;color:#166534;line-height:1.35">
       <span style="flex-shrink:0">${def.icon}</span>
-      <span style="flex:1;color:#1a3a1a">${def.label(e)}</span>
+      <span style="flex:1;color:#1a3a1a">${escH(def.label(e))}</span>
       <span style="color:#86efac;font-size:.65rem;flex-shrink:0">${fmtDate(e.date)}</span>
     </div>`;
   });
@@ -15008,7 +15012,7 @@ function renderRecentWins() {
     const icon = t.status === 'ontime' ? '✅' : t.status === 'late' ? '⏰' : '✔';
     return `<div style="display:flex;align-items:baseline;gap:.3rem;font-size:.72rem;color:#166534;line-height:1.35">
       <span style="flex-shrink:0">${icon}</span>
-      <span style="flex:1;color:#1a3a1a">${(t.text||'').substring(0,52)}${(t.text||'').length>52?'…':''}</span>
+      <span style="flex:1;color:#1a3a1a">${escH((t.text||'').substring(0,52))}${(t.text||'').length>52?'…':''}</span>
       <span style="color:#86efac;font-size:.65rem;flex-shrink:0">${fmtDate(t.resolvedAt)}</span>
     </div>`;
   });
@@ -15829,10 +15833,10 @@ function openJournalHistory(){
       <div style="height:3px;background:#f1f5f9;border-radius:2px;margin-bottom:.55rem;overflow:hidden">
         <div style="height:100%;width:${(e.mood||0)*10}%;background:${mc};border-radius:2px;transition:width .5s"></div>
       </div>
-      ${e.q1?`<div style="font-size:.71rem;color:#374151;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Planning:</span> ${e.q1.slice(0,90)}${e.q1.length>90?'…':''}</div>`:''}
-      ${e.q2?`<div style="font-size:.71rem;color:#b45309;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Avoided:</span> ${e.q2.slice(0,90)}${e.q2.length>90?'…':''}</div>`:''}
-      ${e.q4?`<div style="font-size:.71rem;color:#15803d;line-height:1.4"><span style="font-weight:600">Proud:</span> ${e.q4.slice(0,90)}${e.q4.length>90?'…':''}</div>`:''}
-      ${e.cronResult?`<div style="margin-top:.4rem;padding:.38rem .6rem;background:var(--navy-soft);border-radius:8px;font-size:.68rem;color:var(--navy);line-height:1.4"><span style="font-weight:700">2am said:</span> ${e.cronResult.tomorrowMessage||''}</div>`:''}
+      ${e.q1?`<div style="font-size:.71rem;color:#374151;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Planning:</span> ${escH(e.q1.slice(0,90))}${e.q1.length>90?'…':''}</div>`:''}
+      ${e.q2?`<div style="font-size:.71rem;color:#b45309;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Avoided:</span> ${escH(e.q2.slice(0,90))}${e.q2.length>90?'…':''}</div>`:''}
+      ${e.q4?`<div style="font-size:.71rem;color:#15803d;line-height:1.4"><span style="font-weight:600">Proud:</span> ${escH(e.q4.slice(0,90))}${e.q4.length>90?'…':''}</div>`:''}
+      ${e.cronResult?`<div style="margin-top:.4rem;padding:.38rem .6rem;background:var(--navy-soft);border-radius:8px;font-size:.68rem;color:var(--navy);line-height:1.4"><span style="font-weight:700">2am said:</span> ${escH(e.cronResult.tomorrowMessage||'')}</div>`:''}
     </div>`;
   }).join('');
 }
@@ -21427,8 +21431,14 @@ function gatherBragData() {
     const lst = document.getElementById(listId);
     if (!items.length) { sec.style.display = 'none'; return; }
     sec.style.display = 'block';
+    // escH() wraps the whole formatted line (emoji prefix + i.text) rather
+    // than each call site's i.text individually — fmt() never emits real
+    // markup of its own, so escaping the finished string is safe and
+    // closes every field (task text, DECA result summary, trip name,
+    // email subject, log note, SCR/WBL/E-Sports summary) this one shared
+    // renderer touches, in one place.
     lst.innerHTML = items.map(i =>
-      `<div style="font-size:.72rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4">${fmt(i)}</div>`
+      `<div style="font-size:.72rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4">${escH(fmt(i))}</div>`
     ).join('');
   };
 
@@ -21453,8 +21463,8 @@ function gatherBragData() {
     journalLst.innerHTML = journalCandidates.map(w => {
       const included = journalIncludes[w.id] === true;
       return `<div style="font-size:.72rem;background:${included?'#fff':'#f9fafb'};border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;gap:.45rem;align-items:flex-start">
-        <input type="checkbox" ${included?'checked':''} onchange="toggleBragJournalInclude('${w.id}',this.checked)" style="margin-top:.15rem;flex-shrink:0" aria-label="Include this reflection in the Brag Board draft">
-        <span style="${included?'':'color:var(--muted)'}">${w.kind} ${w.text}</span>
+        <input type="checkbox" ${included?'checked':''} onchange="toggleBragJournalInclude('${escJsAttr(w.id)}',this.checked)" style="margin-top:.15rem;flex-shrink:0" aria-label="Include this reflection in the Brag Board draft">
+        <span style="${included?'':'color:var(--muted)'}">${w.kind} ${escH(w.text)}</span>
       </div>`;
     }).join('');
   }
@@ -21468,8 +21478,8 @@ function gatherBragData() {
     manualSec.style.display = 'block';
     manualLst.innerHTML = manualWins.map(w =>
       `<div style="font-size:.72rem;background:#fff;border:1px solid var(--border);border-radius:5px;padding:.25rem .45rem;color:#374151;line-height:1.4;display:flex;justify-content:space-between;gap:.3rem;align-items:flex-start">
-        <span>✍️ ${w.text}</span>
-        <button onclick="deleteBragManualWin('${w.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;flex-shrink:0" title="Remove" aria-label="Remove this win">✕</button>
+        <span>✍️ ${escH(w.text)}</span>
+        <button onclick="deleteBragManualWin('${escJsAttr(w.id)}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.75rem;flex-shrink:0" title="Remove" aria-label="Remove this win">✕</button>
       </div>`
     ).join('');
   }
