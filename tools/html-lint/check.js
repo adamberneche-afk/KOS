@@ -51,17 +51,22 @@ function extractInlineScripts(html) {
   // reported line number inside the extracted block still matches the
   // real file's line number when read back by a human.
   //
-  // FIXED (CodeQL js/bad-tag-filter): the closing-tag half used to be the
-  // rigid literal `<\/script>` - real HTML tolerates whitespace before
-  // the `>` (`</script >`, `</script  >`), which this didn't match. A
-  // stray extra space in a closing tag would have made this regex skip
-  // right past the real end and keep matching into whatever the NEXT
-  // `<\/script>` happened to be - silently extracting the wrong,
-  // oversized "block" instead of erroring. The closing tag is now its
-  // own capture group (3) specifically so its real matched length -
-  // whatever whitespace it actually contained - can be used below,
-  // instead of assuming the fixed 9-character literal.
-  const re = /<script\b([^>]*)>([\s\S]*?)(<\/script\s*>)/gi;
+  // FIXED (CodeQL js/bad-tag-filter, two rounds): the closing-tag half
+  // used to be the rigid literal `<\/script>`. Round 1 loosened it to
+  // `<\/script\s*>` (plain whitespace before `>`) - CodeQL correctly
+  // flagged that as still incomplete: a real browser's script-data-end-tag
+  // scan tolerates ANYTHING before the `>` (tabs/newlines, or even a bogus
+  // attribute-like token, e.g. `</script foo="bar">`), not just spaces.
+  // `[^>]*` - the exact same permissive convention the OPENING tag's own
+  // group already used a few lines below - is what actually matches that.
+  // Whatever a real `</script ...>` closing tag contains, this regex
+  // skipping past it (into whatever the NEXT real `<\/script...>` happens
+  // to be) would silently extract the wrong, oversized "block" instead of
+  // erroring - which is the actual failure mode this exists to catch, not
+  // a cosmetic completeness nitpick. The closing tag is its own capture
+  // group (3) specifically so its real matched length is used below,
+  // instead of assuming a fixed literal length.
+  const re = /<script\b([^>]*)>([\s\S]*?)(<\/script[^>]*>)/gi;
   let m;
   while ((m = re.exec(scannable))) {
     const attrs = m[1] || '';

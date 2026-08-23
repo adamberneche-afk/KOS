@@ -64,13 +64,24 @@ test('finds multiple real script blocks in one file', () => {
   assert.equal(blocks[1].trim(), 'const b = 2;');
 });
 
-test('matches a closing tag with whitespace before ">" (CodeQL js/bad-tag-filter)', () => {
+test('matches a closing tag with whitespace before ">" (CodeQL js/bad-tag-filter, round 1)', () => {
   // Real HTML tolerates `</script >`/`</script  >` - the rigid literal
   // `<\/script>` this regex used to require would skip right past a tag
   // written this way and keep matching into whatever the NEXT real
   // `</script>` happened to be, silently extracting an oversized, wrong
   // "block" instead of erroring or matching correctly.
   const html = '<script>const a = 1;</script >\n<p>text</p>\n<script>const b = 2;</script>';
+  const blocks = extractInlineScripts(html);
+  assert.equal(blocks.length, 2);
+  assert.equal(blocks[0].trim(), 'const a = 1;');
+  assert.equal(blocks[1].trim(), 'const b = 2;');
+});
+
+test('matches a closing tag with tabs/newlines or a bogus attribute-like token before ">" (CodeQL js/bad-tag-filter, round 2)', () => {
+  // Round 1's `\s*` fix was still incomplete per CodeQL: a real browser's
+  // script-data-end-tag scan tolerates ANYTHING before the `>`, not just
+  // whitespace - e.g. `</script foo="bar">` is a valid closing tag too.
+  const html = '<script>const a = 1;</script\t\n bar>\n<p>text</p>\n<script>const b = 2;</script>';
   const blocks = extractInlineScripts(html);
   assert.equal(blocks.length, 2);
   assert.equal(blocks[0].trim(), 'const a = 1;');
