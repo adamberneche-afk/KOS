@@ -1,0 +1,43 @@
+name: CodeQL
+
+# Scans every .js/.gs file in the repo (CodeQL's javascript analyzer treats
+# .gs the same as .js — both are plain ECMAScript, just running on a
+# different host) plus student-leader-hub.html's inline <script> blocks,
+# which CodeQL's JS extractor already knows how to pull out of HTML on its
+# own. Nothing here existed before this workflow — this repo had zero
+# automated security scanning of its ~57,000 lines of JS across
+# kos-personal/, cas-ccps/, leader-hub/, and tools/.
+on:
+  push:
+    branches: ['main']
+  pull_request:
+  schedule:
+    # Weekly, independent of any push — catches a newly-disclosed advisory
+    # in an existing pattern even on a week nobody touches this repo.
+    - cron: '0 8 * * 2'
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: github/codeql-action/init@v3
+        with:
+          languages: javascript
+          # Never scan generated/checked-out build scratch — cas-ccps's
+          # per-project clasp push folders are regenerated on demand (see
+          # tools/clasp-sync/README.md) and gitignored; if one happens to
+          # exist locally it's a duplicate of scripts/ already scanned.
+          config: |
+            paths-ignore:
+              - 'cas-ccps/.clasp-build/**'
+              - '**/node_modules/**'
+
+      - uses: github/codeql-action/analyze@v3
+        with:
+          category: '/language:javascript'
