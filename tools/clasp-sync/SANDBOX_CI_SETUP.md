@@ -121,7 +121,9 @@ tab on GitHub:
   project you haven't added to the JSON map yet — expected, not an error,
   as long as the project(s) you *do* care about right now went through.
 - **Either secret still unset** → `sandbox-deploy-not-configured` runs
-  instead, printing exactly which secret is missing.
+  instead, printing a reminder that names both required secrets (it
+  doesn't distinguish which one is actually missing — the message is the
+  same either way, so check both).
 - **A configured project's push actually fails** (not skipped) — usually
   means either the Script ID is wrong, or the sandbox copy's own
   `appsscript.json`/OAuth scopes disagree with the manifest this repo's

@@ -515,7 +515,7 @@ data.
 
 | Path | Contents |
 |---|---|
-| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide. `docs/archived/` holds superseded docs the source itself marks superseded. |
+| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide + `FERPA_DATA_MAP.md` (field-by-field FERPA inventory) + `LEADERHUB_CONNECTION_SETUP.md` (the D1 leader-hub OAuth integration's setup doc). `docs/archived/` holds superseded docs the source itself marks superseded. |
 | `scripts/` | Numbered Apps Script files, base + addenda. `scripts/archived/` holds files the source itself marks superseded. |
 | `data/` | Reference data imported into the Central Ledger at setup time. `data/sol-correlations/` holds the VDOE SOL derivation trail. `data/archived/` holds superseded versions. |
 | `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks. `curriculum/archived/` holds the pre-v2 pacing guide JSON. |
@@ -533,11 +533,11 @@ file's own header wins):
 | Project | Bound to | Scripts |
 |---|---|---|
 | Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
-| Unified Manual | Assignment System Manual Doc | `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
+| Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
-| Teacher Dashboard | standalone web app | `07` (includes the Student Context tab and the teacher-identity gate), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`) |
+| Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`) |
 | Student Dashboard | standalone web app | `13` |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
@@ -562,8 +562,14 @@ M1Base — see resolution 1 above), then flips the staging row to
 `COMPLETE`. Script 03's `backPropagateCompletions` (2-min trigger) closes
 out the queue/ledger rows and appends the "what to do next" block. When
 the student turns in via the Turn-In Form, Script 04 runs a 3-point ledger
-match plus a forensic Drive-revision check before marking the row
-`COMPLIANT`.
+match plus a forensic Drive-revision check — a genuine complete attempt
+lands in `PENDING_TEACHER_REVIEW` with an AI-suggested score (1-5 scale,
+5 reserved for teacher judgment alone) rather than a terminal `COMPLIANT`;
+the teacher confirms or overrides it from the Teacher Dashboard's Pending
+Review queue, which is what actually makes the status/score final (Say/Do
+Ledger cas-ccps finding #1). A partial or not-a-real-attempt submission
+never reaches this queue at all — it goes back through the same
+revision-feedback path as before, unchanged.
 
 ## Version control (clasp)
 

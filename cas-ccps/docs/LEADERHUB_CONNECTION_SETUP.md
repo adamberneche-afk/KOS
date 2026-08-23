@@ -15,10 +15,25 @@ leader-hub's request instead carries its own proof of identity — a Google
 ID token, verified inside this project's `doPost()` (see
 `07_TeacherDashboard.js`'s "LEADER-HUB JSON API" section) — so this second
 deployment needs Google's edge check *out of the way* entirely, not
-replaced by a laxer one. That means: same project, same code, a **second**
-web-app deployment with `access: ANYONE_ANONYMOUS` — the same access level
-leader-hub's own `EmailBridge.gs` already uses successfully for exactly
-this reason.
+replaced by a laxer one: a `DOMAIN`-restricted edge is built to answer with
+an interactive sign-in redirect when it can't cleanly authenticate a
+request, and a machine caller expecting a JSON response has no way to
+complete that redirect — it would just receive an HTML login page instead
+of data. That means: same project, same code, a **second** web-app
+deployment with `access: ANYONE_ANONYMOUS`, so nothing at Google's edge
+ever stands between the request and `doPost()`'s own real check.
+(**Correction**: an earlier version of this doc justified this by claiming
+`EmailBridge.gs` uses the same `ANYONE_ANONYMOUS` setting — checked
+directly against `EmailBridge.gs`'s own header comment, `leader-hub`'s
+`appsscript.json` [`"access": "DOMAIN"`], and `leader-hub/README.md`: it
+doesn't. `EmailBridge.gs` is actually deployed `access: DOMAIN`, and
+leader-hub's `callGAS()` reaches it successfully anyway with a plain,
+credential-less cross-origin `fetch()`. Why that particular combination
+works isn't fully explained here — flagged as a real, unresolved mechanics
+question, not glossed over — but it doesn't change the recommendation
+below: `ANYONE_ANONYMOUS` is still the right setting for this specific
+deployment, justified on its own merits above, independent of what
+`EmailBridge.gs` happens to use.)
 
 This does **not** weaken the human-facing dashboard's own security model —
 that deployment (and its `access: DOMAIN` setting) is untouched. The new
@@ -60,8 +75,9 @@ For each teacher's Teacher Dashboard project:
    - Who has access: **Anyone** — Apps Script's UI usually labels this
      "Anyone" without further qualification; confirm it does *not* require
      the caller to be signed in (this is the `ANYONE_ANONYMOUS` API value —
-     the point is no sign-in challenge at all, matching `EmailBridge.gs`'s
-     own deployment).
+     the point is no sign-in challenge at Google's edge at all, so
+     `doPost()`'s own OAuth-token check is the only real gate a request
+     passes through).
    - This creates a **second** `/exec` URL, distinct from the existing
      Teacher Dashboard URL used for the human-facing UI. Copy it.
 3. Paste that second URL into leader-hub → Settings → "Connect to

@@ -782,8 +782,12 @@ that document and get the quarter dates, no-school dates, and
 early-release dates pre-filled for review.
 
 **Why this is text-paste/upload, not a PDF-upload button.** This app has
-no PDF-parsing library and a strict CSP (no third-party scripts,
-`connect-src` limited to `script.google.com`) — there's no way to read a
+no PDF-parsing library and a strict CSP — no PDF-parsing script would be
+allowed to load regardless (the CSP's one exception, Google Identity
+Services for the optional cas-ccps OAuth connection, is a Google-hosted
+identity script, not a PDF library, and `connect-src` only extends as far
+as `script.google.com`/`script.googleusercontent.com`/`accounts.google.com`,
+still no general-purpose network access) — there's no way to read a
 PDF's content client-side without violating both. The honest, buildable
 version: open the county's calendar (PDF or webpage), select-all, copy,
 and paste the text into Settings — or upload a `.txt`/`.csv` file with
@@ -1091,9 +1095,101 @@ injection — and rekeying onto each student's array position instead
 would trade name-collision fragility for a live one (scores silently
 misattributed the moment the hand-edited roster array is reordered),
 for a data structure with no UI path that adds/renames/imports students
-and currently holds none. Left name-keyed, with a comment on
+and currently holds none. Left name-keyed at the time, with a comment on
 `initScrScores()` explaining the trade-off for whoever adds a real
-roster-editing UI later.
+roster-editing UI later. **Update (Round 11, see below):** that "later"
+arrived sooner than expected, via cas-ccps's `getRoster` API rather than
+a hand-built roster-editing UI — `_scrStudentKey()` now resolves to a
+student's linked email once one exists, name otherwise, and only
+students actually matched against that real, external roster get
+rekeyed; everyone else stays exactly as name-keyed as before.
+
+**Round 11** (`4c9b087`, `512aaff`, `34d6fa3`, `61e4500`, `647120e`,
+`c1f86a9`, `4a2e890`, `b928564`, `ab8da50`, `1c15b62`, `e509f60`,
+`4fe081c`, `d97aa9e`, `867d6f4`, `e1221d5`) — all 15 remaining Say/Do
+Ledger leader-hub findings, plus the cas-ccps↔leader-hub integration
+work. In finding order: `4c9b087` fixed the WBL "at risk" threshold
+(30→90 hours, matching the real HQWBL requirement, not a per-semester
+pacing figure the code never actually tracked). `512aaff` reframed Match
+Log as a personal results log with a direct link to the authoritative
+external PlayVS/VHSL bracket, instead of building a redundant internal
+one. `34d6fa3` made Brag Board journal entries opt-in per entry (default
+flipped from auto-include to requiring an explicit "✓ Include" mark).
+`61e4500` fixed `sbeNotes` bypassing the AI-privacy name substitution its
+sibling fields already went through, and consolidated every `aiDraft`
+payload builder onto one shared `_privacySafeAiPayload()` helper so a
+future call site can't independently forget a field. `647120e` re-scoped
+the Trip Process Map checklist from one global, refresh-losing state to
+per-trip and persisted (`t.procSteps`), retiring a disconnected static
+approval-status diagram in the same pass. `c1f86a9` made the Back Room
+Receiving Checklist per-PO (was one shared global state — checking boxes
+for one PO checked them for every PO), added a per-PO "Reset checklist"
+action and a completion timestamp/note. `4a2e890` links a PO to an
+Inventory SKU at creation and auto-increments inventory the moment a PO's
+receiving checklist completes — checklist completion is now the real
+event that connects procurement to inventory. `b928564` gave `finAnalysis()`
+real, distinct `roi`/`decisions` report builders (previously all 4 report
+buttons aliased the same `profitloss` output) routed through the same
+`aiDraft`/Workspace-Flow mechanism every other AI feature already uses.
+`ab8da50` reworked the SCR Grid view to compute column width against real
+viewport width instead of a hardcoded 700px assumption, added a real
+horizontal-scroll affordance, defaults to Cards view below a mobile
+breakpoint, and fixed the sticky "Req" column overlapping the Competency
+column (both had been sharing one `position:sticky;left:0` from a
+duplicate-`style`-attribute bug). `1c15b62` closed 3 real co-advisor
+sync-safety holes: Pull had no confirmation (unlike Join's identical
+action), no check for unpushed local edits before overwriting, and the
+server-side push guard could be bypassed by simply omitting
+`expectedUpdatedAt`. `e509f60` added a one-time "Welcome, co-advisor"
+disclosure plus a persistent "About this tool" Settings section,
+describing this app's real reliability model and the sync-safety
+behavior `1c15b62` just shipped. `4fe081c` made a trip's `stuAtt` count
+derive from its actual permission-slip roster once one exists, instead of
+staying frozen at the Wizard's originally-typed number — with a real
+answer to what happens if the headcount changes after a trip's already
+been submitted (a warning toast, not a silent change). `d97aa9e` added a
+per-flow-type lifetime counter to `EmailBridge.gs`'s job queue (previously
+swept with no record kept) and a new Settings → "AI Flow Health" panel —
+the leader-hub half of a cross-portfolio Flow Health & Inventory
+extension covering all three systems. `867d6f4` and `e1221d5` are D1's
+leader-hub side and its student-email follow-up — see "cas-ccps↔leader-hub
+integration" below for the fuller writeup, since that work is large
+enough to warrant its own section rather than folding into this list.
+
+---
+
+## cas-ccps↔leader-hub integration (D1 + Addendum 26)
+
+leader-hub's SCR grading grid and Pacing Calendar are now optional live
+clients of a connected cas-ccps Teacher Dashboard, instead of always
+relying on the frozen local copies (`CAS_PACING_UNITS`, the hand-typed
+`SCR_COURSES` roster) — a Settings → "Connect to cas-ccps" flow, deliberately
+separate from the existing Email Bridge connection since cas-ccps requires
+a real verified identity per request rather than trusting a bare URL.
+
+- **`CAS_CCPS_BRIDGE`** (`867d6f4`) — Google Identity Services
+  ("Sign In With Google") client-side, a short-lived ID token kept in
+  memory only (never localStorage), sent to cas-ccps's `doPost()` in a
+  `text/plain` POST body (same CORS-preflight-avoidance trick
+  `EMAIL_BRIDGE` already uses) rather than an `Authorization` header.
+  `refreshCasCcpsPacingGuide()` is a deliberate, button-triggered pull —
+  nothing syncs automatically, same convention as Org Sync's push/pull.
+- **Student-email link** (`e1221d5`) — the SCR grading grid had no
+  student-email field at all before this; a new `syncCasCcpsRoster()`
+  pulls cas-ccps's real per-teacher roster (via a new `getRoster` API
+  action) and matches it against the existing hand-placed period rosters
+  by name (cas-ccps's own `period` field used only as a tiebreaker when a
+  name collides across periods — never a hard join key, since the two
+  systems use different period vocabularies). `_scrStudentKey(stu)` is
+  the one place every `scrScores` read/write now resolves its key from —
+  a matched student's scores are non-destructively rekeyed from name to
+  email; anyone unmatched stays exactly as name-keyed as before. A
+  reconciliation report after each sync shows what matched, what's
+  already synced, and what needs manual review — nothing is added,
+  removed, or guessed automatically on either side.
+- **Scoped out on purpose, not silently dropped:** SCR read/write-back to
+  cas-ccps. cas-ccps's own SCR functions still lack per-teacher/ownership
+  gating, and this is a read-only, one-directional integration for now.
 
 ---
 
