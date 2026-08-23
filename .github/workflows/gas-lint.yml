@@ -22,6 +22,16 @@ jobs:
         run: node tools/gas-lint/check.js
       - name: Verify cas-ccps clasp-sync builds cleanly
         run: node tools/clasp-sync/sync.js
+      - name: Lint this repo's own GitHub Actions workflow files
+        # Catches exactly the class of bug that broke this file once already
+        # (a bare `secrets.X` reference inside an `if:` conditional, which
+        # GitHub rejects at parse time with zero jobs ever running — a
+        # generic YAML parser like PyYAML/js-yaml doesn't catch this, since
+        # it's a GitHub Actions expression-context rule, not a YAML syntax
+        # error). Official install method, no third-party marketplace action.
+        run: |
+          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint
 
   # ── Sandbox deploy (R10 — tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5) ──
   # Pushes HEAD to disconnected *sandbox* copies of the cas-ccps/kos-personal
@@ -56,9 +66,35 @@ jobs:
   #     illustrative job didn't spell out where these files come from in
   #     CI (cas-ccps/clasp/local/ is gitignored, so a fresh checkout never
   #     has them); this fills that gap.
-  sandbox-deploy:
+  #
+  # GitHub Actions does not allow a bare `secrets.X` reference inside an
+  # `if:` conditional (only inside `env:`/step bodies) — an earlier version
+  # of this file tried that directly and GitHub rejected the whole workflow
+  # at parse time (0 jobs ever ran, both pushes showed "failure" with no
+  # job list). This job below reads the secrets into a plain string output
+  # instead, and every `if:` downstream compares against that output, never
+  # against `secrets.*` directly.
+  check-sandbox-secrets:
     needs: [gas-lint]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && secrets.CLASP_SANDBOX_CREDENTIALS != '' && secrets.CAS_SANDBOX_SCRIPT_IDS != ''
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      configured: ${{ steps.check.outputs.configured }}
+    steps:
+      - id: check
+        run: |
+          if [ -n "$HAS_CREDS" ] && [ -n "$HAS_IDS" ]; then
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          fi
+        env:
+          HAS_CREDS: ${{ secrets.CLASP_SANDBOX_CREDENTIALS }}
+          HAS_IDS: ${{ secrets.CAS_SANDBOX_SCRIPT_IDS }}
+
+  sandbox-deploy:
+    needs: [gas-lint, check-sandbox-secrets]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.check-sandbox-secrets.outputs.configured == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -120,8 +156,8 @@ jobs:
   # the real job above would be skipped for lack of configuration, and
   # just says so plainly, with a pointer to what to add.
   sandbox-deploy-not-configured:
-    needs: [gas-lint]
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && (secrets.CLASP_SANDBOX_CREDENTIALS == '' || secrets.CAS_SANDBOX_SCRIPT_IDS == '')
+    needs: [gas-lint, check-sandbox-secrets]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push' && needs.check-sandbox-secrets.outputs.configured == 'false'
     runs-on: ubuntu-latest
     steps:
       - run: |
