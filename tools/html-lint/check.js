@@ -50,7 +50,18 @@ function extractInlineScripts(html) {
   // BEFORE a script block's content with newlines, so a syntax error's
   // reported line number inside the extracted block still matches the
   // real file's line number when read back by a human.
-  const re = /<script\b([^>]*)>([\s\S]*?)<\/script>/gi;
+  //
+  // FIXED (CodeQL js/bad-tag-filter): the closing-tag half used to be the
+  // rigid literal `<\/script>` - real HTML tolerates whitespace before
+  // the `>` (`</script >`, `</script  >`), which this didn't match. A
+  // stray extra space in a closing tag would have made this regex skip
+  // right past the real end and keep matching into whatever the NEXT
+  // `<\/script>` happened to be - silently extracting the wrong,
+  // oversized "block" instead of erroring. The closing tag is now its
+  // own capture group (3) specifically so its real matched length -
+  // whatever whitespace it actually contained - can be used below,
+  // instead of assuming the fixed 9-character literal.
+  const re = /<script\b([^>]*)>([\s\S]*?)(<\/script\s*>)/gi;
   let m;
   while ((m = re.exec(scannable))) {
     const attrs = m[1] || '';
@@ -64,7 +75,7 @@ function extractInlineScripts(html) {
     // comment inside a real script block must reach `node --check`
     // unblanked — only HTML-level <!-- --> comments outside/around script
     // tags are the thing being blanked.
-    const contentEnd = m.index + m[0].length - '</script>'.length;
+    const contentEnd = m.index + m[0].length - m[3].length;
     const before = html.slice(0, blockStart);
     const leadingNewlines = before.split('\n').length - 1;
     const content = html.slice(blockStart, contentEnd);
