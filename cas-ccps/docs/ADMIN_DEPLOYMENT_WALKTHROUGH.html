@@ -1498,6 +1498,10 @@ body {
         <p>Deploy: <strong>Deploy → New deployment → Web App</strong><br>
         Execute as: <strong>Me</strong> &nbsp;·&nbsp; Access: <strong>Anyone in your organization</strong><br>
         Copy the deployment URL — this is <strong>this teacher's</strong> Teacher Dashboard URL. Repeat this whole step for each additional teacher.</p>
+        <div class="callout callout-info">
+          <div class="callout-icon">🔗</div>
+          <div class="callout-body"><strong>Optional — only if this teacher will connect leader-hub:</strong> this project's <code>07_TeacherDashboard.js</code> also has a machine-readable JSON API (<code>doPost()</code>) that leader-hub's SCR grading grid and Pacing Calendar can pull live pacing/competency/roster data from, instead of leader-hub keeping its own frozen local copy. That's a separate one-time setup — a third Script Property (<code>LEADER_HUB_OAUTH_CLIENT_ID</code>) and a <strong>second</strong> deployment of this same project with different access settings — documented on its own in <code>docs/LEADERHUB_CONNECTION_SETUP.md</code>, not repeated here. Skip it entirely if this teacher isn't using leader-hub.</div>
+        </div>
       </div>
     </div>
 
