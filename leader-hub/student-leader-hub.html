@@ -9391,6 +9391,43 @@ let CUSTOM_COURSES = LS.get('lh_custom_courses', {});
 Object.assign(SCR_COURSES, CUSTOM_COURSES);
 function persistCustomCourses() { LS.set('lh_custom_courses', CUSTOM_COURSES); }
 
+// ── Student-email linking (Say/Do Ledger, Addendum 26 — "one source of
+// truth for both systems") ───────────────────────────────────────────────
+// SCR_COURSES' built-in courses are a hardcoded const literal — there's
+// nowhere on the object itself to durably persist a `.email` a sync ever
+// attaches to a student, since a page reload rebuilds SCR_COURSES fresh
+// from source every time. This overlay is that persistence layer, mirroring
+// CUSTOM_COURSES' own "persisted, merged onto the hardcoded literal at
+// boot" pattern immediately above. Shape: { [course]: { [period]:
+// { [name]: email } } } — keyed by the student's CURRENT name in the
+// SCR_COURSES literal at the time they were matched (see
+// syncCasCcpsRoster()'s own known-limitation note: renaming a student
+// after matching orphans this entry, same trade-off already accepted for
+// name-keying in general, not newly introduced here).
+let SCR_STUDENT_EMAILS = LS.get('lh_scr_student_emails', {});
+function persistScrStudentEmails() { LS.set('lh_scr_student_emails', SCR_STUDENT_EMAILS); }
+function _applyScrStudentEmails_() {
+  for (const code in SCR_STUDENT_EMAILS) {
+    const course = SCR_COURSES[code];
+    if (!course) continue;
+    const byPeriod = SCR_STUDENT_EMAILS[code];
+    for (const period in byPeriod) {
+      const list = course.periods[period];
+      if (!list) continue;
+      const nameToEmail = byPeriod[period];
+      for (const stu of list) {
+        if (!stu.email && nameToEmail[stu.name]) stu.email = nameToEmail[stu.name];
+      }
+    }
+  }
+}
+_applyScrStudentEmails_(); // safe here: SCR_COURSES/CUSTOM_COURSES merge is already done above
+
+// The single point every scrScores read/write should key off from here on
+// — resolves to the linked email once one exists, falls back to the plain
+// name string otherwise (unchanged behavior for anyone not yet matched).
+function _scrStudentKey(stu) { return stu.email || stu.name; }
+
 
 // ── Pacing Guide Cross-Reference: 8175 lesson → competencies ─────────────────
 // Existing lesson competencies taken verbatim from authoritative pacing guide doc.
@@ -9792,7 +9829,8 @@ function initScrScores() {
     for (const [period, students] of Object.entries(course.periods)) {
       if (!scrScores[code][period]) scrScores[code][period] = {};
       for (const stu of students) {
-        if (!scrScores[code][period][stu.name]) scrScores[code][period][stu.name] = { ...stu.scores };
+        const key = _scrStudentKey(stu);
+        if (!scrScores[code][period][key]) scrScores[code][period][key] = { ...stu.scores };
       }
     }
   }
@@ -9882,7 +9920,7 @@ function renderCompetencyView() {
   // Compute class stats
   let totalScored = 0, totalPossible = 0, satisfactory = 0, stuStats = [];
   for (const stu of students) {
-    const s = myScores[stu.name] || {};
+    const s = myScores[_scrStudentKey(stu)] || {};
     const scored = Object.keys(s).length;
     const sat = Object.values(s).filter(v => v >= 1 && v <= 3).length;
     totalScored += scored;
@@ -9984,7 +10022,7 @@ function renderPacingView(course, students, myScores) {
               const compNums = entry.comps;
               let totalCells = 0, satCells = 0, scoredCells = 0;
               for(const stu of students){
-                const s = myScores[stu.name] || {};
+                const s = myScores[_scrStudentKey(stu)] || {};
                 for(const c of compNums){
                   totalCells++;
                   if(s[c] != null){ scoredCells++; if(s[c]<=3) satCells++; }
@@ -10054,7 +10092,7 @@ function renderPacingView(course, students, myScores) {
                 <!-- Competency chips -->
                 <div style="display:flex;flex-wrap:wrap;gap:.3rem">
                   ${compNums.map(c => {
-                    const scored = students.map(s=>(myScores[s.name]||{})[c]).filter(v=>v!=null);
+                    const scored = students.map(s=>(myScores[_scrStudentKey(s)]||{})[c]).filter(v=>v!=null);
                     const avgSat = scored.length ? Math.round(scored.filter(v=>v<=3).length/scored.length*100) : null;
                     const chipBg = avgSat===null?'#f3f4f6':avgSat>=80?'#dcfce7':avgSat>=60?'#fef9c3':'#fee2e2';
                     const chipColor = avgSat===null?'#6b7280':avgSat>=80?'#15803d':avgSat>=60?'#92400e':'#b91c1c';
@@ -10066,7 +10104,7 @@ function renderPacingView(course, students, myScores) {
                 <!-- Comp text detail -->
                 <div style="margin-top:.5rem;border-top:1px dashed ${Q_COLORS_BDR[q]};padding-top:.45rem">
                   ${compNums.map(c => {
-                    const scores = students.map(s=>(myScores[s.name]||{})[c]).filter(v=>v!=null);
+                    const scores = students.map(s=>(myScores[_scrStudentKey(s)]||{})[c]).filter(v=>v!=null);
                     const sat = scores.filter(v=>v<=3).length;
                     const pct = scores.length ? Math.round(sat/scores.length*100) : null;
                     const bar = pct !== null ? `<div style="display:inline-block;width:40px;height:5px;background:#e5e7eb;border-radius:3px;overflow:hidden;vertical-align:middle;margin-left:4px"><div style="height:100%;width:${pct}%;background:${pct>=80?'#22c55e':pct>=60?'#f59e0b':'#ef4444'}"></div></div>` : '';
@@ -11357,7 +11395,7 @@ function renderScrTable(course, students, myScores) {
   if (scrViewMode === 'list') {
     // Student-focused list view
     el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.75rem">
-      ${students.map(stu => renderStudentCard(stu, course, myScores[stu.name] || {})).join('')}
+      ${students.map(stu => renderStudentCard(stu, course, myScores[_scrStudentKey(stu)] || {})).join('')}
     </div>`;
     return;
   }
@@ -11411,7 +11449,7 @@ function renderScrTable(course, students, myScores) {
               const comp = item.comp;
               const isOpt = comp.req !== 'Required';
               // Compute class average for this comp
-              const scored = students.map(s => (myScores[s.name] || {})[comp.num]).filter(v => v != null);
+              const scored = students.map(s => (myScores[_scrStudentKey(s)] || {})[comp.num]).filter(v => v != null);
               const satCount = scored.filter(v => v <= 3).length;
               const pct = scored.length ? Math.round(satCount / scored.length * 100) : null;
               const pctColor = pct === null ? '#ccc' : pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
@@ -11426,7 +11464,7 @@ function renderScrTable(course, students, myScores) {
                   <span style="font-size:.62rem;font-weight:700;padding:1px 5px;border-radius:10px;background:${isOpt?'#f3f4f6':'#dbeafe'};color:${isOpt?'#9ca3af':'#1d4ed8'}">${isOpt?'Opt':'Req'}</span>
                 </td>
                 ${students.map(stu => {
-                  const score = (myScores[stu.name] || {})[comp.num];
+                  const score = (myScores[_scrStudentKey(stu)] || {})[comp.num];
                   // FIXED: Grid is the default scrViewMode, but its score
                   // cell never got the keyboard support (role/tabindex/
                   // onkeydown/aria-label) an earlier round already added
@@ -11435,8 +11473,8 @@ function renderScrTable(course, students, myScores) {
                   // was keyboard-inaccessible.
                   return `<td style="text-align:center">
                     <span class="scr-score scr-s${score||0}" role="button" tabindex="0"
-                      onclick="cycleScore('${escJsAttr(stu.name)}',${comp.num},this)"
-                      onkeydown="scrScoreKeydown(event,'${escJsAttr(stu.name)}',${comp.num},this)"
+                      onclick="cycleScore('${escJsAttr(_scrStudentKey(stu))}',${comp.num},this)"
+                      onkeydown="scrScoreKeydown(event,'${escJsAttr(_scrStudentKey(stu))}',${comp.num},this)"
                       title="${escH(stu.name)} — #${comp.num}"
                       aria-label="${escH(stu.name)}, competency ${comp.num}, ${score?(SCR_SCORE_LABELS[score]||score)+' ('+score+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
                     >${score || '·'}</span>
@@ -11514,9 +11552,9 @@ function renderStudentCard(stu, course, scores) {
           const s = scores[c.num];
           const cls = `scr-s${s||0}`;
           return `<span class="scr-score ${cls}" style="width:22px;height:18px;font-size:.62rem" role="button" tabindex="0"
-            data-scr-key="${escH(stu.name)}::${c.num}"
-            onclick="cycleScore('${escJsAttr(stu.name)}',${c.num},this)"
-            onkeydown="scrScoreKeydown(event,'${escJsAttr(stu.name)}',${c.num},this)"
+            data-scr-key="${escH(_scrStudentKey(stu))}::${c.num}"
+            onclick="cycleScore('${escJsAttr(_scrStudentKey(stu))}',${c.num},this)"
+            onkeydown="scrScoreKeydown(event,'${escJsAttr(_scrStudentKey(stu))}',${c.num},this)"
             title="#${c.num}: ${c.text.substring(0,50)}${s?' — '+(SCR_SCORE_LABELS[s]||s):''}"
             aria-label="${escH(stu.name)}, competency ${c.num}, ${s?SCR_SCORE_LABELS[s]+' ('+s+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
           >${s||'·'}</span>`;
@@ -11609,7 +11647,7 @@ function exportSCR() {
   
   const headers = ['Student', ...course.competencies.map(c => `#${c.num} ${c.req==='Required'?'(R)':'(O)'}: ${c.text.substring(0,40)}`)];
   const rows = students.map(stu => {
-    const s = myScores[stu.name] || {};
+    const s = myScores[_scrStudentKey(stu)] || {};
     return [stu.name, ...course.competencies.map(c => s[c.num] || '')];
   });
   
@@ -13361,7 +13399,7 @@ function openAISCRInsights() {
   const RATING_BG = {'1':'#dcfce7','2':'var(--blue-light)','3':'#e0f2fe','4':'#fef9c3','5':'var(--red-light)'};
 
   const rows = students.map(stu => {
-    const stuScores = myScores[stu.name] || {};
+    const stuScores = myScores[_scrStudentKey(stu)] || {};
     const rated = comps.filter(c => stuScores[c.num] && stuScores[c.num] !== '·').length;
     const avg   = rated ? (comps.reduce((s,c)=>s+(Number(stuScores[c.num])||0),0)/rated).toFixed(1) : '—';
     const cells = comps.map(c => {
@@ -14618,7 +14656,7 @@ function getPulseData(){
     Object.entries(SCR_COURSES).forEach(([code, c]) => {
       const comps = c.competencies || [];
       Object.keys(c.periods || {}).forEach(per => {
-        const stuList = (c.periods[per] || []).map(s => s.name);
+        const stuList = (c.periods[per] || []).map(s => _scrStudentKey(s));
         const perScores = ((_allScores[code] || {})[per]) || {};
         stuList.forEach(name => {
           comps.forEach(comp => {
@@ -18300,6 +18338,177 @@ function _transformCasCcpsPacingUnit_(u) {
   };
 }
 
+// ── SCR roster/email sync (Say/Do Ledger, Addendum 26 — "one source of
+// truth for both systems") ───────────────────────────────────────────────
+// Pulls this teacher's real student roster (name+email+period) from
+// cas-ccps and links it onto leader-hub's own SCR_COURSES roster by name —
+// the only key that exists on both sides today. Scoped to the two courses
+// cas-ccps actually tracks (CAS_PACING_COURSES: 8175/8177); '6115' has no
+// cas-ccps counterpart and is left entirely alone. A deliberate,
+// button-triggered action — same "always a deliberate click" convention as
+// refreshCasCcpsPacingGuide() and Org Sync's push/pull.
+async function syncCasCcpsRoster() {
+  if (!CAS_CCPS_BRIDGE.apiUrl()) {
+    _showToast('⚙️ Connect to cas-ccps first — Settings → Connect to cas-ccps', 4000, '#991b1b');
+    return;
+  }
+  if (!CAS_CCPS_BRIDGE.hasValidToken()) {
+    _showToast('Sign in to cas-ccps first (Settings → Connect to cas-ccps).', 4000, '#991b1b');
+    return;
+  }
+  try {
+    const res = await callCasCcps('getRoster', {});
+    if (!res || !res.success) {
+      _showToast('⚠ ' + ((res && res.message) || 'Could not fetch roster.'), 4000, '#991b1b');
+      return;
+    }
+    const report = _reconcileCasCcpsRoster_(res.students || []);
+    persistScrStudentEmails();
+    persistSCR();
+    if (document.getElementById('scr-content')) renderCompetencyView();
+    if (typeof _updateCasCcpsStatus_ === 'function') _updateCasCcpsStatus_();
+    _showCasCcpsRosterReport_(report);
+  } catch (e) {
+    _showToast('⚠ Roster sync failed: ' + e.message, 4000, '#991b1b');
+  }
+}
+
+function _normalizeStudentName_(name) {
+  return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+// cas-ccps's Period field is free text (Form 1's own help text is literally
+// "e.g. 3") — a bare number, not leader-hub's "3rd Odd"/"3rd Even" format.
+// Extracting the leading digit sequence from either side gives a rough,
+// same-vocabulary comparison usable only as a disambiguation signal, never
+// a primary key — see _reconcileCasCcpsRoster_'s own comment on why.
+function _periodNumber_(periodStr) {
+  const m = String(periodStr || '').match(/(\d+)/);
+  return m ? m[1] : null;
+}
+
+/**
+ * Matches cas-ccps's flat, per-teacher roster (no period bucketing of its
+ * own — Ledger has no equivalent to leader-hub's period-keyed rosters, see
+ * cas-ccps's own _getRosterForEmail_ comment) against every still-unmatched
+ * student already hand-placed into a period roster for the two eligible
+ * courses. Name-matched only (no better key exists on either side); when
+ * more than one same-named candidate is found, cas-ccps's own `period`
+ * value is used only to try to narrow to exactly one — if it doesn't
+ * resolve the tie, the pair is left for manual review, never guessed.
+ *
+ * Idempotent by construction: a student who already carries `.email` is
+ * excluded from the matching pool entirely (their cas-ccps row is counted
+ * as "already synced" and skipped), so re-running this after a successful
+ * match never re-matches by name a second time and can't attach a
+ * conflicting email.
+ */
+function _reconcileCasCcpsRoster_(casStudents) {
+  const report = { matchedNow: [], alreadySynced: 0, ambiguous: [], casUnmatched: [], leaderHubUnmatched: [] };
+
+  const alreadyMatchedEmails = new Set();
+  const unmatchedPool = []; // { code, period, stu }
+  for (const code of CAS_PACING_COURSES) {
+    const course = SCR_COURSES[code];
+    if (!course) continue;
+    for (const [period, list] of Object.entries(course.periods || {})) {
+      for (const stu of list) {
+        if (stu.email) alreadyMatchedEmails.add(stu.email.toLowerCase());
+        else unmatchedPool.push({ code, period, stu });
+      }
+    }
+  }
+
+  for (const casRow of casStudents) {
+    const casEmail = String(casRow.email || '').trim();
+    if (!casEmail) continue;
+    if (alreadyMatchedEmails.has(casEmail.toLowerCase())) { report.alreadySynced++; continue; }
+
+    const normCasName = _normalizeStudentName_(casRow.name);
+    const candidates = unmatchedPool.filter(e => _normalizeStudentName_(e.stu.name) === normCasName);
+
+    if (!candidates.length) { report.casUnmatched.push(casRow); continue; }
+
+    let winner = candidates.length === 1 ? candidates[0] : null;
+    if (!winner) {
+      const casPeriodNum = _periodNumber_(casRow.period);
+      const narrowed = casPeriodNum ? candidates.filter(e => _periodNumber_(e.period) === casPeriodNum) : [];
+      if (narrowed.length === 1) winner = narrowed[0];
+    }
+    if (!winner) {
+      report.ambiguous.push({ name: casRow.name, entries: candidates.map(e => ({ code: e.code, period: e.period })) });
+      continue;
+    }
+
+    winner.stu.email = casEmail;
+    SCR_STUDENT_EMAILS[winner.code] = SCR_STUDENT_EMAILS[winner.code] || {};
+    SCR_STUDENT_EMAILS[winner.code][winner.period] = SCR_STUDENT_EMAILS[winner.code][winner.period] || {};
+    SCR_STUDENT_EMAILS[winner.code][winner.period][winner.stu.name] = casEmail;
+    _rekeyScrScoresForMatch_(winner.code, winner.period, winner.stu.name, casEmail);
+    report.matchedNow.push({ code: winner.code, period: winner.period, name: winner.stu.name, email: casEmail });
+    unmatchedPool.splice(unmatchedPool.indexOf(winner), 1);
+  }
+
+  for (const { code, period, stu } of unmatchedPool) {
+    report.leaderHubUnmatched.push({ code, period, name: stu.name });
+  }
+
+  return report;
+}
+
+// The non-destructive migration itself: renames a scrScores bucket key from
+// a student's old name to their newly-linked email. Never deletes — merges
+// defensively if both keys somehow already exist (favoring the email-keyed
+// side's own values on conflict, since that's the side being kept going
+// forward), and only removes the old key after a successful copy.
+function _rekeyScrScoresForMatch_(course, period, oldName, newKey) {
+  const bucket = scrScores[course] && scrScores[course][period];
+  if (!bucket || oldName === newKey || !bucket[oldName]) return;
+  bucket[newKey] = bucket[newKey] ? Object.assign({}, bucket[oldName], bucket[newKey]) : bucket[oldName];
+  delete bucket[oldName];
+}
+
+// One-shot reconciliation report — mirrors openAISCRInsights()'s own ad-hoc
+// full-screen-overlay modal convention (not a persistent .mo-registered
+// modal, since this is a dismissible report, not a reopenable dialog).
+function _showCasCcpsRosterReport_(report) {
+  const needsReview = report.ambiguous.length + report.casUnmatched.length + report.leaderHubUnmatched.length;
+
+  const section = (title, caption, rows) => rows.length ? `
+    <div style="margin-top:.85rem">
+      <div style="font-size:.75rem;font-weight:700;margin-bottom:.2rem">${title} (${rows.length})</div>
+      <div style="font-size:.7rem;color:var(--muted);margin-bottom:.4rem">${caption}</div>
+      <div style="max-height:160px;overflow:auto;border:1px solid var(--border);border-radius:6px">
+        ${rows.map(r => `<div style="padding:.3rem .5rem;font-size:.75rem;border-bottom:1px solid var(--border-soft)">${r}</div>`).join('')}
+      </div>
+    </div>` : '';
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:560px;width:95%;border-radius:12px;padding:1.5rem;max-height:85vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-weight:800">✅ Roster sync complete</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:.8rem;color:var(--ink)">
+      ${report.matchedNow.length} newly matched · ${report.alreadySynced} already synced${needsReview ? ` · ${needsReview} need review` : ''}
+    </div>
+    ${section('cas-ccps has these students, but no leader-hub period roster entry matched',
+      'Add them to a period roster by hand, then sync again — leader-hub has no way to know which period they belong in.',
+      report.casUnmatched.map(r => `${escH(r.name)} — ${escH(r.email)}`))}
+    ${section("leader-hub has these students, but cas-ccps's roster has no match",
+      'Stays name-keyed — nothing is lost, just not yet linked to an email.',
+      report.leaderHubUnmatched.map(r => `${escH(SCR_COURSES[r.code] ? SCR_COURSES[r.code].name : r.code)} · ${escH(r.period)} · ${escH(r.name)}`))}
+    ${section('Ambiguous — more than one student shares this name',
+      'Not matched automatically. Resolve by renaming one, or hand-verify, then re-sync.',
+      report.ambiguous.map(r => `${escH(r.name)} — ${r.entries.map(e => escH((SCR_COURSES[e.code] ? SCR_COURSES[e.code].name : e.code) + ' · ' + e.period)).join(', ')}`))}
+    <div style="margin-top:1rem;text-align:right">
+      <button class="btn btn-primary" onclick="this.closest('[style*=fixed]').remove()">Close</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
 function emailBridgeToast_(h, d) {
   const old = document.getElementById('eb-toast'); if (old) old.remove();
   const total = h + d;
@@ -21477,7 +21686,7 @@ function showBragBoardPromptBanner() {
     <div class="mbody" style="display:flex;flex-direction:column;gap:1rem">
 
       <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:.85rem;font-size:.8rem;color:#14532d;line-height:1.6">
-        <strong>⭐ Live pacing guide &amp; competency data</strong> — once connected and signed in, "Refresh pacing guide" pulls the real, current guide straight from your cas-ccps Teacher Dashboard instead of the frozen copy built into this page. Nothing syncs automatically — you choose when to refresh.
+        <strong>⭐ Live pacing guide &amp; competency data</strong> — once connected and signed in, "Refresh pacing guide" pulls the real, current guide straight from your cas-ccps Teacher Dashboard instead of the frozen copy built into this page. "Sync Student Roster" links your SCR grading grid's students (for 8175/8177) to their real cas-ccps email — closing the student-email mismatch between the two systems, so cas-ccps stays the one source of truth for who's who. Nothing syncs automatically — you choose when to refresh or sync.
       </div>
 
       <div>
@@ -21516,6 +21725,11 @@ function showBragBoardPromptBanner() {
       <button class="btn btn-outline" onclick="refreshCasCcpsPacingGuide()">
         🔄 Refresh Pacing Guide Now
       </button>
+
+      <button class="btn btn-outline" onclick="syncCasCcpsRoster()">
+        🔗 Sync Student Roster Now
+      </button>
+      <div style="font-size:.7rem;color:var(--muted)">Links your SCR grading grid's students (8175/8177 only — 6115 has no cas-ccps counterpart) to their real cas-ccps email, by name. Reconciles both ways when a name doesn't match — nothing is added, removed, or renamed automatically.</div>
 
       <hr style="border:none;border-top:1px solid var(--border)">
 
