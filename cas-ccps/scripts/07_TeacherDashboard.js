@@ -160,7 +160,7 @@ function _verifyLeaderHubToken_(idToken, cfg) {
  * Expected POST body (JSON, sent as text/plain to avoid a CORS preflight
  * Apps Script can't answer — same convention leader-hub's own EmailBridge.gs
  * already uses):
- *   { idToken: "<Google ID token>", action: "getPacingGuide" | "getCompetencyRegistry" }
+ *   { idToken: "<Google ID token>", action: "getPacingGuide" | "getCompetencyRegistry" | "getRoster" }
  *
  * @param {GoogleAppsScript.Events.DoPost} e
  * @returns {TextOutput} JSON response, always HTTP 200 (success/failure is
@@ -196,6 +196,8 @@ function doPost(e) {
       result = _apiGetPacingGuide_();
     } else if (action === "getCompetencyRegistry") {
       result = _apiGetCompetencyRegistry_(cfg, auth.email);
+    } else if (action === "getRoster") {
+      result = _apiGetRoster_(cfg, auth.email);
     } else {
       result = { success: false, message: "Unknown action: " + action };
     }
@@ -232,6 +234,72 @@ function _apiGetPacingGuide_() {
  */
 function _apiGetCompetencyRegistry_(cfg, email) {
   return { success: true, data: _getCompetenciesForEmail_(cfg, email) };
+}
+
+/**
+ * Student-email-linking fix (Say/Do Ledger, Addendum 26 — "one source of
+ * truth for both systems"). leader-hub's SCR grading grid has never had a
+ * student-email field; cas-ccps's Ledger is the one place a student's real
+ * email is captured (Form 1 intake, column "GoogleID" — misleadingly named,
+ * holds the actual email address everywhere it's used). This is the first
+ * doPost() action that returns student PII (name+email+period), unlike
+ * getPacingGuide/getCompetencyRegistry — see LEADERHUB_CONNECTION_SETUP.md
+ * and FERPA_DATA_MAP.md, both updated alongside this.
+ *
+ * auth.email is the OAuth-token-verified caller (already checked by
+ * doPost() above) — passed straight through, never re-derived, same
+ * pattern _apiGetCompetencyRegistry_ already uses.
+ */
+function _apiGetRoster_(cfg, email) {
+  try {
+    return { success: true, students: _getRosterForEmail_(cfg, email) };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Builds this teacher's student roster from the Ledger directly — NOT a
+ * reuse of exportToWorkbookGrid_() (30_SCRSuggestionEngine.js: different
+ * GAS project, cas-ccps:central-ledger, not callable from this project's
+ * doPost(); also loops every teacher's students with no per-teacher filter,
+ * unsafe to reuse verbatim) and NOT a reuse of getAllStudentDocsForTeacher_()
+ * (29_StudentContextAggregator.js: same project as this file, but joins
+ * through StudentDocRegistry — under-reports any student who doesn't yet
+ * have a Module-4 context doc). Same Ledger-join *pattern* both of those
+ * already use (row[1]=GoogleID/email, row[4]=StudentName, row[6]=ClassName,
+ * row[8]=TeacherEmail — see getDashboardData() below), but a fresh,
+ * correctly-scoped implementation.
+ *
+ * `className` is included for display context only — Form 1's "Course
+ * Name" field is free text with no enum/validation at capture time, so it
+ * cannot be reliably cross-referenced against leader-hub's own "8175"/
+ * "8177" course codes. `period` (row[11], also free text — Form 1's help
+ * text is literally "e.g. 3") is included as a secondary disambiguation
+ * signal for leader-hub's name-matching, not a hard join key — the two
+ * systems use different period vocabularies ("3" here vs. "3rd Odd" there).
+ */
+function _getRosterForEmail_(cfg, teacherEmail) {
+  const ss     = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet  = ss.getSheetByName(cfg.tabs.ledger);
+  const data   = sheet ? sheet.getDataRange().getValues() : [];
+  const wanted = String(teacherEmail || "").trim().toLowerCase();
+
+  const byEmail = new Map(); // dedup — a student can have multiple Ledger rows (one per assignment)
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[8] || "").trim().toLowerCase() !== wanted) continue;
+    const email = String(row[1] || "").trim();
+    if (!email || byEmail.has(email.toLowerCase())) continue;
+    byEmail.set(email.toLowerCase(), {
+      name:      String(row[4] || "").trim(),
+      email:     email,
+      className: String(row[6] || "").trim(),
+      period:    String(row[11] || "").trim(),
+    });
+  }
+
+  return [...byEmail.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // ---------------------------------------------------------------------------
