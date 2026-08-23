@@ -158,7 +158,7 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - **CURATOR** — Organisation, synthesis, information retrieval
 - **ALIGNMENT** — Always active, monitors for boundary drift (also the cog behind the `04.5_ALIGNER_SILO` Calibration Silo folder and `CE-ALIGN` tag — same cog, older folder-naming convention)
 
-**What "Run full council review" does today:** it assembles current state + pivots into one shared review document instructing the model to act as **ARCHITECT, AUDITOR, and MUSE together** and return a verdict from each — not a fully sequestered, independent-per-persona review. The verdicts appear in the COG_REGISTRY sheet of your BRAIN_TRUST_INDEX once Studio processes the document. A fuller sequestered design — all personas isolated from each other's verdicts ("Seven Bridges," SMP-002) — is specified but not yet built.
+**What "Run full council review" does today:** it's the real, sequestered "Seven Bridges" design (SMP-002) — no longer the older shared-context shortcut that asked one model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass (that's `triggerCouncilSimulation()`, now explicitly superseded, kept only for reference). The button now calls `triggerSevenBridgesReview()`, which assembles **one shared stimulus document** and a fresh Council ID. Real sequestration comes from what you do next, not from anything the pipeline does automatically: send that one document to each cog independently — a separate Gemini Gem conversation per cog, no shared context between them — then log each cog's verdict back under that same Council ID via **Ingest → Cog Verdict**. Once enough verdicts are in, `compileCouncilVerdict_()` enforces the halt-execution rule (3 or more non-APPROVED verdicts halts) and the results land in COG_REGISTRY.
 
 **When to use it:**
 - Before a major decision that affects multiple stakeholders
@@ -166,7 +166,7 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - When you're in a planning loop and want external challenge
 
 **How to trigger it:**
-Go to Diagnostics → **Run full council review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, the shared review document above is routed to RAW_EXHAUST for Studio to pick up.
+Go to Diagnostics → **Run full council review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Ingest → Cog Verdict** using that Council ID.
 
 The council runs automatically every 5 sessions (configurable). You'll see the button pulse in Diagnostics when an auto-trigger fires.
 

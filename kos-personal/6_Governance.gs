@@ -54,6 +54,30 @@
 //                        triggerCouncilSimulation() for web app
 //                        Diagnostics tab. HITL version with
 //                        ui.alert stays in 9_UI_Diagnostics.gs.
+//
+// SEVEN BRIDGES — the real sequestered council review (SMP-002)
+// ─────────────────────────────────────────────────────────────
+//  triggerSevenBridgesReview()  Assembles ONE shared stimulus document
+//                        (reusing triggerCouncilSimulation()'s own
+//                        doc-assembly logic) and hands it to the
+//                        operator to paste into each of CFG.PERSONAS'
+//                        separate Gemini Gem conversations — real
+//                        sequestration comes from that product
+//                        boundary, not from anything built here.
+//  compileCouncilVerdict_()  Reads every COG_REGISTRY row sharing a
+//                        council ID (written by submitCogVerdict() in
+//                        2_Ingestion_Sensors.gs) and enforces the
+//                        halt-execution rule (CFG.COG_HALT_THRESHOLD,
+//                        1_Config_And_Deploy.gs — 3+ non-APPROVED
+//                        verdicts halts). Called from the menu wrapper
+//                        sevenBridgesReview() (9_UI_Diagnostics.gs),
+//                        which SUPERSEDED that same function's old
+//                        static "PENDING USER APPROVAL" stub.
+//  triggerCouncilSimulation()  Explicitly SUPERSEDED by the above —
+//                        one shared-context prompt asking the model
+//                        to role-play all personas together, exactly
+//                        the cross-contamination BRIDGE_FIDELITY_001
+//                        forbids. Kept only for reference.
 // ================================================================
 
 

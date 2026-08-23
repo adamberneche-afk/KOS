@@ -30,6 +30,19 @@
 //    Output  : single doc → 03.4_RAW_EXHAUST
 //              STAGING row: Payload_Type = EXTERNAL_DATA
 //
+//  Sensor 3b — COG_VERDICT (Seven Bridges council review, SMP-002)
+//    Trigger : none — direct web app call only
+//    Handler : submitCogVerdict(councilId, cogName, status, summary)
+//    Web path: same "Cog Verdict" Ingest-tab type as Sensor 2, distinct
+//              action — see this function's own full doc comment below
+//              for why it deliberately skips PENDING_FLOW/STUDIO_ACTIVE
+//              and doesn't reuse Sensor 1/3's dedup-by-content-hash guard.
+//    Output  : COG_REGISTRY row; compileCouncilVerdict_() (6_Governance.gs)
+//              reads these once a council's verdicts are all in.
+//    Reuses the "Sensor 3" label on its own doc comment below (a
+//    numbering collision, not a hierarchy claim) — kept as "3b" here so
+//    this map doesn't silently omit it.
+//
 // SHARED HELPERS
 //   _queuePayload()  → writes a single STAGING_PIPELINE row
 //   _chunkAndQueue() → splits text and calls _queuePayload per chunk
