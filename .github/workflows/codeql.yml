@@ -9,6 +9,18 @@
 # the `language` matrix defined below to confirm you have the correct set of
 # supported CodeQL languages.
 #
+# History: an earlier version of this file (hand-written on PR #4, before
+# Code scanning was enabled in repo Settings) hit two real problems in a
+# row - a missing `actions: read` permission, then a hard "Code scanning
+# is not enabled for this repository" wall no workflow commit could fix.
+# The repo owner then enabled Code scanning via Settings -> Advanced
+# setup, which committed THIS file directly to `main` - already correct
+# on both counts (this template already declares `actions: read`) and
+# already verified running successfully on push/pull_request. Kept as the
+# canonical file rather than reinstating the hand-written one; only the
+# `paths-ignore` block below (excluding cas-ccps's gitignored clasp-sync
+# build scratch) was folded back in from that earlier version.
+#
 name: "CodeQL Advanced"
 
 on:
@@ -79,6 +91,18 @@ jobs:
 
         # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
         # queries: security-extended,security-and-quality
+
+        # Folded back in from the earlier hand-written version of this
+        # file: never scan cas-ccps's clasp-sync build scratch. It's
+        # gitignored (tools/clasp-sync/README.md), so a CI checkout never
+        # has it anyway - this only matters if CodeQL is ever run outside
+        # a fresh checkout (e.g. an actions/checkout with a stale
+        # workspace), where it would otherwise be a duplicate of
+        # cas-ccps/scripts/ already scanned.
+        config: |
+          paths-ignore:
+            - 'cas-ccps/.clasp-build/**'
+            - '**/node_modules/**'
 
     # If the analyze step fails for one of the languages you are analyzing with
     # "We were unable to automatically build your code", modify the matrix above
