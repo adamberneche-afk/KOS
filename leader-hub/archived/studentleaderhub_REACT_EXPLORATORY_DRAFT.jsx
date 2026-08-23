@@ -1,10 +1,13 @@
 // ============================================================================
 // NOT THE DEPLOYED APP — exploratory React/JSX draft only.
-// The live, actively-maintained app is student-leader-hub.html (a single
-// static file, no build step, no React). This file uses placeholder data
-// ("Maya Chen" etc.) and isn't wired into anything — kept for reference,
-// not maintained alongside the real app. See leader-hub/README.md's
-// Layout table.
+// The live, actively-maintained app is ../student-leader-hub.html (a
+// single static file, no build step, no React). This file uses
+// placeholder data ("Maya Chen" etc.) and isn't wired into anything — kept
+// for reference, not maintained alongside the real app. Filed here
+// alongside archived/studentleaderhub_EARLY_PROTOTYPE.html — a real
+// superseded design, not a duplicate — per this repo's convention of
+// keeping every non-deployed design under archived/ rather than at the
+// leader-hub/ top level. See leader-hub/README.md's Layout table.
 // ============================================================================
 import { useState, useEffect } from "react";
 
