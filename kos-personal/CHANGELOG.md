@@ -99,11 +99,22 @@ picking this project up later who wants to know what changed and when.
 10. **The council-simulation UI copy was corrected** to describe what
     `triggerCouncilSimulation()` actually does — one shared review document
     covering ARCHITECT, AUDITOR, and MUSE together — instead of the
-    hardcoded, inaccurate "7 isolated cog stimuli" framing. The fuller
-    7-persona sequestered "Seven Bridges" design (SMP-002) remains
+    hardcoded, inaccurate "7 isolated cog stimuli" framing. At the time,
+    the fuller sequestered "Seven Bridges" design (SMP-002) remained
     unbuilt, pending its own `PENDING USER APPROVAL` governance gate per
     `9_UI_Diagnostics.gs`'s `sevenBridgesReview()` — that scope boundary
     was intentional, not an oversight.
+    **Update — this gap is now closed** (Say/Do Ledger C4): Seven Bridges
+    is real and built. `sevenBridgesReview()` now compiles real verdicts
+    instead of showing the old stub; `triggerSevenBridgesReview()` +
+    `compileCouncilVerdict_()` (`6_Governance.gs`) assemble one shared
+    stimulus document and enforce the halt-execution rule
+    (`CFG.COG_HALT_THRESHOLD`); `submitCogVerdict()` (`2_Ingestion_Sensors.gs`)
+    is the new intake path for a Gem's verdict, deliberately bypassing
+    `PENDING_FLOW`/`STUDIO_ACTIVE`. `triggerCouncilSimulation()` is now the
+    explicitly-superseded fallback, kept only for reference. See
+    `kos-personal/README.md`'s "Architecture in Two Paragraphs" section
+    for the current mechanics.
 
 ### `10_Turnstile.gs` — rebuilt, original preserved in `archived/`
 
@@ -166,9 +177,11 @@ repo root README) since its methodology applies beyond just this system.
 
 **Naming collision, flagged so it's never conflated:** "SMP-002" means two
 different things across this repo's material. The **real, live** SMP-002
-is the "Seven Bridges" 7-persona sequestered council design referenced in
+is the "Seven Bridges" sequestered council design referenced in
 `9_UI_Diagnostics.gs`'s `sevenBridgesReview()` (see "What was fixed," item
-10, above) — still `PENDING USER APPROVAL`, not yet built.
+10, above — **now built**, not still `PENDING USER APPROVAL`; that item's
+own "Update" note has the details). "7-persona" is the feature's own
+branding, not a literal count — `CFG.PERSONAS` has 6 real entries.
 `ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW.md` (filed above) references an
 **unrelated, superseded** "Mirror Matrix" zone-folder taxonomy concept
 that has zero footprint in the real repo and occupies a conceptual slot
@@ -527,4 +540,53 @@ wiping every answer entered across all 4 steps. Also fixed
 `handleBootstrap()` never clearing stale `active`/`done`/`err` classes
 before a retry, so a step that failed once and then succeeded on retry
 could render with a success checkmark in error-red text.
+
+## Round 10 — Say/Do Ledger findings + the real Seven Bridges pipeline (C4)
+
+Ten findings from a separate UI/UX-and-North-Star-alignment audit
+("Say/Do Ledger"), all decided and implemented in this round:
+
+- **Honest, state-aware Turnstile/Registrar copy** — the "processes within
+  5 minutes" static hint replaced with copy that distinguishes "actively
+  cycling, waiting on a Studio flow" from a real stuck state, using
+  `Retry_Count`/`CFG.TURNSTILE_STUCK_THRESHOLD` (Turnstile) and
+  `Attempt_Tracker`/`CFG.REGISTRAR_RETRY_LIMIT` (Registrar) as the real
+  underlying signals rather than a timer guess.
+- **Three shared UI primitives**, extracted once and reused rather than
+  hand-rolled per call site: a correct-by-construction WAI-ARIA tab
+  component (bottom nav + Ingest toggle both migrated onto it), a
+  confirm-tap-with-extend helper (WCAG 2.2.1 "need more time" affordance
+  for the 5-second confirm-tap pattern), and an `announceStatus()` helper
+  (fixed two missing live-region gaps and consolidated future ones onto
+  one polite/assertive choice instead of deciding it ad hoc per site).
+- **State-aware Ambient Calibration copy** — distinguishes "cold, setup
+  not run yet" from "armed, passively calibrating" instead of a static
+  "no manual setup required" claim that was false until the wizard
+  actually ran once.
+- **Billing disclosure** — an honest, bounded note wherever credits are
+  shown: self-serve purchasing isn't available today and this mode isn't
+  intended for public use as-is. The deeper question (should this ever
+  become a real paid feature) is deliberately left open, not answered
+  here — flagged for the operator's own call, since it cuts against this
+  system's own stated "not a SaaS product" identity.
+- **Socratic onboarding data-loss fix** — `runSocraticOnboarding()`'s
+  "Resume anytime" claim was false: every answer was held in a local
+  object and only written to Script Properties after all 8 questions
+  completed, so cancelling partway lost everything. Each answer now
+  persists immediately; a real resume reads back what's already saved and
+  summarizes it; `updateRelationalTargets()` shows the current value via
+  a preceding alert (native `ui.prompt()` has no default-value parameter);
+  the passphrase step gained a second confirm field.
+- **The real Seven Bridges pipeline (finding #1, the largest item this
+  round)** — see "What was fixed," item 10's own "Update" note above for
+  the full mechanics (`triggerSevenBridgesReview()`/`compileCouncilVerdict_()`
+  in `6_Governance.gs`, `submitCogVerdict()` in `2_Ingestion_Sensors.gs`,
+  `CFG.COG_HALT_THRESHOLD`, and the Ingest tab's new "Cog Verdict" type in
+  `8_WebApp_UI.html`). Two assumptions from the original design write-up
+  turned out wrong once actually investigated, and were corrected during
+  the build rather than forced to match the original plan: stimulus-doc
+  generation reuses `triggerCouncilSimulation()`'s own doc-assembly logic
+  (not `buildSessionContext()`, which turned out to be the wrong fit), and
+  the real verdict vocabulary is APPROVED/FLAG/VETO (not the originally
+  assumed APPROVED/REJECTED).
 
