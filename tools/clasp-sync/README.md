@@ -161,3 +161,12 @@ from `project-map.json`, to clear the refusal.
 
 This check — plus a plain `node tools/clasp-sync/sync.js` run — is part
 of `.github/workflows/gas-lint.yml`'s CI job, alongside gas-lint itself.
+
+## Actually pushing to a live project
+
+This file covers what `sync.js` builds and why. For the actual
+command-by-command sequence — `clasp login`, wiring `.clasp.json` files,
+building sandbox copies before touching real cas-ccps projects, the CI
+job that automates sandbox pushes, and the human-run production-promotion
+steps for all three systems in this repo — see
+[`DEPLOYMENT_RUNBOOK.md`](./DEPLOYMENT_RUNBOOK.md) (same folder).
