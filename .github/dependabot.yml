@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # Root package.json (tests/ runner) — added alongside this file; zero
+  # runtime dependencies today (Node's built-in test runner only), but this
+  # keeps it covered the moment that changes.
+  - package-ecosystem: "npm"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  # The one real runtime dependency surface in this repo — pg, stripe,
+  # googleapis, google-auth-library, @anthropic-ai/sdk all live here, and
+  # none of them were being watched for advisories before this file existed.
+  - package-ecosystem: "npm"
+    directory: "/kos-personal/inference-service"
+    schedule:
+      interval: "weekly"
+
+  # GitHub Actions itself (actions/checkout, actions/setup-node, etc.) —
+  # covers .github/workflows/*.yml.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"

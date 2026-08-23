@@ -1,0 +1,11 @@
+{
+  "name": "kos-monorepo",
+  "private": true,
+  "description": "Root-level test runner for the code-level regression suite under tests/ — kos-personal, cas-ccps, and leader-hub each stay independently versioned Apps Script / static-HTML systems, not npm packages; this file exists only to give the repo a single `npm test` entry point, matching the convention tools/gas-lint and tools/clasp-sync already use (plain CommonJS, no build step, no framework dependency beyond Node's own built-in test runner).",
+  "scripts": {
+    "test": "node --test tests/leaderhub/*.test.js tests/tools/*.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
