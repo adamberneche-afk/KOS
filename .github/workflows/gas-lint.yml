@@ -29,7 +29,16 @@ jobs:
         # asset instead — see tests/leaderhub/*.test.js and
         # tests/harness/*.js. Zero dependencies (Node's built-in test
         # runner + vm module only), so no install step is needed here.
-        run: node --test "tests/**/*.test.js"
+        #
+        # FIXED: a quoted "tests/**/*.test.js" left glob expansion to
+        # Node's own --test path handling, which behaves differently
+        # across Node versions - it silently found nothing ("Could not
+        # find '.../tests/**/*.test.js'", exit 1) on the Node 20.20.2
+        # this workflow actually pins, despite passing locally on a
+        # newer Node during development. Unquoted, explicit per-directory
+        # globs are expanded by the shell BEFORE node ever sees them, so
+        # this doesn't depend on any Node version's own glob support.
+        run: node --test tests/leaderhub/*.test.js tests/tools/*.test.js
       - name: Syntax-check student-leader-hub.html's inline <script> blocks
         # The enforced version of the "Verified with node --check on both
         # <script> blocks" note leader-hub/README.md repeats after nearly
