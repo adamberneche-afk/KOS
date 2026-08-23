@@ -36,6 +36,7 @@ The central queue. Every session chunk passes through this sheet.
 |---|---|---|
 | `PENDING_FLOW` | Sensors 1, 2, 3 | Chunk created, waiting for Turnstile |
 | `STUDIO_ACTIVE` | Turnstile | Released to Studio for inference |
+| `STUDIO_TIMEOUT` | Turnstile | Reset for staleness more than CFG.TURNSTILE_STUCK_THRESHOLD times with no Studio flow ever completing it — terminal, human review required |
 | `FLOW_COMPLETE` | Studio | Inference complete, ready for queue processor |
 | `NEEDS_CURATOR` | Queue Processor | JSON parse failed, retry 1 or 2 |
 | `FAILED_PARSE` | Queue Processor | Retry cap hit, manual intervention required |
