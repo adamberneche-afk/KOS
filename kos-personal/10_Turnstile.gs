@@ -102,11 +102,40 @@ function runMatrixTurnstile() {
 
       if (isStale) {
         const newRetries = (parseInt(data[i][SC.RETRY_COUNT]) || 0) + 1;
-        staging.getRange(sheetRow, SC.STATUS      + 1).setValue('PENDING_FLOW');
-        staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
         delete released[uid];
-        staleReset++;
-        console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') stale — reset to PENDING_FLOW.');
+
+        // Say/Do Ledger kos-personal finding #2, closed: a row with no
+        // Studio flow ever completing it used to cycle PENDING_FLOW →
+        // STUDIO_ACTIVE → (stale reset) forever, Retry_Count climbing
+        // without bound — CFG.TURNSTILE_STUCK_THRESHOLD was a UI-only
+        // "call this row stuck" signal (getQueueMetrics()) that never
+        // actually stopped the cycle. Same escalate-to-failure pattern
+        // Registrar already uses via CFG.REGISTRAR_RETRY_LIMIT
+        // (_bounceRegistrarRow, 11_Registrar_CogRelay.gs): once the
+        // threshold is exceeded, the row lands in the terminal
+        // STUDIO_TIMEOUT status instead of re-queuing, so it stops
+        // consuming a concurrency slot and surfaces for human review
+        // instead of retrying invisibly forever.
+        if (newRetries > CFG.TURNSTILE_STUCK_THRESHOLD) {
+          const uidStr    = String(data[i][SC.PAYLOAD_UID]);
+          const fileIdStr = String(data[i][SC.FILE_ID]);
+          staging.getRange(sheetRow, SC.STATUS      + 1).setValue('STUDIO_TIMEOUT');
+          staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+          staleReset++;
+          console.error('[Turnstile] Row ' + sheetRow + ' (' + uid + ') → STUDIO_TIMEOUT after ' +
+            newRetries + ' stale resets (threshold ' + CFG.TURNSTILE_STUCK_THRESHOLD + ').');
+          _sendChatAlert(
+            '🔴 STUDIO_TIMEOUT — kos-personal Turnstile\n' +
+            'Row: ' + sheetRow + ' (' + uidStr + ', file ' + fileIdStr + ')\n' +
+            'No Studio flow ever completed this row after ' + newRetries + ' stale resets. ' +
+            'Human review required — see STAGING_PIPELINE.'
+          );
+        } else {
+          staging.getRange(sheetRow, SC.STATUS      + 1).setValue('PENDING_FLOW');
+          staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+          staleReset++;
+          console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') stale — reset to PENDING_FLOW.');
+        }
       } else {
         activeCount++;
       }
