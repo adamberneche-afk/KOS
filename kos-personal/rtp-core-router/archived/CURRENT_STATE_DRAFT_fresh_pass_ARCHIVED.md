@@ -1,3 +1,10 @@
+> **ARCHIVED — this was a one-time, independently-derived comparison pass
+> against `CURRENT_STATE_DRAFT_v2.md` (protocols/), not a living draft in
+> its own right. Its own closing line already frames it this way ("worth
+> comparing... rather than treating either as automatically superior").
+> Folded in from an external review pass — Addendum 22 R4. Kept here for
+> history only.**
+
 # CURRENT_STATE — DRAFT (Independent Re-Derivation)
 state_source: bootstrapped
 generated: 2026-07-18 (second pass, same session)

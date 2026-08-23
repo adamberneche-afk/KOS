@@ -1,3 +1,14 @@
+> **This is a dated snapshot, not a living protocol document.** It's the
+> output of one specific Cold Boot run, not the process itself (that's
+> `COLD_BOOT_PROTOCOL.md`, same folder) — everything below reflects what
+> the system found *at that moment*, not its current state. Folded in
+> from an external review pass (Addendum 22 R5), which correctly flagged
+> this as filed alongside living instruction docs with nothing marking
+> it as a snapshot. Left here rather than relocated: `protocols/` is
+> still this repo's actual filing convention for Cold Boot deliverables
+> today (see `kos-personal/CHANGELOG.md`) — no dedicated outputs/
+> deliverables folder exists yet to move it to.
+
 # Welcome to This System
 ### A Cold Start Orientation — first run, generated fresh
 

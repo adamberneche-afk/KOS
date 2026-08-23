@@ -1,3 +1,7 @@
+> **ARCHIVED — superseded by `CURRENT_STATE_DRAFT_v2.md` (protocols/), per that
+> document's own header. Folded in from an external review pass — Addendum
+> 22 R4. Kept here for history only; not a live protocol doc.**
+
 # CURRENT_STATE — DRAFT
 state_source: bootstrapped
 generated: 2026-07-09

@@ -14,18 +14,28 @@ with named divisions (Creative Studio, Apparel & Merch Co., School Store,
 Wholesale & Sourcing, Media & PR, Events Division, Esports Division) and
 management roles students rotate through. See `curriculum/lesson-cards/`.
 
-`docs/KOS_Guide_IT__Admin_Security.pdf` has a section titled "FERPA & Data
-Privacy Compliance" (this README previously and incorrectly claimed no file
-anywhere used either word — that self-audit only checked HTML/JS files and
-missed the one PDF in `docs/`). The closest thing to a compliance statement
-among the live HTML/JS docs is `docs/SYSTEM_ARCHITECTURE.html`'s Security
-Model section (no API keys ever touch a student-facing surface,
+**Correction (folded in from an external review pass):** `docs/
+KOS_Guide_IT__Admin_Security.pdf` — the file this README used to cite here
+as having a "FERPA & Data Privacy Compliance" section — was investigated
+and confirmed to describe an entirely different, abandoned architecture:
+"The Lobed Knowledge Operating System," an April-era, pre-v8 design
+(Compaction Engine, Circuit Breaker, Transaction IDs, a "Narrative
+Sanitization" regex scrub of a `STUDY_LOG.txt` file) that predates the
+current Cog/Council model and Studio Flows entirely and was never carried
+forward into the live system (`kos-personal/rtp-core-router/protocols/
+HEREDITARY_WATCHLIST.md` independently confirms this lineage). None of its
+described mechanisms exist anywhere in the actual codebase. It has been
+archived to `docs/archived/KOS_Guide_IT__Admin_Security_PRE_V8_ARCHITECTURE.pdf`
+— **do not hand this to district IT as a current security statement.**
+The real, current compliance reference is `docs/SYSTEM_ARCHITECTURE.html`'s
+Security Model section (no API keys ever touch a student-facing surface,
 prompt-injection denylist, three-point turn-in validation, a forensic
 version-history check with an *honestly documented* bypass: a student who
 selects-all-and-pastes a pre-written fake report in one fast paste can
-defeat it — treated as a manual-review signal, not proof). The two
-documents haven't been reconciled into one canonical security statement —
-worth doing before relying on either alone.
+defeat it — treated as a manual-review signal, not proof) together with
+`docs/FERPA_DATA_MAP.md` (the actual field-by-field FERPA inventory, Say/Do
+Ledger finding #5) — these two are the canonical pair now, not the archived
+PDF.
 
 ---
 

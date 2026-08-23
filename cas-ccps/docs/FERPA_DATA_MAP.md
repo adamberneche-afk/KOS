@@ -8,10 +8,12 @@ collected, who/what can access it, and (where decided) how long it's kept.
 but until this document, no single place inventoried what student data
 actually lives where. This closes that gap (Say/Do Ledger cas-ccps finding
 #5). It is a companion to, not a replacement for, the general compliance
-statement in `docs/KOS_Guide_IT__Admin_Security.pdf`'s "FERPA & Data Privacy
-Compliance" section — that document has not yet been reconciled with this one
-into a single canonical statement, which remains a known open item (see
-`README.md`'s own note on this).
+statement in `docs/SYSTEM_ARCHITECTURE.html`'s Security Model section —
+the two are now the canonical compliance-reference pair. (This document
+used to describe itself as a companion to `docs/KOS_Guide_IT__Admin_Security.pdf`
+instead — that PDF was later investigated and confirmed to describe an
+entirely different, abandoned pre-v8 architecture never carried into the
+live system, and has been archived; see `README.md`'s note on this.)
 
 **Retention policy — partially defined, `SCRDecisionLog` only.** Every other
 tab in this document still persists indefinitely, with no deletion/archival
