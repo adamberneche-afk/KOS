@@ -52,7 +52,13 @@ despite the higher-looking version number) are canonical; the other file
 in each pair is a superseded draft. The Curator PDF's exact content has
 since been confirmed against a clean-source copy and re-saved as
 `PERSONA_CURATOR_V5.md` (PDF retired), matching the Developer file's
-already-Markdown format. See `rtp-core-router/README.md` for the full
+already-Markdown format. **Update (folded in from an external review
+pass — Addendum 22 R6):** all six persona docs, including both of these,
+were later reissued together as `PERSONA_*_V5_1.md` — Developer's version
+number runs backwards on purpose there (V5.1 replacing V5.3 with more
+correct content); see `rtp-core-router/README.md`'s own note on this
+before assuming canonicality from either file's number. See that file for
+the full
 evidence. `PIVOTS_AND_LESSONS.gdoc` and
 `CORE_THESIS` are still not pre-seeded — these are Drive documents the
 deployed system creates on first run (`deployFullSystem()` /
@@ -268,7 +274,7 @@ anywhere in it; this was always a kos-personal-only gap.)
 
 **Naming note (Aligner vs. Alignment).** The Calibration Silo folder is
 named `04.5_ALIGNER_SILO` / tagged `CE-ALIGN`, but every persona doc in
-this repo (`PERSONA_ALIGNMENT_V5.md`, the `LICENSE`'s Fidelity Clause,
+this repo (`PERSONA_ALIGNMENT_V5_1.md`, the `LICENSE`'s Fidelity Clause,
 `CFG.FIDELITY_REQUIRED_PERSONA`) calls this cog ALIGNMENT. Same class of
 issue as the SMP-002 naming collision noted above — cosmetic, not two
 different cogs. `CFG.PERSONAS` used to list `PERSONA_ALIGNER` as if it
@@ -342,7 +348,7 @@ architectural elements in the derivative deployment, unmodified:
    relational bandwidth is threatened, and cannot be suppressed, weighted
    below 0.10 RID (Relevance-Impact-Depth — the score that determines how
    much a cog's output contributes to a prompt; see
-   `rtp-core-router/PERSONA_AUDITOR_V5.md`), or removed.
+   `rtp-core-router/PERSONA_AUDITOR_V5_1.md`), or removed.
 2. **The HITL (Human-In-The-Loop) Firewall** — no autonomous writes to
    canonical documents, no external communications, no mutations to
    persistent state without explicit human verification.

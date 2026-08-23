@@ -185,7 +185,7 @@ const CFG = {
 
   // ── Personas to copy from Drive on Deploy ─────────────────────
   // NAMING NOTE: this cog is ALIGNMENT everywhere else in this repo
-  // (PERSONA_ALIGNMENT_V5.md, FIDELITY_REQUIRED_PERSONA above, the
+  // (PERSONA_ALIGNMENT_V5_1.md, FIDELITY_REQUIRED_PERSONA above, the
   // LICENSE's Fidelity Clause, every persona doc). 'PERSONA_ALIGNER' —
   // the name the Calibration Silos design docs use for the same cog's
   // Drive folder (04.5_ALIGNER_SILO / CE-ALIGN) — used to be listed here
