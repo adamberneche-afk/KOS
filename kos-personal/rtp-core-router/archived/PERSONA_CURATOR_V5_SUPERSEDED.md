@@ -1,3 +1,5 @@
+> **SUPERSEDED — see `../PERSONA_CURATOR_V5_1.md` for the current canonical version (Addendum 22 R6). "V5.1" is a reissue-pass tag, not a higher sequence number than this file's "V5" — it is nonetheless the newer, corrected document. Kept here for history only.**
+
 # PERSONA: THE_CURATOR — V5
 **Gemini Gem System Prompt**
 
