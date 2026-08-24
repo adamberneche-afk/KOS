@@ -14,24 +14,35 @@ applies across systems; that duplication is deliberate, not an
 oversight, so both copies should stay identical if this note or
 anything else here changes.)
 
-**Two specific gaps worth naming, added during a further review pass —
-so this reads as a methodology document, not calibrated rigor already
-in place:** (1) Part 2.5 describes computing a "divergence interval"
-that widens with smaller sample sizes, but never specifies which
-interval — no formula, no named method (e.g. Wilson score, a normal
-approximation, or anything else) is given anywhere in this document.
-As written, "compute the interval" isn't yet an instruction a Gem or
-Flow could actually execute; it names the shape of the right approach
-without the substance. (2) The `Calibration_Log` tab (and the File
-Registry / `Export_Log` it sits alongside) is a proposed schema, not a
-running one — nothing in this document, or anywhere else in this repo,
-persists per-pattern confidence tiers or weekly divergence numbers
-across sessions. Every run of the Part 3 prompt starts from the same
-static text with no memory of prior weeks' calibration, so "cold start,
-earn looseness" describes an intended lifecycle this document doesn't
-yet have the machinery to actually carry out. Both are real gaps to
-close before treating this as calibrated, not just self-aware prose —
-flagged, not fixed here, for the same reason as the scope note above.
+**Two specific gaps named during a further review pass — one now closed,
+one narrowed, added during a still-later pass:**
+
+(1) **Closed.** Part 2.5 used to describe computing a "divergence
+interval" that widens with smaller sample sizes without ever naming
+which interval — no formula, no named method. It now specifies the
+exact method (Wilson score interval, with the formula and a worked
+example) and the `Calibration_Log` schema carries the interval as two
+concrete numeric fields (`wilson_lower`, `wilson_upper`) rather than one
+vague `divergence_interval` slot. "Compute the interval" is now an
+instruction a Gem or Flow could actually execute — see Part 2.5 below.
+
+(2) **Narrowed, not closed.** The `Calibration_Log` schema itself is now
+fully specified — every field has a concrete type/format, not just a
+one-line purpose (see the table in Part 2.5) — so a Gem or Flow could
+create and populate that Sheet tab exactly as written, with no
+remaining ambiguity about what to write into which column. What's
+*still* a gap: it remains a specified-but-not-running schema. Nothing
+in this document, or anywhere else in this repo, actually persists
+per-pattern confidence tiers or weekly divergence numbers across
+sessions yet — no `Calibration_Log` Sheet tab exists in Fluffy's Drive
+today. Every run of the Part 3 prompt still starts from the same static
+text with no memory of prior weeks' calibration, so "cold start, earn
+looseness" describes an intended lifecycle this document specifies but
+doesn't yet operate. Closing *that* remaining piece means actually
+creating the Sheet and wiring a Gem/Flow to read and write it — a real
+deployment step, not a specification gap, and one Fluffy hasn't asked
+for yet. Flagged, not fixed here, for the same reason as the scope note
+above.
 
 **Purpose:** A repeatable workflow that (1) predicts where new files *should* live based on Fluffy's own observed filing logic — not generic best practice — so the context harness can reliably find and pull what it needs, and (2) translates internal technical artifacts into legible output for external audiences (admins, colleagues, district). It never executes changes on its own; it proposes, with rationale, for human approval.
 
@@ -108,30 +119,97 @@ This does not extend to actual file operations.** Drafting a registry row, gener
 
 Confidence tiers aren't set once — they're earned per pattern, tracked weekly, and adjusted only when the data clears a real bar, not on a single week's noise. This is the mechanism that lets the system start tight and loosen responsibly.
 
-**What gets tracked (a `Calibration_Log` tab alongside Registry and Export_Log):**
+**What gets tracked (a `Calibration_Log` tab alongside Registry and Export_Log).** Every field below has a concrete type/format — this is the actual Sheet schema, not a description of one:
 
-| Field | Purpose |
-|---|---|
-| `pattern_id` | The specific classification rule (e.g. "numeric-prefix+CAS-tag → Module folder", "session-dated folder → land as-is", "persona/vector language → KOS lineage") |
-| `week_of` | The week this row summarizes |
-| `n_applied` | How many times this pattern fired this week |
-| `n_flagged` | How many of those were held as low-confidence |
-| `n_corrected` | How many auto-confirmed rows Fluffy ended up correcting (caught via spot-check or later reference) |
-| `observed_divergence` | n_corrected ÷ n_applied for the week — the raw error rate |
-| `divergence_interval` | An interval estimate (not a point estimate) of the true error rate given this week's sample size — small weeks get wide intervals, which is the whole point |
-| `current_tier` | The pattern's active confidence tier going into this week |
-| `target_band` | The acceptable error-rate range for that tier — intentionally left undefined at the start. See note below. |
+| Field | Type / format | Purpose |
+|---|---|---|
+| `pattern_id` | string, stable slug (e.g. `P3-numeric-prefix-cas-tag`, `P1-session-dated-folder`, `P4-vector-language-lineage` — one slug per row of the Part 1 pattern table) | The specific classification rule this row scores |
+| `week_of` | date, ISO, week-start Monday (e.g. `2026-08-24`) | The week this row summarizes |
+| `n_applied` | integer, ≥ 0 | How many times this pattern fired this week |
+| `n_flagged` | integer, 0 ≤ `n_flagged` ≤ `n_applied` | How many of those were held as low-confidence |
+| `n_corrected` | integer, 0 ≤ `n_corrected` ≤ `n_applied` | How many auto-confirmed rows Fluffy ended up correcting (caught via spot-check or later reference) |
+| `observed_divergence` | float, [0, 1], = `n_corrected` ÷ `n_applied`; blank if `n_applied` = 0 | The raw error rate for the week |
+| `z_used` | float, fixed at `1.96` (95% confidence) unless explicitly changed and noted | The z-score the Wilson calculation below uses — logged per row so a later reader can see exactly what was computed, not just trust it |
+| `wilson_lower` / `wilson_upper` | float, [0, 1] each, `wilson_lower` ≤ `wilson_upper`; both blank if `n_applied` = 0 | The two ends of the Wilson score interval (formula below) — replaces the old single vague `divergence_interval` slot with the two numbers a tighten/loosen decision actually compares against |
+| `current_tier` | enum: `low` \| `auto-confirm` | The pattern's active confidence tier going into this week |
+| `target_band_low` / `target_band_high` | float, [0, 1] each, or both blank | The acceptable error-rate range for the current tier — blank for every pattern until the "on setting target_band" bar below is cleared |
+| `proposed_action` | enum: `none` \| `tighten` \| `loosen` | Computed, not hand-set: `tighten` if `wilson_lower` sits entirely above `target_band_high`; `loosen` if `wilson_upper` sits entirely below `target_band_low` for a sustained window (Part 2.5's cadence step 3); `none` otherwise, or whenever the target band is still blank |
 
-**On setting `target_band`:** this isn't fixed in advance. For the first several weeks, every pattern simply logs `observed_divergence` and `divergence_interval` with no band to compare against — the calibration loop's early job is purely descriptive, showing Fluffy what error rates patterns actually produce. Once there's enough weekly data to see where real patterns naturally cluster (which ones run near-zero error, which ones run higher), propose target bands *from* that observed distribution, discuss them with Fluffy, and only then start using them to drive tighten/loosen proposals. Setting the bar before there's data to set it from would just encode a guess as if it were a measurement.
+**On setting `target_band_low` / `target_band_high`:** this isn't fixed in advance. For the first several weeks, every pattern simply logs `observed_divergence`, `wilson_lower`, and `wilson_upper` with both target-band fields left blank — the calibration loop's early job is purely descriptive, showing Fluffy what error rates patterns actually produce. Once there's enough weekly data to see where real patterns naturally cluster (which ones run near-zero error, which ones run higher), propose target bands *from* that observed distribution, discuss them with Fluffy, and only then start populating those two fields and using `proposed_action` to drive tighten/loosen proposals. Setting the bar before there's data to set it from would just encode a guess as if it were a measurement.
 
 **Why an interval, not a single number:** a pattern that fired 4 times this week and was corrected once looks like a 25% error rate — but with n=4, that's statistical noise, not signal. Computing an interval around the observed rate (widening automatically as sample size shrinks) keeps a single bad week from triggering a threshold change, and keeps a single lucky week from prematurely loosening one. A change only gets proposed when the interval for a pattern sits clearly outside its target band — not when the point estimate briefly crosses it.
 
+**The exact method: Wilson score interval.** With `n = n_applied`, observed proportion `p̂ = observed_divergence`, and `z = z_used` (1.96 for a 95% interval):
+
+```
+center = ( p̂ + z²/(2n) ) / ( 1 + z²/n )
+
+margin  = ( z / (1 + z²/n) ) × sqrt( p̂(1 − p̂)/n + z²/(4n²) )
+
+wilson_lower = center − margin
+wilson_upper = center + margin
+```
+
+This is the standard choice for a small-sample binomial-proportion
+interval (over a plain normal-approximation interval) for two concrete
+reasons that matter here: it never produces bounds outside `[0, 1]`
+even at very small `n` or extreme `p̂` (a normal approximation can — a
+pattern with `n_applied = 3, n_corrected = 0` would otherwise report a
+nonsensical negative lower bound), and it's centered on a
+shrunk-toward-0.5 point rather than the raw `p̂`, which is exactly the
+"small weeks get wide, cautious intervals" behavior this loop needs. No
+external library or script is required — a Gem or Flow computes this
+directly from the four inputs (`n`, `p̂` via `n_corrected`/`n_applied`,
+and the fixed `z`) with ordinary arithmetic.
+
+**Worked example** (matches the "fired 4 times, corrected once" case
+above): `n = 4`, `n_corrected = 1`, so `p̂ = 0.25`, `z = 1.96`.
+
+```
+z²/n     = 3.8416 / 4      = 0.9604
+z²/(2n)  = 3.8416 / 8      = 0.4802
+z²/(4n²) = 3.8416 / 64     = 0.0600
+
+center = (0.25 + 0.4802) / (1 + 0.9604) = 0.7302 / 1.9604 ≈ 0.3724
+
+margin = (1.96 / 1.9604) × sqrt( 0.25×0.75/4 + 0.0600 )
+       ≈ 0.9998 × sqrt( 0.046875 + 0.0600 )
+       ≈ 0.9998 × sqrt(0.106875)
+       ≈ 0.9998 × 0.3269
+       ≈ 0.3268
+
+wilson_lower ≈ 0.3724 − 0.3268 ≈ 0.046
+wilson_upper ≈ 0.3724 + 0.3268 ≈ 0.699
+```
+
+So a week with a raw 25% error rate on n=4 actually carries a 95%
+interval of roughly **[4.6%, 69.9%]** — wide enough that this single
+week cannot responsibly move that pattern's tier either direction. That
+width is the mechanism working as intended, not a flaw in it: it takes
+several weeks of consistently low (or consistently high) `n_corrected`
+before the interval narrows enough to sit clearly outside any
+reasonable target band.
+
 **Weekly cadence:**
 
-1. At the end of each week, compute the divergence interval for every active pattern.
-2. For any pattern whose interval sits entirely above its target band (worse than acceptable) — propose tightening: hold that pattern at low-confidence a while longer, or roll it back from auto-confirm to flagged.
-3. For any pattern whose interval sits entirely below its target band (better than the bar it needs to clear) for a sustained window — propose loosening: promote it toward auto-confirm.
-4. Bring Fluffy exactly one artifact: a short table (pattern, this week's numbers, the interval, current vs. proposed tier) plus one paragraph per proposed change on what it would actually do downstream — e.g. "loosening this pattern would auto-confirm an estimated 8–12 more files/week; based on the observed interval, the plausible added error is low, but the pattern covers files that feed the admin-facing translation layer, so a mistake here is more visible than most."
+1. At the end of each week, compute `wilson_lower`/`wilson_upper` (the
+   Wilson score interval, formula above) for every active pattern with
+   `n_applied > 0`, and write the full `Calibration_Log` row.
+2. For any pattern whose `wilson_lower` sits entirely above its
+   `target_band_high` (worse than acceptable) — propose tightening: hold
+   that pattern at low-confidence a while longer, or roll it back from
+   auto-confirm to flagged. Set `proposed_action = tighten`.
+3. For any pattern whose `wilson_upper` sits entirely below its
+   `target_band_low` (better than the bar it needs to clear) for a
+   sustained window — propose loosening: promote it toward auto-confirm.
+   Set `proposed_action = loosen`.
+4. Bring Fluffy exactly one artifact: a short table (pattern, this week's
+   numbers, the Wilson interval, current vs. proposed tier) plus one
+   paragraph per proposed change on what it would actually do downstream
+   — e.g. "loosening this pattern would auto-confirm an estimated 8–12
+   more files/week; based on the observed interval, the plausible added
+   error is low, but the pattern covers files that feed the admin-facing
+   translation layer, so a mistake here is more visible than most."
 5. **No threshold changes take effect until Fluffy responds.** This is a discussion, not an autonomous adjustment — the calibration loop earns its own trust the same way individual patterns do.
 
 ---
@@ -218,24 +296,39 @@ When asked to review recent activity or "steward the drive":
    stay oriented, not a task list for him to work through.
 
 Weekly, run the calibration process:
-1. For every active classification pattern, log n_applied, n_flagged, n_corrected
-   for the week in a Calibration_Log record.
-2. Compute an interval estimate of the true error rate (not a point estimate) —
-   the interval should widen automatically for low sample-size weeks so a single
-   week's noise can't trigger a threshold change.
-3. For the first several weeks, target_band is undefined — just log observed_divergence
-   and divergence_interval per pattern with no comparison. Once enough weekly data
-   exists to see where patterns naturally cluster, propose target bands derived from
-   that observed distribution for Fluffy's discussion before using them to drive any
-   tighten/loosen decisions.
-4. Once bands exist: compare each pattern's interval to its target error-rate band.
-   Only propose a tightening or loosening if the interval sits entirely outside the
-   band, not on a single point estimate crossing it.
-4. Bring Fluffy one weekly artifact: a short table of patterns with their numbers,
-   intervals, and current tier, plus a proposed change and a plain discussion of
-   what that change would actually do downstream (how many more/fewer files get
-   auto-confirmed, and what's at stake if the pattern is wrong).
-5. Do not change any threshold until Fluffy responds. This is a proposal for
+1. For every active classification pattern, log n_applied, n_flagged, n_corrected,
+   and observed_divergence (= n_corrected / n_applied) for the week in a
+   Calibration_Log record. Leave observed_divergence blank if n_applied = 0.
+2. Compute the interval estimate using the Wilson score method — NOT a plain
+   normal approximation, and NOT the point estimate alone. With n = n_applied,
+   p_hat = observed_divergence, and z = 1.96 (95% confidence, log this as
+   z_used):
+     center = (p_hat + z^2/(2n)) / (1 + z^2/n)
+     margin = (z / (1 + z^2/n)) * sqrt( p_hat*(1-p_hat)/n + z^2/(4*n^2) )
+     wilson_lower = center - margin
+     wilson_upper = center + margin
+   Write both bounds into the Calibration_Log record as wilson_lower and
+   wilson_upper. This interval widens automatically for low-sample-size weeks
+   (e.g. n=4 with 1 correction spans roughly [0.05, 0.70], not a bare 25%) so a
+   single week's noise can't trigger a threshold change, and unlike a normal
+   approximation it never produces an out-of-range bound at small n.
+3. For the first several weeks, target_band_low/target_band_high stay blank —
+   just log observed_divergence, wilson_lower, and wilson_upper per pattern with
+   no comparison. Once enough weekly data exists to see where patterns naturally
+   cluster, propose target bands derived from that observed distribution for
+   Fluffy's discussion before populating those two fields or using them to drive
+   any tighten/loosen decisions.
+4. Once bands exist: compare each pattern's wilson_lower/wilson_upper to its
+   target band. Set proposed_action = tighten only if wilson_lower sits entirely
+   above target_band_high; proposed_action = loosen only if wilson_upper sits
+   entirely below target_band_low for a sustained window; proposed_action = none
+   otherwise. Never trigger either off a single point estimate crossing the band.
+5. Bring Fluffy one weekly artifact: a short table of patterns with their numbers,
+   Wilson intervals, and current tier, plus a proposed change and a plain
+   discussion of what that change would actually do downstream (how many
+   more/fewer files get auto-confirmed, and what's at stake if the pattern is
+   wrong).
+6. Do not change any threshold until Fluffy responds. This is a proposal for
    discussion, same as any other change to how the system behaves.
 
 When asked to prepare something for other people, reframe the technical artifact
