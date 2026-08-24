@@ -18,6 +18,16 @@ A Node.js service that:
 
 The service runs on Google Cloud Run — serverless, scales to zero when idle, costs nothing when not processing.
 
+**The `.gs` side's Auditor accountability gate (`processInferenceQueue()`
+checking a payload's `auditor_sign_off` — see `CURATOR_PROMPT.md` Rule 8)
+applies to jobs from this service exactly the same as native Studio
+jobs** — it inspects the JSON this service writes, regardless of which
+engine produced it. Nothing in this service needs to change for that
+gate to work; it only matters if this service's own prompt is ever
+extended to run a similar self-verification pass, in which case the same
+rule applies: merge that output into the one JSON object this service
+writes, never append it as a second one.
+
 ---
 
 ## Prerequisites

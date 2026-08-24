@@ -212,7 +212,7 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 
 This is the critical unbuilt piece. Until the Studio integration is live, every session row requires a manual `devSetFlowComplete()` to advance.
 
-See `STUDIO_INTEGRATION_SPEC.md` for the complete specification of what Studio must implement. The short version: Studio polls for `STUDIO_ACTIVE` rows in STAGING_PIPELINE, reads the Drive document at the `File_ID` column, runs inference, writes JSON back to that document, and sets the `Status` column to `FLOW_COMPLETE`.
+See `STUDIO_INTEGRATION_SPEC.md` for the complete specification of what Studio must implement, and `CURATOR_PROMPT.md` (Rule 8) for the optional Auditor accountability pass. The short version: Studio polls for `STUDIO_ACTIVE` rows in STAGING_PIPELINE, reads the Drive document at the `File_ID` column, runs inference, optionally runs a second Auditor step verifying the Curator's own claims against the transcript (merged into the same JSON as `auditor_sign_off` — never written as a second document), writes the JSON back to that document, and sets the `Status` column to `FLOW_COMPLETE`. A row whose `auditor_sign_off` fails verification never reaches the ledgers — it's archived to `AUDIT_LOG` and either retried or, past `CFG.MAX_RETRIES`, escalated to the terminal `AUDIT_REJECTED` status.
 
 ---
 

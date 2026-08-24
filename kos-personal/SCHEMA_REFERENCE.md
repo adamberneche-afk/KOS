@@ -47,6 +47,19 @@ The central queue. Every session chunk passes through this sheet.
 | `INTAKE_ERROR` | Studio (error path) | Studio couldn't open or process the document |
 | `PARTITIONED` | Legacy | v5.4 chunking status, not used in v8.0 |
 | `CONSOLIDATED` | Legacy | v5.4 Phase 4 status, not used in v8.0 |
+| `PHASE_2_ERROR` | Legacy | Pre-v8.0 catch-all processing error (`archived/legacy-pre-v8/`) — no current code writes this, but it's kept in `TERMINAL_FAILED_STATUSES` (`5_Error_And_Utilities.gs`) so an old row surviving from that era is still recognized as terminal rather than falling through as unrecognized (see `KNOWN_STAGING_STATUSES` / `_isKnownStagingStatus_()` below) |
+| `AUDIT_REJECTED` | Queue Processor | The Curator's own output carried a nested `auditor_sign_off` (see `CURATOR_PROMPT.md`) that didn't clear the Auditor's verification pass, and this row exhausted `CFG.MAX_RETRIES` retries — terminal, human review required. The rejected payload and trace log are archived to `AUDIT_LOG` before this status is set (the Drive doc body itself gets overwritten by Studio's next attempt, so this is the only durable record). Below `MAX_RETRIES`, a failed audit instead reverts the row to `PENDING_FLOW` with priority re-release — see `KOS_AUDIT_RETRY_PRIORITY` in `10_Turnstile.gs`. |
+
+**Recognized vs. unrecognized statuses:** `5_Error_And_Utilities.gs`'s
+`_isKnownStagingStatus_()` is the single source of truth for whether a
+Status value is any of the 15 above — an exact match, or (for
+`PROCESSING_ERROR`/`INTAKE_ERROR`, which can carry a `: <message>`
+suffix) a prefix match. Anything else is genuinely unrecognized: found in
+production as a row stuck at `AUDITING _LOG`, a status no code in this
+repo, current or archived, ever writes. `10_Turnstile.gs` alerts once per
+row via `_sendChatAlert()`, and `getQueueMetrics()`/`getQueueStatus()`
+count it as `unknown` rather than silently excluding it — see
+`CHANGELOG.md` for the fix.
 
 ---
 
@@ -259,6 +272,23 @@ All errors reported by `_reportError()`.
 | C | Message | String | Error message |
 | D | Stack | String | First 800 chars of the stack trace |
 | E | Reported_At | DateTime | When the daily digest included this error (blank = unreported) |
+
+---
+
+### AUDIT_LOG
+
+Every Curator output rejected by the Auditor accountability check (`_archiveAuditFailure_()`, `5_Error_And_Utilities.gs`) — the only durable record of a rejection, since the Drive doc body itself gets overwritten the moment Studio reruns that row.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Timestamp | DateTime | When this rejection was recorded |
+| B | Payload_UID | String | STAGING_PIPELINE row's Payload_UID |
+| C | Staging_Row | Integer | STAGING_PIPELINE row number at time of rejection, for cross-reference |
+| D | Retry_Count | Integer | This row's Retry_Count after this rejection |
+| E | Audit_Status | String | The `auditor_sign_off.status` value that failed (e.g. anything not `PASSED`) |
+| F | Unverified_Claims_Count | Integer | `auditor_sign_off.unverified_claims_count` at time of rejection |
+| G | Trace_Log | JSON string | `auditor_sign_off.trace_log` — the claim-by-claim verification detail |
+| H | Rejected_Payload | JSON string | The full Curator output that was rejected |
 
 ---
 
