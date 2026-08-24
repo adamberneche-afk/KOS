@@ -18,10 +18,21 @@ KOS Turnstile        PENDING_FLOW → STUDIO_ACTIVE
 Studio               Reads STUDIO_ACTIVE rows
 Studio               Opens Drive doc at File_ID
 Studio               Runs inference on doc text
-Studio               Writes JSON back to doc body
+Studio (optional)    Auditor verifies the Curator's own claims against
+                     the transcript, merged in as auditor_sign_off —
+                     see Step 7's connector table (steps 2a/2b) and
+                     CURATOR_PROMPT.md Rule 8. One JSON object either
+                     way — never two objects written back to back.
+Studio               Writes the JSON (with auditor_sign_off merged in,
+                     if the Auditor step ran) back to doc body
 Studio               Sets Status = FLOW_COMPLETE
 KOS Queue Processor  Reads FLOW_COMPLETE rows
-KOS Queue Processor  Parses JSON → fans out to ledgers
+KOS Queue Processor  Parses JSON, checks auditor_sign_off — passes
+                     (or none present) → fans out to ledgers, sets
+                     PROCESSED. Fails → archives to AUDIT_LOG, then
+                     either reverts to PENDING_FLOW for a priority
+                     retry or, past CFG.MAX_RETRIES, escalates to the
+                     terminal AUDIT_REJECTED status.
 ```
 
 ---
@@ -517,8 +528,8 @@ If any ledger write failed, the `drip_failures` array in the queue processor log
 | Creates chunk docs in Drive | Opens chunk docs by File_ID |
 | Sets Status = STUDIO_ACTIVE | Polls STAGING_PIPELINE for STUDIO_ACTIVE |
 | Waits | Runs inference on doc text |
-| Waits | Writes JSON to doc body (replaces text entirely) |
+| Waits | *(optional)* Auditor verifies the Curator's claims, output merged into the same JSON as `auditor_sign_off` — never a second object |
+| Waits | Writes the (possibly merged) JSON to doc body (replaces text entirely) |
 | Waits | Sets Status = FLOW_COMPLETE in STAGING_PIPELINE |
-| Parses JSON from doc | Done |
-| Routes data to all ledgers | Done |
-| Sets Status = PROCESSED | Done |
+| Parses JSON from doc, checks `auditor_sign_off` | Done |
+| Audit passed (or absent): routes data to all ledgers, sets PROCESSED · Audit failed: archives to AUDIT_LOG, then reverts to PENDING_FLOW (priority retry) or escalates to AUDIT_REJECTED past CFG.MAX_RETRIES | Done |

@@ -84,20 +84,35 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 **What it does:** `2_Ingestion_Sensors.gs` queues session logs, external
 data, and (as of the Seven Bridges pipeline) cog verdicts into
 `STAGING_PIPELINE`; a human-built Studio Flow reads a queued doc, runs
-inference, and writes structured JSON back. Two independent sub-pipelines
-depend on their own separate Flow being built: the main ingestion queue
-(Turnstile) and the Registrar curriculum-drafts auditor (a completely
-separate state machine, `11_Registrar_CogRelay.gs`).
+inference, and writes structured JSON back. The Flow can optionally run
+a second, internal Auditor pass verifying the Curator's own claims
+against the source transcript before the row is trusted — see
+`CURATOR_PROMPT.md` Rule 8 — merged into the same JSON output as
+`auditor_sign_off`, never a second document. Two independent
+sub-pipelines depend on their own separate Flow being built: the main
+ingestion queue (Turnstile) and the Registrar curriculum-drafts auditor
+(a completely separate state machine, `11_Registrar_CogRelay.gs` — not
+to be confused with the Curator/Auditor pair above, despite the shared
+vocabulary).
 
 **Where to check:** the web app's Queue tab (Turnstile) and Diagnostics tab
 (Registrar), `8_WebApp_UI.html`.
 - **Turnstile / main queue** — `getQueueMetrics()`'s `cycling` count
   (`3_Queue_Processor.gs`): a `PENDING_FLOW`/`STUDIO_ACTIVE` row whose
   `Retry_Count` has crossed `CFG.TURNSTILE_STUCK_THRESHOLD` (3) is flagged
-  as cycling — Turnstile itself has no ceiling (unlike Registrar below), so
-  a row with no Flow ever completing it retries every 5 minutes forever;
-  this is a UI-only "call it stuck" signal layered on top, not a new
-  pipeline state. Say/Do Ledger kos-personal finding #2.
+  as cycling — a UI-only "call it stuck" signal layered on top, not a new
+  pipeline state. Say/Do Ledger kos-personal finding #2. **Updated:**
+  Turnstile itself now does escalate a row past that same threshold, to
+  the terminal `STUDIO_TIMEOUT` status (this note previously said it had
+  no ceiling — that's no longer true).
+- **Audit gate** — a rejected `auditor_sign_off` is archived to a new
+  `AUDIT_LOG` sheet and, past `CFG.MAX_RETRIES`, escalates to a second
+  terminal status, `AUDIT_REJECTED` (`5_Error_And_Utilities.gs`'s
+  `_isAuditFailure_()`/`_archiveAuditFailure_()`,
+  `3_Queue_Processor.gs`'s `processInferenceQueue()`). Like
+  `STUDIO_TIMEOUT` and the other terminal-failure statuses, this doesn't
+  have a dedicated three-state health-panel signal of its own yet — check
+  `STAGING_PIPELINE`'s Status column or `AUDIT_LOG` directly.
 - **Registrar** — `getRegistrarStatus()`'s `groups` (`11_Registrar_
   CogRelay.gs`): `groups.routed`/`groups.failed` both count as reaching a
   terminal outcome (an attempt-tracker-driven `CRITICAL_FAILURE` proves the
