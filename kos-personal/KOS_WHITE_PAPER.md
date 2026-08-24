@@ -39,9 +39,18 @@ gratification and deep structural growth:
 
 | Horizon | Mechanism | Return |
 |---|---|---|
-| **90-Second Hook** | Automated Drive Infrastructure Deployment | Immediate administrative structure and visual command center. |
+| **A Few Minutes of Setup** | Automated Drive Infrastructure Deployment, then a short reflective wizard (role, 90-Day Vision, Admin Ghost, Necessary Struggle, Relational Targets, passphrase) | Immediate administrative structure and visual command center, once setup completes. |
 | **10-Minute Vent** | Initial Session Ingestion and Distillation | First lossless record and "Admin Ghost" offloading. |
 | **21-Day Moat** | Socratic Onboarding Path | Full cognitive prosthetic alignment and high switching costs. |
+
+<!-- FIXED (external UX audit): "90-Second Hook" promised an instant payoff
+     that doesn't match the real sequencing — the Drive deployment itself
+     is fast, but the reflective wizard that follows it (8_WebApp_UI.html's
+     ARM_STEPS) gates the engine at TIER_2 (`_coldEngineGate()`,
+     1_Config_And_Deploy.gs) before anything, including the next row's
+     "10-Minute Vent," can actually process. Renamed to describe the real
+     sequence rather than a headline number a first-time reader would take
+     literally. -->
 
 ## 4. Licensing: Polyform Noncommercial 1.0.0
 
