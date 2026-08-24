@@ -1,17 +1,31 @@
 // =============================================================================
 // FILE: 15b_StudioFlowPrompts_Flow2_Revised.js
-// NOT A DEPLOYED SCRIPT — reference file only, same status as the original
-// 15_StudioFlowPrompts.js this extends.
+// BOUND TO: Central Ledger spreadsheet (external product review, Finding 3,
+// "this quarter" — added to this project's real file list so
+// FLOW_2_SYSTEM_PROMPT has exactly one source of truth, read directly by
+// 15c_Flow2DirectEvaluationService.js's opt-in DIRECT_GEMINI escape hatch,
+// instead of that file needing its own separate copy that could drift out
+// of sync with what actually gets pasted into Studio).
+//
+// STILL NOT A DEPLOYED STUDIO FLOW. Being loaded into this GAS project
+// (so code here can reference FLOW_2_SYSTEM_PROMPT directly) is a
+// different thing from Flow 2 itself existing in Google Workspace Studio
+// — it still doesn't (see cas-ccps/README.md's "Flow 2 has never been
+// built in Studio"). This file's prompt text is still meant to ALSO be
+// pasted verbatim into a live Studio Flow's Gemini step whenever that
+// Flow actually gets built — nothing about this file's own content
+// changed, only which project loads it.
 //
 // PURPOSE: Complete specification for Flow 2 (Student Evaluation),
 // revised to additionally produce structured, per-milestone competency
 // evidence — without changing what the student sees in their feedback.
 //
-// STATUS: Flow 2 has never been deployed. This is not a patch to a live
-// system — it is the actual first build spec for Flow 2, informed by
-// Module 5's requirements. Treat this the same way you would treat
-// 15_StudioFlowPrompts.js's original FLOW_2_SYSTEM_PROMPT: paste verbatim
-// into the Gemini step, do not abbreviate or paraphrase.
+// STATUS: Flow 2 has never been deployed as a Studio Flow. This is not a
+// patch to a live system — it is the actual first build spec for Flow 2,
+// informed by Module 5's requirements. Treat this the same way you would
+// treat 15_StudioFlowPrompts.js's original FLOW_2_SYSTEM_PROMPT: paste
+// verbatim into the Gemini step whenever Flow 2 is actually built there,
+// do not abbreviate or paraphrase.
 //
 // WHAT CHANGED FROM THE ORIGINAL FLOW 2 DESIGN (per STUDIO_FLOW_REFERENCE.pdf):
 //   1. FLOW_2_SYSTEM_PROMPT gains one new instruction block asking Gemini

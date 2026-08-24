@@ -54,6 +54,21 @@ function getConfig_() {
     // so behavior is unchanged unless a project sets STUDENT_EMAIL_DOMAIN.
     studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || "ccpsnet.net",
 
+    // ── Evaluation escape hatch (external product review, Finding 3,
+    // "this quarter") — same CFG.INFERENCE_MODE pattern kos-personal
+    // already uses (1_Config_And_Deploy.gs), scaled down: cas-ccps has no
+    // separate managed-inference-service, so the opt-in path here is a
+    // direct Gemini API call (15c_Flow2DirectEvaluationService.js)
+    // instead of a whole second deployment. Default "STUDIO" is today's
+    // unchanged behavior — Flow 2 (Student Evaluation) runs as a native
+    // Google Workspace Studio Flow, no code path in this repo calls it.
+    // Set EVALUATION_MODE = "DIRECT_GEMINI" as a Script Property, plus a
+    // DIRECT_GEMINI_API_KEY Script Property, to make Flow 2's evaluation
+    // logic testable/runnable without a live Studio Flow — see
+    // 15c_Flow2DirectEvaluationService.js's own header comment and
+    // cas-ccps/README.md's Finding 3 writeup.
+    evaluationMode:       p.EVALUATION_MODE         || "STUDIO",
+
     // ── leader-hub OAuth connection (D1 — shared-core merge, Addendum 24) ──
     // The Google OAuth Client ID leader-hub's "Sign In With Google" button
     // is registered under. Same real value across every teacher's Teacher
@@ -195,3 +210,142 @@ const CLIENT_ESC_JS = `function esc(s) {
   return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }`;
 // rubricQueue: "RubricQueue"  ← included in getConfig_() above
+
+// =============================================================================
+// LEDGER — column indices (0-based) for the "Ledger" tab (cfg.tabs.ledger),
+// canonical order per registerLedger_() (02_Form1_IntakeAndWorkspaceGenerator.js).
+//
+// External product review, Finding 8: 13_StudentDashboard.js's
+// getStudentDashboardData() already builds one lookup this way correctly
+// (stagingHeaders.indexOf("StudentFileID")) sitting right next to a dozen
+// hardcoded row[N] literals reading this exact tab in the same function —
+// a real header-shift (a column inserted/reordered on the live Ledger)
+// would silently corrupt every one of those, with no error, just wrong
+// data rendered to a student or teacher. This constant object is the
+// same SCRS/SCRDL-style fix 30_SCRSuggestionEngine.js already uses for
+// its own tabs (see that file's column-index comments) — matched to
+// 13_StudentDashboard.js and 07_TeacherDashboard.js, the two files with
+// this exact pattern: several hardcoded Ledger indices read together to
+// build one dashboard-facing object.
+//
+// TURN_IN_SUGGESTED_SCORE (column 19) is NOT written by registerLedger_
+// above — 07_TeacherDashboard.js's _ensureTurnInReviewColumns_() adds it
+// self-healing, on first use, to an already-deployed Ledger that predates
+// it (same pattern as 30_SCRSuggestionEngine.js's
+// _ensureScrDecisionLogArchiveColumn_). Reading it is still safe via this
+// same LEDGER constant even before that column exists — row[19] on a
+// shorter row is simply undefined, same as today.
+// =============================================================================
+const LEDGER = {
+  TIMESTAMP:              0,
+  GOOGLE_ID:              1,   // student's Google account / district email
+  CONFIG_ID:              2,
+  FILE_ID:                3,
+  STUDENT_NAME:           4,
+  BLOCK:                  5,
+  CLASS_NAME:             6,
+  TEACHER_NAME:           7,
+  TEACHER_EMAIL:          8,
+  SUBJECT:                9,
+  COURSE_NAME:            10,
+  PERIOD:                 11,
+  STATUS:                 12,
+  SUBMISSION_TS:          13,
+  NOTES:                  14,
+  LAST_EVAL:              15,
+  ADMIN_FILE_URL:         16,
+  STUDENT_FILE_URL:       17,
+  ACADEMIC_YEAR:          18,
+  // Added self-healing by 07_TeacherDashboard.js's
+  // _ensureTurnInReviewColumns_() (sheet.getRange(1, 20, 1, 4)) — absent on
+  // a Ledger created before that feature existed, in which case row[N] for
+  // any of these four is simply undefined, same as today.
+  TURN_IN_SUGGESTED_SCORE:  19,
+  TURN_IN_FINAL_SCORE:      20,
+  TURN_IN_SCORE_DECIDED_BY: 21,
+  TURN_IN_SCORE_DECIDED_AT: 22,
+};
+
+// One past the highest LEDGER index above — the Ledger's real, schema-known
+// column count, TURN_IN_* columns included. External product review,
+// Finding 6 ("this quarter" scaling fix): every getDataRange() call reads
+// however wide the sheet's used range happens to be, which for the Ledger
+// specifically means re-deriving the same known-fixed 23-column width from
+// live sheet state on every single call, forever, and is vulnerable to the
+// well-known GAS gotcha where one stray far-right value (ever entered, even
+// by accident, even since deleted) can make getDataRange() report a wider
+// range than the real schema forever after. getRange(1, 1, lastRow,
+// LEDGER_COL_COUNT) reads exactly the columns this schema actually defines,
+// no more, no less — used by the handful of call sites (10_AdminRecoveryPanel.js,
+// 29_StudentContextAggregator.js, 30_SCRSuggestionEngine.js) that read the
+// whole Ledger tab rather than a header-driven dynamic column set.
+const LEDGER_COL_COUNT = 23;
+
+// =============================================================================
+// getCompetencyTextMap_ — CacheService layer over CompetencyRegistry
+// (external product review, Finding 6, "this quarter" scaling fix).
+//
+// CompetencyRegistry maps competency_id -> competency_text: imported once
+// at setup (22b_CompetencyRegistryImporter.js) and re-imported only on a
+// deliberate admin action — read constantly (every SCR dashboard load,
+// every warm-up bridge call, every alignment log write) but changes rarely.
+// 30_SCRSuggestionEngine.js's getSCRDashboardData_() and
+// getStudentScrStandingForCompetencies_() used to each independently
+// getDataRange() + build this same map from scratch on every call. This
+// wraps that identical block once, backed by Apps Script's own
+// CacheService (a real cross-execution cache with a TTL, unlike a
+// module-level variable, which resets every fresh execution) — a cache
+// hit costs nothing beyond a JSON.parse of a small cached string, no
+// sheet read at all.
+//
+// Cache key/TTL are process-wide (CacheService.getScriptCache(), not
+// getUserCache()) — CompetencyRegistry isn't per-user data, every caller
+// in every project should see the same map. 6-hour TTL: long enough that
+// a busy day of dashboard loads costs at most one real read per 6 hours,
+// short enough that a deliberate re-import (rare, admin-only) is visible
+// well within the same day rather than needing a manual cache-bust step.
+// Falls back to a direct, uncached read on any CacheService error (e.g.
+// a value that happens to exceed CacheService's 100KB-per-key cap) rather
+// than ever throwing — same fail-open-to-slow-path discipline as this
+// file's own PropertiesService-backed caches elsewhere in this repo
+// (31_PacingGuideManager.js's per-unit pacing cache).
+// =============================================================================
+const COMPETENCY_REGISTRY_CACHE_KEY = "competency_registry_text_map_v1";
+const COMPETENCY_REGISTRY_CACHE_TTL_SECONDS = 6 * 60 * 60; // 6 hours
+
+function getCompetencyTextMap_(registrySheet) {
+  let cache = null;
+  try {
+    cache = CacheService.getScriptCache();
+    const cached = cache.get(COMPETENCY_REGISTRY_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {
+    // CacheService unavailable or the cached value was corrupt/unparsable
+    // — fall through to a fresh read rather than failing the caller.
+  }
+
+  const compTextMap = {};
+  if (registrySheet) {
+    const regData = registrySheet.getDataRange().getValues();
+    const regHeaders = regData[0] ? regData[0].map(h => String(h).trim()) : [];
+    const iId = regHeaders.indexOf("competency_id");
+    const iText = regHeaders.indexOf("competency_text");
+    if (iId !== -1 && iText !== -1) {
+      for (let i = 1; i < regData.length; i++) {
+        compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
+      }
+    }
+  }
+
+  if (cache) {
+    try {
+      cache.put(COMPETENCY_REGISTRY_CACHE_KEY, JSON.stringify(compTextMap), COMPETENCY_REGISTRY_CACHE_TTL_SECONDS);
+    } catch (e) {
+      // Value too large for CacheService's 100KB-per-key cap, or some other
+      // put() failure — non-fatal. The map we just built is still returned
+      // to this caller; the next caller just pays for another fresh read.
+    }
+  }
+
+  return compTextMap;
+}
