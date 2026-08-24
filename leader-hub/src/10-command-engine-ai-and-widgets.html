@@ -67,6 +67,23 @@ function _showToast(msg, duration=2800, bg='#1a3560') {
   setTimeout(() => _removeToast(t), duration);
 }
 
+// Fires a real browser Notification for a reminder (external UX audit:
+// "out of sight, out of mind" only works if the app can reach a minimized
+// tab, and this app had zero uses of the Notification API). Purely
+// additive — every reminder's existing showXBanner() call is untouched, so
+// denied/unsupported/opted-out all fall straight back to the banner with
+// no extra fallback logic needed here. Re-checks live permission on every
+// call rather than trusting the stored lh_notify_enabled flag alone, so a
+// permission revoked at the OS/browser level after opt-in degrades
+// gracefully instead of throwing.
+function _fireNotification(title, body) {
+  if (typeof Notification === 'undefined') return false;
+  if (!LS.get('lh_notify_enabled', false)) return false;
+  if (Notification.permission !== 'granted') return false;
+  try { new Notification(title, { body }); return true; }
+  catch (e) { console.error('[_fireNotification] failed', e); return false; }
+}
+
 // ── Runtime data constants (restored) ──────────────────────────────────────
 const DB_ROLES = {
   teach:   { icon:'📘', label:'Teaching',   color:'#1a3560', bg:'#eef2f9' },
@@ -1882,6 +1899,66 @@ function buildActionQueue(){
     }
   }
 
+  // ── Missed-reminder fallback cards (external UX audit) ───────────────────────
+  // The banner-driven reminders below (deposit/payroll/comms/brag) now have
+  // catch-up windows (checkDepositReminder etc., src/11+src/12), but a
+  // catch-up that fires while the tab is closed still needs a visible
+  // trace once it's reopened — these mirror the journal check above rather
+  // than depending on whether the banner itself already fired. Each is
+  // gated on "past this reminder's own window end," not just isSchoolDay,
+  // so the card doesn't appear before the window it's reporting on has
+  // actually passed.
+  {
+    const _rNow = new Date();
+    const _rToday = _rNow.toDateString();
+    const _rPastToday = (h, m) => {
+      const end = new Date(_rNow); end.setHours(h, m, 0, 0);
+      return _rNow >= end;
+    };
+
+    // Deposit — real CCPS Policy 7060 consequence, highest priority of the four.
+    if (isSchoolDay(_rNow) && _rPastToday(14, 0) && LS.get('lh_deposit_done_date','') !== _rToday) {
+      q.push({priority:80, icon:'🏦', text:`Missed at 1:45 — deposit was due to Ms. Evans by 2 PM. Still outstanding?`,
+        role:'store', nav:'wbl', days:0});
+    }
+
+    // Payroll — Fridays only.
+    if (_rNow.getDay() === 5 && isSchoolDay(_rNow) && _rPastToday(12, 15) && LS.get('lh_workday_done_date','') !== _rToday) {
+      q.push({priority:68, icon:'🕛', text:`Missed at noon — Workday time entry hasn't been submitted this Friday.`,
+        role:'general', nav:'dashboard', days:0});
+    }
+
+    // Comms triage.
+    if (isSchoolDay(_rNow) && _rPastToday(7, 50) && LS.get('lh_comms_done_date','') !== _rToday) {
+      q.push({priority:52, icon:'📬', text:`Missed at 7:30 — email, voicemail, and mailbox haven't been checked today.`,
+        role:'general', nav:'dashboard', days:0});
+    }
+
+    // Brag board — Fridays only.
+    if (_rNow.getDay() === 5 && isSchoolDay(_rNow) && _rPastToday(14, 15) && LS.get('lh_brag_done_date','') !== _rToday) {
+      q.push({priority:42, icon:'🏆', text:`Missed at 2:00 — this week's Brag Board update hasn't gone out.`,
+        role:'general', nav:'dashboard', days:0});
+    }
+  }
+
+  // ── Backup nudge (external UX audit) ──────────────────────────────────────────
+  // This app has an elaborate reminder system and used none of it for the
+  // one event — no backup ever taken — that would erase a full year of
+  // roster/dues/trip data if the browser profile is reset. Nudges once
+  // lh_last_backup is null after a week of use, or hasn't run in 14 days.
+  {
+    const _bFirstUse = LS.get('lh_first_use_date', '');
+    const _bLastBackup = LS.get('lh_last_backup', '');
+    const _bDaysSinceFirstUse = _bFirstUse ? (Date.now() - new Date(_bFirstUse).getTime()) / 86400000 : 0;
+    const _bDaysSinceBackup = _bLastBackup ? (Date.now() - new Date(_bLastBackup).getTime()) / 86400000 : Infinity;
+    if ((!_bLastBackup && _bDaysSinceFirstUse >= 7) || _bDaysSinceBackup >= 14) {
+      q.push({priority:38, icon:'💾', text: _bLastBackup
+          ? `Backup is ${Math.floor(_bDaysSinceBackup)} days old — everything here lives only in this browser.`
+          : `No backup taken yet — everything here lives only in this browser. Export a copy.`,
+        role:'general', nav:'dashboard', action:'openBackupSettings', days:0});
+    }
+  }
+
   // P45 horizon items intentionally excluded from choice cards —
   // "This Week" items are already visible in Row D3 on the dashboard.
   // Routing nav:'dashboard' when already on dashboard is circular and wastes a card slot.
@@ -1999,6 +2076,8 @@ function choicePick(idx, nav, action){
   // Execute special action if present before navigating
   if (action === 'logPLC') {
     try { logPLCAttended(); } catch(_e) {}
+  } else if (action === 'openBackupSettings') {
+    try { openBackupSettings(); } catch(_e) {}
   }
   // Immediately rebuild priority queue so completed card vanishes on return
   try { refreshNextAction(); } catch(_e) {}
