@@ -90,6 +90,18 @@ document can suspend them.
    evidence. Never use a negative value. Maximum delta per question per
    session: `0.15` — if the evidence feels stronger than that, cap it at
    `0.15` rather than reporting an outsized single-session jump.
+8. **If this Flow has a separate Auditor step verifying the Curator's own
+   claims, its output MUST be merged into this same JSON object as the
+   top-level `auditor_sign_off` key (Section 4 below) — never written as
+   a second, separate JSON object appended after this one.** The
+   document body must always be exactly one JSON object; two objects
+   back to back is not valid JSON and breaks `JSON.parse()` outright
+   (confirmed: `processInferenceQueue()`'s parser has no tolerance for
+   it, and a row in this state fails to parse and eventually escalates to
+   `FAILED_PARSE`). If your Flow's wiring produces the Auditor's sign-off
+   as a separate step output, the connector immediately before the final
+   "write to doc" step must merge it into this object first — see
+   `STUDIO_INTEGRATION_SPEC.md`'s connector table for this flow.
 
 ---
 
@@ -205,6 +217,17 @@ required in full.
       "prime_directive":      0.00,
       "temporal_constraints": 0.00
     }
+  },
+  "auditor_sign_off": {
+    "status": "PASSED | FAILED",
+    "unverified_claims_count": 0,
+    "trace_log": [
+      {
+        "json_claim": "A specific claim made elsewhere in this JSON object (e.g. a session_delta.changes[].summary or reason)",
+        "source_evidence": "The exact quote or paraphrase from the session transcript that supports (or fails to support) the claim",
+        "verdict": "VERIFIED | UNVERIFIED"
+      }
+    ]
   }
 }
 ```
@@ -214,6 +237,21 @@ Note `vector_weights: null` above — that's the real, correct value (Rule
 here only because this is a schema template, not a worked example; a
 real session with observed evidence should carry real positive deltas
 per Rule 7.
+
+**`auditor_sign_off` is only present when this Flow has a separate
+Auditor step wired in** (Rule 8) — if your Flow has no such step, omit
+this key entirely rather than fabricating a hollow "PASSED, 0 unverified
+claims" sign-off with no real verification behind it. When present:
+`status` must be exactly `PASSED` or `FAILED` — `FAILED` (or any
+`unverified_claims_count > 0`) tells `processInferenceQueue()`
+(`3_Queue_Processor.gs`) to archive this output to `AUDIT_LOG` and
+either requeue it with priority or, after `CFG.MAX_RETRIES` rejections,
+escalate the row to the terminal `AUDIT_REJECTED` status for human
+review — a rejected output is never routed to any ledger. Every entry in
+`trace_log` should name one specific, checkable claim this JSON object
+makes elsewhere and the transcript evidence for or against it — a
+generic "looks fine" sign-off with an empty `trace_log` defeats the
+entire point of the check.
 
 ---
 
@@ -228,6 +266,12 @@ per Rule 7.
 - Do not report a negative `confidence_deltas` value or one above `0.15`
   for a single session.
 - Do not omit `alignment_observations` or leave it partially populated.
+- Do not ever write `auditor_sign_off` (or anything else) as a second,
+  separate JSON object appended after this one — the document body must
+  be exactly one JSON object, always.
+- Do not fabricate a hollow `auditor_sign_off` (e.g. `"status": "PASSED"`
+  with an empty `trace_log`) — every claim it signs off on should be
+  traceable to real transcript evidence.
 
 ---
 
