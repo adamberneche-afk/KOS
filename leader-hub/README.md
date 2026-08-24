@@ -33,8 +33,18 @@ key at all).
 | `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md`, `LP_ASSIST_FLOW_PROMPT.md`, `EMAIL_COMPOSE_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
 | `drive-tools/` | Later, **not-yet-executed** Drive-cleanup tooling (`LH_DriveDocSplitter.gs`, `LH_8177_Rename.gs`, `LH_AppManifestUpdater.py`) for splitting/renaming 8177 lesson docs |
-| `archived/studentleaderhub_EARLY_PROTOTYPE.html` | A much earlier prototype (2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board, SCR, trips, settings — with a working trips module already present, but no dedicated DECA/WBL/E-Sports modules and no Gemini integration) — genuinely different from the live app, not a duplicate, kept for history |
-| `archived/studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx` | A React/JSX exploration draft, not the deployed artifact — moved here (was previously at the `leader-hub/` top level) for the same reason every other non-deployed design lives under `archived/` |
+
+`archived/` (external product review, Finding 3 / "this month" dead-code
+cleanup) was removed from the working tree — nothing here is lost, the
+full pre-deletion tree is preserved on the `pre-archive-cleanup` branch.
+It held `studentleaderhub_EARLY_PROTOTYPE.html` (a much earlier prototype,
+2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board,
+SCR, trips, settings — with a working trips module already present, but
+no dedicated DECA/WBL/E-Sports modules and no Gemini integration —
+genuinely different from the live app, not a duplicate, kept for history)
+and `studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx` (a React/JSX
+exploration draft, not the deployed artifact, referenced below in "Fixed:
+two more narrow-blast-radius bugs").
 
 ## Status
 

@@ -23,6 +23,12 @@ The shadow matrix is the system's calibration model. It maintains confidence int
 
 ## File Structure
 
+`archived/` and `archived/legacy-pre-v8/` (external product review,
+Finding 3 / "this month" dead-code cleanup) were removed from the working
+tree. Nothing is lost — the full pre-deletion tree is preserved on the
+`pre-archive-cleanup` branch, and every commit before this cleanup still
+has it in history.
+
 ```
 appsscript.json            OAuth scopes, web app config                    ✅ in repo — scopes verified against actual code usage, clean
 1_Config_And_Deploy.gs     CFG constants, deploy, triggers                 ✅ in repo — all documented CFG keys present, 10-trigger install
@@ -34,7 +40,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 7_WebApp.gs                doGet, doPost, server functions                 ✅ in repo — doGet() template-evaluates mode; getInboundFolderUrl() added
 8_WebApp_UI.html           Mobile web app (Ingest / Queue / Diagnostics)   ✅ in repo — all server calls now backed; managed_service panel restored, gated behind CFG.INFERENCE_MODE (see CHANGELOG.md)
 9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, menu       ✅ in repo
-10_Turnstile.gs            Matrix turnstile state machine                 ✅ in repo — rebuilt against the real schema (original in archived/)
+10_Turnstile.gs            Matrix turnstile state machine                 ✅ in repo — rebuilt against the real schema (original was in archived/, removed — see the dead-code cleanup note below)
 11_Registrar_CogRelay.gs   Curriculum-drafts auditing pipeline (Registrar) ✅ in repo — see "Registrar / Cog Relay" below
 KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) — not needed
 KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)   — not needed
