@@ -816,6 +816,54 @@ GoogleID.
       what inventing a Ledger retention policy would have done without
       this same unconfirmed-default framing; confirmed with the user
       before implementing on that basis.
+17. **Flow 2 escape hatch (external product review, Finding 3, "this
+    quarter")** — Flow 2 (Student Evaluation) has never been built in
+    Studio (see "Known gaps" above), and `15_StudioFlowPrompts.js`/
+    `15b_StudioFlowPrompts_Flow2_Revised.js` are specs to paste into a
+    Studio Gemini step, not runnable code — meaning nothing anywhere
+    could actually exercise Flow 2's evaluation logic (prompt
+    construction, response parsing, competency-evidence extraction)
+    without a live Studio Flow. kos-personal already solved the general
+    version of this with `CFG.INFERENCE_MODE` (`1_Config_And_Deploy.gs`)
+    gating a fallback to its own separate, billed managed-inference-service
+    (`kos-personal/inference-service/`) — cas-ccps gets an analogous
+    opt-in escape hatch, scaled to what it actually needs: no separate
+    deployment, just a direct Gemini API call.
+    - `cfg.evaluationMode` (`00_SharedConfig.js`, default `"STUDIO"` —
+      unchanged behavior) can be set to `"DIRECT_GEMINI"` via the
+      `EVALUATION_MODE` Script Property, plus a `DIRECT_GEMINI_API_KEY`
+      Script Property, to opt in.
+    - `15b_StudioFlowPrompts_Flow2_Revised.js` moved into
+      `cas-ccps:central-ledger`'s real file list (was previously excluded
+      as "not deployed" in `tools/gas-lint/project-map.json`) so
+      `FLOW_2_SYSTEM_PROMPT` has exactly one source of truth for both the
+      Studio-paste path and the new direct-call path — see that file's
+      own updated header comment for why this does NOT mean Flow 2 itself
+      is now deployed in Studio (it still isn't).
+    - New `15c_Flow2DirectEvaluationService.js`: `_buildFlow2Prompt_()`
+      and `_parseFlow2Response_()` (pure logic, no network — reuses
+      `04_Form2_TurnInGate.js`'s existing `scanCompliance_()`/
+      `extractSuggestedScore_()` rather than duplicating them, and adds
+      parsing for the `[MILESTONE_OUTCOMES: {...}]` line nothing else in
+      this repo reads today) plus `runFlow2DirectGemini_()` (the thin
+      orchestrator that actually calls `UrlFetchApp`) and
+      `writeCompetencyEvidenceFromFlow2_()` (the CompetencyEvidence write
+      step Flow 2 itself would otherwise perform, with the same
+      "skip a milestone with a blank competency ID, never guess" rule
+      `15b_StudioFlowPrompts_Flow2_Revised.js`'s own DEPENDENCY note
+      specifies).
+    - **Deliberately NOT wired into `06_StagingPipeline_Turnstile.js`'s
+      automatic release loop.** Automatically rerouting live student
+      submissions through an unreviewed new code path is a materially
+      bigger decision than "make Flow 2 testable" calls for — see
+      `15c_Flow2DirectEvaluationService.js`'s own header comment. Call
+      `runFlow2DirectGemini_()` directly (Script Editor, or a manual
+      admin action, with a real Gemini API key) to actually use this path.
+    - See `tests/cas-ccps/flow2-direct-evaluation.test.js` for full
+      coverage of the pure prompt-building/response-parsing/evidence-write
+      logic, plus the mode-gating and error-handling of the one function
+      that actually touches the network (with `UrlFetchApp` mocked, not a
+      real Gemini call).
 
 ## Naming note
 
