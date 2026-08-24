@@ -590,3 +590,96 @@ Ten findings from a separate UI/UX-and-North-Star-alignment audit
   the real verdict vocabulary is APPROVED/FLAG/VETO (not the originally
   assumed APPROVED/REJECTED).
 
+## Round 11 — unrecognized-status catch-all
+
+A live `STAGING_PIPELINE` sheet review found 5 real rows (one session
+log, chunked `_CH01`–`_CH05`) sitting at `Status = "AUDITING _LOG"` — a
+string no Sensor/Turnstile/Queue-Processor/Studio code in this repo,
+current or archived, has ever written. Tracing every place `Status` gets
+read confirmed each one matches on an exact string and silently skips
+anything else: `runMatrixTurnstile()`'s two passes, the Queue Processor's
+main loop, `getQueueMetrics()`/`getQueueStatus()`'s counts (same
+exclusion bug Round 4 above already fixed for terminal-failure statuses,
+just never closed for the fully-unrecognized case), and even the manual
+`devSetFlowComplete()` escape hatch, which throws on it. These rows were
+invisible to every health check the system has, including the
+`STUDIO_TIMEOUT` ceiling.
+
+**Fixed:** `5_Error_And_Utilities.gs` gained `KNOWN_STAGING_STATUSES` and
+`_isKnownStagingStatus_()` — the single source of truth for "is this
+status something the system recognizes at all," combining an exact-match
+list with the existing `TERMINAL_FAILED_STATUSES` prefix check rather
+than duplicating it. `runMatrixTurnstile()` now alerts once per
+`Payload_UID` via `_sendChatAlert()` for any row that fails this check
+(memoized in a new `KOS_UNKNOWN_STATUS_ALERTED` Script Property, same
+pattern as the existing release-timestamp map, so a standing bad row
+doesn't re-alert every 5 minutes forever). `getQueueMetrics()` and
+`getQueueStatus()` both gained an `unknown` bucket in their returned
+counts instead of an implicit silent exclusion, and `8_WebApp_UI.html`
+gained a `metric-unknown` tile (hidden unless nonzero, same convention as
+the existing `metric-failed`/`metric-cycling` tiles) — and, unlike
+`cycling` (a subset of pending/active), `unknown` is genuinely uncounted
+elsewhere, so it's now included in `totalActivity` to avoid the same
+"reads as an empty queue" bug Round 4 fixed for terminal failures.
+`SCHEMA_REFERENCE.md`'s Status Lifecycle table also gained the
+previously-undocumented `PHASE_2_ERROR` (a pre-v8.0 legacy status the
+code already recognized as terminal but the doc never listed).
+
+This is a visibility fix, not an auto-resolution — per this system's
+standing rule, nothing auto-corrects an unrecognized status; a human
+still has to fix the Status cell by hand once alerted.
+
+## Round 12 — Auditor accountability gate for the Curator flow
+
+A real processed log from the live Curator flow surfaced two things at
+once. First, a genuine bug: the log was two separate, complete JSON
+objects concatenated back to back (an `auditor_sign_off` object, then
+the Curator's own structured output) — not valid JSON as a single
+document, and `processInferenceQueue()`'s parser has no tolerance for
+it. Second, real intent: the operator had deliberately added an Auditor
+step inside the Studio Flow itself, verifying the Curator's own claims
+against the session transcript before the row is trusted — "holding the
+Curator accountable," in the operator's own words. The bug was in how
+that intent landed in the document, not the intent itself.
+
+**Fixed — the wiring, documented so it can't recur:** `CURATOR_PROMPT.md`
+gained Rule 8 and a documented `auditor_sign_off` schema: if a Flow runs
+an Auditor step, its output MUST be merged into the same JSON object the
+Curator writes, never appended as a second object.
+`STUDIO_INTEGRATION_SPEC.md`'s connector table for this flow gained
+optional steps 2a/2b (the Auditor's Gemini call, then a merge step)
+documenting exactly where that merge has to happen before the final
+write.
+
+**Added — an actual accountability gate, not just documentation:**
+`processInferenceQueue()` (`3_Queue_Processor.gs`) now checks a parsed
+payload's `auditor_sign_off` (`_isAuditFailure_()`,
+`5_Error_And_Utilities.gs`) before routing anything to a ledger. A
+rejected audit (status not `PASSED`, or any unverified claim):
+1. Archives the full rejected payload and trace log to a new `AUDIT_LOG`
+   sheet (`_archiveAuditFailure_()`) — the only durable record, since the
+   Drive doc body itself gets overwritten the moment Studio reruns the
+   row.
+2. Below `CFG.MAX_RETRIES`, reverts the row to `PENDING_FLOW` and marks
+   its `Payload_UID` for priority release
+   (`_markAuditRetryPriority_()`) — per the operator's explicit request
+   ("push the log back to the start of the queue to run again"),
+   `runMatrixTurnstile()`'s release pass now checks this priority set
+   FIRST, ahead of normal row order, rather than physically reordering
+   sheet rows (which would risk a row-shift race against a concurrent
+   trigger run — the same class of bug Round 5 fixed elsewhere in this
+   file).
+3. At `CFG.MAX_RETRIES`, escalates to a new terminal `AUDIT_REJECTED`
+   status (added to `TERMINAL_FAILED_STATUSES`) with a chat alert — same
+   "don't retry forever, surface it for a human" discipline as
+   `STUDIO_TIMEOUT`, so a persistently-failing audit can't loop silently
+   either.
+
+Verified via sandbox test: three consecutive simulated audit failures
+correctly requeue-with-priority on attempts 1 and 2, then escalate to
+`AUDIT_REJECTED` on attempt 3 (`MAX_RETRIES=3` in the test), with all
+three rejections archived and exactly one chat alert firing, only at
+escalation. A separate sandbox test confirmed a priority-marked UID
+releases before an earlier-row-order, non-priority UID, and that
+priority is correctly one-shot (pruned after release).
+
