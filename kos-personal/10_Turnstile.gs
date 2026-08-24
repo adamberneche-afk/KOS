@@ -88,6 +88,8 @@ function runMatrixTurnstile() {
     const nowMs    = new Date().getTime();
     const staleMs  = CFG.TURNSTILE_STALE_MINS * 60 * 1000;
 
+    _alertOnUnknownStatuses_(data, SC);
+
     let staleReset = 0, activeCount = 0, freedSlots = 0;
 
     // ── Pass 1: reset stale STUDIO_ACTIVE rows, count still-active ──
@@ -229,6 +231,88 @@ function _readReleaseMap() {
 function _writeReleaseMap(map) {
   PropertiesService.getScriptProperties()
     .setProperty('KOS_TURNSTILE_RELEASED', JSON.stringify(map));
+}
+
+
+// ================================================================
+// UNKNOWN-STATUS CATCH-ALL
+// ================================================================
+// A row whose Status is not in KNOWN_STAGING_STATUSES / doesn't match a
+// TERMINAL_FAILED_STATUSES prefix (5_Error_And_Utilities.gs) matches
+// none of the exact-string checks in this file, the Queue Processor's
+// main loop, or getQueueMetrics()'s counts — it's invisible to every
+// health check the system has, including the STUDIO_TIMEOUT ceiling
+// above. Found via a real row stuck at "AUDITING _LOG", a status no
+// Sensor/Turnstile/Queue-Processor/Studio flow in this codebase ever
+// writes. This never auto-fixes the row — same "propose, don't execute"
+// boundary as everything else here — it only makes sure a human finds
+// out, once, instead of the row sitting silently forever.
+
+/**
+ * Alerts once per Payload_UID for any row whose Status isn't recognized
+ * by _isKnownStagingStatus_(). Memoized via PropertiesService so a
+ * standing unknown-status row doesn't re-alert every 5-minute run.
+ *
+ * @param {Array<Array>} data  STAGING_PIPELINE data rows (from getValues()).
+ * @param {Object} SC          CFG.STAGING_COLS column-index map.
+ */
+function _alertOnUnknownStatuses_(data, SC) {
+  const alerted = _readUnknownStatusAlertedSet_();
+  const uidsInSheet = new Set();
+  let alertedThisRun = false;
+
+  for (let i = 0; i < data.length; i++) {
+    const status = String(data[i][SC.STATUS]);
+    const uid    = String(data[i][SC.PAYLOAD_UID]);
+    uidsInSheet.add(uid);
+
+    if (_isKnownStagingStatus_(status)) continue;
+    if (alerted[uid]) continue; // already alerted this UID once
+
+    const sheetRow  = i + 2;
+    const fileIdStr = String(data[i][SC.FILE_ID]);
+    console.error('[Turnstile] Row ' + sheetRow + ' (' + uid + ') has unrecognized Status "' +
+      status + '" — invisible to Turnstile, the Queue Processor, and the Queue tab.');
+    _sendChatAlert(
+      '🟡 UNKNOWN STATUS — kos-personal STAGING_PIPELINE\n' +
+      'Row: ' + sheetRow + ' (' + uid + ', file ' + fileIdStr + ')\n' +
+      'Status: "' + status + '" is not a recognized pipeline state (see ' +
+      'SCHEMA_REFERENCE.md\'s Status Lifecycle table). This row is invisible ' +
+      'to Turnstile, the Queue Processor, and the Queue tab\'s health counts — ' +
+      'it will never advance on its own. Fix the Status cell by hand to ' +
+      're-enter it into the pipeline. (You will not be alerted again for this row.)'
+    );
+    alerted[uid] = true;
+    alertedThisRun = true;
+  }
+
+  // Prune UIDs no longer present in the sheet at all (e.g. archived by
+  // archiveStagingPipeline()) — same pruning rationale as the release
+  // map below: keeps this from growing unbounded over the system's
+  // lifetime.
+  let pruned = false;
+  Object.keys(alerted).forEach(uid => {
+    if (!uidsInSheet.has(uid)) { delete alerted[uid]; pruned = true; }
+  });
+
+  if (alertedThisRun || pruned) _writeUnknownStatusAlertedSet_(alerted);
+}
+
+/** Reads the { Payload_UID: true } set of already-alerted unknown-status rows. */
+function _readUnknownStatusAlertedSet_() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty('KOS_UNKNOWN_STATUS_ALERTED');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn('[Turnstile] Unknown-status alert set corrupt — resetting. ' + e.message);
+    return {};
+  }
+}
+
+/** Persists the { Payload_UID: true } set of already-alerted unknown-status rows. */
+function _writeUnknownStatusAlertedSet_(set) {
+  PropertiesService.getScriptProperties()
+    .setProperty('KOS_UNKNOWN_STATUS_ALERTED', JSON.stringify(set));
 }
 
 

@@ -479,7 +479,7 @@ function getQueueStatus() {
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const SC      = CFG.STAGING_COLS;
 
-    const counts = { pending: 0, ready: 0, needs_curator: 0, processed: 0, failed: 0 };
+    const counts = { pending: 0, ready: 0, needs_curator: 0, processed: 0, failed: 0, unknown: 0 };
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -502,6 +502,13 @@ function getQueueStatus() {
         // (5_Error_And_Utilities.gs), the same list archiveStagingPipeline()
         // uses to identify these rows for cleanup.
         else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  counts.failed++;
+        // Catch-all, same fix and same reasoning as getQueueMetrics()
+        // above — checked against _isKnownStagingStatus_() rather than
+        // treated as unknown outright, so legacy-but-recognized statuses
+        // (PARTITIONED/CONSOLIDATED) don't start reading as alarming.
+        // Only a genuinely unrecognized status (e.g. a real "AUDITING
+        // _LOG" row) used to be silently uncounted here.
+        else if (!_isKnownStagingStatus_(s))                          counts.unknown++;
 
         if (s === 'NEEDS_CURATOR') {
           needsCuratorRows.push({
@@ -589,6 +596,15 @@ function getQueueMetrics() {
     // (TERMINAL_FAILED_STATUSES, 5_Error_And_Utilities.gs) below — this
     // counter only ever sees rows still short of that ceiling.
     let cycling = 0;
+    // Rows whose Status matches none of the branches below — not a new
+    // pipeline state, a visibility fix for one: see
+    // 5_Error_And_Utilities.gs's _isKnownStagingStatus_() and
+    // 10_Turnstile.gs's _alertOnUnknownStatuses_() for how these rows
+    // get surfaced (once, via chat alert) at the source. Found via a
+    // real row stuck at "AUDITING _LOG" that was previously silently
+    // excluded from every bucket here, exactly like MISSING_FILE_ID/
+    // PROCESSING_ERROR were before the FIXED note below.
+    let unknown = 0;
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -609,6 +625,17 @@ function getQueueMetrics() {
         // showing the "empty queue, get started" message even when the
         // user's very first submission had actually failed.
         else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  failed++;
+        // Catch-all: a status matching none of the branches above.
+        // Checked against _isKnownStagingStatus_() (5_Error_And_Utilities.gs)
+        // rather than treated as unknown outright — PARTITIONED/CONSOLIDATED
+        // are legitimate (if v5.4-legacy, unused-in-v8.0) statuses that
+        // never had their own bucket here either, and shouldn't start
+        // reading as an alarming "unrecognized" row now that one exists.
+        // Only a status that fails that check — e.g. a real "AUDITING _LOG"
+        // row found in production — used to fall through here uncounted,
+        // invisible in every tile, same silent-exclusion bug the FIXED
+        // note above already closed for the terminal statuses.
+        else if (!_isKnownStagingStatus_(s))                          unknown++;
 
         if ((s === 'PENDING_FLOW' || s === 'STUDIO_ACTIVE') &&
             (parseInt(row[SC.RETRY_COUNT]) || 0) >= CFG.TURNSTILE_STUCK_THRESHOLD) {
@@ -633,6 +660,7 @@ function getQueueMetrics() {
       processed,
       failed,
       cycling,
+      unknown,
     };
 
     return {

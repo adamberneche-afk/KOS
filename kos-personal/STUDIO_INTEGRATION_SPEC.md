@@ -225,9 +225,16 @@ Studio must write the complete inference output as JSON to the document body, re
 
 **Empty sections** — If a section has no data, use an empty array `[]` or `null`. Do not omit keys entirely — the queue processor checks for key existence in some branches.
 
-**Known drift between this spec and the live Curator (found by diffing 5 real processed-log outputs against this doc):**
-- `alignment_observations` is documented above and required by `_updateShadowMatrix()`, but the live Curator prompt was not producing it as of this writing — confirm your Curator's actual instructions include it verbatim, not just this spec.
-- `session_uid` is documented here as a top-level `LOG-{unix_ms}-{8_char_hash}` field, but the live Curator instead nests the real session identifier at `session_metadata.session_id` in ISO-datetime form. `processIntakePayload()` now checks `session_metadata.session_id` first, then `session_uid`, so either convention works — but pick one and update whichever side (spec or prompt) is wrong, rather than leaving both alive indefinitely.
+**The paste-verbatim Curator prompt:** [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md) —
+same convention as `VECTOR_CLASSIFY_PROMPT.md` below, paste it exactly,
+don't paraphrase. It resolves both items an earlier review found by
+diffing 5 real processed-log outputs against this doc: `alignment_observations`
+is now a first-class, non-negotiable instruction (that field is required
+by `_updateShadowMatrix()` but an earlier deployment's prompt was found
+omitting it), and `session_uid` vs. `session_metadata.session_id` is
+documented as "pick one, use it consistently" rather than left
+unresolved — `processIntakePayload()` already checks both, so neither
+convention is wrong, only inconsistency across runs would be.
 - Real output also carries `schema_version`, `build_state` (component-level health/status tracking), `session_delta.changes` (a change log distinct from `smp_proposals_filed`), and `cog_registry.cogs_active`/`apex_lead`/`inter_cog_disputes` — none of which are documented above. The queue processor currently ignores all of these safely (no crash, just unused). `build_state.components` in particular looks like a legitimate future write-target if KOS should ever track live code health, not just session history — not built, just flagged as real, structured data currently going nowhere.
 
 ---
@@ -284,6 +291,18 @@ for (let i = 1; i < data.length; i++) {
 **Do not set any other status.** Only `FLOW_COMPLETE` triggers the KOS queue processor. Setting any other value (e.g. `PROCESSED`, `DONE`) will leave the row stranded.
 
 The KOS queue processor runs every 10 minutes and will pick up the `FLOW_COMPLETE` row on its next execution.
+
+**Connector configuration, step by step** — same table format as
+`VECTOR_CLASSIFY`'s own configuration table below, so both flows are
+documented at the same level of concreteness:
+
+| # | Connector | Configuration | Notes |
+|---|---|---|---|
+| T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `STAGING_PIPELINE` · Condition: `Status = STUDIO_ACTIVE` AND `Payload_Type` in `SESSION_LOG`, `EXTERNAL_DATA`, `COG_STIMULUS` | The `Payload_Type` condition is what separates this flow from `VECTOR_CLASSIFY` polling the same sheet (that flow's own table below excludes these three the same way) — without it, both flows would race to claim every `STUDIO_ACTIVE` row. |
+| 1 | Google Docs — Get document | Document ID: `@trigger.File_ID` (column 4) | Raw session/external-data/stimulus text, per Step 3 above. Do not modify before writing output. |
+| 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md), pasted verbatim · Variable: the document text from Step 1 · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
+| 3 | Google Docs — Insert text (or overwrite body) | Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`, replacing the entire body | Same "JSON only, nothing else" contract as Step 6 above. |
+| 4 | Google Sheets — Update row | Row: `@trigger.row` · Status column (6): `FLOW_COMPLETE` | Must always run, even on a Step 2/3 failure path — leave `Status` at `STUDIO_ACTIVE` on failure instead (do **not** write `FLOW_COMPLETE` for malformed output) so the staleness guard resets it for retry rather than the queue processor trying to parse garbage — same rule as Error Handling below and as `VECTOR_CLASSIFY`'s own table. |
 
 ---
 
@@ -440,7 +459,7 @@ Write this array as the document body (replacing the source text entirely — sa
 }
 ```
 
-`vector_weights` is `null` here deliberately, not a placeholder oversight — see the Curator prompt patch (Section 4.2) that made this the only correct value the Curator flow ever emits. Real weights only ever come from a completed `VECTOR_CLASSIFY` row, tested separately below.
+`vector_weights` is `null` here deliberately, not a placeholder oversight — see [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md) Rule 1, which makes this the only correct value the Curator flow ever emits. Real weights only ever come from a completed `VECTOR_CLASSIFY` row, tested separately below.
 
 ### Minimum viable test — `VECTOR_CLASSIFY`
 
