@@ -56,14 +56,14 @@ function getStudentDashboardData(termFilter) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (String(row[1]).toLowerCase() !== googleId.toLowerCase()) continue;
+    if (String(row[LEDGER.GOOGLE_ID]).toLowerCase() !== googleId.toLowerCase()) continue;
 
     // Collect all terms for this student regardless of filter
-    const rowTerm = String(row[18] || "").trim();
+    const rowTerm = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
     if (rowTerm) availableTerms.add(rowTerm);
 
     // Skip ARCHIVED rows
-    const rowStatus = String(row[12]).trim();
+    const rowStatus = String(row[LEDGER.STATUS]).trim();
     if (rowStatus === "ARCHIVED") {
       // Still count the term for dropdown, just don't show in assignments
       continue;
@@ -72,10 +72,10 @@ function getStudentDashboardData(termFilter) {
     // Apply term filter
     if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
 
-    const fileId      = String(row[3]).trim();
-    const status      = String(row[12]).trim();
-    const lastEval    = row[15] ? formatDate_(row[15]) : null;
-    const submittedAt = row[13] ? formatDate_(row[13]) : null;
+    const fileId      = String(row[LEDGER.FILE_ID]).trim();
+    const status      = String(row[LEDGER.STATUS]).trim();
+    const lastEval    = row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : null;
+    const submittedAt = row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : null;
 
     // NEW (Say/Do Ledger cas-ccps finding #7): a student previously had no
     // way to see what's actually on file for them (name, class, period,
@@ -83,26 +83,25 @@ function getStudentDashboardData(termFilter) {
     // notice was a one-time email, easy to miss. registeredAt/isNew feed
     // an in-app "just registered" notice; studentName feeds the persistent
     // "My Info" view below.
-    const registeredAtRaw = row[0] || null;
+    const registeredAtRaw = row[LEDGER.TIMESTAMP] || null;
     const isNewRegistration = registeredAtRaw
       ? (Date.now() - new Date(registeredAtRaw).getTime()) < (3 * 24 * 60 * 60 * 1000)
       : false;
 
-    const rowTerm2 = String(row[18] || "").trim();
     assignments.push({
-      configId:      String(row[2]).trim(),
-      studentName:   String(row[4]).trim(),
+      configId:      String(row[LEDGER.CONFIG_ID]).trim(),
+      studentName:   String(row[LEDGER.STUDENT_NAME]).trim(),
       // Same fallback wording as the teacher dashboard's identical gap
       // (blank column 10) — a teacher and student comparing notes about a
       // "missing unit" record should recognize it as the same thing.
-      unitName:      String(row[10]).trim() || "Unassigned unit",
-      block:         String(row[5]).trim(),
-      className:     String(row[6]).trim(),
-      teacherName:   String(row[7]).trim(),
-      teacherEmail:  String(row[8] || "").trim(),
-      period:        String(row[11]).trim(),
-      subject:       String(row[9]).trim(),
-      term:          rowTerm2,
+      unitName:      String(row[LEDGER.COURSE_NAME]).trim() || "Unassigned unit",
+      block:         String(row[LEDGER.BLOCK]).trim(),
+      className:     String(row[LEDGER.CLASS_NAME]).trim(),
+      teacherName:   String(row[LEDGER.TEACHER_NAME]).trim(),
+      teacherEmail:  String(row[LEDGER.TEACHER_EMAIL] || "").trim(),
+      period:        String(row[LEDGER.PERIOD]).trim(),
+      subject:       String(row[LEDGER.SUBJECT]).trim(),
+      term:          rowTerm,
       registeredAt:      registeredAtRaw ? formatDate_(registeredAtRaw) : null,
       isNewRegistration: isNewRegistration,
       status:        status,
@@ -113,9 +112,9 @@ function getStudentDashboardData(termFilter) {
       docUrl:        fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
         : null,
-      folderLabel:   String(row[5]).trim() + " - " +
-                     String(row[6]).trim() + " - " +
-                     String(row[7]).trim()
+      folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
+                     String(row[LEDGER.CLASS_NAME]).trim() + " - " +
+                     String(row[LEDGER.TEACHER_NAME]).trim()
     });
   }
 

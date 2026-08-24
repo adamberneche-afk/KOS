@@ -195,3 +195,58 @@ const CLIENT_ESC_JS = `function esc(s) {
   return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 }`;
 // rubricQueue: "RubricQueue"  ← included in getConfig_() above
+
+// =============================================================================
+// LEDGER — column indices (0-based) for the "Ledger" tab (cfg.tabs.ledger),
+// canonical order per registerLedger_() (02_Form1_IntakeAndWorkspaceGenerator.js).
+//
+// External product review, Finding 8: 13_StudentDashboard.js's
+// getStudentDashboardData() already builds one lookup this way correctly
+// (stagingHeaders.indexOf("StudentFileID")) sitting right next to a dozen
+// hardcoded row[N] literals reading this exact tab in the same function —
+// a real header-shift (a column inserted/reordered on the live Ledger)
+// would silently corrupt every one of those, with no error, just wrong
+// data rendered to a student or teacher. This constant object is the
+// same SCRS/SCRDL-style fix 30_SCRSuggestionEngine.js already uses for
+// its own tabs (see that file's column-index comments) — matched to
+// 13_StudentDashboard.js and 07_TeacherDashboard.js, the two files with
+// this exact pattern: several hardcoded Ledger indices read together to
+// build one dashboard-facing object.
+//
+// TURN_IN_SUGGESTED_SCORE (column 19) is NOT written by registerLedger_
+// above — 07_TeacherDashboard.js's _ensureTurnInReviewColumns_() adds it
+// self-healing, on first use, to an already-deployed Ledger that predates
+// it (same pattern as 30_SCRSuggestionEngine.js's
+// _ensureScrDecisionLogArchiveColumn_). Reading it is still safe via this
+// same LEDGER constant even before that column exists — row[19] on a
+// shorter row is simply undefined, same as today.
+// =============================================================================
+const LEDGER = {
+  TIMESTAMP:              0,
+  GOOGLE_ID:              1,   // student's Google account / district email
+  CONFIG_ID:              2,
+  FILE_ID:                3,
+  STUDENT_NAME:           4,
+  BLOCK:                  5,
+  CLASS_NAME:             6,
+  TEACHER_NAME:           7,
+  TEACHER_EMAIL:          8,
+  SUBJECT:                9,
+  COURSE_NAME:            10,
+  PERIOD:                 11,
+  STATUS:                 12,
+  SUBMISSION_TS:          13,
+  NOTES:                  14,
+  LAST_EVAL:              15,
+  ADMIN_FILE_URL:         16,
+  STUDENT_FILE_URL:       17,
+  ACADEMIC_YEAR:          18,
+  // Added self-healing by 07_TeacherDashboard.js's
+  // _ensureTurnInReviewColumns_() (sheet.getRange(1, 20, 1, 4)) — absent on
+  // a Ledger created before that feature existed, in which case row[N] for
+  // any of these four is simply undefined, same as today.
+  TURN_IN_SUGGESTED_SCORE:  19,
+  TURN_IN_FINAL_SCORE:      20,
+  TURN_IN_SCORE_DECIDED_BY: 21,
+  TURN_IN_SCORE_DECIDED_AT: 22,
+};

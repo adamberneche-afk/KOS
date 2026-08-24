@@ -15,8 +15,8 @@ const { loadGasFile } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 
-function load() {
-  return loadGasFile(SHARED_CONFIG_PATH, ['getConfig_']);
+function load(exposeNames = ['getConfig_']) {
+  return loadGasFile(SHARED_CONFIG_PATH, exposeNames);
 }
 
 test('getConfig_: throws a clear, actionable error when required properties are entirely missing', () => {
@@ -73,4 +73,47 @@ test('getConfig_: an explicitly configured STUDENT_EMAIL_DOMAIN overrides the "c
 
   const cfg = exported.getConfig_();
   assert.equal(cfg.studentEmailDomain, 'otherdistrict.k12.us');
+});
+
+// ── LEDGER column-index map (Finding 8 / header-index fix) ─────────────────
+// registerLedger_ (02_Form1_IntakeAndWorkspaceGenerator.js) is the single
+// place new Ledger rows are actually written — this pins LEDGER's indices
+// to that real column order so 13_StudentDashboard.js/07_TeacherDashboard.js
+// (both now reading LEDGER.* instead of magic numbers) can never silently
+// drift out of sync with what's actually written to the sheet.
+
+test('LEDGER: matches registerLedger_\'s real column order exactly', () => {
+  const { exported } = load(['LEDGER']);
+  assert.deepEqual(exported.LEDGER, {
+    TIMESTAMP: 0,
+    GOOGLE_ID: 1,
+    CONFIG_ID: 2,
+    FILE_ID: 3,
+    STUDENT_NAME: 4,
+    BLOCK: 5,
+    CLASS_NAME: 6,
+    TEACHER_NAME: 7,
+    TEACHER_EMAIL: 8,
+    SUBJECT: 9,
+    COURSE_NAME: 10,
+    PERIOD: 11,
+    STATUS: 12,
+    SUBMISSION_TS: 13,
+    NOTES: 14,
+    LAST_EVAL: 15,
+    ADMIN_FILE_URL: 16,
+    STUDENT_FILE_URL: 17,
+    ACADEMIC_YEAR: 18,
+    TURN_IN_SUGGESTED_SCORE: 19,
+    TURN_IN_FINAL_SCORE: 20,
+    TURN_IN_SCORE_DECIDED_BY: 21,
+    TURN_IN_SCORE_DECIDED_AT: 22,
+  });
+});
+
+test('LEDGER: every value is a unique, non-negative integer (no accidental collision)', () => {
+  const { exported } = load(['LEDGER']);
+  const values = Object.values(exported.LEDGER);
+  assert.deepEqual(values, [...new Set(values)], 'LEDGER must not assign the same column index twice');
+  values.forEach((v) => assert.ok(Number.isInteger(v) && v >= 0, `${v} must be a non-negative integer`));
 });
