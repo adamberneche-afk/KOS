@@ -147,6 +147,46 @@ of either kind proves the Flow is alive" convention.
 
 ---
 
+## meta / personal Drive — Drive Steward classification Flow
+
+**What it does:** `drive-steward-deploy/DriveSteward_Scanner.gs` (time-
+triggered, mechanical, no AI) finds new/changed files in Fluffy's Drive
+and appends bare rows to `Drive_Steward_Intake`; a human-built Studio
+Flow (`drive-steward-deploy/STUDIO_FLOW_SETUP.md`) reads those rows,
+classifies each file against `Drive_Steward_Methodology_and_Prompt.md`'s
+Part 1 patterns, and writes the result to `File_Registry` — the one Flow
+this whole deployment depends on to ever turn a bare intake row into a
+usable registry entry. Not one of this repo's three main systems, but
+the same "GAS hands off to a human-built Flow it can't see or control"
+shape, so it belongs in this inventory on the same terms.
+
+**Status lifecycle:** a file starts as a `Drive_Steward_Intake` row with
+`status='new'` → the Flow classifies it, writes a `File_Registry` row,
+and flips the intake row to `status='classified'`. Low-confidence
+classifications also get a `Batch_Queue` row (`status='pending'` →
+`'confirmed'`/`'corrected'` once Fluffy resolves it).
+
+**Where to check:** `DriveSteward_Calibration.gs`'s
+`getDriveStewardFlowHealth_()`, surfaced in the nightly digest email
+(`runDriveStewardNightlyDigest()`) and loggable directly. Uses this
+doc's shared three-state semantics:
+- **No jobs submitted yet** → `Drive_Steward_Intake` has never had a row
+  (the Scanner hasn't run yet, or nothing's changed in Drive).
+- **Never completed a job** → at least one intake row exists but
+  `File_Registry` is still empty — the Flow hasn't classified anything
+  yet. Rendered as a hedge in the digest ("check it's wired up per
+  STUDIO_FLOW_SETUP.md"), not an alarm, since this is also just what a
+  freshly-deployed instance looks like.
+- **Healthy** → `File_Registry` has at least one row — the Flow has
+  classified something at least once.
+
+Not yet deployed against a real Drive/Sheet as of this writing (see
+`drive-steward-deploy/README.md`'s final section) — this is the first
+Flow in this inventory documented before its first real run rather than
+after.
+
+---
+
 ## Adding a new Flow to this list
 
 1. Add a row to whichever system section above (or a new section, if it's

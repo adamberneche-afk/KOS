@@ -26,23 +26,21 @@ concrete numeric fields (`wilson_lower`, `wilson_upper`) rather than one
 vague `divergence_interval` slot. "Compute the interval" is now an
 instruction a Gem or Flow could actually execute — see Part 2.5 below.
 
-(2) **Narrowed, not closed.** The `Calibration_Log` schema itself is now
-fully specified — every field has a concrete type/format, not just a
-one-line purpose (see the table in Part 2.5) — so a Gem or Flow could
-create and populate that Sheet tab exactly as written, with no
-remaining ambiguity about what to write into which column. What's
-*still* a gap: it remains a specified-but-not-running schema. Nothing
-in this document, or anywhere else in this repo, actually persists
-per-pattern confidence tiers or weekly divergence numbers across
-sessions yet — no `Calibration_Log` Sheet tab exists in Fluffy's Drive
-today. Every run of the Part 3 prompt still starts from the same static
-text with no memory of prior weeks' calibration, so "cold start, earn
-looseness" describes an intended lifecycle this document specifies but
-doesn't yet operate. Closing *that* remaining piece means actually
-creating the Sheet and wiring a Gem/Flow to read and write it — a real
-deployment step, not a specification gap, and one Fluffy hasn't asked
-for yet. Flagged, not fixed here, for the same reason as the scope note
-above.
+(2) **In progress.** The `Calibration_Log` schema itself is now fully
+specified — every field has a concrete type/format, not just a one-line
+purpose (see the table in Part 2.5) — so a Gem or Flow could create and
+populate that Sheet tab exactly as written, with no remaining ambiguity
+about what to write into which column. Fluffy has since asked to push
+this forward, so it's no longer just a specification: a ready-to-deploy
+package now exists at `drive-steward-deploy/` (Part 5 below) —
+Apps Script for the mechanical scan and the weekly Wilson-score
+calibration, plus a Studio Flow spec for the actual classification step,
+all sandbox-tested for correctness. What's *still* open: none of it has
+run against a real Google Drive and Sheet yet, since this session has no
+live Drive access — that first real-world run, and everything Part 2.5's
+"cold start, earn looseness" lifecycle needs weeks of real data to reach,
+is still ahead. Deploying it is a short, mostly-clicking series of steps
+in `drive-steward-deploy/README.md`, not a remaining code gap.
 
 **Purpose:** A repeatable workflow that (1) predicts where new files *should* live based on Fluffy's own observed filing logic — not generic best practice — so the context harness can reliably find and pull what it needs, and (2) translates internal technical artifacts into legible output for external audiences (admins, colleagues, district). It never executes changes on its own; it proposes, with rationale, for human approval.
 
@@ -84,12 +82,15 @@ Every file the workflow touches gets a structured record — this is the unit th
 | `vector_priority` | high / medium / low / exclude — whether this should be embedded at all (empty placeholders and pure logs are usually low/exclude) |
 | `confidence_score` | high / medium / low — the system's own confidence in this row's fields. High confidence auto-confirms and exports without waiting on Fluffy. Low confidence is the only thing that surfaces for review. |
 | `last_reviewed` | date this record was last confirmed accurate (auto-set for high-confidence rows; only meaningfully "reviewed" by Fluffy for flagged ones) |
+| `pattern_id` | which Part 1 pattern (slug, e.g. `P3-filename-metadata`) produced this row's classification — added so Part 2.5's weekly calibration has something to group rows by; without this field, "compute n_applied/n_corrected per pattern" isn't actually computable from the registry alone |
+| `created_date` | timestamp this row was first written — added so weekly calibration can select "this week's" rows; distinct from `last_reviewed`, which tracks accuracy confirmation, not creation |
+| `human_corrected` | boolean, Fluffy's field alone — starts `false` on every row a Gem/Flow writes; Fluffy flips it to `true` if he later notices an auto-confirmed row was wrong. This is what makes `n_corrected` in Part 2.5 mechanically countable instead of relying on memory of which rows got fixed |
 
 The `purpose_summary` field is the one doing the most work — it's what should actually get vectorized, with the raw file as a linked payload retrieved after the match, not embedded wholesale. That keeps the harness matching on intent rather than incidental phrasing inside scripts/JSON.
 
 **Review by exception, not review by default.** Fluffy doesn't derive value from hand-curating a registry, and the whole point of this system is that automation has made the curation cheap enough to not need his labor for it. So: the system auto-drafts every field including `purpose_summary`, scores its own `confidence_score`, and auto-confirms + exports anything high-confidence without waiting for a human pass. Only `low`-confidence rows (ambiguous filenames, files with no clear precedent, conflicting supersession signals) get surfaced — and even those are surfaced as passive notice, not a queue to clear. This is a meaningful shift from treating the Sheet as an approval gate to treating it as a status dashboard: Fluffy stays informed about what's where without being the mechanism that makes it accurate.
 
-**Cold start: begin tight, earn looseness.** No classification pattern starts trusted. Every filing/tagging rule (e.g. "numeric prefix + CAS tag → Module folder," "session-dated folder → land as-is") begins at `low` confidence regardless of how obvious it looks, and only graduates to auto-confirming once it has demonstrated reliability across a real observation window (see Part 4). This means the early weeks will surface more for Fluffy's attention than later weeks — that's expected and correct, not a sign the system is behind.
+**Cold start: begin tight, earn looseness.** No classification pattern starts trusted. Every filing/tagging rule (e.g. "numeric prefix + CAS tag → Module folder," "session-dated folder → land as-is") begins at `low` confidence regardless of how obvious it looks, and only graduates to auto-confirming once it has demonstrated reliability across a real observation window (see Part 2.5). This means the early weeks will surface more for Fluffy's attention than later weeks — that's expected and correct, not a sign the system is behind.
 
 This does not extend to actual file operations.** Drafting a registry row, generating a summary, or running an export is metadata work — it never touches a real file. Moving, copying, deleting, or editing an actual file in Drive stays under Fluffy's standing rule: always proposed, never executed without explicit discussion. The autonomy gain lives entirely in the curation layer, not in Drive itself.
 
@@ -339,6 +340,59 @@ using the audience lens requested:
   "silo," "shadow matrix," etc. — describe function instead).
 Always ask which audience if it isn't specified.
 ```
+
+---
+
+## Part 5: Deployment Architecture
+
+Parts 1–3 describe what Drive Steward should do. Left as just a prompt
+to paste into a Gem when Fluffy remembers to, it never actually runs on
+its own — "the drive maintains itself" needs something that fires
+without a chat message kicking it off. Fluffy asked to push this
+forward; the answer is a **Studio Flow, calling Gemini natively**,
+fed by a small scheduled Apps Script that does the mechanical
+detection work. This mirrors a pattern already running elsewhere in
+this repo, not a new one invented for this: cas-ccps's Script 05 writes
+a row to `RubricQueue`, and Studio Flow 1 reads it and calls Gemini
+with no API key for anyone to manage — Drive Steward's classification
+step reuses that exact shape.
+
+**The pieces, and what each one is responsible for:**
+
+| Piece | What it is | What it does |
+|---|---|---|
+| `Drive_Steward_Intake` (Sheet tab) | bare, mechanical records | Where the Scanner writes "this file is new/changed" — no judgment, no AI |
+| **Scanner** (`DriveSteward_Scanner.gs`, time-triggered daily) | plain Apps Script | Finds files created/modified since the last scan, dedupes against what's already known, appends intake rows. Never touches `File_Registry`. Never moves/renames/deletes a file. |
+| **Classification Flow** (Workspace Studio Flow) | Gemini, called natively | Reads new intake rows, applies Part 1's patterns + Part 1.5's schema + the cold-start cap from `Pattern_Tiers`, writes the classified row to `File_Registry`, and for low-confidence rows also writes to `Batch_Queue` under Part 2.6's sequencing gate |
+| `File_Registry` (Sheet tab) | Part 1.5's schema, extended (see below) | The queryable record the context harness actually reads |
+| `Batch_Queue` (Sheet tab) | Part 2.6's batch governor, made concrete | Flagged items only, grouped into sequencing-gated batches |
+| **Calibration + Digest script** (`DriveSteward_Calibration.gs`, weekly + nightly) | plain Apps Script, pure arithmetic | Computes the Wilson score interval (Part 2.5) per pattern from `File_Registry`, writes `Calibration_Log` rows, emails the weekly artifact and the nightly passive digest (Part 2 step 5b) |
+| `Pattern_Tiers` (Sheet tab) | Fluffy-owned config | `current_tier` and `target_band_low`/`target_band_high` per pattern. **Every script and the Flow only ever read this tab** — enforced structurally (no write call exists anywhere in the deployed code), not just as a rule someone could forget |
+
+**Where the actual code and setup steps live:** `drive-steward-deploy/`
+— `DriveSteward_SheetsSetup.gs`, `DriveSteward_Scanner.gs`, and
+`DriveSteward_Calibration.gs` are ready to paste into an Apps Script
+project as-is, the same way `leader-hub/drive-tools/` ships ready-to-run
+scripts with a setup README. The Studio Flow itself can't be shipped as
+code — `drive-steward-deploy/STUDIO_FLOW_SETUP.md` specs exactly what it
+needs to do, the classification prompt to use, and the field mapping.
+
+**What was checked before any of this shipped:** the Wilson score
+function was tested against this document's own worked example (Part
+2.5) and found to need one small fix — the raw formula can return a
+floating-point value like `-5.5e-17` instead of exactly `0` at small
+sample sizes, now clamped to `[0, 1]`. The weekly calibration logic was
+sandbox-tested against fake data covering all three `proposed_action`
+outcomes. The scanner's dedup and folder-scoping logic was sandbox-tested
+against a fake Drive tree. None of it has run against a real Drive and
+Sheet yet — that first real deployment is still ahead, tracked in
+`drive-steward-deploy/README.md`'s own final section rather than glossed
+over here.
+
+**What this does not change:** every standing invariant from Parts 1–3
+still holds, now enforced by the architecture itself rather than only by
+instruction — no script or Flow in this deployment ever executes a real
+Drive file operation, and no script or Flow ever writes to `Pattern_Tiers`.
 
 ---
 
