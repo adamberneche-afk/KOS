@@ -1,6 +1,15 @@
 {
   "timeZone": "America/New_York",
-  "dependencies": {},
+  "dependencies": {
+    "libraries": [
+      {
+        "userSymbol": "CentralLedger",
+        "libraryId": "REPLACE_WITH_REAL_CENTRAL_LEDGER_SCRIPT_ID",
+        "version": "REPLACE_WITH_LIBRARY_VERSION",
+        "developmentMode": false
+      }
+    ]
+  },
   "exceptionLogging": "STACKDRIVER",
   "runtimeVersion": "V8",
   "oauthScopes": [
