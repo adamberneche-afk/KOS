@@ -260,6 +260,15 @@ const CFG = {
     // a console.log no-op if this isn't configured. Set as a Script
     // Property, never hardcoded, same convention as the two keys above.
     CHAT_WEBHOOK_URL: 'KOS_CHAT_WEBHOOK_URL',
+
+    // The stable doc ID of KOS_LATEST_PRIMER (6_Governance.gs's
+    // generateDailyPrimer()) — a single fixed-name doc that's overwritten
+    // in place every run, purpose-built as an external-tool integration
+    // point (e.g. a NotebookLM source that benefits from Drive-native
+    // auto-sync), as opposed to the dated DAILY_PRIMER_YYYY-MM-DD archival
+    // copies. Read-before-asking: once set, generateDailyPrimer() opens
+    // this doc by ID instead of searching by name on every run.
+    LATEST_PRIMER_DOC_ID: 'KOS_LATEST_PRIMER_DOC_ID',
   },
 };
 

@@ -325,7 +325,8 @@ Completed STAGING_PIPELINE rows moved by `archiveStagingPipeline()`.
 | `CORE_THESIS` | 01_Canonical_Foundation | Sealed operator philosophy — seeded by onboarding |
 | `CURRENT_STATE` | 03.1_Current_State | Rolling state document — next steps and deferred decisions |
 | `PIVOTS_AND_LESSONS` | 03.2_Pivots_And_Lessons | Rolling lessons log — updated each session |
-| `DAILY_PRIMER_YYYY-MM-DD` | 03.1_Current_State | Daily session starter (generated 06:00 each morning) |
+| `DAILY_PRIMER_YYYY-MM-DD` | 03.1_Current_State | Daily session starter (generated 06:00 each morning) — one new file per day, kept forever as an audit trail |
+| `KOS_LATEST_PRIMER` | 03.1_Current_State | The same content as the dated primer above, but as one fixed-name doc overwritten in place every run instead of a new file each day — the integration point for anything external that watches a single Drive file for edits rather than a folder for new files (e.g. a NotebookLM source, which only auto-syncs an existing Drive-native file). Its doc ID is tracked in `CFG.PROP.LATEST_PRIMER_DOC_ID` so it's found by ID, not by name search, after the first run. |
 | `PERSONA_[NAME]_V5` | 02_Council_Alignments | AI persona calibration docs (7 total) |
 
 ---

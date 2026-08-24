@@ -776,6 +776,15 @@ function compileCouncilVerdict_(councilId) {
  * Idempotent per day — re-running the same day overwrites that day's
  * primer rather than creating duplicates.
  *
+ * Also maintains KOS_LATEST_PRIMER (_writeLatestPrimer_(), same folder) —
+ * one fixed-name doc overwritten in place every run, alongside the dated
+ * copy above. The dated copy is an audit trail (one snapshot per day,
+ * kept forever); KOS_LATEST_PRIMER is the integration point for anything
+ * external that watches a single Drive file for edits rather than a
+ * folder for new files (e.g. a NotebookLM source, which only auto-syncs
+ * an existing Drive-native file — a fresh dated file every morning would
+ * never benefit from that).
+ *
  * Called by the web app via:
  *   google.script.run.withSuccessHandler(fn).generateDailyPrimer()
  *
@@ -808,41 +817,12 @@ function generateDailyPrimer() {
 
     const doc  = DocumentApp.create(docName);
     const dId  = doc.getId();
-    const body = doc.getBody();
-
-    body.appendParagraph('DAILY PRIMER — ' + dateStr)
-        .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    body.appendParagraph('Onboarding Day ' + onboardingDay + ' of ' + CFG.ONBOARDING_DAYS);
-
-    body.appendParagraph('90-Day Vision').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(vision);
-
-    body.appendParagraph('Vector State').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    if (vectorState.success && vectorState.vectors.length > 0) {
-      vectorState.vectors.forEach(v =>
-        body.appendListItem(v.name + ': ' + v.score.toFixed(2))
-      );
-    } else {
-      body.appendParagraph('No sessions processed yet.');
-    }
-
-    body.appendParagraph('Shadow Matrix — Calibration Status')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    if (shadowState.success) {
-      body.appendParagraph('Engine mode: ' + shadowState.engine_mode);
-      shadowState.questions.forEach(q =>
-        body.appendListItem(
-          q.label + ': ' + q.status + ' (' + Math.round(q.confidence * 100) + '%)' +
-          (q.inferred ? ' — ' + q.inferred : '')
-        )
-      );
-    } else {
-      body.appendParagraph('Shadow matrix unavailable.');
-    }
-
+    _writePrimerBody_(doc.getBody(), dateStr, onboardingDay, vision, vectorState, shadowState);
     doc.saveAndClose();
     DriveApp.getFileById(dId).moveTo(folder);
     const docUrl = DriveApp.getFileById(dId).getUrl();
+
+    _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState, shadowState);
 
     console.log('[generateDailyPrimer] Created: ' + docName);
     return { success: true, docName, docUrl, message: 'Daily primer saved to 03.1_CURRENT_STATE.' };
@@ -850,6 +830,87 @@ function generateDailyPrimer() {
   } catch (e) {
     _reportError('generateDailyPrimer', e, null);
     return { success: false, message: e.message };
+  }
+}
+
+/**
+ * Writes the primer's actual content into `body` — the one shared source
+ * for both the dated archival doc and KOS_LATEST_PRIMER, so the two can
+ * never drift out of sync with each other (the exact bug class a prior
+ * audit found and fixed elsewhere in this repo — see
+ * meta/CODEBASE_REVIEW.md — when the same content was hand-duplicated
+ * instead of shared).
+ */
+function _writePrimerBody_(body, dateStr, onboardingDay, vision, vectorState, shadowState) {
+  body.appendParagraph('DAILY PRIMER — ' + dateStr)
+      .setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.appendParagraph('Onboarding Day ' + onboardingDay + ' of ' + CFG.ONBOARDING_DAYS);
+
+  body.appendParagraph('90-Day Vision').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  body.appendParagraph(vision);
+
+  body.appendParagraph('Vector State').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  if (vectorState.success && vectorState.vectors.length > 0) {
+    vectorState.vectors.forEach(v =>
+      body.appendListItem(v.name + ': ' + v.score.toFixed(2))
+    );
+  } else {
+    body.appendParagraph('No sessions processed yet.');
+  }
+
+  body.appendParagraph('Shadow Matrix — Calibration Status')
+      .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  if (shadowState.success) {
+    body.appendParagraph('Engine mode: ' + shadowState.engine_mode);
+    shadowState.questions.forEach(q =>
+      body.appendListItem(
+        q.label + ': ' + q.status + ' (' + Math.round(q.confidence * 100) + '%)' +
+        (q.inferred ? ' — ' + q.inferred : '')
+      )
+    );
+  } else {
+    body.appendParagraph('Shadow matrix unavailable.');
+  }
+}
+
+/**
+ * Maintains KOS_LATEST_PRIMER: one fixed-name doc in `folder`, overwritten
+ * in place every run via CFG.PROP.LATEST_PRIMER_DOC_ID rather than found
+ * by name — read-before-asking, same Contextual Gates philosophy cas-ccps
+ * already uses elsewhere in this repo. Falls back to creating it fresh if
+ * the stored ID is missing, stale, or points at a trashed file, so a
+ * manually-deleted doc self-heals on the next run instead of silently
+ * going stale.
+ */
+function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState, shadowState) {
+  const props    = PropertiesService.getScriptProperties();
+  const storedId = props.getProperty(CFG.PROP.LATEST_PRIMER_DOC_ID);
+  let doc = null;
+
+  if (storedId) {
+    try {
+      if (!DriveApp.getFileById(storedId).isTrashed()) {
+        doc = DocumentApp.openById(storedId);
+      }
+    } catch (e) {
+      doc = null; // stored ID stale/deleted — fall through to recreate
+    }
+  }
+
+  const isNew = !doc;
+  if (isNew) {
+    doc = DocumentApp.create('KOS_LATEST_PRIMER');
+  } else {
+    doc.getBody().clear();
+  }
+
+  _writePrimerBody_(doc.getBody(), dateStr, onboardingDay, vision, vectorState, shadowState);
+  doc.saveAndClose();
+
+  if (isNew) {
+    const newId = doc.getId();
+    DriveApp.getFileById(newId).moveTo(folder);
+    props.setProperty(CFG.PROP.LATEST_PRIMER_DOC_ID, newId);
   }
 }
 
