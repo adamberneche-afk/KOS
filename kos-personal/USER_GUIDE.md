@@ -110,6 +110,45 @@ If a row has retried 3 times and is still failing, it becomes permanently flagge
 
 ---
 
+## When a Row Shows "AUDIT_REJECTED"
+
+This is a different problem from "Needs your help" above — the AI's
+output was perfectly valid JSON, but (if your Studio Flow has the
+optional Auditor step configured — see `CURATOR_PROMPT.md`) a second
+verification pass checked the Curator's own claims against your actual
+session transcript and found at least one that didn't hold up. In the
+Queue tab today this surfaces under the generic "Failed" indicator
+alongside other terminal failures — there's no dedicated label for it
+yet — so to confirm it's specifically an audit rejection rather than a
+parse failure, open STAGING_PIPELINE directly and check the Status
+column for the exact text `AUDIT_REJECTED`.
+
+**Your rejected output isn't lost.** Every rejected attempt — the full
+JSON the Curator produced, plus the Auditor's claim-by-claim trace log —
+is preserved in the `AUDIT_LOG` sheet in BRAIN_TRUST_INDEX, even though
+the Drive document itself gets overwritten on each retry attempt.
+
+**What to do:**
+
+1. Open `AUDIT_LOG` and find the row(s) for this session's `Payload_UID`.
+2. Read the `Trace_Log` column — it names the specific claim the Auditor
+   couldn't verify and the transcript evidence (or lack of it) behind
+   that verdict.
+3. Decide whether the Auditor was right. If it was a genuine hallucination
+   in the Curator's output, there's nothing to fix on your end — the
+   system already retried automatically (you'll see multiple `AUDIT_LOG`
+   rows for the same `Payload_UID` if it failed more than once) and gave
+   up only after `CFG.MAX_RETRIES` attempts, meaning the Curator kept
+   producing the same kind of unverifiable claim. Manual intervention —
+   reviewing the session and either resubmitting it or accepting the
+   session should just be logged as-is without automated inference — is
+   needed at that point, same as `FAILED_PARSE` above.
+4. If you believe the Auditor itself was wrong (a false rejection), that's
+   a signal to revisit the Auditor's own prompt instructions, not
+   something to fix per-row.
+
+---
+
 ## What the Shadow Matrix Means
 
 The shadow matrix is the system's model of your values. It tracks five questions:
@@ -242,7 +281,7 @@ The session documents themselves (CURRENT_STATE, PIVOTS_AND_LESSONS, daily prime
 ## Frequently Asked Questions
 
 **My session is processing but nothing appears in the sheets after an hour.**
-The queue processor runs every 10 minutes. If nothing has appeared after an hour, open STAGING_PIPELINE and check the Status column. If it shows FLOW_COMPLETE with nothing processed, run `processInferenceQueue()` manually from the Apps Script editor. If it shows NEEDS_CURATOR, see the NEEDS YOUR HELP section above.
+The queue processor runs every 10 minutes. If nothing has appeared after an hour, open STAGING_PIPELINE and check the Status column. If it shows FLOW_COMPLETE with nothing processed, run `processInferenceQueue()` manually from the Apps Script editor. If it shows NEEDS_CURATOR, see the NEEDS YOUR HELP section above. If it shows AUDIT_REJECTED, see the AUDIT_REJECTED section above.
 
 **I submitted a session but the Queue tab still shows 0 pending.**
 Refresh the Queue tab — it doesn't auto-refresh. If it still shows 0 after refresh, check STAGING_PIPELINE directly. It's possible the session was chunked into multiple rows.
