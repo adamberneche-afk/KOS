@@ -1,0 +1,32 @@
+name: Watchdog
+
+# codeql.yml's only schedule fires Monday 20:15 UTC - this runs the
+# following day so that run has already landed. See tools/watchdog/check.js's
+# header comment for the full rationale.
+on:
+  schedule:
+    - cron: '0 6 * * 2'  # Weekly, Tuesday 06:00 UTC
+  workflow_dispatch:
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install actionlint
+        run: bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+
+      - name: Check every workflow file is valid and every scheduled workflow's last run succeeded
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          export PATH="$PWD:$PATH"
+          node tools/watchdog/check.js
