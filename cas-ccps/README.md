@@ -763,6 +763,59 @@ GoogleID.
        reach `unified-manual` — an Apps Script Library is pinned to a
        specific version on purpose, so central-ledger changes never
        silently reach consumers without an explicit version bump.
+16. **Scaling fixes (external product review, Finding 6, "this quarter")**
+    — the review counted ~90 `getDataRange()` calls across cas-ccps;
+    re-counted at 112 (worse, not better — per-file counts the review cited
+    were exact, only the total was understated). Three fixes, each scoped
+    to real, verified schema knowledge rather than a blanket rewrite:
+    - **Bounded Ledger reads.** Added `LEDGER_COL_COUNT` (00_SharedConfig.js,
+      one past the highest `LEDGER` index) and converted the 6 call sites
+      across `10_AdminRecoveryPanel.js`, `29_StudentContextAggregator.js`,
+      and `30_SCRSuggestionEngine.js` that read the *whole* Ledger tab
+      (not a header-driven dynamic column set) from `getDataRange()` to
+      `getRange(1, 1, lastRow, LEDGER_COL_COUNT)` — reads exactly the
+      columns this schema actually defines, and isn't vulnerable to the
+      well-known GAS gotcha where one stray far-right value (ever entered,
+      even by accident) makes `getDataRange()` report a wider range than
+      the real schema forever after. The other ~106 `getDataRange()` calls
+      (against StagingPipeline, RubricQueue, SCRSuggestions,
+      SCRDecisionLog, CompetencyEvidence, WarmUpResponses,
+      StudentDocRegistry, and header-driven reads generally) were not
+      individually converted in this pass — most either read a genuinely
+      dynamic column set via header lookup (bounding those requires
+      already knowing the header row's width, a chicken-and-egg problem)
+      or a tab whose exact schema this pass didn't independently verify
+      column-by-column; narrowing the scope here on purpose rather than
+      risk silently truncating a column some other function actually needs.
+    - **CacheService layer for CompetencyRegistry.** New
+      `getCompetencyTextMap_()` (00_SharedConfig.js) — a real
+      cross-execution cache (Apps Script's `CacheService`, 6-hour TTL),
+      not a module-level variable that resets every execution. Replaces
+      the identical `getDataRange()` + header-lookup block
+      `30_SCRSuggestionEngine.js`'s `getSCRDashboardData_()` and
+      `getStudentScrStandingForCompetencies_()` used to each build from
+      scratch on every call. `22b_CompetencyRegistryImporter.js` now
+      invalidates the cache entry on every successful re-import, so a
+      newly-imported competency is visible immediately rather than
+      waiting out the TTL. (The pacing guide — the review's other named
+      caching target — already has its own, more sophisticated
+      PropertiesService-backed per-unit cache; see resolution 9/14 above.
+      Not touched here; a second, competing cache layer over the same
+      data would be a regression, not an improvement.)
+    - **Ledger retention, extending the `SCR_RETENTION_YEARS` pattern.**
+      See `docs/FERPA_DATA_MAP.md`'s Retention section for the full
+      writeup — `LEDGER_RETENTION_YEARS` (Script Property, default 5,
+      explicitly unconfirmed against any real district retention
+      schedule, same "correct the moment you know the real number"
+      framing as `SCR_RETENTION_YEARS` itself) drives
+      `_archiveExpiredLedgerRows_()` (`10_AdminRecoveryPanel.js`), run on
+      the same daily/on-demand triggers as the SCRDecisionLog archival.
+      This one needed a direct check against `FERPA_DATA_MAP.md` first —
+      that document explicitly states it "does not assert a retention
+      period that isn't actually enforced anywhere," which is exactly
+      what inventing a Ledger retention policy would have done without
+      this same unconfirmed-default framing; confirmed with the user
+      before implementing on that basis.
 
 ## Naming note
 

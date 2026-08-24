@@ -250,3 +250,87 @@ const LEDGER = {
   TURN_IN_SCORE_DECIDED_BY: 21,
   TURN_IN_SCORE_DECIDED_AT: 22,
 };
+
+// One past the highest LEDGER index above — the Ledger's real, schema-known
+// column count, TURN_IN_* columns included. External product review,
+// Finding 6 ("this quarter" scaling fix): every getDataRange() call reads
+// however wide the sheet's used range happens to be, which for the Ledger
+// specifically means re-deriving the same known-fixed 23-column width from
+// live sheet state on every single call, forever, and is vulnerable to the
+// well-known GAS gotcha where one stray far-right value (ever entered, even
+// by accident, even since deleted) can make getDataRange() report a wider
+// range than the real schema forever after. getRange(1, 1, lastRow,
+// LEDGER_COL_COUNT) reads exactly the columns this schema actually defines,
+// no more, no less — used by the handful of call sites (10_AdminRecoveryPanel.js,
+// 29_StudentContextAggregator.js, 30_SCRSuggestionEngine.js) that read the
+// whole Ledger tab rather than a header-driven dynamic column set.
+const LEDGER_COL_COUNT = 23;
+
+// =============================================================================
+// getCompetencyTextMap_ — CacheService layer over CompetencyRegistry
+// (external product review, Finding 6, "this quarter" scaling fix).
+//
+// CompetencyRegistry maps competency_id -> competency_text: imported once
+// at setup (22b_CompetencyRegistryImporter.js) and re-imported only on a
+// deliberate admin action — read constantly (every SCR dashboard load,
+// every warm-up bridge call, every alignment log write) but changes rarely.
+// 30_SCRSuggestionEngine.js's getSCRDashboardData_() and
+// getStudentScrStandingForCompetencies_() used to each independently
+// getDataRange() + build this same map from scratch on every call. This
+// wraps that identical block once, backed by Apps Script's own
+// CacheService (a real cross-execution cache with a TTL, unlike a
+// module-level variable, which resets every fresh execution) — a cache
+// hit costs nothing beyond a JSON.parse of a small cached string, no
+// sheet read at all.
+//
+// Cache key/TTL are process-wide (CacheService.getScriptCache(), not
+// getUserCache()) — CompetencyRegistry isn't per-user data, every caller
+// in every project should see the same map. 6-hour TTL: long enough that
+// a busy day of dashboard loads costs at most one real read per 6 hours,
+// short enough that a deliberate re-import (rare, admin-only) is visible
+// well within the same day rather than needing a manual cache-bust step.
+// Falls back to a direct, uncached read on any CacheService error (e.g.
+// a value that happens to exceed CacheService's 100KB-per-key cap) rather
+// than ever throwing — same fail-open-to-slow-path discipline as this
+// file's own PropertiesService-backed caches elsewhere in this repo
+// (31_PacingGuideManager.js's per-unit pacing cache).
+// =============================================================================
+const COMPETENCY_REGISTRY_CACHE_KEY = "competency_registry_text_map_v1";
+const COMPETENCY_REGISTRY_CACHE_TTL_SECONDS = 6 * 60 * 60; // 6 hours
+
+function getCompetencyTextMap_(registrySheet) {
+  let cache = null;
+  try {
+    cache = CacheService.getScriptCache();
+    const cached = cache.get(COMPETENCY_REGISTRY_CACHE_KEY);
+    if (cached) return JSON.parse(cached);
+  } catch (e) {
+    // CacheService unavailable or the cached value was corrupt/unparsable
+    // — fall through to a fresh read rather than failing the caller.
+  }
+
+  const compTextMap = {};
+  if (registrySheet) {
+    const regData = registrySheet.getDataRange().getValues();
+    const regHeaders = regData[0] ? regData[0].map(h => String(h).trim()) : [];
+    const iId = regHeaders.indexOf("competency_id");
+    const iText = regHeaders.indexOf("competency_text");
+    if (iId !== -1 && iText !== -1) {
+      for (let i = 1; i < regData.length; i++) {
+        compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
+      }
+    }
+  }
+
+  if (cache) {
+    try {
+      cache.put(COMPETENCY_REGISTRY_CACHE_KEY, JSON.stringify(compTextMap), COMPETENCY_REGISTRY_CACHE_TTL_SECONDS);
+    } catch (e) {
+      // Value too large for CacheService's 100KB-per-key cap, or some other
+      // put() failure — non-fatal. The map we just built is still returned
+      // to this caller; the next caller just pays for another fresh read.
+    }
+  }
+
+  return compTextMap;
+}
