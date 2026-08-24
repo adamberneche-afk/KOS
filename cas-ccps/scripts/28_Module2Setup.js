@@ -410,21 +410,32 @@ function _runRegistryImportWithGate_(ui, props, ss, courseNames) {
 function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
   // Run the importer
   let importedCount = 0;
-  // FIXED (external review pass, folded in — Addendum 22 R1): importCompetencyRegistry()
-  // is defined in Script 22b, which is bound to the Central Ledger project, not this
-  // one (Assignment System Manual / unified-manual). Apps Script doesn't share scope
-  // across projects, so this call would throw ReferenceError on every attempt — caught
-  // by the gas-lint tool's checkUndefinedFunctionCalls check (commit dd339b4) and
-  // explicitly deferred there for a dedicated follow-up. This is that follow-up: check
-  // for the function's existence up front and direct the operator to the project
-  // where the import actually works, instead of letting it fail into a bare
-  // "Import Failed" / err.message dialog that never explains why it always fails.
-  if (typeof importCompetencyRegistry !== "function") {
+  // FIXED (external review pass, folded in — Addendum 22 R1; corrected fix,
+  // external product review Finding 5): importCompetencyRegistry() is
+  // defined in Script 22b, which is bound to the Central Ledger project,
+  // not this one (Assignment System Manual / unified-manual). Apps Script
+  // doesn't share scope across projects, so a direct call here would throw
+  // ReferenceError on every attempt — caught by the gas-lint tool's
+  // checkUndefinedFunctionCalls check (commit dd339b4). The real fix is an
+  // Apps Script Library dependency (this project's manifest now declares
+  // one — see cas-ccps/clasp/manifests/unified-manual.appsscript.json's
+  // dependencies.libraries — pointing at central-ledger published as a
+  // Library, userSymbol CentralLedger): once that Library dependency is
+  // actually wired up with a real scriptId/version (a credentialed,
+  // deployment-time step — see cas-ccps/README.md's Finding 5 writeup),
+  // CentralLedger.importCompetencyRegistry() resolves for real, no manual
+  // Script-Editor step required. The typeof guard below still exists for
+  // the same reason it always did: this repo can't verify the live
+  // deployment actually has the Library wired up, so it fails gracefully
+  // with the manual fallback instructions instead of a bare ReferenceError.
+  if (typeof CentralLedger === "undefined" || typeof CentralLedger.importCompetencyRegistry !== "function") {
     ui.alert(
       "⚠ Import Not Available From This Sheet",
       "The competency registry importer (Script 22b) is bound to the " +
-      "Central Ledger project, not the Assignment System Manual.\n\n" +
-      "To import:\n" +
+      "Central Ledger project, not the Assignment System Manual — and the " +
+      "CentralLedger Library dependency isn't wired up yet on this deployment " +
+      "(see cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
+      "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
       "  2. Run: Assignment System → Import Competency Registry\n\n" +
       "This step can't be completed from this menu — it has to run from " +
@@ -435,7 +446,7 @@ function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
              message: "Import must be run from the Central Ledger project directly." };
   }
   try {
-    importCompetencyRegistry(); // Script 22b — Central Ledger project
+    CentralLedger.importCompetencyRegistry(); // Script 22b, via the CentralLedger Library
   } catch (err) {
     ui.alert(
       "✗ Import Failed",
@@ -636,16 +647,20 @@ function _runPhaseB_(ui, props, ss) {
       ui.ButtonSet.OK
     );
     props.setProperty("M2_PACING_GUIDE_IMPORTED", "false");
-  } else if (typeof importPacingGuide !== "function") {
-    // FIXED (external review pass, folded in — Addendum 22 R1): importPacingGuide()
-    // is defined in Script 31, bound to the Central Ledger project — a cross-project
-    // call that will never resolve from here. Same issue as the registry import in
-    // _executeImportAndVerify_() above.
+  } else if (typeof CentralLedger === "undefined" || typeof CentralLedger.importPacingGuide !== "function") {
+    // FIXED (external review pass, folded in — Addendum 22 R1; corrected
+    // fix, external product review Finding 5): importPacingGuide() is
+    // defined in Script 31, bound to the Central Ledger project. Same
+    // CentralLedger Library fix as the registry import in
+    // _executeImportAndVerify_() above — see that function's comment for
+    // the full explanation.
     ui.alert(
       "⚠ Import Not Available From This Sheet",
       "The pacing guide importer (Script 31) is bound to the Central Ledger " +
-      "project, not the Assignment System Manual.\n\n" +
-      "To import:\n" +
+      "project, not the Assignment System Manual — and the CentralLedger " +
+      "Library dependency isn't wired up yet on this deployment (see " +
+      "cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
+      "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
       "  2. Run importPacingGuide() from Script 31 in that project's Script Editor\n\n" +
       "This step can't be completed from this menu — it has to run from " +
@@ -655,7 +670,7 @@ function _runPhaseB_(ui, props, ss) {
     props.setProperty("M2_PACING_GUIDE_IMPORTED", "false");
   } else {
     try {
-      importPacingGuide(); // Script 31 — Central Ledger project
+      CentralLedger.importPacingGuide(); // Script 31, via the CentralLedger Library
       props.setProperty("M2_PACING_GUIDE_IMPORTED", "true");
       Logger.log("[S28] Pacing guide imported successfully.");
     } catch(pgErr) {
@@ -682,15 +697,19 @@ function _runPhaseB_(ui, props, ss) {
       ui.ButtonSet.OK
     );
     props.setProperty("M2_RUBRICS_IMPORTED", "false");
-  } else if (typeof importCompetencyRubrics !== "function") {
-    // FIXED (external review pass, folded in — Addendum 22 R1): importCompetencyRubrics()
-    // is defined in Script 32, bound to the Central Ledger project — same cross-project
-    // issue as the two imports above.
+  } else if (typeof CentralLedger === "undefined" || typeof CentralLedger.importCompetencyRubrics !== "function") {
+    // FIXED (external review pass, folded in — Addendum 22 R1; corrected
+    // fix, external product review Finding 5): importCompetencyRubrics()
+    // is defined in Script 32, bound to the Central Ledger project. Same
+    // CentralLedger Library fix as the two imports above — see
+    // _executeImportAndVerify_()'s comment for the full explanation.
     ui.alert(
       "⚠ Import Not Available From This Sheet",
       "The competency rubrics importer (Script 32) is bound to the Central " +
-      "Ledger project, not the Assignment System Manual.\n\n" +
-      "To import:\n" +
+      "Ledger project, not the Assignment System Manual — and the " +
+      "CentralLedger Library dependency isn't wired up yet on this deployment " +
+      "(see cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
+      "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
       "  2. Run importCompetencyRubrics() from Script 32 in that project's Script Editor\n\n" +
       "This step can't be completed from this menu — it has to run from " +
@@ -700,7 +719,7 @@ function _runPhaseB_(ui, props, ss) {
     props.setProperty("M2_RUBRICS_IMPORTED", "false");
   } else {
     try {
-      importCompetencyRubrics(); // Script 32 — Central Ledger project
+      CentralLedger.importCompetencyRubrics(); // Script 32, via the CentralLedger Library
       props.setProperty("M2_RUBRICS_IMPORTED", "true");
       Logger.log("[S28] Competency rubrics imported successfully.");
     } catch(crErr) {

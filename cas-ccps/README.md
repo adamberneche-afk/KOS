@@ -722,6 +722,47 @@ GoogleID.
     `_getFullWarmupAnchor_()` to re-read that one unit's untruncated
     `warmup_anchor` directly from the `PacingGuide` sheet, so only the
     (rare) truncated case pays the extra read instead of every call.
+15. **Setup wizard's three cross-project import calls, corrected fix
+    (external product review, Finding 5)** — `28_Module2Setup.js` calls
+    `importCompetencyRegistry()`/`importPacingGuide()`/
+    `importCompetencyRubrics()` (Scripts 22b/31/32), all bound to the
+    Central Ledger project, not `unified-manual` — genuinely separate
+    Apps Script projects, confirmed via `tools/gas-lint/project-map.json`.
+    The external review's own suggested fix ("expose them over the
+    Ledger's existing `doPost` API") is factually wrong: `central-ledger`
+    has no web-app surface — no `doGet`/`doPost` — at all today; the one
+    `doPost` in cas-ccps lives in the separate `teacher-dashboard` project.
+    **Real fix: an Apps Script Library**, the platform's own first-class
+    mechanism for exactly this "share functions across bound projects"
+    problem. `cas-ccps/clasp/manifests/unified-manual.appsscript.json` now
+    declares a `dependencies.libraries` entry (`userSymbol: "CentralLedger"`),
+    and all three call sites in `28_Module2Setup.js` now call
+    `CentralLedger.importCompetencyRegistry()` etc. — resolved via
+    `tools/gas-lint/check.js`'s own `checkUndefinedFunctionCalls`
+    (the 3 warnings these calls used to produce are gone; `.`-prefixed
+    calls are outside that check's scope by design, since it only flags
+    bare identifier calls). Each call site keeps its existing
+    `typeof ... !== "function"` guard (now checking `CentralLedger` itself)
+    so a deployment that hasn't wired up the Library yet still gets the
+    same graceful manual-fallback instructions instead of a bare
+    ReferenceError. **What's left is entirely credentialed, same class of
+    gap as the clasp connection itself (see "Version control (clasp)"
+    below):**
+    1. Open the live Central Ledger Apps Script project → Deploy → New
+       deployment → select type **Library** → Deploy.
+    2. Copy that deployment's Script ID and the version number it was
+       just published at.
+    3. Fill both into `unified-manual.appsscript.json`'s
+       `dependencies.libraries[0]` (`libraryId`, `version`) — replacing
+       the `REPLACE_WITH_...` placeholders — then `clasp push` the
+       `unified-manual` project (or add the Library by hand via the
+       Script Editor's Resources → Libraries UI, entering the same Script
+       ID/version — either path produces the same result).
+    4. Re-publish a new Library version and bump `version` in the manifest
+       any time central-ledger's own code changes in a way that should
+       reach `unified-manual` — an Apps Script Library is pinned to a
+       specific version on purpose, so central-ledger changes never
+       silently reach consumers without an explicit version bump.
 
 ## Naming note
 
