@@ -180,7 +180,9 @@ function runWeeklyStudentAggregation_() {
 // means 23's shape, not this file's validation-specific one).
 // ---------------------------------------------------------------------------
 function buildValidatedStudentRoster_(ledgerSheet) {
-  const data = ledgerSheet.getDataRange().getValues();
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6.
+  const data = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   const roster = new Map();
   const invalidSeen = new Set();
 
@@ -220,7 +222,9 @@ function buildValidatedStudentRoster_(ledgerSheet) {
 // submission time; falls back to Timestamp if SubmissionTS is blank.
 // ---------------------------------------------------------------------------
 function getWeeklyAssignments_(ledgerSheet, windowStart) {
-  const data = ledgerSheet.getDataRange().getValues();
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6.
+  const data = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   const result = new Map();
 
   for (let i = 1; i < data.length; i++) {
@@ -502,7 +506,9 @@ function getAllStudentDocsForTeacher_(teacherEmail) {
   const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
   const allowedStudentEmails = new Set();
   if (ledgerSheet) {
-    const ledgerData = ledgerSheet.getDataRange().getValues();
+    // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange()
+    // — external product review Finding 6.
+    const ledgerData = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
     for (let i = 1; i < ledgerData.length; i++) {
       const rowStudentEmail = String(ledgerData[i][1] /* GoogleID */ || "").trim().toLowerCase();
       const rowTeacherEmail = String(ledgerData[i][8] /* TeacherEmail */ || "").trim().toLowerCase();
