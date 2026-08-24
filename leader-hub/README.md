@@ -1203,6 +1203,40 @@ a real verified identity per request rather than trusting a bare URL.
 
 ---
 
+## Hardcoded-credentials cleanup (external product review, Finding 9)
+
+Three real-PII surfaces in `student-leader-hub.html` got scrubbed to blank
+defaults, matching the same "fresh adopter fills in Settings" pattern
+`PROFILE_DEFAULTS` already used for `name`/`school`/`title`:
+
+- **`decaChapterInfo`** — deleted outright. Confirmed dead: nothing in the
+  app read it (its own comment already said so), and its identity fields
+  duplicated `PROFILE` below it.
+- **`PROFILE_DEFAULTS`** — `email`/`phone`/`supervisorEmail`/`adminEmail`/
+  `attendanceCoordEmail` blanked to `''`. These are genuine reach-this-
+  person credentials (not just a display name/title, which are left as
+  illustrative defaults) — Settings → My Profile & School already has an
+  input for each, unaffected by this change.
+- **The Trips → Chapter Reference "Key Contacts" list** — used to be a
+  hardcoded array of ~8 real people's names/phones/emails. Now reads from
+  `getKeyContacts()`/`saveKeyContacts()` (localStorage, same convention as
+  `PROFILE`), shipping empty by default. Populate your own list once,
+  locally, via the browser console — see that function's own comment in
+  source for the exact call. Never committed, never sent anywhere.
+
+`EmailBridge.gs`'s `CONFIG.defaultBragTo` and `drive-tools/LH_DriveDocSplitter.gs`'s
+four `sourceDocId` values got the same treatment — blanked/placeholder'd
+with a fill-in-locally comment, matching `TARGET_FOLDER_ID`'s existing
+convention in that same file.
+
+Deliberately NOT touched: real names/phone numbers embedded in free-text
+historical trip and event records (e.g. `row('Chaperones', 'Adam Berneche
+· Amanda Berneche')`, trip notes) — that's the app's actual archived
+content, not a hardcoded credential, and scrubbing it would mean altering
+real historical records rather than removing a secret.
+
+---
+
 ## Version control (clasp) — scaffolded, not yet connected
 
 `EmailBridge.gs` is a single Apps Script project, laid out exactly the

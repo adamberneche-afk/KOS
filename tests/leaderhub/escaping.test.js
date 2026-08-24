@@ -17,7 +17,7 @@ const { runInSandbox } = require('../harness/vm-run');
 const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'student-leader-hub.html');
 
 function loadEscapers() {
-  const source = extractLines(HTML_PATH, 5893, 5911, ['function escH(', 'function escJsAttr(']);
+  const source = extractLines(HTML_PATH, 5905, 5923, ['function escH(', 'function escJsAttr(']);
   return runInSandbox(source, {}, ['escH', 'escJsAttr']);
 }
 

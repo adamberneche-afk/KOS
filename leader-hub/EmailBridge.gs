@@ -44,7 +44,14 @@
 const CONFIG = {
   horizonLabel:    'LeaderHub',   // Gmail label to scan for horizon items
   subPlanFolderId: '',            // Drive folder ID for sub plans ('' = root)
-  defaultBragTo:   'adam_berneche@ccpsnet.net',
+  // FIXED (external product review, Finding 9 / "this month" hardcoded-
+  // credentials cleanup): was a real personal email baked into committed
+  // source. Blank like subPlanFolderId above — bragEmail_() (below) already
+  // falls back to body.to when the client sends its own recipient, so this
+  // only matters as a same-account fallback; fill in your own address here
+  // in a local, uncommitted edit, same as any other Script Property you'd
+  // normally set per-deployment.
+  defaultBragTo:   '',
 };
 
 // ── Entry points ──────────────────────────────────────────────────────────────
