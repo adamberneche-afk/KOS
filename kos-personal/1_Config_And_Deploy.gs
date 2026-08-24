@@ -61,6 +61,7 @@ const CFG = {
   ONBOARDING_SHEET:         'ONBOARDING_TRACKER',
   EXTERNAL_TELEMETRY_SHEET: 'EXTERNAL_TELEMETRY',      // v8.0 — Sensor 3 target
   ERROR_LOG_SHEET:          'ERROR_LOG',                // v8.0 — error digest source
+  AUDIT_LOG_SHEET:          'AUDIT_LOG',                // Auditor accountability check rejections — see 3_Queue_Processor.gs's audit gate
 
   // ── STAGING_PIPELINE Column Index Map ────────────────────────
   // Single source of truth — replaces the SC const in Phase 0 patch.
@@ -322,6 +323,7 @@ function deployFullSystem() {
       CFG.ONBOARDING_SHEET,
       CFG.EXTERNAL_TELEMETRY_SHEET,   // v8.0 — Sensor 3
       CFG.ERROR_LOG_SHEET,            // v8.0 — error digest
+      CFG.AUDIT_LOG_SHEET,            // Auditor accountability check rejections
     ];
     sheetNames.forEach(n => _getOrCreateSheet(ss, n));
     _seedBlackboardTemplateRow(ss);

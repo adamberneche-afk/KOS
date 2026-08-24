@@ -152,12 +152,59 @@ function processInferenceQueue() {
           continue;
         }
 
+        const payloadUid = String(data[i][SC.PAYLOAD_UID] || '');
+
+        // ── Audit gate ────────────────────────────────────────────
+        // The Curator flow's own output can carry a nested
+        // auditor_sign_off object (CURATOR_PROMPT.md) — a second
+        // Auditor pass added inside the Studio Flow itself to hold the
+        // Curator accountable for its own claims. A rejected audit
+        // never reaches ledger-routing below: archive the rejected
+        // payload (its Drive doc body gets overwritten on the next
+        // retry, so this is the only durable record), then either
+        // requeue with priority or escalate once retries run out —
+        // same MAX_RETRIES-then-escalate discipline as the JSON-parse
+        // failure path above, so a persistently-failing audit can't
+        // loop forever either.
+        if (parsed.auditor_sign_off && _isAuditFailure_(parsed.auditor_sign_off)) {
+          const newRetries = retries + 1;
+          _archiveAuditFailure_(ss, payloadUid, sheetRow, newRetries, parsed, parsed.auditor_sign_off);
+
+          if (newRetries >= CFG.MAX_RETRIES) {
+            staging.getRange(sheetRow, SC.STATUS      + 1).setValue('AUDIT_REJECTED');
+            staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+            _reportError(
+              'processInferenceQueue:AUDIT_REJECTED',
+              new Error(
+                'Row ' + sheetRow + ' (' + payloadUid + ') failed the Auditor accountability ' +
+                'check ' + newRetries + ' time(s). Manual review required — see AUDIT_LOG.\n' +
+                'Doc: ' + data[i][SC.DOC_URL]
+              ),
+              null,
+            );
+            _sendChatAlert(
+              '🔴 AUDIT_REJECTED — kos-personal Curator\n' +
+              'Row: ' + sheetRow + ' (' + payloadUid + ', file ' + data[i][SC.FILE_ID] + ')\n' +
+              'The Auditor rejected this Curator output ' + newRetries + ' time(s) — see AUDIT_LOG ' +
+              'for the full rejected payload and trace log. Human review required.'
+            );
+            failed++;
+          } else {
+            staging.getRange(sheetRow, SC.STATUS      + 1).setValue('PENDING_FLOW');
+            staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+            _markAuditRetryPriority_(payloadUid);
+            console.log('[Queue] Row ' + sheetRow + ' (' + payloadUid + ') failed audit ' +
+              '(attempt ' + newRetries + ') — reverted to PENDING_FLOW, marked for priority retry.');
+            requeued++;
+          }
+          continue;
+        }
+
         // ── Intake ──────────────────────────────────────────────
         // VECTOR_CLASSIFY rows carry sentence-level classification
         // output (Bifurcation Boundary — see 4_Vector_Router.gs) and
         // route to a dedicated handler instead of the full Curator
         // intake path; every other payload type is unchanged.
-        const payloadUid  = String(data[i][SC.PAYLOAD_UID] || '');
         const payloadType = String(data[i][SC.PAYLOAD_TYPE] || '');
         const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
         const result = (payloadType === 'VECTOR_CLASSIFY')
