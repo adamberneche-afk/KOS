@@ -810,6 +810,17 @@ textarea { line-height: 1.55; }
         <div class="metric-val" id="cnt-cycling">—</div>
         <div class="metric-sub">retrying — no Studio flow has completed it yet</div>
       </div>
+      <!-- NEW: a row whose Status matches none of the recognized pipeline
+           states (5_Error_And_Utilities.gs's _isKnownStagingStatus_()) —
+           found via a real "AUDITING _LOG" row that was previously
+           invisible in every tile here, same silent-exclusion bug the
+           Failed tile above was already fixed for. Hidden unless
+           counts.unknown > 0. -->
+      <div class="metric-card m-warn" id="metric-unknown" style="display:none">
+        <div class="metric-lbl">Unrecognized status</div>
+        <div class="metric-val" id="cnt-unknown">—</div>
+        <div class="metric-sub">not a known pipeline state — fix the Status cell by hand</div>
+      </div>
     </div>
 
     <div class="sec-lbl">Needs review</div>
@@ -1668,10 +1679,23 @@ function renderQueue(res) {
   const cyclingCnt = document.getElementById('cnt-cycling');
   if (cyclingCnt) cyclingCnt.textContent = cycling;
 
+  // NEW: unlike cycling above, an unknown-status row is NOT a subset of
+  // pending/active/etc. — it isn't counted in any of them (see
+  // getQueueMetrics()'s catch-all, 3_Queue_Processor.gs), so unlike
+  // cycling it DOES need adding into totalActivity below, or a queue
+  // holding only unrecognized-status rows would read as empty — the
+  // exact "empty queue" bug the FIXED note on "Failed" above already
+  // closed for terminal-failure rows.
+  const unknown     = c.unknown ?? 0;
+  const unknownTile = document.getElementById('metric-unknown');
+  if (unknownTile) unknownTile.style.display = unknown > 0 ? '' : 'none';
+  const unknownCnt = document.getElementById('cnt-unknown');
+  if (unknownCnt) unknownCnt.textContent = unknown;
+
   const list = document.getElementById('curator-list');
   const rows = res.needs_curator || [];
 
-  const totalActivity = pending + active + inReview + done + failed;
+  const totalActivity = pending + active + inReview + done + failed + unknown;
 
   if (totalActivity === 0) {
     // True empty state — brand new user
