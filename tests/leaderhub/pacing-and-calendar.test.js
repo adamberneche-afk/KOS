@@ -24,7 +24,7 @@ const { runInSandbox } = require('../harness/vm-run');
 const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'student-leader-hub.html');
 
 function loadCalendarParser() {
-  const source = extractLines(HTML_PATH, 16243, 16480, [
+  const source = extractLines(HTML_PATH, 16253, 16490, [
     'function extractDateRangeBounds(',
     'function extractDatesFromText(',
     'function parseCountyCalendarText(',
@@ -33,7 +33,7 @@ function loadCalendarParser() {
 }
 
 function loadPacing(globals) {
-  const source = extractLines(HTML_PATH, 20127, 20192, [
+  const source = extractLines(HTML_PATH, 20139, 20204, [
     'CAS_PACING_COURSES',
     'function getPacingUnitsForCourse(',
     'function getQuarterForDate(',

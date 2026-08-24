@@ -3545,63 +3545,53 @@ const _otherEventsDefault = [
 ];
 let otherEvents = LS.get('lh_events', _otherEventsDefault);
 
-// ─── DECA CHAPTER REFERENCE DATA (from DECA to Know + Y@G) ──────────────────
-const decaChapterInfo = {
-  school: 'Clover Hill High School',
-  advisor: 'Adam Berneche',
-  advisorPhone: '(804) 833-8869',
-  advisorEmail: 'adam_berneche@ccpsnet.net',
-  ccpsCoord: 'Shannon Tual',
-  ccpsCoordPhone: '(703) 860-5000',
-  coAdvisor: 'Kristen Wettstein',
-  account: 'DECA — 4280',
-  socialEmail: 'cloverhillsdeca@gmail.com',
-  instagram: '@cloverhillsdeca',
-  twitter: '@cloverhillsdeca',
-  membershipCost: '$20 (accepted all year)',
-  membershipDues: '$2 dues to Kristen W. by Nov 1',
-  membershipFormDeadline: 'Dec 1 — must submit verified roster to Anne',
-  teamEventRules: '1–150 members: 4 teams total · 151–300: 6 teams · 301+: 8 teams · Max 2 entries per category',
-  annualReport: 'Must register for Annual Report at same time as SLC registration',
-  slcFees: { confOnly: 135, withFriDinner: 165, chapJudge: 75, satMealaddon: 35 },
-  slcHousing: 'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach VA 23451 — $171/night, 4/room ($85.50/person)',
-  slcBus: 'Winn Transportation — $70/student (PO to Kristen at Meadowbrook, PO# 26-0368-2559)',
-  icdcHousing: 'Atlanta Hilton — $260/night, 4/room (advisors + adults + students all 4/room)',
-  icdcRegCost: '$155/student',
-  icdcQualify: 'Top 8 SLC finish + 70%+ SLC test score (bumps available for Top 10)',
-  powerTripCost: '~$250/student',
-  slcCost: '$350/student',
-  icdcTotalCost: '~$1,000/student',
-  dlcCost: '$0 (included with membership)',
-};
-// Note: decaChapterInfo above is reference data only — nothing in the app
-// currently reads from it. Its identity fields (school/advisor/phone/email)
-// now duplicate PROFILE below; PROFILE is the one that's actually wired
-// into email templates, sub plans, and Brag Board.
+// ─── DECA CHAPTER REFERENCE DATA ─────────────────────────────────────────
+// FIXED (external product review, Finding 9 / "this month" hardcoded-
+// credentials cleanup): this object used to duplicate real identifying
+// contact info (advisor name/phone/email, coordinator name/phone) that
+// was never actually read by anything in the app (confirmed — nothing in
+// this file referenced decaChapterInfo) and had already drifted out of
+// sync with PROFILE below, the object that's actually wired into email
+// templates, sub plans, and Brag Board. Deleted outright rather than
+// scrubbed in place — dead code plus a stale, duplicate copy of contact
+// info that's a real credentials-exposure risk sitting in committed
+// source for no functional benefit.
 
 // ─── TEACHER / SCHOOL PROFILE — Settings → My Profile & School ─────────────
 // Every outbound email template, sub-plan header, and Brag Board recipient
 // below reads from this instead of a name baked into the source, so a
 // different teacher can make LeaderHub theirs by filling in Settings once
-// instead of hand-editing dozens of strings in this file. Defaults below
-// are Adam's own values — a fresh adopter overwrites them in Settings and
-// nothing else in the app needs to change.
+// instead of hand-editing dozens of strings in this file.
+//
+// FIXED (external product review, Finding 9): email/phone fields below
+// used to ship as real contact info (Adam's own, plus three other real
+// people's district emails — supervisor/admin/attendance-coordinator) —
+// committed to source control for anyone with repo access to read,
+// regardless of whether the live app ever exposes them. Blanked to ''
+// here; getProfile() below still works identically for a live deployment
+// once Settings → My Profile & School is filled in once (persisted to
+// localStorage, never committed) — this is exactly the same "fresh
+// adopter fills in Settings" path already documented for `name` below,
+// just extended to cover the fields that are actual reach-this-person
+// credentials rather than a display name/title. Names/titles are left
+// as illustrative defaults; they identify a role, not a way to contact
+// someone.
 const PROFILE_DEFAULTS = {
   name: 'Adam Berneche',
   courtesyName: 'Mr. Berneche',        // casual mid-email references ("see Mr. Berneche")
   title: 'DECA Advisor',                // signature line + BRAG_AUDIENCE-adjacent copy
   classroomTitle: 'CTE Business & Marketing', // non-DECA templates (Email Composer, Brag Board)
   school: 'Clover Hill High School',
-  phone: '(804) 833-8869',
-  email: 'adam_berneche@ccpsnet.net',
+  phone: '',                            // fill in via Settings → My Profile & School
+  email: '',                            // fill in via Settings → My Profile & School
   emailDomain: 'ccpsnet.net',           // AI-privacy ID substitution + placeholder examples
   chapterName: 'Clover Hill DECA',      // "payable to ___" dues lines
   supervisorName: 'Ms. Green',          // Brag Board "green" tab recipient
-  supervisorEmail: 'renee_green@ccpsnet.net',
+  supervisorEmail: '',                  // fill in via Settings → My Profile & School
   adminName: 'Admin (Altizer / White)', // Brag Board "admin" tab recipient
-  adminEmail: 'david_altizer@ccpsnet.net',
+  adminEmail: '',                       // fill in via Settings → My Profile & School
   attendanceCoordFirstName: 'Nykia',    // sub-plan email greeting
-  attendanceCoordEmail: 'nykia_ward@ccpsnet.net',
+  attendanceCoordEmail: '',             // fill in via Settings → My Profile & School
 };
 function getProfile() { return Object.assign({}, PROFILE_DEFAULTS, LS.get('lh_profile', {})); }
 function saveProfile(updates) {
@@ -3611,6 +3601,27 @@ function saveProfile(updates) {
   _applyProfileToStaticDOM();
 }
 let PROFILE = getProfile();
+
+// ─── KEY CONTACTS (Trips → Chapter Reference) ───────────────────────────
+// FIXED (external product review, Finding 9 / "this month" hardcoded-
+// credentials cleanup): this list used to be a hardcoded array of ~8 real
+// people's names, phone numbers, and emails baked directly into source —
+// committed to source control regardless of whether the live app ever
+// showed them to anyone else. Same fix as PROFILE above: ships with an
+// empty default, and reads through localStorage instead (so nothing real
+// lives in committed source), via getKeyContacts()/saveKeyContacts()
+// below. There's no dedicated Settings panel for this one (it's a short
+// reference list, not a single profile), so populate it once, locally,
+// from the browser console:
+//   saveKeyContacts([
+//     {name:'...', role:'Head Advisor / Sponsor', phone:'...', email:'...'},
+//     ...
+//   ]);
+// That call persists to this browser's own localStorage only — never
+// committed, never sent anywhere — exactly like every Settings field.
+const KEY_CONTACTS_DEFAULTS = [];
+function getKeyContacts() { return LS.get('lh_keyContacts', KEY_CONTACTS_DEFAULTS); }
+function saveKeyContacts(list) { LS.set('lh_keyContacts', list || []); }
 
 // A couple of subtitle strings are static page HTML (not JS-rendered), so
 // PROFILE changes can't reach them just by reading PROFILE at generation
@@ -6426,21 +6437,20 @@ function renderDECAHub() {
     </div>`;
 
   // ── Key contacts ──────────────────────────────────────────────────────────
-  const contacts = `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
-    ${[
-      {name:'Adam Berneche', role:'Head Advisor / Sponsor', phone:'(804) 833-8869', email:'adam_berneche@ccpsnet.net'},
-      {name:'Shannon Tual', role:'CCPS DECA Coordinator', phone:'(703) 860-5000', email:'—'},
-      {name:'Kristen Wettstein', role:'Co-Advisor / Meadowbrook', phone:'—', email:'kristen_wettstein@ccpsnet.net'},
-      {name:'Amanda Berneche', role:'SLC Chaperone', phone:'(703) 338-6410', email:'—'},
-      {name:'Regina Warriner', role:'Power Trip Chaperone', phone:'(804) 387-7079', email:'regina_warriner@ccpsnet.net'},
-      {name:'Kristen Hangey', role:'DLC Chaperone', phone:'(804) 387-7079', email:'—'},
-      {name:'Lisa Gurley', role:'DECA to Know Author', phone:'—', email:'lisa_gurley@ccpsnet.net'},
-      {name:'CHHS DECA', role:'Chapter Social Accounts', phone:'—', email:'cloverhillsdeca@gmail.com'},
-    ].map(c => `<div style="border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--surface)">
-      <div style="font-weight:700;font-size:.78rem">${c.name}</div>
-      <div style="font-size:.68rem;color:var(--muted);margin:.1rem 0">${c.role}</div>
-      ${c.phone !== '—' ? `<div style="font-size:.7rem">📞 ${c.phone}</div>` : ''}
-      ${c.email !== '—' ? `<div style="font-size:.7rem">✉️ ${c.email}</div>` : ''}
+  // FIXED (external product review, Finding 9): reads from getKeyContacts()
+  // (localStorage, per-browser) instead of a hardcoded array of real
+  // people's contact info — see that function's own comment above for how
+  // to populate it locally. Empty by default; the empty-state message
+  // below only ever shows in a fresh checkout that hasn't done that yet.
+  const keyContactsList = getKeyContacts();
+  const contacts = !keyContactsList.length
+    ? `<div style="font-size:.75rem;color:var(--muted);padding:.5rem 0">No key contacts saved yet in this browser. See the comment above getKeyContacts() in source for how to add your own — never committed, local to this browser only.</div>`
+    : `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
+    ${keyContactsList.map(c => `<div style="border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--surface)">
+      <div style="font-weight:700;font-size:.78rem">${escH(c.name)}</div>
+      <div style="font-size:.68rem;color:var(--muted);margin:.1rem 0">${escH(c.role)}</div>
+      ${c.phone && c.phone !== '—' ? `<div style="font-size:.7rem">📞 ${escH(c.phone)}</div>` : ''}
+      ${c.email && c.email !== '—' ? `<div style="font-size:.7rem">✉️ ${escH(c.email)}</div>` : ''}
     </div>`).join('')}
   </div>`;
 
