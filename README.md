@@ -131,6 +131,21 @@ for the actual command-by-command runbook (all three systems, sandbox-first
 for cas-ccps, human-gated production promotion — folded in from an
 external review pass, Addendum 22 R9).
 
+## [`tools/watchdog/`](./tools/watchdog/check.js) — scheduled-job watchdog
+
+Catches the failure mode a red X can't: an invalid `.github/workflows/*.yml`
+file produces no run at all, so nothing fails loudly. Runs actionlint
+against every workflow file and checks that every workflow with an
+`on.schedule` trigger (currently `codeql.yml`) had its most recent
+scheduled run actually conclude successfully, publishing both to one
+pinned "KOS Scheduled-Job Watchdog" issue updated in place rather than a
+fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
+(the day after `codeql.yml`'s own schedule, so that run has landed);
+`node tools/watchdog/check.js` runs it locally. `.github/dependabot.yml`
+(weekly npm + GitHub Actions updates) and `.github/workflows/codeql.yml`
+(CodeQL code scanning) round out the same "is the repo's own machinery
+healthy" floor.
+
 ## Still pending
 
 Module 1 (`cas-ccps`) still needs Flow 2 built in Studio before it can run
