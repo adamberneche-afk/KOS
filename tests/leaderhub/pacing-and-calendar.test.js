@@ -21,10 +21,17 @@ const path = require('path');
 const { extractLines } = require('../harness/extract-lines');
 const { runInSandbox } = require('../harness/vm-run');
 
-const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'student-leader-hub.html');
+// Point at the fragment files (tools/leaderhub-build/ split, external
+// product review Finding 4) rather than the assembled monolith — a real
+// robustness win, not just a rename: only an edit inside the specific
+// ~1,500/~3,600-line fragment can shift these line numbers now, not an
+// edit anywhere in the full ~22,000-line file. The two pipelines this
+// file covers happen to land in different fragments.
+const CALENDAR_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '11-journal-cron-settings-and-sync.html');
+const PACING_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '12-integrations-pacing-subplan-brag.html');
 
 function loadCalendarParser() {
-  const source = extractLines(HTML_PATH, 16253, 16490, [
+  const source = extractLines(CALENDAR_HTML_PATH, 1221, 1458, [
     'function extractDateRangeBounds(',
     'function extractDatesFromText(',
     'function parseCountyCalendarText(',
@@ -33,15 +40,16 @@ function loadCalendarParser() {
 }
 
 function loadPacing(globals) {
-  const source = extractLines(HTML_PATH, 20139, 20204, [
+  const source = extractLines(PACING_HTML_PATH, 2104, 2167, [
     'CAS_PACING_COURSES',
     'function getPacingUnitsForCourse(',
     'function getQuarterForDate(',
   ]);
   // This range's own `let CUSTOM_PACING_UNITS = LS.get('lh_custom_pacing_units', {})`
   // needs a real LS global to run at all - the real app's LS is a
-  // localStorage wrapper (student-leader-hub.html:3282), but all this
-  // extracted range needs from it is .get() returning a default. A
+  // localStorage wrapper (leader-hub/src/05-data-helpers-dashboard.html:7),
+  // but all this extracted range needs from it is .get() returning a
+  // default. A
   // caller that wants a specific CUSTOM_PACING_UNITS fixture passes its
   // own `LS` override instead of `CUSTOM_PACING_UNITS` directly, since
   // that `let` re-declaration inside the extracted source always wins
