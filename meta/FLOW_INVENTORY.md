@@ -84,20 +84,35 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 **What it does:** `2_Ingestion_Sensors.gs` queues session logs, external
 data, and (as of the Seven Bridges pipeline) cog verdicts into
 `STAGING_PIPELINE`; a human-built Studio Flow reads a queued doc, runs
-inference, and writes structured JSON back. Two independent sub-pipelines
-depend on their own separate Flow being built: the main ingestion queue
-(Turnstile) and the Registrar curriculum-drafts auditor (a completely
-separate state machine, `11_Registrar_CogRelay.gs`).
+inference, and writes structured JSON back. The Flow can optionally run
+a second, internal Auditor pass verifying the Curator's own claims
+against the source transcript before the row is trusted — see
+`CURATOR_PROMPT.md` Rule 8 — merged into the same JSON output as
+`auditor_sign_off`, never a second document. Two independent
+sub-pipelines depend on their own separate Flow being built: the main
+ingestion queue (Turnstile) and the Registrar curriculum-drafts auditor
+(a completely separate state machine, `11_Registrar_CogRelay.gs` — not
+to be confused with the Curator/Auditor pair above, despite the shared
+vocabulary).
 
 **Where to check:** the web app's Queue tab (Turnstile) and Diagnostics tab
 (Registrar), `8_WebApp_UI.html`.
 - **Turnstile / main queue** — `getQueueMetrics()`'s `cycling` count
   (`3_Queue_Processor.gs`): a `PENDING_FLOW`/`STUDIO_ACTIVE` row whose
   `Retry_Count` has crossed `CFG.TURNSTILE_STUCK_THRESHOLD` (3) is flagged
-  as cycling — Turnstile itself has no ceiling (unlike Registrar below), so
-  a row with no Flow ever completing it retries every 5 minutes forever;
-  this is a UI-only "call it stuck" signal layered on top, not a new
-  pipeline state. Say/Do Ledger kos-personal finding #2.
+  as cycling — a UI-only "call it stuck" signal layered on top, not a new
+  pipeline state. Say/Do Ledger kos-personal finding #2. **Updated:**
+  Turnstile itself now does escalate a row past that same threshold, to
+  the terminal `STUDIO_TIMEOUT` status (this note previously said it had
+  no ceiling — that's no longer true).
+- **Audit gate** — a rejected `auditor_sign_off` is archived to a new
+  `AUDIT_LOG` sheet and, past `CFG.MAX_RETRIES`, escalates to a second
+  terminal status, `AUDIT_REJECTED` (`5_Error_And_Utilities.gs`'s
+  `_isAuditFailure_()`/`_archiveAuditFailure_()`,
+  `3_Queue_Processor.gs`'s `processInferenceQueue()`). Like
+  `STUDIO_TIMEOUT` and the other terminal-failure statuses, this doesn't
+  have a dedicated three-state health-panel signal of its own yet — check
+  `STAGING_PIPELINE`'s Status column or `AUDIT_LOG` directly.
 - **Registrar** — `getRegistrarStatus()`'s `groups` (`11_Registrar_
   CogRelay.gs`): `groups.routed`/`groups.failed` both count as reaching a
   terminal outcome (an attempt-tracker-driven `CRITICAL_FAILURE` proves the
@@ -144,6 +159,46 @@ whatever Email Bridge URL is configured). One row per type, using the same
 three-state semantics as the table above — "completed or errored ever" both
 count as healthy, matching the other two systems' own "a terminal outcome
 of either kind proves the Flow is alive" convention.
+
+---
+
+## meta / personal Drive — Drive Steward classification Flow
+
+**What it does:** `drive-steward-deploy/DriveSteward_Scanner.gs` (time-
+triggered, mechanical, no AI) finds new/changed files in Fluffy's Drive
+and appends bare rows to `Drive_Steward_Intake`; a human-built Studio
+Flow (`drive-steward-deploy/STUDIO_FLOW_SETUP.md`) reads those rows,
+classifies each file against `Drive_Steward_Methodology_and_Prompt.md`'s
+Part 1 patterns, and writes the result to `File_Registry` — the one Flow
+this whole deployment depends on to ever turn a bare intake row into a
+usable registry entry. Not one of this repo's three main systems, but
+the same "GAS hands off to a human-built Flow it can't see or control"
+shape, so it belongs in this inventory on the same terms.
+
+**Status lifecycle:** a file starts as a `Drive_Steward_Intake` row with
+`status='new'` → the Flow classifies it, writes a `File_Registry` row,
+and flips the intake row to `status='classified'`. Low-confidence
+classifications also get a `Batch_Queue` row (`status='pending'` →
+`'confirmed'`/`'corrected'` once Fluffy resolves it).
+
+**Where to check:** `DriveSteward_Calibration.gs`'s
+`getDriveStewardFlowHealth_()`, surfaced in the nightly digest email
+(`runDriveStewardNightlyDigest()`) and loggable directly. Uses this
+doc's shared three-state semantics:
+- **No jobs submitted yet** → `Drive_Steward_Intake` has never had a row
+  (the Scanner hasn't run yet, or nothing's changed in Drive).
+- **Never completed a job** → at least one intake row exists but
+  `File_Registry` is still empty — the Flow hasn't classified anything
+  yet. Rendered as a hedge in the digest ("check it's wired up per
+  STUDIO_FLOW_SETUP.md"), not an alarm, since this is also just what a
+  freshly-deployed instance looks like.
+- **Healthy** → `File_Registry` has at least one row — the Flow has
+  classified something at least once.
+
+Not yet deployed against a real Drive/Sheet as of this writing (see
+`drive-steward-deploy/README.md`'s final section) — this is the first
+Flow in this inventory documented before its first real run rather than
+after.
 
 ---
 
