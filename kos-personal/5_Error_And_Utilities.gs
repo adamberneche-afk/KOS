@@ -1174,7 +1174,7 @@ function getRelationalTargets() {
 // below already recognizes them for cleanup. Matched via startsWith(), not
 // exact equality, since PROCESSING_ERROR/INTAKE_ERROR statuses carry a
 // ': <message>' suffix.
-const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR', 'MISSING_FILE_ID', 'PROCESSING_ERROR', 'STUDIO_TIMEOUT'];
+const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR', 'MISSING_FILE_ID', 'PROCESSING_ERROR', 'STUDIO_TIMEOUT', 'AUDIT_REJECTED'];
 
 // Every non-terminal-error status any part of this codebase ever sets or
 // checks for, matched by exact equality. Terminal-error statuses are
@@ -1206,13 +1206,120 @@ function _isKnownStagingStatus_(status) {
   return TERMINAL_FAILED_STATUSES.some(function(prefix) { return s.indexOf(prefix) === 0; });
 }
 
+
+// ================================================================
+// AUDITOR ACCOUNTABILITY GATE
+// ================================================================
+// The Curator flow's own output can carry a nested `auditor_sign_off`
+// object (see CURATOR_PROMPT.md) — a second Auditor pass added directly
+// inside the Studio Flow to hold the Curator accountable for its own
+// claims, verified against the actual session transcript. Merged into
+// the same JSON object the Curator writes (never a second, separate
+// JSON blob appended after it — that broke JSON.parse() outright).
+// processInferenceQueue() (3_Queue_Processor.gs) checks this before
+// routing a payload to any ledger, so a rejected audit never gets
+// treated as a trustworthy PROCESSED row.
+
+/**
+ * True if a parsed payload's `auditor_sign_off` indicates the Curator's
+ * own claims did NOT clear the Auditor's verification pass — either an
+ * explicit non-PASSED status, or any unverified claim at all.
+ */
+function _isAuditFailure_(auditorSignOff) {
+  if (!auditorSignOff) return false; // no audit step wired in this Flow — nothing to gate on
+  const status = String(auditorSignOff.status || '').toUpperCase();
+  const unverified = parseInt(auditorSignOff.unverified_claims_count) || 0;
+  return status !== 'PASSED' || unverified > 0;
+}
+
+/**
+ * Records a rejected Curator output to AUDIT_LOG before it's discarded
+ * and retried — the actual JSON gets overwritten in Drive the moment
+ * Studio reruns this row, so this sheet is the only durable record of
+ * what was rejected and why. Lazily creates AUDIT_LOG with a header row
+ * on first use, same pattern as _reportError()'s ERROR_LOG handling.
+ *
+ * @param {Spreadsheet} ss
+ * @param {string} payloadUid
+ * @param {number} sheetRow       STAGING_PIPELINE row number, for cross-reference.
+ * @param {number} retryCount     This row's Retry_Count AFTER this failure.
+ * @param {Object} fullPayload    The full parsed Curator output that failed audit.
+ * @param {Object} auditorSignOff The auditor_sign_off object itself.
+ */
+function _archiveAuditFailure_(ss, payloadUid, sheetRow, retryCount, fullPayload, auditorSignOff) {
+  try {
+    let log = ss.getSheetByName(CFG.AUDIT_LOG_SHEET);
+    if (!log) {
+      log = ss.insertSheet(CFG.AUDIT_LOG_SHEET);
+      log.appendRow(['Timestamp', 'Payload_UID', 'Staging_Row', 'Retry_Count',
+        'Audit_Status', 'Unverified_Claims_Count', 'Trace_Log', 'Rejected_Payload']);
+      log.getRange('1:1').setFontWeight('bold').setBackground('#fde8e8');
+      log.setFrozenRows(1);
+    }
+    const ts = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    // Cell size caps at ~50,000 chars in Sheets — a pathologically large
+    // session's stringified payload could in principle exceed that. Not
+    // guarded further here; if it becomes a real problem, the fix is a
+    // linked Drive doc per rejection, not a bigger cell.
+    log.appendRow([
+      ts, payloadUid, sheetRow, retryCount,
+      String(auditorSignOff.status || ''),
+      parseInt(auditorSignOff.unverified_claims_count) || 0,
+      JSON.stringify(auditorSignOff.trace_log || []),
+      JSON.stringify(fullPayload),
+    ]);
+  } catch (e) {
+    // Non-fatal — losing the archive record is bad, but must never block
+    // the actual retry/rejection decision that follows this call.
+    console.error('[_archiveAuditFailure_] Could not write to AUDIT_LOG: ' + e.message);
+  }
+}
+
+
+// ================================================================
+// AUDIT-RETRY PRIORITY QUEUE
+// ================================================================
+// PropertiesService-backed set of Payload_UIDs that failed the audit
+// gate and were reverted to PENDING_FLOW — runMatrixTurnstile() checks
+// this set FIRST in its release pass, ahead of normal row order, so a
+// rejected-and-requeued row is genuinely first in line for the next
+// available concurrency slot ("push the log back to the start of the
+// queue"), without the fragility of physically reordering sheet rows.
+
+/** Reads the { Payload_UID: true } audit-retry-priority set. Returns {} if unset/corrupt. */
+function _readAuditRetryPrioritySet_() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty('KOS_AUDIT_RETRY_PRIORITY');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn('[AuditRetry] Priority set corrupt — resetting. ' + e.message);
+    return {};
+  }
+}
+
+/** Persists the { Payload_UID: true } audit-retry-priority set. */
+function _writeAuditRetryPrioritySet_(set) {
+  PropertiesService.getScriptProperties()
+    .setProperty('KOS_AUDIT_RETRY_PRIORITY', JSON.stringify(set));
+}
+
+/** Marks a Payload_UID for priority release on the next Turnstile run. */
+function _markAuditRetryPriority_(payloadUid) {
+  const set = _readAuditRetryPrioritySet_();
+  set[String(payloadUid)] = true;
+  _writeAuditRetryPrioritySet_(set);
+}
+
 /**
  * Moves all terminal-status rows from STAGING_PIPELINE to
  * STAGING_ARCHIVE. Fully headless — no ui.alert.
  *
  * Terminal statuses: PROCESSED, INTAKE_PROCESSED, PARTITIONED,
  *   CONSOLIDATED, FAILED_PARSE, PHASE_2_ERROR, INTAKE_ERROR,
- *   MISSING_FILE_ID, PROCESSING_ERROR.
+ *   MISSING_FILE_ID, PROCESSING_ERROR, STUDIO_TIMEOUT, AUDIT_REJECTED
+ *   (the latter two added after this comment was first written — see
+ *   TERMINAL_FAILED_STATUSES above, the actual list this function reads;
+ *   kept this comment in sync rather than letting it drift again).
  *
  * FIXED: MISSING_FILE_ID and PROCESSING_ERROR (3_Queue_Processor.gs)
  * used to be set as a bare 'ERROR: ...' string, which matched none of
