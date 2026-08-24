@@ -14,10 +14,15 @@ const path = require('path');
 const { extractLines } = require('../harness/extract-lines');
 const { runInSandbox } = require('../harness/vm-run');
 
-const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'student-leader-hub.html');
+// Points at the fragment file (tools/leaderhub-build/ split, external
+// product review Finding 4) rather than the assembled monolith — a real
+// robustness win, not just a rename: only an edit inside this ~1,500-line
+// fragment can shift these line numbers now, not an edit anywhere in the
+// full ~22,000-line file.
+const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '06-tasks-trips-and-modals-core.html');
 
 function loadEscapers() {
-  const source = extractLines(HTML_PATH, 5905, 5923, ['function escH(', 'function escJsAttr(']);
+  const source = extractLines(HTML_PATH, 1461, 1479, ['function escH(', 'function escJsAttr(']);
   return runInSandbox(source, {}, ['escH', 'escJsAttr']);
 }
 

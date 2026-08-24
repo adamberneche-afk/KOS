@@ -1,0 +1,1496 @@
+// ============================================================
+// TASKS
+// ============================================================
+// (renderTasks/addTask/delTask/resolveTask/pauseTask/toggleTask/showTaskMenu
+// — the old flat to-do list's supporting functions — removed with the seed
+// data above; see the note there.)
+
+// ============================================================
+// TRIPS VIEW
+// ============================================================
+function renderTrips(filter) {
+  if(filter) currentFilter = filter;
+  let list = [...trips];
+  if(currentFilter==='missing') list = list.filter(t=>getMissingFields(t).length>0);
+  if(currentFilter==='deadline') list = list.filter(t=>{ const dl=subDeadline(t); if(!dl)return false; const d=Math.ceil((dl-new Date())/86400000); return d>=0&&d<=14; });
+  if(currentFilter==='ready') list = list.filter(t=>getMissingFields(t).length===0);
+  document.getElementById('trips-list').innerHTML = list.length ? list.map(t=>renderReadinessCard(t)).join('') : '<div style="color:var(--muted);font-size:.85rem;grid-column:1/-1;padding:1rem">No trips match this filter.</div>';
+}
+
+function setTripFilter(filter, btn) {
+  currentFilter = filter;
+  document.querySelectorAll('#trip-filter-bar button').forEach(b=>{b.classList.remove('btn-primary');b.classList.add('btn-outline');});
+  if(btn){btn.classList.add('btn-primary');btn.classList.remove('btn-outline');}
+  renderTrips();
+}
+
+// ============================================================
+// TRIP DETAIL VIEW
+// ============================================================
+function openTripDetail(id) {
+  currentTripId = id;
+  const t = trips.find(t=>t.id===id);
+  if(!t) return;
+  document.getElementById('td-title').textContent = t.name + (t.archived ? ' 📦 (Archived)' : '');
+  document.getElementById('td-sub').textContent = `${fd(t.date)} · ${t.dest1||'Destination TBD'}`;
+  renderTripDetail(t);
+  showView('tripdetail');
+}
+
+function renderTripDetail(t) {
+  const missing = getMissingFields(t);
+  const pct = getReadinessPct(t);
+  const dl = subDeadline(t);
+  const dtd = dl ? Math.ceil((dl-new Date())/86400000) : 999;
+  const lead = leadDays(t.sub||'same-day');
+
+  // Build pacing milestones
+  const today = new Date();
+  const tripDate = t.date ? new Date(t.date+'T00:00:00') : null;
+  const phases = [];
+  if(tripDate) {
+    const submit = subDeadline(t);
+    const notify = new Date(submit||today); notify.setDate(notify.getDate()+1);
+    const transportGoal = new Date(submit||today); transportGoal.setDate(transportGoal.getDate()+14);
+    const printSheet = new Date(tripDate); printSheet.setDate(printSheet.getDate()-1);
+
+    const now = today;
+    const mkPhase = (label,sub,date,key) => {
+      const d = Math.ceil((date-now)/86400000);
+      let state = d<0?'done':d===0?'active':'future';
+      return {label,sub,date,d,state,key};
+    };
+
+    phases.push(mkPhase('Gather all required form fields','Complete Permission Request Attachment — all sections',new Date(now.getTime()-1),'gather'));
+    phases.push(mkPhase(`Submit to TripTracker`,`Deadline: ${fd(submit?.toISOString().split('T')[0])} (${lead}-day rule)`,submit||new Date(),'submit'));
+    phases.push(mkPhase('Transportation Approval Goal',`~14 days after submission`,transportGoal,'transport'));
+    phases.push(mkPhase('Notify Students & Parents',`ONLY after all approvals received — distribute auth forms`,notify,'notify'));
+    // Slip collection phase
+    const slipStats = getSlipStats(t.id);
+    const slipCollectDate = new Date(tripDate); slipCollectDate.setDate(slipCollectDate.getDate()-2);
+    const slipPhase = mkPhase(`Collect Signed Authorization Forms`,`${slipStats.returned}/${slipStats.total||'?'} returned · ${slipStats.missing} missing · ${slipStats.pending} pending`,slipCollectDate,'slips');
+    if(slipStats.total>0 && slipStats.returned===slipStats.total) slipPhase.state='done';
+    else if(slipStats.returned>0) slipPhase.state='active';
+    phases.push(slipPhase);
+    phases.push(mkPhase('Print Driver Trip Sheet',`No more than 1 day before trip`,printSheet,'print'));
+    phases.push(mkPhase('Trip Departs 🚌',`Depart: ${t.depTime||'TBD'} — return: ${t.retTime||'TBD'}`,tripDate,'depart'));
+
+    // Override state based on actual data
+    if(getMissingFields(t).length===0) phases[0].state='done';
+    if(t.status==='active'||t.status==='approved') { phases[0].state='done'; phases[1].state='done'; }
+    if(t.status==='approved') phases[2].state='done';
+    if(t.status==='complete') phases.forEach(p=>p.state='done');
+    if(phases[1].d<0 && t.status==='planned') phases[1].state='done';
+    if(phases[1].d>=0 && phases[1].d<=14 && t.status==='planned') phases[1].state='active';
+    if(phases[0].state!=='done' && getMissingFields(t).length>0) { phases[0].state='active'; phases[1].state='future'; }
+  }
+
+  // Build approval tracker — same dead-string bug as leadDays() above.
+  const apSteps = ['overnight-is','overnight-oos','multi-day','international'].includes(t.sub||'same-day')
+    ? [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'director',l:'Level Director'},{k:'chief',l:'Chief of Schools'},{k:'transport',l:'Transportation'}]
+    : [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'transport',l:'Transportation'}];
+  const apDone = apSteps.filter(s=>t.ap&&t.ap[s.k]).length;
+
+  document.getElementById('tripdetail-body').innerHTML = `
+    <div class="grid g2" style="margin-bottom:1rem">
+      <div class="card cal">
+        <div class="stitle">📊 Form Readiness</div>
+        <div style="display:flex;align-items:center;gap:1rem;margin-bottom:.75rem">
+          <div style="font-family:'Bebas Neue',cursive;font-size:3rem;color:${pct===100?'var(--green)':pct>=60?'var(--navy)':'var(--red)'};line-height:1">${pct}%</div>
+          <div style="flex:1">
+            <div class="pbar" style="height:10px;margin-bottom:.35rem"><div class="pfill ${pct===100?'pf-ok':pct>=60?'pf-blue':'pf-danger'}" style="width:${pct}%"></div></div>
+            <div style="font-size:.74rem;color:var(--muted)">${REQUIRED_FIELDS.length - missing.length} of ${REQUIRED_FIELDS.length} required fields complete</div>
+          </div>
+        </div>
+        ${missing.length?`<div style="margin-bottom:.5rem">
+          <div style="font-size:.72rem;font-weight:700;color:var(--red);margin-bottom:.4rem">⚠ MISSING REQUIRED FIELDS</div>
+          ${missing.map(f=>`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${f.label}</div><span style="font-size:.67rem;color:var(--muted)">${f.section}</span></div>`).join('')}
+        </div><button class="btn btn-primary btn-sm" onclick="openEditModal(${t.id})">✏️ Fill In Missing Fields</button>`
+        :`<div class="alert as" style="font-size:.78rem"><span class="aico">✅</span>All required fields complete! Ready for TripTracker submission.</div><button class="btn btn-green btn-sm" onclick="generateFormPreview(${t.id})">📄 Generate Form Preview</button>`}
+      </div>
+      <div class="card cal blue">
+        <div class="stitle">✅ Approval Chain</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem">
+          ${apSteps.map(s=>{
+            const st = apStatus(t, s.k);
+            const detail = (t.apDetail && t.apDetail[s.k]) || null;
+            const look = st === 'approved' ? {bd:'var(--green)',bg:'var(--green)',fg:'#fff',glyph:'✓'}
+                       : st === 'rejected' ? {bd:'var(--red)',bg:'var(--red)',fg:'#fff',glyph:'✕'}
+                       : {bd:'var(--border)',bg:'#fff',fg:'#888',glyph:'○'};
+            const tip = detail
+              ? `${s.l}: ${st} — ${fd(new Date(detail.at).toISOString().slice(0,10))}${detail.note?' — '+detail.note:''}`
+              : `${s.l}: pending`;
+            return `<div style="display:flex;flex-direction:column;align-items:center;min-width:68px">
+              <div onclick="togApDetail(${t.id},'${s.k}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togApDetail(${t.id},'${s.k}')}" role="button" tabindex="0" title="${tip.replace(/"/g,'&quot;')}" aria-label="${tip.replace(/"/g,'&quot;')}" style="width:32px;height:32px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:.85rem">${look.glyph}</div>
+              <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.25rem;color:${st==='rejected'?'var(--red)':'#555'};max-width:65px;line-height:1.2">${s.l}</div>
+            </div>`;
+          }).join('')}
+        </div>
+        <div style="font-size:.73rem;color:var(--muted)">${apDone}/${apSteps.length} approved · Click to cycle pending → approved → rejected</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:1rem">
+      <div class="stitle">📅 Trip Pacing Timeline</div>
+      <div class="phase">
+        ${phases.map(p=>`<div class="phase-item phase-${p.state}">
+          <div class="phase-icon">${p.state==='done'?'✅':p.state==='active'?'🔵':p.state==='late'?'🔴':'⬜'}</div>
+          <div class="phase-body">
+            <div class="phase-label">${p.label}</div>
+            <div class="phase-sub">${p.sub}</div>
+          </div>
+          <div style="text-align:right">
+            <div class="phase-date">${p.date?fd(p.date.toISOString().split('T')[0]):'—'}</div>
+            <div class="phase-badge status ${p.state==='done'?'st-approved':p.state==='active'?'st-pending':p.state==='late'?'st-urgent':'st-complete'}">${p.state==='done'?'Done':p.state==='active'?'Now':p.d>0?p.d+'d away':'Past'}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+
+    <div class="grid g2">
+      <div class="card"><div class="stitle">📋 Trip Info Summary</div>
+        ${fieldRow('Origin',t.origin)} ${fieldRow('Date',fd(t.date))} ${fieldRow('Departure',t.depTime)} ${fieldRow('Return',t.retTime)}
+        ${fieldRow('Destination',t.dest1)} ${fieldRow('Trip Type',t.sub)} ${fieldRow('Students',t.stuAtt)} ${fieldRow('Adults',t.adultAtt)}
+        ${fieldRow('Chaperones',t.chap)} ${fieldRow('Sponsor',t.sponsor)} ${fieldRow('Sponsor Cell',t.cell)} ${fieldRow('PO #',t.po)}
+        ${fieldRow('Funding',t.fund)} ${fieldRow('Med Staff 1',t.med1)} ${fieldRow('Med Staff 2',t.med2)}
+      </div>
+      <div>
+        <div class="card" style="margin-bottom:1rem">
+          <div class="stitle">📝 Permission Slip Status</div>
+          ${(()=>{
+            const ss=getSlipStats(t.id);
+            const spct=ss.total?Math.round(ss.returned/ss.total*100):0;
+            return `
+              <div style="display:flex;align-items:center;gap:.75rem;margin-bottom:.6rem">
+                <div style="font-family:'Bebas Neue',cursive;font-size:2.2rem;color:${spct===100?'var(--green)':spct>=60?'var(--navy)':'var(--red)'};line-height:1">${spct}%</div>
+                <div style="flex:1">
+                  <div class="pbar" style="height:8px;margin-bottom:.2rem"><div class="pfill ${spct===100?'pf-ok':spct>=60?'pf-blue':'pf-danger'}" style="width:${spct}%"></div></div>
+                  <div style="font-size:.72rem;color:var(--muted)">${ss.returned}/${ss.total} slips returned</div>
+                </div>
+              </div>
+              <div style="display:flex;flex-wrap:wrap;gap:.35rem;margin-bottom:.65rem">
+                <span class="status st-approved">✅ ${ss.returned} returned</span>
+                <span class="status st-pending">⏳ ${ss.pending} pending</span>
+                <span class="status st-urgent">⚠ ${ss.missing} missing</span>
+                <span class="status st-planned">🚗 ${ss.parent} own transport</span>
+              </div>
+              ${ss.missing>0?`<div class="alert ad" style="font-size:.74rem"><span class="aico">🚨</span>${ss.missing} student${ss.missing===1?' has':'s have'} not returned their form.</div>`:''}
+              <button class="btn btn-primary btn-sm" onclick="showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)">📝 Manage Slips</button>
+              <button class="btn btn-outline btn-sm" onclick="openPrintSlipFor(${t.id})" style="margin-left:.4rem">🖨 Print Forms</button>
+            `;
+          })()}
+        </div>
+        <div class="card"><div class="stitle">📚 Instructional Justification</div>
+          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Why Necessary</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.why?escH(t.why):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div style="margin-bottom:.75rem"><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Pre-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.pre?escH(t.pre):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+          <div><div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">Post-Trip Activities</div><div style="font-size:.81rem;color:#444;margin-top:.25rem;line-height:1.5">${t.post?escH(t.post):'<em style="color:var(--red)">⚠ Required — not filled in yet</em>'}</div></div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function fieldRow(label, val) {
+  const empty = !val || val===0;
+  // escH() here (rather than at each of fieldRow()'s ~14 call sites in
+  // renderTripDetail()) covers every trip field it's ever handed —
+  // origin, destination, sponsor, PO#, funding, med staff, etc. — in one
+  // place. Safe for numeric fields too: escH() stringifies before escaping.
+  return `<div class="field-row"><div class="field-dot ${empty?'fd-miss':'fd-ok'}"></div><div class="field-name" style="color:${empty?'var(--red)':'inherit'}">${escH(label)}</div><span style="font-size:.75rem;color:${empty?'var(--red)':'#333'};font-weight:${empty?700:400}">${empty?'⚠ Missing':escH(val)}</span></div>`;
+}
+
+// Approval status is stored two ways for backward compatibility:
+//   t.ap[key]      — legacy boolean (true = approved), kept in sync so
+//                    every existing read of it (apDone counts, etc.)
+//                    keeps working unchanged.
+//   t.apDetail[key] — { status: 'approved'|'rejected'|'pending', note, at }
+//                    the real tri-state record, with a note and timestamp,
+//                    that t.ap alone could never represent — "not yet
+//                    approved" and "actively rejected, needs revision"
+//                    used to look identical (an empty circle).
+function apStatus(t, key) {
+  if (t.apDetail && t.apDetail[key] && t.apDetail[key].status) return t.apDetail[key].status;
+  return (t.ap && t.ap[key]) ? 'approved' : 'pending';
+}
+
+function togApDetail(id, key) {
+  const t = trips.find(t=>t.id===id); if(!t) return;
+  const current = apStatus(t, key);
+  const next = current === 'pending' ? 'approved' : current === 'approved' ? 'rejected' : 'pending';
+
+  if (next === 'rejected') {
+    // A rejection needs a note — this used to be a raw browser prompt(),
+    // the only one in the app and a jarring break from everything else's
+    // styled modals (it also skipped the app's Escape/focus-trap handling).
+    const existingNote = (t.apDetail && t.apDetail[key] && t.apDetail[key].note) || '';
+    _showApRejectModal(existingNote, note => _applyApDetail(t, key, next, note));
+    return; // cancelling the modal leaves the step exactly as it was
+  }
+  _applyApDetail(t, key, next, '');
+}
+
+function _applyApDetail(t, key, next, note) {
+  t.ap = t.ap || {};
+  t.apDetail = t.apDetail || {};
+  t.apDetail[key] = { status: next, note, at: new Date().toISOString() };
+  t.ap[key] = (next === 'approved'); // keep the legacy boolean field in sync
+  persistTrips(); // was in-memory only — a refresh used to silently revert every approval/rejection
+  renderTripDetail(t);
+}
+
+function _showApRejectModal(existingNote, onSubmit) {
+  const existing = document.getElementById('ap-reject-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'ap-reject-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem">
+    <div style="font-weight:800;margin-bottom:.35rem">Note for this rejection</div>
+    <div style="font-size:.78rem;color:var(--muted);margin-bottom:.6rem">What needs to change before it can be approved?</div>
+    <textarea id="ap-reject-note" rows="3" style="width:100%;padding:.5rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;font-size:.82rem"></textarea>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('ap-reject-modal').remove()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="ap-reject-submit">Mark Rejected</button>
+    </div>
+  </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+  const ta = document.getElementById('ap-reject-note');
+  ta.value = existingNote;
+  ta.focus();
+  document.getElementById('ap-reject-submit').onclick = () => {
+    const note = ta.value.trim();
+    modal.remove();
+    onSubmit(note);
+  };
+}
+
+// ============================================================
+// FORM PREVIEW (Permission Request Attachment format)
+// ============================================================
+function generateFormPreview(id) {
+  const tid = id || currentTripId;
+  const t = trips.find(t=>t.id===tid); if(!t) return;
+  const missing = getMissingFields(t);
+
+  // "Date Request Entered" below used to be a bare toLocaleDateString()
+  // (e.g. "8/11/2026") sitting right next to "Trip Date" via fd() (e.g.
+  // "Aug 11, 2026") — two date formats side by side on the one printed/
+  // exported form a school actually submits. Now both go through fd().
+  document.getElementById('preview-body').innerHTML = `
+    <div style="font-family:'DM Sans',sans-serif;font-size:.82rem;line-height:1.6">
+      ${missing.length?`<div class="alert aw" style="margin-bottom:1rem"><span class="aico">⚠️</span><strong>${missing.length} required field${missing.length===1?'':'s'} still missing.</strong> Form may be incomplete. Fill in fields before submitting to TripTracker.</div>`:'<div class="alert as" style="margin-bottom:1rem"><span class="aico">✅</span>All required fields complete. Form ready for TripTracker attachment.</div>'}
+      <div style="border:2px solid #333;padding:1rem;border-radius:6px">
+        <div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:.25rem">Field Trip Permission Request Attachment</div>
+        <div style="text-align:center;font-size:.75rem;color:#666;margin-bottom:1rem">(Revised 7-17-23) — CCPS</div>
+        <div class="excl" style="margin-bottom:.75rem">🚫 Field Trip Exclusions: Laser Tag · Trampoline Parks · Go-Karts · Zip Lines</div>
+        ${prow2('Date Request Entered', fd(new Date().toISOString().slice(0,10)), 'Trip Sponsor', t.sponsor)}
+        ${prow2('School Trip Coordinator', t.coord, 'Contact Phone', t.cell)}
+        ${prow2('Trip Name', t.name, 'Trip Date', fd(t.date))}
+        ${prow2('Trip Type', t.sub?.replace('-',' '), 'Activity Type', t.acttype)}
+        ${prow1('Reason for Trip', t.reason)}
+        ${prow2('Funding Source / SAF Code', t.fund, 'PO Number', t.po||'(Assigned after TripTracker submission)')}
+        <div style="margin:.75rem 0 .35rem;font-weight:700;font-size:.8rem;border-bottom:1px solid #ccc">TRANSPORTATION</div>
+        ${prow2('# CCPS Buses', t.ccpsBus||0, '# Charter Buses', t.charter||0)}
+        ${prow2('# Rental Vehicles', t.rental||0, 'Walking/Biking', t.walk||'No')}
+        ${prow2('Parent Transport', t.parentTx||'No', 'Train', t.train||'No')}
+        ${prow2('Charter Bus Company', t.charterCo||'N/A', 'Rental Company', t.rentalCo||'N/A')}
+        <div style="margin:.75rem 0 .35rem;font-weight:700;font-size:.8rem;border-bottom:1px solid #ccc">ORIGIN & SCHEDULE</div>
+        ${prow2('Origin', t.origin, 'One-Way?', t.oneway)}
+        ${prow2('Departure Date', fd(t.depDate), 'Departure Time', t.depTime)}
+        ${prow2('Return Date', fd(t.retDate), 'Return Time', t.retTime)}
+        <div style="margin:.75rem 0 .35rem;font-weight:700;font-size:.8rem;border-bottom:1px solid #ccc">DESTINATIONS</div>
+        ${prow1('Destination #1 (full name & address)', t.dest1)}
+        ${prow2('Arrival at Dest #1', t.arr1, 'Departure from Dest #1', t.dep1)}
+        ${t.dest2?prow1('Destination #2 (full name & address)', t.dest2)+''+prow2('Arrival at Dest #2',t.arr2,'Departure from Dest #2',t.dep2):''}
+        <div style="margin:.75rem 0 .35rem;font-weight:700;font-size:.8rem;border-bottom:1px solid #ccc">ATTENDEES</div>
+        ${prow2('Grade(s)', t.grade, 'Class Membership', t.classMem)}
+        ${prow2('# Students Invited', t.invited, '# Students Attending', t.stuAtt)}
+        ${prow2('Students (M / F)', t.stuMF, '# Adults Attending', t.adultAtt)}
+        ${prow2('Adults (M / F)', t.adultMF, '# Adult Chaperones (M / F)', t.chap)}
+        ${prow2('# Wheelchairs', t.wc||0, 'Cost per Student', '$'+(t.costStu||0))}
+        ${prow2('Cost per Adult', '$'+(t.costAdult||0), '', '')}
+        ${prow1('Plan for Students Who Cannot Afford Cost', t.afford)}
+        ${prow1('Reason(s) for Students Not Attending', t.nonatt)}
+        ${prow1('Special Accommodations', t.sped)}
+        <div style="margin:.75rem 0 .35rem;font-weight:700;font-size:.8rem;border-bottom:1px solid #ccc">MEDICAL</div>
+        ${prow2('2 Medically Trained Personnel on Bus (Y/N)', t.med, 'Provisions for Allergies/Medical (Y/N)', t.allergy)}
+        ${prow1('Medical/Allergy Staff #1 — Name & Cell', t.med1)}
+        ${prow1('Medical/Allergy Staff #2 — Name & Cell', t.med2)}
+        <div style="margin:.75rem 0 .35rem;font-weight:700;font-size:.8rem;border-bottom:1px solid #ccc">INSTRUCTIONAL CONSIDERATIONS</div>
+        ${prow1('Why is this trip necessary? (curriculum connection)', t.why)}
+        ${prow1('Pre-trip activities & teaching aids', t.pre)}
+        ${prow1('Post-trip activities & teaching aids', t.post)}
+        ${(t.isOn||t.oos||t.oosOn||t.intl)?`<div style="margin:.75rem 0 .35rem;font-weight:700;font-size:.8rem;border-bottom:1px solid #ccc">OVERNIGHT / OUT-OF-STATE / INTERNATIONAL</div>${prow2('In-State Overnight',t.isOn||'—','Out of State',t.oos||'—')}${prow2('Out-of-State Overnight',t.oosOn||'—','International',t.intl||'—')}`:''}
+        ${t.flight?prow1('Flight Itinerary',t.flight):''}
+        ${t.waivers?prow1('Parent Driver Waivers',t.waivers):''}
+        ${t.notes?prow1('Additional Notes',t.notes):''}
+      </div>
+    </div>
+  `;
+  openModal('preview');
+}
+
+function prow1(label, val) {
+  const empty = !val || val==='';
+  return `<div style="display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0ebe0"><div style="min-width:220px;font-weight:600;color:#333;font-size:.78rem">${label}</div><div style="flex:1;color:${empty?'#b91c1c':'#444'};font-size:.79rem">${empty?'⚠ MISSING':val}</div></div>`;
+}
+function prow2(l1, v1, l2, v2) {
+  const e1=!v1||v1===''; const e2=!v2||v2==='';
+  return `<div style="display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0ebe0"><div style="flex:1;display:flex;gap:.3rem"><span style="font-weight:600;font-size:.78rem;min-width:130px">${l1}</span><span style="color:${e1?'#b91c1c':'#444'};font-size:.79rem">${e1&&l1?'⚠ MISSING':v1||''}</span></div><div style="flex:1;display:flex;gap:.3rem"><span style="font-weight:600;font-size:.78rem;min-width:130px">${l2}</span><span style="color:${e2&&l2?'#b91c1c':'#444'};font-size:.79rem">${e2&&l2?'⚠ MISSING':v2||''}</span></div></div>`;
+}
+
+// ============================================================
+// TRIP WORKFLOW
+// ============================================================
+// FIXED (Say/Do Ledger leader-hub finding #6): these three arrays used to
+// carry each step's `done` flag directly, as one shared, unpersisted,
+// trip-agnostic state — checking a box for one trip silently checked it
+// for every other trip too, and a page refresh reverted all of it. They're
+// now pure step templates (label + optional detail); done-state lives on
+// each trip's own t.procSteps (see _getTripProcSteps()), the same
+// per-trip-object-plus-persistTrips() pattern the real Approval Chain
+// (t.ap/t.apDetail, see apStatus()/_applyApDetail() below) already uses.
+const sponsorSteps=[
+  {t:'Fill out Field Trip Permission Request Attachment',s:'All fields — handwritten not accepted'},
+  {t:'Set Departure Time = bus loads & departs from school',s:'NOT the time you leave the destination'},
+  {t:'Set Return Time = bus arrives back at school',s:'NOT the time you leave the venue'},
+  {t:'List ALL stops — no unauthorized deviations allowed'},
+  {t:'Note Special Accommodations / SPED bus requirements'},
+  {t:'Save as PDF (File → Make a Copy → Rename → Download PDF)',s:'SchoolName_Date_Destination'},
+  {t:'Submit PDF to Field Trip Coordinator electronically'},
+];
+const coordSteps=[
+  {t:'Review process with Trip Sponsor',s:'Forms, steps, timeline'},
+  {t:'Check school & county calendars for Blackout Dates'},
+  {t:'Obtain completed Permission Request PDF from sponsor'},
+  {t:'Enter Transportation request in TripTracker',s:'Bookmark: chesterfield.tylertech.com/Triptracker'},
+  {t:'Record TripTracker ID # — use on all correspondence & PO'},
+  {t:'Use TripTracker mapping/estimate feature — save the estimate'},
+  {t:'Enter ALL stops in TripTracker request'},
+  {t:'Submit trip in TripTracker (status → "Requested")'},
+  {t:'Attach PDF in TripTracker Attachment tab'},
+  {t:'Complete First Approval Level (Coordinator)'},
+  {t:'Ensure teacher\'s name & cell (NOT central office) in request'},
+];
+const postSteps=[
+  {t:'Receive Transportation approval via TripTracker email'},
+  {t:'Notify Trip Sponsor, Principal, and Bookkeeper of approval'},
+  {t:'Print Driver Trip Sheet no more than 1 day before trip',s:'Confirm driver name, phone & teacher cell on sheet'},
+  {t:'Notify students & parents',s:'ONLY after all approvals received — Policy 3090'},
+  {t:'Review PBIS Trip Expectations with students'},
+  {t:'Deliver Driver Trip Sheet to driver at start of trip',s:'Driver WILL NOT depart without TripTracker Trip Ticket'},
+  {t:'Lead teacher signs Driver Trip Sheet at trip end'},
+  {t:'Bookkeeper pays invoice within 30 days',s:'10201 Courthouse Rd, Chesterfield VA 23832, Attn Deanna Ayscue'},
+];
+
+// Returns (initializing/re-sizing if needed) a trip's own per-step
+// done/undone state — one boolean array per checklist, kept in sync with
+// the current templates above so a template edit never leaves an index
+// reading past the end of an older saved array.
+function _getTripProcSteps(t) {
+  if (!t.procSteps) t.procSteps = {};
+  [['sponsor', sponsorSteps], ['coord', coordSteps], ['post', postSteps]].forEach(([key, tmpl]) => {
+    if (!Array.isArray(t.procSteps[key]) || t.procSteps[key].length !== tmpl.length) {
+      const prev = Array.isArray(t.procSteps[key]) ? t.procSteps[key] : [];
+      t.procSteps[key] = tmpl.map((_, i) => !!prev[i]);
+    }
+  });
+  return t.procSteps;
+}
+
+// Populates the trip selector (mirrors initSlipView()'s pattern) and does
+// the first render — called from showView() instead of renderTripFlow()
+// directly so the selector always has options before anything reads it.
+function initTripFlowView() {
+  const sel = document.getElementById('tripflow-trip-sel');
+  if (!sel) return;
+  const prevVal = sel.value;
+  sel.innerHTML = trips.map(t => `<option value="${t.id}">${escH(t.name)} — ${fd(t.date)}</option>`).join('');
+  if (prevVal && trips.some(t => String(t.id) === prevVal)) sel.value = prevVal;
+  else if (trips.length) sel.value = trips[0].id;
+  renderTripFlow();
+}
+
+function renderTripFlow() {
+  const sel = document.getElementById('tripflow-trip-sel');
+  const tripId = sel ? parseInt(sel.value) : NaN;
+  const t = trips.find(x => x.id === tripId);
+
+  if (!t) {
+    const emptyMsg = '<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.79rem">Create a trip first — this checklist tracks progress per trip.</div>';
+    ['sponsor-cl','coord-cl','post-cl'].forEach(id => { const el = document.getElementById(id); if (el) el.innerHTML = emptyMsg; });
+    const apEl = document.getElementById('tf-live-ap'); if (apEl) apEl.innerHTML = '';
+    const apNote = document.getElementById('tf-live-ap-note'); if (apNote) apNote.style.display = 'none';
+    const apBtn = document.getElementById('tf-live-ap-btn'); if (apBtn) apBtn.onclick = null;
+    const apTitle = document.getElementById('tf-live-ap-title'); if (apTitle) apTitle.textContent = 'Approval Chain';
+    document.getElementById('approver-det').innerHTML = '';
+    return;
+  }
+
+  const steps = _getTripProcSteps(t);
+  ['sponsor-cl','coord-cl','post-cl'].forEach((id,li)=>{
+    const lists=[sponsorSteps,coordSteps,postSteps];
+    const key = ['sponsor','coord','post'][li];
+    // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
+    // had until an earlier round added role/tabindex/onkeydown to them.
+    document.getElementById(id).innerHTML=lists[li].map((s,i)=>{
+      const done = !!steps[key][i];
+      return `<li class="${done?'done':''}"><div class="cb ${done?'checked':''}" role="checkbox" aria-checked="${done}" tabindex="0" aria-label="${s.t.replace(/"/g,'&quot;')}" onclick="togProc('${key}',${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togProc('${key}',${i})}">${done?'✓':''}</div><span class="clt">${s.t}${s.s?`<span class="clsub">${s.s}</span>`:''}</span></li>`;
+    }).join('');
+  });
+
+  // Live Approval Chain summary — FIXED (finding #6): this used to render
+  // a static, non-interactive diagram of three generic example trip types
+  // with no connection to any real trip's data. Now reads the same real
+  // t.ap/t.apDetail the selected trip's actual Approval Chain (Trip
+  // Detail) tracks — same source of truth, read-only here, edited there —
+  // via the same apStatus() helper Trip Detail itself uses.
+  const isExtended = ['overnight-is','overnight-oos','multi-day','international'].includes(t.sub||'same-day');
+  const apSteps = isExtended
+    ? [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'director',l:'Level Director'},{k:'chief',l:'Chief of Schools'},{k:'transport',l:'Transportation'}]
+    : [{k:'coord',l:'Coordinator'},{k:'principal',l:'Principal'},{k:'bookkeeper',l:'Bookkeeper'},{k:'risk',l:'Risk Mgmt'},{k:'transport',l:'Transportation'}];
+  document.getElementById('tf-live-ap-title').textContent = `Approval Chain — ${t.name}`;
+  document.getElementById('tf-live-ap').innerHTML = apSteps.map(s => {
+    const st = apStatus(t, s.k);
+    const look = st === 'approved' ? {bd:'var(--green)',bg:'var(--green)',fg:'#fff',glyph:'✓'}
+               : st === 'rejected' ? {bd:'var(--red)',bg:'var(--red)',fg:'#fff',glyph:'✕'}
+               : {bd:'var(--border)',bg:'#fff',fg:'#888',glyph:'○'};
+    return `<div style="display:flex;flex-direction:column;align-items:center;min-width:70px;margin-bottom:.4rem">
+      <div style="width:30px;height:30px;border-radius:50%;border:2px solid ${look.bd};background:${look.bg};color:${look.fg};display:flex;align-items:center;justify-content:center;font-size:.88rem">${look.glyph}</div>
+      <div style="font-size:.6rem;font-weight:600;text-align:center;margin-top:.22rem;color:#555;max-width:65px;line-height:1.2">${s.l}</div>
+    </div>`;
+  }).join('');
+  const apNote = document.getElementById('tf-live-ap-note');
+  if (apNote) apNote.style.display = isExtended ? 'flex' : 'none';
+  const apBtn = document.getElementById('tf-live-ap-btn');
+  if (apBtn) apBtn.onclick = () => openTripDetail(t.id);
+
+  // Approver details
+  document.getElementById('approver-det').innerHTML=[
+    {r:'📋 Field Trip Coordinator',t:'Attaches PDF at first approval. Ensures teacher cell (not central office) is in request.'},
+    {r:'🏫 Principal',t:'Approves based on calendar, educational value, form completeness, budget code, blackout dates.'},
+    {r:'⚖️ Risk Management',t:'May reject if lead time insufficient. Verifies occupancy limits, chaperones, DMV checks, parent waivers.'},
+    {r:'📊 Central Administration',t:'Reviews per policy. Forms available to Central Leadership, Principals, Security Office (Glenn Pike).'},
+    {r:'🚌 Transportation',t:'Assigns drivers by rotation. Interstate CDL required for out-of-state. Director approval for all out-of-state school bus trips. Contact: Frederick Hughes, Frederick_hughes@ccpsnet.net, (804) 955-7622.'},
+  ].map(x=>`<div style="display:flex;gap:.6rem;padding:.48rem 0;border-bottom:1px solid var(--border)"><div style="font-weight:600;font-size:.79rem;min-width:160px;color:var(--navy)">${x.r}</div><div style="font-size:.77rem;color:#555;line-height:1.5">${x.t}</div></div>`).join('');
+  calcCost();
+}
+
+function togProc(key,i){
+  const sel = document.getElementById('tripflow-trip-sel');
+  const tripId = sel ? parseInt(sel.value) : NaN;
+  const t = trips.find(x => x.id === tripId);
+  if (!t) return;
+  const steps = _getTripProcSteps(t);
+  steps[key][i] = !steps[key][i];
+  persistTrips(); // was in-memory only — see finding #6
+  renderTripFlow();
+}
+
+function tfTab(name,btn){
+  ['process','approvals','deadlines','costs','blackout'].forEach(t=>{const el=document.getElementById('tf-'+t);if(el)el.style.display=t===name?'block':'none';const tb=document.getElementById('tab-'+t);if(tb){tb.classList.remove('btn-primary');tb.classList.add('btn-outline');}});
+  if(btn){btn.classList.remove('btn-outline');btn.classList.add('btn-primary');}
+}
+
+function calcCost(){
+  const mi=Math.max(3,parseFloat(document.getElementById('ce-mi').value)||0);
+  const wt=parseFloat(document.getElementById('ce-wt').value)||0;
+  const bu=Math.max(1,parseInt(document.getElementById('ce-bu').value)||1);
+  const to=parseFloat(document.getElementById('ce-to').value)||0;
+  const mc=mi*4*bu; const wc=wt*25*bu; const tot=mc+wc+to;
+  document.getElementById('cr-mi').textContent='$'+mc.toFixed(2);
+  document.getElementById('cr-wt').textContent='$'+wc.toFixed(2);
+  document.getElementById('cr-bu').textContent='×'+bu;
+  document.getElementById('cr-to').textContent='$'+to.toFixed(2);
+  document.getElementById('cr-tot').textContent='$'+tot.toFixed(2);
+}
+
+function checkBlackout(){
+  const val=document.getElementById('bo-date').value;
+  const el=document.getElementById('bo-result'); if(!val){el.innerHTML='<span style="color:var(--muted)">Enter a date to check.</span>';return;}
+  const d=new Date(val+'T00:00:00'); const issues=[];
+  if(d.getMonth()===4) issues.push('<strong>SOL Testing Window (May):</strong> 6–12 field trips NOT permitted. K–5, ASOL, and CTC (on attendance days) allowed.');
+  el.innerHTML=issues.length?`<div class="alert aw"><span class="aico">⚠️</span><div>${issues.join('<br>')}<br>Verify: <a href="https://docs.google.com/document/d/14TA9xtU3VunvFNU4vKn3FplDhbIAJx25ItB_T9mrbC4/edit" target="_blank" style="color:var(--blue)">Official CCPS Blackout Dates</a></div></div>`:`<div class="alert as"><span class="aico">✅</span>No known blackout for ${fd(val)}. Always verify: <a href="https://docs.google.com/document/d/14TA9xtU3VunvFNU4vKn3FplDhbIAJx25ItB_T9mrbC4/edit" target="_blank" style="color:var(--blue)">Official Blackout Dates</a></div>`;
+}
+
+// ============================================================
+// MODALS — core open/close
+// ============================================================
+// Escape-to-close and a basic Tab focus trap, added once here rather than
+// per-modal — every modal built on the shared .mo/openModal()/closeModal()
+// pattern gets both automatically.
+let _activeMoName = null;
+let _activeMoReturnFocus = null;
+
+function _moFocusables(modalEl) {
+  return Array.from(modalEl.querySelectorAll(
+    'a[href], button:not([disabled]), textarea:not([disabled]), input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])'
+  )).filter(el => el.offsetParent !== null);
+}
+
+// ── Raw modals ────────────────────────────────────────────────────────────
+// These predate the shared .mo/openModal() system, or need their own close
+// logic (e.g. Journal's unsaved-changes confirm) that a markup migration
+// would risk disturbing. Rather than rewrite each one's markup and every
+// call site, the same Escape/focus-trap watcher below is generalized to
+// recognize them too — same protection, far less risk of regression.
+const RAW_MODAL_CLOSERS = {
+  'deadline-modal':        () => closeDeadlineModal(),
+  'journal-modal':         () => closeJournal(),
+  'journal-history-modal': () => { const el = document.getElementById('journal-history-modal'); if (el) el.style.display = 'none'; },
+  'lp-modal':              () => closeLPModal(),
+  'obs-log-modal':         () => closeObsLog(),
+  'po-modal':              () => closePOModal(),
+  'sales-modal':           () => closeSalesModal(),
+  'inventory-modal':       () => closeInventoryModal(),
+  'wbl-student-modal':     () => closeWBLStudentModal(),
+  'es-player-modal':       () => closeESModal(),
+  'es-match-modal':        () => closeMatchModal(),
+  'survey-modal':          () => { const el = document.getElementById('survey-modal'); if (el) el.remove(); },
+  'ap-reject-modal':       () => { const el = document.getElementById('ap-reject-modal'); if (el) el.remove(); },
+  'deca-season-editor':    () => { const el = document.getElementById('deca-season-editor'); if (el) el.remove(); },
+  'import-confirm-modal':  () => { const el = document.getElementById('import-confirm-modal'); if (el) el.remove(); },
+  // FIXED: _showDiscardConfirm() (Brag Board/Lesson Plan/Journal discard
+  // guards) was never registered here — Escape re-invoked the *underlying*
+  // modal's own close function instead of dismissing this dialog, and the
+  // Tab-trap below computed focusables from the modal behind it rather
+  // than from this dialog's own buttons, so Tab could walk focus out into
+  // content still hidden behind the backdrop. Registering it gets both
+  // Escape-to-close and the Tab-trap for free, the same way every other
+  // bespoke dialog here does.
+  // FIXED: this originally just removed the element, skipping opts.onCancel
+  // — fine for callers where "cancel" just means "do nothing," but the
+  // trip-draft resume prompt relies on onCancel to discard the stale draft.
+  // Pressing Escape used to leave the draft in place with no wizard open.
+  // _showConfirm() stashes its real closeIt (which does invoke onCancel) on
+  // the element so Escape and the Cancel button behave identically.
+  'discard-confirm-modal': () => { const el = document.getElementById('discard-confirm-modal'); if (el) { if (el._onCancel) el._onCancel(); else el.remove(); } },
+  // EE2 co-advisor sharing dialogs — same remove()-if-present pattern as
+  // the other bare raw modals above (no onCancel side effect needed;
+  // dismissing either one is just "do nothing").
+  'org-sync-conflict-modal': () => { const el = document.getElementById('org-sync-conflict-modal'); if (el) el.remove(); },
+  'org-join-modal':          () => { const el = document.getElementById('org-join-modal'); if (el) el.remove(); },
+  'cas-pacing-unit-modal':   () => { const el = document.getElementById('cas-pacing-unit-modal'); if (el) el.remove(); },
+};
+
+function _findVisibleRawModalId() {
+  // Most-recently-opened visible raw modal wins — e.g. Journal History is
+  // opened as a sibling overlay on top of the still-visible Journal modal,
+  // and Escape/Tab-trap should act on History, not on whichever modal
+  // happens to come first in RAW_MODAL_CLOSERS's declaration order.
+  // _rawModalOpenStack (populated by _handleRawModalVisibility below) tracks
+  // real open order; fall back to key order for anything the stack hasn't
+  // caught yet (defensive only — shouldn't normally be reached).
+  for (let i = _rawModalOpenStack.length - 1; i >= 0; i--) {
+    const id = _rawModalOpenStack[i];
+    const el = document.getElementById(id);
+    if (el && getComputedStyle(el).display !== 'none') return id;
+  }
+  for (const id of Object.keys(RAW_MODAL_CLOSERS)) {
+    const el = document.getElementById(id);
+    if (el && getComputedStyle(el).display !== 'none') return id;
+  }
+  return null;
+}
+
+// ── Raw modal focus management ───────────────────────────────────────────
+// The .mo system's openModal()/closeModal() already capture the triggering
+// element and move focus in/out on open/close; the raw modals above only
+// got Escape/Tab-trap coverage, not this. Rather than touch each raw
+// modal's own open/close function (14 different implementations, some
+// toggling display, some creating/removing the element entirely), a single
+// MutationObserver watches for any of them becoming visible or vanishing
+// and handles focus the same way the .mo system does.
+const _rawModalReturnFocus = {};
+const _rawModalWasVisible = {};
+// Real open order, most-recent last — lets _findVisibleRawModalId() target
+// the topmost raw modal instead of the first RAW_MODAL_CLOSERS key.
+const _rawModalOpenStack = [];
+function _isRawModalVisible(el) {
+  return !!el && document.body.contains(el) && getComputedStyle(el).display !== 'none';
+}
+function _handleRawModalVisibility(id) {
+  const el = document.getElementById(id);
+  const nowVisible = _isRawModalVisible(el);
+  const wasVisible = !!_rawModalWasVisible[id];
+  if (nowVisible && !wasVisible) {
+    _rawModalReturnFocus[id] = document.activeElement;
+    const focusable = _moFocusables(el);
+    if (focusable.length) focusable[0].focus();
+    const stackIdx = _rawModalOpenStack.indexOf(id);
+    if (stackIdx !== -1) _rawModalOpenStack.splice(stackIdx, 1);
+    _rawModalOpenStack.push(id);
+  } else if (!nowVisible && wasVisible) {
+    const toFocus = _rawModalReturnFocus[id];
+    if (toFocus && typeof toFocus.focus === 'function' && document.body.contains(toFocus)) toFocus.focus();
+    delete _rawModalReturnFocus[id];
+    const stackIdx = _rawModalOpenStack.indexOf(id);
+    if (stackIdx !== -1) _rawModalOpenStack.splice(stackIdx, 1);
+  }
+  _rawModalWasVisible[id] = nowVisible;
+}
+const _rawModalObserver = new MutationObserver(() => {
+  Object.keys(RAW_MODAL_CLOSERS).forEach(_handleRawModalVisibility);
+});
+_rawModalObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
+
+// ── beforeunload guard ────────────────────────────────────────────────────
+// The in-app discard-confirmations already built for the Lesson Plan editor
+// and Journal only intercept in-app close actions (Escape, ✕, backdrop) —
+// an accidental tab close or refresh mid-edit bypasses all of them and
+// loses the draft with zero warning, the exact failure mode those
+// confirmations exist to prevent. This reuses the same has-unsaved-changes
+// checks at the browser level. Other views can opt in later by pushing
+// their own check onto this array.
+const _unsavedWorkChecks = [_lpHasUnsavedChanges, _journalHasUnsavedChanges, _bragHasUnsavedChanges];
+window.addEventListener('beforeunload', (e) => {
+  const hasUnsaved = _unsavedWorkChecks.some(fn => { try { return fn(); } catch (err) { return false; } });
+  if (hasUnsaved) { e.preventDefault(); e.returnValue = ''; }
+});
+
+function _moTrapKeydown(e) {
+  let modalEl, onEscape;
+  if (_activeMoName) {
+    modalEl = document.getElementById('modal-' + _activeMoName);
+    onEscape = () => closeModal(_activeMoName);
+  } else {
+    const rawId = _findVisibleRawModalId();
+    if (rawId) { modalEl = document.getElementById(rawId); onEscape = RAW_MODAL_CLOSERS[rawId]; }
+  }
+  if (!modalEl) return;
+  if (e.key === 'Escape') { onEscape(); return; }
+  if (e.key !== 'Tab') return;
+  const focusable = _moFocusables(modalEl);
+  if (!focusable.length) return;
+  const first = focusable[0], last = focusable[focusable.length - 1];
+  if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+  else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+}
+document.addEventListener('keydown', _moTrapKeydown);
+
+function openModal(name){
+  const modalEl = document.getElementById('modal-'+name);
+  if (!modalEl) return;
+  modalEl.classList.add('open');
+  _activeMoName = name;
+  _activeMoReturnFocus = document.activeElement;
+  const focusable = _moFocusables(modalEl);
+  if (focusable.length) focusable[0].focus();
+}
+// Shared discard-confirmation dialog — replaces native confirm() for
+// "discard unsaved work?" guards (Brag Board draft, Lesson Plan editor,
+// Journal reflection) with the app's own modal/toast visual language
+// instead of a raw OS dialog interrupting mid-action. Async by nature
+// (a click comes back later, not synchronously like confirm()), so every
+// call site below shows the dialog and performs the discard itself from
+// onConfirm, rather than branching on a returned boolean.
+// Generalized from the original discard-only dialog so the same styled,
+// keyboard-correct (see RAW_MODAL_CLOSERS registration) confirmation can
+// back every "are you sure?" in the app, not just discard guards — bulk/
+// destructive actions (mark-all, reset-all, remove-connection) were still
+// popping a raw OS confirm() despite this dialog already existing.
+function _showConfirm(message, onConfirm, opts) {
+  opts = opts || {};
+  const confirmLabel = opts.confirmLabel || 'Discard';
+  const cancelLabel = opts.cancelLabel || 'Cancel';
+  const btnClass = opts.danger === false ? 'btn btn-primary btn-sm' : 'btn btn-danger btn-sm';
+  const ariaLabel = opts.ariaLabel || confirmLabel + ' confirmation';
+  const existing = document.getElementById('discard-confirm-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'discard-confirm-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:400px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="${escH(ariaLabel)}">
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5;white-space:pre-line">${escH(message)}</div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn btn-outline btn-sm" id="discard-confirm-cancel">${escH(cancelLabel)}</button>
+      <button class="${btnClass}" id="discard-confirm-submit">${escH(confirmLabel)}</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  // onCancel fires for every non-confirm dismissal (Cancel button, backdrop
+  // click) — most callers don't need it (canceling is just "do nothing"),
+  // but a couple (e.g. the trip-draft resume prompt) need to run cleanup on
+  // "no" too, not just on "yes".
+  const closeIt = () => { modal.remove(); if (opts.onCancel) opts.onCancel(); };
+  // Stashed so RAW_MODAL_CLOSERS['discard-confirm-modal'] (Escape key) can
+  // invoke the exact same cleanup the Cancel button/backdrop click do,
+  // instead of a bare el.remove() that silently skips opts.onCancel.
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('discard-confirm-cancel').onclick = closeIt;
+  document.getElementById('discard-confirm-submit').onclick = () => { modal.remove(); onConfirm(); };
+  document.getElementById('discard-confirm-submit').focus();
+}
+function _showDiscardConfirm(message, onConfirm) {
+  _showConfirm(message, onConfirm, { confirmLabel: 'Discard', danger: true, ariaLabel: 'Discard unsaved changes' });
+}
+
+// Optional per-modal guard checked before a .mo modal actually closes — lets
+// a single modal (e.g. Brag Board's unsaved-draft check) require
+// confirmation without every other .mo modal needing to know about it.
+// Covers all three close paths uniformly since Escape, the backdrop click,
+// and each modal's own "✕ Close" button all funnel through closeModal().
+const MO_CLOSE_GUARDS = {
+  bragboard: () => {
+    if (!_bragHasUnsavedChanges()) return true;
+    // Guard can only ever answer synchronously, but the dialog's answer
+    // comes back later — block this close attempt (return false) and, if
+    // confirmed, resync the snapshot and force the close directly rather
+    // than re-running the guard.
+    _showDiscardConfirm('Discard this email draft? It hasn\'t been saved to the log.', () => {
+      // Resync the snapshot to the (about to be abandoned) textarea value so
+      // beforeunload doesn't still think there's unsaved work and re-warn
+      // about a draft the user just said to throw away.
+      const el = document.getElementById('brag-body');
+      if (el) _bragBodySnapshot = el.value;
+      closeModal('bragboard', true);
+    });
+    return false;
+  },
+};
+function closeModal(name, force){
+  const guard = MO_CLOSE_GUARDS[name];
+  if (!force && guard && !guard()) return;
+  const modalEl = document.getElementById('modal-'+name);
+  if (modalEl) modalEl.classList.remove('open');
+  if (_activeMoName === name) {
+    _activeMoName = null;
+    if (_activeMoReturnFocus && typeof _activeMoReturnFocus.focus === 'function') _activeMoReturnFocus.focus();
+    _activeMoReturnFocus = null;
+  }
+}
+document.querySelectorAll('.mo').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeModal(m.id.replace(/^modal-/,''));}));
+
+// Deprecated — kept as fallback stub; wizard now handles all trip saves
+function saveTrip() { wzSaveTrip(); }
+
+// leadDays still used by wizard deadline preview
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TRIP WIZARD — 6-STEP FORM ENGINE
+// Replaces the old single-scroll 62-field modal with a guided wizard.
+// All field IDs are preserved (nt-*) so saveTrip() / openEditModal() are intact.
+// ══════════════════════════════════════════════════════════════════════════════
+
+const WZ_STEPS = [
+  { id: 1, icon: '🏷️', label: 'Basics',      short: 'What & When' },
+  { id: 2, icon: '📍', label: 'Where',       short: 'Destinations' },
+  { id: 3, icon: '🚌', label: 'Transport',   short: 'Getting There' },
+  { id: 4, icon: '👥', label: 'People',      short: 'Students & Costs' },
+  { id: 5, icon: '🏥', label: 'Safety',      short: 'Health & Medical' },
+  { id: 6, icon: '📋', label: 'Admin',       short: 'Funding & Sign-off' },
+];
+
+let _wzStep  = 1;
+// The furthest step ever reached this session — "done" on the step bar
+// used to mean purely "before the current index," so going back to fix
+// something on step 2 immediately un-checkmarked steps 3-6 even though
+// _wzDraft still held all their data, reading as if those answers were
+// lost. Tracked separately so going back never visually erases progress
+// that's still there.
+let _wzMaxStepReached = 1;
+let _wzDraft = {};
+
+// ── Open wizard (new or edit) ──────────────────────────────────────────────
+function openTripWizard(tripId) {
+  _wzStep = 1;
+  _wzMaxStepReached = 1;
+  const existing = tripId ? trips.find(t => t.id === tripId) : null;
+
+  if (existing) {
+    // Populate draft from existing trip
+    _wzDraft = { _editId: existing.id, ...tripToDraft(existing) };
+    document.getElementById('nt-modal-title').textContent = 'Edit: ' + existing.name;
+    // Every step already has data from the existing trip, so all of them
+    // should be reachable/checked from the start, not just step 1.
+    _wzMaxStepReached = WZ_STEPS.length;
+    _finishOpenTripWizard(existing);
+    return;
+  }
+  const blankDraft = {
+    origin:  PROFILE.school,
+    sponsor: PROFILE.name,
+    sub:     'same-day',
+    status:  'planned',
+  };
+  // A saved draft used to repopulate silently — including weeks later,
+  // for a completely unrelated new trip, with stale dates/destinations/
+  // medical-staff names and no way to tell it happened. Only auto-load
+  // when the draft actually has real content beyond the same defaults
+  // every fresh wizard starts with, and ask first even then.
+  const saved = LS.get('lh_trip_draft', null);
+  const hasRealContent = saved && Object.keys(saved).some(
+    k => !(k in blankDraft) && saved[k] !== '' && saved[k] !== 0 && saved[k] != null
+  );
+  if (hasRealContent) {
+    const label = saved.name ? `"${saved.name}"` : 'an unfinished trip';
+    // FIXED: was a blocking confirm() — routed through the app's own
+    // styled dialog instead, so the shared tail (below) now runs from
+    // each async branch rather than after a synchronous if/else.
+    _showConfirm(
+      `You have a saved draft for ${label}. Resume it?\n\nChoose Cancel to start a new, blank trip request instead — the saved draft will be discarded.`,
+      () => { _wzDraft = saved; document.getElementById('nt-modal-title').textContent = 'New Field Trip Request'; _finishOpenTripWizard(null); },
+      {
+        confirmLabel: 'Resume Draft', danger: false, ariaLabel: 'Resume saved trip draft',
+        onCancel: () => {
+          _wzDraft = blankDraft;
+          LS.set('lh_trip_draft', {});
+          document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
+          _finishOpenTripWizard(null);
+        },
+      }
+    );
+    return;
+  }
+  _wzDraft = saved || blankDraft;
+  document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
+  _finishOpenTripWizard(null);
+}
+
+function _finishOpenTripWizard(existing) {
+  // wzUpdate() only writes to localStorage for brand-new trips (lh_trip_draft
+  // is specifically the "resume an unfinished new trip" slot — reusing it for
+  // edits would leak a half-finished edit into the next unrelated new-trip
+  // draft, the same class of bug already fixed above). The banner used to
+  // claim auto-save protection unconditionally, which was simply false while
+  // editing — closing mid-edit with unsaved changes loses them silently.
+  const draftMsgEl = document.getElementById('wz-draft-msg');
+  if (draftMsgEl) {
+    draftMsgEl.textContent = existing
+      ? "Editing — changes save when you click Save Changes. Closing without saving will discard them."
+      : "Draft auto-saved — your progress won't be lost if you close this.";
+  }
+
+  renderWizardStep();
+  _origOpenModal('newTrip');
+}
+
+// Map existing trip object → flat draft object
+function tripToDraft(t) {
+  return {
+    name:t.name, date:t.date, sub:t.sub||'same-day', reason:t.reason||'', acttype:t.acttype||'', status:t.status||'planned',
+    origin:t.origin||PROFILE.school, depDate:t.depDate||'', depTime:t.depTime||'', retDate:t.retDate||'', retTime:t.retTime||'',
+    oneway:t.oneway||'NO', dest1:t.dest1||'', arr1:t.arr1||'', dep1:t.dep1||'', dest2:t.dest2||'', arr2:t.arr2||'', dep2:t.dep2||'',
+    ccpsBus:t.ccpsBus||0, charter:t.charter||0, rental:t.rental||0,
+    walk:t.walk||'', parentTx:t.parentTx||'', train:t.train||'', charterCo:t.charterCo||'', rentalCo:t.rentalCo||'',
+    isOn:t.isOn||'', oos:t.oos||'', oosOn:t.oosOn||'', intl:t.intl||'', flight:t.flight||'', waivers:t.waivers||'',
+    grade:t.grade||'11-12', classMem:t.classMem||'DECA Chapter',
+    invited:t.invited||0, stuAtt:t.stuAtt||0, adultAtt:t.adultAtt||0, stuMF:t.stuMF||'', adultMF:t.adultMF||'',
+    costStu:t.costStu||0, costAdult:t.costAdult||0, chap:t.chap||'', wc:t.wc||0,
+    afford:t.afford||'Financial hardship funds available through school SAF.', nonatt:t.nonatt||'', sped:t.sped||'',
+    med:t.med||'', allergy:t.allergy||'', med1:t.med1||'', med2:t.med2||'',
+    fund:t.fund||'', po:t.po||'', sponsor:t.sponsor||PROFILE.name, cell:t.cell||'', coord:t.coord||'', acctNotes:t.acctNotes||'',
+    why:t.why||'', pre:t.pre||'', post:t.post||'', notes:t.notes||''
+  };
+}
+
+// ── Step bar ──────────────────────────────────────────────────────────────
+function renderWizardStepBar() {
+  const bar = document.getElementById('wz-step-bar');
+  if (!bar) return;
+  bar.innerHTML = `<div style="display:flex;align-items:center;gap:0;width:100%">
+    ${WZ_STEPS.map((s, i) => {
+      const active  = s.id === _wzStep;
+      // Reflects "reached, and still has its data" rather than purely
+      // "before the current step" — going back to fix an earlier step no
+      // longer un-checkmarks later ones whose answers are still in _wzDraft.
+      const done    = !active && s.id <= _wzMaxStepReached;
+      const last    = i === WZ_STEPS.length - 1;
+      // Mouse-only before this — the approval-chain circles elsewhere in
+      // the app already carry role/tabindex/onkeydown for this same
+      // "circle acts like a button" pattern; applied here too so a
+      // keyboard user can jump between reached steps the same way.
+      const canJump = done || active;
+      return `<div style="display:flex;align-items:center;flex:1;min-width:0">
+        <div ${canJump ? `onclick="wzJumpTo(${s.id})" onkeydown="if((event.key==='Enter'||event.key===' ')){event.preventDefault();wzJumpTo(${s.id})}" role="button" tabindex="0" aria-label="Go to step ${s.id}: ${s.label}"` : 'aria-hidden="true"'} style="display:flex;flex-direction:column;align-items:center;cursor:${done||active?'pointer':'default'};flex-shrink:0;min-width:0">
+          <div style="width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:${done?'.75rem':'.8rem'};font-weight:700;
+            background:${active?'var(--gold)':done?'rgba(255,255,255,.9)':'rgba(255,255,255,.15)'};
+            color:${active?'var(--navy)':done?'var(--navy)':'rgba(255,255,255,.5)'};
+            border:2px solid ${active?'var(--gold)':done?'rgba(255,255,255,.8)':'rgba(255,255,255,.2)'};
+            transition:all .2s">
+            ${done ? '✓' : s.id}
+          </div>
+          <div style="font-size:.6rem;margin-top:.25rem;font-weight:${active?'700':'400'};
+            color:${active?'var(--gold)':done?'rgba(255,255,255,.8)':'rgba(255,255,255,.4)'};
+            white-space:nowrap;letter-spacing:.3px">
+            ${s.label}
+          </div>
+        </div>
+        ${!last ? `<div style="flex:1;height:2px;margin:0 .25rem;margin-bottom:1.1rem;background:${done?'rgba(255,255,255,.5)':'rgba(255,255,255,.15)'};transition:background .3s"></div>` : ''}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── Main step renderer ────────────────────────────────────────────────────
+function renderWizardStep() {
+  renderWizardStepBar();
+
+  const body = document.getElementById('wz-body');
+  const backBtn = document.getElementById('wz-back-btn');
+  const nextBtn = document.getElementById('wz-next-btn');
+  const progressLabel = document.getElementById('wz-progress-label');
+  if (!body) return;
+
+  backBtn.style.display = _wzStep === 1 ? 'none' : '';
+  nextBtn.textContent = _wzStep === WZ_STEPS.length ? '✅ Save Trip' : 'Next →';
+  progressLabel.textContent = `Step ${_wzStep} of ${WZ_STEPS.length} — ${WZ_STEPS[_wzStep-1].short}`;
+
+  const d = _wzDraft;
+
+  const field = (id, label, inputHTML, hint='', req=false) => `
+    <div class="fg" style="gap:.32rem">
+      <label style="font-size:.72rem;font-weight:700;color:var(--muted);letter-spacing:.3px;display:flex;align-items:center;gap:.3rem">
+        ${label.toUpperCase()}${req ? ' <span style="color:var(--red)">*</span>' : ''}
+      </label>
+      ${inputHTML}
+      ${hint ? `<div style="font-size:.68rem;color:#94a3b8;line-height:1.4">${hint}</div>` : ''}
+    </div>`;
+
+  const inp = (id, type='text', placeholder='', extra='') =>
+    `<input id="${id}" type="${type}" placeholder="${placeholder}" value="${escH(d[id.replace('nt-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase())] ?? '')}" ${extra} style="padding:.42rem .65rem;border:1.5px solid var(--border);border-radius:8px;font-size:.84rem;font-family:inherit;transition:border-color .15s;width:100%" onfocus="this.style.borderColor='var(--navy)'" onblur="wzBlurSave(this,'${id}')">`;
+
+  const sel = (id, opts, extra='') => {
+    const key = id.replace('nt-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
+    const cur = d[key] ?? '';
+    return `<select id="${id}" ${extra} style="padding:.42rem .65rem;border:1.5px solid var(--border);border-radius:8px;font-size:.84rem;font-family:inherit;background:#fff;width:100%" onchange="wzChangeSave(this,'${id}')">
+      ${opts.map(([v,l]) => `<option value="${v}" ${cur===v?'selected':''}>${l}</option>`).join('')}
+    </select>`;
+  };
+
+  const ta = (id, placeholder='', rows=3) => {
+    const key = id.replace('nt-','').replace(/-([a-z])/g,(_,c)=>c.toUpperCase());
+    const val = escH(d[key] ?? '');
+    return `<textarea id="${id}" rows="${rows}" placeholder="${placeholder}" style="padding:.42rem .65rem;border:1.5px solid var(--border);border-radius:8px;font-size:.84rem;font-family:inherit;resize:vertical;line-height:1.55;width:100%;transition:border-color .15s" onfocus="this.style.borderColor='var(--navy)'" onblur="wzBlurSave(this,'${id}')">${val}</textarea>`;
+  };
+
+  const row2 = (...cols) => `<div style="display:grid;grid-template-columns:${cols.map(()=>'1fr').join(' ')};gap:.8rem">${cols.join('')}</div>`;
+  const row3 = (...cols) => `<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.8rem">${cols.join('')}</div>`;
+  const sec  = (title) => `<div style="font-family:'Bebas Neue',cursive;font-size:.88rem;letter-spacing:2px;color:var(--navy);margin:1.2rem 0 .6rem;padding-bottom:.35rem;border-bottom:2px solid var(--border);display:flex;align-items:center;gap:.5rem">${title}</div>`;
+  const info = (msg) => `<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:8px;padding:.6rem .9rem;font-size:.77rem;color:#1e40af;margin-bottom:.75rem;display:flex;gap:.5rem;align-items:flex-start"><span style="flex-shrink:0">ℹ️</span><span>${msg}</span></div>`;
+  const warn = (msg) => `<div style="background:var(--red-light);border:1px solid #fca5a5;border-radius:8px;padding:.6rem .9rem;font-size:.77rem;color:#b91c1c;margin-bottom:.75rem;display:flex;gap:.5rem;align-items:flex-start"><span style="flex-shrink:0">🚫</span><span>${msg}</span></div>`;
+
+  // Calculate deadline preview dynamically
+  const dlPreview = () => {
+    if (!d.date || !d.sub) return '';
+    const lead = leadDays(d.sub);
+    const dl = new Date(d.date+'T00:00:00'); dl.setDate(dl.getDate()-lead);
+    const dtd = Math.ceil((dl - new Date())/86400000);
+    const cls = dtd<0?'ad':dtd<=7?'aw':'as';
+    const icon = dtd<0?'🚨':dtd<=7?'⏰':'✅';
+    return `<div class="alert ${cls}" style="margin-top:.5rem"><span class="aico">${icon}</span>
+      TripTracker deadline: <strong>${fd(dl.toISOString().split('T')[0])}</strong> (${lead}-day rule) —
+      ${dtd<0?Math.abs(dtd)+' day'+(Math.abs(dtd)===1?'':'s')+' OVERDUE':dtd===0?'DUE TODAY':dtd+' day'+(dtd===1?'':'s')+' away'}
+    </div>`;
+  };
+
+  switch(_wzStep) {
+    // ── STEP 1: BASICS ──────────────────────────────────────────────────────
+    case 1:
+      body.innerHTML = `
+        ${warn('Excluded activities: Laser Tag · Trampoline Parks · Go-Karts · Zip Lines · Paintball')}
+        ${field('nt-name','Trip Name', inp('nt-name','text','e.g. DECA SLC — Richmond Convention Center'), '', true)}
+        ${row2(
+          field('nt-date', 'Trip Date', inp('nt-date','date','','oninput="wzUpdate(\'date\',this.value);renderWizardStep()"'), 'Primary date (start date for multi-day)', true),
+          field('nt-sub', 'Trip Type',
+            sel('nt-sub', [
+              ['same-day','📅 Same Day (In-State)'],
+              ['overnight-is','🌙 Overnight — In State'],
+              ['overnight-oos','✈️ Overnight — Out of State'],
+              ['multi-day','📆 Multi-Day'],
+              ['international','🌍 International (1yr advance)'],
+            ], 'onchange="wzUpdate(\'sub\',this.value);renderWizardStep()"'), '', true)
+        )}
+        <div id="wz-dl-preview">${dlPreview()}</div>
+        ${sec('📝 Purpose')}
+        ${row2(
+          field('nt-reason','Reason for Trip', inp('nt-reason','text','e.g. DECA State Leadership Conference'), 'Curriculum connection or CTSO activity'),
+          field('nt-acttype','Activity Type', inp('nt-acttype','text','e.g. Competition, Museum Visit, Service'))
+        )}
+        ${row2(
+          field('nt-status', 'Current Status',
+            sel('nt-status', [['planned','📋 Planned'],['active','🔵 Active — In TripTracker'],['approved','✅ Approved'],['complete','🏁 Complete']])),
+          field('nt-sponsor','Trip Sponsor Name', inp('nt-sponsor','text','Teacher\'s full name'), 'Your name as the responsible educator', true)
+        )}`;
+      break;
+
+    // ── STEP 2: WHERE ────────────────────────────────────────────────────────
+    case 2:
+      const isOvernightOrOOS = ['overnight-is','overnight-oos','multi-day','international'].includes(d.sub||'same-day');
+      const isIntl = d.sub === 'international';
+      const isOOS  = ['overnight-oos','international'].includes(d.sub||'');
+      body.innerHTML = `
+        ${info('Fill all times using school clock. Departure = when bus leaves school. Return = when bus is back at school.')}
+        ${sec('🏫 Origin & Schedule')}
+        ${field('nt-origin','Origin School', inp('nt-origin','text',`e.g. ${PROFILE.school}`), '', true)}
+        ${row2(
+          field('nt-dep-date','Departure Date', inp('nt-dep-date','date')),
+          field('nt-dep-time','Departure Time ⏰', inp('nt-dep-time','time'), 'Bus leaves school', true)
+        )}
+        ${row2(
+          field('nt-ret-date','Return Date', inp('nt-ret-date','date')),
+          field('nt-ret-time','Return Time ⏰', inp('nt-ret-time','time'), 'Bus back at school', !isOvernightOrOOS)
+        )}
+        <!-- Status lives on Step 1 ("Current Status") only — this used to
+             duplicate the exact same field under a different label here,
+             reading like a copy/paste leftover from before the wizard split
+             (both selects wrote the same d.status key with no indication
+             they were linked). -->
+        ${field('nt-oneway','One-Way Trip?', sel('nt-oneway', [['NO','No — Round Trip'],['YES','Yes — One Way Only']]))}
+        ${sec('📍 Destinations')}
+        ${field('nt-dest1','Destination #1 — Full Name & Address', inp('nt-dest1','text','Full venue name and complete street address (no abbreviations)'), 'Required. No abbreviations — write out the full address as it appears on a map.', true)}
+        ${row2(
+          field('nt-arr1','Arrive at Dest #1', inp('nt-arr1','time')),
+          field('nt-dep1','Leave Dest #1', inp('nt-dep1','time'))
+        )}
+        ${field('nt-dest2','Destination #2 (optional)', inp('nt-dest2','text','Leave blank if no second stop'))}
+        ${row2(
+          field('nt-arr2','Arrive at Dest #2', inp('nt-arr2','time')),
+          field('nt-dep2','Leave Dest #2', inp('nt-dep2','time'))
+        )}
+        ${isOvernightOrOOS ? `
+          ${sec('🌙 Overnight / Travel Flags')}
+          ${row3(
+            field('nt-is-on','In-State Overnight?', sel('nt-is-on', [['','No'],['X','✓ Yes']])),
+            field('nt-oos','Out of State?', sel('nt-oos', [['','No'],['X','✓ Yes']])),
+            field('nt-oos-on','OOS Overnight?', sel('nt-oos-on', [['','No'],['X','✓ Yes']]))
+          )}
+          ${isIntl ? `
+            ${field('nt-intl','International Travel?', sel('nt-intl', [['','No'],['X','✓ Yes (1-year advance required)']]), '⚠️ International trips require 1 calendar year advance notice to CCPS.', false)}
+            ${field('nt-flight','Flight Itinerary', ta('nt-flight','List all flight details: airline, flight #, departure/arrival airports and times, dates...', 3))}
+          ` : ''}
+          ${field('nt-waivers','Parent Driver Waivers', ta('nt-waivers','List any students being driven by non-family parents (name of driver, students transported)...', 2), 'Required if any student is transported by a parent who is not their own guardian.')}
+        ` : ''}`;
+      break;
+
+    // ── STEP 3: TRANSPORT ───────────────────────────────────────────────────
+    case 3:
+      const anyCcps    = parseInt(d.ccpsBus)||0;
+      const anyCharter = parseInt(d.charter)||0;
+      const anyRental  = parseInt(d.rental)||0;
+      body.innerHTML = `
+        ${info('Check all that apply. You can use multiple transport types for the same trip.')}
+        ${sec('🚌 Bus & Vehicle Count')}
+        ${row3(
+          field('nt-ccps-bus','CCPS District Buses', inp('nt-ccps-bus','number','0','min="0" oninput="wzUpdate(\'ccpsBus\',this.value)"')),
+          field('nt-charter','Charter Buses', inp('nt-charter','number','0','min="0" oninput="wzUpdate(\'charter\',this.value)"')),
+          field('nt-rental','Rental Vehicles', inp('nt-rental','number','0','min="0" oninput="wzUpdate(\'rental\',this.value)"'))
+        )}
+        ${anyCharter ? field('nt-charter-co','Charter Bus Company Name', inp('nt-charter-co','text','Company name'), 'Required if using charter buses') : ''}
+        ${anyRental  ? field('nt-rental-co', 'Rental Company Name', inp('nt-rental-co','text','Company name'), 'Required if using rental vehicles') : ''}
+        ${sec('🚶 Other Transport Methods')}
+        ${row3(
+          field('nt-walk','Walking / Biking?', sel('nt-walk', [['','No'],['YES','Yes']])),
+          field('nt-parent-tx','Parent Transport?', sel('nt-parent-tx', [['','No'],['YES','Yes']])),
+          field('nt-train','Train / Metro?', sel('nt-train', [['','No'],['YES','Yes']]))
+        )}
+        ${(!anyCcps && !anyCharter && !anyRental && d.walk!=='YES' && d.parentTx!=='YES' && d.train!=='YES') ? `
+          <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:.7rem 1rem;font-size:.78rem;color:#854d0e;margin-top:.5rem">
+            ⚠️ No transport selected yet. At least one transport method is required.
+          </div>` : `
+          <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:.7rem 1rem;font-size:.78rem;color:#166534;margin-top:.5rem">
+            ✅ Transport selected: ${[anyCcps?anyCcps+' CCPS bus':'',anyCharter?anyCharter+' charter':'',anyRental?anyRental+' rental':'',d.walk==='YES'?'walking/biking':'',d.parentTx==='YES'?'parent transport':'',d.train==='YES'?'train':''].filter(Boolean).join(' · ')}
+          </div>`}`;
+      break;
+
+    // ── STEP 4: PEOPLE ──────────────────────────────────────────────────────
+    case 4:
+      const hasCost = (parseFloat(d.costStu)||0) > 0;
+      // Say/Do Ledger leader-hub finding #7: once a roster has been built
+      // for this trip, stuAtt is derived from it (see _syncTripStuAttFromRoster()),
+      // not typed here — disable the field rather than letting a typed
+      // number get silently discarded (or worse, fight the derived value)
+      // at save time, and say where the real number now comes from.
+      const hasRoster = d._editId != null && _tripHasRoster(d._editId);
+      body.innerHTML = `
+        ${sec('👥 Group Composition')}
+        ${row3(
+          field('nt-grade','Grade(s)', inp('nt-grade','text','e.g. 11-12')),
+          field('nt-class','Class / Group', inp('nt-class','text','e.g. DECA Chapter 4280')),
+          field('nt-invited','Students Invited', inp('nt-invited','number','0','min="0"'))
+        )}
+        ${row3(
+          hasRoster
+            ? field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0" disabled'),
+                `Derived from the permission-slip roster (${slipRosters[d._editId].length} student${slipRosters[d._editId].length===1?'':'s'}) — manage headcount in 🎫 Slips, not here.`, true)
+            : field('nt-stu-att','Students Attending', inp('nt-stu-att','number','0','min="0"'), '', true),
+          field('nt-adult-att','Adults Attending', inp('nt-adult-att','number','0','min="0"'), '', true),
+          field('nt-chap','Chaperones (M / F)', inp('nt-chap','text','e.g. 2 / 2'), 'Required ratio: 1 adult per 10 students', true)
+        )}
+        ${row2(
+          field('nt-stuMF','Students — M / F Split', inp('nt-stuMF','text','e.g. 10 / 12')),
+          field('nt-adultMF','Adults — M / F Split', inp('nt-adultMF','text','e.g. 2 / 2'))
+        )}
+        ${row2(
+          field('nt-wc','Wheelchairs', inp('nt-wc','number','0','min="0"')),
+          field('nt-nonatt','Reasons Not Attending', inp('nt-nonatt','text','e.g. Academic conflicts, cost'))
+        )}
+        ${sec('💰 Costs & Equity')}
+        ${row2(
+          field('nt-cost-stu','Cost per Student ($)', inp('nt-cost-stu','number','0.00','min="0" step="0.01" oninput="wzUpdate(\'costStu\',this.value)"')),
+          field('nt-cost-adult','Cost per Adult ($)', inp('nt-cost-adult','number','0.00','min="0" step="0.01"'))
+        )}
+        ${hasCost ? field('nt-afford','Plan for Students Who Can\'t Afford Cost', ta('nt-afford','Describe your equity plan — hardship fund, SAF, payment plans, fundraising...', 2), 'Required when there is a cost to students') : ''}
+        ${sec('♿ Accommodations')}
+        ${field('nt-sped','Special Accommodations (SPED, equipment, etc.)', ta('nt-sped','List all special equipment, accessibility needs, IEP/504 accommodations for this trip...', 2))}`;
+      break;
+
+    // ── STEP 5: SAFETY ──────────────────────────────────────────────────────
+    case 5:
+      body.innerHTML = `
+        ${warn('All four fields on this step are required by CCPS policy. Medical staff must be on every bus/vehicle.')}
+        ${sec('🏥 Medical Readiness')}
+        ${row2(
+          field('nt-med','2+ Medically Trained Staff on Every Bus?',
+            sel('nt-med', [['','— Select —'],['YES','✅ YES'],['NO','❌ NO — explain in notes']]), 'At least 2 trained staff required per vehicle', true),
+          field('nt-allergy','Provisions for Allergies & Medical Needs?',
+            sel('nt-allergy', [['','— Select —'],['YES','✅ YES — documented'],['NO','❌ NO — explain in notes']]), '', true)
+        )}
+        ${sec('👨‍⚕️ Medical Staff Contacts')}
+        ${field('nt-med1','Medical Staff #1 — Full Name & Cell #', inp('nt-med1','text','Name, (804) 555-0001'), 'Must be CPR/First Aid certified', true)}
+        ${field('nt-med2','Medical Staff #2 — Full Name & Cell #', inp('nt-med2','text','Name, (804) 555-0002'), 'Second trained contact required', true)}
+        ${info('Medical staff must carry a first aid kit, any student EpiPens or inhalers, and a printed student emergency contact list for the duration of the trip.')}`;
+      break;
+
+    // ── STEP 6: ADMIN ────────────────────────────────────────────────────────
+    case 6:
+      body.innerHTML = `
+        ${sec('💰 Funding & Approval')}
+        ${row2(
+          field('nt-fund','Funding Source / SAF Code', inp('nt-fund','text','e.g. SAF-2026-DECA or IDT Budget Code'), 'Required. Obtain from your bookkeeper if unsure.', true),
+          field('nt-po','TripTracker PO# (after submission)', inp('nt-po','text','Enter once TripTracker assigns it'), 'Leave blank until TripTracker provides this')
+        )}
+        ${field('nt-acct-notes','Account Notes', inp('nt-acct-notes','text','e.g. PTA reimbursing, attached grant, SAF approved...'), 'Any budget or reimbursement notes')}
+        ${sec('📞 Sponsor & Coordinator')}
+        ${row2(
+          field('nt-cell','Sponsor Cell (NOT central office)', inp('nt-cell','text','(804) 555-0000'), 'Your direct cell — required for emergency contact', true),
+          field('nt-coord','School Trip Coordinator', inp('nt-coord','text','Coordinator\'s name'), 'Your school\'s designated trip coordinator')
+        )}
+        ${sec('📚 Educational Justification')}
+        ${info('These three fields are required by CCPS policy and are reviewed during approval. Be specific about curriculum connections.')}
+        ${field('nt-why','Why Is This Trip Necessary? (Curriculum Connection)',
+          ta('nt-why','Explain the educational purpose, specific curriculum standards addressed, and why an off-campus experience is necessary to achieve these learning objectives...', 4), '', true)}
+        ${field('nt-pre','Pre-Trip Activities & Teaching Aids',
+          ta('nt-pre','Describe preparation activities before the trip: readings, discussions, assignments, vocabulary, learning objectives introduced in class...', 3), '', true)}
+        ${field('nt-post','Post-Trip Activities & Teaching Aids',
+          ta('nt-post','Describe follow-up activities after the trip: reflection assignments, presentations, assessments, how learning will be documented and assessed...', 3), '', true)}
+        ${sec('📝 Additional Notes')}
+        ${field('nt-notes','Anything Else', ta('nt-notes','Additional context, goals, special circumstances, parent communications planned...', 3))}`;
+      break;
+  }
+
+  // Re-attach any live inputs so they update the draft
+  setTimeout(() => {
+    body.querySelectorAll('input, textarea, select').forEach(el => {
+      if (!el.id || !el.id.startsWith('nt-')) return;
+      const key = ntIdToKey(el.id);
+      const cur = _wzDraft[key];
+      if (el.type === 'checkbox') { el.checked = !!cur; }
+      else if (el.value === '' && cur !== undefined && cur !== null) { el.value = cur; }
+    });
+  }, 0);
+}
+
+// ── Helper: nt-dep-date → depDate  (camelCase) ───────────────────────────
+function ntIdToKey(id) {
+  return id.replace('nt-','').replace(/-([a-z])/g, (_,c) => c.toUpperCase());
+}
+
+// ── Save field to draft on blur/change ───────────────────────────────────
+function wzBlurSave(el, id) {
+  el.style.borderColor = 'var(--border)';
+  wzUpdate(ntIdToKey(id), el.value);
+}
+function wzChangeSave(el, id) {
+  wzUpdate(ntIdToKey(id), el.value);
+}
+function wzUpdate(key, val) {
+  _wzDraft[key] = val;
+  // Auto-save draft to LS (only for new trips, not edits)
+  if (!_wzDraft._editId) {
+    LS.set('lh_trip_draft', _wzDraft);
+    const msg = document.getElementById('wz-draft-msg');
+    if (msg) { msg.textContent = '💾 Draft saved — ' + new Date().toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}); }
+  }
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────
+function wzCollectStep() {
+  // Pull all nt-* field values from the DOM into the draft
+  const body = document.getElementById('wz-body');
+  if (!body) return;
+  body.querySelectorAll('input, textarea, select').forEach(el => {
+    if (!el.id || !el.id.startsWith('nt-')) return;
+    wzUpdate(ntIdToKey(el.id), el.value);
+  });
+}
+
+function wzValidateStep() {
+  const d = _wzDraft;
+  const errs = [];
+  switch(_wzStep) {
+    case 1:
+      if (!d.name?.trim())  errs.push('Trip Name is required');
+      if (!d.date)          errs.push('Trip Date is required');
+      if (!d.sponsor?.trim()) errs.push('Trip Sponsor Name is required');
+      break;
+    case 2:
+      // isOvernightTrip() mirrors the same-day/overnight-is/overnight-oos/
+      // multi-day/international taxonomy used to render these fields — an
+      // overnight-or-longer trip's return time is often TBD across days,
+      // so nt-ret-time is only marked required in the markup (and checked
+      // here) for same-day trips.
+      if (!d.origin?.trim()) errs.push('Origin School is required');
+      if (!d.dest1?.trim())  errs.push('Destination #1 is required');
+      if (!d.depTime)        errs.push('Departure Time is required');
+      if (!isOvernightTrip(d) && !d.retTime) errs.push('Return Time is required');
+      break;
+    case 3:
+      if (!parseInt(d.ccpsBus) && !parseInt(d.charter) && !parseInt(d.rental) && d.walk!=='YES' && d.parentTx!=='YES' && d.train!=='YES')
+        errs.push('Select at least one transportation mode (enter bus count or select Yes for walk/parent/train)');
+      break;
+    case 4:
+      if (!d.stuAtt || parseInt(d.stuAtt) < 1)
+        errs.push('Number of attending students is required (must be ≥ 1)');
+      if (!d.adultAtt || parseInt(d.adultAtt) < 1)
+        errs.push('Number of adults attending is required (must be ≥ 1)');
+      if (!d.chap?.trim())
+        errs.push('Chaperone count (M / F) is required');
+      break;
+    case 5:
+      if (!d.med)           errs.push('Confirm medically trained staff status');
+      if (!d.allergy)       errs.push('Confirm allergy/medical provisions');
+      if (!d.med1?.trim())  errs.push('Medical Staff #1 name & cell is required');
+      if (!d.med2?.trim())  errs.push('Medical Staff #2 name & cell is required');
+      break;
+    case 6:
+      if (!d.fund?.trim())  errs.push('Funding Source / SAF Code is required');
+      if (!d.cell?.trim())  errs.push('Sponsor cell number is required');
+      if (!d.why?.trim())   errs.push('Educational justification (Why) is required');
+      if (!d.pre?.trim())   errs.push('Pre-trip activities are required');
+      if (!d.post?.trim())  errs.push('Post-trip activities are required');
+      break;
+  }
+  if (errs.length) {
+    wzShowErrors(errs);
+    return false;
+  }
+  wzClearErrors();
+  return true;
+}
+
+function wzShowErrors(errs) {
+  wzClearErrors();
+  const body = document.getElementById('wz-body');
+  if (!body) return;
+  const div = document.createElement('div');
+  div.id = 'wz-errors';
+  div.style.cssText = 'background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:.75rem 1rem;margin-bottom:.85rem;font-size:.78rem;color:#b91c1c;animation:fi .2s ease';
+  div.innerHTML = `<div style="font-weight:700;margin-bottom:.3rem">⚠️ Please fix these before continuing:</div>` +
+    errs.map(e => `<div style="display:flex;align-items:center;gap:.4rem"><span>•</span><span>${e}</span></div>`).join('');
+  body.prepend(div);
+  body.scrollTop = 0;
+}
+function wzClearErrors() {
+  const el = document.getElementById('wz-errors');
+  if (el) el.remove();
+}
+
+function wzNext() {
+  wzCollectStep();
+  if (!wzValidateStep()) return;
+  if (_wzStep === WZ_STEPS.length) {
+    wzSaveTrip();
+  } else {
+    _wzStep++;
+    if (_wzStep > _wzMaxStepReached) _wzMaxStepReached = _wzStep;
+    renderWizardStep();
+    document.getElementById('wz-body').scrollTop = 0;
+  }
+}
+
+function wzBack() {
+  wzCollectStep();
+  wzClearErrors();
+  if (_wzStep > 1) {
+    _wzStep--;
+    renderWizardStep();
+    document.getElementById('wz-body').scrollTop = 0;
+  }
+}
+
+function wzJumpTo(stepId) {
+  // Allow jumping to any step already reached (forward or back) — not just
+  // strictly-earlier ones, since a later step can be reached-but-not-current
+  // after going back to fix something on an earlier step.
+  if (stepId === _wzStep || stepId > _wzMaxStepReached) return;
+  wzCollectStep();
+  wzClearErrors();
+  _wzStep = stepId;
+  renderWizardStep();
+  document.getElementById('wz-body').scrollTop = 0;
+}
+
+// ── Save to trips array ───────────────────────────────────────────────────
+function wzSaveTrip() {
+  const d = _wzDraft;
+  if (!d.name?.trim()) { wzShowErrors(['Trip Name is required']); _wzStep=1; renderWizardStep(); return; }
+
+  // Editing a trip must never reset its approval chain — tripToDraft() only
+  // ever copies the form-editable fields, so the sign-off history has to be
+  // pulled back from the trip actually being replaced below, not defaulted.
+  const existingTrip = d._editId ? trips.find(t => t.id === d._editId) : null;
+  const ap = existingTrip?.ap
+    ? { ...existingTrip.ap }
+    : {coord:false, principal:false, bookkeeper:false, risk:false, transport:false};
+  // Resolved once — nextId.trip++ has a side effect, so it must only run
+  // one time regardless of how many places below need the final id.
+  const finalTripId = d._editId || nextId.trip++;
+  const trip = {
+    id: finalTripId,
+    name:d.name||'', sub:d.sub||'same-day', date:d.date||'',
+    reason:d.reason||'', acttype:d.acttype||'', origin:d.origin||'',
+    depDate:d.depDate||'', depTime:d.depTime||'', retDate:d.retDate||'', retTime:d.retTime||'',
+    oneway:d.oneway||'NO', status:d.status||'planned',
+    dest1:d.dest1||'', arr1:d.arr1||'', dep1:d.dep1||'',
+    dest2:d.dest2||'', arr2:d.arr2||'', dep2:d.dep2||'',
+    ccpsBus:parseInt(d.ccpsBus)||0, charter:parseInt(d.charter)||0, rental:parseInt(d.rental)||0,
+    walk:d.walk||'', parentTx:d.parentTx||'', train:d.train||'',
+    charterCo:d.charterCo||'', rentalCo:d.rentalCo||'',
+    isOn:d.isOn||'', oos:d.oos||'', oosOn:d.oosOn||'', intl:d.intl||'',
+    flight:d.flight||'', waivers:d.waivers||'',
+    grade:d.grade||'', classMem:d.classMem||'',
+    invited:parseInt(d.invited)||0,
+    // Say/Do Ledger leader-hub finding #7: once a roster exists for this
+    // trip, it wins over whatever the (disabled, in this case) draft field
+    // holds — the field-level disable above stops a user from typing a
+    // conflicting number, but this is the real guard, in case a draft with
+    // a stale value ever reaches this function some other way.
+    stuAtt: _tripHasRoster(finalTripId) ? slipRosters[finalTripId].length : (parseInt(d.stuAtt)||0),
+    adultAtt:parseInt(d.adultAtt)||0,
+    stuMF:d.stuMF||'', adultMF:d.adultMF||'',
+    costStu:parseFloat(d.costStu)||0, costAdult:parseFloat(d.costAdult)||0,
+    chap:d.chap||'', wc:parseInt(d.wc)||0,
+    afford:d.afford||'', nonatt:d.nonatt||'', sped:d.sped||'',
+    med:d.med||'', allergy:d.allergy||'', med1:d.med1||'', med2:d.med2||'',
+    fund:d.fund||'', po:d.po||'', sponsor:d.sponsor||'', cell:d.cell||'',
+    coord:d.coord||'', acctNotes:d.acctNotes||'',
+    why:d.why||'', pre:d.pre||'', post:d.post||'', notes:d.notes||'', ap,
+  };
+  if (existingTrip?.apDetail) trip.apDetail = { ...existingTrip.apDetail };
+  // FIXED: this rebuild used to silently drop .archived — every edit to an
+  // already-archived trip un-archived it with no indication, even though
+  // its old snapshot was still sitting in tripArchive looking current.
+  if (existingTrip?.archived) trip.archived = true;
+
+  if (d._editId) {
+    trips = trips.filter(t => t.id !== d._editId);
+  }
+  trips.push(trip);
+  persistTrips(); persistNextId();
+
+  // Clear draft
+  _wzDraft = {};
+  LS.set('lh_trip_draft', {});
+
+  closeModal('newTrip');
+  document.getElementById('nt-modal-title').textContent = 'New Field Trip Request';
+  currentTripId = null;
+
+  if (d._editId && trip.archived) {
+    // The archive snapshot (tripArchive) is a frozen copy from whenever it
+    // was last archived — an edit here doesn't touch it, so it's now
+    // showing stale data until someone reopens Archive and updates it.
+    _showToast(`✅ Trip updated — its Archive snapshot is now out of date. Reopen 📦 Archive to update it.`, 5000, '#92400e');
+  } else {
+    _showToast(d._editId ? `✅ Trip updated: ${trip.name}` : `✅ Trip saved: ${trip.name}`, 3500, '#065f46');
+  }
+
+  renderDashboard(); renderTrips();
+}
+
+// ── Delete trip ───────────────────────────────────────────────────────────
+function deleteTrip(id) {
+  const idx = trips.findIndex(t=>t.id===id);
+  if (idx === -1) return;
+  // Check whether trip was archived — if so, data survives in lh_trip_archive
+  const isArchived = (typeof tripArchive !== 'undefined') && tripArchive.some(a => a.trip && a.trip.id === id);
+
+  const [removedTrip] = trips.splice(idx, 1);
+  persistTrips();
+
+  // Clean up orphaned slip roster entries for this trip — captured for undo
+  let removedSlipRoster = null;
+  if (typeof slipRosters !== 'undefined' && slipRosters[id]) {
+    removedSlipRoster = slipRosters[id];
+    delete slipRosters[id];
+    persistSlips();
+  }
+
+  // Clean up any DEADLINES entries tied to this trip id — captured for undo
+  const removedDeadlines = DEADLINES.filter(d => d.tripId === id);
+  if (removedDeadlines.length) {
+    DEADLINES = DEADLINES.filter(d => d.tripId !== id);
+    LS.set('lh_deadlines', DEADLINES);
+  }
+
+  renderDashboard(); renderTrips();
+
+  // Trip deletion is the highest-stakes delete in the app (cascades into
+  // slips + deadlines), yet it was the one holdout still using a blocking
+  // confirm() with no way back. Unify onto the same undo-toast pattern as
+  // every other delete, restoring all three pieces together.
+  const msg = isArchived
+    ? `Deleted "${removedTrip.name}" — a reflection is still saved in the Archive`
+    : `Deleted "${removedTrip.name}"`;
+  _undoToast(msg, () => {
+    trips.splice(idx, 0, removedTrip);
+    persistTrips();
+    if (removedSlipRoster) { slipRosters[id] = removedSlipRoster; persistSlips(); }
+    if (removedDeadlines.length) {
+      DEADLINES = DEADLINES.concat(removedDeadlines);
+      LS.set('lh_deadlines', DEADLINES);
+    }
+    renderDashboard(); renderTrips();
+  });
+}
+
+// ── Escape HTML helper for values in inputs ───────────────────────────────
+function escH(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// Safe for interpolating a value into a single-quoted JS string literal that
+// itself sits inside an HTML attribute (e.g. onclick="fn('${x}')"). escH()
+// alone only protects the HTML-attribute boundary (", <, >, &) — it doesn't
+// stop a bare ' or \ in the value from breaking out of the JS string. Escape
+// the JS string first, then escH() the result so the surrounding
+// double-quoted attribute stays safe too (a value containing " must not end
+// the attribute early either).
+function escJsAttr(str) {
+  return escH(String(str||'')
+    .replace(/\\/g,'\\\\')
+    .replace(/'/g,"\\'")
+    .replace(/\n/g,'\\n')
+    .replace(/\r/g,'\\r'));
+}
+
+// ── Patch openModal for newTrip to open wizard instead ────────────────────
+const _origOpenModal = openModal;
+window.openModal = function(name) {
+  if (name === 'newTrip') { openTripWizard(null); return; }
+  _origOpenModal(name);
+};
+
+// ── Patch openEditModal to use wizard ─────────────────────────────────────
+window.openEditModal = function(id) {
+  const tid = id || currentTripId;
+  const t = trips.find(t => t.id === tid);
+  if (!t) { openTripWizard(null); return; }
+  currentTripId = tid;
+  openTripWizard(tid);
+};
+
+

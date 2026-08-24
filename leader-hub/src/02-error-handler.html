@@ -1,0 +1,28 @@
+<script>
+// FIXED: this used to show every uncaught error as a raw, undismissable,
+// monospace stack-trace-style banner ("JS ERROR: ... at line N:M") — a
+// debug-mode leftover left permanently live, so any real user hitting any
+// bug saw developer-facing internals instead of a normal error message.
+// The raw detail still goes to the console (nothing lost for debugging);
+// the on-page banner is now a plain-language message with a dismiss
+// button, and won't stack a second banner on top of a repeated error.
+window.onerror = function(msg, src, line, col, err) {
+  console.error('[Uncaught error]', msg, 'at', src + ':' + line + ':' + col, err);
+  if (document.getElementById('js-error-banner')) return false;
+  const d = document.createElement('div');
+  d.id = 'js-error-banner';
+  d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#dc2626;color:#fff;padding:10px 16px;font-family:system-ui,sans-serif;font-size:13px;z-index:99999;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,.15)';
+  const msgSpan = document.createElement('span');
+  msgSpan.style.flex = '1';
+  msgSpan.textContent = '⚠️ Something went wrong. Try refreshing the page — your data is saved locally and won\'t be lost.';
+  const btn = document.createElement('button');
+  btn.textContent = '✕';
+  btn.setAttribute('aria-label', 'Dismiss');
+  btn.style.cssText = 'background:none;border:none;color:#fff;font-size:16px;cursor:pointer;padding:0 4px;line-height:1';
+  btn.onclick = function() { d.remove(); };
+  d.appendChild(msgSpan);
+  d.appendChild(btn);
+  document.body.appendChild(d);
+  return false;
+};
+</script>

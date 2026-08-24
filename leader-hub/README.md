@@ -27,7 +27,8 @@ key at all).
 
 | Path | Contents |
 |---|---|
-| `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser |
+| `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser. **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so opening it needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
+| `src/` | The 14 fragments `student-leader-hub.html` is generated from, in file order — `00-shell-head.html` through `13-markup-modals-tail.html`. This is where you actually make edits. |
 | `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling, sub-plan/brag-email creation, and — see below — the AI-drafting job queue) — see `LEADERHUB_EMAIL_SETUP.md` and `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
 | `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md`, `LP_ASSIST_FLOW_PROMPT.md`, `EMAIL_COMPOSE_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
@@ -1234,6 +1235,36 @@ historical trip and event records (e.g. `row('Chaperones', 'Adam Berneche
 · Amanda Berneche')`, trip notes) — that's the app's actual archived
 content, not a hardcoded credential, and scrubbing it would mean altering
 real historical records rather than removing a secret.
+
+---
+
+## `student-leader-hub.html` split into `src/` (external product review, Finding 4)
+
+The single ~22,000-line file is now generated from 14 fragments under
+`src/` (`00-shell-head.html` through `13-markup-modals-tail.html`) via
+`tools/leaderhub-build/build.js` — see that tool's own README.md for the
+full design rationale (why a pure textual concatenation is safe here
+despite 189+ scattered top-level declarations and no central config
+object) and one region flagged honestly as tangled, not cleanly modular
+(`12-integrations-pacing-subplan-brag.html`, ~3,600 lines mixing several
+genuinely unrelated features).
+
+**The assembled file stays committed at its current path — never
+gitignored, never hand-edited directly.** Edit the fragment under `src/`
+that holds the section you're changing, then run
+`node tools/leaderhub-build/build.js` and commit both. `npm test`
+(`tests/tools/leaderhub-build.test.js`) fails if the assembled file and
+its fragments ever drift apart, same enforced-not-manual pattern
+`tools/html-lint/check.js` and `tools/gas-lint/check.js` already use.
+
+`tests/leaderhub/escaping.test.js` and `pacing-and-calendar.test.js`
+(which use `extractLines()` against specific line ranges) now point at
+the relevant fragment file instead of the monolith, with fresh,
+much-smaller re-grepped line numbers local to that fragment — a real
+robustness win: only an edit inside that one fragment can shift these
+ranges now, not an edit anywhere in the full file.
+`emailbridge-orgsync.test.js` targets `EmailBridge.gs` directly and
+needed no changes.
 
 ---
 
