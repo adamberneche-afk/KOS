@@ -19,7 +19,7 @@
     "dotenv": "^16.4.0",
     "express": "^4.19.0",
     "google-auth-library": "^9.10.0",
-    "googleapis": "^140.0.0",
+    "googleapis": "^176.0.0",
     "pg": "^8.11.0",
     "stripe": "^15.7.0",
     "winston": "^3.13.0"
