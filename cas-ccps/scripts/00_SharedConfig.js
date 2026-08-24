@@ -54,6 +54,21 @@ function getConfig_() {
     // so behavior is unchanged unless a project sets STUDENT_EMAIL_DOMAIN.
     studentEmailDomain:   p.STUDENT_EMAIL_DOMAIN     || "ccpsnet.net",
 
+    // ── Evaluation escape hatch (external product review, Finding 3,
+    // "this quarter") — same CFG.INFERENCE_MODE pattern kos-personal
+    // already uses (1_Config_And_Deploy.gs), scaled down: cas-ccps has no
+    // separate managed-inference-service, so the opt-in path here is a
+    // direct Gemini API call (15c_Flow2DirectEvaluationService.js)
+    // instead of a whole second deployment. Default "STUDIO" is today's
+    // unchanged behavior — Flow 2 (Student Evaluation) runs as a native
+    // Google Workspace Studio Flow, no code path in this repo calls it.
+    // Set EVALUATION_MODE = "DIRECT_GEMINI" as a Script Property, plus a
+    // DIRECT_GEMINI_API_KEY Script Property, to make Flow 2's evaluation
+    // logic testable/runnable without a live Studio Flow — see
+    // 15c_Flow2DirectEvaluationService.js's own header comment and
+    // cas-ccps/README.md's Finding 3 writeup.
+    evaluationMode:       p.EVALUATION_MODE         || "STUDIO",
+
     // ── leader-hub OAuth connection (D1 — shared-core merge, Addendum 24) ──
     // The Google OAuth Client ID leader-hub's "Sign In With Google" button
     // is registered under. Same real value across every teacher's Teacher
