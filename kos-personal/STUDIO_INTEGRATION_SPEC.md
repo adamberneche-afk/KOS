@@ -301,8 +301,19 @@ documented at the same level of concreteness:
 | T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `STAGING_PIPELINE` · Condition: `Status = STUDIO_ACTIVE` AND `Payload_Type` in `SESSION_LOG`, `EXTERNAL_DATA`, `COG_STIMULUS` | The `Payload_Type` condition is what separates this flow from `VECTOR_CLASSIFY` polling the same sheet (that flow's own table below excludes these three the same way) — without it, both flows would race to claim every `STUDIO_ACTIVE` row. |
 | 1 | Google Docs — Get document | Document ID: `@trigger.File_ID` (column 4) | Raw session/external-data/stimulus text, per Step 3 above. Do not modify before writing output. |
 | 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md), pasted verbatim · Variable: the document text from Step 1 · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
-| 3 | Google Docs — Insert text (or overwrite body) | Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`, replacing the entire body | Same "JSON only, nothing else" contract as Step 6 above. |
+| 2a | *(optional)* Gemini — Generate content | An Auditor persona, instructed to check each checkable claim in `@step2.geminiOutput` against the original transcript (`@step1` output) and produce exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape — nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
+| 2b | *(required if 2a is used)* Merge/transform step | Combine `@step2.geminiOutput` and `@step2a.geminiOutput` into one JSON object: every key from Step 2's output, plus a new top-level `auditor_sign_off` key holding Step 2a's output verbatim | However your Studio setup supports this (a Code/Script step, or a follow-up Gemini call instructed to output the exact union and nothing else) — the requirement is just that Step 3 below writes ONE JSON object. Two JSON objects written back to back is not valid JSON and breaks `JSON.parse()` outright — confirmed directly against a real processed log that hit exactly this. |
+| 3 | Google Docs — Insert text (or overwrite body) | Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`, or `@step2b`'s merged output if 2a/2b are wired in — replacing the entire body | Same "JSON only, nothing else" contract as Step 6 above. |
 | 4 | Google Sheets — Update row | Row: `@trigger.row` · Status column (6): `FLOW_COMPLETE` | Must always run, even on a Step 2/3 failure path — leave `Status` at `STUDIO_ACTIVE` on failure instead (do **not** write `FLOW_COMPLETE` for malformed output) so the staleness guard resets it for retry rather than the queue processor trying to parse garbage — same rule as Error Handling below and as `VECTOR_CLASSIFY`'s own table. |
+
+**If 2a/2b are wired in:** a rejected `auditor_sign_off` (`status` not
+`PASSED`, or `unverified_claims_count > 0`) is caught by
+`processInferenceQueue()` *after* `FLOW_COMPLETE`/parsing, not by this
+Flow — the row still reaches `FLOW_COMPLETE` normally; GAS decides
+whether to route it to ledgers, archive-and-requeue it, or (after
+`CFG.MAX_RETRIES` rejections) escalate it to the terminal
+`AUDIT_REJECTED` status. See `SCHEMA_REFERENCE.md`'s `AUDIT_LOG` section
+and `_isAuditFailure_()`/`_archiveAuditFailure_()` (`5_Error_And_Utilities.gs`).
 
 ---
 

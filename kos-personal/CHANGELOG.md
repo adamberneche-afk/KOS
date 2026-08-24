@@ -629,3 +629,57 @@ This is a visibility fix, not an auto-resolution — per this system's
 standing rule, nothing auto-corrects an unrecognized status; a human
 still has to fix the Status cell by hand once alerted.
 
+## Round 12 — Auditor accountability gate for the Curator flow
+
+A real processed log from the live Curator flow surfaced two things at
+once. First, a genuine bug: the log was two separate, complete JSON
+objects concatenated back to back (an `auditor_sign_off` object, then
+the Curator's own structured output) — not valid JSON as a single
+document, and `processInferenceQueue()`'s parser has no tolerance for
+it. Second, real intent: the operator had deliberately added an Auditor
+step inside the Studio Flow itself, verifying the Curator's own claims
+against the session transcript before the row is trusted — "holding the
+Curator accountable," in the operator's own words. The bug was in how
+that intent landed in the document, not the intent itself.
+
+**Fixed — the wiring, documented so it can't recur:** `CURATOR_PROMPT.md`
+gained Rule 8 and a documented `auditor_sign_off` schema: if a Flow runs
+an Auditor step, its output MUST be merged into the same JSON object the
+Curator writes, never appended as a second object.
+`STUDIO_INTEGRATION_SPEC.md`'s connector table for this flow gained
+optional steps 2a/2b (the Auditor's Gemini call, then a merge step)
+documenting exactly where that merge has to happen before the final
+write.
+
+**Added — an actual accountability gate, not just documentation:**
+`processInferenceQueue()` (`3_Queue_Processor.gs`) now checks a parsed
+payload's `auditor_sign_off` (`_isAuditFailure_()`,
+`5_Error_And_Utilities.gs`) before routing anything to a ledger. A
+rejected audit (status not `PASSED`, or any unverified claim):
+1. Archives the full rejected payload and trace log to a new `AUDIT_LOG`
+   sheet (`_archiveAuditFailure_()`) — the only durable record, since the
+   Drive doc body itself gets overwritten the moment Studio reruns the
+   row.
+2. Below `CFG.MAX_RETRIES`, reverts the row to `PENDING_FLOW` and marks
+   its `Payload_UID` for priority release
+   (`_markAuditRetryPriority_()`) — per the operator's explicit request
+   ("push the log back to the start of the queue to run again"),
+   `runMatrixTurnstile()`'s release pass now checks this priority set
+   FIRST, ahead of normal row order, rather than physically reordering
+   sheet rows (which would risk a row-shift race against a concurrent
+   trigger run — the same class of bug Round 5 fixed elsewhere in this
+   file).
+3. At `CFG.MAX_RETRIES`, escalates to a new terminal `AUDIT_REJECTED`
+   status (added to `TERMINAL_FAILED_STATUSES`) with a chat alert — same
+   "don't retry forever, surface it for a human" discipline as
+   `STUDIO_TIMEOUT`, so a persistently-failing audit can't loop silently
+   either.
+
+Verified via sandbox test: three consecutive simulated audit failures
+correctly requeue-with-priority on attempts 1 and 2, then escalate to
+`AUDIT_REJECTED` on attempt 3 (`MAX_RETRIES=3` in the test), with all
+three rejections archived and exactly one chat alert firing, only at
+escalation. A separate sandbox test confirmed a priority-marked UID
+releases before an earlier-row-order, non-priority UID, and that
+priority is correctly one-shot (pruned after release).
+

@@ -144,14 +144,32 @@ function runMatrixTurnstile() {
     }
 
     // ── Pass 2: release PENDING_FLOW rows up to remaining concurrency ──
+    // Priority rows (audit-gate rejections reverted to PENDING_FLOW —
+    // see _markAuditRetryPriority_(), 5_Error_And_Utilities.gs) release
+    // FIRST, ahead of normal row order — "push the log back to the
+    // start of the queue" without physically reordering sheet rows,
+    // which would risk a row-shift race against a concurrent trigger run.
     freedSlots = Math.max(0, CFG.TURNSTILE_CONCURRENCY - activeCount);
     let releasedCount = 0;
 
+    const auditPriority   = _readAuditRetryPrioritySet_();
+    const releaseOrder    = [];
+    const priorityIndices = [];
+    const normalIndices   = [];
+    for (let i = 0; i < data.length; i++) {
+      if (String(data[i][SC.STATUS]) !== 'PENDING_FLOW') continue;
+      const isPriority = !!auditPriority[String(data[i][SC.PAYLOAD_UID])];
+      (isPriority ? priorityIndices : normalIndices).push(i);
+    }
+    releaseOrder.push(...priorityIndices, ...normalIndices);
+    const consumedPriorityUids = [];
+
     if (freedSlots > 0) {
-      for (let i = 0; i < data.length && releasedCount < freedSlots; i++) {
+      for (let oi = 0; oi < releaseOrder.length && releasedCount < freedSlots; oi++) {
+        const i        = releaseOrder[oi];
         const sheetRow = i + 2;
         const status   = String(data[i][SC.STATUS]);
-        if (status !== 'PENDING_FLOW') continue;
+        if (status !== 'PENDING_FLOW') continue; // defensive; releaseOrder is already filtered
 
         const uid = String(data[i][SC.PAYLOAD_UID]);
 
@@ -179,8 +197,23 @@ function runMatrixTurnstile() {
         staging.getRange(sheetRow, SC.STATUS + 1).setValue('STUDIO_ACTIVE');
         released[uid] = nowMs;
         releasedCount++;
-        console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') released to STUDIO_ACTIVE.');
+        if (auditPriority[uid]) consumedPriorityUids.push(uid);
+        console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') released to STUDIO_ACTIVE' +
+          (auditPriority[uid] ? ' (priority — audit retry)' : '') + '.');
       }
+    }
+
+    // Priority is one-shot: drop consumed UIDs, plus any UID no longer
+    // present in the sheet at all (archived, or otherwise gone) — same
+    // pruning rationale as the release map below.
+    if (consumedPriorityUids.length > 0 || Object.keys(auditPriority).length > 0) {
+      const uidsInSheet = new Set(data.map(r => String(r[SC.PAYLOAD_UID])));
+      let changed = false;
+      consumedPriorityUids.forEach(uid => { delete auditPriority[uid]; changed = true; });
+      Object.keys(auditPriority).forEach(uid => {
+        if (!uidsInSheet.has(uid)) { delete auditPriority[uid]; changed = true; }
+      });
+      if (changed) _writeAuditRetryPrioritySet_(auditPriority);
     }
 
     // ── Prune the release map: drop any UID no longer present in
