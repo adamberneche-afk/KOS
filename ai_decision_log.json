@@ -1,0 +1,10 @@
+[
+  {
+    "timestamp": "2026-08-24T00:00:00.000Z",
+    "mode": "debug",
+    "commitSha": "cbf0e0f0c909bc3e504e35afbc71cabc70815e48",
+    "outcome": "no_findings",
+    "issueUrl": null,
+    "summary": "Docs-only commit (4 hand-converted NotebookLM markdown sources + a README cross-reference) - no source logic in the diff to review."
+  }
+]
