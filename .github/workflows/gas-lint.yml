@@ -38,15 +38,18 @@ jobs:
         # newer Node during development. Unquoted, explicit per-directory
         # globs are expanded by the shell BEFORE node ever sees them, so
         # this doesn't depend on any Node version's own glob support.
-        run: node --test tests/leaderhub/*.test.js tests/tools/*.test.js
+        run: node --test tests/leaderhub/*.test.js tests/tools/*.test.js tests/cas-ccps/*.test.js
       - name: Syntax-check student-leader-hub.html's inline <script> blocks
         # The enforced version of the "Verified with node --check on both
         # <script> blocks" note leader-hub/README.md repeats after nearly
         # every round of changes to this file — see tools/html-lint/.
+        #
+        # leader-hub/archived/ (including the EARLY_PROTOTYPE file this
+        # command used to also check) was deleted repo-wide as confirmed
+        # dead code - see the pre-archive-cleanup tag/branch to recover it.
         run: |
           node tools/html-lint/check.js \
-            leader-hub/student-leader-hub.html \
-            leader-hub/archived/studentleaderhub_EARLY_PROTOTYPE.html
+            leader-hub/student-leader-hub.html
       - name: Lint this repo's own GitHub Actions workflow files
         # Catches exactly the class of bug that broke this file once already
         # (a bare `secrets.X` reference inside an `if:` conditional, which
