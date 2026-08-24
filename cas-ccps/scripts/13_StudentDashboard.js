@@ -252,6 +252,14 @@ function buildStudentDashboardHtml_() {
     header h1{font-size:17px}
     .main{padding:16px}
     .card{padding:14px 16px}
+    /* FIXED (external UX audit): this breakpoint used to only adjust
+       padding/font-size, never reflowing actual layout — unlike
+       07_TeacherDashboard.js's own max-width:600px breakpoint, which
+       genuinely reflows its field-row grid to one column. .card-top's
+       flex-shrink:0 status pill never shrinks, so a long assignment name
+       on a narrow phone screen got squeezed into a cramped remainder
+       instead of stacking, same reflow-need the teacher side's grid had. */
+    .card-top{flex-direction:column;align-items:flex-start}
   }
   #loading{text-align:center;padding:80px 24px;color:var(--text-secondary)}
   /* FIXED: was 40px vs the teacher dashboard's 36px — same border weight,
@@ -323,12 +331,24 @@ function buildStudentDashboardHtml_() {
 <!-- NEW (finding #7): persistent "My Info" view — what's actually on file
      for this student (name, class, period, teacher), available any time
      via the header button, not just a one-time notice. -->
-<div id="my-info-panel" class="main" style="display:none;padding-bottom:0"></div>
+<!-- FIXED (external UX audit): my-info-btn already had aria-expanded/
+     aria-controls pointing here (the correct disclosure-widget half), but
+     this panel itself had no role/label — the other half 07_TeacherDashboard.js's
+     own role="tabpanel" aria-labelledby="tab-..." pattern establishes for
+     every button-controlled region in that file. role="region" +
+     aria-labelledby (pointing back at the button) is the matching pattern
+     for a show/hide disclosure rather than a tab. -->
+<div id="my-info-panel" class="main" role="region" aria-labelledby="my-info-btn" style="display:none;padding-bottom:0"></div>
 <!-- NEW (finding #7): in-app notice for a recent registration, replacing
      the easy-to-miss one-time email — visible for a few days after a new
      registration is recorded, then fades out on its own as it ages past
      the "recent" window computed server-side (isNewRegistration). -->
-<div id="new-registration-banner" class="main" style="display:none;padding-bottom:0"></div>
+<!-- FIXED (external UX audit): matches the role="status" aria-live="polite"
+     convention 07_TeacherDashboard.js already uses for its own dynamically
+     shown/hidden notice regions (lesson-payoff-hint, draft-stale-hint) —
+     this banner is the same shape (server-driven, appears without any
+     user action) and had none. -->
+<div id="new-registration-banner" class="main" role="status" aria-live="polite" style="display:none;padding-bottom:0"></div>
 <div id="main" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 <script>
