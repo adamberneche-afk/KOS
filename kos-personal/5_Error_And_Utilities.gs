@@ -1176,6 +1176,36 @@ function getRelationalTargets() {
 // ': <message>' suffix.
 const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR', 'MISSING_FILE_ID', 'PROCESSING_ERROR', 'STUDIO_TIMEOUT'];
 
+// Every non-terminal-error status any part of this codebase ever sets or
+// checks for, matched by exact equality. Terminal-error statuses are
+// deliberately NOT duplicated here — TERMINAL_FAILED_STATUSES above is
+// the single source of truth for those, matched by prefix (see its own
+// comment: PROCESSING_ERROR/INTAKE_ERROR can carry a ': <message>'
+// suffix). Together, _isKnownStagingStatus_() below is the one place
+// that answers "is this status something the system recognizes at all" —
+// used to catch rows like a real-world "AUDITING _LOG" status that
+// matched none of the exact-string checks in runMatrixTurnstile(),
+// the Queue Processor's main loop, or getQueueMetrics()'s counts, and
+// so sat invisible to every one of them, forever.
+const KNOWN_STAGING_STATUSES = [
+  'PENDING_FLOW', 'STUDIO_ACTIVE', 'FLOW_COMPLETE', 'NEEDS_CURATOR',
+  'PROCESSED', 'INTAKE_PROCESSED', 'PARTITIONED', 'CONSOLIDATED'
+];
+
+/**
+ * True if `status` is any status this codebase recognizes — an exact
+ * match in KNOWN_STAGING_STATUSES, or a terminal-error status from
+ * TERMINAL_FAILED_STATUSES (matched by prefix, same as that list's own
+ * usage elsewhere). Anything else is unrecognized: see
+ * runMatrixTurnstile() (alerts once per row) and getQueueMetrics()
+ * (counts it as `unknown`) for what happens to those rows.
+ */
+function _isKnownStagingStatus_(status) {
+  const s = String(status);
+  if (KNOWN_STAGING_STATUSES.indexOf(s) !== -1) return true;
+  return TERMINAL_FAILED_STATUSES.some(function(prefix) { return s.indexOf(prefix) === 0; });
+}
+
 /**
  * Moves all terminal-status rows from STAGING_PIPELINE to
  * STAGING_ARCHIVE. Fully headless — no ui.alert.
