@@ -22,6 +22,13 @@ why this repo exists at all.
   and from `kos-personal/rtp-core-router/protocols/` (same file, filed in
   both places) since its methodology applies across systems, not just to
   kos-personal's own governance.
+- **`drive-steward-deploy/`** — the methodology doc's Part 5: a
+  ready-to-paste Apps Script package (scanner, weekly Wilson-score
+  calibration, Sheet setup) plus a Studio Flow configuration spec, so
+  Drive Steward actually runs on its own schedule instead of only when
+  invoked in a Gem. Listed in `FLOW_INVENTORY.md` below as well, since
+  its classification step is a human-built Flow dependency like the
+  other three systems'.
 - **`FLOW_INVENTORY.md`** — a single reference listing every "Flow"
   dependency (a human-built Google Workspace Studio/Flow or Gemini Gem
   conversation this repo's own code hands off to and cannot see or
