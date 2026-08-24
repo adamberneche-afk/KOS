@@ -398,12 +398,19 @@ function checkJournalAutoPrompt(){
 let _depositReminderShownDate = null;
 function checkDepositReminder(){
   const now = new Date();
-  const h   = now.getHours();
-  const m   = now.getMinutes();
   const today = now.toDateString();
 
-  // Fire at 13:45–14:00 (1:45 PM window)
-  if(!(h === 13 && m >= 45)) return;
+  // Fire at 13:45–14:00 (1:45 PM window), or any time after 14:00 as a
+  // catch-up if the tab was closed/backgrounded through the window —
+  // matches checkCron's own missedWindow pattern. This is the reminder
+  // with a real CCPS Policy 7060 consequence, so it's the first to get
+  // this (external UX audit: the narrowest window in the app, with zero
+  // catch-up, on the one reminder that actually matters if missed).
+  const windowStart = new Date(now); windowStart.setHours(13, 45, 0, 0);
+  const windowEnd   = new Date(now); windowEnd.setHours(14, 0, 0, 0);
+  const withinWindow = now >= windowStart && now < windowEnd;
+  const missedWindow = now >= windowEnd;
+  if(!(withinWindow || missedWindow)) return;
 
   // Already shown today?
   const shownDate = LS.get('lh_deposit_reminder_date','');
@@ -422,6 +429,7 @@ function checkDepositReminder(){
 
   LS.set('lh_deposit_reminder_date', today);
   showDepositReminderBanner();
+  _fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with Ms. Evans by 2:00 PM.');
 }
 
 function showDepositReminderBanner(){
@@ -447,7 +455,7 @@ function markDepositDone(){
   if(banner) banner.remove();
   // Log deposit completion
   const today = new Date().toDateString();
-  // lh_deposit_done_date removed — workday submission gated by lh_workday_reminder_date
+  LS.set('lh_deposit_done_date', today); // read by buildActionQueue()'s missed-deposit fallback card
   // Show quick confirm toast
   const toast = document.createElement('div');
   toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#15803d;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
@@ -463,11 +471,17 @@ function markDepositDone(){
 function checkWorkdayReminder(){
   const now = new Date();
   const dow  = now.getDay();    // 5 = Friday
-  const h    = now.getHours();
-  const m    = now.getMinutes();
   if(dow !== 5) return;                     // Fridays only
   if (!isSchoolDay(now)) return;             // Skip payroll prompt on break Fridays
-  if(!(h === 12 && m <= 15)) return;        // 12:00–12:15 PM window
+
+  // 12:00–12:15 PM window, plus a catch-up any time later the same Friday
+  // if the tab was closed/backgrounded through it (matches checkCron's own
+  // missedWindow pattern).
+  const windowStart = new Date(now); windowStart.setHours(12, 0, 0, 0);
+  const windowEnd   = new Date(now); windowEnd.setHours(12, 15, 0, 0);
+  const withinWindow = now >= windowStart && now < windowEnd;
+  const missedWindow = now >= windowEnd;
+  if(!(withinWindow || missedWindow)) return;
 
   const today = now.toDateString();
   const shownDate = LS.get('lh_workday_reminder_date', '');
@@ -475,6 +489,7 @@ function checkWorkdayReminder(){
 
   LS.set('lh_workday_reminder_date', today);
   showWorkdayReminderBanner();
+  _fireNotification('🕛 Friday — Submit Time in Workday', 'Payroll deadline is today. Log in to Workday and submit your timesheet.');
 }
 
 function showWorkdayReminderBanner(){
@@ -503,6 +518,7 @@ function showWorkdayReminderBanner(){
 function markWorkdayDone(){
   const banner = document.getElementById('workday-reminder-banner');
   if(banner) banner.remove();
+  LS.set('lh_workday_done_date', new Date().toDateString()); // read by buildActionQueue()'s missed-payroll fallback card
   // Log payroll submission to the daily log
   _logDaily({ date: new Date().toISOString(), type: 'workday_submit',
     note: 'Workday time submitted — payroll compliance' });
@@ -522,8 +538,16 @@ let _commsTriageShownDate = null;
 // ── isSchoolDay() — returns true if today is a regular school day ─────────────
 // Used by reminder checks to suppress banners on holidays, breaks, and in-service days.
 // All dates in CCPS_NO_SCHOOL are accounted for; weekends handled separately by each check.
+//
+// FIXED (external UX audit): once today is past the last quarter Settings
+// has configured, the calendar itself is stale — every reminder that reads
+// this function used to keep firing through summer break because nothing
+// checked for that case. isCalendarExpired() (src/12) is checked first, so
+// a stale calendar suppresses every isSchoolDay()-gated reminder at once
+// instead of needing a separate guard at each call site.
 function isSchoolDay(d) {
   const dt = d || new Date();
+  if (typeof isCalendarExpired === 'function' && isCalendarExpired(dt)) return false;
   const dow = dt.getDay();
   if (dow === 0 || dow === 6) return false; // weekend
   const iso = _localDateStr_(dt);
@@ -534,14 +558,22 @@ function isSchoolDay(d) {
 function checkCommsTriage(){
   const now   = new Date();
   if (!isSchoolDay(now)) return;                        // skip weekends + no-school days
-  const h     = now.getHours();
-  const m     = now.getMinutes();
   const today = now.toDateString();
-  if(!(h === 7 && m >= 30 && m < 50)) return;           // 7:30–7:50 AM window
+
+  // 7:30–7:50 AM window, plus a catch-up any time later the same day if the
+  // tab was closed/backgrounded through it (matches checkCron's own
+  // missedWindow pattern).
+  const windowStart = new Date(now); windowStart.setHours(7, 30, 0, 0);
+  const windowEnd   = new Date(now); windowEnd.setHours(7, 50, 0, 0);
+  const withinWindow = now >= windowStart && now < windowEnd;
+  const missedWindow = now >= windowEnd;
+  if(!(withinWindow || missedWindow)) return;
+
   const shown = LS.get('lh_comms_triage_date','');
   if(shown === today) return;
   LS.set('lh_comms_triage_date', today);
   showCommsTriageBanner();
+  _fireNotification('📬 Morning Comms Check', 'Check Outlook, voicemail, and mailbox before students arrive.');
 }
 
 function showCommsTriageBanner(){
@@ -565,6 +597,7 @@ function showCommsTriageBanner(){
 function markCommsDone(){
   const banner = document.getElementById('comms-triage-banner');
   if(banner) banner.remove();
+  LS.set('lh_comms_done_date', new Date().toDateString()); // read by buildActionQueue()'s missed-comms fallback card
   // Write timestamped entry to daily log
   _logDaily({ date: new Date().toISOString(), type:'comms', note:'Morning comms triage completed: Outlook, voicemail, and mailbox checked.' });
   const toast = document.createElement('div');
@@ -1036,7 +1069,7 @@ function openSurveyModal(){
         These expire every school year and used to require editing the source file directly. Bell-schedule <em>times</em> themselves are still edited as raw JSON below — a full visual period builder is a bigger project than this round covers.
       </div>
 
-      <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Import from County Calendar Document</div>
+      <div id="sched-calendar-import-block" style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Import from County Calendar Document</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         This app can't open a PDF directly (no PDF library, and the security policy blocks loading one). Instead: open your county's calendar PDF or webpage, select all the text, copy it, and paste it below — or upload a plain-text/.csv file with the same content. Parsing is best-effort; you'll see exactly what it found before anything is saved.
       </div>
@@ -1092,6 +1125,15 @@ function openSurveyModal(){
         <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-esports" ${MODULES.esports!==false?'checked':''} onchange="lhSaveModule('esports',this.checked)"> 🎮 E-Sports</label>
       </div>
 
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Notifications</div>
+      <div style="margin-bottom:1.2rem">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer">
+          <input type="checkbox" id="notif-toggle" ${LS.get('lh_notify_enabled', false) ? 'checked' : ''} onchange="lhToggleNotifications(this.checked)">
+          🔔 Browser notifications for time-sensitive reminders (deposit, payroll, comms, brag board) — so a minimized tab can still alert you
+        </label>
+        <div id="notif-status" style="font-size:.74rem;margin-top:.3rem;min-height:1.1em"></div>
+      </div>
+
       <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Organizations</div>
       <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
         Adam's own DECA chapter ships built in. Add your own club, CTSO, or student organization — with its own officer titles, competition/achievement levels, and roster — as a JSON file instead of editing the app. Co-advisors sharing an organization can sync it via a shared Google Sheet (see leader-hub/README.md). <a href="#" onclick="lhDownloadOrgTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
@@ -1139,7 +1181,7 @@ function openSurveyModal(){
       </div>
       <div id="pacing-import-list" style="margin-bottom:1.4rem"></div>
 
-      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
+      <div id="sched-backup-block" style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
       <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
         Everything in LeaderHub lives only in this browser — there's no server and no automatic backup. Export a copy regularly, especially before clearing your browser data or switching devices.
       </div>
@@ -1189,6 +1231,27 @@ function openSurveyModal(){
   _renderStudentIdStatus();
   renderAiFlowHealthSettings();
   m.onclick=e=>{ if(e.target===m) m.remove(); };
+}
+
+// Opens Settings and jumps straight to the county-calendar importer, for
+// the calendar-expired banner's "Import the calendar" button — reuses the
+// same Settings modal/importer rather than building a second entry point.
+function openCalendarImporterSettings() {
+  openSurveyModal();
+  requestAnimationFrame(() => {
+    document.getElementById('sched-calendar-import-block')?.scrollIntoView({behavior:'smooth', block:'start'});
+    document.getElementById('sched-import-text')?.focus();
+  });
+}
+
+// Opens Settings and jumps straight to the "Your Data" export button, for
+// the backup-nudge Next-Action card — same reuse-not-rebuild pattern as
+// openCalendarImporterSettings() above.
+function openBackupSettings() {
+  openSurveyModal();
+  requestAnimationFrame(() => {
+    document.getElementById('sched-backup-block')?.scrollIntoView({behavior:'smooth', block:'start'});
+  });
 }
 
 // Saves one Profile field on blur (not a single "Save" button — same
@@ -1603,6 +1666,36 @@ function lhSaveBellScheduleJson() {
 
 function lhSaveModule(key, checked) {
   saveModules({ [key]: checked });
+}
+
+// Asks for Notification permission only on check — never on page load —
+// and never re-prompts once denied. lh_notify_enabled is the user's own
+// recorded intent; _fireNotification() (src/10) re-checks live
+// Notification.permission on every call too, so a permission revoked at
+// the OS/browser level after this degrades gracefully instead of erroring.
+function lhToggleNotifications(checked) {
+  const statusEl = document.getElementById('notif-status');
+  const toggleEl = document.getElementById('notif-toggle');
+  if (!checked) { LS.set('lh_notify_enabled', false); if (statusEl) statusEl.textContent = ''; return; }
+  if (typeof Notification === 'undefined') {
+    if (statusEl) { statusEl.textContent = '⚠ Not supported in this browser — reminders will still show as in-app banners.'; statusEl.style.color = '#991b1b'; }
+    if (toggleEl) toggleEl.checked = false;
+    return;
+  }
+  if (Notification.permission === 'granted') { LS.set('lh_notify_enabled', true); if (statusEl) { statusEl.textContent = '✅ Enabled'; statusEl.style.color = ''; } return; }
+  if (Notification.permission === 'denied') {
+    if (statusEl) { statusEl.textContent = '⚠ Blocked in your browser settings — reminders will still show as in-app banners.'; statusEl.style.color = '#991b1b'; }
+    if (toggleEl) toggleEl.checked = false;
+    return;
+  }
+  Notification.requestPermission().then(perm => {
+    LS.set('lh_notify_enabled', perm === 'granted');
+    if (toggleEl) toggleEl.checked = (perm === 'granted');
+    if (statusEl) {
+      statusEl.textContent = perm === 'granted' ? '✅ Enabled' : '⚠ Not granted — reminders will still show as in-app banners.';
+      statusEl.style.color = perm === 'granted' ? '' : '#991b1b';
+    }
+  });
 }
 
 // ── Course Catalog — Settings → Course Catalog ────────────────────────────────
@@ -2363,6 +2456,10 @@ function lhExportBackup(){
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+  // Read by buildActionQueue()'s backup-nudge card (external UX audit: this
+  // app has an elaborate reminder system and used none of it for the one
+  // event — no backup ever taken — that would erase everything).
+  LS.set('lh_last_backup', new Date().toISOString());
 }
 
 function lhImportBackup(fileInput){
@@ -2990,6 +3087,11 @@ function resolveObsAction(id) {
 
 // ── Init ──────────────────────────────────────────────────
 function initCockpit(){
+  // One-time marker so the backup-nudge card (buildActionQueue, src/10)
+  // knows how long this install has been in use, without needing a real
+  // account-creation event to key off of.
+  if (!LS.get('lh_first_use_date', '')) LS.set('lh_first_use_date', new Date().toISOString());
+  if (isCalendarExpired()) showCalendarExpiredBanner();
   dbTick();
   setInterval(dbTick, 15000);
   refreshNextAction();

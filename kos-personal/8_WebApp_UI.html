@@ -665,13 +665,17 @@ textarea { line-height: 1.55; }
     <!-- Cog Verdict fields (Say/Do Ledger kos-personal finding #1) -->
     <div id="fields-cogverdict" style="display:none" role="tabpanel" aria-labelledby="btn-type-cogverdict">
       <div class="field-group">
-        <label class="field-lbl" for="cogverdict-council">Council ID</label>
+        <label class="field-lbl has-tip" for="cogverdict-council">Council ID
+          <span class="tip-icon" title="Identifies one sequestered-council review (SMP-002) — the shared stimulus document goes out to each persona as a separate Gem conversation, and every verdict submitted back under this same ID is what groups them into one COG_REGISTRY review.">?</span>
+        </label>
         <input type="text" id="cogverdict-council" placeholder="e.g. SB_1234567890 — shown by Run full council review"
           oninput="scheduleIngestDraftSave()">
         <div class="char-count">Same ID for every verdict from one review — this is what groups them.</div>
       </div>
       <div class="field-group">
-        <label class="field-lbl" for="cogverdict-cog">Cog</label>
+        <label class="field-lbl has-tip" for="cogverdict-cog">Cog
+          <span class="tip-icon" title="Which persona (from CFG.PERSONAS — Architect, Auditor, Muse, Developer, Curator, Alignment) is submitting this verdict, as a separate Gemini Gem conversation outside this pipeline. Not the same thing as a Council ID, which identifies the review all of them are voting in.">?</span>
+        </label>
         <input type="text" id="cogverdict-cog" list="cog-personas-list" placeholder="e.g. PERSONA_ARCHITECT"
           oninput="scheduleIngestDraftSave()">
         <datalist id="cog-personas-list">
@@ -751,7 +755,8 @@ textarea { line-height: 1.55; }
          rather than finishing or failing outright. Says so honestly. -->
     <div id="next-hint" class="next-hint">
       <strong>What happens now:</strong> Your session is in the queue.
-      Turnstile checks it every 5 minutes and hands it to the AI engine —
+      Turnstile <span class="tip-icon" title="The matrix turnstile state machine (10_Turnstile.gs) — checks the queue every 5 minutes and hands one row at a time off to Studio for processing. It can only hand off; it can't complete a row itself, which is why nothing finishes without a connected Studio flow.">?</span>
+      checks it every 5 minutes and hands it to the AI engine —
       but it only actually completes once a Studio flow is connected to
       process it. Without one, it keeps retrying rather than finishing.
       Check the <strong>Queue tab</strong> to track progress — or just come back later.
@@ -822,6 +827,13 @@ textarea { line-height: 1.55; }
         <div class="metric-sub">not a known pipeline state — fix the Status cell by hand</div>
       </div>
     </div>
+
+    <!-- NEW (external UX audit): hidden unless the Pending count has sat
+         unchanged for QUEUE_STALL_MS while nonzero — the diagnostic
+         USER_GUIDE.md currently asks the human to perform by eye
+         ("if it stays high for more than 15 minutes, check that your
+         Studio integration is running"), delivered by the app instead. -->
+    <div id="queue-stall-notice" role="status" aria-live="polite" style="display:none;background:var(--warn-bg);border:1px solid var(--warn);color:var(--warn);border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-size:13px"></div>
 
     <div class="sec-lbl">Needs review</div>
     <!-- FIXED (finding #8): renderQueue()/_diagPanelError() both replace
@@ -1092,6 +1104,22 @@ let draftSession = '', draftResearch = '', draftResearchTitle = '';
 let draftCogCouncil = '', draftCogName = '', draftCogSummary = '';
 let shadowRefreshTimer = null;
 
+// ── Queue tab auto-refresh + stall diagnostic (external UX audit) ─────────
+// The Queue tab used to only refresh on tab-switch or the manual "Refresh
+// queue" button, while USER_GUIDE.md told the human to manually "wait 5
+// minutes and refresh" — the app already knows both halves of that
+// instruction; this makes it do them instead of asking the user to.
+let queueRefreshTimer = null;
+// { pending, since } — tracks how long the "Pending" tile's count has sat
+// unchanged, so a real stall (Studio not consuming anything) surfaces
+// without waiting on a human to notice. Distinct from #metric-cycling's
+// per-row Retry_Count threshold (3_Queue_Processor.gs) — that catches
+// specific rows that have already retried several times; this catches the
+// coarser "nothing at all has moved in a while" case, including before any
+// single row's retry count crosses that threshold.
+let _queueStallTracker = { pending: null, since: null };
+const QUEUE_STALL_MS = 15 * 60 * 1000;
+
 // ── Ingest draft persistence (survives refresh/accidental close) ───────────
 // The in-memory draftSession/draftResearch vars above only ever survived a
 // tab switch — a paste this size (up to 150k chars) is real effort to lose
@@ -1252,7 +1280,14 @@ function switchTab(id) {
 
   // Shadow matrix auto-refresh every 5 min while on Diagnostics
   if (shadowRefreshTimer) { clearInterval(shadowRefreshTimer); shadowRefreshTimer = null; }
-  if (id === 'queue') loadQueueStatus();
+  // Queue auto-refresh every 60s while on Queue — mirrors the Diagnostics
+  // tab's own auto-refresh above rather than leaving Queue as the one tab
+  // that never re-checks itself.
+  if (queueRefreshTimer) { clearInterval(queueRefreshTimer); queueRefreshTimer = null; }
+  if (id === 'queue') {
+    loadQueueStatus();
+    queueRefreshTimer = setInterval(loadQueueStatus, 60 * 1000);
+  }
   if (id === 'diag')  {
     loadDiagnostics();
     shadowRefreshTimer = setInterval(loadShadowMatrix, 5 * 60 * 1000);
@@ -1639,12 +1674,31 @@ function renderServiceStatus(account) {
     '</div>';
 }
 
+// Compares this poll's Pending count against the last one; shows/hides
+// #queue-stall-notice based on how long it's sat unchanged while nonzero.
+// A changing count (even a rising one) resets the clock — this is about
+// "nothing is moving," not "the queue is long."
+function _checkQueueStall(pending) {
+  const el = document.getElementById('queue-stall-notice');
+  if (!el) return;
+  const now = Date.now();
+  if (pending !== _queueStallTracker.pending || pending === 0) {
+    _queueStallTracker = { pending: pending, since: now };
+  }
+  const stalled = pending > 0 && (now - _queueStallTracker.since) >= QUEUE_STALL_MS;
+  el.style.display = stalled ? 'block' : 'none';
+  if (stalled) {
+    el.textContent = '⚠ Nothing has moved in 15 minutes — Studio may not be running.';
+  }
+}
+
 function renderQueue(res) {
   const c = res.counts || {};
   const pending   = c.queued    ?? c.pending ?? 0;
   const active    = c.active    ?? 0;
   const inReview  = c.needs_review ?? c.needs_curator ?? 0;
   const done      = c.processed ?? 0;
+  _checkQueueStall(pending);
   const failed    = c.failed    ?? 0;
 
   // FIXED: "Pending" (subtitle "waiting for AI engine") used to show

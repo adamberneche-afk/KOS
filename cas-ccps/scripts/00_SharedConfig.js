@@ -69,6 +69,18 @@ function getConfig_() {
     // cas-ccps/README.md's Finding 3 writeup.
     evaluationMode:       p.EVALUATION_MODE         || "STUDIO",
 
+    // ── AI-feedback promise gate (external UX audit) ─────────────────────
+    // 01_StudentDoc_ContainerScript.js used to tell every student "your
+    // feedback will appear within 1-3 minutes" unconditionally, even
+    // though the live/default evaluation path (evaluationMode "STUDIO")
+    // has no working AI behind it until Flow 2 is actually built in
+    // Studio — a promise the system had no way to keep and no way to
+    // retract. Defaults false (today's real state for every deployment
+    // that hasn't built Flow 2 yet); set AI_FLOWS_LIVE = "true" as a
+    // Script Property once Flow 2 is genuinely live, to restore the
+    // original copy.
+    aiFlowsLive:          String(p.AI_FLOWS_LIVE).toLowerCase() === "true",
+
     // ── leader-hub OAuth connection (D1 — shared-core merge, Addendum 24) ──
     // The Google OAuth Client ID leader-hub's "Sign In With Google" button
     // is registered under. Same real value across every teacher's Teacher
