@@ -1,0 +1,1659 @@
+<!-- =============== MODALS =============== -->
+
+<!-- NEW FIELD TRIP — full form based on Permission Request Attachment -->
+<!-- ===== TRIP WIZARD MODAL ===== -->
+<div class="mo" id="modal-newTrip">
+  <div style="background:#fff;border-radius:18px;width:720px;max-width:97vw;max-height:95vh;display:flex;flex-direction:column;box-shadow:0 32px 80px rgba(0,0,0,.25);overflow:hidden">
+
+    <!-- Header: title + close -->
+    <div style="background:var(--navy);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.35rem;letter-spacing:2px;color:#fff" id="nt-modal-title">New Field Trip Request</div>
+        <div style="font-size:.7rem;color:rgba(255,255,255,.5);margin-top:.1rem">CCPS Field Trip Form · Clover Hill HS</div>
+      </div>
+      <button onclick="closeModal('newTrip')" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.12);border:none;color:rgba(255,255,255,.7);width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center">✕</button>
+    </div>
+
+    <!-- Step indicator -->
+    <div style="background:var(--navy2);padding:.7rem 1.5rem;flex-shrink:0" id="wz-step-bar">
+      <div style="display:flex;align-items:center;gap:0">
+        <!-- Steps injected by JS -->
+      </div>
+    </div>
+
+    <!-- Auto-save draft notice -->
+    <div style="background:#fefce8;border-bottom:1px solid #fde68a;padding:.4rem 1.5rem;font-size:.72rem;color:#854d0e;display:flex;align-items:center;gap:.5rem;flex-shrink:0" id="wz-draft-bar">
+      <span>💾</span><span id="wz-draft-msg">Draft auto-saved — your progress won't be lost if you close this.</span>
+    </div>
+
+    <!-- Step body — scrollable -->
+    <div style="flex:1;overflow-y:auto;padding:1.5rem" id="wz-body">
+      <!-- Populated by renderWizardStep() -->
+    </div>
+
+    <!-- Footer: progress + nav buttons -->
+    <div style="border-top:1px solid var(--border);padding:.9rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:#fafafa">
+      <div style="font-size:.75rem;color:var(--muted)" id="wz-progress-label"></div>
+      <div style="display:flex;gap:.6rem">
+        <button class="btn btn-outline" id="wz-back-btn" onclick="wzBack()">← Back</button>
+        <button class="btn btn-primary" id="wz-next-btn" onclick="wzNext()">Next →</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ADD STUDENT -->
+<div class="mo" id="modal-addStudent">
+  <div class="mbox" style="max-width:680px;width:95vw;max-height:92vh;display:flex;flex-direction:column">
+    <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px" id="addstu-modal-title">Register DECA Member</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.45)" id="addstu-modal-subtitle">Clover Hill High School DECA · Chapter 4280</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('addStudent')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:1.1rem 1.4rem;display:flex;flex-direction:column;gap:.85rem">
+      <!-- Personal Info -->
+      <div class="fsec">Personal Information</div>
+      <div class="fgrid">
+        <div class="fgrid fg3">
+          <div class="fg"><label>First Name *</label><input id="st-first" placeholder="First"></div>
+          <div class="fg"><label>Last Name *</label><input id="st-last" placeholder="Last"></div>
+          <div class="fg"><label>Grade *</label><select id="st-grade"><option value="">—</option><option>9</option><option>10</option><option>11</option><option>12</option></select></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Student Email (CCPS)</label><input id="st-email" type="email" placeholder="username@student.ccpsnet.net"></div>
+          <div class="fg"><label>Student Cell</label><input id="st-phone" placeholder="(804) 555-0000"></div>
+        </div>
+        <div class="fg"><label>Home Address (for permission forms)</label><input id="st-address" placeholder="123 Main St, Midlothian VA 23114"></div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Shirt Size</label><select id="st-shirt"><option value="">—</option><option>XS</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>2XL</option><option>3XL</option></select></div>
+          <div class="fg"><label>Dietary Needs / Allergies</label><input id="st-dietary" placeholder="e.g. Vegetarian, Nut Allergy"></div>
+        </div>
+      </div>
+      <!-- Parent/Guardian -->
+      <div class="fsec">Parent / Guardian Contact</div>
+      <div class="fgrid">
+        <div class="fgrid fg2">
+          <div class="fg"><label>Parent Email *</label><input id="st-pemail" type="email" placeholder="parent@email.com"></div>
+          <div class="fg"><label>Parent Cell *</label><input id="st-pphone" placeholder="(804) 555-0000"></div>
+        </div>
+      </div>
+      <!-- DECA Position & Competition -->
+      <div class="fsec">DECA Position & Competition</div>
+      <div class="fgrid">
+        <div class="fgrid fg2">
+          <div class="fg"><label>Position / Role *</label>
+            <select id="st-role">
+              <optgroup label="Executive Officers">
+                <option>President</option><option>Executive Vice President</option>
+                <option>Vice President of Finance</option><option>Vice President of Marketing</option>
+                <option>Vice President of Community</option><option>Vice President of Competition</option>
+                <option>Secretary</option><option>Treasurer</option>
+                <option>Parliamentarian</option><option>Reporter</option>
+                <option>Sergeant at Arms</option><option>Webmaster</option>
+              </optgroup>
+              <optgroup label="Member / Competitive Category">
+                <option>Business Management</option><option>Business Finance</option>
+                <option>Entrepreneurship</option><option>Marketing</option>
+                <option>Sports &amp; Entertainment</option><option>Hospitality &amp; Tourism</option>
+                <option>Financial Literacy</option><option>Principles of Business</option>
+                <option>Principles of Marketing</option><option>Member</option>
+              </optgroup>
+            </select>
+          </div>
+          <div class="fg" id="st-compet-wrap"><label>Competitive Event</label>
+            <select id="st-compet">
+              <option value="">— Select Event —</option>
+              <option>Accounting Applications</option><option>Business Finance</option>
+              <option>Business Law &amp; Ethics</option><option>Business Management</option>
+              <option>Entrepreneurship</option><option>Financial Consulting</option>
+              <option>Food Marketing</option><option>Hospitality &amp; Tourism</option>
+              <option>Human Resources Management</option><option>International Marketing</option>
+              <option>Job Interview</option><option>Management Decision Making</option>
+              <option>Marketing Communications</option><option>Marketing Management</option>
+              <option>Personal Financial Literacy</option><option>Principles of Business Administration</option>
+              <option>Principles of Finance</option><option>Principles of Hospitality &amp; Tourism</option>
+              <option>Principles of Marketing</option><option>Retail Merchandising</option>
+              <option>Sports &amp; Entertainment Marketing Management</option>
+              <option>Travel &amp; Tourism</option><option>Virtual Business Challenge</option>
+            </select>
+          </div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Membership Status</label>
+            <select id="st-status">
+              <option value="active">Active — Paid</option>
+              <option value="unpaid">Unpaid — Dues Owed</option>
+              <option value="prospective">Prospective</option>
+              <option value="slc">SLC Qualifier</option>
+              <option value="icdc">ICDC Qualifier</option>
+              <option value="alumni">Alumni</option>
+            </select>
+          </div>
+          <div class="fg"><label>Dues Paid?</label>
+            <select id="st-paid">
+              <option value="false">No — Not paid ($20 owed)</option>
+              <option value="true">Yes — $20 paid</option>
+            </select>
+          </div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Dues Date Paid</label><input id="st-duesdate" type="date"></div>
+          <div class="fg"><label>Assigned Trip/Event</label><select id="st-event"><option value="">— None —</option></select></div>
+        </div>
+      </div>
+      <!-- FERPA Notice -->
+      <div style="background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:.5rem .75rem;font-size:.73rem;color:#78350f">
+        <strong>🔒 FERPA Reminder:</strong> Do not store IEP/504 status, ELL designation, medical information, accommodation details, or disciplinary records here. Those are educational records — keep them in Synergy or district-approved systems only.
+      </div>
+      <!-- Notes -->
+      <div class="fsec">Notes</div>
+      <div class="fgrid">
+        <div class="fg"><label>Advisor Notes</label><textarea id="st-notes" placeholder="Strengths, responsibilities, competitive goals..."></textarea></div>
+      </div>
+    </div>
+    <div class="mftr" style="display:flex;justify-content:space-between">
+      <button class="btn btn-outline" onclick="closeModal('addStudent')">Cancel</button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-outline" onclick="saveStudentAndEmail()" style="color:var(--gold);border-color:var(--gold)">💾 Save &amp; Send Reg Email</button>
+        <button class="btn btn-primary" onclick="saveStudent()" id="addstu-save-btn">Register Member</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MEMBER REGISTRATION INFO MODAL (for existing members — prompt for missing info) -->
+<div class="mo" id="modal-memberReg">
+  <div class="mbox" style="max-width:640px;width:95vw;max-height:88vh;display:flex;flex-direction:column">
+    <div class="mhdr">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">📋 Send Registration Info Request</div>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.45)">Generate an email to gather member registration details</div>
+    </div>
+    <div style="padding:1rem 1.4rem;overflow-y:auto;flex:1">
+      <div class="alert ai" style="font-size:.79rem;margin-bottom:.85rem"><span class="aico">💡</span><div>This generates an email you can send to students (or parents) requesting all details needed for DECA registration: CCPS ID, competitive event, shirt size, dietary needs, emergency contacts, dues payment, and more.</div></div>
+      <div class="fgrid">
+        <div class="fgrid fg2">
+          <div class="fg"><label>Send To</label><select id="reg-audience"><option value="student">Student directly</option><option value="parent">Parent / Guardian</option><option value="both">Student + Parent (CC)</option></select></div>
+          <div class="fg"><label>Context / Event</label><select id="reg-context"><option value="new">New Member Registration</option><option value="renewal">Annual Renewal</option><option value="conference">Conference Prep</option><option value="icdc">ICDC Registration</option></select></div>
+        </div>
+        <div class="fg"><label>Deadline Date</label><input id="reg-deadline" type="date"></div>
+        <div class="fg"><label>Additional Message (optional)</label><textarea id="reg-addl" placeholder="Anything else to include, e.g. 'Bring payment to Room 107'" style="min-height:60px"></textarea></div>
+      </div>
+      <div style="margin-top:.85rem">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem">FIELDS THIS EMAIL WILL REQUEST:</div>
+        <div style="display:flex;flex-wrap:wrap;gap:.3rem" id="reg-field-chips"></div>
+      </div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-outline" onclick="closeModal('memberReg')">Cancel</button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-outline" onclick="generateRegEmail()" style="color:var(--gold);border-color:var(--gold)">✨ Draft Email</button>
+        <button class="btn btn-primary" onclick="loadRegTemplate()">Load Template →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EVENT (non-field-trip) -->
+<div class="mo" id="modal-newEvent">
+  <div class="modal" style="width:520px">
+    <div class="mhdr"><div class="mtitle">New Event</div><button class="mclose" onclick="closeModal('newEvent')" aria-label="Close">✕</button></div>
+    <div class="mbody">
+      <div class="fgrid">
+        <div class="fg"><label>Event Name *</label><input id="ne-name" placeholder="e.g. DECA District Competition"></div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Type</label><select id="ne-type"><option value="deca">DECA Event</option><option value="leadership">Leadership</option><option value="community">Community</option></select></div>
+          <div class="fg"><label>Date</label><input id="ne-date" type="date"></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Location</label><input id="ne-loc" placeholder="Venue name"></div>
+          <div class="fg"><label>Students</label><input id="ne-stu" type="number" min="0" placeholder="0"></div>
+        </div>
+        <div class="fg"><label>Notes</label><textarea id="ne-notes" placeholder="Goals, details..."></textarea></div>
+      </div>
+    </div>
+    <div class="mftr"><button class="btn btn-outline" onclick="closeModal('newEvent')">Cancel</button><button class="btn btn-primary" onclick="saveEvent()">Save Event</button></div>
+  </div>
+</div>
+
+<!-- ADD GOAL -->
+<div class="mo" id="modal-addGoal">
+  <div class="modal" style="width:480px">
+    <div class="mhdr"><div class="mtitle">Add Leadership Goal</div><button class="mclose" onclick="closeModal('addGoal')" aria-label="Close">✕</button></div>
+    <div class="mbody">
+      <div class="fgrid">
+        <div class="fg"><label>Goal Title</label><input id="gl-title" placeholder="e.g. Qualify 5 for State"></div>
+        <div class="fgrid fg2"><div class="fg"><label>Category</label><select id="gl-cat"><option>DECA Competition</option><option>Community Service</option><option>Leadership Development</option><option>Field Trip</option><option>Fundraising</option><option>Membership Growth</option></select></div><div class="fg"><label>Target Date</label><input id="gl-date" type="date"></div></div>
+        <div class="fg"><label>Progress (0–100%)</label><input id="gl-prog" type="range" min="0" max="100" value="0" oninput="document.getElementById('gl-pct').textContent=this.value+'%'"><div style="font-family:'DM Mono',monospace;font-size:.77rem;color:var(--navy);text-align:right" id="gl-pct">0%</div></div>
+        <div class="fg"><label>Description</label><textarea id="gl-desc" placeholder="What does success look like?"></textarea></div>
+      </div>
+    </div>
+    <div class="mftr"><button class="btn btn-outline" onclick="closeModal('addGoal')">Cancel</button><button class="btn btn-primary" onclick="saveGoal()">Add Goal</button></div>
+  </div>
+</div>
+
+<!-- PRINT AUTH FORM -->
+<div class="mo" id="modal-printSlip">
+  <div class="modal" style="width:680px">
+    <div class="mhdr"><div class="mtitle">🖨 Print Parent Authorization Form</div><button class="mclose" onclick="closeModal('printSlip')" aria-label="Close">✕</button></div>
+    <div class="mbody">
+      <div class="alert ai" style="margin-bottom:1rem"><span class="aico">ℹ️</span>Select a trip to auto-fill the Trip Name. Print one copy per student — parents sign and return before the trip.</div>
+      <div class="fgrid fg2" style="margin-bottom:1rem">
+        <div class="fg"><label>Trip (auto-fills name)</label>
+          <select id="ps-trip" onchange="updateAuthPreview()">
+            <option value="">— Select Trip —</option>
+          </select>
+        </div>
+        <div class="fg"><label>Custom Trip Name (override)</label><input id="ps-custom" placeholder="Or type name manually" oninput="updateAuthPreview()"></div>
+      </div>
+      <div id="auth-form-preview" style="border:2px solid #333;border-radius:6px;padding:1.25rem;background:#fff"></div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-outline" onclick="closeModal('printSlip')">Close</button>
+      <button class="btn btn-primary" onclick="printAuthForm()">🖨 Print Form</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD SLIP STUDENT -->
+<div class="mo" id="modal-addSlipStudent">
+  <div class="modal" style="width:560px">
+    <div class="mhdr"><div class="mtitle">Add Student to Slip Tracker</div><button class="mclose" onclick="closeModal('addSlipStudent')" aria-label="Close">✕</button></div>
+    <div class="mbody">
+      <div class="fgrid">
+        <div class="fg"><label>Trip</label><select id="as-trip"></select></div>
+
+        <!-- Source selector -->
+        <div class="fg">
+          <label>Add From</label>
+          <div style="display:flex;gap:.5rem;flex-wrap:wrap" id="as-source-tabs">
+            <button class="btn btn-primary btn-sm" id="as-src-deca"  onclick="slipSourceTab('deca')">🏆 DECA Members</button>
+            <button class="btn btn-outline btn-sm" id="as-src-class" onclick="slipSourceTab('class')">📚 Class Roster</button>
+            <button class="btn btn-outline btn-sm" id="as-src-manual" onclick="slipSourceTab('manual')">✏️ Manual Entry</button>
+          </div>
+        </div>
+
+        <!-- DECA source panel -->
+        <div id="as-panel-deca" class="fgrid">
+          <div class="fg">
+            <label>Filter by Status</label>
+            <select id="as-deca-filter" onchange="renderDecaPicklist()">
+              <option value="all">All Active Members</option>
+              <option value="slc">SLC Qualifiers</option>
+              <option value="icdc">ICDC Qualifiers</option>
+              <option value="active">Active (paid)</option>
+              <option value="unpaid">Unpaid</option>
+            </select>
+          </div>
+          <div class="fg">
+            <label>Select Members <span style="font-size:.72rem;color:var(--muted)">(hold Ctrl/Cmd for multiple)</span></label>
+            <select id="as-deca-list" multiple style="height:160px;font-size:.82rem"></select>
+          </div>
+        </div>
+
+        <!-- Class source panel -->
+        <div id="as-panel-class" class="fgrid" style="display:none">
+          <div class="fgrid fg2">
+            <div class="fg">
+              <label>Course</label>
+              <select id="as-class-course" onchange="renderClassPeriods()">
+                <option value="">— Select Course —</option>
+                <option value="8177">8177 — SEEM Management</option>
+                <option value="8175">8175 — SEEM Marketing</option>
+                <option value="6115">6115 — Principles of Business</option>
+              </select>
+            </div>
+            <div class="fg">
+              <label>Period</label>
+              <select id="as-class-period" onchange="renderClassPicklist()">
+                <option value="">— Select Period —</option>
+              </select>
+            </div>
+          </div>
+          <div class="fg">
+            <label>Select Students <span style="font-size:.72rem;color:var(--muted)">(hold Ctrl/Cmd for multiple)</span></label>
+            <select id="as-class-list" multiple style="height:160px;font-size:.82rem"></select>
+          </div>
+        </div>
+
+        <!-- Manual entry panel -->
+        <div id="as-panel-manual" class="fgrid fg2" style="display:none">
+          <div class="fg"><label>First Name *</label><input id="as-first" placeholder="First"></div>
+          <div class="fg"><label>Last Name *</label><input id="as-last" placeholder="Last"></div>
+          <div class="fg"><label>Parent Phone</label><input id="as-phone" placeholder="(804) 555-0000"></div>
+          <div class="fg"><label>Notes</label><input id="as-notes" placeholder="e.g. allergy, reminder needed…"></div>
+        </div>
+
+        <!-- Transport + status (always shown) -->
+        <div class="fgrid fg2">
+          <div class="fg"><label>Transportation</label>
+            <select id="as-tx">
+              <option value="ccps">🚌 Rides CCPS/School Bus</option>
+              <option value="parent">🚗 Parent Providing Transport</option>
+            </select>
+          </div>
+          <div class="fg"><label>Slip Status</label>
+            <select id="as-status">
+              <option value="pending">⏳ Pending — Not yet returned</option>
+              <option value="returned">✅ Returned &amp; Signed</option>
+              <option value="missing">⚠ Not Returned</option>
+            </select>
+          </div>
+        </div>
+
+      </div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-outline" onclick="closeModal('addSlipStudent')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveSlipStudent()">Add to Tracker</button>
+    </div>
+  </div>
+</div>
+
+<!-- FORM PREVIEW -->
+<div class="mo" id="modal-preview">
+  <div class="modal" style="width:750px">
+    <div class="mhdr"><div class="mtitle">📄 Permission Request Form Preview</div><button class="mclose" onclick="closeModal('preview')" aria-label="Close">✕</button></div>
+    <div class="mbody" id="preview-body"></div>
+    <div class="mftr"><button class="btn btn-outline" onclick="closeModal('preview')">Close</button><button class="btn btn-primary" onclick="window.print()">🖨 Print</button></div>
+  </div>
+</div>
+
+<!-- FTPERM FILL-IN MODAL -->
+<div class="mo" id="modal-ftperm-fill">
+  <div class="modal" style="width:560px">
+    <div class="mhdr"><div class="mtitle">✏️ Fill In — FT Permission Form</div><button class="mclose" onclick="closeModal('ftperm-fill')" aria-label="Close">✕</button></div>
+    <div class="mbody">
+      <div class="alert ai" style="margin-bottom:.85rem"><span class="aico">ℹ️</span>These fields auto-fill from your trip data. Update the trip record to change them. Student-specific medical info is completed by parents on printed forms.</div>
+      <div class="fgrid">
+        <div class="fg"><label>Trip / Sponsor / Class / Group</label><input id="fp-sponsor" placeholder="e.g. Ms. Rivera — Economics Class"></div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Date of Field Trip</label><input id="fp-date" type="date"></div>
+          <div class="fg"><label>Location</label><input id="fp-loc" placeholder="Venue name & address"></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Time Duration</label><input id="fp-dur" placeholder="e.g. 9:45 AM – 1:30 PM"></div>
+          <div class="fg"><label>Transportation Mode</label><input id="fp-tx" placeholder="e.g. CCPS School Bus"></div>
+        </div>
+        <div class="fg"><label>Additional Notes (printed on form)</label><textarea id="fp-notes" placeholder="Any special instructions for parents..."></textarea></div>
+      </div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-outline" onclick="closeModal('ftperm-fill')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveFTPermOverrides();closeModal('ftperm-fill')">Save &amp; Update Preview</button>
+    </div>
+  </div>
+</div>
+
+<!-- CONF LEAVE FILL-IN MODAL -->
+<div class="mo" id="modal-conf-fill">
+  <div class="modal" style="width:600px">
+    <div class="mhdr"><div class="mtitle">✏️ Fill In — Conference/Leave Request</div><button class="mclose" onclick="closeModal('conf-fill')" aria-label="Close">✕</button></div>
+    <div class="mbody">
+      <div class="fgrid">
+        <div class="fsec">Employee Info</div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Employee Name *</label><input id="cl-emp" placeholder="Your full name"></div>
+          <div class="fg"><label>CCPS ID #</label><input id="cl-id" placeholder="e.g. 27827"></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Position / Title *</label><input id="cl-pos" placeholder="e.g. Teacher — Business &amp; Marketing"></div>
+          <div class="fg"><label>School *</label><input id="cl-school" placeholder="e.g. Clover Hill High School"></div>
+        </div>
+        <div class="fsec">Leave Details</div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Conference / Event Name *</label><input id="cl-conf" placeholder="e.g. DECA State Leadership Conference"></div>
+          <div class="fg"><label>Location (City, State) *</label><input id="cl-city" placeholder="e.g. Richmond, VA"></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Date(s) *</label><input id="cl-dates" placeholder="e.g. Apr 28–30, 2026"></div>
+          <div class="fg"><label>Number of Days</label><input id="cl-ndays" type="number" min="0" step="0.5" placeholder="1"></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Leave Category</label>
+            <select id="cl-cat">
+              <option value="III">Cat III — School Related (Field Trips &amp; Competitions)</option>
+              <option value="I">Cat I — Professional Leave (Conferences/Workshops)</option>
+              <option value="II">Cat II — District Level Leave (In-District PD)</option>
+              <option value="IV">Cat IV — Other</option>
+            </select>
+          </div>
+          <div class="fg"><label>Substitute Needed?</label>
+            <select id="cl-sub"><option value="YES">YES</option><option value="NO">NO</option></select>
+          </div>
+        </div>
+        <div class="fg"><label>Funding Source for Substitute</label><input id="cl-subfund" placeholder="e.g. School budget, grant code..."></div>
+        <div class="fg"><label>Budget Code for Activity</label><input id="cl-budget" placeholder="e.g. FY26-DECA-001"></div>
+        <div class="fsec">Estimated Costs</div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Registration Fee ($)</label><input id="cl-reg" type="number" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="fg"><label>Air Fare ($)</label><input id="cl-air" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Mileage ($)</label><input id="cl-mi" type="number" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="fg"><label>Hotel ($)</label><input id="cl-hotel" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="fgrid fg2">
+          <div class="fg"><label>Meals ($)</label><input id="cl-meals" type="number" min="0" step="0.01" placeholder="0.00"></div>
+          <div class="fg"><label>Other ($)</label><input id="cl-other" type="number" min="0" step="0.01" placeholder="0.00"></div>
+        </div>
+        <div class="fg"><label>Brief Activity Description (required for Cat I &amp; II)</label><textarea id="cl-desc" placeholder="Describe the conference/competition and educational value..."></textarea></div>
+        <div class="fg"><label>CTE Program Connection (if applicable)</label><textarea id="cl-cte" placeholder="How does this connect to your CTE program of study and CCPS Imagine Tomorrow?"></textarea></div>
+      </div>
+    </div>
+    <div class="mftr">
+      <button class="btn btn-outline" onclick="closeModal('conf-fill')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveConfLeave();closeModal('conf-fill')">Save &amp; Update Preview</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== LESSON PLANS VIEW ===== -->
+<div id="view-lessons" class="view">
+  <div class="ph">
+    <div>
+      <div class="pt">📚 Lesson Plans</div>
+      <div class="ps">Live from Google Drive · View, edit &amp; AI-assist your lesson plans</div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <!-- View toggle -->
+      <div style="display:flex;background:#f3f4f6;border-radius:8px;padding:2px;gap:2px">
+        <button id="lp-view-units" onclick="lpSetView('units')" style="font-size:.75rem;padding:.3rem .75rem;border:none;border-radius:6px;cursor:pointer;font-weight:700;background:var(--navy);color:#fff;transition:all .15s">🗂 Units</button>
+        <button id="lp-view-lessons" onclick="lpSetView('lessons')" style="font-size:.75rem;padding:.3rem .75rem;border:none;border-radius:6px;cursor:pointer;font-weight:600;background:transparent;color:var(--muted);transition:all .15s">📄 Lessons</button>
+        <button id="lp-view-calendar" onclick="lpSetView('calendar')" style="font-size:.75rem;padding:.3rem .75rem;border:none;border-radius:6px;cursor:pointer;font-weight:600;background:transparent;color:var(--muted);transition:all .15s">📅 Pacing</button>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="lpOpenNew()">＋ New Lesson Plan</button>
+    </div>
+  </div>
+  <!-- Observation Prep Checklist -->
+  <div id="obs-checklist-panel" style="margin-bottom:1rem">
+    <div id="obs-checklist-content"></div>
+  </div>
+
+  <!-- Units view -->
+  <div id="lp-units-grid" style="display:none"></div>
+
+  <!-- Pacing Calendar view -->
+  <div id="lp-calendar-view" style="display:none">
+    <!-- Course + Quarter selectors for calendar -->
+    <div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center">
+      <select id="lpcal-course" onchange="renderPacingCalendar()" style="font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer">
+        <option value="8177">8177 — SEEM Management</option>
+        <option value="8175">8175 — Sports Marketing</option>
+        <option value="6115">6115 — Prin. Business &amp; Marketing</option>
+      </select>
+      <select id="lpcal-q" onchange="renderPacingCalendar()" style="font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer">
+        <option value="1">Q1 — Aug 18 – Oct 22</option>
+        <option value="2">Q2 — Oct 23 – Jan 13</option>
+        <option value="3">Q3 — Jan 14 – Mar 19</option>
+        <option value="4">Q4 — Mar 23 – May 29</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:.35rem;font-size:.76rem;color:var(--ink);cursor:pointer">
+        <input type="checkbox" id="lpcal-show-holidays" checked onchange="renderPacingCalendar()" style="accent-color:var(--navy)">
+        Show holidays &amp; breaks
+      </label>
+      <label style="display:flex;align-items:center;gap:.35rem;font-size:.76rem;color:var(--ink);cursor:pointer">
+        <input type="checkbox" id="lpcal-show-oddeven" checked onchange="renderPacingCalendar()" style="accent-color:var(--navy)">
+        Odd / Even day labels
+      </label>
+      <span id="lpcal-legend" style="margin-left:auto;display:flex;gap:.5rem;flex-wrap:wrap;align-items:center"></span>
+    </div>
+    <div id="lp-calendar-grid" style="overflow-x:auto"></div>
+  </div>
+
+  <!-- Lessons view (filters + grid) -->
+  <div id="lp-lessons-view" style="display:none">
+  <!-- Filters -->
+  <div style="display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center">
+    <select id="lp-filter-course" onchange="renderLessonPlans()" style="font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer">
+      <option value="">All Courses</option>
+      <option value="8177">8177 — SEEM Management</option>
+      <option value="8175">8175 — Sports Marketing</option>
+      <option value="6115">6115 — Prin. Business &amp; Marketing</option>
+    </select>
+    <select id="lp-filter-q" onchange="renderLessonPlans()" style="font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer">
+      <option value="">All Quarters</option>
+      <option value="1">Q1</option>
+      <option value="2">Q2</option>
+      <option value="3">Q3</option>
+      <option value="4">Q4</option>
+    </select>
+    <input id="lp-search" oninput="renderLessonPlans()" placeholder="🔍  Search lessons…" style="font-size:.78rem;padding:.3rem .7rem;border:1px solid var(--border);border-radius:6px;flex:1;min-width:160px;max-width:300px">
+    <span id="lp-count" style="font-size:.72rem;color:var(--muted);margin-left:.25rem"></span>
+  </div>
+  <!-- Grid -->
+  <div id="lp-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.85rem"></div>
+  </div><!-- end lp-lessons-view -->
+</div>
+
+<!-- Observation Log Modal -->
+<div id="obs-log-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.52);z-index:9999;overflow:auto" onclick="if(event.target===this)closeObsLog()">
+  <div style="background:#fff;max-width:580px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:1.5px">📋 Log Observation / Walkthrough</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.5)">Saved to observation history</div>
+      </div>
+      <button onclick="closeObsLog()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.25rem .65rem;border-radius:5px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.25rem 1.4rem;display:flex;flex-direction:column;gap:.75rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+        <div><label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Date *</label>
+          <input id="obslog-date" type="date" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Type</label>
+          <select id="obslog-type" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="formal">Formal Observation</option>
+            <option value="walkthrough">Informal Walkthrough</option>
+            <option value="pop">Unannounced (Pop-in)</option>
+            <option value="plc">CTE PLC Meeting</option>
+          </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+        <div><label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Observer</label>
+          <select id="obslog-observer" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="green">Ms. Green (Associate Principal)</option>
+            <option value="white">C. White (Administrator)</option>
+            <option value="altizer">D. Altizer (Administrator)</option>
+            <option value="other">Other Administrator</option>
+          </select></div>
+        <div><label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Period / Course</label>
+          <select id="obslog-period" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="">— Not specified —</option>
+            <option value="4o_6115">Period 4 Odd — 6115 Prin. Business</option>
+            <option value="2e_8175">Period 2 Even — 8175 Sports Mktg</option>
+            <option value="3e_8175">Period 3 Even — 8175 Sports Mktg</option>
+            <option value="4e_8175">Period 4 Even — 8175 Sports Mktg</option>
+            <option value="3o_8177">Period 3 Odd — 8177 SEEM Mgmt</option>
+          </select></div>
+      </div>
+      <div><label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Outcome / Rating</label>
+        <select id="obslog-outcome" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+          <option value="pending">⏳ Pending / No feedback yet</option>
+          <option value="positive">✅ Positive feedback</option>
+          <option value="concern">⚠️ Concern raised — follow-up required</option>
+          <option value="action">🔴 Action item assigned</option>
+        </select></div>
+      <div><label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Notes / Feedback Received</label>
+        <textarea id="obslog-notes" rows="3" placeholder="Summarize what was observed, any feedback given, and what you did or plan to do in response." style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;resize:vertical;font-family:inherit"></textarea></div>
+      <div><label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Follow-Up Action Required</label>
+        <input id="obslog-followup" placeholder="e.g. Submit revised lesson plan by Friday, add differentiation section" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+    </div>
+    <div style="padding:.85rem 1.4rem;border-top:1px solid var(--border);display:flex;justify-content:space-between">
+      <button onclick="closeObsLog()" style="background:none;border:1.5px solid var(--border);border-radius:6px;padding:.38rem .9rem;font-size:.78rem;cursor:pointer">Cancel</button>
+      <button onclick="saveObsLog()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.38rem 1.1rem;font-size:.78rem;font-weight:700;cursor:pointer">💾 Save Observation Log</button>
+    </div>
+  </div>
+</div>
+
+<!-- Lesson plan modal -->
+<!-- LP New Plan Picker -->
+<div id="lp-new-picker" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:10001;align-items:center;justify-content:center">
+  <div style="background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.35);width:420px;max-width:95vw">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:1.5px">New Lesson Plan</div>
+      <button onclick="lpNewPickerClose()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.28rem .65rem;border-radius:6px;cursor:pointer;font-size:.82rem">✕</button>
+    </div>
+    <div style="padding:1.2rem;display:flex;flex-direction:column;gap:.75rem">
+      <div>
+        <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Lesson Title</label>
+        <input id="lp-new-title" placeholder="e.g. The Brand Board — Brand Identity" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.83rem;font-family:inherit">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div>
+          <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Course</label>
+          <select id="lp-new-course" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-family:inherit;background:#fff">
+            <option value="8177">8177 — SEEM Management</option>
+            <option value="8175">8175 — Sports Mktg</option>
+            <option value="6115">6115 — Prin. B&amp;M</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Quarter</label>
+          <select id="lp-new-quarter" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;font-family:inherit;background:#fff">
+            <option value="1">Q1</option>
+            <option value="2">Q2</option>
+            <option value="3">Q3</option>
+            <option value="4">Q4</option>
+          </select>
+        </div>
+      </div>
+      <div style="font-size:.71rem;color:var(--muted);background:#f9fafb;border-radius:6px;padding:.5rem .7rem;line-height:1.5">
+        💡 The plan will open pre-filled with a standard template including Differentiation and ELL sections. Title and metadata can be edited inside the modal.
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.2rem">
+        <button onclick="lpNewPickerClose()" class="btn btn-outline btn-sm">Cancel</button>
+        <button onclick="lpNewPickerCreate()" class="btn btn-primary btn-sm">Create Plan →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="lp-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto" onclick="if(event.target===this)closeLPModal()">
+  <div style="background:#fff;max-width:900px;margin:2rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3);min-height:500px;display:flex;flex-direction:column">
+    <!-- Modal header -->
+    <div id="lp-modal-header" style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;align-items:flex-start;gap:1rem">
+      <div style="flex:1">
+        <div id="lp-modal-title" style="font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:1.5px;line-height:1.2"></div>
+        <div id="lp-modal-meta" style="font-size:.75rem;opacity:.75;margin-top:.2rem"></div>
+      </div>
+      <div id="lp-modal-grading" style="margin:.6rem 0 .2rem;display:none"></div>
+      <div style="display:flex;gap:.5rem;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end">
+        <button id="lp-modal-gdoc-btn" onclick="" style="font-size:.72rem;padding:.3rem .7rem;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;cursor:pointer;white-space:nowrap">↗ Open in Drive</button>
+        <button onclick="lpAIAssist()" style="font-size:.72rem;padding:.3rem .7rem;background:#f59e0b;color:#fff;border:none;border-radius:6px;cursor:pointer;white-space:nowrap">✨ Lesson Helper</button>
+        <button onclick="closeLPModal()" style="font-size:.72rem;padding:.3rem .7rem;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.35);border-radius:6px;cursor:pointer">✕ Close</button>
+      </div>
+    </div>
+    <!-- Modal tabs -->
+    <div style="display:flex;border-bottom:2px solid var(--border);background:#f9fafb">
+      <button class="lp-tab lp-tab-active" id="lptab-view" onclick="lpSwitchTab('view',this)">📄 View</button>
+      <button class="lp-tab" id="lptab-edit" onclick="lpSwitchTab('edit',this)">✏️ Edit</button>
+      <button class="lp-tab" id="lptab-ai" onclick="lpSwitchTab('ai',this)">✨ Lesson Helper</button>
+    </div>
+    <!-- Modal body -->
+    <div id="lp-modal-body" style="flex:1;padding:1.4rem 1.6rem;overflow-y:auto;max-height:72vh">
+      <div id="lp-pane-view" class="lp-pane"></div>
+      <div id="lp-pane-edit" class="lp-pane" style="display:none">
+        <textarea id="lp-edit-area" style="width:100%;min-height:500px;font-family:'DM Mono',monospace;font-size:.8rem;border:1px solid var(--border);border-radius:8px;padding:.85rem;resize:vertical;line-height:1.6"></textarea>
+        <div style="display:flex;gap:.5rem;margin-top:.75rem;justify-content:flex-end">
+          <button onclick="lpSaveEdit()" class="btn btn-primary btn-sm">💾 Save Changes</button>
+          <button onclick="lpSwitchTab('view',document.getElementById('lptab-view'))" class="btn btn-outline btn-sm">Cancel</button>
+        </div>
+      </div>
+      <div id="lp-pane-ai" class="lp-pane" style="display:none">
+        <!-- Differentiation generator — always first and visually distinct -->
+        <button onclick="lpAIDiff()" style="width:100%;margin-bottom:.75rem;padding:.6rem 1rem;background:linear-gradient(135deg,#1e40af,#1d4ed8);color:#fff;border:none;border-radius:8px;font-size:.82rem;font-weight:700;cursor:pointer;text-align:left;display:flex;align-items:center;gap:.6rem">
+          <span style="font-size:1.1rem">♿</span>
+          <span>Generate SPED / ELL / Assessment Differentiation Section</span>
+        </button>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin-bottom:1rem">
+          <button onclick="lpAIPrompt('Create a detailed warm-up activity (10 minutes) that activates prior knowledge for this lesson.')" class="btn btn-outline btn-sm" style="text-align:left">🔥 Write a Warm-Up</button>
+          <button onclick="lpAIPrompt('Suggest 3 formative assessment ideas for this lesson that check for understanding mid-lesson.')" class="btn btn-outline btn-sm" style="text-align:left">📊 Formative Assessments</button>
+          <button onclick="lpAIPrompt('Create a detailed exit ticket (3-5 questions) aligned to the competencies in this lesson.')" class="btn btn-outline btn-sm" style="text-align:left">🚪 Write an Exit Ticket</button>
+          <button onclick="lpAIPrompt('Suggest extension activities for high-achieving students in this lesson.')" class="btn btn-outline btn-sm" style="text-align:left">🚀 Extension Activities</button>
+          <button onclick="lpAIPrompt('Write a detailed student-facing one-page project brief for this lesson.')" class="btn btn-outline btn-sm" style="text-align:left">📋 Student Project Brief</button>
+          <button onclick="lpAIPrompt('Identify the Bloom\\'s Taxonomy levels addressed and suggest how to push higher up the taxonomy.')" class="btn btn-outline btn-sm" style="text-align:left">🧠 Bloom\\'s Taxonomy Analysis</button>
+          <button onclick="lpAIPrompt('Suggest SEL (Social-Emotional Learning) integration points in this lesson.')" class="btn btn-outline btn-sm" style="text-align:left">💚 SEL Integration</button>
+          <button onclick="lpAIPrompt('Write a pacing breakdown for this lesson across a 90-minute block period and a 50-minute period.')" class="btn btn-outline btn-sm" style="text-align:left">⏱️ Pacing Guide</button>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-bottom:.75rem">
+          <input id="lp-ai-custom" placeholder="Ask about differentiation, objectives, or assessment…" style="flex:1;font-size:.8rem;padding:.45rem .7rem;border:1px solid var(--border);border-radius:6px" onkeydown="if(event.key==='Enter')lpAICustom()">
+          <button onclick="lpAICustom()" class="btn btn-primary btn-sm">Ask →</button>
+        </div>
+        <div id="lp-ai-output" style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:1rem;min-height:200px;font-size:.82rem;line-height:1.7;white-space:pre-wrap"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+<!-- ===== WBL / SCHOOL STORE VIEW ===== -->
+<div id="view-wbl" class="view">
+  <div class="ph">
+    <div>
+      <div class="pt">🏪 WBL & School Store</div>
+      <div class="ps">Work-Based Learning · SBE Compliance · Cavalier Shop · 8177 SEEM Management</div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="wblExport()">📋 Export Report</button>
+      <button class="btn btn-gold btn-sm" onclick="wblAIInsights()">📊 Program Summary</button>
+    </div>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div style="display:flex;gap:.3rem;margin-bottom:1.1rem;flex-wrap:wrap">
+    <button class="wbl-tab wbl-tab-active" id="wbltab-tracker" onclick="wblTab('tracker',this)">📊 Student WBL Tracker</button>
+    <button class="wbl-tab" id="wbltab-sbe" onclick="wblTab('sbe',this)">✅ SBE Compliance</button>
+    <button class="wbl-tab" id="wbltab-procurement" onclick="wblTab('procurement',this)">📦 Procurement Flow</button>
+    <button class="wbl-tab" id="wbltab-finance" onclick="wblTab('finance',this)">💰 Financial Dashboard</button>
+  </div>
+
+  <!-- ── STUDENT WBL TRACKER ── -->
+  <div id="wbl-pane-tracker">
+    <!-- Summary stats -->
+    <div class="grid g4" style="margin-bottom:1.1rem">
+      <div class="card stat"><div class="stat-n" id="wbl-stat-enrolled">0</div><div class="stat-l">Students Enrolled</div></div>
+      <div class="card stat"><div class="stat-n" id="wbl-stat-agreement">0</div><div class="stat-l">Agreements Signed</div></div>
+      <div class="card stat"><div class="stat-n" id="wbl-stat-hours">0</div><div class="stat-l">Avg Hours Logged</div></div>
+      <div class="card stat"><div class="stat-n" id="wbl-stat-reflect">0</div><div class="stat-l">Reflections Complete</div></div>
+    </div>
+
+    <!-- Toolbar -->
+    <div style="display:flex;gap:.5rem;flex-wrap:wrap;align-items:center;margin-bottom:.85rem">
+      <select id="wbl-filter-status" onchange="renderWBLTracker()" style="font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer">
+        <option value="">All Students</option>
+        <option value="on-track">✅ On Track</option>
+        <option value="needs-attention">⚠️ Needs Attention</option>
+        <option value="not-started">🔴 Not Started</option>
+      </select>
+      <input id="wbl-search" oninput="renderWBLTracker()" placeholder="🔍  Search student…" style="font-size:.78rem;padding:.3rem .7rem;border:1px solid var(--border);border-radius:6px;flex:1;min-width:160px;max-width:260px">
+      <button class="btn btn-primary btn-sm" onclick="openWBLAddStudent()">+ Add Student</button>
+    </div>
+
+    <!-- Student table -->
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.8rem">
+        <thead>
+          <tr style="background:#f1f5f9;text-align:left">
+            <th style="padding:.55rem .75rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Student</th>
+            <th style="padding:.55rem .75rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Role</th>
+            <th style="padding:.55rem .75rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Agreement</th>
+            <th style="padding:.55rem .75rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Hours</th>
+            <th style="padding:.55rem .75rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Reflections</th>
+            <th style="padding:.55rem .75rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Status</th>
+            <th style="padding:.55rem .75rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="wbl-table-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ── SBE COMPLIANCE CHECKLIST ── -->
+  <div id="wbl-pane-sbe" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <!-- Progress card -->
+      <div class="card" style="border-top:4px solid var(--navy)">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">SBE Approval Progress</div>
+        <div style="display:flex;align-items:center;gap:1rem">
+          <div style="position:relative;width:80px;height:80px;flex-shrink:0">
+            <svg viewBox="0 0 36 36" style="width:80px;height:80px;transform:rotate(-90deg)">
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="#e5e7eb" stroke-width="3.2"/>
+              <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--navy)" stroke-width="3.2"
+                stroke-dasharray="0 100" id="sbe-progress-arc" stroke-linecap="round"/>
+            </svg>
+            <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:1.3rem;color:var(--navy)" id="sbe-progress-pct">0%</div>
+          </div>
+          <div>
+            <div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:var(--navy)" id="sbe-complete-count">0 / 10</div>
+            <div style="font-size:.75rem;color:var(--muted)">elements complete</div>
+            <div id="sbe-status-badge" style="margin-top:.4rem;font-size:.68rem;padding:2px 10px;border-radius:10px;display:inline-block;font-weight:700"></div>
+          </div>
+        </div>
+      </div>
+      <!-- Info card -->
+      <div class="card" style="border-top:4px solid #0369a1;font-size:.78rem;line-height:1.7">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">What is an SBE?</div>
+        A <strong>School-Based Enterprise</strong> is a HQWBL experience where students design, plan, operate, and grow a real business on campus. The Cavalier Shop (8177) qualifies as a <strong>Retail Store SBE</strong> under CCPS Group III procedures.
+        <div style="margin-top:.6rem;padding:.5rem .7rem;background:#eff6ff;border-radius:6px;font-size:.74rem">
+          <strong>Required:</strong> Training Agreement · Student Reflection · Business Plan · Principal Approval
+        </div>
+      </div>
+    </div>
+
+    <!-- The 10 required elements -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">Required SBE Elements (CCPS Business Plan Approval Checklist)</div>
+    <div id="sbe-checklist" style="display:flex;flex-direction:column;gap:.5rem"></div>
+
+    <div style="margin-top:1.1rem;display:flex;gap:.5rem;flex-wrap:wrap">
+      <button class="btn btn-outline btn-sm" onclick="sbeCheckAll()">✅ Mark All Complete</button>
+      <button class="btn btn-outline btn-sm" onclick="sbeReset()">↺ Reset</button>
+      <button class="btn btn-primary btn-sm" onclick="sbePrintChecklist()">🖨 Print Checklist</button>
+    </div>
+
+    <!-- Required Forms reference -->
+    <div style="margin-top:1.25rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">Required Documentation</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.6rem">
+        <div class="card" style="border-left:4px solid #15803d;padding:.7rem .9rem">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.2rem">📄 Training Agreement</div>
+          <div style="font-size:.73rem;color:var(--muted)">Signed by student, parent, teacher & mentor. Required for HQWBL credit.</div>
+          <div style="margin-top:.5rem;font-size:.7rem;color:#15803d;font-weight:600" id="sbe-form-agreement">⬜ Not collected</div>
+        </div>
+        <div class="card" style="border-left:4px solid #0369a1;padding:.7rem .9rem">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.2rem">📝 Student Reflection</div>
+          <div style="font-size:.73rem;color:var(--muted)">End-of-experience reflection. Required for HQWBL completion.</div>
+          <div style="margin-top:.5rem;font-size:.7rem;color:#0369a1;font-weight:600" id="sbe-form-reflection">⬜ Not collected</div>
+        </div>
+        <div class="card" style="border-left:4px solid #7c3aed;padding:.7rem .9rem">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.2rem">📊 Daily Financial Summary</div>
+          <div style="font-size:.73rem;color:var(--muted)">Daily recap of sales, deposits & transactions per CCPS Policy 7060.</div>
+          <div style="margin-top:.5rem;font-size:.7rem;color:#7c3aed;font-weight:600" id="sbe-form-financial">⬜ Not set up</div>
+        </div>
+        <div class="card" style="border-left:4px solid #d97706;padding:.7rem .9rem">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.2rem">🏷️ Business Plan</div>
+          <div style="font-size:.73rem;color:var(--muted)">Budget, timeline, products/services list. Must be principal-approved.</div>
+          <div style="margin-top:.5rem;font-size:.7rem;color:#d97706;font-weight:600" id="sbe-form-bizplan">⬜ Not submitted</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- HQWBL Requirements summary -->
+    <div style="margin-top:1.25rem;padding:1rem;background:#f8fafc;border:1px solid var(--border);border-radius:10px">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">HQWBL Requirements at a Glance</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:.5rem;font-size:.76rem">
+        <div><span style="color:#15803d;font-weight:700">✓ Grade Levels:</span> 9–12</div>
+        <div><span style="color:#15803d;font-weight:700">✓ Duration:</span> Min. 90 hours</div>
+        <div><span style="color:#15803d;font-weight:700">✓ Pay:</span> Unpaid (SBE)</div>
+        <div><span style="color:#15803d;font-weight:700">✓ 3E Readiness:</span> Eligible</div>
+        <div><span style="color:#15803d;font-weight:700">✓ Grad Requirement:</span> Qualifies</div>
+        <div><span style="color:#15803d;font-weight:700">✓ CEC Contact:</span> Mrs. Tisa Fagan</div>
+        <div><span style="color:#15803d;font-weight:700">✓ Mentor:</span> Required</div>
+        <div><span style="color:#15803d;font-weight:700">✓ Classroom Link:</span> Required</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── PROCUREMENT FLOW PANE ── -->
+  <div id="wbl-pane-procurement" style="display:none">
+
+    <!-- Process flow header -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.1rem">
+      <div class="card" style="border-top:4px solid var(--navy)">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Procurement Overview</div>
+        <div style="font-size:.79rem;line-height:1.7;color:#374151">
+          Every purchase at the Cavalier Shop follows a <strong>3-step approval cycle</strong> per the Store Scaling & Reinvestment Plan: student-led market research → formal Purchase Requisition → CTE Chair + Admin approval. Items ship to the back room where students execute the full <strong>receiving process</strong>.
+        </div>
+      </div>
+      <div class="card" style="border-top:4px solid #15803d">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Inventory Categories</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;font-size:.78rem">
+          <div><span style="background:#1a3560;color:#fff;font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;margin-right:.4rem">APPAREL</span>T-shirts, hoodies, spirit wear</div>
+          <div><span style="background:#0369a1;color:#fff;font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;margin-right:.4rem">NOVELTY</span>Lanyards, foam fingers, accessories</div>
+          <div><span style="background:#065f46;color:#fff;font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;margin-right:.4rem">CONSUMABLE</span>Water, snacks (pending approval)</div>
+          <div><span style="background:#7c3aed;color:#fff;font-size:.65rem;padding:2px 8px;border-radius:8px;font-weight:600;margin-right:.4rem">EQUIPMENT</span>Display, tech, maintenance</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Visual flow diagram -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.65rem">📦 Inventory Procurement Flow — Cavalier Shop</div>
+    <div style="display:flex;flex-direction:column;gap:.45rem;margin-bottom:1.25rem" id="proc-flow-steps"></div>
+
+    <!-- Active Purchase Orders -->
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Purchase Orders</div>
+      <button class="btn btn-primary btn-sm" onclick="openPOModal()">+ New PO</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:.79rem">
+        <thead>
+          <tr style="background:#f1f5f9;text-align:left">
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">PO #</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Item / Description</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Category</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Vendor</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Qty</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Unit Cost</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Total / Margin</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Stage</th>
+            <th style="padding:.5rem .7rem;font-weight:700;color:var(--navy);border-bottom:2px solid var(--border)">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="po-table-body"></tbody>
+      </table>
+    </div>
+
+    <!-- Receiving checklist -->
+    <div style="margin-top:1.25rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">📋 Back Room Receiving Checklist (per Back Room lesson SOP)</div>
+      <!-- PO selector — FIXED per Say/Do Ledger leader-hub finding #8: this
+           checklist used to be one shared, index-keyed state for every PO
+           at once — checking a box for the first shipment of the year left
+           it checked for every later one, reading as verified for a
+           shipment never actually checked. Each PO now gets its own saved
+           checklist, mirroring the Trip Process Map / Slip view
+           trip-selector pattern. -->
+      <div class="card" style="margin-bottom:.6rem;padding:.7rem .9rem">
+        <div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:.82rem;white-space:nowrap">Purchase Order:</span>
+          <select id="receiving-po-sel" onchange="renderReceivingChecklist()" style="flex:1;min-width:200px" title="Each purchase order keeps its own saved receiving checklist — switch POs here to check a different shipment."></select>
+          <button class="btn btn-outline btn-sm" onclick="resetReceivingChecklist()" title="Clear this PO's checklist and start over — for example, if it receives a second real shipment.">↺ Reset Checklist</button>
+        </div>
+        <input id="receiving-note-input" placeholder="Note (optional) — e.g. discrepancy details" style="width:100%;margin-top:.5rem;padding:.35rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.76rem" onblur="saveReceivingNote(this.value)">
+        <div id="receiving-verified-note" style="font-size:.72rem;color:var(--muted);margin-top:.4rem"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.5rem" id="receiving-checklist"></div>
+    </div>
+  </div>
+
+  <!-- ── FINANCIAL DASHBOARD PANE ── -->
+  <div id="wbl-pane-finance" style="display:none">
+
+    <!-- Stats row -->
+    <div class="grid g4" style="margin-bottom:1.1rem">
+      <div class="card stat" style="border-top:4px solid #15803d"><div class="stat-n" id="fin-stat-revenue" style="color:#15803d">$0</div><div class="stat-l">Total Revenue</div></div>
+      <div class="card stat" style="border-top:4px solid #dc2626"><div class="stat-n" id="fin-stat-cogs" style="color:#dc2626">$0</div><div class="stat-l">Total COGS</div></div>
+      <div class="card stat" style="border-top:4px solid #0369a1"><div class="stat-n" id="fin-stat-profit" style="color:#0369a1">$0</div><div class="stat-l">Gross Profit</div></div>
+      <div class="card stat" style="border-top:4px solid #7c3aed"><div class="stat-n" id="fin-stat-margin" style="color:#7c3aed">0%</div><div class="stat-l">Profit Margin</div></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <!-- Sales log -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem">
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Daily Sales Log</div>
+          <button class="btn btn-primary btn-sm" onclick="openSalesModal()">+ Log Shift</button>
+        </div>
+        <div style="max-height:320px;overflow-y:auto" id="sales-log-list"></div>
+      </div>
+      <!-- Inventory snapshot -->
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap">
+          <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Live Inventory</div>
+          <button class="btn btn-outline btn-sm" onclick="openInventoryModal()">+ Add SKU</button>
+        </div>
+        <!-- The PO table and Sales log rendered in insertion order too, but
+             Inventory is the one that gets checked under time pressure
+             ("what's low right now?") — WBL/E-Sports already have a search
+             box for their rosters, this brings Inventory in line. -->
+        <div style="display:flex;gap:.4rem;margin-bottom:.5rem">
+          <input id="inv-search" oninput="renderFinance()" placeholder="🔍  Search SKU or category…" style="font-size:.76rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;flex:1">
+          <label style="font-size:.72rem;color:var(--muted);display:flex;align-items:center;gap:.3rem;white-space:nowrap;cursor:pointer">
+            <input type="checkbox" id="inv-sort-low" onchange="renderFinance()"> Low stock first
+          </label>
+        </div>
+        <div style="max-height:320px;overflow-y:auto" id="inventory-list"></div>
+      </div>
+    </div>
+
+    <!-- Student analysis prompt -->
+    <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:1rem;margin-bottom:1rem">
+      <div style="font-size:.72rem;font-weight:700;color:#1d4ed8;text-transform:uppercase;letter-spacing:1px;margin-bottom:.4rem">📊 Student Analysis Mode</div>
+      <div style="font-size:.79rem;color:#1e40af;margin-bottom:.65rem">Run the financial data through AI to generate a student-facing analysis worksheet — operational decisions, trends, and recommendations.</div>
+      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <button class="btn btn-sm" style="background:#1d4ed8;color:#fff" onclick="finAnalysis('profitloss')">📄 P&L Statement</button>
+        <button class="btn btn-sm" style="background:#1d4ed8;color:#fff" onclick="finAnalysis('roi')">📈 ROI Analysis</button>
+        <button class="btn btn-sm" style="background:#1d4ed8;color:#fff" onclick="finAnalysis('decisions')">🧠 Operational Decisions</button>
+        <button class="btn btn-sm" style="background:#1d4ed8;color:#fff" onclick="finAnalysis('inventory')">📦 Inventory Insights</button>
+      </div>
+      <div id="fin-analysis-out" style="margin-top:.75rem;font-size:.79rem;line-height:1.7;display:none;background:#fff;border-radius:8px;padding:.85rem;border:1px solid #bfdbfe;white-space:pre-wrap"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- PO Modal -->
+<div id="po-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closePOModal()">
+  <div style="background:#fff;max-width:540px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">New Purchase Order</div>
+      <button onclick="closePOModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
+      <!-- FIXED per Say/Do Ledger leader-hub finding #9: this used to be a
+           free-text item name with no link to any real Inventory SKU, so
+           receiving an order never updated or created its Inventory
+           record — a real, separate data-entry step every time. Linking a
+           PO to a SKU here is what lets receiving auto-increment it. -->
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Inventory Item</label>
+        <select id="po-sku-sel" onchange="onPoSkuChange()" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff"></select></div>
+      <div id="po-item-new-wrap" style="display:none">
+        <label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">New Item Name</label>
+        <input id="po-item" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Cavalier Hoodies — S/M/L"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Category</label>
+          <select id="po-cat" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option>Apparel</option><option>Novelty</option><option>Consumable</option><option>Equipment</option>
+          </select></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Vendor</label>
+          <input id="po-vendor" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Custom Ink"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Qty Ordered</label>
+          <input id="po-qty" type="number" min="1" value="1" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Unit Cost ($)</label>
+          <input id="po-cost" type="number" min="0" step="0.01" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Sell Price ($)</label>
+          <input id="po-price" type="number" min="0" step="0.01" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Student Buyer (who researched & pitched this?)</label>
+        <input id="po-buyer" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="Student name"></div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.3rem">
+        <button onclick="closePOModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button onclick="savePO()" class="btn btn-primary btn-sm">💾 Save PO</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Sales Log Modal -->
+<div id="sales-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closeSalesModal()">
+  <div style="background:#fff;max-width:480px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Log Shift Sales</div>
+      <button onclick="closeSalesModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Date</label>
+          <input id="sales-date" type="date" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Cashier / Staff</label>
+          <input id="sales-staff" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="Student names"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Cash Sales ($)</label>
+          <input id="sales-cash" type="number" min="0" step="0.01" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Card Sales ($)</label>
+          <input id="sales-card" type="number" min="0" step="0.01" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Starting Float ($)</label>
+          <input id="sales-float" type="number" min="0" step="0.01" value="50" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Items Sold (units)</label>
+          <input id="sales-units" type="number" min="0" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">COGS for shift ($)</label>
+          <input id="sales-cogs" type="number" min="0" step="0.01" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Notes / Discrepancies</label>
+        <input id="sales-notes" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. register was $2 over, ran out of size M hoodies"></div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.3rem">
+        <button onclick="closeSalesModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button onclick="saveSales()" class="btn btn-primary btn-sm">💾 Save Shift</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Inventory SKU Modal -->
+<div id="inventory-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closeInventoryModal()">
+  <div style="background:#fff;max-width:480px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Add / Update SKU</div>
+      <button onclick="closeInventoryModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
+      <input type="hidden" id="inv-edit-id">
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Product Name / SKU</label>
+        <input id="inv-name" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Cavalier Hoodie — Navy / L"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Category</label>
+          <select id="inv-cat" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option>Apparel</option><option>Novelty</option><option>Consumable</option><option>Equipment</option>
+          </select></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Units in Stock</label>
+          <input id="inv-qty" type="number" min="0" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Cost ($)</label>
+          <input id="inv-cost" type="number" min="0" step="0.01" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Sell Price ($)</label>
+          <input id="inv-price" type="number" min="0" step="0.01" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Reorder Point</label>
+          <input id="inv-reorder" type="number" min="0" value="5" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end;margin-top:.3rem">
+        <button onclick="closeInventoryModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button onclick="saveInventorySKU()" class="btn btn-primary btn-sm">💾 Save SKU</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- WBL: Add / Edit Student Modal -->
+<div id="wbl-student-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closeWBLStudentModal()">
+  <div style="background:#fff;max-width:560px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px" id="wbl-modal-title">Add WBL Student</div>
+      <button onclick="closeWBLStudentModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.4rem">
+      <input type="hidden" id="wbl-edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+        <div>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.3rem">First Name</label>
+          <input id="wbl-fname" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem">
+        </div>
+        <div>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.3rem">Last Name</label>
+          <input id="wbl-lname" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem">
+        </div>
+      </div>
+      <div style="margin-bottom:.75rem">
+        <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.3rem">Store Role</label>
+        <select id="wbl-role" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+          <option value="Store Manager">Store Manager</option>
+          <option value="Assistant Manager">Assistant Manager</option>
+          <option value="Buyer / Inventory">Buyer / Inventory</option>
+          <option value="Cashier">Cashier</option>
+          <option value="Marketing Lead">Marketing Lead</option>
+          <option value="Visual Merchandiser">Visual Merchandiser</option>
+          <option value="Customer Service Rep">Customer Service Rep</option>
+          <option value="Finance / Bookkeeper">Finance / Bookkeeper</option>
+          <option value="General Staff">General Staff</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+        <div>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.3rem">Hours Logged</label>
+          <input id="wbl-hours" type="number" min="0" max="200" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem">
+        </div>
+        <div>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.3rem">Reflections Done</label>
+          <input id="wbl-reflects" type="number" min="0" max="10" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:1rem">
+        <div>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.3rem">Training Agreement</label>
+          <select id="wbl-agreement" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="pending">⬜ Pending</option>
+            <option value="signed">✅ Signed</option>
+            <option value="returned">📬 Returned</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:.75rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.3rem">Period</label>
+          <select id="wbl-period" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="1">Period 1</option>
+            <option value="2">Period 2</option>
+            <option value="3">Period 3</option>
+            <option value="4">Period 4</option>
+            <option value="5">Period 5</option>
+            <option value="6">Period 6</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button onclick="closeWBLStudentModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button onclick="saveWBLStudent()" class="btn btn-primary btn-sm">💾 Save Student</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== E-SPORTS VIEW ===== -->
+<div id="view-esports" class="view">
+  <div class="ph">
+    <div>
+      <div class="pt">🎮 E-Sports Hub</div>
+      <div class="ps">VHSL · PlayVS · Super Smash Bros. Ultimate · Mario Kart 8 Deluxe</div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <button class="btn btn-outline btn-sm" onclick="esExportRoster()">📋 Export Roster</button>
+      <button class="btn btn-gold btn-sm" onclick="esAIScout()">📊 Season Report</button>
+    </div>
+  </div>
+
+  <!-- Sub-tabs -->
+  <div style="display:flex;gap:.3rem;margin-bottom:1.1rem;flex-wrap:wrap">
+    <button class="wbl-tab wbl-tab-active" id="estab-roster"  onclick="esTab('roster',this)">👥 Roster</button>
+    <button class="wbl-tab" id="estab-ssbu"    onclick="esTab('ssbu',this)">🥊 Smash Bros Rules</button>
+    <button class="wbl-tab" id="estab-mk8"     onclick="esTab('mk8',this)">🏎️ Mario Kart 8 Rules</button>
+    <button class="wbl-tab" id="estab-matches" onclick="esTab('matches',this)">📅 Match Log</button>
+  </div>
+
+  <!-- ── ROSTER PANE ── -->
+  <div id="es-pane-roster">
+    <div class="grid g4" style="margin-bottom:1rem">
+      <div class="card stat"><div class="stat-n" id="es-stat-total">0</div><div class="stat-l">Total Players</div></div>
+      <div class="card stat"><div class="stat-n" id="es-stat-ssbu">0</div><div class="stat-l">Smash Starters</div></div>
+      <div class="card stat"><div class="stat-n" id="es-stat-mk8">0</div><div class="stat-l">Mario Kart Starters</div></div>
+      <div class="card stat"><div class="stat-n" id="es-stat-wins">0</div><div class="stat-l">Season Wins</div></div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center;margin-bottom:.8rem;flex-wrap:wrap">
+      <select id="es-filter-game" onchange="renderESRoster()" style="font-size:.78rem;padding:.3rem .6rem;border:1px solid var(--border);border-radius:6px;background:#fff;cursor:pointer">
+        <option value="">All Games</option>
+        <option value="ssbu">Smash Bros</option>
+        <option value="mk8">Mario Kart 8</option>
+      </select>
+      <input id="es-search" oninput="renderESRoster()" placeholder="🔍  Search player…" style="font-size:.78rem;padding:.3rem .7rem;border:1px solid var(--border);border-radius:6px;flex:1;min-width:160px;max-width:280px">
+      <button class="btn btn-primary btn-sm" onclick="openESAddPlayer()">+ Add Player</button>
+    </div>
+    <div id="es-roster-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem"></div>
+  </div>
+
+  <!-- ── SSBU RULES PANE ── -->
+  <div id="es-pane-ssbu" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <div class="card" style="border-top:4px solid #c0392b">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">At a Glance</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;font-size:.79rem">
+          <div>🎮 <strong>Platform:</strong> Nintendo Switch / Switch 2</div>
+          <div>👥 <strong>Team Size:</strong> 3 players (starters)</div>
+          <div>🏆 <strong>Match Format:</strong> Best-of-5 Sets</div>
+          <div>⚔️ <strong>Set Format:</strong> Best-of-3 Games</div>
+          <div>💀 <strong>Game Mode:</strong> Stock · 3 lives · 7 min</div>
+          <div>🚫 <strong>Items:</strong> OFF · Hazards: OFF · Spirits: OFF</div>
+          <div>🌐 <strong>Connection:</strong> Wired required (USB→Ethernet)</div>
+        </div>
+      </div>
+      <div class="card" style="border-top:4px solid #8e44ad">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Game Settings (Save as "PlayVS")</div>
+        <div style="display:flex;flex-direction:column;gap:.25rem;font-size:.78rem">
+          <div style="display:flex;justify-content:space-between"><span>Game Style</span><strong>Stock</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Stocks</span><strong>3</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Time Limit</span><strong>7 minutes</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Final Smash Meter</span><strong>OFF</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Damage Handicap</span><strong>OFF</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Items</span><strong>None (All Off)</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Stage Hazards</span><strong>OFF</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Spirits</span><strong>OFF</strong></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Stage list -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <div class="card">
+        <div style="font-size:.72rem;font-weight:700;color:#15803d;text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">✅ Starter Stages (Game 1 only)</div>
+        <!-- FIXED: this used to be a raw ${...}.map().join('') expression sitting
+             directly in static HTML (outside any <script> tag) — the browser
+             rendered it as literal text instead of executing it. Populated by
+             renderStaticEmbeddedContent() at boot instead. -->
+        <div style="display:flex;flex-direction:column;gap:.3rem" id="ssbu-starter-stages"></div>
+      </div>
+      <div class="card">
+        <div style="font-size:.72rem;font-weight:700;color:#0369a1;text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">🔄 Counterpick Stages (Game 2+)</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem" id="ssbu-counterpick-stages"></div>
+        <div style="font-size:.7rem;color:var(--muted);margin-top:.5rem">Omega/Battlefield variants NOT allowed.</div>
+      </div>
+    </div>
+
+    <!-- Stage striking -->
+    <div class="card" style="margin-bottom:1rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">Stage Striking Order</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;font-size:.78rem">
+        <div>
+          <div style="font-weight:700;color:var(--navy);margin-bottom:.4rem">🎮 Game 1 (Starters only)</div>
+          <div style="display:flex;flex-direction:column;gap:.25rem">
+            <div style="background:#f1f5f9;border-radius:6px;padding:.3rem .6rem"><span style="background:var(--navy);color:#fff;font-size:.65rem;padding:1px 6px;border-radius:4px;margin-right:.4rem">HOME</span>Strikes 1 stage</div>
+            <div style="background:#f1f5f9;border-radius:6px;padding:.3rem .6rem"><span style="background:#dc2626;color:#fff;font-size:.65rem;padding:1px 6px;border-radius:4px;margin-right:.4rem">AWAY</span>Strikes 2 stages</div>
+            <div style="background:#f1f5f9;border-radius:6px;padding:.3rem .6rem"><span style="background:var(--navy);color:#fff;font-size:.65rem;padding:1px 6px;border-radius:4px;margin-right:.4rem">HOME</span>Strikes 1 stage</div>
+            <div style="background:#dcfce7;border-radius:6px;padding:.3rem .6rem;font-weight:600;color:#15803d">✅ Remaining stage is played</div>
+          </div>
+        </div>
+        <div>
+          <div style="font-weight:700;color:var(--navy);margin-bottom:.4rem">🔄 Game 2+ (Starters + Counterpicks)</div>
+          <div style="display:flex;flex-direction:column;gap:.25rem">
+            <div style="background:#f1f5f9;border-radius:6px;padding:.3rem .6rem"><span style="background:#15803d;color:#fff;font-size:.65rem;padding:1px 6px;border-radius:4px;margin-right:.4rem">WINNER</span>Strikes 2 stages + gets free strike for stages they lost on</div>
+            <div style="background:#f1f5f9;border-radius:6px;padding:.3rem .6rem"><span style="background:#dc2626;color:#fff;font-size:.65rem;padding:1px 6px;border-radius:4px;margin-right:.4rem">LOSER</span>Picks from remaining stages</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Match flow -->
+    <div class="card" style="margin-bottom:1rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">Bo5 Match Flow</div>
+      <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:.4rem;text-align:center;font-size:.73rem" id="ssbu-match-flow"></div>
+    </div>
+
+    <!-- Key rules -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Key Rules & Situations</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.5rem" id="ssbu-key-rules"></div>
+
+    <!-- Match day checklist -->
+    <div style="margin-top:1rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">🗒️ Match Day Checklist — Smash Bros</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.4rem" id="ssbu-checklist-render"></div>
+    <button onclick="resetSSBUChecklist()" style="margin-top:.5rem;font-size:.68rem;padding:.2rem .6rem;background:#fff;border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--muted)">↺ Reset All</button>
+    </div>
+  </div>
+
+  <!-- ── MK8 RULES PANE ── -->
+  <div id="es-pane-mk8" style="display:none">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+      <div class="card" style="border-top:4px solid #e67e22">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">At a Glance</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem;font-size:.79rem">
+          <div>🎮 <strong>Platform:</strong> Nintendo Switch / Switch 2</div>
+          <div>👥 <strong>Team Size:</strong> 4 players (4v4)</div>
+          <div>🏆 <strong>Match Format:</strong> Best-of-3 Games</div>
+          <div>🏁 <strong>Regular Season:</strong> 4 races per game</div>
+          <div>🏆 <strong>Playoffs:</strong> 6 races per game</div>
+          <div>⚡ <strong>Speed:</strong> 150cc · Team Game · Normal Items</div>
+          <div>🌐 <strong>Connection:</strong> Wired required (USB→Ethernet)</div>
+          <div>🎲 <strong>Tracks:</strong> ALL players must select RANDOM</div>
+        </div>
+      </div>
+      <div class="card" style="border-top:4px solid #e74c3c">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Lobby Settings</div>
+        <div style="display:flex;flex-direction:column;gap:.25rem;font-size:.78rem">
+          <div style="display:flex;justify-content:space-between"><span>Speed</span><strong>150cc</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Teams</span><strong>Team Game (Red vs Blue)</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Items</span><strong>Normal</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>COM Racers</span><strong>No COM</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Vehicles</span><strong>All Vehicles</strong></div>
+          <div style="display:flex;justify-content:space-between"><span>Race Count</span><strong>4 (6 for Playoffs)</strong></div>
+          <div style="margin-top:.4rem;font-size:.7rem;background:#fef3c7;padding:.35rem .5rem;border-radius:5px;color:#92400e">🏠 Home Team = Red · Away Team = Blue</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Scoring -->
+    <div class="card" style="margin-bottom:1rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.6rem">Scoring System</div>
+      <div style="font-size:.79rem;line-height:1.7;margin-bottom:.5rem">Points are earned based on finishing place within each race. All 4 players' points are combined each race. After all 4 races (6 in playoffs), the team with the highest total wins the game.</div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap;font-size:.72rem">
+        <div id="mk8-scoring-points" style="display:contents"></div>
+        <div style="align-self:center;font-size:.7rem;color:var(--muted)">…down to 1pt for 12th</div>
+      </div>
+    </div>
+
+    <!-- Key rules MK8 -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Key Rules & Situations</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.5rem;margin-bottom:1rem" id="mk8-key-rules"></div>
+
+    <!-- Match day checklist MK8 -->
+    <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">🗒️ Match Day Checklist — Mario Kart 8</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.4rem" id="mk8-checklist-render"></div>
+    <button onclick="resetMK8Checklist()" style="margin-top:.5rem;font-size:.68rem;padding:.2rem .6rem;background:#fff;border:1px solid var(--border);border-radius:5px;cursor:pointer;color:var(--muted)">↺ Reset All</button>
+  </div>
+
+  <!-- ── MATCH LOG PANE ── -->
+  <div id="es-pane-matches" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.2rem;flex-wrap:wrap;gap:.5rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Season Match Log</div>
+      <button class="btn btn-primary btn-sm" onclick="openMatchModal()">+ Log Match</button>
+    </div>
+    <!-- Reframed per Say/Do Ledger leader-hub finding #14: this is a personal
+         results log (a flat W/L/T history), not a tournament-management
+         system — seeding, brackets, and official standings are tracked by
+         PlayVS itself, and duplicating that here would be a second,
+         unofficial copy of data PlayVS already owns. -->
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.8rem">A personal results log — not an official bracket. For seeding, standings, and playoff brackets, see <a href="https://playvs.com" target="_blank" rel="noopener">PlayVS</a>.</div>
+    <div id="es-match-list"></div>
+  </div>
+</div>
+
+<!-- E-Sports: Add Player Modal -->
+<div id="es-player-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closeESModal()">
+  <div style="background:#fff;max-width:520px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px" id="es-modal-title">Add Player</div>
+      <button onclick="closeESModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
+      <input type="hidden" id="es-edit-id">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">First Name</label>
+          <input id="es-fname" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Last Name</label>
+          <input id="es-lname" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Gamer Tag</label>
+        <input id="es-tag" placeholder="e.g. ShadowKnight99" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Game(s)</label>
+          <select id="es-game" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="both">Both Games</option>
+            <option value="ssbu">Smash Bros Only</option>
+            <option value="mk8">Mario Kart Only</option>
+          </select></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Role</label>
+          <select id="es-role" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="starter">Starter</option>
+            <option value="bench">Bench</option>
+            <option value="captain">Team Captain</option>
+          </select></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Main Character (SSBU)</label>
+          <input id="es-main" placeholder="e.g. Pikachu, Link" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Fav Kart Setup (MK8)</label>
+          <input id="es-kart" placeholder="e.g. Waluigi / Pipe Frame" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Notes (strengths, practice goals, etc.)</label>
+        <input id="es-notes" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Strong edgeguarding, needs stage striking practice"></div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button onclick="closeESModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button onclick="saveESPlayer()" class="btn btn-primary btn-sm">💾 Save Player</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- E-Sports: Log Match Modal -->
+<div id="es-match-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;overflow:auto" onclick="if(event.target===this)closeMatchModal()">
+  <div style="background:#fff;max-width:500px;margin:3rem auto;border-radius:14px;overflow:hidden;box-shadow:0 24px 80px rgba(0,0,0,.3)">
+    <div style="background:var(--navy);color:#fff;padding:1rem 1.4rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.3rem;letter-spacing:1.5px">Log Match Result</div>
+      <button onclick="closeMatchModal()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.15);border:none;color:#fff;padding:.3rem .7rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.4rem;display:flex;flex-direction:column;gap:.7rem">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Date</label>
+          <input id="match-date" type="date" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Game</label>
+          <select id="match-game" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem;background:#fff">
+            <option value="ssbu">Smash Bros Ultimate</option>
+            <option value="mk8">Mario Kart 8 Deluxe</option>
+          </select></div>
+      </div>
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Opponent School</label>
+        <input id="match-opp" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Midlothian High School"></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:.6rem">
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Our Score</label>
+          <input id="match-us" type="number" min="0" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+        <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Their Score</label>
+          <input id="match-them" type="number" min="0" value="0" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem"></div>
+      </div>
+      <div><label style="font-size:.74rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">Notes / Standout Moments</label>
+        <input id="match-notes" style="width:100%;padding:.4rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.82rem" placeholder="e.g. Won sets 1-3, close set 4 (2-1)"></div>
+      <div style="display:flex;gap:.5rem;justify-content:flex-end">
+        <button onclick="closeMatchModal()" class="btn btn-outline btn-sm">Cancel</button>
+        <button onclick="saveMatch()" class="btn btn-primary btn-sm">💾 Save Match</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TRIP ARCHIVE VIEW ===== -->
+<div id="view-archive" class="view">
+  <div class="ph">
+    <div>
+      <div class="pt">📦 Trip Archive</div>
+      <div class="ps">Completed trips · Three Glows & a Grow · Knowledge Base</div>
+    </div>
+    <div style="display:flex;gap:.5rem;align-items:center">
+      <button class="btn btn-gold btn-sm" onclick="openAIInsights()">📊 Archive Insights</button>
+      <button class="btn btn-outline btn-sm" onclick="renderArchive()">↺ Refresh</button>
+    </div>
+  </div>
+  <!-- Knowledge Base Summary Strip -->
+  <div id="archive-kb-strip" style="margin-bottom:1.25rem"></div>
+  <!-- Filter bar -->
+  <div style="display:flex;gap:.5rem;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <span style="font-size:.75rem;font-weight:700;color:var(--muted)">FILTER:</span>
+    <button class="btn btn-primary btn-sm" id="af-all" onclick="setArchiveFilter('all',this)">All</button>
+    <button class="btn btn-outline btn-sm" id="af-deca" onclick="setArchiveFilter('deca',this)">🏆 DECA</button>
+    <button class="btn btn-outline btn-sm" id="af-overnight" onclick="setArchiveFilter('overnight',this)">🌙 Overnight</button>
+    <button class="btn btn-outline btn-sm" id="af-sameday" onclick="setArchiveFilter('sameday',this)">☀️ Same Day</button>
+    <input id="archive-search" placeholder="🔍 Search trips, glows, grows..." style="margin-left:auto;padding:.32rem .65rem;font-size:.78rem;border:1px solid var(--border);border-radius:6px;width:220px" oninput="renderArchive()">
+  </div>
+  <div id="archive-list" style="display:flex;flex-direction:column;gap:1rem"></div>
+  <div id="archive-empty" style="display:none;text-align:center;padding:3rem;color:var(--muted)">
+    <div style="font-size:3rem;margin-bottom:.75rem">📦</div>
+    <div style="font-weight:700;margin-bottom:.35rem">No archived trips yet</div>
+    <div style="font-size:.82rem">When you archive a completed trip, it will appear here with its Three Glows & a Grow reflection.</div>
+  </div>
+</div>
+
+</main>
+
+<!-- ===== ARCHIVE MODAL — Three Glows & a Grow ===== -->
+<div class="mo" id="modal-archiveTrip">
+  <div class="mbox" style="max-width:620px;width:95vw">
+    <div class="mhdr">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">📦 Archive Trip</div>
+      <div style="font-size:.72rem;color:rgba(255,255,255,.5)" id="archive-trip-name-label">—</div>
+    </div>
+    <div style="padding:1.25rem 1.5rem">
+      <div class="alert ai" style="margin-bottom:1rem;font-size:.8rem">
+        <span class="aico">💡</span>
+        <div>Before archiving, capture a quick reflection. <strong>Three Glows</strong> = what worked well. <strong>A Grow</strong> = what to improve next time. This becomes your knowledge base for future trips.</div>
+      </div>
+      <div style="display:grid;gap:.85rem">
+        <!-- Glows -->
+        <div style="background:#f0fdf4;border:1.5px solid #86efac;border-radius:10px;padding:1rem">
+          <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:#15803d;margin-bottom:.65rem">✨ Three Glows — What Worked Well</div>
+          <div style="display:flex;flex-direction:column;gap:.5rem">
+            <div style="display:flex;align-items:flex-start;gap:.5rem">
+              <span style="background:#22c55e;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:2px">1</span>
+              <textarea id="arch-glow1" placeholder="e.g. Students were incredibly prepared — role plays were polished and confident" style="flex:1;min-height:52px;font-size:.8rem;border:1px solid #86efac;border-radius:6px;padding:.4rem .55rem;resize:vertical;background:#fff"></textarea>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:.5rem">
+              <span style="background:#22c55e;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:2px">2</span>
+              <textarea id="arch-glow2" placeholder="e.g. Winn Transportation was on time and professional — would use again" style="flex:1;min-height:52px;font-size:.8rem;border:1px solid #86efac;border-radius:6px;padding:.4rem .55rem;resize:vertical;background:#fff"></textarea>
+            </div>
+            <div style="display:flex;align-items:flex-start;gap:.5rem">
+              <span style="background:#22c55e;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:2px">3</span>
+              <textarea id="arch-glow3" placeholder="e.g. Hotel check-in was smooth — pre-assigning rooms the night before helped a lot" style="flex:1;min-height:52px;font-size:.8rem;border:1px solid #86efac;border-radius:6px;padding:.4rem .55rem;resize:vertical;background:#fff"></textarea>
+            </div>
+          </div>
+        </div>
+        <!-- Grow -->
+        <div style="background:#fefce8;border:1.5px solid #fde047;border-radius:10px;padding:1rem">
+          <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:#854d0e;margin-bottom:.65rem">🌱 A Grow — What To Improve Next Time</div>
+          <div style="display:flex;align-items:flex-start;gap:.5rem">
+            <span style="background:#eab308;color:#fff;border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0;margin-top:2px">↑</span>
+            <textarea id="arch-grow" placeholder="e.g. Need to collect permission slips 2 weeks earlier — several came in the day before departure" style="flex:1;min-height:72px;font-size:.8rem;border:1px solid #fde047;border-radius:6px;padding:.4rem .55rem;resize:vertical;background:#fff"></textarea>
+          </div>
+        </div>
+        <!-- Optional: Overall rating + notes -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">OVERALL TRIP RATING</label>
+            <div id="arch-star-picker" style="display:flex;gap:.25rem"></div>
+            <input type="hidden" id="arch-rating" value="0">
+          </div>
+          <div>
+            <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">ATTENDANCE OUTCOME</label>
+            <select id="arch-outcome" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+              <option value="">— Select —</option>
+              <option value="exceeded">Exceeded expectations</option>
+              <option value="met">Met expectations</option>
+              <option value="below">Below expectations</option>
+              <option value="cancelled">Partially cancelled / modified</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:.72rem;font-weight:700;color:var(--muted);display:block;margin-bottom:.25rem">ADDITIONAL NOTES (optional — logistics, vendor info, tips for future)</label>
+          <textarea id="arch-notes" placeholder="e.g. Hampton Inn allowed early check-in for a $25 fee. Contact name: Sarah (front desk). Parking was free." style="width:100%;min-height:58px;font-size:.8rem;border:1px solid var(--border);border-radius:6px;padding:.4rem .55rem;resize:vertical"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="mftr" style="display:flex;justify-content:space-between;align-items:center">
+      <button class="btn btn-outline" onclick="closeModal('archiveTrip')">Cancel</button>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn btn-outline" onclick="archiveWithAI()" style="color:var(--gold);border-color:var(--gold)">✏️ Pre-fill from Trip</button>
+        <button class="btn btn-primary" onclick="confirmArchive()" id="arch-confirm-btn">📦 Archive Trip</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== AI INSIGHTS MODAL ===== -->
+<div class="mo" id="modal-aiInsights">
+  <div class="mbox" style="max-width:720px;width:95vw;max-height:90vh;display:flex;flex-direction:column">
+    <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">✨ Knowledge Base Insights</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.5)">AI analysis across all archived trips</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('aiInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:1.25rem">
+      <div id="ai-insights-body">
+        <div style="text-align:center;padding:2rem;color:var(--muted)">
+          <div style="font-size:2rem;margin-bottom:.5rem">✨</div>
+          <div>Click Generate to analyze your archived trips</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:.85rem 1.25rem;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap">
+      <button id="archive-ai-btn" class="btn btn-gold btn-sm" onclick="generateAIInsights()" style="flex:1">✨ Generate Insights from Archive</button>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('aiInsights')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SCR AI INSIGHTS MODAL ===== -->
+<div class="mo" id="modal-scrInsights">
+  <div class="mbox" style="max-width:720px;width:95vw;max-height:92vh;display:flex;flex-direction:column">
+    <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">✨ SCR Class Insights</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.5)" id="scr-insights-subtitle">AI analysis of competency performance</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('scrInsights')" style="color:#fff;border-color:rgba(255,255,255,.3)" aria-label="Close">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:1.1rem">
+      <div id="ai-insights-content">
+        <div style="text-align:center;padding:2rem;color:var(--muted)">
+          <div style="font-size:2rem;margin-bottom:.5rem">📐</div>
+          <div>Generating competency analysis…</div>
+        </div>
+      </div>
+    </div>
+    <div style="padding:.75rem 1.1rem;border-top:1px solid var(--border);display:flex;gap:.5rem">
+      <button class="btn btn-outline btn-sm" onclick="closeModal('scrInsights')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== EMAIL COMPOSER MODAL ===== -->
+<div class="mo" id="modal-emailComposer">
+  <div class="mbox" style="max-width:820px;width:95vw;max-height:92vh;display:flex;flex-direction:column">
+    <div class="mhdr" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.2rem;letter-spacing:2px">✉️ Email Composer</div>
+        <div style="font-size:.72rem;color:rgba(255,255,255,.5)" id="email-context-label">Select a context above</div>
+      </div>
+      <button class="btn btn-outline btn-sm" onclick="closeModal('emailComposer')" style="color:#fff;border-color:rgba(255,255,255,.3)">✕ Close</button>
+    </div>
+
+    <!-- Audience Tabs -->
+    <div style="display:flex;gap:.3rem;padding:.75rem 1.25rem .5rem;background:#f8f7f4;border-bottom:1px solid var(--border);flex-wrap:wrap">
+      <button class="email-tab active" id="etab-students" onclick="setEmailTab('students',this)">👩‍🎓 Students</button>
+      <button class="email-tab" id="etab-parents"   onclick="setEmailTab('parents',this)">👨‍👩‍👧 Parents</button>
+      <button class="email-tab" id="etab-school"    onclick="setEmailTab('school',this)">🏫 School/Admin</button>
+      <button class="email-tab" id="etab-faculty"   onclick="setEmailTab('faculty',this)">👩‍🏫 Faculty</button>
+    </div>
+
+    <div style="display:flex;flex:1;overflow:hidden;min-height:0">
+      <!-- LEFT: template picker + context selector -->
+      <div style="width:230px;flex-shrink:0;border-right:1px solid var(--border);overflow-y:auto;padding:.75rem;background:#faf9f6">
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:.4rem">Context</div>
+        <select id="email-context-sel" style="width:100%;font-size:.78rem;margin-bottom:.75rem;border:1px solid var(--border);border-radius:6px;padding:.35rem" onchange="onEmailContextChange()">
+          <option value="">— General / No trip —</option>
+        </select>
+
+        <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:.4rem">Templates</div>
+        <div id="email-template-list" style="display:flex;flex-direction:column;gap:.3rem"></div>
+
+        <div style="margin-top:.85rem;font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:.4rem">AI Compose</div>
+        <textarea id="email-ai-prompt" placeholder="Describe what you need… e.g. 'Remind students about ICDC permission slip deadline'" style="width:100%;height:72px;font-size:.75rem;border:1px solid var(--border);border-radius:6px;padding:.4rem;resize:vertical"></textarea>
+        <button class="btn btn-gold btn-sm" style="width:100%;margin-top:.35rem;font-size:.75rem" onclick="aiComposeEmail()">✨ Generate with AI</button>
+        <div id="email-ai-status" style="font-size:.68rem;color:var(--muted);margin-top:.3rem;min-height:14px"></div>
+      </div>
+
+      <!-- RIGHT: compose area -->
+      <div style="flex:1;display:flex;flex-direction:column;overflow:hidden;padding:.85rem">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-bottom:.5rem">
+          <div>
+            <label style="font-size:.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">TO</label>
+            <input id="email-to" placeholder="Recipients / group" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+          </div>
+          <div>
+            <label style="font-size:.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">CC</label>
+            <input id="email-cc" placeholder="Optional" style="width:100%;font-size:.78rem;border:1px solid var(--border);border-radius:6px;padding:.35rem">
+          </div>
+        </div>
+        <div style="margin-bottom:.5rem">
+          <label style="font-size:.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">SUBJECT</label>
+          <input id="email-subject" placeholder="Email subject line" style="width:100%;font-size:.82rem;font-weight:600;border:1px solid var(--border);border-radius:6px;padding:.38rem">
+        </div>
+        <div style="flex:1;display:flex;flex-direction:column;min-height:0">
+          <label style="font-size:.7rem;font-weight:600;color:var(--muted);display:block;margin-bottom:2px">BODY</label>
+          <textarea id="email-body" style="flex:1;resize:none;font-size:.8rem;line-height:1.6;border:1px solid var(--border);border-radius:6px;padding:.6rem;font-family:'DM Sans',sans-serif;min-height:260px"></textarea>
+        </div>
+        <div style="display:flex;gap:.5rem;margin-top:.6rem;flex-wrap:wrap">
+          <button class="btn btn-primary btn-sm" onclick="copyEmail()" style="flex:1">📋 Copy Email</button>
+          <button class="btn btn-gold btn-sm" onclick="openInMailClient()" style="flex:1">📬 Open in Mail</button>
+          <button class="btn btn-outline btn-sm" onclick="clearEmailComposer()">🗑 Clear</button>
+        </div>
+        <div id="email-copy-confirm" style="font-size:.72rem;color:var(--green);text-align:center;margin-top:.3rem;min-height:16px"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+

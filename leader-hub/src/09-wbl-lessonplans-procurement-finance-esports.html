@@ -1,0 +1,2364 @@
+// WBL & SCHOOL STORE
+// ============================================================
+
+// ── Data ──────────────────────────────────────────────────
+let WBL_STUDENTS = [
+  {id:'wbl1', fname:'Sample', lname:'Student', role:'Store Manager',   period:'2', hours:14, reflects:1, agreement:'signed'},
+];
+
+function persistWBL() { LS.set('lh_wbl_students', WBL_STUDENTS); }
+// Array.isArray only (not && saved.length) — see the lh_trips fix above;
+// an explicitly-emptied roster must stay empty on reload, not resurrect
+// the "Sample Student" seed.
+{ const saved = LS.get('lh_wbl_students', null); if (saved && Array.isArray(saved)) WBL_STUDENTS = saved; }
+
+const SBE_ELEMENTS = [
+  {id:'sbe1',  label:'Lesson Plans & Competency List',           desc:'Full pacing guide with competency alignment for each SBE stage. Required starting point.',                owner:'Teacher'},
+  {id:'sbe2',  label:'Business Plan',                            desc:'Basic outline covering budget, inventory, pricing strategy, and timeline for the school year.',          owner:'Teacher + Students'},
+  {id:'sbe3',  label:'Products & Services with Inventory Needs', desc:'Detailed listing of all items sold in the Cavalier Shop, sourcing, and reorder thresholds.',            owner:'Buyer / Inventory Lead'},
+  {id:'sbe4',  label:'Job Positions & Descriptions',             desc:'Written descriptions for each store role (Manager, Cashier, Buyer, etc.) used to interview and hire.',  owner:'Teacher + Manager'},
+  {id:'sbe5',  label:'Consultation / Liability Release Forms',   desc:'Client/patron forms per CCPS guidelines. Required before any service transaction.',                     owner:'Teacher'},
+  {id:'sbe6',  label:'Location for SBE Operation',               desc:'Confirmed physical space for the Cavalier Shop — room, cart, or designated area.',                      owner:'Administration'},
+  {id:'sbe7',  label:'Dates, Times & Setup Schedule',            desc:'Published open hours, setup calendar, and daily operation schedule for all 3 periods.',                 owner:'Teacher + Manager'},
+  {id:'sbe8',  label:'Marketing Materials & Marketing Plan',     desc:'Promotional strategy including signage, social, announcements, and seasonal campaigns.',                 owner:'Marketing Lead'},
+  {id:'sbe9',  label:'Student & Client Reflection / Eval Forms', desc:'Structured reflection prompts for students; feedback mechanism for school community customers.',         owner:'Teacher'},
+  {id:'sbe10', label:'Daily Financial Summary & Recap Forms',    desc:'Per-shift cash count, sales tally, and deposit slip per CCPS Policy 7060 accounting requirements.',     owner:'Finance / Bookkeeper'},
+];
+
+let SBE_STATUS = LS.get('lh_sbe_status', {}); // id → {done, notes}
+function persistSBE() { LS.set('lh_sbe_status', SBE_STATUS); }
+
+function wblTab(name, btn) {
+  document.querySelectorAll('.wbl-tab').forEach(t=>t.classList.remove('wbl-tab-active'));
+  btn.classList.add('wbl-tab-active');
+  document.getElementById('wbl-pane-tracker').style.display      = name==='tracker'     ? '' : 'none';
+  document.getElementById('wbl-pane-sbe').style.display          = name==='sbe'         ? '' : 'none';
+  document.getElementById('wbl-pane-procurement').style.display  = name==='procurement' ? '' : 'none';
+  document.getElementById('wbl-pane-finance').style.display      = name==='finance'     ? '' : 'none';
+  if (name==='tracker')     renderWBLTracker();
+  if (name==='sbe')         renderSBEChecklist();
+  if (name==='procurement') renderProcurement();
+  if (name==='finance')     renderFinance();
+}
+
+// ── WBL TRACKER ───────────────────────────────────────────
+function persistInventory() { LS.set('lh_inventory', INVENTORY); }
+function persistSales()     { LS.set('lh_sales_log', SALES_LOG); }
+function persistPO()        { LS.set('lh_purchase_orders', PURCHASE_ORDERS); }
+// Array.isArray only — see the lh_trips fix above; an explicitly-cleared
+// inventory must stay empty on reload, not resurrect the starter SKUs.
+{ const si = LS.get('lh_inventory', null); if (si && Array.isArray(si)) INVENTORY = si; }
+{ const ss = LS.get('lh_sales_log', null); if (ss && ss.length) SALES_LOG = ss; }
+{ const sp = LS.get('lh_purchase_orders', null); if (sp && sp.length) PURCHASE_ORDERS = sp; }
+
+function renderWBLTracker() {
+  // wblLogHours() inserts an inline "+ Hours" popover directly into this
+  // tbody, outside the normal render cycle — the search/filter controls
+  // above both call this function on every keystroke/change, and the
+  // innerHTML rebuild below used to silently wipe an open popover (and
+  // whatever hours the user had already typed) with no warning. Capture
+  // it here and reopen it after the rebuild if that student is still
+  // visible under the new filter.
+  const openPopover = document.querySelector('[id^="wbl-hrs-popover-"]');
+  let reopenId = null, reopenVal = '';
+  if (openPopover) {
+    reopenId = openPopover.id.slice('wbl-hrs-popover-'.length);
+    const inp = document.getElementById('wbl-hrs-input-' + reopenId);
+    reopenVal = inp ? inp.value : '';
+  }
+
+  const statusF = document.getElementById('wbl-filter-status').value;
+  const search  = (document.getElementById('wbl-search').value||'').toLowerCase();
+
+  const filtered = WBL_STUDENTS.filter(s => {
+    const status = wblStudentStatus(s);
+    if (statusF && status !== statusF) return false;
+    const name = `${s.fname} ${s.lname}`.toLowerCase();
+    if (search && !name.includes(search) && !s.role.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  // Update stats
+  document.getElementById('wbl-stat-enrolled').textContent  = WBL_STUDENTS.length;
+  document.getElementById('wbl-stat-agreement').textContent = WBL_STUDENTS.filter(s=>s.agreement==='signed'||s.agreement==='returned').length;
+  const avgH = WBL_STUDENTS.length ? Math.round(WBL_STUDENTS.reduce((a,s)=>a+Number(s.hours),0)/WBL_STUDENTS.length) : 0;
+  document.getElementById('wbl-stat-hours').textContent   = avgH;
+  document.getElementById('wbl-stat-reflect').textContent = WBL_STUDENTS.filter(s=>s.reflects>=1).length;
+
+  const ROLE_COLORS = {
+    'Store Manager':'#1a3560','Assistant Manager':'#0369a1','Buyer / Inventory':'#065f46',
+    'Cashier':'#7c3aed','Marketing Lead':'#be185d','Visual Merchandiser':'#b45309',
+    'Customer Service Rep':'#0e7490','Finance / Bookkeeper':'#15803d','General Staff':'#6b7280'
+  };
+
+  const tbody = document.getElementById('wbl-table-body');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:2rem;color:var(--muted)">No students match your filters.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(s => {
+    const status   = wblStudentStatus(s);
+    const pct      = Math.min(100, Math.round((Number(s.hours)/90)*100));
+    const agColor  = s.agreement==='signed'||s.agreement==='returned' ? '#15803d' : '#d97706';
+    const agLabel  = {pending:'⬜ Pending', signed:'✅ Signed', returned:'📬 Returned'}[s.agreement] || s.agreement;
+    // Reuse the app's shared .status st-* pill classes (Trips/Slips use the
+    // same ones) instead of one-off colored text — "on track"/"at risk"/
+    // "not started" is the same semantic shape as a trip's status badge.
+    const stClass  = {ontrack:'st-approved','on-track':'st-approved','needs-attention':'st-pending','not-started':'st-urgent'}[status] || 'st-planned';
+    const stLabel  = {'on-track':'✅ On Track','needs-attention':'⚠️ Needs Attention','not-started':'🔴 Not Started'}[status] || status;
+    const rColor   = ROLE_COLORS[s.role] || '#6b7280';
+    return `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:.55rem .75rem;font-weight:600;color:var(--navy)">${escH(s.fname)} ${escH(s.lname)}<div style="font-size:.68rem;color:var(--muted)">Period ${escH(s.period)}</div></td>
+      <td style="padding:.55rem .75rem"><span style="background:${rColor};color:#fff;font-size:.65rem;padding:2px 8px;border-radius:10px;font-weight:600;white-space:nowrap">${escH(s.role)}</span></td>
+      <td style="padding:.55rem .75rem;font-size:.78rem;color:${agColor};font-weight:600">${agLabel}</td>
+      <td style="padding:.55rem .75rem">
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <div style="flex:1;background:#e5e7eb;border-radius:4px;height:6px;min-width:60px">
+            <div style="width:${pct}%;background:${pct>=100?'#15803d':pct>=60?'#0369a1':'#d97706'};height:6px;border-radius:4px;transition:width .3s"></div>
+          </div>
+          <span style="font-size:.73rem;font-weight:700;color:var(--navy);white-space:nowrap">${s.hours}<span style="color:var(--muted);font-weight:400">/90h</span></span>
+        </div>
+      </td>
+      <td style="padding:.55rem .75rem;text-align:center">
+        <span style="font-family:'DM Mono',monospace;font-size:.8rem;font-weight:700;color:${s.reflects>=1?'#15803d':'#dc2626'}">${s.reflects}</span>
+      </td>
+      <td style="padding:.55rem .75rem"><span class="status ${stClass}" style="font-size:.65rem">${stLabel}</span></td>
+      <td style="padding:.55rem .75rem;white-space:nowrap">
+        <button onclick="openWBLEditStudent('${s.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:var(--navy);color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:3px">Edit</button>
+        <button onclick="wblLogHours('${s.id}')" style="font-size:.7rem;padding:.2rem .5rem;background:#0369a1;color:#fff;border:none;border-radius:4px;cursor:pointer;margin-right:3px">+ Hours</button>
+        <button onclick="deleteWBLStudent('${s.id}')" aria-label="Remove ${escH(s.fname)} ${escH(s.lname)} from WBL tracker" style="font-size:.7rem;padding:.2rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+
+  // Reopen the popover captured at the top of this function, restoring
+  // whatever the user had already typed — only if that student is still
+  // visible under the current filter/search.
+  if (reopenId && filtered.some(s => String(s.id) === reopenId)) {
+    wblLogHours(reopenId);
+    const inp = document.getElementById('wbl-hrs-input-' + reopenId);
+    if (inp) inp.value = reopenVal;
+  }
+}
+
+function wblStudentStatus(s) {
+  const hrs = Number(s.hours);
+  const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
+  if (hrs === 0 && !hasAgreement) return 'not-started';
+  // FIXED: was hrs < 30 — a stale threshold with no stated rationale that
+  // contradicted the HQWBL card and progress bar a few screens over, both
+  // of which already correctly use the real program requirement (90 logged
+  // hours across 4 semesters, confirmed with the program owner). A static
+  // 30-hour gate also can't represent a real per-semester pacing check —
+  // WBL_STUDENTS carries no enrollment-date/semester field to prorate
+  // against — so this was never doing partial-progress pacing, just
+  // disagreeing with the real requirement. See leader-hub finding #4.
+  if (!hasAgreement || hrs < 90 || s.reflects < 1) return 'needs-attention';
+  return 'on-track';
+}
+
+function openWBLAddStudent() {
+  document.getElementById('wbl-modal-title').textContent = 'Add WBL Student';
+  document.getElementById('wbl-edit-id').value = '';
+  document.getElementById('wbl-fname').value = '';
+  document.getElementById('wbl-lname').value = '';
+  document.getElementById('wbl-role').value = 'General Staff';
+  document.getElementById('wbl-hours').value = 0;
+  document.getElementById('wbl-reflects').value = 0;
+  document.getElementById('wbl-agreement').value = 'pending';
+  document.getElementById('wbl-period').value = '2';
+  document.getElementById('wbl-student-modal').style.display = 'block';
+}
+
+function openWBLEditStudent(id) {
+  const s = WBL_STUDENTS.find(x=>x.id===id);
+  if (!s) return;
+  document.getElementById('wbl-modal-title').textContent = `Edit — ${s.fname} ${s.lname}`;
+  document.getElementById('wbl-edit-id').value = id;
+  document.getElementById('wbl-fname').value = s.fname;
+  document.getElementById('wbl-lname').value = s.lname;
+  document.getElementById('wbl-role').value = s.role;
+  document.getElementById('wbl-hours').value = s.hours;
+  document.getElementById('wbl-reflects').value = s.reflects;
+  document.getElementById('wbl-agreement').value = s.agreement;
+  document.getElementById('wbl-period').value = s.period;
+  document.getElementById('wbl-student-modal').style.display = 'block';
+}
+
+function saveWBLStudent() {
+  const id   = document.getElementById('wbl-edit-id').value;
+  const data = {
+    fname:     document.getElementById('wbl-fname').value.trim(),
+    lname:     document.getElementById('wbl-lname').value.trim(),
+    role:      document.getElementById('wbl-role').value,
+    hours:     Number(document.getElementById('wbl-hours').value)||0,
+    reflects:  Number(document.getElementById('wbl-reflects').value)||0,
+    agreement: document.getElementById('wbl-agreement').value,
+    period:    document.getElementById('wbl-period').value,
+  };
+  if (!data.fname || !data.lname) { _showToast('Please enter a first and last name.', 2500, '#991b1b'); return; }
+  if (id) {
+    const idx = WBL_STUDENTS.findIndex(s=>s.id===id);
+    if (idx>=0) WBL_STUDENTS[idx] = {...WBL_STUDENTS[idx],...data};
+  } else {
+    WBL_STUDENTS.push({id:'wbl'+Date.now(), ...data});
+  }
+  persistWBL();
+  closeWBLStudentModal();
+  renderWBLTracker();
+  _showToast(id ? `✅ ${data.fname} ${data.lname} updated` : `✅ ${data.fname} ${data.lname} added to WBL tracker`);
+}
+
+function closeWBLStudentModal() {
+  document.getElementById('wbl-student-modal').style.display = 'none';
+}
+
+function wblLogHours(id) {
+  // Show inline hour-input popover anchored to the + Hours button
+  // Removes any existing popover first (toggle behaviour)
+  const existing = document.getElementById('wbl-hrs-popover-' + id);
+  if (existing) { existing.remove(); return; }
+
+  const s = WBL_STUDENTS.find(x => x.id === id);
+  if (!s) return;
+
+  // Build a compact inline popover
+  const pop = document.createElement('div');
+  pop.id = 'wbl-hrs-popover-' + id;
+  pop.style.cssText = 'display:inline-flex;align-items:center;gap:.3rem;margin-left:.4rem;' +
+    'background:#e0f2fe;border:1px solid #7dd3fc;border-radius:6px;padding:.2rem .4rem;vertical-align:middle';
+  pop.innerHTML =
+    `<span style="font-size:.68rem;color:#0369a1;white-space:nowrap">${escH(s.fname)}:</span>` +
+    `<input id="wbl-hrs-input-${escH(id)}" type="number" min="0" step="0.5" placeholder="hrs"` +
+    ` style="width:52px;font-size:.75rem;border:1px solid #7dd3fc;border-radius:4px;padding:.1rem .3rem;text-align:center" />` +
+    `<button onclick="wblLogHoursConfirm('${escJsAttr(id)}')"` +
+    ` style="background:#0369a1;color:#fff;border:none;border-radius:4px;padding:.15rem .4rem;font-size:.72rem;cursor:pointer">✓</button>` +
+    `<button onclick="document.getElementById('wbl-hrs-popover-${id}').remove()"` +
+    ` style="background:none;border:none;color:#64748b;cursor:pointer;font-size:.8rem;padding:0 .1rem">✕</button>`;
+
+  // Insert popover after the clicked button
+  const btn = document.querySelector('[onclick="wblLogHours(\''+id+'\')"]') ||
+              document.querySelector(`[onclick="wblLogHours('${id}')"]`);
+  if (btn && btn.parentNode) {
+    btn.parentNode.insertBefore(pop, btn.nextSibling);
+  }
+  // Focus the input
+  setTimeout(() => {
+    const inp = document.getElementById('wbl-hrs-input-' + id);
+    if (inp) { inp.focus(); inp.addEventListener('keydown', e => { if (e.key === 'Enter') wblLogHoursConfirm(id); }); }
+  }, 30);
+}
+
+function wblLogHoursConfirm(id) {
+  const s = WBL_STUDENTS.find(x => x.id === id);
+  if (!s) return;
+  const inp = document.getElementById('wbl-hrs-input-' + id);
+  if (!inp) return;
+  const add = parseFloat(inp.value);
+  if (isNaN(add) || add < 0) { _showToast('Enter a valid number of hours', 2500, '#991b1b'); return; }
+  if (add === 0) { document.getElementById('wbl-hrs-popover-' + id)?.remove(); return; }
+
+  s.hours = Math.round((Number(s.hours) + add) * 10) / 10;
+  persistWBL();
+
+  // Log for Brag Board weekly wins
+  const _wblHLog = LS.get('lh_wbl_hours_log', []);
+  _wblHLog.unshift({ student: `${s.fname} ${s.lname}`, added: add, total: s.hours, ts: new Date().toISOString() });
+  LS.set('lh_wbl_hours_log', _wblHLog.slice(0, 200));
+
+  _showToast(`+${add}h logged for ${s.fname} — total ${s.hours}h`, 2800, '#0369a1');
+  renderWBLTracker();
+  refreshNextAction();
+}
+
+function deleteWBLStudent(id) {
+  const s = WBL_STUDENTS.find(x=>x.id===id);
+  if (!s) return;
+  const _saved = [...WBL_STUDENTS];
+  WBL_STUDENTS = WBL_STUDENTS.filter(x=>x.id!==id);
+  persistWBL();
+  renderWBLTracker();
+  _undoToast(`${(s.fname+' '+s.lname).slice(0,40)} removed from WBL tracker`, () => {
+    WBL_STUDENTS = _saved;
+    persistWBL();
+    renderWBLTracker();
+  });
+}
+
+// ── SBE CHECKLIST ─────────────────────────────────────────
+function renderSBEChecklist() {
+  const container = document.getElementById('sbe-checklist');
+  // sbeToggle() now also fires from the Dashboard's Quick Log widget, where
+  // this element isn't mounted — every other lookup in this function was
+  // already null-guarded, this one wasn't.
+  if (!container) return;
+  const done      = SBE_ELEMENTS.filter(e=>(SBE_STATUS[e.id]||{}).done).length;
+  const pct       = Math.round((done/SBE_ELEMENTS.length)*100);
+
+  // Update donut
+  const arc = document.getElementById('sbe-progress-arc');
+  if (arc) arc.setAttribute('stroke-dasharray', `${pct} ${100-pct}`);
+  const pctEl = document.getElementById('sbe-progress-pct');
+  if (pctEl) pctEl.textContent = pct+'%';
+  const cntEl = document.getElementById('sbe-complete-count');
+  if (cntEl) cntEl.textContent = `${done} / ${SBE_ELEMENTS.length}`;
+  const badge = document.getElementById('sbe-status-badge');
+  if (badge) {
+    if (pct===100)      { badge.textContent='✅ Approved'; badge.style.background='#dcfce7'; badge.style.color='#15803d'; }
+    else if (pct >= 60) { badge.textContent='🔄 In Progress'; badge.style.background='#eff6ff'; badge.style.color='#0369a1'; }
+    else                { badge.textContent='🔴 Not Started'; badge.style.background='#fee2e2'; badge.style.color='#dc2626'; }
+  }
+
+  container.innerHTML = SBE_ELEMENTS.map((el,i) => {
+    const st    = SBE_STATUS[el.id] || {};
+    const isDone= !!st.done;
+    return `<div style="background:${isDone?'#f0fdf4':'#fff'};border:1px solid ${isDone?'#86efac':'var(--border)'};border-radius:8px;padding:.75rem 1rem;display:flex;gap:.85rem;align-items:flex-start;transition:all .2s">
+      <div onclick="sbeToggle('${el.id}')" style="cursor:pointer;flex-shrink:0;margin-top:1px">
+        <div style="width:22px;height:22px;border-radius:6px;border:2px solid ${isDone?'#15803d':'#d1d5db'};background:${isDone?'#15803d':'#fff'};display:flex;align-items:center;justify-content:center;font-size:.75rem;color:#fff;transition:all .2s">${isDone?'✓':''}</div>
+      </div>
+      <div style="flex:1">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;flex-wrap:wrap">
+          <div style="font-weight:700;font-size:.82rem;color:${isDone?'#15803d':'var(--navy)'};text-decoration:${isDone?'none':'none'}">${i+1}. ${el.label}</div>
+          <span style="font-size:.65rem;background:#f1f5f9;color:var(--muted);padding:2px 8px;border-radius:8px;flex-shrink:0">Owner: ${el.owner}</span>
+        </div>
+        <div style="font-size:.74rem;color:var(--muted);margin-top:.2rem;line-height:1.5">${el.desc}</div>
+        <div style="margin-top:.5rem;display:flex;gap:.5rem;align-items:center">
+          <input placeholder="Add a note…" value="${st.notes||''}" oninput="sbeNoteInput('${el.id}',this.value)" style="flex:1;font-size:.72rem;padding:.25rem .5rem;border:1px solid var(--border);border-radius:4px;max-width:320px">
+          <button onclick="sbeToggle('${el.id}')" style="font-size:.7rem;padding:.25rem .6rem;background:${isDone?'#fee2e2':'#dcfce7'};color:${isDone?'#dc2626':'#15803d'};border:none;border-radius:4px;cursor:pointer;white-space:nowrap">${isDone?'Mark Incomplete':'Mark Complete'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function sbeToggle(id) {
+  // A checkbox click on one row used to be able to win a race against
+  // another row's still-debouncing note (see _flushSbeNote()) — the
+  // renderSBEChecklist() rebuild below reads straight from SBE_STATUS, so
+  // a note typed within the last 300ms and not yet committed was silently
+  // discarded when it rebuilt from the stale value.
+  _flushSbeNote();
+  SBE_STATUS[id] = SBE_STATUS[id] || {};
+  SBE_STATUS[id].done = !SBE_STATUS[id].done;
+  persistSBE();
+  renderSBEChecklist();
+  renderQuickLog(); // no-op if the Dashboard's Quick Log isn't in the DOM right now
+}
+
+function sbeNote(id, val) {
+  SBE_STATUS[id] = SBE_STATUS[id] || {};
+  SBE_STATUS[id].notes = val;
+  persistSBE();
+}
+
+// Debounced on every keystroke rather than committing only on blur — a
+// checkbox click on a different row (sbeToggle()) rebuilds this whole
+// checklist via renderSBEChecklist(), which used to silently discard
+// whatever hadn't been blurred yet in another row's note field.
+let _sbeNoteTimer = null;
+let _sbeNotePending = null; // {id, val} — not yet committed to SBE_STATUS
+function sbeNoteInput(id, val) {
+  _sbeNotePending = { id, val };
+  clearTimeout(_sbeNoteTimer);
+  _sbeNoteTimer = setTimeout(() => { sbeNote(id, val); _sbeNotePending = null; }, 300);
+}
+
+// Commits a pending debounced note immediately — call this before anything
+// that rebuilds the checklist from SBE_STATUS (sbeToggle, sbeCheckAll,
+// sbeReset), so a fast click within the 300ms debounce window can no
+// longer discard a note that just hasn't committed yet.
+function _flushSbeNote() {
+  if (!_sbeNotePending) return;
+  clearTimeout(_sbeNoteTimer);
+  sbeNote(_sbeNotePending.id, _sbeNotePending.val);
+  _sbeNotePending = null;
+}
+
+function sbeCheckAll() {
+  // Compliance checklist, whole-list impact — sbeReset() right below
+  // already confirms before clearing everything; marking everything
+  // "done" at once deserves the same guard.
+  _showConfirm('Mark all SBE checklist items as done? This affects every item on the list.', () => {
+    _flushSbeNote();
+    SBE_ELEMENTS.forEach(e => { SBE_STATUS[e.id] = SBE_STATUS[e.id]||{}; SBE_STATUS[e.id].done = true; });
+    persistSBE();
+    renderSBEChecklist();
+  }, { confirmLabel: 'Mark All Done', danger: false, ariaLabel: 'Mark all SBE checklist items done' });
+}
+
+function sbeReset() {
+  _showConfirm('Reset all SBE checklist items?', () => {
+    _flushSbeNote();
+    SBE_STATUS = {};
+    persistSBE();
+    renderSBEChecklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset SBE checklist' });
+}
+
+function sbePrintChecklist() {
+  const done = SBE_ELEMENTS.filter(e=>(SBE_STATUS[e.id]||{}).done).length;
+  const rows = SBE_ELEMENTS.map((e,i)=>{
+    const st   = SBE_STATUS[e.id]||{};
+    const note = st.notes ? `<br><em style="color:#666;font-size:11px">Note: ${st.notes}</em>` : '';
+    return `<tr style="border-bottom:1px solid #e5e7eb">
+      <td style="padding:8px;text-align:center">${st.done?'✅':'⬜'}</td>
+      <td style="padding:8px;font-weight:600">${i+1}. ${e.label}${note}</td>
+      <td style="padding:8px;color:#666;font-size:12px">${e.owner}</td>
+    </tr>`;
+  }).join('');
+  const w = window.open('','_blank');
+  w.document.write(`<html><head><title>SBE Checklist — Cavalier Shop</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;font-size:13px}table{width:100%;border-collapse:collapse}th{background:#1a3560;color:#fff;padding:8px;text-align:left}</style></head><body>
+    <h2 style="color:#1a3560">🏪 SBE Approval Checklist — Cavalier Shop (8177)</h2>
+    <p style="color:#666">Progress: ${done}/${SBE_ELEMENTS.length} elements complete | Printed: ${fd(new Date().toISOString().slice(0,10))}</p>
+    <table><thead><tr><th style="width:60px">Done</th><th>Element</th><th style="width:180px">Owner</th></tr></thead>
+    <tbody>${rows}</tbody></table>
+    <p style="margin-top:1.5rem;font-size:11px;color:#999">Per CCPS SBE Tool Kit — Group III Procedures. Approval required by school principal.</p>
+  </body></html>`);
+  w.print();
+}
+
+
+
+function wblExport() {
+  const rows = WBL_STUDENTS.map(s =>
+    [s.fname+' '+s.lname, s.role, 'Period '+s.period, s.agreement, s.hours+'h', s.reflects+' reflections', wblStudentStatus(s)].join('\t')
+  ).join('\n');
+  const header = 'Student\tRole\tPeriod\tAgreement\tHours\tReflections\tStatus';
+  const blob   = new Blob([header+'\n'+rows], {type:'text/plain'});
+  const a      = document.createElement('a');
+  a.href       = URL.createObjectURL(blob);
+  a.download   = 'WBL_Tracker_Export.txt';
+  a.click();
+}
+
+
+// ============================================================
+// LESSON PLANS
+// ============================================================
+
+const LESSON_PLANS = [
+  // ── 8177 SEEM MANAGEMENT ── Q1
+  {id:'lp_8177_01', course:'8177', q:1, title:'The Business of the Game',               subtitle:'Franchise Analysis',                          comps:[15,23,24,25,26,27],           docId:'1s8tcXzub_I9DsjESTAT18lJN36uiJu70MLGfSGKOdgo', assess:[{label:'Franchise Analysis Presentation',type:'summative',pct:20}]},
+  {id:'lp_8177_02', course:'8177', q:1, title:'The Brand Board',                         subtitle:'Brand Identity & Atmospherics',                comps:[1,11,28,29,30],               docId:'1gHqibALOtZTfn5maqRmlOKLhPJbIoEPae6jB2iGdhzw', assess:[{label:'Brand Board — Draft',type:'formative',pct:null},{label:'Brand Board — Final Product',type:'summative',pct:20}]},
+  {id:'lp_8177_03', course:'8177', q:1, title:'The 4 Ps of the Fan Experience',          subtitle:'Marketing Mix',                                comps:[10,11,43,44,45],              docId:'13WtsgbBskVffQWII722lhPYObz0qaGjCbC__b-XqL94', assess:[{label:'The 4 Ps Fan Experience Map',type:'formative',pct:null}]},
+  {id:'lp_8177_04', course:'8177', q:1, title:'The Battle for the Entertainment Dollar', subtitle:'Consumer Motivation & Competition',             comps:[27,28,29,30],                 docId:'19mwLqn9Bk7-WAMmvWkM20lxvilvfL7wC4E9zDdJC1_Q'},
+  {id:'lp_8177_05', course:'8177', q:1, title:"The Millionaire's Strike",                subtitle:'Organized Labor & Economics',                  comps:[29,30,31,35,38],              docId:'1Nk1MHsWMVDOGhJaZ01_nTC1HcdWXnOyegwtEVZDD6O0', assess:[{label:"The Millionaire's Strike — Analysis",type:'summative',pct:20}]},
+  // ── 8177 SEEM MANAGEMENT ── Q2
+  {id:'lp_8177_06', course:'8177', q:2, title:'Promotional Flyer Design',                subtitle:'Venue Promotion & Graphic Design',             comps:[1,11,54,55,56],               docId:'1f0QcMeSP6_o91TVu6t_PeqQA-RaWkk6NSdy2Z6I1tLk', assess:[{label:'Promotional Flyer',type:'formative',pct:null}]},
+  {id:'lp_8177_07', course:'8177', q:2, title:'The Hype Machine',                        subtitle:'Promotional Campaigns & the Promo Mix',        comps:[64,65,66,67,68],              docId:'1JZtdD-0P98SHO3FIDRZv3eRVkudiwZshU6cGbntFP7g', assess:[{label:'Product Pitch Outline',type:'formative',pct:null}]},
+  {id:'lp_8177_08', course:'8177', q:2, title:'School Store Planogram',                  subtitle:'Space Planning & Customer Experience',         comps:[1,11,22,85,86],               docId:'1jkUEDcEoj1uh5oMqwuOTNYJEo3dF6FCg78m_4yKW3_Y', assess:[{label:'Store Planogram',type:'formative',pct:null}]},
+  {id:'lp_8177_09', course:'8177', q:2, title:'CHHS School Store Company Description',   subtitle:'USP, Brand Stewardship & Management Writing',  comps:[11,21,23,81,93],              docId:'1WXLq-KtiORTk6w0s5kOFJAfTatXENnoo1DQONTf-79U', assess:[{label:'CHHS School Store Company Description',type:'summative',pct:20}]},
+  {id:'lp_8177_10', course:'8177', q:2, title:'The Product Pitch & Financial Analysis',  subtitle:'Merchandise Strategy & Revenue',               comps:[2,11,37,38,43],               docId:'1vw12XjsDR26-NwMNDHq7kbG6NwD1sjoZAmHWgOiw4AM', assess:[{label:'The Product Pitch & Financial Analysis',type:'summative',pct:20}]},
+  {id:'lp_8177_11', course:'8177', q:2, title:'The Economics of the Arena',              subtitle:'Dynamic Pricing',                              comps:[31,32,33,34],                 docId:'1M_3PGt3SswpwegGfIfwIlQcKqPZ2fFr9XdzGTeto9Pk'},
+  {id:'lp_8177_12', course:'8177', q:2, title:'The Front Lines',                         subtitle:'Customer Service & Sales',                     comps:[9,58,59,60,61,62],            docId:'1ukY1mNO0nGMvCqLxhr3p5aFgNIkl3EtDNx3VmAi2WMA'},
+  {id:'lp_8177_13', course:'8177', q:2, title:'The Franchise Evolution',                 subtitle:'Product Life Cycle, Bundling & Licensing',     comps:[47,48,49,50,51,54,55],        docId:'1n0069b8XGD9dqVBy1W8vlaK-66AnSqCXV0kHzUPfBFY'},
+  {id:'lp_8177_14', course:'8177', q:2, title:'Employee Handbook & Venue Operations',    subtitle:'SOPs, Roles & Workplace Etiquette',            comps:[4,5,10,14,20,85,95,107,108],  docId:'12u7QHEpW9PsyAu4gnV9gPlnoHROwJEL_gkVq2rkjHdU', assess:[{label:'Employee Handbook & Venue Operations',type:'summative',pct:20}]},
+  {id:'lp_8177_15', course:'8177', q:2, title:'The NIL Deal',                            subtitle:'Endorsements & Digital Sponsorships',          comps:[20,52,83,84],                 docId:'1TQQg3sMYutB7kY-YLlL4cIddmfM-ofctGBeBvx_6aFE'},
+  // ── 8177 SEEM MANAGEMENT ── Q3
+  {id:'lp_8177_16', course:'8177', q:3, title:'Market Research & Survey Design',         subtitle:'Target Market, Bias & Google Forms',           comps:[2,18,42,46,93],               docId:'1r5NOu0wy8oTicILis_Ycvc3z20hVzw_dzM6mWbaDm7c', assess:[{label:'Survey Design Worksheet',type:'formative',pct:null}]},
+  {id:'lp_8177_17', course:'8177', q:3, title:'Survey Deployment & Statistical Significance', subtitle:'Data Collection, Quotas & Fieldwork',   comps:[4,7,14,42,43],                docId:'1LtZAvPG8Lg8cGL56VHHHt0n3NbOyddeHr1edqqbnRgo'},
+  {id:'lp_8177_18', course:'8177', q:3, title:'Survey Results Analysis',                 subtitle:'Data Into Management Decisions',               comps:[2,11,77,78,79,80],            docId:'14lw-M4ckGVhkDC4X2nbsKhr4XTsglHLynx8VcC09YNE', assess:[{label:'Survey Results Analysis — Report',type:'summative',pct:20}]},
+  {id:'lp_8177_19', course:'8177', q:3, title:'The Back Room',                           subtitle:'Distribution, Inventory & Supply Chain',      comps:[57,58,59,60,61,62],           docId:'12OoebXz7qYDqyNNnRoKTEAE1zQEQyYA6ezpmN1Nq9j8'},
+  {id:'lp_8177_20', course:'8177', q:3, title:'The Richmond Festival Blueprint',         subtitle:'Event Planning Simulation',                    comps:[1,2,10,93,94,95,96,97,98],    docId:'1AiMQZbGX9KTijjpPczQQEieNJtEDjWM07JMMr-Po6oQ', assess:[{label:'Festival Blueprint Draft',type:'formative',pct:null}]},
+  {id:'lp_8177_21', course:'8177', q:3, title:'Secure the Perimeter',                    subtitle:'Venue Security & Emergency Preparedness',      comps:[87,88,89,90,91],              docId:'100axmCYwo9g99rKCowRdptnIn5zz3kgiqJJ7mDG70UA'},
+  {id:'lp_8177_22', course:'8177', q:3, title:'The Sponsorship Negotiation',             subtitle:'Sales Strategy & SEL',                        comps:[7,8,9,13,14,66],              docId:'1pOCQEFXPKDLQd7fDwCFLbNxNOytcEKxvyoPHoq4yo5M', assess:[{label:'Sponsorship Negotiation Notes',type:'formative',pct:null}]},
+  {id:'lp_8177_23', course:'8177', q:3, title:'Tournament Sponsorship Proposal',         subtitle:'Persuasive Sales Writing',                     comps:[15,21,66,67,68],              docId:'1aXIsO8d05gcKSi4dztDh5co9gXW6evQgvOggf7039Y0', assess:[{label:'Tournament Sponsorship Proposal',type:'summative',pct:20}]},
+  {id:'lp_8177_24', course:'8177', q:3, title:'The Ticket Office',                       subtitle:'Sales Management, Quotas & Ethics',            comps:[72,73,74,75,76],              docId:'1zgdv4arUQ1uFsSYlkpwez-1hoQWeo41RET4hbNudccQ'},
+  {id:'lp_8177_25', course:'8177', q:3, title:'The Bottom Line',                         subtitle:'Event Budgeting & Finance',                    comps:[16,88,89,90,91,92],           docId:'180AgpuwtZPEnxOZ8vpT_WllqUUnzs2VK8YYxaPm8HAI', assess:[{label:'The Bottom Line — Event Budget',type:'summative',pct:20}]},
+  // ── 8177 SEEM MANAGEMENT ── Q4
+  {id:'lp_8177_26', course:'8177', q:4, title:'The Stadium Economy',                     subtitle:'Macroeconomics & Venue Funding',               comps:[32,33,34,35,36],              docId:'1ZnZbRj9b8cIVqsq0zqNNvnfZYlInKXEexOIED-af-vI', assess:[{label:'Stadium Economy Analysis',type:'formative',pct:null}]},
+  {id:'lp_8177_27', course:'8177', q:4, title:'The Global Expansion',                    subtitle:'International Sports & Marketing',             comps:[39,40,41],                    docId:'152qf4exhgXR_0T94lmlj73ZEsW0zZ5O4ze5Vcdrv018', assess:[{label:'The Global Expansion — Market Analysis',type:'summative',pct:20}]},
+  {id:'lp_8177_28', course:'8177', q:4, title:'"What is Branding?" Reflection Essay',    subtitle:'Year-End Synthesis',                           comps:[1,2,11],                      docId:'12mQOmPBP2Rtpm5xWaxV7lANCTHY6wN7SL5PF1hDyaEs', assess:[{label:'Branding Essay Outline',type:'formative',pct:null},{label:'"What is Branding?" Essay — Final',type:'summative',pct:20}]},
+  {id:'lp_8177_29', course:'8177', q:4, title:'The Final Whistle',                       subtitle:'Evaluating Success & Career Readiness',        comps:[102,103,104,105,106,107,108], docId:'1G6IDHAy2wX4Pq01F1oqz_ba06u6d0fRgP5HH-qZjXuE', assess:[{label:'The Final Whistle — Career Readiness Eval',type:'summative',pct:20}]},
+  // ── 6115 PRINCIPLES OF BUSINESS & MARKETING ──
+  {id:'lp_6115_01', course:'6115', q:1, title:'Value is Personal', subtitle:'Collage Activity', comps:[87,1,7,8,38], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA'},
+  {id:'lp_6115_02', course:'6115', q:1, title:'Marketing is Creating Value & Utility', subtitle:'The Utility Framework', comps:[19,2,11,38], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA'},
+  {id:'lp_6115_03', course:'6115', q:1, title:'Economic Foundations & Competition', subtitle:'The Marketplace Simulation', comps:[29,31,33,36], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA'},
+  {id:'lp_6115_04', course:'6115', q:1, title:'Business Structures & The Cycle', subtitle:'The Cycle Chart', comps:[27,34,38], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA', assess:[{label:'Business Structures Quiz',type:'summative',pct:20}]},
+  {id:'lp_6115_05', course:'6115', q:1, title:'Consumer Power & Historic Boycotts Pt. 1', subtitle:'The Boycott Files', comps:[6,8,11,23], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA', assess:[{label:'Consumer Power Research',type:'formative',pct:null}]},
+  {id:'lp_6115_06', course:'6115', q:1, title:'Anatomy of a Boycott Pt. 2', subtitle:'Cause & Effect', comps:[37,6,4,23], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA'},
+  {id:'lp_6115_07', course:'6115', q:1, title:'The Invisible Hand', subtitle:'Supply & Demand', comps:[37,30,19], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA', assess:[{label:'Supply & Demand Diagram',type:'formative',pct:null}]},
+  {id:'lp_6115_08', course:'6115', q:1, title:'Market Relationships', subtitle:'Elasticity', comps:[37,2,36], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA'},
+  {id:'lp_6115_09', course:'6115', q:1, title:'Diagnosing the Economy', subtitle:'Economic Indicators', comps:[34,11,19], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA', assess:[{label:'Economic Indicators Chart',type:'summative',pct:20}]},
+  {id:'lp_6115_10', course:'6115', q:1, title:'Marketing Through the Storm', subtitle:'Strategy Under Pressure', comps:[35,2,27], docId:'1mgCxSsH6xIVgd77PmCTsZhtkuR4C1N99p1wmey5WSDA', assess:[{label:'Marketing Through the Storm Analysis',type:'summative',pct:20}]},
+  {id:'lp_6115_11', course:'6115', q:2, title:'The Magnificent Seven', subtitle:'Core Functions Defined', comps:[38,39,40,41,42,43], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_12', course:'6115', q:2, title:'Functions in Action', subtitle:'Ray Wilson Case Study', comps:[38,39,40,41,42,43,44,9], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_13', course:'6115', q:2, title:'The Corporate Autopsy', subtitle:'Research Phase', comps:[15,4,11,18], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4', assess:[{label:'Corporate Autopsy Research',type:'formative',pct:null}]},
+  {id:'lp_6115_14', course:'6115', q:2, title:'Diagnosing the Patient', subtitle:'Analysis Phase', comps:[38,39,40,41,42,43,2,11], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4', assess:[{label:'Turnaround Plan Checkpoint',type:'formative',pct:null}]},
+  {id:'lp_6115_15', course:'6115', q:2, title:'The Turnaround Plan', subtitle:'Presentation Best Practices', comps:[1,7,21,20], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4', assess:[{label:'The Turnaround Plan Presentation',type:'summative',pct:20}]},
+  {id:'lp_6115_16', course:'6115', q:2, title:'Brand Identity & The Taste Test', subtitle:'Perception vs. Reality', comps:[42,76,11], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_17', course:'6115', q:2, title:'Brand Strategies', subtitle:'Growth & Extension', comps:[42,11,1], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_18', course:'6115', q:2, title:'Brand Creation Lab', subtitle:'The Random Word Challenge', comps:[1,42,25,43], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4', assess:[{label:'Brand Creation Lab — Final',type:'summative',pct:20}]},
+  {id:'lp_6115_19', course:'6115', q:2, title:'The Ad Autopsy', subtitle:'Deconstructing Promotion', comps:[54,43,15,7], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_20', course:'6115', q:2, title:'The Creative Studio', subtitle:'Ad Design Lab', comps:[54,1,18,11], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4', assess:[{label:'The Creative Studio Ad Design',type:'formative',pct:null}]},
+  {id:'lp_6115_21', course:'6115', q:2, title:'The Medium is the Message', subtitle:'Media Channels', comps:[53,55,11,15], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_22', course:'6115', q:2, title:'The Price of Eyeballs', subtitle:'CPM Math & Budgeting', comps:[56,19,14,11], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4', assess:[{label:'CPM Math Practice',type:'formative',pct:null}]},
+  {id:'lp_6115_23', course:'6115', q:2, title:'The Sensory Store', subtitle:'Merchandising', comps:[57,59,9], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_24', course:'6115', q:2, title:'The Architect', subtitle:'Planograms', comps:[60,58,1,19], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_25', course:'6115', q:2, title:'The Perfect Recipe', subtitle:'Promotional Mix', comps:[51,43,61,62,63,64,11], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4'},
+  {id:'lp_6115_26', course:'6115', q:2, title:'Mix Masters', subtitle:'VA Fortune 500 Analysis', comps:[51,23,15,11], docId:'1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4', assess:[{label:'Mix Masters Analysis',type:'summative',pct:20}]},
+  {id:'lp_6115_27', course:'6115', q:3, title:'The Multi-Million Dollar Minute', subtitle:'Super Bowl Ad Analysis', comps:[43,11,53,2], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4', assess:[{label:'Super Bowl Ad Analysis',type:'formative',pct:null}]},
+  {id:'lp_6115_28', course:'6115', q:3, title:'The Pitch Room', subtitle:'Storyboard Lab', comps:[54,1,7,10], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4', assess:[{label:'The Pitch Room Storyboard',type:'summative',pct:20}]},
+  {id:'lp_6115_29', course:'6115', q:3, title:'The Better Mousetrap', subtitle:'Product Innovation', comps:[1,2,42,11,22], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4', assess:[{label:'Innovation Research',type:'formative',pct:null}]},
+  {id:'lp_6115_30', course:'6115', q:3, title:'The Disruption Detectives', subtitle:'Future Tech & Market Trends', comps:[15,23,11,13], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_31', course:'6115', q:3, title:'The Revolution Will Be Televised', subtitle:'Innovation History', comps:[1,7,20,18], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_32', course:'6115', q:3, title:'The Extended Marketing Mix', subtitle:'7Ps of Services', comps:[42,23,9,11], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_33', course:'6115', q:3, title:'The Price is Right', subtitle:'Pricing Strategies', comps:[41,30,15,19], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_34', course:'6115', q:3, title:'Pricing Psychology & Analysis', subtitle:'Anchoring, Charm & Strategy', comps:[41,37,2], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4', assess:[{label:'Pricing Strategy Application',type:'formative',pct:null}]},
+  {id:'lp_6115_35', course:'6115', q:3, title:'The Golden Rule of Business', subtitle:'Customer Service Foundations', comps:[9,46,10], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_36', course:'6115', q:3, title:'The Value Equation', subtitle:'Perceived vs. Actual Value', comps:[47,9,11], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_37', course:'6115', q:3, title:'The Sales Dojo', subtitle:'Role-Play & Objections', comps:[45,48,49,50,52], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4', assess:[{label:'The Sales Dojo Roleplay',type:'summative',pct:20}]},
+  {id:'lp_6115_38', course:'6115', q:3, title:'The Submarine Sonar', subtitle:'Market Research Intro', comps:[65,68,15], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_39', course:'6115', q:3, title:'Garbage In, Garbage Out', subtitle:'Survey Design', comps:[66,67,15,4,16,17], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4', assess:[{label:'Survey Design Draft',type:'formative',pct:null}]},
+  {id:'lp_6115_40', course:'6115', q:3, title:'The Middleman Paradox', subtitle:'Distribution Channels', comps:[70,69,38,11,24], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4'},
+  {id:'lp_6115_41', course:'6115', q:3, title:'Solving the Supply Chain', subtitle:'Case Study', comps:[69,2,70], docId:'1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4', assess:[{label:'Solving the Supply Chain — Case Study',type:'summative',pct:20}]},
+  {id:'lp_6115_42', course:'6115', q:4, title:'The Time Traveler', subtitle:'Career Research & Gap Analysis', comps:[89,12,15,11], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'Career Research',type:'formative',pct:null}]},
+  {id:'lp_6115_43', course:'6115', q:4, title:'You, Inc.', subtitle:'Résumé Building', comps:[91,21,20,15], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'You, Inc. — Résumé',type:'summative',pct:12}]},
+  {id:'lp_6115_44', course:'6115', q:4, title:'The Architecture of You', subtitle:'Personality Cards', comps:[87,93,1,21], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE'},
+  {id:'lp_6115_45', course:'6115', q:4, title:'The Hype Man', subtitle:'Cover Letter', comps:[92,21,89,20], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'The Hype Man — Cover Letter',type:'summative',pct:12}]},
+  {id:'lp_6115_46', course:'6115', q:4, title:'The Professional Breakup', subtitle:'Resignation & Professionalism', comps:[20,12,6,21], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE'},
+  {id:'lp_6115_47', course:'6115', q:4, title:'The \"Adulting\" Crash Course', subtitle:'Personal Finance Basics', comps:[77,78,79,80], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE'},
+  {id:'lp_6115_48', course:'6115', q:4, title:'The Big Idea', subtitle:'Capstone 1 — Elevator Pitch', comps:[1,7,2,21,3,5], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'The Big Idea — Elevator Pitch',type:'summative',pct:12}]},
+  {id:'lp_6115_49', course:'6115', q:4, title:'Know Your Enemy', subtitle:'Capstone 2 — Market Analysis', comps:[23,36,25,15], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'Capstone Checkpoint — Topic Approved',type:'formative',pct:null}]},
+  {id:'lp_6115_50', course:'6115', q:4, title:'The Structure', subtitle:'Capstone 3 — Ops & Org Chart', comps:[27,11,2], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'Business Plan Section Drafts',type:'formative',pct:null}]},
+  {id:'lp_6115_51', course:'6115', q:4, title:'Show Me the Money', subtitle:'Capstone 4 — Financials', comps:[81,19,41,82], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'Financial Worksheet',type:'formative',pct:null}]},
+  {id:'lp_6115_52', course:'6115', q:4, title:'The Final Sell', subtitle:'Capstone 5 — Executive Summary', comps:[20,21,14,96], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'The Final Sell — Executive Summary',type:'summative',pct:12}]},
+  {id:'lp_6115_53', course:'6115', q:4, title:'Protecting the Empire', subtitle:'Capstone 6 — Risk & Legal', comps:[71,72,73,74,75], docId:'1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE', assess:[{label:'Full Business Plan',type:'summative',pct:12}]},
+  // ── 8175 SPORTS MARKETING ──
+  {id:'lp_8175_01', course:'8175', q:1, title:'Evolution of Marketing', subtitle:'From Trade to TikTok', comps:[11,24,73], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_02', course:'8175', q:1, title:'Intrinsic Motivation', subtitle:'The Passion Test', comps:[3,107], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_03', course:'8175', q:1, title:'Personal Branding', subtitle:'Defining Your USP', comps:[12,47,107], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Personal Brand Statement',type:'formative',pct:null}]},
+  {id:'lp_8175_04', course:'8175', q:1, title:'Personal Brand Analysis', subtitle:'Celebrity Case Study', comps:[2,46,47,48], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Personal Brand Analysis',type:'summative',pct:20}]},
+  {id:'lp_8175_05', course:'8175', q:1, title:'Sources of Support', subtitle:'Building Grit', comps:[3,12,109], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_06', course:'8175', q:1, title:'Skill Development Plan', subtitle:'The Soft Skills Gap', comps:[5,20,21,112], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_07', course:'8175', q:1, title:'Ethical Dilemmas Discussion', subtitle:'Professionalism & Ethics', comps:[4,6,20,29,31], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_08', course:'8175', q:1, title:'Effective PowerPoint Presentations', subtitle:'The Rule of Six', comps:[7,18,50], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_09', course:'8175', q:1, title:'Defining Branding', subtitle:'The Mentor Challenge', comps:[2,21,46,49], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_10', course:'8175', q:1, title:'Service Experience Reflection', subtitle:'Perceived Value', comps:[9,11,21], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_11', course:'8175', q:1, title:'CHHS Brand Audit', subtitle:'Internal Analysis', comps:[2,21,25,46,48], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'CHHS Brand Audit Worksheet',type:'formative',pct:null}]},
+  {id:'lp_8175_12', course:'8175', q:1, title:'SWOT Analysis (Company Edition)', subtitle:'The War Room', comps:[101,102,105], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'SWOT Analysis Draft',type:'formative',pct:null}]},
+  {id:'lp_8175_13', course:'8175', q:1, title:'CHHS Rebrand Pitch', subtitle:'Focus Group Prep', comps:[1,50,103], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'CHHS Rebrand Pitch',type:'summative',pct:20}]},
+  {id:'lp_8175_14', course:'8175', q:1, title:'Local Business Research Project', subtitle:'The Consultant\'s Report', comps:[7,10,15,21,50,106], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Local Business Research Project',type:'summative',pct:20}]},
+  {id:'lp_8175_15', course:'8175', q:2, title:'Olymponomics', subtitle:'The Cost of Glory', comps:[15,21,98,100], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_16', course:'8175', q:2, title:'Pricing Strategies', subtitle:'The Price is Right', comps:[38,39,40,41,42,43], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_17', course:'8175', q:2, title:'Distribution Channels', subtitle:'The Ticketmaster Problem', comps:[52,53,56,78,86], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_18', course:'8175', q:2, title:'Make an Olympic Sport', subtitle:'Product Development', comps:[10,27,82,87], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Make an Olympic Sport — Final',type:'summative',pct:15}]},
+  {id:'lp_8175_19', course:'8175', q:2, title:'Album Release Project', subtitle:'The Drop', comps:[33,77,83,86,92], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Album Release Concept Checkpoint',type:'formative',pct:null},{label:'Album Release Project — Final',type:'summative',pct:15}]},
+  {id:'lp_8175_20', course:'8175', q:2, title:'My Cause My Cleats (Analysis)', subtitle:'Partnership Analysis', comps:[2,8,11,21], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'My Cause My Cleats Analysis',type:'formative',pct:null}]},
+  {id:'lp_8175_21', course:'8175', q:2, title:'Licensing and Law', subtitle:'Naming Rights & Ambush Marketing', comps:[51,79,81,96], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_22', course:'8175', q:2, title:'My Cause My Cleats (Pitch)', subtitle:'The Campaign Pitch', comps:[1,50,66,87,93], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'My Cause My Cleats Pitch',type:'summative',pct:15}]},
+  {id:'lp_8175_23', course:'8175', q:2, title:'Industry Publication Project', subtitle:'The Zine', comps:[1,10,14,21,50], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Zine Draft',type:'formative',pct:null},{label:'Industry Publication — Final',type:'summative',pct:15}]},
+  {id:'lp_8175_24', course:'8175', q:3, title:'The Art of the Sale', subtitle:'Methods and Roleplay', comps:[7,10,58], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_25', course:'8175', q:3, title:'BHM Entrepreneur Valentine', subtitle:'Diversity & Entrepreneurship', comps:[1,8,15,21], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'BHM Entrepreneur Valentine',type:'summative',pct:20}]},
+  {id:'lp_8175_26', course:'8175', q:3, title:'Elevator Pitch', subtitle:'The 30-Second Commercial', comps:[7,12,107,109], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Elevator Pitch',type:'summative',pct:20}]},
+  {id:'lp_8175_27', course:'8175', q:3, title:'Spring Break Field Report', subtitle:'Marketing in the Wild', comps:[2,21,57,88], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Spring Break Field Report',type:'formative',pct:null}]},
+  {id:'lp_8175_28', course:'8175', q:3, title:'Market Research (Survey Design)', subtitle:'Unbiased Survey Design', comps:[2,17,103], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Survey Design Draft',type:'formative',pct:null}]},
+  {id:'lp_8175_29', course:'8175', q:3, title:'Survey Reflection', subtitle:'Quality Control & Audit', comps:[2,10,103,105], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Survey Quality Check',type:'formative',pct:null}]},
+  {id:'lp_8175_30', course:'8175', q:3, title:'Survey Creation', subtitle:'Segmentation Verification', comps:[2,17,26,103], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE'},
+  {id:'lp_8175_31', course:'8175', q:3, title:'Survey Analysis', subtitle:'Data Into Action', comps:[2,19,21,103], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Survey Analysis — Final Report',type:'summative',pct:20}]},
+  {id:'lp_8175_32', course:'8175', q:4, title:'AI and the Future of Work', subtitle:'Future-Proofing Your Career', comps:[2,13,15,21], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'AI Futures Reflection',type:'formative',pct:null}]},
+  {id:'lp_8175_33', course:'8175', q:4, title:'The Paper Trail', subtitle:'Résumés & Applications', comps:[21,110,111], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'The Paper Trail — Résumé',type:'summative',pct:20}]},
+  {id:'lp_8175_34', course:'8175', q:4, title:'Interview Skills Practice Plan', subtitle:'Theory & Preparation', comps:[3,21,112], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Interview Practice Notes',type:'formative',pct:null}]},
+  {id:'lp_8175_35', course:'8175', q:4, title:'Google Interview Simulation', subtitle:'AI-Powered Mock Interview', comps:[7,13,112], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Google Interview Simulation',type:'summative',pct:20}]},
+  {id:'lp_8175_36', course:'8175', q:4, title:'Course Evaluation Brochure', subtitle:'The Exit Interview', comps:[1,20,21,95,106], docId:'1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE', assess:[{label:'Course Evaluation Brochure',type:'summative',pct:20}]},
+  {id:'lp_8175_00', course:'8175', q:1, title:'Rebranding the Washington Football Team', subtitle:'Brand Strategy & Cultural Trends', comps:[1,2,11,28,29,30], docId:'1c8hvDwgCzintcdtjKAe1ULYuijbnk21SfSDXoGgm2m8'},
+];
+
+// ── Unit Plans ─────────────────────────────────────────────────────────────────
+// Each unit groups lesson plan IDs into a named instructional block with an
+// essential question, major assessment, and pacing window.
+// Unit plans must show coherent sequencing and alignment.
+const UNIT_PLANS = [
+  // ── 8177 SEEM MANAGEMENT ────────────────────────────────────────────────────
+  {
+    id:'u_8177_1a', course:'8177', q:1,
+    title:'The Business of Sports & Entertainment',
+    essentialQ:'How do franchises create and protect value in a competitive marketplace?',
+    assessment:'Franchise Analysis Presentation',
+    pacing:'~5 class days',
+    lessonIds:['lp_8177_01','lp_8177_02','lp_8177_03','lp_8177_04','lp_8177_05'],
+  },
+  {
+    id:'u_8177_2a', course:'8177', q:2,
+    title:'Operations, Revenue & the Fan Experience',
+    essentialQ:'How do venue operators design systems that generate revenue and retain fans?',
+    assessment:'Employee Handbook & Product Pitch',
+    pacing:'~10 class days',
+    lessonIds:['lp_8177_06','lp_8177_07','lp_8177_08','lp_8177_09','lp_8177_10','lp_8177_11','lp_8177_12','lp_8177_13','lp_8177_14','lp_8177_15'],
+  },
+  {
+    id:'u_8177_3a', course:'8177', q:3,
+    title:'Research, Events & Sales Strategy',
+    essentialQ:'How do managers use data and persuasion to plan events and close deals?',
+    assessment:'Tournament Sponsorship Proposal',
+    pacing:'~10 class days',
+    lessonIds:['lp_8177_16','lp_8177_17','lp_8177_18','lp_8177_19','lp_8177_20','lp_8177_21','lp_8177_22','lp_8177_23','lp_8177_24','lp_8177_25'],
+  },
+  {
+    id:'u_8177_4a', course:'8177', q:4,
+    title:'Global Expansion & Career Readiness',
+    essentialQ:'What does success look like — and how do you pursue it?',
+    assessment:'Branding Reflection Essay & Career Plan',
+    pacing:'~4 class days',
+    lessonIds:['lp_8177_26','lp_8177_27','lp_8177_28','lp_8177_29'],
+  },
+  // ── 8175 SPORTS MARKETING ────────────────────────────────────────────────────
+  {
+    id:'u_8175_1a', course:'8175', q:1,
+    title:'Personal Brand & Professional Identity',
+    essentialQ:'What makes you valuable — and how do you communicate that to an employer or client?',
+    assessment:'Local Business Consultant\'s Report',
+    pacing:'~8 class days',
+    lessonIds:['lp_8175_01','lp_8175_02','lp_8175_03','lp_8175_04','lp_8175_05','lp_8175_06','lp_8175_07','lp_8175_08'],
+  },
+  {
+    id:'u_8175_1b', course:'8175', q:1,
+    title:'Brand Strategy & Market Analysis',
+    essentialQ:'How do organizations build, protect, and evolve their brand identity?',
+    assessment:'CHHS Rebrand Pitch',
+    pacing:'~6 class days',
+    lessonIds:['lp_8175_09','lp_8175_10','lp_8175_11','lp_8175_12','lp_8175_13','lp_8175_14'],
+  },
+  {
+    id:'u_8175_2a', course:'8175', q:2,
+    title:'Economics, Pricing & Promotion',
+    essentialQ:'How do the economics of sports and entertainment shape what gets made, priced, and sold?',
+    assessment:'Cause Campaign Pitch (My Cause My Cleats)',
+    pacing:'~9 class days',
+    lessonIds:['lp_8175_15','lp_8175_16','lp_8175_17','lp_8175_18','lp_8175_19','lp_8175_20','lp_8175_21','lp_8175_22','lp_8175_23'],
+  },
+  {
+    id:'u_8175_3a', course:'8175', q:3,
+    title:'Sales, Entrepreneurship & Market Research',
+    essentialQ:'How do you identify opportunity, test an idea, and make the case for it?',
+    assessment:'Survey Analysis Report',
+    pacing:'~8 class days',
+    lessonIds:['lp_8175_24','lp_8175_25','lp_8175_26','lp_8175_27','lp_8175_28','lp_8175_29','lp_8175_30','lp_8175_31'],
+  },
+  {
+    id:'u_8175_4a', course:'8175', q:4,
+    title:'Career Readiness & Course Capstone',
+    essentialQ:'How do you present yourself as a professional in the sports & entertainment industry?',
+    assessment:'Mock Interview & Course Evaluation Brochure',
+    pacing:'~5 class days',
+    lessonIds:['lp_8175_32','lp_8175_33','lp_8175_34','lp_8175_35','lp_8175_36'],
+  },
+  // ── 6115 PRINCIPLES OF BUSINESS & MARKETING ─────────────────────────────────
+  {
+    id:'u_6115_1a', course:'6115', q:1,
+    title:'Foundations of Economics & Marketing',
+    essentialQ:'How do economic forces shape what businesses make, what consumers buy, and why?',
+    assessment:'Economic Indicators Chart & Supply/Demand Analysis',
+    pacing:'~10 class days',
+    lessonIds:['lp_6115_01','lp_6115_02','lp_6115_03','lp_6115_04','lp_6115_05','lp_6115_06','lp_6115_07','lp_6115_08','lp_6115_09','lp_6115_10'],
+  },
+  {
+    id:'u_6115_2a', course:'6115', q:2,
+    title:'Marketing Functions, Branding & Promotion',
+    essentialQ:'How do the 7 marketing functions and promotional tools work together to create a complete campaign?',
+    assessment:'Corporate Autopsy Presentation & Ad Design Lab',
+    pacing:'~16 class days',
+    lessonIds:['lp_6115_11','lp_6115_12','lp_6115_13','lp_6115_14','lp_6115_15','lp_6115_16','lp_6115_17','lp_6115_18','lp_6115_19','lp_6115_20','lp_6115_21','lp_6115_22','lp_6115_23','lp_6115_24','lp_6115_25','lp_6115_26'],
+  },
+  {
+    id:'u_6115_3a', course:'6115', q:3,
+    title:'Advertising, Pricing, Selling & Distribution',
+    essentialQ:'How do businesses get the right product to the right customer at the right price?',
+    assessment:'Market Research Survey & Distribution Case Study',
+    pacing:'~15 class days',
+    lessonIds:['lp_6115_27','lp_6115_28','lp_6115_29','lp_6115_30','lp_6115_31','lp_6115_32','lp_6115_33','lp_6115_34','lp_6115_35','lp_6115_36','lp_6115_37','lp_6115_38','lp_6115_39','lp_6115_40','lp_6115_41'],
+  },
+  {
+    id:'u_6115_4a', course:'6115', q:4,
+    title:'Career Readiness & Business Capstone',
+    essentialQ:'How do you build something — a career, a business — and make the case for it?',
+    assessment:'Full Business Plan (Capstone 1–6)',
+    pacing:'~12 class days',
+    lessonIds:['lp_6115_42','lp_6115_43','lp_6115_44','lp_6115_45','lp_6115_46','lp_6115_47','lp_6115_48','lp_6115_49','lp_6115_50','lp_6115_51','lp_6115_52','lp_6115_53'],
+  },
+];
+const LP_EDITS = LS.get('lh_lp_edits', {});
+function persistLP() { LS.set('lh_lp_edits', LP_EDITS); }
+let lpActivePlan = null;
+
+
+// ── Grading Weight Structure ─────────────────────────────────────────────────
+// Formative 40% | Summative 60% | No single assignment > 25%
+const GRADING_STRUCTURE = {
+  formativePct: 40,
+  summativePct: 60,
+  maxSinglePct: 25,
+  minSummative: 3,
+  // Per-quarter summative count (all must be ≥ 3)
+  quarters: {
+    '6115_Q1': {summative:3, perAssign:20, fixed:true,  fixNote:'Added Business Structures Quiz + Marketing Through the Storm'},
+    '6115_Q2': {summative:3, perAssign:20, fixed:false},
+    '6115_Q3': {summative:3, perAssign:20, fixed:false},
+    '6115_Q4': {summative:5, perAssign:12, fixed:false},
+    '8175_Q1': {summative:3, perAssign:20, fixed:false},
+    '8175_Q2': {summative:4, perAssign:15, fixed:false},
+    '8175_Q3': {summative:3, perAssign:20, fixed:false},
+    '8175_Q4': {summative:3, perAssign:20, fixed:false},
+    '8177_Q1': {summative:3, perAssign:20, fixed:true,  fixNote:'Added The Brand Board as summative final product'},
+    '8177_Q2': {summative:3, perAssign:20, fixed:false},
+    '8177_Q3': {summative:3, perAssign:20, fixed:false},
+    '8177_Q4': {summative:3, perAssign:20, fixed:true,  fixNote:'Added The Global Expansion market analysis'},
+  },
+};
+
+const LP_Q_COLORS  = {1:'#1a3560',2:'#0369a1',3:'#065f46',4:'#7c3aed'};
+const LP_Q_BG      = {1:'#eff4ff',2:'#e0f2fe',3:'#d1fae5',4:'#ede9fe'};
+const LP_C_LABELS  = {'8177':'SEEM Mgmt','8175':'Sports Mktg','6115':'Prin. B&M'};
+const LP_C_COLORS  = {'8177':'#7c3aed','8175':'#0369a1','6115':'#065f46'};
+
+// ── Unit Plan View ─────────────────────────────────────────────────────────────
+let _lpCurrentView = 'units'; // default to units view
+
+function lpSetView(view) {
+  _lpCurrentView = view;
+  const unitsGrid   = document.getElementById('lp-units-grid');
+  const lessonsView = document.getElementById('lp-lessons-view');
+  const calView     = document.getElementById('lp-calendar-view');
+  const btnUnits    = document.getElementById('lp-view-units');
+  const btnLessons  = document.getElementById('lp-view-lessons');
+  const btnCal      = document.getElementById('lp-view-calendar');
+  if (!unitsGrid) return;
+
+  // Hide all, deactivate all buttons
+  unitsGrid.style.display   = 'none';
+  lessonsView.style.display = 'none';
+  if (calView) calView.style.display = 'none';
+  [btnUnits, btnLessons, btnCal].forEach(b => {
+    if (!b) return;
+    b.style.background = 'transparent';
+    b.style.color = 'var(--muted)';
+  });
+
+  if (view === 'units') {
+    unitsGrid.style.display = 'block';
+    btnUnits.style.background = 'var(--navy)';
+    btnUnits.style.color = '#fff';
+    renderUnitPlans();
+  } else if (view === 'calendar') {
+    if (calView) { calView.style.display = 'block'; }
+    if (btnCal) { btnCal.style.background = 'var(--navy)'; btnCal.style.color = '#fff'; }
+    // Auto-select current quarter on first open
+    const qSel = document.getElementById('lpcal-q');
+    if (qSel && !qSel.dataset.initialized) {
+      // FIXED: was a hardcoded year*100+month range comparison, duplicating
+      // (and silently able to drift out of sync with) LP_QUARTERS' actual
+      // start/end dates below — every school year this range needs updating
+      // by hand in a second place, and a month-only comparison also can't
+      // tell "3 days before Q2 starts" from "in Q2." Look up the real
+      // quarter dates instead; outside the whole defined range, fall back
+      // to whichever end is closer (before Q1 → Q1, after Q4 → Q4) rather
+      // than silently defaulting to Q1 regardless of which side we're on.
+      const todayKey = new Date().toISOString().slice(0, 10);
+      let curQ = null;
+      for (const [qn, r] of Object.entries(LP_QUARTERS)) {
+        if (todayKey >= r.start && todayKey <= r.end) { curQ = qn; break; }
+      }
+      if (!curQ) {
+        curQ = todayKey < LP_QUARTERS[1].start ? '1' : '4';
+      }
+      qSel.value = curQ;
+      qSel.dataset.initialized = '1';
+    }
+    renderPacingCalendar();
+  } else {
+    lessonsView.style.display = 'block';
+    btnLessons.style.background = 'var(--navy)';
+    btnLessons.style.color = '#fff';
+    renderLessonPlans();
+  }
+}
+
+function renderUnitPlans() {
+  const grid = document.getElementById('lp-units-grid');
+  if (!grid) return;
+
+  const unitEdits  = LS.get('lh_unit_notes', {});
+  const expandedIds = LS.get('lh_unit_expanded', []);
+
+  // Group units by course
+  const courses = ['8177','8175','6115'];
+  const courseNames = {'8177':'8177 — SEEM Management','8175':'8175 — Sports Marketing','6115':'6115 — Prin. Business & Marketing'};
+  const courseColors = {'8177':'#7c3aed','8175':'#0369a1','6115':'#065f46'};
+
+  const html = courses.map(course => {
+    const units = UNIT_PLANS.filter(u => u.course === course);
+    if (!units.length) return '';
+
+    const unitsHtml = units.map(unit => {
+      const lessons = unit.lessonIds.map(id => LESSON_PLANS.find(lp => lp.id === id)).filter(Boolean);
+      const isExpanded = expandedIds.includes(unit.id);
+      const notes = unitEdits[unit.id] || '';
+      const qColor = LP_Q_COLORS[unit.q] || '#1a3560';
+      const qBg    = LP_Q_BG[unit.q]    || '#eff4ff';
+
+      // Pacing strip — one dot per lesson
+      const pacingStrip = lessons.map((lp, i) => {
+        const hasEdit = !!LP_EDITS[lp.docId];
+        return `<span title="${lp.title}" onclick="event.stopPropagation();openLPModal('${lp.id}')" style="display:inline-block;width:18px;height:18px;border-radius:50%;background:${hasEdit?qColor:qBg};border:2px solid ${qColor};cursor:pointer;font-size:.55rem;line-height:16px;text-align:center;color:${hasEdit?'#fff':qColor};font-weight:800;transition:transform .1s" onmouseover="this.style.transform='scale(1.3)'" onmouseout="this.style.transform=''">${i+1}</span>`;
+      }).join('');
+
+      // Expanded lesson cards (compact)
+      const lessonCards = isExpanded ? lessons.map(lp => {
+        const hasEdit = !!LP_EDITS[lp.docId];
+        return `<div onclick="openLPModal('${lp.id}')" style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:7px;cursor:pointer;background:#fff;transition:background .1s" onmouseover="this.style.background='${qBg}'" onmouseout="this.style.background='#fff'">
+          <span style="font-size:.65rem;background:${qColor};color:#fff;padding:1px 7px;border-radius:10px;font-weight:700;flex-shrink:0">Q${lp.q}</span>
+          ${hasEdit ? '<span style="font-size:.6rem;background:#d97706;color:#fff;padding:1px 5px;border-radius:8px;flex-shrink:0">✏️</span>' : ''}
+          <div style="flex:1;min-width:0">
+            <div style="font-size:.78rem;font-weight:700;color:var(--navy);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lp.title}</div>
+            <div style="font-size:.66rem;color:var(--muted)">${lp.subtitle}</div>
+          </div>
+          <span style="font-size:.65rem;color:var(--muted);flex-shrink:0">${lp.comps.length} comps →</span>
+        </div>`;
+      }).join('') : '';
+
+      return `<div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:.6rem;background:var(--surface)">
+        <!-- Unit header — clickable to expand -->
+        <div onclick="toggleUnitExpand('${unit.id}')" style="padding:.75rem 1rem;cursor:pointer;display:flex;align-items:flex-start;gap:.75rem;background:${isExpanded?qBg:'var(--surface)'}">
+          <div style="flex-shrink:0;width:36px;height:36px;border-radius:8px;background:${qColor};color:#fff;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',cursive;font-size:1.1rem;letter-spacing:1px">Q${unit.q}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-family:'Bebas Neue',cursive;font-size:1.05rem;letter-spacing:.5px;color:var(--navy);line-height:1.2">${unit.title}</div>
+            <div style="font-size:.72rem;color:var(--muted);margin:.15rem 0 .4rem;font-style:italic">"${unit.essentialQ}"</div>
+            <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap">
+              <span style="font-size:.65rem;background:#f0f4ff;color:#1e3a6e;padding:1px 7px;border-radius:20px">🏆 ${unit.assessment}</span>
+              <span style="font-size:.65rem;background:#f3f4f6;color:#555;padding:1px 7px;border-radius:20px">⏱ ${unit.pacing}</span>
+              <span style="font-size:.65rem;background:${qBg};color:${qColor};padding:1px 7px;border-radius:20px;font-weight:700">${lessons.length} lessons</span>
+            </div>
+          </div>
+          <div style="flex-shrink:0;font-size:.85rem;color:var(--muted);align-self:center">${isExpanded?'▲':'▼'}</div>
+        </div>
+        <!-- Pacing strip -->
+        <div style="padding:.45rem 1rem;background:#f9fafb;border-top:1px solid var(--border);display:flex;align-items:center;gap:.3rem;flex-wrap:wrap">
+          <span style="font-size:.62rem;color:var(--muted);font-weight:700;letter-spacing:.5px;margin-right:.2rem">LESSONS:</span>
+          ${pacingStrip}
+          <span style="font-size:.6rem;color:var(--muted);margin-left:.3rem">● = edited in app</span>
+        </div>
+        <!-- Expanded lessons + notes -->
+        ${isExpanded ? `
+        <div style="padding:.7rem 1rem;border-top:1px solid var(--border)">
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.4rem;margin-bottom:.65rem">
+            ${lessonCards}
+          </div>
+          <div>
+            <div style="font-size:.68rem;font-weight:700;color:var(--navy);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:1px">Unit Plan Notes / Evidence</div>
+            <textarea onchange="saveUnitNote('${unit.id}',this.value)" placeholder="Add unit plan notes: scope & sequence rationale, assessment criteria, differentiation approach for this unit, pacing adjustments…" style="width:100%;min-height:70px;font-size:.78rem;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;resize:vertical;font-family:inherit;color:var(--ink)">${notes}</textarea>
+          </div>
+        </div>` : ''}
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:1.25rem">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.55rem">
+        <div style="width:10px;height:10px;border-radius:50%;background:${courseColors[course]};flex-shrink:0"></div>
+        <div style="font-family:'Bebas Neue',cursive;font-size:1.05rem;letter-spacing:1.5px;color:${courseColors[course]}">${courseNames[course]}</div>
+        <div style="height:1px;flex:1;background:var(--border)"></div>
+        <span style="font-size:.68rem;color:var(--muted)">${units.length} units · ${units.reduce((s,u)=>s+u.lessonIds.length,0)} lessons</span>
+      </div>
+      ${unitsHtml}
+    </div>`;
+  }).join('');
+
+  grid.innerHTML = `
+    <div style="font-size:.73rem;color:#92400e;background:#fffbeb;border:1px solid #fde68a;border-radius:7px;padding:.4rem .75rem;margin-bottom:.85rem">
+      <strong>Unit Plans:</strong> should show coherent lesson sequencing, standards alignment across multiple days, and a clear major assessment. Click any unit to expand its lessons and add planning notes.
+    </div>
+    ${html}`;
+}
+
+function toggleUnitExpand(unitId) {
+  let expanded = LS.get('lh_unit_expanded', []);
+  if (expanded.includes(unitId)) {
+    expanded = expanded.filter(id => id !== unitId);
+  } else {
+    expanded.push(unitId);
+  }
+  LS.set('lh_unit_expanded', expanded);
+  renderUnitPlans();
+}
+
+function saveUnitNote(unitId, text) {
+  const notes = LS.get('lh_unit_notes', {});
+  notes[unitId] = text;
+  LS.set('lh_unit_notes', notes);
+  // No re-render — textarea already has the value
+}
+
+function renderLessonPlans() {
+  const courseFilter = document.getElementById('lp-filter-course').value;
+  const qFilter      = document.getElementById('lp-filter-q').value;
+  LS.set('lh_lp_filter', {course: courseFilter, q: qFilter});
+  const search       = (document.getElementById('lp-search').value||'').toLowerCase();
+  const grid = document.getElementById('lp-grid');
+
+  let filtered = LESSON_PLANS.filter(lp => {
+    if (courseFilter && lp.course !== courseFilter) return false;
+    if (qFilter && String(lp.q) !== qFilter) return false;
+    if (search && !lp.title.toLowerCase().includes(search) && !lp.subtitle.toLowerCase().includes(search)) return false;
+    return true;
+  });
+
+  document.getElementById('lp-count').textContent = `${filtered.length} lesson${filtered.length!==1?'s':''} shown`;
+
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:3rem;color:var(--muted)">No lesson plans match your filters.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(lp => {
+    const hasEdit = !!LP_EDITS[lp.docId];
+    return `<div class="card lp-card" onclick="openLPModal('${lp.id}')" style="cursor:pointer;border-top:4px solid ${LP_Q_COLORS[lp.q]};transition:transform .15s,box-shadow .15s;position:relative">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.5rem">
+        <span style="font-size:.65rem;background:${LP_Q_COLORS[lp.q]};color:#fff;padding:2px 8px;border-radius:10px;font-weight:700;flex-shrink:0">Q${lp.q}</span>
+        <span style="font-size:.65rem;background:${LP_C_COLORS[lp.course]};color:#fff;padding:2px 8px;border-radius:10px;font-weight:600;flex-shrink:0">${LP_C_LABELS[lp.course]||lp.course}</span>
+        ${hasEdit ? '<span style="font-size:.62rem;background:#d97706;color:#fff;padding:2px 7px;border-radius:10px">✏️ Edited</span>' : ''}
+      </div>
+      <div style="font-family:\'Bebas Neue\',cursive;font-size:1.1rem;letter-spacing:.5px;color:var(--navy);line-height:1.2;margin-bottom:.2rem">${lp.title}</div>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:.4rem">${lp.subtitle}</div>
+      ${lp.assess && lp.assess.length ? `<div style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:.45rem">${lp.assess.map(a=>a.type==='summative'?`<span style="font-size:.58rem;background:#dcfce7;color:#15803d;padding:1px 6px;border-radius:8px;font-weight:700">▲ Summative${a.pct?' '+a.pct+'%':''}</span>`:`<span style="font-size:.58rem;background:#f0f9ff;color:#0369a1;padding:1px 6px;border-radius:8px;font-weight:600">◆ Formative</span>`).join('')}</div>` : ''}
+      <div style="display:flex;flex-wrap:wrap;gap:3px">
+        ${lp.comps.slice(0,6).map(c=>`<span style="font-size:.6rem;background:${LP_Q_BG[lp.q]};color:${LP_Q_COLORS[lp.q]};padding:1px 6px;border-radius:8px;font-family:\'DM Mono\',monospace;font-weight:600">#${c}</span>`).join('')}
+        ${lp.comps.length>6?`<span style="font-size:.6rem;color:var(--muted)">+${lp.comps.length-6} more</span>`:''}
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.75rem;justify-content:flex-end">
+        <a href="https://docs.google.com/document/d/${lp.docId}/edit" target="_blank" onclick="event.stopPropagation()" style="font-size:.7rem;color:var(--navy);text-decoration:none;padding:.2rem .55rem;border:1px solid var(--border);border-radius:5px">↗ Drive</a>
+        <button onclick="event.stopPropagation();openLPModal('${lp.id}')" style="font-size:.7rem;color:#fff;background:var(--navy);padding:.2rem .55rem;border:none;border-radius:5px;cursor:pointer">View →</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function openLPModal(id) {
+  const lp = LESSON_PLANS.find(x=>x.id===id);
+  if (!lp) return;
+  lpActivePlan = lp;
+
+  document.getElementById('lp-modal-title').textContent = lp.title;
+  document.getElementById('lp-modal-meta').textContent  = `${LP_C_LABELS[lp.course]||lp.course} · Q${lp.q} · Competencies: ${lp.comps.join(', ')}`;
+
+  // ── Grading strip ──
+  const _gsEl = document.getElementById('lp-modal-grading');
+  if (_gsEl) {
+    if (lp.assess && lp.assess.length) {
+      const _gsKey  = `${lp.course}_Q${lp.q}`;
+      const _gsData = GRADING_STRUCTURE.quarters[_gsKey];
+      const _gsPct  = _gsData ? _gsData.perAssign : null;
+      _gsEl.innerHTML = lp.assess.map(a => {
+        const isSumm  = a.type === 'summative';
+        const pctTag  = (a.pct || _gsPct) ? ` &nbsp;·&nbsp; ${a.pct || _gsPct}% of quarter` : '';
+        const canvasT = `${lp.course} | Q${lp.q} | ${isSumm ? (a.label.toLowerCase().includes('quiz')||a.label.toLowerCase().includes('eval')?'ASSESS':'DUE') : 'DUE'} | ${a.label.replace(/ — (Final|Draft|Checkpoint).*$/,'')}`;
+        return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .5rem;border-radius:6px;margin-bottom:.3rem;background:${isSumm?'#f0fdf4':'#f0f9ff'};border:1px solid ${isSumm?'#86efac':'#bae6fd'}">
+          <span style="font-size:.7rem;font-weight:800;color:${isSumm?'#15803d':'#0369a1'};flex-shrink:0">${isSumm?'▲ SUMMATIVE':'◆ FORMATIVE'}</span>
+          <span style="font-size:.72rem;flex:1;color:#1e293b">${a.label}</span>
+          <span style="font-size:.65rem;color:var(--muted)">${isSumm?'60% weight':'40% weight'}${pctTag}</span>
+        </div>
+        <div style="font-size:.62rem;color:var(--muted);padding:.0rem .5rem .3rem;font-family:'DM Mono',monospace">Canvas: ${canvasT}</div>`;
+      }).join('');
+      _gsEl.style.display = 'block';
+    } else {
+      _gsEl.innerHTML = '<div style="font-size:.72rem;color:var(--muted);padding:.3rem .5rem">Instruction / no graded product — Formative weight if participation is scored.</div>';
+      _gsEl.style.display = 'block';
+    }
+  }
+  const gdocBtn = document.getElementById('lp-modal-gdoc-btn');
+  if (lp.docId && lp.docId.startsWith('new_')) {
+    // Plans created inside LeaderHub live only in this browser — there's no
+    // backing Google Doc to open. Rather than hiding the button (which read
+    // as a silent dead end), explain the state instead.
+    gdocBtn.style.display = '';
+    gdocBtn.disabled = false; // keep clickable so the explanation is reachable
+    gdocBtn.style.opacity = '.7';
+    gdocBtn.style.cursor = 'default';
+    gdocBtn.textContent = '📝 Local only';
+    gdocBtn.title = "This lesson plan was created in LeaderHub and isn't backed by a Google Doc.";
+    gdocBtn.onclick = () => _showToast("This lesson plan lives only in LeaderHub — there's no Google Doc to open.", 3200);
+  } else {
+    gdocBtn.style.display = '';
+    gdocBtn.style.opacity = '';
+    gdocBtn.style.cursor = 'pointer';
+    gdocBtn.textContent = '↗ Open in Drive';
+    gdocBtn.title = '';
+    gdocBtn.onclick = ()=>window.open(`https://docs.google.com/document/d/${lp.docId}/edit`,'_blank');
+  }
+  document.getElementById('lp-ai-output').textContent   = 'Choose a prompt above or ask a custom question to get AI assistance with this lesson plan.';
+  document.getElementById('lp-ai-custom').value         = '';
+  // Clear any leftover text from a previously opened (and possibly
+  // discarded-without-saving) plan — otherwise it can resurface as if it
+  // belonged to this plan the first time the Edit tab is opened.
+  document.getElementById('lp-edit-area').value = LP_EDITS[lp.docId] || '';
+
+  // Switch to view tab and load content
+  lpSwitchTab('view', document.getElementById('lptab-view'));
+  document.getElementById('lp-modal').style.display = 'block';
+
+  const viewPane = document.getElementById('lp-pane-view');
+  if (LP_EDITS[lp.docId]) {
+    viewPane.innerHTML = lpMarkdownToHTML(LP_EDITS[lp.docId]);
+  } else {
+    viewPane.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--muted)"><div style="font-size:2rem;margin-bottom:.5rem">⏳</div>Loading from Google Drive…</div>`;
+    await lpFetchDoc(lp);
+  }
+}
+
+// NOTE: despite the `async` signature and the "Loading from Google Drive…"
+// spinner shown while this is awaited, this never actually performs any
+// I/O — it's a synchronous swap to a static "open in Drive" panel. The
+// `async`/spinner exist as a placeholder for real Drive-fetch behavior that
+// hasn't been implemented (Drive requires auth Gemini can't do); if that's
+// ever added, make sure real error/timeout handling comes with it — none
+// exists today because there's nothing yet that can actually fail.
+async function lpFetchDoc(lp) {
+  // If already edited/cached locally, show that immediately
+  if (LP_EDITS[lp.docId]) {
+    document.getElementById('lp-pane-view').innerHTML = lpMarkdownToHTML(LP_EDITS[lp.docId]);
+    document.getElementById('lp-edit-area').value = LP_EDITS[lp.docId];
+    return;
+  }
+  // Google Drive requires authentication — Gemini cannot fetch private Docs.
+  // Show the Drive link + lesson details panel. User can open the Doc and
+  // paste content into the ✏️ Edit tab to cache it locally for future loads.
+  document.getElementById('lp-pane-view').innerHTML = `
+    <div style="text-align:center;padding:2rem 1rem">
+      <div style="font-size:1.5rem;margin-bottom:.5rem">📄</div>
+      <div style="font-weight:700;font-size:.9rem;color:var(--navy);margin-bottom:.4rem">${lp.title}</div>
+      <div style="font-size:.8rem;color:var(--muted);margin-bottom:1.25rem">Open in Google Drive to view. Paste content into the ✏️ Edit tab to save a local copy.</div>
+      <a href="https://docs.google.com/document/d/${lp.docId}/edit" target="_blank" class="btn btn-primary" style="display:inline-block;text-decoration:none">↗ Open in Google Drive</a>
+    </div>
+    <div style="background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:1rem;margin-top:.5rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:.5rem">Lesson Details</div>
+      <div style="font-size:.8rem;line-height:1.8">
+        <div><strong>Course:</strong> ${LP_C_LABELS[lp.course]||lp.course} (${lp.course})</div>
+        <div><strong>Quarter:</strong> Q${lp.q}</div>
+        <div><strong>Competencies:</strong> ${lp.comps.join(', ')}</div>
+        <div style="margin-top:.5rem"><strong>Google Doc:</strong> <a href="https://docs.google.com/document/d/${lp.docId}/edit" target="_blank" style="color:var(--navy)">docs.google.com/…/${lp.docId.substring(0,12)}…</a></div>
+      </div>
+    </div>`;
+}
+
+function lpMarkdownToHTML(md) {
+  // Simple but solid markdown → HTML converter for lesson plans
+  let html = md
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+    // headings
+    .replace(/^# (.+)$/gm,  '<h1 style="font-family:\'Bebas Neue\',cursive;font-size:1.7rem;letter-spacing:1px;color:var(--navy);margin:0 0 1rem">$1</h1>')
+    .replace(/^## (.+)$/gm, '<h2 style="font-size:1.1rem;font-weight:700;color:var(--navy);border-bottom:2px solid #e5e7eb;padding-bottom:.3rem;margin:1.4rem 0 .6rem">$1</h2>')
+    .replace(/^### (.+)$/gm,'<h3 style="font-size:.95rem;font-weight:700;color:#374151;margin:1.1rem 0 .4rem">$1</h3>')
+    // bold/italic
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g,'<em>$1</em>')
+    // horizontal rules
+    .replace(/^---$/gm,'<hr style="border:none;border-top:1px solid #e5e7eb;margin:1rem 0">')
+    // bullet lists — crude but effective
+    .replace(/^\* (.+)$/gm,'<li style="margin:.2rem 0">$1</li>')
+    .replace(/^- (.+)$/gm,'<li style="margin:.2rem 0">$1</li>')
+    .replace(/^(\d+)\. (.+)$/gm,'<li style="margin:.2rem 0"><strong>$1.</strong> $2</li>')
+    // paragraphs
+    .replace(/\n\n/g,'</p><p style="margin:.6rem 0;line-height:1.7">')
+    ;
+  // wrap consecutive li in ul
+  html = html.replace(/(<li[^>]*>.*?<\/li>(\n|$))+/gs, m => `<ul style="margin:.5rem 0;padding-left:1.4rem">${m}</ul>`);
+  return `<div style="font-size:.83rem;line-height:1.7;color:#1f2937"><p style="margin:.6rem 0;line-height:1.7">${html}</p></div>`;
+}
+
+function lpSwitchTab(name, btn) {
+  document.querySelectorAll('.lp-tab').forEach(t=>t.classList.remove('lp-tab-active'));
+  document.querySelectorAll('.lp-pane').forEach(p=>p.style.display='none');
+  btn.classList.add('lp-tab-active');
+  document.getElementById('lp-pane-'+name).style.display = 'block';
+  if (name === 'edit' && lpActivePlan) {
+    const ta = document.getElementById('lp-edit-area');
+    if (!ta.value && LP_EDITS[lpActivePlan.docId]) ta.value = LP_EDITS[lpActivePlan.docId];
+    if (!ta.value) ta.placeholder = 'Paste or type your lesson plan content here (markdown or plain text)…';
+  }
+}
+
+function lpSaveEdit() {
+  if (!lpActivePlan) return;
+  const text = document.getElementById('lp-edit-area').value.trim();
+  if (!text) return;
+  LP_EDITS[lpActivePlan.docId] = text;
+  // Timestamp the edit — readable in the lesson plan's edit history
+  const _lpMeta = LS.get('lh_lp_edit_meta', {});
+  _lpMeta[lpActivePlan.docId] = { editedAt: new Date().toISOString(), title: lpActivePlan.title, course: lpActivePlan.course };
+  LS.set('lh_lp_edit_meta', _lpMeta);
+  persistLP();
+  document.getElementById('lp-pane-view').innerHTML = lpMarkdownToHTML(text);
+  lpSwitchTab('view', document.getElementById('lptab-view'));
+  renderLessonPlans(); // refresh cards to show "Edited" badge
+  _showToast('✅ Lesson plan saved locally');
+  refreshNextAction();
+}
+
+async function lpAIPrompt(prompt) {
+  lpSwitchTab('ai', document.getElementById('lptab-ai'));
+  await lpRunAI(prompt);
+}
+
+async function lpAIDiff() {
+  lpSwitchTab('ai', document.getElementById('lptab-ai'));
+  const prompt = `Generate a complete, ready-to-paste Differentiation & Assessment section for this lesson plan. This section must satisfy CCPS instructional planning standards (Standard 2.2, 2.5, 2.6) which require documented differentiation for SPED/IEP students, ELL students, and evidence of assessment. Format your response with these exact headers:
+
+## SPED / IEP Accommodations
+(List 4-6 specific accommodations tied to this lesson's tasks — extended time, graphic organizers, chunked instructions, etc.)
+
+## ELL / Language Supports
+(List 4-6 specific language scaffolds tied to this lesson — sentence frames, visual vocab, bilingual glossary, partner talk, etc.)
+
+## Extension for Advanced Learners
+(1-2 enrichment tasks that go deeper into this lesson's content)
+
+## Formative Assessment Checkpoints
+(List 2-3 specific moments in this lesson where you'll check for understanding, and the method — thumbs up/down, exit slip, cold call, whiteboard, etc.)
+
+Be specific to the actual lesson content — not generic strategies.`;
+  await lpRunAI(prompt, 'diff');
+}
+
+async function lpAICustom() {
+  const prompt = document.getElementById('lp-ai-custom').value.trim();
+  if (!prompt) return;
+  await lpRunAI(prompt);
+}
+
+async function lpAIAssist() {
+  lpSwitchTab('ai', document.getElementById('lptab-ai'));
+  document.getElementById('lp-ai-output').textContent = 'Choose a prompt or ask a custom question below.';
+}
+
+
+
+function _lpHasUnsavedChanges() {
+  if (!lpActivePlan) return false;
+  const ta = document.getElementById('lp-edit-area');
+  if (!ta) return false;
+  const current = ta.value.trim();
+  const saved = (LP_EDITS[lpActivePlan.docId] || '').trim();
+  return current !== saved && !!current;
+}
+
+function closeLPModal(skipConfirm) {
+  if (!skipConfirm && _lpHasUnsavedChanges()) {
+    _showDiscardConfirm('Discard unsaved changes to this lesson plan?', () => closeLPModal(true));
+    return;
+  }
+  document.getElementById('lp-modal').style.display = 'none';
+  lpActivePlan = null;
+}
+
+function lpOpenNew() {
+  // Show a quick picker modal before scaffolding
+  document.getElementById('lp-new-picker').style.display = 'flex';
+}
+function lpNewPickerClose() {
+  document.getElementById('lp-new-picker').style.display = 'none';
+}
+function lpNewPickerCreate() {
+  const course  = document.getElementById('lp-new-course').value;
+  const quarter = parseInt(document.getElementById('lp-new-quarter').value);
+  const title   = (document.getElementById('lp-new-title').value.trim()) || 'New Lesson Plan';
+  const courseLbl = LP_C_LABELS[course] || course;
+  const ts = Date.now();
+  const newLP = {
+    id:       'lp_new_'+ts,
+    title,
+    subtitle: '',
+    course,
+    q:        quarter,
+    comps:    [],
+    docId:    'new_'+ts,
+  };
+  LESSON_PLANS.unshift(newLP);
+  LP_EDITS[newLP.docId] = `# ${title}\n\n**Course:** ${courseLbl}\n**Quarter:** Q${quarter}\n**Competencies:** \n\n## 1. Lesson Overview\n\n[Describe the lesson here]\n\n## 2. Learning Objectives\n\n* Students will be able to…\n\n## 3. Instructional Sequence\n\n### A. Warm-Up (10 minutes)\n\n### B. Main Activity (30–40 minutes)\n\n### C. Closing / Exit Ticket (10 minutes)\n\n## 4. Assessment\n\n[Describe formative or summative assessment here]\n\n## 5. Differentiation\n\n### SPED / IEP Accommodations\n\n[List accommodations]\n\n### ELL Supports\n\n[List language scaffolds]\n\n## 6. Materials\n`;
+  persistLP();
+  lpNewPickerClose();
+  // Clear fields for next use
+  document.getElementById('lp-new-title').value = '';
+  openLPModal(newLP.id);
+  renderLessonPlans();
+}
+
+// Default view mode — FIXED per Say/Do Ledger leader-hub finding #2: Grid
+// used to be the hardcoded default even on a phone, where its fixed
+// desktop-width columns push the table far past the screen edge with no
+// visible way back short of accidentally discovering horizontal scroll.
+// A saved preference always wins; absent one, start in Cards below a
+// mobile breakpoint and Grid on desktop.
+let scrViewMode = LS.get('lh_scr_view_mode', null) || (window.innerWidth < 700 ? 'list' : 'grid');
+function toggleScrView() { setScrViewMode(scrViewMode === 'grid' ? 'list' : 'grid'); }
+// A manual choice always overrides the auto-default afterward — this is
+// the one place scrViewMode should ever be assigned from (all view-tab
+// buttons route through it) so the persisted preference stays accurate.
+function setScrViewMode(mode) {
+  scrViewMode = mode;
+  LS.set('lh_scr_view_mode', mode);
+  renderCompetencyView();
+}
+function setPeriod(p, btn) { scrActivePeriod = p; renderCompetencyView(); }
+
+function renderScrTable(course, students, myScores) {
+  const el = document.getElementById('scr-content');
+  
+  if (scrViewMode === 'list') {
+    // Student-focused list view
+    el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:.75rem">
+      ${students.map(stu => renderStudentCard(stu, course, myScores[_scrStudentKey(stu)] || {})).join('')}
+    </div>`;
+    return;
+  }
+
+  if (scrViewMode === 'pacing') {
+    renderPacingView(course, students, myScores);
+    return;
+  }
+
+  // Grid view: competencies as rows, students as columns
+  // FIXED (Say/Do Ledger leader-hub finding #2): was a hardcoded desktop
+  // assumption (700px) that forced 800px+ of table width regardless of
+  // the real viewport — computed against the actual container width now,
+  // so a phone gets narrower (still usable, still real) columns instead
+  // of a table that's silently 2-3x wider than the screen.
+  const availWidth = Math.max(280, (el.clientWidth || window.innerWidth) - 90); // minus the two pinned label columns
+  const colWidth = Math.max(38, Math.floor(availWidth / (students.length + 1)));
+
+  // Group competencies by duty area
+  const byDuty = [];
+  let currentDuty = null;
+  for (const comp of course.competencies) {
+    if (comp.duty !== currentDuty) {
+      byDuty.push({ type: 'duty', label: comp.duty });
+      currentDuty = comp.duty;
+    }
+    byDuty.push({ type: 'comp', comp });
+  }
+
+  // FIXED (finding #2): a real horizontal-scroll affordance — a small
+  // hint line plus a persistent right-edge fade (.scr-scroll-wrap in the
+  // stylesheet) — instead of nothing indicating this table scrolls at all.
+  el.innerHTML = `
+    <div class="card" style="padding:0;overflow:hidden">
+      <div style="font-size:.68rem;color:var(--muted);padding:.4rem .6rem;border-bottom:1px solid var(--border-soft)">↔ Scroll to see all students and scores</div>
+      <div class="scr-scroll-wrap" style="overflow:auto;max-height:72vh">
+        <table class="scr-table">
+          <thead>
+            <tr>
+              <th class="comp-h" style="position:sticky;left:0;z-index:20;background:var(--navy)">#  Competency</th>
+              <th class="scr-req-col">Req</th>
+              ${students.map(s => `<th style="width:${colWidth}px;max-width:${colWidth}px;overflow:hidden;text-overflow:ellipsis" title="${escH(s.name)}">${escH(s.name.split(',')[0])}</th>`).join('')}
+              <th style="width:70px">Class %</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${byDuty.map(item => {
+              if (item.type === 'duty') {
+                return `<tr><td class="scr-duty" colspan="${students.length + 3}">${item.label}</td></tr>`;
+              }
+              const comp = item.comp;
+              const isOpt = comp.req !== 'Required';
+              // Compute class average for this comp
+              const scored = students.map(s => (myScores[_scrStudentKey(s)] || {})[comp.num]).filter(v => v != null);
+              const satCount = scored.filter(v => v <= 3).length;
+              const pct = scored.length ? Math.round(satCount / scored.length * 100) : null;
+              const pctColor = pct === null ? '#ccc' : pct >= 80 ? '#22c55e' : pct >= 60 ? '#f59e0b' : '#ef4444';
+
+              return `<tr>
+                <td style="position:sticky;left:0;background:#fff;border-right:1px solid #e5e7eb;max-width:300px">
+                  <span style="font-family:'DM Mono',monospace;font-size:.65rem;color:var(--muted);margin-right:.3rem">${comp.code||comp.num}</span>
+                  <span class="${isOpt?'scr-opt':''}" style="font-size:.73rem">${comp.text}</span>
+                  ${renderLessonTags(comp.num)}
+                </td>
+                <td class="scr-req-col" style="text-align:center">
+                  <span style="font-size:.62rem;font-weight:700;padding:1px 5px;border-radius:10px;background:${isOpt?'#f3f4f6':'#dbeafe'};color:${isOpt?'#9ca3af':'#1d4ed8'}">${isOpt?'Opt':'Req'}</span>
+                </td>
+                ${students.map(stu => {
+                  const score = (myScores[_scrStudentKey(stu)] || {})[comp.num];
+                  // FIXED: Grid is the default scrViewMode, but its score
+                  // cell never got the keyboard support (role/tabindex/
+                  // onkeydown/aria-label) an earlier round already added
+                  // to the List view's identical cell — Grid was the one
+                  // place in the whole app where the core scoring workflow
+                  // was keyboard-inaccessible.
+                  return `<td style="text-align:center">
+                    <span class="scr-score scr-s${score||0}" role="button" tabindex="0"
+                      onclick="cycleScore('${escJsAttr(_scrStudentKey(stu))}',${comp.num},this)"
+                      onkeydown="scrScoreKeydown(event,'${escJsAttr(_scrStudentKey(stu))}',${comp.num},this)"
+                      title="${escH(stu.name)} — #${comp.num}"
+                      aria-label="${escH(stu.name)}, competency ${comp.num}, ${score?(SCR_SCORE_LABELS[score]||score)+' ('+score+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+                    >${score || '·'}</span>
+                  </td>`;
+                }).join('')}
+                <td style="text-align:center">
+                  ${pct !== null ? `<div style="font-size:.68rem;font-weight:700;color:${pctColor}">${pct}%</div>
+                  <div class="scr-pct-bar"><div class="scr-pct-fill" style="width:${pct}%;background:${pctColor}"></div></div>` : '<span style="color:#ddd;font-size:.7rem">—</span>'}
+                </td>
+              </tr>`;
+            }).join('')}
+          </tbody>
+        </table>
+      </div>
+      <!-- Legend -->
+      <div style="padding:.6rem 1rem;background:#faf9f6;border-top:1px solid var(--border);display:flex;gap:.85rem;flex-wrap:wrap;align-items:center">
+        <span style="font-size:.68rem;font-weight:700;color:var(--muted)">RATING SCALE:</span>
+        ${[[1,'#dcfce7','#15803d','Can teach others'],[2,'#dbeafe','#1d4ed8','Without supervision'],[3,'#e0f2fe','#0369a1','Limited supervision'],[4,'#fef9c3','#92400e','With supervision'],[5,'#fee2e2','#b91c1c','Cannot perform']].map(([n,bg,color,label])=>`
+          <span style="display:inline-flex;align-items:center;gap:.3rem;font-size:.68rem">
+            <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:18px;border-radius:4px;font-weight:700;background:${bg};color:${color}">${n}</span>
+            ${label}
+          </span>`).join('')}
+        <span style="font-size:.68rem;color:var(--muted);margin-left:.5rem">Click any cell to cycle score · 1-3 = Satisfactory</span>
+      </div>
+    </div>`;
+
+  // FIXED (finding #13): the Req header used to carry two `style`
+  // attributes on one element — the browser keeps the first and silently
+  // drops the second, so Req kept position:sticky;left:0 (matching the
+  // Competency column) instead of the min-width it was meant to get,
+  // overlapping the Competency column on horizontal scroll. Req is now a
+  // real second pinned column, stacked right after Competency rather than
+  // sharing its offset — measured here (not hardcoded) so it always
+  // matches Competency's actual rendered width, including on a narrower
+  // viewport where that width itself changes.
+  const compHeader = el.querySelector('.comp-h');
+  if (compHeader) el.style.setProperty('--scr-comp-w', compHeader.offsetWidth + 'px');
+}
+
+function renderStudentCard(stu, course, scores) {
+  const total = course.competencies.length;
+  const reqComps = course.competencies.filter(c => c.req === 'Required');
+  const scored = Object.keys(scores).length;
+  const sat = Object.values(scores).filter(v => v <= 3).length;
+  const pct = total ? Math.round(scored / total * 100) : 0;
+  const satPct = scored ? Math.round(sat / scored * 100) : 0;
+  
+  // Find any competencies rated 4 or 5 (needs attention)
+  const needsWork = course.competencies.filter(c => scores[c.num] >= 4).slice(0,3);
+  const notScored = reqComps.filter(c => !scores[c.num]).length;
+
+  return `<div class="mb-card">
+    <div style="padding:.75rem 1rem;border-bottom:1px solid var(--border)">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.4rem">
+        <div class="ava" style="width:32px;height:32px;font-size:.75rem;background:var(--navy);flex-shrink:0">${escH(stu.name.split(',').map(p=>p.trim()[0]).join(''))}</div>
+        <div>
+          <div style="font-weight:700;font-size:.85rem">${escH(stu.name)}</div>
+          <div style="font-size:.68rem;color:var(--muted)">${scored}/${total} scored · ${sat} satisfactory</div>
+        </div>
+        <div style="margin-left:auto;text-align:right">
+          <div style="font-size:1.1rem;font-family:'Bebas Neue',cursive;color:${satPct>=80?'#22c55e':satPct>=60?'#f59e0b':'#ef4444'}">${satPct}%</div>
+          <div style="font-size:.62rem;color:var(--muted)">satisfactory</div>
+        </div>
+      </div>
+      <div class="scr-pct-bar"><div class="scr-pct-fill" style="width:${pct}%"></div></div>
+      <div style="display:flex;justify-content:space-between;font-size:.64rem;color:var(--muted);margin-top:.2rem"><span>${pct}% complete</span><span>${notScored} req. not scored</span></div>
+    </div>
+    ${needsWork.length ? `<div style="padding:.5rem 1rem;background:#fef9f9;border-bottom:1px solid #fee2e2">
+      <div style="font-size:.65rem;font-weight:700;color:#b91c1c;margin-bottom:.25rem">⚠ Needs Attention</div>
+      ${needsWork.map(c=>`<div style="font-size:.68rem;color:#7f1d1d">${c.code||'#'+c.num} — ${c.text.substring(0,60)}${c.text.length>60?'…':''}</div>`).join('')}
+    </div>`:''}
+    <div style="padding:.5rem 1rem">
+      <div style="display:flex;flex-wrap:wrap;gap:2px">
+        ${course.competencies.map(c => {
+          const s = scores[c.num];
+          const cls = `scr-s${s||0}`;
+          return `<span class="scr-score ${cls}" style="width:22px;height:18px;font-size:.62rem" role="button" tabindex="0"
+            data-scr-key="${escH(_scrStudentKey(stu))}::${c.num}"
+            onclick="cycleScore('${escJsAttr(_scrStudentKey(stu))}',${c.num},this)"
+            onkeydown="scrScoreKeydown(event,'${escJsAttr(_scrStudentKey(stu))}',${c.num},this)"
+            title="#${c.num}: ${c.text.substring(0,50)}${s?' — '+(SCR_SCORE_LABELS[s]||s):''}"
+            aria-label="${escH(stu.name)}, competency ${c.num}, ${s?SCR_SCORE_LABELS[s]+' ('+s+' of 5, 1 is best)':'not scored'}. Type a digit 0-5, or press Enter to advance."
+          >${s||'·'}</span>`;
+        }).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+
+// Keyboard support for the score cells: Enter/Space cycles forward (same as
+// a click), Backspace/⌫ cycles backward, and typing a digit 0-5 jumps straight
+// to that score — a click-only cycle meant setting a 5 took 5 clicks per cell,
+// which doesn't scale across a roster × competency list.
+function scrScoreKeydown(e, stuName, compNum, el) {
+  if (e.key >= '0' && e.key <= '5') {
+    e.preventDefault();
+    setScore(stuName, compNum, el, Number(e.key));
+  } else if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    cycleScore(stuName, compNum, el);
+  } else if (e.key === 'Backspace' || e.key === 'Delete') {
+    e.preventDefault();
+    const course = scrActiveCourse, period = scrActivePeriod;
+    const current = (scrScores[course]?.[period]?.[stuName]?.[compNum]) || 0;
+    setScore(stuName, compNum, el, current <= 0 ? 5 : current - 1);
+  }
+}
+
+function cycleScore(stuName, compNum, el) {
+  const course = scrActiveCourse;
+  const period = scrActivePeriod;
+  const current = (scrScores[course]?.[period]?.[stuName]?.[compNum]) || 0;
+  const next = current >= 5 ? 0 : current + 1;
+  setScore(stuName, compNum, el, next);
+}
+
+function setScore(stuName, compNum, el, next) {
+  const course = scrActiveCourse;
+  const period = scrActivePeriod;
+  if (!scrScores[course]) scrScores[course] = {};
+  if (!scrScores[course][period]) scrScores[course][period] = {};
+  if (!scrScores[course][period][stuName]) scrScores[course][period][stuName] = {};
+
+  if (next === 0) {
+    delete scrScores[course][period][stuName][compNum];
+  } else {
+    scrScores[course][period][stuName][compNum] = next;
+  }
+
+  persistSCR();
+  // Log SCR session for Brag Board — one entry per day per course (deduped by date+course)
+  const _scrLog = LS.get('lh_scr_session_log', []);
+  const _scrToday = _localDateStr_();
+  const _scrKey   = `${_scrToday}|${course}`;
+  if (!_scrLog.some(e => e.key === _scrKey)) {
+    const _cname = (SCR_COURSES[course] || {}).name || course;
+    _scrLog.unshift({ key: _scrKey, course, courseName: _cname, date: _scrToday, ts: new Date().toISOString() });
+    LS.set('lh_scr_session_log', _scrLog.slice(0, 120)); // ~1 semester of daily entries
+  }
+  // Show last-saved timestamp
+  const lsEl = document.getElementById('scr-last-saved');
+  if(lsEl){ const t=new Date(); lsEl.textContent = `Saved ${t.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'})}`; lsEl.style.opacity='1'; setTimeout(()=>{if(lsEl)lsEl.style.opacity='.5';},3000); }
+  // Update cell in place
+  el.className = `scr-score scr-s${next}`;
+  el.textContent = next || '·';
+
+  // Update column % without full re-render
+  updateCompRowPct(compNum, `${stuName}::${compNum}`);
+  refreshNextAction();
+}
+
+function updateCompRowPct(compNum, refocusKey) {
+  // lightweight: just re-render the view (fast enough at this scale)
+  // For a true optimization we'd update only the pct cell — keep simple
+  const topbarContent = document.getElementById('scr-top-bar').innerHTML;
+  renderCompetencyView();
+  // The re-render above replaces the whole grid, which would otherwise drop
+  // focus after every keyboard-driven score change — refocus the same cell
+  // so scoring an entire row by keyboard stays uninterrupted.
+  if (refocusKey) {
+    const cell = document.querySelector(`[data-scr-key="${CSS.escape(refocusKey)}"]`);
+    if (cell) cell.focus();
+  }
+}
+
+function exportSCR() {
+  const course = SCR_COURSES[scrActiveCourse];
+  const students = course.periods[scrActivePeriod] || [];
+  const myScores = scrScores[scrActiveCourse]?.[scrActivePeriod] || {};
+  
+  const headers = ['Student', ...course.competencies.map(c => `#${c.num} ${c.req==='Required'?'(R)':'(O)'}: ${c.text.substring(0,40)}`)];
+  const rows = students.map(stu => {
+    const s = myScores[_scrStudentKey(stu)] || {};
+    return [stu.name, ...course.competencies.map(c => s[c.num] || '')];
+  });
+  
+  const csv = [headers, ...rows].map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  
+  // Download
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SCR_${scrActiveCourse}_${scrActivePeriod}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+
+
+
+// ============================================================
+// PROCUREMENT FLOW
+// ============================================================
+
+const PROC_STEPS = [
+  { icon:'🔍', stage:'1. Market Research',      owner:'Student Buyer',        color:'#1a3560', desc:'Student conducts surveys to justify the "Need." Must identify demand, competitive pricing, and projected sell-through rate. (Comp 2 — Critical Thinking)' },
+  { icon:'📝', stage:'2. Purchase Requisition', owner:'Student + Teacher',     color:'#0369a1', desc:'Formal Purchase Requisition Form completed. Lists item, vendor, qty, unit cost, and educational rationale tied to VDOE competencies. (Comp 96, 98)' },
+  { icon:'✅', stage:'3. Admin Approval',        owner:'CTE Chair + Principal', color:'#065f46', desc:'CTE Department Chair verifies available funds. Principal approves per CCPS Group III SBE procedures. PO issued by school finance technician.' },
+  { icon:'📦', stage:'4. Order Placed',          owner:'Teacher',              color:'#7c3aed', desc:'Official Purchase Order (PO) issued. Vendor confirms order. Students track estimated delivery timeline and communicate with supplier as needed.' },
+  { icon:'🚚', stage:'5. Receiving — Back Room', owner:'Inventory Specialist', color:'#b45309', desc:'Box arrives. Receiving Team opens shipment and verifies Packing Slip against the PO. Never sign delivery paperwork until items are counted and inspected. (Comp 60–62)' },
+  { icon:'🔎', stage:'6. QC & Discrepancy Log', owner:'Shift Manager',         color:'#be185d', desc:'Items inspected for damage. Discrepancy Log completed if shortage or wrong items received. Professional email drafted to vendor requesting credit/replacement.' },
+  { icon:'📊', stage:'7. Inventory Entry',       owner:'Finance / Bookkeeper', color:'#15803d', desc:'Verified quantities entered into inventory tracking sheet. Each SKU assigned cost basis and retail price. FIFO method applied to shelf stocking.' },
+  { icon:'🏷️', stage:'8. Floor & Sales',         owner:'All Staff',            color:'#1a3560', desc:'Merchandise faced and merchandised per planogram. Items active in POS system. All transactions scanned — no exceptions, including giveaways. (Comp 59, 62)' },
+];
+
+let PURCHASE_ORDERS = [];
+let poCounter = 1000;
+
+const RECEIVING_CHECKS = [
+  'Confirmed delivery against PO number before accepting',
+  'Opened all boxes before signing delivery paperwork',
+  'Counted all items against the Packing Slip',
+  'Inspected items for damage or defects',
+  'Noted any discrepancies in the Discrepancy Log',
+  'Drafted vendor email for any shortage/damage',
+  'Entered verified quantities into inventory sheet',
+  'Stored items using FIFO method in back room',
+];
+// FIXED (Say/Do Ledger leader-hub finding #8): RECEIVING_STATUS used to be
+// a flat object keyed only by checklist-item index ({0: true, 1: false,
+// ...}), shared by every Purchase Order — checking a box for the first
+// shipment of the year silently left it checked for every later one.
+// Now keyed by PO id: { [poId]: { checks: [bool,...], verifiedAt, note } }.
+let RECEIVING_STATUS = LS.get('lh_receiving_status', {});
+
+// Returns (initializing/re-sizing if needed) one PO's own receiving state.
+function _getPOReceivingState(poId) {
+  const cur = RECEIVING_STATUS[poId];
+  if (!cur || !Array.isArray(cur.checks)) {
+    RECEIVING_STATUS[poId] = { checks: RECEIVING_CHECKS.map(()=>false), verifiedAt: null, note: '' };
+  } else if (cur.checks.length !== RECEIVING_CHECKS.length) {
+    // Defensive re-size if RECEIVING_CHECKS' own length ever changes.
+    RECEIVING_STATUS[poId] = { ...cur, checks: RECEIVING_CHECKS.map((_,i)=>!!cur.checks[i]) };
+  }
+  return RECEIVING_STATUS[poId];
+}
+
+function renderProcurement() {
+  // Flow steps
+  const container = document.getElementById('proc-flow-steps');
+  if (container) {
+    container.innerHTML = PROC_STEPS.map((s,i) => `
+      <div style="display:flex;gap:.75rem;align-items:flex-start;background:#fff;border:1px solid var(--border);border-radius:8px;padding:.75rem 1rem;border-left:4px solid ${s.color}">
+        <div style="font-size:1.3rem;flex-shrink:0;line-height:1">${s.icon}</div>
+        <div style="flex:1">
+          <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.2rem">
+            <span style="font-weight:700;font-size:.82rem;color:${s.color}">${s.stage}</span>
+            <span style="font-size:.65rem;background:#f1f5f9;color:var(--muted);padding:1px 8px;border-radius:8px">Owner: ${s.owner}</span>
+          </div>
+          <div style="font-size:.75rem;color:#4b5563;line-height:1.55">${s.desc}</div>
+        </div>
+      </div>`).join('');
+  }
+
+  // PO table
+  renderPOTable();
+
+  // Receiving checklist — populate the PO selector (mirrors initSlipView()/
+  // initTripFlowView()'s pattern), preserving the current selection if it's
+  // still a real PO.
+  const sel = document.getElementById('receiving-po-sel');
+  if (sel) {
+    const prevVal = sel.value;
+    sel.innerHTML = PURCHASE_ORDERS.map(po => `<option value="${po.id}">#${po.id} — ${escH(po.item)}</option>`).join('');
+    if (prevVal && PURCHASE_ORDERS.some(po => String(po.id) === prevVal)) sel.value = prevVal;
+    else if (PURCHASE_ORDERS.length) sel.value = PURCHASE_ORDERS[0].id;
+  }
+  renderReceivingChecklist();
+}
+
+function renderReceivingChecklist() {
+  const rc = document.getElementById('receiving-checklist');
+  if (!rc) return;
+  const noteInput = document.getElementById('receiving-note-input');
+  const verifiedEl = document.getElementById('receiving-verified-note');
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+
+  if (!po) {
+    rc.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:1.5rem;color:var(--muted);font-size:.78rem">No purchase orders yet — create one above to start a receiving checklist.</div>';
+    if (noteInput) noteInput.value = '';
+    if (verifiedEl) verifiedEl.textContent = '';
+    return;
+  }
+
+  const state = _getPOReceivingState(po.id);
+  // Mouse-only before this — same gap the SSBU/MK8 pre-match checklists
+  // had until an earlier round added keyboard support to them.
+  rc.innerHTML = RECEIVING_CHECKS.map((c,i) => {
+    const done = !!state.checks[i];
+    return `<div onclick="toggleReceiving(${i})" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleReceiving(${i})}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?'#f0fdf4':'#fff'};border:1px solid ${done?'#86efac':'var(--border)'};border-radius:8px;padding:.55rem .8rem;display:flex;gap:.6rem;align-items:center;font-size:.77rem;transition:all .2s">
+      <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${done?'#15803d':'#d1d5db'};background:${done?'#15803d':'#fff'};display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:.62rem;color:#fff">${done?'✓':''}</div>
+      <span style="color:${done?'#15803d':'#374151'}">${c}</span>
+    </div>`;
+  }).join('');
+  if (noteInput) noteInput.value = state.note || '';
+  // Lightweight audit record — FIXED (finding #8): a timestamp + optional
+  // note now accompanies completion instead of just checkbox state.
+  if (verifiedEl) {
+    verifiedEl.textContent = state.verifiedAt
+      ? `✅ Fully verified ${fd(state.verifiedAt.split('T')[0])}${state.note ? ' — ' + state.note : ''}`
+      : '';
+  }
+}
+
+function toggleReceiving(i) {
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  const state = _getPOReceivingState(po.id);
+  const wasVerified = !!state.verifiedAt;
+  state.checks[i] = !state.checks[i];
+  // verifiedAt means "fully verified as of this timestamp" — stamped the
+  // moment every item is checked, cleared the moment any item is
+  // unchecked again, so it never survives as a stale claim about a
+  // checklist that's since been reopened.
+  const nowVerified = state.checks.every(Boolean);
+  state.verifiedAt = nowVerified ? new Date().toISOString() : null;
+  // Auto-increment Inventory the moment this PO's checklist first becomes
+  // fully verified — the trigger event connecting procurement to
+  // inventory (Say/Do Ledger leader-hub finding #9). Reversing back out of
+  // full verification (unchecking one item after all were checked)
+  // reverses the increment too, so re-checking it later doesn't double-count.
+  if (nowVerified && !wasVerified) { _applyPOToInventory(po, 1); persistInventory(); }
+  else if (!nowVerified && wasVerified) { _applyPOToInventory(po, -1); persistInventory(); }
+  LS.set('lh_receiving_status', RECEIVING_STATUS);
+  renderReceivingChecklist();
+}
+
+// Adds (sign=1) or removes (sign=-1) a PO's ordered quantity from its
+// linked Inventory SKU. No-op if the PO has no linked SKU (older data from
+// before finding #9's fix, or a malformed record) instead of throwing.
+function _applyPOToInventory(po, sign) {
+  if (!po.skuId) return;
+  const sku = INVENTORY.find(i => i.id === po.skuId);
+  if (!sku) return;
+  sku.qty = Math.max(0, Number(sku.qty || 0) + sign * Number(po.qty || 0));
+}
+
+function saveReceivingNote(val) {
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  const state = _getPOReceivingState(po.id);
+  state.note = (val || '').trim();
+  LS.set('lh_receiving_status', RECEIVING_STATUS);
+  renderReceivingChecklist(); // refreshes the "Fully verified..." line if shown
+}
+
+function resetReceivingChecklist() {
+  const sel = document.getElementById('receiving-po-sel');
+  const poId = sel ? sel.value : '';
+  const po = PURCHASE_ORDERS.find(p => String(p.id) === String(poId));
+  if (!po) return;
+  if (!confirm(`Reset the receiving checklist for PO #${po.id} (${po.item})? This clears all checked items — use this if the PO receives a new, separate shipment.`)) return;
+  // Keep Inventory consistent with the reset — if this PO's quantity was
+  // already added (checklist was fully verified), remove it now so a
+  // second real shipment's later completion doesn't double-count it.
+  const wasVerified = !!(RECEIVING_STATUS[po.id] && RECEIVING_STATUS[po.id].verifiedAt);
+  if (wasVerified) { _applyPOToInventory(po, -1); persistInventory(); }
+  RECEIVING_STATUS[po.id] = { checks: RECEIVING_CHECKS.map(()=>false), verifiedAt: null, note: '' };
+  LS.set('lh_receiving_status', RECEIVING_STATUS);
+  renderReceivingChecklist();
+}
+
+function renderPOTable() {
+  const tbody = document.getElementById('po-table-body');
+  if (!tbody) return;
+  if (!PURCHASE_ORDERS.length) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.78rem">No purchase orders yet. Click "+ New PO" to create one.</td></tr>`;
+    return;
+  }
+  // Same visual language as the shared .status st-* pills used for Trips/
+  // Slips/WBL — this one stays a <select> (it's also how the stage gets
+  // changed), but styled to read as the same "status" concept everywhere.
+  const STAGE_STATUS = {
+    'Market Research':   { bg:'var(--blue-light)', fg:'#0369a1' },
+    'Requisition Filed':  { bg:'var(--blue-light)', fg:'#0369a1' },
+    'Awaiting Approval':  { bg:'#fef9c3',           fg:'#854d0e' },
+    'Approved / Ordered': { bg:'#dcfce7',           fg:'#166534' },
+    'Received':           { bg:'#d1fae5',           fg:'#065f46' },
+    'Discrepancy':        { bg:'var(--red-light)',  fg:'#b91c1c' },
+  };
+  tbody.innerHTML = PURCHASE_ORDERS.map(po => {
+    const total = (po.qty * po.cost).toFixed(2);
+    // po.price (Sell Price) was captured on every PO but never read anywhere
+    // — no column, no margin calc, nothing carried into a matching
+    // Inventory SKU. Surfacing it here as a margin% is the same calc the
+    // Inventory SKU list already does, so it's at least visible somewhere.
+    const margin = po.price > 0 ? Math.round(((po.price - po.cost) / po.price) * 100) : null;
+    const ss = STAGE_STATUS[po.stage] || { bg:'#f1f5f9', fg:'#6b7280' };
+    const stages = ['Market Research','Requisition Filed','Awaiting Approval','Approved / Ordered','Received','Discrepancy'];
+    const opts = stages.map(s=>`<option ${po.stage===s?'selected':''}>${s}</option>`).join('');
+    return `<tr style="border-bottom:1px solid #f1f5f9">
+      <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.73rem;font-weight:700;color:var(--navy)">#${po.id}</td>
+      <td style="padding:.45rem .7rem;font-size:.78rem;font-weight:600">${po.item}<div style="font-size:.67rem;color:var(--muted)">Buyer: ${po.buyer}</div></td>
+      <td style="padding:.45rem .7rem"><span style="font-size:.65rem;background:#f1f5f9;padding:2px 7px;border-radius:6px">${po.cat}</span></td>
+      <td style="padding:.45rem .7rem;font-size:.76rem">${po.vendor}</td>
+      <td style="padding:.45rem .7rem;text-align:center;font-size:.78rem">${po.qty}</td>
+      <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.76rem">$${Number(po.cost).toFixed(2)}</td>
+      <td style="padding:.45rem .7rem;font-family:'DM Mono',monospace;font-size:.76rem;font-weight:700;color:var(--navy)">$${total}${margin !== null ? `<div style="font-size:.65rem;color:var(--muted);font-weight:400;font-family:inherit">Margin: ${margin}%</div>` : ''}</td>
+      <td style="padding:.45rem .7rem">
+        <select onchange="updatePOStage('${po.id}',this.value)" class="status" style="border:none;background:${ss.bg};color:${ss.fg};cursor:pointer">${opts}</select>
+      </td>
+      <td style="padding:.45rem .7rem">
+        <button onclick="deletePO('${po.id}')" aria-label="Remove purchase order for ${escH(po.item)}" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openPOModal() {
+  // openPOModal() used to reset nothing at all — every field, including
+  // cost/price/qty, silently carried over the last PO entered.
+  document.getElementById('po-item').value   = '';
+  document.getElementById('po-cat').value    = 'Apparel';
+  document.getElementById('po-vendor').value = '';
+  document.getElementById('po-qty').value    = '1';
+  document.getElementById('po-cost').value   = '0';
+  document.getElementById('po-price').value  = '0';
+  document.getElementById('po-buyer').value  = '';
+  // Populate the Inventory-item link selector — see savePO()/finding #9.
+  const skuSel = document.getElementById('po-sku-sel');
+  skuSel.innerHTML = '<option value="">— Select existing SKU —</option>' +
+    INVENTORY.map(i => `<option value="${i.id}">${escH(i.name)}</option>`).join('') +
+    '<option value="__new__">➕ New item (not yet in Inventory)</option>';
+  document.getElementById('po-item-new-wrap').style.display = 'none';
+  document.getElementById('po-modal').style.display='block';
+}
+function closePOModal() { document.getElementById('po-modal').style.display='none'; }
+
+// Shows the New Item Name field only when "create new" is chosen, and
+// otherwise keeps po-item (hidden) mirroring the selected SKU's own name
+// so the rest of savePO()/the PO table keep working off one field.
+function onPoSkuChange() {
+  const val  = document.getElementById('po-sku-sel').value;
+  const wrap = document.getElementById('po-item-new-wrap');
+  if (val === '__new__') {
+    wrap.style.display = '';
+    document.getElementById('po-item').value = '';
+  } else {
+    wrap.style.display = 'none';
+    const sku = INVENTORY.find(i => i.id === val);
+    document.getElementById('po-item').value = sku ? sku.name : '';
+  }
+}
+
+function savePO() {
+  // FIXED (Say/Do Ledger leader-hub finding #9): a PO used to carry only
+  // a free-text item name with no link to any real Inventory SKU, so
+  // receiving an order never updated or created its Inventory record —
+  // Adam had to manually re-type every received order as a brand-new SKU
+  // entry in a completely separate tab. Every PO now resolves to a real
+  // skuId — either an existing SKU or one created here at qty 0 (the
+  // ordered quantity is only actually added once the order is really
+  // received — see toggleReceiving()/_applyPOToInventory()).
+  const skuSel = document.getElementById('po-sku-sel').value;
+  const item   = document.getElementById('po-item').value.trim();
+  if (!skuSel) { _showToast('Please select an Inventory item, or choose "New item".', 2500, '#991b1b'); return; }
+  if (skuSel === '__new__' && !item) { _showToast('Please enter a name for the new item.', 2500, '#991b1b'); return; }
+
+  const cat   = document.getElementById('po-cat').value;
+  const cost  = Number(document.getElementById('po-cost').value)||0;
+  const price = Number(document.getElementById('po-price').value)||0;
+
+  let skuId = skuSel;
+  let itemName = item;
+  if (skuSel === '__new__') {
+    skuId = 'sku' + Date.now();
+    INVENTORY.push({ id: skuId, name: item, cat, qty: 0, cost, price, reorder: 5 });
+    persistInventory();
+  } else {
+    const sku = INVENTORY.find(i => i.id === skuId);
+    itemName = sku ? sku.name : item;
+  }
+
+  PURCHASE_ORDERS.push({
+    id: ++poCounter,
+    item: itemName, skuId,
+    vendor: document.getElementById('po-vendor').value.trim()||'TBD',
+    cat,
+    qty:  Number(document.getElementById('po-qty').value)||1,
+    cost, price,
+    buyer:document.getElementById('po-buyer').value.trim()||'Unassigned',
+    stage:'Market Research',
+  });
+  persistPO();
+  closePOModal();
+  renderPOTable();
+  _showToast(`✅ PO created: ${itemName}`);
+}
+
+function updatePOStage(id, stage) {
+  const po = PURCHASE_ORDERS.find(p=>String(p.id)===String(id));
+  if (po) { po.stage = stage; persistPO(); renderPOTable(); }
+}
+
+function deletePO(id) {
+  const po = PURCHASE_ORDERS.find(p=>String(p.id)===String(id));
+  const _saved = [...PURCHASE_ORDERS];
+  PURCHASE_ORDERS = PURCHASE_ORDERS.filter(p=>String(p.id)!==String(id));
+  persistPO();
+  renderPOTable();
+  _undoToast(po ? `"${po.item}" PO removed` : 'Purchase order removed', () => { PURCHASE_ORDERS = _saved; persistPO(); renderPOTable(); });
+}
+
+// ============================================================
+// FINANCIAL DASHBOARD
+// ============================================================
+
+let SALES_LOG = [];
+let INVENTORY  = [
+  {id:'sku1', name:'Cavalier Hoodie — Navy/L', cat:'Apparel',  qty:8,  cost:12.00, price:25.00, reorder:3},
+  {id:'sku2', name:'Cavalier T-Shirt — White', cat:'Apparel',  qty:15, cost:5.50,  price:12.00, reorder:5},
+  {id:'sku3', name:'CHHS Lanyard',             cat:'Novelty',  qty:22, cost:1.25,  price:4.00,  reorder:10},
+];
+
+function renderFinance() {
+  // Totals
+  const totalRev  = SALES_LOG.reduce((a,s)=>a+(Number(s.cash)+Number(s.card)),0);
+  const totalCOGS = SALES_LOG.reduce((a,s)=>a+Number(s.cogs),0);
+  const profit    = totalRev - totalCOGS;
+  const margin    = totalRev > 0 ? Math.round((profit/totalRev)*100) : 0;
+  document.getElementById('fin-stat-revenue').textContent = '$'+totalRev.toFixed(2);
+  document.getElementById('fin-stat-cogs').textContent    = '$'+totalCOGS.toFixed(2);
+  document.getElementById('fin-stat-profit').textContent  = '$'+profit.toFixed(2);
+  document.getElementById('fin-stat-margin').textContent  = margin+'%';
+
+  // Sales log
+  const logEl = document.getElementById('sales-log-list');
+  if (!SALES_LOG.length) {
+    logEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No shifts logged yet — click "+ Log Shift" after each shift.</div>`;
+  } else {
+    logEl.innerHTML = [...SALES_LOG].reverse().map(s => {
+      const rev = Number(s.cash)+Number(s.card);
+      const gp  = rev - Number(s.cogs);
+      return `<div style="background:#fff;border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin-bottom:.4rem">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.25rem">
+          <span style="font-weight:700;font-size:.79rem;color:var(--navy)">${s.date}</span>
+          <span style="font-family:'DM Mono',monospace;font-size:.79rem;font-weight:700;color:#15803d">$${rev.toFixed(2)}</span>
+        </div>
+        <div style="font-size:.72rem;color:var(--muted);margin-bottom:.2rem">Staff: ${s.staff} · ${s.units} items sold</div>
+        <div style="display:flex;gap:.75rem;font-size:.71rem">
+          <span>💵 Cash: <strong>$${Number(s.cash).toFixed(2)}</strong></span>
+          <span>💳 Card: <strong>$${Number(s.card).toFixed(2)}</strong></span>
+          <span style="color:${gp>=0?'#15803d':'#dc2626'}">GP: <strong>$${gp.toFixed(2)}</strong></span>
+        </div>
+        ${s.notes ? `<div style="margin-top:.3rem;font-size:.7rem;color:#d97706;font-style:italic">⚠️ ${s.notes}</div>` : ''}
+        <button onclick="deleteSale('${s.id}')" style="margin-top:.3rem;font-size:.65rem;padding:.15rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:3px;cursor:pointer">✕ Delete</button>
+      </div>`;
+    }).join('');
+  }
+
+  // Inventory
+  const invEl = document.getElementById('inventory-list');
+  const invSearch = (document.getElementById('inv-search')?.value || '').toLowerCase();
+  const invSortLow = document.getElementById('inv-sort-low')?.checked;
+  let invFiltered = INVENTORY.filter(item => {
+    if (!invSearch) return true;
+    return item.name.toLowerCase().includes(invSearch) || item.cat.toLowerCase().includes(invSearch);
+  });
+  if (invSortLow) {
+    // Low-stock-first, but stable within each group — as the SKU count grows,
+    // this is the one question ("what's low right now?") that matters most
+    // and previously required scrolling the whole insertion-order list.
+    invFiltered = [...invFiltered].sort((a, b) => (b.qty <= b.reorder ? 1 : 0) - (a.qty <= a.reorder ? 1 : 0));
+  }
+  if (!INVENTORY.length) {
+    invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs yet — click "+ Add SKU" to start tracking inventory.</div>`;
+  } else if (!invFiltered.length) {
+    invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs match "${invSearch}".</div>`;
+  } else {
+    invEl.innerHTML = invFiltered.map(item => {
+      const low    = item.qty <= item.reorder;
+      const margin = item.price > 0 ? Math.round(((item.price-item.cost)/item.price)*100) : 0;
+      return `<div style="background:${low?'#fff7ed':'#fff'};border:1px solid ${low?'#fed7aa':'var(--border)'};border-radius:8px;padding:.65rem .85rem;margin-bottom:.4rem;display:flex;justify-content:space-between;align-items:center">
+        <div>
+          <div style="font-weight:600;font-size:.78rem;color:var(--navy)">${item.name}</div>
+          <div style="font-size:.7rem;color:var(--muted)">${item.cat} · Margin: ${margin}% · Reorder @ ${item.reorder}</div>
+          ${low ? `<div style="font-size:.68rem;color:#d97706;font-weight:700">⚠️ LOW STOCK</div>` : ''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-family:'DM Mono',monospace;font-size:.85rem;font-weight:700;color:${low?'#d97706':'var(--navy)'}">${item.qty}</div>
+          <div style="font-size:.68rem;color:var(--muted)">units</div>
+          <div style="display:flex;gap:.3rem;margin-top:.2rem">
+            <button onclick="openInventoryModal('${item.id}')" style="font-size:.65rem;padding:.15rem .4rem;background:var(--navy);color:#fff;border:none;border-radius:3px;cursor:pointer">Edit</button>
+            <button onclick="deleteInventorySKU('${item.id}')" aria-label="Remove ${escH(item.name)} from inventory" style="font-size:.65rem;padding:.15rem .4rem;background:#fee2e2;color:#dc2626;border:1px solid #fecaca;border-radius:3px;cursor:pointer">✕</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+function deleteSale(id) {
+  const sale = SALES_LOG.find(s => s.id === id);
+  const _saved = [...SALES_LOG];
+  SALES_LOG = SALES_LOG.filter(s => s.id !== id);
+  persistSales();
+  renderFinance();
+  _undoToast(sale ? `Sale from ${sale.date} removed` : 'Sales entry removed', () => { SALES_LOG = _saved; persistSales(); renderFinance(); });
+}
+
+function openSalesModal() {
+  document.getElementById('sales-date').valueAsDate = new Date();
+  // Reset everything except float, which genuinely is sticky (same drawer
+  // float shift to shift) — cash/card/units/cogs/notes used to silently
+  // carry over the last entry's numbers, an easy way to resubmit a stale
+  // shift's figures without noticing.
+  document.getElementById('sales-staff').value = '';
+  document.getElementById('sales-cash').value  = '0';
+  document.getElementById('sales-card').value  = '0';
+  document.getElementById('sales-units').value = '0';
+  document.getElementById('sales-cogs').value  = '0';
+  document.getElementById('sales-notes').value = '';
+  document.getElementById('sales-modal').style.display='block';
+}
+function closeSalesModal() { document.getElementById('sales-modal').style.display='none'; }
+
+function saveSales() {
+  const date = document.getElementById('sales-date').value;
+  if (!date) { _showToast('Please select a date.', 2500, '#991b1b'); return; }
+  SALES_LOG.push({
+    id:'sl'+Date.now(),
+    date, staff:  document.getElementById('sales-staff').value.trim()||'Staff',
+    cash:  Number(document.getElementById('sales-cash').value)||0,
+    card:  Number(document.getElementById('sales-card').value)||0,
+    float: Number(document.getElementById('sales-float').value)||50,
+    units: Number(document.getElementById('sales-units').value)||0,
+    cogs:  Number(document.getElementById('sales-cogs').value)||0,
+    notes: document.getElementById('sales-notes').value.trim(),
+  });
+  closeSalesModal();
+  persistSales();
+  renderFinance();
+  _showToast('✅ Sale logged');
+}
+
+function openInventoryModal(id) {
+  const item = id ? INVENTORY.find(i=>i.id===id) : null;
+  document.getElementById('inv-edit-id').value  = id||'';
+  document.getElementById('inv-name').value     = item ? item.name  : '';
+  document.getElementById('inv-cat').value      = item ? item.cat   : 'Apparel';
+  document.getElementById('inv-qty').value      = item ? item.qty   : 0;
+  document.getElementById('inv-cost').value     = item ? item.cost  : 0;
+  document.getElementById('inv-price').value    = item ? item.price : 0;
+  document.getElementById('inv-reorder').value  = item ? item.reorder : 5;
+  document.getElementById('inventory-modal').style.display='block';
+}
+function closeInventoryModal() { document.getElementById('inventory-modal').style.display='none'; }
+
+function saveInventorySKU() {
+  const id   = document.getElementById('inv-edit-id').value;
+  const name = document.getElementById('inv-name').value.trim();
+  if (!name) { _showToast('Please enter a product name.', 2500, '#991b1b'); return; }
+  const data = {
+    name, cat:    document.getElementById('inv-cat').value,
+    qty:    Number(document.getElementById('inv-qty').value)||0,
+    cost:   Number(document.getElementById('inv-cost').value)||0,
+    price:  Number(document.getElementById('inv-price').value)||0,
+    reorder:Number(document.getElementById('inv-reorder').value)||5,
+  };
+  if (id) {
+    const idx = INVENTORY.findIndex(i=>i.id===id);
+    if (idx>=0) INVENTORY[idx]={...INVENTORY[idx],...data};
+  } else {
+    INVENTORY.push({id:'sku'+Date.now(),...data});
+  }
+  persistInventory();
+  closeInventoryModal();
+  renderFinance();
+  _showToast(id ? `✅ "${name}" updated` : `✅ "${name}" added to inventory`);
+}
+
+function deleteInventorySKU(id) {
+  const item = INVENTORY.find(i => i.id === id);
+  if (!item) return;
+  const _saved = [...INVENTORY];
+  INVENTORY = INVENTORY.filter(i => i.id !== id);
+  persistInventory();
+  renderFinance();
+  _undoToast(`"${(item.name||'').slice(0,40)}" removed from inventory`, () => { INVENTORY = _saved; persistInventory(); renderFinance(); });
+}
+
+
+
+// ============================================================
+// E-SPORTS HUB
+// ============================================================
+
+let ES_PLAYERS = [
+  {id:'esp1', fname:'Sample', lname:'Player', tag:'P1Champion', game:'both', role:'captain', main:'Link', kart:'Waluigi / Pipe Frame', notes:'Strong all-around, leads stage striking calls'},
+];
+let ES_MATCHES = [];
+
+function persistESPlayers() { LS.set('lh_es_players', ES_PLAYERS); }
+function persistESMatches() { LS.set('lh_es_matches', ES_MATCHES); }
+{ const sep = LS.get('lh_es_players', null); if (sep && sep.length) ES_PLAYERS = sep; }
+{ const sem = LS.get('lh_es_matches', null); if (sem && Array.isArray(sem)) ES_MATCHES = sem; }
+
+const SSBU_CHECKLIST = [
+  'All 3 starters confirmed & present (or sub designated)',
+  'PlayVS Match Assistant open — ready up within 30-min grace period',
+  'Nintendo Switch fully charged + USB-Ethernet adapter connected',
+  'Game settings saved as "PlayVS" preset (Stock, 3 lives, 7 min, all OFF)',
+  'Home team: Arena created with password, ID shared in Match Lobby Chat',
+  'Away team: Arena ID entered, profile dropped in ring area',
+  'Starting lineup confirmed blind for Set 1 in Match Assistant',
+  'Screenshots ready after EVERY game result',
+  'Streaming? Music set to ZERO in in-game options',
+  'Post-match: Results confirmed in Match Assistant within 1 hour',
+];
+let SSBU_CHECK_STATUS = LS.get('lh_ssbu_check', {});
+let MK8_CHECK_STATUS_LOADED = true; // flag
+
+const MK8_CHECKLIST = [
+  'All 4 starters confirmed & present (or sub designated)',
+  'PlayVS Match Assistant open — ready up within grace period',
+  'All Nintendo Switches charged + USB-Ethernet adapters connected',
+  'Home team: Room created (150cc, Team, Normal Items, No COM, All Vehicles, 4 races)',
+  'Home team: Room code shared in Match Lobby Chat',
+  'Away team: Joined via Search by Room ID',
+  'Teams assigned: Home = Red · Away = Blue',
+  'All players set to select RANDOM on track selection screen',
+  'Screenshots taken after EVERY race (capture button)',
+  'Post-match: Results confirmed in Match Assistant within 1 hour',
+];
+let MK8_CHECK_STATUS = LS.get('lh_mk8_check', {});
+function persistESChecklists() {
+  LS.set('lh_ssbu_check', SSBU_CHECK_STATUS);
+  LS.set('lh_mk8_check', MK8_CHECK_STATUS);
+}
+
+function esTab(name, btn) {
+  document.querySelectorAll('.wbl-tab').forEach(t=>t.classList.remove('wbl-tab-active'));
+  btn.classList.add('wbl-tab-active');
+  document.getElementById('es-pane-roster').style.display   = name==='roster'  ? '' : 'none';
+  document.getElementById('es-pane-ssbu').style.display     = name==='ssbu'    ? '' : 'none';
+  document.getElementById('es-pane-mk8').style.display      = name==='mk8'     ? '' : 'none';
+  document.getElementById('es-pane-matches').style.display  = name==='matches' ? '' : 'none';
+  if (name==='roster')  renderESRoster();
+  if (name==='ssbu')    renderSSBUChecklist();
+  if (name==='mk8')     renderMK8Checklist();
+  if (name==='matches') renderMatchLog();
+}
+
+// ── Roster ─────────────────────────────────────────────────
+function renderESRoster() {
+  const gameF  = document.getElementById('es-filter-game')?.value || '';
+  const search = (document.getElementById('es-search')?.value || '').toLowerCase();
+
+  const filtered = ES_PLAYERS.filter(p => {
+    if (gameF && p.game !== gameF && p.game !== 'both') return false;
+    const name = `${p.fname} ${p.lname} ${p.tag}`.toLowerCase();
+    return !search || name.includes(search);
+  });
+
+  const ssbuCount = ES_PLAYERS.filter(p=>p.game==='ssbu'||p.game==='both').filter(p=>p.role==='starter'||p.role==='captain').length;
+  const mk8Count  = ES_PLAYERS.filter(p=>p.game==='mk8'||p.game==='both').filter(p=>p.role==='starter'||p.role==='captain').length;
+  const wins = ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length;
+  document.getElementById('es-stat-total').textContent = ES_PLAYERS.length;
+  document.getElementById('es-stat-ssbu').textContent  = ssbuCount;
+  document.getElementById('es-stat-mk8').textContent   = mk8Count;
+  document.getElementById('es-stat-wins').textContent  = wins;
+
+  const GAME_LABELS = {ssbu:'🥊 Smash Bros', mk8:'🏎️ Mario Kart', both:'🎮 Both Games'};
+  const ROLE_COLORS = {starter:'#1a3560', bench:'#6b7280', captain:'#d97706'};
+  const ROLE_LABELS = {starter:'Starter', bench:'Bench', captain:'⭐ Captain'};
+
+  const grid = document.getElementById('es-roster-grid');
+  if (!filtered.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:2rem;color:var(--muted);font-size:.8rem">No players match your filters.</div>`;
+    return;
+  }
+  grid.innerHTML = filtered.map(p => {
+    const rc = ROLE_COLORS[p.role]||'#6b7280';
+    const gl = GAME_LABELS[p.game]||p.game;
+    return `<div class="card" style="border-top:4px solid ${rc};position:relative">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.5rem">
+        <div>
+          <div style="font-weight:700;font-size:.9rem;color:var(--navy)">${escH(p.fname)} ${escH(p.lname)}</div>
+          <div style="font-size:.75rem;color:var(--muted);font-family:'DM Mono',monospace">${escH(p.tag||'No tag set')}</div>
+        </div>
+        <span style="font-size:.65rem;background:${rc};color:#fff;padding:2px 8px;border-radius:8px;font-weight:700;white-space:nowrap">${escH(ROLE_LABELS[p.role]||p.role)}</span>
+      </div>
+      <div style="font-size:.73rem;background:#f1f5f9;border-radius:6px;padding:.4rem .6rem;margin-bottom:.4rem">${gl}</div>
+      ${p.main ? `<div style="font-size:.73rem;color:#374151"><strong>SSBU Main:</strong> ${escH(p.main)}</div>` : ''}
+      ${p.kart ? `<div style="font-size:.73rem;color:#374151"><strong>MK8 Setup:</strong> ${escH(p.kart)}</div>` : ''}
+      ${p.notes ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.3rem;font-style:italic">${escH(p.notes)}</div>` : ''}
+      <div style="display:flex;gap:.35rem;margin-top:.6rem">
+        <button onclick="openESEditPlayer('${escJsAttr(p.id)}')" style="flex:1;font-size:.7rem;padding:.25rem;background:var(--navy);color:#fff;border:none;border-radius:5px;cursor:pointer">Edit</button>
+        <button onclick="deleteESPlayer('${escJsAttr(p.id)}')" aria-label="Remove ${escH(p.fname)} ${escH(p.lname)}" style="font-size:.7rem;padding:.25rem .5rem;background:#fee2e2;color:#dc2626;border:none;border-radius:5px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openESAddPlayer() {
+  document.getElementById('es-modal-title').textContent = 'Add Player';
+  ['es-edit-id','es-fname','es-lname','es-tag','es-main','es-kart','es-notes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('es-game').value = 'both';
+  document.getElementById('es-role').value = 'starter';
+  document.getElementById('es-player-modal').style.display='block';
+}
+
+function openESEditPlayer(id) {
+  const p = ES_PLAYERS.find(x=>x.id===id); if (!p) return;
+  document.getElementById('es-modal-title').textContent = `Edit — ${p.fname} ${p.lname}`;
+  document.getElementById('es-edit-id').value = id;
+  document.getElementById('es-fname').value   = p.fname;
+  document.getElementById('es-lname').value   = p.lname;
+  document.getElementById('es-tag').value     = p.tag||'';
+  document.getElementById('es-game').value    = p.game;
+  document.getElementById('es-role').value    = p.role;
+  document.getElementById('es-main').value    = p.main||'';
+  document.getElementById('es-kart').value    = p.kart||'';
+  document.getElementById('es-notes').value   = p.notes||'';
+  document.getElementById('es-player-modal').style.display='block';
+}
+
+function saveESPlayer() {
+  const fname = document.getElementById('es-fname').value.trim();
+  const lname = document.getElementById('es-lname').value.trim();
+  if (!fname || !lname) { _showToast('Please enter a name.', 2500, '#991b1b'); return; }
+  const id = document.getElementById('es-edit-id').value;
+  const data = { fname, lname,
+    tag:   document.getElementById('es-tag').value.trim(),
+    game:  document.getElementById('es-game').value,
+    role:  document.getElementById('es-role').value,
+    main:  document.getElementById('es-main').value.trim(),
+    kart:  document.getElementById('es-kart').value.trim(),
+    notes: document.getElementById('es-notes').value.trim(),
+  };
+  if (id) { const i=ES_PLAYERS.findIndex(p=>p.id===id); if(i>=0) ES_PLAYERS[i]={...ES_PLAYERS[i],...data}; }
+  else ES_PLAYERS.push({id:'esp'+Date.now(),...data});
+  persistESPlayers();
+  closeESModal();
+  renderESRoster();
+  _showToast(id ? `✅ ${fname} ${lname} updated` : `✅ ${fname} ${lname} added to roster`);
+}
+
+function deleteESPlayer(id) {
+  const p=ES_PLAYERS.find(x=>x.id===id); if(!p) return;
+  const _saved=[...ES_PLAYERS];
+  ES_PLAYERS = ES_PLAYERS.filter(x=>x.id!==id);
+  persistESPlayers(); renderESRoster();
+  _undoToast(`${(p.fname+' '+p.lname).slice(0,40)} removed`,()=>{ES_PLAYERS=_saved;persistESPlayers();renderESRoster();});
+}
+
+function closeESModal() { document.getElementById('es-player-modal').style.display='none'; }
+
+function resetSSBUChecklist() {
+  _showConfirm('Reset all Smash Bros pre-match checklist items?', () => {
+    SSBU_CHECK_STATUS = {};
+    persistESChecklists();
+    renderSSBUChecklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset Smash Bros checklist' });
+}
+
+function resetMK8Checklist() {
+  _showConfirm('Reset all Mario Kart pre-match checklist items?', () => {
+    MK8_CHECK_STATUS = {};
+    persistESChecklists();
+    renderMK8Checklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset Mario Kart checklist' });
+}
+
+// FIXED: these 8 lists (E-Sports rules/stages, DECA registration-info
+// field chips, and the Archive Trip star-rating picker) used to be raw
+// ${...}.map().join('') template-literal expressions sitting directly in
+// static page HTML, outside any <script> tag — the browser had no way to
+// evaluate them, so it rendered the literal JS source as visible text
+// instead of a formatted list. Worse, the Archive star-rating buttons
+// never existed as real DOM elements, so the whole rating widget was
+// unclickable (setArchiveStar() silently no-ops when the button is
+// missing). Moved into this function, called once at boot, using the
+// exact same data/markup as before — just executed instead of printed.
+function renderStaticEmbeddedContent() {
+  _applyProfileToStaticDOM();
+  _applyModuleVisibility();
+  const ssbuStarter = document.getElementById('ssbu-starter-stages');
+  if (ssbuStarter) ssbuStarter.innerHTML = ['Battlefield','Pokémon Stadium 2','Small Battlefield','Smashville','Town and City'].map(s=>`<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#15803d">${s}</div>`).join('');
+
+  const ssbuCounterpick = document.getElementById('ssbu-counterpick-stages');
+  if (ssbuCounterpick) ssbuCounterpick.innerHTML = ['Final Destination','Kalos Pokémon League','Hollow Bastion (DLC required)'].map(s=>`<div style="background:#eff6ff;border:1px solid #93c5fd;border-radius:6px;padding:.3rem .7rem;font-size:.78rem;font-weight:600;color:#0369a1">${s}</div>`).join('');
+
+  const ssbuMatchFlow = document.getElementById('ssbu-match-flow');
+  if (ssbuMatchFlow) ssbuMatchFlow.innerHTML = [1,2,3,4,5].map(n=>`<div style="background:${n<=3?'#eff6ff':'#fef3c7'};border:1px solid ${n<=3?'#93c5fd':'#fcd34d'};border-radius:8px;padding:.5rem .3rem">
+    <div style="font-family:'Bebas Neue',cursive;font-size:1rem;color:var(--navy)">Set ${n}</div>
+    <div style="color:var(--muted);font-size:.67rem">${n<=3?'Each team fields one unique player':(n===4?'Rosters reset — any 3 eligible':'Player from set 4 CANNOT play set 5')}</div>
+  </div>`).join('');
+
+  const ssbuKeyRules = document.getElementById('ssbu-key-rules');
+  if (ssbuKeyRules) ssbuKeyRules.innerHTML = [
+    {icon:'⏸️', title:'Pausing',         text:'Only allowed on your own respawn platform at live events. Pause elsewhere = stock loss. Opponent loses stock = you lose 2 stocks.'},
+    {icon:'🔌', title:'Disconnect',       text:'10 min window to return. Recreate game to same state (stock count, same fighters/stage). Damage % resets are OK.'},
+    {icon:'💀', title:'Sudden Death',     text:'Sudden death does NOT count. Higher stock = winner. Tie in stocks → lower % wins. Both tied → 1-stock, 2-min match.'},
+    {icon:'🎭', title:'Mii Fighters',     text:'Default costume, Guest Mii, name = move code (e.g. "1213"). Must declare in lobby chat before the set begins.'},
+    {icon:'📸', title:'Screenshots',      text:'Take screenshots at end of every game. Required if Match Assistant fails — results must be submitted within 1 hour.'},
+    {icon:'🎵', title:'Streaming Music',  text:'If broadcasting, set in-game music to ZERO (0). Nintendo copyright rules apply to all streams.'},
+  ].map(r=>`<div class="card" style="border-left:4px solid var(--navy);padding:.7rem .9rem">
+    <div style="font-weight:700;font-size:.79rem;margin-bottom:.2rem">${r.icon} ${r.title}</div>
+    <div style="font-size:.73rem;color:#4b5563;line-height:1.55">${r.text}</div>
+  </div>`).join('');
+
+  const mk8Scoring = document.getElementById('mk8-scoring-points');
+  if (mk8Scoring) mk8Scoring.innerHTML = [['1st','15'],['2nd','12'],['3rd','10'],['4th','9'],['5th','8'],['6th','7'],['7th','6'],['8th','5']].map(([p,pts])=>`<div style="background:${p==='1st'?'#1a3560':p==='2nd'?'#374151':p==='3rd'?'#7c3aed':'#f1f5f9'};color:${['1st','2nd','3rd'].includes(p)?'#fff':'var(--navy)'};border-radius:6px;padding:.3rem .6rem;text-align:center;min-width:50px"><div style="font-weight:700">${p}</div><div>${pts} pts</div></div>`).join('');
+
+  const mk8KeyRules = document.getElementById('mk8-key-rules');
+  if (mk8KeyRules) mk8KeyRules.innerHTML = [
+    {icon:'🎲', title:'Track Selection',   text:'EVERYONE must pick RANDOM. If a player picks a specific track and it gets chosen → 15 point penalty per violation. Screenshot the violation + final score immediately.'},
+    {icon:'🔌', title:'Host Disconnect',   text:'Entire lobby drops. Screenshot scores after each race! If you have screenshots, tally from old + new lobby. No screenshots = replay the full game.'},
+    {icon:'🔄', title:'Player Changes',    text:'Press Y between races to change character/kart. Do NOT leave the lobby by accident. Substitutions allowed between games, not mid-game.'},
+    {icon:'🐛', title:'Glitching',         text:'Zero tolerance. Video/screenshot proof required for disputes. Penalty = game loss + possible further sanctions from League Officials.'},
+    {icon:'⚖️', title:'Tie-Breaker',       text:'If teams are tied after 4 races, play 1 additional race immediately. Highest team total in that race wins the game.'},
+    {icon:'📸', title:'Screenshots',       text:'Capture button after EVERY race. Non-negotiable. Required for dispute resolution and score submission if Match Assistant fails.'},
+  ].map(r=>`<div class="card" style="border-left:4px solid #e67e22;padding:.7rem .9rem">
+    <div style="font-weight:700;font-size:.79rem;margin-bottom:.2rem">${r.icon} ${r.title}</div>
+    <div style="font-size:.73rem;color:#4b5563;line-height:1.55">${r.text}</div>
+  </div>`).join('');
+
+  const regChips = document.getElementById('reg-field-chips');
+  if (regChips) regChips.innerHTML = ['Full legal name','Grade','CCPS Student ID','Home address','Student email','Student cell','Parent name','Parent email','Parent cell','Competitive event selection','Shirt size','Dietary restrictions / allergies','Emergency contact','Dues payment ($20)','Signed membership agreement'].map(f=>`<span style="font-size:.68rem;background:#f0f4ff;border:1px solid #bdd;color:#1e3a6e;padding:2px 7px;border-radius:20px">${f}</span>`).join('');
+
+  const archStars = document.getElementById('arch-star-picker');
+  if (archStars) archStars.innerHTML = [1,2,3,4,5].map(n=>`<button onclick="setArchiveStar(${n})" id="arch-star-${n}" style="font-size:1.4rem;background:none;border:none;cursor:pointer;padding:0;opacity:.35" title="${n} star${n>1?'s':''}">⭐</button>`).join('');
+}
+
+// ── Checklists ────────────────────────────────────────────
+// Shared by renderSSBUChecklist()/renderMK8Checklist() below — these were
+// two near-byte-identical functions differing only in element id, data
+// source, and color tokens. statusVarName/rerenderFnName are passed as
+// strings (not the objects themselves) because they need to end up
+// literally in the onclick attribute text, which is evaluated later
+// against the global scope, not against a closure over this call.
+function _renderEsChecklist(elId, list, statusArr, statusVarName, rerenderFnName, theme) {
+  const el = document.getElementById(elId); if (!el) return;
+  el.innerHTML = list.map((c,i)=>{
+    const done = !!statusArr[i];
+    // Mouse-only before this — unlike the SBE checklist (which has a real
+    // <button> alongside its clickable div as a keyboard fallback), these
+    // items had no way to toggle without a pointer at all.
+    const toggle = `${statusVarName}[${i}]=!${statusVarName}[${i}];persistESChecklists();${rerenderFnName}()`;
+    return `<div onclick="${toggle}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();${toggle}}" role="checkbox" aria-checked="${done}" tabindex="0" style="cursor:pointer;background:${done?theme.doneBg:'#fff'};border:1px solid ${done?theme.doneBorder:'var(--border)'};border-radius:7px;padding:.45rem .7rem;display:flex;gap:.5rem;align-items:center;font-size:.74rem;transition:all .15s">
+      <div style="width:16px;height:16px;border-radius:4px;border:2px solid ${done?theme.accent:'#d1d5db'};background:${done?theme.accent:'#fff'};flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#fff">${done?'✓':''}</div>
+      <span style="color:${done?theme.text:'#374151'}">${c}</span>
+    </div>`;
+  }).join('');
+}
+
+function renderSSBUChecklist() {
+  _renderEsChecklist('ssbu-checklist-render', SSBU_CHECKLIST, SSBU_CHECK_STATUS, 'SSBU_CHECK_STATUS', 'renderSSBUChecklist',
+    { doneBg: '#f0fdf4', doneBorder: '#86efac', accent: '#15803d', text: '#15803d' });
+}
+
+function renderMK8Checklist() {
+  _renderEsChecklist('mk8-checklist-render', MK8_CHECKLIST, MK8_CHECK_STATUS, 'MK8_CHECK_STATUS', 'renderMK8Checklist',
+    { doneBg: '#fff7ed', doneBorder: '#fed7aa', accent: '#e67e22', text: '#92400e' });
+}
+
+// ── Match Log ─────────────────────────────────────────────
+function renderMatchLog() {
+  const el = document.getElementById('es-match-list'); if (!el) return;
+  if (!ES_MATCHES.length) {
+    el.innerHTML = `<div style="text-align:center;padding:2.5rem;color:var(--muted);font-size:.79rem">No matches logged yet. Click "+ Log Match" after each PlayVS match day.</div>`;
+    return;
+  }
+  const totalW = ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length;
+  const totalL = ES_MATCHES.filter(m=>Number(m.us)<Number(m.them)).length;
+  const totalT = ES_MATCHES.filter(m=>Number(m.us)===Number(m.them)).length;
+  el.innerHTML = `<div style="display:flex;gap:.75rem;margin-bottom:.85rem;flex-wrap:wrap">
+    <div style="background:#dcfce7;border:1px solid #86efac;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#15803d">${totalW}W</strong> <span style="color:var(--muted)">Wins</span></div>
+    <div style="background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#dc2626">${totalL}L</strong> <span style="color:var(--muted)">Losses</span></div>
+    ${totalT ? `<div style="background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong style="color:#475569">${totalT}T</strong> <span style="color:var(--muted)">Ties</span></div>` : ''}
+    <div style="background:#f1f5f9;border:1px solid var(--border);border-radius:8px;padding:.5rem 1rem;font-size:.82rem"><strong>${ES_MATCHES.length}</strong> <span style="color:var(--muted)">Total</span></div>
+  </div>` + [...ES_MATCHES].sort((a, b) => {
+    // FIXED: this used to be a plain .reverse() — "most recently logged"
+    // order, not "most recent match date" order. Logging a missed match
+    // late (e.g. Tuesday's match entered on Thursday, after Wednesday's
+    // was already logged) showed it below a match that actually happened
+    // after it.
+    if (a.date !== b.date) return (b.date||'').localeCompare(a.date||'');
+    return String(b.id).localeCompare(String(a.id)); // tiebreak: same-day matches, most recently logged first
+  }).map(m => {
+    const us = Number(m.us), them = Number(m.them);
+    const result = us > them ? 'win' : us < them ? 'loss' : 'tie';
+    const color = result==='win' ? '#15803d' : result==='loss' ? '#dc2626' : '#64748b';
+    const label = result==='win' ? 'WIN' : result==='loss' ? 'LOSS' : 'TIE';
+    const game = m.game==='ssbu'?'🥊 Smash Bros':'🏎️ Mario Kart 8';
+    return `<div style="background:#fff;border:1px solid var(--border);border-left:5px solid ${color};border-radius:8px;padding:.8rem 1rem;margin-bottom:.5rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:.5rem">
+      <div>
+        <div style="font-weight:700;font-size:.84rem;color:var(--navy)">vs ${m.opp}</div>
+        <div style="font-size:.72rem;color:var(--muted)">${m.date} · ${game}</div>
+        ${m.notes ? `<div style="font-size:.72rem;color:#4b5563;margin-top:.2rem;font-style:italic">${m.notes}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:.75rem">
+        <div style="text-align:center">
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:${color};line-height:1">${m.us} – ${m.them}</div>
+          <div style="font-size:.68rem;font-weight:700;color:${color}">${label}</div>
+        </div>
+        <button onclick="deleteMatch('${m.id}')" aria-label="Remove match vs ${escH(m.opp)}" style="font-size:.68rem;padding:.2rem .45rem;background:#fee2e2;color:#dc2626;border:none;border-radius:4px;cursor:pointer">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openMatchModal() {
+  document.getElementById('match-date').valueAsDate = new Date();
+  // Clear fields
+  ['match-opp','match-notes'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  const us=document.getElementById('match-us'); if(us) us.value=0;
+  const them=document.getElementById('match-them'); if(them) them.value=0;
+  // FIXED: was left out of the reset above, so whatever game the previous
+  // match logged stayed selected — logging an SSBU match, closing, then
+  // opening again to log an MK8 match would silently save it as SSBU
+  // unless the coach happened to notice and re-pick it.
+  const game=document.getElementById('match-game'); if(game) game.selectedIndex=0;
+  document.getElementById('es-match-modal').style.display='block';
+}
+function closeMatchModal() { document.getElementById('es-match-modal').style.display='none'; }
+
+function saveMatch() {
+  const opp = document.getElementById('match-opp').value.trim();
+  if (!opp) { _showToast('Please enter opponent school.', 2500, '#991b1b'); return; }
+  // Falls back to today when the date field is left blank — was computed
+  // here but never actually used below, so a blank date field silently
+  // saved an empty date instead of falling back.
+  const matchDateVal = document.getElementById('match-date')?.value || new Date().toISOString().slice(0,10);
+  ES_MATCHES.push({
+    id:'m'+Date.now(),
+    date:  matchDateVal,
+    game:  document.getElementById('match-game').value,
+    opp,
+    us:    Number(document.getElementById('match-us').value)||0,
+    them:  Number(document.getElementById('match-them').value)||0,
+    notes: document.getElementById('match-notes').value.trim(),
+  });
+  persistESMatches();
+  // Write to daily log — e-sports coaching is a documented professional role
+  const _usScore = Number(document.getElementById('match-us')?.value)||0;
+  const _themScore = Number(document.getElementById('match-them')?.value)||0;
+  const _gameLabel = document.getElementById('match-game')?.value === 'ssbu' ? 'Smash Bros' :
+                     document.getElementById('match-game')?.value === 'mk8'  ? 'Mario Kart' : 'E-Sports';
+  const _result = _usScore > _themScore ? 'Win' : _usScore < _themScore ? 'Loss' : 'Tie';
+  _logDaily({ date: new Date().toISOString(), type: 'esports_match',
+    note: `E-Sports match logged: ${_gameLabel} vs ${opp} — ${_result} ${_usScore}–${_themScore}` });
+  document.getElementById('es-match-modal').style.display='none';
+  renderMatchLog();
+  renderESRoster(); // refresh win count
+  refreshNextAction();
+  _showToast(`✅ Match logged: ${_result} ${_usScore}–${_themScore} vs ${opp}`);
+}
+
+function deleteMatch(id) {
+  const m = ES_MATCHES.find(m=>m.id===id);
+  const _saved = [...ES_MATCHES];
+  ES_MATCHES = ES_MATCHES.filter(m=>m.id!==id);
+  persistESMatches();
+  renderMatchLog();
+  renderESRoster();
+  _undoToast(m ? `Match vs ${m.opp} removed` : 'Match removed', () => { ES_MATCHES = _saved; persistESMatches(); renderMatchLog(); renderESRoster(); });
+}
+
+
+
+function esExportRoster() {
+  const rows = ES_PLAYERS.map(p=>[p.fname+' '+p.lname, p.tag||'', p.game, p.role, p.main||'', p.kart||'', p.notes||''].join('\t')).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob(['Name\tTag\tGame\tRole\tSSBU Main\tMK8 Setup\tNotes\n'+rows],{type:'text/plain'}));
+  a.download = 'ESports_Roster.txt'; a.click();
+}
+
+// ============================================================

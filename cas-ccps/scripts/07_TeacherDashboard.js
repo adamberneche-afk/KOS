@@ -267,17 +267,18 @@ function _apiGetRoster_(cfg, email) {
  * (29_StudentContextAggregator.js: same project as this file, but joins
  * through StudentDocRegistry — under-reports any student who doesn't yet
  * have a Module-4 context doc). Same Ledger-join *pattern* both of those
- * already use (row[1]=GoogleID/email, row[4]=StudentName, row[6]=ClassName,
- * row[8]=TeacherEmail — see getDashboardData() below), but a fresh,
+ * already use (LEDGER.GOOGLE_ID/STUDENT_NAME/CLASS_NAME/TEACHER_EMAIL,
+ * 00_SharedConfig.js — see getDashboardData() below), but a fresh,
  * correctly-scoped implementation.
  *
  * `className` is included for display context only — Form 1's "Course
  * Name" field is free text with no enum/validation at capture time, so it
  * cannot be reliably cross-referenced against leader-hub's own "8175"/
- * "8177" course codes. `period` (row[11], also free text — Form 1's help
- * text is literally "e.g. 3") is included as a secondary disambiguation
- * signal for leader-hub's name-matching, not a hard join key — the two
- * systems use different period vocabularies ("3" here vs. "3rd Odd" there).
+ * "8177" course codes. `period` (LEDGER.PERIOD, also free text — Form 1's
+ * help text is literally "e.g. 3") is included as a secondary
+ * disambiguation signal for leader-hub's name-matching, not a hard join
+ * key — the two systems use different period vocabularies ("3" here vs.
+ * "3rd Odd" there).
  */
 function _getRosterForEmail_(cfg, teacherEmail) {
   const ss     = SpreadsheetApp.openById(cfg.ledgerSsId);
@@ -288,14 +289,14 @@ function _getRosterForEmail_(cfg, teacherEmail) {
   const byEmail = new Map(); // dedup — a student can have multiple Ledger rows (one per assignment)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (String(row[8] || "").trim().toLowerCase() !== wanted) continue;
-    const email = String(row[1] || "").trim();
+    if (String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== wanted) continue;
+    const email = String(row[LEDGER.GOOGLE_ID] || "").trim();
     if (!email || byEmail.has(email.toLowerCase())) continue;
     byEmail.set(email.toLowerCase(), {
-      name:      String(row[4] || "").trim(),
+      name:      String(row[LEDGER.STUDENT_NAME] || "").trim(),
       email:     email,
-      className: String(row[6] || "").trim(),
-      period:    String(row[11] || "").trim(),
+      className: String(row[LEDGER.CLASS_NAME] || "").trim(),
+      period:    String(row[LEDGER.PERIOD] || "").trim(),
     });
   }
 
@@ -342,43 +343,43 @@ function getDashboardData(termFilter) {
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row = ledgerData[i];
-    if (String(row[8]).toLowerCase() !== teacherEmail.toLowerCase()) continue;
-    if (!row[1]) continue;
+    if (String(row[LEDGER.TEACHER_EMAIL]).toLowerCase() !== teacherEmail.toLowerCase()) continue;
+    if (!row[LEDGER.GOOGLE_ID]) continue;
 
-    const rowTerm    = String(row[18] || "").trim();
-    const ledgerStatus = String(row[12]).trim();
+    const rowTerm    = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
+    const ledgerStatus = String(row[LEDGER.STATUS]).trim();
 
     if (rowTerm) allTerms.add(rowTerm);
     if (ledgerStatus === "ARCHIVED") continue;
     if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
 
-    const fileId       = String(row[3]).trim();
-    const unitCode     = String(row[10]).trim();
+    const fileId       = String(row[LEDGER.FILE_ID]).trim();
+    const unitCode     = String(row[LEDGER.COURSE_NAME]).trim();
     const displayStatus = resolveDisplay_(ledgerStatus, pipelineStatus[fileId]);
     const statusClass  = resolveClass_(displayStatus);
 
-    // Say/Do Ledger cas-ccps finding #1: column 20 (index 19) is the new
-    // SuggestedScore column — may not exist yet on a Ledger where no
+    // Say/Do Ledger cas-ccps finding #1: LEDGER.TURN_IN_SUGGESTED_SCORE
+    // (column 20, index 19) — may not exist yet on a Ledger where no
     // submission has ever gone through markPendingReview_() (which self-heals
-    // the column via _ensureTurnInReviewColumns_), so row[19] can genuinely
-    // be undefined here, not just an empty string.
-    const suggestedScoreRaw = row[19];
+    // the column via _ensureTurnInReviewColumns_), so this can genuinely be
+    // undefined here, not just an empty string.
+    const suggestedScoreRaw = row[LEDGER.TURN_IN_SUGGESTED_SCORE];
     const suggestedScore = (suggestedScoreRaw === undefined || suggestedScoreRaw === "")
       ? null : Number(suggestedScoreRaw);
 
     students.push({
-      name:        String(row[4]).trim()  || "—",
-      googleId:    String(row[1]).trim(),
-      block:       String(row[5]).trim(),
-      className:   String(row[6]).trim(),
-      period:      String(row[11]).trim(),
-      subject:     String(row[9]).trim(),
+      name:        String(row[LEDGER.STUDENT_NAME]).trim()  || "—",
+      googleId:    String(row[LEDGER.GOOGLE_ID]).trim(),
+      block:       String(row[LEDGER.BLOCK]).trim(),
+      className:   String(row[LEDGER.CLASS_NAME]).trim(),
+      period:      String(row[LEDGER.PERIOD]).trim(),
+      subject:     String(row[LEDGER.SUBJECT]).trim(),
       unitCode:    unitCode,
-      configId:    String(row[2]).trim(),
+      configId:    String(row[LEDGER.CONFIG_ID]).trim(),
       status:      displayStatus,
       statusClass: statusClass,
-      lastEval:    row[15] ? formatDate_(row[15]) : "Never",
-      submittedAt: row[13] ? formatDate_(row[13]) : "—",
+      lastEval:    row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : "Never",
+      submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : "—",
       suggestedScore: suggestedScore,
       docUrl:      fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
@@ -454,7 +455,7 @@ function getDashboardData(termFilter) {
 // created before this feature existed, regardless of which project touches
 // it first.
 function _ensureTurnInReviewColumns_(sheet) {
-  const headerRange = sheet.getRange(1, 20, 1, 4);
+  const headerRange = sheet.getRange(1, LEDGER.TURN_IN_SUGGESTED_SCORE + 1, 1, 4);
   const existing     = headerRange.getValues()[0];
   if (existing[0] !== "SuggestedScore") {
     headerRange.setValues([["SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt"]]);
@@ -468,14 +469,14 @@ function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, deci
   const data  = sheet.getDataRange().getValues();
 
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][2]).trim() !== configId) continue; // column C = ConfigID
+    if (String(data[i][LEDGER.CONFIG_ID]).trim() !== configId) continue;
 
-    const currentStatus = String(data[i][12]).trim();
+    const currentStatus = String(data[i][LEDGER.STATUS]).trim();
     if (currentStatus !== "PENDING_TEACHER_REVIEW") {
       return { success: false, error: "This submission is not awaiting review (current status: " + currentStatus + ")." };
     }
 
-    const rowSuggested = data[i][19];
+    const rowSuggested = data[i][LEDGER.TURN_IN_SUGGESTED_SCORE];
     const suggestedScore = (rowSuggested === "" || rowSuggested === undefined) ? null : Number(rowSuggested);
     if (decisionType === "CONFIRMED" && suggestedScore === null) {
       return { success: false, error: "No suggested score to confirm — use Override to assign a score directly." };
@@ -487,13 +488,13 @@ function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, deci
     }
 
     const rowIndex = i + 1;
-    sheet.getRange(rowIndex, 13).setValue("COMPLIANT"); // terminal — same status every other health check/report already expects
-    sheet.getRange(rowIndex, 15).setValue(
+    sheet.getRange(rowIndex, LEDGER.STATUS + 1).setValue("COMPLIANT"); // terminal — same status every other health check/report already expects
+    sheet.getRange(rowIndex, LEDGER.NOTES + 1).setValue(
       "Reviewed by teacher — final score " + finalScore + "/5 (" + decisionType.toLowerCase() + ")."
     );
-    sheet.getRange(rowIndex, 21).setValue(finalScore);
-    sheet.getRange(rowIndex, 22).setValue(teacherEmail);
-    sheet.getRange(rowIndex, 23).setValue(new Date());
+    sheet.getRange(rowIndex, LEDGER.TURN_IN_FINAL_SCORE + 1).setValue(finalScore);
+    sheet.getRange(rowIndex, LEDGER.TURN_IN_SCORE_DECIDED_BY + 1).setValue(teacherEmail);
+    sheet.getRange(rowIndex, LEDGER.TURN_IN_SCORE_DECIDED_AT + 1).setValue(new Date());
     SpreadsheetApp.flush();
 
     return { success: true, finalScore: finalScore };

@@ -61,6 +61,22 @@ class FakeRange {
     }
     return out;
   }
+  // Single-cell convenience API — real Range.setValue()/getValue() act on
+  // the top-left cell of the range regardless of its size. Several cas-ccps
+  // files call sheet.getRange(row, col) (a single cell, no numRows/numCols)
+  // then .setValue()/.getValue() directly, rather than the array-shaped
+  // setValues()/getValues() above.
+  setValue(value) {
+    const targetRow = this.row - 1;
+    while (this.sheet.rows.length <= targetRow) this.sheet.rows.push([]);
+    this.sheet.rows[targetRow][this.col - 1] = value;
+    return this;
+  }
+  getValue() {
+    const sourceRow = this.sheet.rows[this.row - 1] || [];
+    const v = sourceRow[this.col - 1];
+    return v === undefined ? '' : v;
+  }
 }
 
 class FakeSheet {
@@ -73,7 +89,7 @@ class FakeSheet {
   setName(n) { this.name = n; return this; }
   appendRow(arr) { this.rows.push(arr.slice()); return this; }
   getLastRow() { return this.rows.length; }
-  getRange(row, col, numRows, numCols) { return new FakeRange(this, row, col, numRows, numCols); }
+  getRange(row, col, numRows = 1, numCols = 1) { return new FakeRange(this, row, col, numRows, numCols); }
   getDataRange() {
     const width = this.rows.reduce((m, r) => Math.max(m, r.length), 0) || 1;
     return new FakeRange(this, 1, 1, this.rows.length, width);
@@ -113,6 +129,11 @@ function makeSpreadsheetAppMock() {
       if (!registry.has(id)) throw new Error('Spreadsheet not found: ' + id);
       return registry.get(id);
     },
+    // Real Apps Script API — several files call SpreadsheetApp.flush()
+    // after a batch of writes to force them out before the next read. A
+    // no-op here is correct: this mock's writes (FakeRange.setValue(s))
+    // already apply synchronously, so there is nothing to flush.
+    flush() {},
   };
 }
 
@@ -122,12 +143,39 @@ function makePropertiesServiceMock() {
     getProperty(key) { return store.has(key) ? store.get(key) : null; },
     setProperty(key, value) { store.set(key, String(value)); return scriptProperties; },
     deleteProperty(key) { store.delete(key); return scriptProperties; },
+    // Real Apps Script API — getConfig_() (00_SharedConfig.js) reads every
+    // Script Property at once via getProperties(), and several cron-style
+    // functions (e.g. 25_WarmUpWriter.js's _checkCronHealth_) batch-write
+    // several keys at once via setProperties(). Both were missing here,
+    // which made any file calling either throw "is not a function" for a
+    // reason that had nothing to do with the logic actually under test.
+    getProperties() { return Object.fromEntries(store); },
+    setProperties(properties, deleteAllOthers) {
+      if (deleteAllOthers) store.clear();
+      Object.keys(properties || {}).forEach((k) => store.set(k, String(properties[k])));
+      return scriptProperties;
+    },
   };
   return { getScriptProperties() { return scriptProperties; } };
 }
 
 function makeSessionMock(email = 'teacher@example.com') {
   return { getActiveUser() { return { getEmail() { return email; } }; } };
+}
+
+// Real Apps Script API — get()/put()/remove() on getScriptCache(). No TTL
+// enforcement (a unit test controls its own clock only via explicit
+// remove() calls, not real elapsed time) — good enough for testing the
+// cache-hit/cache-miss/invalidation logic itself, not for testing expiry
+// timing, which no test in this repo needs.
+function makeCacheServiceMock() {
+  const store = new Map();
+  const cache = {
+    get(key) { return store.has(key) ? store.get(key) : null; },
+    put(key, value /* , ttlSeconds — ignored, see comment above */) { store.set(key, String(value)); },
+    remove(key) { store.delete(key); },
+  };
+  return { getScriptCache() { return cache; }, getUserCache() { return cache; } };
 }
 
 // Loads a real .gs file's source into a fresh vm context with the mocks
@@ -137,18 +185,46 @@ function makeSessionMock(email = 'teacher@example.com') {
 // set up or inspect state the public API doesn't expose, e.g. backdating a
 // queue row's timestamp to simulate staleness).
 function loadGasFile(absPath, exposeNames, extraGlobals = {}) {
-  const source = fs.readFileSync(absPath, 'utf8');
+  return loadGasFiles([absPath], exposeNames, extraGlobals);
+}
+
+// Same as loadGasFile, but concatenates multiple files' source before
+// running it — mirrors how a real Apps Script project actually works
+// (every file bound to the same project shares one global scope; see
+// tools/gas-lint/project-map.json). Needed whenever the function under
+// test calls a helper declared in a sibling file of the same GAS project
+// (e.g. cas-ccps's 30_SCRSuggestionEngine.js calling 00_SharedConfig.js's
+// getConfig_()) — loading either file alone would throw a ReferenceError
+// that has nothing to do with the logic actually being tested.
+function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
+  const source = absPaths.map((p) => fs.readFileSync(p, 'utf8')).join('\n;\n');
   const sandbox = {
     console,
     PropertiesService: makePropertiesServiceMock(),
     SpreadsheetApp: makeSpreadsheetAppMock(),
     Session: makeSessionMock(),
+    CacheService: makeCacheServiceMock(),
     Utilities: { getUuid: () => 'fake-uuid-' + Math.random().toString(36).slice(2) },
+    // Every cas-ccps file logs through Logger.log(...) (Apps Script's
+    // built-in logger, distinct from console) on essentially every code
+    // path, including ones this harness exists to exercise — without a
+    // mock, calling any of them throws "Logger is not defined" for a
+    // reason that has nothing to do with the logic under test.
+    Logger: { log: () => {} },
     ...extraGlobals,
   };
   const context = vm.createContext(sandbox);
   const footer = `\n;globalThis.__exported = { ${exposeNames.join(', ')} };`;
-  vm.runInContext(source + footer, context, { filename: absPath });
+  vm.runInContext(source + footer, context, { filename: absPaths[absPaths.length - 1] });
+
+  // vm.createContext's sandbox object does NOT gain standard built-ins
+  // (Date, Array, ...) as ordinary properties just by being contextified —
+  // `context.Date` is undefined even though `Date` resolves fine to code
+  // running *inside* the context. A test that needs to construct a value
+  // the loaded file will `instanceof`-check (e.g. a Date cell) has to use
+  // the context's OWN Date constructor, not this file's — so pull it out
+  // here as a plain, directly-usable property on the returned `sandbox`.
+  context.Date = vm.runInContext('Date', context);
 
   const raw = context.__exported || {};
   const exported = {};
@@ -161,4 +237,4 @@ function loadGasFile(absPath, exposeNames, extraGlobals = {}) {
   return { exported, sandbox: context };
 }
 
-module.exports = { loadGasFile, FakeSheet, FakeSpreadsheet };
+module.exports = { loadGasFile, loadGasFiles, FakeSheet, FakeSpreadsheet };

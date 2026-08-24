@@ -1,0 +1,2464 @@
+// LEADERHUB COMMAND ENGINE v3
+// Dual-Choice Priority · Thought Organizer · Reflective Journal
+// Cron-style 2am Priority Adjustment · Emotional Barometer
+// ============================================================
+
+// ── Storage helpers (localStorage with JSON) ──────────────
+
+// ══════════════════════════════════════════════════════════
+// GEMINI API HELPER — single auth'd fetch for all AI calls
+// ══════════════════════════════════════════════════════════
+function _logDaily(entry) {
+  const log = LS.get('lh_daily_log', []);
+  log.push(entry);
+  LS.set('lh_daily_log', log.slice(-500)); // keep most recent 500 — ~1 full school year
+}
+
+// Toasts used to all render at the same fixed bottom position, so checking
+// off several Horizon items (or logging several lessons) within a few
+// seconds stacked them directly on top of each other — the older one's
+// Undo button became unclickable and its own countdown kept running,
+// invisibly, underneath. This registry stacks active toasts bottom-up
+// instead, newest closest to the original position, and reflows the rest
+// whenever one is added or removed.
+const _activeToasts = [];
+function _repositionToasts() {
+  let offset = 24; // 1.5rem, matches the original single-toast position
+  const gap = 10;
+  for (let i = _activeToasts.length - 1; i >= 0; i--) {
+    const el = _activeToasts[i];
+    el.style.bottom = offset + 'px';
+    offset += el.offsetHeight + gap;
+  }
+}
+function _registerToast(el) {
+  document.body.appendChild(el);
+  _activeToasts.push(el);
+  _repositionToasts();
+}
+function _removeToast(el) {
+  const idx = _activeToasts.indexOf(el);
+  if (idx !== -1) _activeToasts.splice(idx, 1);
+  el.remove();
+  _repositionToasts();
+}
+
+function _undoToast(msg, onUndo) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:.5rem .75rem .5rem 1.1rem;border-radius:8px;font-size:.8rem;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.25);display:flex;align-items:center;gap:.65rem;white-space:nowrap;transition:bottom .18s ease';
+  const label = document.createElement('span');
+  label.textContent = msg;
+  const btn = document.createElement('button');
+  btn.textContent = 'Undo';
+  btn.style.cssText = 'background:#f59e0b;color:#1e293b;border:none;border-radius:5px;padding:.22rem .65rem;font-size:.78rem;font-weight:800;cursor:pointer;flex-shrink:0';
+  let undone = false;
+  btn.onclick = () => { undone=true; onUndo(); _removeToast(t); };
+  t.appendChild(label);
+  t.appendChild(btn);
+  _registerToast(t);
+  setTimeout(() => { if(!undone) _removeToast(t); }, 5000);
+}
+
+function _showToast(msg, duration=2800, bg='#1a3560') {
+  const t = document.createElement('div');
+  t.style.cssText = `position:fixed;left:50%;transform:translateX(-50%);background:${bg};color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.8rem;font-weight:600;z-index:99999;box-shadow:0 4px 16px rgba(0,0,0,.2);white-space:nowrap;transition:bottom .18s ease`;
+  t.textContent = msg;
+  _registerToast(t);
+  setTimeout(() => _removeToast(t), duration);
+}
+
+// ── Runtime data constants (restored) ──────────────────────────────────────
+const DB_ROLES = {
+  teach:   { icon:'📘', label:'Teaching',   color:'#1a3560', bg:'#eef2f9' },
+  meeting: { icon:'🗓️', label:'Meeting',    color:'#0f766e', bg:'#f0fdfa' },
+  store:   { icon:'🏪', label:'Store/WBL',  color:'#15803d', bg:'#f0fdf4' },
+  deca:    { icon:'🏆', label:'DECA',        color:'#b45309', bg:'#fffbeb' },
+  esports: { icon:'🎮', label:'E-Sports',    color:'#6d28d9', bg:'#f5f3ff' },
+  trips:   { icon:'🚌', label:'Field Trips', color:'#0369a1', bg:'#eff6ff' },
+  general: { icon:'📌', label:'General',     color:'#374151', bg:'#f9fafb' },
+};
+
+// ─── SCHOOL CALENDAR / BELL SCHEDULE — Settings → School Calendar & Bell
+// Schedule ───────────────────────────────────────────────────────────────
+// Defaults below are Clover Hill's actual 2025-26 calendar and bell times —
+// every one of them expires at the end of a school year and none had a UI
+// path to update. The _DEFAULT consts stay as literal fallbacks; the live
+// bindings (BELL_SCHEDULES, CCPS_SCHEDULE_OVERRIDES, CCPS_NO_SCHOOL,
+// LP_QUARTERS, DAY_SCHEDULE_MAP) are populated by _applyScheduleConfig()
+// from lh_schedule_config in localStorage, falling back to these defaults
+// for anything not customized. Every call site below reads these same
+// four names/DAY_SCHEDULE_MAP exactly as before — only where their values
+// come from changed.
+const BELL_SCHEDULES_DEFAULT = {
+  // ── Schedule A — Regular (Mon/Tue/Thu on non-B days) ──────────────────────
+  A: {
+    label: 'Schedule A',
+    periods: [
+      { label:'Before School', start:'07:00', end:'08:29' },
+      { label:'1st Block',     start:'08:30', end:'09:20', block:1 },
+      { label:'Passing',       start:'09:20', end:'09:25' },
+      { label:'2nd Block',     start:'09:25', end:'11:05', block:2 },
+      { label:'A Lunch',       start:'11:28', end:'11:51', lunch:true },
+      { label:'B Lunch',       start:'11:56', end:'12:19', lunch:true },
+      { label:'C Lunch',       start:'12:24', end:'12:47', lunch:true },
+      { label:'D Lunch',       start:'12:52', end:'13:15', lunch:true },
+      { label:'3rd Block',     start:'11:10', end:'13:15', block:3 },
+      { label:'Passing',       start:'13:15', end:'13:20' },
+      { label:'4th Block',     start:'13:20', end:'15:00', block:4 },
+      { label:'After School',  start:'15:00', end:'17:30' },
+    ]
+  },
+  // ── Schedule B — Cav Morning (Thu/Fri) / Homeroom (Wed) ───────────────────
+  B: {
+    label: 'Schedule B',
+    periods: [
+      { label:'Before School', start:'07:00', end:'08:29' },
+      { label:'1st Block',     start:'08:30', end:'09:15', block:1 },
+      { label:'CM / H.R.',     start:'09:20', end:'09:45', advisory:true },
+      { label:'Passing',       start:'09:45', end:'09:50' },
+      { label:'2nd Block',     start:'09:50', end:'11:20', block:2 },
+      { label:'A Lunch',       start:'11:38', end:'12:01', lunch:true },
+      { label:'B Lunch',       start:'12:06', end:'12:29', lunch:true },
+      { label:'C Lunch',       start:'12:34', end:'12:57', lunch:true },
+      { label:'D Lunch',       start:'13:02', end:'13:25', lunch:true },
+      { label:'3rd Block',     start:'11:25', end:'13:25', block:3 },
+      { label:'Passing',       start:'13:25', end:'13:30' },
+      { label:'4th Block',     start:'13:30', end:'15:00', block:4 },
+      { label:'After School',  start:'15:00', end:'17:30' },
+    ]
+  },
+  // ── Activity Schedule ──────────────────────────────────────────────────────
+  ACT: {
+    label: 'Activity Day',
+    periods: [
+      { label:'Before School', start:'07:00', end:'08:29' },
+      { label:'1st Block',     start:'08:30', end:'09:10', block:1 },
+      { label:'2nd Block',     start:'09:15', end:'10:35', block:2 },
+      { label:'A Lunch',       start:'10:44', end:'11:05', lunch:true },
+      { label:'B Lunch',       start:'11:09', end:'11:30', lunch:true },
+      { label:'C Lunch',       start:'11:34', end:'11:55', lunch:true },
+      { label:'D Lunch',       start:'11:59', end:'12:20', lunch:true },
+      { label:'3rd Block',     start:'10:40', end:'12:20', block:3 },
+      { label:'4th Block',     start:'12:25', end:'13:55', block:4 },
+      { label:'Activity',      start:'14:00', end:'15:00', activity:true },
+      { label:'After School',  start:'15:00', end:'17:30' },
+    ]
+  },
+  // ── 2-Hour Delay ──────────────────────────────────────────────────────────
+  DELAY2: {
+    label: '2-Hr Delay',
+    periods: [
+      { label:'Before School', start:'07:00', end:'10:29' },
+      { label:'1st Block',     start:'10:30', end:'11:00', block:1 },
+      { label:'2nd Block',     start:'11:05', end:'12:10', block:2 },
+      { label:'A Lunch',       start:'12:18', end:'12:38', lunch:true },
+      { label:'B Lunch',       start:'12:42', end:'13:02', lunch:true },
+      { label:'C Lunch',       start:'13:06', end:'13:26', lunch:true },
+      { label:'D Lunch',       start:'13:30', end:'13:50', lunch:true },
+      { label:'3rd Block',     start:'12:15', end:'13:50', block:3 },
+      { label:'4th Block',     start:'13:55', end:'15:00', block:4 },
+      { label:'After School',  start:'15:00', end:'17:30' },
+    ]
+  },
+  // ── 3-Hour Early Release ──────────────────────────────────────────────────
+  EARLY3: {
+    label: '3-Hr Early Release',
+    periods: [
+      { label:'Before School', start:'07:00', end:'08:29' },
+      { label:'1st Block',     start:'08:30', end:'09:00', block:1 },
+      { label:'2nd Block',     start:'09:05', end:'10:00', block:2 },
+      { label:'3rd Block',     start:'10:05', end:'11:00', block:3 },
+      { label:'4th Block',     start:'11:05', end:'12:00', block:4 },
+      { label:'Dismissed',     start:'12:00', end:'17:30' },
+    ]
+  },
+};
+
+const SCHEDULE_OVERRIDES_DEFAULT = {
+  // Early release days → EARLY3
+  '2025-09-19': 'EARLY3',
+  '2025-10-22': 'EARLY3',
+  '2025-11-14': 'EARLY3',
+  '2026-01-13': 'EARLY3',
+  '2026-02-06': 'EARLY3',
+  '2026-03-19': 'EARLY3',
+  '2026-04-17': 'EARLY3',
+  '2026-05-28': 'EARLY3',
+  '2026-05-29': 'EARLY3',
+};
+
+const NO_SCHOOL_DEFAULT = [
+  '2025-08-29','2025-09-01',
+  '2025-10-02',
+  '2025-11-03','2025-11-04','2025-11-26','2025-11-27','2025-11-28',
+  '2025-12-22','2025-12-23','2025-12-24','2025-12-25','2025-12-26',
+  '2025-12-29','2025-12-30','2025-12-31',
+  '2026-01-01','2026-01-02','2026-01-19',
+  '2026-02-16',
+  '2026-03-20','2026-03-30','2026-03-31',
+  '2026-04-01','2026-04-02','2026-04-03',
+  '2026-05-25',
+];
+
+// Sun=0..Sat=6 → schedule type key (null = no school that day of week).
+// Matches Clover Hill's actual rotation: Mon/Tue = A, Wed/Thu/Fri = B.
+const DAY_SCHEDULE_MAP_DEFAULT = { 0:null, 1:'A', 2:'A', 3:'B', 4:'B', 5:'B', 6:null };
+
+const SCHOOL_PERIODS = [];
+
+let BELL_SCHEDULES         = BELL_SCHEDULES_DEFAULT;
+let CCPS_SCHEDULE_OVERRIDES = SCHEDULE_OVERRIDES_DEFAULT;
+let CCPS_NO_SCHOOL         = new Set(NO_SCHOOL_DEFAULT);
+let DAY_SCHEDULE_MAP       = DAY_SCHEDULE_MAP_DEFAULT;
+
+function getScheduleConfig() { return LS.get('lh_schedule_config', {}); }
+// NOTE: this eager call only ever runs BELL_SCHEDULES/overrides/noSchool/
+// dayMap — never _applyQuartersConfig. At the moment this line first
+// executes (synchronous top-level parse), QUARTERS_DEFAULT/LP_QUARTERS
+// (Pacing Calendar section, ~4000 lines down) haven't been declared yet;
+// `const`/`let` bindings are in the temporal dead zone until their own
+// declaration runs, so touching them here would throw. LP_QUARTERS
+// self-initializes at its own declaration point instead. saveScheduleConfig
+// below only ever runs later, from a user's Settings edit — by then the
+// whole script has already executed once, so it's safe for it to refresh
+// quarters too.
+function _applyScheduleConfig() {
+  const cfg = getScheduleConfig();
+  BELL_SCHEDULES          = cfg.bellSchedules || BELL_SCHEDULES_DEFAULT;
+  CCPS_SCHEDULE_OVERRIDES = cfg.overrides     || SCHEDULE_OVERRIDES_DEFAULT;
+  CCPS_NO_SCHOOL          = new Set(cfg.noSchool || NO_SCHOOL_DEFAULT);
+  DAY_SCHEDULE_MAP        = cfg.dayOfWeekMap  || DAY_SCHEDULE_MAP_DEFAULT;
+}
+_applyScheduleConfig();
+
+function saveScheduleConfig(updates) {
+  const merged = Object.assign({}, getScheduleConfig(), updates);
+  LS.set('lh_schedule_config', merged);
+  _applyScheduleConfig();
+  if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
+}
+
+// <option> list for a schedule-type <select> in Settings — every configured
+// bell schedule plus "No School" for days/dates with none.
+function _schedTypeOptions(selectedKey) {
+  const opts = [`<option value="" ${!selectedKey ? 'selected' : ''}>No School</option>`];
+  Object.entries(BELL_SCHEDULES).forEach(([key, sched]) => {
+    opts.push(`<option value="${key}" ${selectedKey === key ? 'selected' : ''}>${escH(sched.label || key)}</option>`);
+  });
+  return opts.join('');
+}
+
+// Shared local-calendar-date string builder (YYYY-MM-DD). FIXED: several
+// "what day is it" call sites below used to build this key via
+// `date.toISOString().slice(0,10)`, which converts to UTC first — in a
+// negative-UTC-offset timezone (e.g. US Eastern, what this app is built
+// for), that silently rolls the date forward in the evening, hours
+// before local midnight, causing a mismatch with a same-day lookup (a
+// schedule/holiday/match "today" check reading tomorrow's date
+// instead — every evening the app is left open, not an edge case).
+// getTodayScheduleType() below used to build this correctly inline with
+// its own copy of the same three lines; extracted here so every other
+// site with the same bug can share one correct implementation instead
+// of re-deriving it (or re-introducing the bug) separately.
+function _localDateStr_(date) {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function getTodayScheduleType() {
+  const now = new Date();
+  const key = _localDateStr_(now);
+
+  if (CCPS_NO_SCHOOL.has(key)) return null; // no school
+  if (CCPS_SCHEDULE_OVERRIDES[key]) return CCPS_SCHEDULE_OVERRIDES[key];
+
+  const dow = now.getDay(); // 0=Sun,1=Mon,...6=Sat
+  return DAY_SCHEDULE_MAP[dow] ?? null;
+}
+
+function getCurrentPeriodInfo() {
+  const schedType = getTodayScheduleType();
+  if (!schedType) return { label: 'No School', schedType: null, block: null };
+
+  const sched = BELL_SCHEDULES[schedType];
+  const now   = new Date();
+  const mins  = now.getHours() * 60 + now.getMinutes();
+  const toM   = t => { const [h,m] = t.split(':'); return +h*60 + +m; };
+
+  // Find the most specific matching period (prefer block/advisory/activity over passing/generic)
+  const matches = sched.periods.filter(p => mins >= toM(p.start) && mins < toM(p.end));
+  // Priority: block > advisory > activity > lunch > passing > generic
+  const priority = p => p.block ? 5 : p.advisory ? 4 : p.activity ? 3 : p.lunch ? 2 : 1;
+  const cur = matches.sort((a,b) => priority(b) - priority(a))[0];
+
+  if (!cur) return { label: 'After School', schedType, block: null };
+
+  let label = cur.label;
+  if (cur.block) label = cur.label + ' (' + sched.label + ')';
+  if (cur.advisory) label = schedType === 'B' && now.getDay() === 3 ? 'Homeroom' : 'Cav Morning';
+  if (cur.lunch) label = cur.label + ' Lunch';
+
+  return { label, schedType, block: cur.block || null, raw: cur };
+}
+
+// ── Apps Script Bridge — replaces all Gemini AI calls ───────────────────────
+// All "AI" features now route through the existing EmailBridge Apps Script.
+// Set the bridge URL once in Settings → Email Bridge.
+// GAS endpoints: action=subPlan, action=bragEmail, action=markConsumed,
+//   action=aiDraft, action=checkAiJob (all POST with JSON body)
+
+async function callGAS(action, payload) {
+  const url = EMAIL_BRIDGE.url();
+  if (!url) {
+    _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    throw new Error('NO_GAS_URL');
+  }
+  const resp = await fetch(url, {
+    method: 'POST',
+    // FIXED: was 'application/json', which makes this a non-simple CORS
+    // request — the browser sends an OPTIONS preflight first, and Apps
+    // Script Web Apps don't answer preflights (no doOptions handler),
+    // so the browser blocked the real POST and every callGAS() call
+    // (subPlan, bragEmail, and anything else routed through here) failed
+    // silently into its catch block, always falling back to "saved
+    // locally." 'text/plain' is a CORS-"simple" content type — no
+    // preflight — and EmailBridge.gs's doPost() already reads the raw
+    // body via JSON.parse(e.postData.contents), which doesn't care what
+    // Content-Type header was declared.
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action, ...payload }),
+  });
+  if (!resp.ok) throw new Error('GAS HTTP ' + resp.status);
+  return resp.json();
+}
+
+// ── AI job polling — bifurcated backend, see LEADERHUB_AI_FLOW_SETUP.md ────
+// GAS only ever queues/reads job rows; the actual generation happens in a
+// separate Google Workspace Flow polling the same sheet, using the
+// Workspace account's own Gemini access — no API key anywhere in this app.
+// Polls until COMPLETE/ERROR or a ~90s timeout, then gives up quietly.
+// Never throws — every caller already has a deterministic local fallback,
+// so a null return just means "use that instead," not a failure to surface.
+async function pollAiJob_(jobId, statusEl, labelPrefix) {
+  const POLL_MS    = 3000;
+  const TIMEOUT_MS = 90000;
+  const start = Date.now();
+  while (Date.now() - start < TIMEOUT_MS) {
+    await new Promise(r => setTimeout(r, POLL_MS));
+    let res;
+    try { res = await callGAS('checkAiJob', { jobId }); }
+    catch (e) { continue; } // transient network blip — keep polling until the overall timeout
+    if (!res || !res.ok) continue;
+    if (res.status === 'COMPLETE') return res.result || null;
+    if (res.status === 'ERROR' || res.status === 'NOT_FOUND') return null;
+    // Still PENDING — surface elapsed time so a 30-90s wait doesn't read as frozen.
+    if (statusEl) statusEl.textContent = `${labelPrefix || '⏳ Drafting with AI…'} (${Math.round((Date.now() - start) / 1000)}s)`;
+  }
+  return null; // timed out — no Flow built yet, or it's just slow this time
+}
+
+// ── 1. aiComposeEmail → real AI drafting, with a deterministic fallback ──────
+// FIXED: this always wrote to document.getElementById('email-output'),
+// which doesn't exist anywhere in this file — the real compose textarea
+// is #email-body (see the "EMAIL COMPOSER MODAL" markup). `out` was
+// therefore always null and the function returned immediately, every
+// time — clicking "✨ Generate with AI" silently did nothing at all, and
+// neither did generateRegEmail()'s programmatic call into this function.
+// Wiring the real AI backend surfaced this dead button; fixed the id so
+// the deterministic fallback template actually reaches the screen
+// regardless of whether AI drafting is ever configured.
+let _emailAiReqId = 0;
+async function aiComposeEmail() {
+  const prompt = (document.getElementById('email-ai-prompt')?.value || '').trim();
+  const status = document.getElementById('email-ai-status');
+  const trip   = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+  const out    = document.getElementById('email-body');
+  if (!out) return;
+  const reqId = ++_emailAiReqId; // guards against a slower, stale request overwriting a newer one's result
+
+  // Deterministic fallback — the app's original behavior, now actually
+  // reachable. Used outright when nothing was typed, no bridge is
+  // configured, the Flow errors, or the poll times out.
+  const tripLine = trip ? `\nTrip: ${trip.name} — ${fd(trip.date)}` : '';
+  const localTemplate = `Dear [Recipient],\n\n${prompt || '[Your message here]'}${tripLine}\n\nPlease feel free to reach out with any questions.\n\nBest,\n${PROFILE.name}\n${PROFILE.classroomTitle} | ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\n${PROFILE.title}`;
+
+  if (!prompt) {
+    out.value = localTemplate;
+    if (status) status.textContent = '✏️ Template populated — describe what you need above for a real AI draft';
+    return;
+  }
+
+  const url = EMAIL_BRIDGE.url();
+  if (!url) {
+    out.value = localTemplate;
+    if (status) status.textContent = "✏️ Template populated — AI drafting isn't configured (see Settings)";
+    return;
+  }
+
+  // Real AI path — see LEADERHUB_AI_FLOW_SETUP.md / EMAIL_COMPOSE_FLOW_PROMPT.md.
+  if (status) status.textContent = '⏳ Drafting with AI…';
+  try {
+    const AUDIENCE_LABELS = { students: 'Students', parents: 'Parents/Families', school: 'School Administration', faculty: 'Faculty/Colleagues' };
+    // Privacy: same roster-based substitution the other AI features use
+    // (Settings → Student ID Lookup) — a typed instruction can plausibly
+    // name a specific student (e.g. "remind ___ her slip is late").
+    const jobRes = await callGAS('aiDraft', {
+      type: 'EMAIL_COMPOSE',
+      payload: _privacySafeAiPayload({
+        prompt,
+        audience: emailTab,
+        audienceLabel: AUDIENCE_LABELS[emailTab] || emailTab,
+        trip: trip ? {
+          name: trip.name,
+          date: fd(trip.date),
+          returnDate: (trip.retDate && trip.retDate !== trip.date) ? fd(trip.retDate) : '',
+          destination: trip.dest1 || '',
+          costPerStudent: trip.costStu || 0,
+          transportation: trip.charterCo || trip.train || (trip.ccpsBus ? 'CCPS Bus' : trip.parentTx ? 'Parent Transport' : ''),
+          chaperones: trip.chaperones || '',
+        } : null,
+      }, ['prompt']),
+    });
+    if (jobRes && jobRes.ok && jobRes.jobId) {
+      const draft = await pollAiJob_(jobRes.jobId, status, '⏳ Drafting with AI…');
+      if (reqId !== _emailAiReqId) return; // a newer request already superseded this one
+      const curOut = document.getElementById('email-body'); // modal/tab may have changed while polling
+      if (draft && curOut) {
+        curOut.value = _restoreNamesFromIds(draft);
+        if (status) status.textContent = '✨ AI draft ready — edit as needed';
+        return;
+      }
+    }
+  } catch (e) { /* fall through to local template below */ }
+
+  if (reqId !== _emailAiReqId) return;
+  const curOut = document.getElementById('email-body');
+  if (curOut) curOut.value = localTemplate;
+  if (status) status.textContent = "⚠ Couldn't get an AI draft just now — showing a basic template instead";
+}
+
+// ── 2. archiveWithAI → structured reflection form (no AI) ────────────────────
+// The archive modal already has glows/grows fields; this just pre-fills from trip data
+function archiveWithAI() {
+  const t = trips.find(x => x.id === archivingTripId);
+  if (!t) return;
+  const btn = document.querySelector('[onclick="archiveWithAI()"]');
+  if (btn) { btn.textContent = '✏️ Pre-fill from trip'; btn.disabled = false; }
+
+  // Pre-fill glow/grow fields from existing trip notes if available
+  const glowEl = document.getElementById('archive-glows');
+  const growEl  = document.getElementById('archive-grows');
+  const outEl   = document.getElementById('archive-outcome');
+  if (glowEl && !glowEl.value) glowEl.value = t.notes ? `Trip notes: ${t.notes}` : '';
+  if (growEl && !growEl.value) growEl.value = 'What would I do differently next time?';
+  if (outEl  && !outEl.value)  outEl.value  = t.status === 'complete' ? 'Completed successfully' : t.status || '';
+  _showToast('Fields pre-filled from trip data — edit and save', 3000, '#0369a1');
+}
+
+// ── 3. generateAIInsights → trip archive stats + optional AI narrative ───────
+// The stats grid/table below is pure arithmetic — computed locally, always,
+// with no model involved, same Bifurcation Boundary principle as the rest
+// of this app's AI features: numbers are too correctness-critical to ever
+// hand to a model. The narrative synthesis appended after it (patterns
+// across glows/grows) is the qualitative half, and that part optionally
+// routes through the same GAS+Workspace-Flow backend Brag Board uses — see
+// LEADERHUB_AI_FLOW_SETUP.md. No developer API key either way.
+async function generateAIInsights() {
+  const btn  = document.getElementById('archive-ai-btn');
+  const body = document.getElementById('ai-insights-body');
+  if (!tripArchive.length) {
+    if (body) body.innerHTML = '<div style="text-align:center;padding:2rem;color:var(--muted)">Archive at least one trip to see insights.</div>';
+    return;
+  }
+  // Guard re-entrancy for the whole call — the AI narrative leg below is a
+  // real network round-trip; a second click before it resolves would queue
+  // a second concurrent job for the same stats. Same pattern as
+  // generateBragEmail()/_generateBragEmailInner().
+  if (btn) { if (btn.disabled) return; btn.disabled = true; btn.textContent = '📊 Stats'; }
+
+  const total   = tripArchive.length;
+  const stuTotal= tripArchive.reduce((s,a) => s + Number(a.trip?.stuAtt || 0), 0);
+  const costAvg = tripArchive.reduce((s,a) => s + Number(a.trip?.costStu || 0), 0) / total;
+  const types   = {};
+  tripArchive.forEach(a => { const t = a.trip?.sub || 'same-day'; types[t] = (types[t]||0)+1; });
+  const typeRows = Object.entries(types).map(([k,v]) => `<tr><td>${k}</td><td>${v}</td></tr>`).join('');
+  const glowList = tripArchive.filter(a => a.glows).map(a => ({ name: a.trip?.name||'Trip', text: a.glows }));
+  const growList = tripArchive.filter(a => a.grow).map(a => ({ name: a.trip?.name||'Trip', text: a.grow }));
+  const glows   = glowList.slice(0,5).map(g => `<li><strong>${escH(g.name)}:</strong> ${escH(g.text)}</li>`).join('');
+  const grows   = growList.slice(0,5).map(g => `<li><strong>${escH(g.name)}:</strong> ${escH(g.text)}</li>`).join('');
+
+  if (body) body.innerHTML = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:1rem">
+      <div style="background:#f0f9ff;border-radius:8px;padding:.75rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:800">${total}</div>
+        <div style="font-size:.72rem;color:var(--muted)">Trips Archived</div>
+      </div>
+      <div style="background:#f0fdf4;border-radius:8px;padding:.75rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:800">${stuTotal}</div>
+        <div style="font-size:.72rem;color:var(--muted)">Total Students</div>
+      </div>
+      <div style="background:#fdf4ff;border-radius:8px;padding:.75rem;text-align:center">
+        <div style="font-size:1.5rem;font-weight:800">$${costAvg.toFixed(0)}</div>
+        <div style="font-size:.72rem;color:var(--muted)">Avg Cost/Student</div>
+      </div>
+    </div>
+    <div style="margin-bottom:.75rem">
+      <div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">Trip Types</div>
+      <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+        <tr><th style="text-align:left;padding:.2rem .4rem;background:#f8fafc">Type</th><th style="text-align:left;padding:.2rem .4rem;background:#f8fafc">Count</th></tr>
+        ${typeRows}
+      </table>
+    </div>
+    ${glows ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">✅ Recent Glows</div><ul style="font-size:.76rem;margin:0;padding-left:1.2rem">${glows}</ul></div>` : ''}
+    ${grows ? `<div><div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">📈 Recent Grows</div><ul style="font-size:.76rem;margin:0;padding-left:1.2rem">${grows}</ul></div>` : ''}
+    <div id="archive-ai-narrative"></div>`;
+  if (btn) btn.textContent = '📊 Refresh Stats';
+
+  // Optional AI narrative — additive only. The stats above are already a
+  // complete, correct result on their own; this just tries to surface
+  // patterns across glows/grows in prose. Silently skipped (narrative area
+  // stays empty) if no bridge is configured, the Flow errors, or the
+  // ~90s poll times out — never blocks or replaces the stats.
+  const narrativeEl = document.getElementById('archive-ai-narrative');
+  const url = EMAIL_BRIDGE.url();
+  if (url && narrativeEl && (glowList.length || growList.length)) {
+    narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)" id="archive-ai-status">⏳ Drafting narrative with AI…</div>`;
+    const statusEl = document.getElementById('archive-ai-status');
+    try {
+      // Privacy: same roster-based substitution Brag Board's AI drafting
+      // uses (Settings → Student ID Lookup) — swap any known student name
+      // in glows/grows for their CCPS ID before this leaves the browser.
+      // See _substituteNamesForIds / LEADERHUB_AI_FLOW_SETUP.md.
+      const jobRes = await callGAS('aiDraft', {
+        type: 'ARCHIVE_INSIGHTS',
+        payload: _privacySafeAiPayload({
+          totalTrips: total,
+          totalStudents: stuTotal,
+          avgCostPerStudent: Number(costAvg.toFixed(0)) || 0,
+          tripTypes: Object.entries(types).map(([type, count]) => ({ type, count })),
+          glows: glowList.map(g => `${g.name}: ${g.text}`),
+          grows: growList.map(g => `${g.name}: ${g.text}`),
+        }, ['glows', 'grows']),
+      });
+      if (jobRes && jobRes.ok && jobRes.jobId) {
+        const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting narrative with AI…');
+        const curNarrativeEl = document.getElementById('archive-ai-narrative'); // modal may have re-rendered while polling
+        if (draft && curNarrativeEl) {
+          // FIXED: draft is AI-drafted text that round-trips through
+          // Gemini and back — escH() here (same helper already used
+          // throughout this file for user text) prevents it from being
+          // interpreted as HTML if the model ever echoes back a stray
+          // tag-like sequence. white-space:pre-wrap already renders plain
+          // text with its original line breaks, so escaping doesn't
+          // change how a normal narrative looks.
+          curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
+            <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Narrative</div>
+            <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${escH(_restoreNamesFromIds(draft))}</div>
+          </div>`;
+        } else if (curNarrativeEl) {
+          curNarrativeEl.innerHTML = '';
+        }
+      } else if (narrativeEl) {
+        narrativeEl.innerHTML = '';
+      }
+    } catch (e) {
+      const curNarrativeEl = document.getElementById('archive-ai-narrative');
+      if (curNarrativeEl) curNarrativeEl.innerHTML = ''; // stats above already rendered — narrative is additive only
+    }
+  }
+
+  if (btn) btn.disabled = false;
+}
+
+// ── 4. wblAIInsights → WBL stats panel + optional AI narrative ───────────────
+// Same split as generateAIInsights(): the stats grid/table is pure local
+// arithmetic, computed always, never handed to a model. The narrative
+// synthesis (patterns across which students need attention and why, plus
+// any free-text SBE checklist notes) optionally routes through the same
+// GAS+Workspace-Flow backend — see LEADERHUB_AI_FLOW_SETUP.md.
+//
+// FIXED while wiring this up: the stat tile and per-student badge below
+// used to check wblStudentStatus(s)==='at-risk', a status string that
+// function never actually returns (it returns 'not-started',
+// 'needs-attention', or 'on-track') — so the "At Risk" tile always read 0
+// and every non-on-track student showed a ❌ regardless of which of the
+// two real statuses applied. Fixed to match the real status values and to
+// build a specific reason per flagged student (missing agreement, hours
+// short of the 90 required, no reflections logged) instead of just a
+// pass/fail badge.
+function _wblAttentionReason(s) {
+  const hrs = Number(s.hours);
+  const hasAgreement = s.agreement === 'signed' || s.agreement === 'returned';
+  const reasons = [];
+  if (!hasAgreement) reasons.push('no signed work agreement on file');
+  // FIXED: was hrs < 30, disagreeing with the real 90-hour/4-semester HQWBL
+  // requirement the progress bar and HQWBL card already use correctly —
+  // see wblStudentStatus() above and leader-hub finding #4.
+  if (hrs < 90) reasons.push(`${hrs} of 90 required hours logged`);
+  if (Number(s.reflects) < 1) reasons.push('no reflections logged yet');
+  return reasons.join('; ');
+}
+
+async function wblAIInsights() {
+  const done      = SBE_ELEMENTS.filter(e=>(SBE_STATUS[e.id]||{}).done).length;
+  const onTrack   = WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='on-track').length;
+  const attention = WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='needs-attention');
+  const notStarted= WBL_STUDENTS.filter(s=>wblStudentStatus(s)==='not-started');
+  const avgH    = WBL_STUDENTS.length ? (WBL_STUDENTS.reduce((a,s)=>a+Number(s.hours),0)/WBL_STUDENTS.length).toFixed(1) : '—';
+  const totalH  = WBL_STUDENTS.reduce((a,s)=>a+Number(s.hours),0).toFixed(1);
+  const rows    = WBL_STUDENTS.map(s => {
+    const status = wblStudentStatus(s);
+    const badge  = status==='on-track'?'✅':status==='needs-attention'?'⚠️':'❌';
+    return `<tr><td style="padding:.2rem .4rem">${escH(s.fname)} ${escH(s.lname)}</td><td style="padding:.2rem .4rem">${s.hours}h</td><td style="padding:.2rem .4rem">${badge} ${status}</td></tr>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:600px;width:90%;border-radius:12px;padding:1.5rem;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-weight:800;font-size:1rem">WBL Program Summary</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1rem">
+      <div style="background:#f0f9ff;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${WBL_STUDENTS.length}</div><div style="font-size:.68rem;color:var(--muted)">Students</div></div>
+      <div style="background:#f0fdf4;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${onTrack}</div><div style="font-size:.68rem;color:var(--muted)">On Track</div></div>
+      <div style="background:#fef3c7;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${attention.length}</div><div style="font-size:.68rem;color:var(--muted)">Needs Attention</div></div>
+      <div style="background:#f8fafc;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.3rem;font-weight:800">${done}/${SBE_ELEMENTS.length}</div><div style="font-size:.68rem;color:var(--muted)">SBE Done</div></div>
+    </div>
+    <div style="font-size:.78rem;margin-bottom:.5rem"><strong>Total hours logged: ${totalH}h | Avg: ${avgH}h/student</strong></div>
+    <table style="width:100%;font-size:.76rem;border-collapse:collapse;margin-bottom:1rem">
+      <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Student</th><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Hours</th><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Status</th></tr>
+      ${rows}
+    </table>
+    <div style="padding-top:.85rem;border-top:1px solid var(--border);display:flex;gap:.5rem;flex-wrap:wrap">
+      <button id="wbl-ai-btn" class="btn btn-gold btn-sm" onclick="_wblGenerateNarrative()" style="flex:1">✨ Generate AI Summary</button>
+    </div>
+    <div id="wbl-ai-narrative"></div>
+  </div>`;
+  document.body.appendChild(modal);
+
+  // Stash the deterministic pieces the AI narrative needs so the button's
+  // handler (which has no closure over this call's locals) can read them.
+  window._wblInsightsSnapshot = {
+    totalStudents: WBL_STUDENTS.length,
+    onTrack, notStartedCount: notStarted.length,
+    sbeDone: done, sbeTotal: SBE_ELEMENTS.length,
+    avgHours: avgH, totalHours: totalH,
+    attentionDetails: attention.map(s => `${s.fname} ${s.lname}: ${_wblAttentionReason(s)}`),
+    sbeNotes: SBE_ELEMENTS.filter(e => !(SBE_STATUS[e.id]||{}).done && (SBE_STATUS[e.id]||{}).notes)
+                          .map(e => `${e.label}: ${SBE_STATUS[e.id].notes}`),
+  };
+}
+
+// Optional AI narrative — additive only, same Bifurcation Boundary pattern
+// as Brag Board / Archive Insights (see LEADERHUB_AI_FLOW_SETUP.md). The
+// stats above are already a complete, correct result on their own; this
+// just tries to surface real patterns across who needs attention and why,
+// plus any open SBE blockers, in prose.
+async function _wblGenerateNarrative() {
+  const btn = document.getElementById('wbl-ai-btn');
+  const narrativeEl = document.getElementById('wbl-ai-narrative');
+  const snap = window._wblInsightsSnapshot;
+  if (!btn || !narrativeEl || !snap) return;
+  if (btn.disabled) return;
+  const url = EMAIL_BRIDGE.url();
+  if (!url) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">AI drafting needs an Apps Script bridge URL configured in Settings.</div>'; return; }
+  if (!snap.attentionDetails.length && !snap.sbeNotes.length) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">Nothing flagged right now — no pattern to summarize.</div>'; return; }
+
+  btn.disabled = true;
+  narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)" id="wbl-ai-status">⏳ Drafting summary with AI…</div>`;
+  const statusEl = document.getElementById('wbl-ai-status');
+  try {
+    // Privacy: same roster-based substitution Brag Board/Archive Insights
+    // use (Settings → Student ID Lookup) — swap any known student name in
+    // attentionDetails/sbeNotes for their CCPS ID before this leaves the
+    // browser. FIXED: sbeNotes (teacher-entered free-text notes, which can
+    // plausibly mention a student by name) used to be sent unsubstituted
+    // in this exact payload while its sibling field, attentionDetails, was
+    // already protected — see Say/Do Ledger leader-hub finding #12.
+    const jobRes = await callGAS('aiDraft', {
+      type: 'WBL_INSIGHTS',
+      payload: _privacySafeAiPayload({
+        totalStudents: snap.totalStudents,
+        onTrack: snap.onTrack,
+        notStarted: snap.notStartedCount,
+        sbeDone: snap.sbeDone,
+        sbeTotal: snap.sbeTotal,
+        avgHours: snap.avgHours,
+        totalHours: snap.totalHours,
+        attentionDetails: snap.attentionDetails,
+        sbeNotes: snap.sbeNotes,
+      }, ['attentionDetails', 'sbeNotes']),
+    });
+    if (jobRes && jobRes.ok && jobRes.jobId) {
+      const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
+      const curNarrativeEl = document.getElementById('wbl-ai-narrative'); // modal may have closed while polling
+      if (draft && curNarrativeEl) {
+        // FIXED: same escaping fix as generateAIInsights()'s narrative —
+        // draft is AI-drafted text round-tripped through Gemini; escH()
+        // prevents a stray tag-like sequence from being interpreted as
+        // HTML. white-space:pre-wrap already preserves plain-text
+        // line breaks, so this doesn't change how a normal summary looks.
+        curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border)">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Summary</div>
+          <div style="font-size:.78rem;white-space:pre-wrap;line-height:1.5">${escH(_restoreNamesFromIds(draft))}</div>
+        </div>`;
+      } else if (curNarrativeEl) {
+        curNarrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">No summary came back — try again in a moment.</div>';
+      }
+    } else if (narrativeEl) {
+      narrativeEl.innerHTML = '';
+    }
+  } catch (e) {
+    const curNarrativeEl = document.getElementById('wbl-ai-narrative');
+    if (curNarrativeEl) curNarrativeEl.innerHTML = ''; // stats above already rendered — narrative is additive only
+  }
+  if (btn) btn.disabled = false;
+}
+
+// ── 5. lpRunAI → lesson plan assistant, optional real AI drafting ────────────
+// Unlike the other three optional-AI features, this one has no arithmetic
+// half worth keeping local — the whole point of this panel is free-form
+// written content from a prompt (a warm-up, an exit ticket, a full
+// differentiation section), so it follows Brag Board's shape (a full
+// AI-drafted answer, or a local deterministic fallback), not Archive
+// Insights/WBL's stats-grid-plus-narrative split. See
+// LEADERHUB_AI_FLOW_SETUP.md / LP_ASSIST_FLOW_PROMPT.md.
+//
+// The keyword-matched tip lists below are the fallback, not the feature —
+// they're what this panel showed before any backend existed, kept as the
+// guaranteed result when no bridge is configured, the Flow errors, or the
+// poll times out. Before this, a typed question was silently discarded
+// and always produced the generic tip list; matching it to the closest
+// fixed topic (and saying so) was already an improvement over that, and
+// still applies whenever the real answer isn't available.
+let _lpAiReqId = 0;
+async function lpRunAI(userPrompt, forceSection) {
+  if (!lpActivePlan) return;
+  const output = document.getElementById('lp-ai-output');
+  if (!output) return;
+  const plan = lpActivePlan;
+  const reqId = ++_lpAiReqId; // guards against a slower, stale request overwriting a newer one's result
+
+  let section = forceSection;
+  let matchedTopic = !!section;
+  if (!section && userPrompt) {
+    const p = userPrompt.toLowerCase();
+    if (/differenti|sped|iep|ell|accommodat|tier/.test(p))            { section = 'diff';   matchedTopic = true; }
+    else if (/objective|goal|standard|outcome/.test(p))               { section = 'obj';    matchedTopic = true; }
+    else if (/assess|grade|rubric|score|checkpoint|formative|exit/.test(p)) { section = 'assess'; matchedTopic = true; }
+  }
+  section = section || 'general';
+
+  const tips = {
+    diff: [
+      `🎯 Tiered tasks: create 3 versions of the main activity (foundational / grade-level / extension) for ${plan.title}.`,
+      `📋 SPED accommodations to document: extended time, reduced questions, graphic organizer, preferential seating, chunked directions.`,
+      `🌐 ELL strategies: visual vocabulary wall, sentence frames ("I know that ___ because ___"), bilingual glossary, partnered read-aloud.`,
+      `✅ Best practice: explicitly name which students receive which accommodation — add a differentiation table.`,
+    ],
+    obj: [
+      `Use the format: "By the end of class, students will be able to [verb] [concept] by [evidence]."`,
+      `Strong verbs for CTE: calculate, construct, compare, demonstrate, evaluate, propose, present, justify.`,
+      `Align to your SCR competency for this unit — reference the competency number in the objective.`,
+    ],
+    assess: [
+      `Quick formative: exit ticket, thumbs up/down cold-call, whiteboard response, Kahoot.`,
+      `Summative: SCR scoring, presentation rubric, project checklist, written reflection.`,
+      `Note the assessment method and how you'll use data to adjust instruction.`,
+    ],
+    general: [
+      `Lesson: "${plan.title}" | Course: ${plan.course} | Q${plan.q}`,
+      `Competencies covered: ${(plan.comps||[]).join(', ')||'—'}`,
+      `Tip: make sure your lesson plan includes objective, materials, procedure, differentiation, and assessment sections.`,
+      `Reminder: save edits frequently using the Save button.`,
+    ],
+  };
+  const localHtml = (tips[section] || tips.general)
+    .map(t => `<div style="padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem">${t}</div>`).join('');
+
+  const url = EMAIL_BRIDGE.url();
+  if (!url) {
+    // No bridge configured at all — this box genuinely cannot attempt a
+    // real answer, so say that plainly rather than pretending it tried.
+    const note = userPrompt
+      ? `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">` +
+        (matchedTopic
+          ? `AI drafting isn't configured — matched "${escH(userPrompt)}" to the closest topic below instead.`
+          : `AI drafting isn't configured, and couldn't match "${escH(userPrompt)}" to a specific topic — showing general tips.`) +
+        `</div>`
+      : '';
+    output.innerHTML = note + localHtml;
+    return;
+  }
+
+  output.innerHTML = `<div id="lp-ai-status" style="font-size:.78rem;color:var(--muted);padding:.4rem 0">⏳ Thinking…</div>`;
+  const statusEl = document.getElementById('lp-ai-status');
+  try {
+    // Privacy: a typed custom question can plausibly name a specific
+    // student (e.g. "how do I accommodate Jane's IEP in this lesson?") —
+    // same roster-based substitution the other AI features use (Settings
+    // → Student ID Lookup) applied to both the prompt and the lesson body.
+    const jobRes = await callGAS('aiDraft', {
+      type: 'LP_ASSIST',
+      payload: _privacySafeAiPayload({
+        prompt: userPrompt || 'Give general lesson-planning tips for this lesson.',
+        lessonTitle: plan.title,
+        course: LP_C_LABELS[plan.course] || plan.course,
+        quarter: plan.q,
+        competencies: plan.comps || [],
+        // The lesson's actual content is only available in-browser once
+        // it's been edited/saved locally (see lpFetchDoc's note — real
+        // Drive content requires auth Gemini can't do) — empty is a real,
+        // expected state, not a bug; the prompt file handles it.
+        planBody: LP_EDITS[plan.docId] || '',
+      }, ['prompt', 'planBody']),
+    });
+    if (jobRes && jobRes.ok && jobRes.jobId) {
+      const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Thinking…');
+      if (reqId !== _lpAiReqId) return; // a newer request already superseded this one
+      const curOutput = document.getElementById('lp-ai-output'); // tab/modal may have changed while polling
+      if (draft && curOutput) { curOutput.innerHTML = lpMarkdownToHTML(_restoreNamesFromIds(draft)); return; }
+    }
+  } catch (e) { /* fall through to local tips below */ }
+
+  if (reqId !== _lpAiReqId) return;
+  const curOutput = document.getElementById('lp-ai-output');
+  if (curOutput) {
+    const note = `<div style="padding:.3rem 0 .5rem;font-size:.72rem;color:var(--muted);font-style:italic">Couldn't get an AI answer just now — showing related tips instead.</div>`;
+    curOutput.innerHTML = note + localHtml;
+  }
+}
+
+// ── 6. openAISCRInsights → SCR data summary ───────────────────────────────────
+function openAISCRInsights() {
+  const course   = SCR_COURSES[scrActiveCourse];
+  const students = course.periods[scrActivePeriod] || [];
+  const myScores = scrScores[scrActiveCourse]?.[scrActivePeriod] || {};
+  const comps    = course.competencies || [];
+
+  // Build per-student, per-competency summary table
+  const compHeaders = comps.map(c => `<th style="padding:.2rem .35rem;font-size:.65rem;max-width:50px;overflow:hidden">${c.num}</th>`).join('');
+  // Same 1 (best) → 5 (worst) scale and color direction as the grading grid
+  // (.scr-s1 green … .scr-s5 red) — see SCR_SCORE_LABELS. This modal used to
+  // color 4 green / 1 red, the opposite direction from the grid it summarizes.
+  const RATING_BG = {'1':'#dcfce7','2':'var(--blue-light)','3':'#e0f2fe','4':'#fef9c3','5':'var(--red-light)'};
+
+  const rows = students.map(stu => {
+    const stuScores = myScores[_scrStudentKey(stu)] || {};
+    const rated = comps.filter(c => stuScores[c.num] && stuScores[c.num] !== '·').length;
+    const avg   = rated ? (comps.reduce((s,c)=>s+(Number(stuScores[c.num])||0),0)/rated).toFixed(1) : '—';
+    const cells = comps.map(c => {
+      const v = stuScores[c.num] || '·';
+      const bg = RATING_BG[v] || '#f8fafc';
+      return `<td style="padding:.15rem .3rem;text-align:center;background:${bg};font-size:.72rem" title="${SCR_SCORE_LABELS[v]||'Not scored'}">${v}</td>`;
+    }).join('');
+    return `<tr><td style="padding:.2rem .4rem;font-size:.75rem;font-weight:600">${escH(stu.name)}</td>${cells}<td style="padding:.2rem .4rem;font-size:.75rem;text-align:center">${avg}</td></tr>`;
+  }).join('');
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:700px;width:95%;border-radius:12px;padding:1.5rem;max-height:85vh;overflow:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-weight:800">SCR Summary — ${course.name} · ${scrActivePeriod}</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">1=Can teach others · 2=Without supervision · 3=Limited supervision · 4=With supervision · 5=Cannot perform · ·=Not scored</div>
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse">
+        <tr><th style="text-align:left;padding:.2rem .4rem;font-size:.75rem">Student</th>${compHeaders}<th style="padding:.2rem .35rem;font-size:.65rem">Avg</th></tr>
+        ${rows}
+      </table>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+// ── 7. finAnalysis → formatted financial report ────────────────────────────────
+// FIXED (Say/Do Ledger leader-hub finding #3): 'roi' and 'decisions' used
+// to be undefined report keys — reports[type] || reports.profitloss meant
+// the ROI Analysis and Operational Decisions buttons silently rendered
+// the exact same P&L table under a mismatched heading. Both now have
+// real, distinct content built from the same real data the other reports
+// already use (no fabricated per-item sales figures — SALES_LOG only
+// tracks per-shift aggregates, not per-item sales). finAnalysis() also
+// becomes the 6th consumer of the app's one real AI-drafting mechanism
+// (callGAS('aiDraft', ...) → pollAiJob_(), same as Archive Insights/WBL
+// Insights/etc.) — an optional, additive AI narrative on top of the
+// always-correct local report, honestly hedged the same way its siblings
+// are if no Workspace Flow is configured.
+async function finAnalysis(type) {
+  const outEl = document.getElementById('fin-analysis-out');
+  if (!outEl) return;
+  outEl.style.display = 'block';
+
+  const totalRev  = SALES_LOG.reduce((a,s)=>a+(Number(s.cash)+Number(s.card)),0);
+  const totalCOGS = SALES_LOG.reduce((a,s)=>a+Number(s.cogs),0);
+  const profit    = totalRev - totalCOGS;
+  const margin    = totalRev > 0 ? Math.round((profit/totalRev)*100) : 0;
+  const shifts    = SALES_LOG.length;
+  const avgSale   = shifts > 0 ? (totalRev/shifts).toFixed(2) : '0.00';
+  const lowStock  = INVENTORY.filter(i=>i.qty<=i.reorder);
+  // "Value" here means dollars tied up in stock, so it has to be cost basis —
+  // the SKU list's own Margin% a few lines away already distinguishes cost
+  // vs. price; using price here overstated inventory value by the margin.
+  const totalInv  = INVENTORY.reduce((a,i)=>a+(i.qty*i.cost),0);
+  const totalOrderedCost = PURCHASE_ORDERS.reduce((a,po)=>a+(Number(po.qty)*Number(po.cost)),0);
+
+  const reports = {
+    profitloss: `<h3 style="margin:0 0 .75rem">📊 Profit & Loss — The Cavalier Shop</h3>
+      <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+        <tr><td style="padding:.3rem 0">Gross Revenue</td><td style="text-align:right;font-weight:700">$${totalRev.toFixed(2)}</td></tr>
+        <tr><td style="padding:.3rem 0">Cost of Goods Sold</td><td style="text-align:right">($${totalCOGS.toFixed(2)})</td></tr>
+        <tr style="border-top:2px solid #e2e8f0"><td style="padding:.3rem 0;font-weight:800">Gross Profit</td><td style="text-align:right;font-weight:800;color:${profit>=0?'#16a34a':'#dc2626'}">$${profit.toFixed(2)}</td></tr>
+        <tr><td style="padding:.3rem 0;color:var(--muted)">Gross Margin</td><td style="text-align:right;color:var(--muted)">${margin}%</td></tr>
+        <tr><td style="padding:.3rem 0;color:var(--muted)">Sales Shifts</td><td style="text-align:right;color:var(--muted)">${shifts}</td></tr>
+        <tr><td style="padding:.3rem 0;color:var(--muted)">Avg Revenue/Shift</td><td style="text-align:right;color:var(--muted)">$${avgSale}</td></tr>
+      </table>`,
+    inventory: `<h3 style="margin:0 0 .75rem">📦 Inventory Status — The Cavalier Shop</h3>
+      <div style="font-size:.82rem;margin-bottom:.5rem">Total inventory value: <strong>$${totalInv.toFixed(2)}</strong> | Low stock items: <strong>${lowStock.length}</strong></div>
+      <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+        <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Item</th><th style="padding:.25rem .4rem;background:#f8fafc">Qty</th><th style="padding:.25rem .4rem;background:#f8fafc">Reorder</th><th style="padding:.25rem .4rem;background:#f8fafc">Value (cost)</th><th style="padding:.25rem .4rem;background:#f8fafc">Status</th></tr>
+        ${INVENTORY.map(i=>`<tr><td style="padding:.2rem .4rem">${i.name}</td><td style="padding:.2rem .4rem;text-align:center">${i.qty}</td><td style="padding:.2rem .4rem;text-align:center">${i.reorder}</td><td style="padding:.2rem .4rem;text-align:right">$${(i.qty*i.cost).toFixed(2)}</td><td style="padding:.2rem .4rem;text-align:center">${i.qty<=i.reorder?'⚠️ Low':'✅'}</td></tr>`).join('')}
+      </table>`,
+    cashflow: `<h3 style="margin:0 0 .75rem">💰 Cash Flow Summary — The Cavalier Shop</h3>
+      <table style="width:100%;font-size:.82rem;border-collapse:collapse">
+        <tr><td style="padding:.3rem 0">Cash Sales</td><td style="text-align:right">$${SALES_LOG.reduce((a,s)=>a+Number(s.cash),0).toFixed(2)}</td></tr>
+        <tr><td style="padding:.3rem 0">Card Sales</td><td style="text-align:right">$${SALES_LOG.reduce((a,s)=>a+Number(s.card),0).toFixed(2)}</td></tr>
+        <tr style="border-top:2px solid #e2e8f0"><td style="padding:.3rem 0;font-weight:700">Total Revenue</td><td style="text-align:right;font-weight:700">$${totalRev.toFixed(2)}</td></tr>
+        <tr><td style="padding:.3rem 0;color:var(--muted)">Gross Profit</td><td style="text-align:right;color:${profit>=0?'#16a34a':'#dc2626'}">$${profit.toFixed(2)}</td></tr>
+      </table>`,
+    roi: (() => {
+      const roiPct = totalOrderedCost > 0 ? Math.round((profit/totalOrderedCost)*100) : null;
+      // Grouped by category from Inventory's own cost/price — the only
+      // real per-category signal available; there's no per-item sales
+      // data to compute a true per-item ROI from.
+      const byCat = {};
+      INVENTORY.forEach(i => {
+        if (!(i.price > 0)) return;
+        const m = (i.price - i.cost) / i.price;
+        (byCat[i.cat] = byCat[i.cat] || []).push(m);
+      });
+      const catRows = Object.entries(byCat)
+        .map(([cat, ms]) => ({ cat, avg: Math.round((ms.reduce((a,b)=>a+b,0)/ms.length)*100) }))
+        .sort((a,b)=>b.avg-a.avg)
+        .map(r => `<tr><td style="padding:.25rem .4rem">${r.cat}</td><td style="padding:.25rem .4rem;text-align:right">${r.avg}%</td></tr>`)
+        .join('');
+      return `<h3 style="margin:0 0 .75rem">📈 Return on Investment — The Cavalier Shop</h3>
+        <table style="width:100%;font-size:.82rem;border-collapse:collapse;margin-bottom:.75rem">
+          <tr><td style="padding:.3rem 0">Total Invested (cost of all Purchase Orders)</td><td style="text-align:right;font-weight:700">$${totalOrderedCost.toFixed(2)}</td></tr>
+          <tr><td style="padding:.3rem 0">Gross Profit to Date</td><td style="text-align:right;font-weight:700;color:${profit>=0?'#16a34a':'#dc2626'}">$${profit.toFixed(2)}</td></tr>
+          <tr style="border-top:2px solid #e2e8f0"><td style="padding:.3rem 0;font-weight:800">ROI</td><td style="text-align:right;font-weight:800">${roiPct===null?'—':(roiPct+'%')}</td></tr>
+          <tr><td style="padding:.3rem 0;color:var(--muted)">Inventory On Hand (at cost, not yet sold)</td><td style="text-align:right;color:var(--muted)">$${totalInv.toFixed(2)}</td></tr>
+        </table>
+        ${catRows ? `<div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">Average margin by category</div>
+        <table style="width:100%;font-size:.78rem;border-collapse:collapse">
+          <tr><th style="text-align:left;padding:.25rem .4rem;background:#f8fafc">Category</th><th style="text-align:right;padding:.25rem .4rem;background:#f8fafc">Avg Margin</th></tr>
+          ${catRows}
+        </table>` : ''}
+        <div style="font-size:.72rem;color:var(--muted);margin-top:.6rem">ROI is computed from total order cost vs. gross profit — sales aren't tracked per item, so this can't show which specific SKUs are driving it.</div>`;
+    })(),
+    decisions: (() => {
+      const reorderList = lowStock.map(i=>`<li>${i.name} — ${i.qty} on hand (reorder at ${i.reorder})</li>`).join('');
+      const marginOf = i => Math.round(((i.price-i.cost)/i.price)*100);
+      const lowMargin = INVENTORY.filter(i => i.price > 0 && marginOf(i) < 20);
+      const strong = [...INVENTORY].filter(i=>i.price>0).sort((a,b)=>marginOf(b)-marginOf(a)).slice(0,3);
+      return `<h3 style="margin:0 0 .75rem">🧠 Operational Decisions — The Cavalier Shop</h3>
+        ${reorderList
+          ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;color:#b45309;margin-bottom:.3rem">⚠️ Reorder now (${lowStock.length})</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${reorderList}</ul></div>`
+          : `<div style="margin-bottom:.75rem;color:var(--muted);font-size:.79rem">✅ Nothing at or below its reorder threshold right now.</div>`}
+        ${lowMargin.length ? `<div style="margin-bottom:.75rem"><div style="font-weight:700;font-size:.8rem;color:#b91c1c;margin-bottom:.3rem">📉 Consider re-pricing (margin under 20%)</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${lowMargin.map(i=>`<li>${i.name} — ${marginOf(i)}% margin</li>`).join('')}</ul></div>` : ''}
+        ${strong.length ? `<div><div style="font-weight:700;font-size:.8rem;color:#166534;margin-bottom:.3rem">✅ Strongest margins — keep stocking</div><ul style="font-size:.78rem;margin:0;padding-left:1.2rem">${strong.map(i=>`<li>${i.name} — ${marginOf(i)}% margin</li>`).join('')}</ul></div>` : ''}`;
+    })(),
+  };
+
+  outEl.innerHTML = (reports[type] || reports.profitloss) + '<div id="fin-ai-narrative"></div>';
+
+  // Optional AI narrative — additive only, same pattern as
+  // generateAIInsights()/Archive Insights: the report above is already a
+  // complete, correct result on its own (real data, computed locally);
+  // this just tries to add a prose summary on top. Silently skipped
+  // (narrative area stays empty) if no bridge is configured, the Flow
+  // errors, or the ~90s poll times out — never blocks or replaces the
+  // report above.
+  const narrativeEl = document.getElementById('fin-ai-narrative');
+  const url = EMAIL_BRIDGE.url();
+  if (url && narrativeEl) {
+    narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe;font-size:.78rem;color:var(--muted)" id="fin-ai-status">⏳ Drafting summary with AI…</div>`;
+    const statusEl = document.getElementById('fin-ai-status');
+    try {
+      const jobRes = await callGAS('aiDraft', {
+        type: 'FIN_ANALYSIS',
+        payload: { reportType: type, totalRev, totalCOGS, profit, margin, shifts, totalInv, totalOrderedCost, lowStockCount: lowStock.length },
+      });
+      let draft = null;
+      if (jobRes && jobRes.ok && jobRes.jobId) draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting summary with AI…');
+      const curNarrativeEl = document.getElementById('fin-ai-narrative'); // panel may have re-rendered while polling
+      if (draft && curNarrativeEl) {
+        // draft is AI-drafted text round-tripped through Gemini — escH()
+        // prevents a stray tag-like sequence from being interpreted as
+        // HTML, same convention as every sibling AI-narrative render.
+        curNarrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe">
+          <div style="font-weight:700;font-size:.8rem;margin-bottom:.4rem">✨ AI Summary</div>
+          <div style="font-size:.79rem;line-height:1.6">${escH(draft)}</div>
+        </div>`;
+      } else if (curNarrativeEl) {
+        curNarrativeEl.innerHTML = ''; // no Flow built yet, errored, or timed out — the local report above already stands on its own
+      }
+    } catch (e) {
+      const el = document.getElementById('fin-ai-narrative'); if (el) el.innerHTML = '';
+    }
+  }
+}
+
+// ── 8. esAIScout → e-sports stats panel ───────────────────────────────────────
+function esAIScout() {
+  const wins   = ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length;
+  const losses = ES_MATCHES.filter(m=>Number(m.us)<Number(m.them)).length;
+  const ties   = ES_MATCHES.length - wins - losses;
+  const byGame = {};
+  ES_MATCHES.forEach(m => {
+    if (!byGame[m.game]) byGame[m.game] = {w:0,l:0};
+    if (Number(m.us) > Number(m.them)) byGame[m.game].w++;
+    else if (Number(m.us) < Number(m.them)) byGame[m.game].l++;
+  });
+  const gameRows = Object.entries(byGame).map(([g,r])=>{
+    const label = g==='ssbu'?'🥊 Smash Bros':g==='mk8'?'🏎️ Mario Kart':'🎮 '+g;
+    return `<tr><td style="padding:.2rem .4rem">${label}</td><td style="padding:.2rem .4rem;text-align:center;color:#16a34a">${r.w}W</td><td style="padding:.2rem .4rem;text-align:center;color:#dc2626">${r.l}L</td></tr>`;
+  }).join('');
+  const playerRows = ES_PLAYERS.map(p=>`<tr><td style="padding:.2rem .4rem">${p.fname||''} ${p.lname||''}</td><td style="padding:.2rem .4rem">${p.tag||'—'}</td><td style="padding:.2rem .4rem">${p.game||'—'}</td><td style="padding:.2rem .4rem">${p.role||'—'}</td></tr>`).join('');
+
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:560px;width:90%;border-radius:12px;padding:1.5rem;max-height:80vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem">
+      <div style="font-weight:800">🎮 E-Sports Season Report</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;margin-bottom:1rem">
+      <div style="background:#f0fdf4;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:#16a34a">${wins}</div><div style="font-size:.68rem;color:var(--muted)">Wins</div></div>
+      <div style="background:#fef2f2;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.5rem;font-weight:800;color:#dc2626">${losses}</div><div style="font-size:.68rem;color:var(--muted)">Losses</div></div>
+      <div style="background:#f8fafc;border-radius:8px;padding:.6rem;text-align:center"><div style="font-size:1.5rem;font-weight:800">${ES_MATCHES.length}</div><div style="font-size:.68rem;color:var(--muted)">Matches</div></div>
+    </div>
+    ${gameRows ? `<div style="margin-bottom:1rem"><div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">By Game</div><table style="width:100%;font-size:.78rem;border-collapse:collapse">${gameRows}</table></div>` : ''}
+    ${playerRows ? `<div><div style="font-weight:700;font-size:.8rem;margin-bottom:.35rem">Roster</div><table style="width:100%;font-size:.78rem;border-collapse:collapse"><tr><th style="text-align:left;padding:.2rem .4rem;background:#f8fafc">Player</th><th style="text-align:left;padding:.2rem .4rem;background:#f8fafc">Tag</th><th style="text-align:left;padding:.2rem .4rem;background:#f8fafc">Game</th><th style="text-align:left;padding:.2rem .4rem;background:#f8fafc">Role</th></tr>${playerRows}</table></div>` : ''}
+  </div>`;
+  document.body.appendChild(modal);
+}
+
+// ── 9. organizeThought → rule-based task sorter ────────────────────────────────
+function organizeThought() {
+  const inp    = document.getElementById('thought-inp');
+  const status = document.getElementById('thought-status');
+  const btn    = document.getElementById('thought-btn-txt');
+  const text   = (inp?.value || '').trim();
+  if (!text) return;
+
+  // Rule-based classification by keyword. The 'deca' role key stays as the
+  // stable internal identifier (matches DEADLINES/HORIZON role tagging and
+  // EmailBridge.gs's #role: hashtag convention — renaming it would be a
+  // real data migration, not a hardcoding cleanup), but the keyword LIST
+  // was hardcoded to DECA-only vocabulary — a teacher whose only
+  // organization is FBLA typing "FBLA fundraiser" or "regional conference"
+  // never matched. FIXED: every configured organization's own name and
+  // achievement-level labels are folded in dynamically, in addition to
+  // (never instead of) Adam's original DECA terms, so his own classifier
+  // behavior is unchanged and any other configured org gets covered too.
+  const _orgKeywords = Object.values(ORGANIZATIONS).flatMap(o => [o.name, ...((o.levels||[]).map(l => l.label))]).filter(Boolean);
+  const ROLE_KEYWORDS = {
+    teach:   ['lesson','plan','grade','score','gradebook','unit','synergy','obs','observation','IEP','student','class','period','pacing'],
+    store:   ['store','inventory','PO','purchase','sales','SBE','deposit','cash','register','Cavalier'],
+    deca:    ['DECA','ICDC','competition','chapter','membership','SLC','DLC','conference','region', ..._orgKeywords],
+    esports: ['esports','e-sports','Smash','Mario Kart','match','roster','game','bracket'],
+    trips:   ['trip','field trip','TripTracker','permission','slip','chaperone','bus','approval'],
+    general: [],
+  };
+  const URGENCY_KEYWORDS = {
+    now:         ['overdue','urgent','today','immediately','ASAP','deadline','due','submit','missing'],
+    today:       ['tonight','this afternoon','before','end of day','EOD','by 3'],
+    'this week': ['this week','soon','upcoming','next'],
+    delegate:    ['ask','email','contact','remind','follow up','check with'],
+  };
+
+  // Split on periods, newlines, semicolons, "and", "also"
+  const sentences = text.split(/[.\n;]|\band\b|\balso\b/).map(s => s.trim()).filter(s => s.length > 4);
+  const tasks = sentences.map(s => {
+    let role = 'general';
+    for (const [r, kws] of Object.entries(ROLE_KEYWORDS)) {
+      if (kws.some(k => s.toLowerCase().includes(k.toLowerCase()))) { role = r; break; }
+    }
+    let urgency = 'this week';
+    for (const [u, kws] of Object.entries(URGENCY_KEYWORDS)) {
+      if (kws.some(k => s.toLowerCase().includes(k.toLowerCase()))) { urgency = u; break; }
+    }
+    return { task: s, urgency, role };
+  });
+
+  if (!tasks.length) {
+    if (status) status.textContent = '⚠️ Could not parse any tasks — try separating with periods or newlines.';
+    return;
+  }
+
+  // Add to horizon
+  let added = 0;
+  tasks.forEach(t => {
+    const horizon = t.urgency === 'now' || t.urgency === 'today' ? 'short'
+                  : t.urgency === 'this week' ? 'mid' : 'long';
+    const id = 'thought' + Date.now() + Math.random().toString(36).slice(2,6);
+    HORIZON[horizon].unshift({ id, text: t.task, done: false, role: t.role });
+    added++;
+  });
+  LS.set('lh_horizon', HORIZON);
+  renderHorizons();
+  refreshNextAction();
+  if (inp) inp.value = '';
+  if (status) status.textContent = `✅ ${added} task${added!==1?'s':''} sorted into your horizon lists`;
+  if (btn) btn.textContent = '↗ Sort';
+}
+
+// ── 10. runCronAdjustment → rule-based priority plan from journal ─────────────
+// Produces the same output shape {loadTier, tomorrowMessage, priorities,
+// avoidedFollowUp, energyNote, kindnessNote} so showCronMorningBriefing still works.
+function runCronAdjustment(entry) {
+  if (!entry) entry = LS.get('lh_journal_last');
+  if (!entry) return Promise.resolve(null);
+
+  const mood     = entry.mood || 5;
+  const avoided  = (entry.q2 || '').trim();
+  const proud    = (entry.q4 || '').trim();
+  const k5       = (entry.q5 || '').trim();
+  const k6       = (entry.q6 || '').trim();
+  const loadTier = mood <= 3 ? 'reduced' : mood <= 6 ? 'standard' : 'ambitious';
+  const maxTasks = mood <= 3 ? 2 : mood <= 6 ? 4 : 6;
+
+  // Build priority list from live data
+  const prios = [];
+  // 1. Avoided task always goes first (unless mood ≤ 3)
+  if (avoided) {
+    const p = { order: prios.length+1, task: avoided, role: 'general', why: 'You set this aside yesterday' };
+    mood <= 3 ? prios.push({ order:1, task:'Start with something small and doable', role:'general', why:'Low energy day — gentle start' }, {...p, order:2})
+              : prios.push(p);
+  }
+  // 2. Overdue deadlines
+  const overdue = DEADLINES.filter(d => daysUntil(d.date) < 0 && _isActionable(d));
+  overdue.slice(0,2).forEach(d => prios.push({ order:prios.length+1, task:`Address overdue: ${d.title}`, role:d.role||'general', why:`${Math.abs(daysUntil(d.date))}d overdue` }));
+  // 3. Upcoming deadlines ≤3 days
+  const soon = DEADLINES.filter(d => { const x=daysUntil(d.date); return x>=0&&x<=3&&_isActionable(d); });
+  soon.slice(0,2).forEach(d => prios.push({ order:prios.length+1, task:`Complete: ${d.title}`, role:d.role||'general', why:`Due in ${daysUntil(d.date)}d` }));
+  // 4. Stalled goal
+  const stalledGoal = typeof goals !== 'undefined' ? goals.find(g => g.progress < 60 && g.date && daysUntil(g.date) >= 0) : null;
+  if (stalledGoal && prios.length < maxTasks) prios.push({ order:prios.length+1, task:`Update progress on: ${stalledGoal.title}`, role:'teach', why:`Goal at ${stalledGoal.progress}%` });
+  // 5. Pad to maxTasks with role-based defaults
+  const defaults = [
+    {task:'Review and respond to parent/admin emails',role:'teach',why:'Daily comms — Standard 2'},
+    {task:'Update Synergy gradebook',role:'teach',why:'Grades current'},
+    {task:'Check store inventory and reorder if needed',role:'store',why:'SBE operations'},
+    {task:'Log WBL student hours',role:'store',why:'WBL compliance'},
+  ];
+  defaults.forEach(d => { if (prios.length < maxTasks) prios.push({order:prios.length+1,...d}); });
+
+  const finalPrios = prios.slice(0, maxTasks);
+
+  // Morning message based on mood tier
+  const messages = {
+    reduced: ['Take it one step at a time today.', 'Small wins still count — start where you can.', 'Rest is productive. Do what you can.'],
+    standard: ['Good setup for tomorrow.', 'You handled yesterday — tomorrow is handled too.', 'Priorities are clear. Have a solid day.'],
+    ambitious: ['Stack is loaded — let\'s go.', 'You\'ve got the energy. Use it well.', 'High-output day incoming. Lead with the hard stuff.'],
+  };
+  const msgList = messages[loadTier];
+  const tomorrowMessage = msgList[Math.floor(Math.random() * msgList.length)];
+
+  const plan = {
+    loadTier,
+    tomorrowMessage,
+    priorities: finalPrios,
+    avoidedFollowUp: avoided || null,
+    energyNote: mood <= 3 ? 'Protect your energy today.' : mood <= 6 ? 'Steady pace — one thing at a time.' : 'High energy — tackle the hardest thing first.',
+    kindnessNote: (k5 || k6) ? `You noticed: "${k5||k6}" — that kind of attention matters.` : null,
+  };
+
+  // Persist — same as before
+  const updated = { ...entry, cronRan: true, cronResult: plan, cronTime: new Date().toISOString() };
+  LS.set('lh_journal_last', updated);
+  const hist = LS.get('lh_journal_history', []);
+  const idx  = hist.findIndex(e => e.date === entry.date);
+  if (idx >= 0) hist[idx] = updated;
+  LS.set('lh_journal_history', hist);
+
+  if (plan.avoidedFollowUp && entry.q2) {
+    HORIZON.short = HORIZON.short.filter(h => !h.pinned);
+    HORIZON.short.unshift({ id: 'cron' + Date.now(), text: plan.avoidedFollowUp, done: false, pinned: true });
+    LS.set('lh_horizon', HORIZON);
+  }
+  LS.set('lh_cron_result', plan);
+  LS.set('lh_cron_pending', null);
+
+  const badge = document.getElementById('cron-status-badge');
+  if (badge) { badge.className = 'cron-badge cron-ok'; badge.textContent = '✅ Priorities set'; }
+
+  return Promise.resolve(plan);
+}
+
+// ── 11. generateSubPlan → Apps Script builds Google Doc ──────────────────────
+async function generateSubPlan() {
+  saveSubLocations();
+  setSubPlanStep('preview', document.getElementById('sptab-preview'));
+
+  const dateStr   = document.getElementById('sp-date').value;
+  const reason    = document.getElementById('sp-reason').value;
+  const schedType = document.getElementById('sp-schedule').value;
+  const oddEven   = document.querySelector('input[name="sp-oddeven"]:checked')?.value || 'Odd';
+  const context   = document.getElementById('sp-context')?.value || '';
+  const locations = LS.get('lh_sub_settings', SP_STATIC_DEFAULTS);
+  const studentNotes = LS.get('lh_sub_student_notes', []);
+  const outputEl  = document.getElementById('sp-preview-output');
+  const statusEl  = document.getElementById('sp-gen-status');
+
+  if (!dateStr) {
+    if (outputEl) outputEl.textContent = '⚠ Please select an absence date first.';
+    return;
+  }
+  if (!_spPeriods.length) buildSubPlanPeriods();
+
+  // Build structured sub plan text locally (no AI needed)
+  const reasonLabels = { illness:'Illness/Personal',professional:'Professional Development',emergency:'Family Emergency',other:'Other' };
+  const schedLabel   = schedType === 'normal' ? 'Regular Schedule' : schedType === '3hr-er' ? '3-Hour Early Release' : '2-Hour Delay';
+  const dateLabel    = new Date(dateStr+'T12:00:00').toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+
+  const periodsText = _spPeriods.map(p => {
+    const loc = locations[p.id] || {};
+    const notes = studentNotes.filter(n => n.period === p.id || n.period === 'all');
+    return `\n  ${p.label} — ${p.course}\n  Location: ${loc.room||'[Room]'} | Seating: ${loc.seating||'[Chart location]'}\n  ${p.activity||'Independent work or activity as assigned.'}\n  ${notes.length ? 'Student notes: ' + notes.map(n=>n.note).join('; ') : ''}`;
+  }).join('\n');
+
+  const planText = `SUBSTITUTE TEACHER PLAN
+Date: ${dateLabel}
+Teacher: ${PROFILE.name} — ${PROFILE.classroomTitle}, ${PROFILE.school}
+Reason: ${reasonLabels[reason]||reason}
+Schedule: ${schedLabel} · ${oddEven} Day
+
+EMERGENCY CONTACTS
+Grade-Level Admin: [Principal/AP]
+Department Chair: [Dept Chair]
+Neighboring Teacher: [Room next door]
+
+PERIOD-BY-PERIOD INSTRUCTIONS${periodsText}
+
+GENERAL NOTES
+${context || 'Students know the routines. Raise expectations — CTE students respond well to professional norms.'}
+
+Attendance: use Synergy (${locations.synergy||'[Synergy room/instructions]'})
+Grade book: do not enter grades — collect work and leave on desk.
+Thank you for covering my classes.`;
+
+  if (outputEl) outputEl.textContent = planText;
+
+  // Log as evidence
+  const log = LS.get('lh_sub_plan_log', []);
+  log.unshift({ date: dateStr, reason, plan: planText, createdAt: new Date().toISOString() });
+  LS.set('lh_sub_plan_log', log.slice(0, 30));
+  if (statusEl) { statusEl.textContent = '✓ Plan ready'; setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 3000); }
+
+  // Optionally send to Apps Script to create a Google Doc
+  const url = EMAIL_BRIDGE.url();
+  if (url) {
+    try {
+      if (statusEl) statusEl.textContent = '⏳ Sending to Google Docs…';
+      const res = await callGAS('subPlan', { date: dateStr, reason, plan: planText });
+      if (res.docUrl) {
+        if (statusEl) statusEl.textContent = '✅ Google Doc created';
+        if (outputEl) outputEl.insertAdjacentHTML('beforebegin',
+          `<div style="margin-bottom:.5rem"><a href="${res.docUrl}" target="_blank" style="color:#0369a1;font-weight:700">📄 Open in Google Docs →</a></div>`);
+      }
+    } catch(e) {
+      if (statusEl) statusEl.textContent = '⚠ Doc creation unavailable — plan saved locally';
+    }
+  }
+  refreshNextAction();
+}
+
+// ── 12. generateBragEmail → Apps Script creates Gmail draft ──────────────────
+async function generateBragEmail() {
+  // The Gmail-draft creation below is a real network round-trip with only a
+  // small status-text change to show it's in flight — easy to miss, and a
+  // second click before it resolves used to fire a second concurrent
+  // request, which the bridge would happily turn into a second duplicate
+  // draft. Guard re-entrancy for the whole call, not just the network leg.
+  const genBtn = document.getElementById('brag-generate-btn');
+  if (genBtn) { if (genBtn.disabled) return; genBtn.disabled = true; }
+  try {
+    await _generateBragEmailInner();
+  } finally {
+    if (genBtn) genBtn.disabled = false;
+  }
+}
+
+async function _generateBragEmailInner() {
+  const aud      = BRAG_AUDIENCE[_bragTab];
+  const statusEl = document.getElementById('brag-ai-status');
+  const bodyEl   = document.getElementById('brag-body');
+  const { completedTasks, decaResults, orgResults, trips, emailItems, logEntries, scrWins, wblWins, esMatchWins, journalWins, manualWins } = _bragData;
+  const totalWins = (completedTasks||[]).length + (decaResults||[]).length + (orgResults||[]).length + (trips||[]).length +
+                    (emailItems||[]).length + (logEntries||[]).length + (scrWins||[]).length +
+                    (wblWins||[]).length + (esMatchWins||[]).length + (journalWins||[]).length + (manualWins||[]).length;
+
+  if (!totalWins) {
+    if (bodyEl) bodyEl.value = '';
+    if (statusEl) statusEl.textContent = '⚠ No wins found for this week.';
+    return;
+  }
+
+  const weekLabel  = document.getElementById('brag-week-start')?.value || '';
+  const weekDisplay = weekLabel ? new Date(weekLabel+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric'}) : 'this week';
+
+  // Build email body locally
+  const sections = [];
+  if ((completedTasks||[]).length) sections.push('Tasks completed:\n' + completedTasks.map(t=>`• ${t.text}`).join('\n'));
+  if ((decaResults||[]).length)    sections.push('DECA results:\n' + decaResults.map(r=>`• ${r.text}`).join('\n'));
+  if ((orgResults||[]).length)     sections.push('Organization results:\n' + orgResults.map(r=>`• ${r.text}`).join('\n'));
+  if ((trips||[]).length)          sections.push('Field trips:\n' + trips.map(t=>`• ${t.text}`).join('\n'));
+  if ((scrWins||[]).length)        sections.push('Instruction:\n' + scrWins.map(s=>`• ${s.text}`).join('\n'));
+  if ((wblWins||[]).length)        sections.push('WBL/Store:\n' + wblWins.map(w=>`• ${w.text}`).join('\n'));
+  if ((esMatchWins||[]).length)    sections.push('E-Sports:\n' + esMatchWins.map(e=>`• ${e.text}`).join('\n'));
+  if ((logEntries||[]).length)     sections.push('Other highlights:\n' + logEntries.map(l=>`• ${l.text}`).join('\n'));
+  if ((journalWins||[]).length)    sections.push('Moments worth remembering:\n' + journalWins.map(j=>`• ${j.text}`).join('\n'));
+  if ((manualWins||[]).length)     sections.push('Also worth mentioning:\n' + manualWins.map(m=>`• ${m.text}`).join('\n'));
+
+  // This local, deterministic assembly is the guaranteed result — computed
+  // first and used outright whenever AI drafting is unavailable, times
+  // out, or errors, so this button never produces an empty box.
+  const localBody = `Week of ${weekDisplay} — Highlights\n\n${sections.join('\n\n')}\n\nBest,\n${PROFILE.name}\n${PROFILE.classroomTitle} | ${PROFILE.school}`;
+
+  let emailBody = localBody;
+  let usedAi    = false;
+  const url = EMAIL_BRIDGE.url();
+
+  // Try real AI drafting first if a bridge is configured — see
+  // LEADERHUB_AI_FLOW_SETUP.md for the GAS+Workspace-Flow backend this
+  // calls. Silently falls through to localBody on any failure: no Flow
+  // built yet, the Flow errors, or the ~90s poll times out. The status
+  // line below is the only place this distinction surfaces to the user.
+  if (url) {
+    try {
+      if (statusEl) statusEl.textContent = '⏳ Drafting with AI…';
+      // Privacy: if a student ID roster has been uploaded (Settings →
+      // Student ID Lookup), swap known student names for their CCPS ID
+      // before this leaves the browser — see _privacySafeAiPayload /
+      // _substituteNamesForIds. The local sections[]/localBody above keep
+      // real names; only this network payload is affected.
+      const jobRes = await callGAS('aiDraft', {
+        type: 'BRAG_EMAIL',
+        payload: _privacySafeAiPayload(
+          { audience: _bragTab, audienceLabel: aud.label, tone: aud.tone, weekLabel: weekDisplay, sections },
+          ['sections']
+        ),
+      });
+      if (jobRes && jobRes.ok && jobRes.jobId) {
+        const draft = await pollAiJob_(jobRes.jobId, statusEl, '⏳ Drafting with AI…');
+        if (draft) { emailBody = _restoreNamesFromIds(draft); usedAi = true; }
+      }
+    } catch (e) { /* fall through to localBody — status line below still reports a result */ }
+  }
+
+  if (bodyEl) bodyEl.value = emailBody;
+  if (statusEl) statusEl.textContent = usedAi ? '✨ AI draft ready — edit and copy' : '✏️ Draft ready — edit and copy';
+
+  // Log evidence
+  const _bLog = LS.get('lh_brag_log', []);
+  const _subj = document.getElementById('brag-subject')?.value || '';
+  _bLog.unshift({ date: new Date().toISOString(), week: weekLabel, audience: _bragTab, subject: _subj, body: emailBody });
+  LS.set('lh_brag_log', _bLog.slice(0, 52));
+  _bragBodySnapshot = emailBody; // this exact text is now persisted — only further hand-edits are at risk
+  refreshNextAction();
+
+  // Optionally send to Apps Script to create Gmail draft
+  if (url) {
+    try {
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Creating Gmail draft…';
+      const to   = aud?.defaultTo || '';
+      const subj = _subj || `Weekly Wins — Week of ${weekDisplay}`;
+      const res  = await callGAS('bragEmail', { to, subject: subj, body: emailBody });
+      if (res.ok) {
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Gmail draft created — check Drafts folder';
+      } else {
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (Gmail draft failed)';
+      }
+    } catch(e) {
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — Gmail unavailable';
+    }
+  }
+}
+
+// ── Removed: Gemini AI infrastructure (getAPIKey, setAPIKey, callAI) ──────────
+// The real, live FERPA boot check is the IIFE further down this file (see
+// "── FERPA boot check ──") — this was a dead duplicate declaration with
+// the same name, never called anywhere, left over from the AI-removal
+// edit and never cleaned up. Removed rather than fixed in place: keeping
+// two functions with the same name (one dead) is worse than one.
+
+
+// ── Lesson Strip — shows today's active lesson plan on the dashboard clock row ─
+// Fires every tick. Maps current block + odd/even day → course → lesson plan.
+const _ord = n => n === 1 ? '1st' : n === 2 ? '2nd' : n === 3 ? '3rd' : n + 'th';
+
+function updateLessonStrip() {
+  const el = document.getElementById('db-lesson-strip');
+  if (!el) return;
+
+  const info = getCurrentPeriodInfo();
+  const now     = new Date();
+  const dateStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+
+  let html = '';
+
+  // ── Outside-block lesson context pill ───────────────────────────────────────
+  // Before/between/after blocks: show what's coming up next today
+  if (!info.block && info.schedType && info.schedType !== null) {
+    const oeMap2   = buildOddEvenMap(LP_QUARTERS[1].start, dateStr);
+    const oddEven2 = oeMap2[dateStr] || 'Odd';
+    const sched2   = BELL_SCHEDULES[info.schedType];
+    const nowMins  = now.getHours() * 60 + now.getMinutes();
+    const toM      = t => { const [h,m] = t.split(':'); return +h*60 + +m; };
+    if (sched2) {
+      const nextBlock = sched2.periods.filter(p => p.block && toM(p.start) > nowMins)
+                                       .sort((a,b) => toM(a.start) - toM(b.start))[0];
+      if (nextBlock) {
+        const sk2 = `${_ord(nextBlock.block)} ${oddEven2}`;
+        for (const [code, cdata] of Object.entries(SCR_COURSES)) {
+          if (Object.keys(cdata.periods || {}).includes(sk2)) {
+            const lp2 = getTodayLessonForCourse(code, dateStr);
+            const color2 = ({8177:'#7c3aed',8175:'#0369a1',6115:'#065f46'})[code] || 'var(--navy)';
+            const short2 = ({8177:'SEEM Mgmt',8175:'Sports Mktg',6115:'Prin. B&M'})[code] || code;
+            const minsAway = toM(nextBlock.start) - nowMins;
+            const timeLabel = minsAway < 60 ? `in ${minsAway}m` : `at ${nextBlock.start.replace(/^0/,'')}`;
+            html += `<div style="display:inline-flex;align-items:center;gap:.45rem;background:#f1f5f9;border:1px solid ${color2}28;border-left:3px solid ${color2};border-radius:0 6px 6px 0;padding:.18rem .7rem .18rem .55rem;font-size:.77rem;cursor:pointer;margin-right:.35rem;opacity:.75" onclick="showView('lessons')" title="Next class">
+              <span style="font-family:'Bebas Neue',cursive;font-size:.8rem;letter-spacing:1px;color:${color2}">${short2}</span>
+              <span style="color:#cbd5e1">·</span>
+              <span style="color:var(--muted)">${lp2 ? lp2.title : 'Next block'} <span style="font-size:.7rem">(${timeLabel})</span></span>
+            </div>`;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // ── Lesson pill (only during a teaching block) ──────────────────────────────
+  if (info.block && info.schedType) {
+    const oeMap   = buildOddEvenMap(LP_QUARTERS[1].start, dateStr);
+    const oddEven = oeMap[dateStr] || 'Odd';
+    const searchKey = `${_ord(info.block)} ${oddEven}`;
+    const hits = [];
+    for (const [code, cdata] of Object.entries(SCR_COURSES)) {
+      if (Object.keys(cdata.periods || {}).includes(searchKey)) {
+        const lp = getTodayLessonForCourse(code, dateStr);
+        hits.push({ code, name: cdata.name, lp });
+      }
+    }
+    const C_COLOR = { '8177':'#7c3aed', '8175':'#0369a1', '6115':'#065f46' };
+    const C_SHORT = { '8177':'SEEM Mgmt', '8175':'Sports Mktg', '6115':'Prin. B&M' };
+    html += hits.map(h => {
+      const color  = C_COLOR[h.code] || 'var(--navy)';
+      const short  = C_SHORT[h.code] || h.name;
+      const lpText = h.lp
+        ? `<span style="font-weight:600;color:var(--ink)">${h.lp.title}</span><span style="color:var(--muted);font-size:.7rem;margin-left:.3rem">· ${h.lp.subtitle || ''}</span>`
+        : `<span style="color:var(--muted);font-style:italic">No lesson mapped for today</span>`;
+      return `<div style="display:inline-flex;align-items:center;gap:.45rem;background:#f8fafc;border:1px solid ${color}28;border-left:3px solid ${color};border-radius:0 6px 6px 0;padding:.18rem .7rem .18rem .55rem;font-size:.77rem;cursor:pointer;margin-right:.35rem" onclick="showView('lessons')" title="Go to Lesson Plans">
+        <span style="font-family:'Bebas Neue',cursive;font-size:.8rem;letter-spacing:1px;color:${color}">${short}</span>
+        <span style="color:#cbd5e1">·</span>
+        ${lpText}
+      </div>`;
+    }).join('');
+  }
+
+  // ── Obs Prep pill — always visible on school days ────────────────────────────
+  const dow = now.getDay();
+  if (dow >= 1 && dow <= 5) {
+    const obsPrep  = LS.get('lh_obs_prep', {});
+    const obsItems = typeof OBS_PREP_ITEMS !== 'undefined' ? OBS_PREP_ITEMS : [];
+    const total    = obsItems.length;
+    const done     = obsItems.filter(i => obsPrep[i.key]).length;
+    const critical = obsItems.filter(i => i.critical);
+    const critDone = critical.filter(i => obsPrep[i.key]).length;
+    const allCrit  = critDone === critical.length;
+    const pct      = total ? Math.round(done / total * 100) : 0;
+    const [bg, border, txtColor, icon] = allCrit
+      ? ['#f0fdf4', '#86efac', '#166534', '✅']
+      : done > 0
+        ? ['#fffbeb', '#fde68a', '#92400e', '🟡']
+        : ['#fef2f2', '#fca5a5', '#991b1b', '📋'];
+    // Log to daily_log when all critical items are checked — observation-readiness evidence
+    if (allCrit && critical.length > 0) {
+      const _opDate = new Date().toISOString().slice(0,10);
+      const _opLog  = LS.get('lh_daily_log', []);
+      if (!_opLog.some(e => e.type === 'obs_prep_ready' && (e.date||'').slice(0,10) === _opDate)) {
+        _logDaily({ date: new Date().toISOString(), type: 'obs_prep_ready',
+          note: `Obs prep checklist complete — all ${critical.length} critical items ready` });
+      }
+    }
+    html += `<div onclick="showView('lessons')" title="Observation Prep Checklist — click to open" style="display:inline-flex;align-items:center;gap:.35rem;background:${bg};border:1px solid ${border};border-radius:6px;padding:.18rem .6rem;font-size:.73rem;font-weight:600;color:${txtColor};cursor:pointer;margin-right:.35rem">
+      ${icon} Obs Prep ${done}/${total}
+    </div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+function dbTick() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const tEl = document.getElementById('db-time');
+  const dEl = document.getElementById('db-date');
+  const pEl = document.getElementById('db-period-badge');
+  if(tEl) tEl.textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+  if(dEl) dEl.textContent = now.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  if(pEl){
+    const info = getCurrentPeriodInfo();
+    if (!info.label || info.label === 'No School') {
+      pEl.textContent = 'No School';
+      pEl.style.background = 'var(--navy2)';
+      pEl.style.color = '#94a3b8';
+    } else {
+      pEl.textContent = info.label;
+      // Color by block number
+      const colors = { 1:'#1d4ed8', 2:'#15803d', 3:'#b45309', 4:'#7c3aed' };
+      pEl.style.background = info.block ? colors[info.block] || 'var(--navy)' : 'var(--navy)';
+      pEl.style.color = 'var(--gold)';
+    }
+  }
+  updateDeadlineTimers();
+  updateLessonStrip();
+  checkCron();
+  checkJournalAutoPrompt();
+  checkDepositReminder();
+  checkWorkdayReminder();
+  checkBragBoardPrompt();
+  checkCommsTriage();
+  checkPLCToday();
+  checkEsportsMatchToday();
+  checkDECAEventTomorrow();
+}
+
+// ── Deadlines ─────────────────────────────────────────────
+let DEADLINES = LS.get('lh_deadlines', [
+  // ── CTE PLC Monthly Meetings ─────────────────────────────────────────────
+  { id:'dl_plc_mar',   title:'CTE PLC — Monthly Meeting',                    date:'2026-03-19', role:'meeting' },
+  { id:'dl_plc_apr',   title:'CTE PLC — Monthly Meeting',                    date:'2026-04-16', role:'meeting' },
+  { id:'dl_plc_may',   title:'CTE PLC — Monthly Meeting',                    date:'2026-05-14', role:'meeting' },
+  // ── Synergy Grading Cadence (2-week required update cycle) ─────────────────
+  { id:'dl_syn1',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-03-21', role:'teach' },
+  { id:'dl_syn2',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-04-04', role:'teach' },
+  { id:'dl_syn3',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-04-18', role:'teach' },
+  { id:'dl_syn4',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-05-02', role:'teach' },
+  // ── DECA ───────────────────────────────────────────────────────────────────
+  { id:'dl_icdc_pay',  title:'DECA ICDC Payment Due',                        date:'2026-04-01', role:'deca' },
+  { id:'dl6',          title:'DECA ICDC Atlanta',                            date:'2026-04-25', role:'deca' },
+  // ── Field Trips ────────────────────────────────────────────────────────────
+  { id:'dl5',          title:'Field Trip Form Submission Deadline',           date:'2026-04-22', role:'trips' },
+  // ── WBL / Store ────────────────────────────────────────────────────────────
+  { id:'dl2',          title:'WBL Training Agreements Due to CEC',           date:'2026-03-31', role:'store' },
+  // ── CCPS Calendar — Quarter End Dates ──────────────────────────────────────
+  { id:'cal_q3_end',   title:'End of Q3 — Grades Due',                      date:'2026-03-19', role:'teach' },
+  { id:'cal_q4_end',   title:'End of Q4 / Last Day of School',               date:'2026-05-29', role:'teach' },
+  // ── CCPS Calendar — Early Release Days ────────────────────────────────────
+  { id:'cal_er_mar',   title:'3-Hr Early Release / Q3 End (Mar 19)',         date:'2026-03-19', role:'teach' },
+  { id:'cal_er_apr',   title:'3-Hr Early Release (Apr 17)',                  date:'2026-04-17', role:'teach' },
+  { id:'cal_er_may28', title:'3-Hr Early Release (May 28)',                  date:'2026-05-28', role:'teach' },
+  // ── CCPS Calendar — Breaks & Holidays ─────────────────────────────────────
+  { id:'cal_spring',   title:'Spring Break Begins (Mar 30)',                 date:'2026-03-30', role:'teach' },
+  { id:'cal_summer',   title:'First Day of Summer School (Jun 22)',          date:'2026-06-22', role:'teach' },
+  { id:'dl4',          title:'SBE Business Plan — Principal Sign-Off',       date:'2026-04-15', role:'store' },
+  // ── E-Sports ───────────────────────────────────────────────────────────────
+  { id:'dl3',          title:'E-Sports Playoff Roster Lock',                 date:'2026-04-07', role:'esports' },
+]);
+
+function daysUntil(dateStr) {
+  const t = new Date(dateStr+'T23:59:59'), n = new Date();
+  return Math.ceil((t-n)/(1000*60*60*24));
+}
+function urgencyClass(days) {
+  if(days<0)  return {bg:'#7f1d1d',text:'#fff',dot:'💀',label:`${Math.abs(days)}d OVERDUE`};
+  if(days<=3) return {bg:'#fee2e2',text:'#991b1b',dot:'🔴',label:`${days}d left`};
+  if(days<=7) return {bg:'#fef9c3',text:'#854d0e',dot:'🟡',label:`${days}d left`};
+  return        {bg:'#f0fdf4',text:'#166534',dot:'🟢',label:`${days}d left`};
+}
+
+// Shared by runCronAdjustment(), renderDeadlines(), and buildActionQueue()
+// — previously reimplemented separately at each of those 4 call sites
+// (including a locally-scoped copy inside buildActionQueue) instead of
+// defined once, risking exactly the kind of drift a filter list like this
+// invites (a new cal_/dl_ prefix added in one copy and missed in another).
+// cal_* = calendar reference entries (quarter ends, early release, breaks).
+// dl_green/dl_plc = meeting attendance records (logged if attended) —
+// once past, they're history, not open tasks.
+function _isActionable(d) {
+  return !d.id.startsWith('cal_') && !d.id.startsWith('dl_green') && !d.id.startsWith('dl_plc');
+}
+
+function renderDeadlines() {
+  const list=document.getElementById('deadline-list');
+  const empty=document.getElementById('deadline-empty');
+  if(!list) return;
+  // Filter out past reference/meeting deadlines — they're informational, not
+  // open tasks. _isActionable() already excludes all of these from the
+  // choice cards (buildActionQueue()) and the priority list
+  // (runCronAdjustment()).
+  const visible = DEADLINES.filter(d => daysUntil(d.date) >= 0 || _isActionable(d));
+  const sorted=[...visible].sort((a,b)=>daysUntil(a.date)-daysUntil(b.date));
+  if(!sorted.length){ list.innerHTML=''; if(empty) empty.style.display='block'; return; }
+  if(empty) empty.style.display='none';
+  list.innerHTML=sorted.map(dl=>{
+    const days=daysUntil(dl.date), u=urgencyClass(days);
+    const r=DB_ROLES[dl.role]||DB_ROLES.deca;
+    // FIXED: every row got cursor:pointer and an onclick, even teach/meeting
+    // rows whose onclick was the empty string — a misleading no-op cursor
+    // promising a click that does nothing. Rows that do navigate had zero
+    // keyboard access (no tabindex, no role, no Enter/Space handler) — same
+    // mouse-only gap already fixed for the checklists elsewhere in this app.
+    const navigates = !(dl.role==='teach'||dl.role==='meeting');
+    const target = dl.role==='store'?'wbl':dl.role;
+    const navAttrs = navigates
+      ? `onclick="showView('${target}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showView('${target}')}" role="button" tabindex="0" style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem;cursor:pointer;transition:opacity .15s" onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"`
+      : `style="display:flex;align-items:center;gap:.6rem;padding:.55rem .65rem;border-radius:9px;background:${u.bg};margin-bottom:.32rem"`;
+    return `<div ${navAttrs}>
+      <span style="font-size:1.05rem;flex-shrink:0">${u.dot}</span>
+      <span style="font-size:1.05rem;flex-shrink:0">${r.icon}</span>
+      <span style="flex:1;font-size:.9rem;font-weight:600;color:${u.text};line-height:1.3">${escH(dl.title)}</span>
+      <span id="dltimer-${dl.id}" style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:${u.text};white-space:nowrap">${u.label}</span>
+      <button onclick="event.stopPropagation();editDeadline('${escJsAttr(dl.id)}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Edit" aria-label="Edit deadline">✏️</button>
+      <button onclick="event.stopPropagation();deleteDeadline('${escJsAttr(dl.id)}')" style="background:none;border:none;color:#9ca3af;cursor:pointer;font-size:.82rem;padding:0 2px;line-height:1" title="Delete" aria-label="Delete deadline">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function updateDeadlineTimers() {
+  DEADLINES.forEach(dl=>{
+    const el=document.getElementById('dltimer-'+dl.id);
+    if(el) el.textContent=urgencyClass(daysUntil(dl.date)).label;
+  });
+}
+
+let _editingDeadlineId = null;
+function openDeadlineModal(id) {
+  _editingDeadlineId = id || null;
+  const inp=document.getElementById('dl-date');
+  const titleEl=document.getElementById('dl-title');
+  const roleEl=document.getElementById('dl-role');
+  const hdr=document.getElementById('deadline-modal-hdr');
+  const savBtn=document.getElementById('deadline-save-btn');
+  if(_editingDeadlineId) {
+    const dl=DEADLINES.find(d=>d.id===_editingDeadlineId);
+    if(dl){ if(titleEl) titleEl.value=dl.title; if(inp) inp.value=dl.date; if(roleEl) roleEl.value=dl.role; }
+    if(hdr) hdr.textContent='Edit Deadline';
+    if(savBtn) savBtn.textContent='Save Changes';
+  } else {
+    if(titleEl) titleEl.value='';
+    if(inp) inp.valueAsDate=new Date(Date.now()+7*864e5);
+    if(roleEl) roleEl.value='teach';
+    if(hdr) hdr.textContent='Add Deadline';
+    if(savBtn) savBtn.textContent='Add Deadline';
+  }
+  document.getElementById('deadline-modal').style.display='block';
+  // "+ Deadline" is one of the most-repeated actions on the Dashboard —
+  // without this, keyboard users land with focus nowhere specific and have
+  // to Tab from the top of the modal every single time.
+  if (titleEl) titleEl.focus();
+}
+function editDeadline(id){ openDeadlineModal(id); }
+function closeDeadlineModal(){ document.getElementById('deadline-modal').style.display='none'; _editingDeadlineId=null; }
+function saveDeadline(){
+  const title=(document.getElementById('dl-title').value||'').trim();
+  const date=document.getElementById('dl-date').value;
+  if(!title||!date){ _showToast('Please fill in both fields.', 2500, '#991b1b'); return; }
+  const role=document.getElementById('dl-role').value;
+  if(_editingDeadlineId) {
+    const dl=DEADLINES.find(d=>d.id===_editingDeadlineId);
+    if(dl){ dl.title=title; dl.date=date; dl.role=role; }
+  } else {
+    DEADLINES.push({id:'dl'+Date.now(),title,date,role});
+  }
+  LS.set('lh_deadlines',DEADLINES);
+  const wasEditing = !!_editingDeadlineId;
+  document.getElementById('dl-title').value='';
+  closeDeadlineModal();
+  renderDeadlines();
+  refreshNextAction();
+  _showToast(wasEditing ? '✅ Deadline updated' : '✅ Deadline added');
+}
+function deleteDeadline(id){
+  const dl = DEADLINES.find(d=>d.id===id);
+  const _saved = [...DEADLINES];
+  DEADLINES=DEADLINES.filter(d=>d.id!==id);
+  LS.set('lh_deadlines',DEADLINES);
+  renderDeadlines();
+  refreshNextAction();
+  _undoToast(dl ? `"${dl.title}" removed` : 'Deadline removed', () => {
+    DEADLINES = _saved;
+    LS.set('lh_deadlines', DEADLINES);
+    renderDeadlines();
+    refreshNextAction();
+  });
+}
+
+// ── Progress Ring SVG ─────────────────────────────────────
+function ring(pct,color,size=50,stroke=3.5){
+  const r=(size/2)-(stroke*1.5), circ=2*Math.PI*r, dash=(pct/100)*circ;
+  return `<svg width="${size}" height="${size}" style="transform:rotate(-90deg)">
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="#f1f5f9" stroke-width="${stroke}"/>
+    <circle cx="${size/2}" cy="${size/2}" r="${r}" fill="none" stroke="${color}" stroke-width="${stroke}"
+      stroke-dasharray="${dash} ${circ}" stroke-linecap="round"/>
+  </svg>`;
+}
+
+// ── Priority Queue ─────────────────────────────────────────
+let _naNav = 'dashboard';
+let CHOICE_SNOOZED = LS.get('lh_snoozed', []);
+
+function buildActionQueue(){
+  const q=[];
+  const lastMood = getLastMoodScore();
+
+  const dlNav = r => r==='store'?'wbl':r==='teach'?'lessons':r==='meeting'?'dashboard':r;
+  // _isActionable() (shared, defined near daysUntil/urgencyClass above) —
+  // excludes cal_* reference entries and past dl_green/dl_plc meetings.
+  DEADLINES.filter(d=>daysUntil(d.date)<0 && _isActionable(d)).forEach(d=>
+    q.push({priority:100,icon:'💀',text:`OVERDUE: ${d.title}`,role:d.role,nav:dlNav(d.role),days:daysUntil(d.date)}));
+
+  DEADLINES.filter(d=>{const x=daysUntil(d.date);return x>=0&&x<=3&&_isActionable(d);}).forEach(d=>
+    q.push({priority:90,icon:'🔴',text:`Due in ${daysUntil(d.date)}d: ${d.title}`,role:d.role,nav:dlNav(d.role),days:daysUntil(d.date)}));
+
+  // Open observation follow-up action items
+  const obsHistory = LS.get('lh_obs_history', []);
+  const openActions = obsHistory.filter(o => (o.outcome === 'action' || o.outcome === 'concern') && o.outcome !== 'resolved');
+  if (openActions.length) {
+    const latest = openActions[0];
+    q.push({priority:95, icon:'📋', text:`Obs follow-up required: "${latest.followup||'See observation log'}"`, role:'teach', nav:'lessons', days:3});
+  }
+
+  if(typeof INVENTORY!=='undefined'){
+    const low=INVENTORY.filter(i=>i.qty<=i.reorder);
+    if(low.length) q.push({priority:85,icon:'📦',text:`Reorder ${low.length} low-stock item${low.length>1?'s':''} — ${low[0].name} at ${low[0].qty} units`,role:'store',nav:'wbl',days:1});
+  }
+
+
+
+  // ── Trip incomplete with submission deadline approaching ─────────────────────
+  // Surfaces any trip with missing required fields AND ≤7 days to submit deadline
+  if(typeof trips!=='undefined' && typeof getMissingFields!=='undefined'){
+    trips.forEach(t=>{
+      const dl = subDeadline(t);
+      if(!dl) return;
+      const daysLeft = Math.ceil((dl - new Date()) / 86400000);
+      if(daysLeft < 0 || daysLeft > 7) return;
+      const missing = getMissingFields(t);
+      if(!missing.length) return;
+      q.push({
+        priority: 87,
+        icon: '🚌',
+        text: `"${t.name}" — ${missing.length} required field${missing.length!==1?'s':''} incomplete, submit deadline ${daysLeft===0?'TODAY':`in ${daysLeft}d`}`,
+        role: 'trips',
+        nav: 'trips',
+        days: daysLeft
+      });
+    });
+  }
+
+  // ── Permission slips not returned — trip within 7 days ───────────────────────
+  // Students with status 'pending' or 'missing' on an upcoming trip are a
+  // compliance risk: cannot take unconsented students on a trip.
+  if(typeof trips!=='undefined' && typeof slipRosters!=='undefined'){
+    trips.forEach(t=>{
+      if(!t.date) return;
+      const daysToTrip = Math.ceil((new Date(t.date+'T00:00:00') - new Date()) / 86400000);
+      if(daysToTrip < 0 || daysToTrip > 7) return;
+      const roster = slipRosters[t.id] || [];
+      if(!roster.length) return;
+      const notReturned = roster.filter(s => s.status === 'pending' || s.status === 'missing');
+      if(!notReturned.length) return;
+      q.push({
+        priority: 84,
+        icon: '📋',
+        text: `"${t.name}" — ${notReturned.length} permission slip${notReturned.length!==1?'s':''} not returned, trip ${daysToTrip===0?'TODAY':`in ${daysToTrip}d`}`,
+        role: 'trips',
+        nav: 'slips',
+        days: daysToTrip
+      });
+    });
+  }
+
+  if(typeof WBL_STUDENTS!=='undefined'){
+    const unsigned=WBL_STUDENTS.filter(s=>s.agreement==='pending');
+    if(unsigned.length) q.push({priority:75,icon:'📝',text:`${unsigned.length} WBL training agreement${unsigned.length>1?'s':''} pending`,role:'store',nav:'wbl',days:7});
+  }
+
+  DEADLINES.filter(d=>{const x=daysUntil(d.date);return x>3&&x<=7&&_isActionable(d);}).forEach(d=>
+    q.push({priority:70,icon:'🟡',text:`Due in ${daysUntil(d.date)}d: ${d.title}`,role:d.role,nav:dlNav(d.role),days:daysUntil(d.date)}));
+
+  // ── TODAY: PLC meeting ───────────────────────────────────────────────────────
+  const plcToday = DEADLINES.filter(d => d.id.startsWith('dl_plc') && daysUntil(d.date) === 0);
+  if (plcToday.length) {
+    q.push({priority:82, icon:'🗓️', text:'TODAY: CTE PLC Meeting — tap to log attendance', role:'meeting', nav:'dashboard', action:'logPLC', days:0});
+  }
+
+  // ── Synergy / Canvas staleness ───────────────────────────────────────────────
+  // Surfaces in priority engine when overdue — data already exists in lh_sync_tracker
+  const syncSaved = LS.get('lh_sync_tracker', {});
+  const syncNow = Date.now();
+  SYNC_PLATFORMS.forEach(p => {
+    const lastStr = syncSaved[p.id];
+    const diffDays = lastStr ? (syncNow - new Date(lastStr).getTime()) / 86400000 : Infinity;
+    if (diffDays > p.maxDays) {
+      const daysOver = Math.floor(diffDays - p.maxDays);
+      const isGrades = p.id === 'synergy';
+      q.push({
+        priority: isGrades ? 80 : 72,
+        icon: p.icon,
+        text: `${p.label} overdue — ${daysOver}d past ${p.maxDays}-day limit`,
+        role: 'teach', nav: 'lessons', days: 0
+      });
+    }
+  });
+
+  if(typeof SBE_ELEMENTS!=='undefined'){
+    const rem=SBE_ELEMENTS.filter(e=>!(SBE_STATUS[e.id]||{}).done);
+    if(rem.length) q.push({priority:60,icon:'✅',text:`SBE Checklist: "${rem[0].label||rem[0].id}" — ${rem.length} element${rem.length>1?'s':''} left`,role:'store',nav:'wbl',days:14});
+  }
+
+  // ── Goals stalled — two triggers, all categories:
+  //   1. Progress below threshold (40%)
+  //   2. Goal not updated in 14+ days regardless of progress level (quiet neglect)
+  // Covers all 5 goal categories (Leadership Development, Membership Growth, Field Trip,
+  // Community Service, DECA Competition).
+  if(typeof goals!=='undefined'){
+    const _threshold = 40;
+    const _now       = Date.now();
+    const _staleMs   = 14 * 24 * 60 * 60 * 1000; // 14 days
+    const _stalledGoals = goals.filter(g => {
+      // Skip goals whose target date has already passed — they're done or moot, not actionable
+      if (g.date && daysUntil(g.date) < 0) return false;
+      const _pct     = g.progress || 0;
+      const _updated = g.updatedAt ? new Date(g.updatedAt).getTime() : 0;
+      const _stale   = !_updated || (_now - _updated) > _staleMs;
+      // Fire if: below threshold OR (not complete AND quietly neglected ≥14 days)
+      return _pct < _threshold || (_pct < 100 && _stale);
+    });
+    if (_stalledGoals.length) {
+      // Sort by lowest progress first
+      _stalledGoals.sort((a, b) => (a.progress || 0) - (b.progress || 0));
+      const _g = _stalledGoals[0];
+      const _updated = _g.updatedAt ? new Date(_g.updatedAt).getTime() : 0;
+      const _staleDays = _updated ? Math.floor((_now - _updated) / 86400000) : null;
+      const _staleTxt  = _staleDays !== null && _staleDays >= 14 ? ` (no update in ${_staleDays}d)` : '';
+      const _catTag    = ` [${_g.cat}]`;
+      // Defensive: an older-schema goal record missing `title` must not
+      // throw here — this function feeds the dashboard's action queue,
+      // and a thrown error here used to abort every render after it.
+      const _gTitle    = (_g.title || 'Untitled goal').substring(0,40);
+      q.push({
+        priority: 62,
+        icon: '🎯',
+        text: `Goal needs attention: "${_gTitle}"${_catTag} at ${_g.progress||0}%${_staleTxt}`,
+        role: 'teach',
+        nav: 'goals',
+        days: _g.date ? daysUntil(_g.date) : 30
+      });
+    }
+  }
+
+  const avoided=LS.get('lh_journal_avoided','');
+  if(avoided && avoided.trim()){
+    q.push({priority:65,icon:'⚠️',text:`From yesterday: "${avoided.slice(0,55)}${avoided.length>55?'…':''}"`,role:'general',nav:'dashboard',days:1});
+  }
+
+  // ── Journal not done today (after 2pm on school days) ────────────────────────
+  const _jNow = new Date();
+  const _jDow = _jNow.getDay();
+  if (_jDow >= 1 && _jDow <= 5 && _jNow.getHours() >= 14 && isSchoolDay(_jNow)) {
+    const _jLast = LS.get('lh_journal_last');
+    const _jToday = _jNow.toDateString();
+    if (!_jLast || new Date(_jLast.savedAt || 0).toDateString() !== _jToday) {
+      q.push({priority:55, icon:'📓', text:`End-of-day reflection not done yet — priorities adjust at 2am without it`,
+        role:'general', nav:'dashboard', days:0});
+    }
+  }
+
+  // P45 horizon items intentionally excluded from choice cards —
+  // "This Week" items are already visible in Row D3 on the dashboard.
+  // Routing nav:'dashboard' when already on dashboard is circular and wastes a card slot.
+  // Adam can see and act on horizon items directly without the choice card indirection.
+
+  if(!q.length) q.push({priority:0,icon:'✅',text:'You\'re caught up — check tomorrow\'s lesson plan pacing',role:'teach',nav:'lessons',days:null});
+
+  // Mood-based priority scaling: low mood → reduce heavy tasks, elevate wins
+  if(lastMood!==null){
+    if(lastMood<=4){
+      // Soften: deprioritize overloading tasks, add encouragement
+      q.forEach(item=>{ if(item.priority>60) item.priority=Math.max(item.priority-15,40); });
+      q.unshift({priority:50,icon:'💙',text:`Low energy day flagged — start with one small win today`,role:'general',nav:'lessons',days:null});
+    } else if(lastMood>=8){
+      // Amplify: elevate ambitious items
+      q.forEach(item=>{ if(['deca','esports'].includes(item.role)) item.priority+=10; });
+    }
+  }
+
+  // Filter snoozed
+  const now=Date.now();
+  const active=q.filter(item=>!CHOICE_SNOOZED.some(s=>s.text===item.text&&now<s.until));
+  return active.sort((a,b)=>b.priority-a.priority);
+}
+
+// ── Dual Choice Cards ──────────────────────────────────────
+let _lastChoiceCardsSig = null;
+function renderChoiceCards(){
+  const container=document.getElementById('choice-cards'); if(!container) return;
+  const q=buildActionQueue();
+  const top2=q.slice(0,2);
+  if(!top2.length){
+    if (_lastChoiceCardsSig !== '__empty__') {
+      _lastChoiceCardsSig = '__empty__';
+      container.innerHTML=`<div style="grid-column:1/-1;background:var(--surface);border:1.5px solid var(--border);border-radius:var(--radius);padding:2rem;text-align:center">
+        <div style="font-size:1.5rem;margin-bottom:.5rem">✅</div>
+        <div style="font-weight:700;font-size:.88rem;color:var(--ink);margin-bottom:.25rem">All priorities handled</div>
+        <div style="font-size:.75rem;color:var(--muted)">Great work — check the horizon lists for what's next.</div>
+      </div>`;
+    }
+    return;
+  }
+
+  // Badge colors per urgency
+  const iconBgForUrgency = (days) => {
+    if(days===null) return {bg:'#f1f5f9',color:'#475569'};
+    if(days<0)  return {bg:'#7f1d1d',color:'#fff'};
+    if(days<=3) return {bg:'#fef2f2',color:'#dc2626'};
+    if(days<=7) return {bg:'#fefce8',color:'#ca8a04'};
+    return {bg:'#f0fdf4',color:'#16a34a'};
+  };
+
+  // Update queue depth badge
+  const countBadge = document.getElementById('choice-count-badge');
+  if (countBadge) {
+    const total = q.length;
+    countBadge.textContent = total <= 2 ? `${total} item${total!==1?'s':''}` : `${total} in queue`;
+    countBadge.style.background = total > 5 ? '#fef2f2' : total > 2 ? '#fefce8' : '#f0fdf4';
+    countBadge.style.color = total > 5 ? '#dc2626' : total > 2 ? '#ca8a04' : '#16a34a';
+  }
+
+  // Skip the innerHTML rebuild (and its .choice-card fadeUp entrance
+  // animation) when the top-2 priorities haven't actually changed — a small
+  // dashboard action elsewhere (e.g. ticking one Quick Log checkbox) used to
+  // trigger refreshNextAction()'s full cascade and replay this card's
+  // entrance animation for no reason every single time.
+  const sig = top2.map(i => i.text + '|' + i.days).join('::');
+  if (sig === _lastChoiceCardsSig) return;
+  _lastChoiceCardsSig = sig;
+
+  container.innerHTML=top2.map((item,i)=>{
+    const r=DB_ROLES[item.role]||DB_ROLES.general;
+    const u=item.days!==null?urgencyClass(item.days):{bg:'#f1f5f9',text:'#475569',dot:'•',label:'Ongoing'};
+    const ic=iconBgForUrgency(item.days);
+    const isTop=i===0;
+    const borderCls=isTop?'cc-danger':'cc-warning';
+    const labelColor=isTop?'#dc2626':'#ca8a04';
+    const labelText=isTop?'Top Priority':'Alternative';
+    const labelDot=isTop?'#fca5a5':'#fde68a';
+    return `<div class="choice-card ${borderCls}" id="cc-${i}">
+      <div class="cc-label">
+        <span style="width:6px;height:6px;border-radius:50%;background:${labelDot};display:inline-block;flex-shrink:0"></span>
+        <span style="color:${labelColor}">${labelText}</span>
+      </div>
+      <div style="display:flex;gap:.55rem;align-items:flex-start;margin-bottom:.35rem">
+        <div class="cc-icon-box" style="background:${ic.bg}"><span>${item.icon}</span></div>
+        <div style="flex:1;min-width:0">
+          <div class="cc-title">${escH(item.text)}</div>
+          <div class="cc-meta">
+            <span class="cc-urgency" style="background:${u.bg};color:${u.text}">${u.dot} ${u.label}</span>
+            <span class="cc-role-tag" style="background:${r.bg};color:${r.color}">${r.icon} ${r.label}</span>
+          </div>
+        </div>
+      </div>
+      <div class="cc-actions">
+        <button class="cc-pick" onclick="choicePick(${i},'${item.nav}','${item.action||''}')">Do This →</button>
+        <button class="cc-snooze" onclick="choiceSnooze(${i},'${encodeURIComponent(item.text)}')">⏸ Later</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function choicePick(idx, nav, action){
+  const card=document.getElementById('cc-'+idx);
+  if(card){ card.classList.add('selected'); card.style.opacity='.7'; }
+  // Log the engagement — "responded to priority signal"
+  try {
+    const q = buildActionQueue();
+    const item = q[idx];
+    if (item) {
+      _logDaily({ date: new Date().toISOString(), type: 'choice_picked',
+        note: `Priority action engaged: "${item.text.substring(0,80)}" (${item.role})` });
+    }
+  } catch(_e) {}
+  // Execute special action if present before navigating
+  if (action === 'logPLC') {
+    try { logPLCAttended(); } catch(_e) {}
+  }
+  // Immediately rebuild priority queue so completed card vanishes on return
+  try { refreshNextAction(); } catch(_e) {}
+  setTimeout(()=>showView(nav), 320);
+}
+
+function choiceSnooze(idx, encodedText){
+  const text=decodeURIComponent(encodedText);
+  CHOICE_SNOOZED.push({text, until:Date.now()+4*60*60*1000}); // snooze 4h
+  CHOICE_SNOOZED=CHOICE_SNOOZED.filter(s=>Date.now()<s.until);
+  LS.set('lh_snoozed', CHOICE_SNOOZED);
+  renderChoiceCards();
+  refreshNextAction();
+}
+
+// ── Next Action banner ────────────────────────────────────
+function refreshNextAction(){
+  // Every sub-render below is independent — one throwing (malformed data,
+  // an older-schema record) must not silently cancel the rest, which is
+  // what happened when this whole function ran as one unguarded block.
+  let top;
+  try {
+    const q = buildActionQueue();
+    // buildActionQueue() always pushes a fallback item before the snooze
+    // filter runs, but the snooze filter itself can still remove it —
+    // e.g. the fallback text happens to match an already-snoozed entry —
+    // leaving q empty. Never assume q[0] exists.
+    top = (q && q[0]) || { text:'All caught up', icon:'✅', role:'general', nav:'dashboard', days:null };
+  } catch (e) {
+    console.error('buildActionQueue failed:', e);
+    top = { text:'Could not load your priorities', icon:'⚠️', role:'general', nav:'dashboard', days:null };
+  }
+
+  try {
+    _naNav=top.nav;
+    const textEl=document.getElementById('na-text');
+    const roleEl=document.getElementById('na-role');
+    const iconEl=document.getElementById('na-icon');
+    const timerEl=document.getElementById('na-timer');
+    const timerLb=document.getElementById('na-timer-lbl');
+    const bar=document.getElementById('na-bar');
+    if(!textEl) return;
+    textEl.textContent=top.text;
+    iconEl.textContent=top.icon;
+    const r=DB_ROLES[top.role]||DB_ROLES.general;
+    roleEl.textContent=r.label;
+    if(top.days!==null&&top.days!==undefined){
+      const u=urgencyClass(top.days);
+      timerEl.textContent=top.days<0?`${Math.abs(top.days)}d OVERDUE`:top.days===0?'TODAY':`${top.days}d`;
+      timerLb.textContent=top.days<0?'Overdue':'Days Left';
+      if(bar) bar.style.background=top.days<0?'#dc2626':top.days<=3?'#f87171':top.days<=7?'#fbbf24':'#4ade80';
+    } else {
+      timerEl.textContent='—'; timerLb.textContent='No Deadline';
+      if(bar) bar.style.background='#4ade80';
+    }
+  } catch (e) { console.error('Next Action banner render failed:', e); }
+
+  // Each of these owns its own DOM section — isolate them from each other
+  // so one bad record (a goal, a task, a win) can't blank the whole dashboard.
+  const _safeRender = (fn, label) => { try { fn(); } catch (e) { console.error(label + ' failed:', e); } };
+  _safeRender(renderPulseRow,   'renderPulseRow');
+  _safeRender(renderDeadlines,  'renderDeadlines');
+  _safeRender(renderQuickLog,   'renderQuickLog');
+  _safeRender(renderHorizons,   'renderHorizons');
+  _safeRender(renderChoiceCards,'renderChoiceCards');
+  _safeRender(updateJournalCTA, 'updateJournalCTA');
+  _safeRender(renderRecentWins, 'renderRecentWins');
+}
+
+function cockpitGo(){ if(_naNav) showView(_naNav); }
+
+// ── Pulse Row ─────────────────────────────────────────────
+function getPulseData(){
+  const wblTotal=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.length:0;
+  const wblSigned=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.filter(s=>s.agreement!=='pending').length:0;
+  const wblAvgHrs=wblTotal?Math.round(WBL_STUDENTS.reduce((a,s)=>a+Number(s.hours),0)/wblTotal):0;
+  const lowInv=typeof INVENTORY!=='undefined'?INVENTORY.filter(i=>i.qty<=i.reorder).length:0;
+  const sbeDone=typeof SBE_ELEMENTS!=='undefined'?SBE_ELEMENTS.filter(e=>(SBE_STATUS[e.id]||{}).done).length:0;
+  const sbeTotal=typeof SBE_ELEMENTS!=='undefined'?SBE_ELEMENTS.length:10;
+  const esTotal=typeof ES_MATCHES!=='undefined'?ES_MATCHES.length:0;
+  const esWins=typeof ES_MATCHES!=='undefined'?ES_MATCHES.filter(m=>Number(m.us)>Number(m.them)).length:0;
+  // Next upcoming match — future-dated entries sorted ascending
+  const _todayStr = _localDateStr_();
+  const _futureMatches = typeof ES_MATCHES!=='undefined'
+    ? ES_MATCHES.filter(m=>m.date && m.date >= _todayStr).sort((a,b)=>a.date.localeCompare(b.date))
+    : [];
+  const nextMatch = _futureMatches[0] || null;
+  const nextMatchDays = nextMatch ? Math.ceil((new Date(nextMatch.date+'T00:00:00')-new Date())/86400000) : null;
+  const nextMatchLabel = nextMatch
+    ? (nextMatchDays === 0 ? `TODAY vs ${nextMatch.opp}` : nextMatchDays === 1 ? `Tomorrow vs ${nextMatch.opp}` : `${nextMatchDays}d vs ${nextMatch.opp}`)
+    : null;
+  const decaDeadlines=DEADLINES.filter(d=>d.role==='deca');
+  const nextDeca=decaDeadlines.sort((a,b)=>daysUntil(a.date)-daysUntil(b.date))[0];
+  const decaDays=nextDeca?daysUntil(nextDeca.date):null;
+  const tripDL=DEADLINES.filter(d=>d.role==='trips').sort((a,b)=>daysUntil(a.date)-daysUntil(b.date))[0];
+
+  // ── Teach pct: live SCR coverage across all courses/periods ──────────────────
+  let _scrScored=0, _scrTotal=0;
+  try {
+    const _allScores = LS.get('lh_scr_scores', {});
+    Object.entries(SCR_COURSES).forEach(([code, c]) => {
+      const comps = c.competencies || [];
+      Object.keys(c.periods || {}).forEach(per => {
+        const stuList = (c.periods[per] || []).map(s => _scrStudentKey(s));
+        const perScores = ((_allScores[code] || {})[per]) || {};
+        stuList.forEach(name => {
+          comps.forEach(comp => {
+            _scrTotal++;
+            if (perScores[name] && perScores[name][comp.num]) _scrScored++;
+          });
+        });
+      });
+    });
+  } catch(e) {}
+  const teachPct = _scrTotal ? Math.round((_scrScored / _scrTotal) * 100) : 0;
+  const teachStat = _scrTotal ? `${teachPct}% comp coverage` : 'No scores yet';
+  const teachAlert = teachPct < 60 && _scrTotal > 0;  // Alert when <60% scored — actionable before it's urgent
+
+  // ── SCR staleness — days since last scoring session ───────────────────────
+  const _scrLog     = LS.get('lh_scr_session_log', []);
+  const _scrLastTs  = _scrLog[0] ? _scrLog[0].ts : null;
+  const _scrDaysAgo = _scrLastTs
+    ? Math.floor((Date.now() - new Date(_scrLastTs).getTime()) / 86400000)
+    : null;
+  const teachScrNext = _scrDaysAgo === null
+    ? 'No SCR sessions yet'
+    : _scrDaysAgo === 0
+      ? 'SCR scored today ✓'
+      : _scrDaysAgo === 1
+        ? 'SCR scored yesterday'
+        : `SCR last scored ${_scrDaysAgo}d ago`;
+
+  // ── Pacing indicator — ▲ ahead / ▼ behind / ✓ on track ───────────────────
+  // Quick single-course check: most recently active course
+  let teachPacingIndicator = '';
+  try {
+    const _pNow = new Date().toISOString().slice(0,10);
+    let _q = 1;
+    for (const [qn, r] of Object.entries(LP_QUARTERS)) {
+      if (_pNow >= r.start && _pNow <= r.end) { _q = parseInt(qn); break; }
+    }
+    const _qr = LP_QUARTERS[_q];
+    const _lpMeta = LS.get('lh_lp_edit_meta', {});
+    const _oeMap  = buildOddEvenMap(LP_QUARTERS[1].start, _pNow);
+    let _totalDue = 0, _totalEdited = 0;
+    for (const [code, c] of Object.entries(SCR_COURSES)) {
+      const oe = getCourseOddEven(code);
+      const sdays = getSchoolDays(_qr.start, _pNow);
+      const meet  = sdays.filter(d => {
+        const p = _oeMap[d];
+        if (oe.odd && oe.even) return true;
+        if (p==='Odd'  && oe.odd)  return true;
+        if (p==='Even' && oe.even) return true;
+        return false;
+      });
+      const lpsQ = LESSON_PLANS.filter(lp => lp.course === code && lp.q === _q);
+      _totalDue    += Math.min(meet.length, lpsQ.length);
+      _totalEdited += Object.values(_lpMeta).filter(e => e.course===code && e.editedAt>=_qr.start).length;
+    }
+    const _diff = _totalEdited - _totalDue;
+    teachPacingIndicator = _diff > 0 ? ' ▲' : _diff < 0 ? ' ▼' : ' ✓';
+  } catch(_pe) {}
+
+  // Combine into `next` stat: pacing + SCR currency
+  const teachNext = teachScrNext + teachPacingIndicator;
+
+  // ── Trips pct: % of trips with all required fields complete ──────────────────
+  const _allTrips = typeof trips !== 'undefined' ? trips : [];
+  const _readyTrips = _allTrips.filter(t => typeof getMissingFields==='function' && getMissingFields(t).length===0);
+  const tripsPct = _allTrips.length ? Math.round((_readyTrips.length / _allTrips.length) * 100) : 100;
+  const tripsAlert = (tripDL && daysUntil(tripDL.date) <= 3) || (_allTrips.length > 0 && tripsPct < 50);
+
+  // 'store'/'deca'/'esports' cards drop out when their module is disabled
+  // in Settings — 'teach' and 'trips' stay, since Classroom and Field Trips
+  // are always-on (see MODULES / _applyModuleVisibility()).
+  return [
+    {key:'teach',pct:teachPct,nav:'competency',stat:teachStat,next:teachNext,alert:teachAlert},
+    {key:'store',pct:Math.round((sbeDone/sbeTotal)*100)||0,nav:'wbl',stat:lowInv>0?`⚠ ${lowInv} low-stock SKU`:`${wblAvgHrs}h avg WBL`,next:lowInv>0?`Reorder items`:wblSigned<wblTotal?`${wblTotal-wblSigned} agreements unsigned`:`SBE ${sbeDone}/${sbeTotal}`,alert:lowInv>0||wblSigned<wblTotal},
+    {key:'deca',pct:decaDays!==null?Math.max(0,Math.min(100,Math.round((1-decaDays/90)*100))):50,nav:'deca',stat:nextDeca?`${urgencyClass(decaDays).dot} ${decaDays}d`:'No deadlines',next:nextDeca?nextDeca.title:'Add DECA deadlines',alert:decaDays!==null&&decaDays<=7},
+    {key:'esports',pct:esTotal?Math.round((esWins/esTotal)*100):0,nav:'esports',stat:esTotal?`${esWins}W–${esTotal-esWins}L`:'No matches logged',next:nextMatchLabel?`Next: ${nextMatchLabel}`:esTotal?'Review lineup':'Log first match',alert:nextMatchDays!==null&&nextMatchDays<=1},
+    {key:'trips',pct:tripsPct,nav:'trips',stat:tripDL?`${urgencyClass(daysUntil(tripDL.date)).dot} ${daysUntil(tripDL.date)}d`:'No trip deadlines',next:tripDL?tripDL.title:`${_readyTrips.length}/${_allTrips.length} ready`,alert:tripsAlert},
+  ].filter(d => (d.key!=='store' || MODULES.wbl) && (d.key!=='deca' || MODULES.orgs) && (d.key!=='esports' || MODULES.esports));
+}
+
+function renderPulseRow(){
+  const row=document.getElementById('pulse-row'); if(!row) return;
+  row.innerHTML=getPulseData().map(d=>{
+    const r=DB_ROLES[d.key];
+    const ab=d.alert?'border:2px solid #dc2626;':'border:1px solid var(--border);';
+    return `<div onclick="showView('${d.nav}')" style="background:var(--surface);${ab}border-radius:var(--radius-sm,10px);padding:.65rem .8rem;cursor:pointer;transition:all .2s;position:relative" onmouseover="this.style.boxShadow='var(--shadow-lg)';this.style.transform='translateY(-1px)'" onmouseout="this.style.boxShadow='';this.style.transform=''">
+      ${d.alert?`<div style="position:absolute;top:-.4rem;right:-.4rem;background:#dc2626;color:#fff;font-size:.62rem;font-weight:800;padding:2px 7px;border-radius:99px">Action!</div>`:''}
+      <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem">
+        <div style="position:relative;flex-shrink:0">${ring(d.pct,r.color,54,3.5)}
+          <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:1.1rem">${r.icon}</div>
+        </div>
+        <div>
+          <div style="font-size:.76rem;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:${r.color}">${r.label}</div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.35rem;color:var(--navy);line-height:1">${d.pct}%</div>
+        </div>
+      </div>
+      <div style="font-size:.84rem;color:#374151;font-weight:600;line-height:1.3">${d.stat}</div>
+      <div style="font-size:.76rem;color:var(--muted);margin-top:.2rem;border-top:1px solid #f1f5f9;padding-top:.22rem">→ ${d.next}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Quick Log ─────────────────────────────────────────────
+function renderQuickLog(){
+  renderRecentWins();
+  const sel=document.getElementById('ql-wbl-student');
+  if(sel&&typeof WBL_STUDENTS!=='undefined'){
+    const cur=sel.value;
+    sel.innerHTML='<option value="">Select student…</option>'+
+      WBL_STUDENTS.map(s=>`<option value="${s.id}" ${s.id===cur?'selected':''}>${s.fname} ${s.lname}</option>`).join('');
+  }
+  const sbeEl=document.getElementById('ql-sbe-items');
+  if(sbeEl&&typeof SBE_ELEMENTS!=='undefined'){
+    const items=SBE_ELEMENTS.filter(e=>!(SBE_STATUS[e.id]||{}).done).slice(0,4);
+    sbeEl.innerHTML=items.length?items.map(e=>`<div onclick="sbeToggle('${e.id}');refreshNextAction();" style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.86rem;color:#1d4ed8;padding:.12rem 0">
+      <div style="width:16px;height:16px;border:2px solid #93c5fd;border-radius:3px;flex-shrink:0;background:#fff"></div>
+      <span>${e.label||e.id}</span></div>`).join(''):`<div style="font-size:.86rem;color:#15803d;font-weight:600">All 10 elements done ✓</div>`;
+  }
+  const invEl=document.getElementById('ql-inventory');
+  const invClr=document.getElementById('ql-inv-clear');
+  if(invEl&&typeof INVENTORY!=='undefined'){
+    const low=INVENTORY.filter(i=>i.qty<=i.reorder);
+    if(!low.length){ invEl.style.display='none'; if(invClr) invClr.style.display='block'; }
+    else{
+      if(invClr) invClr.style.display='none'; invEl.style.display='flex';
+      invEl.innerHTML=low.map(i=>`<div onclick="showView('wbl');setTimeout(()=>wblTab('finance',document.getElementById('wbltab-finance')),80)" style="display:flex;justify-content:space-between;align-items:center;font-size:.84rem;cursor:pointer;padding:.12rem 0">
+        <span style="color:#c2410c;font-weight:600">${i.name}</span>
+        <span style="color:#9a3412">${i.qty} left (min ${i.reorder})</span></div>`).join('');
+    }
+  }
+}
+
+function qlLogHours(){
+  const sid=document.getElementById('ql-wbl-student').value;
+  const hrs=parseFloat(document.getElementById('ql-wbl-hrs').value)||0;
+  if(!sid||hrs<=0){ _showToast('Select a student and enter hours.', 2500, '#991b1b'); return; }
+  let s = null;
+  if(typeof WBL_STUDENTS!=='undefined'){
+    s=WBL_STUDENTS.find(x=>x.id===sid);
+    if(s){
+      s.hours=Number(s.hours)+hrs;
+      // Log for Brag Board weekly wins
+      const _wblQL = LS.get('lh_wbl_hours_log', []);
+      _wblQL.unshift({ student: `${s.fname} ${s.lname}`, added: hrs, total: s.hours, ts: new Date().toISOString() });
+      LS.set('lh_wbl_hours_log', _wblQL.slice(0, 200));
+    }
+  }
+  persistWBL(); renderQuickLog(); refreshNextAction();
+  const btn=event.target; btn.textContent='✓';
+  setTimeout(()=>btn.textContent='+h',1200);
+  // Same feedback richness as wblLogHoursConfirm() for the identical action —
+  // this quick-log path used to only flash the button, with no running total.
+  if (s) _showToast(`+${hrs}h logged for ${s.fname} — total ${s.hours}h`, 2800, '#0369a1');
+}
+
+// ── Horizon lists ─────────────────────────────────────────
+let HORIZON = LS.get('lh_horizon', {
+  short:[{id:'hs1',text:'Check WBL student hours',done:false},{id:'hs2',text:'Print SBE checklist for meeting',done:false}],
+  mid:  [{id:'hm1',text:'Submit DECA district paperwork',done:false},{id:'hm2',text:'Order store inventory restock',done:false}],
+  long: [{id:'hl1',text:'SBE Business Plan sign-off',done:false},{id:'hl2',text:'DECA ICDC registration',done:false},{id:'hl3',text:'E-Sports season review',done:false}],
+});
+
+function renderHorizons(){
+  const META = {
+    short: { label:'🔴 This Week', color:'#dc2626', border:'#fecaca', tick:'#dc2626', badgeBg:'#fee2e2', badgeColor:'#b91c1c' },
+    mid:   { label:'🟡 Month',     color:'#b45309', border:'#fde68a', tick:'#b45309', badgeBg:'#fef3c7', badgeColor:'#92400e' },
+    long:  { label:'🟢 Semester',  color:'#15803d', border:'#bbf7d0', tick:'#15803d', badgeBg:'#dcfce7', badgeColor:'#166534' },
+  };
+  ['short','mid','long'].forEach(h=>{
+    const el=document.getElementById('horizon-'+h); if(!el) return;
+    const m = META[h];
+
+    // Update header badge with completion count (only 'short' shows wins)
+    const hdrEl = document.getElementById('horizon-hdr-'+h);
+    if (hdrEl) {
+      const total = HORIZON[h].length;
+      const done  = HORIZON[h].filter(i=>i.done).length;
+      if (h === 'short' && total > 0) {
+        hdrEl.innerHTML = `${m.label} <span style="background:${m.badgeBg};color:${m.badgeColor};font-size:.65rem;font-weight:800;padding:1px 7px;border-radius:20px;margin-left:.35rem">${done}/${total}</span>`;
+      } else {
+        hdrEl.textContent = m.label;
+      }
+    }
+
+    if(!HORIZON[h].length){
+      el.innerHTML=`<div style="font-size:.84rem;color:var(--muted);font-style:italic;padding:.3rem 0">All clear ✓</div>`;
+      return;
+    }
+    el.innerHTML=HORIZON[h].map(item=>`
+      <div data-hid="${item.id}" style="display:flex;align-items:flex-start;gap:.42rem;margin-bottom:.3rem;transition:opacity .7s ease,transform .7s ease;${item.pinned?'background:#fffbeb;border:1px solid #fde68a;border-radius:5px;padding:2px 4px;margin-left:-4px;':''}">
+        <div onclick="horizonToggle('${h}','${item.id}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();horizonToggle('${h}','${item.id}')}" role="checkbox" aria-checked="${item.done}" aria-label="${item.done?'Done — ':''}${(item.text||'').replace(/"/g,'&quot;')}" tabindex="0" style="width:17px;height:17px;border-radius:3px;border:2px solid ${m.border};background:${item.done?m.tick:'#fff'};flex-shrink:0;cursor:pointer;margin-top:2px;display:flex;align-items:center;justify-content:center;font-size:.66rem;color:#fff">${item.done?'✓':''}</div>
+        <span style="font-size:.88rem;${item.done?'text-decoration:line-through;color:var(--muted)':item.pinned?'color:#92400e;font-weight:600':'color:#374151'};line-height:1.4;cursor:pointer;flex:1" onclick="horizonToggle('${h}','${item.id}')">${item.pinned?'📌 ':''}${escH(item.text)}</span>
+        <button onclick="horizonDelete('${h}','${item.id}')" aria-label="Delete this item" style="background:none;border:none;color:#d1d5db;font-size:.74rem;cursor:pointer;padding:0;flex-shrink:0;margin-top:2px">✕</button>
+      </div>`).join('');
+  });
+}
+
+function addHorizon(h){
+  const inp=document.getElementById('h-'+h+'-inp');
+  const text=(inp.value||'').trim(); if(!text) return;
+  const newId = 'h'+Date.now();
+  HORIZON[h].push({id:newId,text,done:false});
+  inp.value=''; LS.set('lh_horizon',HORIZON); renderHorizons();
+  // Completing an item fades out deliberately (see horizonToggle) — adding
+  // one used to just snap into place with no equivalent entrance.
+  const row = document.querySelector('[data-hid="'+newId+'"]');
+  if (row) {
+    row.style.opacity = '0';
+    row.style.transform = 'translateX(-6px)';
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      row.style.opacity = '1';
+      row.style.transform = 'translateX(0)';
+    }));
+  }
+}
+function horizonToggle(h,id){
+  const item=HORIZON[h].find(x=>x.id===id); if(!item) return;
+  const wasDone = item.done;
+  item.done = !item.done;
+  LS.set('lh_horizon', HORIZON);
+
+  // ── Evidence bridge: completing a horizon item writes a task entry ──
+  // This feeds Brag Board completedTasks and preserves the resolvedAt timestamp.
+  // Only fires on 'short' (This Week) items — these are the active work items.
+  if (!wasDone && item.done && h === 'short') {
+    const _htasks = LS.get('lh_tasks', []);
+    const alreadyLogged = _htasks.some(t => t.horizonId === item.id);
+    if (!alreadyLogged) {
+      const newTask = {
+        id: Date.now(),
+        horizonId: item.id,
+        text: item.text.replace(/^📧\s*/, ''), // strip email prefix if any
+        done: true,
+        status: 'ontime',
+        resolvedAt: Date.now(),
+        source: 'horizon',
+      };
+      _htasks.push(newTask);
+      LS.set('lh_tasks', _htasks);
+    }
+  }
+
+  renderHorizons();
+  refreshNextAction(); // re-score priority queue
+
+  // ── Auto-remove done items after 1s — keeps lists clean ──────────────────
+  // Unchecking is still possible via the ✕ button while it's still visible;
+  // a visible fade (not an instant vanish) gives a beat of warning, and an
+  // undo toast covers the case where the removal happens before you react.
+  if (!wasDone && item.done) {
+    const rowEl = document.querySelector(`[data-hid="${id}"]`);
+    setTimeout(() => { if (rowEl) { rowEl.style.opacity = '0'; rowEl.style.transform = 'translateX(6px)'; } }, 150);
+    setTimeout(() => {
+      const removedIdx = HORIZON[h].findIndex(x => x.id === id);
+      if (removedIdx === -1) return;
+      const [removedItem] = HORIZON[h].splice(removedIdx, 1);
+      LS.set('lh_horizon', HORIZON);
+      renderHorizons();
+      refreshNextAction();
+      _undoToast(`Marked done: "${(removedItem.text||'').slice(0,40)}"`, () => {
+        HORIZON[h].splice(removedIdx, 0, removedItem);
+        HORIZON[h][removedIdx].done = false;
+        LS.set('lh_horizon', HORIZON);
+        renderHorizons();
+        refreshNextAction();
+      });
+    }, 1000);
+  }
+}
+function horizonDelete(h,id){
+  const idx = HORIZON[h].findIndex(x=>x.id===id);
+  if (idx === -1) return;
+  const [removed] = HORIZON[h].splice(idx,1);
+  LS.set('lh_horizon',HORIZON);
+  renderHorizons();
+  refreshNextAction();
+  // Non-blocking undo (reuses the app's existing toast helper — see LEADERHUB
+  // COMMAND ENGINE section) rather than a confirm() dialog, since this is a
+  // frequent, routine action where a brief undo window fits better.
+  _undoToast(`Deleted "${(removed.text||'').slice(0,40)}"`, () => {
+    HORIZON[h].splice(idx,0,removed);
+    LS.set('lh_horizon',HORIZON);
+    renderHorizons();
+    refreshNextAction();
+  });
+}
+
+// ── Recent Wins Strip — shows completed This Week items in D4 column ──────────
+// Reads from lh_tasks (source:'horizon') for this week.
+// Gives instant visual feedback when a horizon item is checked off.
+function renderRecentWins() {
+  const strip = document.getElementById('recent-wins-strip');
+  const list  = document.getElementById('recent-wins-list');
+  const badge = document.getElementById('wins-count-badge');
+  if (!strip || !list) return;
+
+  const now       = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - now.getDay() + (now.getDay() === 0 ? -6 : 1));
+  weekStart.setHours(0, 0, 0, 0);
+
+  const inWeek = d => new Date(d) >= weekStart;
+
+  // Pull wins from daily_log this week — all typed evidence events
+  const dailyLog = LS.get('lh_daily_log', []);
+  const LOG_WIN = {
+    comms:          { icon: '📬', label: t => 'Morning comms cleared' },
+    task_complete:  { icon: '✅', label: t => t.note?.replace('Task completed: ','').replace(/^"|"$/g,'').substring(0,50) || 'Task completed' },
+    trip_archived:  { icon: '🚌', label: t => t.note?.replace('Trip archived: ','').substring(0,50) || 'Trip archived' },
+    plc_meeting:    { icon: '🗓️', label: () => 'CTE PLC meeting attended' },
+    workday_submit: { icon: '💼', label: () => 'Workday payroll submitted' },
+    obs_prep_complete: { icon: '👁️', label: () => 'Obs prep checklist complete' },
+    esports_match:  { icon: '🎮', label: t => t.note?.replace('E-Sports match logged: ','').substring(0,50) || 'E-Sports match' },
+    choice_picked:  { icon: '⚡', label: t => t.note?.replace('Priority action engaged: ','').replace(/^"|"$/g,'').substring(0,50) || 'Priority action taken' },
+    deca_result:    { icon: '🏆', label: t => t.note?.replace('DECA result logged: ','').substring(0,50) || 'DECA result logged' },
+  };
+
+  const logWins = dailyLog
+    .filter(e => inWeek(e.date) && LOG_WIN[e.type])
+    .sort((a,b) => new Date(b.date) - new Date(a.date))
+    .slice(0, 8);
+
+  // Also pull completed tasks not yet in daily_log (legacy / no-log tasks)
+  const allTasks = LS.get('lh_tasks', []);
+  const taskWins = allTasks
+    .filter(t => t.done && t.resolvedAt && new Date(t.resolvedAt) >= weekStart
+                 && !logWins.some(e => e.note?.includes(t.text?.substring(0,30))))
+    .sort((a,b) => b.resolvedAt - a.resolvedAt)
+    .slice(0, 4);
+
+  const totalWins = logWins.length + taskWins.length;
+  if (!totalWins) { strip.style.display = 'none'; return; }
+
+  strip.style.display = '';
+  if (badge) badge.textContent = totalWins + ' win' + (totalWins !== 1 ? 's' : '');
+
+  const fmtDate = d => new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const logRows = logWins.map(e => {
+    const def = LOG_WIN[e.type];
+    return `<div style="display:flex;align-items:baseline;gap:.3rem;font-size:.72rem;color:#166534;line-height:1.35">
+      <span style="flex-shrink:0">${def.icon}</span>
+      <span style="flex:1;color:#1a3a1a">${escH(def.label(e))}</span>
+      <span style="color:#86efac;font-size:.65rem;flex-shrink:0">${fmtDate(e.date)}</span>
+    </div>`;
+  });
+
+  const taskRows = taskWins.map(t => {
+    const icon = t.status === 'ontime' ? '✅' : t.status === 'late' ? '⏰' : '✔';
+    return `<div style="display:flex;align-items:baseline;gap:.3rem;font-size:.72rem;color:#166534;line-height:1.35">
+      <span style="flex-shrink:0">${icon}</span>
+      <span style="flex:1;color:#1a3a1a">${escH((t.text||'').substring(0,52))}${(t.text||'').length>52?'…':''}</span>
+      <span style="color:#86efac;font-size:.65rem;flex-shrink:0">${fmtDate(t.resolvedAt)}</span>
+    </div>`;
+  });
+
+  list.innerHTML = [...logRows, ...taskRows].join('');
+}
+

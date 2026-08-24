@@ -47,12 +47,27 @@ that was built. The three-state *meaning* stays the same either way.
 
 ## cas-ccps — Flow 2 (Turn-In evaluation)
 
-**What it does:** a student's Turn-In Gate submission (`04_Form2_
-TurnInGate.js`) is queued to `ReviewQueue`, bridged into `STAGING_PIPELINE`
-(`03_QueueBridge.js`), and picked up by a human-built Studio Flow that
-evaluates the submission against its rubric and writes the result back —
-the one Flow this entire system depends on to ever turn a submission
-COMPLETE.
+**What it does (or would, once built):** a student's Turn-In Gate
+submission (`04_Form2_TurnInGate.js`) is queued to `ReviewQueue`, bridged
+into `STAGING_PIPELINE` (`03_QueueBridge.js`), and is meant to be picked
+up by a Studio Flow that evaluates the submission against its rubric and
+writes the result back — the one Flow this entire system depends on to
+ever turn a submission `COMPLETE`.
+
+**Corrected (this document previously described Flow 2 as already
+human-built and live — it is not.** cas-ccps/README.md's "Known gaps"
+section states plainly: "Flow 2 has never been built in Studio." Today,
+a row that reaches `IN_PROCESS` has nothing actually watching it in a
+real deployment — it sits there until `06_StagingPipeline_Turnstile.js`'s
+timeout logic ages it out to `ERROR_TIMEOUT`, every time, unless someone
+processes it by hand. External product review, Finding 3 ("this
+quarter" tier) added `15c_Flow2DirectEvaluationService.js` — an opt-in,
+`DIRECT_GEMINI`-mode escape hatch that makes Flow 2's evaluation logic
+actually callable/testable (`runFlow2DirectGemini_()`) without a live
+Studio Flow — but it is deliberately NOT wired into
+`06_StagingPipeline_Turnstile.js`'s automatic release loop; see that
+file's own header comment for why. Building Flow 2 for real in Studio
+is still the intended production path.)
 
 **Status lifecycle:** `PENDING_INFERENCE` (queued, waiting for a free
 per-teacher lane) → `IN_PROCESS` (Flow 2 is expected to be actively

@@ -683,3 +683,16 @@ escalation. A separate sandbox test confirmed a priority-marked UID
 releases before an earlier-row-order, non-priority UID, and that
 priority is correctly one-shot (pruned after release).
 
+## Round 13 — dead-code cleanup (external product review, Finding 3)
+
+An external product review found `archived/` and
+`archived/legacy-pre-v8/` — 123 files, 76,080 lines, repo-wide across
+cas-ccps, leader-hub, and kos-personal — genuinely superseded and
+unreferenced by any live code path. Removed. Nothing is lost: the full
+pre-deletion tree is preserved on the `pre-archive-cleanup` branch
+(created from the commit immediately before this deletion), and every
+commit before this round still has it in git history regardless.
+`tools/gas-lint/check.js` stays at 0 errors and `npm test` stays green
+after the removal — confirming nothing still in use depended on these
+files.
+

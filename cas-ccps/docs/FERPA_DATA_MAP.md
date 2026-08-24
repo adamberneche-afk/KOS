@@ -15,23 +15,43 @@ instead — that PDF was later investigated and confirmed to describe an
 entirely different, abandoned pre-v8 architecture never carried into the
 live system, and has been archived; see `README.md`'s note on this.)
 
-**Retention policy — partially defined, `SCRDecisionLog` only.** Every other
-tab in this document still persists indefinitely, with no deletion/archival
-mechanism at all. `SCRDecisionLog` — the one tab with an actual VDOE/Perkins
-legal retention obligation — is the exception, built as Say/Do Ledger cas-ccps
-Extension 3: a configurable `SCR_RETENTION_YEARS` Script Property (default 5
-years, **still unconfirmed against a primary source** — direct confirmation
-with VDOE/central-office records staff remains outstanding) drives an
-automated archival routine (`_archiveExpiredScrDecisions_()` in
-`30_SCRSuggestionEngine.js`) that flips a row's `archive_status` column to
-"ARCHIVED — pending disposition review" once it's older than the configured
-window — run automatically every time `autoHealthAlert()`'s daily trigger
-fires or an admin runs `runSystemHealthCheck()` on demand. This never deletes
-anything — actual permanent deletion still always requires a human to look at
-the archived rows and decide by hand; no script here automates that step. A
-new admin-triggered "📤 Export SCRDecisionLog for Audit" menu item
+**Retention policy — partially defined, `SCRDecisionLog` and `Ledger` only.**
+Every other tab in this document still persists indefinitely, with no
+deletion/archival mechanism at all. `SCRDecisionLog` — the one tab with an
+actual VDOE/Perkins legal retention obligation — was the first exception,
+built as Say/Do Ledger cas-ccps Extension 3: a configurable
+`SCR_RETENTION_YEARS` Script Property (default 5 years, **still unconfirmed
+against a primary source** — direct confirmation with VDOE/central-office
+records staff remains outstanding) drives an automated archival routine
+(`_archiveExpiredScrDecisions_()` in `30_SCRSuggestionEngine.js`) that flips
+a row's `archive_status` column to "ARCHIVED — pending disposition review"
+once it's older than the configured window — run automatically every time
+`autoHealthAlert()`'s daily trigger fires or an admin runs
+`runSystemHealthCheck()` on demand. This never deletes anything — actual
+permanent deletion still always requires a human to look at the archived
+rows and decide by hand; no script here automates that step. A new
+admin-triggered "📤 Export SCRDecisionLog for Audit" menu item
 (`exportScrDecisionLogForAudit()`) shares an audit export directly with
 specific central-office accounts, restricted to the admin's own school domain.
+
+**`Ledger`** (external product review, Finding 6, "this quarter" scaling
+fix) got the same treatment, extended: a configurable
+`LEDGER_RETENTION_YEARS` Script Property (default 5 years, **also
+unconfirmed against any real district/legal retention schedule for
+assignment records specifically** — no primary source has been checked for
+this any more than one had been checked for SCR ratings when that default
+first shipped) drives `_archiveExpiredLedgerRows_()`
+(`10_AdminRecoveryPanel.js`), run on the same daily/on-demand triggers as
+the SCRDecisionLog archival above. It reuses the Ledger's own pre-existing
+`Status` column value "ARCHIVED" — the same value the manual, admin-triggered
+"📦 Archive Completed Term" menu item (`archiveCompletedTerm()`) already
+writes, and the same value `13_StudentDashboard.js` already excludes from
+a student's own dashboard — rather than adding a second, parallel
+archive-flag column. Only rows already in a terminal status
+(`COMPLIANT`/`ACTIVE`/`COMPLETE`) are eligible; an `ERROR`-prefixed row is
+left alone for admin review, same as `archiveCompletedTerm()`'s own rule.
+Never deletes anything, same as SCRDecisionLog's archival.
+
 For every other tab, treat "retention: indefinite, no policy" as the honest
 answer — this document does not assert a retention period that isn't actually
 enforced anywhere.
@@ -47,10 +67,10 @@ enforced anywhere.
 |---|---|
 | **Fields** | Timestamp, GoogleID (student's district **email**, not a Google account ID — see note below), ConfigID, FileID, StudentName, Block, ClassName, TeacherName, TeacherEmail, Subject, CourseName, Period, Status, SubmissionTS, Notes, LastEval, AdminFileURL, StudentFileURL, AcademicYear |
 | **Why collected** | The system-of-record for every assignment: who submitted what, when, to which teacher, with what evaluation outcome. Every other tab in cas-ccps traces back to a Ledger row. |
-| **Written by** | Scripts 02 (intake), 04 (turn-in gate) |
+| **Written by** | Scripts 02 (intake), 04 (turn-in gate), 10 (manual `archiveCompletedTerm()` and automatic `_archiveExpiredLedgerRows_()` — both only ever set `Status` to `ARCHIVED`, never any other field) |
 | **Read by** | Scripts 03, 07 (Teacher Dashboard), 10 (Admin Recovery Panel), 13 (Student Dashboard), 23, 24, 29, 30, 33 |
 | **Visible to** | The student's own teacher (Teacher Dashboard, gated by `_isAuthorizedTeacher_()`); the student themselves (Student Dashboard, own row only); admin (Admin Recovery Panel) |
-| **Retention** | Indefinite — not yet defined (see above) |
+| **Retention** | `LEDGER_RETENTION_YEARS` (Script Property, default 5, unconfirmed — see above) via `_archiveExpiredLedgerRows_()`, run automatically on every daily health check and every on-demand admin health check. A `COMPLIANT`/`ACTIVE`/`COMPLETE` row past the window gets `Status` set to `ARCHIVED`; `ERROR`-prefixed rows are left for admin review. Actual deletion is never automatic. |
 
 > **Naming note:** the column labeled `GoogleID` throughout this codebase (here and in every tab below) is populated with the student's district **email address**, not a separate Google account identifier. There is no non-PII stable student ID anywhere in cas-ccps today — a fact that matters for the Bonus-2 fix below.
 

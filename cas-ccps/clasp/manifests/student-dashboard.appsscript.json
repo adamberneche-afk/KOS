@@ -8,7 +8,7 @@
     "https://www.googleapis.com/auth/userinfo.email"
   ],
   "webapp": {
-    "executeAs": "USER_ACCESSING",
-    "access": "ANYONE"
+    "executeAs": "MYSELF",
+    "access": "DOMAIN"
   }
 }

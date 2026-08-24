@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeaderHub — CCPS Command Center</title>
+<!--
+  ╔══════════════════════════════════════════════════════════════════════╗
+  ║  FERPA DATA HANDLING NOTICE                                          ║
+  ║  This file processes student education records locally in-browser.   ║
+  ║  Student PII (names, grades, scores) is stored only in localStorage  ║
+  ║  on this device. Network calls this page makes go to: script.google.com║
+  ║  — your own Apps Script Web App(s) (EmailBridge.gs, and optionally a  ║
+  ║  connected cas-ccps Teacher Dashboard, D1/Addendum 24) — and, only if ║
+  ║  a cas-ccps connection is configured (Settings), accounts.google.com  ║
+  ║  for Google's own "Sign In With Google" widget, used solely to prove  ║
+  ║  identity to that Teacher Dashboard (a verified ID token, checked     ║
+  ║  server-side there) — no student PII is ever sent to Google's         ║
+  ║  identity endpoints, only this browser's own sign-in. No direct       ║
+  ║  Gemini/AI API call is ever made from the browser. Optional AI        ║
+  ║  drafting (Brag Board, Archive Insights, WBL Program Summary,        ║
+  ║  Lesson Plan Helper, Email Composer) hands off to that same Apps     ║
+  ║  Script, which queues a job for a separate Google Workspace Flow to  ║
+  ║  fulfill — see LEADERHUB_AI_FLOW_SETUP.md. Not a FERPA-scoped data    ║
+  ║  path, since this content is personal professional communication,    ║
+  ║  not student education records. If a student ID roster CSV has been  ║
+  ║  uploaded (Settings), matched student names are substituted for      ║
+  ║  their CCPS ID before that request leaves the browser; unmapped      ║
+  ║  names are sent as-is — see LEADERHUB_AI_FLOW_SETUP.md.              ║
+  ║  The Content-Security-Policy meta tag below enforces this exact      ║
+  ║  destination allowlist.                                              ║
+  ╚══════════════════════════════════════════════════════════════════════╝
+-->
+<!-- CSP: your own Apps Script Web App(s) (script.google.com) + Google Fonts (display only)
+     + accounts.google.com (Sign In With Google, only if a cas-ccps connection is configured) -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data:;
+  connect-src 'self' https://script.google.com https://script.googleusercontent.com https://accounts.google.com;
+  font-src 'self' https://fonts.gstatic.com data:;
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  img-src 'self' data: blob:;
+  script-src 'self' 'unsafe-inline' 'unsafe-eval' https://accounts.google.com;
+  form-action 'none';
+  frame-src https://accounts.google.com;
+  object-src 'none';
+">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Outfit:wght@300;400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<!-- Google Identity Services (D1/Addendum 24) — only used if a cas-ccps
+     connection is configured (Settings → Connect to cas-ccps). Loads
+     unconditionally (a <script> tag can't be conditional) but renders
+     nothing until CAS_CCPS_BRIDGE.renderSignInButton() is actually
+     called, which only happens once a Client ID is on file. -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
