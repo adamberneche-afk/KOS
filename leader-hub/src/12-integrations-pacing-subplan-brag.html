@@ -2166,6 +2166,54 @@ function getQuarterForDate(dateKey) {
   return dateKey < LP_QUARTERS[qNums[0]].start ? qNums[0] : qNums[qNums.length-1];
 }
 
+// The latest 'end' date across every configured quarter — the day the whole
+// school-calendar configuration goes stale. Used to detect "Settings hasn't
+// been updated yet for a new year" (see getQuarterForDate's own comment)
+// instead of silently falling back to last year's edge quarter forever.
+function getLastConfiguredQuarterEnd() {
+  const ends = Object.values(LP_QUARTERS).map(q => q && q.end).filter(Boolean).sort();
+  return ends.length ? ends[ends.length - 1] : null;
+}
+
+// True once today is past the last configured quarter's end date — the
+// single signal isSchoolDay() and the Lesson Plans view both key off of, so
+// a stale calendar produces one honest, user-visible explanation instead of
+// silently-wrong reminders (isSchoolDay) and a silently-wrong pacing display
+// (getQuarterForDate/lpSetView's edge-quarter fallback) with no link between
+// them (external UX audit, "the calendar expired and the app pretends
+// otherwise" finding).
+function isCalendarExpired(d) {
+  const end = getLastConfiguredQuarterEnd();
+  if (!end) return false;
+  return _localDateStr_(d || new Date()) > end;
+}
+
+// In-memory only, on purpose — resets on refresh so a teacher who leaves
+// the tab open all day (this app's stated usage pattern) sees it once,
+// matching the existing tick-scoped-flag idiom already used for
+// _journalForced/_cronChecked rather than introducing a new storage
+// mechanism just for this.
+let _calendarExpiredBannerDismissed = false;
+
+function showCalendarExpiredBanner() {
+  if (_calendarExpiredBannerDismissed || document.getElementById('calendar-expired-banner')) return;
+  const end = getLastConfiguredQuarterEnd();
+  const banner = document.createElement('div');
+  banner.id = 'calendar-expired-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:100000;background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.innerHTML = `
+    <span style="font-size:1.3rem">📅</span>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">Your school calendar ended ${escH(fd(end))}</div>
+      <div style="font-size:.76rem;opacity:.9">Reminders are paused and Lesson Plans is showing last year's calendar. Import the next school year's dates to turn both back on.</div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <button onclick="openCalendarImporterSettings()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📆 Import Calendar</button>
+      <button onclick="document.getElementById('calendar-expired-banner').remove();_calendarExpiredBannerDismissed=true" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
+    </div>`;
+  document.body.prepend(banner);
+}
+
 
 function renderPacingCalendar() {
   const container = document.getElementById('lp-calendar-grid');
@@ -2441,6 +2489,13 @@ function renderPacingCalendar() {
   });
 
   html += `</div>`;
+  // Same isCalendarExpired() signal the calendar-expired banner uses, so a
+  // stale calendar has one honest explanation instead of this view's
+  // existing edge-quarter fallback (getQuarterForDate, above) silently
+  // showing last year's dates with no indication why.
+  if (isCalendarExpired()) {
+    html = `<div style="background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:.6rem .9rem;font-size:.78rem;color:#78350f;margin-bottom:.75rem">📅 Showing last year's calendar — see the banner at the top of the page to import the current school year's dates.</div>` + html;
+  }
   container.innerHTML = html;
 }
 
@@ -3554,6 +3609,7 @@ function saveBragToLog() {
   const log = LS.get('lh_brag_log', []);
   log.unshift({ id: 'brag'+Date.now(), audience: _bragTab, subject, body, savedAt: new Date().toISOString() });
   LS.set('lh_brag_log', log.slice(0, 52)); // keep ~1 year of weekly entries
+  LS.set('lh_brag_done_date', new Date().toDateString()); // read by buildActionQueue()'s missed-brag-board fallback card
   _bragBodySnapshot = body;
   const el = document.getElementById('brag-copy-confirm');
   el.textContent = '✓ Saved to log';
@@ -3561,18 +3617,26 @@ function saveBragToLog() {
 }
 
 // ── Friday afternoon auto-prompt ──────────────────────────────────────────────
-// Fires at 2:00–2:15 PM on Fridays, once per week.
+// Fires at 2:00–2:15 PM on Fridays, or as a catch-up any time later the
+// same Friday if the tab was closed/backgrounded through the window
+// (matches checkCron's own missedWindow pattern) — once per week.
 // Stacked below Workday reminder (z-index 99997).
 function checkBragBoardPrompt() {
   const now = new Date();
   if (now.getDay() !== 5) return;                         // Fridays only
   if (!isSchoolDay(now)) return;                          // Skip on break Fridays
-  const h = now.getHours(), m = now.getMinutes();
-  if (!(h === 14 && m <= 15)) return;                     // 2:00–2:15 PM window
+
+  const windowStart = new Date(now); windowStart.setHours(14, 0, 0, 0);
+  const windowEnd   = new Date(now); windowEnd.setHours(14, 15, 0, 0);
+  const withinWindow = now >= windowStart && now < windowEnd;
+  const missedWindow = now >= windowEnd;
+  if (!(withinWindow || missedWindow)) return;
+
   const today = now.toDateString();
   if (LS.get('lh_brag_prompt_date', '') === today) return;
   LS.set('lh_brag_prompt_date', today);
   showBragBoardPromptBanner();
+  _fireNotification('🏆 Friday — Brag About Your Week', 'You did a lot this week. Generate a quick wins email for Ms. Green, Admin, or DECA parents.');
 }
 
 function showBragBoardPromptBanner() {
