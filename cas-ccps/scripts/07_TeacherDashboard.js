@@ -1781,9 +1781,7 @@ function _populateTermDropdown(data) {
   if (data.activeTerm && data.activeTerm !== "ALL") sel.value = data.activeTerm;
 }
 
-function esc(s) {
-  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
+${CLIENT_ESC_JS}
 
 // ── M4: STUDENT CONTEXT TAB ───────────────────────────────────────────────
 // FIXED (finding #9): this page is only ever built for the authorized
@@ -2549,9 +2547,7 @@ header h1{font-size:18px;font-weight:500}
 <div id="main" class="main" style="display:none"></div>
 
 <script>
-function esc(s) {
-  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
+${CLIENT_ESC_JS}
 
 function loadOwnContext() {
   google.script.run

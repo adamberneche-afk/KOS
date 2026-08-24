@@ -601,9 +601,7 @@ function _populateTermDropdown(data) {
   }
 }
 
-function esc(s) {
-  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-}
+${CLIENT_ESC_JS}
 
 loadData();
 </script>
