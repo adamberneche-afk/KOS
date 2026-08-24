@@ -590,3 +590,42 @@ Ten findings from a separate UI/UX-and-North-Star-alignment audit
   the real verdict vocabulary is APPROVED/FLAG/VETO (not the originally
   assumed APPROVED/REJECTED).
 
+## Round 11 — unrecognized-status catch-all
+
+A live `STAGING_PIPELINE` sheet review found 5 real rows (one session
+log, chunked `_CH01`–`_CH05`) sitting at `Status = "AUDITING _LOG"` — a
+string no Sensor/Turnstile/Queue-Processor/Studio code in this repo,
+current or archived, has ever written. Tracing every place `Status` gets
+read confirmed each one matches on an exact string and silently skips
+anything else: `runMatrixTurnstile()`'s two passes, the Queue Processor's
+main loop, `getQueueMetrics()`/`getQueueStatus()`'s counts (same
+exclusion bug Round 4 above already fixed for terminal-failure statuses,
+just never closed for the fully-unrecognized case), and even the manual
+`devSetFlowComplete()` escape hatch, which throws on it. These rows were
+invisible to every health check the system has, including the
+`STUDIO_TIMEOUT` ceiling.
+
+**Fixed:** `5_Error_And_Utilities.gs` gained `KNOWN_STAGING_STATUSES` and
+`_isKnownStagingStatus_()` — the single source of truth for "is this
+status something the system recognizes at all," combining an exact-match
+list with the existing `TERMINAL_FAILED_STATUSES` prefix check rather
+than duplicating it. `runMatrixTurnstile()` now alerts once per
+`Payload_UID` via `_sendChatAlert()` for any row that fails this check
+(memoized in a new `KOS_UNKNOWN_STATUS_ALERTED` Script Property, same
+pattern as the existing release-timestamp map, so a standing bad row
+doesn't re-alert every 5 minutes forever). `getQueueMetrics()` and
+`getQueueStatus()` both gained an `unknown` bucket in their returned
+counts instead of an implicit silent exclusion, and `8_WebApp_UI.html`
+gained a `metric-unknown` tile (hidden unless nonzero, same convention as
+the existing `metric-failed`/`metric-cycling` tiles) — and, unlike
+`cycling` (a subset of pending/active), `unknown` is genuinely uncounted
+elsewhere, so it's now included in `totalActivity` to avoid the same
+"reads as an empty queue" bug Round 4 fixed for terminal failures.
+`SCHEMA_REFERENCE.md`'s Status Lifecycle table also gained the
+previously-undocumented `PHASE_2_ERROR` (a pre-v8.0 legacy status the
+code already recognized as terminal but the doc never listed).
+
+This is a visibility fix, not an auto-resolution — per this system's
+standing rule, nothing auto-corrects an unrecognized status; a human
+still has to fix the Status cell by hand once alerted.
+

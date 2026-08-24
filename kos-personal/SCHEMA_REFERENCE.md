@@ -47,6 +47,18 @@ The central queue. Every session chunk passes through this sheet.
 | `INTAKE_ERROR` | Studio (error path) | Studio couldn't open or process the document |
 | `PARTITIONED` | Legacy | v5.4 chunking status, not used in v8.0 |
 | `CONSOLIDATED` | Legacy | v5.4 Phase 4 status, not used in v8.0 |
+| `PHASE_2_ERROR` | Legacy | Pre-v8.0 catch-all processing error (`archived/legacy-pre-v8/`) — no current code writes this, but it's kept in `TERMINAL_FAILED_STATUSES` (`5_Error_And_Utilities.gs`) so an old row surviving from that era is still recognized as terminal rather than falling through as unrecognized (see `KNOWN_STAGING_STATUSES` / `_isKnownStagingStatus_()` below) |
+
+**Recognized vs. unrecognized statuses:** `5_Error_And_Utilities.gs`'s
+`_isKnownStagingStatus_()` is the single source of truth for whether a
+Status value is any of the 14 above — an exact match, or (for
+`PROCESSING_ERROR`/`INTAKE_ERROR`, which can carry a `: <message>`
+suffix) a prefix match. Anything else is genuinely unrecognized: found in
+production as a row stuck at `AUDITING _LOG`, a status no code in this
+repo, current or archived, ever writes. `10_Turnstile.gs` alerts once per
+row via `_sendChatAlert()`, and `getQueueMetrics()`/`getQueueStatus()`
+count it as `unknown` rather than silently excluding it — see
+`CHANGELOG.md` for the fix.
 
 ---
 
