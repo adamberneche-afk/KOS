@@ -461,18 +461,11 @@ function getSCRDashboardData_() {
 
   if (!suggestionsSheet) return { error: "SCRSuggestions tab not found." };
 
-  const compTextMap = {};
-  if (registrySheet) {
-    const regData = registrySheet.getDataRange().getValues();
-    const regHeaders = regData[0].map(h => String(h).trim());
-    const iId = regHeaders.indexOf("competency_id");
-    const iText = regHeaders.indexOf("competency_text");
-    if (iId !== -1 && iText !== -1) {
-      for (let i = 1; i < regData.length; i++) {
-        compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
-      }
-    }
-  }
+  // getCompetencyTextMap_() (00_SharedConfig.js) — CacheService-backed,
+  // external product review Finding 6. Replaces a getDataRange() +
+  // header-lookup block that used to run fresh on every single dashboard
+  // load.
+  const compTextMap = getCompetencyTextMap_(registrySheet);
 
   const data = suggestionsSheet.getDataRange().getValues();
   const results = [];
@@ -555,18 +548,10 @@ function getStudentScrStandingForCompetencies_(studentEmail, competencyIds) {
     if (!suggestionsSheet) { _scrStandingRawCache_ = { data: [], compTextMap: {} }; }
     else {
       const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
-      const compTextMap = {};
-      if (registrySheet) {
-        const regData = registrySheet.getDataRange().getValues();
-        const regHeaders = regData[0].map(h => String(h).trim());
-        const iId = regHeaders.indexOf("competency_id");
-        const iText = regHeaders.indexOf("competency_text");
-        if (iId !== -1 && iText !== -1) {
-          for (let i = 1; i < regData.length; i++) {
-            compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
-          }
-        }
-      }
+      // getCompetencyTextMap_() (00_SharedConfig.js) — CacheService-backed,
+      // external product review Finding 6. Same replacement as
+      // getSCRDashboardData_() above.
+      const compTextMap = getCompetencyTextMap_(registrySheet);
       _scrStandingRawCache_ = { data: suggestionsSheet.getDataRange().getValues(), compTextMap: compTextMap };
     }
   }
@@ -768,7 +753,11 @@ function exportToWorkbookGrid_() {
   }
 
   // ── Build student_email -> {name, className} from Ledger ──
-  const ledgerData = ledgerSheet.getDataRange().getValues();
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6. Math.max(1, ...) matches
+  // getDataRange()'s own guarantee of at least one row even on an
+  // otherwise-empty sheet (getRange throws on a zero-row request).
+  const ledgerData = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   const studentInfo = new Map();
   for (let i = 1; i < ledgerData.length; i++) {
     const row = ledgerData[i];

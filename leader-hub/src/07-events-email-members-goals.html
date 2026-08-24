@@ -1,0 +1,2014 @@
+// ============================================================
+// OTHER EVENTS
+// ============================================================
+function renderEvents(type) {
+  const list = type ? otherEvents.filter(e=>e.type===type) : otherEvents;
+  const today = new Date();
+
+  document.getElementById('events-grid').innerHTML = list.map(e=>{
+    const daysAway = e.date ? Math.ceil((new Date(e.date+'T00:00:00')-today)/86400000) : null;
+    const isComplete = e.status==='complete' || (daysAway!==null && daysAway < -3);
+    const isUrgent = !isComplete && daysAway !== null && daysAway <= 14 && daysAway >= 0;
+    const isActionNeeded = e.id===14 || e.id===15 || e.id===16; // ICDC reg, payment, trip
+
+    let statusBadge = '';
+    if(isComplete) statusBadge = `<span class="status st-approved" style="font-size:.6rem">✅ Complete</span>`;
+    else if(e.status==='active') statusBadge = `<span class="status st-pending" style="font-size:.6rem">🔵 Awaiting Results</span>`;
+    else if(isActionNeeded) statusBadge = `<span class="status st-urgent" style="font-size:.6rem">⚠️ Action Required</span>`;
+    else if(isUrgent) statusBadge = `<span class="status st-urgent" style="font-size:.6rem">⏰ ${daysAway}d away</span>`;
+    else if(daysAway !== null) statusBadge = `<span class="status st-planned" style="font-size:.6rem">${du(e.date)}</span>`;
+
+    const urgentBorder = isActionNeeded ? '3px solid var(--red)' : isUrgent ? '3px solid var(--orange)' : '1px solid var(--border)';
+
+    return `<div style="border:${urgentBorder};border-radius:10px;background:${isComplete?'#fafaf8':'#fff'};overflow:hidden;box-shadow:var(--shadow);opacity:${isComplete?.85:1}">
+      <div style="padding:.6rem .85rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:${isActionNeeded?'#fef2f2':isComplete?'#f4f4f0':'#fff'}">
+        <span class="tag ${tagClass[e.type]}">${tagEmoji[e.type]} ${e.type==='deca'?'DECA':e.type.charAt(0).toUpperCase()+e.type.slice(1)}</span>
+        <div style="display:flex;align-items:center;gap:.4rem">${statusBadge}</div>
+      </div>
+      <div style="padding:.85rem">
+        <div style="font-weight:700;font-size:.93rem;margin-bottom:.35rem;${isComplete?'color:var(--muted)':''}">${e.name}</div>
+        <div style="font-size:.77rem;color:var(--muted);display:flex;flex-direction:column;gap:.18rem">
+          <span>📅 ${fd(e.date)}${e.endDate?' – '+fd(e.endDate):''}</span>
+          <span>📍 ${e.loc}</span>
+          ${e.stu?`<span>👥 ${e.stu} students${e.adults?' · '+e.adults+' adults':''}</span>`:''}
+          ${e.cost?`<span>💰 ${e.cost}</span>`:''}
+          ${e.transport?`<span>🚌 ${e.transport}</span>`:''}
+          ${e.notes?`<div style="color:${isActionNeeded?'#b91c1c':'#555'};margin-top:.25rem;font-size:.73rem;line-height:1.4">${e.notes}</div>`:''}
+        </div>
+      </div>
+      ${!isComplete && e.id<=16 ? `<div style="padding:.5rem .85rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:.35rem">
+        ${isActionNeeded?`<button class="btn btn-danger btn-xs" onclick="openModal('newTrip')">🚨 Start Field Trip Form</button>`:''}
+        <button class="btn btn-danger btn-xs" onclick="delEv(${e.id})">✕</button>
+      </div>` : `<div style="padding:.5rem .85rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end">
+        <button class="btn btn-danger btn-xs" onclick="delEv(${e.id})">✕</button>
+      </div>`}
+    </div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:.85rem;grid-column:1/-1;padding:1rem">No events in this category.</div>';
+
+  // Inject DECA season pipeline if on DECA tab
+  const pipeline = document.getElementById('deca-pipeline');
+  if(pipeline) renderDECAPipeline();
+}
+function filterEv(type,btn){document.querySelectorAll('.si').forEach(b=>b.classList.remove('active'));btn.classList.add('active');showView('events');renderEvents(type);}
+function delEv(id){
+  const ev=otherEvents.find(e=>e.id===id); if(!ev) return;
+  const _saved=[...otherEvents];
+  otherEvents=otherEvents.filter(e=>e.id!==id);
+  persistEvents(); renderEvents();
+  // Truncated to match the Journal/Brag Board undo-toast convention — toasts
+  // have no max-width/wrap CSS, so an unbounded free-text event name can
+  // overflow off-screen.
+  _undoToast(`"${(ev.name||'').slice(0,40)}" removed`,()=>{otherEvents=_saved;persistEvents();renderEvents();});
+}
+
+// ============================================================
+// EMAIL COMPOSER ENGINE
+// ============================================================
+
+let emailTab = 'students';
+let emailContextTripId = null;
+
+// ── Audience-specific template definitions ───────────────────────────────────
+const EMAIL_TEMPLATES = {
+  students: [
+    { id:'stu-trip-announcement', label:'📢 Trip Announcement',
+      subject: (t) => `Upcoming Field Trip: ${t ? t.name : '[Trip Name]'}`,
+      body: (t) => {
+        if(!t) return `Hi DECA Team,\n\nWe have an exciting field trip coming up! More details will be shared soon.\n\nPlease watch for further communications and reach out with any questions.\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`;
+        return `Hi DECA Team,\n\nExciting news — we have an upcoming trip and I want to make sure you have all the details!\n\n📅 EVENT: ${t.name}\n📆 DATE: ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination TBD]'}\n🚌 TRANSPORTATION: ${t.charterCo || t.train || (t.ccpsBus ? 'CCPS Bus' : t.parentTx ? 'Parent Transport' : 'TBD')}\n💰 COST: $${t.costStu || 0}/student\n\nWHAT YOU NEED TO DO:\n1. Return your signed permission slip to ${PROFILE.courtesyName}\n2. Make sure your tuition and fees are current\n3. Confirm your spot by [DATE]\n\nEligibility reminder: you must be in good academic standing and have no outstanding obligations to participate.\n\nQuestions? See me before/after class or email me.\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
+      }
+    },
+    { id:'stu-icdc-qualify', label:'🏆 ICDC Qualifier Notification',
+      subject: () => `CONGRATULATIONS — You Qualified for ICDC!`,
+      body: (t) => `Hi [Student Name],\n\nCONGRATULATIONS! Based on your performance at the DECA State Leadership Conference, you have qualified to compete at the DECA International Career Development Conference (ICDC) in Atlanta, GA!\n\n📅 ICDC DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n💰 ESTIMATED COST: ~$1,000/student\n\nIMPORTANT NEXT STEPS:\n1. ✅ Confirm your participation with ${PROFILE.courtesyName} by [DATE]\n2. 💰 First installment (~$400) due March 13\n3. 📋 ICDC permission form due [DATE]\n4. 📝 Complete the ICDC commitment letter packet\n\nREQUIREMENT REMINDER: You must have scored 70%+ on the SLC written test to attend ICDC. I will confirm your test score with you directly.\n\nRegistration window: March 2–13 ($155). I cannot register you after March 13 — no exceptions.\n\nThis is a huge achievement. I am incredibly proud of you. Let's make ICDC count!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+    },
+    { id:'stu-permission-reminder', label:'📝 Permission Slip Reminder',
+      subject: (t) => `REMINDER: Permission Slip Needed — ${t ? t.name : 'Upcoming Trip'}`,
+      body: (t) => `Hi [Student Name],\n\nThis is a friendly reminder that your signed permission slip for the ${t ? t.name : 'upcoming trip'} has NOT yet been returned.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  DEADLINE: Please return your slip by [DATE] or your spot may be given to another student.\n\nYou can pick up a new form from ${PROFILE.courtesyName} (Room [#]) if you need one.\n\nIf you have decided not to attend, please let me know as soon as possible so I can adjust the roster.\n\n${PROFILE.courtesyName}\n${PROFILE.phone}`
+    },
+    { id:'stu-deadline-reminder', label:'⏰ General Deadline Reminder',
+      subject: (t) => `Action Required: Deadline Approaching — ${t ? t.name : 'DECA'}`,
+      body: (t) => `Hi DECA Team,\n\nJust a reminder that there is an important deadline coming up${t ? ' for ' + t.name : ''}.\n\n⚠️  DEADLINE: [DATE]\n📋 WHAT'S NEEDED: [Describe what students need to submit/return]\n\nIf you have any questions or need help, please reach out before the deadline — I cannot make exceptions after the cutoff.\n\n${PROFILE.courtesyName}\n${PROFILE.title} | ${PROFILE.phone}`
+    },
+    { id:'stu-post-trip', label:'🎉 Post-Trip Thank You',
+      subject: (t) => `Thank You — ${t ? t.name : 'Recent DECA Trip'} Recap`,
+      body: (t) => `Hi DECA Team,\n\nWhat an incredible experience! Thank you all for representing ${PROFILE.chapterName} with such professionalism and enthusiasm${t ? ' at ' + t.name : ''}.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.loc || '') + '\n\n' : ''}Your preparation, attitude, and performance made this trip a success. I am proud of each and every one of you.\n\n[Add specific highlights / results here]\n\nThank you also to our chaperones${t && t.chaperones ? ' — ' + t.chaperones : ''} for giving their time to support our chapter.\n\nLooking forward to our next adventure together!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}`
+    },
+    { id:'stu-meeting-agenda', label:'📋 Meeting Announcement',
+      subject: () => `DECA Chapter Meeting — [Date] @ [Time]`,
+      body: () => `Hi DECA Team,\n\nWe have an important chapter meeting coming up!\n\n📅 DATE: [Date]\n⏰ TIME: [Time]\n📍 LOCATION: [Room/Location]\n\nAGENDA:\n• [Item 1]\n• [Item 2]\n• [Item 3]\n• Open Q&A\n\nAttendance is [required / strongly encouraged]. Please plan to arrive a few minutes early.\n\nSee you there!\n\n${PROFILE.courtesyName}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`
+    },
+  ],
+  parents: [
+    { id:'par-trip-overview', label:'📢 Trip Overview & Permission',
+      subject: (t) => `DECA Field Trip: ${t ? t.name : '[Trip Name]'} — Permission & Payment`,
+      body: (t) => {
+        if(!t) return `Dear DECA Families,\n\nOur DECA chapter has an exciting trip coming up. Please watch for details and the permission form that will be sent home soon.\n\nIf you have any questions, please contact me at the information below.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
+        const overnight = isOvernightTrip(t);
+        return `Dear ${t.name} Families,\n\nOur DECA chapter has an upcoming ${overnight ? 'overnight ' : ''}field trip and I want to make sure you have all of the information you need.\n\n📅 EVENT: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORTATION: ${t.charterCo ? 'Charter Bus — ' + t.charterCo : t.train ? 'Train/Amtrak' : t.parentTx ? 'Parent Transportation' : 'TBD'}\n💰 COST: $${t.costStu || 0}/student${t.afford ? '\n   Funding source: ' + t.afford : ''}\n👨‍🏫 CHAPERONES: ${t.chaperones || t.med1 || '${PROFILE.name}'}\n\nPERMISSION & PAYMENT:\nA signed permission form and payment of $${t.costStu || 0} must be returned to ${PROFILE.courtesyName} by [DATE]. Your student's spot is not secured until both are received.\n\n${overnight ? 'OVERNIGHT INFORMATION:\nStudents will be staying at ' + (t.housing || '[Hotel TBD]') + '. We will maintain a chaperone-to-student ratio throughout the trip.\n\n' : ''}If you have any questions or concerns, please reach out directly.\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
+      }
+    },
+    { id:'par-icdc-info', label:'✈️ ICDC Qualifier Letter',
+      subject: () => `DECA ICDC — Your Student Qualified! Information & Next Steps`,
+      body: () => `Dear [Student] Families,\n\nI am thrilled to share that your student has qualified to compete at the DECA International Career Development Conference (ICDC)!\n\n📅 EVENT: DECA ICDC\n📆 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA — Atlanta Hilton + Georgia World Congress Center\n🚌 TRANSPORTATION: Airline (details to follow)\n🏨 HOUSING: Atlanta Hilton — $260/night, 4 to a room\n💰 ESTIMATED TOTAL COST: ~$1,000/student\n\nPAYMENT SCHEDULE:\n• Installment #1: ~$400 due March 13\n• Installment #2: ~$300 due March 27\n• Installment #3: ~$300 + forms due April 17\n\nIMPORTANT: ICDC is open only to students who placed in the Top 8 at the State Leadership Conference AND scored 70%+ on the SLC written test. I will confirm eligibility with each family individually.\n\nPlease contact me as soon as possible to confirm whether your student will attend, as the registration window closes March 13.\n\nThank you for your continued support of our DECA chapter!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+    },
+    { id:'par-permission-followup', label:'📝 Unsigned Permission Slip Followup',
+      subject: (t) => `URGENT: Missing Permission Slip — ${t ? t.name : 'Upcoming Trip'}`,
+      body: (t) => `Dear [Student]'s Family,\n\nThis is a follow-up regarding the permission slip for ${t ? t.name : 'the upcoming DECA trip'}.\n\nAs of today, we have not received a signed permission form for your student. Without a completed permission slip, your student WILL NOT be able to participate.\n\n📅 Trip Date: ${t ? fd(t.date) : '[Date]'}\n⚠️  Permission Deadline: [DATE]\n💰 Payment Remaining: $[AMOUNT]\n\nPlease return the signed form and any remaining payment to ${PROFILE.courtesyName} (Room [#]) by the deadline above.\n\nIf you have questions or need a new form, please contact me directly.\n\n${PROFILE.name}\n${PROFILE.phone} | ${PROFILE.email}`
+    },
+    { id:'par-season-update', label:'📅 Season / Calendar Update',
+      subject: () => `DECA 25-26 Season Update — Key Dates & Upcoming Events`,
+      body: () => `Dear DECA Families,\n\nI wanted to send a quick update on our DECA chapter's 25-26 season and share some important upcoming dates.\n\n✅ COMPLETED THIS SEASON:\n• Ultimate Power Trip — Nov 21–23, 2025 (Arlington, VA)\n• District Leadership Conference — Dec 3, 2025 (Chesterfield Towne Center)\n• State Leadership Conference — Feb 27–Mar 1, 2026 (Virginia Beach)\n\n📅 UPCOMING:\n• ICDC Registration: March 2–13, 2026 ($155/student — qualifiers only)\n• ICDC Payment Due: April 1, 2026\n• ICDC Atlanta: April 25–29, 2026\n\nMembership in DECA is $20 and accepted all year. If your student is not yet a paid member and would like to be involved in future activities, please have them see ${PROFILE.courtesyName}.\n\nThank you for your ongoing support!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}\nInstagram: @cloverhillsdeca`
+    },
+    { id:'par-chaperone-request', label:'🙋 Chaperone Request',
+      subject: (t) => `Seeking Chaperones: ${t ? t.name : 'Upcoming DECA Trip'}`,
+      body: (t) => `Dear DECA Families,\n\nWe are looking for parent/guardian volunteers to serve as chaperones for our upcoming trip!\n\n📅 EVENT: ${t ? t.name : '[Trip Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nChaperones are responsible for supervising students and supporting the advisor during the trip. ${t && isOvernightTrip(t) ? 'This is an overnight trip and chaperones will need to arrange overnight accommodations.' : ''}\n\nIf you are interested in chaperoning or have questions, please contact me at:\n\n${PROFILE.name}\n${PROFILE.phone} | ${PROFILE.email}\n\nThank you for your support!`
+    },
+  ],
+  school: [
+    { id:'sch-trip-approval-request', label:'📋 Trip Approval Request',
+      subject: (t) => `Field Trip Approval Request: ${t ? t.name : '[Trip Name]'}`,
+      body: (t) => {
+        if(!t) return `Dear Administration,\n\nI am writing to request approval for an upcoming DECA field trip. I will follow up with the full Permission Request Attachment form through TripTracker.\n\nPlease let me know if you need any additional information.\n\n${PROFILE.name}\n${PROFILE.title} | Room [#]\n${PROFILE.phone}`;
+        return `Dear Administration,\n\nI am writing to request approval for the following field trip:\n\n📋 TRIP: ${t.name}\n📆 DATE(S): ${fd(t.date)}${t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : ''}\n📍 DESTINATION: ${t.dest1 || '[Destination]'}\n🚌 TRANSPORT: ${t.charterCo ? 'Charter — ' + t.charterCo : t.train ? 'Amtrak' : t.parentTx ? 'Parent Transport' : 'CCPS Bus'}\n👥 STUDENTS: ${t.stuAtt || '[#]'} students, ${t.adultAtt || 2} adults\n💰 COST/STUDENT: $${t.costStu || 0}\n📁 ACCOUNT: ${t.fund || 'DECA 4280'}\n📑 PO #: ${t.po || '[Pending]'}\n\nEDUCATIONAL JUSTIFICATION:\n${t.why || 'This trip supports DECA, the CTSO associated with the Marketing program of study, as required by the Virginia Department of Education.'}\n\nPRE-TRIP PREPARATION:\n${t.pre || 'Students will prepare through chapter meetings and classroom instruction.'}\n\nPOST-TRIP FOLLOW-UP:\n${t.post || 'Students will debrief and apply learning to future events.'}\n\nThe full Permission Request Attachment has been submitted through TripTracker. Please let me know if you need any additional documentation.\n\nThank you,\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`;
+      }
+    },
+    { id:'sch-sub-coverage', label:'🧑‍🏫 Substitute Coverage Request',
+      subject: (t) => `Substitute Coverage Request — ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}`,
+      body: (t) => `Dear ${t && isOvernightTrip(t) ? 'Administration' : '[Department Head / Admin]'},\n\nI am requesting substitute coverage for my classes during the following dates due to a DECA field trip:\n\n📅 DATES OUT: ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n\nCLASSES NEEDING COVERAGE:\n• [Period #] — [Course Name] — [Room #]\n• [Period #] — [Course Name] — [Room #]\n\nI will prepare sub plans and have them ready by [DATE]. All materials will be left on my desk clearly labeled.\n\nPlease let me know if any additional paperwork is needed for the Professional Leave / Conference Request form.\n\nThank you,\n${PROFILE.name}\n${PROFILE.phone}`
+    },
+    { id:'sch-finance-po', label:'💰 Finance / PO Request',
+      subject: (t) => `Purchase Order / Payment Request — ${t ? t.name : '[Event]'}`,
+      body: (t) => `Dear Finance Office,\n\nI am writing to request a purchase order / payment processing for the following:\n\n📋 EVENT: ${t ? t.name : '[Event Name]'}\n📆 DATE(S): ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') : '[Dates]'}\n💰 AMOUNT: $[AMOUNT]\n📁 ACCOUNT CODE: ${t ? (t.fund || 'DECA 4280') : 'DECA 4280'}\n📤 PAYABLE TO: [Vendor Name]\n\nDETAILS:\n[Brief description of what is being purchased — e.g., transportation, registration fees, hotel]\n\nPlease let me know what documentation you need to process this request.\n\nThank you,\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
+    },
+    { id:'sch-icdc-notification', label:'✈️ ICDC Admin Notification',
+      subject: () => `DECA ICDC — Students Advancing to Nationals — April 25–29, 2026`,
+      body: () => `Dear Administration,\n\nI am pleased to share that [#] ${PROFILE.chapterName} students have qualified to represent our school at the DECA International Career Development Conference (ICDC) — a national competition attended by approximately 20,000 students.\n\n📅 DATES: April 25–29, 2026\n📍 LOCATION: Atlanta, GA\n💰 STUDENT COST: ~$1,000/student (funded through SAF/student payments)\n🚌 TRANSPORT: Airline\n📁 ACCOUNT: DECA 4280\n\nQUALIFICATION: Students placed in the Top 8 at the Virginia DECA State Leadership Conference (Feb 27–Mar 1) AND scored 70%+ on the written assessment.\n\nThis is a tremendous achievement for our students and for ${PROFILE.school}. I will be submitting the field trip form through TripTracker and the Conference/Leave Request (PR3) form for administrative approval.\n\nPlease let me know if you need any additional information.\n\nThank you for your continued support of our DECA program!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone} | ${PROFILE.email}`
+    },
+    { id:'sch-season-report', label:'📊 Season Report / Summary',
+      subject: () => `DECA 25-26 Season Report — ${PROFILE.school}`,
+      body: () => `Dear Administration,\n\nI wanted to share a brief summary of the ${PROFILE.chapterName} chapter's 25-26 competitive season.\n\n✅ SEASON HIGHLIGHTS:\n\n1. Ultimate Power Trip (Nov 21–23, 2025)\n   • Location: Arlington, VA (Renaissance Arlington Capital View)\n   • 13 students attended · Transport: Amtrak\n   • PO# 26-316-3418\n\n2. District Leadership Conference (Dec 3, 2025)\n   • Location: Chesterfield Towne Center\n   • 15 students competed (23 invited)\n   • No transportation cost\n\n3. State Leadership Conference (Feb 27–Mar 1, 2026)\n   • Location: Virginia Beach Convention Center\n   • 15 students competed · Charter bus (Winn)\n   • PO# 26-0368-2559\n   • Results: [Add SLC results]\n\n4. ICDC — International Career Development Conference (Apr 25–29, 2026)\n   • [# qualifiers advancing]\n   • Atlanta, GA\n\nThe DECA program continues to grow in both membership and competitive achievement. I look forward to sharing full results at the end of the season.\n\nThank you for your support!\n\n${PROFILE.name}\n${PROFILE.title}\n${PROFILE.phone}`
+    },
+  ],
+  faculty: [
+    { id:'fac-student-missing-class', label:'📚 Student Absence Notification',
+      subject: (t) => `Student Absence — DECA Trip — ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? '–' + fd(t.retDate) : '') : '[Dates]'}`,
+      body: (t) => `Dear Colleagues,\n\nPlease be advised that the following students will be absent from school on ${t ? fd(t.date) + (t.retDate && t.retDate !== t.date ? ' through ' + fd(t.retDate) : '') : '[Dates]'} due to an approved DECA field trip.\n\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n📍 DESTINATION: ${t ? (t.dest1 || '[Destination]') : '[Destination]'}\n\nABSENT STUDENTS:\n[List student names here — or see attached roster]\n\nPer school policy, these are EXCUSED absences. Please allow students to make up any missed work, tests, or assignments within [#] days of their return.\n\nIf a student has a major assessment or obligation on these dates, please reach out to me in advance so we can coordinate.\n\nThank you for your flexibility and support of our DECA program!\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone} | ${PROFILE.email}`
+    },
+    { id:'fac-student-eligibility', label:'✅ Student Eligibility Check',
+      subject: (t) => `DECA Trip Eligibility Check — ${t ? t.name : 'Upcoming Trip'}`,
+      body: (t) => `Dear Colleagues,\n\nI am preparing the student roster for our upcoming DECA trip and need to confirm current academic standing and eligibility for the following students.\n\n📋 TRIP: ${t ? t.name : '[Trip Name]'}\n📆 DATE: ${t ? fd(t.date) : '[Date]'}\n\nSTUDENTS TO VERIFY:\n[List student names]\n\nIf any of the students listed above have eligibility concerns (grade, attendance, behavior) that would prevent participation, please let me know by [DATE]. Otherwise, I will assume all listed students are cleared.\n\nThank you for your help!\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
+    },
+    { id:'fac-recruitment', label:'🎓 DECA Recruitment Ask',
+      subject: () => `DECA Student Recruitment — Can You Help?`,
+      body: () => `Dear Colleagues,\n\nI am reaching out to ask for your help in recruiting students for our ${PROFILE.chapterName} chapter!\n\nDECA is the Career & Technical Student Organization (CTSO) associated with the Marketing and Business programs. Membership is open to all students and costs just $20 for the year.\n\nWHAT DECA OFFERS STUDENTS:\n• Real-world competitive events (written tests + role-play simulations)\n• Leadership development and networking\n• Travel to District, State, and National conferences\n• Scholarship opportunities\n• College application standout experience\n\nIF YOU HAVE STUDENTS WHO:\n• Are in Business, Marketing, Finance, or Entrepreneurship classes\n• Are confident communicators or natural leaders\n• Would benefit from a career-focused extracurricular\n\n…please encourage them to see me or visit [room/location].\n\nMembership forms are available from me or at our chapter email: cloverhillsdeca@gmail.com\n\nThank you!\n\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`
+    },
+    { id:'fac-thank-you', label:'🙏 Chaperone / Support Thank You',
+      subject: (t) => `Thank You — ${t ? t.name : 'Recent DECA Trip'}`,
+      body: (t) => `Dear [Name],\n\nI wanted to take a moment to sincerely thank you for your support${t ? ' during ' + t.name : ' on our recent DECA trip'}.\n\nYour willingness to give your time${t && isOvernightTrip(t) ? ' — including overnight — ' : ' '}made this trip possible and ensured our students had a safe, positive, and memorable experience.\n\n${t ? '📅 ' + fd(t.date) + (t.retDate && t.retDate !== t.date ? ' – ' + fd(t.retDate) : '') + '\n📍 ' + (t.dest1 || t.name) + '\n\n' : ''}Our students truly benefit from having caring adults who invest in their growth, and I could not do this without people like you.\n\nWith gratitude,\n${PROFILE.name}\n${PROFILE.title} — ${PROFILE.school}\n${PROFILE.phone}`
+    },
+    { id:'fac-dept-update', label:'📣 Dept / Team DECA Update',
+      subject: () => `DECA Program Update — [Month] [Year]`,
+      body: () => `Hi Team,\n\nJust a quick update on where DECA is at this season and what's on the horizon.\n\nSEASON SO FAR:\n• Ultimate Power Trip ✅ — Nov 21–23 (Arlington, VA · 13 students)\n• DLC ✅ — Dec 3 (Chesterfield Towne Center · 15 students)\n• SLC ✅ — Feb 27–Mar 1 (Virginia Beach · 15 students · results pending)\n\nUPCOMING:\n• ICDC Registration: March 2–13 ($155 — qualifiers only)\n• ICDC Atlanta: April 25–29, 2026\n\nSTUDENTS TO WATCH: [Add names of strong performers]\n\nLet me know if you have any questions or if there's anything I can do to support your students who are in DECA.\n\n${PROFILE.name}\nRoom [#] | ${PROFILE.phone}`
+    },
+  ]
+};
+
+// ── Email Composer State & Logic ─────────────────────────────────────────────
+function openEmailComposer(tripId, audience) {
+  populateEmailContextDropdown();
+  if(tripId) {
+    document.getElementById('email-context-sel').value = tripId;
+    emailContextTripId = tripId;
+  }
+  if(audience) setEmailTab(audience, document.getElementById('etab-'+audience));
+  else setEmailTab('students', document.getElementById('etab-students'));
+  openModal('emailComposer');
+}
+
+function populateEmailContextDropdown() {
+  const sel = document.getElementById('email-context-sel');
+  const currentVal = sel.value;
+  sel.innerHTML = '<option value="">— General / No trip —</option>';
+  // DECA field trips
+  const decaGroup = document.createElement('optgroup');
+  decaGroup.label = '🏆 DECA Trips (25–26)';
+  const decaNames = {3:'Power Trip',4:'DLC',5:'SLC',6:'ICDC'};
+  trips.filter(t => t.id >= 3 && t.id <= 6).forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = `${t.name.replace('DECA ','').replace('— International Career Development Conference','')} (${fd(t.date)})`;
+    decaGroup.appendChild(o);
+  });
+  sel.appendChild(decaGroup);
+  // Other trips
+  const otherGroup = document.createElement('optgroup');
+  otherGroup.label = '🚌 Other Trips';
+  trips.filter(t => t.id < 3).forEach(t => {
+    const o = document.createElement('option');
+    o.value = t.id;
+    o.textContent = `${t.name} (${fd(t.date)})`;
+    otherGroup.appendChild(o);
+  });
+  if(otherGroup.children.length) sel.appendChild(otherGroup);
+  // Restore value
+  if(currentVal) sel.value = currentVal;
+}
+
+function onEmailContextChange() {
+  const sel = document.getElementById('email-context-sel');
+  emailContextTripId = sel.value ? parseInt(sel.value) : null;
+  renderEmailTemplates();
+  // Update context label
+  const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+  document.getElementById('email-context-label').textContent = t ? t.name : 'General — no trip selected';
+}
+
+function setEmailTab(tab, btn) {
+  emailTab = tab;
+  document.querySelectorAll('.email-tab').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  else { const b = document.getElementById('etab-'+tab); if(b) b.classList.add('active'); }
+  renderEmailTemplates();
+  clearEmailComposer();
+}
+
+function renderEmailTemplates() {
+  const list = document.getElementById('email-template-list');
+  if(!list) return;
+  const templates = EMAIL_TEMPLATES[emailTab] || [];
+  const t = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+  list.innerHTML = templates.map(tpl => `
+    <button class="etpl" onclick="loadEmailTemplate('${tpl.id}')">
+      ${tpl.label}
+    </button>`).join('');
+}
+
+function loadEmailTemplate(tplId) {
+  const tpl = Object.values(EMAIL_TEMPLATES).flat().find(t => t.id === tplId);
+  if(!tpl) return;
+  const trip = emailContextTripId ? trips.find(x => x.id === emailContextTripId) : null;
+  document.getElementById('email-subject').value = typeof tpl.subject === 'function' ? tpl.subject(trip) : tpl.subject;
+  document.getElementById('email-body').value = typeof tpl.body === 'function' ? tpl.body(trip) : tpl.body;
+  // Set TO defaults based on audience
+  const toDefaults = { students:'DECA Chapter Members', parents:'DECA Families', school:'Principal / Administration', faculty:'Colleagues / Dept. Team' };
+  if(!document.getElementById('email-to').value) {
+    document.getElementById('email-to').value = toDefaults[emailTab] || '';
+  }
+  const ccDefaults = { school:PROFILE.email, faculty:PROFILE.email };
+  if(!document.getElementById('email-cc').value && ccDefaults[emailTab]) {
+    document.getElementById('email-cc').value = ccDefaults[emailTab];
+  }
+  // Highlight active template
+  document.querySelectorAll('.etpl').forEach(b => { b.classList.toggle('sel', b.textContent.trim() === (tpl.label||'').trim()); });
+  document.getElementById('email-copy-confirm').textContent = '';
+}
+
+function copyEmail() {
+  const subj = document.getElementById('email-subject').value;
+  const body = document.getElementById('email-body').value;
+  const to = document.getElementById('email-to').value;
+  const full = (to ? 'TO: ' + to + '\n' : '') + (subj ? 'SUBJECT: ' + subj + '\n\n' : '') + body;
+  navigator.clipboard.writeText(full).then(() => {
+    document.getElementById('email-copy-confirm').textContent = '✅ Copied to clipboard!';
+    setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 2500);
+  }).catch(() => {
+    // fallback
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = full;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+      document.getElementById('email-copy-confirm').textContent = '✅ Copied!';
+    } catch (e) {
+      document.getElementById('email-copy-confirm').textContent = '⚠ Could not copy — select and copy the text manually';
+    }
+    setTimeout(() => { document.getElementById('email-copy-confirm').textContent = ''; }, 3500);
+  });
+}
+
+function openInMailClient() {
+  const subj = encodeURIComponent(document.getElementById('email-subject').value || '');
+  const body = encodeURIComponent(document.getElementById('email-body').value || '');
+  const to = encodeURIComponent(document.getElementById('email-to').value || '');
+  const cc = encodeURIComponent(document.getElementById('email-cc').value || '');
+  window.location.href = `mailto:${to}?subject=${subj}&body=${body}${cc?'&cc='+cc:''}`;
+}
+
+function clearEmailComposer() {
+  document.getElementById('email-to').value = '';
+  document.getElementById('email-cc').value = '';
+  document.getElementById('email-subject').value = '';
+  document.getElementById('email-body').value = '';
+  document.getElementById('email-copy-confirm').textContent = '';
+  document.querySelectorAll('.etpl').forEach(b => b.classList.remove('sel'));
+}
+
+
+
+// ── Wire "Compose Email" buttons into trip detail and DECA hub ───────────────
+function openEmailComposerForTrip(tripId, audience) {
+  openEmailComposer(tripId, audience || 'parents');
+}
+
+// ── ORGANIZATION HUB — routes to DECA's own rich hub, or a simpler generic
+// hub for any other configured organization ──────────────────────────────────
+// DECA keeps its exact original hub content (season pipeline, approval
+// checklist tied to real trips, chapter reference/contacts) — that content
+// is genuinely DECA/CCPS-specific hand-authored material, not something a
+// generic org config can stand in for. Any other organization gets a
+// simpler hub: its officer roster and its own results log, both already
+// fully data-driven off ORGANIZATIONS[orgId] — with a pointer to the
+// Members page for full roster management.
+function renderOrgHub() {
+  const titleEl = document.getElementById('orghub-title');
+  // Say/Do Ledger leader-hub #1: "last synced" used to be visible ONLY in
+  // Settings → Organizations — nowhere a co-advisor is actually looking
+  // while they work. Shown here (and in Members, see renderStudents) too,
+  // using the same _orgSyncStatusLine_ helper Settings itself now calls.
+  const badgeEl = document.getElementById('orghub-sync-badge');
+  if (badgeEl) badgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
+  if (activeOrgId === 'deca') {
+    if (titleEl) titleEl.textContent = '🏆 DECA Chapter Hub';
+    renderDECAHub();
+    return;
+  }
+  const org = ORGANIZATIONS[activeOrgId] || ORGANIZATIONS.deca;
+  if (titleEl) titleEl.textContent = `${org.icon || '🧩'} ${org.name} Hub`;
+  renderGenericOrgHub(activeOrgId);
+}
+
+function renderGenericOrgHub(orgId) {
+  const el = document.getElementById('deca-hub-content');
+  if (!el) return;
+  const org = ORGANIZATIONS[orgId];
+  if (!org) { el.innerHTML = ''; return; }
+  const card = (title, icon, content) => `<div class="card" style="margin-bottom:1rem">
+    <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:var(--navy);margin-bottom:.75rem">${icon} ${title}</div>
+    ${content}
+  </div>`;
+  const officers = students.filter(s => s.org === orgId && isOfficer(s) && s.memberStatus !== 'alumni');
+  const officerHtml = officers.length
+    ? renderOfficerGrid(officers)
+    : `<div style="text-align:center;padding:1.5rem;color:var(--muted)">No officers added yet — use <strong>+ Add Member</strong> on the Members page.</div>`;
+  el.innerHTML =
+    card(`${escH(org.name)} Officers`, '👑', officerHtml) +
+    card('Results', '🏅', renderOrgResults(orgId)) +
+    card('Full Roster', '👥', `<div style="font-size:.82rem;color:var(--muted)">Manage the full ${escH(org.name)} roster, dues, and membership status on the <a href="#" onclick="showView('students');return false;" style="color:var(--navy);text-decoration:underline">Members</a> page.</div>`);
+}
+
+// ── DECA CHAPTER HUB ─────────────────────────────────────────────────────────
+function renderDECAHub() {
+  const el = document.getElementById('deca-hub-content');
+  if(!el) return;
+  const today = new Date();
+
+  const card = (title, icon, content, urgent=false) =>
+    `<div class="card" style="margin-bottom:1rem;${urgent?'border:2px solid var(--red)':''}">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:${urgent?'var(--red)':'var(--navy)'};margin-bottom:.75rem">${icon} ${title}</div>
+      ${content}
+    </div>`;
+
+  const row = (label, val) => val ?
+    `<div style="display:flex;gap:.5rem;margin-bottom:.3rem;font-size:.8rem">
+      <span style="color:var(--muted);min-width:160px;flex-shrink:0">${label}</span>
+      <span style="font-weight:600">${val}</span>
+    </div>` : '';
+
+  const badge = (txt, color='var(--navy)') =>
+    `<span style="display:inline-block;background:${color};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:20px;margin:2px">${txt}</span>`;
+
+  // ── Season Timeline ───────────────────────────────────────────────────────
+  // FIXED: this used to be a second, hardcoded stages array — a completely
+  // separate data model from DECA_SEASON (the one openDecaSeasonEditor()
+  // actually updates and renderDECAPipeline() on the Events view already
+  // reads). Editing next year's season via "Edit Season" updated the
+  // Events pipeline but left this card frozen on the old year forever,
+  // since it never read DECA_SEASON at all. Now derived from the same
+  // source of truth, so there's only ever one season timeline to keep
+  // current.
+  const _monthDay = iso => new Date(iso+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  const _dateRangeLabel = s => {
+    if (!s.date) return '';
+    if (!s.endDate || s.endDate === s.date) return _monthDay(s.date);
+    const sameMonth = s.date.slice(0,7) === s.endDate.slice(0,7);
+    return sameMonth
+      ? `${_monthDay(s.date)}–${new Date(s.endDate+'T00:00:00').getDate()}`
+      : `${_monthDay(s.date)} – ${_monthDay(s.endDate)}`;
+  };
+  const stages = (DECA_SEASON.stages || []).map(s => {
+    const computed = _decaStageStatus(s, today);
+    // DECA_SEASON only tracks done/active/upcoming plus a separate `urgent`
+    // flag; this card's own visual language additionally distinguishes an
+    // "urgent" (open + flagged) stage with its own red styling below.
+    const status = (s.urgent && computed !== 'done') ? 'urgent' : computed;
+    return { label: s.label, dates: _dateRangeLabel(s), status, icon: s.icon, detail: s.detail };
+  });
+
+  const timeline = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(95px,1fr));gap:.4rem">
+    ${stages.map(s => {
+      const done = s.status==='done', act = s.status==='active', urg = s.status==='urgent';
+      const bg = done ? 'rgba(42,122,75,.1)' : act ? 'rgba(232,184,75,.15)' : urg ? 'rgba(214,61,47,.1)' : 'var(--surface)';
+      const border = done ? 'var(--green)' : act ? 'var(--gold)' : urg ? 'var(--red)' : 'var(--border)';
+      const ic = done ? '✅' : act ? '🔵' : urg ? '⚠️' : s.icon;
+      return `<div style="border:1.5px solid ${border};border-radius:8px;padding:.5rem;background:${bg};text-align:center">
+        <div style="font-size:1rem">${ic}</div>
+        <div style="font-size:.65rem;font-weight:700;color:${urg?'var(--red)':done?'var(--muted)':'var(--navy)'};margin:.15rem 0;line-height:1.2">${s.label}</div>
+        <div style="font-size:.58rem;color:var(--muted)">${s.dates}</div>
+        <div style="font-size:.58rem;color:${urg?'var(--red)':'#666'};margin-top:.2rem;line-height:1.3">${s.detail}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
+  // ── ICDC urgent alert ─────────────────────────────────────────────────────
+  const icdcDaysLeft = Math.ceil((new Date('2026-03-13') - today) / 86400000);
+  const icdcFormDeadline = Math.ceil((new Date('2026-03-11') - today) / 86400000);
+  const icdcUrgent = today < new Date('2026-04-30');
+
+  const icdcAlert = icdcUrgent ? `
+    <div class="alert" style="background:#fef2f2;border:2px solid var(--red);border-radius:8px;padding:.85rem 1rem;margin-bottom:.75rem">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1px;color:var(--red);margin-bottom:.5rem">🚨 ICDC — ACTION REQUIRED NOW</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;font-size:.78rem">
+        <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
+          <div style="font-weight:700;color:var(--red);margin-bottom:.2rem">Field Trip Form</div>
+          <div>Submit to TripTracker by <strong>~Mar 11</strong></div>
+          <div style="color:var(--muted);font-size:.72rem">45-day lead for out-of-state overnight</div>
+          <div style="margin-top:.4rem">${icdcFormDeadline > 0 ? badge(icdcFormDeadline+'d left','var(--red)') : badge('OVERDUE','#7f1d1d')}</div>
+          <button class="btn btn-sm" onclick="openModal('newTrip')" style="margin-top:.4rem;width:100%;background:var(--red);color:#fff;border:none;font-size:.7rem">Start Form →</button>
+        </div>
+        <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
+          <div style="font-weight:700;color:#b45309;margin-bottom:.2rem">Registration Window</div>
+          <div>Opens <strong>Mar 2</strong> · Closes <strong>Mar 13</strong></div>
+          <div style="color:var(--muted);font-size:.72rem">$155/student · Top 8 + bumps from Top 10</div>
+          <div style="margin-top:.4rem">${icdcDaysLeft > 0 ? badge('Reg closes in '+icdcDaysLeft+'d','var(--orange)') : badge('Reg CLOSED','#7f1d1d')}</div>
+          <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">70%+ SLC test score required</div>
+        </div>
+        <div style="background:#fff;border-radius:6px;padding:.6rem;border:1px solid #fecaca">
+          <div style="font-weight:700;color:var(--navy);margin-bottom:.2rem">Logistics</div>
+          <div>Payment due <strong>Apr 1</strong></div>
+          <div style="color:var(--muted);font-size:.72rem">Atlanta Hilton · $260/night · 4/room</div>
+          <div style="font-size:.7rem;margin-top:.3rem">Coordinate flights + rooming with other CCPS advisors</div>
+          <div style="font-size:.7rem;font-weight:700;margin-top:.3rem">Apr 25–29 · Atlanta, GA</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:.5rem;margin-top:.65rem;flex-wrap:wrap">
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'students')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Email Qualifiers</button>
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'parents')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Email Families</button>
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'school')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Notify Admin</button>
+        <button class="btn btn-sm" onclick="openEmailComposerForTrip(6,'faculty')" style="font-size:.72rem;background:var(--navy);color:#fff;border:none">✉️ Notify Faculty</button>
+      </div>
+    </div>` : '';
+
+  // ── Season record cards ───────────────────────────────────────────────────
+  const seasonCards = `
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.75rem">
+      <div class="card" style="background:var(--navy);color:#fff;border:none">
+        <div style="font-size:.65rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">Ultimate Power Trip · Nov 21–23</div>
+        <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">13 students traveled</div>
+        ${row('Location','Renaissance Arlington Capital View')}
+        ${row('Transport','Amtrak from Staples Mills + Rental')}
+        ${row('PO #','26-316-3418')}
+        ${row('Chaperones','Adam Berneche · Regina Warriner')}
+        ${row('Cost','~$250/student')}
+        ${row('Account','DECA 4280')}
+      </div>
+      <div class="card" style="background:var(--navy);color:#fff;border:none">
+        <div style="font-size:.65rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">District Leadership Conference · Dec 3</div>
+        <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">15 students competed</div>
+        ${row('Location','Chesterfield Towne Center')}
+        ${row('Transport','Parent Transportation (1 vehicle)')}
+        ${row('Students','9F / 6M · 23 invited')}
+        ${row('Chaperones','Adam Berneche · Kristen Hangey')}
+        ${row('Cost','$0 (included w/membership)')}
+        ${row('JI Topic','Ice Cream Innovator @ Sweet Scoops')}
+      </div>
+      <div class="card" style="background:var(--navy);color:#fff;border:none">
+        <div style="font-size:.65rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px">State Leadership Conference · Feb 27–Mar 1 ⏳</div>
+        <div style="font-size:.85rem;font-weight:700;margin:.3rem 0">15 students · RESULTS PENDING</div>
+        ${row('Location','Virginia Beach Convention Center')}
+        ${row('Housing','Hampton Inn North Oceanfront, $171/night, 4/room')}
+        ${row('Transport','Winn Charter · ~$70/student')}
+        ${row('PO #','26-0368-2559')}
+        ${row('Chaperones','Adam Berneche · Amanda Berneche')}
+        ${row('Students','8F / 7M · 30 invited')}
+      </div>
+    </div>`;
+
+  // ── Key contacts ──────────────────────────────────────────────────────────
+  // FIXED (external product review, Finding 9): reads from getKeyContacts()
+  // (localStorage, per-browser) instead of a hardcoded array of real
+  // people's contact info — see that function's own comment above for how
+  // to populate it locally. Empty by default; the empty-state message
+  // below only ever shows in a fresh checkout that hasn't done that yet.
+  const keyContactsList = getKeyContacts();
+  const contacts = !keyContactsList.length
+    ? `<div style="font-size:.75rem;color:var(--muted);padding:.5rem 0">No key contacts saved yet in this browser. See the comment above getKeyContacts() in source for how to add your own — never committed, local to this browser only.</div>`
+    : `<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem">
+    ${keyContactsList.map(c => `<div style="border:1px solid var(--border);border-radius:8px;padding:.6rem;background:var(--surface)">
+      <div style="font-weight:700;font-size:.78rem">${escH(c.name)}</div>
+      <div style="font-size:.68rem;color:var(--muted);margin:.1rem 0">${escH(c.role)}</div>
+      ${c.phone && c.phone !== '—' ? `<div style="font-size:.7rem">📞 ${escH(c.phone)}</div>` : ''}
+      ${c.email && c.email !== '—' ? `<div style="font-size:.7rem">✉️ ${escH(c.email)}</div>` : ''}
+    </div>`).join('')}
+  </div>`;
+
+  // ── Chapter reference ──────────────────────────────────────────────────────
+  const refInfo = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:.75rem">
+    <div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Fee Schedule (25–26)</div>
+      ${[
+        ['Membership','$20 — accepted all year'],
+        ['Dues to Kristen W.','$2 — due Nov 1'],
+        ['DLC','$0 (with paid membership)'],
+        ['Ultimate Power Trip','~$250/student'],
+        ['SLC','$350/student (w/Friday dinner option: $165 conf + housing + bus)'],
+        ['SLC — Conf Only','$135/student'],
+        ['SLC — w/Fri Dinner','$165/student'],
+        ['SLC — Chaperone Judge','$75 (note: $60 fee if chaperone no-shows judging)'],
+        ['SLC — Sat Meal Add-On','$35/person (optional; whole chapter must match)'],
+        ['ICDC Registration','$155/student (payment due Apr 1)'],
+        ['ICDC Total Est.','~$1,000/student'],
+        ['ICDC Housing','Atlanta Hilton · $260/night · 4/room'],
+      ].map(([l,v]) => row(l,v)).join('')}
+    </div>
+    <div>
+      <div style="font-size:.75rem;font-weight:700;color:var(--navy);margin-bottom:.4rem;text-transform:uppercase;letter-spacing:.5px">Key Rules & Deadlines</div>
+      ${[
+        ['Membership Form','Due Dec 1 — submit verified roster to Anne'],
+        ['Membership Dues','$2 to Kristen W. by Nov 1'],
+        ['Team Event Limit','1–150 members: 4 teams · 151–300: 6 · 301+: 8 · max 2/category'],
+        ['Annual Report','Register at same time as SLC — can\'t add later'],
+        ['SLC Test Threshold','70%+ required for ICDC eligibility'],
+        ['SLC → ICDC Qualify','Top 8 + possible bumps to Top 10'],
+        ['ICDC Field Trip Lead','45 days for out-of-state overnight'],
+        ['ICDC 45-day Deadline','~March 11 for Apr 25 departure'],
+        ['ICDC Reg Window','March 2–13'],
+        ['ICDC Pay Due','April 1'],
+        ['ICDC Rooming Rule','4 to a room — advisors, adults AND students'],
+        ['Chapter Account','DECA — 4280'],
+        ['SLC PO','26-0368-2559 (Winn bus to Kristen at MHS)'],
+        ['Power Trip PO','26-316-3418'],
+      ].map(([l,v]) => row(l,v)).join('')}
+    </div>
+  </div>`;
+
+  el.innerHTML =
+    icdcAlert +
+    card('25–26 Season Timeline', '📅', timeline) +
+    card('📋 Admin Approval Checklist — CCPS Required Forms', '🏛️', renderDecaApprovalChecklist(), true) +
+    `<div style="margin-bottom:.75rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+        <div style="font-family:'Bebas Neue',cursive;font-size:1rem;letter-spacing:1.5px;color:var(--navy)">📊 Season Record</div>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'students')">✉️ Email All Students</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'parents')">✉️ Email All Families</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'school')">✉️ Email Admin</button>
+          <button class="btn btn-outline btn-sm" style="font-size:.7rem" onclick="openEmailComposer(null,'faculty')">✉️ Email Faculty</button>
+        </div>
+      </div>
+      ${seasonCards}
+    </div>` +
+    card('🏅 Competitive Results', '📈', renderDecaResults()) +
+    card('Key Contacts', '📞', contacts) +
+    card('Chapter Reference — Fees, Rules & Deadlines', '📋', refInfo);
+}
+
+
+// ── DECA Competitive Results Board ────────────────────────────────────────────
+const DECA_RESULT_EVENTS = [
+  {id:'dlc25',  label:'DLC — Dec 3',          short:'DLC'},
+  {id:'slc26',  label:'SLC — Feb 27–Mar 1',   short:'SLC'},
+  {id:'icdc26', label:'ICDC — Apr 25–29',      short:'ICDC'},
+];
+
+const DECA_PLACE_OPTIONS = ['1st','2nd','3rd','4th','5th','6th','7th','8th','Top 10','Top 12','Finalist','Award','Qualified','Did Not Place'];
+
+// Sticky conference/placement selection — logging a whole roster's results
+// is usually all the same conference and often a run of similar placements;
+// re-defaulting these dropdowns after every single add (the whole "+ Log a
+// Result" form gets rebuilt by renderDECAHub()) made re-picking them the
+// most repetitive part of the flow.
+let lastDecaConf = null, lastDecaPlace = null;
+
+function renderDecaResults() {
+  const results = LS.get('lh_deca_results', []);
+  // Group by event
+  const byEvent = {};
+  DECA_RESULT_EVENTS.forEach(e => { byEvent[e.id] = results.filter(r => r.eventId === e.id); });
+
+  // Summary bar: total results, qualifiers, placements
+  const totalResults   = results.length;
+  const topPlaces      = results.filter(r => ['1st','2nd','3rd','4th','5th'].includes(r.place)).length;
+  const icdcQuals      = results.filter(r => r.eventId === 'slc26' && ['1st','2nd','3rd','4th','5th','6th','7th','8th','Qualified'].includes(r.place)).length;
+  const icdcConfirmed  = byEvent['icdc26'].length;
+
+  const summary = `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem">
+    <div style="background:var(--navy);color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${totalResults}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Results Logged</div>
+    </div>
+    <div style="background:#15803d;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${topPlaces}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Top-5 Finishes</div>
+    </div>
+    <div style="background:#b45309;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${icdcQuals}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">SLC Qualifiers</div>
+    </div>
+    <div style="background:#6d28d9;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${icdcConfirmed}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">ICDC Entries</div>
+    </div>
+  </div>`;
+
+  // Per-event tables
+  const placeColor = p => {
+    if(p==='1st') return '#b45309';
+    if(p==='2nd') return '#6b7280';
+    if(p==='3rd') return '#92400e';
+    if(['4th','5th','6th','7th','8th'].includes(p)) return '#1a3560';
+    if(['Qualified','Finalist'].includes(p)) return '#15803d';
+    return '#374151';
+  };
+
+  const eventTables = DECA_RESULT_EVENTS.map(ev => {
+    const evResults = byEvent[ev.id] || [];
+    const rows = evResults.length
+      ? evResults.map(r => `
+        <tr>
+          <td style="padding:.35rem .5rem;font-size:.77rem;font-weight:600">${escH(r.student)}</td>
+          <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.event)}</td>
+          <td style="padding:.35rem .5rem">
+            <span style="background:${placeColor(r.place)};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
+          </td>
+          <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
+          <td style="padding:.35rem .5rem;text-align:right">
+            <button onclick="deleteDecaResult('${escJsAttr(r.id)}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
+          </td>
+        </tr>`).join('')
+      : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
+
+    return `<div style="margin-bottom:.85rem">
+      <div style="font-size:.72rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;border-bottom:2px solid var(--navy);padding-bottom:.2rem">${ev.label}</div>
+      <table style="width:100%;border-collapse:collapse">
+        <thead>
+          <tr style="background:#f3f4f6">
+            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Student</th>
+            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Event / Category</th>
+            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Place</th>
+            <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Notes</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+  }).join('');
+
+  // Add result form
+  const addForm = `
+    <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin-top:.5rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.5px">+ Log a Result</div>
+      <div style="display:grid;grid-template-columns:1.5fr 1.5fr 1fr 1fr auto;gap:.4rem;align-items:end">
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Student Name</div>
+          <input id="deca-res-student" placeholder="Last, First" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        </div>
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Event / Category</div>
+          <input id="deca-res-event" placeholder="e.g. Advertising Campaign" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        </div>
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Conference</div>
+          <select id="deca-res-conf" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+            ${DECA_RESULT_EVENTS.map(e=>`<option value="${e.id}"${e.id===lastDecaConf?' selected':''}>${e.short}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
+          <select id="deca-res-place" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+            ${DECA_PLACE_OPTIONS.map(p=>`<option${p===lastDecaPlace?' selected':''}>${p}</option>`).join('')}
+          </select>
+        </div>
+        <button onclick="addDecaResult()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
+      </div>
+      <div style="margin-top:.35rem">
+        <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
+        <input id="deca-res-notes" placeholder="e.g. Qualified for ICDC · Team event · Partner: Smith" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+      </div>
+    </div>`;
+
+  return summary + eventTables + addForm;
+}
+
+function addDecaResult() {
+  const student = (document.getElementById('deca-res-student')?.value||'').trim();
+  const event   = (document.getElementById('deca-res-event')?.value||'').trim();
+  const conf    = document.getElementById('deca-res-conf')?.value;
+  const place   = document.getElementById('deca-res-place')?.value;
+  const notes   = (document.getElementById('deca-res-notes')?.value||'').trim();
+  if(!student || !event) { _showToast('Student name and event are required.', 2500, '#991b1b'); return; }
+  const results = LS.get('lh_deca_results', []);
+  results.push({ id:'dr'+Date.now(), student, event, eventId:conf, place, notes, addedAt: new Date().toISOString() });
+  LS.set('lh_deca_results', results);
+  // Makes result visible in Recent Wins strip and daily activity log
+  // `place` is already a fully-formatted DECA_PLACE_OPTIONS value ("1st",
+  // "Top 10", "Qualified", "Did Not Place", ...) — it was being compared
+  // against raw digit strings ('1'/'2'/'3') that never matched, so every
+  // placement fell through to `place + 'th'` (e.g. "1stth place",
+  // "Qualifiedth place"). Only ordinal placements read naturally with
+  // " place" appended; the label placements ("Top 10", "Qualified", etc.)
+  // stand on their own.
+  const _ordinalPlacements = new Set(['1st','2nd','3rd','4th','5th','6th','7th','8th']);
+  const _placeStr = place ? ` — ${place}${_ordinalPlacements.has(place) ? ' place' : ''}` : '';
+  _logDaily({ date: new Date().toISOString(), type: 'deca_result',
+    note: `DECA result logged: ${event}${_placeStr} (${student})` });
+  // Clear fields — conference/placement are intentionally left as-is (see
+  // lastDecaConf/lastDecaPlace) since a whole roster is usually entered from
+  // the same conference with similar placements.
+  ['deca-res-student','deca-res-event','deca-res-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  lastDecaConf = conf; lastDecaPlace = place;
+  renderDECAHub();
+  refreshNextAction();
+  _showToast(`✅ Result logged for ${student}${_placeStr}`, 2800, '#065f46');
+}
+
+function deleteDecaResult(id) {
+  const all = LS.get('lh_deca_results', []);
+  const removed = all.find(r => r.id === id);
+  LS.set('lh_deca_results', all.filter(r => r.id !== id));
+  renderDECAHub();
+  if (removed) {
+    // removed.event is free text (e.g. "Principles of Hospitality and
+    // Tourism Team Decision Making") — truncated for the same reason as
+    // the Journal/Brag Board undo-toasts.
+    _undoToast(`${(removed.student||'').slice(0,40)} — ${(removed.event||'').slice(0,40)} removed`, () => {
+      LS.set('lh_deca_results', [...LS.get('lh_deca_results', []), removed]);
+      renderDECAHub();
+    });
+  }
+}
+
+// ── Generic Organization Results Board — any org besides DECA ────────────────
+// A simpler, un-tiered results log for organizations added via Settings →
+// Organizations: one flat "Results Logged" + "Top Finishes" summary, then
+// either a table per configured level (org.levels) or, for a non-competitive
+// club with no levels configured, a single flat table. Deliberately NOT a
+// drop-in replacement for renderDecaResults() above — DECA keeps its exact
+// original results board (3 hardcoded conferences, SLC/ICDC qualifier
+// tiles) untouched; this is a parallel, separate implementation storing to
+// its own lh_org_results key so nothing here can affect DECA's data.
+let ORG_RESULTS = LS.get('lh_org_results', {});
+function persistOrgResults() { LS.set('lh_org_results', ORG_RESULTS); }
+function getOrgResults(orgId) { return ORG_RESULTS[orgId] || []; }
+let _lastOrgResultLevel = {}, _lastOrgResultPlace = {};
+
+// ── Co-advisor sharing (EE2) — see EmailBridge.gs's "Organization Sync"
+// section. `ORG_SYNC[orgId]` tracks whether an org is shared and the last
+// remote state this browser knows about — `lastKnownRemoteUpdatedAt` is
+// what gets sent back as `expectedUpdatedAt` on the next push, which is how
+// the server's compare-and-swap conflict check recognizes "have I seen
+// everything since my last pull?" Sharing/pushing/pulling always operates
+// on one organization at a time — nothing here is automatic or silent.
+let ORG_SYNC = LS.get('lh_org_sync', {});
+function persistOrgSync() { LS.set('lh_org_sync', ORG_SYNC); }
+
+// Say/Do Ledger leader-hub #10: which orgs this browser has already seen the
+// one-time "Welcome, co-advisor" disclosure for, keyed by orgId so joining a
+// second shared org still gets its own welcome. Separate from ORG_SYNC so
+// stopping and re-joining the same org (ORG_SYNC[orgId] deleted, then
+// recreated) doesn't show the welcome a second time.
+let ORG_WELCOME_SEEN = LS.get('lh_org_welcome_seen', {});
+function persistOrgWelcomeSeen() { LS.set('lh_org_welcome_seen', ORG_WELCOME_SEEN); }
+
+function renderOrgResults(orgId) {
+  const org = ORGANIZATIONS[orgId] || ORGANIZATIONS.deca;
+  const levels = org.levels || [];
+  const placeOptions = (org.placeOptions && org.placeOptions.length) ? org.placeOptions : ['1st','2nd','3rd','Award','Did Not Place'];
+  const results = getOrgResults(orgId);
+
+  const totalResults = results.length;
+  const topPlaces = results.filter(r => ['1st','2nd','3rd','4th','5th'].includes(r.place)).length;
+  const summary = `<div style="display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:.85rem">
+    <div style="background:var(--navy);color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${totalResults}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Results Logged</div>
+    </div>
+    <div style="background:#15803d;color:#fff;border-radius:8px;padding:.45rem .85rem;text-align:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;line-height:1">${topPlaces}</div>
+      <div style="font-size:.6rem;opacity:.8;text-transform:uppercase;letter-spacing:.5px">Top-5 Finishes</div>
+    </div>
+  </div>`;
+
+  const placeColor = p => {
+    if(p==='1st') return '#b45309';
+    if(p==='2nd') return '#6b7280';
+    if(p==='3rd') return '#92400e';
+    if(['4th','5th','6th','7th','8th'].includes(p)) return '#1a3560';
+    if(['Qualified','Finalist'].includes(p)) return '#15803d';
+    return '#374151';
+  };
+  const resultRow = r => `<tr>
+    <td style="padding:.35rem .5rem;font-size:.77rem;font-weight:600">${escH(r.student)}</td>
+    <td style="padding:.35rem .5rem;font-size:.75rem;color:var(--muted)">${escH(r.event)}</td>
+    <td style="padding:.35rem .5rem">
+      <span style="background:${placeColor(r.place)};color:#fff;font-size:.65rem;font-weight:700;padding:2px 8px;border-radius:10px">${escH(r.place)}</span>
+    </td>
+    <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
+    <td style="padding:.35rem .5rem;text-align:right">
+      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
+    </td>
+  </tr>`;
+  const resultTableHead = `<thead><tr style="background:#f3f4f6">
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Student</th>
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Event / Category</th>
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Place</th>
+    <th style="padding:.3rem .5rem;font-size:.65rem;text-align:left;color:var(--muted);font-weight:700;text-transform:uppercase">Notes</th>
+    <th></th>
+  </tr></thead>`;
+
+  let resultTables;
+  if (levels.length) {
+    resultTables = levels.map(lv => {
+      const lvResults = results.filter(r => r.levelKey === lv.key);
+      const rows = lvResults.length ? lvResults.map(resultRow).join('')
+        : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
+      return `<div style="margin-bottom:.85rem">
+        <div style="font-size:.72rem;font-weight:800;color:var(--navy);text-transform:uppercase;letter-spacing:1px;margin-bottom:.3rem;border-bottom:2px solid var(--navy);padding-bottom:.2rem">${escH(lv.label)}</div>
+        <table style="width:100%;border-collapse:collapse">${resultTableHead}<tbody>${rows}</tbody></table>
+      </div>`;
+    }).join('');
+  } else {
+    const rows = results.length ? results.map(resultRow).join('')
+      : `<tr><td colspan="5" style="padding:.5rem;font-size:.75rem;color:var(--muted);text-align:center;font-style:italic">No results logged yet</td></tr>`;
+    resultTables = `<table style="width:100%;border-collapse:collapse">${resultTableHead}<tbody>${rows}</tbody></table>`;
+  }
+
+  const levelSelector = levels.length ? `
+    <div>
+      <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Level</div>
+      <select id="org-res-level" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        ${levels.map(lv=>`<option value="${escH(lv.key)}"${lv.key===_lastOrgResultLevel[orgId]?' selected':''}>${escH(lv.label)}</option>`).join('')}
+      </select>
+    </div>` : '';
+
+  const addForm = `
+    <div style="background:#f9fafb;border:1px solid var(--border);border-radius:8px;padding:.65rem .85rem;margin-top:.5rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--navy);margin-bottom:.45rem;text-transform:uppercase;letter-spacing:.5px">+ Log a Result</div>
+      <div style="display:grid;grid-template-columns:1.5fr 1.5fr ${levels.length?'1fr ':''}1fr auto;gap:.4rem;align-items:end">
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Student Name</div>
+          <input id="org-res-student" placeholder="Last, First" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        </div>
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Event / Category</div>
+          <input id="org-res-event" placeholder="e.g. Chapter Meeting Award" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+        </div>
+        ${levelSelector}
+        <div>
+          <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Placement</div>
+          <select id="org-res-place" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+            ${placeOptions.map(p=>`<option${p===_lastOrgResultPlace[orgId]?' selected':''}>${escH(p)}</option>`).join('')}
+          </select>
+        </div>
+        <button onclick="addOrgResult('${orgId}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer;white-space:nowrap">Add ＋</button>
+      </div>
+      <div style="margin-top:.35rem">
+        <div style="font-size:.63rem;color:var(--muted);margin-bottom:.15rem">Notes (optional)</div>
+        <input id="org-res-notes" placeholder="e.g. Qualified for next level" style="width:100%;font-size:.75rem;padding:.3rem .5rem;border:1px solid var(--border);border-radius:5px;font-family:inherit">
+      </div>
+    </div>`;
+
+  return summary + resultTables + addForm;
+}
+
+function addOrgResult(orgId) {
+  const student = (document.getElementById('org-res-student')?.value||'').trim();
+  const event    = (document.getElementById('org-res-event')?.value||'').trim();
+  const levelKey = document.getElementById('org-res-level')?.value || null;
+  const place    = document.getElementById('org-res-place')?.value;
+  const notes    = (document.getElementById('org-res-notes')?.value||'').trim();
+  if(!student || !event) { _showToast('Student name and event are required.', 2500, '#991b1b'); return; }
+  if (!ORG_RESULTS[orgId]) ORG_RESULTS[orgId] = [];
+  ORG_RESULTS[orgId].push({ id:'or'+Date.now(), student, event, levelKey, place, notes, addedAt: new Date().toISOString() });
+  persistOrgResults();
+  const _ordinalPlacements = new Set(['1st','2nd','3rd','4th','5th','6th','7th','8th']);
+  const _placeStr = place ? ` — ${place}${_ordinalPlacements.has(place) ? ' place' : ''}` : '';
+  const orgName = (ORGANIZATIONS[orgId]||{}).name || orgId;
+  _logDaily({ date: new Date().toISOString(), type: 'org_result',
+    note: `${orgName} result logged: ${event}${_placeStr} (${student})` });
+  ['org-res-student','org-res-event','org-res-notes'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; });
+  _lastOrgResultLevel[orgId] = levelKey; _lastOrgResultPlace[orgId] = place;
+  renderOrgHub();
+  refreshNextAction();
+  _showToast(`✅ Result logged for ${student}${_placeStr}`, 2800, '#065f46');
+}
+
+function deleteOrgResult(orgId, id) {
+  const all = getOrgResults(orgId);
+  const removed = all.find(r => r.id === id);
+  ORG_RESULTS[orgId] = all.filter(r => r.id !== id);
+  persistOrgResults();
+  renderOrgHub();
+  if (removed) {
+    _undoToast(`${(removed.student||'').slice(0,40)} — ${(removed.event||'').slice(0,40)} removed`, () => {
+      ORG_RESULTS[orgId] = [...getOrgResults(orgId), removed];
+      persistOrgResults();
+      renderOrgHub();
+    });
+  }
+}
+
+// tripId links each DECA event to its real record in `trips[]` — these
+// are the SAME four trips (Ultimate Power Trip, DLC, SLC, ICDC), not a
+// separate set. Two of the 8 steps below (form_submitted, admin_approved)
+// used to be tracked here as their own independent checkboxes, which
+// could read "done" while the real Trip Detail approval chain for the
+// exact same trip still showed the Coordinator/Principal step outstanding
+// — or vice versa. Those two steps now read directly from the real trip's
+// approval chain instead of keeping a second, driftable copy.
+const DECA_APPROVAL_EVENTS = [
+  { id:'icdc26', tripId:6, label:'ICDC 2026 — Atlanta (Apr 25–29)', type:'Overnight Out-of-State', urgent:true },
+  { id:'powertip25', tripId:3, label:'Ultimate Power Trip — Arlington (Nov 21–23)', type:'Overnight Out-of-State', urgent:false },
+  { id:'slc26', tripId:5, label:'State Leadership Conference — VA Beach (Feb 27–Mar 1)', type:'Overnight In-State', urgent:false },
+  { id:'dlc25', tripId:4, label:'District Leadership Conference — Dec 3', type:'Day Trip', urgent:false },
+];
+
+function renderDecaApprovalChecklist() {
+  // form_submitted/admin_approved are synced from the matched trip's real
+  // approval chain (t.ap.coord / t.ap.principal) — see the note above.
+  // The remaining steps are DECA-specific compliance items with no Trip
+  // Detail equivalent and stay independently tracked here.
+  const APPROVAL_STEPS = [
+    { key:'form_submitted', label:'Field Trip Permission Request submitted to Zyglocke', critical:true, synced:'coord' },
+    { key:'admin_approved', label:'Written admin approval received', critical:true, synced:'principal' },
+    { key:'overnight_form', label:'Overnight/Out-of-State form submitted (if applicable)', critical:false },
+    { key:'fundraiser_form', label:'Fundraiser Request form submitted (if trip fundraiser involved)', critical:false },
+    { key:'medical_forms', label:'Student medical/emergency forms collected', critical:true },
+    { key:'money_deposited', label:'All student payments deposited to Ms. Evans by 2:00 PM', critical:true },
+    { key:'roster_final', label:'Final student roster submitted', critical:false },
+    { key:'eligibility_confirmed', label:'Student eligibility confirmed (grades/attendance)', critical:false },
+  ];
+
+  const saved = LS.get('lh_deca_approvals', {});
+
+  const eventRows = DECA_APPROVAL_EVENTS.map(ev => {
+    const checks = saved[ev.id] || {};
+    const trip   = trips.find(t => t.id === ev.tripId) || null;
+
+    const isChecked = step => step.synced
+      ? !!(trip && apStatus(trip, step.synced) === 'approved')
+      : !!checks[step.key];
+
+    const total = APPROVAL_STEPS.length;
+    const done = APPROVAL_STEPS.filter(isChecked).length;
+    const critical = APPROVAL_STEPS.filter(s => s.critical);
+    const critDone = critical.filter(isChecked).length;
+    const allCritical = critDone === critical.length;
+    const pct = Math.round(done / total * 100);
+    const barColor = allCritical ? '#22c55e' : done > 0 ? '#f59e0b' : '#e5e7eb';
+
+    const steps = APPROVAL_STEPS.map(step => {
+      const checked = isChecked(step);
+      if (step.synced) {
+        // Read-only — this is a mirror of Trip Detail's approval chain,
+        // not an independent record. Editing it here would recreate the
+        // exact drift this unification exists to remove.
+        return `<div style="display:flex;align-items:flex-start;gap:.45rem;padding:.22rem 0;font-size:.75rem;color:${checked?'var(--muted)':'inherit'};${checked?'text-decoration:line-through':''}">
+          <span style="margin-top:1px;flex-shrink:0">${checked?'✅':'⬜'}</span>
+          <span><strong>${step.label}</strong> <span style="font-size:.62rem;color:#b91c1c">★ Required</span>
+            ${trip ? `<a href="javascript:void(0)" onclick="showView('trips');openTripDetail(${trip.id})" style="font-size:.62rem;color:var(--navy);margin-left:.3rem">synced from Trip Detail →</a>`
+                   : `<span style="font-size:.62rem;color:var(--red)"> — no matching trip found</span>`}
+          </span>
+        </div>`;
+      }
+      return `<label style="display:flex;align-items:flex-start;gap:.45rem;cursor:pointer;padding:.22rem 0;font-size:.75rem;color:${checked?'var(--muted)':'inherit'};${checked?'text-decoration:line-through':''}">
+        <input type="checkbox" ${checked?'checked':''} onchange="toggleDecaCheck('${ev.id}','${step.key}',this.checked)" style="margin-top:2px;accent-color:var(--navy);flex-shrink:0">
+        <span>${step.critical?'<strong>':''} ${step.label} ${step.critical?'</strong>':''}${step.critical?' <span style="font-size:.62rem;color:#b91c1c">★ Required</span>':''}</span>
+      </label>`;
+    }).join('');
+
+    return `<div style="border:${ev.urgent&&!allCritical?'2px solid var(--red)':'1px solid var(--border)'};border-radius:8px;padding:.7rem .85rem;margin-bottom:.55rem;background:${allCritical?'#f0fdf4':ev.urgent?'#fef9f9':'var(--surface)'}">
+      <div style="display:flex;align-items:center;gap:.6rem;margin-bottom:.45rem;flex-wrap:wrap">
+        <div style="font-weight:700;font-size:.82rem;flex:1">${ev.urgent&&!allCritical?'⚠️ ':''}${ev.label}</div>
+        <span style="font-size:.65rem;background:${allCritical?'#dcfce7':'#f3f4f6'};color:${allCritical?'#15803d':'#555'};padding:1px 8px;border-radius:20px;font-weight:700">${allCritical?'✅ All Critical Done':`${critDone}/${critical.length} critical`}</span>
+        <span style="font-size:.65rem;color:var(--muted)">${done}/${total} steps</span>
+      </div>
+      <div style="height:4px;border-radius:2px;background:#e5e7eb;margin-bottom:.55rem">
+        <div style="height:4px;border-radius:2px;background:${barColor};width:${pct}%;transition:width .3s"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1rem">
+        ${steps}
+      </div>
+    </div>`;
+  }).join('');
+
+  return `<div id="deca-checklist-body">
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:.65rem;padding:.4rem .6rem;background:#fffbeb;border:1px solid #fde68a;border-radius:6px">
+      <strong>Stay on top of deadlines</strong> — complete all required CCPS forms and meet all stated deadlines for DECA activities and events.
+    </div>
+    ${eventRows}
+  </div>`;
+}
+
+function toggleDecaCheck(eventId, stepKey, val) {
+  const saved = LS.get('lh_deca_approvals', {});
+  if (!saved[eventId]) saved[eventId] = {};
+  saved[eventId][stepKey] = val;
+  LS.set('lh_deca_approvals', saved);
+  // Refresh just this card's body, not the whole hub (timeline/results/
+  // contacts/fees don't depend on approval state) — the old full
+  // renderDECAHub() call needed a 50ms scrollIntoView hack afterward just
+  // to put the checkbox the user clicked back on screen, which replacing
+  // only this element (title bar untouched) makes unnecessary.
+  const body = document.getElementById('deca-checklist-body');
+  if (body) {
+    body.outerHTML = renderDecaApprovalChecklist();
+  } else {
+    renderDECAHub();
+  }
+}
+
+// The season pipeline used to be a hardcoded array baked into this function —
+// accurate for 25–26, permanently stale (and permanently showing the old
+// ICDC alert) the moment that season ended. It's now app data instead: seeded
+// once with the same 25–26 content, persisted to localStorage, and editable
+// from the pipeline header each year without touching code.
+const DECA_SEASON_DEFAULT = {
+  title: 'DECA 25–26 Season Pipeline',
+  stages: [
+    { label:'Ultimate Power Trip', date:'2025-11-21', endDate:'2025-11-23', icon:'🚂', status:'done',
+      detail:'13 students · Arlington, VA · Amtrak · PO# 26-316-3418', color:'var(--green)' },
+    { label:'DLC', date:'2025-12-03', icon:'🏆', status:'done',
+      detail:'15 students competed · Chesterfield Towne Center · Account 4280', color:'var(--green)' },
+    { label:'SLC Testing', date:'2026-02-09', endDate:'2026-02-13', icon:'📝', status:'done',
+      detail:'Feb 9–13 · 70% required for ICDC · No make-up days', color:'var(--green)' },
+    { label:'State (SLC)', date:'2026-02-27', endDate:'2026-03-02', icon:'🎤', status:'done',
+      detail:'15 students · Virginia Beach · Charter: Winn · PO# 26-0368-2559', color:'var(--green)' },
+    { label:'ICDC Registration', date:'2026-03-02', endDate:'2026-03-13', icon:'📋', statusAuto:true,
+      detail:'Mar 2–13 · $155/student · Top 8 + bumps · 70% test required', color:'var(--gold)', urgent:true },
+    { label:'ICDC Payment', date:'2026-04-01', icon:'💳', statusAuto:true,
+      detail:'$155/student due Apr 1 · Atlanta Hilton $260/night · 4/room', color:'var(--orange)' },
+    { label:'ICDC Atlanta', date:'2026-04-25', endDate:'2026-04-29', icon:'✈️', statusAuto:true,
+      detail:'Apr 25–29 · Atlanta, GA · ~$1,000/student · Start field trip form NOW!', color:'var(--navy)', urgent:true },
+  ],
+  notice: {
+    text: '<strong>ICDC Field Trip Form is due NOW.</strong> Out-of-state overnight trips require 45 days lead time — deadline to submit is <strong>~March 11, 2026</strong>. Registration opens March 2 and closes March 13. Confirm SLC qualifiers (Top 8 + possible bumps to Top 10) and their 70% test scores before registering.',
+    ctaLabel: '+ Start ICDC Field Trip Form',
+  },
+};
+let DECA_SEASON = LS.get('lh_deca_season', DECA_SEASON_DEFAULT);
+function persistDecaSeason() { LS.set('lh_deca_season', DECA_SEASON); }
+
+function _decaStageStatus(s, today) {
+  // statusAuto stages compute done/active/upcoming from their own dates
+  // (so a season loaded from a prior year doesn't need its statuses
+  // hand-updated); stages with an explicit status (or none) just use it.
+  if (!s.statusAuto) return s.status || 'upcoming';
+  const start = s.date ? new Date(s.date) : null;
+  const end = s.endDate ? new Date(s.endDate) : start;
+  if (!start) return 'upcoming';
+  if (end && today > end) return 'done';
+  if (today >= start) return 'active';
+  return 'upcoming';
+}
+
+function renderDECAPipeline() {
+  const el = document.getElementById('deca-pipeline');
+  if(!el) return;
+  const today = new Date();
+  const stages = DECA_SEASON.stages || [];
+  const doneCount = stages.filter(s => _decaStageStatus(s, today) === 'done').length;
+  const hasUrgentOpen = stages.some(s => s.urgent && _decaStageStatus(s, today) !== 'done');
+
+  el.innerHTML = `
+    <div class="card" style="background:var(--navy);color:#fff;padding:1rem 1.25rem;border:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.85rem;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;letter-spacing:2px;color:var(--gold)">🏆 ${DECA_SEASON.title || 'DECA Season Pipeline'}</div>
+          <div style="font-size:.72rem;color:rgba(255,255,255,.5)">${PROFILE.school} · DECA Account 4280 · Advisor: ${PROFILE.name}</div>
+        </div>
+        <div style="display:flex;gap:.5rem;align-items:center">
+          <span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--green);color:#fff;font-weight:700">${doneCount} event${doneCount!==1?'s':''} complete</span>
+          ${hasUrgentOpen ? `<span style="font-size:.68rem;padding:3px 9px;border-radius:20px;background:var(--red);color:#fff;font-weight:700">⚠️ Action needed</span>` : ''}
+          <button class="btn btn-sm btn-outline btn-on-navy" onclick="openDecaSeasonEditor()" style="color:#fff;border-color:rgba(255,255,255,.4)" title="Update next year's season timeline">✏️ Edit Season</button>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:.5rem;align-items:start">
+        ${stages.map((s) => {
+          const status = _decaStageStatus(s, today);
+          const isDone = status==='done';
+          const isActive = status==='active';
+          const isUrgent = s.urgent && !isDone;
+          const bg = isDone ? 'rgba(42,122,75,.35)' : isActive ? 'rgba(232,184,75,.25)' : isUrgent ? 'rgba(214,61,47,.3)' : 'rgba(255,255,255,.08)';
+          const border = isDone ? 'var(--green)' : isActive ? 'var(--gold)' : isUrgent ? 'var(--red)' : 'rgba(255,255,255,.15)';
+          return `<div style="background:${bg};border:1.5px solid ${border};border-radius:8px;padding:.55rem .6rem;position:relative">
+            ${isUrgent?`<div style="position:absolute;top:-5px;right:-5px;width:11px;height:11px;border-radius:50%;background:var(--red);border:2px solid var(--navy)"></div>`:''}
+            <div style="font-size:1.1rem;margin-bottom:.18rem">${isDone?'✅':isActive?'🔵':s.icon}</div>
+            <div style="font-size:.68rem;font-weight:700;color:${isDone?'rgba(255,255,255,.6)':'#fff'};line-height:1.25;margin-bottom:.2rem">${s.label}</div>
+            <div style="font-size:.61rem;color:rgba(255,255,255,.5);margin-bottom:.25rem">${s.date?fd(s.date):''}</div>
+            <div style="font-size:.61rem;color:${isUrgent?'#fca5a5':'rgba(255,255,255,.45)'};line-height:1.35">${s.detail||''}</div>
+          </div>`;
+        }).join('')}
+      </div>
+      ${DECA_SEASON.notice && DECA_SEASON.notice.text ? `
+      <div style="margin-top:.85rem;padding-top:.7rem;border-top:1px solid rgba(255,255,255,.12)">
+        <div class="alert ad" style="font-size:.75rem;background:rgba(214,61,47,.25);border-color:rgba(214,61,47,.5);color:#fca5a5">
+          <span class="aico">🚨</span>
+          <div>${DECA_SEASON.notice.text}
+          <button class="btn btn-sm" onclick="openModal('newTrip')" style="margin-left:.75rem;background:var(--red);color:#fff;border:none">${DECA_SEASON.notice.ctaLabel || '+ Start Field Trip Form'}</button></div>
+        </div>
+      </div>` : ''}
+    </div>`;
+}
+
+// ── Season editor — raw-JSON edit so next year's advisor can update the whole
+// pipeline (stages + notice) in one place without a code change. ──────────────
+function openDecaSeasonEditor() {
+  const existing = document.getElementById('deca-season-editor');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'deca-season-editor';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:640px;width:92%;border-radius:12px;padding:1.5rem;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem">
+      <div style="font-weight:800">Edit DECA Season</div>
+      <button onclick="this.closest('#deca-season-editor').remove()" aria-label="Close" style="background:none;border:none;font-size:1.2rem;cursor:pointer">✕</button>
+    </div>
+    <div style="font-size:.76rem;color:var(--muted);margin-bottom:.6rem">Edit as JSON — title, an array of stages ({label, date, endDate, icon, status or statusAuto:true, detail, color, urgent}), and an optional notice banner. Used at the start of each new season.</div>
+    <textarea id="deca-season-json" style="width:100%;height:340px;font-family:'DM Mono',monospace;font-size:.76rem;border:1px solid var(--border);border-radius:8px;padding:.6rem">${JSON.stringify(DECA_SEASON, null, 2).replace(/</g,"&lt;")}</textarea>
+    <div id="deca-season-err" style="color:#dc2626;font-size:.75rem;margin-top:.4rem"></div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
+      <button class="btn btn-outline" onclick="this.closest('#deca-season-editor').remove()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDecaSeasonEditor()">Save</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  document.getElementById('deca-season-json').focus();
+}
+function saveDecaSeasonEditor() {
+  const ta = document.getElementById('deca-season-json');
+  const errEl = document.getElementById('deca-season-err');
+  try {
+    const parsed = JSON.parse(ta.value);
+    if (!parsed || !Array.isArray(parsed.stages)) throw new Error('Expected an object with a "stages" array.');
+    DECA_SEASON = parsed;
+    persistDecaSeason();
+    document.getElementById('deca-season-editor').remove();
+    renderDECAPipeline();
+    _showToast('✅ Season updated');
+  } catch (e) {
+    errEl.textContent = '⚠ ' + e.message;
+  }
+}
+
+function saveEvent(){
+  const name=document.getElementById('ne-name').value.trim();if(!name)return _showToast('Enter event name.', 2500, '#991b1b');
+  otherEvents.push({id:nextId.ev++,name,type:document.getElementById('ne-type').value,date:document.getElementById('ne-date').value,loc:document.getElementById('ne-loc').value||'TBD',stu:parseInt(document.getElementById('ne-stu').value)||0,notes:document.getElementById('ne-notes').value});
+  persistNextId();
+  persistEvents();
+  closeModal('newEvent');['ne-name','ne-loc','ne-stu','ne-notes','ne-date'].forEach(id=>document.getElementById(id).value='');
+  renderEvents();
+}
+
+function deleteEvent(id) {
+  const ev = otherEvents.find(e => e.id === id);
+  const _saved=[...otherEvents];
+  otherEvents = otherEvents.filter(e => e.id !== id);
+  persistEvents(); renderEvents();
+  _undoToast(ev ? `"${(ev.name||'').slice(0,40)}" removed` : 'Event removed', ()=>{otherEvents=_saved;persistEvents();renderEvents();});
+}
+
+
+// ============================================================
+// MEMBERS / STUDENTS — Full DECA Member Management System
+// ============================================================
+
+let memberTab = 'officers';
+
+const MEMBER_STATUS_MAP = {
+  active:      {label:'Active — Paid',    color:'#15803d', bg:'#dcfce7'},
+  unpaid:      {label:'Unpaid',           color:'#92400e', bg:'#fef3c7'},
+  prospective: {label:'Prospective',      color:'#0369a1', bg:'#e0f2fe'},
+  slc:         {label:'SLC Qualifier',    color:'#6d28d9', bg:'#ede9fe'},
+  icdc:        {label:'ICDC Qualifier',   color:'#92400e', bg:'#fef3c7'},
+  alumni:      {label:'Alumni',           color:'#475569', bg:'#f1f5f9'},
+  inactive:    {label:'Inactive',         color:'#9ca3af', bg:'#f9fafb'},
+};
+
+// Legacy fallback list — used only for a roster row whose `org` doesn't
+// (or no longer) match a configured organization. Every real lookup below
+// prefers ORGANIZATIONS[<org id>].officerPositions instead, so an
+// organization added via Settings → Organizations can define its own
+// officer titles instead of inheriting DECA's.
+const OFFICER_POSITIONS = ['President','Executive Vice President','Vice President of Finance',
+  'Vice President of Marketing','Vice President of Community','Vice President of Competition',
+  'Secretary','Treasurer','Parliamentarian','Reporter','Sergeant at Arms','Webmaster'];
+
+function _officerPositionsFor(orgId){ return (ORGANIZATIONS[orgId] && ORGANIZATIONS[orgId].officerPositions) || OFFICER_POSITIONS; }
+function isOfficer(s){ return _officerPositionsFor(s.org).includes(s.position); }
+
+// Rebuilds the organization tab bar from ORGANIZATIONS — called at boot and
+// again after an organization is imported/removed via Settings →
+// Organizations, so a newly added org gets a tab without any hardcoded
+// markup change. Mirrors renderScrCourseTabs() in the SCR competency tracker.
+function renderOrgTabs() {
+  const wrap = document.getElementById('org-tabs');
+  if (!wrap) return;
+  wrap.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) =>
+    `<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${id}" onclick="setOrgTab('${id}',this)">${o.icon||'🧩'} ${escH(o.name)}</button>`
+  ).join('');
+}
+
+function setOrgTab(orgId, btn) {
+  activeOrgId = orgId;
+  LS.set('lh_active_org', orgId);
+  document.querySelectorAll('#org-tabs .scr-tab').forEach(b => b.classList.remove('active'));
+  const tabBtn = btn || document.getElementById('orgtab-' + orgId);
+  if (tabBtn) tabBtn.classList.add('active');
+  _applyOrgUIVisibility();
+  renderStudents();
+  if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+}
+
+// Hides DECA-only UI (Qualifiers tab, SLC/ICDC stat tiles, Registration Info
+// tab — all deeply tied to DECA's specific competition-tier structure and
+// chapter-specific registration process) when a different organization is
+// active, and updates the Members header/FERPA text to the active org's
+// name. Called at boot and on every org-tab switch.
+function _applyOrgUIVisibility() {
+  const isDeca = activeOrgId === 'deca';
+  const org = ORGANIZATIONS[activeOrgId] || ORGANIZATIONS.deca;
+  const setDisp = (id, show) => { const el = document.getElementById(id); if (el) el.style.display = show ? '' : 'none'; };
+  setDisp('mtab-qualifiers', isDeca);
+  setDisp('mtab-registration', isDeca);
+  setDisp('mb-quals-strip', isDeca);
+  const titleEl = document.getElementById('members-title');
+  if (titleEl) titleEl.textContent = `${org.name} Members`;
+  const ferpaEl = document.getElementById('ferpa-org-name');
+  if (ferpaEl) ferpaEl.textContent = org.name;
+  // A DECA-only tab left active when switching away falls back to Officers
+  // rather than showing an empty/hidden tab as if it were still selected.
+  if (!isDeca && (memberTab === 'qualifiers' || memberTab === 'registration')) {
+    memberTab = 'officers';
+    document.querySelectorAll('#member-tab-bar .member-tab').forEach(b=>b.classList.remove('active'));
+    document.getElementById('mtab-officers')?.classList.add('active');
+  }
+}
+
+function setMemberTab(tab, btn){
+  memberTab = tab;
+  document.querySelectorAll('.member-tab').forEach(b=>b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  renderStudents();
+}
+
+function renderStudents(){
+  updateMemberStats();
+  // Say/Do Ledger leader-hub #1: same "last synced" indicator as
+  // renderOrgHub() — Members is the other place a co-advisor is actually
+  // working with this organization's synced data.
+  const syncBadgeEl = document.getElementById('member-sync-badge');
+  if (syncBadgeEl) syncBadgeEl.innerHTML = `<span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(activeOrgId)}</span>`;
+  const search = (document.getElementById('member-search')?.value||'').toLowerCase();
+  const content = document.getElementById('member-tab-content');
+  if(!content) return;
+
+  let list = students.filter(s => s.org === activeOrgId);
+  if(search) list = list.filter(s=>[s.first,s.last,s.position,s.competEvent,s.email,s.phone].join(' ').toLowerCase().includes(search));
+
+  if(memberTab === 'officers')     list = list.filter(s=>isOfficer(s) && s.memberStatus !== 'alumni');
+  if(memberTab === 'members')      list = list.filter(s=>s.memberStatus !== 'alumni');
+  if(memberTab === 'unpaid')       list = list.filter(s=>!s.paid && s.memberStatus !== 'alumni');
+  // "Qualifiers" is DECA's own competition-tier concept (SLC/ICDC memberStatus
+  // values) — the tab is hidden for other organizations (_applyOrgUIVisibility),
+  // but guard the filter too in case it's reached some other way.
+  if(memberTab === 'qualifiers')   list = list.filter(s=>['slc','icdc'].includes(s.memberStatus));
+  if(memberTab === 'alumni')       list = list.filter(s=>s.memberStatus === 'alumni');
+  if(memberTab === 'registration') { renderRegistrationTab(content); return; }
+
+  if(!list.length){
+    content.innerHTML = `<div style="text-align:center;padding:3rem;color:var(--muted)">
+      <div style="font-size:2.5rem;margin-bottom:.5rem">${memberTab==='unpaid'?'✅':'👤'}</div>
+      <div style="font-weight:700">${memberTab==='unpaid'?'All dues are current!':'No members in this category'}</div>
+    </div>`; return;
+  }
+
+  if(memberTab === 'alumni') { content.innerHTML = renderAlumniGrid(list); return; }
+  if(memberTab === 'officers') { content.innerHTML = renderOfficerGrid(list); return; }
+  content.innerHTML = renderMemberTable(list);
+}
+
+function updateMemberStats(){
+  const orgStudents = students.filter(s => s.org === activeOrgId);
+  const active = orgStudents.filter(s=>s.memberStatus!=='alumni');
+  const el = (id,v) => { const e=document.getElementById(id); if(e) e.textContent=v; };
+  el('mb-total',    active.length);
+  el('mb-officers', active.filter(s=>isOfficer(s)).length);
+  el('mb-paid',     active.filter(s=>s.paid).length);
+  el('mb-unpaid',   active.filter(s=>!s.paid).length);
+  el('mb-slc',      active.filter(s=>s.memberStatus==='slc').length);
+  el('mb-icdc',     active.filter(s=>s.memberStatus==='icdc').length);
+  el('mb-alumni',   orgStudents.filter(s=>s.memberStatus==='alumni').length);
+}
+
+function statusBadge(s){
+  const st = MEMBER_STATUS_MAP[s.memberStatus] || MEMBER_STATUS_MAP.active;
+  return `<span class="mb-status" style="color:${st.color};background:${st.bg}">${st.label}</span>`;
+}
+
+function positionBadge(pos){
+  const isOff = _officerPositionsFor(activeOrgId).includes(pos);
+  return `<span style="font-size:.68rem;font-weight:700;padding:1px 7px;border-radius:20px;background:${isOff?'#0f2044':'#f3f4f6'};color:${isOff?'#fff':'#555'}">${escH(pos)}</span>`;
+}
+
+function avatarBg(s){
+  const map = {President:'#0f2044','Executive Vice President':'#1a3560','Treasurer':'#d63d2f',Secretary:'#2a7a4b',Parliamentarian:'#854d0e',Reporter:'#0369a1','Sergeant at Arms':'#7c3aed',Webmaster:'#065f46'};
+  if(map[s.position]) return map[s.position];
+  if(s.position.startsWith('Vice President')) return '#1a5fb4';
+  return s.memberStatus==='alumni' ? '#64748b' : '#555';
+}
+
+function renderOfficerGrid(list){
+  // Sort by officer rank
+  const officerPositions = _officerPositionsFor(activeOrgId);
+  const rank = pos => { const i=officerPositions.indexOf(pos); return i<0?99:i; };
+  list = [...list].sort((a,b)=>rank(a.position)-rank(b.position));
+  return `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:.85rem">
+    ${list.map(s=>`
+    <div class="mb-card" style="${s.memberStatus==='slc'?'border:2px solid #7c3aed':s.memberStatus==='icdc'?'border:2px solid var(--gold)':''}">
+      <div style="padding:.85rem 1rem;display:flex;gap:.75rem;align-items:flex-start">
+        <div class="ava" style="width:44px;height:44px;font-size:1rem;flex-shrink:0;background:${avatarBg(s)}">${escH(s.first[0])}${escH(s.last[0])}</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-weight:700;font-size:.9rem">${escH(s.first)} ${escH(s.last)}</div>
+          <div style="margin:.2rem 0">${positionBadge(s.position)}</div>
+          <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.3rem">${statusBadge(s)}${s.paid?'<span style="font-size:.63rem;background:#dcfce7;color:#15803d;padding:1px 7px;border-radius:20px;font-weight:700">✓ Paid</span>':'<span style="font-size:.63rem;background:#fef9c3;color:#92400e;padding:1px 7px;border-radius:20px;font-weight:700">⚠ Dues Owed</span>'}</div>
+          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted);margin-top:.35rem">🏆 ${escH(s.competEvent)}</div>`:''}
+        </div>
+      </div>
+      <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.4rem;flex-wrap:wrap">
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.68rem;color:var(--navy)">✉ Member</a><span style="color:var(--border)">|</span>`:''}
+        ${s.parentEmail?`<a href="mailto:${escH(s.parentEmail)}" style="font-size:.68rem;color:var(--navy)">✉ Parent</a><span style="color:var(--border)">|</span>`:''}
+        ${s.phone?`<span style="font-size:.68rem;color:var(--muted)">${escH(s.phone)}</span><span style="color:var(--border)">|</span>`:''}
+        <button class="btn btn-outline btn-xs" style="font-size:.63rem;margin-left:auto" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
+        <button class="btn btn-danger btn-xs" style="font-size:.63rem" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
+      </div>
+      ${s.notes?`<div style="padding:.4rem 1rem .65rem;font-size:.72rem;color:var(--muted);font-style:italic">${escH(s.notes)}</div>`:''}    </div>`).join('')}
+  </div>`;
+}
+
+function renderMemberTable(list){
+  return `<div class="card" style="overflow-x:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.65rem;flex-wrap:wrap;gap:.4rem">
+      <div style="font-size:.72rem;color:var(--muted)">${list.length} member${list.length!==1?'s':''} shown</div>
+      <div style="display:flex;gap:.4rem">
+        <button class="btn btn-outline btn-xs" onclick="exportMemberCSV()">📋 Export CSV</button>
+        <button class="btn btn-outline btn-xs" onclick="openModal('memberReg')">📧 Reg Email</button>
+      </div>
+    </div>
+    <table>
+      <thead><tr><th>Member</th><th>Grade</th><th>Position</th><th>Event</th><th>Status</th><th>Dues</th><th>Contact</th><th></th></tr></thead>
+      <tbody>${list.map(s=>`<tr>
+        <td><div style="display:flex;align-items:center;gap:.5rem"><div class="ava" style="background:${avatarBg(s)};width:28px;height:28px;font-size:.7rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div><strong>${escH(s.first)} ${escH(s.last)}</strong></div></td>
+        <td style="font-size:.78rem">${s.grade?s.grade+'th':''}</td>
+        <td>${positionBadge(s.position)}</td>
+        <td style="font-size:.75rem;max-width:160px">${escH(s.competEvent)||'—'}</td>
+        <td>${statusBadge(s)}</td>
+        <td>${s.paid?'<span style="color:#15803d;font-size:.75rem;font-weight:700">✓ Paid</span>':'<span style="color:#d97706;font-size:.75rem;font-weight:700">⚠ Owed</span>'}</td>
+        <td style="font-size:.72rem">${s.email?`<a href="mailto:${escH(s.email)}" style="color:var(--navy)">${escH(s.email)}</a>`:''}</td>
+        <td style="white-space:nowrap">
+          <button class="btn btn-outline btn-xs" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
+          <button class="btn btn-danger btn-xs" onclick="delStu(${s.id})" aria-label="Remove ${escH(s.first)} ${escH(s.last)}">✕</button>
+        </td>
+      </tr>`).join('')}</tbody>
+    </table>
+  </div>`;
+}
+
+function renderAlumniGrid(list){
+  const prefLabel = {mentoring:'Open to Mentoring',newsletter:'Newsletter Only',events:'Event Invites',none:'No Preference',chapters:'Stay Connected'};
+  return `<div style="margin-bottom:.75rem">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem;margin-bottom:.85rem">
+      <div style="font-size:.82rem;color:var(--muted)">${list.length} alumni on record</div>
+      <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+        <button class="btn btn-gold btn-sm" onclick="loadAlumniExitTemplate()">📋 Exit Interview Email</button>
+        <button class="btn btn-outline btn-sm" onclick="openModal('memberReg')">📧 Alumni Outreach Email</button>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.85rem">
+    ${list.map(s=>`
+    <div class="mb-card" style="border-left:4px solid #94a3b8">
+      <div style="padding:.85rem 1rem;display:flex;gap:.75rem;align-items:flex-start">
+        <div class="ava" style="background:#64748b;width:42px;height:42px;font-size:.9rem;flex-shrink:0">${escH(s.first[0])}${escH(s.last[0])}</div>
+        <div style="flex:1">
+          <div style="font-weight:700">${escH(s.first)} ${escH(s.last)}</div>
+          <div style="font-size:.72rem;color:var(--muted);margin:.15rem 0">Class of ${s.alumniYear||'—'} · Former ${escH(s.position)}</div>
+          ${s.competEvent?`<div style="font-size:.72rem;color:var(--muted)">🏆 ${escH(s.competEvent)}</div>`:''}
+          ${s.alumniPref?`<div style="margin-top:.3rem"><span style="font-size:.65rem;background:#f1f5f9;border:1px solid #e2e8f0;color:#475569;padding:2px 7px;border-radius:20px;font-weight:600">${escH(prefLabel[s.alumniPref]||s.alumniPref)}</span></div>`:''}
+        </div>
+      </div>
+      <div style="padding:.5rem 1rem;border-top:1px solid var(--border);background:#faf9f6;display:flex;gap:.5rem;flex-wrap:wrap">
+        ${s.email?`<a href="mailto:${escH(s.email)}" style="font-size:.7rem;color:var(--navy)">✉ ${escH(s.email)}</a>`:'<span style="font-size:.7rem;color:var(--muted);font-style:italic">No email on file</span>'}
+        <button class="btn btn-outline btn-xs" style="margin-left:auto;font-size:.63rem" onclick="sendAlumniExitEmail(${s.id})">📋 Exit Interview</button>
+        <button class="btn btn-outline btn-xs" style="font-size:.63rem" onclick="openEditMember(${s.id})" aria-label="Edit ${escH(s.first)} ${escH(s.last)}">✏️</button>
+      </div>
+    </div>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderRegistrationTab(content){
+  content.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:1.1rem;align-items:start">
+
+    <!-- Left: Required Registration Fields -->
+    <div class="card" style="border-left:4px solid var(--navy)">
+      <div class="stitle" style="margin-bottom:.85rem">📋 DECA Registration — Required Info</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:.85rem">All fields below are needed to register members in DECA Connect and for field trip forms. Use the email generator to request this info from students and parents.</div>
+      <div style="display:flex;flex-direction:column;gap:.55rem">
+        ${[
+          {section:'Student Identity', fields:['Full legal name (as on ID)','Grade level','CCPS Student ID number','Date of birth']},
+          {section:'Contact Information', fields:['Student cell phone','Student CCPS email','Home address (street, city, zip)']},
+          {section:'Parent / Guardian', fields:['Parent/guardian full name','Parent email address','Parent cell phone','Emergency contact (if different)']},
+          {section:'DECA Specifics', fields:['Competitive event selection (primary)','Competitive event selection (partner/backup)','Officer position (if running)','Team event partner name (if applicable)']},
+          {section:'Logistics', fields:['Shirt size (XS–3XL)','Dietary restrictions / food allergies (note: detailed medical info collected via school forms, not here)']},
+          {section:'Membership Dues', fields:['$20 membership fee (cash or check to "Clover Hill DECA")','Due to Kristen Wettstein by November 1','State dues: $2 sent to Kristen W by Nov 1','Chapter membership form due December 1']},
+        ].map(sec=>`
+          <div>
+            <div style="font-size:.65rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--navy);margin-bottom:.3rem">${sec.section}</div>
+            ${sec.fields.map(f=>`<div style="display:flex;align-items:center;gap:.4rem;font-size:.76rem;padding:.18rem 0;border-bottom:1px dashed #eee">
+              <span style="color:#22c55e;font-size:.7rem">✓</span>${f}
+            </div>`).join('')}
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Right: Key Deadlines + Email Actions -->
+    <div style="display:flex;flex-direction:column;gap:1rem">
+      <div class="card" style="border-left:4px solid var(--gold)">
+        <div class="stitle" style="margin-bottom:.65rem">⏰ Registration Deadlines</div>
+        ${[
+          {date:'Nov 1',  label:'Dues paid to Kristen Wettstein ($2 state dues)'},
+          {date:'Dec 1',  label:'Chapter membership form submitted to advisor'},
+          {date:'Nov–Dec',label:'DECA Connect registration window (advisor submits)'},
+          {date:'Nov 17–25',label:'DLC Testing Window — must complete to compete'},
+          {date:'Feb 9–13',label:'SLC Testing Window — 70%+ required, no make-ups'},
+          {date:'Mar 2–13',label:'ICDC Registration — $155/student (qualifiers only)'},
+          {date:'Apr 1',  label:'ICDC full payment due'},
+        ].map(d=>`<div style="display:flex;gap:.6rem;align-items:flex-start;padding:.35rem 0;border-bottom:1px solid var(--border);font-size:.78rem">
+          <span style="font-family:'DM Mono',monospace;font-size:.7rem;background:var(--navy);color:var(--gold);padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0">${d.date}</span>
+          <span>${d.label}</span>
+        </div>`).join('')}
+      </div>
+
+      <div class="card" style="border-left:4px solid #22c55e">
+        <div class="stitle" style="margin-bottom:.7rem">✉️ Email Actions</div>
+        <div style="display:flex;flex-direction:column;gap:.45rem">
+          <button class="btn btn-primary" style="width:100%;text-align:left;font-size:.78rem" onclick="loadEmailTemplate('stu-registration-info');openEmailComposer(null,'students');setTimeout(()=>loadEmailTemplate('stu-registration-info'),80)">📋 Registration Info Request → Students</button>
+          <button class="btn btn-primary" style="width:100%;text-align:left;font-size:.78rem" onclick="openEmailComposer(null,'parents');setTimeout(()=>loadEmailTemplate('par-registration-info'),80)">📋 Registration Info Request → Parents</button>
+          <button class="btn btn-gold" style="width:100%;text-align:left;font-size:.78rem" onclick="loadAlumniExitTemplate()">🎓 Exit Interview + Alumni Outreach → Alumni</button>
+          <button class="btn btn-outline" style="width:100%;text-align:left;font-size:.78rem" onclick="openModal('memberReg')">⚙️ Custom Registration Email Generator</button>
+        </div>
+        <div style="margin-top:.85rem;padding:.65rem;background:#f0fdf4;border-radius:6px;font-size:.73rem;color:#166534;border:1px solid #86efac">
+          <strong>Tip:</strong> After generating the registration email, use the Email Composer to customize and send via your mail client. All contact info in member profiles is pre-filled from registration responses.
+        </div>
+      </div>
+
+      <div class="card" style="border-left:4px solid #7c3aed">
+        <div class="stitle" style="margin-bottom:.65rem">📊 Registration Status</div>
+        ${(() => {
+          const active = students.filter(s=>s.memberStatus!=='alumni');
+          const paid = active.filter(s=>s.paid).length;
+          const pct = active.length ? Math.round(paid/active.length*100) : 0;
+          const missing = active.filter(s=>!s.email||!s.parentEmail||!s.competEvent||!s.shirtSize);
+          return `
+          <div style="margin-bottom:.75rem">
+            <div style="display:flex;justify-content:space-between;font-size:.75rem;margin-bottom:.25rem"><span>Dues collected</span><span style="font-weight:700">${paid}/${active.length} (${pct}%)</span></div>
+            <div class="gbar"><div class="gfill" style="width:${pct}%"></div></div>
+          </div>
+          ${missing.length?`<div style="font-size:.75rem;color:#92400e;background:#fef3c7;border-radius:6px;padding:.55rem .7rem;border:1px solid #fde68a">
+            <strong>⚠ ${missing.length} member${missing.length>1?'s':''} missing info:</strong><br>
+            ${missing.map(s=>`${escH(s.first)} ${escH(s.last)} — ${[!s.email&&'email',!s.parentEmail&&'parent email',!s.competEvent&&'event',!s.shirtSize&&'shirt size'].filter(Boolean).join(', ')}`).join('<br>')}
+          </div>`:'<div style="font-size:.75rem;color:#15803d;background:#dcfce7;border-radius:6px;padding:.55rem .7rem;">✅ All member profiles are complete</div>'}`;
+        })()}
+      </div>
+    </div>
+  </div>`;
+}
+
+// Captured once at load, before any org-switching mutates these selects —
+// lets DECA's own Position/Membership Status dropdowns (written once as
+// static HTML, unchanged) be restored exactly when the active organization
+// switches back to 'deca' after showing another organization's simpler
+// generic options. See _populateMemberFormForOrg().
+const _DECA_ROLE_HTML   = document.getElementById('st-role')   ? document.getElementById('st-role').innerHTML   : '';
+const _DECA_STATUS_HTML = document.getElementById('st-status') ? document.getElementById('st-status').innerHTML : '';
+
+// Repopulates the org-dependent parts of the Add/Edit Member modal —
+// subtitle, officer-position options, membership-status options, and
+// whether the Competitive Event field applies — from ORGANIZATIONS[orgId].
+// DECA keeps its exact original dropdown content (officer titles + DECA's
+// specific competitive categories, all 6 status options including SLC/ICDC
+// qualifier); any other organization gets its own configured officer
+// titles, a plain "Member" option, the 5 non-competition statuses, and the
+// Competitive Event field hidden — not every club is structured around
+// individual competition categories the way DECA is.
+function _populateMemberFormForOrg(orgId) {
+  const org = ORGANIZATIONS[orgId] || ORGANIZATIONS.deca;
+  const roleSel   = document.getElementById('st-role');
+  const compWrap  = document.getElementById('st-compet-wrap');
+  const statusSel = document.getElementById('st-status');
+  if (orgId === 'deca') {
+    if (roleSel)   roleSel.innerHTML   = _DECA_ROLE_HTML;
+    if (statusSel) statusSel.innerHTML = _DECA_STATUS_HTML;
+    if (compWrap)  compWrap.style.display = '';
+    // DECA's own subtitle is already kept live off PROFILE.school by
+    // _applyProfileToStaticDOM() — don't fight that binding here.
+    _applyProfileToStaticDOM();
+  } else {
+    const subEl = document.getElementById('addstu-modal-subtitle');
+    if (subEl) subEl.textContent = org.subtitle || org.name;
+    if (roleSel)   roleSel.innerHTML   = org.officerPositions.map(p=>`<option>${escH(p)}</option>`).join('') + '<option>Member</option>';
+    if (statusSel) statusSel.innerHTML =
+      '<option value="active">Active — Paid</option>' +
+      '<option value="unpaid">Unpaid — Dues Owed</option>' +
+      '<option value="prospective">Prospective</option>' +
+      '<option value="alumni">Alumni</option>' +
+      '<option value="inactive">Inactive</option>';
+    if (compWrap)  compWrap.style.display = 'none';
+  }
+}
+
+function saveStudent(){
+  const first = document.getElementById('st-first').value.trim();
+  const last  = document.getElementById('st-last').value.trim();
+  if(!first||!last) return _showToast('Enter student name.', 2500, '#991b1b');
+  const s = {
+    id: nextId.st++, first, last, org: activeOrgId,
+    grade:        parseInt(document.getElementById('st-grade')?.value)||null,
+    position:     document.getElementById('st-role').value,
+    competEvent:  document.getElementById('st-compet')?.value||'',
+    memberStatus: document.getElementById('st-status')?.value||'active',
+    paid:         document.getElementById('st-paid')?.value==='true',
+    duesDate:     document.getElementById('st-duesdate')?.value||'',
+    email:        document.getElementById('st-email')?.value.trim()||'',
+    phone:        document.getElementById('st-phone')?.value.trim()||'',
+    parentEmail:  document.getElementById('st-pemail')?.value.trim()||'',
+    parentPhone:  document.getElementById('st-pphone')?.value.trim()||'',
+    address:      document.getElementById('st-address')?.value.trim()||'',
+    shirtSize:    document.getElementById('st-shirt')?.value||'',
+    dietaryNeeds: document.getElementById('st-dietary')?.value.trim()||'',
+    ev:           parseInt(document.getElementById('st-event')?.value)||null,
+    notes:        document.getElementById('st-notes').value,
+  };
+  students.push(s);
+  persistNextId();
+  persistStudents();
+  closeModal('addStudent');
+  renderStudents();
+  _showToast('✅ Member added');
+}
+
+function saveStudentAndEmail(){
+  saveStudent();
+  const s = students[students.length-1];
+  openEmailComposerForMember(s);
+}
+
+function openEditMember(id){
+  const s = students.find(x=>x.id===id);
+  if(!s) return;
+  openModal_addStudent();
+  setTimeout(()=>{
+    // Repopulate for the MEMBER'S OWN org, not whichever org tab happens to
+    // be active right now — editing someone shouldn't depend on which tab
+    // you last clicked.
+    _populateMemberFormForOrg(s.org || 'deca');
+    document.getElementById('addstu-modal-title').textContent = 'Edit Member';
+    document.getElementById('addstu-save-btn').textContent = 'Save Changes';
+    document.getElementById('addstu-save-btn').onclick = ()=>{ updateStudent(id); };
+    const set = (el,v) => { const e=document.getElementById(el); if(e&&v!=null) e.value=v; };
+    set('st-first',s.first); set('st-last',s.last); set('st-grade',s.grade);
+    set('st-role',s.position); set('st-compet',s.competEvent); set('st-status',s.memberStatus);
+    set('st-paid',s.paid?'true':'false'); set('st-duesdate',s.duesDate);
+    set('st-email',s.email); set('st-phone',s.phone);
+    set('st-pemail',s.parentEmail); set('st-pphone',s.parentPhone);
+    set('st-address',s.address); set('st-shirt',s.shirtSize);
+    set('st-dietary',s.dietaryNeeds);
+    // FIXED: openModal_addStudent() (called above) already populates
+    // st-event's options from trips+otherEvents, but nothing ever set its
+    // value back to the member's own s.ev — every edit silently reset a
+    // student's Assigned Trip/Event to "— None —" unless the person editing
+    // happened to re-pick it, even when they were only fixing a typo in the
+    // phone number.
+    set('st-event',s.ev);
+    set('st-notes',s.notes);
+  }, 80);
+}
+
+function updateStudent(id){
+  const s = students.find(x=>x.id===id);
+  if(!s) return;
+  s.first       = document.getElementById('st-first').value.trim();
+  s.last        = document.getElementById('st-last').value.trim();
+  s.grade       = parseInt(document.getElementById('st-grade')?.value)||null;
+  s.position    = document.getElementById('st-role').value;
+  s.competEvent = document.getElementById('st-compet')?.value||'';
+  s.memberStatus= document.getElementById('st-status')?.value||'active';
+  s.paid        = document.getElementById('st-paid')?.value==='true';
+  s.duesDate    = document.getElementById('st-duesdate')?.value||'';
+  s.email       = document.getElementById('st-email')?.value.trim()||'';
+  s.phone       = document.getElementById('st-phone')?.value.trim()||'';
+  s.parentEmail = document.getElementById('st-pemail')?.value.trim()||'';
+  s.parentPhone = document.getElementById('st-pphone')?.value.trim()||'';
+  s.address     = document.getElementById('st-address')?.value.trim()||'';
+  s.shirtSize   = document.getElementById('st-shirt')?.value||'';
+  s.dietaryNeeds= document.getElementById('st-dietary')?.value.trim()||'';
+  // FIXED: paired with the openEditMember() fix above — updateStudent()
+  // never read st-event back into s.ev, so even after that field displayed
+  // correctly on open, saving the edit dropped it regardless.
+  s.ev          = parseInt(document.getElementById('st-event')?.value)||null;
+  s.notes       = document.getElementById('st-notes').value;
+  persistStudents(); // was missing — edits (dues paid, contact info, etc.) never survived a reload
+  closeModal('addStudent');
+  renderStudents();
+  _showToast('✅ Member updated');
+}
+
+function delStu(id){
+  const stu = students.find(s=>s.id===id);
+  const _saved=[...students];
+  students=students.filter(s=>s.id!==id);
+  persistStudents(); renderStudents();
+  _undoToast(stu ? `${stu.first} ${stu.last} removed` : 'Member removed',()=>{students=_saved;persistStudents();renderStudents();});
+}
+
+// ── Parent Communication Log ──────────────────────────────────────────────────
+function openModal_addStudent(){
+  document.getElementById('st-event').innerHTML = '<option value="">— None —</option>' +
+    [...trips.map(t=>({id:t.id,name:t.name})),...otherEvents.map(e=>({id:e.id,name:e.name}))].map(e=>`<option value="${escH(e.id)}">${escH(e.name)}</option>`).join('');
+  _populateMemberFormForOrg(activeOrgId);
+  const org = ORGANIZATIONS[activeOrgId] || ORGANIZATIONS.deca;
+  document.getElementById('addstu-modal-title').textContent = `Register ${org.name} Member`;
+  document.getElementById('addstu-save-btn').textContent = 'Register Member';
+  document.getElementById('addstu-save-btn').onclick = saveStudent;
+  openModal('addStudent');
+}
+
+function openMemberRegistrationModal(){ openModal('memberReg'); }
+
+function exportMemberCSV(){
+  // Scoped to the active organization — otherwise every org's rosters
+  // would be exported mixed together in one CSV with no way to tell them
+  // apart (no `org`/organization column in the export).
+  const active = students.filter(s=>s.org===activeOrgId && s.memberStatus!=='alumni');
+  const headers = ['Last','First','Grade','Position','Event','Status','Paid','Email','Phone','Parent Email','Parent Phone','Shirt','Dietary'];
+  const rows = active.map(s=>[s.last,s.first,s.grade,s.position,s.competEvent,s.memberStatus,s.paid?'Yes':'No',s.email,s.phone,s.parentEmail,s.parentPhone,s.shirtSize,s.dietaryNeeds].map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','),...rows].join('\n');
+  navigator.clipboard.writeText(csv).then(()=>_showToast('📋 Member CSV copied to clipboard')).catch(()=>{ const ta=document.createElement('textarea');ta.value=csv;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);_showToast('📋 Copied to clipboard'); });
+}
+
+// ── Registration & Alumni Email Helpers ──────────────────────────────────────
+
+function openEmailComposerForMember(s){
+  setEmailTab('parents', document.getElementById('etab-parents'));
+  document.getElementById('email-to').value = s.parentEmail || '';
+  document.getElementById('email-cc').value = s.email || '';
+  const _memberOrgName = (ORGANIZATIONS[s.org]||ORGANIZATIONS.deca).name;
+  document.getElementById('email-subject').value = `${_memberOrgName} Registration Info Needed — ${s.first} ${s.last}`;
+  document.getElementById('email-body').value =
+`Dear ${s.first} ${s.last}'s Family,
+
+Welcome to Clover Hill DECA! To complete ${s.first}'s membership registration, I need a few details. Please reply with the following information by [DEADLINE]:
+
+STUDENT INFORMATION:
+• Full legal name: ${s.first} ${s.last}
+• Grade: ${s.grade||'[Please confirm]'}
+• CCPS Student ID: [Needed]
+• Date of birth: [Needed]
+• Student cell: ${s.phone||'[Needed]'}
+• Student email: ${s.email||'[Needed]'}
+• Home address: ${s.address||'[Needed]'}
+
+PARENT / GUARDIAN:
+• Parent name: [Needed]
+• Parent email: ${s.parentEmail||'[Needed]'}
+• Parent cell: ${s.parentPhone||'[Needed]'}
+
+DECA SPECIFICS:
+• Competitive event (primary): ${s.competEvent||'[Please select from DECA event list]'}
+• Partner's name (if team event): [If applicable]
+• Shirt size: ${s.shirtSize||'[XS / S / M / L / XL / 2XL / 3XL]'}
+• Dietary restrictions/allergies: ${s.dietaryNeeds||'None / [Please specify]'}
+• Emergency contact on file: [Confirm with front office if needed]
+
+DUES:
+$20 membership fee is due to ${PROFILE.courtesyName} by [DATE].
+Checks payable to "${PROFILE.chapterName}."
+
+Questions? Reply to this email or stop by Room [#].
+
+Thank you!
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}`;
+  openModal('emailComposer');
+}
+
+function loadRegTemplate(){
+  const audience = document.getElementById('reg-audience')?.value || 'parent';
+  const context  = document.getElementById('reg-context')?.value  || 'new';
+  const deadline = document.getElementById('reg-deadline')?.value ? fd(document.getElementById('reg-deadline').value) : '[DATE]';
+  const addl     = document.getElementById('reg-addl')?.value.trim() || '';
+
+  const contextLabels = {new:'new membership registration',renewal:'annual membership renewal',conference:'conference participation',icdc:'ICDC registration'};
+  const tab = audience==='parent' ? 'parents' : 'students';
+
+  closeModal('memberReg');
+  setEmailTab(tab, document.getElementById('etab-'+tab));
+  document.getElementById('email-to').value   = audience==='student'?'DECA Members':audience==='parent'?'DECA Families':'DECA Members; DECA Families';
+  document.getElementById('email-subject').value = `DECA Registration — Information Needed by ${deadline}`;
+  document.getElementById('email-body').value =
+`Dear ${audience==='student'?'DECA Team':'DECA Families'},
+
+I am reaching out to collect the information needed for ${contextLabels[context]||'DECA registration'}. Please complete and return all items below by ${deadline}.
+
+REQUIRED INFORMATION:
+□ Full legal name (as on school ID)
+□ Grade level
+□ CCPS Student ID number
+□ Date of birth
+□ Student cell phone
+□ Student CCPS email
+□ Home address (street, city, state, zip)
+□ Parent/guardian full name
+□ Parent email address
+□ Parent cell phone
+□ Emergency contact name + phone (if different from parent)
+
+DECA-SPECIFIC:
+□ Competitive event selection (primary)
+□ Competitive event selection (partner or backup, if applicable)
+□ Team event partner name (if applicable)
+□ Shirt size (XS / S / M / L / XL / 2XL / 3XL)
+□ Dietary restrictions or food allergies (or "none")
+□ Dietary restrictions / allergies noted with chaperones
+
+MEMBERSHIP DUES:
+□ $20 membership fee — cash or check payable to "${PROFILE.chapterName}"
+□ $2 state dues — due to Kristen Wettstein by November 1
+□ Signed membership agreement form${addl?'\n\nADDITIONAL NOTES:\n'+addl:''}
+
+Questions? Contact me directly or stop by Room [#].
+
+Thank you,
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}`;
+  openModal('emailComposer');
+}
+
+async function generateRegEmail(){
+  const audience = document.getElementById('reg-audience')?.value || 'parent';
+  const context  = document.getElementById('reg-context')?.value  || 'new';
+  const deadline = document.getElementById('reg-deadline')?.value ? fd(document.getElementById('reg-deadline').value) : 'soon';
+  const addl     = document.getElementById('reg-addl')?.value.trim() || '';
+  const status   = document.getElementById('email-ai-status');
+  closeModal('memberReg');
+  document.getElementById('email-ai-prompt').value = `Write a ${audience==='student'?'student-facing':'parent-facing'} DECA registration information request email for ${context} with deadline ${deadline}. ${addl} The email should be warm, organized, and include ALL required fields for DECA Connect registration and field trip forms.`;
+  setEmailTab(audience==='parent'?'parents':'students', document.getElementById('etab-'+(audience==='parent'?'parents':'students')));
+  openModal('emailComposer');
+  await aiComposeEmail();
+}
+
+function loadAlumniExitTemplate(){
+  setEmailTab('students', document.getElementById('etab-students'));
+  document.getElementById('email-to').value = 'DECA Alumni';
+  document.getElementById('email-subject').value = `DECA Exit Interview & Alumni Connection — ${PROFILE.chapterName}`;
+  document.getElementById('email-body').value =
+`Dear [Student Name],
+
+Congratulations on completing your ${PROFILE.chapterName} journey! Whether you competed at districts, state, or even ICDC — you made our chapter better, and we are proud of everything you accomplished.
+
+As you move forward, I would love to take a few minutes to hear your thoughts on your experience and stay connected with you as a DECA alum.
+
+─────────────────────────────
+EXIT INTERVIEW — A Few Questions
+─────────────────────────────
+
+1. What was your most meaningful DECA experience or memory?
+
+2. What is one thing the chapter does really well that we should protect and continue?
+
+3. What is one thing you wish had been different — what could we improve for future members?
+
+4. What skills did DECA help you develop that you feel most prepared you for life after high school?
+
+5. Is there anything you wish you had known as a freshman/first-year member that you know now?
+
+─────────────────────────────
+ALUMNI CONNECTION
+─────────────────────────────
+
+Please let me know how you'd like to stay connected with ${PROFILE.chapterName}:
+
+□ Yes — I am open to mentoring current members (job interview prep, event practice, general advice)
+□ Yes — I would like to receive the DECA chapter newsletter and updates
+□ Yes — I would like to be invited back for alumni events, banquets, or special recognition
+□ Yes — I am interested in being a guest speaker or judge at a chapter event
+□ No preference — feel free to reach out occasionally
+
+CURRENT CONTACT INFO (post-graduation):
+• Personal email: ___________________________
+• Personal cell: ___________________________
+• College / employer: ___________________________
+• Graduating class / year: ___________________________
+• Major or career path: ___________________________
+
+─────────────────────────────
+
+You can reply directly to this email or fill out the Google Form at [LINK]. This takes less than 5 minutes and genuinely helps us grow the program for the next generation of DECA members.
+
+Thank you for everything you gave to this chapter. Once DECA, always DECA. 🏆
+
+With pride,
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}
+Instagram: @cloverhillsdeca`;
+  openModal('emailComposer');
+}
+
+function sendAlumniExitEmail(studentId){
+  const s = students.find(x=>x.id===studentId);
+  if(!s) return;
+  setEmailTab('students', document.getElementById('etab-students'));
+  document.getElementById('email-to').value = s.email || '';
+  document.getElementById('email-subject').value = `DECA Exit Interview & Alumni Connection — ${s.first}, We'd Love to Hear from You`;
+  // Load template then personalize
+  loadAlumniExitTemplate();
+  // Personalize greeting
+  const body = document.getElementById('email-body');
+  body.value = body.value.replace('Dear [Student Name],', `Dear ${s.first},`);
+  document.getElementById('email-to').value = s.email || '';
+  openModal('emailComposer');
+}
+
+// ── Add registration email templates to EMAIL_TEMPLATES ───────────────────────
+// (Appended to students and parents arrays)
+if(typeof EMAIL_TEMPLATES !== 'undefined'){
+  EMAIL_TEMPLATES.students.push(
+    { id:'stu-registration-info', label:'📋 Registration Info Request',
+      subject: ()=>'DECA Registration — Please Submit Your Info',
+      body: ()=>`Hi DECA Team,
+
+It's time to get your membership registration finalized for the 25-26 season! Please make sure I have all of the information below on file.
+
+WHAT I NEED FROM YOU:
+□ Full legal name + CCPS Student ID
+□ Grade level + home address
+□ Student cell + student email
+□ Parent/guardian name, email, and cell
+□ Your competitive event selection (primary)
+□ Partner name (if team event)
+□ Shirt size (XS / S / M / L / XL / 2XL / 3XL)
+□ Dietary restrictions / allergies (or "none")
+□ Dietary restrictions / allergies noted with chaperones
+
+DUES:
+$20 membership fee is due by [DATE].
+Cash or check payable to "${PROFILE.chapterName}."
+$2 state dues due to Kristen Wettstein by November 1.
+
+Missing info = missing from event rosters and field trip forms.
+Please get this to me ASAP — don't miss your spot!
+
+${PROFILE.courtesyName}
+${PROFILE.phone} | ${PROFILE.email}`
+    },
+    { id:'stu-exit-interview', label:'🎓 Exit Interview (Alumni)',
+      subject: ()=>'DECA Exit Interview & Alumni Connection',
+      body: ()=>{ loadAlumniExitTemplate(); return document.getElementById('email-body')?.value||''; }
+    }
+  );
+  EMAIL_TEMPLATES.parents.push(
+    { id:'par-registration-info', label:'📋 Registration Info Request',
+      subject: ()=>'DECA Registration — Student Information Needed',
+      body: ()=>`Dear DECA Families,
+
+To complete your student's DECA membership registration for the 25-26 season, I need the following information by [DATE].
+
+STUDENT INFORMATION:
+□ Full legal name (as on school ID)
+□ CCPS Student ID number
+□ Date of birth
+□ Grade level + home address
+□ Student cell phone + CCPS email
+
+PARENT / GUARDIAN:
+□ Parent/guardian full name
+□ Parent email address
+□ Parent cell phone
+□ Emergency contact name + number (if different)
+
+DECA SPECIFICS:
+□ Competitive event preference (I'll confirm availability)
+□ Team event partner name (if applicable)
+□ Shirt size (XS / S / M / L / XL / 2XL / 3XL)
+□ Dietary restrictions / food allergies (or "none")
+□ Dietary restrictions / allergies noted with chaperones
+
+MEMBERSHIP DUES:
+$20 due to ${PROFILE.courtesyName} by [DATE] (cash or check — "${PROFILE.chapterName}")
+
+This information is used for DECA Connect registration, field trip permission forms, and emergency contacts at all events. Having accurate, complete records is essential for your student's participation.
+
+Please reply to this email or have your student deliver the information directly.
+
+Thank you,
+${PROFILE.name}
+${PROFILE.title} — ${PROFILE.school}
+${PROFILE.phone} | ${PROFILE.email}`
+    }
+  );
+}
+
+// ============================================================
+// GOALS
+// ============================================================
+function renderGoals(){
+  // ── Group goals by category ───────────────────────────────────────────────
+  const grouped = {};
+  const catOrder = ['Leadership Development','DECA Competition','Field Trip','Community Service','Membership Growth','Fundraising'];
+  goals.forEach(g => {
+    if (!grouped[g.cat]) grouped[g.cat] = [];
+    grouped[g.cat].push(g);
+  });
+
+  let html = '';
+  const orderedCats = [...catOrder.filter(c=>grouped[c]), ...Object.keys(grouped).filter(c=>!catOrder.includes(c))];
+
+  orderedCats.forEach(cat => {
+    const catGoals = grouped[cat];
+    html += `<div style="margin-bottom:1.25rem">
+      <div style="font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:${gcColors[cat]||'#555'};margin-bottom:.5rem;display:flex;align-items:center;gap:.5rem">
+        ${cat}
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:.65rem">
+        ${catGoals.map(g => {
+          const overdue = g.date && new Date(g.date) < new Date() && g.progress < 100;
+          const done = g.progress >= 100;
+          const border = done ? '#15803d' : overdue ? 'var(--red)' : 'var(--border)';
+          return `<div style="border:1.5px solid ${border};border-radius:8px;padding:.9rem 1rem;background:${done?'#f0fdf4':overdue?'#fff8f8':'#fff'}">
+            <div style="display:flex;justify-content:space-between;margin-bottom:.28rem">
+              <span style="font-size:.62rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:${gcColors[g.cat]||'#555'}">${g.cat}</span>
+              <span style="font-family:'DM Mono',monospace;font-size:.68rem;color:${overdue&&!done?'var(--red)':'var(--muted)'}">${g.date?fd(g.date):''}</span>
+            </div>
+            <div style="font-weight:700;font-size:.86rem;margin-bottom:.22rem;color:var(--navy)">${done?'✅ ':overdue?'⚠️ ':''}${g.title}</div>
+            ${g.desc?`<div style="font-size:.73rem;color:#666;margin-bottom:.42rem;line-height:1.45">${g.desc}</div>`:''}
+            <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.4rem">
+              <div class="gbar" style="flex:1"><div class="gfill" style="width:${g.progress}%;background:${done?'#15803d':overdue?'var(--red)':'var(--navy)'}"></div></div>
+              <span style="font-family:'DM Mono',monospace;font-size:.72rem;min-width:30px;color:var(--navy);text-align:right">${g.progress}%</span>
+            </div>
+            ${g.updatedAt?`<div style="font-size:.63rem;color:var(--muted);margin-bottom:.25rem">Updated ${new Date(g.updatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`:''}
+            <div style="display:flex;align-items:center;gap:.4rem">
+              <input type="range" min="0" max="100" value="${g.progress}" style="flex:1;cursor:pointer" oninput="updGoal(${g.id},this.value)">
+              <button class="btn btn-danger btn-xs" onclick="delGoal(${g.id})" title="Remove goal" aria-label="Remove goal">✕</button>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('goals-grid').innerHTML = html || '<div style="text-align:center;padding:2rem;color:var(--muted);font-size:.82rem">No goals yet. Click + Add Goal to get started.</div>';
+}
+function updGoal(id,val){const g=goals.find(g=>g.id===id);if(g){g.progress=parseInt(val);g.updatedAt=new Date().toISOString();}persistGoals();renderGoals();refreshNextAction();}
+function delGoal(id){
+  const g = goals.find(g=>g.id===id);
+  const _saved=[...goals];
+  goals=goals.filter(g=>g.id!==id);
+  persistGoals(); renderGoals();
+  _undoToast(g ? `"${g.title}" removed` : 'Goal removed',()=>{goals=_saved;persistGoals();renderGoals();refreshNextAction();});
+  refreshNextAction();
+}
+// FIXED: the "+ Add Goal" button used to call openModal('addGoal') directly,
+// so gl-date/gl-cat kept whatever the previous goal (or a cancelled draft)
+// last had — a Target Date left over from a goal added weeks ago silently
+// carried onto the next one unless the user happened to overwrite it.
+function openAddGoalModal(){
+  document.getElementById('gl-date').value = '';
+  document.getElementById('gl-cat').selectedIndex = 0;
+  openModal('addGoal');
+}
+function saveGoal(){
+  const title=document.getElementById('gl-title').value.trim();if(!title)return _showToast('Enter goal title.', 2500, '#991b1b');
+  goals.push({id:nextId.gl++,title,cat:document.getElementById('gl-cat').value,date:document.getElementById('gl-date').value,progress:parseInt(document.getElementById('gl-prog').value)||0,desc:document.getElementById('gl-desc').value,updatedAt:new Date().toISOString()});
+  persistGoals(); persistNextId();
+  closeModal('addGoal');['gl-title','gl-desc'].forEach(id=>document.getElementById(id).value='');document.getElementById('gl-prog').value=0;document.getElementById('gl-pct').textContent='0%';
+  renderGoals(); refreshNextAction();
+}
+
+
+// ============================================================

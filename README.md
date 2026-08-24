@@ -63,11 +63,13 @@ missing data files, the `lesson_unit_id` column, and 6 of 7 missing Module
 2 scripts) and resolved a second, genuine numbering collision inside
 Module 2 itself. Since then, nine further rounds of dedicated UI/UX
 auditing (see
-[`cas-ccps/README.md`](./cas-ccps/README.md#uiux-hardening--rounds-19))
+[`cas-ccps/HISTORY.md`](./cas-ccps/HISTORY.md#uiux-hardening--rounds-19))
 have fixed real bugs including a CRITICAL silent date-type-coercion bug
 that stopped the nightly warm-up queue from ever matching a lesson, and a
 double-counting bug in the warm-up readiness dashboard. See
-[`cas-ccps/README.md`](./cas-ccps/README.md) for the full record.
+[`cas-ccps/README.md`](./cas-ccps/README.md) (current state) and
+[`cas-ccps/HISTORY.md`](./cas-ccps/HISTORY.md) (process history) for the
+full record.
 
 ## [`leader-hub/`](./leader-hub/) — LeaderHub
 
@@ -79,7 +81,7 @@ school store, E-Sports, field trips). Client-side only — no server, no
 shared data model with `kos-personal/` or `cas-ccps/`. It also went
 through the same nine rounds of UI/UX auditing as the two systems above —
 see
-[`leader-hub/README.md`](./leader-hub/README.md#uiux-hardening--rounds-19)
+[`leader-hub/HISTORY.md`](./leader-hub/HISTORY.md#uiux-hardening--rounds-19)
 for its record, including the most severe bug found in any round: 8
 places where raw JavaScript was rendering as visible garbage text because
 it sat outside any `<script>` tag, silently disabling a rating widget
@@ -145,6 +147,31 @@ fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
 (weekly npm + GitHub Actions updates) and `.github/workflows/codeql.yml`
 (CodeQL code scanning) round out the same "is the repo's own machinery
 healthy" floor.
+
+## [`tools/leaderhub-build/`](./tools/leaderhub-build/) — assembles `student-leader-hub.html`
+
+`leader-hub/student-leader-hub.html` (~22,000 lines) is generated from 14
+ordered fragments under `leader-hub/src/` — edit the fragment, run `node
+tools/leaderhub-build/build.js`, never hand-edit the assembled file
+directly. `--check` mode builds in memory and diffs against the committed
+file for a CI drift gate (external product review, Finding 4 / "this
+quarter" maintainability fix). See
+[`tools/leaderhub-build/README.md`](./tools/leaderhub-build/README.md).
+
+## [`tests/`](./tests/) — regression coverage for the GAS systems
+
+`node --test tests/leaderhub/*.test.js tests/tools/*.test.js
+tests/cas-ccps/*.test.js` (`npm test`) runs real Node-`vm`-sandboxed
+coverage against the actual `.gs`/`.js` source via
+[`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
+`tests/cas-ccps/` covers the SCR suggestion engine's threshold/state
+machine, the student-context aggregator, `getCompetencyTextMap_`'s
+cache-with-fail-open behavior, Ledger retention, and the opt-in Flow 2
+direct-evaluation escape hatch; `tests/leaderhub/` covers escaping/XSS
+guards and the pacing/calendar helpers; `tests/tools/` covers the lint
+tools and the `leaderhub-build` drift gate. `kos-personal/`'s one existing
+test file (`inference-service/test/credits.test.js`) is not yet wired
+into this script — see that system's own README.
 
 ## Still pending
 
