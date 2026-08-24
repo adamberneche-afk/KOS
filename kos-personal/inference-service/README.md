@@ -78,3 +78,12 @@ anywhere in the `.gs` files and that wiring `10_Turnstile.gs` to submit
 jobs here was still unbuilt — that's now stale; the wiring above is live.
 Treat `MANAGED_SERVICE` mode today as fully wired end to end, gated
 behind `CFG.INFERENCE_MODE`, off by default.
+
+**The Auditor accountability gate applies here too.** `processInferenceQueue()`'s
+check of a payload's `auditor_sign_off` (see `CURATOR_PROMPT.md` Rule 8)
+happens entirely on the `.gs` side, after this service's job comes back
+— it doesn't know or care which engine produced the JSON. If this
+service's own Claude-based prompt (`src/inference.js`) is ever extended
+with a similar self-verification pass, the same contract applies: merge
+the Auditor's output into the one JSON object this service writes, never
+append it as a second one.
