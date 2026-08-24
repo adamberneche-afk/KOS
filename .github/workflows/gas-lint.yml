@@ -58,6 +58,76 @@ jobs:
           bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
           ./actionlint
 
+  # This repo has six READMEs, not one (root plus one per top-level system) —
+  # a straight port of a single-README docs-check would be wrong here: a new
+  # file under cas-ccps/ needs cas-ccps/README.md touched, not just any
+  # README in the repo. Ported from Mothership's own docs-check job
+  # (.github/workflows/ci.yml there) with that mapping added.
+  docs-check:
+    runs-on: ubuntu-latest
+    # Only meaningful against a PR's own diff - the "did docs come along
+    # with this new file" question doesn't apply to a push/workflow_dispatch
+    # run, which has no base to diff against.
+    if: github.event_name == 'pull_request'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Full history, not the default shallow clone - needed to diff
+          # reliably against the PR's base sha below.
+          fetch-depth: 0
+
+      - name: Require the matching system's README updated alongside new capability files
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          set -e
+          if echo "$PR_TITLE $PR_BODY" | grep -qi '\[skip-docs-check\]'; then
+            echo "Skip marker found - not requiring a README update for this PR."
+            exit 0
+          fi
+
+          added_files=$(git diff --diff-filter=A --name-only "$BASE_SHA" "$HEAD_SHA")
+          changed_files=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
+
+          fail=0
+          for dir in cas-ccps kos-personal leader-hub drive-curation meta; do
+            new_in_dir=$(echo "$added_files" | grep -E "^${dir}/" | grep -v "^${dir}/README\.md$" || true)
+            if [ -z "$new_in_dir" ]; then continue; fi
+            if echo "$changed_files" | grep -qx "${dir}/README.md"; then
+              echo "New file(s) under $dir/ and $dir/README.md was updated in the same PR:"
+              echo "$new_in_dir"
+              continue
+            fi
+            echo "::error::This PR adds new file(s) under $dir/ but never touches $dir/README.md:"
+            echo "$new_in_dir"
+            fail=1
+          done
+
+          # A new top-level file (not inside any of the five systems above)
+          # is checked against the root README instead.
+          new_at_root=$(echo "$added_files" | grep -vE "^(cas-ccps|kos-personal|leader-hub|drive-curation|meta)/" | grep -v '^README\.md$' || true)
+          if [ -n "$new_at_root" ]; then
+            if echo "$changed_files" | grep -qx 'README.md'; then
+              echo "New top-level file(s) and README.md was updated in the same PR:"
+              echo "$new_at_root"
+            else
+              echo "::error::This PR adds new top-level file(s) but never touches README.md:"
+              echo "$new_at_root"
+              fail=1
+            fi
+          fi
+
+          if [ "$fail" = "1" ]; then
+            echo ""
+            echo "Update the matching README to describe what this adds, or add '[skip-docs-check]' to the PR title/description if this genuinely needs no documentation."
+            exit 1
+          fi
+
   # kos-personal/inference-service is the one real Node service in this
   # repo (Postgres + Stripe + OAuth) and, until this job, had zero
   # automated tests and zero CI coverage of any kind — nothing here
