@@ -176,4 +176,22 @@ function getConfig_() {
 // =============================================================================
 
 // Extend tabs map with RubricQueue (add this line to getConfig_() tabs object)
+
+// =============================================================================
+// CLIENT_ESC_JS — exact source of the client-side esc() HTML-escaping
+// helper, shared verbatim by every dashboard's inline <script> block so
+// the three copies (07_TeacherDashboard.js's buildDashboardHtml_() and
+// buildMyContextHtml_(), and 13_StudentDashboard.js's
+// buildStudentDashboardHtml_()) can never drift out of sync again — see
+// meta/CODEBASE_REVIEW.md's P2 finding #5 (the two functions once
+// disagreed on newline handling; a prior audit fixed the divergence, but
+// three independent hardcoded copies meant nothing stopped it recurring).
+// Interpolate as `${CLIENT_ESC_JS}` inside a template literal's own
+// <script> block — this file is already on every cas-ccps GAS project's
+// file list ("INCLUDE IN: Every Apps Script project in this system",
+// above), so no clasp/manifest change is needed to reach any of them.
+// =============================================================================
+const CLIENT_ESC_JS = `function esc(s) {
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}`;
 // rubricQueue: "RubricQueue"  ← included in getConfig_() above
