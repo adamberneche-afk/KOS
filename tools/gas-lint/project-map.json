@@ -31,6 +31,8 @@
       "cas-ccps/scripts/04_Form2_TurnInGate.js",
       "cas-ccps/scripts/06_StagingPipeline_Turnstile.js",
       "cas-ccps/scripts/10_AdminRecoveryPanel.js",
+      "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js",
+      "cas-ccps/scripts/15c_Flow2DirectEvaluationService.js",
       "cas-ccps/scripts/18_FormSubmitDispatcher.js",
       "cas-ccps/scripts/22_LessonContextHandler.js",
       "cas-ccps/scripts/22b_CompetencyRegistryImporter.js",
@@ -124,8 +126,8 @@
 
   "_excluded_not_deployed_scripts": [
     "cas-ccps/scripts/15_StudioFlowPrompts.js",
-    "cas-ccps/scripts/15b_StudioFlowPrompts_Flow2_Revised.js",
     "leader-hub/drive-tools/LH_8177_Rename.gs",
     "leader-hub/drive-tools/LH_DriveDocSplitter.gs"
-  ]
+  ],
+  "_note_on_15b": "15b_StudioFlowPrompts_Flow2_Revised.js moved OUT of the excluded list above and into cas-ccps:central-ledger's real files (external product review, Finding 3) — it's now loaded into that live GAS project so 15c_Flow2DirectEvaluationService.js can reference FLOW_2_SYSTEM_PROMPT directly. This does NOT mean Flow 2 itself is deployed in Studio — it still isn't (see cas-ccps/README.md). 15b's own header comment explains the distinction."
 }

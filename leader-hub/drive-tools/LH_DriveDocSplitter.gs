@@ -10,10 +10,17 @@
  *   2. Set TARGET_FOLDER_ID below (the Drive folder where individual docs should land)
  *      - Open your target folder in Drive → copy the ID from the URL
  *      - e.g., drive.google.com/drive/folders/1AbCdEfG → ID is "1AbCdEfG"
- *   3. Run previewAllSplits() first — reads docs, logs what it finds, creates NOTHING
- *   4. If the preview looks right, run runAll() to create all individual docs
- *   5. Copy the manifest JSON from the script logs
- *   6. Use LH_AppManifestUpdater.py (companion script) to patch student-leader-hub.html
+ *   3. Fill in each COMPILATION_DOCS entry's sourceDocId below (same
+ *      copy-the-ID-from-the-URL step as TARGET_FOLDER_ID) — placeholder
+ *      values ship here on purpose (external product review, Finding 9:
+ *      the real IDs used to be hardcoded, which meant anyone with repo
+ *      access could open specific Drive documents referenced by ID; now
+ *      this is a local, uncommitted fill-in step, same as TARGET_FOLDER_ID
+ *      always has been)
+ *   4. Run previewAllSplits() first — reads docs, logs what it finds, creates NOTHING
+ *   5. If the preview looks right, run runAll() to create all individual docs
+ *   6. Copy the manifest JSON from the script logs
+ *   7. Use LH_AppManifestUpdater.py (companion script) to patch student-leader-hub.html
  *
  * PERMISSIONS:
  *   First run will ask you to authorize access to Google Docs and Drive. That's expected.
@@ -57,7 +64,7 @@ const COMPILATION_DOCS = [
   // ----------------------------------------------------------------
   {
     key: '6115_Q2',
-    sourceDocId: '1W1kLhBMS_LL5c8HD6egWLmyvlACIldsMkN6qYDdA8x4',
+    sourceDocId: 'YOUR_6115_Q2_SOURCE_DOC_ID_HERE',
     course: '6115',
     quarter: 'Q2',
     lessons: [
@@ -86,7 +93,7 @@ const COMPILATION_DOCS = [
   // ----------------------------------------------------------------
   {
     key: '6115_Q3',
-    sourceDocId: '1_VsWWDxsmiiuOWGtEI8f_1W2gu8abvP1pq4CzO8efl4',
+    sourceDocId: 'YOUR_6115_Q3_SOURCE_DOC_ID_HERE',
     course: '6115',
     quarter: 'Q3',
     lessons: [
@@ -114,7 +121,7 @@ const COMPILATION_DOCS = [
   // ----------------------------------------------------------------
   {
     key: '6115_Q4',
-    sourceDocId: '1GiKW9EzEs6TFsq-0ePvpOyPbUIQd-oFa5ZQQbecAVtE',
+    sourceDocId: 'YOUR_6115_Q4_SOURCE_DOC_ID_HERE',
     course: '6115',
     quarter: 'Q4',
     lessons: [
@@ -141,7 +148,7 @@ const COMPILATION_DOCS = [
   // ----------------------------------------------------------------
   {
     key: '8175_ALL',
-    sourceDocId: '1WstjEnXFT_YUVisi8Q7kE_NpFYhG4RKr9yqhixmuKUE',
+    sourceDocId: 'YOUR_8175_ALL_SOURCE_DOC_ID_HERE',
     course: '8175',
     quarter: null, // spans Q1–Q4; each lesson carries its own quarter field
     lessons: [
