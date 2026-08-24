@@ -244,13 +244,18 @@ function runInstallation_(props) {
     name:       "Assignment System — Student Dashboard",
     files:      registry["STUDENT_DASHBOARD"] || [],
     properties: buildStudentDashboardProps_(assetIds),
-    executeAs:  "USER_ACCESSING",   // User accessing the web app
-    // ANYONE means "anyone with a Google account" (sign-in required) — this
-    // was previously ANYONE_ANONYMOUS, which actually means no sign-in at
-    // all, on a FERPA-scoped student platform. Matches the checked-in
-    // clasp/manifests/student-dashboard.appsscript.json, which has always
-    // had this right; only this generated-deployment path was wrong.
-    access:     "ANYONE"
+    executeAs:  "MYSELF",           // Server code runs as the deploying admin,
+    // not the visiting student — USER_ACCESSING previously meant
+    // getStudentDashboardData() opened the Central Ledger under the
+    // *student's own* identity, which only works if every student already
+    // has direct read access to that spreadsheet. DOMAIN scopes web app
+    // access to signed-in accounts on this Workspace domain; the row filter
+    // in 13_StudentDashboard.js (matched against Session.getActiveUser())
+    // still limits what's rendered, now as real defense-in-depth rather
+    // than the only thing standing between a student and the full Ledger.
+    // Matches the checked-in
+    // clasp/manifests/student-dashboard.appsscript.json.
+    access:     "DOMAIN"
   });
 
   projectResults.push(teacherDashResult);
