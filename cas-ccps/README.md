@@ -513,12 +513,21 @@ data.
 
 ## Directory map
 
+**Every `archived/` subdirectory named below was removed from the working
+tree** (external product review, Finding 3 / "this month" dead-code
+cleanup — 123 files, 76,080 lines repo-wide, all genuinely superseded, none
+of it deleted without a trace). Nothing is lost: the full pre-deletion tree
+is preserved on the `pre-archive-cleanup` branch, and every commit before
+this cleanup still has it in history. A file this README cites as
+"reissued from" or "compared against" an archived original can still be
+retrieved from that branch by path.
+
 | Path | Contents |
 |---|---|
-| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide + `FERPA_DATA_MAP.md` (field-by-field FERPA inventory) + `LEADERHUB_CONNECTION_SETUP.md` (the D1 leader-hub OAuth integration's setup doc). `docs/archived/` holds superseded docs the source itself marks superseded. `docs/notebooklm-sources/` holds hand-converted Markdown copies of the four user-guide HTML docs (quick-start ×2, teacher reference, UX reference), purpose-built as clean NotebookLM upload sources — see that folder's own README.md for why and how they're maintained. |
-| `scripts/` | Numbered Apps Script files, base + addenda. `scripts/archived/` holds files the source itself marks superseded. |
-| `data/` | Reference data imported into the Central Ledger at setup time. `data/sol-correlations/` holds the VDOE SOL derivation trail. `data/archived/` holds superseded versions. |
-| `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks. `curriculum/archived/` holds the pre-v2 pacing guide JSON. |
+| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide + `FERPA_DATA_MAP.md` (field-by-field FERPA inventory) + `LEADERHUB_CONNECTION_SETUP.md` (the D1 leader-hub OAuth integration's setup doc). `docs/archived/` held superseded docs the source itself marked superseded — removed; see the note above. `docs/notebooklm-sources/` holds hand-converted Markdown copies of the four user-guide HTML docs (quick-start ×2, teacher reference, UX reference), purpose-built as clean NotebookLM upload sources — see that folder's own README.md for why and how they're maintained. |
+| `scripts/` | Numbered Apps Script files, base + addenda. `scripts/archived/` held files the source itself marked superseded — removed; see the note above. |
+| `data/` | Reference data imported into the Central Ledger at setup time. `data/sol-correlations/` holds the VDOE SOL derivation trail. `data/archived/` held superseded versions — removed; see the note above. |
+| `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks. `curriculum/archived/` held the pre-v2 pacing guide JSON — removed; see the note above. |
 | `forms/` | Setup spec for the Warm-Up Response Google Form |
 
 ## What Module 1 (the base system) actually is
