@@ -129,6 +129,11 @@ function makeSpreadsheetAppMock() {
       if (!registry.has(id)) throw new Error('Spreadsheet not found: ' + id);
       return registry.get(id);
     },
+    // Real Apps Script API — several files call SpreadsheetApp.flush()
+    // after a batch of writes to force them out before the next read. A
+    // no-op here is correct: this mock's writes (FakeRange.setValue(s))
+    // already apply synchronously, so there is nothing to flush.
+    flush() {},
   };
 }
 
@@ -158,6 +163,21 @@ function makeSessionMock(email = 'teacher@example.com') {
   return { getActiveUser() { return { getEmail() { return email; } }; } };
 }
 
+// Real Apps Script API — get()/put()/remove() on getScriptCache(). No TTL
+// enforcement (a unit test controls its own clock only via explicit
+// remove() calls, not real elapsed time) — good enough for testing the
+// cache-hit/cache-miss/invalidation logic itself, not for testing expiry
+// timing, which no test in this repo needs.
+function makeCacheServiceMock() {
+  const store = new Map();
+  const cache = {
+    get(key) { return store.has(key) ? store.get(key) : null; },
+    put(key, value /* , ttlSeconds — ignored, see comment above */) { store.set(key, String(value)); },
+    remove(key) { store.delete(key); },
+  };
+  return { getScriptCache() { return cache; }, getUserCache() { return cache; } };
+}
+
 // Loads a real .gs file's source into a fresh vm context with the mocks
 // above, then exposes the functions named in `exposeNames` for direct
 // calling. Returns { exported, sandbox } — `sandbox` is the full vm context
@@ -183,6 +203,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     PropertiesService: makePropertiesServiceMock(),
     SpreadsheetApp: makeSpreadsheetAppMock(),
     Session: makeSessionMock(),
+    CacheService: makeCacheServiceMock(),
     Utilities: { getUuid: () => 'fake-uuid-' + Math.random().toString(36).slice(2) },
     // Every cas-ccps file logs through Logger.log(...) (Apps Script's
     // built-in logger, distinct from console) on essentially every code

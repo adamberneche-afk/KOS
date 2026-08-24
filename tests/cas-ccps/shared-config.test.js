@@ -11,7 +11,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFile } = require('../harness/gas-sandbox');
+const { loadGasFile, FakeSheet } = require('../harness/gas-sandbox');
 
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 
@@ -116,4 +116,72 @@ test('LEDGER: every value is a unique, non-negative integer (no accidental colli
   const values = Object.values(exported.LEDGER);
   assert.deepEqual(values, [...new Set(values)], 'LEDGER must not assign the same column index twice');
   values.forEach((v) => assert.ok(Number.isInteger(v) && v >= 0, `${v} must be a non-negative integer`));
+});
+
+test('LEDGER_COL_COUNT: one past the highest LEDGER index (bounds every getRange() call that uses it)', () => {
+  const { exported } = load(['LEDGER', 'LEDGER_COL_COUNT']);
+  const maxIndex = Math.max(...Object.values(exported.LEDGER));
+  assert.equal(exported.LEDGER_COL_COUNT, maxIndex + 1);
+});
+
+// ── getCompetencyTextMap_ — CacheService layer (Finding 6 / "this quarter"
+//    scaling fix) ────────────────────────────────────────────────────────────
+
+function makeRegistrySheet(rows) {
+  const sheet = new FakeSheet('CompetencyRegistry');
+  sheet.appendRow(['competency_id', 'competency_text', 'subject', 'grade_band', 'strand', 'teacher_email', 'active']);
+  rows.forEach((r) => sheet.appendRow(r));
+  return sheet;
+}
+
+test('getCompetencyTextMap_: builds id -> text from the registry sheet on a cache miss', () => {
+  const { exported } = load(['getCompetencyTextMap_']);
+  const sheet = makeRegistrySheet([
+    ['COMP-1', 'Can identify a target market', 'Marketing', '9-12', 'Strand A', '', 'TRUE'],
+    ['COMP-2', 'Can build a pricing strategy', 'Marketing', '9-12', 'Strand B', '', 'TRUE'],
+  ]);
+  const map = exported.getCompetencyTextMap_(sheet);
+  assert.deepEqual(map, {
+    'COMP-1': 'Can identify a target market',
+    'COMP-2': 'Can build a pricing strategy',
+  });
+});
+
+test('getCompetencyTextMap_: a cache hit returns the cached map without re-reading the sheet', () => {
+  const { exported, sandbox } = load(['getCompetencyTextMap_']);
+  const sheet = makeRegistrySheet([['COMP-1', 'Original text', '', '', '', '', 'TRUE']]);
+
+  const first = exported.getCompetencyTextMap_(sheet);
+  assert.equal(first['COMP-1'], 'Original text');
+
+  // Mutate the sheet directly, bypassing the cache-invalidation path
+  // (22b_CompetencyRegistryImporter.js's real re-import flow) on purpose —
+  // this is exactly what proves the second call is served from cache: if
+  // it read the sheet again, it would see this new value instead.
+  sheet.rows[1][1] = 'Changed after first call';
+
+  const second = exported.getCompetencyTextMap_(sheet);
+  assert.equal(second['COMP-1'], 'Original text', 'a cache hit must not re-read the sheet');
+
+  // Cross-check via the raw sandbox cache too, confirming the put() actually
+  // happened under the documented key.
+  const cached = sandbox.CacheService.getScriptCache().get('competency_registry_text_map_v1');
+  assert.ok(cached, 'expected a cache entry under the documented key');
+});
+
+test('getCompetencyTextMap_: removing the cache entry (simulating a re-import) forces a fresh read', () => {
+  const { exported, sandbox } = load(['getCompetencyTextMap_']);
+  const sheet = makeRegistrySheet([['COMP-1', 'Original text', '', '', '', '', 'TRUE']]);
+
+  exported.getCompetencyTextMap_(sheet); // populate the cache
+  sheet.rows[1][1] = 'Updated after re-import';
+  sandbox.CacheService.getScriptCache().remove('competency_registry_text_map_v1'); // what importCompetencyRegistry() does
+
+  const afterInvalidation = exported.getCompetencyTextMap_(sheet);
+  assert.equal(afterInvalidation['COMP-1'], 'Updated after re-import');
+});
+
+test('getCompetencyTextMap_: a missing registry sheet returns an empty map, never throws', () => {
+  const { exported } = load(['getCompetencyTextMap_']);
+  assert.deepEqual(exported.getCompetencyTextMap_(null), {});
 });
