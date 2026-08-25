@@ -31,13 +31,22 @@ project as noted.
 ## Part 0 — One-time: confirm clasp is talking to the right account
 
 ```
-clasp login --status
+clasp show-authorized-user
 ```
 
 Check the email it prints against whichever account should own the
 project you're about to touch. Do this again anytime you switch between
 your personal account and the district account — it's the one mistake
 that's easy to make and annoying to unwind.
+
+> **clasp 3.x renamed several commands from the 2.x conventions this
+> runbook was originally written against.** Confirmed against the real
+> installed CLI during a live deployment, not assumed: `login --status`
+> doesn't exist anymore (`show-authorized-user` replaces it, as above);
+> `clasp open` alone doesn't work (`clasp open-script` opens the code
+> editor; `clasp open-web-app` — note the hyphens — opens the live
+> deployment URL instead). Every command in this runbook already uses the
+> current 3.x names.
 
 ---
 
@@ -86,10 +95,10 @@ cd kos-personal
 git add .
 git commit -m "describe the change"
 clasp push
-clasp open
+clasp open-script
 ```
 
-`clasp open` pops the script editor open in your browser so you can
+`clasp open-script` pops the script editor open in your browser so you can
 eyeball that the change landed. No sandbox needed here — kos-personal
 only ever runs against your own account, so there's no live audience to
 protect.
@@ -132,7 +141,7 @@ copy .clasp.json.template .clasp.json
 Get its Script ID the same way (open the bound Sheet, Extensions → Apps
 Script → Project Settings), paste it in, do the same live-check-in-a-temp-folder
 sanity pass as 1.1, then the same everyday loop as 1.2 (`clasp push`,
-`clasp open`).
+`clasp open-script`).
 
 ---
 
@@ -200,11 +209,91 @@ build and push:
 node tools/clasp-sync/sync.js central-ledger
 cd cas-ccps\.clasp-build\central-ledger
 clasp push
-clasp open
+clasp open-script
 ```
 
 Confirm in the browser it landed in the *sandbox* project, not the real
 one.
+
+### 3.2b — Alternative: building from scratch, straight to production
+
+Section 3.2 above assumes a *live* project already exists somewhere to
+copy from before you touch it. When **none of the 7 projects have ever
+been deployed** — no sandbox to make a copy *of* — that step doesn't
+apply, and there's nothing live to protect while you build directly.
+Confirmed working end-to-end during a real from-scratch deployment; the
+three gotchas below aren't hypothetical, they're what actually happened.
+
+For each of the 7 projects, in a scratch folder **outside** the repo:
+
+```
+clasp create --type sheets --title "CAS - <Project Name>" --rootDir .
+```
+
+(`--type docs` for the two Doc-bound projects — `unified-manual`,
+`master-student-template`; `--type standalone` for the two web apps —
+`teacher-dashboard`, `student-dashboard`.) This creates the real Drive
+file *and* its bound script together — there's no separate "attach a
+script to an existing sheet" step needed, since nothing existed yet.
+
+clasp prints two different IDs — don't mix them up:
+```
+Created new document: https://drive.google.com/open?id=<documentId>
+Created new script: https://script.google.com/d/<scriptId>/edit
+```
+The **document ID** is the Sheet/Doc's own Drive file — not what goes in
+`.clasp.json`. The **script ID** (from the second line) is what you want.
+As a sanity check, real script IDs run noticeably longer (~57-58
+characters) than Drive file IDs (~44-45) — if the value you're about to
+paste looks short, you grabbed the wrong one.
+
+Copy the script ID into `cas-ccps/clasp/local/<name>.clasp.json` per the
+setup instructions above, then the normal `node tools/clasp-sync/sync.js
+<name>` → `cd cas-ccps\.clasp-build\<name>` → `clasp push` loop applies
+unchanged for every project.
+
+**Three real gotchas hit going this route, all now understood:**
+
+1. **`unified-manual` fails to push with `Invalid ID`** until
+   `central-ledger` exists and has a saved version. Its manifest
+   (`cas-ccps/clasp/manifests/unified-manual.appsscript.json`) ships a
+   library dependency on `central-ledger` with placeholder `libraryId`/
+   `version` values — intentional, since the real ID is per-deployment
+   and (same convention as every real script ID in this repo) never
+   committed. Once `central-ledger` is live: `cd` into its build folder
+   and run `clasp version "..."` to cut version 1, then edit your
+   **local, uncommitted** copy of `unified-manual.appsscript.json` with
+   the real `central-ledger` scriptId and that version number before
+   running `sync.js`/`push` for `unified-manual`. The tracked manifest
+   keeps the placeholder — this edit stays local to your machine.
+
+2. **A from-scratch `central-ledger` spreadsheet has none of the tabs the
+   rest of the system expects.** The admin setup wizard
+   (`unified-manual`'s "🚀 Run Admin + Teacher Setup" menu item) normally
+   *creates* `central-ledger` itself, pre-populated with 5 tabs —
+   `Ledger`, `ReviewQueue`, `STAGING_PIPELINE`, `RubricQueue`,
+   `MatrixRegistry` — see `createAdminAssets_()` in
+   `16_UnifiedManualSetup.js`. Building `central-ledger` directly via
+   `clasp create` instead skips that entirely, so both dashboards throw
+   on a null-sheet lookup (`getDashboardData()`/`getStudentDashboardData()`)
+   the first time they load. Fix: paste `createAdminAssets_()`'s tab
+   creation block (the `setHeaders_()` calls, roughly lines 331-373 of
+   that file) into a throwaway function in `central-ledger`'s own script
+   editor, pointed at `SpreadsheetApp.getActiveSpreadsheet()` instead of
+   a freshly created one, and run it once via the editor's function
+   dropdown. It won't survive the next `clasp push` (Apps Script replaces
+   the whole file set on push) — that's expected, it only needs to run
+   once.
+
+3. **`teacher-dashboard`/`student-dashboard` both need `ADMIN_SS_ID` set,
+   not just `CENTRAL_LEDGER_SS_ID`.** `ADMIN_DEPLOYMENT_WALKTHROUGH.html`'s
+   Step 10 was missing this (now fixed there too) —
+   `00_SharedConfig.js`'s `getConfig_()` hard-requires both, same value.
+   While setting these, also confirm `student-dashboard`'s manifest has
+   `executeAs: "USER_ACCESSING"` — a real bug (`"MYSELF"`, not even a
+   valid value for that field) shipped there until this same deployment
+   caught it; already fixed in the tracked manifest, just noting it here
+   in case you're working from an older checkout.
 
 ### 3.3 Extending the pattern to the other 6 projects
 
@@ -381,7 +470,8 @@ before it, including the `clasp push`, was still just rehearsal.
 
 | Situation | Command sequence |
 |---|---|
-| kos-personal, any change | `clasp push` → `clasp open` |
+| kos-personal, any change | `clasp push` → `clasp open-script` |
+| cas-ccps, no live projects exist yet | `clasp create --type <sheets\|docs\|standalone>` per project (see 3.2b) |
 | leader-hub HTML, any change | save file, replace it wherever it's opened from |
 | leader-hub EmailBridge, any change | same as kos-personal, once ownership is confirmed |
 | cas-ccps, testing a change | push to `main`, let sandbox-deploy CI job run |
