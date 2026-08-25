@@ -1489,9 +1489,16 @@ body {
           <div class="file-row"><div><div class="file-name">29_StudentContextAggregator</div></div></div>
           <div class="file-row"><div><div class="file-name">31_PacingGuideManager</div></div></div>
         </div>
+        <!-- FIXED (found during a live from-scratch deployment): this block
+             was missing ADMIN_SS_ID. 00_SharedConfig.js's getConfig_() hard-
+             requires both ADMIN_SS_ID and CENTRAL_LEDGER_SS_ID — omitting
+             either throws "Script Properties not configured" the moment
+             the dashboard tries to load. Both use the same value, same
+             convention as Step 9's "Set 2 Script Properties" block above. -->
         <p>Set Script Properties on this project:</p>
         <div class="code-block">
 <span class="k">CENTRAL_LEDGER_SS_ID</span> = <span class="v">[Central Ledger Spreadsheet ID]</span>
+<span class="k">ADMIN_SS_ID</span>           = <span class="v">[Central Ledger Spreadsheet ID]</span>  <span class="c">← same value as above</span>
 <span class="k">TEACHER_EMAIL</span> = <span class="v">[this teacher's school email address]</span>
 <span class="k">TEACHER_NAME</span>  = <span class="v">[this teacher's display name]</span>
         </div>
@@ -1514,14 +1521,18 @@ body {
           <div class="file-row"><div><div class="file-name">00_SharedConfig</div></div></div>
           <div class="file-row"><div><div class="file-name">13_StudentDashboard</div></div></div>
         </div>
+        <!-- FIXED (found during a live from-scratch deployment): same
+             ADMIN_SS_ID gap as the Teacher Dashboard block above — see that
+             instruction's comment for why getConfig_() requires both. -->
         <p>Set Script Properties:</p>
         <div class="code-block">
 <span class="k">CENTRAL_LEDGER_SS_ID</span> = <span class="v">[Central Ledger Spreadsheet ID]</span>
+<span class="k">ADMIN_SS_ID</span>           = <span class="v">[Central Ledger Spreadsheet ID]</span>  <span class="c">← same value as above</span>
         </div>
         <p>Deploy: <strong>Deploy → New deployment → Web App</strong></p>
         <div class="callout callout-warn">
           <div class="callout-icon">⚠️</div>
-          <div class="callout-body"><strong>Execute as: User accessing the web app</strong> — critical. This makes <code>Session.getActiveUser()</code> return the student's own Google ID so each student sees only their own assignments. Access: <strong>Anyone with a Google account</strong>.</div>
+          <div class="callout-body"><strong>Execute as: User accessing the web app</strong> — critical. This makes <code>Session.getActiveUser()</code> return the student's own Google ID so each student sees only their own assignments. Access: <strong>Anyone with a Google account</strong>. <code>cas-ccps/clasp/manifests/student-dashboard.appsscript.json</code> now matches this (fixed a bug where it shipped <code>executeAs: "MYSELF"</code> — not even a valid value for that field, and would have broken per-student identity if deployed via clasp instead of this manual walkthrough).</div>
         </div>
         <p>Copy the deployment URL — this is your <strong>Student Dashboard URL</strong>.</p>
       </div>
