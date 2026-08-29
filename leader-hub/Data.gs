@@ -46,6 +46,14 @@ const LH_DATA_TABS = [
   // Phase 7
   'wbl_roster', 'store_inventory', 'store_sales_log', 'store_purchase_orders',
   'esports_players', 'esports_matches',
+  // Phase 8 — deliberately NOT here: lh_daily_log, lh_sub_plan_log,
+  // lh_brag_log, lh_wbl_hours_log (Phase 7), lh_inventory_transactions
+  // (Phase 7) — none of their entries have an `id` field, and a synthetic
+  // one derived from a timestamp was judged more fragile (a same-
+  // millisecond double action could silently dedupe two real entries into
+  // one) than leaving these already-capped, lower-stakes logs local-only.
+  'goals', 'events', 'tasks', 'deadlines', 'journal_entries',
+  'observation_history', 'brag_manual_wins',
 ];
 
 const LH_DATA_SHEET_PROP = 'LH_DATA_SHEET_ID';

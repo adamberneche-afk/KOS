@@ -73,6 +73,11 @@ const LH_CONFIG_KEYS = [
   // and are capped at 200 — a synthetic id from a timestamp was judged
   // more fragile than leaving this one small log local-only for now).
   'lh_receiving_status',
+  // Added during Phase 8 (server-migration): the Horizon system uses its
+  // own {short:[], mid:[], long:[]} buckets — not a flat list of
+  // independent records with a shared shape the way Data.gs expects, so
+  // this fits the singleton-JSON-blob mechanism instead.
+  'lh_horizon',
 ];
 
 // Namespaced so these can never collide with OWNER_EMAIL, AI_QUEUE_SHEET_ID,
