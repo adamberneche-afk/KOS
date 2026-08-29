@@ -490,3 +490,88 @@ every field on the page, a Sheet cell with an embedded newline was
 rendering a line break on one dashboard but not the other for identical
 data.
 
+---
+
+## Studio Steps adoption — Flows 1–5's custom-step code lands
+
+Adopted from a reviewed external drop of ~2,200 lines of custom Workspace
+Studio step code, staged across six sequential steps rather than one
+commit, each landed on its own branch and verified before merging.
+
+**Landed a 9th cas-ccps project, `cas-ccps/studio-steps/`** — 9 `.gs`
+files covering every step behind Flows 1–5 that a native Studio connector
+genuinely can't do cleanly (native Sheets/Docs connectors and Ask-Gemini
+steps still handle everything else): `StepsShared.gs` (shared helpers),
+`CommitRubricDraftStep.gs` (Flow 1), `ReadInstructorConfigStep.gs` +
+`CommitStudentEvaluationStep.gs` (Flow 2), `SelectWarmUpArchetypeStep.gs`
++ `CreateWarmUpDocStep.gs` (Flow 3), `ExtractWarmUpPromptTextStep.gs` +
+`FinalizeWarmUpScoreStep.gs` (Flow 4 — closing a confirmed-dead
+`callFlow4_()` placeholder that made warm-up scoring inoperable), and
+`ExtractBridgeInputsStep.gs` (Flow 5). See `cas-ccps/studio-steps/README.md`
+for the full file-to-flow map and every fix applied while landing it —
+summarized here: a shared `inStr_()` safe-input reader plus a whole-body
+try/catch in every step (a raw `inputs["x"].stringValues[0]` read throws
+before any status can be returned, stranding the trigger row), fence-
+stripping before `JSON.parse` (Gemini routinely wraps output in a
+markdown fence), a U+2500 box-drawing marker bug in
+`CommitStudentEvaluationStep.gs` that would have silently broken two live
+consumers' "insert next-steps text after the evaluation" logic on every
+Flow 2 run, `CompetencyEvidence` tab auto-creation, and a PII-logging
+reduction across all nine files.
+
+**Reconciled `CompetencyEvidence`'s schema across its two writers.**
+`15c_Flow2DirectEvaluationService.js`'s `writeCompetencyEvidenceFromFlow2_()`
+(the manual/dev-testing bridge) and `CommitStudentEvaluationStep.gs`
+(Flow 2's real Studio writer) both write to the same tab; widened 15c to
+the same 8-column schema the Studio step uses so
+`30_SCRSuggestionEngine.js`'s header-driven `aggregateEvidence_()` reads
+correctly regardless of which writer seeds the tab first — confirmed
+with a dedicated cross-project schema-compatibility test
+(`tests/cas-ccps/competency-evidence-schema-compat.test.js`).
+
+**Landed `35_FlowPreflightAndCanary.js`** — a one-shot health check. Its
+`CompetencyEvidence` check "failing on every deployment" turned out to be
+a true positive: no existing setup script (`16_UnifiedManualSetup.js`,
+`28_Module2Setup.js`) ever created that tab, silently stranding Flow 2's
+evidence writes. Fixed by adding `cfg.tabs.competencyEvidence` to
+`00_SharedConfig.js` and extending the existing `createSCRTabs_()` to
+create it alongside `SCRSuggestions`/`SCRDecisionLog`. Also fixed: the
+canary write now uses `appendRow` + a document lock instead of a
+row-shifting `deleteRow` (which would have broken the watchdog's
+row-number-keyed state), and a dead `ADMIN_SS_ID` check was dropped.
+
+**Landed `34_QueueWatchdog.js`** — WarmUpQueue/StagingPipeline/ReviewQueue
+monitoring with Chat-space escalation, the one genuinely new coverage
+area (`10_AdminRecoveryPanel.js` and `06_StagingPipeline_Turnstile.js`
+already covered the other two queues). Fixed four blocking defects found
+during review before landing: unbounded `PropertiesService` growth (no
+pruning on the healthy path — the exact bug class
+`kos-personal/10_Turnstile.gs` already had to fix once), a `STUDIO_TIMEOUT`
+escalation that orphaned student submissions instead of reusing the
+existing `ERROR_TIMEOUT` path, `getScriptLock()` where every other writer
+to these cells uses `getDocumentLock()`, and one release-map key shared
+across three status passes causing early escalation. Ships in dry-run
+mode by default.
+
+**Fixed Flow 5's ordering bug in `24_WarmUpBridge.js`.** `buildWarmUpQueues()`
+now writes a two-status split
+(`row[WQ24_STATUS] = priorResponse ? "PENDING_BRIDGE" : "PENDING"`)
+instead of a single `PENDING` status, so a row with a real prior warm-up
+response goes through Flow 5 (the bridging flow) before Flow 3, instead
+of racing it. Landed as a bundle with every artifact this change strands
+if left alone: the Module 2 setup wizard's on-screen instructions
+(`28_Module2Setup.js`, two places), the status enum in
+`CAS_M2_WarmUp_Schema.html`, the trigger/output rows in
+`CAS_Flow3_Flow4_Specification.html` and `CAS_M2_DeploymentGuide.html`
+(including a manual test-walkthrough step that was actually wrong after
+this change), and `ExtractBridgeInputsStep.gs`'s own stale header.
+
+**What this closes, and what it doesn't.** Every custom step Flows 1-5
+need now exists in code, is registered in `tools/gas-lint/project-map.json`,
+and is covered by tests (286 passing repo-wide as of this adoption). What
+remains is deployment, not code: `cas-ccps/studio-steps/` hasn't been
+pushed to a live Google account yet (`.clasp.json.template`'s scriptId is
+still a placeholder), and no flow has actually been wired together in
+Studio's builder. See `cas-ccps/README.md`'s Known Gap #1 and Finding 18
+for the current-state summary this entry feeds.
+

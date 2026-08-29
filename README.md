@@ -75,11 +75,15 @@ full record.
 
 A third, unrelated system — confirmed genuinely distinct from both of the
 above during Round 3 reconciliation, not a cas-ccps companion despite
-covering the same course numbers. A personal, single-file HTML command
-center for one teacher's full multi-role workload (classroom, DECA,
-school store, E-Sports, field trips). Client-side only — no server, no
-shared data model with `kos-personal/` or `cas-ccps/`. It also went
-through the same nine rounds of UI/UX auditing as the two systems above —
+covering the same course numbers. A personal command center for one
+teacher's full multi-role workload (classroom, DECA, school store,
+E-Sports, field trips). Now server-backed: a single Apps Script Web App
+(`leader-hub:app` — `Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`,
+`EmailBridge.gs`) serves the HTML front end and holds its data in a
+Spreadsheet, no longer client-side-only — see
+[`leader-hub/README.md`](./leader-hub/README.md)'s "JJ1 — Server-deployed
+web app" section for the migration. It also went through the same nine
+rounds of UI/UX auditing as the two systems above —
 see
 [`leader-hub/HISTORY.md`](./leader-hub/HISTORY.md#uiux-hardening--rounds-19)
 for its record, including the most severe bug found in any round: 8
@@ -116,14 +120,17 @@ safe to deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
 
 ## [`tools/clasp-sync/`](./tools/clasp-sync/) — bridges cas-ccps to clasp
 
-`kos-personal/` and `leader-hub/` are each already laid out the way
-[clasp](https://github.com/google/clasp) wants — a flat folder, one
-script ID. `cas-ccps/scripts/` isn't: it's actually 7 separate Apps
-Script projects sharing overlapping files. This tool generates a
-throwaway per-project push folder for each of the 7 from
-`tools/gas-lint/project-map.json`, so `cas-ccps/scripts/` itself never
-gets reorganized or duplicated in git. All 9 real projects across the
-repo now have a committed `appsscript.json` for the first time. `clasp
+`leader-hub/` and the main `kos-personal/` project are each already laid
+out the way [clasp](https://github.com/google/clasp) wants — a flat
+folder, one script ID; `kos-personal/studio-steps/` is a second, separate
+flat-folder project alongside it (SMP-004's personal/district account
+split). `cas-ccps/scripts/` isn't: it's actually 8 separate Apps Script
+projects sharing overlapping files (7 spreadsheet/doc-bound projects plus
+the standalone `studio-steps` project holding every custom Workspace
+Studio step). This tool generates a throwaway per-project push folder for
+each of the 8 from `tools/gas-lint/project-map.json`, so `cas-ccps/scripts/`
+itself never gets reorganized or duplicated in git. Every real project
+across the repo now has a committed `appsscript.json`. `clasp
 login` against a real Google account is now working — see
 [`meta/CLASP_AND_APPS_SCRIPT.md`](./meta/CLASP_AND_APPS_SCRIPT.md) for
 the conceptual workflow, [`tools/clasp-sync/README.md`](./tools/clasp-sync/README.md)
@@ -161,22 +168,27 @@ quarter" maintainability fix). See
 ## [`tests/`](./tests/) — regression coverage for the GAS systems
 
 `node --test tests/leaderhub/*.test.js tests/tools/*.test.js
-tests/cas-ccps/*.test.js` (`npm test`) runs real Node-`vm`-sandboxed
-coverage against the actual `.gs`/`.js` source via
-[`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
+tests/cas-ccps/*.test.js tests/kos-personal/*.test.js` (`npm test`) runs
+real Node-`vm`-sandboxed coverage against the actual `.gs`/`.js` source
+via [`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
 `tests/cas-ccps/` covers the SCR suggestion engine's threshold/state
 machine, the student-context aggregator, `getCompetencyTextMap_`'s
-cache-with-fail-open behavior, Ledger retention, and the opt-in Flow 2
-direct-evaluation escape hatch; `tests/leaderhub/` covers escaping/XSS
-guards and the pacing/calendar helpers; `tests/tools/` covers the lint
-tools and the `leaderhub-build` drift gate. `kos-personal/`'s one existing
-test file (`inference-service/test/credits.test.js`) is not yet wired
-into this script — see that system's own README.
+cache-with-fail-open behavior, Ledger retention, the opt-in Flow 2
+direct-evaluation escape hatch, the `cas-ccps/studio-steps/` custom steps
+(Flows 1-5), the queue watchdog, and the flow-preflight/canary check;
+`tests/leaderhub/` covers escaping/XSS guards and the pacing/calendar
+helpers; `tests/kos-personal/` covers the `kos-personal/studio-steps/`
+custom steps (Curator and VECTOR_CLASSIFY flows); `tests/tools/` covers
+the lint tools and the `leaderhub-build` drift gate.
 
 ## Still pending
 
-Module 1 (`cas-ccps`) still needs Flow 2 built in Studio before it can run
-end-to-end, and a handful of named-but-not-yet-uploaded files remain across
+Module 1 (`cas-ccps`) still needs Flows 2-5 pushed to a live Studio
+deployment before they can run end-to-end — the custom-step code for all
+five flows now exists and is tested (`cas-ccps/studio-steps/`), but that
+project hasn't been pushed to a real Google account yet (its
+`.clasp.json.template` scriptId is still a placeholder), so "code
+written" isn't yet "wired and live" — and a handful of named-but-not-yet-uploaded files remain across
 systems (`27_LessonFrameGenerator` in cas-ccps; two `PERSONA_*` version
 duplicates and `sql/migrate.js` in kos-personal's optional inference
 service) — see each system's README for the specific list. Reconciliation
