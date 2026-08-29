@@ -3314,6 +3314,7 @@ const LS = {
   set: (k, v) => {
     try {
       localStorage.setItem(k, JSON.stringify(v));
+      _lhSyncConfigKeyToServer_(k, v);
       return true;
     } catch (e) {
       console.error('[LS.set] write failed for key', k, e);
@@ -3325,6 +3326,98 @@ const LS = {
     }
   },
 };
+
+// ── Server write-through for singleton config domains (server-migration
+// Phase 3) ───────────────────────────────────────────────────────────────
+// A "singleton config domain" is a small settings object kept in one
+// localStorage key (Profile, Modules, Schedule Config, ...) as opposed to
+// a growing multi-record list (trips, roster, scores, ...), which gets its
+// own real Spreadsheet tab with proper conflict handling in a later phase
+// — this list is deliberately NOT those. Every key here also exists in
+// Config.gs's LH_CONFIG_KEYS; kept as two lists (not one shared file)
+// because the client can't require() the .gs file — if you add a domain
+// to one, add it to the other too, or lhSaveConfig_() will just reject it.
+//
+// This hooks LS.set() itself rather than each domain's own
+// getX()/persistX() wrapper (or the many call sites for domains that have
+// no single wrapper — several of these are read/written inline at their
+// point of use throughout the file) so every existing call site gets the
+// write-through automatically, with no per-call-site changes anywhere.
+const LH_SERVER_SYNCED_CONFIG_KEYS = [
+  'lh_profile', 'lh_modules', 'lh_schedule_config', 'lh_custom_orgs',
+  'lh_custom_courses', 'lh_keyContacts', 'lh_student_id_map',
+  'lh_cas_ccps_api_url', 'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
+  'lh_sub_period_assignments', 'lh_sbe_status', 'lh_deca_season',
+  'lh_deca_approvals', 'lh_ftp_overrides', 'lh_conf_leave', 'lh_mk8_check',
+  'lh_ssbu_check', 'lh_obs_prep', 'lh_sync_tracker', 'lh_sub_student_notes',
+];
+
+// Fire-and-forget — never blocks or throws back into the LS.set() caller.
+// Same-origin only (google.script.run doesn't exist for a locally-opened
+// file); a failed sync just logs a warning, since localStorage already has
+// the value regardless of whether the server copy lands.
+function _lhSyncConfigKeyToServer_(key, value) {
+  if (LH_SERVER_SYNCED_CONFIG_KEYS.indexOf(key) === -1) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  google.script.run
+    .withFailureHandler(err => console.warn('[LeaderHub] config sync failed for ' + key + ':', (err && err.message) || err))
+    .lhSaveConfig_(key, value);
+}
+
+// Called once at boot (see the boot sequence's EMAIL_BRIDGE.poll() call) —
+// same-origin only, a no-op when opened as a local file. Pulls every
+// server-synced config domain in one round trip and catches this browser
+// up on anything saved from a different device/browser since it last
+// opened the app. Most of these domains are read fresh via LS.get() at
+// every point of use, so writing the server's copy into localStorage IS
+// the whole refresh for them; a handful also cache into a persistent
+// in-memory variable and need that re-applied too, listed explicitly
+// below rather than guessed at generically. Uses raw localStorage.setItem
+// (not LS.set) so applying a value the server just gave us doesn't
+// immediately re-queue the exact same value right back to it.
+async function lhRefreshConfigFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  let remote;
+  try {
+    remote = await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig_();
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.message) || e);
+    return;
+  }
+  if (!remote) return;
+
+  const _write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  // Read fresh via LS.get() at point of use everywhere — localStorage
+  // catch-up is the entire refresh, nothing else to re-apply.
+  ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
+   'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
+   'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
+   'lh_sync_tracker', 'lh_sub_student_notes'].forEach(k => {
+    if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
+  });
+
+  // Cached into a persistent in-memory variable — write through
+  // localStorage AND re-apply, so an already-rendered page picks up a
+  // change made elsewhere without a manual reload.
+  if (remote.lh_profile != null)        { _write('lh_profile', remote.lh_profile); Object.assign(PROFILE, PROFILE_DEFAULTS, remote.lh_profile); _applyProfileToStaticDOM(); }
+  if (remote.lh_modules != null)        { _write('lh_modules', remote.lh_modules); Object.assign(MODULES, MODULES_DEFAULT, remote.lh_modules); _applyModuleVisibility(); }
+  if (remote.lh_custom_orgs != null)    { _write('lh_custom_orgs', remote.lh_custom_orgs); Object.assign(CUSTOM_ORGS, remote.lh_custom_orgs); Object.assign(ORGANIZATIONS, ORG_DEFAULTS, CUSTOM_ORGS); }
+  if (remote.lh_custom_courses != null) { _write('lh_custom_courses', remote.lh_custom_courses); Object.assign(CUSTOM_COURSES, remote.lh_custom_courses); }
+  if (remote.lh_ftp_overrides != null)  { _write('lh_ftp_overrides', remote.lh_ftp_overrides); Object.assign(ftPermOverrides, remote.lh_ftp_overrides); }
+  if (remote.lh_conf_leave != null)     { _write('lh_conf_leave', remote.lh_conf_leave); Object.assign(confLeaveRecords, remote.lh_conf_leave); }
+  if (remote.lh_sbe_status != null)     { _write('lh_sbe_status', remote.lh_sbe_status); Object.assign(SBE_STATUS, remote.lh_sbe_status); }
+  if (remote.lh_deca_season != null)    { _write('lh_deca_season', remote.lh_deca_season); Object.assign(DECA_SEASON, remote.lh_deca_season); }
+  if (remote.lh_ssbu_check != null)     { _write('lh_ssbu_check', remote.lh_ssbu_check); Object.assign(SSBU_CHECK_STATUS, remote.lh_ssbu_check); }
+  if (remote.lh_mk8_check != null)      { _write('lh_mk8_check', remote.lh_mk8_check); Object.assign(MK8_CHECK_STATUS, remote.lh_mk8_check); }
+  if (remote.lh_schedule_config != null) {
+    _write('lh_schedule_config', remote.lh_schedule_config);
+    if (typeof _applyScheduleConfig === 'function') _applyScheduleConfig();
+    if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
+  }
+}
 
 // ============================================================
 // DATA
@@ -21143,6 +21236,12 @@ try {
 // Email bridge: poll on boot, then every 10 minutes
 EMAIL_BRIDGE.poll();
 setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
+// Server-migration Phase 3: catch this browser up on any singleton config
+// domain (Profile, Modules, Schedule Config, ...) saved server-side from a
+// different browser/device since this one last opened the app. Same-origin
+// only — a no-op when opened as a local file. See lhRefreshConfigFromServer_()
+// in leader-hub/src/05-data-helpers-dashboard.html.
+lhRefreshConfigFromServer_();
 // Initialize badge state
 setTimeout(updateEmailBridgeBadge_, 500);
 // cas-ccps connection badge (D1/Addendum 24) — also renders the sign-in
