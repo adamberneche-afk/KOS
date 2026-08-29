@@ -45,7 +45,9 @@
       "cas-ccps/scripts/30b_SCRRetryRemediation.js",
       "cas-ccps/scripts/31_PacingGuideManager.js",
       "cas-ccps/scripts/32_CompetencyRubricImporter.js",
-      "cas-ccps/scripts/33_ArtifactCompetencyBridge.js"
+      "cas-ccps/scripts/33_ArtifactCompetencyBridge.js",
+      "cas-ccps/scripts/34_QueueWatchdog.js",
+      "cas-ccps/scripts/35_FlowPreflightAndCanary.js"
     ]
   },
 
@@ -115,6 +117,32 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/13_StudentDashboard.js"
+    ]
+  },
+
+  "cas-ccps:studio-steps": {
+    "_bound_to": "Standalone Workspace Studio add-on project (not bound to any spreadsheet, so it's installable across every flow rather than tied to one document) — the custom steps behind Flows 1-5",
+    "manifest": "cas-ccps/clasp/manifests/studio-steps.appsscript.json",
+    "files": [
+      "cas-ccps/studio-steps/StepsShared.gs",
+      "cas-ccps/studio-steps/CommitRubricDraftStep.gs",
+      "cas-ccps/studio-steps/ReadInstructorConfigStep.gs",
+      "cas-ccps/studio-steps/CommitStudentEvaluationStep.gs",
+      "cas-ccps/studio-steps/SelectWarmUpArchetypeStep.gs",
+      "cas-ccps/studio-steps/CreateWarmUpDocStep.gs",
+      "cas-ccps/studio-steps/ExtractWarmUpPromptTextStep.gs",
+      "cas-ccps/studio-steps/FinalizeWarmUpScoreStep.gs",
+      "cas-ccps/studio-steps/ExtractBridgeInputsStep.gs"
+    ]
+  },
+
+  "kos-personal:studio-steps": {
+    "_bound_to": "Standalone Workspace Studio add-on project, personal Google account (SMP-004 keeps this off the district domain, separate from cas-ccps:studio-steps even though both share the same step-authoring pattern) — the Curator/Classification flow's custom steps",
+    "manifest": "kos-personal/studio-steps/appsscript.json",
+    "files": [
+      "kos-personal/studio-steps/StepsShared.gs",
+      "kos-personal/studio-steps/WriteCuratorOutputStep.gs",
+      "kos-personal/studio-steps/WriteClassificationOutputStep.gs"
     ]
   },
 
