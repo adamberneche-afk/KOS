@@ -97,6 +97,12 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // Phase 9: Lesson Plan content edits, both keyed by a lesson/unit
   // identifier rather than a flat record list.
   'lh_lp_edits', 'lh_lp_edit_meta',
+  // Phase 10 final audit: Unit Plans notes, keyed by unit id — missed in
+  // Phase 9. lh_scr_session_log was found the same audit pass but stays
+  // excluded (its entries key off a composite `key` field, not `id`,
+  // same class of gap as the other id-less capped logs already listed
+  // above).
+  'lh_unit_notes',
 ];
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
@@ -142,7 +148,8 @@ async function lhRefreshConfigFromServer_() {
   ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
    'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
    'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
-   'lh_sync_tracker', 'lh_sub_student_notes'].forEach(k => {
+   'lh_sync_tracker', 'lh_sub_student_notes', 'lh_lp_edit_meta',
+   'lh_unit_notes'].forEach(k => {
     if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
   });
 
@@ -207,11 +214,9 @@ async function lhRefreshConfigFromServer_() {
     Object.keys(LP_EDITS).forEach(k => delete LP_EDITS[k]);
     Object.assign(LP_EDITS, remote.lh_lp_edits);
   }
-  if (remote.lh_lp_edit_meta != null) {
-    // No persistent in-memory variable — every reader calls
-    // LS.get('lh_lp_edit_meta', {}) fresh.
-    _write('lh_lp_edit_meta', remote.lh_lp_edit_meta);
-  }
+  // lh_lp_edit_meta and lh_unit_notes have no persistent in-memory
+  // variable either — both handled by the "read fresh via LS.get()"
+  // batch above.
 }
 
 // ── Server write-through for row-shaped data domains (server-migration

@@ -3372,6 +3372,12 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // Phase 9: Lesson Plan content edits, both keyed by a lesson/unit
   // identifier rather than a flat record list.
   'lh_lp_edits', 'lh_lp_edit_meta',
+  // Phase 10 final audit: Unit Plans notes, keyed by unit id — missed in
+  // Phase 9. lh_scr_session_log was found the same audit pass but stays
+  // excluded (its entries key off a composite `key` field, not `id`,
+  // same class of gap as the other id-less capped logs already listed
+  // above).
+  'lh_unit_notes',
 ];
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
@@ -3417,7 +3423,8 @@ async function lhRefreshConfigFromServer_() {
   ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
    'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
    'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
-   'lh_sync_tracker', 'lh_sub_student_notes'].forEach(k => {
+   'lh_sync_tracker', 'lh_sub_student_notes', 'lh_lp_edit_meta',
+   'lh_unit_notes'].forEach(k => {
     if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
   });
 
@@ -3482,11 +3489,9 @@ async function lhRefreshConfigFromServer_() {
     Object.keys(LP_EDITS).forEach(k => delete LP_EDITS[k]);
     Object.assign(LP_EDITS, remote.lh_lp_edits);
   }
-  if (remote.lh_lp_edit_meta != null) {
-    // No persistent in-memory variable — every reader calls
-    // LS.get('lh_lp_edit_meta', {}) fresh.
-    _write('lh_lp_edit_meta', remote.lh_lp_edit_meta);
-  }
+  // lh_lp_edit_meta and lh_unit_notes have no persistent in-memory
+  // variable either — both handled by the "read fresh via LS.get()"
+  // batch above.
 }
 
 // ── Server write-through for row-shaped data domains (server-migration
@@ -22405,9 +22410,13 @@ function showBragBoardPromptBanner() {
         <strong>⭐ Star any email in Gmail</strong> — it appears on your dashboard within 5 minutes. No API key. No labeling. One tap on mobile or desktop.
       </div>
 
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .85rem;font-size:.78rem;color:var(--ink);line-height:1.6">
+        <strong>Opened this hub from its deployed web app URL?</strong> The Apps Script bridge is already connected — nothing to paste below. This field is only for opening <code>student-leader-hub.html</code> as a local file.
+      </div>
+
       <div>
-        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">Apps Script Web App URL</label>
-        <input id="bridge-url-input" type="url" placeholder="https://script.google.com/macros/s/..." 
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">Apps Script Web App URL (local-file mode only)</label>
+        <input id="bridge-url-input" type="url" placeholder="https://script.google.com/macros/s/..."
           style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
           oninput="document.getElementById('bridge-url-save').disabled=!this.value.trim()">
         <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">Paste the URL from Apps Script → Deploy → Manage Deployments</div>
@@ -22434,18 +22443,16 @@ function showBragBoardPromptBanner() {
       <div style="font-size:.78rem;color:var(--ink);line-height:1.7">
         <strong style="display:block;margin-bottom:.3rem">Quick Setup (do once — ~10 min):</strong>
         <ol style="margin:0;padding-left:1.2rem">
-          <li>Open <a href="https://script.google.com" target="_blank" style="color:var(--blue)">script.google.com</a> → New Project → paste <code>EmailBridge.gs</code></li>
-          <li>Add <strong>one</strong> Script Property: <code>SHEET_URL</code> → your LeaderHub Inbox sheet URL</li>
-          <li>Run <code>firstTimeSetup()</code> once to verify everything</li>
-          <li>Deploy as Web App (Execute as: Me, Access: Anyone)</li>
-          <li>Set a 5-minute trigger on <code>processStarred</code></li>
+          <li><code>clasp push</code> this project (EmailBridge.gs + Code.gs + Config.gs + Data.gs + SCR.gs + appsscript.json)</li>
+          <li>Deploy → New deployment → Web App (Execute as: Me, Access: Anyone in your domain)</li>
+          <li>Project Settings → Script Properties → add <code>OWNER_EMAIL</code> = your own Google account</li>
+          <li>Open the deployed URL, signed in as that account — you're done, nothing to paste here</li>
         </ol>
         <div style="margin-top:.5rem;padding:.45rem .65rem;background:#fefce8;border:1px solid #fde68a;border-radius:6px">
-          No <code>GEMINI_API_KEY</code> needed. The only property is <code>SHEET_URL</code>.<br>
-          Full guide: <strong>LEADERHUB_EMAIL_SETUP.md</strong>
+          No Script Property is required for the Email Bridge itself — <code>OWNER_EMAIL</code> above is the only one. Opening this hub as a local file instead of the deployed URL still works exactly as before; paste the deployed <code>/exec</code> URL above to connect it that way.
         </div>
         <div style="margin-top:.5rem;padding:.45rem .65rem;background:#f0f4ff;border:1px solid #bfdbfe;border-radius:6px">
-          <strong>Optional: real AI drafting for Brag Board</strong> — once the Apps Script above is deployed, "✨ Generate" can produce an actual AI-written draft instead of a template, via a separate Google Workspace Flow (no API key — uses your Workspace account's own Gemini access). Fully optional: without it, Brag Board keeps working exactly as it does today. See <strong>LEADERHUB_AI_FLOW_SETUP.md</strong>.
+          <strong>Optional: real AI drafting for Brag Board</strong> — once this Web App is deployed, "✨ Generate" can produce an actual AI-written draft instead of a template, via a separate Google Workspace Flow (no API key — uses your Workspace account's own Gemini access). Fully optional: without it, Brag Board keeps working exactly as it does today. See <strong>LEADERHUB_AI_FLOW_SETUP.md</strong>.
         </div>
       </div>
 

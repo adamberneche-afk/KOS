@@ -82,6 +82,14 @@ const LH_CONFIG_KEYS = [
   // both keyed by a lesson/unit identifier rather than a flat record list.
   'lh_lp_edits',
   'lh_lp_edit_meta',
+  // Added during the Phase 10 final audit: caught by re-enumerating every
+  // lh_* key actually used in leader-hub/src and cross-checking it
+  // against every whitelist and documented exclusion — this one (Unit
+  // Plans notes, keyed by unit id) was missed in Phase 9. lh_scr_session_log
+  // was found the same way but excluded on purpose (see leader-hub/Data.gs's
+  // header comment's note on id-less capped logs) — its entries key off a
+  // composite `key` field (date+course), not `id`.
+  'lh_unit_notes',
 ];
 
 // Namespaced so these can never collide with OWNER_EMAIL, AI_QUEUE_SHEET_ID,
