@@ -3355,6 +3355,10 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // independent records — see LH_SERVER_SYNCED_DATA_KEYS below for that
   // distinction, and Config.gs for why these two live here.
   'lh_slip_rosters', 'lh_org_results',
+  // Phase 6: Course Catalog / SCR support data, all map-shaped. The real
+  // SCR scores are NOT here — see LH_SERVER_SYNCED_DATA_KEYS/
+  // leader-hub/SCR.gs for why that domain needs a different shape.
+  'lh_custom_pacing_units', 'lh_cas_pacing_notes', 'lh_scr_student_emails',
 ];
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
@@ -3431,6 +3435,21 @@ async function lhRefreshConfigFromServer_() {
     _write('lh_org_results', remote.lh_org_results);
     Object.keys(ORG_RESULTS).forEach(k => delete ORG_RESULTS[k]);
     Object.assign(ORG_RESULTS, remote.lh_org_results);
+  }
+  if (remote.lh_custom_pacing_units != null) {
+    _write('lh_custom_pacing_units', remote.lh_custom_pacing_units);
+    Object.keys(CUSTOM_PACING_UNITS).forEach(k => delete CUSTOM_PACING_UNITS[k]);
+    Object.assign(CUSTOM_PACING_UNITS, remote.lh_custom_pacing_units);
+  }
+  if (remote.lh_cas_pacing_notes != null) {
+    _write('lh_cas_pacing_notes', remote.lh_cas_pacing_notes);
+    Object.keys(CAS_PACING_NOTES).forEach(k => delete CAS_PACING_NOTES[k]);
+    Object.assign(CAS_PACING_NOTES, remote.lh_cas_pacing_notes);
+  }
+  if (remote.lh_scr_student_emails != null) {
+    _write('lh_scr_student_emails', remote.lh_scr_student_emails);
+    Object.keys(SCR_STUDENT_EMAILS).forEach(k => delete SCR_STUDENT_EMAILS[k]);
+    Object.assign(SCR_STUDENT_EMAILS, remote.lh_scr_student_emails);
   }
 }
 
@@ -3566,6 +3585,83 @@ async function lhRefreshDataDomainsFromServer_() {
       const apply = APPLY[domain];
       if (apply) apply(arr);
       _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+    }
+  }
+}
+
+// ── SCR score sync — debounced, per-cell (server-migration Phase 6) ────────
+// scrScores is a course→period→student→competency matrix that can span
+// thousands of cells, and setScore() (leader-hub/src/09-...-esports.html)
+// fires on every single grid click — orders of magnitude past a Script
+// Property's ~9KB value limit if pushed whole (Config.gs's model), and a
+// wholesale-tab-rewrite per click (Data.gs's model) would both be slow and
+// rewrite the entire gradebook on every keystroke of a fast grading pass.
+// See leader-hub/SCR.gs for the server side (one real row per cell,
+// upserted by composite key). This queues each change and flushes a whole
+// batch in one call after a short pause in clicking, rather than one round
+// trip per click.
+const SCR_SYNC_DEBOUNCE_MS = 2000;
+let _scrSyncQueue = []; // [{course, period, studentKey, compNum, score}]
+let _scrSyncTimer = null;
+
+function _lhQueueScrScoreSync_(course, period, studentKey, compNum, score) {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return; // local-file mode: nothing to sync to
+  // Replace any already-queued change to this exact cell rather than
+  // appending a duplicate — a fast clicker cycling a score 0→1→2→3 should
+  // sync once with the final value, not four separate stale writes.
+  _scrSyncQueue = _scrSyncQueue.filter(c => !(c.course === course && c.period === period && c.studentKey === studentKey && c.compNum === compNum));
+  _scrSyncQueue.push({ course, period, studentKey, compNum, score });
+  if (_scrSyncTimer) clearTimeout(_scrSyncTimer);
+  _scrSyncTimer = setTimeout(_lhFlushScrScoreSync_, SCR_SYNC_DEBOUNCE_MS);
+}
+
+async function _lhFlushScrScoreSync_() {
+  _scrSyncTimer = null;
+  if (!_scrSyncQueue.length) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) { _scrSyncQueue = []; return; }
+  const batch = _scrSyncQueue;
+  _scrSyncQueue = [];
+  try {
+    await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhSaveScrScores_(batch);
+    });
+  } catch (e) {
+    // Not re-queued automatically — the edit is already safe in scrScores/
+    // localStorage via persistSCR() (setScore() calls that first, before
+    // this ever runs); the next real edit to any cell queues and flushes
+    // again, so a transient failure here doesn't strand an edit forever.
+    console.warn('[LeaderHub] SCR score sync failed for ' + batch.length + ' cell(s):', (e && e.message) || e);
+  }
+}
+
+// Boot-time catch-up, same found:false/found:true-guarded shape as
+// lhRefreshConfigFromServer_()/lhRefreshDataDomainsFromServer_() above —
+// found:false (this deployment has never had a score pushed to it) leaves
+// scrScores untouched; found:true replaces it wholesale with the server's
+// authoritative copy, since by the time any score has ever been synced,
+// the server is the source of truth every device should converge on.
+async function lhRefreshScrScoresFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  let res;
+  try {
+    res = await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhGetScrScores_();
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Could not refresh SCR scores from server:', (e && e.message) || e);
+    return;
+  }
+  if (res && res.ok && res.found) {
+    scrScores = res.scores || {};
+    localStorage.setItem('lh_scr_scores', JSON.stringify(scrScores));
+    if (document.getElementById('view-competency')?.classList.contains('active') && typeof renderCompetencyView === 'function') {
+      renderCompetencyView();
     }
   }
 }
@@ -11863,6 +11959,10 @@ function setScore(stuName, compNum, el, next) {
   }
 
   persistSCR();
+  // Server-migration Phase 6: queue this one cell for a debounced,
+  // batched server sync — see _lhQueueScrScoreSync_() in
+  // leader-hub/src/05-data-helpers-dashboard.html.
+  _lhQueueScrScoreSync_(course, period, stuName, compNum, next);
   // Log SCR session for Brag Board — one entry per day per course (deduped by date+course)
   const _scrLog = LS.get('lh_scr_session_log', []);
   const _scrToday = _localDateStr_();
@@ -21404,6 +21504,9 @@ lhRefreshConfigFromServer_();
 // (Trips, Trip Archive, DECA Results, ...). See
 // lhRefreshDataDomainsFromServer_() in the same file.
 lhRefreshDataDomainsFromServer_();
+// Server-migration Phase 6: same catch-up for SCR grading scores. See
+// lhRefreshScrScoresFromServer_() in the same file.
+lhRefreshScrScoresFromServer_();
 // Initialize badge state
 setTimeout(updateEmailBridgeBadge_, 500);
 // cas-ccps connection badge (D1/Addendum 24) — also renders the sign-in
