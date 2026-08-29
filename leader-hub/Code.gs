@@ -25,13 +25,18 @@
  * multi-tenant logic needed, matching how Organization Sync (EmailBridge.gs)
  * already treats a co-advisor as a second, wholly separate deployment.
  *
- * THIS IS PHASE 1 of the server-migration plan (scaffolding only): doGet()
- * serves the existing, unmodified assembled HTML, and every data domain in
- * it is still 100% localStorage — zero behavior change to any feature.
- * EmailBridge.gs's doPost() JSON API is completely untouched by this file.
- * Phase 2 moves its actions onto google.script.run for the now-same-origin
- * client; later phases move individual data domains onto server-side
- * storage one at a time. See the migration plan for the full sequence.
+ * THIS COVERS PHASES 1-2 of the server-migration plan (transport/serving
+ * only — no data domain has moved off localStorage yet, zero behavior
+ * change to any feature's data). doGet() serves the existing, unmodified
+ * assembled HTML. lhApiCall_() below is the google.script.run entry point
+ * the same-origin client (callGAS() in
+ * leader-hub/src/10-command-engine-ai-and-widgets.html) now calls instead
+ * of fetch()ing EmailBridge.gs's doPost() URL — same action dispatch table
+ * (_lhDispatchAction_() in EmailBridge.gs), same underlying functions,
+ * just a same-origin RPC instead of a cross-origin POST. doPost() itself
+ * is untouched and still answers external JSON callers directly. Later
+ * phases move individual data domains onto server-side storage one at a
+ * time. See the migration plan for the full sequence.
  *
  * ONE-TIME SETUP for a fresh deployment: Project Settings → Script
  * Properties → add OWNER_EMAIL = the Google account this deployment
@@ -39,16 +44,19 @@
  * including the person who deployed it — by design, same as
  * TEACHER_EMAIL's fail-closed behavior in cas-ccps/00_SharedConfig.js.
  *
- * doGet() also carries one temporary exception to "serve HTML, always":
- * a `?api=horizon` request is routed to EmailBridge.gs's
- * emailBridgeGetHorizonItems_() instead — this is the exact GET request
- * EMAIL_BRIDGE.poll() (leader-hub/src/12-...-brag.html) already makes
- * against the deployed URL today. Only GAS allows one doGet() per
- * project, so merging EmailBridge.gs's project into this one required
- * either breaking that already-shipped, working poll or preserving it
- * this way; Phase 2 of the migration plan retires this branch once
- * poll() calls scanHorizonLabel_()/markConsumed_() via google.script.run
- * directly instead of fetch()ing this URL.
+ * doGet() also carries one permanent exception to "serve HTML, always": a
+ * `?api=horizon` request routes to EmailBridge.gs's
+ * emailBridgeGetHorizonItems_() instead. This isn't a transitional shim —
+ * leader-hub/student-leader-hub.html keeps working as a fully local file
+ * indefinitely (no forced cutover, per the migration plan's deployment-
+ * safety section), and a local file has no google.script.run available to
+ * it at all, so EMAIL_BRIDGE.poll() (leader-hub/src/12-...-brag.html)
+ * still needs a real fetch()-able GET endpoint for that mode. Only GAS
+ * allows one doGet() per project, so merging EmailBridge.gs's project
+ * into this one required exactly this kind of explicit routing rather
+ * than a second doGet(). When served by this deployed web app, poll()
+ * instead calls lhGetHorizonItems_() below via google.script.run and
+ * never hits this branch at all.
  *
  * NOTE for implementation follow-up: once this is actually deployed and
  * opened, check the browser console for CSP violations — the assembled
@@ -86,4 +94,28 @@ function doGet(e) {
   return HtmlService.createHtmlOutputFromFile('student-leader-hub')
     .setTitle('LeaderHub — CCPS Command Center')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+
+// ── google.script.run entry points (Phase 2) ────────────────────────────────
+// Both of these are plain functions returning a JSON-serializable object
+// directly — NOT wrapped in ContentService/jsonResponse_() like doPost()'s
+// response, which google.script.run would choke on (it expects the raw
+// return value, not an HtmlService/ContentService output object).
+
+// Same-origin replacement for EMAIL_BRIDGE.poll()'s old `?api=horizon`
+// fetch() — same underlying result shape (_horizonItemsResult_() in
+// EmailBridge.gs), reached via RPC instead of a URL fetch.
+function lhGetHorizonItems_() {
+  return _horizonItemsResult_();
+}
+
+// Same-origin replacement for callGAS()'s old fetch()-to-doPost() call —
+// one action dispatch table (_lhDispatchAction_() in EmailBridge.gs)
+// shared with doPost(), so the two transports can never drift apart.
+function lhApiCall_(action, payload) {
+  try {
+    return _lhDispatchAction_(action || '', payload || {});
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
 }

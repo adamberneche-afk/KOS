@@ -8,18 +8,32 @@
 const EMAIL_BRIDGE = {
   url() { return LS.get('lh_email_bridge_url', null); },
 
+  // Server-migration Phase 2: same-origin (served by the deployed LeaderHub
+  // web app) means horizon polling works with no Email Bridge URL
+  // configured at all — it's the same server. Opened as a local file, this
+  // still needs the configured URL, exactly as before.
   async poll() {
+    const sameOrigin = typeof google !== 'undefined' && google.script && google.script.run;
     const url = this.url();
-    if (!url) return;
+    if (!sameOrigin && !url) return;
     let data;
     try {
-      // Server-migration Phase 1: the deployed URL's doGet() now serves the
-      // hub UI by default (Code.gs) — ?api=horizon is what routes this
-      // specific GET to EmailBridge.gs's horizon-items JSON instead, same
-      // response shape as before. See Code.gs's own doGet() comment.
-      const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'api=horizon', { method: 'GET' });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      data = await resp.json();
+      if (sameOrigin) {
+        data = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+            .lhGetHorizonItems_();
+        });
+      } else {
+        // ?api=horizon routes this GET to EmailBridge.gs's horizon-items
+        // JSON instead of the deployed URL's default HTML — see Code.gs's
+        // doGet() comment for why this fetch()-based path stays permanent
+        // for the local-file case, not just a migration-transition shim.
+        const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'api=horizon', { method: 'GET' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        data = await resp.json();
+      }
     } catch (e) {
       console.warn('[EmailBridge] Poll failed:', e.message);
       return;
@@ -50,23 +64,18 @@ const EMAIL_BRIDGE = {
 
     if (consumed.length) {
       try {
-        // FIXED — two independent bugs, both silent:
-        // (1) payload shape: EmailBridge.gs's doPost() expects
-        //     {action: 'markConsumed', ids: [...]}; this sent
-        //     {consumed: [...]} with no action field at all, so the
-        //     server always fell through to "Unknown action: " and
-        //     never actually persisted anything — items marked done/
-        //     deleted here would reappear on the next poll forever.
-        // (2) 'Content-Type': 'application/json' triggers a CORS
-        //     preflight Apps Script Web Apps don't answer (see callGAS()
-        //     above) — the request would have failed outright even with
-        //     the payload shape fixed.
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'markConsumed', ids: consumed }),
-        });
-        const result = await resp.json().catch(() => null);
+        // Routed through callGAS() (server-migration Phase 2) — same
+        // google.script.run/fetch() transport choice as every other GAS
+        // call, instead of a third hand-rolled fetch() here. Historical
+        // note, still relevant to the fetch() fallback path callGAS() uses
+        // when opened as a local file: this used to send
+        // {consumed:[...]} with no `action` field (server always fell
+        // through to "Unknown action" and never persisted anything — items
+        // marked done here would reappear on every poll forever), and a
+        // 'Content-Type':'application/json' header (triggers a CORS
+        // preflight Apps Script Web Apps don't answer) — both fixed by
+        // routing through the same shared, already-correct call path.
+        const result = await callGAS('markConsumed', { ids: consumed }).catch(() => null);
         if (!result || !result.ok) {
           console.warn('[EmailBridge] Mark-consumed rejected by server:', result && result.error);
         }
