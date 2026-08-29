@@ -174,7 +174,20 @@ function getConfig_() {
       // so adding them is a no-op for current behavior, just makes the
       // fallback unnecessary going forward.
       scrSuggestions:     "SCRSuggestions",
-      scrDecisionLog:     "SCRDecisionLog"
+      scrDecisionLog:     "SCRDecisionLog",
+
+      // ── Flow 2's evidence tab (15c_Flow2DirectEvaluationService.js's
+      // writeCompetencyEvidenceFromFlow2_, this project's own
+      // installSCRTrigger_ in 30_SCRSuggestionEngine.js) — same
+      // "documented but never added" situation as scrSuggestions/
+      // scrDecisionLog above: every existing reference in THIS project
+      // already falls back to this exact literal name via
+      // `|| "CompetencyEvidence"`, so adding it is a no-op for current
+      // behavior. cas-ccps/studio-steps/CommitStudentEvaluationStep.gs
+      // is a separate GAS project with no access to this file or
+      // getConfig_() — it hardcodes the same literal name directly, by
+      // necessity, not via this config key.
+      competencyEvidence: "CompetencyEvidence"
     }
   };
 }
