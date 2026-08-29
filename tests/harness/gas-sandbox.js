@@ -13,8 +13,9 @@
 // loading the file still works (those globals are only referenced inside
 // function bodies that are never invoked by these tests, and JS doesn't
 // evaluate a function body's free variables until it's called), but
-// calling createSubPlanDoc_/createBragDraft_/scanHorizonLabel_/doGet/doPost
-// from a test using this sandbox will throw ReferenceError by design.
+// calling createSubPlanDoc_/createBragDraft_/scanHorizonLabel_/
+// emailBridgeGetHorizonItems_/doPost from a test using this sandbox will
+// throw ReferenceError by design.
 
 const vm = require('vm');
 const fs = require('fs');
@@ -178,6 +179,18 @@ function makeCacheServiceMock() {
   return { getScriptCache() { return cache; }, getUserCache() { return cache; } };
 }
 
+// Real Apps Script API — a no-op lock. A synchronous VM sandbox can never
+// exercise real cross-request contention (there's only ever one thread of
+// execution), so this exists purely so a file that calls
+// LockService.getScriptLock().waitLock()/.releaseLock() (e.g. SCR.gs,
+// guarding its read-modify-write of the scores sheet against two
+// overlapping flushes) can load and run at all — not to test locking
+// behavior itself, which no test in this repo needs.
+function makeLockServiceMock() {
+  const lock = { waitLock() {}, releaseLock() {}, tryLock() { return true; }, hasLock() { return true; } };
+  return { getScriptLock() { return lock; }, getUserLock() { return lock; }, getDocumentLock() { return lock; } };
+}
+
 // Loads a real .gs file's source into a fresh vm context with the mocks
 // above, then exposes the functions named in `exposeNames` for direct
 // calling. Returns { exported, sandbox } — `sandbox` is the full vm context
@@ -204,6 +217,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     SpreadsheetApp: makeSpreadsheetAppMock(),
     Session: makeSessionMock(),
     CacheService: makeCacheServiceMock(),
+    LockService: makeLockServiceMock(),
     Utilities: { getUuid: () => 'fake-uuid-' + Math.random().toString(36).slice(2) },
     // Every cas-ccps file logs through Logger.log(...) (Apps Script's
     // built-in logger, distinct from console) on essentially every code
