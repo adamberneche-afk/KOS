@@ -538,9 +538,11 @@ function _removeEmailBridge() {
 function updateEmailBridgeBadge_() {
   const el = document.getElementById('email-bridge-status');
   if (!el) return;
-  const url = EMAIL_BRIDGE.url();
-  el.textContent = url ? '\u2705 On' : '\u26a0\ufe0f Off';
-  el.style.color  = url ? '#16a34a' : '#b45309';
+  // Same-origin (served by the deployed LeaderHub web app) counts as "On"
+  // even with no URL ever configured \u2014 see _lhBridgeAvailable_().
+  const on = _lhBridgeAvailable_();
+  el.textContent = on ? '\u2705 On' : '\u26a0\ufe0f Off';
+  el.style.color  = on ? '#16a34a' : '#b45309';
 }
 
 function openEmailBridgeModal_() {
