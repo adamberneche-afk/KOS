@@ -13,7 +13,11 @@ const EMAIL_BRIDGE = {
     if (!url) return;
     let data;
     try {
-      const resp = await fetch(url, { method: 'GET' });
+      // Server-migration Phase 1: the deployed URL's doGet() now serves the
+      // hub UI by default (Code.gs) — ?api=horizon is what routes this
+      // specific GET to EmailBridge.gs's horizon-items JSON instead, same
+      // response shape as before. See Code.gs's own doGet() comment.
+      const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'api=horizon', { method: 'GET' });
       if (!resp.ok) throw new Error('HTTP ' + resp.status);
       data = await resp.json();
     } catch (e) {
