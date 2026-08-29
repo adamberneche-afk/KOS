@@ -18,9 +18,9 @@ Three projects, three different shapes:
 
 | Project | Script projects involved | Who it's for | Stakes |
 |---|---|---|---|
-| kos-personal | 1 (single flat folder) | You, personal account | Low — no students touch this |
-| leader-hub | 1 (`EmailBridge.gs` only — the HTML app itself has no deploy step at all) | **Belongs to Adam Berneche per its own README, not confirmed as yours** | Depends on ownership — see Part 2 |
-| cas-ccps | 7 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `teacher-dashboard`, `student-dashboard`) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
+| kos-personal | 2 (the main flat-folder project, plus `kos-personal/studio-steps/` — a second, separate standalone project; SMP-004's personal/district split, not a shared global scope) | You, personal account | Low — no students touch this |
+| leader-hub | 1 (`leader-hub:app` — `Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`, one real Web App deployment) | **Belongs to Adam Berneche per its own README, not confirmed as yours** | Depends on ownership — see Part 2 |
+| cas-ccps | 8 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `teacher-dashboard`, `student-dashboard`, `studio-steps`) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
 
 Do these in order. Parts 0 and 1 you can do today. Part 3 (cas-ccps) takes
 real setup time — budget it separately, and start with just the one pilot
@@ -119,37 +119,46 @@ pushing code to someone else's GitHub repo without asking — don't.
 If you *are* the owner (or this has changed since that README was
 written):
 
-### 2.1 The HTML app itself has no deploy step
+### 2.1 One project now — `leader-hub:app` is a real Web App deployment
 
-`student-leader-hub.html` is, per its own README, **100% client-side:
-opens as a local HTML file, all state in `localStorage`, no server.**
-There's no clasp project, no script ID, nothing to push. "Deploying" a
-change to it is just: save the file, and put the updated copy wherever
-it's actually opened from (local machine, shared Drive folder, wherever
-that currently is). That's it.
+**⚠ Superseded since this was written.** `student-leader-hub.html` used to
+be 100% client-side with no deploy step at all; it no longer is.
+leader-hub is now server-backed: `leader-hub:app` — five files
+(`Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`) — is a
+single Apps Script project deployed as a Web App, serving the HTML front
+end and holding its data in a Spreadsheet. See
+`leader-hub/README.md`'s "JJ1 — Server-deployed web app" section for the
+full migration story; that section is now the authoritative description
+of how this system deploys.
 
-### 2.2 EmailBridge.gs — the one real script project here
+### 2.2 The one real script project here
 
-This is the optional companion script (Gmail → Sheet → app polling).
-It's a single flat project, same shape as kos-personal:
+`leader-hub:app` — all five files above, one flat project:
 
 ```
 cd leader-hub
 copy .clasp.json.template .clasp.json
 ```
 
-Get its Script ID the same way (open the bound Sheet, Extensions → Apps
-Script → Project Settings), paste it in, do the same live-check-in-a-temp-folder
-sanity pass as 1.1, then the same everyday loop as 1.2 (`clasp push`,
-`clasp open-script`).
+Get its Script ID the same way (open the bound project, Project
+Settings), paste it in, do the same live-check-in-a-temp-folder sanity
+pass as 1.1, then the same everyday loop as 1.2 (`clasp push`,
+`clasp open-script`). Since this is now a Web App, promoting a change to
+production follows the same "push, version, deploy" pattern as
+cas-ccps's own web apps (see Part 3's `teacher-dashboard`/`student-dashboard`
+promotion steps) — a `clasp push` alone updates the code but not the live
+deployment users hit until `clasp deploy` points a real version at it.
 
 ---
 
-## Part 3 — cas-ccps (7 projects, real students, the one that needs care)
+## Part 3 — cas-ccps (8 projects, real students, the one that needs care)
 
 This is the one SMP-004 exists for. The shape is different from the other
-two because cas-ccps isn't one project — it's seven, several of which
-share files (`00_SharedConfig.js` is pasted into six of them).
+two because cas-ccps isn't one project — it's eight, several of which
+share files (`00_SharedConfig.js` is pasted into six of them). The 8th,
+`studio-steps`, is standalone (not bound to any spreadsheet) and shares no
+files with the other seven — see 3.7 below for what's different about
+deploying it.
 `tools/clasp-sync/sync.js` exists specifically to solve that: it reads
 `tools/gas-lint/project-map.json` and builds a clean, throwaway push
 folder per project.
@@ -218,13 +227,15 @@ one.
 ### 3.2b — Alternative: building from scratch, straight to production
 
 Section 3.2 above assumes a *live* project already exists somewhere to
-copy from before you touch it. When **none of the 7 projects have ever
-been deployed** — no sandbox to make a copy *of* — that step doesn't
-apply, and there's nothing live to protect while you build directly.
-Confirmed working end-to-end during a real from-scratch deployment; the
-three gotchas below aren't hypothetical, they're what actually happened.
+copy from before you touch it. When **none of the 7 spreadsheet/doc-bound
+projects have ever been deployed** — no sandbox to make a copy *of* —
+that step doesn't apply, and there's nothing live to protect while you
+build directly. Confirmed working end-to-end during a real from-scratch
+deployment; the three gotchas below aren't hypothetical, they're what
+actually happened. (`studio-steps`, the 8th project, doesn't fit this
+section either — it's standalone, not sheet/doc-bound; see 3.7.)
 
-For each of the 7 projects, in a scratch folder **outside** the repo:
+For each of those 7 projects, in a scratch folder **outside** the repo:
 
 ```
 clasp create --type sheets --title "CAS - <Project Name>" --rootDir .
@@ -349,9 +360,15 @@ steps** — the walkthrough below is kept for the conceptual picture (why a
 sandbox-only credential, why it's safe to automate) but isn't the literal
 job in the repo anymore.
 
-Once you have sandbox Script IDs for all 7, this is safe to fully
+Once you have sandbox Script IDs for all 8 projects (`studio-steps`
+included — `.github/workflows/gas-lint.yml`'s `sandbox-deploy` job pushes
+its sandbox copy the same way as everything else), this is safe to fully
 automate — the CI credential only ever has keys to the sandbox copies,
-never to the real district-owned projects.
+never to the real district-owned projects. (`studio-steps` gets `clasp
+push` in CI like everything else, but never `clasp deploy`, sandbox or
+production — see 3.7: the one-time "Test deployments → Install" step
+that actually makes the steps usable in Studio has no clasp equivalent
+and stays a human action.)
 
 **Give the robot a personal-account key.** Open `%USERPROFILE%\.clasprc.json`
 on your machine (this is where clasp saved the login from your very first
@@ -464,28 +481,59 @@ if you don't have it handy. That last `clasp deploy` command is the
 actual "open the stadium doors" moment for the two web apps — everything
 before it, including the `clasp push`, was still just rehearsal.
 
+### 3.7 `studio-steps` (both cas-ccps and kos-personal) — a different shape again
+
+Neither of the two other patterns above quite fits. `studio-steps` is
+standalone (not sheet/doc-bound, so no "which spreadsheet is this bound
+to" step), and it's a Workspace Studio add-on, not a web app — there's no
+`/exec` URL and no `clasp deploy -i <id>` promoting a version to a live
+audience the way 3.6's web apps work. Promotion here means:
+
+```
+node tools/clasp-sync/sync.js studio-steps
+cd cas-ccps\.clasp-build\studio-steps
+clasp push
+clasp deploy --description "v1"
+```
+
+...followed by a **manual, one-time Apps Script editor action with no
+clasp equivalent**: Deploy → Test deployments → Install. That's what
+actually makes the steps available in Studio's step picker — nothing
+after the initial install needs repeating; a later `clasp push` updates
+the code for everyone who already installed it, no re-install needed.
+Same human-at-keyboard model as everything else in this runbook applies
+here too — see `cas-ccps/studio-steps/README.md`'s own deployment section
+for the full command block and this project's specific file list.
+kos-personal's `studio-steps` project follows the same shape but the
+flat-folder `clasp create --type standalone` pattern from Part 1, not
+`sync.js` (it isn't `cas-ccps:`-prefixed) — see
+`kos-personal/studio-steps/README.md`.
+
 ---
 
 ## Quick-reference cheat sheet
 
 | Situation | Command sequence |
 |---|---|
-| kos-personal, any change | `clasp push` → `clasp open-script` |
-| cas-ccps, no live projects exist yet | `clasp create --type <sheets\|docs\|standalone>` per project (see 3.2b) |
-| leader-hub HTML, any change | save file, replace it wherever it's opened from |
-| leader-hub EmailBridge, any change | same as kos-personal, once ownership is confirmed |
+| kos-personal (main project), any change | `clasp push` → `clasp open-script` |
+| kos-personal `studio-steps`, any change | `clasp push` → `clasp deploy --description "..."` (test-install already done once — see `kos-personal/studio-steps/README.md`) |
+| cas-ccps, no live projects exist yet | `clasp create --type <sheets\|docs\|standalone>` per project (see 3.2b; `studio-steps` follows 3.7 instead) |
+| leader-hub (`leader-hub:app`), any change | same "push → version → deploy" pattern as a cas-ccps web app, once ownership is confirmed — see 2.2 |
 | cas-ccps, testing a change | push to `main`, let sandbox-deploy CI job run |
 | cas-ccps trigger-driven project, promoting to production | `node tools/clasp-sync/sync.js <name>` → fill in production `.clasp.json` → `clasp push` |
 | cas-ccps web app, promoting to production | `clasp push` → `clasp version "..."` → `clasp list-deployments` → `clasp deploy -i <id> -V <the number just printed>` |
+| cas-ccps `studio-steps`, any change | `node tools/clasp-sync/sync.js studio-steps` → `clasp push` → `clasp deploy --description "..."` (see 3.7) |
 
 ## Recommended order
 
-Don't build all 7 sandboxes, then promote all 7 to production, in one
-pass. Do the whole loop — sandbox build (3.2), robot push (3.5), manual
-promotion (3.6) — on **`central-ledger` alone** first, including
-confirming the Script 28 fix (3.4) is actually present and working.
-Confirm it end to end before extending the same pattern to the other four
-trigger-driven cas-ccps projects and the two web apps.
+Don't build all 7 spreadsheet/doc-bound sandboxes, then promote all 7 to
+production, in one pass. Do the whole loop — sandbox build (3.2), robot
+push (3.5), manual promotion (3.6) — on **`central-ledger` alone** first,
+including confirming the Script 28 fix (3.4) is actually present and
+working. Confirm it end to end before extending the same pattern to the
+other four trigger-driven cas-ccps projects and the two web apps.
+`studio-steps` (3.7) doesn't depend on any of this and can be done
+whenever it's ready — it shares no files with the other 7.
 
 ## Before this goes fully live
 

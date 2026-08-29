@@ -3,6 +3,19 @@
 *Full front-to-back review, August 2026. Scope: all of `kos-personal/`,
 `cas-ccps/`, `leader-hub/`, `meta/`, `drive-curation/`, and `tools/`.*
 
+> **⚠ Stale in three places, corrected inline rather than rewritten** (this
+> review predates work landed after it was written): leader-hub gained a
+> server (`leader-hub:app` — see its own README's "JJ1" section) and is no
+> longer client-side-only; the repo gained a real test suite
+> (`tests/`, `npm test`, 286 passing as of the Studio Steps adoption) where
+> this review found none; and cas-ccps's Flow 2/3/4/5 custom-step code now
+> exists (`cas-ccps/studio-steps/`), though it is not yet pushed to a live
+> Studio deployment. Each affected passage below carries its own inline
+> `⚠ Stale` note rather than being silently rewritten, matching this repo's
+> own convention (see `leader-hub/LEADERHUB_PRINCIPLES.md`'s Principle 6
+> correction) — the surrounding analysis is otherwise left as originally
+> written.
+
 ## 0. Executive summary
 
 **KOS is not one product.** It's a monorepo consolidating three genuinely
@@ -18,7 +31,7 @@ own right:
 |---|---|---|
 | `kos-personal/` | "We automate the machine so we can be free to be human" — protect human agency from AI extraction (`KOS_WHITE_PAPER.md`) | Real proactive machinery exists, but the loop the promise depends on is admittedly unbuilt |
 | `cas-ccps/` | "The system should never require the user to type something it already has" (`docs/CAS_ContextualGates_DesignPrinciples.html`) | A genuinely well-designed philosophy, one proof-of-concept live, but the AI pipeline it's meant to serve isn't fully wired end-to-end |
-| `leader-hub/` | "Out of sight, out of mind. This dashboard exists to keep everything in sight so that everything stays in mind." (`LEADERHUB_PRINCIPLES.md`) | The most fully realized against its own promise — working, live, single-file, and genuinely anticipatory |
+| `leader-hub/` | "Out of sight, out of mind. This dashboard exists to keep everything in sight so that everything stays in mind." (`LEADERHUB_PRINCIPLES.md`) | The most fully realized against its own promise — working, live, and genuinely anticipatory (⚠ Stale: "single-file" describes the HTML front end only as of this writing — leader-hub is now server-backed, see §3's note) |
 
 The single biggest cross-cutting risk in the entire repo: **there is no
 automated test coverage anywhere.** The only CI is a custom static linter
@@ -239,9 +252,19 @@ friction.
 ### Where the implementation earns the promise — this is the strongest case in the repo
 
 LeaderHub is the system that most fully delivers on "give people what they
-need before they know they need it," and it does so with the least
-infrastructure of the three (no server, no external AI flow dependency for
-its core loop, all client-side):
+need before they know they need it," and at the time of this review did so
+with the least infrastructure of the three (no server, no external AI flow
+dependency for its core loop, all client-side).
+
+> **⚠ Stale:** leader-hub has since gained a server. `leader-hub:app`
+> (`Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`) is now a
+> real Apps Script Web App deployment holding data in a Spreadsheet — see
+> `leader-hub/README.md`'s "JJ1 — Server-deployed web app" section. The
+> "no external AI flow dependency for its core loop" half of this claim
+> still holds; only the "no server... all client-side" half is now
+> outdated. The findings below (banners, Command Engine, undo pattern,
+> responsive handling, CSP) are about the front end and remain accurate as
+> written.
 
 - **Time-triggered banners fire at the moment of maximum utility, not
   arbitrarily** — the principles doc names five specific banners tied to
@@ -294,6 +317,19 @@ its core loop, all client-side):
 ## 4. Cross-cutting findings
 
 ### No automated tests anywhere
+
+> **⚠ Stale — this entire section describes a gap that has since been
+> closed.** `tests/` now exists, wired into `npm test`
+> (`tests/leaderhub/`, `tests/cas-ccps/`, `tests/kos-personal/`,
+> `tests/tools/`), running real Node-`vm`-sandboxed coverage against the
+> actual `.gs`/`.js` source via `tests/harness/gas-sandbox.js` — 286
+> passing tests as of the Studio Steps adoption. The specific bug classes
+> named below (raw-JS-outside-`<script>`, date-type coercion) now have
+> regression coverage; a `google.script.run` call with no matching server
+> function is still gas-lint's job, not the test suite's, and remains
+> covered the way this section originally described. The original text is
+> left below for its still-accurate framing of *why* this mattered, not as
+> a current-state claim.
 
 `find -iname "*test*"` across the entire repo returns nothing except
 `package.json` script-name matches. The only CI job
@@ -362,11 +398,21 @@ has, it will need to be rebuilt there, not inherited.
    partially aspirational rather than delivered — worth either finishing
    or updating the North Star docs to describe the manual-step reality
    plainly (the repo already has a track record of doing this well, e.g.
-   the `⚠ Stale` correction in `LEADERHUB_PRINCIPLES.md`).
-4. Add minimal automated test coverage to `kos-personal/inference-service/`
-   first — it's the one component in the repo touching billing and auth,
-   and unlike the GAS systems it's a normal Node/Postgres service where
-   standard test tooling applies directly.
+   the `⚠ Stale` correction in `LEADERHUB_PRINCIPLES.md`). **⚠ Partially
+   done since this review:** cas-ccps's Flow 2/3/4/5 custom-step code is
+   now built (`cas-ccps/studio-steps/`) and tested — what remains is
+   pushing that project to a live Studio deployment and wiring each flow,
+   not writing the code. kos-personal's inference-closing flow is
+   unaffected by that work and remains as this review found it.
+4. **⚠ Re-scoped since this review — the framing below assumed no test
+   suite existed anywhere; that's no longer true (see §4's note).** The
+   underlying recommendation stands on its own merits, not on that
+   framing: `kos-personal/inference-service/` is still the one component
+   in the repo touching billing and auth, still a normal Node/Postgres
+   service where standard test tooling applies directly, and still has no
+   coverage in the test suite that now exists for the rest of the repo —
+   add minimal automated test coverage there next, as the next gap to
+   close rather than the only one.
 
 **P2 — polish**
 5. Confirm the cas-ccps Teacher/Student dashboard `esc()` parity is fully
@@ -397,7 +443,12 @@ that depend on an externally-configured AI flow (kos-personal, cas-ccps),
 the anticipatory feature is *built* but not *closed* — a Studio flow that
 needs to exist doesn't yet, so a human has to do manually what the system
 is designed to do automatically. leader-hub, which owns its entire loop
-client-side with no external dependency, is where the philosophy is most
-completely real today. Closing that same gap in the other two systems is
-the highest-leverage next step for the whole repo to actually deliver, end
-to end, on what each of its own North Star documents already promises.
+with no external AI-flow dependency, is where that particular philosophy
+is most completely real today (⚠ Stale: "client-side" is no longer
+accurate — see §3's note; the "no external dependency for its core loop"
+half of this sentence still holds). Closing that same Studio-flow gap in
+the other two systems is the highest-leverage next step for the whole repo
+to actually deliver, end to end, on what each of its own North Star
+documents already promises — with cas-ccps's half of that gap now
+partially closed (custom-step code for Flows 2-5 exists and is tested;
+what remains is deployment, not code).
