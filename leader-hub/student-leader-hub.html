@@ -3314,6 +3314,8 @@ const LS = {
   set: (k, v) => {
     try {
       localStorage.setItem(k, JSON.stringify(v));
+      _lhSyncConfigKeyToServer_(k, v);
+      _lhSyncDataKeyToServer_(k, v);
       return true;
     } catch (e) {
       console.error('[LS.set] write failed for key', k, e);
@@ -3325,6 +3327,465 @@ const LS = {
     }
   },
 };
+
+// ── Server write-through for singleton config domains (server-migration
+// Phase 3) ───────────────────────────────────────────────────────────────
+// A "singleton config domain" is a small settings object kept in one
+// localStorage key (Profile, Modules, Schedule Config, ...) as opposed to
+// a growing multi-record list (trips, roster, scores, ...), which gets its
+// own real Spreadsheet tab with proper conflict handling in a later phase
+// — this list is deliberately NOT those. Every key here also exists in
+// Config.gs's LH_CONFIG_KEYS; kept as two lists (not one shared file)
+// because the client can't require() the .gs file — if you add a domain
+// to one, add it to the other too, or lhSaveConfig_() will just reject it.
+//
+// This hooks LS.set() itself rather than each domain's own
+// getX()/persistX() wrapper (or the many call sites for domains that have
+// no single wrapper — several of these are read/written inline at their
+// point of use throughout the file) so every existing call site gets the
+// write-through automatically, with no per-call-site changes anywhere.
+const LH_SERVER_SYNCED_CONFIG_KEYS = [
+  'lh_profile', 'lh_modules', 'lh_schedule_config', 'lh_custom_orgs',
+  'lh_custom_courses', 'lh_keyContacts', 'lh_student_id_map',
+  'lh_cas_ccps_api_url', 'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
+  'lh_sub_period_assignments', 'lh_sbe_status', 'lh_deca_season',
+  'lh_deca_approvals', 'lh_ftp_overrides', 'lh_conf_leave', 'lh_mk8_check',
+  'lh_ssbu_check', 'lh_obs_prep', 'lh_sync_tracker', 'lh_sub_student_notes',
+  // Phase 5: map-shaped (keyed by tripId / orgId), not a flat list of
+  // independent records — see LH_SERVER_SYNCED_DATA_KEYS below for that
+  // distinction, and Config.gs for why these two live here.
+  'lh_slip_rosters', 'lh_org_results',
+  // Phase 6: Course Catalog / SCR support data, all map-shaped. The real
+  // SCR scores are NOT here — see LH_SERVER_SYNCED_DATA_KEYS/
+  // leader-hub/SCR.gs for why that domain needs a different shape.
+  'lh_custom_pacing_units', 'lh_cas_pacing_notes', 'lh_scr_student_emails',
+  // Phase 7: map-shaped (keyed by purchase-order id). lh_wbl_hours_log is
+  // deliberately NOT synced anywhere yet — its entries have no `id` field
+  // and are capped at 200, so neither this mechanism nor
+  // LH_SERVER_SYNCED_DATA_KEYS fits without a fragile synthetic key.
+  'lh_receiving_status',
+  // Phase 8: the Horizon system uses its own bucketed {short,mid,long}
+  // shape, not a flat record list — see LH_SERVER_SYNCED_DATA_KEYS for the
+  // id-less logs (lh_daily_log, lh_sub_plan_log, lh_brag_log) deliberately
+  // left out of both mechanisms.
+  'lh_horizon',
+  // Phase 9: Lesson Plan content edits, both keyed by a lesson/unit
+  // identifier rather than a flat record list.
+  'lh_lp_edits', 'lh_lp_edit_meta',
+  // Phase 10 final audit: Unit Plans notes, keyed by unit id — missed in
+  // Phase 9. lh_scr_session_log was found the same audit pass but stays
+  // excluded (its entries key off a composite `key` field, not `id`,
+  // same class of gap as the other id-less capped logs already listed
+  // above).
+  'lh_unit_notes',
+];
+
+// Fire-and-forget — never blocks or throws back into the LS.set() caller.
+// Same-origin only (google.script.run doesn't exist for a locally-opened
+// file); a failed sync just logs a warning, since localStorage already has
+// the value regardless of whether the server copy lands.
+function _lhSyncConfigKeyToServer_(key, value) {
+  if (LH_SERVER_SYNCED_CONFIG_KEYS.indexOf(key) === -1) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  google.script.run
+    .withFailureHandler(err => console.warn('[LeaderHub] config sync failed for ' + key + ':', (err && err.message) || err))
+    .lhSaveConfig_(key, value);
+}
+
+// Called once at boot (see the boot sequence's EMAIL_BRIDGE.poll() call) —
+// same-origin only, a no-op when opened as a local file. Pulls every
+// server-synced config domain in one round trip and catches this browser
+// up on anything saved from a different device/browser since it last
+// opened the app. Most of these domains are read fresh via LS.get() at
+// every point of use, so writing the server's copy into localStorage IS
+// the whole refresh for them; a handful also cache into a persistent
+// in-memory variable and need that re-applied too, listed explicitly
+// below rather than guessed at generically. Uses raw localStorage.setItem
+// (not LS.set) so applying a value the server just gave us doesn't
+// immediately re-queue the exact same value right back to it.
+async function lhRefreshConfigFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  let remote;
+  try {
+    remote = await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig_();
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.message) || e);
+    return;
+  }
+  if (!remote) return;
+
+  const _write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  // Read fresh via LS.get() at point of use everywhere — localStorage
+  // catch-up is the entire refresh, nothing else to re-apply.
+  ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
+   'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
+   'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
+   'lh_sync_tracker', 'lh_sub_student_notes', 'lh_lp_edit_meta',
+   'lh_unit_notes'].forEach(k => {
+    if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
+  });
+
+  // Cached into a persistent in-memory variable — write through
+  // localStorage AND re-apply, so an already-rendered page picks up a
+  // change made elsewhere without a manual reload.
+  if (remote.lh_profile != null)        { _write('lh_profile', remote.lh_profile); Object.assign(PROFILE, PROFILE_DEFAULTS, remote.lh_profile); _applyProfileToStaticDOM(); }
+  if (remote.lh_modules != null)        { _write('lh_modules', remote.lh_modules); Object.assign(MODULES, MODULES_DEFAULT, remote.lh_modules); _applyModuleVisibility(); }
+  if (remote.lh_custom_orgs != null)    { _write('lh_custom_orgs', remote.lh_custom_orgs); Object.assign(CUSTOM_ORGS, remote.lh_custom_orgs); Object.assign(ORGANIZATIONS, ORG_DEFAULTS, CUSTOM_ORGS); }
+  if (remote.lh_custom_courses != null) { _write('lh_custom_courses', remote.lh_custom_courses); Object.assign(CUSTOM_COURSES, remote.lh_custom_courses); }
+  if (remote.lh_ftp_overrides != null)  { _write('lh_ftp_overrides', remote.lh_ftp_overrides); Object.assign(ftPermOverrides, remote.lh_ftp_overrides); }
+  if (remote.lh_conf_leave != null)     { _write('lh_conf_leave', remote.lh_conf_leave); Object.assign(confLeaveRecords, remote.lh_conf_leave); }
+  if (remote.lh_sbe_status != null)     { _write('lh_sbe_status', remote.lh_sbe_status); Object.assign(SBE_STATUS, remote.lh_sbe_status); }
+  if (remote.lh_deca_season != null)    { _write('lh_deca_season', remote.lh_deca_season); Object.assign(DECA_SEASON, remote.lh_deca_season); }
+  if (remote.lh_ssbu_check != null)     { _write('lh_ssbu_check', remote.lh_ssbu_check); Object.assign(SSBU_CHECK_STATUS, remote.lh_ssbu_check); }
+  if (remote.lh_mk8_check != null)      { _write('lh_mk8_check', remote.lh_mk8_check); Object.assign(MK8_CHECK_STATUS, remote.lh_mk8_check); }
+  if (remote.lh_schedule_config != null) {
+    _write('lh_schedule_config', remote.lh_schedule_config);
+    if (typeof _applyScheduleConfig === 'function') _applyScheduleConfig();
+    if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
+  }
+  if (remote.lh_slip_rosters != null) {
+    _write('lh_slip_rosters', remote.lh_slip_rosters);
+    Object.keys(slipRosters).forEach(k => delete slipRosters[k]);
+    Object.assign(slipRosters, remote.lh_slip_rosters);
+  }
+  if (remote.lh_org_results != null) {
+    _write('lh_org_results', remote.lh_org_results);
+    Object.keys(ORG_RESULTS).forEach(k => delete ORG_RESULTS[k]);
+    Object.assign(ORG_RESULTS, remote.lh_org_results);
+  }
+  if (remote.lh_custom_pacing_units != null) {
+    _write('lh_custom_pacing_units', remote.lh_custom_pacing_units);
+    Object.keys(CUSTOM_PACING_UNITS).forEach(k => delete CUSTOM_PACING_UNITS[k]);
+    Object.assign(CUSTOM_PACING_UNITS, remote.lh_custom_pacing_units);
+  }
+  if (remote.lh_cas_pacing_notes != null) {
+    _write('lh_cas_pacing_notes', remote.lh_cas_pacing_notes);
+    Object.keys(CAS_PACING_NOTES).forEach(k => delete CAS_PACING_NOTES[k]);
+    Object.assign(CAS_PACING_NOTES, remote.lh_cas_pacing_notes);
+  }
+  if (remote.lh_scr_student_emails != null) {
+    _write('lh_scr_student_emails', remote.lh_scr_student_emails);
+    Object.keys(SCR_STUDENT_EMAILS).forEach(k => delete SCR_STUDENT_EMAILS[k]);
+    Object.assign(SCR_STUDENT_EMAILS, remote.lh_scr_student_emails);
+  }
+  if (remote.lh_receiving_status != null) {
+    _write('lh_receiving_status', remote.lh_receiving_status);
+    Object.keys(RECEIVING_STATUS).forEach(k => delete RECEIVING_STATUS[k]);
+    Object.assign(RECEIVING_STATUS, remote.lh_receiving_status);
+  }
+  if (remote.lh_horizon != null) {
+    _write('lh_horizon', remote.lh_horizon);
+    Object.keys(HORIZON).forEach(k => delete HORIZON[k]);
+    Object.assign(HORIZON, remote.lh_horizon);
+    if (typeof renderHorizons === 'function') renderHorizons();
+  }
+  if (remote.lh_lp_edits != null) {
+    _write('lh_lp_edits', remote.lh_lp_edits);
+    // LP_EDITS is a const object reference — mutate in place rather than
+    // reassign, same convention as ORGANIZATIONS/ORG_RESULTS above.
+    Object.keys(LP_EDITS).forEach(k => delete LP_EDITS[k]);
+    Object.assign(LP_EDITS, remote.lh_lp_edits);
+  }
+  // lh_lp_edit_meta and lh_unit_notes have no persistent in-memory
+  // variable either — both handled by the "read fresh via LS.get()"
+  // batch above.
+}
+
+// ── Server write-through for row-shaped data domains (server-migration
+// Phase 5+) ──────────────────────────────────────────────────────────────
+// A row-shaped domain is a growing flat list of independent records with
+// their own `id` (trips, trip archive, DECA results, ...) — as opposed to
+// the map-shaped domains just above, and the small singleton settings
+// objects further up. Synced automatically, same as the config domains —
+// see leader-hub/Data.gs's own header comment for why that's safe here
+// (a private, owner-only Spreadsheet, not Organization Sync's deliberate
+// co-advisor-sharing one).
+//
+// Each record is pushed/pulled as one [Id, RecordJSON] row rather than
+// flattening every field into its own column — this domain list already
+// covers records as structurally different as a ~50-field trip (with a
+// nested `ap` approvals object) and a 6-field DECA result, and a
+// schema-agnostic row shape means adding a field to a record's own object
+// literal never requires a matching server-side or sync-layer change.
+// leader-hub/Data.gs's tab is still real per-record ROWS, not one giant
+// blob for the whole domain — same "a stray corrupt record can't corrupt
+// its neighbors" property flat columns would give, just JSON per cell
+// instead of JSON per field.
+const LH_SERVER_SYNCED_DATA_KEYS = {
+  lh_trips: 'trips',
+  lh_trip_archive: 'trip_archive',
+  lh_deca_results: 'deca_results',
+  lh_wbl_students: 'wbl_roster',
+  lh_inventory: 'store_inventory',
+  lh_sales_log: 'store_sales_log',
+  lh_purchase_orders: 'store_purchase_orders',
+  lh_es_players: 'esports_players',
+  lh_es_matches: 'esports_matches',
+  lh_goals: 'goals',
+  lh_events: 'events',
+  lh_tasks: 'tasks',
+  lh_deadlines: 'deadlines',
+  lh_journal_history: 'journal_entries',
+  lh_obs_history: 'observation_history',
+  lh_brag_manual_wins: 'brag_manual_wins',
+};
+
+function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
+function _lhGetDataTracker_(domain) { return LS.get(_lhDataTrackerKey_(domain), { lastKnownRemoteUpdatedAt: null }); }
+// Raw localStorage, not LS.set() — a tracker key is bookkeeping about a
+// sync, not itself a synced domain, and must never recursively trigger
+// this same hook.
+function _lhSetDataTracker_(domain, tracker) {
+  try { localStorage.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
+}
+
+// One-warning-per-domain-per-page-load, same convention as LS.set/LS.get's
+// own _lsWriteFailWarned/_lsReadFailWarned — a background sync hitting a
+// real conflict (this browser's edit is safe locally, just not yet
+// pushed) shouldn't spam a toast on every subsequent write.
+let _lhDataConflictWarned = {};
+
+// Fire-and-forget — never blocks or throws back into the LS.set() caller.
+// A rejected (conflicting) push never overwrites the server and never
+// touches this browser's own localStorage copy either — the edit stays
+// exactly as safe as it always was, just not yet synced. No interactive
+// dialog here (contrast with Organization Sync's button-triggered push,
+// which does show one) — this runs in the background on every save, not
+// in response to a deliberate "sync now" click.
+async function _lhSyncDataKeyToServer_(key, value) {
+  const domain = LH_SERVER_SYNCED_DATA_KEYS[key];
+  if (!domain) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+
+  const tracker = _lhGetDataTracker_(domain);
+  const rows = (Array.isArray(value) ? value : []).map(rec => [
+    (rec && rec.id != null) ? String(rec.id) : '',
+    JSON.stringify(rec),
+  ]);
+  let res;
+  try {
+    res = await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhPushData_({ domain, headers: ['Id', 'RecordJSON'], rows, expectedUpdatedAt: tracker.lastKnownRemoteUpdatedAt });
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Sync failed for ' + domain + ':', (e && e.message) || e);
+    return;
+  }
+  if (res && res.ok) {
+    _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+    return;
+  }
+  if (res && res.conflict && !_lhDataConflictWarned[domain]) {
+    _lhDataConflictWarned[domain] = true;
+    console.warn('[LeaderHub] ' + domain + ' has changes from elsewhere this browser hasn\'t synced yet — this edit stayed safe locally but wasn\'t pushed to the server.');
+    if (typeof _showToast === 'function') {
+      _showToast('⚠ ' + domain + ' changed elsewhere — reload once things settle to catch up', 6000, '#b45309');
+    }
+  }
+}
+
+// Boot-time catch-up for every row-shaped domain, same shape as
+// lhRefreshConfigFromServer_() above — only overwrites this browser's
+// copy when the server actually has something (found:true); a
+// never-synced domain keeps whatever's already in localStorage (this
+// browser's own seed data, on the very first sync).
+async function lhRefreshDataDomainsFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+
+  const APPLY = {
+    trips: arr => {
+      trips = arr;
+      localStorage.setItem('lh_trips', JSON.stringify(trips));
+      if (typeof renderTrips === 'function') renderTrips();
+      if (typeof renderDashboard === 'function') renderDashboard();
+    },
+    trip_archive: arr => {
+      tripArchive = arr;
+      localStorage.setItem('lh_trip_archive', JSON.stringify(tripArchive));
+      if (typeof renderArchive === 'function') renderArchive();
+    },
+    deca_results: arr => {
+      // No persistent in-memory variable — every reader already calls
+      // LS.get('lh_deca_results', []) fresh, so the localStorage write is
+      // the whole refresh; re-render only if that view happens to be open.
+      localStorage.setItem('lh_deca_results', JSON.stringify(arr));
+      if (typeof renderDecaResults === 'function') renderDecaResults();
+    },
+    wbl_roster: arr => {
+      WBL_STUDENTS = arr;
+      localStorage.setItem('lh_wbl_students', JSON.stringify(WBL_STUDENTS));
+      if (typeof renderWBLTracker === 'function') renderWBLTracker();
+    },
+    store_inventory: arr => {
+      INVENTORY = arr;
+      localStorage.setItem('lh_inventory', JSON.stringify(INVENTORY));
+      if (typeof renderProcurement === 'function') renderProcurement();
+    },
+    store_sales_log: arr => {
+      SALES_LOG = arr;
+      localStorage.setItem('lh_sales_log', JSON.stringify(SALES_LOG));
+      if (typeof renderFinance === 'function') renderFinance();
+    },
+    store_purchase_orders: arr => {
+      PURCHASE_ORDERS = arr;
+      localStorage.setItem('lh_purchase_orders', JSON.stringify(PURCHASE_ORDERS));
+      if (typeof renderProcurement === 'function') renderProcurement();
+    },
+    esports_players: arr => {
+      ES_PLAYERS = arr;
+      localStorage.setItem('lh_es_players', JSON.stringify(ES_PLAYERS));
+      if (typeof renderESRoster === 'function') renderESRoster();
+    },
+    esports_matches: arr => {
+      ES_MATCHES = arr;
+      localStorage.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
+      if (typeof renderMatchLog === 'function') renderMatchLog();
+    },
+    goals: arr => {
+      goals = arr;
+      localStorage.setItem('lh_goals', JSON.stringify(goals));
+      if (typeof renderGoals === 'function') renderGoals();
+    },
+    events: arr => {
+      otherEvents = arr;
+      localStorage.setItem('lh_events', JSON.stringify(otherEvents));
+      if (typeof renderEvents === 'function') renderEvents();
+      if (typeof renderDECAPipeline === 'function') renderDECAPipeline();
+    },
+    tasks: arr => {
+      // No persistent in-memory variable — every reader already calls
+      // LS.get('lh_tasks', []) fresh, so the localStorage write is the
+      // whole refresh; refreshNextAction() re-derives the action queue
+      // that reads from it.
+      localStorage.setItem('lh_tasks', JSON.stringify(arr));
+      if (typeof refreshNextAction === 'function') refreshNextAction();
+    },
+    deadlines: arr => {
+      DEADLINES = arr;
+      localStorage.setItem('lh_deadlines', JSON.stringify(DEADLINES));
+      if (typeof renderDeadlines === 'function') renderDeadlines();
+    },
+    journal_entries: arr => {
+      // No persistent in-memory variable (lh_journal_last, a single most-
+      // recent entry, is separate and untouched) — every reader calls
+      // LS.get('lh_journal_history', []) fresh.
+      localStorage.setItem('lh_journal_history', JSON.stringify(arr));
+    },
+    observation_history: arr => {
+      localStorage.setItem('lh_obs_history', JSON.stringify(arr));
+      if (typeof renderObsChecklist === 'function') renderObsChecklist();
+    },
+    brag_manual_wins: arr => {
+      localStorage.setItem('lh_brag_manual_wins', JSON.stringify(arr));
+    },
+  };
+
+  for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
+    let res;
+    try {
+      res = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+          .lhPullData_({ domain });
+      });
+    } catch (e) {
+      console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
+      continue;
+    }
+    if (res && res.ok && res.found) {
+      const arr = (res.rows || [])
+        .map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } })
+        .filter(Boolean);
+      const apply = APPLY[domain];
+      if (apply) apply(arr);
+      _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+    }
+  }
+}
+
+// ── SCR score sync — debounced, per-cell (server-migration Phase 6) ────────
+// scrScores is a course→period→student→competency matrix that can span
+// thousands of cells, and setScore() (leader-hub/src/09-...-esports.html)
+// fires on every single grid click — orders of magnitude past a Script
+// Property's ~9KB value limit if pushed whole (Config.gs's model), and a
+// wholesale-tab-rewrite per click (Data.gs's model) would both be slow and
+// rewrite the entire gradebook on every keystroke of a fast grading pass.
+// See leader-hub/SCR.gs for the server side (one real row per cell,
+// upserted by composite key). This queues each change and flushes a whole
+// batch in one call after a short pause in clicking, rather than one round
+// trip per click.
+const SCR_SYNC_DEBOUNCE_MS = 2000;
+let _scrSyncQueue = []; // [{course, period, studentKey, compNum, score}]
+let _scrSyncTimer = null;
+
+function _lhQueueScrScoreSync_(course, period, studentKey, compNum, score) {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return; // local-file mode: nothing to sync to
+  // Replace any already-queued change to this exact cell rather than
+  // appending a duplicate — a fast clicker cycling a score 0→1→2→3 should
+  // sync once with the final value, not four separate stale writes.
+  _scrSyncQueue = _scrSyncQueue.filter(c => !(c.course === course && c.period === period && c.studentKey === studentKey && c.compNum === compNum));
+  _scrSyncQueue.push({ course, period, studentKey, compNum, score });
+  if (_scrSyncTimer) clearTimeout(_scrSyncTimer);
+  _scrSyncTimer = setTimeout(_lhFlushScrScoreSync_, SCR_SYNC_DEBOUNCE_MS);
+}
+
+async function _lhFlushScrScoreSync_() {
+  _scrSyncTimer = null;
+  if (!_scrSyncQueue.length) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) { _scrSyncQueue = []; return; }
+  const batch = _scrSyncQueue;
+  _scrSyncQueue = [];
+  try {
+    await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhSaveScrScores_(batch);
+    });
+  } catch (e) {
+    // Not re-queued automatically — the edit is already safe in scrScores/
+    // localStorage via persistSCR() (setScore() calls that first, before
+    // this ever runs); the next real edit to any cell queues and flushes
+    // again, so a transient failure here doesn't strand an edit forever.
+    console.warn('[LeaderHub] SCR score sync failed for ' + batch.length + ' cell(s):', (e && e.message) || e);
+  }
+}
+
+// Boot-time catch-up, same found:false/found:true-guarded shape as
+// lhRefreshConfigFromServer_()/lhRefreshDataDomainsFromServer_() above —
+// found:false (this deployment has never had a score pushed to it) leaves
+// scrScores untouched; found:true replaces it wholesale with the server's
+// authoritative copy, since by the time any score has ever been synced,
+// the server is the source of truth every device should converge on.
+async function lhRefreshScrScoresFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  let res;
+  try {
+    res = await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhGetScrScores_();
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Could not refresh SCR scores from server:', (e && e.message) || e);
+    return;
+  }
+  if (res && res.ok && res.found) {
+    scrScores = res.scores || {};
+    localStorage.setItem('lh_scr_scores', JSON.stringify(scrScores));
+    if (document.getElementById('view-competency')?.classList.contains('active') && typeof renderCompetencyView === 'function') {
+      renderCompetencyView();
+    }
+  }
+}
 
 // ============================================================
 // DATA
@@ -11619,6 +12080,10 @@ function setScore(stuName, compNum, el, next) {
   }
 
   persistSCR();
+  // Server-migration Phase 6: queue this one cell for a debounced,
+  // batched server sync — see _lhQueueScrScoreSync_() in
+  // leader-hub/src/05-data-helpers-dashboard.html.
+  _lhQueueScrScoreSync_(course, period, stuName, compNum, next);
   // Log SCR session for Brag Board — one entry per day per course (deduped by date+course)
   const _scrLog = LS.get('lh_scr_session_log', []);
   const _scrToday = _localDateStr_();
@@ -12888,11 +13353,30 @@ function getCurrentPeriodInfo() {
 
 // ── Apps Script Bridge — replaces all Gemini AI calls ───────────────────────
 // All "AI" features now route through the existing EmailBridge Apps Script.
-// Set the bridge URL once in Settings → Email Bridge.
-// GAS endpoints: action=subPlan, action=bragEmail, action=markConsumed,
-//   action=aiDraft, action=checkAiJob (all POST with JSON body)
-
+// GAS endpoints (dispatched by _lhDispatchAction_() in EmailBridge.gs,
+// shared by both transports below): action=subPlan, action=bragEmail,
+// action=markConsumed, action=aiDraft, action=checkAiJob, action=flowHealth,
+// action=pushOrgSync, action=pullOrgSync, action=listOrgSyncs.
+//
+// Two transports, chosen automatically, no Settings change needed:
+//  - Served by the deployed LeaderHub web app (Code.gs's doGet(), server-
+//    migration Phase 1+): same-origin, so google.script.run works — no
+//    URL to configure, no CORS/preflight concerns at all. This is checked
+//    first and always wins when available.
+//  - Opened as a local file (student-leader-hub.html directly — still
+//    fully supported, no forced cutover): google.script.run doesn't exist
+//    outside the Apps Script iframe, so this falls back to the original
+//    fetch()-to-the-configured-Email-Bridge-URL call, unchanged.
 async function callGAS(action, payload) {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhApiCall_(action, payload || {});
+    });
+  }
+
   const url = EMAIL_BRIDGE.url();
   if (!url) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
@@ -12915,6 +13399,18 @@ async function callGAS(action, payload) {
   });
   if (!resp.ok) throw new Error('GAS HTTP ' + resp.status);
   return resp.json();
+}
+
+// True once ANY Apps Script bridge transport is actually usable — either
+// same-origin (served by the deployed LeaderHub web app; no URL
+// configuration needed at all, see callGAS() above) or a configured Email
+// Bridge URL (opened as a local file). Every "is AI drafting / Sub Plan /
+// Brag Email / Org Sync configured" gate should check this, not
+// EMAIL_BRIDGE.url() directly — checking the URL alone would incorrectly
+// report "not configured" once served by the deployed app with no URL
+// ever set, even though callGAS() would work fine via google.script.run.
+function _lhBridgeAvailable_() {
+  return (typeof google !== 'undefined' && google.script && google.script.run) || !!EMAIL_BRIDGE.url();
 }
 
 // ── AI job polling — bifurcated backend, see LEADERHUB_AI_FLOW_SETUP.md ────
@@ -12973,8 +13469,7 @@ async function aiComposeEmail() {
     return;
   }
 
-  const url = EMAIL_BRIDGE.url();
-  if (!url) {
+  if (!_lhBridgeAvailable_()) {
     out.value = localTemplate;
     if (status) status.textContent = "✏️ Template populated — AI drafting isn't configured (see Settings)";
     return;
@@ -13105,8 +13600,7 @@ async function generateAIInsights() {
   // stays empty) if no bridge is configured, the Flow errors, or the
   // ~90s poll times out — never blocks or replaces the stats.
   const narrativeEl = document.getElementById('archive-ai-narrative');
-  const url = EMAIL_BRIDGE.url();
-  if (url && narrativeEl && (glowList.length || growList.length)) {
+  if (_lhBridgeAvailable_() && narrativeEl && (glowList.length || growList.length)) {
     narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)" id="archive-ai-status">⏳ Drafting narrative with AI…</div>`;
     const statusEl = document.getElementById('archive-ai-status');
     try {
@@ -13246,8 +13740,7 @@ async function _wblGenerateNarrative() {
   const snap = window._wblInsightsSnapshot;
   if (!btn || !narrativeEl || !snap) return;
   if (btn.disabled) return;
-  const url = EMAIL_BRIDGE.url();
-  if (!url) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">AI drafting needs an Apps Script bridge URL configured in Settings.</div>'; return; }
+  if (!_lhBridgeAvailable_()) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">AI drafting needs an Apps Script bridge URL configured in Settings.</div>'; return; }
   if (!snap.attentionDetails.length && !snap.sbeNotes.length) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">Nothing flagged right now — no pattern to summarize.</div>'; return; }
 
   btn.disabled = true;
@@ -13362,8 +13855,7 @@ async function lpRunAI(userPrompt, forceSection) {
   const localHtml = (tips[section] || tips.general)
     .map(t => `<div style="padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem">${t}</div>`).join('');
 
-  const url = EMAIL_BRIDGE.url();
-  if (!url) {
+  if (!_lhBridgeAvailable_()) {
     // No bridge configured at all — this box genuinely cannot attempt a
     // real answer, so say that plainly rather than pretending it tried.
     const note = userPrompt
@@ -13567,8 +14059,7 @@ async function finAnalysis(type) {
   // errors, or the ~90s poll times out — never blocks or replaces the
   // report above.
   const narrativeEl = document.getElementById('fin-ai-narrative');
-  const url = EMAIL_BRIDGE.url();
-  if (url && narrativeEl) {
+  if (_lhBridgeAvailable_() && narrativeEl) {
     narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe;font-size:.78rem;color:var(--muted)" id="fin-ai-status">⏳ Drafting summary with AI…</div>`;
     const statusEl = document.getElementById('fin-ai-status');
     try {
@@ -13845,8 +14336,7 @@ Thank you for covering my classes.`;
   if (statusEl) { statusEl.textContent = '✓ Plan ready'; setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 3000); }
 
   // Optionally send to Apps Script to create a Google Doc
-  const url = EMAIL_BRIDGE.url();
-  if (url) {
+  if (_lhBridgeAvailable_()) {
     try {
       if (statusEl) statusEl.textContent = '⏳ Sending to Google Docs…';
       const res = await callGAS('subPlan', { date: dateStr, reason, plan: planText });
@@ -13916,14 +14406,13 @@ async function _generateBragEmailInner() {
 
   let emailBody = localBody;
   let usedAi    = false;
-  const url = EMAIL_BRIDGE.url();
 
   // Try real AI drafting first if a bridge is configured — see
   // LEADERHUB_AI_FLOW_SETUP.md for the GAS+Workspace-Flow backend this
   // calls. Silently falls through to localBody on any failure: no Flow
   // built yet, the Flow errors, or the ~90s poll times out. The status
   // line below is the only place this distinction surfaces to the user.
-  if (url) {
+  if (_lhBridgeAvailable_()) {
     try {
       if (statusEl) statusEl.textContent = '⏳ Drafting with AI…';
       // Privacy: if a student ID roster has been uploaded (Settings →
@@ -17202,7 +17691,7 @@ function lhStopSharingOrg(orgId) {
 async function lhPushOrgSync(orgId) {
   const org = ORGANIZATIONS[orgId];
   if (!org) return;
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
     return;
   }
@@ -17276,7 +17765,7 @@ function lhPullOrgSync(orgId) {
 // leader-hub #10), since that should only ever follow a real, completed
 // first sync, never a failed attempt.
 async function _doPullOrgSync(orgId) {
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
     return false;
   }
@@ -17474,7 +17963,7 @@ function _showOrgWelcomeModal(orgId) {
 }
 
 async function lhOpenJoinOrgModal() {
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
     return;
   }
@@ -17833,7 +18322,7 @@ async function renderAiFlowHealthSettings() {
   const el = document.getElementById('ai-flow-health-list');
   if (!el) return;
 
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Connect an Email Bridge URL (above) to see Flow status here.</div>`;
     return;
   }
@@ -18224,14 +18713,32 @@ function initCockpit(){
 const EMAIL_BRIDGE = {
   url() { return LS.get('lh_email_bridge_url', null); },
 
+  // Server-migration Phase 2: same-origin (served by the deployed LeaderHub
+  // web app) means horizon polling works with no Email Bridge URL
+  // configured at all — it's the same server. Opened as a local file, this
+  // still needs the configured URL, exactly as before.
   async poll() {
+    const sameOrigin = typeof google !== 'undefined' && google.script && google.script.run;
     const url = this.url();
-    if (!url) return;
+    if (!sameOrigin && !url) return;
     let data;
     try {
-      const resp = await fetch(url, { method: 'GET' });
-      if (!resp.ok) throw new Error('HTTP ' + resp.status);
-      data = await resp.json();
+      if (sameOrigin) {
+        data = await new Promise((resolve, reject) => {
+          google.script.run
+            .withSuccessHandler(resolve)
+            .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+            .lhGetHorizonItems_();
+        });
+      } else {
+        // ?api=horizon routes this GET to EmailBridge.gs's horizon-items
+        // JSON instead of the deployed URL's default HTML — see Code.gs's
+        // doGet() comment for why this fetch()-based path stays permanent
+        // for the local-file case, not just a migration-transition shim.
+        const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'api=horizon', { method: 'GET' });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        data = await resp.json();
+      }
     } catch (e) {
       console.warn('[EmailBridge] Poll failed:', e.message);
       return;
@@ -18262,23 +18769,18 @@ const EMAIL_BRIDGE = {
 
     if (consumed.length) {
       try {
-        // FIXED — two independent bugs, both silent:
-        // (1) payload shape: EmailBridge.gs's doPost() expects
-        //     {action: 'markConsumed', ids: [...]}; this sent
-        //     {consumed: [...]} with no action field at all, so the
-        //     server always fell through to "Unknown action: " and
-        //     never actually persisted anything — items marked done/
-        //     deleted here would reappear on the next poll forever.
-        // (2) 'Content-Type': 'application/json' triggers a CORS
-        //     preflight Apps Script Web Apps don't answer (see callGAS()
-        //     above) — the request would have failed outright even with
-        //     the payload shape fixed.
-        const resp = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-          body: JSON.stringify({ action: 'markConsumed', ids: consumed }),
-        });
-        const result = await resp.json().catch(() => null);
+        // Routed through callGAS() (server-migration Phase 2) — same
+        // google.script.run/fetch() transport choice as every other GAS
+        // call, instead of a third hand-rolled fetch() here. Historical
+        // note, still relevant to the fetch() fallback path callGAS() uses
+        // when opened as a local file: this used to send
+        // {consumed:[...]} with no `action` field (server always fell
+        // through to "Unknown action" and never persisted anything — items
+        // marked done here would reappear on every poll forever), and a
+        // 'Content-Type':'application/json' header (triggers a CORS
+        // preflight Apps Script Web Apps don't answer) — both fixed by
+        // routing through the same shared, already-correct call path.
+        const result = await callGAS('markConsumed', { ids: consumed }).catch(() => null);
         if (!result || !result.ok) {
           console.warn('[EmailBridge] Mark-consumed rejected by server:', result && result.error);
         }
@@ -18741,9 +19243,11 @@ function _removeEmailBridge() {
 function updateEmailBridgeBadge_() {
   const el = document.getElementById('email-bridge-status');
   if (!el) return;
-  const url = EMAIL_BRIDGE.url();
-  el.textContent = url ? '\u2705 On' : '\u26a0\ufe0f Off';
-  el.style.color  = url ? '#16a34a' : '#b45309';
+  // Same-origin (served by the deployed LeaderHub web app) counts as "On"
+  // even with no URL ever configured \u2014 see _lhBridgeAvailable_().
+  const on = _lhBridgeAvailable_();
+  el.textContent = on ? '\u2705 On' : '\u26a0\ufe0f Off';
+  el.style.color  = on ? '#16a34a' : '#b45309';
 }
 
 function openEmailBridgeModal_() {
@@ -21111,6 +21615,19 @@ try {
 // Email bridge: poll on boot, then every 10 minutes
 EMAIL_BRIDGE.poll();
 setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
+// Server-migration Phase 3: catch this browser up on any singleton config
+// domain (Profile, Modules, Schedule Config, ...) saved server-side from a
+// different browser/device since this one last opened the app. Same-origin
+// only — a no-op when opened as a local file. See lhRefreshConfigFromServer_()
+// in leader-hub/src/05-data-helpers-dashboard.html.
+lhRefreshConfigFromServer_();
+// Server-migration Phase 5: same catch-up for row-shaped data domains
+// (Trips, Trip Archive, DECA Results, ...). See
+// lhRefreshDataDomainsFromServer_() in the same file.
+lhRefreshDataDomainsFromServer_();
+// Server-migration Phase 6: same catch-up for SCR grading scores. See
+// lhRefreshScrScoresFromServer_() in the same file.
+lhRefreshScrScoresFromServer_();
 // Initialize badge state
 setTimeout(updateEmailBridgeBadge_, 500);
 // cas-ccps connection badge (D1/Addendum 24) — also renders the sign-in
@@ -21893,9 +22410,13 @@ function showBragBoardPromptBanner() {
         <strong>⭐ Star any email in Gmail</strong> — it appears on your dashboard within 5 minutes. No API key. No labeling. One tap on mobile or desktop.
       </div>
 
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .85rem;font-size:.78rem;color:var(--ink);line-height:1.6">
+        <strong>Opened this hub from its deployed web app URL?</strong> The Apps Script bridge is already connected — nothing to paste below. This field is only for opening <code>student-leader-hub.html</code> as a local file.
+      </div>
+
       <div>
-        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">Apps Script Web App URL</label>
-        <input id="bridge-url-input" type="url" placeholder="https://script.google.com/macros/s/..." 
+        <label style="font-size:.78rem;font-weight:600;color:var(--navy);display:block;margin-bottom:.4rem">Apps Script Web App URL (local-file mode only)</label>
+        <input id="bridge-url-input" type="url" placeholder="https://script.google.com/macros/s/..."
           style="width:100%;padding:.5rem .7rem;border:1px solid var(--border);border-radius:6px;font-size:.8rem;font-family:var(--font-mono, monospace)"
           oninput="document.getElementById('bridge-url-save').disabled=!this.value.trim()">
         <div style="font-size:.7rem;color:var(--muted);margin-top:.3rem">Paste the URL from Apps Script → Deploy → Manage Deployments</div>
@@ -21922,18 +22443,16 @@ function showBragBoardPromptBanner() {
       <div style="font-size:.78rem;color:var(--ink);line-height:1.7">
         <strong style="display:block;margin-bottom:.3rem">Quick Setup (do once — ~10 min):</strong>
         <ol style="margin:0;padding-left:1.2rem">
-          <li>Open <a href="https://script.google.com" target="_blank" style="color:var(--blue)">script.google.com</a> → New Project → paste <code>EmailBridge.gs</code></li>
-          <li>Add <strong>one</strong> Script Property: <code>SHEET_URL</code> → your LeaderHub Inbox sheet URL</li>
-          <li>Run <code>firstTimeSetup()</code> once to verify everything</li>
-          <li>Deploy as Web App (Execute as: Me, Access: Anyone)</li>
-          <li>Set a 5-minute trigger on <code>processStarred</code></li>
+          <li><code>clasp push</code> this project (EmailBridge.gs + Code.gs + Config.gs + Data.gs + SCR.gs + appsscript.json)</li>
+          <li>Deploy → New deployment → Web App (Execute as: Me, Access: Anyone in your domain)</li>
+          <li>Project Settings → Script Properties → add <code>OWNER_EMAIL</code> = your own Google account</li>
+          <li>Open the deployed URL, signed in as that account — you're done, nothing to paste here</li>
         </ol>
         <div style="margin-top:.5rem;padding:.45rem .65rem;background:#fefce8;border:1px solid #fde68a;border-radius:6px">
-          No <code>GEMINI_API_KEY</code> needed. The only property is <code>SHEET_URL</code>.<br>
-          Full guide: <strong>LEADERHUB_EMAIL_SETUP.md</strong>
+          No Script Property is required for the Email Bridge itself — <code>OWNER_EMAIL</code> above is the only one. Opening this hub as a local file instead of the deployed URL still works exactly as before; paste the deployed <code>/exec</code> URL above to connect it that way.
         </div>
         <div style="margin-top:.5rem;padding:.45rem .65rem;background:#f0f4ff;border:1px solid #bfdbfe;border-radius:6px">
-          <strong>Optional: real AI drafting for Brag Board</strong> — once the Apps Script above is deployed, "✨ Generate" can produce an actual AI-written draft instead of a template, via a separate Google Workspace Flow (no API key — uses your Workspace account's own Gemini access). Fully optional: without it, Brag Board keeps working exactly as it does today. See <strong>LEADERHUB_AI_FLOW_SETUP.md</strong>.
+          <strong>Optional: real AI drafting for Brag Board</strong> — once this Web App is deployed, "✨ Generate" can produce an actual AI-written draft instead of a template, via a separate Google Workspace Flow (no API key — uses your Workspace account's own Gemini access). Fully optional: without it, Brag Board keeps working exactly as it does today. See <strong>LEADERHUB_AI_FLOW_SETUP.md</strong>.
         </div>
       </div>
 

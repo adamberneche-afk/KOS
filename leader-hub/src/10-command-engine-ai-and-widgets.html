@@ -320,11 +320,30 @@ function getCurrentPeriodInfo() {
 
 // ── Apps Script Bridge — replaces all Gemini AI calls ───────────────────────
 // All "AI" features now route through the existing EmailBridge Apps Script.
-// Set the bridge URL once in Settings → Email Bridge.
-// GAS endpoints: action=subPlan, action=bragEmail, action=markConsumed,
-//   action=aiDraft, action=checkAiJob (all POST with JSON body)
-
+// GAS endpoints (dispatched by _lhDispatchAction_() in EmailBridge.gs,
+// shared by both transports below): action=subPlan, action=bragEmail,
+// action=markConsumed, action=aiDraft, action=checkAiJob, action=flowHealth,
+// action=pushOrgSync, action=pullOrgSync, action=listOrgSyncs.
+//
+// Two transports, chosen automatically, no Settings change needed:
+//  - Served by the deployed LeaderHub web app (Code.gs's doGet(), server-
+//    migration Phase 1+): same-origin, so google.script.run works — no
+//    URL to configure, no CORS/preflight concerns at all. This is checked
+//    first and always wins when available.
+//  - Opened as a local file (student-leader-hub.html directly — still
+//    fully supported, no forced cutover): google.script.run doesn't exist
+//    outside the Apps Script iframe, so this falls back to the original
+//    fetch()-to-the-configured-Email-Bridge-URL call, unchanged.
 async function callGAS(action, payload) {
+  if (typeof google !== 'undefined' && google.script && google.script.run) {
+    return new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhApiCall_(action, payload || {});
+    });
+  }
+
   const url = EMAIL_BRIDGE.url();
   if (!url) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
@@ -347,6 +366,18 @@ async function callGAS(action, payload) {
   });
   if (!resp.ok) throw new Error('GAS HTTP ' + resp.status);
   return resp.json();
+}
+
+// True once ANY Apps Script bridge transport is actually usable — either
+// same-origin (served by the deployed LeaderHub web app; no URL
+// configuration needed at all, see callGAS() above) or a configured Email
+// Bridge URL (opened as a local file). Every "is AI drafting / Sub Plan /
+// Brag Email / Org Sync configured" gate should check this, not
+// EMAIL_BRIDGE.url() directly — checking the URL alone would incorrectly
+// report "not configured" once served by the deployed app with no URL
+// ever set, even though callGAS() would work fine via google.script.run.
+function _lhBridgeAvailable_() {
+  return (typeof google !== 'undefined' && google.script && google.script.run) || !!EMAIL_BRIDGE.url();
 }
 
 // ── AI job polling — bifurcated backend, see LEADERHUB_AI_FLOW_SETUP.md ────
@@ -405,8 +436,7 @@ async function aiComposeEmail() {
     return;
   }
 
-  const url = EMAIL_BRIDGE.url();
-  if (!url) {
+  if (!_lhBridgeAvailable_()) {
     out.value = localTemplate;
     if (status) status.textContent = "✏️ Template populated — AI drafting isn't configured (see Settings)";
     return;
@@ -537,8 +567,7 @@ async function generateAIInsights() {
   // stays empty) if no bridge is configured, the Flow errors, or the
   // ~90s poll times out — never blocks or replaces the stats.
   const narrativeEl = document.getElementById('archive-ai-narrative');
-  const url = EMAIL_BRIDGE.url();
-  if (url && narrativeEl && (glowList.length || growList.length)) {
+  if (_lhBridgeAvailable_() && narrativeEl && (glowList.length || growList.length)) {
     narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid var(--border);font-size:.78rem;color:var(--muted)" id="archive-ai-status">⏳ Drafting narrative with AI…</div>`;
     const statusEl = document.getElementById('archive-ai-status');
     try {
@@ -678,8 +707,7 @@ async function _wblGenerateNarrative() {
   const snap = window._wblInsightsSnapshot;
   if (!btn || !narrativeEl || !snap) return;
   if (btn.disabled) return;
-  const url = EMAIL_BRIDGE.url();
-  if (!url) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">AI drafting needs an Apps Script bridge URL configured in Settings.</div>'; return; }
+  if (!_lhBridgeAvailable_()) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">AI drafting needs an Apps Script bridge URL configured in Settings.</div>'; return; }
   if (!snap.attentionDetails.length && !snap.sbeNotes.length) { narrativeEl.innerHTML = '<div style="margin-top:1rem;font-size:.76rem;color:var(--muted)">Nothing flagged right now — no pattern to summarize.</div>'; return; }
 
   btn.disabled = true;
@@ -794,8 +822,7 @@ async function lpRunAI(userPrompt, forceSection) {
   const localHtml = (tips[section] || tips.general)
     .map(t => `<div style="padding:.35rem 0;border-bottom:1px solid #f1f5f9;font-size:.8rem">${t}</div>`).join('');
 
-  const url = EMAIL_BRIDGE.url();
-  if (!url) {
+  if (!_lhBridgeAvailable_()) {
     // No bridge configured at all — this box genuinely cannot attempt a
     // real answer, so say that plainly rather than pretending it tried.
     const note = userPrompt
@@ -999,8 +1026,7 @@ async function finAnalysis(type) {
   // errors, or the ~90s poll times out — never blocks or replaces the
   // report above.
   const narrativeEl = document.getElementById('fin-ai-narrative');
-  const url = EMAIL_BRIDGE.url();
-  if (url && narrativeEl) {
+  if (_lhBridgeAvailable_() && narrativeEl) {
     narrativeEl.innerHTML = `<div style="margin-top:1rem;padding-top:.85rem;border-top:1px solid #bfdbfe;font-size:.78rem;color:var(--muted)" id="fin-ai-status">⏳ Drafting summary with AI…</div>`;
     const statusEl = document.getElementById('fin-ai-status');
     try {
@@ -1277,8 +1303,7 @@ Thank you for covering my classes.`;
   if (statusEl) { statusEl.textContent = '✓ Plan ready'; setTimeout(() => { if(statusEl) statusEl.textContent = ''; }, 3000); }
 
   // Optionally send to Apps Script to create a Google Doc
-  const url = EMAIL_BRIDGE.url();
-  if (url) {
+  if (_lhBridgeAvailable_()) {
     try {
       if (statusEl) statusEl.textContent = '⏳ Sending to Google Docs…';
       const res = await callGAS('subPlan', { date: dateStr, reason, plan: planText });
@@ -1348,14 +1373,13 @@ async function _generateBragEmailInner() {
 
   let emailBody = localBody;
   let usedAi    = false;
-  const url = EMAIL_BRIDGE.url();
 
   // Try real AI drafting first if a bridge is configured — see
   // LEADERHUB_AI_FLOW_SETUP.md for the GAS+Workspace-Flow backend this
   // calls. Silently falls through to localBody on any failure: no Flow
   // built yet, the Flow errors, or the ~90s poll times out. The status
   // line below is the only place this distinction surfaces to the user.
-  if (url) {
+  if (_lhBridgeAvailable_()) {
     try {
       if (statusEl) statusEl.textContent = '⏳ Drafting with AI…';
       // Privacy: if a student ID roster has been uploaded (Settings →
