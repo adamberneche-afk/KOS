@@ -92,31 +92,42 @@ for even once the tooling exists to make the old habit unnecessary.
 Everything above was written while this was still a proposal. It's now
 real tooling, sitting one credentialed step away from actually pushing:
 
-- **`kos-personal/`** and **`leader-hub/`** are each a single Apps Script
-  project already laid out exactly the way clasp wants — a flat folder.
-  Both now carry a `.clasp.json.template` (copy to `.clasp.json` with a
-  real `scriptId` once you've run `clasp login` + `clasp clone`/`create`)
-  and a `.claspignore` that allowlists only the real script files, so the
-  legacy/archived material and (for kos-personal) the separate Node.js
-  `inference-service/` never get swept into a push.
+- **`kos-personal/`'s main project** and **`leader-hub/`** are each a
+  single Apps Script project already laid out exactly the way clasp
+  wants — a flat folder. Both now carry a `.clasp.json.template` (copy to
+  `.clasp.json` with a real `scriptId` once you've run `clasp login` +
+  `clasp clone`/`create`) and a `.claspignore` that allowlists only the
+  real script files, so the legacy/archived material and (for
+  kos-personal) the separate Node.js `inference-service/` never get swept
+  into a push. `kos-personal/studio-steps/` is a second, separate
+  flat-folder project alongside the main one (SMP-004's personal/district
+  account split, not a shared global scope) — see its own README.
+  `leader-hub/` is now server-backed (`leader-hub:app` — five files, one
+  Web App deployment) rather than the client-side-only single HTML file
+  it started as, but it's still exactly one Apps Script project either
+  way, so the flat-folder model still applies unchanged.
 - **`cas-ccps/scripts/`** doesn't fit the one-folder-one-project model —
   it's actually 7 separate bound/standalone projects sharing overlapping
   files (`00_SharedConfig.js` alone is pasted into 5 of them). See
   [`tools/clasp-sync/README.md`](../tools/clasp-sync/README.md) for how
   that's reconciled: a small script generates a throwaway per-project
-  push folder for each of the 7, from the same `project-map.json`
-  gas-lint already uses, so `cas-ccps/scripts/` itself never gets
-  reorganized or duplicated in git.
-- Every one of the 9 real projects (1 + 7 + 1) now has a committed
-  `appsscript.json` — `cas-ccps` and `leader-hub` had none before this;
-  `oauthScopes` were derived from actual code usage against
-  `tools/gas-lint/scope-map.json`, and `gas-lint`'s existing OAuth-scope
-  check now validates all 9 of them, not just `kos-personal`.
+  push folder for each, from the same `project-map.json` gas-lint already
+  uses, so `cas-ccps/scripts/` itself never gets reorganized or
+  duplicated in git. An 8th project, `cas-ccps/studio-steps/`, was added
+  later for the Studio Steps adoption — standalone, sharing no files with
+  the other 7, but handled by the same tool and the same `cas-ccps:*`
+  scope.
+- Every one of the 11 real projects (kos-personal's 2 + cas-ccps's 8 +
+  leader-hub's 1) now has a committed `appsscript.json` —`cas-ccps` and
+  `leader-hub` had none before this reconciliation; `oauthScopes` were
+  derived from actual code usage against `tools/gas-lint/scope-map.json`,
+  and `gas-lint`'s existing OAuth-scope check now validates all 11 of
+  them, not just `kos-personal`'s main project.
 - **What's left is entirely credentialed and can't be done from a repo
   session**: run `clasp login` against the real Google account, then
   `clasp clone` (or `clasp create`, for the two "cloned per teacher"
   projects — target the *master* template, not any individual teacher's
-  copy) for each of the 9 projects, and drop the resulting `scriptId`
+  copy) for each of the 11 projects, and drop the resulting `scriptId`
   into the matching template. Real script IDs are deliberately never
   committed (`.gitignore`d) — same convention this repo already uses for
   real Sheet/Doc IDs living in Script Properties, not source.
