@@ -89,6 +89,11 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // and are capped at 200, so neither this mechanism nor
   // LH_SERVER_SYNCED_DATA_KEYS fits without a fragile synthetic key.
   'lh_receiving_status',
+  // Phase 8: the Horizon system uses its own bucketed {short,mid,long}
+  // shape, not a flat record list — see LH_SERVER_SYNCED_DATA_KEYS for the
+  // id-less logs (lh_daily_log, lh_sub_plan_log, lh_brag_log) deliberately
+  // left out of both mechanisms.
+  'lh_horizon',
 ];
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
@@ -186,6 +191,12 @@ async function lhRefreshConfigFromServer_() {
     Object.keys(RECEIVING_STATUS).forEach(k => delete RECEIVING_STATUS[k]);
     Object.assign(RECEIVING_STATUS, remote.lh_receiving_status);
   }
+  if (remote.lh_horizon != null) {
+    _write('lh_horizon', remote.lh_horizon);
+    Object.keys(HORIZON).forEach(k => delete HORIZON[k]);
+    Object.assign(HORIZON, remote.lh_horizon);
+    if (typeof renderHorizons === 'function') renderHorizons();
+  }
 }
 
 // ── Server write-through for row-shaped data domains (server-migration
@@ -218,6 +229,13 @@ const LH_SERVER_SYNCED_DATA_KEYS = {
   lh_purchase_orders: 'store_purchase_orders',
   lh_es_players: 'esports_players',
   lh_es_matches: 'esports_matches',
+  lh_goals: 'goals',
+  lh_events: 'events',
+  lh_tasks: 'tasks',
+  lh_deadlines: 'deadlines',
+  lh_journal_history: 'journal_entries',
+  lh_obs_history: 'observation_history',
+  lh_brag_manual_wins: 'brag_manual_wins',
 };
 
 function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
@@ -333,6 +351,43 @@ async function lhRefreshDataDomainsFromServer_() {
       ES_MATCHES = arr;
       localStorage.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
       if (typeof renderMatchLog === 'function') renderMatchLog();
+    },
+    goals: arr => {
+      goals = arr;
+      localStorage.setItem('lh_goals', JSON.stringify(goals));
+      if (typeof renderGoals === 'function') renderGoals();
+    },
+    events: arr => {
+      otherEvents = arr;
+      localStorage.setItem('lh_events', JSON.stringify(otherEvents));
+      if (typeof renderEvents === 'function') renderEvents();
+      if (typeof renderDECAPipeline === 'function') renderDECAPipeline();
+    },
+    tasks: arr => {
+      // No persistent in-memory variable — every reader already calls
+      // LS.get('lh_tasks', []) fresh, so the localStorage write is the
+      // whole refresh; refreshNextAction() re-derives the action queue
+      // that reads from it.
+      localStorage.setItem('lh_tasks', JSON.stringify(arr));
+      if (typeof refreshNextAction === 'function') refreshNextAction();
+    },
+    deadlines: arr => {
+      DEADLINES = arr;
+      localStorage.setItem('lh_deadlines', JSON.stringify(DEADLINES));
+      if (typeof renderDeadlines === 'function') renderDeadlines();
+    },
+    journal_entries: arr => {
+      // No persistent in-memory variable (lh_journal_last, a single most-
+      // recent entry, is separate and untouched) — every reader calls
+      // LS.get('lh_journal_history', []) fresh.
+      localStorage.setItem('lh_journal_history', JSON.stringify(arr));
+    },
+    observation_history: arr => {
+      localStorage.setItem('lh_obs_history', JSON.stringify(arr));
+      if (typeof renderObsChecklist === 'function') renderObsChecklist();
+    },
+    brag_manual_wins: arr => {
+      localStorage.setItem('lh_brag_manual_wins', JSON.stringify(arr));
     },
   };
 
