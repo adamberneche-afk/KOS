@@ -13,8 +13,9 @@
 // loading the file still works (those globals are only referenced inside
 // function bodies that are never invoked by these tests, and JS doesn't
 // evaluate a function body's free variables until it's called), but
-// calling createSubPlanDoc_/createBragDraft_/scanHorizonLabel_/doGet/doPost
-// from a test using this sandbox will throw ReferenceError by design.
+// calling createSubPlanDoc_/createBragDraft_/scanHorizonLabel_/
+// emailBridgeGetHorizonItems_/doPost from a test using this sandbox will
+// throw ReferenceError by design.
 
 const vm = require('vm');
 const fs = require('fs');
