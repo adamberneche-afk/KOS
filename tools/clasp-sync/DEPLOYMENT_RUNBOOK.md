@@ -492,8 +492,17 @@ trigger-driven cas-ccps projects and the two web apps.
 - `28_Module2Setup.js`'s cross-project call bug (3.4) — already fixed in
   this repo (Addendum 22 R1); just confirm the fix is present in whatever
   sandbox/production copy you're pushing.
-- Re-ratify SMP-004's wording once this is running — "no clasp, no CLI"
-  was written before this pipeline existed; worth an explicit note that a
-  human-run `clasp push` from your own authenticated session is the
-  intended exception this runbook describes, not a quiet workaround of
-  that policy.
+- **SMP-004 wording — reconciled in-repo, one external step still
+  outstanding.** `KILL_SWITCH_PROTOCOL.md`'s "no clasp, no CLI" phrasing
+  predated this runbook's Option 2 and, read literally, forbade the exact
+  production-promotion path Part 3.6 above describes. That doc now
+  explicitly carves out the human-at-keyboard `clasp push` exception —
+  no stored production credential, nothing automatable, a person
+  physically deciding in the moment — as compliant with the automation
+  air-gap's actual intent, not a workaround of it. That's the two
+  *in-repo* documents brought into agreement; it does not itself amend
+  SMP-004's own filed, adopted text (tracked outside this repo, in
+  `01.3_SMP_PROPOSALS`). If that filed wording still reads as an absolute
+  prohibition, re-ratifying it to match is a separate action for whoever
+  owns that adoption process — this repo can describe the intended
+  exception, but can't re-file the proposal itself.
