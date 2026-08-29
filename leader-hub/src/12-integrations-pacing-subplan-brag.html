@@ -2920,6 +2920,9 @@ lhRefreshConfigFromServer_();
 // (Trips, Trip Archive, DECA Results, ...). See
 // lhRefreshDataDomainsFromServer_() in the same file.
 lhRefreshDataDomainsFromServer_();
+// Server-migration Phase 6: same catch-up for SCR grading scores. See
+// lhRefreshScrScoresFromServer_() in the same file.
+lhRefreshScrScoresFromServer_();
 // Initialize badge state
 setTimeout(updateEmailBridgeBadge_, 500);
 // cas-ccps connection badge (D1/Addendum 24) — also renders the sign-in
