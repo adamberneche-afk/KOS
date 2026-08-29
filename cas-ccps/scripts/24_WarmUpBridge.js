@@ -340,7 +340,20 @@ function buildWarmUpQueues() {
 
       row[WQ24_LESSON_CTX_SNAP]      = JSON.stringify(studentSnapshot);
       row[WQ24_STUDENT_PROFILE_SNAP] = JSON.stringify(profileSnapshot || {});
-      row[WQ24_STATUS]               = "PENDING";
+      // Rows with a prior response start at PENDING_BRIDGE, not PENDING —
+      // Flow 5's Studio trigger listens for PENDING_BRIDGE specifically and
+      // promotes the row to PENDING itself once bridge_output is written.
+      // This is what actually enforces "Flow 5 runs before Flow 3": the two
+      // flows now key off different status values instead of both listening
+      // on the same "Status = PENDING" condition and racing on whichever
+      // fires first. See cas-ccps/studio-steps/README.md's Flow 5 section
+      // for the full reasoning — this two-status design replaces the single
+      // "flow5_prior_response != null" trigger condition originally
+      // documented in CAS_Flow3_Flow4_Specification.html, which depended on
+      // a native trigger inspecting a nested field inside a JSON-blob
+      // column — never confirmed as something Studio's condition builder
+      // can actually do, and no longer needed either way.
+      row[WQ24_STATUS]               = priorResponse ? "PENDING_BRIDGE" : "PENDING";
       // Scoring columns default to "" — written by S25 and Flow 4
 
       rowsToWrite.push(row);
@@ -717,6 +730,7 @@ function validateQueueBuild() {
 
   let recent  = 0;
   let pending = 0;
+  let pendingBridge = 0;
   const periodCounts = {};
 
   for (let i = 1; i < data.length; i++) {
@@ -731,6 +745,7 @@ function validateQueueBuild() {
     if (lessonDate !== tomorrow) continue;
     recent++;
     if (status === "PENDING") pending++;
+    if (status === "PENDING_BRIDGE") pendingBridge++;
 
     // Count by period — extract from lesson context snapshot
     try {
@@ -742,7 +757,8 @@ function validateQueueBuild() {
 
   Logger.log("[VALIDATE] WarmUpQueue build summary for " + formatDateYMD_(getTomorrow_()) + ":");
   Logger.log("[VALIDATE]   Total rows queued: " + recent);
-  Logger.log("[VALIDATE]   Status PENDING:    " + pending);
+  Logger.log("[VALIDATE]   Status PENDING:        " + pending + " (routes straight to Flow 3)");
+  Logger.log("[VALIDATE]   Status PENDING_BRIDGE: " + pendingBridge + " (routes to Flow 5 first)");
   Logger.log("[VALIDATE]   By period:");
   Object.entries(periodCounts).sort().forEach(([p, n]) =>
     Logger.log("[VALIDATE]     Period " + p + ": " + n + " students")
