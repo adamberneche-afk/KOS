@@ -84,6 +84,11 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // SCR scores are NOT here — see LH_SERVER_SYNCED_DATA_KEYS/
   // leader-hub/SCR.gs for why that domain needs a different shape.
   'lh_custom_pacing_units', 'lh_cas_pacing_notes', 'lh_scr_student_emails',
+  // Phase 7: map-shaped (keyed by purchase-order id). lh_wbl_hours_log is
+  // deliberately NOT synced anywhere yet — its entries have no `id` field
+  // and are capped at 200, so neither this mechanism nor
+  // LH_SERVER_SYNCED_DATA_KEYS fits without a fragile synthetic key.
+  'lh_receiving_status',
 ];
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
@@ -176,6 +181,11 @@ async function lhRefreshConfigFromServer_() {
     Object.keys(SCR_STUDENT_EMAILS).forEach(k => delete SCR_STUDENT_EMAILS[k]);
     Object.assign(SCR_STUDENT_EMAILS, remote.lh_scr_student_emails);
   }
+  if (remote.lh_receiving_status != null) {
+    _write('lh_receiving_status', remote.lh_receiving_status);
+    Object.keys(RECEIVING_STATUS).forEach(k => delete RECEIVING_STATUS[k]);
+    Object.assign(RECEIVING_STATUS, remote.lh_receiving_status);
+  }
 }
 
 // ── Server write-through for row-shaped data domains (server-migration
@@ -202,6 +212,12 @@ const LH_SERVER_SYNCED_DATA_KEYS = {
   lh_trips: 'trips',
   lh_trip_archive: 'trip_archive',
   lh_deca_results: 'deca_results',
+  lh_wbl_students: 'wbl_roster',
+  lh_inventory: 'store_inventory',
+  lh_sales_log: 'store_sales_log',
+  lh_purchase_orders: 'store_purchase_orders',
+  lh_es_players: 'esports_players',
+  lh_es_matches: 'esports_matches',
 };
 
 function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
@@ -287,6 +303,36 @@ async function lhRefreshDataDomainsFromServer_() {
       // the whole refresh; re-render only if that view happens to be open.
       localStorage.setItem('lh_deca_results', JSON.stringify(arr));
       if (typeof renderDecaResults === 'function') renderDecaResults();
+    },
+    wbl_roster: arr => {
+      WBL_STUDENTS = arr;
+      localStorage.setItem('lh_wbl_students', JSON.stringify(WBL_STUDENTS));
+      if (typeof renderWBLTracker === 'function') renderWBLTracker();
+    },
+    store_inventory: arr => {
+      INVENTORY = arr;
+      localStorage.setItem('lh_inventory', JSON.stringify(INVENTORY));
+      if (typeof renderProcurement === 'function') renderProcurement();
+    },
+    store_sales_log: arr => {
+      SALES_LOG = arr;
+      localStorage.setItem('lh_sales_log', JSON.stringify(SALES_LOG));
+      if (typeof renderFinance === 'function') renderFinance();
+    },
+    store_purchase_orders: arr => {
+      PURCHASE_ORDERS = arr;
+      localStorage.setItem('lh_purchase_orders', JSON.stringify(PURCHASE_ORDERS));
+      if (typeof renderProcurement === 'function') renderProcurement();
+    },
+    esports_players: arr => {
+      ES_PLAYERS = arr;
+      localStorage.setItem('lh_es_players', JSON.stringify(ES_PLAYERS));
+      if (typeof renderESRoster === 'function') renderESRoster();
+    },
+    esports_matches: arr => {
+      ES_MATCHES = arr;
+      localStorage.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
+      if (typeof renderMatchLog === 'function') renderMatchLog();
     },
   };
 
