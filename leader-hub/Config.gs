@@ -55,6 +55,15 @@ const LH_CONFIG_KEYS = [
   // comment for that distinction.
   'lh_slip_rosters',
   'lh_org_results',
+  // Added during Phase 6 (server-migration): Course Catalog / SCR support
+  // data, all map-shaped (keyed by course code, or unitId_course, or a
+  // student key) — SCR's actual scores live in leader-hub/SCR.gs's own
+  // long-format Spreadsheet tab instead (thousands of cells, edited one
+  // at a time — see that file's header comment for why it needs a
+  // different shape entirely from everything else here).
+  'lh_custom_pacing_units',
+  'lh_cas_pacing_notes',
+  'lh_scr_student_emails',
 ];
 
 // Namespaced so these can never collide with OWNER_EMAIL, AI_QUEUE_SHEET_ID,

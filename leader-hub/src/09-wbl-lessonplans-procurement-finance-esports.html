@@ -1415,6 +1415,10 @@ function setScore(stuName, compNum, el, next) {
   }
 
   persistSCR();
+  // Server-migration Phase 6: queue this one cell for a debounced,
+  // batched server sync — see _lhQueueScrScoreSync_() in
+  // leader-hub/src/05-data-helpers-dashboard.html.
+  _lhQueueScrScoreSync_(course, period, stuName, compNum, next);
   // Log SCR session for Brag Board — one entry per day per course (deduped by date+course)
   const _scrLog = LS.get('lh_scr_session_log', []);
   const _scrToday = _localDateStr_();
