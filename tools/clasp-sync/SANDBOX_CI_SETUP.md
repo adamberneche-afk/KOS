@@ -21,7 +21,7 @@ clasp writes to your machine's home directory.
 
 ## Step 1 — Build at least one sandbox copy
 
-Follow `DEPLOYMENT_RUNBOOK.md` §3.2, but you don't need all 7 projects before
+Follow `DEPLOYMENT_RUNBOOK.md` §3.2, but you don't need all 8 projects before
 this is useful — start with just one. **`teacher-dashboard` is the
 recommended first pick**, since it's what the new cas-ccps↔leader-hub OAuth
 work (`getRoster`/`getPacingGuide`/`getCompetencyRegistry`) actually needs
@@ -42,8 +42,13 @@ tested.
 
 Repeat for any other project you want covered (`central-ledger`,
 `unified-manual`, `master-student-template`, `rubric-response-sheet`,
-`teacher-matrix-sheet`, `student-dashboard`) whenever you're ready — the CI
-job handles a partial set fine (see Step 3's note on this).
+`teacher-matrix-sheet`, `student-dashboard`, `studio-steps`) whenever
+you're ready — the CI job handles a partial set fine (see Step 3's note
+on this). `studio-steps` is standalone (not bound to a spreadsheet), so
+its sandbox copy comes from **File → Make a copy is not applicable
+here** — instead, `clasp create --type standalone` a fresh sandbox
+project the same way `DEPLOYMENT_RUNBOOK.md` §3.2b describes for a
+from-scratch build, using test-only data.
 
 `kos-personal` doesn't need a separate "sandbox" copy the same way —
 it only ever runs against your own account already, so its real Script ID
@@ -102,6 +107,7 @@ add more keys. Full key set, once every project has a sandbox copy:
   "teacher-matrix-sheet": "...",
   "teacher-dashboard": "...",
   "student-dashboard": "...",
+  "studio-steps": "...",
   "kos-personal": "..."
 }
 ```
