@@ -2091,7 +2091,7 @@ function lhStopSharingOrg(orgId) {
 async function lhPushOrgSync(orgId) {
   const org = ORGANIZATIONS[orgId];
   if (!org) return;
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
     return;
   }
@@ -2165,7 +2165,7 @@ function lhPullOrgSync(orgId) {
 // leader-hub #10), since that should only ever follow a real, completed
 // first sync, never a failed attempt.
 async function _doPullOrgSync(orgId) {
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
     return false;
   }
@@ -2363,7 +2363,7 @@ function _showOrgWelcomeModal(orgId) {
 }
 
 async function lhOpenJoinOrgModal() {
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
     return;
   }
@@ -2722,7 +2722,7 @@ async function renderAiFlowHealthSettings() {
   const el = document.getElementById('ai-flow-health-list');
   if (!el) return;
 
-  if (!EMAIL_BRIDGE.url()) {
+  if (!_lhBridgeAvailable_()) {
     el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Connect an Email Bridge URL (above) to see Flow status here.</div>`;
     return;
   }
