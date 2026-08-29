@@ -1,3 +1,14 @@
+> **⚠ SUPERSEDED — kept for historical reference only.** This describes
+> an "EmailBridge v2" design (calendar sync, email-rule label scan, and a
+> `LH:` self-email shortcut, needing a `SHEET_URL` Script Property,
+> `firstTimeSetup()`, and a `processStarred` trigger) that predates the
+> `EmailBridge.gs` actually in this repo today — none of those functions
+> or that property exist in the current file. The real, current setup
+> steps are `EmailBridge.gs`'s own header comment and the in-app "📧 Email
+> Bridge Setup" modal (`leader-hub/src/13-markup-modals-tail.html`), both
+> kept in sync with the actual shipped code; see `README.md`'s "JJ1 —
+> Server-deployed web app" section for the full current architecture.
+
 # LeaderHub Email Bridge v2 — Setup Guide
 ### Three automatic intake channels. Zero API key required.
 
