@@ -38,7 +38,23 @@
  * rejected push here fails closed (nothing is overwritten, ever) and
  * leaves the edit safe in the browser's own localStorage rather than
  * popping a dialog for a sync the user didn't consciously trigger; see
- * the client-side lhSyncDataDomain_() for how that's surfaced.
+ * the client-side _lhSyncDataKeyToServer_() (leader-hub/src/05-data-
+ * helpers-dashboard.html) for how that's surfaced.
+ *
+ * ID GENERATION — deliberately still client-side, not server-assigned.
+ * Every record in every domain here already carries its own `id`
+ * (Date.now(), an incrementing counter, or a literal seed value) minted
+ * by existing client code untouched by this migration; this file never
+ * generates or rewrites one. The original migration plan considered
+ * moving to server-generated ids specifically to guard against two
+ * writers minting the same next-id and colliding — but every push here
+ * already replaces a domain's ENTIRE row set in one call, and the
+ * compare-and-swap check above already rejects a stale push before it
+ * can overwrite anything. A same-id collision from two browser tabs would
+ * therefore surface as a rejected/conflicting push (caught, safe, exactly
+ * the case this file's conflict model exists for) well before it could
+ * silently corrupt a row — server-side id generation would add real
+ * complexity to close a gap that's already closed.
  */
 
 const LH_DATA_TABS = [
