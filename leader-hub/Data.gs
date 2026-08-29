@@ -43,6 +43,9 @@
 
 const LH_DATA_TABS = [
   'trips', 'trip_archive', 'deca_results',
+  // Phase 7
+  'wbl_roster', 'store_inventory', 'store_sales_log', 'store_purchase_orders',
+  'esports_players', 'esports_matches',
 ];
 
 const LH_DATA_SHEET_PROP = 'LH_DATA_SHEET_ID';

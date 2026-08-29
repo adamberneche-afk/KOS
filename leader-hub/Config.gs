@@ -64,6 +64,15 @@ const LH_CONFIG_KEYS = [
   'lh_custom_pacing_units',
   'lh_cas_pacing_notes',
   'lh_scr_student_emails',
+  // Added during Phase 7 (server-migration): map-shaped (keyed by
+  // purchase-order id) — the WBL/Store/E-Sports domains with real `id`
+  // fields (roster, inventory, sales log, purchase orders, esports
+  // roster/matches) live in leader-hub/Data.gs's row-shaped mechanism
+  // instead; see this project's migration plan for lh_wbl_hours_log,
+  // deliberately NOT migrated here (its log entries have no `id` field
+  // and are capped at 200 — a synthetic id from a timestamp was judged
+  // more fragile than leaving this one small log local-only for now).
+  'lh_receiving_status',
 ];
 
 // Namespaced so these can never collide with OWNER_EMAIL, AI_QUEUE_SHEET_ID,
