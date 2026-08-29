@@ -58,10 +58,36 @@ automation air gap is involved, but the procedure itself is one:
      real future option, not rejected — just deferred until there's more
      production experience to justify it.)
    - *CCPS/production:* already entirely manual by construction, per
-     SMP-004 — no clasp, no CLI. Stopping something here means logging in
-     and deleting the trigger through the browser editor directly. This
-     protocol doesn't add a new mechanism here; it just names what's
-     already structurally true.
+     SMP-004's automation air-gap. Stopping something here means logging
+     in and deleting the trigger through the browser editor directly —
+     this protocol doesn't add a new mechanism here; it just names what's
+     already structurally true. (**Reconciled with
+     `tools/clasp-sync/DEPLOYMENT_RUNBOOK.md`'s "Option 2":** SMP-004's
+     "no clasp, no CLI" phrasing was written before that runbook's
+     sanctioned production-promotion path existed, and read literally
+     would forbid it. What SMP-004's automation air-gap actually protects
+     against is an *unattended, credentialed* path into production — a
+     stored secret, a CI job, anything that could reach a ccpsnet.net-
+     owned project without a human directly present, deciding in the
+     moment. A human, at their own keyboard, in their own
+     already-authenticated `clasp login` session, typing `clasp push`
+     themselves — with no production credential ever stored anywhere but
+     that person's own machine, exactly as that runbook's Part 3.6
+     describes — is still "manual by construction" in every way that
+     matters here: nothing automatable, nothing unattended, no stored
+     credential a Kill Switch would ever need to revoke beyond that
+     person's own login. It is not the "quiet workaround" SMP-004 was
+     written to prevent. The one thing this reconciliation does NOT
+     change: stopping something in production via Kill Switch is still
+     the browser-editor action above, never a clasp command — Kill
+     Switch is an emergency stop invoked in the moment, not a deployment,
+     and conflating the two would be exactly the kind of confusion this
+     note exists to head off. This reconciles the two *in-repo*
+     documents; if SMP-004's own filed text — tracked outside this repo,
+     in `01.3_SMP_PROPOSALS` — still reads as an absolute prohibition,
+     re-ratifying that filed wording to match is a separate action for
+     whoever owns that adoption process, not something a repo commit can
+     do on its own.)
 3. **Do not attempt to fix the underlying cause in the moment.** Stopping
    the harm and diagnosing it are separate steps — this procedure only
    covers the first.
