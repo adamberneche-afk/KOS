@@ -78,6 +78,10 @@ const LH_CONFIG_KEYS = [
   // independent records with a shared shape the way Data.gs expects, so
   // this fits the singleton-JSON-blob mechanism instead.
   'lh_horizon',
+  // Added during Phase 9 (server-migration): Lesson Plan content edits,
+  // both keyed by a lesson/unit identifier rather than a flat record list.
+  'lh_lp_edits',
+  'lh_lp_edit_meta',
 ];
 
 // Namespaced so these can never collide with OWNER_EMAIL, AI_QUEUE_SHEET_ID,
