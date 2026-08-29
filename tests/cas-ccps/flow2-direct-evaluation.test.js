@@ -212,27 +212,45 @@ function setUpLedgerFixture(sandbox) {
   return ss;
 }
 
+// CompetencyEvidence columns (widened to 8 in Step 3 to match
+// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own writer —
+// see that function's header for why the two must match exactly):
+// evidence_id=0, student_email=1, competency_id=2, milestone_text=3,
+// outcome=4, config_id=5, evaluated_at=6, student_file_id=7.
+
 test('writeCompetencyEvidenceFromFlow2_: writes one row per milestone with both a competency ID and a valid outcome', () => {
   const { exported, sandbox } = load(['writeCompetencyEvidenceFromFlow2_']);
   const ss = setUpLedgerFixture(sandbox);
   const evidenceSheet = ss.insertSheet('CompetencyEvidence');
 
   const result = exported.writeCompetencyEvidenceFromFlow2_(
-    'student@ccpsnet.net',
+    'student@ccpsnet.net', 'VDOE-ABC-2026', 'file-1',
     { '1': 'CAS-M5-1', '2': 'CAS-M5-2', '3': 'CAS-M5-3', '4': 'CAS-M5-4' },
+    { '1': 'Milestone one text', '2': 'Milestone two text', '3': 'Milestone three text', '4': 'Milestone four text' },
     { '1': 'MET', '2': 'NOT_MET', '3': 'PARTIALLY_MET', '4': 'MET' },
   );
   assert.deepEqual(result, { written: 4, skipped: 0 });
 
-  const rows = evidenceSheet.getRange(2, 1, 4, 3).getValues();
-  assert.deepEqual(rows, [
-    ['student@ccpsnet.net', 'CAS-M5-1', 'MET'],
-    ['student@ccpsnet.net', 'CAS-M5-2', 'NOT_MET'],
-    ['student@ccpsnet.net', 'CAS-M5-3', 'PARTIALLY_MET'],
-    ['student@ccpsnet.net', 'CAS-M5-4', 'MET'],
+  const rows = evidenceSheet.getRange(2, 1, 4, 8).getValues();
+  assert.deepEqual(rows.map((r) => [r[1], r[2], r[3], r[4], r[5], r[7]]), [
+    ['student@ccpsnet.net', 'CAS-M5-1', 'Milestone one text', 'MET', 'VDOE-ABC-2026', 'file-1'],
+    ['student@ccpsnet.net', 'CAS-M5-2', 'Milestone two text', 'NOT_MET', 'VDOE-ABC-2026', 'file-1'],
+    ['student@ccpsnet.net', 'CAS-M5-3', 'Milestone three text', 'PARTIALLY_MET', 'VDOE-ABC-2026', 'file-1'],
+    ['student@ccpsnet.net', 'CAS-M5-4', 'Milestone four text', 'MET', 'VDOE-ABC-2026', 'file-1'],
   ]);
-  // Header row self-healed on a genuinely empty sheet.
-  assert.deepEqual(evidenceSheet.getRange(1, 1, 1, 3).getValues()[0], ['student_email', 'competency_id', 'outcome']);
+  // evidence_id (col 0) matches the shared "EVD-yyyyMMdd-XXXXXX" shape.
+  rows.forEach((r) => assert.match(r[0], /^EVD-\d{8}-[A-Z0-9]{6}$/));
+  // evaluated_at (col 6) is a real Date, not a formatted string. (Built
+  // inside the vm sandbox's own realm, so `instanceof Date` against the
+  // host's Date would false-negative -- Object.prototype.toString is the
+  // cross-realm-safe check.)
+  rows.forEach((r) => assert.equal(Object.prototype.toString.call(r[6]), '[object Date]'));
+  // Header row self-healed on a genuinely empty sheet, byte-identical to
+  // CommitStudentEvaluationStep.gs's own header.
+  assert.deepEqual(evidenceSheet.getRange(1, 1, 1, 8).getValues()[0], [
+    'evidence_id', 'student_email', 'competency_id', 'milestone_text',
+    'outcome', 'config_id', 'evaluated_at', 'student_file_id',
+  ]);
 });
 
 test('writeCompetencyEvidenceFromFlow2_: skips a milestone with a blank competency ID (pre-Module-5 assignment), never guesses', () => {
@@ -241,8 +259,9 @@ test('writeCompetencyEvidenceFromFlow2_: skips a milestone with a blank competen
   const evidenceSheet = ss.insertSheet('CompetencyEvidence');
 
   const result = exported.writeCompetencyEvidenceFromFlow2_(
-    'student@ccpsnet.net',
+    'student@ccpsnet.net', 'VDOE-ABC-2026', 'file-1',
     { '1': 'CAS-M5-1', '2': '', '3': 'CAS-M5-3', '4': '' },
+    { '1': 'T1', '2': 'T2', '3': 'T3', '4': 'T4' },
     { '1': 'MET', '2': 'MET', '3': 'MET', '4': 'MET' },
   );
   assert.deepEqual(result, { written: 2, skipped: 2 });
@@ -255,8 +274,9 @@ test('writeCompetencyEvidenceFromFlow2_: skips a milestone with no valid outcome
   ss.insertSheet('CompetencyEvidence');
 
   const result = exported.writeCompetencyEvidenceFromFlow2_(
-    'student@ccpsnet.net',
+    'student@ccpsnet.net', 'VDOE-ABC-2026', 'file-1',
     { '1': 'CAS-M5-1', '2': 'CAS-M5-2', '3': 'CAS-M5-3', '4': 'CAS-M5-4' },
+    { '1': 'T1', '2': 'T2', '3': 'T3', '4': 'T4' },
     { '1': 'MET', '2': null, '3': 'MET', '4': null },
   );
   assert.deepEqual(result, { written: 2, skipped: 2 });
@@ -266,9 +286,8 @@ test('writeCompetencyEvidenceFromFlow2_: a missing CompetencyEvidence tab return
   const { exported, sandbox } = load(['writeCompetencyEvidenceFromFlow2_']);
   setUpLedgerFixture(sandbox); // no CompetencyEvidence sheet inserted
   const result = exported.writeCompetencyEvidenceFromFlow2_(
-    'student@ccpsnet.net',
-    { '1': 'CAS-M5-1' },
-    { '1': 'MET' },
+    'student@ccpsnet.net', 'VDOE-ABC-2026', 'file-1',
+    { '1': 'CAS-M5-1' }, { '1': 'T1' }, { '1': 'MET' },
   );
   assert.deepEqual(result, { written: 0, skipped: 0 });
 });

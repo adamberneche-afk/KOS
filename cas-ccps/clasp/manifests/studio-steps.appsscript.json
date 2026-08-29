@@ -273,6 +273,156 @@
           }
         },
         {
+          "id": "commitStudentEvaluation",
+          "state": "PUBLISHED",
+          "name": "CAS-CCPS: Commit Student Evaluation",
+          "description": "Splits a Flow 2 Gemini evaluation into the student-facing report and the machine-readable milestone outcomes, writes CompetencyEvidence rows for any milestone with a confirmed competency ID, and returns a ready-to-insert formatted feedback block. Use as the step right after Flow 2's Ask Gemini step.",
+          "workflowAction": {
+            "inputs": [
+              {
+                "id": "geminiFullOutput",
+                "description": "The full evaluation report text produced by Flow 2's Ask Gemini step (FLOW_2_SYSTEM_PROMPT output), including the compliance stamp and machine-readable outcome line.",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "ledgerSsId",
+                "description": "Central Ledger spreadsheet ID (where CompetencyEvidence lives).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "configId",
+                "description": "The assignment's ConfigID (trigger row).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "studentEmail",
+                "description": "Student's school email (from the widened Ledger lookup).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "studentFileId",
+                "description": "Google Doc ID of the student's submission (trigger row).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone1CompetencyId",
+                "description": "TeacherMatrix.Milestone1_Competency_Id — blank if not yet confirmed (Module 5).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone2CompetencyId",
+                "description": "TeacherMatrix.Milestone2_Competency_Id — blank if not yet confirmed (Module 5).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone3CompetencyId",
+                "description": "TeacherMatrix.Milestone3_Competency_Id — blank if not yet confirmed (Module 5).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone4CompetencyId",
+                "description": "TeacherMatrix.Milestone4_Competency_Id — blank if not yet confirmed (Module 5).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone1Text",
+                "description": "TeacherMatrix.Milestone1 criterion text.",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone2Text",
+                "description": "TeacherMatrix.Milestone2 criterion text.",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone3Text",
+                "description": "TeacherMatrix.Milestone3 criterion text.",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "milestone4Text",
+                "description": "TeacherMatrix.Milestone4 criterion text.",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              }
+            ],
+            "outputs": [
+              {
+                "id": "formattedFeedbackBlock",
+                "description": "The complete '── EVALUATION [timestamp] ──' block, ready for Step 5's native Insert-text step to place after '-- FEEDBACK --' with no further logic.",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              },
+              {
+                "id": "evidenceWritten",
+                "description": "Count of CompetencyEvidence rows written this run (0-4).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "INTEGER"
+                }
+              },
+              {
+                "id": "evidenceSkipped",
+                "description": "Count of milestones skipped this run (blank competency ID or missing outcome).",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "INTEGER"
+                }
+              },
+              {
+                "id": "parseStatus",
+                "description": "OK or MILESTONE_OUTCOMES_PARSE_FAILED. Never blocks Step 5's feedback delivery either way.",
+                "cardinality": "SINGLE",
+                "dataType": {
+                  "basicType": "STRING"
+                }
+              }
+            ],
+            "onConfigFunction": "onCommitStudentEvaluationConfig",
+            "onExecuteFunction": "onCommitStudentEvaluationExecute"
+          }
+        },
+        {
           "id": "selectWarmUpArchetype",
           "state": "PUBLISHED",
           "name": "CAS-CCPS: Select Warm-Up Archetype",

@@ -123,10 +123,16 @@ timestamps. The doc itself is shared with the student via `addViewer(email)`
 — standard per-student Drive sharing, not a broad-access grant.
 
 ### CompetencyEvidence
-Student email, competency ID, and MET/NOT MET/PARTIAL outcome. **Written
-externally by Studio Flow 2** (this repo has no code that creates this tab —
-it's populated entirely by the Flow itself). Read by Script 30's evidence
-aggregation and Script 30b.
+Evidence ID, student email, competency ID, milestone text, MET/NOT MET/PARTIAL
+outcome, ConfigID, evaluated-at timestamp, student file ID. Written by two
+code paths that share this exact 8-column schema (confirmed the reader below
+resolves columns by header name, not position, so both writers must keep
+matching headers in matching order): `cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`
+(the real Studio Flow 2 write step, once deployed) and
+`15c_Flow2DirectEvaluationService.js`'s `writeCompetencyEvidenceFromFlow2_()`
+(the manual/dev-testing DIRECT_GEMINI bridge). The Studio step creates the
+tab itself if missing (both writers seed its header row on an otherwise-empty
+tab). Read by Script 30's evidence aggregation and Script 30b.
 
 ### SCRSuggestions
 Student email, competency ID, AI-suggested rating (1–5), MET/NOT MET/PARTIAL
