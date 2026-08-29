@@ -94,6 +94,9 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   // id-less logs (lh_daily_log, lh_sub_plan_log, lh_brag_log) deliberately
   // left out of both mechanisms.
   'lh_horizon',
+  // Phase 9: Lesson Plan content edits, both keyed by a lesson/unit
+  // identifier rather than a flat record list.
+  'lh_lp_edits', 'lh_lp_edit_meta',
 ];
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
@@ -196,6 +199,18 @@ async function lhRefreshConfigFromServer_() {
     Object.keys(HORIZON).forEach(k => delete HORIZON[k]);
     Object.assign(HORIZON, remote.lh_horizon);
     if (typeof renderHorizons === 'function') renderHorizons();
+  }
+  if (remote.lh_lp_edits != null) {
+    _write('lh_lp_edits', remote.lh_lp_edits);
+    // LP_EDITS is a const object reference — mutate in place rather than
+    // reassign, same convention as ORGANIZATIONS/ORG_RESULTS above.
+    Object.keys(LP_EDITS).forEach(k => delete LP_EDITS[k]);
+    Object.assign(LP_EDITS, remote.lh_lp_edits);
+  }
+  if (remote.lh_lp_edit_meta != null) {
+    // No persistent in-memory variable — every reader calls
+    // LS.get('lh_lp_edit_meta', {}) fresh.
+    _write('lh_lp_edit_meta', remote.lh_lp_edit_meta);
   }
 }
 
