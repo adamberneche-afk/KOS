@@ -46,6 +46,7 @@ KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) —
 KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)   — not needed
 inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README
 rtp-core-router/protocols/ 10 governance/protocol docs                    ✅ filed in — see CHANGELOG.md
+studio-steps/              Custom Studio steps — SEPARATE Apps Script project, not part of this one; see its own README
 ```
 
 All 6 persona cog docs, plus the Core Router doc itself (7 files total —
@@ -304,7 +305,7 @@ fixing this one list.
 
 ## Version control (clasp) — scaffolded, not yet connected
 
-This directory is already laid out exactly the way
+This directory's main flat folder is already laid out exactly the way
 [clasp](https://github.com/google/clasp) wants — a single flat folder,
 one Apps Script project, `appsscript.json` already present. A
 `.clasp.json.template` and `.claspignore` (allowlisting only the real
@@ -318,8 +319,18 @@ byte-for-byte) or `clasp create` if starting fresh, and drop the real
 committed, same convention as real Sheet/Doc IDs living in Script
 Properties, not source. See
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
-the full rationale and cas-ccps's harder version of this problem (7
+the full rationale and cas-ccps's harder version of this problem (8
 overlapping Apps Script projects, not 1).
+
+**A second, separate project lives alongside it:**
+[`kos-personal/studio-steps/`](./studio-steps/README.md) — the custom
+Workspace Studio steps behind the Curator and VECTOR_CLASSIFY flows
+(`WriteCuratorOutputStep.gs`, `WriteClassificationOutputStep.gs`, plus
+shared helpers). It's a standalone project, not sheet/doc-bound, and it's
+deliberately a *different* Apps Script project from the main one above —
+not a shared global scope — even though it deploys the same flat-folder
+way. See its own README for its file list, deployment steps, and the two
+still-open design questions it carries forward.
 
 ---
 
@@ -327,7 +338,7 @@ overlapping Apps Script projects, not 1).
 
 - **First deploy:** See `DEPLOYMENT_GUIDE.md`
 - **Using the web app:** See `USER_GUIDE.md`
-- **Building the Studio integration:** See `STUDIO_INTEGRATION_SPEC.md`
+- **Building the Studio integration:** See `STUDIO_INTEGRATION_SPEC.md` and, for the custom steps that already implement it, [`studio-steps/README.md`](./studio-steps/README.md)
 - **Understanding the data model:** See `SCHEMA_REFERENCE.md`
 - **Debugging a specific issue:** Check ERROR_LOG sheet in BRAIN_TRUST_INDEX
 - **Licensing:** See `LICENSE` (Polyform Noncommercial 1.0.0 + Fidelity Clause)

@@ -55,19 +55,27 @@ writes the result back — the one Flow this entire system depends on to
 ever turn a submission `COMPLETE`.
 
 **Corrected (this document previously described Flow 2 as already
-human-built and live — it is not.** cas-ccps/README.md's "Known gaps"
-section states plainly: "Flow 2 has never been built in Studio." Today,
-a row that reaches `IN_PROCESS` has nothing actually watching it in a
-real deployment — it sits there until `06_StagingPipeline_Turnstile.js`'s
-timeout logic ages it out to `ERROR_TIMEOUT`, every time, unless someone
-processes it by hand. External product review, Finding 3 ("this
-quarter" tier) added `15c_Flow2DirectEvaluationService.js` — an opt-in,
-`DIRECT_GEMINI`-mode escape hatch that makes Flow 2's evaluation logic
-actually callable/testable (`runFlow2DirectGemini_()`) without a live
-Studio Flow — but it is deliberately NOT wired into
+human-built and live — it is not; then, later, as never built at all,
+which is now also stale — see the update below.)** cas-ccps/README.md's
+"Known gaps" section originally stated plainly: "Flow 2 has never been
+built in Studio." That's no longer accurate: `CommitStudentEvaluationStep.gs`
+(`cas-ccps/studio-steps/`) is now Flow 2's real, tested writer code. What
+remains true is that it isn't *live* — that project hasn't been pushed to
+a real Google account, and no flow has been wired together in Studio's
+builder — so today, a row that reaches `IN_PROCESS` still has nothing
+actually watching it in a real deployment; it sits there until
+`06_StagingPipeline_Turnstile.js`'s timeout logic ages it out to
+`ERROR_TIMEOUT`, every time, unless someone processes it by hand. "Code
+exists" and "wired and live" are different facts — only the second one
+closes this gap; see `cas-ccps/README.md`'s Known Gap #1 for the current
+wording. External product review, Finding 3 ("this quarter" tier) added
+`15c_Flow2DirectEvaluationService.js` — an opt-in, `DIRECT_GEMINI`-mode
+escape hatch that makes Flow 2's evaluation logic actually
+callable/testable (`runFlow2DirectGemini_()`) without a live Studio Flow
+— but it is deliberately NOT wired into
 `06_StagingPipeline_Turnstile.js`'s automatic release loop; see that
-file's own header comment for why. Building Flow 2 for real in Studio
-is still the intended production path.)
+file's own header comment for why. Deploying `cas-ccps/studio-steps/` and
+wiring Flow 2 for real in Studio is still the intended production path.)
 
 **Status lifecycle:** `PENDING_INFERENCE` (queued, waiting for a free
 per-teacher lane) → `IN_PROCESS` (Flow 2 is expected to be actively
