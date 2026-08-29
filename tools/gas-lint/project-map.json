@@ -121,7 +121,7 @@
   "leader-hub:app": {
     "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything — no collision surface to check against another project, but promoted to a top-level entry (not '_excluded') anyway so Check E (OAuth scope coverage) runs against it, and now Check D (google.script.run <-> server function cross-reference) too now that Code.gs/student-leader-hub.html exist. Renamed from 'leader-hub:email-bridge' now that this project serves the HTML web app as well as the JSON API — see the leader-hub server-migration plan.",
     "manifest": "leader-hub/appsscript.json",
-    "files": ["leader-hub/EmailBridge.gs", "leader-hub/Code.gs", "leader-hub/Config.gs"],
+    "files": ["leader-hub/EmailBridge.gs", "leader-hub/Code.gs", "leader-hub/Config.gs", "leader-hub/Data.gs"],
     "html": ["leader-hub/student-leader-hub.html"]
   },
 
