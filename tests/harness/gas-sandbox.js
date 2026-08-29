@@ -78,6 +78,29 @@ class FakeRange {
     const v = sourceRow[this.col - 1];
     return v === undefined ? '' : v;
   }
+  // Real Apps Script API — blanks every cell in the range without
+  // shifting any other row (unlike Sheet.deleteRow(), which removes the
+  // row entirely and shifts everything below it up by one — see
+  // 35_FlowPreflightAndCanary.js's own header on exactly this
+  // distinction: cleanUpFlow1Canary() needs row numbers below the
+  // cleared row to stay stable for anything else that tracks rows by
+  // absolute position).
+  clearContent() {
+    return this.setValues(
+      Array.from({ length: this.numRows }, () => Array.from({ length: this.numCols }, () => ''))
+    );
+  }
+  // Real Apps Script API — cosmetic formatting calls. Every setup/tab-
+  // creation function in this repo chains these right after writing a
+  // header row (setFontWeight('bold'), setBackground('#f3f3f3')) or
+  // forces a column to plain-text format (setNumberFormat('@'), see
+  // 22_LessonContextHandler.js's own comment on the ISO-date-autoconvert
+  // bug this prevents). No test in this repo asserts on formatting
+  // itself — these exist only so a file that calls them can load and
+  // run at all, chainable no-ops like the rest of this mock.
+  setFontWeight() { return this; }
+  setBackground() { return this; }
+  setNumberFormat() { return this; }
 }
 
 class FakeSheet {
@@ -98,6 +121,14 @@ class FakeSheet {
   setFrozenRows(n) { this.frozenRows = n; return this; }
   clear() { this.rows = []; return this; }
   deleteRow(rowNum1Based) { this.rows.splice(rowNum1Based - 1, 1); }
+  // Real Apps Script API — the sheet's used-range column count. Same
+  // width calculation as getDataRange() above (the widest row seen so
+  // far), 0 rather than 1 on a genuinely empty sheet (matching real
+  // Sheets: getLastColumn() on a blank sheet is 0, unlike getDataRange()
+  // which always returns at least a 1x1 range).
+  getLastColumn() { return this.rows.reduce((m, r) => Math.max(m, r.length), 0); }
+  // Cosmetic only — no test in this repo asserts on column width.
+  autoResizeColumns() { return this; }
 }
 
 class FakeSpreadsheet {
@@ -117,8 +148,38 @@ class FakeSpreadsheet {
 }
 FakeSpreadsheet._counter = 0;
 
+// Real Apps Script API — the modal-dialog UI object SpreadsheetApp.getUi()/
+// DocumentApp.getUi() return. Several admin-facing entry points (e.g.
+// 35_FlowPreflightAndCanary.js's runFlowPreflightCheckNow()/
+// runFlow1CanaryNow()) call .alert() as their one visible side effect —
+// this mock records every call (text and button choice) so a test can
+// assert on what the user would have seen, rather than needing to mock
+// it away silently. alert() supports both the single-message form and
+// the (title, message, buttonSet) form real Apps Script accepts;
+// promptResponse lets a test script a canned Button answer for any
+// alert with an OK_CANCEL/YES_NO button set, defaulting to OK/YES so a
+// script that doesn't care about the branch still proceeds.
+function makeUiMock(promptResponse) {
+  const calls = [];
+  const ButtonSet = { OK: 'OK', OK_CANCEL: 'OK_CANCEL', YES_NO: 'YES_NO' };
+  const Button = { OK: 'OK', CANCEL: 'CANCEL', YES: 'YES', NO: 'NO', CLOSE: 'CLOSE' };
+  return {
+    _calls: calls,
+    ButtonSet,
+    Button,
+    alert(...args) {
+      const call = args.length >= 2
+        ? { title: args[0], message: args[1], buttonSet: args[2] }
+        : { title: null, message: args[0], buttonSet: null };
+      calls.push(call);
+      return promptResponse !== undefined ? promptResponse : Button.OK;
+    },
+  };
+}
+
 function makeSpreadsheetAppMock() {
   const registry = new Map();
+  const ui = makeUiMock();
   return {
     _registry: registry,
     create(name) {
@@ -135,6 +196,7 @@ function makeSpreadsheetAppMock() {
     // no-op here is correct: this mock's writes (FakeRange.setValue(s))
     // already apply synchronously, so there is nothing to flush.
     flush() {},
+    getUi() { return ui; },
   };
 }
 
@@ -444,6 +506,13 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     Utilities: {
       getUuid: () => 'fake-uuid-' + Math.random().toString(36).slice(2),
       formatDate: formatDateMock,
+      // Real Apps Script API — blocks for real inside a live GAS
+      // execution. A no-op here, not a real setTimeout/delay: a
+      // synchronous VM sandbox test needs a polling loop (e.g.
+      // 35_FlowPreflightAndCanary.js's runFlow1Canary()) to run through
+      // all its iterations instantly, not actually wait real wall-clock
+      // seconds per attempt.
+      sleep() {},
     },
     // Every cas-ccps file logs through Logger.log(...) (Apps Script's
     // built-in logger, distinct from console) on essentially every code

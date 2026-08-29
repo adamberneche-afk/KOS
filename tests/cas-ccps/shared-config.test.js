@@ -63,6 +63,7 @@ test('getConfig_: succeeds once both required properties are set, with optional 
   assert.equal(cfg.studentEmailDomain, 'ccpsnet.net');
   assert.equal(cfg.tabs.ledger, 'Ledger');
   assert.equal(cfg.tabs.scrSuggestions, 'SCRSuggestions');
+  assert.equal(cfg.tabs.competencyEvidence, 'CompetencyEvidence');
 });
 
 test('getConfig_: an explicitly configured STUDENT_EMAIL_DOMAIN overrides the "ccpsnet.net" default', () => {

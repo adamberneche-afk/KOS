@@ -21,7 +21,7 @@ const SCR_ENGINE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', 
 function load() {
   return loadGasFiles(
     [SHARED_CONFIG_PATH, SCR_ENGINE_PATH],
-    ['computeSuggestion_', 'recordConfirmation_', 'recordOverride_'],
+    ['computeSuggestion_', 'recordConfirmation_', 'recordOverride_', 'createSCRTabs_'],
   );
 }
 
@@ -171,4 +171,61 @@ test('recordDecision_ (via recordConfirmation_): no matching suggestion row -> a
   const result = exported.recordConfirmation_('nobody@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net');
   assert.equal(result.success, false);
   assert.match(result.error, /No suggestion row found/);
+});
+
+// ── createSCRTabs_ — the tab-creation gap the Studio Steps review found:
+//    a fresh deployment had no code path creating CompetencyEvidence,
+//    SCRSuggestions, or SCRDecisionLog until this function existed
+//    (SCRSuggestions/SCRDecisionLog), and CompetencyEvidence was added
+//    to it in Step 4 of that adoption so an admin doesn't have to wait
+//    for Flow 2's own lazy self-creation to pass preflight. ─────────────────
+
+test('createSCRTabs_: creates all three tabs, with headers matching each real writer exactly', () => {
+  const { exported, sandbox } = load();
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+
+  exported.createSCRTabs_();
+
+  const evidence = ss.getSheetByName('CompetencyEvidence');
+  assert.ok(evidence);
+  assert.deepEqual(evidence.getRange(1, 1, 1, 8).getValues()[0], [
+    'evidence_id', 'student_email', 'competency_id', 'milestone_text',
+    'outcome', 'config_id', 'evaluated_at', 'student_file_id',
+  ]);
+
+  const suggestions = ss.getSheetByName('SCRSuggestions');
+  assert.ok(suggestions);
+  assert.deepEqual(suggestions.getRange(1, 1, 1, 11).getValues()[0], [
+    'student_email', 'competency_id', 'suggested_rating',
+    'met_count', 'not_met_count', 'partial_count',
+    'status', 'last_computed_at',
+    'confirmed_rating', 'confirmed_at', 'confirmed_by',
+  ]);
+
+  const decisionLog = ss.getSheetByName('SCRDecisionLog');
+  assert.ok(decisionLog);
+  assert.deepEqual(decisionLog.getRange(1, 1, 1, 10).getValues()[0], [
+    'decision_id', 'student_email', 'competency_id', 'suggested_rating',
+    'final_rating', 'decision_type', 'decided_at', 'decided_by',
+    'evidence_snapshot', 'archive_status',
+  ]);
+});
+
+test('createSCRTabs_: safe to re-run -- skips a tab that already has real data rather than clobbering it', () => {
+  const { exported, sandbox } = load();
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+
+  const evidence = ss.insertSheet('CompetencyEvidence');
+  evidence.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome', 'config_id', 'evaluated_at', 'student_file_id']);
+  evidence.appendRow(['EVD-REAL', 'student@ccpsnet.net', 'CAS-1', 'text', 'MET', 'CFG', new Date(), 'file-1']);
+
+  exported.createSCRTabs_();
+
+  assert.equal(evidence.getLastRow(), 2, 'the existing real row must survive a re-run untouched');
+  assert.ok(ss.getSheetByName('SCRSuggestions'), 'the two tabs that did NOT already exist still get created');
+  assert.ok(ss.getSheetByName('SCRDecisionLog'));
 });

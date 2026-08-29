@@ -935,13 +935,47 @@ function exportScrDecisionLogForAudit() {
 }
 
 // ---------------------------------------------------------------------------
-// createSCRTabs_ — MANUAL, one-time setup. Creates SCRSuggestions and
-// SCRDecisionLog with correct headers. Safe to re-run — skips tabs that
-// already exist.
+// createSCRTabs_ — MANUAL, one-time setup. Creates CompetencyEvidence,
+// SCRSuggestions, and SCRDecisionLog with correct headers. Safe to
+// re-run — skips tabs that already exist.
+//
+// CompetencyEvidence's header matches
+// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own writer
+// exactly (evidence_id/student_email/competency_id/milestone_text/
+// outcome/config_id/evaluated_at/student_file_id) — that step and
+// 15c_Flow2DirectEvaluationService.js's writeCompetencyEvidenceFromFlow2_
+// both self-create this tab lazily on their own first write if it's
+// still missing at that point, so creating it here up front isn't
+// strictly required for correctness, only for aggregateEvidence_()
+// below and runFlowPreflightCheck() (35_FlowPreflightAndCanary.js) to
+// stop reporting it missing before Flow 2 has ever actually run once.
+//
+// INTEGRATION WITH SCRIPT 16 (same convention as
+// 28_Module2Setup.js's own "INTEGRATION WITH SCRIPT 16" note):
+// createSCRTabs_() and installSCRTrigger_() have no menu entry today —
+// an admin following only the normal setup wizard would never discover
+// Module 5 needs a separate step, which is exactly how "the entire
+// competency-evidence -> SCR-suggestion subsystem is silently dead on
+// a fresh deployment" (this file's own "[S30] Aborting run" log line)
+// happens in practice. To wire this in the same way Module 2's own
+// menu items are documented to be wired (paste into onOpen(), after
+// the Module 2 block):
+//
+//   menu.addSeparator();
+//   if (!ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions")) {
+//     menu.addItem("📐 Set Up Student Competency Records (Module 5)", "createSCRTabs_");
+//   } else {
+//     menu.addItem("📐 Module 5 Status", "installSCRTrigger_");
+//   }
 // ---------------------------------------------------------------------------
 function createSCRTabs_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+
+  _createTabIfMissingS30_(ss, cfg.tabs.competencyEvidence || "CompetencyEvidence", [
+    "evidence_id", "student_email", "competency_id", "milestone_text",
+    "outcome", "config_id", "evaluated_at", "student_file_id"
+  ]);
 
   _createTabIfMissingS30_(ss, cfg.tabs.scrSuggestions || "SCRSuggestions", [
     "student_email", "competency_id", "suggested_rating",
