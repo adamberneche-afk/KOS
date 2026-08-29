@@ -55,8 +55,19 @@ const CONFIG = {
 };
 
 // ── Entry points ──────────────────────────────────────────────────────────────
+//
+// NOTE (server-migration Phase 1): this file used to own doGet() itself,
+// returning horizon-items JSON unconditionally. Now that Code.gs's doGet()
+// serves the hub UI (GAS allows exactly one doGet per project — a second
+// top-level declaration is a real collision, not just a style issue), this
+// logic moved to a plain function Code.gs's doGet() calls for the
+// `?api=horizon` polling request EMAIL_BRIDGE.poll() already makes — same
+// URL, same GET request shape, same JSON response, zero client-side change
+// yet. Phase 2 retires this branch entirely once EMAIL_BRIDGE.poll() moves
+// to calling scanHorizonLabel_()/markConsumed_() directly via
+// google.script.run instead of fetch()ing the deployed URL.
 
-function doGet(e) {
+function emailBridgeGetHorizonItems_(e) {
   try {
     return jsonResponse_({ ok: true, items: scanHorizonLabel_() });
   } catch (err) {
