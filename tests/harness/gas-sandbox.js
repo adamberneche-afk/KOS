@@ -99,6 +99,7 @@ class FakeRange {
   // itself — these exist only so a file that calls them can load and
   // run at all, chainable no-ops like the rest of this mock.
   setFontWeight() { return this; }
+  setFontSize() { return this; }
   setBackground() { return this; }
   setNumberFormat() { return this; }
 }
