@@ -102,7 +102,7 @@ the only person-identifying column in either tab.
 | **Why collected** | The working table for warm-up generation, scoring, and feedback — Studio Flows 3, 4, and 5 all read/write directly against this tab via the Sheets connector. |
 | **Written by** | Script 24 (build), Script 25 (scoring), Studio Flow 3 (doc creation, archetype write-back), Studio Flow 5 (bridge output) |
 | **Read by** | Script 23 (nightly), Script 25 |
-| **Visible to** | Studio Flow 3/4/5 (external — reads/writes directly, no gate in this repo's own code); the student, indirectly, via the generated warm-up doc |
+| **Visible to** | Studio Flow 3/4/5 — the native Sheets/Ask-Gemini connector steps still read/write this tab directly with no gate in this repo's own code, but the pre/post-processing steps around them are now this repo's own code (`cas-ccps/studio-steps/`: `SelectWarmUpArchetypeStep.gs`/`CreateWarmUpDocStep.gs` for Flow 3, `ExtractWarmUpPromptTextStep.gs`/`FinalizeWarmUpScoreStep.gs` for Flow 4, `ExtractBridgeInputsStep.gs` for Flow 5 — not yet pushed to a live Studio deployment); the student, indirectly, via the generated warm-up doc |
 | **Retention** | Indefinite — not yet defined |
 
 > This is the tab the Bonus-2 fix below actually touches — see "Flow 3 name exposure" section.
@@ -160,7 +160,7 @@ since it's a central, shared tab.
 - **Teacher Dashboard** — gated by `_isAuthorizedTeacher_(cfg)`; a teacher only ever sees their own students' rows (Ledger's `TeacherEmail` column, StudentProfiles' `SP_TEACHER_EMAIL`).
 - **Student Dashboard** — a student only ever sees their own row.
 - **Admin Recovery Panel** — full read access to Ledger, StudentProfiles, and (via export) SCRDecisionLog. This is the one surface with the broadest reach into student data, and the one place a health-check gap (see below) mattered most.
-- **Studio Flows 1–5** — external, outside this repo's own access-control code. Flows 1, 2, 4, 5 never receive a real student name (opaque IDs/content only, already true before this document). **Flow 3 is the one exception** — see below.
+- **Studio Flows 1–5** — the native Sheets/Docs/Ask-Gemini connector steps in every flow are still outside this repo's own access-control code; the custom pre/post-processing steps around them (`cas-ccps/studio-steps/`, one per flow — see the table above) are this repo's own code, but carry no additional access gating beyond what each step's own input mapping already scopes it to. Flows 1, 2, 4, 5 never receive a real student name (opaque IDs/content only, already true before this document). **Flow 3 is the one exception** — see below.
 - **leader-hub JSON API** (`07_TeacherDashboard.js`'s `doPost()`, D1/Addendum 24) — a separate, machine-to-machine trust surface, not a browser session: gated by a Google ID token verified server-side against `oauth2.googleapis.com/tokeninfo`, checked against this deployment's own `TEACHER_EMAIL` (same identity boundary as `_isAuthorizedTeacher_()`, re-implemented for an HTTP caller instead of `Session.getActiveUser()`). Two of its three actions (`getPacingGuide`, `getCompetencyRegistry`) carry no student PII. The third, **`getRoster`** (Addendum 26), does — name, email, and a free-text period field, per-teacher-scoped the same way as everything else in this table. Once returned, this data is out of cas-ccps's control; leader-hub's own handling of it is documented in `leader-hub/README.md`, not here.
 
 ## Flow 3 name exposure (Bonus 2 — fixed)
