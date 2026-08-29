@@ -71,26 +71,28 @@ retrieved from that branch by path.
 
 ## What Module 1 (the base system) actually is
 
-The base system is **7 separate Apps Script projects** working together
+The base system is **8 separate Apps Script projects** working together
 (corrected from an earlier "6" here that put Script 20 on the wrong
 project — see `tools/gas-lint/project-map.json`'s header comment, which
 flagged this exact mismatch: `20_SetupCheckpoint.js`'s own `INCLUDED IN:`
 header says the Unified Manual project, not Central Ledger, and the
-file's own header wins):
+file's own header wins; an 8th project, `studio-steps`, was added later
+for the Studio Steps adoption — see its own row below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `35` (flow preflight/canary) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
 | Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`) |
 | Student Dashboard | standalone web app | `13` |
+| Studio Steps | standalone (not bound to a spreadsheet/doc) | 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Written and tested, not yet pushed to a live Studio deployment. |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
 
-Each of these 7 projects now has a real, committed `appsscript.json` and
+Each of these 8 projects now has a real, committed `appsscript.json` and
 is a clasp-adoption target — see [Version control (clasp)](#version-control-clasp)
 below.
 
@@ -124,15 +126,18 @@ revision-feedback path as before, unchanged.
 Scaffolded, not yet connected to a live account — see
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
 the full rationale. The short version: `cas-ccps/scripts/` doesn't fit
-clasp's one-folder-one-project model, since it's the 7 projects above
+clasp's one-folder-one-project model, since it's 7 of the 8 projects above
 sharing overlapping files (`00_SharedConfig.js` alone is pasted into 5 of
-them). [`tools/clasp-sync/`](../tools/clasp-sync/README.md) reconciles
-that — a script reads `tools/gas-lint/project-map.json` and generates a
-throwaway per-project push folder for each of the 7 under
+them) — `studio-steps`, the 8th, lives in its own `cas-ccps/studio-steps/`
+folder and shares no files with the other 7.
+[`tools/clasp-sync/`](../tools/clasp-sync/README.md) reconciles the
+7-projects-in-one-folder problem — a script reads
+`tools/gas-lint/project-map.json` and generates a throwaway per-project
+push folder for each (`studio-steps` included) under
 `cas-ccps/.clasp-build/` (gitignored, regenerated on demand), so
 `cas-ccps/scripts/` itself never has to be reorganized or duplicated in
 git. `cas-ccps/clasp/manifests/` holds each project's real
-`appsscript.json` (new — none of these 7 had a committed manifest
+`appsscript.json` (new — none of these projects had a committed manifest
 before), and `cas-ccps/clasp/templates/` holds `.clasp.json` placeholders
 to fill in with a real `scriptId` once you've run `clasp login` +
 `clasp clone`/`create` against the live projects. For
@@ -149,7 +154,7 @@ teachers have their own copies.
 | **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `23`, `24`, `25`, `28` in hand (HISTORY.md's resolution 9); `31`/`32`/`33` (pacing/rubric/artifact utilities) in hand (HISTORY.md's resolution 10). **`27_LessonFrameGenerator` is the one Full script still not uploaded.** |
 | **M3** — Student Profile | Extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` — unaffected by this reconciliation pass |
 | **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct twice now, see HISTORY.md's resolutions 3 and 10 |
-| **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Cannot go fully live until Flow 2 is built in Studio. |
+| **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Flow 2's writer code now exists (`cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`) and is tested, but M5 can't go fully live until that project is actually pushed to a live Studio deployment — see Known Gap #1 below. |
 
 `scripts/archived/ARCHIVED_11_StudentFriendlyRejections.js` (merged into
 Script 04; renamed to match the repo's prefix convention — HISTORY.md's resolution 13)
@@ -161,10 +166,19 @@ GoogleID.
 
 ## Known gaps (carried forward so a future session doesn't re-derive them)
 
-1. **Flow 2 has never been built in Studio** — both `09_StudentRevisionGuidance_M1Base.js`
-   and `03_QueueBridge.js` assume it exists, and Module 5 cannot go fully
-   live without it. Flows 3 (warm-up generation) and 4 (warm-up
-   grading/grammar) are also unbuilt.
+1. **Flows 2-5 have never been pushed to a live Studio deployment** — both
+   `09_StudentRevisionGuidance_M1Base.js` and `03_QueueBridge.js` assume
+   Flow 2 exists, and Module 5 cannot go fully live without it.
+   **⚠ Updated since first written:** this used to read "never been
+   built" — that's no longer accurate. The custom-step code for all five
+   flows (rubric extraction, student evaluation, warm-up generation,
+   warm-up scoring, bridging) is now written and tested
+   (`cas-ccps/studio-steps/`, see its own README). What's still genuinely
+   missing is deployment: that project hasn't been pushed to a real
+   Google account (`.clasp.json.template`'s scriptId is still a
+   placeholder), and no flow has actually been wired together in Studio's
+   builder. "Code exists" and "wired and live" are different facts —
+   only the second one closes this gap.
 2. ~~`TeacherMatrix` missing a `lesson_unit_id` column~~ — **closed**, see
    HISTORY.md's resolution 12.
 3. ~~`CompetencyRegistry.csv` not uploaded~~ — **closed**, see HISTORY.md's resolution 7.
@@ -356,8 +370,9 @@ GoogleID.
       this same unconfirmed-default framing; confirmed with the user
       before implementing on that basis.
 17. **Flow 2 escape hatch (external product review, Finding 3, "this
-    quarter")** — Flow 2 (Student Evaluation) has never been built in
-    Studio (see "Known gaps" above), and `15_StudioFlowPrompts.js`/
+    quarter")** — at the time this was written, Flow 2 (Student
+    Evaluation) had never been built in Studio (see "Known gaps" above,
+    now updated by Finding 18 below), and `15_StudioFlowPrompts.js`/
     `15b_StudioFlowPrompts_Flow2_Revised.js` are specs to paste into a
     Studio Gemini step, not runnable code — meaning nothing anywhere
     could actually exercise Flow 2's evaluation logic (prompt
@@ -403,6 +418,22 @@ GoogleID.
       logic, plus the mode-gating and error-handling of the one function
       that actually touches the network (with `UrlFetchApp` mocked, not a
       real Gemini call).
+18. **Studio Steps adoption — the custom-step code Finding 17's escape
+    hatch was working around now exists.** A 9th cas-ccps project,
+    `cas-ccps/studio-steps/`, implements every custom step Flows 1-5
+    genuinely need (native Studio connectors and Ask-Gemini steps cover
+    everything else) — see its own README for the full file-to-flow map
+    and the fixes applied while landing it. Also landed in the same
+    effort: `34_QueueWatchdog.js` (WarmUpQueue/StagingPipeline/ReviewQueue
+    monitoring with Chat-space escalation) and
+    `35_FlowPreflightAndCanary.js` (a one-shot health check that, among
+    other things, caught a real pre-existing gap — `CompetencyEvidence`
+    was never created by any setup script, silently stranding Flow 2's
+    evidence writes on a fresh deployment; now fixed in
+    `createSCRTabs_()`), both added to `cas-ccps:central-ledger`. This
+    closes Finding 17's underlying gap in code, but not in deployment —
+    see Known Gap #1: the project exists and is tested, not yet pushed
+    live. See `cas-ccps/HISTORY.md` for the full adoption record.
 
 ## Naming note
 
