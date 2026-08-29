@@ -784,7 +784,44 @@ function _runPhaseB_(ui, props, ss) {
   // ── STEP 4: Studio Flow configuration — inline, not deferred ─────────────
   _gateAlert_(ui, "Step 5 of 5 complete — Studio Flow Configuration follows.", "");
 
-  // Show Flow 3 config first
+  // Show Flow 5 config first — it's a PREREQUISITE step for Flow 3, not an
+  // independent flow: a returning student's row starts at Status =
+  // PENDING_BRIDGE (see 24_WarmUpBridge.js's own buildWarmUpQueues()) and
+  // Flow 5 promotes it to PENDING once bridge_output is written, which is
+  // the only thing that hands the row to Flow 3 below. A first-week
+  // student (no prior warm-up history) never gets PENDING_BRIDGE at all —
+  // their row starts straight at PENDING, so Flow 3 alone is enough to see
+  // that case through. Flow 5 not configured, or misconfigured, means
+  // every RETURNING student's row sits at PENDING_BRIDGE forever — the
+  // Queue Watchdog (Script 34) will flag that as a timed-out row once it's
+  // live, but configuring Flow 5 correctly the first time avoids ever
+  // needing that safety net to fire.
+  ui.alert(
+    "⚙ Configure Studio Flow 5 — Warm-Up Bridging",
+
+    "In Google Workspace Studio, create a flow with these exact settings:\n\n" +
+    "  Name:         CAS — Warm-Up Bridging\n" +
+    "  Trigger:      Sheets row updated\n" +
+    "                Sheet: WarmUpQueue\n" +
+    "                Condition: Status = PENDING_BRIDGE\n" +
+    "                (this status only appears on a row that already has\n" +
+    "                a prior scored response — no further condition needed)\n\n" +
+    "  Step 1:       Custom step — CAS-CCPS: Extract Bridge Inputs\n" +
+    "                (pulls flow5_prior_response, pacing_prior_connection,\n" +
+    "                course_name out of lesson_context_snapshot)\n" +
+    "  Step 2:       Ask Gemini — system prompt from\n" +
+    "                CAS_Flow3_Flow4_Specification.html's Bridging Flow section\n" +
+    "  Step 3:       Sheets — update row\n" +
+    "                Write bridge_output = Gemini's output\n" +
+    "                Set status = PENDING\n" +
+    "                (this is what hands the row to Flow 3 below —\n" +
+    "                Flow 3's own trigger condition never changes)\n\n" +
+    "Click OK when Flow 5 is configured.",
+
+    ui.ButtonSet.OK
+  );
+
+  // Show Flow 3 config
   ui.alert(
     "⚙ Configure Studio Flow 3 — Warm-Up Generation",
 
@@ -793,6 +830,9 @@ function _runPhaseB_(ui, props, ss) {
     "  Trigger:      Sheets row updated\n" +
     "                Sheet: WarmUpQueue\n" +
     "                Condition: Status = PENDING\n" +
+    "                (a row reaches this status directly if the student has\n" +
+    "                no prior warm-up history, or via Flow 5 above once it\n" +
+    "                writes bridge_output for a returning student)\n" +
     "  Model:        Gemini Pro\n" +
     "  Temperature:  0.7\n" +
     "  Max tokens:   400\n\n" +
@@ -1263,6 +1303,10 @@ function _writePhaseBSummaryDoc_(teacherName, teacherEmail, scheduleResult, prop
   body.appendParagraph("Studio Flows Required")
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph(
+    "Flow 5 — Warm-Up Bridging    (Trigger: WarmUpQueue status=PENDING_BRIDGE)\n" +
+    "                              Prerequisite for Flow 3, only for returning\n" +
+    "                              students — writes bridge_output and sets\n" +
+    "                              status back to PENDING when done.\n" +
     "Flow 3 — Warm-Up Generation  (Trigger: WarmUpQueue status=PENDING)\n" +
     "Flow 4 — Warm-Up Evaluation  (Trigger: WarmUpQueue status=PENDING_EVAL)\n\n" +
     "Full configuration: CAS_Flow3_Flow4_Specification.html"

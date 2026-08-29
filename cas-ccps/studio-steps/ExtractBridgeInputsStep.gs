@@ -29,12 +29,25 @@
 // assigned to a different, never-built idea, later reused for this one.
 //
 // TRIGGER-LEVEL FILTERING, NOT THIS STEP'S JOB: the flow's own trigger
-// condition is "Status = PENDING AND flow5_prior_response != null" —
-// Studio filters out rows with no prior response before this step ever
-// runs, so there's no "skip" logic to build here. The light defensive
-// check below (empty priorResponse treated as a parse-adjacent failure)
-// exists only as defense in depth, not because it's expected to fire
-// in normal operation.
+// condition is "Status = PENDING_BRIDGE" — 24_WarmUpBridge.js's
+// buildWarmUpQueues() only ever writes that status when a prior
+// response was actually found (row[WQ24_STATUS] = priorResponse ?
+// "PENDING_BRIDGE" : "PENDING"), so PENDING_BRIDGE alone already means
+// "there is a prior response" with no compound condition needed. (An
+// earlier version of this comment described the condition as "Status =
+// PENDING AND flow5_prior_response != null" — that was the single-
+// status design before the two-status PENDING/PENDING_BRIDGE split;
+// see 24_WarmUpBridge.js's own header on that fix and
+// cas-ccps/studio-steps/README.md's Flow 5 section for the full
+// reasoning.) The light defensive check below (empty priorResponse
+// treated as a parse-adjacent failure) exists only as defense in depth,
+// not because it's expected to fire in normal operation.
+//
+// FLOW 5'S OWN FINAL STEP (native, not built here): after the Ask
+// Gemini step produces the bridge paragraph, a native "Sheets — update
+// row" step writes it to bridge_output (col 21) AND sets Status back
+// to PENDING — this is what hands the row to Flow 3, which still only
+// ever triggers on "Status = PENDING" (unchanged).
 //
 // INPUT READING / ERROR HANDLING: reads its input through
 // StepsShared.gs's inStr_() rather than the raw
