@@ -401,6 +401,12 @@ function formatDateMock(date, timeZone, format) {
   if (format === 'MMMM d, yyyy') {
     return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
   }
+  if (format === 'yyyyMMdd') {
+    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
+  }
+  if (format === 'yyyy-MM-dd HH:mm') {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
   throw new Error('formatDateMock: unsupported format "' + format + '" — add it to tests/harness/gas-sandbox.js');
 }
 

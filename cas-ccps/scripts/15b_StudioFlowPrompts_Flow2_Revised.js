@@ -309,7 +309,7 @@ nothing after it.
 //   Connector: Google Docs -- Insert text
 //   Doc ID:    @trigger.StudentFileID
 //   Location:  After the line containing "-- FEEDBACK --"
-//   Content:   "\\n-- EVALUATION [TIMESTAMP] --\\n"
+//   Content:   "\\n── EVALUATION [TIMESTAMP] ──\\n"
 //              + [RESULT LINE -- see original logic, unchanged]
 //              + "\\n\\n" + @step3b.STUDENT_FACING_REPORT
 //                (CHANGED from original: reads the relay step's clean
@@ -318,7 +318,17 @@ nothing after it.
 //                visible result to the student is identical either way,
 //                since STUDENT_FACING_REPORT is the same text minus the
 //                one trailing line the student was never meant to see)
-//              + "\\n-- END EVALUATION --\\n"
+//              + "\\n── END EVALUATION ──\\n"
+//              (real U+2500 box-drawing character, not an ASCII "--" --
+//              this comment used to carry the ASCII transliteration by
+//              mistake; 03_QueueBridge.js's and
+//              09_StudentRevisionGuidance_M1Base.js's own body.findText()
+//              calls only match the real U+2500 marker, and an external
+//              Studio Steps drop built against this comment's stale
+//              ASCII form once shipped exactly that bug -- see
+//              cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own
+//              header for the fix. Canonical form confirmed at
+//              15_StudioFlowPrompts.js:261-265.)
 //   Note:      Do NOT add compliance stamps in this step. Do NOT write
 //              the "What to do next" block -- Script 03 handles that.
 //              (both unchanged from original design)

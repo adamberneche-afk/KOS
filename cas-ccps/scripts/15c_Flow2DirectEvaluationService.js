@@ -226,6 +226,22 @@ function runFlow2DirectGemini_(vars) {
 }
 
 // ---------------------------------------------------------------------------
+// _generateEvidenceId_ — same "EVD-" + yyyyMMdd + "-" + 6-char token shape
+// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own writer uses
+// for this column, so both writers of CompetencyEvidence produce evidence
+// IDs in one recognizable format even though they're two independent GAS
+// projects that can't share a literal function. Not
+// 02_Form1_IntakeAndWorkspaceGenerator.js's generateConfigId_() — that's a
+// "VDOE-" ID for a different purpose (a rubric ConfigID, not an evidence
+// row ID) — and not the Studio step's own randomToken_() either, which
+// lives in a different project's global scope entirely.
+// ---------------------------------------------------------------------------
+function _generateEvidenceId_(now) {
+  const token = Utilities.getUuid().replace(/-/g, "").substring(0, 6).toUpperCase();
+  return "EVD-" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd") + "-" + token;
+}
+
+// ---------------------------------------------------------------------------
 // writeCompetencyEvidenceFromFlow2_ — the CompetencyEvidence write step
 // Flow 2 itself would otherwise perform (Step 3b/CompetencyEvidence-write
 // in 15b_StudioFlowPrompts_Flow2_Revised.js's step sequence). Kept as a
@@ -233,17 +249,29 @@ function runFlow2DirectGemini_(vars) {
 // caller/test can inspect a parsed evaluation before deciding whether to
 // commit evidence rows from it.
 //
-// competencyIds: { "1": competencyId|"", "2": ..., "3": ..., "4": ... } —
-// from TeacherMatrix's Milestone1_Competency_Id..4 columns (blank for any
-// assignment confirmed before Module 5 shipped — see
-// 15b_StudioFlowPrompts_Flow2_Revised.js's own DEPENDENCY note).
+// Row shape and header are byte-identical, in the same column order, to
+// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own
+// writeCompetencyEvidence_() — confirmed the two are the tab's only
+// writers, and that its one reader (30_SCRSuggestionEngine.js's
+// aggregateEvidence_()) resolves columns by header NAME, not position;
+// matching header/order here means the reader works correctly regardless
+// of which of the two writers seeds the tab first. This function used to
+// write only 3 columns (student_email, competency_id, outcome) — widened
+// here specifically to close that mismatch, not as an independent schema
+// change.
+//
+// competencyIds / milestoneTexts: { "1": value|"", "2": ..., "3": ..., "4": ... } —
+// from TeacherMatrix's Milestone1_Competency_Id..4 / Milestone1..4 columns
+// (competency IDs blank for any assignment confirmed before Module 5
+// shipped — see 15b_StudioFlowPrompts_Flow2_Revised.js's own DEPENDENCY
+// note).
 //
 // Skips any milestone where the competency ID is blank, OR where
 // milestoneOutcomes has no valid outcome for it — matching the exact
 // "skip, never guess or write a row with a missing key" rule that file's
 // DEPENDENCY note specifies. Returns { written, skipped }.
 // ---------------------------------------------------------------------------
-function writeCompetencyEvidenceFromFlow2_(studentEmail, competencyIds, milestoneOutcomes) {
+function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId, competencyIds, milestoneTexts, milestoneOutcomes) {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const evidenceSheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
@@ -255,6 +283,7 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, competencyIds, mileston
   let written = 0;
   let skipped = 0;
   const rows = [];
+  const now = new Date();
 
   ["1", "2", "3", "4"].forEach((milestoneNum) => {
     const competencyId = competencyIds && competencyIds[milestoneNum];
@@ -263,23 +292,30 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, competencyIds, mileston
       skipped++;
       return;
     }
-    rows.push([studentEmail, competencyId, outcome]);
+    const milestoneText = (milestoneTexts && milestoneTexts[milestoneNum]) || "";
+    rows.push([
+      _generateEvidenceId_(now), studentEmail, competencyId, milestoneText,
+      outcome, configId || "", now, studentFileId || "",
+    ]);
     written++;
   });
 
   if (rows.length > 0) {
     // CompetencyEvidence has no code-level creation function anywhere in
     // this repo — "written externally by Studio Flow 2" (docs/FERPA_DATA_MAP.md)
-    // — so this is the first code path that could ever write to a
+    // — so this is one of the two code paths that could ever write to a
     // genuinely empty tab. A blank sheet needs its header row first, or
     // the first evidence row would land in row 1 and be misread as
     // headers by 30_SCRSuggestionEngine.js's aggregateEvidence_() (which
     // reads data[0] as headers unconditionally).
     if (evidenceSheet.getLastRow() === 0) {
-      evidenceSheet.getRange(1, 1, 1, 3).setValues([["student_email", "competency_id", "outcome"]]);
+      evidenceSheet.getRange(1, 1, 1, 8).setValues([[
+        "evidence_id", "student_email", "competency_id", "milestone_text",
+        "outcome", "config_id", "evaluated_at", "student_file_id",
+      ]]);
     }
     const startRow = evidenceSheet.getLastRow() + 1;
-    evidenceSheet.getRange(startRow, 1, rows.length, 3).setValues(rows);
+    evidenceSheet.getRange(startRow, 1, rows.length, 8).setValues(rows);
   }
 
   Logger.log("[S15c] CompetencyEvidence: wrote " + written + " row(s), skipped " + skipped +
