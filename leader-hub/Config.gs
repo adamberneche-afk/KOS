@@ -48,6 +48,13 @@ const LH_CONFIG_KEYS = [
   'lh_obs_prep',
   'lh_sync_tracker',
   'lh_sub_student_notes',
+  // Added during Phase 5 (server-migration): both are map-shaped (keyed by
+  // tripId / orgId respectively), not a flat growing list of independent
+  // records, so they fit this singleton-JSON-blob mechanism better than
+  // Data.gs's array-of-records one — see leader-hub/Data.gs's own header
+  // comment for that distinction.
+  'lh_slip_rosters',
+  'lh_org_results',
 ];
 
 // Namespaced so these can never collide with OWNER_EMAIL, AI_QUEUE_SHEET_ID,

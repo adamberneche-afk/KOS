@@ -2916,6 +2916,10 @@ setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
 // only — a no-op when opened as a local file. See lhRefreshConfigFromServer_()
 // in leader-hub/src/05-data-helpers-dashboard.html.
 lhRefreshConfigFromServer_();
+// Server-migration Phase 5: same catch-up for row-shaped data domains
+// (Trips, Trip Archive, DECA Results, ...). See
+// lhRefreshDataDomainsFromServer_() in the same file.
+lhRefreshDataDomainsFromServer_();
 // Initialize badge state
 setTimeout(updateEmailBridgeBadge_, 500);
 // cas-ccps connection badge (D1/Addendum 24) — also renders the sign-in

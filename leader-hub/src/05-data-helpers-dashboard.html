@@ -40,6 +40,7 @@ const LS = {
     try {
       localStorage.setItem(k, JSON.stringify(v));
       _lhSyncConfigKeyToServer_(k, v);
+      _lhSyncDataKeyToServer_(k, v);
       return true;
     } catch (e) {
       console.error('[LS.set] write failed for key', k, e);
@@ -75,6 +76,10 @@ const LH_SERVER_SYNCED_CONFIG_KEYS = [
   'lh_sub_period_assignments', 'lh_sbe_status', 'lh_deca_season',
   'lh_deca_approvals', 'lh_ftp_overrides', 'lh_conf_leave', 'lh_mk8_check',
   'lh_ssbu_check', 'lh_obs_prep', 'lh_sync_tracker', 'lh_sub_student_notes',
+  // Phase 5: map-shaped (keyed by tripId / orgId), not a flat list of
+  // independent records — see LH_SERVER_SYNCED_DATA_KEYS below for that
+  // distinction, and Config.gs for why these two live here.
+  'lh_slip_rosters', 'lh_org_results',
 ];
 
 // Fire-and-forget — never blocks or throws back into the LS.set() caller.
@@ -141,6 +146,152 @@ async function lhRefreshConfigFromServer_() {
     _write('lh_schedule_config', remote.lh_schedule_config);
     if (typeof _applyScheduleConfig === 'function') _applyScheduleConfig();
     if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
+  }
+  if (remote.lh_slip_rosters != null) {
+    _write('lh_slip_rosters', remote.lh_slip_rosters);
+    Object.keys(slipRosters).forEach(k => delete slipRosters[k]);
+    Object.assign(slipRosters, remote.lh_slip_rosters);
+  }
+  if (remote.lh_org_results != null) {
+    _write('lh_org_results', remote.lh_org_results);
+    Object.keys(ORG_RESULTS).forEach(k => delete ORG_RESULTS[k]);
+    Object.assign(ORG_RESULTS, remote.lh_org_results);
+  }
+}
+
+// ── Server write-through for row-shaped data domains (server-migration
+// Phase 5+) ──────────────────────────────────────────────────────────────
+// A row-shaped domain is a growing flat list of independent records with
+// their own `id` (trips, trip archive, DECA results, ...) — as opposed to
+// the map-shaped domains just above, and the small singleton settings
+// objects further up. Synced automatically, same as the config domains —
+// see leader-hub/Data.gs's own header comment for why that's safe here
+// (a private, owner-only Spreadsheet, not Organization Sync's deliberate
+// co-advisor-sharing one).
+//
+// Each record is pushed/pulled as one [Id, RecordJSON] row rather than
+// flattening every field into its own column — this domain list already
+// covers records as structurally different as a ~50-field trip (with a
+// nested `ap` approvals object) and a 6-field DECA result, and a
+// schema-agnostic row shape means adding a field to a record's own object
+// literal never requires a matching server-side or sync-layer change.
+// leader-hub/Data.gs's tab is still real per-record ROWS, not one giant
+// blob for the whole domain — same "a stray corrupt record can't corrupt
+// its neighbors" property flat columns would give, just JSON per cell
+// instead of JSON per field.
+const LH_SERVER_SYNCED_DATA_KEYS = {
+  lh_trips: 'trips',
+  lh_trip_archive: 'trip_archive',
+  lh_deca_results: 'deca_results',
+};
+
+function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
+function _lhGetDataTracker_(domain) { return LS.get(_lhDataTrackerKey_(domain), { lastKnownRemoteUpdatedAt: null }); }
+// Raw localStorage, not LS.set() — a tracker key is bookkeeping about a
+// sync, not itself a synced domain, and must never recursively trigger
+// this same hook.
+function _lhSetDataTracker_(domain, tracker) {
+  try { localStorage.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
+}
+
+// One-warning-per-domain-per-page-load, same convention as LS.set/LS.get's
+// own _lsWriteFailWarned/_lsReadFailWarned — a background sync hitting a
+// real conflict (this browser's edit is safe locally, just not yet
+// pushed) shouldn't spam a toast on every subsequent write.
+let _lhDataConflictWarned = {};
+
+// Fire-and-forget — never blocks or throws back into the LS.set() caller.
+// A rejected (conflicting) push never overwrites the server and never
+// touches this browser's own localStorage copy either — the edit stays
+// exactly as safe as it always was, just not yet synced. No interactive
+// dialog here (contrast with Organization Sync's button-triggered push,
+// which does show one) — this runs in the background on every save, not
+// in response to a deliberate "sync now" click.
+async function _lhSyncDataKeyToServer_(key, value) {
+  const domain = LH_SERVER_SYNCED_DATA_KEYS[key];
+  if (!domain) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+
+  const tracker = _lhGetDataTracker_(domain);
+  const rows = (Array.isArray(value) ? value : []).map(rec => [
+    (rec && rec.id != null) ? String(rec.id) : '',
+    JSON.stringify(rec),
+  ]);
+  let res;
+  try {
+    res = await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhPushData_({ domain, headers: ['Id', 'RecordJSON'], rows, expectedUpdatedAt: tracker.lastKnownRemoteUpdatedAt });
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Sync failed for ' + domain + ':', (e && e.message) || e);
+    return;
+  }
+  if (res && res.ok) {
+    _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+    return;
+  }
+  if (res && res.conflict && !_lhDataConflictWarned[domain]) {
+    _lhDataConflictWarned[domain] = true;
+    console.warn('[LeaderHub] ' + domain + ' has changes from elsewhere this browser hasn\'t synced yet — this edit stayed safe locally but wasn\'t pushed to the server.');
+    if (typeof _showToast === 'function') {
+      _showToast('⚠ ' + domain + ' changed elsewhere — reload once things settle to catch up', 6000, '#b45309');
+    }
+  }
+}
+
+// Boot-time catch-up for every row-shaped domain, same shape as
+// lhRefreshConfigFromServer_() above — only overwrites this browser's
+// copy when the server actually has something (found:true); a
+// never-synced domain keeps whatever's already in localStorage (this
+// browser's own seed data, on the very first sync).
+async function lhRefreshDataDomainsFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+
+  const APPLY = {
+    trips: arr => {
+      trips = arr;
+      localStorage.setItem('lh_trips', JSON.stringify(trips));
+      if (typeof renderTrips === 'function') renderTrips();
+      if (typeof renderDashboard === 'function') renderDashboard();
+    },
+    trip_archive: arr => {
+      tripArchive = arr;
+      localStorage.setItem('lh_trip_archive', JSON.stringify(tripArchive));
+      if (typeof renderArchive === 'function') renderArchive();
+    },
+    deca_results: arr => {
+      // No persistent in-memory variable — every reader already calls
+      // LS.get('lh_deca_results', []) fresh, so the localStorage write is
+      // the whole refresh; re-render only if that view happens to be open.
+      localStorage.setItem('lh_deca_results', JSON.stringify(arr));
+      if (typeof renderDecaResults === 'function') renderDecaResults();
+    },
+  };
+
+  for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
+    let res;
+    try {
+      res = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+          .lhPullData_({ domain });
+      });
+    } catch (e) {
+      console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
+      continue;
+    }
+    if (res && res.ok && res.found) {
+      const arr = (res.rows || [])
+        .map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } })
+        .filter(Boolean);
+      const apply = APPLY[domain];
+      if (apply) apply(arr);
+      _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+    }
   }
 }
 
