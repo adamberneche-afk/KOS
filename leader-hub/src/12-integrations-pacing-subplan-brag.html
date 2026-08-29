@@ -2908,6 +2908,12 @@ try {
 // Email bridge: poll on boot, then every 10 minutes
 EMAIL_BRIDGE.poll();
 setInterval(() => EMAIL_BRIDGE.poll(), 10 * 60 * 1000);
+// Server-migration Phase 3: catch this browser up on any singleton config
+// domain (Profile, Modules, Schedule Config, ...) saved server-side from a
+// different browser/device since this one last opened the app. Same-origin
+// only — a no-op when opened as a local file. See lhRefreshConfigFromServer_()
+// in leader-hub/src/05-data-helpers-dashboard.html.
+lhRefreshConfigFromServer_();
 // Initialize badge state
 setTimeout(updateEmailBridgeBadge_, 500);
 // cas-ccps connection badge (D1/Addendum 24) — also renders the sign-in
