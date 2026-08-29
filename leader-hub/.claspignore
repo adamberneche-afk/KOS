@@ -1,12 +1,22 @@
 # clasp push allowlist for leader-hub's single Apps Script project
-# (EmailBridge.gs). Everything else here — the LEADERHUB_*/LH_0* docs,
-# student-leader-hub.html (a 100%-localStorage local app, not Apps
-# Script), and drive-tools/ (one-off paste-and-run admin utilities, never
-# a persistent deployment — see drive-tools/LH_Drive_README.md) — must
-# never reach the live script. Allowlist style,
-# same rationale as kos-personal/.claspignore: safer against future
-# additions than a denylist that has to be kept in sync by hand.
+# (Code.gs + EmailBridge.gs, serving both the HTML web app and the JSON
+# API — see Code.gs's own header comment for the server-migration plan
+# these are phase 1 of). Everything else here — the LEADERHUB_*/LH_0*
+# docs and drive-tools/ (one-off paste-and-run admin utilities, never a
+# persistent deployment — see drive-tools/LH_Drive_README.md) — must
+# never reach the live script. student-leader-hub.html DOES now need to
+# reach the live script (Code.gs's doGet() serves it via
+# HtmlService.createHtmlOutputFromFile) — it stays the generated,
+# never-hand-edited file tools/leaderhub-build/build.js produces; only
+# its allowlist status here changed, not how it's built. Allowlist
+# style, same rationale as kos-personal/.claspignore: safer against
+# future additions than a denylist that has to be kept in sync by hand.
 **/**
 
 !appsscript.json
 !EmailBridge.gs
+!Code.gs
+!Config.gs
+!Data.gs
+!SCR.gs
+!student-leader-hub.html
