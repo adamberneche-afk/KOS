@@ -76,6 +76,12 @@
 //                        sevenBridgesReview() (9_UI_Diagnostics.gs),
 //                        which SUPERSEDED that same function's old
 //                        static "PENDING USER APPROVAL" stub.
+//  getCouncilReviewStatus()  Read-only "where is this review up to" —
+//                        wraps the above and adds the half it cannot
+//                        answer: which of CFG.PERSONAS have NOT
+//                        verdicted yet. Also surfaces duplicate and
+//                        misspelled cog names, both of which inflate
+//                        the halt count silently today. Writes nothing.
 //
 //  REMOVED: triggerCouncilSimulation() — a shared-context prompt asking
 //  one model to role-play ARCHITECT/AUDITOR/MUSE together in a single
@@ -649,6 +655,128 @@ function compileCouncilVerdict_(councilId) {
 
   } catch (e) {
     _reportError('compileCouncilVerdict_', e, null);
+    return { success: false, message: e.message };
+  }
+}
+
+
+/**
+ * Read-only status of one council review: who has verdicted, who has not,
+ * and anything that would quietly skew compileCouncilVerdict_()'s halt
+ * arithmetic. Pure read — writes nothing, changes nothing.
+ *
+ * WHY THIS EXISTS. A Seven Bridges review is fanned out by hand, one cog
+ * per conversation, over however long that takes. Every step of it is
+ * already durably recorded — submitCogVerdict() writes a COG_REGISTRY row
+ * the moment each verdict lands — but nothing ever read that back to tell
+ * the operator where they were. compileCouncilVerdict_() answers "what did
+ * the cogs say"; it cannot answer "which cogs haven't answered yet,"
+ * because it only ever sees rows that exist. This is the complement:
+ * CFG.PERSONAS minus what's on file. Mid-review state was never lost —
+ * it just had no reader.
+ *
+ * Builds on compileCouncilVerdict_() rather than re-reading COG_REGISTRY.
+ * A second independent reader of the same tab is exactly the drift that
+ * produced two council generators and two CompetencyEvidence writers in
+ * this repo already.
+ *
+ * TWO THINGS IT SURFACES THAT NOTHING ELSE DOES. The web app's Cog field
+ * is a free-text input with a datalist of suggestions (8_WebApp_UI.html),
+ * and submitCogVerdict() stores whatever is typed after a trim. So:
+ *   - A typo ("ARCHITEKT") records a verdict that counts toward
+ *     CFG.COG_HALT_THRESHOLD under a name matching no persona, while the
+ *     real ARCHITECT still reads as never having voted. Reported as
+ *     `unrecognized`.
+ *   - Submitting the same cog twice records two rows, both counted.
+ *     Reported as `duplicates`.
+ * Both inflate compileCouncilVerdict_()'s totals silently today. This
+ * function does not change that arithmetic — it makes it visible.
+ *
+ * Matching is deliberately forgiving on the one axis that is pure
+ * notation: case, and an optional PERSONA_ prefix. CFG.PERSONAS stores
+ * 'PERSONA_ARCHITECT'; an operator reasonably types 'Architect'. Treating
+ * those as different cogs would manufacture a problem rather than report
+ * one. Anything beyond that is reported, not guessed at.
+ *
+ * @param  {string} councilId  The SB_<ms> ID from the stimulus document.
+ * @returns {Object} { success, councilId, received[], pending[],
+ *   unrecognized[], duplicates[], total, expected, complete, halted,
+ *   nonApprovedCount, countsInflated, message }
+ */
+function getCouncilReviewStatus(councilId) {
+  try {
+    const compiled = compileCouncilVerdict_(councilId);
+    if (!compiled.success) return compiled;
+
+    // Strip case and an optional PERSONA_ / PERSONA- / "PERSONA " prefix.
+    const canon = (name) =>
+      String(name || '').trim().toUpperCase().replace(/^PERSONA[_\s-]*/, '');
+
+    const expected = CFG.PERSONAS.map(canon);
+
+    const byCog        = {};   // canonical cog -> verdicts recorded for it
+    const unrecognized = [];
+
+    compiled.verdicts.forEach(v => {
+      const key = canon(v.cog);
+      if (expected.indexOf(key) === -1) {
+        // Keep the raw string — the whole point is showing the operator
+        // exactly what got typed so they can spot the typo.
+        unrecognized.push({ cog: String(v.cog || ''), status: v.status, summary: v.summary });
+        return;
+      }
+      if (!byCog[key]) byCog[key] = [];
+      byCog[key].push(v);
+    });
+
+    const received = Object.keys(byCog).map(cog => ({
+      cog,
+      status:  byCog[cog][0].status,
+      summary: byCog[cog][0].summary,
+      count:   byCog[cog].length,
+    }));
+    const pending    = expected.filter(p => !byCog[p]);
+    const duplicates = received.filter(r => r.count > 1).map(r => ({ cog: r.cog, count: r.count }));
+
+    const complete       = pending.length === 0;
+    const countsInflated = duplicates.length > 0 || unrecognized.length > 0;
+
+    let message;
+    if (compiled.total === 0) {
+      message = 'No verdicts recorded yet for council ' + compiled.councilId +
+        '. Waiting on all ' + expected.length + ': ' + pending.join(', ') + '.';
+    } else if (!complete) {
+      message = received.length + ' of ' + expected.length + ' cogs have verdicted. ' +
+        'Still waiting on: ' + pending.join(', ') + '.';
+    } else {
+      message = 'All ' + expected.length + ' cogs have verdicted. ' + compiled.message;
+    }
+    if (countsInflated) {
+      message += ' NOTE: the halt count includes ' +
+        (duplicates.length ? duplicates.length + ' duplicate cog(s)' : '') +
+        (duplicates.length && unrecognized.length ? ' and ' : '') +
+        (unrecognized.length ? unrecognized.length + ' unrecognized cog name(s)' : '') +
+        ' — review those before trusting it.';
+    }
+
+    return {
+      success:          true,
+      councilId:        compiled.councilId,
+      received,
+      pending,
+      unrecognized,
+      duplicates,
+      total:            compiled.total,
+      expected:         expected.length,
+      complete,
+      halted:           compiled.halted,
+      nonApprovedCount: compiled.nonApprovedCount,
+      countsInflated,
+      message,
+    };
+
+  } catch (e) {
+    _reportError('getCouncilReviewStatus', e, null);
     return { success: false, message: e.message };
   }
 }
