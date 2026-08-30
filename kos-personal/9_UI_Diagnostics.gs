@@ -37,10 +37,15 @@
 //                        active doc in standalone context).
 //                        Creates a new doc in Drive instead.
 //
-// generateCouncilInputPayload() HITL version preserved here.
-//                        Headless version = triggerCouncilSimulation()
-//                        in 6_Governance.gs — both now superseded by the
-//                        real Seven Bridges pipeline (see next entry).
+// generateSevenBridgesStimulus() Menu counterpart to the web app's
+//                        council button — a thin wrapper over
+//                        triggerSevenBridgesReview() (6_Governance.gs),
+//                        which owns the guard, lock, council ID and doc.
+//                        REPLACED generateCouncilInputPayload(), which
+//                        re-implemented the deleted shared-context
+//                        generator's logic and violated
+//                        BRIDGE_FIDELITY_001 from a live menu item.
+//                        See CHANGELOG.md Round 14.
 //
 // sevenBridgesReview()   The real, current sequestered-council menu
 //                        entry — SUPERSEDED the old static
@@ -108,7 +113,7 @@ function onOpen() {
       // more to a non-technical reader than dropping it.
       .addSubMenu(ui.createMenu('📥 Ingest & Context')
         .addItem('Build Session Context', 'buildSessionContext')
-        .addItem('Generate Council Payload (Human Review)', 'generateCouncilInputPayload')
+        .addItem('Generate Seven Bridges Stimulus', 'generateSevenBridgesStimulus')
         .addItem('Consolidate Inference Chunks', 'consolidateInferenceChunks'))
       .addSubMenu(ui.createMenu('📊 Diagnostics')
         .addItem('Check Onboarding Progress', 'checkOnboardingProgress')
@@ -465,84 +470,78 @@ function buildSessionContext() {
 
 
 // ================================================================
-// COUNCIL PAYLOAD GENERATOR — HITL VERSION
+// SEVEN BRIDGES STIMULUS — HITL WRAPPER
 // ================================================================
 
 /**
- * HITL version. For headless/web-app version see
- * triggerCouncilSimulation() in 6_Governance.gs.
+ * Spreadsheet-menu counterpart to the web app's "Run full council review"
+ * button — both are thin surfaces over the same
+ * triggerSevenBridgesReview() (6_Governance.gs), which owns the stasis
+ * guard, the lock, the council ID, and the document itself.
  *
- * Generates a council stimulus doc from CURRENT_STATE and
- * PIVOTS_AND_LESSONS. Presents a stasis guard before running —
- * blocks if CURRENT_STATE hasn't been updated since the last run.
+ * REPLACES generateCouncilInputPayload() (CHANGELOG.md Round 14). That
+ * function was an independent re-implementation of the deleted
+ * triggerCouncilSimulation()'s shared-context logic — it wrote a doc
+ * telling one model to "Act as ARCHITECT, AUDITOR, and MUSE
+ * independently" in a single pass, exactly the cross-contamination
+ * BRIDGE_FIDELITY_001 forbids, and it was reachable from a live menu
+ * item. Rewritten as a delegating wrapper rather than deleted so the
+ * operator keeps a working menu path (with its confirm gate) to the
+ * sequestered flow.
+ *
+ * Renders the callee's {success, busy, noop, councilId, message} contract
+ * the same way handleCouncil() does in 8_WebApp_UI.html — busy and noop
+ * are routine outcomes, not errors, so they get a neutral alert rather
+ * than an error one.
  */
-function generateCouncilInputPayload() {
-  const ui    = _getUi();
-  const props = PropertiesService.getScriptProperties();
+function generateSevenBridgesStimulus() {
+  const ui = _getUi();
   try {
-    _coldEngineGate('generateCouncilInputPayload', 'TIER_2');
-
-    const stateId   = props.getProperty('ID_CURRENT_STATE');
-    const pivotId   = props.getProperty('ID_PIVOTS_AND_LESSONS');
-    const exhaustId = props.getProperty('ID_00_RAW_EXHAUST');
-    if (!stateId || !pivotId || !exhaustId) throw new Error('Core pointers missing. Run deployFullSystem().');
-
-    // Stasis guard
-    const lastMs = parseInt(props.getProperty('COUNCIL_LAST_RUN') || '0', 10);
-    if (DriveApp.getFileById(stateId).getLastUpdated().getTime() <= lastMs) {
-      ui.alert('⚠ Stasis Guard',
-        'CURRENT_STATE has not been updated since the last council run.\n\n' +
-        'Update the state doc with recent session data before generating a new payload.',
-        ui.ButtonSet.OK);
-      return;
-    }
-
-    const go = ui.alert('Generate Council Payload?',
-      'This creates a structured council stimulus doc from:\n' +
+    // No _coldEngineGate() here — triggerSevenBridgesReview() applies its
+    // own TIER_2 gate. Gating twice would just produce a worse error
+    // message from the outer call before the real one ever ran.
+    const go = ui.alert('Generate Seven Bridges stimulus?',
+      'This creates ONE stimulus document from:\n' +
       '  • CURRENT_STATE\n  • PIVOTS_AND_LESSONS\n\n' +
-      'The doc will be saved to 03.4_RAW_EXHAUST for Studio pickup.',
+      'You then send that one document to EACH cog independently — a ' +
+      'separate Gemini Gem conversation per cog, no shared context ' +
+      'between them (BRIDGE_FIDELITY_001) — and log each verdict back ' +
+      'under the Council ID it gives you.\n\n' +
+      'Nothing reviews it automatically. Continue?',
       ui.ButtonSet.YES_NO);
     if (go !== ui.Button.YES) return;
 
-    const stateText = DocumentApp.openById(stateId).getBody().getText();
-    const pivotText = DocumentApp.openById(pivotId).getBody().getText();
-    const ts        = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-    const docName   = 'CE: COUNCIL_PAYLOAD_' + ts;
+    const result = triggerSevenBridgesReview();
 
-    const doc  = DocumentApp.create(docName);
-    const dId  = doc.getId();
-    const body = doc.getBody();
+    if (!result || result.success === false) {
+      ui.alert('⚠ Could Not Generate Stimulus',
+        (result && result.message) || 'Unknown error.', ui.ButtonSet.OK);
+      return;
+    }
+    if (result.busy || result.noop) {
+      // Routine, expected outcomes — same neutral treatment the web app
+      // gives them. A "nothing has changed yet" is not a failure.
+      ui.alert('Nothing to do', result.message, ui.ButtonSet.OK);
+      return;
+    }
 
-    body.appendParagraph('[🧠 RTP COUNCIL INITIATION STUB]')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    body.appendParagraph('System State: ' + ts);
-    body.appendParagraph('1. THE CONTEXT (Recent Session Summary)')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(_truncateWithMarker_(stateText, 8000));
-    body.appendParagraph('2. THE LAWS (Active Constraints & Pivots)')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(_truncateWithMarker_(pivotText, 4000));
-    body.appendParagraph('3. INFERENCE INSTRUCTIONS')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(
-      'Act as ARCHITECT, AUDITOR, and MUSE independently. ' +
-      'Evaluate Context against Laws. Respond with structured JSON.'
-    ).setBold(true);
-
-    doc.saveAndClose();
-    DriveApp.getFileById(dId).moveTo(DriveApp.getFolderById(exhaustId));
-    props.setProperty('COUNCIL_LAST_RUN', new Date().getTime().toString());
-
-    // FIXED (finding #5): "PENDING_FLOW scan" is the raw pipeline status
-    // name — reworded to describe what actually happens, matching how the
-    // web app's own copy never surfaces this term to a user.
-    ui.alert('✅ Council Payload Created',
-      docName + '\n\nSaved to 03.4_RAW_EXHAUST.\n' +
-      'Studio checks for new documents every few minutes and will pick this up automatically.\n\n' +
-      'URL: ' + DriveApp.getFileById(dId).getUrl(),
+    // FIXED: the old copy here said "Studio checks for new documents every
+    // few minutes and will pick this up automatically." That was never
+    // true for this artifact — no STAGING_PIPELINE row is written for it,
+    // and the whole point of the sequestered design is that the operator
+    // fans the document out by hand. Telling them it was automatic is how
+    // a stimulus sits in RAW_EXHAUST forever with no verdicts against it.
+    ui.alert('✅ Stimulus Ready — Council ' + result.councilId,
+      result.docName + '\n\nSaved to 03.4_RAW_EXHAUST.\n\n' +
+      'NEXT — this does not run itself:\n' +
+      '  1. Open the doc and read its REVIEW INSTRUCTIONS section.\n' +
+      '  2. Send it to each cog in its OWN fresh conversation.\n' +
+      '  3. Log every verdict via Ingest → Cog Verdict under Council ID ' +
+      result.councilId + '.\n\n' +
+      'URL: ' + result.docUrl,
       ui.ButtonSet.OK);
 
-  } catch (e) { _reportError('generateCouncilInputPayload', e, ui); }
+  } catch (e) { _reportError('generateSevenBridgesStimulus', e, ui); }
 }
 
 

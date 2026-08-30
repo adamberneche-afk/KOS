@@ -854,7 +854,7 @@ function _seedCoreThesisDoc(a, deployType) {
 // passively from each processed session's `alignment_observations`
 // (see STUDIO_INTEGRATION_SPEC.md Step 5). Stored as a single JSON
 // blob under PropertiesService key KOS_SHADOW_MATRIX, matching the
-// pattern already used for KOS_PROMOTED_VECTORS and COUNCIL_LAST_RUN.
+// pattern already used for KOS_PROMOTED_VECTORS and SEVEN_BRIDGES_LAST_RUN.
 // ================================================================
 
 const SHADOW_QUESTIONS = ['admin_ghost', 'relational_targets', 'necessary_struggle', 'prime_directive', 'temporal_constraints'];
@@ -1508,9 +1508,9 @@ function dumpAllProperties() {
  * incomplete.
  *
  * Single source of truth for this pattern — previously reimplemented
- * inline, without a marker, in triggerCouncilSimulation() and
- * triggerSevenBridgesReview() (6_Governance.gs) and
- * generateCouncilInputPayload() (9_UI_Diagnostics.gs).
+ * inline, without a marker, in triggerSevenBridgesReview()
+ * (6_Governance.gs) and in the two shared-context council generators
+ * deleted in Round 14 (see CHANGELOG.md).
  * buildSessionContext()'s local readDoc() already did this correctly on
  * its own; this extracts that same logic so every caller gets it, not
  * just one (folded in from an external parallel review pass — Addendum
