@@ -20,6 +20,18 @@ jobs:
           node-version: '20'
       - name: Run gas-lint
         run: node tools/gas-lint/check.js
+      - name: Check documentation currency
+        # The docs-check job below asks whether a README was *touched*; it
+        # cannot catch a README that says something false. Every finding in
+        # the sweep that motivated this tool passed docs-check — including a
+        # deployment guide telling operators to run two functions that exist
+        # nowhere in the repo. See tools/doc-currency/README.md for what this
+        # does and, more importantly, what it still doesn't check.
+        #
+        # Runs after gas-lint on purpose: doc-currency requires gas-lint's
+        # stripCommentsAndStrings(), so a gas-lint failure is the more
+        # informative one to see first.
+        run: node tools/doc-currency/check.js
       - name: Verify cas-ccps clasp-sync builds cleanly
         run: node tools/clasp-sync/sync.js
       - name: Run the leader-hub + tooling regression suite (tests/)
@@ -46,7 +58,9 @@ jobs:
         #
         # leader-hub/archived/ (including the EARLY_PROTOTYPE file this
         # command used to also check) was deleted repo-wide as confirmed
-        # dead code - see the pre-archive-cleanup tag/branch to recover it.
+        # dead code - recover it with `git fetch origin pre-archive-cleanup`
+        # then `git show origin/pre-archive-cleanup:<path>` (a fresh clone
+        # does not have that branch locally; there is no tag of that name).
         run: |
           node tools/html-lint/check.js \
             leader-hub/student-leader-hub.html
