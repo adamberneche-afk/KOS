@@ -28,6 +28,20 @@ const app  = express();
 const PORT = process.env.PORT || 8080;
 
 
+// ── Startup guards ───────────────────────────────────────────────
+// FIXED: validateWebhookSignature (below) used to silently `return next()`
+// whenever WEBHOOK_SECRET wasn't set — a dropped or misconfigured secret in
+// a real deployment didn't fail loudly, it just turned off the one check
+// that keeps /api/v1/jobs submissions authenticated, with no log line to
+// notice by. Refusing to boot without the secret in production is the real
+// fix; validateWebhookSignature's own check is defense in depth for any
+// path that imports this module without going through app.listen.
+if (process.env.NODE_ENV === 'production' && !process.env.WEBHOOK_SECRET) {
+  logger.error('[Server] WEBHOOK_SECRET is required in production — refusing to start.');
+  process.exit(1);
+}
+
+
 // ── Middleware ────────────────────────────────────────────────────
 
 // Stripe webhooks need the raw body — must be before express.json()
@@ -127,7 +141,23 @@ function clearOAuthStateCookie(res) {
 function validateWebhookSignature(req, res, next) {
   const signature = req.headers['x-kos-signature'];
   const secret    = process.env.WEBHOOK_SECRET;
-  if (!secret) return next(); // Skip in dev if not configured
+
+  // FIXED: this used to skip auth entirely whenever WEBHOOK_SECRET wasn't
+  // set. The startup guard above already refuses to boot in production
+  // without it; this branch only exists for dev/test runs that import the
+  // app directly. Fail closed instead of open if that guard is ever bypassed.
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[Server] WEBHOOK_SECRET missing in production — rejecting webhook request.');
+      return res.status(500).json({ error: 'Webhook auth not configured' });
+    }
+    logger.warn('[Server] WEBHOOK_SECRET not set — skipping webhook signature check (dev only).');
+    return next();
+  }
+
+  if (!signature) {
+    return res.status(401).json({ error: 'Missing X-KOS-Signature header' });
+  }
 
   // Sign the actual raw request bytes (captured by express.json()'s
   // verify callback above), not a re-serialization of the parsed body —
@@ -136,8 +166,16 @@ function validateWebhookSignature(req, res, next) {
     .createHmac('sha256', secret)
     .update(req.rawBody || Buffer.alloc(0))
     .digest('hex');
+  const expectedHeader = `sha256=${expected}`;
 
-  if (signature !== `sha256=${expected}`) {
+  // FIXED: was a plain `!==` comparison — not constant-time, unlike the
+  // OAuth state check above which already uses timingSafeEqual for exactly
+  // this reason. A length- or content-dependent comparison here leaks how
+  // many leading bytes of a guessed signature are correct, letting an
+  // attacker recover a valid signature byte-by-byte across many requests.
+  const sigOk = signature.length === expectedHeader.length &&
+    crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedHeader));
+  if (!sigOk) {
     return res.status(401).json({ error: 'Invalid webhook signature' });
   }
   next();

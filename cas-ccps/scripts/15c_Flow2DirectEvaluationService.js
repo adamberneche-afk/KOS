@@ -295,7 +295,12 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId
     const milestoneText = (milestoneTexts && milestoneTexts[milestoneNum]) || "";
     rows.push([
       _generateEvidenceId_(now), studentEmail, competencyId, milestoneText,
-      outcome, configId || "", now, studentFileId || "",
+      // archive_status starts blank — see 30_SCRSuggestionEngine.js's
+      // _archiveExpiredCompetencyEvidence_()/reactivateCompetencyEvidence_
+      // (roadmap 2.2). Must stay byte-identical with
+      // CommitStudentEvaluationStep.gs's writer — see
+      // tests/cas-ccps/competency-evidence-schema-compat.test.js.
+      outcome, configId || "", now, studentFileId || "", "",
     ]);
     written++;
   });
@@ -309,13 +314,13 @@ function writeCompetencyEvidenceFromFlow2_(studentEmail, configId, studentFileId
     // headers by 30_SCRSuggestionEngine.js's aggregateEvidence_() (which
     // reads data[0] as headers unconditionally).
     if (evidenceSheet.getLastRow() === 0) {
-      evidenceSheet.getRange(1, 1, 1, 8).setValues([[
+      evidenceSheet.getRange(1, 1, 1, 9).setValues([[
         "evidence_id", "student_email", "competency_id", "milestone_text",
-        "outcome", "config_id", "evaluated_at", "student_file_id",
+        "outcome", "config_id", "evaluated_at", "student_file_id", "archive_status",
       ]]);
     }
     const startRow = evidenceSheet.getLastRow() + 1;
-    evidenceSheet.getRange(startRow, 1, rows.length, 8).setValues(rows);
+    evidenceSheet.getRange(startRow, 1, rows.length, 9).setValues(rows);
   }
 
   Logger.log("[S15c] CompetencyEvidence: wrote " + written + " row(s), skipped " + skipped +
