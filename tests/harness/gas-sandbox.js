@@ -130,6 +130,15 @@ class FakeSheet {
   getLastColumn() { return this.rows.reduce((m, r) => Math.max(m, r.length), 0); }
   // Cosmetic only — no test in this repo asserts on column width.
   autoResizeColumns() { return this; }
+  // Real Apps Script API — inserts a blank column before the given 1-based
+  // column index, shifting every later column in every row right by one.
+  // kos-personal/4_Vector_Router.gs's promotion paths
+  // (_checkPromotionCandidates, pinThemeToCore) use this to grow
+  // VECTOR_MATRIX by one theme column when a theme graduates.
+  insertColumnBefore(colPos1Based) {
+    this.rows.forEach((row) => { row.splice(colPos1Based - 1, 0, ''); });
+    return this;
+  }
 }
 
 class FakeSpreadsheet {
@@ -343,12 +352,37 @@ class FakeDriveFile {
     this.sharingAccess = null;
     this.sharingPermission = null;
     this.editors = [];
+    // Real Drive stamps this at creation; tests that exercise a
+    // last-updated guard (see getLastUpdated below) can overwrite it to
+    // simulate an older or newer file without waiting on wall-clock time.
+    this.lastUpdated = new Date();
   }
   getId() { return this.id; }
   getName() { return this.name; }
   getUrl() { return 'https://fake-drive.example/file/' + this.id; }
   setSharing(access, permission) { this.sharingAccess = access; this.sharingPermission = permission; return this; }
   addEditor(email) { this.editors.push(email); return this; }
+  // Real Apps Script API — 6_Governance.gs's triggerSevenBridgesReview()
+  // compares CURRENT_STATE's getLastUpdated() against
+  // SEVEN_BRIDGES_LAST_RUN as its stasis guard ("has anything changed
+  // since the last review?"), so a test of that flow has to be able to
+  // both read and control it.
+  getLastUpdated() { return this.lastUpdated; }
+  // Real Apps Script API — moves the file to `folder`, removing it from
+  // whatever folder currently holds it. Every doc-producing function in
+  // kos-personal follows DocumentApp.create() with a moveTo() into its
+  // destination folder (RAW_EXHAUST, CURRENT_STATE, …), since create()
+  // always lands the file in root first.
+  moveTo(folder) {
+    if (this._parent && typeof this._parent.removeFile === 'function') {
+      this._parent.removeFile(this);
+    }
+    if (folder && typeof folder.addFile === 'function') {
+      folder.addFile(this);
+      this._parent = folder;
+    }
+    return this;
+  }
 }
 
 function makeDriveAppMock() {
@@ -374,6 +408,17 @@ function makeDriveAppMock() {
       if (!files.has(id)) throw new Error('File not found: ' + id);
       return files.get(id);
     },
+    // Real Apps Script API — flat, top-level name search across all of
+    // Drive (unlike FakeDriveFolder.getFoldersByName, which is scoped to
+    // one folder's direct children). 9_UI_Diagnostics.gs's
+    // buildSessionContext() uses this to look up an optional file
+    // (RTP_USER_MANUAL_v1.0) by name with no folder ID on hand — same
+    // hasNext()/next() iterator shape as getFoldersByName.
+    getFilesByName(name) {
+      const matches = [...files.values()].filter((f) => f.name === name);
+      let i = 0;
+      return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
+    },
     _registerFile(file) { files.set(file.id, file); },
   };
 }
@@ -390,6 +435,16 @@ function makeDriveAppMock() {
 class FakeParagraph {
   constructor(text) { this.text = text; }
   getText() { return this.text; }
+  // Real Apps Script API — chained directly off appendParagraph() by
+  // every doc-building function in kos-personal (e.g. 6_Governance.gs's
+  // triggerSevenBridgesReview() sets HEADING1/HEADING2 on its section
+  // titles and bolds the BRIDGE_FIDELITY_001 paragraph). Chainable no-ops
+  // returning the paragraph: no test in this repo asserts on formatting,
+  // only on the resulting text, but a file that calls them has to be able
+  // to run at all. Note these live on the paragraph itself — distinct
+  // from the editAsText() sub-object below, which has its own setBold().
+  setHeading() { return this; }
+  setBold() { return this; }
   editAsText() {
     const self = {
       setFontSize() { return self; },
@@ -428,13 +483,24 @@ function makeDocumentAppMock(driveAppMock) {
   const docs = new Map();
   return {
     _docs: docs,
+    // Real Apps Script API — the heading enum passed to
+    // Paragraph.setHeading(). Values are opaque to this mock (setHeading
+    // is a no-op); it exists so `DocumentApp.ParagraphHeading.HEADING1`
+    // resolves instead of throwing on undefined.
+    ParagraphHeading: {
+      NORMAL: 'NORMAL', TITLE: 'TITLE', SUBTITLE: 'SUBTITLE',
+      HEADING1: 'HEADING1', HEADING2: 'HEADING2', HEADING3: 'HEADING3',
+      HEADING4: 'HEADING4', HEADING5: 'HEADING5', HEADING6: 'HEADING6',
+    },
     create(title) {
       const id = 'fake-doc-' + (++makeDocumentAppMock._counter);
       const doc = new FakeDoc(id, title);
       docs.set(id, doc);
       const file = new FakeDriveFile(id, title);
       driveAppMock._registerFile(file);
-      driveAppMock.getRootFolder().addFile(file); // DocumentApp.create() lands in root first, same as real Docs
+      const root = driveAppMock.getRootFolder();
+      root.addFile(file); // DocumentApp.create() lands in root first, same as real Docs
+      file._parent = root; // so a later moveTo() removes it from root, as real Drive does
       return doc;
     },
     openById(id) {
@@ -469,6 +535,12 @@ function formatDateMock(date, timeZone, format) {
   }
   if (format === 'yyyy-MM-dd HH:mm') {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
+  if (format === 'yyyy-MM-dd HH:mm:ss') {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+  }
+  if (format === 'yyyy-MM-dd_HH-mm') {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}_${pad2(date.getHours())}-${pad2(date.getMinutes())}`;
   }
   throw new Error('formatDateMock: unsupported format "' + format + '" — add it to tests/harness/gas-sandbox.js');
 }
