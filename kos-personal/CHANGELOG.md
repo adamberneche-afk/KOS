@@ -786,3 +786,62 @@ additions to `tests/harness/gas-sandbox.js` (`moveTo`, `getLastUpdated`,
 `triggerSevenBridgesReview()` could not run in the sandbox at all, which is
 its own explanation for the missing coverage. `tools/gas-lint/check.js`
 stays at 0 errors and `npm test` stays green.
+
+## Round 15 — a council review had no way to report where it was up to
+
+A Seven Bridges review is fanned out by hand — one cog per conversation,
+six conversations, however long that takes. Every step of it was already
+durably recorded: `submitCogVerdict()` writes a `COG_REGISTRY` row the
+moment each verdict lands, keyed by Council ID. But nothing ever read that
+back. `compileCouncilVerdict_()` answers *what did the cogs say*, and
+structurally cannot answer *which cogs haven't answered yet* — it only ever
+sees rows that exist. So mid-review state was never lost; it simply had no
+reader, and an operator returning to a half-finished council had no way to
+tell which Gems they had already sent it to.
+
+This was scoped down from a much larger idea. A competitive-framework
+comparison had suggested checkpoint/rewind for the governance pipeline —
+LangGraph-style resume-from-step. That would have meant real
+infrastructure: snapshotting per-step state, defining resumable boundaries,
+versioning them against every future change to the persona sequence, and
+maintaining all of it forever against a failure mode nobody had actually
+hit. The Council flow already checkpoints itself; what was missing was
+seventy lines that read it back.
+
+- **`getCouncilReviewStatus(councilId)`** (`6_Governance.gs`) — pure read,
+  writes nothing. Returns which cogs have verdicted, which are still
+  outstanding, the compiled halt verdict, and two things nothing surfaced
+  before. Deliberately wraps `compileCouncilVerdict_()` rather than
+  re-reading `COG_REGISTRY`: a second independent reader of one tab is
+  exactly the drift that produced two council generators and two
+  `CompetencyEvidence` writers in this repo already.
+- **Misspelled cog names are now visible.** The web app's Cog field is a
+  free-text input with a datalist of suggestions, and `submitCogVerdict()`
+  stores whatever is typed after a trim. A typo (`ARCHITEKT`) therefore
+  records a verdict that counts toward `CFG.COG_HALT_THRESHOLD` under a
+  name matching no persona — while the real ARCHITECT still reads as never
+  having voted. Reported as `unrecognized`, with the raw text preserved so
+  the typo is actually spottable.
+- **Duplicate submissions are now visible.** Submitting the same cog twice
+  records two rows and counts both. Reported as `duplicates`.
+- Neither is silently corrected. Both inflate the halt arithmetic, so the
+  status view flags the count as inflated and leaves the decision to the
+  operator — what to do about a double-vote or a typo is a judgment call,
+  not something to paper over.
+- Cog matching is forgiving on the one axis that is pure notation — case,
+  and an optional `PERSONA_` prefix, since `CFG.PERSONAS` stores
+  `PERSONA_ARCHITECT` and an operator reasonably types `Architect`.
+  Treating those as different cogs would have manufactured a problem
+  rather than reported one. Anything beyond that is reported, not guessed.
+- **Surfaced through the existing menu entry, not a new one.** ⚙️
+  Diagnostics → *Seven Bridges — Status & Verdict* (renamed from "Seven
+  Bridges Review") already prompted for a Council ID and displayed
+  verdicts; it now shows the full picture. No new surface area.
+
+`tests/kos-personal/council-review-status.test.js` covers the empty case,
+partial completion, the tolerant-matching rule, both skew cases, a clean
+complete review carrying the halt verdict through, strict scoping to one
+Council ID, and rejection of a blank ID. Verified non-vacuous against two
+separate mutations — breaking the pending calculation fails 3 tests,
+breaking typo detection fails 1. `tools/gas-lint/check.js` stays at 0
+errors and `npm test` stays green.
