@@ -2421,6 +2421,10 @@ function renderIncubating(res) {
   wrap.style.display = '';
   list.innerHTML = items.map(v => {
     const pct = Math.round(Math.min(v.cumulative_score / threshold, 1) * 100);
+    // Stable per-theme button id — safe even if the name ever contains
+    // anything other than the uppercase-alnum shape _aggregateSentenceVectors_
+    // normally produces, since _confirmTap_'s state is keyed by this id.
+    const btnId = 'pin-btn-' + v.name.replace(/[^A-Za-z0-9_-]/g, '_');
     return '<div class="vec-row" style="margin-bottom:6px">' +
       '<div class="vec-hdr">' +
       '<span class="vec-name" style="font-size:11px">' + esc(v.name) + '</span>' +
@@ -2430,6 +2434,14 @@ function renderIncubating(res) {
       '<span class="vec-score" style="font-size:10px">' + v.cumulative_score.toFixed(2) + ' / ' + threshold.toFixed(2) + '</span>' +
       '</div>' +
       '<div class="bar-bg" style="height:4px"><div class="bar-fill" style="width:' + pct + '%;background:var(--text3)"></div></div>' +
+      // Manual "pin to Core" override (KOS/CAS roadmap synthesis 2.1) — a
+      // theme name lives in data-theme, not inlined into the onclick string,
+      // so nothing here needs JS-string escaping on top of esc()'s HTML
+      // escaping.
+      '<button class="btn btn-sm" id="' + btnId + '" ' +
+        'style="margin-top:4px;padding:4px 10px;font-size:11px" ' +
+        'data-theme="' + esc(v.name) + '" onclick="handlePinToCore(this)">' +
+        '<i class="ti ti-pin"></i>Pin to Core</button>' +
       '</div>';
   }).join('');
 }
@@ -2589,6 +2601,46 @@ function handlePromotion() {
     btn.disabled = false;
     resetBtn('btn-promote', 'ti-trending-up', 'Check for new themes to promote');
     showDiagStatus('Error: ' + err.message, 'danger', gen);
+  });
+}
+
+// Companion to handlePromotion() above: that button runs the algorithmic
+// threshold check across every incubating theme; this one lets the
+// operator declare a single theme permanent outright (KOS/CAS roadmap
+// synthesis 2.1 — "pin to Core"), for a one-off but structurally important
+// decision that shouldn't have to wait for enough sessions to
+// out-accumulate CFG.DECAY_FACTOR. Uses the same double-tap confirm as
+// handleCouncil()/handleDeploy() below — this bypasses the normal
+// promotion threshold, so it shouldn't fire on a single accidental tap.
+function handlePinToCore(btn) {
+  const theme = btn.dataset.theme;
+  const btnId = btn.id;
+  _confirmTap_(btnId, {
+    armedClass: 'btn btn-sm btn-confirm btn-countdown',
+    armedIcon:  '<i class="ti ti-alert-triangle"></i>',
+    armedLabel: (n) => 'Tap again to pin · ' + n + 's',
+    onArm: () => showDiagStatus('Tap "Pin to Core" again within 5 seconds to confirm — this bypasses the normal promotion threshold.', undefined, beginDiagAction()),
+    onExpire: () => {
+      resetBtn(btnId, 'ti-pin', 'Pin to Core');
+      showDiagStatus('', undefined, beginDiagAction());
+    },
+    onConfirm: () => {
+      const gen = beginDiagAction();
+      btn.disabled = true;
+      btn.className = 'btn btn-sm';
+      btn.innerHTML = '<i class="ti ti-loader-2"></i>Pinning…';
+      showDiagStatus('Pinning "' + esc(theme) + '" to Core…', undefined, gen);
+      callServer('pinThemeToCore', [theme], (res) => {
+        btn.disabled = false;
+        const isError = res && res.success === false;
+        showDiagStatus((res && res.message) || String(res), isError ? 'danger' : undefined, gen);
+        loadVectorState(); // refresh — a successful pin moves the theme out of this list
+      }, (err) => {
+        btn.disabled = false;
+        resetBtn(btnId, 'ti-pin', 'Pin to Core');
+        showDiagStatus('Error: ' + err.message, 'danger', gen);
+      });
+    }
   });
 }
 
