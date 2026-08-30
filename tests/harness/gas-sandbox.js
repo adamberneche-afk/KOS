@@ -383,6 +383,17 @@ function makeDriveAppMock() {
       if (!files.has(id)) throw new Error('File not found: ' + id);
       return files.get(id);
     },
+    // Real Apps Script API — flat, top-level name search across all of
+    // Drive (unlike FakeDriveFolder.getFoldersByName, which is scoped to
+    // one folder's direct children). 9_UI_Diagnostics.gs's
+    // buildSessionContext() uses this to look up an optional file
+    // (RTP_USER_MANUAL_v1.0) by name with no folder ID on hand — same
+    // hasNext()/next() iterator shape as getFoldersByName.
+    getFilesByName(name) {
+      const matches = [...files.values()].filter((f) => f.name === name);
+      let i = 0;
+      return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
+    },
     _registerFile(file) { files.set(file.id, file); },
   };
 }
@@ -478,6 +489,12 @@ function formatDateMock(date, timeZone, format) {
   }
   if (format === 'yyyy-MM-dd HH:mm') {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+  }
+  if (format === 'yyyy-MM-dd HH:mm:ss') {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+  }
+  if (format === 'yyyy-MM-dd_HH-mm') {
+    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}_${pad2(date.getHours())}-${pad2(date.getMinutes())}`;
   }
   throw new Error('formatDateMock: unsupported format "' + format + '" — add it to tests/harness/gas-sandbox.js');
 }
