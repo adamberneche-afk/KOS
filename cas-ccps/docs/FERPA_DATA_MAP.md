@@ -229,11 +229,12 @@ payload. Investigated options:
   `"true"`. An intentional, auditable escape hatch, not a silent gap — the
   admin health check (below) alerts if it's ever turned on.
 
-## Health checks (Bonus 1 — added; item 4 added later, Extension 3)
+## Health checks (Bonus 1 — added; items 4-6 added later)
 
 `10_AdminRecoveryPanel.js`'s `_ferpaHealthChecks_()` (shared by both
 `autoHealthAlert()`'s daily email and `runSystemHealthCheck()`'s on-demand
-dialog) now checks four things:
+dialog) now checks six things — one per retention policy above, plus the
+three original safety-property checks:
 
 1. **`GEMINI_API_KEY` is not set** — this property existing would mean the
    dead direct-Gemini-API code path in `25_WarmUpWriter.js`'s `callFlow4_()`
@@ -247,6 +248,18 @@ dialog) now checks four things:
    `_archiveExpiredScrDecisions_()` immediately before this check, so a
    nonzero result here means automated archival itself failed to run, not
    just that it hasn't happened yet (Say/Do Ledger cas-ccps Extension 3).
+5. **No `Ledger` rows are past the `LEDGER_RETENTION_YEARS` window without
+   being marked `ARCHIVED`** — same shape as check 4, via
+   `_countLedgerRowsPastRetentionUnarchived_()`, with
+   `_archiveExpiredLedgerRows_()` run immediately before it (external
+   product review, Finding 6).
+6. **No `CompetencyEvidence` rows are past the
+   `COMPETENCY_EVIDENCE_RETENTION_YEARS` window without being marked
+   `ARCHIVED`** — same shape again, via
+   `_countCompetencyEvidencePastRetentionUnarchived_()`, with
+   `_archiveExpiredCompetencyEvidence_()` run immediately before it
+   (roadmap 2.2). This closed the last FERPA-scoped tab with no retention
+   mechanism at all.
 
 ## Newly-discovered gap (fixed alongside this document)
 

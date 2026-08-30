@@ -220,11 +220,26 @@ See `STUDIO_INTEGRATION_SPEC.md` for the complete specification of what Studio m
 
 If you have a live v5.4 system, do not deploy v8.0 into the same Apps Script project.
 
-1. In your existing v5.4 project, add `KOS_PHASE0_PATCHES.gs`
-2. Run `runPhase0Migration()` — this migrates the STAGING_PIPELINE schema and MATRIX_LEDGER column structure
-3. Run `runPhase0Verify()` — confirm all five checks show ✅
-4. Create a new standalone Apps Script project and deploy v8.0 there
-5. Your existing BRAIN_TRUST_INDEX spreadsheet works with v8.0 — just ensure `INDEX_ID` in PropertiesService points to it
+1. **Recover `KOS_PHASE0_PATCHES.gs` first — it is no longer in this repo's working
+   tree.** Round 13's dead-code cleanup (`45ad8c8`) deleted `archived/` repo-wide,
+   including this file. It survives in git history, in that commit's parent. Retrieve it
+   with:
+
+   ```bash
+   git show 45ad8c8^:kos-personal/archived/legacy-pre-v8/files_37_38_predraft/KOS_PHASE0_PATCHES.gs > KOS_PHASE0_PATCHES.gs
+   ```
+
+   `runPhase0Migration()` and `runPhase0Verify()` — steps 3 and 4 below — are defined in
+   that file and **nowhere else in the repo**, which is why this step comes first.
+
+   (This step used to read simply "add `KOS_PHASE0_PATCHES.gs`", which stopped being
+   followable the moment that cleanup landed — the file it names had no source.)
+2. Add that recovered file to your existing **v5.4** project. Never add it to the v8.0
+   project — see the file list earlier in this guide.
+3. Run `runPhase0Migration()` — this migrates the STAGING_PIPELINE schema and MATRIX_LEDGER column structure
+4. Run `runPhase0Verify()` — confirm all five checks show ✅
+5. Create a new standalone Apps Script project and deploy v8.0 there
+6. Your existing BRAIN_TRUST_INDEX spreadsheet works with v8.0 — just ensure `INDEX_ID` in PropertiesService points to it
 
 ---
 
