@@ -269,7 +269,7 @@
 **File Stats**
 | Field | Value |
 |-------|-------|
-| `student-leader-hub.html` | 14,150 lines |
+| `student-leader-hub.html` | run `wc -l` — 22,822 lines at the time of writing |
 | `EmailBridge.gs` | 750 lines |
 | localStorage keys | 59 (`lh_` prefix) |
 | AI call sites | 12 (all via `callAI()`) |

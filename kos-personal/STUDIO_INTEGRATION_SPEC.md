@@ -117,7 +117,7 @@ Read the full session text. Produce structured JSON matching the schema defined 
 - Identify deferred decisions with owners and blocking dependencies
 - Extract pivots and lessons learned
 - Score vector weights for each known domain (0.0 to 1.0)
-- Produce cog verdicts from each of the 7 persona perspectives
+- Produce cog verdicts from each of the 6 persona perspectives
 - Extract action items with owners and protected time risk flags
 - Note any SMP proposals filed
 - Produce an alignment report with relational status
@@ -226,11 +226,13 @@ Studio must write the complete inference output as JSON to the document body, re
 
 **`session_uid`** — Use the Payload_UID from the STAGING_PIPELINE row if available. If not, generate one using the pattern `LOG-{unix_ms}-{8_char_hash}`.
 
-**`vector_weights`** — All six domain keys must be present. Values must be 0.0 to 1.0. These are raw scores before KOS applies operator calibration. Do not apply calibration in Studio — KOS applies it during `_applyCalibration()` in the queue processor.
+**`vector_weights`** — **Emit `null`. Always.** This is the only correct value the Curator flow ever produces — see `CURATOR_PROMPT.md` Rule 1. Real weights come solely from a separately-completed `VECTOR_CLASSIFY` row, aggregated by `_aggregateSentenceVectors_()` in `4_Vector_Router.gs`. The example object earlier in this document shows six populated keys; that is illustrative of the *shape* only, is missing the 7th `CFG.KNOWN_VECTORS` entry (`DOMAIN_COMPLIANCE`), and must not be read as a contract. Operator calibration is applied GAS-side by `_getCalibrationStatus()` / `_inferCalibrationWeights()` (`5_Error_And_Utilities.gs`) — never in Studio.
 
-**`cog_verdicts`** — For `SESSION_LOG` payloads, include verdicts from all 7 personas if possible. For `COG_STIMULUS` payloads, include only the single cog specified in the stimulus document.
+**`cog_verdicts`** — For `SESSION_LOG` payloads, include verdicts from all 6 personas (`CFG.PERSONAS`) if possible — six, not seven; see `1_Config_And_Deploy.gs`'s naming-collision note on ALIGNMENT vs the retired ALIGNER label. For `COG_STIMULUS` payloads, include only the single cog specified in the stimulus document.
 
 **`alignment_report.relational_status_at_closeout`** — Must be exactly one of: `GREEN`, `YELLOW`, `RED`. `GREEN` = no relational concerns. `YELLOW` = threshold approached, operator should review. `RED` = relational boundary concern, mandatory pause recommended.
+
+**`alignment_report.thresholds_crossed_this_session`** — If the session transcript shows ALIGNMENT raising a value-consistency-drift flag (a decision contradicting a Core fact pinned via `pinThemeToCore()`), record it as `D_VALUE_CONSISTENCY_DRIFT` and set the status above to `YELLOW` or higher. This is Threshold D — see `PERSONA_ALIGNMENT_V5_1.md` §2.2 and `CURATOR_PROMPT.md` Rule 6. Relay it only if the transcript actually shows it; never infer it independently.
 
 **`confidence_deltas`** — Values of 0.0 mean no evidence observed this session for that shadow question. Positive values (typically 0.03–0.10 per session) indicate observed evidence. Do not use negative values — confidence only increases. Maximum delta per question per session: 0.15.
 

@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 1 of 8: Config & Deploy
+// FILE 1 of 11: Config & Deploy
 // ================================================================
 //
 // Replaces : PART 1 (CFG), PART 2 (onOpen), PART 3 (Deploy),
@@ -251,9 +251,15 @@ const CFG = {
     // Shared HMAC secret matching inference-service's WEBHOOK_SECRET env
     // var — signs POST /api/v1/jobs submissions so the service can reject
     // forged job-submission requests (see server.js's validateWebhookSignature).
-    // Optional: if unset, job submission still runs, unsigned — matching
-    // the service's own "skip in dev if not configured" behavior. Only
-    // read by _submitManagedServiceJob_() in 3_Queue_Processor.gs.
+    // REQUIRED in production, despite what this comment used to say.
+    // It previously read "Optional: if unset, job submission still runs,
+    // unsigned" — true when written, false since the fail-closed fix.
+    // server.js now process.exit(1)s at startup if WEBHOOK_SECRET is
+    // unset while NODE_ENV=production, and rejects an unsigned request
+    // with 401. So leaving this property unset against a production
+    // service means every job submission fails, not that it runs
+    // unsigned. Genuinely optional only against a dev service. Only read
+    // by _submitManagedServiceJob_() in 3_Queue_Processor.gs.
     MANAGED_SERVICE_WEBHOOK_SECRET: 'KOS_MANAGED_SERVICE_WEBHOOK_SECRET',
 
     // Google Chat incoming webhook (optional). Unset by default — every

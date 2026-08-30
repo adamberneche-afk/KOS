@@ -419,7 +419,7 @@ GoogleID.
       that actually touches the network (with `UrlFetchApp` mocked, not a
       real Gemini call).
 18. **Studio Steps adoption — the custom-step code Finding 17's escape
-    hatch was working around now exists.** A 9th cas-ccps project,
+    hatch was working around now exists.** An 8th cas-ccps project,
     `cas-ccps/studio-steps/`, implements every custom step Flows 1-5
     genuinely need (native Studio connectors and Ask-Gemini steps cover
     everything else) — see its own README for the full file-to-flow map

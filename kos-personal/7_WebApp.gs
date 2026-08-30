@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 7 of 8: Web App Server
+// FILE 7 of 11: Web App Server
 // ================================================================
 //
 // This file contains the two GAS entry points for the web app
@@ -37,26 +37,35 @@
 //   Bootstrap screen:
 //     executeBootstrap()              → 1_Config_And_Deploy.gs (alias of deployFullSystem)
 //
+//   This list is kept in sync with every `callServer('name', …)` site in
+//   8_WebApp_UI.html — 19 as of this writing. Adding a client call without
+//   adding it here is what gas-lint's google.script.run rule catches.
+//
 //   Ingest tab:
 //     submitSessionLog(text)          → 2_Ingestion_Sensors.gs
 //     submitExternalData(text, title) → 2_Ingestion_Sensors.gs
 //     submitCogVerdict(councilId, cogName, status, summary)
 //                                      → 2_Ingestion_Sensors.gs
 //     getInboundFolderUrl()           → this file
+//     getWebAppUrl()                  → this file
 //
 //   Queue tab:
 //     getQueueMetrics()                → 3_Queue_Processor.gs
-//     getQueueStatus()                 → 3_Queue_Processor.gs (legacy shape, still available)
+//     getQueueStatus()                 → 3_Queue_Processor.gs (legacy shape,
+//                                        still callable; no client call site)
 //
 //   Diagnostics tab:
 //     getVectorState()                → 4_Vector_Router.gs
 //     runPromotionCheck()              → 4_Vector_Router.gs
+//     pinThemeToCore(theme, note)     → 4_Vector_Router.gs (operator Core pin)
 //     getShadowMatrixStatus()         → 5_Error_And_Utilities.gs
 //     completeOnboarding(payload)     → 5_Error_And_Utilities.gs
 //     sendDailyErrorReport()          → 5_Error_And_Utilities.gs
 //     archiveStagingPipeline()        → 5_Error_And_Utilities.gs
 //     triggerSevenBridgesReview()     → 6_Governance.gs
 //     generateDailyPrimer()           → 6_Governance.gs
+//     getSystemHealth()               → this file
+//     getRegistrarStatus()            → 11_Registrar_CogRelay.gs
 //     deployFullSystem()              → 1_Config_And_Deploy.gs
 // ================================================================
 

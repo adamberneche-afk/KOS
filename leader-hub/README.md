@@ -13,9 +13,14 @@ field-trip coordinator. Despite the name and its coverage of courses
 8175/8177, this is **not** a cas-ccps companion tool — it's teacher-facing
 only, covers a materially wider scope than cas-ccps's two-course pair
 (DECA, E-Sports, trips, a third course), and has no code-level integration
-with cas-ccps beyond referencing the same course numbers. 100%
-client-side: opens as a local HTML file, all state in `localStorage`, no
-server, no build step. The app's original design called for AI features
+with cas-ccps beyond referencing the same course numbers. It began as a
+100% client-side single file — local HTML, all state in `localStorage`, no
+server, no build step — and **none of that is true any more**: the app is
+now generated from 14 fragments in `src/` by `tools/leaderhub-build/build.js`,
+deployed as a real Apps Script Web App (`Code.gs`, `Data.gs`, `SCR.gs`,
+`Config.gs`), with most domains round-tripping to a private Spreadsheet.
+See "Server migration" below for what moved and what deliberately stayed
+in `localStorage`. The app's original design called for AI features
 calling Gemini directly from the browser with a user-supplied API key —
 that key was never obtainable, so every "AI"-branded feature shipped as
 deterministic local logic instead (see "AI drafting" below for the one

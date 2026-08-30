@@ -791,7 +791,7 @@ function archiveCompletedTerm() {
     "  • All COMPLIANT submissions from that term\n" +
     "  • All ACTIVE (unfinished) rows from that term\n\n" +
     "Archived rows stay in the Ledger for records but are hidden from dashboards.\n\n" +
-    "This cannot be undone automatically — contact your admin to restore.",
+    "To undo this later, use ♻️ Reactivate an Archived Term in this same menu.",
     ui.ButtonSet.OK_CANCEL
   );
   if (termRes.getSelectedButton() !== ui.Button.OK) return;

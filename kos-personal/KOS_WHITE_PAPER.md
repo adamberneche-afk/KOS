@@ -79,11 +79,12 @@ KOS's Vector Router implements exactly this three-stage lifecycle:
 agrees with its operator is not a partner, it is an echo. The Alignment
 persona already watches for the system itself going quiet on what it
 exists to protect — too many sessions passing without a human-connection
-check-in raises a Socratic challenge, not a silent log line. The natural
-next axis for that same watchfulness is the operator's own side: once a
-fact is Core, a future decision that quietly contradicts it is exactly the
-kind of drift worth a respectful challenge, the same way the system
-already challenges its own silence.
+check-in raises a Socratic challenge, not a silent log line. That same
+watchfulness now extends to the operator's own side: once a fact is
+pinned to Core, a decision that quietly contradicts it raises the same
+respectful challenge — Threshold D, Value-Consistency Drift. The pin
+carries the asserted fact itself, not just a topic label, which is what
+makes the contradiction checkable at all.
 
 This is what makes the licensing in Section 5 more than a legal
 formality: the architecture already delivers, by default, the

@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 9 of 9: UI & Diagnostics (HITL Functions)
+// FILE 9 of 11: UI & Diagnostics (HITL Functions)
 // ================================================================
 //
 // ── PURPOSE & SCOPE ──────────────────────────────────────────

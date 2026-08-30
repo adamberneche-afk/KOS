@@ -209,11 +209,11 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 **How to trigger it:**
 Go to Diagnostics → **Run full council review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Ingest → Cog Verdict** using that Council ID.
 
-From the spreadsheet instead of the web app, the same thing lives under **⚙️ Ingest & Context → Generate Seven Bridges Stimulus**. Both surfaces call the same function and produce the same artifact.
+From the spreadsheet instead of the web app, the same thing lives under **📥 Ingest & Context → Generate Seven Bridges Stimulus**. Both surfaces call the same function and produce the same artifact.
 
 **The automatic trigger generates a stimulus, not a finished review.** Every 2 hours KOS checks whether 5 new sessions (configurable, `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS`) have accumulated since the last review. If so, it generates a Seven Bridges stimulus document into `03.4_RAW_EXHAUST` with a fresh Council ID — and stops there. **Nothing reviews it for you.** The fan-out to each cog's own conversation and the verdict logging are still yours to do; until you do them, that document is just a file waiting in a folder. It won't fire again for another 5 sessions once one has been generated.
 
-**Picking a review back up: ⚙️ Diagnostics → Seven Bridges — Status & Verdict.** Because you run a council by hand across six separate conversations, it's normal to stop partway and come back later. Enter the Council ID and you get the whole picture: which cogs have verdicted and what they said, **which ones you're still waiting on**, and — once everyone's in — the compiled verdict and whether the halt rule tripped. Nothing was ever lost between sittings; each verdict was written down as it arrived. This is just the view that reads it back.
+**Picking a review back up: 📊 Diagnostics → Seven Bridges — Status & Verdict.** Because you run a council by hand across six separate conversations, it's normal to stop partway and come back later. Enter the Council ID and you get the whole picture: which cogs have verdicted and what they said, **which ones you're still waiting on**, and — once everyone's in — the compiled verdict and whether the halt rule tripped. Nothing was ever lost between sittings; each verdict was written down as it arrived. This is just the view that reads it back.
 
 It also flags two things that otherwise pass silently, both consequences of the Cog field being free text:
 
@@ -252,6 +252,7 @@ New domains can be promoted from the incubator as your work evolves. If the same
 | **Generate today's session starter** | On demand — replaces waiting for the 06:00 trigger |
 | **Run full council review** | Before major decisions, after significant project phases |
 | **Check for new themes to promote** | When you notice your work has shifted domains |
+| **Pin to Core** | On an incubator theme you've already decided is permanent, when you don't want to wait for it to recur often enough to promote itself. Asks for a second tap; the note you attach becomes the asserted fact the Alignment persona checks later decisions against (Threshold D, Value-Consistency Drift) |
 | **Archive completed queue rows** | Periodically, when STAGING_PIPELINE has many processed rows |
 | **Send error digest now** | When you want to check the error log immediately |
 | **Re-run full deploy** | Only when something is broken and you need to rebuild infrastructure |
