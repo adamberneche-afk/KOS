@@ -50,7 +50,17 @@ jobs:
         # newer Node during development. Unquoted, explicit per-directory
         # globs are expanded by the shell BEFORE node ever sees them, so
         # this doesn't depend on any Node version's own glob support.
-        run: node --test tests/leaderhub/*.test.js tests/tools/*.test.js tests/cas-ccps/*.test.js
+        #
+        # FIXED (doc-currency sweep, Round 16): this step inlined its own
+        # copy of the glob and omitted tests/kos-personal/ entirely, which
+        # package.json's own `npm test` includes. Six files never ran in
+        # CI, including all four added to cover the council-sequestration
+        # fix (BRIDGE_FIDELITY_001) — exactly the regression coverage the
+        # deleted triggerCouncilSimulation() needed. `npm run` scripts
+        # execute through a shell like any other `run:` step, so this
+        # keeps the same unquoted-glob fix above while collapsing back to
+        # one definition of "the test suite" instead of two that drift.
+        run: npm test
       - name: Syntax-check student-leader-hub.html's inline <script> blocks
         # The enforced version of the "Verified with node --check on both
         # <script> blocks" note leader-hub/README.md repeats after nearly
