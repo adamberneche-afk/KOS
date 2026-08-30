@@ -141,7 +141,8 @@ Tracks themes that appear consistently but haven't been promoted to known vector
 | D | Session_Count | Integer | Number of sessions this theme has appeared in |
 | E | Cumulative_Score | Float | Running score, decayed by half every `CFG.INCUBATOR_HALF_LIFE_DAYS` if untouched; promotes at `CFG.INCUBATOR_PROMOTION_THRESHOLD` |
 | F | Raw_Score_Log | String | JSON array of `{session_id, raw_score}` — migrated verbatim into VECTOR_MATRIX on promotion, never re-normalized |
-| G | Status | String | INCUBATING, PROMOTED, DECAYED (below `CFG.INCUBATOR_DECAY_FLOOR` — kept for audit, not deleted) |
+| G | Status | String | INCUBATING, PROMOTED (crossed `CFG.INCUBATOR_PROMOTION_THRESHOLD` on its own), PROMOTED_MANUAL (pinned to Core by explicit operator/Council decision via `pinThemeToCore()` — bypasses the threshold; see `4_Vector_Router.gs`), DECAYED (below `CFG.INCUBATOR_DECAY_FLOOR` — kept for audit, not deleted) |
+| H | Core_Fact | String | Roadmap 2.3. Only populated for PROMOTED_MANUAL rows — the actual asserted fact/boundary behind the pin (e.g. "Operator will not schedule client calls after 6pm"), not just the theme label. Read by `getManuallyPinnedCoreFacts()` and surfaced into `buildSessionContext()`'s session-start block for the ALIGNMENT persona's value-consistency-drift threshold. Blank for every other status. |
 
 ---
 
@@ -198,7 +199,15 @@ Verdicts from all council sessions and individual cog responses.
 
 ### Blackboard
 
-Governance mutations waiting for or having received operator approval.
+Governance mutations waiting for or having received operator approval. Also
+doubles as a general append-only audit log for filed decisions that aren't
+document mutations at all — e.g. `3_Queue_Processor.gs`'s SMP-proposal rows
+and `4_Vector_Router.gs`'s `pinThemeToCore()` audit rows both write here with
+`Deploy_Trigger` left `FALSE` and `Status` already resolved, using
+`Find_String`/`Replace_Payload` as an informational `[title]`/summary pair
+rather than literal find-replace text — so `onGovernanceEdit` (which only
+acts on an explicit `Deploy_Trigger` edit) never mistakes them for a pending
+mutation.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
@@ -427,10 +436,11 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 |---|---|
 | `KOS_SHADOW_MATRIX` | JSON blob — shadow matrix confidence intervals |
 | `KOS_PROMOTED_VECTORS` | JSON array — themes promoted from incubator |
-| `COUNCIL_LAST_RUN` | Unix ms timestamp of last council execution |
-| `COUNCIL_ACTIVE_ID` | ID string of the currently running council session |
-| `COUNCIL_EXPECTED_VERDICTS` | Number of cog verdicts expected for active council |
-| `COUNCIL_VERDICTS_RECEIVED` | Number received so far |
+| `SEVEN_BRIDGES_LAST_RUN` | Unix ms timestamp of the last Seven Bridges review. Serves double duty: `triggerSevenBridgesReview()`'s stasis guard (don't mint a new stimulus unless CURRENT_STATE has changed) **and** `autoCouncilCheck()`'s session-count anchor. That coupling is deliberate and load-bearing — the callee advancing this key is what stops the 2-hourly trigger from re-firing. See `6_Governance.gs`. |
+| `COUNCIL_LAST_RUN` | **Legacy — no longer read or written by any code.** Was the guard for the shared-context council generator deleted in Round 14 (see `CHANGELOG.md`). An existing stored value is a harmless orphan; there is no migration. |
+| `COUNCIL_ACTIVE_ID` | **Aspirational — never read or written by any code.** Council-in-progress state is not tracked in PropertiesService; a review's identity is the `SB_<ms>` Council ID carried in its stimulus document and stamped on each `COG_REGISTRY` row. |
+| `COUNCIL_EXPECTED_VERDICTS` | **Aspirational — never read or written by any code.** No expected-count is stored; `compileCouncilVerdict_()` groups whatever verdicts have arrived for a Council ID and tests them against `CFG.COG_HALT_THRESHOLD`. |
+| `COUNCIL_VERDICTS_RECEIVED` | **Aspirational — never read or written by any code.** Counted live from `COG_REGISTRY` at compile time, not tracked incrementally. |
 
 ---
 

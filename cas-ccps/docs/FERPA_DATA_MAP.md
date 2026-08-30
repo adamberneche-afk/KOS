@@ -15,9 +15,9 @@ instead — that PDF was later investigated and confirmed to describe an
 entirely different, abandoned pre-v8 architecture never carried into the
 live system, and has been archived; see `README.md`'s note on this.)
 
-**Retention policy — partially defined, `SCRDecisionLog` and `Ledger` only.**
-Every other tab in this document still persists indefinitely, with no
-deletion/archival mechanism at all. `SCRDecisionLog` — the one tab with an
+**Retention policy — partially defined, `SCRDecisionLog`, `Ledger`, and
+`CompetencyEvidence`.** Every other tab in this document still persists
+indefinitely, with no deletion/archival mechanism at all. `SCRDecisionLog` — the one tab with an
 actual VDOE/Perkins legal retention obligation — was the first exception,
 built as Say/Do Ledger cas-ccps Extension 3: a configurable
 `SCR_RETENTION_YEARS` Script Property (default 5 years, **still unconfirmed
@@ -50,7 +50,40 @@ a student's own dashboard — rather than adding a second, parallel
 archive-flag column. Only rows already in a terminal status
 (`COMPLIANT`/`ACTIVE`/`COMPLETE`) are eligible; an `ERROR`-prefixed row is
 left alone for admin review, same as `archiveCompletedTerm()`'s own rule.
-Never deletes anything, same as SCRDecisionLog's archival.
+Never deletes anything, same as SCRDecisionLog's archival. A new
+`♻️ Reactivate an Archived Term` menu item (`reactivateArchivedTerm()`) is
+the genuinely missing half this extension had lacked until now: it sets a
+matching term's `ARCHIVED` rows back to `ACTIVE` (the original
+`COMPLIANT`/`ACTIVE`/`COMPLETE` distinction is not recoverable through the
+round trip — every reactivated row becomes `ACTIVE`).
+
+**`CompetencyEvidence`** (KOS/CAS roadmap synthesis 2.2, "explicit
+archive/hibernate state") got the same retention treatment as the two tabs
+above, closing the one gap this document used to flag as having no
+mechanism at all: a configurable `COMPETENCY_EVIDENCE_RETENTION_YEARS`
+Script Property (default 5 years, **also unconfirmed against any real
+district/legal retention schedule** — same open question as the two
+defaults above) drives `_archiveExpiredCompetencyEvidence_()`
+(`30_SCRSuggestionEngine.js`), run on the same daily/on-demand triggers as
+the other two. It adds a new `archive_status` column (self-healing on a
+tab created before this extension existed) rather than reusing `Ledger`'s
+`Status`-column pattern, since CompetencyEvidence has no existing status
+lifecycle of its own to overload — same reasoning `SCRDecisionLog`'s own
+dedicated `archive_status` column already established. `aggregateEvidence_()`
+excludes archived rows from SCR suggestion computation, the same way
+archived Ledger/SCRDecisionLog rows are already excluded from their own
+live reads. Never deletes anything.
+
+Deliberately plain `"ARCHIVED"`, not SCRDecisionLog's `"ARCHIVED — pending
+disposition review"` — that wording is a legal-hold state for the actual
+retained SCR decision record, intentionally not meant to be casually
+reversed. CompetencyEvidence is upstream working evidence, not the
+retained decision itself, so it gets a real way back: a new
+`♻️ Reactivate Competency Evidence` menu item
+(`reactivateCompetencyEvidence()`) clears `archive_status` back to blank
+for a given student's rows, for a reopened case (an appeal, a corrected
+record). SCRDecisionLog deliberately has no equivalent reactivate action —
+its archived state is a disposition hold, not a hibernate state.
 
 For every other tab, treat "retention: indefinite, no policy" as the honest
 answer — this document does not assert a retention period that isn't actually
@@ -124,8 +157,9 @@ timestamps. The doc itself is shared with the student via `addViewer(email)`
 
 ### CompetencyEvidence
 Evidence ID, student email, competency ID, milestone text, MET/NOT MET/PARTIAL
-outcome, ConfigID, evaluated-at timestamp, student file ID. Written by two
-code paths that share this exact 8-column schema (confirmed the reader below
+outcome, ConfigID, evaluated-at timestamp, student file ID, archive status
+(added by roadmap 2.2 — see the retention note above). Written by two
+code paths that share this exact 9-column schema (confirmed the reader below
 resolves columns by header name, not position, so both writers must keep
 matching headers in matching order): `cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`
 (the real Studio Flow 2 write step, once deployed) and
@@ -133,6 +167,14 @@ matching headers in matching order): `cas-ccps/studio-steps/CommitStudentEvaluat
 (the manual/dev-testing DIRECT_GEMINI bridge). The Studio step creates the
 tab itself if missing (both writers seed its header row on an otherwise-empty
 tab). Read by Script 30's evidence aggregation and Script 30b.
+**Retention:** `COMPETENCY_EVIDENCE_RETENTION_YEARS` (Script Property,
+default 5 — see the retention note above) via
+`_archiveExpiredCompetencyEvidence_()`, run automatically on every daily
+health check and every on-demand admin health check. A row past the window
+gets `archive_status` set to `"ARCHIVED"`, excluded from SCR suggestion
+aggregation; actual deletion is never automatic. Reversible via the
+`♻️ Reactivate Competency Evidence` menu item
+(`reactivateCompetencyEvidence()`), unlike SCRDecisionLog's archival below.
 
 ### SCRSuggestions
 Student email, competency ID, AI-suggested rating (1–5), MET/NOT MET/PARTIAL
@@ -147,7 +189,7 @@ SCRDecisionLog once a teacher actually confirms a rating.
 | **Why collected** | **The actual legally-retained record** — this is the one tab in cas-ccps whose retention obligation is named in a code comment already (VDOE's General Schedule GS-21 / 8VAC20-120-120), append-only — rows are never deleted by any code path, though a row can now be marked archived (see Retention below). |
 | **Read by** | `exportToWorkbookGrid_()` (Script 30), via the admin-facing `exportScrDecisionLogForAudit()` menu item |
 | **Visible to** | Admin (via export, now shared directly with specific central-office accounts on the same domain — see Extension 3 note above) |
-| **Retention** | `SCR_RETENTION_YEARS` (Script Property, default 5 — see the Extension 3 note above) via `_archiveExpiredScrDecisions_()`, run automatically on every daily health check and every on-demand admin health check. A row past the window gets `archive_status` set to "ARCHIVED — pending disposition review"; actual deletion is never automatic. |
+| **Retention** | `SCR_RETENTION_YEARS` (Script Property, default 5 — see the Extension 3 note above) via `_archiveExpiredScrDecisions_()`, run automatically on every daily health check and every on-demand admin health check. A row past the window gets `archive_status` set to "ARCHIVED — pending disposition review"; actual deletion is never automatic. Deliberately has no reactivate action, unlike Ledger and CompetencyEvidence below — this status is a disposition hold on the legally-retained record itself, not a hibernate state meant to be casually reversed. |
 
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness

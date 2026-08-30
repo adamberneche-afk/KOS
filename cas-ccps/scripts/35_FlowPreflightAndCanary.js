@@ -95,6 +95,11 @@ function runFlowPreflightCheck() {
   results.push(_pfCheckTab_(ss, 'STAGING_PIPELINE', 6)); // Flow 2 — see WD_STAGING_PIPELINE_COLUMNS
   results.push(_pfCheckTab_(ss, 'WarmUpQueue', 21)); // Flows 3/4/5 — see WD_WARMUP_QUEUE_COLUMNS
   results.push(_pfCheckTab_(ss, 'WarmUpRegistry', 12)); // Flow 4's finalizeWarmUpScore target
+  // 8, not 9 — archive_status (roadmap 2.2) is self-healing
+  // (_ensureCompetencyEvidenceArchiveColumn_, 30_SCRSuggestionEngine.js)
+  // and read by header name with a graceful "nothing archived" fallback
+  // when absent, so its absence on an un-healed pre-2.2 tab is not a
+  // flow-breaking gap the way a missing column 1-8 would be.
   results.push(_pfCheckTab_(ss, 'CompetencyEvidence', 8)); // Flow 2's commitStudentEvaluation target
   results.push(_pfCheckTab_(ss, 'Ledger', 19)); // Flow 2's readInstructorConfig source
   results.push(_pfCheckTab_(ss, 'MatrixRegistry', 4)); // Flow 2's readInstructorConfig source

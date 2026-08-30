@@ -80,9 +80,14 @@ This is the system with the most machinery already built in service of
   the clearest single example in the repo of the exact philosophy the
   system is asked to embody: it gives the operator their own stated values
   back before they'd think to articulate them.
-- **Auto-Council** (`6_Governance.gs:879`, every 2 hours) — fires the
-  6-persona review automatically once 5 new sessions accumulate; no manual
-  invocation required.
+- **Auto-Council** (`autoCouncilCheck()`, `6_Governance.gs`, every 2 hours) —
+  generates a sequestered Seven Bridges stimulus automatically once 5 new
+  sessions accumulate. Note what this does *not* do: the review itself still
+  requires manual invocation, since sequestration means the operator sends
+  that one document to each cog's own Gem conversation by hand and logs the
+  verdicts back. The trigger removes the "remember to start one" step, not
+  the review. (Until Round 14 it fired a shared-context generator instead —
+  see `CHANGELOG.md`.)
 - **Incubator** (`4_Vector_Router.gs`) — emerging themes accumulate score
   and decay on a 14-day half-life, surfacing what's actually gaining
   traction without the operator having to track it themselves.

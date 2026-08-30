@@ -207,6 +207,10 @@ function aggregateEvidence_(evidenceSheet) {
   const iEmail = headers.indexOf("student_email");
   const iCompId = headers.indexOf("competency_id");
   const iOutcome = headers.indexOf("outcome");
+  // -1 on a sheet created before roadmap 2.2 added this column — treated
+  // as "nothing is archived" below (row[-1] is always undefined), not a
+  // required column, so an old sheet still aggregates exactly as before.
+  const iArchiveStatus = headers.indexOf("archive_status");
 
   const result = new Map();
   const badOutcomesSeen = new Set();
@@ -219,6 +223,11 @@ function aggregateEvidence_(evidenceSheet) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
+    // Archived evidence is cold storage, not deleted — SCR suggestions
+    // should reflect only active evidence, the same way archived Ledger/
+    // SCRDecisionLog rows are already excluded from their own live reads.
+    if (iArchiveStatus !== -1 && String(row[iArchiveStatus] || "").trim()) continue;
+
     const email = String(row[iEmail]).trim();
     const compId = String(row[iCompId]).trim();
     const outcome = String(row[iOutcome]).trim();
@@ -718,6 +727,207 @@ function _countScrDecisionsPastRetentionUnarchived_() {
   return count;
 }
 
+// =============================================================================
+// COMPETENCY EVIDENCE RETENTION + REACTIVATE (KOS/CAS roadmap synthesis 2.2 —
+// "explicit archive/hibernate state")
+//
+// CompetencyEvidence was the one FERPA-scoped tab in this file's own
+// retention story (docs/FERPA_DATA_MAP.md) with no archival mechanism at
+// all — SCRDecisionLog and the Ledger (10_AdminRecoveryPanel.js) already
+// had this exact pattern; this extends it here, unconfirmed retention
+// default and all, for the same reason theirs shipped unconfirmed: correct
+// the number the moment a real district/legal schedule is known, via
+// COMPETENCY_EVIDENCE_RETENTION_YEARS, no code change required.
+//
+// Deliberately plain "ARCHIVED", not SCRDecisionLog's "ARCHIVED — pending
+// disposition review" — that wording is a legal-hold state for the actual
+// retained SCR decision record, intentionally not meant to be casually
+// reversed (see reactivateCompetencyEvidence's own note on why it has no
+// SCRDecisionLog counterpart). CompetencyEvidence is upstream working
+// evidence, not the retained decision itself, so plain ARCHIVED — and a
+// real way back — is the better fit, matching the Ledger's own ARCHIVED
+// status exactly.
+//
+// Never deletes anything; actual permanent deletion still always requires
+// a human decision outside any script here.
+// =============================================================================
+
+function _competencyEvidenceRetentionYears_() {
+  const raw = PropertiesService.getScriptProperties().getProperty("COMPETENCY_EVIDENCE_RETENTION_YEARS");
+  const n = Number(raw);
+  return (n && n > 0) ? n : 5;
+}
+
+// Idempotently adds the "archive_status" header (column 9) if it's
+// missing — same self-healing pattern as
+// _ensureScrDecisionLogArchiveColumn_() above, for a CompetencyEvidence
+// tab created before this extension existed.
+function _ensureCompetencyEvidenceArchiveColumn_(sheet) {
+  const headerCell = sheet.getRange(1, 9);
+  if (String(headerCell.getValue()).trim() !== "archive_status") {
+    headerCell.setValue("archive_status");
+  }
+}
+
+// Returns { archived, checked }. Safe to call with CompetencyEvidence
+// missing (returns zeros) or already fully archived (returns archived: 0).
+// Anchors "how old is this record" on evaluated_at, the same "age of the
+// record itself" anchor the Ledger (TIMESTAMP) and SCRDecisionLog
+// (DECIDED_AT) archival both use. Resolves columns by header name, not
+// position — same convention aggregateEvidence_() above already
+// established for this specific tab (unlike LEDGER/SCRDL's positional
+// constants), since this file has no CE.* column-index constant to match.
+function _archiveExpiredCompetencyEvidence_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!sheet) return { archived: 0, checked: 0 };
+
+  _ensureCompetencyEvidenceArchiveColumn_(sheet);
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iEvaluatedAt = headers.indexOf("evaluated_at");
+  const iArchiveStatus = headers.indexOf("archive_status");
+  if (iEvaluatedAt === -1 || iArchiveStatus === -1) {
+    Logger.log("[S30] CompetencyEvidence missing evaluated_at/archive_status columns. Cannot run retention archival.");
+    return { archived: 0, checked: Math.max(0, data.length - 1) };
+  }
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _competencyEvidenceRetentionYears_());
+
+  let archived = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[iArchiveStatus] || "").trim()) continue; // already archived
+
+    const evaluatedAt = row[iEvaluatedAt];
+    if (!evaluatedAt) continue;
+    const evaluatedDate = new Date(evaluatedAt);
+    if (isNaN(evaluatedDate.getTime())) continue;
+
+    if (evaluatedDate < cutoff) {
+      sheet.getRange(i + 1, iArchiveStatus + 1).setValue("ARCHIVED");
+      archived++;
+    }
+  }
+
+  if (archived > 0) {
+    SpreadsheetApp.flush();
+    Logger.log("[S30] Archived " + archived + " CompetencyEvidence row(s) past the " +
+      _competencyEvidenceRetentionYears_() + "-year retention window.");
+  }
+
+  return { archived: archived, checked: data.length - 1 };
+}
+
+// Read-only companion to _archiveExpiredCompetencyEvidence_(), used by
+// _ferpaHealthChecks_() (10_AdminRecoveryPanel.js) — same pairing as the
+// Ledger/SCRDecisionLog checks above. Both callers of
+// _ferpaHealthChecks_() already run _archiveExpiredCompetencyEvidence_()
+// first, so a nonzero result here means archival itself failed or didn't
+// run, not a tautology.
+function _countCompetencyEvidencePastRetentionUnarchived_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!sheet) return 0;
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iEvaluatedAt = headers.indexOf("evaluated_at");
+  const iArchiveStatus = headers.indexOf("archive_status");
+  if (iEvaluatedAt === -1 || iArchiveStatus === -1) return 0;
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _competencyEvidenceRetentionYears_());
+
+  let count = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[iArchiveStatus] || "").trim()) continue;
+    const evaluatedAt = row[iEvaluatedAt];
+    if (!evaluatedAt) continue;
+    const evaluatedDate = new Date(evaluatedAt);
+    if (isNaN(evaluatedDate.getTime())) continue;
+    if (evaluatedDate < cutoff) count++;
+  }
+  return count;
+}
+
+// ---------------------------------------------------------------------------
+// reactivateCompetencyEvidence — admin menu item (wired into
+// 10_AdminRecoveryPanel.js's onOpen(), same central-ledger project as
+// exportScrDecisionLogForAudit() above). The genuinely missing half of
+// "archive/hibernate state": until this, nothing in cas-ccps had a way
+// back from ARCHIVED at all — archiveCompletedTerm()'s own confirm dialog
+// says so explicitly ("This cannot be undone automatically — contact your
+// admin to restore"). This clears archive_status back to blank for every
+// row matching a given student email, so evidence for a reopened case
+// (an appeal, a corrected record) can feed back into aggregateEvidence_()
+// and SCR suggestions again. No SCRDecisionLog counterpart, deliberately —
+// see this file's retention-block header comment on why that tab's
+// "ARCHIVED — pending disposition review" is a legal-hold state, not a
+// hibernate state.
+// ---------------------------------------------------------------------------
+function reactivateCompetencyEvidence() {
+  const ui = SpreadsheetApp.getUi();
+  const cfg = getConfig_();
+
+  const emailRes = ui.prompt(
+    "Reactivate Competency Evidence",
+    "Enter the student's email address to reactivate archived evidence for.\n\n" +
+    "This clears the archived status on every matching CompetencyEvidence row " +
+    "so it counts toward SCR suggestions again.",
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (emailRes.getSelectedButton() !== ui.Button.OK) return;
+
+  const email = emailRes.getResponseText().trim().toLowerCase();
+  if (!email) { ui.alert("Email cannot be blank."); return; }
+
+  const confirm = ui.alert(
+    "Reactivate evidence for \"" + email + "\"?",
+    "This will clear the archived status on all of this student's CompetencyEvidence rows.\n\n" +
+    "Are you sure?",
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!sheet) { ui.alert("⚠️ CompetencyEvidence tab not found."); return; }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iEmail = headers.indexOf("student_email");
+  const iArchiveStatus = headers.indexOf("archive_status");
+  if (iEmail === -1 || iArchiveStatus === -1) {
+    ui.alert("⚠️ CompetencyEvidence is missing student_email/archive_status columns.");
+    return;
+  }
+
+  let reactivated = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[iEmail]).trim().toLowerCase() !== email) continue;
+    if (!String(row[iArchiveStatus] || "").trim()) continue; // wasn't archived
+    sheet.getRange(i + 1, iArchiveStatus + 1).setValue("");
+    reactivated++;
+  }
+
+  if (reactivated > 0) SpreadsheetApp.flush();
+
+  ui.alert(
+    "✅ Reactivate Complete",
+    reactivated > 0
+      ? reactivated + " row(s) reactivated for " + email + "."
+      : "No archived CompetencyEvidence rows found for " + email + ".",
+    ui.ButtonSet.OK
+  );
+}
+
 // ---------------------------------------------------------------------------
 // exportToWorkbookGrid_ — produces a Google Sheet matching the official SCR
 // Excel workbook shape described in the original specification: one tab per
@@ -972,9 +1182,17 @@ function createSCRTabs_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
 
+  // archive_status added (roadmap 2.2 — explicit archive/hibernate state):
+  // "" = active; "ARCHIVED" once past COMPETENCY_EVIDENCE_RETENTION_YEARS
+  // or manually reactivated back to blank — see
+  // _archiveExpiredCompetencyEvidence_()/reactivateCompetencyEvidence()
+  // below. Both real writers (this function and
+  // cas-ccps/studio-steps/CommitStudentEvaluationStep.gs /
+  // 15c_Flow2DirectEvaluationService.js) must stay byte-identical here —
+  // see tests/cas-ccps/competency-evidence-schema-compat.test.js.
   _createTabIfMissingS30_(ss, cfg.tabs.competencyEvidence || "CompetencyEvidence", [
     "evidence_id", "student_email", "competency_id", "milestone_text",
-    "outcome", "config_id", "evaluated_at", "student_file_id"
+    "outcome", "config_id", "evaluated_at", "student_file_id", "archive_status"
   ]);
 
   _createTabIfMissingS30_(ss, cfg.tabs.scrSuggestions || "SCRSuggestions", [
