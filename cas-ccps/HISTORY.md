@@ -498,7 +498,7 @@ Adopted from a reviewed external drop of ~2,200 lines of custom Workspace
 Studio step code, staged across six sequential steps rather than one
 commit, each landed on its own branch and verified before merging.
 
-**Landed a 9th cas-ccps project, `cas-ccps/studio-steps/`** — 9 `.gs`
+**Landed an 8th cas-ccps project, `cas-ccps/studio-steps/`** — 9 `.gs`
 files covering every step behind Flows 1–5 that a native Studio connector
 genuinely can't do cleanly (native Sheets/Docs connectors and Ask-Gemini
 steps still handle everything else): `StepsShared.gs` (shared helpers),
@@ -523,7 +523,8 @@ reduction across all nine files.
 `15c_Flow2DirectEvaluationService.js`'s `writeCompetencyEvidenceFromFlow2_()`
 (the manual/dev-testing bridge) and `CommitStudentEvaluationStep.gs`
 (Flow 2's real Studio writer) both write to the same tab; widened 15c to
-the same 8-column schema the Studio step uses so
+the same 8-column schema the Studio step used at the time (since widened
+again to 9 columns by the `archive_status` retention column) so
 `30_SCRSuggestionEngine.js`'s header-driven `aggregateEvidence_()` reads
 correctly regardless of which writer seeds the tab first — confirmed
 with a dedicated cross-project schema-compatibility test
