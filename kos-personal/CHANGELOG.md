@@ -910,15 +910,22 @@ The ones an operator or teacher would actually have acted on:
   operators to run `runPhase0Migration()` and `runPhase0Verify()`.
   Neither exists in the working tree — they live in
   `KOS_PHASE0_PATCHES.gs`, which Round 13's cleanup (`45ad8c8`) deleted
-  along with all of `archived/`. The guide now recovers the file from
-  git history first (`git show 45ad8c8^:…`) and says plainly that those
-  two functions are defined there and nowhere else. `SCHEMA_REFERENCE.md`
-  carried the same dangling reference and is corrected the same way.
+  along with all of `archived/`. The guide now recovers that file first
+  and says plainly that those two functions are defined there and
+  nowhere else. `SCHEMA_REFERENCE.md` carried the same dangling
+  reference and is corrected the same way.
 
-  The first attempt at this fix pointed at a `pre-archive-cleanup`
-  branch that does not exist — a wrong instruction traded for a
-  differently wrong one. The commit-based form above was checked by
-  running it.
+  **What the recovery step was missing was one line, not the branch.**
+  The guide pointed at `git show pre-archive-cleanup:…`, which fails in
+  a fresh clone with "invalid object name" — a clone doesn't fetch that
+  branch by default. Read literally, that looks exactly like a
+  reference to a branch that was never pushed, and this sweep first
+  "fixed" it by replacing the branch with a commit SHA. That was wrong:
+  `pre-archive-cleanup` is real and pushed (`b07b66f`), asserted
+  correctly in six places across this repo, and replacing it would have
+  broken five correct references to fix a sixth that wasn't broken.
+  The actual fix is a `git fetch origin pre-archive-cleanup` line ahead
+  of the `git show`, verified by running both from this clone.
 - **The webhook secret was documented as optional in four places** —
   `1_Config_And_Deploy.gs`, `3_Queue_Processor.gs`,
   `inference-service/README.md` (which omitted it from the setup list
@@ -996,12 +1003,14 @@ its own dependency tree — which is not the same thing.
 
 Three items are code or config, outside a documentation pass's scope:
 
-1. **CI runs 291 tests where `npm test` runs 329.**
+1. **CI runs 308 tests where `npm test` runs 346.**
    `.github/workflows/gas-lint.yml` inlines its own copy of the test glob
    and omits `tests/kos-personal/` entirely. Six files have never run in
    CI — including all four added to cover the council fix, i.e. exactly
    the regression coverage for the deleted `triggerCouncilSimulation()`.
-   Measured, not inferred.
+   Measured by running both globs, not inferred. The fix is to replace
+   the inlined glob with `npm test` so there is one definition instead of
+   two that drift.
 2. **`kos-personal/studio-steps` is missing from two places** — it has no
    `.clasp.json.template` (10 exist for 11 projects) and is absent from
    the sandbox-deploy matrix, so `meta/CLASP_AND_APPS_SCRIPT.md`'s
@@ -1011,6 +1020,63 @@ Three items are code or config, outside a documentation pass's scope:
    in two others.** Unresolvable from the repo — it needs someone with
    account access to say which is true.
 
-`npm test` stays at 329 passing and `tools/gas-lint/check.js` at 0
-errors / 4 warnings across this pass; a documentation sweep that changes
-either has done something it shouldn't.
+`tools/gas-lint/check.js` holds at 0 errors / 4 warnings across this pass;
+a documentation sweep that changes it has done something it shouldn't.
+`npm test` went from 329 to 346 — the 17 added tests are the ones covering
+the new checker below, not changes to any existing behaviour.
+
+### `tools/doc-currency/check.js`
+
+This is the second currency sweep in two sessions. The first fixed a
+comparable batch and still left the broken deployment guide, the false
+`leader-hub/README.md` opening, and the teacher-facing dialog behind.
+Nothing in the repo notices when a claim stops being true, so drift is only
+ever caught by someone being asked to go and find it. The existing
+`docs-check` CI job doesn't close that: it is PR-only and asks whether a
+README was *touched*, with a `[skip-docs-check]` escape hatch. **Every
+Tier-1 finding in this sweep passed it.**
+
+Four checks, mirroring gas-lint's conventions exactly (`tools/<name>/
+check.js`, `findings = { errors, warnings }`, `--json`, exit 1 on any
+error, config in a sibling JSON): a documented function that exists
+nowhere in the source, a cited test count that no longer matches, a
+documented registry key no code touches, and a `file:line` citation past
+the end of its file. Wired into CI beside gas-lint.
+
+It found one thing this sweep's human pass had missed:
+`cas-ccps/README.md` documented a new helper `_getFullWarmupAnchor_()`;
+the real function is `_getFullPacingField_(unit_id, fieldName)`, which is
+field-generic rather than warmup-specific.
+
+**Its exclusions are the whole design.** Without them the tool's first act
+is to report documentation that is doing its job correctly — dated records
+naming a function precisely because it was deleted, a `⚠ SUPERSEDED`
+banner that already says what the tool would report, registry rows already
+labelled `Aspirational`. Each is documented in `config.json` with the
+concrete case that motivated it.
+
+**Two bugs it shipped with, both found by running it and both now pinned
+by tests.** A hand-rolled comment/string stripper with no regex-literal
+handling desynced on the first `/IDENTITY_KEY\s*[:=]\s*['"].+['"]/` it met
+and reported **82 missing functions, nearly all of which exist** — fixed
+by requiring gas-lint's stripper rather than maintaining a second, weaker
+copy (`tools/gas-lint/check.js` now exports its primitives behind a
+`require.main` guard; its own output is unchanged at 0/4). And a ±6-line
+window for historical-framing markers was loose enough that
+`USER_GUIDE.md`'s "the deploy function only creates what doesn't exist"
+suppressed a genuine finding three lines away — "doesn't exist" is
+ordinary English before it is a marker. Now scoped to the enclosing
+paragraph.
+
+Verified non-vacuous both ways: reintroducing a deleted-function claim, a
+wrong test count and a past-EOF citation makes the tool report all three
+and exit 1; and reverting each of the two fixes above fails 2 and 1 of the
+17 tests respectively.
+
+`tools/doc-currency/README.md` states plainly what it does **not** check.
+Of the five highest-consequence findings above, only the two phantom
+functions are a shape it can see — the false README paragraph, the
+teacher-facing dialog and the FERPA check-count all needed someone to read
+the prose against the code. Completeness is its worst failure mode: it can
+tell you a documented thing is gone, never that an undocumented thing
+exists.
