@@ -505,9 +505,11 @@ function _getOrCreateSheet(ss, name) {
     // Vector Weight Calculation Engine v1.0). Raw_Score_Log is a JSON
     // array of {session_id, raw_score} — the historical record migrated
     // verbatim into VECTOR_MATRIX on promotion, never re-normalized.
+    // Core_Fact (roadmap 2.3) is populated only for PROMOTED_MANUAL rows —
+    // see pinThemeToCore()/getManuallyPinnedCoreFacts() in 4_Vector_Router.gs.
     [CFG.INCUBATOR_SHEET]: [
       'Theme','First_Detected','Last_Touched',
-      'Session_Count','Cumulative_Score','Raw_Score_Log','Status',
+      'Session_Count','Cumulative_Score','Raw_Score_Log','Status','Core_Fact',
     ],
 
     // ── Governance ────────────────────────────────────────────
