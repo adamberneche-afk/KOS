@@ -1001,24 +1001,28 @@ its own dependency tree — which is not the same thing.
 
 ### Found and reported, not fixed
 
-Three items are code or config, outside a documentation pass's scope:
+Two items are code or config, outside a documentation pass's scope, and
+stay unresolved:
 
-1. **CI runs 308 tests where `npm test` runs 346.**
-   `.github/workflows/gas-lint.yml` inlines its own copy of the test glob
-   and omits `tests/kos-personal/` entirely. Six files have never run in
-   CI — including all four added to cover the council fix, i.e. exactly
-   the regression coverage for the deleted `triggerCouncilSimulation()`.
-   Measured by running both globs, not inferred. The fix is to replace
-   the inlined glob with `npm test` so there is one definition instead of
-   two that drift.
-2. **`kos-personal/studio-steps` is missing from two places** — it has no
+1. **`kos-personal/studio-steps` is missing from two places** — it has no
    `.clasp.json.template` (10 exist for 11 projects) and is absent from
    the sandbox-deploy matrix, so `meta/CLASP_AND_APPS_SCRIPT.md`'s
    instruction to clone "each of the 11 projects" cannot be followed for
    the 11th.
-3. **`clasp login` is described as working in one place and not working
+2. **`clasp login` is described as working in one place and not working
    in two others.** Unresolvable from the repo — it needs someone with
    account access to say which is true.
+
+A third was reported the same way and then fixed on request: **CI ran 308
+tests where `npm test` ran 346.** `.github/workflows/gas-lint.yml` inlined
+its own copy of the test glob and omitted `tests/kos-personal/` entirely.
+Six files had never run in CI — including all four added to cover the
+council fix, i.e. exactly the regression coverage for the deleted
+`triggerCouncilSimulation()`. Measured by running both globs, not
+inferred. The step now runs `npm test` instead of its own inlined glob —
+one definition instead of two that drift — verified locally (346/346)
+before the workflow change was made, since a step that only runs in CI
+can't be checked by running it here.
 
 `tools/gas-lint/check.js` holds at 0 errors / 4 warnings across this pass;
 a documentation sweep that changes it has done something it shouldn't.
