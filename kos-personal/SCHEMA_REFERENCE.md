@@ -95,7 +95,7 @@ Calibrated vector scores per session. Primary audit trail for domain weighting.
 | I | DOMAIN_COMPLIANCE | Float | 0.0–1.0, calibrated score — 7th known vector, added alongside RELATIONAL (CE-SMP Vector Weight Calculation Engine v1.0) |
 | J | TOTAL | Float | Sum of all domain scores |
 
-Note: v5.4 had 7 columns (no GAS_DEVELOPMENT or RELATIONAL). `runPhase0Migration()` adds these columns to existing sheets — that function lives in `KOS_PHASE0_PATCHES.gs`, which is **not in this repo's working tree** — it was deleted by `45ad8c8` and survives only in git history (`git show 45ad8c8^:kos-personal/archived/legacy-pre-v8/files_37_38_predraft/KOS_PHASE0_PATCHES.gs`; see `DEPLOYMENT_GUIDE.md`'s "Migrating from v5.4"). DOMAIN_COMPLIANCE was added later still, as the 7th `CFG.KNOWN_VECTORS` entry.
+Note: v5.4 had 7 columns (no GAS_DEVELOPMENT or RELATIONAL). `runPhase0Migration()` adds these columns to existing sheets — that function lives in `KOS_PHASE0_PATCHES.gs`, which is **not in this repo's working tree** — it was deleted by `45ad8c8` and is preserved on the `pre-archive-cleanup` branch, which a fresh clone must `git fetch origin pre-archive-cleanup` before it can read (see `DEPLOYMENT_GUIDE.md`'s "Migrating from v5.4" for the exact commands). DOMAIN_COMPLIANCE was added later still, as the 7th `CFG.KNOWN_VECTORS` entry.
 
 ---
 
