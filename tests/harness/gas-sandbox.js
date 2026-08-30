@@ -130,6 +130,15 @@ class FakeSheet {
   getLastColumn() { return this.rows.reduce((m, r) => Math.max(m, r.length), 0); }
   // Cosmetic only — no test in this repo asserts on column width.
   autoResizeColumns() { return this; }
+  // Real Apps Script API — inserts a blank column before the given 1-based
+  // column index, shifting every later column in every row right by one.
+  // kos-personal/4_Vector_Router.gs's promotion paths
+  // (_checkPromotionCandidates, pinThemeToCore) use this to grow
+  // VECTOR_MATRIX by one theme column when a theme graduates.
+  insertColumnBefore(colPos1Based) {
+    this.rows.forEach((row) => { row.splice(colPos1Based - 1, 0, ''); });
+    return this;
+  }
 }
 
 class FakeSpreadsheet {

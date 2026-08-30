@@ -141,7 +141,7 @@ Tracks themes that appear consistently but haven't been promoted to known vector
 | D | Session_Count | Integer | Number of sessions this theme has appeared in |
 | E | Cumulative_Score | Float | Running score, decayed by half every `CFG.INCUBATOR_HALF_LIFE_DAYS` if untouched; promotes at `CFG.INCUBATOR_PROMOTION_THRESHOLD` |
 | F | Raw_Score_Log | String | JSON array of `{session_id, raw_score}` — migrated verbatim into VECTOR_MATRIX on promotion, never re-normalized |
-| G | Status | String | INCUBATING, PROMOTED, DECAYED (below `CFG.INCUBATOR_DECAY_FLOOR` — kept for audit, not deleted) |
+| G | Status | String | INCUBATING, PROMOTED (crossed `CFG.INCUBATOR_PROMOTION_THRESHOLD` on its own), PROMOTED_MANUAL (pinned to Core by explicit operator/Council decision via `pinThemeToCore()` — bypasses the threshold; see `4_Vector_Router.gs`), DECAYED (below `CFG.INCUBATOR_DECAY_FLOOR` — kept for audit, not deleted) |
 
 ---
 
@@ -198,7 +198,15 @@ Verdicts from all council sessions and individual cog responses.
 
 ### Blackboard
 
-Governance mutations waiting for or having received operator approval.
+Governance mutations waiting for or having received operator approval. Also
+doubles as a general append-only audit log for filed decisions that aren't
+document mutations at all — e.g. `3_Queue_Processor.gs`'s SMP-proposal rows
+and `4_Vector_Router.gs`'s `pinThemeToCore()` audit rows both write here with
+`Deploy_Trigger` left `FALSE` and `Status` already resolved, using
+`Find_String`/`Replace_Payload` as an informational `[title]`/summary pair
+rather than literal find-replace text — so `onGovernanceEdit` (which only
+acts on an explicit `Deploy_Trigger` edit) never mistakes them for a pending
+mutation.
 
 | Col | Name | Type | Description |
 |---|---|---|---|
