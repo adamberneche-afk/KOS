@@ -47,7 +47,8 @@
       "cas-ccps/scripts/32_CompetencyRubricImporter.js",
       "cas-ccps/scripts/33_ArtifactCompetencyBridge.js",
       "cas-ccps/scripts/34_QueueWatchdog.js",
-      "cas-ccps/scripts/35_FlowPreflightAndCanary.js"
+      "cas-ccps/scripts/35_FlowPreflightAndCanary.js",
+    "cas-ccps/scripts/36_WeeklyParentReport.js"
     ]
   },
 
@@ -107,7 +108,8 @@
       "cas-ccps/scripts/23_StudentProfileManager.js",
       "cas-ccps/scripts/26_CompetencyAlignmentLog.js",
       "cas-ccps/scripts/29_StudentContextAggregator.js",
-      "cas-ccps/scripts/31_PacingGuideManager.js"
+      "cas-ccps/scripts/31_PacingGuideManager.js",
+      "cas-ccps/scripts/36_WeeklyParentReport.js"
     ]
   },
 
