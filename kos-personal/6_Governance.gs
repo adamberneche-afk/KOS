@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 6 of 8: Governance Engine
+// FILE 6 of 11: Governance Engine
 // ================================================================
 //
 // Replaces: PART 10 (Governance Engine), PART 11 (Council
@@ -90,9 +90,9 @@
 //  autoCouncilCheck() still called it every 2 hours; deleted outright
 //  rather than left callable, since every top-level GAS function is
 //  reachable via google.script.run regardless of what calls it
-//  internally. Its HITL twin generateCouncilInputPayload()
-//  (9_UI_Diagnostics.gs) is now a thin wrapper over the sequestered
-//  path. See CHANGELOG.md Round 14.
+//  internally. Its HITL twin, formerly generateCouncilInputPayload(),
+//  was replaced by generateSevenBridgesStimulus() (9_UI_Diagnostics.gs) —
+//  a thin wrapper over the sequestered path. See CHANGELOG.md Round 14.
 // ================================================================
 
 

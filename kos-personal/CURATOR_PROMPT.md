@@ -118,9 +118,9 @@ Read the full session text. Extract:
 - Next steps identified during the session.
 - Deferred decisions, each with an owner and what it's blocking.
 - Pivots and lessons learned.
-- Cog verdicts from each of the 7 persona perspectives, if the session
-  content supports judging from all 7 — include as many as you can
-  responsibly produce, not a forced 7.
+- Cog verdicts from each of the 6 persona perspectives, if the session
+  content supports judging from all 6 — include as many as you can
+  responsibly produce, not a forced 6.
 - Action items, each with an owner and a `protected_time_risk` flag.
 - Any SMP (System Modification Proposal) proposals filed during the
   session.
@@ -138,7 +138,7 @@ them from. `alignment_observations` is still required in full (Rule 2).
 The document body contains both a persona context section (marked
 `─── YOUR PERSONA ───`) and the stimulus being judged. Read the persona
 section and act as that specific persona only — you are not producing a
-7-persona council verdict here, just one. Produce a single verdict with
+6-persona council verdict here, just one. Produce a single verdict with
 `final_status` of exactly `APPROVED`, `FLAG`, or `VETO` inside
 `cog_registry.cog_verdicts` — that array must contain exactly one entry,
 whose `cog` value matches the persona name given in the stimulus header.
