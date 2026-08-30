@@ -412,6 +412,22 @@ function buildSessionContext() {
         targets.map((t, i) => (i + 1) + '. ' + t).join('\n'));
     }
 
+    // Roadmap 2.3 — value-consistency drift. The ALIGNMENT persona
+    // (PERSONA_ALIGNMENT_V5_1.md §2.2 Threshold D) has no feed of
+    // Core-pinned facts otherwise: it only ever sees this chat's own
+    // context window, never live sheet state. This is that feed — the
+    // same session-start injection point Frequency Drift's own inputs
+    // (VECTOR_MATRIX, RELATIONAL TARGETS) already use above, not a new
+    // mechanism.
+    try {
+      const coreFacts = getManuallyPinnedCoreFacts();
+      if (coreFacts.length > 0) {
+        sections.push('## CORE FACTS (Operator-Pinned — Do Not Contradict)\n' +
+          coreFacts.map((f, i) => (i + 1) + '. [' + f.theme + '] ' + f.fact).join('\n'));
+        loaded.push('Core Facts (' + coreFacts.length + ')');
+      }
+    } catch (_) { console.warn('[buildSessionContext] Could not load manually-pinned Core facts'); }
+
     const block =
       '[🧠 RTP — SESSION CONTEXT INJECTION]\n' +
       'Assembled: ' + new Date().toLocaleString() + '\n' +

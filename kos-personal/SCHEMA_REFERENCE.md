@@ -142,6 +142,7 @@ Tracks themes that appear consistently but haven't been promoted to known vector
 | E | Cumulative_Score | Float | Running score, decayed by half every `CFG.INCUBATOR_HALF_LIFE_DAYS` if untouched; promotes at `CFG.INCUBATOR_PROMOTION_THRESHOLD` |
 | F | Raw_Score_Log | String | JSON array of `{session_id, raw_score}` — migrated verbatim into VECTOR_MATRIX on promotion, never re-normalized |
 | G | Status | String | INCUBATING, PROMOTED (crossed `CFG.INCUBATOR_PROMOTION_THRESHOLD` on its own), PROMOTED_MANUAL (pinned to Core by explicit operator/Council decision via `pinThemeToCore()` — bypasses the threshold; see `4_Vector_Router.gs`), DECAYED (below `CFG.INCUBATOR_DECAY_FLOOR` — kept for audit, not deleted) |
+| H | Core_Fact | String | Roadmap 2.3. Only populated for PROMOTED_MANUAL rows — the actual asserted fact/boundary behind the pin (e.g. "Operator will not schedule client calls after 6pm"), not just the theme label. Read by `getManuallyPinnedCoreFacts()` and surfaced into `buildSessionContext()`'s session-start block for the ALIGNMENT persona's value-consistency-drift threshold. Blank for every other status. |
 
 ---
 
