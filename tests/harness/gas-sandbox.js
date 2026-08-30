@@ -7,15 +7,24 @@
 // wired into CI specifically so it doesn't have to be rebuilt from scratch
 // again next time something in EmailBridge.gs changes.
 //
-// Deliberately covers only what EmailBridge.gs's AI-queue and Organization
-// Sync functions actually call: PropertiesService, SpreadsheetApp, and
-// Session. DriveApp/GmailApp/DocumentApp/ContentService are NOT mocked —
-// loading the file still works (those globals are only referenced inside
-// function bodies that are never invoked by these tests, and JS doesn't
-// evaluate a function body's free variables until it's called), but
-// calling createSubPlanDoc_/createBragDraft_/scanHorizonLabel_/
-// emailBridgeGetHorizonItems_/doPost from a test using this sandbox will
-// throw ReferenceError by design.
+// Started as only what EmailBridge.gs's AI-queue and Organization Sync
+// functions call (PropertiesService, SpreadsheetApp, Session) and has grown
+// one mock at a time as tests needed them. Now also: CacheService,
+// LockService, AddOnsResponseService, DriveApp, DocumentApp, Utilities,
+// Logger, MailApp and ScriptApp.
+//
+// GmailApp and ContentService remain deliberately unmocked — loading a file
+// that references them still works (those globals are only named inside
+// function bodies, and JS doesn't resolve a body's free variables until it
+// runs), but calling scanHorizonLabel_/emailBridgeGetHorizonItems_/doPost
+// from a test using this sandbox throws ReferenceError by design.
+//
+// GmailApp's absence is worth keeping. No cas-ccps code calls it, and
+// nothing should start: GmailApp requires the https://mail.google.com/
+// scope — full read/modify/delete on the user's whole mailbox — where
+// MailApp needs only script.send_mail, which every mail-sending cas-ccps
+// project already declares. A ReferenceError here is a cheaper way to
+// discover that than a scope-consent prompt in production.
 
 const vm = require('vm');
 const fs = require('fs');
@@ -120,6 +129,10 @@ class FakeSheet {
     return new FakeRange(this, 1, 1, this.rows.length, width);
   }
   setFrozenRows(n) { this.frozenRows = n; return this; }
+  // Recorded rather than ignored, like setFrozenRows above: which columns an
+  // export freezes is a real assertion a test may want to make (the SCR
+  // export freezes both identifying columns, not just the name).
+  setFrozenColumns(n) { this.frozenColumns = n; return this; }
   clear() { this.rows = []; return this; }
   deleteRow(rowNum1Based) { this.rows.splice(rowNum1Based - 1, 1); }
   // Real Apps Script API — the sheet's used-range column count. Same
@@ -148,6 +161,8 @@ class FakeSpreadsheet {
     this.sheets = [new FakeSheet('Sheet1')];
   }
   getId() { return this.id; }
+  getName() { return this.name; }
+  getUrl() { return 'https://docs.google.com/spreadsheets/d/' + this.id + '/edit'; }
   getSheets() { return this.sheets; }
   getSheetByName(name) { return this.sheets.find((s) => s.name === name) || null; }
   insertSheet(name) {
@@ -155,6 +170,13 @@ class FakeSpreadsheet {
     this.sheets.push(s);
     return s;
   }
+  // A newly created spreadsheet's default first sheet. Real GAS returns
+  // whichever sheet is currently selected; with no UI there is no selection,
+  // so the first sheet is the only sensible answer — and it is what the one
+  // pattern that uses this actually means. exportToWorkbookGrid_() calls
+  // getActiveSheet() on a spreadsheet it just created, to rename Sheet1 into
+  // the first real tab rather than leave an empty one behind.
+  getActiveSheet() { return this.sheets[0]; }
 }
 FakeSpreadsheet._counter = 0;
 
@@ -563,6 +585,94 @@ function loadGasFile(absPath, exposeNames, extraGlobals = {}) {
 // (e.g. cas-ccps's 30_SCRSuggestionEngine.js calling 00_SharedConfig.js's
 // getConfig_()) — loading either file alone would throw a ReferenceError
 // that has nothing to do with the logic actually being tested.
+// MailApp — records instead of sending.
+//
+// Apps Script accepts two shapes, and cas-ccps uses both:
+// sendEmail(recipient, subject, body) in most call sites, and the object
+// form sendEmail({to, subject, body}) in 25_WarmUpWriter.js. Both normalize
+// to the same recorded entry so a test asserting on the recipient doesn't
+// have to know which shape the code under test happened to pick.
+//
+// getSentMessages() is the assertion surface. It exists because the single
+// highest-value test of any outbound feature is "who did this actually go
+// to" — a question the code can only be trusted on if the harness can see
+// the answer.
+function makeMailAppMock() {
+  const sent = [];
+  return {
+    sendEmail(...args) {
+      if (args.length === 1 && args[0] && typeof args[0] === 'object') {
+        const m = args[0];
+        sent.push({
+          to: m.to, subject: m.subject, body: m.body,
+          htmlBody: m.htmlBody, noReply: m.noReply,
+        });
+      } else {
+        sent.push({ to: args[0], subject: args[1], body: args[2] });
+      }
+    },
+    // Real API, occasionally read before sending in bulk. Large enough that
+    // no test trips a quota check it wasn't written to exercise.
+    getRemainingDailyQuota: () => 1500,
+    getSentMessages: () => sent.slice(),
+    __sent: sent,
+  };
+}
+
+// ScriptApp — trigger installation, recorded rather than performed.
+//
+// Enough to exercise an installer's own logic: does it check for an
+// existing trigger before adding a second one, and does it build the
+// schedule it claims to? getProjectTriggers() returns objects carrying
+// getHandlerFunction()/getUniqueId(), which is what the two existing
+// cas-ccps installers filter on. The builder is chainable and records the
+// calls made against it, so a test can assert onWeekDay(FRIDAY) was used
+// rather than everyDays(7) without needing a live Apps Script project.
+function makeScriptAppMock() {
+  const triggers = [];
+  let nextId = 1;
+
+  function makeTriggerBuilder(handlerFunction) {
+    const calls = [];
+    const builder = {};
+    for (const name of [
+      'timeBased', 'everyDays', 'everyHours', 'everyMinutes', 'everyWeeks',
+      'atHour', 'nearMinute', 'onWeekDay', 'onMonthDay', 'inTimezone',
+    ]) {
+      builder[name] = (...args) => { calls.push({ method: name, args }); return builder; };
+    }
+    builder.create = () => {
+      const id = String(nextId++);
+      const trigger = {
+        getHandlerFunction: () => handlerFunction,
+        getUniqueId: () => id,
+        getEventType: () => 'CLOCK',
+        __calls: calls,
+      };
+      triggers.push(trigger);
+      return trigger;
+    };
+    return builder;
+  }
+
+  return {
+    newTrigger: (handlerFunction) => makeTriggerBuilder(handlerFunction),
+    getProjectTriggers: () => triggers.slice(),
+    deleteTrigger(trigger) {
+      const i = triggers.indexOf(trigger);
+      if (i >= 0) triggers.splice(i, 1);
+    },
+    // Real enum values are opaque objects; string values are enough here and
+    // make an assertion failure readable.
+    WeekDay: {
+      SUNDAY: 'SUNDAY', MONDAY: 'MONDAY', TUESDAY: 'TUESDAY',
+      WEDNESDAY: 'WEDNESDAY', THURSDAY: 'THURSDAY', FRIDAY: 'FRIDAY',
+      SATURDAY: 'SATURDAY',
+    },
+    __triggers: triggers,
+  };
+}
+
 function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
   const source = absPaths.map((p) => fs.readFileSync(p, 'utf8')).join('\n;\n');
   const driveAppMock = makeDriveAppMock();
@@ -576,6 +686,8 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     AddOnsResponseService: makeAddOnsResponseServiceMock(),
     DriveApp: driveAppMock,
     DocumentApp: makeDocumentAppMock(driveAppMock),
+    MailApp: makeMailAppMock(),
+    ScriptApp: makeScriptAppMock(),
     Utilities: {
       getUuid: () => 'fake-uuid-' + Math.random().toString(36).slice(2),
       formatDate: formatDateMock,
