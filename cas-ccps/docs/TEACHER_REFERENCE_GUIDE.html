@@ -118,6 +118,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
     <a class="sb-link" href="#create">Creating an Assignment</a>
     <a class="sb-link" href="#register">Registering Students</a>
     <a class="sb-link" href="#dashboard">Your Dashboard</a>
+    <a class="sb-link" href="#parent-reports">Weekly Parent Reports</a>
     <a class="sb-link" href="#status">Understanding Status</a>
     <a class="sb-link" href="#module2">What Module 2 Does</a>
   </div>
@@ -351,6 +352,37 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
     <span class="callout-icon">💡</span>
     <div class="callout-body">Click a student's "Open document ↗" link to go directly to their assignment document. You can read their response, see their full evaluation history, and check the compliance stamps from there.</div>
   </div>
+</div>
+
+<!-- WEEKLY PARENT REPORTS -->
+<div class="topic" id="parent-reports">
+  <a class="topic-anchor"></a>
+  <div class="topic-header">
+    <div class="topic-icon icon-teal">✉️</div>
+    <h2>Weekly Parent Reports</h2>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px">Click <span class="inline-code">✉ Parent Reports</span> in the dashboard header to see this week&rsquo;s report for each of your students. Nothing is sent until you enter an address and press Send on that student &mdash; there is no &ldquo;send all&rdquo;.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>What each report contains.</strong> Two sections. <em>This week</em> lists the coursework recorded for that student between Monday and Sunday, labelled by course and date. <em>Progress so far this term</em> lists their confirmed competency ratings, which are cumulative &mdash; they cover all work to date, not just this week, and the report says so.</p>
+
+  <div class="callout callout-gold">
+    <span class="callout-icon">⚠️</span>
+    <div class="callout-body"><strong>Only scores you have confirmed appear as numbers.</strong> Anything still awaiting your review shows as &ldquo;with your teacher for review&rdquo; and is counted in a summary line &mdash; the parent never sees an AI-suggested score you haven&rsquo;t acted on. This is the same rule the student&rsquo;s own document follows while a submission is pending your review. If you want a score to appear, confirm it first in the Pending Review step.</div>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Read before you send.</strong> Each student&rsquo;s row has a <span class="inline-code">Read what will be sent</span> toggle showing the exact text the parent will receive. This is the only place in the system where student information leaves the school&rsquo;s Google Workspace, so it is worth actually reading the first few times.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>You type the address.</strong> The system stores no parent contact details, so there is nothing to auto-fill and nothing to mistype on your behalf &mdash; but equally, nothing catches a wrong address for you. After a send, the confirmation echoes back the address it used. That line is worth a glance: it is the last moment a misdirected report can be spotted by someone who still remembers who it was meant for.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>One report per student per week.</strong> A second Send for the same student and week is refused, so a reload or a double-click can&rsquo;t send a parent the same report twice.</p>
+
+  <div class="callout callout-slate">
+    <span class="callout-icon">📝</span>
+    <div class="callout-body">Every send is recorded &mdash; which student, which address, which week, and you as the sender. That record is what lets the school answer &ldquo;what were we told, and when&rdquo; later, and it exists only because the app does the sending rather than your mail client.</div>
+  </div>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>If a student is missing from the list.</strong> The panel shows a count of students it could not build a report for. That happens when a student&rsquo;s account doesn&rsquo;t match the district student-ID format, and it will keep happening for that student until the account is corrected &mdash; the system can&rsquo;t fix it on its own, and won&rsquo;t quietly skip them without telling you.</p>
 </div>
 
 <!-- STATUS -->
