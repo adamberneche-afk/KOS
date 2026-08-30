@@ -177,7 +177,7 @@ This is the complete, expanded schema. Every field is required. Fields with no a
 
   "alignment_report": {
     "relational_status_at_closeout": "GREEN | YELLOW | RED",
-    "thresholds_crossed_this_session": ["[A_TIME_ENCROACHMENT | B_FREQUENCY_DRIFT | C_ISOLATION_DIRECTIVE — or 'none']"],
+    "thresholds_crossed_this_session": ["[A_TIME_ENCROACHMENT | B_FREQUENCY_DRIFT | C_ISOLATION_DIRECTIVE | D_VALUE_CONSISTENCY_DRIFT — or 'none']"],
     "protected_time_risks_in_next_steps": [
       "[Any next_step item flagged by ALIGNMENT as requiring protected-time presence — or 'none']"
     ],
@@ -223,7 +223,7 @@ If the session contains a mistake, a changed decision, or a realization, format 
 Do not editorialize. Do not add context. The format is the format.
 
 ### 5.6 alignment_report
-Ingest ALIGNMENT's Closeout Scan output directly. If ALIGNMENT was not active this session, all fields default to GREEN / 0 / none.
+Ingest ALIGNMENT's Closeout Scan output directly. If ALIGNMENT was not active this session, all fields default to GREEN / 0 / none. Roadmap 2.3: if ALIGNMENT's Closeout Scan reports a value-consistency flag (Threshold D — a decision this session contradicting a pinned Core fact), record it as `D_VALUE_CONSISTENCY_DRIFT` in `thresholds_crossed_this_session` and set `relational_status_at_closeout` to at least `YELLOW` — same severity floor as any other hard threshold caught at Closeout.
 
 ### 5.7 action_exhaust
 Generalized from the original student-specific field. Captures all action items regardless of domain. Every item must have a type, owner, and protected-time risk flag. Items flagged `protected_time_risk: true` must have already been surfaced by ALIGNMENT — if they haven't, the CURATOR must trigger a retroactive ALIGNMENT flag before producing final output.

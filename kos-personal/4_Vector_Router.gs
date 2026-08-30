@@ -764,6 +764,18 @@ function _checkPromotionCandidates(incubSheet, matrixSheet) {
  * (6_Governance.gs), which only acts on an explicit Deploy_Trigger
  * checkbox edit.
  *
+ * FIXED (roadmap 2.3 — value-consistency drift): `note` used to be folded
+ * only into the Blackboard audit row's free-text Notes column — real, but
+ * not retrievable in structured form. `pinThemeToCore` pins a *theme*
+ * (a topic-vector label like ARCHITECTURE), not the actual asserted fact
+ * behind it — TAIS's "Core Memory" concept this whole feature is modeled
+ * on is specifically about untouchable *facts* ("operator does not accept
+ * same-day-turnaround clients"), not topic categories. Persisting `note`
+ * onto the INCUBATOR row itself (new Core_Fact column, self-healing via
+ * _ensureIncubatorCoreFactColumn_) is what makes getManuallyPinnedCoreFacts()
+ * below possible — without it, there was no fact text to check a future
+ * decision against, only a bare theme label.
+ *
  * Called by the web app via:
  *   google.script.run
  *     .withSuccessHandler(fn)
@@ -771,16 +783,21 @@ function _checkPromotionCandidates(incubSheet, matrixSheet) {
  *
  * @param  {string} themeName  Theme to pin. Case-insensitive; stored
  *   uppercase, same normalization as every other theme name in this file.
- * @param  {string} [note]     Optional operator justification, folded into
+ * @param  {string} [note]     The actual Core fact/boundary this pin
+ *   asserts (e.g. "Operator will not schedule client calls after 6pm").
+ *   Persisted onto the INCUBATOR row's Core_Fact column and folded into
  *   the Blackboard audit row. Not currently collected by the web app UI
  *   (see 8_WebApp_UI.html's confirm-tap wiring) — available for a future
  *   reason-input surface, or for calling this directly from the Apps
- *   Script editor with a written rationale.
+ *   Script editor with a written fact. Without it, getManuallyPinnedCoreFacts()
+ *   falls back to the bare theme name — better than nothing, but not a
+ *   checkable fact.
  * @returns {{success: boolean, message: string}}
  */
 function pinThemeToCore(themeName, note) {
   const theme = String(themeName || '').toUpperCase().trim();
   if (!theme) return { success: false, message: 'No theme name given.' };
+  const fact = String(note || '').trim();
 
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(10000)) return { success: true, message: 'System busy — try again in a moment.' };
@@ -792,6 +809,7 @@ function pinThemeToCore(themeName, note) {
     const ss          = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const matrixSheet = _getOrCreateSheet(ss, CFG.VECTOR_MATRIX_SHEET);
     const incubSheet  = _getOrCreateSheet(ss, CFG.INCUBATOR_SHEET);
+    _ensureIncubatorCoreFactColumn_(incubSheet);
 
     // Find any existing INCUBATOR row for this theme so its history (if
     // any) migrates into VECTOR_MATRIX the same way an algorithmic
@@ -808,19 +826,20 @@ function pinThemeToCore(themeName, note) {
 
     if (idx >= 0) {
       incubSheet.getRange(idx + 2, 7).setValue('PROMOTED_MANUAL');
+      if (fact) incubSheet.getRange(idx + 2, 8).setValue(fact);
     } else {
       // No incubator history at all — a genuinely new Core theme declared
       // outright, never previously observed as a signal. Still file an
       // INCUBATOR row so the audit trail and Diagnostics tab have one
       // consistent place to look for how every Core theme got there.
-      incubSheet.appendRow([theme, new Date(), new Date(), 0, 0, '[]', 'PROMOTED_MANUAL']);
+      incubSheet.appendRow([theme, new Date(), new Date(), 0, 0, '[]', 'PROMOTED_MANUAL', fact]);
     }
 
     _persistPromotedVector(theme);
     _fileBlackboardAuditRow_(
       'Manual Core promotion: ' + theme,
       'Theme "' + theme + '" pinned to Core status by explicit operator/Council decision, ' +
-        'bypassing CFG.INCUBATOR_PROMOTION_THRESHOLD.' + (note ? ' Note: ' + note : '')
+        'bypassing CFG.INCUBATOR_PROMOTION_THRESHOLD.' + (fact ? ' Fact: ' + fact : '')
     );
 
     SpreadsheetApp.flush();
@@ -831,6 +850,62 @@ function pinThemeToCore(themeName, note) {
     return { success: false, message: e.message };
   } finally {
     lock.releaseLock();
+  }
+}
+
+
+/**
+ * Idempotently adds the "Core_Fact" header (column 8) to INCUBATOR if
+ * missing — same self-healing pattern
+ * cas-ccps/30_SCRSuggestionEngine.js's _ensureScrDecisionLogArchiveColumn_
+ * established for a schema addition landing on a sheet created before it
+ * existed. Only ever populated for PROMOTED_MANUAL rows (pinThemeToCore);
+ * blank for every algorithmic INCUBATING/PROMOTED/DECAYED row, same as
+ * archive_status is blank for a never-archived CompetencyEvidence row.
+ *
+ * @param {Sheet} incubSheet
+ */
+function _ensureIncubatorCoreFactColumn_(incubSheet) {
+  const headerCell = incubSheet.getRange(1, 8);
+  if (String(headerCell.getValue()).trim() !== 'Core_Fact') {
+    headerCell.setValue('Core_Fact');
+  }
+}
+
+
+/**
+ * Returns every manually-pinned Core fact — the data source
+ * buildSessionContext() (9_UI_Diagnostics.gs) injects into a new live
+ * session so the ALIGNMENT persona's value-consistency-drift threshold
+ * (PERSONA_ALIGNMENT_V5_1.md §2.2 Threshold D) has something concrete to
+ * check a decision against. Only PROMOTED_MANUAL rows qualify — an
+ * algorithmically PROMOTED theme is a recurring topic, not an asserted
+ * boundary; only an explicit pinThemeToCore() call carries operator intent
+ * strong enough to be "a fact worth a Socratic challenge if contradicted."
+ *
+ * @returns {{theme: string, fact: string}[]} Empty array if INCUBATOR is
+ *   missing or has no manually-pinned rows. `fact` falls back to the bare
+ *   theme name for a pin made before Core_Fact existed, or made with no
+ *   `note` — better than nothing in the session-context block, but callers
+ *   should not treat a fallback fact as a real checkable assertion.
+ */
+function getManuallyPinnedCoreFacts() {
+  try {
+    const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const incubSheet = ss.getSheetByName(CFG.INCUBATOR_SHEET);
+    if (!incubSheet || incubSheet.getLastRow() <= 1) return [];
+
+    return incubSheet
+      .getRange(2, 1, incubSheet.getLastRow() - 1, 8)
+      .getValues()
+      .filter(r => r[6] === 'PROMOTED_MANUAL')
+      .map(r => ({
+        theme: String(r[0]),
+        fact:  String(r[7] || '').trim() || String(r[0]),
+      }));
+  } catch (e) {
+    _reportError('getManuallyPinnedCoreFacts', e, null);
+    return [];
   }
 }
 

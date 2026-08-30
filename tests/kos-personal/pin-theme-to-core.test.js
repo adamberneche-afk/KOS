@@ -25,7 +25,7 @@ const ROUTER_PATH = path.join(__dirname, '..', '..', 'kos-personal', '4_Vector_R
 function load() {
   return loadGasFiles(
     [CONFIG_PATH, UTILS_PATH, ROUTER_PATH],
-    ['pinThemeToCore', 'getVectorState']
+    ['pinThemeToCore', 'getVectorState', 'getManuallyPinnedCoreFacts']
   );
 }
 
@@ -108,6 +108,99 @@ test('pinThemeToCore: is idempotent — a theme already at Core status returns s
   assert.equal(res2.success, true);
   assert.match(res2.message, /already at Core status/);
   assert.equal(matrix.getLastColumn(), colsAfterFirst, 'no second column was inserted');
+});
+
+// ── Roadmap 2.3 — value-consistency drift's data source ────────────────
+// pinThemeToCore() pins a theme (a topic-vector label); Core_Fact is what
+// makes it a checkable *fact* rather than a bare category name.
+
+test('pinThemeToCore: persists the note as Core_Fact on a brand-new pin', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+
+  exported.pinThemeToCore('NO_WEEKEND_CALLS', 'Operator will not take client calls on weekends.');
+
+  const incub = ss.getSheetByName('INCUBATOR');
+  const row = incub.getRange(2, 1, 1, 8).getValues()[0];
+  assert.equal(row[6], 'PROMOTED_MANUAL');
+  assert.equal(row[7], 'Operator will not take client calls on weekends.');
+  assert.equal(incub.getRange(1, 8).getValue(), 'Core_Fact', 'header self-heals to the documented name');
+});
+
+test('pinThemeToCore: persists the note as Core_Fact when promoting an existing incubator row', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+
+  exported.pinThemeToCore('placeholder'); // bootstrap real headers, as in the test above
+  const incub = ss.getSheetByName('INCUBATOR');
+  incub.appendRow(['EMERGING', new Date(), new Date(), 2, 1.5, '[]', 'INCUBATING']);
+
+  exported.pinThemeToCore('emerging', 'Never ship a Friday-afternoon deploy.');
+
+  const rows = incub.getRange(2, 1, incub.getLastRow() - 1, 8).getValues();
+  const emergingRow = rows.find(r => r[0] === 'EMERGING');
+  assert.equal(emergingRow[6], 'PROMOTED_MANUAL');
+  assert.equal(emergingRow[7], 'Never ship a Friday-afternoon deploy.');
+});
+
+test('pinThemeToCore: with no note, Core_Fact stays blank', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+
+  exported.pinThemeToCore('BARE_THEME');
+
+  const incub = ss.getSheetByName('INCUBATOR');
+  const row = incub.getRange(2, 1, 1, 8).getValues()[0];
+  assert.equal(row[7], '');
+});
+
+test('getManuallyPinnedCoreFacts: returns only PROMOTED_MANUAL rows, with their fact text', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+
+  exported.pinThemeToCore('FACT_A', 'Operator never works past 6pm on weekdays.');
+  exported.pinThemeToCore('FACT_B', 'All student data stays in Drive, never a third-party server.');
+
+  const facts = exported.getManuallyPinnedCoreFacts();
+  assert.deepEqual(
+    facts.sort((a, b) => a.theme.localeCompare(b.theme)),
+    [
+      { theme: 'FACT_A', fact: 'Operator never works past 6pm on weekdays.' },
+      { theme: 'FACT_B', fact: 'All student data stays in Drive, never a third-party server.' },
+    ]
+  );
+});
+
+test('getManuallyPinnedCoreFacts: excludes algorithmically-promoted and still-incubating themes', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+
+  exported.pinThemeToCore('MANUAL_ONE', 'A real pinned fact.');
+  const incub = ss.getSheetByName('INCUBATOR');
+  incub.appendRow(['ALGORITHMIC', new Date(), new Date(), 5, 4.0, '[]', 'PROMOTED']);
+  incub.appendRow(['STILL_BUILDING', new Date(), new Date(), 1, 0.5, '[]', 'INCUBATING']);
+
+  const facts = exported.getManuallyPinnedCoreFacts();
+  assert.equal(facts.length, 1);
+  assert.equal(facts[0].theme, 'MANUAL_ONE');
+});
+
+test('getManuallyPinnedCoreFacts: falls back to the bare theme name when no fact text was ever recorded', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+
+  exported.pinThemeToCore('NO_NOTE_GIVEN'); // no note argument at all
+
+  const facts = exported.getManuallyPinnedCoreFacts();
+  assert.deepEqual(facts, [{ theme: 'NO_NOTE_GIVEN', fact: 'NO_NOTE_GIVEN' }]);
+});
+
+test('getManuallyPinnedCoreFacts: returns an empty array when INCUBATOR does not exist yet', () => {
+  const { exported, sandbox } = load();
+  const ss = sandbox.SpreadsheetApp.create('Empty Index');
+  sandbox.PropertiesService.getScriptProperties().setProperty('INDEX_ID', ss.getId());
+
+  assert.deepEqual(exported.getManuallyPinnedCoreFacts(), []);
 });
 
 test('getVectorState: a manually-pinned theme disappears from the incubating list', () => {

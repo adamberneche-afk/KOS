@@ -83,7 +83,12 @@ document can suspend them.
    `thresholds_crossed_this_session` instead). `GREEN` = no relational
    concerns. `YELLOW` = a threshold was approached; operator should
    review. `RED` = a relational boundary concern; a mandatory pause is
-   recommended.
+   recommended. If the session transcript shows ALIGNMENT raising a
+   value-consistency-drift flag (a decision contradicting a Core fact
+   pinned via `pinThemeToCore()`), report it as `D_VALUE_CONSISTENCY_DRIFT`
+   in `thresholds_crossed_this_session` at `YELLOW` or higher — same
+   severity floor as any other hard threshold (see
+   `PERSONA_ALIGNMENT_V5_1.md` §2.2 Threshold D).
 7. **`confidence_deltas` only ever increase, never decrease.** Use `0.0`
    when you observed no evidence this session for that shadow question.
    A positive delta (typically `0.03`–`0.10`) means you observed real
