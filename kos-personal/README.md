@@ -343,8 +343,8 @@ still-open design questions it carries forward.
 - **Debugging a specific issue:** Check ERROR_LOG sheet in BRAIN_TRUST_INDEX
 - **Licensing:** See `LICENSE` (Polyform Noncommercial 1.0.0 + Fidelity Clause)
 - **Positioning / "why this exists":** See `KOS_WHITE_PAPER.md`
-- **Ideas parked for later, not in progress:** See
-  `EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md`
+- **External ideas parked for later (two now landed, see its own status
+  note):** See `EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md`
 - **Curriculum-drafts auditing pipeline:** See
   `11_Registrar_CogRelay.gs` and its two Studio prompt files
   (`REGISTRAR_STAGE1_AUDITOR_PROMPT.md`, `REGISTRAR_STAGE2_CURATOR_PROMPT.md`)
