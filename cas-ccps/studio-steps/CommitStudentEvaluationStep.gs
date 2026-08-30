@@ -40,9 +40,12 @@
 // 00_SharedConfig.js across all 7 cas-ccps container-bound projects —
 // not a new problem this step introduces.
 //
-// COMPETENCYEVIDENCE SCHEMA: 8 columns (evidence_id, student_email,
+// COMPETENCYEVIDENCE SCHEMA: 9 columns (evidence_id, student_email,
 // competency_id, milestone_text, outcome, config_id, evaluated_at,
-// student_file_id), byte-identical in shape and order to
+// student_file_id, archive_status — the last added by roadmap 2.2,
+// "explicit archive/hibernate state"; see
+// 30_SCRSuggestionEngine.js's _archiveExpiredCompetencyEvidence_()/
+// reactivateCompetencyEvidence_()), byte-identical in shape and order to
 // 15c_Flow2DirectEvaluationService.js's own writeCompetencyEvidenceFromFlow2_()
 // in cas-ccps:central-ledger — confirmed these are the tab's only two
 // writers, and its one reader (30_SCRSuggestionEngine.js's
@@ -273,6 +276,9 @@ function writeCompetencyEvidence_(ledgerSsId, configId, studentEmail, studentFil
       configId,
       now,
       studentFileId,
+      "", // archive_status — blank until _archiveExpiredCompetencyEvidence_()
+          // ages it out, or reactivateCompetencyEvidence_() clears it back
+          // (30_SCRSuggestionEngine.js, roadmap 2.2)
     ]);
     written++;
   });
@@ -284,13 +290,13 @@ function writeCompetencyEvidence_(ledgerSsId, configId, studentEmail, studentFil
       sheet = ss.insertSheet("CompetencyEvidence");
     }
     if (sheet.getLastRow() === 0) {
-      sheet.getRange(1, 1, 1, 8).setValues([[
+      sheet.getRange(1, 1, 1, 9).setValues([[
         "evidence_id", "student_email", "competency_id", "milestone_text",
-        "outcome", "config_id", "evaluated_at", "student_file_id",
+        "outcome", "config_id", "evaluated_at", "student_file_id", "archive_status",
       ]]);
     }
     var startRow = sheet.getLastRow() + 1;
-    sheet.getRange(startRow, 1, rows.length, 8).setValues(rows);
+    sheet.getRange(startRow, 1, rows.length, 9).setValues(rows);
   }
 
   return { written: written, skipped: skipped };
