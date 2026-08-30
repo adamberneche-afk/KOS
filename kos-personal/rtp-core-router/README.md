@@ -9,9 +9,11 @@ with for the real sequestered council review ("Seven Bridges," SMP-002).
 (`kos-personal/2_Ingestion_Sensors.gs`) are the actual, current execution
 layer this feeds — `9_UI_Diagnostics.gs`'s `sevenBridgesReview()` is only
 the menu wrapper that compiles verdicts already submitted, not a stimulus
-generator itself. `triggerCouncilSimulation()` (also in `6_Governance.gs`)
-is a different, explicitly-**superseded** shared-context shortcut, kept
-only for reference — not interchangeable with the real pipeline above.
+generator itself. The older shared-context shortcut that asked one model to
+role-play every persona at once (`triggerCouncilSimulation()`) was **deleted**
+in Round 14 — see `kos-personal/CHANGELOG.md`. Note that sequestration is
+enforced by operator discipline, not by code: these persona prompts only
+work as a council if each one is run in its own conversation.
 Nothing in this directory is executable code — see `kos-personal/README.md`'s
 "Architecture in Two Paragraphs" section for how the built pipeline
 actually works today.

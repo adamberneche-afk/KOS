@@ -50,20 +50,23 @@
 // sweepRootForExhaust()  Fully headless: no ui.alert. Logs to
 //                        console only.
 //
-// generateCouncilInputPayload() Headless version retained here as
-//                        triggerCouncilSimulation() for web app
-//                        Diagnostics tab. HITL version with
-//                        ui.alert stays in 9_UI_Diagnostics.gs.
-//
 // SEVEN BRIDGES — the real sequestered council review (SMP-002)
 // ─────────────────────────────────────────────────────────────
 //  triggerSevenBridgesReview()  Assembles ONE shared stimulus document
-//                        (reusing triggerCouncilSimulation()'s own
-//                        doc-assembly logic) and hands it to the
-//                        operator to paste into each of CFG.PERSONAS'
-//                        separate Gemini Gem conversations — real
-//                        sequestration comes from that product
-//                        boundary, not from anything built here.
+//                        and hands it to the operator to paste into
+//                        each of CFG.PERSONAS' separate Gemini Gem
+//                        conversations — real sequestration comes from
+//                        that product boundary, not from anything built
+//                        here. See the function's own header on why no
+//                        code in this repo can enforce it.
+//  autoCouncilCheck()    Time-driven entry point (every 2 hours).
+//                        Counts new SESSION_LOG rows since the last
+//                        review and delegates to
+//                        triggerSevenBridgesReview() once
+//                        CFG.COUNCIL_AUTO_TRIGGER_SESSIONS is reached.
+//                        Shares that function's SEVEN_BRIDGES_LAST_RUN
+//                        property as its own counter anchor — see its
+//                        header for why that coupling is load-bearing.
 //  compileCouncilVerdict_()  Reads every COG_REGISTRY row sharing a
 //                        council ID (written by submitCogVerdict() in
 //                        2_Ingestion_Sensors.gs) and enforces the
@@ -73,11 +76,17 @@
 //                        sevenBridgesReview() (9_UI_Diagnostics.gs),
 //                        which SUPERSEDED that same function's old
 //                        static "PENDING USER APPROVAL" stub.
-//  triggerCouncilSimulation()  Explicitly SUPERSEDED by the above —
-//                        one shared-context prompt asking the model
-//                        to role-play all personas together, exactly
-//                        the cross-contamination BRIDGE_FIDELITY_001
-//                        forbids. Kept only for reference.
+//
+//  REMOVED: triggerCouncilSimulation() — a shared-context prompt asking
+//  one model to role-play ARCHITECT/AUDITOR/MUSE together in a single
+//  pass, exactly the cross-contamination BRIDGE_FIDELITY_001 forbids.
+//  Long marked "superseded, kept only for reference" while
+//  autoCouncilCheck() still called it every 2 hours; deleted outright
+//  rather than left callable, since every top-level GAS function is
+//  reachable via google.script.run regardless of what calls it
+//  internally. Its HITL twin generateCouncilInputPayload()
+//  (9_UI_Diagnostics.gs) is now a thin wrapper over the sequestered
+//  path. See CHANGELOG.md Round 14.
 // ================================================================
 
 
@@ -449,126 +458,6 @@ function sweepRootForExhaust() {
 
 
 // ================================================================
-// COUNCIL SIMULATION — HEADLESS WEB APP ENTRY POINT
-// ================================================================
-
-/**
- * Headless version of generateCouncilInputPayload for the web app
- * Diagnostics tab. Generates a council stimulus doc from CURRENT_STATE
- * and PIVOTS_AND_LESSONS, routes it to RAW_EXHAUST for Studio pickup,
- * and returns a result object.
- *
- * The HITL version (with ui.alert confirmations and prompts) is in
- * 9_UI_Diagnostics.gs as generateCouncilInputPayload().
- *
- * SUPERSEDED (Say/Do Ledger kos-personal finding #1): this is the
- * shared-context shortcut the CHANGELOG already named as a known gap
- * against the real SMP-002 "Seven Bridges" design — it asks one Studio
- * flow to role-play as ARCHITECT/AUDITOR/MUSE together in a single pass,
- * which is exactly the cross-contamination BRIDGE_FIDELITY_001 forbids.
- * Left in place, unremoved, as a low-risk choice (no confirmed absence of
- * a second caller) rather than deleted outright — but the "Run full
- * council review" button in 8_WebApp_UI.html now calls
- * triggerSevenBridgesReview() (below) instead of this function. Use that
- * one for any new integration; this one is kept only for whatever else
- * may still call it directly.
- *
- * Called by the web app via:
- *   google.script.run
- *     .withSuccessHandler(fn)
- *     .triggerCouncilSimulation()
- *
- * @returns {Object} { success, docName, docUrl, message }
- */
-function triggerCouncilSimulation() {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(10000)) {
-    // FIXED: was success:false, so the client's handleCouncil() rendered
-    // ordinary lock contention as a red error — inconsistent with the
-    // busy:true-on-success:true convention established for
-    // archiveStagingPipeline()/runPromotionCheck() specifically so this
-    // kind of routine, expected "try again in a moment" case doesn't look
-    // like a failure.
-    return { success: true, busy: true, message: 'System busy — try again in a moment.' };
-  }
-  try {
-    _coldEngineGate('triggerCouncilSimulation', 'TIER_2');
-
-    const props     = PropertiesService.getScriptProperties();
-    const stateId   = props.getProperty('ID_CURRENT_STATE');
-    const pivotId   = props.getProperty('ID_PIVOTS_AND_LESSONS');
-    const exhaustId = props.getProperty('ID_00_RAW_EXHAUST');
-
-    if (!stateId || !pivotId || !exhaustId) {
-      throw new Error('Core pointers missing (CURRENT_STATE, PIVOTS, RAW_EXHAUST). Run deployFullSystem().');
-    }
-
-    // Guard: only generate if CURRENT_STATE has been updated since last run
-    const stateFile   = DriveApp.getFileById(stateId);
-    const lastRunMs   = parseInt(props.getProperty('COUNCIL_LAST_RUN') || '0', 10);
-    if (stateFile.getLastUpdated().getTime() <= lastRunMs) {
-      // FIXED: was success:false — "nothing has changed since last time" is
-      // a routine no-op, not a failure, but the client had no way to tell
-      // it apart from a real error and painted it red. noop:true lets the
-      // client render this neutrally, same reasoning as busy:true above.
-      return {
-        success: true,
-        noop: true,
-        message: 'No new data in CURRENT_STATE since last council run. Update the state doc first.',
-      };
-    }
-
-    const stateText = DocumentApp.openById(stateId).getBody().getText();
-    const pivotText = DocumentApp.openById(pivotId).getBody().getText();
-    const ts        = Utilities.formatDate(
-      new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
-
-    const docName = 'CE: COUNCIL_PAYLOAD_' + ts;
-    const doc     = DocumentApp.create(docName);
-    const dId     = doc.getId();
-    const body    = doc.getBody();
-
-    body.appendParagraph('[🧠 RTP COUNCIL INITIATION STUB]')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-    body.appendParagraph('System State: ' + ts);
-    body.appendParagraph('1. THE CONTEXT (Recent Session Summary)')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(_truncateWithMarker_(stateText, 8000));
-    body.appendParagraph('2. THE LAWS (Active Constraints & Pivots)')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(_truncateWithMarker_(pivotText, 4000));
-    body.appendParagraph('3. INFERENCE INSTRUCTIONS')
-        .setHeading(DocumentApp.ParagraphHeading.HEADING2);
-    body.appendParagraph(
-      'Act as ARCHITECT, AUDITOR, and MUSE independently. Evaluate Context against Laws. ' +
-      'Respond with: [🏗 ARCHITECT FLAG], [⚖️ AUDITOR FLAG], [✨ MUSE FLAG]. ' +
-      'Format output as KOS inference JSON.'
-    ).setBold(true);
-
-    doc.saveAndClose();
-    DriveApp.getFileById(dId).moveTo(DriveApp.getFolderById(exhaustId));
-
-    const docUrl = DriveApp.getFileById(dId).getUrl();
-    props.setProperty('COUNCIL_LAST_RUN', new Date().getTime().toString());
-
-    console.log('[triggerCouncilSimulation] Council payload created: ' + docName);
-    return {
-      success: true,
-      docName,
-      docUrl,
-      message: 'Council payload routed to RAW_EXHAUST for Studio pickup.',
-    };
-
-  } catch (e) {
-    _reportError('triggerCouncilSimulation', e, null);
-    return { success: false, message: e.message };
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-
-// ================================================================
 // SEVEN BRIDGES — REAL SEQUESTERED-REVIEW EXECUTION LAYER
 // (SMP-002 — Say/Do Ledger kos-personal finding #1)
 // ================================================================
@@ -577,19 +466,24 @@ function triggerCouncilSimulation() {
  * Headless web app entry point for the real Seven Bridges design.
  * Generates ONE shared stimulus document from CURRENT_STATE and
  * PIVOTS_AND_LESSONS — the same document every cog reviews — and routes
- * it to RAW_EXHAUST. Reuses triggerCouncilSimulation()'s doc-assembly
- * shape (same two source docs, same guard against re-generating when
- * nothing has changed) but with its own "last run" property, so this
- * flow and the older shared-context one (still callable directly, see
- * that function's doc comment) don't stomp on each other's guard state.
+ * it to RAW_EXHAUST. Guarded by SEVEN_BRIDGES_LAST_RUN so a fresh
+ * stimulus is only minted once CURRENT_STATE has actually changed.
  *
- * Sequestration itself is NOT this function's job — it comes entirely
- * from the operator sending this one document to N separate Gemini Gem
- * conversations (one cog per conversation, per BRIDGE_FIDELITY_001: "a
- * verdict produced with knowledge of another cog's verdict is VOID").
- * This function's whole contribution is generating a fresh, shared
- * council ID and handing back clear next-step instructions; each verdict
- * gets recorded afterward via submitCogVerdict() (2_Ingestion_Sensors.gs).
+ * ENFORCEMENT LIMIT — read this before trusting the guarantee.
+ * Sequestration is NOT enforced by any code in this repository, and
+ * cannot be: the actual inference happens in Gemini Gem conversations
+ * the operator drives by hand, entirely outside this codebase. Nothing
+ * here can verify that a verdict was produced in isolation. What KOS
+ * guarantees is narrower and worth stating plainly — it will only ever
+ * PRODUCE a sequestered stimulus (the shared-context generator that
+ * violated this was deleted, see CHANGELOG.md Round 14), and the
+ * governing law travels with the document in bold: BRIDGE_FIDELITY_001,
+ * "a verdict produced with knowledge of another cog's verdict is VOID."
+ * The remaining guarantee is operator discipline — one cog per fresh
+ * conversation, no cross-pasting. Every verdict gets recorded afterward
+ * via submitCogVerdict() (2_Ingestion_Sensors.gs), which never feeds one
+ * cog's verdict forward into another's context; aggregation happens only
+ * post-hoc in compileCouncilVerdict_().
  *
  * Called by the web app via:
  *   google.script.run
@@ -615,9 +509,9 @@ function triggerSevenBridgesReview() {
       throw new Error('Core pointers missing (CURRENT_STATE, PIVOTS, RAW_EXHAUST). Run deployFullSystem().');
     }
 
-    // Own guard property — SEVEN_BRIDGES_LAST_RUN, distinct from
-    // triggerCouncilSimulation()'s COUNCIL_LAST_RUN — so running one flow
-    // doesn't block the other from noticing the same CURRENT_STATE update.
+    // SEVEN_BRIDGES_LAST_RUN is this flow's stasis guard AND, since Round
+    // 14, autoCouncilCheck()'s session-count anchor — advancing it below
+    // is what stops that 2-hourly trigger from re-firing. See its header.
     const stateFile = DriveApp.getFileById(stateId);
     const lastRunMs = parseInt(props.getProperty('SEVEN_BRIDGES_LAST_RUN') || '0', 10);
     if (stateFile.getLastUpdated().getTime() <= lastRunMs) {
@@ -920,20 +814,35 @@ function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState
 // ================================================================
 
 /**
- * Fires the sequestered/simulated council automatically once
+ * Fires the sequestered Seven Bridges council automatically once
  * CFG.COUNCIL_AUTO_TRIGGER_SESSIONS sessions have been processed since
- * the last council run, per README.md's documented auto-council trigger
+ * the last review, per README.md's documented auto-council trigger
  * (previously unbuilt — see reconciliation decision 1).
  *
- * Counts SESSION_LOG rows with a Timestamp after COUNCIL_LAST_RUN rather
- * than maintaining a separate counter, so it stays correct even if
- * COUNCIL_LAST_RUN was also just updated by a manual triggerCouncilSimulation()
- * run in the same window.
+ * FIXED (CHANGELOG.md Round 14): this used to delegate to
+ * triggerCouncilSimulation(), the shared-context generator that asked one
+ * model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass —
+ * exactly what BRIDGE_FIDELITY_001 forbids. That function claimed to be
+ * "superseded, kept only for reference" while this live 2-hourly trigger
+ * was its sole caller. It now delegates to triggerSevenBridgesReview(),
+ * and the old function has been deleted outright.
  *
- * Delegates to triggerCouncilSimulation() — that function's own stasis
- * guard (CURRENT_STATE must have changed since the last run) still
- * applies, so this can safely fire on every 2-hour tick without risking
- * a duplicate council run when there is nothing new to review.
+ * GUARD PROPERTY — load-bearing, do not "simplify" back to COUNCIL_LAST_RUN.
+ * The session count is anchored on SEVEN_BRIDGES_LAST_RUN, the same
+ * property triggerSevenBridgesReview() advances on a successful run. That
+ * coupling is what makes this terminate: the callee resets the counter by
+ * writing the property, so a fired review stops the next tick from firing
+ * again. Anchoring on any property the callee does NOT write (as the old
+ * COUNCIL_LAST_RUN pairing would, since triggerSevenBridgesReview() never
+ * touches it) leaves newSessions permanently above threshold and mints a
+ * fresh council ID and stimulus doc every 2 hours, forever. Sharing the
+ * property with the callee also means a manual council run from the web
+ * app correctly resets this counter too — you just held a review; don't
+ * auto-fire another.
+ *
+ * The no-op path is self-limiting: if CURRENT_STATE hasn't changed, the
+ * callee returns noop and generates nothing, and this simply re-checks in
+ * 2 hours.
  *
  * Fires: every 2 hours via time-driven trigger (setupAllTriggers).
  */
@@ -942,7 +851,7 @@ function autoCouncilCheck() {
     _coldEngineGate('autoCouncilCheck', 'TIER_1');
 
     const props      = PropertiesService.getScriptProperties();
-    const lastRunMs  = parseInt(props.getProperty('COUNCIL_LAST_RUN') || '0', 10);
+    const lastRunMs  = parseInt(props.getProperty('SEVEN_BRIDGES_LAST_RUN') || '0', 10);
     const ss         = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const sessionLog = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
 
@@ -963,10 +872,20 @@ function autoCouncilCheck() {
       return;
     }
 
-    console.log('[autoCouncilCheck] ' + newSessions + ' sessions since last run — firing council.');
-    const result = triggerCouncilSimulation();
-    if (!result.success) {
-      console.log('[autoCouncilCheck] triggerCouncilSimulation declined: ' + result.message);
+    console.log('[autoCouncilCheck] ' + newSessions + ' sessions since last run — firing Seven Bridges review.');
+    const result = triggerSevenBridgesReview();
+
+    // FIXED: was `if (!result.success)`, which silently swallowed every
+    // declined run — busy and noop both return success:true by the
+    // convention this repo uses for routine, expected outcomes (see
+    // triggerSevenBridgesReview()'s own returns). On an unattended
+    // trigger that meant a council that never actually fired left no
+    // trace at all; the only log line was "firing", which was a lie.
+    if (!result.success || result.busy || result.noop) {
+      console.log('[autoCouncilCheck] Seven Bridges review declined: ' + result.message);
+    } else {
+      console.log('[autoCouncilCheck] Stimulus ready — council ' + result.councilId +
+        '. Send it to each cog independently, then log verdicts under that ID.');
     }
 
   } catch (e) {

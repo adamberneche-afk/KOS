@@ -40,7 +40,7 @@
 // Adding an 8th STAGING_PIPELINE column would mean touching every
 // hardcoded 7-column getRange() call across 2/3/9_*.gs. Instead this
 // file follows the same pattern already used elsewhere in v8.0 for
-// transient runtime state (COUNCIL_LAST_RUN, KOS_PROMOTED_VECTORS,
+// transient runtime state (SEVEN_BRIDGES_LAST_RUN, KOS_PROMOTED_VECTORS,
 // KOS_SHADOW_MATRIX): a small JSON map in PropertiesService, keyed by
 // Payload_UID, pruned every run so it never grows unbounded.
 //

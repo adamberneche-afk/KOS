@@ -353,8 +353,8 @@ Council stimulus documents (Payload_Type = `COG_STIMULUS`) require isolated proc
 The stimulus document structure:
 ```
 === SEQUESTERED COUNCIL STIMULUS ===
-Council ID : COUNCIL_1747392001
-Cog        : PERSONA_ARCHITECT (1 of 7)
+Council ID : SB_1747392001
+Cog        : PERSONA_ARCHITECT (1 of 6)
 ...
 BRIDGE_FIDELITY_001: You are operating in sequestered mode.
 ...

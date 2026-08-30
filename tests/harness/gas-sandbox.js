@@ -352,12 +352,37 @@ class FakeDriveFile {
     this.sharingAccess = null;
     this.sharingPermission = null;
     this.editors = [];
+    // Real Drive stamps this at creation; tests that exercise a
+    // last-updated guard (see getLastUpdated below) can overwrite it to
+    // simulate an older or newer file without waiting on wall-clock time.
+    this.lastUpdated = new Date();
   }
   getId() { return this.id; }
   getName() { return this.name; }
   getUrl() { return 'https://fake-drive.example/file/' + this.id; }
   setSharing(access, permission) { this.sharingAccess = access; this.sharingPermission = permission; return this; }
   addEditor(email) { this.editors.push(email); return this; }
+  // Real Apps Script API — 6_Governance.gs's triggerSevenBridgesReview()
+  // compares CURRENT_STATE's getLastUpdated() against
+  // SEVEN_BRIDGES_LAST_RUN as its stasis guard ("has anything changed
+  // since the last review?"), so a test of that flow has to be able to
+  // both read and control it.
+  getLastUpdated() { return this.lastUpdated; }
+  // Real Apps Script API — moves the file to `folder`, removing it from
+  // whatever folder currently holds it. Every doc-producing function in
+  // kos-personal follows DocumentApp.create() with a moveTo() into its
+  // destination folder (RAW_EXHAUST, CURRENT_STATE, …), since create()
+  // always lands the file in root first.
+  moveTo(folder) {
+    if (this._parent && typeof this._parent.removeFile === 'function') {
+      this._parent.removeFile(this);
+    }
+    if (folder && typeof folder.addFile === 'function') {
+      folder.addFile(this);
+      this._parent = folder;
+    }
+    return this;
+  }
 }
 
 function makeDriveAppMock() {
@@ -410,6 +435,16 @@ function makeDriveAppMock() {
 class FakeParagraph {
   constructor(text) { this.text = text; }
   getText() { return this.text; }
+  // Real Apps Script API — chained directly off appendParagraph() by
+  // every doc-building function in kos-personal (e.g. 6_Governance.gs's
+  // triggerSevenBridgesReview() sets HEADING1/HEADING2 on its section
+  // titles and bolds the BRIDGE_FIDELITY_001 paragraph). Chainable no-ops
+  // returning the paragraph: no test in this repo asserts on formatting,
+  // only on the resulting text, but a file that calls them has to be able
+  // to run at all. Note these live on the paragraph itself — distinct
+  // from the editAsText() sub-object below, which has its own setBold().
+  setHeading() { return this; }
+  setBold() { return this; }
   editAsText() {
     const self = {
       setFontSize() { return self; },
@@ -448,13 +483,24 @@ function makeDocumentAppMock(driveAppMock) {
   const docs = new Map();
   return {
     _docs: docs,
+    // Real Apps Script API — the heading enum passed to
+    // Paragraph.setHeading(). Values are opaque to this mock (setHeading
+    // is a no-op); it exists so `DocumentApp.ParagraphHeading.HEADING1`
+    // resolves instead of throwing on undefined.
+    ParagraphHeading: {
+      NORMAL: 'NORMAL', TITLE: 'TITLE', SUBTITLE: 'SUBTITLE',
+      HEADING1: 'HEADING1', HEADING2: 'HEADING2', HEADING3: 'HEADING3',
+      HEADING4: 'HEADING4', HEADING5: 'HEADING5', HEADING6: 'HEADING6',
+    },
     create(title) {
       const id = 'fake-doc-' + (++makeDocumentAppMock._counter);
       const doc = new FakeDoc(id, title);
       docs.set(id, doc);
       const file = new FakeDriveFile(id, title);
       driveAppMock._registerFile(file);
-      driveAppMock.getRootFolder().addFile(file); // DocumentApp.create() lands in root first, same as real Docs
+      const root = driveAppMock.getRootFolder();
+      root.addFile(file); // DocumentApp.create() lands in root first, same as real Docs
+      file._parent = root; // so a later moveTo() removes it from root, as real Drive does
       return doc;
     },
     openById(id) {

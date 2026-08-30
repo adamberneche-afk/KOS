@@ -65,6 +65,12 @@ picking this project up later who wants to know what changed and when.
    `6_Governance.gs`, installed on the documented 2-hour trigger, fires
    `triggerCouncilSimulation()` once `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS`
    new sessions have processed since the last council run.
+   **Update — retargeted (Round 14):** wiring this trigger to
+   `triggerCouncilSimulation()` is exactly what kept the shared-context
+   generator alive after item 10 below declared it "kept only for
+   reference." It now fires `triggerSevenBridgesReview()`, and its
+   session count is anchored on `SEVEN_BRIDGES_LAST_RUN` rather than
+   `COUNCIL_LAST_RUN`. See Round 14 for why that second half matters.
 5. **`CFG` now has all four previously-missing keys**:
    `TURNSTILE_CONCURRENCY`, `TURNSTILE_STALE_MINS`, `SHADOW_VERIFY_THRESHOLD`,
    `COUNCIL_AUTO_TRIGGER_SESSIONS` — values match the defaults this README
@@ -115,6 +121,10 @@ picking this project up later who wants to know what changed and when.
     explicitly-superseded fallback, kept only for reference. See
     `kos-personal/README.md`'s "Architecture in Two Paragraphs" section
     for the current mechanics.
+    **Update — "kept only for reference" was never true (Round 14):**
+    item 4 above had already wired the 2-hourly `autoCouncilCheck()`
+    trigger to that function, and a live menu item duplicated its logic.
+    It has now been deleted outright. See Round 14.
 
 ### `10_Turnstile.gs` — rebuilt, original preserved in `archived/`
 
@@ -696,3 +706,83 @@ commit before this round still has it in git history regardless.
 after the removal — confirming nothing still in use depended on these
 files.
 
+
+## Round 14 — the shared-context council path was still armed
+
+`triggerCouncilSimulation()` generated a document instructing one model to
+"Act as ARCHITECT, AUDITOR, and MUSE independently" in a single pass —
+precisely the cross-contamination BRIDGE_FIDELITY_001 declares VOID ("a
+verdict produced with knowledge of another cog's verdict is VOID"). Its own
+doc comment, Round 10's item 10, `README.md`, `USER_GUIDE.md` and
+`rtp-core-router/README.md` all described it as superseded and "kept only
+for reference." It was not. Three live paths still reached it:
+
+- **`autoCouncilCheck()` called it every 2 hours** — a default-enabled
+  time-driven trigger installed by `setupAllTriggers()`, firing once
+  `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS` sessions accumulated. Round 10's own
+  item 4 documented this while item 10 called the same function
+  reference-only; the two entries contradicted each other for three rounds.
+- **`generateCouncilInputPayload()` (`9_UI_Diagnostics.gs`)** was an
+  independent re-implementation of the same shared-context logic behind a
+  live menu item an operator could click at any time.
+- **Neither had to be called at all** — every top-level GAS function is
+  reachable via `google.script.run` by virtue of shared execution scope
+  (`7_WebApp.gs`'s own note), so removing callers would not have
+  neutralised it.
+
+Neither path invoked an LLM directly — both only assembled a Drive document
+— so contamination required a human pasting that document into one
+conversation. But the document explicitly instructed exactly that.
+
+- **`autoCouncilCheck()` retargeted** to `triggerSevenBridgesReview()`, so
+  the automatic and manual paths now produce the same sequestered artifact.
+- **Its guard property changed with it**, and this half is load-bearing:
+  the session count is now anchored on `SEVEN_BRIDGES_LAST_RUN`, the
+  property the callee actually advances. Retargeting alone would have left
+  the counter anchored on `COUNCIL_LAST_RUN`, which
+  `triggerSevenBridgesReview()` never writes — leaving `newSessions`
+  permanently above threshold and minting a fresh council ID and stimulus
+  document every 2 hours, forever, on every tick where CURRENT_STATE had
+  changed (i.e. after every session). A regression test covers exactly this.
+- **Its decline logging fixed** — `busy` and `noop` both return
+  `success: true` by this repo's convention for routine outcomes, so the
+  old `if (!result.success)` check silently swallowed every declined run.
+  On an unattended trigger the only log line was "firing", which was a lie.
+- **`triggerCouncilSimulation()` deleted outright**, not left callable.
+- **`generateCouncilInputPayload()` replaced by
+  `generateSevenBridgesStimulus()`** — a thin wrapper over the sequestered
+  path that keeps the operator's menu affordance and its confirm gate, and
+  drops the duplicated doc assembly, the duplicate stasis guard and the
+  last `COUNCIL_LAST_RUN` write. Its success alert used to claim "Studio
+  checks for new documents every few minutes and will pick this up
+  automatically" — never true for this artifact, and the surest way for a
+  stimulus to sit in RAW_EXHAUST forever with no verdicts against it. It
+  now states the three manual steps that actually follow.
+- **`COUNCIL_LAST_RUN` retired** — no reader, no writer. Documented as
+  legacy in `SCHEMA_REFERENCE.md`; an existing stored value is a harmless
+  orphan and there is no migration. `SEVEN_BRIDGES_LAST_RUN`, previously
+  undocumented anywhere, is now documented in its place.
+- **The enforcement limit is now stated rather than assumed.**
+  BRIDGE_FIDELITY_001 is enforced by operator discipline, not by code, and
+  cannot be otherwise: inference happens in Gemini Gem conversations
+  outside this repository, so nothing here can verify a verdict was
+  produced in isolation. What KOS guarantees is narrower — it will only
+  ever *produce* a sequestered stimulus, and the law travels with the
+  document. Written into `README.md`, `USER_GUIDE.md`,
+  `rtp-core-router/README.md` and `triggerSevenBridgesReview()`'s own
+  header. The recording side *is* code-enforced and unchanged:
+  `submitCogVerdict()` never feeds one verdict forward into another cog's
+  context; aggregation is post-hoc only, in `compileCouncilVerdict_()`.
+
+The council surface had zero test coverage, which is how a contradiction
+this size survived three rounds of review. `tests/kos-personal/auto-council-check.test.js`
+now covers the threshold arithmetic, the sequestered content of what the
+automatic path produces, the re-fire regression above, the decline-logging
+path, and that the deleted generator is genuinely gone rather than merely
+uncalled. Verified non-vacuous by reverting the guard-property fix and
+confirming the re-fire test fails. Testing it at all required five small
+additions to `tests/harness/gas-sandbox.js` (`moveTo`, `getLastUpdated`,
+`setHeading`, paragraph-level `setBold`, `ParagraphHeading`) — without them
+`triggerSevenBridgesReview()` could not run in the sandbox at all, which is
+its own explanation for the missing coverage. `tools/gas-lint/check.js`
+stays at 0 errors and `npm test` stays green.
