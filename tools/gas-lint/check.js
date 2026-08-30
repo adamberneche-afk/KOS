@@ -548,6 +548,29 @@ function checkUndefinedFunctionCalls() {
 }
 
 // -----------------------------------------------------------------------
+// Reusable primitives
+//
+// stripCommentsAndStrings() is the piece other tools most need and most
+// easily get wrong: a naive version that handles quotes but not regex
+// literals desyncs on the first `/IDENTITY_KEY\s*[:=]\s*['"].+['"]/` it
+// meets and silently mis-parses the entire rest of the file. Exporting it
+// keeps one implementation rather than several that drift.
+//
+// Guarded on require.main so that `require()`ing this file gives you the
+// helpers without running the checks or calling process.exit().
+// -----------------------------------------------------------------------
+module.exports = {
+  stripCommentsAndStrings,
+  findTopLevelDecls,
+  findAnyDepthDeclNames,
+  lineAt,
+  ALLOWLIST,
+  DECL_RE,
+};
+
+if (require.main !== module) return;
+
+// -----------------------------------------------------------------------
 // Run everything
 // -----------------------------------------------------------------------
 checkDuplicateDeclarations();

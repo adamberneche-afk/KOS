@@ -272,9 +272,12 @@ GoogleID.
     `warmup_anchor_truncated` flag at write time; `resolveUnitForDate_()`
     now threads that flag through, and `getWarmUpAnchor_()` checks it
     before returning — if set, it calls new helper
-    `_getFullWarmupAnchor_()` to re-read that one unit's untruncated
-    `warmup_anchor` directly from the `PacingGuide` sheet, so only the
-    (rare) truncated case pays the extra read instead of every call.
+    `_getFullPacingField_(unit_id, fieldName)` to re-read that one unit's
+    untruncated `warmup_anchor` directly from the `PacingGuide` sheet, so
+    only the (rare) truncated case pays the extra read instead of every
+    call. (This entry named the helper `_getFullWarmupAnchor_()` until
+    `tools/doc-currency/check.js` pointed out that it does not exist —
+    the real one is field-generic, not warmup-specific.)
 15. **Setup wizard's three cross-project import calls, corrected fix
     (external product review, Finding 5)** — `28_Module2Setup.js` calls
     `importCompetencyRegistry()`/`importPacingGuide()`/
