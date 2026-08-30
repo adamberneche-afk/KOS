@@ -576,3 +576,137 @@ still a placeholder), and no flow has actually been wired together in
 Studio's builder. See `cas-ccps/README.md`'s Known Gap #1 and Finding 18
 for the current-state summary this entry feeds.
 
+
+---
+
+## Sprint 1 — docs entry point, weekly parent report, export doc links
+
+Three components from a sprint plan, two of which landed close to as
+proposed and one of which needed a different design. Verifying the plan
+against the code first turned up several claims that would have caused
+rework mid-build, so those are recorded here alongside what was built.
+
+### What the sprint plan got wrong
+
+- **"Couldn't locate a manifest for the cas-ccps script project."** Eight
+  committed manifests live in `clasp/manifests/`; the copies under
+  `.clasp-build/` are generated and gitignored, which is almost certainly
+  what was searched. This inverted the plan's own delivery recommendation:
+  `central-ledger.appsscript.json` already declares `script.send_mail`, so
+  `MailApp` is free, while `GmailApp` would need `https://mail.google.com/`
+  — full read/modify/delete on the teacher's entire mailbox — for no gain
+  over sending directly.
+- **`RubricQueue` as a per-student assignment record.** It has no student
+  column at all (`Timestamp | TeacherEmail | TeacherName | Subject |
+  CourseName | Tier | RubricText | PromptTemplateID | TeacherMatrixSsId |
+  Status`); it is Studio Flow 1's rubric-drafting funnel. The `Ledger`
+  carries the per-student weekly data, including `TurnInSuggestedScore` and
+  `TurnInFinalScore` as adjacent columns.
+- **`exportScrDecisionLogForAudit()` "exports the decision log."** It is a UI
+  wrapper around `exportToWorkbookGrid_()`, which produces a pivoted grid —
+  one tab per class, one row per student, one column per competency. Seven
+  of SCRDecisionLog's ten columns never appear in it, `evidence_snapshot`
+  included. The plan's "each row links to the submitted work, not just the
+  evidence-snapshot text already included" was wrong twice over.
+- **Most of the assembly already existed.** `getWeeklyAssignments_()`
+  (Script 29) already did the per-student weekly window; it needed four more
+  columns, not a new join.
+- **No assignment title exists anywhere**, so a parent report can only label
+  work by course and date. Printing a ConfigID (`VDOE-XK4M2P-2025`) at a
+  parent tells them nothing.
+- **`everyDays(7)` is a rolling interval anchored to install time**, not a
+  weekday. Copying the two existing weekly triggers would have produced a
+  parent report arriving on a drifting day.
+
+### The design change that mattered
+
+The plan proposed `GmailApp.createDraft()`, landing a draft in the teacher's
+own Gmail for them to address and send. Delivery moved into the Teacher
+Dashboard instead. Three reasons, in increasing order of weight:
+
+1. No new OAuth scope. See the manifest point above.
+2. Reuses the `_isAuthorizedTeacher_()` + `google.script.run` +
+   Pending Review modal pattern already in `07_TeacherDashboard.js`.
+3. **The app sends, so the app knows the recipient.** A hand-addressed draft
+   leaves no record of where a child's scores went. The most likely FERPA
+   incident this feature can produce is one child's report reaching another
+   child's parent, and `ParentReportLog.recipient_address` is the only thing
+   that makes that detectable afterwards. The plan's own field list had
+   "sent status if knowable" — this design makes it knowable.
+
+### The disclosure boundary, written down
+
+This is the first thing in cas-ccps that sends student data off-domain.
+Everything else is walled — `exportScrDecisionLogForAudit()` rejects
+off-domain recipients in those words, `exportToWorkbookGrid_()` applies
+`DriveApp.Access.DOMAIN`, health check (c) audits it. The sprint plan
+didn't mention this at all.
+
+FERPA permits disclosure to a parent, so the exception is legitimate; it is
+now recorded as a decision in `docs/FERPA_DATA_MAP.md` rather than left as
+an emergent property of a mail API choice. Four constraints keep it narrow,
+each in code: only a teacher can send (the weekly trigger prepares and sends
+nothing), only teacher-confirmed values leave, one student at a time (no
+"send all"), and every send is logged with its recipient.
+
+The second constraint follows a decision this system had already made.
+`01_StudentDoc_ContainerScript.js`'s `PENDING_TEACHER_REVIEW` state shows
+the *student* no number, because "nothing is final until the teacher
+confirms or overrides it." A parent is further from the work than the
+student, so a confirmed score prints a number and everything else prints
+"with your teacher for review" and is counted. The report reads
+`TURN_IN_FINAL_SCORE` and `SCRDecisionLog`, never `TURN_IN_SUGGESTED_SCORE`
+or `SCRSuggestions` — and `SCRS`, that tab's column map, was deliberately
+left in Script 30 rather than moved to `00_SharedConfig.js` alongside
+`SCRDL`, so a dashboard-project file that tried to read suggestions fails
+at load instead of quietly rendering one.
+
+### What landed
+
+- **`docs/index.html`** — the first index over `docs/`, which had 15 HTML
+  files and zero cross-links between any two of them. Four role-based
+  routes plus a reference list.
+- **`36_WeeklyParentReport.js`** — assembly, two-section rendering,
+  `MailApp` send, `ParentReportLog` write-back with dedup, the five-part
+  retention pattern, and a `onWeekDay(FRIDAY)` prep trigger. Listed under
+  both `central-ledger` and `teacher-dashboard` in `project-map.json`, so
+  it may only call functions present in both — noted in its own header,
+  since Script 30's helpers are not.
+- **Teacher Dashboard panel** — review-and-send, one student at a time,
+  with each report's full text behind a "Read what will be sent" toggle.
+- **`ParentReportLog`** — the disclosure log, using SCRDecisionLog's
+  legal-hold archive vocabulary rather than the reversible one, and a 7th
+  `_ferpaHealthChecks_()` check pairing its counter with its archiver.
+- **`Student Doc` column in the SCR export** — joined from
+  `StudentDocRegistry`, whose one-row-per-student grain matches the grid's.
+  No sharing change: those docs are already shared with their own student,
+  and the workbook is already domain-restricted at creation.
+
+### Two things found while building
+
+- **`_turnInScoreOrNull_`.** `cell || null` turns a genuine score of 0 into
+  "awaiting review". Cosmetic in an aggregator; in a parent report it is the
+  difference between "your child scored 0" and "not yet marked".
+- **The dashboard's 72KB of inline client JS had nothing checking it.**
+  leader-hub's single-file app has had that coverage since `html-lint`
+  landed, but `07_TeacherDashboard.js`'s markup is a JS template literal, so
+  a stray bracket in the client script was invisible to every check in the
+  repo — and would fail silently in the teacher's browser, not in the server
+  function that emits it. `tests/cas-ccps/teacher-dashboard-inline-js.test.js`
+  now renders the real HTML through the sandbox and parses each block.
+
+Also added: `MailApp`, `ScriptApp`, `getActiveSheet()` and
+`setFrozenColumns()` to `tests/harness/gas-sandbox.js`; `GmailApp` stays
+deliberately unmocked, with the reason recorded there.
+
+`npm test` 374 passing (up 28), gas-lint 0 errors / 4 warnings,
+doc-currency 0 errors. Each safety test was checked by reverting the fix it
+covers and confirming it fails.
+
+### Still open
+
+`PARENT_REPORT_RETENTION_YEARS` defaults to 5 years, inherited from the
+three existing retention windows and, like them, **not confirmed against any
+district or state schedule.** That gap matters more here than elsewhere:
+this is the tab that exists to answer "what did we tell whom", which is the
+question a records request asks.

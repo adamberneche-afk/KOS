@@ -7,7 +7,7 @@
 > review predates work landed after it was written): leader-hub gained a
 > server (`leader-hub:app` — see its own README's "JJ1" section) and is no
 > longer client-side-only; the repo gained a real test suite
-> (`tests/`, `npm test`, 346 passing at the time of writing — run `npm test`
+> (`tests/`, `npm test`, 374 passing at the time of writing — run `npm test`
 > for the live count) where
 > this review found none; and cas-ccps's Flow 2/3/4/5 custom-step code now
 > exists (`cas-ccps/studio-steps/`), though it is not yet pushed to a live
@@ -38,7 +38,7 @@ The single biggest cross-cutting risk in the entire repo, **as this review
 found it: there was no automated test coverage anywhere.** The only CI was a
 custom static linter (`tools/gas-lint/`) that catches parse-time hazards, not
 behavior regressions. **⚠ Closed since this review** — `tests/` now exists and
-runs under `npm test` (346 passing at the time of writing) with real
+runs under `npm test` (374 passing at the time of writing) with real
 Node-`vm`-sandboxed coverage of the actual `.gs`/`.js` source; see §4's note.
 The paragraph is kept as written because the rest of this section's reasoning
 rests on the state it describes. Every fix described in the extensive, unusually candid
