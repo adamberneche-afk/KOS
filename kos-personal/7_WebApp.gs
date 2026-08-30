@@ -55,7 +55,6 @@
 //     completeOnboarding(payload)     → 5_Error_And_Utilities.gs
 //     sendDailyErrorReport()          → 5_Error_And_Utilities.gs
 //     archiveStagingPipeline()        → 5_Error_And_Utilities.gs
-//     triggerCouncilSimulation()      → 6_Governance.gs (superseded — see its doc comment)
 //     triggerSevenBridgesReview()     → 6_Governance.gs
 //     generateDailyPrimer()           → 6_Governance.gs
 //     deployFullSystem()              → 1_Config_And_Deploy.gs
