@@ -110,7 +110,7 @@ test('CompetencyEvidence: both writers seed byte-identical headers, so neither r
   studio.exported.writeCompetencyEvidence_(
     ssStudioFirst.getId(), 'CFG', 'a@example.com', 'file-a', { '1': 'C1' }, { '1': 'T1' }, { '1': 'MET' }
   );
-  const headerFromStudio = ssStudioFirst.getSheetByName('CompetencyEvidence').getRange(1, 1, 1, 8).getValues()[0];
+  const headerFromStudio = ssStudioFirst.getSheetByName('CompetencyEvidence').getRange(1, 1, 1, 9).getValues()[0];
 
   const ss15cFirst = central.sandbox.SpreadsheetApp.create('Ledger B');
   shareSpreadsheet(studio, central, ss15cFirst);
@@ -123,11 +123,27 @@ test('CompetencyEvidence: both writers seed byte-identical headers, so neither r
   central.exported.writeCompetencyEvidenceFromFlow2_(
     'b@example.com', 'CFG', 'file-b', { '1': 'C1' }, { '1': 'T1' }, { '1': 'MET' }
   );
-  const headerFrom15c = ss15cFirst.getSheetByName('CompetencyEvidence').getRange(1, 1, 1, 8).getValues()[0];
+  const headerFrom15c = ss15cFirst.getSheetByName('CompetencyEvidence').getRange(1, 1, 1, 9).getValues()[0];
 
   assert.deepEqual(headerFromStudio, headerFrom15c);
   assert.deepEqual(headerFromStudio, [
     'evidence_id', 'student_email', 'competency_id', 'milestone_text',
-    'outcome', 'config_id', 'evaluated_at', 'student_file_id',
+    'outcome', 'config_id', 'evaluated_at', 'student_file_id', 'archive_status',
   ]);
+});
+
+test('CompetencyEvidence: both writers leave archive_status blank on a fresh row (roadmap 2.2)', () => {
+  const { studio, central } = loadBothWriters();
+  const ss = studio.sandbox.SpreadsheetApp.create('Central Ledger');
+  shareSpreadsheet(studio, central, ss);
+
+  studio.exported.writeCompetencyEvidence_(
+    ss.getId(), 'CFG', 'a@example.com', 'file-a', { '1': 'C1' }, { '1': 'T1' }, { '1': 'MET' }
+  );
+  central.exported.writeCompetencyEvidenceFromFlow2_(
+    'b@example.com', 'CFG', 'file-b', { '1': 'C1' }, { '1': 'T1' }, { '1': 'MET' }
+  );
+
+  const rows = ss.getSheetByName('CompetencyEvidence').getRange(2, 1, 2, 9).getValues();
+  rows.forEach((row) => assert.equal(row[8], ''));
 });
