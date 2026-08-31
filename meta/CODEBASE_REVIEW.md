@@ -7,7 +7,7 @@
 > review predates work landed after it was written): leader-hub gained a
 > server (`leader-hub:app` — see its own README's "JJ1" section) and is no
 > longer client-side-only; the repo gained a real test suite
-> (`tests/`, `npm test`, 379 passing at the time of writing — run `npm test`
+> (`tests/`, `npm test`, 393 passing at the time of writing — run `npm test`
 > for the live count) where
 > this review found none; and cas-ccps's Flow 2/3/4/5 custom-step code now
 > exists (`cas-ccps/studio-steps/`), though it is not yet pushed to a live
@@ -38,7 +38,7 @@ The single biggest cross-cutting risk in the entire repo, **as this review
 found it: there was no automated test coverage anywhere.** The only CI was a
 custom static linter (`tools/gas-lint/`) that catches parse-time hazards, not
 behavior regressions. **⚠ Closed since this review** — `tests/` now exists and
-runs under `npm test` (379 passing at the time of writing) with real
+runs under `npm test` (393 passing at the time of writing) with real
 Node-`vm`-sandboxed coverage of the actual `.gs`/`.js` source; see §4's note.
 The paragraph is kept as written because the rest of this section's reasoning
 rests on the state it describes. Every fix described in the extensive, unusually candid
@@ -221,7 +221,9 @@ described in the code — arguably the most anticipatory, "before you know
 you need it" feature cas-ccps has (personalized practice generated for a
 student overnight, unasked) — is not actually operating end-to-end today.
 `27_LessonFrameGenerator`, a script the Module 2 table names as required,
-also hasn't been uploaded yet.
+also hadn't been uploaded yet. **⚠ Stale — closed since this review.** It's
+now built; see `cas-ccps/HISTORY.md`'s "27_LessonFrameGenerator — the one
+Full script closed."
 
 ### UI/UX
 
@@ -337,7 +339,7 @@ dependency for its core loop, all client-side).
 > closed.** `tests/` now exists, wired into `npm test`
 > (`tests/leaderhub/`, `tests/cas-ccps/`, `tests/kos-personal/`,
 > `tests/tools/`), running real Node-`vm`-sandboxed coverage against the
-> actual `.gs`/`.js` source via `tests/harness/gas-sandbox.js` — 379
+> actual `.gs`/`.js` source via `tests/harness/gas-sandbox.js` — 393
 > passing tests at the time of writing (run `npm test` for the live count). The specific bug classes
 > named below (raw-JS-outside-`<script>`, date-type coercion) now have
 > regression coverage; a `google.script.run` call with no matching server

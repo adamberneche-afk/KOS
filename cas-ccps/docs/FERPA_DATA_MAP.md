@@ -126,6 +126,27 @@ Lesson plans and competency-coverage logs. Included here only to confirm they
 were checked and contain no student-identifiable fields — teacher email is
 the only person-identifying column in either tab.
 
+### Lesson Frame Document (S27)
+*Teacher-authored, class-level — no student PII, but a new Drive artifact*
+
+The `LessonContext`/`AlignmentLog` entry above only vouches for the two
+spreadsheet tabs — Script 27 (`27_LessonFrameGenerator.js`) creates a
+separate artifact from the same data: a Google Doc compiled synchronously
+during `onLessonContextSubmit_()`, containing the lesson's learning
+objective, activity description, prior-lesson connection (when provided),
+and competency-alignment text (pulled from `CompetencyRubrics`). Same
+person-identifying surface as its source rows — teacher email only, in the
+title and `ReportRegistry` row, no student data anywhere in the doc's
+content.
+
+| | |
+|---|---|
+| **Fields** | The Doc's body text (objective/activity/prior-connection/competency-alignment prose, plus a fixed warm-up placeholder — never real student content); `ReportRegistry` gains a row (`docId`, `docUrl`, `teacherEmail`, `generatedAt`, `reportType: "LESSON_FRAME"`) via the same `registerReport_()` used by Script 26's alignment reports |
+| **Written by** | Script 27, called from Script 22 immediately after successful alignment logging |
+| **Read by** | The teacher, via the Teacher Dashboard's `window.open()` hook (`07_TeacherDashboard.js`) once `frameDocUrl` is non-null |
+| **Visible to** | The doc lives in `cfg.teacherFolderId` (or Drive root if unset) — same Drive-sharing surface as every other generated report doc in this repo (25/26/29/36); no broader sharing is set by Script 27 itself |
+| **Retention** | Indefinite — not yet defined (same as every other Drive-doc artifact in this map) |
+
 ### WarmUpQueue
 *Per-lesson, per-student — the primary Studio Flow exposure surface*
 
