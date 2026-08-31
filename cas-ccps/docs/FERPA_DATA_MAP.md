@@ -16,7 +16,7 @@ entirely different, abandoned pre-v8 architecture never carried into the
 live system, and has been archived; see `README.md`'s note on this.)
 
 **Retention policy — partially defined: `SCRDecisionLog`, `Ledger`,
-`CompetencyEvidence`, and `ParentReportLog`.** Every other tab in this document still persists
+`CompetencyEvidence`, `ParentReportLog`, and `WarmUpQueue`.** Every other tab in this document still persists
 indefinitely, with no deletion/archival mechanism at all. `SCRDecisionLog` — the one tab with an
 actual VDOE/Perkins legal retention obligation — was the first exception,
 built as Say/Do Ledger cas-ccps Extension 3: a configurable
@@ -157,7 +157,7 @@ content.
 | **Written by** | Script 24 (build), Script 25 (scoring), Studio Flow 3 (doc creation, archetype write-back), Studio Flow 5 (bridge output) |
 | **Read by** | Script 23 (nightly), Script 25 |
 | **Visible to** | Studio Flow 3/4/5 — the native Sheets/Ask-Gemini connector steps still read/write this tab directly with no gate in this repo's own code, but the pre/post-processing steps around them are now this repo's own code (`cas-ccps/studio-steps/`: `SelectWarmUpArchetypeStep.gs`/`CreateWarmUpDocStep.gs` for Flow 3, `ExtractWarmUpPromptTextStep.gs`/`FinalizeWarmUpScoreStep.gs` for Flow 4, `ExtractBridgeInputsStep.gs` for Flow 5 — not yet pushed to a live Studio deployment); the student, indirectly, via the generated warm-up doc |
-| **Retention** | Indefinite — not yet defined |
+| **Retention** | `WARMUP_QUEUE_RETENTION_YEARS` (Script Property, default 5 — see the retention note above) via `_archiveExpiredWarmUpQueueRows_()` (`34_QueueWatchdog.js`, which already owns this tab's health monitoring), run automatically on every daily health check and every on-demand admin health check, anchored on `lesson_date`. A row past the window gets `archive_status` set to `"ARCHIVED"`; actual deletion is never automatic. Reversible via the `♻️ Reactivate WarmUpQueue Rows` menu item (`reactivateWarmUpQueueArchival()`), same operational-data treatment as CompetencyEvidence above — this was the one major operational tab with no retention mechanism at all until a third-party review found the gap. |
 
 > This is the tab the Bonus-2 fix below actually touches — see "Flow 3 name exposure" section.
 

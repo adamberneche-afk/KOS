@@ -743,14 +743,23 @@ function _runPhaseB_(ui, props, ss) {
   _gateAlert_(ui, "Step 5 of 5 — Installing Nightly Triggers", "");
 
   _installTriggerIfMissing_("updateAllStudentProfiles", "atHour", 3,  { nearMinute: 0  });
+  // FIXED: syncArtifactCompetencies (Script 33, Stage 1B) had its own
+  // standalone manual installer (installArtifactSyncTrigger_()) but was
+  // never part of the wizard's automated install/verify list — a
+  // third-party review found it. It stamps M2_STAGE1B_LAST_RUN on every
+  // run, now checked by runWarmUpEvaluation() below at 3:15am; installing
+  // it here is what makes that check meaningful on a fresh setup instead
+  // of alerting every night on a trigger the wizard never installed.
+  _installTriggerIfMissing_("syncArtifactCompetencies", "atHour", 3,  { nearMinute: 5  });
   _installTriggerIfMissing_("runWarmUpEvaluation",      "atHour", 3,  { nearMinute: 15 });
   _installTriggerIfMissing_("buildWarmUpQueues",         "atHour", 3,  { nearMinute: 30 });
   _installTriggerIfMissing_("registerDeliveredWarmUps", "everyMinutes", 5);
 
-  // Verify all four triggers installed
+  // Verify all five triggers installed
   const installedFns = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
   const requiredTriggers = [
     "updateAllStudentProfiles",
+    "syncArtifactCompetencies",
     "runWarmUpEvaluation",
     "buildWarmUpQueues",
     "registerDeliveredWarmUps"
@@ -766,6 +775,7 @@ function _runPhaseB_(ui, props, ss) {
       "  Script Editor → Triggers → + Add Trigger\n" +
       "  Event source: Time-driven\n\n" +
       "  updateAllStudentProfiles  → Every day at 3am\n" +
+      "  syncArtifactCompetencies  → Every day at 3:05am\n" +
       "  runWarmUpEvaluation       → Every day at 3:15am\n" +
       "  buildWarmUpQueues          → Every day at 3:30am\n" +
       "  registerDeliveredWarmUps  → Every 5 minutes\n\n" +
@@ -1105,7 +1115,7 @@ function _createM2WarmUpTabs_(ss) {
   _createTabIfMissing28_(ss, "WarmUpRegistry", [
     "warmup_id","queue_id","lesson_id","lesson_date","student_email",
     "student_name","teacher_email","doc_id","doc_url","generated_at",
-    "total_score","extra_credit","term"
+    "total_score","extra_credit","term","extra_credit_checked"
   ], [4]);
   _createTabIfMissing28_(ss, "ClassSchedule", [
     "teacher_email","period","day_type","course_name","active"
@@ -1294,6 +1304,7 @@ function _writePhaseBSummaryDoc_(teacherName, teacherEmail, scheduleResult, prop
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
   [
     "3:00am — updateAllStudentProfiles",
+    "3:05am — syncArtifactCompetencies",
     "3:15am — runWarmUpEvaluation",
     "3:30am — buildWarmUpQueues",
     "Every 5 min — registerDeliveredWarmUps"

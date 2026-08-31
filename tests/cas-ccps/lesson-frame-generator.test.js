@@ -117,7 +117,7 @@ function submitLesson(exported, overrides) {
 }
 
 function lcRow(lc) {
-  return lc.getRange(2, 1, 1, 17).getValues()[0];
+  return lc.getRange(2, 1, 1, 18).getValues()[0];
 }
 
 // ── End-to-end through the real hook ─────────────────────────────────────
@@ -139,9 +139,9 @@ test('the LessonContext row advances to FRAME_GENERATED with the doc columns fil
 
   const row = lcRow(fx.lc);
   assert.equal(row[10], 'FRAME_GENERATED'); // status
-  assert.ok(row[14]); // frame_doc_id
-  assert.equal(row[15], result.frameDocUrl); // frame_doc_url
-  assert.ok(row[16] instanceof sandbox.Date); // frame_generated_at
+  assert.ok(row[15]); // frame_doc_id
+  assert.equal(row[16], result.frameDocUrl); // frame_doc_url
+  assert.ok(row[17] instanceof sandbox.Date); // frame_generated_at
 });
 
 test('the doc lands in the teacher folder, not Drive root', () => {
@@ -170,7 +170,7 @@ test('the doc contains the objective, activity, and competency alignment', () =>
   const fx = setUpFixture(sandbox);
   const result = submitLesson(exported);
   const row = lcRow(fx.lc);
-  const text = docTextFor(sandbox, row[14]);
+  const text = docTextFor(sandbox, row[15]);
 
   assert.match(text, /Students will demonstrate a persuasive pitch\./);
   assert.match(text, /Students role-play a sales pitch\./);
@@ -185,7 +185,7 @@ test('a blank prior-lesson connection omits that section entirely', () => {
   const fx = setUpFixture(sandbox);
   submitLesson(exported, { priorLessonConnection: '' });
   const row = lcRow(fx.lc);
-  const text = docTextFor(sandbox, row[14]);
+  const text = docTextFor(sandbox, row[15]);
   assert.ok(!/Connection to Prior Lesson/.test(text),
     'the section header itself must not appear when the field is blank');
 });
@@ -195,7 +195,7 @@ test('a non-blank prior-lesson connection is included', () => {
   const fx = setUpFixture(sandbox);
   submitLesson(exported);
   const row = lcRow(fx.lc);
-  const text = docTextFor(sandbox, row[14]);
+  const text = docTextFor(sandbox, row[15]);
   assert.match(text, /Connection to Prior Lesson/);
   assert.match(text, /Builds on yesterday's market research lesson\./);
 });
@@ -219,7 +219,7 @@ test('a competency ID missing from the rubric tab is noted, not silently dropped
   const result = submitLesson(exported, { competencyIds: '8175-1,8175-3' });
   assert.equal(result.success, true);
   const row = lcRow(fx.lc);
-  const text = docTextFor(sandbox, row[14]);
+  const text = docTextFor(sandbox, row[15]);
   assert.match(text, /8175-3/);
   assert.match(text, /not found in the competency registry/);
 });
@@ -229,7 +229,7 @@ test('the warm-up section always appears with a labeled placeholder, never a fab
   const fx = setUpFixture(sandbox);
   submitLesson(exported);
   const row = lcRow(fx.lc);
-  const text = docTextFor(sandbox, row[14]);
+  const text = docTextFor(sandbox, row[15]);
   assert.match(text, /Suggested Warm-Up/);
   assert.match(text, /Generated separately by the nightly warm-up flow/);
 });
@@ -300,6 +300,40 @@ test('a row not yet ALIGNMENT_LOGGED is skipped, not treated as an error', () =>
   const result = exported.generateLessonFrame_('LES-PENDING');
   assert.equal(result.success, true);
   assert.equal(result.skipped, true);
+});
+
+test('frame generation never clobbers 24_WarmUpBridge.js\'s pre-existing warm_up_generated column', () => {
+  // Regression test for a real column-index collision this session
+  // introduced and then found: LC_FRAME_DOC_ID was originally also 14,
+  // the same index 24_WarmUpBridge.js/25_WarmUpWriter.js hardcode for
+  // warm_up_generated (LC24_WARM_UP_GENERATED / LC25_WARM_UP_GENERATED).
+  // On a deployment where Script 24's migration had already added that
+  // column, _ensureFrameColumns_ would overwrite its header with
+  // "frame_doc_id" and generateLessonFrame_ would overwrite its data with
+  // the new doc ID — silently destroying warm-up delivery tracking. This
+  // fails under the pre-fix column numbering and passes under the fixed one.
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox);
+
+  // Simulate a deployment where Script 24's createLessonContextWarmUpColumn_()
+  // already ran: header at column 15 (1-based), and this specific row
+  // already carries "DELIVERED" from a completed warm-up flow.
+  fx.lc.getRange(1, 15).setValue('warm_up_generated');
+  fx.lc.appendRow([
+    'LES-COLLISION', 'teacher@ccpsnet.net', new sandbox.Date(), todayIso(),
+    '2', 'Activity', 'Objective', '', '', '8175-1',
+    'ALIGNMENT_LOGGED', new sandbox.Date(), '', '2025-26 S2',
+    'DELIVERED',
+  ]);
+
+  const result = exported.generateLessonFrame_('LES-COLLISION');
+  assert.equal(result.success, true);
+
+  const row = lcRow(fx.lc);
+  assert.equal(row[14], 'DELIVERED', 'warm_up_generated data must survive frame generation untouched');
+  assert.equal(fx.lc.getRange(1, 15).getValue(), 'warm_up_generated', 'warm_up_generated header must survive untouched');
+  assert.ok(row[15], 'frame_doc_id must still be written'); // frame_doc_id
+  assert.equal(row[16], result.docUrl); // frame_doc_url
 });
 
 test('a submission still succeeds and reports frameDocUrl null when frame generation throws', () => {
