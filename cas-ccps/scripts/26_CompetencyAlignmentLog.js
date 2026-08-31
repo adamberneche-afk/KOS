@@ -461,8 +461,19 @@ function generateAlignmentReport() {
 // registerReport_
 // Appends one row to the ReportRegistry tab.
 // Creates the tab if it doesn't exist (graceful degradation).
+//
+// reportType is optional, defaulting to "ALIGNMENT_TERM" so this function's
+// one pre-existing call site (generateAlignmentReport() above, which passes
+// 7 args) is unaffected. Widened rather than duplicated when
+// 27_LessonFrameGenerator.js needed the identical registration mechanic
+// under a different type ("LESSON_FRAME") — this file already sits in both
+// cas-ccps:central-ledger and cas-ccps:teacher-dashboard (see the header
+// above), and Script 27 is placed in the same two projects for the same
+// reason, so calling this shared function directly is possible without
+// cross-project risk. See 36_WeeklyParentReport.js's own header for why
+// this codebase prefers one shared implementation over two that drift.
 // ---------------------------------------------------------------------------
-function registerReport_(ss, cfg, generatedAt, term, teacherEmail, docId, docUrl) {
+function registerReport_(ss, cfg, generatedAt, term, teacherEmail, docId, docUrl, reportType) {
   try {
     let rrSheet = ss.getSheetByName(cfg.tabs.reportRegistry);
 
@@ -486,7 +497,7 @@ function registerReport_(ss, cfg, generatedAt, term, teacherEmail, docId, docUrl
     reportRow[RR_TEACHER_EMAIL] = teacherEmail;
     reportRow[RR_DOC_ID]        = docId;
     reportRow[RR_DOC_URL]       = docUrl;
-    reportRow[RR_REPORT_TYPE]   = "ALIGNMENT_TERM";
+    reportRow[RR_REPORT_TYPE]   = reportType || "ALIGNMENT_TERM";
 
     rrSheet.appendRow(reportRow);
     Logger.log("[S26] Registered in ReportRegistry: " + reportId);
