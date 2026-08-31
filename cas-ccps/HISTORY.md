@@ -805,3 +805,122 @@ non-vacuous on four points: the `frameDocUrl` hook (revert to hardcoded
 `null`), the blank-prior-connection omission, the missing-competency note,
 and the `registerReport_()` widening — each mutation caught by exactly the
 test meant to cover it.
+
+## Script 27 follow-up — a real column collision, found and fixed
+
+A third-party product review of this codebase (see below for the full
+verification of its other 16 claims) surfaced one true fact along the way
+that led to a genuine, self-inflicted bug: while checking whether a
+`warm_up_generated` column really exists, `LC24_WARM_UP_GENERATED = 14` /
+`LC25_WARM_UP_GENERATED = 14` (`24_WarmUpBridge.js`/`25_WarmUpWriter.js`)
+turned up — a real, pre-existing `LessonContext` column this earlier
+Script 27 work never checked for. `LC_FRAME_DOC_ID` had also been assigned
+`14`. Same index, two unrelated features, one shared sheet, both scripts
+in the same `cas-ccps:central-ledger` GAS project.
+
+The earlier documentation pass this session had it backwards: it corrected
+`CAS_M2_Schema.html` to say `warm_up_generated` "does not exist in the
+built schema and never has." It does — as a plain String status column
+(`""`/`"QUEUED"`/`"DELIVERED"`), not the Boolean an even earlier draft of
+that doc briefly described. Both the "it's fictional" claim and the column
+collision are corrected together here.
+
+**Real-world consequence, either order:** on a deployment where
+`createLessonContextWarmUpColumn_()` had already added `warm_up_generated`
+at column 15 (1-based), `_ensureFrameColumns_()` would find "warm_up_generated"
+where it expected "frame_doc_id", overwrite the header, and
+`generateLessonFrame_()` would then overwrite that row's warm-up delivery
+status with a Drive file ID — silently breaking warm-up tracking. In the
+other order (Script 27 exercised first on a fresh install), the pre-existing
+`createLessonContextWarmUpColumn_()` used to append at
+`sheet.getLastColumn() + 1`, landing past Script 27's columns — not at the
+fixed index `LC24_WARM_UP_GENERATED`/`LC25_WARM_UP_GENERATED` both scripts
+hardcode for every read and write — silently breaking it in the other
+direction instead.
+
+**Fix:** `LC_WARM_UP_GENERATED = 14` is now an explicit, reserved constant
+in `22_LessonContextHandler.js` — documented, never written by that file.
+The Lesson Frame columns moved to 15-17. `createModule2Tabs_()`'s header
+array now includes `warm_up_generated` directly, so a fresh install never
+needs the manual migration at all. `createLessonContextWarmUpColumn_()`
+itself was changed from a dynamic `getLastColumn() + 1` append to writing
+at the fixed `LC24_WARM_UP_GENERATED + 1` position — the same idempotent-
+header-at-a-fixed-position pattern every self-healing column in this
+codebase already uses — so order between the two scripts' migrations no
+longer matters.
+
+New regression test (`lesson-frame-generator.test.js`): builds a fixture
+row with `warm_up_generated` already set to `"DELIVERED"` at its real
+column, runs `generateLessonFrame_()`, and asserts that value survives
+untouched. Verified non-vacuous — reverted the constant change back to 14
+and confirmed this test (and 6 others depending on the corrected column
+positions) failed, then restored it.
+
+## Third-party review verification — 10 stale claims, 6 real fixes
+
+A detailed third-party review claimed 16 defects across P0/P1/P2 severity.
+Every claim was forensically re-verified against the live tree before
+acting on any of it — this session has already been burned once by a
+confidently-stated but wrong claim (see the Script 27 identity correction
+above `27_LessonFrameGenerator`'s own section). Verdict: **10 of 16 claims
+were false or already fixed**, consistent with the review having run
+against a pre-renumbering snapshot (this module's own scripts 29/30/31 are
+now 31/32/33): two claimed parse errors don't reproduce under
+`node --check`; a claimed duplicate-`const` bug was already fixed and is
+documented as such in this file; the `callFlow4_()` "always returns null"
+finding is real as a code fact but describes a deliberately-retained dead
+stub — the actual live scoring path is `studio-steps/FinalizeWarmUpScoreStep.gs`,
+built and tested independently; "trigger handlers with trailing underscores
+won't fire" mischaracterizes how Apps Script trigger installation actually
+works (the real, narrower issue — manual Script-Editor entry points hidden
+from the Run dropdown — was already understood and documented elsewhere in
+this codebase); a pacing-guide filename mismatch, an `M2_ENABLED`
+fail-open/fail-closed inconsistency, a triplicated `formatDateYMD_`, and a
+"no `LockService` anywhere" claim were all already fixed, several
+documented as fixed in this same file.
+
+**6 claims were genuinely real, current bugs, fixed here:**
+
+1. **Extra credit was structurally unreachable.** `runWarmUpEvaluation()`'s
+   row selector only ever examines a `WarmUpRegistry` row once — the one
+   night `lesson_date === yesterday` — and by the time the async Studio Flow
+   finishes writing feedback into the doc (later that same night or the
+   next), the row has aged out of the selector forever. `extra_credit`
+   could never become 1. Added a second sweep,
+   `_recheckExtraCredit_()`, over already-finalized rows within a bounded
+   window, with a new self-healing `extra_credit_checked` termination
+   column.
+2. **4-hex-character IDs could collide.** `generateQueueId_()` and
+   `generateLessonId_()` both used `Math.random() * 0xffff` (65,536
+   values/day) with no uniqueness check, and `25_WarmUpWriter.js` uses the
+   generated ID as a lookup-map key — a collision would silently
+   misattribute one student's scores to another. Switched both to the
+   `Utilities.getUuid()`-derived pattern `15c_Flow2DirectEvaluationService.js`'s
+   `_generateEvidenceId_()` already established.
+3. **`esc()` didn't escape quotes; `docUrl` wasn't escaped at all.**
+   `00_SharedConfig.js`'s shared `esc()` only handled `&`/`<`/`>`, used in
+   HTML-attribute and inline-JS contexts across `07_TeacherDashboard.js`
+   and `13_StudentDashboard.js`, with `docUrl` interpolated into `href=`
+   with no escaping or scheme check anywhere. Extended `esc()` and added a
+   shared `safeDocUrl()` allowlist validator.
+4. **Script 33's headline feature was dead; its trigger wasn't installed.**
+   `getStudentCompetenciesFromArtifacts_()`'s own header claimed it was
+   "called by Script 23's `getStudentProfileSnapshot_()`" — it wasn't; the
+   real mechanism was an undocumented cron-ordering accident, with no
+   health check if it ever broke, and `syncArtifactCompetencies` was never
+   in Script 28's installed-trigger list. Fixed the comment, added a
+   cron-health stamp/check, added the missing trigger install.
+5. **`WarmUpQueue` had no retention.** The one major operational tab with
+   zero archival, unlike `Ledger`/`SCRDecisionLog`/`CompetencyEvidence`/
+   `ParentReportLog`. Extended `34_QueueWatchdog.js` (already the
+   acknowledged owner — its own header calls this out) with the same
+   `*_RETENTION_YEARS`/self-healing-column/never-delete pattern as the
+   other four.
+6. **`CAS_M2_Schema.html` column counts had drifted.** Badges said 13/5/8;
+   real counts are 18/7/9 (the review said 14/5/8 — even that undercounted
+   `LessonContext`, missing the collision above). Corrected, and added the
+   missing `term` and `warm_up_generated` rows.
+
+See each fix's own commit/code comments for full detail. `npm test`
+422 passing (up 29), gas-lint 0 errors / 4 warnings, doc-currency 0
+errors.
