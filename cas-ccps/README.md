@@ -151,7 +151,7 @@ teachers have their own copies.
 |---|---|---|
 | **M1** — base intake/grading | See above | ~20 files in hand. Both confirmed bugs (Turn-In Form field mismatch, `16`'s `onOpen()` `ReferenceError`) fixed — see HISTORY.md's resolution 2. `CompetencyRegistry.csv` is now in hand (HISTORY.md's resolution 7). |
 | **M2 Lightweight** — Lesson Intelligence | Teacher logs lesson context → `LessonContext` / `AlignmentLog` / `CompetencyRegistry` / `ReportRegistry`; generates term-end alignment reports | Production ready. `22`, `22b`, `26` now in hand (HISTORY.md's resolution 9) — all Lightweight scripts present. |
-| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `23`, `24`, `25`, `28` in hand (HISTORY.md's resolution 9); `31`/`32`/`33` (pacing/rubric/artifact utilities) in hand (HISTORY.md's resolution 10). **`27_LessonFrameGenerator` is the one Full script still not uploaded.** |
+| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `23`, `24`, `25`, `28` in hand (HISTORY.md's resolution 9); `31`/`32`/`33` (pacing/rubric/artifact utilities) in hand (HISTORY.md's resolution 10). `27_LessonFrameGenerator` — the last remaining Full script — is now in hand too, see HISTORY.md's "27_LessonFrameGenerator — the one Full script closed". |
 | **M3** — Student Profile | Extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` — unaffected by this reconciliation pass |
 | **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct twice now, see HISTORY.md's resolutions 3 and 10 |
 | **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Flow 2's writer code now exists (`cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`) and is tested, but M5 can't go fully live until that project is actually pushed to a live Studio deployment — see Known Gap #1 below. |
@@ -192,9 +192,9 @@ GoogleID.
    rows, 2× secondary-to-primary ratio) remain provisional, unvalidated
    defaults.
 7. ~~Scripts 22, 22b, 23, 24, 26, 28, 31, 32, 33 not uploaded~~ — **closed**,
-   see HISTORY.md's resolutions 9 and 10. **`27_LessonFrameGenerator` remains
-   open** — it was not in the Round 3 batch either; do not assume it
-   shipped because its Module 2 Full siblings did.
+   see HISTORY.md's resolutions 9 and 10. ~~`27_LessonFrameGenerator`
+   remains open~~ — **closed**, see HISTORY.md's
+   "27_LessonFrameGenerator — the one Full script closed".
 8. ~~Two archived-file naming conventions coexist~~ — **closed**, see
    HISTORY.md's resolution 13.
 9. ~~`31_PacingGuideManager.js` doesn't yet read the v2 pacing guide's 4

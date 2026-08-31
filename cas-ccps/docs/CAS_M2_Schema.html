@@ -208,7 +208,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
       <div class="tab-title">LessonContext</div>
       <div class="tab-subtitle">Central Ledger · one row per lesson</div>
     </div>
-    <div class="tab-desc">Written by Script 22 on every Lesson Context Form submission. One row = one lesson = one day (or one multi-day unit, at teacher discretion). The row is never deleted — updated in place as status progresses from RECEIVED → FRAME_GENERATED → PUBLISHED.</div>
+    <div class="tab-desc">Written by Script 22 on every Lesson Context Form submission. One row = one lesson = one day (or one multi-day unit, at teacher discretion). The row is never deleted — updated in place as status progresses from RECEIVED → ALIGNMENT_LOGGED → FRAME_GENERATED (or SUPERSEDED/ERROR at any point). PUBLISHED, mentioned in earlier drafts of this lifecycle, has no described or built mechanism anywhere in this repo — left undocumented rather than invented.</div>
 
     <table class="schema" style="width:100%">
       <div class="schema-header cols-4"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
@@ -250,7 +250,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
         <span class="col-field">activity_description</span>
         <span class="col-type">Text</span>
         <span class="col-writer">S22</span>
-        <span class="col-desc">What students are doing today. Plain prose. Free-form. Not processed by any script in the lightweight build — consumed as-is by S27 (Lesson Frame Generator) when that script is built.</span>
+        <span class="col-desc">What students are doing today. Plain prose. Free-form. Not processed by any script until frame generation — consumed as-is by S27 (Lesson Frame Generator) into the "Today's Activity" section of the Lesson Frame Document.</span>
       </div>
       <div class="schema-row cols-4">
         <span class="col-field">learning_objective</span>
@@ -276,7 +276,29 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
         <span class="col-writer">S22</span>
         <span class="col-desc">Comma-separated competency IDs from CompetencyRegistry. E.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">"ELA-W-1,ELA-W-3"</code>. S22 validates each ID exists in CompetencyRegistry before writing — unknown IDs trigger a validation error returned to the form.</span>
       </div>
-      <div class="schema-row cols-4"><span class="col-name">warm_up_generated</span><span class="col-type">Boolean</span><span class="col-writer">S24</span><span class="col-desc">Flag set by Script 24 when a WarmUpQueue row has been built for this lesson context. Prevents duplicate queue rows on re-runs. Empty until the 3:30am queue build runs.</span></div>
+      <div class="callout callout-amber" style="margin:8px 0">
+        <span class="callout-icon">◈</span>
+        <div class="callout-body"><strong>Correction:</strong> earlier drafts of this table documented a <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">warm_up_generated</code> Boolean column (writer: S24) here. It does not exist in the built schema and never has — <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">LessonContext</code> and <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">WarmUpQueue</code> are unrelated subsystems (S24's <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">findLesson_()</code> reads this tab only to seed nightly warm-up generation; it never writes back to it). Removed rather than left to mislead. See <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">27_LessonFrameGenerator</code>'s "Suggested Warm-Up" placeholder section for how this gap is actually handled at frame-generation time.</div>
+      </div>
+      <div class="schema-row cols-4 group-head"><span class="col-field">── LESSON FRAME (S27) ──</span><span></span><span></span><span></span></div>
+      <div class="schema-row cols-4">
+        <span class="col-field">frame_doc_id</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S27</span>
+        <span class="col-desc">Google Drive file ID of the generated Lesson Frame Document. Self-healing column — added to the header row on first use by any deployment predating this feature. Null until FRAME_GENERATED.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">frame_doc_url</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S27</span>
+        <span class="col-desc">Shareable URL for the Lesson Frame Document. This is the value S22 returns as <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">frameDocUrl</code> to the teacher dashboard, which opens it via the client's existing (previously dormant) <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">window.open()</code> hook. Null until FRAME_GENERATED.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">frame_generated_at</span>
+        <span class="col-type">DateTime</span>
+        <span class="col-writer">S27</span>
+        <span class="col-desc">Timestamp when Script 27 successfully created the Lesson Frame Document. Null until processed.</span>
+      </div>
 
       <div class="schema-row cols-4 group-head"><span class="col-field">── STATUS + PIPELINE ──</span><span></span><span></span><span></span></div>
       <div class="schema-row cols-4">
@@ -304,14 +326,15 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
       <div class="enum-block">
         <div><span class="ev">RECEIVED</span><span class="ec">→ S22 has written the row. S26 has not yet run.</span></div>
         <div><span class="ev">ALIGNMENT_LOGGED</span><span class="ec">→ S26 has written AlignmentLog rows for this lesson.</span></div>
-        <div><span class="ev">FRAME_GENERATED</span><span class="ec">→ S27 has created the Lesson Frame Document (future build).</span></div>
+        <div><span class="ev">FRAME_GENERATED</span><span class="ec">→ S27 has created the Lesson Frame Document.</span></div>
+        <div><span class="ev">SUPERSEDED</span><span class="ec">→ Teacher resubmitted the same lesson (same teacher_email + lesson_date + period_or_class); a new row exists with a new lesson_id. S26 skips SUPERSEDED rows.</span></div>
         <div><span class="ev">ERROR</span><span class="ec">→ A script encountered a failure. See error_notes. Retryable.</span></div>
       </div>
     </div>
 
     <div class="callout callout-amber">
       <span class="callout-icon">◈</span>
-      <div class="callout-body"><strong>Why ALIGNMENT_LOGGED not COMPLETE?</strong> The lightweight build has two distinct downstream steps: alignment logging (S26, built now) and frame generation (S27, built later). Using separate status values means S26 can be deployed and running without waiting for S27, and the status column tells you exactly where each row is in the pipeline.</div>
+      <div class="callout-body"><strong>Why ALIGNMENT_LOGGED not COMPLETE?</strong> The lightweight build has two distinct downstream steps: alignment logging (S26) and frame generation (S27) — both built, called back-to-back synchronously inside <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">onLessonContextSubmit_()</code>. Using separate status values still means either step's failure is independently visible: the status column tells you exactly where each row got to in the pipeline, and a row can rest at ALIGNMENT_LOGGED if frame generation itself failed non-fatally (see error_notes).</div>
     </div>
   </div>
 </div>
@@ -495,7 +518,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
 
     <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px;border-top:1px solid var(--border)">
       <span style="font-family:var(--mono);font-size:11px;color:var(--amber);padding-top:2px">DEDUP</span>
-      <span style="color:var(--text-dim);line-height:1.7">If a teacher resubmits the same lesson (same teacher_email + lesson_date + period_or_class), S22 creates a new row with a new lesson_id rather than updating the original. The old row's status becomes SUPERSEDED (add this to the enum). S26 skips SUPERSEDED rows. This preserves history and avoids update-in-place complexity in the lightweight build.</span>
+      <span style="color:var(--text-dim);line-height:1.7">If a teacher resubmits the same lesson (same teacher_email + lesson_date + period_or_class), S22 creates a new row with a new lesson_id rather than updating the original. The old row's status becomes SUPERSEDED — now in the enum above. S26 skips SUPERSEDED rows. This preserves history and avoids update-in-place complexity in the lightweight build.</span>
     </div>
 
     <div style="background:var(--ink);padding:24px 28px;display:grid;grid-template-columns:140px 1fr;gap:24px;align-items:start;font-size:13.5px;border-top:1px solid var(--border)">

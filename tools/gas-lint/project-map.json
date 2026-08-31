@@ -40,6 +40,7 @@
       "cas-ccps/scripts/24_WarmUpBridge.js",
       "cas-ccps/scripts/25_WarmUpWriter.js",
       "cas-ccps/scripts/26_CompetencyAlignmentLog.js",
+    "cas-ccps/scripts/27_LessonFrameGenerator.js",
       "cas-ccps/scripts/29_StudentContextAggregator.js",
       "cas-ccps/scripts/30_SCRSuggestionEngine.js",
       "cas-ccps/scripts/30b_SCRRetryRemediation.js",
@@ -107,8 +108,10 @@
       "cas-ccps/scripts/22_LessonContextHandler.js",
       "cas-ccps/scripts/23_StudentProfileManager.js",
       "cas-ccps/scripts/26_CompetencyAlignmentLog.js",
+      "cas-ccps/scripts/27_LessonFrameGenerator.js",
       "cas-ccps/scripts/29_StudentContextAggregator.js",
       "cas-ccps/scripts/31_PacingGuideManager.js",
+      "cas-ccps/scripts/32_CompetencyRubricImporter.js",
       "cas-ccps/scripts/36_WeeklyParentReport.js"
     ]
   },

@@ -467,6 +467,13 @@ class FakeParagraph {
   // from the editAsText() sub-object below, which has its own setBold().
   setHeading() { return this; }
   setBold() { return this; }
+  // Added when 26_CompetencyAlignmentLog.js's generateAlignmentReport()
+  // got its first test coverage (tests/cas-ccps/lesson-frame-generator.test.js
+  // — it reuses that file's registerReport_()) — that function calls all
+  // three directly on a paragraph, same no-op convention as setHeading/setBold.
+  appendHorizontalRule() { return this; }
+  setIndentStart() { return this; }
+  setItalic() { return this; }
   editAsText() {
     const self = {
       setFontSize() { return self; },
@@ -545,7 +552,18 @@ makeDocumentAppMock._counter = 0;
 function formatDateMock(date, timeZone, format) {
   const months = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
+  const monthsAbbr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const pad2 = (n) => String(n).padStart(2, '0');
+  // First hit from tests/cas-ccps/lesson-frame-generator.test.js, the first
+  // test to ever call 26_CompetencyAlignmentLog.js's generateAlignmentReport()
+  // — that function has used this format since before any test exercised it.
+  if (format === 'MMM d, yyyy h:mm a') {
+    const h24 = date.getHours();
+    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+    const ampm = h24 < 12 ? 'AM' : 'PM';
+    return `${monthsAbbr[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} ${h12}:${pad2(date.getMinutes())} ${ampm}`;
+  }
   if (format === 'yyyy-MM-dd') {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
   }
