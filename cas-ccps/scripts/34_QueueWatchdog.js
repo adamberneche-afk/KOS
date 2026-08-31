@@ -180,8 +180,15 @@ const WD_STAGING_PIPELINE_COLUMNS = {
 // WarmUpQueue — confirmed from 25_WarmUpWriter.js's WQ25_* constants and
 // this project's own studio-steps code, both already cross-checked
 // against each other earlier in this project's history.
+// LESSON_DATE and ARCHIVE_STATUS added for _archiveExpiredWarmUpQueueRows_
+// below — WarmUpQueue was the one major operational tab with no retention
+// mechanism at all, a third-party review found. ARCHIVE_STATUS (21) is a
+// genuinely new column past WQ25_BRIDGE_OUTPUT (20), the last one
+// 25_WarmUpWriter.js itself writes — self-healing, see
+// _ensureWarmUpQueueArchiveColumn_ below.
 const WD_WARMUP_QUEUE_COLUMNS = {
-  QUEUE_ID: 0, STATUS: 8, ARCHETYPE: 19, BRIDGE_OUTPUT: 20,
+  QUEUE_ID: 0, LESSON_DATE: 5, STATUS: 8, ARCHETYPE: 19, BRIDGE_OUTPUT: 20,
+  ARCHIVE_STATUS: 21,
 };
 
 // -----------------------------------------------------------------------
@@ -556,6 +563,148 @@ function runQueueWatchdogNow() {
     'Watchdog run complete' + (dryRun ? ' (DRY RUN — nothing was actually changed)' : '') +
     ' — see the Health tab.'
   );
+}
+
+// =============================================================================
+// WARMUP QUEUE RETENTION — a third-party review found WarmUpQueue was the
+// one major operational tab (alongside Ledger, SCRDecisionLog,
+// CompetencyEvidence, ParentReportLog) with zero retention/archival
+// mechanism at all. Same pattern as the other four: a configurable
+// *_RETENTION_YEARS Script Property (default 5, same "unconfirmed against
+// a primary source" caveat FERPA_DATA_MAP.md already carries for the
+// others), a self-healing archive_status column, never deletes — just
+// flips a status marker — and a read-only counter for
+// _ferpaHealthChecks_() in 10_AdminRecoveryPanel.js. Lives here rather than
+// in 25_WarmUpWriter.js because this file is already this tab's dedicated
+// health/monitoring owner (see this file's own header) and already keeps
+// its own WD_WARMUP_QUEUE_COLUMNS map — WarmUpQueue is operational
+// instructional data like CompetencyEvidence/Ledger, not a legal
+// disposition/disclosure record like SCRDecisionLog/ParentReportLog, so it
+// gets the same plain, reversible "ARCHIVED" marker and a reactivate path,
+// not a "pending disposition review" legal-hold marker.
+// =============================================================================
+
+function _warmUpQueueRetentionYears_() {
+  const raw = PropertiesService.getScriptProperties().getProperty('WARMUP_QUEUE_RETENTION_YEARS');
+  const n = Number(raw);
+  return (n && n > 0) ? n : 5;
+}
+
+// Idempotent header add for the archive_status column — same self-healing
+// pattern as _ensureCompetencyEvidenceArchiveColumn_/_ensureParentReportArchiveColumn_.
+function _ensureWarmUpQueueArchiveColumn_(sheet) {
+  const cell = sheet.getRange(1, WD_WARMUP_QUEUE_COLUMNS.ARCHIVE_STATUS + 1);
+  if (String(cell.getValue()).trim() !== 'archive_status') {
+    cell.setValue('archive_status');
+  }
+}
+
+// Anchors "how old is this row" on lesson_date, the same "age of the record
+// itself" anchor Ledger (TIMESTAMP), SCRDecisionLog (DECIDED_AT),
+// CompetencyEvidence (evaluated_at), and ParentReportLog (GENERATED_AT) all
+// use. Never deletes. Safe with WarmUpQueue missing (returns zeros).
+function _archiveExpiredWarmUpQueueRows_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue || 'WarmUpQueue');
+  if (!sheet || sheet.getLastRow() < 2) return { archived: 0, checked: 0 };
+  _ensureWarmUpQueueArchiveColumn_(sheet);
+
+  const C = WD_WARMUP_QUEUE_COLUMNS;
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _warmUpQueueRetentionYears_());
+
+  const data = sheet.getRange(1, 1, sheet.getLastRow(), C.ARCHIVE_STATUS + 1).getValues();
+  let archived = 0;
+  let checked = 0;
+  for (let i = 1; i < data.length; i++) {
+    checked++;
+    if (String(data[i][C.ARCHIVE_STATUS] || '').trim() !== '') continue; // already archived
+
+    const lessonDate = _normalizeLessonDateCell_(data[i][C.LESSON_DATE]);
+    if (!lessonDate) continue;
+    const lessonDateObj = new Date(lessonDate);
+    if (isNaN(lessonDateObj.getTime()) || lessonDateObj >= cutoff) continue;
+
+    sheet.getRange(i + 1, C.ARCHIVE_STATUS + 1).setValue('ARCHIVED');
+    archived++;
+  }
+  if (archived > 0) {
+    Logger.log('[Watchdog] Archived ' + archived + ' WarmUpQueue row(s) past the ' +
+      _warmUpQueueRetentionYears_() + '-year retention window.');
+  }
+  return { archived: archived, checked: checked };
+}
+
+// Read-only companion for _ferpaHealthChecks_(). Callers run
+// _archiveExpiredWarmUpQueueRows_() immediately before this, so a nonzero
+// result means archival itself failed — a real signal, not a tautology.
+// Same shape as the Ledger/SCRDecisionLog/CompetencyEvidence/ParentReportLog
+// counters.
+function _countWarmUpQueueRowsPastRetentionUnarchived_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue || 'WarmUpQueue');
+  if (!sheet || sheet.getLastRow() < 2) return 0;
+
+  const C = WD_WARMUP_QUEUE_COLUMNS;
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _warmUpQueueRetentionYears_());
+
+  const data = sheet.getRange(1, 1, sheet.getLastRow(), C.ARCHIVE_STATUS + 1).getValues();
+  let count = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][C.ARCHIVE_STATUS] || '').trim() !== '') continue;
+    const lessonDate = _normalizeLessonDateCell_(data[i][C.LESSON_DATE]);
+    if (!lessonDate) continue;
+    const lessonDateObj = new Date(lessonDate);
+    if (!isNaN(lessonDateObj.getTime()) && lessonDateObj < cutoff) count++;
+  }
+  return count;
+}
+
+// Admin menu action — matches reactivateCompetencyEvidence()'s UI shape
+// (30_SCRSuggestionEngine.js): WarmUpQueue is operational data, not a legal
+// hold, so — like CompetencyEvidence and unlike SCRDecisionLog/
+// ParentReportLog — it gets a real way back for a reopened case.
+function reactivateWarmUpQueueArchival() {
+  const ui = SpreadsheetApp.getUi();
+  const cfg = getConfig_();
+
+  const emailRes = ui.prompt(
+    'Reactivate WarmUpQueue Rows',
+    "Enter the student's email address to reactivate archived warm-up rows for.\n\n" +
+    'This clears the archived status on every matching WarmUpQueue row.',
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (emailRes.getSelectedButton() !== ui.Button.OK) return;
+
+  const email = emailRes.getResponseText().trim().toLowerCase();
+  if (!email) { ui.alert('Email cannot be blank.'); return; }
+
+  const confirm = ui.alert(
+    'Reactivate warm-up rows for "' + email + '"?',
+    "This will clear the archived status on all of this student's WarmUpQueue rows.\n\n" +
+    'Are you sure?',
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.warmUpQueue || 'WarmUpQueue');
+  if (!sheet) { ui.alert('⚠️ WarmUpQueue tab not found.'); return; }
+
+  const C = WD_WARMUP_QUEUE_COLUMNS;
+  const data = sheet.getDataRange().getValues();
+  let cleared = 0;
+  for (let i = 1; i < data.length; i++) {
+    const rowEmail = String(data[i][2] || '').trim().toLowerCase(); // WQ25_STUDENT_EMAIL
+    if (rowEmail !== email) continue;
+    if (String(data[i][C.ARCHIVE_STATUS] || '').trim() === '') continue;
+    sheet.getRange(i + 1, C.ARCHIVE_STATUS + 1).setValue('');
+    cleared++;
+  }
+  ui.alert('Reactivated ' + cleared + ' WarmUpQueue row(s) for ' + email + '.');
 }
 
 // -----------------------------------------------------------------------
