@@ -29,6 +29,7 @@ const {
   declaredNamesFromSource,
   paragraphAround,
   docLevelStatus,
+  normalizeBlockquotes,
   DOC_TOKEN_RE,
 } = require('../../tools/doc-currency/check.js');
 
@@ -185,4 +186,48 @@ test('a backticked bare word without parens is not a function claim', () => {
 
 test('unbackticked prose that happens to contain call syntax is ignored', () => {
   assert.deepEqual(tokens('The function someFunction() is described below.'), []);
+});
+
+// ── normalizeBlockquotes ─────────────────────────────────────────────────
+// The real bug this exists to fix: meta/CODEBASE_REVIEW.md once carried
+// "...gas-sandbox.js` — 346\n> passing tests..." — a blockquote line-wrap
+// splitting the count from the word "passing" — and checkCitedTestCounts'
+// plain \s+ regex could not cross the `>` sitting between the two newlines,
+// so a stale count went unreported. This pins the fix directly rather than
+// depending on the whole-repo check, which would only ever tell you the
+// state of whatever the repo currently says.
+
+test('a count and "passing" split by a blockquote line-wrap become matchable', () => {
+  const raw = 'via `tests/harness/gas-sandbox.js` — 346\n> passing tests at the time of writing.';
+  const normalized = normalizeBlockquotes(raw);
+  assert.match(normalized, /346\s+passing/,
+    'the blockquote marker must no longer separate the count from "passing"');
+});
+
+test('normalizeBlockquotes preserves the string length, so line numbers stay valid', () => {
+  // lineAt() is always called against the ORIGINAL raw text with an index
+  // found in the normalized text. That only stays correct if every
+  // character up to and including the match keeps the same offset —
+  // i.e. the transform never inserts or removes characters.
+  const raw = 'line one\n> line two — 346\n> passing tests\nline four';
+  assert.equal(normalizeBlockquotes(raw).length, raw.length);
+});
+
+test('normalizeBlockquotes only touches a leading ">", not one appearing mid-line', () => {
+  // A real comparison operator or quoted-greater-than in prose (e.g. "5 > 3")
+  // must not be mistaken for a blockquote marker.
+  const raw = 'Scores where 5 > 3 held, on one line.';
+  assert.equal(normalizeBlockquotes(raw), raw);
+});
+
+test('a blockquote marker at the very start of the file is also normalized', () => {
+  const raw = '> 346\n> passing tests, first line of the file.';
+  assert.match(normalizeBlockquotes(raw), /346\s+passing/);
+});
+
+test('an ordinary single-line count still matches after normalization', () => {
+  // The fix must not regress the common case that already worked.
+  const raw = 'the suite reports 374 passing tests today.';
+  assert.equal(normalizeBlockquotes(raw), raw);
+  assert.match(normalizeBlockquotes(raw), /374\s+passing/);
 });
