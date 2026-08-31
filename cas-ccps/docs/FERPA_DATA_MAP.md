@@ -328,11 +328,11 @@ payload. Investigated options:
   `"true"`. An intentional, auditable escape hatch, not a silent gap — the
   admin health check (below) alerts if it's ever turned on.
 
-## Health checks (Bonus 1 — added; items 4-7 added later)
+## Health checks (Bonus 1 — added; items 4-8 added later)
 
 `10_AdminRecoveryPanel.js`'s `_ferpaHealthChecks_()` (shared by both
 `autoHealthAlert()`'s daily email and `runSystemHealthCheck()`'s on-demand
-dialog) now checks seven things — one per retention policy above, plus the
+dialog) now checks eight things — one per retention policy above, plus the
 three original safety-property checks:
 
 1. **`GEMINI_API_KEY` is not set** — this property existing would mean the
@@ -364,9 +364,14 @@ three original safety-property checks:
    window without being archived** — same counter-after-archiver shape as
    4-6, via `_countParentReportsPastRetentionUnarchived_()`, with
    `_archiveExpiredParentReports_()` run immediately before it. This is the
-   disclosure log (see "Disclosure to parents" above), so of the four
+   disclosure log (see "Disclosure to parents" above), so of the five
    retention checks it is the one whose window a records request is most
    likely to ask about.
+8. **No `WarmUpQueue` rows are past the `WARMUP_QUEUE_RETENTION_YEARS`
+   window without being archived** — same counter-after-archiver shape as
+   4-7, via `_countWarmUpQueueRowsPastRetentionUnarchived_()`, with
+   `_archiveExpiredWarmUpQueueRows_()` (`34_QueueWatchdog.js`) run
+   immediately before it (third-party review).
 
 ## Newly-discovered gap (fixed alongside this document)
 
