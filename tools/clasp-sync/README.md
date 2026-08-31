@@ -43,12 +43,12 @@ contents — every run).
 
 | Project | Bound to | Files |
 |---|---|---|
-| `central-ledger` | Central Ledger spreadsheet | 23 |
-| `unified-manual` | Assignment System Manual Doc (setup wizard) | 6 |
+| `central-ledger` | Central Ledger spreadsheet | 24 |
+| `unified-manual` | Assignment System Manual Doc (setup wizard) | 8 |
 | `master-student-template` | Master Student Template Doc | 4 |
-| `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 5 |
-| `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 5 |
-| `teacher-dashboard` | Standalone web app | 3 |
+| `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 3 |
+| `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 3 |
+| `teacher-dashboard` | Standalone web app | 8 |
 | `student-dashboard` | Standalone web app | 2 |
 | `studio-steps` | Standalone — not bound to a spreadsheet/doc | 9 |
 

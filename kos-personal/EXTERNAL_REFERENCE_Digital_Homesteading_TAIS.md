@@ -36,12 +36,15 @@ stripped of TAIS's own branding and economics:
   challenges" the user when new behavior contradicts an established Core
   Memory. This is conceptually close to what KOS's ALIGNMENT persona
   already does at Closeout, but TAIS frames it as a standing, continuous
-  check rather than an end-of-session one. **Still just described, not
-  built:** `KOS_WHITE_PAPER.md` §3 now names this as "the natural next
-  axis" for the existing Frequency Drift check, but no code extends
-  Frequency Drift to check decisions against pinned Core facts yet — that
-  needs `pinThemeToCore()` above as its data source, which only just
-  landed. Real next step if this gets picked up.
+  check rather than an end-of-session one. **Landed.** This bullet
+  previously read "still just described, not built" — that was written one
+  commit before it was built. `PERSONA_ALIGNMENT_V5_1.md` §2.2 now defines
+  **Threshold D, Value-Consistency Drift**, as a fourth hard threshold;
+  `buildSessionContext()` (`9_UI_Diagnostics.gs`) injects a CORE FACTS
+  block so the live persona can actually see pinned facts; and
+  `CURATOR_PROMPT.md` / `PERSONA_CURATOR_V5_1.md` carry
+  `D_VALUE_CONSISTENCY_DRIFT` end to end. TAIS's "standing, continuous
+  check" framing is still the difference — KOS's fires at Closeout.
 - **Local-first data custody** — TAIS's "RCRT" module keeps all memory on
   the user's device by default, with a server holding only non-sensitive
   metadata. KOS is already local/self-hosted by construction (a user's own
@@ -67,6 +70,6 @@ stripped of TAIS's own branding and economics:
 - The Agent SDK / OAuth-style scoped third-party access model assumes a
   much larger integration surface than KOS currently has or needs.
 
-Aside from the two "Landed" bullets above, nothing here is scheduled,
+Aside from the three "Landed" bullets above, nothing here is scheduled,
 approved, or in progress — this file exists so the remaining ideas aren't
 lost, not to commit KOS to any of them.

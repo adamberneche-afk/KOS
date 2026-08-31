@@ -81,12 +81,12 @@ for the Studio Steps adoption — see its own row below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `35` (flow preflight/canary) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
-| Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`) |
+| Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's review-and-send panel; it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header) |
 | Student Dashboard | standalone web app | `13` |
 | Studio Steps | standalone (not bound to a spreadsheet/doc) | 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Written and tested, not yet pushed to a live Studio deployment. |
 
@@ -272,9 +272,12 @@ GoogleID.
     `warmup_anchor_truncated` flag at write time; `resolveUnitForDate_()`
     now threads that flag through, and `getWarmUpAnchor_()` checks it
     before returning — if set, it calls new helper
-    `_getFullWarmupAnchor_()` to re-read that one unit's untruncated
-    `warmup_anchor` directly from the `PacingGuide` sheet, so only the
-    (rare) truncated case pays the extra read instead of every call.
+    `_getFullPacingField_(unit_id, fieldName)` to re-read that one unit's
+    untruncated `warmup_anchor` directly from the `PacingGuide` sheet, so
+    only the (rare) truncated case pays the extra read instead of every
+    call. (This entry named the helper `_getFullWarmupAnchor_()` until
+    `tools/doc-currency/check.js` pointed out that it does not exist —
+    the real one is field-generic, not warmup-specific.)
 15. **Setup wizard's three cross-project import calls, corrected fix
     (external product review, Finding 5)** — `28_Module2Setup.js` calls
     `importCompetencyRegistry()`/`importPacingGuide()`/
@@ -419,7 +422,7 @@ GoogleID.
       that actually touches the network (with `UrlFetchApp` mocked, not a
       real Gemini call).
 18. **Studio Steps adoption — the custom-step code Finding 17's escape
-    hatch was working around now exists.** A 9th cas-ccps project,
+    hatch was working around now exists.** An 8th cas-ccps project,
     `cas-ccps/studio-steps/`, implements every custom step Flows 1-5
     genuinely need (native Studio connectors and Ask-Gemini steps cover
     everything else) — see its own README for the full file-to-flow map

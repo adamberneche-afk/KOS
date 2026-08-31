@@ -407,7 +407,12 @@ always a kos-personal-only gap, and is fixed here once, not twice.)
   that computes the same signature both ways and confirms they match
   exactly). The secret is optional, same as the service's own "skip in
   dev if not configured" behavior — job submission still runs unsigned if
-  it's unset.
+  it's unset. **⚠ No longer true since Round 16's `386c3ea`:** a
+  production `inference-service` now exits at startup without
+  `WEBHOOK_SECRET` and 401s an unsigned request, so leaving this property
+  unset against production means every job submission fails. Optional only
+  against a dev service. Left as written, annotated, because this entry
+  records what was true when the signing was added.
 - `10_Turnstile.gs`'s `runMatrixTurnstile()` calls this immediately before
   releasing a `PENDING_FLOW` row, but only when `CFG.INFERENCE_MODE ===
   'MANAGED_SERVICE'` — in the default `'STUDIO'` mode this whole path is
@@ -845,3 +850,237 @@ Council ID, and rejection of a blank ID. Verified non-vacuous against two
 separate mutations — breaking the pending calculation fails 3 tests,
 breaking typo detection fails 1. `tools/gas-lint/check.js` stays at 0
 errors and `npm test` stays green.
+
+---
+
+## Round 16 — the four commits that left no entry, and the sweep that found them
+
+This file's own opening line calls itself "the historical record of what
+was found and fixed," and `README.md` points readers here for exactly
+that. Four of the seven commits merged in `433aea5` left no entry, which
+made that claim false about the most recent work in the repo. Recording
+them now, at the point they were found rather than pretending they were
+never missed.
+
+### The four unrecorded commits
+
+- **`386c3ea` — fail-closed webhook auth in `inference-service/`.** The
+  managed-inference service accepted job submissions with no signature
+  when `WEBHOOK_SECRET` was unset, and compared signatures with `!==`.
+  Both are now closed: `server.js` calls `process.exit(1)` at startup if
+  `WEBHOOK_SECRET` is unset while `NODE_ENV=production`, rejects an
+  unsigned request with 401, and compares with
+  `crypto.timingSafeEqual()` behind a length check. The behaviour change
+  is real and operator-visible — a production deployment that was
+  running without the secret now refuses to boot rather than silently
+  accepting forged jobs. Four places documented that secret as
+  "optional"; all four are corrected below.
+- **`762eabc` — `pinThemeToCore()` (roadmap 2.1).** Core promotion was
+  algorithmic only: a theme reached `VECTOR_MATRIX` by crossing
+  `CFG.INCUBATOR_PROMOTION_THRESHOLD` over enough sessions, and an
+  operator who already knew a decision was permanent had no way to say
+  so. `pinThemeToCore(themeName, note)` bypasses the threshold, writes a
+  `PROMOTED_MANUAL` status distinct from the algorithmic `PROMOTED`, and
+  persists the asserted fact itself into a new `Core_Fact` column
+  (INCUBATOR column 8, added self-healingly by
+  `_ensureIncubatorCoreFactColumn_()`). Storing the fact rather than
+  just the theme label is what makes 2.3 possible at all.
+- **`27c1a5c` — Threshold D, Value-Consistency Drift (roadmap 2.3).**
+  ALIGNMENT already watched for the system going quiet on what it exists
+  to protect. It now also watches the operator's own side: a decision
+  that contradicts a pinned Core fact raises the same Socratic
+  challenge. `getManuallyPinnedCoreFacts()` feeds
+  `buildSessionContext()`, which injects a `## CORE FACTS
+  (Operator-Pinned — Do Not Contradict)` block so the live persona can
+  see the facts; `D_VALUE_CONSISTENCY_DRIFT` is carried end to end
+  through `CURATOR_PROMPT.md` and `PERSONA_CURATOR_V5_1.md`. It fires at
+  Closeout, not continuously.
+- **`dcaee02` — `KOS_WHITE_PAPER.md` §3, the sovereignty framing
+  (roadmap 2.5).** Positioning only; no code. Names the zero-server
+  posture the architecture already had, and the memory lifecycle the
+  Vector Router already implemented, in language the paper hadn't
+  claimed before.
+
+### Documentation currency sweep
+
+Roughly seventy false claims, found by auditing the repo against itself.
+The ones an operator or teacher would actually have acted on:
+
+- **`DEPLOYMENT_GUIDE.md`'s v5.4 migration was unfollowable.** It told
+  operators to run `runPhase0Migration()` and `runPhase0Verify()`.
+  Neither exists in the working tree — they live in
+  `KOS_PHASE0_PATCHES.gs`, which Round 13's cleanup (`45ad8c8`) deleted
+  along with all of `archived/`. The guide now recovers that file first
+  and says plainly that those two functions are defined there and
+  nowhere else. `SCHEMA_REFERENCE.md` carried the same dangling
+  reference and is corrected the same way.
+
+  **What the recovery step was missing was one line, not the branch.**
+  The guide pointed at `git show pre-archive-cleanup:…`, which fails in
+  a fresh clone with "invalid object name" — a clone doesn't fetch that
+  branch by default. Read literally, that looks exactly like a
+  reference to a branch that was never pushed, and this sweep first
+  "fixed" it by replacing the branch with a commit SHA. That was wrong:
+  `pre-archive-cleanup` is real and pushed (`b07b66f`), asserted
+  correctly in six places across this repo, and replacing it would have
+  broken five correct references to fix a sixth that wasn't broken.
+  The actual fix is a `git fetch origin pre-archive-cleanup` line ahead
+  of the `git show`, verified by running both from this clone.
+- **The webhook secret was documented as optional in four places** —
+  `1_Config_And_Deploy.gs`, `3_Queue_Processor.gs`,
+  `inference-service/README.md` (which omitted it from the setup list
+  entirely), and this file's Round-9 entry. Following any of them
+  against a production service after `386c3ea` yields 401s on every job
+  submission. All four now state it is required in production, and the
+  service README gained a section covering both sides of the pair.
+- **`leader-hub/README.md` opened with three false clauses** — "100%
+  client-side… no server, no build step." There is a build step
+  (`tools/leaderhub-build/build.js`), a server (`Code.gs`/`Data.gs`/
+  `SCR.gs`), and state round-trips to a Spreadsheet. The same README
+  contradicted itself three times further down.
+- **A live teacher-facing dialog was false.** `archiveCompletedTerm()`
+  (`cas-ccps/scripts/10_AdminRecoveryPanel.js`) still warned "This
+  cannot be undone automatically" after `8d46121` added ♻️ Reactivate an
+  Archived Term two menu items below it.
+- **`FERPA_DATA_MAP.md` said `_ferpaHealthChecks_()` "now checks four
+  things."** It checks six; the two missing ones are the Ledger and
+  CompetencyEvidence retention checks — that is, the compliance document
+  described the policy but not the checks enforcing it.
+
+Beyond those: wrong counts corrected repo-wide (286 → 329 tests, 7 → 6
+personas in five places, a "9th" cas-ccps project that is the 8th,
+four wrong rows in `tools/clasp-sync/README.md`'s file-count table, three
+stale leader-hub line counts, six recovery operations that are twelve, and
+four different totals in one project's `FILE n of m` banners, now all 11).
+`SCHEMA_REFERENCE.md` claimed to be a complete reference while missing the
+`Inference_Buffer` sheet, 20 `ID_*` routing keys, four live runtime keys
+and two optional ones; its `COG_STIMULUS` row described one doc per cog
+when the design is one shared doc. `7_WebApp.gs` and `4_Vector_Router.gs`
+both claimed complete entry-point lists that omitted `pinThemeToCore()`.
+
+**Three self-inflicted staleness items** — text written in one commit and
+invalidated by the next, in this same batch: `6_Governance.gs`'s banner
+asserted `generateCouncilInputPayload()` as live code after the same
+commit renamed it; `EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md` said
+value-consistency drift was "still just described, not built" one commit
+before `27c1a5c` built it, and counted two "Landed" bullets when there
+were three; `KOS_WHITE_PAPER.md` called Threshold D "the natural next
+axis" after it had shipped.
+
+**Where numbers were replaced rather than corrected.** A count in a doc
+rots the moment the thing it counts changes, which is how three separate
+leader-hub line counts ended up wrong. Following the model already set by
+`leader-hub/README.md` — which tells the reader to run `wc -l` — those
+now name the command and give the current value as of writing, rather
+than asserting a number that will be wrong again next month.
+
+**Where a dated record was annotated rather than rewritten.**
+`cas-ccps/HISTORY.md` says CompetencyEvidence was widened to an 8-column
+schema. That was true when written; `8d46121` made it 9. Rewriting the
+number would falsify the record, so the entry keeps its original figure
+and carries a note on what changed since — the same convention
+`meta/CODEBASE_REVIEW.md` already uses for its `⚠ Stale` passages, and
+the same reason `CHANGELOG.md` entries naming deleted functions are left
+alone.
+
+**Rotted citations converted to anchors.** `meta/CODEBASE_REVIEW.md`
+carried 16 `file:line` citations; four pointed past the end of the file
+they named and several more had drifted onto unrelated lines. All are now
+`functionName()` or named-section anchors, which survive edits. Two ARIA
+counts there were wrong (32/23 → 29/23, 5/1 → 9/6); the asymmetry point
+they support is unaffected. Four of its recommendations are marked done
+or moot — the viewport fix and the Turnstile failure ceiling both landed
+in code, `inference-service` has tests, and the `.jsx` file it wanted
+archived no longer exists.
+
+**A correction to a claim made during this work.** The
+`inference-service` tests were described as never running in CI. They do:
+a dedicated `test-inference-service` job runs `npm ci && npm test` in that
+directory. They are absent from the *root* `npm test` — the service has
+its own dependency tree — which is not the same thing.
+
+### Found and reported, not fixed
+
+Two items are code or config, outside a documentation pass's scope, and
+stay unresolved:
+
+1. **`kos-personal/studio-steps` is missing from two places** — it has no
+   `.clasp.json.template` (10 exist for 11 projects) and is absent from
+   the sandbox-deploy matrix, so `meta/CLASP_AND_APPS_SCRIPT.md`'s
+   instruction to clone "each of the 11 projects" cannot be followed for
+   the 11th.
+2. **`clasp login` is described as working in one place and not working
+   in two others.** Unresolvable from the repo — it needs someone with
+   account access to say which is true.
+
+A third was reported the same way and then fixed on request: **CI ran 308
+tests where `npm test` ran 346.** `.github/workflows/gas-lint.yml` inlined
+its own copy of the test glob and omitted `tests/kos-personal/` entirely.
+Six files had never run in CI — including all four added to cover the
+council fix, i.e. exactly the regression coverage for the deleted
+`triggerCouncilSimulation()`. Measured by running both globs, not
+inferred. The step now runs `npm test` instead of its own inlined glob —
+one definition instead of two that drift — verified locally (346/346)
+before the workflow change was made, since a step that only runs in CI
+can't be checked by running it here.
+
+`tools/gas-lint/check.js` holds at 0 errors / 4 warnings across this pass;
+a documentation sweep that changes it has done something it shouldn't.
+`npm test` went from 329 to 346 — the 17 added tests are the ones covering
+the new checker below, not changes to any existing behaviour.
+
+### `tools/doc-currency/check.js`
+
+This is the second currency sweep in two sessions. The first fixed a
+comparable batch and still left the broken deployment guide, the false
+`leader-hub/README.md` opening, and the teacher-facing dialog behind.
+Nothing in the repo notices when a claim stops being true, so drift is only
+ever caught by someone being asked to go and find it. The existing
+`docs-check` CI job doesn't close that: it is PR-only and asks whether a
+README was *touched*, with a `[skip-docs-check]` escape hatch. **Every
+Tier-1 finding in this sweep passed it.**
+
+Four checks, mirroring gas-lint's conventions exactly (`tools/<name>/
+check.js`, `findings = { errors, warnings }`, `--json`, exit 1 on any
+error, config in a sibling JSON): a documented function that exists
+nowhere in the source, a cited test count that no longer matches, a
+documented registry key no code touches, and a `file:line` citation past
+the end of its file. Wired into CI beside gas-lint.
+
+It found one thing this sweep's human pass had missed:
+`cas-ccps/README.md` documented a new helper `_getFullWarmupAnchor_()`;
+the real function is `_getFullPacingField_(unit_id, fieldName)`, which is
+field-generic rather than warmup-specific.
+
+**Its exclusions are the whole design.** Without them the tool's first act
+is to report documentation that is doing its job correctly — dated records
+naming a function precisely because it was deleted, a `⚠ SUPERSEDED`
+banner that already says what the tool would report, registry rows already
+labelled `Aspirational`. Each is documented in `config.json` with the
+concrete case that motivated it.
+
+**Two bugs it shipped with, both found by running it and both now pinned
+by tests.** A hand-rolled comment/string stripper with no regex-literal
+handling desynced on the first `/IDENTITY_KEY\s*[:=]\s*['"].+['"]/` it met
+and reported **82 missing functions, nearly all of which exist** — fixed
+by requiring gas-lint's stripper rather than maintaining a second, weaker
+copy (`tools/gas-lint/check.js` now exports its primitives behind a
+`require.main` guard; its own output is unchanged at 0/4). And a ±6-line
+window for historical-framing markers was loose enough that
+`USER_GUIDE.md`'s "the deploy function only creates what doesn't exist"
+suppressed a genuine finding three lines away — "doesn't exist" is
+ordinary English before it is a marker. Now scoped to the enclosing
+paragraph.
+
+Verified non-vacuous both ways: reintroducing a deleted-function claim, a
+wrong test count and a past-EOF citation makes the tool report all three
+and exit 1; and reverting each of the two fixes above fails 2 and 1 of the
+17 tests respectively.
+
+`tools/doc-currency/README.md` states plainly what it does **not** check.
+Of the five highest-consequence findings above, only the two phantom
+functions are a shape it can see — the false README paragraph, the
+teacher-facing dialog and the FERPA check-count all needed someone to read
+the prose against the code. Completeness is its worst failure mode: it can
+tell you a documented thing is gone, never that an undocumented thing
+exists.

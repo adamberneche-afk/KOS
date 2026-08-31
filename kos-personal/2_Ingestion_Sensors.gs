@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 2 of 8: Ingestion Sensors
+// FILE 2 of 11: Ingestion Sensors
 // ================================================================
 //
 // SENSOR MAP

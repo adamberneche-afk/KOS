@@ -87,33 +87,18 @@ const SCRS = {
   CONFIRMED_BY: 10,
 };
 
-// SCRDecisionLog column indices (0-based) — canonical order
-// Append-only. One row per confirm/override action ever taken. This is
-// the actual legally-retained record — see 8VAC20-120-120 retention
-// requirement noted in the original SCR specification.
+// SCRDecisionLog column indices (SCRDL) now live in 00_SharedConfig.js.
+// They were moved there when 36_WeeklyParentReport.js needed them: that
+// file runs in BOTH cas-ccps:central-ledger and cas-ccps:teacher-dashboard,
+// and this file exists only in the former, so a constant declared here is
+// simply not defined in the dashboard project. 00_SharedConfig.js is in
+// every project, which is the same reason LEDGER lives there.
 //
-// Say/Do Ledger cas-ccps Extension 3: rows are still never deleted
-// automatically (see _archiveExpiredScrDecisions_() below) — ARCHIVE_STATUS
-// only marks a row "restricted, pending disposition review" once it's past
-// the configured retention window. Actual permanent deletion always
-// requires an explicit human decision, never a script.
-const SCRDL = {
-  DECISION_ID: 0,
-  STUDENT_EMAIL: 1,
-  COMPETENCY_ID: 2,
-  SUGGESTED_RATING: 3,       // what the system proposed (blank if teacher
-                             // entered cold, with no suggestion shown)
-  FINAL_RATING: 4,           // what the teacher actually decided — 1-5
-  DECISION_TYPE: 5,          // CONFIRMED | OVERRIDDEN
-  DECIDED_AT: 6,
-  DECIDED_BY: 7,             // teacher email
-  EVIDENCE_SNAPSHOT: 8,      // met/notMet/partial counts at decision time,
-                             // denormalized for audit — same rationale as
-                             // AlignmentLog's denormalized competency_text
-  ARCHIVE_STATUS: 9,         // "" = active; "ARCHIVED — pending disposition
-                             // review" once past SCR_RETENTION_YEARS — see
-                             // _archiveExpiredScrDecisions_() below
-};
+// SCRS (above) deliberately did NOT move. Nothing outside this project has
+// any business reading SCRSuggestions — it holds AI values no teacher has
+// acted on — so leaving its column map here means a dashboard-project file
+// that tried would fail loudly at load rather than quietly render an
+// unreviewed rating to someone.
 
 const VALID_OUTCOMES = ["MET", "PARTIALLY_MET", "NOT_MET"];
 const EVIDENCE_THRESHOLD = 3; // N, locked design decision
@@ -979,6 +964,38 @@ function exportToWorkbookGrid_() {
     }
   }
 
+  // ── Join in each student's assignment-doc link ──
+  // An auditor reading a competency rating has, until now, had no route from
+  // the rating to the work it was based on — the evidence snapshot on the
+  // decision row is text, and this grid doesn't carry even that. A link
+  // closes that gap using data already collected.
+  //
+  // Sourced from StudentDocRegistry rather than the Ledger's StudentFileURL:
+  // the registry holds one row per student, which matches this grid's grain,
+  // where the Ledger holds one row per submission and would need a
+  // "which one" rule this export has no basis to pick.
+  //
+  // No sharing change is implied. These docs are already shared with their
+  // own student via addViewer(), and this workbook is already restricted to
+  // the owner's Workspace domain at creation (below) — a link is only
+  // followable by someone who could already open the file.
+  const docUrlByEmail = new Map();
+  const registrySheet = ss.getSheetByName(cfg.tabs.studentDocRegistry);
+  if (registrySheet && registrySheet.getLastRow() > 1) {
+    const SDR_EMAIL = 0;
+    const SDR_DOC_URL = 3;
+    const registryData = registrySheet
+      .getRange(1, 1, registrySheet.getLastRow(), SDR_DOC_URL + 1)
+      .getValues();
+    for (let i = 1; i < registryData.length; i++) {
+      const email = String(registryData[i][SDR_EMAIL] || "").trim();
+      const url = String(registryData[i][SDR_DOC_URL] || "").trim();
+      if (email && url && !docUrlByEmail.has(email)) docUrlByEmail.set(email, url);
+    }
+  } else {
+    Logger.log("[S30] No StudentDocRegistry rows — export will have no doc links.");
+  }
+
   // ── Read only CONFIRMED / OVERRIDDEN decisions, most recent per pair ──
   const decisionData = decisionLogSheet.getDataRange().getValues();
   const latestDecision = new Map(); // pairKey -> { finalRating, decidedAt }
@@ -1047,12 +1064,20 @@ function exportToWorkbookGrid_() {
       : exportSs.insertSheet(safeTabName);
     firstClass = false;
 
-    const headerRow = ["Student Name", ...sortedCompIds.map(id => id.split("-").pop())];
+    // "Student Doc" sits second so both identifying columns stay inside the
+    // frozen pane; the competency numbers keep their original order after it.
+    const headerRow = [
+      "Student Name", "Student Doc",
+      ...sortedCompIds.map(id => id.split("-").pop()),
+    ];
     const rows = [headerRow];
 
     for (const email of emails) {
       const info = studentInfo.get(email);
-      const row = [info.name];
+      // Blank, not a placeholder: a student with no registry row has no doc
+      // to link, and "N/A" in an audit export invites reading it as a
+      // finding about the student rather than a gap in the data.
+      const row = [info.name, docUrlByEmail.get(email) || ""];
       for (const compId of sortedCompIds) {
         const decision = latestDecision.get(email + "|||" + compId);
         row.push(decision ? decision.finalRating : "");
@@ -1063,7 +1088,7 @@ function exportToWorkbookGrid_() {
     sheet.getRange(1, 1, rows.length, headerRow.length).setValues(rows);
     sheet.getRange(1, 1, 1, headerRow.length).setFontWeight("bold").setBackground("#f3f3f3");
     sheet.setFrozenRows(1);
-    sheet.setFrozenColumns(1);
+    sheet.setFrozenColumns(2);   // Student Name + Student Doc
   }
 
   Logger.log("[S30] Export complete: " + exportSs.getUrl());

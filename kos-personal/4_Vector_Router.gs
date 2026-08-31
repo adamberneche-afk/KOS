@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 4 of 8: Vector Router
+// FILE 4 of 11: Vector Router
 // ================================================================
 //
 // Replaces: PART 12 (routeVectorWeights and sub-functions) from
@@ -34,7 +34,10 @@
 //             met promotion thresholds. Cumulative-score + half-life
 //             decay lifecycle, not a running average.
 //   Schema  : Theme, First_Detected, Last_Touched, Session_Count,
-//             Cumulative_Score, Raw_Score_Log, Status
+//             Cumulative_Score, Raw_Score_Log, Status, Core_Fact
+//             (Core_Fact, column 8, is added self-healingly by
+//             _ensureIncubatorCoreFactColumn_() and holds the asserted
+//             fact text for an operator pin — see pinThemeToCore)
 //
 // DYNAMIC_STATE_MATRIX (written by _writeDynamicStateRow here)
 //   Purpose : Long-format version of VECTOR_MATRIX. One row per
@@ -49,6 +52,15 @@
 //   processVectorClassificationPayload()  VECTOR_CLASSIFY flow entry
 //   getVectorState()         web app Diagnostics tab
 //   runPromotionCheck()      web app Diagnostics tab button
+//   pinThemeToCore(theme, note)  operator Core promotion — bypasses
+//                            CFG.INCUBATOR_PROMOTION_THRESHOLD, writes
+//                            PROMOTED_MANUAL + the asserted Core_Fact
+//   getManuallyPinnedCoreFacts()  the pinned {theme, fact} pairs, read by
+//                            buildSessionContext() (9_UI_Diagnostics.gs)
+//                            to inject the CORE FACTS block that makes
+//                            Threshold D (Value-Consistency Drift)
+//                            checkable
+//   dumpVectorState()        console-only debugging dump
 //   migrateVectorSchema_v2() ONE-TIME manual run — upgrades an existing
 //                            live VECTOR_MATRIX/INCUBATOR sheet pair
 //                            created before this engine landed. See its

@@ -22,14 +22,14 @@ A personal AI-session knowledge pipeline: ingests one operator's AI working
 sessions, extracts structured knowledge (decisions, action items, vector
 weights, persona council verdicts), and routes it into a `BRAIN_TRUST_INDEX`
 spreadsheet. Governed by an external orchestration layer (`RTP_CORE_ROUTER`)
-that runs a 7-persona council with RID-weighted routing and a human-in-the-loop
+that runs a 6-persona council with RID-weighted routing and a human-in-the-loop
 firewall.
 
 **Status:** reconciled — the code, the docs, and the HTML client now agree.
 Every gap the docs previously described (missing server functions,
 `STUDIO_ACTIVE` turnstile gating, the shadow matrix, the daily primer, the
 auto-council trigger) has been implemented, `10_Turnstile.gs` was rebuilt
-against the real schema (original archived), and all 7 `PERSONA_*` cog
+against the real schema (original archived), and all `PERSONA_*` cog
 docs are now filed under `rtp-core-router/`. A later reupload batch added
 two backported fixes, ten governance/protocol docs, and a real optional
 managed-inference-service alternative to native Studio (opt-in, gated
@@ -125,9 +125,9 @@ out the way [clasp](https://github.com/google/clasp) wants — a flat
 folder, one script ID; `kos-personal/studio-steps/` is a second, separate
 flat-folder project alongside it (SMP-004's personal/district account
 split). `cas-ccps/scripts/` isn't: it's actually 8 separate Apps Script
-projects sharing overlapping files (7 spreadsheet/doc-bound projects plus
-the standalone `studio-steps` project holding every custom Workspace
-Studio step). This tool generates a throwaway per-project push folder for
+projects sharing overlapping files (5 spreadsheet/doc-bound projects, the
+standalone Teacher and Student Dashboard web apps, and the standalone
+`studio-steps` project holding every custom Workspace Studio step). This tool generates a throwaway per-project push folder for
 each of the 8 from `tools/gas-lint/project-map.json`, so `cas-ccps/scripts/`
 itself never gets reorganized or duplicated in git. Every real project
 across the repo now has a committed `appsscript.json`. `clasp
@@ -190,8 +190,7 @@ project hasn't been pushed to a real Google account yet (its
 `.clasp.json.template` scriptId is still a placeholder), so "code
 written" isn't yet "wired and live" — and a handful of named-but-not-yet-uploaded files remain across
 systems (`27_LessonFrameGenerator` in cas-ccps; two `PERSONA_*` version
-duplicates and `sql/migrate.js` in kos-personal's optional inference
-service) — see each system's README for the specific list. Reconciliation
+duplicates in kos-personal) — see each system's README for the specific list. Reconciliation
 work (resolving contradictions between what's here) is done twice over now
 (original pass + Round 3); filling remaining gaps (uploading what's still
 missing) is the open work. Clasp adoption is scaffolded (manifests,

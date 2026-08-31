@@ -298,6 +298,38 @@ function _ferpaHealthChecks_() {
       : "✅  No CompetencyEvidence rows past retention awaiting archival",
   });
 
+  // ── (g) ParentReportLog retention ──
+  // Same counter-after-archiver shape as (d), (e) and (f): both callers run
+  // _archiveExpiredParentReports_() immediately before this, so a nonzero
+  // result means archival itself failed, not that it merely hasn't run.
+  //
+  // This is the disclosure log — the record of what left the school's domain,
+  // about whom, and to which address. Of the four retention checks it is the
+  // one whose window a records request is most likely to ask about, which is
+  // also why its five-year default being unconfirmed matters most here.
+  let parentReportsPastRetentionUnarchived = 0;
+  try {
+    parentReportsPastRetentionUnarchived = _countParentReportsPastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] ParentReportLog retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: parentReportsPastRetentionUnarchived === 0,
+    alertText: parentReportsPastRetentionUnarchived
+      ? "🚨 PARENTREPORTLOG RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + parentReportsPastRetentionUnarchived + " disclosure record(s) are past the configured\n" +
+        "   retention window (PARENT_REPORT_RETENTION_YEARS Script Property,\n" +
+        "   default 5 years, unconfirmed against any real district retention\n" +
+        "   schedule) and have not moved to ARCHIVED — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: parentReportsPastRetentionUnarchived
+      ? "🚨  " + parentReportsPastRetentionUnarchived + " ParentReportLog row(s) past retention, not archived — see admin alert"
+      : "✅  No ParentReportLog rows past retention awaiting archival",
+  });
+
   return checks;
 }
 
@@ -410,6 +442,7 @@ function autoHealthAlert() {
   // archive/hibernate state). Same rationale as the two calls above,
   // extended to the one FERPA-scoped tab that had no archival at all.
   _archiveExpiredCompetencyEvidence_();
+  _archiveExpiredParentReports_();
 
   // --- FERPA-adjacent checks (Say/Do Ledger finding #5, Bonus 1) ---
   _ferpaHealthChecks_().forEach(c => { if (!c.ok && c.alertText) issues.push(c.alertText); });
@@ -646,6 +679,7 @@ function runSystemHealthCheck() {
   // CompetencyEvidence retention archival (roadmap 2.2) — same reasoning,
   // extended to the one FERPA-scoped tab that had no archival at all.
   _archiveExpiredCompetencyEvidence_();
+  _archiveExpiredParentReports_();
 
   // FIXED (finding #5, Bonus 1): folded into the final "all healthy" &&
   // condition below, not just appended as a display line — a display-only
@@ -791,7 +825,7 @@ function archiveCompletedTerm() {
     "  • All COMPLIANT submissions from that term\n" +
     "  • All ACTIVE (unfinished) rows from that term\n\n" +
     "Archived rows stay in the Ledger for records but are hidden from dashboards.\n\n" +
-    "This cannot be undone automatically — contact your admin to restore.",
+    "To undo this later, use ♻️ Reactivate an Archived Term in this same menu.",
     ui.ButtonSet.OK_CANCEL
   );
   if (termRes.getSelectedButton() !== ui.Button.OK) return;

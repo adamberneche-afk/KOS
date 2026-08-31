@@ -29,6 +29,12 @@ why this repo exists at all.
   invoked in a Gem. Listed in `FLOW_INVENTORY.md` below as well, since
   its classification step is a human-built Flow dependency like the
   other three systems'.
+- **`CODEBASE_REVIEW.md`** — the largest document here: an outside review of
+  all three systems against their own stated promises, plus a prioritized
+  recommendation list. Several of its findings have since been acted on; it
+  carries inline `⚠ Stale` / **Done** annotations rather than being rewritten,
+  matching this repo's convention of correcting a record in place instead of
+  silently editing it.
 - **`FLOW_INVENTORY.md`** — a single reference listing every "Flow"
   dependency (a human-built Google Workspace Studio/Flow or Gemini Gem
   conversation this repo's own code hands off to and cannot see or
@@ -43,6 +49,6 @@ why this repo exists at all.
 Everything else filed during this repo's reconciliation passes went under
 `kos-personal/`, `cas-ccps/`, or a system-specific new top-level directory
 (`leader-hub/`, `drive-curation/`) because it was clearly scoped to one
-system. These four documents are explicitly about the relationship
+system. The documents listed above are explicitly about the relationship
 between systems, or about the repo's own existence — putting them under
 one system's directory would misfile them.
