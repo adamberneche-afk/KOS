@@ -115,8 +115,13 @@ should keep failing loudly on that alone.
 `tests/tools/doc-currency-check.test.js`, run by `npm test`. It pins the
 pure functions rather than the checks themselves — the checks read the whole
 repo, so testing them directly would mean a suite that fails whenever a doc
-legitimately changes. Both bugs this tool shipped with (the stripper
-desync, and a historical-marker window loose enough that "only creates what
-doesn't exist" suppressed a real finding three lines away) live in those
-pure functions, verified by reverting each fix and confirming the tests
-fail.
+legitimately changes. Three bugs this tool has shipped with live in those
+pure functions, each verified by reverting its fix and confirming the test
+fails: the stripper desync; a historical-marker window loose enough that
+"only creates what doesn't exist" suppressed a real finding three lines
+away; and a test-count regex that couldn't cross a markdown blockquote
+line-wrap — `meta/CODEBASE_REVIEW.md` once carried a stale count split
+across a `>` continuation ("...gas-sandbox.js\` — 346\n> passing tests..."),
+which `\s+` could not bridge. `normalizeBlockquotes()` fixes this by
+replacing a leading `>` with a same-length blank before matching, so the
+paragraph reads as the one logical line it renders as.

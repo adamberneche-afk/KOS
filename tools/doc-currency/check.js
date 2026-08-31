@@ -262,6 +262,23 @@ function measuredTestCount() {
   }
 }
 
+// Markdown blockquotes wrap one logical paragraph across several literal
+// lines, each starting with `>`. A count and "passing" split exactly like
+// that ("...gas-sandbox.js\` — 346\n> passing tests...") once slipped past
+// checkCitedTestCounts below: \s+ could not cross the `>` sitting between
+// the two newline characters. Replacing "\n>" (or a leading ">") with a
+// same-length blank first — so every index into the result still lines up
+// with the real file for lineAt() — treats a blockquote as the one logical
+// line it actually renders as, for this check's purposes only.
+//
+// Pulled out as its own pure function (rather than inlined in the check)
+// so it can be pinned by a test without re-running the check against the
+// whole repo, matching this file's existing pattern for declaredNamesFromSource
+// and paragraphAround.
+function normalizeBlockquotes(raw) {
+  return raw.replace(/(^|\n)>/g, '$1 ');
+}
+
 function checkCitedTestCounts() {
   // Only look for the claim shape first — measuring costs a full test run,
   // so don't pay for it if no doc makes the claim.
@@ -270,10 +287,16 @@ function checkCitedTestCounts() {
   for (const relPath of DOC_FILES) {
     let raw;
     try { raw = readFile(relPath); } catch (e) { continue; }
+    const normalized = normalizeBlockquotes(raw);
     let m;
     claimRe.lastIndex = 0;
-    while ((m = claimRe.exec(raw))) {
-      sites.push({ relPath, line: lineAt(raw, m.index), claimed: parseInt(m[1].replace(/,/g, ''), 10), text: m[0] });
+    while ((m = claimRe.exec(normalized))) {
+      sites.push({
+        relPath,
+        line: lineAt(raw, m.index),
+        claimed: parseInt(m[1].replace(/,/g, ''), 10),
+        text: m[0].replace(/\s+/g, ' '),
+      });
     }
   }
   if (!sites.length) return;
@@ -389,15 +412,17 @@ function checkCitationsInRange() {
 // Exported for tests/tools/doc-currency-check.test.js. Only the pure pieces
 // are exported: the checks themselves read the whole repo, so testing them
 // directly would mean a test that fails whenever a doc legitimately changes.
-// The two bugs this tool actually shipped with — a stripper that desynced on
-// a regex literal, and a historical-marker window loose enough to suppress a
-// real finding — both live in these functions, which is the argument for
+// The bugs this tool actually shipped with — a stripper that desynced on a
+// regex literal, a historical-marker window loose enough to suppress a real
+// finding, and a test-count regex that couldn't cross a markdown blockquote
+// line-wrap — all live in these functions, which is the argument for
 // testing exactly them.
 // -----------------------------------------------------------------------
 module.exports = {
   declaredNamesFromSource,
   paragraphAround,
   docLevelStatus,
+  normalizeBlockquotes,
   DOC_TOKEN_RE,
   CONFIG,
 };
