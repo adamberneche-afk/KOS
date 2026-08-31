@@ -163,7 +163,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
       <h3>LessonContext</h3>
       <p>One row per lesson submission. Written by Script 22 when the teacher submits the Lesson Context Form. The source of truth for what was taught, when, and why.</p>
       <div class="ic-meta">
-        <span class="badge badge-teal">13 columns</span>
+        <span class="badge badge-teal">18 columns</span>
         <span class="badge badge-ghost">Written by: S22</span>
         <span class="badge badge-ghost">Read by: S26, S27</span>
       </div>
@@ -172,7 +172,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
       <h3>CompetencyRegistry</h3>
       <p>One row per competency from the district framework. Set up once. Never written by any script after initial load — only read. Powers the form dropdown and the alignment log.</p>
       <div class="ic-meta">
-        <span class="badge badge-amber">5 columns</span>
+        <span class="badge badge-amber">7 columns</span>
         <span class="badge badge-ghost">Written by: Manual / S28</span>
         <span class="badge badge-ghost">Read by: S22, S26</span>
       </div>
@@ -181,7 +181,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
       <h3>AlignmentLog</h3>
       <p>Append-only. One row per lesson-competency pair — so one lesson with three competencies produces three rows. Accumulates automatically. Feeds end-of-term documentation export.</p>
       <div class="ic-meta">
-        <span class="badge badge-violet">8 columns</span>
+        <span class="badge badge-violet">9 columns</span>
         <span class="badge badge-ghost">Written by: S26</span>
         <span class="badge badge-ghost">Read by: dashboard, export</span>
       </div>
@@ -218,7 +218,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
         <span class="col-field">lesson_id</span>
         <span class="col-type">String</span>
         <span class="col-writer">S22</span>
-        <span class="col-desc">Auto-generated UUID. Format: <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">LES-{YYYYMMDD}-{4hex}</code>. Primary key. Used in AlignmentLog foreign key.</span>
+        <span class="col-desc">Auto-generated UUID. Format: <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">LES-{YYYYMMDD}-{6hex}</code> (widened from 4 to 6 hex chars — the original 65,536-value/day space had a real collision risk against WarmUpRegistry's queue_id lookup map). Primary key. Used in AlignmentLog foreign key.</span>
       </div>
       <div class="schema-row cols-4">
         <span class="col-field">teacher_email</span>
@@ -278,7 +278,13 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
       </div>
       <div class="callout callout-amber" style="margin:8px 0">
         <span class="callout-icon">◈</span>
-        <div class="callout-body"><strong>Correction:</strong> earlier drafts of this table documented a <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">warm_up_generated</code> Boolean column (writer: S24) here. It does not exist in the built schema and never has — <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">LessonContext</code> and <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">WarmUpQueue</code> are unrelated subsystems (S24's <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">findLesson_()</code> reads this tab only to seed nightly warm-up generation; it never writes back to it). Removed rather than left to mislead. See <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">27_LessonFrameGenerator</code>'s "Suggested Warm-Up" placeholder section for how this gap is actually handled at frame-generation time.</div>
+        <div class="callout-body"><strong>Correction to an earlier correction:</strong> a prior pass through this table claimed <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">warm_up_generated</code> "does not exist in the built schema and never has." That was wrong — it does exist, as a plain <strong>String</strong> status column (not the Boolean this document briefly described), created by <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">24_WarmUpBridge.js</code>'s <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">createLessonContextWarmUpColumn_()</code> and set to <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">"DELIVERED"</code> by <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">25_WarmUpWriter.js</code>'s <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">markLessonContextDelivered_()</code>. Found during the Script 27 build's own aftermath: its column index (14) was reused by this document's earlier <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">frame_doc_id</code> assignment, a real collision fixed in code by moving the Lesson Frame columns to 15-17 — see the row below and <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">HISTORY.md</code>.</div>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">warm_up_generated</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S24</span>
+        <span class="col-desc">Status of warm-up generation for this lesson: empty (not yet queued), <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">"QUEUED"</code> (Script 24 has written WarmUpQueue rows for it), or <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">"DELIVERED"</code> (Studio Flow 3 has created all warm-up docs for this lesson). Full-build-only — never set on a lightweight-only installation. Added by <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">createLessonContextWarmUpColumn_()</code> (manual, once) or automatically on a fresh install's initial tab creation.</span>
       </div>
       <div class="schema-row cols-4 group-head"><span class="col-field">── LESSON FRAME (S27) ──</span><span></span><span></span><span></span></div>
       <div class="schema-row cols-4">
@@ -318,6 +324,12 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
         <span class="col-type">Text</span>
         <span class="col-writer">S22, S26</span>
         <span class="col-desc">Human-readable error detail written by any script on validation failure. Null on success. Visible in admin health check. Never shown to students.</span>
+      </div>
+      <div class="schema-row cols-4">
+        <span class="col-field">term</span>
+        <span class="col-type">String</span>
+        <span class="col-writer">S22</span>
+        <span class="col-desc">Academic term this lesson belongs to, e.g. <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">"2025-26 S2"</code>. Read from the <code style="font-family:var(--mono);font-size:11px;color:var(--teal)">CURRENT_TERM</code> Script Property at submit time. Written once, never updated — a mid-term property change does not retroactively relabel existing rows. Last of the original 14 base columns; the columns above it (warm_up_generated, frame_doc_id/url/generated_at) were all appended after.</span>
       </div>
     </table>
 
