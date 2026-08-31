@@ -15,8 +15,8 @@ instead — that PDF was later investigated and confirmed to describe an
 entirely different, abandoned pre-v8 architecture never carried into the
 live system, and has been archived; see `README.md`'s note on this.)
 
-**Retention policy — partially defined, `SCRDecisionLog`, `Ledger`, and
-`CompetencyEvidence`.** Every other tab in this document still persists
+**Retention policy — partially defined: `SCRDecisionLog`, `Ledger`,
+`CompetencyEvidence`, and `ParentReportLog`.** Every other tab in this document still persists
 indefinitely, with no deletion/archival mechanism at all. `SCRDecisionLog` — the one tab with an
 actual VDOE/Perkins legal retention obligation — was the first exception,
 built as Say/Do Ledger cas-ccps Extension 3: a configurable
@@ -187,9 +187,35 @@ SCRDecisionLog once a teacher actually confirms a rating.
 |---|---|
 | **Fields** | Decision ID, student email, competency ID, suggested rating, final rating, decision type, decided-at, decided-by, evidence snapshot, archive status |
 | **Why collected** | **The actual legally-retained record** — this is the one tab in cas-ccps whose retention obligation is named in a code comment already (VDOE's General Schedule GS-21 / 8VAC20-120-120), append-only — rows are never deleted by any code path, though a row can now be marked archived (see Retention below). |
-| **Read by** | `exportToWorkbookGrid_()` (Script 30), via the admin-facing `exportScrDecisionLogForAudit()` menu item |
+| **Read by** | `exportToWorkbookGrid_()` (Script 30), via the admin-facing `exportScrDecisionLogForAudit()` menu item. The export is a pivoted grid — one tab per class, one row per student, one column per competency holding that student's latest final rating — **not** a dump of this tab's own columns; `decision_type`, `decided_by`, `suggested_rating` and `evidence_snapshot` do not appear in it. It now also carries a **Student Doc** column joined from `StudentDocRegistry`, so an auditor reading a rating can reach the work behind it. That link implies no new sharing: the doc is already shared with its own student via `addViewer()`, and the workbook is already domain-restricted at creation. |
 | **Visible to** | Admin (via export, now shared directly with specific central-office accounts on the same domain — see Extension 3 note above) |
 | **Retention** | `SCR_RETENTION_YEARS` (Script Property, default 5 — see the Extension 3 note above) via `_archiveExpiredScrDecisions_()`, run automatically on every daily health check and every on-demand admin health check. A row past the window gets `archive_status` set to "ARCHIVED — pending disposition review"; actual deletion is never automatic. Deliberately has no reactivate action, unlike Ledger and CompetencyEvidence below — this status is a disposition hold on the legally-retained record itself, not a hibernate state meant to be casually reversed. |
+
+### ParentReportLog
+| | |
+|---|---|
+| **Fields** | Report ID, student email, student name, week start, week end, **recipient address**, generated-at, sent-at, sent-by (teacher email), confirmed item count, pending item count, archive status |
+| **Why collected** | **This is the disclosure log.** It is the only record in cas-ccps of student data leaving the school's Workspace domain — what was sent, about whom, to which address, by which teacher, and when. Written by `36_WeeklyParentReport.js`: `runWeeklyParentReportPrep()` creates a row with no recipient and no sent-at; `sendWeeklyParentReport()` fills both in at the moment it sends. |
+| **Read by** | `36_WeeklyParentReport.js` (its own dedup check, so a parent never receives the same week twice), and the Teacher Dashboard's Parent Reports panel |
+| **Visible to** | The authorized teacher only, via `_isAuthorizedTeacher_()` — the same gate as every other Teacher Dashboard surface |
+| **Retention** | `PARENT_REPORT_RETENTION_YEARS` (Script Property, default 5 — the same unconfirmed default as the three tabs above, and see the note below on why it matters more here) via `_archiveExpiredParentReports_()`, run on every daily and on-demand health check. Uses SCRDecisionLog's `"ARCHIVED — pending disposition review"` marker rather than the reversible `"ARCHIVED"`, and has no reactivate action: a record of what was disclosed to whom is closer to the legally-retained record than to a hibernate state. |
+
+**Why `recipient_address` is stored at all.** Parent contact details exist
+nowhere else in cas-ccps, and this document's default posture is that
+cas-ccps should hold as little as it can. This field is a deliberate
+exception. The alternative design — the teacher addressing a mail draft by
+hand — stores nothing, and in exchange makes the most likely FERPA incident
+this feature can produce undetectable: one child's scores reaching another
+child's parent, with no record afterwards of where anything actually went.
+The address is captured because the app, not the teacher's mail client,
+performs the send.
+
+**The retention default is more pressing here than elsewhere.** The five-year
+default is inherited from the three tabs above and is equally unconfirmed
+against a district or state schedule. But this is the tab that exists
+specifically to answer "what did we tell whom," which is the question a
+records request asks — so the gap between a placeholder default and a real
+retention decision matters more for this tab than for any other.
 
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness
@@ -204,6 +230,58 @@ since it's a central, shared tab.
 - **Admin Recovery Panel** — full read access to Ledger, StudentProfiles, and (via export) SCRDecisionLog. This is the one surface with the broadest reach into student data, and the one place a health-check gap (see below) mattered most.
 - **Studio Flows 1–5** — the native Sheets/Docs/Ask-Gemini connector steps in every flow are still outside this repo's own access-control code; the custom pre/post-processing steps around them (`cas-ccps/studio-steps/`, one per flow — see the table above) are this repo's own code, but carry no additional access gating beyond what each step's own input mapping already scopes it to. Flows 1, 2, 4, 5 never receive a real student name (opaque IDs/content only, already true before this document). **Flow 3 is the one exception** — see below.
 - **leader-hub JSON API** (`07_TeacherDashboard.js`'s `doPost()`, D1/Addendum 24) — a separate, machine-to-machine trust surface, not a browser session: gated by a Google ID token verified server-side against `oauth2.googleapis.com/tokeninfo`, checked against this deployment's own `TEACHER_EMAIL` (same identity boundary as `_isAuthorizedTeacher_()`, re-implemented for an HTTP caller instead of `Session.getActiveUser()`). Two of its three actions (`getPacingGuide`, `getCompetencyRegistry`) carry no student PII. The third, **`getRoster`** (Addendum 26), does — name, email, and a free-text period field, per-teacher-scoped the same way as everything else in this table. Once returned, this data is out of cas-ccps's control; leader-hub's own handling of it is documented in `leader-hub/README.md`, not here.
+
+- **Weekly parent report** (`36_WeeklyParentReport.js`, reached from the Teacher Dashboard's Parent Reports panel) — **the only surface in cas-ccps that sends student data outside the school's Workspace domain.** Gated by `_isAuthorizedTeacher_()` like every other dashboard surface, and additionally by the disclosure rules in the section below. Every send is recorded in `ParentReportLog` with the recipient address.
+
+## Disclosure to parents — a deliberate exception to the Walled Garden
+
+Everything else in this document describes a system whose data does not leave
+the organization's domain. That posture is enforced in code, not just
+described: `exportScrDecisionLogForAudit()` rejects any recipient not on the
+caller's own domain and says so to the user in those terms,
+`exportToWorkbookGrid_()` applies `DriveApp.Access.DOMAIN` at creation, and
+health check (c) audits the result.
+
+The weekly parent report is an exception to that, and it is the first one.
+It is written down here because a boundary this system enforces everywhere
+else should not be crossed as a side effect of an implementation choice.
+
+**Why it is permitted.** FERPA gives a parent a right of access to their own
+child's education record. A disclosure to the parent of that student is not
+a third-party disclosure; withholding it is the harder position to defend.
+
+**What keeps the exception narrow.** Four constraints, each enforced in code
+rather than by convention:
+
+1. **Only a teacher can send.** The weekly trigger
+   (`runWeeklyParentReportPrep()`) prepares rows and sends nothing. Nothing
+   on a timer ever emails a parent.
+2. **Only teacher-decided values leave.** A confirmed score prints a number;
+   anything still awaiting review prints no number and is counted instead.
+   The report reads Ledger `TURN_IN_FINAL_SCORE` and `SCRDecisionLog`, and
+   never `TURN_IN_SUGGESTED_SCORE` or `SCRSuggestions`. This follows the
+   decision the system already made for students in
+   `01_StudentDoc_ContainerScript.js`'s `PENDING_TEACHER_REVIEW` state, which
+   shows no score because "nothing is final until the teacher confirms or
+   overrides it" — a parent is further from the work than the student, so the
+   rule applies with more force, not less.
+3. **One student at a time.** There is no "send all" action. Each send is one
+   disclosure of one child's record, and a bulk control would make the most
+   consequential action the easiest one to take by accident.
+4. **Every send is logged with its recipient.** See `ParentReportLog` above.
+
+**What this does NOT extend to.** Nothing else in this document becomes
+sendable off-domain. The SCR audit export's domain check stays; so does
+`DriveApp.Access.DOMAIN` on generated workbooks. This exception covers one
+report, to one parent, containing only values a teacher decided.
+
+**Known limitation, surfaced rather than hidden.** Report assembly reuses
+`getWeeklyAssignments_()`, which filters on `_studentIdPattern_()`
+(`^\d{7}@ccpsnet\.net$`) and skips anything else. In the aggregator that is
+a skipped row; here it is a family that would never hear from the school. The
+dashboard panel therefore displays the count of excluded students rather than
+inheriting the silent drop, but the underlying accounts still need fixing —
+the system cannot do that for itself.
 
 ## Flow 3 name exposure (Bonus 2 — fixed)
 
@@ -229,11 +307,12 @@ payload. Investigated options:
   `"true"`. An intentional, auditable escape hatch, not a silent gap — the
   admin health check (below) alerts if it's ever turned on.
 
-## Health checks (Bonus 1 — added; item 4 added later, Extension 3)
+## Health checks (Bonus 1 — added; items 4-7 added later)
 
 `10_AdminRecoveryPanel.js`'s `_ferpaHealthChecks_()` (shared by both
 `autoHealthAlert()`'s daily email and `runSystemHealthCheck()`'s on-demand
-dialog) now checks four things:
+dialog) now checks seven things — one per retention policy above, plus the
+three original safety-property checks:
 
 1. **`GEMINI_API_KEY` is not set** — this property existing would mean the
    dead direct-Gemini-API code path in `25_WarmUpWriter.js`'s `callFlow4_()`
@@ -247,6 +326,26 @@ dialog) now checks four things:
    `_archiveExpiredScrDecisions_()` immediately before this check, so a
    nonzero result here means automated archival itself failed to run, not
    just that it hasn't happened yet (Say/Do Ledger cas-ccps Extension 3).
+5. **No `Ledger` rows are past the `LEDGER_RETENTION_YEARS` window without
+   being marked `ARCHIVED`** — same shape as check 4, via
+   `_countLedgerRowsPastRetentionUnarchived_()`, with
+   `_archiveExpiredLedgerRows_()` run immediately before it (external
+   product review, Finding 6).
+6. **No `CompetencyEvidence` rows are past the
+   `COMPETENCY_EVIDENCE_RETENTION_YEARS` window without being marked
+   `ARCHIVED`** — same shape again, via
+   `_countCompetencyEvidencePastRetentionUnarchived_()`, with
+   `_archiveExpiredCompetencyEvidence_()` run immediately before it
+   (roadmap 2.2). This closed the last FERPA-scoped tab with no retention
+   mechanism at all — until `ParentReportLog` was added, which is why item 7
+   exists.
+7. **No `ParentReportLog` rows are past the `PARENT_REPORT_RETENTION_YEARS`
+   window without being archived** — same counter-after-archiver shape as
+   4-6, via `_countParentReportsPastRetentionUnarchived_()`, with
+   `_archiveExpiredParentReports_()` run immediately before it. This is the
+   disclosure log (see "Disclosure to parents" above), so of the four
+   retention checks it is the one whose window a records request is most
+   likely to ask about.
 
 ## Newly-discovered gap (fixed alongside this document)
 

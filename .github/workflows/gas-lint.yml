@@ -20,6 +20,18 @@ jobs:
           node-version: '20'
       - name: Run gas-lint
         run: node tools/gas-lint/check.js
+      - name: Check documentation currency
+        # The docs-check job below asks whether a README was *touched*; it
+        # cannot catch a README that says something false. Every finding in
+        # the sweep that motivated this tool passed docs-check — including a
+        # deployment guide telling operators to run two functions that exist
+        # nowhere in the repo. See tools/doc-currency/README.md for what this
+        # does and, more importantly, what it still doesn't check.
+        #
+        # Runs after gas-lint on purpose: doc-currency requires gas-lint's
+        # stripCommentsAndStrings(), so a gas-lint failure is the more
+        # informative one to see first.
+        run: node tools/doc-currency/check.js
       - name: Verify cas-ccps clasp-sync builds cleanly
         run: node tools/clasp-sync/sync.js
       - name: Run the leader-hub + tooling regression suite (tests/)
@@ -38,7 +50,17 @@ jobs:
         # newer Node during development. Unquoted, explicit per-directory
         # globs are expanded by the shell BEFORE node ever sees them, so
         # this doesn't depend on any Node version's own glob support.
-        run: node --test tests/leaderhub/*.test.js tests/tools/*.test.js tests/cas-ccps/*.test.js
+        #
+        # FIXED (doc-currency sweep, Round 16): this step inlined its own
+        # copy of the glob and omitted tests/kos-personal/ entirely, which
+        # package.json's own `npm test` includes. Six files never ran in
+        # CI, including all four added to cover the council-sequestration
+        # fix (BRIDGE_FIDELITY_001) — exactly the regression coverage the
+        # deleted triggerCouncilSimulation() needed. `npm run` scripts
+        # execute through a shell like any other `run:` step, so this
+        # keeps the same unquoted-glob fix above while collapsing back to
+        # one definition of "the test suite" instead of two that drift.
+        run: npm test
       - name: Syntax-check student-leader-hub.html's inline <script> blocks
         # The enforced version of the "Verified with node --check on both
         # <script> blocks" note leader-hub/README.md repeats after nearly
@@ -46,7 +68,9 @@ jobs:
         #
         # leader-hub/archived/ (including the EARLY_PROTOTYPE file this
         # command used to also check) was deleted repo-wide as confirmed
-        # dead code - see the pre-archive-cleanup tag/branch to recover it.
+        # dead code - recover it with `git fetch origin pre-archive-cleanup`
+        # then `git show origin/pre-archive-cleanup:<path>` (a fresh clone
+        # does not have that branch locally; there is no tag of that name).
         run: |
           node tools/html-lint/check.js \
             leader-hub/student-leader-hub.html

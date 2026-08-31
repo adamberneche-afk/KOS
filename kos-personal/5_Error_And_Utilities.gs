@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 5 of 8: Error Reporting & Shared Utilities
+// FILE 5 of 11: Error Reporting & Shared Utilities
 // ================================================================
 //
 // Replaces: PART 16 (Shared Utilities), PART 15 (Calibration &
