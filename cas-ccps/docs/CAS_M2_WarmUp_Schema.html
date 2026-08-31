@@ -526,7 +526,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
       <div class="schema-head"><h4>16 columns</h4><span>Snapshot-based — profile data embedded at queue-write time</span></div>
       <div class="sr hdr"><span>Column</span><span>Type</span><span>Writer</span><span>Description</span></div>
       <div class="sr grp"><span class="cf">── IDENTITY ──</span><span></span><span></span><span></span></div>
-      <div class="sr"><span class="cf">queue_id</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Auto-generated. Format: <code>WUQ-YYYYMMDD-XXXX</code>. Primary key.</span></div>
+      <div class="sr"><span class="cf">queue_id</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Auto-generated. Format: <code>WUQ-YYYYMMDD-XXXXXX</code> (widened from 4 to 6 hex chars — this ID is a lookup-map key in 25_WarmUpWriter.js, so the original 65,536-value/day collision risk was a real one). Primary key.</span></div>
       <div class="sr"><span class="cf">lesson_id</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Foreign key → LessonContext.lesson_id. Identifies which lesson this warm-up is for.</span></div>
       <div class="sr"><span class="cf">student_email</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Student's Google account email. Deduplication key with lesson_id.</span></div>
       <div class="sr"><span class="cf">student_name</span><span class="ct">String</span><span class="cw">S24</span><span class="cd">Denormalized from Ledger. Used for doc naming and report display.</span></div>
