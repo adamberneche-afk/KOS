@@ -68,15 +68,26 @@ const LC_ALIGNMENT_LOGGED_AT    = 11;
 const LC_ERROR_NOTES            = 12;
 const LC_TERM                   = 13;
 
-// Columns 14-16 — 27_LessonFrameGenerator.js. Added self-healing (see
+// Column 14 — 24_WarmUpBridge.js's warm_up_generated (QUEUED/DELIVERED
+// status string). Reserved here, not written by this file, so nothing else
+// ever claims this index. FOUND AND FIXED during the Script 27 build's own
+// aftermath: LC_FRAME_DOC_ID was originally also assigned 14 — a genuine
+// column collision with this pre-existing column, since 24_WarmUpBridge.js
+// hardcodes LC24_WARM_UP_GENERATED = 14 / 25_WarmUpWriter.js hardcodes
+// LC25_WARM_UP_GENERATED = 14 as read/write targets, independent of
+// whatever _ensureFrameColumns_ below happened to write there. The frame
+// columns were moved to 15-17 to resolve it; see HISTORY.md.
+const LC_WARM_UP_GENERATED       = 14;
+
+// Columns 15-17 — 27_LessonFrameGenerator.js. Added self-healing (see
 // _ensureFrameColumns_ below) rather than only in createModule2Tabs_()'s
 // initial header write, so a deployment created before this feature existed
 // gets these columns on first use instead of needing a migration step —
 // same convention as _ensureTurnInReviewColumns_() (07_TeacherDashboard.js)
 // and _ensureScrDecisionLogArchiveColumn_() (30_SCRSuggestionEngine.js).
-const LC_FRAME_DOC_ID            = 14;
-const LC_FRAME_DOC_URL           = 15;
-const LC_FRAME_GENERATED_AT      = 16;
+const LC_FRAME_DOC_ID            = 15;
+const LC_FRAME_DOC_URL           = 16;
+const LC_FRAME_GENERATED_AT      = 17;
 
 // LessonContext status values
 const LC_STATUS_RECEIVED          = "RECEIVED";
@@ -93,13 +104,17 @@ const LC_STATUS_ERROR             = "ERROR";
 
 // ---------------------------------------------------------------------------
 // _ensureFrameColumns_
-// Idempotent header add for columns 15-17 (1-based) — frame_doc_id,
-// frame_doc_url, frame_generated_at. Safe to call on every
-// generateLessonFrame_() invocation; a no-op once the headers exist.
+// Idempotent header add for columns 16-18 (1-based) — frame_doc_id,
+// frame_doc_url, frame_generated_at. Deliberately starts one column past
+// LC_WARM_UP_GENERATED (column 15, 1-based) rather than adjacent to `term`,
+// so this function can never clobber 24_WarmUpBridge.js's warm_up_generated
+// header even on a deployment where that column hasn't been added yet.
+// Safe to call on every generateLessonFrame_() invocation; a no-op once the
+// headers exist.
 // ---------------------------------------------------------------------------
 function _ensureFrameColumns_(lcSheet) {
   const headers = ["frame_doc_id", "frame_doc_url", "frame_generated_at"];
-  const startCol = LC_FRAME_DOC_ID + 1; // 15, 1-based
+  const startCol = LC_FRAME_DOC_ID + 1; // 16, 1-based
   headers.forEach((name, i) => {
     const cell = lcSheet.getRange(1, startCol + i);
     if (String(cell.getValue()).trim() !== name) {
@@ -413,16 +428,21 @@ function writeErrorNote_(lcSheet, lessonId, note) {
 
 // ---------------------------------------------------------------------------
 // generateLessonId_
-// Format: LES-YYYYMMDD-XXXX (4 hex chars)
-// Matches the ID pattern established in the schema doc.
+// Format: LES-YYYYMMDD-XXXXXX (6 hex chars, getUuid()-derived)
+//
+// FIXED: used to be Math.floor(Math.random() * 0xffff) — only 65,536
+// possible values/day with no uniqueness check against existing rows. Now
+// matches the Utilities.getUuid()-derived pattern
+// 15c_Flow2DirectEvaluationService.js's _generateEvidenceId_() already
+// established for exactly this reason (24_WarmUpBridge.js's
+// generateQueueId_() got the identical fix).
 // ---------------------------------------------------------------------------
 function generateLessonId_() {
   const now  = new Date();
   const yyyy = now.getFullYear();
   const mm   = String(now.getMonth() + 1).padStart(2, "0");
   const dd   = String(now.getDate()).padStart(2, "0");
-  const hex  = Math.floor(Math.random() * 0xffff)
-    .toString(16).toUpperCase().padStart(4, "0");
+  const hex  = Utilities.getUuid().replace(/-/g, "").substring(0, 6).toUpperCase();
   return "LES-" + yyyy + mm + dd + "-" + hex;
 }
 
@@ -523,11 +543,17 @@ function createModule2Tabs_() {
   // broke supersedeDuplicates_()/findLesson_()'s string comparisons (see
   // _normalizeLessonDateCell_ below — that fix handles rows written before
   // this format existed; this prevents new rows from needing it at all).
+  // "warm_up_generated" (col 15) is included here for fresh installs so it
+  // never needs 24_WarmUpBridge.js's manual createLessonContextWarmUpColumn_()
+  // migration at all — and so the frame columns that follow it can never
+  // land in its slot. See LC_WARM_UP_GENERATED's own comment above for why
+  // that matters.
   _createTabIfMissing_(ss, cfg.tabs.lessonContext, [
     "lesson_id", "teacher_email", "submitted_at", "lesson_date",
     "period_or_class", "activity_description", "learning_objective",
     "key_vocabulary", "prior_lesson_connection", "competency_ids",
     "status", "alignment_logged_at", "error_notes", "term",
+    "warm_up_generated",
     "frame_doc_id", "frame_doc_url", "frame_generated_at"
   ], [4]);
 
