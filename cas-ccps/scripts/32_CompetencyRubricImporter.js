@@ -4,16 +4,27 @@
 //       already-pushed Module 4/5 scripts 29/30/30b; Module 2 moved to
 //       31/32/33 per repo reconciliation decision 1 (see cas-ccps/README.md).
 // BOUND TO: Central Ledger spreadsheet (same project as the other
-//          Module 2 scripts: 22, 22b, 23, 24, 26, 28, 31, 33)
+//          Module 2 scripts: 22, 22b, 23, 24, 26, 28, 31, 33) AND the
+//          Teacher Dashboard standalone web app — added there when
+//          27_LessonFrameGenerator.js needed getRubricsForLesson_() and
+//          gas-lint's cross-project call check caught that this file
+//          wasn't present in that project (Script 27 runs synchronously
+//          inside Teacher Dashboard, called from Script 22's
+//          onLessonContextSubmit_(), which itself runs there — see that
+//          file's own header). Only depends on getConfig_()
+//          (00_SharedConfig.js, present in every project) plus its own
+//          internal functions/constants, so this dual placement is safe.
 // PURPOSE: Imports CompetencyRubrics.json into the CompetencyRubrics tab,
 //          and exports lookup functions used by Script 24 when building
-//          WarmUpQueue lesson context snapshots.
+//          WarmUpQueue lesson context snapshots, and by Script 27 when
+//          compiling a Lesson Frame's competency-alignment section.
 //
 // ENTRY POINTS:
 //   importCompetencyRubrics()          — run once manually from Script Editor
 //   validateRubricImport()             — run after import to verify data
 //   getRubricForCompetency_(compId)    — called by Script 24 per competency
-//   getRubricsForLesson_(compIds)      — called by Script 24 for full lesson
+//   getRubricsForLesson_(compIds)      — called by Script 24 for full lesson,
+//                                        and by Script 27 for a Lesson Frame
 //
 // TAB SCHEMA (CompetencyRubrics):
 //   competency_id | course | task_number | duty_area | competency_text

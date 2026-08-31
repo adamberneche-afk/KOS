@@ -710,3 +710,98 @@ three existing retention windows and, like them, **not confirmed against any
 district or state schedule.** That gap matters more here than elsewhere:
 this is the tab that exists to answer "what did we tell whom", which is the
 question a records request asks.
+
+---
+
+## `27_LessonFrameGenerator` — the one Full script closed
+
+The last remaining gap named repeatedly since resolution 9 above
+(`cas-ccps/README.md`'s module table, `meta/CODEBASE_REVIEW.md`,
+`PLATFORM_DOCUMENTATION.html`'s script inventory) is built. Not an
+unassigned slot — a specific, named script two other files were already
+wired for: `22_LessonContextHandler.js`'s `onLessonContextSubmit_()` has
+returned `frameDocUrl: null` since it was written, with the comment
+*"frameDocUrl is null until Script 27 is built"*, and
+`07_TeacherDashboard.js`'s client already does
+`if (firstFrameDocUrl) window.open(...)` — dormant, waiting for that field
+to ever be non-null. Neither file needed a change beyond Script 27 existing
+and being called; `PLATFORM_DOCUMENTATION.html`'s own note (*"No frontend
+change required"*) held.
+
+**Resolved a real architectural disagreement between docs before building
+anything.** `CAS_Module2_Documentation_v2.0.html` and `CAS_M2_Schema.html`
+describe the hook as synchronous — a URL ready in the same request/response
+cycle as the lesson submission. `PLATFORM_DOCUMENTATION.html` instead frames
+it as **"Studio Flow 5,"** matching the async, nightly-cron shape of Flows
+3/4. The two are incompatible: an async flow means no URL exists by the time
+submission returns, and the already-built `window.open()` hook would simply
+never fire. Built synchronous — every piece of content it needs (objective,
+activity, prior-lesson connection, competency text) is already-collected
+data, none of it requiring an LLM call, exactly like
+`26_CompetencyAlignmentLog.js`'s `generateAlignmentReport()`, whose
+Doc-building idiom this reuses directly (`DocumentApp.create()` → `moveTo`
+teacher folder → headings/paragraphs → `saveAndClose()` →
+`registerReport_()`).
+
+**No real "suggested warm-up question" is possible at generation time, so
+the doc says so rather than fabricating one.** `LessonContext` and
+`WarmUpQueue` are unrelated subsystems — `24_WarmUpBridge.js`'s
+`findLesson_()` reads `LessonContext` only to *feed* Flow 3's future nightly
+generation, never the reverse. At the moment a frame is compiled
+(synchronously, at submission), no warm-up exists yet for that lesson in the
+ordinary case. The frame's "Suggested Warm-Up" section carries a labeled
+placeholder instead of a lookup that would almost always come up empty.
+
+**Closed a real gap between documented and implemented status lifecycle.**
+`CAS_M2_Schema.html` has always described `RECEIVED → ALIGNMENT_LOGGED →
+FRAME_GENERATED`; the code only ever implemented the first two. Added
+`LC_STATUS_FRAME_GENERATED` and three new self-healing `LessonContext`
+columns (`frame_doc_id`, `frame_doc_url`, `frame_generated_at`) — same
+self-healing convention as `_ensureTurnInReviewColumns_()`
+(`07_TeacherDashboard.js`), so a deployment created before this feature
+existed gets the columns on first use. The doc's `PUBLISHED` status has no
+described mechanism anywhere in this repo and stays undocumented rather
+than invented here.
+
+**Widened `registerReport_()` instead of duplicating it.**
+Script 27 needed the identical ReportRegistry-write mechanic under a new
+`report_type` (`LESSON_FRAME`). `registerReport_()` gained an 8th, optional
+`reportType` parameter defaulting to `"ALIGNMENT_TERM"`, so
+`generateAlignmentReport()`'s one pre-existing call site is unaffected. This
+works because Script 27 sits in exactly the two projects
+`26_CompetencyAlignmentLog.js` already does
+(`cas-ccps:central-ledger` + `cas-ccps:teacher-dashboard`) — calling the
+shared function directly instead of copying it, matching this codebase's
+established preference (see `36_WeeklyParentReport.js`'s own header).
+
+**gas-lint caught a real cross-project bug before it shipped.** Script 27
+calls `getRubricsForLesson_()` (`32_CompetencyRubricImporter.js`) for the
+competency-alignment section — but that file was only ever in
+`cas-ccps:central-ledger`. Script 27 runs synchronously inside the Teacher
+Dashboard project (called from `onLessonContextSubmit_()`, which runs
+there), so the call would have thrown `ReferenceError` in a live Teacher
+Dashboard deployment. `node tools/gas-lint/check.js` flagged it as a
+possibly-undefined-in-project warning the moment the project-map entry was
+added; fixed by adding `32_CompetencyRubricImporter.js` to
+`cas-ccps:teacher-dashboard` too (it only depends on `getConfig_()`, present
+in every project, so this is safe).
+
+**A competency ID missing from `CompetencyRubrics` is noted, not silently
+dropped.** `getRubricsForLesson_()` itself only logs a warning and omits a
+missing ID from its result — exactly what would have made a Lesson Frame
+quietly show fewer competencies than the teacher actually selected. Script
+27 diffs the requested IDs against what came back and lists any gap
+explicitly.
+
+Also added to `tests/harness/gas-sandbox.js`: the `MMM d, yyyy h:mm a` date
+format, and `appendHorizontalRule()`/`setIndentStart()`/`setItalic()` as
+paragraph-level no-ops — all three already used by
+`generateAlignmentReport()`, which had never been called by any test before
+this one needed to exercise `registerReport_()`'s widening through a real
+call.
+
+`npm test` 393 passing (up 14), gas-lint 0 errors / 4 warnings. Verified
+non-vacuous on four points: the `frameDocUrl` hook (revert to hardcoded
+`null`), the blank-prior-connection omission, the missing-competency note,
+and the `registerReport_()` widening — each mutation caught by exactly the
+test meant to cover it.
