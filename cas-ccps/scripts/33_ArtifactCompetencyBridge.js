@@ -456,9 +456,31 @@ function validateArtifactSync() {
 
 // ---------------------------------------------------------------------------
 // getStudentCompetenciesFromArtifacts_
-// Exported function — called by Script 23's getStudentProfileSnapshot_()
-// to get the artifact-evidenced competency set for a specific student.
-// Used at queue-build time (Script 24) to compute competency_gaps accurately.
+//
+// CORRECTED — this comment used to claim "called by Script 23's
+// getStudentProfileSnapshot_() to get the artifact-evidenced competency set
+// for a specific student." That was never true; a third-party review found
+// it. This function has no callers anywhere in the repo — it's dead code.
+//
+// The real mechanism getStudentProfileSnapshot_() actually relies on is
+// cron-ordering, not a call into this function: syncArtifactCompetencies()
+// (this file, 3:05am) directly overwrites the same StudentProfiles
+// competencies_addressed cell that getStudentProfileSnapshot_()
+// (23_StudentProfileManager.js) reads straight off the sheet — a merge of
+// class-level coverage (written by Script 23 at 3:00am) with artifact
+// evidence — a few minutes before that read next happens (3:15am eval,
+// 3:30am queue build). It works, but as an undocumented side effect of
+// trigger scheduling, not the documented interface this comment described.
+// If syncArtifactCompetencies()'s trigger ever silently stopped firing,
+// every profile would quietly revert to class-level-only coverage with no
+// signal — closed by the M2_STAGE1B_LAST_RUN cron-health check
+// runWarmUpEvaluation() now performs (25_WarmUpWriter.js), and by
+// registering this trigger in Script 28's setup wizard, which never
+// installed it before.
+//
+// This function is kept as-is (unused) rather than deleted or wired in —
+// rewiring the real mechanism into an explicit function call is a genuine
+// design change outside the scope of a comment correction.
 //
 // Returns: Set of competency IDs evidenced by completed artifacts, or null
 //          if artifact sync hasn't run yet (falls back to class-level set).

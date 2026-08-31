@@ -330,6 +330,34 @@ function _ferpaHealthChecks_() {
       : "✅  No ParentReportLog rows past retention awaiting archival",
   });
 
+  // ── (h) WarmUpQueue retention (third-party review) ──
+  // Same counter-after-archiver shape as (d)-(g): both callers run
+  // _archiveExpiredWarmUpQueueRows_() (34_QueueWatchdog.js) immediately
+  // before this, so a nonzero result means archival itself failed, not
+  // that it merely hasn't run.
+  let warmUpQueuePastRetentionUnarchived = 0;
+  try {
+    warmUpQueuePastRetentionUnarchived = _countWarmUpQueueRowsPastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] WarmUpQueue retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: warmUpQueuePastRetentionUnarchived === 0,
+    alertText: warmUpQueuePastRetentionUnarchived
+      ? "🚨 WARMUPQUEUE RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + warmUpQueuePastRetentionUnarchived + " row(s) are past the configured retention\n" +
+        "   window (WARMUP_QUEUE_RETENTION_YEARS Script Property, default 5 years,\n" +
+        "   unconfirmed against any real district retention schedule) and have\n" +
+        "   not moved to ARCHIVED — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: warmUpQueuePastRetentionUnarchived
+      ? "🚨  " + warmUpQueuePastRetentionUnarchived + " WarmUpQueue row(s) past retention, not archived — see admin alert"
+      : "✅  No WarmUpQueue rows past retention awaiting archival",
+  });
+
   return checks;
 }
 
@@ -443,6 +471,12 @@ function autoHealthAlert() {
   // extended to the one FERPA-scoped tab that had no archival at all.
   _archiveExpiredCompetencyEvidence_();
   _archiveExpiredParentReports_();
+
+  // --- WarmUpQueue retention archival (third-party review — the one major
+  // operational tab with zero retention at all). Same rationale as the
+  // calls above, in 34_QueueWatchdog.js since that file already owns
+  // WarmUpQueue health monitoring.
+  _archiveExpiredWarmUpQueueRows_();
 
   // --- FERPA-adjacent checks (Say/Do Ledger finding #5, Bonus 1) ---
   _ferpaHealthChecks_().forEach(c => { if (!c.ok && c.alertText) issues.push(c.alertText); });
@@ -680,6 +714,10 @@ function runSystemHealthCheck() {
   // extended to the one FERPA-scoped tab that had no archival at all.
   _archiveExpiredCompetencyEvidence_();
   _archiveExpiredParentReports_();
+
+  // WarmUpQueue retention archival (third-party review) — same reasoning,
+  // in 34_QueueWatchdog.js since that file already owns WarmUpQueue health.
+  _archiveExpiredWarmUpQueueRows_();
 
   // FIXED (finding #5, Bonus 1): folded into the final "all healthy" &&
   // condition below, not just appended as a display line — a display-only

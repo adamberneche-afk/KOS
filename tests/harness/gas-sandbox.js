@@ -707,7 +707,21 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     MailApp: makeMailAppMock(),
     ScriptApp: makeScriptAppMock(),
     Utilities: {
-      getUuid: () => 'fake-uuid-' + Math.random().toString(36).slice(2),
+      // FIXED: used to return 'fake-uuid-' + a base36 tail — after any
+      // caller's own hyphen-stripping (e.g. _generateEvidenceId_()'s
+      // Utilities.getUuid().replace(/-/g,"").substring(0,6)) the first 6
+      // characters were the fixed, non-hex literal "fakeuu" on every call,
+      // which would make a uniqueness/collision test against that slice
+      // meaningless. Now emits a realistic UUIDv4-shaped hex string
+      // (8-4-4-4-12), matching what real GAS actually returns.
+      getUuid: () => {
+        const hex = (n) => {
+          let s = '';
+          for (let i = 0; i < n; i++) s += Math.floor(Math.random() * 16).toString(16);
+          return s;
+        };
+        return hex(8) + '-' + hex(4) + '-' + hex(4) + '-' + hex(4) + '-' + hex(12);
+      },
       formatDate: formatDateMock,
       // Real Apps Script API — blocks for real inside a live GAS
       // execution. A no-op here, not a real setTimeout/delay: a
