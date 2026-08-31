@@ -519,6 +519,60 @@ function teacherOverrideTurnInScore(configId, score) {
   return _recordTurnInDecision_(cfg, configId, cfg.teacherEmail, score, "OVERRIDDEN");
 }
 
+// ── Weekly parent reports (36_WeeklyParentReport.js) ────────────────────────
+// Two more google.script.run entry points, same _isAuthorizedTeacher_ gate as
+// everything else exported from this file.
+//
+// This pair is the reason delivery lives in the dashboard rather than in
+// Gmail drafts. A draft the teacher addresses by hand leaves the system no
+// record of where a child's scores went; here the app addresses and sends,
+// so ParentReportLog can record the recipient. The most likely FERPA
+// incident this feature could produce is one child's report reaching another
+// child's parent, and a log that says who actually received what is the only
+// thing that makes that detectable after the fact.
+//
+// The authorization gate matters more here than on most functions in this
+// file: this is the one path in cas-ccps that sends student data outside the
+// school's Workspace domain.
+
+function getWeeklyParentReports() {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  try {
+    const generated = generateWeeklyParentReports();
+    return {
+      success: true,
+      weekStart: generated.weekStart ? Utilities.formatDate(
+        generated.weekStart, Session.getScriptTimeZone(), "MMMM d, yyyy") : "",
+      weekEnd: generated.weekEnd ? Utilities.formatDate(
+        generated.weekEnd, Session.getScriptTimeZone(), "MMMM d, yyyy") : "",
+      excludedStudentCount: generated.excludedStudentCount,
+      reports: generated.reports.map(function (r) {
+        return {
+          studentEmail: r.studentEmail,
+          studentName: r.studentName,
+          confirmedCount: r.confirmedCount,
+          pendingCount: r.pendingCount,
+          itemCount: r.thisWeek.length,
+          progressCount: r.progress.length,
+          // The exact text that would be sent, so the teacher reviews what
+          // the parent will actually read rather than a summary of it.
+          preview: renderWeeklyParentReportText_(r),
+        };
+      }),
+    };
+  } catch (e) {
+    Logger.log("[S07] getWeeklyParentReports failed: " + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function teacherSendWeeklyParentReport(studentEmail, recipientAddress) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return sendWeeklyParentReport(studentEmail, recipientAddress);
+}
+
 // ── M2 ──────────────────────────────────────────────────────────────────────
 // getCompetencies — discovers all courses for this teacher from the registry,
 // returns competencies grouped by course, sorted by task number within each.
@@ -993,6 +1047,10 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
        roster via getStudentContextRoster(). A student caller gets an
        entirely separate, small buildMyContextHtml_() page instead. ── -->
   <button id="context-tab-btn" onclick="showStudentContext()">My Context</button>
+  <!-- Weekly parent reports (36_WeeklyParentReport.js). Opens a review
+       list; nothing is sent until the teacher enters an address and
+       presses Send on one student. -->
+  <button id="parent-report-btn" onclick="openParentReportModal()">✉ Parent Reports</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -1167,6 +1225,24 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
       <button class="modal-close" onclick="closeScoreReviewModal()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="score-review-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Weekly Parent Reports modal — 36_WeeklyParentReport.js.
+     Same modal-backdrop/modal/modal-header/modal-body convention as the
+     three modals above. Wider than the review modal because each row shows
+     a full preview of the text that would be sent: the teacher is
+     authorizing a disclosure outside the school's domain, so they read the
+     actual message, not a summary of it. -->
+<div class="modal-backdrop" id="parent-report-modal-backdrop" onclick="if(event.target===this)closeParentReportModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="parent-report-modal-title" style="max-width:720px">
+    <div class="modal-header">
+      <h2 id="parent-report-modal-title">Weekly parent reports</h2>
+      <button class="modal-close" onclick="closeParentReportModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="parent-report-modal-body">
       <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
   </div>
@@ -1458,6 +1534,136 @@ function _handleTurnInDecisionResult(res) {
   closeScoreReviewModal();
   showToast("✅ Score recorded — " + res.finalScore + "/5");
   loadData();
+}
+
+// ── Weekly parent reports ───────────────────────────────────────────────────
+// Review-and-send, one student at a time. Deliberately not a "send all"
+// button: each send is a disclosure of one child's record to one address
+// outside the school's domain, and a bulk action would make the most
+// consequential thing here the easiest thing to do by accident.
+
+let _parentReports = [];
+
+function openParentReportModal() {
+  document.getElementById("parent-report-modal-backdrop").classList.add("show");
+  document.getElementById("parent-report-modal-body").innerHTML =
+    '<p style="font-size:13px;color:var(--text-secondary)">Loading this week\\'s reports…</p>';
+  google.script.run
+    .withSuccessHandler(renderParentReportModal)
+    .withFailureHandler(function(e) {
+      document.getElementById("parent-report-modal-body").innerHTML =
+        '<p style="color:#d93025;font-size:13px">Could not load: ' +
+        esc(e && e.message ? e.message : "unknown error") + '</p>';
+    })
+    .getWeeklyParentReports();
+}
+
+function closeParentReportModal() {
+  document.getElementById("parent-report-modal-backdrop").classList.remove("show");
+}
+
+function renderParentReportModal(data) {
+  const body = document.getElementById("parent-report-modal-body");
+  if (!data || !data.success) {
+    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+      esc((data && data.error) || "Could not load reports.") + '</p>';
+    return;
+  }
+  _parentReports = data.reports || [];
+
+  let html = '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">' +
+    'Week of <strong>' + esc(data.weekStart) + '</strong> – <strong>' +
+    esc(data.weekEnd) + '</strong></p>' +
+    '<p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">' +
+    'Scores appear only where you have already confirmed them. Anything still ' +
+    'awaiting your review is counted, never numbered.</p>';
+
+  // Students dropped by _studentIdPattern_ are surfaced, not swallowed. In
+  // the aggregator a skipped row is a cosmetic gap; here it is a family that
+  // would never hear from the school, and the teacher is the only person who
+  // can notice and fix the underlying account.
+  if (data.excludedStudentCount > 0) {
+    html += '<div role="alert" style="background:#fef7e0;border:1px solid #f9dc8f;' +
+      'border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:14px">' +
+      '<strong>' + esc(data.excludedStudentCount) + ' student' +
+      (data.excludedStudentCount === 1 ? ' is' : 's are') + ' not listed below.</strong> ' +
+      'Their account does not match the district student-ID format, so no report ' +
+      'was built for them. They will keep being skipped until the account is corrected.' +
+      '</div>';
+  }
+
+  if (!_parentReports.length) {
+    html += '<p style="font-size:13px;color:var(--text-secondary)">No coursework recorded this week.</p>';
+    body.innerHTML = html;
+    return;
+  }
+
+  _parentReports.forEach(function(r, i) {
+    const pending = r.pendingCount > 0
+      ? '<span style="color:#b06000"> · ' + esc(r.pendingCount) + ' awaiting your review</span>'
+      : '';
+    html +=
+      '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
+        '<div style="font-weight:600;font-size:14px">' + esc(r.studentName || r.studentEmail) + '</div>' +
+        '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px">' +
+          esc(r.confirmedCount) + ' confirmed score' + (r.confirmedCount === 1 ? '' : 's') +
+          pending + ' · ' + esc(r.progressCount) + ' competenc' +
+          (r.progressCount === 1 ? 'y' : 'ies') + ' to date' +
+        '</div>' +
+        '<details style="margin-bottom:10px">' +
+          '<summary style="font-size:12.5px;cursor:pointer;color:#1a73e8">' +
+            'Read what will be sent</summary>' +
+          '<pre style="white-space:pre-wrap;font-size:12px;background:#f8f9fa;' +
+            'border-radius:6px;padding:10px;margin-top:8px;font-family:inherit">' +
+            esc(r.preview) + '</pre>' +
+        '</details>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+          '<label for="pr-addr-' + i + '" style="font-size:12.5px">Parent email</label>' +
+          '<input id="pr-addr-' + i + '" type="email" placeholder="name@example.com" ' +
+            'style="flex:1;min-width:190px;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px">' +
+          '<button class="btn" onclick="submitParentReportSend(' + i + ')">Send</button>' +
+        '</div>' +
+        '<div id="pr-msg-' + i + '" role="status" aria-live="polite" ' +
+          'style="font-size:12.5px;margin-top:8px"></div>' +
+      '</div>';
+  });
+  body.innerHTML = html;
+}
+
+function submitParentReportSend(i) {
+  const report = _parentReports[i];
+  if (!report) return;
+  const input = document.getElementById("pr-addr-" + i);
+  const msg   = document.getElementById("pr-msg-" + i);
+  const addr  = input ? input.value.trim() : "";
+  if (!addr) {
+    msg.style.color = "#d93025";
+    msg.textContent = "Enter the parent's email address.";
+    return;
+  }
+  msg.style.color = "var(--text-secondary)";
+  msg.textContent = "Sending…";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        msg.style.color = "#d93025";
+        msg.textContent = (res && res.error) || "Could not send — try again.";
+        return;
+      }
+      msg.style.color = "#188038";
+      // Echo the address back. The teacher typed it by hand, and this is the
+      // last moment a misdirected report can be noticed by the person who
+      // still remembers who it was meant for.
+      msg.textContent = "✅ Sent to " + res.recipient;
+      if (input) input.disabled = true;
+      showToast("✅ Report sent to " + res.recipient);
+    })
+    .withFailureHandler(function(e) {
+      msg.style.color = "#d93025";
+      msg.textContent = e && e.message ? e.message : "Could not send — try again.";
+    })
+    .teacherSendWeeklyParentReport(report.studentEmail, addr);
 }
 
 // Per-term client cache — switching the term filter back and forth used to

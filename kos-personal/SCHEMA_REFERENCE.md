@@ -26,7 +26,7 @@ The central queue. Every session chunk passes through this sheet.
 |---|---|
 | `SESSION_LOG` | Session transcript submitted via web app or Sensor 1 folder-drop |
 | `EXTERNAL_DATA` | Research or context submitted via web app Research tab |
-| `COG_STIMULUS` | Sequestered council stimulus doc (one per cog per council run) |
+| `COG_STIMULUS` | Council stimulus doc — **one shared document per council run**, not one per cog. Sequestration is enforced by the operator running each persona in its own separate Gem conversation against that shared stimulus (BRIDGE_FIDELITY_001), not by minting a doc per cog. **No `.gs` writes a STAGING_PIPELINE row with this Payload_Type**: `generateSevenBridgesStimulus()` / `triggerSevenBridgesReview()` produce the Drive doc, and verdicts come back through `submitCogVerdict()`. The value is live in the Studio prompt contract (`CURATOR_PROMPT.md` §3.3) rather than in the intake pipeline |
 | `EXTERNAL_TELEMETRY` | Data from Sensor 3 (onChange on BRAIN_TRUST_INDEX) |
 | `VECTOR_CLASSIFY` | Sentence-level vector classification flow, paired with a SESSION_LOG chunk — see STUDIO_INTEGRATION_SPEC.md's "Inference Flow — Sentence Classification" |
 
@@ -95,7 +95,7 @@ Calibrated vector scores per session. Primary audit trail for domain weighting.
 | I | DOMAIN_COMPLIANCE | Float | 0.0–1.0, calibrated score — 7th known vector, added alongside RELATIONAL (CE-SMP Vector Weight Calculation Engine v1.0) |
 | J | TOTAL | Float | Sum of all domain scores |
 
-Note: v5.4 had 7 columns (no GAS_DEVELOPMENT or RELATIONAL). `runPhase0Migration()` adds these columns to existing sheets. DOMAIN_COMPLIANCE was added later still, as the 7th `CFG.KNOWN_VECTORS` entry.
+Note: v5.4 had 7 columns (no GAS_DEVELOPMENT or RELATIONAL). `runPhase0Migration()` adds these columns to existing sheets — that function lives in `KOS_PHASE0_PATCHES.gs`, which is **not in this repo's working tree** — it was deleted by `45ad8c8` and is preserved on the `pre-archive-cleanup` branch, which a fresh clone must `git fetch origin pre-archive-cleanup` before it can read (see `DEPLOYMENT_GUIDE.md`'s "Migrating from v5.4" for the exact commands). DOMAIN_COMPLIANCE was added later still, as the 7th `CFG.KNOWN_VECTORS` entry.
 
 ---
 
@@ -310,6 +310,24 @@ Completed STAGING_PIPELINE rows moved by `archiveStagingPipeline()`.
 | A | Archived_At | DateTime | When the row was archived |
 | B–H | [All STAGING_PIPELINE columns] | — | Exact copy of the original row |
 
+### Inference_Buffer
+
+Provisioned by `deployFullSystem()` (`1_Config_And_Deploy.gs`, via
+`CFG.INFERENCE_BUFFER_SHEET`) and given headers by the schema map in
+`5_Error_And_Utilities.gs`. **Legacy — kept for backward compatibility
+with pre-v8 deployments; nothing in the current pipeline reads or writes
+rows here.** Documented because a real deployment will have the tab and a
+reader who doesn't find it here would reasonably assume it was created by
+something else.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Timestamp | DateTime | When the buffered inference row was written |
+| B | Session_ID | String | Owning session UID |
+| C | Chunk_ID | String | Chunk identifier within the session |
+| D | Inference_Payload | String | Serialized inference payload |
+| E | Status | String | Row processing status |
+
 ---
 
 ## Drive Folder Structure
@@ -366,7 +384,7 @@ Completed STAGING_PIPELINE rows moved by `archiveStagingPipeline()`.
 | `PIVOTS_AND_LESSONS` | 03.2_Pivots_And_Lessons | Rolling lessons log — updated each session |
 | `DAILY_PRIMER_YYYY-MM-DD` | 03.1_Current_State | Daily session starter (generated 06:00 each morning) — one new file per day, kept forever as an audit trail |
 | `KOS_LATEST_PRIMER` | 03.1_Current_State | The same content as the dated primer above, but as one fixed-name doc overwritten in place every run instead of a new file each day — the integration point for anything external that watches a single Drive file for edits rather than a folder for new files (e.g. a NotebookLM source, which only auto-syncs an existing Drive-native file). Its doc ID is tracked in `CFG.PROP.LATEST_PRIMER_DOC_ID` so it's found by ID, not by name search, after the first run. |
-| `PERSONA_[NAME]_V5` | 02_Council_Alignments | AI persona calibration docs (7 total) |
+| `PERSONA_[NAME]_V5` | 02_Council_Alignments | AI persona calibration docs — one per `CFG.PERSONAS` entry (6), plus any archived version duplicates |
 
 ---
 
@@ -393,7 +411,27 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `ID_03_3_PROCESSED` | 03.3_Processed_Exhaust folder ID |
 | `ID_03_5_INBOUND_SESSIONS` | 03.5_Inbound_Sessions folder ID |
 | `ID_04_COUNCIL_LOGS` | 04_Council_Logs folder ID |
+| `ID_04_1_ARCHITECT` | 04.1_ARCHITECT_SILO folder ID |
+| `ID_04_2_AUDITOR` | 04.2_AUDITOR_SILO folder ID |
+| `ID_04_3_MUSE` | 04.3_MUSE_SILO folder ID |
+| `ID_04_4_DEVELOPER` | 04.4_DEVELOPER_SILO folder ID |
+| `ID_04_5_ALIGNER` | 04.5_ALIGNER_SILO folder ID |
+| `ID_04_6_CURATOR` | 04.6_CURATOR_SILO folder ID |
+| `ID_04_7_RTP` | 04.7_RTP_SILO folder ID |
+| `ID_04_8_GRAVEYARD` | 04.8_COG_GRAVEYARD folder ID |
 | `ID_05_VECTOR_REPOSITORY` | 05_Vector_Repository folder ID |
+| `ID_06_CLASSROOM_ASSETS` | 06_CLASSROOM_ASSETS folder ID |
+| `ID_06_1_LESSON_PLANS` | 06.1_LESSON_PLANS folder ID |
+| `ID_06_2_STUDENT_FACING` | 06.2_STUDENT_FACING folder ID |
+| `ID_06_3_ASSESSMENTS` | 06.3_ASSESSMENTS folder ID |
+| `ID_06_4_COMMUNICATIONS` | 06.4_COMMUNICATIONS folder ID |
+| `ID_07_MEMORY_VAULT` | 07_Memory_Vault folder ID |
+| `ID_08_PROJECT_AUTOPSIES` | 08_Project_Autopsies folder ID |
+| `ID_09_UNC` | Registrar UNC folder ID (`CFG.REGISTRAR_UNC_FOLDER`) |
+| `ID_09_1_HLD` | Registrar HLD folder ID (`CFG.REGISTRAR_HLD_FOLDER`) |
+| `ID_CCPS_MASTER_TEMPLATES` | CCPS_MASTER_TEMPLATES folder ID |
+| `ID_BRAIN_TRUST_INDEX` | BRAIN_TRUST_INDEX spreadsheet ID — written by `deployFullSystem()` alongside `INDEX_ID`, which holds the same value. Both are live; `INDEX_ID` is the one every reader uses |
+| `FOLDER_ID` | 03.4_RAW_EXHAUST folder ID (legacy unprefixed name, still written and read) |
 
 ### Calibration Keys (PIVOT 008 — never logged)
 
@@ -428,7 +466,9 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 |---|---|---|
 | `KOS_MANAGED_SERVICE_BASE_URL` | `CFG.PROP.MANAGED_SERVICE_BASE_URL` | Base URL of the optional `inference-service/` deployment — only read when `CFG.INFERENCE_MODE = 'MANAGED_SERVICE'` |
 | `KOS_MANAGED_SERVICE_API_KEY` | `CFG.PROP.MANAGED_SERVICE_API_KEY` | API key for the optional `inference-service/` deployment |
+| `KOS_MANAGED_SERVICE_WEBHOOK_SECRET` | `CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET` | Shared HMAC secret matching `inference-service`'s `WEBHOOK_SECRET` env var; signs `POST /api/v1/jobs`. **Optional only against a dev service.** A production `inference-service` exits at startup without `WEBHOOK_SECRET` and 401s an unsigned request, so leaving this unset against production means every job submission fails. Read by `_submitManagedServiceJob_()` in `3_Queue_Processor.gs` |
 | `KOS_CHAT_WEBHOOK_URL` | `CFG.PROP.CHAT_WEBHOOK_URL` | Google Chat incoming webhook for `_sendChatAlert()` (Registrar Fail Loud Protocol, Apollo Kill-Switch). Degrades to a console.log no-op if unset |
+| `KOS_LATEST_PRIMER_DOC_ID` | `CFG.PROP.LATEST_PRIMER_DOC_ID` | Stable doc ID of `KOS_LATEST_PRIMER`. Written on the first `generateDailyPrimer()` run so later runs open the doc by ID instead of searching by name |
 
 ### Runtime State
 
@@ -436,6 +476,11 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 |---|---|
 | `KOS_SHADOW_MATRIX` | JSON blob — shadow matrix confidence intervals |
 | `KOS_PROMOTED_VECTORS` | JSON array — themes promoted from incubator |
+| `KOS_TURNSTILE_RELEASED` | JSON map — Payload_UID → release timestamp, the turnstile's release ledger (`_readReleaseMap()`, `10_Turnstile.gs`). Reset to `{}` if the stored JSON is corrupt |
+| `KOS_UNKNOWN_STATUS_ALERTED` | JSON set — `{ Payload_UID: true }` for rows whose unknown status has already raised an alert, so the same row doesn't alert twice (`_readUnknownStatusAlertedSet_()`, `10_Turnstile.gs`) |
+| `KOS_REGISTRAR_RELEASED` | JSON map — the Registrar's own release-timestamp ledger (`_readRegistrarReleaseMap()`, `11_Registrar_CogRelay.gs`) |
+| `KOS_AUDIT_RETRY_PRIORITY` | JSON set — `{ Payload_UID: true }` for payloads to be retried ahead of the queue, without physically reordering sheet rows (`_readAuditRetryPrioritySet_()`, `5_Error_And_Utilities.gs`) |
+| `KOS_ADMIN_EMAIL` | Also listed under Operator Properties — recipient of the daily error digest |
 | `SEVEN_BRIDGES_LAST_RUN` | Unix ms timestamp of the last Seven Bridges review. Serves double duty: `triggerSevenBridgesReview()`'s stasis guard (don't mint a new stimulus unless CURRENT_STATE has changed) **and** `autoCouncilCheck()`'s session-count anchor. That coupling is deliberate and load-bearing — the callee advancing this key is what stops the 2-hourly trigger from re-firing. See `6_Governance.gs`. |
 | `COUNCIL_LAST_RUN` | **Legacy — no longer read or written by any code.** Was the guard for the shared-context council generator deleted in Round 14 (see `CHANGELOG.md`). An existing stored value is a harmless orphan; there is no migration. |
 | `COUNCIL_ACTIVE_ID` | **Aspirational — never read or written by any code.** Council-in-progress state is not tracked in PropertiesService; a review's identity is the `SB_<ms>` Council ID carried in its stimulus document and stamped on each `COG_REGISTRY` row. |

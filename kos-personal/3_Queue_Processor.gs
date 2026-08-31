@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 3 of 8: Queue Processor
+// FILE 3 of 11: Queue Processor
 // ================================================================
 //
 // Replaces: PART 9 (processInferenceQueue), PART 10
@@ -836,10 +836,12 @@ function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType, inde
 
   const headers = { 'X-KOS-API-Key': apiKey };
 
-  // Signature is optional server-side ("skip in dev if not configured" —
-  // see server.js's validateWebhookSignature) but always sent when a
-  // secret is configured here, matching the service's own HMAC-SHA256
-  // over the raw request body scheme.
+  // The signature is REQUIRED by any production service — server.js
+  // refuses to boot without WEBHOOK_SECRET and 401s an unsigned request.
+  // (This comment used to call it "optional server-side"; that was true
+  // before the fail-closed fix and is now only true against a dev
+  // service.) Sent whenever a secret is configured here, matching the
+  // service's HMAC-SHA256 over the raw request body.
   const secret = props.getProperty(CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET);
   if (secret) {
     const sigBytes = Utilities.computeHmacSha256Signature(bodyString, secret);
