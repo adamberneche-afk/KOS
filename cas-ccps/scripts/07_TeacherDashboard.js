@@ -1907,8 +1907,18 @@ If you expect to see students here:
         // attribute's text to the JS parser, so the ' escape still has to
         // survive that decode — hence &quot; here, not \\", which the JS
         // parser would see literally instead of as a quote).
+        //
+        // FIXED: wrNameSafe's second .replace() used to target a literal
+        // ' character. That was fine when esc() only handled &/</>, but
+        // esc() now also escapes ' to &#39; (a real quote-escaping bug a
+        // third-party review found) — so by the time this line ran, esc()
+        // had already consumed every raw ', leaving &#39; untouched and
+        // silently reintroducing the exact vulnerability this comment
+        // describes for any student name containing an apostrophe. Now
+        // targets the entity esc() actually produces. wrIdSafe is
+        // unaffected — googleId is never passed through esc() first.
         const wrIdSafe   = s.googleId.replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const wrNameSafe = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const wrNameSafe = esc(s.name).replace(/&#39;/g,"\\\\'");
         wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
       }
       // NEW (Say/Do Ledger cas-ccps finding #1): shown on every
@@ -1917,11 +1927,12 @@ If you expect to see students here:
       // above since these are independent concerns, not mutually exclusive
       // bucket states. Same double-escape pattern as the "locked" bucket's
       // View Profile button just above, for the same reason (onclick
-      // attribute — see that comment).
+      // attribute — see that comment) — including the same esc()-then-&#39;
+      // fix for rvNameSafe.
       let reviewNextStep = "";
       if (s.statusClass === "pending-review") {
         const rvConfigSafe = String(s.configId||"").replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const rvNameSafe   = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const rvNameSafe   = esc(s.name).replace(/&#39;/g,"\\\\'");
         const rvScoreArg   = s.suggestedScore == null ? "null" : String(s.suggestedScore);
         const rvScoreNote  = s.suggestedScore == null
           ? "No AI-suggested score — assign one directly."
@@ -1935,8 +1946,8 @@ If you expect to see students here:
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
           <div class="last-eval">Last evaluation: \${esc(s.lastEval)}</div>
           \${s.submittedAt && s.submittedAt !== "—" ? \`<div class="last-eval">Submitted: \${esc(s.submittedAt)}</div>\` : ""}
-          \${s.docUrl
-            ? \`<a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>\`
+          \${safeDocUrl(s.docUrl)
+            ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">Open document ↗</a>\`
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
           \${wrNextStep}
@@ -1989,6 +2000,7 @@ function _populateTermDropdown(data) {
 }
 
 ${CLIENT_ESC_JS}
+${CLIENT_SAFE_DOC_URL_JS}
 
 // ── M4: STUDENT CONTEXT TAB ───────────────────────────────────────────────
 // FIXED (finding #9): this page is only ever built for the authorized
@@ -2044,7 +2056,9 @@ function renderTeacherRoster(result) {
         : '<span class="status-badge badge-not-started">No recent activity</span>';
       html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
       html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:11px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
-      html += '<a href="' + s.docUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>';
+      html += safeDocUrl(s.docUrl)
+        ? '<a href="' + esc(safeDocUrl(s.docUrl)) + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>'
+        : '<span style="font-size:12px;color:var(--text-secondary);">Document not yet available</span>';
       html += '</div>';
     });
   }
@@ -2755,6 +2769,7 @@ header h1{font-size:18px;font-weight:500}
 
 <script>
 ${CLIENT_ESC_JS}
+${CLIENT_SAFE_DOC_URL_JS}
 
 function loadOwnContext() {
   google.script.run
@@ -2775,7 +2790,9 @@ function loadOwnContext() {
         '<div style="text-align:center;padding:40px 0;">' +
         '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
         '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
-        '<a href="' + result.docUrl + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>' +
+        (safeDocUrl(result.docUrl)
+          ? '<a href="' + esc(safeDocUrl(result.docUrl)) + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>'
+          : '<p style="font-size:13px;color:var(--text-secondary);">Document not yet available</p>') +
         '</div>';
     })
     .withFailureHandler(function(e) {

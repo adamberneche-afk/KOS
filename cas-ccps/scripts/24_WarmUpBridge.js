@@ -665,15 +665,22 @@ function getPriorWarmUpResponse_(wqData, studentEmail, currentLessonId) {
 
 // ---------------------------------------------------------------------------
 // generateQueueId_
-// Format: WUQ-YYYYMMDD-XXXX (4 hex chars)
+// Format: WUQ-YYYYMMDD-XXXXXX (6 hex chars, getUuid()-derived)
+//
+// FIXED: used to be Math.floor(Math.random() * 0xffff) — only 65,536
+// possible values/day with no uniqueness check, and 25_WarmUpWriter.js
+// uses this ID as a lookup-map key (queueRowByQueueId), so a collision
+// would silently misattribute one student's scores to another's row. Now
+// matches the Utilities.getUuid()-derived pattern
+// 15c_Flow2DirectEvaluationService.js's _generateEvidenceId_() already
+// established for exactly this reason.
 // ---------------------------------------------------------------------------
 function generateQueueId_() {
   const now  = new Date();
   const yyyy = now.getFullYear();
   const mm   = String(now.getMonth() + 1).padStart(2, "0");
   const dd   = String(now.getDate()).padStart(2, "0");
-  const hex  = Math.floor(Math.random() * 0xffff)
-    .toString(16).toUpperCase().padStart(4, "0");
+  const hex  = Utilities.getUuid().replace(/-/g, "").substring(0, 6).toUpperCase();
   return "WUQ-" + yyyy + mm + dd + "-" + hex;
 }
 
@@ -682,11 +689,26 @@ function generateQueueId_() {
 // Run once manually to add the warm_up_generated column to the
 // existing LessonContext tab. Safe to re-run — checks if column exists first.
 //
-// This column extends LessonContext from 14 to 15 columns.
 // warm_up_generated values:
 //   ""        — not yet queued
 //   "QUEUED"  — Script 24 has written WarmUpQueue rows
 //   "DELIVERED" — Flow 3 has created all warm-up docs for this lesson
+//
+// FIXED: this used to append at sheet.getLastColumn() + 1 — whatever
+// column happened to be last at the moment someone ran this. That's fine
+// in isolation, but 22_LessonContextHandler.js's own self-healing
+// _ensureFrameColumns_() (added for Script 27) ALSO appends columns after
+// whatever it finds, and LC24_WARM_UP_GENERATED below is a hardcoded read/
+// write target (= 14) that every caller in this file and 25_WarmUpWriter.js
+// assumes without checking the sheet. Whichever of the two self-healers ran
+// second would land its columns wherever the sheet currently ended — not
+// necessarily column 15 (1-based) — silently breaking either warm-up
+// delivery tracking or lesson frame generation depending on order. Now
+// writes to the fixed position matching LC24_WARM_UP_GENERATED, same
+// idempotent-header-at-fixed-position pattern used everywhere else in this
+// codebase (_ensureFrameColumns_, _ensureTurnInReviewColumns_, etc.) —
+// order no longer matters. createModule2Tabs_() also now writes this header
+// directly for fresh installs, making this function a no-op there.
 // ---------------------------------------------------------------------------
 function createLessonContextWarmUpColumn_() {
   const cfg    = getConfig_();
@@ -698,15 +720,15 @@ function createLessonContextWarmUpColumn_() {
     return;
   }
 
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  if (headers.includes("warm_up_generated")) {
+  const targetCol = LC24_WARM_UP_GENERATED + 1; // 15, 1-based
+  const cell = sheet.getRange(1, targetCol);
+  if (String(cell.getValue()).trim() === "warm_up_generated") {
     Logger.log("[S24] warm_up_generated column already exists — skipping.");
     return;
   }
 
-  const newCol = sheet.getLastColumn() + 1;
-  sheet.getRange(1, newCol).setValue("warm_up_generated").setFontWeight("bold");
-  Logger.log("[S24] Added warm_up_generated column at position " + newCol);
+  cell.setValue("warm_up_generated").setFontWeight("bold");
+  Logger.log("[S24] Added warm_up_generated column at position " + targetCol);
 }
 
 // ---------------------------------------------------------------------------

@@ -239,8 +239,31 @@ function getConfig_() {
 // file list ("INCLUDE IN: Every Apps Script project in this system",
 // above), so no clasp/manifest change is needed to reach any of them.
 // =============================================================================
+// FIXED: used to only escape &/</>. A third-party review found esc() used
+// in HTML-attribute contexts (value="${esc(c.id)}") and inline-JS contexts
+// (onchange="onCompetencyChange('${esc(course.code)}')") with no quote
+// escaping at all — a teacher-entered course name containing an apostrophe
+// (e.g. "Coach's Period") broke the page today, and a crafted " or ' could
+// break out of an attribute. Escapes & first so the newly-added entities
+// for "/' are never themselves double-escaped.
 const CLIENT_ESC_JS = `function esc(s) {
-  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+  return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}`;
+
+// =============================================================================
+// CLIENT_SAFE_DOC_URL_JS — shared client-side docUrl allowlist validator,
+// same sharing rationale as CLIENT_ESC_JS above. FIXED: docUrl was
+// interpolated directly into href="${s.docUrl}" at several sites in
+// 07_TeacherDashboard.js and 13_StudentDashboard.js with no escaping OR
+// scheme validation — esc()'s quote-escaping alone doesn't stop a
+// javascript: URI in an href. docUrl is server-built from a real Drive/Doc
+// file ID (never raw user input) but passes through a stored Sheets cell
+// first, which is a real tampering surface a spreadsheet editor can reach.
+// Interpolate as `${CLIENT_SAFE_DOC_URL_JS}` the same way as CLIENT_ESC_JS.
+// =============================================================================
+const CLIENT_SAFE_DOC_URL_JS = `function safeDocUrl(u) {
+  var s = String(u||"");
+  return /^https:\\/\\/(docs|drive)\\.google\\.com\\//.test(s) ? s : "";
 }`;
 // rubricQueue: "RubricQueue"  ← included in getConfig_() above
 

@@ -516,8 +516,8 @@ function render(data) {
              pattern (07_TeacherDashboard.js's student-meta line). -->
         <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
         <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
-        \${a.docUrl
-          ? \`<a href="\${a.docUrl}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
+        \${safeDocUrl(a.docUrl)
+          ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
           : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
         }
         \${isDone && a.submittedAt
@@ -621,6 +621,7 @@ function _populateTermDropdown(data) {
 }
 
 ${CLIENT_ESC_JS}
+${CLIENT_SAFE_DOC_URL_JS}
 
 loadData();
 </script>
