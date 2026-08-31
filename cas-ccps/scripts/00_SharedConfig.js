@@ -187,7 +187,15 @@ function getConfig_() {
       // is a separate GAS project with no access to this file or
       // getConfig_() — it hardcodes the same literal name directly, by
       // necessity, not via this config key.
-      competencyEvidence: "CompetencyEvidence"
+      competencyEvidence: "CompetencyEvidence",
+
+      // ── 36_WeeklyParentReport.js ──
+      // One row per student per week: what was prepared, what was sent, and
+      // — the point of the tab — the address it was actually sent to. This
+      // is the only record in cas-ccps of student data leaving the school's
+      // domain, which is why the address is captured by the app that sends
+      // rather than left to whatever the teacher typed into a mail client.
+      parentReportLog:    "ParentReportLog"
     }
   };
 }
@@ -305,6 +313,49 @@ const LEDGER = {
 // 29_StudentContextAggregator.js, 30_SCRSuggestionEngine.js) that read the
 // whole Ledger tab rather than a header-driven dynamic column set.
 const LEDGER_COL_COUNT = 23;
+
+// =============================================================================
+// SCRDecisionLog column indices (0-based) — canonical order
+//
+// Moved here from 30_SCRSuggestionEngine.js, which is bound only to
+// cas-ccps:central-ledger. 36_WeeklyParentReport.js runs in BOTH that
+// project and cas-ccps:teacher-dashboard and needs these indices, and this
+// file is the one thing present in every project — the same reason LEDGER
+// above lives here rather than in 07_TeacherDashboard.js.
+//
+// Append-only. One row per confirm/override action ever taken. This is the
+// actual legally-retained record — see the 8VAC20-120-120 retention
+// requirement noted in the original SCR specification.
+//
+// Say/Do Ledger cas-ccps Extension 3: rows are still never deleted
+// automatically (see _archiveExpiredScrDecisions_() in Script 30) —
+// ARCHIVE_STATUS only marks a row "restricted, pending disposition review"
+// once it's past the configured retention window. Actual permanent deletion
+// always requires an explicit human decision, never a script.
+//
+// Note what is NOT here: SCRSuggestions' own column map (SCRS) stays in
+// Script 30 on purpose. SCRDecisionLog holds decisions a teacher actually
+// made; SCRSuggestions holds AI values nobody has acted on yet. Only the
+// former is safe to surface outside this codebase's teacher-facing
+// surfaces, and keeping the two maps in different scopes makes that
+// distinction structural instead of a convention someone has to remember.
+// =============================================================================
+const SCRDL = {
+  DECISION_ID: 0,
+  STUDENT_EMAIL: 1,
+  COMPETENCY_ID: 2,
+  SUGGESTED_RATING: 3,       // what the system proposed (blank if teacher
+                             // entered cold, with no suggestion shown)
+  FINAL_RATING: 4,           // what the teacher actually decided — 1-5
+  DECISION_TYPE: 5,          // CONFIRMED | OVERRIDDEN
+  DECIDED_AT: 6,
+  DECIDED_BY: 7,             // teacher email
+  EVIDENCE_SNAPSHOT: 8,      // met/notMet/partial counts at decision time,
+                             // denormalized for audit — same rationale as
+                             // AlignmentLog's denormalized competency_text
+  ARCHIVE_STATUS: 9,         // "" = active; "ARCHIVED — pending disposition
+                             // review" once past SCR_RETENTION_YEARS
+};
 
 // =============================================================================
 // getCompetencyTextMap_ — CacheService layer over CompetencyRegistry
