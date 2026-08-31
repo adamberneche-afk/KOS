@@ -108,6 +108,13 @@ Answer questions about his programs, help draft emails, think through trip logis
 
 ## KEY CONTEXT YOU ALWAYS KNOW
 
+> **⚠ Stale — every date below has passed.** This block was accurate "as of
+> March 2026"; it needs a real refresh with the current cycle's actual dates
+> (registration, payment, ICDC location/window, and the Ms. Green meeting
+> series) rather than being left to mislead. Left in place, not deleted or
+> guessed at, since no primary source for the replacement dates is in this
+> repo.
+
 **Upcoming hard deadlines (as of March 2026):**
 - ICDC Registration: March 2–13, 2026 ($155/student)
 - Meeting w/ Ms. Green: March 14, 28 | April 11, 25 | May 9
