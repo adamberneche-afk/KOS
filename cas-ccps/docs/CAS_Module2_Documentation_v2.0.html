@@ -314,7 +314,13 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
   → build <span class="v">CompetencyMap</span> from registry
   → for each competency ID: write one row to <span class="v">AlignmentLog</span> (denormalized)
   → update <span class="v">LessonContext</span> status → <span class="g">ALIGNMENT_LOGGED</span>
-  → Script 07 receives { success: true } → toast + <span class="h">S27 hook</span> (dormant)
+  → call <span class="v">generateLessonFrame_(lessonId)</span> in Script 27, only if S26 succeeded
+
+<span class="k">Script 27</span> (LessonFrameGenerator)
+  → look up rubric text for the lesson's competencies (Script 32)
+  → build the Lesson Frame Doc · register in ReportRegistry (report_type: LESSON_FRAME)
+  → update <span class="v">LessonContext</span> status → <span class="g">FRAME_GENERATED</span>
+  → Script 07 receives { success: true, frameDocUrl } → toast + opens the Lesson Frame doc
 
 <span class="c">// SAFETY NET</span>
 <span class="k">runAlignmentLogBackfill_</span> (every 5 min)
@@ -550,7 +556,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
       <div class="sc-fns">
         <span class="fn-tag entry">getCompetencies()</span>
         <span class="fn-tag entry">submitLessonContext(payload)</span>
-        <span class="fn-tag hook">S27 hook: frameDocUrl</span>
+        <span class="fn-tag hook">S27: frameDocUrl (live — see 27_LessonFrameGenerator.js)</span>
         <span class="fn-tag hook">M3 hook: scaffold spans</span>
       </div>
     </div>
@@ -896,8 +902,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
     <div class="hook-row hdr"><span>Location</span><span>Status</span><span>Description</span></div>
     <div class="hook-row">
       <span class="hook-file">07_TeacherDashboard.js<br>submitLesson() client</span>
-      <span class="hook-status dormant">DORMANT</span>
-      <span class="hook-desc"><strong>S27 hook — Lesson Frame doc.</strong> <code>if (result.frameDocUrl) window.open(...)</code>. When Script 27 populates <code>frameDocUrl</code>, the generated Lesson Frame opens automatically. No frontend change required.</span>
+      <span class="hook-status live">LIVE</span>
+      <span class="hook-desc"><strong>S27 hook — Lesson Frame doc.</strong> <code>if (result.frameDocUrl) window.open(...)</code>. Script 27 (<code>27_LessonFrameGenerator.js</code>) now populates <code>frameDocUrl</code>, so the generated Lesson Frame opens automatically. No frontend change was needed, exactly as this row predicted.</span>
     </div>
     <div class="hook-row">
       <span class="hook-file">07_TeacherDashboard.js<br>loadCompetencies() render</span>
@@ -906,8 +912,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:40px
     </div>
     <div class="hook-row">
       <span class="hook-file">22_LessonContextHandler.js<br>onLessonContextSubmit_()</span>
-      <span class="hook-status dormant">DORMANT</span>
-      <span class="hook-desc"><strong>S27 hook — frameDocUrl return field.</strong> Server response always includes <code>frameDocUrl: null</code>. Script 27 populates this field when the Lesson Frame Generator is built.</span>
+      <span class="hook-status live">LIVE</span>
+      <span class="hook-desc"><strong>S27 hook — frameDocUrl return field.</strong> Server response includes a real <code>frameDocUrl</code> whenever <code>generateLessonFrame_()</code> (Script 27) succeeds for that submission; still <code>null</code> only if frame generation was deferred (e.g. alignment logging itself failed first) — see <code>27_LessonFrameGenerator.js</code>'s own header.</span>
     </div>
     <div class="hook-row">
       <span class="hook-file">22_LessonContextHandler.js<br>LessonContext tab</span>
