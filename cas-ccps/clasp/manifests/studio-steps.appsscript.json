@@ -12,7 +12,7 @@
   "addOns": {
     "common": {
       "name": "CAS-CCPS Studio Steps",
-      "logoUrl": "REPLACE_WITH_A_HOSTED_LOGO_URL",
+      "logoUrl": "https://www.gstatic.com/images/branding/product/2x/apps_script_48dp.png",
       "useLocaleFromApp": true,
       "layoutProperties": {
         "primaryColor": "#1a73e8"
