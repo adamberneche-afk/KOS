@@ -73,17 +73,23 @@
 function addLessonUnitDropdownItem_(confirmForm, centralSsId) {
   const options = buildLessonUnitDropdownOptions_(centralSsId);
 
+  // FIXED (same bug as addCompetencyDropdownItems_() above, confirmed live
+  // during a real from-scratch deployment): setChoiceValues() throws
+  // "Array is empty: values" on an empty array instead of silently
+  // creating an empty dropdown -- a hard setup-time failure, not the soft
+  // "blocks future submissions" degradation the warning always assumed.
+  // Same placeholder-choice fix.
+  const placeholderOptions = ["(no pacing guide imported yet -- run Script 31)"];
   if (options.length === 0) {
     Logger.log("[M6] WARNING — PacingGuide returned zero options. The " +
-      "Lesson Unit dropdown will be created EMPTY. Run importPacingGuide() " +
-      "(Script 31) before teacher setup, or this field will block every " +
-      "future confirmation submission since it is required and has " +
-      "nothing to select.");
+      "Lesson Unit dropdown will be created with a placeholder choice only. " +
+      "Run importPacingGuide() (Script 31), then Re-Run Setup, before this " +
+      "field has real choices to select.");
   }
 
   confirmForm.addListItem()
     .setTitle("Lesson Unit")
-    .setChoiceValues(options)
+    .setChoiceValues(options.length > 0 ? options : placeholderOptions)
     .setRequired(true)
     .setHelpText(
       "Select the pacing-guide lesson unit this assignment belongs to. " +
