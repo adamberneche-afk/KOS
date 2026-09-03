@@ -1,5 +1,40 @@
 # kos-personal Studio Steps
 
+> ## ⚠️ BEFORE BUILDING ON THIS: CHECK THE CLOUD PROJECT
+>
+> Custom Workspace Studio steps are a Workspace Add-on, and publishing one
+> requires a standard (non-default) Google Cloud project. **No standard
+> project has been provisioned for anything in this repo** — every project
+> here uses the default one Apps Script creates on its own, and no doc,
+> script or manifest records one ever being created or linked through Project
+> Settings.
+>
+> `cas-ccps/studio-steps/` is what that costs when nobody checks: 8 steps,
+> 2,113 written and unit-tested lines, pushed and deployed successfully, and
+> permanently unreachable — the install completes and the step picker stays
+> empty, with no error anywhere. These two steps were built the same way.
+>
+> The difference here is *policy, not provisioning*: SMP-004 puts this
+> project on the **personal** Google account, so unlike `ccpsnet.net` — where
+> GCP is switched off org-wide by the district — creating and linking a
+> standard project is self-service. Nobody has confirmed whether one exists.
+>
+> **So verify by looking, not by inferring.** Open Project Settings on that
+> account and read the linked Cloud project. Do not treat OAuth
+> consent-screen setup or an enabled Drive API as evidence — `DEPLOYMENT_GUIDE.md`'s
+> Phase 1 does both in the *default* project, and reading it as availability
+> is a mistake already made once and corrected in
+> [`tools/gas-lint/gcp-map.json`](../../tools/gas-lint/gcp-map.json), where
+> this project is declared `live-unverified` and enforced by gas-lint's
+> Check G.
+>
+> If a standard project is there, kos-personal needs *finishing*, not
+> redesigning. If not, these two steps collapse into one Apps Script harvest
+> function on a time trigger — a far smaller port than cas-ccps needed,
+> because the payload already lives in a Drive Doc and the output already
+> goes back to a Doc body.
+
+
 One standalone Apps Script project holding the custom Workspace Studio
 steps kos-personal's two Studio flows use. Registered in
 `tools/gas-lint/project-map.json` as `kos-personal:studio-steps` — a

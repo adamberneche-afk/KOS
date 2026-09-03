@@ -1,7 +1,7 @@
 # gas-lint
 
 A static checker for the GAS-based systems in this repo (`kos-personal`,
-`cas-ccps`). Built after a full manual code review turned up the same
+`cas-ccps`, `leader-hub`). Built after a full manual code review turned up the same
 failure pattern repeatedly — bugs that only exist because nothing checks
 them automatically, so they ship silently and surface months later. See
 the reasoning in the conversation that produced this tool; the short

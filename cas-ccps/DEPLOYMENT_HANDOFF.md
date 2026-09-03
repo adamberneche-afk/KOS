@@ -26,8 +26,14 @@
 >   `cas-ccps/clasp/local/` now holds their real script IDs and is gitignored,
 >   so a new session or machine has to recreate it from the templates.
 >
-> What remains genuinely useful here: the Script Properties reference, the
-> runbook pointers, and the order-of-operations for anyone deploying to a
+> **If you are picking this up to continue the live deployment, the section
+> you want is "Bringing an already-live account up to current HEAD"** — the
+> `clasp push` plus the five Run-dropdown functions that make scripts 37-40
+> and the Ledger schema guard actually do anything. The from-scratch order of
+> operations below is not that.
+>
+> What else remains genuinely useful here: the Script Properties reference,
+> the runbook pointers, and the order-of-operations for anyone deploying to a
 > *second* account.
 
 **Originally for:** the session that takes this codebase from "code complete,
@@ -113,6 +119,45 @@ this stage, but a second account would start here):
   you can prepare everything up to that point (builds, manifests, `.clasp.json`
   files with real IDs once the human creates the projects) and hand off the
   actual `clasp push`/`clasp deploy` invocations.
+
+## Bringing an already-live account up to current HEAD
+
+**This is the operation that actually applies now**, and it is not the
+from-scratch sequence below. The 8 projects exist, Module 1 and Module 2
+(Phase A + B) are set up, and Flow 1 works against real data — but HEAD has
+moved since that push, and four scripts (37-40) plus a schema guard landed
+afterwards. None of them do anything until they're pushed and their setup
+functions are run once.
+
+Everything here runs at **the operator's own keyboard** (SMP-004: an agent
+session must never `clasp push` to production). From the repo:
+
+```bash
+git pull
+node tools/clasp-sync/sync.js central-ledger
+cd cas-ccps/.clasp-build/central-ledger && clasp push
+```
+
+Then, in the Apps Script editor's **Run** dropdown, in this order:
+
+| # | Function | Why, and what to expect |
+|---|---|---|
+| 1 | `checkLedgerSchema()` | **Run this first and read the log before anything else.** The live Ledger's columns had shifted, which made `LEDGER.TEACHER_EMAIL` return a person's *name* and silently broke every MatrixRegistry lookup with no error anywhere. If it reports drift, run `repairLedgerSchema()` — it backs the tab up to `Ledger_BACKUP_<timestamp>` first, and refuses outright if it can't verify the repair is safe from the headers alone. Nothing downstream is trustworthy until this is clean. |
+| 2 | `syncFlowPromptsToSheet()` | Writes the `FlowPrompts` tab. After this, a Flow can read its system prompt from a chip instead of carrying a pasted copy, and future prompt changes are a `clasp push` + re-run rather than a hand-paste per Flow. |
+| 3 | `installFlowFixtures()` | Seeds dummy rows at all five flows' trigger conditions. Without these, a Flow with nothing to match reports a green "Run Completed" over zero rows — which is how a lot of time got spent last session. `checkFlowFixtures()` reports what's present; `removeFlowFixtures()` takes them out. |
+| 4 | `installFlowInputTriggers()` | Installs Flow 2's two time triggers (1-min build, 2-min harvest). This is what makes `FlowInput` populate at all. |
+| 5 | `runFlow2Canary()` | End-to-end check of Flow 2's **Apps Script half only** — it self-provisions a scratch student doc and TeacherMatrix and stubs Studio out deliberately. Paste the log. A pass means the lookup chain and the harvest are sound and any remaining failure is in the Flow itself. |
+
+Only after 1-5 are clean is there any point configuring Flow 2 in Studio,
+because before that there is no `FlowInput` row for it to read.
+
+Two things that will *not* work no matter what you run, so don't spend time
+on them — see `cas-ccps/studio-steps/README.md`'s status banner and
+`tools/gas-lint/gcp-map.json`:
+
+- Any custom Studio step. All 8 are unreachable on this account.
+- The `DIRECT_GEMINI` evaluation mode in `15c`. It needs an API key, a key
+  needs a Cloud project, same wall.
 
 ## Order of operations
 
