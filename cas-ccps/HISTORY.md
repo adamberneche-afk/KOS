@@ -1490,3 +1490,51 @@ nonexistent account is not a capability under test.
 `checkFlowFixtures()` now says outright that a parked fixture is only half the
 story — nothing reaches a Flow until an input row is materialized, and nothing
 proves a Flow ran until something appears in the return tab.
+
+### Follow-up — the Flow 2 fixture's document was missing a delimiter
+
+The row itself was sound: every `FI` column populated, the prompt
+pre-substituted through the real `_fiBuildPromptText_`, `StagingRowRef` the
+literal `FIXTURE` so the harvest can never complete an unrelated real row. The
+gap was in the *document* it points at.
+
+Flow 2's Extract step reads the student response as the text **between**
+`── YOUR RESPONSE BEGINS HERE ──` and `[CONFIG_ID:` —
+`15b_StudioFlowPrompts_Flow2_Revised.js`'s own Step 1 note says so. The
+fixture doc carried the first marker and not the second, so that step had no
+end delimiter, and the failure would read as "the doc was empty" rather than
+as a missing footer. Both zones are now reproduced from
+`02_Form1_IntakeAndWorkspaceGenerator.js`'s ZONE 3 and ZONE 4, footer
+included, and a test asserts the footer follows the response marker and that
+the ConfigID inside it satisfies the `/\[CONFIG_ID:\s*([A-Z0-9\-]+)\]/`
+pattern Script 01's fallback parses with.
+
+**Two findings that came out of writing the checks rather than the fix.**
+
+`15b`'s Step 1 note renders both markers in that comment block's
+em-dash-normalized style — `"-- YOUR RESPONSE BEGINS HERE --"`. It is not
+claiming the markers use hyphens; the whole block writes `--` for `—`. But an
+operator building the Extract step reads that note and types what it shows,
+and Studio matches literally, so the step would return empty. The note now
+says outright to copy the strings from `RESPONSE_MARKER` /
+`CONFIG_ID_MARKER` in `01_StudentDoc_ContainerScript.js` rather than from the
+comment.
+
+`PROMPT_TEXT` was arriving **empty in the test sandbox**, and the tests had
+been green anyway because they never asserted on it. `_fiBuildPromptText_`
+returns `""` rather than throwing when `FLOW_2_SYSTEM_PROMPT` (15b) or
+`substituteFlowPrompt_` (40) is out of scope, and this test file was loading
+neither — so the fixture was being exercised in a scope narrower than
+production. Fixed on both sides: the test now loads the real
+`cas-ccps:central-ledger` file set, and `installFlow2Fixture()` warns loudly
+when the prompt comes back empty, since an operator wiring
+`@trigger.PromptText` against a blank cell would read that as a Studio
+problem.
+
+Pattern across all four fixture checks this session, worth stating once: every
+gap was a *shape* mismatch that produced no error anywhere — invented payload
+keys in leader-hub, string-vs-object signals in the warm-up profile, a missing
+`Doc_ID` for Flow 4, one payload type instead of two in kos-personal, and a
+missing document delimiter here. None would have appeared in a Flow's run log.
+The only thing that found any of them was reading the consumer instead of
+trusting the fixture.
