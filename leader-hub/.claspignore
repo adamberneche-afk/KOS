@@ -1,7 +1,8 @@
 # clasp push allowlist for leader-hub's single Apps Script project
 # (Code.gs + EmailBridge.gs, serving both the HTML web app and the JSON
 # API — see Code.gs's own header comment for the server-migration plan
-# these are phase 1 of). Everything else here — the LEADERHUB_*/LH_0*
+# these are phase 1 of; plus AiPrompts.gs, which holds the six AI-flow
+# system prompts EmailBridge.gs's queue hands to the Flows). Everything else here — the LEADERHUB_*/LH_0*
 # docs and drive-tools/ (one-off paste-and-run admin utilities, never a
 # persistent deployment — see drive-tools/LH_Drive_README.md) — must
 # never reach the live script. student-leader-hub.html DOES now need to
@@ -19,4 +20,5 @@
 !Config.gs
 !Data.gs
 !SCR.gs
+!AiPrompts.gs
 !student-leader-hub.html
