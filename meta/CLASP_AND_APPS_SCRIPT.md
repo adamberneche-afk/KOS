@@ -157,8 +157,10 @@ The layout each system needs, which hasn't changed:
   real script files, so the legacy/archived material and (for
   kos-personal) the separate Node.js `inference-service/` never get swept
   into a push. `kos-personal/studio-steps/` is a second, separate
-  flat-folder project alongside the main one (SMP-004's personal/district
-  account split, not a shared global scope) — see its own README.
+  flat-folder project alongside the main one (a separate Apps Script
+  project, not a shared global scope — note this is a PROJECT split, not
+  the personal/district ACCOUNT split SMP-004 describes; in practice both
+  are deployed on the same ccpsnet.net account) — see its own README.
   `leader-hub/` is now server-backed (`leader-hub:app` — every `.gs` file in
   that folder, one Web App deployment; the authoritative list is that
   project's entry in [`tools/gas-lint/project-map.json`](../tools/gas-lint/project-map.json),
