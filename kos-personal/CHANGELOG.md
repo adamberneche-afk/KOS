@@ -1,5 +1,63 @@
 # KOS Changelog
 
+
+## 2026-09-03 — Studio write-back ported into Apps Script (12_StudioReturnHarvest.gs)
+
+`kos-personal/studio-steps/`'s two custom Studio steps cannot run. Publishing
+a Workspace Add-on needs a standard, non-default Cloud project, and GCP is
+switched off org-wide for the `ccpsnet.net` account — which is the account
+this is deployed on, confirmed by the operator, despite SMP-004 describing a
+separate personal one. The Studio flow was never live.
+
+`12_StudioReturnHarvest.gs` replaces the write-back half. Only that half
+moves: the Sheets trigger, the Docs read and both Gemini passes were always
+native and are untouched. The Flow's last step becomes a native "add row to
+sheet" into a new `STUDIO_RETURN` tab, and `harvestStudioReturns()` (5-minute
+trigger, installed by `setupAllTriggers()` — now 14 triggers) applies it.
+
+Design constraints this had to respect rather than choose:
+
+- **No new `STAGING_PIPELINE` columns.** `10_Turnstile.gs`'s header already
+  settled this: an 8th column means touching hardcoded 7-column `getRange()`
+  calls across `2/3/9_*.gs`, which is why release timestamps live in
+  `PropertiesService`. Hence a separate tab.
+- **No new status.** A row stays `STUDIO_ACTIVE` until the harvest sets
+  `FLOW_COMPLETE`, so the Turnstile's release gate, its staleness reset and
+  `_alertOnUnknownStatuses_()` all keep working unedited. The cost is that the
+  staleness guard can recycle a row whose return is still queued, so the
+  harvest runs every 5 minutes (well inside the 30-minute window) and handles
+  a duplicate return by consuming it without re-writing the doc.
+- **Both output contracts carried over exactly.** The Curator path
+  re-serializes because it merges the Auditor pass under `auditor_sign_off`;
+  the Classification path writes the *original, unstripped* text and only
+  strips the fence to validate that it parses to an Array. Those look
+  cosmetic and are not — re-serializing classification output would risk
+  reformatting floats and key order away from what the model produced.
+- **Touch nothing on failure**, per the spec's own choice: the staleness
+  guard owns retries, so no failure path writes the doc or the staging row.
+  Giving up on a return row after 3 attempts still leaves the payload for the
+  guard.
+
+One thing the harvest does *better* than the custom step could. Once the doc
+body is overwritten the original source text is gone, so a crash before the
+staging mark would leave a row that a retry re-infers against JSON. The
+custom step could only flag that (`STAGING_ROW_NOT_FOUND_AFTER_DOC_WRITE`)
+and hope someone noticed. Running inside the main project, a breadcrumb goes
+into `PropertiesService` between the doc write and the mark, so a later pass
+skips the write and completes the mark.
+
+Also added: `checkStudioReturns()` (read-only report),
+`checkStudioFlowLiveness()` — the only thing that can tell you whether a Flow
+has *ever* written back, since a Flow that matched zero rows reports a green
+"Run Completed" — plus `installStudioFlowFixture()` /
+`removeStudioFlowFixtures()` (a scratch doc and a `PENDING_FLOW` row, so a
+real Flow has something to match) and `runStudioReturnCanary()`, which proves
+the Apps Script half with the Flow deliberately stubbed.
+
+`tests/kos-personal/studio-return-harvest.test.js` — 23 tests, pinning both
+contracts, the touch-nothing-on-failure rule, the duplicate return, and the
+breadcrumb.
+
 Historical record of what was found and fixed during this system's reconciliation and UI/UX hardening passes. Split out of `README.md` so that file can stay current-state-only reference — see it for what's true today; see this file for how it got there.
 
 ---

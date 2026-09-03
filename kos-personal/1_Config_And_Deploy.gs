@@ -448,10 +448,11 @@ function executeBootstrap() {
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed (13 total — matches DEPLOYMENT_GUIDE.md's
+ * Triggers installed (14 total — matches DEPLOYMENT_GUIDE.md's
  * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
  *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
+ *   harvestStudioReturns          → every 5 min  (time-driven) — 12_StudioReturnHarvest.gs
  *   processInferenceQueue         → every 10 min (time-driven)
  *   runSemanticSweeper            → hourly        (time-driven)
  *   sweepRootForExhaust           → hourly        (time-driven)
@@ -514,6 +515,15 @@ function setupAllTriggers() {
   // ── Turnstile — every 5 min (10_Turnstile.gs) ──────────────
   tryInstall('runMatrixTurnstile', () =>
     ScriptApp.newTrigger('runMatrixTurnstile')
+      .timeBased().everyMinutes(5).create()
+  );
+
+  // ── Studio Return Harvest — every 5 min (12_StudioReturnHarvest.gs) ──
+  // Must run well inside CFG.TURNSTILE_STALE_MINS (default 30): a return row
+  // waiting longer than that gets its staging row recycled by the staleness
+  // guard, which then re-runs inference on a doc that already has an answer.
+  tryInstall('harvestStudioReturns', () =>
+    ScriptApp.newTrigger('harvestStudioReturns')
       .timeBased().everyMinutes(5).create()
   );
 
