@@ -203,6 +203,19 @@ test('the known-blocked cas-ccps surfaces are still declared blocked', () => {
     'live-blocked');
 });
 
+test('kos-personal\'s custom steps are blocked too — same account, confirmed', () => {
+  // This entry has been wrong twice, in the same direction both times, so it
+  // is pinned. It first read GCP as "very likely fine" from a deployment
+  // doc's mention of a GCP project (a consent screen lives in the DEFAULT
+  // project, so that was never evidence), and then kept a residual "different
+  // account, so the org policy does not reach it" — which the operator has
+  // since confirmed is also wrong: kos-personal is on the SAME ccpsnet.net
+  // account and its flow is not live. Anything moving this off live-blocked
+  // should be a deliberate change with new evidence, not an inference.
+  assert.equal(GCP_MAP.surfaces['kos-personal/studio-steps/appsscript.json'].status,
+    'live-blocked');
+});
+
 test('a declared surface marked scanned:false is not a GAS file', () => {
   // The only legitimate use of the opt-out: kos-personal/inference-service/
   // is a standalone Node service, not a file in any Apps Script project. If

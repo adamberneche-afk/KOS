@@ -1,5 +1,50 @@
 # kos-personal Studio Steps
 
+> ## ⚠️ STATUS: BLOCKED — the flow is not live, and this project cannot make it live
+>
+> **Both steps here are dead code on the account this is deployed to.**
+> Publishing a Workspace Add-on (which is what a custom Studio step is)
+> requires a standard, non-default Google Cloud project, and GCP access is
+> turned off org-wide for the `ccpsnet.net` account by the district.
+>
+> This README previously carried a "check the Cloud project before building
+> on this" caveat that leaned on kos-personal running on a **separate
+> personal Google account**, per SMP-004, where creating a project would be
+> self-service. **It doesn't.** The operator has confirmed it is the same
+> `ccpsnet.net` account as cas-ccps, and that the Studio flow is not live.
+> That was a documented intention read as a deployment fact — see
+> `tools/gas-lint/gcp-map.json`'s doctrine, where the general lesson is
+> recorded, and `cas-ccps/HISTORY.md` for the two rounds it took to get here.
+>
+> `cas-ccps/studio-steps/` is the same story one system over: 8 steps, 2,113
+> unit-tested lines, pushed successfully, never appeared in Studio's picker,
+> no error anywhere. The install completes and the picker stays empty.
+>
+> **The path forward is the Apps Script port, not a Cloud project.** Three
+> things make it a much smaller job here than cas-ccps's Flow 2 redesign was:
+>
+> - The fixed-picker wall doesn't apply. `STAGING_PIPELINE` is a single
+>   spreadsheet, so a native Sheets connector can target it — unlike
+>   cas-ccps's per-teacher TeacherMatrix, which no native step could reach.
+> - The trigger, the document read, and both Gemini passes are all native
+>   already and are unaffected.
+> - Only the **doc-body overwrite** genuinely has to come back into script: a
+>   native insert-text step isn't documented as able to clear a doc's
+>   existing content first, and `overwriteDocBody_()` below relies on
+>   `body.clear()` before `setText()`.
+>
+> One constraint the port must respect: **do not widen `STAGING_PIPELINE`.**
+> `10_Turnstile.gs:41` records that an 8th column means touching hardcoded
+> 7-column `getRange()` calls across `2/3/9_*.gs` — which is why release
+> timestamps already live in `PropertiesService` rather than a column. A
+> separate return tab is the shape that fits.
+>
+> **Everything below stays accurate as design**, and the pure logic in these
+> files (fence stripping, the Curator/Auditor merge, the validation rules,
+> the touch-nothing-on-failure discipline) is exactly what the port reuses.
+> Kept for that reason, not out of sentiment.
+
+
 > ## ⚠️ BEFORE BUILDING ON THIS: CHECK THE CLOUD PROJECT
 >
 > Custom Workspace Studio steps are a Workspace Add-on, and publishing one
