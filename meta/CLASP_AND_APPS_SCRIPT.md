@@ -89,8 +89,20 @@ push can arrange. The two that matter here are publishing a Workspace
 Add-on (which is what a custom Workspace Studio step is) and calling the
 Gemini API or Vertex directly with a key.
 
+And no project in this repo has one. Every GCP project across all three
+systems was built the same way — the default project Apps Script creates on
+its own. The only console work any deployment doc here describes is
+configuring that project's OAuth consent screen and enabling an API inside
+it; neither of those makes a project *standard*, and nothing in this repo
+records one ever being created or linked through Project Settings for any of
+the 11 Apps Script projects. Worth stating plainly, because a deploy doc
+saying "every future deploy uses the same GCP project" reads like
+reassurance and isn't (see `kos-personal/DEPLOYMENT_GUIDE.md`'s Phase 1,
+which now says so itself).
+
 This is not hypothetical. On the `ccpsnet.net` account, GCP access is
-turned off org-wide — confirmed directly in the Cloud console. All 8
+turned off org-wide — confirmed directly in the Cloud console, which is the
+*second* block on those custom steps rather than the first. All 8
 custom Studio steps in `cas-ccps/studio-steps/` (2,113 lines, written and
 unit-tested) pushed *successfully* and then never appeared in Studio's
 step picker, across repeated uninstall/reinstall cycles, with no OAuth

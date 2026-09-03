@@ -35,6 +35,19 @@ This step controls what users see on the OAuth consent screen when they first vi
 
 This is a one-time step. Every future deploy uses the same GCP project.
 
+> **What this step is not.** It configures the consent screen of the project
+> Apps Script already created for this script — step 2 above says as much.
+> It does not create or link a *standard* (non-default) Cloud project, and
+> neither does enabling the Drive API in Troubleshooting below. Some
+> capabilities do need a standard project: publishing a Workspace Add-on,
+> which is what `studio-steps/`'s two custom Studio steps are, and calling
+> the Gemini API or Vertex directly with a key. Before building on any of
+> those, read the linked project in **Project Settings** rather than
+> assuming this phase covered it, and declare what you find in
+> [`tools/gas-lint/gcp-map.json`](../tools/gas-lint/gcp-map.json). Getting
+> this backwards is a mistake this repo has already made once, on the
+> district account, at a cost of 2,113 unreachable lines.
+
 ---
 
 ## Phase 2 — Create the Apps Script Project
