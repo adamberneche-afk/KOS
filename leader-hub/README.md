@@ -987,7 +987,7 @@ needed no changes.
 ## Version control (clasp) — scaffolded, not yet connected
 
 The Apps Script project (now `EmailBridge.gs` + `Code.gs` + `Config.gs` +
-`Data.gs` + `SCR.gs` — see "Server-deployed web app" below) is laid out
+`Data.gs` + `SCR.gs` + `AiPrompts.gs` — see "Server-deployed web app" below) is laid out
 exactly the way [clasp](https://github.com/google/clasp) wants — a flat
 folder. It has a committed `appsscript.json` (derived from actual service
 usage: `GmailApp`, `DriveApp`, `DocumentApp`, `SpreadsheetApp`, plus the
