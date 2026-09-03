@@ -324,11 +324,18 @@ Properties, not source. See
 the full rationale and cas-ccps's harder version of this problem (8
 overlapping Apps Script projects, not 1).
 
-**A second, separate project lives alongside it:**
+**A second, separate project lives alongside it — and it cannot be published
+on this account:**
 [`kos-personal/studio-steps/`](./studio-steps/README.md) — the custom
 Workspace Studio steps behind the Curator and VECTOR_CLASSIFY flows
 (`WriteCuratorOutputStep.gs`, `WriteClassificationOutputStep.gs`, plus
-shared helpers). It's a standalone project, not sheet/doc-bound, and it's
+shared helpers). A custom step is a Workspace Add-on and needs a standard,
+non-default Cloud project; GCP is disabled org-wide for `ccpsnet.net`, so
+these install without error and never appear in Studio's picker. The
+write-back half they implemented now lives in `12_StudioReturnHarvest.gs`
+(`harvestStudioReturns()`), with the Flow's last step a native add-row into
+`STUDIO_RETURN`. The project is kept because a district admin enabling GCP
+would make it reachable again with no code change. It's a standalone project, not sheet/doc-bound, and it's
 deliberately a *different* Apps Script project from the main one above —
 not a shared global scope — even though it deploys the same flat-folder
 way. See its own README for its file list, deployment steps, and the two

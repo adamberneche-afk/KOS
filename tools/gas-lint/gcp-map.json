@@ -32,14 +32,47 @@
       "status": "live-blocked",
       "why": "The 8 custom Studio steps in cas-ccps/studio-steps/. Pushed successfully to the real account and never appeared in Studio's step picker, across repeated uninstall/reinstall cycles with no OAuth prompt ever shown. Root cause confirmed directly at console.cloud.google.com: GCP access is turned off for this account by the ccpsnet.net organization, and a Workspace Add-on needs a standard project.",
       "if_unavailable": "ALL FIVE FLOWS ARE NOW PORTED, so this surface being blocked no longer gates anything. cas-ccps/scripts/37_FlowInputBuilder.js took Flow 2 off its custom step by materializing the whole lookup chain into one flat literal row; cas-ccps/scripts/41_WarmUpFlowBridge.js does the same for Flows 3, 4 and 5, which were the remaining exposure named here until now. In every case Apps Script materializes the inputs and harvests the output, and Studio makes only the keyless Gemini call. Three of the five steps 41 replaces turned out to be duplicating Apps Script that already existed in the same project (evaluateWarmUpDoc_, writeFinalScores_, writeFeedbackToDoc_, writeRegistryScores_ in 25_WarmUpWriter.js), so the port reuses them rather than carrying a second copy.",
-      "revisit": "A district Workspace admin enabling GCP for this account would make all 2,113 lines reachable again with no code change. Worth requesting; nothing is sequenced behind it."
+      "revisit": "A district Workspace admin enabling GCP for this account would make all 2,113 lines reachable again with no code change. Worth requesting; nothing is sequenced behind it.",
+      "doc_tokens": {
+        "_why": "Check 5 in tools/doc-currency/check.js reads these. `mentions` are the strings a document uses when it is talking about this surface; `fallback` are the strings that name what replaced it. A doc that names one of the former without either acknowledging the block or naming one of the latter is telling a reader the blocked path is how the system works.",
+        "mentions": [
+          "cas-ccps/studio-steps",
+          "CommitStudentEvaluationStep",
+          "CommitRubricDraftStep",
+          "CreateWarmUpDocStep",
+          "FinalizeWarmUpScoreStep",
+          "SelectWarmUpArchetypeStep",
+          "ExtractBridgeInputsStep",
+          "ExtractWarmUpPromptTextStep",
+          "ReadInstructorConfigStep"
+        ],
+        "fallback": [
+          "37_FlowInputBuilder",
+          "41_WarmUpFlowBridge",
+          "harvestFlowInputResults",
+          "harvestWarmUpFlowReturns",
+          "buildFlowInputRows",
+          "FlowInput"
+        ]
+      }
     },
     "cas-ccps/scripts/15c_Flow2DirectEvaluationService.js": {
       "pattern": "gemini-api-endpoint",
       "status": "live-blocked",
       "why": "The opt-in DIRECT_GEMINI escape hatch, gated behind EVALUATION_MODE and a DIRECT_GEMINI_API_KEY Script Property. Built specifically to make Flow 2's evaluation runnable without Studio — and blocked by the same wall, because the key needs a project.",
       "if_unavailable": "Default EVALUATION_MODE is STUDIO, so nothing calls this path unless an operator opts in. Its pure functions (_buildFlow2Prompt_, _parseFlow2Response_, writeCompetencyEvidenceFromFlow2_) are reused by 37_FlowInputBuilder.js and are not GCP-dependent — only _callGeminiDirect_ is.",
-      "revisit": "Two separate gates, not one. A district admin enabling GCP for the account would let a key exist at all; even then this path stays dormant until an operator sets the DIRECT_GEMINI_API_KEY Script Property and flips EVALUATION_MODE to DIRECT_GEMINI. The second gate is deliberate — that mode bills per call against a key held in a Script Property, which is a different risk posture from keyless Gemini and should stay opt-in even if the wall lifts."
+      "revisit": "Two separate gates, not one. A district admin enabling GCP for the account would let a key exist at all; even then this path stays dormant until an operator sets the DIRECT_GEMINI_API_KEY Script Property and flips EVALUATION_MODE to DIRECT_GEMINI. The second gate is deliberate — that mode bills per call against a key held in a Script Property, which is a different risk posture from keyless Gemini and should stay opt-in even if the wall lifts.",
+      "doc_tokens": {
+        "mentions": [
+          "DIRECT_GEMINI",
+          "_callGeminiDirect_"
+        ],
+        "fallback": [
+          "EVALUATION_MODE",
+          "37_FlowInputBuilder",
+          "harvestFlowInputResults"
+        ]
+      }
     },
     "cas-ccps/scripts/25_WarmUpWriter.js": {
       "pattern": "gemini-api-endpoint",
@@ -53,7 +86,19 @@
       "status": "live-blocked",
       "why": "kos-personal's two custom steps (WriteCuratorOutputStep, WriteClassificationOutputStep). BLOCKED BY THE SAME WALL AS cas-ccps, confirmed by the operator: kos-personal is deployed on the SAME ccpsnet.net account, not a separate personal one, and its Studio flow is not live. The personal/district account separation described in SMP-004 and repeated throughout this repo is not what exists in practice, so every conclusion that depended on it is void -- including two earlier readings of this entry. It first claimed GCP was \"very likely fine\" here, citing kos-personal/DEPLOYMENT_GUIDE.md:36; that was corrected once already (a consent screen and an enabled API both happen in the default project Apps Script creates on its own, so neither is evidence of a standard project), and the residual \"different account, so the org policy does not reach it\" is now wrong too. It does reach it. GCP access is turned off org-wide for this account.",
       "if_unavailable": "The two steps only merge Curator+Auditor JSON, overwrite the source doc's body, and flip a STAGING_PIPELINE row to FLOW_COMPLETE. That is a smaller port than cas-ccps needed, for a reason worth stating: the fixed-spreadsheet-picker wall that made cas-ccps's per-teacher TeacherMatrix unreachable does not apply, because STAGING_PIPELINE is a single spreadsheet a native Sheets connector can target. Only the doc-body overwrite genuinely needs Apps Script (a native insert-text step is not documented as able to clear existing content first). Note the port must NOT widen STAGING_PIPELINE: 10_Turnstile.gs:41 records that an 8th column would mean touching hardcoded 7-column getRange() calls across 2/3/9_*.gs, which is why release timestamps already live in PropertiesService instead. A separate return tab is the shape that fits.",
-      "revisit": "Nothing to check any more -- this is confirmed blocked, not unverified. Enabling GCP for the ccpsnet.net account would be a district-admin decision, and even then someone would still have to create and link a standard project, since none has ever existed for any project in this repo. Treat the Apps Script port as the path forward, not as a workaround to be undone later."
+      "revisit": "Nothing to check any more -- this is confirmed blocked, not unverified. Enabling GCP for the ccpsnet.net account would be a district-admin decision, and even then someone would still have to create and link a standard project, since none has ever existed for any project in this repo. Treat the Apps Script port as the path forward, not as a workaround to be undone later.",
+      "doc_tokens": {
+        "mentions": [
+          "kos-personal/studio-steps",
+          "WriteCuratorOutputStep",
+          "WriteClassificationOutputStep"
+        ],
+        "fallback": [
+          "12_StudioReturnHarvest",
+          "harvestStudioReturns",
+          "STUDIO_RETURN"
+        ]
+      }
     },
     "kos-personal/inference-service/": {
       "pattern": "gemini-api-endpoint",

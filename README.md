@@ -125,12 +125,31 @@ live defect on its first run. Run `node tools/gas-lint/check.js` before
 trusting any change to `kos-personal/` or `cas-ccps/scripts/` is safe to
 deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
 
+## [`tools/doc-currency/`](./tools/doc-currency/) — checks the docs against the code
+
+The other half of the same idea. `gas-lint` reads the source; this reads the
+prose and asks whether it is still true: a doc naming a function that exists
+nowhere, a cited test count that has drifted, a key registry listing a key no
+code mentions, a `file:line` citation past the end of that file, and — the
+one no other check could see — **a document describing a path that cannot
+run on the account this repo deploys to.** Every function in those
+instructions existed; the instructions were still impossible to follow,
+which is what made `cas-ccps/studio-steps/` — blocked on this account, and
+superseded by `37_FlowInputBuilder.js` — read as a deployment backlog for
+weeks rather than as a wall. The check caught this very paragraph on its
+first draft, which is the argument for it. Dated records (`CHANGELOG.md`, `HISTORY.md`)
+are skipped wholesale, because naming a removed function is what a changelog
+is for. `node tools/doc-currency/check.js`; see
+[`tools/doc-currency/README.md`](./tools/doc-currency/README.md).
+
 ## [`tools/clasp-sync/`](./tools/clasp-sync/) — bridges cas-ccps to clasp
 
 `leader-hub/` and the main `kos-personal/` project are each already laid
 out the way [clasp](https://github.com/google/clasp) wants — a flat
-folder, one script ID; `kos-personal/studio-steps/` is a second, separate
-flat-folder project alongside it (a separate Apps Script project, not a
+folder, one script ID; `kos-personal/studio-steps/` (whose two custom steps
+are blocked on this account — the write-back moved to
+`12_StudioReturnHarvest.gs`) is a second, separate flat-folder project
+alongside it (a separate Apps Script project, not a
 shared global scope — SMP-004 describes a personal/district *account* split
 as well, but that is not what is deployed: both live on the same ccpsnet.net
 account, which is why the org-wide GCP block reaches the Studio steps in
