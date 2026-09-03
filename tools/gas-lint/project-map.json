@@ -53,7 +53,8 @@
       "cas-ccps/scripts/38_LedgerSchemaGuard.js",
       "cas-ccps/scripts/39_FlowFixtures.js",
       "cas-ccps/scripts/40_FlowPrompts.js",
-      "cas-ccps/scripts/41_WarmUpFlowBridge.js"
+      "cas-ccps/scripts/41_WarmUpFlowBridge.js",
+      "cas-ccps/scripts/42_FlowBuildSpec.js"
     ]
   },
   "cas-ccps:unified-manual": {
