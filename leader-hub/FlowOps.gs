@@ -14,6 +14,8 @@
  *   checkAiFlowFixtures()     — which fixtures moved off PENDING (i.e. which
  *                               Flows are actually live)
  *   removeAiFlowFixtures()    — take them back out
+ *   checkAiFlowBinding()      — are the Flow's write-back columns bound
+ *                               right? also logs the binding to copy
  *   runAiFlowCanary()         — end-to-end test of the Apps Script half,
  *                               with the Flow deliberately stubbed out
  *   cleanUpAiFlowCanary()     — drop the canary's stats key
@@ -449,6 +451,163 @@ function removeAiFlowFixtures() {
   for (let i = rows.length - 1; i >= 0; i--) sheet.deleteRow(rows[i].rowNumber);
   Logger.log('[FlowOps] removeAiFlowFixtures: removed ' + rows.length + ' row(s)');
   return { removed: rows.length };
+}
+
+// ── Binding probe ────────────────────────────────────────────────────────────
+
+// Statuses checkAiJob_ actually recognizes, and the exact strings it compares
+// against. Case-sensitive and exact — see _aiDiagnoseQueueRow_ for why that
+// matters more here than it looks.
+const AI_TERMINAL_STATUSES = ['COMPLETE', 'ERROR'];
+
+/**
+ * Diagnoses whether a Flow's write-back step is bound to the right columns.
+ *
+ * WHY THIS EXISTS. Every other check in this file verifies the Apps Script
+ * side. The Studio side is built by hand in a UI, and the only signal about
+ * it was checkAiFlowFixtures()'s "still PENDING" — one answer covering four
+ * causes: the Flow was never built, its trigger matches no rows, it runs and
+ * writes into the wrong columns, or it runs and Gemini errors. The third
+ * looks exactly like the first.
+ *
+ * LEADER-HUB'S SHAPE IS DIFFERENT FROM cas-ccps's. There the Flow appends a
+ * new row, so a mis-binding shows up as a shifted arrival. Here the Flow
+ * updates an EXISTING AI_Queue row in place, writing Status and Result by
+ * column position, which produces its own failure modes — the most common
+ * being a result written without the status flipped, which leaves the job
+ * PENDING forever and then swept.
+ *
+ * TIMING. Rows are deleted the instant their outcome is handed back, and
+ * swept after two hours regardless. So this is only informative while a row
+ * is in flight: install fixtures, let a Flow run, then run this. On an empty
+ * queue it says so rather than implying health.
+ *
+ * Read-only. Also logs the binding to copy, generated from AI_QUEUE_HEADERS
+ * rather than transcribed, so it cannot drift from what the code reads.
+ */
+function checkAiFlowBinding() {
+  const report = { rows: 0, ok: 0, problems: [], expected: [] };
+
+  AI_QUEUE_HEADERS.forEach(function (name, idx) {
+    let owner;
+    if (idx === AIQ_COL.STATUS || idx === AIQ_COL.RESULT || idx === AIQ_COL.ERROR) {
+      owner = 'the Flow writes this';
+    } else {
+      owner = 'set by queueAiJob_ — the Flow must NOT change it';
+    }
+    report.expected.push({ column: idx + 1, header: name, owner: owner });
+  });
+  Logger.log('[FlowOps] Expected binding for the Flow\'s write-back step, updating the ' +
+    AI_QUEUE_SHEET_NAME + ' row it was triggered by:');
+  report.expected.forEach(function (e) {
+    Logger.log('[FlowOps]   col ' + e.column + '  ' + e.header + '  — ' + e.owner);
+  });
+  Logger.log('[FlowOps]   Status must become the literal COMPLETE (or ERROR). Result carries ' +
+    'the generated text. Match the row on JobId, never on a row number — the sweep in ' +
+    'checkAiJob_ deletes rows and shifts every position below them.');
+
+  const sheet = _getAiQueueSheet_();
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) {
+    Logger.log('[FlowOps] ' + AI_QUEUE_SHEET_NAME + ' is empty, so there is no binding to ' +
+      'diagnose — and an empty queue is the NORMAL resting state, since a row is deleted the ' +
+      'moment its outcome is handed back. Run installAiFlowFixtures(), give the Flows a ' +
+      'moment, then run this again.');
+    return report;
+  }
+
+  const width = AI_QUEUE_HEADERS.length;
+  const data = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+  for (let i = 0; i < data.length; i++) {
+    report.rows++;
+    const issues = _aiDiagnoseQueueRow_(data[i]);
+    if (!issues.length) { report.ok++; continue; }
+    report.problems.push({ row: i + 2, jobId: String(data[i][AIQ_COL.JOB_ID] || ''), issues: issues });
+  }
+
+  Logger.log('[FlowOps] checkAiFlowBinding: ' + report.ok + '/' + report.rows +
+    ' queue row(s) in a state the code can act on');
+  report.problems.forEach(function (p) {
+    Logger.log('[FlowOps]   row ' + p.row + ' (' + p.jobId + '):');
+    p.issues.forEach(function (msg) { Logger.log('[FlowOps]     - ' + msg); });
+  });
+  return report;
+}
+
+/**
+ * Per-row diagnosis. Returns a list of problems; empty means the row is in a
+ * state checkAiJob_ can act on correctly.
+ *
+ * A row still cleanly PENDING with nothing written is NOT a problem — that is
+ * a job waiting for its Flow, which is what checkAiFlowFixtures() reports on.
+ * This function is about rows the Flow has touched and touched wrongly.
+ */
+function _aiDiagnoseQueueRow_(row) {
+  const issues = [];
+  const cell = function (idx) { return String(row[idx] === undefined ? '' : row[idx]).trim(); };
+  const status = cell(AIQ_COL.STATUS);
+  const result = cell(AIQ_COL.RESULT);
+  const error = cell(AIQ_COL.ERROR);
+
+  // The single most likely mis-binding: Result bound, Status not. checkAiJob_
+  // compares status === 'PENDING' and returns early, so the generated text
+  // sits there until the two-hour sweep deletes it. The client polls, times
+  // out, and falls back to a local draft — indistinguishable from "no Flow".
+  if (status === 'PENDING' && result) {
+    issues.push('Result is filled but Status is still PENDING. The Flow wrote its output and ' +
+      'never flipped the status, so checkAiJob_ returns PENDING forever and the sweep deletes ' +
+      'the row after two hours. Bind Status to the literal COMPLETE in the same step.');
+  }
+
+  // Status flipped, nothing to hand back.
+  if (AI_TERMINAL_STATUSES.indexOf(status) !== -1 && status !== 'ERROR' && !result) {
+    issues.push('Status is COMPLETE but Result is empty. Either the Result binding is missing, ' +
+      'or it is pointed at another column — the client will receive an empty draft and treat ' +
+      'it as a failure.');
+  }
+
+  // A shift right by one puts the generated text in Error and leaves Result
+  // empty. checkAiJob_ would hand back an empty COMPLETE, or an ERROR whose
+  // message is actually the draft.
+  if (!result && error && error.length > 40) {
+    issues.push('Error (column ' + (AIQ_COL.ERROR + 1) + ') holds ' + error.length +
+      ' characters while Result (column ' + (AIQ_COL.RESULT + 1) + ') is empty — that is the ' +
+      'signature of a binding shifted one column right. The generated text is landing in the ' +
+      'error field.');
+  }
+
+  // CASE SENSITIVITY, and it is worse than untidy. checkAiJob_ tests
+  // `status === 'PENDING'` exactly, then treats everything else as terminal.
+  // So a Flow that writes "pending" while it is still working causes the row
+  // to be DELETED and whatever is in Result — possibly nothing — handed back
+  // as a completed job.
+  if (status && status !== 'PENDING' && AI_TERMINAL_STATUSES.indexOf(status) === -1) {
+    issues.push('Status is "' + status + '", which is neither PENDING nor ' +
+      AI_TERMINAL_STATUSES.join('/') + '. The comparison is exact and case-sensitive, and ' +
+      'anything that is not exactly PENDING is treated as a finished job: this row will be ' +
+      'handed back and DELETED on the next poll. A lowercase "pending" is the dangerous ' +
+      'version of this.');
+  }
+
+  // Columns queueAiJob_ owns. The Flow updating a row should touch Status,
+  // Result and Error only; a write into Type or Payload means the whole
+  // binding is off, and it also destroys the job's own identity.
+  if (!cell(AIQ_COL.JOB_ID)) {
+    issues.push('JobId is empty. checkAiJob_ finds rows by JobId, so this row can never be ' +
+      'handed back — if the Flow cleared it, its update is bound one column left.');
+  }
+  if (!cell(AIQ_COL.TYPE)) {
+    issues.push('Type is empty, so _bumpFlowStat_ has nothing to record against and the AI ' +
+      'Flow Health panel will never show this job.');
+  }
+  const payload = cell(AIQ_COL.PAYLOAD);
+  if (payload && result && payload === result) {
+    issues.push('Payload and Result are identical — the Flow is writing its output back over ' +
+      'the input. Bind Result to column ' + (AIQ_COL.RESULT + 1) + ', not ' +
+      (AIQ_COL.PAYLOAD + 1) + '.');
+  }
+
+  return issues;
 }
 
 // ── Canary ───────────────────────────────────────────────────────────────────

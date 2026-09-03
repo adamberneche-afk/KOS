@@ -1142,11 +1142,28 @@ function _wfbDiagnoseReturnRow_(row, knownIds) {
   // as misplaced. That binding is implausible (Timestamp is the first column
   // and the obvious one to leave to `now`), and the Flow/QueueID diagnostics
   // below still fire, so the row is not reported as healthy either way.
-  let blobAt = -1, blobLen = 0;
-  for (let i = 0; i < row.length; i++) {
-    if (i === WFB_RET.TIMESTAMP) continue;
-    const len = cell(i).length;
-    if (len > blobLen && len > 20) { blobLen = len; blobAt = i; }
+  //
+  // AND if RawOutput holds anything at all, that is the answer — the
+  // heuristic exists only to LOCATE misplaced output, so running it when the
+  // output is already in the right place just invents false positives. A
+  // terse but valid result (a one-line bridge sentence) is shorter than the
+  // threshold and was being read as "nothing is arriving".
+  // ...but only when RawOutput's content is not better explained as some
+  // OTHER field's value. On a one-column shift, RawOutput holds the Queue_ID,
+  // and short-circuiting on "non-empty" would trust that and hide the shift.
+  const rawCell = cell(WFB_RET.RAW_OUTPUT);
+  const rawLooksLikeAnotherField = !!rawCell &&
+    (knownIds[rawCell] || ['3', '4', '5'].indexOf(rawCell) !== -1);
+  let blobAt = -1;
+  if (rawCell && !rawLooksLikeAnotherField) {
+    blobAt = WFB_RET.RAW_OUTPUT;
+  } else {
+    let blobLen = 0;
+    for (let i = 0; i < row.length; i++) {
+      if (i === WFB_RET.TIMESTAMP) continue;
+      const len = cell(i).length;
+      if (len > blobLen && len > 20) { blobLen = len; blobAt = i; }
+    }
   }
 
   if (flowAt === -1) {

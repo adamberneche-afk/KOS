@@ -252,6 +252,15 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 > itself: on any failure this design deliberately touches nothing, so the
 > staleness guard can retry.
 >
+> While wiring that step, run **`checkStudioFlowBinding()`** — it logs the
+> exact binding to copy, generated from the harvest's own column constants,
+> and once rows arrive it diagnoses them. It catches one thing no other check
+> can: `Payload_Type` doesn't label the row, it **selects a contract**. A
+> Curator type gets a merge and re-serialization; anything else gets "write
+> verbatim, must parse as an Array". So a *valid* type name that isn't the one
+> queued applies the wrong treatment silently, and the probe compares what
+> came back against what the pipeline queued for that UID.
+>
 > Verify with `runStudioReturnCanary()` (proves the Apps Script half with the
 > Flow stubbed), then `checkStudioFlowLiveness()` — the only thing that can
 > tell you whether a Flow has ever actually written back. A green "Run

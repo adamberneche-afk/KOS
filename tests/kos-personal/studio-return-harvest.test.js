@@ -43,6 +43,7 @@ const EXPOSE = [
   '_srPrepareDocText_', '_srStripJsonFence_', '_srFindStagingRow_',
   '_srIsDocWritten_', '_srMarkDocWritten_', '_srClearDocWritten_',
   'SR_COLS', 'SR_SHEET', 'SR_CURATOR_TYPES', 'SR_MAX_ATTEMPTS',
+  '_srDiagnoseReturnRow_', 'checkStudioFlowBinding', 'SR_KNOWN_TYPES',
   'CFG', '_getSystemAsset', '_getOrCreateSheet',
 ];
 
@@ -467,4 +468,161 @@ test('liveness reports per payload type, so one dead flow is visible', () => {
     'nothing has ever returned for this type');
   assert.equal(report.releasedByType.VECTOR_CLASSIFY, 1,
     'even though a row was released for it');
+});
+
+// ── The binding probe ────────────────────────────────────────────────────────
+//
+// Same return-tab shape as cas-ccps's, so the shift diagnostics are the same
+// idea. One diagnosis here has NO equivalent there, and it is why this is not
+// a copy: Payload_Type does not label the row, it SELECTS A CONTRACT.
+// _srPrepareDocText_ routes a Curator type through a merge and
+// re-serialization, and anything else through "write the original verbatim,
+// and require it to parse as an Array". So a valid type name that is not the
+// one queued applies the wrong treatment silently.
+
+function returnRow(exported, knownUid, over) {
+  const row = new Array(Object.keys(exported.SR_COLS).length).fill('');
+  row[exported.SR_COLS.RETURNED_AT] = new Date();
+  row[exported.SR_COLS.PAYLOAD_UID] = knownUid;
+  row[exported.SR_COLS.PAYLOAD_TYPE] = 'SESSION_LOG';
+  row[exported.SR_COLS.PRIMARY_JSON] =
+    '{"summary":"a curator result long enough to read as model output"}';
+  Object.keys(over || {}).forEach((k) => { row[Number(k)] = over[k]; });
+  return row;
+}
+
+const KNOWN = { 'UID-1': true };
+const QUEUED = { 'UID-1': 'SESSION_LOG' };
+
+test('binding probe: a correctly bound row reports no issues', () => {
+  const { exported } = load();
+  assert.deepEqual(
+    exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1'), KNOWN, QUEUED), []);
+});
+
+test('binding probe: a one-column shift is named as a shift, with the offset', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  const row = new Array(Object.keys(C).length).fill('');
+  row[C.PAYLOAD_UID + 1] = 'UID-1';
+  row[C.PAYLOAD_TYPE + 1] = 'SESSION_LOG';
+  row[C.PRIMARY_JSON + 1] = '{"summary":"output one column too far right"}';
+
+  const issues = exported._srDiagnoseReturnRow_(row, KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /shifted by 1 column/.test(m)), JSON.stringify(issues));
+});
+
+test('binding probe: a valid but WRONG Payload_Type is caught against what was queued', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // The diagnosis with no cas-ccps equivalent. VECTOR_CLASSIFY is a perfectly
+  // valid type, so nothing about the value looks wrong — but this UID was
+  // queued as SESSION_LOG, and the two take different contracts.
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: 'VECTOR_CLASSIFY' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /was queued as "SESSION_LOG"/.test(m)), JSON.stringify(issues));
+  assert.ok(issues.some((m) => /DIFFERENT output contracts/.test(m)),
+    'and says the consequence: ' + JSON.stringify(issues));
+});
+
+test('binding probe: a wrong type WITHIN the same contract is flagged more softly', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // EXTERNAL_DATA and SESSION_LOG are both Curator types, so the harvest
+  // behaves identically. Still wrong, still worth saying, but not the same
+  // severity — and conflating the two would train the reader to ignore it.
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: 'EXTERNAL_DATA' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /nothing breaks today/.test(m)), JSON.stringify(issues));
+  assert.ok(!issues.some((m) => /DIFFERENT output contracts/.test(m)));
+});
+
+test('binding probe: an unrecognized Payload_Type explains the contract it will get', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: 'SESSION' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /CLASSIFICATION contract/.test(m) && /NOT_ARRAY/.test(m)),
+    'a mislabelled Curator result fails with a confusing array error: ' + JSON.stringify(issues));
+});
+
+test('binding probe: an empty Payload_Type is called out as defaulting wrongly', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: '' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /takes the classification contract by default/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: an Auditor value on a classification row is caught', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // The classification contract writes verbatim with nothing to merge, so an
+  // auditor value here is a mis-binding or a leftover from copying the
+  // Curator flow's step.
+  const issues = exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1', {
+    [C.PAYLOAD_TYPE]: 'VECTOR_CLASSIFY',
+    [C.PRIMARY_JSON]: '[{"theme":"UI"}] long enough to count as model output here',
+    [C.AUDITOR_JSON]: '{"verdict":"PASS"}',
+  }), KNOWN, { 'UID-1': 'VECTOR_CLASSIFY' });
+  assert.ok(issues.some((m) => /Auditor_JSON is filled on a "VECTOR_CLASSIFY" row/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: an Auditor value on a Curator row is perfectly fine', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  assert.deepEqual(exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.AUDITOR_JSON]: '{"verdict":"PASS"}' }), KNOWN, QUEUED), []);
+});
+
+test('binding probe: no output at all is not blamed on Returned_At', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // Same bug cas-ccps's probe shipped with: a Date stringifies to ~50 chars,
+  // so including Returned_At in the longest-cell scan made an empty
+  // Primary_JSON read as "your output landed in Returned_At".
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PRIMARY_JSON]: '' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /not reaching this row at all/.test(m)), JSON.stringify(issues));
+  assert.ok(!issues.some((m) => /column 1/.test(m)), JSON.stringify(issues));
+});
+
+test('binding probe: an already-harvested row is not scolded for its bookkeeping', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  assert.deepEqual(exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1', {
+    [C.HARVEST_STATUS]: 'HARVESTED', [C.ATTEMPTS]: 1,
+  }), KNOWN, QUEUED), []);
+});
+
+test('binding probe: the logged binding is derived from the harvest\'s own columns', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  const report = exported.checkStudioFlowBinding();
+  assert.equal(report.expected.length, Object.keys(exported.SR_COLS).length);
+  const primary = report.expected.find((e) => e.header === 'Primary_JSON');
+  assert.equal(primary.column, exported.SR_COLS.PRIMARY_JSON + 1);
+  assert.match(primary.owner, /Flow writes this/);
+  const status = report.expected.find((e) => e.header === 'Harvest_Status');
+  assert.match(status.owner, /leave EMPTY/);
+  // And the seeded return row from seed() is correctly bound, so the probe
+  // and the fixtures agree rather than contradicting each other.
+  assert.equal(report.problems.length, 0, JSON.stringify(report.problems, null, 2));
+});
+
+test('binding probe: a SHORT but valid output is not reported as missing', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // '{"summary":"s"}' is 15 characters — shorter than the longest-cell
+  // threshold, and a perfectly valid Curator result. The heuristic used to
+  // read it as "nothing is arriving", which is a false alarm on a working
+  // flow and worse than no probe at all.
+  ['{"summary":"s"}', '[{"theme":"UI"}]'].forEach((out) => {
+    const issues = exported._srDiagnoseReturnRow_(
+      returnRow(exported, 'UID-1', { [C.PRIMARY_JSON]: out }), KNOWN, QUEUED);
+    assert.deepEqual(issues, [], 'flagged a valid short output ' + JSON.stringify(out) +
+      ': ' + JSON.stringify(issues));
+  });
 });

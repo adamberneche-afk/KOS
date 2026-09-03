@@ -49,6 +49,7 @@ const EXPOSE = [
   'installAiFlowFixtures', 'checkAiFlowFixtures', 'removeAiFlowFixtures',
   'runAiFlowCanary', 'cleanUpAiFlowCanary',
   'AI_FIXTURE_JOB_PREFIX', 'AI_CANARY_JOB_TYPE', 'AI_FIXTURE_PAYLOADS',
+  'checkAiFlowBinding', '_aiDiagnoseQueueRow_', 'AI_TERMINAL_STATUSES',
   // EmailBridge collaborators
   'queueAiJob_', 'checkAiJob_', 'getFlowHealth_', '_getFlowStats_',
   'AI_FLOW_TYPES', 'AI_QUEUE_HEADERS', 'AI_QUEUE_SHEET_NAME', 'AI_QUEUE_SHEET_PROP',
@@ -462,4 +463,128 @@ test('attentionDetails keeps its "<id>: <detail>" sentence shape', () => {
   const details = exported.AI_FIXTURE_PAYLOADS.WBL_INSIGHTS.attentionDetails;
   assert.ok(details.length >= 1);
   assert.match(details[0], /^\S+@\S+: .+/);
+});
+
+// ── The binding probe ────────────────────────────────────────────────────────
+//
+// leader-hub's Flow UPDATES an existing AI_Queue row rather than appending
+// one, so its mis-bindings look nothing like cas-ccps's shifted arrivals. The
+// two that matter most are peculiar to writing in place, and both are silent:
+//
+//   1. Result bound, Status not. checkAiJob_ returns early on
+//      status === 'PENDING', so the generated text sits in the row until the
+//      two-hour sweep deletes it. The client polls, times out, falls back to
+//      a local draft — indistinguishable from "no Flow exists".
+//   2. A Status that is not exactly 'PENDING'. The comparison is exact and
+//      case-sensitive, and everything else is treated as terminal — so a Flow
+//      writing "pending" while it is still working gets the row DELETED and
+//      an empty result handed back as a completed job.
+
+function queueRow(exported, over) {
+  const row = new Array(exported.AI_QUEUE_HEADERS.length).fill('');
+  row[exported.AIQ_COL.TIMESTAMP] = new Date();
+  row[exported.AIQ_COL.JOB_ID] = 'job-1';
+  row[exported.AIQ_COL.TYPE] = 'BRAG_EMAIL';
+  row[exported.AIQ_COL.PAYLOAD] = '{"audience":"green"}';
+  row[exported.AIQ_COL.STATUS] = 'COMPLETE';
+  row[exported.AIQ_COL.RESULT] = 'A drafted email long enough to read as real model output.';
+  Object.keys(over || {}).forEach((k) => { row[Number(k)] = over[k]; });
+  return row;
+}
+
+test('binding probe: a correctly written-back row reports no issues', () => {
+  const { exported } = load();
+  assert.deepEqual(exported._aiDiagnoseQueueRow_(queueRow(exported)), []);
+});
+
+test('binding probe: a row still cleanly PENDING is not a problem', () => {
+  const { exported } = load();
+  const C = exported.AIQ_COL;
+  // A job waiting for its Flow. checkAiFlowFixtures() reports on those; this
+  // probe is about rows the Flow has touched and touched wrongly, so flagging
+  // an untouched one would make every fresh fixture look mis-bound.
+  const row = queueRow(exported, { [C.STATUS]: 'PENDING', [C.RESULT]: '' });
+  assert.deepEqual(exported._aiDiagnoseQueueRow_(row), []);
+});
+
+test('binding probe: Result written without Status flipped is caught', () => {
+  const { exported } = load();
+  const C = exported.AIQ_COL;
+  const issues = exported._aiDiagnoseQueueRow_(queueRow(exported, { [C.STATUS]: 'PENDING' }));
+  assert.ok(issues.some((m) => /never flipped the status/.test(m)), JSON.stringify(issues));
+  assert.ok(issues.some((m) => /sweep deletes/.test(m)),
+    'and says what happens to the row: ' + JSON.stringify(issues));
+});
+
+test('binding probe: COMPLETE with an empty Result is caught', () => {
+  const { exported } = load();
+  const C = exported.AIQ_COL;
+  const issues = exported._aiDiagnoseQueueRow_(queueRow(exported, { [C.RESULT]: '' }));
+  assert.ok(issues.some((m) => /Status is COMPLETE but Result is empty/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: output landing in Error instead of Result reads as a shift', () => {
+  const { exported } = load();
+  const C = exported.AIQ_COL;
+  const issues = exported._aiDiagnoseQueueRow_(queueRow(exported, {
+    [C.RESULT]: '',
+    [C.ERROR]: 'A drafted email long enough to read as real model output, in the wrong column.',
+  }));
+  assert.ok(issues.some((m) => /shifted one column right/.test(m)), JSON.stringify(issues));
+});
+
+test('binding probe: a lowercase "pending" is called out as dangerous', () => {
+  const { exported } = load();
+  const C = exported.AIQ_COL;
+  // The nastiest one. checkAiJob_ tests `status === 'PENDING'` exactly, then
+  // treats everything else as finished — so this row gets deleted and handed
+  // back mid-generation.
+  const issues = exported._aiDiagnoseQueueRow_(queueRow(exported, { [C.STATUS]: 'pending' }));
+  assert.ok(issues.some((m) => /case-sensitive/.test(m) && /DELETED/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: a cleared JobId is caught, since lookups key on it', () => {
+  const { exported } = load();
+  const C = exported.AIQ_COL;
+  const issues = exported._aiDiagnoseQueueRow_(queueRow(exported, { [C.JOB_ID]: '' }));
+  assert.ok(issues.some((m) => /JobId is empty/.test(m)), JSON.stringify(issues));
+});
+
+test('binding probe: writing the result over the payload is caught', () => {
+  const { exported } = load();
+  const C = exported.AIQ_COL;
+  const same = 'The same text in both cells, because Result was bound to the Payload column.';
+  const issues = exported._aiDiagnoseQueueRow_(queueRow(exported, {
+    [C.PAYLOAD]: same, [C.RESULT]: same,
+  }));
+  assert.ok(issues.some((m) => /writing its output back over the input/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: logs the expected binding, derived from the headers', () => {
+  const { exported } = load();
+  exported.installAiFlowFixtures();
+  const report = exported.checkAiFlowBinding();
+  // Generated from AI_QUEUE_HEADERS rather than transcribed, so it cannot
+  // drift from what checkAiJob_ actually reads — the whole reason it belongs
+  // in code rather than in a setup document.
+  assert.equal(report.expected.length, exported.AI_QUEUE_HEADERS.length);
+  const status = report.expected.find((e) => e.header === 'Status');
+  assert.equal(status.column, exported.AIQ_COL.STATUS + 1);
+  assert.match(status.owner, /Flow writes this/);
+  const jobId = report.expected.find((e) => e.header === 'JobId');
+  assert.match(jobId.owner, /must NOT change it/);
+});
+
+test('binding probe: fixture rows pass it, so the two checks agree', () => {
+  const { exported } = load();
+  exported.installAiFlowFixtures();
+  // Fixtures arrive PENDING with no result, which the probe must consider
+  // fine — otherwise installing fixtures would immediately report six
+  // binding problems that do not exist.
+  const report = exported.checkAiFlowBinding();
+  assert.equal(report.rows, exported.AI_FLOW_TYPES.length);
+  assert.equal(report.problems.length, 0, JSON.stringify(report.problems, null, 2));
 });

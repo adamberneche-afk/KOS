@@ -472,3 +472,18 @@ test('binding probe: a numeric Attempts value is not mistaken for stray text', (
   const issues = exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true });
   assert.deepEqual(issues, [], 'a retry counter is not a binding problem: ' + JSON.stringify(issues));
 });
+
+test('binding probe: a SHORT but valid output is not reported as missing', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  // Flow 5 returns a single bridging sentence; a terse Flow 4 payload is
+  // '{"grammar":2}'. Both are shorter than the longest-cell threshold, and
+  // the heuristic used to read them as "nothing is arriving" — a false alarm
+  // on a working flow, which is worse than no probe at all.
+  ['Short bridge.', '{"grammar":2}'].forEach((out) => {
+    const issues = exported._wfbDiagnoseReturnRow_(
+      bindingRow(exported, { [R.RAW_OUTPUT]: out }), { 'WUQ-1': true });
+    assert.deepEqual(issues, [], 'flagged a valid short output ' + JSON.stringify(out) +
+      ': ' + JSON.stringify(issues));
+  });
+});
