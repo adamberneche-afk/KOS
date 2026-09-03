@@ -39,6 +39,13 @@ const FILES = [
   // tests looked green. Load the real scope, so the tests see what Studio
   // would.
   S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('40_FlowPrompts.js'),
+  // The harvest's own collaborators: 15c parses the answer and writes the
+  // evidence, 04 holds scanCompliance_/extractSuggestedScore_ that 15c reads
+  // with, and 03 holds the STG_* column map _fiMarkStagingComplete_ indexes
+  // by. All four are bound to cas-ccps:central-ledger, so all four are in
+  // scope in production (gas-lint Check K).
+  S('15c_Flow2DirectEvaluationService.js'), S('04_Form2_TurnInGate.js'),
+  S('03_QueueBridge.js'),
 ];
 
 function load() {
@@ -55,6 +62,9 @@ function load() {
     'WQ24_DOC_ID', 'WQ24_WORD_COUNT_SCORE', 'WFB_INPUT_TABS',
     'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
     'RESPONSE_ZONE_MARKER',
+    // 37_FlowInputBuilder.js's harvest — the Flow 2 fixture's consumer. The
+    // tests at the bottom of this file drive the fixture through it.
+    'harvestFlowInputResults', 'STG_STATUS',
   ]);
 }
 
@@ -732,4 +742,154 @@ test('the fixture is idempotent — a second install does not double the row', (
   assert.equal(again.seeded, 0);
   assert.equal(again.skipped, 1);
   assert.equal(ss.getSheetByName('RubricQueue').getLastRow(), 2, 'header + one fixture row');
+});
+
+// ── The Flow 2 fixture, driven through the harvest ───────────────────────────
+//
+// Everything above checks the fixture's shape against the constants its
+// consumers use. That is most of rule 4, but not all of it: a row can satisfy
+// every column-level assertion and still be un-harvestable, because the
+// harvest reads combinations — a ConfigID the doc's footer must agree with, a
+// StagingRowRef it feeds to _fiMarkStagingComplete_, four competency IDs that
+// have to survive writeCompetencyEvidenceFromFlow2_'s skip rule.
+//
+// So these tests do what Studio would: write an answer into GEMINI_FULL_OUTPUT,
+// flip READY_STATUS to EVALUATED, and run harvestFlowInputResults() against
+// the fixture. gas-lint's Check J (FLOW_DOCTRINE.md rule 4) now requires that
+// every declared fixture be driven through one of its flow's own consumers
+// like this, because a fixture asserted only against itself is self-consistent
+// by construction: the test re-derives the shape from the code that wrote it.
+
+// What Flow 2 writes back. The three machine-readable markers are the ones
+// 15c's parser reads — [SYSTEM: ...] for compliance (04_Form2_TurnInGate.js's
+// scanCompliance_), [SUGGESTED_SCORE: N], and the MILESTONE_OUTCOMES line.
+const FIXTURE_FLOW2_OUTPUT = [
+  'Strong work overall. Your evidence for the first two milestones is clear,',
+  'and the third needs one more concrete example.',
+  '',
+  '[SYSTEM: APPROVED]',
+  '[SUGGESTED_SCORE: 3]',
+  '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"NOT_MET","4":"MET"}]',
+].join('\n');
+
+// Stands in for the Flow: fills the one column the fixture deliberately leaves
+// blank, and moves the row to the status the harvest watches.
+function simulateFlow2Answer(ss, exported, output) {
+  const fi = ss.getSheetByName('FlowInput');
+  const values = fi.getDataRange().getValues();
+  let rowNum = -1;
+  for (let i = 1; i < values.length; i++) {
+    if (String(values[i][exported.FI.STUDENT_EMAIL]).trim() === exported.FX_STUDENT_EMAIL) {
+      rowNum = i + 1;
+      break;
+    }
+  }
+  assert.ok(rowNum !== -1, 'the fixture row is there to answer');
+  fi.getRange(rowNum, exported.FI.GEMINI_FULL_OUTPUT + 1)
+    .setValue(output === undefined ? FIXTURE_FLOW2_OUTPUT : output);
+  fi.getRange(rowNum, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+  return rowNum;
+}
+
+function fiRowStatus(ss, exported, rowNum) {
+  return String(ss.getSheetByName('FlowInput')
+    .getRange(rowNum, exported.FI.READY_STATUS + 1).getValue()).trim();
+}
+
+test('the Flow 2 fixture harvests clean — HARVESTED, not ERROR_HARVEST_FAILED', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+  const rowNum = simulateFlow2Answer(ss, exported);
+
+  exported.harvestFlowInputResults();
+
+  // ERROR_HARVEST_FAILED is the catch-all the harvest writes when anything in
+  // the row's shape defeats it, and it is the single most informative
+  // assertion in this file: it fails for a missing doc, an unparseable
+  // output, a ConfigID mismatch, or a competency ID the evidence writer
+  // rejects — the whole class of gap that the column-level tests above cannot
+  // see.
+  assert.equal(fiRowStatus(ss, exported, rowNum), 'HARVESTED');
+});
+
+test('the harvest writes competency evidence keyed to the fixture\'s own IDs', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+  const fixtureRow = ss.getSheetByName('FlowInput').getDataRange().getValues()[1];
+  simulateFlow2Answer(ss, exported);
+
+  exported.harvestFlowInputResults();
+
+  // The harvest self-heals this tab; nothing above created it.
+  const evidence = ss.getSheetByName('CompetencyEvidence');
+  assert.ok(evidence, 'the harvest created CompetencyEvidence');
+  const rows = evidence.getDataRange().getValues().slice(1);
+  // Three MET/NOT_MET outcomes plus one MET = four milestones, all with a
+  // competency ID in the fixture, so all four should produce evidence.
+  assert.equal(rows.length, 4,
+    'a milestone whose competency ID the fixture left blank would be skipped here');
+
+  const FI = exported.FI;
+  const ids = rows.map((r) => String(r[2]));
+  [FI.MILESTONE_1_COMPETENCY_ID, FI.MILESTONE_2_COMPETENCY_ID,
+   FI.MILESTONE_3_COMPETENCY_ID, FI.MILESTONE_4_COMPETENCY_ID].forEach((col, i) => {
+    assert.ok(ids.indexOf(String(fixtureRow[col])) !== -1,
+      'milestone ' + (i + 1) + '\'s competency ID did not reach the evidence row');
+  });
+  // And the outcomes came from the answer, not from a default.
+  assert.equal(rows.filter((r) => String(r[4]) === 'NOT_MET').length, 1);
+});
+
+test('the harvest appends feedback to the fixture\'s own student doc', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const installed = exported.installFlow2Fixture();
+  simulateFlow2Answer(ss, exported);
+
+  exported.harvestFlowInputResults();
+
+  const text = sandbox.DocumentApp.openById(installed.studentFileId).getBody().getText();
+  assert.ok(text.indexOf('Strong work overall') !== -1,
+    'the model\'s report reached the doc the fixture row points at');
+  // The machine-readable line is stripped before a student sees it.
+  assert.ok(text.indexOf('MILESTONE_OUTCOMES') === -1,
+    '_fiStripMilestoneOutcomesLine_ ran on the way through');
+});
+
+test('the fixture cannot complete a REAL staging row, proven through the harvest', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  // The safety property asserted literally further up ('StagingRowRef is
+  // FIXTURE, and parseInt cannot turn it into a row number'), now driven
+  // through _fiMarkStagingComplete_ — which has a content-scan fallback that
+  // a literal assertion about the ref cannot rule out. Row 2 is a real
+  // student's in-flight submission.
+  const staging = ss.insertSheet('STAGING_PIPELINE');
+  staging.appendRow(['Timestamp', 'QueueRowRef', 'StudentFileID', 'ConfigID',
+                     'TeacherEmail', 'Status']);
+  staging.appendRow([new Date(), 7, 'real-student-doc-id', 'REAL-CONFIG-001',
+                     'someone@example.invalid', 'IN_PROCESS']);
+
+  exported.installFlow2Fixture();
+  simulateFlow2Answer(ss, exported);
+  exported.harvestFlowInputResults();
+
+  assert.equal(String(staging.getRange(2, exported.STG_STATUS + 1).getValue()).trim(),
+    'IN_PROCESS', 'the fixture harvest completed a real student\'s staging row');
+});
+
+test('an EVALUATED fixture row with no output is parked, not harvested', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+  // The shape of a Flow that fired and returned nothing — the commonest live
+  // failure, and the one a fixture exists to make visible.
+  const rowNum = simulateFlow2Answer(ss, exported, '');
+
+  exported.harvestFlowInputResults();
+
+  assert.equal(fiRowStatus(ss, exported, rowNum), 'ERROR_EMPTY_OUTPUT',
+    'an empty answer must be distinguishable from a harvest that failed');
 });

@@ -1039,6 +1039,350 @@ function checkFlowSurfaces() {
 }
 
 // -----------------------------------------------------------------------
+// Test-sandbox analysis, shared by Checks J and K.
+//
+// Both checks read the test tree rather than the GAS source, because both
+// doctrine rules they enforce are about tests: rule 4 (a fixture must be
+// exercised through its consumer) and rule 12 (a sandbox that loads fewer
+// files than the GAS project is testing a different program).
+// -----------------------------------------------------------------------
+
+const TEST_ROOT = 'tests';
+
+// tests/tools/ tests THIS tool, and both checks below have to skip it for the
+// same underlying reason: its content is sample data about GAS code, not GAS
+// code being exercised. It quotes flow-map.json's own function names as
+// strings, which would let every surface pass Check J on the strength of the
+// linter's own fixtures; and it contains literal loadGasFiles(...) snippets as
+// test input, which Check K would otherwise analyse as if they were real
+// sandboxes (they name one or two invented files and produced seven findings
+// against a project they never load). No file in tests/tools/ loads a real GAS
+// sandbox — if one ever does, it needs its own handling rather than this
+// blanket skip.
+const TOOL_TEST_DIRS = ['tests/tools'];
+
+function isToolTest(relPath) {
+  return TOOL_TEST_DIRS.some(d => relPath.indexOf(d + '/') === 0);
+}
+
+function listTestFiles() {
+  const out = [];
+  (function walk(rel) {
+    const abs = path.join(REPO_ROOT, rel);
+    if (!fs.existsSync(abs)) return;
+    for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+      const next = rel + '/' + entry.name;
+      if (entry.isDirectory()) walk(next);
+      else if (entry.name.endsWith('.test.js')) out.push(next);
+    }
+  })(TEST_ROOT);
+  return out.sort();
+}
+
+/**
+ * Finds every loadGasFiles(files, expose) invocation in a test file and
+ * returns what each one puts in scope: { files: [basename], expose: [name] }.
+ *
+ * Both arguments are usually named constants (`FILES`, `EXPOSE`) rather than
+ * inline literals, so an identifier in either position is expanded from its
+ * `const NAME = [ ... ]` declaration in the same file. `FILES.concat([...])`
+ * works for free: the concatenated literal is inside the argument text.
+ *
+ * Paths are reduced to basenames on purpose. Tests build them half a dozen
+ * ways (`S('00_SharedConfig.js')`, `path.join(LH, 'EmailBridge.gs')`,
+ * a `KP` prefix), and resolving those expressions statically would mean
+ * evaluating them. Basenames are unique across this repo's GAS files.
+ *
+ * Pure and path-free, so tests can drive it with literal source.
+ */
+function findSandboxLoads(src) {
+  const s = stripCommentsAndStrings(src, { keepStrings: true });
+  const out = [];
+
+  // Array literals assigned to a top-level const, for expanding identifiers.
+  const arrays = {};
+  const arrayRe = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\[/g;
+  let m;
+  while ((m = arrayRe.exec(s))) {
+    const open = s.indexOf('[', m.index);
+    let depth = 0, close = -1;
+    for (let i = open; i < s.length; i++) {
+      if (s[i] === '[') depth++;
+      else if (s[i] === ']') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close !== -1) arrays[m[1]] = s.substring(open, close + 1);
+  }
+
+  const expand = (text) => {
+    let acc = text;
+    for (const id of (text.match(/\b[A-Za-z_$][\w$]*\b/g) || [])) {
+      if (arrays[id]) acc += ' ' + arrays[id];
+    }
+    return acc;
+  };
+
+  const callRe = /loadGasFiles\s*\(/g;
+  while ((m = callRe.exec(s))) {
+    const open = s.indexOf('(', m.index);
+    let depth = 0, close = -1;
+    for (let i = open; i < s.length; i++) {
+      if (s[i] === '(') depth++;
+      else if (s[i] === ')') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close === -1) continue;
+
+    // Split the argument list on top-level commas only.
+    const args = [];
+    let cur = '', d = 0;
+    for (const ch of s.substring(open + 1, close)) {
+      if ('([{'.indexOf(ch) !== -1) d++;
+      else if (')]}'.indexOf(ch) !== -1) d--;
+      if (ch === ',' && d === 0) { args.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    args.push(cur);
+
+    const fileText = expand(args[0] || '');
+    const exposeText = expand(args[1] || '');
+    // The basename may be the whole literal (`S('00_SharedConfig.js')`) or the
+    // tail of a path written out in one (`'/scripts/00_SharedConfig.js'`).
+    const files = [];
+    const fileRe = /['"][^'"]*?([\w.\-]+\.(?:js|gs))['"]/g;
+    let fm;
+    while ((fm = fileRe.exec(fileText))) files.push(fm[1]);
+    const expose = (exposeText.match(/['"]([A-Za-z_$][\w$]*)['"]/g) || [])
+      .map(q => q.slice(1, -1));
+    out.push({
+      files: Array.from(new Set(files)),
+      expose: Array.from(new Set(expose)),
+    });
+  }
+  return out;
+}
+
+/**
+ * Every identifier referenced inside each top-level declaration of a file,
+ * keyed by declaration name — a coarse reference graph.
+ *
+ * Identifiers, not just call sites, because half of the incident behind rule
+ * 12 was a missing *constant*: 37_FlowInputBuilder.js's _fiBuildPromptText_
+ * needs both substituteFlowPrompt_() from 40 and FLOW_2_SYSTEM_PROMPT from
+ * 15b, and a call-shaped pattern would only have found the first while the
+ * fixture still seeded an empty prompt.
+ */
+function findDeclRefs(relPath) {
+  const stripped = stripCommentsAndStrings(readFile(relPath));
+  const out = {};
+  let depth = 0, cur = null;
+  for (const line of stripped.split('\n')) {
+    if (depth === 0) {
+      const m = line.match(DECL_RE);
+      if (m) { cur = m[1] || m[2]; out[cur] = out[cur] || new Set(); }
+    }
+    if (cur) {
+      // Not preceded by `.`, so `sheet.getRange` doesn't register getRange.
+      const idRe = /(?<!\.)\b([A-Za-z_$][\w$]*)\b/g;
+      let m2;
+      while ((m2 = idRe.exec(line))) out[cur].add(m2[1]);
+    }
+    for (const ch of line) {
+      if (ch === '{') depth++;
+      else if (ch === '}') depth = Math.max(0, depth - 1);
+    }
+    if (depth === 0) cur = null;
+  }
+  return out;
+}
+
+const DECL_REF_CACHE = {};
+function declRefs(relPath) {
+  if (!DECL_REF_CACHE[relPath]) DECL_REF_CACHE[relPath] = findDeclRefs(relPath);
+  return DECL_REF_CACHE[relPath];
+}
+
+/** The project whose file set best matches a sandbox's basenames. */
+function projectForBasenames(basenames) {
+  let best = null, bestCount = 0;
+  for (const [name, def] of Object.entries(PROJECT_MAP)) {
+    if (name.startsWith('_')) continue;
+    const files = (def.files || []).filter(f => !f.endsWith('.html'));
+    const count = files.filter(f => basenames.indexOf(path.basename(f)) !== -1).length;
+    if (count > bestCount) { bestCount = count; best = name; }
+  }
+  return best;
+}
+
+// -----------------------------------------------------------------------
+// Check J — a fixture must be exercised through its consumer.
+//
+// FLOW_DOCTRINE.md rule 4 for the first half (every flow gets a fixture at
+// its trigger condition, and the read-back is the test — so a fixture no test
+// reads back is half a fixture), rule 5 for the second (a fixture is only as
+// good as the consumer that reads it). A fixture asserted only against itself is
+// self-consistent by construction: the test re-derives the shape from the
+// same code that wrote it, so a fixture whose shape its consumer cannot read
+// passes. Five of this repo's six fixtures had exactly that defect, and none
+// of them produced an error anywhere — a kos-personal fixture planted a
+// prefixed Payload_UID no staging row could ever match, which exercised the
+// not-found path while reading as a pass.
+//
+// So for each declared fixture, some test outside tests/tools/ must install
+// it AND drive one of that flow's own consumers (materialize, harvest,
+// binding, liveness). The canary is deliberately not a consumer: it stubs the
+// Flow and seeds its own row, so naming it would satisfy this check without
+// reading the fixture at all.
+// -----------------------------------------------------------------------
+const FIXTURE_CONSUMER_ROLES = ['materialize', 'harvest', 'binding', 'liveness'];
+
+function checkFixtureConsumers() {
+  let flowMap;
+  try { flowMap = JSON.parse(readFile(FLOW_MAP_PATH)); }
+  catch (e) { return; } // Check H already reported it.
+
+  const testFiles = listTestFiles().filter(f => !isToolTest(f));
+  const testSrc = {};
+  for (const f of testFiles) testSrc[f] = stripCommentsAndStrings(readFile(f), { keepStrings: true });
+
+  for (const [surface, def] of Object.entries(flowMap.flowSurfaces || {})) {
+    const fixture = def.fixture;
+    if (!fixture) continue; // Check I already warns about a missing role.
+
+    const nameRe = new RegExp('\\b' + fixture + '\\b');
+    const installing = testFiles.filter(f => nameRe.test(testSrc[f]));
+    if (!installing.length) {
+      err('fixture-untested',
+        `${surface}: ${fixture}() is declared as this flow's fixture, but no test outside ` +
+        `tests/tools/ references it. The read-back IS the test — a Flow's own "Run Completed" ` +
+        `over zero rows looks exactly like success. See meta/FLOW_DOCTRINE.md rule 4.`,
+        FLOW_MAP_PATH);
+      continue;
+    }
+
+    const consumers = FIXTURE_CONSUMER_ROLES.map(r => def[r]).filter(Boolean);
+    if (!consumers.length) continue; // Nothing declared to drive it through.
+
+    const driven = installing.filter(f =>
+      consumers.some(fn => new RegExp('\\b' + fn + '\\b').test(testSrc[f])));
+    if (!driven.length) {
+      err('fixture-not-driven-through-consumer',
+        `${surface}: ${fixture}() is exercised in ${installing.join(', ')}, but none of those ` +
+        `files also drives one of its consumers (${consumers.join(', ')}). A fixture checked ` +
+        `only against itself is self-consistent by construction — the test re-derives the ` +
+        `shape from the code that wrote it, so a shape the consumer cannot read still passes. ` +
+        `Five of this repo's six fixtures had exactly that defect. See ` +
+        `meta/FLOW_DOCTRINE.md rule 5.`, FLOW_MAP_PATH);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Check K — a test sandbox must load the scope its code runs in.
+//
+// FLOW_DOCTRINE.md rule 12. GAS concatenates every file bound to a project
+// into one global scope, so a function's collaborators are in scope in
+// production whether or not a test loaded them. A sandbox that loads fewer
+// files is running a different program, and the failure is silent whenever
+// the code degrades instead of throwing: installFlow2Fixture() seeded an
+// empty PromptText for exactly this reason, because _fiBuildPromptText_
+// returns "" rather than throwing when 15b and 40 are out of scope, and the
+// tests were green throughout.
+//
+// A test loading a subset is normal and fine — most here load two or three
+// files on purpose. What is not fine is a subset with a hole in it: a name
+// that code reachable from the sandbox's OWN exposed entry points needs, that
+// is declared in this project but was not loaded. That is the reachable part
+// of the scope, and it is what this check requires to be closed.
+//
+// Reachability is what keeps this quiet: without it, the same analysis
+// reports every collaborator of every loaded file (nine findings on one
+// fixture test, none of them exercised) and gets muted within a week.
+// -----------------------------------------------------------------------
+/**
+ * The reachable scope gaps of one sandbox: names that code reachable from
+ * `expose` needs, that this project declares in a file the sandbox did not
+ * load. Returns [{ name, declaredIn, via }].
+ *
+ * Separated from the check so a test can drive it with a file list directly —
+ * including the historical one that produced the empty PromptText, which is
+ * the only way to prove this analysis would have caught it.
+ */
+function findScopeGaps(projectName, basenames, expose, allowed) {
+  const def = PROJECT_MAP[projectName];
+  if (!def) return [];
+  const allowSet = allowed instanceof Set ? allowed : new Set(allowed || []);
+  const files = (def.files || []).filter(f => !f.endsWith('.html'));
+  const loaded = files.filter(f => basenames.indexOf(path.basename(f)) !== -1);
+  const unloaded = files.filter(f => loaded.indexOf(f) === -1);
+
+  // Names the sandbox has, and names the rest of the project has.
+  const inScope = {};
+  for (const relPath of loaded) {
+    if (!exists(relPath)) continue;
+    Object.assign(inScope, declRefs(relPath));
+  }
+  const outOfScope = new Map();
+  for (const relPath of unloaded) {
+    if (!exists(relPath)) continue;
+    for (const d of findTopLevelDecls(relPath)) {
+      if (!outOfScope.has(d.name)) outOfScope.set(d.name, relPath);
+    }
+  }
+
+  // Walk out from the names this sandbox exposes — those are what the test
+  // can actually call. Everything else in a loaded file is along for the
+  // ride, and reporting its collaborators is what would make this noisy.
+  const seen = new Set();
+  const stack = (expose || []).filter(name => inScope[name]);
+  const gaps = new Map();
+  while (stack.length) {
+    const name = stack.pop();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    for (const ref of inScope[name] || []) {
+      if (inScope[ref]) { stack.push(ref); continue; }
+      if (ALLOWLIST.has(ref) || allowSet.has(ref)) continue;
+      if (outOfScope.has(ref) && !gaps.has(ref)) {
+        gaps.set(ref, { name: ref, declaredIn: outOfScope.get(ref), via: name });
+      }
+    }
+  }
+  return Array.from(gaps.values());
+}
+
+function checkSandboxScope() {
+  let allow = {};
+  try {
+    const flowMap = JSON.parse(readFile(FLOW_MAP_PATH));
+    allow = (flowMap.sandboxScope && flowMap.sandboxScope.allow) || {};
+  } catch (e) { /* Check H already reported it. */ }
+
+  for (const testFile of listTestFiles()) {
+    if (isToolTest(testFile)) continue;
+    const allowed = new Set(((allow[testFile] || {}).names) || []);
+    for (const load of findSandboxLoads(readFile(testFile))) {
+      if (!load.files.length) continue;
+      const projectName = projectForBasenames(load.files);
+      if (!projectName) continue;
+      const files = (PROJECT_MAP[projectName].files || []).filter(f => !f.endsWith('.html'));
+      const loadedCount = files.filter(f => load.files.indexOf(path.basename(f)) !== -1).length;
+
+      for (const gap of findScopeGaps(projectName, load.files, load.expose, allowed)) {
+        err('sandbox-scope-gap',
+          `${testFile}: the sandbox loads ${loadedCount} of project "${projectName}"'s ` +
+          `${files.length} files, and ${gap.via}() — reachable from the names this test ` +
+          `exposes — needs "${gap.name}", which is declared in ${gap.declaredIn} and was not ` +
+          `loaded. In production GAS puts it in scope; here it is missing, so this test is ` +
+          `exercising a different program than Studio runs. Add ` +
+          `${path.basename(gap.declaredIn)} to the file list. If the omission is deliberate, ` +
+          `declare it under sandboxScope.allow in ${FLOW_MAP_PATH} with a reason. See ` +
+          `meta/FLOW_DOCTRINE.md rule 12.`,
+          testFile);
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Reusable primitives
 //
 // stripCommentsAndStrings() is the piece other tools most need and most
@@ -1055,6 +1399,13 @@ module.exports = {
   parseColumnMap,
   columnMapLabel,
   FLOW_ROLE_QUESTIONS,
+  FIXTURE_CONSUMER_ROLES,
+  findSandboxLoads,
+  findDeclRefs,
+  findScopeGaps,
+  projectForBasenames,
+  listTestFiles,
+  isToolTest,
   findGoogleScriptRunCalls,
   findGcpSurfaces,
   GCP_PATTERNS,
@@ -1080,6 +1431,8 @@ checkUndefinedFunctionCalls();
 checkGcpSurfaces();
 checkColumnMapAgreement();
 checkFlowSurfaces();
+checkFixtureConsumers();
+checkSandboxScope();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

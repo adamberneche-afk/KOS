@@ -32,7 +32,12 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
-const FILES = [S('00_SharedConfig.js'), S('07_TeacherDashboard.js')];
+// 31 comes along because _apiGetPacingGuide_ calls its getAllUnits_. Without
+// it the three data checks failed on a ReferenceError rather than on empty
+// tabs — the right answer for the wrong reason, which is what gas-lint's
+// Check K (FLOW_DOCTRINE.md rule 12) exists to stop.
+const FILES = [S('00_SharedConfig.js'), S('07_TeacherDashboard.js'),
+               S('31_PacingGuideManager.js')];
 
 const EXPOSE = [
   'runLeaderHubConnectionCheck', '_lhcHasRows_', '_lhcCount_', '_lhcDescribe_',
@@ -152,6 +157,12 @@ test('empty source tabs fail the check rather than passing it', () => {
   assert.equal(dataChecks.length, 3);
   dataChecks.forEach((c) => {
     assert.equal(c.ok, false, c.name + ' should fail on an empty deployment');
+    // AND for the right reason. With 31_PacingGuideManager.js out of the
+    // sandbox, _apiGetPacingGuide_ died on a ReferenceError and this check
+    // still read as "fails on empty" — the correct verdict from an incorrect
+    // program. Pinning the message keeps the narrower scope from coming back.
+    assert.match(c.detail, /Handler succeeded but returned 0/,
+      c.name + ' failed for some reason other than an empty tab: ' + c.detail);
   });
 });
 

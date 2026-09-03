@@ -69,9 +69,13 @@
       ]
     },
     "cas-ccps:STAGING_PIPELINE": {
-      "why": "Flow 2's trigger queue. Declared with one map for now -- see _doctrine on why a single-map group is still worth declaring. NOT the same sheet as kos-personal's STAGING_PIPELINE below.",
-      "authoritative": "WD_STAGING_PIPELINE_COLUMNS in 34_QueueWatchdog.js, derived from the writer",
+      "why": "Flow 2's trigger queue, and the second real pair. 03_QueueBridge.js writes the rows with STG_* and 37_FlowInputBuilder.js's _fiMarkStagingComplete_ indexes them by those same constants; 34_QueueWatchdog.js keeps its own object map for the stale-row sweep. STG_ carries no TIMESTAMP member, which is fine -- Check H compares shared keys only. NOT the same sheet as kos-personal's STAGING_PIPELINE below.",
+      "authoritative": "STG_* in 03_QueueBridge.js, the script that writes the rows",
       "maps": [
+        {
+          "file": "cas-ccps/scripts/03_QueueBridge.js",
+          "prefix": "STG_"
+        },
         {
           "file": "cas-ccps/scripts/34_QueueWatchdog.js",
           "object": "WD_STAGING_PIPELINE_COLUMNS"
@@ -108,6 +112,18 @@
         }
       ]
     }
+  },
+  "sandboxScope": {
+    "_doctrine": [
+      "RULE 12 -- test in the production scope. GAS concatenates every file bound to a project into one global scope, so a function's collaborators are in scope in production whether or not a test loaded them. A sandbox that loads fewer files is running a different program, and the failure is silent whenever the code degrades instead of throwing.",
+      "",
+      "The incident: installFlow2Fixture() seeded an empty PromptText for weeks while its tests stayed green, because the test file loaded neither 15b (FLOW_2_SYSTEM_PROMPT) nor 40 (substituteFlowPrompt_), and _fiBuildPromptText_ returns \"\" rather than throwing when they are out of scope. Check K found four more of the same shape on its first run, including one where runLeaderHubConnectionCheck's three data checks were failing on a ReferenceError while the test asserted they fail on empty tabs -- the right verdict from the wrong program.",
+      "",
+      "Check K only reports a name that code REACHABLE FROM THE TEST'S OWN EXPOSED ENTRY POINTS needs. Loading a subset is normal; a subset with a hole in the part you actually drive is not. Without the reachability filter the same analysis reports every collaborator of every loaded file -- nine findings on one fixture test, none of them exercised -- and gets muted within a week.",
+      "",
+      "`allow` below is for a name that is genuinely absent in production too, or one the analysis mis-reads (an object key that happens to match a declaration elsewhere in the project). It is not for making a finding go away: the fix for a real gap is to load the file, which costs one line. Every entry needs a `why` that would survive someone else reading it."
+    ],
+    "allow": {}
   },
   "flowSurfaces": {
     "cas-ccps:flow-2": {

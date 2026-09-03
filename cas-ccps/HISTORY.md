@@ -1752,3 +1752,80 @@ one-column drift in `WD_RUBRIC_QUEUE_COLUMNS` produces the
 produces the `column-map-not-found` warning rather than silently un-checking
 the group; and a flow-map entry naming a function that does not exist
 produces `flow-surface-missing-function`.
+
+### Follow-up — the other two rules that turned out to be checkable
+
+Two more of `FLOW_DOCTRINE.md`'s prose-only rules are now `gas-lint` checks.
+Both are about the **tests** rather than the GAS source, and both found live
+defects on their first run.
+
+**Check J — a fixture must be read back, and read back by its consumer.**
+Rule 4 says the read-back is the test, because a Flow's own "Run Completed"
+over zero rows looks exactly like success. Rule 5 says a fixture is only as
+good as the consumer that reads it. Together they are checkable: for each
+`fixture` declared in `flow-map.json`, some test outside `tests/tools/` must
+reference it, and that same file must drive one of the flow's own consumers —
+`materialize`, `harvest`, `binding` or `liveness`. The canary deliberately
+does not count: it stubs the Flow and seeds its own row, so naming it would
+satisfy the check without touching the fixture.
+
+The gap it found: Flow 2's fixture was checked column by column, doc delimiter
+by doc delimiter, and never handed to `harvestFlowInputResults()`. Five tests
+now do that — status reaches `HARVESTED` rather than `ERROR_HARVEST_FAILED`,
+competency evidence lands keyed to the fixture's own IDs, feedback reaches the
+doc the row points at with the machine-readable line stripped, an empty answer
+parks as `ERROR_EMPTY_OUTPUT`, and a real `IN_PROCESS` staging row survives
+untouched.
+
+That last one is the case worth keeping. The `StagingRowRef = 'FIXTURE'`
+safety property was already asserted literally ("`parseInt` cannot turn it
+into a row number"), but `_fiMarkStagingComplete_` has a content-scan fallback
+that a literal assertion about the ref cannot rule out. Driving it through the
+consumer is what actually proves the fixture cannot complete a student's
+submission.
+
+The value of the whole exercise showed up in the negative-path check: pointing
+the fixture at a document that does not exist passes **every** column-level
+assertion in that file and fails only the three harvest tests.
+
+**Check K — a test sandbox must load the scope its code runs in.** Rule 12.
+GAS concatenates every file bound to a project into one global scope, so a
+function's collaborators are in scope in production whether or not a test
+loaded them, and the failure is silent whenever the code degrades instead of
+throwing. `installFlow2Fixture()` seeded an empty `PromptText` for weeks for
+exactly this reason.
+
+Requiring the whole project file set would fail nearly every test here, most
+of which load two or three files on purpose and correctly. So the check
+requires the part the test actually drives to be closed: it walks out from the
+names each `loadGasFiles(files, expose)` call exposes and errors on a name
+that reachable code needs, declared in a file the sandbox did not load.
+Reachability is the entire difference between a check and a nuisance — without
+it the same analysis reports nine unexercised collaborators on one fixture
+test and gets muted within a week. It matches identifiers rather than call
+sites because half of the motivating incident was a missing *constant*.
+
+Five gaps on the first run, all fixed by loading the named file:
+
+- `flow2-canary.test.js` was still missing `40_FlowPrompts.js` — the same
+  omission as the original incident, in the next test file over.
+- `warmup-flow-bridge.test.js` drove `checkFlow2Binding()` without `FI`.
+- `lesson-frame-generator.test.js` and `scr-export-grid.test.js` each reached
+  one collaborator they had not loaded.
+- `leaderhub-connection-check.test.js` was the bad one: with
+  `31_PacingGuideManager.js` out of scope, `_apiGetPacingGuide_` died on a
+  `ReferenceError`, so all three data checks failed — and the test asserting
+  they fail on empty tabs passed. The right verdict from the wrong program.
+  That test now pins the failure *message* as well, so the narrower scope
+  cannot come back unnoticed.
+
+While wiring the harvest tests, `03_QueueBridge.js`'s `STG_*` constants turned
+out to be a second column map of `STAGING_PIPELINE` alongside
+`34_QueueWatchdog.js`'s object map — so that Check H group is no longer a
+single-map placeholder. They agree, and the writer (`03`) is now recorded as
+authoritative.
+
+Both new checks were negative-path verified by injection and revert: removing
+the consumer drive reproduces `fixture-not-driven-through-consumer`, dropping
+`40_FlowPrompts.js` from the canary sandbox reproduces `sandbox-scope-gap`
+naming the file to add, and allowlisting that same name silences it.

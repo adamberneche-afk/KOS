@@ -31,6 +31,11 @@ const FILES = [
   S('00_SharedConfig.js'), S('03_QueueBridge.js'), S('04_Form2_TurnInGate.js'),
   S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('15c_Flow2DirectEvaluationService.js'),
   S('37_FlowInputBuilder.js'), S('35_FlowPreflightAndCanary.js'),
+  // 40 holds substituteFlowPrompt_, which _fiBuildPromptText_ needs and
+  // which returns "" rather than throwing when it is out of scope. Same
+  // omission that let installFlow2Fixture() seed an empty PromptText while
+  // its tests stayed green; gas-lint Check K now refuses the narrower scope.
+  S('40_FlowPrompts.js'),
 ];
 
 function load() {
