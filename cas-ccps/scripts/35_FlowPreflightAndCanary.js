@@ -103,6 +103,13 @@ function runFlowPreflightCheck() {
   results.push(_pfCheckTab_(ss, 'CompetencyEvidence', 8)); // Flow 2's commitStudentEvaluation target
   results.push(_pfCheckTab_(ss, 'Ledger', 19)); // Flow 2's readInstructorConfig source
   results.push(_pfCheckTab_(ss, 'MatrixRegistry', 4)); // Flow 2's readInstructorConfig source
+  // Self-healing (37_FlowInputBuilder.js's own _fiEnsureTab_) — absent on
+  // a deployment that has never run buildFlowInputRows() yet, same
+  // reasoning as the CompetencyEvidence check above. 21, not fewer —
+  // GeminiFullOutput (col 21) is written by Studio Flow 2 itself, not by
+  // the builder, but the column must already exist for that write to
+  // land anywhere.
+  results.push(_pfCheckTab_(ss, 'FlowInput', 21)); // Flow 2's materialized input row
 
   results.push(_pfCheckScriptProperty_('CAS_CHAT_WEBHOOK_URL', false));
 

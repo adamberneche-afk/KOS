@@ -148,6 +148,7 @@ function getConfig_() {
       teacherMatrix:   "TeacherMatrix",
       draftUnits:      "DraftUnits",
       matrixRegistry:  "MatrixRegistry",   // Teacher Matrix SS ID lookup for Script 02
+      flowInput:       "FlowInput",        // Script 37's materialized Flow 2 input row
 
       // ── M2 Lightweight (merged from 00_SharedConfig_M2_ADDENDUM_v2.js) ──
       lessonContext:      "LessonContext",
