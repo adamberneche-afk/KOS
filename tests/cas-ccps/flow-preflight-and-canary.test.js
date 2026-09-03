@@ -84,7 +84,7 @@ function makeFullyPassingAdminSs(sandbox) {
   ss.insertSheet('CompetencyEvidence').appendRow(new Array(8).fill('h'));
   ss.insertSheet('Ledger').appendRow(new Array(19).fill('h'));
   ss.insertSheet('MatrixRegistry').appendRow(new Array(4).fill('h'));
-  ss.insertSheet('FlowInput').appendRow(new Array(21).fill('h'));
+  ss.insertSheet('FlowInput').appendRow(new Array(22).fill('h'));
   return ss;
 }
 

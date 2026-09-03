@@ -30,10 +30,11 @@ const TURNIN_GATE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts',
 const FLOW2_PROMPT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15b_StudioFlowPrompts_Flow2_Revised.js');
 const SERVICE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15c_Flow2DirectEvaluationService.js');
 const BUILDER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '37_FlowInputBuilder.js');
+const PROMPTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '40_FlowPrompts.js');
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH],
+    [SHARED_CONFIG_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PROMPTS_PATH],
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
       'STG_STATUS', 'STG_STUDENT_FILE_ID', 'STG_CONFIG_ID', 'STG_TEACHER_EMAIL',
@@ -103,7 +104,7 @@ function teacherMatrixRow({
 }
 
 function flowInputRow(exported, overrides = {}) {
-  const row = new Array(21).fill('');
+  const row = new Array(22).fill('');
   row[exported.FI.STUDENT_FILE_ID] = overrides.studentFileId || 'file-1';
   row[exported.FI.CONFIG_ID] = overrides.configId || 'VDOE-1';
   row[exported.FI.STAGING_ROW_REF] = overrides.stagingRowRef || 2;
@@ -359,4 +360,45 @@ test('harvestFlowInputResults: only EVALUATED rows are touched — READY and HAR
   assert.doesNotThrow(() => exported.harvestFlowInputResults());
   assert.equal(fiSheet.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'READY');
   assert.equal(fiSheet.getRange(3, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
+});
+
+// ── PromptText: the @trigger.PromptText chip ─────────────────────────────────
+
+test('buildFlowInputRows: writes the Flow 2 prompt pre-substituted, leaving only {{STUDENT_TEXT}}', () => {
+  const { exported, sandbox } = load();
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+
+  const doc = sandbox.DocumentApp.create('Student Doc');
+  const studentFileId = doc.getId();
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(
+    stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));
+  ledgerSs.getSheetByName('Ledger').appendRow(
+    ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026', fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  const matrixSs = setUpTeacherMatrix(sandbox, 'matrix-ss-1');
+  matrixSs.getSheetByName('TeacherMatrix').appendRow(teacherMatrixRow({
+    configId: 'VDOE-ABC-2026', unitName: 'Campaign Pitch', tier: 'Advanced',
+    persona: 'Strict Coach', m1: 'Milestone one text', dod: 'Definition text' }));
+
+  exported.buildFlowInputRows();
+
+  const row = ledgerSs.getSheetByName('FlowInput').getDataRange().getValues()[1];
+  const prompt = String(row[exported.FI.PROMPT_TEXT]);
+
+  assert.ok(prompt.length > 500, 'the prompt should be the real substituted template');
+  // Every rubric value resolved...
+  assert.ok(prompt.indexOf('Campaign Pitch') !== -1);
+  assert.ok(prompt.indexOf('Advanced') !== -1);
+  assert.ok(prompt.indexOf('Strict Coach') !== -1);
+  assert.ok(prompt.indexOf('Milestone one text') !== -1);
+  assert.ok(prompt.indexOf('Definition text') !== -1);
+  assert.equal(prompt.indexOf('{{UNIT_NAME}}'), -1, 'no unsubstituted rubric placeholders remain');
+  assert.equal(prompt.indexOf('{{PERSONA}}'), -1);
+  assert.equal(prompt.indexOf('{{DOD}}'), -1);
+  // ...except this one, deliberately. Pre-substituting it would mean reading
+  // the student's Doc and writing their writing into the central Ledger —
+  // the FERPA regression docs/FERPA_DATA_MAP.md's pointer design avoids.
+  assert.ok(prompt.indexOf('{{STUDENT_TEXT}}') !== -1,
+    '{{STUDENT_TEXT}} must survive for Studio to map the extracted response into');
 });

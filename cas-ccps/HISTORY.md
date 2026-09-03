@@ -745,6 +745,61 @@ says `PENDING_EVAL` and `34_QueueWatchdog.js` watches that status; the
 closing notes had said Flow 4 needed "a real WarmUpQueue row already at
 DELIVERED," which would have been the wrong status to seed.
 
+### Prompts get a deployable home (`40_FlowPrompts.js`)
+
+Five of the six system prompts had no deployable home at all, which nobody
+had noticed:
+
+| Flow | Prompt lived in | Deployed? |
+|---|---|---|
+| 1 | `15_StudioFlowPrompts.js` | **No** — `project-map.json` lists it under `_excluded_not_deployed_scripts` |
+| 2 | `15b_...js` | Yes — the one exception |
+| 3 A/B | `docs/CAS_Flow3_Flow4_Specification.html` | **No** |
+| 4 | the same HTML | **No** |
+| 5 | the same HTML | **No** |
+
+A prompt living only in a rendered HTML spec means every change is a
+copy-paste out of a browser into Studio's UI — with the doc's own
+`<span class="kw">` markup interleaved through the text, so the paste isn't
+even clean — and no version history of what the live prompt actually says.
+
+`40_FlowPrompts.js` is now the one deployable home. The Flow 3/4/5 text was
+extracted **mechanically** from the spec's own `prompt-body` and `<pre>`
+blocks (strip highlight spans, strip tags, unescape, trim) and Flow 1's was
+copied from file 15 — nothing retyped or paraphrased. Two tests re-run that
+same extraction and fail if either source has drifted, which turns the
+duplication into a detectable condition rather than silent rot. Flow 2 stays
+resolved through 15b's own constant rather than copied, since a second
+declaration in the same GAS project would collide at parse time.
+
+`substituteFlowPrompt_()` handles both placeholder styles — Flows 1-2 use
+`{{DOUBLE_BRACE}}`, Flows 3-5 use `{single_brace}`, an artefact of the two
+sources that isn't worth rewriting five prompts to unify. Its important
+behaviour is that an unmatched placeholder is **left in place**, not blanked:
+blanking produces a prompt that looks complete while asking Gemini to
+evaluate against nothing.
+
+Two ways a flow can now read its prompt instead of carrying a pasted copy:
+
+- `syncFlowPromptsToSheet()` writes one row per prompt to a `FlowPrompts` tab.
+  Because that tab is on the one spreadsheet every native step can already
+  reach through its fixed picker, a flow can read its own prompt with a "Get
+  sheet contents" step and bind the `prompt_text` chip into Ask Gemini.
+  `checkFlowPrompts()` reports drift between sheet and code — the question
+  that actually matters after someone edits a prompt and pushes.
+- For Flow 2 there's a shorter path needing no extra step: `FlowInput` gained
+  a `PromptText` column (appended at the END — appending is safe where
+  inserting is what cost us the Ledger incident), holding the prompt with
+  every rubric value already substituted. Studio binds
+  `@trigger.PromptText`.
+
+`{{STUDENT_TEXT}}` is deliberately the one placeholder left standing in that
+column. Its value comes from Studio's Extract step reading the student's Doc,
+after the row exists — and pre-substituting it would mean this code reading
+the Doc and writing the student's writing into the central Ledger, the exact
+FERPA regression the pointer-based design exists to prevent. So Studio maps
+one variable rather than carrying one prompt.
+
 ### Still open
 
 `PARENT_REPORT_RETENTION_YEARS` defaults to 5 years, inherited from the
