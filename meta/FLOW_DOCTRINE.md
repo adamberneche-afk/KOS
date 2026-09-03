@@ -86,8 +86,14 @@ prompt, no error. That is how all 8 steps in `cas-ccps/studio-steps/` (2,113
 lines, written and unit-tested) turned out to be unreachable *after* being
 pushed successfully.
 
-**Enforced:** yes — Check G. The doctrine, the four honest status values, and
-the reasoning are in `gcp-map.json`'s own `_doctrine` block.
+**Enforced:** yes, on two sides now. Check G requires the code's dependency
+to be declared; `doc-currency`'s Check 5 reads those declarations back and
+errors when a declared behavior document names a `live-blocked` surface
+without saying it is blocked or naming the fallback. Declaring a wall and
+then leaving instructions that walk into it was the actual failure — every
+function in those instructions existed. The doctrine, the four honest status
+values, and the reasoning are in `gcp-map.json`'s own `_doctrine` block; the
+per-surface `doc_tokens` are what Check 5 reads.
 
 ## 3. Do not assume an account boundary you have not seen.
 
@@ -99,8 +105,11 @@ account separation is a policy someone intends, not a fact about a deployment
 up. Nothing in this repo can observe which account a script runs on, so that
 is the class of claim to confirm with the operator rather than derive.
 
-**Enforced:** partly — the status is pinned by a test, but the reasoning
-cannot be checked. Recorded in `gcp-map.json`'s `_doctrine`.
+**Enforced:** partly — the status is pinned by a test, and Check 5 now
+catches the documentation half (a doc still describing the blocked path as
+live), which is where this error survives longest after being corrected in
+code. The reasoning itself cannot be checked. Recorded in `gcp-map.json`'s
+`_doctrine`.
 
 ## 4. A green "Run Completed" over zero rows is indistinguishable from success.
 

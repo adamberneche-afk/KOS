@@ -156,7 +156,7 @@ content.
 | **Why collected** | The working table for warm-up generation, scoring, and feedback — Studio Flows 3, 4, and 5 all read/write directly against this tab via the Sheets connector. |
 | **Written by** | Script 24 (build), Script 25 (scoring), Studio Flow 3 (doc creation, archetype write-back), Studio Flow 5 (bridge output) |
 | **Read by** | Script 23 (nightly), Script 25 |
-| **Visible to** | Studio Flow 3/4/5 — the native Sheets/Ask-Gemini connector steps still read/write this tab directly with no gate in this repo's own code, but the pre/post-processing steps around them are now this repo's own code (`cas-ccps/studio-steps/`: `SelectWarmUpArchetypeStep.gs`/`CreateWarmUpDocStep.gs` for Flow 3, `ExtractWarmUpPromptTextStep.gs`/`FinalizeWarmUpScoreStep.gs` for Flow 4, `ExtractBridgeInputsStep.gs` for Flow 5 — not yet pushed to a live Studio deployment); the student, indirectly, via the generated warm-up doc |
+| **Visible to** | Studio Flow 3/4/5 — the native Sheets/Ask-Gemini connector steps still read/write this tab directly with no gate in this repo's own code, but the pre/post-processing steps around them are now this repo's own code (`cas-ccps/studio-steps/`: `SelectWarmUpArchetypeStep.gs`/`CreateWarmUpDocStep.gs` for Flow 3, `ExtractWarmUpPromptTextStep.gs`/`FinalizeWarmUpScoreStep.gs` for Flow 4, `ExtractBridgeInputsStep.gs` for Flow 5 — **blocked on this account and superseded**: a custom step needs a standard Cloud project, and this pre/post-processing was ported into `41_WarmUpFlowBridge.js`, which reaches this tab from Apps Script under the same Script Properties as Scripts 24/25); the student, indirectly, via the generated warm-up doc |
 | **Retention** | `WARMUP_QUEUE_RETENTION_YEARS` (Script Property, default 5 — see the retention note above) via `_archiveExpiredWarmUpQueueRows_()` (`34_QueueWatchdog.js`, which already owns this tab's health monitoring), run automatically on every daily health check and every on-demand admin health check, anchored on `lesson_date`. A row past the window gets `archive_status` set to `"ARCHIVED"`; actual deletion is never automatic. Reversible via the `♻️ Reactivate WarmUpQueue Rows` menu item (`reactivateWarmUpQueueArchival()`), same operational-data treatment as CompetencyEvidence above — this was the one major operational tab with no retention mechanism at all until a third-party review found the gap. |
 
 > This is the tab the Bonus-2 fix below actually touches — see "Flow 3 name exposure" section.
@@ -183,11 +183,19 @@ outcome, ConfigID, evaluated-at timestamp, student file ID, archive status
 code paths that share this exact 9-column schema (confirmed the reader below
 resolves columns by header name, not position, so both writers must keep
 matching headers in matching order): `cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`
-(the real Studio Flow 2 write step, once deployed) and
-`15c_Flow2DirectEvaluationService.js`'s `writeCompetencyEvidenceFromFlow2_()`
-(the manual/dev-testing DIRECT_GEMINI bridge). The Studio step creates the
-tab itself if missing (both writers seed its header row on an otherwise-empty
-tab). Read by Script 30's evidence aggregation and Script 30b.
+and `15c_Flow2DirectEvaluationService.js`'s
+`writeCompetencyEvidenceFromFlow2_()` — neither of which is reachable on this
+account, and the live writer is `harvestFlowInputResults()`; see immediately
+below.
+
+**Corrected — who actually writes this tab.** Neither of those runs on this
+account. The first is a custom Studio step, which needs a standard Cloud
+project; the second is the opt-in `DIRECT_GEMINI` path, which needs an API
+key, which needs the same project. The live writer is
+`37_FlowInputBuilder.js`'s `harvestFlowInputResults()`, which calls that same
+`writeCompetencyEvidenceFromFlow2_()` from Apps Script on a time trigger — so
+the schema and header seeding described below are unchanged, and the tab is
+created by the harvest if missing rather than by the Studio step. Read by Script 30's evidence aggregation and Script 30b.
 **Retention:** `COMPETENCY_EVIDENCE_RETENTION_YEARS` (Script Property,
 default 5 — see the retention note above) via
 `_archiveExpiredCompetencyEvidence_()`, run automatically on every daily
@@ -272,7 +280,7 @@ since it's a central, shared tab.
 - **Teacher Dashboard** — gated by `_isAuthorizedTeacher_(cfg)`; a teacher only ever sees their own students' rows (Ledger's `TeacherEmail` column, StudentProfiles' `SP_TEACHER_EMAIL`).
 - **Student Dashboard** — a student only ever sees their own row.
 - **Admin Recovery Panel** — full read access to Ledger, StudentProfiles, and (via export) SCRDecisionLog. This is the one surface with the broadest reach into student data, and the one place a health-check gap (see below) mattered most.
-- **Studio Flows 1–5** — the native Sheets/Docs/Ask-Gemini connector steps in every flow are still outside this repo's own access-control code; the custom pre/post-processing steps around them (`cas-ccps/studio-steps/`, one per flow — see the table above) are this repo's own code, but carry no additional access gating beyond what each step's own input mapping already scopes it to. Flows 1, 2, 4, 5 never receive a real student name (opaque IDs/content only, already true before this document). **Flow 3 is the one exception** — see below.
+- **Studio Flows 1–5** — the native Sheets/Docs/Ask-Gemini connector steps in every flow are still outside this repo's own access-control code; the pre/post-processing around them is this repo's own code and carries no additional access gating beyond what each step's own input mapping already scopes it to. That code used to be the custom steps in `cas-ccps/studio-steps/` (one per flow — see the table above); those are blocked on this account and it now runs in Apps Script (`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`), which moves it inside this repo's own Script-Property and trigger boundary rather than Studio's. The data it touches is unchanged. Flows 1, 2, 4, 5 never receive a real student name (opaque IDs/content only, already true before this document). **Flow 3 is the one exception** — see below.
 - **leader-hub JSON API** (`07_TeacherDashboard.js`'s `doPost()`, D1/Addendum 24) — a separate, machine-to-machine trust surface, not a browser session: gated by a Google ID token verified server-side against `oauth2.googleapis.com/tokeninfo`, checked against this deployment's own `TEACHER_EMAIL` (same identity boundary as `_isAuthorizedTeacher_()`, re-implemented for an HTTP caller instead of `Session.getActiveUser()`). Two of its three actions (`getPacingGuide`, `getCompetencyRegistry`) carry no student PII. The third, **`getRoster`** (Addendum 26), does — name, email, and a free-text period field, per-teacher-scoped the same way as everything else in this table. Once returned, this data is out of cas-ccps's control; leader-hub's own handling of it is documented in `leader-hub/README.md`, not here.
 
 - **Weekly parent report** (`36_WeeklyParentReport.js`, reached from the Teacher Dashboard's Parent Reports panel) — **the only surface in cas-ccps that sends student data outside the school's Workspace domain.** Gated by `_isAuthorizedTeacher_()` like every other dashboard surface, and additionally by the disclosure rules in the section below. Every send is recorded in `ParentReportLog` with the recipient address.

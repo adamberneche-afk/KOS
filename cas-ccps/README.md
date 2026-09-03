@@ -88,7 +88,7 @@ for the Studio Steps adoption — see its own row below):
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
 | Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26`/`27` (lesson-context logging + alignment log + synchronous lesson frame generation, called by Script 07's `submitLessonContext()`), `32` (competency rubric lookup, called by Script 27's frame generation — dual-placed here and in Central Ledger since Script 27 runs in both), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's review-and-send panel; it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header) |
 | Student Dashboard | standalone web app | `13` |
-| Studio Steps | standalone (not bound to a spreadsheet/doc) | 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Written and tested, not yet pushed to a live Studio deployment. |
+| Studio Steps | standalone (not bound to a spreadsheet/doc) | **Blocked on this account** — needs a standard Cloud project; all five flows were ported to `37_FlowInputBuilder.js`/`41_WarmUpFlowBridge.js` instead. 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Written and tested, not yet pushed to a live Studio deployment. |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
 
@@ -129,6 +129,8 @@ the full rationale. The short version: `cas-ccps/scripts/` doesn't fit
 clasp's one-folder-one-project model, since it's 7 of the 8 projects above
 sharing overlapping files (`00_SharedConfig.js` alone is pasted into 5 of
 them) — `studio-steps`, the 8th, lives in its own `cas-ccps/studio-steps/`
+(blocked on this account; the flows were ported to `37_FlowInputBuilder.js`
+and `41_WarmUpFlowBridge.js`)
 folder and shares no files with the other 7.
 [`tools/clasp-sync/`](../tools/clasp-sync/README.md) reconciles the
 7-projects-in-one-folder problem — a script reads

@@ -18,10 +18,16 @@
 >
 > `cas-ccps/studio-steps/` is the same story one system over: 8 steps, 2,113
 > unit-tested lines, pushed successfully, never appeared in Studio's picker,
-> no error anywhere. The install completes and the picker stays empty.
+> no error anywhere. The install completes and the picker stays empty. All
+> five of its flows have since been ported the same way, into
+> `37_FlowInputBuilder.js` and `41_WarmUpFlowBridge.js`.
 >
-> **The path forward is the Apps Script port, not a Cloud project.** Three
-> things make it a much smaller job here than cas-ccps's Flow 2 redesign was:
+> **The path forward was the Apps Script port, not a Cloud project — and it
+> is done.** `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` now
+> replaces both steps: the Flow's last step is a native "add row to sheet"
+> into a `STUDIO_RETURN` tab, and the harvest overwrites the source doc and
+> sets `FLOW_COMPLETE` on a 5-minute trigger. Three things made it a much
+> smaller job here than cas-ccps's Flow 2 redesign was:
 >
 > - The fixed-picker wall doesn't apply. `STAGING_PIPELINE` is a single
 >   spreadsheet, so a native Sheets connector can target it — unlike

@@ -156,7 +156,8 @@ The layout each system needs, which hasn't changed:
   `clasp clone`/`create`) and a `.claspignore` that allowlists only the
   real script files, so the legacy/archived material and (for
   kos-personal) the separate Node.js `inference-service/` never get swept
-  into a push. `kos-personal/studio-steps/` is a second, separate
+  into a push. `kos-personal/studio-steps/` (blocked on this account — its
+  write-back moved to `12_StudioReturnHarvest.gs`) is a second, separate
   flat-folder project alongside the main one (a separate Apps Script
   project, not a shared global scope — note this is a PROJECT split, not
   the personal/district ACCOUNT split SMP-004 describes; in practice both
@@ -174,7 +175,9 @@ The layout each system needs, which hasn't changed:
   that's reconciled: a small script generates a throwaway per-project
   push folder for each, from the same `project-map.json` gas-lint already
   uses, so `cas-ccps/scripts/` itself never gets reorganized or
-  duplicated in git. An 8th project, `cas-ccps/studio-steps/`, was added
+  duplicated in git. An 8th project, `cas-ccps/studio-steps/` — blocked on
+  this account, kept because enabling GCP would make it reachable again —
+  was added
   later for the Studio Steps adoption — standalone, sharing no files with
   the other 7, but handled by the same tool and the same `cas-ccps:*`
   scope.

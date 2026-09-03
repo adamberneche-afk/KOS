@@ -1829,3 +1829,73 @@ Both new checks were negative-path verified by injection and revert: removing
 the consumer drive reproduces `fixture-not-driven-through-consumer`, dropping
 `40_FlowPrompts.js` from the canary sandbox reproduces `sandbox-scope-gap`
 naming the file to add, and allowlisting that same name silences it.
+
+### Follow-up — the check for a doc that describes a path that cannot run
+
+Every check in `doc-currency` verified that a documented thing **exists**.
+Nothing verified that a documented path can **run**, and that gap is where
+this deployment's most expensive misunderstanding lived: a custom Studio step
+is a Workspace Add-on and needs a standard, non-default Cloud project, GCP is
+disabled org-wide for `ccpsnet.net`, and every function named in the
+instructions for those steps existed. The instructions were still impossible
+to follow. Three documents carried them for weeks, and all three were found by
+reading, not by tooling.
+
+**Check 5 — `blocked-surface-presented-as-live`.** `gas-lint`'s Check G
+already requires every GCP surface to be declared with a status; this reads
+those declarations back and holds the prose to them. A declared behavior
+document that names a `live-blocked` surface must either acknowledge the
+status in the enclosing paragraph or name the fallback. Unacknowledged is an
+error; acknowledged everywhere but with the fallback named nowhere in the
+document is a warning — the reader learns the path is dead and still not what
+to do instead.
+
+Declared on both sides, each for a reason. `gcp-map.json` carries per-surface
+`doc_tokens` (`mentions`, `fallback`) because nothing can infer that
+`37_FlowInputBuilder` answers `cas-ccps/studio-steps`, and because those
+tokens belong beside the status they describe. `config.json` carries
+`blockedSurfaceDocs` because the repo-wide version was **measured first**: 12
+findings, 8 of them layout inventories ("kos-personal has 2 clasp projects", a
+table of step files) that are true whatever the surface's status. That is the
+signal ratio at which a check gets muted, and a muted check is worse than an
+absent one — so the doc list follows the `keyRegistryDocs` idiom this tool
+already uses for the same problem.
+
+Eight errors and three warnings on the first run, across seven documents:
+
+- `cas-ccps/docs/FERPA_DATA_MAP.md` named the blocked custom step as the live
+  writer of `CompetencyEvidence` ("the real Studio Flow 2 write step, once
+  deployed"). In a FERPA data map, "who writes this tab" being wrong is the
+  kind of error the document exists to prevent. The live writer is
+  `harvestFlowInputResults()`, calling the same
+  `writeCompetencyEvidenceFromFlow2_()` from Apps Script; the schema is
+  unchanged. Its trust-surfaces section also described the pre/post-processing
+  as living in the blocked steps — it now runs inside this repo's own
+  Script-Property and trigger boundary rather than Studio's, which is a
+  boundary change worth stating in that document specifically.
+- `meta/CODEBASE_REVIEW.md`'s header still said the custom-step code was "not
+  yet pushed to a live Studio deployment."
+- Two documents said the port "has to" come back into Apps Script, in the
+  future tense, after it was done: `meta/FLOW_INVENTORY.md`'s kos-personal
+  banner and `kos-personal/studio-steps/README.md`'s own "path forward"
+  paragraph. A doc that describes a finished port as pending is the same
+  failure as one that describes a blocked path as live.
+- Four more were project-layout mentions inside declared behavior docs
+  (`README.md`, `cas-ccps/README.md`, `kos-personal/README.md`,
+  `meta/CLASP_AND_APPS_SCRIPT.md`), each fixed with one clause. These are the
+  cases the doc list makes worth reporting: in a layout table a status word is
+  useful, and in `tools/clasp-sync/README.md`'s equivalent table it would be
+  noise.
+
+One design bug, caught by its own test suite rather than by the repo: the
+banner region was being treated as acknowledgment for every mention in a
+document, so any document shorter than `bannerScanLines` was entirely
+"banner" and one marker word anywhere in it laundered every mention. The
+banner now covers only mentions below it. The test that caught it is a
+three-line document where "disabled by default" belongs to a scheduled sweep
+and not to the surface named two lines later — the same class of bug this tool
+already paid for once with a ±6-line marker window.
+
+Also pinned: a declared `fallback` token must name something that exists in
+the source. A fallback pointer to a renamed function is worse than none, since
+it reads as an answer and leads nowhere.
