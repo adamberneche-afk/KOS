@@ -166,6 +166,59 @@ it — that gap is closed now.
    `tests/tools/gas-lint-gcp.test.js` covers it plus `gcp-map.json`'s own
    integrity.
 
+8. **Column-map agreement** (`checkColumnMapAgreement`). When two files
+   both declare the column order of one sheet, they drift, and the drift is
+   silent: `row[RQ05.STATUS]` comparing a spreadsheet ID against
+   `"PENDING_EXTRACTION"` never errors, it just never matches. That exact
+   pair — `RQ05` in `05_TeacherIntakePipeline.js` against
+   `WD_RUBRIC_QUEUE_COLUMNS` in `34_QueueWatchdog.js` — is the case this
+   check was written for, and the Central Ledger version of it (a shift that
+   made `LEDGER.TEACHER_EMAIL` return a person's *name*) cost a live session.
+
+   `flow-map.json`'s `columnMaps` declares the groups; the check parses each
+   declared map out of its file and compares every pair on the keys they
+   **share**. Disagreement is an **error** naming the differing keys and the
+   authoritative row order. Keys in only one map are deliberately not a
+   finding — a reader may legitimately name fewer columns than the writer
+   (`FI_TM_COLUMNS_` names 13 of TeacherMatrix's 20 because it reads 13), and
+   requiring parity would report a false conflict on every run, which is how
+   a check gets muted. A map that can't be found (typically a rename) is a
+   **warning**, because a rename otherwise un-checks the group in silence.
+
+   Groups are **declared, not inferred from names**: `cas-ccps` and
+   `kos-personal` both have a `STAGING_PIPELINE`, with different column
+   counts. Same name is not same sheet.
+
+   Two shapes are parsed, because the repo uses both: an object literal
+   (`const TM08 = { CONFIG_ID: 0, … }`, read by brace depth) and a flat
+   prefix family (`const WQ25_QUEUE_ID = 0;`, keyed by suffix). `exclude`
+   drops non-column members like `COL_COUNT`.
+
+9. **Flow surface completeness** (`checkFlowSurfaces`). "Nothing came back"
+   is one answer covering four causes — the Flow was never built, its trigger
+   matches no rows, it writes to the wrong columns, or the model call errored
+   — and the third looks exactly like the first. `meta/FLOW_DOCTRINE.md`
+   rule 9 requires a distinct check per cause; `flow-map.json`'s
+   `flowSurfaces` declares which function plays each role
+   (`materialize`, `harvest`, `canary`, `binding`, `liveness`, `fixture`).
+
+   A role named but **absent** from the project is an **error** — that is
+   worse than an unnamed role, because the declaration claims a check exists
+   when it does not, and a rename produces it. A **missing** role is a
+   **warning** naming the question that can no longer be answered; warning
+   and not error because a flow mid-construction legitimately lacks some,
+   and an error would make the linter a thing to work around while building.
+   A role that genuinely does not apply is declared away in the entry's
+   `_note` (leader-hub has no materialize step — its client submits a whole
+   payload as one JSON string, so there is nothing to flatten; kos-personal's
+   payload already lives in a Drive Doc a native step reads), and the check
+   honours
+   `_note` because its own warning text instructs the reader to use it.
+
+   It found a real gap on its first run: cas-ccps Flow 2 had a preflight, a
+   canary and a binding probe but no liveness check, so
+   `checkFlow2Liveness()` was written to close it.
+
 ## What this is NOT
 
 Not a JS parser. Comments and string literals are stripped with a small
@@ -196,6 +249,18 @@ false positives.
 - A system other than `kos-personal`/`cas-ccps` grows a config-object
   pattern worth checking → add a new `check*()` function following the
   same shape as `checkKosPersonalCfgKeys`/`checkCasCcpsConfigKeys`.
+- A second file starts declaring the column order of a sheet some other file
+  already maps → add a `columnMaps` group to `flow-map.json` naming both,
+  with `authoritative` pointing at the code that *writes* the rows. Prefix
+  the group with its system (`cas-ccps:RubricQueue`), and declare it even
+  with a single map today — the group is where the next reader is told which
+  order is authoritative. A one-map group is inert until a second appears,
+  and then it is already correct.
+- A new flow, or a new check for an existing one → add or extend its
+  `flowSurfaces` entry in `flow-map.json`. Declare only functions that
+  exist; a stale name is an error by design. If a role does not apply, name
+  it in the entry's `_note` rather than leaving the warning standing — a
+  warning nobody can clear is a warning everybody learns to skip.
 
 ## Known limitations worth fixing later, not blocking
 
