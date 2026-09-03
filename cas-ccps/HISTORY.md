@@ -703,6 +703,48 @@ deliberately unmocked, with the reason recorded there.
 doc-currency 0 errors. Each safety test was checked by reverting the fix it
 covers and confirming it fails.
 
+### Fixture data for every flow's trigger (`39_FlowFixtures.js`)
+
+The single biggest time sink of the deployment wasn't any of the three walls —
+it was building flows against empty sheets. Flow 1's first build failed
+repeatedly with "Can't match any row," and diagnosing *that* cost more than
+fixing it. A flow can't be Test Run without a row matching its trigger
+condition, and a chip bound to a missing value looks identical to a chip
+bound wrongly.
+
+`installFlowFixtures()` seeds persistent dummy data at all five trigger
+conditions: a `RubricQueue` row at `PENDING_EXTRACTION` (Flow 1, with a real
+scratch prompt-template Doc and TeacherMatrix so the happy path works, unlike
+the canary's deliberate not-found case), a fully-populated `FlowInput` row at
+`READY` (Flow 2 — every column filled, so no chip is ambiguous while wiring
+Ask Gemini), and three `WarmUpQueue` rows parked at `PENDING_BRIDGE`,
+`PENDING` and `PENDING_EVAL` so Flows 5, 3 and 4 all have something to build
+against at the same time. `checkFlowFixtures()` reports readiness;
+`removeFlowFixtures()` clears everything and trashes the scratch files.
+
+**This is not the canaries, and the file says so at length.** Canaries seed,
+verify and clean up inside one execution — they answer "is the code right?"
+Fixtures sit there for as long as you're clicking a flow together. Separate
+marker namespaces (`VDOE-FIXTURE-*` / `WUQ-FIXTURE-*` /
+`fixture-*@example.invalid` versus the canaries' `VDOE-CANARY-*` /
+`canary-test+*@example.invalid`) so neither one's cleanup can eat the other's
+rows — asserted by a test.
+
+Two interactions documented rather than engineered around: a live flow
+**consumes** its fixture by advancing the row's status, which is exactly what
+proves the flow fires (re-run the installer, it's idempotent); and
+`34_QueueWatchdog.js` will report a long-lived fixture as a stuck row, which
+is the watchdog working, not misfiring. It defaults to dry-run, so it alerts
+rather than escalating.
+
+Building this also settled a real documentation discrepancy: **Flow 4 triggers
+on `PENDING_EVAL`, not `DELIVERED`.** `28_Module2Setup.js`'s Phase B dialog
+says `PENDING_EVAL` and `34_QueueWatchdog.js` watches that status; the
+`DELIVERED → PENDING_EVAL` hop belongs to `25_WarmUpWriter.js`'s
+`runWarmUpEvaluation()`, not to any flow. `35_FlowPreflightAndCanary.js`'s own
+closing notes had said Flow 4 needed "a real WarmUpQueue row already at
+DELIVERED," which would have been the wrong status to seed.
+
 ### Still open
 
 `PARENT_REPORT_RETENTION_YEARS` defaults to 5 years, inherited from the
