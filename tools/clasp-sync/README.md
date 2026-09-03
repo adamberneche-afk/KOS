@@ -13,9 +13,11 @@ project and `leader-hub/` fit that model directly — each is a single Apps
 Script project already laid out as a flat folder, so clasp can push
 straight from the tracked source (see `.clasp.json.template` and
 `.claspignore` in each of those two directories). `kos-personal/studio-steps/`
-is a second, separate flat-folder project alongside the main one (SMP-004's
-personal/district account split), not part of this tool's `cas-ccps:*`
-scope either.
+is a second, separate flat-folder project alongside the main one, not part
+of this tool's `cas-ccps:*` scope either. (SMP-004 describes that project as
+sitting on a personal Google account rather than the district domain; in
+practice it is deployed on the same ccpsnet.net account. The project split is
+real, the account split is not — see `tools/gas-lint/gcp-map.json`.)
 
 `cas-ccps/scripts/` doesn't fit that model. It's actually **7 separate
 bound/standalone Apps Script projects** sharing overlapping files —

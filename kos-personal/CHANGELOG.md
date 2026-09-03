@@ -1,5 +1,123 @@
 # KOS Changelog
 
+
+### Follow-up — the fixture now feeds both flows
+
+`installStudioFlowFixture()` planted one `SESSION_LOG` row, so the
+classification flow had nothing to latch onto and its output contract (write
+the ORIGINAL unstripped text, validate it parses to an Array) had never been
+exercised against a real queued row. It now plants a `VECTOR_CLASSIFY` row
+alongside it, sharing one scratch document and one UID stem.
+
+Sharing the document is the design, not a shortcut: `CURATOR_PROMPT.md`'s
+Rule 1 has the Curator citing a completed, independent `VECTOR_CLASSIFY` row
+*for the same session*, and `README.md`:192 records the open gap that
+`_chunkAndQueue()` doesn't queue that paired row yet. Until it does, this
+fixture is the only place the paired shape exists — so it doubles as a worked
+example of what that fix should produce.
+
+`checkStudioFlowLiveness()` now reports returns and releases **per payload
+type**. A single aggregate "has anything ever returned" cannot distinguish a
+working Curator flow from a classification flow that was never built — both
+read as healthy. It now warns per type when rows were released and not one
+return ever came back.
+
+Also confirmed while checking: `runMatrixTurnstile` is TIER_1 gated, so a cold
+engine warns and passes through rather than blocking. A fixture will be
+released even on an unarmed deployment.
+
+### Follow-up — a binding probe, with one diagnosis unique to this system
+
+`checkStudioFlowBinding()` closes the configuration-side gap: before it,
+"nothing has ever come back" covered four causes at once — the Flow was never
+built, its trigger matches no rows, it writes into the wrong columns, or Gemini
+is erroring. The shift diagnostics mirror cas-ccps's probe, and one check has
+no equivalent there.
+
+**`Payload_Type` does not label the row, it selects a contract.**
+`_srPrepareDocText_` routes a Curator type through a merge and
+re-serialization, and anything else through "write the original verbatim, and
+require it to parse as an Array". So a *valid* type name that is not the one
+queued applies the wrong treatment silently — and the value itself looks fine,
+which is why nothing else could catch it. The probe compares what came back
+against what the pipeline queued for that UID, and grades the severity: a
+wrong type within the same contract is worth saying but breaks nothing today,
+while one across contracts will apply the wrong treatment. Conflating those
+would train the reader to ignore both.
+
+It also catches an Auditor value on a classification row (that contract has
+nothing to merge into, so it is a mis-binding or a leftover from copying the
+Curator flow's step), an unrecognized type — explaining that it will get the
+classification contract and fail with a confusing NOT_ARRAY error — and the
+usual shifts.
+
+Two bugs in the probe, both caught by its own tests, both also fixed in
+cas-ccps's copy: a Date stringifies to ~50 characters, so including
+`Returned_At` in the longest-cell scan made an empty `Primary_JSON` read as
+"your output landed in Returned_At"; and short-circuiting on "Primary_JSON is
+non-empty" reported a terse but valid result (`{"summary":"s"}`, 15
+characters) as missing — while short-circuiting *unconditionally* would trust
+a shifted row where `Primary_JSON` holds the Payload_Type. The rule that works
+is: trust the expected column unless its content is better explained as
+another field's value.
+
+## 2026-09-03 — Studio write-back ported into Apps Script (12_StudioReturnHarvest.gs)
+
+`kos-personal/studio-steps/`'s two custom Studio steps cannot run. Publishing
+a Workspace Add-on needs a standard, non-default Cloud project, and GCP is
+switched off org-wide for the `ccpsnet.net` account — which is the account
+this is deployed on, confirmed by the operator, despite SMP-004 describing a
+separate personal one. The Studio flow was never live.
+
+`12_StudioReturnHarvest.gs` replaces the write-back half. Only that half
+moves: the Sheets trigger, the Docs read and both Gemini passes were always
+native and are untouched. The Flow's last step becomes a native "add row to
+sheet" into a new `STUDIO_RETURN` tab, and `harvestStudioReturns()` (5-minute
+trigger, installed by `setupAllTriggers()` — now 14 triggers) applies it.
+
+Design constraints this had to respect rather than choose:
+
+- **No new `STAGING_PIPELINE` columns.** `10_Turnstile.gs`'s header already
+  settled this: an 8th column means touching hardcoded 7-column `getRange()`
+  calls across `2/3/9_*.gs`, which is why release timestamps live in
+  `PropertiesService`. Hence a separate tab.
+- **No new status.** A row stays `STUDIO_ACTIVE` until the harvest sets
+  `FLOW_COMPLETE`, so the Turnstile's release gate, its staleness reset and
+  `_alertOnUnknownStatuses_()` all keep working unedited. The cost is that the
+  staleness guard can recycle a row whose return is still queued, so the
+  harvest runs every 5 minutes (well inside the 30-minute window) and handles
+  a duplicate return by consuming it without re-writing the doc.
+- **Both output contracts carried over exactly.** The Curator path
+  re-serializes because it merges the Auditor pass under `auditor_sign_off`;
+  the Classification path writes the *original, unstripped* text and only
+  strips the fence to validate that it parses to an Array. Those look
+  cosmetic and are not — re-serializing classification output would risk
+  reformatting floats and key order away from what the model produced.
+- **Touch nothing on failure**, per the spec's own choice: the staleness
+  guard owns retries, so no failure path writes the doc or the staging row.
+  Giving up on a return row after 3 attempts still leaves the payload for the
+  guard.
+
+One thing the harvest does *better* than the custom step could. Once the doc
+body is overwritten the original source text is gone, so a crash before the
+staging mark would leave a row that a retry re-infers against JSON. The
+custom step could only flag that (`STAGING_ROW_NOT_FOUND_AFTER_DOC_WRITE`)
+and hope someone noticed. Running inside the main project, a breadcrumb goes
+into `PropertiesService` between the doc write and the mark, so a later pass
+skips the write and completes the mark.
+
+Also added: `checkStudioReturns()` (read-only report),
+`checkStudioFlowLiveness()` — the only thing that can tell you whether a Flow
+has *ever* written back, since a Flow that matched zero rows reports a green
+"Run Completed" — plus `installStudioFlowFixture()` /
+`removeStudioFlowFixtures()` (a scratch doc and a `PENDING_FLOW` row, so a
+real Flow has something to match) and `runStudioReturnCanary()`, which proves
+the Apps Script half with the Flow deliberately stubbed.
+
+`tests/kos-personal/studio-return-harvest.test.js` — 23 tests, pinning both
+contracts, the touch-nothing-on-failure rule, the duplicate return, and the
+breadcrumb.
+
 Historical record of what was found and fixed during this system's reconciliation and UI/UX hardening passes. Split out of `README.md` so that file can stay current-state-only reference — see it for what's true today; see this file for how it got there.
 
 ---
