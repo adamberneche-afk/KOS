@@ -1694,3 +1694,61 @@ FERPA: `getRoster` is the first of the three actions to return student name,
 email and period, and this runs from a Run dropdown into an execution log. The
 roster check reports a **count only**, and a test seeds a roster that would
 leak if the detail string ever carried rows instead.
+
+### Follow-up — the doctrine, and the checkable part of it
+
+Enough of this process has now been rediscovered the hard way to be worth
+writing down once. `meta/FLOW_DOCTRINE.md` collects the thirteen rules that
+this deployment produced, each with the incident that produced it, a pointer
+to where the reasoning already lives, and — the part that matters — an
+explicit statement of whether anything **enforces** it.
+
+That last column is the point of the document. Eight of the thirteen rules
+are enforced by nothing, and the reason is visible in the repo's own history:
+a practice that exists only as prose gets rediscovered, while a practice that
+exists as a check gets held. Rule 4 (a fixture must match the shape its
+consumer reads) was stated in five places as prose and was violated in five of
+six fixtures anyway. So the document deliberately does not re-transcribe the
+file headers it points at — *a rule restated in two places becomes two rules*
+— and instead names what is checked and what is not, so the unenforced ones
+are visible as a to-do list rather than as settled practice.
+
+Two of them were then promoted into `gas-lint`.
+
+**Check H — column-map agreement.** `tools/gas-lint/flow-map.json` declares
+the groups of files that each map the same sheet; the check parses every
+declared map and compares each pair on the keys they **share**. The motivating
+case is in this repo: `RQ05` in `05_TeacherIntakePipeline.js` had drifted a
+column out of sync with the `queueRow` array it describes, so
+`row[RQ05.STATUS]` would have compared a spreadsheet ID against
+`"PENDING_EXTRACTION"` forever without erroring. That one was dead code; the
+Central Ledger version of the same drift cost a live session. Keys present in
+only one map are deliberately not a finding — a reader may legitimately name
+fewer columns than the writer, and requiring parity would report a false
+conflict on every run, which is how a check gets muted. Groups are declared
+rather than inferred from names, because `cas-ccps` and `kos-personal` both
+have a `STAGING_PIPELINE` with different column counts.
+
+**Check I — flow surface completeness.** Rule 9 says the four causes of
+"nothing happened" each need their own check. The check reads the declared
+role for each flow (`materialize`, `harvest`, `canary`, `binding`, `liveness`,
+`fixture`) and errors when a named function does not exist — a stale name is
+worse than a missing role, because it claims a check exists when it does not.
+A missing role is a warning naming the question that can no longer be
+answered; a role that genuinely does not apply is declared away in a `_note`,
+which the check honours because its own warning text tells the reader to use
+it.
+
+It earned itself on its first run: Flow 2 had a preflight, a canary and a
+binding probe, and nothing answering "has this flow ever answered?" — so
+`checkFlow2Liveness()` in `37_FlowInputBuilder.js` was written to close it.
+That is the argument for the whole exercise in one finding. The gap had been
+there through several passes of reading these files, and the check found it
+immediately.
+
+All three failure paths were verified by temporary injection and revert: a
+one-column drift in `WD_RUBRIC_QUEUE_COLUMNS` produces the
+`column-map-disagreement` error naming `STATUS is 9 vs 8`; a renamed map
+produces the `column-map-not-found` warning rather than silently un-checking
+the group; and a flow-map entry naming a function that does not exist
+produces `flow-surface-missing-function`.
