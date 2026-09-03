@@ -936,11 +936,14 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
 
   const FORMAT_HELP =
     "Enter your schedule as: PERIOD:DAYTYPE:COURSE NAME\n" +
-    "One period per line.\n\n" +
+    "One period per line (or separate entries with \";\" if this box " +
+    "won't keep your line breaks).\n\n" +
     "DAYTYPE values:\n" +
     "  DAILY — meets every school day (Period 1)\n" +
     "  ODD   — meets on odd calendar days (1st, 3rd, 5th...)\n" +
     "  EVEN  — meets on even calendar days (2nd, 4th, 6th...)\n\n" +
+    "Two courses in the same period at once? Enter it twice, once per " +
+    "course.\n\n" +
     "Example:\n" +
     "1:DAILY:" + exampleCourse1 + "\n" +
     "2:ODD:"   + exampleCourse1 + "\n" +
@@ -965,8 +968,17 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
       continue;
     }
 
-    // Parse each line
-    const lines   = raw.split("\n").map(l => l.trim()).filter(Boolean);
+    // Parse each line.
+    // FIXED (confirmed live during a real deployment): Ui.prompt()'s dialog
+    // does not reliably preserve newlines in its response text -- a
+    // multi-line PERIOD:DAYTYPE:COURSE entry came back as one long
+    // space-joined blob, which then parsed as a single "line" whose
+    // course-name field swallowed everything after the second colon
+    // (every subsequent period/daytype/course got absorbed into one
+    // giant invalid course name). Splitting on ";" too lets a teacher
+    // work around an unreliable newline by separating entries with
+    // semicolons instead -- real newlines still work exactly as before.
+    const lines   = raw.split(/[\n;]/).map(l => l.trim()).filter(Boolean);
     const rows    = [];
     const errors  = [];
 

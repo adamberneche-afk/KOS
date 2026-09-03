@@ -1,5 +1,85 @@
 # kos-personal Studio Steps
 
+> ## ⚠️ STATUS: BLOCKED — the flow is not live, and this project cannot make it live
+>
+> **Both steps here are dead code on the account this is deployed to.**
+> Publishing a Workspace Add-on (which is what a custom Studio step is)
+> requires a standard, non-default Google Cloud project, and GCP access is
+> turned off org-wide for the `ccpsnet.net` account by the district.
+>
+> This README previously carried a "check the Cloud project before building
+> on this" caveat that leaned on kos-personal running on a **separate
+> personal Google account**, per SMP-004, where creating a project would be
+> self-service. **It doesn't.** The operator has confirmed it is the same
+> `ccpsnet.net` account as cas-ccps, and that the Studio flow is not live.
+> That was a documented intention read as a deployment fact — see
+> `tools/gas-lint/gcp-map.json`'s doctrine, where the general lesson is
+> recorded, and `cas-ccps/HISTORY.md` for the two rounds it took to get here.
+>
+> `cas-ccps/studio-steps/` is the same story one system over: 8 steps, 2,113
+> unit-tested lines, pushed successfully, never appeared in Studio's picker,
+> no error anywhere. The install completes and the picker stays empty.
+>
+> **The path forward is the Apps Script port, not a Cloud project.** Three
+> things make it a much smaller job here than cas-ccps's Flow 2 redesign was:
+>
+> - The fixed-picker wall doesn't apply. `STAGING_PIPELINE` is a single
+>   spreadsheet, so a native Sheets connector can target it — unlike
+>   cas-ccps's per-teacher TeacherMatrix, which no native step could reach.
+> - The trigger, the document read, and both Gemini passes are all native
+>   already and are unaffected.
+> - Only the **doc-body overwrite** genuinely has to come back into script: a
+>   native insert-text step isn't documented as able to clear a doc's
+>   existing content first, and `overwriteDocBody_()` below relies on
+>   `body.clear()` before `setText()`.
+>
+> One constraint the port must respect: **do not widen `STAGING_PIPELINE`.**
+> `10_Turnstile.gs:41` records that an 8th column means touching hardcoded
+> 7-column `getRange()` calls across `2/3/9_*.gs` — which is why release
+> timestamps already live in `PropertiesService` rather than a column. A
+> separate return tab is the shape that fits.
+>
+> **Everything below stays accurate as design**, and the pure logic in these
+> files (fence stripping, the Curator/Auditor merge, the validation rules,
+> the touch-nothing-on-failure discipline) is exactly what the port reuses.
+> Kept for that reason, not out of sentiment.
+
+
+> ## ⚠️ BEFORE BUILDING ON THIS: CHECK THE CLOUD PROJECT
+>
+> Custom Workspace Studio steps are a Workspace Add-on, and publishing one
+> requires a standard (non-default) Google Cloud project. **No standard
+> project has been provisioned for anything in this repo** — every project
+> here uses the default one Apps Script creates on its own, and no doc,
+> script or manifest records one ever being created or linked through Project
+> Settings.
+>
+> `cas-ccps/studio-steps/` is what that costs when nobody checks: 8 steps,
+> 2,113 written and unit-tested lines, pushed and deployed successfully, and
+> permanently unreachable — the install completes and the step picker stays
+> empty, with no error anywhere. These two steps were built the same way.
+>
+> The difference here is *policy, not provisioning*: SMP-004 puts this
+> project on the **personal** Google account, so unlike `ccpsnet.net` — where
+> GCP is switched off org-wide by the district — creating and linking a
+> standard project is self-service. Nobody has confirmed whether one exists.
+>
+> **So verify by looking, not by inferring.** Open Project Settings on that
+> account and read the linked Cloud project. Do not treat OAuth
+> consent-screen setup or an enabled Drive API as evidence — `DEPLOYMENT_GUIDE.md`'s
+> Phase 1 does both in the *default* project, and reading it as availability
+> is a mistake already made once and corrected in
+> [`tools/gas-lint/gcp-map.json`](../../tools/gas-lint/gcp-map.json), where
+> this project is declared `live-unverified` and enforced by gas-lint's
+> Check G.
+>
+> If a standard project is there, kos-personal needs *finishing*, not
+> redesigning. If not, these two steps collapse into one Apps Script harvest
+> function on a time trigger — a far smaller port than cas-ccps needed,
+> because the payload already lives in a Drive Doc and the output already
+> goes back to a Doc body.
+
+
 One standalone Apps Script project holding the custom Workspace Studio
 steps kos-personal's two Studio flows use. Registered in
 `tools/gas-lint/project-map.json` as `kos-personal:studio-steps` — a

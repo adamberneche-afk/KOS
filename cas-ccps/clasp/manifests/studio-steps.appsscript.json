@@ -12,7 +12,7 @@
   "addOns": {
     "common": {
       "name": "CAS-CCPS Studio Steps",
-      "logoUrl": "REPLACE_WITH_A_HOSTED_LOGO_URL",
+      "logoUrl": "https://www.gstatic.com/images/branding/product/2x/apps_script_48dp.png",
       "useLocaleFromApp": true,
       "layoutProperties": {
         "primaryColor": "#1a73e8"
@@ -22,7 +22,7 @@
       "workflowElements": [
         {
           "id": "commitRubricDraft",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Commit Rubric Draft",
           "description": "Parses and validates the rubric-extraction JSON produced by a prior Ask Gemini step, generates a ConfigID, and appends a DRAFT row to the teacher's Teacher Matrix. Use as the last step of Flow 1 (Rubric Extraction), after the native Ask Gemini step.",
           "workflowAction": {
@@ -116,7 +116,7 @@
         },
         {
           "id": "readInstructorConfig",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Read Instructor Config",
           "description": "Resolves a ConfigID + StudentFileID into everything Flow 2 needs downstream: student email, teacher email, unit/tier/persona, all 4 milestone texts, definition of done, and all 4 milestone competency IDs. Implements the Ledger -> MatrixRegistry -> TeacherMatrix lookup chain from Flow 2 Step 2. Use right after Flow 2's Starter, before the native Ask Gemini step.",
           "workflowAction": {
@@ -139,7 +139,7 @@
               },
               {
                 "id": "studentFileId",
-                "description": "Student submission doc ID (trigger row) — required to uniquely identify the Ledger row, since ConfigID alone is shared by every student assigned the same rubric.",
+                "description": "Student submission doc ID (trigger row) \u2014 required to uniquely identify the Ledger row, since ConfigID alone is shared by every student assigned the same rubric.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -229,7 +229,7 @@
               },
               {
                 "id": "milestone1CompetencyId",
-                "description": "TeacherMatrix.Milestone1_Competency_Id — blank if not yet confirmed.",
+                "description": "TeacherMatrix.Milestone1_Competency_Id \u2014 blank if not yet confirmed.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -237,7 +237,7 @@
               },
               {
                 "id": "milestone2CompetencyId",
-                "description": "TeacherMatrix.Milestone2_Competency_Id — blank if not yet confirmed.",
+                "description": "TeacherMatrix.Milestone2_Competency_Id \u2014 blank if not yet confirmed.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -245,7 +245,7 @@
               },
               {
                 "id": "milestone3CompetencyId",
-                "description": "TeacherMatrix.Milestone3_Competency_Id — blank if not yet confirmed.",
+                "description": "TeacherMatrix.Milestone3_Competency_Id \u2014 blank if not yet confirmed.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -253,7 +253,7 @@
               },
               {
                 "id": "milestone4CompetencyId",
-                "description": "TeacherMatrix.Milestone4_Competency_Id — blank if not yet confirmed.",
+                "description": "TeacherMatrix.Milestone4_Competency_Id \u2014 blank if not yet confirmed.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -274,7 +274,7 @@
         },
         {
           "id": "commitStudentEvaluation",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Commit Student Evaluation",
           "description": "Splits a Flow 2 Gemini evaluation into the student-facing report and the machine-readable milestone outcomes, writes CompetencyEvidence rows for any milestone with a confirmed competency ID, and returns a ready-to-insert formatted feedback block. Use as the step right after Flow 2's Ask Gemini step.",
           "workflowAction": {
@@ -321,7 +321,7 @@
               },
               {
                 "id": "milestone1CompetencyId",
-                "description": "TeacherMatrix.Milestone1_Competency_Id — blank if not yet confirmed (Module 5).",
+                "description": "TeacherMatrix.Milestone1_Competency_Id \u2014 blank if not yet confirmed (Module 5).",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -329,7 +329,7 @@
               },
               {
                 "id": "milestone2CompetencyId",
-                "description": "TeacherMatrix.Milestone2_Competency_Id — blank if not yet confirmed (Module 5).",
+                "description": "TeacherMatrix.Milestone2_Competency_Id \u2014 blank if not yet confirmed (Module 5).",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -337,7 +337,7 @@
               },
               {
                 "id": "milestone3CompetencyId",
-                "description": "TeacherMatrix.Milestone3_Competency_Id — blank if not yet confirmed (Module 5).",
+                "description": "TeacherMatrix.Milestone3_Competency_Id \u2014 blank if not yet confirmed (Module 5).",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -345,7 +345,7 @@
               },
               {
                 "id": "milestone4CompetencyId",
-                "description": "TeacherMatrix.Milestone4_Competency_Id — blank if not yet confirmed (Module 5).",
+                "description": "TeacherMatrix.Milestone4_Competency_Id \u2014 blank if not yet confirmed (Module 5).",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -387,7 +387,7 @@
             "outputs": [
               {
                 "id": "formattedFeedbackBlock",
-                "description": "The complete '── EVALUATION [timestamp] ──' block, ready for Step 5's native Insert-text step to place after '-- FEEDBACK --' with no further logic.",
+                "description": "The complete '\u2500\u2500 EVALUATION [timestamp] \u2500\u2500' block, ready for Step 5's native Insert-text step to place after '-- FEEDBACK --' with no further logic.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -424,7 +424,7 @@
         },
         {
           "id": "selectWarmUpArchetype",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Select Warm-Up Archetype",
           "description": "Flow 3's pre-processing step, required by the spec's own words to be code, not Gemini: parses both WarmUpQueue snapshot columns, selects an archetype (shadow matrix override, then decision table, then fallback), selects Mode A/B, and formats every prompt-template variable both system prompts need. Use right after Flow 3's Starter, before the native Ask Gemini step.",
           "workflowAction": {
@@ -457,7 +457,7 @@
               },
               {
                 "id": "mode",
-                "description": "A (anchor-aware) or B (generative) — routes to the matching system prompt.",
+                "description": "A (anchor-aware) or B (generative) \u2014 routes to the matching system prompt.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -481,7 +481,7 @@
               },
               {
                 "id": "warmupAnchor",
-                "description": "Mode A only — empty in Mode B.",
+                "description": "Mode A only \u2014 empty in Mode B.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -609,7 +609,7 @@
               },
               {
                 "id": "shadowArchetypeNote",
-                "description": "Mode A only — empty if not present in the snapshot.",
+                "description": "Mode A only \u2014 empty if not present in the snapshot.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -638,9 +638,9 @@
         },
         {
           "id": "createWarmUpDoc",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Create Warm-Up Doc",
-          "description": "Flow 3's post-processing step: resolves the student's warm-up folder, creates the doc, stamps Zone 1 (Prompt) and Zone 2 (Response, blank) with the spec's exact markers and formatting, shares it with the student, and writes doc_id/doc_url/status back to WarmUpQueue — status = ERROR on any failure, per the spec's own stated error philosophy for this flow. Use as the last step of Flow 3, after the native Ask Gemini step. Prepends bridge_output (Flow 5's output) before Zone 1 when present, with a separator line.",
+          "description": "Flow 3's post-processing step: resolves the student's warm-up folder, creates the doc, stamps Zone 1 (Prompt) and Zone 2 (Response, blank) with the spec's exact markers and formatting, shares it with the student, and writes doc_id/doc_url/status back to WarmUpQueue \u2014 status = ERROR on any failure, per the spec's own stated error philosophy for this flow. Use as the last step of Flow 3, after the native Ask Gemini step. Prepends bridge_output (Flow 5's output) before Zone 1 when present, with a separator line.",
           "workflowAction": {
             "inputs": [
               {
@@ -661,7 +661,7 @@
               },
               {
                 "id": "lessonContextSnapshotJson",
-                "description": "lesson_context_snapshot (trigger row) — re-parsed here for course_name/teacher_name/period/admin_root_folder_id.",
+                "description": "lesson_context_snapshot (trigger row) \u2014 re-parsed here for course_name/teacher_name/period/admin_root_folder_id.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -701,7 +701,7 @@
               },
               {
                 "id": "generatedPromptText",
-                "description": "The native Ask Gemini step's raw output — the generated warm-up text.",
+                "description": "The native Ask Gemini step's raw output \u2014 the generated warm-up text.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -709,7 +709,7 @@
               },
               {
                 "id": "bridgeOutput",
-                "description": "bridge_output (col 21, trigger row) — from Flow 5. Leave unmapped, or map to an empty string, if Flow 5 isn't wired into this flow or the student has no prior response.",
+                "description": "bridge_output (col 21, trigger row) \u2014 from Flow 5. Leave unmapped, or map to an empty string, if Flow 5 isn't wired into this flow or the student has no prior response.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -732,14 +732,14 @@
         },
         {
           "id": "extractWarmUpPromptText",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Extract Warm-Up Prompt Text",
-          "description": "Flow 4's input-preparation step: extracts the exact Zone 1 prompt text from the warm-up doc's raw body (byte-identical to what the student saw), matching evaluateWarmUpDoc_()'s own extraction in 25_WarmUpWriter.js. Use right after a native 'Docs — get document' step, before the native Ask Gemini step.",
+          "description": "Flow 4's input-preparation step: extracts the exact Zone 1 prompt text from the warm-up doc's raw body (byte-identical to what the student saw), matching evaluateWarmUpDoc_()'s own extraction in 25_WarmUpWriter.js. Use right after a native 'Docs \u2014 get document' step, before the native Ask Gemini step.",
           "workflowAction": {
             "inputs": [
               {
                 "id": "rawDocText",
-                "description": "The native Docs — get document step's output.",
+                "description": "The native Docs \u2014 get document step's output.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -770,9 +770,9 @@
         },
         {
           "id": "finalizeWarmUpScore",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Finalize Warm-Up Score",
-          "description": "Flow 4's output step, and the actual implementation behind Script 25's callFlow4_() stub (25_WarmUpWriter.js — confirmed returning null in the current code). Computes the total score, writes final fields to WarmUpQueue, stamps feedback into the doc's Zone 3, and updates the matching WarmUpRegistry row. Use as the last step of Flow 4, after the native Ask Gemini step.",
+          "description": "Flow 4's output step, and the actual implementation behind Script 25's callFlow4_() stub (25_WarmUpWriter.js \u2014 confirmed returning null in the current code). Computes the total score, writes final fields to WarmUpQueue, stamps feedback into the doc's Zone 3, and updates the matching WarmUpRegistry row. Use as the last step of Flow 4, after the native Ask Gemini step.",
           "workflowAction": {
             "inputs": [
               {
@@ -801,7 +801,7 @@
               },
               {
                 "id": "wordCountScore",
-                "description": "Word_Count_Score (trigger row — already computed by Script 25's writePreEvalScores_).",
+                "description": "Word_Count_Score (trigger row \u2014 already computed by Script 25's writePreEvalScores_).",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -809,7 +809,7 @@
               },
               {
                 "id": "extraCredit",
-                "description": "Extra_Credit (trigger row — already computed by Script 25).",
+                "description": "Extra_Credit (trigger row \u2014 already computed by Script 25).",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -835,7 +835,7 @@
               },
               {
                 "id": "registryUpdateStatus",
-                "description": "OK, SKIPPED, REGISTRY_ROW_NOT_FOUND, or REGISTRY_UPDATE_ERROR: <detail> — non-blocking either way; see this step's own file header.",
+                "description": "OK, SKIPPED, REGISTRY_ROW_NOT_FOUND, or REGISTRY_UPDATE_ERROR: <detail> \u2014 non-blocking either way; see this step's own file header.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
@@ -848,7 +848,7 @@
         },
         {
           "id": "extractBridgeInputs",
-          "state": "PUBLISHED",
+          "state": "ACTIVE",
           "name": "CAS-CCPS: Extract Bridge Inputs",
           "description": "Flow 5's (Bridging Flow) input-preparation step: pulls flow5_prior_response, pacing_prior_connection, and course_name out of the raw lesson_context_snapshot JSON for the native Ask Gemini step. Use right after Flow 5's Starter, before the native Ask Gemini step.",
           "workflowAction": {
@@ -865,7 +865,7 @@
             "outputs": [
               {
                 "id": "extractStatus",
-                "description": "OK, LESSON_SNAPSHOT_PARSE_FAILED, or NO_PRIOR_RESPONSE_IN_SNAPSHOT (defense in depth — the trigger's own condition should already prevent this). Gate the Gemini call on this being OK.",
+                "description": "OK, LESSON_SNAPSHOT_PARSE_FAILED, or NO_PRIOR_RESPONSE_IN_SNAPSHOT (defense in depth \u2014 the trigger's own condition should already prevent this). Gate the Gemini call on this being OK.",
                 "cardinality": "SINGLE",
                 "dataType": {
                   "basicType": "STRING"
