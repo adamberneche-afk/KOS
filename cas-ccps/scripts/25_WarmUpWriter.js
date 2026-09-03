@@ -458,9 +458,23 @@ function runWarmUpEvaluation() {
         result.wordCountScore
       );
 
-      if (!flow4Result || flow4Result.error) {
+      if (!flow4Result) {
+        // EXPECTED, NOT AN ERROR, since 41_WarmUpFlowBridge.js exists.
+        // callFlow4_() is a stub that always returns null (see its own
+        // header). writePreEvalScores_ above has already parked this row at
+        // PENDING_EVAL with its response text and word-count score, which is
+        // exactly the state buildWarmUpFlowInputs() collects for Flow 4.
+        // The scoring then happens asynchronously in
+        // harvestWarmUpFlowReturns(), so counting it as an error here made
+        // every nightly run look like a total failure in the log.
+        Logger.log("[S25-J2] Queue " + item.queueId +
+                   " parked at PENDING_EVAL for the Flow 4 bridge — " +
+                   "41_WarmUpFlowBridge.js will materialize and score it.");
+        continue;
+      }
+      if (flow4Result.error) {
         Logger.log("[S25-J2] Flow 4 failed for queue " + item.queueId +
-                   ": " + (flow4Result ? flow4Result.error : "null response"));
+                   ": " + flow4Result.error);
         errors++;
         continue;
       }
@@ -947,6 +961,14 @@ function buildFlow4Prompt_(responseText, promptText, wordCountScore) {
 // Polls every 15 seconds for up to 3 minutes.
 // Returns the scored row data or null on timeout.
 // ---------------------------------------------------------------------------
+// DEAD CODE, AND MUST STAY THAT WAY. Nothing calls this — 35_FlowPreflightAndCanary.js
+// already noted it as unused. Do not wire it up: twelve 15-second sleeps is
+// three minutes of wall clock PER ROW inside a trigger, so ten students would
+// need thirty minutes of sleeping and blow every Apps Script execution limit.
+// 41_WarmUpFlowBridge.js's harvestWarmUpFlowReturns() replaces the whole idea
+// — it applies whatever has come back on each pass and returns immediately,
+// so there is nothing to poll for. Kept only because the shape of the result
+// object below documents what Flow 4 is expected to write.
 function pollForFlow4Result_(wqSheet, queueRowNum, queueId) {
   const MAX_ATTEMPTS  = 12; // 12 × 15s = 3 minutes
   const POLL_INTERVAL = 15 * 1000; // 15 seconds
