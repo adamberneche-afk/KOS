@@ -1,45 +1,84 @@
 # cas-ccps Deployment Handoff
 
-**For:** the session that takes this codebase from "code complete, verified in the
-Node sandbox" to "live in a real Google Workspace account."
+> ## ⚠️ STATUS: THE FIRST DEPLOYMENT ALREADY HAPPENED
+>
+> **This document was written before any deployment existed, and its original
+> premise — "this repo has never been pushed to a real Apps Script project" —
+> is no longer true.** All 8 projects are live in a real `ccpsnet.net`
+> Workspace account. Module 1 and Module 2 (Phase A + B) are set up. Flow 1 is
+> working against real data.
+>
+> **Read `cas-ccps/HISTORY.md`'s final section first** ("First real deployment
+> — 8 projects live, three confirmed Studio walls, Flow 2 redesigned"). It
+> records what landed, three walls confirmed by direct test, the real bugs only
+> a live push could find, and an architectural change to Flow 2 that
+> supersedes parts of this document.
+>
+> **Three things below are now actively misleading, corrected inline where they
+> appear:**
+> - The from-scratch gotchas are described as "still open, none yet hit." All
+>   three were hit and resolved, and a fourth was found.
+> - "Flows 2-5 are code-complete, not deployed" understates it: the custom-step
+>   code for all of them is **unreachable on this account**, because Workspace
+>   Studio custom steps require a GCP project this district has disabled.
+> - The mechanics below (`clasp create`, the ID-mixing warning, Part 3.2b)
+>   apply to a *fresh* deployment. This account's projects already exist;
+>   `cas-ccps/clasp/local/` now holds their real script IDs and is gitignored,
+>   so a new session or machine has to recreate it from the templates.
+>
+> **If you are picking this up to continue the live deployment, the section
+> you want is "Bringing an already-live account up to current HEAD"** — the
+> `clasp push` plus the five Run-dropdown functions that make scripts 37-40
+> and the Ledger schema guard actually do anything. The from-scratch order of
+> operations below is not that.
+>
+> What else remains genuinely useful here: the Script Properties reference,
+> the runbook pointers, and the order-of-operations for anyone deploying to a
+> *second* account.
+
+**Originally for:** the session that takes this codebase from "code complete,
+verified in the Node sandbox" to "live in a real Google Workspace account."
 
 **Written:** 2026-08-31, at the end of a session that closed the
 `27_LessonFrameGenerator` gap, verified and fixed 6 real bugs from a third-party
-code review, and fixed a real column-collision bug that work introduced. None of
-that work touched deployment — this repo has never been pushed to a real Apps
-Script project. That is the entire scope of what's ahead.
+code review, and fixed a real column-collision bug that work introduced.
 
 ## Current repo state
 
-- `main` and `claude/new-session-sph6vw` are in sync at `d2a047e`.
-- `npm test`: 422/422 passing. `node tools/gas-lint/check.js`: 0 errors, 4 known
-  baseline warnings. `node tools/doc-currency/check.js`: 0 errors, 9 known
-  baseline warnings. `node tools/clasp-sync/sync.js`: builds all 8 projects
-  cleanly into `cas-ccps/.clasp-build/`.
-- **No real Google Apps Script project exists yet for any of the 8 cas-ccps
-  projects.** Confirmed: `cas-ccps/clasp/local/` doesn't exist, and every
-  `cas-ccps/clasp/templates/*.clasp.json.template` still has
-  `"scriptId": "REPLACE_WITH_REAL_SCRIPT_ID"`. Everything below starts from zero.
+- Deployment work continues on `claude/new-session-l8yvnj`.
+- Run the checks rather than trusting a number in this file — it rots:
+  `npm test`, `node tools/gas-lint/check.js` (expect 0 errors, 4 known
+  baseline warnings), `node tools/doc-currency/check.js` (0 errors, 9 known
+  baseline warnings), `node tools/clasp-sync/sync.js` (all 8 projects build
+  into `cas-ccps/.clasp-build/`).
+- **All 8 projects now exist in a real Google account.** Their real script IDs
+  live in `cas-ccps/clasp/local/*.clasp.json`, which is gitignored — so it is
+  present on the deploying machine and absent everywhere else. A fresh clone
+  must recreate those files from
+  `cas-ccps/clasp/templates/*.clasp.json.template` (still carrying
+  `"scriptId": "REPLACE_WITH_REAL_SCRIPT_ID"`) before `sync.js` can build.
 
-Don't re-derive the last session's bug-fix history — it's all in
-`cas-ccps/HISTORY.md` (most recent two sections) if you need it, but it's not
-relevant to deployment mechanics.
+Don't re-derive the bug-fix history — it's in `cas-ccps/HISTORY.md` if you need
+it, but only the final section is relevant to deployment mechanics.
 
 ## The one document that actually walks through this
 
 **`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` is the real, step-by-step guide.**
 `tools/clasp-sync/README.md` hands off to it explicitly. Read it in full before
 doing anything — don't rely on this handoff's summary below for exact commands.
-Key parts, since nothing has ever been deployed here:
+Key parts (written for a from-scratch deployment; this account is now past
+this stage, but a second account would start here):
 
 - **Part 3.2b — building from scratch straight to production** (not 3.2's pilot-
-  sandbox path, since there's no existing production project to sandbox-copy
-  from): `clasp create --type sheets|docs|standalone --title "CAS - <Project
+  sandbox path, which had no existing production project to sandbox-copy from
+  at the time; there is one now, so 3.2 is available for a second account): `clasp create --type sheets|docs|standalone --title "CAS - <Project
   Name>" --rootDir .` in a scratch folder outside this repo, per project. This
   creates both the real Drive file and its bound script, and prints two
   different IDs (document ID ~44-45 chars, script ID ~57-58 chars — don't mix
   them up in the `.clasp.json` files).
-- **Three documented from-scratch gotchas, all still open, none yet hit:**
+- **Four from-scratch gotchas. The first three were documented here before
+  deployment and all three fired exactly as written; the fourth was found
+  during it.** Kept in full because they apply again to any second account:
   1. `unified-manual` fails to push (`Invalid ID`) until `central-ledger` exists
      and has a cut version — its manifest ships a placeholder library dependency.
   2. A from-scratch `central-ledger` spreadsheet has none of the 5 Module-1 tabs
@@ -52,6 +91,18 @@ Key parts, since nothing has ever been deployed here:
      just `CENTRAL_LEDGER_SS_ID`), and `student-dashboard`'s manifest must have
      `executeAs: "USER_ACCESSING"` (already correct in the tracked manifest —
      just don't overwrite it).
+  4. **Found during the real deployment, not predicted:** the from-scratch path
+     also skips the **Central Turn-In Form**. The admin wizard creates it
+     normally; a `clasp create` + `clasp push` deployment never runs that path.
+     Same remedy as #2 — call the wizard's form-creation step from a throwaway
+     function once.
+
+  Two manifest bugs also surfaced on first push, both now fixed in the tracked
+  manifests (`bcc772c`, `83f6f76`) — neither was detectable by tests or lint,
+  only by a real push rejecting the file. If you are deploying from a tree
+  older than those commits, expect `studio-steps` to fail on an invalid
+  `workflowElements` `state` value and, once pushed, to never appear in
+  Studio's picker because of a placeholder `logoUrl`.
 - **Part 3.6 — production promotion**: the 5 trigger/menu-driven projects go
   live on `clasp push` alone. The 2 web apps (`teacher-dashboard`,
   `student-dashboard`) need an explicit `clasp version` + `clasp deploy
@@ -69,14 +120,76 @@ Key parts, since nothing has ever been deployed here:
   files with real IDs once the human creates the projects) and hand off the
   actual `clasp push`/`clasp deploy` invocations.
 
+## Bringing an already-live account up to current HEAD
+
+**This is the operation that actually applies now**, and it is not the
+from-scratch sequence below. The 8 projects exist, Module 1 and Module 2
+(Phase A + B) are set up, and Flow 1 works against real data — but HEAD has
+moved since that push, and four scripts (37-40) plus a schema guard landed
+afterwards. None of them do anything until they're pushed and their setup
+functions are run once.
+
+Everything here runs at **the operator's own keyboard** (SMP-004: an agent
+session must never `clasp push` to production). From the repo:
+
+```bash
+git pull
+node tools/clasp-sync/sync.js central-ledger
+cd cas-ccps/.clasp-build/central-ledger && clasp push
+```
+
+Then, in the Apps Script editor's **Run** dropdown, in this order:
+
+| # | Function | Why, and what to expect |
+|---|---|---|
+| 1 | `checkLedgerSchema()` | **Run this first and read the log before anything else.** The live Ledger's columns had shifted, which made `LEDGER.TEACHER_EMAIL` return a person's *name* and silently broke every MatrixRegistry lookup with no error anywhere. If it reports drift, run `repairLedgerSchema()` — it backs the tab up to `Ledger_BACKUP_<timestamp>` first, and refuses outright if it can't verify the repair is safe from the headers alone. Nothing downstream is trustworthy until this is clean. |
+| 2 | `syncFlowPromptsToSheet()` | Writes the `FlowPrompts` tab. After this, a Flow can read its system prompt from a chip instead of carrying a pasted copy, and future prompt changes are a `clasp push` + re-run rather than a hand-paste per Flow. |
+| 3 | `installFlowFixtures()` | Seeds dummy rows at all five flows' trigger conditions. Without these, a Flow with nothing to match reports a green "Run Completed" over zero rows — which is how a lot of time got spent last session. `checkFlowFixtures()` reports what's present; `removeFlowFixtures()` takes them out. |
+| 4 | `installFlowInputTriggers()` | Installs Flow 2's two time triggers (1-min build, 2-min harvest). This is what makes `FlowInput` populate at all. |
+| 5 | `runFlow2Canary()` | End-to-end check of Flow 2's **Apps Script half only** — it self-provisions a scratch student doc and TeacherMatrix and stubs Studio out deliberately. Paste the log. A pass means the lookup chain and the harvest are sound and any remaining failure is in the Flow itself. |
+| 6 | `installWarmUpFlowTriggers()` | Installs Flows 3/4/5's two triggers (materialize + harvest, both 5-minute). Nothing in `41_WarmUpFlowBridge.js` runs until this is done. |
+| 7 | `runWarmUpFlowCanary()` | Same idea as `runFlow2Canary()` for Flows 3, 4 and 5: exercises the archetype decision table, the materialization and the harvest against scratch rows with Studio stubbed, then cleans up. Flows 3 and 4 are covered as pure logic only — both need Drive and a real student doc, which a canary must not fabricate. |
+| 8 | `checkFlowBinding()` | **Run this while wiring each Flow's last step, not after.** It logs the exact binding to copy — column number, header, and which columns the harvest owns — generated from the same constants the harvest reads, so it cannot drift the way a setup document does. Once rows start arriving it diagnoses them: a one-column shift is reported *as a shift with its offset*, not as "Flow is blank". `checkFlow2Binding()` does the equivalent for Flow 2's write-into-the-row shape. |
+| 9 | `syncFlowBuildSpec()` | Writes the `FlowBuildSpec` tab — every tab name, column number, header, trigger condition, prompt key and ownership rule for all five flows, **derived from the constants the code reads**. Build each Flow's Studio side from that tab, not from a comment block: the values there cannot drift, and `checkFlowBuildSpec()` reports when a column has moved since the last sync. Connector names, temperature and token limits are deliberately not in it — they need judgement and don't drift, and copying them would make it a seventh document to keep in sync. |
+| 10 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. The only thing that can tell you a Flow is live — a Flow that matched zero rows reports a green "Run Completed" too. |
+
+**The D1 leader-hub connection** is separate from the flows and has its own
+diagnostic now: `runLeaderHubConnectionCheck()`, run from the **Teacher
+Dashboard** deployment (not central-ledger — it lives in
+`07_TeacherDashboard.js` beside the API it tests). It separates the causes
+that all surface in leader-hub as one opaque error: the OAuth client ID
+unset, `TEACHER_EMAIL` unset, or the token gate fine while the source tabs are
+empty — which leader-hub cannot tell apart from a rejection. It says outright
+that it *cannot* check the one remaining cause, a stale `/exec` URL stored on
+leader-hub's side, because nothing in the script can see that.
+
+**Which check answers which question.** `runFlowPreflightCheck()` covers the
+structure — tabs wide enough, triggers installed exactly once, required
+properties set. `runWarmUpFlowCanary()` covers the Apps Script half with
+Studio stubbed. `checkFlowBinding()` covers the columns your Flow writes to.
+`checkWarmUpFlowLiveness()` covers whether anything came back at all. Those
+four separate the four causes of "nothing happened" that used to look
+identical: not built, trigger doesn't match, wrong columns, Gemini erroring.
+
+Only after 1-5 are clean is there any point configuring Flow 2 in Studio,
+because before that there is no `FlowInput` row for it to read.
+
+Two things that will *not* work no matter what you run, so don't spend time
+on them — see `cas-ccps/studio-steps/README.md`'s status banner and
+`tools/gas-lint/gcp-map.json`:
+
+- Any custom Studio step. All 8 are unreachable on this account.
+- The `DIRECT_GEMINI` evaluation mode in `15c`. It needs an API key, a key
+  needs a Cloud project, same wall.
+
 ## Order of operations
 
 1. **Module 1 must exist and be live first** — it's the prerequisite for
    everything else (`CENTRAL_LEDGER_SS_ID` has to resolve to something real
    before Module 2's wizard will even run). If Module 1 isn't live yet either,
    this is a from-scratch deployment of the whole system, not just Module 2.
-2. **Get all 8 projects connected via clasp** per the runbook above. Expect the
-   3 gotchas.
+2. **Get all 8 projects connected via clasp** per the runbook above. Expect all
+   4 gotchas — the first three are confirmed to fire every time.
 3. **Upload the 3 data files to the teacher's Drive folder before running the
    wizard** — the wizard only *searches* for these, it doesn't fetch or
    generate them:
@@ -108,22 +221,59 @@ Key parts, since nothing has ever been deployed here:
    see the next section. Nothing in this repo can automate this step; the
    wizard only shows you the settings to enter.
 
-## The real gap: Studio Flows 2-5 are code-complete, not deployed
+## The real gap: Studio Flows 2-5 — and it's worse than "not deployed"
 
-Only **Flow 1** (Rubric Extraction) is actually live in any real Studio
-deployment anywhere. Flows 2 (Student Evaluation), 3 (Warm-Up Generation), 4
-(Warm-Up Evaluation), and 5 (Bridging) all have their custom-step code written
-and tested in `cas-ccps/studio-steps/*.gs` — but that project has never been
-pushed to a real account, and none of the four flows has actually been wired
-together in Studio's builder. This blocks both **Module 2 Full (Warm-Ups)**
-and **Module 5 (SCR Suggestion)** from being genuinely live, independent of
-code readiness. `cas-ccps/docs/IMPACT_DASHBOARD.html` renders this exact state
-as status badges (`Flow 1 ✅ Live`, `Flows 2-5 ⬜ Built, Not Deployed`) if you
-want a visual gut-check after deployment — update those badges once each flow
-is actually wired.
+**Corrected after the first real deployment. The original framing below said
+the custom-step code was merely "not deployed." It is unreachable on this
+account.**
+
+Workspace Studio custom-step add-ons require a standard (non-default) GCP
+project linked through Project Settings. `ccpsnet.net` has GCP access disabled
+for this account entirely — confirmed directly at `console.cloud.google.com`.
+The `studio-steps` project pushes successfully and its steps never appear in
+Studio's picker, across repeated uninstall/reinstall cycles, with no OAuth
+prompt ever shown. All 8 steps (2,113 lines) are blocked, and so is
+`15c_Flow2DirectEvaluationService.js`'s `DIRECT_GEMINI` escape hatch, which
+needs an API key, which needs a project.
+
+Resolving that is a district IT / Workspace admin action. Worth requesting —
+it would resurrect all 2,113 lines at once — but don't sequence anything
+behind it.
+
+**What was done instead — all five flows are now ported.**
+
+`37_FlowInputBuilder.js` took Flow 2 off its custom step: it moves the whole
+lookup chain into Apps Script and materializes one flat `FlowInput` row,
+shrinking Flow 2's Studio side to four native, fixed-picker-safe steps.
+`41_WarmUpFlowBridge.js` does the same for Flows 3, 4 and 5 —
+`Flow3Input`/`Flow4Input`/`Flow5Input` in, a shared `WarmUpFlowReturn` tab
+out, Studio making only the Gemini call. Verify each half independently of
+Studio with `runFlow2Canary()` and `runWarmUpFlowCanary()`
+(`35_FlowPreflightAndCanary.js` and `41_WarmUpFlowBridge.js`).
+
+*Correction to what this section used to say:* it claimed Flows 3, 4 and 5
+"hit the same fixed-picker wall (Warm-Ups are per-teacher too)." They don't.
+`WarmUpQueue` lives in the Central Ledger — one spreadsheet a fixed picker
+can target perfectly well. The per-teacher problem was specific to Flow 2's
+`TeacherMatrix`. What actually blocked Flows 3/4/5 was the five custom steps
+alone, plus the Drive and Docs work (creating a warm-up doc, sharing it,
+stamping its zones) that no native step can do. Getting that distinction
+wrong made the job look bigger than it was.
+
+Only **Flow 1** (Rubric Extraction) has been verified live end to end. Flows
+2-5 now have a keyless path but the Studio side of each still has to be built
+by hand, so **Module 2 Full (Warm-Ups)** and **Module 5 (SCR Suggestion)**
+remain not-live — now for want of Flow construction, not for want of code.
+`cas-ccps/docs/IMPACT_DASHBOARD.html`'s badges (`Flow 1 ✅ Live`, `Flows 2-5 ⬜
+Built, Not Deployed`) are now only half right and deserve a three-state
+rewrite: built-and-reachable, built-and-blocked, and not-built.
 
 `cas-ccps/studio-steps/README.md` has the per-step deployment instructions
-(mirrors Part 3.7 of the runbook). The wizard's Phase B dialogs
+(mirrors Part 3.7 of the runbook) — still accurate for an account that *has*
+GCP access, which is no account this repo deploys to. That aside used to name
+kos-personal as such an account; it is on this same `ccpsnet.net` account, so
+its own two custom steps are blocked identically and were ported the same way
+(`kos-personal/12_StudioReturnHarvest.gs`). The wizard's Phase B dialogs
 (`28_Module2Setup.js`) give you the exact Studio Flow settings (trigger
 condition, temperature, token limits, input/output field names) to enter once
 you're in Studio's builder — don't guess these from the `.gs` files alone.
@@ -190,7 +340,7 @@ clean (nothing should have drifted since this handoff was written):
 
 ```bash
 cd /home/user/KOS
-npm test                          # expect 422/422
+npm test                          # all passing (count grows; don't assert a number)
 node tools/gas-lint/check.js      # expect 0 errors, 4 warnings
 node tools/doc-currency/check.js  # expect 0 errors, 9 warnings
 node tools/clasp-sync/sync.js     # expect all 8 projects to build cleanly
@@ -202,10 +352,19 @@ clean local build says nothing about whether a real Apps Script project
 actually authorized correctly, has the right OAuth scopes accepted, or has its
 triggers actually firing on Google's clock, not just installed.
 
-## One small, low-priority doc gap noticed along the way
+## One small, low-priority doc gap noticed along the way — CLOSED
 
-`cas-ccps/docs/FERPA_DATA_MAP.md`'s Health Checks section says
-`_ferpaHealthChecks_()` "now checks **seven** things" — the live code
-(`10_AdminRecoveryPanel.js`) has **eight** checks, (a) through (h), since last
-session added the WarmUpQueue retention check. Not deployment-blocking; fix
-opportunistically if you're already in that file.
+`cas-ccps/docs/FERPA_DATA_MAP.md`'s Health Checks section said
+`_ferpaHealthChecks_()` "now checks **seven** things" where the live code
+(`10_AdminRecoveryPanel.js`) has **eight**. Fixed in `37aa157` at the start of
+the deployment session, along with the "four retention checks" count in the
+same file (also five). Nothing to do here.
+
+## What to read next
+
+`cas-ccps/HISTORY.md`'s final section — the deployment record. It covers the
+three Studio walls confirmed by direct test, the manifest and schema bugs only
+a live push could surface, the `=AI()` investigation and why it's closed, the
+`FlowInput` redesign that replaced Flow 2's plumbing, and an explicit warning
+not to carry this project's Studio constraints over to kos-personal, which
+runs on a different account with GCP access intact.

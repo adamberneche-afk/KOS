@@ -1,0 +1,67 @@
+{
+  "_doctrine": [
+    "GCP AVAILABILITY IS NOT AN ARCHITECTURAL ASSUMPTION IN THIS REPO.",
+    "",
+    "Every system here reaches Gemini the same way by default: a hand-built Google Workspace Flow / Studio flow makes the model call using the Workspace account's own built-in Gemini access. No API key, no standard Cloud project, nothing for an operator to provision. GAS orchestrates state deterministically and never calls a model itself. leader-hub/EmailBridge.gs calls this the Bifurcation Boundary; cas-ccps and kos-personal call it the Walled Garden. Same rule, three names.",
+    "",
+    "That default exists because the alternative is not reliably available. A Workspace Studio custom-step add-on, a Gemini API key, and Vertex all require a standard (non-default) Cloud project, and whether an account can have one is a Workspace-admin decision nobody in this repo controls. cas-ccps hit exactly that: GCP access is disabled for the ccpsnet.net account, confirmed directly, which left all 8 custom steps in cas-ccps/studio-steps/ (2,113 lines, written and unit-tested) permanently unreachable and took the DIRECT_GEMINI escape hatch built to work around it down at the same time -- it needs a key, a key needs a project.",
+    "",
+    "UNIFORM CONSTRUCTION, WHICH IS WHY A FINDING ON ONE ACCOUNT IS EVIDENCE ABOUT THE OTHERS. Every GCP project in this repo was built the same way: the default project Apps Script creates on its own. The only console work any deployment doc here describes is configuring that project's OAuth consent screen (kos-personal/DEPLOYMENT_GUIDE.md Phase 1, whose step 2 is literally \"select your existing Apps Script project\") and enabling an API inside it (line 255). Neither establishes a standard project, and nothing in this repo -- no doc, script, or manifest -- records one ever being created or linked through Project Settings for any of the 11 Apps Script projects. That matters twice. It means the ccpsnet.net org policy is the SECOND block on cas-ccps's custom steps, not the only one: there was no standard project to lose. And it means a deployment doc saying a deploy \"uses an established GCP project\" is describing the default project, so consent-screen setup and an enabled API are NOT evidence of availability. Check the linked project in Project Settings, and nothing else.",
+    "",
+    "AND DO NOT ASSUME AN ACCOUNT BOUNDARY YOU HAVE NOT SEEN. The other half of how this went wrong: kos-personal was read as safe because SMP-004 describes it as living on a personal Google account, off the district domain, so the ccpsnet.net org policy could not reach it. It is deployed on the same ccpsnet.net account. A documented account separation is a policy someone intends, not a fact about a deployment -- the same mistake as reading a consent screen as a standard project, one level up. When a declaration here turns on WHICH account something runs on, that is the thing to confirm with the operator, because nothing in this repo can observe it.",
+    "",
+    "THE RULE: no code path may depend on GCP without an entry in `surfaces` below. gas-lint's Check G scans every file in project-map.json for the technical surfaces that actually require a project and errors on any undeclared LIVE one. That is the whole point -- a GCP dependency should be a decision someone made on purpose and wrote down, not something discovered when a push silently no-ops or a step never appears in a picker.",
+    "",
+    "A declaration is not approval. It records that the dependency exists, whether it currently works, and what happens if it doesn't. `status` is the honest current state, not an aspiration:",
+    "  live-blocked   — depends on GCP, and GCP is confirmed unavailable on the target account. Dead code today. Do not build on it.",
+    "  live-unverified— depends on GCP, has not been confirmed unavailable, and has not been confirmed to work either. Given uniform construction above, the default reading is \"un-provisioned\", NOT \"probably fine\". Treat as a risk, not a foundation.",
+    "  live-ok        — depends on GCP, confirmed working on the target account.",
+    "  latent         — the dependency is present but commented out or otherwise not executed. Uncommenting it is a real decision; this entry is what makes that visible.",
+    "",
+    "If you are adding a feature and find yourself wanting a key: check whether a native Flow step can do it instead. That is how all five cas-ccps flows, both kos-personal flows, and all six leader-hub flows work. cas-ccps/scripts/37_FlowInputBuilder.js is the worked example of pushing everything except the model call into Apps Script so the Flow needs no capability beyond keyless Gemini."
+  ],
+  "_scanned": "Check G scans the files, html and manifest of every entry in project-map.json. Non-GAS surfaces (kos-personal/inference-service/) can be declared here for completeness but are not scanned — see their own entries.",
+  "_patterns": {
+    "studio-custom-step": "A `workflowElements` key in an appsscript.json manifest — a Workspace Add-on exposing custom Studio steps. Publishing/deploying one requires a standard Cloud project. Scoped to .json manifests so prose in a .gs header that merely mentions the key is not a finding.",
+    "gemini-api-endpoint": "generativelanguage.googleapis.com — the Gemini API. Reaching it needs an API key, which needs a project.",
+    "vertex-endpoint": "aiplatform.googleapis.com — Vertex AI. Needs a project."
+  },
+  "surfaces": {
+    "cas-ccps/clasp/manifests/studio-steps.appsscript.json": {
+      "pattern": "studio-custom-step",
+      "status": "live-blocked",
+      "why": "The 8 custom Studio steps in cas-ccps/studio-steps/. Pushed successfully to the real account and never appeared in Studio's step picker, across repeated uninstall/reinstall cycles with no OAuth prompt ever shown. Root cause confirmed directly at console.cloud.google.com: GCP access is turned off for this account by the ccpsnet.net organization, and a Workspace Add-on needs a standard project.",
+      "if_unavailable": "ALL FIVE FLOWS ARE NOW PORTED, so this surface being blocked no longer gates anything. cas-ccps/scripts/37_FlowInputBuilder.js took Flow 2 off its custom step by materializing the whole lookup chain into one flat literal row; cas-ccps/scripts/41_WarmUpFlowBridge.js does the same for Flows 3, 4 and 5, which were the remaining exposure named here until now. In every case Apps Script materializes the inputs and harvests the output, and Studio makes only the keyless Gemini call. Three of the five steps 41 replaces turned out to be duplicating Apps Script that already existed in the same project (evaluateWarmUpDoc_, writeFinalScores_, writeFeedbackToDoc_, writeRegistryScores_ in 25_WarmUpWriter.js), so the port reuses them rather than carrying a second copy.",
+      "revisit": "A district Workspace admin enabling GCP for this account would make all 2,113 lines reachable again with no code change. Worth requesting; nothing is sequenced behind it."
+    },
+    "cas-ccps/scripts/15c_Flow2DirectEvaluationService.js": {
+      "pattern": "gemini-api-endpoint",
+      "status": "live-blocked",
+      "why": "The opt-in DIRECT_GEMINI escape hatch, gated behind EVALUATION_MODE and a DIRECT_GEMINI_API_KEY Script Property. Built specifically to make Flow 2's evaluation runnable without Studio — and blocked by the same wall, because the key needs a project.",
+      "if_unavailable": "Default EVALUATION_MODE is STUDIO, so nothing calls this path unless an operator opts in. Its pure functions (_buildFlow2Prompt_, _parseFlow2Response_, writeCompetencyEvidenceFromFlow2_) are reused by 37_FlowInputBuilder.js and are not GCP-dependent — only _callGeminiDirect_ is.",
+      "revisit": "Two separate gates, not one. A district admin enabling GCP for the account would let a key exist at all; even then this path stays dormant until an operator sets the DIRECT_GEMINI_API_KEY Script Property and flips EVALUATION_MODE to DIRECT_GEMINI. The second gate is deliberate — that mode bills per call against a key held in a Script Property, which is a different risk posture from keyless Gemini and should stay opt-in even if the wall lifts."
+    },
+    "cas-ccps/scripts/25_WarmUpWriter.js": {
+      "pattern": "gemini-api-endpoint",
+      "status": "latent",
+      "why": "A commented-out direct-Gemini reference implementation inside callFlow4_, kept deliberately: that function's own header explains that gas-lint's OAuth-scope check reads raw file text, so deleting the block would make the linter blind to the script.external_request requirement the moment someone uncommented it. Note it reads a GEMINI_API_KEY property — a different name from 15c's DIRECT_GEMINI_API_KEY, so the two paths were never wired together.",
+      "if_unavailable": "Nothing executes it. The live path is the Studio Flow 4 queue (PENDING_EVAL -> SCORED) plus pollForFlow4Result_.",
+      "revisit": "Uncommenting it is a real decision, not a cleanup. It would need a key, a project, and a second key-management story alongside 15c's."
+    },
+    "kos-personal/studio-steps/appsscript.json": {
+      "pattern": "studio-custom-step",
+      "status": "live-blocked",
+      "why": "kos-personal's two custom steps (WriteCuratorOutputStep, WriteClassificationOutputStep). BLOCKED BY THE SAME WALL AS cas-ccps, confirmed by the operator: kos-personal is deployed on the SAME ccpsnet.net account, not a separate personal one, and its Studio flow is not live. The personal/district account separation described in SMP-004 and repeated throughout this repo is not what exists in practice, so every conclusion that depended on it is void -- including two earlier readings of this entry. It first claimed GCP was \"very likely fine\" here, citing kos-personal/DEPLOYMENT_GUIDE.md:36; that was corrected once already (a consent screen and an enabled API both happen in the default project Apps Script creates on its own, so neither is evidence of a standard project), and the residual \"different account, so the org policy does not reach it\" is now wrong too. It does reach it. GCP access is turned off org-wide for this account.",
+      "if_unavailable": "The two steps only merge Curator+Auditor JSON, overwrite the source doc's body, and flip a STAGING_PIPELINE row to FLOW_COMPLETE. That is a smaller port than cas-ccps needed, for a reason worth stating: the fixed-spreadsheet-picker wall that made cas-ccps's per-teacher TeacherMatrix unreachable does not apply, because STAGING_PIPELINE is a single spreadsheet a native Sheets connector can target. Only the doc-body overwrite genuinely needs Apps Script (a native insert-text step is not documented as able to clear existing content first). Note the port must NOT widen STAGING_PIPELINE: 10_Turnstile.gs:41 records that an 8th column would mean touching hardcoded 7-column getRange() calls across 2/3/9_*.gs, which is why release timestamps already live in PropertiesService instead. A separate return tab is the shape that fits.",
+      "revisit": "Nothing to check any more -- this is confirmed blocked, not unverified. Enabling GCP for the ccpsnet.net account would be a district-admin decision, and even then someone would still have to create and link a standard project, since none has ever existed for any project in this repo. Treat the Apps Script port as the path forward, not as a workaround to be undone later."
+    },
+    "kos-personal/inference-service/": {
+      "pattern": "gemini-api-endpoint",
+      "status": "live-unverified",
+      "scanned": false,
+      "why": "NOT a GAS surface, so Check G does not scan it — declared here for completeness. A standalone Node/Docker/Postgres service (CFG.INFERENCE_MODE = MANAGED_SERVICE) with its own billing and credit accounting. This is the only place in the monorepo where a real API key path is the intended design rather than an escape hatch.",
+      "if_unavailable": "kos-personal's default INFERENCE_MODE does not use it; the Studio path does.",
+      "revisit": "It carries its own deployment doc (INFERENCE_SERVICE_DEPLOYMENT.md) and its own tests. Out of scope for the GAS pipeline."
+    }
+  }
+}

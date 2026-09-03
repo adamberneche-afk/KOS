@@ -104,6 +104,19 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 
 ## kos-personal — Studio ingestion/inference Flow
 
+> **⚠ NOT LIVE, AND BLOCKED IN ITS CURRENT SHAPE.** Confirmed by the
+> operator: kos-personal is deployed on the same `ccpsnet.net` account as
+> cas-ccps — not the separate personal account SMP-004 describes — so the
+> district's org-wide GCP block reaches it, and the two custom steps in
+> `kos-personal/studio-steps/` cannot be published. The flow is not running.
+> Everything below describes the intended design and the state machine, all
+> of which still holds; what changes is that the write-back half has to come
+> back into Apps Script rather than being a custom step. See
+> `kos-personal/studio-steps/README.md`'s status banner for the port's shape
+> and its one hard constraint (do not widen `STAGING_PIPELINE`), and
+> `tools/gas-lint/gcp-map.json` for the declaration.
+
+
 **What it does:** `2_Ingestion_Sensors.gs` queues session logs, external
 data, and (as of the Seven Bridges pipeline) cog verdicts into
 `STAGING_PIPELINE`; a human-built Studio Flow reads a queued doc, runs
@@ -157,12 +170,16 @@ analysis) submits a job to `EmailBridge.gs`'s `AI_Queue` sheet via
 Every feature already degrades gracefully to a template/local draft when no
 Flow is connected — this panel is about visibility, not a hard dependency.
 
-**Six real types**, not the five `LEADERHUB_AI_FLOW_SETUP.md` documents —
-`FIN_ANALYSIS` (`finAnalysis()`) is real, shipping traffic today but was
-never added to that doc alongside `EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`,
-`WBL_INSIGHTS`, `LP_ASSIST`, and `BRAG_EMAIL`. Fixing that doc gap is
-tracked separately from this extension; this inventory and the new health
-panel both already list all six.
+**Six real types.** This section used to note that
+`LEADERHUB_AI_FLOW_SETUP.md` documented only five, `FIN_ANALYSIS`
+(`finAnalysis()`) having shipped without being added alongside
+`EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`, `LP_ASSIST` and
+`BRAG_EMAIL`, and tracked fixing it as separate work. **That gap is closed** —
+that doc now covers all six, including a `FIN_ANALYSIS` payload section and
+its own note about being the one type whose payload carries pre-computed
+arithmetic. Kept as a correction rather than deleted, because a tracking note
+outliving the thing it tracked is its own small failure mode: a reader who
+believes it goes looking for work that is already done.
 
 **Why this system needed new code, not just a new panel:** `AI_Queue` rows
 are always eventually deleted — either the instant their outcome (COMPLETE/
@@ -176,9 +193,22 @@ known before its row disappears: `queueAiJob_()` (submitted) and
 `checkAiJob_()` (completed/errored on hand-back, sweptUnclaimed if it aged
 out still `PENDING`).
 
-**Where to check:** Settings → AI Flow Health, `student-leader-hub.html`
-(`renderAiFlowHealthSettings()`, calling the new `flowHealth` action on
-whatever Email Bridge URL is configured). One row per type, using the same
+**Where to check:** two places now, answering different questions.
+
+For *has this type ever succeeded*: Settings → AI Flow Health,
+`student-leader-hub.html` (`renderAiFlowHealthSettings()`, calling the
+`flowHealth` action on whatever Email Bridge URL is configured).
+
+For *is this Flow live right now*: `FlowOps.gs`'s
+`installAiFlowFixtures()` then `checkAiFlowFixtures()`. The counters above
+cannot separate "nobody has used this type" from "no Flow exists for it"
+except by waiting for a `sweptUnclaimed` two hours later; a fixture row per
+type answers it directly, because a `Status` that moved off `PENDING` is
+proof a Flow touched that row. `runLeaderHubPreflight()` covers the
+prerequisites (queue reachable, header rows un-drifted, prompts synced), and
+`runAiFlowCanary()` proves the Apps Script half with the Flow deliberately
+stubbed — see that file's header for why a canary pass must never be read as
+"the Flows work". One row per type, using the same
 three-state semantics as the table above — "completed or errored ever" both
 count as healthy, matching the other two systems' own "a terminal outcome
 of either kind proves the Flow is alive" convention.

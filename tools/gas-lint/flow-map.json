@@ -1,0 +1,166 @@
+{
+  "_doctrine": [
+    "FLOW SURFACES AND COLUMN MAPS, DECLARED SO gas-lint CAN HOLD US TO THEM.",
+    "",
+    "meta/FLOW_DOCTRINE.md states thirteen rules for building a Flow in this repo, each with the incident that produced it. Most are not machine-checkable. Two are, and this file is what makes them so.",
+    "",
+    "RULE 7 — two column maps for the same sheet will drift. 34_QueueWatchdog.js:166 records the habit that saved a wrong fix: derive from the writer, verify against the constant. It exists because RQ05 in 05_TeacherIntakePipeline.js had drifted one column out of sync with the queueRow array it describes, so anything reading row[RQ05.STATUS] would have compared a spreadsheet ID against \"PENDING_EXTRACTION\" forever without erroring. The Central Ledger version of the same drift cost a live session: a shift made LEDGER.TEACHER_EMAIL return a person's name. `columnMaps` below declares every place a sheet's layout is written down twice, and Check H compares them.",
+    "",
+    "RULE 9 — separate the four causes of \"nothing happened\". Nothing came back is one answer covering four: the Flow was never built, its trigger matches no rows, it writes to the wrong columns, or the model call errored. The third looks exactly like the first, so each cause needs its own check. `flowSurfaces` below declares which functions play those roles for each flow, and Check I verifies they exist in the right project.",
+    "",
+    "SAME NAME IS NOT SAME SHEET. cas-ccps and kos-personal both have a STAGING_PIPELINE, and they are different sheets with different widths (6 vs 7 columns) in different spreadsheets. That is why groups are declared explicitly rather than inferred from a tab name -- an inferring check would compare the two and report a false conflict every run, which is how a check gets muted.",
+    "",
+    "A GROUP WITH ONE MAP IS STILL WORTH DECLARING. Nothing to compare today, but it records where the layout lives so a second copy gets added to the group rather than drifting quietly beside it."
+  ],
+  "columnMaps": {
+    "cas-ccps:RubricQueue": {
+      "why": "The pair that would have caught the RQ05 drift. 05 writes the row; 34 deliberately derived its own indices from that writer's appendRow() call rather than trusting RQ05, and said so in a comment. Now the comparison is automatic.",
+      "authoritative": "the queueRow array in 05_TeacherIntakePipeline.js's onTeacherRubricSubmit",
+      "maps": [
+        {
+          "file": "cas-ccps/scripts/05_TeacherIntakePipeline.js",
+          "object": "RQ05"
+        },
+        {
+          "file": "cas-ccps/scripts/34_QueueWatchdog.js",
+          "object": "WD_RUBRIC_QUEUE_COLUMNS"
+        }
+      ]
+    },
+    "cas-ccps:TeacherMatrix": {
+      "why": "Flow 1 writes this sheet and 37_FlowInputBuilder.js reads it by position, so a shift silently feeds Flow 2 the wrong field. 37's own header notes that FI_TM_COLUMNS_ is a redeclaration of TM08 under a different name, because the two live in different GAS projects with separate global scopes -- exactly the situation where drift is invisible.",
+      "authoritative": "TM08 in 08_TeacherConfirmationStep.js, which that file's header calls the authoritative source",
+      "maps": [
+        {
+          "file": "cas-ccps/scripts/08_TeacherConfirmationStep.js",
+          "object": "TM08"
+        },
+        {
+          "file": "cas-ccps/scripts/37_FlowInputBuilder.js",
+          "object": "FI_TM_COLUMNS_"
+        }
+      ]
+    },
+    "cas-ccps:WarmUpQueue": {
+      "why": "21 columns indexed by hardcoded constants in three scripts, which is why 41_WarmUpFlowBridge.js added tabs instead of columns. Two prefixed constant runs and one object map describe the same sheet.",
+      "authoritative": "WQ24_* in 24_WarmUpBridge.js, the script that writes the rows",
+      "maps": [
+        {
+          "file": "cas-ccps/scripts/24_WarmUpBridge.js",
+          "prefix": "WQ24_",
+          "exclude": [
+            "COL_COUNT"
+          ]
+        },
+        {
+          "file": "cas-ccps/scripts/25_WarmUpWriter.js",
+          "prefix": "WQ25_",
+          "exclude": [
+            "COL_COUNT"
+          ]
+        },
+        {
+          "file": "cas-ccps/scripts/34_QueueWatchdog.js",
+          "object": "WD_WARMUP_QUEUE_COLUMNS",
+          "exclude": [
+            "ARCHIVE_STATUS"
+          ]
+        }
+      ]
+    },
+    "cas-ccps:STAGING_PIPELINE": {
+      "why": "Flow 2's trigger queue, and the second real pair. 03_QueueBridge.js writes the rows with STG_* and 37_FlowInputBuilder.js's _fiMarkStagingComplete_ indexes them by those same constants; 34_QueueWatchdog.js keeps its own object map for the stale-row sweep. STG_ carries no TIMESTAMP member, which is fine -- Check H compares shared keys only. NOT the same sheet as kos-personal's STAGING_PIPELINE below.",
+      "authoritative": "STG_* in 03_QueueBridge.js, the script that writes the rows",
+      "maps": [
+        {
+          "file": "cas-ccps/scripts/03_QueueBridge.js",
+          "prefix": "STG_"
+        },
+        {
+          "file": "cas-ccps/scripts/34_QueueWatchdog.js",
+          "object": "WD_STAGING_PIPELINE_COLUMNS"
+        }
+      ]
+    },
+    "cas-ccps:FlowInput": {
+      "why": "Flow 2's materialized input row. One map, and it should stay that way: 39_FlowFixtures.js and 42_FlowBuildSpec.js both READ FI rather than redeclaring it, which is the pattern this whole file exists to encourage.",
+      "authoritative": "FI in 37_FlowInputBuilder.js",
+      "maps": [
+        {
+          "file": "cas-ccps/scripts/37_FlowInputBuilder.js",
+          "object": "FI"
+        }
+      ]
+    },
+    "leader-hub:AI_Queue": {
+      "why": "The Flow writes Status and Result here by position, so drift breaks reading AND writing. leader-hub/FlowOps.gs's checkAiQueueSchema verifies the live header row against this map at runtime; this checks the map itself has not been copied.",
+      "authoritative": "AIQ_COL in leader-hub/EmailBridge.gs, beside the AI_QUEUE_HEADERS it indexes",
+      "maps": [
+        {
+          "file": "leader-hub/EmailBridge.gs",
+          "object": "AIQ_COL"
+        }
+      ]
+    },
+    "kos-personal:STUDIO_RETURN": {
+      "why": "Where a Workspace Flow writes its raw output for the harvest. A different sheet from cas-ccps's WarmUpFlowReturn despite the same role.",
+      "authoritative": "SR_COLS in kos-personal/12_StudioReturnHarvest.gs",
+      "maps": [
+        {
+          "file": "kos-personal/12_StudioReturnHarvest.gs",
+          "object": "SR_COLS"
+        }
+      ]
+    }
+  },
+  "sandboxScope": {
+    "_doctrine": [
+      "RULE 12 -- test in the production scope. GAS concatenates every file bound to a project into one global scope, so a function's collaborators are in scope in production whether or not a test loaded them. A sandbox that loads fewer files is running a different program, and the failure is silent whenever the code degrades instead of throwing.",
+      "",
+      "The incident: installFlow2Fixture() seeded an empty PromptText for weeks while its tests stayed green, because the test file loaded neither 15b (FLOW_2_SYSTEM_PROMPT) nor 40 (substituteFlowPrompt_), and _fiBuildPromptText_ returns \"\" rather than throwing when they are out of scope. Check K found four more of the same shape on its first run, including one where runLeaderHubConnectionCheck's three data checks were failing on a ReferenceError while the test asserted they fail on empty tabs -- the right verdict from the wrong program.",
+      "",
+      "Check K only reports a name that code REACHABLE FROM THE TEST'S OWN EXPOSED ENTRY POINTS needs. Loading a subset is normal; a subset with a hole in the part you actually drive is not. Without the reachability filter the same analysis reports every collaborator of every loaded file -- nine findings on one fixture test, none of them exercised -- and gets muted within a week.",
+      "",
+      "`allow` below is for a name that is genuinely absent in production too, or one the analysis mis-reads (an object key that happens to match a declaration elsewhere in the project). It is not for making a finding go away: the fix for a real gap is to load the file, which costs one line. Every entry needs a `why` that would survive someone else reading it."
+    ],
+    "allow": {}
+  },
+  "flowSurfaces": {
+    "cas-ccps:flow-2": {
+      "project": "cas-ccps:central-ledger",
+      "materialize": "buildFlowInputRows",
+      "harvest": "harvestFlowInputResults",
+      "canary": "runFlow2Canary",
+      "binding": "checkFlow2Binding",
+      "liveness": "checkFlow2Liveness",
+      "fixture": "installFlow2Fixture"
+    },
+    "cas-ccps:flows-3-4-5": {
+      "project": "cas-ccps:central-ledger",
+      "materialize": "buildWarmUpFlowInputs",
+      "harvest": "harvestWarmUpFlowReturns",
+      "canary": "runWarmUpFlowCanary",
+      "binding": "checkFlowBinding",
+      "liveness": "checkWarmUpFlowLiveness",
+      "fixture": "installWarmUpFixtures"
+    },
+    "leader-hub:ai-flows": {
+      "project": "leader-hub:app",
+      "harvest": "checkAiJob_",
+      "canary": "runAiFlowCanary",
+      "binding": "checkAiFlowBinding",
+      "liveness": "checkAiFlowFixtures",
+      "fixture": "installAiFlowFixtures",
+      "_note": "No materialize role: the client submits a whole payload as one JSON string, so there is nothing to flatten. queueAiJob_ is the write path."
+    },
+    "kos-personal:studio-flows": {
+      "project": "kos-personal",
+      "harvest": "harvestStudioReturns",
+      "canary": "runStudioReturnCanary",
+      "binding": "checkStudioFlowBinding",
+      "liveness": "checkStudioFlowLiveness",
+      "fixture": "installStudioFlowFixture",
+      "_note": "No materialize role: the payload already lives in a Drive Doc that a native step reads directly."
+    }
+  }
+}

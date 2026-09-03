@@ -62,6 +62,10 @@ times out after ~90 seconds of polling (see `pollAiJob_` in
 draft the app has always produced. AI drafting is additive, not a
 replacement for anything that already worked.
 
+> **Not deployed yet?** This document assumes `leader-hub:app` is already a
+> live Apps Script Web App. If it isn't, start with
+> [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) and come back at its Phase 6.
+
 ## Step 1 — Locate the queue sheet
 
 The first `aiDraft` call creates a spreadsheet named **"LeaderHub AI
@@ -99,7 +103,7 @@ for each row of the table below:
 | # | Connector | Configuration |
 |---|---|---|
 | T | Google Sheets — Row updated | Spreadsheet: the "LeaderHub AI Queue" file from Step 1 · Tab: `AI_Queue` · Condition: `Status = PENDING` AND `Type = <job type>` |
-| 1 | Gemini — Generate content | System prompt: full text of the job type's prompt file, pasted verbatim · Input: `@trigger.Payload` (the JSON string in column 3) · Output format: per that prompt file's own rules — plain text for most job types, `LP_ASSIST` explicitly allows Markdown (see its prompt file's rule 5) |
+| 1 | Gemini — Generate content | System prompt: **either** the full text of the job type's prompt file pasted verbatim, **or** the `prompt_text` chip from the optional step below — see "Reading the prompt from a chip instead" · Input: `@trigger.Payload` (the JSON string in column 3) · Output format: per that prompt file's own rules — plain text for most job types, `LP_ASSIST` explicitly allows Markdown (see its prompt file's rule 5) |
 | 2 | Google Sheets — Update row | Row: `@trigger.row` · Result column (6): `@step1.geminiOutput` · Status column (5): `COMPLETE` |
 
 | Job type | Prompt file | Trigger `<job type>` |
@@ -110,6 +114,39 @@ for each row of the table below:
 | Lesson Plan Helper | `LP_ASSIST_FLOW_PROMPT.md` | `LP_ASSIST` |
 | Email Composer | `EMAIL_COMPOSE_FLOW_PROMPT.md` | `EMAIL_COMPOSE` |
 | Financial Analysis summary | `FIN_ANALYSIS_FLOW_PROMPT.md` | `FIN_ANALYSIS` |
+
+### Reading the prompt from a chip instead of pasting it
+
+Pasting works and nothing below is required. But a pasted prompt has no
+version history, and there's no way to tell whether what a Flow is running
+still matches the `.md` file — so a prompt edit means re-pasting into every
+Flow that uses it, and forgetting one is invisible.
+
+`leader-hub/AiPrompts.gs` holds all six prompts as deployable constants
+(extracted from these same `.md` files; a test fails if the two ever
+disagree). Run **`syncAiPromptsToSheet()`** once from the Apps Script editor
+and it writes them to an `AI_Prompts` tab in the *same* "LeaderHub AI Queue"
+spreadsheet these Flows already trigger on — so the Sheets connector's fixed
+picker can reach it with no second file to authorize.
+
+Then in each Flow, insert one step before the Gemini step:
+
+| # | Connector | Configuration |
+|---|---|---|
+| 0 | Google Sheets — Get row | Spreadsheet: the same "LeaderHub AI Queue" file · Tab: `AI_Prompts` · Find: `job_type` = this Flow's own type |
+
+…and in the Gemini step, bind `@step0.prompt_text` into the system-prompt
+field instead of pasting the text.
+
+After that, changing a prompt is: edit the `.md` file and its constant, `clasp
+push`, run `syncAiPromptsToSheet()`. Every Flow picks it up with no UI work.
+**`checkAiPrompts()`** reports whether the sheet still matches the code — the
+thing worth checking after a push, since a push alone doesn't update the tab.
+
+Two notes. The `AI_Prompts` tab is not touched by the 2-hour sweep in
+`checkAiJob_`; that walks `AI_Queue` rows only. And if a job type is ever
+added to `AI_FLOW_TYPES` without a prompt constant, `checkAiPrompts()` names
+it rather than leaving you to find out when that Flow returns nothing.
 
 Each Flow is independent — build one, test it, then build the other
 whenever you're ready. Neither blocks the other: a row with a `Type` no
@@ -381,6 +418,43 @@ rule, by design — its payload never contains a name or an ID string to
 protect in the first place.
 
 ## Testing the integration
+
+### Fastest path — verify from the script editor, before touching the UI
+
+`FlowOps.gs` does most of what the manual walkthrough below does, without
+driving the app, and it answers one question the walkthrough can't: **is a
+given Flow actually live?** A Workspace Flow whose trigger matched zero rows
+reports a green "Run Completed", which is indistinguishable from working — so
+"the Flow ran" is not evidence, and this is where a lot of time went on the
+cas-ccps side of this repo before fixtures existed.
+
+Run these from the Apps Script editor's **Run** dropdown, in order:
+
+| # | Function | What it tells you |
+|---|---|---|
+| 1 | `runLeaderHubPreflight()` | One read-only report: queue spreadsheet reachable, both tab header rows matching the code, prompts synced, every job type carrying a prompt. Makes no writes, so it is safe against a live deployment at any time. |
+| 2 | `checkAiQueueSchema()` | Just the header check, with the diff. Worth knowing on its own because `AIQ_COL` reads `AI_Queue` **by column position** and the Flow writes `Status`/`Result` back by position too — so a reordered column breaks both directions with no error on either side. `repairAiQueueSchema()` fixes it, and deliberately refuses while data rows are present. |
+| 3 | `runAiFlowCanary()` | Exercises the whole Apps Script half — queue, poll, hand back once, delete the row, bump the stats — with the Flow **stubbed on purpose**. A pass means any remaining failure is in the Flow, not in this code. It does not mean the Flows work; nothing about a Flow is touched. |
+| 4 | `installAiFlowFixtures()` | Plants one `PENDING` row per job type, so all six Flows have something to match at once. |
+| 5 | `checkAiFlowFixtures()` | **The real test.** Run it after the Flows have had a chance to fire. A fixture whose `Status` moved off `PENDING` is proof that that specific Flow is live; one still `PENDING` means no Flow has ever touched that type. |
+| 6 | `checkAiFlowBinding()` | **Run this while wiring the write-back step, not after.** It logs the exact binding to copy — column, header, and which columns `queueAiJob_` owns and the Flow must not touch — generated from `AI_QUEUE_HEADERS` rather than transcribed. Once a Flow has touched a row it diagnoses what it did: the two it catches that nothing else can are a Result written without Status flipped (the job stays `PENDING` forever, then gets swept) and a Status that isn't exactly `PENDING` — that comparison is case-sensitive, so a Flow writing `"pending"` mid-generation gets the row **deleted** and an empty result handed back as complete. |
+| 7 | `removeAiFlowFixtures()` | Takes them back out. Optional — the existing two-hour sweep in `checkAiJob_` clears them anyway, so forgetting this leaks nothing. |
+
+Two things worth knowing before you run 4:
+
+- **A fixture row cannot send anything.** A queue row makes a Flow generate
+  text and write it back into that row; it does not make Apps Script act. The
+  only outbound side effect in this project, `createBragDraft_()`'s
+  `GmailApp.createDraft()`, is reachable only from an explicit `bragEmail`
+  client action and never from a queue row.
+- **Fixtures don't show up as usage.** They're written straight to the sheet
+  rather than through `queueAiJob_()`, so they never touch the per-type
+  counters behind Settings → AI Flow Health. The canary is the opposite: it
+  goes through the real queue path on purpose, so it uses the job type
+  `CANARY`, which is deliberately absent from `AI_FLOW_TYPES` and therefore
+  invisible in that panel. `cleanUpAiFlowCanary()` drops even the counter.
+
+### Full manual walkthrough (drives the real UI end to end)
 
 All six job types follow the same handshake, so the same test procedure
 applies to each — just swap the feature and status element referenced.

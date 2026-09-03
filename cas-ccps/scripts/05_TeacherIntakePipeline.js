@@ -17,17 +17,38 @@ function getConfig_05() {
   return getSheetConfig_(); // defined in 19_ClonedSheetConfig.js
 }
 
-// RubricQueue column indices (0-based)
+// RubricQueue column indices (0-based).
+//
+// CORRECTED: this map used to end at STATUS: 8, with no entry for
+// TeacherMatrixSsId — one column short of the 10-field queueRow array below
+// that it is supposed to describe. Anything reading row[RQ05.STATUS] would
+// have got a spreadsheet ID instead of a status, and compared it against
+// "PENDING_EXTRACTION" forever without erroring. The same class of drift on
+// the Central Ledger made LEDGER.TEACHER_EMAIL return a person's name and
+// took a live session to find.
+//
+// Nothing was actually broken, because RQ05 is declared here and read
+// nowhere — 34_QueueWatchdog.js confirmed that by grepping the whole project
+// and deliberately derived its own WD_RUBRIC_QUEUE_COLUMNS from the real
+// appendRow() call rather than trusting this constant. That note is what made
+// this safe to correct rather than merely safe to leave. Fixed anyway: a
+// wrong constant sitting next to the correct array is a trap for whoever
+// reads it next, and it is the obvious thing to reach for.
+//
+// The authoritative order is the queueRow array in onTeacherRubricSubmit
+// below, matched by 16_UnifiedManualSetup.js's header row and by
+// 39_FlowFixtures.js's Flow 1 fixture.
 const RQ05 = {
-  TIMESTAMP:          0,
-  TEACHER_EMAIL:      1,
-  TEACHER_NAME:       2,
-  SUBJECT:            3,
-  COURSE_NAME:        4,
-  TIER:               5,
-  RUBRIC_TEXT:        6,
-  PROMPT_TEMPLATE_ID: 7,
-  STATUS:             8   // PENDING_EXTRACTION → IN_EXTRACTION (Studio) → COMPLETE
+  TIMESTAMP:            0,
+  TEACHER_EMAIL:        1,
+  TEACHER_NAME:         2,
+  SUBJECT:              3,
+  COURSE_NAME:          4,
+  TIER:                 5,
+  RUBRIC_TEXT:          6,
+  PROMPT_TEMPLATE_ID:   7,
+  TEACHER_MATRIX_SS_ID: 8,
+  STATUS:               9   // PENDING_EXTRACTION → IN_EXTRACTION (Studio) → COMPLETE
 };
 
 // ---------------------------------------------------------------------------

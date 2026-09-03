@@ -986,13 +986,22 @@ needed no changes.
 
 ## Version control (clasp) — scaffolded, not yet connected
 
+> **Deploying it?** [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) is the
+> step-by-step runbook — clasp connection, the `.claspignore` allowlist
+> gotcha that fails silently, the Web App deploy, and the `FlowOps.gs`
+> verification sequence. This section describes the *layout*; that document
+> is the sequence.
+
+
 The Apps Script project (now `EmailBridge.gs` + `Code.gs` + `Config.gs` +
-`Data.gs` + `SCR.gs` — see "Server-deployed web app" below) is laid out
+`Data.gs` + `SCR.gs` + `AiPrompts.gs` + `FlowOps.gs` — see "Server-deployed
+web app" below; this is the one place this list is spelled out in prose, and
+`tools/gas-lint/project-map.json` is what the tooling actually reads) is laid out
 exactly the way [clasp](https://github.com/google/clasp) wants — a flat
 folder. It has a committed `appsscript.json` (derived from actual service
 usage: `GmailApp`, `DriveApp`, `DocumentApp`, `SpreadsheetApp`, plus the
 `webapp` `executeAs`/`access` block — "Execute as: Me · Access: Anyone in
-your domain"), a `.claspignore` that allowlists exactly those five `.gs`
+your domain"), a `.claspignore` that allowlists exactly those `.gs`
 files plus `appsscript.json` and `student-leader-hub.html` (everything
 else here — the `LEADERHUB_*`/`LH_0*` docs, `student-leader-hub.jsx`,
 `archived/`, and `drive-tools/`'s one-off paste-and-run utilities — is
@@ -1137,7 +1146,8 @@ Verified with `node --check` on every `.gs` file, `node
 tools/gas-lint/check.js` (clean — Check D now also verifies every
 `google.script.run.*` call from the assembled HTML resolves to a real
 server function, and Check E confirms OAuth scope coverage across all
-five `.gs` files), `node tools/leaderhub-build/build.js --check`, and a
+five `.gs` files that existed at that round — the project has grown since;
+`tools/gas-lint/project-map.json` has the current list), `node tools/leaderhub-build/build.js --check`, and a
 Node-VM-sandboxed test per new server file (`tests/leaderhub/config-sync
 .test.js`, `data-sync.test.js`, `scr-sync.test.js`, extending
 `tests/harness/gas-sandbox.js` with a `LockService` mock for `SCR.gs`) —

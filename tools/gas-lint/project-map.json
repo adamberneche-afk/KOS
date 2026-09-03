@@ -1,6 +1,5 @@
 {
   "_comment": "Which files share a single Apps Script global scope. GAS concatenates every file bound to one project into one namespace, so two files in the same entry here that both declare a top-level `function foo()` or `const foo` will crash the whole project at parse time. Membership here is taken from each file's own header comment (BOUND TO: / INCLUDE IN: / INCLUDED IN:), not assumed from filename or README tables — those two disagreed at least once (see cas-ccps/README.md's Module 1 table vs. 20_SetupCheckpoint.js's own header) and the file's own header wins. A file can legitimately appear in more than one project (00_SharedConfig.js and 19_ClonedSheetConfig.js are each pasted into multiple projects by design).",
-
   "kos-personal": {
     "_bound_to": "Single standalone Apps Script project (web app + all triggers)",
     "manifest": "kos-personal/appsscript.json",
@@ -14,13 +13,13 @@
       "kos-personal/7_WebApp.gs",
       "kos-personal/9_UI_Diagnostics.gs",
       "kos-personal/10_Turnstile.gs",
-      "kos-personal/11_Registrar_CogRelay.gs"
+      "kos-personal/11_Registrar_CogRelay.gs",
+      "kos-personal/12_StudioReturnHarvest.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"
     ]
   },
-
   "cas-ccps:central-ledger": {
     "_bound_to": "Central Ledger spreadsheet",
     "manifest": "cas-ccps/clasp/manifests/central-ledger.appsscript.json",
@@ -40,7 +39,7 @@
       "cas-ccps/scripts/24_WarmUpBridge.js",
       "cas-ccps/scripts/25_WarmUpWriter.js",
       "cas-ccps/scripts/26_CompetencyAlignmentLog.js",
-    "cas-ccps/scripts/27_LessonFrameGenerator.js",
+      "cas-ccps/scripts/27_LessonFrameGenerator.js",
       "cas-ccps/scripts/29_StudentContextAggregator.js",
       "cas-ccps/scripts/30_SCRSuggestionEngine.js",
       "cas-ccps/scripts/30b_SCRRetryRemediation.js",
@@ -49,10 +48,15 @@
       "cas-ccps/scripts/33_ArtifactCompetencyBridge.js",
       "cas-ccps/scripts/34_QueueWatchdog.js",
       "cas-ccps/scripts/35_FlowPreflightAndCanary.js",
-    "cas-ccps/scripts/36_WeeklyParentReport.js"
+      "cas-ccps/scripts/36_WeeklyParentReport.js",
+      "cas-ccps/scripts/37_FlowInputBuilder.js",
+      "cas-ccps/scripts/38_LedgerSchemaGuard.js",
+      "cas-ccps/scripts/39_FlowFixtures.js",
+      "cas-ccps/scripts/40_FlowPrompts.js",
+      "cas-ccps/scripts/41_WarmUpFlowBridge.js",
+      "cas-ccps/scripts/42_FlowBuildSpec.js"
     ]
   },
-
   "cas-ccps:unified-manual": {
     "_bound_to": "Assignment System Manual Google Doc (container-bound) — the setup wizard's own project",
     "manifest": "cas-ccps/clasp/manifests/unified-manual.appsscript.json",
@@ -67,7 +71,6 @@
       "cas-ccps/scripts/28_Module2Setup.js"
     ]
   },
-
   "cas-ccps:master-student-template": {
     "_bound_to": "Master Student Template Google Doc (container-bound)",
     "manifest": "cas-ccps/clasp/manifests/master-student-template.appsscript.json",
@@ -78,7 +81,6 @@
       "cas-ccps/scripts/17_MasterStudentTemplate.js"
     ]
   },
-
   "cas-ccps:rubric-response-sheet": {
     "_bound_to": "Rubric Response Sheet (cloned per teacher)",
     "manifest": "cas-ccps/clasp/manifests/rubric-response-sheet.appsscript.json",
@@ -88,7 +90,6 @@
       "cas-ccps/scripts/19_ClonedSheetConfig.js"
     ]
   },
-
   "cas-ccps:teacher-matrix-sheet": {
     "_bound_to": "Teacher Matrix Sheet (cloned per teacher)",
     "manifest": "cas-ccps/clasp/manifests/teacher-matrix-sheet.appsscript.json",
@@ -98,7 +99,6 @@
       "cas-ccps/scripts/19_ClonedSheetConfig.js"
     ]
   },
-
   "cas-ccps:teacher-dashboard": {
     "_bound_to": "Standalone web app",
     "manifest": "cas-ccps/clasp/manifests/teacher-dashboard.appsscript.json",
@@ -115,7 +115,6 @@
       "cas-ccps/scripts/36_WeeklyParentReport.js"
     ]
   },
-
   "cas-ccps:student-dashboard": {
     "_bound_to": "Standalone web app",
     "manifest": "cas-ccps/clasp/manifests/student-dashboard.appsscript.json",
@@ -124,7 +123,6 @@
       "cas-ccps/scripts/13_StudentDashboard.js"
     ]
   },
-
   "cas-ccps:studio-steps": {
     "_bound_to": "Standalone Workspace Studio add-on project (not bound to any spreadsheet, so it's installable across every flow rather than tied to one document) — the custom steps behind Flows 1-5",
     "manifest": "cas-ccps/clasp/manifests/studio-steps.appsscript.json",
@@ -140,9 +138,8 @@
       "cas-ccps/studio-steps/ExtractBridgeInputsStep.gs"
     ]
   },
-
   "kos-personal:studio-steps": {
-    "_bound_to": "Standalone Workspace Studio add-on project, personal Google account (SMP-004 keeps this off the district domain, separate from cas-ccps:studio-steps even though both share the same step-authoring pattern) — the Curator/Classification flow's custom steps",
+    "_bound_to": "Standalone Workspace Studio add-on project, SEPARATE FROM cas-ccps:studio-steps even though both share the same step-authoring pattern. The project separation is real; the ACCOUNT separation this used to assert is not -- SMP-004 describes kos-personal as living on a personal Google account off the district domain, and in practice it is deployed on the same ccpsnet.net account, so the org-wide GCP block reaches these steps too (see tools/gas-lint/gcp-map.json) — the Curator/Classification flow's custom steps",
     "manifest": "kos-personal/studio-steps/appsscript.json",
     "files": [
       "kos-personal/studio-steps/StepsShared.gs",
@@ -150,14 +147,22 @@
       "kos-personal/studio-steps/WriteClassificationOutputStep.gs"
     ]
   },
-
   "leader-hub:app": {
     "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything — no collision surface to check against another project, but promoted to a top-level entry (not '_excluded') anyway so Check E (OAuth scope coverage) runs against it, and now Check D (google.script.run <-> server function cross-reference) too now that Code.gs/student-leader-hub.html exist. Renamed from 'leader-hub:email-bridge' now that this project serves the HTML web app as well as the JSON API — see the leader-hub server-migration plan.",
     "manifest": "leader-hub/appsscript.json",
-    "files": ["leader-hub/EmailBridge.gs", "leader-hub/Code.gs", "leader-hub/Config.gs", "leader-hub/Data.gs", "leader-hub/SCR.gs"],
-    "html": ["leader-hub/student-leader-hub.html"]
+    "files": [
+      "leader-hub/EmailBridge.gs",
+      "leader-hub/Code.gs",
+      "leader-hub/Config.gs",
+      "leader-hub/Data.gs",
+      "leader-hub/SCR.gs",
+      "leader-hub/AiPrompts.gs",
+      "leader-hub/FlowOps.gs"
+    ],
+    "html": [
+      "leader-hub/student-leader-hub.html"
+    ]
   },
-
   "_excluded_not_deployed_scripts": [
     "cas-ccps/scripts/15_StudioFlowPrompts.js",
     "leader-hub/drive-tools/LH_8177_Rename.gs",

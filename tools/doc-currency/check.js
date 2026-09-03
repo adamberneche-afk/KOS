@@ -165,6 +165,31 @@ function paragraphAround(lines, lineNo) {
   return lines.slice(from, to + 1).join('\n');
 }
 
+// externalSurfaceDocs is a map of doc path -> the function names that live in
+// the operator's Script editor rather than in this repo. It used to be a flat
+// array of paths, which marked a whole FILE unverifiable — and that is how a
+// genuinely stale reference hid in plain sight for a while:
+// LH_02_INTEGRATION_GUIDE.md's "all AI calls go through callAI()" survived as
+// a soft "cannot verify" warning even though callAI was deleted from
+// leader-hub's own HTML (see its line 14466, "Removed: Gemini AI
+// infrastructure"). It was never an out-of-repo function at all.
+//
+// Per-name is the honest granularity: a doc can legitimately describe an
+// external Gmail watcher AND make a stale claim about in-repo code in the
+// same paragraph. Only the names actually declared external get the soft
+// treatment; anything else in the same file is checked normally.
+//
+// Returns the name list for a declared external-surface doc, or null if the
+// doc isn't one. An array value is still accepted (treated as the name list),
+// so the config can't silently regress to whole-file semantics.
+function externalNamesFor(relPath) {
+  const cfg = CONFIG.externalSurfaceDocs;
+  if (Array.isArray(cfg)) return cfg.includes(relPath) ? [] : null;
+  if (!cfg || !Object.prototype.hasOwnProperty.call(cfg, relPath)) return null;
+  const names = cfg[relPath];
+  return Array.isArray(names) ? names : [];
+}
+
 function docLevelStatus(relPath, raw) {
   // A file-level banner speaks for the whole document. This repo already
   // uses them heavily — "⚠ SUPERSEDED — kept for historical reference
@@ -175,7 +200,7 @@ function docLevelStatus(relPath, raw) {
   // would be reporting.
   const head = raw.split('\n').slice(0, CONFIG.bannerScanLines).join('\n');
   if (new RegExp(CONFIG.supersededMarkers.join('|'), 'i').test(head)) return 'superseded';
-  if (CONFIG.externalSurfaceDocs.includes(relPath)) return 'external';
+  if (externalNamesFor(relPath) !== null) return 'external';
   return 'live';
 }
 
@@ -217,9 +242,18 @@ function checkDocumentedFunctionsExist() {
       // asserting something the tool does not know, so it reports what it
       // actually knows instead, at warning level.
       if (status === 'external') {
-        warn(
-          'documented-function-unverifiable',
-          `${relPath}:${lineNo} documents \`${name}()\`, which is not in this repo's source. This file is listed in config.json's externalSurfaceDocs as describing an Apps Script project that was never committed here, so the tool cannot tell a stale reference from a correct one — worth an occasional human check, not a build failure.`,
+        const externalNames = externalNamesFor(relPath) || [];
+        if (externalNames.includes(name)) {
+          warn(
+            'documented-function-unverifiable',
+            `${relPath}:${lineNo} documents \`${name}()\`, which is not in this repo's source. config.json's externalSurfaceDocs lists this name for this doc as living in an Apps Script project that was never committed here, so the tool cannot tell a stale reference from a correct one — worth an occasional human check, not a build failure.`,
+            relPath
+          );
+          continue;
+        }
+        err(
+          'documented-function-missing',
+          `${relPath}:${lineNo} documents \`${name}()\`, which is not declared anywhere in this repo's source. This doc IS an externalSurfaceDocs entry, but \`${name}\` is not on its list of out-of-repo names (${externalNames.length ? externalNames.join(', ') : 'the list is empty'}) — so this is an ordinary stale reference, not an unverifiable one. Either the function was renamed or deleted and this doc still instructs a reader to call it, or it really does live in the external project and belongs on that list. Do not add a name to the list just to silence this: that is how a deleted function keeps being documented as current.`,
           relPath
         );
         continue;

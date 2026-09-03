@@ -155,15 +155,15 @@
 // -----------------------------------------------------------------------
 // Column indices — re-derived directly from each writer's actual row
 // construction, not from any pre-existing constant. Worth noting why:
-// RubricQueue's own RQ05 constant in 05_TeacherIntakePipeline.js
-// (TIMESTAMP..STATUS: 8) has drifted out of sync with the real queueRow
-// array it's supposed to describe (which has 10 fields, TeacherMatrixSsId
-// at 8 and Status at 9) — confirmed dead code (grepped for RQ05 across
-// every file in this project; declared once, used nowhere), so nothing
-// is actually broken by the drift today. But it's exactly the kind of
-// thing a watchdog built by trusting the wrong reference constant would
-// get wrong, so the indices below come from the real appendRow() call,
-// not RQ05.
+// RubricQueue's own RQ05 constant in 05_TeacherIntakePipeline.js had drifted
+// out of sync with the real queueRow array it describes — it ended at
+// STATUS: 8 with no TeacherMatrixSsId entry, against a 10-field row with
+// TeacherMatrixSsId at 8 and Status at 9. It was confirmed dead code
+// (declared once, used nowhere), so nothing was broken by the drift, and this
+// note recorded it rather than fixing it. **RQ05 has since been corrected**
+// and now matches. The indices below still come from the real appendRow()
+// call rather than from RQ05, which is the right habit whatever the constant
+// currently says: derive from the writer, verify against the constant.
 // -----------------------------------------------------------------------
 const WD_RUBRIC_QUEUE_COLUMNS = {
   TIMESTAMP: 0, TEACHER_EMAIL: 1, TEACHER_NAME: 2, SUBJECT: 3,

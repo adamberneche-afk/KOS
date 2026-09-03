@@ -1,5 +1,55 @@
 # cas-ccps Studio Steps
 
+> ## ⚠️ STATUS: UNREACHABLE ON THE PRODUCTION ACCOUNT
+>
+> **All 8 steps in this project are dead code on `ccpsnet.net` today. Nothing
+> below is wrong about the design — it is wrong about the outcome.** This
+> project was pushed and deployed successfully against the real account and
+> the steps **never appeared in Studio's step picker**, across repeated
+> uninstall/reinstall cycles, with no OAuth prompt ever shown. There was no
+> error to read.
+>
+> Root cause, confirmed directly at `console.cloud.google.com`: a Workspace
+> Add-on exposing custom Studio steps requires a standard (non-default)
+> Google Cloud project, and GCP access is turned off org-wide for this
+> account by the district. Two things follow, and the second is the one
+> people miss:
+> - No amount of pushing, redeploying, or reinstalling changes this. The
+>   ceremony described below completes fine and produces nothing.
+> - **No standard project was ever provisioned for any project in this repo**
+>   — every one uses the default project Apps Script creates on its own. So
+>   the district policy is the *second* block here, not the first. An admin
+>   enabling GCP is necessary but not sufficient; someone would still have to
+>   create and link the project.
+>
+> **What to build instead:** push the work into Apps Script and let the Flow
+> make only the keyless Gemini call.
+> `cas-ccps/scripts/37_FlowInputBuilder.js` is the worked example — it moves
+> Flow 2's entire per-teacher lookup chain into a time trigger so the Flow
+> reads one flat literal row and needs no custom step, and
+> `cas-ccps/scripts/41_WarmUpFlowBridge.js` does the same for Flows 3, 4 and
+> 5 — the exposure this banner used to name is closed. **All five flows now
+> have a keyless path, so nothing in this folder gates anything.**
+>
+> Worth knowing before porting anything else this way: three of the five
+> steps 41 replaced were duplicating Apps Script that already existed in the
+> same project, and each said so in its own header (`ExtractWarmUpPromptTextStep`
+> re-implemented `evaluateWarmUpDoc_`; `FinalizeWarmUpScoreStep`'s three
+> write-backs each state they "mirror" `writeFinalScores_` /
+> `writeFeedbackToDoc_` / `writeRegistryScores_` "exactly"). The port reuses
+> them. Only `SelectWarmUpArchetypeStep`'s decision logic and
+> `CreateWarmUpDocStep`'s document construction were substantial ports.
+>
+> Declared in [`tools/gas-lint/gcp-map.json`](../../tools/gas-lint/gcp-map.json)
+> as `live-blocked`, enforced by gas-lint's Check G. The full account
+> narrative is in `cas-ccps/HISTORY.md` ("Wall 1 — GCP access is disabled for
+> this district account").
+>
+> **Everything below remains accurate as design, and would be correct again
+> unchanged if a standard project were ever linked.** Kept for exactly that
+> reason — it is 2,113 written and unit-tested lines, not a mistake.
+
+
 One standalone Apps Script project holding every custom Workspace
 Studio step cas-ccps uses, across all five flows. This is an 8th
 cas-ccps deployment target — the other 7 in `cas-ccps/clasp/manifests/`
@@ -27,6 +77,11 @@ Then, once: **Apps Script editor → Deploy → Test deployments → Install
 → Done.** Every step registered in the manifest becomes available in
 Studio's step picker from that point on — adding a new step later means
 adding a file and a manifest entry, not repeating any of the above.
+
+*(That last sentence is the design intent, and it is what did not happen on
+`ccpsnet.net` — see the status banner at the top of this file. The install
+completes; the picker stays empty, because the add-on needs a standard Cloud
+project this account doesn't have.)*
 
 ## What's in it
 
