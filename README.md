@@ -123,8 +123,11 @@ safe to deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
 `leader-hub/` and the main `kos-personal/` project are each already laid
 out the way [clasp](https://github.com/google/clasp) wants — a flat
 folder, one script ID; `kos-personal/studio-steps/` is a second, separate
-flat-folder project alongside it (SMP-004's personal/district account
-split). `cas-ccps/scripts/` isn't: it's actually 8 separate Apps Script
+flat-folder project alongside it (a separate Apps Script project, not a
+shared global scope — SMP-004 describes a personal/district *account* split
+as well, but that is not what is deployed: both live on the same ccpsnet.net
+account, which is why the org-wide GCP block reaches the Studio steps in
+both systems). `cas-ccps/scripts/` isn't: it's actually 8 separate Apps Script
 projects sharing overlapping files (5 spreadsheet/doc-bound projects, the
 standalone Teacher and Student Dashboard web apps, and the standalone
 `studio-steps` project holding every custom Workspace Studio step). This tool generates a throwaway per-project push folder for
