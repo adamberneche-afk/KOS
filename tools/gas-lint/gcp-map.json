@@ -1,0 +1,70 @@
+{
+  "_doctrine": [
+    "GCP AVAILABILITY IS NOT AN ARCHITECTURAL ASSUMPTION IN THIS REPO.",
+    "",
+    "Every system here reaches Gemini the same way by default: a hand-built Google Workspace Flow / Studio flow makes the model call using the Workspace account's own built-in Gemini access. No API key, no standard Cloud project, nothing for an operator to provision. GAS orchestrates state deterministically and never calls a model itself. leader-hub/EmailBridge.gs calls this the Bifurcation Boundary; cas-ccps and kos-personal call it the Walled Garden. Same rule, three names.",
+    "",
+    "That default exists because the alternative is not reliably available. A Workspace Studio custom-step add-on, a Gemini API key, and Vertex all require a standard (non-default) Cloud project, and whether an account can have one is a Workspace-admin decision nobody in this repo controls. cas-ccps hit exactly that: GCP access is disabled for the ccpsnet.net account, confirmed directly, which left all 8 custom steps in cas-ccps/studio-steps/ (2,113 lines, written and unit-tested) permanently unreachable and took the DIRECT_GEMINI escape hatch built to work around it down at the same time -- it needs a key, a key needs a project.",
+    "",
+    "THE RULE: no code path may depend on GCP without an entry in `surfaces` below. gas-lint's Check G scans every file in project-map.json for the technical surfaces that actually require a project and errors on any undeclared LIVE one. That is the whole point -- a GCP dependency should be a decision someone made on purpose and wrote down, not something discovered when a push silently no-ops or a step never appears in a picker.",
+    "",
+    "A declaration is not approval. It records that the dependency exists, whether it currently works, and what happens if it doesn't. `status` is the honest current state, not an aspiration:",
+    "  live-blocked   — depends on GCP, and GCP is confirmed unavailable on the target account. Dead code today. Do not build on it.",
+    "  live-unverified— depends on GCP and appears available, but nobody has confirmed it on the real account. Treat as a risk, not a foundation.",
+    "  live-ok        — depends on GCP, confirmed working on the target account.",
+    "  latent         — the dependency is present but commented out or otherwise not executed. Uncommenting it is a real decision; this entry is what makes that visible.",
+    "",
+    "If you are adding a feature and find yourself wanting a key: check whether a native Flow step can do it instead. That is how all five cas-ccps flows, both kos-personal flows, and all six leader-hub flows work. cas-ccps/scripts/37_FlowInputBuilder.js is the worked example of pushing everything except the model call into Apps Script so the Flow needs no capability beyond keyless Gemini."
+  ],
+
+  "_scanned": "Check G scans the files, html and manifest of every entry in project-map.json. Non-GAS surfaces (kos-personal/inference-service/) can be declared here for completeness but are not scanned — see their own entries.",
+
+  "_patterns": {
+    "studio-custom-step": "A `workflowElements` key in an appsscript.json manifest — a Workspace Add-on exposing custom Studio steps. Publishing/deploying one requires a standard Cloud project. Scoped to .json manifests so prose in a .gs header that merely mentions the key is not a finding.",
+    "gemini-api-endpoint": "generativelanguage.googleapis.com — the Gemini API. Reaching it needs an API key, which needs a project.",
+    "vertex-endpoint": "aiplatform.googleapis.com — Vertex AI. Needs a project."
+  },
+
+  "surfaces": {
+    "cas-ccps/clasp/manifests/studio-steps.appsscript.json": {
+      "pattern": "studio-custom-step",
+      "status": "live-blocked",
+      "why": "The 8 custom Studio steps in cas-ccps/studio-steps/. Pushed successfully to the real account and never appeared in Studio's step picker, across repeated uninstall/reinstall cycles with no OAuth prompt ever shown. Root cause confirmed directly at console.cloud.google.com: GCP access is turned off for this account by the ccpsnet.net organization, and a Workspace Add-on needs a standard project.",
+      "if_unavailable": "Flow 2 was redesigned around it — cas-ccps/scripts/37_FlowInputBuilder.js moves the whole lookup chain into Apps Script so the flow needs only keyless Gemini. Flows 3, 4 and 5 have no native replacement yet and are the remaining exposure.",
+      "revisit": "A district Workspace admin enabling GCP for this account would make all 2,113 lines reachable again with no code change. Worth requesting; nothing is sequenced behind it."
+    },
+
+    "cas-ccps/scripts/15c_Flow2DirectEvaluationService.js": {
+      "pattern": "gemini-api-endpoint",
+      "status": "live-blocked",
+      "why": "The opt-in DIRECT_GEMINI escape hatch, gated behind EVALUATION_MODE and a DIRECT_GEMINI_API_KEY Script Property. Built specifically to make Flow 2's evaluation runnable without Studio — and blocked by the same wall, because the key needs a project.",
+      "if_unavailable": "Default EVALUATION_MODE is STUDIO, so nothing calls this path unless an operator opts in. Its pure functions (_buildFlow2Prompt_, _parseFlow2Response_, writeCompetencyEvidenceFromFlow2_) are reused by 37_FlowInputBuilder.js and are not GCP-dependent — only _callGeminiDirect_ is.",
+      "revisit": "Two separate gates, not one. A district admin enabling GCP for the account would let a key exist at all; even then this path stays dormant until an operator sets the DIRECT_GEMINI_API_KEY Script Property and flips EVALUATION_MODE to DIRECT_GEMINI. The second gate is deliberate — that mode bills per call against a key held in a Script Property, which is a different risk posture from keyless Gemini and should stay opt-in even if the wall lifts."
+    },
+
+    "cas-ccps/scripts/25_WarmUpWriter.js": {
+      "pattern": "gemini-api-endpoint",
+      "status": "latent",
+      "why": "A commented-out direct-Gemini reference implementation inside callFlow4_, kept deliberately: that function's own header explains that gas-lint's OAuth-scope check reads raw file text, so deleting the block would make the linter blind to the script.external_request requirement the moment someone uncommented it. Note it reads a GEMINI_API_KEY property — a different name from 15c's DIRECT_GEMINI_API_KEY, so the two paths were never wired together.",
+      "if_unavailable": "Nothing executes it. The live path is the Studio Flow 4 queue (PENDING_EVAL -> SCORED) plus pollForFlow4Result_.",
+      "revisit": "Uncommenting it is a real decision, not a cleanup. It would need a key, a project, and a second key-management story alongside 15c's."
+    },
+
+    "kos-personal/studio-steps/appsscript.json": {
+      "pattern": "studio-custom-step",
+      "status": "live-unverified",
+      "why": "kos-personal's two custom steps (WriteCuratorOutputStep, WriteClassificationOutputStep). SMP-004 puts this project on the PERSONAL Google account, not ccpsnet.net, and kos-personal/DEPLOYMENT_GUIDE.md:36 states every deploy already uses an established GCP project (line 255 walks through enabling the Drive API in its console) — so this is very likely fine. Nobody has confirmed it against the live account, which is why this is unverified rather than ok.",
+      "if_unavailable": "The two steps only merge Curator+Auditor JSON and flip a STAGING_PIPELINE row to FLOW_COMPLETE. Both collapse into one Apps Script harvest function on a time trigger — a much smaller port than cas-ccps needed, because kos-personal's payload already lives in a Drive Doc and its output already goes back to a Doc body.",
+      "revisit": "Check Project Settings on that account before designing anything around it. If GCP is there, kos-personal needs finishing, not redesigning."
+    },
+
+    "kos-personal/inference-service/": {
+      "pattern": "gemini-api-endpoint",
+      "status": "live-unverified",
+      "scanned": false,
+      "why": "NOT a GAS surface, so Check G does not scan it — declared here for completeness. A standalone Node/Docker/Postgres service (CFG.INFERENCE_MODE = MANAGED_SERVICE) with its own billing and credit accounting. This is the only place in the monorepo where a real API key path is the intended design rather than an escape hatch.",
+      "if_unavailable": "kos-personal's default INFERENCE_MODE does not use it; the Studio path does.",
+      "revisit": "It carries its own deployment doc (INFERENCE_SERVICE_DEPLOYMENT.md) and its own tests. Out of scope for the GAS pipeline."
+    }
+  }
+}
