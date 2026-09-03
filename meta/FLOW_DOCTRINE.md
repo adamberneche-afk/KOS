@@ -24,8 +24,16 @@ they healthy*. This answers *how you build one, and why these rules*.
 **Enforcement is marked on every rule**, because the difference matters more
 than the rule does. A practice that is only prose gets rediscovered; a
 practice that is a check gets enforced. Of the rules below, the enforced ones
-have survived contact with three systems. The prose-only ones are the ones to
-distrust first.
+have survived contact with three systems. The prose-only ones — 8, 10, 11 and
+13 — are the ones to distrust first.
+
+That list started at eight. Rules 4, 5, 7, 9 and 12 came off it by becoming
+`gas-lint` Checks H through K, and each of those checks found a live defect on
+its first run: a flow with no liveness check, a fixture no consumer ever read,
+and five test sandboxes narrower than the scope their code runs in. Every one
+had survived several passes of reading the same files by hand. That is the
+argument for the enforcement column, and the standing invitation to move
+another rule out of the prose list.
 
 ---
 
@@ -107,8 +115,12 @@ back.** The read-back is the test, not the Flow's own run log.
 `installAiFlowFixtures`, `kos-personal/12_StudioReturnHarvest.gs`'s
 `installStudioFlowFixture`.
 
-**Enforced:** no. Prose in seven documents and twelve code sites, and not one
-check. Distrust accordingly.
+**Enforced:** partly, as of Checks I and J — every declared flow surface must
+name a fixture (Check I), and some test outside `tests/tools/` must read that
+fixture back (Check J). What the read-back *asserts* is not checkable. Before
+those two, this rule was prose in seven documents and twelve code sites with
+not one check behind it, which is how five of six fixtures came to be wrong at
+once.
 
 ## 5. A fixture is only as good as the consumer that reads it.
 
@@ -137,7 +149,14 @@ the parity — `tests/leaderhub/flow-ops.test.js` re-reads all six
 `*_FLOW_PROMPT.md` payload examples and demands key-for-key agreement in both
 directions.
 
-**Enforced:** no, in general. One instance is (the leader-hub parity test).
+**Enforced:** partly, as of Check J — the test that reads a fixture back must
+also drive one of that flow's own consumers (materialize, harvest, binding or
+liveness), so the fixture is read by the code that has to read it in
+production rather than only by assertions derived from the writer. The canary
+deliberately does not count: it stubs the Flow and seeds its own row, so it
+would satisfy the check without touching the fixture. Whether the assertions
+are *good* is still judgement, and the leader-hub parity test remains the one
+place a fixture's shape is checked against an authored document.
 
 ## 6. Never widen a sheet another file indexes by position.
 
@@ -247,7 +266,19 @@ scope. The fixture was being exercised in a narrower scope than production.
 different program.** `project-map.json` is the authority on what a project
 contains; load that set.
 
-**Enforced:** no.
+**Enforced:** yes, as of Check K, with one deliberate narrowing. Requiring the
+*whole* project set would fail every unit test in the repo, most of which load
+two or three files on purpose and correctly. What Check K requires is that the
+part you actually drive be closed: a name that code reachable from the
+sandbox's own exposed entry points needs, declared in a file the sandbox did
+not load, is an error. Without that reachability filter the same analysis
+reports every collaborator of every loaded file — nine findings on one fixture
+test, none of them exercised — and gets muted within a week.
+
+It found five more of this shape on its first run, one of them worse than the
+original: `runLeaderHubConnectionCheck()`'s three data checks were failing on
+a `ReferenceError` while the test asserted they fail on empty tabs. The right
+verdict from the wrong program, which is the failure mode this rule names.
 
 ## 13. Refuse to claim what you cannot know.
 
@@ -276,7 +307,9 @@ Same rule as 10, at the level of the whole report rather than one canary.
    in `25_WarmUpWriter.js` is kept as dead code with a note explaining that
    twelve 15-second sleeps is three minutes of wall clock per row.
 5. Write a fixture from the consumer's shape, and a test that drives the
-   fixture *through* the consumer (rules 4, 5).
+   fixture *through* the consumer (rules 4, 5) — Check J requires exactly
+   that, and Check K requires the test's sandbox to load the scope the code
+   runs in (rule 12).
 6. Add the four checks (rule 9), and register the surface in
    `tools/gas-lint/flow-map.json` so Check I holds you to it. Register its
    column map there too, if a second file declares one for the same sheet, so

@@ -34,6 +34,9 @@ const FILES = [
   path.join(CC, '00_SharedConfig.js'),
   path.join(CC, '25_WarmUpWriter.js'),
   path.join(CC, '41_WarmUpFlowBridge.js'),
+  // checkFlow2Binding reads FI, which lives in 37. Same GAS project, so it
+  // is in scope in production (gas-lint Check K).
+  path.join(CC, '37_FlowInputBuilder.js'),
 ];
 
 const EXPOSE = [
