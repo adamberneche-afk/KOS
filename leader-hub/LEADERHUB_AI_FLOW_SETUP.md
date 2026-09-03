@@ -99,7 +99,7 @@ for each row of the table below:
 | # | Connector | Configuration |
 |---|---|---|
 | T | Google Sheets — Row updated | Spreadsheet: the "LeaderHub AI Queue" file from Step 1 · Tab: `AI_Queue` · Condition: `Status = PENDING` AND `Type = <job type>` |
-| 1 | Gemini — Generate content | System prompt: full text of the job type's prompt file, pasted verbatim · Input: `@trigger.Payload` (the JSON string in column 3) · Output format: per that prompt file's own rules — plain text for most job types, `LP_ASSIST` explicitly allows Markdown (see its prompt file's rule 5) |
+| 1 | Gemini — Generate content | System prompt: **either** the full text of the job type's prompt file pasted verbatim, **or** the `prompt_text` chip from the optional step below — see "Reading the prompt from a chip instead" · Input: `@trigger.Payload` (the JSON string in column 3) · Output format: per that prompt file's own rules — plain text for most job types, `LP_ASSIST` explicitly allows Markdown (see its prompt file's rule 5) |
 | 2 | Google Sheets — Update row | Row: `@trigger.row` · Result column (6): `@step1.geminiOutput` · Status column (5): `COMPLETE` |
 
 | Job type | Prompt file | Trigger `<job type>` |
@@ -110,6 +110,39 @@ for each row of the table below:
 | Lesson Plan Helper | `LP_ASSIST_FLOW_PROMPT.md` | `LP_ASSIST` |
 | Email Composer | `EMAIL_COMPOSE_FLOW_PROMPT.md` | `EMAIL_COMPOSE` |
 | Financial Analysis summary | `FIN_ANALYSIS_FLOW_PROMPT.md` | `FIN_ANALYSIS` |
+
+### Reading the prompt from a chip instead of pasting it
+
+Pasting works and nothing below is required. But a pasted prompt has no
+version history, and there's no way to tell whether what a Flow is running
+still matches the `.md` file — so a prompt edit means re-pasting into every
+Flow that uses it, and forgetting one is invisible.
+
+`leader-hub/AiPrompts.gs` holds all six prompts as deployable constants
+(extracted from these same `.md` files; a test fails if the two ever
+disagree). Run **`syncAiPromptsToSheet()`** once from the Apps Script editor
+and it writes them to an `AI_Prompts` tab in the *same* "LeaderHub AI Queue"
+spreadsheet these Flows already trigger on — so the Sheets connector's fixed
+picker can reach it with no second file to authorize.
+
+Then in each Flow, insert one step before the Gemini step:
+
+| # | Connector | Configuration |
+|---|---|---|
+| 0 | Google Sheets — Get row | Spreadsheet: the same "LeaderHub AI Queue" file · Tab: `AI_Prompts` · Find: `job_type` = this Flow's own type |
+
+…and in the Gemini step, bind `@step0.prompt_text` into the system-prompt
+field instead of pasting the text.
+
+After that, changing a prompt is: edit the `.md` file and its constant, `clasp
+push`, run `syncAiPromptsToSheet()`. Every Flow picks it up with no UI work.
+**`checkAiPrompts()`** reports whether the sheet still matches the code — the
+thing worth checking after a push, since a push alone doesn't update the tab.
+
+Two notes. The `AI_Prompts` tab is not touched by the 2-hour sweep in
+`checkAiJob_`; that walks `AI_Queue` rows only. And if a job type is ever
+added to `AI_FLOW_TYPES` without a prompt constant, `checkAiPrompts()` names
+it rather than leaving you to find out when that Flow returns nothing.
 
 Each Flow is independent — build one, test it, then build the other
 whenever you're ready. Neither blocks the other: a row with a `Type` no
