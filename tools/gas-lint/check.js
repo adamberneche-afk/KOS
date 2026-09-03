@@ -402,6 +402,78 @@ function checkCasCcpsConfigKeys() {
 // against that same project's declared server functions, regardless of
 // whether the client-side code lives in an .html file or inline in .js.
 // -----------------------------------------------------------------------
+// A chain like
+//
+//   google.script.run
+//     .withSuccessHandler(resolve)
+//     .withFailureHandler(err => reject(new Error((err && err.message))))
+//     .lhPullData_({ domain });
+//
+// cannot be matched by a per-line regex, and it is how leader-hub and both
+// cas-ccps dashboards write every one of their calls. So this walks the
+// chain instead: from each `google.script.run`, step through `.name(...)`
+// links, skipping balanced parens, until the chain ends.
+//
+// WHY THE STRIPPING MODE MATTERS, both halves of it:
+//   - Comments MUST be blanked. Eight .gs files in kos-personal carry
+//     `*   google.script.run.withSuccessHandler(fn).executeBootstrap()` in
+//     a doc comment. Scanning raw text made those the ONLY thing this check
+//     ever found — it was cross-referencing its own documentation and
+//     reporting success.
+//   - Strings MUST be kept (keepStrings). cas-ccps's dashboards serve their
+//     client code from template literals inside .js files, so blanking
+//     string contents deletes every real call site in the repo's largest
+//     client surface.
+// Getting either half wrong makes this check silently vacuous, which is
+// what it was.
+//
+// Returns { calls: [{name, line}], unresolved: [line, ...] }. `unresolved`
+// is a `google.script.run` whose chain has no resolvable link — dynamic
+// dispatch, e.g. kos-personal's `const gsr = ... google.script.run` plus
+// `runner[fn].apply(runner, args)`, where the function name arrives as a
+// string at runtime. Those cannot be cross-referenced by any static pass,
+// and saying so is better than counting the file as covered.
+const RUN_CHAIN_SKIP = new Set([
+  'withSuccessHandler', 'withFailureHandler', 'withUserObject', 'withLogger',
+]);
+
+function findGoogleScriptRunCalls(relPath, src) {
+  const s = stripCommentsAndStrings(src, { keepStrings: true });
+  const calls = [];
+  const unresolved = [];
+  const anchor = /google\.script\.run/g;
+  let a;
+  while ((a = anchor.exec(s))) {
+    let i = a.index + a[0].length;
+    let resolvedHere = 0;
+    for (;;) {
+      while (i < s.length && /\s/.test(s[i])) i++;
+      if (s[i] !== '.') break;
+      i++;
+      const m = /^([A-Za-z_$][\w$]*)/.exec(s.slice(i, i + 120));
+      if (!m) break;
+      const name = m[1];
+      i += name.length;
+      while (i < s.length && /\s/.test(s[i])) i++;
+      if (s[i] !== '(') {
+        // A bare `.name` with no call — a property read, not an invocation.
+        break;
+      }
+      let depth = 0;
+      for (; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') { depth--; if (depth === 0) { i++; break; } }
+      }
+      if (!RUN_CHAIN_SKIP.has(name)) {
+        calls.push({ name, line: lineAt(s, a.index) });
+        resolvedHere++;
+      }
+    }
+    if (resolvedHere === 0) unresolved.push(lineAt(s, a.index));
+  }
+  return { calls, unresolved };
+}
+
 function checkGoogleScriptRunCalls() {
   for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
     if (projectName.startsWith('_')) continue;
@@ -409,21 +481,27 @@ function checkGoogleScriptRunCalls() {
 
     const called = new Map(); // fnName -> [{file, line}]
     const declared = new Set();
+    const dynamic = []; // [{file, line}]
 
     for (const relPath of files) {
       if (!exists(relPath)) continue;
-      const raw = readFile(relPath);
-      const lines = raw.split('\n');
-      lines.forEach((line, i) => {
-        const re = /google\.script\.run(?:\.\w+\([^)]*\))*\.(\w+)\s*\(/g;
-        let m;
-        while ((m = re.exec(line))) {
-          const name = m[1];
-          if (['withSuccessHandler', 'withFailureHandler', 'withUserObject'].includes(name)) continue;
-          if (!called.has(name)) called.set(name, []);
-          called.get(name).push({ file: relPath, line: i + 1 });
-        }
-      });
+      const { calls, unresolved } = findGoogleScriptRunCalls(relPath, readFile(relPath));
+      for (const c of calls) {
+        if (!called.has(c.name)) called.set(c.name, []);
+        called.get(c.name).push({ file: relPath, line: c.line });
+      }
+      // Only worth reporting when NOTHING in the file resolved. A bare
+      // `google.script.run` is usually a truthiness guard
+      // (`if (google.script.run)`, `const sameOrigin = ... && google.script.run`)
+      // rather than a dispatch, and leader-hub's HTML is full of those
+      // alongside 8 chains this check does resolve. Flagging a file that
+      // reached the bridge and yielded no names is the honest signal;
+      // flagging every guard in a covered file is noise. Known limitation:
+      // a file with resolvable chains AND a genuine dynamic dispatch stays
+      // silent about the latter.
+      if (calls.length === 0 && unresolved.length > 0) {
+        dynamic.push({ file: relPath, line: unresolved[0], count: unresolved.length });
+      }
       if (!relPath.endsWith('.html')) {
         for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
       }
@@ -437,6 +515,14 @@ function checkGoogleScriptRunCalls() {
           locs[0].file
         );
       }
+    }
+
+    for (const d of dynamic) {
+      warn(
+        'dynamic-server-dispatch',
+        `${d.file} reaches google.script.run ${d.count} time(s) (first at line ${d.line}) and never names a server function in the expression — the name arrives at runtime (e.g. \`runner[fn].apply(runner, args)\` fed by \`callServer('someFunction', ...)\`). No static check can cross-reference those, so project "${projectName}"'s client calls through this path are NOT covered by this check. Reported so the gap is visible rather than looking like coverage; a rename on either side of a dynamic dispatch is caught by nothing here.`,
+        d.file
+      );
     }
   }
 }
@@ -755,6 +841,7 @@ function checkGcpSurfaces() {
 // -----------------------------------------------------------------------
 module.exports = {
   stripCommentsAndStrings,
+  findGoogleScriptRunCalls,
   findGcpSurfaces,
   GCP_PATTERNS,
   GCP_STATUSES,

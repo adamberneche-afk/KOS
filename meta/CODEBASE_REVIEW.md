@@ -274,7 +274,7 @@ with the least infrastructure of the three (no server, no external AI flow
 dependency for its core loop, all client-side).
 
 > **⚠ Stale:** leader-hub has since gained a server. `leader-hub:app`
-> (`Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`) is now a
+> (`Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`, `AiPrompts.gs`) is now a
 > real Apps Script Web App deployment holding data in a Spreadsheet — see
 > `leader-hub/README.md`'s "JJ1 — Server-deployed web app" section. The
 > "no external AI flow dependency for its core loop" half of this claim

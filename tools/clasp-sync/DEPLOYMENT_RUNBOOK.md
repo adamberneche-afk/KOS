@@ -19,7 +19,7 @@ Three projects, three different shapes:
 | Project | Script projects involved | Who it's for | Stakes |
 |---|---|---|---|
 | kos-personal | 2 (the main flat-folder project, plus `kos-personal/studio-steps/` — a second, separate standalone project; SMP-004's personal/district split, not a shared global scope) | You, personal account | Low — no students touch this |
-| leader-hub | 1 (`leader-hub:app` — `Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`, one real Web App deployment) | **Belongs to Adam Berneche per its own README, not confirmed as yours** | Depends on ownership — see Part 2 |
+| leader-hub | 1 (`leader-hub:app` — `Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`, `AiPrompts.gs`, one real Web App deployment) | **Belongs to Adam Berneche per its own README, not confirmed as yours** | Depends on ownership — see Part 2 |
 | cas-ccps | 8 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `teacher-dashboard`, `student-dashboard`, `studio-steps`) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
 
 Do these in order. Parts 0 and 1 you can do today. Part 3 (cas-ccps) takes
@@ -123,8 +123,8 @@ written):
 
 **⚠ Superseded since this was written.** `student-leader-hub.html` used to
 be 100% client-side with no deploy step at all; it no longer is.
-leader-hub is now server-backed: `leader-hub:app` — five files
-(`Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`) — is a
+leader-hub is now server-backed: `leader-hub:app` — six `.gs` files
+(`Code.gs`, `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`, `AiPrompts.gs`) — is a
 single Apps Script project deployed as a Web App, serving the HTML front
 end and holding its data in a Spreadsheet. See
 `leader-hub/README.md`'s "JJ1 — Server-deployed web app" section for the
@@ -133,7 +133,7 @@ of how this system deploys.
 
 ### 2.2 The one real script project here
 
-`leader-hub:app` — all five files above, one flat project:
+`leader-hub:app` — all six `.gs` files above, one flat project:
 
 ```
 cd leader-hub
