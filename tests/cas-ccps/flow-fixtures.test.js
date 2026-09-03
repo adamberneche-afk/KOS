@@ -44,6 +44,7 @@ const FILES = [
 function load() {
   return loadGasFiles(FILES, [
     'installFlowFixtures', 'installFlow1Fixture', 'installFlow2Fixture',
+    '_fiFindTeacherMatrixRow_',
     'installWarmUpFixtures', 'checkFlowFixtures', 'removeFlowFixtures',
     'FI', 'WQ24_QUEUE_ID', 'WQ24_STATUS', 'WQ24_LESSON_CTX_SNAP',
     'WQ24_STUDENT_PROFILE_SNAP', 'WQ24_RESPONSE_TEXT', 'WQ24_COL_COUNT',
@@ -587,4 +588,148 @@ test('StagingRowRef is non-numeric, so the harvest cannot complete a real row', 
   const ref = String(row[exported.FI.STAGING_ROW_REF]).trim();
   assert.equal(ref, 'FIXTURE');
   assert.ok(isNaN(parseInt(ref, 10)), 'and parseInt cannot turn it into a row number');
+});
+
+// ── The Flow 1 fixture, checked against its consumers ────────────────────────
+//
+// Flow 1 is the one flow verified live end to end, which makes its fixture the
+// one most likely to be trusted without checking. Four things read what it
+// seeds: Flow 1 itself (the RubricQueue row plus the prompt-template doc),
+// 08_TeacherConfirmationStep.js (the DRAFT rows Flow 1 writes into the
+// TeacherMatrix), 37_FlowInputBuilder.js (that same matrix, for Flow 2), and
+// 10_AdminRecoveryPanel.js's stuck-row watchdog.
+//
+// The scratch TeacherMatrix is the load-bearing part. It is indexed BY
+// POSITION by two separate readers with two separate constants — TM08 in
+// 08_TeacherConfirmationStep.js (which that step's own header calls the
+// authoritative source) and FI_TM_COLUMNS_ in 37_FlowInputBuilder.js — so a
+// header order that merely looks right silently feeds Flow 2 the wrong
+// fields.
+
+// TM08 / FI_TM_COLUMNS_, as a name→index map, for comparing against the
+// fixture's header row. Spelled out here rather than imported because the
+// point is to catch a change on either side.
+const TEACHER_MATRIX_ORDER = [
+  'ConfigID', 'UnitName', 'Tier', 'Persona',
+  'Milestone1', 'Milestone2', 'Milestone3', 'Milestone4',
+  'DefinitionOfDone', 'InstructorEmail', 'Created', 'Status',
+  'PromptTemplateID', 'Subject', 'CourseName',
+  'Milestone1CompetencyId', 'Milestone2CompetencyId',
+  'Milestone3CompetencyId', 'Milestone4CompetencyId', 'LessonUnitId',
+];
+
+const RUBRIC_QUEUE_ORDER = [
+  'Timestamp', 'TeacherEmail', 'TeacherName', 'Subject',
+  'CourseName', 'Tier', 'RubricText', 'PromptTemplateID',
+  'TeacherMatrixSsId', 'Status',
+];
+
+test('the Flow 1 fixture row matches the RubricQueue column order exactly', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow1Fixture();
+
+  const row = ss.getSheetByName('RubricQueue').getDataRange().getValues()[1];
+  assert.equal(row.length >= RUBRIC_QUEUE_ORDER.length, true,
+    'the fixture writes at least as many columns as the schema has');
+  // The order 16_UnifiedManualSetup.js's header row and
+  // 05_TeacherIntakePipeline.js's queueRow array both use. Status LAST, at 9 —
+  // 05's own RQ05 constant used to say 8, which is corrected now but is
+  // exactly why this is pinned positionally rather than by name.
+  assert.equal(String(row[1]).trim(), 'fixture-teacher@example.invalid', 'TeacherEmail at 1');
+  assert.ok(String(row[6]).indexOf('FIXTURE RUBRIC') === 0, 'RubricText at 6');
+  assert.ok(String(row[7]).trim().length > 0, 'PromptTemplateID at 7');
+  assert.ok(String(row[8]).trim().length > 0, 'TeacherMatrixSsId at 8');
+  assert.equal(String(row[9]).trim(), 'PENDING_EXTRACTION', 'Status at 9, not 8');
+});
+
+test('PENDING_EXTRACTION is the status the real writer and the watchdog use', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow1Fixture();
+  const row = ss.getSheetByName('RubricQueue').getDataRange().getValues()[1];
+  // 05_TeacherIntakePipeline.js writes this literal, and
+  // 10_AdminRecoveryPanel.js alerts on rows stuck in it for 2 hours. A
+  // fixture in any other state is invisible to both.
+  assert.equal(String(row[9]).trim(), 'PENDING_EXTRACTION');
+});
+
+test('the scratch TeacherMatrix header order matches TM08 and FI_TM_COLUMNS_', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.installFlow1Fixture();
+
+  const matrix = sandbox.SpreadsheetApp.openById(result.matrixSsId)
+    .getSheetByName('TeacherMatrix');
+  assert.ok(matrix, 'the scratch matrix has a TeacherMatrix tab, which is what readers open by name');
+  const headers = matrix.getDataRange().getValues()[0].map((h) => String(h).trim());
+  assert.deepEqual(headers, TEACHER_MATRIX_ORDER);
+});
+
+test('37_FlowInputBuilder can actually read the scratch matrix row it seeds', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.installFlow1Fixture();
+
+  // The end-to-end assertion, rather than a header comparison: hand the real
+  // reader the real fixture and check the fields come back populated. A
+  // one-column shift would return blanks here while the headers still looked
+  // plausible.
+  const row = exported._fiFindTeacherMatrixRow_(result.matrixSsId, 'VDOE-FIXTURE-F1');
+  assert.ok(row, 'the reader finds the seeded ConfigID');
+  ['unitName', 'tier', 'persona', 'milestone1', 'milestone2', 'milestone3',
+   'milestone4', 'dod', 'milestone1CompetencyId', 'milestone4CompetencyId']
+    .forEach((field) => {
+      assert.ok(String(row[field] || '').trim().length > 0,
+        'matrixRow.' + field + ' came back empty — the columns are shifted');
+    });
+});
+
+test('the seeded matrix row is LIVE, so it is usable rather than pending review', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.installFlow1Fixture();
+  const values = sandbox.SpreadsheetApp.openById(result.matrixSsId)
+    .getSheetByName('TeacherMatrix').getDataRange().getValues();
+  // 08_TeacherConfirmationStep.js scans for DRAFT rows to send for review and
+  // flips them to REVIEW_SENT. A fixture row at DRAFT would get swept into
+  // that flow and mail a fixture teacher; LIVE keeps it inert and readable.
+  assert.equal(String(values[1][TEACHER_MATRIX_ORDER.indexOf('Status')]).trim(), 'LIVE');
+});
+
+test('the prompt-template doc Flow 1 step 1 reads is real and non-empty', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.installFlow1Fixture();
+  // Flow 1's Step 1 is a native "Drive — read prompt template" against
+  // PromptTemplateID. A fabricated id makes that step fail before Gemini
+  // is ever reached.
+  const body = sandbox.DocumentApp.openById(result.templateDocId).getBody().getText();
+  assert.match(body, /FIXTURE ASSIGNMENT PROMPT/);
+  assert.ok(body.length > 100);
+});
+
+test('the rubric text carries all four milestones plus a done condition', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow1Fixture();
+  const rubricText = String(ss.getSheetByName('RubricQueue').getDataRange().getValues()[1][6]);
+  // Flow 1's job is to extract four milestones, a definition of done and a
+  // persona from this text. Vague rubric text would make Gemini's output
+  // thin and the fixture would test the prompt's tolerance rather than the
+  // flow's wiring.
+  ['(1)', '(2)', '(3)', '(4)'].forEach((marker) => {
+    assert.ok(rubricText.indexOf(marker) !== -1, 'rubric text is missing ' + marker);
+  });
+  assert.match(rubricText, /complete when/i, 'and states a completion condition');
+});
+
+test('the fixture is idempotent — a second install does not double the row', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow1Fixture();
+  const again = exported.installFlow1Fixture();
+  assert.equal(again.seeded, 0);
+  assert.equal(again.skipped, 1);
+  assert.equal(ss.getSheetByName('RubricQueue').getLastRow(), 2, 'header + one fixture row');
 });
