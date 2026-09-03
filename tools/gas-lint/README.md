@@ -62,10 +62,44 @@ it — that gap is closed now.
    **warning**, not an error, since it's a real accepted deployment step,
    not a bug), or missing entirely (an **error**).
 
-4. **`google.script.run` ↔ server function cross-reference** for
-   `kos-personal/8_WebApp_UI.html` (the only HTML in this repo that calls
-   `google.script.run`) — every client call needs a matching top-level
-   `.gs` function.
+4. **`google.script.run` ↔ server function cross-reference**
+   (`findGoogleScriptRunCalls`). Every client call needs a matching
+   top-level function in the *same* project, across every file in
+   `project-map.json` — not just HTML. Client code lives in three different
+   shapes here: a separate `.html` file (kos-personal), an `.html` file that
+   is also the whole app (leader-hub), and template literals inside `.js`
+   (both cas-ccps dashboards).
+
+   **This check used to verify nothing, and the way it failed is worth
+   knowing before touching it.** It scanned raw source with a per-*line*
+   regex, and every real call in this repo defeats one half or the other:
+   leader-hub and both cas-ccps dashboards write multi-line chains
+   (`google.script.run` / `.withSuccessHandler(…)` / `.fn(…)`), which a
+   per-line pattern cannot see — 19 real call sites, invisible; meanwhile
+   eight kos-personal `.gs` files carry
+   `*   google.script.run.withSuccessHandler(fn).executeBootstrap()` in doc
+   comments, and those eight were the only names it ever found. The check
+   was cross-referencing its own documentation and passing.
+
+   So it now walks the chain from each `google.script.run`, skipping
+   balanced parens through the `with*Handler(…)` links, over source stripped
+   with `keepStrings: true`. Both halves of that mode are load-bearing, in
+   opposite directions: **comments must be blanked** or doc examples
+   masquerade as call sites, and **strings must be kept** or the cas-ccps
+   dashboards lose every call. `tests/tools/gas-lint-scriptrun.test.js`
+   pins both, and asserts a repo-wide floor on the number of resolvable
+   calls — because the failure mode here is passing for lack of findings.
+
+   A `google.script.run` the walker can't resolve to a name is reported as
+   a `dynamic-server-dispatch` **warning**, once per file, and only when
+   *nothing* in that file resolved. kos-personal's web app is the real case:
+   it aliases the bridge (`const gsr = … ? google.script.run : null`) and
+   dispatches with `runner[fn].apply(runner, args)` fed by
+   `callServer('executeBootstrap', …)`, so the name only exists at runtime.
+   No static pass can check that, and saying so is better than counting the
+   file as covered. The per-file, nothing-resolved condition is what keeps
+   leader-hub's many truthiness guards (`if (google.script.run)`) from
+   drowning the signal — it has 8 chains that do resolve.
 
 5. **OAuth scope coverage**, for any project with a checked-in manifest
    that declares an explicit `oauthScopes` list. Once a manifest lists
@@ -172,3 +206,10 @@ false positives.
   looks like it should be callable from the client but never is) — that's
   dead-code detection, a different and much noisier kind of check, left
   out deliberately to keep signal-to-noise high.
+- #4's dynamic-dispatch warning fires only for a file where *no* call
+  resolved, so a file with resolvable chains **and** a genuine dynamic
+  dispatch stays silent about the latter. Deliberate: the alternative
+  flags every truthiness guard in leader-hub's HTML. Resolving a
+  dispatcher's string arguments (`callServer('name', …)`) would give
+  kos-personal real coverage and is the obvious next step if that surface
+  ever grows past one helper.
