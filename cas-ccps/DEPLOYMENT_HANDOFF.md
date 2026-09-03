@@ -218,8 +218,15 @@ on them — see `cas-ccps/studio-steps/README.md`'s status banner and
    itself.
 7. **Build Studio Flows 2-5 by hand in Google Workspace Studio's UI.** This is
    the single biggest real gap between "code is done" and "system is live" —
-   see the next section. Nothing in this repo can automate this step; the
-   wizard only shows you the settings to enter.
+   see the next section. Nothing in this repo can automate this step, but run
+   `syncFlowBuildSpec()` first and build from the `FlowBuildSpec` tab it
+   writes: every tab name, column number, header, trigger condition and
+   prompt key for all five flows, derived from the constants the code
+   actually reads. The wizard's Phase B dialogs and `15_StudioFlowPrompts.js`
+   still carry the judgement half — connector names, temperature, token
+   limits — which is deliberately not generated, because it needs judgement
+   and does not drift. Keep `checkFlowBinding()` open in a second tab while
+   wiring each Flow's last step (row 8 of the table above).
 
 ## The real gap: Studio Flows 2-5 — and it's worse than "not deployed"
 
@@ -264,9 +271,11 @@ Only **Flow 1** (Rubric Extraction) has been verified live end to end. Flows
 2-5 now have a keyless path but the Studio side of each still has to be built
 by hand, so **Module 2 Full (Warm-Ups)** and **Module 5 (SCR Suggestion)**
 remain not-live — now for want of Flow construction, not for want of code.
-`cas-ccps/docs/IMPACT_DASHBOARD.html`'s badges (`Flow 1 ✅ Live`, `Flows 2-5 ⬜
-Built, Not Deployed`) are now only half right and deserve a three-state
-rewrite: built-and-reachable, built-and-blocked, and not-built.
+`cas-ccps/docs/IMPACT_DASHBOARD.html`'s badges have since been rewritten to
+three states — `Flow 1 ✅ Live`, `Flows 2-5 ⬜ Ported, Studio side not built`,
+and `Custom Studio steps ⛔ Blocked` — because "Built, Not Deployed" read as
+"someone just needs to push it," which is the one thing that will never
+resolve it.
 
 `cas-ccps/studio-steps/README.md` has the per-step deployment instructions
 (mirrors Part 3.7 of the runbook) — still accurate for an account that *has*
@@ -276,7 +285,11 @@ its own two custom steps are blocked identically and were ported the same way
 (`kos-personal/12_StudioReturnHarvest.gs`). The wizard's Phase B dialogs
 (`28_Module2Setup.js`) give you the exact Studio Flow settings (trigger
 condition, temperature, token limits, input/output field names) to enter once
-you're in Studio's builder — don't guess these from the `.gs` files alone.
+you're in Studio's builder — don't guess these from the `.gs` files alone. For
+anything positional (tab, column, header, trigger condition), prefer the
+generated `FlowBuildSpec` tab over any document, this one included: it is
+derived from the constants the harvest reads, and `checkFlowBuildSpec()`
+reports when a column has moved since the last sync.
 
 ## Script Properties reference
 
@@ -341,10 +354,18 @@ clean (nothing should have drifted since this handoff was written):
 ```bash
 cd /home/user/KOS
 npm test                          # all passing (count grows; don't assert a number)
-node tools/gas-lint/check.js      # expect 0 errors, 4 warnings
-node tools/doc-currency/check.js  # expect 0 errors, 9 warnings
+node tools/gas-lint/check.js      # expect 0 errors (5 warnings as of this writing)
+node tools/doc-currency/check.js  # expect 0 errors (8 warnings as of this writing)
 node tools/clasp-sync/sync.js     # expect all 8 projects to build cleanly
 ```
+
+**Zero errors is the gate; the warning counts are not.** Both tools warn about
+things that are accepted and documented (an unmerged addendum, a dynamic
+`google.script.run` dispatch, function names living in an Apps Script project
+that was never committed here), and both numbers move whenever a check is
+added or a warning is legitimately resolved — gas-lint has gone 4 → 5 and
+doc-currency 9 → 8 since this section was written. Read the findings, not the
+count.
 
 After each project goes live, the runbook's own verification steps (spot-check
 a menu item, run a smoke test) matter more than anything in this repo — a
@@ -362,9 +383,19 @@ same file (also five). Nothing to do here.
 
 ## What to read next
 
-`cas-ccps/HISTORY.md`'s final section — the deployment record. It covers the
+`cas-ccps/HISTORY.md`'s final sections — the deployment record. They cover the
 three Studio walls confirmed by direct test, the manifest and schema bugs only
 a live push could surface, the `=AI()` investigation and why it's closed, the
-`FlowInput` redesign that replaced Flow 2's plumbing, and an explicit warning
-not to carry this project's Studio constraints over to kos-personal, which
-runs on a different account with GCP access intact.
+`FlowInput` redesign that replaced Flow 2's plumbing, the ports of Flows 3/4/5
+and of kos-personal's write-back, and the four `gas-lint` checks (H-K) that now
+enforce the parts of `meta/FLOW_DOCTRINE.md` a machine can hold.
+
+*Correction:* this paragraph used to end by warning against carrying this
+project's Studio constraints over to kos-personal, "which runs on a different
+account with GCP access intact." That was wrong, twice over — the operator
+confirmed kos-personal is deployed on this same `ccpsnet.net` account, so the
+org-wide GCP block reaches it and its two custom steps are blocked
+identically. They were ported the same way
+(`kos-personal/12_StudioReturnHarvest.gs`). Do not read an account boundary
+into a system boundary; check the target account's Project Settings and
+declare what you find in `tools/gas-lint/gcp-map.json`.

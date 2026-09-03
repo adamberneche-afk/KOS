@@ -166,19 +166,23 @@ GoogleID.
 
 ## Flow plumbing added after the first deployment (scripts 37-40)
 
-Cross-module infrastructure rather than a module — all four are bound to
-`cas-ccps:central-ledger`, all four exist because the first real deployment
-found that Workspace Studio can do less than the design assumed. See
-`HISTORY.md`'s deployment section for the walls each one works around.
+Cross-module infrastructure rather than a module — every script below is
+bound to `cas-ccps:central-ledger`, and every one exists because the first
+real deployment found that Workspace Studio can do less than the design
+assumed. See `HISTORY.md`'s deployment sections for the walls each one works
+around. (This paragraph said "all four" while the table held four rows; it has
+grown to seven since, which is exactly the kind of count worth not writing
+down twice.)
 
 | Script | What it does | Run it via |
 |---|---|---|
+| `35_FlowPreflightAndCanary.js` | Structural preflight plus the two canaries. `runFlowPreflightCheck()` verifies what has to exist before a Flow can match anything — the tabs, the four time triggers (a duplicate counts as a failure, not a pass), the required Script Properties, the self-healing tabs — and says which of the four questions each finding answers. The canaries verify the Apps Script half with the Flow deliberately stubbed, and say so in their own log. | `runFlowPreflightCheck()`, `runFlow2Canary()` |
 | `37_FlowInputBuilder.js` | **The Flow 2 redesign.** Resolves Ledger → MatrixRegistry → TeacherMatrix in Apps Script and materializes one flat literal `FlowInput` row, so the Flow reads a single row and needs no custom step and no variable spreadsheet target. `harvestFlowInputResults()` applies Studio's result back. Two time triggers (1-min build, 2-min harvest). | `installFlowInputTriggers()` once; then automatic |
 | `38_LedgerSchemaGuard.js` | Detects and safely repairs Ledger column drift — the live Ledger had shifted so `LEDGER.TEACHER_EMAIL` read a person's *name*, silently breaking the MatrixRegistry hop with no error. Backs the tab up before mutating, and refuses when it can't verify the repair is safe. | `checkLedgerSchema()`, then `repairLedgerSchema()` if it reports drift |
 | `39_FlowFixtures.js` | Persistent dummy rows at all five flows' trigger conditions, so a flow has something to match instead of reporting a green "Run Completed" over zero rows. Namespaced `VDOE-FIXTURE-*` / `WUQ-FIXTURE-*` / `fixture-*@example.invalid`, deliberately separate from the canaries' namespace. | `installFlowFixtures()`, `checkFlowFixtures()`, `removeFlowFixtures()` |
 | `40_FlowPrompts.js` | Every reusable flow prompt as a constant plus a `FlowPrompts` tab, so a prompt change is a `clasp push` and one function run instead of a hand-paste into each Flow. Flow 2 resolves through `15b`'s existing constant rather than carrying a second copy. `substituteFlowPrompt_()` leaves unmatched placeholders standing — `{{STUDENT_TEXT}}` stays unfilled on purpose, since student response text must not enter the central Ledger (FERPA). | `syncFlowPromptsToSheet()`, `checkFlowPrompts()` |
-
 | `41_WarmUpFlowBridge.js` | **The Flows 3/4/5 port**, same two-phase shape as 37: materializes `Flow3Input`/`Flow4Input`/`Flow5Input` rows and harvests a shared `WarmUpFlowReturn` tab, so Studio makes only the Gemini call. Carries the archetype decision table and the warm-up document construction ported from the two blocked custom steps that held real logic; reuses `25_WarmUpWriter.js`'s existing `evaluateWarmUpDoc_`/`writeFinalScores_`/`writeFeedbackToDoc_`/`writeRegistryScores_` rather than copying the three steps that duplicated them. Leaves the WarmUpQueue status machine untouched, so Scripts 23/24/25 needed no edits. | `installWarmUpFlowTriggers()` once; then automatic. `checkWarmUpFlowLiveness()`, `runWarmUpFlowCanary()` |
+| `42_FlowBuildSpec.js` | Generates the `FlowBuildSpec` tab an operator builds a Flow from: every tab, column number, header, trigger condition, prompt key and ownership rule for all five flows, **derived from the constants the code reads**. Deliberately omits connector names, temperature and token limits — those need judgement, do not drift, and copying them would make this a seventh document to keep in sync. Flags a pointer into a blocked custom step at the point someone would otherwise follow it. | `syncFlowBuildSpec()`, `checkFlowBuildSpec()` |
 
 Flow 2's Apps Script half has a self-provisioning canary
 (`runFlow2Canary()` in `35_FlowPreflightAndCanary.js`) that stubs Studio out
@@ -186,19 +190,29 @@ deliberately — it verifies the code path, not the flow.
 
 ## Known gaps (carried forward so a future session doesn't re-derive them)
 
-1. **Flows 2-5 have never been pushed to a live Studio deployment** — both
-   `09_StudentRevisionGuidance_M1Base.js` and `03_QueueBridge.js` assume
-   Flow 2 exists, and Module 5 cannot go fully live without it.
-   **⚠ Updated since first written:** this used to read "never been
-   built" — that's no longer accurate. The custom-step code for all five
-   flows (rubric extraction, student evaluation, warm-up generation,
-   warm-up scoring, bridging) is now written and tested
-   (`cas-ccps/studio-steps/`, see its own README). What's still genuinely
-   missing is deployment: that project hasn't been pushed to a real
-   Google account (`.clasp.json.template`'s scriptId is still a
-   placeholder), and no flow has actually been wired together in Studio's
-   builder. "Code exists" and "wired and live" are different facts —
-   only the second one closes this gap.
+1. **Flows 2-5 are not live: each one's Studio side still has to be built
+   by hand** — both `09_StudentRevisionGuidance_M1Base.js` and
+   `03_QueueBridge.js` assume Flow 2 exists, and Module 5 cannot go fully
+   live without it.
+   **⚠ Corrected twice.** It first read "never been built." It then read
+   "the custom-step code is written and tested; what's missing is
+   deployment — that project hasn't been pushed to a real Google account
+   (`.clasp.json.template`'s scriptId is still a placeholder)." Both are
+   now wrong, and the second one wrong in the expensive direction: the
+   `studio-steps` project **was** pushed successfully, and its steps still
+   never appeared in Studio's picker. A custom step is a Workspace Add-on
+   and needs a standard, non-default Cloud project; GCP is disabled
+   org-wide for `ccpsnet.net`. All 8 steps (2,113 tested lines) are
+   unreachable on this account, and so is `15c`'s `DIRECT_GEMINI` escape
+   hatch, which needs an API key, which needs the same project. Pushing
+   fixes none of it.
+   All five flows have since been **ported** to native Studio steps plus
+   an Apps Script harvest (`37_FlowInputBuilder.js`,
+   `41_WarmUpFlowBridge.js`) — a keyless path that does work here. So what
+   closes this gap is building each flow in Studio's builder from
+   `syncFlowBuildSpec()`'s generated tab, then `checkFlow2Liveness()` /
+   `checkWarmUpFlowLiveness()` reporting that something came back. "Code
+   exists," "reachable," and "wired and live" are three different facts.
 2. ~~`TeacherMatrix` missing a `lesson_unit_id` column~~ — **closed**, see
    HISTORY.md's resolution 12.
 3. ~~`CompetencyRegistry.csv` not uploaded~~ — **closed**, see HISTORY.md's resolution 7.

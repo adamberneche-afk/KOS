@@ -340,7 +340,7 @@ still-open design questions it carries forward.
 
 - **First deploy:** See `DEPLOYMENT_GUIDE.md`
 - **Using the web app:** See `USER_GUIDE.md`
-- **Building the Studio integration:** See `STUDIO_INTEGRATION_SPEC.md` and, for the custom steps that already implement it, [`studio-steps/README.md`](./studio-steps/README.md)
+- **Building the Studio integration:** See `STUDIO_INTEGRATION_SPEC.md` — and read its top banner first: the write-back half is no longer a custom step. `studio-steps/`'s two steps cannot be published on this account (GCP is disabled org-wide for `ccpsnet.net`), so the Flow's last step is a native "add row to sheet" into `STUDIO_RETURN` and `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` writes the document and sets `FLOW_COMPLETE`. [`studio-steps/README.md`](./studio-steps/README.md) carries the same status banner and stays accurate for an account that has GCP access.
 - **Understanding the data model:** See `SCHEMA_REFERENCE.md`
 - **Debugging a specific issue:** Check ERROR_LOG sheet in BRAIN_TRUST_INDEX
 - **Licensing:** See `LICENSE` (Polyform Noncommercial 1.0.0 + Fidelity Clause)
