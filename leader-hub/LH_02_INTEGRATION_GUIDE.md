@@ -13,9 +13,9 @@
 > Both corrections are marked inline in the table as well.
 >
 > 1. **LeaderHub is no longer a single client-side `.html` file.** It is
->    server-backed: `leader-hub:app` is a real Apps Script project (`Code.gs`,
->    `Config.gs`, `Data.gs`, `SCR.gs`, `EmailBridge.gs`, `AiPrompts.gs`) with a
->    Web App deployment, `doGet`/`doPost`, and a `_lhDispatchAction_` action
+>    server-backed: `leader-hub:app` is a real Apps Script project — every
+>    `.gs` file in this folder, listed authoritatively in
+>    `tools/gas-lint/project-map.json` — with a Web App deployment, `doGet`/`doPost`, and a `_lhDispatchAction_` action
 >    dispatch. The HTML still runs standalone from a local file — that
 >    capability was kept deliberately — but "no server" is not a constraint
 >    to design against any more.
