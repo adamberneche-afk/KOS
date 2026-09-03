@@ -1,6 +1,31 @@
 # KOS Changelog
 
 
+### Follow-up — the fixture now feeds both flows
+
+`installStudioFlowFixture()` planted one `SESSION_LOG` row, so the
+classification flow had nothing to latch onto and its output contract (write
+the ORIGINAL unstripped text, validate it parses to an Array) had never been
+exercised against a real queued row. It now plants a `VECTOR_CLASSIFY` row
+alongside it, sharing one scratch document and one UID stem.
+
+Sharing the document is the design, not a shortcut: `CURATOR_PROMPT.md`'s
+Rule 1 has the Curator citing a completed, independent `VECTOR_CLASSIFY` row
+*for the same session*, and `README.md`:192 records the open gap that
+`_chunkAndQueue()` doesn't queue that paired row yet. Until it does, this
+fixture is the only place the paired shape exists — so it doubles as a worked
+example of what that fix should produce.
+
+`checkStudioFlowLiveness()` now reports returns and releases **per payload
+type**. A single aggregate "has anything ever returned" cannot distinguish a
+working Curator flow from a classification flow that was never built — both
+read as healthy. It now warns per type when rows were released and not one
+return ever came back.
+
+Also confirmed while checking: `runMatrixTurnstile` is TIER_1 gated, so a cold
+engine warns and passes through rather than blocking. A fixture will be
+released even on an unarmed deployment.
+
 ## 2026-09-03 — Studio write-back ported into Apps Script (12_StudioReturnHarvest.gs)
 
 `kos-personal/studio-steps/`'s two custom Studio steps cannot run. Publishing

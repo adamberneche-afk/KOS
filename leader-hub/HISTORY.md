@@ -411,3 +411,35 @@ and `README.md` keeps the one human-readable copy.
 `.claspignore` here is an allowlist (`**/**` followed by explicit
 un-ignores), so a new file that isn't listed is silently skipped by
 `clasp push` — it would appear to deploy and simply not exist.
+
+### Follow-up — the AI fixture payloads had all six shapes wrong
+
+`AI_FIXTURE_PAYLOADS` was invented rather than derived: `EMAIL_COMPOSE` as
+`{to, intent, tone}`, `FIN_ANALYSIS` as `{account, transactions}`,
+`WBL_INSIGHTS` as `{students: [...]}`. Not one of those keys exists. Nothing
+would have errored — each Flow would have triggered, read a payload with no
+field it recognized, and produced confident nonsense. A fixture whose job is
+to prove a Flow works cannot be the thing that makes it *look* like it does.
+
+The real shapes are documented, in the same files the prompts themselves come
+from: each `*_FLOW_PROMPT.md` carries a fenced json example of its payload,
+and those match the six `callGAS('aiDraft', ...)` sites in
+`src/10-command-engine-ai-and-widgets.html` exactly. The fixtures are now
+derived from those examples — structure kept, values replaced with synthetic
+ones (`.invalid` addresses, no student or staff name, no real domain).
+
+`tests/leaderhub/flow-ops.test.js` re-reads all six markdown files and asserts
+key-for-key shape parity, recursively and in both directions: a key in the
+prompt example that the fixture lacks fails, and so does a key the fixture has
+that the example doesn't. So a prompt that grows a payload field now fails a
+test instead of quietly leaving the fixtures a version behind.
+
+One detail worth keeping: `attentionDetails` entries hold a
+`"<student-id>: <detail sentence>"` shape, because
+`WBL_INSIGHTS_FLOW_PROMPT.md`'s rules read *across* those strings looking for
+patterns. An entry that is only an address exercises none of that, so the
+fixture keeps the full sentence.
+
+Found the same way as the equivalent cas-ccps bug (a fixture profile carrying
+`evaluation_signals` as plain strings where the consumer expected objects):
+by reading the consumer instead of trusting the fixture.

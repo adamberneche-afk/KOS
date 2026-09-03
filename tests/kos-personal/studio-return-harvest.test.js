@@ -38,6 +38,8 @@ const FILES = [
 
 const EXPOSE = [
   'harvestStudioReturns', 'checkStudioReturns', 'checkStudioFlowLiveness',
+  'removeStudioFlowFixtures',
+  'installStudioFlowFixture',
   '_srPrepareDocText_', '_srStripJsonFence_', '_srFindStagingRow_',
   '_srIsDocWritten_', '_srMarkDocWritten_', '_srClearDocWritten_',
   'SR_COLS', 'SR_SHEET', 'SR_CURATOR_TYPES', 'SR_MAX_ATTEMPTS',
@@ -350,4 +352,119 @@ test('checkStudioReturns: read-only — it never writes', () => {
   exported.checkStudioReturns();
   assert.deepEqual(ctx.returns.getDataRange().getValues(), before);
   assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
+});
+
+// ── The fixture, and whether it reaches both flows ───────────────────────────
+//
+// installStudioFlowFixture() is the only thing that can answer "is the Flow
+// live?", so it has to feed BOTH flows. Its first version fed one: the
+// classification flow had nothing to latch onto, and its output contract
+// (write the ORIGINAL unstripped text, validate it parses to an Array) had
+// never been exercised against a real queued row.
+
+function fixtureRows(exported, sandbox) {
+  const ss = indexSpreadsheet(exported, sandbox);
+  const staging = tab(ss, exported.CFG.STAGING_SHEET, STAGING_HEADERS);
+  return staging.getDataRange().getValues().slice(1)
+    .filter((r) => String(r[1]).indexOf('FIXTURE-SR-') === 0);
+}
+
+test('the fixture plants a row for BOTH payload types', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+
+  const types = fixtureRows(exported, sandbox).map((r) => String(r[2]).trim()).sort();
+  assert.deepEqual(types, ['SESSION_LOG', 'VECTOR_CLASSIFY'],
+    'one type only would leave the other flow with nothing to match');
+});
+
+test('both fixture rows share one document, as the paired design intends', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+
+  // CURATOR_PROMPT.md Rule 1 has the Curator citing a completed VECTOR_CLASSIFY
+  // row for the SAME session. README.md:192 records that _chunkAndQueue()
+  // doesn't queue that paired row yet, so this fixture is currently the only
+  // place the paired shape exists.
+  const rows = fixtureRows(exported, sandbox);
+  const fileIds = [...new Set(rows.map((r) => String(r[4]).trim()))];
+  assert.equal(fileIds.length, 1, 'both rows point at the same FileID');
+  assert.ok(fileIds[0], 'and it is a real document id');
+
+  const stems = [...new Set(rows.map((r) => String(r[1]).replace(/-(SESSION_LOG|VECTOR_CLASSIFY)$/, '')))];
+  assert.equal(stems.length, 1, 'and they share one UID stem, so the pair reads as one session');
+});
+
+test('both fixture rows start at PENDING_FLOW, for the Turnstile to release', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+  fixtureRows(exported, sandbox).forEach((r) => {
+    assert.equal(String(r[5]).trim(), 'PENDING_FLOW');
+  });
+});
+
+test('the fixture document is real and readable, not a fabricated id', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  const result = exported.installStudioFlowFixture();
+  const body = sandbox.DocumentApp.openById(result.fileId).getBody().getText();
+  assert.match(body, /FIXTURE SESSION LOG/);
+  assert.ok(body.length > 200, 'enough text for a Curator pass to have something to say');
+});
+
+test('the classification contract accepts what its fixture flow would return', () => {
+  const { exported } = load();
+  // The half that had never been exercised end to end. VECTOR_CLASSIFY output
+  // is written VERBATIM and must parse to an Array — so a Curator-shaped
+  // object response has to be rejected, not written.
+  const good = exported._srPrepareDocText_('VECTOR_CLASSIFY',
+    '```json\n[{"theme":"ARCHITECTURE","raw_score":3}]\n```', '');
+  assert.equal(good.ok, true, good.error);
+  assert.match(good.text, /^```json/, 'written verbatim, fence included');
+
+  const bad = exported._srPrepareDocText_('VECTOR_CLASSIFY', '{"theme":"ARCHITECTURE"}', '');
+  assert.equal(bad.ok, false);
+  assert.equal(bad.error, 'CLASSIFICATION_JSON_NOT_ARRAY');
+});
+
+test('removeStudioFlowFixtures clears both rows and trashes the doc', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+  const removed = exported.removeStudioFlowFixtures();
+  assert.equal(removed.removedRows, 2, 'both rows, not just the first');
+  assert.equal(fixtureRows(exported, sandbox).length, 0);
+});
+
+test('liveness reports per payload type, so one dead flow is visible', () => {
+  const { exported, sandbox } = load();
+  const ss = indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+
+  // Release both, then let only the Curator flow answer.
+  const staging = tab(ss, exported.CFG.STAGING_SHEET, STAGING_HEADERS);
+  const rows = staging.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]).indexOf('FIXTURE-SR-') === 0) {
+      staging.getRange(i + 1, 6).setValue('STUDIO_ACTIVE');
+    }
+  }
+  const curatorUid = rows.slice(1)
+    .map((r) => String(r[1]))
+    .find((u) => u.indexOf('-SESSION_LOG') !== -1);
+  tab(ss, exported.SR_SHEET, RETURN_HEADERS)
+    .appendRow([new sandbox.Date(), curatorUid, 'SESSION_LOG', '{"summary":"s"}', '', '', 0, '']);
+
+  const report = exported.checkStudioFlowLiveness();
+  // An aggregate "something returned" would read as healthy here. Per type it
+  // is plain that the classification flow has never written back.
+  assert.equal(report.flowEverReturned, true);
+  assert.equal(report.returnsByType.SESSION_LOG, 1);
+  assert.equal(report.returnsByType.VECTOR_CLASSIFY, undefined,
+    'nothing has ever returned for this type');
+  assert.equal(report.releasedByType.VECTOR_CLASSIFY, 1,
+    'even though a row was released for it');
 });

@@ -29,9 +29,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
+const fs = require('fs');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
+// Same list EmailBridge.gs's AI_FLOW_TYPES holds; ai-prompts.test.js asserts
+// the two agree, so hardcoding it here is a check, not a duplication.
+const JOB_TYPES = ['EMAIL_COMPOSE', 'ARCHIVE_INSIGHTS', 'WBL_INSIGHTS',
+                   'LP_ASSIST', 'FIN_ANALYSIS', 'BRAG_EMAIL'];
 const FILES = [
   path.join(LH, 'EmailBridge.gs'),
   path.join(LH, 'AiPrompts.gs'),
@@ -359,4 +364,102 @@ test('runLeaderHubPreflight: makes no writes, so it is safe against a live deplo
   assert.equal(after.length, before.length, 'preflight must not add or remove rows');
   assert.equal(exported.checkAiJob_({ jobId: real.jobId }).status, 'PENDING',
     'and must not consume an in-flight job');
+});
+
+// ── Fixture payload shapes vs. the prompts that read them ────────────────────
+//
+// THE LOAD-BEARING TEST IN THIS FILE, alongside the provenance ones in
+// ai-prompts.test.js. The first version of AI_FIXTURE_PAYLOADS invented all
+// six shapes — EMAIL_COMPOSE as {to, intent, tone}, FIN_ANALYSIS as
+// {account, transactions} — and not one of those keys exists. Nothing would
+// have errored: each Flow would have triggered, read a payload with no field
+// it recognized, and produced confident nonsense. A fixture whose job is to
+// prove a Flow works cannot be the thing that makes it look like it does.
+//
+// So this re-reads the fenced json example out of each *_FLOW_PROMPT.md — the
+// same file the Flow's own prompt text comes from, and the shape the client
+// actually sends — and demands key-for-key parity, recursively. A prompt that
+// grows a payload field now fails here instead of quietly leaving the
+// fixtures a version behind.
+
+function documentedPayload(jobType) {
+  const raw = fs.readFileSync(path.join(LH, jobType + '_FLOW_PROMPT.md'), 'utf8');
+  const blocks = raw.match(/```json\s*\n[\s\S]*?\n```/g) || [];
+  for (const block of blocks) {
+    const body = block.replace(/^```json\s*\n/, '').replace(/\n```$/, '');
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+    } catch (e) { /* a fenced block describing OUTPUT, not the payload */ }
+  }
+  return null;
+}
+
+// Compares structure only — key names, and object/array/scalar kind — never
+// values, since the fixture's whole point is to carry synthetic ones.
+function assertSameShape(actual, expected, trail) {
+  const where = trail || 'payload';
+  if (Array.isArray(expected)) {
+    assert.ok(Array.isArray(actual), where + ' should be an array');
+    if (expected.length && actual.length) {
+      assertSameShape(actual[0], expected[0], where + '[0]');
+    }
+    return;
+  }
+  if (expected && typeof expected === 'object') {
+    assert.ok(actual && typeof actual === 'object' && !Array.isArray(actual),
+      where + ' should be an object');
+    Object.keys(expected).forEach((key) => {
+      assert.ok(Object.prototype.hasOwnProperty.call(actual, key),
+        where + '.' + key + ' is in the prompt example but missing from the fixture');
+      assertSameShape(actual[key], expected[key], where + '.' + key);
+    });
+    Object.keys(actual).forEach((key) => {
+      assert.ok(Object.prototype.hasOwnProperty.call(expected, key),
+        where + '.' + key + ' is in the fixture but not in the prompt example — ' +
+        'either the prompt grew and this is stale, or the key was invented');
+    });
+    return;
+  }
+  assert.equal(typeof actual, typeof expected,
+    where + ' should be a ' + typeof expected + ', not a ' + typeof actual);
+}
+
+test('every prompt documents a payload example to check fixtures against', () => {
+  JOB_TYPES.forEach((jobType) => {
+    assert.ok(documentedPayload(jobType),
+      jobType + '_FLOW_PROMPT.md has no parseable json payload example — without one ' +
+      'nothing can verify this fixture, so add the example rather than deleting this test');
+  });
+});
+
+test('each fixture payload matches its prompt example key for key', () => {
+  const { exported } = load();
+  JOB_TYPES.forEach((jobType) => {
+    assertSameShape(exported.AI_FIXTURE_PAYLOADS[jobType], documentedPayload(jobType),
+      jobType);
+  });
+});
+
+test('fixture values are synthetic even where the prompt example is not', () => {
+  const { exported } = load();
+  // The prompt examples carry a real staff name and a real @ccpsnet.net
+  // student id, because they are illustrating a live payload. The fixtures
+  // copy the shape and must not copy those.
+  const blob = JSON.stringify(exported.AI_FIXTURE_PAYLOADS);
+  assert.ok(!/ccpsnet\.net/.test(blob), 'no real domain');
+  assert.ok(!/Berneche/i.test(blob), 'no real name');
+  (blob.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+/g) || []).forEach((e) => {
+    assert.ok(e.endsWith('.invalid'), e + ' is not an .invalid address');
+  });
+});
+
+test('attentionDetails keeps its "<id>: <detail>" sentence shape', () => {
+  const { exported } = load();
+  // WBL_INSIGHTS_FLOW_PROMPT.md's rules read ACROSS these strings looking for
+  // patterns, so an entry that is only an address gives the Flow nothing to
+  // find and the fixture would prove nothing.
+  const details = exported.AI_FIXTURE_PAYLOADS.WBL_INSIGHTS.attentionDetails;
+  assert.ok(details.length >= 1);
+  assert.match(details[0], /^\S+@\S+: .+/);
 });
