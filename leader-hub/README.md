@@ -987,7 +987,9 @@ needed no changes.
 ## Version control (clasp) — scaffolded, not yet connected
 
 The Apps Script project (now `EmailBridge.gs` + `Code.gs` + `Config.gs` +
-`Data.gs` + `SCR.gs` + `AiPrompts.gs` — see "Server-deployed web app" below) is laid out
+`Data.gs` + `SCR.gs` + `AiPrompts.gs` + `FlowOps.gs` — see "Server-deployed
+web app" below; this is the one place this list is spelled out in prose, and
+`tools/gas-lint/project-map.json` is what the tooling actually reads) is laid out
 exactly the way [clasp](https://github.com/google/clasp) wants — a flat
 folder. It has a committed `appsscript.json` (derived from actual service
 usage: `GmailApp`, `DriveApp`, `DocumentApp`, `SpreadsheetApp`, plus the

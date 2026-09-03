@@ -323,3 +323,91 @@ leader-hub side and its student-email follow-up — see "cas-ccps↔leader-hub
 integration" in README.md for the fuller writeup, since that work is large
 enough to warrant its own section rather than folding into this list.
 
+
+---
+
+## 2026-09-03 — brought in line with the repo's current build practices
+
+leader-hub was one of the first builds here, and the operational scaffolding
+the later systems grew never got back-fitted to it. An audit against what
+cas-ccps and kos-personal now carry found the gap was narrow but real, and —
+usefully — that most of the *architectural* worry did not apply.
+
+**What turned out to be fine, so nobody re-litigates it.** leader-hub has no
+GCP exposure at all: no custom Workspace Studio steps, no API key, nothing
+for an operator to provision. Its Flows call Gemini with the Workspace
+account's own built-in access, which is the Bifurcation Boundary
+`EmailBridge.gs` describes at its line 160. That makes it the cleanest
+example of the pattern in this repo, and it is why it has no entry in
+`tools/gas-lint/gcp-map.json` and should never acquire one — the wall that
+killed 2,113 lines of `cas-ccps/studio-steps/` cannot reach this system. The
+10 open items in `LEADERHUB_WIP.md` are UI and data-freshness polish, not
+blockers. Test coverage was already reasonable (7 files before this).
+
+**What was missing: the whole reliability layer.** cas-ccps has a schema
+guard, a preflight, fixtures and a canary; kos-personal has a turnstile and
+a queue watchdog; leader-hub had none of the four, while having the exact
+failure modes they exist to catch. Added as `FlowOps.gs`:
+
+- **Schema guard** (`checkAiQueueSchema` / `repairAiQueueSchema`). `AIQ_COL`
+  indexes `AI_Queue` by column *position*, and the Workspace Flow writes
+  `Status`/`Result` back by position too — so drift breaks reading *and*
+  writing with no error on either side, and a Flow would write its result
+  into the wrong cell while GAS read `PENDING` forever.
+  `_getAiQueueSheet_()` writes headers only when it creates the tab, so
+  nothing had ever verified them again. This is not a hypothetical risk: the
+  same class of drift on cas-ccps's Central Ledger made
+  `LEDGER.TEACHER_EMAIL` return a person's *name*, silently killing every
+  downstream lookup, and it took a live session to find. The repair
+  deliberately **refuses** while data rows exist — rewriting headers over
+  rows written under the old layout relabels their columns without moving
+  their values, which hides the mismatch instead of fixing it. Queue rows
+  are transient (swept after two hours), so waiting is a real option here in
+  a way it was not for the Ledger, which is why this refuses rather than
+  backing up and rebuilding the way `38_LedgerSchemaGuard.js` does.
+- **Fixtures** (`installAiFlowFixtures` / `checkAiFlowFixtures` /
+  `removeAiFlowFixtures`). A Workspace Flow that matched zero rows reports a
+  green "Run Completed", indistinguishable from working — the single biggest
+  time sink on the cas-ccps side. Six Flows here had never had a row to match
+  unless someone drove the UI by hand. One `PENDING` row per type makes the
+  read-back the actual test: a `Status` that moved off `PENDING` is proof
+  that *that* Flow is live.
+- **Canary** (`runAiFlowCanary`). Exercises the Apps Script half end to end —
+  queue, poll, hand back once, delete, bump stats — with the Flow stubbed on
+  purpose, so a pass localises any remaining failure to the Flow. Same
+  discipline as `runFlow2Canary()`, including being explicit in both the code
+  and the log that a pass says nothing about whether any Flow exists.
+- **Preflight** (`runLeaderHubPreflight`). One read-only report: queue
+  spreadsheet reachable, both header rows matching the code, prompts synced,
+  every job type carrying a prompt. Makes no writes, so it is safe against a
+  live deployment at any time.
+
+Two safety properties were verified before the fixtures were written, and
+both are pinned by tests. A fixture row **cannot send anything**: a queue row
+makes a Flow generate text and write it back, it does not make GAS act, and
+the only outbound side effect in the project (`createBragDraft_()`'s
+`GmailApp.createDraft()`) is reachable solely from an explicit `bragEmail`
+client action. And fixtures **do not appear as usage** — they are written
+straight to the sheet rather than through `queueAiJob_()`, so they never
+touch the per-type counters behind Settings → AI Flow Health. The canary
+takes the opposite route on purpose and therefore uses the job type `CANARY`,
+deliberately absent from `AI_FLOW_TYPES`, so its traffic is recorded but
+invisible in that panel.
+
+**Documentation drift found in the same pass.**
+`meta/FLOW_INVENTORY.md` was tracking a doc gap that no longer existed — it
+said `LEADERHUB_AI_FLOW_SETUP.md` documented only five of the six job types,
+omitting `FIN_ANALYSIS`, when that doc now covers all six including a payload
+section for it. Corrected in place rather than deleted, because a tracking
+note outliving the thing it tracked sends a reader looking for finished work.
+Separately, the `leader-hub:app` file list was spelled out in prose in six
+places across five documents and had to be corrected twice in one session as
+files were added; five of those now point at
+`tools/gas-lint/project-map.json`, which is what the tooling actually reads,
+and `README.md` keeps the one human-readable copy.
+
+`FlowOps.gs` is registered in `project-map.json` **and** in
+`leader-hub/.claspignore`. That second one matters and is easy to miss: the
+`.claspignore` here is an allowlist (`**/**` followed by explicit
+un-ignores), so a new file that isn't listed is silently skipped by
+`clasp push` — it would appear to deploy and simply not exist.
