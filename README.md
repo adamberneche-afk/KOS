@@ -136,8 +136,9 @@ external review pass, Addendum 22 R9).
 Catches the failure mode a red X can't: an invalid `.github/workflows/*.yml`
 file produces no run at all, so nothing fails loudly. Runs actionlint
 against every workflow file and checks that every workflow with an
-`on.schedule` trigger (currently `codeql.yml`) had its most recent
-scheduled run actually conclude successfully, publishing both to one
+`on.schedule` trigger (currently `codeql.yml` and `watchdog.yml` itself -
+there's no self-exclusion, so it watches its own run history too) had its
+most recent scheduled run actually conclude successfully, publishing both to one
 pinned "KOS Scheduled-Job Watchdog" issue updated in place rather than a
 fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
 (the day after `codeql.yml`'s own schedule, so that run has landed);
