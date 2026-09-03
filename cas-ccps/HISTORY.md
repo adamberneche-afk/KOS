@@ -1447,3 +1447,46 @@ decision table (the override threshold as a floor not a ceiling, the
 evaluation order, the persistence reading, the fallback tail) and the schema
 invariants that keep a native "add row to sheet" step writing into the right
 cells.
+
+### Follow-up — the warm-up fixtures now actually reach the bridge
+
+Seeding a `WarmUpQueue` row at the right status turned out not to be enough
+for Flows 3, 4 and 5 to have something to latch onto. The bridge also has to
+be able to *materialize* an input row from that seed, and each flow needs
+something different present before it can. Three gaps, one of them silent:
+
+- **Flow 4 had nothing at all.** `wfbBuildFlow4Row_` refuses a row with no
+  `Doc_ID`, because it pulls the *original* prompt out of the document via
+  `evaluateWarmUpDoc_()` rather than reconstructing an approximation from the
+  lesson snapshot. The status-only fixture therefore logged "no Doc_ID —
+  skipped" and wrote nothing, while looking installed. The fixture now creates
+  a real scratch document carrying the same zone structure a Flow 3 run
+  produces, plus a written response — and takes its marker strings from the
+  reader (`RESPONSE_ZONE_MARKER` by reference, not retyped) so it stays honest
+  if that constant changes.
+- **`evaluation_signals` was the wrong shape**: an array of plain strings,
+  where the archetype decision reads `signals[i].indicators.strengths/.gaps`
+  and formats `.date`/`.note`. Nothing errored — it produced
+  `"- : (strengths: None; gaps: None)"` in the prompt and fell through to a
+  gaps-based BRIDGE, so the fixture exercised none of the decision table. Now
+  the object shape, with values chosen to land on CONCRETE_SCENARIO through a
+  real branch (application strong, analysis a gap, engagement 2).
+- **No `Word_Count_Score`.** The harvest reads that cell rather than
+  recomputing it, so a plausible response would have scored as if blank —
+  which reads as a scoring bug rather than a fixture gap.
+
+`removeFlowFixtures()` now also clears the four bridge tabs. Left behind,
+those input rows point at queue rows that no longer exist and every later
+harvest pass reports them as failures forever.
+
+One accommodation in the bridge itself, made deliberately: `wfbApplyFlow3_`
+skips `addEditor` for an address ending in `.invalid`. That is the reserved
+TLD, so it can never be a real student, and `addEditor` throws on an address
+that cannot exist — which would park a working fixture in `NEEDS_ATTENTION`
+and make it look like a bug. Everything worth proving (the folder chain, the
+document, the zones) has already happened by that point; sharing to a
+nonexistent account is not a capability under test.
+
+`checkFlowFixtures()` now says outright that a parked fixture is only half the
+story — nothing reaches a Flow until an input row is materialized, and nothing
+proves a Flow ran until something appears in the return tab.

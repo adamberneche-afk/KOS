@@ -29,7 +29,8 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = [
   S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('24_WarmUpBridge.js'),
-  S('37_FlowInputBuilder.js'), S('39_FlowFixtures.js'),
+  S('25_WarmUpWriter.js'), S('37_FlowInputBuilder.js'), S('39_FlowFixtures.js'),
+  S('41_WarmUpFlowBridge.js'),
 ];
 
 function load() {
@@ -39,6 +40,12 @@ function load() {
     'FI', 'WQ24_QUEUE_ID', 'WQ24_STATUS', 'WQ24_LESSON_CTX_SNAP',
     'WQ24_STUDENT_PROFILE_SNAP', 'WQ24_RESPONSE_TEXT', 'WQ24_COL_COUNT',
     'FX_QUEUE_PREFIX', 'FX_CONFIG_PREFIX', 'FX_TEACHER_EMAIL', 'FX_STUDENT_EMAIL',
+    // 41_WarmUpFlowBridge.js — the fixtures exist to feed it, so the
+    // end-to-end tests at the bottom of this file drive it directly.
+    'buildWarmUpFlowInputs', 'wfbBuildFlow3Fields_', 'evaluateWarmUpDoc_',
+    'WQ24_DOC_ID', 'WQ24_WORD_COUNT_SCORE', 'WFB_INPUT_TABS',
+    'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
+    'RESPONSE_ZONE_MARKER',
   ]);
 }
 
@@ -302,4 +309,137 @@ test('fixture markers never collide with the canary markers in file 35', () => {
   // And both stay inside the reserved, non-deliverable TLD.
   assert.ok(exported.FX_TEACHER_EMAIL.endsWith('@example.invalid'));
   assert.ok(exported.FX_STUDENT_EMAIL.endsWith('@example.invalid'));
+});
+
+// ── The fixtures against 41_WarmUpFlowBridge.js ──────────────────────────────
+//
+// The whole point of the warm-up fixtures is that Flows 3, 4 and 5 have
+// something to match. Seeding a WarmUpQueue row at the right STATUS is not
+// enough for that — the bridge also has to be able to materialize an input
+// row from it, and each flow needs different things present before it can:
+//
+//   Flow 5  a flow5_prior_response inside the lesson snapshot
+//   Flow 3  BOTH snapshots, parseable, with the folder-path fields
+//   Flow 4  a real Doc_ID whose document carries the zone markers
+//
+// Flow 4 is the one that silently didn't work: a status-only row makes
+// wfbBuildFlow4Row_ log "no Doc_ID — skipped" and write nothing, so the flow
+// had nothing to latch onto while the fixture looked installed.
+
+test('the fixtures materialize an input row for all three flows', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  exported.installWarmUpFixtures();
+
+  const built = exported.buildWarmUpFlowInputs();
+  assert.equal(built.flow5, 1, 'Flow 5: ' + JSON.stringify(built));
+  assert.equal(built.flow3, 1, 'Flow 3: ' + JSON.stringify(built));
+  assert.equal(built.flow4, 1, 'Flow 4 — a status-only fixture would be 0 here: ' +
+    JSON.stringify(built));
+});
+
+test('materializing twice does not duplicate — two docs per student would follow', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  exported.installWarmUpFixtures();
+  exported.buildWarmUpFlowInputs();
+  const second = exported.buildWarmUpFlowInputs();
+  assert.equal(second.flow3 + second.flow4 + second.flow5, 0);
+  assert.equal(second.skipped, 3);
+});
+
+test('the Flow 4 fixture brings a real document, with extractable zones', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installWarmUpFixtures();
+
+  const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
+  const f4 = rows.find((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F4') !== -1);
+  assert.ok(f4, 'the F4 fixture row exists');
+  const docId = String(f4[exported.WQ24_DOC_ID] || '').trim();
+  assert.ok(docId, 'and carries a Doc_ID — without one Flow 4 materializes nothing');
+
+  // The assertion that matters: the reader the bridge actually uses can find
+  // both zones. Marker strings copied from the reader rather than retyped.
+  const extracted = exported.evaluateWarmUpDoc_(docId, 'WUQ-FIXTURE-F4');
+  assert.equal(extracted.error, null, JSON.stringify(extracted));
+  assert.match(extracted.promptText, /FIXTURE PROMPT/);
+  assert.ok(extracted.responseText.length > 20, 'response: ' + extracted.responseText);
+  assert.ok(extracted.wordCount > 5);
+});
+
+test('the Flow 4 fixture carries a word-count score, so its total is not blank-scored', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installWarmUpFixtures();
+  const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
+  const f4 = rows.find((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F4') !== -1);
+  // The harvest reads this cell rather than recomputing it, so a 0 here would
+  // score a plausible response as if it had been left empty — reading as a
+  // scoring bug rather than a fixture gap.
+  assert.ok(Number(f4[exported.WQ24_WORD_COUNT_SCORE]) > 0);
+});
+
+test('the seeded profile drives a real archetype branch, not the fallback tail', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installWarmUpFixtures();
+
+  const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
+  const f3 = rows.find((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F3') !== -1);
+  const lesson = JSON.parse(String(f3[exported.WQ24_LESSON_CTX_SNAP]));
+  const profile = JSON.parse(String(f3[exported.WQ24_STUDENT_PROFILE_SNAP]));
+
+  // evaluation_signals must be the OBJECT shape. As a plain string array this
+  // silently produced "- : (strengths: None; gaps: None)" in the prompt and
+  // fell through to a gaps-based BRIDGE, so the fixture exercised nothing.
+  assert.equal(typeof profile.evaluation_signals[0], 'object');
+  assert.ok(profile.evaluation_signals[0].indicators.strengths.length > 0);
+
+  const fields = exported.wfbBuildFlow3Fields_(lesson, profile);
+  assert.equal(fields.archetype, 'CONCRETE_SCENARIO',
+    'application strong + analysis gap + engagement 2 should reach this row');
+  assert.equal(fields.mode, 'A', 'the fixture snapshot carries a warmup_anchor');
+  assert.match(fields.evaluationSignals, /strengths: application/);
+  assert.ok(fields.evaluationSignals.indexOf('strengths: None') === -1,
+    'a string-array signal would render as None here');
+});
+
+test('removeFlowFixtures clears the bridge tabs too', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installWarmUpFixtures();
+  exported.buildWarmUpFlowInputs();
+
+  const before = [3, 4, 5].map((f) =>
+    ss.getSheetByName(exported.WFB_INPUT_TABS[f]).getLastRow());
+  assert.deepEqual(before, [2, 2, 2], 'one materialized row per flow');
+
+  exported.removeFlowFixtures();
+
+  // Left behind, these input rows point at queue rows that no longer exist,
+  // and every later harvest pass reports them as failures forever.
+  [3, 4, 5].forEach((f) => {
+    const values = ss.getSheetByName(exported.WFB_INPUT_TABS[f]).getDataRange().getValues();
+    const live = values.slice(1).filter((r) => String(r[1]).trim() !== '');
+    assert.deepEqual(live, [], 'Flow ' + f + ' input tab still holds ' + JSON.stringify(live));
+  });
+});
+
+test('a Flow 5 fixture with no prior response materializes nothing, by design', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installWarmUpFixtures();
+
+  // Strip the prior response the way a first-time student's row would lack
+  // it. The bridge must not hand Flow 5 a job with nothing to bridge from.
+  const sheet = ss.getSheetByName('WarmUpQueue');
+  const rows = sheet.getDataRange().getValues();
+  const idx = rows.findIndex((r) => String(r[exported.WQ24_QUEUE_ID]).indexOf('F5') !== -1);
+  const ctx = JSON.parse(String(rows[idx][exported.WQ24_LESSON_CTX_SNAP]));
+  delete ctx.flow5_prior_response;
+  sheet.getRange(idx + 1, exported.WQ24_LESSON_CTX_SNAP + 1).setValue(JSON.stringify(ctx));
+
+  const built = exported.buildWarmUpFlowInputs();
+  assert.equal(built.flow5, 0);
 });

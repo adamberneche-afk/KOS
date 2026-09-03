@@ -733,9 +733,22 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
     return { ok: false, error: "DOC_CREATE_FAILED: " + e.message };
   }
 
+  const shareWith = String(row[WQ25_GOOGLE_ID] || "");
   try {
     file.setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
-    file.addEditor(String(row[WQ25_GOOGLE_ID] || ""));
+    // .invalid is the reserved TLD, so it can never be a real student — this
+    // is a fixture row (39_FlowFixtures.js seeds fixture-student@example.invalid).
+    // addEditor would throw on an address that cannot exist, parking the row
+    // in NEEDS_ATTENTION and making a working fixture look like a bug. Sharing
+    // to a nonexistent account is not a capability worth proving; everything
+    // before this point — the folder chain, the doc, the zones — is, and it
+    // has already happened by now.
+    if (/\.invalid$/i.test(shareWith.trim())) {
+      Logger.log("[WFB] " + queueId + ": fixture address " + shareWith +
+        " — doc created and left unshared, deliberately.");
+    } else {
+      file.addEditor(shareWith);
+    }
   } catch (e) {
     return {
       ok: false, needsAttention: true,

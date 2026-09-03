@@ -279,6 +279,57 @@ function installFlow2Fixture() {
 // 34_QueueWatchdog.js watches that status; the DELIVERED -> PENDING_EVAL hop
 // belongs to Script 25, not to any flow.
 // ---------------------------------------------------------------------------
+/**
+ * Builds a scratch warm-up document for the Flow 4 fixture, with the same
+ * zone structure a real Flow 3 run produces plus a written response.
+ *
+ * WHY A REAL DOCUMENT AND NOT A FAKED Doc_ID. Flow 4's materialization
+ * (41_WarmUpFlowBridge.js) calls evaluateWarmUpDoc_() to pull the ORIGINAL
+ * prompt text out of the doc, because reconstructing it from the lesson
+ * snapshot gives an approximation rather than the exact text the student saw.
+ * A fabricated Doc_ID makes that call fail and no Flow4Input row is written —
+ * the flow would have nothing to latch onto, which is the specific problem
+ * these fixtures exist to solve.
+ *
+ * THE MARKERS ARE COPIED FROM THE READER, NOT INVENTED. evaluateWarmUpDoc_()
+ * finds the prompt between "── WARM-UP PROMPT ──" and "── END PROMPT ──", and
+ * the response after RESPONSE_ZONE_MARKER. Using RESPONSE_ZONE_MARKER by
+ * reference (it is the same project) rather than retyping the string is what
+ * keeps this fixture honest if that constant ever changes.
+ *
+ * Returns { id, url } or null — a fixture that cannot make a doc logs and
+ * degrades to a status-only row rather than aborting the whole seed.
+ */
+function _fxCreateWarmUpFixtureDoc_(queueId, ctx, responseText) {
+  try {
+    const doc = DocumentApp.create("FIXTURE Warm-Up — " + queueId);
+    const body = doc.getBody();
+    body.clear();
+    body.appendParagraph("Warm-Up — FIXTURE — Fixture Student");
+
+    body.appendParagraph("── WARM-UP PROMPT ──");
+    body.appendParagraph(
+      "FIXTURE PROMPT — " + (ctx.activity || "Draft a channel justification.") +
+      " Think about " + (ctx.vocabulary || "your key terms") + " as you write.");
+    body.appendParagraph("── END PROMPT ──");
+    body.appendParagraph("");
+    body.appendParagraph(RESPONSE_ZONE_MARKER);
+    body.appendParagraph(responseText);
+    doc.saveAndClose();
+
+    const file = DriveApp.getFileById(doc.getId());
+    Logger.log("[Fixtures] Flow 4: created scratch doc " + file.getId() +
+               " with a prompt zone and a written response.");
+    return { id: file.getId(), url: file.getUrl() };
+  } catch (e) {
+    Logger.log("[Fixtures] Flow 4: could not create the scratch doc (" + e.message +
+               "). Seeding a status-only row — Flow 4's materialization will " +
+               "skip it for want of a Doc_ID, so Flow 4 has nothing to match " +
+               "until this is re-run.");
+    return null;
+  }
+}
+
 function installWarmUpFixtures() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
@@ -324,7 +375,20 @@ function installWarmUpFixtures() {
     period: "1",
     competencies_addressed: ["FIXTURE-COMP-1"],
     competency_gaps: ["FIXTURE-COMP-2"],
-    evaluation_signals: ["FIXTURE: seeded profile, not a real learner record"],
+    // OBJECT shape, not strings. 41_WarmUpFlowBridge.js's archetype decision
+    // reads signals[i].indicators.strengths/.gaps and formats .date/.note, so
+    // a plain string array materializes into a nonsense prompt block
+    // ("- : (strengths: None; gaps: None)") without erroring anywhere. These
+    // values are chosen to land on CONCRETE_SCENARIO through the decision
+    // table — application strong, analysis a gap, engagement 2 — so the
+    // fixture exercises a real branch rather than the fallback tail.
+    evaluation_signals: [
+      {
+        date: lessonDate,
+        note: "FIXTURE: seeded signal, not a real learner record",
+        indicators: { strengths: ["application"], gaps: ["analysis"] },
+      },
+    ],
     warmup_scores: [3, 4],
     extra_credit_count: 0,
     avg_engagement_score: 2,
@@ -348,7 +412,12 @@ function installWarmUpFixtures() {
   const specs = [
     { suffix: "F5", status: "PENDING_BRIDGE", ctx: ctxWithPrior, response: "" },
     { suffix: "F3", status: "PENDING", ctx: ctxBase, response: "" },
-    { suffix: "F4", status: "PENDING_EVAL", ctx: ctxBase, response: FX_STUDENT_RESPONSE },
+    // withDoc: Flow 4's materialization refuses a row with no Doc_ID, and
+    // reads the original prompt out of the doc via evaluateWarmUpDoc_(). A
+    // status alone therefore gives Flow 4 nothing to latch onto — this is the
+    // one fixture that has to bring a real document with it.
+    { suffix: "F4", status: "PENDING_EVAL", ctx: ctxBase,
+      response: FX_STUDENT_RESPONSE, withDoc: true },
   ];
 
   let seeded = 0;
@@ -374,7 +443,21 @@ function installWarmUpFixtures() {
     row[WQ24_STATUS] = spec.status;
     if (spec.response) {
       row[WQ24_RESPONSE_TEXT] = spec.response;
-      row[WQ24_WORD_COUNT] = spec.response.split(/\s+/).length;
+      const words = spec.response.split(/\s+/).filter(Boolean).length;
+      row[WQ24_WORD_COUNT] = words;
+      // Flow 4's total is word_count_score + grammar + engagement +
+      // extra_credit, and the harvest reads this cell rather than recomputing
+      // it. Left at 0 the fixture would score a plausible response as if it
+      // had been blank, which reads as a scoring bug rather than a fixture
+      // gap. 2 is the mid band for a response of this length.
+      row[WQ24_WORD_COUNT_SCORE] = 2;
+    }
+    if (spec.withDoc) {
+      const made = _fxCreateWarmUpFixtureDoc_(queueId, spec.ctx, spec.response);
+      if (made) {
+        row[WQ24_DOC_ID] = made.id;
+        row[WQ24_DOC_URL] = made.url;
+      }
     }
     sheet.appendRow(row);
     seeded++;
@@ -445,6 +528,17 @@ function checkFlowFixtures() {
   const ready = report.filter(function (r) { return r.ok; }).length;
   Logger.log("[Fixtures] " + ready + " of " + report.length +
              " flows have a fixture parked at their trigger condition.");
+  // A fixture parked at a trigger condition is only half the story. Nothing
+  // reaches a Flow until Apps Script materializes an input row from it, and
+  // nothing proves a Flow ran until something appears in the return tab.
+  // Saying so here keeps "fixtures installed" from being mistaken for
+  // "the flows are being exercised" — the exact confusion these fixtures
+  // were built to remove.
+  Logger.log("[Fixtures] Next: buildWarmUpFlowInputs() materializes Flows 3/4/5's " +
+             "input rows (installWarmUpFlowTriggers() does it on a schedule), then " +
+             "checkWarmUpFlowLiveness() reports whether any Flow has ever written " +
+             "back. For Flow 2 the equivalents are installFlowInputTriggers() and " +
+             "the FlowInput row checked above.");
   return { ready: ready, total: report.length, report: report };
 }
 
@@ -495,6 +589,17 @@ function removeFlowFixtures() {
   // RubricQueue — also collect the template doc (7) and scratch matrix (8).
   clearWhere(adminSs.getSheetByName(cfg.tabs.rubricQueue || "RubricQueue"),
     1, fixtureEmails, [7, 8]);
+
+  // 41_WarmUpFlowBridge.js's four tabs. Materialized input rows and harvested
+  // returns both key on the WarmUpQueue's Queue_ID, so the same prefix match
+  // clears them — without this, removing the fixtures would leave input rows
+  // pointing at queue rows that no longer exist and the next harvest pass
+  // would report them as failures forever.
+  clearWhere(ledgerSs.getSheetByName("Flow3Input"), 1, { prefix: FX_QUEUE_PREFIX });
+  clearWhere(ledgerSs.getSheetByName("Flow4Input"), 1, { prefix: FX_QUEUE_PREFIX });
+  clearWhere(ledgerSs.getSheetByName("Flow5Input"), 1, { prefix: FX_QUEUE_PREFIX });
+  // The return tab keys Queue_ID in column 3 (0-based 2), after Flow.
+  clearWhere(ledgerSs.getSheetByName("WarmUpFlowReturn"), 2, { prefix: FX_QUEUE_PREFIX });
 
   // FlowInput — also collect the scratch student doc.
   clearWhere(ledgerSs.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput"),
