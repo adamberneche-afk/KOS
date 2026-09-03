@@ -60,9 +60,11 @@ which is now also stale — see the update below.)** cas-ccps/README.md's
 "Known gaps" section originally stated plainly: "Flow 2 has never been
 built in Studio." That's no longer accurate: `CommitStudentEvaluationStep.gs`
 (`cas-ccps/studio-steps/`) is now Flow 2's real, tested writer code. What
-remains true is that it isn't *live* — that project hasn't been pushed to
-a real Google account, and no flow has been wired together in Studio's
-builder — so today, a row that reaches `IN_PROCESS` still has nothing
+remains true is that it isn't *live* — and the reason is not the one this
+paragraph used to give ("that project hasn't been pushed to a real Google
+account"). It was pushed, successfully; see the correction below. No flow
+has been wired together in Studio's builder, so today a row that reaches
+`IN_PROCESS` still has nothing
 actually watching it in a real deployment; it sits there until
 `06_StagingPipeline_Turnstile.js`'s timeout logic ages it out to
 `ERROR_TIMEOUT`, every time, unless someone processes it by hand. "Code
@@ -74,8 +76,21 @@ escape hatch that makes Flow 2's evaluation logic actually
 callable/testable (`runFlow2DirectGemini_()`) without a live Studio Flow
 — but it is deliberately NOT wired into
 `06_StagingPipeline_Turnstile.js`'s automatic release loop; see that
-file's own header comment for why. Deploying `cas-ccps/studio-steps/` and
-wiring Flow 2 for real in Studio is still the intended production path.)
+file's own header comment for why.
+
+**Corrected again, after the first live deployment.** The line that used to
+close this paragraph — "deploying `cas-ccps/studio-steps/` and wiring Flow 2
+for real in Studio is still the intended production path" — is no longer
+true, and cannot become true on this account. A custom Studio step is a
+Workspace Add-on and needs a standard, non-default Cloud project; GCP is
+disabled org-wide for `ccpsnet.net`. `CommitStudentEvaluationStep.gs` is
+tested code that Studio will never load here, and `15c`'s `DIRECT_GEMINI`
+escape hatch needs an API key, which needs the same project. **The production
+path is now the port:** `37_FlowInputBuilder.js` materializes one flat
+`FlowInput` row, the Flow makes one model call with native steps, and
+`harvestFlowInputResults()` applies the result on a time trigger.
+`41_WarmUpFlowBridge.js` does the same for Flows 3/4/5, and
+`tools/gas-lint/gcp-map.json` carries the declaration.)
 
 **Status lifecycle:** `PENDING_INFERENCE` (queued, waiting for a free
 per-teacher lane) → `IN_PROCESS` (Flow 2 is expected to be actively
@@ -83,9 +98,28 @@ evaluating it) → `COMPLETE` / `ERROR_TIMEOUT`. `06_StagingPipeline_
 Turnstile.js`'s 1-minute trigger both promotes queued rows into a lane and
 auto-times-out a row that's sat `IN_PROCESS` too long.
 
-**Where to check:** ⚙️ Admin Controls → 📊 Run System Health Check (or the
-daily `autoHealthAlert()` email), in `10_AdminRecoveryPanel.js`. Two
-checks, both fed by the shared `_stagingPipelineHealthChecks_()` scan:
+**Where to check:** four questions, four checks — "nothing came back" is one
+answer covering four causes (never built; the trigger matches nothing; it
+writes to the wrong columns; the model call errored), and the third looks
+exactly like the first. See `meta/FLOW_DOCTRINE.md` rule 9; `gas-lint`'s Check
+I holds each flow to having all four.
+
+| Question | cas-ccps | leader-hub | kos-personal |
+|---|---|---|---|
+| Is the structure sound? | `runFlowPreflightCheck()` | `runLeaderHubPreflight()` | — |
+| Does the script half work? | `runFlow2Canary()`, `runWarmUpFlowCanary()` | `runAiFlowCanary()` | `runStudioReturnCanary()` |
+| Are the columns bound right? | `checkFlowBinding()`, `checkFlow2Binding()` | `checkAiFlowBinding()` | `checkStudioFlowBinding()` |
+| Has a Flow ever answered? | `checkFlow2Liveness()`, `checkWarmUpFlowLiveness()` | `checkAiFlowFixtures()` | `checkStudioFlowLiveness()` |
+
+Each system also has a fixture installer, so a Flow has something to match
+rather than reporting a green "Run Completed" over zero rows —
+`installFlowFixtures()`, `installAiFlowFixtures()`,
+`installStudioFlowFixture()`.
+
+The admin-facing signal below predates those and still stands: ⚙️ Admin
+Controls → 📊 Run System Health Check (or the daily `autoHealthAlert()`
+email), in `10_AdminRecoveryPanel.js`. Two checks, both fed by the shared
+`_stagingPipelineHealthChecks_()` scan:
 - **Stuck `IN_PROCESS` rows** (past 15 min) — an evaluation that started
   but never finished. *Never completed a job*-equivalent for one specific
   submission, not the whole Flow.
