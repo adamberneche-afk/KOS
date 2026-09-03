@@ -94,6 +94,9 @@
  *   harvestWarmUpFlowReturns()   — apply whatever has come back
  *   installWarmUpFlowTriggers()  — both of the above, on time triggers
  *   checkWarmUpFlowLiveness()    — has each flow EVER returned anything?
+ *   checkFlowBinding()           — are the Flow's output columns bound right?
+ *                                  also logs the binding to copy from
+ *   checkFlow2Binding()          — the same, for Flow 2's write-into-the-row shape
  *   runWarmUpFlowCanary()        — end-to-end, with Studio stubbed
  *   removeWarmUpFlowFixtures()   — clean up after a canary that died early
  */
@@ -1017,6 +1020,237 @@ function checkWarmUpFlowLiveness() {
       Logger.log("[WFB] Flow " + flow + ": no returns and nothing waiting — nothing to conclude.");
     }
   });
+  return report;
+}
+
+// ── Binding probe ────────────────────────────────────────────────────────────
+
+/**
+ * Diagnoses whether a Flow's native "add row to sheet" step is bound to the
+ * right columns — the one deployment surface nothing else could check.
+ *
+ * WHY THIS EXISTS. Every other check in this repo verifies the Apps Script
+ * side. The Studio side is built by hand in a UI, and until now the only
+ * signal about it was checkWarmUpFlowLiveness()'s "nothing has ever come
+ * back". That single answer covers four different causes:
+ *
+ *   1. the Flow was never built
+ *   2. its trigger condition is wrong, so it matches no rows
+ *   3. it runs and writes, but into the wrong columns
+ *   4. it runs and Gemini errors
+ *
+ * Case 3 is the one that looks most like case 1 and is the easiest to
+ * create: WarmUpFlowReturn's columns are bound one at a time in a picker,
+ * and a row written one column across is silently invisible to the harvest.
+ * This function separates it out by looking at where the values actually
+ * LANDED rather than at whether the harvest liked them.
+ *
+ * Read-only. It also logs the expected binding, so it doubles as the thing to
+ * copy from while wiring the step — generated from the same header constants
+ * the harvest reads, so it cannot drift from the code the way a hand-written
+ * setup document does.
+ */
+function checkFlowBinding() {
+  const ctx = wfbLedger_();
+  const report = { returnRows: 0, ok: 0, problems: [], expected: [] };
+
+  // The binding to copy. Derived, not transcribed.
+  WFB_RETURN_HEADERS.forEach(function (name, idx) {
+    const owner = (idx <= WFB_RET.RAW_OUTPUT) ? 'the Flow writes this' : 'leave EMPTY — the harvest owns it';
+    report.expected.push({ column: idx + 1, header: name, owner: owner });
+  });
+  Logger.log('[WFB] Expected binding for the final "add row to sheet" step, into ' + WFB_RETURN_TAB + ':');
+  report.expected.forEach(function (e) {
+    Logger.log('[WFB]   col ' + e.column + '  ' + e.header + '  — ' + e.owner);
+  });
+  Logger.log('[WFB]   Flow must be the literal 3, 4 or 5. QueueID must be the trigger row\'s ' +
+    'Queue_ID. RawOutput is the Gemini step\'s output, unmodified.');
+
+  const returns = ctx.ss.getSheetByName(WFB_RETURN_TAB);
+  if (!returns || returns.getLastRow() <= 1) {
+    Logger.log('[WFB] No rows in ' + WFB_RETURN_TAB + ' yet, so there is no binding to diagnose. ' +
+      'That is case 1 or 2 above — the Flow has never written here at all. ' +
+      'checkWarmUpFlowLiveness() covers those.');
+    return report;
+  }
+
+  const wqSheet = ctx.ss.getSheetByName(ctx.cfg.tabs.warmUpQueue);
+  const knownIds = {};
+  if (wqSheet && wqSheet.getLastRow() > 1) {
+    wqSheet.getRange(2, WQ25_QUEUE_ID + 1, wqSheet.getLastRow() - 1, 1)
+      .getValues().forEach(function (r) {
+        const id = String(r[0]).trim();
+        if (id) knownIds[id] = true;
+      });
+  }
+
+  const width = WFB_RETURN_HEADERS.length;
+  const data = returns.getRange(2, 1, returns.getLastRow() - 1, width).getValues();
+  for (let i = 0; i < data.length; i++) {
+    report.returnRows++;
+    const row = data[i];
+    const issues = _wfbDiagnoseReturnRow_(row, knownIds);
+    if (!issues.length) { report.ok++; continue; }
+    report.problems.push({ row: i + 2, issues: issues });
+  }
+
+  Logger.log('[WFB] checkFlowBinding: ' + report.ok + '/' + report.returnRows +
+    ' return row(s) correctly bound');
+  report.problems.forEach(function (p) {
+    Logger.log('[WFB]   row ' + p.row + ':');
+    p.issues.forEach(function (msg) { Logger.log('[WFB]     - ' + msg); });
+  });
+  if (!report.problems.length && report.returnRows) {
+    Logger.log('[WFB] Every row is bound correctly, so a flow still reporting no results is ' +
+      'failing inside the Flow itself (case 4) rather than writing to the wrong place.');
+  }
+  return report;
+}
+
+/**
+ * Per-row diagnosis. Returns a list of human-readable problems, empty when
+ * the row is correctly bound.
+ *
+ * The shift check is the point: rather than only saying "Flow is blank", it
+ * looks for where each expected value actually landed and reports the offset.
+ * A one-column shift is by far the most likely mis-binding, and the hardest
+ * to see by eye in a picker.
+ */
+function _wfbDiagnoseReturnRow_(row, knownIds) {
+  const issues = [];
+  const cell = function (idx) { return String(row[idx] === undefined ? '' : row[idx]).trim(); };
+
+  // Where did a flow number actually land?
+  let flowAt = -1;
+  for (let i = 0; i < row.length; i++) {
+    if (['3', '4', '5'].indexOf(cell(i)) !== -1) { flowAt = i; break; }
+  }
+  // Where did a known Queue_ID actually land?
+  let idAt = -1;
+  for (let i = 0; i < row.length; i++) {
+    if (knownIds[cell(i)]) { idAt = i; break; }
+  }
+  // Where did the longest blob land? That is almost certainly the model output.
+  //
+  // Timestamp is excluded, and that exclusion is load-bearing: a Date cell
+  // stringifies to ~50 characters, so without it an EMPTY RawOutput made this
+  // pick column 1 and report "your output landed in Timestamp" — a confident
+  // wrong answer where "the output is not reaching this row at all" is the
+  // useful one. Caught by its own test.
+  //
+  // The trade: output genuinely bound to column 1 reads as absent rather than
+  // as misplaced. That binding is implausible (Timestamp is the first column
+  // and the obvious one to leave to `now`), and the Flow/QueueID diagnostics
+  // below still fire, so the row is not reported as healthy either way.
+  let blobAt = -1, blobLen = 0;
+  for (let i = 0; i < row.length; i++) {
+    if (i === WFB_RET.TIMESTAMP) continue;
+    const len = cell(i).length;
+    if (len > blobLen && len > 20) { blobLen = len; blobAt = i; }
+  }
+
+  if (flowAt === -1) {
+    issues.push('No cell holds 3, 4 or 5 — the Flow column is unbound, or bound to a ' +
+      'value that is not the literal flow number. The harvest skips any row whose Flow ' +
+      'is not 3, 4 or 5.');
+  } else if (flowAt !== WFB_RET.FLOW) {
+    issues.push('The flow number is in column ' + (flowAt + 1) + ' (' +
+      WFB_RETURN_HEADERS[flowAt] + '), expected column ' + (WFB_RET.FLOW + 1) +
+      ' (Flow) — your binding is shifted by ' + (flowAt - WFB_RET.FLOW) + ' column(s).');
+  }
+
+  if (idAt === -1) {
+    const present = cell(WFB_RET.QUEUE_ID);
+    issues.push(present
+      ? 'QueueID holds "' + present + '", which matches no WarmUpQueue row. Bind it to the ' +
+        'trigger row\'s Queue_ID, not to a generated id or a row number.'
+      : 'QueueID is empty — the harvest cannot find the queue row to apply the result to.');
+  } else if (idAt !== WFB_RET.QUEUE_ID) {
+    issues.push('The Queue_ID is in column ' + (idAt + 1) + ' (' + WFB_RETURN_HEADERS[idAt] +
+      '), expected column ' + (WFB_RET.QUEUE_ID + 1) + ' (QueueID).');
+  }
+
+  if (blobAt === -1) {
+    issues.push('No cell holds anything long enough to be model output. The Gemini step\'s ' +
+      'output is not reaching this row at all.');
+  } else if (blobAt !== WFB_RET.RAW_OUTPUT) {
+    issues.push('The model output landed in column ' + (blobAt + 1) + ' (' +
+      WFB_RETURN_HEADERS[blobAt] + '), expected column ' + (WFB_RET.RAW_OUTPUT + 1) +
+      ' (RawOutput). Everything from HarvestStatus onward belongs to the harvest — ' +
+      'writing there also means the harvest reads your output as its own bookkeeping.');
+  }
+
+  // The harvest's own columns must arrive empty. A value here is either a
+  // mis-binding or a row the harvest has already processed.
+  const bookkeeping = [WFB_RET.HARVEST_STATUS, WFB_RET.ATTEMPTS, WFB_RET.ERROR];
+  const processed = ['HARVESTED', 'FAILED', 'NEEDS_ATTENTION'].indexOf(cell(WFB_RET.HARVEST_STATUS)) !== -1;
+  if (!processed) {
+    bookkeeping.forEach(function (idx) {
+      const v = cell(idx);
+      if (v && idx !== blobAt && String(Number(v)) !== v) {
+        issues.push(WFB_RETURN_HEADERS[idx] + ' (column ' + (idx + 1) + ') arrived holding "' +
+          v.substring(0, 40) + '" — the Flow should leave it empty.');
+      }
+    });
+  }
+
+  return issues;
+}
+
+/**
+ * The Flow 2 half. Studio writes into an EXISTING FlowInput row rather than
+ * appending, so the mis-binding shape is different: the output lands in some
+ * other column of a row that already has 21 populated cells.
+ *
+ * Heuristic by nature, and reported as such: it looks for a READY row whose
+ * GeminiFullOutput is empty while some column that should hold a short
+ * literal holds something long and JSON-shaped. That is the signature of an
+ * output write bound to the wrong column.
+ */
+function checkFlow2Binding() {
+  const ctx = wfbLedger_();
+  const tabName = (ctx.cfg.tabs && ctx.cfg.tabs.flowInput) || 'FlowInput';
+  const sheet = ctx.ss.getSheetByName(tabName);
+  const report = { rows: 0, awaitingOutput: 0, suspected: [] };
+  if (!sheet || sheet.getLastRow() <= 1) {
+    Logger.log('[WFB] checkFlow2Binding: no ' + tabName + ' rows to diagnose.');
+    return report;
+  }
+
+  Logger.log('[WFB] Flow 2 writes its result INTO the trigger row, not a new one. Bind the ' +
+    'output step to column ' + (FI.GEMINI_FULL_OUTPUT + 1) + ' (GeminiFullOutput) and change ' +
+    'nothing else on the row.');
+
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, FI.PROMPT_TEXT + 1).getValues();
+  for (let i = 0; i < data.length; i++) {
+    const row = data[i];
+    report.rows++;
+    if (String(row[FI.GEMINI_FULL_OUTPUT] || '').trim()) continue; // output arrived where expected
+    if (String(row[FI.READY_STATUS] || '').trim() !== 'READY') continue;
+    report.awaitingOutput++;
+
+    // Columns that should hold a short-ish literal. PromptText is excluded —
+    // it is legitimately long.
+    for (let c = 0; c <= FI.MILESTONE_4_COMPETENCY_ID; c++) {
+      const v = String(row[c] === undefined ? '' : row[c]).trim();
+      if (v.length < 400) continue;
+      if (v.indexOf('{') === -1 && v.indexOf('```') === -1) continue;
+      report.suspected.push({ row: i + 2, column: c + 1, sample: v.substring(0, 60) });
+    }
+  }
+
+  Logger.log('[WFB] checkFlow2Binding: ' + report.awaitingOutput + ' of ' + report.rows +
+    ' row(s) READY with no output yet');
+  report.suspected.forEach(function (sus) {
+    Logger.log('[WFB]   row ' + sus.row + ': column ' + sus.column + ' holds long JSON-shaped ' +
+      'text where a short literal belongs ("' + sus.sample + '…"). The output step is very ' +
+      'likely bound to that column instead of GeminiFullOutput (column ' +
+      (FI.GEMINI_FULL_OUTPUT + 1) + ').');
+  });
+  if (report.awaitingOutput && !report.suspected.length) {
+    Logger.log('[WFB]   No mis-bound output found. Those rows are waiting on the Flow itself — ' +
+      'either it is not built, its trigger does not match READY, or it is erroring.');
+  }
   return report;
 }
 

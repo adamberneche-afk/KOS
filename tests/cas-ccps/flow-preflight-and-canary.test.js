@@ -16,9 +16,26 @@ function load(exposeNames) {
   return loadGasFiles([SHARED_CONFIG_PATH, SERVICE_PATH], exposeNames);
 }
 
-function setUpConfig(sandbox, adminSs) {
-  sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', adminSs.getId());
-  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', 'fake-ledger-ss');
+// A deployment-ready state, not merely a config-shaped one. The preflight now
+// covers triggers and required properties as well as tabs, because a
+// deployment missing either looks structurally perfect and moves nothing —
+// so "fully passing" has to mean those are present too.
+const PREFLIGHT_TRIGGERS = ['buildFlowInputRows', 'harvestFlowInputResults',
+                            'buildWarmUpFlowInputs', 'harvestWarmUpFlowReturns'];
+
+function setUpConfig(sandbox, adminSs, opts) {
+  const o = opts || {};
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('ADMIN_SS_ID', adminSs.getId());
+  props.setProperty('CENTRAL_LEDGER_SS_ID', 'fake-ledger-ss');
+  if (o.adminRootFolderId !== null) {
+    props.setProperty('ADMIN_ROOT_FOLDER_ID', o.adminRootFolderId || 'fake-root-folder');
+  }
+  if (o.triggers !== false) {
+    PREFLIGHT_TRIGGERS.forEach((fn) => {
+      sandbox.ScriptApp.newTrigger(fn).timeBased().everyMinutes(5).create();
+    });
+  }
 }
 
 // ── _pfCheckTab_ ─────────────────────────────────────────────────────────
@@ -88,17 +105,108 @@ function makeFullyPassingAdminSs(sandbox) {
   return ss;
 }
 
-test('runFlowPreflightCheck: every tab present and wide enough, no CAS_CHAT_WEBHOOK_URL set -- 8 of 9 pass (webhook is optional)', () => {
+test('runFlowPreflightCheck: a deployment-ready state passes every check', () => {
   const { exported, sandbox } = load(['runFlowPreflightCheck']);
   const ss = makeFullyPassingAdminSs(sandbox);
   setUpConfig(sandbox, ss);
 
   const result = exported.runFlowPreflightCheck();
-  assert.equal(result.total, 9); // 8 tabs (FlowInput added, 37_FlowInputBuilder.js) + 1 script property
-  assert.equal(result.failed, 0);
+  assert.equal(result.failed, 0,
+    'failing: ' + JSON.stringify(result.results.filter((r) => !r.ok), null, 2));
+  // Asserted structurally rather than as a pinned total. The guarantee worth
+  // keeping is "no check was silently dropped", and naming the checks does
+  // that without making every added check a four-test edit — which is what
+  // discourages adding one.
+  const labels = result.results.map((r) => r.label);
+  [
+    'Tab: RubricQueue', 'Tab: STAGING_PIPELINE', 'Tab: WarmUpQueue',
+    'Tab: WarmUpRegistry', 'Tab: CompetencyEvidence', 'Tab: Ledger',
+    'Tab: MatrixRegistry', 'Tab: FlowInput',
+    'Tab: Flow3Input', 'Tab: Flow4Input', 'Tab: Flow5Input', 'Tab: WarmUpFlowReturn',
+    'Trigger: buildFlowInputRows', 'Trigger: harvestFlowInputResults',
+    'Trigger: buildWarmUpFlowInputs', 'Trigger: harvestWarmUpFlowReturns',
+    'Script property: ADMIN_ROOT_FOLDER_ID', 'Script property: CENTRAL_LEDGER_SS_ID',
+    'Script property: CAS_CHAT_WEBHOOK_URL',
+  ].forEach((label) => {
+    assert.ok(labels.indexOf(label) !== -1, 'missing check: ' + label);
+  });
+  assert.equal(new Set(labels).size, labels.length, 'no check runs twice');
 });
 
-test('runFlowPreflightCheck: the dead ADMIN_SS_ID check is gone -- exactly 8 checks run, never 9', () => {
+test('runFlowPreflightCheck: a missing flow trigger is a reported failure', () => {
+  const { exported, sandbox } = load(['runFlowPreflightCheck']);
+  const ss = makeFullyPassingAdminSs(sandbox);
+  setUpConfig(sandbox, ss, { triggers: false });
+
+  // The gap this closes: every install function checked its own trigger and
+  // nothing surveyed the set, so a deployment where
+  // installWarmUpFlowTriggers() was never run looked perfect and
+  // materialized nothing, with no error anywhere.
+  const result = exported.runFlowPreflightCheck();
+  const failures = result.results.filter((r) => !r.ok);
+  assert.equal(failures.length, PREFLIGHT_TRIGGERS.length);
+  failures.forEach((f) => {
+    assert.match(f.label, /^Trigger: /);
+    assert.match(f.detail, /install\w+Triggers\(\)/, 'names the installer to run');
+  });
+});
+
+test('runFlowPreflightCheck: a DUPLICATE trigger is a failure too', () => {
+  const { exported, sandbox } = load(['runFlowPreflightCheck']);
+  const ss = makeFullyPassingAdminSs(sandbox);
+  setUpConfig(sandbox, ss);
+  // Two copies means the handler runs twice per interval. For
+  // buildWarmUpFlowInputs that is harmless (it is idempotent per QueueID);
+  // for a harvest it doubles the work and can race itself.
+  sandbox.ScriptApp.newTrigger('harvestWarmUpFlowReturns').timeBased().everyMinutes(5).create();
+
+  const result = exported.runFlowPreflightCheck();
+  const dup = result.results.find((r) => r.label === 'Trigger: harvestWarmUpFlowReturns');
+  assert.equal(dup.ok, false);
+  assert.match(dup.detail, /2 copies/);
+});
+
+test('runFlowPreflightCheck: an unset ADMIN_ROOT_FOLDER_ID is a failure', () => {
+  const { exported, sandbox } = load(['runFlowPreflightCheck']);
+  const ss = makeFullyPassingAdminSs(sandbox);
+  setUpConfig(sandbox, ss, { adminRootFolderId: null });
+  // Flow 3's harvest resolves the student's warm-up folder from this, so
+  // unset means every warm-up doc has nowhere to go — and you find out when
+  // a doc fails to appear, not when you deploy.
+  const result = exported.runFlowPreflightCheck();
+  const check = result.results.find((r) => r.label === 'Script property: ADMIN_ROOT_FOLDER_ID');
+  assert.equal(check.ok, false);
+});
+
+test('runFlowPreflightCheck: the bridge tabs are self-healing, so absent is not a failure', () => {
+  const { exported, sandbox } = load(['runFlowPreflightCheck']);
+  const ss = makeFullyPassingAdminSs(sandbox);
+  ss.sheets = ss.sheets.filter((s) => ['Flow3Input', 'Flow4Input', 'Flow5Input',
+    'WarmUpFlowReturn'].indexOf(s.getName()) === -1);
+  setUpConfig(sandbox, ss);
+
+  const result = exported.runFlowPreflightCheck();
+  assert.equal(result.failed, 0, 'a tab wfbTab_ creates on demand must not read as broken');
+  const note = result.results.find((r) => r.label === 'Tab: Flow3Input');
+  assert.match(note.detail, /Not created yet/);
+});
+
+test('runFlowPreflightCheck: a bridge tab that EXISTS but is too narrow IS a failure', () => {
+  const { exported, sandbox } = load(['runFlowPreflightCheck']);
+  const ss = makeFullyPassingAdminSs(sandbox);
+  ss.sheets = ss.sheets.filter((s) => s.getName() !== 'WarmUpFlowReturn');
+  ss.insertSheet('WarmUpFlowReturn').appendRow(['Timestamp', 'Flow', 'QueueID']);
+  setUpConfig(sandbox, ss);
+
+  // The failure mode: a native "add row to sheet" step bound to RawOutput
+  // (column 4) on a 3-column tab writes nowhere and still reports success.
+  const result = exported.runFlowPreflightCheck();
+  const check = result.results.find((r) => r.label === 'Tab: WarmUpFlowReturn');
+  assert.equal(check.ok, false);
+  assert.match(check.detail, /writes nowhere/);
+});
+
+test('runFlowPreflightCheck: the dead ADMIN_SS_ID check is still gone', () => {
   const { exported, sandbox } = load(['runFlowPreflightCheck']);
   const ss = makeFullyPassingAdminSs(sandbox);
   setUpConfig(sandbox, ss);
@@ -114,7 +222,8 @@ test('runFlowPreflightCheck: a missing CompetencyEvidence tab is a real, reporte
   setUpConfig(sandbox, ss);
 
   const result = exported.runFlowPreflightCheck();
-  assert.equal(result.failed, 1);
+  assert.equal(result.failed, 1,
+    'only this one: ' + JSON.stringify(result.results.filter((r) => !r.ok).map((r) => r.label)));
   const failure = result.results.find((r) => r.label === 'Tab: CompetencyEvidence');
   assert.equal(failure.ok, false);
 });
@@ -126,8 +235,10 @@ test('runFlowPreflightCheck: writes a Preflight report tab with one row per chec
   exported.runFlowPreflightCheck();
   const report = ss.getSheetByName('Preflight');
   assert.ok(report);
-  // header row + "Last run" row + 9 check rows
-  assert.equal(report.getLastRow(), 11);
+  // Derived from the result rather than pinned: header row + "Last run" row
+  // + one row per check.
+  const result = exported.runFlowPreflightCheck();
+  assert.equal(report.getLastRow(), result.total + 2);
 });
 
 test('runFlowPreflightCheckNow: alerts a clean pass/fail summary', () => {
@@ -137,7 +248,7 @@ test('runFlowPreflightCheckNow: alerts a clean pass/fail summary', () => {
   exported.runFlowPreflightCheckNow();
   const calls = sandbox.SpreadsheetApp.getUi()._calls;
   assert.equal(calls.length, 1);
-  assert.match(calls[0].message, /All 9 preflight checks passed/);
+  assert.match(calls[0].message, /All \d+ preflight checks passed/);
 });
 
 // ── runFlow1Canary ───────────────────────────────────────────────────────

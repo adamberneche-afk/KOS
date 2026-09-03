@@ -1581,3 +1581,58 @@ confirmed DRAFT row there would never reach Flow 2. Left alone deliberately:
 `_fiFindMatrixSsId_` returns the *first* registry match, and a fixture entry
 competing with a real teacher's is how two canary runs collided earlier in
 this session.
+
+### Follow-up — closing the configuration-side gap
+
+Everything built this session verified the Apps Script side and left the
+Studio side unverifiable, while the ports kept making that side *larger*:
+Flows 3/4/5 went from five custom steps to three input tabs plus a return tab
+whose columns an operator binds one at a time in a picker. Two additions close
+that.
+
+**The preflight now covers what it structurally could and didn't.** It checked
+nine tabs and one optional Script Property. It now also checks the four bridge
+tabs (as self-healing — absent is a note, present-and-too-narrow is a failure,
+because a step bound to a column that doesn't exist writes nowhere and still
+reports success), the four flow triggers, and the two required properties.
+That last set matters most: every install function checked its own trigger and
+nothing surveyed the set, so a deployment where `installWarmUpFlowTriggers()`
+was never run looked structurally perfect and materialized nothing. A
+*duplicate* trigger is also a failure — two copies run the handler twice per
+interval.
+
+`ADMIN_ROOT_FOLDER_ID` was documented in this file's own reference table and
+checked nowhere. Flow 3's harvest resolves the student's warm-up folder from
+it, so unset means every warm-up doc has nowhere to go — discovered when a doc
+fails to appear, not at deploy time.
+
+The preflight tests used to pin the total check count, so adding a check meant
+editing four tests. They now assert structurally — every expected label
+present, none duplicated, report rows derived from the result — which keeps
+the real guarantee ("no check was silently dropped") without making the
+brittleness a disincentive to adding checks.
+
+**`checkFlowBinding()` is the new thing.** Before it, "nothing has ever come
+back" was one answer covering four causes: the Flow was never built, its
+trigger matches no rows, it writes to the wrong columns, or Gemini is erroring.
+The third looks exactly like the first and is the easiest to create. The probe
+reads where values actually *landed*: it finds which column holds a flow
+number, which holds a known Queue_ID, and which holds the longest blob, then
+compares against the expected indices and reports the offset. A one-column
+shift is reported as a shift with its offset rather than as "Flow is blank".
+It also distinguishes an unbound column from a plausible-but-wrong value
+(someone binding "Flow 5" instead of `5`), and a Queue_ID that matches nothing
+from an empty one — different fixes.
+
+It logs the expected binding too, derived from `WFB_RETURN_HEADERS` rather
+than transcribed, so it doubles as the thing to copy from while wiring the
+step. `checkFlow2Binding()` does the equivalent for Flow 2, whose Studio step
+writes *into* the trigger row rather than appending — a different mis-binding
+shape, and the check is explicitly heuristic about it.
+
+One bug in the probe, caught by its own test: with `RawOutput` empty, the
+longest-cell heuristic picked **Timestamp**, because a Date stringifies to
+about fifty characters. It reported "your output landed in Timestamp" — a
+confident wrong answer where "nothing is arriving" is the useful one. The
+timestamp column is now excluded, and the exclusion is documented as
+load-bearing along with what it trades away.

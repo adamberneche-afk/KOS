@@ -149,7 +149,16 @@ Then, in the Apps Script editor's **Run** dropdown, in this order:
 | 5 | `runFlow2Canary()` | End-to-end check of Flow 2's **Apps Script half only** — it self-provisions a scratch student doc and TeacherMatrix and stubs Studio out deliberately. Paste the log. A pass means the lookup chain and the harvest are sound and any remaining failure is in the Flow itself. |
 | 6 | `installWarmUpFlowTriggers()` | Installs Flows 3/4/5's two triggers (materialize + harvest, both 5-minute). Nothing in `41_WarmUpFlowBridge.js` runs until this is done. |
 | 7 | `runWarmUpFlowCanary()` | Same idea as `runFlow2Canary()` for Flows 3, 4 and 5: exercises the archetype decision table, the materialization and the harvest against scratch rows with Studio stubbed, then cleans up. Flows 3 and 4 are covered as pure logic only — both need Drive and a real student doc, which a canary must not fabricate. |
-| 8 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. The only thing that can tell you a Flow is live — a Flow that matched zero rows reports a green "Run Completed" too. |
+| 8 | `checkFlowBinding()` | **Run this while wiring each Flow's last step, not after.** It logs the exact binding to copy — column number, header, and which columns the harvest owns — generated from the same constants the harvest reads, so it cannot drift the way a setup document does. Once rows start arriving it diagnoses them: a one-column shift is reported *as a shift with its offset*, not as "Flow is blank". `checkFlow2Binding()` does the equivalent for Flow 2's write-into-the-row shape. |
+| 9 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. The only thing that can tell you a Flow is live — a Flow that matched zero rows reports a green "Run Completed" too. |
+
+**Which check answers which question.** `runFlowPreflightCheck()` covers the
+structure — tabs wide enough, triggers installed exactly once, required
+properties set. `runWarmUpFlowCanary()` covers the Apps Script half with
+Studio stubbed. `checkFlowBinding()` covers the columns your Flow writes to.
+`checkWarmUpFlowLiveness()` covers whether anything came back at all. Those
+four separate the four causes of "nothing happened" that used to look
+identical: not built, trigger doesn't match, wrong columns, Gemini erroring.
 
 Only after 1-5 are clean is there any point configuring Flow 2 in Studio,
 because before that there is no `FlowInput` row for it to read.
