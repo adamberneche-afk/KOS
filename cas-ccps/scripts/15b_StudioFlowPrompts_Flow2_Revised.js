@@ -217,9 +217,19 @@ nothing after it.
 //   Connector: Google Docs -- Get document content
 //   Doc ID:    @trigger.StudentFileID
 //   Output:    Full document text
-//   Note:      Extract only the response zone in the next step
-//              (text between "-- YOUR RESPONSE BEGINS HERE --" and
-//              "[CONFIG_ID:")
+//   Note:      Extract only the response zone in the next step -- the text
+//              between the response marker and the CONFIG_ID footer.
+//              COPY THOSE TWO STRINGS FROM THE CODE, NOT FROM THIS COMMENT:
+//              this whole comment block normalizes em-dashes to "--" for
+//              plain-text readability, but the real markers use box-drawing
+//              characters and Studio matches them literally. The authoritative
+//              values are RESPONSE_MARKER and CONFIG_ID_MARKER at the top of
+//              01_StudentDoc_ContainerScript.js, written into every student
+//              doc by stampDocument_'s ZONE 3 and ZONE 4
+//              (02_Form1_IntakeAndWorkspaceGenerator.js). Typing the hyphen
+//              form here into Studio's Extract step matches nothing and the
+//              step returns empty, which reads as "the doc was empty" rather
+//              than as a mis-typed delimiter.
 //   Output variable: STUDENT_RESPONSE_TEXT
 //   (unchanged from original design)
 //
