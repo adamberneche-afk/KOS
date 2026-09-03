@@ -828,6 +828,217 @@ function checkGcpSurfaces() {
 }
 
 // -----------------------------------------------------------------------
+// Checks H and I — the two machine-checkable rules from
+// meta/FLOW_DOCTRINE.md, declared in flow-map.json.
+//
+// Most of that doctrine is not checkable: "a canary must say what it did
+// not test" is a judgement. These two are, and the difference matters more
+// than the rules do — a practice that is only prose gets rediscovered, a
+// practice that is a check gets enforced. Rule 7 lived in exactly one
+// comment before Check H existed.
+// -----------------------------------------------------------------------
+const FLOW_MAP_PATH = 'tools/gas-lint/flow-map.json';
+
+/**
+ * Reads a column map out of source. Two shapes, because this repo uses both:
+ *
+ *   object  — `const TM08 = { CONFIG_ID: 0, UNIT_NAME: 1, ... };`
+ *   prefix  — `const WQ25_QUEUE_ID = 0;` repeated, keyed by the suffix
+ *
+ * Returns { KEY: index } or null when the declaration isn't found. Comments
+ * are stripped first so a commented-out index can't be read as live — the
+ * same reason Check D strips them.
+ *
+ * Pure and path-free, so tests can drive it with literal source.
+ */
+function parseColumnMap(src, spec) {
+  const stripped = stripCommentsAndStrings(src);
+  const exclude = (spec && spec.exclude) || [];
+  const out = {};
+
+  if (spec && spec.object) {
+    // Find `NAME = {` then take to the matching brace. Brace-depth rather
+    // than a regex, because these literals span lines and carry comments.
+    const at = stripped.search(new RegExp('\\b' + spec.object + '\\s*=\\s*\\{'));
+    if (at === -1) return null;
+    const open = stripped.indexOf('{', at);
+    let depth = 0, close = -1;
+    for (let i = open; i < stripped.length; i++) {
+      if (stripped[i] === '{') depth++;
+      else if (stripped[i] === '}') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close === -1) return null;
+    const body = stripped.substring(open + 1, close);
+    const re = /([A-Za-z_$][\w$]*)\s*:\s*(\d+)/g;
+    let m;
+    while ((m = re.exec(body))) {
+      if (exclude.indexOf(m[1]) !== -1) continue;
+      out[m[1]] = Number(m[2]);
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  if (spec && spec.prefix) {
+    const re = new RegExp('^[ \\t]*(?:const|var|let)\\s+' + spec.prefix +
+      '([A-Za-z_$][\\w$]*)\\s*=\\s*(\\d+)\\s*;', 'gm');
+    let m;
+    while ((m = re.exec(stripped))) {
+      if (exclude.indexOf(m[1]) !== -1) continue;
+      out[m[1]] = Number(m[2]);
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  return null;
+}
+
+/** How a declared map is referred to in a finding. */
+function columnMapLabel(spec) {
+  return spec.object ? spec.object : spec.prefix + '*';
+}
+
+// -----------------------------------------------------------------------
+// Check H — column-map agreement.
+//
+// Compares every declared duplicate map of the same sheet on the keys they
+// share. Disagreement is an ERROR: it is the drift class that made
+// LEDGER.TEACHER_EMAIL return a person's name and cost a live session, and
+// it never announces itself at runtime.
+//
+// Keys present in only one map are NOT a finding. A reader can legitimately
+// name fewer columns than the writer — 37_FlowInputBuilder.js's
+// FI_TM_COLUMNS_ names 13 of TeacherMatrix's 20 because it reads 13.
+// Requiring parity there would report a false conflict on every run, which
+// is how a check gets muted.
+// -----------------------------------------------------------------------
+function checkColumnMapAgreement() {
+  let flowMap;
+  try { flowMap = JSON.parse(readFile(FLOW_MAP_PATH)); }
+  catch (e) {
+    err('flow-map-unreadable',
+      `Could not read ${FLOW_MAP_PATH}: ${e.message}. Checks H and I cannot run, so they are ` +
+      `failing loudly rather than passing silently.`, FLOW_MAP_PATH);
+    return;
+  }
+
+  for (const [group, def] of Object.entries(flowMap.columnMaps || {})) {
+    const parsed = [];
+    for (const spec of def.maps || []) {
+      if (!exists(spec.file)) {
+        warn('flow-map-stale', `${group}: declares a map in ${spec.file}, which no longer ` +
+          `exists. Update ${FLOW_MAP_PATH}.`, FLOW_MAP_PATH);
+        continue;
+      }
+      const map = parseColumnMap(readFile(spec.file), spec);
+      if (!map) {
+        // A rename is the likely cause, and it silently un-checks the group.
+        warn('column-map-not-found',
+          `${group}: could not find ${columnMapLabel(spec)} in ${spec.file}. If it was renamed, ` +
+          `update ${FLOW_MAP_PATH} — until then this group is not being compared.`, spec.file);
+        continue;
+      }
+      parsed.push({ spec, map });
+    }
+
+    for (let i = 0; i < parsed.length; i++) {
+      for (let j = i + 1; j < parsed.length; j++) {
+        const a = parsed[i], b = parsed[j];
+        const shared = Object.keys(a.map).filter(k => Object.prototype.hasOwnProperty.call(b.map, k));
+        const conflicts = shared.filter(k => a.map[k] !== b.map[k]);
+        if (!conflicts.length) continue;
+        err('column-map-disagreement',
+          `${group}: ${columnMapLabel(a.spec)} (${a.spec.file}) and ${columnMapLabel(b.spec)} ` +
+          `(${b.spec.file}) disagree on ${conflicts.length} column(s): ` +
+          conflicts.map(k => `${k} is ${a.map[k]} vs ${b.map[k]}`).join('; ') +
+          `. One of them is reading the wrong field, silently — this is the drift class that ` +
+          `made LEDGER.TEACHER_EMAIL return a person's name. The authoritative order is ` +
+          `${def.authoritative || 'the code that writes the rows'}; derive from the writer and ` +
+          `fix whichever map disagrees with it.`,
+          a.spec.file);
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Check I — flow surface completeness.
+//
+// FLOW_DOCTRINE.md rule 9: "nothing came back" is one answer covering four
+// causes — never built, trigger matches nothing, wrong columns, model call
+// errored — and the third looks exactly like the first. Each cause needs its
+// own check, so a declared flow surface missing one of those roles is a
+// WARNING naming which question can no longer be answered.
+//
+// Warning rather than error on purpose: a flow mid-construction legitimately
+// lacks some of these, and an error would make the linter something to work
+// around while building. The declaration is the commitment; this is the
+// reminder.
+// -----------------------------------------------------------------------
+const FLOW_ROLE_QUESTIONS = {
+  materialize: 'what hands the flow its input',
+  harvest: 'what applies the result',
+  canary: 'does the Apps Script half work (with the Flow stubbed)',
+  binding: 'are the Flow output columns bound to the right cells',
+  liveness: 'has this flow EVER answered',
+  fixture: 'does the flow have something to match, so a green run means something',
+};
+
+function checkFlowSurfaces() {
+  let flowMap;
+  try { flowMap = JSON.parse(readFile(FLOW_MAP_PATH)); }
+  catch (e) { return; } // Check H already reported it.
+
+  for (const [surface, def] of Object.entries(flowMap.flowSurfaces || {})) {
+    const projectName = def.project;
+    const project = PROJECT_MAP[projectName];
+    if (!project) {
+      err('flow-surface-bad-project',
+        `${surface}: declares project "${projectName}", which is not in project-map.json.`,
+        FLOW_MAP_PATH);
+      continue;
+    }
+
+    const declared = new Set();
+    for (const relPath of (project.files || [])) {
+      if (!exists(relPath) || relPath.endsWith('.html')) continue;
+      for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
+    }
+
+    const missingRoles = [];
+    // A role a flow genuinely does not have is declared away in "_note" —
+    // leader-hub and kos-personal both legitimately lack a materialize step.
+    // The warning below tells the reader to do exactly that, so the check has
+    // to honour it; otherwise it is instructing them to do something that
+    // does not work, which is how a check earns being ignored.
+    const note = String(def._note || '');
+    for (const role of Object.keys(FLOW_ROLE_QUESTIONS)) {
+      const fn = def[role];
+      if (!fn) {
+        if (!note.includes(role)) missingRoles.push(role);
+        continue;
+      }
+      if (!declared.has(fn)) {
+        // A named-but-absent function is worse than an unnamed role: the
+        // declaration claims the question is answered when it is not.
+        err('flow-surface-missing-function',
+          `${surface}: declares ${role} = ${fn}(), but no top-level function of that name ` +
+          `exists in project "${projectName}". Either it was renamed — in which case ` +
+          `${FLOW_MAP_PATH} is now claiming a check exists that does not — or it was never ` +
+          `written.`, FLOW_MAP_PATH);
+      }
+    }
+    if (missingRoles.length) {
+      warn('flow-surface-incomplete',
+        `${surface}: no ${missingRoles.join(', ')} declared. Unanswerable question(s): ` +
+        missingRoles.map(r => `"${FLOW_ROLE_QUESTIONS[r]}"`).join('; ') +
+        `. See meta/FLOW_DOCTRINE.md rule 9 — if a role genuinely does not apply to this ` +
+        `flow, say so in a "_note" on its entry the way leader-hub and kos-personal do for ` +
+        `materialize.`, FLOW_MAP_PATH);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Reusable primitives
 //
 // stripCommentsAndStrings() is the piece other tools most need and most
@@ -841,6 +1052,9 @@ function checkGcpSurfaces() {
 // -----------------------------------------------------------------------
 module.exports = {
   stripCommentsAndStrings,
+  parseColumnMap,
+  columnMapLabel,
+  FLOW_ROLE_QUESTIONS,
   findGoogleScriptRunCalls,
   findGcpSurfaces,
   GCP_PATTERNS,
@@ -864,6 +1078,8 @@ checkGoogleScriptRunCalls();
 checkOAuthScopes();
 checkUndefinedFunctionCalls();
 checkGcpSurfaces();
+checkColumnMapAgreement();
+checkFlowSurfaces();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

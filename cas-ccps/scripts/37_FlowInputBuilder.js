@@ -599,6 +599,63 @@ function _fiFormatFeedbackBlock_(studentFacingReport, complianceStatus) {
 // project's other installX() functions (installStudentAggregatorTrigger_,
 // installSCRTrigger_, etc.) — checks for an existing trigger by handler
 // name before adding a second one.
+// -----------------------------------------------------------------------
+// checkFlow2Liveness
+//
+// Has Flow 2 EVER written a result? Added because gas-lint's Check I found
+// this missing: Flows 3/4/5 got checkWarmUpFlowLiveness(), leader-hub got
+// checkAiFlowFixtures(), kos-personal got checkStudioFlowLiveness(), and
+// Flow 2 — the first flow redesigned around the wall — never got one. The
+// declaration in tools/gas-lint/flow-map.json is what surfaced the omission.
+//
+// Flow 2's shape makes this cheaper than the others: because Studio writes
+// INTO the trigger row rather than appending, a row that has been answered
+// is a row whose GeminiFullOutput is non-empty. No separate return tab to
+// correlate.
+//
+// Read-only. Reports rows waiting, rows answered, and — the useful part —
+// says plainly when rows have been READY longer than the harvest interval
+// with nothing ever written, which is the state that means "no Flow is
+// listening" rather than "the Flow is slow".
+// -----------------------------------------------------------------------
+function checkFlow2Liveness() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName((cfg.tabs && cfg.tabs.flowInput) || "FlowInput");
+  const report = { ready: 0, answered: 0, everAnswered: false, oldestReadyMins: 0 };
+
+  if (!sheet || sheet.getLastRow() <= 1) {
+    Logger.log("[FlowInput] checkFlow2Liveness: no FlowInput rows — nothing to conclude. " +
+               "installFlow2Fixture() gives Flow 2 something to match.");
+    return report;
+  }
+
+  const nowMs = new Date().getTime();
+  const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, FI.PROMPT_TEXT + 1).getValues();
+  data.forEach(function (row) {
+    const answered = String(row[FI.GEMINI_FULL_OUTPUT] || "").trim() !== "";
+    if (answered) { report.answered++; report.everAnswered = true; return; }
+    if (String(row[FI.READY_STATUS] || "").trim() !== "READY") return;
+    report.ready++;
+    const ageMins = Math.round((nowMs - new Date(row[FI.TIMESTAMP]).getTime()) / 60000);
+    if (ageMins > report.oldestReadyMins) report.oldestReadyMins = ageMins;
+  });
+
+  Logger.log("[FlowInput] checkFlow2Liveness: " + report.ready + " row(s) READY and unanswered, " +
+             report.answered + " answered, oldest wait " + report.oldestReadyMins + " min");
+  if (!report.everAnswered && report.ready > 0) {
+    Logger.log("[FlowInput] NOTHING has ever been written to GeminiFullOutput, but " +
+               report.ready + " row(s) are READY. Either Flow 2 is not built, its trigger is " +
+               "not matching ReadyStatus = READY, or its output step is bound to a different " +
+               "column — checkFlow2Binding() separates that last one. A green \"Run " +
+               "Completed\" in Studio rules out none of the three.");
+  } else if (report.ready > 0) {
+    Logger.log("[FlowInput] Flow 2 HAS answered before, so a row waiting now is more likely a " +
+               "slow or erroring run than a missing flow.");
+  }
+  return report;
+}
+
 // ---------------------------------------------------------------------------
 function installFlowInputTriggers() {
   const existing = ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction());
