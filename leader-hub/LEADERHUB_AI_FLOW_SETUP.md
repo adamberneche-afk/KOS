@@ -415,6 +415,42 @@ protect in the first place.
 
 ## Testing the integration
 
+### Fastest path — verify from the script editor, before touching the UI
+
+`FlowOps.gs` does most of what the manual walkthrough below does, without
+driving the app, and it answers one question the walkthrough can't: **is a
+given Flow actually live?** A Workspace Flow whose trigger matched zero rows
+reports a green "Run Completed", which is indistinguishable from working — so
+"the Flow ran" is not evidence, and this is where a lot of time went on the
+cas-ccps side of this repo before fixtures existed.
+
+Run these from the Apps Script editor's **Run** dropdown, in order:
+
+| # | Function | What it tells you |
+|---|---|---|
+| 1 | `runLeaderHubPreflight()` | One read-only report: queue spreadsheet reachable, both tab header rows matching the code, prompts synced, every job type carrying a prompt. Makes no writes, so it is safe against a live deployment at any time. |
+| 2 | `checkAiQueueSchema()` | Just the header check, with the diff. Worth knowing on its own because `AIQ_COL` reads `AI_Queue` **by column position** and the Flow writes `Status`/`Result` back by position too — so a reordered column breaks both directions with no error on either side. `repairAiQueueSchema()` fixes it, and deliberately refuses while data rows are present. |
+| 3 | `runAiFlowCanary()` | Exercises the whole Apps Script half — queue, poll, hand back once, delete the row, bump the stats — with the Flow **stubbed on purpose**. A pass means any remaining failure is in the Flow, not in this code. It does not mean the Flows work; nothing about a Flow is touched. |
+| 4 | `installAiFlowFixtures()` | Plants one `PENDING` row per job type, so all six Flows have something to match at once. |
+| 5 | `checkAiFlowFixtures()` | **The real test.** Run it after the Flows have had a chance to fire. A fixture whose `Status` moved off `PENDING` is proof that that specific Flow is live; one still `PENDING` means no Flow has ever touched that type. |
+| 6 | `removeAiFlowFixtures()` | Takes them back out. Optional — the existing two-hour sweep in `checkAiJob_` clears them anyway, so forgetting this leaks nothing. |
+
+Two things worth knowing before you run 4:
+
+- **A fixture row cannot send anything.** A queue row makes a Flow generate
+  text and write it back into that row; it does not make Apps Script act. The
+  only outbound side effect in this project, `createBragDraft_()`'s
+  `GmailApp.createDraft()`, is reachable only from an explicit `bragEmail`
+  client action and never from a queue row.
+- **Fixtures don't show up as usage.** They're written straight to the sheet
+  rather than through `queueAiJob_()`, so they never touch the per-type
+  counters behind Settings → AI Flow Health. The canary is the opposite: it
+  goes through the real queue path on purpose, so it uses the job type
+  `CANARY`, which is deliberately absent from `AI_FLOW_TYPES` and therefore
+  invisible in that panel. `cleanUpAiFlowCanary()` drops even the counter.
+
+### Full manual walkthrough (drives the real UI end to end)
+
 All six job types follow the same handshake, so the same test procedure
 applies to each — just swap the feature and status element referenced.
 
