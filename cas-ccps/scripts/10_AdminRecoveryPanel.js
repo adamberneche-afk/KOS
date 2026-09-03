@@ -15,6 +15,7 @@ function onOpen() {
     .addSeparator()
     .addItem("📅 Set Current Term",                   "setCurrentTerm")
     .addItem("📦 Archive Completed Term",             "archiveCompletedTerm")
+    .addItem("♻️ Reactivate an Archived Term",         "reactivateArchivedTerm")
     .addItem("📈 View Term Summary",                  "viewTermSummary")
     .addSeparator()
     .addItem("📧 Re-Send Student Document Link",      "resendStudentDocLink")
@@ -23,6 +24,9 @@ function onOpen() {
     // Say/Do Ledger cas-ccps Extension 3 — exportScrDecisionLogForAudit()
     // is defined in 30_SCRSuggestionEngine.js, same central-ledger project.
     .addItem("📤 Export SCRDecisionLog for Audit",    "exportScrDecisionLogForAudit")
+    // Roadmap 2.2 — reactivateCompetencyEvidence() is also defined in
+    // 30_SCRSuggestionEngine.js, same central-ledger project.
+    .addItem("♻️ Reactivate Competency Evidence",      "reactivateCompetencyEvidence")
     .addToUi();
 }
 
@@ -237,6 +241,123 @@ function _ferpaHealthChecks_() {
       : "✅  No SCRDecisionLog rows past retention awaiting archival",
   });
 
+  // (e) Ledger rows past the configured retention window that haven't been
+  // marked ARCHIVED (external product review, Finding 6 — same pattern as
+  // check (d) above, extended to the Ledger). Both callers already run
+  // _archiveExpiredLedgerRows_() immediately before calling this, so a
+  // nonzero count here means archival itself failed or didn't run.
+  let ledgerPastRetentionUnarchived = 0;
+  try {
+    ledgerPastRetentionUnarchived = _countLedgerRowsPastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] Ledger retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: ledgerPastRetentionUnarchived === 0,
+    alertText: ledgerPastRetentionUnarchived
+      ? "🚨 LEDGER RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + ledgerPastRetentionUnarchived + " row(s) are past the configured retention\n" +
+        "   window (LEDGER_RETENTION_YEARS Script Property, default 5 years,\n" +
+        "   unconfirmed against any real district retention schedule) and have\n" +
+        "   not moved to ARCHIVED — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: ledgerPastRetentionUnarchived
+      ? "🚨  " + ledgerPastRetentionUnarchived + " Ledger row(s) past retention, not archived — see admin alert"
+      : "✅  No Ledger rows past retention awaiting archival",
+  });
+
+  // (f) CompetencyEvidence rows past the configured retention window that
+  // haven't been marked ARCHIVED (roadmap 2.2 — same pattern as (d)/(e),
+  // extended to the one FERPA-scoped tab that had no archival mechanism
+  // at all). Both callers already run _archiveExpiredCompetencyEvidence_()
+  // immediately before calling this, so a nonzero count here means
+  // archival itself failed or didn't run.
+  let evidencePastRetentionUnarchived = 0;
+  try {
+    evidencePastRetentionUnarchived = _countCompetencyEvidencePastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] CompetencyEvidence retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: evidencePastRetentionUnarchived === 0,
+    alertText: evidencePastRetentionUnarchived
+      ? "🚨 COMPETENCYEVIDENCE RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + evidencePastRetentionUnarchived + " row(s) are past the configured retention\n" +
+        "   window (COMPETENCY_EVIDENCE_RETENTION_YEARS Script Property, default 5\n" +
+        "   years, unconfirmed against any real district retention schedule) and\n" +
+        "   have not moved to ARCHIVED — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: evidencePastRetentionUnarchived
+      ? "🚨  " + evidencePastRetentionUnarchived + " CompetencyEvidence row(s) past retention, not archived — see admin alert"
+      : "✅  No CompetencyEvidence rows past retention awaiting archival",
+  });
+
+  // ── (g) ParentReportLog retention ──
+  // Same counter-after-archiver shape as (d), (e) and (f): both callers run
+  // _archiveExpiredParentReports_() immediately before this, so a nonzero
+  // result means archival itself failed, not that it merely hasn't run.
+  //
+  // This is the disclosure log — the record of what left the school's domain,
+  // about whom, and to which address. Of the four retention checks it is the
+  // one whose window a records request is most likely to ask about, which is
+  // also why its five-year default being unconfirmed matters most here.
+  let parentReportsPastRetentionUnarchived = 0;
+  try {
+    parentReportsPastRetentionUnarchived = _countParentReportsPastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] ParentReportLog retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: parentReportsPastRetentionUnarchived === 0,
+    alertText: parentReportsPastRetentionUnarchived
+      ? "🚨 PARENTREPORTLOG RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + parentReportsPastRetentionUnarchived + " disclosure record(s) are past the configured\n" +
+        "   retention window (PARENT_REPORT_RETENTION_YEARS Script Property,\n" +
+        "   default 5 years, unconfirmed against any real district retention\n" +
+        "   schedule) and have not moved to ARCHIVED — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: parentReportsPastRetentionUnarchived
+      ? "🚨  " + parentReportsPastRetentionUnarchived + " ParentReportLog row(s) past retention, not archived — see admin alert"
+      : "✅  No ParentReportLog rows past retention awaiting archival",
+  });
+
+  // ── (h) WarmUpQueue retention (third-party review) ──
+  // Same counter-after-archiver shape as (d)-(g): both callers run
+  // _archiveExpiredWarmUpQueueRows_() (34_QueueWatchdog.js) immediately
+  // before this, so a nonzero result means archival itself failed, not
+  // that it merely hasn't run.
+  let warmUpQueuePastRetentionUnarchived = 0;
+  try {
+    warmUpQueuePastRetentionUnarchived = _countWarmUpQueueRowsPastRetentionUnarchived_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] WarmUpQueue retention scan failed: " + e.message);
+  }
+  checks.push({
+    ok: warmUpQueuePastRetentionUnarchived === 0,
+    alertText: warmUpQueuePastRetentionUnarchived
+      ? "🚨 WARMUPQUEUE RETENTION ARCHIVAL DID NOT RUN\n" +
+        "   " + warmUpQueuePastRetentionUnarchived + " row(s) are past the configured retention\n" +
+        "   window (WARMUP_QUEUE_RETENTION_YEARS Script Property, default 5 years,\n" +
+        "   unconfirmed against any real district retention schedule) and have\n" +
+        "   not moved to ARCHIVED — this should be automatic.\n" +
+        "   Action: run ⚙️ Admin Controls → Run System Health Check once by hand\n" +
+        "   (which re-triggers archival), and confirm the daily health-check\n" +
+        "   trigger (setupAutoHealthTrigger) is still installed."
+      : "",
+    displayLine: warmUpQueuePastRetentionUnarchived
+      ? "🚨  " + warmUpQueuePastRetentionUnarchived + " WarmUpQueue row(s) past retention, not archived — see admin alert"
+      : "✅  No WarmUpQueue rows past retention awaiting archival",
+  });
+
   return checks;
 }
 
@@ -340,6 +461,22 @@ function autoHealthAlert() {
   // signal (did archival actually run?) precisely because this call
   // normally makes it true, not a tautology.
   _archiveExpiredScrDecisions_();
+
+  // --- Ledger retention archival (external product review, Finding 6) ---
+  // Same rationale as the SCRDecisionLog call above, extended to the Ledger.
+  _archiveExpiredLedgerRows_();
+
+  // --- CompetencyEvidence retention archival (roadmap 2.2 — explicit
+  // archive/hibernate state). Same rationale as the two calls above,
+  // extended to the one FERPA-scoped tab that had no archival at all.
+  _archiveExpiredCompetencyEvidence_();
+  _archiveExpiredParentReports_();
+
+  // --- WarmUpQueue retention archival (third-party review — the one major
+  // operational tab with zero retention at all). Same rationale as the
+  // calls above, in 34_QueueWatchdog.js since that file already owns
+  // WarmUpQueue health monitoring.
+  _archiveExpiredWarmUpQueueRows_();
 
   // --- FERPA-adjacent checks (Say/Do Ledger finding #5, Bonus 1) ---
   _ferpaHealthChecks_().forEach(c => { if (!c.ok && c.alertText) issues.push(c.alertText); });
@@ -517,7 +654,9 @@ function runSystemHealthCheck() {
   const ledgerSheet  = ledgerSs.getSheetByName(cfg.tabs.ledger);
 
   const qd  = queueSheet   ? queueSheet.getDataRange().getValues()   : [];
-  const ld  = ledgerSheet  ? ledgerSheet.getDataRange().getValues()  : [];
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6.
+  const ld  = ledgerSheet  ? ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues() : [];
   const now = new Date();
 
   // FIXED (Say/Do Ledger cross-portfolio Flow Health extension): this used
@@ -566,6 +705,19 @@ function runSystemHealthCheck() {
   // retention health check below reflects current-after-archival reality
   // (Say/Do Ledger cas-ccps Extension 3).
   _archiveExpiredScrDecisions_();
+
+  // Ledger retention archival (external product review, Finding 6) — same
+  // reasoning as the SCRDecisionLog call above, extended to the Ledger.
+  _archiveExpiredLedgerRows_();
+
+  // CompetencyEvidence retention archival (roadmap 2.2) — same reasoning,
+  // extended to the one FERPA-scoped tab that had no archival at all.
+  _archiveExpiredCompetencyEvidence_();
+  _archiveExpiredParentReports_();
+
+  // WarmUpQueue retention archival (third-party review) — same reasoning,
+  // in 34_QueueWatchdog.js since that file already owns WarmUpQueue health.
+  _archiveExpiredWarmUpQueueRows_();
 
   // FIXED (finding #5, Bonus 1): folded into the final "all healthy" &&
   // condition below, not just appended as a display line — a display-only
@@ -638,7 +790,10 @@ function resendStudentDocLink() {
   const term = res.getResponseText().trim().toLowerCase();
   const cfg  = getConfig_();
   const ss   = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const data = ss.getSheetByName(cfg.tabs.ledger).getDataRange().getValues();
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6.
+  const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
+  const data = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
 
   for (let i = 1; i < data.length; i++) {
     const rowGid  = String(data[i][1]).toLowerCase();
@@ -708,7 +863,7 @@ function archiveCompletedTerm() {
     "  • All COMPLIANT submissions from that term\n" +
     "  • All ACTIVE (unfinished) rows from that term\n\n" +
     "Archived rows stay in the Ledger for records but are hidden from dashboards.\n\n" +
-    "This cannot be undone automatically — contact your admin to restore.",
+    "To undo this later, use ♻️ Reactivate an Archived Term in this same menu.",
     ui.ButtonSet.OK_CANCEL
   );
   if (termRes.getSelectedButton() !== ui.Button.OK) return;
@@ -761,6 +916,186 @@ function archiveCompletedTerm() {
     "They will no longer appear in dashboards.",
     ui.ButtonSet.OK
   );
+}
+
+// ---------------------------------------------------------------------------
+// reactivateArchivedTerm (roadmap 2.2 — "explicit archive/hibernate state").
+// The genuinely missing half of archiveCompletedTerm() above: until this,
+// nothing in cas-ccps had a way back from ARCHIVED at all —
+// archiveCompletedTerm()'s own confirm dialog says so explicitly ("This
+// cannot be undone automatically — contact your admin to restore"). This
+// IS that restore path.
+//
+// Sets a matching term's ARCHIVED rows back to ACTIVE — a deliberate
+// simplification, not a bug: archiveCompletedTerm() overwrites whichever
+// of COMPLIANT/ACTIVE/COMPLETE a row had with a single ARCHIVED value, so
+// that original distinction isn't recoverable through the round trip.
+// ACTIVE is the safe default ("back in play, visible on dashboards again")
+// rather than guessing which of the three it actually was.
+// ---------------------------------------------------------------------------
+function reactivateArchivedTerm() {
+  const ui  = SpreadsheetApp.getUi();
+  const cfg = getConfig_();
+
+  const termRes = ui.prompt(
+    "Reactivate an Archived Term",
+    "Enter the term to reactivate (e.g. 2025-26 S1).\n\n" +
+    "This sets every ARCHIVED row from that term back to ACTIVE so it " +
+    "appears on dashboards again.\n\n" +
+    "Note: the original distinction between COMPLIANT/ACTIVE/COMPLETE is " +
+    "not restored — every reactivated row becomes ACTIVE.",
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (termRes.getSelectedButton() !== ui.Button.OK) return;
+
+  const term = termRes.getResponseText().trim();
+  if (!term) { ui.alert("Term cannot be blank."); return; }
+
+  const confirm = ui.alert(
+    "Reactivate \"" + term + "\"?",
+    "This will set all ARCHIVED student records from \"" + term + "\" to ACTIVE.\n\n" +
+    "Are you sure?",
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet    = ledgerSs.getSheetByName(cfg.tabs.ledger);
+  const data     = sheet.getDataRange().getValues();
+  let reactivated = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const rowTerm   = String(data[i][LEDGER.ACADEMIC_YEAR] || "").trim();
+    const rowStatus = String(data[i][LEDGER.STATUS]).trim();
+    if (rowTerm !== term || rowStatus !== "ARCHIVED") continue;
+    sheet.getRange(i + 1, LEDGER.STATUS + 1).setValue("ACTIVE");
+    reactivated++;
+  }
+
+  if (reactivated > 0) SpreadsheetApp.flush();
+
+  ui.alert(
+    "✅ Reactivate Complete",
+    reactivated > 0
+      ? "Term reactivated: " + term + "\n\nRows reactivated: " + reactivated
+      : "No ARCHIVED rows found for term: " + term,
+    ui.ButtonSet.OK
+  );
+}
+
+// =============================================================================
+// AUTOMATIC LEDGER RETENTION (external product review, Finding 6, "this
+// quarter" scaling fix — extends the SCR_RETENTION_YEARS pattern
+// (30_SCRSuggestionEngine.js) to the Ledger).
+//
+// cas-ccps/docs/FERPA_DATA_MAP.md is explicit that this repo does not
+// assert a retention period for a tab unless one is actually enforced
+// somewhere — this is that enforcement, following SCR_RETENTION_YEARS'
+// own precedent exactly: a configurable, Script-Property-driven default
+// that ships UNCONFIRMED against any real district/legal retention
+// schedule (no primary source has been checked for assignment records
+// specifically, any more than one had been for SCR ratings when that
+// default first shipped) — correct the number the moment a real one is
+// known, via LEDGER_RETENTION_YEARS, no code change required.
+//
+// Deliberately reuses the STATUS column's existing "ARCHIVED" value
+// (LEDGER.STATUS, 00_SharedConfig.js) rather than adding a second,
+// parallel archive-flag column — archiveCompletedTerm() above already
+// established "ARCHIVED" as this tab's one archival signal (dashboards
+// already skip it — see 13_StudentDashboard.js's own "Skip ARCHIVED
+// rows" comment), and this function is genuinely the same operation,
+// just time-triggered instead of admin-triggered by term name. Only
+// rows already in one of archiveCompletedTerm()'s own archivable
+// statuses (COMPLIANT/ACTIVE/COMPLETE) are eligible — ERROR-prefixed
+// rows are left alone for admin review, same as there. Never deletes
+// anything; actual permanent deletion still always requires a human
+// decision outside any script here.
+// =============================================================================
+const LEDGER_ARCHIVABLE_STATUSES = ["COMPLIANT", "ACTIVE", "COMPLETE"];
+
+function _ledgerRetentionYears_() {
+  const raw = PropertiesService.getScriptProperties().getProperty("LEDGER_RETENTION_YEARS");
+  const n = Number(raw);
+  return (n && n > 0) ? n : 5;
+}
+
+// Returns { archived, checked }. Safe to call with the Ledger tab missing
+// (returns zeros) or with nothing eligible (returns archived: 0). Anchors
+// "how old is this record" on LEDGER.TIMESTAMP (registration date, always
+// populated) — the same "age of the record itself" anchor SCRDecisionLog's
+// own archival uses (DECIDED_AT), not SubmissionTS, which is blank for any
+// row that was never submitted and shouldn't be treated as ageless just
+// because of that.
+function _archiveExpiredLedgerRows_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  if (!sheet) return { archived: 0, checked: 0 };
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _ledgerRetentionYears_());
+
+  const data = sheet.getRange(1, 1, Math.max(1, sheet.getLastRow()), LEDGER_COL_COUNT).getValues();
+  let archived = 0;
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = String(row[LEDGER.STATUS] || "").trim();
+    if (LEDGER_ARCHIVABLE_STATUSES.indexOf(status) === -1) continue; // already ARCHIVED, or an ERROR/other status left for admin review
+
+    const ts = row[LEDGER.TIMESTAMP];
+    if (!ts) continue;
+    const rowDate = new Date(ts);
+    if (isNaN(rowDate.getTime())) continue;
+
+    if (rowDate < cutoff) {
+      sheet.getRange(i + 1, LEDGER.STATUS + 1).setValue("ARCHIVED");
+      archived++;
+    }
+  }
+
+  if (archived > 0) {
+    SpreadsheetApp.flush();
+    Logger.log("[S10] Archived " + archived + " Ledger row(s) past the " +
+      _ledgerRetentionYears_() + "-year retention window.");
+  }
+
+  return { archived: archived, checked: data.length - 1 };
+}
+
+// ---------------------------------------------------------------------------
+// _countLedgerRowsPastRetentionUnarchived_ — read-only companion to
+// _archiveExpiredLedgerRows_(), used by _ferpaHealthChecks_() as a pure
+// check with no side effects of its own — same pairing as
+// _countScrDecisionsPastRetentionUnarchived_()/_archiveExpiredScrDecisions_()
+// in 30_SCRSuggestionEngine.js. Both callers of _ferpaHealthChecks_()
+// already run _archiveExpiredLedgerRows_() first, so this should almost
+// always return 0 — a nonzero result means archival itself failed or the
+// daily trigger isn't actually firing, which is the real thing worth
+// alerting on.
+// ---------------------------------------------------------------------------
+function _countLedgerRowsPastRetentionUnarchived_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  if (!sheet) return 0;
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _ledgerRetentionYears_());
+
+  const data = sheet.getRange(1, 1, Math.max(1, sheet.getLastRow()), LEDGER_COL_COUNT).getValues();
+  let count = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = String(row[LEDGER.STATUS] || "").trim();
+    if (LEDGER_ARCHIVABLE_STATUSES.indexOf(status) === -1) continue;
+    const ts = row[LEDGER.TIMESTAMP];
+    if (!ts) continue;
+    const rowDate = new Date(ts);
+    if (isNaN(rowDate.getTime())) continue;
+    if (rowDate < cutoff) count++;
+  }
+  return count;
 }
 
 // ---------------------------------------------------------------------------

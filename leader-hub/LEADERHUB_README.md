@@ -21,7 +21,7 @@
 LeaderHub is a single standalone HTML file (`student-leader-hub.html`) built for a high school Business & Marketing teacher who also runs DECA, a school store, WBL, E-Sports, and field trips. It is a personal command center — not a web app, not a server, not a database. It runs by opening the file directly in a browser.
 
 **File:** `student-leader-hub.html`
-**Size:** 13,214 lines of HTML/CSS/JS in one file
+**Size:** one file of HTML/CSS/JS — run `wc -l leader-hub/student-leader-hub.html` for the current count (22,822 at the time of writing)
 **Storage:** All user data persists via `localStorage` (key prefix: `lh_`, 51 keys in use)
 **AI:** Google Gemini API (`gemini-2.5-pro`) called directly from the browser
 

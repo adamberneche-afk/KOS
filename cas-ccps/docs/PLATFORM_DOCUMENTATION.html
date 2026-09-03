@@ -432,7 +432,7 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
     <div class="schema-row"><span class="col-n">24_WarmUpBridge</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Routes warm-up generation requests through staging. One request per student per lesson day. Deduplication.</span></div>
     <div class="schema-row"><span class="col-n">25_WarmUpWriter</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Writes generated warm-up content to student documents. Called by backprop after Studio Flow 3 completes.</span></div>
     <div class="schema-row"><span class="col-n">26_CompetencyAlignmentLog</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Accumulates lesson-to-competency mappings. Generates term coverage report. Feeds admin documentation export.</span></div>
-    <div class="schema-row"><span class="col-n">27_LessonFrameGenerator</span><span class="col-t">Admin Manual</span><span class="col-d">Still not uploaded — the one Module 2 Full script that remains a genuine open gap. Creates formatted lesson frame Google Doc from lesson context. Teacher reviews and approves before class.</span></div>
+    <div class="schema-row"><span class="col-n">27_LessonFrameGenerator</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Creates a formatted Lesson Frame Google Doc from lesson context — objective, activity, prior-lesson connection, competency alignment — synchronously at submission time. Teacher reviews and approves before class. Called directly from Script 22's onLessonContextSubmit_(); populates the frameDocUrl field Script 07's client has opened on receipt since before this script existed.</span></div>
     <div class="schema-row"><span class="col-n">28_Module2Setup</span><span class="col-t">Admin Manual</span><span class="col-d">In hand. Extends Script 16 wizard for Module 2 setup — creates new tabs, competency registry form, lesson context form.</span></div>
     <div class="schema-row"><span class="col-n">31_PacingGuideManager</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Imports PacingGuide_CAS_Context.json into a PacingGuide tab (20 units); resolves lesson dates to unit IDs for Scripts 23/24. Renumbered from a conflicting "Script 29" claim in 00_SharedConfig_M2_ADDENDUM_v2.js — see cas-ccps/README.md reconciliation record. 29 and 30 stay Module 4 and Module 5's own scripts.</span></div>
     <div class="schema-row"><span class="col-n">32_CompetencyRubricImporter</span><span class="col-t">Central Ledger</span><span class="col-d">In hand. Imports CompetencyRubrics.json (221 rubrics, now with SOL correlation metadata) into a CompetencyRubrics tab; supplies skill-question lookups to Script 24. Renumbered from a conflicting "Script 30" claim — same note as above.</span></div>
@@ -453,9 +453,9 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
       <p>Trigger: student submits warm-up response. Evaluates genuine engagement vs. surface response. Updates StudentProfile with concept engagement signal. Feeds pre-lesson readiness dashboard.</p>
     </div>
     <div class="iface-card">
-      <div class="iface-actor">Studio Flow 5</div>
+      <div class="iface-actor">27_LessonFrameGenerator.js</div>
       <h4>Lesson Frame Generation</h4>
-      <p>Trigger: teacher submits Lesson Context Form. Reads competency registry. Generates formatted lesson frame with objective, alignment, warm-up suggestion. Writes to Google Doc for teacher review.</p>
+      <p>Trigger: teacher submits Lesson Context Form. Reads competency rubrics for the lesson's competency IDs (Script 32). Compiles a formatted Lesson Frame with objective, activity, prior-lesson connection, and competency alignment; the warm-up section is a labeled placeholder, not a generated suggestion. Writes to a Google Doc for teacher review — synchronously, in the same request as the submission, not a Studio Flow. This was originally framed as a fifth Studio Flow; built as a direct Apps Script call instead once it became clear nothing here needs an LLM call, and an async flow would leave the already-built <code>frameDocUrl</code> hook in 07_TeacherDashboard.js permanently unfired — see cas-ccps/HISTORY.md's "27_LessonFrameGenerator — the one Full script closed" for the reasoning.</p>
     </div>
   </div>
 </div>
@@ -487,7 +487,9 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:48px
 <span class="k">New data tabs</span>
   LessonContext · CompetencyRegistry · WarmUpQueue · StudentProfiles
 <span class="k">Scripts</span>  22 · 23 · 24 · 25 · 26 · 27 · 28
-<span class="k">Studio</span>   Flow 3 (Warm-Up Gen) · Flow 4 (Warm-Up Eval) · Flow 5 (Lesson Frame)
+<span class="k">Studio</span>   Flow 3 (Warm-Up Gen) · Flow 4 (Warm-Up Eval)
+<span class="k">Note</span>     Lesson Frame generation (Script 27) is a direct, synchronous Apps
+          Script call, not a Studio Flow — see Script 27's own entry above.
 <span class="k">Triggers</span> processLessonContext (on form submit) · generateWarmUps (6am daily)
           evaluateWarmUps (2m) · updateStudentProfiles (2m)
 

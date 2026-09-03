@@ -41,7 +41,7 @@ All files live at `/mnt/user-data/outputs/`. The app is a **single HTML file** �
 
 | File | Purpose | Touch? |
 |------|---------|--------|
-| `student-leader-hub.html` | **THE APP** — 15,149 lines, ~1MB | Primary work target |
+| `student-leader-hub.html` | **THE APP** — ~1MB; run `wc -l` for the current line count (22,822 at the time of writing) | Primary work target |
 | `EmailBridge.gs` | Google Apps Script — sub plan docs + Gmail drafts | Update when adding GAS endpoints |
 | `LEADERHUB_PRINCIPLES.md` | Six guiding principles — the constitution | Read before every session |
 | `LEADERHUB_WIP.md` | Historical work log | Reference only |
@@ -106,7 +106,7 @@ print(f"Syntax: {'✅ PASS' if r.returncode==0 else '❌ FAIL — '+r.stderr[:20
 
 ## Current App State
 
-**Lines:** 15,149  
+**Lines:** run `wc -l leader-hub/student-leader-hub.html` — 22,822 at the time of writing  
 **Syntax:** ✅ Clean  
 **alert() calls:** 0  
 **prompt() calls:** 0  

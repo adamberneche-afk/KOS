@@ -1,5 +1,123 @@
 # KOS Changelog
 
+
+### Follow-up — the fixture now feeds both flows
+
+`installStudioFlowFixture()` planted one `SESSION_LOG` row, so the
+classification flow had nothing to latch onto and its output contract (write
+the ORIGINAL unstripped text, validate it parses to an Array) had never been
+exercised against a real queued row. It now plants a `VECTOR_CLASSIFY` row
+alongside it, sharing one scratch document and one UID stem.
+
+Sharing the document is the design, not a shortcut: `CURATOR_PROMPT.md`'s
+Rule 1 has the Curator citing a completed, independent `VECTOR_CLASSIFY` row
+*for the same session*, and `README.md`:192 records the open gap that
+`_chunkAndQueue()` doesn't queue that paired row yet. Until it does, this
+fixture is the only place the paired shape exists — so it doubles as a worked
+example of what that fix should produce.
+
+`checkStudioFlowLiveness()` now reports returns and releases **per payload
+type**. A single aggregate "has anything ever returned" cannot distinguish a
+working Curator flow from a classification flow that was never built — both
+read as healthy. It now warns per type when rows were released and not one
+return ever came back.
+
+Also confirmed while checking: `runMatrixTurnstile` is TIER_1 gated, so a cold
+engine warns and passes through rather than blocking. A fixture will be
+released even on an unarmed deployment.
+
+### Follow-up — a binding probe, with one diagnosis unique to this system
+
+`checkStudioFlowBinding()` closes the configuration-side gap: before it,
+"nothing has ever come back" covered four causes at once — the Flow was never
+built, its trigger matches no rows, it writes into the wrong columns, or Gemini
+is erroring. The shift diagnostics mirror cas-ccps's probe, and one check has
+no equivalent there.
+
+**`Payload_Type` does not label the row, it selects a contract.**
+`_srPrepareDocText_` routes a Curator type through a merge and
+re-serialization, and anything else through "write the original verbatim, and
+require it to parse as an Array". So a *valid* type name that is not the one
+queued applies the wrong treatment silently — and the value itself looks fine,
+which is why nothing else could catch it. The probe compares what came back
+against what the pipeline queued for that UID, and grades the severity: a
+wrong type within the same contract is worth saying but breaks nothing today,
+while one across contracts will apply the wrong treatment. Conflating those
+would train the reader to ignore both.
+
+It also catches an Auditor value on a classification row (that contract has
+nothing to merge into, so it is a mis-binding or a leftover from copying the
+Curator flow's step), an unrecognized type — explaining that it will get the
+classification contract and fail with a confusing NOT_ARRAY error — and the
+usual shifts.
+
+Two bugs in the probe, both caught by its own tests, both also fixed in
+cas-ccps's copy: a Date stringifies to ~50 characters, so including
+`Returned_At` in the longest-cell scan made an empty `Primary_JSON` read as
+"your output landed in Returned_At"; and short-circuiting on "Primary_JSON is
+non-empty" reported a terse but valid result (`{"summary":"s"}`, 15
+characters) as missing — while short-circuiting *unconditionally* would trust
+a shifted row where `Primary_JSON` holds the Payload_Type. The rule that works
+is: trust the expected column unless its content is better explained as
+another field's value.
+
+## 2026-09-03 — Studio write-back ported into Apps Script (12_StudioReturnHarvest.gs)
+
+`kos-personal/studio-steps/`'s two custom Studio steps cannot run. Publishing
+a Workspace Add-on needs a standard, non-default Cloud project, and GCP is
+switched off org-wide for the `ccpsnet.net` account — which is the account
+this is deployed on, confirmed by the operator, despite SMP-004 describing a
+separate personal one. The Studio flow was never live.
+
+`12_StudioReturnHarvest.gs` replaces the write-back half. Only that half
+moves: the Sheets trigger, the Docs read and both Gemini passes were always
+native and are untouched. The Flow's last step becomes a native "add row to
+sheet" into a new `STUDIO_RETURN` tab, and `harvestStudioReturns()` (5-minute
+trigger, installed by `setupAllTriggers()` — now 14 triggers) applies it.
+
+Design constraints this had to respect rather than choose:
+
+- **No new `STAGING_PIPELINE` columns.** `10_Turnstile.gs`'s header already
+  settled this: an 8th column means touching hardcoded 7-column `getRange()`
+  calls across `2/3/9_*.gs`, which is why release timestamps live in
+  `PropertiesService`. Hence a separate tab.
+- **No new status.** A row stays `STUDIO_ACTIVE` until the harvest sets
+  `FLOW_COMPLETE`, so the Turnstile's release gate, its staleness reset and
+  `_alertOnUnknownStatuses_()` all keep working unedited. The cost is that the
+  staleness guard can recycle a row whose return is still queued, so the
+  harvest runs every 5 minutes (well inside the 30-minute window) and handles
+  a duplicate return by consuming it without re-writing the doc.
+- **Both output contracts carried over exactly.** The Curator path
+  re-serializes because it merges the Auditor pass under `auditor_sign_off`;
+  the Classification path writes the *original, unstripped* text and only
+  strips the fence to validate that it parses to an Array. Those look
+  cosmetic and are not — re-serializing classification output would risk
+  reformatting floats and key order away from what the model produced.
+- **Touch nothing on failure**, per the spec's own choice: the staleness
+  guard owns retries, so no failure path writes the doc or the staging row.
+  Giving up on a return row after 3 attempts still leaves the payload for the
+  guard.
+
+One thing the harvest does *better* than the custom step could. Once the doc
+body is overwritten the original source text is gone, so a crash before the
+staging mark would leave a row that a retry re-infers against JSON. The
+custom step could only flag that (`STAGING_ROW_NOT_FOUND_AFTER_DOC_WRITE`)
+and hope someone noticed. Running inside the main project, a breadcrumb goes
+into `PropertiesService` between the doc write and the mark, so a later pass
+skips the write and completes the mark.
+
+Also added: `checkStudioReturns()` (read-only report),
+`checkStudioFlowLiveness()` — the only thing that can tell you whether a Flow
+has *ever* written back, since a Flow that matched zero rows reports a green
+"Run Completed" — plus `installStudioFlowFixture()` /
+`removeStudioFlowFixtures()` (a scratch doc and a `PENDING_FLOW` row, so a
+real Flow has something to match) and `runStudioReturnCanary()`, which proves
+the Apps Script half with the Flow deliberately stubbed.
+
+`tests/kos-personal/studio-return-harvest.test.js` — 23 tests, pinning both
+contracts, the touch-nothing-on-failure rule, the duplicate return, and the
+breadcrumb.
+
 Historical record of what was found and fixed during this system's reconciliation and UI/UX hardening passes. Split out of `README.md` so that file can stay current-state-only reference — see it for what's true today; see this file for how it got there.
 
 ---
@@ -65,6 +183,12 @@ picking this project up later who wants to know what changed and when.
    `6_Governance.gs`, installed on the documented 2-hour trigger, fires
    `triggerCouncilSimulation()` once `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS`
    new sessions have processed since the last council run.
+   **Update — retargeted (Round 14):** wiring this trigger to
+   `triggerCouncilSimulation()` is exactly what kept the shared-context
+   generator alive after item 10 below declared it "kept only for
+   reference." It now fires `triggerSevenBridgesReview()`, and its
+   session count is anchored on `SEVEN_BRIDGES_LAST_RUN` rather than
+   `COUNCIL_LAST_RUN`. See Round 14 for why that second half matters.
 5. **`CFG` now has all four previously-missing keys**:
    `TURNSTILE_CONCURRENCY`, `TURNSTILE_STALE_MINS`, `SHADOW_VERIFY_THRESHOLD`,
    `COUNCIL_AUTO_TRIGGER_SESSIONS` — values match the defaults this README
@@ -115,6 +239,10 @@ picking this project up later who wants to know what changed and when.
     explicitly-superseded fallback, kept only for reference. See
     `kos-personal/README.md`'s "Architecture in Two Paragraphs" section
     for the current mechanics.
+    **Update — "kept only for reference" was never true (Round 14):**
+    item 4 above had already wired the 2-hourly `autoCouncilCheck()`
+    trigger to that function, and a live menu item duplicated its logic.
+    It has now been deleted outright. See Round 14.
 
 ### `10_Turnstile.gs` — rebuilt, original preserved in `archived/`
 
@@ -397,7 +525,12 @@ always a kos-personal-only gap, and is fixed here once, not twice.)
   that computes the same signature both ways and confirms they match
   exactly). The secret is optional, same as the service's own "skip in
   dev if not configured" behavior — job submission still runs unsigned if
-  it's unset.
+  it's unset. **⚠ No longer true since Round 16's `386c3ea`:** a
+  production `inference-service` now exits at startup without
+  `WEBHOOK_SECRET` and 401s an unsigned request, so leaving this property
+  unset against production means every job submission fails. Optional only
+  against a dev service. Left as written, annotated, because this entry
+  records what was true when the signing was added.
 - `10_Turnstile.gs`'s `runMatrixTurnstile()` calls this immediately before
   releasing a `PENDING_FLOW` row, but only when `CFG.INFERENCE_MODE ===
   'MANAGED_SERVICE'` — in the default `'STUDIO'` mode this whole path is
@@ -590,3 +723,482 @@ Ten findings from a separate UI/UX-and-North-Star-alignment audit
   the real verdict vocabulary is APPROVED/FLAG/VETO (not the originally
   assumed APPROVED/REJECTED).
 
+## Round 11 — unrecognized-status catch-all
+
+A live `STAGING_PIPELINE` sheet review found 5 real rows (one session
+log, chunked `_CH01`–`_CH05`) sitting at `Status = "AUDITING _LOG"` — a
+string no Sensor/Turnstile/Queue-Processor/Studio code in this repo,
+current or archived, has ever written. Tracing every place `Status` gets
+read confirmed each one matches on an exact string and silently skips
+anything else: `runMatrixTurnstile()`'s two passes, the Queue Processor's
+main loop, `getQueueMetrics()`/`getQueueStatus()`'s counts (same
+exclusion bug Round 4 above already fixed for terminal-failure statuses,
+just never closed for the fully-unrecognized case), and even the manual
+`devSetFlowComplete()` escape hatch, which throws on it. These rows were
+invisible to every health check the system has, including the
+`STUDIO_TIMEOUT` ceiling.
+
+**Fixed:** `5_Error_And_Utilities.gs` gained `KNOWN_STAGING_STATUSES` and
+`_isKnownStagingStatus_()` — the single source of truth for "is this
+status something the system recognizes at all," combining an exact-match
+list with the existing `TERMINAL_FAILED_STATUSES` prefix check rather
+than duplicating it. `runMatrixTurnstile()` now alerts once per
+`Payload_UID` via `_sendChatAlert()` for any row that fails this check
+(memoized in a new `KOS_UNKNOWN_STATUS_ALERTED` Script Property, same
+pattern as the existing release-timestamp map, so a standing bad row
+doesn't re-alert every 5 minutes forever). `getQueueMetrics()` and
+`getQueueStatus()` both gained an `unknown` bucket in their returned
+counts instead of an implicit silent exclusion, and `8_WebApp_UI.html`
+gained a `metric-unknown` tile (hidden unless nonzero, same convention as
+the existing `metric-failed`/`metric-cycling` tiles) — and, unlike
+`cycling` (a subset of pending/active), `unknown` is genuinely uncounted
+elsewhere, so it's now included in `totalActivity` to avoid the same
+"reads as an empty queue" bug Round 4 fixed for terminal failures.
+`SCHEMA_REFERENCE.md`'s Status Lifecycle table also gained the
+previously-undocumented `PHASE_2_ERROR` (a pre-v8.0 legacy status the
+code already recognized as terminal but the doc never listed).
+
+This is a visibility fix, not an auto-resolution — per this system's
+standing rule, nothing auto-corrects an unrecognized status; a human
+still has to fix the Status cell by hand once alerted.
+
+## Round 12 — Auditor accountability gate for the Curator flow
+
+A real processed log from the live Curator flow surfaced two things at
+once. First, a genuine bug: the log was two separate, complete JSON
+objects concatenated back to back (an `auditor_sign_off` object, then
+the Curator's own structured output) — not valid JSON as a single
+document, and `processInferenceQueue()`'s parser has no tolerance for
+it. Second, real intent: the operator had deliberately added an Auditor
+step inside the Studio Flow itself, verifying the Curator's own claims
+against the session transcript before the row is trusted — "holding the
+Curator accountable," in the operator's own words. The bug was in how
+that intent landed in the document, not the intent itself.
+
+**Fixed — the wiring, documented so it can't recur:** `CURATOR_PROMPT.md`
+gained Rule 8 and a documented `auditor_sign_off` schema: if a Flow runs
+an Auditor step, its output MUST be merged into the same JSON object the
+Curator writes, never appended as a second object.
+`STUDIO_INTEGRATION_SPEC.md`'s connector table for this flow gained
+optional steps 2a/2b (the Auditor's Gemini call, then a merge step)
+documenting exactly where that merge has to happen before the final
+write.
+
+**Added — an actual accountability gate, not just documentation:**
+`processInferenceQueue()` (`3_Queue_Processor.gs`) now checks a parsed
+payload's `auditor_sign_off` (`_isAuditFailure_()`,
+`5_Error_And_Utilities.gs`) before routing anything to a ledger. A
+rejected audit (status not `PASSED`, or any unverified claim):
+1. Archives the full rejected payload and trace log to a new `AUDIT_LOG`
+   sheet (`_archiveAuditFailure_()`) — the only durable record, since the
+   Drive doc body itself gets overwritten the moment Studio reruns the
+   row.
+2. Below `CFG.MAX_RETRIES`, reverts the row to `PENDING_FLOW` and marks
+   its `Payload_UID` for priority release
+   (`_markAuditRetryPriority_()`) — per the operator's explicit request
+   ("push the log back to the start of the queue to run again"),
+   `runMatrixTurnstile()`'s release pass now checks this priority set
+   FIRST, ahead of normal row order, rather than physically reordering
+   sheet rows (which would risk a row-shift race against a concurrent
+   trigger run — the same class of bug Round 5 fixed elsewhere in this
+   file).
+3. At `CFG.MAX_RETRIES`, escalates to a new terminal `AUDIT_REJECTED`
+   status (added to `TERMINAL_FAILED_STATUSES`) with a chat alert — same
+   "don't retry forever, surface it for a human" discipline as
+   `STUDIO_TIMEOUT`, so a persistently-failing audit can't loop silently
+   either.
+
+Verified via sandbox test: three consecutive simulated audit failures
+correctly requeue-with-priority on attempts 1 and 2, then escalate to
+`AUDIT_REJECTED` on attempt 3 (`MAX_RETRIES=3` in the test), with all
+three rejections archived and exactly one chat alert firing, only at
+escalation. A separate sandbox test confirmed a priority-marked UID
+releases before an earlier-row-order, non-priority UID, and that
+priority is correctly one-shot (pruned after release).
+
+## Round 13 — dead-code cleanup (external product review, Finding 3)
+
+An external product review found `archived/` and
+`archived/legacy-pre-v8/` — 123 files, 76,080 lines, repo-wide across
+cas-ccps, leader-hub, and kos-personal — genuinely superseded and
+unreferenced by any live code path. Removed. Nothing is lost: the full
+pre-deletion tree is preserved on the `pre-archive-cleanup` branch
+(created from the commit immediately before this deletion), and every
+commit before this round still has it in git history regardless.
+`tools/gas-lint/check.js` stays at 0 errors and `npm test` stays green
+after the removal — confirming nothing still in use depended on these
+files.
+
+
+## Round 14 — the shared-context council path was still armed
+
+`triggerCouncilSimulation()` generated a document instructing one model to
+"Act as ARCHITECT, AUDITOR, and MUSE independently" in a single pass —
+precisely the cross-contamination BRIDGE_FIDELITY_001 declares VOID ("a
+verdict produced with knowledge of another cog's verdict is VOID"). Its own
+doc comment, Round 10's item 10, `README.md`, `USER_GUIDE.md` and
+`rtp-core-router/README.md` all described it as superseded and "kept only
+for reference." It was not. Three live paths still reached it:
+
+- **`autoCouncilCheck()` called it every 2 hours** — a default-enabled
+  time-driven trigger installed by `setupAllTriggers()`, firing once
+  `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS` sessions accumulated. Round 10's own
+  item 4 documented this while item 10 called the same function
+  reference-only; the two entries contradicted each other for three rounds.
+- **`generateCouncilInputPayload()` (`9_UI_Diagnostics.gs`)** was an
+  independent re-implementation of the same shared-context logic behind a
+  live menu item an operator could click at any time.
+- **Neither had to be called at all** — every top-level GAS function is
+  reachable via `google.script.run` by virtue of shared execution scope
+  (`7_WebApp.gs`'s own note), so removing callers would not have
+  neutralised it.
+
+Neither path invoked an LLM directly — both only assembled a Drive document
+— so contamination required a human pasting that document into one
+conversation. But the document explicitly instructed exactly that.
+
+- **`autoCouncilCheck()` retargeted** to `triggerSevenBridgesReview()`, so
+  the automatic and manual paths now produce the same sequestered artifact.
+- **Its guard property changed with it**, and this half is load-bearing:
+  the session count is now anchored on `SEVEN_BRIDGES_LAST_RUN`, the
+  property the callee actually advances. Retargeting alone would have left
+  the counter anchored on `COUNCIL_LAST_RUN`, which
+  `triggerSevenBridgesReview()` never writes — leaving `newSessions`
+  permanently above threshold and minting a fresh council ID and stimulus
+  document every 2 hours, forever, on every tick where CURRENT_STATE had
+  changed (i.e. after every session). A regression test covers exactly this.
+- **Its decline logging fixed** — `busy` and `noop` both return
+  `success: true` by this repo's convention for routine outcomes, so the
+  old `if (!result.success)` check silently swallowed every declined run.
+  On an unattended trigger the only log line was "firing", which was a lie.
+- **`triggerCouncilSimulation()` deleted outright**, not left callable.
+- **`generateCouncilInputPayload()` replaced by
+  `generateSevenBridgesStimulus()`** — a thin wrapper over the sequestered
+  path that keeps the operator's menu affordance and its confirm gate, and
+  drops the duplicated doc assembly, the duplicate stasis guard and the
+  last `COUNCIL_LAST_RUN` write. Its success alert used to claim "Studio
+  checks for new documents every few minutes and will pick this up
+  automatically" — never true for this artifact, and the surest way for a
+  stimulus to sit in RAW_EXHAUST forever with no verdicts against it. It
+  now states the three manual steps that actually follow.
+- **`COUNCIL_LAST_RUN` retired** — no reader, no writer. Documented as
+  legacy in `SCHEMA_REFERENCE.md`; an existing stored value is a harmless
+  orphan and there is no migration. `SEVEN_BRIDGES_LAST_RUN`, previously
+  undocumented anywhere, is now documented in its place.
+- **The enforcement limit is now stated rather than assumed.**
+  BRIDGE_FIDELITY_001 is enforced by operator discipline, not by code, and
+  cannot be otherwise: inference happens in Gemini Gem conversations
+  outside this repository, so nothing here can verify a verdict was
+  produced in isolation. What KOS guarantees is narrower — it will only
+  ever *produce* a sequestered stimulus, and the law travels with the
+  document. Written into `README.md`, `USER_GUIDE.md`,
+  `rtp-core-router/README.md` and `triggerSevenBridgesReview()`'s own
+  header. The recording side *is* code-enforced and unchanged:
+  `submitCogVerdict()` never feeds one verdict forward into another cog's
+  context; aggregation is post-hoc only, in `compileCouncilVerdict_()`.
+
+The council surface had zero test coverage, which is how a contradiction
+this size survived three rounds of review. `tests/kos-personal/auto-council-check.test.js`
+now covers the threshold arithmetic, the sequestered content of what the
+automatic path produces, the re-fire regression above, the decline-logging
+path, and that the deleted generator is genuinely gone rather than merely
+uncalled. Verified non-vacuous by reverting the guard-property fix and
+confirming the re-fire test fails. Testing it at all required five small
+additions to `tests/harness/gas-sandbox.js` (`moveTo`, `getLastUpdated`,
+`setHeading`, paragraph-level `setBold`, `ParagraphHeading`) — without them
+`triggerSevenBridgesReview()` could not run in the sandbox at all, which is
+its own explanation for the missing coverage. `tools/gas-lint/check.js`
+stays at 0 errors and `npm test` stays green.
+
+## Round 15 — a council review had no way to report where it was up to
+
+A Seven Bridges review is fanned out by hand — one cog per conversation,
+six conversations, however long that takes. Every step of it was already
+durably recorded: `submitCogVerdict()` writes a `COG_REGISTRY` row the
+moment each verdict lands, keyed by Council ID. But nothing ever read that
+back. `compileCouncilVerdict_()` answers *what did the cogs say*, and
+structurally cannot answer *which cogs haven't answered yet* — it only ever
+sees rows that exist. So mid-review state was never lost; it simply had no
+reader, and an operator returning to a half-finished council had no way to
+tell which Gems they had already sent it to.
+
+This was scoped down from a much larger idea. A competitive-framework
+comparison had suggested checkpoint/rewind for the governance pipeline —
+LangGraph-style resume-from-step. That would have meant real
+infrastructure: snapshotting per-step state, defining resumable boundaries,
+versioning them against every future change to the persona sequence, and
+maintaining all of it forever against a failure mode nobody had actually
+hit. The Council flow already checkpoints itself; what was missing was
+seventy lines that read it back.
+
+- **`getCouncilReviewStatus(councilId)`** (`6_Governance.gs`) — pure read,
+  writes nothing. Returns which cogs have verdicted, which are still
+  outstanding, the compiled halt verdict, and two things nothing surfaced
+  before. Deliberately wraps `compileCouncilVerdict_()` rather than
+  re-reading `COG_REGISTRY`: a second independent reader of one tab is
+  exactly the drift that produced two council generators and two
+  `CompetencyEvidence` writers in this repo already.
+- **Misspelled cog names are now visible.** The web app's Cog field is a
+  free-text input with a datalist of suggestions, and `submitCogVerdict()`
+  stores whatever is typed after a trim. A typo (`ARCHITEKT`) therefore
+  records a verdict that counts toward `CFG.COG_HALT_THRESHOLD` under a
+  name matching no persona — while the real ARCHITECT still reads as never
+  having voted. Reported as `unrecognized`, with the raw text preserved so
+  the typo is actually spottable.
+- **Duplicate submissions are now visible.** Submitting the same cog twice
+  records two rows and counts both. Reported as `duplicates`.
+- Neither is silently corrected. Both inflate the halt arithmetic, so the
+  status view flags the count as inflated and leaves the decision to the
+  operator — what to do about a double-vote or a typo is a judgment call,
+  not something to paper over.
+- Cog matching is forgiving on the one axis that is pure notation — case,
+  and an optional `PERSONA_` prefix, since `CFG.PERSONAS` stores
+  `PERSONA_ARCHITECT` and an operator reasonably types `Architect`.
+  Treating those as different cogs would have manufactured a problem
+  rather than reported one. Anything beyond that is reported, not guessed.
+- **Surfaced through the existing menu entry, not a new one.** ⚙️
+  Diagnostics → *Seven Bridges — Status & Verdict* (renamed from "Seven
+  Bridges Review") already prompted for a Council ID and displayed
+  verdicts; it now shows the full picture. No new surface area.
+
+`tests/kos-personal/council-review-status.test.js` covers the empty case,
+partial completion, the tolerant-matching rule, both skew cases, a clean
+complete review carrying the halt verdict through, strict scoping to one
+Council ID, and rejection of a blank ID. Verified non-vacuous against two
+separate mutations — breaking the pending calculation fails 3 tests,
+breaking typo detection fails 1. `tools/gas-lint/check.js` stays at 0
+errors and `npm test` stays green.
+
+---
+
+## Round 16 — the four commits that left no entry, and the sweep that found them
+
+This file's own opening line calls itself "the historical record of what
+was found and fixed," and `README.md` points readers here for exactly
+that. Four of the seven commits merged in `433aea5` left no entry, which
+made that claim false about the most recent work in the repo. Recording
+them now, at the point they were found rather than pretending they were
+never missed.
+
+### The four unrecorded commits
+
+- **`386c3ea` — fail-closed webhook auth in `inference-service/`.** The
+  managed-inference service accepted job submissions with no signature
+  when `WEBHOOK_SECRET` was unset, and compared signatures with `!==`.
+  Both are now closed: `server.js` calls `process.exit(1)` at startup if
+  `WEBHOOK_SECRET` is unset while `NODE_ENV=production`, rejects an
+  unsigned request with 401, and compares with
+  `crypto.timingSafeEqual()` behind a length check. The behaviour change
+  is real and operator-visible — a production deployment that was
+  running without the secret now refuses to boot rather than silently
+  accepting forged jobs. Four places documented that secret as
+  "optional"; all four are corrected below.
+- **`762eabc` — `pinThemeToCore()` (roadmap 2.1).** Core promotion was
+  algorithmic only: a theme reached `VECTOR_MATRIX` by crossing
+  `CFG.INCUBATOR_PROMOTION_THRESHOLD` over enough sessions, and an
+  operator who already knew a decision was permanent had no way to say
+  so. `pinThemeToCore(themeName, note)` bypasses the threshold, writes a
+  `PROMOTED_MANUAL` status distinct from the algorithmic `PROMOTED`, and
+  persists the asserted fact itself into a new `Core_Fact` column
+  (INCUBATOR column 8, added self-healingly by
+  `_ensureIncubatorCoreFactColumn_()`). Storing the fact rather than
+  just the theme label is what makes 2.3 possible at all.
+- **`27c1a5c` — Threshold D, Value-Consistency Drift (roadmap 2.3).**
+  ALIGNMENT already watched for the system going quiet on what it exists
+  to protect. It now also watches the operator's own side: a decision
+  that contradicts a pinned Core fact raises the same Socratic
+  challenge. `getManuallyPinnedCoreFacts()` feeds
+  `buildSessionContext()`, which injects a `## CORE FACTS
+  (Operator-Pinned — Do Not Contradict)` block so the live persona can
+  see the facts; `D_VALUE_CONSISTENCY_DRIFT` is carried end to end
+  through `CURATOR_PROMPT.md` and `PERSONA_CURATOR_V5_1.md`. It fires at
+  Closeout, not continuously.
+- **`dcaee02` — `KOS_WHITE_PAPER.md` §3, the sovereignty framing
+  (roadmap 2.5).** Positioning only; no code. Names the zero-server
+  posture the architecture already had, and the memory lifecycle the
+  Vector Router already implemented, in language the paper hadn't
+  claimed before.
+
+### Documentation currency sweep
+
+Roughly seventy false claims, found by auditing the repo against itself.
+The ones an operator or teacher would actually have acted on:
+
+- **`DEPLOYMENT_GUIDE.md`'s v5.4 migration was unfollowable.** It told
+  operators to run `runPhase0Migration()` and `runPhase0Verify()`.
+  Neither exists in the working tree — they live in
+  `KOS_PHASE0_PATCHES.gs`, which Round 13's cleanup (`45ad8c8`) deleted
+  along with all of `archived/`. The guide now recovers that file first
+  and says plainly that those two functions are defined there and
+  nowhere else. `SCHEMA_REFERENCE.md` carried the same dangling
+  reference and is corrected the same way.
+
+  **What the recovery step was missing was one line, not the branch.**
+  The guide pointed at `git show pre-archive-cleanup:…`, which fails in
+  a fresh clone with "invalid object name" — a clone doesn't fetch that
+  branch by default. Read literally, that looks exactly like a
+  reference to a branch that was never pushed, and this sweep first
+  "fixed" it by replacing the branch with a commit SHA. That was wrong:
+  `pre-archive-cleanup` is real and pushed (`b07b66f`), asserted
+  correctly in six places across this repo, and replacing it would have
+  broken five correct references to fix a sixth that wasn't broken.
+  The actual fix is a `git fetch origin pre-archive-cleanup` line ahead
+  of the `git show`, verified by running both from this clone.
+- **The webhook secret was documented as optional in four places** —
+  `1_Config_And_Deploy.gs`, `3_Queue_Processor.gs`,
+  `inference-service/README.md` (which omitted it from the setup list
+  entirely), and this file's Round-9 entry. Following any of them
+  against a production service after `386c3ea` yields 401s on every job
+  submission. All four now state it is required in production, and the
+  service README gained a section covering both sides of the pair.
+- **`leader-hub/README.md` opened with three false clauses** — "100%
+  client-side… no server, no build step." There is a build step
+  (`tools/leaderhub-build/build.js`), a server (`Code.gs`/`Data.gs`/
+  `SCR.gs`), and state round-trips to a Spreadsheet. The same README
+  contradicted itself three times further down.
+- **A live teacher-facing dialog was false.** `archiveCompletedTerm()`
+  (`cas-ccps/scripts/10_AdminRecoveryPanel.js`) still warned "This
+  cannot be undone automatically" after `8d46121` added ♻️ Reactivate an
+  Archived Term two menu items below it.
+- **`FERPA_DATA_MAP.md` said `_ferpaHealthChecks_()` "now checks four
+  things."** It checks six; the two missing ones are the Ledger and
+  CompetencyEvidence retention checks — that is, the compliance document
+  described the policy but not the checks enforcing it.
+
+Beyond those: wrong counts corrected repo-wide (286 → 329 tests, 7 → 6
+personas in five places, a "9th" cas-ccps project that is the 8th,
+four wrong rows in `tools/clasp-sync/README.md`'s file-count table, three
+stale leader-hub line counts, six recovery operations that are twelve, and
+four different totals in one project's `FILE n of m` banners, now all 11).
+`SCHEMA_REFERENCE.md` claimed to be a complete reference while missing the
+`Inference_Buffer` sheet, 20 `ID_*` routing keys, four live runtime keys
+and two optional ones; its `COG_STIMULUS` row described one doc per cog
+when the design is one shared doc. `7_WebApp.gs` and `4_Vector_Router.gs`
+both claimed complete entry-point lists that omitted `pinThemeToCore()`.
+
+**Three self-inflicted staleness items** — text written in one commit and
+invalidated by the next, in this same batch: `6_Governance.gs`'s banner
+asserted `generateCouncilInputPayload()` as live code after the same
+commit renamed it; `EXTERNAL_REFERENCE_Digital_Homesteading_TAIS.md` said
+value-consistency drift was "still just described, not built" one commit
+before `27c1a5c` built it, and counted two "Landed" bullets when there
+were three; `KOS_WHITE_PAPER.md` called Threshold D "the natural next
+axis" after it had shipped.
+
+**Where numbers were replaced rather than corrected.** A count in a doc
+rots the moment the thing it counts changes, which is how three separate
+leader-hub line counts ended up wrong. Following the model already set by
+`leader-hub/README.md` — which tells the reader to run `wc -l` — those
+now name the command and give the current value as of writing, rather
+than asserting a number that will be wrong again next month.
+
+**Where a dated record was annotated rather than rewritten.**
+`cas-ccps/HISTORY.md` says CompetencyEvidence was widened to an 8-column
+schema. That was true when written; `8d46121` made it 9. Rewriting the
+number would falsify the record, so the entry keeps its original figure
+and carries a note on what changed since — the same convention
+`meta/CODEBASE_REVIEW.md` already uses for its `⚠ Stale` passages, and
+the same reason `CHANGELOG.md` entries naming deleted functions are left
+alone.
+
+**Rotted citations converted to anchors.** `meta/CODEBASE_REVIEW.md`
+carried 16 `file:line` citations; four pointed past the end of the file
+they named and several more had drifted onto unrelated lines. All are now
+`functionName()` or named-section anchors, which survive edits. Two ARIA
+counts there were wrong (32/23 → 29/23, 5/1 → 9/6); the asymmetry point
+they support is unaffected. Four of its recommendations are marked done
+or moot — the viewport fix and the Turnstile failure ceiling both landed
+in code, `inference-service` has tests, and the `.jsx` file it wanted
+archived no longer exists.
+
+**A correction to a claim made during this work.** The
+`inference-service` tests were described as never running in CI. They do:
+a dedicated `test-inference-service` job runs `npm ci && npm test` in that
+directory. They are absent from the *root* `npm test` — the service has
+its own dependency tree — which is not the same thing.
+
+### Found and reported, not fixed
+
+Two items are code or config, outside a documentation pass's scope, and
+stay unresolved:
+
+1. **`kos-personal/studio-steps` is missing from two places** — it has no
+   `.clasp.json.template` (10 exist for 11 projects) and is absent from
+   the sandbox-deploy matrix, so `meta/CLASP_AND_APPS_SCRIPT.md`'s
+   instruction to clone "each of the 11 projects" cannot be followed for
+   the 11th.
+2. **`clasp login` is described as working in one place and not working
+   in two others.** Unresolvable from the repo — it needs someone with
+   account access to say which is true.
+
+A third was reported the same way and then fixed on request: **CI ran 308
+tests where `npm test` ran 346.** `.github/workflows/gas-lint.yml` inlined
+its own copy of the test glob and omitted `tests/kos-personal/` entirely.
+Six files had never run in CI — including all four added to cover the
+council fix, i.e. exactly the regression coverage for the deleted
+`triggerCouncilSimulation()`. Measured by running both globs, not
+inferred. The step now runs `npm test` instead of its own inlined glob —
+one definition instead of two that drift — verified locally (346/346)
+before the workflow change was made, since a step that only runs in CI
+can't be checked by running it here.
+
+`tools/gas-lint/check.js` holds at 0 errors / 4 warnings across this pass;
+a documentation sweep that changes it has done something it shouldn't.
+`npm test` went from 329 to 346 — the 17 added tests are the ones covering
+the new checker below, not changes to any existing behaviour.
+
+### `tools/doc-currency/check.js`
+
+This is the second currency sweep in two sessions. The first fixed a
+comparable batch and still left the broken deployment guide, the false
+`leader-hub/README.md` opening, and the teacher-facing dialog behind.
+Nothing in the repo notices when a claim stops being true, so drift is only
+ever caught by someone being asked to go and find it. The existing
+`docs-check` CI job doesn't close that: it is PR-only and asks whether a
+README was *touched*, with a `[skip-docs-check]` escape hatch. **Every
+Tier-1 finding in this sweep passed it.**
+
+Four checks, mirroring gas-lint's conventions exactly (`tools/<name>/
+check.js`, `findings = { errors, warnings }`, `--json`, exit 1 on any
+error, config in a sibling JSON): a documented function that exists
+nowhere in the source, a cited test count that no longer matches, a
+documented registry key no code touches, and a `file:line` citation past
+the end of its file. Wired into CI beside gas-lint.
+
+It found one thing this sweep's human pass had missed:
+`cas-ccps/README.md` documented a new helper `_getFullWarmupAnchor_()`;
+the real function is `_getFullPacingField_(unit_id, fieldName)`, which is
+field-generic rather than warmup-specific.
+
+**Its exclusions are the whole design.** Without them the tool's first act
+is to report documentation that is doing its job correctly — dated records
+naming a function precisely because it was deleted, a `⚠ SUPERSEDED`
+banner that already says what the tool would report, registry rows already
+labelled `Aspirational`. Each is documented in `config.json` with the
+concrete case that motivated it.
+
+**Two bugs it shipped with, both found by running it and both now pinned
+by tests.** A hand-rolled comment/string stripper with no regex-literal
+handling desynced on the first `/IDENTITY_KEY\s*[:=]\s*['"].+['"]/` it met
+and reported **82 missing functions, nearly all of which exist** — fixed
+by requiring gas-lint's stripper rather than maintaining a second, weaker
+copy (`tools/gas-lint/check.js` now exports its primitives behind a
+`require.main` guard; its own output is unchanged at 0/4). And a ±6-line
+window for historical-framing markers was loose enough that
+`USER_GUIDE.md`'s "the deploy function only creates what doesn't exist"
+suppressed a genuine finding three lines away — "doesn't exist" is
+ordinary English before it is a marker. Now scoped to the enclosing
+paragraph.
+
+Verified non-vacuous both ways: reintroducing a deleted-function claim, a
+wrong test count and a past-EOF citation makes the tool report all three
+and exit 1; and reverting each of the two fixes above fails 2 and 1 of the
+17 tests respectively.
+
+`tools/doc-currency/README.md` states plainly what it does **not** check.
+Of the five highest-consequence findings above, only the two phantom
+functions are a shape it can see — the false README paragraph, the
+teacher-facing dialog and the FERPA check-count all needed someone to read
+the prose against the code. Completeness is its worst failure mode: it can
+tell you a documented thing is gone, never that an undocumented thing
+exists.

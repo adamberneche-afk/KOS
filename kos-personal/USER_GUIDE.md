@@ -110,6 +110,45 @@ If a row has retried 3 times and is still failing, it becomes permanently flagge
 
 ---
 
+## When a Row Shows "AUDIT_REJECTED"
+
+This is a different problem from "Needs your help" above — the AI's
+output was perfectly valid JSON, but (if your Studio Flow has the
+optional Auditor step configured — see `CURATOR_PROMPT.md`) a second
+verification pass checked the Curator's own claims against your actual
+session transcript and found at least one that didn't hold up. In the
+Queue tab today this surfaces under the generic "Failed" indicator
+alongside other terminal failures — there's no dedicated label for it
+yet — so to confirm it's specifically an audit rejection rather than a
+parse failure, open STAGING_PIPELINE directly and check the Status
+column for the exact text `AUDIT_REJECTED`.
+
+**Your rejected output isn't lost.** Every rejected attempt — the full
+JSON the Curator produced, plus the Auditor's claim-by-claim trace log —
+is preserved in the `AUDIT_LOG` sheet in BRAIN_TRUST_INDEX, even though
+the Drive document itself gets overwritten on each retry attempt.
+
+**What to do:**
+
+1. Open `AUDIT_LOG` and find the row(s) for this session's `Payload_UID`.
+2. Read the `Trace_Log` column — it names the specific claim the Auditor
+   couldn't verify and the transcript evidence (or lack of it) behind
+   that verdict.
+3. Decide whether the Auditor was right. If it was a genuine hallucination
+   in the Curator's output, there's nothing to fix on your end — the
+   system already retried automatically (you'll see multiple `AUDIT_LOG`
+   rows for the same `Payload_UID` if it failed more than once) and gave
+   up only after `CFG.MAX_RETRIES` attempts, meaning the Curator kept
+   producing the same kind of unverifiable claim. Manual intervention —
+   reviewing the session and either resubmitting it or accepting the
+   session should just be logged as-is without automated inference — is
+   needed at that point, same as `FAILED_PARSE` above.
+4. If you believe the Auditor itself was wrong (a false rejection), that's
+   a signal to revisit the Auditor's own prompt instructions, not
+   something to fix per-row.
+
+---
+
 ## What the Shadow Matrix Means
 
 The shadow matrix is the system's model of your values. It tracks five questions:
@@ -158,7 +197,9 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 - **CURATOR** — Organisation, synthesis, information retrieval
 - **ALIGNMENT** — Always active, monitors for boundary drift (also the cog behind the `04.5_ALIGNER_SILO` Calibration Silo folder and `CE-ALIGN` tag — same cog, older folder-naming convention)
 
-**What "Run full council review" does today:** it's the real, sequestered "Seven Bridges" design (SMP-002) — no longer the older shared-context shortcut that asked one model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass (that's `triggerCouncilSimulation()`, now explicitly superseded, kept only for reference). The button now calls `triggerSevenBridgesReview()`, which assembles **one shared stimulus document** and a fresh Council ID. Real sequestration comes from what you do next, not from anything the pipeline does automatically: send that one document to each cog independently — a separate Gemini Gem conversation per cog, no shared context between them — then log each cog's verdict back under that same Council ID via **Ingest → Cog Verdict**. Once enough verdicts are in, `compileCouncilVerdict_()` enforces the halt-execution rule (3 or more non-APPROVED verdicts halts) and the results land in COG_REGISTRY.
+**What "Run full council review" does today:** it's the real, sequestered "Seven Bridges" design (SMP-002) — no longer the older shared-context shortcut that asked one model to role-play ARCHITECT/AUDITOR/MUSE together in a single pass (that generator was **deleted** in Round 14, along with the menu item that duplicated it). The button calls `triggerSevenBridgesReview()`, which assembles **one shared stimulus document** and a fresh Council ID. Real sequestration comes from what you do next, not from anything the pipeline does automatically: send that one document to each cog independently — a separate Gemini Gem conversation per cog, no shared context between them — then log each cog's verdict back under that same Council ID via **Ingest → Cog Verdict**. Once enough verdicts are in, `compileCouncilVerdict_()` enforces the halt-execution rule (3 or more non-APPROVED verdicts halts) and the results land in COG_REGISTRY.
+
+**This one rule is on you, not the software.** BRIDGE_FIDELITY_001: *a verdict produced with knowledge of another cog's verdict is VOID.* KOS cannot enforce that — your Gem conversations happen outside it, and nothing in the system can tell whether a cog saw another's answer first. What it can do, and now does, is guarantee it will only ever hand you a sequestered stimulus. If you paste two cogs into one conversation, or summarise ARCHITECT's verdict into AUDITOR's prompt, the review is void and nothing will warn you. One cog, one fresh conversation, every time.
 
 **When to use it:**
 - Before a major decision that affects multiple stakeholders
@@ -168,7 +209,18 @@ The system ships six AI personas (a 7th, ALIGNMENT, is always active rather than
 **How to trigger it:**
 Go to Diagnostics → **Run full council review**. The button asks for a second tap (with a countdown) to prevent accidental triggers. After confirmation, you'll get the stimulus document and a Council ID — send the document to each cog's own Gem conversation, then log each verdict via **Ingest → Cog Verdict** using that Council ID.
 
-The council runs automatically every 5 sessions (configurable). You'll see the button pulse in Diagnostics when an auto-trigger fires.
+From the spreadsheet instead of the web app, the same thing lives under **📥 Ingest & Context → Generate Seven Bridges Stimulus**. Both surfaces call the same function and produce the same artifact.
+
+**The automatic trigger generates a stimulus, not a finished review.** Every 2 hours KOS checks whether 5 new sessions (configurable, `CFG.COUNCIL_AUTO_TRIGGER_SESSIONS`) have accumulated since the last review. If so, it generates a Seven Bridges stimulus document into `03.4_RAW_EXHAUST` with a fresh Council ID — and stops there. **Nothing reviews it for you.** The fan-out to each cog's own conversation and the verdict logging are still yours to do; until you do them, that document is just a file waiting in a folder. It won't fire again for another 5 sessions once one has been generated.
+
+**Picking a review back up: 📊 Diagnostics → Seven Bridges — Status & Verdict.** Because you run a council by hand across six separate conversations, it's normal to stop partway and come back later. Enter the Council ID and you get the whole picture: which cogs have verdicted and what they said, **which ones you're still waiting on**, and — once everyone's in — the compiled verdict and whether the halt rule tripped. Nothing was ever lost between sittings; each verdict was written down as it arrived. This is just the view that reads it back.
+
+It also flags two things that otherwise pass silently, both consequences of the Cog field being free text:
+
+- **A misspelled cog name.** Type `ARCHITEKT` and that verdict still counts toward the halt threshold, while the real ARCHITECT keeps showing as never having voted. The status view lists it under "unrecognized" with the exact text you typed, so you can spot it.
+- **A cog submitted twice.** Both rows count. You'll see `⚠ 2 submissions` next to that cog.
+
+Neither changes the arithmetic — a review whose count is inflated is flagged, not silently corrected, because deciding what to do about a duplicate or a typo is your call, not the system's.
 
 ---
 
@@ -200,6 +252,7 @@ New domains can be promoted from the incubator as your work evolves. If the same
 | **Generate today's session starter** | On demand — replaces waiting for the 06:00 trigger |
 | **Run full council review** | Before major decisions, after significant project phases |
 | **Check for new themes to promote** | When you notice your work has shifted domains |
+| **Pin to Core** | On an incubator theme you've already decided is permanent, when you don't want to wait for it to recur often enough to promote itself. Asks for a second tap; the note you attach becomes the asserted fact the Alignment persona checks later decisions against (Threshold D, Value-Consistency Drift) |
 | **Archive completed queue rows** | Periodically, when STAGING_PIPELINE has many processed rows |
 | **Send error digest now** | When you want to check the error log immediately |
 | **Re-run full deploy** | Only when something is broken and you need to rebuild infrastructure |
@@ -242,7 +295,7 @@ The session documents themselves (CURRENT_STATE, PIVOTS_AND_LESSONS, daily prime
 ## Frequently Asked Questions
 
 **My session is processing but nothing appears in the sheets after an hour.**
-The queue processor runs every 10 minutes. If nothing has appeared after an hour, open STAGING_PIPELINE and check the Status column. If it shows FLOW_COMPLETE with nothing processed, run `processInferenceQueue()` manually from the Apps Script editor. If it shows NEEDS_CURATOR, see the NEEDS YOUR HELP section above.
+The queue processor runs every 10 minutes. If nothing has appeared after an hour, open STAGING_PIPELINE and check the Status column. If it shows FLOW_COMPLETE with nothing processed, run `processInferenceQueue()` manually from the Apps Script editor. If it shows NEEDS_CURATOR, see the NEEDS YOUR HELP section above. If it shows AUDIT_REJECTED, see the AUDIT_REJECTED section above.
 
 **I submitted a session but the Queue tab still shows 0 pending.**
 Refresh the Queue tab — it doesn't auto-refresh. If it still shows 0 after refresh, check STAGING_PIPELINE directly. It's possible the session was chunked into multiple rows.
