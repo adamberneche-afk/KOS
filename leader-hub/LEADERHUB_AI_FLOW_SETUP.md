@@ -437,7 +437,8 @@ Run these from the Apps Script editor's **Run** dropdown, in order:
 | 3 | `runAiFlowCanary()` | Exercises the whole Apps Script half — queue, poll, hand back once, delete the row, bump the stats — with the Flow **stubbed on purpose**. A pass means any remaining failure is in the Flow, not in this code. It does not mean the Flows work; nothing about a Flow is touched. |
 | 4 | `installAiFlowFixtures()` | Plants one `PENDING` row per job type, so all six Flows have something to match at once. |
 | 5 | `checkAiFlowFixtures()` | **The real test.** Run it after the Flows have had a chance to fire. A fixture whose `Status` moved off `PENDING` is proof that that specific Flow is live; one still `PENDING` means no Flow has ever touched that type. |
-| 6 | `removeAiFlowFixtures()` | Takes them back out. Optional — the existing two-hour sweep in `checkAiJob_` clears them anyway, so forgetting this leaks nothing. |
+| 6 | `checkAiFlowBinding()` | **Run this while wiring the write-back step, not after.** It logs the exact binding to copy — column, header, and which columns `queueAiJob_` owns and the Flow must not touch — generated from `AI_QUEUE_HEADERS` rather than transcribed. Once a Flow has touched a row it diagnoses what it did: the two it catches that nothing else can are a Result written without Status flipped (the job stays `PENDING` forever, then gets swept) and a Status that isn't exactly `PENDING` — that comparison is case-sensitive, so a Flow writing `"pending"` mid-generation gets the row **deleted** and an empty result handed back as complete. |
+| 7 | `removeAiFlowFixtures()` | Takes them back out. Optional — the existing two-hour sweep in `checkAiJob_` clears them anyway, so forgetting this leaks nothing. |
 
 Two things worth knowing before you run 4:
 

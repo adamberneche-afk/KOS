@@ -81,6 +81,9 @@
  *                                   installs it on a fresh deploy
  *   checkStudioFlowLiveness()     — has any Flow EVER written back? the only
  *                                   thing that answers that
+ *   checkStudioFlowBinding()      — are the Flow's output columns bound right,
+ *                                   and is Payload_Type the queued one? also
+ *                                   logs the binding to copy
  *   installStudioFlowFixture()    — plant a scratch doc + PENDING_FLOW row so
  *                                   a real Flow has something to match
  *   removeStudioFlowFixtures()    — take them back out, docs included
@@ -681,6 +684,233 @@ function checkStudioFlowLiveness() {
       'that was never built.');
   }
   return report;
+}
+
+// ── Binding probe ────────────────────────────────────────────────────────────
+
+// Every Payload_Type the pipeline queues. The Curator subset is
+// SR_CURATOR_TYPES; anything else takes the Classification contract.
+const SR_KNOWN_TYPES = SR_CURATOR_TYPES.concat(['VECTOR_CLASSIFY']);
+
+/**
+ * Diagnoses whether a Flow's final "add row to sheet" step is bound to the
+ * right columns of STUDIO_RETURN.
+ *
+ * WHY THIS EXISTS. checkStudioFlowLiveness() answers "has anything ever come
+ * back", which covers four causes at once: the Flow was never built, its
+ * trigger matches no rows, it writes into the wrong columns, or Gemini is
+ * erroring. The third looks exactly like the first, and STUDIO_RETURN's
+ * columns are bound one at a time in a picker.
+ *
+ * ONE DIAGNOSIS HERE HAS NO EQUIVALENT IN cas-ccps, and it is the reason this
+ * is not a copy of that probe: Payload_Type is not just a label, it SELECTS A
+ * CONTRACT. _srPrepareDocText_ routes a Curator type through a merge and
+ * re-serialization, and anything else through "write the original text
+ * verbatim, and require it to parse as an Array". So a classification result
+ * arriving labelled SESSION_LOG is not a cosmetic error — it gets the wrong
+ * treatment, and the failure surfaces as a parse error about the wrong thing,
+ * or worse, as a silently re-serialized array.
+ *
+ * Read-only. Also logs the binding to copy, generated from the header
+ * constants the harvest reads rather than transcribed.
+ */
+function checkStudioFlowBinding() {
+  const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+  const returns = _getOrCreateSheet(ss, SR_SHEET);
+  const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+  const report = { rows: 0, ok: 0, problems: [], expected: [] };
+
+  const headers = ['Returned_At', 'Payload_UID', 'Payload_Type', 'Primary_JSON',
+                   'Auditor_JSON', 'Harvest_Status', 'Attempts', 'Error'];
+  headers.forEach(function (name, idx) {
+    const owner = (idx <= SR_COLS.AUDITOR_JSON)
+      ? 'the Flow writes this'
+      : 'leave EMPTY — the harvest owns it';
+    report.expected.push({ column: idx + 1, header: name, owner: owner });
+  });
+  console.log('[StudioReturn] Expected binding for the final "add row to sheet" step, into ' +
+    SR_SHEET + ':');
+  report.expected.forEach(function (e) {
+    console.log('[StudioReturn]   col ' + e.column + '  ' + e.header + '  — ' + e.owner);
+  });
+  console.log('[StudioReturn]   Payload_UID and Payload_Type must both come from the TRIGGER ' +
+    'ROW, unchanged. Payload_Type selects which output contract the harvest applies, so a ' +
+    'wrong value there is not cosmetic. Auditor_JSON is for the Curator flow\'s optional ' +
+    'second pass only — leave it empty otherwise.');
+
+  const knownUids = {};
+  const stagingTypes = {};
+  if (staging.getLastRow() > 1) {
+    const SC = CFG.STAGING_COLS;
+    staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues().forEach(function (r) {
+      const uid = String(r[SC.PAYLOAD_UID]).trim();
+      if (!uid) return;
+      knownUids[uid] = true;
+      stagingTypes[uid] = String(r[SC.PAYLOAD_TYPE]).trim();
+    });
+  }
+
+  if (returns.getLastRow() <= 1) {
+    console.log('[StudioReturn] No rows in ' + SR_SHEET + ' yet, so there is no binding to ' +
+      'diagnose — that is "never built" or "trigger matches nothing", which ' +
+      'checkStudioFlowLiveness() covers.');
+    return report;
+  }
+
+  const width = Object.keys(SR_COLS).length;
+  const data = returns.getRange(2, 1, returns.getLastRow() - 1, width).getValues();
+  for (let i = 0; i < data.length; i++) {
+    report.rows++;
+    const issues = _srDiagnoseReturnRow_(data[i], knownUids, stagingTypes);
+    if (!issues.length) { report.ok++; continue; }
+    report.problems.push({ row: i + 2, issues: issues });
+  }
+
+  console.log('[StudioReturn] checkStudioFlowBinding: ' + report.ok + '/' + report.rows +
+    ' return row(s) correctly bound');
+  report.problems.forEach(function (p) {
+    console.log('[StudioReturn]   row ' + p.row + ':');
+    p.issues.forEach(function (msg) { console.log('[StudioReturn]     - ' + msg); });
+  });
+  if (!report.problems.length && report.rows) {
+    console.log('[StudioReturn] Every row is bound correctly, so a flow still producing nothing ' +
+      'is failing inside the Flow itself rather than writing to the wrong place.');
+  }
+  return report;
+}
+
+/**
+ * Per-row diagnosis. Returns a list of problems, empty when correctly bound.
+ *
+ * `stagingTypes` maps Payload_UID to the type the pipeline queued, which is
+ * what makes the type check possible at all: comparing the returned type
+ * against the queued one catches a mis-bound Payload_Type even when the value
+ * is a perfectly valid type name.
+ */
+function _srDiagnoseReturnRow_(row, knownUids, stagingTypes) {
+  const issues = [];
+  const cell = function (idx) { return String(row[idx] === undefined ? '' : row[idx]).trim(); };
+
+  // Where did a known Payload_UID land?
+  let uidAt = -1;
+  for (let i = 0; i < row.length; i++) {
+    if (knownUids[cell(i)]) { uidAt = i; break; }
+  }
+  // Where did a known payload type land?
+  let typeAt = -1;
+  for (let i = 0; i < row.length; i++) {
+    if (SR_KNOWN_TYPES.indexOf(cell(i)) !== -1) { typeAt = i; break; }
+  }
+  // Where did the model output land?
+  //
+  // If Primary_JSON holds ANYTHING, that is the answer and no guessing is
+  // needed. The longest-cell heuristic exists only to LOCATE misplaced
+  // output, so running it when the output is already in the right place just
+  // invents false positives — a terse but perfectly valid result
+  // ('{"summary":"s"}', a one-line bridge sentence) is shorter than the
+  // threshold and read as "nothing is arriving". Caught by its own test.
+  //
+  // Returned_At is excluded from the fallback scan: a Date stringifies to
+  // about fifty characters, so including it made an empty Primary_JSON read
+  // as "your output landed in Returned_At" — a confident wrong answer where
+  // "nothing is arriving" is the useful one. Same two bugs, same two fixes,
+  // as cas-ccps's equivalent probe.
+  // ...but only when Primary_JSON's content is not better explained as some
+  // OTHER field's value. On a one-column shift, Primary_JSON holds the
+  // Payload_Type, and short-circuiting on "non-empty" would trust that and
+  // hide the shift.
+  const primaryCell = cell(SR_COLS.PRIMARY_JSON);
+  const primaryLooksLikeAnotherField = !!primaryCell &&
+    (knownUids[primaryCell] || SR_KNOWN_TYPES.indexOf(primaryCell) !== -1);
+  let blobAt = -1;
+  if (primaryCell && !primaryLooksLikeAnotherField) {
+    blobAt = SR_COLS.PRIMARY_JSON;
+  } else {
+    let blobLen = 0;
+    for (let i = 0; i < row.length; i++) {
+      if (i === SR_COLS.RETURNED_AT) continue;
+      const len = cell(i).length;
+      if (len > blobLen && len > 20) { blobLen = len; blobAt = i; }
+    }
+  }
+
+  if (uidAt === -1) {
+    const present = cell(SR_COLS.PAYLOAD_UID);
+    issues.push(present
+      ? 'Payload_UID holds "' + present + '", which matches no STAGING_PIPELINE row. Bind it ' +
+        'to the trigger row\'s Payload_UID, not to a row number or a generated id.'
+      : 'Payload_UID is empty — the harvest cannot find the staging row to apply this to.');
+  } else if (uidAt !== SR_COLS.PAYLOAD_UID) {
+    issues.push('The Payload_UID is in column ' + (uidAt + 1) + ', expected column ' +
+      (SR_COLS.PAYLOAD_UID + 1) + ' — your binding is shifted by ' +
+      (uidAt - SR_COLS.PAYLOAD_UID) + ' column(s).');
+  }
+
+  if (typeAt === -1) {
+    const present = cell(SR_COLS.PAYLOAD_TYPE);
+    issues.push(present
+      ? 'Payload_Type holds "' + present + '", which is not one of ' + SR_KNOWN_TYPES.join(', ') +
+        '. The harvest routes anything unrecognized through the CLASSIFICATION contract, which ' +
+        'requires the output to parse as an Array — so a Curator result mislabelled this way ' +
+        'fails with a confusing NOT_ARRAY error.'
+      : 'Payload_Type is empty. An empty type takes the classification contract by default, ' +
+        'which is almost certainly not what this row is.');
+  } else if (typeAt !== SR_COLS.PAYLOAD_TYPE) {
+    issues.push('The payload type is in column ' + (typeAt + 1) + ', expected column ' +
+      (SR_COLS.PAYLOAD_TYPE + 1) + '.');
+  } else if (uidAt === SR_COLS.PAYLOAD_UID) {
+    // Both bound to the right columns — now is the type the RIGHT one? This
+    // is the check with no cas-ccps equivalent: a valid type name that does
+    // not match what was queued selects the wrong contract silently.
+    const queued = stagingTypes[cell(SR_COLS.PAYLOAD_UID)];
+    const returned = cell(SR_COLS.PAYLOAD_TYPE);
+    if (queued && queued !== returned) {
+      const queuedIsCurator = SR_CURATOR_TYPES.indexOf(queued) !== -1;
+      const returnedIsCurator = SR_CURATOR_TYPES.indexOf(returned) !== -1;
+      issues.push('Payload_Type is "' + returned + '" but this UID was queued as "' + queued +
+        '". Bind it from the trigger row rather than typing a constant.' +
+        (queuedIsCurator === returnedIsCurator
+          ? ' Both take the same output contract, so nothing breaks today — but the value is ' +
+            'still wrong and will mislead anyone reading the tab.'
+          : ' These take DIFFERENT output contracts, so the harvest will apply the wrong one: ' +
+            'a merge and re-serialize where verbatim was needed, or the reverse.'));
+    }
+  }
+
+  if (blobAt === -1) {
+    issues.push('No cell holds anything long enough to be model output — the Gemini step\'s ' +
+      'result is not reaching this row at all.');
+  } else if (blobAt !== SR_COLS.PRIMARY_JSON && blobAt !== SR_COLS.AUDITOR_JSON) {
+    issues.push('The model output landed in column ' + (blobAt + 1) + ', expected column ' +
+      (SR_COLS.PRIMARY_JSON + 1) + ' (Primary_JSON). Everything from Harvest_Status onward ' +
+      'belongs to the harvest, and writing there also means the harvest reads your output as ' +
+      'its own bookkeeping and skips the row.');
+  }
+
+  // An Auditor pass on a classification row is meaningless — that contract
+  // has nothing to merge into.
+  const returnedType = cell(SR_COLS.PAYLOAD_TYPE);
+  if (cell(SR_COLS.AUDITOR_JSON) && returnedType &&
+      SR_CURATOR_TYPES.indexOf(returnedType) === -1) {
+    issues.push('Auditor_JSON is filled on a "' + returnedType + '" row. The classification ' +
+      'contract writes its output verbatim with nothing to merge, so an auditor value here is ' +
+      'either a mis-binding or a leftover from copying the Curator flow\'s step.');
+  }
+
+  // The harvest's own columns must arrive empty, unless it has already run.
+  const processed = ['HARVESTED', 'FAILED', 'NEEDS_ATTENTION']
+    .indexOf(cell(SR_COLS.HARVEST_STATUS)) !== -1;
+  if (!processed) {
+    [SR_COLS.HARVEST_STATUS, SR_COLS.ATTEMPTS, SR_COLS.ERROR].forEach(function (idx) {
+      const v = cell(idx);
+      if (v && idx !== blobAt && String(Number(v)) !== v) {
+        issues.push('Column ' + (idx + 1) + ' arrived holding "' + v.substring(0, 40) +
+          '" — the Flow should leave it empty.');
+      }
+    });
+  }
+
+  return issues;
 }
 
 /**

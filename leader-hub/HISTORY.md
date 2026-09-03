@@ -443,3 +443,35 @@ fixture keeps the full sentence.
 Found the same way as the equivalent cas-ccps bug (a fixture profile carrying
 `evaluation_signals` as plain strings where the consumer expected objects):
 by reading the consumer instead of trusting the fixture.
+
+### Follow-up — a binding probe for the write-back step
+
+`checkAiFlowBinding()` closes the same gap cas-ccps's probe closed, for a
+different shape. There the Flow appends a row, so a mis-binding shows up as a
+shifted arrival. Here it **updates an existing row in place**, writing Status
+and Result by column position, which produces its own failure modes — and the
+two worst are peculiar to writing in place:
+
+- **Result bound, Status not.** `checkAiJob_` returns early on
+  `status === 'PENDING'`, so the generated text sits in the row until the
+  two-hour sweep deletes it. The client polls, times out, and falls back to a
+  local draft — indistinguishable from "no Flow exists".
+- **A Status that isn't exactly `PENDING`.** That comparison is exact and
+  case-sensitive, and everything else is treated as terminal. So a Flow that
+  writes `"pending"` while it is still working gets the row **deleted** and
+  whatever is in Result — possibly nothing — handed back as a completed job.
+  The probe calls this one out specifically rather than filing it under
+  "unrecognized status", because it is the one that loses work.
+
+It also catches output landing in Error instead of Result (a shift one column
+right), a COMPLETE row with no Result, a cleared JobId (lookups key on it),
+and a Result written over the Payload.
+
+A row still cleanly `PENDING` with nothing written is deliberately **not** a
+problem — that is a job waiting for its Flow, which `checkAiFlowFixtures()`
+reports on. Flagging it would make installing fixtures immediately report six
+binding problems that do not exist, and a test pins that the two checks agree.
+
+The expected binding is logged from `AI_QUEUE_HEADERS` rather than
+transcribed, so it is the thing to copy from while wiring the step and cannot
+drift from what `checkAiJob_` reads.

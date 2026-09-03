@@ -26,6 +26,41 @@ Also confirmed while checking: `runMatrixTurnstile` is TIER_1 gated, so a cold
 engine warns and passes through rather than blocking. A fixture will be
 released even on an unarmed deployment.
 
+### Follow-up — a binding probe, with one diagnosis unique to this system
+
+`checkStudioFlowBinding()` closes the configuration-side gap: before it,
+"nothing has ever come back" covered four causes at once — the Flow was never
+built, its trigger matches no rows, it writes into the wrong columns, or Gemini
+is erroring. The shift diagnostics mirror cas-ccps's probe, and one check has
+no equivalent there.
+
+**`Payload_Type` does not label the row, it selects a contract.**
+`_srPrepareDocText_` routes a Curator type through a merge and
+re-serialization, and anything else through "write the original verbatim, and
+require it to parse as an Array". So a *valid* type name that is not the one
+queued applies the wrong treatment silently — and the value itself looks fine,
+which is why nothing else could catch it. The probe compares what came back
+against what the pipeline queued for that UID, and grades the severity: a
+wrong type within the same contract is worth saying but breaks nothing today,
+while one across contracts will apply the wrong treatment. Conflating those
+would train the reader to ignore both.
+
+It also catches an Auditor value on a classification row (that contract has
+nothing to merge into, so it is a mis-binding or a leftover from copying the
+Curator flow's step), an unrecognized type — explaining that it will get the
+classification contract and fail with a confusing NOT_ARRAY error — and the
+usual shifts.
+
+Two bugs in the probe, both caught by its own tests, both also fixed in
+cas-ccps's copy: a Date stringifies to ~50 characters, so including
+`Returned_At` in the longest-cell scan made an empty `Primary_JSON` read as
+"your output landed in Returned_At"; and short-circuiting on "Primary_JSON is
+non-empty" reported a terse but valid result (`{"summary":"s"}`, 15
+characters) as missing — while short-circuiting *unconditionally* would trust
+a shifted row where `Primary_JSON` holds the Payload_Type. The rule that works
+is: trust the expected column unless its content is better explained as
+another field's value.
+
 ## 2026-09-03 — Studio write-back ported into Apps Script (12_StudioReturnHarvest.gs)
 
 `kos-personal/studio-steps/`'s two custom Studio steps cannot run. Publishing
