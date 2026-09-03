@@ -110,13 +110,20 @@ in the first place. See [`meta/README.md`](./meta/README.md).
 
 Built after a full codebase review kept turning up the same failure
 pattern: bugs that only exist because nothing checks for them
-automatically. Catches duplicate top-level declarations across files that
-share an Apps Script project (a parse-time crash, or worse, a silent
-wrong-function-wins if the duplicates actually differ), undefined config
-keys, `google.script.run` calls with no matching server function, and
-OAuth scopes used but not declared. Run `node tools/gas-lint/check.js`
-before trusting any change to `kos-personal/` or `cas-ccps/scripts/` is
-safe to deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
+automatically. Eleven checks now, each written for a bug that had already
+shipped — duplicate top-level declarations across files that share an Apps
+Script project (a parse-time crash, or worse, a silent wrong-function-wins
+if the duplicates actually differ), undefined config keys,
+`google.script.run` calls with no matching server function, OAuth scopes
+used but not declared, cross-project calls that can't resolve, undeclared
+Google Cloud dependencies (the class that made 2,113 lines of custom Studio
+steps permanently unreachable), two files that map the same sheet's columns
+and disagree, a flow missing one of the four checks it needs, a fixture no
+consumer ever reads, and a test sandbox narrower than the scope its code
+runs in. The last four enforce `meta/FLOW_DOCTRINE.md`, and each found a
+live defect on its first run. Run `node tools/gas-lint/check.js` before
+trusting any change to `kos-personal/` or `cas-ccps/scripts/` is safe to
+deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
 
 ## [`tools/clasp-sync/`](./tools/clasp-sync/) — bridges cas-ccps to clasp
 
@@ -178,7 +185,10 @@ via [`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
 machine, the student-context aggregator, `getCompetencyTextMap_`'s
 cache-with-fail-open behavior, Ledger retention, the opt-in Flow 2
 direct-evaluation escape hatch, the `cas-ccps/studio-steps/` custom steps
-(Flows 1-5), the queue watchdog, and the flow-preflight/canary check;
+(Flows 1-5, kept covered even though they cannot run on this account), the
+queue watchdog, the preflight and canaries, the Flow 2 and Flows 3/4/5
+ports and their harvests, the fixtures driven through the code that
+consumes them, the binding probes, and the generated build spec;
 `tests/leaderhub/` covers escaping/XSS guards and the pacing/calendar
 helpers; `tests/kos-personal/` covers the `kos-personal/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows); `tests/tools/` covers
@@ -186,16 +196,30 @@ the lint tools and the `leaderhub-build` drift gate.
 
 ## Still pending
 
-Module 1 (`cas-ccps`) still needs Flows 2-5 pushed to a live Studio
-deployment before they can run end-to-end — the custom-step code for all
-five flows now exists and is tested (`cas-ccps/studio-steps/`), but that
-project hasn't been pushed to a real Google account yet (its
-`.clasp.json.template` scriptId is still a placeholder), so "code
-written" isn't yet "wired and live" — and a handful of named-but-not-yet-uploaded files remain across
-systems (`27_LessonFrameGenerator` in cas-ccps; two `PERSONA_*` version
-duplicates in kos-personal) — see each system's README for the specific list. Reconciliation
-work (resolving contradictions between what's here) is done twice over now
-(original pass + Round 3); filling remaining gaps (uploading what's still
-missing) is the open work. Clasp adoption is scaffolded (manifests,
-ignore-lists, the cas-ccps multi-project sync tool) but not yet connected
-to a live Google account — see `tools/clasp-sync/`.
+**Corrected after the first real deployment.** This section used to say
+Flows 2-5 needed the custom-step project "pushed to a live Studio
+deployment," with its scriptId "still a placeholder." That framing is
+wrong, and in the most expensive direction: the project *was* pushed
+successfully, and its steps still never appeared in Studio's picker. A
+custom Studio step is a Workspace Add-on and needs a standard,
+non-default Google Cloud project; GCP is disabled org-wide for the
+`ccpsnet.net` account all three systems deploy to. Nothing about pushing
+fixes that — it is a Workspace-admin decision nobody here controls.
+
+What is actually pending: **all five cas-ccps flows plus kos-personal's
+two have been ported** to native Studio steps with an Apps Script harvest
+(`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`,
+`kos-personal/12_StudioReturnHarvest.gs`), which is a keyless path that
+works on this account. Only Flow 1 is verified live end to end. Each
+remaining flow's Studio side has to be built by hand in the Workspace UI —
+nothing in this repo can automate it, but `syncFlowBuildSpec()` generates
+the sheet to build from, and the preflight, canaries, binding probes and
+liveness checks answer the four separate causes of "nothing happened."
+`cas-ccps/DEPLOYMENT_HANDOFF.md` is the operator's document; the
+`clasp`-side work is a human's, per SMP-004's air-gap.
+
+Clasp adoption is no longer scaffolding: all 8 cas-ccps projects build
+from `tools/clasp-sync/sync.js` and CI refuses a build with an unmerged
+addendum. The two named-but-not-uploaded files this section used to list
+(`27_LessonFrameGenerator` in cas-ccps, the `PERSONA_*` duplicates in
+kos-personal) are both in the repo now.

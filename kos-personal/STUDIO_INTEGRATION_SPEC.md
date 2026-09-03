@@ -1,5 +1,35 @@
 # KOS v8.0 — Studio Integration Specification
 
+> **⚠ STEPS 6 AND 7 ARE SUPERSEDED. Read this before building the Flow.**
+> The write-back half moved into Apps Script. A custom Studio step is a
+> Workspace Add-on and needs a standard, non-default Cloud project; GCP is
+> disabled org-wide for the `ccpsnet.net` account this system is actually
+> deployed on (SMP-004 describes a separate personal account — that is not
+> what exists), so `studio-steps/`'s two steps install without error and
+> never appear in Studio's picker.
+>
+> **What the Flow does now:** everything through the model call, unchanged —
+> the Sheets trigger, the Docs read, both Gemini passes (Steps 1-5 and
+> connector rows T through 2b below are all still correct). Its **last step
+> is a native "add row to sheet" into a `STUDIO_RETURN` tab**, columns
+> `Returned_At | Payload_UID | Payload_Type | Primary_JSON | Auditor_JSON`.
+> It does **not** write the document and does **not** set a status.
+>
+> `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` then does both on a
+> 5-minute trigger: overwrite the source doc body and set the staging row to
+> `FLOW_COMPLETE`. Only the doc-body overwrite genuinely needed script — a
+> native insert-text step is not documented as able to clear existing
+> content first, and at that point the body still holds the raw source text.
+> The status machine is unchanged: a row stays `STUDIO_ACTIVE` until the
+> harvest sets `FLOW_COMPLETE`, and there is no new intermediate status.
+>
+> Verify with `runStudioReturnCanary()`, `checkStudioFlowBinding()` (run it
+> while wiring that last step — it logs the exact column binding) and
+> `checkStudioFlowLiveness()`. `installStudioFlowFixture()` gives the Flow a
+> row to match, so a green "Run Completed" over zero rows is distinguishable
+> from success. See that file's header, `kos-personal/DEPLOYMENT_GUIDE.md`
+> and `tools/gas-lint/gcp-map.json`.
+
 This document defines the complete contract between KOS v8.0 and Workspace Studio (or any AI inference engine used as a drop-in replacement). It is written for the developer building the Studio side of the integration.
 
 ---
@@ -23,9 +53,14 @@ Studio (optional)    Auditor verifies the Curator's own claims against
                      see Step 7's connector table (steps 2a/2b) and
                      CURATOR_PROMPT.md Rule 8. One JSON object either
                      way — never two objects written back to back.
-Studio               Writes the JSON (with auditor_sign_off merged in,
-                     if the Auditor step ran) back to doc body
-Studio               Sets Status = FLOW_COMPLETE
+Studio               Adds a row to STUDIO_RETURN carrying the JSON
+                     (with auditor_sign_off merged in, if the Auditor
+                     step ran) — see the banner above; Studio used to
+                     write the doc body and the status itself, and
+                     cannot on this account
+KOS Return Harvest   Overwrites the doc body, sets Status =
+                     FLOW_COMPLETE (12_StudioReturnHarvest.gs,
+                     5-minute trigger)
 KOS Queue Processor  Reads FLOW_COMPLETE rows
 KOS Queue Processor  Parses JSON, checks auditor_sign_off — passes
                      (or none present) → fans out to ledgers, sets
@@ -283,6 +318,12 @@ service.documents().batchUpdate(documentId=file_id, body={'requests': requests})
 ---
 
 ## Step 7 — Signalling Completion
+
+> **Superseded — this is now Apps Script's job, not the Flow's.** Kept
+> because it documents the contract `harvestStudioReturns()` implements and
+> the one status that means anything. Do not wire a Flow step to do it: on
+> this account the Flow's last step is a native "add row to sheet" into
+> `STUDIO_RETURN`, and the harvest sets the status.
 
 After writing the JSON to the document, update the Status column in STAGING_PIPELINE to `FLOW_COMPLETE`.
 
