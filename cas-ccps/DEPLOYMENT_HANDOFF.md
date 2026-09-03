@@ -1,40 +1,90 @@
 # cas-ccps Deployment Handoff
 
-> ## ⚠️ STATUS: THE FIRST DEPLOYMENT ALREADY HAPPENED
+> ## ⚠️ STATUS: START HERE, THEN STOP READING THIS FILE'S LOWER HALF
 >
-> **This document was written before any deployment existed, and its original
+> **The first deployment already happened.** All 8 cas-ccps projects are live
+> in a real `ccpsnet.net` Workspace account, Module 1 and Module 2 (Phase A +
+> B) are set up, and Flow 1 works against real data. This document's original
 > premise — "this repo has never been pushed to a real Apps Script project" —
-> is no longer true.** All 8 projects are live in a real `ccpsnet.net`
-> Workspace account. Module 1 and Module 2 (Phase A + B) are set up. Flow 1 is
-> working against real data.
+> has been false for a while.
 >
-> **Read `cas-ccps/HISTORY.md`'s final section first** ("First real deployment
-> — 8 projects live, three confirmed Studio walls, Flow 2 redesigned"). It
-> records what landed, three walls confirmed by direct test, the real bugs only
-> a live push could find, and an architectural change to Flow 2 that
-> supersedes parts of this document.
+> **If you are a fresh session picking up deployment, read this banner and
+> then jump to ["Bringing an already-live account up to current HEAD"](#bringing-an-already-live-account-up-to-current-head).**
+> That section is the operation that applies. The from-scratch order of
+> operations further down applies only to a *second* account.
 >
-> **Three things below are now actively misleading, corrected inline where they
-> appear:**
-> - The from-scratch gotchas are described as "still open, none yet hit." All
->   three were hit and resolved, and a fourth was found.
-> - "Flows 2-5 are code-complete, not deployed" understates it: the custom-step
->   code for all of them is **unreachable on this account**, because Workspace
->   Studio custom steps require a GCP project this district has disabled.
-> - The mechanics below (`clasp create`, the ID-mixing warning, Part 3.2b)
->   apply to a *fresh* deployment. This account's projects already exist;
->   `cas-ccps/clasp/local/` now holds their real script IDs and is gitignored,
->   so a new session or machine has to recreate it from the templates.
+> ### What changed since the last deployment session
 >
-> **If you are picking this up to continue the live deployment, the section
-> you want is "Bringing an already-live account up to current HEAD"** — the
-> `clasp push` plus the five Run-dropdown functions that make scripts 37-40
-> and the Ledger schema guard actually do anything. The from-scratch order of
-> operations below is not that.
+> 1. **Every flow is ported off the custom Studio steps.** A custom step is a
+>    Workspace Add-on and needs a standard, non-default Cloud project; GCP is
+>    disabled org-wide for this account, so all 8 cas-ccps steps and both
+>    kos-personal steps install without error and never appear in Studio's
+>    picker. The shape now is: Apps Script materializes one flat literal row →
+>    the Flow makes **one model call** with native steps → Apps Script
+>    harvests on a time trigger. `37_FlowInputBuilder.js` (Flow 2),
+>    `41_WarmUpFlowBridge.js` (Flows 3/4/5),
+>    `kos-personal/12_StudioReturnHarvest.gs` (both KOS flows).
+> 2. **There is now a check for each of the four causes of "nothing
+>    happened"** — never built, trigger matches nothing, wrong columns, model
+>    call errored. Previously all four looked identical. The table in the
+>    section below is ordered so each one gets answered before the next
+>    question can confuse it.
+> 3. **The Studio values to type are generated, not transcribed.**
+>    `syncFlowBuildSpec()` writes a `FlowBuildSpec` tab from the same
+>    constants the harvest reads. Build each Flow from that tab, not from a
+>    comment block — the comment blocks normalize em-dashes, which is how a
+>    marker copied from a note silently matched nothing.
+> 4. **`meta/FLOW_DOCTRINE.md` exists**: thirteen rules with the incident
+>    behind each and an explicit note on whether anything enforces it. Read it
+>    before changing how a flow is built. Nine of the thirteen are enforced by
+>    `gas-lint` Checks G-K and `doc-currency` Check 5.
+> 5. **The docs were corrected** where they still described the blocked path
+>    as live or as merely unpushed. `doc-currency` Check 5 now errors on that
+>    class, so a document cannot regress to it quietly.
 >
-> What else remains genuinely useful here: the Script Properties reference,
-> the runbook pointers, and the order-of-operations for anyone deploying to a
-> *second* account.
+> ### The two rules that govern this work
+>
+> - **SMP-004 air-gap.** Every `clasp push`, `clasp deploy`, browser action
+>   and Studio edit happens at the operator's own already-authenticated
+>   keyboard. An agent session prepares code and hands over exact commands; it
+>   does not touch production. Paste logs back rather than granting access.
+> - **FERPA.** Student response text stays in the student's own Doc as the
+>   record of origin and is never copied into the central Ledger. That is why
+>   `{{STUDENT_TEXT}}` is deliberately left unsubstituted in the materialized
+>   prompt and why the Extract step that reads the doc stays in Studio.
+>
+> ### Read these, in this order, before touching anything
+>
+> 1. This section, and the already-live section below.
+> 2. `tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` — the real step-by-step for
+>    clasp mechanics.
+> 3. `meta/FLOW_DOCTRINE.md` — how a flow is built here and why.
+> 4. `cas-ccps/HISTORY.md`'s deployment sections — what was tried, what the
+>    three confirmed Studio walls are, and the bugs only a live push found.
+>    Skim the follow-up sections; they are the reasoning behind every check
+>    named below.
+>
+> ### What will not work, whatever you run
+>
+> Don't spend time on either — see `cas-ccps/studio-steps/README.md`'s status
+> banner and `tools/gas-lint/gcp-map.json`:
+>
+> - **Any custom Studio step.** All 8 cas-ccps and both kos-personal steps are
+>   unreachable on this account. Pushing does not fix it; a district Workspace
+>   admin enabling GCP would, with no code change.
+> - **The `DIRECT_GEMINI` evaluation mode in `15c`.** It needs an API key, a
+>   key needs a Cloud project, same wall.
+>
+> ### Still-useful leftovers below
+>
+> The Script Properties reference, the runbook pointers, and the
+> order-of-operations for anyone deploying to a *second* account. Three things
+> in the lower half are corrected inline where they appear: the from-scratch
+> gotchas (all three were hit and a fourth was found), the "code-complete, not
+> deployed" framing of Flows 2-5, and the `clasp create` mechanics (this
+> account's projects already exist; `cas-ccps/clasp/local/` holds their real
+> script IDs and is gitignored, so a new machine recreates it from the
+> templates).
 
 **Originally for:** the session that takes this codebase from "code complete,
 verified in the Node sandbox" to "live in a real Google Workspace account."
@@ -45,12 +95,14 @@ code review, and fixed a real column-collision bug that work introduced.
 
 ## Current repo state
 
-- Deployment work continues on `claude/new-session-l8yvnj`.
-- Run the checks rather than trusting a number in this file — it rots:
-  `npm test`, `node tools/gas-lint/check.js` (expect 0 errors, 4 known
-  baseline warnings), `node tools/doc-currency/check.js` (0 errors, 9 known
-  baseline warnings), `node tools/clasp-sync/sync.js` (all 8 projects build
-  into `cas-ccps/.clasp-build/`).
+- Deployment work continues on `claude/new-session-l8yvnj`, merged to `main`.
+- **Zero errors is the gate. The warning counts are not** — both tools warn
+  about accepted, documented things, and both numbers move whenever a check is
+  added or a warning is legitimately resolved (gas-lint has gone 4 → 5,
+  doc-currency 9 → 8). Read the findings, not the count:
+  `npm test`, `node tools/gas-lint/check.js` (11 checks), `node
+  tools/doc-currency/check.js` (5 checks), `node tools/clasp-sync/sync.js`
+  (all 8 projects build into `cas-ccps/.clasp-build/`).
 - **All 8 projects now exist in a real Google account.** Their real script IDs
   live in `cas-ccps/clasp/local/*.clasp.json`, which is gitignored — so it is
   present on the deploying machine and absent everywhere else. A fresh clone
@@ -58,8 +110,9 @@ code review, and fixed a real column-collision bug that work introduced.
   `cas-ccps/clasp/templates/*.clasp.json.template` (still carrying
   `"scriptId": "REPLACE_WITH_REAL_SCRIPT_ID"`) before `sync.js` can build.
 
-Don't re-derive the bug-fix history — it's in `cas-ccps/HISTORY.md` if you need
-it, but only the final section is relevant to deployment mechanics.
+Don't re-derive the bug-fix history — it's in `cas-ccps/HISTORY.md` if you
+need it. The deployment record and the follow-up sections after it are the
+relevant ones; everything before them is pre-deployment reconciliation work.
 
 ## The one document that actually walks through this
 
@@ -125,9 +178,10 @@ this stage, but a second account would start here):
 **This is the operation that actually applies now**, and it is not the
 from-scratch sequence below. The 8 projects exist, Module 1 and Module 2
 (Phase A + B) are set up, and Flow 1 works against real data — but HEAD has
-moved since that push, and four scripts (37-40) plus a schema guard landed
-afterwards. None of them do anything until they're pushed and their setup
-functions are run once.
+moved a long way since that push. Scripts `35`, `37`, `39`, `40`, `41` and
+`42` plus the Ledger schema guard (`38`) all landed afterwards, and **none of
+them do anything until they are pushed and their setup functions are run
+once.** That is what this section is.
 
 Everything here runs at **the operator's own keyboard** (SMP-004: an agent
 session must never `clasp push` to production). From the repo:
@@ -138,20 +192,53 @@ node tools/clasp-sync/sync.js central-ledger
 cd cas-ccps/.clasp-build/central-ledger && clasp push
 ```
 
-Then, in the Apps Script editor's **Run** dropdown, in this order:
+Then, in the Apps Script editor's **Run** dropdown. The order matters: each
+phase answers a question that would otherwise make the next phase's failure
+unreadable.
+
+### Phase 1 — is the ground true? (before anything else)
 
 | # | Function | Why, and what to expect |
 |---|---|---|
-| 1 | `checkLedgerSchema()` | **Run this first and read the log before anything else.** The live Ledger's columns had shifted, which made `LEDGER.TEACHER_EMAIL` return a person's *name* and silently broke every MatrixRegistry lookup with no error anywhere. If it reports drift, run `repairLedgerSchema()` — it backs the tab up to `Ledger_BACKUP_<timestamp>` first, and refuses outright if it can't verify the repair is safe from the headers alone. Nothing downstream is trustworthy until this is clean. |
-| 2 | `syncFlowPromptsToSheet()` | Writes the `FlowPrompts` tab. After this, a Flow can read its system prompt from a chip instead of carrying a pasted copy, and future prompt changes are a `clasp push` + re-run rather than a hand-paste per Flow. |
-| 3 | `installFlowFixtures()` | Seeds dummy rows at all five flows' trigger conditions. Without these, a Flow with nothing to match reports a green "Run Completed" over zero rows — which is how a lot of time got spent last session. `checkFlowFixtures()` reports what's present; `removeFlowFixtures()` takes them out. |
-| 4 | `installFlowInputTriggers()` | Installs Flow 2's two time triggers (1-min build, 2-min harvest). This is what makes `FlowInput` populate at all. |
-| 5 | `runFlow2Canary()` | End-to-end check of Flow 2's **Apps Script half only** — it self-provisions a scratch student doc and TeacherMatrix and stubs Studio out deliberately. Paste the log. A pass means the lookup chain and the harvest are sound and any remaining failure is in the Flow itself. |
-| 6 | `installWarmUpFlowTriggers()` | Installs Flows 3/4/5's two triggers (materialize + harvest, both 5-minute). Nothing in `41_WarmUpFlowBridge.js` runs until this is done. |
-| 7 | `runWarmUpFlowCanary()` | Same idea as `runFlow2Canary()` for Flows 3, 4 and 5: exercises the archetype decision table, the materialization and the harvest against scratch rows with Studio stubbed, then cleans up. Flows 3 and 4 are covered as pure logic only — both need Drive and a real student doc, which a canary must not fabricate. |
-| 8 | `checkFlowBinding()` | **Run this while wiring each Flow's last step, not after.** It logs the exact binding to copy — column number, header, and which columns the harvest owns — generated from the same constants the harvest reads, so it cannot drift the way a setup document does. Once rows start arriving it diagnoses them: a one-column shift is reported *as a shift with its offset*, not as "Flow is blank". `checkFlow2Binding()` does the equivalent for Flow 2's write-into-the-row shape. |
-| 9 | `syncFlowBuildSpec()` | Writes the `FlowBuildSpec` tab — every tab name, column number, header, trigger condition, prompt key and ownership rule for all five flows, **derived from the constants the code reads**. Build each Flow's Studio side from that tab, not from a comment block: the values there cannot drift, and `checkFlowBuildSpec()` reports when a column has moved since the last sync. Connector names, temperature and token limits are deliberately not in it — they need judgement and don't drift, and copying them would make it a seventh document to keep in sync. |
-| 10 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. The only thing that can tell you a Flow is live — a Flow that matched zero rows reports a green "Run Completed" too. |
+| 1 | `checkLedgerSchema()` | **First, and read the log before running anything else.** The live Ledger's columns had shifted, which made `LEDGER.TEACHER_EMAIL` return a person's *name* and silently broke every MatrixRegistry lookup with no error anywhere. If it reports drift, run `repairLedgerSchema()` — it backs the tab up to `Ledger_BACKUP_<timestamp>` first and refuses outright if it cannot verify the repair is safe from the headers alone. Nothing downstream is trustworthy until this is clean. |
+| 2 | `runFlowPreflightCheck()` | Structure: every tab present and wide enough, all four flow triggers installed **exactly once** (a duplicate is reported as a failure, not a pass — two copies of a harvest race each other), the required Script Properties set, the self-healing tabs healthy. Each finding says which of the four questions it answers. Run this before the canaries; a canary failing for a missing tab wastes the canary. |
+
+### Phase 2 — give the flows something to read and something to run on
+
+| # | Function | Why, and what to expect |
+|---|---|---|
+| 3 | `syncFlowPromptsToSheet()` | Writes the `FlowPrompts` tab, so a Flow reads its system prompt from a chip instead of carrying a pasted copy. A future prompt change is then a `clasp push` plus one re-run, not a hand-paste per Flow. |
+| 4 | `installFlowFixtures()` | Seeds dummy rows at all five flows' trigger conditions, so a Flow has something to match. Without them a Flow reports a green "Run Completed" over zero rows, which is indistinguishable from success and is where a lot of last session went. `checkFlowFixtures()` reports what is present; `removeFlowFixtures()` takes them out. Fixture data uses `.invalid` addresses and `*-FIXTURE-*` IDs — the Flow-2 fixture's `StagingRowRef` is the literal `FIXTURE` precisely so the harvest cannot complete a real student's submission. |
+| 5 | `installFlowInputTriggers()` | Flow 2's two time triggers (1-minute build, 2-minute harvest). This is what makes `FlowInput` populate at all. |
+| 6 | `installWarmUpFlowTriggers()` | Flows 3/4/5's two triggers (materialize + harvest, both 5-minute). Nothing in `41_WarmUpFlowBridge.js` runs until this is done. |
+
+### Phase 3 — does the Apps Script half work, with Studio stubbed?
+
+| # | Function | Why, and what to expect |
+|---|---|---|
+| 7 | `runFlow2Canary()` | Flow 2's Apps Script half end to end: it self-provisions a scratch student doc and TeacherMatrix, stubs Studio out **deliberately**, and cleans up. Paste the log. A pass means the lookup chain and the harvest are sound and any remaining failure is in the Flow itself. A pass says nothing about whether a Flow exists — by design, and it says so in its own log. |
+| 8 | `runWarmUpFlowCanary()` | The same for Flows 3, 4 and 5: the archetype decision table, the materialization and the harvest against scratch rows. Flows 3 and 4 are covered as pure logic only — both need Drive and a real student doc, which a canary must not fabricate. |
+
+### Phase 4 — build the Studio side (the part nothing here can automate)
+
+| # | Function | Why, and what to expect |
+|---|---|---|
+| 9 | `syncFlowBuildSpec()` | Writes the `FlowBuildSpec` tab: every tab name, column number, header, trigger condition, prompt key and ownership rule for all five flows, **derived from the constants the code reads**. **Build each Flow from that tab.** The judgement half — connector names, temperature, token limits — is deliberately not generated and lives in the Module 2 Phase B wizard dialogs and `15_StudioFlowPrompts.js`. `checkFlowBuildSpec()` reports when a column has moved since the last sync. |
+| 10 | `checkFlowBinding()` | **Keep this open in a second tab while wiring each Flow's last step, not after.** It logs the exact binding to copy — column number, header, which columns the harvest owns — from the same constants the harvest reads, so it cannot drift the way a setup document does. Once rows arrive it diagnoses them: a one-column shift is reported *as a shift, with its offset*, not as "the Flow is blank". `checkFlow2Binding()` is the equivalent for Flow 2's write-into-the-row shape. |
+
+Each Flow's Studio side is: a Sheets trigger on the input tab → **one** Gemini
+call → a native "add row"/"update row" writing back. Nothing else belongs in
+the Flow (`FLOW_DOCTRINE.md` rule 1).
+
+### Phase 5 — has a Flow ever actually answered?
+
+| # | Function | Why, and what to expect |
+|---|---|---|
+| 11 | `checkFlow2Liveness()` | Whether anything has ever been written into `FI.GEMINI_FULL_OUTPUT`, and whether rows have sat READY with nothing coming back. |
+| 12 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. |
+
+These two are the only things that can tell you a Flow is live. A Flow that
+matched zero rows also reports a green "Run Completed".
 
 **The D1 leader-hub connection** is separate from the flows and has its own
 diagnostic now: `runLeaderHubConnectionCheck()`, run from the **Teacher
@@ -163,16 +250,23 @@ empty — which leader-hub cannot tell apart from a rejection. It says outright
 that it *cannot* check the one remaining cause, a stale `/exec` URL stored on
 leader-hub's side, because nothing in the script can see that.
 
-**Which check answers which question.** `runFlowPreflightCheck()` covers the
-structure — tabs wide enough, triggers installed exactly once, required
-properties set. `runWarmUpFlowCanary()` covers the Apps Script half with
-Studio stubbed. `checkFlowBinding()` covers the columns your Flow writes to.
-`checkWarmUpFlowLiveness()` covers whether anything came back at all. Those
-four separate the four causes of "nothing happened" that used to look
-identical: not built, trigger doesn't match, wrong columns, Gemini erroring.
+**Which check answers which question**, across all three systems. "Nothing
+came back" is one answer covering four causes, and the third looks exactly
+like the first:
 
-Only after 1-5 are clean is there any point configuring Flow 2 in Studio,
-because before that there is no `FlowInput` row for it to read.
+| Question | cas-ccps | leader-hub | kos-personal |
+|---|---|---|---|
+| Is the structure sound? | `runFlowPreflightCheck()` | `runLeaderHubPreflight()` | — |
+| Does the script half work? | `runFlow2Canary()`, `runWarmUpFlowCanary()` | `runAiFlowCanary()` | `runStudioReturnCanary()` |
+| Are the columns bound right? | `checkFlowBinding()`, `checkFlow2Binding()` | `checkAiFlowBinding()` | `checkStudioFlowBinding()` |
+| Has a Flow ever answered? | `checkFlow2Liveness()`, `checkWarmUpFlowLiveness()` | `checkAiFlowFixtures()` | `checkStudioFlowLiveness()` |
+
+`gas-lint`'s Check I holds every declared flow to having all four, so if you
+add a flow and skip one, the linter says which question you can no longer
+answer.
+
+Only after Phases 1-3 are clean is there any point configuring Flow 2 in
+Studio, because before that there is no `FlowInput` row for it to read.
 
 Two things that will *not* work no matter what you run, so don't spend time
 on them — see `cas-ccps/studio-steps/README.md`'s status banner and
@@ -181,6 +275,67 @@ on them — see `cas-ccps/studio-steps/README.md`'s status banner and
 - Any custom Studio step. All 8 are unreachable on this account.
 - The `DIRECT_GEMINI` evaluation mode in `15c`. It needs an API key, a key
   needs a Cloud project, same wall.
+
+### How to work with an agent session on this
+
+The agent cannot see your account, and you should not give it access. What
+makes the loop fast is pasting back the **whole** log of whatever you ran,
+including the boring lines — every check here is written to be read that way,
+and the useful signal is usually in a line that looks like noise (a duplicate
+trigger, a status that reads `ERROR_EMPTY_OUTPUT` rather than
+`ERROR_HARVEST_FAILED`, a column offset).
+
+Worth pasting without being asked:
+
+- The full execution log of any check above, pass or fail.
+- The Studio run panel for a Flow that "completed" but changed nothing — a
+  green **Run Completed** over zero rows is the single most common false
+  positive here, and the step list plus row counts is what distinguishes it.
+- The first two rows of any tab a check complains about, headers included.
+  Positional drift is invisible in prose and obvious in two rows.
+
+If a check's own output contradicts this document, the check is right: it is
+derived from the constants the code reads, and this file is prose.
+
+### A first message for a fresh session
+
+```
+Read cas-ccps/DEPLOYMENT_HANDOFF.md's status banner and the
+"Bringing an already-live account up to current HEAD" section, then
+meta/FLOW_DOCTRINE.md. I'm continuing the live deployment on the
+ccpsnet.net account: 8 cas-ccps projects exist, Module 1 and Module 2
+(A+B) are set up, Flow 1 works, Flows 2-5 are ported but their Studio
+sides are unbuilt, and leader-hub and kos-personal have never been
+deployed. I run every clasp/browser/Studio action myself (SMP-004) and
+paste logs back. Start by telling me the exact commands for step 1.
+```
+
+## The other two systems
+
+This file is cas-ccps's. A fresh deployment session covers three, and each
+carries its own guide with its own sequence. Both are on the **same
+`ccpsnet.net` account** as cas-ccps — do not read a system boundary as an
+account boundary, which is a mistake this repo made twice
+(`FLOW_DOCTRINE.md` rule 3).
+
+**leader-hub** — `leader-hub/DEPLOYMENT_GUIDE.md`. Never pushed, so it is a
+from-scratch deployment: create the project, push, deploy as a web app, then
+`syncAiPromptsToSheet()` → `runLeaderHubPreflight()` → `checkAiQueueSchema()`
+→ `runAiFlowCanary()` → `installAiFlowFixtures()`, then build the six Flows
+and confirm with `checkAiFlowFixtures()`. Its queue rows are deleted the
+moment their outcome is read, which is why liveness there is a durable
+counter rather than a row scan. Its D1 side — the browser calling cas-ccps's
+`doPost()` — is diagnosed from the cas-ccps end; see the paragraph above.
+
+**kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. Push, deploy the web
+app, then `setupAllTriggers()` (14 triggers, `harvestStudioReturns` among
+them), and build the two Flows with a native "add row to sheet" into
+`STUDIO_RETURN` as the last step. `installStudioFlowFixture()` plants a
+scratch doc plus a `PENDING_FLOW` staging row; verify with
+`runStudioReturnCanary()`, `checkStudioFlowBinding()` while wiring that last
+step, then `checkStudioFlowLiveness()`. Its consent-screen phase configures
+the *default* project and does **not** create a standard one — that
+distinction is what cost 2,113 lines here.
 
 ## Order of operations
 
