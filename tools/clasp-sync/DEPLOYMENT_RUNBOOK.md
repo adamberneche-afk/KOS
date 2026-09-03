@@ -18,7 +18,7 @@ Three projects, three different shapes:
 
 | Project | Script projects involved | Who it's for | Stakes |
 |---|---|---|---|
-| kos-personal | 2 (the main flat-folder project, plus `kos-personal/studio-steps/` — a second, separate standalone project; SMP-004's personal/district split, not a shared global scope) | You, personal account | Low — no students touch this |
+| kos-personal | 2 (the main flat-folder project, plus `kos-personal/studio-steps/` — a second, separate standalone project, not a shared global scope) | You. SMP-004 describes a personal account here; in practice it is the same `ccpsnet.net` account as cas-ccps, which is why the org-wide GCP block reaches its Studio steps too | Low — no students touch this |
 | leader-hub | 1 (`leader-hub:app` — every `.gs` file in `leader-hub/`, one real Web App deployment; authoritative list in `tools/gas-lint/project-map.json`) | **Belongs to Adam Berneche per its own README, not confirmed as yours** | Depends on ownership — see Part 2 |
 | cas-ccps | 8 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `teacher-dashboard`, `student-dashboard`, `studio-steps`) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
 

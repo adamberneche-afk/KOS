@@ -136,7 +136,7 @@
     ]
   },
   "kos-personal:studio-steps": {
-    "_bound_to": "Standalone Workspace Studio add-on project, personal Google account (SMP-004 keeps this off the district domain, separate from cas-ccps:studio-steps even though both share the same step-authoring pattern) — the Curator/Classification flow's custom steps",
+    "_bound_to": "Standalone Workspace Studio add-on project, SEPARATE FROM cas-ccps:studio-steps even though both share the same step-authoring pattern. The project separation is real; the ACCOUNT separation this used to assert is not -- SMP-004 describes kos-personal as living on a personal Google account off the district domain, and in practice it is deployed on the same ccpsnet.net account, so the org-wide GCP block reaches these steps too (see tools/gas-lint/gcp-map.json) — the Curator/Classification flow's custom steps",
     "manifest": "kos-personal/studio-steps/appsscript.json",
     "files": [
       "kos-personal/studio-steps/StepsShared.gs",

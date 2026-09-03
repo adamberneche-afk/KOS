@@ -1268,42 +1268,63 @@ row on every path. Do not "tidy" it into a number.
 
 A plan was reviewed late in the session proposing to rebuild kos-personal's
 ingestion/classification pipeline around the same "keep Studio away from
-everything" posture this session arrived at for cas-ccps. That posture does
-not transfer, and acting on it would be solving a problem that project
-doesn't have:
+everything" posture this session arrived at for cas-ccps.
 
-- SMP-004 bifurcates kos-personal onto **the personal Google account**, not
-  `ccpsnet.net`, so the org policy behind Wall 1 doesn't reach it. That is
-  the only real difference, and it is about *policy*, not about anything
-  having been provisioned.
-- `kos-personal/studio-steps/` already exists, complete, built the same way
-  cas-ccps's blocked steps were — and so was the project behind it.
+**That plan was right, and this section spent two rounds arguing otherwise.**
+The conclusion is recorded here with both wrong readings intact, because the
+reasoning is more reusable than the answer and both errors are the kind that
+look like diligence at the time.
 
-**Correction to an earlier reading of this, recorded because the mistake is
-easy to repeat.** This section first cited
-`kos-personal/DEPLOYMENT_GUIDE.md:36` ("every future deploy uses the same
-GCP project") plus line 255's Drive-API walkthrough as evidence GCP was
-available there. It isn't evidence. That line closes a Phase 1 whose step 2
-is *"select your existing Apps Script project"* and whose only work is the
-OAuth consent screen; both that and enabling an API happen quite happily in
-the default project Apps Script creates on its own. Every GCP project across
-this repo was built that same way, and nothing here records a standard
-project ever being created or linked through Project Settings for any of the
-11 Apps Script projects. So Wall 1 is really the *second* block on the custom
-steps — there was no standard project to lose in the first place — and
-kos-personal's steps are un-provisioned rather than probably-fine. The rule
-and the corrected entry now live in `tools/gas-lint/gcp-map.json`, enforced
-by gas-lint's Check G.
+**Round 1 — "GCP is available there."** This section cited
+`kos-personal/DEPLOYMENT_GUIDE.md:36` ("every future deploy uses the same GCP
+project") plus line 255's Drive-API walkthrough as evidence. Neither is
+evidence. That line closes a Phase 1 whose step 2 is *"select your existing
+Apps Script project"* and whose only work is the OAuth consent screen; both
+that and enabling an API happen quite happily in the default project Apps
+Script creates on its own. Every GCP project across this repo was built that
+same way, and nothing here records a standard project ever being created or
+linked through Project Settings for any of the 11 Apps Script projects. So
+Wall 1 is really the *second* block on cas-ccps's custom steps — there was no
+standard project to lose in the first place.
 
-Verify by *looking* at Project Settings on that account — read the linked
-Cloud project, don't infer it from a deployment doc. If a standard project
-is there (or you create one, which is self-service on a personal account),
-kos-personal needs *finishing*, not redesigning: push
-`kos-personal:studio-steps`, build the two flows from
-`STUDIO_INTEGRATION_SPEC.md`'s existing connector tables, and close the one
-gap that spec names itself at line 455 (`_chunkAndQueue()` doesn't queue a
-paired `VECTOR_CLASSIFY` row alongside each `SESSION_LOG` row, so the two
-flows can't correlate to one session).
+**Round 2 — "different account, so the org policy can't reach it."** What
+survived the first correction was the account argument: SMP-004 bifurcates
+kos-personal onto a personal Google account, off `ccpsnet.net`, so the
+district's org-wide GCP block wouldn't apply and the steps were merely
+*un-provisioned* rather than blocked. The operator has since confirmed
+otherwise: **kos-personal is deployed on the same `ccpsnet.net` account, and
+its Studio flow is not live.** A documented account separation turned out to
+be a policy someone intended, not a fact about a deployment — which is the
+Round 1 mistake one level up, reading an intention as a state of the world.
+Nothing in this repo can observe which account a script runs on, so that is
+the class of claim to confirm with the operator rather than derive.
+
+So the posture *does* transfer, and `kos-personal/studio-steps/` is blocked
+by the same wall for the same reason. It needs the Apps Script port, not
+finishing. Two things make it a smaller job than cas-ccps's was, and one
+makes it different:
+
+- **The fixed-picker wall doesn't apply.** What forced cas-ccps's Flow 2
+  redesign was that a native "Get sheet contents" step targets a spreadsheet
+  through a fixed picker and never a variable, which is fatal when the target
+  is a per-teacher TeacherMatrix. `STAGING_PIPELINE` is one spreadsheet, so a
+  native Sheets connector can reach it.
+- **Only the doc write genuinely needs Apps Script.** The trigger, the
+  document read, and the Gemini calls are all native and unaffected. The two
+  custom steps merge Curator + Auditor JSON, overwrite the source doc's body,
+  and flip a row to `FLOW_COMPLETE`; a native insert-text step is not
+  documented as able to clear a doc's existing content first, which is the
+  one capability that has to come back into script.
+- **The port must not widen `STAGING_PIPELINE`.** `10_Turnstile.gs:41`
+  records why: an 8th column would mean touching hardcoded 7-column
+  `getRange()` calls across `2/3/9_*.gs`, which is exactly why release
+  timestamps already live in `PropertiesService` instead of a column. A
+  separate return tab is the shape that fits, not extra columns.
+
+The gap `STUDIO_INTEGRATION_SPEC.md` names itself at line 455 still stands
+either way: `_chunkAndQueue()` doesn't queue a paired `VECTOR_CLASSIFY` row
+alongside each `SESSION_LOG` row, so the two flows can't correlate to one
+session.
 
 The reviewed plan also diverged from the real constants and structures:
 `MAX_CHUNK_SIZE` is 25,000 not 8,000; `DECAY_FACTOR` is 0.92 not 0.85; and

@@ -104,6 +104,19 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 
 ## kos-personal — Studio ingestion/inference Flow
 
+> **⚠ NOT LIVE, AND BLOCKED IN ITS CURRENT SHAPE.** Confirmed by the
+> operator: kos-personal is deployed on the same `ccpsnet.net` account as
+> cas-ccps — not the separate personal account SMP-004 describes — so the
+> district's org-wide GCP block reaches it, and the two custom steps in
+> `kos-personal/studio-steps/` cannot be published. The flow is not running.
+> Everything below describes the intended design and the state machine, all
+> of which still holds; what changes is that the write-back half has to come
+> back into Apps Script rather than being a custom step. See
+> `kos-personal/studio-steps/README.md`'s status banner for the port's shape
+> and its one hard constraint (do not widen `STAGING_PIPELINE`), and
+> `tools/gas-lint/gcp-map.json` for the declaration.
+
+
 **What it does:** `2_Ingestion_Sensors.gs` queues session logs, external
 data, and (as of the Seven Bridges pipeline) cog verdicts into
 `STAGING_PIPELINE`; a human-built Studio Flow reads a queued doc, runs
