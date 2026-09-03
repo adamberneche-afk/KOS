@@ -924,3 +924,308 @@ documented as fixed in this same file.
 See each fix's own commit/code comments for full detail. `npm test`
 422 passing (up 29), gas-lint 0 errors / 4 warnings, doc-currency 0
 errors.
+
+## First real deployment — 8 projects live, three confirmed Studio walls, Flow 2 redesigned
+
+The session `DEPLOYMENT_HANDOFF.md` was written for. It took this codebase
+from "code complete, never pushed anywhere" to eight real Apps Script
+projects running in a live `ccpsnet.net` Google Workspace account, with
+Module 1 and Module 2 (Phase A + B) genuinely set up and Flow 1 verified
+against real teacher data.
+
+**It did not get a working Flow 2 Studio run, and that outcome is the most
+valuable thing in this section.** Three walls were confirmed by direct
+test — not inferred, not assumed — and two of them are permanent for this
+account. The response was an architectural change (`37_FlowInputBuilder.js`)
+that dissolves all three rather than continuing to fight them. Anyone
+picking this up should read the walls before touching Studio again.
+
+### What actually went live
+
+All eight projects created via `clasp create` and pushed. The two web apps
+(`teacher-dashboard`, `student-dashboard`) additionally versioned and
+deployed, since `clasp push` alone never moves an `/exec` URL. Module 1's
+admin + teacher setup wizard run to completion; Module 2 Phase A and Phase B
+both completed, including a real block schedule for eight periods across two
+courses meeting simultaneously. Flow 1 (Rubric Extraction) built natively in
+Studio and verified end to end against a real rubric submitted through the
+live upload form — real ConfigIDs generated, every extracted field correct,
+`RubricQueue` row reaching `COMPLETE`.
+
+That Flow 1 run doubled as proof `05_TeacherIntakePipeline.js` works: the
+first several attempts failed on its own validation chain (a Doc URL that
+wasn't a Doc URL, an unshared template, a Sheet where a Doc was required),
+each rejected with the correct, specific error. The validation nobody had
+ever exercised against a real submission turned out to be right.
+
+### All three predicted from-scratch gotchas hit, plus a fourth
+
+`DEPLOYMENT_HANDOFF.md` listed three documented-but-never-hit gotchas. All
+three fired exactly as written: `unified-manual` refused to push until
+`central-ledger` had a cut version, a from-scratch `central-ledger`
+spreadsheet had none of the five Module-1 tabs, and both dashboards needed
+`ADMIN_SS_ID` set rather than just `CENTRAL_LEDGER_SS_ID`. The handoff
+earned its keep.
+
+A fourth wasn't predicted: **the from-scratch path also skips the Central
+Turn-In Form.** The admin wizard normally creates it; a
+`clasp create`-then-`clasp push` deployment never runs that path. Created by
+hand via a throwaway function, same remedy as the missing-tabs gotcha.
+
+### Two real manifest bugs, findable only by pushing
+
+Both had been in the tree since `studio-steps` landed. Neither was
+detectable by `npm test`, `gas-lint`, or reading the file — only by a real
+`clasp push` rejecting it.
+
+1. **`bcc772c` — `"state": "PUBLISHED"` is not a valid `workflowElements`
+   value.** All 8 entries carried it. The real enum is `"ACTIVE"`. The push
+   failed outright until every one was corrected.
+2. **`83f6f76` — `addOns.common.logoUrl` was still the literal
+   placeholder `"REPLACE_WITH_A_HOSTED_LOGO_URL"`.** Google's own docs name
+   this as a cause of an add-on's steps never appearing in the Studio
+   picker. Replaced with a real hosted icon URL.
+
+Also fixed live: `ca43738` (a block-schedule `Ui.prompt()` losing newlines,
+so multi-line `PERIOD:DAYTYPE:COURSE` entries arrived space-joined — now
+accepts `;` as a delimiter too) and `a53e155` (teacher setup crashing when
+`CompetencyRegistry`/`PacingGuide` were empty, which on a fresh deployment
+they always are).
+
+### Wall 1 — GCP access is disabled for this district account
+
+Confirmed directly at `console.cloud.google.com`: *"you do not have access
+to Google Cloud Platform… your account is managed by an organization that
+has this service turned off."* A Workspace Studio custom-step add-on
+requires a standard (non-default) GCP project linked through Project
+Settings. This account cannot have one.
+
+Consequences, both wider than they first look:
+
+- **All 8 custom steps in `cas-ccps/studio-steps/` (2,113 lines) are
+  unreachable on this account.** Not broken — unreachable. They were pushed
+  successfully and never appeared in Studio's step picker, across multiple
+  uninstall/reinstall cycles, with no OAuth prompt ever shown.
+- **`15c_Flow2DirectEvaluationService.js`'s `DIRECT_GEMINI` escape hatch is
+  blocked by the same wall.** It needs a `DIRECT_GEMINI_API_KEY`, and an API
+  key needs a project. The hatch built specifically for "make Flow 2
+  runnable without Studio" cannot run either.
+
+This is a district IT / Workspace admin action, not something this repo or
+this account can resolve. Worth filing regardless — it would resurrect all
+2,113 lines at once — but nothing should be sequenced behind it.
+
+### Wall 2 — native Studio cannot express this data model
+
+With custom steps unavailable, only native steps remain. They can't do it,
+for reasons confirmed by direct test in the live editor:
+
+- **"Get sheet contents" targets a spreadsheet through a FIXED PICKER only.**
+  No variable binding, confirmed by trying: *"no variables option appears,
+  still shows a fixed picker."* Flow 2's TeacherMatrix hop is inherently
+  per-teacher — a different spreadsheet per teacher — which native Studio
+  structurally cannot address. This is the wall that matters, because
+  multi-teacher is the product.
+- **The two capabilities Flow 2 needs are split across two steps that
+  won't compose.** "Extract" is schema-driven and can read a Doc from a URL
+  but has no row-filtering; "Get sheet contents" has real keyed Find
+  conditions but can't read a Doc or return a schema. Neither does both.
+- **"Ask Gemini" emits Text or List only** — no arbitrary JSON schema.
+
+### Wall 3 — Studio has no engineering affordances
+
+The most expensive wall in practice, and the least obvious going in. This
+repo has 453 tests, a lint pass, clasp manifests, a FERPA data map,
+retention policies, a queue watchdog, a preflight check and a canary. The
+Studio flow configs are the **only** layer with no version control, no
+diff, no test, no rollback and no code review — and that layer is where the
+entire session went. Specific failure modes met:
+
+- **"Run Completed" renders green when a lookup step matched zero rows.**
+  No fail-fast; wrong-but-empty data propagates silently downstream. This is
+  the same class of invisible failure `34_QueueWatchdog.js`'s own header
+  describes from a prior incident.
+- **Literal text that looks like a bound chip.** A `Ledger` row was found
+  containing the strings `@trigger.ConfigID` and `@trigger.StudentFileID`
+  as cell *values*. A Find condition holding that same unresolved text
+  then "matched" that row — two wrongs matching each other, reported as
+  success. Chips must be inserted through the variable picker; typing the
+  name does nothing and looks identical.
+- **Text + chip concatenation in a field is unreliable.** URL construction
+  had to be pushed back into the sheet as a formula column rather than
+  built inside a Studio field.
+- **Formula-derived columns can be empty in the trigger's row snapshot.**
+  An `ARRAYFORMULA` column populated a moment after the row edit that fired
+  the trigger, so the flow read a blank — Step 3 reported "source content
+  was empty" while the sheet visibly showed a correct value.
+- **Every debug cycle is a screenshot round-trip through a human.** That,
+  not any single bug, is what consumed the session.
+
+### The `=AI()` investigation — closed, not viable
+
+Google Sheets' `=AI()` / `=Gemini()` function (Education Plus / Teaching &
+Learning, 18+, since 2026-02-24) was investigated as a way to get inference
+without GCP. It is genuinely available on this account and genuinely cannot
+serve this pipeline:
+
+- **It cannot read other files.** Context must be in the current
+  spreadsheet, passed via the range argument. Flow 2's whole job starts with
+  reading a student's Doc. Disqualifying on its own.
+- **It is not an automation primitive.** Output is a static value that does
+  not recalculate when inputs change; a human clicks "Generate and Insert"
+  or "Refresh and Insert," and the edit is attributed to that person in
+  version history. Apps Script cannot trigger or refresh it — there is an
+  open Google issue tracker request (429140217) for exactly that.
+- ~200 cells per formula, ~200–350 per batch, short- and long-term
+  generation caps, and no useful `ARRAYFORMULA` expansion.
+- Making it work would require copying student response text into the
+  central Ledger spreadsheet — a direct regression against
+  `docs/FERPA_DATA_MAP.md`'s pointer-based design, for no functional gain.
+
+Where it *is* useful is teacher-facing and human-in-the-loop: drafting
+rubric milestones before a config goes live (static output is a feature
+there — a rubric that silently rewrites itself would be a bug), ad-hoc
+analysis over already-extracted evidence, one-time backfills, report
+narrative drafts a teacher reviews. Not the pipeline.
+
+### The response: `37_FlowInputBuilder.js` (`03bcbe9`)
+
+Flow 2 was ~8 steps, of which 6 were data plumbing and 2 were inference.
+Every wall above hit the plumbing. Studio's one irreplaceable capability is
+keyless Gemini; everything else it does badly and Apps Script does well.
+
+So the plumbing moved into code. `buildFlowInputRows()` resolves the full
+`Ledger → MatrixRegistry → TeacherMatrix` chain — the same 3-hop lookup
+`studio-steps/ReadInstructorConfigStep.gs` already implements and tests,
+reimplemented because GAS has no cross-project calls — and materializes one
+flat, literal row on a single fixed spreadsheet. `harvestFlowInputResults()`
+then applies Studio's result: splits it, writes the feedback into the
+student's doc, writes `CompetencyEvidence`, and flips the originating
+`STAGING_PIPELINE` row to `COMPLETE` so the already-deployed
+`backPropagateCompletions()` closes the rest of the loop. It reuses
+`_parseFlow2Response_()` and `writeCompetencyEvidenceFromFlow2_()` from
+`15c` directly rather than duplicating them.
+
+Studio Flow 2 shrinks to four steps, all fixed-picker-safe: trigger on a
+`FlowInput` row at `READY`, Extract the response text from
+`@trigger.StudentDocURL`, Ask Gemini from literal columns, write the raw
+output back and set `EVALUATED`. No lookups, no chip concatenation, no
+dynamic spreadsheet target, no formula-timing race — Walls 2 and 3
+dissolve, and Wall 1 stops mattering because only the keyless Gemini call
+still lives in Studio.
+
+The doc read deliberately stays in Studio. Having Apps Script read the doc
+and pass text through a sheet cell would cut Studio to three steps and put
+raw student writing at rest in the central Ledger — the same FERPA
+regression `=AI()` would have required. Four steps is the floor.
+
+### Three real bugs the redesign surfaced
+
+1. **A `Ledger` column insertion had silently shifted 14 fields.** A helper
+   `FileURL` column at index 4 moved `TeacherEmail` from 8 to 9, so every
+   reader using `LEDGER.TEACHER_EMAIL` — the dashboards, `03_QueueBridge.js`,
+   the aggregator, the SCR engine — was reading a person's *name*. The new
+   builder's MatrixRegistry hop then searched for a teacher whose email
+   equalled that name, matched nothing, and skipped every row forever behind
+   one log line. Exactly the failure `00_SharedConfig.js`'s own `LEDGER`
+   comment warns about. The inserted column was also redundant: index 16,
+   `AdminFileURL`, already holds the doc URL.
+   `38_LedgerSchemaGuard.js` (`0e4bd42`) now detects and repairs this — and
+   deliberately refuses when it can't verify the repair is safe, because two
+   cases are indistinguishable from the header row alone (a column inserted
+   *before* any `registerLedger_` write, versus rows appended positionally
+   *after* it, where the column holds real data).
+2. **`writeCompetencyEvidenceFromFlow2_()` doesn't self-create its tab.** It
+   logs and returns zero if `CompetencyEvidence` is missing — correct for
+   `15c`'s dev-only bridge, wrong once it's the sole real writer.
+   `harvestFlowInputResults()` self-heals the tab before calling it.
+3. **Two canary bugs, both caught by tests rather than by a live run.**
+   `_fiFindMatrixSsId_()` returns the *first* MatrixRegistry match for a
+   teacher email, so two canary runs collided on a shared fake address; and
+   a bare millisecond timestamp let two same-millisecond runs share a
+   ConfigID. Fixed with per-run plus-addressing and a random token.
+
+### Flow 2's canary became possible (`d7c36a4`)
+
+`35_FlowPreflightAndCanary.js`'s header used to explain why Flow 2 couldn't
+have one: it "read[s] and write[s] real student submission docs," needing a
+test-student fixture only the operator could provide. Moving the lookup
+chain into code removed that — `runFlow2Canary()` provisions its own scratch
+doc and scratch TeacherMatrix and trashes both afterwards.
+
+It is a **different kind of canary** than `runFlow1Canary()`, and the header
+says so at length. Flow 1's waits on the live Studio flow and therefore
+proves Studio works. Flow 2's deliberately stubs Studio out — a PASS means
+every line of code cas-ccps owns in Flow 2 is correct and says nothing about
+whether the Studio flow is built or wired right. That split is the point:
+with the code half proven separately, a full-chain failure is unambiguously
+Studio's.
+
+Safety worth preserving: the synthetic staging row's `QueueRowRef` is the
+literal string `'CANARY'`. Both branches of `backPropagateCompletions()`
+gate on `parseInt(queueRowRef)`, including the `!isNaN` guard around
+`notifyTimeoutToTeacher_`, so a non-numeric ref makes that function skip the
+row on every path. Do not "tidy" it into a number.
+
+### kos-personal is NOT subject to Wall 1 — don't import this lesson
+
+A plan was reviewed late in the session proposing to rebuild kos-personal's
+ingestion/classification pipeline around the same "keep Studio away from
+everything" posture this session arrived at for cas-ccps. That posture does
+not transfer, and acting on it would be solving a problem that project
+doesn't have:
+
+- SMP-004 bifurcates kos-personal onto **the personal Google account**, not
+  `ccpsnet.net`. `kos-personal/DEPLOYMENT_GUIDE.md:36` states every deploy
+  already uses an established GCP project, and line 255 walks through
+  enabling the Drive API in that project's console.
+- `kos-personal/studio-steps/` already exists, complete, built the same way
+  cas-ccps's blocked steps were.
+
+Verify by looking at Project Settings on that account before designing
+anything. If GCP is available there, kos-personal needs *finishing*, not
+redesigning: push `kos-personal:studio-steps`, build the two flows from
+`STUDIO_INTEGRATION_SPEC.md`'s existing connector tables, and close the one
+gap that spec names itself at line 455 (`_chunkAndQueue()` doesn't queue a
+paired `VECTOR_CLASSIFY` row alongside each `SESSION_LOG` row, so the two
+flows can't correlate to one session).
+
+The reviewed plan also diverged from the real constants and structures:
+`MAX_CHUNK_SIZE` is 25,000 not 8,000; `DECAY_FACTOR` is 0.92 not 0.85; and
+it merged three deliberately separate mechanisms — informational
+`VECTOR_MATRIX` scoring, the two-stage `INCUBATOR` promotion
+(`INCUBATOR_PROMOTION_THRESHOLD` 3.0, `INCUBATOR_HALF_LIFE_DAYS` 14), and
+the human-gated `Blackboard` mutation queue (`Deploy_Trigger = TRUE` →
+`applyMutation()`) — into one score-crosses-threshold path.
+
+### Where things actually stand
+
+**Verified live:** all 8 projects pushed; both web apps deployed; Module 1
+complete; Module 2 Phase A + B complete; Flow 1 working end to end against
+real data; `05_TeacherIntakePipeline.js`'s validation chain proven.
+
+**Written and tested, not yet run against the live account:**
+`37_FlowInputBuilder.js`, `38_LedgerSchemaGuard.js`, `runFlow2Canary()`.
+These need a `clasp push` and three Run-dropdown invocations
+(`checkLedgerSchema()`, `installFlowInputTriggers()`, `runFlow2Canary()`).
+
+**Not built:** Flow 2's four-step Studio flow. Flows 3, 4, 5 — untouched,
+and they hit the same fixed-picker wall since Warm-Ups are per-teacher too,
+so the FlowInput pattern should port to them.
+
+**Permanently blocked on this account:** the 8 custom steps, and `15c`'s
+`DIRECT_GEMINI` hatch.
+
+### Still open
+
+- The live `Ledger` column drift is unrepaired until `checkLedgerSchema()` /
+  `repairLedgerSchema()` are actually run. Flow 2 cannot work before that —
+  the MatrixRegistry hop resolves a name as an email and silently skips.
+- `FlowInput` has no retention pass and no `34_QueueWatchdog.js` staleness
+  coverage. Deliberate: it's new and low-volume. Add when usage justifies
+  it, same as every other tab got retention after the fact.
+- Whether the district will enable GCP. Not sequenced behind.
+- `IMPACT_DASHBOARD.html`'s Flow status badges still read `Flows 2-5 ⬜
+  Built, Not Deployed`, which is now only half right — Flow 2's code half is
+  built and tested, its Studio half isn't, and Flows 3-5's custom-step code
+  is built but unreachable. Worth a more honest three-state badge.
