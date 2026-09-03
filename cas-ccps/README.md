@@ -154,7 +154,7 @@ teachers have their own copies.
 | **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `23`, `24`, `25`, `28` in hand (HISTORY.md's resolution 9); `31`/`32`/`33` (pacing/rubric/artifact utilities) in hand (HISTORY.md's resolution 10). `27_LessonFrameGenerator` — the last remaining Full script — is now in hand too, see HISTORY.md's "27_LessonFrameGenerator — the one Full script closed". |
 | **M3** — Student Profile | Extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` — unaffected by this reconciliation pass |
 | **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct twice now, see HISTORY.md's resolutions 3 and 10 |
-| **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Flow 2's writer code now exists (`cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`) and is tested, but M5 can't go fully live until that project is actually pushed to a live Studio deployment — see Known Gap #1 below. |
+| **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Flow 2's writer code exists as a custom Studio step (`cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`) and is tested, but **that path is dead on this account** — it was pushed and the step never appeared in Studio's picker, because a Workspace Add-on needs a standard Cloud project the district has disabled (see that folder's README banner). Flow 2's writer now runs in Apps Script instead, via `37_FlowInputBuilder.js` reusing `15c`'s pure parse/write functions. |
 
 `scripts/archived/ARCHIVED_11_StudentFriendlyRejections.js` (merged into
 Script 04; renamed to match the repo's prefix convention — HISTORY.md's resolution 13)
@@ -163,6 +163,24 @@ current Script 04 writes rejections into the doc instead — the system
 deliberately moved away from student email entirely at some point,
 consistent with the Ledger schema never carrying a student email/only a
 GoogleID.
+
+## Flow plumbing added after the first deployment (scripts 37-40)
+
+Cross-module infrastructure rather than a module — all four are bound to
+`cas-ccps:central-ledger`, all four exist because the first real deployment
+found that Workspace Studio can do less than the design assumed. See
+`HISTORY.md`'s deployment section for the walls each one works around.
+
+| Script | What it does | Run it via |
+|---|---|---|
+| `37_FlowInputBuilder.js` | **The Flow 2 redesign.** Resolves Ledger → MatrixRegistry → TeacherMatrix in Apps Script and materializes one flat literal `FlowInput` row, so the Flow reads a single row and needs no custom step and no variable spreadsheet target. `harvestFlowInputResults()` applies Studio's result back. Two time triggers (1-min build, 2-min harvest). | `installFlowInputTriggers()` once; then automatic |
+| `38_LedgerSchemaGuard.js` | Detects and safely repairs Ledger column drift — the live Ledger had shifted so `LEDGER.TEACHER_EMAIL` read a person's *name*, silently breaking the MatrixRegistry hop with no error. Backs the tab up before mutating, and refuses when it can't verify the repair is safe. | `checkLedgerSchema()`, then `repairLedgerSchema()` if it reports drift |
+| `39_FlowFixtures.js` | Persistent dummy rows at all five flows' trigger conditions, so a flow has something to match instead of reporting a green "Run Completed" over zero rows. Namespaced `VDOE-FIXTURE-*` / `WUQ-FIXTURE-*` / `fixture-*@example.invalid`, deliberately separate from the canaries' namespace. | `installFlowFixtures()`, `checkFlowFixtures()`, `removeFlowFixtures()` |
+| `40_FlowPrompts.js` | Every reusable flow prompt as a constant plus a `FlowPrompts` tab, so a prompt change is a `clasp push` and one function run instead of a hand-paste into each Flow. Flow 2 resolves through `15b`'s existing constant rather than carrying a second copy. `substituteFlowPrompt_()` leaves unmatched placeholders standing — `{{STUDENT_TEXT}}` stays unfilled on purpose, since student response text must not enter the central Ledger (FERPA). | `syncFlowPromptsToSheet()`, `checkFlowPrompts()` |
+
+Flow 2's Apps Script half has a self-provisioning canary
+(`runFlow2Canary()` in `35_FlowPreflightAndCanary.js`) that stubs Studio out
+deliberately — it verifies the code path, not the flow.
 
 ## Known gaps (carried forward so a future session doesn't re-derive them)
 
