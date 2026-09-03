@@ -157,5 +157,42 @@
     "COMMERCIAL",
     "YYYY"
   ],
+  "_comment_blockedSurfaceDocs": "Docs that make behavioral claims about the pipeline, checked against every live-blocked surface in tools/gas-lint/gcp-map.json (Check 5). Declared rather than repo-wide on purpose: run repo-wide, that check reports 12 findings and 8 are layout inventories -- 'kos-personal has 2 clasp projects', a table of step files -- which are true whatever the surface's status. These are the documents where a blocked path read as live costs someone a session. A doc that only lists repo structure does not belong here; a doc that tells you how inference happens does. .html is accepted here even though docExtensions is .md only, because IMPACT_DASHBOARD.html's deployment badges were one of the three real cases.",
+  "blockedSurfaceDocs": [
+    "README.md",
+    "cas-ccps/README.md",
+    "cas-ccps/DEPLOYMENT_HANDOFF.md",
+    "cas-ccps/docs/FERPA_DATA_MAP.md",
+    "cas-ccps/docs/IMPACT_DASHBOARD.html",
+    "cas-ccps/studio-steps/README.md",
+    "kos-personal/README.md",
+    "kos-personal/DEPLOYMENT_GUIDE.md",
+    "kos-personal/STUDIO_INTEGRATION_SPEC.md",
+    "kos-personal/studio-steps/README.md",
+    "meta/FLOW_INVENTORY.md",
+    "meta/FLOW_DOCTRINE.md",
+    "meta/CODEBASE_REVIEW.md",
+    "meta/CLASP_AND_APPS_SCRIPT.md"
+  ],
+  "_comment_blockedMarkers": "Prose that acknowledges a capability is unavailable, checked against the enclosing paragraph and the doc's banner region. Same idea as historicalMarkers above: a doc that says the path is blocked is documenting correctly even if it does not name the replacement (that case is a warning, not an error).",
+  "blockedMarkers": [
+    "blocked",
+    "unreachable",
+    "cannot be published",
+    "cannot run",
+    "never appeared",
+    "not reachable",
+    "ported",
+    "port of",
+    "disabled",
+    "standard (non-default)",
+    "non-default Cloud project",
+    "no longer",
+    "superseded",
+    "will never",
+    "not live",
+    "unavailable",
+    "does not work"
+  ],
   "testTimeoutMs": 120000
 }

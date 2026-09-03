@@ -404,6 +404,157 @@ function checkDocumentedKeysAreLive() {
 }
 
 // -----------------------------------------------------------------------
+// Check 5 — a behavior doc presents a blocked capability as live
+//
+// The gap this closes is the one every other check in this tool is blind to.
+// Check 1 verifies that a documented function EXISTS; nothing verified that
+// a documented path can RUN. On the ccpsnet.net account it often cannot: a
+// custom Studio step is a Workspace Add-on and needs a standard, non-default
+// Cloud project, and GCP is disabled org-wide, so 2,113 lines of tested
+// custom-step code push successfully and never appear in Studio's picker.
+// Every function those docs named existed. The instructions were still
+// impossible to follow.
+//
+// Three real cases, all of which were found by hand and none of which any
+// check could see: kos-personal/STUDIO_INTEGRATION_SPEC.md told a Flow
+// builder to write the document body and set FLOW_COMPLETE from Studio (the
+// half that moved into Apps Script); IMPACT_DASHBOARD.html's badges read
+// "Built, Not Deployed," which reads as "someone just needs to push it";
+// and three separate documents described Flows 2-5 as waiting on a push.
+//
+// WHAT IS DECLARED AND WHY. gcp-map.json owns each blocked surface's
+// doc_tokens: `mentions` (what a doc says when it means this surface) and
+// `fallback` (what replaced it). It has to be declared — the tool cannot
+// infer from "cas-ccps/studio-steps" that "37_FlowInputBuilder" is the
+// answer — and it belongs beside the status it describes rather than in this
+// tool's config, so there is one place to update when a surface changes.
+//
+// WHICH DOCS. Only those in config.json's blockedSurfaceDocs, following the
+// keyRegistryDocs idiom already used by Check 3: a check that applies to
+// every doc in the repo would report 12 findings, 8 of them layout
+// inventories ("kos-personal has 2 clasp projects", a table of step files)
+// that are true whatever the surface's status. Measured before shipping,
+// because a check at that signal ratio gets muted, and a muted check is
+// worse than an absent one. The declared list is the set of documents that
+// make behavioral claims about the pipeline — the ones where a blocked path
+// read as live sends someone to spend a session on it.
+//
+// A mention is fine if its own paragraph (or the doc's banner region) either
+// acknowledges the block — config.json's blockedMarkers, the same idea as
+// Check 1's historicalMarkers — or names the fallback. Unacknowledged is an
+// ERROR. Acknowledged everywhere but with the fallback named nowhere in the
+// document is a WARNING: the reader knows it is broken and still does not
+// know what to do instead.
+// -----------------------------------------------------------------------
+function blockedSurfaces() {
+  let gcpMap;
+  try { gcpMap = JSON.parse(readFile('tools/gas-lint/gcp-map.json')); }
+  catch (e) {
+    err('gcp-map-unreadable',
+      `Could not read tools/gas-lint/gcp-map.json: ${e.message}. Check 5 cannot run, so it is ` +
+      `failing loudly rather than passing silently.`, 'tools/gas-lint/gcp-map.json');
+    return [];
+  }
+  const out = [];
+  for (const [key, def] of Object.entries(gcpMap.surfaces || {})) {
+    if (def.status !== 'live-blocked') continue;
+    const tokens = def.doc_tokens;
+    if (!tokens || !Array.isArray(tokens.mentions) || !tokens.mentions.length) {
+      // A blocked surface with no doc_tokens is invisible to this check, and
+      // silence there would look like coverage.
+      warn('blocked-surface-undeclared-tokens',
+        `gcp-map.json's "${key}" is live-blocked but declares no doc_tokens.mentions, so no ` +
+        `document is being checked against it. Add the strings a doc uses when it means this ` +
+        `surface, and the ones that name its fallback.`, 'tools/gas-lint/gcp-map.json');
+      continue;
+    }
+    out.push({ key, mentions: tokens.mentions, fallback: tokens.fallback || [] });
+  }
+  return out;
+}
+
+/**
+ * Audits one document against one blocked surface. Returns
+ * { bare, acknowledged, docNamesFallback } — `bare` is the first mention
+ * whose own paragraph (and the doc's banner) neither acknowledges the block
+ * nor names the fallback.
+ *
+ * Paragraph scope, not a line window, for the reason this tool already
+ * learned once: USER_GUIDE.md's "only creates what doesn't exist" sat three
+ * lines from an unrelated paragraph and suppressed a real finding, because
+ * these markers are ordinary English before they are markers.
+ *
+ * Pure apart from CONFIG, so a test can drive it with literal doc text.
+ */
+function auditBlockedMentions(raw, surface) {
+  const blockedRe = new RegExp(CONFIG.blockedMarkers.join('|'), 'i');
+  const lines = raw.split('\n');
+  const banner = lines.slice(0, CONFIG.bannerScanLines).join('\n');
+  const fallback = surface.fallback || [];
+  const out = {
+    bare: null,
+    acknowledged: null,
+    docNamesFallback: fallback.some(t => raw.includes(t)),
+  };
+  for (let i = 0; i < lines.length; i++) {
+    const hit = surface.mentions.find(m => lines[i].includes(m));
+    if (!hit) continue;
+    // The banner counts only for a mention BELOW it. Without that guard a
+    // document shorter than bannerScanLines is entirely "banner," so any
+    // marker word anywhere in it launders every mention — caught by
+    // tests/tools/doc-currency-blocked-surfaces.test.js's different-paragraph
+    // test, which is a 3-line document.
+    const inBannerRegion = i + 1 <= CONFIG.bannerScanLines;
+    const context = paragraphAround(lines, i + 1) + (inBannerRegion ? '' : '\n' + banner);
+    const ok = blockedRe.test(context) || fallback.some(t => context.includes(t));
+    if (ok) { if (!out.acknowledged) out.acknowledged = { line: i + 1, hit }; }
+    else if (!out.bare) out.bare = { line: i + 1, hit, text: lines[i].trim() };
+  }
+  return out;
+}
+
+function checkBlockedSurfacesNotPresentedAsLive() {
+  const surfaces = blockedSurfaces();
+  if (!surfaces.length) return;
+
+  for (const relPath of (CONFIG.blockedSurfaceDocs || [])) {
+    let raw;
+    try { raw = readFile(relPath); }
+    catch (e) {
+      warn('blocked-surface-doc-missing',
+        `config.json's blockedSurfaceDocs names ${relPath}, which does not exist. A stale list ` +
+        `here silently un-checks a document.`, 'tools/doc-currency/config.json');
+      continue;
+    }
+    // A file-level superseded banner speaks for the whole document, same as
+    // everywhere else in this tool.
+    if (docLevelStatus(relPath, raw) === 'superseded') continue;
+
+    for (const surface of surfaces) {
+      const { bare, acknowledged, docNamesFallback } = auditBlockedMentions(raw, surface);
+
+      if (bare) {
+        err('blocked-surface-presented-as-live',
+          `${relPath}:${bare.line} names "${bare.hit}" without saying, anywhere near it, that ` +
+          `the surface is blocked or what replaced it. gcp-map.json has "${surface.key}" as ` +
+          `live-blocked: it cannot run on the account this repo deploys to, so a reader takes ` +
+          `this as a live path and spends a session on it. Either acknowledge the status (this ` +
+          `check accepts "${CONFIG.blockedMarkers.slice(0, 4).join('", "')}", … in the ` +
+          `enclosing paragraph or the doc's banner) or name the fallback ` +
+          `(${surface.fallback.join(', ') || 'none declared'}).`,
+          relPath);
+      } else if (acknowledged && surface.fallback.length && !docNamesFallback) {
+        warn('blocked-surface-fallback-unnamed',
+          `${relPath}:${acknowledged.line} correctly says "${acknowledged.hit}" is blocked, but ` +
+          `this document never names what replaced it (${surface.fallback.join(', ')}). A ` +
+          `reader learns the path is dead and not what to do instead.`,
+          relPath);
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Check 4 — a doc cites file:line that is past the end of that file
 //
 // meta/CODEBASE_REVIEW.md carried 16 file:line citations; 4 pointed past
@@ -458,6 +609,8 @@ module.exports = {
   docLevelStatus,
   normalizeBlockquotes,
   DOC_TOKEN_RE,
+  blockedSurfaces,
+  auditBlockedMentions,
   CONFIG,
 };
 
@@ -470,6 +623,7 @@ checkDocumentedFunctionsExist();
 checkCitedTestCounts();
 checkDocumentedKeysAreLive();
 checkCitationsInRange();
+checkBlockedSurfacesNotPresentedAsLive();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

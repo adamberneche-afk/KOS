@@ -10,8 +10,13 @@
 > (`tests/`, `npm test`, all passing — run `npm test`
 > for the live count) where
 > this review found none; and cas-ccps's Flow 2/3/4/5 custom-step code now
-> exists (`cas-ccps/studio-steps/`), though it is not yet pushed to a live
-> Studio deployment. Each affected passage below carries its own inline
+> exists (`cas-ccps/studio-steps/`) but is **unreachable on this account** —
+> it was pushed successfully and its steps never appeared in Studio's picker,
+> because a custom step is a Workspace Add-on and needs a standard Cloud
+> project. (This sentence used to read "not yet pushed to a live Studio
+> deployment," which invited exactly the wrong conclusion.) All five flows
+> were ported to `37_FlowInputBuilder.js` and `41_WarmUpFlowBridge.js`
+> instead. Each affected passage below carries its own inline
 > `⚠ Stale` note rather than being silently rewritten, matching this repo's
 > own convention (see `leader-hub/LEADERHUB_PRINCIPLES.md`'s Principle 6
 > correction) — the surrounding analysis is otherwise left as originally

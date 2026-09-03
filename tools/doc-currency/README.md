@@ -40,13 +40,61 @@ above passed it.**
 | 2 | `stale-test-count` — a doc cites "N passing" and `npm test` reports a different N | error |
 | 3 | `documented-key-not-in-code` — a doc claiming to be a complete key registry lists a key no source file mentions | warning |
 | 4 | `citation-past-eof` — a doc cites `file:line` beyond the end of that file | warning |
+| 5 | `blocked-surface-presented-as-live` — a declared behavior doc names a `live-blocked` GCP surface without acknowledging the status or naming the fallback | error |
 | — | `documented-function-unverifiable` — as (1), but in a doc that describes an Apps Script project never committed here | warning |
+| — | `blocked-surface-fallback-unnamed` — as (5), but the doc does say it is blocked and never says what replaced it | warning |
+| — | `blocked-surface-undeclared-tokens` — a `live-blocked` surface in `gcp-map.json` has no `doc_tokens`, so no doc is checked against it | warning |
+| — | `blocked-surface-doc-missing` — `blockedSurfaceDocs` names a file that does not exist | warning |
 
 Check 2 measures by running the repo's own `npm test` and reading the TAP
 plan line. If it can't measure — no `node_modules`, a genuinely failing
 suite — it reports that it couldn't and reports nothing about the
 citations. A checker that guesses a number and then "corrects" the docs to
 match it is worse than one that abstains.
+
+### Check 5, and why it is declared on both sides
+
+Checks 1-4 all verify that a documented thing **exists**. Nothing verified
+that a documented path can **run**, and on the account this repo deploys to
+many cannot: a custom Studio step is a Workspace Add-on and needs a standard,
+non-default Cloud project, and GCP is disabled org-wide for `ccpsnet.net`.
+Every function those instructions named existed. The instructions were still
+impossible to follow. Three documents carried them for weeks —
+`kos-personal/STUDIO_INTEGRATION_SPEC.md` telling a Flow builder to write the
+document body and set `FLOW_COMPLETE` from Studio (the half that moved into
+Apps Script), `IMPACT_DASHBOARD.html`'s "Built, Not Deployed" badges, and
+three separate docs describing Flows 2-5 as waiting on a push. All three were
+found by reading, not by tooling.
+
+`gas-lint`'s Check G already requires every GCP surface to be **declared**
+with a status. This check reads those declarations back and holds the *prose*
+to them.
+
+Two declarations, in two places, each for a reason:
+
+- **`gcp-map.json`'s `doc_tokens`** per blocked surface: `mentions` (the
+  strings a doc uses when it means this surface) and `fallback` (the strings
+  that name what replaced it). Nothing can infer that `37_FlowInputBuilder`
+  answers `cas-ccps/studio-steps`, and the tokens belong beside the status
+  they describe rather than in this tool's config.
+- **`config.json`'s `blockedSurfaceDocs`**: which documents make behavioral
+  claims. This follows `keyRegistryDocs` (Check 3's idiom) for a measured
+  reason — run repo-wide, this check reports 12 findings and 8 are layout
+  inventories ("kos-personal has 2 clasp projects", a table of step files)
+  that are true whatever the surface's status. A check at that signal ratio
+  gets muted, and a muted check is worse than an absent one.
+
+A mention passes if its **enclosing paragraph** either acknowledges the block
+(`blockedMarkers`) or names the fallback. A file-level banner covers mentions
+*below* it — the guard matters: without it a document shorter than
+`bannerScanLines` is entirely "banner," so one marker word anywhere in it
+launders every mention. Paragraph scope rather than a line window is the same
+lesson this tool already paid for once (see Exclusions below).
+
+Its first run reported 8 errors and 3 warnings across 7 documents, including
+the FERPA data map naming a blocked custom step as the live writer of
+`CompetencyEvidence`, and two docs that said a port "has to" happen after it
+was done.
 
 ## What it does NOT check
 
