@@ -31,6 +31,14 @@ const FILES = [
   S('00_SharedConfig.js'), S('22_LessonContextHandler.js'), S('24_WarmUpBridge.js'),
   S('25_WarmUpWriter.js'), S('37_FlowInputBuilder.js'), S('39_FlowFixtures.js'),
   S('41_WarmUpFlowBridge.js'),
+  // 15b holds FLOW_2_SYSTEM_PROMPT and 40 holds substituteFlowPrompt_. Both
+  // are bound to cas-ccps:central-ledger alongside everything above, so they
+  // are in scope in production — but this sandbox was loading neither, and
+  // _fiBuildPromptText_ degrades to "" when they are missing rather than
+  // throwing. The result was a fixture seeding an empty PromptText while the
+  // tests looked green. Load the real scope, so the tests see what Studio
+  // would.
+  S('15b_StudioFlowPrompts_Flow2_Revised.js'), S('40_FlowPrompts.js'),
 ];
 
 function load() {
@@ -442,4 +450,141 @@ test('a Flow 5 fixture with no prior response materializes nothing, by design', 
 
   const built = exported.buildWarmUpFlowInputs();
   assert.equal(built.flow5, 0);
+});
+
+// ── The Flow 2 fixture, checked against its consumers ────────────────────────
+//
+// Three different things read a FlowInput row, and a fixture only proves
+// something if all three can use it: Studio's Flow (the row's chips plus the
+// student doc it points at), harvestFlowInputResults() (37_FlowInputBuilder.js),
+// and the pure parse/write functions in 15c that the harvest reuses.
+//
+// The gap found by this pass was in the document, not the row: the fixture's
+// student doc carried the response marker but NOT the "[CONFIG_ID: …]" footer.
+// Flow 2's Extract step reads the response as the text BETWEEN those two
+// delimiters (15b's Step 1 note), so a doc with no footer gives it no end
+// delimiter — and the failure reads as "the doc was empty".
+
+test('the Flow 2 fixture fills every FlowInput column', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+
+  const row = ss.getSheetByName('FlowInput').getDataRange().getValues()[1];
+  const FI = exported.FI;
+  // GEMINI_FULL_OUTPUT is the one deliberate blank — it is where the Flow
+  // writes its answer. Everything else empty means a chip resolves to nothing.
+  const expectedBlank = ['GEMINI_FULL_OUTPUT'];
+  Object.keys(FI).forEach((key) => {
+    const value = String(row[FI[key]] === undefined ? '' : row[FI[key]]).trim();
+    if (expectedBlank.indexOf(key) !== -1) {
+      assert.equal(value, '', key + ' should start empty');
+    } else {
+      assert.ok(value.length > 0, 'FI.' + key + ' is empty — its @trigger chip ' +
+        'would resolve to nothing in Studio');
+    }
+  });
+});
+
+test('the fixture doc carries BOTH delimiters the Extract step reads between', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.installFlow2Fixture();
+
+  const text = sandbox.DocumentApp.openById(result.studentFileId).getBody().getText();
+  const startIdx = text.indexOf('── YOUR RESPONSE BEGINS HERE ──');
+  const endIdx = text.indexOf('[CONFIG_ID:');
+  assert.ok(startIdx !== -1, 'response marker present');
+  assert.ok(endIdx !== -1, 'CONFIG_ID footer present — this is what was missing');
+  assert.ok(endIdx > startIdx, 'and the footer comes after the response, or the ' +
+    'extracted range would be empty or inverted');
+
+  const between = text.substring(startIdx + '── YOUR RESPONSE BEGINS HERE ──'.length, endIdx);
+  assert.ok(between.trim().length > 40,
+    'the text an Extract step would pull: ' + JSON.stringify(between.trim().slice(0, 60)));
+});
+
+test('the fixture doc\'s ConfigID footer matches the row, and parses', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.installFlow2Fixture();
+  const text = sandbox.DocumentApp.openById(result.studentFileId).getBody().getText();
+
+  // Script 01's fallback pulls the ConfigID out of the body with this exact
+  // pattern, so a fixture ConfigID that doesn't satisfy the character class
+  // would be invisible to it.
+  const m = text.match(/\[CONFIG_ID:\s*([A-Z0-9\-]+)\]/);
+  assert.ok(m, 'the footer matches the reader\'s regex');
+  assert.equal(m[1], result.configId, 'and names this fixture\'s own ConfigID');
+});
+
+test('the fixture also carries the feedback zone, so a re-run has somewhere to write', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.installFlow2Fixture();
+  const text = sandbox.DocumentApp.openById(result.studentFileId).getBody().getText();
+  // 04_Form2_TurnInGate.js locates the feedback zone by findText('── FEEDBACK ──').
+  assert.ok(text.indexOf('── FEEDBACK ──') !== -1);
+  assert.ok(text.indexOf('── END FEEDBACK ──') !== -1);
+});
+
+test('PROMPT_TEXT has every placeholder filled except STUDENT_TEXT', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+
+  const row = ss.getSheetByName('FlowInput').getDataRange().getValues()[1];
+  const promptText = String(row[exported.FI.PROMPT_TEXT]);
+  assert.ok(promptText.length > 1000, 'the pre-substituted prompt is present');
+
+  // {{STUDENT_TEXT}} is left standing DELIBERATELY: student response text must
+  // stay in the student's own Doc as the record of origin and must not be
+  // copied into the central Ledger (FERPA), so Studio's Extract step fills it
+  // at run time. Any OTHER surviving placeholder means a chip resolved to
+  // nothing and the model gets a literal "{{...}}" in its instructions.
+  const left = [...new Set(promptText.match(/\{\{[A-Z_0-9]+\}\}/g) || [])];
+  assert.deepEqual(left, ['{{STUDENT_TEXT}}'],
+    'unfilled placeholders: ' + left.join(' '));
+});
+
+test('PROMPT_TEXT actually contains the fixture rubric, not just its shape', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+  const row = ss.getSheetByName('FlowInput').getDataRange().getValues()[1];
+  const promptText = String(row[exported.FI.PROMPT_TEXT]);
+  // Substituting the wrong variable names would leave the prompt structurally
+  // valid and semantically empty — the failure mode this whole pass is about.
+  assert.ok(promptText.indexOf(String(row[exported.FI.UNIT_NAME])) !== -1, 'unit name');
+  assert.ok(promptText.indexOf(String(row[exported.FI.MILESTONE_1])) !== -1, 'milestone 1');
+  assert.ok(promptText.indexOf(String(row[exported.FI.MILESTONE_4])) !== -1, 'milestone 4');
+  assert.ok(promptText.indexOf(String(row[exported.FI.DEFINITION_OF_DONE])) !== -1, 'DoD');
+  assert.ok(promptText.indexOf(String(row[exported.FI.PERSONA])) !== -1, 'persona');
+});
+
+test('every milestone has a competency ID, or the evidence write has nothing to key on', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+  const row = ss.getSheetByName('FlowInput').getDataRange().getValues()[1];
+  const FI = exported.FI;
+  [FI.MILESTONE_1_COMPETENCY_ID, FI.MILESTONE_2_COMPETENCY_ID,
+   FI.MILESTONE_3_COMPETENCY_ID, FI.MILESTONE_4_COMPETENCY_ID].forEach((col, i) => {
+    assert.ok(String(row[col]).trim().length > 0,
+      'milestone ' + (i + 1) + ' has no competency ID — writeCompetencyEvidenceFromFlow2_ ' +
+      'would drop its evidence row');
+  });
+});
+
+test('StagingRowRef is non-numeric, so the harvest cannot complete a real row', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installFlow2Fixture();
+  const row = ss.getSheetByName('FlowInput').getDataRange().getValues()[1];
+  // The safety property: a numeric ref would point the harvest's
+  // _fiMarkStagingComplete_ at whatever real STAGING_PIPELINE row happened to
+  // sit at that index. The literal 'FIXTURE' can match nothing.
+  const ref = String(row[exported.FI.STAGING_ROW_REF]).trim();
+  assert.equal(ref, 'FIXTURE');
+  assert.ok(isNaN(parseInt(ref, 10)), 'and parseInt cannot turn it into a row number');
 });

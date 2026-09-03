@@ -203,22 +203,41 @@ function installFlow2Fixture() {
     return { flow: 2, seeded: 0, skipped: 1 };
   }
 
+  const configId = FX_CONFIG_PREFIX + "F2";
+
   const doc = DocumentApp.create("[FIXTURE] Flow 2 Student Submission");
   const body = doc.getBody();
   // Mirrors the zone structure stampDocument_()
   // (02_Form1_IntakeAndWorkspaceGenerator.js) writes into a real student doc,
   // so Studio's Extract step sees the markers it would see in production.
+  //
+  // THE CONFIG_ID FOOTER IS NOT DECORATION, and this fixture shipped without
+  // it. Flow 2's Extract step reads the response as the text BETWEEN
+  // "── YOUR RESPONSE BEGINS HERE ──" and "[CONFIG_ID:" — see
+  // 15b_StudioFlowPrompts_Flow2_Revised.js's Step 1 note — so a doc with no
+  // footer gives that step no end delimiter at all. Script 01's
+  // getConfigIdFromDoc-style fallback also parses the ConfigID straight out of
+  // the body with /\[CONFIG_ID:\s*([A-Z0-9\-]+)\]/, which the fixture's
+  // VDOE-FIXTURE-F2 satisfies. Both zones are reproduced from
+  // 02_Form1_IntakeAndWorkspaceGenerator.js's own ZONE 3 and ZONE 4 rather
+  // than approximated.
   body.appendParagraph("── FEEDBACK ──");
   body.appendParagraph(
     "[No feedback yet. Use 📊 AI Evaluation Panel → Run Assignment Check " +
     "to request your first evaluation.]");
   body.appendParagraph("── END FEEDBACK ──");
   body.appendParagraph("");
-  body.appendParagraph("── YOUR RESPONSE BEGINS HERE ──");
+  body.appendParagraph(
+    "──────────────────────────────────────────────────\n" +
+    "── YOUR RESPONSE BEGINS HERE ──\n" +
+    "──────────────────────────────────────────────────");
   body.appendParagraph(FX_STUDENT_RESPONSE);
+  body.appendParagraph(
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n" +
+    "[CONFIG_ID: " + configId + "]\n" +
+    "Do not modify or delete this section.\n" +
+    "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
   doc.saveAndClose();
-
-  const configId = FX_CONFIG_PREFIX + "F2";
   const row = new Array(22).fill("");
   row[FI.TIMESTAMP] = new Date();
   row[FI.STAGING_ROW_REF] = "FIXTURE"; // non-numeric on purpose — see below
@@ -255,6 +274,21 @@ function installFlow2Fixture() {
   });
   sheet.appendRow(row);
   SpreadsheetApp.flush();
+
+  // _fiBuildPromptText_ returns "" rather than throwing when
+  // FLOW_2_SYSTEM_PROMPT (15b) or substituteFlowPrompt_ (40) is out of scope.
+  // Both are bound to this project so that should never happen live — but a
+  // silent empty here would send an operator to wire @trigger.PromptText
+  // against a blank cell and read the result as a Studio problem. Say it
+  // loudly instead.
+  if (!String(row[FI.PROMPT_TEXT]).trim()) {
+    Logger.log("[Fixtures] ⚠️ Flow 2: PromptText came back EMPTY. The fixture row is " +
+               "otherwise complete, but @trigger.PromptText will resolve to nothing — " +
+               "check that 15b_StudioFlowPrompts_Flow2_Revised.js and 40_FlowPrompts.js " +
+               "are both present in this project (project-map.json lists them under " +
+               "cas-ccps:central-ledger). Until then, paste Flow 2's prompt into the " +
+               "Ask Gemini step by hand.");
+  }
 
   Logger.log("[Fixtures] Flow 2: seeded FlowInput row " + sheet.getLastRow() +
              " at READY (ConfigID " + configId + ").");
