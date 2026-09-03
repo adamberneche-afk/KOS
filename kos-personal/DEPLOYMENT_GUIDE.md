@@ -35,6 +35,19 @@ This step controls what users see on the OAuth consent screen when they first vi
 
 This is a one-time step. Every future deploy uses the same GCP project.
 
+> **What this step is not.** It configures the consent screen of the project
+> Apps Script already created for this script — step 2 above says as much.
+> It does not create or link a *standard* (non-default) Cloud project, and
+> neither does enabling the Drive API in Troubleshooting below. Some
+> capabilities do need a standard project: publishing a Workspace Add-on,
+> which is what `studio-steps/`'s two custom Studio steps are, and calling
+> the Gemini API or Vertex directly with a key. Before building on any of
+> those, read the linked project in **Project Settings** rather than
+> assuming this phase covered it, and declare what you find in
+> [`tools/gas-lint/gcp-map.json`](../tools/gas-lint/gcp-map.json). Getting
+> this backwards is a mistake this repo has already made once, on the
+> district account, at a cost of 2,113 unreachable lines.
+
 ---
 
 ## Phase 2 — Create the Apps Script Project
@@ -173,11 +186,12 @@ The daily error digest sends to the email address stored as `KOS_ADMIN_EMAIL` in
 2. Run `setupAllTriggers()` (select it from the function dropdown → click Run)
 3. Authorize any new permission prompts
 4. Go to **Triggers** (clock icon in the left sidebar)
-5. Confirm you see 13 triggers installed
+5. Confirm you see 14 triggers installed
 
 Expected trigger list:
 - sensor1_scanInboundSessions (every 5 min)
 - runMatrixTurnstile (every 5 min)
+- harvestStudioReturns (every 5 min)
 - processInferenceQueue (every 10 min)
 - runSemanticSweeper (hourly)
 - sweepRootForExhaust (hourly)
@@ -209,6 +223,50 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 ---
 
 ## Studio Integration
+
+> **⚠ The custom-step path is blocked on this account.** Publishing a
+> Workspace Add-on needs a standard, non-default Cloud project, and GCP is
+> switched off org-wide for `ccpsnet.net` — which is the account this is
+> deployed on, despite SMP-004 describing a separate personal one. So
+> `kos-personal/studio-steps/`'s two steps cannot run, and the flow is not
+> live.
+>
+> **Build the Flow with native steps and let Apps Script harvest the result.**
+> The trigger, the Docs read and both Gemini passes were always native and are
+> unaffected; only the write-back moves. Make the Flow's last step a native
+> **"add row to sheet"** into the `STUDIO_RETURN` tab of the BRAIN_TRUST_INDEX
+> spreadsheet, writing:
+>
+> | Column | Value |
+> |---|---|
+> | `Returned_At` | now |
+> | `Payload_UID` | the trigger row's `Payload_UID` |
+> | `Payload_Type` | the trigger row's `Payload_Type` |
+> | `Primary_JSON` | the Curator (or Classification) step's raw output |
+> | `Auditor_JSON` | the optional Auditor step's raw output, or blank |
+>
+> Leave `Harvest_Status`, `Attempts` and `Error` empty — `harvestStudioReturns()`
+> owns those. It then strips the markdown fence, merges the Auditor pass under
+> `auditor_sign_off`, overwrites the source doc's body, and sets the staging
+> row to `FLOW_COMPLETE`. Do **not** have the Flow write `FLOW_COMPLETE`
+> itself: on any failure this design deliberately touches nothing, so the
+> staleness guard can retry.
+>
+> While wiring that step, run **`checkStudioFlowBinding()`** — it logs the
+> exact binding to copy, generated from the harvest's own column constants,
+> and once rows arrive it diagnoses them. It catches one thing no other check
+> can: `Payload_Type` doesn't label the row, it **selects a contract**. A
+> Curator type gets a merge and re-serialization; anything else gets "write
+> verbatim, must parse as an Array". So a *valid* type name that isn't the one
+> queued applies the wrong treatment silently, and the probe compares what
+> came back against what the pipeline queued for that UID.
+>
+> Verify with `runStudioReturnCanary()` (proves the Apps Script half with the
+> Flow stubbed), then `checkStudioFlowLiveness()` — the only thing that can
+> tell you whether a Flow has ever actually written back. A green "Run
+> Completed" in the Studio UI cannot: a Flow that matched zero rows reports
+> exactly the same thing.
+
 
 This is the critical unbuilt piece. Until the Studio integration is live, every session row requires a manual `devSetFlowComplete()` to advance.
 

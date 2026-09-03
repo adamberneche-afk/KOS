@@ -80,6 +80,51 @@ Drive-based asset. Once code lives in git, that record needs a place to
 point to the repo and the specific commit a given deployment corresponds
 to — otherwise the INDEX would be pointing at half the truth.
 
+## The one thing clasp can't hand you: a Cloud project
+
+`clasp` needs an authenticated Google account and nothing more. Some Apps
+Script *capabilities* need a standard (non-default) Google Cloud project
+behind the script, and that is a Workspace-admin decision, not something a
+push can arrange. The two that matter here are publishing a Workspace
+Add-on (which is what a custom Workspace Studio step is) and calling the
+Gemini API or Vertex directly with a key.
+
+And no project in this repo has one. Every GCP project across all three
+systems was built the same way — the default project Apps Script creates on
+its own. The only console work any deployment doc here describes is
+configuring that project's OAuth consent screen and enabling an API inside
+it; neither of those makes a project *standard*, and nothing in this repo
+records one ever being created or linked through Project Settings for any of
+the 11 Apps Script projects. Worth stating plainly, because a deploy doc
+saying "every future deploy uses the same GCP project" reads like
+reassurance and isn't (see `kos-personal/DEPLOYMENT_GUIDE.md`'s Phase 1,
+which now says so itself).
+
+This is not hypothetical. On the `ccpsnet.net` account, GCP access is
+turned off org-wide — confirmed directly in the Cloud console, which is the
+*second* block on those custom steps rather than the first. All 8
+custom Studio steps in `cas-ccps/studio-steps/` (2,113 lines, written and
+unit-tested) pushed *successfully* and then never appeared in Studio's
+step picker, across repeated uninstall/reinstall cycles, with no OAuth
+prompt ever shown. There was no error to read. A missing Cloud project
+doesn't fail a push; it just makes the result do nothing.
+
+Which is why every system in this repo defaults to reaching Gemini
+through a hand-built Flow using the account's own built-in access
+(`cas-ccps`/`kos-personal` call it the Walled Garden, `leader-hub` the
+Bifurcation Boundary) — Apps Script orchestrates state and never calls a
+model itself. `cas-ccps/scripts/37_FlowInputBuilder.js` is the worked
+example of the port: it moves an entire per-teacher lookup chain into
+Apps Script so the Flow needs no capability beyond keyless Gemini.
+
+**Before writing anything that needs a key or a custom step**: check
+Project Settings on the *target* account first, and declare the
+dependency in [`tools/gas-lint/gcp-map.json`](../tools/gas-lint/gcp-map.json).
+gas-lint's Check G scans every file in `project-map.json` for those
+surfaces and errors on any live one with no entry — so a GCP dependency
+is something someone decided on purpose and wrote down, rather than
+something discovered when a step never shows up in a picker.
+
 ## A note on what this doesn't remove
 
 clasp and git together solve *where the code's history lives*. They don't,
@@ -87,10 +132,22 @@ by themselves, stop the instinct that produced seven codebase copies in
 the first place — that's a habit, not a tooling gap, and worth watching
 for even once the tooling exists to make the old habit unnecessary.
 
-## Status: scaffolded, not yet connected to a live account
+## Status: cas-ccps is live; kos-personal and leader-hub are not
 
-Everything above was written while this was still a proposal. It's now
-real tooling, sitting one credentialed step away from actually pushing:
+Everything above was written while this was still a proposal, and the
+heading here used to say "scaffolded, not yet connected to a live account."
+That stopped being true. **All 8 `cas-ccps` projects now exist in a real
+`ccpsnet.net` Workspace account and have been pushed with this tooling** —
+`cas-ccps/clasp/local/` holds their real script IDs and is gitignored, so a
+new session or machine recreates it from the templates rather than finding
+it in the repo. `cas-ccps/HISTORY.md`'s deployment section records what that
+first push found, including three Studio walls that only a live account
+could reveal.
+
+`kos-personal`'s two projects and `leader-hub`'s one are still at the
+one-credentialed-step-away stage described below.
+
+The layout each system needs, which hasn't changed:
 
 - **`kos-personal/`'s main project** and **`leader-hub/`** are each a
   single Apps Script project already laid out exactly the way clasp
@@ -100,10 +157,14 @@ real tooling, sitting one credentialed step away from actually pushing:
   real script files, so the legacy/archived material and (for
   kos-personal) the separate Node.js `inference-service/` never get swept
   into a push. `kos-personal/studio-steps/` is a second, separate
-  flat-folder project alongside the main one (SMP-004's personal/district
-  account split, not a shared global scope) — see its own README.
-  `leader-hub/` is now server-backed (`leader-hub:app` — five files, one
-  Web App deployment) rather than the client-side-only single HTML file
+  flat-folder project alongside the main one (a separate Apps Script
+  project, not a shared global scope — note this is a PROJECT split, not
+  the personal/district ACCOUNT split SMP-004 describes; in practice both
+  are deployed on the same ccpsnet.net account) — see its own README.
+  `leader-hub/` is now server-backed (`leader-hub:app` — every `.gs` file in
+  that folder, one Web App deployment; the authoritative list is that
+  project's entry in [`tools/gas-lint/project-map.json`](../tools/gas-lint/project-map.json),
+  not a count repeated in prose) rather than the client-side-only single HTML file
   it started as, but it's still exactly one Apps Script project either
   way, so the flat-folder model still applies unchanged.
 - **`cas-ccps/scripts/`** doesn't fit the one-folder-one-project model —
@@ -124,10 +185,13 @@ real tooling, sitting one credentialed step away from actually pushing:
   and `gas-lint`'s existing OAuth-scope check now validates all 11 of
   them, not just `kos-personal`'s main project.
 - **What's left is entirely credentialed and can't be done from a repo
-  session**: run `clasp login` against the real Google account, then
-  `clasp clone` (or `clasp create`, for the two "cloned per teacher"
-  projects — target the *master* template, not any individual teacher's
-  copy) for each of the 11 projects, and drop the resulting `scriptId`
-  into the matching template. Real script IDs are deliberately never
+  session** — and for `cas-ccps` it is already done. For the remaining 3
+  projects (`kos-personal`'s 2, `leader-hub`'s 1): run `clasp login`
+  against the real Google account, then `clasp clone` (or `clasp create`,
+  for the two "cloned per teacher" projects — target the *master* template,
+  not any individual teacher's copy), and drop the resulting `scriptId`
+  into the matching template. SMP-004 is why an agent session can't do
+  this step for you: pushing to production happens at the operator's own
+  already-authenticated keyboard, never from here. Real script IDs are deliberately never
   committed (`.gitignore`d) — same convention this repo already uses for
   real Sheet/Doc IDs living in Script Properties, not source.

@@ -23,7 +23,10 @@ const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 
 function load() {
   return loadGasFiles(
-    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '30_SCRSuggestionEngine.js')],
+    // 29 holds SDR_DOC_URL, which exportToWorkbookGrid_ reads — in scope in
+    // production, so it must be in scope here too (gas-lint Check K).
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '30_SCRSuggestionEngine.js'),
+     path.join(SCRIPTS, '29_StudentContextAggregator.js')],
     ['exportToWorkbookGrid_'],
   );
 }
