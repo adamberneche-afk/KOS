@@ -197,6 +197,29 @@ aggregation; actual deletion is never automatic. Reversible via the
 `♻️ Reactivate Competency Evidence` menu item
 (`reactivateCompetencyEvidence()`), unlike SCRDecisionLog's archival below.
 
+### FlowInput
+Added by `37_FlowInputBuilder.js` as part of Flow 2's native-Studio
+redesign (Google Workspace Studio custom steps are blocked entirely for
+this district — no standard GCP project available on this account — and
+native Studio's "Get sheet contents" step cannot target a per-teacher
+spreadsheet dynamically, only through a fixed picker). One row per
+in-flight student evaluation: StagingRowRef, student file ID, ConfigID,
+teacher email, **student email**, student doc URL, and the full rubric
+(unit name, tier, persona, four milestones + competency IDs, definition
+of done) resolved from Ledger → MatrixRegistry → TeacherMatrix ahead of
+time — the same 3-hop lookup `cas-ccps/studio-steps/ReadInstructorConfigStep.gs`
+already implements, reimplemented here in Apps Script since Studio can't
+run it natively for a dynamic-spreadsheet target. Studio Flow 2 reads
+this tab (fixed picker — safe, since FlowInput itself always lives on
+this one Central Ledger spreadsheet), writes the raw Gemini evaluation
+text back into `GeminiFullOutput`, and `harvestFlowInputResults()` takes
+it from there — same PII class as Ledger (student email, no raw response
+text; the response text itself is read from and stays in the student's
+own Doc, never copied in here). No dedicated retention pass yet — flagged
+as a fast-follow once real usage volume justifies one, same as every
+other tab's retention mechanism was added after the fact, not
+speculatively up front.
+
 ### SCRSuggestions
 Student email, competency ID, AI-suggested rating (1–5), MET/NOT MET/PARTIAL
 counts, status, confirmed rating, confirmed-at, confirmed-by (the teacher who
