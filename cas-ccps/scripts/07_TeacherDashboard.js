@@ -46,6 +46,134 @@
 // real signed-in caller, so a misconfigured deployment denies everyone
 // instead of silently granting access.
 // ---------------------------------------------------------------------------
+// runLeaderHubConnectionCheck
+//
+// Separates the causes of "leader-hub can't reach cas-ccps" — the last
+// deployment surface in this repo with no diagnostic of its own.
+//
+// WHY THIS IS NOT A FIXTURE. Every other flow in this repo has a queue, so a
+// fixture row gives it something to latch onto. D1 has no queue: leader-hub's
+// browser POSTs an OAuth ID token and gets JSON back synchronously. There is
+// nothing to seed. What there IS, is four independent failure causes that all
+// surface as the same opaque error in leader-hub's UI:
+//
+//   1. LEADER_HUB_OAUTH_CLIENT_ID is unset on this deployment
+//   2. TEACHER_EMAIL is unset or does not match the signed-in teacher
+//   3. the token is fine but the underlying tabs are empty, so every action
+//      returns an empty payload that reads as a failure
+//   4. the deployment URL leader-hub is configured with is stale
+//
+// This checks 1, 2 and 3 from inside the script, where they are all knowable,
+// and says explicitly that it cannot check 4. The three action handlers are
+// called directly with this deployment's own teacher email, deliberately
+// bypassing _verifyLeaderHubToken_ — that is the whole point: if real data
+// comes back here, the data side is sound and the failure is the token, the
+// consent, or the URL.
+//
+// Read-only. Returns nothing student-identifying: the roster check reports
+// only a COUNT, never a name or an email, because this runs from a Run
+// dropdown and its output lands in an execution log (FERPA — see
+// docs/FERPA_DATA_MAP.md's entry on this endpoint being the first to return
+// student PII).
+// ---------------------------------------------------------------------------
+function runLeaderHubConnectionCheck() {
+  const cfg = getConfig_();
+  const checks = [];
+  function record(name, ok, detail) { checks.push({ name: name, ok: !!ok, detail: detail || "" }); }
+
+  record("LEADER_HUB_OAUTH_CLIENT_ID is set", !!cfg.leaderHubOauthClientId,
+    cfg.leaderHubOauthClientId
+      ? "Configured."
+      : "Unset, so doPost rejects every request before it reaches an action. " +
+        "See docs/LEADERHUB_CONNECTION_SETUP.md — it is registered once for the " +
+        "whole district, not per teacher.");
+
+  record("TEACHER_EMAIL is set", !!cfg.teacherEmail,
+    cfg.teacherEmail
+      ? "This deployment answers only for " + cfg.teacherEmail + "."
+      : "Unset. _verifyLeaderHubToken_ fails closed on a blank teacherEmail, so every " +
+        "request is rejected no matter whose token arrives.");
+
+  // The three actions, called with this deployment's own email so the answer
+  // is about the DATA rather than about authorization.
+  const email = String(cfg.teacherEmail || "").toLowerCase();
+
+  let pacing;
+  try { pacing = _apiGetPacingGuide_(); } catch (err) { pacing = { success: false, message: err.message }; }
+  record("getPacingGuide returns data", _lhcHasRows_(pacing),
+    _lhcDescribe_(pacing, "pacing unit") +
+    " Curriculum data, no student PII — the safest of the three to test with.");
+
+  let registry;
+  try { registry = _apiGetCompetencyRegistry_(cfg, email); }
+  catch (err) { registry = { success: false, message: err.message }; }
+  record("getCompetencyRegistry returns data", _lhcHasRows_(registry),
+    _lhcDescribe_(registry, "competency row"));
+
+  let roster;
+  try { roster = _apiGetRoster_(cfg, email); }
+  catch (err) { roster = { success: false, message: err.message }; }
+  // Count only. This action is the first of the three to return student name,
+  // email and period, and this output goes to an execution log.
+  record("getRoster returns data", _lhcHasRows_(roster),
+    _lhcDescribe_(roster, "student") +
+    " Reported as a count only — this action returns student PII and this log is not a " +
+    "place for it.");
+
+  const passed = checks.filter(function (c) { return c.ok; }).length;
+  Logger.log("[LeaderHubCheck] " + passed + "/" + checks.length + " passed");
+  checks.forEach(function (c) {
+    Logger.log("[LeaderHubCheck]   " + (c.ok ? "PASS" : "FAIL") + "  " + c.name +
+      (c.detail ? " — " + c.detail : ""));
+  });
+
+  if (passed === checks.length) {
+    Logger.log("[LeaderHubCheck] The data side and both properties are sound, so a failure " +
+      "in leader-hub is one of: the ID token (wrong Google account signed in), consent not " +
+      "granted, or the /exec URL leader-hub is configured with pointing at an older " +
+      "deployment. THAT LAST ONE CANNOT BE CHECKED FROM HERE — a redeploy issues a new URL " +
+      "unless you deploy over the existing version, and nothing in this script can see what " +
+      "leader-hub has stored. Re-copy the URL from Deploy → Manage deployments.");
+  } else {
+    Logger.log("[LeaderHubCheck] Fix the failures above before looking at leader-hub — every " +
+      "one of them surfaces there as the same opaque error.");
+  }
+
+  return { passed: passed, total: checks.length, checks: checks };
+}
+
+// A handler result counts as data if it succeeded AND carries at least one
+// row. "Succeeded but empty" is its own diagnosis: the token gate is fine and
+// the tab is empty, which reads to leader-hub exactly like a rejection.
+function _lhcHasRows_(result) {
+  if (!result || result.success === false) return false;
+  return _lhcCount_(result) > 0;
+}
+
+function _lhcCount_(result) {
+  if (!result) return 0;
+  const keys = Object.keys(result);
+  for (let i = 0; i < keys.length; i++) {
+    if (Array.isArray(result[keys[i]])) return result[keys[i]].length;
+  }
+  return 0;
+}
+
+function _lhcDescribe_(result, noun) {
+  if (!result) return "Handler returned nothing at all.";
+  if (result.success === false) {
+    return "Handler failed: " + (result.message || "no message") + ".";
+  }
+  const n = _lhcCount_(result);
+  if (n === 0) {
+    return "Handler succeeded but returned 0 " + noun + "s — the source tab is empty. " +
+      "leader-hub cannot tell an empty payload from a rejection, so this looks like a " +
+      "broken connection from that end.";
+  }
+  return n + " " + noun + (n === 1 ? "" : "s") + " returned.";
+}
+
+// ---------------------------------------------------------------------------
 function _isAuthorizedTeacher_(cfg) {
   const viewerEmail = Session.getActiveUser().getEmail();
   return !!(viewerEmail && cfg.teacherEmail &&

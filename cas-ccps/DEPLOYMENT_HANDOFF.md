@@ -150,7 +150,18 @@ Then, in the Apps Script editor's **Run** dropdown, in this order:
 | 6 | `installWarmUpFlowTriggers()` | Installs Flows 3/4/5's two triggers (materialize + harvest, both 5-minute). Nothing in `41_WarmUpFlowBridge.js` runs until this is done. |
 | 7 | `runWarmUpFlowCanary()` | Same idea as `runFlow2Canary()` for Flows 3, 4 and 5: exercises the archetype decision table, the materialization and the harvest against scratch rows with Studio stubbed, then cleans up. Flows 3 and 4 are covered as pure logic only — both need Drive and a real student doc, which a canary must not fabricate. |
 | 8 | `checkFlowBinding()` | **Run this while wiring each Flow's last step, not after.** It logs the exact binding to copy — column number, header, and which columns the harvest owns — generated from the same constants the harvest reads, so it cannot drift the way a setup document does. Once rows start arriving it diagnoses them: a one-column shift is reported *as a shift with its offset*, not as "Flow is blank". `checkFlow2Binding()` does the equivalent for Flow 2's write-into-the-row shape. |
-| 9 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. The only thing that can tell you a Flow is live — a Flow that matched zero rows reports a green "Run Completed" too. |
+| 9 | `syncFlowBuildSpec()` | Writes the `FlowBuildSpec` tab — every tab name, column number, header, trigger condition, prompt key and ownership rule for all five flows, **derived from the constants the code reads**. Build each Flow's Studio side from that tab, not from a comment block: the values there cannot drift, and `checkFlowBuildSpec()` reports when a column has moved since the last sync. Connector names, temperature and token limits are deliberately not in it — they need judgement and don't drift, and copying them would make it a seventh document to keep in sync. |
+| 10 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. The only thing that can tell you a Flow is live — a Flow that matched zero rows reports a green "Run Completed" too. |
+
+**The D1 leader-hub connection** is separate from the flows and has its own
+diagnostic now: `runLeaderHubConnectionCheck()`, run from the **Teacher
+Dashboard** deployment (not central-ledger — it lives in
+`07_TeacherDashboard.js` beside the API it tests). It separates the causes
+that all surface in leader-hub as one opaque error: the OAuth client ID
+unset, `TEACHER_EMAIL` unset, or the token gate fine while the source tabs are
+empty — which leader-hub cannot tell apart from a rejection. It says outright
+that it *cannot* check the one remaining cause, a stale `/exec` URL stored on
+leader-hub's side, because nothing in the script can see that.
 
 **Which check answers which question.** `runFlowPreflightCheck()` covers the
 structure — tabs wide enough, triggers installed exactly once, required
