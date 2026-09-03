@@ -2,6 +2,8 @@
 
 **Status:** Reference material only. Not part of KOS. Filed at the user's
 request as context for future development, not as a spec to implement.
+**Update:** two of the ideas below have since been acted on — see each
+bullet's own note on what actually landed and what's still just described.
 
 ## What this is
 
@@ -23,23 +25,34 @@ stripped of TAIS's own branding and economics:
 - **Temporal memory maturity lifecycle** — TAIS distinguishes
   Working/Active memory (raw session logs) → Reflective/Immutable memory
   (nightly-synthesized insights) → Core memory (user-promoted, "untouchable"
-  facts). KOS's own `CURRENT_STATE` / `PIVOTS_AND_LESSONS` / promoted
-  `VECTOR_MATRIX` themes already form a rough three-tier equivalent of
-  this — worth an explicit comparison if KOS's memory model gets revisited.
+  facts). **Landed, twice:** the explicit comparison is now written up in
+  `KOS_WHITE_PAPER.md` §3 (mapped to real KOS components: the Blackboard/
+  session log, the 06:00 Daily Primer, and `VECTOR_MATRIX` promotion), and
+  the missing "user-promoted, untouchable" half of Core Memory — KOS's
+  algorithmic promotion had no manual override — is now real code:
+  `pinThemeToCore()` in `4_Vector_Router.gs`, a `PROMOTED_MANUAL` status
+  distinct from the algorithmic `PROMOTED`.
 - **Drift detection / mutual correction** — an agent that "respectfully
   challenges" the user when new behavior contradicts an established Core
   Memory. This is conceptually close to what KOS's ALIGNMENT persona
   already does at Closeout, but TAIS frames it as a standing, continuous
-  check rather than an end-of-session one. Possibly relevant if KOS ever
-  adds mid-session (not just Closeout) alignment checks.
+  check rather than an end-of-session one. **Landed.** This bullet
+  previously read "still just described, not built" — that was written one
+  commit before it was built. `PERSONA_ALIGNMENT_V5_1.md` §2.2 now defines
+  **Threshold D, Value-Consistency Drift**, as a fourth hard threshold;
+  `buildSessionContext()` (`9_UI_Diagnostics.gs`) injects a CORE FACTS
+  block so the live persona can actually see pinned facts; and
+  `CURATOR_PROMPT.md` / `PERSONA_CURATOR_V5_1.md` carry
+  `D_VALUE_CONSISTENCY_DRIFT` end to end. TAIS's "standing, continuous
+  check" framing is still the difference — KOS's fires at Closeout.
 - **Local-first data custody** — TAIS's "RCRT" module keeps all memory on
   the user's device by default, with a server holding only non-sensitive
   metadata. KOS is already local/self-hosted by construction (a user's own
   Drive + Apps Script project, not a vendor server) — this isn't a new
-  idea for KOS, but it's a useful frame for *marketing* KOS's existing
-  privacy posture in similar language, if that's ever useful (see
-  `KOS_WHITE_PAPER.md`'s "Boutique Advantage" framing, which touches
-  similar ground independently).
+  idea for KOS. **Landed:** `KOS_WHITE_PAPER.md` §3 now states this
+  explicitly in TAIS's own "sovereignty" language (zero external server,
+  no API keys, no vendor billing relationship), alongside the memory-
+  lifecycle comparison above.
 - **Cross-app session handoff** — carrying an agent's identity/context
   across separate tools (Slack → Notion, in TAIS's example). Not
   applicable to KOS's current single-surface (Drive + Studio) design, but
@@ -57,5 +70,6 @@ stripped of TAIS's own branding and economics:
 - The Agent SDK / OAuth-style scoped third-party access model assumes a
   much larger integration surface than KOS currently has or needs.
 
-Nothing above is scheduled, approved, or in progress — this file exists so
-the ideas aren't lost, not to commit KOS to any of them.
+Aside from the three "Landed" bullets above, nothing here is scheduled,
+approved, or in progress — this file exists so the remaining ideas aren't
+lost, not to commit KOS to any of them.

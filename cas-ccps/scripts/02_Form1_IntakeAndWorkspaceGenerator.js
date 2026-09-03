@@ -121,7 +121,7 @@ function onFormSubmit_Intake(e) {
   stampDocument_(
     fileId, studentConfigId, studentName, block,
     className, teacherName, period, assignment.unitName,
-    promptContent, cfg.ledgerSsId, cfg.adminSsId
+    promptContent, cfg.ledgerSsId, cfg.adminSsId, cfg.studentDashboardUrl
   );
 
   // Share into student Drive under [Block - Class - Teacher] folder
@@ -220,7 +220,7 @@ function fetchPromptContent_(promptTemplateId) {
 // ---------------------------------------------------------------------------
 function stampDocument_(fileId, configId, studentName, block,
                          className, teacherName, period, unitName,
-                         promptContent, ledgerSsId, adminSsId) {
+                         promptContent, ledgerSsId, adminSsId, studentDashboardUrl) {
   const doc  = DocumentApp.openById(fileId);
   const body = doc.getBody();
 
@@ -245,6 +245,16 @@ function stampDocument_(fileId, configId, studentName, block,
     "[No feedback yet. Use 📊 AI Evaluation Panel → Run Assignment Check " +
     "to request your first evaluation.]"
   );
+
+  // External UX audit: the Student Dashboard web app was fully built but
+  // had zero real consumers anywhere in the repo — never written into the
+  // student doc, never in the onOpen() menu, never emailed — so no student
+  // could ever actually find it. This is the one place every student's
+  // doc is guaranteed to be freshly stamped, so it's the anchor point for
+  // making the dashboard discoverable at all.
+  if (studentDashboardUrl) {
+    body.appendParagraph("Your assignment dashboard: " + studentDashboardUrl + " — bookmark this.");
+  }
 
   body.appendParagraph("── END FEEDBACK ──");
   body.appendParagraph("");

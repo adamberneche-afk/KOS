@@ -205,7 +205,7 @@ ${recentSummaries}
 4. vector_weights: score 0.0–1.0 for each domain based on how prominently it featured in this specific session. 0.0 = not present, 1.0 = the entire session was about this domain.
    vector_weights must include exactly these 6 keys, every time, all present even if 0.0:
    ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL
-5. alignment_report: relational_status_at_closeout must be GREEN, YELLOW, or RED. Use RED only if a relational boundary was clearly violated. YELLOW if one was approached. GREEN otherwise.
+5. alignment_report: relational_status_at_closeout must be GREEN, YELLOW, or RED. Use RED only if a relational boundary was clearly violated. YELLOW if one was approached. GREEN otherwise. If the session text itself shows ALIGNMENT raising a value-consistency-drift flag (a decision contradicting a Core fact the operator had pinned), record "D_VALUE_CONSISTENCY_DRIFT" in thresholds_crossed_this_session at YELLOW or higher — do not infer this on your own from vector history or session summaries alone; only relay it if the transcript shows ALIGNMENT actually raising it.
 6. alignment_observations.confidence_deltas: use small values (0.02–0.08) when the session provides evidence for a shadow question. Use 0.0 when there is no relevant evidence. Do NOT use negative values.
 7. Return ONLY the JSON object. No markdown, no code fences, no explanation before or after.
 

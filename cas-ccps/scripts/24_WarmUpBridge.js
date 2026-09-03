@@ -340,7 +340,20 @@ function buildWarmUpQueues() {
 
       row[WQ24_LESSON_CTX_SNAP]      = JSON.stringify(studentSnapshot);
       row[WQ24_STUDENT_PROFILE_SNAP] = JSON.stringify(profileSnapshot || {});
-      row[WQ24_STATUS]               = "PENDING";
+      // Rows with a prior response start at PENDING_BRIDGE, not PENDING —
+      // Flow 5's Studio trigger listens for PENDING_BRIDGE specifically and
+      // promotes the row to PENDING itself once bridge_output is written.
+      // This is what actually enforces "Flow 5 runs before Flow 3": the two
+      // flows now key off different status values instead of both listening
+      // on the same "Status = PENDING" condition and racing on whichever
+      // fires first. See cas-ccps/studio-steps/README.md's Flow 5 section
+      // for the full reasoning — this two-status design replaces the single
+      // "flow5_prior_response != null" trigger condition originally
+      // documented in CAS_Flow3_Flow4_Specification.html, which depended on
+      // a native trigger inspecting a nested field inside a JSON-blob
+      // column — never confirmed as something Studio's condition builder
+      // can actually do, and no longer needed either way.
+      row[WQ24_STATUS]               = priorResponse ? "PENDING_BRIDGE" : "PENDING";
       // Scoring columns default to "" — written by S25 and Flow 4
 
       rowsToWrite.push(row);
@@ -652,15 +665,22 @@ function getPriorWarmUpResponse_(wqData, studentEmail, currentLessonId) {
 
 // ---------------------------------------------------------------------------
 // generateQueueId_
-// Format: WUQ-YYYYMMDD-XXXX (4 hex chars)
+// Format: WUQ-YYYYMMDD-XXXXXX (6 hex chars, getUuid()-derived)
+//
+// FIXED: used to be Math.floor(Math.random() * 0xffff) — only 65,536
+// possible values/day with no uniqueness check, and 25_WarmUpWriter.js
+// uses this ID as a lookup-map key (queueRowByQueueId), so a collision
+// would silently misattribute one student's scores to another's row. Now
+// matches the Utilities.getUuid()-derived pattern
+// 15c_Flow2DirectEvaluationService.js's _generateEvidenceId_() already
+// established for exactly this reason.
 // ---------------------------------------------------------------------------
 function generateQueueId_() {
   const now  = new Date();
   const yyyy = now.getFullYear();
   const mm   = String(now.getMonth() + 1).padStart(2, "0");
   const dd   = String(now.getDate()).padStart(2, "0");
-  const hex  = Math.floor(Math.random() * 0xffff)
-    .toString(16).toUpperCase().padStart(4, "0");
+  const hex  = Utilities.getUuid().replace(/-/g, "").substring(0, 6).toUpperCase();
   return "WUQ-" + yyyy + mm + dd + "-" + hex;
 }
 
@@ -669,11 +689,26 @@ function generateQueueId_() {
 // Run once manually to add the warm_up_generated column to the
 // existing LessonContext tab. Safe to re-run — checks if column exists first.
 //
-// This column extends LessonContext from 14 to 15 columns.
 // warm_up_generated values:
 //   ""        — not yet queued
 //   "QUEUED"  — Script 24 has written WarmUpQueue rows
 //   "DELIVERED" — Flow 3 has created all warm-up docs for this lesson
+//
+// FIXED: this used to append at sheet.getLastColumn() + 1 — whatever
+// column happened to be last at the moment someone ran this. That's fine
+// in isolation, but 22_LessonContextHandler.js's own self-healing
+// _ensureFrameColumns_() (added for Script 27) ALSO appends columns after
+// whatever it finds, and LC24_WARM_UP_GENERATED below is a hardcoded read/
+// write target (= 14) that every caller in this file and 25_WarmUpWriter.js
+// assumes without checking the sheet. Whichever of the two self-healers ran
+// second would land its columns wherever the sheet currently ended — not
+// necessarily column 15 (1-based) — silently breaking either warm-up
+// delivery tracking or lesson frame generation depending on order. Now
+// writes to the fixed position matching LC24_WARM_UP_GENERATED, same
+// idempotent-header-at-fixed-position pattern used everywhere else in this
+// codebase (_ensureFrameColumns_, _ensureTurnInReviewColumns_, etc.) —
+// order no longer matters. createModule2Tabs_() also now writes this header
+// directly for fresh installs, making this function a no-op there.
 // ---------------------------------------------------------------------------
 function createLessonContextWarmUpColumn_() {
   const cfg    = getConfig_();
@@ -685,15 +720,15 @@ function createLessonContextWarmUpColumn_() {
     return;
   }
 
-  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
-  if (headers.includes("warm_up_generated")) {
+  const targetCol = LC24_WARM_UP_GENERATED + 1; // 15, 1-based
+  const cell = sheet.getRange(1, targetCol);
+  if (String(cell.getValue()).trim() === "warm_up_generated") {
     Logger.log("[S24] warm_up_generated column already exists — skipping.");
     return;
   }
 
-  const newCol = sheet.getLastColumn() + 1;
-  sheet.getRange(1, newCol).setValue("warm_up_generated").setFontWeight("bold");
-  Logger.log("[S24] Added warm_up_generated column at position " + newCol);
+  cell.setValue("warm_up_generated").setFontWeight("bold");
+  Logger.log("[S24] Added warm_up_generated column at position " + targetCol);
 }
 
 // ---------------------------------------------------------------------------
@@ -717,6 +752,7 @@ function validateQueueBuild() {
 
   let recent  = 0;
   let pending = 0;
+  let pendingBridge = 0;
   const periodCounts = {};
 
   for (let i = 1; i < data.length; i++) {
@@ -731,6 +767,7 @@ function validateQueueBuild() {
     if (lessonDate !== tomorrow) continue;
     recent++;
     if (status === "PENDING") pending++;
+    if (status === "PENDING_BRIDGE") pendingBridge++;
 
     // Count by period — extract from lesson context snapshot
     try {
@@ -742,7 +779,8 @@ function validateQueueBuild() {
 
   Logger.log("[VALIDATE] WarmUpQueue build summary for " + formatDateYMD_(getTomorrow_()) + ":");
   Logger.log("[VALIDATE]   Total rows queued: " + recent);
-  Logger.log("[VALIDATE]   Status PENDING:    " + pending);
+  Logger.log("[VALIDATE]   Status PENDING:        " + pending + " (routes straight to Flow 3)");
+  Logger.log("[VALIDATE]   Status PENDING_BRIDGE: " + pendingBridge + " (routes to Flow 5 first)");
   Logger.log("[VALIDATE]   By period:");
   Object.entries(periodCounts).sort().forEach(([p, n]) =>
     Logger.log("[VALIDATE]     Period " + p + ": " + n + " students")

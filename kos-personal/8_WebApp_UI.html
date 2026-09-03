@@ -665,13 +665,17 @@ textarea { line-height: 1.55; }
     <!-- Cog Verdict fields (Say/Do Ledger kos-personal finding #1) -->
     <div id="fields-cogverdict" style="display:none" role="tabpanel" aria-labelledby="btn-type-cogverdict">
       <div class="field-group">
-        <label class="field-lbl" for="cogverdict-council">Council ID</label>
+        <label class="field-lbl has-tip" for="cogverdict-council">Council ID
+          <span class="tip-icon" title="Identifies one sequestered-council review (SMP-002) — the shared stimulus document goes out to each persona as a separate Gem conversation, and every verdict submitted back under this same ID is what groups them into one COG_REGISTRY review.">?</span>
+        </label>
         <input type="text" id="cogverdict-council" placeholder="e.g. SB_1234567890 — shown by Run full council review"
           oninput="scheduleIngestDraftSave()">
         <div class="char-count">Same ID for every verdict from one review — this is what groups them.</div>
       </div>
       <div class="field-group">
-        <label class="field-lbl" for="cogverdict-cog">Cog</label>
+        <label class="field-lbl has-tip" for="cogverdict-cog">Cog
+          <span class="tip-icon" title="Which persona (from CFG.PERSONAS — Architect, Auditor, Muse, Developer, Curator, Alignment) is submitting this verdict, as a separate Gemini Gem conversation outside this pipeline. Not the same thing as a Council ID, which identifies the review all of them are voting in.">?</span>
+        </label>
         <input type="text" id="cogverdict-cog" list="cog-personas-list" placeholder="e.g. PERSONA_ARCHITECT"
           oninput="scheduleIngestDraftSave()">
         <datalist id="cog-personas-list">
@@ -751,7 +755,8 @@ textarea { line-height: 1.55; }
          rather than finishing or failing outright. Says so honestly. -->
     <div id="next-hint" class="next-hint">
       <strong>What happens now:</strong> Your session is in the queue.
-      Turnstile checks it every 5 minutes and hands it to the AI engine —
+      Turnstile <span class="tip-icon" title="The matrix turnstile state machine (10_Turnstile.gs) — checks the queue every 5 minutes and hands one row at a time off to Studio for processing. It can only hand off; it can't complete a row itself, which is why nothing finishes without a connected Studio flow.">?</span>
+      checks it every 5 minutes and hands it to the AI engine —
       but it only actually completes once a Studio flow is connected to
       process it. Without one, it keeps retrying rather than finishing.
       Check the <strong>Queue tab</strong> to track progress — or just come back later.
@@ -810,7 +815,25 @@ textarea { line-height: 1.55; }
         <div class="metric-val" id="cnt-cycling">—</div>
         <div class="metric-sub">retrying — no Studio flow has completed it yet</div>
       </div>
+      <!-- NEW: a row whose Status matches none of the recognized pipeline
+           states (5_Error_And_Utilities.gs's _isKnownStagingStatus_()) —
+           found via a real "AUDITING _LOG" row that was previously
+           invisible in every tile here, same silent-exclusion bug the
+           Failed tile above was already fixed for. Hidden unless
+           counts.unknown > 0. -->
+      <div class="metric-card m-warn" id="metric-unknown" style="display:none">
+        <div class="metric-lbl">Unrecognized status</div>
+        <div class="metric-val" id="cnt-unknown">—</div>
+        <div class="metric-sub">not a known pipeline state — fix the Status cell by hand</div>
+      </div>
     </div>
+
+    <!-- NEW (external UX audit): hidden unless the Pending count has sat
+         unchanged for QUEUE_STALL_MS while nonzero — the diagnostic
+         USER_GUIDE.md currently asks the human to perform by eye
+         ("if it stays high for more than 15 minutes, check that your
+         Studio integration is running"), delivered by the app instead. -->
+    <div id="queue-stall-notice" role="status" aria-live="polite" style="display:none;background:var(--warn-bg);border:1px solid var(--warn);color:var(--warn);border-radius:var(--r);padding:8px 12px;margin-bottom:12px;font-size:13px"></div>
 
     <div class="sec-lbl">Needs review</div>
     <!-- FIXED (finding #8): renderQueue()/_diagPanelError() both replace
@@ -1081,6 +1104,22 @@ let draftSession = '', draftResearch = '', draftResearchTitle = '';
 let draftCogCouncil = '', draftCogName = '', draftCogSummary = '';
 let shadowRefreshTimer = null;
 
+// ── Queue tab auto-refresh + stall diagnostic (external UX audit) ─────────
+// The Queue tab used to only refresh on tab-switch or the manual "Refresh
+// queue" button, while USER_GUIDE.md told the human to manually "wait 5
+// minutes and refresh" — the app already knows both halves of that
+// instruction; this makes it do them instead of asking the user to.
+let queueRefreshTimer = null;
+// { pending, since } — tracks how long the "Pending" tile's count has sat
+// unchanged, so a real stall (Studio not consuming anything) surfaces
+// without waiting on a human to notice. Distinct from #metric-cycling's
+// per-row Retry_Count threshold (3_Queue_Processor.gs) — that catches
+// specific rows that have already retried several times; this catches the
+// coarser "nothing at all has moved in a while" case, including before any
+// single row's retry count crosses that threshold.
+let _queueStallTracker = { pending: null, since: null };
+const QUEUE_STALL_MS = 15 * 60 * 1000;
+
 // ── Ingest draft persistence (survives refresh/accidental close) ───────────
 // The in-memory draftSession/draftResearch vars above only ever survived a
 // tab switch — a paste this size (up to 150k chars) is real effort to lose
@@ -1241,7 +1280,14 @@ function switchTab(id) {
 
   // Shadow matrix auto-refresh every 5 min while on Diagnostics
   if (shadowRefreshTimer) { clearInterval(shadowRefreshTimer); shadowRefreshTimer = null; }
-  if (id === 'queue') loadQueueStatus();
+  // Queue auto-refresh every 60s while on Queue — mirrors the Diagnostics
+  // tab's own auto-refresh above rather than leaving Queue as the one tab
+  // that never re-checks itself.
+  if (queueRefreshTimer) { clearInterval(queueRefreshTimer); queueRefreshTimer = null; }
+  if (id === 'queue') {
+    loadQueueStatus();
+    queueRefreshTimer = setInterval(loadQueueStatus, 60 * 1000);
+  }
   if (id === 'diag')  {
     loadDiagnostics();
     shadowRefreshTimer = setInterval(loadShadowMatrix, 5 * 60 * 1000);
@@ -1628,12 +1674,31 @@ function renderServiceStatus(account) {
     '</div>';
 }
 
+// Compares this poll's Pending count against the last one; shows/hides
+// #queue-stall-notice based on how long it's sat unchanged while nonzero.
+// A changing count (even a rising one) resets the clock — this is about
+// "nothing is moving," not "the queue is long."
+function _checkQueueStall(pending) {
+  const el = document.getElementById('queue-stall-notice');
+  if (!el) return;
+  const now = Date.now();
+  if (pending !== _queueStallTracker.pending || pending === 0) {
+    _queueStallTracker = { pending: pending, since: now };
+  }
+  const stalled = pending > 0 && (now - _queueStallTracker.since) >= QUEUE_STALL_MS;
+  el.style.display = stalled ? 'block' : 'none';
+  if (stalled) {
+    el.textContent = '⚠ Nothing has moved in 15 minutes — Studio may not be running.';
+  }
+}
+
 function renderQueue(res) {
   const c = res.counts || {};
   const pending   = c.queued    ?? c.pending ?? 0;
   const active    = c.active    ?? 0;
   const inReview  = c.needs_review ?? c.needs_curator ?? 0;
   const done      = c.processed ?? 0;
+  _checkQueueStall(pending);
   const failed    = c.failed    ?? 0;
 
   // FIXED: "Pending" (subtitle "waiting for AI engine") used to show
@@ -1668,10 +1733,23 @@ function renderQueue(res) {
   const cyclingCnt = document.getElementById('cnt-cycling');
   if (cyclingCnt) cyclingCnt.textContent = cycling;
 
+  // NEW: unlike cycling above, an unknown-status row is NOT a subset of
+  // pending/active/etc. — it isn't counted in any of them (see
+  // getQueueMetrics()'s catch-all, 3_Queue_Processor.gs), so unlike
+  // cycling it DOES need adding into totalActivity below, or a queue
+  // holding only unrecognized-status rows would read as empty — the
+  // exact "empty queue" bug the FIXED note on "Failed" above already
+  // closed for terminal-failure rows.
+  const unknown     = c.unknown ?? 0;
+  const unknownTile = document.getElementById('metric-unknown');
+  if (unknownTile) unknownTile.style.display = unknown > 0 ? '' : 'none';
+  const unknownCnt = document.getElementById('cnt-unknown');
+  if (unknownCnt) unknownCnt.textContent = unknown;
+
   const list = document.getElementById('curator-list');
   const rows = res.needs_curator || [];
 
-  const totalActivity = pending + active + inReview + done + failed;
+  const totalActivity = pending + active + inReview + done + failed + unknown;
 
   if (totalActivity === 0) {
     // True empty state — brand new user
@@ -2343,6 +2421,10 @@ function renderIncubating(res) {
   wrap.style.display = '';
   list.innerHTML = items.map(v => {
     const pct = Math.round(Math.min(v.cumulative_score / threshold, 1) * 100);
+    // Stable per-theme button id — safe even if the name ever contains
+    // anything other than the uppercase-alnum shape _aggregateSentenceVectors_
+    // normally produces, since _confirmTap_'s state is keyed by this id.
+    const btnId = 'pin-btn-' + v.name.replace(/[^A-Za-z0-9_-]/g, '_');
     return '<div class="vec-row" style="margin-bottom:6px">' +
       '<div class="vec-hdr">' +
       '<span class="vec-name" style="font-size:11px">' + esc(v.name) + '</span>' +
@@ -2352,6 +2434,14 @@ function renderIncubating(res) {
       '<span class="vec-score" style="font-size:10px">' + v.cumulative_score.toFixed(2) + ' / ' + threshold.toFixed(2) + '</span>' +
       '</div>' +
       '<div class="bar-bg" style="height:4px"><div class="bar-fill" style="width:' + pct + '%;background:var(--text3)"></div></div>' +
+      // Manual "pin to Core" override (KOS/CAS roadmap synthesis 2.1) — a
+      // theme name lives in data-theme, not inlined into the onclick string,
+      // so nothing here needs JS-string escaping on top of esc()'s HTML
+      // escaping.
+      '<button class="btn btn-sm" id="' + btnId + '" ' +
+        'style="margin-top:4px;padding:4px 10px;font-size:11px" ' +
+        'data-theme="' + esc(v.name) + '" onclick="handlePinToCore(this)">' +
+        '<i class="ti ti-pin"></i>Pin to Core</button>' +
       '</div>';
   }).join('');
 }
@@ -2511,6 +2601,46 @@ function handlePromotion() {
     btn.disabled = false;
     resetBtn('btn-promote', 'ti-trending-up', 'Check for new themes to promote');
     showDiagStatus('Error: ' + err.message, 'danger', gen);
+  });
+}
+
+// Companion to handlePromotion() above: that button runs the algorithmic
+// threshold check across every incubating theme; this one lets the
+// operator declare a single theme permanent outright (KOS/CAS roadmap
+// synthesis 2.1 — "pin to Core"), for a one-off but structurally important
+// decision that shouldn't have to wait for enough sessions to
+// out-accumulate CFG.DECAY_FACTOR. Uses the same double-tap confirm as
+// handleCouncil()/handleDeploy() below — this bypasses the normal
+// promotion threshold, so it shouldn't fire on a single accidental tap.
+function handlePinToCore(btn) {
+  const theme = btn.dataset.theme;
+  const btnId = btn.id;
+  _confirmTap_(btnId, {
+    armedClass: 'btn btn-sm btn-confirm btn-countdown',
+    armedIcon:  '<i class="ti ti-alert-triangle"></i>',
+    armedLabel: (n) => 'Tap again to pin · ' + n + 's',
+    onArm: () => showDiagStatus('Tap "Pin to Core" again within 5 seconds to confirm — this bypasses the normal promotion threshold.', undefined, beginDiagAction()),
+    onExpire: () => {
+      resetBtn(btnId, 'ti-pin', 'Pin to Core');
+      showDiagStatus('', undefined, beginDiagAction());
+    },
+    onConfirm: () => {
+      const gen = beginDiagAction();
+      btn.disabled = true;
+      btn.className = 'btn btn-sm';
+      btn.innerHTML = '<i class="ti ti-loader-2"></i>Pinning…';
+      showDiagStatus('Pinning "' + esc(theme) + '" to Core…', undefined, gen);
+      callServer('pinThemeToCore', [theme], (res) => {
+        btn.disabled = false;
+        const isError = res && res.success === false;
+        showDiagStatus((res && res.message) || String(res), isError ? 'danger' : undefined, gen);
+        loadVectorState(); // refresh — a successful pin moves the theme out of this list
+      }, (err) => {
+        btn.disabled = false;
+        resetBtn(btnId, 'ti-pin', 'Pin to Core');
+        showDiagStatus('Error: ' + err.message, 'danger', gen);
+      });
+    }
   });
 }
 

@@ -495,6 +495,37 @@ body{font-family:var(--sans);background:var(--bg);color:var(--ink);font-size:15p
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
     <div class="outcome-block">
       <h3>What the System Does</h3>
+      <!-- FIXED (external UX audit, then updated for the Studio Steps
+           adoption, then CORRECTED after the first real deployment): the
+           paragraph below describes the full pipeline in the present
+           tense, but only Flow 1 (submission intake) is actually live in
+           Studio, so no student has received AI feedback through Flows
+           2-5 from this system yet. Same honesty standard already applied
+           to the metrics above (which read 0 / "not independently
+           verified"), applied here too.
+
+           The badges said "Built, Not Deployed" for Flows 2-5, which was
+           read as "someone just needs to push it." That was wrong twice
+           over. The custom-step code those flows were built on
+           (cas-ccps/studio-steps/) is UNREACHABLE on this account, not
+           merely unpushed: a custom Studio step is a Workspace Add-on and
+           needs a standard, non-default Cloud project, and GCP is disabled
+           org-wide for ccpsnet.net. All five flows have since been ported
+           to native steps plus an Apps Script harvest (37_FlowInputBuilder.js,
+           41_WarmUpFlowBridge.js), which is a keyless path that works on
+           this account — what remains is building each flow's Studio side
+           by hand, which nothing in the repo can automate. Hence three
+           states rather than two: live, ported-and-awaiting-construction,
+           and blocked. cas-ccps/DEPLOYMENT_HANDOFF.md has the full
+           account. -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <span class="deploy-status status-active">Flow 1 ✅ Live</span>
+        <span class="deploy-status status-pending">Flow 2 ⬜ Ported, Studio side not built</span>
+        <span class="deploy-status status-pending">Flow 3 ⬜ Ported, Studio side not built</span>
+        <span class="deploy-status status-pending">Flow 4 ⬜ Ported, Studio side not built</span>
+        <span class="deploy-status status-pending">Flow 5 ⬜ Ported, Studio side not built</span>
+        <span class="deploy-status status-pending">Custom Studio steps ⛔ Blocked (no Cloud project on this account)</span>
+      </div>
       <div style="font-size:14px;color:var(--mid);line-height:1.75">
         <p style="margin-bottom:10px">Students receive AI-powered feedback on written work within 1–3 minutes — as many times as they need, any time of day. Teachers define the rubric once. The system enforces it consistently across every student and every draft.</p>
         <p style="margin-bottom:10px">The system runs entirely inside Google Workspace. No third-party vendor. No student data leaves the school. No additional licensing fees beyond our existing Workspace agreement.</p>

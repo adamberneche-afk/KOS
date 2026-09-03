@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 1 of 8: Config & Deploy
+// FILE 1 of 11: Config & Deploy
 // ================================================================
 //
 // Replaces : PART 1 (CFG), PART 2 (onOpen), PART 3 (Deploy),
@@ -61,6 +61,7 @@ const CFG = {
   ONBOARDING_SHEET:         'ONBOARDING_TRACKER',
   EXTERNAL_TELEMETRY_SHEET: 'EXTERNAL_TELEMETRY',      // v8.0 — Sensor 3 target
   ERROR_LOG_SHEET:          'ERROR_LOG',                // v8.0 — error digest source
+  AUDIT_LOG_SHEET:          'AUDIT_LOG',                // Auditor accountability check rejections — see 3_Queue_Processor.gs's audit gate
 
   // ── STAGING_PIPELINE Column Index Map ────────────────────────
   // Single source of truth — replaces the SC const in Phase 0 patch.
@@ -250,9 +251,15 @@ const CFG = {
     // Shared HMAC secret matching inference-service's WEBHOOK_SECRET env
     // var — signs POST /api/v1/jobs submissions so the service can reject
     // forged job-submission requests (see server.js's validateWebhookSignature).
-    // Optional: if unset, job submission still runs, unsigned — matching
-    // the service's own "skip in dev if not configured" behavior. Only
-    // read by _submitManagedServiceJob_() in 3_Queue_Processor.gs.
+    // REQUIRED in production, despite what this comment used to say.
+    // It previously read "Optional: if unset, job submission still runs,
+    // unsigned" — true when written, false since the fail-closed fix.
+    // server.js now process.exit(1)s at startup if WEBHOOK_SECRET is
+    // unset while NODE_ENV=production, and rejects an unsigned request
+    // with 401. So leaving this property unset against a production
+    // service means every job submission fails, not that it runs
+    // unsigned. Genuinely optional only against a dev service. Only read
+    // by _submitManagedServiceJob_() in 3_Queue_Processor.gs.
     MANAGED_SERVICE_WEBHOOK_SECRET: 'KOS_MANAGED_SERVICE_WEBHOOK_SECRET',
 
     // Google Chat incoming webhook (optional). Unset by default — every
@@ -322,6 +329,7 @@ function deployFullSystem() {
       CFG.ONBOARDING_SHEET,
       CFG.EXTERNAL_TELEMETRY_SHEET,   // v8.0 — Sensor 3
       CFG.ERROR_LOG_SHEET,            // v8.0 — error digest
+      CFG.AUDIT_LOG_SHEET,            // Auditor accountability check rejections
     ];
     sheetNames.forEach(n => _getOrCreateSheet(ss, n));
     _seedBlackboardTemplateRow(ss);
@@ -440,10 +448,11 @@ function executeBootstrap() {
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed (13 total — matches DEPLOYMENT_GUIDE.md's
+ * Triggers installed (14 total — matches DEPLOYMENT_GUIDE.md's
  * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
  *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
+ *   harvestStudioReturns          → every 5 min  (time-driven) — 12_StudioReturnHarvest.gs
  *   processInferenceQueue         → every 10 min (time-driven)
  *   runSemanticSweeper            → hourly        (time-driven)
  *   sweepRootForExhaust           → hourly        (time-driven)
@@ -506,6 +515,15 @@ function setupAllTriggers() {
   // ── Turnstile — every 5 min (10_Turnstile.gs) ──────────────
   tryInstall('runMatrixTurnstile', () =>
     ScriptApp.newTrigger('runMatrixTurnstile')
+      .timeBased().everyMinutes(5).create()
+  );
+
+  // ── Studio Return Harvest — every 5 min (12_StudioReturnHarvest.gs) ──
+  // Must run well inside CFG.TURNSTILE_STALE_MINS (default 30): a return row
+  // waiting longer than that gets its staging row recycled by the staleness
+  // guard, which then re-runs inference on a doc that already has an answer.
+  tryInstall('harvestStudioReturns', () =>
+    ScriptApp.newTrigger('harvestStudioReturns')
       .timeBased().everyMinutes(5).create()
   );
 

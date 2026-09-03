@@ -3,6 +3,25 @@
 *Full front-to-back review, August 2026. Scope: all of `kos-personal/`,
 `cas-ccps/`, `leader-hub/`, `meta/`, `drive-curation/`, and `tools/`.*
 
+> **⚠ Stale in three places, corrected inline rather than rewritten** (this
+> review predates work landed after it was written): leader-hub gained a
+> server (`leader-hub:app` — see its own README's "JJ1" section) and is no
+> longer client-side-only; the repo gained a real test suite
+> (`tests/`, `npm test`, all passing — run `npm test`
+> for the live count) where
+> this review found none; and cas-ccps's Flow 2/3/4/5 custom-step code now
+> exists (`cas-ccps/studio-steps/`) but is **unreachable on this account** —
+> it was pushed successfully and its steps never appeared in Studio's picker,
+> because a custom step is a Workspace Add-on and needs a standard Cloud
+> project. (This sentence used to read "not yet pushed to a live Studio
+> deployment," which invited exactly the wrong conclusion.) All five flows
+> were ported to `37_FlowInputBuilder.js` and `41_WarmUpFlowBridge.js`
+> instead. Each affected passage below carries its own inline
+> `⚠ Stale` note rather than being silently rewritten, matching this repo's
+> own convention (see `leader-hub/LEADERHUB_PRINCIPLES.md`'s Principle 6
+> correction) — the surrounding analysis is otherwise left as originally
+> written.
+
 ## 0. Executive summary
 
 **KOS is not one product.** It's a monorepo consolidating three genuinely
@@ -18,12 +37,16 @@ own right:
 |---|---|---|
 | `kos-personal/` | "We automate the machine so we can be free to be human" — protect human agency from AI extraction (`KOS_WHITE_PAPER.md`) | Real proactive machinery exists, but the loop the promise depends on is admittedly unbuilt |
 | `cas-ccps/` | "The system should never require the user to type something it already has" (`docs/CAS_ContextualGates_DesignPrinciples.html`) | A genuinely well-designed philosophy, one proof-of-concept live, but the AI pipeline it's meant to serve isn't fully wired end-to-end |
-| `leader-hub/` | "Out of sight, out of mind. This dashboard exists to keep everything in sight so that everything stays in mind." (`LEADERHUB_PRINCIPLES.md`) | The most fully realized against its own promise — working, live, single-file, and genuinely anticipatory |
+| `leader-hub/` | "Out of sight, out of mind. This dashboard exists to keep everything in sight so that everything stays in mind." (`LEADERHUB_PRINCIPLES.md`) | The most fully realized against its own promise — working, live, and genuinely anticipatory (⚠ Stale: "single-file" describes the HTML front end only as of this writing — leader-hub is now server-backed, see §3's note) |
 
-The single biggest cross-cutting risk in the entire repo: **there is no
-automated test coverage anywhere.** The only CI is a custom static linter
-(`tools/gas-lint/`) that catches parse-time hazards, not behavior
-regressions. Every fix described in the extensive, unusually candid
+The single biggest cross-cutting risk in the entire repo, **as this review
+found it: there was no automated test coverage anywhere.** The only CI was a
+custom static linter (`tools/gas-lint/`) that catches parse-time hazards, not
+behavior regressions. **⚠ Closed since this review** — `tests/` now exists and
+runs under `npm test` (all passing; run it for the current count) with real
+Node-`vm`-sandboxed coverage of the actual `.gs`/`.js` source; see §4's note.
+The paragraph is kept as written because the rest of this section's reasoning
+rests on the state it describes. Every fix described in the extensive, unusually candid
 "UI/UX Hardening" changelogs across all three systems was found and
 verified by hand. That discipline is real and has clearly worked so far —
 but it is a standing risk, not a solved problem, for a codebase of this size
@@ -49,7 +72,7 @@ recommendations.
 Concretely, the product is a personal AI-session knowledge pipeline: it
 ingests one operator's AI working-session transcripts, extracts structured
 knowledge (decisions, action items, vector weights), and routes it into a
-`BRAIN_TRUST_INDEX` spreadsheet — governed by a 7-persona "Council" review
+`BRAIN_TRUST_INDEX` spreadsheet — governed by a 6-persona "Council" review
 layer.
 
 ### Where the implementation earns the promise
@@ -60,21 +83,27 @@ This is the system with the most machinery already built in service of
 - **Daily Primer** (`6_Governance.gs`, 06:00 daily trigger) — assembles
   vector state, shadow-matrix status, and the 90-day vision into a
   ready-to-read context doc every morning, unprompted.
-- **Shadow Matrix** (`5_Error_And_Utilities.gs:888-997`) — passively infers
+- **Shadow Matrix** (`_updateShadowMatrix()` / `_classifyShadowStatus()` in
+  `kos-personal/5_Error_And_Utilities.gs`) — passively infers
   five of the operator's own values from session data and auto-populates
   them into config once confidence crosses 0.75
-  (`SHADOW_VERIFY_THRESHOLD: 0.75`, `1_Config_And_Deploy.gs:92`). This is
+  (`CFG.SHADOW_VERIFY_THRESHOLD`, `kos-personal/1_Config_And_Deploy.gs`). This is
   the clearest single example in the repo of the exact philosophy the
   system is asked to embody: it gives the operator their own stated values
   back before they'd think to articulate them.
-- **Auto-Council** (`6_Governance.gs:879`, every 2 hours) — fires the
-  6-persona review automatically once 5 new sessions accumulate; no manual
-  invocation required.
+- **Auto-Council** (`autoCouncilCheck()`, `6_Governance.gs`, every 2 hours) —
+  generates a sequestered Seven Bridges stimulus automatically once 5 new
+  sessions accumulate. Note what this does *not* do: the review itself still
+  requires manual invocation, since sequestration means the operator sends
+  that one document to each cog's own Gem conversation by hand and logs the
+  verdicts back. The trigger removes the "remember to start one" step, not
+  the review. (Until Round 14 it fired a shared-context generator instead —
+  see `CHANGELOG.md`.)
 - **Incubator** (`4_Vector_Router.gs`) — emerging themes accumulate score
   and decay on a 14-day half-life, surfacing what's actually gaining
   traction without the operator having to track it themselves.
 - 13 separate `ScriptApp.newTrigger` automations installed
-  (`1_Config_And_Deploy.gs:493-576`), plus a daily error digest and
+  (`setupAllTriggers()` in `kos-personal/1_Config_And_Deploy.gs`), plus a daily error digest and
   real-time Chat webhook alerts on failure.
 
 ### Where the promise outruns the delivery
@@ -87,7 +116,7 @@ true end-to-end, in the system's own README:
 > STAGING_PIPELINE and structured inference is the critical unbuilt piece.
 > Until it is complete, the queue requires a manual `devSetFlowComplete()`
 > step to advance rows."
-> — `kos-personal/README.md:339`
+> — `kos-personal/README.md`, "Current Status" section
 
 This matters for the "North Star" question specifically: the entire premise
 of "density of insight" over manual effort depends on the inference step
@@ -119,7 +148,7 @@ the white paper as already delivered.
   ```
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   ```
-  — `8_WebApp_UI.html:5`
+  — `kos-personal/8_WebApp_UI.html`, the `<meta name="viewport">` tag
 
   This is a WCAG 1.4.4/1.4.10 violation (users who need to zoom to read
   text cannot). Notably, this file has been through 9 dedicated rounds of
@@ -127,7 +156,7 @@ the white paper as already delivered.
   never caught — worth fixing directly given how cheap the fix is (drop
   `maximum-scale=1.0, user-scalable=no`).
 - **Turnstile has no failure ceiling**: the config comment for
-  `TURNSTILE_STUCK_THRESHOLD` (`1_Config_And_Deploy.gs:86-89`) states
+  `CFG.TURNSTILE_STUCK_THRESHOLD` (`kos-personal/1_Config_And_Deploy.gs`) states
   plainly that a row with no Studio flow ever completing it "just cycles
   PENDING_FLOW → STUDIO_ACTIVE → (stale reset) forever, Retry_Count
   climbing without bound" — the threshold is display-only and doesn't
@@ -186,27 +215,33 @@ meant to protect the *setup* of is not fully live yet:
 > "Flow 2 has never been built in Studio — both
 > `09_StudentRevisionGuidance_M1Base.js` and `03_QueueBridge.js` assume it
 > exists, and Module 5 cannot go fully live [without it]."
-> — `cas-ccps/README.md:616-617`, corroborated at `README.md:604`
+> — `cas-ccps/README.md`, "Known gaps" (paraphrased; the README has since
+> been rewritten — Flow 2's custom-step code now exists in
+> `cas-ccps/studio-steps/`, though it is still not deployed)
 
-Flows 3 and 4 (the nightly personalized warm-up generation and grading,
-`README.md:601`) are in the same state. So the "nightly AI warm-up" feature
+Flows 3 and 4 (the nightly personalized warm-up generation and grading —
+see the **M2 Full (Warm-Ups)** row of `cas-ccps/README.md`'s module table)
+are in the same state. So the "nightly AI warm-up" feature
 described in the code — arguably the most anticipatory, "before you know
 you need it" feature cas-ccps has (personalized practice generated for a
 student overnight, unasked) — is not actually operating end-to-end today.
 `27_LessonFrameGenerator`, a script the Module 2 table names as required,
-also hasn't been uploaded yet.
+also hadn't been uploaded yet. **⚠ Stale — closed since this review.** It's
+now built; see `cas-ccps/HISTORY.md`'s "27_LessonFrameGenerator — the one
+Full script closed."
 
 ### UI/UX
 
 - Two standalone GAS web apps (Teacher Dashboard, Student Dashboard), no
   shared framework, Google Material-styled to visually match Docs/Sheets.
 - Genuinely good instance of a token cleanup: `--text-secondary`
-  (`07_TeacherDashboard.js:824`) exists because two inconsistent "muted"
+  (`buildDashboardHtml_()` in `cas-ccps/scripts/07_TeacherDashboard.js`)
+  exists because two inconsistent "muted"
   grays were consolidated after one (`#80868b`, ~3.68:1 contrast) was found
   to fail WCAG AA — the kind of detail work the review was asked to look
   for, already done here.
-- **ARIA coverage asymmetry**: Teacher Dashboard carries 32 `aria-*` / 23
-  `role=` attributes; the Student Dashboard has 5 / 1. Some of this gap is
+- **ARIA coverage asymmetry**: Teacher Dashboard carries 29 `aria-*` / 23
+  `role=` attributes; the Student Dashboard has 9 / 6. Some of this gap is
   legitimate — the student view has no tab bar to make accessible — but the
   repo's own changelog independently confirms it's also masked a real bug:
   the student dashboard's `esc()` helper silently dropped the
@@ -239,9 +274,20 @@ friction.
 ### Where the implementation earns the promise — this is the strongest case in the repo
 
 LeaderHub is the system that most fully delivers on "give people what they
-need before they know they need it," and it does so with the least
-infrastructure of the three (no server, no external AI flow dependency for
-its core loop, all client-side):
+need before they know they need it," and at the time of this review did so
+with the least infrastructure of the three (no server, no external AI flow
+dependency for its core loop, all client-side).
+
+> **⚠ Stale:** leader-hub has since gained a server. `leader-hub:app`
+> (every `.gs` file in `leader-hub/` — see that project's entry in
+> `tools/gas-lint/project-map.json`) is now a
+> real Apps Script Web App deployment holding data in a Spreadsheet — see
+> `leader-hub/README.md`'s "JJ1 — Server-deployed web app" section. The
+> "no external AI flow dependency for its core loop" half of this claim
+> still holds; only the "no server... all client-side" half is now
+> outdated. The findings below (banners, Command Engine, undo pattern,
+> responsive handling, CSP) are about the front end and remain accurate as
+> written.
 
 - **Time-triggered banners fire at the moment of maximum utility, not
   arbitrarily** — the principles doc names five specific banners tied to
@@ -254,15 +300,15 @@ its core loop, all client-side):
   timestamps it; archiving a trip logs it; the journal feeds a cron engine
   that reweights tomorrow's priorities — all without the user doing
   anything beyond their normal workflow.
-- **`_showConfirm`/`_showDiscardConfirm`** (`student-leader-hub.html:5122-5157`)
+- **`_showConfirm()`/`_showDiscardConfirm()`** (`leader-hub/student-leader-hub.html`)
   replace every native `confirm()` with a styled, keyboard-correct dialog
   (Escape/backdrop/Cancel all route through one `closeIt()`), and
-  **`_undoToast`** (`:12600`) gives a real 5-second undo affordance rather
+  **`_undoToast()`** gives a real 5-second undo affordance rather
   than a destructive-action confirmation gate — directly implementing
   Principle 5 ("the system trusts the user's professional judgment... where
   data is critical, it is protected through architecture... not through
   friction").
-- The **Command Engine** (`student-leader-hub.html:12555`) builds a
+- The **Command Engine** (`leader-hub/student-leader-hub.html`) builds a
   prioritized "Next Action" queue surfaced directly on the dashboard —
   literally answering "what should I do next?" before the user asks.
 - Most mature responsive handling of the three systems: 4 real breakpoints
@@ -294,6 +340,19 @@ its core loop, all client-side):
 ## 4. Cross-cutting findings
 
 ### No automated tests anywhere
+
+> **⚠ Stale — this entire section describes a gap that has since been
+> closed.** `tests/` now exists, wired into `npm test`
+> (`tests/leaderhub/`, `tests/cas-ccps/`, `tests/kos-personal/`,
+> `tests/tools/`), running real Node-`vm`-sandboxed coverage against the
+> actual `.gs`/`.js` source via `tests/harness/gas-sandbox.js` — all
+> passing tests at the time of writing (run `npm test` for the live count). The specific bug classes
+> named below (raw-JS-outside-`<script>`, date-type coercion) now have
+> regression coverage; a `google.script.run` call with no matching server
+> function is still gas-lint's job, not the test suite's, and remains
+> covered the way this section originally described. The original text is
+> left below for its still-accurate framing of *why* this mattered, not as
+> a current-state claim.
 
 `find -iname "*test*"` across the entire repo returns nothing except
 `package.json` script-name matches. The only CI job
@@ -347,36 +406,48 @@ has, it will need to be rebuilt there, not inherited.
 ## 5. Prioritized recommendations
 
 **P0 — cheap, high-value, do first**
-1. Fix the kos-personal viewport tag (`8_WebApp_UI.html:5`) — drop
-   `maximum-scale=1.0, user-scalable=no`. One line, closes a real WCAG
-   violation that nine hardening rounds missed.
-2. Give the Turnstile stuck-row cycle an actual failure ceiling, not just a
-   display threshold (`1_Config_And_Deploy.gs:86-89` / `10_Turnstile.gs`) —
-   today a row with no Studio flow can retry forever with no cap.
+1. ~~Fix the kos-personal viewport tag — drop `maximum-scale=1.0,
+   user-scalable=no`.~~ **Done.** `kos-personal/8_WebApp_UI.html`'s viewport
+   tag now reads `width=device-width, initial-scale=1.0` and nothing more.
+2. ~~Give the Turnstile stuck-row cycle an actual failure ceiling, not just a
+   display threshold.~~ **Done.** `10_Turnstile.gs` now compares
+   `newRetries > CFG.TURNSTILE_STUCK_THRESHOLD` and halts the row, and its
+   own comment records that the threshold "was a UI-only" value before this.
 
 **P1 — closes the promise/delivery gap in the two systems where it's real**
 3. Build (or explicitly re-scope away from) the unbuilt Studio flows:
-   kos-personal's inference-closing flow (`README.md:339`) and cas-ccps's
-   Flow 2/3/4 (`README.md:616-619`). Until these exist, the white paper's
+   kos-personal's inference-closing flow (`kos-personal/README.md`, "Current
+   Status") and cas-ccps's Flow 2/3/4. **Partly closed:** every custom step
+   Flows 1–5 need now exists as code in `cas-ccps/studio-steps/`; what
+   remains is deployment to a live Studio account, not authoring.
+
+   The original recommendation, kept for its reasoning: until these exist, the white paper's
    "we automate the machine" and the nightly-warm-up feature are both
    partially aspirational rather than delivered — worth either finishing
    or updating the North Star docs to describe the manual-step reality
    plainly (the repo already has a track record of doing this well, e.g.
-   the `⚠ Stale` correction in `LEADERHUB_PRINCIPLES.md`).
-4. Add minimal automated test coverage to `kos-personal/inference-service/`
-   first — it's the one component in the repo touching billing and auth,
-   and unlike the GAS systems it's a normal Node/Postgres service where
-   standard test tooling applies directly.
+   the `⚠ Stale` correction in `LEADERHUB_PRINCIPLES.md`). **⚠ Partially
+   done since this review:** cas-ccps's Flow 2/3/4/5 custom-step code is
+   now built (`cas-ccps/studio-steps/`) and tested — what remains is
+   pushing that project to a live Studio deployment and wiring each flow,
+   not writing the code. kos-personal's inference-closing flow is
+   unaffected by that work and remains as this review found it.
+4. ~~Add minimal automated test coverage to
+   `kos-personal/inference-service/`, the one component in the repo touching
+   billing and auth.~~ **Done.** `inference-service/test/credits.test.js`
+   exists and runs in CI under its own `test-inference-service` job
+   (`.github/workflows/gas-lint.yml`), which does `npm ci && npm test` inside
+   that directory. It is not part of the *root* `npm test` — the service has
+   its own dependency tree — so a root-only run will not show it.
 
 **P2 — polish**
 5. Confirm the cas-ccps Teacher/Student dashboard `esc()` parity is fully
    closed, not just the one instance already caught, and consider whether
    the ARIA gap between the two dashboards has other legitimate-but-uneven
    spots worth a pass.
-6. Move `leader-hub/student-leader-hub.jsx` into `archived/`, consistent
-   with how every other superseded design in the repo is already filed —
-   it's harmless today only because of the header comment; filing it
-   properly removes the need for that caveat.
+6. ~~Move `leader-hub/student-leader-hub.jsx` into `archived/`.~~ **Moot.**
+   That file no longer exists anywhere in the repo, so there is nothing left
+   to file.
 
 ---
 
@@ -397,7 +468,12 @@ that depend on an externally-configured AI flow (kos-personal, cas-ccps),
 the anticipatory feature is *built* but not *closed* — a Studio flow that
 needs to exist doesn't yet, so a human has to do manually what the system
 is designed to do automatically. leader-hub, which owns its entire loop
-client-side with no external dependency, is where the philosophy is most
-completely real today. Closing that same gap in the other two systems is
-the highest-leverage next step for the whole repo to actually deliver, end
-to end, on what each of its own North Star documents already promises.
+with no external AI-flow dependency, is where that particular philosophy
+is most completely real today (⚠ Stale: "client-side" is no longer
+accurate — see §3's note; the "no external dependency for its core loop"
+half of this sentence still holds). Closing that same Studio-flow gap in
+the other two systems is the highest-leverage next step for the whole repo
+to actually deliver, end to end, on what each of its own North Star
+documents already promises — with cas-ccps's half of that gap now
+partially closed (custom-step code for Flows 2-5 exists and is tested;
+what remains is deployment, not code).

@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 3 of 8: Queue Processor
+// FILE 3 of 11: Queue Processor
 // ================================================================
 //
 // Replaces: PART 9 (processInferenceQueue), PART 10
@@ -152,12 +152,59 @@ function processInferenceQueue() {
           continue;
         }
 
+        const payloadUid = String(data[i][SC.PAYLOAD_UID] || '');
+
+        // ── Audit gate ────────────────────────────────────────────
+        // The Curator flow's own output can carry a nested
+        // auditor_sign_off object (CURATOR_PROMPT.md) — a second
+        // Auditor pass added inside the Studio Flow itself to hold the
+        // Curator accountable for its own claims. A rejected audit
+        // never reaches ledger-routing below: archive the rejected
+        // payload (its Drive doc body gets overwritten on the next
+        // retry, so this is the only durable record), then either
+        // requeue with priority or escalate once retries run out —
+        // same MAX_RETRIES-then-escalate discipline as the JSON-parse
+        // failure path above, so a persistently-failing audit can't
+        // loop forever either.
+        if (parsed.auditor_sign_off && _isAuditFailure_(parsed.auditor_sign_off)) {
+          const newRetries = retries + 1;
+          _archiveAuditFailure_(ss, payloadUid, sheetRow, newRetries, parsed, parsed.auditor_sign_off);
+
+          if (newRetries >= CFG.MAX_RETRIES) {
+            staging.getRange(sheetRow, SC.STATUS      + 1).setValue('AUDIT_REJECTED');
+            staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+            _reportError(
+              'processInferenceQueue:AUDIT_REJECTED',
+              new Error(
+                'Row ' + sheetRow + ' (' + payloadUid + ') failed the Auditor accountability ' +
+                'check ' + newRetries + ' time(s). Manual review required — see AUDIT_LOG.\n' +
+                'Doc: ' + data[i][SC.DOC_URL]
+              ),
+              null,
+            );
+            _sendChatAlert(
+              '🔴 AUDIT_REJECTED — kos-personal Curator\n' +
+              'Row: ' + sheetRow + ' (' + payloadUid + ', file ' + data[i][SC.FILE_ID] + ')\n' +
+              'The Auditor rejected this Curator output ' + newRetries + ' time(s) — see AUDIT_LOG ' +
+              'for the full rejected payload and trace log. Human review required.'
+            );
+            failed++;
+          } else {
+            staging.getRange(sheetRow, SC.STATUS      + 1).setValue('PENDING_FLOW');
+            staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
+            _markAuditRetryPriority_(payloadUid);
+            console.log('[Queue] Row ' + sheetRow + ' (' + payloadUid + ') failed audit ' +
+              '(attempt ' + newRetries + ') — reverted to PENDING_FLOW, marked for priority retry.');
+            requeued++;
+          }
+          continue;
+        }
+
         // ── Intake ──────────────────────────────────────────────
         // VECTOR_CLASSIFY rows carry sentence-level classification
         // output (Bifurcation Boundary — see 4_Vector_Router.gs) and
         // route to a dedicated handler instead of the full Curator
         // intake path; every other payload type is unchanged.
-        const payloadUid  = String(data[i][SC.PAYLOAD_UID] || '');
         const payloadType = String(data[i][SC.PAYLOAD_TYPE] || '');
         const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
         const result = (payloadType === 'VECTOR_CLASSIFY')
@@ -479,7 +526,7 @@ function getQueueStatus() {
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
     const SC      = CFG.STAGING_COLS;
 
-    const counts = { pending: 0, ready: 0, needs_curator: 0, processed: 0, failed: 0 };
+    const counts = { pending: 0, ready: 0, needs_curator: 0, processed: 0, failed: 0, unknown: 0 };
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -502,6 +549,13 @@ function getQueueStatus() {
         // (5_Error_And_Utilities.gs), the same list archiveStagingPipeline()
         // uses to identify these rows for cleanup.
         else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  counts.failed++;
+        // Catch-all, same fix and same reasoning as getQueueMetrics()
+        // above — checked against _isKnownStagingStatus_() rather than
+        // treated as unknown outright, so legacy-but-recognized statuses
+        // (PARTITIONED/CONSOLIDATED) don't start reading as alarming.
+        // Only a genuinely unrecognized status (e.g. a real "AUDITING
+        // _LOG" row) used to be silently uncounted here.
+        else if (!_isKnownStagingStatus_(s))                          counts.unknown++;
 
         if (s === 'NEEDS_CURATOR') {
           needsCuratorRows.push({
@@ -589,6 +643,15 @@ function getQueueMetrics() {
     // (TERMINAL_FAILED_STATUSES, 5_Error_And_Utilities.gs) below — this
     // counter only ever sees rows still short of that ceiling.
     let cycling = 0;
+    // Rows whose Status matches none of the branches below — not a new
+    // pipeline state, a visibility fix for one: see
+    // 5_Error_And_Utilities.gs's _isKnownStagingStatus_() and
+    // 10_Turnstile.gs's _alertOnUnknownStatuses_() for how these rows
+    // get surfaced (once, via chat alert) at the source. Found via a
+    // real row stuck at "AUDITING _LOG" that was previously silently
+    // excluded from every bucket here, exactly like MISSING_FILE_ID/
+    // PROCESSING_ERROR were before the FIXED note below.
+    let unknown = 0;
     const needsCuratorRows = [];
 
     if (staging.getLastRow() > 1) {
@@ -609,6 +672,17 @@ function getQueueMetrics() {
         // showing the "empty queue, get started" message even when the
         // user's very first submission had actually failed.
         else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  failed++;
+        // Catch-all: a status matching none of the branches above.
+        // Checked against _isKnownStagingStatus_() (5_Error_And_Utilities.gs)
+        // rather than treated as unknown outright — PARTITIONED/CONSOLIDATED
+        // are legitimate (if v5.4-legacy, unused-in-v8.0) statuses that
+        // never had their own bucket here either, and shouldn't start
+        // reading as an alarming "unrecognized" row now that one exists.
+        // Only a status that fails that check — e.g. a real "AUDITING _LOG"
+        // row found in production — used to fall through here uncounted,
+        // invisible in every tile, same silent-exclusion bug the FIXED
+        // note above already closed for the terminal statuses.
+        else if (!_isKnownStagingStatus_(s))                          unknown++;
 
         if ((s === 'PENDING_FLOW' || s === 'STUDIO_ACTIVE') &&
             (parseInt(row[SC.RETRY_COUNT]) || 0) >= CFG.TURNSTILE_STUCK_THRESHOLD) {
@@ -633,6 +707,7 @@ function getQueueMetrics() {
       processed,
       failed,
       cycling,
+      unknown,
     };
 
     return {
@@ -761,10 +836,12 @@ function _submitManagedServiceJob_(payloadUid, fileId, docUrl, payloadType, inde
 
   const headers = { 'X-KOS-API-Key': apiKey };
 
-  // Signature is optional server-side ("skip in dev if not configured" —
-  // see server.js's validateWebhookSignature) but always sent when a
-  // secret is configured here, matching the service's own HMAC-SHA256
-  // over the raw request body scheme.
+  // The signature is REQUIRED by any production service — server.js
+  // refuses to boot without WEBHOOK_SECRET and 401s an unsigned request.
+  // (This comment used to call it "optional server-side"; that was true
+  // before the fail-closed fix and is now only true against a dev
+  // service.) Sent whenever a secret is configured here, matching the
+  // service's HMAC-SHA256 over the raw request body.
   const secret = props.getProperty(CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET);
   if (secret) {
     const sigBytes = Utilities.computeHmacSha256Signature(bodyString, secret);

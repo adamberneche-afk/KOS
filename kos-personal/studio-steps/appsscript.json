@@ -1,0 +1,118 @@
+{
+  "timeZone": "America/New_York",
+  "dependencies": {},
+  "exceptionLogging": "STACKDRIVER",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/documents"
+  ],
+  "addOns": {
+    "common": {
+      "name": "KOS Studio Steps",
+      "logoUrl": "REPLACE_WITH_A_HOSTED_LOGO_URL",
+      "useLocaleFromApp": true,
+      "layoutProperties": {
+        "primaryColor": "#8e24aa"
+      }
+    },
+    "flows": {
+      "workflowElements": [
+        {
+          "id": "writeCuratorOutput",
+          "state": "PUBLISHED",
+          "name": "KOS: Write Curator Output",
+          "description": "Merges the optional Auditor sign-off into the Curator's JSON output (if Step 2a is wired in), overwrites the source document body with the result, and marks the STAGING_PIPELINE row FLOW_COMPLETE — but only on success. On any failure, writes nothing and leaves Status untouched so the staleness guard retries. Use as the last step of the Curator Flow (SESSION_LOG / EXTERNAL_DATA / COG_STIMULUS), after the native Ask Gemini step(s).",
+          "workflowAction": {
+            "inputs": [
+              {
+                "id": "stagingPipelineSsId",
+                "description": "BRAIN_TRUST_INDEX spreadsheet ID (from the INDEX_ID script property).",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              },
+              {
+                "id": "payloadUid",
+                "description": "Payload_UID of the trigger row (STAGING_PIPELINE column 1).",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              },
+              {
+                "id": "fileId",
+                "description": "File_ID of the trigger row (STAGING_PIPELINE column 4) — the doc this step overwrites.",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              },
+              {
+                "id": "curatorJsonOutput",
+                "description": "Raw JSON text from the native Ask Gemini step running CURATOR_PROMPT.md.",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              },
+              {
+                "id": "auditorJsonOutput",
+                "description": "Raw JSON text from the optional native Ask Gemini Auditor step. Leave unmapped (or map to an empty string) if this flow doesn't run an Auditor pass.",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              }
+            ],
+            "outputs": [
+              {
+                "id": "writeStatus",
+                "description": "SUCCESS, CURATOR_JSON_PARSE_FAILED, AUDITOR_JSON_PARSE_FAILED, DOC_WRITE_FAILED, or STAGING_ROW_NOT_FOUND_AFTER_DOC_WRITE.",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              }
+            ],
+            "onConfigFunction": "onWriteCuratorOutputConfig",
+            "onExecuteFunction": "onWriteCuratorOutputExecute"
+          }
+        },
+        {
+          "id": "writeClassificationOutput",
+          "state": "PUBLISHED",
+          "name": "KOS: Write Classification Output",
+          "description": "Validates the Classifier's JSON array output, overwrites the source document body with it, and marks the STAGING_PIPELINE row FLOW_COMPLETE — but only on success. On any failure, writes nothing and leaves Status untouched so the staleness guard retries. Use as the last step of the VECTOR_CLASSIFY Flow, after the native Ask Gemini step.",
+          "workflowAction": {
+            "inputs": [
+              {
+                "id": "stagingPipelineSsId",
+                "description": "BRAIN_TRUST_INDEX spreadsheet ID (from the INDEX_ID script property).",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              },
+              {
+                "id": "payloadUid",
+                "description": "Payload_UID of the trigger row (STAGING_PIPELINE column 1).",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              },
+              {
+                "id": "fileId",
+                "description": "File_ID of the trigger row (STAGING_PIPELINE column 4) — the doc this step overwrites.",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              },
+              {
+                "id": "classificationJsonOutput",
+                "description": "Raw JSON array text from the native Ask Gemini step running VECTOR_CLASSIFY_PROMPT.md.",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              }
+            ],
+            "outputs": [
+              {
+                "id": "writeStatus",
+                "description": "SUCCESS, CLASSIFICATION_JSON_PARSE_FAILED, CLASSIFICATION_JSON_NOT_ARRAY, DOC_WRITE_FAILED, or STAGING_ROW_NOT_FOUND_AFTER_DOC_WRITE.",
+                "cardinality": "SINGLE",
+                "dataType": { "basicType": "STRING" }
+              }
+            ],
+            "onConfigFunction": "onWriteClassificationOutputConfig",
+            "onExecuteFunction": "onWriteClassificationOutputExecute"
+          }
+        }
+      ]
+    }
+  }
+}

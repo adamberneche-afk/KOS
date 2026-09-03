@@ -13,9 +13,14 @@ field-trip coordinator. Despite the name and its coverage of courses
 8175/8177, this is **not** a cas-ccps companion tool — it's teacher-facing
 only, covers a materially wider scope than cas-ccps's two-course pair
 (DECA, E-Sports, trips, a third course), and has no code-level integration
-with cas-ccps beyond referencing the same course numbers. 100%
-client-side: opens as a local HTML file, all state in `localStorage`, no
-server, no build step. The app's original design called for AI features
+with cas-ccps beyond referencing the same course numbers. It began as a
+100% client-side single file — local HTML, all state in `localStorage`, no
+server, no build step — and **none of that is true any more**: the app is
+now generated from 14 fragments in `src/` by `tools/leaderhub-build/build.js`,
+deployed as a real Apps Script Web App (`Code.gs`, `Data.gs`, `SCR.gs`,
+`Config.gs`), with most domains round-tripping to a private Spreadsheet.
+See "Server migration" below for what moved and what deliberately stayed
+in `localStorage`. The app's original design called for AI features
 calling Gemini directly from the browser with a user-supplied API key —
 that key was never obtainable, so every "AI"-branded feature shipped as
 deterministic local logic instead (see "AI drafting" below for the one
@@ -27,14 +32,25 @@ key at all).
 
 | Path | Contents |
 |---|---|
-| `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser |
+| `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser. **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so opening it needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
+| `src/` | The 14 fragments `student-leader-hub.html` is generated from, in file order — `00-shell-head.html` through `13-markup-modals-tail.html`. This is where you actually make edits. |
 | `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling, sub-plan/brag-email creation, and — see below — the AI-drafting job queue) — see `LEADERHUB_EMAIL_SETUP.md` and `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
 | `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md`, `LP_ASSIST_FLOW_PROMPT.md`, `EMAIL_COMPOSE_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
 | `drive-tools/` | Later, **not-yet-executed** Drive-cleanup tooling (`LH_DriveDocSplitter.gs`, `LH_8177_Rename.gs`, `LH_AppManifestUpdater.py`) for splitting/renaming 8177 lesson docs |
-| `archived/studentleaderhub_EARLY_PROTOTYPE.html` | A much earlier prototype (2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board, SCR, trips, settings — with a working trips module already present, but no dedicated DECA/WBL/E-Sports modules and no Gemini integration) — genuinely different from the live app, not a duplicate, kept for history |
-| `archived/studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx` | A React/JSX exploration draft, not the deployed artifact — moved here (was previously at the `leader-hub/` top level) for the same reason every other non-deployed design lives under `archived/` |
+
+`archived/` (external product review, Finding 3 / "this month" dead-code
+cleanup) was removed from the working tree — nothing here is lost, the
+full pre-deletion tree is preserved on the `pre-archive-cleanup` branch.
+It held `studentleaderhub_EARLY_PROTOTYPE.html` (a much earlier prototype,
+2,155 lines, 8 views — dashboard, lessons, tasks, journal, brag board,
+SCR, trips, settings — with a working trips module already present, but
+no dedicated DECA/WBL/E-Sports modules and no Gemini integration —
+genuinely different from the live app, not a duplicate, kept for history)
+and `studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx` (a React/JSX
+exploration draft, not the deployed artifact, referenced in HISTORY.md's
+"Fixed: two more narrow-blast-radius bugs").
 
 ## Status
 
@@ -43,73 +59,17 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
-## Fixed: the Apps Script bridge was completely non-functional
+## Process history
 
-A full codebase review found the `EmailBridge.gs` integration — sub-plan
-Doc creation, brag-email Gmail drafts, and mark-consumed for horizon
-items — silently failed 100% of the time, for two independent reasons,
-both now fixed:
+Bug-fix narration for closed items — the Apps Script bridge's two
+independent silent-failure bugs, and the "found two more narrow-blast-
+radius bugs" pass, plus the nine-round UI/UX hardening log — now lives in
+`HISTORY.md`, not here (external product review, Finding 10 /
+"structural" tier). Read `HISTORY.md` when you need to know *why*
+something is the way it is; this file stays focused on what the system
+currently does and how to work with it.
 
-1. **CORS preflight.** Every `fetch()` call to the bridge (`callGAS()`,
-   used by sub-plan/brag-email, and the separate mark-consumed call in
-   `EMAIL_BRIDGE.poll()`) set `Content-Type: application/json`, which
-   makes it a non-simple CORS request — the browser sends an OPTIONS
-   preflight first, and Apps Script Web Apps don't answer preflights.
-   Every call failed before it ever reached the server, always falling
-   into the UI's "saved locally" fallback with no indication the
-   automation wasn't actually running. Fixed by switching to
-   `text/plain;charset=utf-8` (a CORS-"simple" content type — no
-   preflight) — `EmailBridge.gs`'s `doPost()` already reads the raw body
-   via `JSON.parse(e.postData.contents)` regardless of the declared
-   Content-Type, so this required no server-side change.
-2. **Payload shape mismatch.** Independent of the CORS bug,
-   `EMAIL_BRIDGE.poll()`'s mark-consumed call sent `{consumed: [...]}`
-   with no `action` field; `EmailBridge.gs`'s `doPost()` requires
-   `{action: 'markConsumed', ids: [...]}`. Even with CORS fixed, this
-   call always hit the server's `"Unknown action: "` fallback and never
-   persisted anything — a horizon item marked done or deleted client-side
-   would reappear on the next 10-minute poll, forever. Fixed to send the
-   shape the server actually expects.
-3. **Bonus, found while fixing #2**: `markConsumed_`'s stored ID list was
-   capped at 500 entries via `slice(-500)`, but 500 JSON-encoded Gmail
-   message IDs (~19 bytes each) already exceeds PropertiesService's
-   9216-byte per-value limit (~9.5KB) — `setProperty()` would have started
-   throwing well before reaching the cap, breaking mark-consumed
-   permanently from that point on. Lowered to 300 (~5.7KB), with real
-   margin.
-
-## Fixed: two more narrow-blast-radius bugs
-
-1. **`archived/studentleaderhub_REACT_EXPLORATORY_DRAFT.jsx`'s leaderboard mutated React state directly.**
-   The top-3 leaderboard render called
-   `data.leaders.sort((a, b) => b.hours - a.hours).slice(0, 3).map(...)`
-   directly on `data.leaders` — `Array.prototype.sort()` sorts in place,
-   so this silently reordered the component's own state array as a render
-   side effect instead of just computing a sorted view of it. Harmless by
-   luck as long as nothing else depended on `data.leaders`'s original
-   order, but a real landmine for the next feature that does. Fixed to
-   sort a shallow copy — `[...data.leaders].sort(...)`. Note: this file is
-   an explicitly-labeled React/JSX exploration draft, not the deployed
-   artifact (see Status above), so this was verified by careful manual
-   review rather than `node --check`, which can't parse JSX.
-2. **`drive-tools/LH_DriveDocSplitter.gs`'s `copyTextRunFormatting` could
-   lose or misapply character formatting.** It walked the source and
-   destination paragraph's child `Text` elements in parallel by index,
-   copying attributes range-by-range from `srcElem.getChild(i)` to
-   `destElem.getChild(i)`. Google Docs splits a paragraph's text into
-   multiple `Text` children whenever formatting changes mid-paragraph
-   (e.g. one bolded word), so source and destination can end up with a
-   different number of children, or children of different lengths, even
-   when their combined text is identical — `Text.setAttributes()` also
-   takes child-local offsets, not whole-paragraph offsets, so index-paired
-   copying could apply the wrong attributes to the wrong text, or throw
-   entirely once the two elements' child counts diverged. Rewritten to
-   walk the source paragraph by absolute character offset (accumulating a
-   running `globalOffset` across all of its `Text` children) and use a new
-   helper, `_setDestAttributesAtOffset_()`, to translate each global
-   offset into the correct destination child + local offset before calling
-   `setAttributes()` — correct regardless of how either side's runs are
-   split.
+---
 
 ## AI drafting — bifurcated GAS + Workspace Flow backend
 
@@ -923,239 +883,6 @@ still the same call GG1 made. This round builds the missing half of the
 pipeline (import), not the content; 6115's real units still need to come
 from a teacher filling in the template, same as it always would have.
 
-## UI/UX Hardening — Rounds 1–9
-
-After the reconciliation work that filed this system into the repo, it
-went through nine further rounds of dedicated UI/UX auditing alongside
-`kos-personal/` and `cas-ccps/` — each round re-examined the whole app
-against everything already fixed, then split its findings into a bugs
-commit and a separate polish commit. What follows is this system's share
-of that record (by far the largest of the three, since this is the
-biggest single file in the repo); see the other two systems' READMEs for
-theirs. Commit hashes are given so any item's full diff/rationale can be
-looked up directly.
-
-**Round 1** (`d37f3c4`, `1a51e22`, `a6b74d5`) — the initial pass. Made
-`refreshNextAction()`/`buildActionQueue()` defensive against malformed
-records (one bad record used to silently abort every dashboard render
-after it); turned the Approval Chain into a real tri-state
-(approved/rejected/pending) with a note and timestamp per step, replacing
-a boolean that couldn't distinguish "not yet approved" from "actively
-rejected"; **unified the two most dangerous duplicate approval trackers**
-— the DECA Hub checklist's approval steps now read directly from the
-matching trip's real Approval Chain instead of keeping an independently-
-toggleable copy that could silently drift from it; fixed the SCR rating
-scale rendering backwards from the actual VA CTE rubric (Insights table
-colored 4 as best, 1 as worst — the grading grid and the rubric both say
-1 is best); converted the DECA season pipeline from a hardcoded array
-that went stale every year to editable app data; made SCR grading cells
-and the Horizon checkbox keyboard-operable; and added a shared
-Escape-to-close + Tab-trap to the app's `openModal()`/`closeModal()`,
-covering all 17 modals built on it at the time.
-
-**Round 2** (`c329ccf`, `3a8ebf7`) — **fixed three real data-loss bugs in
-one pass**: editing a trip through the wizard silently wiped its entire
-approval chain (the edit draft never carried the existing sign-offs
-forward); approval-chain approve/reject clicks were never persisted to
-storage, so a page refresh silently reverted every decision; and DECA
-roster edits never saved at all (`updateStudent()` mutated the in-memory
-object but never called `persistStudents()`, unlike its sibling
-`saveStudent()`). Also fixed E-Sports match ties rendering as "LOSS" and
-excluded from both win/loss tallies; the Trip Archive "Overnight" filter
-checking for values the wizard had never actually written (the filter
-always returned an empty list); DECA placement text garbling into
-strings like "1stth place"; and Total Inventory Value being computed at
-retail price instead of cost. Toasts gained proper bottom-up stacking;
-13 legacy "raw" modals got real focus management; and a `beforeunload`
-guard was added to catch an accidental tab close, not just an in-app
-close action.
-
-**Round 3** (`f63bcae`, `4bb4491`) — fixed `leadDays()`/`apSteps` trip-type
-comparisons checking against dead pre-refactor strings instead of the
-wizard's real taxonomy, producing wrong deadline lead times and missing
-required approval steps for every real trip; fixed the Dashboard Quick
-Log's SBE checkbox mutating state directly instead of calling
-`sbeToggle()`, so checks never actually persisted; and fixed the Journal
-History modal's Escape/Tab-trap acting on the wrong modal when opened on
-top of Journal. Added wizard required-field validation for 4 fields that
-were marked required in markup but never actually validated, and keyboard
-access to the wizard step-bar and E-Sports checklists.
-
-**Round 4** (`641633c`, `ce39d09`) — fixed the Trip Archive's `.archived`
-flag being set but never read anywhere (no indicator on the trip
-card/detail) and silently dropped on every edit; the DECA Hub's "Season
-Timeline" card reading from its own hardcoded stages array instead of the
-data the season editor actually updates; the WBL Tracker's inline
-"+ Hours" popover being silently destroyed, with unsaved input, by the
-search/filter re-render; a debounce race where a fast checkbox click
-could discard an unsaved SBE note on a *different* row within the commit
-window; and the default SCR Grid view being entirely keyboard-
-inaccessible (an earlier round's keyboard support had only landed on the
-secondary List view).
-
-**Round 5** (`c8a0169`, `a5dd7fd`) — fixed the 2am priority-adjustment
-cron job's catch-up logic: it only ever fired inside an exact 10-minute
-window keyed to the current clock hour, so a run missed while the app was
-closed at 2am sat stale for a full extra day before it could match again;
-fixed opening Print Auth Forms from Trip Detail printing a **blank trip
-name** (the trip selector's options were never populated on that entry
-path); and fixed editing any DECA member detail silently resetting their
-Assigned Trip/Event field to "— None —". Replaced the last native
-`confirm()` calls in 3 discard guards with the app's own styled dialog.
-
-**Round 6** (`8273ed4`, `803ba1f`) — **unified a real cross-screen
-inconsistency**: the Dashboard alert banner and Trip Detail header used a
-7-day urgency cutoff while the Trips Hub deadline filter and readiness
-card used 14 days, so the identical trip could read "urgent" on one
-screen and calm on another — standardized on 14 days across all 4 call
-sites (see Round 7 below for a 5th spot this missed). Also fixed
-missing-singular day-count bugs ("1 days OVERDUE"), 7 previously-
-unbounded undo-toast interpolations, and 4 inconsistent date-format call
-sites — including the printed Field Trip Permission Request form, which
-was showing two different date formats side by side on the same page.
-
-**Round 7** (`5f1c4d2`, `12730fb`) — **found two of Round 6's own fixes
-had gaps**: the `_showDiscardConfirm()` dialog it introduced was never
-registered in `RAW_MODAL_CLOSERS`, so Escape re-invoked the *underlying*
-modal's close function instead of dismissing the dialog itself; and the
-trip-readiness step tiles (Phase 1/Phase 4) were still using the old
-7-day cutoff after Round 6 unified the card's own header banner to 14
-days — the exact contradiction that fix was meant to prevent, one level
-deeper in the same card. Replaced the app's last 8 native `confirm()`
-dialogs with a generalized `_showConfirm()`, and added `aria-label` to 17
-previously-unlabeled icon-only buttons.
-
-**Round 8** (`3fd08da`, `cef3700`) — **found that Round 7's own
-`RAW_MODAL_CLOSERS` registration for the discard-confirm dialog only did
-`el.remove()`, skipping `opts.onCancel`** — Escape on the trip-draft
-resume prompt left no wizard open and never cleared the stale draft,
-where clicking Cancel did both correctly. Fixed by stashing the dialog's
-real close handler on the element itself. Extended the navy-background
-focus ring to 12 more modal close buttons + DECA's Edit Season button via
-a new `.btn-on-navy` class, and fixed the trip-draft-resume message's
-`\n\n` rendering as literal characters instead of a line break.
-
-**Round 9** (`0d433eb`) — **found the single most severe bug of any
-round, pre-dating this series entirely**: 8 raw
-`${...}.map().join('')` template-literal expressions were sitting
-directly in static page HTML, *outside any `<script>` tag*, dating back
-to the original Round 3 reconciliation filing — the browser had no way to
-evaluate them, so it rendered the literal JS source as visible garbage
-text (E-Sports rules/stages, DECA registration-info field chips), and
-**the Archive Trip star-rating widget's buttons never existed as real DOM
-elements at all**, making that entire rating control silently unclickable
-since the day it was added. Fixed by moving all 8 into a proper render
-function called once at boot. Also fixed `.mbox` — the CSS class backing
-8 modals (Register DECA Member, Archive Trip, Email Composer, Brag Board,
-and others) — having *zero* matching CSS rules anywhere in the file, so
-those modal bodies rendered fully transparent over the blurred backdrop
-with invisible white-on-white header text; and gave the Trip Wizard close
-button (the single most-used modal in the app) the `aria-label`/focus-ring
-treatment two prior rounds had both missed.
-
-**Round 10** (`40e4055`, `722fd65`, `c124dd3`, `307fc27`) — a
-whole-repo audit pass, not triggered by a bug report. `40e4055` escaped
-`renderHorizons()`'s email-sourced text with the existing `escH()`
-helper (it was already used three lines above for the same value's
-`aria-label`, just not for the visible text). `722fd65` bundled six
-independent small fixes: `LS.get()` now mirrors `LS.set()`'s
-toast-on-failure convention (its own sentinel, since a read failure —
-corrupted JSON — is a different cause than a write failure); the
-co-advisor-synced `orgId` gets the same slug-sanitizer already used for
-locally-created orgs before it's interpolated into the Join button's
-`onclick`; `lhPullOrgSync()` now warns and keeps the existing roster
-instead of wiping it when a sync returns zero roster rows; `lh_obs_history`
-is capped at 200 entries, matching the `lh_wbl_hours_log` precedent;
-8 icon-only buttons that relied on `title` alone (the Alumni edit button
-had neither) got matching `aria-label`s; and the printed trip name in
-`buildAuthFormHTML()`/`printAuthForm()` is now `escH()`'d, since unlike
-the Auth Form's other static-title callers this one is genuinely
-user-entered text. `c124dd3` fixed a UTC-vs-local date bug present at 6
-call sites — `date.toISOString().slice(0,10)` converts to UTC first,
-which silently rolls the calendar date forward in the evening for
-US Eastern — by adding one shared `_localDateStr_()` helper (mirroring
-`getTodayScheduleType()`'s already-correct inline pattern) and
-collapsing all 6 sites onto it, including the SCR daily-session dedup
-key, the E-Sports next-match filter, and the school-day/holiday check.
-
-`307fc27` closed an inline-handler JS-injection gap in the SCR grading
-grid: `renderScrTable()`/`renderStudentCard()` interpolated a raw
-student name straight into `onclick`/`onkeydown` handlers with no
-escaping at all, so a name containing a stray `'` could break out of
-the JS string argument. `escH()` alone doesn't close this — it only
-guards the HTML-attribute boundary, not the JS-string-literal boundary
-a bare `'` or `\` breaks out of inside `onclick="fn('${x}')"` — so this
-added a second helper, `escJsAttr()`, that escapes for the JS string
-first and then runs the result through `escH()` so the surrounding
-attribute stays safe too. The audit that flagged this also assumed
-fixing it required switching the grading grid from name-keyed to
-id-keyed scores, since the SCR roster schema has no id field for
-students. It doesn't need one — escaping alone fully closes the
-injection — and rekeying onto each student's array position instead
-would trade name-collision fragility for a live one (scores silently
-misattributed the moment the hand-edited roster array is reordered),
-for a data structure with no UI path that adds/renames/imports students
-and currently holds none. Left name-keyed at the time, with a comment on
-`initScrScores()` explaining the trade-off for whoever adds a real
-roster-editing UI later. **Update (Round 11, see below):** that "later"
-arrived sooner than expected, via cas-ccps's `getRoster` API rather than
-a hand-built roster-editing UI — `_scrStudentKey()` now resolves to a
-student's linked email once one exists, name otherwise, and only
-students actually matched against that real, external roster get
-rekeyed; everyone else stays exactly as name-keyed as before.
-
-**Round 11** (`4c9b087`, `512aaff`, `34d6fa3`, `61e4500`, `647120e`,
-`c1f86a9`, `4a2e890`, `b928564`, `ab8da50`, `1c15b62`, `e509f60`,
-`4fe081c`, `d97aa9e`, `867d6f4`, `e1221d5`) — all 15 remaining Say/Do
-Ledger leader-hub findings, plus the cas-ccps↔leader-hub integration
-work. In finding order: `4c9b087` fixed the WBL "at risk" threshold
-(30→90 hours, matching the real HQWBL requirement, not a per-semester
-pacing figure the code never actually tracked). `512aaff` reframed Match
-Log as a personal results log with a direct link to the authoritative
-external PlayVS/VHSL bracket, instead of building a redundant internal
-one. `34d6fa3` made Brag Board journal entries opt-in per entry (default
-flipped from auto-include to requiring an explicit "✓ Include" mark).
-`61e4500` fixed `sbeNotes` bypassing the AI-privacy name substitution its
-sibling fields already went through, and consolidated every `aiDraft`
-payload builder onto one shared `_privacySafeAiPayload()` helper so a
-future call site can't independently forget a field. `647120e` re-scoped
-the Trip Process Map checklist from one global, refresh-losing state to
-per-trip and persisted (`t.procSteps`), retiring a disconnected static
-approval-status diagram in the same pass. `c1f86a9` made the Back Room
-Receiving Checklist per-PO (was one shared global state — checking boxes
-for one PO checked them for every PO), added a per-PO "Reset checklist"
-action and a completion timestamp/note. `4a2e890` links a PO to an
-Inventory SKU at creation and auto-increments inventory the moment a PO's
-receiving checklist completes — checklist completion is now the real
-event that connects procurement to inventory. `b928564` gave `finAnalysis()`
-real, distinct `roi`/`decisions` report builders (previously all 4 report
-buttons aliased the same `profitloss` output) routed through the same
-`aiDraft`/Workspace-Flow mechanism every other AI feature already uses.
-`ab8da50` reworked the SCR Grid view to compute column width against real
-viewport width instead of a hardcoded 700px assumption, added a real
-horizontal-scroll affordance, defaults to Cards view below a mobile
-breakpoint, and fixed the sticky "Req" column overlapping the Competency
-column (both had been sharing one `position:sticky;left:0` from a
-duplicate-`style`-attribute bug). `1c15b62` closed 3 real co-advisor
-sync-safety holes: Pull had no confirmation (unlike Join's identical
-action), no check for unpushed local edits before overwriting, and the
-server-side push guard could be bypassed by simply omitting
-`expectedUpdatedAt`. `e509f60` added a one-time "Welcome, co-advisor"
-disclosure plus a persistent "About this tool" Settings section,
-describing this app's real reliability model and the sync-safety
-behavior `1c15b62` just shipped. `4fe081c` made a trip's `stuAtt` count
-derive from its actual permission-slip roster once one exists, instead of
-staying frozen at the Wizard's originally-typed number — with a real
-answer to what happens if the headcount changes after a trip's already
-been submitted (a warning toast, not a silent change). `d97aa9e` added a
-per-flow-type lifetime counter to `EmailBridge.gs`'s job queue (previously
-swept with no record kept) and a new Settings → "AI Flow Health" panel —
-the leader-hub half of a cross-portfolio Flow Health & Inventory
-extension covering all three systems. `867d6f4` and `e1221d5` are D1's
-leader-hub side and its student-email follow-up — see "cas-ccps↔leader-hub
-integration" below for the fuller writeup, since that work is large
-enough to warrant its own section rather than folding into this list.
-
 ---
 
 ## cas-ccps↔leader-hub integration (D1 + Addendum 26)
@@ -1193,19 +920,238 @@ a real verified identity per request rather than trusting a bare URL.
 
 ---
 
+## Hardcoded-credentials cleanup (external product review, Finding 9)
+
+Three real-PII surfaces in `student-leader-hub.html` got scrubbed to blank
+defaults, matching the same "fresh adopter fills in Settings" pattern
+`PROFILE_DEFAULTS` already used for `name`/`school`/`title`:
+
+- **`decaChapterInfo`** — deleted outright. Confirmed dead: nothing in the
+  app read it (its own comment already said so), and its identity fields
+  duplicated `PROFILE` below it.
+- **`PROFILE_DEFAULTS`** — `email`/`phone`/`supervisorEmail`/`adminEmail`/
+  `attendanceCoordEmail` blanked to `''`. These are genuine reach-this-
+  person credentials (not just a display name/title, which are left as
+  illustrative defaults) — Settings → My Profile & School already has an
+  input for each, unaffected by this change.
+- **The Trips → Chapter Reference "Key Contacts" list** — used to be a
+  hardcoded array of ~8 real people's names/phones/emails. Now reads from
+  `getKeyContacts()`/`saveKeyContacts()` (localStorage, same convention as
+  `PROFILE`), shipping empty by default. Populate your own list once,
+  locally, via the browser console — see that function's own comment in
+  source for the exact call. Never committed, never sent anywhere.
+
+`EmailBridge.gs`'s `CONFIG.defaultBragTo` and `drive-tools/LH_DriveDocSplitter.gs`'s
+four `sourceDocId` values got the same treatment — blanked/placeholder'd
+with a fill-in-locally comment, matching `TARGET_FOLDER_ID`'s existing
+convention in that same file.
+
+Deliberately NOT touched: real names/phone numbers embedded in free-text
+historical trip and event records (e.g. `row('Chaperones', 'Adam Berneche
+· Amanda Berneche')`, trip notes) — that's the app's actual archived
+content, not a hardcoded credential, and scrubbing it would mean altering
+real historical records rather than removing a secret.
+
+---
+
+## `student-leader-hub.html` split into `src/` (external product review, Finding 4)
+
+The single ~22,000-line file is now generated from 14 fragments under
+`src/` (`00-shell-head.html` through `13-markup-modals-tail.html`) via
+`tools/leaderhub-build/build.js` — see that tool's own README.md for the
+full design rationale (why a pure textual concatenation is safe here
+despite 189+ scattered top-level declarations and no central config
+object) and one region flagged honestly as tangled, not cleanly modular
+(`12-integrations-pacing-subplan-brag.html`, ~3,600 lines mixing several
+genuinely unrelated features).
+
+**The assembled file stays committed at its current path — never
+gitignored, never hand-edited directly.** Edit the fragment under `src/`
+that holds the section you're changing, then run
+`node tools/leaderhub-build/build.js` and commit both. `npm test`
+(`tests/tools/leaderhub-build.test.js`) fails if the assembled file and
+its fragments ever drift apart, same enforced-not-manual pattern
+`tools/html-lint/check.js` and `tools/gas-lint/check.js` already use.
+
+`tests/leaderhub/escaping.test.js` and `pacing-and-calendar.test.js`
+(which use `extractLines()` against specific line ranges) now point at
+the relevant fragment file instead of the monolith, with fresh,
+much-smaller re-grepped line numbers local to that fragment — a real
+robustness win: only an edit inside that one fragment can shift these
+ranges now, not an edit anywhere in the full file.
+`emailbridge-orgsync.test.js` targets `EmailBridge.gs` directly and
+needed no changes.
+
+---
+
 ## Version control (clasp) — scaffolded, not yet connected
 
-`EmailBridge.gs` is a single Apps Script project, laid out exactly the
-way [clasp](https://github.com/google/clasp) wants — a flat folder. It
-now has its first-ever committed `appsscript.json` (derived from actual
-service usage: `GmailApp`, `DriveApp`, `DocumentApp`, plus the `webapp`
-`executeAs`/`access` its own header comment already specifies — "Execute
-as: Me · Access: Anyone in CCPS domain"), a `.claspignore` that
-allowlists only `EmailBridge.gs` + `appsscript.json` (everything else
-here — the `LEADERHUB_*`/`LH_0*` docs, `student-leader-hub.html/.jsx`,
+> **Deploying it?** [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) is the
+> step-by-step runbook — clasp connection, the `.claspignore` allowlist
+> gotcha that fails silently, the Web App deploy, and the `FlowOps.gs`
+> verification sequence. This section describes the *layout*; that document
+> is the sequence.
+
+
+The Apps Script project (now `EmailBridge.gs` + `Code.gs` + `Config.gs` +
+`Data.gs` + `SCR.gs` + `AiPrompts.gs` + `FlowOps.gs` — see "Server-deployed
+web app" below; this is the one place this list is spelled out in prose, and
+`tools/gas-lint/project-map.json` is what the tooling actually reads) is laid out
+exactly the way [clasp](https://github.com/google/clasp) wants — a flat
+folder. It has a committed `appsscript.json` (derived from actual service
+usage: `GmailApp`, `DriveApp`, `DocumentApp`, `SpreadsheetApp`, plus the
+`webapp` `executeAs`/`access` block — "Execute as: Me · Access: Anyone in
+your domain"), a `.claspignore` that allowlists exactly those `.gs`
+files plus `appsscript.json` and `student-leader-hub.html` (everything
+else here — the `LEADERHUB_*`/`LH_0*` docs, `student-leader-hub.jsx`,
 `archived/`, and `drive-tools/`'s one-off paste-and-run utilities — is
 excluded), and a `.clasp.json.template` to fill in with a real
 `scriptId` once you've run `clasp login` + `clasp clone`/`create` against
 the live project. See
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
 the full workflow.
+
+---
+
+## JJ1 — Server-deployed web app: leader-hub becomes a real Apps Script deployment
+
+Closes the gap a "handoff doc" one session assumed was already true —
+`EmailBridge.gs` being deployed was mistaken for the whole app being
+deployed, when in fact `student-leader-hub.html` had no server behind it
+at all and `EmailBridge.gs` had zero `HtmlService` code, so its `/exec`
+URL could never have shown the hub UI regardless of configuration. This
+round makes leader-hub genuinely operate the way `cas-ccps/teacher-
+dashboard` does: a real Apps Script Web App reachable at a `/exec` URL,
+sign-in-gated to one owner, with most data domains synced to a private
+Spreadsheet — while `student-leader-hub.html` keeps working as a fully
+local, no-network file for as long as anyone wants it. There is no forced
+cutover date; the deployed app is purely additive.
+
+**New files, one merged Apps Script project** (not two): `Code.gs`
+(`doGet()` serves the hub UI via `HtmlService.createHtmlOutputFromFile()`
+— zero changes needed to `student-leader-hub.html` or
+`tools/leaderhub-build/build.js` to make that work, since the build
+already produces one complete, valid, standalone document), `Config.gs`
+(singleton settings-object domains → Script Properties), `Data.gs`
+(growing record-list domains with a real `id` field → a private
+"LeaderHub Data" Spreadsheet, one tab per domain), `SCR.gs` (grading
+scores — a different shape from everything else, see below).
+`EmailBridge.gs` is unchanged in behavior; its `doPost()` JSON API still
+answers external callers directly, and its action dispatch
+(`_lhDispatchAction_()`) is now shared with the same-origin
+`google.script.run` path the deployed app's own client uses instead of
+`fetch()`.
+
+**Auth**: a single owner, fail-closed, matching
+`_isAuthorizedTeacher_()`'s shape in `cas-ccps/00_SharedConfig.js` — a new
+`OWNER_EMAIL` Script Property compared against
+`Session.getActiveUser().getEmail()`. leader-hub has no second legitimate
+viewer role the way teacher-dashboard has a student "My Context" view, so
+there's nothing to branch `doGet()` toward besides "the owner" or "not
+authorized." A colleague forking this repo deploys their own copy with
+their own `OWNER_EMAIL` — no multi-tenant logic needed, matching how
+Organization Sync already treats a co-advisor as a second, wholly
+separate deployment.
+
+**Two sync mechanisms, chosen per domain's actual shape** (not per the
+original plan's guess — several domains turned out map-shaped rather than
+row-shaped once actually read, and were placed accordingly):
+
+- **`Config.gs`** — a JSON-stringified Script Property per key, namespaced
+  `LH_CONFIG__<key>`. For small, singleton, or map-shaped domains: Profile,
+  Modules, Schedule Config, Key Contacts, Custom Organizations/Courses,
+  AI Privacy student-ID map, cas-ccps bridge config, Sub Plan
+  settings/period assignments, SBE checklist, DECA Season/Approvals, Field
+  Trip Permission overrides, Conference Leave, E-Sports checklists,
+  Observation Prep, Synergy tracker, Sub-plan student notes, Permission
+  Slips (`slipRosters`, keyed by tripId), DECA/generic Org Results (keyed
+  by orgId), Course Catalog pacing imports/delivery notes, SCR
+  student-email link, Receiving Status (keyed by PO id), the Horizon
+  system's own `{short,mid,long}` buckets, and Lesson Plan content edits.
+- **`Data.gs`** — one private Spreadsheet ("LeaderHub Data"), one real tab
+  per domain, each record pushed/pulled as a `[Id, RecordJSON]` row rather
+  than a fixed column-per-field schema (deliberate — this domain list
+  spans records as different as a ~50-field trip with a nested `ap`
+  approvals object and a 6-field DECA result; schema-agnostic rows mean a
+  field added to a record's own object literal never needs a matching
+  server change). Covers Trips, Trip Archive, DECA Results, WBL roster,
+  Store inventory/sales/purchase-orders, E-Sports roster/matches, Goals,
+  Events, Tasks, Deadlines, Journal History, Observation History, and Brag
+  Board manual wins. Conflict model: optimistic concurrency
+  (compare-and-swap on an `UpdatedAt` meta row per domain), same shape
+  Organization Sync already proved out — a stale push is rejected with
+  `{conflict:true}` and writes nothing.
+
+**Not migrated, on purpose**:
+- **Organizations' own roster (`students[]`) and DECA-shared results** —
+  the existing "Share with a co-advisor" opt-in (Organization Sync) stays
+  exactly as it was. Auto-enabling that for every organization would mean
+  publishing real student PII (names, emails, phone numbers, parent
+  contacts, addresses) to a Spreadsheet reachable by anyone holding the
+  deployed `/exec` URL, without ever asking — a real data-exposure
+  regression, not a neutral architecture change. Every other student-data
+  domain in this round (trips, WBL, grades, ...) syncs automatically
+  instead, specifically *because* its Spreadsheet is private to this
+  deployment's one `OWNER_EMAIL`-gated owner, with no analogous
+  "hand someone else this URL" sharing path at all.
+- **Per-browser UI/ephemeral state** — last-open view, active tab/filter
+  selections, one-time reminder-dedup date flags, and similar: no durable
+  value in round-tripping these to a server.
+- **A handful of append-only logs whose entries have no `id` field**
+  (`lh_daily_log`, `lh_sub_plan_log`, `lh_brag_log`, `lh_wbl_hours_log`,
+  `lh_scr_session_log`) — a synthetic id derived from a timestamp was
+  judged more fragile (a same-millisecond double action could silently
+  dedupe two real entries into one) than leaving these already-capped,
+  supplementary display/aggregation logs local-only. Nothing else depends
+  on them as a source of truth — e.g. a WBL student's real total hours
+  live in the (synced) roster row, not the hours log.
+- **`lh_inventory_transactions`** — read in one place, never written
+  anywhere in the file; left alone as apparently-dead data rather than
+  building sync infrastructure for it.
+
+**SCR grading scores get a third, dedicated shape** (`SCR.gs`), because
+`scrScores` is a sparse course × period × student × competency matrix
+that can span thousands of cells and is edited one cell at a time, very
+fast, during a live grading pass — orders of magnitude past a Script
+Property's ~9KB limit if pushed whole, and a wholesale-tab-rewrite per
+click would both be slow and rewrite the entire gradebook for a one-cell
+change. Instead: one real row per `(Course, Period, StudentKey,
+CompetencyNum)` cell, upserted by that composite key, with the client
+debouncing and batching changes (2s pause, or the batch's final value if
+the same cell changes again before flushing) into one call instead of one
+round trip per click. Conflict model is per-cell last-write-wins — the
+same granularity editing one Sheet cell from two tabs would already give
+— deliberately simpler than `Data.gs`'s whole-domain compare-and-swap.
+`lhGetScrScores_()`'s `found:false` (this deployment has never had a
+score pushed) vs. `found:true` with an empty result (synced, then
+cleared) is what protects a fresh deployment's first pull from wiping out
+a teacher's real, already-graded local scores.
+
+**ID generation stays client-side.** Every record already carries its own
+`id` (`Date.now()`, an incrementing counter, or a seed value) from
+existing, untouched client code. `Data.gs` never mints or rewrites one —
+a same-id collision from two browser tabs surfaces as a rejected
+compare-and-swap push (safe, caught) rather than silent corruption, so
+server-side id generation would add real complexity to close a gap that's
+already closed by the conflict model.
+
+**One-time-setup for a fresh deployment**: `clasp push`, then Deploy →
+New deployment → Web App (Execute as: Me, Access: Anyone in your domain —
+same access `EmailBridge.gs` already needed), then Project Settings →
+Script Properties → add `OWNER_EMAIL` (the deploying Google account).
+Until that property is set, `doGet()` fails closed for everyone,
+including the person who deployed it, by design.
+
+Verified with `node --check` on every `.gs` file, `node
+tools/gas-lint/check.js` (clean — Check D now also verifies every
+`google.script.run.*` call from the assembled HTML resolves to a real
+server function, and Check E confirms OAuth scope coverage across all
+five `.gs` files that existed at that round — the project has grown since;
+`tools/gas-lint/project-map.json` has the current list), `node tools/leaderhub-build/build.js --check`, and a
+Node-VM-sandboxed test per new server file (`tests/leaderhub/config-sync
+.test.js`, `data-sync.test.js`, `scr-sync.test.js`, extending
+`tests/harness/gas-sandbox.js` with a `LockService` mock for `SCR.gs`) —
+round-trips, conflict rejection writing nothing, ragged-row/malformed
+handling, unknown-key/domain rejection, and (config/data) a guardrail
+test that fails if the client's and server's whitelists of synced keys
+ever drift apart. All existing tests continue passing unchanged.

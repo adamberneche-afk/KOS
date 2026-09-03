@@ -180,7 +180,9 @@ function runWeeklyStudentAggregation_() {
 // means 23's shape, not this file's validation-specific one).
 // ---------------------------------------------------------------------------
 function buildValidatedStudentRoster_(ledgerSheet) {
-  const data = ledgerSheet.getDataRange().getValues();
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6.
+  const data = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   const roster = new Map();
   const invalidSeen = new Set();
 
@@ -213,14 +215,47 @@ function buildValidatedStudentRoster_(ledgerSheet) {
 }
 
 // ---------------------------------------------------------------------------
+// _turnInScoreOrNull_
+// Normalizes one Ledger turn-in score cell to a number or null.
+//
+// Exists because `cell || null` is wrong here in a way that matters: a
+// student who genuinely scored 0 would come back as null, i.e. as "not yet
+// scored". In the aggregator that is a cosmetic slip; in a parent-facing
+// report it is the difference between "your child scored 0" and "awaiting
+// teacher review", so the distinction is worth a named function rather than
+// an inline truthiness check each caller has to remember to get right.
+//
+// Empty string, null and undefined all mean the same thing — no score. The
+// undefined case is real, not defensive: on a Ledger created before
+// _ensureTurnInReviewColumns_() (07_TeacherDashboard.js) added columns
+// 20-23, those cells don't exist at all.
+// ---------------------------------------------------------------------------
+function _turnInScoreOrNull_(cell) {
+  if (cell === null || cell === undefined || cell === "") return null;
+  const n = Number(cell);
+  return isNaN(n) ? null : n;
+}
+
+// ---------------------------------------------------------------------------
 // getWeeklyAssignments_
-// Returns Map<email, [{ status, courseName, configId, lastEval, studentFileURL }]>
+// Returns Map<email, [{ status, courseName, configId, lastEval,
+//   studentFileURL, timestamp, suggestedScore, finalScore, scoreDecidedBy,
+//   scoreDecidedAt }]>
 // Filtered to rows where SubmissionTS or Timestamp falls inside the window.
 // Uses SubmissionTS preferentially since that reflects actual student
 // submission time; falls back to Timestamp if SubmissionTS is blank.
+//
+// The fallback is load-bearing beyond convenience: a row created this week
+// but never submitted still lands in the window on its Timestamp, carrying
+// its Status. That is what lets a caller report work that was assigned and
+// NOT turned in — which for 36_WeeklyParentReport.js is the single thing a
+// parent most wants to know, and would be invisible if this filtered on
+// SubmissionTS alone.
 // ---------------------------------------------------------------------------
 function getWeeklyAssignments_(ledgerSheet, windowStart) {
-  const data = ledgerSheet.getDataRange().getValues();
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6.
+  const data = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   const result = new Map();
 
   for (let i = 1; i < data.length; i++) {
@@ -228,20 +263,38 @@ function getWeeklyAssignments_(ledgerSheet, windowStart) {
     const email = String(row[1] || "").trim();
     if (!email || !_studentIdPattern_().test(email)) continue;
 
-    const submissionTs = row[13]; // SubmissionTS
-    const fallbackTs = row[0];    // Timestamp
+    const submissionTs = row[LEDGER.SUBMISSION_TS];
+    const fallbackTs = row[LEDGER.TIMESTAMP];
     const effectiveTs = (submissionTs instanceof Date) ? submissionTs
       : (fallbackTs instanceof Date) ? fallbackTs : null;
 
     if (!effectiveTs || effectiveTs < windowStart) continue;
 
     const entry = {
-      courseName: String(row[10] || "").trim(),
-      configId: String(row[2] || "").trim(),
-      status: String(row[12] || "").trim(),
-      lastEval: row[15] || null,
-      studentFileURL: String(row[17] || "").trim(),
+      courseName: String(row[LEDGER.COURSE_NAME] || "").trim(),
+      configId: String(row[LEDGER.CONFIG_ID] || "").trim(),
+      status: String(row[LEDGER.STATUS] || "").trim(),
+      lastEval: row[LEDGER.LAST_EVAL] || null,
+      studentFileURL: String(row[LEDGER.STUDENT_FILE_URL] || "").trim(),
       timestamp: effectiveTs,
+
+      // Turn-in review scores (Ledger cols 20-23, LEDGER.TURN_IN_*).
+      //
+      // Read through _turnInScoreOrNull_ rather than `|| null`, because a
+      // legitimately-zero score must survive: `0 || null` is null, which
+      // would silently promote a real "scored 0" to "not yet scored". On a
+      // Ledger created before _ensureTurnInReviewColumns_() existed these
+      // cells are undefined, which the helper reports as null — genuinely
+      // "no score", the same answer as an empty cell.
+      //
+      // suggestedScore is carried but is NOT for parent-facing output: it
+      // is an AI value no teacher has acted on. Callers that render to
+      // anyone other than the teacher must use finalScore only. See
+      // 36_WeeklyParentReport.js, which is why these four are here.
+      suggestedScore: _turnInScoreOrNull_(row[LEDGER.TURN_IN_SUGGESTED_SCORE]),
+      finalScore: _turnInScoreOrNull_(row[LEDGER.TURN_IN_FINAL_SCORE]),
+      scoreDecidedBy: String(row[LEDGER.TURN_IN_SCORE_DECIDED_BY] || "").trim(),
+      scoreDecidedAt: row[LEDGER.TURN_IN_SCORE_DECIDED_AT] || null,
     };
 
     if (!result.has(email)) result.set(email, []);
@@ -502,7 +555,9 @@ function getAllStudentDocsForTeacher_(teacherEmail) {
   const ledgerSheet = ss.getSheetByName(cfg.tabs.ledger);
   const allowedStudentEmails = new Set();
   if (ledgerSheet) {
-    const ledgerData = ledgerSheet.getDataRange().getValues();
+    // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange()
+    // — external product review Finding 6.
+    const ledgerData = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
     for (let i = 1; i < ledgerData.length; i++) {
       const rowStudentEmail = String(ledgerData[i][1] /* GoogleID */ || "").trim().toLowerCase();
       const rowTeacherEmail = String(ledgerData[i][8] /* TeacherEmail */ || "").trim().toLowerCase();

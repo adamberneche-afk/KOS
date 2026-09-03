@@ -16,6 +16,27 @@ Studio subscription — set `CFG.INFERENCE_MODE = 'MANAGED_SERVICE'` and
 configure `MANAGED_SERVICE_BASE_URL` / `MANAGED_SERVICE_API_KEY` as
 Script Properties to use it.
 
+## Webhook authentication — required in production, both sides
+
+`POST /api/v1/jobs` is authenticated by an HMAC-SHA256 signature over the raw
+request body. **Both halves must be configured or every job submission fails:**
+
+| Where | Name | Notes |
+|---|---|---|
+| This service (env var) | `WEBHOOK_SECRET` | Without it, the service **refuses to start** when `NODE_ENV=production` (`src/server.js`) |
+| KOS (Script Property) | `KOS_MANAGED_SERVICE_WEBHOOK_SECRET` | Must be the same value. Read by `_submitManagedServiceJob_()` in `3_Queue_Processor.gs` |
+
+Set both to the same random secret. If the service has one and KOS doesn't, every
+submission gets a 401; if neither is set in production, the service exits at boot.
+
+This was previously documented across the repo as *optional* — "if unset, job
+submission still runs, unsigned." That described the earlier fail-**open**
+behaviour: `validateWebhookSignature()` skipped the check entirely when no secret
+was configured, which silently downgraded the one authenticated endpoint on the
+component handling billing and auth. It now fails closed, and the comparison is
+constant-time (`crypto.timingSafeEqual`). The dev-only skip survives, logged as a
+warning, for `NODE_ENV !== 'production'`.
+
 ## Why this exists in the repo
 
 This service was recovered from a reupload batch as the real, previously
@@ -78,3 +99,12 @@ anywhere in the `.gs` files and that wiring `10_Turnstile.gs` to submit
 jobs here was still unbuilt — that's now stale; the wiring above is live.
 Treat `MANAGED_SERVICE` mode today as fully wired end to end, gated
 behind `CFG.INFERENCE_MODE`, off by default.
+
+**The Auditor accountability gate applies here too.** `processInferenceQueue()`'s
+check of a payload's `auditor_sign_off` (see `CURATOR_PROMPT.md` Rule 8)
+happens entirely on the `.gs` side, after this service's job comes back
+— it doesn't know or care which engine produced the JSON. If this
+service's own Claude-based prompt (`src/inference.js`) is ever extended
+with a similar self-verification pass, the same contract applies: merge
+the Auditor's output into the one JSON object this service writes, never
+append it as a second one.

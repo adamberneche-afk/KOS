@@ -1,6 +1,6 @@
 # clasp-sync
 
-Bridges cas-ccps's 7 separate Apps Script projects to
+Bridges cas-ccps's 8 separate Apps Script projects to
 [clasp](https://github.com/google/clasp), Google's own CLI for pushing
 local files to a live, bound Apps Script project. See
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../../meta/CLASP_AND_APPS_SCRIPT.md) for
@@ -8,11 +8,16 @@ why this needed a separate tool at all before reading further.
 
 ## The problem this solves
 
-clasp's model is one local folder ↔ one script ID. `kos-personal/` and
-`leader-hub/` fit that model directly — each is a single Apps Script
-project already laid out as a flat folder, so clasp can push straight
-from the tracked source (see `.clasp.json.template` and `.claspignore` in
-each of those two directories).
+clasp's model is one local folder ↔ one script ID. `kos-personal/`'s main
+project and `leader-hub/` fit that model directly — each is a single Apps
+Script project already laid out as a flat folder, so clasp can push
+straight from the tracked source (see `.clasp.json.template` and
+`.claspignore` in each of those two directories). `kos-personal/studio-steps/`
+is a second, separate flat-folder project alongside the main one, not part
+of this tool's `cas-ccps:*` scope either. (SMP-004 describes that project as
+sitting on a personal Google account rather than the district domain; in
+practice it is deployed on the same ccpsnet.net account. The project split is
+real, the account split is not — see `tools/gas-lint/gcp-map.json`.)
 
 `cas-ccps/scripts/` doesn't fit that model. It's actually **7 separate
 bound/standalone Apps Script projects** sharing overlapping files —
@@ -22,9 +27,11 @@ is the existing record of exactly which files belong to which project
 (gas-lint's duplicate-declaration check depends on this same mapping
 being accurate). There's no single folder to point `clasp push` at
 without either sending files to a project that doesn't want them, or
-missing files a project needs.
+missing files a project needs. An 8th project, `cas-ccps/studio-steps/`,
+is standalone and shares no files with the other 7, but is still handled
+by this same tool under its `cas-ccps:*` scope.
 
-`sync.js` reads that same `project-map.json` and, for each of the 7
+`sync.js` reads that same `project-map.json` and, for each of the 8
 `cas-ccps:*` projects, generates a throwaway push folder under
 `cas-ccps/.clasp-build/<project-name>/` containing exactly that
 project's files (flattened to basenames — Apps Script projects are a
@@ -34,17 +41,18 @@ under `.clasp-build/` is ever hand-edited or committed (it's
 `.gitignore`d, and regenerated fresh — `fs.rmSync` clears the old
 contents — every run).
 
-## The 7 projects
+## The 8 projects
 
 | Project | Bound to | Files |
 |---|---|---|
-| `central-ledger` | Central Ledger spreadsheet | 21 |
-| `unified-manual` | Assignment System Manual Doc (setup wizard) | 6 |
+| `central-ledger` | Central Ledger spreadsheet | 25 |
+| `unified-manual` | Assignment System Manual Doc (setup wizard) | 8 |
 | `master-student-template` | Master Student Template Doc | 4 |
-| `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 5 |
-| `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 5 |
-| `teacher-dashboard` | Standalone web app | 3 |
+| `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 3 |
+| `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 3 |
+| `teacher-dashboard` | Standalone web app | 10 |
 | `student-dashboard` | Standalone web app | 2 |
+| `studio-steps` | Standalone — not bound to a spreadsheet/doc | 9 |
 
 **The two "cloned per teacher" projects don't have one live script ID —
 they have one per teacher's copy.** clasp can only meaningfully target
@@ -68,7 +76,9 @@ clasp login
 # code as-is — don't skip this and assume the tracked files already match):
 clasp clone <scriptId>
 
-# Only if no live project exists yet for one of the 7:
+# Only if no live project exists yet for one of the 7 spreadsheet/doc-bound
+# projects (studio-steps, the 8th, is --type standalone instead — see
+# cas-ccps/studio-steps/README.md):
 clasp create --type sheets --title "CAS — Central Ledger" --rootDir .
 ```
 
@@ -91,7 +101,7 @@ IDs (they live in Script Properties, not source).
 ## Usage
 
 ```bash
-# Rebuild all 7 project folders
+# Rebuild all 8 project folders
 node tools/clasp-sync/sync.js
 
 # Rebuild just one
@@ -103,7 +113,7 @@ cd cas-ccps/.clasp-build/central-ledger && clasp push
 
 Running `sync.js` with no real script IDs configured yet is still
 useful — it's a way to inspect exactly which files and manifest would go
-to each of the 7 live projects, with zero Google credentials involved.
+to each of the 8 live projects, with zero Google credentials involved.
 The script prints `(no real scriptId yet — ready to inspect, not to
 push)` for any project still on the placeholder template.
 

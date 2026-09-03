@@ -20,6 +20,18 @@ jobs:
           node-version: '20'
       - name: Run gas-lint
         run: node tools/gas-lint/check.js
+      - name: Check documentation currency
+        # The docs-check job below asks whether a README was *touched*; it
+        # cannot catch a README that says something false. Every finding in
+        # the sweep that motivated this tool passed docs-check — including a
+        # deployment guide telling operators to run two functions that exist
+        # nowhere in the repo. See tools/doc-currency/README.md for what this
+        # does and, more importantly, what it still doesn't check.
+        #
+        # Runs after gas-lint on purpose: doc-currency requires gas-lint's
+        # stripCommentsAndStrings(), so a gas-lint failure is the more
+        # informative one to see first.
+        run: node tools/doc-currency/check.js
       - name: Verify cas-ccps clasp-sync builds cleanly
         run: node tools/clasp-sync/sync.js
       - name: Run the leader-hub + tooling regression suite (tests/)
@@ -38,15 +50,30 @@ jobs:
         # newer Node during development. Unquoted, explicit per-directory
         # globs are expanded by the shell BEFORE node ever sees them, so
         # this doesn't depend on any Node version's own glob support.
-        run: node --test tests/leaderhub/*.test.js tests/tools/*.test.js
+        #
+        # FIXED (doc-currency sweep, Round 16): this step inlined its own
+        # copy of the glob and omitted tests/kos-personal/ entirely, which
+        # package.json's own `npm test` includes. Six files never ran in
+        # CI, including all four added to cover the council-sequestration
+        # fix (BRIDGE_FIDELITY_001) — exactly the regression coverage the
+        # deleted triggerCouncilSimulation() needed. `npm run` scripts
+        # execute through a shell like any other `run:` step, so this
+        # keeps the same unquoted-glob fix above while collapsing back to
+        # one definition of "the test suite" instead of two that drift.
+        run: npm test
       - name: Syntax-check student-leader-hub.html's inline <script> blocks
         # The enforced version of the "Verified with node --check on both
         # <script> blocks" note leader-hub/README.md repeats after nearly
         # every round of changes to this file — see tools/html-lint/.
+        #
+        # leader-hub/archived/ (including the EARLY_PROTOTYPE file this
+        # command used to also check) was deleted repo-wide as confirmed
+        # dead code - recover it with `git fetch origin pre-archive-cleanup`
+        # then `git show origin/pre-archive-cleanup:<path>` (a fresh clone
+        # does not have that branch locally; there is no tag of that name).
         run: |
           node tools/html-lint/check.js \
-            leader-hub/student-leader-hub.html \
-            leader-hub/archived/studentleaderhub_EARLY_PROTOTYPE.html
+            leader-hub/student-leader-hub.html
       - name: Lint this repo's own GitHub Actions workflow files
         # Catches exactly the class of bug that broke this file once already
         # (a bare `secrets.X` reference inside an `if:` conditional, which
@@ -179,17 +206,21 @@ jobs:
   #       {"central-ledger":"...", "unified-manual":"...",
   #        "master-student-template":"...", "rubric-response-sheet":"...",
   #        "teacher-matrix-sheet":"...", "teacher-dashboard":"...",
-  #        "student-dashboard":"...", "kos-personal":"..."}
+  #        "student-dashboard":"...", "studio-steps":"...", "kos-personal":"..."}
   #     Each ID comes from the runbook's §3.2 sandbox-copy process (Drive →
   #     Make a copy → Extensions → Apps Script → Project Settings → Script
   #     ID) — none of these sandbox copies exist yet either; build them
   #     before this secret means anything. A project missing from this map
   #     is skipped (logged, not a failure) rather than blocking the rest.
   #     One combined secret instead of one-per-project purely to keep repo
-  #     secrets management from growing to 8+ entries — the runbook's own
+  #     secrets management from growing to 9+ entries — the runbook's own
   #     illustrative job didn't spell out where these files come from in
   #     CI (cas-ccps/clasp/local/ is gitignored, so a fresh checkout never
-  #     has them); this fills that gap.
+  #     has them); this fills that gap. `studio-steps` gets a sandbox copy
+  #     pushed here the same as everything else — only the one-time Apps
+  #     Script "Test deployments → Install" action stays a human-only step
+  #     (no clasp equivalent exists for it), same as DEPLOYMENT_RUNBOOK.md
+  #     §3.7 describes for production.
   #
   # GitHub Actions does not allow a bare `secrets.X` reference inside an
   # `if:` conditional (only inside `env:`/step bodies) — an earlier version
@@ -236,7 +267,7 @@ jobs:
             const fs = require("fs");
             const path = require("path");
             const ids = JSON.parse(process.env.CAS_SANDBOX_SCRIPT_IDS);
-            const casNames = ["central-ledger","unified-manual","master-student-template","rubric-response-sheet","teacher-matrix-sheet","teacher-dashboard","student-dashboard"];
+            const casNames = ["central-ledger","unified-manual","master-student-template","rubric-response-sheet","teacher-matrix-sheet","teacher-dashboard","student-dashboard","studio-steps"];
             fs.mkdirSync("cas-ccps/clasp/local", { recursive: true });
             for (const name of casNames) {
               if (!ids[name]) { console.warn("No sandbox Script ID for " + name + " in CAS_SANDBOX_SCRIPT_IDS — that project will be skipped."); continue; }
@@ -267,6 +298,15 @@ jobs:
             node tools/clasp-sync/sync.js "$p"
             (cd "cas-ccps/.clasp-build/$p" && clasp push --force)
           done
+      - name: Rebuild and push sandbox copy of studio-steps (standalone — neither a web app nor trigger-driven)
+        run: |
+          if [ ! -f "cas-ccps/clasp/local/studio-steps.clasp.json" ]; then echo "Skipping studio-steps — no sandbox Script ID configured."; exit 0; fi
+          node tools/clasp-sync/sync.js studio-steps
+          (cd "cas-ccps/.clasp-build/studio-steps" && clasp push --force)
+          # Deliberately no `clasp deploy` here, sandbox or production — the
+          # one-time "Test deployments → Install" step that actually makes
+          # these steps usable in Studio has no clasp equivalent and stays a
+          # human action, same as DEPLOYMENT_RUNBOOK.md §3.7 describes.
       - name: kos-personal (no live audience — safe to fold in here too)
         run: |
           if [ -f "kos-personal/.clasp.json" ]; then

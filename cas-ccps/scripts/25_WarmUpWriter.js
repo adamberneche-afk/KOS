@@ -103,7 +103,11 @@ const WR_GENERATED_AT = 9;
 const WR_TOTAL_SCORE  = 10;
 const WR_EXTRA_CREDIT = 11;
 const WR_TERM         = 12;
-const WR_COL_COUNT    = 13;
+// extra_credit_checked — self-healing (see _ensureWarmUpRegistryExtraCreditColumn_
+// below), added to close a real "extra credit can never be captured" bug:
+// see _recheckExtraCredit_()'s own header for the full story.
+const WR_EXTRA_CREDIT_CHECKED = 13;
+const WR_COL_COUNT    = 14;
 
 // ── LessonContext column indices (0-based) — from Script 22 + 24 ─────────────
 const LC25_LESSON_ID          = 0;
@@ -136,6 +140,11 @@ const WORD_COUNT_THRESHOLDS = [
 ];
 const EXTRA_CREDIT_MIN_WORDS = 10;
 const MAX_FEEDBACK_CHARS     = 500; // cap Flow 4 feedback stored in queue row
+// How many days past total_score being finalized _recheckExtraCredit_()
+// keeps re-scanning a row for a late extra-credit reply before giving up
+// and stamping it done. See that function's own header for why this sweep
+// exists at all.
+const EXTRA_CREDIT_RECHECK_WINDOW_DAYS = 7;
 
 // =============================================================================
 // JOB 1 — POST-GENERATION REGISTRATION
@@ -337,6 +346,18 @@ function runWarmUpEvaluation() {
   _checkCronHealth_("M2_STAGE1_LAST_RUN", "Script 23 (updateAllStudentProfiles)",
                     45, cfg.adminNotifyEmail || cfg.teacherEmail);
 
+  // ── Cron health check — verify Stage 1B (Script 33) ran recently ────────
+  // FIXED: syncArtifactCompetencies() (33_ArtifactCompetencyBridge.js,
+  // 3:05am, between Stage 1 and this script) already stamped
+  // M2_STAGE1B_LAST_RUN on every run — nothing ever checked it. If that
+  // trigger silently stopped firing, every student profile would quietly
+  // revert to Script 23's class-level-only coverage (the merge Script 33
+  // performs is the only thing that ever narrows/personalizes it) with no
+  // signal anywhere. Tighter window than Stage 1's 45 minutes — the real
+  // gap between Stage 1B (3:05) and this script (3:15) is only 10 minutes.
+  _checkCronHealth_("M2_STAGE1B_LAST_RUN", "Script 33 (syncArtifactCompetencies)",
+                    15, cfg.adminNotifyEmail || cfg.teacherEmail);
+
   const wrData = wrSheet.getDataRange().getValues();
   const wqData = wqSheet.getDataRange().getValues();
 
@@ -383,6 +404,16 @@ function runWarmUpEvaluation() {
     });
   }
 
+  // ── Extra credit re-check sweep ──────────────────────────────────────────
+  // Runs regardless of whether there's anything new in toEvaluate below —
+  // this sweep is independent nightly work over already-finalized older
+  // rows, not conditional on tonight having a fresh lesson to score. It
+  // used to sit after the early return just below, which meant it silently
+  // never ran on any night with nothing new to evaluate — exactly the kind
+  // of gap this sweep itself exists to close for extra credit. See
+  // _recheckExtraCredit_()'s own header for the full story.
+  _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId);
+
   if (toEvaluate.length === 0) {
     Logger.log("[S25-J2] No warm-ups to evaluate for " + yesterdayStr + ".");
     return;
@@ -427,9 +458,23 @@ function runWarmUpEvaluation() {
         result.wordCountScore
       );
 
-      if (!flow4Result || flow4Result.error) {
+      if (!flow4Result) {
+        // EXPECTED, NOT AN ERROR, since 41_WarmUpFlowBridge.js exists.
+        // callFlow4_() is a stub that always returns null (see its own
+        // header). writePreEvalScores_ above has already parked this row at
+        // PENDING_EVAL with its response text and word-count score, which is
+        // exactly the state buildWarmUpFlowInputs() collects for Flow 4.
+        // The scoring then happens asynchronously in
+        // harvestWarmUpFlowReturns(), so counting it as an error here made
+        // every nightly run look like a total failure in the log.
+        Logger.log("[S25-J2] Queue " + item.queueId +
+                   " parked at PENDING_EVAL for the Flow 4 bridge — " +
+                   "41_WarmUpFlowBridge.js will materialize and score it.");
+        continue;
+      }
+      if (flow4Result.error) {
         Logger.log("[S25-J2] Flow 4 failed for queue " + item.queueId +
-                   ": " + (flow4Result ? flow4Result.error : "null response"));
+                   ": " + flow4Result.error);
         errors++;
         continue;
       }
@@ -487,6 +532,113 @@ function runWarmUpEvaluation() {
   // the 0.75 threshold since last night. If so, send the teacher one digest
   // email — not one per student.
   checkShadowMatrixInterrupts_(ss, cfg);
+}
+
+// ---------------------------------------------------------------------------
+// _ensureWarmUpRegistryExtraCreditColumn_
+// Idempotent header add for the extra_credit_checked column (self-healing,
+// same pattern as _ensureScrDecisionLogArchiveColumn_() in
+// 30_SCRSuggestionEngine.js) — so a WarmUpRegistry tab created before
+// _recheckExtraCredit_() existed gets the column on first use.
+// ---------------------------------------------------------------------------
+function _ensureWarmUpRegistryExtraCreditColumn_(wrSheet) {
+  const cell = wrSheet.getRange(1, WR_EXTRA_CREDIT_CHECKED + 1);
+  if (String(cell.getValue()).trim() !== "extra_credit_checked") {
+    cell.setValue("extra_credit_checked");
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _recheckExtraCredit_
+// FIXES A REAL BUG: runWarmUpEvaluation()'s main loop only ever examines a
+// WarmUpRegistry row on the one night lesson_date === yesterday, and by the
+// time the async Studio Flow (studio-steps/FinalizeWarmUpScoreStep.gs)
+// finishes writing feedback into the doc and total_score into this row,
+// that window has already closed — the row is never looked at again, so
+// evaluateWarmUpDoc_()'s FEEDBACK_END_MARKER scan can never actually find
+// a student's extra-credit reply. extra_credit could never become 1.
+//
+// This is a second, independent sweep: rows where total_score is already
+// set (the async Flow finished) but extra_credit_checked is still blank
+// get re-scanned via the same evaluateWarmUpDoc_() marker check. If a
+// reply is found, mirrors the +1/flag onto both WarmUpRegistry (via the
+// existing writeRegistryScores_()) and the matching WarmUpQueue row.
+// Rows are re-checked on each nightly run, up to
+// EXTRA_CREDIT_RECHECK_WINDOW_DAYS after lesson_date, giving a student
+// several nights to actually reply — extra_credit_checked is stamped only
+// once a row is found (crediting it) or ages out of the window (giving up),
+// which is what stops the sweep from re-scanning a row forever.
+// ---------------------------------------------------------------------------
+function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId) {
+  _ensureWarmUpRegistryExtraCreditColumn_(wrSheet);
+
+  const wrData = wrSheet.getDataRange().getValues();
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - EXTRA_CREDIT_RECHECK_WINDOW_DAYS);
+
+  let credited = 0;
+  let expired  = 0;
+
+  for (let i = 1; i < wrData.length; i++) {
+    const row = wrData[i];
+    const tEmail  = String(row[WR_TEACHER_EMAIL] || "").trim().toLowerCase();
+    if (tEmail !== teacherEmail.toLowerCase()) continue;
+
+    const totalScore = String(row[WR_TOTAL_SCORE] || "").trim();
+    if (totalScore === "") continue; // async Flow hasn't finalized this row yet
+
+    const alreadyChecked = String(row[WR_EXTRA_CREDIT_CHECKED] || "").trim();
+    if (alreadyChecked) continue; // already credited or expired — never re-scan
+
+    const docId   = String(row[WR_DOC_ID]    || "").trim();
+    const queueId = String(row[WR_QUEUE_ID]  || "").trim();
+    if (!docId || !queueId) continue;
+
+    const lessonDate = _normalizeLessonDateCell_(row[WR_LESSON_DATE]);
+    const lessonDateObj = new Date(lessonDate);
+    const pastWindow = !isNaN(lessonDateObj.getTime()) && lessonDateObj < cutoff;
+
+    let result;
+    try {
+      result = evaluateWarmUpDoc_(docId, queueId);
+    } catch (err) {
+      Logger.log("[S25-J2-recheck] Could not open doc " + docId + ": " + err.message);
+      continue;
+    }
+
+    if (result.error) {
+      Logger.log("[S25-J2-recheck] " + result.error);
+      if (pastWindow) {
+        wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
+        expired++;
+      }
+      continue;
+    }
+
+    if (result.extraCredit === 1) {
+      const newTotal = Number(totalScore) + 1;
+      writeRegistryScores_(wrSheet, i + 1, newTotal, 1);
+      wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
+
+      const queueRowNum = queueRowByQueueId[queueId];
+      if (queueRowNum) {
+        wqSheet.getRange(queueRowNum, WQ25_TOTAL_SCORE  + 1).setValue(newTotal);
+        wqSheet.getRange(queueRowNum, WQ25_EXTRA_CREDIT + 1).setValue(1);
+      }
+      credited++;
+    } else if (pastWindow) {
+      // No reply found and the window has closed — stop looking.
+      wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
+      expired++;
+    }
+    // else: still within the window, no reply yet — leave unstamped so a
+    // later night's run checks again.
+  }
+
+  if (credited > 0 || expired > 0) {
+    Logger.log("[S25-J2-recheck] Extra credit re-check: " + credited +
+               " credited, " + expired + " expired.");
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -660,9 +812,17 @@ function evaluateWarmUpDoc_(fileId, queueId) {
   }
 
   // ── Check for extra credit reply (text after FEEDBACK_END_MARKER) ─────────
-  // On the first nightly evaluation, FEEDBACK_END_MARKER won't exist yet
-  // (feedback is written by this run). Extra credit is detected on the
-  // SUBSEQUENT night's run — the student replies after seeing feedback.
+  // On the night runWarmUpEvaluation()'s main loop calls this (the one
+  // night lesson_date === yesterday), FEEDBACK_END_MARKER never exists yet:
+  // feedback is written into the doc later, by the async Studio Flow
+  // (studio-steps/FinalizeWarmUpScoreStep.gs's appendWarmUpFeedbackToDoc_(),
+  // which mirrors this exact marker text), not by this run. This same
+  // function is also called again later by _recheckExtraCredit_() — a
+  // second sweep over already-scored rows — which is the pass that
+  // actually can find the marker and the student's reply after it. See
+  // that function's own header for the full story; a FIXED note used to
+  // sit here claiming "detected on the subsequent night's run" when no
+  // subsequent-run mechanism existed at all.
   let extraCredit = 0;
   const feedbackEndIdx = text.indexOf(FEEDBACK_END_MARKER);
   if (feedbackEndIdx !== -1) {
@@ -801,6 +961,14 @@ function buildFlow4Prompt_(responseText, promptText, wordCountScore) {
 // Polls every 15 seconds for up to 3 minutes.
 // Returns the scored row data or null on timeout.
 // ---------------------------------------------------------------------------
+// DEAD CODE, AND MUST STAY THAT WAY. Nothing calls this — 35_FlowPreflightAndCanary.js
+// already noted it as unused. Do not wire it up: twelve 15-second sleeps is
+// three minutes of wall clock PER ROW inside a trigger, so ten students would
+// need thirty minutes of sleeping and blow every Apps Script execution limit.
+// 41_WarmUpFlowBridge.js's harvestWarmUpFlowReturns() replaces the whole idea
+// — it applies whatever has come back on each pass and returns immediately,
+// so there is nothing to poll for. Kept only because the shape of the result
+// object below documents what Flow 4 is expected to write.
 function pollForFlow4Result_(wqSheet, queueRowNum, queueId) {
   const MAX_ATTEMPTS  = 12; // 12 × 15s = 3 minutes
   const POLL_INTERVAL = 15 * 1000; // 15 seconds

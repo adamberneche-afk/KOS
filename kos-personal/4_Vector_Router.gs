@@ -1,6 +1,6 @@
 // ================================================================
 // KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 4 of 8: Vector Router
+// FILE 4 of 11: Vector Router
 // ================================================================
 //
 // Replaces: PART 12 (routeVectorWeights and sub-functions) from
@@ -34,7 +34,10 @@
 //             met promotion thresholds. Cumulative-score + half-life
 //             decay lifecycle, not a running average.
 //   Schema  : Theme, First_Detected, Last_Touched, Session_Count,
-//             Cumulative_Score, Raw_Score_Log, Status
+//             Cumulative_Score, Raw_Score_Log, Status, Core_Fact
+//             (Core_Fact, column 8, is added self-healingly by
+//             _ensureIncubatorCoreFactColumn_() and holds the asserted
+//             fact text for an operator pin — see pinThemeToCore)
 //
 // DYNAMIC_STATE_MATRIX (written by _writeDynamicStateRow here)
 //   Purpose : Long-format version of VECTOR_MATRIX. One row per
@@ -49,6 +52,15 @@
 //   processVectorClassificationPayload()  VECTOR_CLASSIFY flow entry
 //   getVectorState()         web app Diagnostics tab
 //   runPromotionCheck()      web app Diagnostics tab button
+//   pinThemeToCore(theme, note)  operator Core promotion — bypasses
+//                            CFG.INCUBATOR_PROMOTION_THRESHOLD, writes
+//                            PROMOTED_MANUAL + the asserted Core_Fact
+//   getManuallyPinnedCoreFacts()  the pinned {theme, fact} pairs, read by
+//                            buildSessionContext() (9_UI_Diagnostics.gs)
+//                            to inject the CORE FACTS block that makes
+//                            Threshold D (Value-Consistency Drift)
+//                            checkable
+//   dumpVectorState()        console-only debugging dump
 //   migrateVectorSchema_v2() ONE-TIME manual run — upgrades an existing
 //                            live VECTOR_MATRIX/INCUBATOR sheet pair
 //                            created before this engine landed. See its
@@ -561,7 +573,10 @@ function _logToIncubator(sheet, unknown, sessionUid, timestamp) {
 
     if (idx >= 0) {
       const prev = data[idx];
-      if (String(prev[6]) === 'PROMOTED') return;  // already graduated — ignore
+      // Both terminal statuses mean "already graduated, stop touching this
+      // row" — PROMOTED via the algorithmic threshold below, PROMOTED_MANUAL
+      // via pinThemeToCore()'s Council/operator override.
+      if (String(prev[6]) === 'PROMOTED' || String(prev[6]) === 'PROMOTED_MANUAL') return;
 
       const n = (parseInt(prev[3]) || 0) + 1;
       const cumulative = parseFloat((parseFloat(prev[4]) || 0) + score);
@@ -621,7 +636,7 @@ function _applyIncubatorDecay_(sheet, timestamp) {
 
   data.forEach((row, i) => {
     const [, , lastTouched, , cumulative, , status] = row;
-    if (status === 'PROMOTED' || status === 'DECAYED') return;
+    if (status === 'PROMOTED' || status === 'PROMOTED_MANUAL' || status === 'DECAYED') return;
 
     const lastMs        = new Date(lastTouched).getTime() || now;
     const daysSince      = Math.max(0, (now - lastMs) / 86400000);
@@ -634,6 +649,42 @@ function _applyIncubatorDecay_(sheet, timestamp) {
       sheet.getRange(sr, 7).setValue('DECAYED');
     }
   });
+}
+
+
+/**
+ * Inserts a new theme column into VECTOR_MATRIX — before the trailing
+ * INCUBATOR_SIGNALS + CHECKSUM columns (see _writeMatrixRow) — and migrates
+ * a Raw_Score_Log JSON blob verbatim into the historical rows that
+ * actually produced those scores; every other prior row gets 0 (SMP
+ * Step 1 — "do not backfill"). Shared by _checkPromotionCandidates()
+ * (algorithmic threshold promotion) and pinThemeToCore() (manual Council
+ * override) so both promotion paths add a column the same way.
+ *
+ * @param  {Sheet}  matrixSheet  VECTOR_MATRIX sheet.
+ * @param  {string} theme        Theme name for the new column header.
+ * @param  {string} rawLogJson   JSON array of {session_id, raw_score} —
+ *   pass '[]' (or anything unparseable) for a theme with no prior history.
+ */
+function _addThemeColumnToMatrix_(matrixSheet, theme, rawLogJson) {
+  const insertAt = matrixSheet.getLastColumn() - 1;
+  matrixSheet.insertColumnBefore(insertAt);
+  matrixSheet.getRange(1, insertAt).setValue(theme);
+
+  const lastDataRow = matrixSheet.getLastRow();
+  if (lastDataRow > 1) {
+    matrixSheet.getRange(2, insertAt, lastDataRow - 1, 1).setValue(0);
+    let rawLog = [];
+    try { rawLog = JSON.parse(rawLogJson || '[]'); } catch (_) { rawLog = []; }
+    if (rawLog.length > 0) {
+      const uidCol = matrixSheet.getRange(2, 1, lastDataRow - 1, 1).getValues().map(r => String(r[0]));
+      rawLog.forEach(entry => {
+        const rowIdx = uidCol.indexOf(String(entry.session_id));
+        if (rowIdx === -1) return;  // that session's row has aged out or was never written
+        matrixSheet.getRange(rowIdx + 2, insertAt).setValue(parseFloat(entry.raw_score) || 0);
+      });
+    }
+  }
 }
 
 
@@ -681,29 +732,7 @@ function _checkPromotionCandidates(incubSheet, matrixSheet) {
       headers.includes(theme)                              // already a column
     ) return;
 
-    // Insert new theme column in VECTOR_MATRIX — before the trailing
-    // INCUBATOR_SIGNALS + CHECKSUM columns (see _writeMatrixRow).
-    const insertAt = matrixSheet.getLastColumn() - 1;
-    matrixSheet.insertColumnBefore(insertAt);
-    matrixSheet.getRange(1, insertAt).setValue(theme);
-
-    // Migrate the raw score log verbatim into the historical rows that
-    // actually produced those scores; every other prior row gets 0
-    // (SMP Step 1 — "do not backfill").
-    const lastDataRow = matrixSheet.getLastRow();
-    if (lastDataRow > 1) {
-      matrixSheet.getRange(2, insertAt, lastDataRow - 1, 1).setValue(0);
-      let rawLog = [];
-      try { rawLog = JSON.parse(rawLogJson || '[]'); } catch (_) { rawLog = []; }
-      if (rawLog.length > 0) {
-        const uidCol = matrixSheet.getRange(2, 1, lastDataRow - 1, 1).getValues().map(r => String(r[0]));
-        rawLog.forEach(entry => {
-          const rowIdx = uidCol.indexOf(String(entry.session_id));
-          if (rowIdx === -1) return;  // that session's row has aged out or was never written
-          matrixSheet.getRange(rowIdx + 2, insertAt).setValue(parseFloat(entry.raw_score) || 0);
-        });
-      }
-    }
+    _addThemeColumnToMatrix_(matrixSheet, theme, rawLogJson);
 
     incubSheet.getRange(i + 2, 7).setValue('PROMOTED');
 
@@ -722,6 +751,219 @@ function _checkPromotionCandidates(incubSheet, matrixSheet) {
   });
 
   return promoted;
+}
+
+
+/**
+ * Manual "pin to Core" override — promotes a theme to full VECTOR_MATRIX
+ * status immediately, bypassing CFG.INCUBATOR_PROMOTION_THRESHOLD entirely.
+ * Complements, not replaces, the algorithmic path above: a one-off but
+ * structurally important theme (a Council/operator decision) shouldn't
+ * have to wait for enough sessions to out-accumulate CFG.DECAY_FACTOR
+ * before it can be treated as permanent.
+ *
+ * Distinguished from the algorithmic path with its own terminal INCUBATOR
+ * status — PROMOTED_MANUAL, not PROMOTED — so the audit trail always shows
+ * *how* a theme graduated. _logToIncubator(), _applyIncubatorDecay_(), and
+ * getVectorState()'s incubating list all treat the two statuses as equally
+ * terminal, but the sheet itself keeps them visibly distinct.
+ *
+ * Auditable the same way everything else in the Blackboard already is:
+ * files an informational row via _fileBlackboardAuditRow_() rather than a
+ * separate log. Deploy_Trigger is left false and Status is written already
+ * resolved (not staged for review) — this isn't a document find/replace
+ * mutation, so it must never be picked up by onGovernanceEdit()
+ * (6_Governance.gs), which only acts on an explicit Deploy_Trigger
+ * checkbox edit.
+ *
+ * FIXED (roadmap 2.3 — value-consistency drift): `note` used to be folded
+ * only into the Blackboard audit row's free-text Notes column — real, but
+ * not retrievable in structured form. `pinThemeToCore` pins a *theme*
+ * (a topic-vector label like ARCHITECTURE), not the actual asserted fact
+ * behind it — TAIS's "Core Memory" concept this whole feature is modeled
+ * on is specifically about untouchable *facts* ("operator does not accept
+ * same-day-turnaround clients"), not topic categories. Persisting `note`
+ * onto the INCUBATOR row itself (new Core_Fact column, self-healing via
+ * _ensureIncubatorCoreFactColumn_) is what makes getManuallyPinnedCoreFacts()
+ * below possible — without it, there was no fact text to check a future
+ * decision against, only a bare theme label.
+ *
+ * Called by the web app via:
+ *   google.script.run
+ *     .withSuccessHandler(fn)
+ *     .pinThemeToCore(themeName)
+ *
+ * @param  {string} themeName  Theme to pin. Case-insensitive; stored
+ *   uppercase, same normalization as every other theme name in this file.
+ * @param  {string} [note]     The actual Core fact/boundary this pin
+ *   asserts (e.g. "Operator will not schedule client calls after 6pm").
+ *   Persisted onto the INCUBATOR row's Core_Fact column and folded into
+ *   the Blackboard audit row. Not currently collected by the web app UI
+ *   (see 8_WebApp_UI.html's confirm-tap wiring) — available for a future
+ *   reason-input surface, or for calling this directly from the Apps
+ *   Script editor with a written fact. Without it, getManuallyPinnedCoreFacts()
+ *   falls back to the bare theme name — better than nothing, but not a
+ *   checkable fact.
+ * @returns {{success: boolean, message: string}}
+ */
+function pinThemeToCore(themeName, note) {
+  const theme = String(themeName || '').toUpperCase().trim();
+  if (!theme) return { success: false, message: 'No theme name given.' };
+  const fact = String(note || '').trim();
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { success: true, message: 'System busy — try again in a moment.' };
+  try {
+    if (_getKnownVectors().includes(theme)) {
+      return { success: true, message: '"' + theme + '" is already at Core status.' };
+    }
+
+    const ss          = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const matrixSheet = _getOrCreateSheet(ss, CFG.VECTOR_MATRIX_SHEET);
+    const incubSheet  = _getOrCreateSheet(ss, CFG.INCUBATOR_SHEET);
+    _ensureIncubatorCoreFactColumn_(incubSheet);
+
+    // Find any existing INCUBATOR row for this theme so its history (if
+    // any) migrates into VECTOR_MATRIX the same way an algorithmic
+    // promotion would — a theme that's been building toward the threshold
+    // shouldn't lose its accumulated raw-score log just because an
+    // operator pinned it before it got there on its own.
+    const data = incubSheet.getLastRow() > 1
+      ? incubSheet.getRange(2, 1, incubSheet.getLastRow() - 1, 7).getValues()
+      : [];
+    const idx = data.findIndex(r => String(r[0]) === theme);
+    const rawLogJson = idx >= 0 ? data[idx][5] : '[]';
+
+    _addThemeColumnToMatrix_(matrixSheet, theme, rawLogJson);
+
+    if (idx >= 0) {
+      incubSheet.getRange(idx + 2, 7).setValue('PROMOTED_MANUAL');
+      if (fact) incubSheet.getRange(idx + 2, 8).setValue(fact);
+    } else {
+      // No incubator history at all — a genuinely new Core theme declared
+      // outright, never previously observed as a signal. Still file an
+      // INCUBATOR row so the audit trail and Diagnostics tab have one
+      // consistent place to look for how every Core theme got there.
+      incubSheet.appendRow([theme, new Date(), new Date(), 0, 0, '[]', 'PROMOTED_MANUAL', fact]);
+    }
+
+    _persistPromotedVector(theme);
+    _fileBlackboardAuditRow_(
+      'Manual Core promotion: ' + theme,
+      'Theme "' + theme + '" pinned to Core status by explicit operator/Council decision, ' +
+        'bypassing CFG.INCUBATOR_PROMOTION_THRESHOLD.' + (fact ? ' Fact: ' + fact : '')
+    );
+
+    SpreadsheetApp.flush();
+    console.log('[VectorRouter] Manually pinned theme to Core: ' + theme);
+    return { success: true, message: '"' + theme + '" pinned to Core status.' };
+  } catch (e) {
+    _reportError('pinThemeToCore', e, null);
+    return { success: false, message: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+
+/**
+ * Idempotently adds the "Core_Fact" header (column 8) to INCUBATOR if
+ * missing — same self-healing pattern
+ * cas-ccps/30_SCRSuggestionEngine.js's _ensureScrDecisionLogArchiveColumn_
+ * established for a schema addition landing on a sheet created before it
+ * existed. Only ever populated for PROMOTED_MANUAL rows (pinThemeToCore);
+ * blank for every algorithmic INCUBATING/PROMOTED/DECAYED row, same as
+ * archive_status is blank for a never-archived CompetencyEvidence row.
+ *
+ * @param {Sheet} incubSheet
+ */
+function _ensureIncubatorCoreFactColumn_(incubSheet) {
+  const headerCell = incubSheet.getRange(1, 8);
+  if (String(headerCell.getValue()).trim() !== 'Core_Fact') {
+    headerCell.setValue('Core_Fact');
+  }
+}
+
+
+/**
+ * Returns every manually-pinned Core fact — the data source
+ * buildSessionContext() (9_UI_Diagnostics.gs) injects into a new live
+ * session so the ALIGNMENT persona's value-consistency-drift threshold
+ * (PERSONA_ALIGNMENT_V5_1.md §2.2 Threshold D) has something concrete to
+ * check a decision against. Only PROMOTED_MANUAL rows qualify — an
+ * algorithmically PROMOTED theme is a recurring topic, not an asserted
+ * boundary; only an explicit pinThemeToCore() call carries operator intent
+ * strong enough to be "a fact worth a Socratic challenge if contradicted."
+ *
+ * @returns {{theme: string, fact: string}[]} Empty array if INCUBATOR is
+ *   missing or has no manually-pinned rows. `fact` falls back to the bare
+ *   theme name for a pin made before Core_Fact existed, or made with no
+ *   `note` — better than nothing in the session-context block, but callers
+ *   should not treat a fallback fact as a real checkable assertion.
+ */
+function getManuallyPinnedCoreFacts() {
+  try {
+    const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const incubSheet = ss.getSheetByName(CFG.INCUBATOR_SHEET);
+    if (!incubSheet || incubSheet.getLastRow() <= 1) return [];
+
+    return incubSheet
+      .getRange(2, 1, incubSheet.getLastRow() - 1, 8)
+      .getValues()
+      .filter(r => r[6] === 'PROMOTED_MANUAL')
+      .map(r => ({
+        theme: String(r[0]),
+        fact:  String(r[7] || '').trim() || String(r[0]),
+      }));
+  } catch (e) {
+    _reportError('getManuallyPinnedCoreFacts', e, null);
+    return [];
+  }
+}
+
+
+/**
+ * Files an informational audit row into the Blackboard sheet, following
+ * the same convention 3_Queue_Processor.gs's SMP-proposal logging already
+ * uses (see its "BLACKBOARD — SMP proposals" block): Deploy_Trigger stays
+ * false and Status is written already resolved, so onGovernanceEdit()
+ * (6_Governance.gs) — which only acts on an explicit Deploy_Trigger
+ * checkbox edit — never mistakes this for a pending document mutation.
+ * The Find_String/Replace_Payload columns aren't literal find/replace
+ * instructions here; they carry the same bracket-tagged title/summary
+ * shape the SMP-proposal rows use for a purely informational log entry.
+ *
+ * @param {string} title  Short label, stored in Find_String as [title].
+ * @param {string} notes  Longer description, stored in Replace_Payload
+ *   and Notes.
+ */
+function _fileBlackboardAuditRow_(title, notes) {
+  try {
+    const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const bb = _getOrCreateSheet(ss, CFG.BLACKBOARD_SHEET);
+    const ts = new Date();
+    let filedBy = 'operator';
+    try { filedBy = Session.getActiveUser().getEmail() || 'operator'; } catch (_) { /* stays 'operator' */ }
+
+    bb.appendRow([
+      '',                                // Target_Doc_ID — n/a, not a document mutation
+      'VECTOR_PROMOTION',                // CE_Tag
+      title,                             // Doc_Title
+      '',                                // Version
+      '[' + title + ']',                 // Find_String — informational marker only
+      notes,                             // Replace_Payload — the actual audit content
+      '',                                // Alt_Doc_ID
+      notes,                             // Notes
+      filedBy,                           // Filed_By
+      ts,                                // Filed_Date
+      'DEPLOYED: ' + ts.toISOString(),   // Status — already executed, not staged for review
+      false,                             // Deploy_Trigger — must never fire onGovernanceEdit
+    ]);
+  } catch (e) {
+    // Non-fatal — the promotion itself already succeeded; a failed audit
+    // write shouldn't roll it back or surface as the operation's own error.
+    console.error('[_fileBlackboardAuditRow_] Failed to file audit row: ' + e.message);
+  }
 }
 
 
@@ -939,7 +1181,10 @@ function getVectorState() {
         .getRange(2, 1, incubSheet.getLastRow() - 1, 7)
         .getValues()
         .forEach(r => {
-          if (String(r[6]) !== 'PROMOTED') {
+          // Both terminal statuses have graduated to a real vector column
+          // above — PROMOTED (algorithmic) and PROMOTED_MANUAL (pinThemeToCore
+          // Council override).
+          if (r[6] !== 'PROMOTED' && r[6] !== 'PROMOTED_MANUAL') {
             incubating.push({
               name:             String(r[0]),
               sessions:         parseInt(r[3]) || 0,

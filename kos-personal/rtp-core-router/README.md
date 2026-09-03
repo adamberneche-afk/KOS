@@ -9,9 +9,11 @@ with for the real sequestered council review ("Seven Bridges," SMP-002).
 (`kos-personal/2_Ingestion_Sensors.gs`) are the actual, current execution
 layer this feeds — `9_UI_Diagnostics.gs`'s `sevenBridgesReview()` is only
 the menu wrapper that compiles verdicts already submitted, not a stimulus
-generator itself. `triggerCouncilSimulation()` (also in `6_Governance.gs`)
-is a different, explicitly-**superseded** shared-context shortcut, kept
-only for reference — not interchangeable with the real pipeline above.
+generator itself. The older shared-context shortcut that asked one model to
+role-play every persona at once (`triggerCouncilSimulation()`) was **deleted**
+in Round 14 — see `kos-personal/CHANGELOG.md`. Note that sequestration is
+enforced by operator discipline, not by code: these persona prompts only
+work as a council if each one is run in its own conversation.
 Nothing in this directory is executable code — see `kos-personal/README.md`'s
 "Architecture in Two Paragraphs" section for how the built pipeline
 actually works today.
@@ -37,6 +39,15 @@ original Curator pair. Don't infer canonicality from any of these version
 numbers alone; the table's own verification notes are what actually
 settled each one.
 
+**`archived/` was removed from the working tree** (external product
+review, Finding 3 / "this month" dead-code cleanup). Every "reissued
+from"/"superseded by" claim in the table below is unchanged and still
+true as history — it describes what was actually compared and why a file
+was judged canonical or stale — but the archived file itself no longer
+exists in this directory. Nothing is lost: the full pre-deletion tree,
+including every file named below, is preserved on the
+`pre-archive-cleanup` branch.
+
 | File | Status |
 |---|---|
 | `PERSONA_ARCHITECT_V5_1.md` | Canonical — only version now current (reissued from `archived/PERSONA_ARCHITECT_V5_SUPERSEDED.pdf`) |
@@ -57,7 +68,8 @@ reads at runtime. The earlier version of this table guessed canonicality
 from version numbers alone and got the Curator pair backwards — `v5.3`
 looked newer but was actually the abandoned draft; the Developer
 V5.1-vs-V5.3 situation above is the same trap in reverse (the lower
-number is the correct one this time). Every superseded file lives in
-`archived/` alongside `PERSONA_ALIGNMENT_EARLY_DRAFT.pdf` — treat
-anything in that folder as historical reference only; do not paste it
-into a live Studio flow.
+number is the correct one this time). Every superseded file, alongside
+`PERSONA_ALIGNMENT_EARLY_DRAFT.pdf`, lived in `archived/` — removed now
+per the note above the table; retrievable from the `pre-archive-cleanup`
+branch, historical reference only, never something to paste into a live
+Studio flow.

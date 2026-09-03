@@ -1,17 +1,31 @@
 // =============================================================================
 // FILE: 15b_StudioFlowPrompts_Flow2_Revised.js
-// NOT A DEPLOYED SCRIPT — reference file only, same status as the original
-// 15_StudioFlowPrompts.js this extends.
+// BOUND TO: Central Ledger spreadsheet (external product review, Finding 3,
+// "this quarter" — added to this project's real file list so
+// FLOW_2_SYSTEM_PROMPT has exactly one source of truth, read directly by
+// 15c_Flow2DirectEvaluationService.js's opt-in DIRECT_GEMINI escape hatch,
+// instead of that file needing its own separate copy that could drift out
+// of sync with what actually gets pasted into Studio).
+//
+// STILL NOT A DEPLOYED STUDIO FLOW. Being loaded into this GAS project
+// (so code here can reference FLOW_2_SYSTEM_PROMPT directly) is a
+// different thing from Flow 2 itself existing in Google Workspace Studio
+// — it still doesn't (see cas-ccps/README.md's "Flow 2 has never been
+// built in Studio"). This file's prompt text is still meant to ALSO be
+// pasted verbatim into a live Studio Flow's Gemini step whenever that
+// Flow actually gets built — nothing about this file's own content
+// changed, only which project loads it.
 //
 // PURPOSE: Complete specification for Flow 2 (Student Evaluation),
 // revised to additionally produce structured, per-milestone competency
 // evidence — without changing what the student sees in their feedback.
 //
-// STATUS: Flow 2 has never been deployed. This is not a patch to a live
-// system — it is the actual first build spec for Flow 2, informed by
-// Module 5's requirements. Treat this the same way you would treat
-// 15_StudioFlowPrompts.js's original FLOW_2_SYSTEM_PROMPT: paste verbatim
-// into the Gemini step, do not abbreviate or paraphrase.
+// STATUS: Flow 2 has never been deployed as a Studio Flow. This is not a
+// patch to a live system — it is the actual first build spec for Flow 2,
+// informed by Module 5's requirements. Treat this the same way you would
+// treat 15_StudioFlowPrompts.js's original FLOW_2_SYSTEM_PROMPT: paste
+// verbatim into the Gemini step whenever Flow 2 is actually built there,
+// do not abbreviate or paraphrase.
 //
 // WHAT CHANGED FROM THE ORIGINAL FLOW 2 DESIGN (per STUDIO_FLOW_REFERENCE.pdf):
 //   1. FLOW_2_SYSTEM_PROMPT gains one new instruction block asking Gemini
@@ -203,9 +217,19 @@ nothing after it.
 //   Connector: Google Docs -- Get document content
 //   Doc ID:    @trigger.StudentFileID
 //   Output:    Full document text
-//   Note:      Extract only the response zone in the next step
-//              (text between "-- YOUR RESPONSE BEGINS HERE --" and
-//              "[CONFIG_ID:")
+//   Note:      Extract only the response zone in the next step -- the text
+//              between the response marker and the CONFIG_ID footer.
+//              COPY THOSE TWO STRINGS FROM THE CODE, NOT FROM THIS COMMENT:
+//              this whole comment block normalizes em-dashes to "--" for
+//              plain-text readability, but the real markers use box-drawing
+//              characters and Studio matches them literally. The authoritative
+//              values are RESPONSE_MARKER and CONFIG_ID_MARKER at the top of
+//              01_StudentDoc_ContainerScript.js, written into every student
+//              doc by stampDocument_'s ZONE 3 and ZONE 4
+//              (02_Form1_IntakeAndWorkspaceGenerator.js). Typing the hyphen
+//              form here into Studio's Extract step matches nothing and the
+//              step returns empty, which reads as "the doc was empty" rather
+//              than as a mis-typed delimiter.
 //   Output variable: STUDENT_RESPONSE_TEXT
 //   (unchanged from original design)
 //
@@ -295,7 +319,7 @@ nothing after it.
 //   Connector: Google Docs -- Insert text
 //   Doc ID:    @trigger.StudentFileID
 //   Location:  After the line containing "-- FEEDBACK --"
-//   Content:   "\\n-- EVALUATION [TIMESTAMP] --\\n"
+//   Content:   "\\n── EVALUATION [TIMESTAMP] ──\\n"
 //              + [RESULT LINE -- see original logic, unchanged]
 //              + "\\n\\n" + @step3b.STUDENT_FACING_REPORT
 //                (CHANGED from original: reads the relay step's clean
@@ -304,7 +328,17 @@ nothing after it.
 //                visible result to the student is identical either way,
 //                since STUDENT_FACING_REPORT is the same text minus the
 //                one trailing line the student was never meant to see)
-//              + "\\n-- END EVALUATION --\\n"
+//              + "\\n── END EVALUATION ──\\n"
+//              (real U+2500 box-drawing character, not an ASCII "--" --
+//              this comment used to carry the ASCII transliteration by
+//              mistake; 03_QueueBridge.js's and
+//              09_StudentRevisionGuidance_M1Base.js's own body.findText()
+//              calls only match the real U+2500 marker, and an external
+//              Studio Steps drop built against this comment's stale
+//              ASCII form once shipped exactly that bug -- see
+//              cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own
+//              header for the fix. Canonical form confirmed at
+//              15_StudioFlowPrompts.js:261-265.)
 //   Note:      Do NOT add compliance stamps in this step. Do NOT write
 //              the "What to do next" block -- Script 03 handles that.
 //              (both unchanged from original design)

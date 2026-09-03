@@ -87,33 +87,18 @@ const SCRS = {
   CONFIRMED_BY: 10,
 };
 
-// SCRDecisionLog column indices (0-based) — canonical order
-// Append-only. One row per confirm/override action ever taken. This is
-// the actual legally-retained record — see 8VAC20-120-120 retention
-// requirement noted in the original SCR specification.
+// SCRDecisionLog column indices (SCRDL) now live in 00_SharedConfig.js.
+// They were moved there when 36_WeeklyParentReport.js needed them: that
+// file runs in BOTH cas-ccps:central-ledger and cas-ccps:teacher-dashboard,
+// and this file exists only in the former, so a constant declared here is
+// simply not defined in the dashboard project. 00_SharedConfig.js is in
+// every project, which is the same reason LEDGER lives there.
 //
-// Say/Do Ledger cas-ccps Extension 3: rows are still never deleted
-// automatically (see _archiveExpiredScrDecisions_() below) — ARCHIVE_STATUS
-// only marks a row "restricted, pending disposition review" once it's past
-// the configured retention window. Actual permanent deletion always
-// requires an explicit human decision, never a script.
-const SCRDL = {
-  DECISION_ID: 0,
-  STUDENT_EMAIL: 1,
-  COMPETENCY_ID: 2,
-  SUGGESTED_RATING: 3,       // what the system proposed (blank if teacher
-                             // entered cold, with no suggestion shown)
-  FINAL_RATING: 4,           // what the teacher actually decided — 1-5
-  DECISION_TYPE: 5,          // CONFIRMED | OVERRIDDEN
-  DECIDED_AT: 6,
-  DECIDED_BY: 7,             // teacher email
-  EVIDENCE_SNAPSHOT: 8,      // met/notMet/partial counts at decision time,
-                             // denormalized for audit — same rationale as
-                             // AlignmentLog's denormalized competency_text
-  ARCHIVE_STATUS: 9,         // "" = active; "ARCHIVED — pending disposition
-                             // review" once past SCR_RETENTION_YEARS — see
-                             // _archiveExpiredScrDecisions_() below
-};
+// SCRS (above) deliberately did NOT move. Nothing outside this project has
+// any business reading SCRSuggestions — it holds AI values no teacher has
+// acted on — so leaving its column map here means a dashboard-project file
+// that tried would fail loudly at load rather than quietly render an
+// unreviewed rating to someone.
 
 const VALID_OUTCOMES = ["MET", "PARTIALLY_MET", "NOT_MET"];
 const EVIDENCE_THRESHOLD = 3; // N, locked design decision
@@ -207,6 +192,10 @@ function aggregateEvidence_(evidenceSheet) {
   const iEmail = headers.indexOf("student_email");
   const iCompId = headers.indexOf("competency_id");
   const iOutcome = headers.indexOf("outcome");
+  // -1 on a sheet created before roadmap 2.2 added this column — treated
+  // as "nothing is archived" below (row[-1] is always undefined), not a
+  // required column, so an old sheet still aggregates exactly as before.
+  const iArchiveStatus = headers.indexOf("archive_status");
 
   const result = new Map();
   const badOutcomesSeen = new Set();
@@ -219,6 +208,11 @@ function aggregateEvidence_(evidenceSheet) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
+    // Archived evidence is cold storage, not deleted — SCR suggestions
+    // should reflect only active evidence, the same way archived Ledger/
+    // SCRDecisionLog rows are already excluded from their own live reads.
+    if (iArchiveStatus !== -1 && String(row[iArchiveStatus] || "").trim()) continue;
+
     const email = String(row[iEmail]).trim();
     const compId = String(row[iCompId]).trim();
     const outcome = String(row[iOutcome]).trim();
@@ -461,18 +455,11 @@ function getSCRDashboardData_() {
 
   if (!suggestionsSheet) return { error: "SCRSuggestions tab not found." };
 
-  const compTextMap = {};
-  if (registrySheet) {
-    const regData = registrySheet.getDataRange().getValues();
-    const regHeaders = regData[0].map(h => String(h).trim());
-    const iId = regHeaders.indexOf("competency_id");
-    const iText = regHeaders.indexOf("competency_text");
-    if (iId !== -1 && iText !== -1) {
-      for (let i = 1; i < regData.length; i++) {
-        compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
-      }
-    }
-  }
+  // getCompetencyTextMap_() (00_SharedConfig.js) — CacheService-backed,
+  // external product review Finding 6. Replaces a getDataRange() +
+  // header-lookup block that used to run fresh on every single dashboard
+  // load.
+  const compTextMap = getCompetencyTextMap_(registrySheet);
 
   const data = suggestionsSheet.getDataRange().getValues();
   const results = [];
@@ -555,18 +542,10 @@ function getStudentScrStandingForCompetencies_(studentEmail, competencyIds) {
     if (!suggestionsSheet) { _scrStandingRawCache_ = { data: [], compTextMap: {} }; }
     else {
       const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
-      const compTextMap = {};
-      if (registrySheet) {
-        const regData = registrySheet.getDataRange().getValues();
-        const regHeaders = regData[0].map(h => String(h).trim());
-        const iId = regHeaders.indexOf("competency_id");
-        const iText = regHeaders.indexOf("competency_text");
-        if (iId !== -1 && iText !== -1) {
-          for (let i = 1; i < regData.length; i++) {
-            compTextMap[String(regData[i][iId]).trim()] = String(regData[i][iText]).trim();
-          }
-        }
-      }
+      // getCompetencyTextMap_() (00_SharedConfig.js) — CacheService-backed,
+      // external product review Finding 6. Same replacement as
+      // getSCRDashboardData_() above.
+      const compTextMap = getCompetencyTextMap_(registrySheet);
       _scrStandingRawCache_ = { data: suggestionsSheet.getDataRange().getValues(), compTextMap: compTextMap };
     }
   }
@@ -733,6 +712,207 @@ function _countScrDecisionsPastRetentionUnarchived_() {
   return count;
 }
 
+// =============================================================================
+// COMPETENCY EVIDENCE RETENTION + REACTIVATE (KOS/CAS roadmap synthesis 2.2 —
+// "explicit archive/hibernate state")
+//
+// CompetencyEvidence was the one FERPA-scoped tab in this file's own
+// retention story (docs/FERPA_DATA_MAP.md) with no archival mechanism at
+// all — SCRDecisionLog and the Ledger (10_AdminRecoveryPanel.js) already
+// had this exact pattern; this extends it here, unconfirmed retention
+// default and all, for the same reason theirs shipped unconfirmed: correct
+// the number the moment a real district/legal schedule is known, via
+// COMPETENCY_EVIDENCE_RETENTION_YEARS, no code change required.
+//
+// Deliberately plain "ARCHIVED", not SCRDecisionLog's "ARCHIVED — pending
+// disposition review" — that wording is a legal-hold state for the actual
+// retained SCR decision record, intentionally not meant to be casually
+// reversed (see reactivateCompetencyEvidence's own note on why it has no
+// SCRDecisionLog counterpart). CompetencyEvidence is upstream working
+// evidence, not the retained decision itself, so plain ARCHIVED — and a
+// real way back — is the better fit, matching the Ledger's own ARCHIVED
+// status exactly.
+//
+// Never deletes anything; actual permanent deletion still always requires
+// a human decision outside any script here.
+// =============================================================================
+
+function _competencyEvidenceRetentionYears_() {
+  const raw = PropertiesService.getScriptProperties().getProperty("COMPETENCY_EVIDENCE_RETENTION_YEARS");
+  const n = Number(raw);
+  return (n && n > 0) ? n : 5;
+}
+
+// Idempotently adds the "archive_status" header (column 9) if it's
+// missing — same self-healing pattern as
+// _ensureScrDecisionLogArchiveColumn_() above, for a CompetencyEvidence
+// tab created before this extension existed.
+function _ensureCompetencyEvidenceArchiveColumn_(sheet) {
+  const headerCell = sheet.getRange(1, 9);
+  if (String(headerCell.getValue()).trim() !== "archive_status") {
+    headerCell.setValue("archive_status");
+  }
+}
+
+// Returns { archived, checked }. Safe to call with CompetencyEvidence
+// missing (returns zeros) or already fully archived (returns archived: 0).
+// Anchors "how old is this record" on evaluated_at, the same "age of the
+// record itself" anchor the Ledger (TIMESTAMP) and SCRDecisionLog
+// (DECIDED_AT) archival both use. Resolves columns by header name, not
+// position — same convention aggregateEvidence_() above already
+// established for this specific tab (unlike LEDGER/SCRDL's positional
+// constants), since this file has no CE.* column-index constant to match.
+function _archiveExpiredCompetencyEvidence_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!sheet) return { archived: 0, checked: 0 };
+
+  _ensureCompetencyEvidenceArchiveColumn_(sheet);
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iEvaluatedAt = headers.indexOf("evaluated_at");
+  const iArchiveStatus = headers.indexOf("archive_status");
+  if (iEvaluatedAt === -1 || iArchiveStatus === -1) {
+    Logger.log("[S30] CompetencyEvidence missing evaluated_at/archive_status columns. Cannot run retention archival.");
+    return { archived: 0, checked: Math.max(0, data.length - 1) };
+  }
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _competencyEvidenceRetentionYears_());
+
+  let archived = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[iArchiveStatus] || "").trim()) continue; // already archived
+
+    const evaluatedAt = row[iEvaluatedAt];
+    if (!evaluatedAt) continue;
+    const evaluatedDate = new Date(evaluatedAt);
+    if (isNaN(evaluatedDate.getTime())) continue;
+
+    if (evaluatedDate < cutoff) {
+      sheet.getRange(i + 1, iArchiveStatus + 1).setValue("ARCHIVED");
+      archived++;
+    }
+  }
+
+  if (archived > 0) {
+    SpreadsheetApp.flush();
+    Logger.log("[S30] Archived " + archived + " CompetencyEvidence row(s) past the " +
+      _competencyEvidenceRetentionYears_() + "-year retention window.");
+  }
+
+  return { archived: archived, checked: data.length - 1 };
+}
+
+// Read-only companion to _archiveExpiredCompetencyEvidence_(), used by
+// _ferpaHealthChecks_() (10_AdminRecoveryPanel.js) — same pairing as the
+// Ledger/SCRDecisionLog checks above. Both callers of
+// _ferpaHealthChecks_() already run _archiveExpiredCompetencyEvidence_()
+// first, so a nonzero result here means archival itself failed or didn't
+// run, not a tautology.
+function _countCompetencyEvidencePastRetentionUnarchived_() {
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!sheet) return 0;
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iEvaluatedAt = headers.indexOf("evaluated_at");
+  const iArchiveStatus = headers.indexOf("archive_status");
+  if (iEvaluatedAt === -1 || iArchiveStatus === -1) return 0;
+
+  const cutoff = new Date();
+  cutoff.setFullYear(cutoff.getFullYear() - _competencyEvidenceRetentionYears_());
+
+  let count = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[iArchiveStatus] || "").trim()) continue;
+    const evaluatedAt = row[iEvaluatedAt];
+    if (!evaluatedAt) continue;
+    const evaluatedDate = new Date(evaluatedAt);
+    if (isNaN(evaluatedDate.getTime())) continue;
+    if (evaluatedDate < cutoff) count++;
+  }
+  return count;
+}
+
+// ---------------------------------------------------------------------------
+// reactivateCompetencyEvidence — admin menu item (wired into
+// 10_AdminRecoveryPanel.js's onOpen(), same central-ledger project as
+// exportScrDecisionLogForAudit() above). The genuinely missing half of
+// "archive/hibernate state": until this, nothing in cas-ccps had a way
+// back from ARCHIVED at all — archiveCompletedTerm()'s own confirm dialog
+// says so explicitly ("This cannot be undone automatically — contact your
+// admin to restore"). This clears archive_status back to blank for every
+// row matching a given student email, so evidence for a reopened case
+// (an appeal, a corrected record) can feed back into aggregateEvidence_()
+// and SCR suggestions again. No SCRDecisionLog counterpart, deliberately —
+// see this file's retention-block header comment on why that tab's
+// "ARCHIVED — pending disposition review" is a legal-hold state, not a
+// hibernate state.
+// ---------------------------------------------------------------------------
+function reactivateCompetencyEvidence() {
+  const ui = SpreadsheetApp.getUi();
+  const cfg = getConfig_();
+
+  const emailRes = ui.prompt(
+    "Reactivate Competency Evidence",
+    "Enter the student's email address to reactivate archived evidence for.\n\n" +
+    "This clears the archived status on every matching CompetencyEvidence row " +
+    "so it counts toward SCR suggestions again.",
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (emailRes.getSelectedButton() !== ui.Button.OK) return;
+
+  const email = emailRes.getResponseText().trim().toLowerCase();
+  if (!email) { ui.alert("Email cannot be blank."); return; }
+
+  const confirm = ui.alert(
+    "Reactivate evidence for \"" + email + "\"?",
+    "This will clear the archived status on all of this student's CompetencyEvidence rows.\n\n" +
+    "Are you sure?",
+    ui.ButtonSet.YES_NO
+  );
+  if (confirm !== ui.Button.YES) return;
+
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!sheet) { ui.alert("⚠️ CompetencyEvidence tab not found."); return; }
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0].map(h => String(h).trim());
+  const iEmail = headers.indexOf("student_email");
+  const iArchiveStatus = headers.indexOf("archive_status");
+  if (iEmail === -1 || iArchiveStatus === -1) {
+    ui.alert("⚠️ CompetencyEvidence is missing student_email/archive_status columns.");
+    return;
+  }
+
+  let reactivated = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    if (String(row[iEmail]).trim().toLowerCase() !== email) continue;
+    if (!String(row[iArchiveStatus] || "").trim()) continue; // wasn't archived
+    sheet.getRange(i + 1, iArchiveStatus + 1).setValue("");
+    reactivated++;
+  }
+
+  if (reactivated > 0) SpreadsheetApp.flush();
+
+  ui.alert(
+    "✅ Reactivate Complete",
+    reactivated > 0
+      ? reactivated + " row(s) reactivated for " + email + "."
+      : "No archived CompetencyEvidence rows found for " + email + ".",
+    ui.ButtonSet.OK
+  );
+}
+
 // ---------------------------------------------------------------------------
 // exportToWorkbookGrid_ — produces a Google Sheet matching the official SCR
 // Excel workbook shape described in the original specification: one tab per
@@ -768,7 +948,11 @@ function exportToWorkbookGrid_() {
   }
 
   // ── Build student_email -> {name, className} from Ledger ──
-  const ledgerData = ledgerSheet.getDataRange().getValues();
+  // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
+  // external product review Finding 6. Math.max(1, ...) matches
+  // getDataRange()'s own guarantee of at least one row even on an
+  // otherwise-empty sheet (getRange throws on a zero-row request).
+  const ledgerData = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
   const studentInfo = new Map();
   for (let i = 1; i < ledgerData.length; i++) {
     const row = ledgerData[i];
@@ -778,6 +962,38 @@ function exportToWorkbookGrid_() {
     if (email && !studentInfo.has(email)) {
       studentInfo.set(email, { name, className });
     }
+  }
+
+  // ── Join in each student's assignment-doc link ──
+  // An auditor reading a competency rating has, until now, had no route from
+  // the rating to the work it was based on — the evidence snapshot on the
+  // decision row is text, and this grid doesn't carry even that. A link
+  // closes that gap using data already collected.
+  //
+  // Sourced from StudentDocRegistry rather than the Ledger's StudentFileURL:
+  // the registry holds one row per student, which matches this grid's grain,
+  // where the Ledger holds one row per submission and would need a
+  // "which one" rule this export has no basis to pick.
+  //
+  // No sharing change is implied. These docs are already shared with their
+  // own student via addViewer(), and this workbook is already restricted to
+  // the owner's Workspace domain at creation (below) — a link is only
+  // followable by someone who could already open the file.
+  const docUrlByEmail = new Map();
+  const registrySheet = ss.getSheetByName(cfg.tabs.studentDocRegistry);
+  if (registrySheet && registrySheet.getLastRow() > 1) {
+    const SDR_EMAIL = 0;
+    const SDR_DOC_URL = 3;
+    const registryData = registrySheet
+      .getRange(1, 1, registrySheet.getLastRow(), SDR_DOC_URL + 1)
+      .getValues();
+    for (let i = 1; i < registryData.length; i++) {
+      const email = String(registryData[i][SDR_EMAIL] || "").trim();
+      const url = String(registryData[i][SDR_DOC_URL] || "").trim();
+      if (email && url && !docUrlByEmail.has(email)) docUrlByEmail.set(email, url);
+    }
+  } else {
+    Logger.log("[S30] No StudentDocRegistry rows — export will have no doc links.");
   }
 
   // ── Read only CONFIRMED / OVERRIDDEN decisions, most recent per pair ──
@@ -848,12 +1064,20 @@ function exportToWorkbookGrid_() {
       : exportSs.insertSheet(safeTabName);
     firstClass = false;
 
-    const headerRow = ["Student Name", ...sortedCompIds.map(id => id.split("-").pop())];
+    // "Student Doc" sits second so both identifying columns stay inside the
+    // frozen pane; the competency numbers keep their original order after it.
+    const headerRow = [
+      "Student Name", "Student Doc",
+      ...sortedCompIds.map(id => id.split("-").pop()),
+    ];
     const rows = [headerRow];
 
     for (const email of emails) {
       const info = studentInfo.get(email);
-      const row = [info.name];
+      // Blank, not a placeholder: a student with no registry row has no doc
+      // to link, and "N/A" in an audit export invites reading it as a
+      // finding about the student rather than a gap in the data.
+      const row = [info.name, docUrlByEmail.get(email) || ""];
       for (const compId of sortedCompIds) {
         const decision = latestDecision.get(email + "|||" + compId);
         row.push(decision ? decision.finalRating : "");
@@ -864,7 +1088,7 @@ function exportToWorkbookGrid_() {
     sheet.getRange(1, 1, rows.length, headerRow.length).setValues(rows);
     sheet.getRange(1, 1, 1, headerRow.length).setFontWeight("bold").setBackground("#f3f3f3");
     sheet.setFrozenRows(1);
-    sheet.setFrozenColumns(1);
+    sheet.setFrozenColumns(2);   // Student Name + Student Doc
   }
 
   Logger.log("[S30] Export complete: " + exportSs.getUrl());
@@ -946,13 +1170,55 @@ function exportScrDecisionLogForAudit() {
 }
 
 // ---------------------------------------------------------------------------
-// createSCRTabs_ — MANUAL, one-time setup. Creates SCRSuggestions and
-// SCRDecisionLog with correct headers. Safe to re-run — skips tabs that
-// already exist.
+// createSCRTabs_ — MANUAL, one-time setup. Creates CompetencyEvidence,
+// SCRSuggestions, and SCRDecisionLog with correct headers. Safe to
+// re-run — skips tabs that already exist.
+//
+// CompetencyEvidence's header matches
+// cas-ccps/studio-steps/CommitStudentEvaluationStep.gs's own writer
+// exactly (evidence_id/student_email/competency_id/milestone_text/
+// outcome/config_id/evaluated_at/student_file_id) — that step and
+// 15c_Flow2DirectEvaluationService.js's writeCompetencyEvidenceFromFlow2_
+// both self-create this tab lazily on their own first write if it's
+// still missing at that point, so creating it here up front isn't
+// strictly required for correctness, only for aggregateEvidence_()
+// below and runFlowPreflightCheck() (35_FlowPreflightAndCanary.js) to
+// stop reporting it missing before Flow 2 has ever actually run once.
+//
+// INTEGRATION WITH SCRIPT 16 (same convention as
+// 28_Module2Setup.js's own "INTEGRATION WITH SCRIPT 16" note):
+// createSCRTabs_() and installSCRTrigger_() have no menu entry today —
+// an admin following only the normal setup wizard would never discover
+// Module 5 needs a separate step, which is exactly how "the entire
+// competency-evidence -> SCR-suggestion subsystem is silently dead on
+// a fresh deployment" (this file's own "[S30] Aborting run" log line)
+// happens in practice. To wire this in the same way Module 2's own
+// menu items are documented to be wired (paste into onOpen(), after
+// the Module 2 block):
+//
+//   menu.addSeparator();
+//   if (!ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions")) {
+//     menu.addItem("📐 Set Up Student Competency Records (Module 5)", "createSCRTabs_");
+//   } else {
+//     menu.addItem("📐 Module 5 Status", "installSCRTrigger_");
+//   }
 // ---------------------------------------------------------------------------
 function createSCRTabs_() {
   const cfg = getConfig_();
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+
+  // archive_status added (roadmap 2.2 — explicit archive/hibernate state):
+  // "" = active; "ARCHIVED" once past COMPETENCY_EVIDENCE_RETENTION_YEARS
+  // or manually reactivated back to blank — see
+  // _archiveExpiredCompetencyEvidence_()/reactivateCompetencyEvidence()
+  // below. Both real writers (this function and
+  // cas-ccps/studio-steps/CommitStudentEvaluationStep.gs /
+  // 15c_Flow2DirectEvaluationService.js) must stay byte-identical here —
+  // see tests/cas-ccps/competency-evidence-schema-compat.test.js.
+  _createTabIfMissingS30_(ss, cfg.tabs.competencyEvidence || "CompetencyEvidence", [
+    "evidence_id", "student_email", "competency_id", "milestone_text",
+    "outcome", "config_id", "evaluated_at", "student_file_id", "archive_status"
+  ]);
 
   _createTabIfMissingS30_(ss, cfg.tabs.scrSuggestions || "SCRSuggestions", [
     "student_email", "competency_id", "suggested_rating",

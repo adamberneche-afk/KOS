@@ -647,15 +647,15 @@ shadowMatrixDecayFactor:         0.85,</div></div>
             <thead><tr><th>Setting</th><th>Value</th></tr></thead>
             <tbody>
               <tr><td>Name</td><td>CAS — Bridging Flow</td></tr>
-              <tr><td>Trigger</td><td>WarmUpQueue · Status = PENDING · <code>flow5_prior_response</code> != null in snapshot</td></tr>
+              <tr><td>Trigger</td><td>WarmUpQueue · Status = PENDING_BRIDGE — no compound condition needed; Script 24 only writes this status when a prior scored response already exists</td></tr>
               <tr><td>Temperature</td><td><code>0.4</code></td></tr>
               <tr><td>Max tokens</td><td><code>150</code></td></tr>
               <tr><td>Input</td><td><code>flow5_prior_response</code> · <code>pacing_prior_connection</code> · <code>course_name</code> from <code>lesson_context_snapshot</code></td></tr>
-              <tr><td>Output</td><td>Write to <code>bridge_output</code> (col 21) · Status stays PENDING</td></tr>
+              <tr><td>Output</td><td>Write to <code>bridge_output</code> (col 21) · Set status = PENDING</td></tr>
               <tr><td>System prompt</td><td>See CAS_Flow3_Flow4_Specification.html → Flow 5 section</td></tr>
             </tbody>
           </table>
-          <div class="note">Runs before Flow 3 on the same PENDING row. Skips rows where flow5_prior_response is null.</div>
+          <div class="note">Runs on its own PENDING_BRIDGE row, then promotes that row to PENDING — this hand-off is what actually enforces "before Flow 3," not a compound trigger condition on Flow 5. A student with no prior response never reaches PENDING_BRIDGE at all; their row starts at PENDING directly and skips Flow 5 entirely.</div>
         </div>
       </div>
     </div>
@@ -671,7 +671,7 @@ shadowMatrixDecayFactor:         0.85,</div></div>
             <thead><tr><th>Setting</th><th>Value</th></tr></thead>
             <tbody>
               <tr><td>Name</td><td>CAS — Warm-Up Generation</td></tr>
-              <tr><td>Trigger</td><td>WarmUpQueue · Status = PENDING (after Flow 5)</td></tr>
+              <tr><td>Trigger</td><td>WarmUpQueue · Status = PENDING — unchanged either way a row gets here: directly from Script 24 (no prior response) or via Flow 5 promoting a PENDING_BRIDGE row (returning student)</td></tr>
               <tr><td>Temperature</td><td><code>0.7</code></td></tr>
               <tr><td>Max tokens</td><td><code>400</code></td></tr>
               <tr><td>Input</td><td><code>lesson_context_snapshot</code> + <code>student_profile_snapshot</code> from queue row</td></tr>
@@ -716,7 +716,7 @@ shadowMatrixDecayFactor:         0.85,</div></div>
       <div class="step-body">
         <div class="step-num">Step 4 of 6</div>
         <div class="step-title">Test Flow 5 with a synthetic queue row</div>
-        <div class="step-desc">Create a test row in WarmUpQueue with status = PENDING and a non-null <code>flow5_prior_response</code> in the lesson context snapshot JSON. Trigger Flow 5 and confirm <code>bridge_output</code> (col 21) is populated with 2–3 sentences.</div>
+        <div class="step-desc">Create a test row in WarmUpQueue with status = <strong>PENDING_BRIDGE</strong> (not PENDING — that's Flow 3's trigger, and Flow 5 no longer watches it) and a non-null <code>flow5_prior_response</code> in the lesson context snapshot JSON. Trigger Flow 5 and confirm <code>bridge_output</code> (col 21) is populated with 2–3 sentences and status has been set to PENDING.</div>
       </div>
     </div>
 
@@ -802,7 +802,7 @@ shadowMatrixDecayFactor:         0.85,</div></div>
           <p style="color:var(--text-dim);font-size:13px">Confirm in WarmUpQueue tab:</p>
           <ul>
             <li>One row per student in the period(s) meeting tomorrow</li>
-            <li>Status = PENDING</li>
+            <li>Status = PENDING for a student with no prior scored warm-up, or PENDING_BRIDGE for a returning student with one — on a fresh deployment with no warm-up history yet, expect every row to be PENDING</li>
             <li><code>lesson_context_snapshot</code> is populated JSON (not empty)</li>
             <li><code>student_profile_snapshot</code> is populated JSON</li>
             <li>Snapshot contains <code>warmup_anchor</code> if pacing guide was imported</li>
@@ -816,12 +816,12 @@ shadowMatrixDecayFactor:         0.85,</div></div>
       <div class="step-check"><div class="checkbox" onclick="toggle(this)"><span class="checkbox-mark">✓</span></div></div>
       <div class="step-body">
         <div class="step-num">Step 5 of 8</div>
-        <div class="step-title">Trigger Flow 5 and Flow 3 manually on the PENDING rows</div>
-        <div class="step-desc">In Studio, manually trigger Flow 5 on one of the PENDING rows (choose one with a prior response if any exist, otherwise skip Flow 5 and go straight to Flow 3). Then trigger Flow 3.</div>
+        <div class="step-title">Trigger Flow 5 (if any PENDING_BRIDGE rows exist) and Flow 3</div>
+        <div class="step-desc">In Studio, if step 4 produced any PENDING_BRIDGE rows, manually trigger Flow 5 on one of them first — its own final step promotes that row to PENDING once bridge_output is written. On a fresh deployment with no warm-up history, skip straight to Flow 3 below; every row is already PENDING. Then trigger Flow 3 on a PENDING row.</div>
         <div class="step-detail">
           <p style="color:var(--text-dim);font-size:13px">Confirm:</p>
           <ul>
-            <li>Flow 5: <code>bridge_output</code> (col 21) populated with 2–3 sentences (if prior response existed)</li>
+            <li>Flow 5 (if triggered): <code>bridge_output</code> (col 21) populated with 2–3 sentences, status set to PENDING</li>
             <li>Flow 3: warm-up doc created in student Drive folder</li>
             <li>Flow 3: <code>doc_id</code> + <code>doc_url</code> written to queue row</li>
             <li>Flow 3: <code>archetype</code> (col 19) populated</li>

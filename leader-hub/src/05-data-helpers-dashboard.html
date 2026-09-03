@@ -1,0 +1,1630 @@
+<script>
+// Tracks whether a save-failed warning has already been shown this page
+// load — a full quota means EVERY subsequent LS.set() call fails too, and
+// nothing here should spam a toast on every single one of them.
+let _lsWriteFailWarned = false;
+let _lsReadFailWarned = false;
+const LS = {
+  // FIXED: this used to swallow every read failure silently — no
+  // console log, no distinction between "key never existed" (normal,
+  // returns def) and "key exists but is corrupted JSON" (a real
+  // problem). If any of the 78+ persisted keys gets truncated (quota
+  // pressure mid-write, a bad hand-edited import, a browser crash),
+  // the app silently falls back to the default and looks exactly like
+  // the user's trips/journal/roster vanished, with no indication why —
+  // the same failure mode LS.set()'s fix (below) was written to close,
+  // just on the read side. Own sentinel, not LS.set's: a read failure
+  // and a write failure are different problems (corrupted data vs.
+  // inaccessible storage) worth telling apart in the log even though
+  // both use the same one-toast-per-page-load convention.
+  get: (k, def=null) => {
+    try { const v=localStorage.getItem(k); return v?JSON.parse(v):def; }
+    catch (e) {
+      console.error('[LS.get] read failed for key', k, e);
+      if (!_lsReadFailWarned && typeof _showToast === 'function') {
+        _lsReadFailWarned = true;
+        _showToast('⚠ Could not read saved data — some information may not have loaded.', 6000, '#991b1b');
+      }
+      return def;
+    }
+  },
+  // FIXED: this used to swallow every write failure (including a full
+  // storage quota) with an empty catch block — no return value, no
+  // console log, no user-visible sign anything went wrong. With 78+ keys
+  // that only grow (trip history, journal entries, daily logs...), a full
+  // quota meant silent, permanent data loss with zero indication. Now
+  // returns whether the write actually succeeded, and surfaces one toast
+  // per page load if it didn't — callers that care can still check the
+  // return value, but the common case (fire-and-forget) is no longer silent.
+  set: (k, v) => {
+    try {
+      localStorage.setItem(k, JSON.stringify(v));
+      _lhSyncConfigKeyToServer_(k, v);
+      _lhSyncDataKeyToServer_(k, v);
+      return true;
+    } catch (e) {
+      console.error('[LS.set] write failed for key', k, e);
+      if (!_lsWriteFailWarned && typeof _showToast === 'function') {
+        _lsWriteFailWarned = true;
+        _showToast('⚠ Could not save — your device\'s storage may be full. Export a backup soon.', 6000, '#991b1b');
+      }
+      return false;
+    }
+  },
+};
+
+// ── Server write-through for singleton config domains (server-migration
+// Phase 3) ───────────────────────────────────────────────────────────────
+// A "singleton config domain" is a small settings object kept in one
+// localStorage key (Profile, Modules, Schedule Config, ...) as opposed to
+// a growing multi-record list (trips, roster, scores, ...), which gets its
+// own real Spreadsheet tab with proper conflict handling in a later phase
+// — this list is deliberately NOT those. Every key here also exists in
+// Config.gs's LH_CONFIG_KEYS; kept as two lists (not one shared file)
+// because the client can't require() the .gs file — if you add a domain
+// to one, add it to the other too, or lhSaveConfig_() will just reject it.
+//
+// This hooks LS.set() itself rather than each domain's own
+// getX()/persistX() wrapper (or the many call sites for domains that have
+// no single wrapper — several of these are read/written inline at their
+// point of use throughout the file) so every existing call site gets the
+// write-through automatically, with no per-call-site changes anywhere.
+const LH_SERVER_SYNCED_CONFIG_KEYS = [
+  'lh_profile', 'lh_modules', 'lh_schedule_config', 'lh_custom_orgs',
+  'lh_custom_courses', 'lh_keyContacts', 'lh_student_id_map',
+  'lh_cas_ccps_api_url', 'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
+  'lh_sub_period_assignments', 'lh_sbe_status', 'lh_deca_season',
+  'lh_deca_approvals', 'lh_ftp_overrides', 'lh_conf_leave', 'lh_mk8_check',
+  'lh_ssbu_check', 'lh_obs_prep', 'lh_sync_tracker', 'lh_sub_student_notes',
+  // Phase 5: map-shaped (keyed by tripId / orgId), not a flat list of
+  // independent records — see LH_SERVER_SYNCED_DATA_KEYS below for that
+  // distinction, and Config.gs for why these two live here.
+  'lh_slip_rosters', 'lh_org_results',
+  // Phase 6: Course Catalog / SCR support data, all map-shaped. The real
+  // SCR scores are NOT here — see LH_SERVER_SYNCED_DATA_KEYS/
+  // leader-hub/SCR.gs for why that domain needs a different shape.
+  'lh_custom_pacing_units', 'lh_cas_pacing_notes', 'lh_scr_student_emails',
+  // Phase 7: map-shaped (keyed by purchase-order id). lh_wbl_hours_log is
+  // deliberately NOT synced anywhere yet — its entries have no `id` field
+  // and are capped at 200, so neither this mechanism nor
+  // LH_SERVER_SYNCED_DATA_KEYS fits without a fragile synthetic key.
+  'lh_receiving_status',
+  // Phase 8: the Horizon system uses its own bucketed {short,mid,long}
+  // shape, not a flat record list — see LH_SERVER_SYNCED_DATA_KEYS for the
+  // id-less logs (lh_daily_log, lh_sub_plan_log, lh_brag_log) deliberately
+  // left out of both mechanisms.
+  'lh_horizon',
+  // Phase 9: Lesson Plan content edits, both keyed by a lesson/unit
+  // identifier rather than a flat record list.
+  'lh_lp_edits', 'lh_lp_edit_meta',
+  // Phase 10 final audit: Unit Plans notes, keyed by unit id — missed in
+  // Phase 9. lh_scr_session_log was found the same audit pass but stays
+  // excluded (its entries key off a composite `key` field, not `id`,
+  // same class of gap as the other id-less capped logs already listed
+  // above).
+  'lh_unit_notes',
+];
+
+// Fire-and-forget — never blocks or throws back into the LS.set() caller.
+// Same-origin only (google.script.run doesn't exist for a locally-opened
+// file); a failed sync just logs a warning, since localStorage already has
+// the value regardless of whether the server copy lands.
+function _lhSyncConfigKeyToServer_(key, value) {
+  if (LH_SERVER_SYNCED_CONFIG_KEYS.indexOf(key) === -1) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  google.script.run
+    .withFailureHandler(err => console.warn('[LeaderHub] config sync failed for ' + key + ':', (err && err.message) || err))
+    .lhSaveConfig_(key, value);
+}
+
+// Called once at boot (see the boot sequence's EMAIL_BRIDGE.poll() call) —
+// same-origin only, a no-op when opened as a local file. Pulls every
+// server-synced config domain in one round trip and catches this browser
+// up on anything saved from a different device/browser since it last
+// opened the app. Most of these domains are read fresh via LS.get() at
+// every point of use, so writing the server's copy into localStorage IS
+// the whole refresh for them; a handful also cache into a persistent
+// in-memory variable and need that re-applied too, listed explicitly
+// below rather than guessed at generically. Uses raw localStorage.setItem
+// (not LS.set) so applying a value the server just gave us doesn't
+// immediately re-queue the exact same value right back to it.
+async function lhRefreshConfigFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  let remote;
+  try {
+    remote = await new Promise((resolve, reject) => {
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig_();
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.message) || e);
+    return;
+  }
+  if (!remote) return;
+
+  const _write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+
+  // Read fresh via LS.get() at point of use everywhere — localStorage
+  // catch-up is the entire refresh, nothing else to re-apply.
+  ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
+   'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
+   'lh_sub_period_assignments', 'lh_deca_approvals', 'lh_obs_prep',
+   'lh_sync_tracker', 'lh_sub_student_notes', 'lh_lp_edit_meta',
+   'lh_unit_notes'].forEach(k => {
+    if (remote[k] !== null && remote[k] !== undefined) _write(k, remote[k]);
+  });
+
+  // Cached into a persistent in-memory variable — write through
+  // localStorage AND re-apply, so an already-rendered page picks up a
+  // change made elsewhere without a manual reload.
+  if (remote.lh_profile != null)        { _write('lh_profile', remote.lh_profile); Object.assign(PROFILE, PROFILE_DEFAULTS, remote.lh_profile); _applyProfileToStaticDOM(); }
+  if (remote.lh_modules != null)        { _write('lh_modules', remote.lh_modules); Object.assign(MODULES, MODULES_DEFAULT, remote.lh_modules); _applyModuleVisibility(); }
+  if (remote.lh_custom_orgs != null)    { _write('lh_custom_orgs', remote.lh_custom_orgs); Object.assign(CUSTOM_ORGS, remote.lh_custom_orgs); Object.assign(ORGANIZATIONS, ORG_DEFAULTS, CUSTOM_ORGS); }
+  if (remote.lh_custom_courses != null) { _write('lh_custom_courses', remote.lh_custom_courses); Object.assign(CUSTOM_COURSES, remote.lh_custom_courses); }
+  if (remote.lh_ftp_overrides != null)  { _write('lh_ftp_overrides', remote.lh_ftp_overrides); Object.assign(ftPermOverrides, remote.lh_ftp_overrides); }
+  if (remote.lh_conf_leave != null)     { _write('lh_conf_leave', remote.lh_conf_leave); Object.assign(confLeaveRecords, remote.lh_conf_leave); }
+  if (remote.lh_sbe_status != null)     { _write('lh_sbe_status', remote.lh_sbe_status); Object.assign(SBE_STATUS, remote.lh_sbe_status); }
+  if (remote.lh_deca_season != null)    { _write('lh_deca_season', remote.lh_deca_season); Object.assign(DECA_SEASON, remote.lh_deca_season); }
+  if (remote.lh_ssbu_check != null)     { _write('lh_ssbu_check', remote.lh_ssbu_check); Object.assign(SSBU_CHECK_STATUS, remote.lh_ssbu_check); }
+  if (remote.lh_mk8_check != null)      { _write('lh_mk8_check', remote.lh_mk8_check); Object.assign(MK8_CHECK_STATUS, remote.lh_mk8_check); }
+  if (remote.lh_schedule_config != null) {
+    _write('lh_schedule_config', remote.lh_schedule_config);
+    if (typeof _applyScheduleConfig === 'function') _applyScheduleConfig();
+    if (typeof _applyQuartersConfig === 'function') _applyQuartersConfig();
+  }
+  if (remote.lh_slip_rosters != null) {
+    _write('lh_slip_rosters', remote.lh_slip_rosters);
+    Object.keys(slipRosters).forEach(k => delete slipRosters[k]);
+    Object.assign(slipRosters, remote.lh_slip_rosters);
+  }
+  if (remote.lh_org_results != null) {
+    _write('lh_org_results', remote.lh_org_results);
+    Object.keys(ORG_RESULTS).forEach(k => delete ORG_RESULTS[k]);
+    Object.assign(ORG_RESULTS, remote.lh_org_results);
+  }
+  if (remote.lh_custom_pacing_units != null) {
+    _write('lh_custom_pacing_units', remote.lh_custom_pacing_units);
+    Object.keys(CUSTOM_PACING_UNITS).forEach(k => delete CUSTOM_PACING_UNITS[k]);
+    Object.assign(CUSTOM_PACING_UNITS, remote.lh_custom_pacing_units);
+  }
+  if (remote.lh_cas_pacing_notes != null) {
+    _write('lh_cas_pacing_notes', remote.lh_cas_pacing_notes);
+    Object.keys(CAS_PACING_NOTES).forEach(k => delete CAS_PACING_NOTES[k]);
+    Object.assign(CAS_PACING_NOTES, remote.lh_cas_pacing_notes);
+  }
+  if (remote.lh_scr_student_emails != null) {
+    _write('lh_scr_student_emails', remote.lh_scr_student_emails);
+    Object.keys(SCR_STUDENT_EMAILS).forEach(k => delete SCR_STUDENT_EMAILS[k]);
+    Object.assign(SCR_STUDENT_EMAILS, remote.lh_scr_student_emails);
+  }
+  if (remote.lh_receiving_status != null) {
+    _write('lh_receiving_status', remote.lh_receiving_status);
+    Object.keys(RECEIVING_STATUS).forEach(k => delete RECEIVING_STATUS[k]);
+    Object.assign(RECEIVING_STATUS, remote.lh_receiving_status);
+  }
+  if (remote.lh_horizon != null) {
+    _write('lh_horizon', remote.lh_horizon);
+    Object.keys(HORIZON).forEach(k => delete HORIZON[k]);
+    Object.assign(HORIZON, remote.lh_horizon);
+    if (typeof renderHorizons === 'function') renderHorizons();
+  }
+  if (remote.lh_lp_edits != null) {
+    _write('lh_lp_edits', remote.lh_lp_edits);
+    // LP_EDITS is a const object reference — mutate in place rather than
+    // reassign, same convention as ORGANIZATIONS/ORG_RESULTS above.
+    Object.keys(LP_EDITS).forEach(k => delete LP_EDITS[k]);
+    Object.assign(LP_EDITS, remote.lh_lp_edits);
+  }
+  // lh_lp_edit_meta and lh_unit_notes have no persistent in-memory
+  // variable either — both handled by the "read fresh via LS.get()"
+  // batch above.
+}
+
+// ── Server write-through for row-shaped data domains (server-migration
+// Phase 5+) ──────────────────────────────────────────────────────────────
+// A row-shaped domain is a growing flat list of independent records with
+// their own `id` (trips, trip archive, DECA results, ...) — as opposed to
+// the map-shaped domains just above, and the small singleton settings
+// objects further up. Synced automatically, same as the config domains —
+// see leader-hub/Data.gs's own header comment for why that's safe here
+// (a private, owner-only Spreadsheet, not Organization Sync's deliberate
+// co-advisor-sharing one).
+//
+// Each record is pushed/pulled as one [Id, RecordJSON] row rather than
+// flattening every field into its own column — this domain list already
+// covers records as structurally different as a ~50-field trip (with a
+// nested `ap` approvals object) and a 6-field DECA result, and a
+// schema-agnostic row shape means adding a field to a record's own object
+// literal never requires a matching server-side or sync-layer change.
+// leader-hub/Data.gs's tab is still real per-record ROWS, not one giant
+// blob for the whole domain — same "a stray corrupt record can't corrupt
+// its neighbors" property flat columns would give, just JSON per cell
+// instead of JSON per field.
+const LH_SERVER_SYNCED_DATA_KEYS = {
+  lh_trips: 'trips',
+  lh_trip_archive: 'trip_archive',
+  lh_deca_results: 'deca_results',
+  lh_wbl_students: 'wbl_roster',
+  lh_inventory: 'store_inventory',
+  lh_sales_log: 'store_sales_log',
+  lh_purchase_orders: 'store_purchase_orders',
+  lh_es_players: 'esports_players',
+  lh_es_matches: 'esports_matches',
+  lh_goals: 'goals',
+  lh_events: 'events',
+  lh_tasks: 'tasks',
+  lh_deadlines: 'deadlines',
+  lh_journal_history: 'journal_entries',
+  lh_obs_history: 'observation_history',
+  lh_brag_manual_wins: 'brag_manual_wins',
+};
+
+function _lhDataTrackerKey_(domain) { return 'lh_data_sync_' + domain; }
+function _lhGetDataTracker_(domain) { return LS.get(_lhDataTrackerKey_(domain), { lastKnownRemoteUpdatedAt: null }); }
+// Raw localStorage, not LS.set() — a tracker key is bookkeeping about a
+// sync, not itself a synced domain, and must never recursively trigger
+// this same hook.
+function _lhSetDataTracker_(domain, tracker) {
+  try { localStorage.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
+}
+
+// One-warning-per-domain-per-page-load, same convention as LS.set/LS.get's
+// own _lsWriteFailWarned/_lsReadFailWarned — a background sync hitting a
+// real conflict (this browser's edit is safe locally, just not yet
+// pushed) shouldn't spam a toast on every subsequent write.
+let _lhDataConflictWarned = {};
+
+// Fire-and-forget — never blocks or throws back into the LS.set() caller.
+// A rejected (conflicting) push never overwrites the server and never
+// touches this browser's own localStorage copy either — the edit stays
+// exactly as safe as it always was, just not yet synced. No interactive
+// dialog here (contrast with Organization Sync's button-triggered push,
+// which does show one) — this runs in the background on every save, not
+// in response to a deliberate "sync now" click.
+async function _lhSyncDataKeyToServer_(key, value) {
+  const domain = LH_SERVER_SYNCED_DATA_KEYS[key];
+  if (!domain) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+
+  const tracker = _lhGetDataTracker_(domain);
+  const rows = (Array.isArray(value) ? value : []).map(rec => [
+    (rec && rec.id != null) ? String(rec.id) : '',
+    JSON.stringify(rec),
+  ]);
+  let res;
+  try {
+    res = await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhPushData_({ domain, headers: ['Id', 'RecordJSON'], rows, expectedUpdatedAt: tracker.lastKnownRemoteUpdatedAt });
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Sync failed for ' + domain + ':', (e && e.message) || e);
+    return;
+  }
+  if (res && res.ok) {
+    _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+    return;
+  }
+  if (res && res.conflict && !_lhDataConflictWarned[domain]) {
+    _lhDataConflictWarned[domain] = true;
+    console.warn('[LeaderHub] ' + domain + ' has changes from elsewhere this browser hasn\'t synced yet — this edit stayed safe locally but wasn\'t pushed to the server.');
+    if (typeof _showToast === 'function') {
+      _showToast('⚠ ' + domain + ' changed elsewhere — reload once things settle to catch up', 6000, '#b45309');
+    }
+  }
+}
+
+// Boot-time catch-up for every row-shaped domain, same shape as
+// lhRefreshConfigFromServer_() above — only overwrites this browser's
+// copy when the server actually has something (found:true); a
+// never-synced domain keeps whatever's already in localStorage (this
+// browser's own seed data, on the very first sync).
+async function lhRefreshDataDomainsFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+
+  const APPLY = {
+    trips: arr => {
+      trips = arr;
+      localStorage.setItem('lh_trips', JSON.stringify(trips));
+      if (typeof renderTrips === 'function') renderTrips();
+      if (typeof renderDashboard === 'function') renderDashboard();
+    },
+    trip_archive: arr => {
+      tripArchive = arr;
+      localStorage.setItem('lh_trip_archive', JSON.stringify(tripArchive));
+      if (typeof renderArchive === 'function') renderArchive();
+    },
+    deca_results: arr => {
+      // No persistent in-memory variable — every reader already calls
+      // LS.get('lh_deca_results', []) fresh, so the localStorage write is
+      // the whole refresh; re-render only if that view happens to be open.
+      localStorage.setItem('lh_deca_results', JSON.stringify(arr));
+      if (typeof renderDecaResults === 'function') renderDecaResults();
+    },
+    wbl_roster: arr => {
+      WBL_STUDENTS = arr;
+      localStorage.setItem('lh_wbl_students', JSON.stringify(WBL_STUDENTS));
+      if (typeof renderWBLTracker === 'function') renderWBLTracker();
+    },
+    store_inventory: arr => {
+      INVENTORY = arr;
+      localStorage.setItem('lh_inventory', JSON.stringify(INVENTORY));
+      if (typeof renderProcurement === 'function') renderProcurement();
+    },
+    store_sales_log: arr => {
+      SALES_LOG = arr;
+      localStorage.setItem('lh_sales_log', JSON.stringify(SALES_LOG));
+      if (typeof renderFinance === 'function') renderFinance();
+    },
+    store_purchase_orders: arr => {
+      PURCHASE_ORDERS = arr;
+      localStorage.setItem('lh_purchase_orders', JSON.stringify(PURCHASE_ORDERS));
+      if (typeof renderProcurement === 'function') renderProcurement();
+    },
+    esports_players: arr => {
+      ES_PLAYERS = arr;
+      localStorage.setItem('lh_es_players', JSON.stringify(ES_PLAYERS));
+      if (typeof renderESRoster === 'function') renderESRoster();
+    },
+    esports_matches: arr => {
+      ES_MATCHES = arr;
+      localStorage.setItem('lh_es_matches', JSON.stringify(ES_MATCHES));
+      if (typeof renderMatchLog === 'function') renderMatchLog();
+    },
+    goals: arr => {
+      goals = arr;
+      localStorage.setItem('lh_goals', JSON.stringify(goals));
+      if (typeof renderGoals === 'function') renderGoals();
+    },
+    events: arr => {
+      otherEvents = arr;
+      localStorage.setItem('lh_events', JSON.stringify(otherEvents));
+      if (typeof renderEvents === 'function') renderEvents();
+      if (typeof renderDECAPipeline === 'function') renderDECAPipeline();
+    },
+    tasks: arr => {
+      // No persistent in-memory variable — every reader already calls
+      // LS.get('lh_tasks', []) fresh, so the localStorage write is the
+      // whole refresh; refreshNextAction() re-derives the action queue
+      // that reads from it.
+      localStorage.setItem('lh_tasks', JSON.stringify(arr));
+      if (typeof refreshNextAction === 'function') refreshNextAction();
+    },
+    deadlines: arr => {
+      DEADLINES = arr;
+      localStorage.setItem('lh_deadlines', JSON.stringify(DEADLINES));
+      if (typeof renderDeadlines === 'function') renderDeadlines();
+    },
+    journal_entries: arr => {
+      // No persistent in-memory variable (lh_journal_last, a single most-
+      // recent entry, is separate and untouched) — every reader calls
+      // LS.get('lh_journal_history', []) fresh.
+      localStorage.setItem('lh_journal_history', JSON.stringify(arr));
+    },
+    observation_history: arr => {
+      localStorage.setItem('lh_obs_history', JSON.stringify(arr));
+      if (typeof renderObsChecklist === 'function') renderObsChecklist();
+    },
+    brag_manual_wins: arr => {
+      localStorage.setItem('lh_brag_manual_wins', JSON.stringify(arr));
+    },
+  };
+
+  for (const [key, domain] of Object.entries(LH_SERVER_SYNCED_DATA_KEYS)) {
+    let res;
+    try {
+      res = await new Promise((resolve, reject) => {
+        google.script.run
+          .withSuccessHandler(resolve)
+          .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+          .lhPullData_({ domain });
+      });
+    } catch (e) {
+      console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
+      continue;
+    }
+    if (res && res.ok && res.found) {
+      const arr = (res.rows || [])
+        .map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } })
+        .filter(Boolean);
+      const apply = APPLY[domain];
+      if (apply) apply(arr);
+      _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+    }
+  }
+}
+
+// ── SCR score sync — debounced, per-cell (server-migration Phase 6) ────────
+// scrScores is a course→period→student→competency matrix that can span
+// thousands of cells, and setScore() (leader-hub/src/09-...-esports.html)
+// fires on every single grid click — orders of magnitude past a Script
+// Property's ~9KB value limit if pushed whole (Config.gs's model), and a
+// wholesale-tab-rewrite per click (Data.gs's model) would both be slow and
+// rewrite the entire gradebook on every keystroke of a fast grading pass.
+// See leader-hub/SCR.gs for the server side (one real row per cell,
+// upserted by composite key). This queues each change and flushes a whole
+// batch in one call after a short pause in clicking, rather than one round
+// trip per click.
+const SCR_SYNC_DEBOUNCE_MS = 2000;
+let _scrSyncQueue = []; // [{course, period, studentKey, compNum, score}]
+let _scrSyncTimer = null;
+
+function _lhQueueScrScoreSync_(course, period, studentKey, compNum, score) {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return; // local-file mode: nothing to sync to
+  // Replace any already-queued change to this exact cell rather than
+  // appending a duplicate — a fast clicker cycling a score 0→1→2→3 should
+  // sync once with the final value, not four separate stale writes.
+  _scrSyncQueue = _scrSyncQueue.filter(c => !(c.course === course && c.period === period && c.studentKey === studentKey && c.compNum === compNum));
+  _scrSyncQueue.push({ course, period, studentKey, compNum, score });
+  if (_scrSyncTimer) clearTimeout(_scrSyncTimer);
+  _scrSyncTimer = setTimeout(_lhFlushScrScoreSync_, SCR_SYNC_DEBOUNCE_MS);
+}
+
+async function _lhFlushScrScoreSync_() {
+  _scrSyncTimer = null;
+  if (!_scrSyncQueue.length) return;
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) { _scrSyncQueue = []; return; }
+  const batch = _scrSyncQueue;
+  _scrSyncQueue = [];
+  try {
+    await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhSaveScrScores_(batch);
+    });
+  } catch (e) {
+    // Not re-queued automatically — the edit is already safe in scrScores/
+    // localStorage via persistSCR() (setScore() calls that first, before
+    // this ever runs); the next real edit to any cell queues and flushes
+    // again, so a transient failure here doesn't strand an edit forever.
+    console.warn('[LeaderHub] SCR score sync failed for ' + batch.length + ' cell(s):', (e && e.message) || e);
+  }
+}
+
+// Boot-time catch-up, same found:false/found:true-guarded shape as
+// lhRefreshConfigFromServer_()/lhRefreshDataDomainsFromServer_() above —
+// found:false (this deployment has never had a score pushed to it) leaves
+// scrScores untouched; found:true replaces it wholesale with the server's
+// authoritative copy, since by the time any score has ever been synced,
+// the server is the source of truth every device should converge on.
+async function lhRefreshScrScoresFromServer_() {
+  if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+  let res;
+  try {
+    res = await new Promise((resolve, reject) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+        .lhGetScrScores_();
+    });
+  } catch (e) {
+    console.warn('[LeaderHub] Could not refresh SCR scores from server:', (e && e.message) || e);
+    return;
+  }
+  if (res && res.ok && res.found) {
+    scrScores = res.scores || {};
+    localStorage.setItem('lh_scr_scores', JSON.stringify(scrScores));
+    if (document.getElementById('view-competency')?.classList.contains('active') && typeof renderCompetencyView === 'function') {
+      renderCompetencyView();
+    }
+  }
+}
+
+// ============================================================
+// DATA
+// ============================================================
+let trips = [
+  {id:1, name:'City Museum Field Trip', sub:'same-day', date:'2026-03-18',
+   origin:'Chester Middle School', depTime:'09:45', retTime:'13:30', depDate:'2026-03-18', retDate:'2026-03-18',
+   dest1:'The Children\'s Museum of Richmond, 2626 W Broad St, Richmond VA 23220', arr1:'10:15', dep1:'12:45', dest2:'', arr2:'', dep2:'',
+   oneway:'NO', status:'active',
+   ccpsBus:1, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
+   grade:'9-10', classMem:'Economics Class', invited:28, stuAtt:24, adultAtt:3,
+   stuMF:'12/12', adultMF:'1/2', costStu:0, costAdult:0, chap:'1/2', wc:0,
+   afford:'No cost trip — transportation covered by school budget',
+   nonatt:'Students with unresolved discipline issues',
+   sped:'No special accommodations required',
+   med:'YES', allergy:'YES',
+   med1:'Jane Smith, (804) 555-1001', med2:'Bob Jones, (804) 555-1002',
+   fund:'FT-2026-001', po:'TT-2026-0041', sponsor:'Ms. Rivera', cell:'(804) 555-2010', coord:'Mr. Hughes', acctNotes:'',
+   why:'Connects to Unit 3: Consumer Economics — students analyze real-world marketplace decisions.',
+   pre:'Pre-trip reading on economic systems; vocabulary preview worksheet.',
+   post:'Reflection essay: 3 economic concepts observed during visit.',
+   isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
+   reason:'Academic enrichment — economics curriculum', acttype:'Museum Visit',
+   notes:'Student-led Q&A session with museum educators.',
+   ap:{coord:true,principal:true,bookkeeper:true,risk:false,transport:false}
+  },
+  {id:2, name:'Science Center Trip', sub:'same-day', date:'2026-05-06',
+   origin:'Chester Middle School', depTime:'09:45', retTime:'13:30', depDate:'2026-05-06', retDate:'2026-05-06',
+   dest1:'Science Museum of Virginia, 2500 W Broad St, Richmond VA 23220', arr1:'10:15', dep1:'12:30', dest2:'', arr2:'', dep2:'',
+   oneway:'NO', status:'planned',
+   ccpsBus:2, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
+   grade:'9-12', classMem:'All enrolled students', invited:36, stuAtt:32, adultAtt:4,
+   stuMF:'', adultMF:'', costStu:0, costAdult:0, chap:'', wc:0,
+   afford:'', nonatt:'', sped:'',
+   med:'', allergy:'',
+   med1:'', med2:'',
+   fund:'', po:'', sponsor:'Mr. Chen', cell:'', coord:'', acctNotes:'',
+   why:'', pre:'', post:'',
+   isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
+   reason:'STEM enrichment', acttype:'Science Center Visit',
+   notes:'Innovation exhibit + engineering challenge.',
+   ap:{coord:false,principal:false,bookkeeper:false,risk:false,transport:false}
+  },
+];
+
+// ─── DECA Field Trips injected from Google Drive data ────────────────────────
+trips.push(
+  // DECA Ultimate Power Trip — Nov 21–23, 2025 — COMPLETE
+  {id:3, name:'DECA Ultimate Power Trip', sub:'overnight', date:'2025-11-21',
+   origin:'Clover Hill High School', depTime:'08:00', retTime:'17:00', depDate:'2025-11-21', retDate:'2025-11-23',
+   dest1:'Renaissance Arlington Capital View, 2800 South Potomac Ave, Arlington, VA 22202', arr1:'13:00', dep1:'13:00',
+   dest2:'Staples Mills Train Station, 7519 Staples Mill Rd, Richmond, VA 23228', arr2:'12:00', dep2:'16:00',
+   oneway:'NO', status:'complete',
+   ccpsBus:0, charter:0, rental:1, walk:'', parentTx:'', train:'AmTrak', charterCo:'', rentalCo:'',
+   grade:'9-12', classMem:'DECA Members', invited:50, stuAtt:13, adultAtt:2,
+   stuMF:'7/6', adultMF:'1/1', costStu:250, costAdult:250, chap:'1/1', wc:0,
+   afford:'SAF Funds', nonatt:'Student Choice', sped:'',
+   med:'Y', allergy:'Y',
+   med1:'Adam Berneche, (804) 833-8869', med2:'Regina Warriner, (804) 387-7079',
+   fund:'4280', po:'26-316-3418', sponsor:'Adam Berneche', cell:'(804) 833-8869', coord:'Adam Berneche', acctNotes:'DECA Account 4280',
+   why:'This trip supports DECA which is the CTSO of the Marketing classes which is required by the DoE.',
+   pre:'Students prepared for the DECA conference through practice sessions at chapter meetings and classroom experience.',
+   post:'Conference attendees had the opportunity to qualify competing at further DECA Conferences.',
+   isOn:'X', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
+   reason:'DECA CTSO — Student Competition Conference', acttype:'Student Conference',
+   notes:'Amtrak from Staples Mills. Drivers: Adam Berneche & Regina Warriner.',
+   ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
+  },
+  // DECA District Leadership Conference — Dec 3, 2025 — COMPLETE
+  {id:4, name:'DECA District Leadership Conference', sub:'same-day', date:'2025-12-03',
+   origin:'Clover Hill High School', depTime:'09:00', retTime:'14:00', depDate:'2025-12-03', retDate:'2025-12-03',
+   dest1:'Chesterfield Towne Center, 11500 Midlothian Tpke, Richmond, VA 23235', arr1:'09:30', dep1:'13:30',
+   dest2:'', arr2:'', dep2:'',
+   oneway:'NO', status:'complete',
+   ccpsBus:0, charter:0, rental:0, walk:'', parentTx:'1', train:'', charterCo:'', rentalCo:'',
+   grade:'9-12', classMem:'DECA Members', invited:23, stuAtt:15, adultAtt:2,
+   stuMF:'9/6', adultMF:'1/1', costStu:0, costAdult:0, chap:'1/1', wc:0,
+   afford:'SAF Funds', nonatt:'Student Choice', sped:'',
+   med:'Y', allergy:'Y',
+   med1:'Adam Berneche, (804) 833-8869', med2:'Kristen Hangey, (804) 387-7079',
+   fund:'4280', po:'', sponsor:'Adam Berneche', cell:'(804) 833-8869', coord:'Adam Berneche', acctNotes:'No Transportation Costs. Contact: Shannon Tual (703) 860-5000',
+   why:'DECA Students participated in competitive events applying classroom knowledge in predetermined scenarios and networked with district peers.',
+   pre:'Practice sessions at chapter meetings; knowledge from classroom.',
+   post:'Conference attendees had the opportunity to qualify for SLC.',
+   isOn:'', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
+   reason:'DECA competitive events — district qualifier', acttype:'Conference',
+   notes:'Parent transportation (1 vehicle). 15 students attended.',
+   ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
+  },
+  // DECA State Leadership Conference — Feb 27–Mar 2, 2026 — COMPLETE
+  {id:5, name:'DECA State Leadership Conference', sub:'overnight-is', date:'2026-02-27',
+   origin:'Meadowbrook High School (bus origin)', depTime:'09:00', retTime:'14:00', depDate:'2026-02-27', retDate:'2026-03-02',
+   dest1:'Virginia Beach Convention Center, 1000 19th St, Virginia Beach, VA 23451', arr1:'12:00', dep1:'11:00',
+   dest2:'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach, VA 23451', arr2:'13:00', dep2:'07:00',
+   oneway:'NO', status:'complete',
+   ccpsBus:0, charter:1, rental:0, walk:'', parentTx:'', train:'', charterCo:'Winn Transportation', rentalCo:'',
+   grade:'9-12', classMem:'DECA Members', invited:30, stuAtt:15, adultAtt:2,
+   stuMF:'8/7', adultMF:'1/1', costStu:350, costAdult:350, chap:'1/1', wc:0,
+   afford:'SAF Funds', nonatt:'Student Choice', sped:'',
+   med:'Y', allergy:'Y',
+   med1:'Adam Berneche, (804) 833-8869', med2:'Amanda Berneche, (703) 338-6410',
+   fund:'4280', po:'26-0368-2559', sponsor:'Adam Berneche', cell:'(804) 833-8869', coord:'Adam Berneche', acctNotes:'Contact: Shannon Tual (703) 860-5000. Bus ~$70/student.',
+   why:'This trip supports DECA which is the CTSO of the Marketing classes which is required by the DoE.',
+   pre:'Practice sessions at chapter meetings and classroom experience.',
+   post:'Top 8 finishers qualify for ICDC. Top 10 may receive bumps. Must have 70%+ SLC test score.',
+   isOn:'X', oos:'', oosOn:'', intl:'', flight:'', waivers:'',
+   reason:'DECA CTSO — State Competition', acttype:'Conference',
+   notes:'Housing: Hampton Inn North Oceanfront ($171/night, 4/room). Charter: Winn. Awaiting SLC results for ICDC qualifiers.',
+   ap:{coord:true,principal:true,bookkeeper:true,risk:true,transport:true}
+  },
+  // DECA ICDC — Apr 25–29, 2026 — PLANNED ⚠️ URGENT
+  {id:6, name:'DECA ICDC — International Career Development Conference', sub:'overnight-oos', date:'2026-04-25',
+   origin:'Clover Hill High School', depTime:'', retTime:'', depDate:'2026-04-25', retDate:'2026-04-29',
+   dest1:'Atlanta, GA — Atlanta Hilton + Convention Center', arr1:'', dep1:'',
+   dest2:'', arr2:'', dep2:'',
+   oneway:'NO', status:'planned',
+   ccpsBus:0, charter:0, rental:0, walk:'', parentTx:'', train:'', charterCo:'', rentalCo:'',
+   grade:'9-12', classMem:'SLC Qualifiers (Top 8 + bumps, 70%+ test)', invited:0, stuAtt:0, adultAtt:2,
+   stuMF:'', adultMF:'1/1', costStu:1000, costAdult:0, chap:'1/1', wc:0,
+   afford:'SAF Funds', nonatt:'Did not qualify at SLC or scored below 70% on SLC test', sped:'',
+   med:'Y', allergy:'Y',
+   med1:'Adam Berneche, (804) 833-8869', med2:'TBD — need 2nd trained adult',
+   fund:'4280', po:'', sponsor:'Adam Berneche', cell:'(804) 833-8869', coord:'Adam Berneche',
+   acctNotes:'Registration: $155/student (opens Mar 2, closes Mar 13, payment due Apr 1). Housing: Atlanta Hilton $260/night, 4/room. Coordinate flights with other CCPS advisors.',
+   why:'DECA students who qualified at the State level will compete at the National competition. Attended by 20,000 qualifiers from across the U.S. and internationally.',
+   pre:'Use judges\' SLC comments to improve test scores and role play presentations. Practice with mentors.',
+   post:'Review successes and areas of improvement. Thrive Academy participants begin planning next year.',
+   isOn:'', oos:'X', oosOn:'X', intl:'', flight:'Airline — coordinate with CCPS advisors',
+   waivers:'',
+   reason:'DECA CTSO — National Competition (SLC qualifiers only)', acttype:'Conference',
+   notes:'⚠️ Reg opens Mar 2–13 ($155/student). Payment due Apr 1. Field trip form needed NOW — 45-day lead required. Airline transport. Atlanta Hilton 4/room ($260/night).',
+   ap:{coord:false,principal:false,bookkeeper:false,risk:false,transport:false,director:false,chief:false}
+  }
+);
+
+// ─── DECA EVENTS — 25-26 SEASON (sourced from Google Drive field trip forms + DECA to Know) ──
+const _otherEventsDefault = [
+  // ── COMPLETED ──────────────────────────────────────────────────────────────
+  {id:10, name:'DECA Ultimate Power Trip', type:'deca', date:'2025-11-21',
+   endDate:'2025-11-23', loc:'Renaissance Arlington Capital View, 2800 South Potomac Ave, Arlington, VA 22202',
+   stu:13, adults:2, stuMF:'7M/6F', adultMF:'1M/1F', status:'complete',
+   cost:'~$250/student', transport:'Amtrak (from Staples Mills) + Rental Vehicle',
+   chaperones:'Adam Berneche (804-833-8869) · Regina Warriner (804-387-7079)',
+   po:'26-316-3418', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
+   notes:'In-state overnight. Amtrak from Staples Mill Station (7519 Staples Mill Rd, Richmond VA 23228). Students competed in written events and role-plays. Trip entered 10/9/2025.'},
+
+  {id:11, name:'DECA District Leadership Conference (DLC)', type:'deca', date:'2025-12-03',
+   loc:'Chesterfield Towne Center, 11500 Midlothian Tpke, Richmond, VA 23235',
+   stu:15, adults:2, stuMF:'9F/6M', adultMF:'1M/1F', status:'complete',
+   cost:'$0 (included with membership)', transport:'Parent Transportation (1 vehicle)',
+   chaperones:'Adam Berneche (804-833-8869) · Kristen Hangey (804-387-7079)',
+   po:'', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
+   notes:'Day trip. Depart CHHS 9am, arrive CTC 9:30am, depart 1:30pm, return ~2pm. 23 students invited, 15 attended. Job Interview topic: Ice Cream Innovator @ Sweet Scoops ($13.50/hr). All chapters must bring 2 judges. Trip entered 12/1/2025.'},
+
+  {id:12, name:'DLC Testing Window', type:'deca', date:'2025-11-17',
+   endDate:'2025-11-25', loc:'Clover Hill HS (in-school)',
+   stu:0, adults:0, status:'complete',
+   notes:'Nov 17–21 primary window; Nov 24–25 make-up dates. No test = no compete. Students completed Job Interview application + resume in Google Form (NEW this year — no email to Kris required).'},
+
+  {id:17, name:'SLC Testing Window', type:'deca', date:'2026-02-09',
+   endDate:'2026-02-13', loc:'Clover Hill HS (in-school)',
+   stu:0, adults:0, status:'complete',
+   notes:'Feb 9–13. NO make-up days. Students must earn 70%+ on test to advance to ICDC. Score is required regardless of placement at SLC.'},
+
+  // ── JUST OCCURRED — results pending ────────────────────────────────────────
+  {id:13, name:'DECA State Leadership Conference (SLC)', type:'deca', date:'2026-02-27',
+   endDate:'2026-03-01', loc:'Virginia Beach Convention Center, 1000 19th St, Virginia Beach, VA 23451',
+   stu:15, adults:2, stuMF:'8F/7M', adultMF:'1M/1F', status:'active',
+   cost:'$350/student ($165 conference w/Friday dinner + $171/night hotel + ~$70 bus)',
+   transport:'Charter Bus — Winn Transportation (~$70/student)',
+   chaperones:'Adam Berneche (804-833-8869) · Amanda Berneche (703-338-6410)',
+   po:'26-0368-2559', account:'DECA 4280', contact:'Shannon Tual (703) 860-5000',
+   housing:'Hampton Inn North Oceanfront, 3107 Atlantic Ave, Virginia Beach VA 23451 — $171/night, 4 to a room',
+   notes:'In-state overnight. Depart Meadowbrook HS 9am (bus origin). 30 students invited, 15 attended. Top 8 finishers qualify for ICDC; Top 10 may receive bumps. Must have 70%+ SLC test score to attend ICDC. Annual Report registered at same time as SLC. Reg closed Jan 16; payment was due Feb 2. SLC fee options: Conference Only $135 · w/Friday Dinner $165 · Chaperone Judge $75. Saturday meal add-on $35. Team events: chapters with 1–150 members get 4 entries, 151–300 get 6, 301+ get 8; max 2 per category. AWAITING RESULTS.'},
+
+  // ── UPCOMING — ACTION REQUIRED ─────────────────────────────────────────────
+  {id:14, name:'ICDC Registration Window', type:'deca', date:'2026-03-02',
+   endDate:'2026-03-13', loc:'Online — Virginia DECA',
+   stu:0, adults:0, status:'urgent',
+   notes:'⚠️ Opens March 2, CLOSES MARCH 13. $155/student. Open to Top 8 SLC finishers + possible bumps to Top 10. MUST have 70%+ SLC test score. Prepare ICDC commitment letter packet for Top 8 qualifiers. Coordinate rooming + flights with other CCPS advisors. Housing: Atlanta Hilton, $260/night, 4 to a room (advisors, adults, AND students). FIELD TRIP FORM MUST BE SUBMITTED BEFORE THIS CLOSES.'},
+
+  {id:15, name:'ICDC Payment Due', type:'deca', date:'2026-04-01',
+   loc:'Online / Finance Office',
+   stu:0, adults:0, status:'upcoming',
+   notes:'$155/student registration payment due April 1. Coordinate flights with other CCPS advisors. Based on 24-25 Y@G pattern, student installments were ~$400 → $300 → $300. Total ICDC cost per student ~$1,000.'},
+
+  {id:16, name:'DECA ICDC — International Career Development Conference', type:'deca', date:'2026-04-25',
+   endDate:'2026-04-29', loc:'Atlanta, GA — Atlanta Hilton + Georgia World Congress Center',
+   stu:0, adults:2, status:'planned',
+   cost:'~$1,000/student', transport:'Airline (coordinate with CCPS advisors)',
+   housing:'Atlanta Hilton, $260/night, 4 to a room — advisors, adults, AND students all 4/room',
+   notes:'Out-of-state overnight. Field trip form needed NOW — 45-day lead required = submit by ~Mar 11. Registration Mar 2–13 ($155). Payment due Apr 1. Only SLC Top 8 qualifiers (+ bumps to Top 10) with 70%+ test score. ~20,000 competitors nationally and internationally. Coordinate flights + rooming with other CCPS advisors attending.'},
+
+  // ── CHAPTER MEETINGS & ADMIN (25-26 pattern from Y@G) ─────────────────────
+  {id:18, name:'ICDC Student Installment #1 Due', type:'deca', date:'2026-03-13',
+   loc:'Finance / Mr. Berneche',
+   stu:0, adults:0, status:'upcoming',
+   notes:'~$400/student (based on 24-25 Y@G schedule). Confirm exact amount for 25-26.'},
+
+  {id:19, name:'ICDC Student Installment #2 Due', type:'deca', date:'2026-03-27',
+   loc:'Finance / Mr. Berneche',
+   stu:0, adults:0, status:'upcoming',
+   notes:'~$300/student (based on 24-25 Y@G schedule).'},
+
+  {id:22, name:'ICDC Student Installment #3 + Forms Due', type:'deca', date:'2026-04-17',
+   loc:'Finance / Mr. Berneche',
+   stu:0, adults:0, status:'upcoming',
+   notes:'~$300/student + all field trip permission forms due (based on 24-25 Y@G schedule).'},
+
+  {id:23, name:'End of Year / Post-Mortem Meeting', type:'deca', date:'2026-05-15',
+   loc:'Rm 107 · 3pm–4pm',
+   stu:0, adults:0, status:'upcoming',
+   notes:'25-26 Post Mortem Meeting. Review season results, plan for 26-27.'},
+
+  // ── OTHER EVENTS ──────────────────────────────────────────────────────────
+  {id:20, name:'Spring Leadership Workshop', type:'leadership', date:'2026-04-02', loc:'Library Commons', stu:30, notes:'Guest speaker: local entrepreneur.'},
+  {id:21, name:'Community Service Drive', type:'community', date:'2026-04-10', loc:'Food Bank', stu:18, notes:'3 hrs service; reflect & debrief.'},
+];
+let otherEvents = LS.get('lh_events', _otherEventsDefault);
+
+// ─── DECA CHAPTER REFERENCE DATA ─────────────────────────────────────────
+// FIXED (external product review, Finding 9 / "this month" hardcoded-
+// credentials cleanup): this object used to duplicate real identifying
+// contact info (advisor name/phone/email, coordinator name/phone) that
+// was never actually read by anything in the app (confirmed — nothing in
+// this file referenced decaChapterInfo) and had already drifted out of
+// sync with PROFILE below, the object that's actually wired into email
+// templates, sub plans, and Brag Board. Deleted outright rather than
+// scrubbed in place — dead code plus a stale, duplicate copy of contact
+// info that's a real credentials-exposure risk sitting in committed
+// source for no functional benefit.
+
+// ─── TEACHER / SCHOOL PROFILE — Settings → My Profile & School ─────────────
+// Every outbound email template, sub-plan header, and Brag Board recipient
+// below reads from this instead of a name baked into the source, so a
+// different teacher can make LeaderHub theirs by filling in Settings once
+// instead of hand-editing dozens of strings in this file.
+//
+// FIXED (external product review, Finding 9): email/phone fields below
+// used to ship as real contact info (Adam's own, plus three other real
+// people's district emails — supervisor/admin/attendance-coordinator) —
+// committed to source control for anyone with repo access to read,
+// regardless of whether the live app ever exposes them. Blanked to ''
+// here; getProfile() below still works identically for a live deployment
+// once Settings → My Profile & School is filled in once (persisted to
+// localStorage, never committed) — this is exactly the same "fresh
+// adopter fills in Settings" path already documented for `name` below,
+// just extended to cover the fields that are actual reach-this-person
+// credentials rather than a display name/title. Names/titles are left
+// as illustrative defaults; they identify a role, not a way to contact
+// someone.
+const PROFILE_DEFAULTS = {
+  name: 'Adam Berneche',
+  courtesyName: 'Mr. Berneche',        // casual mid-email references ("see Mr. Berneche")
+  title: 'DECA Advisor',                // signature line + BRAG_AUDIENCE-adjacent copy
+  classroomTitle: 'CTE Business & Marketing', // non-DECA templates (Email Composer, Brag Board)
+  school: 'Clover Hill High School',
+  phone: '',                            // fill in via Settings → My Profile & School
+  email: '',                            // fill in via Settings → My Profile & School
+  emailDomain: 'ccpsnet.net',           // AI-privacy ID substitution + placeholder examples
+  chapterName: 'Clover Hill DECA',      // "payable to ___" dues lines
+  supervisorName: 'Ms. Green',          // Brag Board "green" tab recipient
+  supervisorEmail: '',                  // fill in via Settings → My Profile & School
+  adminName: 'Admin (Altizer / White)', // Brag Board "admin" tab recipient
+  adminEmail: '',                       // fill in via Settings → My Profile & School
+  attendanceCoordFirstName: 'Nykia',    // sub-plan email greeting
+  attendanceCoordEmail: '',             // fill in via Settings → My Profile & School
+};
+function getProfile() { return Object.assign({}, PROFILE_DEFAULTS, LS.get('lh_profile', {})); }
+function saveProfile(updates) {
+  const merged = Object.assign({}, LS.get('lh_profile', {}), updates);
+  LS.set('lh_profile', merged);
+  Object.assign(PROFILE, PROFILE_DEFAULTS, merged); // live-update the in-memory object, no reload needed
+  _applyProfileToStaticDOM();
+}
+let PROFILE = getProfile();
+
+// ─── KEY CONTACTS (Trips → Chapter Reference) ───────────────────────────
+// FIXED (external product review, Finding 9 / "this month" hardcoded-
+// credentials cleanup): this list used to be a hardcoded array of ~8 real
+// people's names, phone numbers, and emails baked directly into source —
+// committed to source control regardless of whether the live app ever
+// showed them to anyone else. Same fix as PROFILE above: ships with an
+// empty default, and reads through localStorage instead (so nothing real
+// lives in committed source), via getKeyContacts()/saveKeyContacts()
+// below. There's no dedicated Settings panel for this one (it's a short
+// reference list, not a single profile), so populate it once, locally,
+// from the browser console:
+//   saveKeyContacts([
+//     {name:'...', role:'Head Advisor / Sponsor', phone:'...', email:'...'},
+//     ...
+//   ]);
+// That call persists to this browser's own localStorage only — never
+// committed, never sent anywhere — exactly like every Settings field.
+const KEY_CONTACTS_DEFAULTS = [];
+function getKeyContacts() { return LS.get('lh_keyContacts', KEY_CONTACTS_DEFAULTS); }
+function saveKeyContacts(list) { LS.set('lh_keyContacts', list || []); }
+
+// A couple of subtitle strings are static page HTML (not JS-rendered), so
+// PROFILE changes can't reach them just by reading PROFILE at generation
+// time the way every email template does. Patch them by id instead — once
+// at boot (see renderStaticEmbeddedContent) and again on every Settings save.
+function _applyProfileToStaticDOM() {
+  const decaSub = document.getElementById('deca-hub-subtitle');
+  if (decaSub && (typeof activeOrgId === 'undefined' || activeOrgId === 'deca')) {
+    decaSub.textContent = `${PROFILE.school} · 25–26 Season · All data sourced from Google Drive`;
+  }
+  // Only DECA's own subtitle is PROFILE-bound here — a non-DECA org's
+  // subtitle is set by _populateMemberFormForOrg() instead, and would be
+  // clobbered by this running unconditionally on every Settings save.
+  const addStuSub = document.getElementById('addstu-modal-subtitle');
+  if (addStuSub && (typeof activeOrgId === 'undefined' || activeOrgId === 'deca')) {
+    addStuSub.textContent = `${PROFILE.school} DECA · Chapter 4280`;
+  }
+}
+
+// ─── MODULE VISIBILITY — Settings → Modules ─────────────────────────────────
+// The nav + sidebar previously showed all 7 sections unconditionally, no
+// matter which of them a given teacher actually uses — no toggle existed
+// anywhere. DECA/WBL-Store/E-Sports are singled out as optional since
+// they're role-specific extras on top of the core classroom/trips/tools
+// surface; Dashboard, Classroom, Field Trips, and Tools stay always-on.
+const MODULES_DEFAULT = { orgs: true, wbl: true, esports: true };
+function getModules() {
+  const saved = LS.get('lh_modules', {});
+  // One-time migration: this flag used to be named `deca` (back when DECA
+  // was the only organization the app could show). Carry an existing
+  // teacher's on/off preference over to the new generic name instead of
+  // silently resetting it to the default.
+  if (saved.deca !== undefined && saved.orgs === undefined) { saved.orgs = saved.deca; delete saved.deca; LS.set('lh_modules', saved); }
+  return Object.assign({}, MODULES_DEFAULT, saved);
+}
+function saveModules(updates) {
+  const merged = Object.assign({}, LS.get('lh_modules', {}), updates);
+  LS.set('lh_modules', merged);
+  Object.assign(MODULES, MODULES_DEFAULT, merged);
+  _applyModuleVisibility();
+}
+let MODULES = getModules();
+
+// Hides the nav button + whole sidebar section (header+body+its trailing
+// separator, see the HTML — each is wrapped in a side-sec-<key> div) for
+// any disabled module, and re-filters the Dashboard pulse row to match.
+// (The DOM ids stay nav-deca/side-sec-deca/acc-deca — internal hooks, not
+// user-visible — while the flag/label they're driven by is now generic;
+// see _applyOrgNavLabels() for the visible "DECA" → org-name(s) text.)
+function _applyModuleVisibility() {
+  [['orgs', 'nav-deca', 'side-sec-deca'], ['wbl', 'nav-wbl', 'side-sec-wbl'], ['esports', 'nav-esports', 'side-sec-esports']].forEach(([key, navId, sideId]) => {
+    const show = MODULES[key] !== false;
+    const navEl = document.getElementById(navId);
+    if (navEl) navEl.style.display = show ? '' : 'none';
+    const sideEl = document.getElementById(sideId);
+    if (sideEl) sideEl.style.display = show ? '' : 'none';
+  });
+  if (typeof renderPulseRow === 'function') renderPulseRow();
+  if (typeof _applyOrgNavLabels === 'function') _applyOrgNavLabels();
+}
+
+// Keeps the nav button and sidebar accordion header's visible "DECA" text
+// honest once other organizations can be added: shows the one configured
+// organization's own name/icon, or "Organizations" once there's more than
+// one. Called at boot and after any org import/removal.
+//
+// Also refreshes a handful of narrower, lower-value spots elsewhere in the
+// app that still show a literal "DECA" string rather than reading it from
+// config — the sub-plan absence-reason dropdown, the trip-archive filter
+// button, and the permission-slip roster-source button. Those three are
+// specifically about DECA's own built-in config (ORGANIZATIONS.deca —
+// there is no UI to rename the built-in org today, but a teacher forking
+// this file for their own club/CTSO can hand-edit ORG_DEFAULTS.deca once
+// and have every one of these follow, instead of hunting down each
+// hardcoded string individually). They intentionally do NOT track custom
+// imported organizations — those are covered by the separate, fully
+// generic ORG_RESULTS/renderOrgResults() system.
+function _applyOrgNavLabels() {
+  const ids = Object.keys(ORGANIZATIONS);
+  const single = ids.length === 1 ? ORGANIZATIONS[ids[0]] : null;
+  const icon = single ? (single.icon || '🏆') : '🏆';
+  const name = single ? single.name : 'Organizations';
+  const navBtn = document.getElementById('nav-deca');
+  if (navBtn) navBtn.textContent = `${icon} ${name}`;
+  const accHd = document.getElementById('acc-deca');
+  if (accHd) {
+    const arrowTxt = accHd.querySelector('.acc-arrow')?.textContent || '▶';
+    accHd.innerHTML = `<span>${icon}</span> ${escH(name)} <span class="acc-arrow">${arrowTxt}</span>`;
+  }
+
+  const decaOrg  = ORGANIZATIONS.deca;
+  const decaIcon = decaOrg ? (decaOrg.icon || '🏆') : '🏆';
+  const decaName = decaOrg ? decaOrg.name : 'DECA';
+
+  const reasonOpt = document.getElementById('sp-reason-deca-opt');
+  if (reasonOpt) reasonOpt.textContent = `${decaIcon} ${decaName} Trip`;
+
+  const archiveBtn = document.getElementById('af-deca');
+  if (archiveBtn) archiveBtn.textContent = `${decaIcon} ${decaName}`;
+
+  const slipSrcBtn = document.getElementById('as-src-deca');
+  if (slipSrcBtn) slipSrcBtn.textContent = `${decaIcon} ${decaName} Members`;
+}
+
+// ── Extracurricular Organizations — Settings → Organizations ─────────────────
+// Adam's own DECA chapter is the seeded built-in organization below — its
+// content is unchanged from what this file always shipped. A teacher running
+// a different club/CTSO (FBLA, HOSA, SkillsUSA, NHS, Key Club, Robotics, ...)
+// adds it via Settings → Organizations → Import Organization (JSON) instead
+// of editing this file — same additive-overlay pattern as the Course
+// Catalog. Officer titles and competition/achievement levels are now
+// per-organization config instead of hardcoded DECA-only constants, so a
+// non-competitive club can leave `levels` empty and a differently-tiered
+// CTSO can name its own levels instead of inheriting DECA's DLC → SLC → ICDC
+// structure. (This replaces DECA_POSITIONS/COMPETITIVE_EVENTS/
+// MEMBERSHIP_STATUSES, three richer constants that were defined here but
+// never actually referenced anywhere in the file — the app always ran on
+// the plainer OFFICER_POSITIONS array + MEMBER_STATUS_MAP defined further
+// down instead.)
+const ORG_DEFAULTS = {
+  deca: {
+    id: 'deca',
+    name: 'DECA',
+    // No `subtitle` here — DECA's subtitle is kept live off PROFILE.school
+    // by _applyProfileToStaticDOM(), not a fixed string (see there).
+    icon: '🏆',
+    officerPositions: ['President','Executive Vice President','Vice President of Finance',
+      'Vice President of Marketing','Vice President of Community','Vice President of Competition',
+      'Secretary','Treasurer','Parliamentarian','Reporter','Sergeant at Arms','Webmaster'],
+    levels: [
+      { key:'dlc',  label:'DLC — District' },
+      { key:'slc',  label:'SLC — State' },
+      { key:'icdc', label:'ICDC — International' },
+    ],
+    placeOptions: ['1st','2nd','3rd','4th','5th','6th','7th','8th','Top 10','Top 12','Finalist','Award','Qualified','Did Not Place'],
+    custom: false,
+  },
+};
+let CUSTOM_ORGS = LS.get('lh_custom_orgs', {});
+const ORGANIZATIONS = Object.assign({}, ORG_DEFAULTS, CUSTOM_ORGS);
+function persistCustomOrgs() { LS.set('lh_custom_orgs', CUSTOM_ORGS); }
+// Which organization's roster/results/officers the Members and Org Hub
+// views currently show — mirrors scrActiveCourse in the SCR tracker.
+let activeOrgId = LS.get('lh_active_org', 'deca');
+if (!ORGANIZATIONS[activeOrgId]) activeOrgId = Object.keys(ORGANIZATIONS)[0] || 'deca';
+
+const _studentsDefault = [
+  {id:1, first:'Jordan',  last:'Rivera',    grade:12, position:'President',       competEvent:'Business Management',      memberStatus:'slc',    paid:true,  duesDate:'2025-10-15', email:'jrivera@student.ccpsnet.net',    phone:'(804) 555-0101', parentEmail:'mrivera@email.com',   parentPhone:'(804) 555-0100', address:'1234 Oak St, Midlothian VA 23114', shirtSize:'M', dietaryNeeds:'', ev:5, notes:'SLC placer — potential ICDC qualifier'},
+  {id:2, first:'Aaliyah', last:'Thompson',  grade:11, position:'Vice President of Marketing', competEvent:'Marketing Communications', memberStatus:'slc', paid:true, duesDate:'2025-10-15', email:'athompson@student.ccpsnet.net', phone:'(804) 555-0103', parentEmail:'lthompson@email.com', parentPhone:'(804) 555-0102', address:'5678 Elm Ave, Midlothian VA 23113', shirtSize:'S', dietaryNeeds:'', ev:5, notes:'Strong communicator, led marketing push'},
+  {id:3, first:'Marcus',  last:'Chen',      grade:12, position:'Treasurer',        competEvent:'Business Finance',         memberStatus:'active', paid:true,  duesDate:'2025-10-20', email:'mchen@student.ccpsnet.net',    phone:'(804) 555-0105', parentEmail:'jchen@email.com',     parentPhone:'(804) 555-0104', address:'9012 Pine Rd, Chesterfield VA 23832', shirtSize:'L', dietaryNeeds:'', ev:5, notes:'Handles chapter budget, strong analyst'},
+  {id:4, first:'Priya',   last:'Patel',     grade:11, position:'Vice President of Competition', competEvent:'Sports & Entertainment Marketing Management', memberStatus:'slc', paid:true, duesDate:'2025-10-15', email:'ppatel@student.ccpsnet.net', phone:'(804) 555-0107', parentEmail:'rpatel@email.com', parentPhone:'(804) 555-0106', address:'3456 Maple Dr, Midlothian VA 23112', shirtSize:'XS', dietaryNeeds:'', ev:5, notes:'Competitive powerhouse, organized'},
+  {id:5, first:'Darius',  last:'Washington',grade:10, position:'Vice President of Community', competEvent:'Principles of Marketing', memberStatus:'active', paid:true, duesDate:'2025-11-01', email:'dwashington@student.ccpsnet.net', phone:'(804) 555-0109', parentEmail:'cwashington@email.com', parentPhone:'(804) 555-0108', address:'7890 Birch Ln, Chesterfield VA 23831', shirtSize:'XL', dietaryNeeds:'', ev:5, notes:'Passion for service, future leader'},
+  {id:6, first:'Sofia',   last:'Martinez',  grade:11, position:'Secretary',        competEvent:'Entrepreneurship',         memberStatus:'active', paid:true,  duesDate:'2025-10-22', email:'smartinez@student.ccpsnet.net', phone:'(804) 555-0111', parentEmail:'emartinez@email.com', parentPhone:'(804) 555-0110', address:'2345 Cedar Ct, Midlothian VA 23114', shirtSize:'S', dietaryNeeds:'', ev:5, notes:'Detail-oriented, keeps chapter on track'},
+  {id:7, first:'Devon',   last:'Harris',    grade:10, position:'Reporter',          competEvent:'Marketing Management',     memberStatus:'active', paid:true,  duesDate:'2025-11-03', email:'dharris@student.ccpsnet.net',  phone:'(804) 555-0113', parentEmail:'tharris@email.com',   parentPhone:'(804) 555-0112', address:'6789 Walnut St, Richmond VA 23235',  shirtSize:'M', dietaryNeeds:'', ev:null, notes:'Social media lead, creative eye'},
+  {id:8, first:'Imani',   last:'Brooks',    grade:9,  position:'Member',            competEvent:'Job Interview',            memberStatus:'unpaid', paid:false, duesDate:'', email:'ibrooks@student.ccpsnet.net',   phone:'(804) 555-0115', parentEmail:'kbrooks@email.com',   parentPhone:'(804) 555-0114', address:'1122 Spruce Way, Midlothian VA 23113', shirtSize:'S', dietaryNeeds:'', ev:null, notes:'Prospective competitor — dues pending'},
+  {id:9, first:'Tyler',   last:'Nguyen',    grade:12, position:'President',          competEvent:'Business Management',     memberStatus:'alumni', paid:true,  duesDate:'2024-10-10', email:'tnguyen24@gmail.com',          phone:'(804) 555-0117', parentEmail:'mnguyen@email.com',   parentPhone:'(804) 555-0116', address:'3344 Poplar Ave, Richmond VA 23236',  shirtSize:'M', dietaryNeeds:'', ev:null, notes:'24-25 President — graduated May 2025. ICDC placer.', alumniYear:2025, alumniPref:'mentoring'},
+  {id:10,first:'Chloe',   last:'Davis',     grade:12, position:'Vice President of Finance', competEvent:'Financial Consulting', memberStatus:'alumni', paid:true, duesDate:'2024-10-12', email:'cdavis24@gmail.com', phone:'(804) 555-0119', parentEmail:'ndavis@email.com', parentPhone:'(804) 555-0118', address:'5566 Aspen Blvd, Chesterfield VA 23832', shirtSize:'S', dietaryNeeds:'', ev:null, notes:'24-25 VP Finance — graduated May 2025. SLC placer.', alumniYear:2025, alumniPref:'newsletter'},
+];
+let students = LS.get('lh_students', _studentsDefault);
+// Backfill `org` on every roster row (built-in seed rows and anything saved
+// before Organizations existed) so the roster views can filter by
+// activeOrgId universally instead of assuming every row is DECA.
+students.forEach(s => { if (!s.org) s.org = 'deca'; });
+
+let goals = [
+  {id:1,title:'Qualify students for ICDC',cat:'DECA Competition',date:'2026-03-02',progress:100,desc:'Top 8 SLC finishers (+ bumps to Top 10) with 70%+ test score qualify. SLC results pending — check for qualifiers and start ICDC registration Mar 2–13.'},
+  {id:2,title:'Submit ICDC Field Trip Form',cat:'Field Trip',date:'2026-03-11',progress:100,updatedAt:'2026-03-11T00:00:00.000Z',desc:'⚠️ URGENT — Out-of-state overnight requires 45-day lead. Deadline ~March 11 to submit for Apr 25 departure. Start now.'},
+  {id:3,title:'Complete ICDC Registration (Mar 2–13)',cat:'DECA Competition',date:'2026-03-13',progress:100,updatedAt:'2026-03-13T00:00:00.000Z',desc:'$155/student. Only qualifiers with 70%+ SLC test. Atlanta Hilton housing ($260/night, 4/room). Coordinate with other CCPS advisors on rooming + flights.'},
+  {id:4,title:'ICDC Payment Submitted',cat:'DECA Competition',date:'2026-04-01',progress:0,desc:'$155/student due April 1. Coordinate flights with other CCPS advisors attending.'},
+  {id:5,title:'Grow Chapter Membership to 60+',cat:'Membership Growth',date:'2026-11-01',progress:20,desc:'Per DLC agenda: membership was at 12, needed 60 more. Membership form due Dec 1, dues to Kristen W by Nov 1.'},
+  {id:6,title:'100 Hours Community Service',cat:'Community Service',date:'2026-05-30',progress:38,desc:'Coordinate with nonprofits. Shoe Drive: goal of 2,500 shoes — track progress.'},
+  {id:7,title:'Annual Report Submission at SLC',cat:'DECA Competition',date:'2026-02-27',progress:100,desc:'Must register for Annual Report when registering for SLC. Complete.'},
+];
+
+function persistGoals() { LS.set('lh_goals', goals); }
+{ const saved = LS.get('lh_goals', null); if (saved && Array.isArray(saved)) goals = saved; }
+
+// Note: the standalone task list (add/resolve/pause a flat to-do) that used
+// to live here was replaced by the Horizon system (This Week/Month/Semester)
+// — its UI was removed but the dead functions lingered pointing at hidden
+// stub elements. Removed for real; the 'lh_tasks' storage key itself is still
+// live (Horizon's own check-off flow writes completed items into it, and the
+// Brag Board reads them back out), so that key and its readers are untouched.
+
+const TRIPS_SEED = null; // seed already inline above
+function persistEvents()       { LS.set('lh_events', otherEvents); }
+function persistStudents()     { LS.set('lh_students', students); }
+function persistTrips() { LS.set('lh_trips', trips); }
+function persistTripArchive() { LS.set('lh_trip_archive', tripArchive); }
+// Load persisted trips if available; else keep seed. Array.isArray (not
+// saved.length) so that deleting every trip and reloading actually shows
+// zero trips instead of silently resurrecting the seed — same bug class
+// fixed below for WBL_STUDENTS/INVENTORY, and the reason "Clear Sample
+// Data" in Settings works at all (see lhClearSampleData()).
+{ const saved = LS.get('lh_trips', null); if (saved && Array.isArray(saved)) trips = saved; }
+let nextId = LS.get('lh_next_id', {trip:24, ev:30, st:11, gl:14, tk:11});
+function persistNextId() { LS.set('lh_next_id', nextId); }
+let currentTripId = null;
+let currentFilter = 'all';
+
+// ============================================================
+// REQUIRED FIELDS DEFINITION (maps to Permission Request Attachment)
+// ============================================================
+const REQUIRED_FIELDS = [
+  {key:'name',       label:'Trip Name',                        section:'Basic Info'},
+  {key:'date',       label:'Trip Date',                        section:'Basic Info'},
+  {key:'reason',     label:'Reason for Trip',                  section:'Basic Info'},
+  {key:'origin',     label:'Origin School',                    section:'Schedule'},
+  {key:'depTime',    label:'Departure Time (from school)',      section:'Schedule'},
+  {key:'retTime',    label:'Return Time (to school)',           section:'Schedule'},
+  {key:'dest1',      label:'Destination #1 Full Address',      section:'Destinations'},
+  {key:'stuAtt',     label:'# Students Attending',             section:'Attendees', check: v=>v>0},
+  {key:'adultAtt',   label:'# Adults Attending',               section:'Attendees', check: v=>v>0},
+  {key:'stuMF',      label:'Students M/F Split',               section:'Attendees'},
+  {key:'adultMF',    label:'Adults M/F Split',                 section:'Attendees'},
+  {key:'chap',       label:'# Adult Chaperones (M/F)',         section:'Attendees'},
+  {key:'med',        label:'Medically Trained Staff (Y/N)',     section:'Medical'},
+  {key:'allergy',    label:'Allergy/Medical Provisions (Y/N)', section:'Medical'},
+  {key:'med1',       label:'Medical Staff #1 — Name & Cell',   section:'Medical'},
+  {key:'med2',       label:'Medical Staff #2 — Name & Cell',   section:'Medical'},
+  {key:'fund',       label:'Funding Source / SAF Code',        section:'Billing'},
+  {key:'sponsor',    label:'Trip Sponsor Name',                 section:'Billing'},
+  {key:'cell',       label:'Sponsor Contact Cell Phone',        section:'Billing'},
+  {key:'why',        label:'Educational Justification',         section:'Instructional'},
+  {key:'pre',        label:'Pre-Trip Activities',               section:'Instructional'},
+  {key:'post',       label:'Post-Trip Activities',              section:'Instructional'},
+];
+
+function getMissingFields(trip) {
+  return REQUIRED_FIELDS.filter(f => {
+    const v = trip[f.key];
+    if(f.check) return !f.check(v);
+    return !v || v === '' || v === 0;
+  });
+}
+
+function getReadinessPct(trip) {
+  const missing = getMissingFields(trip).length;
+  return Math.round(((REQUIRED_FIELDS.length - missing) / REQUIRED_FIELDS.length) * 100);
+}
+
+// ============================================================
+// HELPERS
+// ============================================================
+const fd = d => { if(!d) return '—'; const dt=new Date(d+'T00:00:00'); return dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}); };
+const du = d => { if(!d) return ''; const diff=Math.ceil((new Date(d+'T00:00:00')-new Date())/86400000); if(diff<0)return'Past'; if(diff===0)return'Today!'; return diff+' day'+(diff===1?'':'s')+' away'; };
+const dn = d => { if(!d) return 9999; return Math.ceil((new Date(d+'T00:00:00')-new Date())/86400000); };
+// 'out-of-state'/'overnight'/'grant'/'rental' are pre-wizard trip-type
+// strings — no trip made through the current wizard (same-day/overnight-is/
+// overnight-oos/multi-day/international) can ever produce them, so every
+// wizard-created overnight/multi-day trip was silently getting the 30-day
+// same-day lead time instead of the intended 45.
+const leadDays = sub => { if(sub==='international')return 365; if(['overnight-is','overnight-oos','multi-day'].includes(sub))return 45; return 30; };
+// Shared "is this trip overnight/multi-day/international" check — the same
+// dead-string list ('overnight'/'out-of-state') was duplicated inline in
+// several email templates below; centralizing it means the next taxonomy
+// change only needs to happen once.
+const isOvernightTrip = t => ['overnight-is','overnight-oos','multi-day','international'].includes(t?.sub || '');
+const subDeadline = t => { const lead=leadDays(t.sub||'same-day'); if(!t.date)return null; const d=new Date(t.date+'T00:00:00'); d.setDate(d.getDate()-lead); return d; };
+const fmtDeadline = t => { const dl=subDeadline(t); if(!dl)return null; return dl.toISOString().split('T')[0]; };
+const tagClass = {fieldtrip:'tag-ft',deca:'tag-deca',leadership:'tag-lead',community:'tag-comm'};
+const tagEmoji = {fieldtrip:'🚌',deca:'🏆',leadership:'⭐',community:'🤝'};
+const rcColors = {'President':'#0f2044','Vice President':'#1a5fb4','Treasurer':'#d63d2f','Chapter Officer':'#6b21a8','Event Lead':'#c9962a','Community Lead':'#0369a1','Secretary':'#2a7a4b','Member':'#555'};
+const gcColors = {'DECA Competition':'var(--gold)','Community Service':'var(--green)','Leadership Development':'var(--navy)','Field Trip':'var(--blue)','Fundraising':'var(--red)','Membership Growth':'var(--purple)'};
+
+// ============================================================
+// VIEWS
+// ============================================================
+function showView(name, btn) {
+  try {
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    const viewEl = document.getElementById('view-'+name);
+    if (!viewEl) { console.warn('showView: no view-'+name); return; }
+    viewEl.classList.add('active');
+    // Remembered on next boot — see the restore call at the bottom of the
+    // script. A deep session in, say, Lessons used to always get thrown
+    // back to the Dashboard on every refresh.
+    if (!window._appBooting) LS.set('lh_last_view', name);
+    document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.si').forEach(b=>b.classList.remove('active'));
+    if(btn && btn.classList) btn.classList.add('active');
+    // ── Render the active view ────────────────────────────────────────────
+    if(name==='dashboard')  { renderDashboard(); refreshNextAction(); }
+    if(name==='trips')      renderTrips();
+    if(name==='archive')    renderArchive();
+    if(name==='students')   renderStudents();
+    if(name==='deca')       renderOrgHub();
+    if(name==='competency') renderCompetencyView();
+    if(name==='lessons') {
+      const lf = LS.get('lh_lp_filter', null);
+      if (lf) {
+        const cs = document.getElementById('lp-filter-course'); if(cs&&lf.course) cs.value=lf.course;
+        const qs = document.getElementById('lp-filter-q');      if(qs&&lf.q)      qs.value=lf.q;
+      }
+      renderLessonPlans(); renderObsChecklist(); setTimeout(()=>lpSetView(_lpCurrentView),50);
+    }
+    if(name==='wbl')     renderWBLTracker();
+    if(name==='esports') { renderESRoster(); renderSSBUChecklist(); renderMK8Checklist(); renderMatchLog(); }
+    if(name==='events')  { renderEvents(); renderDECAPipeline(); }
+    if(name==='goals')   renderGoals();
+    if(name==='tripflow') initTripFlowView();
+    if(name==='forms')   initFormsView();
+    if(name==='slips')   initSlipView();
+    // ── Accordion: open the section that owns this view ───────────────────
+    const _accKeys = ['dashboard','class','trips','deca','wbl','esports','tools'];
+    const _accMap  = {
+      dashboard:'dashboard', competency:'class', lessons:'class',
+      trips:'trips', tripflow:'trips', slips:'trips', forms:'trips', archive:'trips',
+      deca:'deca', events:'deca', students:'deca', goals:'deca',
+      wbl:'wbl', esports:'esports',
+    };
+    const accKey = _accMap[name];
+    if(accKey && !window._appBooting) {
+      // FIXED: this only ever toggled the .open class — toggleAcc() (a
+      // direct sidebar-header click) also syncs aria-expanded and each
+      // section's .si buttons' tabindex via _setAccBodyTabbable(). Any
+      // navigation that reaches showView() another way (Dashboard's Next
+      // Action "Go" button, Current-Class/Lessons shortcuts, inline
+      // showView() links elsewhere) used to visually open the owning
+      // section while leaving its links untabbable and its header still
+      // announced as collapsed to a screen reader.
+      _accKeys.forEach(k=>{
+        const h=document.getElementById('acc-'+k), b=document.getElementById('accb-'+k);
+        if(h&&b){ h.classList.remove('open'); b.classList.remove('open'); h.setAttribute('aria-expanded','false'); _setAccBodyTabbable(b, false); }
+      });
+      const th=document.getElementById('acc-'+accKey), tb=document.getElementById('accb-'+accKey);
+      if(th&&tb){ th.classList.add('open'); tb.classList.add('open'); th.setAttribute('aria-expanded','true'); _setAccBodyTabbable(tb, true); }
+    }
+  } catch(e) {
+    console.error('showView('+name+') crashed:', e);
+    const eb = document.createElement('div');
+    eb.style.cssText='position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#dc2626;color:#fff;padding:.75rem 1.25rem;border-radius:8px;font-family:monospace;font-size:.75rem;z-index:9999;max-width:80vw;';
+    eb.textContent='Nav error ('+name+'): '+e.message;
+    document.body.appendChild(eb);
+    setTimeout(()=>eb.remove(),8000);
+  }
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function renderDashboard() {
+  // Guard all IDs — some were removed in dashboard redesign
+  const safeSet = (id, val) => { const el=document.getElementById(id); if(el) el.textContent=val; };
+
+  safeSet('live-date', new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'}));
+
+  // ── STATS ──
+  safeSet('d-trips', trips.length);
+  const totalMissing = trips.reduce((sum, t) => sum + getMissingFields(t).length, 0);
+  const readyCount = trips.filter(t => getMissingFields(t).length === 0).length;
+  safeSet('d-ready', readyCount);
+  safeSet('d-miss', totalMissing);
+
+  // ── SIDEBAR BADGES ──
+  safeSet('cnt-ft', trips.length);
+  safeSet('cnt-deca', otherEvents.filter(e=>e.type==='deca').length);
+  safeSet('cnt-lead', otherEvents.filter(e=>e.type==='leadership').length);
+  safeSet('cnt-comm', otherEvents.filter(e=>e.type==='community').length);
+  const deadlineSoon = trips.filter(t=>{ const dl=subDeadline(t); if(!dl)return false; const d=Math.ceil((dl-new Date())/86400000); return d>=0&&d<=14&&t.status==='planned'; });
+  const missingTrips = trips.filter(t=>getMissingFields(t).length>0);
+  safeSet('cnt-miss', missingTrips.length);
+  safeSet('cnt-dl', deadlineSoon.length);
+
+  // ── PRIORITY ALERTS ──
+  const alts = [];
+  trips.forEach(t => {
+    const dl = subDeadline(t); if(!dl) return;
+    const dtd = Math.ceil((dl-new Date())/86400000);
+    const miss = getMissingFields(t).length;
+    // FIXED: was dtd<=7 here — the sidebar's own "deadlines soon" badge
+    // count (cnt-dl, above) and the Trips Hub/readiness-card urgency
+    // signals all use a 14-day window. The same trip 8-14 days out used to
+    // count toward that badge without ever appearing in this alert list,
+    // and separately showed "urgent" on its readiness card while this
+    // banner (and the Trip Detail header, below) stayed calm — unified to
+    // 14 days everywhere so one trip can't read as urgent on one screen and
+    // fine on another.
+    if(dtd < 0 && t.status==='planned') alts.push(`<div class="alert ad"><span class="aico">🚨</span><div><strong>${escH(t.name)}</strong> — TripTracker deadline <strong>OVERDUE</strong> by ${Math.abs(dtd)} day${Math.abs(dtd)===1?'':'s'}. Submit immediately.</div></div>`);
+    else if(dtd<=14 && dtd>=0 && t.status==='planned') alts.push(`<div class="alert aw"><span class="aico">⚠️</span><div><strong>${escH(t.name)}</strong> — TripTracker submission in <strong>${dtd} day${dtd===1?'':'s'}</strong> (${fd(fmtDeadline(t))}). ${miss>0?`<strong>${miss} fields still missing!</strong>`:''}</div></div>`);
+    if(miss > 0 && dtd > 14) alts.push(`<div class="alert aw"><span class="aico">📋</span><strong>${escH(t.name)}</strong> — <strong>${miss} required field${miss===1?'':'s'}</strong> missing. <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})" style="margin-left:.5rem">Fill In →</button></div>`);
+  });
+  const dashAlerts = document.getElementById('dash-alerts');
+  if(dashAlerts) dashAlerts.innerHTML = alts.slice(0,4).join('');
+
+  // ── UPCOMING STRIP ──
+  const allEvs = [...trips.map(t=>({name:t.name,date:t.date,type:'fieldtrip'})), ...otherEvents.map(e=>({name:e.name,date:e.date,type:e.type}))].sort((a,b)=>new Date(a.date)-new Date(b.date)).slice(0,6);
+  const stripEvs = document.getElementById('strip-evs');
+  if(stripEvs) stripEvs.innerHTML = allEvs.map(e=>{ const d=dn(e.date);const w=d<=7&&d>=0; return`<div class="se${w?' warn':''}"><strong>${escH(e.name)}</strong><span>${fd(e.date)} · ${du(e.date)}</span></div>`; }).join('');
+
+  // ── FORM COMPLETION HUB ──
+  renderFormHub();
+
+  // ── PRIORITY ACTIONS ──
+  renderDashPriorityActions();
+
+  // ── SLIP STATUS PANEL ──
+  renderDashSlips();
+}
+
+// ─── FORM COMPLETION HUB — the main dashboard workhorse ───────────────────
+function renderFormHub() {
+  const hub = document.getElementById('dash-form-hub');
+  if(!hub) return;
+  if(!trips.length) {
+    hub.innerHTML = `<div class="card" style="text-align:center;padding:2rem;color:var(--muted)">No field trips yet. <button class="btn btn-primary btn-sm" onclick="openModal('newTrip')" style="margin-left:.75rem">+ Add Trip</button></div>`;
+    return;
+  }
+
+  hub.innerHTML = trips.map(t => {
+    const today = new Date();
+    const tripDate = t.date ? new Date(t.date+'T00:00:00') : null;
+    const dl = subDeadline(t);
+    const dtd = dl ? Math.ceil((dl-today)/86400000) : 999;
+    const daysToTrip = tripDate ? Math.ceil((tripDate-today)/86400000) : 999;
+    const lead = leadDays(t.sub||'same-day');
+
+    // ── FORM 1: TripTracker Permission Request Attachment ──
+    const rfMissing = getMissingFields(t);
+    const rfPct = getReadinessPct(t);
+    const rfDone = rfMissing.length === 0;
+
+    // ── FORM 2: FT Permission Form (parent/student) ──
+    const fpMissing = getMissingFTPermFields(t.id);
+    const fpDone = fpMissing.length === 0;
+    const fpPct = Math.round(((5-fpMissing.length)/5)*100);
+
+    // ── FORM 3: Conference/Leave Request ──
+    const clKey = 't'+t.id;
+    const clRec = confLeaveRecords[clKey] || {};
+    const clMissing = CONF_REQUIRED.filter(k => !clRec[k] && !(k==='conf' && t.name));
+    const clDone = clMissing.length === 0;
+    const clPct = Math.round(((CONF_REQUIRED.length-clMissing.length)/CONF_REQUIRED.length)*100);
+
+    // ── SLIPS ──
+    const slips = getSlipStats(t.id);
+    const slipPct = slips.total ? Math.round((slips.returned/slips.total)*100) : 0;
+
+    // ── OVERALL TRIP READINESS ──
+    const allFormsTotal = 3; // TripTracker + FT Perm + Conf Leave
+    const allFormsDone = (rfDone?1:0) + (fpDone?1:0) + (clDone?1:0);
+    const overallPct = Math.round((allFormsDone/allFormsTotal)*100);
+
+    // ── PACING PHASES ──
+    // Each phase has: label, dueDate, status (done|active|warn|future), action
+    const phases = [];
+
+    // Phase 1: Fill TripTracker form
+    const p1Done = rfDone;
+    phases.push({
+      n:'1', icon:'📋',
+      label:'Complete TripTracker Form',
+      sub: p1Done ? `All ${REQUIRED_FIELDS.length} required fields filled` : `${rfMissing.length} field${rfMissing.length===1?'':'s'} still missing`,
+      dueLabel: dl ? `Submit by ${fd(fmtDeadline(t))}` : 'No date set',
+      // FIXED: was dtd<=7 — out of step with this same card's header banner
+      // (urgColor/urgLabel below), which Round 6 unified to a 14-day
+      // cutoff for the identical TripTracker submit deadline. A trip 8-14
+      // days out showed an orange "urgent" header while this tile — for
+      // the step most directly tied to that same deadline — stayed gray
+      // "future" right underneath it.
+      state: p1Done ? 'done' : dtd<0 ? 'warn' : dtd<=14 ? 'active' : 'future',
+      action: p1Done ? null : {label:'✏️ Fill In', fn:`openEditModal(${t.id})`},
+      action2: p1Done ? {label:'📄 Preview', fn:`generateFormPreview(${t.id})`} : null,
+      badge: p1Done ? '✓ Complete' : rfMissing.length+' missing',
+      badgeCls: p1Done ? 'st-approved' : dtd<=14 ? 'st-urgent' : 'st-pending',
+    });
+
+    // Phase 2: Fill FT Permission Form (parent handout)
+    phases.push({
+      n:'2', icon:'👨‍👩‍👧',
+      label:'Print & Distribute FT Permission Forms',
+      sub: fpDone ? `Header complete — print ${t.stuAtt||'?'} copies for parents` : `Missing: ${fpMissing.join(' · ')}`,
+      dueLabel: dl ? `Complete before notifying students (${fd(fmtDeadline(t))})` : 'Complete before submission',
+      state: fpDone ? 'done' : dtd<=14 ? 'active' : 'future',
+      action: {label: fpDone ? '🖨 Print' : '✏️ Fill & Print', fn:`openFTPermFromTrip(${t.id})`},
+      badge: fpDone ? '✓ Ready' : fpMissing.length+' missing',
+      badgeCls: fpDone ? 'st-approved' : 'st-pending',
+    });
+
+    // Phase 3: Conf/Leave Request
+    const clCatNote = clRec.cat==='I' ? 'Principal + Director' : clRec.cat==='II' ? 'Principal' : clRec.cat==='IV' ? 'Principal + Director + CAO' : 'Principal only';
+    phases.push({
+      n:'3', icon:'✈️',
+      label:'Submit Conference/Leave Request (PR3)',
+      sub: clDone ? `Category ${clRec.cat||'III'} — needs ${clCatNote} signature` : `Missing: ${clMissing.map(k=>({emp:'Employee Name',pos:'Position',school:'School',conf:'Conference Name',city:'Location',dates:'Date(s)',cat:'Category'})[k]||k).join(' · ')}`,
+      dueLabel: 'Submit in advance to Principal',
+      state: clDone ? 'done' : dtd<=21 ? 'active' : 'future',
+      action: {label: clDone ? '🖨 Print' : '✏️ Fill In', fn:`openConfFromTrip(${t.id})`},
+      badge: clDone ? '✓ Ready' : clMissing.length+' missing',
+      badgeCls: clDone ? 'st-approved' : 'st-pending',
+    });
+
+    // Phase 4: Submit to TripTracker
+    phases.push({
+      n:'4', icon:'🖥',
+      label:'Submit to TripTracker System',
+      sub: dtd<0&&t.status==='planned' ? '⚠ OVERDUE — submit immediately' : rfDone ? `Ready to submit — deadline ${fd(fmtDeadline(t))}` : 'Complete form first',
+      dueLabel: dl ? fd(fmtDeadline(t)) + ` (${lead}-day rule)` : 'No date set',
+      // FIXED: same 7-day-vs-14-day mismatch as Phase 1 above.
+      state: t.status==='active'||t.status==='approved'||t.status==='complete' ? 'done' : !rfDone ? 'future' : dtd<0 ? 'warn' : dtd<=14 ? 'active' : 'future',
+      action: null,
+      badge: t.status==='active'||t.status==='approved' ? '✓ Submitted' : dtd<0&&t.status==='planned' ? 'OVERDUE' : dtd<=14&&t.status==='planned' ? dtd+'d left' : rfDone ? 'Ready' : 'Waiting',
+      badgeCls: t.status==='active'||t.status==='approved' ? 'st-approved' : dtd<0&&t.status==='planned' ? 'st-urgent' : dtd<=14&&t.status==='planned' ? 'st-urgent' : 'st-planned',
+    });
+
+    // Phase 5: Collect Permission Slips
+    const slipState = slips.total===0?'future':slips.returned===slips.total?'done':daysToTrip<=7?'warn':'active';
+    phases.push({
+      n:'5', icon:'📝',
+      label:'Collect Signed Permission Slips',
+      sub: slips.total===0 ? 'No students added yet' : `${slips.returned}/${slips.total} returned · ${slips.missing} missing · ${slips.pending} pending`,
+      dueLabel: tripDate ? `Due before trip (${fd(t.date)})` : 'Before trip date',
+      state: slipState,
+      action: {label:'📝 Manage Slips', fn:`showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)`},
+      badge: slips.total===0 ? '—' : slipPct+'%',
+      badgeCls: slips.total===0?'st-complete':slipPct===100?'st-approved':slipPct>=50?'st-pending':'st-urgent',
+    });
+
+    // Phase 6: Trip Day
+    const tripDone = daysToTrip < 0;
+    phases.push({
+      n:'6', icon:'🚌',
+      label:'Trip Departs',
+      sub: t.depTime&&t.retTime ? `Depart ${t.depTime} — Return ${t.retTime}` : 'Times TBD',
+      dueLabel: t.date ? fd(t.date) : 'Date TBD',
+      state: tripDone ? 'done' : daysToTrip===0 ? 'active' : 'future',
+      action: null,
+      badge: tripDone ? '✓ Complete' : daysToTrip>0 ? daysToTrip+'d away' : 'Today!',
+      badgeCls: tripDone ? 'st-complete' : daysToTrip<=1 ? 'st-urgent' : 'st-planned',
+    });
+
+    // Urgency color for the trip card header. FIXED: was a 7-day cutoff,
+    // out of step with the Dashboard alert banner and readiness card, which
+    // both flag the same trip's deadline urgency at 14 days — see the fix
+    // note above renderDashboard()'s alert-banner logic.
+    const urgColor = dtd<0&&t.status==='planned' ? 'var(--red)' : dtd<=14&&t.status==='planned' ? 'var(--orange)' : 'var(--green)';
+    const urgLabel = dtd<0&&t.status==='planned' ? '🚨 OVERDUE' : dtd<=14&&t.status==='planned' ? `⏰ ${dtd}d to submit` : rfDone&&fpDone&&clDone ? '✅ Forms Ready' : `${lead}d lead rule`;
+
+    return `<div class="card" style="border-left:4px solid ${urgColor};padding:0;overflow:hidden">
+      <!-- Trip header -->
+      <div style="background:var(--navy);color:#fff;padding:.7rem 1.1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem">
+        <div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1.25rem;letter-spacing:2px">${escH(t.name)}</div>
+          <div style="font-size:.71rem;color:rgba(255,255,255,.55)">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)} &nbsp;·&nbsp; ${t.sub?.replace('-',' ')||'same day'} &nbsp;·&nbsp; ${escH(t.dest1||'Destination TBD')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap">
+          <span style="font-size:.68rem;font-weight:700;padding:3px 9px;border-radius:20px;background:${dtd<0&&t.status==='planned'?'var(--red)':dtd<=14&&t.status==='planned'?'var(--orange)':'rgba(255,255,255,.15)'};color:#fff">${urgLabel}</span>
+          <div style="font-size:.68rem;text-align:center"><div style="font-family:'Bebas Neue',cursive;font-size:1.5rem;line-height:1;color:${overallPct===100?'#4ade80':'var(--gold)'}">${overallPct}%</div><div style="color:rgba(255,255,255,.45)">forms done</div></div>
+        </div>
+      </div>
+
+      <!-- Overall progress bar -->
+      <div style="height:4px;background:rgba(0,0,0,.12)"><div style="height:100%;background:${overallPct===100?'var(--green)':'var(--gold)'};width:${overallPct}%;transition:width .5s"></div></div>
+
+      <!-- Phases grid -->
+      <div style="padding:.85rem 1.1rem">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.65rem">
+          ${phases.map(p => {
+            const stateColor = p.state==='done'?'var(--green)':p.state==='warn'?'var(--red)':p.state==='active'?'var(--gold)':'#ccc';
+            const stateBg = p.state==='done'?'#f0fdf4':p.state==='warn'?'#fef2f2':p.state==='active'?'#fffbeb':'#f9f9f9';
+            const iconBg = p.state==='done'?'var(--green)':p.state==='warn'?'var(--red)':p.state==='active'?'var(--gold)':'#ccc';
+            return `<div style="background:${stateBg};border:1px solid ${stateColor};border-radius:8px;padding:.6rem .75rem">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.3rem">
+                <div style="display:flex;align-items:center;gap:.35rem">
+                  <div style="width:22px;height:22px;border-radius:50%;background:${iconBg};color:${p.state==='active'?'var(--navy)':'#fff'};display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;flex-shrink:0">${p.state==='done'?'✓':p.n}</div>
+                  <span style="font-size:.75rem;font-weight:700;color:${p.state==='done'?'var(--green)':p.state==='warn'?'var(--red)':p.state==='active'?'#7a5900':'#888'}">${p.icon}</span>
+                </div>
+                <span class="status ${p.badgeCls}" style="font-size:.58rem">${p.badge}</span>
+              </div>
+              <div style="font-size:.77rem;font-weight:600;color:var(--ink);line-height:1.3;margin-bottom:.2rem">${p.label}</div>
+              <div style="font-size:.69rem;color:#666;line-height:1.4;margin-bottom:.35rem">${p.sub}</div>
+              <div style="font-size:.63rem;color:var(--muted);margin-bottom:.4rem">📅 ${p.dueLabel}</div>
+              <div style="display:flex;gap:.3rem;flex-wrap:wrap">
+                ${p.action?`<button class="btn btn-primary btn-xs" onclick="${p.action.fn}">${p.action.label}</button>`:''}
+                ${p.action2?`<button class="btn btn-outline btn-xs" onclick="${p.action2.fn}">${p.action2.label}</button>`:''}
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── PRIORITY ACTION ENGINE ────────────────────────────────────────────────────
+// Surfaces the highest-urgency actions across all trips, sorted by deadline proximity
+function renderDashPriorityActions() {
+  const el = document.getElementById('dash-priority-actions');
+  if(!el) return;
+  const today = new Date();
+  const actions = [];
+
+  trips.forEach(t => {
+    const dl = subDeadline(t);
+    const dtd = dl ? Math.ceil((dl-today)/86400000) : 999;
+    const daysToTrip = t.date ? Math.ceil((new Date(t.date+'T00:00:00')-today)/86400000) : 999;
+    const lead = leadDays(t.sub||'same-day');
+
+    // ── FORM 1: TripTracker Permission Request Attachment ──
+    const rfMissing = getMissingFields(t);
+    if(rfMissing.length > 0) {
+      const urgency = dtd < 0 ? 0 : dtd <= 3 ? 1 : dtd <= 7 ? 2 : dtd <= 14 ? 3 : 10;
+      const sev = dtd < 0 ? 'ad' : dtd <= 7 ? 'aw' : 'ai';
+      const sevIcon = dtd < 0 ? '🚨' : dtd <= 7 ? '⚠️' : '📋';
+      actions.push({
+        urgency, sev, icon: sevIcon,
+        trip: t.name,
+        title: `Complete TripTracker Form — ${rfMissing.length} field${rfMissing.length===1?'':'s'} missing`,
+        detail: `Missing: ${rfMissing.slice(0,3).map(f=>f.label).join(', ')}${rfMissing.length>3?' + '+(rfMissing.length-3)+' more':''}`,
+        deadline: dl ? `Submit by ${fd(dl.toISOString().split('T')[0])} (${lead}-day rule · ${dtd<0?Math.abs(dtd)+' day'+(Math.abs(dtd)===1?'':'s')+' OVERDUE':dtd+'d left'})` : 'No trip date set',
+        btnLabel: '✏️ Fill In Form',
+        btnFn: `openEditModal(${t.id})`,
+        btn2Label: rfMissing.length < 5 ? '📄 Preview' : null,
+        btn2Fn: `generateFormPreview(${t.id})`,
+      });
+    }
+
+    // ── FORM 2: FT Permission/Risk Form (parent handout) ──
+    const fpMissing = getMissingFTPermFields(t.id);
+    if(fpMissing.length > 0) {
+      const urgency = dtd < 0 ? 1 : dtd <= 7 ? 3 : dtd <= 14 ? 4 : 11;
+      actions.push({
+        urgency, sev: dtd <= 14 ? 'aw' : 'ai', icon: '👨‍👩‍👧',
+        trip: t.name,
+        title: `Print FT Permission & Risk Form — ${fpMissing.length} header field${fpMissing.length===1?'':'s'} missing`,
+        detail: `Missing: ${fpMissing.join(', ')}. Print one per student for parents to sign.`,
+        deadline: `Complete before notifying students (after all approvals received)`,
+        btnLabel: '✏️ Fill & Print',
+        btnFn: `openFTPermFromTrip(${t.id})`,
+      });
+    }
+
+    // ── FORM 3: Conference/Leave Request ──
+    const clKey = 't'+t.id;
+    const clRec = confLeaveRecords[clKey] || {};
+    const clMissing = CONF_REQUIRED.filter(k => !clRec[k] && !(k==='conf' && t.name));
+    if(clMissing.length > 0) {
+      const clLabels = {emp:'Employee Name',pos:'Position',school:'School',conf:'Conference Name',city:'Location',dates:'Date(s)',cat:'Leave Category'};
+      const urgency = dtd <= 21 ? 2 : 12;
+      actions.push({
+        urgency, sev: 'ai', icon: '✈️',
+        trip: t.name,
+        title: `Submit Conference/Leave Request (PR3) — ${clMissing.length} field${clMissing.length===1?'':'s'} needed`,
+        detail: `Missing: ${clMissing.map(k=>clLabels[k]||k).join(', ')}. Submit in advance to Principal.`,
+        deadline: `Submit before trip — Category III (Field Trips) requires Principal signature only`,
+        btnLabel: '✏️ Fill In',
+        btnFn: `openConfFromTrip(${t.id})`,
+      });
+    }
+
+    // ── SLIPS: Missing permission slips close to trip ──
+    const slips = getSlipStats(t.id);
+    if(slips.missing > 0 && daysToTrip <= 14 && daysToTrip >= 0) {
+      actions.push({
+        urgency: daysToTrip <= 3 ? 1 : daysToTrip <= 7 ? 2 : 4,
+        sev: daysToTrip <= 3 ? 'ad' : 'aw', icon: '📝',
+        trip: t.name,
+        title: `${slips.missing} signed permission slip${slips.missing===1?'':'s'} not returned`,
+        detail: `${slips.returned}/${slips.total} returned · ${slips.pending} pending · Trip in ${daysToTrip} day${daysToTrip===1?'':'s'}`,
+        deadline: `Slips due before trip departs (${fd(t.date)})`,
+        btnLabel: '📝 Manage Slips',
+        btnFn: `showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)`,
+      });
+    }
+
+    // ── APPROVALS pending ──
+    // Same dead-string bug as leadDays() above — 'out-of-state'/'overnight'
+    // never match anything the wizard can produce, so no wizard-created
+    // overnight/multi-day trip ever got the Director/Chief-of-Schools
+    // approval steps added.
+    const apSteps = ['overnight-is','overnight-oos','multi-day','international'].includes(t.sub||'same-day')
+      ? ['coord','principal','bookkeeper','risk','director','chief','transport']
+      : ['coord','principal','bookkeeper','risk','transport'];
+    const pendingAp = apSteps.filter(k => !t.ap?.[k]);
+    if(pendingAp.length > 0 && dtd <= 21) {
+      const apLabels = {coord:'Coordinator',principal:'Principal',bookkeeper:'Bookkeeper',risk:'Risk Mgmt',director:'Level Director',chief:'Chief of Schools',transport:'Transportation'};
+      actions.push({
+        urgency: dtd <= 7 ? 3 : 6, sev: 'aw', icon: '✅',
+        trip: t.name,
+        title: `${pendingAp.length} approval${pendingAp.length===1?'':'s'} still needed`,
+        detail: `Awaiting: ${pendingAp.map(k=>apLabels[k]).join(' → ')}`,
+        deadline: dl ? `TripTracker deadline: ${fd(dl.toISOString().split('T')[0])}` : '',
+        btnLabel: '📋 View Details',
+        btnFn: `openTripDetail(${t.id})`,
+      });
+    }
+  });
+
+  // Sort by urgency (lower = more urgent)
+  actions.sort((a,b) => a.urgency - b.urgency);
+
+  if(!actions.length) {
+    el.innerHTML = `<div class="alert as"><span class="aico">✅</span><strong>All caught up!</strong> No urgent actions needed right now. All forms are complete and slips are on track.</div>`;
+    return;
+  }
+
+  // Group into: Do Now (urgency < 4) vs Coming Up (4–8) vs Later (>8)
+  const doNow = actions.filter(a=>a.urgency < 4);
+  const soonish = actions.filter(a=>a.urgency >= 4 && a.urgency <= 8);
+  const later = actions.filter(a=>a.urgency > 8);
+
+  const renderGroup = (items, label, collapsed) => {
+    if(!items.length) return '';
+    return `
+      <div style="margin-bottom:.85rem">
+        <div style="font-size:.67rem;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:.45rem">${label}</div>
+        <div style="display:flex;flex-direction:column;gap:.5rem">
+          ${items.map(a=>`
+            <div class="alert ${a.sev}" style="padding:.6rem .85rem;align-items:flex-start;gap:.6rem">
+              <span class="aico" style="font-size:1rem">${a.icon}</span>
+              <div style="flex:1">
+                <div style="font-size:.69rem;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:inherit;opacity:.7;margin-bottom:.1rem">${escH(a.trip)}</div>
+                <div style="font-weight:700;font-size:.81rem;margin-bottom:.18rem">${a.title}</div>
+                <div style="font-size:.74rem;opacity:.85;line-height:1.45;margin-bottom:.28rem">${a.detail}</div>
+                <div style="font-size:.67rem;opacity:.7;margin-bottom:.35rem">📅 ${a.deadline}</div>
+                <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+                  <button class="btn btn-primary btn-xs" onclick="${a.btnFn}">${a.btnLabel}</button>
+                  ${a.btn2Label&&a.btn2Fn?`<button class="btn btn-outline btn-xs" onclick="${a.btn2Fn}">${a.btn2Label}</button>`:''}
+                </div>
+              </div>
+            </div>`).join('')}
+        </div>
+      </div>`;
+  };
+
+  el.innerHTML =
+    renderGroup(doNow,    '🔴 Do Now') +
+    renderGroup(soonish,  '🟡 Do Soon — Within 3 Weeks') +
+    renderGroup(later,    '🔵 On the Horizon — Complete When Ready');
+}
+
+// ─── OPEN FORMS DIRECTLY FROM A TRIP ID ──────────────────────────────────────
+function openFTPermFromTrip(tripId) {
+  showView('forms');
+  setTimeout(() => {
+    fTab('ftperm', document.getElementById('ftab-ftperm'));
+    const sel = document.getElementById('ftperm-trip');
+    if(sel) { sel.value = tripId; renderFTPermForm(); }
+    openFTPermFill();
+  }, 80);
+}
+
+function openConfFromTrip(tripId) {
+  showView('forms');
+  setTimeout(() => {
+    fTab('confleave', document.getElementById('ftab-confleave'));
+    const sel = document.getElementById('conf-event');
+    if(sel) { sel.value = 't'+tripId; renderConfLeaveForm(); }
+    openConfFill();
+  }, 80);
+}
+
+// ─── DASHBOARD SLIP STATUS PANEL ─────────────────────────────────────────────
+function renderDashSlips() {
+  const el = document.getElementById('dash-slips');
+  if(!el) return;
+  if(!trips.length) { el.innerHTML = '<div style="color:var(--muted);font-size:.82rem">No trips yet.</div>'; return; }
+  el.innerHTML = trips.map(t => {
+    const s = getSlipStats(t.id);
+    const pct = s.total ? Math.round(s.returned/s.total*100) : 0;
+    const cls = pct===100?'pf-ok':pct>=50?'pf-warn':'pf-danger';
+    return `<div style="margin-bottom:.7rem">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.18rem">
+        <span style="font-size:.79rem;font-weight:600">${escH(t.name)}</span>
+        <button class="btn btn-outline btn-xs" onclick="showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)">Manage</button>
+      </div>
+      ${s.total ? `
+        <div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.1rem">
+          <div class="pbar" style="flex:1"><div class="pfill ${cls}" style="width:${pct}%"></div></div>
+          <span style="font-size:.67rem;font-family:'DM Mono',monospace;min-width:60px;text-align:right;color:${pct===100?'var(--green)':pct<50?'var(--red)':'var(--orange)'}">${s.returned}/${s.total} back</span>
+        </div>
+        <div style="display:flex;gap:.35rem;flex-wrap:wrap">
+          ${s.missing>0?`<span class="status st-urgent">⚠ ${s.missing} missing</span>`:''}
+          ${s.pending>0?`<span class="status st-pending">⏳ ${s.pending} pending</span>`:''}
+          ${s.parent>0?`<span class="status st-planned">🚗 ${s.parent} own transport</span>`:''}
+          ${pct===100?`<span class="status st-approved">✅ All returned</span>`:''}
+        </div>` :
+        `<div style="font-size:.75rem;color:var(--muted)">No students added yet. <button class="btn btn-outline btn-xs" onclick="showView('slips')">Add →</button></div>`
+      }
+    </div>`;
+  }).join('');
+}
+
+function renderReadinessCard(t, compact=false) {
+  const pct = getReadinessPct(t);
+  const missing = getMissingFields(t);
+  const dl = subDeadline(t);
+  const dtd = dl ? Math.ceil((dl-new Date())/86400000) : 999;
+  const pclass = pct===100?'pf-ok':pct>=60?'pf-blue':'pf-danger';
+  return `<div class="rcard">
+    <div class="rcard-top">
+      <div>
+        <div class="rcard-name">${escH(t.name)}${t.archived?' <span title="This trip has an Archive snapshot — editing it does not update the snapshot" style="font-size:.62rem;font-weight:700;color:#7c3aed;background:#ede9fe;padding:.1rem .4rem;border-radius:4px;vertical-align:middle">📦 ARCHIVED</span>':''}</div>
+        <div style="font-size:.72rem;color:var(--muted);margin-top:.15rem">📅 ${fd(t.date)} &nbsp;·&nbsp; ${du(t.date)}</div>
+        ${dtd<0&&t.status==='planned'?`<div class="alert ad" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">🚨</span>Deadline OVERDUE</div>`:dtd<=14&&dtd>=0&&t.status==='planned'?`<div class="alert aw" style="margin-top:.4rem;padding:.3rem .6rem;font-size:.72rem"><span class="aico">⚠️</span>Submit in ${dtd} day${dtd===1?'':'s'}</div>`:''}
+      </div>
+      <div style="text-align:center">
+        <div class="rcard-pct">${pct}%</div>
+        <div style="font-size:.65rem;color:var(--muted)">complete</div>
+      </div>
+    </div>
+    <div class="pbar" style="margin-bottom:.65rem"><div class="pfill ${pclass}" style="width:${pct}%"></div></div>
+    ${missing.length ? `
+      <div style="margin-bottom:.5rem">
+        <div style="font-size:.7rem;font-weight:700;color:var(--red);margin-bottom:.3rem">⚠ ${missing.length} Required Field${missing.length===1?'':'s'} Missing</div>
+        ${missing.slice(0,4).map(f=>`<div class="field-row"><div class="field-dot fd-miss"></div><div class="field-name">${f.label}</div><span style="font-size:.68rem;color:var(--muted)">${f.section}</span></div>`).join('')}
+        ${missing.length>4?`<div style="font-size:.7rem;color:var(--muted);padding:.2rem .4rem">+${missing.length-4} more...</div>`:''}
+      </div>` : `<div class="alert as" style="font-size:.74rem"><span class="aico">✅</span>All required fields complete! Ready for TripTracker.</div>`}
+    <div style="display:flex;gap:.4rem;margin-top:.55rem;flex-wrap:wrap">
+      <button class="btn btn-primary btn-xs" onclick="openTripDetail(${t.id})">📋 View Details</button>
+      <button class="btn btn-outline btn-xs" onclick="openEditModal(${t.id})">✏️ Fill In</button>
+      <button class="btn btn-outline btn-xs" onclick="showView('slips');setTimeout(()=>{document.getElementById('slip-trip-sel').value=${t.id};renderSlipView();},60)">📝 Slips</button>
+      <button class="btn btn-outline btn-xs" onclick="openEmailComposerForTrip(${t.id},'parents')">✉️ Email</button>
+      <button class="btn btn-outline btn-xs" onclick="openArchiveModal(${t.id})" style="color:#7c3aed;border-color:#c4b5fd">${t.archived?'🔄 Update Archive':'📦 Archive'}</button>
+      ${pct===100?`<button class="btn btn-green btn-xs" onclick="generateFormPreview(${t.id})">📄 Preview Form</button>`:''}
+      <button class="btn btn-xs" onclick="deleteTrip(${t.id})" style="color:#dc2626;border-color:#fecaca;background:#fff;border:1px solid #fecaca;border-radius:5px;font-size:.68rem;padding:.18rem .5rem;cursor:pointer;font-weight:700">✕ Delete</button>
+    </div>
+  </div>`;
+}
+
