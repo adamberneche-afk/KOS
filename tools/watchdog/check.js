@@ -68,6 +68,18 @@ function runActionlint(dir = WORKFLOWS_DIR, { actionlintBin = 'actionlint', exec
     execFn(actionlintBin, [], { cwd: path.join(__dirname, '..', '..'), encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
     return results; // exit 0 — every file clean
   } catch (e) {
+    // A failure to even spawn actionlint (binary missing from PATH, no
+    // exec permission, etc) has no stdout/stderr in actionlint's own
+    // "file:line: message" shape - treating that silence as "every file
+    // is clean" would be a false negative exactly as dangerous as the
+    // invalid-workflow-file gap this tool exists to catch. Surface it as
+    // a finding on every file instead of swallowing it. Found while
+    // porting this same file to TSO - not caught here originally.
+    if (e.code === 'ENOENT' || (!e.stdout && !e.stderr)) {
+      const reason = `could not run actionlint (${e.code || e.message}) - is it installed and on PATH?`;
+      for (const f of Object.keys(results)) results[f].push(reason);
+      return results;
+    }
     const output = `${e.stdout || ''}${e.stderr || ''}`;
     for (const line of output.split('\n')) {
       const m = line.match(/^\.github\/workflows\/([^:]+):/);
