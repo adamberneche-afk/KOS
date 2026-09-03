@@ -1,0 +1,20 @@
+{
+  "_comment": "Ordered list of leader-hub/src/*.html fragments. build.js concatenates them in this exact order, with no separator, to produce leader-hub/student-leader-hub.html. Order matters: variable initializers in the assembled script run in file order (see this tool's own README.md for why a pure textual concatenation is safe here despite scattered global state).",
+  "output": "leader-hub/student-leader-hub.html",
+  "fragments": [
+    "leader-hub/src/00-shell-head.html",
+    "leader-hub/src/01-styles.html",
+    "leader-hub/src/02-error-handler.html",
+    "leader-hub/src/03-markup-nav-dashboard-trips.html",
+    "leader-hub/src/04-markup-modals-and-feature-views.html",
+    "leader-hub/src/05-data-helpers-dashboard.html",
+    "leader-hub/src/06-tasks-trips-and-modals-core.html",
+    "leader-hub/src/07-events-email-members-goals.html",
+    "leader-hub/src/08-permission-forms-archive-competency.html",
+    "leader-hub/src/09-wbl-lessonplans-procurement-finance-esports.html",
+    "leader-hub/src/10-command-engine-ai-and-widgets.html",
+    "leader-hub/src/11-journal-cron-settings-and-sync.html",
+    "leader-hub/src/12-integrations-pacing-subplan-brag.html",
+    "leader-hub/src/13-markup-modals-tail.html"
+  ]
+}

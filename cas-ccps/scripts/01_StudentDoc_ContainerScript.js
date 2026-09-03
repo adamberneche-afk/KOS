@@ -16,6 +16,41 @@ const MIN_RESPONSE_CHARS = 150;
 const MIN_RESPONSE_WORDS = 25;
 
 // ---------------------------------------------------------------------------
+// _aiFlowsLive_ (external UX audit) — reads the same AI_FLOWS_LIVE Script
+// Property 00_SharedConfig.js's getConfig_() exposes as cfg.aiFlowsLive,
+// but directly via PropertiesService rather than through getConfig_()
+// itself — that function throws if ADMIN_SS_ID/CENTRAL_LEDGER_SS_ID aren't
+// set, which readSystemIds() above is specifically built to tolerate (its
+// own fallback reads IDs embedded in the doc body instead). This flag
+// needs neither of those IDs to be meaningful, so it's read the same
+// direct-property way readSystemIds() reads its own fallback-optional
+// properties, rather than introducing a new crash path into a function
+// that's designed to degrade gracefully without them.
+// ---------------------------------------------------------------------------
+function _aiFlowsLive_() {
+  return String(PropertiesService.getScriptProperties().getProperty("AI_FLOWS_LIVE")).toLowerCase() === "true";
+}
+
+// ---------------------------------------------------------------------------
+// openStudentDashboard (external UX audit) — the Student Dashboard web app
+// was fully built (Script 13) but had no menu item, no link in the doc, and
+// no email pointing to it anywhere in the repo, so no student could ever
+// find it. Reads STUDENT_DASHBOARD_URL directly rather than through
+// getConfig_(), same reasoning as _aiFlowsLive_() above: this menu item
+// should degrade to "not configured yet" rather than throwing if
+// ADMIN_SS_ID/CENTRAL_LEDGER_SS_ID haven't been set on this deployment.
+// ---------------------------------------------------------------------------
+function openStudentDashboard() {
+  const url = PropertiesService.getScriptProperties().getProperty("STUDENT_DASHBOARD_URL");
+  DocumentApp.getUi().alert(
+    "Your Assignment Dashboard",
+    url ? "Open this link and bookmark it:\n\n" + url
+        : "Your dashboard isn't set up yet — contact your teacher.",
+    DocumentApp.getUi().ButtonSet.OK
+  );
+}
+
+// ---------------------------------------------------------------------------
 // readSystemIds — self-contained, no Script 17 dependency
 // ---------------------------------------------------------------------------
 function readSystemIds() {
@@ -44,6 +79,8 @@ function onOpen() {
     .addItem("Run Assignment Check",  "runSystemCheck")
     .addSeparator()
     .addItem("📬 Check My Status",    "checkSubmissionStatus")
+    .addSeparator()
+    .addItem("📈 Open My Dashboard",  "openStudentDashboard")
     .addToUi();
 }
 
@@ -100,7 +137,9 @@ function runSystemCheck() {
         "Your work was just submitted for evaluation.\n\n" +
         "Please wait " + remaining + " more second" + (remaining === 1 ? "" : "s") +
         " before submitting again.\n\n" +
-        "Your feedback will appear at the top of this document within 1–3 minutes.",
+        (_aiFlowsLive_()
+          ? "Your feedback will appear at the top of this document within 1–3 minutes."
+          : "Your work is saved and your teacher can see it. Automatic feedback isn't switched on for your class yet — your teacher will review this directly."),
         ui.ButtonSet.OK
       );
       return;
@@ -146,9 +185,12 @@ function runSystemCheck() {
 
   ui.alert(
     "✅ Submitted for Feedback",
-    "Your work is being evaluated now.\n\n" +
-    "Your feedback will appear at the top of this document within 1–3 minutes.\n\n" +
-    "You can keep this tab open and refresh the page to see it when it arrives.",
+    _aiFlowsLive_()
+      ? "Your work is being evaluated now.\n\n" +
+        "Your feedback will appear at the top of this document within 1–3 minutes.\n\n" +
+        "You can keep this tab open and refresh the page to see it when it arrives."
+      : "Your work is saved and your teacher can see it.\n\n" +
+        "Automatic feedback isn't switched on for your class yet — your teacher will review this directly.",
     ui.ButtonSet.OK
   );
 }
@@ -307,10 +349,14 @@ function buildStatusMessage_(info, configId) {
 
     case "STAGED": case "PENDING":
       return header + "\n\n" +
-        "⏳  Being Evaluated Right Now\n\n" +
-        "Your feedback should appear at the top of this document\n" +
-        "within the next 1–3 minutes.\n\n" +
-        "Keep this tab open — you can refresh to see it.";
+        (_aiFlowsLive_()
+          ? "⏳  Being Evaluated Right Now\n\n" +
+            "Your feedback should appear at the top of this document\n" +
+            "within the next 1–3 minutes.\n\n" +
+            "Keep this tab open — you can refresh to see it."
+          : "✅  Saved and Visible to Your Teacher\n\n" +
+            "Automatic feedback isn't switched on for your class yet — " +
+            "your teacher will review this directly.");
 
     case "COMPLETE":
       return header + "\n\n" +

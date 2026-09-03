@@ -52,7 +52,16 @@ function exists(relPath) {
 // Comment/string stripping — same length as input, so line numbers of
 // whatever survives still line up with the original file.
 // -----------------------------------------------------------------------
-function stripCommentsAndStrings(src) {
+// opts.keepStrings: emit string-literal CONTENTS verbatim instead of blanking
+// them, while still blanking comments. Check G needs that distinction — an
+// API endpoint written in live code sits inside a string literal, and one
+// left behind in a commented-out reference implementation does not, so
+// blanking both makes the two indistinguishable. Everything else here (the
+// regex-vs-division machinery in particular) is shared rather than copied
+// into a second, weaker stripper — see tests/tools/doc-currency-check.test.js
+// on what that cost the last time.
+function stripCommentsAndStrings(src, opts) {
+  const keepStrings = !!(opts && opts.keepStrings);
   let out = '';
   let i = 0;
   const n = src.length;
@@ -85,13 +94,17 @@ function stripCommentsAndStrings(src) {
     }
     if (c === '"' || c === "'" || c === '`') {
       const quote = c;
-      out += ' '; i++;
+      out += keepStrings ? c : ' '; i++;
       while (i < n && src[i] !== quote) {
-        if (src[i] === '\\') { out += '  '; i += 2; continue; }
-        out += (src[i] === '\n') ? '\n' : ' ';
+        if (src[i] === '\\') {
+          out += keepStrings ? src.substr(i, 2) : '  ';
+          i += 2; continue;
+        }
+        if (keepStrings) out += src[i];
+        else out += (src[i] === '\n') ? '\n' : ' ';
         i++;
       }
-      if (i < n) { out += ' '; i++; }
+      if (i < n) { out += keepStrings ? src[i] : ' '; i++; }
       lastSig = quote;
       continue;
     }
@@ -389,6 +402,78 @@ function checkCasCcpsConfigKeys() {
 // against that same project's declared server functions, regardless of
 // whether the client-side code lives in an .html file or inline in .js.
 // -----------------------------------------------------------------------
+// A chain like
+//
+//   google.script.run
+//     .withSuccessHandler(resolve)
+//     .withFailureHandler(err => reject(new Error((err && err.message))))
+//     .lhPullData_({ domain });
+//
+// cannot be matched by a per-line regex, and it is how leader-hub and both
+// cas-ccps dashboards write every one of their calls. So this walks the
+// chain instead: from each `google.script.run`, step through `.name(...)`
+// links, skipping balanced parens, until the chain ends.
+//
+// WHY THE STRIPPING MODE MATTERS, both halves of it:
+//   - Comments MUST be blanked. Eight .gs files in kos-personal carry
+//     `*   google.script.run.withSuccessHandler(fn).executeBootstrap()` in
+//     a doc comment. Scanning raw text made those the ONLY thing this check
+//     ever found — it was cross-referencing its own documentation and
+//     reporting success.
+//   - Strings MUST be kept (keepStrings). cas-ccps's dashboards serve their
+//     client code from template literals inside .js files, so blanking
+//     string contents deletes every real call site in the repo's largest
+//     client surface.
+// Getting either half wrong makes this check silently vacuous, which is
+// what it was.
+//
+// Returns { calls: [{name, line}], unresolved: [line, ...] }. `unresolved`
+// is a `google.script.run` whose chain has no resolvable link — dynamic
+// dispatch, e.g. kos-personal's `const gsr = ... google.script.run` plus
+// `runner[fn].apply(runner, args)`, where the function name arrives as a
+// string at runtime. Those cannot be cross-referenced by any static pass,
+// and saying so is better than counting the file as covered.
+const RUN_CHAIN_SKIP = new Set([
+  'withSuccessHandler', 'withFailureHandler', 'withUserObject', 'withLogger',
+]);
+
+function findGoogleScriptRunCalls(relPath, src) {
+  const s = stripCommentsAndStrings(src, { keepStrings: true });
+  const calls = [];
+  const unresolved = [];
+  const anchor = /google\.script\.run/g;
+  let a;
+  while ((a = anchor.exec(s))) {
+    let i = a.index + a[0].length;
+    let resolvedHere = 0;
+    for (;;) {
+      while (i < s.length && /\s/.test(s[i])) i++;
+      if (s[i] !== '.') break;
+      i++;
+      const m = /^([A-Za-z_$][\w$]*)/.exec(s.slice(i, i + 120));
+      if (!m) break;
+      const name = m[1];
+      i += name.length;
+      while (i < s.length && /\s/.test(s[i])) i++;
+      if (s[i] !== '(') {
+        // A bare `.name` with no call — a property read, not an invocation.
+        break;
+      }
+      let depth = 0;
+      for (; i < s.length; i++) {
+        if (s[i] === '(') depth++;
+        else if (s[i] === ')') { depth--; if (depth === 0) { i++; break; } }
+      }
+      if (!RUN_CHAIN_SKIP.has(name)) {
+        calls.push({ name, line: lineAt(s, a.index) });
+        resolvedHere++;
+      }
+    }
+    if (resolvedHere === 0) unresolved.push(lineAt(s, a.index));
+  }
+  return { calls, unresolved };
+}
+
 function checkGoogleScriptRunCalls() {
   for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
     if (projectName.startsWith('_')) continue;
@@ -396,21 +481,27 @@ function checkGoogleScriptRunCalls() {
 
     const called = new Map(); // fnName -> [{file, line}]
     const declared = new Set();
+    const dynamic = []; // [{file, line}]
 
     for (const relPath of files) {
       if (!exists(relPath)) continue;
-      const raw = readFile(relPath);
-      const lines = raw.split('\n');
-      lines.forEach((line, i) => {
-        const re = /google\.script\.run(?:\.\w+\([^)]*\))*\.(\w+)\s*\(/g;
-        let m;
-        while ((m = re.exec(line))) {
-          const name = m[1];
-          if (['withSuccessHandler', 'withFailureHandler', 'withUserObject'].includes(name)) continue;
-          if (!called.has(name)) called.set(name, []);
-          called.get(name).push({ file: relPath, line: i + 1 });
-        }
-      });
+      const { calls, unresolved } = findGoogleScriptRunCalls(relPath, readFile(relPath));
+      for (const c of calls) {
+        if (!called.has(c.name)) called.set(c.name, []);
+        called.get(c.name).push({ file: relPath, line: c.line });
+      }
+      // Only worth reporting when NOTHING in the file resolved. A bare
+      // `google.script.run` is usually a truthiness guard
+      // (`if (google.script.run)`, `const sameOrigin = ... && google.script.run`)
+      // rather than a dispatch, and leader-hub's HTML is full of those
+      // alongside 8 chains this check does resolve. Flagging a file that
+      // reached the bridge and yielded no names is the honest signal;
+      // flagging every guard in a covered file is noise. Known limitation:
+      // a file with resolvable chains AND a genuine dynamic dispatch stays
+      // silent about the latter.
+      if (calls.length === 0 && unresolved.length > 0) {
+        dynamic.push({ file: relPath, line: unresolved[0], count: unresolved.length });
+      }
       if (!relPath.endsWith('.html')) {
         for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
       }
@@ -424,6 +515,14 @@ function checkGoogleScriptRunCalls() {
           locs[0].file
         );
       }
+    }
+
+    for (const d of dynamic) {
+      warn(
+        'dynamic-server-dispatch',
+        `${d.file} reaches google.script.run ${d.count} time(s) (first at line ${d.line}) and never names a server function in the expression — the name arrives at runtime (e.g. \`runner[fn].apply(runner, args)\` fed by \`callServer('someFunction', ...)\`). No static check can cross-reference those, so project "${projectName}"'s client calls through this path are NOT covered by this check. Reported so the gap is visible rather than looking like coverage; a rename on either side of a dynamic dispatch is caught by nothing here.`,
+        d.file
+      );
     }
   }
 }
@@ -548,6 +647,779 @@ function checkUndefinedFunctionCalls() {
 }
 
 // -----------------------------------------------------------------------
+// Check G — undeclared GCP dependencies.
+//
+// Nothing in this repo's default architecture needs a Cloud project: every
+// system reaches Gemini through a hand-built Workspace Flow using the
+// account's own built-in access (the Walled Garden / Bifurcation Boundary).
+// That is not a stylistic preference — GCP access is a Workspace-admin
+// decision nobody here controls, and on the ccpsnet.net account it is
+// switched off, which is what made all 2,113 lines of cas-ccps/studio-steps/
+// permanently unreachable AFTER they were written, unit-tested, and pushed.
+// The failure mode is what makes this worth a linter: a custom step that
+// needs a project doesn't error, it just never appears in Studio's picker.
+//
+// So this check finds the technical surfaces that actually require a
+// project and demands each one have an entry in gcp-map.json. A declaration
+// is not approval — it records that the dependency exists, whether it
+// currently works, and what happens if it doesn't. An undeclared LIVE
+// surface is an ERROR because it's a capability requirement nobody wrote
+// down; an undeclared LATENT one (present but commented out) is a WARNING.
+//
+// LIVE vs LATENT is decided positionally, not by guessing: the surface is
+// live if it survives comment-stripping at the same offset in the source.
+// That's the whole reason stripCommentsAndStrings grew a keepStrings option
+// — an endpoint in live code sits inside a string literal, and one left in
+// a commented-out reference implementation does not, so the default
+// (blank both) can't tell them apart. 25_WarmUpWriter.js is the real case:
+// its callFlow4_ deliberately keeps a commented-out direct-Gemini block so
+// Check E stays able to see the script.external_request requirement.
+//
+// Known edge: an endpoint written inside a REGEX literal is blanked by the
+// stripper in both modes, so it classifies as latent (a warning) rather
+// than live. Nothing in the repo does that today; if something starts
+// matching endpoints by regex, it earns a declaration either way.
+// -----------------------------------------------------------------------
+const GCP_STATUSES = ['live-blocked', 'live-unverified', 'live-ok', 'latent'];
+
+const GCP_PATTERNS = [
+  // A Workspace Add-on exposing custom Studio steps. Scoped to .json
+  // manifests on purpose: several .gs headers discuss workflowElements in
+  // prose, and prose about a wall is not a dependency on it.
+  { name: 'studio-custom-step', source: '"workflowElements"', jsonOnly: true },
+  { name: 'gemini-api-endpoint', source: 'generativelanguage\\.googleapis\\.com' },
+  { name: 'vertex-endpoint', source: 'aiplatform\\.googleapis\\.com' },
+];
+
+// Pure and path-only-by-extension, so tests can drive it with literal
+// source strings instead of the whole repo — see tests/tools/gas-lint-gcp.test.js.
+// Returns at most one finding per (file, pattern), live winning over latent.
+function findGcpSurfaces(relPath, src) {
+  const isJson = /\.json$/i.test(relPath);
+  // Same length as src, so a match offset means the same thing in both.
+  const executable = stripCommentsAndStrings(src, { keepStrings: true });
+  const byPattern = new Map();
+
+  for (const p of GCP_PATTERNS) {
+    if (p.jsonOnly && !isJson) continue;
+    const re = new RegExp(p.source, 'g');
+    let m;
+    while ((m = re.exec(src))) {
+      // JSON has no comment syntax, so a hit in a manifest is always real.
+      const live = isJson || executable.substr(m.index, m[0].length) === m[0];
+      const status = live ? 'live' : 'latent';
+      const prev = byPattern.get(p.name);
+      if (prev && (prev.status === 'live' || status !== 'live')) continue;
+      byPattern.set(p.name, {
+        pattern: p.name, status, line: lineAt(src, m.index), evidence: m[0],
+      });
+    }
+  }
+  return [...byPattern.values()].sort((a, b) => a.line - b.line);
+}
+
+function checkGcpSurfaces() {
+  let map;
+  try { map = JSON.parse(readFile('tools/gas-lint/gcp-map.json')); }
+  catch (e) {
+    err('gcp-map-unreadable',
+      `Could not read tools/gas-lint/gcp-map.json: ${e.message}. Without it this check ` +
+      `cannot tell a declared GCP dependency from an undeclared one, so it is failing loudly ` +
+      `rather than passing silently.`,
+      'tools/gas-lint/gcp-map.json');
+    return;
+  }
+  const declared = map.surfaces || {};
+
+  for (const [relPath, def] of Object.entries(declared)) {
+    if (GCP_STATUSES.indexOf(def.status) === -1) {
+      err('gcp-bad-status',
+        `gcp-map.json declares ${relPath} with status "${def.status}", which is not one of ` +
+        `${GCP_STATUSES.join(', ')}. The status is what tells a reader whether this dependency ` +
+        `works today; an unrecognized one weakens the map without looking broken.`,
+        'tools/gas-lint/gcp-map.json');
+    }
+  }
+
+  // Every file gas-lint already knows about, deduped — a manifest is shared
+  // between a project's entry and its own listing.
+  const scanned = new Set();
+  for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
+    if (projectName.startsWith('_')) continue;
+    for (const relPath of (def.files || []).concat(def.html || [])) scanned.add(relPath);
+    if (def.manifest) scanned.add(def.manifest);
+  }
+
+  const seen = new Set();
+  for (const relPath of [...scanned].sort()) {
+    if (!exists(relPath)) continue;
+    for (const hit of findGcpSurfaces(relPath, readFile(relPath))) {
+      const def = declared[relPath];
+      if (!def) {
+        const where = `${relPath}:${hit.line}`;
+        if (hit.status === 'live') {
+          err('undeclared-gcp-dependency',
+            `${where} depends on GCP (${hit.pattern}: ${hit.evidence}) with no entry in ` +
+            `tools/gas-lint/gcp-map.json. A standard Cloud project is not available on every ` +
+            `account this repo deploys to — it is confirmed disabled on ccpsnet.net — and the ` +
+            `failure mode is silent (a custom step never appears in the picker; an API call ` +
+            `401s inside a try/catch). Add a surfaces entry recording the status, what breaks ` +
+            `without it, and the fallback, or use a native Flow step instead ` +
+            `(cas-ccps/scripts/37_FlowInputBuilder.js is the worked example).`,
+            relPath);
+        } else {
+          warn('undeclared-latent-gcp-dependency',
+            `${where} carries a commented-out GCP dependency (${hit.pattern}: ${hit.evidence}) ` +
+            `with no entry in tools/gas-lint/gcp-map.json. Nothing executes it, so this is a ` +
+            `warning — but uncommenting it would need a Cloud project, and that is a decision ` +
+            `worth being written down before someone makes it by accident.`,
+            relPath);
+        }
+        continue;
+      }
+
+      seen.add(relPath);
+      if (def.pattern !== hit.pattern) {
+        warn('gcp-pattern-mismatch',
+          `gcp-map.json declares ${relPath} as "${def.pattern}" but the surface found at ` +
+          `${relPath}:${hit.line} is "${hit.pattern}" (${hit.evidence}). Either the file grew a ` +
+          `second kind of GCP dependency or the declaration is describing the wrong one.`,
+          relPath);
+      } else if (hit.status === 'live' && def.status === 'latent') {
+        err('gcp-latent-now-live',
+          `gcp-map.json declares ${relPath} as "latent" — present but not executed — but the ` +
+          `surface at ${relPath}:${hit.line} is now in live code. Uncommenting a GCP dependency ` +
+          `is a real decision: confirm a Cloud project is actually available on the target ` +
+          `account, then change the status to live-ok/live-unverified/live-blocked to match.`,
+          relPath);
+      } else if (hit.status === 'latent' && def.status !== 'latent') {
+        warn('gcp-live-now-latent',
+          `gcp-map.json declares ${relPath} as "${def.status}" but the surface at ` +
+          `${relPath}:${hit.line} is commented out. If it was retired, "latent" is the honest ` +
+          `status; if it was commented out to work around the wall, say so in why/if_unavailable.`,
+          relPath);
+      }
+    }
+  }
+
+  for (const [relPath, def] of Object.entries(declared)) {
+    if (def.scanned === false) continue; // declared for completeness, not a GAS surface
+    if (seen.has(relPath)) continue;
+    if (!exists(relPath)) {
+      warn('gcp-stale-declaration',
+        `gcp-map.json declares ${relPath}, which no longer exists. If the dependency is gone, ` +
+        `remove the entry; if the file moved, update the path so the check keeps watching it.`,
+        'tools/gas-lint/gcp-map.json');
+    } else if (!scanned.has(relPath)) {
+      warn('gcp-unscanned-declaration',
+        `gcp-map.json declares ${relPath}, but no project in project-map.json lists that file, ` +
+        `so Check G never scans it and the declaration is unenforced. Add it to the owning ` +
+        `project's file set, or mark the entry "scanned": false the way ` +
+        `kos-personal/inference-service/ is.`,
+        'tools/gas-lint/gcp-map.json');
+    } else {
+      warn('gcp-stale-declaration',
+        `gcp-map.json declares ${relPath} as a ${def.pattern} surface, but scanning it found no ` +
+        `such dependency. The dependency was probably removed — good news, but the entry now ` +
+        `overstates what this repo needs, so delete it (git history keeps the record).`,
+        'tools/gas-lint/gcp-map.json');
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Checks H and I — the two machine-checkable rules from
+// meta/FLOW_DOCTRINE.md, declared in flow-map.json.
+//
+// Most of that doctrine is not checkable: "a canary must say what it did
+// not test" is a judgement. These two are, and the difference matters more
+// than the rules do — a practice that is only prose gets rediscovered, a
+// practice that is a check gets enforced. Rule 7 lived in exactly one
+// comment before Check H existed.
+// -----------------------------------------------------------------------
+const FLOW_MAP_PATH = 'tools/gas-lint/flow-map.json';
+
+/**
+ * Reads a column map out of source. Two shapes, because this repo uses both:
+ *
+ *   object  — `const TM08 = { CONFIG_ID: 0, UNIT_NAME: 1, ... };`
+ *   prefix  — `const WQ25_QUEUE_ID = 0;` repeated, keyed by the suffix
+ *
+ * Returns { KEY: index } or null when the declaration isn't found. Comments
+ * are stripped first so a commented-out index can't be read as live — the
+ * same reason Check D strips them.
+ *
+ * Pure and path-free, so tests can drive it with literal source.
+ */
+function parseColumnMap(src, spec) {
+  const stripped = stripCommentsAndStrings(src);
+  const exclude = (spec && spec.exclude) || [];
+  const out = {};
+
+  if (spec && spec.object) {
+    // Find `NAME = {` then take to the matching brace. Brace-depth rather
+    // than a regex, because these literals span lines and carry comments.
+    const at = stripped.search(new RegExp('\\b' + spec.object + '\\s*=\\s*\\{'));
+    if (at === -1) return null;
+    const open = stripped.indexOf('{', at);
+    let depth = 0, close = -1;
+    for (let i = open; i < stripped.length; i++) {
+      if (stripped[i] === '{') depth++;
+      else if (stripped[i] === '}') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close === -1) return null;
+    const body = stripped.substring(open + 1, close);
+    const re = /([A-Za-z_$][\w$]*)\s*:\s*(\d+)/g;
+    let m;
+    while ((m = re.exec(body))) {
+      if (exclude.indexOf(m[1]) !== -1) continue;
+      out[m[1]] = Number(m[2]);
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  if (spec && spec.prefix) {
+    const re = new RegExp('^[ \\t]*(?:const|var|let)\\s+' + spec.prefix +
+      '([A-Za-z_$][\\w$]*)\\s*=\\s*(\\d+)\\s*;', 'gm');
+    let m;
+    while ((m = re.exec(stripped))) {
+      if (exclude.indexOf(m[1]) !== -1) continue;
+      out[m[1]] = Number(m[2]);
+    }
+    return Object.keys(out).length ? out : null;
+  }
+
+  return null;
+}
+
+/** How a declared map is referred to in a finding. */
+function columnMapLabel(spec) {
+  return spec.object ? spec.object : spec.prefix + '*';
+}
+
+// -----------------------------------------------------------------------
+// Check H — column-map agreement.
+//
+// Compares every declared duplicate map of the same sheet on the keys they
+// share. Disagreement is an ERROR: it is the drift class that made
+// LEDGER.TEACHER_EMAIL return a person's name and cost a live session, and
+// it never announces itself at runtime.
+//
+// Keys present in only one map are NOT a finding. A reader can legitimately
+// name fewer columns than the writer — 37_FlowInputBuilder.js's
+// FI_TM_COLUMNS_ names 13 of TeacherMatrix's 20 because it reads 13.
+// Requiring parity there would report a false conflict on every run, which
+// is how a check gets muted.
+// -----------------------------------------------------------------------
+function checkColumnMapAgreement() {
+  let flowMap;
+  try { flowMap = JSON.parse(readFile(FLOW_MAP_PATH)); }
+  catch (e) {
+    err('flow-map-unreadable',
+      `Could not read ${FLOW_MAP_PATH}: ${e.message}. Checks H and I cannot run, so they are ` +
+      `failing loudly rather than passing silently.`, FLOW_MAP_PATH);
+    return;
+  }
+
+  for (const [group, def] of Object.entries(flowMap.columnMaps || {})) {
+    const parsed = [];
+    for (const spec of def.maps || []) {
+      if (!exists(spec.file)) {
+        warn('flow-map-stale', `${group}: declares a map in ${spec.file}, which no longer ` +
+          `exists. Update ${FLOW_MAP_PATH}.`, FLOW_MAP_PATH);
+        continue;
+      }
+      const map = parseColumnMap(readFile(spec.file), spec);
+      if (!map) {
+        // A rename is the likely cause, and it silently un-checks the group.
+        warn('column-map-not-found',
+          `${group}: could not find ${columnMapLabel(spec)} in ${spec.file}. If it was renamed, ` +
+          `update ${FLOW_MAP_PATH} — until then this group is not being compared.`, spec.file);
+        continue;
+      }
+      parsed.push({ spec, map });
+    }
+
+    for (let i = 0; i < parsed.length; i++) {
+      for (let j = i + 1; j < parsed.length; j++) {
+        const a = parsed[i], b = parsed[j];
+        const shared = Object.keys(a.map).filter(k => Object.prototype.hasOwnProperty.call(b.map, k));
+        const conflicts = shared.filter(k => a.map[k] !== b.map[k]);
+        if (!conflicts.length) continue;
+        err('column-map-disagreement',
+          `${group}: ${columnMapLabel(a.spec)} (${a.spec.file}) and ${columnMapLabel(b.spec)} ` +
+          `(${b.spec.file}) disagree on ${conflicts.length} column(s): ` +
+          conflicts.map(k => `${k} is ${a.map[k]} vs ${b.map[k]}`).join('; ') +
+          `. One of them is reading the wrong field, silently — this is the drift class that ` +
+          `made LEDGER.TEACHER_EMAIL return a person's name. The authoritative order is ` +
+          `${def.authoritative || 'the code that writes the rows'}; derive from the writer and ` +
+          `fix whichever map disagrees with it.`,
+          a.spec.file);
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Check I — flow surface completeness.
+//
+// FLOW_DOCTRINE.md rule 9: "nothing came back" is one answer covering four
+// causes — never built, trigger matches nothing, wrong columns, model call
+// errored — and the third looks exactly like the first. Each cause needs its
+// own check, so a declared flow surface missing one of those roles is a
+// WARNING naming which question can no longer be answered.
+//
+// Warning rather than error on purpose: a flow mid-construction legitimately
+// lacks some of these, and an error would make the linter something to work
+// around while building. The declaration is the commitment; this is the
+// reminder.
+// -----------------------------------------------------------------------
+const FLOW_ROLE_QUESTIONS = {
+  materialize: 'what hands the flow its input',
+  harvest: 'what applies the result',
+  canary: 'does the Apps Script half work (with the Flow stubbed)',
+  binding: 'are the Flow output columns bound to the right cells',
+  liveness: 'has this flow EVER answered',
+  fixture: 'does the flow have something to match, so a green run means something',
+};
+
+function checkFlowSurfaces() {
+  let flowMap;
+  try { flowMap = JSON.parse(readFile(FLOW_MAP_PATH)); }
+  catch (e) { return; } // Check H already reported it.
+
+  for (const [surface, def] of Object.entries(flowMap.flowSurfaces || {})) {
+    const projectName = def.project;
+    const project = PROJECT_MAP[projectName];
+    if (!project) {
+      err('flow-surface-bad-project',
+        `${surface}: declares project "${projectName}", which is not in project-map.json.`,
+        FLOW_MAP_PATH);
+      continue;
+    }
+
+    const declared = new Set();
+    for (const relPath of (project.files || [])) {
+      if (!exists(relPath) || relPath.endsWith('.html')) continue;
+      for (const d of findTopLevelDecls(relPath)) declared.add(d.name);
+    }
+
+    const missingRoles = [];
+    // A role a flow genuinely does not have is declared away in "_note" —
+    // leader-hub and kos-personal both legitimately lack a materialize step.
+    // The warning below tells the reader to do exactly that, so the check has
+    // to honour it; otherwise it is instructing them to do something that
+    // does not work, which is how a check earns being ignored.
+    const note = String(def._note || '');
+    for (const role of Object.keys(FLOW_ROLE_QUESTIONS)) {
+      const fn = def[role];
+      if (!fn) {
+        if (!note.includes(role)) missingRoles.push(role);
+        continue;
+      }
+      if (!declared.has(fn)) {
+        // A named-but-absent function is worse than an unnamed role: the
+        // declaration claims the question is answered when it is not.
+        err('flow-surface-missing-function',
+          `${surface}: declares ${role} = ${fn}(), but no top-level function of that name ` +
+          `exists in project "${projectName}". Either it was renamed — in which case ` +
+          `${FLOW_MAP_PATH} is now claiming a check exists that does not — or it was never ` +
+          `written.`, FLOW_MAP_PATH);
+      }
+    }
+    if (missingRoles.length) {
+      warn('flow-surface-incomplete',
+        `${surface}: no ${missingRoles.join(', ')} declared. Unanswerable question(s): ` +
+        missingRoles.map(r => `"${FLOW_ROLE_QUESTIONS[r]}"`).join('; ') +
+        `. See meta/FLOW_DOCTRINE.md rule 9 — if a role genuinely does not apply to this ` +
+        `flow, say so in a "_note" on its entry the way leader-hub and kos-personal do for ` +
+        `materialize.`, FLOW_MAP_PATH);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Test-sandbox analysis, shared by Checks J and K.
+//
+// Both checks read the test tree rather than the GAS source, because both
+// doctrine rules they enforce are about tests: rule 4 (a fixture must be
+// exercised through its consumer) and rule 12 (a sandbox that loads fewer
+// files than the GAS project is testing a different program).
+// -----------------------------------------------------------------------
+
+const TEST_ROOT = 'tests';
+
+// tests/tools/ tests THIS tool, and both checks below have to skip it for the
+// same underlying reason: its content is sample data about GAS code, not GAS
+// code being exercised. It quotes flow-map.json's own function names as
+// strings, which would let every surface pass Check J on the strength of the
+// linter's own fixtures; and it contains literal loadGasFiles(...) snippets as
+// test input, which Check K would otherwise analyse as if they were real
+// sandboxes (they name one or two invented files and produced seven findings
+// against a project they never load). No file in tests/tools/ loads a real GAS
+// sandbox — if one ever does, it needs its own handling rather than this
+// blanket skip.
+const TOOL_TEST_DIRS = ['tests/tools'];
+
+function isToolTest(relPath) {
+  return TOOL_TEST_DIRS.some(d => relPath.indexOf(d + '/') === 0);
+}
+
+function listTestFiles() {
+  const out = [];
+  (function walk(rel) {
+    const abs = path.join(REPO_ROOT, rel);
+    if (!fs.existsSync(abs)) return;
+    for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
+      const next = rel + '/' + entry.name;
+      if (entry.isDirectory()) walk(next);
+      else if (entry.name.endsWith('.test.js')) out.push(next);
+    }
+  })(TEST_ROOT);
+  return out.sort();
+}
+
+/**
+ * Finds every loadGasFiles(files, expose) invocation in a test file and
+ * returns what each one puts in scope: { files: [basename], expose: [name] }.
+ *
+ * Both arguments are usually named constants (`FILES`, `EXPOSE`) rather than
+ * inline literals, so an identifier in either position is expanded from its
+ * `const NAME = [ ... ]` declaration in the same file. `FILES.concat([...])`
+ * works for free: the concatenated literal is inside the argument text.
+ *
+ * Paths are reduced to basenames on purpose. Tests build them half a dozen
+ * ways (`S('00_SharedConfig.js')`, `path.join(LH, 'EmailBridge.gs')`,
+ * a `KP` prefix), and resolving those expressions statically would mean
+ * evaluating them. Basenames are unique across this repo's GAS files.
+ *
+ * Pure and path-free, so tests can drive it with literal source.
+ */
+function findSandboxLoads(src) {
+  const s = stripCommentsAndStrings(src, { keepStrings: true });
+  const out = [];
+
+  // Array literals assigned to a top-level const, for expanding identifiers.
+  const arrays = {};
+  const arrayRe = /(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*=\s*\[/g;
+  let m;
+  while ((m = arrayRe.exec(s))) {
+    const open = s.indexOf('[', m.index);
+    let depth = 0, close = -1;
+    for (let i = open; i < s.length; i++) {
+      if (s[i] === '[') depth++;
+      else if (s[i] === ']') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close !== -1) arrays[m[1]] = s.substring(open, close + 1);
+  }
+
+  const expand = (text) => {
+    let acc = text;
+    for (const id of (text.match(/\b[A-Za-z_$][\w$]*\b/g) || [])) {
+      if (arrays[id]) acc += ' ' + arrays[id];
+    }
+    return acc;
+  };
+
+  const callRe = /loadGasFiles\s*\(/g;
+  while ((m = callRe.exec(s))) {
+    const open = s.indexOf('(', m.index);
+    let depth = 0, close = -1;
+    for (let i = open; i < s.length; i++) {
+      if (s[i] === '(') depth++;
+      else if (s[i] === ')') { depth--; if (depth === 0) { close = i; break; } }
+    }
+    if (close === -1) continue;
+
+    // Split the argument list on top-level commas only.
+    const args = [];
+    let cur = '', d = 0;
+    for (const ch of s.substring(open + 1, close)) {
+      if ('([{'.indexOf(ch) !== -1) d++;
+      else if (')]}'.indexOf(ch) !== -1) d--;
+      if (ch === ',' && d === 0) { args.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    args.push(cur);
+
+    const fileText = expand(args[0] || '');
+    const exposeText = expand(args[1] || '');
+    // The basename may be the whole literal (`S('00_SharedConfig.js')`) or the
+    // tail of a path written out in one (`'/scripts/00_SharedConfig.js'`).
+    const files = [];
+    const fileRe = /['"][^'"]*?([\w.\-]+\.(?:js|gs))['"]/g;
+    let fm;
+    while ((fm = fileRe.exec(fileText))) files.push(fm[1]);
+    const expose = (exposeText.match(/['"]([A-Za-z_$][\w$]*)['"]/g) || [])
+      .map(q => q.slice(1, -1));
+    out.push({
+      files: Array.from(new Set(files)),
+      expose: Array.from(new Set(expose)),
+    });
+  }
+  return out;
+}
+
+/**
+ * Every identifier referenced inside each top-level declaration of a file,
+ * keyed by declaration name — a coarse reference graph.
+ *
+ * Identifiers, not just call sites, because half of the incident behind rule
+ * 12 was a missing *constant*: 37_FlowInputBuilder.js's _fiBuildPromptText_
+ * needs both substituteFlowPrompt_() from 40 and FLOW_2_SYSTEM_PROMPT from
+ * 15b, and a call-shaped pattern would only have found the first while the
+ * fixture still seeded an empty prompt.
+ */
+function findDeclRefs(relPath) {
+  const stripped = stripCommentsAndStrings(readFile(relPath));
+  const out = {};
+  let depth = 0, cur = null;
+  for (const line of stripped.split('\n')) {
+    if (depth === 0) {
+      const m = line.match(DECL_RE);
+      if (m) { cur = m[1] || m[2]; out[cur] = out[cur] || new Set(); }
+    }
+    if (cur) {
+      // Not preceded by `.`, so `sheet.getRange` doesn't register getRange.
+      const idRe = /(?<!\.)\b([A-Za-z_$][\w$]*)\b/g;
+      let m2;
+      while ((m2 = idRe.exec(line))) out[cur].add(m2[1]);
+    }
+    for (const ch of line) {
+      if (ch === '{') depth++;
+      else if (ch === '}') depth = Math.max(0, depth - 1);
+    }
+    if (depth === 0) cur = null;
+  }
+  return out;
+}
+
+const DECL_REF_CACHE = {};
+function declRefs(relPath) {
+  if (!DECL_REF_CACHE[relPath]) DECL_REF_CACHE[relPath] = findDeclRefs(relPath);
+  return DECL_REF_CACHE[relPath];
+}
+
+/** The project whose file set best matches a sandbox's basenames. */
+function projectForBasenames(basenames) {
+  let best = null, bestCount = 0;
+  for (const [name, def] of Object.entries(PROJECT_MAP)) {
+    if (name.startsWith('_')) continue;
+    const files = (def.files || []).filter(f => !f.endsWith('.html'));
+    const count = files.filter(f => basenames.indexOf(path.basename(f)) !== -1).length;
+    if (count > bestCount) { bestCount = count; best = name; }
+  }
+  return best;
+}
+
+// -----------------------------------------------------------------------
+// Check J — a fixture must be exercised through its consumer.
+//
+// FLOW_DOCTRINE.md rule 4 for the first half (every flow gets a fixture at
+// its trigger condition, and the read-back is the test — so a fixture no test
+// reads back is half a fixture), rule 5 for the second (a fixture is only as
+// good as the consumer that reads it). A fixture asserted only against itself is
+// self-consistent by construction: the test re-derives the shape from the
+// same code that wrote it, so a fixture whose shape its consumer cannot read
+// passes. Five of this repo's six fixtures had exactly that defect, and none
+// of them produced an error anywhere — a kos-personal fixture planted a
+// prefixed Payload_UID no staging row could ever match, which exercised the
+// not-found path while reading as a pass.
+//
+// So for each declared fixture, some test outside tests/tools/ must install
+// it AND drive one of that flow's own consumers (materialize, harvest,
+// binding, liveness). The canary is deliberately not a consumer: it stubs the
+// Flow and seeds its own row, so naming it would satisfy this check without
+// reading the fixture at all.
+// -----------------------------------------------------------------------
+const FIXTURE_CONSUMER_ROLES = ['materialize', 'harvest', 'binding', 'liveness'];
+
+function checkFixtureConsumers() {
+  let flowMap;
+  try { flowMap = JSON.parse(readFile(FLOW_MAP_PATH)); }
+  catch (e) { return; } // Check H already reported it.
+
+  const testFiles = listTestFiles().filter(f => !isToolTest(f));
+  const testSrc = {};
+  for (const f of testFiles) testSrc[f] = stripCommentsAndStrings(readFile(f), { keepStrings: true });
+
+  for (const [surface, def] of Object.entries(flowMap.flowSurfaces || {})) {
+    const fixture = def.fixture;
+    if (!fixture) continue; // Check I already warns about a missing role.
+
+    const nameRe = new RegExp('\\b' + fixture + '\\b');
+    const installing = testFiles.filter(f => nameRe.test(testSrc[f]));
+    if (!installing.length) {
+      err('fixture-untested',
+        `${surface}: ${fixture}() is declared as this flow's fixture, but no test outside ` +
+        `tests/tools/ references it. The read-back IS the test — a Flow's own "Run Completed" ` +
+        `over zero rows looks exactly like success. See meta/FLOW_DOCTRINE.md rule 4.`,
+        FLOW_MAP_PATH);
+      continue;
+    }
+
+    const consumers = FIXTURE_CONSUMER_ROLES.map(r => def[r]).filter(Boolean);
+    if (!consumers.length) continue; // Nothing declared to drive it through.
+
+    const driven = installing.filter(f =>
+      consumers.some(fn => new RegExp('\\b' + fn + '\\b').test(testSrc[f])));
+    if (!driven.length) {
+      err('fixture-not-driven-through-consumer',
+        `${surface}: ${fixture}() is exercised in ${installing.join(', ')}, but none of those ` +
+        `files also drives one of its consumers (${consumers.join(', ')}). A fixture checked ` +
+        `only against itself is self-consistent by construction — the test re-derives the ` +
+        `shape from the code that wrote it, so a shape the consumer cannot read still passes. ` +
+        `Five of this repo's six fixtures had exactly that defect. See ` +
+        `meta/FLOW_DOCTRINE.md rule 5.`, FLOW_MAP_PATH);
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Check K — a test sandbox must load the scope its code runs in.
+//
+// FLOW_DOCTRINE.md rule 12. GAS concatenates every file bound to a project
+// into one global scope, so a function's collaborators are in scope in
+// production whether or not a test loaded them. A sandbox that loads fewer
+// files is running a different program, and the failure is silent whenever
+// the code degrades instead of throwing: installFlow2Fixture() seeded an
+// empty PromptText for exactly this reason, because _fiBuildPromptText_
+// returns "" rather than throwing when 15b and 40 are out of scope, and the
+// tests were green throughout.
+//
+// A test loading a subset is normal and fine — most here load two or three
+// files on purpose. What is not fine is a subset with a hole in it: a name
+// that code reachable from the sandbox's OWN exposed entry points needs, that
+// is declared in this project but was not loaded. That is the reachable part
+// of the scope, and it is what this check requires to be closed.
+//
+// Reachability is what keeps this quiet: without it, the same analysis
+// reports every collaborator of every loaded file (nine findings on one
+// fixture test, none of them exercised) and gets muted within a week.
+// -----------------------------------------------------------------------
+/**
+ * The reachable scope gaps of one sandbox: names that code reachable from
+ * `expose` needs, that this project declares in a file the sandbox did not
+ * load. Returns [{ name, declaredIn, via }].
+ *
+ * Separated from the check so a test can drive it with a file list directly —
+ * including the historical one that produced the empty PromptText, which is
+ * the only way to prove this analysis would have caught it.
+ */
+function findScopeGaps(projectName, basenames, expose, allowed) {
+  const def = PROJECT_MAP[projectName];
+  if (!def) return [];
+  const allowSet = allowed instanceof Set ? allowed : new Set(allowed || []);
+  const files = (def.files || []).filter(f => !f.endsWith('.html'));
+  const loaded = files.filter(f => basenames.indexOf(path.basename(f)) !== -1);
+  const unloaded = files.filter(f => loaded.indexOf(f) === -1);
+
+  // Names the sandbox has, and names the rest of the project has.
+  const inScope = {};
+  for (const relPath of loaded) {
+    if (!exists(relPath)) continue;
+    Object.assign(inScope, declRefs(relPath));
+  }
+  const outOfScope = new Map();
+  for (const relPath of unloaded) {
+    if (!exists(relPath)) continue;
+    for (const d of findTopLevelDecls(relPath)) {
+      if (!outOfScope.has(d.name)) outOfScope.set(d.name, relPath);
+    }
+  }
+
+  // Walk out from the names this sandbox exposes — those are what the test
+  // can actually call. Everything else in a loaded file is along for the
+  // ride, and reporting its collaborators is what would make this noisy.
+  const seen = new Set();
+  const stack = (expose || []).filter(name => inScope[name]);
+  const gaps = new Map();
+  while (stack.length) {
+    const name = stack.pop();
+    if (seen.has(name)) continue;
+    seen.add(name);
+    for (const ref of inScope[name] || []) {
+      if (inScope[ref]) { stack.push(ref); continue; }
+      if (ALLOWLIST.has(ref) || allowSet.has(ref)) continue;
+      if (outOfScope.has(ref) && !gaps.has(ref)) {
+        gaps.set(ref, { name: ref, declaredIn: outOfScope.get(ref), via: name });
+      }
+    }
+  }
+  return Array.from(gaps.values());
+}
+
+function checkSandboxScope() {
+  let allow = {};
+  try {
+    const flowMap = JSON.parse(readFile(FLOW_MAP_PATH));
+    allow = (flowMap.sandboxScope && flowMap.sandboxScope.allow) || {};
+  } catch (e) { /* Check H already reported it. */ }
+
+  for (const testFile of listTestFiles()) {
+    if (isToolTest(testFile)) continue;
+    const allowed = new Set(((allow[testFile] || {}).names) || []);
+    for (const load of findSandboxLoads(readFile(testFile))) {
+      if (!load.files.length) continue;
+      const projectName = projectForBasenames(load.files);
+      if (!projectName) continue;
+      const files = (PROJECT_MAP[projectName].files || []).filter(f => !f.endsWith('.html'));
+      const loadedCount = files.filter(f => load.files.indexOf(path.basename(f)) !== -1).length;
+
+      for (const gap of findScopeGaps(projectName, load.files, load.expose, allowed)) {
+        err('sandbox-scope-gap',
+          `${testFile}: the sandbox loads ${loadedCount} of project "${projectName}"'s ` +
+          `${files.length} files, and ${gap.via}() — reachable from the names this test ` +
+          `exposes — needs "${gap.name}", which is declared in ${gap.declaredIn} and was not ` +
+          `loaded. In production GAS puts it in scope; here it is missing, so this test is ` +
+          `exercising a different program than Studio runs. Add ` +
+          `${path.basename(gap.declaredIn)} to the file list. If the omission is deliberate, ` +
+          `declare it under sandboxScope.allow in ${FLOW_MAP_PATH} with a reason. See ` +
+          `meta/FLOW_DOCTRINE.md rule 12.`,
+          testFile);
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Reusable primitives
+//
+// stripCommentsAndStrings() is the piece other tools most need and most
+// easily get wrong: a naive version that handles quotes but not regex
+// literals desyncs on the first `/IDENTITY_KEY\s*[:=]\s*['"].+['"]/` it
+// meets and silently mis-parses the entire rest of the file. Exporting it
+// keeps one implementation rather than several that drift.
+//
+// Guarded on require.main so that `require()`ing this file gives you the
+// helpers without running the checks or calling process.exit().
+// -----------------------------------------------------------------------
+module.exports = {
+  stripCommentsAndStrings,
+  parseColumnMap,
+  columnMapLabel,
+  FLOW_ROLE_QUESTIONS,
+  FIXTURE_CONSUMER_ROLES,
+  findSandboxLoads,
+  findDeclRefs,
+  findScopeGaps,
+  projectForBasenames,
+  listTestFiles,
+  isToolTest,
+  findGoogleScriptRunCalls,
+  findGcpSurfaces,
+  GCP_PATTERNS,
+  GCP_STATUSES,
+  findTopLevelDecls,
+  findAnyDepthDeclNames,
+  lineAt,
+  ALLOWLIST,
+  DECL_RE,
+};
+
+if (require.main !== module) return;
+
+// -----------------------------------------------------------------------
 // Run everything
 // -----------------------------------------------------------------------
 checkDuplicateDeclarations();
@@ -556,6 +1428,11 @@ checkCasCcpsConfigKeys();
 checkGoogleScriptRunCalls();
 checkOAuthScopes();
 checkUndefinedFunctionCalls();
+checkGcpSurfaces();
+checkColumnMapAgreement();
+checkFlowSurfaces();
+checkFixtureConsumers();
+checkSandboxScope();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

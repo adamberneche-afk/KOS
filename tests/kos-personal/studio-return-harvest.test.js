@@ -1,0 +1,628 @@
+'use strict';
+// Regression tests for kos-personal/12_StudioReturnHarvest.gs — the Apps
+// Script harvest that replaces the two blocked custom Studio steps.
+//
+// The custom steps could not be tested end to end from here at all (they run
+// inside a Workspace Add-on runtime), and they are now dead code on this
+// account regardless. What matters is that the port preserved their contracts
+// EXACTLY, because three of the differences look cosmetic and are not:
+//
+//   1. The Curator contract RE-SERIALIZES (JSON.stringify) because it merges
+//      the Auditor pass in. The Classification contract writes the ORIGINAL,
+//      unstripped text — the fence is stripped only for the copy being
+//      validated — because re-serializing risks reformatting floats or key
+//      order differently from what the model produced, for no benefit.
+//   2. A malformed Auditor pass is a FULL failure. Dropping the audit and
+//      writing an un-audited result would paper over exactly what
+//      CURATOR_PROMPT.md's rule against a fabricated sign-off forbids.
+//   3. On any failure, NOTHING is written — not the doc, not the staging row.
+//      KOS's spec wants the staleness guard to own retries, which is the
+//      opposite of cas-ccps's Flow 2 behaviour.
+//
+// The load-bearing new behaviour is the doc-written breadcrumb. Once the doc
+// body is overwritten the original source text is gone, so a retry would
+// re-run inference against a document that is already JSON. The custom step
+// could only flag that and hope someone noticed; this can resume.
+
+const test = require('node:test');
+const assert = require('node:assert/strict');
+const path = require('path');
+const { loadGasFiles } = require('../harness/gas-sandbox');
+
+const KP = path.join(__dirname, '..', '..', 'kos-personal');
+const FILES = [
+  path.join(KP, '1_Config_And_Deploy.gs'),
+  path.join(KP, '5_Error_And_Utilities.gs'),
+  path.join(KP, '12_StudioReturnHarvest.gs'),
+];
+
+const EXPOSE = [
+  'harvestStudioReturns', 'checkStudioReturns', 'checkStudioFlowLiveness',
+  'removeStudioFlowFixtures',
+  'installStudioFlowFixture',
+  '_srPrepareDocText_', '_srStripJsonFence_', '_srFindStagingRow_',
+  '_srIsDocWritten_', '_srMarkDocWritten_', '_srClearDocWritten_',
+  'SR_COLS', 'SR_SHEET', 'SR_CURATOR_TYPES', 'SR_MAX_ATTEMPTS',
+  '_srDiagnoseReturnRow_', 'checkStudioFlowBinding', 'SR_KNOWN_TYPES',
+  'CFG', '_getSystemAsset', '_getOrCreateSheet',
+];
+
+function load() {
+  return loadGasFiles(FILES, EXPOSE);
+}
+
+// ── The two output contracts ─────────────────────────────────────────────────
+
+test('curator output: fence stripped, Auditor merged under auditor_sign_off', () => {
+  const { exported } = load();
+  const out = exported._srPrepareDocText_(
+    'SESSION_LOG', '```json\n{"summary":"s","themes":["UI"]}\n```', '{"verdict":"PASS"}');
+  assert.equal(out.ok, true, out.error);
+  const parsed = JSON.parse(out.text);
+  assert.equal(parsed.summary, 's');
+  // CURATOR_PROMPT.md Rule 8 / Section 4: ONE top-level key holding the
+  // Auditor output verbatim, never a second JSON object appended after.
+  assert.deepEqual(parsed.auditor_sign_off, { verdict: 'PASS' });
+});
+
+test('curator output with no Auditor pass carries no auditor_sign_off key', () => {
+  const { exported } = load();
+  const out = exported._srPrepareDocText_('SESSION_LOG', '{"summary":"s"}', '');
+  assert.equal(out.ok, true);
+  assert.equal(Object.prototype.hasOwnProperty.call(JSON.parse(out.text), 'auditor_sign_off'), false,
+    'an absent audit must not become a present-but-empty sign-off');
+});
+
+test('a malformed Auditor pass fails the whole write rather than dropping the audit', () => {
+  const { exported } = load();
+  const out = exported._srPrepareDocText_('SESSION_LOG', '{"summary":"s"}', 'not json');
+  assert.equal(out.ok, false);
+  assert.match(out.error, /^AUDITOR_JSON_PARSE_FAILED/);
+});
+
+test('classification output is written VERBATIM, fence and all', () => {
+  const { exported } = load();
+  // The difference that looks like a bug and is not: the fence is stripped
+  // only to validate. Re-serializing here would risk reformatting floats or
+  // key order away from what the model produced, and there is nothing to
+  // merge, so there is no reason to reconstruct it.
+  const raw = '```json\n[{"theme":"UI","score":1.50}]\n```';
+  const out = exported._srPrepareDocText_('VECTOR_CLASSIFY', raw, '');
+  assert.equal(out.ok, true);
+  assert.equal(out.text, raw);
+});
+
+test('classification output must parse to an Array', () => {
+  const { exported } = load();
+  const out = exported._srPrepareDocText_('VECTOR_CLASSIFY', '{"theme":"UI"}', '');
+  assert.equal(out.ok, false);
+  assert.equal(out.error, 'CLASSIFICATION_JSON_NOT_ARRAY');
+});
+
+test('unparseable primary output fails with a contract-specific code', () => {
+  const { exported } = load();
+  assert.match(exported._srPrepareDocText_('SESSION_LOG', '{oops', '').error,
+    /^CURATOR_JSON_PARSE_FAILED/);
+  assert.match(exported._srPrepareDocText_('VECTOR_CLASSIFY', '{oops', '').error,
+    /^CLASSIFICATION_JSON_PARSE_FAILED/);
+});
+
+test('empty model output is rejected before either contract runs', () => {
+  const { exported } = load();
+  assert.equal(exported._srPrepareDocText_('SESSION_LOG', '   ', '').ok, false);
+});
+
+test('every curator payload type routes to the curator contract', () => {
+  const { exported } = load();
+  // A type falling through to the classification contract would demand an
+  // Array and reject a perfectly good Curator object, so this pins the list.
+  exported.SR_CURATOR_TYPES.forEach((type) => {
+    const out = exported._srPrepareDocText_(type, '{"summary":"s"}', '{"verdict":"PASS"}');
+    assert.equal(out.ok, true, type + ' did not use the curator contract: ' + out.error);
+    assert.ok(JSON.parse(out.text).auditor_sign_off, type + ' dropped the audit');
+  });
+});
+
+// ── Fence stripping ──────────────────────────────────────────────────────────
+
+test('fence stripping handles the shapes a real response arrives in', () => {
+  const { exported } = load();
+  const s = exported._srStripJsonFence_;
+  assert.equal(s('```json\n{"a":1}\n```'), '{"a":1}');
+  assert.equal(s('```\n{"a":1}\n```'), '{"a":1}');
+  assert.equal(s('{"a":1}'), '{"a":1}', 'unfenced text passes through untouched');
+  assert.equal(s('  {"a":1}  '), '{"a":1}');
+  assert.equal(s(null), '');
+  // A fence-like sequence INSIDE the JSON must not truncate it.
+  assert.equal(s('```json\n{"code":"x"}\n```'), '{"code":"x"}');
+});
+
+// ── The full harvest, against the sandbox ────────────────────────────────────
+
+// Everything here is built SANDBOX-SIDE on purpose. The harness passes any
+// value returned through `exported` via crossRealmSafe(), which flattens a
+// live FakeSpreadsheet into a plain object — so calling the exported
+// _getSystemAsset()/_getOrCreateSheet() and then using the result gives you
+// something with no getSheetByName(). Tabs are created with insertSheet plus
+// explicit headers, matching what _getOrCreateSheet writes, the same way
+// every other kos-personal test sets up its index spreadsheet.
+const STAGING_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type',
+  'Doc_URL', 'File_ID', 'Status', 'Retry_Count'];
+const RETURN_HEADERS = ['Returned_At', 'Payload_UID', 'Payload_Type',
+  'Primary_JSON', 'Auditor_JSON', 'Harvest_Status', 'Attempts', 'Error'];
+
+function indexSpreadsheet(exported, sandbox) {
+  const props = sandbox.PropertiesService.getScriptProperties();
+  const existing = props.getProperty('INDEX_ID');
+  if (existing) return sandbox.SpreadsheetApp.openById(existing);
+  const ss = sandbox.SpreadsheetApp.create(exported.CFG.INDEX_NAME);
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  props.setProperty('INDEX_ID', ss.getId());
+  return ss;
+}
+
+function tab(ss, name, headers) {
+  let sheet = ss.getSheetByName(name);
+  if (sheet) return sheet;
+  sheet = ss.insertSheet(name);
+  sheet.appendRow(headers);
+  return sheet;
+}
+
+// The source document is created here too, so its real mock id is what lands
+// in the staging row's File_ID: a hand-written id would make the doc write
+// throw and quietly turn every success case into a failure case.
+function seed(exported, sandbox, opts) {
+  const o = opts || {};
+  const ss = indexSpreadsheet(exported, sandbox);
+  const staging = tab(ss, exported.CFG.STAGING_SHEET, STAGING_HEADERS);
+  const returns = tab(ss, exported.SR_SHEET, RETURN_HEADERS);
+  const uid = o.uid || 'UID-1';
+
+  const doc = sandbox.DocumentApp.create('source doc for ' + uid);
+  doc.getBody().setText(o.docText || 'ORIGINAL SOURCE TEXT');
+  const fileId = doc.getId();
+
+  if (o.skipStaging !== true) {
+    staging.appendRow([new sandbox.Date(), uid, o.type || 'SESSION_LOG',
+      'https://docs.google.com/document/d/' + fileId, fileId,
+      o.status || 'STUDIO_ACTIVE', 0]);
+  }
+  if (o.skipReturn !== true) {
+    returns.appendRow([new sandbox.Date(), uid, o.type || 'SESSION_LOG',
+      o.primary === undefined ? '{"summary":"s"}' : o.primary,
+      o.auditor === undefined ? '' : o.auditor, '', 0, '']);
+  }
+  return { ss: ss, staging: staging, returns: returns, uid: uid, fileId: fileId, doc: doc };
+}
+
+// Reads the staging row's Status straight off the sheet, rather than through
+// the exported _srFindStagingRow_ — same crossRealm reason as above, and it
+// keeps the assertion about the sheet's real contents.
+function stagingStatus(ctx) {
+  const rows = ctx.staging.getDataRange().getValues();
+  const row = rows.slice(1).find((r) => String(r[1]).trim() === ctx.uid);
+  return row ? String(row[5]).trim() : null;
+}
+
+test('harvest: applies a return, marks FLOW_COMPLETE, and replaces the doc body', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox, { auditor: '{"verdict":"PASS"}' });
+
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 1, JSON.stringify(result));
+
+  assert.equal(stagingStatus(ctx), 'FLOW_COMPLETE');
+
+  const body = sandbox.DocumentApp.openById(ctx.fileId).getBody().getText();
+  assert.ok(body.indexOf('auditor_sign_off') !== -1, 'the merged JSON was written: ' + body);
+  assert.equal(body.indexOf('ORIGINAL SOURCE TEXT'), -1, 'the source text was replaced');
+});
+
+test('harvest: marks the return row HARVESTED, so a second pass skips it', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  exported.harvestStudioReturns();
+  const second = exported.harvestStudioReturns();
+  assert.equal(second.applied, 0);
+  assert.equal(second.skipped, 1);
+});
+
+test('harvest: a duplicate return is consumed WITHOUT re-writing the doc', () => {
+  const { exported, sandbox } = load();
+  // Genuinely reachable: the staleness guard can reset a row whose return is
+  // still queued, the Turnstile re-releases it, and a second Flow run returns
+  // later. Re-writing would clobber a good result with an older one.
+  const ctx = seed(exported, sandbox);
+  exported.harvestStudioReturns();
+  const bodyAfterFirst = sandbox.DocumentApp.openById(ctx.fileId).getBody().getText();
+
+  ctx.returns.appendRow([new Date(), ctx.uid, 'SESSION_LOG',
+    '{"summary":"a stale second result"}', '', '', 0, '']);
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 1, 'the duplicate is consumed, not left to retry forever');
+  assert.equal(sandbox.DocumentApp.openById(ctx.fileId).getBody().getText(), bodyAfterFirst,
+    'the doc body must not change on a duplicate return');
+});
+
+test('harvest: NOTHING is touched when the output is malformed', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox, { primary: '{not json' });
+
+  exported.harvestStudioReturns();
+
+  // KOS's spec: leave the staging row alone so the staleness guard retries.
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
+  assert.equal(sandbox.DocumentApp.openById(ctx.fileId).getBody().getText(), 'ORIGINAL SOURCE TEXT');
+});
+
+test('harvest: gives up on the RETURN row after SR_MAX_ATTEMPTS, staging still untouched', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox, { primary: '{not json' });
+  for (let i = 0; i < exported.SR_MAX_ATTEMPTS; i++) exported.harvestStudioReturns();
+
+  const report = exported.checkStudioReturns();
+  assert.equal(report.failed, 1, JSON.stringify(report));
+  // The separation that keeps this file from fighting the Turnstile: giving
+  // up on a return row never means giving up on the payload.
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
+});
+
+test('harvest: a return with no matching staging row fails without writing anything', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox, { skipStaging: true });
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 0);
+  assert.equal(result.failed, 1);
+});
+
+test('harvest: a row missing its Payload_UID fails immediately, not after 3 tries', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox, { skipReturn: true });
+  ctx.returns.appendRow([new Date(), '', 'SESSION_LOG', '{"a":1}', '', '', 0, '']);
+  exported.harvestStudioReturns();
+  assert.equal(exported.checkStudioReturns().failed, 1);
+});
+
+test('harvest: empty return tab is a no-op', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox, { skipStaging: true, skipReturn: true });
+  assert.deepEqual(exported.harvestStudioReturns(),
+    { applied: 0, skipped: 0, failed: 0, attention: 0, pruned: 0 });
+});
+
+// ── The breadcrumb ───────────────────────────────────────────────────────────
+
+test('breadcrumb: a pre-set breadcrumb makes the harvest skip the doc write', () => {
+  const { exported, sandbox } = load();
+  // Simulates a crash between the doc write and the staging mark. The doc
+  // already holds the answer; re-writing is unnecessary and re-inferring
+  // would be actively wrong, since the source text is gone.
+  const ctx = seed(exported, sandbox, { docText: 'ALREADY THE MODEL OUTPUT' });
+  exported._srMarkDocWritten_(ctx.uid);
+
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 1);
+  assert.equal(sandbox.DocumentApp.openById(ctx.fileId).getBody().getText(),
+    'ALREADY THE MODEL OUTPUT', 'the doc write was skipped, as the breadcrumb asked');
+  assert.equal(stagingStatus(ctx), 'FLOW_COMPLETE', 'and the staging mark still completed');
+});
+
+test('breadcrumb: cleared once the staging mark succeeds', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  exported.harvestStudioReturns();
+  assert.equal(exported._srIsDocWritten_(ctx.uid), false,
+    'a breadcrumb left behind would make a future re-run of this UID skip a needed doc write');
+});
+
+// ── Liveness ─────────────────────────────────────────────────────────────────
+
+test('liveness: reports plainly that no Flow has ever written back', () => {
+  const { exported, sandbox } = load();
+  // The whole point of this report. A Studio Flow that matched zero rows
+  // reports a green "Run Completed", so the Flow UI cannot answer this.
+  seed(exported, sandbox, { skipReturn: true });
+  const report = exported.checkStudioFlowLiveness();
+  assert.equal(report.flowEverReturned, false);
+  assert.equal(report.released, 1);
+  assert.equal(report.awaitingReturn.length, 1);
+});
+
+test('liveness: a return row is the evidence that flips it', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox);
+  const report = exported.checkStudioFlowLiveness();
+  assert.equal(report.flowEverReturned, true);
+  assert.equal(report.awaitingReturn.length, 0, 'this UID has a return, so it is not awaiting one');
+});
+
+test('liveness: counts FLOW_COMPLETE rows separately from released ones', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox);
+  exported.harvestStudioReturns();
+  const report = exported.checkStudioFlowLiveness();
+  assert.equal(report.completed, 1);
+  assert.equal(report.released, 0, 'a completed row is no longer awaiting inference');
+});
+
+test('checkStudioReturns: read-only — it never writes', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  const before = ctx.returns.getDataRange().getValues();
+  exported.checkStudioReturns();
+  assert.deepEqual(ctx.returns.getDataRange().getValues(), before);
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
+});
+
+// ── The fixture, and whether it reaches both flows ───────────────────────────
+//
+// installStudioFlowFixture() is the only thing that can answer "is the Flow
+// live?", so it has to feed BOTH flows. Its first version fed one: the
+// classification flow had nothing to latch onto, and its output contract
+// (write the ORIGINAL unstripped text, validate it parses to an Array) had
+// never been exercised against a real queued row.
+
+function fixtureRows(exported, sandbox) {
+  const ss = indexSpreadsheet(exported, sandbox);
+  const staging = tab(ss, exported.CFG.STAGING_SHEET, STAGING_HEADERS);
+  return staging.getDataRange().getValues().slice(1)
+    .filter((r) => String(r[1]).indexOf('FIXTURE-SR-') === 0);
+}
+
+test('the fixture plants a row for BOTH payload types', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+
+  const types = fixtureRows(exported, sandbox).map((r) => String(r[2]).trim()).sort();
+  assert.deepEqual(types, ['SESSION_LOG', 'VECTOR_CLASSIFY'],
+    'one type only would leave the other flow with nothing to match');
+});
+
+test('both fixture rows share one document, as the paired design intends', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+
+  // CURATOR_PROMPT.md Rule 1 has the Curator citing a completed VECTOR_CLASSIFY
+  // row for the SAME session. README.md:192 records that _chunkAndQueue()
+  // doesn't queue that paired row yet, so this fixture is currently the only
+  // place the paired shape exists.
+  const rows = fixtureRows(exported, sandbox);
+  const fileIds = [...new Set(rows.map((r) => String(r[4]).trim()))];
+  assert.equal(fileIds.length, 1, 'both rows point at the same FileID');
+  assert.ok(fileIds[0], 'and it is a real document id');
+
+  const stems = [...new Set(rows.map((r) => String(r[1]).replace(/-(SESSION_LOG|VECTOR_CLASSIFY)$/, '')))];
+  assert.equal(stems.length, 1, 'and they share one UID stem, so the pair reads as one session');
+});
+
+test('both fixture rows start at PENDING_FLOW, for the Turnstile to release', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+  fixtureRows(exported, sandbox).forEach((r) => {
+    assert.equal(String(r[5]).trim(), 'PENDING_FLOW');
+  });
+});
+
+test('the fixture document is real and readable, not a fabricated id', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  const result = exported.installStudioFlowFixture();
+  const body = sandbox.DocumentApp.openById(result.fileId).getBody().getText();
+  assert.match(body, /FIXTURE SESSION LOG/);
+  assert.ok(body.length > 200, 'enough text for a Curator pass to have something to say');
+});
+
+test('the classification contract accepts what its fixture flow would return', () => {
+  const { exported } = load();
+  // The half that had never been exercised end to end. VECTOR_CLASSIFY output
+  // is written VERBATIM and must parse to an Array — so a Curator-shaped
+  // object response has to be rejected, not written.
+  const good = exported._srPrepareDocText_('VECTOR_CLASSIFY',
+    '```json\n[{"theme":"ARCHITECTURE","raw_score":3}]\n```', '');
+  assert.equal(good.ok, true, good.error);
+  assert.match(good.text, /^```json/, 'written verbatim, fence included');
+
+  const bad = exported._srPrepareDocText_('VECTOR_CLASSIFY', '{"theme":"ARCHITECTURE"}', '');
+  assert.equal(bad.ok, false);
+  assert.equal(bad.error, 'CLASSIFICATION_JSON_NOT_ARRAY');
+});
+
+test('removeStudioFlowFixtures clears both rows and trashes the doc', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+  const removed = exported.removeStudioFlowFixtures();
+  assert.equal(removed.removedRows, 2, 'both rows, not just the first');
+  assert.equal(fixtureRows(exported, sandbox).length, 0);
+});
+
+test('liveness reports per payload type, so one dead flow is visible', () => {
+  const { exported, sandbox } = load();
+  const ss = indexSpreadsheet(exported, sandbox);
+  exported.installStudioFlowFixture();
+
+  // Release both, then let only the Curator flow answer.
+  const staging = tab(ss, exported.CFG.STAGING_SHEET, STAGING_HEADERS);
+  const rows = staging.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]).indexOf('FIXTURE-SR-') === 0) {
+      staging.getRange(i + 1, 6).setValue('STUDIO_ACTIVE');
+    }
+  }
+  const curatorUid = rows.slice(1)
+    .map((r) => String(r[1]))
+    .find((u) => u.indexOf('-SESSION_LOG') !== -1);
+  tab(ss, exported.SR_SHEET, RETURN_HEADERS)
+    .appendRow([new sandbox.Date(), curatorUid, 'SESSION_LOG', '{"summary":"s"}', '', '', 0, '']);
+
+  const report = exported.checkStudioFlowLiveness();
+  // An aggregate "something returned" would read as healthy here. Per type it
+  // is plain that the classification flow has never written back.
+  assert.equal(report.flowEverReturned, true);
+  assert.equal(report.returnsByType.SESSION_LOG, 1);
+  assert.equal(report.returnsByType.VECTOR_CLASSIFY, undefined,
+    'nothing has ever returned for this type');
+  assert.equal(report.releasedByType.VECTOR_CLASSIFY, 1,
+    'even though a row was released for it');
+});
+
+// ── The binding probe ────────────────────────────────────────────────────────
+//
+// Same return-tab shape as cas-ccps's, so the shift diagnostics are the same
+// idea. One diagnosis here has NO equivalent there, and it is why this is not
+// a copy: Payload_Type does not label the row, it SELECTS A CONTRACT.
+// _srPrepareDocText_ routes a Curator type through a merge and
+// re-serialization, and anything else through "write the original verbatim,
+// and require it to parse as an Array". So a valid type name that is not the
+// one queued applies the wrong treatment silently.
+
+function returnRow(exported, knownUid, over) {
+  const row = new Array(Object.keys(exported.SR_COLS).length).fill('');
+  row[exported.SR_COLS.RETURNED_AT] = new Date();
+  row[exported.SR_COLS.PAYLOAD_UID] = knownUid;
+  row[exported.SR_COLS.PAYLOAD_TYPE] = 'SESSION_LOG';
+  row[exported.SR_COLS.PRIMARY_JSON] =
+    '{"summary":"a curator result long enough to read as model output"}';
+  Object.keys(over || {}).forEach((k) => { row[Number(k)] = over[k]; });
+  return row;
+}
+
+const KNOWN = { 'UID-1': true };
+const QUEUED = { 'UID-1': 'SESSION_LOG' };
+
+test('binding probe: a correctly bound row reports no issues', () => {
+  const { exported } = load();
+  assert.deepEqual(
+    exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1'), KNOWN, QUEUED), []);
+});
+
+test('binding probe: a one-column shift is named as a shift, with the offset', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  const row = new Array(Object.keys(C).length).fill('');
+  row[C.PAYLOAD_UID + 1] = 'UID-1';
+  row[C.PAYLOAD_TYPE + 1] = 'SESSION_LOG';
+  row[C.PRIMARY_JSON + 1] = '{"summary":"output one column too far right"}';
+
+  const issues = exported._srDiagnoseReturnRow_(row, KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /shifted by 1 column/.test(m)), JSON.stringify(issues));
+});
+
+test('binding probe: a valid but WRONG Payload_Type is caught against what was queued', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // The diagnosis with no cas-ccps equivalent. VECTOR_CLASSIFY is a perfectly
+  // valid type, so nothing about the value looks wrong — but this UID was
+  // queued as SESSION_LOG, and the two take different contracts.
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: 'VECTOR_CLASSIFY' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /was queued as "SESSION_LOG"/.test(m)), JSON.stringify(issues));
+  assert.ok(issues.some((m) => /DIFFERENT output contracts/.test(m)),
+    'and says the consequence: ' + JSON.stringify(issues));
+});
+
+test('binding probe: a wrong type WITHIN the same contract is flagged more softly', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // EXTERNAL_DATA and SESSION_LOG are both Curator types, so the harvest
+  // behaves identically. Still wrong, still worth saying, but not the same
+  // severity — and conflating the two would train the reader to ignore it.
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: 'EXTERNAL_DATA' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /nothing breaks today/.test(m)), JSON.stringify(issues));
+  assert.ok(!issues.some((m) => /DIFFERENT output contracts/.test(m)));
+});
+
+test('binding probe: an unrecognized Payload_Type explains the contract it will get', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: 'SESSION' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /CLASSIFICATION contract/.test(m) && /NOT_ARRAY/.test(m)),
+    'a mislabelled Curator result fails with a confusing array error: ' + JSON.stringify(issues));
+});
+
+test('binding probe: an empty Payload_Type is called out as defaulting wrongly', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PAYLOAD_TYPE]: '' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /takes the classification contract by default/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: an Auditor value on a classification row is caught', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // The classification contract writes verbatim with nothing to merge, so an
+  // auditor value here is a mis-binding or a leftover from copying the
+  // Curator flow's step.
+  const issues = exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1', {
+    [C.PAYLOAD_TYPE]: 'VECTOR_CLASSIFY',
+    [C.PRIMARY_JSON]: '[{"theme":"UI"}] long enough to count as model output here',
+    [C.AUDITOR_JSON]: '{"verdict":"PASS"}',
+  }), KNOWN, { 'UID-1': 'VECTOR_CLASSIFY' });
+  assert.ok(issues.some((m) => /Auditor_JSON is filled on a "VECTOR_CLASSIFY" row/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: an Auditor value on a Curator row is perfectly fine', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  assert.deepEqual(exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.AUDITOR_JSON]: '{"verdict":"PASS"}' }), KNOWN, QUEUED), []);
+});
+
+test('binding probe: no output at all is not blamed on Returned_At', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // Same bug cas-ccps's probe shipped with: a Date stringifies to ~50 chars,
+  // so including Returned_At in the longest-cell scan made an empty
+  // Primary_JSON read as "your output landed in Returned_At".
+  const issues = exported._srDiagnoseReturnRow_(
+    returnRow(exported, 'UID-1', { [C.PRIMARY_JSON]: '' }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /not reaching this row at all/.test(m)), JSON.stringify(issues));
+  assert.ok(!issues.some((m) => /column 1/.test(m)), JSON.stringify(issues));
+});
+
+test('binding probe: an already-harvested row is not scolded for its bookkeeping', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  assert.deepEqual(exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1', {
+    [C.HARVEST_STATUS]: 'HARVESTED', [C.ATTEMPTS]: 1,
+  }), KNOWN, QUEUED), []);
+});
+
+test('binding probe: the logged binding is derived from the harvest\'s own columns', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  const report = exported.checkStudioFlowBinding();
+  assert.equal(report.expected.length, Object.keys(exported.SR_COLS).length);
+  const primary = report.expected.find((e) => e.header === 'Primary_JSON');
+  assert.equal(primary.column, exported.SR_COLS.PRIMARY_JSON + 1);
+  assert.match(primary.owner, /Flow writes this/);
+  const status = report.expected.find((e) => e.header === 'Harvest_Status');
+  assert.match(status.owner, /leave EMPTY/);
+  // And the seeded return row from seed() is correctly bound, so the probe
+  // and the fixtures agree rather than contradicting each other.
+  assert.equal(report.problems.length, 0, JSON.stringify(report.problems, null, 2));
+});
+
+test('binding probe: a SHORT but valid output is not reported as missing', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // '{"summary":"s"}' is 15 characters — shorter than the longest-cell
+  // threshold, and a perfectly valid Curator result. The heuristic used to
+  // read it as "nothing is arriving", which is a false alarm on a working
+  // flow and worse than no probe at all.
+  ['{"summary":"s"}', '[{"theme":"UI"}]'].forEach((out) => {
+    const issues = exported._srDiagnoseReturnRow_(
+      returnRow(exported, 'UID-1', { [C.PRIMARY_JSON]: out }), KNOWN, QUEUED);
+    assert.deepEqual(issues, [], 'flagged a valid short output ' + JSON.stringify(out) +
+      ': ' + JSON.stringify(issues));
+  });
+});

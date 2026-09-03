@@ -44,33 +44,63 @@
 const CONFIG = {
   horizonLabel:    'LeaderHub',   // Gmail label to scan for horizon items
   subPlanFolderId: '',            // Drive folder ID for sub plans ('' = root)
-  defaultBragTo:   'adam_berneche@ccpsnet.net',
+  // FIXED (external product review, Finding 9 / "this month" hardcoded-
+  // credentials cleanup): was a real personal email baked into committed
+  // source. Blank like subPlanFolderId above — bragEmail_() (below) already
+  // falls back to body.to when the client sends its own recipient, so this
+  // only matters as a same-account fallback; fill in your own address here
+  // in a local, uncommitted edit, same as any other Script Property you'd
+  // normally set per-deployment.
+  defaultBragTo:   '',
 };
 
 // ── Entry points ──────────────────────────────────────────────────────────────
+//
+// NOTE (server-migration Phase 1): this file used to own doGet() itself,
+// returning horizon-items JSON unconditionally. Now that Code.gs's doGet()
+// serves the hub UI (GAS allows exactly one doGet per project — a second
+// top-level declaration is a real collision, not just a style issue), this
+// logic moved to a plain function Code.gs's doGet() calls for the
+// `?api=horizon` polling request EMAIL_BRIDGE.poll() used to make when
+// opened as a local file (no google.script.run available there — see
+// Code.gs's lhGetHorizonItems_()/lhApiCall_(), which poll()/callGAS() now
+// call directly in the same-origin (deployed web app) case).
+//
+// NOTE (server-migration Phase 2): doPost()'s action dispatch is now
+// factored into _lhDispatchAction_() below, shared with Code.gs's
+// lhApiCall_() (the google.script.run entry point the same-origin client
+// uses instead of doPost() once served by the deployed web app) — one
+// action table, not two that could silently drift apart.
 
-function doGet(e) {
+function _horizonItemsResult_() {
   try {
-    return jsonResponse_({ ok: true, items: scanHorizonLabel_() });
+    return { ok: true, items: scanHorizonLabel_() };
   } catch (err) {
-    return jsonResponse_({ ok: false, error: err.message });
+    return { ok: false, error: err.message };
   }
+}
+
+function emailBridgeGetHorizonItems_(e) {
+  return jsonResponse_(_horizonItemsResult_());
+}
+
+function _lhDispatchAction_(action, body) {
+  if (action === 'markConsumed') return markConsumed_(body.ids || []);
+  if (action === 'subPlan')      return createSubPlanDoc_(body);
+  if (action === 'bragEmail')    return createBragDraft_(body);
+  if (action === 'aiDraft')      return queueAiJob_(body);
+  if (action === 'checkAiJob')   return checkAiJob_(body);
+  if (action === 'flowHealth')   return getFlowHealth_();
+  if (action === 'pushOrgSync')  return pushOrgSync_(body);
+  if (action === 'pullOrgSync')  return pullOrgSync_(body);
+  if (action === 'listOrgSyncs') return listOrgSyncs_(body);
+  return { ok: false, error: 'Unknown action: ' + action };
 }
 
 function doPost(e) {
   try {
-    const body   = JSON.parse(e.postData.contents || '{}');
-    const action = body.action || '';
-    if (action === 'markConsumed') return jsonResponse_(markConsumed_(body.ids || []));
-    if (action === 'subPlan')      return jsonResponse_(createSubPlanDoc_(body));
-    if (action === 'bragEmail')    return jsonResponse_(createBragDraft_(body));
-    if (action === 'aiDraft')      return jsonResponse_(queueAiJob_(body));
-    if (action === 'checkAiJob')   return jsonResponse_(checkAiJob_(body));
-    if (action === 'flowHealth')   return jsonResponse_(getFlowHealth_());
-    if (action === 'pushOrgSync')  return jsonResponse_(pushOrgSync_(body));
-    if (action === 'pullOrgSync')  return jsonResponse_(pullOrgSync_(body));
-    if (action === 'listOrgSyncs') return jsonResponse_(listOrgSyncs_(body));
-    return jsonResponse_({ ok: false, error: 'Unknown action: ' + action });
+    const body = JSON.parse(e.postData.contents || '{}');
+    return jsonResponse_(_lhDispatchAction_(body.action || '', body));
   } catch (err) {
     return jsonResponse_({ ok: false, error: err.message });
   }

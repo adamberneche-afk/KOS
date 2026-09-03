@@ -47,12 +47,50 @@ that was built. The three-state *meaning* stays the same either way.
 
 ## cas-ccps — Flow 2 (Turn-In evaluation)
 
-**What it does:** a student's Turn-In Gate submission (`04_Form2_
-TurnInGate.js`) is queued to `ReviewQueue`, bridged into `STAGING_PIPELINE`
-(`03_QueueBridge.js`), and picked up by a human-built Studio Flow that
-evaluates the submission against its rubric and writes the result back —
-the one Flow this entire system depends on to ever turn a submission
-COMPLETE.
+**What it does (or would, once built):** a student's Turn-In Gate
+submission (`04_Form2_TurnInGate.js`) is queued to `ReviewQueue`, bridged
+into `STAGING_PIPELINE` (`03_QueueBridge.js`), and is meant to be picked
+up by a Studio Flow that evaluates the submission against its rubric and
+writes the result back — the one Flow this entire system depends on to
+ever turn a submission `COMPLETE`.
+
+**Corrected (this document previously described Flow 2 as already
+human-built and live — it is not; then, later, as never built at all,
+which is now also stale — see the update below.)** cas-ccps/README.md's
+"Known gaps" section originally stated plainly: "Flow 2 has never been
+built in Studio." That's no longer accurate: `CommitStudentEvaluationStep.gs`
+(`cas-ccps/studio-steps/`) is now Flow 2's real, tested writer code. What
+remains true is that it isn't *live* — and the reason is not the one this
+paragraph used to give ("that project hasn't been pushed to a real Google
+account"). It was pushed, successfully; see the correction below. No flow
+has been wired together in Studio's builder, so today a row that reaches
+`IN_PROCESS` still has nothing
+actually watching it in a real deployment; it sits there until
+`06_StagingPipeline_Turnstile.js`'s timeout logic ages it out to
+`ERROR_TIMEOUT`, every time, unless someone processes it by hand. "Code
+exists" and "wired and live" are different facts — only the second one
+closes this gap; see `cas-ccps/README.md`'s Known Gap #1 for the current
+wording. External product review, Finding 3 ("this quarter" tier) added
+`15c_Flow2DirectEvaluationService.js` — an opt-in, `DIRECT_GEMINI`-mode
+escape hatch that makes Flow 2's evaluation logic actually
+callable/testable (`runFlow2DirectGemini_()`) without a live Studio Flow
+— but it is deliberately NOT wired into
+`06_StagingPipeline_Turnstile.js`'s automatic release loop; see that
+file's own header comment for why.
+
+**Corrected again, after the first live deployment.** The line that used to
+close this paragraph — "deploying `cas-ccps/studio-steps/` and wiring Flow 2
+for real in Studio is still the intended production path" — is no longer
+true, and cannot become true on this account. A custom Studio step is a
+Workspace Add-on and needs a standard, non-default Cloud project; GCP is
+disabled org-wide for `ccpsnet.net`. `CommitStudentEvaluationStep.gs` is
+tested code that Studio will never load here, and `15c`'s `DIRECT_GEMINI`
+escape hatch needs an API key, which needs the same project. **The production
+path is now the port:** `37_FlowInputBuilder.js` materializes one flat
+`FlowInput` row, the Flow makes one model call with native steps, and
+`harvestFlowInputResults()` applies the result on a time trigger.
+`41_WarmUpFlowBridge.js` does the same for Flows 3/4/5, and
+`tools/gas-lint/gcp-map.json` carries the declaration.)
 
 **Status lifecycle:** `PENDING_INFERENCE` (queued, waiting for a free
 per-teacher lane) → `IN_PROCESS` (Flow 2 is expected to be actively
@@ -60,9 +98,28 @@ evaluating it) → `COMPLETE` / `ERROR_TIMEOUT`. `06_StagingPipeline_
 Turnstile.js`'s 1-minute trigger both promotes queued rows into a lane and
 auto-times-out a row that's sat `IN_PROCESS` too long.
 
-**Where to check:** ⚙️ Admin Controls → 📊 Run System Health Check (or the
-daily `autoHealthAlert()` email), in `10_AdminRecoveryPanel.js`. Two
-checks, both fed by the shared `_stagingPipelineHealthChecks_()` scan:
+**Where to check:** four questions, four checks — "nothing came back" is one
+answer covering four causes (never built; the trigger matches nothing; it
+writes to the wrong columns; the model call errored), and the third looks
+exactly like the first. See `meta/FLOW_DOCTRINE.md` rule 9; `gas-lint`'s Check
+I holds each flow to having all four.
+
+| Question | cas-ccps | leader-hub | kos-personal |
+|---|---|---|---|
+| Is the structure sound? | `runFlowPreflightCheck()` | `runLeaderHubPreflight()` | — |
+| Does the script half work? | `runFlow2Canary()`, `runWarmUpFlowCanary()` | `runAiFlowCanary()` | `runStudioReturnCanary()` |
+| Are the columns bound right? | `checkFlowBinding()`, `checkFlow2Binding()` | `checkAiFlowBinding()` | `checkStudioFlowBinding()` |
+| Has a Flow ever answered? | `checkFlow2Liveness()`, `checkWarmUpFlowLiveness()` | `checkAiFlowFixtures()` | `checkStudioFlowLiveness()` |
+
+Each system also has a fixture installer, so a Flow has something to match
+rather than reporting a green "Run Completed" over zero rows —
+`installFlowFixtures()`, `installAiFlowFixtures()`,
+`installStudioFlowFixture()`.
+
+The admin-facing signal below predates those and still stands: ⚙️ Admin
+Controls → 📊 Run System Health Check (or the daily `autoHealthAlert()`
+email), in `10_AdminRecoveryPanel.js`. Two checks, both fed by the shared
+`_stagingPipelineHealthChecks_()` scan:
 - **Stuck `IN_PROCESS` rows** (past 15 min) — an evaluation that started
   but never finished. *Never completed a job*-equivalent for one specific
   submission, not the whole Flow.
@@ -81,23 +138,54 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 
 ## kos-personal — Studio ingestion/inference Flow
 
+> **⚠ NOT LIVE, AND BLOCKED IN ITS CURRENT SHAPE.** Confirmed by the
+> operator: kos-personal is deployed on the same `ccpsnet.net` account as
+> cas-ccps — not the separate personal account SMP-004 describes — so the
+> district's org-wide GCP block reaches it, and the two custom steps in
+> `kos-personal/studio-steps/` cannot be published. The flow is not running.
+> Everything below describes the intended design and the state machine, all
+> of which still holds; what changed is that the write-back half came back
+> into Apps Script rather than being a custom step. That port is done:
+> `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` overwrites the
+> source doc and sets `FLOW_COMPLETE` on a 5-minute trigger, and the Flow's
+> last step is a native add-row into `STUDIO_RETURN`. See
+> `kos-personal/studio-steps/README.md`'s status banner for the port's shape
+> and its one hard constraint (do not widen `STAGING_PIPELINE`), and
+> `tools/gas-lint/gcp-map.json` for the declaration.
+
+
 **What it does:** `2_Ingestion_Sensors.gs` queues session logs, external
 data, and (as of the Seven Bridges pipeline) cog verdicts into
 `STAGING_PIPELINE`; a human-built Studio Flow reads a queued doc, runs
-inference, and writes structured JSON back. Two independent sub-pipelines
-depend on their own separate Flow being built: the main ingestion queue
-(Turnstile) and the Registrar curriculum-drafts auditor (a completely
-separate state machine, `11_Registrar_CogRelay.gs`).
+inference, and writes structured JSON back. The Flow can optionally run
+a second, internal Auditor pass verifying the Curator's own claims
+against the source transcript before the row is trusted — see
+`CURATOR_PROMPT.md` Rule 8 — merged into the same JSON output as
+`auditor_sign_off`, never a second document. Two independent
+sub-pipelines depend on their own separate Flow being built: the main
+ingestion queue (Turnstile) and the Registrar curriculum-drafts auditor
+(a completely separate state machine, `11_Registrar_CogRelay.gs` — not
+to be confused with the Curator/Auditor pair above, despite the shared
+vocabulary).
 
 **Where to check:** the web app's Queue tab (Turnstile) and Diagnostics tab
 (Registrar), `8_WebApp_UI.html`.
 - **Turnstile / main queue** — `getQueueMetrics()`'s `cycling` count
   (`3_Queue_Processor.gs`): a `PENDING_FLOW`/`STUDIO_ACTIVE` row whose
   `Retry_Count` has crossed `CFG.TURNSTILE_STUCK_THRESHOLD` (3) is flagged
-  as cycling — Turnstile itself has no ceiling (unlike Registrar below), so
-  a row with no Flow ever completing it retries every 5 minutes forever;
-  this is a UI-only "call it stuck" signal layered on top, not a new
-  pipeline state. Say/Do Ledger kos-personal finding #2.
+  as cycling — a UI-only "call it stuck" signal layered on top, not a new
+  pipeline state. Say/Do Ledger kos-personal finding #2. **Updated:**
+  Turnstile itself now does escalate a row past that same threshold, to
+  the terminal `STUDIO_TIMEOUT` status (this note previously said it had
+  no ceiling — that's no longer true).
+- **Audit gate** — a rejected `auditor_sign_off` is archived to a new
+  `AUDIT_LOG` sheet and, past `CFG.MAX_RETRIES`, escalates to a second
+  terminal status, `AUDIT_REJECTED` (`5_Error_And_Utilities.gs`'s
+  `_isAuditFailure_()`/`_archiveAuditFailure_()`,
+  `3_Queue_Processor.gs`'s `processInferenceQueue()`). Like
+  `STUDIO_TIMEOUT` and the other terminal-failure statuses, this doesn't
+  have a dedicated three-state health-panel signal of its own yet — check
+  `STAGING_PIPELINE`'s Status column or `AUDIT_LOG` directly.
 - **Registrar** — `getRegistrarStatus()`'s `groups` (`11_Registrar_
   CogRelay.gs`): `groups.routed`/`groups.failed` both count as reaching a
   terminal outcome (an attempt-tracker-driven `CRITICAL_FAILURE` proves the
@@ -119,12 +207,16 @@ analysis) submits a job to `EmailBridge.gs`'s `AI_Queue` sheet via
 Every feature already degrades gracefully to a template/local draft when no
 Flow is connected — this panel is about visibility, not a hard dependency.
 
-**Six real types**, not the five `LEADERHUB_AI_FLOW_SETUP.md` documents —
-`FIN_ANALYSIS` (`finAnalysis()`) is real, shipping traffic today but was
-never added to that doc alongside `EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`,
-`WBL_INSIGHTS`, `LP_ASSIST`, and `BRAG_EMAIL`. Fixing that doc gap is
-tracked separately from this extension; this inventory and the new health
-panel both already list all six.
+**Six real types.** This section used to note that
+`LEADERHUB_AI_FLOW_SETUP.md` documented only five, `FIN_ANALYSIS`
+(`finAnalysis()`) having shipped without being added alongside
+`EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`, `LP_ASSIST` and
+`BRAG_EMAIL`, and tracked fixing it as separate work. **That gap is closed** —
+that doc now covers all six, including a `FIN_ANALYSIS` payload section and
+its own note about being the one type whose payload carries pre-computed
+arithmetic. Kept as a correction rather than deleted, because a tracking note
+outliving the thing it tracked is its own small failure mode: a reader who
+believes it goes looking for work that is already done.
 
 **Why this system needed new code, not just a new panel:** `AI_Queue` rows
 are always eventually deleted — either the instant their outcome (COMPLETE/
@@ -138,12 +230,65 @@ known before its row disappears: `queueAiJob_()` (submitted) and
 `checkAiJob_()` (completed/errored on hand-back, sweptUnclaimed if it aged
 out still `PENDING`).
 
-**Where to check:** Settings → AI Flow Health, `student-leader-hub.html`
-(`renderAiFlowHealthSettings()`, calling the new `flowHealth` action on
-whatever Email Bridge URL is configured). One row per type, using the same
+**Where to check:** two places now, answering different questions.
+
+For *has this type ever succeeded*: Settings → AI Flow Health,
+`student-leader-hub.html` (`renderAiFlowHealthSettings()`, calling the
+`flowHealth` action on whatever Email Bridge URL is configured).
+
+For *is this Flow live right now*: `FlowOps.gs`'s
+`installAiFlowFixtures()` then `checkAiFlowFixtures()`. The counters above
+cannot separate "nobody has used this type" from "no Flow exists for it"
+except by waiting for a `sweptUnclaimed` two hours later; a fixture row per
+type answers it directly, because a `Status` that moved off `PENDING` is
+proof a Flow touched that row. `runLeaderHubPreflight()` covers the
+prerequisites (queue reachable, header rows un-drifted, prompts synced), and
+`runAiFlowCanary()` proves the Apps Script half with the Flow deliberately
+stubbed — see that file's header for why a canary pass must never be read as
+"the Flows work". One row per type, using the same
 three-state semantics as the table above — "completed or errored ever" both
 count as healthy, matching the other two systems' own "a terminal outcome
 of either kind proves the Flow is alive" convention.
+
+---
+
+## meta / personal Drive — Drive Steward classification Flow
+
+**What it does:** `drive-steward-deploy/DriveSteward_Scanner.gs` (time-
+triggered, mechanical, no AI) finds new/changed files in Fluffy's Drive
+and appends bare rows to `Drive_Steward_Intake`; a human-built Studio
+Flow (`drive-steward-deploy/STUDIO_FLOW_SETUP.md`) reads those rows,
+classifies each file against `Drive_Steward_Methodology_and_Prompt.md`'s
+Part 1 patterns, and writes the result to `File_Registry` — the one Flow
+this whole deployment depends on to ever turn a bare intake row into a
+usable registry entry. Not one of this repo's three main systems, but
+the same "GAS hands off to a human-built Flow it can't see or control"
+shape, so it belongs in this inventory on the same terms.
+
+**Status lifecycle:** a file starts as a `Drive_Steward_Intake` row with
+`status='new'` → the Flow classifies it, writes a `File_Registry` row,
+and flips the intake row to `status='classified'`. Low-confidence
+classifications also get a `Batch_Queue` row (`status='pending'` →
+`'confirmed'`/`'corrected'` once Fluffy resolves it).
+
+**Where to check:** `DriveSteward_Calibration.gs`'s
+`getDriveStewardFlowHealth_()`, surfaced in the nightly digest email
+(`runDriveStewardNightlyDigest()`) and loggable directly. Uses this
+doc's shared three-state semantics:
+- **No jobs submitted yet** → `Drive_Steward_Intake` has never had a row
+  (the Scanner hasn't run yet, or nothing's changed in Drive).
+- **Never completed a job** → at least one intake row exists but
+  `File_Registry` is still empty — the Flow hasn't classified anything
+  yet. Rendered as a hedge in the digest ("check it's wired up per
+  STUDIO_FLOW_SETUP.md"), not an alarm, since this is also just what a
+  freshly-deployed instance looks like.
+- **Healthy** → `File_Registry` has at least one row — the Flow has
+  classified something at least once.
+
+Not yet deployed against a real Drive/Sheet as of this writing (see
+`drive-steward-deploy/README.md`'s final section) — this is the first
+Flow in this inventory documented before its first real run rather than
+after.
 
 ---
 

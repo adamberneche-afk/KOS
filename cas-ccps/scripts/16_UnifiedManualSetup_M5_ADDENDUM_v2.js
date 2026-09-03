@@ -131,12 +131,23 @@
 function addCompetencyDropdownItems_(confirmForm, centralSsId) {
   const options = buildCompetencyDropdownOptions_(centralSsId);
 
+  // FIXED (confirmed live during a real from-scratch deployment):
+  // FormApp's ListItem.setChoiceValues() throws "Array is empty: values"
+  // outright when given an empty array -- it does NOT silently create an
+  // empty dropdown the way the warning below always assumed. That made
+  // this a hard failure at teacher-setup time whenever CompetencyRegistry
+  // hadn't been imported yet, not the soft "blocks future submissions"
+  // degradation the comment describes. A single placeholder choice keeps
+  // setChoiceValues() valid while preserving that same intent: it isn't a
+  // real competency ID, so a submission using it still needs the import
+  // run and setup re-run (Re-Run Setup is checkpoint-safe) before the
+  // field has real choices.
+  const placeholderOptions = ["(no competencies imported yet -- run Script 22b)"];
   if (options.length === 0) {
     Logger.log("[M5] WARNING -- CompetencyRegistry returned zero options. " +
-      "Competency dropdowns will be created EMPTY. Run " +
-      "importCompetencyRegistry() (Script 22b) before teacher setup, or " +
-      "these four fields will block every future confirmation submission " +
-      "since they are required and have nothing to select.");
+      "Competency dropdowns will be created with a placeholder choice only. " +
+      "Run importCompetencyRegistry() (Script 22b), then Re-Run Setup, " +
+      "before these four fields have real choices to select.");
   }
 
   [
@@ -147,7 +158,7 @@ function addCompetencyDropdownItems_(confirmForm, centralSsId) {
   ].forEach(f => {
     confirmForm.addListItem()
       .setTitle(f.title)
-      .setChoiceValues(options)
+      .setChoiceValues(options.length > 0 ? options : placeholderOptions)
       .setRequired(true)
       .setHelpText(
         "Select the Student Competency Record (SCR) competency this " +
