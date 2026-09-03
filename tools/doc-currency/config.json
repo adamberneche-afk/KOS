@@ -1,19 +1,26 @@
 {
   "_comment": "Configuration for tools/doc-currency/check.js. Sibling-JSON convention borrowed from tools/gas-lint/ (project-map.json, scope-map.json). Every exclusion here is load-bearing: see the comment above the check that reads it for why removing one makes the tool report correct documentation as wrong.",
-
   "excludeDirs": [
     ".git",
     "node_modules",
     ".github",
     "archived"
   ],
-
-  "sourceExtensions": [".gs", ".js", ".jsx", ".html"],
-  "docExtensions": [".md"],
-
+  "sourceExtensions": [
+    ".gs",
+    ".js",
+    ".jsx",
+    ".html"
+  ],
+  "docExtensions": [
+    ".md"
+  ],
   "_comment_excludeDocs": "Dated records, wholesale. Naming a function that was deleted is exactly what these exist to do — Round 14's CHANGELOG entry records that triggerCouncilSimulation() was removed, and flagging it would be flagging the record for being a record. LEADERHUB_WIP.md is here for the same reason: its body is per-session log entries, and 'Session 11 — added resolveTask()' stays true after resolveTask() is removed. Matched on basename, so cas-ccps/HISTORY.md and kos-personal/CHANGELOG.md are both covered.",
-  "excludeDocs": ["CHANGELOG.md", "HISTORY.md", "LEADERHUB_WIP.md"],
-
+  "excludeDocs": [
+    "CHANGELOG.md",
+    "HISTORY.md",
+    "LEADERHUB_WIP.md"
+  ],
   "_comment_supersededMarkers": "A file-level banner speaks for the whole document, so a hit in the first bannerScanLines lines skips the file. This repo already uses these heavily and correctly — LEADERHUB_README.md's third line says callAI() 'neither exists in the code anymore', which is precisely the finding the tool would otherwise report against it twenty times.",
   "supersededMarkers": [
     "SUPERSEDED",
@@ -26,15 +33,25 @@
     "point-in-time"
   ],
   "bannerScanLines": 20,
-
-  "_comment_externalSurfaceDocs": "Docs describing Apps Script that lives in the operator's Script editor and was never committed here — the Gmail watcher behind processInbox()/extractFromEmail_()/auditInbox(), and the Canvas/Calendar sync behind syncCalendar()/processLHShortcuts(). For these the missing-function check has no way to tell a stale reference from a correct one, so it reports that it cannot verify rather than asserting absence. Committing those scripts would let them graduate off this list.",
-  "externalSurfaceDocs": [
-    "leader-hub/LH_02_INTEGRATION_GUIDE.md",
-    "leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md",
-    "leader-hub/LH_04_EMAIL_AUDIT.md",
-    "leader-hub/LEADERHUB_AI_FLOW_SETUP.md"
-  ],
-
+  "_comment_externalSurfaceDocs": "Docs describing Apps Script that lives in the operator's Script editor and was never committed here, mapped to the specific out-of-repo function names each one documents. PER-NAME ON PURPOSE: this was a flat array of paths, which marked a whole file unverifiable, and that is how LH_02_INTEGRATION_GUIDE.md's \"all AI calls go through callAI()\" hid as a soft warning -- callAI was deleted from leader-hub's own HTML (see its \"Removed: Gemini AI infrastructure\" line), so it was never external at all. A name NOT on its doc's list is checked normally and errors if missing. Do not add a name here to silence a finding; only add one that genuinely lives in the uncommitted project. Committing those scripts would let an entry graduate off this list entirely.",
+  "externalSurfaceDocs": {
+    "leader-hub/LH_02_INTEGRATION_GUIDE.md": [
+      "processInbox",
+      "processLHShortcuts",
+      "syncCalendar",
+      "extractFromEmail_"
+    ],
+    "leader-hub/LH_03_CANVAS_INTEGRATION_IDEAS.md": [
+      "syncCalendar",
+      "processLHShortcuts",
+      "extractFromEmail_"
+    ],
+    "leader-hub/LH_04_EMAIL_AUDIT.md": [
+      "auditInbox",
+      "processInbox",
+      "extractFromEmail_"
+    ]
+  },
   "_comment_historicalMarkers": "Prose that marks a function reference as describing the past rather than instructing the reader. Checked against the enclosing blank-line-delimited paragraph. A fixed line window was tried first and was too loose: 'doesn't exist' is ordinary English before it is a marker, and USER_GUIDE.md's 'The deploy function only creates what doesn't exist' silently suppressed a real finding three lines away.",
   "historicalMarkers": [
     "deleted",
@@ -53,25 +70,61 @@
     "exists nowhere",
     "nowhere else in the repo"
   ],
-
   "_comment_allowlistedNames": "Names that read as this repo's own functions but aren't: platform APIs, other products' functions, and shell/tooling commands that happen to appear backticked with parens.",
   "allowlistedNames": [
-    "getRange", "getValue", "getValues", "setValue", "setValues",
-    "getSheetByName", "openById", "getId", "getName", "getBody",
-    "getFilesByName", "createFile", "getScriptProperties", "getProperty",
-    "setProperty", "newTrigger", "getUi", "createMenu", "addItem",
-    "require", "describe", "it", "test", "expect", "beforeEach", "afterEach",
-    "fetch", "confirm", "alert", "querySelector", "addEventListener",
-    "wc", "grep", "sed", "awk", "npm", "node", "git",
-    "addViewer", "addEditor", "removeViewer", "getEditors", "getViewers",
-    "foo", "bar", "baz", "doSomething", "myFunction"
+    "getRange",
+    "getValue",
+    "getValues",
+    "setValue",
+    "setValues",
+    "getSheetByName",
+    "openById",
+    "getId",
+    "getName",
+    "getBody",
+    "getFilesByName",
+    "createFile",
+    "getScriptProperties",
+    "getProperty",
+    "setProperty",
+    "newTrigger",
+    "getUi",
+    "createMenu",
+    "addItem",
+    "require",
+    "describe",
+    "it",
+    "test",
+    "expect",
+    "beforeEach",
+    "afterEach",
+    "fetch",
+    "confirm",
+    "alert",
+    "querySelector",
+    "addEventListener",
+    "wc",
+    "grep",
+    "sed",
+    "awk",
+    "npm",
+    "node",
+    "git",
+    "addViewer",
+    "addEditor",
+    "removeViewer",
+    "getEditors",
+    "getViewers",
+    "foo",
+    "bar",
+    "baz",
+    "doSomething",
+    "myFunction"
   ],
-
   "_comment_keyRegistryDocs": "Docs that claim to be a complete registry of sheet columns or PropertiesService keys. Only these are checked for dead keys — a key mentioned in passing in a narrative doc is not a completeness claim.",
   "keyRegistryDocs": [
     "kos-personal/SCHEMA_REFERENCE.md"
   ],
-
   "_comment_acknowledgedMarkers": "A registry row that admits its own status is documenting correctly, not drifting. Without this the tool's first output is a complaint about the three rows that were just labelled honestly.",
   "acknowledgedMarkers": [
     "Aspirational",
@@ -83,13 +136,26 @@
     "unwired",
     "reserved"
   ],
-
   "_comment_allowlistedKeys": "ALL-CAPS tokens in the registry docs that are not keys: value enums, column headers, folder names, and status strings.",
   "allowlistedKeys": [
-    "BRAIN_TRUST_INDEX", "GREEN", "YELLOW", "RED", "TRUE", "FALSE",
-    "NULL", "JSON", "HTML", "DATE", "DATETIME", "UNKNOWN", "HYPOTHESIZED",
-    "VERIFIED", "INDIVIDUAL", "EDUCATOR", "COMMERCIAL", "YYYY"
+    "BRAIN_TRUST_INDEX",
+    "GREEN",
+    "YELLOW",
+    "RED",
+    "TRUE",
+    "FALSE",
+    "NULL",
+    "JSON",
+    "HTML",
+    "DATE",
+    "DATETIME",
+    "UNKNOWN",
+    "HYPOTHESIZED",
+    "VERIFIED",
+    "INDIVIDUAL",
+    "EDUCATOR",
+    "COMMERCIAL",
+    "YYYY"
   ],
-
   "testTimeoutMs": 120000
 }
