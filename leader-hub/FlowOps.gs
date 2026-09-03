@@ -87,17 +87,96 @@
 const AI_FIXTURE_JOB_PREFIX = 'FIXTURE-';
 const AI_CANARY_JOB_TYPE = 'CANARY';
 
-// Small, structurally realistic payloads — enough for a Flow's prompt to have
-// the shape it expects, with no real student data in any of them (FERPA: a
-// fixture row's payload cell is as visible as any other, so these stay
-// synthetic on purpose).
+// FIXTURE PAYLOADS — SHAPES TAKEN FROM THE PROMPTS, NOT INVENTED.
+//
+// Every key below comes from the fenced json example in the matching
+// *_FLOW_PROMPT.md, which is also what the client actually sends (checked
+// against the six callGAS('aiDraft', ...) sites in
+// leader-hub/src/10-command-engine-ai-and-widgets.html). Only the VALUES are
+// fixture stand-ins; the structure is the real contract.
+//
+// THIS FILE'S FIRST VERSION GOT ALL SIX WRONG, and it is worth recording why
+// that mattered. They were plausible-looking inventions — EMAIL_COMPOSE as
+// {to, intent, tone}, FIN_ANALYSIS as {account, transactions} — none of whose
+// keys exist. Nothing would have errored: the Flow would have triggered, read
+// a payload with no field it recognized, and produced confident nonsense.
+// That is the same class of bug as cas-ccps's fixture profile carrying
+// evaluation_signals as plain strings instead of objects, found the same way
+// (reading the consumer instead of trusting the fixture), and it is the
+// specific failure a fixture is supposed to rule out rather than introduce.
+//
+// tests/leaderhub/flow-ops.test.js re-reads the six markdown files and
+// asserts key-for-key shape parity, so a prompt that grows a payload field
+// fails a test here rather than silently leaving fixtures behind.
+//
+// Nothing real: .invalid addresses (the reserved TLD), synthetic figures, and
+// no student or staff name anywhere. attentionDetails keeps its
+// "<id>: <detail>" sentence shape because the prompt's rules read across those
+// strings, so an entry that is only an address exercises nothing.
 const AI_FIXTURE_PAYLOADS = {
-  EMAIL_COMPOSE:    { to: 'fixture@example.invalid', intent: 'Fixture row — confirm this Flow triggers.', tone: 'professional' },
-  ARCHIVE_INSIGHTS: { period: 'FIXTURE', entries: ['Fixture journal entry one.', 'Fixture journal entry two.'] },
-  WBL_INSIGHTS:     { students: [{ id: 'FIXTURE_1', hours: 12, placement: 'Fixture Placement' }] },
-  LP_ASSIST:        { course: 'FIXTURE 100', unit: 'Fixture Unit', objective: 'Confirm this Flow triggers.' },
-  FIN_ANALYSIS:     { account: 'FIXTURE', transactions: [{ label: 'Fixture deposit', amount: 10 }] },
-  BRAG_EMAIL:       { student: 'FIXTURE_1', accomplishment: 'Fixture accomplishment — confirm this Flow triggers.' },
+  EMAIL_COMPOSE: {
+    prompt: "FIXTURE — confirm this Flow triggers and returns a draft.",
+    audience: "students",
+    audienceLabel: "Students",
+    trip: {
+      name: "FIXTURE Trip",
+      date: "April 25, 2026",
+      returnDate: "April 29, 2026",
+      destination: "FIXTURE City, VA",
+      costPerStudent: 100,
+      transportation: "Bus",
+      chaperones: "FIXTURE Chaperone",
+    },
+  },
+  ARCHIVE_INSIGHTS: {
+    totalTrips: 6,
+    totalStudents: 214,
+    avgCostPerStudent: 38,
+    tripTypes: [{ type: "FIXTURE Competition", count: 2 }],
+    glows: ["FIXTURE_1: handled the registration table without being asked."],
+    grows: ["FIXTURE_1: needs a earlier reminder about the packing list."],
+  },
+  WBL_INSIGHTS: {
+    totalStudents: 12,
+    onTrack: 8,
+    notStarted: 1,
+    sbeDone: 6,
+    sbeTotal: 10,
+    avgHours: "22.4",
+    totalHours: "269.0",
+    attentionDetails: [
+      "fixture-student@example.invalid: 18 of 30 required hours logged; no reflections logged yet",
+    ],
+    sbeNotes: ["FIXTURE SBE note: waiting on a confirmed cart storage spot."],
+  },
+  LP_ASSIST: {
+    prompt: "FIXTURE — confirm this Flow triggers and returns lesson-planning help.",
+    lessonTitle: "FIXTURE Lesson",
+    course: "FIXTURE Sports Marketing",
+    quarter: 2,
+    competencies: [58],
+    planBody: "FIXTURE plan body — a short synthetic lesson outline.",
+  },
+  FIN_ANALYSIS: {
+    reportType: "roi",
+    totalRev: 4820.50,
+    totalCOGS: 2910.15,
+    profit: 1910.35,
+    margin: 40,
+    shifts: 22,
+    totalInv: 1340.00,
+    totalOrderedCost: 3600.00,
+    lowStockCount: 3,
+  },
+  BRAG_EMAIL: {
+    audience: "green",
+    audienceLabel: "FIXTURE Administrator",
+    tone: "warm and brief, leading with the student outcome",
+    weekLabel: "August 11",
+    sections: [
+      "FIXTURE Section\n• FIXTURE_1 placed at a district event.\n• FIXTURE_2 logged 30 WBL hours.",
+    ],
+  },
 };
 
 // ── Schema guard ─────────────────────────────────────────────────────────────
