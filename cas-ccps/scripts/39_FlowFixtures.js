@@ -219,7 +219,7 @@ function installFlow2Fixture() {
   doc.saveAndClose();
 
   const configId = FX_CONFIG_PREFIX + "F2";
-  const row = new Array(21).fill("");
+  const row = new Array(22).fill("");
   row[FI.TIMESTAMP] = new Date();
   row[FI.STAGING_ROW_REF] = "FIXTURE"; // non-numeric on purpose — see below
   row[FI.STUDENT_FILE_ID] = doc.getId();
@@ -244,6 +244,15 @@ function installFlow2Fixture() {
   row[FI.MILESTONE_4_COMPETENCY_ID] = "FIXTURE-COMP-4";
   row[FI.READY_STATUS] = "READY";
   row[FI.GEMINI_FULL_OUTPUT] = "";
+  // Same pre-substituted prompt a real row gets, so the @trigger.PromptText
+  // chip resolves to real text while you're wiring Ask Gemini against the
+  // fixture — the whole point of the fixture being fully populated.
+  row[FI.PROMPT_TEXT] = _fiBuildPromptText_({
+    unitName: row[FI.UNIT_NAME], tier: row[FI.TIER], persona: row[FI.PERSONA],
+    milestone1: row[FI.MILESTONE_1], milestone2: row[FI.MILESTONE_2],
+    milestone3: row[FI.MILESTONE_3], milestone4: row[FI.MILESTONE_4],
+    dod: row[FI.DEFINITION_OF_DONE],
+  });
   sheet.appendRow(row);
   SpreadsheetApp.flush();
 
