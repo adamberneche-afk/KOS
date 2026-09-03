@@ -1538,3 +1538,46 @@ keys in leader-hub, string-vs-object signals in the warm-up profile, a missing
 missing document delimiter here. None would have appeared in a Flow's run log.
 The only thing that found any of them was reading the consumer instead of
 trusting the fixture.
+
+### Follow-up — Flow 1's fixture was clean; a constant next to it was not
+
+Flow 1's fixture came out of the shape check intact, which is worth recording
+as plainly as the failures. Its RubricQueue row matches
+`16_UnifiedManualSetup.js`'s header order and `05_TeacherIntakePipeline.js`'s
+`queueRow` array field for field; `PENDING_EXTRACTION` is the status both the
+real writer and `10_AdminRecoveryPanel.js`'s stuck-row watchdog use; the
+prompt-template doc Flow 1's Step 1 reads is real and substantive; the rubric
+text carries all four milestones and a completion condition, so Flow 1 has
+something to extract rather than testing the prompt's tolerance for vagueness.
+
+The scratch TeacherMatrix was the part most worth checking, because it is
+indexed **by position** by two separate readers with two separate constants —
+`TM08` in `08_TeacherConfirmationStep.js` (which that step's own header calls
+the authoritative source) and `FI_TM_COLUMNS_` in `37_FlowInputBuilder.js`.
+Its 20 headers match both exactly. Rather than compare header lists, the test
+hands `_fiFindTeacherMatrixRow_` the real fixture and asserts every field
+comes back populated: a one-column shift would return blanks while the headers
+still looked plausible.
+
+One incidental find, and it matters that it was already known.
+`05_TeacherIntakePipeline.js`'s `RQ05` constant ended at `STATUS: 8` with no
+`TeacherMatrixSsId` entry, one column short of the 10-field row it describes.
+Anything reading `row[RQ05.STATUS]` would have compared a spreadsheet ID
+against `"PENDING_EXTRACTION"` forever without erroring — the same drift class
+as the Central Ledger bug. **A previous session had already found it**, grepped
+the project to confirm `RQ05` is declared once and read nowhere, and
+deliberately derived `34_QueueWatchdog.js`'s own `WD_RUBRIC_QUEUE_COLUMNS` from
+the real `appendRow()` call instead. That note is what made this safe to
+correct rather than merely safe to leave, so `RQ05` is now fixed and 34's note
+updated to say so — while keeping its actual advice, which outlives the fix:
+derive from the writer, verify against the constant.
+
+Also worth writing down: `installFlow1Fixture()` does **not** register its
+scratch TeacherMatrix in `MatrixRegistry`. That is correct for Flow 1 in
+isolation, and it is why the Flow 2 fixture seeds a `FlowInput` row directly
+instead of relying on the registry hop. But it does mean the two fixtures do
+not chain — Flow 1's output matrix is not discoverable by teacher email, so a
+confirmed DRAFT row there would never reach Flow 2. Left alone deliberately:
+`_fiFindMatrixSsId_` returns the *first* registry match, and a fixture entry
+competing with a real teacher's is how two canary runs collided earlier in
+this session.
