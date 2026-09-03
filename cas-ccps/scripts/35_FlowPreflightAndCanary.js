@@ -122,7 +122,34 @@ function runFlowPreflightCheck() {
   // @trigger.PromptText chip — see 40_FlowPrompts.js.
   results.push(_pfCheckTab_(ss, 'FlowInput', 22)); // Flow 2's materialized input row
 
+  // 41_WarmUpFlowBridge.js's four tabs. All self-healing (wfbTab_ creates
+  // them on first use), so absent is reported as a note rather than a
+  // failure — but present-and-too-narrow IS a failure, because a native
+  // "add row to sheet" step bound to a column that doesn't exist writes
+  // nowhere and reports success.
+  results.push(_pfCheckSelfHealingTab_(ss, 'Flow5Input', 7, 'buildWarmUpFlowInputs()'));
+  results.push(_pfCheckSelfHealingTab_(ss, 'Flow3Input', 30, 'buildWarmUpFlowInputs()'));
+  results.push(_pfCheckSelfHealingTab_(ss, 'Flow4Input', 9, 'buildWarmUpFlowInputs()'));
+  results.push(_pfCheckSelfHealingTab_(ss, 'WarmUpFlowReturn', 7, 'harvestWarmUpFlowReturns()'));
+
+  // TRIGGERS. Every install function checks its own, and nothing surveyed the
+  // set — so a deployment where installWarmUpFlowTriggers() was never run
+  // looks structurally perfect and materializes nothing, with no error
+  // anywhere. That is the same silent-nothing-happens class the fixtures and
+  // liveness reports exist for, one layer down.
+  results.push(_pfCheckTrigger_('buildFlowInputRows', 'installFlowInputTriggers()', 'Flow 2 input'));
+  results.push(_pfCheckTrigger_('harvestFlowInputResults', 'installFlowInputTriggers()', 'Flow 2 harvest'));
+  results.push(_pfCheckTrigger_('buildWarmUpFlowInputs', 'installWarmUpFlowTriggers()', 'Flows 3/4/5 input'));
+  results.push(_pfCheckTrigger_('harvestWarmUpFlowReturns', 'installWarmUpFlowTriggers()', 'Flows 3/4/5 harvest'));
+
   results.push(_pfCheckScriptProperty_('CAS_CHAT_WEBHOOK_URL', false));
+  // Required properties, previously documented in DEPLOYMENT_HANDOFF.md's
+  // reference table and checked nowhere. ADMIN_ROOT_FOLDER_ID is the one that
+  // fails silently and late: Flow 3's harvest resolves the student's warm-up
+  // folder from it, so an unset value means every warm-up doc has nowhere to
+  // go — discovered only when a doc fails to appear.
+  results.push(_pfCheckScriptProperty_('ADMIN_ROOT_FOLDER_ID', true));
+  results.push(_pfCheckScriptProperty_('CENTRAL_LEDGER_SS_ID', true));
 
   const failed = results.filter(function (r) { return !r.ok; });
   _pfWriteReport_(ss, results);
@@ -147,6 +174,55 @@ function _pfCheckTab_(ss, tabName, expectedMinCols) {
     };
   }
   return { ok: true, label: 'Tab: ' + tabName, detail: lastCol + ' columns, exists.' };
+}
+
+function _pfCheckSelfHealingTab_(ss, tabName, expectedMinCols, healer) {
+  const sheet = ss.getSheetByName(tabName);
+  if (!sheet) {
+    return {
+      ok: true, label: 'Tab: ' + tabName,
+      detail: 'Not created yet — ' + healer + ' creates it on first run. Not a failure.',
+    };
+  }
+  const lastCol = sheet.getLastColumn();
+  if (lastCol < expectedMinCols) {
+    return {
+      ok: false, label: 'Tab: ' + tabName,
+      detail: 'Only ' + lastCol + ' column(s); expected at least ' + expectedMinCols +
+        '. A Studio step bound to a column past ' + lastCol + ' writes nowhere and ' +
+        'still reports success.',
+    };
+  }
+  return { ok: true, label: 'Tab: ' + tabName, detail: lastCol + ' columns, exists.' };
+}
+
+function _pfCheckTrigger_(handlerName, installer, purpose) {
+  let installed = 0;
+  try {
+    ScriptApp.getProjectTriggers().forEach(function (t) {
+      if (t.getHandlerFunction() === handlerName) installed++;
+    });
+  } catch (e) {
+    return {
+      ok: true, label: 'Trigger: ' + handlerName,
+      detail: 'Could not read project triggers (' + e.message + ') — not treated as a failure.',
+    };
+  }
+  if (installed === 0) {
+    return {
+      ok: false, label: 'Trigger: ' + handlerName,
+      detail: purpose + ' is not installed. Run ' + installer + '. Until then nothing ' +
+        'moves and no error is raised anywhere.',
+    };
+  }
+  if (installed > 1) {
+    return {
+      ok: false, label: 'Trigger: ' + handlerName,
+      detail: installed + ' copies installed — it will run ' + installed + ' times per ' +
+        'interval. Delete the extras in the Triggers panel.',
+    };
+  }
+  return { ok: true, label: 'Trigger: ' + handlerName, detail: purpose + ', installed once.' };
 }
 
 function _pfCheckScriptProperty_(key, required) {
