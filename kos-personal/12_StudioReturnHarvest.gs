@@ -482,21 +482,35 @@ function installStudioReturnTrigger() {
 }
 
 /**
- * Plants a scratch document plus a PENDING_FLOW staging row, so the
- * Turnstile releases it and a real Workspace Flow has something to match.
+ * Plants one scratch document plus TWO PENDING_FLOW staging rows — a
+ * SESSION_LOG row for the Curator flow and a paired VECTOR_CLASSIFY row for
+ * the classification flow — so the Turnstile releases both and each real
+ * Workspace Flow has something to match.
  *
- * THIS IS THE ONLY THING THAT ANSWERS "IS THE FLOW LIVE?". A Studio Flow
- * that matched zero rows reports a green "Run Completed", indistinguishable
- * from working — the lesson that cost a cas-ccps session. Nothing on this
- * side of the boundary can tell you a Flow ran; the only evidence is a row
- * appearing in STUDIO_RETURN that this code did not put there.
+ * THIS IS THE ONLY THING THAT ANSWERS "IS THE FLOW LIVE?". A Studio Flow that
+ * matched zero rows reports a green "Run Completed", indistinguishable from
+ * working — the lesson that cost a cas-ccps session. Nothing on this side of
+ * the boundary can tell you a Flow ran; the only evidence is a row appearing
+ * in STUDIO_RETURN that this code did not put there.
  *
- * An earlier version of this function planted a STUDIO_RETURN row instead,
- * which was the wrong side of the handshake: STUDIO_RETURN is where the Flow
- * WRITES, so a fixture there tests this file's harvest (the canary already
- * does that, more thoroughly) and tells you nothing about the Flow. Worse,
- * it used a prefixed Payload_UID that no staging row could match, so it
- * would have exercised the not-found path while looking like a passing test.
+ * WHY BOTH TYPES, AND WHY THEY SHARE A DOCUMENT. There are two independent
+ * flows here, and the first version of this fixture only fed one of them —
+ * the classification flow had nothing to latch onto at all, and its output
+ * contract (write the ORIGINAL unstripped text, validate it parses to an
+ * Array) had never been exercised against a real queued row. The two rows
+ * share one FileID because that is what the design intends:
+ * CURATOR_PROMPT.md's Rule 1 has the Curator citing a completed, independent
+ * VECTOR_CLASSIFY row *for the same session*, and README.md:192 records the
+ * open gap that `_chunkAndQueue()` doesn't yet queue that paired row. Until
+ * it does, this fixture is the only place the paired shape exists — so it
+ * also serves as a worked example of what that fix should produce.
+ *
+ * An earlier version planted a STUDIO_RETURN row instead, which was the wrong
+ * side of the handshake: STUDIO_RETURN is where the Flow WRITES, so a fixture
+ * there tests this file's harvest (the canary already does that, more
+ * thoroughly) and says nothing about the Flow. Worse, it used a prefixed
+ * Payload_UID no staging row could match, so it would have exercised the
+ * not-found path while looking like a passing test.
  *
  * The document is scratch and its body is disposable — being overwritten by
  * the model's output is the expected outcome, not a side effect to avoid.
@@ -505,25 +519,37 @@ function installStudioFlowFixture() {
   const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
   const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss');
-  const uid = SR_FIXTURE_UID_PREFIX + stamp;
 
   const doc = DocumentApp.create('KOS Fixture — StudioReturn ' + stamp);
   doc.getBody().setText(
-    'FIXTURE SESSION LOG — planted by installStudioFlowFixture() to give the Curator Flow ' +
-    'something to match. This body is disposable; the Flow is expected to replace it with JSON.\n\n' +
+    'FIXTURE SESSION LOG — planted by installStudioFlowFixture() to give both Studio flows ' +
+    'something to match. This body is disposable; a Flow is expected to replace it with JSON.\n\n' +
     'Discussed the Studio integration: the custom-step path is blocked on this account, so the ' +
-    'write-back moved into Apps Script as a harvest over a STUDIO_RETURN tab.');
+    'write-back moved into Apps Script as a harvest over a STUDIO_RETURN tab. Also covered why ' +
+    'widening STAGING_PIPELINE was refused, and how the doc-written breadcrumb makes the ' +
+    'partial state recoverable.');
   doc.saveAndClose();
   const fileId = doc.getId();
+  const docUrl = 'https://docs.google.com/document/d/' + fileId;
 
-  staging.appendRow([new Date(), uid, 'SESSION_LOG',
-    'https://docs.google.com/document/d/' + fileId, fileId, 'PENDING_FLOW', 0]);
+  // One stem, two rows — the shared stem is what makes the pair visibly one
+  // session rather than two unrelated fixtures.
+  const stem = SR_FIXTURE_UID_PREFIX + stamp;
+  const rows = [
+    { uid: stem + '-SESSION_LOG', type: 'SESSION_LOG' },
+    { uid: stem + '-VECTOR_CLASSIFY', type: 'VECTOR_CLASSIFY' },
+  ];
+  rows.forEach(function (r) {
+    staging.appendRow([new Date(), r.uid, r.type, docUrl, fileId, 'PENDING_FLOW', 0]);
+  });
 
-  console.log('[StudioReturn] fixture installed: Payload_UID ' + uid + ', doc ' + fileId);
-  console.log('[StudioReturn] Next: runMatrixTurnstile() releases it to STUDIO_ACTIVE, then a ' +
-    'real Flow should write a STUDIO_RETURN row for it. checkStudioFlowLiveness() reports whether ' +
-    'that ever happened. Nothing else can tell you.');
-  return { installed: true, uid: uid, fileId: fileId };
+  console.log('[StudioReturn] fixture installed: doc ' + fileId + ', rows ' +
+    rows.map(function (r) { return r.type; }).join(' + '));
+  console.log('[StudioReturn] Next: runMatrixTurnstile() releases them to STUDIO_ACTIVE ' +
+    '(it is TIER_1 gated, so a cold engine warns but still passes through), then a real Flow ' +
+    'should write a STUDIO_RETURN row for each. checkStudioFlowLiveness() reports whether that ' +
+    'ever happened, per payload type. Nothing else can tell you.');
+  return { installed: true, fileId: fileId, uids: rows.map(function (r) { return r.uid; }) };
 }
 
 /** Removes fixture staging rows, their returns, and trashes their scratch docs. */
@@ -582,16 +608,26 @@ function checkStudioFlowLiveness() {
   const seenUids = {};
   const rLast = returns.getLastRow();
   let returnCount = 0;
+  // Per payload type, because there are TWO independent flows here and a
+  // single "has anything ever returned" number cannot tell you which one is
+  // live. A Curator flow working while the classification flow was never
+  // built looks identical in the aggregate.
+  const returnsByType = {};
   if (rLast > 1) {
     const width = Object.keys(SR_COLS).length;
     returns.getRange(2, 1, rLast - 1, width).getValues().forEach(function (row) {
       const uid = String(row[SR_COLS.PAYLOAD_UID] || '').trim();
-      if (uid) { seenUids[uid] = true; returnCount++; }
+      if (!uid) return;
+      seenUids[uid] = true;
+      returnCount++;
+      const type = String(row[SR_COLS.PAYLOAD_TYPE] || '').trim() || 'UNKNOWN';
+      returnsByType[type] = (returnsByType[type] || 0) + 1;
     });
   }
 
   const report = { released: 0, awaitingReturn: [], completed: 0, returnRows: returnCount,
-                   flowEverReturned: returnCount > 0, oldestAwaitingMins: 0 };
+                   flowEverReturned: returnCount > 0, oldestAwaitingMins: 0,
+                   returnsByType: returnsByType, releasedByType: {} };
   const sLast = staging.getLastRow();
   const nowMs = new Date().getTime();
   if (sLast > 1) {
@@ -601,6 +637,8 @@ function checkStudioFlowLiveness() {
       if (status === 'FLOW_COMPLETE') { report.completed++; return; }
       if (status !== 'STUDIO_ACTIVE') return;
       report.released++;
+      const relType = String(row[SC.PAYLOAD_TYPE]).trim() || 'UNKNOWN';
+      report.releasedByType[relType] = (report.releasedByType[relType] || 0) + 1;
       if (seenUids[uid]) return;
       const ageMins = Math.round((nowMs - new Date(row[SC.TIMESTAMP]).getTime()) / 60000);
       report.awaitingReturn.push({ uid: uid, type: String(row[SC.PAYLOAD_TYPE]).trim(), ageMins: ageMins });
@@ -611,6 +649,19 @@ function checkStudioFlowLiveness() {
   console.log('[StudioReturn] liveness: ' + report.released + ' row(s) STUDIO_ACTIVE, ' +
     report.awaitingReturn.length + ' with no return yet, ' + returnCount +
     ' return row(s) ever seen, ' + report.completed + ' row(s) FLOW_COMPLETE');
+  console.log('[StudioReturn]   returns by payload type: ' +
+    (Object.keys(returnsByType).length ? JSON.stringify(returnsByType) : 'none'));
+  console.log('[StudioReturn]   released by payload type: ' +
+    (Object.keys(report.releasedByType).length ? JSON.stringify(report.releasedByType) : 'none'));
+  // Per type, name the ones that have been handed work and never answered.
+  // This is the line that separates "the Curator flow works and the
+  // classification flow was never built" from "nothing works".
+  Object.keys(report.releasedByType).forEach(function (type) {
+    if (!returnsByType[type]) {
+      console.warn('[StudioReturn]   payload type ' + type + ': ' + report.releasedByType[type] +
+        ' row(s) released and NOT ONE return, ever. That flow specifically is not writing back.');
+    }
+  });
 
   if (!report.flowEverReturned && report.released > 0) {
     console.warn('[StudioReturn] NO Workspace Flow has EVER written to ' + SR_SHEET + ', but ' +
