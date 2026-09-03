@@ -118,6 +118,11 @@ const FI = {
   READY_STATUS:               19, // READY -> EVALUATED -> HARVESTED
                                    // (or ERROR_EMPTY_OUTPUT / ERROR_HARVEST_FAILED)
   GEMINI_FULL_OUTPUT:          20, // written by Studio Flow 2's own Step 4
+  // Appended at the END of the schema on purpose. Every positional reader in
+  // this system breaks on a column INSERTED before the end (see
+  // 38_LedgerSchemaGuard.js for what that costs); appending is safe, and a
+  // row written before this column existed simply reads undefined here.
+  PROMPT_TEXT:                 21, // the Flow 2 prompt, pre-substituted
 };
 
 const FI_TAB_NAME = "FlowInput";
@@ -128,7 +133,7 @@ const FI_HEADERS = [
   "Milestone1", "Milestone2", "Milestone3", "Milestone4", "DefinitionOfDone",
   "Milestone1CompetencyId", "Milestone2CompetencyId",
   "Milestone3CompetencyId", "Milestone4CompetencyId",
-  "ReadyStatus", "GeminiFullOutput",
+  "ReadyStatus", "GeminiFullOutput", "PromptText",
 ];
 
 function _fiEnsureTab_(ledgerSs, cfg) {
@@ -253,6 +258,9 @@ function buildFlowInputRows() {
         matrixRow.milestone4CompetencyId,
         "READY",
         "", // GeminiFullOutput — Studio Flow 2 fills this in
+        // The Flow 2 prompt with every placeholder resolved EXCEPT
+        // {{STUDENT_TEXT}} — see _fiBuildPromptText_ below.
+        _fiBuildPromptText_(matrixRow),
       ]);
       existingKeys.add(key);
       built++;
@@ -360,6 +368,50 @@ function _fiFindTeacherMatrixRow_(matrixSsId, configId) {
     }
   }
   return null;
+}
+
+// ---------------------------------------------------------------------------
+// _fiBuildPromptText_ — the Flow 2 prompt with this assignment's rubric
+// already substituted in, so Studio's Ask Gemini step can bind one chip
+// (@trigger.PromptText) instead of carrying a hand-pasted copy of the
+// prompt that silently ages every time 15b's text changes.
+//
+// Substitutes everything EXCEPT {{STUDENT_TEXT}}, which is deliberately left
+// standing. That value comes from Studio's own Extract step reading the
+// student's Doc, which happens after this row exists — and pre-substituting
+// it would mean this function reading the Doc and writing the student's
+// writing into the central Ledger, the same FERPA regression
+// docs/FERPA_DATA_MAP.md's pointer-based design exists to avoid.
+//
+// So in Studio, Ask Gemini's instructions get @trigger.PromptText, and the
+// extracted response text goes in as the {{STUDENT_TEXT}} variable mapping —
+// one mapping, rather than the whole prompt, pasted by hand.
+//
+// substituteFlowPrompt_ / FLOW_2_SYSTEM_PROMPT come from 40_FlowPrompts.js
+// and 15b_StudioFlowPrompts_Flow2_Revised.js, both bound to this same
+// project. If 40_FlowPrompts.js isn't deployed alongside this file, this
+// returns "" and logs — the flow still works off a pasted prompt, it just
+// doesn't get the chip.
+// ---------------------------------------------------------------------------
+function _fiBuildPromptText_(matrixRow) {
+  if (typeof substituteFlowPrompt_ !== "function" ||
+      typeof FLOW_2_SYSTEM_PROMPT !== "string") {
+    Logger.log("[FlowInputBuilder] 40_FlowPrompts.js or 15b's FLOW_2_SYSTEM_PROMPT " +
+               "is not loaded in this project — leaving PromptText empty. Studio " +
+               "will need a pasted prompt instead of the @trigger.PromptText chip.");
+    return "";
+  }
+  return substituteFlowPrompt_(FLOW_2_SYSTEM_PROMPT, {
+    UNIT_NAME:   matrixRow.unitName,
+    TIER:        matrixRow.tier,
+    PERSONA:     matrixRow.persona,
+    MILESTONE_1: matrixRow.milestone1,
+    MILESTONE_2: matrixRow.milestone2,
+    MILESTONE_3: matrixRow.milestone3,
+    MILESTONE_4: matrixRow.milestone4,
+    DOD:         matrixRow.dod,
+    // STUDENT_TEXT deliberately omitted — keepUnmatched leaves it in place.
+  }, true);
 }
 
 // ---------------------------------------------------------------------------

@@ -118,8 +118,9 @@ function runFlowPreflightCheck() {
   // reasoning as the CompetencyEvidence check above. 21, not fewer —
   // GeminiFullOutput (col 21) is written by Studio Flow 2 itself, not by
   // the builder, but the column must already exist for that write to
-  // land anywhere.
-  results.push(_pfCheckTab_(ss, 'FlowInput', 21)); // Flow 2's materialized input row
+  // land anywhere. 22 since PromptText (col 22) was appended for the
+  // @trigger.PromptText chip — see 40_FlowPrompts.js.
+  results.push(_pfCheckTab_(ss, 'FlowInput', 22)); // Flow 2's materialized input row
 
   results.push(_pfCheckScriptProperty_('CAS_CHAT_WEBHOOK_URL', false));
 

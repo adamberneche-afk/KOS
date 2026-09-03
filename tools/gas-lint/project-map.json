@@ -50,7 +50,8 @@
       "cas-ccps/scripts/36_WeeklyParentReport.js",
       "cas-ccps/scripts/37_FlowInputBuilder.js",
       "cas-ccps/scripts/38_LedgerSchemaGuard.js",
-      "cas-ccps/scripts/39_FlowFixtures.js"
+      "cas-ccps/scripts/39_FlowFixtures.js",
+      "cas-ccps/scripts/40_FlowPrompts.js"
     ]
   },
   "cas-ccps:unified-manual": {
