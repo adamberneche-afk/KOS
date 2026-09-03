@@ -84,16 +84,17 @@ function makeFullyPassingAdminSs(sandbox) {
   ss.insertSheet('CompetencyEvidence').appendRow(new Array(8).fill('h'));
   ss.insertSheet('Ledger').appendRow(new Array(19).fill('h'));
   ss.insertSheet('MatrixRegistry').appendRow(new Array(4).fill('h'));
+  ss.insertSheet('FlowInput').appendRow(new Array(21).fill('h'));
   return ss;
 }
 
-test('runFlowPreflightCheck: every tab present and wide enough, no CAS_CHAT_WEBHOOK_URL set -- 7 of 8 pass (webhook is optional)', () => {
+test('runFlowPreflightCheck: every tab present and wide enough, no CAS_CHAT_WEBHOOK_URL set -- 8 of 9 pass (webhook is optional)', () => {
   const { exported, sandbox } = load(['runFlowPreflightCheck']);
   const ss = makeFullyPassingAdminSs(sandbox);
   setUpConfig(sandbox, ss);
 
   const result = exported.runFlowPreflightCheck();
-  assert.equal(result.total, 8); // 7 tabs + 1 script property (ADMIN_SS_ID's own dead check is gone)
+  assert.equal(result.total, 9); // 8 tabs (FlowInput added, 37_FlowInputBuilder.js) + 1 script property
   assert.equal(result.failed, 0);
 });
 
@@ -125,8 +126,8 @@ test('runFlowPreflightCheck: writes a Preflight report tab with one row per chec
   exported.runFlowPreflightCheck();
   const report = ss.getSheetByName('Preflight');
   assert.ok(report);
-  // header row + "Last run" row + 8 check rows
-  assert.equal(report.getLastRow(), 10);
+  // header row + "Last run" row + 9 check rows
+  assert.equal(report.getLastRow(), 11);
 });
 
 test('runFlowPreflightCheckNow: alerts a clean pass/fail summary', () => {
@@ -136,7 +137,7 @@ test('runFlowPreflightCheckNow: alerts a clean pass/fail summary', () => {
   exported.runFlowPreflightCheckNow();
   const calls = sandbox.SpreadsheetApp.getUi()._calls;
   assert.equal(calls.length, 1);
-  assert.match(calls[0].message, /All 8 preflight checks passed/);
+  assert.match(calls[0].message, /All 9 preflight checks passed/);
 });
 
 // ── runFlow1Canary ───────────────────────────────────────────────────────
