@@ -152,6 +152,16 @@ class FakeSheet {
     this.rows.forEach((row) => { row.splice(colPos1Based - 1, 0, ''); });
     return this;
   }
+  // Real Apps Script API — the inverse of insertColumnBefore above.
+  // cas-ccps/scripts/38_LedgerSchemaGuard.js's repairLedgerSchema() uses
+  // deleteColumns() to remove one drifted column and pull every later
+  // field back into its canonical position.
+  deleteColumns(colPos1Based, howMany) {
+    const n = howMany === undefined ? 1 : howMany;
+    this.rows.forEach((row) => { row.splice(colPos1Based - 1, n); });
+    return this;
+  }
+  deleteColumn(colPos1Based) { return this.deleteColumns(colPos1Based, 1); }
 }
 
 class FakeSpreadsheet {
@@ -581,6 +591,13 @@ function formatDateMock(date, timeZone, format) {
   }
   if (format === 'yyyy-MM-dd_HH-mm') {
     return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}_${pad2(date.getHours())}-${pad2(date.getMinutes())}`;
+  }
+  // cas-ccps/scripts/38_LedgerSchemaGuard.js's _lsgBackupTab_() — names the
+  // pre-repair backup tab, so two repairs in the same minute can't collide
+  // on one name (hence seconds, unlike the formats above).
+  if (format === 'yyyyMMdd-HHmmss') {
+    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`
+      + `-${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
   }
   throw new Error('formatDateMock: unsupported format "' + format + '" — add it to tests/harness/gas-sandbox.js');
 }
