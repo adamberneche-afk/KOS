@@ -147,6 +147,9 @@ Then, in the Apps Script editor's **Run** dropdown, in this order:
 | 3 | `installFlowFixtures()` | Seeds dummy rows at all five flows' trigger conditions. Without these, a Flow with nothing to match reports a green "Run Completed" over zero rows — which is how a lot of time got spent last session. `checkFlowFixtures()` reports what's present; `removeFlowFixtures()` takes them out. |
 | 4 | `installFlowInputTriggers()` | Installs Flow 2's two time triggers (1-min build, 2-min harvest). This is what makes `FlowInput` populate at all. |
 | 5 | `runFlow2Canary()` | End-to-end check of Flow 2's **Apps Script half only** — it self-provisions a scratch student doc and TeacherMatrix and stubs Studio out deliberately. Paste the log. A pass means the lookup chain and the harvest are sound and any remaining failure is in the Flow itself. |
+| 6 | `installWarmUpFlowTriggers()` | Installs Flows 3/4/5's two triggers (materialize + harvest, both 5-minute). Nothing in `41_WarmUpFlowBridge.js` runs until this is done. |
+| 7 | `runWarmUpFlowCanary()` | Same idea as `runFlow2Canary()` for Flows 3, 4 and 5: exercises the archetype decision table, the materialization and the harvest against scratch rows with Studio stubbed, then cleans up. Flows 3 and 4 are covered as pure logic only — both need Drive and a real student doc, which a canary must not fabricate. |
+| 8 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. The only thing that can tell you a Flow is live — a Flow that matched zero rows reports a green "Run Completed" too. |
 
 Only after 1-5 are clean is there any point configuring Flow 2 in Studio,
 because before that there is no `FlowInput` row for it to read.
@@ -217,25 +220,40 @@ Resolving that is a district IT / Workspace admin action. Worth requesting —
 it would resurrect all 2,113 lines at once — but don't sequence anything
 behind it.
 
-**What was done instead, for Flow 2:** `37_FlowInputBuilder.js` moves the
-whole lookup chain into Apps Script and materializes one flat `FlowInput` row,
-shrinking Flow 2's Studio side to four native, fixed-picker-safe steps. See
-`HISTORY.md`'s final section for the design and the three walls it dissolves,
-and `runFlow2Canary()` (`35_FlowPreflightAndCanary.js`) to verify the code half
-independently of Studio. **Flows 3, 4 and 5 hit the same fixed-picker wall**
-(Warm-Ups are per-teacher too), so the same pattern should port to them —
-not yet done.
+**What was done instead — all five flows are now ported.**
 
-Only **Flow 1** (Rubric Extraction) is genuinely live and verified end to end.
-This still blocks **Module 2 Full (Warm-Ups)** and **Module 5 (SCR
-Suggestion)** from being live, independent of code readiness.
+`37_FlowInputBuilder.js` took Flow 2 off its custom step: it moves the whole
+lookup chain into Apps Script and materializes one flat `FlowInput` row,
+shrinking Flow 2's Studio side to four native, fixed-picker-safe steps.
+`41_WarmUpFlowBridge.js` does the same for Flows 3, 4 and 5 —
+`Flow3Input`/`Flow4Input`/`Flow5Input` in, a shared `WarmUpFlowReturn` tab
+out, Studio making only the Gemini call. Verify each half independently of
+Studio with `runFlow2Canary()` and `runWarmUpFlowCanary()`
+(`35_FlowPreflightAndCanary.js` and `41_WarmUpFlowBridge.js`).
+
+*Correction to what this section used to say:* it claimed Flows 3, 4 and 5
+"hit the same fixed-picker wall (Warm-Ups are per-teacher too)." They don't.
+`WarmUpQueue` lives in the Central Ledger — one spreadsheet a fixed picker
+can target perfectly well. The per-teacher problem was specific to Flow 2's
+`TeacherMatrix`. What actually blocked Flows 3/4/5 was the five custom steps
+alone, plus the Drive and Docs work (creating a warm-up doc, sharing it,
+stamping its zones) that no native step can do. Getting that distinction
+wrong made the job look bigger than it was.
+
+Only **Flow 1** (Rubric Extraction) has been verified live end to end. Flows
+2-5 now have a keyless path but the Studio side of each still has to be built
+by hand, so **Module 2 Full (Warm-Ups)** and **Module 5 (SCR Suggestion)**
+remain not-live — now for want of Flow construction, not for want of code.
 `cas-ccps/docs/IMPACT_DASHBOARD.html`'s badges (`Flow 1 ✅ Live`, `Flows 2-5 ⬜
 Built, Not Deployed`) are now only half right and deserve a three-state
 rewrite: built-and-reachable, built-and-blocked, and not-built.
 
 `cas-ccps/studio-steps/README.md` has the per-step deployment instructions
 (mirrors Part 3.7 of the runbook) — still accurate for an account that *has*
-GCP access, e.g. kos-personal's. The wizard's Phase B dialogs
+GCP access, which is no account this repo deploys to. That aside used to name
+kos-personal as such an account; it is on this same `ccpsnet.net` account, so
+its own two custom steps are blocked identically and were ported the same way
+(`kos-personal/12_StudioReturnHarvest.gs`). The wizard's Phase B dialogs
 (`28_Module2Setup.js`) give you the exact Studio Flow settings (trigger
 condition, temperature, token limits, input/output field names) to enter once
 you're in Studio's builder — don't guess these from the `.gs` files alone.
