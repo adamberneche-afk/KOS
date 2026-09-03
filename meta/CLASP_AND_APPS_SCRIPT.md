@@ -159,8 +159,10 @@ The layout each system needs, which hasn't changed:
   into a push. `kos-personal/studio-steps/` is a second, separate
   flat-folder project alongside the main one (SMP-004's personal/district
   account split, not a shared global scope) — see its own README.
-  `leader-hub/` is now server-backed (`leader-hub:app` — six `.gs` files, one
-  Web App deployment) rather than the client-side-only single HTML file
+  `leader-hub/` is now server-backed (`leader-hub:app` — every `.gs` file in
+  that folder, one Web App deployment; the authoritative list is that
+  project's entry in [`tools/gas-lint/project-map.json`](../tools/gas-lint/project-map.json),
+  not a count repeated in prose) rather than the client-side-only single HTML file
   it started as, but it's still exactly one Apps Script project either
   way, so the flat-folder model still applies unchanged.
 - **`cas-ccps/scripts/`** doesn't fit the one-folder-one-project model —
