@@ -80,6 +80,39 @@ Drive-based asset. Once code lives in git, that record needs a place to
 point to the repo and the specific commit a given deployment corresponds
 to — otherwise the INDEX would be pointing at half the truth.
 
+## The one thing clasp can't hand you: a Cloud project
+
+`clasp` needs an authenticated Google account and nothing more. Some Apps
+Script *capabilities* need a standard (non-default) Google Cloud project
+behind the script, and that is a Workspace-admin decision, not something a
+push can arrange. The two that matter here are publishing a Workspace
+Add-on (which is what a custom Workspace Studio step is) and calling the
+Gemini API or Vertex directly with a key.
+
+This is not hypothetical. On the `ccpsnet.net` account, GCP access is
+turned off org-wide — confirmed directly in the Cloud console. All 8
+custom Studio steps in `cas-ccps/studio-steps/` (2,113 lines, written and
+unit-tested) pushed *successfully* and then never appeared in Studio's
+step picker, across repeated uninstall/reinstall cycles, with no OAuth
+prompt ever shown. There was no error to read. A missing Cloud project
+doesn't fail a push; it just makes the result do nothing.
+
+Which is why every system in this repo defaults to reaching Gemini
+through a hand-built Flow using the account's own built-in access
+(`cas-ccps`/`kos-personal` call it the Walled Garden, `leader-hub` the
+Bifurcation Boundary) — Apps Script orchestrates state and never calls a
+model itself. `cas-ccps/scripts/37_FlowInputBuilder.js` is the worked
+example of the port: it moves an entire per-teacher lookup chain into
+Apps Script so the Flow needs no capability beyond keyless Gemini.
+
+**Before writing anything that needs a key or a custom step**: check
+Project Settings on the *target* account first, and declare the
+dependency in [`tools/gas-lint/gcp-map.json`](../tools/gas-lint/gcp-map.json).
+gas-lint's Check G scans every file in `project-map.json` for those
+surfaces and errors on any live one with no entry — so a GCP dependency
+is something someone decided on purpose and wrote down, rather than
+something discovered when a step never shows up in a picker.
+
 ## A note on what this doesn't remove
 
 clasp and git together solve *where the code's history lives*. They don't,

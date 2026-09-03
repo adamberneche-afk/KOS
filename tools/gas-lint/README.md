@@ -91,6 +91,47 @@ it — that gap is closed now.
    point of view), so every warning is worth reading once, not
    auto-fixing.
 
+7. **Undeclared GCP dependencies** (`checkGcpSurfaces`). Nothing in this
+   repo's default architecture needs a Google Cloud project: every system
+   reaches Gemini through a hand-built Workspace Flow using the account's
+   own built-in access (`cas-ccps` and `kos-personal` call that the Walled
+   Garden, `leader-hub` the Bifurcation Boundary — same rule, three
+   names). That default isn't a style preference. Whether an account can
+   have a standard Cloud project is a Workspace-admin decision nobody
+   here controls, and on the `ccpsnet.net` account it is switched off —
+   which is how all 2,113 lines of `cas-ccps/studio-steps/` ended up
+   permanently unreachable *after* being written, unit-tested, and pushed
+   successfully. That's the failure mode this check exists for: a custom
+   step needing a project doesn't error, it just never appears in
+   Studio's step picker, and an API call 401s inside a `try/catch`.
+
+   So the check scans every file in `project-map.json` for the surfaces
+   that actually require a project — a `workflowElements` key in a
+   manifest, `generativelanguage.googleapis.com`, `aiplatform.googleapis.com`
+   — and requires each one to have an entry in `gcp-map.json` recording
+   its status, what breaks without it, and the fallback. An **undeclared
+   live** surface is an **error**; an undeclared **latent** one (present
+   but commented out) is a **warning**; so is a declaration whose
+   dependency has since been removed. A declaration is not approval — it
+   just means someone decided this on purpose and wrote it down.
+
+   Live vs. latent is decided positionally, not guessed: the surface is
+   live if it survives comment-stripping at the same offset in the
+   source. That's what `stripCommentsAndStrings`'s `keepStrings` option
+   is for — an endpoint in live code sits inside a string literal, one
+   left in a commented-out reference implementation does not, and the
+   default (blank both) can't tell them apart. `25_WarmUpWriter.js` is
+   the real case: `callFlow4_` deliberately keeps a commented-out
+   direct-Gemini block so check #5 above stays able to see the
+   `script.external_request` requirement it would need. The
+   `workflowElements` pattern is scoped to `.json` manifests for the same
+   reason — several `.gs` headers discuss the wall at length, and prose
+   about a dependency is not a dependency.
+
+   `findGcpSurfaces(relPath, src)` is exported as the pure unit;
+   `tests/tools/gas-lint-gcp.test.js` covers it plus `gcp-map.json`'s own
+   integrity.
+
 ## What this is NOT
 
 Not a JS parser. Comments and string literals are stripped with a small
@@ -111,6 +152,13 @@ false positives.
   longer exists, so a stale map is visible, not silent.
 - New GAS advanced service gets used somewhere → add it to
   `scope-map.json`'s `services` table.
+- Something starts needing a Cloud project → add a `surfaces` entry to
+  `gcp-map.json` **before** writing the code, not after. Check the target
+  account's Project Settings first; if GCP isn't there, look for a native
+  Flow step instead (`cas-ccps/scripts/37_FlowInputBuilder.js` is the
+  worked example of pushing everything except the model call into Apps
+  Script). A new *kind* of GCP surface → add a pattern to
+  `GCP_PATTERNS` and describe it in `gcp-map.json`'s `_patterns`.
 - A system other than `kos-personal`/`cas-ccps` grows a config-object
   pattern worth checking → add a new `check*()` function following the
   same shape as `checkKosPersonalCfgKeys`/`checkCasCcpsConfigKeys`.
