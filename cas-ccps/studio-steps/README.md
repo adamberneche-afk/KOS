@@ -26,8 +26,19 @@
 > make only the keyless Gemini call.
 > `cas-ccps/scripts/37_FlowInputBuilder.js` is the worked example — it moves
 > Flow 2's entire per-teacher lookup chain into a time trigger so the Flow
-> reads one flat literal row and needs no custom step. Flows 3, 4 and 5 have
-> no native replacement yet and are the remaining exposure.
+> reads one flat literal row and needs no custom step, and
+> `cas-ccps/scripts/41_WarmUpFlowBridge.js` does the same for Flows 3, 4 and
+> 5 — the exposure this banner used to name is closed. **All five flows now
+> have a keyless path, so nothing in this folder gates anything.**
+>
+> Worth knowing before porting anything else this way: three of the five
+> steps 41 replaced were duplicating Apps Script that already existed in the
+> same project, and each said so in its own header (`ExtractWarmUpPromptTextStep`
+> re-implemented `evaluateWarmUpDoc_`; `FinalizeWarmUpScoreStep`'s three
+> write-backs each state they "mirror" `writeFinalScores_` /
+> `writeFeedbackToDoc_` / `writeRegistryScores_` "exactly"). The port reuses
+> them. Only `SelectWarmUpArchetypeStep`'s decision logic and
+> `CreateWarmUpDocStep`'s document construction were substantial ports.
 >
 > Declared in [`tools/gas-lint/gcp-map.json`](../../tools/gas-lint/gcp-map.json)
 > as `live-blocked`, enforced by gas-lint's Check G. The full account
