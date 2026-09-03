@@ -50,7 +50,8 @@
       "cas-ccps/scripts/34_QueueWatchdog.js",
       "cas-ccps/scripts/35_FlowPreflightAndCanary.js",
     "cas-ccps/scripts/36_WeeklyParentReport.js",
-      "cas-ccps/scripts/37_FlowInputBuilder.js"
+      "cas-ccps/scripts/37_FlowInputBuilder.js",
+      "cas-ccps/scripts/38_LedgerSchemaGuard.js"
     ]
   },
 
