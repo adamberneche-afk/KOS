@@ -41,6 +41,7 @@ const EXPOSE = [
   'wfbUnionIndicatorTags_', 'wfbHasPersistentGap_', 'wfbFormatCompetencyTexts_',
   'wfbFormatList_', 'wfbFormatEvaluationSignals_', 'wfbStripFence_',
   'wfbNormalizeDateIso_', 'wfbFormatReadableDate_',
+  '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding',
   'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_PROFILE_SNAP', 'WFB_RET',
   'WFB_RETURN_HEADERS', 'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
   'WFB_INPUT_TABS',
@@ -341,4 +342,133 @@ test('Flow 3 headers cover every field wfbBuildFlow3Fields_ produces', () => {
     assert.ok(headers.indexOf(key.toLowerCase()) !== -1,
       'field "' + key + '" has no column in WFB_FLOW3_HEADERS');
   });
+});
+
+// ── The binding probe ────────────────────────────────────────────────────────
+//
+// The one deployment surface nothing else could check. Every other test in
+// this repo verifies the Apps Script side; the Studio side is built by hand,
+// and until this probe the only signal about it was "nothing has ever come
+// back" — which covers four different causes at once:
+//
+//   1. the Flow was never built
+//   2. its trigger condition matches no rows
+//   3. it runs and writes, but into the wrong columns
+//   4. it runs and Gemini errors
+//
+// Case 3 looks exactly like case 1 and is the easiest to create, because
+// WarmUpFlowReturn's columns get bound one at a time in a picker. These tests
+// drive the mis-bindings directly, since a real one can only be produced by
+// hand in the Workspace UI.
+
+function bindingRow(exported, over) {
+  // A correctly bound arrival: the Flow fills the first four columns and
+  // leaves the harvest's three empty.
+  const row = new Array(exported.WFB_RETURN_HEADERS.length).fill('');
+  row[exported.WFB_RET.TIMESTAMP] = new Date();
+  row[exported.WFB_RET.FLOW] = 5;
+  row[exported.WFB_RET.QUEUE_ID] = 'WUQ-1';
+  row[exported.WFB_RET.RAW_OUTPUT] =
+    'A bridge paragraph long enough to read as model output rather than a flag.';
+  Object.keys(over || {}).forEach((k) => { row[Number(k)] = over[k]; });
+  return row;
+}
+
+test('binding probe: a correctly bound row reports no issues', () => {
+  const { exported } = load();
+  const issues = exported._wfbDiagnoseReturnRow_(bindingRow(exported), { 'WUQ-1': true });
+  assert.deepEqual(issues, []);
+});
+
+test('binding probe: a one-column shift is named as a shift, with the offset', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  // Everything bound one column to the right — the single most likely
+  // mis-binding, and the hardest to see by eye in a picker.
+  const row = new Array(exported.WFB_RETURN_HEADERS.length).fill('');
+  row[R.FLOW + 1] = 5;
+  row[R.QUEUE_ID + 1] = 'WUQ-1';
+  row[R.RAW_OUTPUT + 1] = 'A bridge paragraph long enough to read as model output.';
+
+  const issues = exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true });
+  assert.ok(issues.some((m) => /shifted by 1 column/.test(m)),
+    'should name the offset, not merely say Flow is blank: ' + JSON.stringify(issues));
+  assert.ok(issues.some((m) => /model output landed in column 5/.test(m)),
+    'and say where the output went: ' + JSON.stringify(issues));
+});
+
+test('binding probe: output landing in the harvest\'s own columns is called out', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  const row = bindingRow(exported, {
+    [R.RAW_OUTPUT]: '',
+    [R.HARVEST_STATUS]: 'The model output, written one column too far right entirely.',
+  });
+  const issues = exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true });
+  // Two distinct harms: the harvest never sees the output, AND it reads that
+  // cell as its own bookkeeping and skips the row as already processed.
+  assert.ok(issues.some((m) => /HarvestStatus/.test(m) && /expected column 4/.test(m)),
+    JSON.stringify(issues));
+});
+
+test('binding probe: an unbound Flow column is distinguished from a wrong value', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  const unbound = exported._wfbDiagnoseReturnRow_(
+    bindingRow(exported, { [R.FLOW]: '' }), { 'WUQ-1': true });
+  assert.ok(unbound.some((m) => /Flow column is unbound/.test(m)), JSON.stringify(unbound));
+
+  // A plausible-but-wrong value: someone bound the flow NAME instead of the
+  // number. The harvest skips it either way, but the fix differs.
+  const wrong = exported._wfbDiagnoseReturnRow_(
+    bindingRow(exported, { [R.FLOW]: 'Flow 5' }), { 'WUQ-1': true });
+  assert.ok(wrong.some((m) => /not the literal flow number/.test(m)), JSON.stringify(wrong));
+});
+
+test('binding probe: a QueueID matching nothing is distinguished from an empty one', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  const wrong = exported._wfbDiagnoseReturnRow_(
+    bindingRow(exported, { [R.QUEUE_ID]: 'row-7' }), { 'WUQ-1': true });
+  assert.ok(wrong.some((m) => /matches no WarmUpQueue row/.test(m)), JSON.stringify(wrong));
+  // Naming the likely cause matters: binding a row number instead of the
+  // Queue_ID is a specific, common mistake in a Sheets picker.
+  assert.ok(wrong.some((m) => /not to a generated id or a row number/.test(m)));
+
+  const empty = exported._wfbDiagnoseReturnRow_(
+    bindingRow(exported, { [R.QUEUE_ID]: '' }), { 'WUQ-1': true });
+  assert.ok(empty.some((m) => /QueueID is empty/.test(m)), JSON.stringify(empty));
+});
+
+test('binding probe: no output at all is reported as the Gemini step not reaching the row', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  const issues = exported._wfbDiagnoseReturnRow_(
+    bindingRow(exported, { [R.RAW_OUTPUT]: '' }), { 'WUQ-1': true });
+  // The bug this pins: a Date cell stringifies to ~50 characters, so the
+  // longest-cell heuristic originally picked Timestamp here and reported
+  // "your output landed in Timestamp" — a confident wrong answer where
+  // "nothing is arriving" is the useful one.
+  assert.ok(issues.some((m) => /not reaching this row at all/.test(m)), JSON.stringify(issues));
+  assert.ok(!issues.some((m) => /Timestamp/.test(m)),
+    'and must not blame the timestamp: ' + JSON.stringify(issues));
+});
+
+test('binding probe: an already-harvested row is not scolded for its bookkeeping', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  // HARVESTED/Attempts/Error are exactly what the harvest is supposed to
+  // write. Flagging them would make every processed row look mis-bound.
+  const row = bindingRow(exported, {
+    [R.HARVEST_STATUS]: 'HARVESTED', [R.ATTEMPTS]: 1, [R.ERROR]: '',
+  });
+  assert.deepEqual(exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true }), []);
+});
+
+test('binding probe: a numeric Attempts value is not mistaken for stray text', () => {
+  const { exported } = load();
+  const R = exported.WFB_RET;
+  const row = bindingRow(exported, { [R.ATTEMPTS]: 2 });
+  const issues = exported._wfbDiagnoseReturnRow_(row, { 'WUQ-1': true });
+  assert.deepEqual(issues, [], 'a retry counter is not a binding problem: ' + JSON.stringify(issues));
 });
