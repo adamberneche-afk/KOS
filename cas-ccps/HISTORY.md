@@ -1365,3 +1365,85 @@ so the FlowInput pattern should port to them.
   Built, Not Deployed`, which is now only half right — Flow 2's code half is
   built and tested, its Studio half isn't, and Flows 3-5's custom-step code
   is built but unreachable. Worth a more honest three-state badge.
+
+---
+
+## 2026-09-03 — Flows 3, 4 and 5 ported off their custom steps
+
+Flow 2 was redesigned around the GCP wall in the first deployment session.
+Flows 3, 4 and 5 were left as the remaining exposure, and
+`tools/gas-lint/gcp-map.json` named them as such. `41_WarmUpFlowBridge.js`
+closes that: same two-phase shape as `37_FlowInputBuilder.js` — Apps Script
+materializes a flat literal input row, Studio makes only the keyless Gemini
+call, Apps Script harvests the output.
+
+**The job was smaller than the five-step count suggested**, because three of
+the five steps were duplicating Apps Script that already existed in this same
+project, and each said so in its own header:
+
+- `ExtractWarmUpPromptTextStep` re-implemented what `evaluateWarmUpDoc_()`
+  (`25_WarmUpWriter.js`) already does — read the doc, pull the exact text
+  between the Zone 1 delimiters.
+- `FinalizeWarmUpScoreStep`'s three write-backs each state they "mirror
+  `writeFinalScores_()` / `writeFeedbackToDoc_()` / `writeRegistryScores_()`
+  exactly". Those live in Script 25, in this project, so the harvest calls
+  them. A second copy is what drift is made of.
+- `ExtractBridgeInputsStep` is three field reads off one parsed JSON blob.
+
+That left `SelectWarmUpArchetypeStep`'s decision logic and
+`CreateWarmUpDocStep`'s document construction as the only substantial ports.
+Both are reproduced with their interpretive choices intact, because each one
+changes what a student receives:
+
+- The archetype **evaluation order** is PROVOCATION → PARADOX → CONCRETE
+  SCENARIO → BRIDGE, which is *not* the order the spec's decision table lists
+  them in. The spec states the evaluation order separately, in prose, and that
+  is the one that governs. Preserved rather than tidied.
+- "No persistent gaps" means no single gap tag recurs across 2+ of the
+  evaluation_signals entries.
+- The zone marker strings are load-bearing, not formatting.
+  `evaluateWarmUpDoc_()` finds the prompt and the response by `indexOf` on
+  them, so a changed string silently makes Flow 4 read an empty response. The
+  port stamps `RESPONSE_ZONE_MARKER` — the same constant, not an equal
+  string — and a test asserts that.
+
+**Two corrections to what this repo believed.**
+
+*The fixed-picker wall never applied to these three.* `DEPLOYMENT_HANDOFF.md`
+said Flows 3, 4 and 5 "hit the same fixed-picker wall (Warm-Ups are
+per-teacher too)." They don't: `WarmUpQueue` lives in the Central Ledger, one
+spreadsheet a fixed picker targets perfectly well. The per-teacher problem was
+specific to Flow 2's `TeacherMatrix`. What actually blocked these three was
+the five custom steps, plus the Drive/Docs work no native step can do. The
+wrong diagnosis made the job look bigger than it was.
+
+*`pollForFlow4Result_()` is dead and must stay dead.* It blocks on
+`Utilities.sleep(15000)` twelve times — three minutes of wall clock **per
+row**, inside a trigger — so ten students would need thirty minutes of
+sleeping and blow every Apps Script execution limit. Flow 4 could never have
+scaled past a handful of rows even with its custom step working. Nothing ever
+called it (`35_FlowPreflightAndCanary.js` had already noted it as unused), so
+nothing had to be unwired; it now carries a note saying why not to wire it up.
+A harvest on its own trigger needs no polling at all.
+
+Also fixed while in there: `runWarmUpEvaluation()` calls `callFlow4_()`, a
+stub that always returns null, and its null branch counted that as an error —
+so every nightly run logged a failure for every row even though
+`writePreEvalScores_` had correctly parked each one at `PENDING_EVAL`, which
+is exactly the state the new bridge collects. That branch now says so instead
+of crying wolf. A genuine `flow4Result.error` still counts as an error.
+
+**Nothing else needed to change.** The `WarmUpQueue` status machine is
+untouched — `PENDING_BRIDGE` → `PENDING` → `DELIVERED` → `PENDING_EVAL` →
+`SCORED` still means what it meant; the bridge only moves *who* performs each
+transition, keyed off the statuses that already existed. So Scripts 23, 24 and
+25 needed no edits, and no new column was added to a 21-column sheet whose
+indices those three hardcode (the same trade kos-personal's `10_Turnstile.gs`
+refused, for the same reason). Three input tabs plus one shared return tab
+carry everything instead.
+
+`tests/cas-ccps/warmup-flow-bridge.test.js` — 27 tests, weighted toward the
+decision table (the override threshold as a floor not a ceiling, the
+evaluation order, the persistence reading, the fallback tail) and the schema
+invariants that keep a native "add row to sheet" step writing into the right
+cells.
