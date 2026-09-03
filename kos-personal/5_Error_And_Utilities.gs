@@ -460,6 +460,15 @@ function _getOrCreateSheet(ss, name) {
       'Timestamp','Payload_UID','Payload_Type',
       'Doc_URL','File_ID','Status','Retry_Count',
     ],
+    // STUDIO_RETURN: where a Workspace Flow's native "add row to sheet" step
+    // drops its raw model output for 12_StudioReturnHarvest.gs to apply. A
+    // separate tab rather than extra STAGING_PIPELINE columns, for the reason
+    // 10_Turnstile.gs's header gives: an 8th column there would mean touching
+    // every hardcoded 7-column getRange() call across 2/3/9_*.gs.
+    'STUDIO_RETURN': [
+      'Returned_At','Payload_UID','Payload_Type',
+      'Primary_JSON','Auditor_JSON','Harvest_Status','Attempts','Error',
+    ],
     'STAGING_ARCHIVE': [
       'Archived_At','Timestamp','Payload_UID','Payload_Type',
       'Doc_URL','File_ID','Status','Retry_Count',

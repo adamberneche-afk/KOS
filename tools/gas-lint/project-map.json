@@ -13,7 +13,8 @@
       "kos-personal/7_WebApp.gs",
       "kos-personal/9_UI_Diagnostics.gs",
       "kos-personal/10_Turnstile.gs",
-      "kos-personal/11_Registrar_CogRelay.gs"
+      "kos-personal/11_Registrar_CogRelay.gs",
+      "kos-personal/12_StudioReturnHarvest.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"
