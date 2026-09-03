@@ -1636,3 +1636,61 @@ about fifty characters. It reported "your output landed in Timestamp" — a
 confident wrong answer where "nothing is arriving" is the useful one. The
 timestamp column is now excluded, and the exclusion is documented as
 load-bearing along with what it trades away.
+
+### Follow-up — the generated build spec, and D1's own diagnostic
+
+Two remaining friction items from the deployment review, both about
+configuration rather than code.
+
+**`42_FlowBuildSpec.js` generates the sheet an operator builds a Flow from.**
+The values to type into Studio were spread across six files in three formats —
+JS comment blocks, a GAS wizard dialog, markdown — about 3,350 lines from
+which the operator reconstructs a step list. That scatter has already produced
+one confirmed hazard: `15b`'s Step 1 note renders the student-doc markers in
+that comment block's em-dash-normalized style, so copying from it puts plain
+hyphens into Studio's Extract step, which matches nothing and returns empty.
+
+The split is deliberate and is the whole design. `syncFlowBuildSpec()` emits
+the **derived** half — every tab, column number, header, trigger condition,
+prompt key and ownership rule, computed from the same constants the code reads.
+Those are the drift-prone facts and generating them is the only way to keep
+them true. It does **not** re-transcribe connector names, temperature, token
+limits or the reasoning behind a step: copying those would create a seventh
+document to keep in sync, which is the problem rather than the fix. Each flow
+points at where that narrative lives — and, where the pointer has gone stale,
+says so. That last part is the one thing a generated sheet can do that the
+narrative cannot: `15_StudioFlowPrompts.js`'s Step 3 and the Flow 3/4
+specification's connector tables both call for custom steps that are blocked
+on this account, and the spec now flags both at the point an operator would
+otherwise follow them.
+
+`checkFlowBuildSpec()` compares the tab against what the code would generate
+now, on `flow|surface|tab|column|header` only. Diffing the notes too would
+flag every wording change as drift and train the reader to ignore the report —
+a test pins that a reworded note is *not* stale while a moved column is.
+
+**D1 got a diagnostic rather than a fixture, because it has no queue.**
+leader-hub's browser POSTs an OAuth ID token to `07_TeacherDashboard.js`'s
+`doPost()` and gets JSON back synchronously; there is nothing to seed. What
+there is, is four causes that all surface in leader-hub as the same opaque
+error: the OAuth client ID unset, `TEACHER_EMAIL` unset, the token gate fine
+but the source tabs empty, or a stale `/exec` URL stored on leader-hub's side.
+
+`runLeaderHubConnectionCheck()` calls the three action handlers directly with
+this deployment's own teacher email, deliberately bypassing
+`_verifyLeaderHubToken_` — that is the point: if real data comes back, the
+data side is sound and the failure is the token, the consent or the URL. The
+empty-but-successful case is treated as a **failure**, because leader-hub
+cannot tell an empty payload from a rejection, and a naive "did it throw?"
+check would call an empty deployment healthy and send someone to debug OAuth.
+
+It refuses to claim what it cannot know. Nothing in the script can see what
+URL leader-hub has stored, and a redeploy issues a new one, so there is no
+check for it — only a closing note. A test asserts that no check *implies* the
+URL was verified, because a green report while leader-hub calls a dead URL
+would be the worst possible outcome for a diagnostic.
+
+FERPA: `getRoster` is the first of the three actions to return student name,
+email and period, and this runs from a Run dropdown into an execution log. The
+roster check reports a **count only**, and a test seeds a roster that would
+leak if the detail string ever carried rows instead.
