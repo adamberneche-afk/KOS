@@ -219,6 +219,67 @@ it — that gap is closed now.
    canary and a binding probe but no liveness check, so
    `checkFlow2Liveness()` was written to close it.
 
+10. **Fixture coverage** (`checkFixtureConsumers`). A fixture asserted only
+    against itself is self-consistent by construction: the test re-derives the
+    expected shape from the same code that wrote it, so a fixture whose shape
+    its consumer cannot read passes. Five of this repo's six fixtures had
+    exactly that defect in one pass, every one a shape mismatch that produced
+    no error anywhere — a `kos-personal` fixture planted a prefixed
+    `Payload_UID` no staging row could ever match, which exercised the
+    not-found path while reading as a pass.
+
+    So for each `fixture` declared in `flow-map.json`, some test outside
+    `tests/tools/` must reference it (`meta/FLOW_DOCTRINE.md` rule 4 — the
+    read-back is the test, because a Flow's own "Run Completed" over zero rows
+    looks exactly like success) **and** that same file must drive one of the
+    flow's own consumers: `materialize`, `harvest`, `binding` or `liveness`
+    (rule 5). The `canary` is deliberately not a consumer — it stubs the Flow
+    and seeds its own row, so naming it would satisfy the check without ever
+    reading the fixture.
+
+    Found on its first run: Flow 2's fixture was checked column by column and
+    never handed to `harvestFlowInputResults()`. Verified by injection after
+    the missing tests were written — a fixture pointing at a doc that does not
+    exist passes every column-level assertion in that file and fails only the
+    harvest tests.
+
+11. **Sandbox scope** (`checkSandboxScope`). GAS concatenates every file bound
+    to a project into one global scope, so a function's collaborators are in
+    scope in production whether or not a test loaded them. A sandbox that
+    loads fewer files is running a different program, and the failure is
+    silent whenever the code degrades instead of throwing:
+    `installFlow2Fixture()` seeded an empty `PromptText` for weeks because its
+    test loaded neither `15b` (`FLOW_2_SYSTEM_PROMPT`) nor `40`
+    (`substituteFlowPrompt_`), and `_fiBuildPromptText_` returns `""` rather
+    than throwing when they are missing. The tests were green throughout.
+
+    Requiring the *whole* project file set would fail nearly every test here,
+    most of which load two or three files on purpose. What this check requires
+    is that the part the test actually drives be closed: it walks out from the
+    names each `loadGasFiles(files, expose)` call exposes, and errors on a
+    name that reachable code needs, that this project declares in a file the
+    sandbox did not load. **Reachability is what keeps it quiet** — without
+    that filter the same analysis reports every collaborator of every loaded
+    file (nine findings on one fixture test, none of them exercised), and a
+    check that noisy is worse than none.
+
+    Identifiers, not just call sites: half of the motivating incident was a
+    missing *constant*, and a call-shaped pattern would have found only
+    `substituteFlowPrompt_()` while the fixture still seeded an empty prompt.
+
+    It found five gaps on its first run, one worse than the original —
+    `runLeaderHubConnectionCheck()`'s three data checks were failing on a
+    `ReferenceError` while the test asserted they fail on empty tabs. The
+    right verdict from the wrong program. That test now pins the failure
+    *message* too, so the narrower scope cannot come back.
+
+    `sandboxScope.allow` in `flow-map.json` is the escape hatch, for a name
+    genuinely absent in production too or one the analysis mis-reads. It is
+    not for silencing a real gap: loading the file costs one line.
+    `tests/tools/` is skipped entirely — its content is sample data *about*
+    GAS code, including literal `loadGasFiles(...)` snippets that would
+    otherwise be analysed as real sandboxes.
+
 ## What this is NOT
 
 Not a JS parser. Comments and string literals are stripped with a small
@@ -261,6 +322,13 @@ false positives.
   exist; a stale name is an error by design. If a role does not apply, name
   it in the entry's `_note` rather than leaving the warning standing — a
   warning nobody can clear is a warning everybody learns to skip.
+- A new test whose sandbox loads a subset of a project → nothing to
+  configure; Check K will tell you if the subset has a hole in the part you
+  drive. Add the file it names. Reach for `sandboxScope.allow` only when the
+  name is genuinely absent in production too, and give it a `why`.
+- A new fixture → write the test that drives it through a consumer at the
+  same time as the fixture, not after. Check J will require it, and the
+  fixture is guesswork until that test exists.
 
 ## Known limitations worth fixing later, not blocking
 
