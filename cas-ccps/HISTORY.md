@@ -1273,15 +1273,33 @@ not transfer, and acting on it would be solving a problem that project
 doesn't have:
 
 - SMP-004 bifurcates kos-personal onto **the personal Google account**, not
-  `ccpsnet.net`. `kos-personal/DEPLOYMENT_GUIDE.md:36` states every deploy
-  already uses an established GCP project, and line 255 walks through
-  enabling the Drive API in that project's console.
+  `ccpsnet.net`, so the org policy behind Wall 1 doesn't reach it. That is
+  the only real difference, and it is about *policy*, not about anything
+  having been provisioned.
 - `kos-personal/studio-steps/` already exists, complete, built the same way
-  cas-ccps's blocked steps were.
+  cas-ccps's blocked steps were — and so was the project behind it.
 
-Verify by looking at Project Settings on that account before designing
-anything. If GCP is available there, kos-personal needs *finishing*, not
-redesigning: push `kos-personal:studio-steps`, build the two flows from
+**Correction to an earlier reading of this, recorded because the mistake is
+easy to repeat.** This section first cited
+`kos-personal/DEPLOYMENT_GUIDE.md:36` ("every future deploy uses the same
+GCP project") plus line 255's Drive-API walkthrough as evidence GCP was
+available there. It isn't evidence. That line closes a Phase 1 whose step 2
+is *"select your existing Apps Script project"* and whose only work is the
+OAuth consent screen; both that and enabling an API happen quite happily in
+the default project Apps Script creates on its own. Every GCP project across
+this repo was built that same way, and nothing here records a standard
+project ever being created or linked through Project Settings for any of the
+11 Apps Script projects. So Wall 1 is really the *second* block on the custom
+steps — there was no standard project to lose in the first place — and
+kos-personal's steps are un-provisioned rather than probably-fine. The rule
+and the corrected entry now live in `tools/gas-lint/gcp-map.json`, enforced
+by gas-lint's Check G.
+
+Verify by *looking* at Project Settings on that account — read the linked
+Cloud project, don't infer it from a deployment doc. If a standard project
+is there (or you create one, which is self-service on a personal account),
+kos-personal needs *finishing*, not redesigning: push
+`kos-personal:studio-steps`, build the two flows from
 `STUDIO_INTEGRATION_SPEC.md`'s existing connector tables, and close the one
 gap that spec names itself at line 455 (`_chunkAndQueue()` doesn't queue a
 paired `VECTOR_CLASSIFY` row alongside each `SESSION_LOG` row, so the two
