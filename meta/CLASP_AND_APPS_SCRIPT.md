@@ -132,10 +132,22 @@ by themselves, stop the instinct that produced seven codebase copies in
 the first place — that's a habit, not a tooling gap, and worth watching
 for even once the tooling exists to make the old habit unnecessary.
 
-## Status: scaffolded, not yet connected to a live account
+## Status: cas-ccps is live; kos-personal and leader-hub are not
 
-Everything above was written while this was still a proposal. It's now
-real tooling, sitting one credentialed step away from actually pushing:
+Everything above was written while this was still a proposal, and the
+heading here used to say "scaffolded, not yet connected to a live account."
+That stopped being true. **All 8 `cas-ccps` projects now exist in a real
+`ccpsnet.net` Workspace account and have been pushed with this tooling** —
+`cas-ccps/clasp/local/` holds their real script IDs and is gitignored, so a
+new session or machine recreates it from the templates rather than finding
+it in the repo. `cas-ccps/HISTORY.md`'s deployment section records what that
+first push found, including three Studio walls that only a live account
+could reveal.
+
+`kos-personal`'s two projects and `leader-hub`'s one are still at the
+one-credentialed-step-away stage described below.
+
+The layout each system needs, which hasn't changed:
 
 - **`kos-personal/`'s main project** and **`leader-hub/`** are each a
   single Apps Script project already laid out exactly the way clasp
@@ -169,10 +181,13 @@ real tooling, sitting one credentialed step away from actually pushing:
   and `gas-lint`'s existing OAuth-scope check now validates all 11 of
   them, not just `kos-personal`'s main project.
 - **What's left is entirely credentialed and can't be done from a repo
-  session**: run `clasp login` against the real Google account, then
-  `clasp clone` (or `clasp create`, for the two "cloned per teacher"
-  projects — target the *master* template, not any individual teacher's
-  copy) for each of the 11 projects, and drop the resulting `scriptId`
-  into the matching template. Real script IDs are deliberately never
+  session** — and for `cas-ccps` it is already done. For the remaining 3
+  projects (`kos-personal`'s 2, `leader-hub`'s 1): run `clasp login`
+  against the real Google account, then `clasp clone` (or `clasp create`,
+  for the two "cloned per teacher" projects — target the *master* template,
+  not any individual teacher's copy), and drop the resulting `scriptId`
+  into the matching template. SMP-004 is why an agent session can't do
+  this step for you: pushing to production happens at the operator's own
+  already-authenticated keyboard, never from here. Real script IDs are deliberately never
   committed (`.gitignore`d) — same convention this repo already uses for
   real Sheet/Doc IDs living in Script Properties, not source.
