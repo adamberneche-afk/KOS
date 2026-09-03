@@ -46,6 +46,134 @@
 // real signed-in caller, so a misconfigured deployment denies everyone
 // instead of silently granting access.
 // ---------------------------------------------------------------------------
+// runLeaderHubConnectionCheck
+//
+// Separates the causes of "leader-hub can't reach cas-ccps" — the last
+// deployment surface in this repo with no diagnostic of its own.
+//
+// WHY THIS IS NOT A FIXTURE. Every other flow in this repo has a queue, so a
+// fixture row gives it something to latch onto. D1 has no queue: leader-hub's
+// browser POSTs an OAuth ID token and gets JSON back synchronously. There is
+// nothing to seed. What there IS, is four independent failure causes that all
+// surface as the same opaque error in leader-hub's UI:
+//
+//   1. LEADER_HUB_OAUTH_CLIENT_ID is unset on this deployment
+//   2. TEACHER_EMAIL is unset or does not match the signed-in teacher
+//   3. the token is fine but the underlying tabs are empty, so every action
+//      returns an empty payload that reads as a failure
+//   4. the deployment URL leader-hub is configured with is stale
+//
+// This checks 1, 2 and 3 from inside the script, where they are all knowable,
+// and says explicitly that it cannot check 4. The three action handlers are
+// called directly with this deployment's own teacher email, deliberately
+// bypassing _verifyLeaderHubToken_ — that is the whole point: if real data
+// comes back here, the data side is sound and the failure is the token, the
+// consent, or the URL.
+//
+// Read-only. Returns nothing student-identifying: the roster check reports
+// only a COUNT, never a name or an email, because this runs from a Run
+// dropdown and its output lands in an execution log (FERPA — see
+// docs/FERPA_DATA_MAP.md's entry on this endpoint being the first to return
+// student PII).
+// ---------------------------------------------------------------------------
+function runLeaderHubConnectionCheck() {
+  const cfg = getConfig_();
+  const checks = [];
+  function record(name, ok, detail) { checks.push({ name: name, ok: !!ok, detail: detail || "" }); }
+
+  record("LEADER_HUB_OAUTH_CLIENT_ID is set", !!cfg.leaderHubOauthClientId,
+    cfg.leaderHubOauthClientId
+      ? "Configured."
+      : "Unset, so doPost rejects every request before it reaches an action. " +
+        "See docs/LEADERHUB_CONNECTION_SETUP.md — it is registered once for the " +
+        "whole district, not per teacher.");
+
+  record("TEACHER_EMAIL is set", !!cfg.teacherEmail,
+    cfg.teacherEmail
+      ? "This deployment answers only for " + cfg.teacherEmail + "."
+      : "Unset. _verifyLeaderHubToken_ fails closed on a blank teacherEmail, so every " +
+        "request is rejected no matter whose token arrives.");
+
+  // The three actions, called with this deployment's own email so the answer
+  // is about the DATA rather than about authorization.
+  const email = String(cfg.teacherEmail || "").toLowerCase();
+
+  let pacing;
+  try { pacing = _apiGetPacingGuide_(); } catch (err) { pacing = { success: false, message: err.message }; }
+  record("getPacingGuide returns data", _lhcHasRows_(pacing),
+    _lhcDescribe_(pacing, "pacing unit") +
+    " Curriculum data, no student PII — the safest of the three to test with.");
+
+  let registry;
+  try { registry = _apiGetCompetencyRegistry_(cfg, email); }
+  catch (err) { registry = { success: false, message: err.message }; }
+  record("getCompetencyRegistry returns data", _lhcHasRows_(registry),
+    _lhcDescribe_(registry, "competency row"));
+
+  let roster;
+  try { roster = _apiGetRoster_(cfg, email); }
+  catch (err) { roster = { success: false, message: err.message }; }
+  // Count only. This action is the first of the three to return student name,
+  // email and period, and this output goes to an execution log.
+  record("getRoster returns data", _lhcHasRows_(roster),
+    _lhcDescribe_(roster, "student") +
+    " Reported as a count only — this action returns student PII and this log is not a " +
+    "place for it.");
+
+  const passed = checks.filter(function (c) { return c.ok; }).length;
+  Logger.log("[LeaderHubCheck] " + passed + "/" + checks.length + " passed");
+  checks.forEach(function (c) {
+    Logger.log("[LeaderHubCheck]   " + (c.ok ? "PASS" : "FAIL") + "  " + c.name +
+      (c.detail ? " — " + c.detail : ""));
+  });
+
+  if (passed === checks.length) {
+    Logger.log("[LeaderHubCheck] The data side and both properties are sound, so a failure " +
+      "in leader-hub is one of: the ID token (wrong Google account signed in), consent not " +
+      "granted, or the /exec URL leader-hub is configured with pointing at an older " +
+      "deployment. THAT LAST ONE CANNOT BE CHECKED FROM HERE — a redeploy issues a new URL " +
+      "unless you deploy over the existing version, and nothing in this script can see what " +
+      "leader-hub has stored. Re-copy the URL from Deploy → Manage deployments.");
+  } else {
+    Logger.log("[LeaderHubCheck] Fix the failures above before looking at leader-hub — every " +
+      "one of them surfaces there as the same opaque error.");
+  }
+
+  return { passed: passed, total: checks.length, checks: checks };
+}
+
+// A handler result counts as data if it succeeded AND carries at least one
+// row. "Succeeded but empty" is its own diagnosis: the token gate is fine and
+// the tab is empty, which reads to leader-hub exactly like a rejection.
+function _lhcHasRows_(result) {
+  if (!result || result.success === false) return false;
+  return _lhcCount_(result) > 0;
+}
+
+function _lhcCount_(result) {
+  if (!result) return 0;
+  const keys = Object.keys(result);
+  for (let i = 0; i < keys.length; i++) {
+    if (Array.isArray(result[keys[i]])) return result[keys[i]].length;
+  }
+  return 0;
+}
+
+function _lhcDescribe_(result, noun) {
+  if (!result) return "Handler returned nothing at all.";
+  if (result.success === false) {
+    return "Handler failed: " + (result.message || "no message") + ".";
+  }
+  const n = _lhcCount_(result);
+  if (n === 0) {
+    return "Handler succeeded but returned 0 " + noun + "s — the source tab is empty. " +
+      "leader-hub cannot tell an empty payload from a rejection, so this looks like a " +
+      "broken connection from that end.";
+  }
+  return n + " " + noun + (n === 1 ? "" : "s") + " returned.";
+}
+
+// ---------------------------------------------------------------------------
 function _isAuthorizedTeacher_(cfg) {
   const viewerEmail = Session.getActiveUser().getEmail();
   return !!(viewerEmail && cfg.teacherEmail &&
@@ -267,17 +395,18 @@ function _apiGetRoster_(cfg, email) {
  * (29_StudentContextAggregator.js: same project as this file, but joins
  * through StudentDocRegistry — under-reports any student who doesn't yet
  * have a Module-4 context doc). Same Ledger-join *pattern* both of those
- * already use (row[1]=GoogleID/email, row[4]=StudentName, row[6]=ClassName,
- * row[8]=TeacherEmail — see getDashboardData() below), but a fresh,
+ * already use (LEDGER.GOOGLE_ID/STUDENT_NAME/CLASS_NAME/TEACHER_EMAIL,
+ * 00_SharedConfig.js — see getDashboardData() below), but a fresh,
  * correctly-scoped implementation.
  *
  * `className` is included for display context only — Form 1's "Course
  * Name" field is free text with no enum/validation at capture time, so it
  * cannot be reliably cross-referenced against leader-hub's own "8175"/
- * "8177" course codes. `period` (row[11], also free text — Form 1's help
- * text is literally "e.g. 3") is included as a secondary disambiguation
- * signal for leader-hub's name-matching, not a hard join key — the two
- * systems use different period vocabularies ("3" here vs. "3rd Odd" there).
+ * "8177" course codes. `period` (LEDGER.PERIOD, also free text — Form 1's
+ * help text is literally "e.g. 3") is included as a secondary
+ * disambiguation signal for leader-hub's name-matching, not a hard join
+ * key — the two systems use different period vocabularies ("3" here vs.
+ * "3rd Odd" there).
  */
 function _getRosterForEmail_(cfg, teacherEmail) {
   const ss     = SpreadsheetApp.openById(cfg.ledgerSsId);
@@ -288,14 +417,14 @@ function _getRosterForEmail_(cfg, teacherEmail) {
   const byEmail = new Map(); // dedup — a student can have multiple Ledger rows (one per assignment)
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (String(row[8] || "").trim().toLowerCase() !== wanted) continue;
-    const email = String(row[1] || "").trim();
+    if (String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== wanted) continue;
+    const email = String(row[LEDGER.GOOGLE_ID] || "").trim();
     if (!email || byEmail.has(email.toLowerCase())) continue;
     byEmail.set(email.toLowerCase(), {
-      name:      String(row[4] || "").trim(),
+      name:      String(row[LEDGER.STUDENT_NAME] || "").trim(),
       email:     email,
-      className: String(row[6] || "").trim(),
-      period:    String(row[11] || "").trim(),
+      className: String(row[LEDGER.CLASS_NAME] || "").trim(),
+      period:    String(row[LEDGER.PERIOD] || "").trim(),
     });
   }
 
@@ -342,43 +471,43 @@ function getDashboardData(termFilter) {
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row = ledgerData[i];
-    if (String(row[8]).toLowerCase() !== teacherEmail.toLowerCase()) continue;
-    if (!row[1]) continue;
+    if (String(row[LEDGER.TEACHER_EMAIL]).toLowerCase() !== teacherEmail.toLowerCase()) continue;
+    if (!row[LEDGER.GOOGLE_ID]) continue;
 
-    const rowTerm    = String(row[18] || "").trim();
-    const ledgerStatus = String(row[12]).trim();
+    const rowTerm    = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
+    const ledgerStatus = String(row[LEDGER.STATUS]).trim();
 
     if (rowTerm) allTerms.add(rowTerm);
     if (ledgerStatus === "ARCHIVED") continue;
     if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
 
-    const fileId       = String(row[3]).trim();
-    const unitCode     = String(row[10]).trim();
+    const fileId       = String(row[LEDGER.FILE_ID]).trim();
+    const unitCode     = String(row[LEDGER.COURSE_NAME]).trim();
     const displayStatus = resolveDisplay_(ledgerStatus, pipelineStatus[fileId]);
     const statusClass  = resolveClass_(displayStatus);
 
-    // Say/Do Ledger cas-ccps finding #1: column 20 (index 19) is the new
-    // SuggestedScore column — may not exist yet on a Ledger where no
+    // Say/Do Ledger cas-ccps finding #1: LEDGER.TURN_IN_SUGGESTED_SCORE
+    // (column 20, index 19) — may not exist yet on a Ledger where no
     // submission has ever gone through markPendingReview_() (which self-heals
-    // the column via _ensureTurnInReviewColumns_), so row[19] can genuinely
-    // be undefined here, not just an empty string.
-    const suggestedScoreRaw = row[19];
+    // the column via _ensureTurnInReviewColumns_), so this can genuinely be
+    // undefined here, not just an empty string.
+    const suggestedScoreRaw = row[LEDGER.TURN_IN_SUGGESTED_SCORE];
     const suggestedScore = (suggestedScoreRaw === undefined || suggestedScoreRaw === "")
       ? null : Number(suggestedScoreRaw);
 
     students.push({
-      name:        String(row[4]).trim()  || "—",
-      googleId:    String(row[1]).trim(),
-      block:       String(row[5]).trim(),
-      className:   String(row[6]).trim(),
-      period:      String(row[11]).trim(),
-      subject:     String(row[9]).trim(),
+      name:        String(row[LEDGER.STUDENT_NAME]).trim()  || "—",
+      googleId:    String(row[LEDGER.GOOGLE_ID]).trim(),
+      block:       String(row[LEDGER.BLOCK]).trim(),
+      className:   String(row[LEDGER.CLASS_NAME]).trim(),
+      period:      String(row[LEDGER.PERIOD]).trim(),
+      subject:     String(row[LEDGER.SUBJECT]).trim(),
       unitCode:    unitCode,
-      configId:    String(row[2]).trim(),
+      configId:    String(row[LEDGER.CONFIG_ID]).trim(),
       status:      displayStatus,
       statusClass: statusClass,
-      lastEval:    row[15] ? formatDate_(row[15]) : "Never",
-      submittedAt: row[13] ? formatDate_(row[13]) : "—",
+      lastEval:    row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : "Never",
+      submittedAt: row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : "—",
       suggestedScore: suggestedScore,
       docUrl:      fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
@@ -454,7 +583,7 @@ function getDashboardData(termFilter) {
 // created before this feature existed, regardless of which project touches
 // it first.
 function _ensureTurnInReviewColumns_(sheet) {
-  const headerRange = sheet.getRange(1, 20, 1, 4);
+  const headerRange = sheet.getRange(1, LEDGER.TURN_IN_SUGGESTED_SCORE + 1, 1, 4);
   const existing     = headerRange.getValues()[0];
   if (existing[0] !== "SuggestedScore") {
     headerRange.setValues([["SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt"]]);
@@ -468,14 +597,14 @@ function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, deci
   const data  = sheet.getDataRange().getValues();
 
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][2]).trim() !== configId) continue; // column C = ConfigID
+    if (String(data[i][LEDGER.CONFIG_ID]).trim() !== configId) continue;
 
-    const currentStatus = String(data[i][12]).trim();
+    const currentStatus = String(data[i][LEDGER.STATUS]).trim();
     if (currentStatus !== "PENDING_TEACHER_REVIEW") {
       return { success: false, error: "This submission is not awaiting review (current status: " + currentStatus + ")." };
     }
 
-    const rowSuggested = data[i][19];
+    const rowSuggested = data[i][LEDGER.TURN_IN_SUGGESTED_SCORE];
     const suggestedScore = (rowSuggested === "" || rowSuggested === undefined) ? null : Number(rowSuggested);
     if (decisionType === "CONFIRMED" && suggestedScore === null) {
       return { success: false, error: "No suggested score to confirm — use Override to assign a score directly." };
@@ -487,13 +616,13 @@ function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, deci
     }
 
     const rowIndex = i + 1;
-    sheet.getRange(rowIndex, 13).setValue("COMPLIANT"); // terminal — same status every other health check/report already expects
-    sheet.getRange(rowIndex, 15).setValue(
+    sheet.getRange(rowIndex, LEDGER.STATUS + 1).setValue("COMPLIANT"); // terminal — same status every other health check/report already expects
+    sheet.getRange(rowIndex, LEDGER.NOTES + 1).setValue(
       "Reviewed by teacher — final score " + finalScore + "/5 (" + decisionType.toLowerCase() + ")."
     );
-    sheet.getRange(rowIndex, 21).setValue(finalScore);
-    sheet.getRange(rowIndex, 22).setValue(teacherEmail);
-    sheet.getRange(rowIndex, 23).setValue(new Date());
+    sheet.getRange(rowIndex, LEDGER.TURN_IN_FINAL_SCORE + 1).setValue(finalScore);
+    sheet.getRange(rowIndex, LEDGER.TURN_IN_SCORE_DECIDED_BY + 1).setValue(teacherEmail);
+    sheet.getRange(rowIndex, LEDGER.TURN_IN_SCORE_DECIDED_AT + 1).setValue(new Date());
     SpreadsheetApp.flush();
 
     return { success: true, finalScore: finalScore };
@@ -516,6 +645,60 @@ function teacherOverrideTurnInScore(configId, score) {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
   return _recordTurnInDecision_(cfg, configId, cfg.teacherEmail, score, "OVERRIDDEN");
+}
+
+// ── Weekly parent reports (36_WeeklyParentReport.js) ────────────────────────
+// Two more google.script.run entry points, same _isAuthorizedTeacher_ gate as
+// everything else exported from this file.
+//
+// This pair is the reason delivery lives in the dashboard rather than in
+// Gmail drafts. A draft the teacher addresses by hand leaves the system no
+// record of where a child's scores went; here the app addresses and sends,
+// so ParentReportLog can record the recipient. The most likely FERPA
+// incident this feature could produce is one child's report reaching another
+// child's parent, and a log that says who actually received what is the only
+// thing that makes that detectable after the fact.
+//
+// The authorization gate matters more here than on most functions in this
+// file: this is the one path in cas-ccps that sends student data outside the
+// school's Workspace domain.
+
+function getWeeklyParentReports() {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  try {
+    const generated = generateWeeklyParentReports();
+    return {
+      success: true,
+      weekStart: generated.weekStart ? Utilities.formatDate(
+        generated.weekStart, Session.getScriptTimeZone(), "MMMM d, yyyy") : "",
+      weekEnd: generated.weekEnd ? Utilities.formatDate(
+        generated.weekEnd, Session.getScriptTimeZone(), "MMMM d, yyyy") : "",
+      excludedStudentCount: generated.excludedStudentCount,
+      reports: generated.reports.map(function (r) {
+        return {
+          studentEmail: r.studentEmail,
+          studentName: r.studentName,
+          confirmedCount: r.confirmedCount,
+          pendingCount: r.pendingCount,
+          itemCount: r.thisWeek.length,
+          progressCount: r.progress.length,
+          // The exact text that would be sent, so the teacher reviews what
+          // the parent will actually read rather than a summary of it.
+          preview: renderWeeklyParentReportText_(r),
+        };
+      }),
+    };
+  } catch (e) {
+    Logger.log("[S07] getWeeklyParentReports failed: " + e.message);
+    return { success: false, error: e.message };
+  }
+}
+
+function teacherSendWeeklyParentReport(studentEmail, recipientAddress) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return sendWeeklyParentReport(studentEmail, recipientAddress);
 }
 
 // ── M2 ──────────────────────────────────────────────────────────────────────
@@ -992,6 +1175,10 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
        roster via getStudentContextRoster(). A student caller gets an
        entirely separate, small buildMyContextHtml_() page instead. ── -->
   <button id="context-tab-btn" onclick="showStudentContext()">My Context</button>
+  <!-- Weekly parent reports (36_WeeklyParentReport.js). Opens a review
+       list; nothing is sent until the teacher enters an address and
+       presses Send on one student. -->
+  <button id="parent-report-btn" onclick="openParentReportModal()">✉ Parent Reports</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -1166,6 +1353,24 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
       <button class="modal-close" onclick="closeScoreReviewModal()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="score-review-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- Weekly Parent Reports modal — 36_WeeklyParentReport.js.
+     Same modal-backdrop/modal/modal-header/modal-body convention as the
+     three modals above. Wider than the review modal because each row shows
+     a full preview of the text that would be sent: the teacher is
+     authorizing a disclosure outside the school's domain, so they read the
+     actual message, not a summary of it. -->
+<div class="modal-backdrop" id="parent-report-modal-backdrop" onclick="if(event.target===this)closeParentReportModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="parent-report-modal-title" style="max-width:720px">
+    <div class="modal-header">
+      <h2 id="parent-report-modal-title">Weekly parent reports</h2>
+      <button class="modal-close" onclick="closeParentReportModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="parent-report-modal-body">
       <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
   </div>
@@ -1459,6 +1664,136 @@ function _handleTurnInDecisionResult(res) {
   loadData();
 }
 
+// ── Weekly parent reports ───────────────────────────────────────────────────
+// Review-and-send, one student at a time. Deliberately not a "send all"
+// button: each send is a disclosure of one child's record to one address
+// outside the school's domain, and a bulk action would make the most
+// consequential thing here the easiest thing to do by accident.
+
+let _parentReports = [];
+
+function openParentReportModal() {
+  document.getElementById("parent-report-modal-backdrop").classList.add("show");
+  document.getElementById("parent-report-modal-body").innerHTML =
+    '<p style="font-size:13px;color:var(--text-secondary)">Loading this week\\'s reports…</p>';
+  google.script.run
+    .withSuccessHandler(renderParentReportModal)
+    .withFailureHandler(function(e) {
+      document.getElementById("parent-report-modal-body").innerHTML =
+        '<p style="color:#d93025;font-size:13px">Could not load: ' +
+        esc(e && e.message ? e.message : "unknown error") + '</p>';
+    })
+    .getWeeklyParentReports();
+}
+
+function closeParentReportModal() {
+  document.getElementById("parent-report-modal-backdrop").classList.remove("show");
+}
+
+function renderParentReportModal(data) {
+  const body = document.getElementById("parent-report-modal-body");
+  if (!data || !data.success) {
+    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+      esc((data && data.error) || "Could not load reports.") + '</p>';
+    return;
+  }
+  _parentReports = data.reports || [];
+
+  let html = '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:4px">' +
+    'Week of <strong>' + esc(data.weekStart) + '</strong> – <strong>' +
+    esc(data.weekEnd) + '</strong></p>' +
+    '<p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">' +
+    'Scores appear only where you have already confirmed them. Anything still ' +
+    'awaiting your review is counted, never numbered.</p>';
+
+  // Students dropped by _studentIdPattern_ are surfaced, not swallowed. In
+  // the aggregator a skipped row is a cosmetic gap; here it is a family that
+  // would never hear from the school, and the teacher is the only person who
+  // can notice and fix the underlying account.
+  if (data.excludedStudentCount > 0) {
+    html += '<div role="alert" style="background:#fef7e0;border:1px solid #f9dc8f;' +
+      'border-radius:6px;padding:10px 12px;font-size:12.5px;margin-bottom:14px">' +
+      '<strong>' + esc(data.excludedStudentCount) + ' student' +
+      (data.excludedStudentCount === 1 ? ' is' : 's are') + ' not listed below.</strong> ' +
+      'Their account does not match the district student-ID format, so no report ' +
+      'was built for them. They will keep being skipped until the account is corrected.' +
+      '</div>';
+  }
+
+  if (!_parentReports.length) {
+    html += '<p style="font-size:13px;color:var(--text-secondary)">No coursework recorded this week.</p>';
+    body.innerHTML = html;
+    return;
+  }
+
+  _parentReports.forEach(function(r, i) {
+    const pending = r.pendingCount > 0
+      ? '<span style="color:#b06000"> · ' + esc(r.pendingCount) + ' awaiting your review</span>'
+      : '';
+    html +=
+      '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
+        '<div style="font-weight:600;font-size:14px">' + esc(r.studentName || r.studentEmail) + '</div>' +
+        '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:10px">' +
+          esc(r.confirmedCount) + ' confirmed score' + (r.confirmedCount === 1 ? '' : 's') +
+          pending + ' · ' + esc(r.progressCount) + ' competenc' +
+          (r.progressCount === 1 ? 'y' : 'ies') + ' to date' +
+        '</div>' +
+        '<details style="margin-bottom:10px">' +
+          '<summary style="font-size:12.5px;cursor:pointer;color:#1a73e8">' +
+            'Read what will be sent</summary>' +
+          '<pre style="white-space:pre-wrap;font-size:12px;background:#f8f9fa;' +
+            'border-radius:6px;padding:10px;margin-top:8px;font-family:inherit">' +
+            esc(r.preview) + '</pre>' +
+        '</details>' +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+          '<label for="pr-addr-' + i + '" style="font-size:12.5px">Parent email</label>' +
+          '<input id="pr-addr-' + i + '" type="email" placeholder="name@example.com" ' +
+            'style="flex:1;min-width:190px;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px">' +
+          '<button class="btn" onclick="submitParentReportSend(' + i + ')">Send</button>' +
+        '</div>' +
+        '<div id="pr-msg-' + i + '" role="status" aria-live="polite" ' +
+          'style="font-size:12.5px;margin-top:8px"></div>' +
+      '</div>';
+  });
+  body.innerHTML = html;
+}
+
+function submitParentReportSend(i) {
+  const report = _parentReports[i];
+  if (!report) return;
+  const input = document.getElementById("pr-addr-" + i);
+  const msg   = document.getElementById("pr-msg-" + i);
+  const addr  = input ? input.value.trim() : "";
+  if (!addr) {
+    msg.style.color = "#d93025";
+    msg.textContent = "Enter the parent's email address.";
+    return;
+  }
+  msg.style.color = "var(--text-secondary)";
+  msg.textContent = "Sending…";
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (!res || !res.success) {
+        msg.style.color = "#d93025";
+        msg.textContent = (res && res.error) || "Could not send — try again.";
+        return;
+      }
+      msg.style.color = "#188038";
+      // Echo the address back. The teacher typed it by hand, and this is the
+      // last moment a misdirected report can be noticed by the person who
+      // still remembers who it was meant for.
+      msg.textContent = "✅ Sent to " + res.recipient;
+      if (input) input.disabled = true;
+      showToast("✅ Report sent to " + res.recipient);
+    })
+    .withFailureHandler(function(e) {
+      msg.style.color = "#d93025";
+      msg.textContent = e && e.message ? e.message : "Could not send — try again.";
+    })
+    .teacherSendWeeklyParentReport(report.studentEmail, addr);
+}
+
 // Per-term client cache — switching the term filter back and forth used to
 // refetch and rebuild the whole dashboard from scratch every time, even
 // though the previous term's data was still sitting in memory. A cache hit
@@ -1700,8 +2035,18 @@ If you expect to see students here:
         // attribute's text to the JS parser, so the ' escape still has to
         // survive that decode — hence &quot; here, not \\", which the JS
         // parser would see literally instead of as a quote).
+        //
+        // FIXED: wrNameSafe's second .replace() used to target a literal
+        // ' character. That was fine when esc() only handled &/</>, but
+        // esc() now also escapes ' to &#39; (a real quote-escaping bug a
+        // third-party review found) — so by the time this line ran, esc()
+        // had already consumed every raw ', leaving &#39; untouched and
+        // silently reintroducing the exact vulnerability this comment
+        // describes for any student name containing an apostrophe. Now
+        // targets the entity esc() actually produces. wrIdSafe is
+        // unaffected — googleId is never passed through esc() first.
         const wrIdSafe   = s.googleId.replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const wrNameSafe = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const wrNameSafe = esc(s.name).replace(/&#39;/g,"\\\\'");
         wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
       }
       // NEW (Say/Do Ledger cas-ccps finding #1): shown on every
@@ -1710,11 +2055,12 @@ If you expect to see students here:
       // above since these are independent concerns, not mutually exclusive
       // bucket states. Same double-escape pattern as the "locked" bucket's
       // View Profile button just above, for the same reason (onclick
-      // attribute — see that comment).
+      // attribute — see that comment) — including the same esc()-then-&#39;
+      // fix for rvNameSafe.
       let reviewNextStep = "";
       if (s.statusClass === "pending-review") {
         const rvConfigSafe = String(s.configId||"").replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const rvNameSafe   = esc(s.name).replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
+        const rvNameSafe   = esc(s.name).replace(/&#39;/g,"\\\\'");
         const rvScoreArg   = s.suggestedScore == null ? "null" : String(s.suggestedScore);
         const rvScoreNote  = s.suggestedScore == null
           ? "No AI-suggested score — assign one directly."
@@ -1728,8 +2074,8 @@ If you expect to see students here:
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
           <div class="last-eval">Last evaluation: \${esc(s.lastEval)}</div>
           \${s.submittedAt && s.submittedAt !== "—" ? \`<div class="last-eval">Submitted: \${esc(s.submittedAt)}</div>\` : ""}
-          \${s.docUrl
-            ? \`<a class="doc-link" href="\${s.docUrl}" target="_blank">Open document ↗</a>\`
+          \${safeDocUrl(s.docUrl)
+            ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">Open document ↗</a>\`
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
           }
           \${wrNextStep}
@@ -1782,6 +2128,7 @@ function _populateTermDropdown(data) {
 }
 
 ${CLIENT_ESC_JS}
+${CLIENT_SAFE_DOC_URL_JS}
 
 // ── M4: STUDENT CONTEXT TAB ───────────────────────────────────────────────
 // FIXED (finding #9): this page is only ever built for the authorized
@@ -1837,7 +2184,9 @@ function renderTeacherRoster(result) {
         : '<span class="status-badge badge-not-started">No recent activity</span>';
       html += '<div style="background:white;border-radius:8px;padding:12px 16px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;box-shadow:0 1px 2px rgba(0,0,0,0.08);">';
       html += '<div>' + activityBadge + ' <strong style="margin-left:6px">' + esc(s.name) + '</strong><div style="font-size:11px;color:var(--text-secondary);margin-left:16px;">' + esc(s.email) + ' · last updated ' + esc(s.lastUpdatedAt) + '</div></div>';
-      html += '<a href="' + s.docUrl + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>';
+      html += safeDocUrl(s.docUrl)
+        ? '<a href="' + esc(safeDocUrl(s.docUrl)) + '" target="_blank" style="font-size:12px;color:#1a73e8;text-decoration:none;">Open doc ↗</a>'
+        : '<span style="font-size:12px;color:var(--text-secondary);">Document not yet available</span>';
       html += '</div>';
     });
   }
@@ -2548,6 +2897,7 @@ header h1{font-size:18px;font-weight:500}
 
 <script>
 ${CLIENT_ESC_JS}
+${CLIENT_SAFE_DOC_URL_JS}
 
 function loadOwnContext() {
   google.script.run
@@ -2568,7 +2918,9 @@ function loadOwnContext() {
         '<div style="text-align:center;padding:40px 0;">' +
         '<p style="font-size:14px;color:#3c4043;margin-bottom:6px;">Your context record was last updated:</p>' +
         '<p style="font-size:16px;font-weight:500;color:#202124;margin-bottom:20px;">' + esc(result.lastUpdatedAt) + '</p>' +
-        '<a href="' + result.docUrl + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>' +
+        (safeDocUrl(result.docUrl)
+          ? '<a href="' + esc(safeDocUrl(result.docUrl)) + '" target="_blank" style="background:#1a73e8;color:white;padding:10px 24px;border-radius:6px;text-decoration:none;font-size:14px;">Open my context doc ↗</a>'
+          : '<p style="font-size:13px;color:var(--text-secondary);">Document not yet available</p>') +
         '</div>';
     })
     .withFailureHandler(function(e) {

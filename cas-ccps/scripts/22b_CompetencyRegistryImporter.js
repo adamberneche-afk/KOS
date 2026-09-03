@@ -135,6 +135,16 @@ function importCompetencyRegistry() {
   const startRow = regSheet.getLastRow() + 1;
   regSheet.getRange(startRow, 1, toAppend.length, 7).setValues(toAppend);
 
+  // Invalidate getCompetencyTextMap_()'s CacheService entry (00_SharedConfig.js)
+  // — new competency_ids just landed on the sheet and must not be masked by
+  // a cached map built before this import ran. Same "cache invalidated on
+  // re-import" discipline as 31_PacingGuideManager.js's pacing-guide cache.
+  // Non-fatal if CacheService itself is unavailable — the cache would only
+  // otherwise self-correct after its own TTL.
+  try {
+    CacheService.getScriptCache().remove(COMPETENCY_REGISTRY_CACHE_KEY);
+  } catch (e) { /* non-fatal — see comment above */ }
+
   Logger.log("[IMPORT] Import complete.");
   Logger.log("[IMPORT]   Imported: " + toAppend.length + " row(s)");
   Logger.log("[IMPORT]   Skipped (already present): " + skipped + " row(s)");

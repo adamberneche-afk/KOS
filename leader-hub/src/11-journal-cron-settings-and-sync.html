@@ -1,0 +1,3105 @@
+// ══════════════════════════════════════════════════════════
+// THOUGHT ORGANIZER
+// ══════════════════════════════════════════════════════════
+
+
+// ══════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════
+// REFLECTIVE JOURNAL — STEP-BY-STEP ENGINE + CRON SYSTEM
+// ══════════════════════════════════════════════════════════
+
+const MOOD_LABELS = {
+  1:'😞 Rough',2:'😔 Hard',3:'😕 Low',4:'😐 Okay',5:'🙂 Decent',
+  6:'😊 Good',7:'😁 Great',8:'🤩 Energized',9:'🔥 On Fire',10:'⚡ Peak'
+};
+const MOOD_ADVICE = {
+  1:'Tomorrow: Just one task. Protect yourself first.',
+  2:'Tomorrow: Start with something that brings you energy.',
+  3:'Tomorrow: Small wins only. Build momentum gently.',
+  4:'Tomorrow: Normal pace. Pick one priority and stay with it.',
+  5:'Tomorrow: Standard load. You\'ve got this.',
+  6:'Tomorrow: Good energy — take on something you\'ve been avoiding.',
+  7:'Tomorrow: Push on a big project. Momentum is yours.',
+  8:'Tomorrow: High output day — lead with your hardest task first.',
+  9:'Tomorrow: Channel this. Go ambitious on something that matters.',
+  10:'Tomorrow: Peak state — do your most important work first, before anything else.',
+};
+const MOOD_COLORS = {
+  1:'#dc2626',2:'#ef4444',3:'#f97316',4:'#eab308',5:'#84cc16',
+  6:'#22c55e',7:'#10b981',8:'#06b6d4',9:'#3b82f6',10:'#8b5cf6'
+};
+
+// Step state
+let _journalMood = null;
+let _journalStep = 0;
+let _journalOpenSnapshot = null;   // field values captured on open, to detect unsaved changes on close
+const JOURNAL_TOTAL_STEPS = 7; // 6 questions + summary
+
+function openJournal(){
+  const modal = document.getElementById('journal-modal');
+  modal.style.display = 'block';
+  _journalStep = 0;
+
+  // Set date
+  document.getElementById('journal-date-hdr').textContent =
+    new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+  // Pre-fill from today if already saved
+  const last = LS.get('lh_journal_last');
+  const today = new Date().toDateString();
+  if(last && last.date === today){
+    const set = (id, val) => { const el=document.getElementById(id); if(el) el.value=val||''; };
+    set('jq1',last.q1); set('jq2',last.q2);
+    set('jq4',last.q4); set('jq5',last.q5); set('jq6',last.q6);
+    _journalMood = last.mood || null;
+  } else {
+    // Clear fields
+    ['jq1','jq2','jq4','jq5','jq6'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+    _journalMood = null;
+  }
+
+  // A draft from an interrupted session (tab closed/crashed mid-reflection)
+  // takes priority over whatever was just set above — it represents more
+  // recent typing than either the fully-saved entry or a blank form.
+  const draft = LS.get(JOURNAL_DRAFT_KEY);
+  if (draft && draft.date === today) {
+    const set = (id, val) => { const el=document.getElementById(id); if(el && val) el.value=val; };
+    set('jq1',draft.jq1); set('jq2',draft.jq2);
+    set('jq4',draft.jq4); set('jq5',draft.jq5); set('jq6',draft.jq6);
+    if (draft.mood) _journalMood = draft.mood;
+  }
+
+  renderMoodButtons();
+  goToJournalStep(0);
+
+  // Cron badge
+  const badge = document.getElementById('journal-cron-badge');
+  if(badge){
+    if(last && last.cronRan){ badge.className='cron-badge cron-ok'; badge.textContent='✅ Adjusted'; }
+    else if(last){ badge.className='cron-badge cron-warn'; badge.textContent='⏰ 2am'; }
+    else { badge.className='cron-badge cron-idle'; badge.textContent='⏰ 2am'; }
+  }
+
+  // Snapshot the just-loaded values so closeJournal() can tell whether the
+  // user changed anything since opening — closing used to silently discard
+  // a fully-answered reflection with zero warning.
+  _journalOpenSnapshot = _journalCurrentValues();
+}
+
+function _journalCurrentValues(){
+  const get = id => { const el=document.getElementById(id); return el ? el.value : ''; };
+  return { jq1:get('jq1'), jq2:get('jq2'), jq4:get('jq4'), jq5:get('jq5'), jq6:get('jq6'), mood:_journalMood };
+}
+
+function _journalHasUnsavedChanges(){
+  if(!_journalOpenSnapshot) return false;
+  const now = _journalCurrentValues();
+  return Object.keys(now).some(k => (now[k]||'') !== (_journalOpenSnapshot[k]||''));
+}
+
+// ── Journal draft autosave ──────────────────────────────────────────────
+// The discard-confirmation above only catches in-app close (Escape, ✕,
+// backdrop) — it can't help if the tab dies mid-reflection. This debounced
+// autosave gives a real recovery path for that case: in-progress answers
+// land in localStorage as the user types, restored on next open if they're
+// newer than whatever's already saved for today.
+const JOURNAL_DRAFT_KEY = 'lh_journal_draft';
+function saveJournalDraft(){
+  const d = _journalCurrentValues();
+  d.date = new Date().toDateString();
+  if (!(d.jq1 || d.jq2 || d.jq4 || d.jq5 || d.jq6)) { LS.set(JOURNAL_DRAFT_KEY, null); return; }
+  LS.set(JOURNAL_DRAFT_KEY, d);
+}
+let _journalDraftTimer = null;
+function scheduleJournalDraftSave(){
+  clearTimeout(_journalDraftTimer);
+  _journalDraftTimer = setTimeout(saveJournalDraft, 500);
+}
+function clearJournalDraft(){
+  // Also cancel any pending debounced autosave — without this, a keystroke
+  // just before Save leaves _journalDraftTimer armed, and it fires ~500ms
+  // later (reading the still-live textarea values) and re-writes the exact
+  // draft this call just cleared, resurrecting a "recover your draft?"
+  // prompt for an entry that already saved successfully.
+  clearTimeout(_journalDraftTimer);
+  LS.set(JOURNAL_DRAFT_KEY, null);
+}
+// Delegated rather than wired onto each of the 5 textareas individually —
+// works for all of them (and any added later) without touching their markup.
+document.addEventListener('input', (e) => {
+  if (e.target && e.target.classList && e.target.classList.contains('journal-ta')) scheduleJournalDraftSave();
+});
+
+function closeJournal(skipConfirm){
+  // If journal was auto-triggered at 2:30pm, block closing until complete
+  if(_journalForced){
+    // Shake the modal to indicate it can't be dismissed
+    const inner = document.getElementById('journal-modal')?.querySelector('.journal-inner');
+    if(inner){
+      inner.style.animation = 'none';
+      inner.offsetHeight; // force reflow
+      inner.style.animation = 'journalShake .35s ease';
+      setTimeout(()=>{ inner.style.animation=''; }, 400);
+    }
+    return;
+  }
+  // A backdrop click or the ✕ button used to discard a fully-answered
+  // reflection with no warning at all — this is the one place in the app
+  // where that's especially costly, since there's no autosave for it.
+  if(!skipConfirm && _journalHasUnsavedChanges()){
+    _showDiscardConfirm('You have unsaved reflection answers. Close without saving?', () => closeJournal(true));
+    return;
+  }
+  _journalOpenSnapshot = null;
+  document.getElementById('journal-modal').style.display='none';
+}
+
+function goToJournalStep(n, direction='forward'){
+  // Hide all steps
+  document.querySelectorAll('.journal-step').forEach(el=>{
+    el.classList.remove('active','going-back');
+  });
+
+  // Show target step
+  const target = document.getElementById('jstep-'+n);
+  if(!target) return;
+  if(direction==='back') target.classList.add('journal-step','going-back');
+  target.classList.add('active');
+  _journalStep = n;
+
+  // Update pips
+  document.querySelectorAll('.journal-pip').forEach((pip, i) => {
+    pip.classList.remove('done','active');
+    if(i < n) pip.classList.add('done');
+    else if(i === n) pip.classList.add('active');
+  });
+
+  // Show/hide nav buttons
+  const backBtn = document.getElementById('journal-back-btn');
+  const nextBtn = document.getElementById('journal-next-btn');
+  const saveBtn = document.getElementById('journal-save-btn');
+  if(backBtn) backBtn.style.display = n > 0 ? 'inline-flex' : 'none';
+
+  const isSummary = (n === JOURNAL_TOTAL_STEPS - 1);
+  if(nextBtn) nextBtn.style.display = isSummary ? 'none' : 'inline-flex';
+  if(saveBtn) saveBtn.style.display = isSummary ? 'inline-flex' : 'none';
+
+  // Build summary if on last step
+  if(isSummary) buildJournalSummary();
+
+  // Auto-focus textarea if present
+  const ta = target.querySelector('textarea');
+  if(ta) setTimeout(()=>ta.focus(), 250);
+}
+
+function journalStep(dir){
+  const next = _journalStep + dir;
+  if(next < 0 || next >= JOURNAL_TOTAL_STEPS) return;
+  goToJournalStep(next, dir < 0 ? 'back' : 'forward');
+}
+
+function buildJournalSummary(){
+  const get = id => { const el=document.getElementById(id); return el?el.value.trim():''; };
+  const body = document.getElementById('journal-summary-body');
+  if(!body) return;
+  const moodColor = _journalMood ? MOOD_COLORS[_journalMood] : '#94a3b8';
+  const rows = [
+    { icon:'📋', label:'Planning', val: get('jq1') },
+    { icon:'🚧', label:'Avoided', val: get('jq2') },
+    { icon:'🌡️', label:'Energy', val: _journalMood
+        ? `<span style="font-weight:700;color:${moodColor}">${_journalMood}/10</span> — ${MOOD_LABELS[_journalMood]}`
+        : null },
+    { icon:'🏅', label:'Proud of', val: get('jq4') },
+    { icon:'👀', label:'Kindness seen', val: get('jq5') },
+    { icon:'🤝', label:'Kindness given', val: get('jq6') },
+  ];
+  body.innerHTML = rows.map(r=>`
+    <div class="journal-summary-row">
+      <span class="sr-icon">${r.icon}</span>
+      <div class="sr-body">
+        <div class="sr-label">${r.label}</div>
+        <div class="sr-val ${!r.val?'empty':''}">${r.val || '(skipped)'}</div>
+      </div>
+    </div>`).join('');
+}
+
+function renderMoodButtons(){
+  const container = document.getElementById('mood-btns');
+  if(!container) return;
+  container.innerHTML = Array.from({length:10},(_,i)=>{
+    const n = i+1;
+    const isSel = _journalMood === n;
+    const style = isSel ? `background:${MOOD_COLORS[n]};border-color:${MOOD_COLORS[n]}` : '';
+    return `<button class="mood-btn${isSel?' selected':''}" data-n="${n}" style="${style}" onclick="selectMood(${n})" aria-label="Energy level ${n} of 10" aria-pressed="${isSel}">${n}</button>`;
+  }).join('');
+  const desc = document.getElementById('mood-desc');
+  if(desc && _journalMood){
+    desc.style.background = MOOD_COLORS[_journalMood]+'18';
+    desc.style.color = MOOD_COLORS[_journalMood];
+    desc.style.borderLeft = `3px solid ${MOOD_COLORS[_journalMood]}`;
+    desc.textContent = `${MOOD_LABELS[_journalMood]} — ${MOOD_ADVICE[_journalMood]}`;
+  } else if(desc){
+    desc.style.cssText='';
+    desc.textContent='Tap a number to set your energy level.';
+  }
+}
+
+function selectMood(n){
+  _journalMood = n;
+  renderMoodButtons();
+  saveJournalDraft();
+}
+
+function getLastMoodScore(){
+  const last = LS.get('lh_journal_last');
+  if(!last) return null;
+  const age = (Date.now()-new Date(last.savedAt||0).getTime())/(1000*60*60);
+  return age < 48 ? last.mood : null;
+}
+
+async function saveJournalEntry(){
+  const btn = document.getElementById('journal-save-btn');
+  if(btn){ btn.textContent = 'Saving…'; btn.disabled = true; }
+
+  const get = id => { const el=document.getElementById(id); return el?el.value.trim():''; };
+  const entry = {
+    id: 'j'+Date.now(),
+    date: new Date().toDateString(),
+    savedAt: new Date().toISOString(),
+    q1: get('jq1'),
+    q2: get('jq2'),
+    mood: _journalMood || 5,
+    q4: get('jq4'),
+    q5: get('jq5'),
+    q6: get('jq6'),
+    cronRan: false,
+  };
+
+  LS.set('lh_journal_last', entry);
+
+  // Append to history (keep 60 days)
+  const hist = LS.get('lh_journal_history', []);
+  const todayIdx = hist.findIndex(e=>e.date===entry.date);
+  if(todayIdx>=0) hist[todayIdx]=entry; else hist.unshift(entry);
+  LS.set('lh_journal_history', hist.slice(0,60));
+
+  // Surface avoided task for tomorrow
+  if(entry.q2) LS.set('lh_journal_avoided', entry.q2);
+
+  // Cron: run now if after 8pm, otherwise schedule for 2am
+  const hour = new Date().getHours();
+  if(hour >= 20 || hour < 5){
+    await runCronAdjustment(entry);
+  } else {
+    // createdAt lets checkCron() compute the actual target 2am occurrence
+    // (the next one after this moment) instead of only ever matching
+    // today's clock hour — see checkCron()'s catch-up comment.
+    LS.set('lh_cron_pending', { entryId: entry.id, scheduledFor:'02:00', createdAt: new Date().toISOString() });
+  }
+
+  // Unlock forced mode (if this was a 2:30pm auto-prompt)
+  unlockJournalModal();
+
+  // Already persisted above — clear the open-time snapshot so the
+  // save-triggered close below doesn't itself get flagged as "unsaved changes."
+  _journalOpenSnapshot = null;
+  clearJournalDraft();
+  closeJournal();
+  if(btn){ btn.textContent='Save & Set Tomorrow ✦'; btn.disabled=false; }
+  // The most reflective, highest-effort save in the app was also the one
+  // with zero confirmation that it actually landed.
+  _showToast('✅ Reflection saved — see you tomorrow');
+  refreshNextAction();
+  updateJournalCTA();
+}
+
+// ══════════════════════════════════════════════════════════
+// CRON ADJUSTMENT ENGINE
+// Runs at 2am (or immediately if evening/night).
+// Reads mood (Q3) as emotional barometer.
+// Mood 1-3 → reduced, gentle load
+// Mood 4-6 → standard load
+// Mood 7-10 → push, ambitious load
+// Writes tomorrow's priority stack to localStorage.
+// ══════════════════════════════════════════════════════════
+
+
+
+// Checks if cron should fire (called every 15s via tick)
+let _cronChecked = false;
+function checkCron(){
+  const pending = LS.get('lh_cron_pending');
+  if(!pending) return;
+  const now = new Date();
+  const [th, tm] = pending.scheduledFor.split(':').map(Number);
+  // Compute the actual target moment: the next occurrence of scheduledFor
+  // after the pending entry was created. Anchoring to createdAt (rather
+  // than always re-deriving "today at th:tm" from `now`) is what makes the
+  // catch-up check below safe — without it, a pending entry created at 3pm
+  // for tonight's 2am would look "missed" the instant checkCron ran later
+  // that same afternoon.
+  const created = pending.createdAt ? new Date(pending.createdAt) : now;
+  const target  = new Date(created);
+  target.setHours(th, tm, 0, 0);
+  if(target <= created) target.setDate(target.getDate() + 1);
+  const windowEnd    = new Date(target.getTime() + 10*60000);
+  const withinWindow = now >= target && now < windowEnd;
+  // Catch-up: the 10-minute window already passed without firing (laptop
+  // asleep, tab closed at 2am, etc.) — previously this just sat pending
+  // forever, since the hour-of-day check above could only ever match again
+  // a full day later. Fire as soon as the app is next open instead of
+  // silently skipping a night's priority adjustment.
+  const missedWindow = now >= windowEnd;
+  if(withinWindow || missedWindow){
+    if(_cronChecked) return;
+    _cronChecked = true;
+    const entry = LS.get('lh_journal_last');
+    if(entry && !entry.cronRan){
+      runCronAdjustment(entry).then(()=>{
+        refreshNextAction();
+        updateJournalCTA();
+        _cronChecked = false; // reset so it can be manually triggered again
+      });
+    } else {
+      _cronChecked = false;
+    }
+  }
+}
+
+// ── 2:30pm forced journal prompt ──────────────────────────────
+// Fires once per calendar day, locks modal until reflection is saved
+let _journalForced = false;        // true = modal is in forced/locked mode
+let _journalAutoShownDate = null;  // tracks which date auto-show already fired
+
+function checkJournalAutoPrompt(){
+  const now   = new Date();
+  const today = now.toDateString();
+  const h     = now.getHours();
+  const m     = now.getMinutes();
+
+  // Only fire at 14:30–14:59 (2:30pm–2:59pm window)
+  if(!(h === 14 && m >= 30)) return;
+  if (!isSchoolDay(now)) return;  // Skip on no-school days
+
+  // Already shown today?
+  const shownDate = LS.get('lh_journal_autoprompt_date','');
+  if(shownDate === today) return;
+
+  // Already completed today's reflection?
+  const last = LS.get('lh_journal_last');
+  if(last && last.date === today) return;
+
+  // Mark as shown for today, then open in forced mode
+  LS.set('lh_journal_autoprompt_date', today);
+  openJournalForced();
+}
+
+// ── 1:45 PM deposit reminder (CCPS Policy: no money overnight, deposit by 2 PM to Ms. Evans)
+let _depositReminderShownDate = null;
+function checkDepositReminder(){
+  const now = new Date();
+  const today = now.toDateString();
+
+  // Fire at 13:45–14:00 (1:45 PM window), or any time after 14:00 as a
+  // catch-up if the tab was closed/backgrounded through the window —
+  // matches checkCron's own missedWindow pattern. This is the reminder
+  // with a real CCPS Policy 7060 consequence, so it's the first to get
+  // this (external UX audit: the narrowest window in the app, with zero
+  // catch-up, on the one reminder that actually matters if missed).
+  const windowStart = new Date(now); windowStart.setHours(13, 45, 0, 0);
+  const windowEnd   = new Date(now); windowEnd.setHours(14, 0, 0, 0);
+  const withinWindow = now >= windowStart && now < windowEnd;
+  const missedWindow = now >= windowEnd;
+  if(!(withinWindow || missedWindow)) return;
+
+  // Already shown today?
+  const shownDate = LS.get('lh_deposit_reminder_date','');
+  if(shownDate === today) return;
+
+  // Check if store has any transactions today (any INVENTORY changes or daily log entries)
+  const storeTxToday = LS.get('lh_deposit_reminder_force', false);
+  const dailyLog = LS.get('lh_daily_log', []);
+  const hasTodayLog = dailyLog.some(e => new Date(e.date).toDateString() === today);
+  const invTransactions = LS.get('lh_inventory_transactions', []);
+  const hasTodaySale = invTransactions.some(t => new Date(t.date||t.ts).toDateString() === today);
+
+  // Show reminder if: forced flag set, or store log entry today, or sale today, OR always show (safe default)
+  // Safe default: always show on school days (Mon–Fri) — better to remind unnecessarily than miss a deposit
+  if (!isSchoolDay(now)) return; // Skip weekends + no-school days (spring break, etc.)
+
+  LS.set('lh_deposit_reminder_date', today);
+  showDepositReminderBanner();
+  _fireNotification('🏦 1:45 PM — Deposit Reminder', 'CCPS Policy 7060: no money overnight. Deposit with Ms. Evans by 2:00 PM.');
+}
+
+function showDepositReminderBanner(){
+  if(document.getElementById('deposit-reminder-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'deposit-reminder-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.innerHTML = `
+    <span style="font-size:1.3rem">🏦</span>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">⏰ 1:45 PM — DEPOSIT REMINDER</div>
+      <div style="font-size:.76rem;opacity:.9">Per CCPS Policy 7060: <strong>no money overnight.</strong> All school store funds must be deposited with <strong>Ms. Evans by 2:00 PM</strong> today. Count cash, complete deposit slip, and deliver to bookkeeper before end of period.</div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <button onclick="markDepositDone()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Deposit Done</button>
+      <button onclick="document.getElementById('deposit-reminder-banner').remove()" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕ Dismiss</button>
+    </div>`;
+  document.body.prepend(banner);
+}
+
+function markDepositDone(){
+  const banner = document.getElementById('deposit-reminder-banner');
+  if(banner) banner.remove();
+  // Log deposit completion
+  const today = new Date().toDateString();
+  LS.set('lh_deposit_done_date', today); // read by buildActionQueue()'s missed-deposit fallback card
+  // Show quick confirm toast
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#15803d;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  toast.textContent = '✅ Deposit logged — funds delivered to Ms. Evans';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 4000);
+  refreshNextAction();
+}
+
+// ── Friday noon Workday payroll reminder ─────────────────────────────────────
+// Fires at 12:00–12:15 PM every Friday. Shows a banner with a direct link to
+// Workday time entry. Dismissed = gone for the day. "Done" = gone until next Friday.
+function checkWorkdayReminder(){
+  const now = new Date();
+  const dow  = now.getDay();    // 5 = Friday
+  if(dow !== 5) return;                     // Fridays only
+  if (!isSchoolDay(now)) return;             // Skip payroll prompt on break Fridays
+
+  // 12:00–12:15 PM window, plus a catch-up any time later the same Friday
+  // if the tab was closed/backgrounded through it (matches checkCron's own
+  // missedWindow pattern).
+  const windowStart = new Date(now); windowStart.setHours(12, 0, 0, 0);
+  const windowEnd   = new Date(now); windowEnd.setHours(12, 15, 0, 0);
+  const withinWindow = now >= windowStart && now < windowEnd;
+  const missedWindow = now >= windowEnd;
+  if(!(withinWindow || missedWindow)) return;
+
+  const today = now.toDateString();
+  const shownDate = LS.get('lh_workday_reminder_date', '');
+  if(shownDate === today) return;           // Already shown this Friday
+
+  LS.set('lh_workday_reminder_date', today);
+  showWorkdayReminderBanner();
+  _fireNotification('🕛 Friday — Submit Time in Workday', 'Payroll deadline is today. Log in to Workday and submit your timesheet.');
+}
+
+function showWorkdayReminderBanner(){
+  if(document.getElementById('workday-reminder-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'workday-reminder-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#1d4ed8);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.innerHTML = `
+    <span style="font-size:1.3rem">🕛</span>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">FRIDAY — SUBMIT TIME IN WORKDAY</div>
+      <div style="font-size:.76rem;opacity:.9">Payroll deadline is today. Log in to Workday and submit your timesheet before the end of the day.</div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <a href="https://www.myworkday.com/ccps" target="_blank"
+         onclick="markWorkdayDone()"
+         style="background:#fff;color:#1e3a5f;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center">
+        ↗ Open Workday
+      </a>
+      <button onclick="markWorkdayDone()" style="background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3);border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:700;cursor:pointer">✅ Done</button>
+      <button onclick="document.getElementById('workday-reminder-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.1);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+    </div>`;
+  document.body.prepend(banner);
+}
+
+function markWorkdayDone(){
+  const banner = document.getElementById('workday-reminder-banner');
+  if(banner) banner.remove();
+  LS.set('lh_workday_done_date', new Date().toDateString()); // read by buildActionQueue()'s missed-payroll fallback card
+  // Log payroll submission to the daily log
+  _logDaily({ date: new Date().toISOString(), type: 'workday_submit',
+    note: 'Workday time submitted — payroll compliance' });
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1d4ed8;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  toast.textContent = '✅ Workday time submitted';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 3500);
+  refreshNextAction();
+}
+
+// ── Communications Triage Reminder ────────────────────────────────────────────
+// Fires once per day at 7:30 AM on school days — reminder to clear email,
+// voicemail, and mailbox before students arrive, and to respond promptly to
+// parent/admin communications.
+let _commsTriageShownDate = null;
+// ── isSchoolDay() — returns true if today is a regular school day ─────────────
+// Used by reminder checks to suppress banners on holidays, breaks, and in-service days.
+// All dates in CCPS_NO_SCHOOL are accounted for; weekends handled separately by each check.
+//
+// FIXED (external UX audit): once today is past the last quarter Settings
+// has configured, the calendar itself is stale — every reminder that reads
+// this function used to keep firing through summer break because nothing
+// checked for that case. isCalendarExpired() (src/12) is checked first, so
+// a stale calendar suppresses every isSchoolDay()-gated reminder at once
+// instead of needing a separate guard at each call site.
+function isSchoolDay(d) {
+  const dt = d || new Date();
+  if (typeof isCalendarExpired === 'function' && isCalendarExpired(dt)) return false;
+  const dow = dt.getDay();
+  if (dow === 0 || dow === 6) return false; // weekend
+  const iso = _localDateStr_(dt);
+  if (typeof CCPS_NO_SCHOOL !== 'undefined' && CCPS_NO_SCHOOL.has(iso)) return false;
+  return true;
+}
+
+function checkCommsTriage(){
+  const now   = new Date();
+  if (!isSchoolDay(now)) return;                        // skip weekends + no-school days
+  const today = now.toDateString();
+
+  // 7:30–7:50 AM window, plus a catch-up any time later the same day if the
+  // tab was closed/backgrounded through it (matches checkCron's own
+  // missedWindow pattern).
+  const windowStart = new Date(now); windowStart.setHours(7, 30, 0, 0);
+  const windowEnd   = new Date(now); windowEnd.setHours(7, 50, 0, 0);
+  const withinWindow = now >= windowStart && now < windowEnd;
+  const missedWindow = now >= windowEnd;
+  if(!(withinWindow || missedWindow)) return;
+
+  const shown = LS.get('lh_comms_triage_date','');
+  if(shown === today) return;
+  LS.set('lh_comms_triage_date', today);
+  showCommsTriageBanner();
+  _fireNotification('📬 Morning Comms Check', 'Check Outlook, voicemail, and mailbox before students arrive.');
+}
+
+function showCommsTriageBanner(){
+  if(document.getElementById('comms-triage-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'comms-triage-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.innerHTML = `
+    <span style="font-size:1.3rem">📬</span>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">🌅 MORNING COMMS CHECK</div>
+      <div style="font-size:.76rem;opacity:.9;margin-top:.15rem">Before students arrive: <strong>✉️ Check Outlook</strong> · <strong>📞 Check voicemail</strong> · <strong>📥 Check mailbox outside room</strong>. Reply to anything from admin or parents within 24 hrs. Log any actions in Brain Dump.</div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <button onclick="markCommsDone()" style="background:#fff;color:#1e3a5f;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✅ Checked</button>
+      <button onclick="document.getElementById('comms-triage-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+    </div>`;
+  document.body.prepend(banner);
+}
+
+function markCommsDone(){
+  const banner = document.getElementById('comms-triage-banner');
+  if(banner) banner.remove();
+  LS.set('lh_comms_done_date', new Date().toDateString()); // read by buildActionQueue()'s missed-comms fallback card
+  // Write timestamped entry to daily log
+  _logDaily({ date: new Date().toISOString(), type:'comms', note:'Morning comms triage completed: Outlook, voicemail, and mailbox checked.' });
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;padding:.55rem 1.2rem;border-radius:8px;font-size:.82rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  toast.textContent = '✅ Comms triage logged';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 4000);
+  refreshNextAction();
+}
+
+// ── PLC meeting day-of check ───────────────────────────────────────────────────
+function checkPLCToday() {
+  const now   = new Date();
+  if (!isSchoolDay(now)) return;                // skip weekends + no-school days
+  const today = now.toDateString();
+  const shown = LS.get('lh_plc_banner_date', '');
+  if (shown === today) return;
+  const plcToday = DEADLINES.filter(d => d.id.startsWith('dl_plc') && daysUntil(d.date) === 0);
+  if (!plcToday.length) return;
+  LS.set('lh_plc_banner_date', today);
+  showPLCBanner();
+}
+
+// ── PLC meeting day-of banner ─────────────────────────────────────────────────
+function showPLCBanner() {
+  if (document.getElementById('plc-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'plc-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99995;background:linear-gradient(135deg,#1e3a5f,#1a3560);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.innerHTML = `
+    <span style="font-size:1.3rem">🗓️</span>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">TODAY — CTE PLC MEETING</div>
+      <div style="font-size:.76rem;opacity:.9;margin-top:.1rem">Bring your professional goals update.</div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <button onclick="logPLCAttended();document.getElementById('plc-banner').remove()" style="background:#fff;color:#1a3560;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">✓ Attended</button>
+      <button onclick="document.getElementById('plc-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:rgba(255,255,255,.7);border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+    </div>`;
+  document.body.prepend(banner);
+}
+
+function logPLCAttended() {
+  _logDaily({ date: today, type: 'plc_meeting', note: 'CTE PLC Monthly Meeting — attended.' });
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1a3560;color:#fff;padding:.7rem 1.2rem;border-radius:8px;font-size:.8rem;z-index:99999;box-shadow:0 4px 20px rgba(0,0,0,.2)';
+  toast.textContent = '✅ PLC attendance logged';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 4000);
+  refreshNextAction();
+}
+
+// ── E-sports match day-of banner ─────────────────────────────────────────────
+// Fires once on the morning of a scheduled match. Uses ES_MATCHES date field.
+function checkEsportsMatchToday() {
+  const now   = new Date();
+  if (!isSchoolDay(now)) return;                // skip on holidays + spring break
+  const today = _localDateStr_(now);
+  const shown = LS.get('lh_esports_match_banner_date', '');
+  if (shown === today) return;
+  if (typeof ES_MATCHES === 'undefined') return;
+  const matchToday = ES_MATCHES.find(m => m.date === today);
+  if (!matchToday) return;
+  LS.set('lh_esports_match_banner_date', today);
+  showEsportsMatchBanner(matchToday);
+}
+
+function showEsportsMatchBanner(match) {
+  if (document.getElementById('esports-match-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'esports-match-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99995;background:linear-gradient(135deg,#4c1d95,#6d28d9);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  const gameLabel = match.game === 'ssbu' ? '🥊 Smash Bros' : match.game === 'mk8' ? '🏎️ Mario Kart' : '🎮 E-Sports';
+  banner.innerHTML = `
+    <span style="font-size:1.3rem">🎮</span>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">MATCH DAY — ${gameLabel.toUpperCase()} vs ${match.opp||'TBD'}</div>
+      <div style="font-size:.76rem;opacity:.9;margin-top:.1rem">Run pre-match checklist before game time. Log results after.</div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <button onclick="showView('esports');document.getElementById('esports-match-banner').remove()" style="background:#fff;color:#4c1d95;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">📋 Checklist</button>
+      <button onclick="document.getElementById('esports-match-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+    </div>`;
+  document.body.prepend(banner);
+}
+
+// ── DECA event tomorrow — day-before banner ────────────────────────────────
+// Fires once when any DECA deadline (role:'deca') is exactly 1 day away.
+// Gives Adam time to prep travel docs, contact members, confirm logistics.
+function checkDECAEventTomorrow() {
+  // FIXED: this used to fire unconditionally — even with the Organizations
+  // module turned off in Settings, where its nav button/sidebar section
+  // (and the DECA Hub the banner's button navigates to) are hidden.
+  if (MODULES.orgs === false) return;
+  const now   = new Date();
+  const today = now.toDateString();
+  const shown = LS.get('lh_deca_tomorrow_date', '');
+  if (shown === today) return;
+  if (!isSchoolDay(now)) return;             // skip weekends + no-school days (spring break, etc.)
+  const tomorrow = DEADLINES.filter(d => d.role === 'deca' && daysUntil(d.date) === 1);
+  if (!tomorrow.length) return;
+  LS.set('lh_deca_tomorrow_date', today);
+  showDECATomorrowBanner(tomorrow[0]);
+}
+
+function showDECATomorrowBanner(dl) {
+  if (document.getElementById('deca-tomorrow-banner')) return;
+  const banner = document.createElement('div');
+  banner.id = 'deca-tomorrow-banner';
+  banner.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99994;background:linear-gradient(135deg,#92400e,#b45309);color:#fff;padding:.65rem 1.2rem;display:flex;align-items:center;gap:.75rem;box-shadow:0 4px 12px rgba(0,0,0,.3);font-family:inherit';
+  banner.innerHTML = `
+    <span style="font-size:1.3rem">🏆</span>
+    <div style="flex:1">
+      <div style="font-weight:800;font-size:.88rem;letter-spacing:.5px">TOMORROW — ${dl.title.toUpperCase()}</div>
+      <div style="font-size:.76rem;opacity:.9;margin-top:.1rem">Confirm member roster, travel documents, hotel confirmation, and emergency contacts. Notify parents if not already done.</div>
+    </div>
+    <div style="display:flex;gap:.5rem;flex-shrink:0">
+      <button onclick="showView('deca');document.getElementById('deca-tomorrow-banner').remove()" style="background:#fff;color:#92400e;border:none;border-radius:6px;padding:.35rem .75rem;font-size:.75rem;font-weight:800;cursor:pointer">🏆 DECA Hub</button>
+      <button onclick="document.getElementById('deca-tomorrow-banner').remove()" aria-label="Dismiss" class="btn-on-navy" style="background:rgba(255,255,255,.2);color:#fff;border:none;border-radius:6px;padding:.35rem .6rem;font-size:.75rem;cursor:pointer">✕</button>
+    </div>`;
+  document.body.prepend(banner);
+}
+
+function openJournalForced(){
+  _journalForced = true;
+  openJournal();
+  // Swap out the header close button with a locked indicator
+  const modal = document.getElementById('journal-modal');
+  if(!modal) return;
+  // Hide any existing close button
+  const closeBtn = modal.querySelector('.journal-close-btn');
+  if(closeBtn) closeBtn.style.display = 'none';
+  // Add locked banner inside header if not already there
+  if(!document.getElementById('journal-locked-banner')){
+    const hdr = modal.querySelector('.journal-hdr');
+    if(hdr){
+      const banner = document.createElement('div');
+      banner.id = 'journal-locked-banner';
+      banner.style.cssText = 'font-size:.65rem;font-weight:700;color:var(--gold);letter-spacing:1px;text-transform:uppercase;display:flex;align-items:center;gap:.35rem;margin-top:.2rem';
+      banner.innerHTML = '🔒 Complete all 6 questions to continue';
+      hdr.appendChild(banner);
+    }
+  }
+}
+
+function unlockJournalModal(){
+  _journalForced = false;
+  const banner = document.getElementById('journal-locked-banner');
+  if(banner) banner.remove();
+  const modal = document.getElementById('journal-modal');
+  if(!modal) return;
+  const closeBtn = modal.querySelector('.journal-close-btn');
+  if(closeBtn) closeBtn.style.display = '';
+}
+
+function updateJournalCTA(){
+  const titleEl = document.getElementById('journal-cta-title');
+  const subEl = document.getElementById('journal-cta-sub');
+  const moodEl = document.getElementById('journal-mood-display');
+  const last = LS.get('lh_journal_last');
+  const today = new Date().toDateString();
+
+  if(last && last.date===today){
+    if(titleEl) titleEl.textContent = 'Reflection Complete ✓';
+    const plan = LS.get('lh_cron_result');
+    if(subEl) subEl.textContent = plan ? `"${plan.tomorrowMessage}"` : 'Priorities adjust at 2am';
+    if(moodEl){ moodEl.style.display='block'; moodEl.textContent=`${last.mood||'—'}/10`; }
+  } else {
+    if(titleEl) titleEl.textContent = 'End-of-Day Reflection';
+    if(subEl) subEl.textContent = '6 questions · ~3 minutes · priorities adjust overnight';
+    if(moodEl) moodEl.style.display='none';
+  }
+
+  // Show morning briefing if cron ran overnight and not yet displayed
+  const plan = LS.get('lh_cron_result');
+  const lastEntry = LS.get('lh_journal_last');
+  if(plan && lastEntry && !lastEntry.cronDisplayed){
+    showCronMorningBriefing(plan, lastEntry);
+    lastEntry.cronDisplayed = true;
+    LS.set('lh_journal_last', lastEntry);
+  }
+}
+
+function showCronMorningBriefing(plan, entry){
+  if(document.getElementById('cron-briefing')) return;
+  const banner = document.createElement('div');
+  banner.id = 'cron-briefing';
+  const moodColor = entry.mood<=3?'#dc2626':entry.mood<=6?'#d97706':'#16a34a';
+  const tierLabel = entry.mood<=3?'🛡️ Gentle day':'🎯 Focused day';
+  banner.style.cssText = `
+    background:linear-gradient(135deg,#0f2044 0%,#1a3560 100%);
+    border-radius:16px;padding:1.1rem 1.4rem;margin-bottom:1rem;
+    border:1px solid rgba(232,184,75,.2);animation:journalRise .3s ease;
+  `;
+  banner.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem">
+      <div style="display:flex;align-items:center;gap:.65rem">
+        <span style="font-size:1.3rem">⏰</span>
+        <div>
+          <div style="font-family:'Bebas Neue',cursive;font-size:1rem;color:var(--gold);letter-spacing:1.5px;line-height:1">2am Priority Briefing</div>
+          <div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.1rem">${tierLabel} · Mood ${entry.mood}/10 · ${MOOD_LABELS[entry.mood]||''}</div>
+        </div>
+      </div>
+      <button onclick="this.closest('#cron-briefing').remove()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.5);padding:2px 8px;border-radius:6px;cursor:pointer;font-size:.7rem">Dismiss</button>
+    </div>
+    <div style="font-size:.82rem;color:#fff;font-weight:500;line-height:1.5;margin-bottom:.7rem">${plan.tomorrowMessage||''}</div>
+    <div style="display:flex;gap:.35rem;flex-wrap:wrap;margin-bottom:${plan.kindnessNote?'.6rem':'0'}">
+      ${(plan.priorities||[]).slice(0,maxFromMood(entry.mood)).map((p,i)=>{
+        const r = DB_ROLES[p.role]||DB_ROLES.general;
+        return `<div style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:8px;padding:.32rem .65rem;font-size:.7rem;color:#fff;display:flex;align-items:center;gap:.35rem">
+          <span style="font-size:.85rem">${r.icon}</span>
+          <span><strong>${i+1}.</strong> ${p.task}</span>
+        </div>`;
+      }).join('')}
+    </div>
+    ${plan.kindnessNote?`<div style="font-size:.68rem;color:rgba(255,255,255,.4);font-style:italic;border-top:1px solid rgba(255,255,255,.08);padding-top:.45rem;margin-top:.1rem">${plan.kindnessNote}</div>`:''}
+    ${plan.energyNote?`<div style="font-size:.66rem;color:rgba(255,255,255,.32);margin-top:.35rem">${plan.energyNote}</div>`:''}
+  `;
+  const dashView = document.getElementById('view-dashboard');
+  if(dashView) dashView.insertBefore(banner, dashView.firstChild);
+}
+
+function maxFromMood(mood){ return mood<=3?2:mood<=6?4:6; }
+
+function openJournalHistory(){
+  const modal = document.getElementById('journal-history-modal');
+  const body = document.getElementById('journal-history-body');
+  modal.style.display = 'block';
+  const hist = LS.get('lh_journal_history',[]);
+  if(!hist.length){
+    body.innerHTML='<div style="text-align:center;padding:2.5rem;color:var(--muted);font-size:.82rem">No entries yet — start your first reflection tonight.</div>';
+    return;
+  }
+  body.innerHTML = hist.slice(0,30).map(e=>{
+    const mc = e.mood<=3?MOOD_COLORS[e.mood||1]:e.mood<=6?MOOD_COLORS[e.mood||5]:MOOD_COLORS[e.mood||8];
+    return `<div style="border:1px solid var(--border);border-radius:12px;padding:.85rem 1rem;margin-bottom:.55rem;background:#fafafa">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem">
+        <span style="font-weight:700;font-size:.8rem;color:var(--navy)">${e.date}</span>
+        <div style="display:flex;align-items:center;gap:.45rem">
+          ${e.cronRan?'<span style="font-size:.6rem;background:#f0fdf4;color:#15803d;border:1px solid #86efac;padding:1px 7px;border-radius:99px;font-weight:600">✓ 2am ran</span>':''}
+          <span style="font-weight:800;font-size:1rem;color:${mc};font-family:\'Bebas Neue\',cursive">${e.mood||'—'}/10</span>
+        </div>
+      </div>
+      <div style="height:3px;background:#f1f5f9;border-radius:2px;margin-bottom:.55rem;overflow:hidden">
+        <div style="height:100%;width:${(e.mood||0)*10}%;background:${mc};border-radius:2px;transition:width .5s"></div>
+      </div>
+      ${e.q1?`<div style="font-size:.71rem;color:#374151;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Planning:</span> ${escH(e.q1.slice(0,90))}${e.q1.length>90?'…':''}</div>`:''}
+      ${e.q2?`<div style="font-size:.71rem;color:#b45309;line-height:1.4;margin-bottom:.2rem"><span style="font-weight:600">Avoided:</span> ${escH(e.q2.slice(0,90))}${e.q2.length>90?'…':''}</div>`:''}
+      ${e.q4?`<div style="font-size:.71rem;color:#15803d;line-height:1.4"><span style="font-weight:600">Proud:</span> ${escH(e.q4.slice(0,90))}${e.q4.length>90?'…':''}</div>`:''}
+      ${e.cronResult?`<div style="margin-top:.4rem;padding:.38rem .6rem;background:var(--navy-soft);border-radius:8px;font-size:.68rem;color:var(--navy);line-height:1.4"><span style="font-weight:700">2am said:</span> ${escH(e.cronResult.tomorrowMessage||'')}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ── Compatibility stubs ───────────────────────────────────
+function addBlockTask(){}
+function initBlockDefaults(){}
+function renderAllBlocks(){}
+function renderDontForget(){}
+function renderPulse(){}
+function renderWeekStrip(){}
+
+// ── CSS animation injection ───────────────────────────────
+(function injectCSS(){
+  const s=document.createElement('style');
+  s.textContent=`
+    @keyframes ringIn{from{stroke-dasharray:0 999}}
+    @keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    #next-action-card:hover{box-shadow:0 12px 40px rgba(0,0,0,.2)!important}
+    .choice-card{animation:fadeUp .25s ease both}
+    .choice-card:nth-child(2){animation-delay:.08s}
+    .journal-modal .journal-inner{animation:fadeUp .2s ease}
+  `;
+  document.head.appendChild(s);
+})();
+
+// ── Accordion ─────────────────────────────────────────────
+const _ACC_IDS = ['dashboard','class','trips','deca','wbl','esports','tools'];
+
+// Collapsed accordion sections are hidden via max-height:0, but that leaves
+// every .si button inside still in the Tab order — a sighted keyboard user
+// tabs through ~26 invisible buttons before reaching whatever's actually on
+// screen. Toggling tabindex alongside the open/closed state keeps focus
+// order matching what's visible.
+function _setAccBodyTabbable(body, tabbable) {
+  body.querySelectorAll('.si').forEach(btn => {
+    if (tabbable) btn.removeAttribute('tabindex');
+    else btn.setAttribute('tabindex', '-1');
+  });
+}
+
+function toggleAcc(id) {
+  const hd   = document.getElementById('acc-'+id);
+  const body = document.getElementById('accb-'+id);
+  if (!hd || !body) return;
+  const opening = !body.classList.contains('open');
+  // Close every accordion first (exclusive open)
+  _ACC_IDS.forEach(k => {
+    const h = document.getElementById('acc-'+k);
+    const b = document.getElementById('accb-'+k);
+    if (h && b) { h.classList.remove('open'); b.classList.remove('open'); h.setAttribute('aria-expanded', 'false'); _setAccBodyTabbable(b, false); }
+  });
+  // If we were closed, open this one
+  if (opening) { hd.classList.add('open'); body.classList.add('open'); hd.setAttribute('aria-expanded', 'true'); _setAccBodyTabbable(body, true); }
+}
+
+function restoreAccState() {
+  // Always start fully collapsed — nothing open on load. Also where
+  // aria-controls/aria-expanded get set up: the buttons visually rotate an
+  // arrow and animate open/closed, but had no ARIA semantics at all, so a
+  // screen reader had no way to know these are expandable regions or which
+  // one is currently open.
+  _ACC_IDS.forEach(k => {
+    const h = document.getElementById('acc-'+k);
+    const b = document.getElementById('accb-'+k);
+    if (h && b) {
+      h.classList.remove('open'); b.classList.remove('open');
+      h.setAttribute('aria-controls', 'accb-'+k);
+      h.setAttribute('aria-expanded', 'false');
+      _setAccBodyTabbable(b, false);
+    }
+  });
+}
+// (accordion logic inlined into showView)
+
+// ── Sidebar mobile collapse ────────────────────────────────
+// Below 760px (see the .sidebar-open/.sidebar-backdrop rules) the sidebar
+// becomes an off-canvas panel instead of permanently eating over half the
+// screen; this toggles it and keeps the hamburger button's ARIA state in
+// sync with which state it's in.
+function toggleSidebar() {
+  const app = document.querySelector('.app');
+  if (!app) return;
+  const isOpen = app.classList.toggle('sidebar-open');
+  const btn = document.getElementById('sidebar-toggle-btn');
+  if (btn) btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+}
+// Picking a destination should also close the panel on mobile — delegated
+// so it works for every current and future .si link without wiring each
+// one's onclick individually.
+document.addEventListener('DOMContentLoaded', () => {
+  const sidebar = document.querySelector('.sidebar');
+  if (!sidebar) return;
+  sidebar.addEventListener('click', (e) => {
+    if (window.innerWidth <= 760 && e.target.closest('.si')) {
+      document.querySelector('.app')?.classList.remove('sidebar-open');
+      document.getElementById('sidebar-toggle-btn')?.setAttribute('aria-expanded', 'false');
+    }
+  });
+});
+
+// ── Improvements + Survey stubs ───────────────────────────
+const IMPROVEMENTS={
+  classroom:[
+    {icon:'🗂️',title:'Pacing Calendar Overlay',desc:'Overlay competency pacing on a week-by-week calendar — see exactly which comp to teach each day.'},
+    {icon:'📊',title:'Class Completion Heatmap',desc:'Color-coded grid showing which students in each period are lagging behind on competencies.'},
+    {icon:'🤖',title:'AI Lesson Differentiator',desc:'One-click AI that generates modified versions for below, on, and above-grade learners simultaneously.'},
+    {icon:'📋',title:'Sub Plans Auto-Generator',desc:'Pull today\'s lesson and generate a complete substitute teacher packet instantly.'},
+    {icon:'🔔',title:'Competency Pacing Alerts',desc:'Alert when you fall more than 3 competencies behind pacing, with a catch-up plan.'},
+  ],
+  trips:[
+    {icon:'📱',title:'Parent Blast Messaging',desc:'One-click message to all parents of a trip — no hunting for contact lists.'},
+    {icon:'📸',title:'Photo Permission Tracker',desc:'Separate photo release tracking per student per trip with a printable follow-up list.'},
+    {icon:'🚌',title:'Transportation Auto-Fill',desc:'Pull trip details and auto-populate the CCPS bus request form fields.'},
+    {icon:'🔄',title:'Trip Template Library',desc:'Save any completed trip as a reusable template — just update the date next time.'},
+    {icon:'📊',title:'Participation Analytics',desc:'Track which students attend most trips and which consistently miss due to fees.'},
+  ],
+  deca:[
+    {icon:'🗓️',title:'DECA Season Timeline',desc:'Visual timeline from fall kickoff to ICDC with every deadline and registration window.'},
+    {icon:'🏅',title:'Member Achievement Tracker',desc:'Log placements, hours, and officer roles — auto-generates achievement summaries.'},
+    {icon:'📝',title:'Written Event Tracker',desc:'Track submission status, review status, and competition category per member.'},
+    {icon:'💳',title:'Dues & Fees Dashboard',desc:'Track membership dues and outstanding balances with one-click payment reminders.'},
+    {icon:'🤖',title:'AI Competition Coach',desc:'AI generates practice questions and judge rubric breakdowns for any event category.'},
+  ],
+  wbl:[
+    {icon:'⏱️',title:'Shift Schedule Builder',desc:'Drag-and-drop weekly shift schedule with auto-check against student class schedules.'},
+    {icon:'📈',title:'Sales Trend Charts',desc:'Line and bar charts showing daily/weekly revenue trends and best-selling categories.'},
+    {icon:'📦',title:'Auto-Reorder Trigger',desc:'When stock hits threshold, a "Ready to Order" card appears on your dashboard automatically.'},
+    {icon:'🧾',title:'Daily Z-Out Wizard',desc:'Guided end-of-shift process that generates the daily financial summary pre-filled.'},
+    {icon:'📄',title:'WBL Progress Report Generator',desc:'One click generates a formal WBL progress report per student ready to send to Mrs. Fagan.'},
+  ],
+  esports:[
+    {icon:'🎯',title:'Match Strategy Board',desc:'Pre-match planner for Smash lineup order and Mario Kart grouping with scouting notes.'},
+    {icon:'📊',title:'Player Performance Charts',desc:'Track individual win/loss records and character win rates per player.'},
+    {icon:'📅',title:'VHSL Season Calendar',desc:'Full PlayVS season calendar with match dates and playoff brackets.'},
+    {icon:'🎮',title:'Practice Drill Library',desc:'Curated drill cards for Smash and Mario Kart — assign to players as homework.'},
+    {icon:'📋',title:'Equipment Checkout Log',desc:'Track which Switch consoles and controllers went home with which student.'},
+  ],
+};
+
+function openImprovementsModal(){
+  const m=document.createElement('div');
+  m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto;padding:2rem 1rem';
+  m.innerHTML=`<div style="background:var(--surface);max-width:780px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl,0 24px 64px rgba(0,0,0,.2))">
+    <div style="background:var(--navy);padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.5rem;color:var(--gold);letter-spacing:2px">5 Ideas per Work Area</div>
+      <button onclick="this.closest('[style*=fixed]').remove()" aria-label="Close" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.5rem;display:flex;flex-direction:column;gap:1.5rem">
+      ${Object.entries(IMPROVEMENTS).map(([key,items])=>{
+        const labels={classroom:'📘 Classroom',trips:'🚌 Field Trips',deca:'🏆 DECA',wbl:'🏪 WBL / Store',esports:'🎮 E-Sports'};
+        return `<div><div style="font-family:'Bebas Neue',cursive;font-size:1.1rem;color:var(--navy);letter-spacing:1.5px;margin-bottom:.65rem;border-bottom:2px solid var(--gold);padding-bottom:.35rem">${labels[key]}</div>
+          <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.55rem">
+            ${items.map(it=>`<div style="border:1px solid var(--border);border-radius:10px;padding:.75rem .85rem;background:#fafafa">
+              <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem">
+                <span style="font-size:1.1rem">${it.icon}</span>
+                <span style="font-weight:700;font-size:.78rem;color:var(--navy)">${it.title}</span>
+              </div>
+              <p style="font-size:.71rem;color:#4b5563;line-height:1.55;margin:0">${it.desc}</p>
+            </div>`).join('')}
+          </div></div>`;
+      }).join('')}
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  m.onclick=e=>{ if(e.target===m) m.remove(); };
+}
+
+let surveyAnswers={};
+function openSurveyModal(){
+  const m=document.createElement('div');
+  m.id='survey-modal'; m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;overflow:auto;padding:2rem 1rem';
+  m.innerHTML=`<div style="background:var(--surface);max-width:600px;margin:0 auto;border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-xl)">
+    <div style="background:var(--navy);padding:1.1rem 1.5rem;display:flex;justify-content:space-between;align-items:center">
+      <div style="font-family:'Bebas Neue',cursive;font-size:1.4rem;color:var(--gold);letter-spacing:2px">Settings</div>
+      <button onclick="document.getElementById('survey-modal').remove()" aria-label="Close" class="btn-on-navy" style="background:rgba(255,255,255,.12);border:none;color:#fff;padding:.35rem .8rem;border-radius:6px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:1.5rem">
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">My Profile &amp; School</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Every email template, sub plan, and Brag Board recipient below reads from these fields instead of a name built into the app — fill these in once to make LeaderHub yours. Values save as you leave each field.
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Your Name</label><input id="prof-name" value="${escH(PROFILE.name)}" onblur="lhSaveProfileField('name',this.value)" placeholder="e.g. Jordan Lee"></div>
+        <div class="fg"><label>Courtesy Title (mid-email mentions)</label><input id="prof-courtesyName" value="${escH(PROFILE.courtesyName)}" onblur="lhSaveProfileField('courtesyName',this.value)" placeholder="e.g. Ms. Lee"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Your Title (DECA emails)</label><input id="prof-title" value="${escH(PROFILE.title)}" onblur="lhSaveProfileField('title',this.value)" placeholder="e.g. DECA Advisor"></div>
+        <div class="fg"><label>Your Title (non-DECA emails)</label><input id="prof-classroomTitle" value="${escH(PROFILE.classroomTitle)}" onblur="lhSaveProfileField('classroomTitle',this.value)" placeholder="e.g. Business Teacher"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>School Name</label><input id="prof-school" value="${escH(PROFILE.school)}" onblur="lhSaveProfileField('school',this.value)" placeholder="e.g. Jefferson High School"></div>
+        <div class="fg"><label>Chapter/Org Name ("payable to")</label><input id="prof-chapterName" value="${escH(PROFILE.chapterName)}" onblur="lhSaveProfileField('chapterName',this.value)" placeholder="e.g. Jefferson DECA"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Phone</label><input id="prof-phone" value="${escH(PROFILE.phone)}" onblur="lhSaveProfileField('phone',this.value)" placeholder="e.g. (555) 123-4567"></div>
+        <div class="fg"><label>Email</label><input id="prof-email" type="email" value="${escH(PROFILE.email)}" onblur="lhSaveProfileField('email',this.value)" placeholder="e.g. you@yourdistrict.org"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Email Domain (AI-privacy ID lookup)</label><input id="prof-emailDomain" value="${escH(PROFILE.emailDomain)}" onblur="lhSaveProfileField('emailDomain',this.value)" placeholder="e.g. yourdistrict.org"></div>
+        <div></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Supervisor Name (Brag Board)</label><input id="prof-supervisorName" value="${escH(PROFILE.supervisorName)}" onblur="lhSaveProfileField('supervisorName',this.value)"></div>
+        <div class="fg"><label>Supervisor Email</label><input id="prof-supervisorEmail" type="email" value="${escH(PROFILE.supervisorEmail)}" onblur="lhSaveProfileField('supervisorEmail',this.value)"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.5rem">
+        <div class="fg"><label>Admin Contact Name (Brag Board)</label><input id="prof-adminName" value="${escH(PROFILE.adminName)}" onblur="lhSaveProfileField('adminName',this.value)"></div>
+        <div class="fg"><label>Admin Contact Email</label><input id="prof-adminEmail" type="email" value="${escH(PROFILE.adminEmail)}" onblur="lhSaveProfileField('adminEmail',this.value)"></div>
+      </div>
+      <div class="fgrid fg2" style="margin-bottom:.9rem">
+        <div class="fg"><label>Attendance Coordinator (sub plans)</label><input id="prof-attendanceCoordFirstName" value="${escH(PROFILE.attendanceCoordFirstName)}" onblur="lhSaveProfileField('attendanceCoordFirstName',this.value)" placeholder="First name"></div>
+        <div class="fg"><label>Attendance Coordinator Email</label><input id="prof-attendanceCoordEmail" type="email" value="${escH(PROFILE.attendanceCoordEmail)}" onblur="lhSaveProfileField('attendanceCoordEmail',this.value)"></div>
+      </div>
+      <div id="prof-save-status" style="font-size:.74rem;color:#166534;margin-bottom:1.2rem;min-height:1.1em"></div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">School Calendar &amp; Bell Schedule</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.9rem">
+        These expire every school year and used to require editing the source file directly. Bell-schedule <em>times</em> themselves are still edited as raw JSON below — a full visual period builder is a bigger project than this round covers.
+      </div>
+
+      <div id="sched-calendar-import-block" style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Import from County Calendar Document</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        This app can't open a PDF directly (no PDF library, and the security policy blocks loading one). Instead: open your county's calendar PDF or webpage, select all the text, copy it, and paste it below — or upload a plain-text/.csv file with the same content. Parsing is best-effort; you'll see exactly what it found before anything is saved.
+      </div>
+      <textarea id="sched-import-text" rows="6" placeholder="Paste calendar text here, e.g.:&#10;Quarter 1: August 25 - October 23, 2026&#10;September 7, 2026 - Labor Day&#10;November 25-27, 2026 - Thanksgiving Break" style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical;margin-bottom:.5rem"></textarea>
+      <div style="display:flex;gap:.6rem;margin-bottom:.5rem">
+        <button onclick="lhParseCountyCalendar()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">🔍 Parse Pasted Text</button>
+        <button onclick="document.getElementById('sched-import-file').click()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">⬆️ Upload File (.txt/.csv)</button>
+        <input type="file" id="sched-import-file" accept=".txt,.csv,text/plain,text/csv" style="display:none" onchange="lhLoadCountyCalendarFile(this)">
+      </div>
+      <div id="sched-import-status" style="font-size:.74rem;margin-bottom:1.2rem;min-height:1.1em"></div>
+
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Day-of-Week Default Schedule</div>
+      <div class="fgrid" style="grid-template-columns:repeat(7,1fr);gap:.35rem;margin-bottom:.9rem">
+        ${['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map((d,i)=>`
+        <div class="fg"><label style="font-size:.66rem">${d}</label>
+          <select id="sched-dow-${i}" onchange="lhSaveDayMap()" style="width:100%;padding:.35rem .3rem;border:1px solid var(--border);border-radius:6px;font-size:.74rem;background:#fff">${_schedTypeOptions(DAY_SCHEDULE_MAP[i])}</select>
+        </div>`).join('')}
+      </div>
+
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Quarter Dates</div>
+      <div style="margin-bottom:.9rem">
+        ${[1,2,3,4].map(q=>{ const r = LP_QUARTERS[q] || {start:'',end:'',label:'Q'+q}; return `
+        <div class="fgrid fg2" style="margin-bottom:.4rem">
+          <div class="fg"><label style="font-size:.7rem">${escH(r.label)} Start</label><input type="date" id="sched-q${q}-start" value="${escH(r.start)}" onblur="lhSaveQuarters()"></div>
+          <div class="fg"><label style="font-size:.7rem">${escH(r.label)} End</label><input type="date" id="sched-q${q}-end" value="${escH(r.end)}" onblur="lhSaveQuarters()"></div>
+        </div>`; }).join('')}
+      </div>
+
+      <div class="fgrid fg2" style="margin-bottom:.9rem">
+        <div class="fg">
+          <label style="font-size:.72rem;font-weight:700;color:var(--muted)">No-School Dates (one per line)</label>
+          <textarea id="sched-noschool" onblur="lhSaveNoSchool()" rows="5" style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${[...CCPS_NO_SCHOOL].sort().join('\n')}</textarea>
+        </div>
+        <div class="fg">
+          <label style="font-size:.72rem;font-weight:700;color:var(--muted)">Early-Release Dates (one per line)</label>
+          <textarea id="sched-earlyrelease" onblur="lhSaveEarlyRelease()" rows="5" style="width:100%;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.78rem;font-family:inherit;resize:vertical">${Object.keys(CCPS_SCHEDULE_OVERRIDES).sort().join('\n')}</textarea>
+        </div>
+      </div>
+
+      <details style="margin-bottom:.5rem">
+        <summary style="cursor:pointer;font-size:.72rem;font-weight:700;color:var(--muted)">Advanced: Bell Schedule Times (JSON)</summary>
+        <textarea id="sched-bell-json" onblur="lhSaveBellScheduleJson()" rows="8" style="width:100%;margin-top:.5rem;padding:.45rem .6rem;border:1px solid var(--border);border-radius:6px;font-size:.72rem;font-family:monospace;resize:vertical">${escH(JSON.stringify(BELL_SCHEDULES, null, 2))}</textarea>
+      </details>
+      <div id="sched-save-status" style="font-size:.74rem;margin-bottom:1.2rem;min-height:1.1em"></div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Modules</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Turn off any of these you don't run yourself — the nav button and sidebar section disappear immediately. Dashboard, Classroom, Field Trips, and Tools always stay on.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.2rem">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-orgs" ${MODULES.orgs!==false?'checked':''} onchange="lhSaveModule('orgs',this.checked)"> 🏆 Organizations (DECA, clubs, CTSOs)</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-wbl" ${MODULES.wbl!==false?'checked':''} onchange="lhSaveModule('wbl',this.checked)"> 🏪 WBL / School Store</label>
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer"><input type="checkbox" id="mod-esports" ${MODULES.esports!==false?'checked':''} onchange="lhSaveModule('esports',this.checked)"> 🎮 E-Sports</label>
+      </div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Notifications</div>
+      <div style="margin-bottom:1.2rem">
+        <label style="display:flex;align-items:center;gap:.5rem;font-size:.84rem;cursor:pointer">
+          <input type="checkbox" id="notif-toggle" ${LS.get('lh_notify_enabled', false) ? 'checked' : ''} onchange="lhToggleNotifications(this.checked)">
+          🔔 Browser notifications for time-sensitive reminders (deposit, payroll, comms, brag board) — so a minimized tab can still alert you
+        </label>
+        <div id="notif-status" style="font-size:.74rem;margin-top:.3rem;min-height:1.1em"></div>
+      </div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Organizations</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Adam's own DECA chapter ships built in. Add your own club, CTSO, or student organization — with its own officer titles, competition/achievement levels, and roster — as a JSON file instead of editing the app. Co-advisors sharing an organization can sync it via a shared Google Sheet (see leader-hub/README.md). <a href="#" onclick="lhDownloadOrgTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
+      </div>
+      <div id="org-catalog-list" style="margin-bottom:.6rem"></div>
+      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+        <button onclick="document.getElementById('lh-org-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Import Organization (JSON)</button>
+        <input type="file" id="lh-org-file" accept="application/json" style="display:none" onchange="lhImportOrgJson(this)">
+      </div>
+
+      <!-- Say/Do Ledger leader-hub #10: permanent counterpart to the one-time
+           "Welcome, co-advisor" modal (_showOrgWelcomeModal) — discoverable
+           any time, not just on first join, matching the persistent-view
+           pattern already used elsewhere (cas-ccps #7's "My Info" view). -->
+      <details style="margin-bottom:1.4rem">
+        <summary style="cursor:pointer;font-size:.72rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)">ℹ️ About This Tool &amp; Syncing</summary>
+        <div style="margin-top:.6rem;font-size:.78rem;color:#333;line-height:1.6;background:#f8fafc;border:1px solid var(--border);border-radius:8px;padding:.8rem .95rem">
+          <p style="margin-bottom:.6rem"><strong>What this is:</strong> LeaderHub is a personal tool Adam Berneche built and maintains for his own workload — it isn't a district-provisioned or IT-supported product. There's no uptime guarantee and no support desk; if something breaks, it gets fixed on Adam's own time. If you're a co-advisor sharing an organization here, keep your own backup of anything you can't afford to lose (dues records, competition results) — this is a convenience layer, not a system of record.</p>
+          <p style="margin:0"><strong>How syncing works:</strong> Nothing syncs automatically. ⬆️ Push sends your copy to the shared Sheet; ⬇️ Pull brings in what's on the Sheet — both always ask you to confirm first. If a push tells you someone else updated it since you last synced, or a pull tells you that you have local changes that haven't been pushed yet, that's this app catching a real conflict before it happens, not a bug — pick pull-first or push-anyway; it's never resolved silently behind your back.</p>
+        </div>
+      </details>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Course Catalog</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        The Student Competency Records tracker ships with Adam's own 3 courses built in. Add your own — with their competency list or Standards of Learning — as a JSON file instead of editing the app. <a href="#" onclick="lhDownloadCourseTemplate();return false;" style="color:#1e3a6e;text-decoration:underline">Download a blank template</a> to see the format.
+      </div>
+      <div id="course-catalog-list" style="margin-bottom:.6rem"></div>
+      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+        <button onclick="document.getElementById('lh-course-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Import Course (JSON)</button>
+        <input type="file" id="lh-course-file" accept="application/json" style="display:none" onchange="lhImportCourseJson(this)">
+      </div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Weekly Schedule / Lesson Unit Template</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        8175/8177's Pacing Calendar auto-populates from the real, current CAS pacing guide (imported from cas-ccps) — click any unit cell there to see its VDOE/CCPS competencies, vocabulary, and warm-up, and to add your own materials/assessment/differentiation notes. 6115 (or any other course) has no equivalent real external source — download the same CCPS/VDOE-format template below, fill it in (structured or on paper), then import the finished JSON here to put it on that course's Pacing Calendar the same way.
+      </div>
+      <div style="display:flex;gap:.6rem;margin-bottom:.6rem">
+        <button onclick="lhDownloadLessonUnitTemplate()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬇️ Download Blank Template (JSON)</button>
+        <button onclick="lhPrintLessonUnitTemplate()" style="flex:1;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">🖨 Print Blank Template</button>
+      </div>
+      <div style="display:flex;gap:.6rem;margin-bottom:.6rem">
+        <select id="lh-pacing-import-course" aria-label="Course to import lesson units into" style="flex:1;padding:.55rem .6rem;border:1.5px solid var(--border);border-radius:8px;font-size:.8rem;font-family:inherit"></select>
+        <button onclick="document.getElementById('lh-pacing-import-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Import Filled-In Units (JSON)</button>
+        <input type="file" id="lh-pacing-import-file" accept="application/json" style="display:none" onchange="lhImportPacingUnitsJson(this)">
+      </div>
+      <div id="pacing-import-list" style="margin-bottom:1.4rem"></div>
+
+      <div id="sched-backup-block" style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Your Data</div>
+      <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#78350f;margin-bottom:.9rem">
+        Everything in LeaderHub lives only in this browser — there's no server and no automatic backup. Export a copy regularly, especially before clearing your browser data or switching devices.
+      </div>
+      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+        <button onclick="lhExportBackup()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬇️ Export All Data</button>
+        <button onclick="document.getElementById('lh-import-file').click()" style="flex:1;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">⬆️ Import Backup</button>
+        <input type="file" id="lh-import-file" accept="application/json" style="display:none" onchange="lhImportBackup(this)">
+      </div>
+      <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#7f1d1d;margin-bottom:.6rem">
+        This file ships with sample content — Field Trips, DECA Members, DECA/Leadership Events, Goals, WBL Roster, and Store Inventory — so a new teacher adopting LeaderHub can wipe it in one step instead of deleting each record by hand.
+      </div>
+      <button onclick="lhClearSampleData()" style="width:100%;background:none;border:1.5px solid #fca5a5;color:#991b1b;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer;margin-bottom:1.4rem">🧹 Clear Sample Data</button>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Student ID Lookup — AI Privacy</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Upload a roster CSV (Name + CCPS ID/login columns) to have Brag Board's AI drafting substitute each matched student's real name with their CCPS ID (e.g. <code>1234567@${PROFILE.emailDomain}</code>) before that content ever reaches Gemini. The AI-drafted email still shows real names — only the network request is affected. Names not in the uploaded roster are sent as-is.
+      </div>
+      <div id="student-id-status" style="font-size:.74rem;color:var(--muted);margin-bottom:.6rem">No roster uploaded — student names will be sent to Gemini as-is.</div>
+      <div style="display:flex;gap:.6rem;margin-bottom:1.4rem">
+        <button onclick="document.getElementById('lh-student-id-file').click()" style="flex:1;background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.6rem 1rem;font-size:.8rem;font-weight:600;cursor:pointer">⬆️ Upload Roster CSV</button>
+        <input type="file" id="lh-student-id-file" accept=".csv,text/csv" style="display:none" onchange="lhImportStudentIdCsv(this)">
+        <button onclick="lhClearStudentIdMap()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;color:#dc2626;cursor:pointer">Clear</button>
+      </div>
+
+      <!-- Say/Do Ledger cross-portfolio Flow Health &amp; Inventory extension:
+           every AI-drafting feature routes through the same Email Bridge
+           job queue (see callGAS('aiDraft',...) sites) but has no visible
+           signal today for "is any Flow actually built for this yet" —
+           see renderAiFlowHealthSettings() below. -->
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">AI Flow Health</div>
+      <div style="background:#f0f4ff;border:1px solid #bfdbfe;border-radius:8px;padding:.7rem .9rem;font-size:.75rem;color:#1e3a6e;margin-bottom:.6rem">
+        Every AI-drafting feature (Brag Board, Email Composer, Lesson Plan assist, Financial analysis, Archive/WBL insights) submits a job through your Email Bridge, but only actually produces AI output once you've built the matching Google Workspace Flow for it (see LEADERHUB_AI_FLOW_SETUP.md) — until then it falls back to a template, silently. This shows which types have ever actually completed a job.
+      </div>
+      <div id="ai-flow-health-list" style="margin-bottom:1.4rem"></div>
+
+      <div style="font-size:.68rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:.6rem">Quick Links</div>
+      <div style="display:flex;gap:.6rem;justify-content:center">
+        <button onclick="document.getElementById('survey-modal').remove();openJournal()" style="background:var(--navy);color:#fff;border:none;border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;font-weight:600;cursor:pointer">📓 Open Journal</button>
+        <button onclick="document.getElementById('survey-modal').remove();openImprovementsModal()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.5rem 1.2rem;font-size:.8rem;cursor:pointer">💡 Ideas</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(m);
+  renderCourseCatalogSettings();
+  renderOrgCatalogSettings();
+  renderPacingImportSettings();
+  _renderStudentIdStatus();
+  renderAiFlowHealthSettings();
+  m.onclick=e=>{ if(e.target===m) m.remove(); };
+}
+
+// Opens Settings and jumps straight to the county-calendar importer, for
+// the calendar-expired banner's "Import the calendar" button — reuses the
+// same Settings modal/importer rather than building a second entry point.
+function openCalendarImporterSettings() {
+  openSurveyModal();
+  requestAnimationFrame(() => {
+    document.getElementById('sched-calendar-import-block')?.scrollIntoView({behavior:'smooth', block:'start'});
+    document.getElementById('sched-import-text')?.focus();
+  });
+}
+
+// Opens Settings and jumps straight to the "Your Data" export button, for
+// the backup-nudge Next-Action card — same reuse-not-rebuild pattern as
+// openCalendarImporterSettings() above.
+function openBackupSettings() {
+  openSurveyModal();
+  requestAnimationFrame(() => {
+    document.getElementById('sched-backup-block')?.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+}
+
+// Saves one Profile field on blur (not a single "Save" button — same
+// as-you-go pattern as the Email Bridge URL field below) and updates
+// PROFILE in memory immediately, so the very next email/sub-plan/Brag
+// Board generated in this session already reflects it.
+let _profSaveStatusTimer = null;
+function lhSaveProfileField(key, value) {
+  saveProfile({ [key]: value });
+  const el = document.getElementById('prof-save-status');
+  if (!el) return;
+  el.textContent = '✓ Saved';
+  clearTimeout(_profSaveStatusTimer);
+  _profSaveStatusTimer = setTimeout(() => { if (el) el.textContent = ''; }, 2000);
+}
+
+// ── County Calendar Document import (HH1) ───────────────────────────────
+// Best-effort text parser for a county-published school calendar (PDF or
+// webpage) — this app has no PDF-parsing library and a strict CSP (no
+// third-party scripts, connect-src limited to script.google.com), so this
+// works on plain TEXT: paste text copied out of the PDF/webpage, or upload
+// a .txt/.csv file with the same content. It never touches Settings
+// directly — lhParseCountyCalendar() always shows a preview/warning
+// summary via _showConfirm() first; only on confirm does it write into the
+// real quarter/no-school/early-release fields and save (matching this
+// app's established import-preview pattern from Course Catalog/
+// Organizations). Pure functions below, no DOM access, so they're testable
+// in isolation — see leader-hub/README.md's HH1 section.
+
+const MONTHS = {
+  jan:0, january:0, feb:1, february:1, mar:2, march:2, apr:3, april:3,
+  may:4, jun:5, june:5, jul:6, july:6, aug:7, august:7, sep:8, sept:8, september:8,
+  oct:9, october:9, nov:10, november:10, dec:11, december:11,
+};
+
+function _pad2(n) { return String(n).padStart(2, '0'); }
+function _iso(y, m, d) { return `${y}-${_pad2(m + 1)}-${_pad2(d)}`; }
+
+function _daysInMonth(y, m) { return new Date(y, m + 1, 0).getDate(); }
+
+// Expands a same-month day range: (2026, 10 /*Nov*/, 25, 27) -> ['2026-11-25','2026-11-26','2026-11-27']
+function _expandDayRange(y, m, d1, d2) {
+  const out = [];
+  for (let d = d1; d <= d2; d++) out.push(_iso(y, m, d));
+  return out;
+}
+
+// Expands a cross-month/cross-year range from one full date to another,
+// inclusive. Capped at 25 days — real multi-day school breaks (even winter
+// break) are never longer than that; a range past the cap is almost
+// certainly a parsing mistake (two unrelated dates on the same line getting
+// matched as one span), not a real single break. NOT used for quarter date
+// ranges — see extractDateRangeBounds below, which never expands day-by-day
+// in the first place, so a genuine ~90-calendar-day quarter is never capped.
+function _expandFullRange(y1, m1, d1, y2, m2, d2) {
+  const out = [];
+  let cur = new Date(y1, m1, d1);
+  const end = new Date(y2, m2, d2);
+  let guard = 0;
+  while (cur <= end && guard < 25) {
+    out.push(_iso(cur.getFullYear(), cur.getMonth(), cur.getDate()));
+    cur.setDate(cur.getDate() + 1);
+    guard++;
+  }
+  return out;
+}
+
+// Finds the boundary {start, end} of the FIRST date range in `text` without
+// expanding every day in between — used for quarter date ranges, which can
+// legitimately span ~90 calendar days (a nine-week quarter including
+// weekends) where the day-cap in _expandFullRange would wrongly truncate.
+// Falls back to "first two standalone dates found" if no explicit range
+// pattern matches (covers "Quarter 1: August 25, October 23, 2026" phrasing
+// without a dash).
+function extractDateRangeBounds(text, refYear) {
+  const crossRe = new RegExp(
+    `(${MONTH_RE})\\s+(\\d{1,2})(?:,?\\s*(\\d{4}))?\\s*(?:[-–—]|to|through)\\s*(${MONTH_RE})\\s+(\\d{1,2}),?\\s*(\\d{4})`,
+    'i'
+  );
+  let m = crossRe.exec(text);
+  if (m) {
+    const mon1 = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
+    const mon2 = MONTHS[m[4].toLowerCase().replace(/\.$/, '')];
+    if (mon1 != null && mon2 != null) {
+      const y1 = m[3] ? parseInt(m[3]) : parseInt(m[6]);
+      const y2 = parseInt(m[6]);
+      return { start: _iso(y1, mon1, parseInt(m[2])), end: _iso(y2, mon2, parseInt(m[5])) };
+    }
+  }
+  const sameMonRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})\\s*[-–—]\\s*(\\d{1,2}),?\\s*(\\d{4})?`, 'i');
+  m = sameMonRe.exec(text);
+  if (m) {
+    const mon = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
+    if (mon != null) {
+      const y = m[4] ? parseInt(m[4]) : refYear;
+      return { start: _iso(y, mon, parseInt(m[2])), end: _iso(y, mon, parseInt(m[3])) };
+    }
+  }
+  const numRangeRe = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/;
+  m = numRangeRe.exec(text);
+  if (m) {
+    return { start: _iso(_normYear(m[3]), parseInt(m[1]) - 1, parseInt(m[2])), end: _iso(_normYear(m[6]), parseInt(m[4]) - 1, parseInt(m[5])) };
+  }
+  // Fallback: two standalone dates on the line, no dash between them
+  const found = extractDatesFromText(text, refYear);
+  if (found.length >= 2) return { start: found[0], end: found[found.length - 1] };
+  if (found.length === 1) return { start: found[0], end: null };
+  return null;
+}
+
+const MONTH_RE = '(?:' + Object.keys(MONTHS).filter(k => k.length > 3 || k === 'may').join('|') + ')\\.?';
+
+// Finds every date-like span in `text` and returns ISO dates (ranges
+// expanded to every included day). Order of alternatives matters — most
+// specific (cross-month range) tried before plainer single-date forms so a
+// range isn't double-counted as two loose singles.
+function extractDatesFromText(text, refYear) {
+  const dates = [];
+  const consumed = [];
+  const markConsumed = (start, end) => consumed.push([start, end]);
+  const isFree = (start, end) => !consumed.some(([s, e]) => start < e && end > s);
+
+  // 1. Cross-month/cross-year range: "Dec 21, 2026 - Jan 1, 2027" or "Dec 21 - Jan 1, 2027"
+  const crossRe = new RegExp(
+    `(${MONTH_RE})\\s+(\\d{1,2})(?:,?\\s*(\\d{4}))?\\s*(?:[-–—]|to|through)\\s*(${MONTH_RE})\\s+(\\d{1,2}),?\\s*(\\d{4})`,
+    'gi'
+  );
+  let m;
+  while ((m = crossRe.exec(text))) {
+    if (!isFree(m.index, m.index + m[0].length)) continue;
+    const mon1 = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
+    const mon2 = MONTHS[m[4].toLowerCase().replace(/\.$/, '')];
+    if (mon1 == null || mon2 == null) continue;
+    const y1 = m[3] ? parseInt(m[3]) : parseInt(m[6]); // if first date has no year, borrow the range's year
+    const y2 = parseInt(m[6]);
+    dates.push(..._expandFullRange(y1, mon1, parseInt(m[2]), y2, mon2, parseInt(m[5])));
+    markConsumed(m.index, m.index + m[0].length);
+  }
+
+  // 2. Same-month day range: "November 25-27, 2026" / "Nov. 25-27"
+  const sameMonRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})\\s*[-–—]\\s*(\\d{1,2}),?\\s*(\\d{4})?`, 'gi');
+  while ((m = sameMonRe.exec(text))) {
+    if (!isFree(m.index, m.index + m[0].length)) continue;
+    const mon = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
+    if (mon == null) continue;
+    const y = m[4] ? parseInt(m[4]) : refYear;
+    dates.push(..._expandDayRange(y, mon, parseInt(m[2]), parseInt(m[3])));
+    markConsumed(m.index, m.index + m[0].length);
+  }
+
+  // 3. Single date: "August 25, 2026" / "Aug. 25" (year inferred if absent)
+  const singleRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s*(\\d{4})?`, 'gi');
+  while ((m = singleRe.exec(text))) {
+    if (!isFree(m.index, m.index + m[0].length)) continue;
+    const mon = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
+    if (mon == null) continue;
+    const day = parseInt(m[2]);
+    if (day < 1 || day > _daysInMonth(m[3] ? parseInt(m[3]) : refYear, mon)) continue;
+    const y = m[3] ? parseInt(m[3]) : refYear;
+    dates.push(_iso(y, mon, day));
+    markConsumed(m.index, m.index + m[0].length);
+  }
+
+  // 4. Numeric M/D/YYYY (single or range "M/D/YYYY - M/D/YYYY")
+  const numRangeRe = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s*[-–—]\s*(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g;
+  while ((m = numRangeRe.exec(text))) {
+    if (!isFree(m.index, m.index + m[0].length)) continue;
+    const y1 = _normYear(m[3]), y2 = _normYear(m[6]);
+    dates.push(..._expandFullRange(y1, parseInt(m[1]) - 1, parseInt(m[2]), y2, parseInt(m[4]) - 1, parseInt(m[5])));
+    markConsumed(m.index, m.index + m[0].length);
+  }
+  const numRe = /(\d{1,2})\/(\d{1,2})\/(\d{2,4})/g;
+  while ((m = numRe.exec(text))) {
+    if (!isFree(m.index, m.index + m[0].length)) continue;
+    dates.push(_iso(_normYear(m[3]), parseInt(m[1]) - 1, parseInt(m[2])));
+    markConsumed(m.index, m.index + m[0].length);
+  }
+
+  return [...new Set(dates)].sort();
+}
+
+function _normYear(y) {
+  y = parseInt(y);
+  return y < 100 ? 2000 + y : y;
+}
+
+// Ordinal word -> quarter number, for "1st Nine Weeks" style phrasing.
+const ORDINAL_Q = { '1st':1, '2nd':2, '3rd':3, '4th':4, first:1, second:2, third:3, fourth:4 };
+
+const HOLIDAY_KEYWORDS = [
+  'labor day','thanksgiving','winter break','christmas','new year','mlk',
+  'martin luther king','presidents','washington','spring break','memorial day',
+  'teacher workday','teacher work day','student holiday','professional development',
+  'veterans day','independence day','good friday','easter','rosh hashanah',
+  'yom kippur','diwali','eid','lunar new year','juneteenth','staff development',
+  'no school', 'schools closed', 'inclement weather',
+];
+
+// Best-effort parse of a full pasted/uploaded calendar document. Returns
+// {quarters, noSchool, earlyRelease, warnings} — NEVER applied directly to
+// Settings; the caller always shows this back to the teacher for review/
+// edit before saving (see lhApplyCountyCalendarParse() in the app).
+function parseCountyCalendarText(text, refYear) {
+  const warnings = [];
+  const lines = text.split(/\r?\n/);
+  const quarters = {};
+  const noSchoolSet = new Set();
+  const earlyReleaseSet = new Set();
+
+  // Real calendars typically state a year once per section/month and omit
+  // it on the next several entries ("MLK Day — January 18" with no year,
+  // right after a line that said "...2027"). Track the most recently seen
+  // year as we scan top to bottom and use it for any undated line, instead
+  // of assuming one constant year for a document that spans two calendar
+  // years (Aug 2026 - Jun 2027).
+  let yearContext = refYear;
+  let section = null; // 'noschool' | 'earlyrelease' | null
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) { return; } // blank line: keep current section (real calendars wrap holiday lists across blanks)
+    const lower = trimmed.toLowerCase();
+    const yearsOnLine = trimmed.match(/\b(20\d{2})\b/g);
+    if (yearsOnLine) yearContext = parseInt(yearsOnLine[yearsOnLine.length - 1]);
+
+    // Section headers
+    if (/early\s*release|early\s*dismissal/i.test(lower) && lower.length < 60) { section = 'earlyrelease'; }
+    else if (/(holiday|no\s*school|break|closed)/i.test(lower) && lower.length < 60 && !/\d/.test(lower)) { section = 'noschool'; }
+
+    // Quarter / nine-weeks date ranges
+    const qMatch = lower.match(/(?:quarter|qtr)\s*([1-4])\b/) || lower.match(/(1st|2nd|3rd|4th|first|second|third|fourth)\s*nine\s*weeks/);
+    if (qMatch) {
+      const qNum = qMatch[1].length <= 1 ? parseInt(qMatch[1]) : ORDINAL_Q[qMatch[1]];
+      const bounds = extractDateRangeBounds(trimmed, yearContext);
+      if (bounds && bounds.end) {
+        quarters[qNum] = bounds;
+      } else if (bounds && bounds.start) {
+        warnings.push(`Quarter ${qNum}: only found one date ("${bounds.start}") — needs a start AND end date, check this line manually.`);
+      } else {
+        warnings.push(`Found a "Quarter ${qNum}" label but no parseable date range on that line: "${trimmed.slice(0,80)}"`);
+      }
+      return; // a quarter line is never also a holiday/early-release line
+    }
+
+    // Keyword-triggered date pull, regardless of section (catches named
+    // holidays even when a document has no explicit section headers)
+    const isNamedHoliday = HOLIDAY_KEYWORDS.some(k => lower.includes(k));
+    if (section === 'earlyrelease') {
+      extractDatesFromText(trimmed, yearContext).forEach(d => earlyReleaseSet.add(d));
+    } else if (section === 'noschool' || isNamedHoliday) {
+      extractDatesFromText(trimmed, yearContext).forEach(d => noSchoolSet.add(d));
+    }
+  });
+
+  if (!Object.keys(quarters).length) {
+    warnings.push('No quarter date ranges recognized — enter them manually below (look for "Quarter 1/2/3/4" or "1st/2nd/3rd/4th Nine Weeks" lines with two dates).');
+  }
+  for (let q = 1; q <= 4; q++) {
+    if (!quarters[q]) warnings.push(`Quarter ${q} not found — fill in manually if your document has it.`);
+  }
+
+  return {
+    quarters,
+    noSchool: [...noSchoolSet].sort(),
+    earlyRelease: [...earlyReleaseSet].sort(),
+    warnings,
+  };
+}
+
+
+// ── School Calendar & Bell Schedule settings ─────────────────────────────────
+let _schedSaveStatusTimer = null;
+function _schedSaveStatus(msg, isError) {
+  const el = document.getElementById('sched-save-status');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = isError ? '#991b1b' : '#166534';
+  clearTimeout(_schedSaveStatusTimer);
+  _schedSaveStatusTimer = setTimeout(() => { if (el) el.textContent = ''; }, isError ? 5000 : 2000);
+}
+
+function lhSaveDayMap() {
+  const map = {};
+  for (let i = 0; i <= 6; i++) {
+    const sel = document.getElementById('sched-dow-' + i);
+    map[i] = sel && sel.value ? sel.value : null;
+  }
+  saveScheduleConfig({ dayOfWeekMap: map });
+  _schedSaveStatus('✓ Saved');
+}
+
+function lhSaveQuarters() {
+  const quarters = {};
+  [1, 2, 3, 4].forEach(q => {
+    const start = document.getElementById('sched-q' + q + '-start')?.value || '';
+    const end   = document.getElementById('sched-q' + q + '-end')?.value || '';
+    quarters[q] = { start, end, label: 'Q' + q };
+  });
+  saveScheduleConfig({ quarters });
+  _schedSaveStatus('✓ Saved');
+}
+
+// Accepts one date per line (or comma-separated); silently drops anything
+// that isn't YYYY-MM-DD rather than saving a calendar with junk entries.
+function _parseDateList(raw) {
+  return (raw || '').split(/[\n,]+/).map(s => s.trim()).filter(s => /^\d{4}-\d{2}-\d{2}$/.test(s));
+}
+
+function lhSaveNoSchool() {
+  saveScheduleConfig({ noSchool: _parseDateList(document.getElementById('sched-noschool')?.value) });
+  _schedSaveStatus('✓ Saved');
+}
+
+function lhSaveEarlyRelease() {
+  const overrides = {};
+  _parseDateList(document.getElementById('sched-earlyrelease')?.value).forEach(d => { overrides[d] = 'EARLY3'; });
+  saveScheduleConfig({ overrides });
+  _schedSaveStatus('✓ Saved');
+}
+
+// ── County Calendar Document import — the review/apply half ────────────
+// parseCountyCalendarText() (defined above, near getScheduleConfig) never
+// touches Settings by itself; this is the only place its output gets
+// applied, and only after the teacher confirms a preview.
+
+function lhLoadCountyCalendarFile(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    document.getElementById('sched-import-text').value = String(e.target.result || '');
+    fileInput.value = '';
+    lhParseCountyCalendar();
+  };
+  reader.onerror = () => {
+    const el = document.getElementById('sched-import-status');
+    if (el) { el.textContent = '⚠ Could not read that file.'; el.style.color = '#991b1b'; }
+    fileInput.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function lhParseCountyCalendar() {
+  const text = document.getElementById('sched-import-text')?.value || '';
+  const statusEl = document.getElementById('sched-import-status');
+  if (!text.trim()) {
+    if (statusEl) { statusEl.textContent = '⚠ Paste or upload some calendar text first.'; statusEl.style.color = '#991b1b'; }
+    return;
+  }
+  // Reference year: whatever Q1 is currently configured to (so parsing
+  // stays anchored to the school year already in Settings), falling back
+  // to the current calendar year if Q1 has never been set.
+  const refYear = (LP_QUARTERS[1] && LP_QUARTERS[1].start) ? parseInt(LP_QUARTERS[1].start.slice(0, 4)) : new Date().getFullYear();
+  const result = parseCountyCalendarText(text, refYear);
+
+  const qLines = [1, 2, 3, 4].map(q => result.quarters[q]
+    ? `Q${q}: ${result.quarters[q].start} to ${result.quarters[q].end}`
+    : `Q${q}: not found — existing value kept`
+  );
+  const summary = [
+    'Here\'s what was parsed — review before applying:',
+    '',
+    ...qLines,
+    '',
+    `${result.noSchool.length} no-school date(s) found (will be ADDED to your existing list, nothing removed).`,
+    `${result.earlyRelease.length} early-release date(s) found (will be ADDED to your existing list, nothing removed).`,
+    ...(result.warnings.length ? ['', '⚠ ' + result.warnings.join('\n⚠ ')] : []),
+    '',
+    'Apply these to Settings below? Quarters found above will REPLACE their current dates; everything else merges in.',
+  ].join('\n');
+
+  _showConfirm(summary, () => _lhApplyCountyCalendarParse(result), {
+    confirmLabel: 'Apply to Settings', danger: false, ariaLabel: 'Apply parsed county calendar to Settings',
+  });
+}
+
+function _lhApplyCountyCalendarParse(result) {
+  [1, 2, 3, 4].forEach(q => {
+    if (!result.quarters[q]) return; // not found — leave the existing field alone
+    const startEl = document.getElementById('sched-q' + q + '-start');
+    const endEl   = document.getElementById('sched-q' + q + '-end');
+    if (startEl) startEl.value = result.quarters[q].start;
+    if (endEl)   endEl.value   = result.quarters[q].end;
+  });
+  lhSaveQuarters();
+
+  const noSchoolEl = document.getElementById('sched-noschool');
+  if (noSchoolEl) {
+    const merged = [...new Set([..._parseDateList(noSchoolEl.value), ...result.noSchool])].sort();
+    noSchoolEl.value = merged.join('\n');
+  }
+  lhSaveNoSchool();
+
+  const earlyEl = document.getElementById('sched-earlyrelease');
+  if (earlyEl) {
+    const merged = [...new Set([..._parseDateList(earlyEl.value), ...result.earlyRelease])].sort();
+    earlyEl.value = merged.join('\n');
+  }
+  lhSaveEarlyRelease();
+
+  const statusEl = document.getElementById('sched-import-status');
+  if (statusEl) { statusEl.textContent = '✅ Applied to Settings below.'; statusEl.style.color = '#166534'; }
+}
+
+function lhSaveBellScheduleJson() {
+  const raw = document.getElementById('sched-bell-json')?.value || '';
+  let parsed;
+  try { parsed = JSON.parse(raw); }
+  catch (e) { _schedSaveStatus('⚠ Invalid JSON — not saved', true); return; }
+  saveScheduleConfig({ bellSchedules: parsed });
+  _schedSaveStatus('✓ Saved');
+}
+
+function lhSaveModule(key, checked) {
+  saveModules({ [key]: checked });
+}
+
+// Asks for Notification permission only on check — never on page load —
+// and never re-prompts once denied. lh_notify_enabled is the user's own
+// recorded intent; _fireNotification() (src/10) re-checks live
+// Notification.permission on every call too, so a permission revoked at
+// the OS/browser level after this degrades gracefully instead of erroring.
+function lhToggleNotifications(checked) {
+  const statusEl = document.getElementById('notif-status');
+  const toggleEl = document.getElementById('notif-toggle');
+  if (!checked) { LS.set('lh_notify_enabled', false); if (statusEl) statusEl.textContent = ''; return; }
+  if (typeof Notification === 'undefined') {
+    if (statusEl) { statusEl.textContent = '⚠ Not supported in this browser — reminders will still show as in-app banners.'; statusEl.style.color = '#991b1b'; }
+    if (toggleEl) toggleEl.checked = false;
+    return;
+  }
+  if (Notification.permission === 'granted') { LS.set('lh_notify_enabled', true); if (statusEl) { statusEl.textContent = '✅ Enabled'; statusEl.style.color = ''; } return; }
+  if (Notification.permission === 'denied') {
+    if (statusEl) { statusEl.textContent = '⚠ Blocked in your browser settings — reminders will still show as in-app banners.'; statusEl.style.color = '#991b1b'; }
+    if (toggleEl) toggleEl.checked = false;
+    return;
+  }
+  Notification.requestPermission().then(perm => {
+    LS.set('lh_notify_enabled', perm === 'granted');
+    if (toggleEl) toggleEl.checked = (perm === 'granted');
+    if (statusEl) {
+      statusEl.textContent = perm === 'granted' ? '✅ Enabled' : '⚠ Not granted — reminders will still show as in-app banners.';
+      statusEl.style.color = perm === 'granted' ? '' : '#991b1b';
+    }
+  });
+}
+
+// ── Course Catalog — Settings → Course Catalog ────────────────────────────────
+// Lets a teacher add their own course(s) to the SCR competency tracker —
+// course name, competency/Standards-of-Learning list, and class periods —
+// as a JSON file, instead of editing SCR_COURSES in this file by hand.
+// Imported courses are additive only: _validateAndAddCourse() refuses to
+// touch a code that already exists, so this can never overwrite Adam's own
+// 6115/8175/8177 (or another imported course).
+//
+// Deliberately out of scope: a hand-authored day-by-day pacing guide like
+// PACING_8175/8177/6115 (objectives, materials, assessment per lesson) —
+// that's original lesson-planning content, not catalog data, and isn't
+// something a JSON import can reasonably stand in for. Imported courses
+// use the Grid/Cards views normally and show a "no pacing guide yet" empty
+// state in the Pacing Guide sub-view (see getPacingForCourse()).
+function lhDownloadCourseTemplate() {
+  const template = {
+    code: "1234",
+    name: "Your Course Name",
+    icon: "🧩",
+    standardsLabel: "Competencies",
+    periods: ["1st Period", "2nd Period"],
+    competencies: [
+      { num: 1, code: "", req: "Required", duty: "Category or Duty Area", text: "First competency or Standard of Learning description." },
+      { num: 2, code: "", req: "Optional", duty: "Category or Duty Area", text: "Second competency or Standard of Learning description." }
+    ]
+  };
+  const blob = new Blob([JSON.stringify(template, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'leaderhub-course-template.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Parses + validates an uploaded course JSON. Returns {ok:true, code, name,
+// course} or {ok:false, error}. Never mutates SCR_COURSES itself — that's
+// the caller's job once the teacher confirms the preview.
+function _parseCourseJson(raw) {
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(_err) { return { ok:false, error:'Could not read this file — make sure it\'s valid JSON.' }; }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { ok:false, error:'File must contain a single JSON object (see the template).' };
+
+  const code = String(data.code || '').trim();
+  const name = String(data.name || '').trim();
+  if (!code) return { ok:false, error:'Course is missing a "code".' };
+  if (!name) return { ok:false, error:'Course is missing a "name".' };
+  if (SCR_COURSES[code]) return { ok:false, error:`A course with code "${code}" already exists — remove it first, or use a different code.` };
+
+  if (!Array.isArray(data.competencies) || !data.competencies.length) {
+    return { ok:false, error:'Course must include a non-empty "competencies" array (competencies or Standards of Learning).' };
+  }
+  const competencies = [];
+  const seenNums = new Set();
+  for (let i = 0; i < data.competencies.length; i++) {
+    const raw2 = data.competencies[i] || {};
+    const text = String(raw2.text || '').trim();
+    if (!text) return { ok:false, error:`Competency #${i+1} is missing "text".` };
+    let num = parseInt(raw2.num, 10);
+    if (!Number.isInteger(num) || num <= 0) num = i + 1; // auto-assign if omitted/invalid
+    if (seenNums.has(num)) return { ok:false, error:`Duplicate competency number ${num} — each "num" must be unique.` };
+    seenNums.add(num);
+    competencies.push({
+      num,
+      code: String(raw2.code || '').trim(),
+      text,
+      duty: String(raw2.duty || raw2.category || 'General').trim(),
+      req: raw2.req === 'Optional' ? 'Optional' : 'Required',
+    });
+  }
+
+  const periodNames = Array.isArray(data.periods) && data.periods.length
+    ? data.periods.map(p => String(p).trim()).filter(Boolean)
+    : ['Period 1'];
+  const periods = {};
+  periodNames.forEach(p => { periods[p] = []; });
+
+  const course = {
+    code, name,
+    icon: String(data.icon || '').trim() || '🧩',
+    standardsLabel: String(data.standardsLabel || 'Competencies').trim() || 'Competencies',
+    competencies, periods,
+    custom: true,
+  };
+  return { ok:true, code, name, course };
+}
+
+function lhImportCourseJson(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = _parseCourseJson(String(e.target.result || ''));
+    fileInput.value = '';
+    if (!result.ok) { _showToast('⚠ ' + result.error, 5000, '#991b1b'); return; }
+    const { code, name, course } = result;
+    _showConfirm(
+      `Add course ${code} — ${name}?\n\n${course.competencies.length} ${course.standardsLabel.toLowerCase()} · ${Object.keys(course.periods).length} period(s).\n\nThis only adds a new course — nothing you already have is changed.`,
+      () => {
+        SCR_COURSES[code] = course;
+        CUSTOM_COURSES[code] = course;
+        persistCustomCourses();
+        initScrScores();
+        renderScrCourseTabs();
+        renderCourseCatalogSettings();
+        renderPacingImportSettings();
+        _showToast(`✅ Added course ${code} — ${name}`, 3500, '#166534');
+      },
+      { confirmLabel: 'Add Course', danger: false, ariaLabel: `Add course ${code}` }
+    );
+  };
+  reader.onerror = () => { _showToast('⚠ Could not read that file.', 4000, '#991b1b'); fileInput.value = ''; };
+  reader.readAsText(file);
+}
+
+function lhRemoveCustomCourse(code) {
+  const course = CUSTOM_COURSES[code];
+  if (!course) return; // built-in courses have no remove control in the UI
+  _showConfirm(
+    `Remove course ${code} — ${course.name}? This deletes its ${course.standardsLabel.toLowerCase()} list and any scores recorded against it. This can't be undone.`,
+    () => {
+      delete SCR_COURSES[code];
+      delete CUSTOM_COURSES[code];
+      persistCustomCourses();
+      if (scrScores[code]) { delete scrScores[code]; persistSCR(); }
+      if (CUSTOM_PACING_UNITS[code]) { delete CUSTOM_PACING_UNITS[code]; persistCustomPacingUnits(); }
+      if (scrActiveCourse === code) {
+        scrActiveCourse = Object.keys(SCR_COURSES)[0] || '';
+        LS.set('lh_scr_active_course', scrActiveCourse);
+      }
+      renderScrCourseTabs();
+      if (document.getElementById('scr-content')) renderCompetencyView();
+      renderCourseCatalogSettings();
+      renderPacingImportSettings();
+      _showToast('🗑️ Course removed');
+    },
+    { confirmLabel: 'Remove', ariaLabel: `Remove course ${code}` }
+  );
+}
+
+function renderCourseCatalogSettings() {
+  const el = document.getElementById('course-catalog-list');
+  if (!el) return;
+  el.innerHTML = Object.entries(SCR_COURSES).map(([code, c]) => `
+    <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
+      <span>${c.icon||'🧩'}</span>
+      <span style="flex:1"><strong>${escH(code)}</strong> — ${escH(c.name)} <span style="color:var(--muted)">(${c.competencies.length} ${escH((c.standardsLabel||'competencies').toLowerCase())})</span></span>
+      ${c.custom
+        ? `<button onclick="lhRemoveCustomCourse('${code}')" aria-label="Remove course ${escH(code)}" title="Remove course" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+        : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
+    </div>`).join('');
+}
+
+// ── Organizations — Settings → Organizations ──────────────────────────────────
+// Mirrors the Course Catalog import above: additive JSON import, template
+// download, and a remove control for anything besides Adam's built-in DECA.
+function lhDownloadOrgTemplate() {
+  const template = {
+    id: "fbla",
+    name: "Your Organization Name",
+    icon: "🎯",
+    officerPositions: ["President","Vice President","Secretary","Treasurer","Historian"],
+    levels: [
+      { key: "region", label: "Regional Competition" },
+      { key: "state",  label: "State Competition" }
+    ],
+    placeOptions: ["1st","2nd","3rd","Finalist","Award","Did Not Place"]
+  };
+  const blob = new Blob([JSON.stringify(template, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'leaderhub-organization-template.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Parses + validates an uploaded organization JSON. Returns {ok:true, id,
+// name, org} or {ok:false, error}. Never mutates ORGANIZATIONS itself —
+// that's the caller's job once the teacher confirms the preview. `levels`
+// and `placeOptions` are both optional — a non-competitive club (NHS, Key
+// Club) can omit `levels` entirely and its Results log falls back to a
+// flat, un-tiered list (see renderOrgResults()).
+function _parseOrgJson(raw) {
+  let data;
+  try { data = JSON.parse(raw); }
+  catch(_err) { return { ok:false, error:'Could not read this file — make sure it\'s valid JSON.' }; }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) return { ok:false, error:'File must contain a single JSON object (see the template).' };
+
+  const id   = String(data.id || '').trim().toLowerCase().replace(/[^a-z0-9_-]/g,'');
+  const name = String(data.name || '').trim();
+  if (!id)   return { ok:false, error:'Organization is missing an "id" (short, letters/numbers only, e.g. "fbla").' };
+  if (!name) return { ok:false, error:'Organization is missing a "name".' };
+  if (ORGANIZATIONS[id]) return { ok:false, error:`An organization with id "${id}" already exists — remove it first, or use a different id.` };
+
+  let officerPositions = Array.isArray(data.officerPositions) ? data.officerPositions.map(p=>String(p).trim()).filter(Boolean) : [];
+  if (!officerPositions.length) officerPositions = ['President','Vice President','Secretary','Treasurer','Member'];
+
+  let levels = [];
+  if (Array.isArray(data.levels)) {
+    for (let i = 0; i < data.levels.length; i++) {
+      const raw2 = data.levels[i] || {};
+      const label = String(raw2.label || '').trim();
+      if (!label) return { ok:false, error:`Level #${i+1} is missing "label".` };
+      const key = String(raw2.key || label).trim().toLowerCase().replace(/[^a-z0-9_-]/g,'') || ('level'+(i+1));
+      levels.push({ key, label });
+    }
+  }
+
+  const placeOptions = Array.isArray(data.placeOptions) && data.placeOptions.length
+    ? data.placeOptions.map(p=>String(p).trim()).filter(Boolean)
+    : ['1st','2nd','3rd','Award','Did Not Place'];
+
+  const org = {
+    id, name,
+    icon: String(data.icon || '').trim() || '🧩',
+    officerPositions, levels, placeOptions,
+    custom: true,
+  };
+  return { ok:true, id, name, org };
+}
+
+function lhImportOrgJson(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const result = _parseOrgJson(String(e.target.result || ''));
+    fileInput.value = '';
+    if (!result.ok) { _showToast('⚠ ' + result.error, 5000, '#991b1b'); return; }
+    const { id, name, org } = result;
+    _showConfirm(
+      `Add organization ${name}?\n\n${org.officerPositions.length} officer position(s) · ${org.levels.length} level(s) configured.\n\nThis only adds a new organization — nothing you already have is changed.`,
+      () => {
+        ORGANIZATIONS[id] = org;
+        CUSTOM_ORGS[id] = org;
+        persistCustomOrgs();
+        renderOrgTabs();
+        _applyOrgNavLabels();
+        renderOrgCatalogSettings();
+        _showToast(`✅ Added organization: ${name}`, 3500, '#166534');
+      },
+      { confirmLabel: 'Add Organization', danger: false, ariaLabel: `Add organization ${name}` }
+    );
+  };
+  reader.onerror = () => { _showToast('⚠ Could not read that file.', 4000, '#991b1b'); fileInput.value = ''; };
+  reader.readAsText(file);
+}
+
+function lhRemoveCustomOrg(id) {
+  const org = CUSTOM_ORGS[id];
+  if (!org) return; // DECA has no remove control in the UI
+  _showConfirm(
+    `Remove organization ${org.name}? This deletes its roster, officers, and logged results. This can't be undone.`,
+    () => {
+      delete ORGANIZATIONS[id];
+      delete CUSTOM_ORGS[id];
+      persistCustomOrgs();
+      students = students.filter(s => s.org !== id);
+      persistStudents();
+      if (ORG_RESULTS[id]) { delete ORG_RESULTS[id]; persistOrgResults(); }
+      if (activeOrgId === id) {
+        activeOrgId = Object.keys(ORGANIZATIONS)[0] || 'deca';
+        LS.set('lh_active_org', activeOrgId);
+      }
+      renderOrgTabs();
+      _applyOrgUIVisibility();
+      _applyOrgNavLabels();
+      if (document.getElementById('member-tab-content')) renderStudents();
+      if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+      renderOrgCatalogSettings();
+      _showToast('🗑️ Organization removed');
+    },
+    { confirmLabel: 'Remove', ariaLabel: `Remove organization ${org.name}` }
+  );
+}
+
+function renderOrgCatalogSettings() {
+  const el = document.getElementById('org-catalog-list');
+  if (!el) return;
+  el.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) => {
+    const sync = ORG_SYNC[id];
+    const syncRow = (sync && sync.enabled)
+      ? `<div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;flex-wrap:wrap;padding-left:1.75rem">
+           <span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
+           <button onclick="lhPullOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
+           <button onclick="lhPushOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
+           <button onclick="lhStopSharingOrg('${id}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
+         </div>`
+      : `<div style="padding-left:1.75rem;margin-top:.3rem">
+           <button onclick="lhShareOrg('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.68rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
+         </div>`;
+    return `
+    <div style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
+      <div style="display:flex;align-items:center;gap:.5rem">
+        <span>${o.icon||'🧩'}</span>
+        <span style="flex:1"><strong>${escH(o.name)}</strong> <span style="color:var(--muted)">(${o.officerPositions.length} officer position(s)${o.levels && o.levels.length ? ', '+o.levels.length+' level(s)' : ''})</span></span>
+        ${o.custom
+          ? `<button onclick="lhRemoveCustomOrg('${id}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+          : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
+      </div>
+      ${syncRow}
+    </div>`;
+  }).join('') + `
+    <button onclick="lhOpenJoinOrgModal()" style="width:100%;background:none;border:1.5px dashed var(--border);border-radius:8px;padding:.5rem;font-size:.75rem;color:#1e3a6e;cursor:pointer;margin-top:.2rem">🔎 Join a Shared Organization…</button>`;
+}
+
+// ── Co-advisor sharing (EE2) — push/pull/join, all routed through the same
+// EmailBridge.gs "Organization Sync" endpoints an Email Bridge URL already
+// points at (Settings → Email Bridge). Nothing here runs automatically —
+// every push/pull is a deliberate button click, and a rejected push always
+// surfaces a conflict prompt rather than silently overwriting anyone's data.
+
+// Field lists define BOTH the header row sent to the sheet and the shape
+// read back on pull — keep these two in sync with each other, not with
+// EmailBridge.gs (which is intentionally schema-agnostic and never needs to
+// change when these lists do).
+const ORG_ROSTER_SYNC_FIELDS = ['id','first','last','grade','position','competEvent','memberStatus','paid','duesDate','email','phone','parentEmail','parentPhone','address','shirtSize','dietaryNeeds','ev','notes','alumniYear','alumniPref'];
+const ORG_RESULT_SYNC_FIELDS = ['id','student','event','level','place','notes','addedAt'];
+
+function _orgRosterRows(orgId) {
+  return students.filter(s => s.org === orgId).map(s =>
+    ORG_ROSTER_SYNC_FIELDS.map(f => (s[f] === undefined || s[f] === null) ? '' : s[f])
+  );
+}
+
+// DECA's own results (`lh_deca_results`) and generic ORG_RESULTS both use
+// slightly different field names for the qualification tier ('eventId' vs
+// 'levelKey') — normalized to 'level' on the wire so one shared row shape
+// covers both without EmailBridge.gs needing to know either name.
+function _orgResultRows(orgId) {
+  const raw = orgId === 'deca' ? LS.get('lh_deca_results', []) : getOrgResults(orgId);
+  return raw.map(r => ORG_RESULT_SYNC_FIELDS.map(f => {
+    if (f === 'level') return (orgId === 'deca' ? r.eventId : r.levelKey) || '';
+    return (r[f] === undefined || r[f] === null) ? '' : r[f];
+  }));
+}
+
+// ── Sync safety helper (Say/Do Ledger leader-hub #1) ─────────────────────────
+// One shared, deterministic snapshot of an org's current local roster+results
+// — the same rows a push would send. Both push (to record "this is what I
+// just synced") and pull (to detect "has this browser changed anything since
+// the last time it synced?") call this, so there's exactly one definition of
+// "in sync" instead of two separately-maintained ideas of it.
+function _orgSyncSnapshot_(orgId) {
+  const payload = JSON.stringify({ r: _orgRosterRows(orgId), o: _orgResultRows(orgId) });
+  let h = 0;
+  for (let i = 0; i < payload.length; i++) { h = ((h << 5) - h + payload.charCodeAt(i)) | 0; }
+  return String(h);
+}
+
+// One shared "last synced" line, used everywhere a co-advisor is actually
+// looking at a shared org's data — not just Settings → Organizations, which
+// used to be the only place this was visible at all.
+function _orgSyncStatusLine_(orgId) {
+  const sync = ORG_SYNC[orgId];
+  if (!sync || !sync.enabled) return '';
+  return `🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.lastSyncedAt).toLocaleString()) : ''}`;
+}
+
+function lhShareOrg(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  if (!org) return;
+  _showConfirm(
+    `Share ${org.name} with a co-advisor?\n\nThis publishes its current roster, results, and settings to the shared Google Sheet behind your Email Bridge URL. Anyone with that same /exec URL can then join or sync this organization.`,
+    () => lhPushOrgSync(orgId),
+    { confirmLabel: 'Share', danger: false, ariaLabel: `Share organization ${org.name}` }
+  );
+}
+
+function lhStopSharingOrg(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  if (!org) return;
+  _showConfirm(
+    `Stop sharing ${org.name}? This only stops THIS browser from syncing — it doesn't delete anything from the shared Sheet, and a co-advisor still connected keeps their own copy.`,
+    () => {
+      delete ORG_SYNC[orgId];
+      persistOrgSync();
+      renderOrgCatalogSettings();
+      _showToast('Stopped sharing ' + org.name);
+    },
+    { confirmLabel: 'Stop Sharing', ariaLabel: `Stop sharing organization ${org.name}` }
+  );
+}
+
+async function lhPushOrgSync(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  if (!org) return;
+  if (!_lhBridgeAvailable_()) {
+    _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    return;
+  }
+  const state = ORG_SYNC[orgId];
+  let res;
+  try {
+    res = await callGAS('pushOrgSync', {
+      orgId,
+      orgName: org.name,
+      config: org,
+      rosterHeaders: ORG_ROSTER_SYNC_FIELDS,
+      rosterRows: _orgRosterRows(orgId),
+      resultHeaders: ORG_RESULT_SYNC_FIELDS,
+      resultRows: _orgResultRows(orgId),
+      updatedBy: PROFILE.email || '',
+      expectedUpdatedAt: state ? state.lastKnownRemoteUpdatedAt : undefined,
+    });
+  } catch (e) {
+    _showToast('⚠ Could not reach Apps Script bridge.', 4000, '#991b1b');
+    return;
+  }
+  if (res && res.conflict) { _showOrgSyncConflictModal(orgId, res); return; }
+  if (!res || !res.ok) { _showToast('⚠ Push failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
+  // localSnapshotHash records what THIS browser's local data looked like at
+  // the moment it was last confirmed to match the shared Sheet — pull uses
+  // it afterward to detect local edits made since, before ever overwriting
+  // them (see _doPullOrgSync).
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
+  persistOrgSync();
+  renderOrgCatalogSettings();
+  if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+  if (document.getElementById('member-tab-content')) renderStudents();
+  _showToast('✅ ' + org.name + ' pushed to the shared Sheet', 3200, '#166534');
+}
+
+// lhPullOrgSync() is the confirming, user-facing entry point (the "⬇️ Pull"
+// button in Settings → Organizations) — it always asks first, mirroring
+// lhJoinOrg()'s existing confirm pattern (Say/Do Ledger leader-hub #1: this
+// button used to skip confirmation entirely, unlike Join). Call sites that
+// already got explicit, in-context confirmation from their own dialog
+// (lhJoinOrg's own confirm, the conflict modal's "Pull Latest First" button)
+// call _doPullOrgSync() directly instead, so nobody confirms the same pull
+// twice.
+function lhPullOrgSync(orgId) {
+  const org = ORGANIZATIONS[orgId];
+  const orgName = org ? org.name : orgId;
+  _showConfirm(
+    `Pull the latest ${orgName} data from the shared Sheet?\n\nThis replaces this browser's local roster and results for ${orgName} with what's on the Sheet.`,
+    () => _doPullOrgSync(orgId),
+    { confirmLabel: 'Pull', danger: false, ariaLabel: `Pull organization ${orgName}` }
+  );
+}
+
+// Pulls an org's current synced state and replaces this browser's local
+// roster/results for that org wholesale. For a non-DECA org this also
+// adopts the shared config (officer positions/levels/placeOptions) as
+// local — that's the point of sharing a custom org — but DECA's own
+// hardcoded config is never touched, matching the guarantee the rest of
+// this app makes about Adam's built-in DECA experience.
+//
+// Before any of that, checks this browser's current local data against the
+// snapshot hash recorded the last time this org was synced (push OR pull) —
+// mirroring pushOrgSync_'s own compare-and-swap on the server, just against
+// a local baseline instead of a remote timestamp (Say/Do Ledger leader-hub
+// #1: pull used to have no equivalent check at all, so a browser with real
+// unpushed local edits would silently lose them to any pull).
+// Returns true on a completed pull, false/undefined on every early-return
+// path (bridge not configured, drift detected, network failure, server
+// error, nothing shared yet, empty roster guard) — lhJoinOrg uses this to
+// know whether to show the one-time welcome disclosure (Say/Do Ledger
+// leader-hub #10), since that should only ever follow a real, completed
+// first sync, never a failed attempt.
+async function _doPullOrgSync(orgId) {
+  if (!_lhBridgeAvailable_()) {
+    _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    return false;
+  }
+  const priorState = ORG_SYNC[orgId];
+  if (priorState && priorState.localSnapshotHash !== undefined && priorState.localSnapshotHash !== _orgSyncSnapshot_(orgId)) {
+    _showOrgPullDriftModal(orgId);
+    return false;
+  }
+  let res;
+  try {
+    res = await callGAS('pullOrgSync', { orgId });
+  } catch (e) {
+    _showToast('⚠ Could not reach Apps Script bridge.', 4000, '#991b1b');
+    return false;
+  }
+  if (!res || !res.ok) { _showToast('⚠ Pull failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return false; }
+  if (!res.found) { _showToast('This organization has never been shared yet.', 3500, '#991b1b'); return false; }
+  // FIXED: the roster wipe below used to run unconditionally, even if
+  // the remote pull came back with zero rows — a transient Sheet-read
+  // glitch, or a co-advisor who'd just cleared the tab by mistake, would
+  // silently erase this organization's entire local roster with no
+  // confirmation and no undo. Bail out before the wipe instead.
+  if (!res.rosterRows || !res.rosterRows.length) {
+    _showToast('⚠ Pull returned no roster rows — keeping your existing roster rather than clearing it.', 5500, '#991b1b');
+    return false;
+  }
+
+  if (orgId !== 'deca' && res.config) {
+    const cfg = Object.assign({}, res.config, { id: orgId, custom: true });
+    ORGANIZATIONS[orgId] = cfg;
+    CUSTOM_ORGS[orgId] = cfg;
+    persistCustomOrgs();
+  }
+
+  students = students.filter(s => s.org !== orgId);
+  (res.rosterRows || []).forEach(row => {
+    const obj = { org: orgId };
+    ORG_ROSTER_SYNC_FIELDS.forEach((f, i) => { if (f !== 'id') obj[f] = row[i]; });
+    obj.id       = nextId.st++; // local ids are per-browser only — never trust a remote id back in
+    obj.grade    = (obj.grade === '' || obj.grade == null) ? null : parseInt(obj.grade) || null;
+    obj.ev       = (obj.ev === '' || obj.ev == null) ? null : parseInt(obj.ev) || null;
+    obj.paid     = obj.paid === true || obj.paid === 'true' || obj.paid === 'TRUE';
+    students.push(obj);
+  });
+  persistNextId();
+  persistStudents();
+
+  const resultRows = (res.resultRows || []).map(row => {
+    const obj = {};
+    ORG_RESULT_SYNC_FIELDS.forEach((f, i) => { obj[f] = row[i]; });
+    return obj;
+  });
+  if (orgId === 'deca') {
+    LS.set('lh_deca_results', resultRows.map(r => ({ id: r.id || ('dr' + Date.now() + Math.random().toString(36).slice(2,6)), student: r.student, event: r.event, eventId: r.level, place: r.place, notes: r.notes, addedAt: r.addedAt })));
+  } else {
+    ORG_RESULTS[orgId] = resultRows.map(r => ({ id: r.id || ('or' + Date.now() + Math.random().toString(36).slice(2,6)), student: r.student, event: r.event, levelKey: r.level, place: r.place, notes: r.notes, addedAt: r.addedAt }));
+    persistOrgResults();
+  }
+
+  // localSnapshotHash is computed here, AFTER the pulled data has just been
+  // written into `students`/results above — it must reflect what this
+  // browser's data looks like right now (which now matches the remote),
+  // not the pre-pull state, so a later pull's drift check compares against
+  // the right baseline.
+  ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
+  persistOrgSync();
+
+  renderOrgTabs();
+  _applyOrgNavLabels();
+  if (document.getElementById('member-tab-content')) renderStudents();
+  if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
+  renderOrgCatalogSettings();
+  _showToast('✅ Pulled latest ' + (ORGANIZATIONS[orgId] ? ORGANIZATIONS[orgId].name : orgId) + ' data', 3200, '#166534');
+  return true;
+}
+
+// Shown when pushOrgSync_ rejects a push with {conflict:true} — someone
+// else pushed since this browser's last pull. Offers Pull-first (safe
+// default — see what changed, then re-push if still needed) or Push
+// Anyway (overwrite the newer remote state with this browser's local
+// data), never a silent auto-resolution either way.
+function _showOrgSyncConflictModal(orgId, res) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-sync-conflict-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  const whenStr = res.remoteUpdatedAt ? new Date(res.remoteUpdatedAt).toLocaleString() : 'unknown time';
+  const byStr   = res.remoteUpdatedBy ? escH(res.remoteUpdatedBy) : 'someone else';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="Sync conflict for ${escH(org.name)}">
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">⚠️ <strong>${escH(org.name)}</strong> was updated by ${byStr} on ${escH(whenStr)} — after the last time this browser synced. Pushing now would overwrite that change.</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <button class="btn btn-primary btn-sm" id="org-conflict-pull">⬇️ Pull Latest First (recommended)</button>
+      <button class="btn btn-danger btn-sm" id="org-conflict-push">⬆️ Push Anyway (overwrite their change)</button>
+      <button class="btn btn-outline btn-sm" id="org-conflict-cancel">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-conflict-cancel').onclick = closeIt;
+  // Goes straight to _doPullOrgSync, not lhPullOrgSync — the user already
+  // made an explicit, informed choice by clicking this button; a second
+  // "are you sure?" confirm right after would just be an extra click.
+  document.getElementById('org-conflict-pull').onclick = () => { closeIt(); _doPullOrgSync(orgId); };
+  document.getElementById('org-conflict-push').onclick = () => {
+    closeIt();
+    // Re-push with expectedUpdatedAt cleared to the *server's* reported
+    // current value — this is the one deliberate override path, so it
+    // still goes through the same compare-and-swap on the server (against
+    // whatever's there right this instant), it just accepts the value the
+    // conflict response just told us about instead of our stale one.
+    ORG_SYNC[orgId] = Object.assign({}, ORG_SYNC[orgId], { lastKnownRemoteUpdatedAt: res.remoteUpdatedAt });
+    persistOrgSync();
+    lhPushOrgSync(orgId);
+  };
+  document.getElementById('org-conflict-pull').focus();
+}
+
+// Shown when _doPullOrgSync's own local-vs-last-synced-snapshot check finds
+// this browser has edits (new members, results, dues changes) that were
+// never pushed — pulling would silently throw them away otherwise. Mirrors
+// _showOrgSyncConflictModal's shape (never a silent auto-resolution either
+// way), just for the opposite direction of the same underlying risk.
+function _showOrgPullDriftModal(orgId) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-pull-drift-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem" role="alertdialog" aria-modal="true" aria-label="Unsynced local changes for ${escH(org.name)}">
+    <div style="font-size:.86rem;color:#111;margin-bottom:1rem;line-height:1.5">⚠️ This browser has local changes to <strong>${escH(org.name)}</strong> that haven't been pushed to the shared Sheet yet. Pulling now would discard them.</div>
+    <div style="display:flex;flex-direction:column;gap:.5rem">
+      <button class="btn btn-primary btn-sm" id="org-drift-push">⬆️ Push My Changes First</button>
+      <button class="btn btn-danger btn-sm" id="org-drift-discard">⬇️ Discard Local Changes & Pull</button>
+      <button class="btn btn-outline btn-sm" id="org-drift-cancel">Cancel</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-drift-cancel').onclick = closeIt;
+  document.getElementById('org-drift-push').onclick = () => { closeIt(); lhPushOrgSync(orgId); };
+  document.getElementById('org-drift-discard').onclick = () => {
+    closeIt();
+    // The one deliberate override path — clear the stored hash so
+    // _doPullOrgSync's comparison can't fire again for this same pull, then
+    // proceed exactly as if there were no local edits to protect.
+    if (ORG_SYNC[orgId]) { ORG_SYNC[orgId] = Object.assign({}, ORG_SYNC[orgId], { localSnapshotHash: undefined }); persistOrgSync(); }
+    _doPullOrgSync(orgId);
+  };
+  document.getElementById('org-drift-cancel').focus();
+}
+
+// Say/Do Ledger leader-hub #10 — shown once per org, right after a co-advisor's
+// first successful join (see lhJoinOrg's doPull). Covers what this tool
+// actually is, the practical reliability implication of that, and — folded in
+// per the decision's own sequencing note, now that #1 has shipped — the real
+// sync-safety behavior a co-advisor will actually see going forward. The same
+// content lives permanently in Settings → Organizations (see the "About This
+// Tool & Syncing" block in renderOrgCatalogSettings' surrounding markup) so
+// it's not just a one-time modal a co-advisor can never find again.
+function _showOrgWelcomeModal(orgId) {
+  const org = ORGANIZATIONS[orgId] || { name: orgId };
+  const modalId = 'org-welcome-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:460px;width:92%;max-height:85vh;overflow-y:auto;border-radius:12px;padding:1.25rem" role="dialog" aria-modal="true" aria-label="Welcome, co-advisor">
+    <h3 style="margin:0 0 .6rem;font-size:1.05rem">👋 Welcome, co-advisor</h3>
+    <div style="font-size:.82rem;color:#333;line-height:1.6">
+      <p style="margin-bottom:.7rem">You just joined <strong>${escH(org.name)}</strong>. A couple of things worth knowing before you use this alongside your co-advisor:</p>
+      <p style="margin-bottom:.7rem"><strong>What this is:</strong> LeaderHub is a personal tool Adam Berneche built and maintains for his own workload — it isn't a district-provisioned or IT-supported product. There's no uptime guarantee and no support desk; if something breaks, it gets fixed on Adam's own time. Keep your own backup of anything you can't afford to lose (dues records, competition results) — this is a convenience layer, not a system of record.</p>
+      <p style="margin-bottom:.7rem"><strong>How syncing works:</strong> Nothing syncs automatically. <strong>⬆️ Push</strong> sends your copy to the shared Sheet; <strong>⬇️ Pull</strong> brings in your co-advisor's copy — both always ask you to confirm first. If a push says someone else updated it since you last synced, or a pull says you have local changes that haven't been pushed yet, that's this app catching a real conflict before it happens — pick pull-first or push-anyway, it's never resolved silently behind your back.</p>
+      <p style="margin:0;color:var(--muted);font-size:.76rem">This same explanation lives permanently under Settings → Organizations, so you can find it again any time.</p>
+    </div>
+    <div style="margin-top:1rem;text-align:right">
+      <button class="btn btn-primary btn-sm" id="org-welcome-close">Got it</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-welcome-close').onclick = closeIt;
+  document.getElementById('org-welcome-close').focus();
+}
+
+async function lhOpenJoinOrgModal() {
+  if (!_lhBridgeAvailable_()) {
+    _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
+    return;
+  }
+  const modalId = 'org-join-modal';
+  const existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:460px;width:92%;max-height:80vh;overflow-y:auto;border-radius:12px;padding:1.25rem" role="dialog" aria-modal="true" aria-label="Join a shared organization">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <h3 style="margin:0;font-size:1rem">Join a Shared Organization</h3>
+      <button id="org-join-close" aria-label="Close" style="background:none;border:none;font-size:1.1rem;cursor:pointer">✕</button>
+    </div>
+    <div id="org-join-list" style="font-size:.8rem;color:var(--muted)">Loading shared organizations…</div>
+  </div>`;
+  document.body.appendChild(modal);
+  const closeIt = () => modal.remove();
+  modal._onCancel = closeIt;
+  modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
+  document.getElementById('org-join-close').onclick = closeIt;
+
+  const listEl = document.getElementById('org-join-list');
+  let res;
+  try { res = await callGAS('listOrgSyncs', {}); }
+  catch (e) { listEl.textContent = '⚠ Could not reach Apps Script bridge.'; return; }
+  if (!res || !res.ok) { listEl.textContent = '⚠ Could not load: ' + ((res && res.error) || 'unknown error'); return; }
+  if (!res.orgs.length) { listEl.textContent = 'No organizations have been shared on this bridge yet.'; return; }
+  listEl.innerHTML = res.orgs.map(o => {
+    const existsLocally = !!ORGANIZATIONS[o.orgId];
+    const btnLabel = existsLocally ? 'Pull latest' : 'Join';
+    const whenStr = o.updatedAt ? new Date(o.updatedAt).toLocaleString() : 'unknown';
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.4rem">
+      <span style="flex:1"><strong>${escH(o.orgName)}</strong><br><span style="font-size:.7rem;color:var(--muted)">Last updated ${escH(whenStr)}${o.updatedBy ? ' by ' + escH(o.updatedBy) : ''}</span></span>
+      <button onclick="lhJoinOrg('${String(o.orgId||'').trim().toLowerCase().replace(/[^a-z0-9_-]/g,'')}')" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer;white-space:nowrap">${btnLabel}</button>
+    </div>`;
+  }).join('');
+}
+
+function lhJoinOrg(orgId) {
+  const existing = ORGANIZATIONS[orgId];
+  // Calls _doPullOrgSync directly, not lhPullOrgSync — this function's own
+  // _showConfirm below (or the immediate doPull() for a brand-new org) is
+  // already the confirmation step; a second one right after would just be
+  // a redundant extra click. The drift check inside _doPullOrgSync still
+  // applies either way.
+  const doPull = () => {
+    const m = document.getElementById('org-join-modal'); if (m) m.remove();
+    // Say/Do Ledger leader-hub #10: a one-time "Welcome, co-advisor"
+    // disclosure the first time a join actually completes for this org —
+    // gated on the pull's real success (not just on clicking Join) and on
+    // ORG_WELCOME_SEEN so it never shows twice for the same org, even across
+    // a stop-sharing/rejoin cycle.
+    _doPullOrgSync(orgId).then(ok => {
+      if (ok && !ORG_WELCOME_SEEN[orgId]) {
+        ORG_WELCOME_SEEN[orgId] = true;
+        persistOrgWelcomeSeen();
+        _showOrgWelcomeModal(orgId);
+      }
+    });
+  };
+  if (existing) {
+    _showConfirm(
+      `Pull the latest shared data for ${existing.name}? This replaces its roster and results in this browser with what's on the shared Sheet.`,
+      doPull,
+      { confirmLabel: 'Pull Latest', danger: false, ariaLabel: `Pull latest data for ${existing.name}` }
+    );
+  } else {
+    doPull();
+  }
+}
+
+// ── Whole-app backup — every lh_* localStorage key, in one file ─────────────
+// This is the only backup mechanism a 100%-local, no-server app like this
+// one can have. Without it, a cleared cache or a device switch is silent,
+// unrecoverable data loss for a full year of tasks/journal/trip records.
+function lhExportBackup(){
+  const data = {};
+  for (let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if (k && k.startsWith('lh_')) data[k] = localStorage.getItem(k);
+  }
+  const payload = { app:'LeaderHub', version:1, exportedAt:new Date().toISOString(), data };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/json'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = 'leaderhub-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  // Read by buildActionQueue()'s backup-nudge card (external UX audit: this
+  // app has an elaborate reminder system and used none of it for the one
+  // event — no backup ever taken — that would erase everything).
+  LS.set('lh_last_backup', new Date().toISOString());
+}
+
+function lhImportBackup(fileInput){
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    let parsed;
+    try { parsed = JSON.parse(e.target.result); }
+    catch(err){ _showToast('Could not read this file — make sure it\'s a LeaderHub backup export (.json).', 4000, '#991b1b'); return; }
+
+    const data = (parsed && parsed.data) || parsed;
+    const keys = Object.keys(data || {}).filter(k => k.startsWith('lh_'));
+    if (!keys.length){ _showToast('This doesn\'t look like a LeaderHub backup — no lh_ data keys found.', 4000, '#991b1b'); return; }
+
+    // Native alert()/confirm() used to interrupt with raw OS dialogs here —
+    // a jarring break from the app's own toast/modal vocabulary, right in
+    // the middle of a genuinely destructive action worth getting right.
+    _showImportConfirmModal(keys.length, () => {
+      // FIXED: this used to be one bare `keys.forEach(k =>
+      // localStorage.setItem(...))` with no try/catch at all — a single
+      // key throwing (quota exceeded partway through, a malformed value)
+      // aborted the whole loop silently, leaving some keys imported and
+      // others not, yet the toast below still unconditionally said
+      // "Import complete" and reloaded anyway. A partial, silently
+      // corrupted import looked identical to a clean one. Now each key
+      // gets its own try/catch so one failure can't abort the rest, and
+      // the completion message (and whether to reload at all) depends on
+      // whether anything actually failed.
+      const failedKeys = [];
+      keys.forEach(k => {
+        try { localStorage.setItem(k, data[k]); }
+        catch (e) { failedKeys.push(k); console.error('[lhImportBackup] failed to import key', k, e); }
+      });
+
+      if (failedKeys.length === 0) {
+        _showToast('✅ Import complete — reloading…');
+        setTimeout(() => location.reload(), 900);
+      } else {
+        // A long duration rather than the usual ~3-4s default — this
+        // message is longer and more consequential than a normal toast,
+        // and critically, this branch does NOT reload. Reloading now
+        // would make this half-imported state look identical to a clean
+        // success, the exact failure mode this fix closes.
+        _showToast(
+          `⚠ Import partially failed — ${keys.length - failedKeys.length} of ${keys.length} key(s) imported, ` +
+          `${failedKeys.length} failed (likely storage full). Not reloading — export a backup and free up ` +
+          `storage before trying again.`,
+          15000, '#991b1b'
+        );
+      }
+    });
+  };
+  reader.readAsText(file);
+  fileInput.value = '';
+}
+
+function _showImportConfirmModal(count, onConfirm) {
+  const existing = document.getElementById('import-confirm-modal');
+  if (existing) existing.remove();
+  const modal = document.createElement('div');
+  modal.id = 'import-confirm-modal';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:#fff;max-width:420px;width:90%;border-radius:12px;padding:1.25rem">
+    <div style="font-weight:800;margin-bottom:.5rem">Import backup?</div>
+    <div style="font-size:.82rem;color:var(--muted);margin-bottom:1rem">Import ${count} data key(s) from this backup? This overwrites anything currently saved under the same names — consider exporting your current data first.</div>
+    <div style="display:flex;justify-content:flex-end;gap:.5rem">
+      <button class="btn btn-outline btn-sm" onclick="document.getElementById('import-confirm-modal').remove()">Cancel</button>
+      <button class="btn btn-primary btn-sm" id="import-confirm-submit">Import &amp; Overwrite</button>
+    </div>
+  </div>`;
+  modal.onclick = e => { if (e.target === modal) modal.remove(); };
+  document.body.appendChild(modal);
+  document.getElementById('import-confirm-submit').onclick = () => { modal.remove(); onConfirm(); };
+}
+
+// ── Clear Sample Data — Settings → Your Data ─────────────────────────────────
+// This file ships with real Adam-specific seed content in six collections
+// (trips, DECA roster, WBL roster, store inventory, DECA/leadership events,
+// goals) and — until this button existed — the only way for a new teacher
+// to start from a blank slate was deleting each record one at a time
+// through its own UI. Reloads afterward (same as lhImportBackup) so every
+// render path picks up the now-empty collections consistently instead of
+// trying to patch a dozen render functions live.
+//
+// Setting each key to [] only works because lh_trips/lh_wbl_students/
+// lh_inventory's reload-time overlay checks were just fixed to accept an
+// explicitly-empty array (Array.isArray) instead of requiring a non-empty
+// one (saved.length) — otherwise an empty array would silently fall back
+// to the hardcoded seed on the very reload this function triggers.
+function lhClearSampleData() {
+  _showConfirm(
+    "Clear all sample data?\n\nThis empties Field Trips, DECA Members, DECA/Leadership Events, Goals, WBL Roster, and Store Inventory — the content that shipped with this file. Your Profile, School Calendar, and Module settings are untouched.\n\nThis can't be undone — export a backup first if you're not sure.",
+    () => {
+      ['lh_trips', 'lh_students', 'lh_events', 'lh_goals', 'lh_wbl_students', 'lh_inventory'].forEach(k => LS.set(k, []));
+      _showToast('✅ Sample data cleared — reloading…');
+      setTimeout(() => location.reload(), 900);
+    },
+    { confirmLabel: 'Clear Sample Data', danger: true, ariaLabel: 'Clear sample data confirmation' }
+  );
+}
+
+// ── Student ID Lookup — CSV upload for AI-drafting privacy ──────────────────
+// Maps a student's full name (as typed elsewhere in the app — DECA results,
+// WBL roster, journal notes, etc.) to their CCPS ID number, so Brag Board's
+// AI-drafting payload (see LEADERHUB_AI_FLOW_SETUP.md) can substitute the ID
+// for the name before any of that text ever leaves this browser for Gemini.
+// A name not found in the uploaded roster is sent as-is — this is an
+// opt-in improvement over the default (nothing substituted), not a
+// guarantee that no name can ever reach Gemini; see the setup doc's
+// "What data this sends through Gemini" section for the full rationale.
+
+function _studentIdMap() {
+  return LS.get('lh_student_id_map', []);
+}
+
+// Minimal CSV line splitter — handles double-quoted fields (with "" as an
+// escaped literal quote), which a plain split(',') would break on any
+// field containing a comma (e.g. a "Last, First" formatted name column).
+function _parseCsvLine_(line) {
+  const out = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (inQuotes) {
+      if (c === '"') { if (line[i + 1] === '"') { cur += '"'; i++; } else inQuotes = false; }
+      else cur += c;
+    } else {
+      if (c === '"') inQuotes = true;
+      else if (c === ',') { out.push(cur); cur = ''; }
+      else cur += c;
+    }
+  }
+  out.push(cur);
+  return out.map(s => s.trim());
+}
+
+// Header-driven column detection rather than assuming a fixed layout, since
+// this reads whatever CSV export the teacher actually has. Looks for a
+// "Name" column, or separate "First"/"Last" columns to combine; and an
+// "ID"/"Number" column, or an "Email"/"Login"/"Username" column to pull the
+// leading digits out of (covers a CSV that exports the CCPS login directly
+// as e.g. "1234567@ccpsnet.net" instead of a bare ID column).
+function _parseStudentIdCsv_(text) {
+  const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim());
+  if (lines.length < 2) return { rows: [], skipped: [], error: 'File has no data rows.' };
+
+  const header  = _parseCsvLine_(lines[0]).map(h => h.toLowerCase());
+  const findCol = (...keywords) => header.findIndex(h => keywords.some(k => h.includes(k)));
+
+  const firstCol = findCol('first');
+  const lastCol  = findCol('last');
+  const nameCol  = (firstCol === -1 || lastCol === -1) ? findCol('name', 'student') : -1;
+  const idCol    = findCol('id', 'number');
+  const emailCol = findCol('email', 'login', 'username');
+
+  if (nameCol === -1 && (firstCol === -1 || lastCol === -1)) {
+    return { rows: [], skipped: [], error: 'Could not find a name column (looked for "Name", "First"/"Last", or "Student"). Check your CSV’s header row.' };
+  }
+  if (idCol === -1 && emailCol === -1) {
+    return { rows: [], skipped: [], error: 'Could not find an ID or email column (looked for "ID", "Number", "Email", "Login", or "Username"). Check your CSV’s header row.' };
+  }
+
+  const rows = [], skipped = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cells = _parseCsvLine_(lines[i]);
+    const name = nameCol !== -1 ? cells[nameCol] : `${cells[firstCol] || ''} ${cells[lastCol] || ''}`.trim();
+    let id = '';
+    if (idCol !== -1) {
+      const digits = (cells[idCol] || '').replace(/\D/g, '');
+      if (digits) id = digits;
+    }
+    if (!id && emailCol !== -1) {
+      const m = (cells[emailCol] || '').match(/(\d{5,})/);
+      if (m) id = m[1];
+    }
+    if (!name || !id) { skipped.push(lines[i]); continue; }
+    rows.push({ name, id });
+  }
+  return { rows, skipped };
+}
+
+function lhImportStudentIdCsv(fileInput) {
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const { rows, error, skipped } = _parseStudentIdCsv_(String(e.target.result || ''));
+    fileInput.value = ''; // allow re-selecting the identical file later
+    if (error) { _showToast('⚠ ' + error, 5000, '#991b1b'); return; }
+    if (!rows.length) { _showToast('⚠ No valid name/ID pairs found in this file.', 4000, '#991b1b'); return; }
+
+    const preview = rows.slice(0, 5).map(r => `${r.name} → ${r.id}`).join('\n');
+    const skippedNote = skipped && skipped.length ? `\n\n${skipped.length} row(s) skipped (missing name or ID).` : '';
+    _showConfirm(
+      `Import ${rows.length} student${rows.length !== 1 ? 's' : ''}?\n\n${preview}${rows.length > 5 ? '\n…' : ''}${skippedNote}\n\nThis replaces any previously uploaded roster.`,
+      () => {
+        LS.set('lh_student_id_map', rows);
+        LS.set('lh_student_id_map_updated', new Date().toISOString());
+        _renderStudentIdStatus();
+        _showToast(`✅ ${rows.length} student${rows.length !== 1 ? 's' : ''} mapped for AI privacy`, 3500, '#166534');
+      },
+      { confirmLabel: 'Import', danger: false, ariaLabel: 'Import student ID roster' }
+    );
+  };
+  reader.onerror = () => { _showToast('⚠ Could not read that file.', 4000, '#991b1b'); fileInput.value = ''; };
+  reader.readAsText(file);
+}
+
+function lhClearStudentIdMap() {
+  _showConfirm(
+    'Clear the uploaded student ID roster? Brag Board AI drafting will no longer substitute names before sending to Gemini.',
+    () => {
+      LS.set('lh_student_id_map', []);
+      LS.set('lh_student_id_map_updated', null);
+      _renderStudentIdStatus();
+      _showToast('Student ID roster cleared.', 2500, '#0369a1');
+    },
+    { confirmLabel: 'Clear', danger: true, ariaLabel: 'Clear student ID roster' }
+  );
+}
+
+function _renderStudentIdStatus() {
+  const el = document.getElementById('student-id-status');
+  if (!el) return;
+  const map = _studentIdMap();
+  if (!map.length) {
+    el.textContent = 'No roster uploaded — student names will be sent to Gemini as-is.';
+    el.style.color = 'var(--muted)';
+    return;
+  }
+  const updated = LS.get('lh_student_id_map_updated', null);
+  el.textContent = `✅ ${map.length} student${map.length !== 1 ? 's' : ''} mapped` +
+    (updated ? ' — updated ' + new Date(updated).toLocaleDateString() : '');
+  el.style.color = '#166534';
+}
+
+// ── AI Flow Health panel (Say/Do Ledger cross-portfolio Flow Health &amp;
+// Inventory extension) — Settings → AI Flow Health. Same "make correctness
+// the only easy path" instinct as #6/#7/#8's shared UI primitives: one
+// shared three-state read of the server's lifetime per-type counters
+// (getFlowHealth_(), EmailBridge.gs), rather than each of this file's 6 AI-
+// drafting features independently guessing whether its own Flow is built.
+// Mirrors kos-personal's own Turnstile/Registrar "healthy vs never-
+// completed-a-job vs no-jobs-yet" convention (8_WebApp_UI.html) adapted to
+// this system's actual signal: AI_Queue rows are always deleted (no
+// durable row history), so "healthy" here means the LIFETIME counter has
+// ever recorded a completed or errored job for that type — either counts,
+// since even an error proves a Flow is actually running and responding.
+const AI_FLOW_LABELS = {
+  EMAIL_COMPOSE:    '✉️ Email Composer',
+  ARCHIVE_INSIGHTS: '📦 Archive Insights',
+  WBL_INSIGHTS:     '🏪 WBL Insights',
+  LP_ASSIST:        '📝 Lesson Plan Assist',
+  FIN_ANALYSIS:     '💰 Financial Analysis',
+  BRAG_EMAIL:       '🎉 Brag Board Email',
+};
+
+async function renderAiFlowHealthSettings() {
+  const el = document.getElementById('ai-flow-health-list');
+  if (!el) return;
+
+  if (!_lhBridgeAvailable_()) {
+    el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Connect an Email Bridge URL (above) to see Flow status here.</div>`;
+    return;
+  }
+  el.innerHTML = `<div style="font-size:.75rem;color:var(--muted)">Checking…</div>`;
+
+  let res;
+  try {
+    res = await callGAS('flowHealth', {});
+  } catch (e) {
+    el.innerHTML = `<div style="font-size:.75rem;color:#991b1b">Couldn't reach Email Bridge — ${escH(e.message || String(e))}</div>`;
+    return;
+  }
+  if (!res || !res.ok) {
+    el.innerHTML = `<div style="font-size:.75rem;color:#991b1b">${escH((res && res.error) || 'Unknown error')}</div>`;
+    return;
+  }
+
+  const types = res.types && res.types.length ? res.types : Object.keys(AI_FLOW_LABELS);
+  el.innerHTML = types.map(type => {
+    const s = (res.stats && res.stats[type]) || { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0 };
+    const label = AI_FLOW_LABELS[type] || type;
+    let icon, color, text;
+    if (!s.submitted) {
+      icon = '⚪'; color = 'var(--muted)'; text = 'No jobs submitted yet';
+    } else if (s.completed || s.errored) {
+      icon = '✅'; color = '#166534';
+      text = s.completed + ' completed' + (s.errored ? ', ' + s.errored + ' errored' : '') + ' — Flow is connected';
+    } else {
+      icon = '⚠️'; color = '#b45309';
+      text = s.submitted + ' submitted, none ever finished — Flow may not be built yet';
+    }
+    return `<div style="display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.4rem 0;border-bottom:1px solid var(--border);font-size:.78rem">
+      <span>${escH(label)}</span>
+      <span style="color:${color};text-align:right">${escH(text)}</span>
+    </div>`;
+  }).join('');
+}
+
+// Forward substitution — applied to a COPY of the Brag Board wins text used
+// only for the network payload sent to Gemini; the local draft shown in the
+// UI and the eventual Gmail draft always keep real names (see
+// _restoreNamesFromIds below, which undoes this on the way back).
+// Longest-name-first so e.g. "Jane Smith-Doe" isn't partially shadowed by a
+// shorter "Jane Smith" entry matching first; \b-anchored so a name can't
+// match as a substring of an unrelated longer word.
+function _substituteNamesForIds(text) {
+  const map = _studentIdMap();
+  if (!map.length || !text) return text;
+  let out = text;
+  [...map].sort((a, b) => b.name.length - a.name.length).forEach(({ name, id }) => {
+    if (!name) return;
+    const re = new RegExp('\\b' + name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'gi');
+    out = out.replace(re, `${id}@${PROFILE.emailDomain}`);
+  });
+  return out;
+}
+
+// Runs _substituteNamesForIds over every named free-text field of a
+// callGAS('aiDraft', ...) payload before it leaves the browser, in one
+// place — so a future call site can't independently forget a field the
+// way sbeNotes did for months while its sibling field, attentionDetails,
+// already had this exact protection (Say/Do Ledger leader-hub finding
+// #12). Callers declare which keys are free text; string values are
+// substituted directly, array values are substituted per-item — anything
+// else (numbers, trip facts, structural strings like a course/quarter
+// label) is left untouched.
+function _privacySafeAiPayload(payload, freeTextKeys) {
+  const out = { ...payload };
+  (freeTextKeys || []).forEach(key => {
+    const v = out[key];
+    if (Array.isArray(v)) out[key] = v.map(_substituteNamesForIds);
+    else if (typeof v === 'string') out[key] = _substituteNamesForIds(v);
+  });
+  return out;
+}
+
+function _restoreNamesFromIds(text) {
+  const map = _studentIdMap();
+  if (!map.length || !text) return text;
+  let out = text;
+  const domainRe = PROFILE.emailDomain.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  map.forEach(({ name, id }) => {
+    out = out.replace(new RegExp(id + '@' + domainRe, 'gi'), name);
+  });
+  return out;
+}
+
+// ── Synergy / Canvas Currency Tracker ────────────────────────────────────────
+// Synergy grades should be updated every 2 weeks, and the Canvas assignment
+// calendar should be updated weekly.
+const SYNC_PLATFORMS = [
+  { id:'synergy',  label:'Synergy Grades',     icon:'📗', maxDays:14, policy:'Update every 2 weeks' },
+  { id:'canvas',   label:'Canvas Assignments',  icon:'🖥️', maxDays:7,  policy:'Update weekly' },
+  { id:'synergy_att', label:'Attendance (Synergy)', icon:'📋', maxDays:1, policy:'Update daily' },
+  { id:'canvas_comm', label:'Canvas Messages',  icon:'💬', maxDays:1,  policy:'Check daily' },
+];
+
+function renderSyncTracker() {
+  const grid = document.getElementById('sync-tracker-grid');
+  if (!grid) return;
+  const saved = LS.get('lh_sync_tracker', {});
+  grid.innerHTML = SYNC_PLATFORMS.map(p => {
+    const lastStr = saved[p.id];
+    const last = lastStr ? new Date(lastStr) : null;
+    const now = new Date();
+    const diffMs = last ? now - last : Infinity;
+    const diffDays = diffMs / (1000 * 60 * 60 * 24);
+    const overdue = diffDays > p.maxDays;
+    const warning = diffDays > p.maxDays * 0.75 && !overdue;
+    const bg = overdue ? '#fef2f2' : warning ? '#fffbeb' : '#f0fdf4';
+    const border = overdue ? '#fca5a5' : warning ? '#fde68a' : '#86efac';
+    const textColor = overdue ? '#991b1b' : warning ? '#92400e' : '#166534';
+    const statusLabel = !last ? '⚠ Never logged'
+      : diffDays < 1 ? '✅ Today'
+      : diffDays < 2 ? `✅ Yesterday`
+      : overdue ? `🔴 ${Math.floor(diffDays)}d ago`
+      : warning ? `🟡 ${Math.floor(diffDays)}d ago`
+      : `✅ ${Math.floor(diffDays)}d ago`;
+    const dateStr = last ? last.toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '—';
+    return `<div style="background:${bg};border:1px solid ${border};border-radius:8px;padding:.42rem .55rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:.3rem;margin-bottom:.2rem">
+        <span style="font-size:.72rem;font-weight:700;color:${textColor}">${p.icon} ${p.label}</span>
+        <button onclick="markSyncDone('${p.id}')" title="Mark as updated now" style="background:var(--navy);color:#fff;border:none;border-radius:4px;padding:1px 6px;font-size:.62rem;font-weight:700;cursor:pointer;white-space:nowrap">✓ Done</button>
+      </div>
+      <div style="font-size:.68rem;color:${textColor};font-weight:${overdue?'700':'400'}">${statusLabel}</div>
+      <div style="font-size:.62rem;color:#9ca3af">${dateStr} · ${p.policy}</div>
+    </div>`;
+  }).join('');
+}
+
+function markSyncDone(platformId) {
+  const saved = LS.get('lh_sync_tracker', {});
+  saved[platformId] = new Date().toISOString();
+  LS.set('lh_sync_tracker', saved);
+  renderSyncTracker();
+  // Toast
+  const p = SYNC_PLATFORMS.find(x => x.id === platformId);
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#15803d;color:#fff;padding:.45rem 1.1rem;border-radius:8px;font-size:.8rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  toast.textContent = `✅ ${p?.label || platformId} marked current`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+// ── Observation Prep Checklist ────────────────────────────────────────────────
+// Lesson plans should be current, differentiation should be documented,
+// and objectives should be posted and aligned. Evidence collected before/after
+// each observation.
+
+const OBS_PREP_ITEMS = [
+  // Instructional Readiness — Lesson Plans
+  { key:'lp_current',    label:'Lesson plan for today is written and accessible in Google Drive',       group:'Instructional Readiness', critical:true },
+  { key:'lp_objectives', label:'Learning objectives are posted / visible in the room',                  group:'Instructional Readiness', critical:true },
+  { key:'lp_aligned',    label:'Lesson is aligned to SOL/SCR competencies (noted in plan)',             group:'Instructional Readiness', critical:true },
+  { key:'lp_diff',       label:'Differentiation section is complete (SPED/ELL/Advanced/Formative)',     group:'Instructional Readiness', critical:true },
+  { key:'lp_unit',       label:'Unit plan is current — today\'s lesson fits the pacing sequence',       group:'Instructional Readiness', critical:false },
+  { key:'lp_pacing',     label:'Pacing is on track — no major gaps or compression in unit',             group:'Instructional Readiness', critical:false },
+  // Instructional Readiness — Assessment Evidence
+  { key:'assess_warm',   label:'Warm-up or bell-ringer is planned and ready',                           group:'Instructional Readiness', critical:false },
+  { key:'assess_form',   label:'Formative assessment checkpoint is built into the lesson',              group:'Instructional Readiness', critical:true },
+  { key:'assess_exit',   label:'Exit ticket or closing activity is prepared',                           group:'Instructional Readiness', critical:false },
+  // Professionalism & Records
+  { key:'grades_synergy','label':'Synergy grades are updated within the last 14 days',                  group:'Professionalism & Records', critical:true },
+  { key:'grades_canvas', label:'Canvas assignments/materials are current and visible to students',      group:'Professionalism & Records', critical:true },
+  { key:'deposit_clear', label:'No outstanding deposits — all collections deposited to Ms. Evans',      group:'Professionalism & Records', critical:false },
+  { key:'deadlines_ok',  label:'No overdue CCPS forms or DECA deadlines',                               group:'Professionalism & Records', critical:false },
+  // Physical environment
+  { key:'room_ready',    label:'Room is organized, materials are staged, agenda visible',               group:'Instructional Readiness', critical:false },
+  { key:'tech_working',  label:'Technology tested — projector, computer, any tools needed',             group:'Instructional Readiness', critical:false },
+];
+
+function renderObsChecklist() {
+  const el = document.getElementById('obs-checklist-content');
+  if (!el) return;
+
+  const saved   = LS.get('lh_obs_prep', {});
+  const history = LS.get('lh_obs_history', []);
+
+  const total    = OBS_PREP_ITEMS.length;
+  const done     = OBS_PREP_ITEMS.filter(i => saved[i.key]).length;
+  const critical = OBS_PREP_ITEMS.filter(i => i.critical);
+  const critDone = critical.filter(i => saved[i.key]).length;
+  const allCrit  = critDone === critical.length;
+  const pct      = Math.round(done / total * 100);
+  const barColor = allCrit ? '#22c55e' : done > critical.length ? '#f59e0b' : '#ef4444';
+
+  // Group by category
+  const groups = {};
+  OBS_PREP_ITEMS.forEach(item => {
+    const g = item.group;
+    if (!groups[g]) groups[g] = [];
+    groups[g].push(item);
+  });
+
+  const groupHtml = Object.entries(groups).map(([grpLabel, items]) => {
+    const rows = items.map(item => {
+      const checked = !!saved[item.key];
+      return `<label style="display:flex;align-items:flex-start;gap:.45rem;cursor:pointer;padding:.22rem 0;font-size:.76rem;color:${checked?'#9ca3af':'inherit'};${checked?'text-decoration:line-through':''}">
+        <input type="checkbox" ${checked?'checked':''} onchange="toggleObsCheck('${item.key}',this.checked)" style="margin-top:2px;accent-color:var(--navy);flex-shrink:0">
+        <span>${item.critical?'<strong>':''}${item.label}${item.critical?'</strong>':''} ${item.critical?'<span style="font-size:.6rem;color:#b91c1c;margin-left:2px">★ Critical</span>':''}</span>
+      </label>`;
+    }).join('');
+    return `<div style="margin-bottom:.6rem">
+      <div style="font-size:.65rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin-bottom:.3rem;padding-bottom:.2rem;border-bottom:1px solid var(--border)">${grpLabel}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 1.2rem">${rows}</div>
+    </div>`;
+  }).join('');
+
+  // Recent observations strip
+  const recent = history.slice(0,3).map(o => {
+    const typeLabel = {formal:'Formal Obs',walkthrough:'Walkthrough',pop:'Unannounced',plc:'PLC Meeting'};
+    const outcomeStyle = {pending:'color:#92400e;background:#fef3c7',positive:'color:#166534;background:#dcfce7',concern:'color:#92400e;background:#fef3c7',action:'color:#991b1b;background:#fee2e2'};
+    const st = outcomeStyle[o.outcome] || outcomeStyle.pending;
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.35rem .6rem;background:#f9fafb;border:1px solid var(--border);border-radius:7px;font-size:.72rem">
+      <span style="flex-shrink:0;color:var(--muted)">${o.date}</span>
+      <span style="font-weight:700;color:var(--navy)">${typeLabel[o.type]||o.type}</span>
+      <span style="font-size:.65rem;color:#555">${o.observer==='green'?'Ms. Green':o.observer==='white'?'C. White':o.observer==='altizer'?'D. Altizer':'Other'}</span>
+      <span style="font-size:.65rem;padding:1px 7px;border-radius:20px;font-weight:700;margin-left:auto;${st}">${o.outcome==='pending'?'⏳ Pending':o.outcome==='positive'?'✅ Positive':o.outcome==='concern'?'⚠️ Concern':'🔴 Action'}</span>
+      ${o.followup?`<span style="font-size:.63rem;color:#b91c1c;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${o.followup}">↳ ${o.followup}</span>`:''}
+      ${(o.outcome==='action'||o.outcome==='concern')?`<button onclick="resolveObsAction('${o.id}')" style="background:#dcfce7;color:#166534;border:1px solid #86efac;border-radius:5px;padding:1px 6px;font-size:.63rem;font-weight:700;cursor:pointer;flex-shrink:0" title="Mark follow-up complete — removes from priority queue">✅ Resolve</button>`:''}
+      <button onclick="deleteObsLog('${o.id}')" aria-label="Remove observation log entry from ${escH(o.date)}" style="background:none;border:none;color:#d1d5db;cursor:pointer;font-size:.72rem;flex-shrink:0">✕</button>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+  <div style="border:${allCrit?'1px solid #86efac':'2px solid #f59e0b'};border-radius:12px;background:${allCrit?'#f0fdf4':'#fffbeb'};overflow:hidden">
+    <!-- Header row -->
+    <div style="display:flex;align-items:center;gap:.75rem;padding:.7rem 1rem;cursor:pointer;user-select:none" onclick="toggleObsPanel()">
+      <div style="font-size:1.1rem">${allCrit?'✅':'📋'}</div>
+      <div style="flex:1">
+        <div style="font-size:.85rem;font-weight:700;color:var(--navy)">Observation / Walkthrough Prep Checklist</div>
+        <div style="font-size:.7rem;color:var(--muted)">${critDone}/${critical.length} critical items ready · ${done}/${total} total · click to ${saved._expanded?'collapse':'expand'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:.5rem;flex-shrink:0">
+        <span style="font-size:.65rem;background:${allCrit?'#dcfce7':'#fef3c7'};color:${allCrit?'#15803d':'#92400e'};padding:2px 10px;border-radius:20px;font-weight:700;border:1px solid ${allCrit?'#86efac':'#fde68a'}">${allCrit?'🟢 READY':'🟡 '+pct+'% ready'}</span>
+        <button onclick="event.stopPropagation();openObsLog()" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.3rem .75rem;font-size:.72rem;font-weight:700;cursor:pointer;white-space:nowrap">＋ Log Observation</button>
+        <button onclick="event.stopPropagation();resetObsPrep()" title="Reset all checkboxes" style="background:none;border:1px solid var(--border);border-radius:6px;padding:.3rem .5rem;font-size:.7rem;cursor:pointer;color:var(--muted)">↺ Reset</button>
+        <span style="font-size:.85rem;color:var(--muted)">${saved._expanded?'▲':'▼'}</span>
+      </div>
+    </div>
+    <!-- Progress bar -->
+    <div style="height:3px;background:#e5e7eb">
+      <div style="height:3px;background:${barColor};width:${pct}%;transition:width .3s"></div>
+    </div>
+    <!-- Expandable body -->
+    <div id="obs-checklist-body" style="display:${saved._expanded?'block':'none'};padding:.85rem 1rem 1rem">
+      <div style="font-size:.72rem;color:#92400e;background:#fef9c3;border:1px solid #fde68a;border-radius:6px;padding:.4rem .65rem;margin-bottom:.75rem">
+        <strong>How to use:</strong> Check off each item before any observation or walkthrough. Critical items (★) must be complete. Reset between observations. Log the observation after it happens — this creates your evidence trail.
+      </div>
+      ${groupHtml}
+      ${history.length ? `
+      <div style="margin-top:.85rem;border-top:1px solid var(--border);padding-top:.75rem">
+        <div style="font-size:.7rem;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--navy);margin-bottom:.45rem">Observation History (${history.length} logged)</div>
+        <div style="display:flex;flex-direction:column;gap:.3rem">${recent}</div>
+        ${history.length > 3 ? `<div style="font-size:.7rem;color:var(--muted);margin-top:.35rem;font-style:italic">${history.length-3} more observation${history.length-3!==1?'s':''} in history — reset or scroll to see all</div>` : ''}
+      </div>` : ''}
+    </div>
+  </div>`;
+}
+
+function toggleObsPanel() {
+  const saved = LS.get('lh_obs_prep', {});
+  saved._expanded = !saved._expanded;
+  LS.set('lh_obs_prep', saved);
+  renderObsChecklist();
+  refreshNextAction();
+}
+
+function toggleObsCheck(key, val) {
+  const saved = LS.get('lh_obs_prep', {});
+  saved[key] = val;
+  LS.set('lh_obs_prep', saved);
+  // If all critical items just became complete, log it to the daily log
+  const obsItems  = typeof OBS_PREP_ITEMS !== 'undefined' ? OBS_PREP_ITEMS : [];
+  const critical  = obsItems.filter(i => i.critical);
+  const critDone  = critical.filter(i => saved[i.key]).length;
+  if (val && critDone === critical.length && critical.length > 0) {
+    // Dedup: only log once per calendar day — prevents inflation if user unchecks/rechecks
+    const _ocToday = new Date().toISOString().slice(0, 10);
+    const _ocLog   = LS.get('lh_daily_log', []);
+    if (!_ocLog.some(e => e.type === 'obs_prep_complete' && (e.date||'').slice(0,10) === _ocToday)) {
+      _logDaily({ date: new Date().toISOString(), type: 'obs_prep_complete',
+        note: `Obs prep checklist complete — all ${critical.length} critical items checked (${obsItems.filter(i=>saved[i.key]).length}/${obsItems.length} total)` });
+    }
+  }
+  renderObsChecklist();
+  refreshNextAction();
+}
+
+function resetObsPrep() {
+  _showConfirm('Reset all checklist items? This clears today\'s prep — observation history is kept.', () => {
+    const saved = LS.get('lh_obs_prep', {});
+    const next = { _expanded: saved._expanded };
+    LS.set('lh_obs_prep', next);
+    renderObsChecklist();
+  }, { confirmLabel: 'Reset', ariaLabel: 'Reset observation prep checklist' });
+}
+
+function openObsLog() {
+  document.getElementById('obslog-date').valueAsDate = new Date();
+  document.getElementById('obslog-notes').value = '';
+  document.getElementById('obslog-followup').value = '';
+  document.getElementById('obs-log-modal').style.display = 'block';
+}
+function closeObsLog() { document.getElementById('obs-log-modal').style.display = 'none'; }
+
+function saveObsLog() {
+  const date     = document.getElementById('obslog-date').value;
+  const type     = document.getElementById('obslog-type').value;
+  const observer = document.getElementById('obslog-observer').value;
+  const period   = document.getElementById('obslog-period').value;
+  const outcome  = document.getElementById('obslog-outcome').value;
+  const notes    = document.getElementById('obslog-notes').value.trim();
+  const followup = document.getElementById('obslog-followup').value.trim();
+  if (!date) { _showToast('Please set a date.', 2500, '#991b1b'); return; }
+
+  const history = LS.get('lh_obs_history', []);
+  history.unshift({ id:'obs'+Date.now(), date, type, observer, period, outcome, notes, followup, loggedAt: new Date().toISOString() });
+  // FIXED: this was the one persisted log with no cap — every sibling
+  // log (lh_daily_log, lh_wbl_hours_log, lh_journal_history, ...) is
+  // capped in the same style. Matches lh_wbl_hours_log's precedent
+  // (irregular, per-event entries with no fixed calendar cadence).
+  LS.set('lh_obs_history', history.slice(0, 200));
+
+  closeObsLog();
+  renderObsChecklist();
+
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#0f2044;color:#fff;padding:.45rem 1.2rem;border-radius:8px;font-size:.8rem;font-weight:700;z-index:99999;box-shadow:0 4px 12px rgba(0,0,0,.2)';
+  toast.textContent = '📋 Observation logged';
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 3000);
+}
+
+function deleteObsLog(id) {
+  const all = LS.get('lh_obs_history', []);
+  const removed = all.find(o => o.id === id);
+  LS.set('lh_obs_history', all.filter(o => o.id !== id));
+  renderObsChecklist();
+  if (removed) {
+    _undoToast(`${removed.type || 'Observation'} log (${removed.date}) removed`, () => {
+      LS.set('lh_obs_history', [...LS.get('lh_obs_history', []), removed]);
+      renderObsChecklist();
+    });
+  }
+}
+
+// ── Resolve obs action item — marks it resolved so P95 stops firing ───────────
+// Changes outcome to 'resolved', which excludes it from the openActions filter
+// in buildActionQueue. The entry remains in the log as a historical record.
+function resolveObsAction(id) {
+  const history = LS.get('lh_obs_history', []);
+  const entry   = history.find(o => o.id === id);
+  if (!entry) return;
+  entry.outcome    = 'resolved';
+  entry.resolvedAt = new Date().toISOString();
+  LS.set('lh_obs_history', history);
+  renderObsChecklist();
+  refreshNextAction();
+  _showToast('✅ Follow-up marked resolved — removed from priority queue', 3000, '#166534');
+}
+
+// ── Init ──────────────────────────────────────────────────
+function initCockpit(){
+  // One-time marker so the backup-nudge card (buildActionQueue, src/10)
+  // knows how long this install has been in use, without needing a real
+  // account-creation event to key off of.
+  if (!LS.get('lh_first_use_date', '')) LS.set('lh_first_use_date', new Date().toISOString());
+  if (isCalendarExpired()) showCalendarExpiredBanner();
+  dbTick();
+  setInterval(dbTick, 15000);
+  refreshNextAction();
+  setInterval(refreshNextAction, 60000);
+  updateJournalCTA();
+  renderSyncTracker();
+  setInterval(renderSyncTracker, 60000);
+  renderObsChecklist();
+}
+
+// Init

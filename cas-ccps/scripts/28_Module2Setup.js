@@ -410,21 +410,32 @@ function _runRegistryImportWithGate_(ui, props, ss, courseNames) {
 function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
   // Run the importer
   let importedCount = 0;
-  // FIXED (external review pass, folded in — Addendum 22 R1): importCompetencyRegistry()
-  // is defined in Script 22b, which is bound to the Central Ledger project, not this
-  // one (Assignment System Manual / unified-manual). Apps Script doesn't share scope
-  // across projects, so this call would throw ReferenceError on every attempt — caught
-  // by the gas-lint tool's checkUndefinedFunctionCalls check (commit dd339b4) and
-  // explicitly deferred there for a dedicated follow-up. This is that follow-up: check
-  // for the function's existence up front and direct the operator to the project
-  // where the import actually works, instead of letting it fail into a bare
-  // "Import Failed" / err.message dialog that never explains why it always fails.
-  if (typeof importCompetencyRegistry !== "function") {
+  // FIXED (external review pass, folded in — Addendum 22 R1; corrected fix,
+  // external product review Finding 5): importCompetencyRegistry() is
+  // defined in Script 22b, which is bound to the Central Ledger project,
+  // not this one (Assignment System Manual / unified-manual). Apps Script
+  // doesn't share scope across projects, so a direct call here would throw
+  // ReferenceError on every attempt — caught by the gas-lint tool's
+  // checkUndefinedFunctionCalls check (commit dd339b4). The real fix is an
+  // Apps Script Library dependency (this project's manifest now declares
+  // one — see cas-ccps/clasp/manifests/unified-manual.appsscript.json's
+  // dependencies.libraries — pointing at central-ledger published as a
+  // Library, userSymbol CentralLedger): once that Library dependency is
+  // actually wired up with a real scriptId/version (a credentialed,
+  // deployment-time step — see cas-ccps/README.md's Finding 5 writeup),
+  // CentralLedger.importCompetencyRegistry() resolves for real, no manual
+  // Script-Editor step required. The typeof guard below still exists for
+  // the same reason it always did: this repo can't verify the live
+  // deployment actually has the Library wired up, so it fails gracefully
+  // with the manual fallback instructions instead of a bare ReferenceError.
+  if (typeof CentralLedger === "undefined" || typeof CentralLedger.importCompetencyRegistry !== "function") {
     ui.alert(
       "⚠ Import Not Available From This Sheet",
       "The competency registry importer (Script 22b) is bound to the " +
-      "Central Ledger project, not the Assignment System Manual.\n\n" +
-      "To import:\n" +
+      "Central Ledger project, not the Assignment System Manual — and the " +
+      "CentralLedger Library dependency isn't wired up yet on this deployment " +
+      "(see cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
+      "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
       "  2. Run: Assignment System → Import Competency Registry\n\n" +
       "This step can't be completed from this menu — it has to run from " +
@@ -435,7 +446,7 @@ function _executeImportAndVerify_(ui, ss, csvFile, courseNames) {
              message: "Import must be run from the Central Ledger project directly." };
   }
   try {
-    importCompetencyRegistry(); // Script 22b — Central Ledger project
+    CentralLedger.importCompetencyRegistry(); // Script 22b, via the CentralLedger Library
   } catch (err) {
     ui.alert(
       "✗ Import Failed",
@@ -636,16 +647,20 @@ function _runPhaseB_(ui, props, ss) {
       ui.ButtonSet.OK
     );
     props.setProperty("M2_PACING_GUIDE_IMPORTED", "false");
-  } else if (typeof importPacingGuide !== "function") {
-    // FIXED (external review pass, folded in — Addendum 22 R1): importPacingGuide()
-    // is defined in Script 31, bound to the Central Ledger project — a cross-project
-    // call that will never resolve from here. Same issue as the registry import in
-    // _executeImportAndVerify_() above.
+  } else if (typeof CentralLedger === "undefined" || typeof CentralLedger.importPacingGuide !== "function") {
+    // FIXED (external review pass, folded in — Addendum 22 R1; corrected
+    // fix, external product review Finding 5): importPacingGuide() is
+    // defined in Script 31, bound to the Central Ledger project. Same
+    // CentralLedger Library fix as the registry import in
+    // _executeImportAndVerify_() above — see that function's comment for
+    // the full explanation.
     ui.alert(
       "⚠ Import Not Available From This Sheet",
       "The pacing guide importer (Script 31) is bound to the Central Ledger " +
-      "project, not the Assignment System Manual.\n\n" +
-      "To import:\n" +
+      "project, not the Assignment System Manual — and the CentralLedger " +
+      "Library dependency isn't wired up yet on this deployment (see " +
+      "cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
+      "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
       "  2. Run importPacingGuide() from Script 31 in that project's Script Editor\n\n" +
       "This step can't be completed from this menu — it has to run from " +
@@ -655,7 +670,7 @@ function _runPhaseB_(ui, props, ss) {
     props.setProperty("M2_PACING_GUIDE_IMPORTED", "false");
   } else {
     try {
-      importPacingGuide(); // Script 31 — Central Ledger project
+      CentralLedger.importPacingGuide(); // Script 31, via the CentralLedger Library
       props.setProperty("M2_PACING_GUIDE_IMPORTED", "true");
       Logger.log("[S28] Pacing guide imported successfully.");
     } catch(pgErr) {
@@ -682,15 +697,19 @@ function _runPhaseB_(ui, props, ss) {
       ui.ButtonSet.OK
     );
     props.setProperty("M2_RUBRICS_IMPORTED", "false");
-  } else if (typeof importCompetencyRubrics !== "function") {
-    // FIXED (external review pass, folded in — Addendum 22 R1): importCompetencyRubrics()
-    // is defined in Script 32, bound to the Central Ledger project — same cross-project
-    // issue as the two imports above.
+  } else if (typeof CentralLedger === "undefined" || typeof CentralLedger.importCompetencyRubrics !== "function") {
+    // FIXED (external review pass, folded in — Addendum 22 R1; corrected
+    // fix, external product review Finding 5): importCompetencyRubrics()
+    // is defined in Script 32, bound to the Central Ledger project. Same
+    // CentralLedger Library fix as the two imports above — see
+    // _executeImportAndVerify_()'s comment for the full explanation.
     ui.alert(
       "⚠ Import Not Available From This Sheet",
       "The competency rubrics importer (Script 32) is bound to the Central " +
-      "Ledger project, not the Assignment System Manual.\n\n" +
-      "To import:\n" +
+      "Ledger project, not the Assignment System Manual — and the " +
+      "CentralLedger Library dependency isn't wired up yet on this deployment " +
+      "(see cas-ccps/README.md's Finding 5 writeup to set that up once).\n\n" +
+      "Until then, import manually:\n" +
       "  1. Open the Central Ledger spreadsheet\n" +
       "  2. Run importCompetencyRubrics() from Script 32 in that project's Script Editor\n\n" +
       "This step can't be completed from this menu — it has to run from " +
@@ -700,7 +719,7 @@ function _runPhaseB_(ui, props, ss) {
     props.setProperty("M2_RUBRICS_IMPORTED", "false");
   } else {
     try {
-      importCompetencyRubrics(); // Script 32 — Central Ledger project
+      CentralLedger.importCompetencyRubrics(); // Script 32, via the CentralLedger Library
       props.setProperty("M2_RUBRICS_IMPORTED", "true");
       Logger.log("[S28] Competency rubrics imported successfully.");
     } catch(crErr) {
@@ -724,14 +743,23 @@ function _runPhaseB_(ui, props, ss) {
   _gateAlert_(ui, "Step 5 of 5 — Installing Nightly Triggers", "");
 
   _installTriggerIfMissing_("updateAllStudentProfiles", "atHour", 3,  { nearMinute: 0  });
+  // FIXED: syncArtifactCompetencies (Script 33, Stage 1B) had its own
+  // standalone manual installer (installArtifactSyncTrigger_()) but was
+  // never part of the wizard's automated install/verify list — a
+  // third-party review found it. It stamps M2_STAGE1B_LAST_RUN on every
+  // run, now checked by runWarmUpEvaluation() below at 3:15am; installing
+  // it here is what makes that check meaningful on a fresh setup instead
+  // of alerting every night on a trigger the wizard never installed.
+  _installTriggerIfMissing_("syncArtifactCompetencies", "atHour", 3,  { nearMinute: 5  });
   _installTriggerIfMissing_("runWarmUpEvaluation",      "atHour", 3,  { nearMinute: 15 });
   _installTriggerIfMissing_("buildWarmUpQueues",         "atHour", 3,  { nearMinute: 30 });
   _installTriggerIfMissing_("registerDeliveredWarmUps", "everyMinutes", 5);
 
-  // Verify all four triggers installed
+  // Verify all five triggers installed
   const installedFns = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
   const requiredTriggers = [
     "updateAllStudentProfiles",
+    "syncArtifactCompetencies",
     "runWarmUpEvaluation",
     "buildWarmUpQueues",
     "registerDeliveredWarmUps"
@@ -747,6 +775,7 @@ function _runPhaseB_(ui, props, ss) {
       "  Script Editor → Triggers → + Add Trigger\n" +
       "  Event source: Time-driven\n\n" +
       "  updateAllStudentProfiles  → Every day at 3am\n" +
+      "  syncArtifactCompetencies  → Every day at 3:05am\n" +
       "  runWarmUpEvaluation       → Every day at 3:15am\n" +
       "  buildWarmUpQueues          → Every day at 3:30am\n" +
       "  registerDeliveredWarmUps  → Every 5 minutes\n\n" +
@@ -765,7 +794,44 @@ function _runPhaseB_(ui, props, ss) {
   // ── STEP 4: Studio Flow configuration — inline, not deferred ─────────────
   _gateAlert_(ui, "Step 5 of 5 complete — Studio Flow Configuration follows.", "");
 
-  // Show Flow 3 config first
+  // Show Flow 5 config first — it's a PREREQUISITE step for Flow 3, not an
+  // independent flow: a returning student's row starts at Status =
+  // PENDING_BRIDGE (see 24_WarmUpBridge.js's own buildWarmUpQueues()) and
+  // Flow 5 promotes it to PENDING once bridge_output is written, which is
+  // the only thing that hands the row to Flow 3 below. A first-week
+  // student (no prior warm-up history) never gets PENDING_BRIDGE at all —
+  // their row starts straight at PENDING, so Flow 3 alone is enough to see
+  // that case through. Flow 5 not configured, or misconfigured, means
+  // every RETURNING student's row sits at PENDING_BRIDGE forever — the
+  // Queue Watchdog (Script 34) will flag that as a timed-out row once it's
+  // live, but configuring Flow 5 correctly the first time avoids ever
+  // needing that safety net to fire.
+  ui.alert(
+    "⚙ Configure Studio Flow 5 — Warm-Up Bridging",
+
+    "In Google Workspace Studio, create a flow with these exact settings:\n\n" +
+    "  Name:         CAS — Warm-Up Bridging\n" +
+    "  Trigger:      Sheets row updated\n" +
+    "                Sheet: WarmUpQueue\n" +
+    "                Condition: Status = PENDING_BRIDGE\n" +
+    "                (this status only appears on a row that already has\n" +
+    "                a prior scored response — no further condition needed)\n\n" +
+    "  Step 1:       Custom step — CAS-CCPS: Extract Bridge Inputs\n" +
+    "                (pulls flow5_prior_response, pacing_prior_connection,\n" +
+    "                course_name out of lesson_context_snapshot)\n" +
+    "  Step 2:       Ask Gemini — system prompt from\n" +
+    "                CAS_Flow3_Flow4_Specification.html's Bridging Flow section\n" +
+    "  Step 3:       Sheets — update row\n" +
+    "                Write bridge_output = Gemini's output\n" +
+    "                Set status = PENDING\n" +
+    "                (this is what hands the row to Flow 3 below —\n" +
+    "                Flow 3's own trigger condition never changes)\n\n" +
+    "Click OK when Flow 5 is configured.",
+
+    ui.ButtonSet.OK
+  );
+
+  // Show Flow 3 config
   ui.alert(
     "⚙ Configure Studio Flow 3 — Warm-Up Generation",
 
@@ -774,6 +840,9 @@ function _runPhaseB_(ui, props, ss) {
     "  Trigger:      Sheets row updated\n" +
     "                Sheet: WarmUpQueue\n" +
     "                Condition: Status = PENDING\n" +
+    "                (a row reaches this status directly if the student has\n" +
+    "                no prior warm-up history, or via Flow 5 above once it\n" +
+    "                writes bridge_output for a returning student)\n" +
     "  Model:        Gemini Pro\n" +
     "  Temperature:  0.7\n" +
     "  Max tokens:   400\n\n" +
@@ -867,11 +936,14 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
 
   const FORMAT_HELP =
     "Enter your schedule as: PERIOD:DAYTYPE:COURSE NAME\n" +
-    "One period per line.\n\n" +
+    "One period per line (or separate entries with \";\" if this box " +
+    "won't keep your line breaks).\n\n" +
     "DAYTYPE values:\n" +
     "  DAILY — meets every school day (Period 1)\n" +
     "  ODD   — meets on odd calendar days (1st, 3rd, 5th...)\n" +
     "  EVEN  — meets on even calendar days (2nd, 4th, 6th...)\n\n" +
+    "Two courses in the same period at once? Enter it twice, once per " +
+    "course.\n\n" +
     "Example:\n" +
     "1:DAILY:" + exampleCourse1 + "\n" +
     "2:ODD:"   + exampleCourse1 + "\n" +
@@ -896,8 +968,17 @@ function _collectScheduleCompact_(ui, props, ss, teacherEmail) {
       continue;
     }
 
-    // Parse each line
-    const lines   = raw.split("\n").map(l => l.trim()).filter(Boolean);
+    // Parse each line.
+    // FIXED (confirmed live during a real deployment): Ui.prompt()'s dialog
+    // does not reliably preserve newlines in its response text -- a
+    // multi-line PERIOD:DAYTYPE:COURSE entry came back as one long
+    // space-joined blob, which then parsed as a single "line" whose
+    // course-name field swallowed everything after the second colon
+    // (every subsequent period/daytype/course got absorbed into one
+    // giant invalid course name). Splitting on ";" too lets a teacher
+    // work around an unreliable newline by separating entries with
+    // semicolons instead -- real newlines still work exactly as before.
+    const lines   = raw.split(/[\n;]/).map(l => l.trim()).filter(Boolean);
     const rows    = [];
     const errors  = [];
 
@@ -1046,7 +1127,7 @@ function _createM2WarmUpTabs_(ss) {
   _createTabIfMissing28_(ss, "WarmUpRegistry", [
     "warmup_id","queue_id","lesson_id","lesson_date","student_email",
     "student_name","teacher_email","doc_id","doc_url","generated_at",
-    "total_score","extra_credit","term"
+    "total_score","extra_credit","term","extra_credit_checked"
   ], [4]);
   _createTabIfMissing28_(ss, "ClassSchedule", [
     "teacher_email","period","day_type","course_name","active"
@@ -1235,6 +1316,7 @@ function _writePhaseBSummaryDoc_(teacherName, teacherEmail, scheduleResult, prop
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
   [
     "3:00am — updateAllStudentProfiles",
+    "3:05am — syncArtifactCompetencies",
     "3:15am — runWarmUpEvaluation",
     "3:30am — buildWarmUpQueues",
     "Every 5 min — registerDeliveredWarmUps"
@@ -1244,6 +1326,10 @@ function _writePhaseBSummaryDoc_(teacherName, teacherEmail, scheduleResult, prop
   body.appendParagraph("Studio Flows Required")
     .setHeading(DocumentApp.ParagraphHeading.HEADING2);
   body.appendParagraph(
+    "Flow 5 — Warm-Up Bridging    (Trigger: WarmUpQueue status=PENDING_BRIDGE)\n" +
+    "                              Prerequisite for Flow 3, only for returning\n" +
+    "                              students — writes bridge_output and sets\n" +
+    "                              status back to PENDING when done.\n" +
     "Flow 3 — Warm-Up Generation  (Trigger: WarmUpQueue status=PENDING)\n" +
     "Flow 4 — Warm-Up Evaluation  (Trigger: WarmUpQueue status=PENDING_EVAL)\n\n" +
     "Full configuration: CAS_Flow3_Flow4_Specification.html"

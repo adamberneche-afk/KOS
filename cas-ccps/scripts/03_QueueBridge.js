@@ -195,6 +195,7 @@ function backPropagateCompletions() {
           ).trim();
           if (currentQStatus === "STAGED") {
             markQueueRow_(queueSheet, rowNum, "ERROR_TIMEOUT");
+            updateLedgerStatus_(ledgerSheet, fileId, configId, "ERROR_TIMEOUT");
             notifyTimeoutToTeacher_(cfg, teacherEmail, fileId, configId);
             Logger.log("[BACKPROP] ERROR_TIMEOUT closed — row " + rowNum +
                        " | Teacher: " + teacherEmail);
@@ -388,6 +389,31 @@ function updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId) {
       String(data[i][L_CONFIG_ID]).trim() === configId
     ) {
       ledgerSheet.getRange(i + 1, L_LAST_EVAL + 1).setValue(new Date());
+      return;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// updateLedgerStatus_ (external UX audit)
+// ---------------------------------------------------------------------------
+// The ERROR_TIMEOUT branch above used to update only STAGING_PIPELINE and
+// ReviewQueue, never the Ledger — so the student's own fetchStatus_()/
+// buildStatusMessage_() (01_StudentDoc_ContainerScript.js) kept reading
+// whatever pre-timeout status (STAGED/PENDING) was last written there,
+// showing "Being Evaluated Right Now... within the next 1-3 minutes"
+// indefinitely, and the Teacher Dashboard's resolveDisplay_() (keyed off
+// this same column) never flagged the row either. Writing the status here
+// lights up both of those already-built, already-tested consumers with
+// no changes needed on their end.
+function updateLedgerStatus_(ledgerSheet, fileId, configId, status) {
+  const data = ledgerSheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (
+      String(data[i][L_FILE_ID]).trim()   === fileId &&
+      String(data[i][L_CONFIG_ID]).trim() === configId
+    ) {
+      ledgerSheet.getRange(i + 1, L_STATUS + 1).setValue(status);
       return;
     }
   }

@@ -8,7 +8,7 @@ Module 1's role-by-role walkthroughs and structural reference material — extra
 
 - **One-time central setup** (~2 hours) — Creates central spreadsheet, folders, deploys all shared scripts, configures two Studio Flows, deploys both web apps, creates master Teacher Manual with six Script Properties pre-set. Done once for the whole school.
 - **Per-teacher onboarding** (~5 minutes per teacher) — Makes a copy of the master Teacher Manual, shares it with the teacher. After the teacher runs the setup wizard, the admin opens the teacher's two response sheets and sets Scripts 05 and 08 with their triggers. That's the full per-teacher admin workload.
-- **Ongoing monitoring** (on demand) — The ⚙️ Admin Controls menu in the central spreadsheet provides a System Health Check showing pipeline status, stuck rows, error counts, and flagged students in one alert. Six recovery operations are available without touching any script.
+- **Ongoing monitoring** (on demand) — The ⚙️ Admin Controls menu in the central spreadsheet provides a System Health Check showing pipeline status, stuck rows, error counts, and flagged students in one alert. Twelve recovery operations are available without touching any script.
 
 ## The Teacher Experience
 

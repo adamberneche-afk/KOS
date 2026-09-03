@@ -56,14 +56,14 @@ function getStudentDashboardData(termFilter) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (String(row[1]).toLowerCase() !== googleId.toLowerCase()) continue;
+    if (String(row[LEDGER.GOOGLE_ID]).toLowerCase() !== googleId.toLowerCase()) continue;
 
     // Collect all terms for this student regardless of filter
-    const rowTerm = String(row[18] || "").trim();
+    const rowTerm = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
     if (rowTerm) availableTerms.add(rowTerm);
 
     // Skip ARCHIVED rows
-    const rowStatus = String(row[12]).trim();
+    const rowStatus = String(row[LEDGER.STATUS]).trim();
     if (rowStatus === "ARCHIVED") {
       // Still count the term for dropdown, just don't show in assignments
       continue;
@@ -72,10 +72,10 @@ function getStudentDashboardData(termFilter) {
     // Apply term filter
     if (activeTerm !== "ALL" && rowTerm && rowTerm !== activeTerm) continue;
 
-    const fileId      = String(row[3]).trim();
-    const status      = String(row[12]).trim();
-    const lastEval    = row[15] ? formatDate_(row[15]) : null;
-    const submittedAt = row[13] ? formatDate_(row[13]) : null;
+    const fileId      = String(row[LEDGER.FILE_ID]).trim();
+    const status      = String(row[LEDGER.STATUS]).trim();
+    const lastEval    = row[LEDGER.LAST_EVAL] ? formatDate_(row[LEDGER.LAST_EVAL]) : null;
+    const submittedAt = row[LEDGER.SUBMISSION_TS] ? formatDate_(row[LEDGER.SUBMISSION_TS]) : null;
 
     // NEW (Say/Do Ledger cas-ccps finding #7): a student previously had no
     // way to see what's actually on file for them (name, class, period,
@@ -83,26 +83,25 @@ function getStudentDashboardData(termFilter) {
     // notice was a one-time email, easy to miss. registeredAt/isNew feed
     // an in-app "just registered" notice; studentName feeds the persistent
     // "My Info" view below.
-    const registeredAtRaw = row[0] || null;
+    const registeredAtRaw = row[LEDGER.TIMESTAMP] || null;
     const isNewRegistration = registeredAtRaw
       ? (Date.now() - new Date(registeredAtRaw).getTime()) < (3 * 24 * 60 * 60 * 1000)
       : false;
 
-    const rowTerm2 = String(row[18] || "").trim();
     assignments.push({
-      configId:      String(row[2]).trim(),
-      studentName:   String(row[4]).trim(),
+      configId:      String(row[LEDGER.CONFIG_ID]).trim(),
+      studentName:   String(row[LEDGER.STUDENT_NAME]).trim(),
       // Same fallback wording as the teacher dashboard's identical gap
       // (blank column 10) — a teacher and student comparing notes about a
       // "missing unit" record should recognize it as the same thing.
-      unitName:      String(row[10]).trim() || "Unassigned unit",
-      block:         String(row[5]).trim(),
-      className:     String(row[6]).trim(),
-      teacherName:   String(row[7]).trim(),
-      teacherEmail:  String(row[8] || "").trim(),
-      period:        String(row[11]).trim(),
-      subject:       String(row[9]).trim(),
-      term:          rowTerm2,
+      unitName:      String(row[LEDGER.COURSE_NAME]).trim() || "Unassigned unit",
+      block:         String(row[LEDGER.BLOCK]).trim(),
+      className:     String(row[LEDGER.CLASS_NAME]).trim(),
+      teacherName:   String(row[LEDGER.TEACHER_NAME]).trim(),
+      teacherEmail:  String(row[LEDGER.TEACHER_EMAIL] || "").trim(),
+      period:        String(row[LEDGER.PERIOD]).trim(),
+      subject:       String(row[LEDGER.SUBJECT]).trim(),
+      term:          rowTerm,
       registeredAt:      registeredAtRaw ? formatDate_(registeredAtRaw) : null,
       isNewRegistration: isNewRegistration,
       status:        status,
@@ -113,9 +112,9 @@ function getStudentDashboardData(termFilter) {
       docUrl:        fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
         : null,
-      folderLabel:   String(row[5]).trim() + " - " +
-                     String(row[6]).trim() + " - " +
-                     String(row[7]).trim()
+      folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
+                     String(row[LEDGER.CLASS_NAME]).trim() + " - " +
+                     String(row[LEDGER.TEACHER_NAME]).trim()
     });
   }
 
@@ -253,6 +252,14 @@ function buildStudentDashboardHtml_() {
     header h1{font-size:17px}
     .main{padding:16px}
     .card{padding:14px 16px}
+    /* FIXED (external UX audit): this breakpoint used to only adjust
+       padding/font-size, never reflowing actual layout — unlike
+       07_TeacherDashboard.js's own max-width:600px breakpoint, which
+       genuinely reflows its field-row grid to one column. .card-top's
+       flex-shrink:0 status pill never shrinks, so a long assignment name
+       on a narrow phone screen got squeezed into a cramped remainder
+       instead of stacking, same reflow-need the teacher side's grid had. */
+    .card-top{flex-direction:column;align-items:flex-start}
   }
   #loading{text-align:center;padding:80px 24px;color:var(--text-secondary)}
   /* FIXED: was 40px vs the teacher dashboard's 36px — same border weight,
@@ -324,12 +331,24 @@ function buildStudentDashboardHtml_() {
 <!-- NEW (finding #7): persistent "My Info" view — what's actually on file
      for this student (name, class, period, teacher), available any time
      via the header button, not just a one-time notice. -->
-<div id="my-info-panel" class="main" style="display:none;padding-bottom:0"></div>
+<!-- FIXED (external UX audit): my-info-btn already had aria-expanded/
+     aria-controls pointing here (the correct disclosure-widget half), but
+     this panel itself had no role/label — the other half 07_TeacherDashboard.js's
+     own role="tabpanel" aria-labelledby="tab-..." pattern establishes for
+     every button-controlled region in that file. role="region" +
+     aria-labelledby (pointing back at the button) is the matching pattern
+     for a show/hide disclosure rather than a tab. -->
+<div id="my-info-panel" class="main" role="region" aria-labelledby="my-info-btn" style="display:none;padding-bottom:0"></div>
 <!-- NEW (finding #7): in-app notice for a recent registration, replacing
      the easy-to-miss one-time email — visible for a few days after a new
      registration is recorded, then fades out on its own as it ages past
      the "recent" window computed server-side (isNewRegistration). -->
-<div id="new-registration-banner" class="main" style="display:none;padding-bottom:0"></div>
+<!-- FIXED (external UX audit): matches the role="status" aria-live="polite"
+     convention 07_TeacherDashboard.js already uses for its own dynamically
+     shown/hidden notice regions (lesson-payoff-hint, draft-stale-hint) —
+     this banner is the same shape (server-driven, appears without any
+     user action) and had none. -->
+<div id="new-registration-banner" class="main" role="status" aria-live="polite" style="display:none;padding-bottom:0"></div>
 <div id="main" class="main" style="display:none"></div>
 <footer id="footer"></footer>
 <script>
@@ -497,8 +516,8 @@ function render(data) {
              pattern (07_TeacherDashboard.js's student-meta line). -->
         <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
         <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
-        \${a.docUrl
-          ? \`<a href="\${a.docUrl}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
+        \${safeDocUrl(a.docUrl)
+          ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
           : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
         }
         \${isDone && a.submittedAt
@@ -602,6 +621,7 @@ function _populateTermDropdown(data) {
 }
 
 ${CLIENT_ESC_JS}
+${CLIENT_SAFE_DOC_URL_JS}
 
 loadData();
 </script>

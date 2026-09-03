@@ -39,510 +39,60 @@ PDF.
 
 ---
 
-## ✅ Reconciled: all 7 flagged conflicts resolved
+## Process history
 
-Every conflict this README previously documented has been resolved via the
-CAS/KOS reconciliation decision log. What follows is a record of each
-resolution, kept for anyone picking this project up later.
-
-### 1. The Script 09 architecture fork — Studio writes the report
-
-**Confirmed: Studio writes the evaluation report directly; GAS does not.**
-Four independent, mutually corroborating sources agreed
-(`09_StudentRevisionGuidance_M1Base.js`, `15_StudioFlowPrompts.js` +
-`15b_StudioFlowPrompts_Flow2_Revised.js`, the real `03_QueueBridge.js`
-backup-only `processCompletedEvaluation_()`, `docs/STUDIO_FLOW_REFERENCE.html`,
-and the salvaged `docs/USER_EXPERIENCE_REFERENCE.html` Document Anatomy
-section) against one outlier — `scripts/09_StudentRevisionGuidance.js`, the
-very first file uploaded to this project, which assumed GAS writes the
-report via `prependFeedbackToHeader()`. That file is now archived at
-`scripts/archived/09_StudentRevisionGuidance_ORIGINAL_GAS_WRITES.js`
-(confirmed before archiving: nothing else in this repo calls
-`prependFeedbackToHeader()`). `09_StudentRevisionGuidance_M1Base.js` is the
-live design. This unblocks Flow 2 (still not built in Studio — see Known
-Gaps) with an unambiguous spec.
-
-### 2. Two confirmed bugs — both fixed
-
-1. **Turn-In Form field mismatch.** `04_Form2_TurnInGate.js` assumed
-   `setCollectEmail(true)` and read the auto-collected `"Email Address"`
-   field. `16_UnifiedManualSetup.js` (the actual form-builder) sets
-   `setCollectEmail(false)` and adds a manual text item titled **"Your
-   Google Account"** — confirmed directly in code — and
-   `18_FormSubmitDispatcher.js`'s own comment already agreed. As shipped,
-   every real Form 2 submission would have had `r["Email Address"]`
-   undefined, so `onTurnInSubmit` treated every real turn-in as "not a
-   Form 2 submission" and silently no-opped. Fixed `04` to match `16`/`18`
-   (`r["Your Google Account"]`); `16` and `18` were already correct and
-   are unchanged.
-2. **`16_UnifiedManualSetup.js`'s `onOpen()` `ReferenceError`.** Confirmed
-   directly in code: `onOpen()` referenced `props.getProperty(...)`
-   without ever declaring `props`, throwing on every doc open once setup
-   completed — likely breaking the operational menu for good after
-   first-time setup. Fixed: `props` declared once at the top of `onOpen()`,
-   reused for both property reads, matching every other function in the file.
-
-**A third, larger bug found while verifying the fix above:** several
-script files contained literal, unescaped newline characters inside
-double-quoted string literals — invalid JavaScript that would fail to save
-in the Apps Script editor at all, confirmed via `node --check` across the
-whole `scripts/` tree. Fixed in `16_UnifiedManualSetup.js`,
-`02_Form1_IntakeAndWorkspaceGenerator.js`, `03_QueueBridge.js`,
-`10_AdminRecoveryPanel.js`, and `25_WarmUpWriter.js` (the latter four were
-outside the original decision queue — found only because this pass
-actually ran a syntax check on every file, which nothing before it had
-done). `10_AdminRecoveryPanel.js` also had a related but distinct bug: two
-literal, unescaped quote characters meant to wrap a term name in a
-confirmation dialog (`"Archive "" + termToArchive + ""?"`), fixed by
-escaping them. Every `.js` file in `scripts/` (including `archived/`) now
-passes `node --check`.
-
-### 3. Module numbering — corrected during implementation, not just relabeled
-
-The originally-approved reconciliation decision called for renumbering the
-mislabeled "Module 3" (SCR Suggestion & Remediation Engine) to "Module 4,"
-and the existing "Module 4" (Student Context Aggregator) to "Module 5."
-**That specific mapping was wrong, caught while implementing it**, once
-`docs/CAS_Module4_Documentation_v1.0.docx` and `_v1.1.docx` — files not in
-view when the original decision was made — were read in full. Both
-versions of that document extensively, explicitly self-identify as
-**"Module 4"** ("PRODUCTION READY," title page, footer) and both
-independently state that future student-competency-coverage work (exactly
-what the SCR engine does) is **"Module 5 territory"** — v1.0: *"If a
-future Module 5 builds a genuine student-competency junction, it would
-likely sit alongside — not inside — Script 29."* `30_SCRSuggestionEngine.js`'s
-own header comment independently corroborates this: it already called
-itself *"The Module 3 threshold script"* while calling Script 29
-*"Module 4's Script 29"* three separate times.
-
-**Corrected, final numbering:**
-
-| Module | What it is | Status |
-|---|---|---|
-| **1** | Base intake/grading pipeline | Production, ~20 files (see below) |
-| **2** | Lesson Intelligence (Lightweight + Full/Warm-Ups) | Production ready |
-| **3** | Student Profile — extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` |
-| **4** | Student Context Aggregator — Script 29 | **Unchanged, production ready** — this module's own numbering was always correct |
-| **5** | SCR Suggestion & Remediation Engine — Scripts 30, 30b | Renumbered from mislabeled "Module 3" |
-
-**What actually changed on disk:**
-- `30_SCRSuggestionEngine.js` and `30b_SCRRetryRemediation.js`: "Module 3"
-  self-references corrected to "Module 5" (their own file numbers, 30 and
-  30b, are unaffected — only the module *label* moved).
-- `08_TeacherConfirmationStep.js`, `15b_StudioFlowPrompts_Flow2_Revised.js`:
-  same "Module 3" → "Module 5" label correction (their genuine "Module 2"
-  and "Module 4" references — e.g. `07_TeacherDashboard.js`'s "Module 3
-  student profiles," which correctly refers to the real Student Profile
-  module — were left untouched).
-- `scripts/19_ClonedSheetConfig_M3_ADDENDUM.js` → renamed
-  `19_ClonedSheetConfig_M5_ADDENDUM.js`.
-- `scripts/16_UnifiedManualSetup_M3_ADDENDUM_v2.js` → renamed
-  `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`.
-- `docs/CAS_Module3_Documentation_v1.0.docx` and `_v1.0_alt.docx` → merged
-  into `docs/CAS_Module5_Documentation_v1.1.docx` (see item 5 below); both
-  originals kept in `docs/`, neither deleted (not moved into
-  `docs/archived/` — see item 6 below).
-
-`docs/PLATFORM_DOCUMENTATION.html`'s Module 3 (Student Profile) was never
-part of this collision and is untouched.
-
-### 4. Script 29/30/31 numbering — also corrected against real code, not just docs
-
-The original decision assumed no code existed yet for scripts 29–31 and
-called it "a pure documentation fix." **That assumption was wrong** — real,
-substantial, already-implemented files exist: `29_StudentContextAggregator.js`
-(Module 4, "PRODUCTION READY") and `30_SCRSuggestionEngine.js` +
-`30b_SCRRetryRemediation.js` (Module 5). `00_SharedConfig_M2_ADDENDUM_v2.js`'s
-claim that Scripts 29/30/31 should be Module 2's `importPacingGuide()`,
-`importCompetencyRubrics()`, and `ArtifactCompetencyBridge` was itself
-unbuilt (confirmed: those three functions don't exist anywhere in this
-repo, only referenced by name in that addendum's setup checklist) — it
-collided with real code and lost. **Corrected: Module 2's import/bridge
-utilities move to 31/32/33** (not 29–31); 29, 30, and 30b keep their real,
-already-implemented numbers. `docs/PLATFORM_DOCUMENTATION.html`'s Module 2
-script-map table (previously stopping at 28) now lists 31–33 explicitly,
-each flagged not-yet-built.
-
-### 5. Platform-level docs — `DEPLOYMENT_AND_UX_GUIDE.html` split, not kept whole
-
-Its four reference sections (Admin/Teacher/Student UX walkthroughs,
-Document Anatomy, Folder Structure, Full Pipeline) were confirmed unique —
-absent from all four previously-endorsed docs — and consistent with the
-rest of the repo. Extracted into `docs/USER_EXPERIENCE_REFERENCE.html`,
-now a fifth endorsed document (see `docs/PLATFORM_DEPLOYMENT_GUIDE_OUTDATED.md`'s
-updated list). The remainder of the original file — its Steps 1–9
-deployment walkthrough — is archived at
-`docs/archived/DEPLOYMENT_AND_UX_GUIDE_SUPERSEDED.html` with a banner
-explaining why: it self-contradicted on which script is the live setup
-wizard (Script 16 vs. the already-archived Script 14), branded the system
-"Decoupled AI Wrapper Engine v3.0" (a name used nowhere else in this
-repo), and repeated a stale "14 Script files" stat.
-
-### 6. `CAS_Module3_Documentation` v1.0 vs. `_alt` — merged, not picked
-
-Diffing the actual document text (not just the already-known version/seed
-notes) turned up real content in both directions. `_alt` had a Rubric
-Upload Form repair (fixing "a pre-existing defect that would throw a
-syntax error on the first teacher setup run") and a seed-CSV-assisted
-`LessonPrimarySecondary` workflow that `v1.0` lacked. `v1.0` had a "TeacherMatrix
-needs a `lesson_unit_id` column" gap entry — independently, directly
-confirmed elsewhere in this repo (Known Gaps below) as still true — that
-`_alt` silently dropped. Resolution: `docs/CAS_Module5_Documentation_v1.1.docx`
-merges both, using `_alt` as the base (its guidance is strictly newer)
-with `v1.0`'s dropped gap entry restored. Both source `.docx` files stay
-in `docs/` unchanged (not physically moved into `docs/archived/`, unlike
-the other superseded docs this pass touched). The v3/v4 addendum file and the
-`LessonPrimarySecondary_Seed.csv` seed file referenced by the merged doc
-remain open known gaps — still not uploaded anywhere.
-
----
-
-## Round 3 — large reupload batch closes most remaining gaps
-
-The user reuploaded 18 zip files "to ensure nothing was left out." Most
-duplicated what was already reconciled above, but the batch contained
-real, previously-missing material: the two data files Known Gaps #3/#4
-were blocked on, a materially larger pacing guide, the six actually-missing
-Module 2 Full scripts (as real code, not the doc-only spec Round 2
-declined to author from scratch), a genuine renumbering collision inside
-Module 2 itself, and a corrected Module 2 documentation set. Full findings
-are on record in this session's plan file; what follows is what landed.
-
-### 7. Data files — Known Gaps #3/#4 closed
-
-`data/CompetencyRegistry.csv` (222 lines, 221 competencies — header
-`competency_id,competency_text,subject,grade_band,strand,teacher_email,active`)
-and `data/LessonPrimarySecondary_Seed.csv` (14 rows — 7 stage/node pairs ×
-2 courses) are now in the repo, matching the schemas these gaps already
-documented. `data/CompetencyRubrics.json` was also refreshed to a version
-carrying the same 221 rubrics plus new `sol_correlations` metadata (same
-generation date, strict superset — the old version is kept at
-`data/archived/CompetencyRubrics_v1_SUPERSEDED.json`). Five VDOE SOL
-correlation support files (`8177_Printable_Version_with_Standards_Correlations.docx`,
-`8177_SOL_Official.csv`, `8177_SOL_Transitive_Mapping.csv`/`.docx`,
-`8177_SOL_Transitive_Summary.csv`) were filed under
-`data/sol-correlations/` as the documented derivation trail for that
-metadata.
-
-### 8. Pacing guide — adopted v2 as canonical
-
-`curriculum/PacingGuide_CAS_Context.json` was replaced with a documented
-superset rebuild (same 20 units, 16 fields → 20 fields — adds `chain_node`,
-`esports_connection`, `vocabulary_with_definitions`, `studio_flow_hooks`;
-warm-up anchors are now full teacher-authored prompts instead of
-compressed summaries). The prior version is kept at
-`curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.json`.
-
-**Update — gap closed:** `scripts/31_PacingGuideManager.js` now reads,
-writes, and caches all 20 v2 fields. `PG_HEADERS`/`PG_COL_COUNT` were
-extended (16 → 20, append-only) to carry `chain_node`, `esports_connection`,
-`vocabulary_with_definitions`, and `studio_flow_hooks` into the
-`PacingGuide` tab (the two structured fields are stored as a JSON string
-per cell and parsed back out on read, with a defensive fallback to `[]`/`{}`
-on a hand-edited cell). `resolveUnitForDate_`/`getWarmUpAnchor_`/
-`getAllUnits_`/`getUnitById_` all expose the 4 new fields now — no
-downstream consumer (Scripts 23/24) reads them yet, but they're no longer
-silently dropped at the point of import.
-
-Fixing this surfaced a real, pre-existing bug independent of the 4 new
-fields: the pacing guide cache (`_loadPacingGuide_`) wrote all 20 units as
-one JSON blob into a single Script Property, and PropertiesService caps a
-single property at 9216 bytes. Measured against the real 2026-27 data,
-that blob was already ~28KB with only the *original* 16 fields (the file's
-own comment claimed "~10KB — at the limit," which undersold it by ~3x) —
-meaning `setProperty()` was likely already failing silently into the
-existing non-fatal catch block in production, before this fix touched
-anything. Adding the 4 new fields in full would have pushed it to ~69KB.
-
-**Fix:** the cache is now split one Script Property per unit
-(`M2_PACING_UNIT_<lesson_unit_id>`) plus a small index property listing
-which unit IDs are cached (`M2_PACING_GUIDE_INDEX`, replacing the old
-`M2_PACING_GUIDE_CACHE` single-blob key). Every real unit's own row, even
-with all 20 fields, comes in well under the 9216-byte cap (largest
-observed unit: ~5.2KB) — no field needs blanket truncation for real data.
-A defensive safety valve still exists for a hypothetical future unit whose
-own content alone exceeds the cap: `warmup_anchor` (the one field this
-file already established as safe to cut) gets truncated for that unit only,
-flagged, and transparently recovered in full on demand by
-`_getFullPacingField_` (generalized from the old warmup_anchor-only
-`_getFullWarmupAnchor_`) — same mechanism, now reusable for any column.
-Verified with a Node harness against the real 20-unit JSON (all units
-cache without truncation) plus a simulated oversized-unit case (safety
-valve fires correctly, full text still recoverable).
-
-**Update — gap closed:** `curriculum/PacingGuide_CAS_Context.csv` and
-`.docx` have been regenerated from the v2 JSON. The CSV was rebuilt
-mechanically (20 columns, matching `PG_HEADERS` exactly — the two
-structured fields are JSON-encoded per cell, same convention as the
-`PacingGuide` sheet). The `.docx` was updated with a surgical text-only
-edit of its `word/document.xml` (every style/formatting tag left
-untouched, cloned from the real `division_context` schema-reference row
-for the 4 new rows) rather than regenerated from scratch, since no
-docx-authoring tool was available in this environment — verified via
-zip-integrity check, XML well-formedness, open/close tag balance, and a
-byte-for-byte diff confirming every non-`document.xml` part of the
-archive is unchanged. It now correctly describes 20 columns (not 16),
-lists the 4 new v2 fields in its schema-reference table, and its version
-footer is bumped to v1.1. The prior versions are kept at
-`curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.csv`/`.docx`.
-
-### 9. Six missing Module 2 Full scripts filed in as real code
-
-`22_LessonContextHandler.js`, `22b_CompetencyRegistryImporter.js`,
-`23_StudentProfileManager.js`, `24_WarmUpBridge.js`,
-`26_CompetencyAlignmentLog.js`, and `28_Module2Setup.js` are now in
-`scripts/` — real, substantial, already-implemented files, not the
-doc-only spec Round 2 explicitly declined to author from scratch (that
-decision was about *this project* writing untested code from a
-specification; these are real uploaded files, a different situation).
-`28_Module2Setup.js` had the same unescaped-newline-in-string-literal bug
-class documented in resolution 2 above (four broken alert-dialog strings,
-confirmed via `node --check`) — fixed the same way. **Script
-`27_LessonFrameGenerator` was not in this batch and remains a genuine
-open gap** — do not assume it shipped because its siblings did.
-
-### 10. Module 2's own numbering collision — resolved by keeping the repo's existing direction
-
-The batch's three Module 2 utility scripts — `PacingGuideManager`,
-`CompetencyRubricImporter`, `ArtifactCompetencyBridge` — were built and
-numbered **29, 30, 31** by whoever wrote them, unaware that this repo had
-already resolved a *different* 29/30/31 collision (resolution 4 above) by
-keeping those numbers for Module 4/5's `StudentContextAggregator` /
-`SCRSuggestionEngine` / `SCRRetryRemediation`. The newly-uploaded
-`CAS_Module2_Documentation.html` (v2.0) explicitly argues the *opposite*
-resolution — renumber Module 4/5 to 32/33/33b instead. **Decision: keep
-the repo's existing direction.** Module 4/5 keep 29/30/30b unchanged (two
-already-verified reconciliation passes and more cross-references than the
-newly-arrived alternative). Module 2's three utilities are filed in as:
-
-| Old (as authored) | Filed as | Log tag |
-|---|---|---|
-| `29_PacingGuideManager.js` | `scripts/31_PacingGuideManager.js` | `[S31]` |
-| `30_CompetencyRubricImporter.js` | `scripts/32_CompetencyRubricImporter.js` | `[S32]` |
-| `31_ArtifactCompetencyBridge.js` | `scripts/33_ArtifactCompetencyBridge.js` | `[S33]` |
-
-Every internal self-reference (log prefixes, header comments, the CRON
-sequence comment, and cross-references from `22b`/`23`/`24`/`28`) was
-updated to the new numbers — verified by grep, not assumed.
-`00_SharedConfig_M2_ADDENDUM_v2.js` already documented this exact 31/32/33
-target numbering before this batch arrived, so no change was needed
-there. `files_42/00_SharedConfig_M2_ADDENDUM.js` (no `_v2`) is confirmed
-stale — the version already in this repo supersedes it — and was **not**
-reintroduced. `docs/PLATFORM_DOCUMENTATION.html`'s Module 2 script-map
-table, previously flagging 31–33 "not yet built," now reflects that they
-are.
-
-### 11. Module 2 documentation — v2.0 adopted, with a numbering disclaimer
-
-`CAS_Module2_Documentation.html` (v2.0) is a materially larger successor
-to the archived `docs/CAS_Module2_Documentation_v1.1.docx` (now at
-`docs/archived/CAS_Module2_Documentation_v1.1_SUPERSEDED.docx`) — it
-documents the Full/Warm-Up build the old docx doesn't. Adopted as
-`docs/CAS_Module2_Documentation_v2.0.html`, **with a banner added at the
-top** disclosing that its own "Numbering Collision" section argues for
-the resolution this repo did *not* take (see item 10) — every "Script 29
-/ 30 / 31" in that document means this module's own pre-renumbering
-scheme and should be read as 31/32/33. Five companion docs — 
-`CAS_ContextualGates_DesignPrinciples.html`, `CAS_Flow3_Flow4_Specification.html`,
-`CAS_M2_DeploymentGuide.html`, `CAS_M2_Schema.html`,
-`CAS_M2_WarmUp_Schema.html` — were filed in alongside it; the three that
-reference script numbers also carry a short version of the same
-disclaimer banner.
-
-### 12. Known Gaps #2 closed — `lesson_unit_id` added
-
-Round 2's planned fix, executed here: one new column, following the exact
-append-only pattern the M5 competency-ID addendum already established.
-`08_TeacherConfirmationStep.js` gained `TM08.LESSON_UNIT_ID` (19) and
-`DU08.LESSON_UNIT_ID` (18), a new "M6" documentation block, a new
-`onTeacherConfirmSubmit()` read/write path, and a new blank pre-fill entry
-in `buildPrefilledUrl_()` — directly merged into the file, matching how
-its M5 columns were already merged rather than left as an unmerged
-addendum. `scripts/16_UnifiedManualSetup_M6_ADDENDUM.js` and
-`scripts/19_ClonedSheetConfig_M6_ADDENDUM.js` are new, unmerged patch
-files (same convention as the M5 addenda they sit on top of) adding the
-Confirmation Form's new "Lesson Unit" dropdown (sourced from Script 31's
-`PacingGuide` tab) and its config plumbing. "M6" is a file-naming label
-only — there is no `CAS_Module6_Documentation` and none is planned.
-**Known gap carried forward, not introduced by this change:** neither the
-M5 nor the M6 addenda extend the base `TeacherMatrix`/`DraftUnits`
-`setHeaders_()` calls in `16_UnifiedManualSetup.js` with the new columns'
-header labels — those columns are fully functional (read/written by
-position) but have no header text. Cosmetic, pre-existing, flagged here
-rather than silently fixed as a drive-by change.
-
-### 13. Archived-file naming convention — Known Gaps #8 closed
-
-`scripts/archived/11_StudentFriendlyRejections_ARCHIVED.js` renamed to
-`scripts/archived/ARCHIVED_11_StudentFriendlyRejections.js`, matching the
-prefix convention `ADMIN_DEPLOYMENT_WALKTHROUGH.html` documents (a `git
-mv`, no content change).
-
----
-
-## UI/UX Hardening — Rounds 1–9
-
-After the reconciliation work above landed, this codebase went through nine
-further rounds of dedicated UI/UX auditing — each round re-examined the
-whole UI against everything already fixed, then split its findings into a
-bugs commit and a separate polish commit. What follows is cas-ccps's share
-of that record; see kos-personal's and leader-hub's own READMEs for
-theirs. Commit hashes are given so any item's full diff/rationale can be
-looked up directly.
-
-**Round 1** (`d37f3c4`, `1a51e22`, `a6b74d5`) — the initial pass. Fixed
-`resolveStudentStatus_`/`resolveStudentClass_` falling through to showing
-a raw Ledger status string to a student on blank/unexpected data; ISSUE-
-status cards sorting last instead of first (the one status telling a
-student to contact their teacher was buried below finished work); and
-both dashboards' failure paths showing raw exception text with no
-recovery path. Also: a mobile-responsive header, a lesson-log discard
-warning with a real focus trap, and — found while fixing the discard
-guard — **an escaping bug where unescaped backticks in a new empty-state
-message broke the outer client-HTML template literal.** The lesson-log
-form gained a 500ms-debounced autosave draft and last-used-period memory;
-dashboards gained a per-term client cache (background-revalidating, never
-clobbering good cached data with a revalidation-failure screen) and
-scroll-position preservation across re-renders; and teacher/student
-wording was aligned so both dashboards describe the same pipeline stage
-the same way.
-
-**Round 2** (`c329ccf`, `3a8ebf7`) — **fixed `CURRENT_TERM`'s smart
-default being dead code**: the term dropdown always sent the literal
-string `"ALL"` on first load, which is truthy, so the server's fallback
-chain never actually consulted the admin-configured term — every
-teacher/student always opened on the unfiltered, all-terms view no
-matter what was configured. Also fixed lesson-log draft restore silently
-backdating today's log with a stale date from an abandoned prior-day
-draft; unified status colors so the same pipeline stage renders
-identically on both dashboards; gave the student dashboard the same
-staging-pipeline lookup the teacher side already had (so "evaluating
-now" became visible instead of a static "queued" the whole time); added
-real ARIA tablist/tab/tabpanel semantics + keyboard nav to the course
-tabs; and split "no results for this term filter" empty-state copy from
-"genuinely no roster yet" (previously showed identical setup-
-troubleshooting copy for both, which was actively misleading).
-
-**Round 3** (`f63bcae`, `4bb4491`) — fixed the teacher dashboard's
-summary numbers not reconciling: both the unit-header tally and the top
-summary cards excluded `EVALUATED` and `NOT STARTED` students from every
-bucket, so the displayed counts never summed to the real total. Also
-gated "+ New Lesson" behind `M2_ENABLED` (previously always rendered, so
-a teacher without Module 2 could fill out the whole form before hitting
-an internal error at submit); replaced a native `confirm()` with an
-in-app dialog; fixed `buildShadowMatrixSummary_()` returning a truthy
-zeroed-out object instead of `null` when there's no profile data yet,
-which rendered a fake "0 of 0 students" panel instead of hiding it; and
-fixed the student dashboard staying stuck on "Loading…" with no retry on
-an application-level error (only the network-failure path had one).
-
-**Round 4** (`641633c`, `ce39d09`) — **the most severe bug found in any
-round: `LessonContext`'s `lesson_date` column was silently getting
-type-coerced by Sheets from a `"YYYY-MM-DD"` string into a real `Date`
-object**, which broke every string-comparison-based duplicate/lookup
-check downstream and silently stopped the nightly warm-up queue from
-ever matching a lesson — while the teacher dashboard still showed a
-success toast, giving no indication anything had gone wrong. Fixed by
-forcing the column to text format on every writing tab and normalizing
-every read-side comparison to be resilient regardless of the cell's
-underlying type. Same commit also closed the same
-truthy-zeroed-object bug class for the zero-profiled-students case, fixed
-a draft-staleness hint omitting the `period` field, and fixed the
-discard-confirm dialog's focus trap always targeting the first `.modal`
-in DOM order instead of whichever one was actually open on top.
-
-**Round 5** (`40229bd`) — added `LockService.getDocumentLock()` to
-`26_CompetencyAlignmentLog.js` and `08_TeacherConfirmationStep.js`,
-matching `03_QueueBridge.js`'s existing precedent, closing a duplicate-
-AlignmentLog-row / duplicate-confirmation-email race on overlapping
-trigger runs; normalized the last unfixed raw `String()` cast on a
-`lesson_date` cell; unified `M2_ENABLED` guard polarity to strict opt-in
-across 6 files (the prior opt-out check let Module 2 backend jobs run on
-an installation that never explicitly set the property); and fixed a
-dashboard per-term cache-key mismatch that made a manual Refresh
-immediately after page load miss the cache it should have hit.
-
-**Round 6** (`8273ed4`, `803ba1f`) — fixed `.course-tabs` clipping extra
-tabs with no way for mouse/touch users to reach them (no
-`overflow-x:auto`, sitting inside a parent with `overflow:hidden`); fixed
-two pluralization/grammar bugs; restored the `FLAGGED` status's ⚠ icon on
-the student dashboard (present on the teacher side, lost on the
-student's); and unified status-badge/pill geometry and loading-spinner
-diameter between the two dashboards.
-
-**Round 7** (`5f1c4d2`, `12730fb`) — fixed the discard-confirm "Keep
-editing" action dropping keyboard focus to `<body>` instead of restoring
-it; fixed `m2Enabled` (a global admin setting) being read off whichever
-per-term cached dashboard blob happened to be rendered, which could
-flicker the "+ New Lesson" button based on a stale snapshot; mirrored a
-dangling `"Period ·"` fix from the teacher dashboard onto the student
-side; and added roving tabindex to the course tab bar, completing the
-ARIA tabs pattern started two rounds earlier.
-
-**Round 8** (`3fd08da`, `cef3700`) — fixed `#warmup-readiness-panel`
-carrying two conflicting `display` declarations in one style attribute
-(`display:none` then `display:flex` later in the same string — the later
-one wins per CSS cascade rules, so the panel was visible from page load
-contrary to its own apparent intent); fixed the teacher dashboard's
-empty-roster early-return path never reaching the term-dropdown
-population logic, mirroring a fix the student dashboard already had; and
-moved the competency-loading `aria-live` region onto a persistent
-container, since the registry-error/zero-competencies/network-failure
-paths were all replacing (and thereby destroying) the element that
-originally carried it, right when there was something worth announcing.
-
-**Round 9** (`0d433eb`, `513424f`) — fixed `buildShadowMatrixSummary_()`'s
-two confidence buckets not being mutually exclusive: every "locked"
-student (≥0.75 confidence) was also being counted in "building
-confidence" (>0.5), so the dashboard's two stat lines double-counted the
-same students. Fixed `saveLessonDraft()` never persisting checked
-competency checkboxes — even though submission requires at least one
-checked competency — so a crash/tab-close mid-entry restored every typed
-field but silently dropped every competency selection, forcing a full
-re-check with no indication that was expected. Also added proper
-`role="group"`/`aria-required` semantics to the competency checkbox
-group (missed by Round 8's otherwise-complete `aria-required` sweep of
-the lesson form), and removed a `\n`-to-`<br>` conversion from the
-student dashboard's `esc()` that the teacher dashboard's identically-named
-`esc()` never had — since `esc()` is the general-purpose escaper for
-every field on the page, a Sheet cell with an embedded newline was
-rendering a line break on one dashboard but not the other for identical
-data.
+Reconciliation-decision write-ups, per-round bug fixes, and UI/UX
+hardening narration — "what was wrong, how it was confirmed, what
+changed" for closed items — now live in `HISTORY.md`, not here (external
+product review, Finding 10 / "structural" tier). Read `HISTORY.md` when
+you need to know *why* something is the way it is; this file stays
+focused on what the system currently does and how to work with it.
 
 ---
 
 ## Directory map
 
+**Every `archived/` subdirectory named below was removed from the working
+tree** (external product review, Finding 3 / "this month" dead-code
+cleanup — 123 files, 76,080 lines repo-wide, all genuinely superseded, none
+of it deleted without a trace). Nothing is lost: the full pre-deletion tree
+is preserved on the `pre-archive-cleanup` branch, and every commit before
+this cleanup still has it in history. A file this README cites as
+"reissued from" or "compared against" an archived original can still be
+retrieved from that branch by path.
+
 | Path | Contents |
 |---|---|
-| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide + `FERPA_DATA_MAP.md` (field-by-field FERPA inventory) + `LEADERHUB_CONNECTION_SETUP.md` (the D1 leader-hub OAuth integration's setup doc). `docs/archived/` holds superseded docs the source itself marks superseded. `docs/notebooklm-sources/` holds hand-converted Markdown copies of the four user-guide HTML docs (quick-start ×2, teacher reference, UX reference), purpose-built as clean NotebookLM upload sources — see that folder's own README.md for why and how they're maintained. |
-| `scripts/` | Numbered Apps Script files, base + addenda. `scripts/archived/` holds files the source itself marks superseded. |
-| `data/` | Reference data imported into the Central Ledger at setup time. `data/sol-correlations/` holds the VDOE SOL derivation trail. `data/archived/` holds superseded versions. |
-| `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks. `curriculum/archived/` holds the pre-v2 pacing guide JSON. |
+| `docs/` | Base platform docs (architecture, deployment, Studio flow reference, UX reference, teacher/student/admin guides) + Module 2/3/4/5 documentation + IT/Admin security guide + `FERPA_DATA_MAP.md` (field-by-field FERPA inventory) + `LEADERHUB_CONNECTION_SETUP.md` (the D1 leader-hub OAuth integration's setup doc). `docs/archived/` held superseded docs the source itself marked superseded — removed; see the note above. `docs/notebooklm-sources/` holds hand-converted Markdown copies of the four user-guide HTML docs (quick-start ×2, teacher reference, UX reference), purpose-built as clean NotebookLM upload sources — see that folder's own README.md for why and how they're maintained. |
+| `scripts/` | Numbered Apps Script files, base + addenda. `scripts/archived/` held files the source itself marked superseded — removed; see the note above. |
+| `data/` | Reference data imported into the Central Ledger at setup time. `data/sol-correlations/` holds the VDOE SOL derivation trail. `data/archived/` held superseded versions — removed; see the note above. |
+| `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks. `curriculum/archived/` held the pre-v2 pacing guide JSON — removed; see the note above. |
 | `forms/` | Setup spec for the Warm-Up Response Google Form |
 
 ## What Module 1 (the base system) actually is
 
-The base system is **7 separate Apps Script projects** working together
+The base system is **8 separate Apps Script projects** working together
 (corrected from an earlier "6" here that put Script 20 on the wrong
 project — see `tools/gas-lint/project-map.json`'s header comment, which
 flagged this exact mismatch: `20_SetupCheckpoint.js`'s own `INCLUDED IN:`
 header says the Unified Manual project, not Central Ledger, and the
-file's own header wins):
+file's own header wins; an 8th project, `studio-steps`, was added later
+for the Studio Steps adoption — see its own row below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
-| Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26` (lesson-context logging + alignment log, called by Script 07's `submitLessonContext()`), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`) |
+| Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26`/`27` (lesson-context logging + alignment log + synchronous lesson frame generation, called by Script 07's `submitLessonContext()`), `32` (competency rubric lookup, called by Script 27's frame generation — dual-placed here and in Central Ledger since Script 27 runs in both), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's review-and-send panel; it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header) |
 | Student Dashboard | standalone web app | `13` |
+| Studio Steps | standalone (not bound to a spreadsheet/doc) | **Blocked on this account** — needs a standard Cloud project; all five flows were ported to `37_FlowInputBuilder.js`/`41_WarmUpFlowBridge.js` instead. 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Written and tested, not yet pushed to a live Studio deployment. |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
 
-Each of these 7 projects now has a real, committed `appsscript.json` and
+Each of these 8 projects now has a real, committed `appsscript.json` and
 is a clasp-adoption target — see [Version control (clasp)](#version-control-clasp)
 below.
 
@@ -558,7 +108,7 @@ codebase — and auto-clears rows stuck `IN_PROCESS` for &gt;12 minutes.
 Studio's Flow 2 reads the doc, evaluates it against the teacher's
 milestones (set up via Script 05 → Flow 1 → Script 08's confirmation step),
 and writes the full formatted report directly into the doc (Script 09
-M1Base — see resolution 1 above), then flips the staging row to
+M1Base — see HISTORY.md's resolution 1), then flips the staging row to
 `COMPLETE`. Script 03's `backPropagateCompletions` (2-min trigger) closes
 out the queue/ledger rows and appends the "what to do next" block. When
 the student turns in via the Turn-In Form, Script 04 runs a 3-point ledger
@@ -576,15 +126,20 @@ revision-feedback path as before, unchanged.
 Scaffolded, not yet connected to a live account — see
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
 the full rationale. The short version: `cas-ccps/scripts/` doesn't fit
-clasp's one-folder-one-project model, since it's the 7 projects above
+clasp's one-folder-one-project model, since it's 7 of the 8 projects above
 sharing overlapping files (`00_SharedConfig.js` alone is pasted into 5 of
-them). [`tools/clasp-sync/`](../tools/clasp-sync/README.md) reconciles
-that — a script reads `tools/gas-lint/project-map.json` and generates a
-throwaway per-project push folder for each of the 7 under
+them) — `studio-steps`, the 8th, lives in its own `cas-ccps/studio-steps/`
+(blocked on this account; the flows were ported to `37_FlowInputBuilder.js`
+and `41_WarmUpFlowBridge.js`)
+folder and shares no files with the other 7.
+[`tools/clasp-sync/`](../tools/clasp-sync/README.md) reconciles the
+7-projects-in-one-folder problem — a script reads
+`tools/gas-lint/project-map.json` and generates a throwaway per-project
+push folder for each (`studio-steps` included) under
 `cas-ccps/.clasp-build/` (gitignored, regenerated on demand), so
 `cas-ccps/scripts/` itself never has to be reorganized or duplicated in
 git. `cas-ccps/clasp/manifests/` holds each project's real
-`appsscript.json` (new — none of these 7 had a committed manifest
+`appsscript.json` (new — none of these projects had a committed manifest
 before), and `cas-ccps/clasp/templates/` holds `.clasp.json` placeholders
 to fill in with a real `scriptId` once you've run `clasp login` +
 `clasp clone`/`create` against the live projects. For
@@ -596,32 +151,75 @@ teachers have their own copies.
 
 | Module | Purpose | Status |
 |---|---|---|
-| **M1** — base intake/grading | See above | ~20 files in hand. Both confirmed bugs (Turn-In Form field mismatch, `16`'s `onOpen()` `ReferenceError`) fixed — see resolution 2 above. `CompetencyRegistry.csv` is now in hand (resolution 7). |
-| **M2 Lightweight** — Lesson Intelligence | Teacher logs lesson context → `LessonContext` / `AlignmentLog` / `CompetencyRegistry` / `ReportRegistry`; generates term-end alignment reports | Production ready. `22`, `22b`, `26` now in hand (resolution 9) — all Lightweight scripts present. |
-| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `23`, `24`, `25`, `28` in hand (resolution 9); `31`/`32`/`33` (pacing/rubric/artifact utilities) in hand (resolution 10). **`27_LessonFrameGenerator` is the one Full script still not uploaded.** |
+| **M1** — base intake/grading | See above | ~20 files in hand. Both confirmed bugs (Turn-In Form field mismatch, `16`'s `onOpen()` `ReferenceError`) fixed — see HISTORY.md's resolution 2. `CompetencyRegistry.csv` is now in hand (HISTORY.md's resolution 7). |
+| **M2 Lightweight** — Lesson Intelligence | Teacher logs lesson context → `LessonContext` / `AlignmentLog` / `CompetencyRegistry` / `ReportRegistry`; generates term-end alignment reports | Production ready. `22`, `22b`, `26` now in hand (HISTORY.md's resolution 9) — all Lightweight scripts present. |
+| **M2 Full (Warm-Ups)** — personalized AI warm-up generation & grading | Nightly cron builds per-student warm-up docs (Studio Flow 3), grades them (Studio Flow 4), tracks a per-student "shadow matrix" | `23`, `24`, `25`, `28` in hand (HISTORY.md's resolution 9); `31`/`32`/`33` (pacing/rubric/artifact utilities) in hand (HISTORY.md's resolution 10). `27_LessonFrameGenerator` — the last remaining Full script — is now in hand too, see HISTORY.md's "27_LessonFrameGenerator — the one Full script closed". |
 | **M3** — Student Profile | Extension of Script 23, no new scripts | Designed, per `PLATFORM_DOCUMENTATION.html` — unaffected by this reconciliation pass |
-| **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct twice now (resolutions 3 and 10), see both above |
-| **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Cannot go fully live until Flow 2 is built in Studio. |
+| **M4** — Student Context Aggregator | Weekly per-student living Google Doc, Script 29 | **Production ready** — numbering confirmed correct twice now, see HISTORY.md's resolutions 3 and 10 |
+| **M5** — SCR Suggestion & Remediation Engine | Scripts 30/30b; reads CompetencyEvidence, suggests SCR ratings, teacher confirm/override, retry-via-secondary-evidence path | Mixed confidence — see `docs/CAS_Module5_Documentation_v1.1.docx`'s file-by-file table. Flow 2's writer code exists as a custom Studio step (`cas-ccps/studio-steps/CommitStudentEvaluationStep.gs`) and is tested, but **that path is dead on this account** — it was pushed and the step never appeared in Studio's picker, because a Workspace Add-on needs a standard Cloud project the district has disabled (see that folder's README banner). Flow 2's writer now runs in Apps Script instead, via `37_FlowInputBuilder.js` reusing `15c`'s pure parse/write functions. |
 
 `scripts/archived/ARCHIVED_11_StudentFriendlyRejections.js` (merged into
-Script 04; renamed to match the repo's prefix convention — resolution 13)
+Script 04; renamed to match the repo's prefix convention — HISTORY.md's resolution 13)
 is itself informative: it emailed rejection notices to the *student*. The
 current Script 04 writes rejections into the doc instead — the system
 deliberately moved away from student email entirely at some point,
 consistent with the Ledger schema never carrying a student email/only a
 GoogleID.
 
+## Flow plumbing added after the first deployment (scripts 37-40)
+
+Cross-module infrastructure rather than a module — every script below is
+bound to `cas-ccps:central-ledger`, and every one exists because the first
+real deployment found that Workspace Studio can do less than the design
+assumed. See `HISTORY.md`'s deployment sections for the walls each one works
+around. (This paragraph said "all four" while the table held four rows; it has
+grown to seven since, which is exactly the kind of count worth not writing
+down twice.)
+
+| Script | What it does | Run it via |
+|---|---|---|
+| `35_FlowPreflightAndCanary.js` | Structural preflight plus the two canaries. `runFlowPreflightCheck()` verifies what has to exist before a Flow can match anything — the tabs, the four time triggers (a duplicate counts as a failure, not a pass), the required Script Properties, the self-healing tabs — and says which of the four questions each finding answers. The canaries verify the Apps Script half with the Flow deliberately stubbed, and say so in their own log. | `runFlowPreflightCheck()`, `runFlow2Canary()` |
+| `37_FlowInputBuilder.js` | **The Flow 2 redesign.** Resolves Ledger → MatrixRegistry → TeacherMatrix in Apps Script and materializes one flat literal `FlowInput` row, so the Flow reads a single row and needs no custom step and no variable spreadsheet target. `harvestFlowInputResults()` applies Studio's result back. Two time triggers (1-min build, 2-min harvest). | `installFlowInputTriggers()` once; then automatic |
+| `38_LedgerSchemaGuard.js` | Detects and safely repairs Ledger column drift — the live Ledger had shifted so `LEDGER.TEACHER_EMAIL` read a person's *name*, silently breaking the MatrixRegistry hop with no error. Backs the tab up before mutating, and refuses when it can't verify the repair is safe. | `checkLedgerSchema()`, then `repairLedgerSchema()` if it reports drift |
+| `39_FlowFixtures.js` | Persistent dummy rows at all five flows' trigger conditions, so a flow has something to match instead of reporting a green "Run Completed" over zero rows. Namespaced `VDOE-FIXTURE-*` / `WUQ-FIXTURE-*` / `fixture-*@example.invalid`, deliberately separate from the canaries' namespace. | `installFlowFixtures()`, `checkFlowFixtures()`, `removeFlowFixtures()` |
+| `40_FlowPrompts.js` | Every reusable flow prompt as a constant plus a `FlowPrompts` tab, so a prompt change is a `clasp push` and one function run instead of a hand-paste into each Flow. Flow 2 resolves through `15b`'s existing constant rather than carrying a second copy. `substituteFlowPrompt_()` leaves unmatched placeholders standing — `{{STUDENT_TEXT}}` stays unfilled on purpose, since student response text must not enter the central Ledger (FERPA). | `syncFlowPromptsToSheet()`, `checkFlowPrompts()` |
+| `41_WarmUpFlowBridge.js` | **The Flows 3/4/5 port**, same two-phase shape as 37: materializes `Flow3Input`/`Flow4Input`/`Flow5Input` rows and harvests a shared `WarmUpFlowReturn` tab, so Studio makes only the Gemini call. Carries the archetype decision table and the warm-up document construction ported from the two blocked custom steps that held real logic; reuses `25_WarmUpWriter.js`'s existing `evaluateWarmUpDoc_`/`writeFinalScores_`/`writeFeedbackToDoc_`/`writeRegistryScores_` rather than copying the three steps that duplicated them. Leaves the WarmUpQueue status machine untouched, so Scripts 23/24/25 needed no edits. | `installWarmUpFlowTriggers()` once; then automatic. `checkWarmUpFlowLiveness()`, `runWarmUpFlowCanary()` |
+| `42_FlowBuildSpec.js` | Generates the `FlowBuildSpec` tab an operator builds a Flow from: every tab, column number, header, trigger condition, prompt key and ownership rule for all five flows, **derived from the constants the code reads**. Deliberately omits connector names, temperature and token limits — those need judgement, do not drift, and copying them would make this a seventh document to keep in sync. Flags a pointer into a blocked custom step at the point someone would otherwise follow it. | `syncFlowBuildSpec()`, `checkFlowBuildSpec()` |
+
+Flow 2's Apps Script half has a self-provisioning canary
+(`runFlow2Canary()` in `35_FlowPreflightAndCanary.js`) that stubs Studio out
+deliberately — it verifies the code path, not the flow.
+
 ## Known gaps (carried forward so a future session doesn't re-derive them)
 
-1. **Flow 2 has never been built in Studio** — both `09_StudentRevisionGuidance_M1Base.js`
-   and `03_QueueBridge.js` assume it exists, and Module 5 cannot go fully
-   live without it. Flows 3 (warm-up generation) and 4 (warm-up
-   grading/grammar) are also unbuilt.
+1. **Flows 2-5 are not live: each one's Studio side still has to be built
+   by hand** — both `09_StudentRevisionGuidance_M1Base.js` and
+   `03_QueueBridge.js` assume Flow 2 exists, and Module 5 cannot go fully
+   live without it.
+   **⚠ Corrected twice.** It first read "never been built." It then read
+   "the custom-step code is written and tested; what's missing is
+   deployment — that project hasn't been pushed to a real Google account
+   (`.clasp.json.template`'s scriptId is still a placeholder)." Both are
+   now wrong, and the second one wrong in the expensive direction: the
+   `studio-steps` project **was** pushed successfully, and its steps still
+   never appeared in Studio's picker. A custom step is a Workspace Add-on
+   and needs a standard, non-default Cloud project; GCP is disabled
+   org-wide for `ccpsnet.net`. All 8 steps (2,113 tested lines) are
+   unreachable on this account, and so is `15c`'s `DIRECT_GEMINI` escape
+   hatch, which needs an API key, which needs the same project. Pushing
+   fixes none of it.
+   All five flows have since been **ported** to native Studio steps plus
+   an Apps Script harvest (`37_FlowInputBuilder.js`,
+   `41_WarmUpFlowBridge.js`) — a keyless path that does work here. So what
+   closes this gap is building each flow in Studio's builder from
+   `syncFlowBuildSpec()`'s generated tab, then `checkFlow2Liveness()` /
+   `checkWarmUpFlowLiveness()` reporting that something came back. "Code
+   exists," "reachable," and "wired and live" are three different facts.
 2. ~~`TeacherMatrix` missing a `lesson_unit_id` column~~ — **closed**, see
-   resolution 12 above.
-3. ~~`CompetencyRegistry.csv` not uploaded~~ — **closed**, see resolution 7 above.
+   HISTORY.md's resolution 12.
+3. ~~`CompetencyRegistry.csv` not uploaded~~ — **closed**, see HISTORY.md's resolution 7.
 4. ~~`LessonPrimarySecondary_Seed.csv` not uploaded~~ — **closed**, see
-   resolution 7 above.
+   HISTORY.md's resolution 7.
 5. **A v3/v4 of `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`** exists
    (referenced by the merged Module 5 doc's Repair Note 4, a Rubric Upload
    Form fix) but hasn't been uploaded. Still open — the Round 3 batch did
@@ -630,11 +228,11 @@ GoogleID.
    rows, 2× secondary-to-primary ratio) remain provisional, unvalidated
    defaults.
 7. ~~Scripts 22, 22b, 23, 24, 26, 28, 31, 32, 33 not uploaded~~ — **closed**,
-   see resolutions 9 and 10 above. **`27_LessonFrameGenerator` remains
-   open** — it was not in the Round 3 batch either; do not assume it
-   shipped because its Module 2 Full siblings did.
+   see HISTORY.md's resolutions 9 and 10. ~~`27_LessonFrameGenerator`
+   remains open~~ — **closed**, see HISTORY.md's
+   "27_LessonFrameGenerator — the one Full script closed".
 8. ~~Two archived-file naming conventions coexist~~ — **closed**, see
-   resolution 13 above.
+   HISTORY.md's resolution 13.
 9. ~~`31_PacingGuideManager.js` doesn't yet read the v2 pacing guide's 4
    new fields~~ — **closed.** `PG_HEADERS`/`PG_COL_COUNT`/row-mapping
    extended (16 → 20, append-only); `chain_node`, `esports_connection`,
@@ -644,13 +242,13 @@ GoogleID.
    real pre-existing bug: the pacing guide cache was already silently
    overflowing PropertiesService's 9216-byte-per-property limit with just
    the original 16 fields (~28KB measured against real data) — see
-   resolution 8 above for the full writeup and the per-unit-cache fix.
+   HISTORY.md's resolution 8 for the full writeup and the per-unit-cache fix.
 10. ~~`curriculum/PacingGuide_CAS_Context.csv` and `.docx` are stale~~ —
-    **closed.** Both regenerated from the adopted v2 JSON — see resolution
-    8 above for how each was rebuilt/verified. Prior versions archived at
+    **closed.** Both regenerated from the adopted v2 JSON — see
+    HISTORY.md's resolution 8 for how each was rebuilt/verified. Prior versions archived at
     `curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.csv`/`.docx`.
 11. **`data/CompetencyRegistry.csv` and `data/sol-correlations/` are not
-    yet imported into any Sheet** — the files exist in the repo (resolution
+    yet imported into any Sheet** — the files exist in the repo (HISTORY.md's resolution
     7), but nothing has run `importCompetencyRegistry()` (Script `22b`)
     against them in a live deployment. This is a deployment-time action,
     not a repo-file gap, listed here so it isn't mistaken for "already live."
@@ -710,9 +308,171 @@ GoogleID.
     `warmup_anchor_truncated` flag at write time; `resolveUnitForDate_()`
     now threads that flag through, and `getWarmUpAnchor_()` checks it
     before returning — if set, it calls new helper
-    `_getFullWarmupAnchor_()` to re-read that one unit's untruncated
-    `warmup_anchor` directly from the `PacingGuide` sheet, so only the
-    (rare) truncated case pays the extra read instead of every call.
+    `_getFullPacingField_(unit_id, fieldName)` to re-read that one unit's
+    untruncated `warmup_anchor` directly from the `PacingGuide` sheet, so
+    only the (rare) truncated case pays the extra read instead of every
+    call. (This entry named the helper `_getFullWarmupAnchor_()` until
+    `tools/doc-currency/check.js` pointed out that it does not exist —
+    the real one is field-generic, not warmup-specific.)
+15. **Setup wizard's three cross-project import calls, corrected fix
+    (external product review, Finding 5)** — `28_Module2Setup.js` calls
+    `importCompetencyRegistry()`/`importPacingGuide()`/
+    `importCompetencyRubrics()` (Scripts 22b/31/32), all bound to the
+    Central Ledger project, not `unified-manual` — genuinely separate
+    Apps Script projects, confirmed via `tools/gas-lint/project-map.json`.
+    The external review's own suggested fix ("expose them over the
+    Ledger's existing `doPost` API") is factually wrong: `central-ledger`
+    has no web-app surface — no `doGet`/`doPost` — at all today; the one
+    `doPost` in cas-ccps lives in the separate `teacher-dashboard` project.
+    **Real fix: an Apps Script Library**, the platform's own first-class
+    mechanism for exactly this "share functions across bound projects"
+    problem. `cas-ccps/clasp/manifests/unified-manual.appsscript.json` now
+    declares a `dependencies.libraries` entry (`userSymbol: "CentralLedger"`),
+    and all three call sites in `28_Module2Setup.js` now call
+    `CentralLedger.importCompetencyRegistry()` etc. — resolved via
+    `tools/gas-lint/check.js`'s own `checkUndefinedFunctionCalls`
+    (the 3 warnings these calls used to produce are gone; `.`-prefixed
+    calls are outside that check's scope by design, since it only flags
+    bare identifier calls). Each call site keeps its existing
+    `typeof ... !== "function"` guard (now checking `CentralLedger` itself)
+    so a deployment that hasn't wired up the Library yet still gets the
+    same graceful manual-fallback instructions instead of a bare
+    ReferenceError. **What's left is entirely credentialed, same class of
+    gap as the clasp connection itself (see "Version control (clasp)"
+    below):**
+    1. Open the live Central Ledger Apps Script project → Deploy → New
+       deployment → select type **Library** → Deploy.
+    2. Copy that deployment's Script ID and the version number it was
+       just published at.
+    3. Fill both into `unified-manual.appsscript.json`'s
+       `dependencies.libraries[0]` (`libraryId`, `version`) — replacing
+       the `REPLACE_WITH_...` placeholders — then `clasp push` the
+       `unified-manual` project (or add the Library by hand via the
+       Script Editor's Resources → Libraries UI, entering the same Script
+       ID/version — either path produces the same result).
+    4. Re-publish a new Library version and bump `version` in the manifest
+       any time central-ledger's own code changes in a way that should
+       reach `unified-manual` — an Apps Script Library is pinned to a
+       specific version on purpose, so central-ledger changes never
+       silently reach consumers without an explicit version bump.
+16. **Scaling fixes (external product review, Finding 6, "this quarter")**
+    — the review counted ~90 `getDataRange()` calls across cas-ccps;
+    re-counted at 112 (worse, not better — per-file counts the review cited
+    were exact, only the total was understated). Three fixes, each scoped
+    to real, verified schema knowledge rather than a blanket rewrite:
+    - **Bounded Ledger reads.** Added `LEDGER_COL_COUNT` (00_SharedConfig.js,
+      one past the highest `LEDGER` index) and converted the 6 call sites
+      across `10_AdminRecoveryPanel.js`, `29_StudentContextAggregator.js`,
+      and `30_SCRSuggestionEngine.js` that read the *whole* Ledger tab
+      (not a header-driven dynamic column set) from `getDataRange()` to
+      `getRange(1, 1, lastRow, LEDGER_COL_COUNT)` — reads exactly the
+      columns this schema actually defines, and isn't vulnerable to the
+      well-known GAS gotcha where one stray far-right value (ever entered,
+      even by accident) makes `getDataRange()` report a wider range than
+      the real schema forever after. The other ~106 `getDataRange()` calls
+      (against StagingPipeline, RubricQueue, SCRSuggestions,
+      SCRDecisionLog, CompetencyEvidence, WarmUpResponses,
+      StudentDocRegistry, and header-driven reads generally) were not
+      individually converted in this pass — most either read a genuinely
+      dynamic column set via header lookup (bounding those requires
+      already knowing the header row's width, a chicken-and-egg problem)
+      or a tab whose exact schema this pass didn't independently verify
+      column-by-column; narrowing the scope here on purpose rather than
+      risk silently truncating a column some other function actually needs.
+    - **CacheService layer for CompetencyRegistry.** New
+      `getCompetencyTextMap_()` (00_SharedConfig.js) — a real
+      cross-execution cache (Apps Script's `CacheService`, 6-hour TTL),
+      not a module-level variable that resets every execution. Replaces
+      the identical `getDataRange()` + header-lookup block
+      `30_SCRSuggestionEngine.js`'s `getSCRDashboardData_()` and
+      `getStudentScrStandingForCompetencies_()` used to each build from
+      scratch on every call. `22b_CompetencyRegistryImporter.js` now
+      invalidates the cache entry on every successful re-import, so a
+      newly-imported competency is visible immediately rather than
+      waiting out the TTL. (The pacing guide — the review's other named
+      caching target — already has its own, more sophisticated
+      PropertiesService-backed per-unit cache; see Known Gaps #9/#14 above.
+      Not touched here; a second, competing cache layer over the same
+      data would be a regression, not an improvement.)
+    - **Ledger retention, extending the `SCR_RETENTION_YEARS` pattern.**
+      See `docs/FERPA_DATA_MAP.md`'s Retention section for the full
+      writeup — `LEDGER_RETENTION_YEARS` (Script Property, default 5,
+      explicitly unconfirmed against any real district retention
+      schedule, same "correct the moment you know the real number"
+      framing as `SCR_RETENTION_YEARS` itself) drives
+      `_archiveExpiredLedgerRows_()` (`10_AdminRecoveryPanel.js`), run on
+      the same daily/on-demand triggers as the SCRDecisionLog archival.
+      This one needed a direct check against `FERPA_DATA_MAP.md` first —
+      that document explicitly states it "does not assert a retention
+      period that isn't actually enforced anywhere," which is exactly
+      what inventing a Ledger retention policy would have done without
+      this same unconfirmed-default framing; confirmed with the user
+      before implementing on that basis.
+17. **Flow 2 escape hatch (external product review, Finding 3, "this
+    quarter")** — at the time this was written, Flow 2 (Student
+    Evaluation) had never been built in Studio (see "Known gaps" above,
+    now updated by Finding 18 below), and `15_StudioFlowPrompts.js`/
+    `15b_StudioFlowPrompts_Flow2_Revised.js` are specs to paste into a
+    Studio Gemini step, not runnable code — meaning nothing anywhere
+    could actually exercise Flow 2's evaluation logic (prompt
+    construction, response parsing, competency-evidence extraction)
+    without a live Studio Flow. kos-personal already solved the general
+    version of this with `CFG.INFERENCE_MODE` (`1_Config_And_Deploy.gs`)
+    gating a fallback to its own separate, billed managed-inference-service
+    (`kos-personal/inference-service/`) — cas-ccps gets an analogous
+    opt-in escape hatch, scaled to what it actually needs: no separate
+    deployment, just a direct Gemini API call.
+    - `cfg.evaluationMode` (`00_SharedConfig.js`, default `"STUDIO"` —
+      unchanged behavior) can be set to `"DIRECT_GEMINI"` via the
+      `EVALUATION_MODE` Script Property, plus a `DIRECT_GEMINI_API_KEY`
+      Script Property, to opt in.
+    - `15b_StudioFlowPrompts_Flow2_Revised.js` moved into
+      `cas-ccps:central-ledger`'s real file list (was previously excluded
+      as "not deployed" in `tools/gas-lint/project-map.json`) so
+      `FLOW_2_SYSTEM_PROMPT` has exactly one source of truth for both the
+      Studio-paste path and the new direct-call path — see that file's
+      own updated header comment for why this does NOT mean Flow 2 itself
+      is now deployed in Studio (it still isn't).
+    - New `15c_Flow2DirectEvaluationService.js`: `_buildFlow2Prompt_()`
+      and `_parseFlow2Response_()` (pure logic, no network — reuses
+      `04_Form2_TurnInGate.js`'s existing `scanCompliance_()`/
+      `extractSuggestedScore_()` rather than duplicating them, and adds
+      parsing for the `[MILESTONE_OUTCOMES: {...}]` line nothing else in
+      this repo reads today) plus `runFlow2DirectGemini_()` (the thin
+      orchestrator that actually calls `UrlFetchApp`) and
+      `writeCompetencyEvidenceFromFlow2_()` (the CompetencyEvidence write
+      step Flow 2 itself would otherwise perform, with the same
+      "skip a milestone with a blank competency ID, never guess" rule
+      `15b_StudioFlowPrompts_Flow2_Revised.js`'s own DEPENDENCY note
+      specifies).
+    - **Deliberately NOT wired into `06_StagingPipeline_Turnstile.js`'s
+      automatic release loop.** Automatically rerouting live student
+      submissions through an unreviewed new code path is a materially
+      bigger decision than "make Flow 2 testable" calls for — see
+      `15c_Flow2DirectEvaluationService.js`'s own header comment. Call
+      `runFlow2DirectGemini_()` directly (Script Editor, or a manual
+      admin action, with a real Gemini API key) to actually use this path.
+    - See `tests/cas-ccps/flow2-direct-evaluation.test.js` for full
+      coverage of the pure prompt-building/response-parsing/evidence-write
+      logic, plus the mode-gating and error-handling of the one function
+      that actually touches the network (with `UrlFetchApp` mocked, not a
+      real Gemini call).
+18. **Studio Steps adoption — the custom-step code Finding 17's escape
+    hatch was working around now exists.** An 8th cas-ccps project,
+    `cas-ccps/studio-steps/`, implements every custom step Flows 1-5
+    genuinely need (native Studio connectors and Ask-Gemini steps cover
+    everything else) — see its own README for the full file-to-flow map
+    and the fixes applied while landing it. Also landed in the same
+    effort: `34_QueueWatchdog.js` (WarmUpQueue/StagingPipeline/ReviewQueue
+    monitoring with Chat-space escalation) and
+    `35_FlowPreflightAndCanary.js` (a one-shot health check that, among
+    other things, caught a real pre-existing gap — `CompetencyEvidence`
+    was never created by any setup script, silently stranding Flow 2's
+    evidence writes on a fresh deployment; now fixed in
+    `createSCRTabs_()`), both added to `cas-ccps:central-ledger`. This
+    closes Finding 17's underlying gap in code, but not in deployment —
+    see Known Gap #1: the project exists and is tested, not yet pushed
+    live. See `cas-ccps/HISTORY.md` for the full adoption record.
 
 ## Naming note
 
@@ -725,5 +485,5 @@ because this repo's existing `07`/`08` are strictly newer, additive
 supersets of them — keeping only the newer copies avoids two files
 silently claiming the same canonical name with one of them being stale.
 `09` was the one exception, kept under both names (one archived), because
-the difference there was architectural, not incremental — see resolution
-1 above.
+the difference there was architectural, not incremental — see
+HISTORY.md's resolution 1.
