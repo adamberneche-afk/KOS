@@ -52,7 +52,16 @@ function exists(relPath) {
 // Comment/string stripping — same length as input, so line numbers of
 // whatever survives still line up with the original file.
 // -----------------------------------------------------------------------
-function stripCommentsAndStrings(src) {
+// opts.keepStrings: emit string-literal CONTENTS verbatim instead of blanking
+// them, while still blanking comments. Check G needs that distinction — an
+// API endpoint written in live code sits inside a string literal, and one
+// left behind in a commented-out reference implementation does not, so
+// blanking both makes the two indistinguishable. Everything else here (the
+// regex-vs-division machinery in particular) is shared rather than copied
+// into a second, weaker stripper — see tests/tools/doc-currency-check.test.js
+// on what that cost the last time.
+function stripCommentsAndStrings(src, opts) {
+  const keepStrings = !!(opts && opts.keepStrings);
   let out = '';
   let i = 0;
   const n = src.length;
@@ -85,13 +94,17 @@ function stripCommentsAndStrings(src) {
     }
     if (c === '"' || c === "'" || c === '`') {
       const quote = c;
-      out += ' '; i++;
+      out += keepStrings ? c : ' '; i++;
       while (i < n && src[i] !== quote) {
-        if (src[i] === '\\') { out += '  '; i += 2; continue; }
-        out += (src[i] === '\n') ? '\n' : ' ';
+        if (src[i] === '\\') {
+          out += keepStrings ? src.substr(i, 2) : '  ';
+          i += 2; continue;
+        }
+        if (keepStrings) out += src[i];
+        else out += (src[i] === '\n') ? '\n' : ' ';
         i++;
       }
-      if (i < n) { out += ' '; i++; }
+      if (i < n) { out += keepStrings ? src[i] : ' '; i++; }
       lastSig = quote;
       continue;
     }
@@ -548,6 +561,187 @@ function checkUndefinedFunctionCalls() {
 }
 
 // -----------------------------------------------------------------------
+// Check G — undeclared GCP dependencies.
+//
+// Nothing in this repo's default architecture needs a Cloud project: every
+// system reaches Gemini through a hand-built Workspace Flow using the
+// account's own built-in access (the Walled Garden / Bifurcation Boundary).
+// That is not a stylistic preference — GCP access is a Workspace-admin
+// decision nobody here controls, and on the ccpsnet.net account it is
+// switched off, which is what made all 2,113 lines of cas-ccps/studio-steps/
+// permanently unreachable AFTER they were written, unit-tested, and pushed.
+// The failure mode is what makes this worth a linter: a custom step that
+// needs a project doesn't error, it just never appears in Studio's picker.
+//
+// So this check finds the technical surfaces that actually require a
+// project and demands each one have an entry in gcp-map.json. A declaration
+// is not approval — it records that the dependency exists, whether it
+// currently works, and what happens if it doesn't. An undeclared LIVE
+// surface is an ERROR because it's a capability requirement nobody wrote
+// down; an undeclared LATENT one (present but commented out) is a WARNING.
+//
+// LIVE vs LATENT is decided positionally, not by guessing: the surface is
+// live if it survives comment-stripping at the same offset in the source.
+// That's the whole reason stripCommentsAndStrings grew a keepStrings option
+// — an endpoint in live code sits inside a string literal, and one left in
+// a commented-out reference implementation does not, so the default
+// (blank both) can't tell them apart. 25_WarmUpWriter.js is the real case:
+// its callFlow4_ deliberately keeps a commented-out direct-Gemini block so
+// Check E stays able to see the script.external_request requirement.
+//
+// Known edge: an endpoint written inside a REGEX literal is blanked by the
+// stripper in both modes, so it classifies as latent (a warning) rather
+// than live. Nothing in the repo does that today; if something starts
+// matching endpoints by regex, it earns a declaration either way.
+// -----------------------------------------------------------------------
+const GCP_STATUSES = ['live-blocked', 'live-unverified', 'live-ok', 'latent'];
+
+const GCP_PATTERNS = [
+  // A Workspace Add-on exposing custom Studio steps. Scoped to .json
+  // manifests on purpose: several .gs headers discuss workflowElements in
+  // prose, and prose about a wall is not a dependency on it.
+  { name: 'studio-custom-step', source: '"workflowElements"', jsonOnly: true },
+  { name: 'gemini-api-endpoint', source: 'generativelanguage\\.googleapis\\.com' },
+  { name: 'vertex-endpoint', source: 'aiplatform\\.googleapis\\.com' },
+];
+
+// Pure and path-only-by-extension, so tests can drive it with literal
+// source strings instead of the whole repo — see tests/tools/gas-lint-gcp.test.js.
+// Returns at most one finding per (file, pattern), live winning over latent.
+function findGcpSurfaces(relPath, src) {
+  const isJson = /\.json$/i.test(relPath);
+  // Same length as src, so a match offset means the same thing in both.
+  const executable = stripCommentsAndStrings(src, { keepStrings: true });
+  const byPattern = new Map();
+
+  for (const p of GCP_PATTERNS) {
+    if (p.jsonOnly && !isJson) continue;
+    const re = new RegExp(p.source, 'g');
+    let m;
+    while ((m = re.exec(src))) {
+      // JSON has no comment syntax, so a hit in a manifest is always real.
+      const live = isJson || executable.substr(m.index, m[0].length) === m[0];
+      const status = live ? 'live' : 'latent';
+      const prev = byPattern.get(p.name);
+      if (prev && (prev.status === 'live' || status !== 'live')) continue;
+      byPattern.set(p.name, {
+        pattern: p.name, status, line: lineAt(src, m.index), evidence: m[0],
+      });
+    }
+  }
+  return [...byPattern.values()].sort((a, b) => a.line - b.line);
+}
+
+function checkGcpSurfaces() {
+  let map;
+  try { map = JSON.parse(readFile('tools/gas-lint/gcp-map.json')); }
+  catch (e) {
+    err('gcp-map-unreadable',
+      `Could not read tools/gas-lint/gcp-map.json: ${e.message}. Without it this check ` +
+      `cannot tell a declared GCP dependency from an undeclared one, so it is failing loudly ` +
+      `rather than passing silently.`,
+      'tools/gas-lint/gcp-map.json');
+    return;
+  }
+  const declared = map.surfaces || {};
+
+  for (const [relPath, def] of Object.entries(declared)) {
+    if (GCP_STATUSES.indexOf(def.status) === -1) {
+      err('gcp-bad-status',
+        `gcp-map.json declares ${relPath} with status "${def.status}", which is not one of ` +
+        `${GCP_STATUSES.join(', ')}. The status is what tells a reader whether this dependency ` +
+        `works today; an unrecognized one weakens the map without looking broken.`,
+        'tools/gas-lint/gcp-map.json');
+    }
+  }
+
+  // Every file gas-lint already knows about, deduped — a manifest is shared
+  // between a project's entry and its own listing.
+  const scanned = new Set();
+  for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
+    if (projectName.startsWith('_')) continue;
+    for (const relPath of (def.files || []).concat(def.html || [])) scanned.add(relPath);
+    if (def.manifest) scanned.add(def.manifest);
+  }
+
+  const seen = new Set();
+  for (const relPath of [...scanned].sort()) {
+    if (!exists(relPath)) continue;
+    for (const hit of findGcpSurfaces(relPath, readFile(relPath))) {
+      const def = declared[relPath];
+      if (!def) {
+        const where = `${relPath}:${hit.line}`;
+        if (hit.status === 'live') {
+          err('undeclared-gcp-dependency',
+            `${where} depends on GCP (${hit.pattern}: ${hit.evidence}) with no entry in ` +
+            `tools/gas-lint/gcp-map.json. A standard Cloud project is not available on every ` +
+            `account this repo deploys to — it is confirmed disabled on ccpsnet.net — and the ` +
+            `failure mode is silent (a custom step never appears in the picker; an API call ` +
+            `401s inside a try/catch). Add a surfaces entry recording the status, what breaks ` +
+            `without it, and the fallback, or use a native Flow step instead ` +
+            `(cas-ccps/scripts/37_FlowInputBuilder.js is the worked example).`,
+            relPath);
+        } else {
+          warn('undeclared-latent-gcp-dependency',
+            `${where} carries a commented-out GCP dependency (${hit.pattern}: ${hit.evidence}) ` +
+            `with no entry in tools/gas-lint/gcp-map.json. Nothing executes it, so this is a ` +
+            `warning — but uncommenting it would need a Cloud project, and that is a decision ` +
+            `worth being written down before someone makes it by accident.`,
+            relPath);
+        }
+        continue;
+      }
+
+      seen.add(relPath);
+      if (def.pattern !== hit.pattern) {
+        warn('gcp-pattern-mismatch',
+          `gcp-map.json declares ${relPath} as "${def.pattern}" but the surface found at ` +
+          `${relPath}:${hit.line} is "${hit.pattern}" (${hit.evidence}). Either the file grew a ` +
+          `second kind of GCP dependency or the declaration is describing the wrong one.`,
+          relPath);
+      } else if (hit.status === 'live' && def.status === 'latent') {
+        err('gcp-latent-now-live',
+          `gcp-map.json declares ${relPath} as "latent" — present but not executed — but the ` +
+          `surface at ${relPath}:${hit.line} is now in live code. Uncommenting a GCP dependency ` +
+          `is a real decision: confirm a Cloud project is actually available on the target ` +
+          `account, then change the status to live-ok/live-unverified/live-blocked to match.`,
+          relPath);
+      } else if (hit.status === 'latent' && def.status !== 'latent') {
+        warn('gcp-live-now-latent',
+          `gcp-map.json declares ${relPath} as "${def.status}" but the surface at ` +
+          `${relPath}:${hit.line} is commented out. If it was retired, "latent" is the honest ` +
+          `status; if it was commented out to work around the wall, say so in why/if_unavailable.`,
+          relPath);
+      }
+    }
+  }
+
+  for (const [relPath, def] of Object.entries(declared)) {
+    if (def.scanned === false) continue; // declared for completeness, not a GAS surface
+    if (seen.has(relPath)) continue;
+    if (!exists(relPath)) {
+      warn('gcp-stale-declaration',
+        `gcp-map.json declares ${relPath}, which no longer exists. If the dependency is gone, ` +
+        `remove the entry; if the file moved, update the path so the check keeps watching it.`,
+        'tools/gas-lint/gcp-map.json');
+    } else if (!scanned.has(relPath)) {
+      warn('gcp-unscanned-declaration',
+        `gcp-map.json declares ${relPath}, but no project in project-map.json lists that file, ` +
+        `so Check G never scans it and the declaration is unenforced. Add it to the owning ` +
+        `project's file set, or mark the entry "scanned": false the way ` +
+        `kos-personal/inference-service/ is.`,
+        'tools/gas-lint/gcp-map.json');
+    } else {
+      warn('gcp-stale-declaration',
+        `gcp-map.json declares ${relPath} as a ${def.pattern} surface, but scanning it found no ` +
+        `such dependency. The dependency was probably removed — good news, but the entry now ` +
+        `overstates what this repo needs, so delete it (git history keeps the record).`,
+        'tools/gas-lint/gcp-map.json');
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Reusable primitives
 //
 // stripCommentsAndStrings() is the piece other tools most need and most
@@ -561,6 +755,9 @@ function checkUndefinedFunctionCalls() {
 // -----------------------------------------------------------------------
 module.exports = {
   stripCommentsAndStrings,
+  findGcpSurfaces,
+  GCP_PATTERNS,
+  GCP_STATUSES,
   findTopLevelDecls,
   findAnyDepthDeclNames,
   lineAt,
@@ -579,6 +776,7 @@ checkCasCcpsConfigKeys();
 checkGoogleScriptRunCalls();
 checkOAuthScopes();
 checkUndefinedFunctionCalls();
+checkGcpSurfaces();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));
