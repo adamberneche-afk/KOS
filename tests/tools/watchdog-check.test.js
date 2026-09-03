@@ -71,6 +71,20 @@ test('runActionlint: findings are attributed to the specific file actionlint nam
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('runActionlint: a missing/unspawnable binary is a finding on every file, never silently reported clean', () => {
+  const dir = makeWorkflowsDir({ 'a.yml': SIMPLE_WORKFLOW, 'b.yml': SIMPLE_WORKFLOW });
+  const fakeExec = () => {
+    const err = new Error('spawnSync actionlint ENOENT');
+    err.code = 'ENOENT';
+    throw err;
+  };
+  const results = runActionlint(dir, { execFn: fakeExec });
+  assert.equal(results['a.yml'].length, 1);
+  assert.equal(results['b.yml'].length, 1);
+  assert.ok(results['a.yml'][0].includes('could not run actionlint'));
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('checkScheduledWorkflowRuns only queries workflows that actually declare a schedule trigger', async () => {
   const dir = makeWorkflowsDir({ 'push-only.yml': SIMPLE_WORKFLOW, 'scheduled.yml': SCHEDULED_WORKFLOW });
   const calls = [];
