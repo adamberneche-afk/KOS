@@ -152,7 +152,8 @@
       "leader-hub/Code.gs",
       "leader-hub/Config.gs",
       "leader-hub/Data.gs",
-      "leader-hub/SCR.gs"
+      "leader-hub/SCR.gs",
+      "leader-hub/AiPrompts.gs"
     ],
     "html": [
       "leader-hub/student-leader-hub.html"
