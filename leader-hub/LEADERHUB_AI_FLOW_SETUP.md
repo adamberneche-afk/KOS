@@ -62,6 +62,10 @@ times out after ~90 seconds of polling (see `pollAiJob_` in
 draft the app has always produced. AI drafting is additive, not a
 replacement for anything that already worked.
 
+> **Not deployed yet?** This document assumes `leader-hub:app` is already a
+> live Apps Script Web App. If it isn't, start with
+> [`DEPLOYMENT_GUIDE.md`](DEPLOYMENT_GUIDE.md) and come back at its Phase 6.
+
 ## Step 1 — Locate the queue sheet
 
 The first `aiDraft` call creates a spreadsheet named **"LeaderHub AI
