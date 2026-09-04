@@ -4,9 +4,14 @@
 // TRIGGERS:
 //   buildFlowInputRows      — Time-driven, every 1 minute  (mirrors
 //                              03_QueueBridge.js's bridgeQueue cadence)
-//   harvestFlowInputResults — Time-driven, every 2 minutes (mirrors
-//                              03_QueueBridge.js's backPropagateCompletions
-//                              cadence)
+//   harvestFlowInputResults — Time-driven, every 5 minutes. Originally
+//                              specced to mirror 03_QueueBridge.js's
+//                              backPropagateCompletions cadence (documented
+//                              there as "every 2 minutes," never actually
+//                              achievable — see the fix note on
+//                              installFlowInputTriggers() below), so this
+//                              uses the nearest interval ScriptApp's
+//                              time-based trigger API actually accepts.
 //
 // PURPOSE: Flow 2 (Student Evaluation) redesign, landed after a live
 // Studio build session hit three walls documented in this session's
@@ -657,6 +662,19 @@ function checkFlow2Liveness() {
 }
 
 // ---------------------------------------------------------------------------
+// FIX (found during live redeployment): ScriptApp's time-based trigger API
+// only accepts everyMinutes(1|5|10|15|30) — confirmed directly, a real
+// account throws "The value you passed to everyMinutes was invalid" on
+// everyMinutes(2). The harvest side was specced at "every 2 minutes" (see
+// this file's own header and 03_QueueBridge.js's identical, equally
+// unachievable backPropagateCompletions comment) but never actually
+// installable. Moved to the nearest legal value, 5 — keeping harvest
+// slower than build's 1-minute cadence, which was the actual intent, rather
+// than collapsing the two to the same interval. installFlowInputTriggers()
+// itself was never reached past this line on affected accounts, so
+// buildFlowInputRows could end up installed with harvestFlowInputResults
+// silently missing; the indexOf guards below make re-running this function
+// safe (it won't duplicate buildFlowInputRows) once the fix is pushed.
 function installFlowInputTriggers() {
   const existing = ScriptApp.getProjectTriggers().map((t) => t.getHandlerFunction());
 
@@ -665,7 +683,7 @@ function installFlowInputTriggers() {
     Logger.log("[FlowInputBuilder] Installed buildFlowInputRows — every 1 minute.");
   }
   if (existing.indexOf("harvestFlowInputResults") === -1) {
-    ScriptApp.newTrigger("harvestFlowInputResults").timeBased().everyMinutes(2).create();
-    Logger.log("[FlowInputBuilder] Installed harvestFlowInputResults — every 2 minutes.");
+    ScriptApp.newTrigger("harvestFlowInputResults").timeBased().everyMinutes(5).create();
+    Logger.log("[FlowInputBuilder] Installed harvestFlowInputResults — every 5 minutes.");
   }
 }
