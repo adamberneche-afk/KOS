@@ -1,19 +1,98 @@
 # cas-ccps Deployment Handoff
 
-> ## ⚠️ STATUS: START HERE, THEN STOP READING THIS FILE'S LOWER HALF
+> ## ⚠️ STATUS: cas-ccps IS FULLY LIVE. START HERE, THEN GO TO leader-hub.
 >
-> **The first deployment already happened.** All 8 cas-ccps projects are live
-> in a real `ccpsnet.net` Workspace account, Module 1 and Module 2 (Phase A +
-> B) are set up, and Flow 1 works against real data. This document's original
-> premise — "this repo has never been pushed to a real Apps Script project" —
-> has been false for a while.
+> **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
+> projects are live in a real `ccpsnet.net` Workspace account, Module 1 and
+> Module 2 (Phase A + B) are set up, and Flow 1 through Flow 5 have each been
+> built in Studio and confirmed with their own liveness check
+> (`checkFlow2Liveness()`, `checkWarmUpFlowLiveness()`) — not just a green
+> "Run Completed" banner. "Verified" means a real Studio run against seeded
+> fixture data, not yet a real student submission; `cas-ccps/docs/IMPACT_DASHBOARD.html`
+> keeps that distinction explicit in its own badges and metrics.
 >
-> **If you are a fresh session picking up deployment, read this banner and
-> then jump to ["Bringing an already-live account up to current HEAD"](#bringing-an-already-live-account-up-to-current-head).**
-> That section is the operation that applies. The from-scratch order of
-> operations further down applies only to a *second* account.
+> **If you are a fresh session picking up deployment work, cas-ccps itself
+> needs nothing further right now — move to leader-hub, then kos-personal**
+> (["The other two systems"](#the-other-two-systems) below), both still
+> from-scratch deployments that have never been pushed. The rest of this
+> document — the already-live section, the Script Properties reference, the
+> from-scratch order of operations — is kept as reference for those two
+> systems and for standing up a *second* cas-ccps account, not as an active
+> checklist for this one.
 >
-> ### What changed since the last deployment session
+> ### Lessons learned closing out Flows 2-5 — read before building a flow
+> anywhere else in this repo
+>
+> These came out of actually building Flows 2-5 in Studio this session, not
+> from reading the code. Full detail, with the exact logs and diagnosis, is in
+> `cas-ccps/HISTORY.md`'s deployment record.
+>
+> 1. **A green "Run Completed" banner proves nothing.** It doesn't distinguish
+>    "the Flow is not built," "its trigger matches nothing," "it wrote to the
+>    wrong column," or "it's erroring" — all four look identical from Studio's
+>    side. The only things that actually prove a flow is live are its own
+>    liveness/binding checks (`checkFlow2Binding()`/`checkFlow2Liveness()`,
+>    `checkFlowBinding()`/`checkWarmUpFlowLiveness()`). Run them after every
+>    build, not just when something looks wrong.
+> 2. **`everyMinutes(n)` only accepts 1, 5, 10, 15, or 30.** Two install
+>    functions (`installFlowInputTriggers()` in `37_FlowInputBuilder.js`,
+>    `registerTriggersIfNeeded_()` in `08_TeacherConfirmationStep.js`) called
+>    `everyMinutes(2)`, which throws immediately — confirmed directly against
+>    a real account, not assumed. The second one runs from `onOpen()`, whose
+>    exceptions are swallowed rather than surfaced, so it had likely been
+>    failing silently on every Teacher Matrix sheet open since deployment.
+>    Both fixed to `everyMinutes(5)`. If you ever see this exact error message
+>    installing a trigger anywhere in this repo, this is the whole story —
+>    don't re-diagnose it from scratch.
+> 3. **A Flow's own write-back step is not automatically the one thing
+>    `harvestFlowInputResults()` is waiting for.** Flow 2's build spec and its
+>    binding check both said the Flow should write *only* `GeminiFullOutput`.
+>    Built exactly as instructed, the Flow ran successfully in Studio and
+>    produced a correct evaluation — and was never harvested, because
+>    `harvestFlowInputResults()` only processes rows already at
+>    `ReadyStatus = EVALUATED`, a transition nothing else in the codebase
+>    makes. `checkFlow2Binding()` used to call a row like that fully healthy.
+>    Both the build spec (`42_FlowBuildSpec.js`) and the check
+>    (`41_WarmUpFlowBridge.js`) are now fixed — the check flags this exact
+>    case as "stuck at READY" — but the underlying lesson generalizes: when a
+>    harvest function checks for a specific status value, confirm *what writes
+>    that value* before assuming a "write the output column" instruction is
+>    complete.
+> 4. **A `PromptText` chip (`FlowInput`/`Flow3Input`/`Flow4Input`/`Flow5Input`,
+>    always the last read-only column before the Flow's own writes) is already
+>    fully substituted** — including, for Flow 3, already resolved between its
+>    Mode A/B templates. Bind Gemini's system prompt directly to that chip.
+>    Don't reconstruct the prompt by hand from `15_StudioFlowPrompts.js` /
+>    `15b_StudioFlowPrompts_Flow2_Revised.js` (those describe the *pre-37/41*
+>    design, now superseded — the lookup, split, and evidence-write steps they
+>    describe all moved into Apps Script) and don't branch on `Mode` in
+>    Studio. The `FlowPrompts`-tab prompt-key row in `FlowBuildSpec` is
+>    explicitly the *alternative*, not the default.
+> 5. **Model-setting guidance (temperature, token limits) is not prompt
+>    text.** It's easy to paste a sentence about settings directly into the
+>    prompt field by mistake — Gemini will receive it as literal instruction
+>    text, which reads as confusing rather than throwing an error. If Studio's
+>    "Ask Gemini" action doesn't expose a settings control, that's fine; leave
+>    it at default rather than fighting the UI for it.
+> 6. **A `checkWarmUpFlowLiveness()` reading of `returnsSeen: 1,
+>    everReturned: true, consumed: 0` right after a harvest is very likely a
+>    benign timing gap, not a bug** — the harvest marks the return row
+>    `HARVESTED` and then separately consumes the matching input row; a check
+>    that lands between those two writes sees the first without the second.
+>    It resolved on its own within a couple of minutes both times it was seen
+>    this session. Confirmed by directly inspecting the `WarmUpFlowReturn`
+>    row's `HarvestStatus`/`Error` columns before concluding otherwise — do
+>    that first if it doesn't resolve on a re-check.
+> 7. **A zip/archive transfer to an air-gapped machine can nest a folder.**
+>    "Download ZIP"-style exports commonly wrap the repo in a top-level folder
+>    named after the branch (e.g. `KOS-main`), so `C:\...\KOS\` and
+>    `C:\...\KOS\KOS-main\` both exist and only the second is the real repo
+>    root. Every path-not-found error this session traced back to standing one
+>    level too high. Confirm with a plain directory listing before assuming
+>    gitignored files (like `cas-ccps/clasp/local/*.clasp.json`, the real
+>    script IDs) failed to survive the transfer.
+>
+> ### What changed to get here
 >
 > 1. **Every flow is ported off the custom Studio steps.** A custom step is a
 >    Workspace Add-on and needs a standard, non-default Cloud project; GCP is
@@ -41,6 +120,11 @@
 > 5. **The docs were corrected** where they still described the blocked path
 >    as live or as merely unpushed. `doc-currency` Check 5 now errors on that
 >    class, so a document cannot regress to it quietly.
+> 6. **Flows 2-5 were built in Studio and verified live**, closing the gap
+>    items 1-5 above only got partway to. Two real bugs surfaced doing it (the
+>    `everyMinutes(2)` trigger bug and Flow 2's missing `ReadyStatus` write),
+>    both fixed at the root cause rather than worked around — see "Lessons
+>    learned" above.
 >
 > ### The two rules that govern this work
 >
@@ -55,7 +139,7 @@
 >
 > ### Read these, in this order, before touching anything
 >
-> 1. This section, and the already-live section below.
+> 1. This section.
 > 2. `tools/clasp-sync/DEPLOYMENT_RUNBOOK.md` — the real step-by-step for
 >    clasp mechanics.
 > 3. `meta/FLOW_DOCTRINE.md` — how a flow is built here and why.
@@ -77,11 +161,15 @@
 >
 > ### Still-useful leftovers below
 >
-> The Script Properties reference, the runbook pointers, and the
-> order-of-operations for anyone deploying to a *second* account. Three things
-> in the lower half are corrected inline where they appear: the from-scratch
-> gotchas (all three were hit and a fourth was found), the "code-complete, not
-> deployed" framing of Flows 2-5, and the `clasp create` mechanics (this
+> The already-live-account section below is kept for its exact commands and
+> phase ordering — leader-hub's own guide follows the same shape, and a
+> *second* cas-ccps account would run this exact sequence from Phase 1. The
+> Script Properties reference, the runbook pointers, and the
+> order-of-operations further down are for anyone deploying to a *second*
+> account. Three things in the lower half are corrected inline where they
+> appear: the from-scratch gotchas (all three were hit and a fourth was
+> found), the "code-complete, not deployed" framing of Flows 2-5 (now stale —
+> see the status banner above), and the `clasp create` mechanics (this
 > account's projects already exist; `cas-ccps/clasp/local/` holds their real
 > script IDs and is gitignored, so a new machine recreates it from the
 > templates).
@@ -92,6 +180,10 @@ verified in the Node sandbox" to "live in a real Google Workspace account."
 **Written:** 2026-08-31, at the end of a session that closed the
 `27_LessonFrameGenerator` gap, verified and fixed 6 real bugs from a third-party
 code review, and fixed a real column-collision bug that work introduced.
+
+**Updated:** 2026-09-04, at the end of the session that built Flows 2-5 in
+Studio and verified all five live end to end — see the status banner and
+"Lessons learned" above.
 
 ## Current repo state
 
@@ -268,8 +360,9 @@ answer.
 Only after Phases 1-3 are clean is there any point configuring Flow 2 in
 Studio, because before that there is no `FlowInput` row for it to read.
 
-Two things that will *not* work no matter what you run, so don't spend time
-on them — see `cas-ccps/studio-steps/README.md`'s status banner and
+Two things that are **blocked** on this account, not merely unpushed, so
+don't spend time on either no matter what you run — see
+`cas-ccps/studio-steps/README.md`'s status banner and
 `tools/gas-lint/gcp-map.json`:
 
 - Any custom Studio step. All 8 are unreachable on this account.
@@ -300,14 +393,13 @@ derived from the constants the code reads, and this file is prose.
 ### A first message for a fresh session
 
 ```
-Read cas-ccps/DEPLOYMENT_HANDOFF.md's status banner and the
-"Bringing an already-live account up to current HEAD" section, then
-meta/FLOW_DOCTRINE.md. I'm continuing the live deployment on the
-ccpsnet.net account: 8 cas-ccps projects exist, Module 1 and Module 2
-(A+B) are set up, Flow 1 works, Flows 2-5 are ported but their Studio
-sides are unbuilt, and leader-hub and kos-personal have never been
-deployed. I run every clasp/browser/Studio action myself (SMP-004) and
-paste logs back. Start by telling me the exact commands for step 1.
+Read cas-ccps/DEPLOYMENT_HANDOFF.md's status banner, then
+leader-hub/DEPLOYMENT_GUIDE.md. I'm continuing the live deployment on
+the ccpsnet.net account: 8 cas-ccps projects exist, Module 1 and
+Module 2 (A+B) are set up, and all five cas-ccps flows are live and
+verified. leader-hub and kos-personal have never been deployed — that's
+what's next. I run every clasp/browser/Studio action myself (SMP-004)
+and paste logs back. Start by telling me the exact commands for step 1.
 ```
 
 ## The other two systems
@@ -371,19 +463,27 @@ distinction is what cost 2,113 lines here.
 6. **Redeploy Script 07 (Teacher Dashboard) as a new web-app version** after
    Phase A — the wizard tells you this in its completion alert; it can't do it
    itself.
-7. **Build Studio Flows 2-5 by hand in Google Workspace Studio's UI.** This is
-   the single biggest real gap between "code is done" and "system is live" —
-   see the next section. Nothing in this repo can automate this step, but run
-   `syncFlowBuildSpec()` first and build from the `FlowBuildSpec` tab it
-   writes: every tab name, column number, header, trigger condition and
+7. **Build Studio Flows 2-5 by hand in Google Workspace Studio's UI.** — DONE
+   for this account as of 2026-09-04; see the status banner and lessons
+   learned at the top of this document. Kept here for a *second* account:
+   this was the single biggest real gap between "code is done" and "system is
+   live" — see the next section. Nothing in this repo can automate this step,
+   but run `syncFlowBuildSpec()` first and build from the `FlowBuildSpec` tab
+   it writes: every tab name, column number, header, trigger condition and
    prompt key for all five flows, derived from the constants the code
    actually reads. The wizard's Phase B dialogs and `15_StudioFlowPrompts.js`
    still carry the judgement half — connector names, temperature, token
    limits — which is deliberately not generated, because it needs judgement
    and does not drift. Keep `checkFlowBinding()` open in a second tab while
-   wiring each Flow's last step (row 8 of the table above).
+   wiring each Flow's last step (row 8 of the table above), and confirm with
+   the flow's own liveness check afterward — a green "Run Completed" banner
+   in Studio does not by itself prove the flow is wired correctly.
 
 ## The real gap: Studio Flows 2-5 — and it's worse than "not deployed"
+
+**CLOSED for this account as of 2026-09-04 — all five flows built and
+verified live.** Kept below as the reasoning for a *second* account, since
+the same wall and the same port apply there identically.
 
 **Corrected after the first real deployment. The original framing below said
 the custom-step code was merely "not deployed." It is unreachable on this
@@ -422,15 +522,17 @@ alone, plus the Drive and Docs work (creating a warm-up doc, sharing it,
 stamping its zones) that no native step can do. Getting that distinction
 wrong made the job look bigger than it was.
 
-Only **Flow 1** (Rubric Extraction) has been verified live end to end. Flows
-2-5 now have a keyless path but the Studio side of each still has to be built
-by hand, so **Module 2 Full (Warm-Ups)** and **Module 5 (SCR Suggestion)**
-remain not-live — now for want of Flow construction, not for want of code.
-`cas-ccps/docs/IMPACT_DASHBOARD.html`'s badges have since been rewritten to
-three states — `Flow 1 ✅ Live`, `Flows 2-5 ⬜ Ported, Studio side not built`,
-and `Custom Studio steps ⛔ Blocked` — because "Built, Not Deployed" read as
-"someone just needs to push it," which is the one thing that will never
-resolve it.
+**All five flows (Rubric Extraction, Student Evaluation, Warm-Up Generation,
+Warm-Up Scoring, Bridging) have now been verified live end to end**, each
+confirmed with its own liveness check, not just a Studio "Run Completed"
+banner. `cas-ccps/docs/IMPACT_DASHBOARD.html`'s badges read `Flow 1-5 ✅ Live`
+and `Custom Studio steps ⛔ Blocked` — the custom-step badge stays as its own
+state, deliberately distinct from "live," because "Built, Not Deployed" used
+to read as "someone just needs to push it," which is the one thing that will
+never resolve it. "Live" in these badges means built, wired, and confirmed
+working against seeded fixture data — not yet exercised by a real student
+submission; that distinction stays explicit in the dashboard's metrics and
+narrative copy.
 
 `cas-ccps/studio-steps/README.md` has the per-step deployment instructions
 (mirrors Part 3.7 of the runbook) — still accurate for an account that *has*
