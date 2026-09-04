@@ -173,19 +173,29 @@ test('each flow names its trigger condition, taken from the status constants', (
 
 // ── Ownership, the thing a mis-binding gets wrong ────────────────────────────
 
-test('exactly one FlowInput column is marked as the Flow\'s to write', () => {
+test('exactly two FlowInput columns are marked as the Flow\'s to write', () => {
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   exported.syncFlowBuildSpec();
 
-  // Flow 2 writes GeminiFullOutput and nothing else. An operator who writes
-  // anywhere else corrupts a materialized literal, and checkFlow2Binding()
-  // exists because that failure is otherwise invisible.
+  // Flow 2's update-row step must write BOTH GeminiFullOutput and
+  // ReadyStatus (= "EVALUATED") in the same step. Corrected during live
+  // redeployment: a build that wrote only GeminiFullOutput ran successfully
+  // in Studio but was never harvested, because harvestFlowInputResults()
+  // only processes rows already at EVALUATED and nothing else makes that
+  // transition. checkFlow2Binding() now flags that specific gap as
+  // "stuck at READY" — exists because the failure is otherwise invisible.
   const writes = specRows(exported, ss)
     .filter((r) => r.tab === 'FlowInput' && r.surface === 'write');
-  assert.equal(writes.length, 1);
-  assert.equal(Number(writes[0].column), exported.FI.GEMINI_FULL_OUTPUT + 1);
-  assert.match(String(writes[0].notes), /ONLY column the Flow writes/);
+  assert.equal(writes.length, 2);
+  const columns = writes.map((w) => Number(w.column)).sort((a, b) => a - b);
+  assert.deepEqual(columns, [
+    exported.FI.READY_STATUS + 1, exported.FI.GEMINI_FULL_OUTPUT + 1,
+  ].sort((a, b) => a - b));
+  const outputRow = writes.find((w) => Number(w.column) === exported.FI.GEMINI_FULL_OUTPUT + 1);
+  const statusRow = writes.find((w) => Number(w.column) === exported.FI.READY_STATUS + 1);
+  assert.match(String(outputRow.notes), /TWO columns/);
+  assert.match(String(statusRow.notes), /EVALUATED/);
 });
 
 test('the return tab marks the harvest-owned columns "leave empty"', () => {

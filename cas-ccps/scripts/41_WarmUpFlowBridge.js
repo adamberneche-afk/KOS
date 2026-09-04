@@ -1223,27 +1223,48 @@ function _wfbDiagnoseReturnRow_(row, knownIds) {
  * GeminiFullOutput is empty while some column that should hold a short
  * literal holds something long and JSON-shaped. That is the signature of an
  * output write bound to the wrong column.
+ *
+ * FIX (found during live redeployment — confirmed directly, not assumed):
+ * this check used to treat any row with non-empty GeminiFullOutput as fully
+ * healthy and skip it entirely. That misses the exact failure a real Studio
+ * build just produced: the Flow's update-row step wrote GeminiFullOutput
+ * correctly but left ReadyStatus at "READY" instead of also setting it to
+ * "EVALUATED" — harvestFlowInputResults() only ever processes rows already
+ * at EVALUATED (nothing else in this codebase makes that transition), so
+ * the row sits with real output, forever unharvested, and this check
+ * previously called it fine. Now flagged as its own category,
+ * `stuckAtReady`, before the existing mis-bound-output heuristic runs.
  */
 function checkFlow2Binding() {
   const ctx = wfbLedger_();
   const tabName = (ctx.cfg.tabs && ctx.cfg.tabs.flowInput) || 'FlowInput';
   const sheet = ctx.ss.getSheetByName(tabName);
-  const report = { rows: 0, awaitingOutput: 0, suspected: [] };
+  const report = { rows: 0, awaitingOutput: 0, stuckAtReady: 0, suspected: [] };
   if (!sheet || sheet.getLastRow() <= 1) {
     Logger.log('[WFB] checkFlow2Binding: no ' + tabName + ' rows to diagnose.');
     return report;
   }
 
   Logger.log('[WFB] Flow 2 writes its result INTO the trigger row, not a new one. Bind the ' +
-    'output step to column ' + (FI.GEMINI_FULL_OUTPUT + 1) + ' (GeminiFullOutput) and change ' +
-    'nothing else on the row.');
+    'output step to column ' + (FI.GEMINI_FULL_OUTPUT + 1) + ' (GeminiFullOutput), AND set ' +
+    'column ' + (FI.READY_STATUS + 1) + ' (ReadyStatus) to the literal "EVALUATED" — both in ' +
+    'the same update-row step. Change nothing else on the row.');
 
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, FI.PROMPT_TEXT + 1).getValues();
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
     report.rows++;
-    if (String(row[FI.GEMINI_FULL_OUTPUT] || '').trim()) continue; // output arrived where expected
-    if (String(row[FI.READY_STATUS] || '').trim() !== 'READY') continue;
+    const hasOutput = !!String(row[FI.GEMINI_FULL_OUTPUT] || '').trim();
+    const readyStatus = String(row[FI.READY_STATUS] || '').trim();
+
+    if (hasOutput && readyStatus === 'READY') {
+      // Output arrived, but the status half of the same write never
+      // happened — harvestFlowInputResults() will never see this row.
+      report.stuckAtReady++;
+      continue;
+    }
+    if (hasOutput) continue; // output arrived AND status already advanced — healthy
+    if (readyStatus !== 'READY') continue;
     report.awaitingOutput++;
 
     // Columns that should hold a short-ish literal. PromptText is excluded —
@@ -1258,6 +1279,13 @@ function checkFlow2Binding() {
 
   Logger.log('[WFB] checkFlow2Binding: ' + report.awaitingOutput + ' of ' + report.rows +
     ' row(s) READY with no output yet');
+  if (report.stuckAtReady) {
+    Logger.log('[WFB]   ' + report.stuckAtReady + ' row(s) have real GeminiFullOutput but ' +
+      'ReadyStatus is still READY, not EVALUATED. harvestFlowInputResults() will never process ' +
+      'these — they will sit forever with real, unharvested output. Fix the Flow\'s update-row ' +
+      'step: it must write the literal "EVALUATED" into ReadyStatus in the SAME step that ' +
+      'writes GeminiFullOutput, not leave that column untouched.');
+  }
   report.suspected.forEach(function (sus) {
     Logger.log('[WFB]   row ' + sus.row + ': column ' + sus.column + ' holds long JSON-shaped ' +
       'text where a short literal belongs ("' + sus.sample + '…"). The output step is very ' +
