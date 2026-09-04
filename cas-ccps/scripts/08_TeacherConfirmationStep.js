@@ -43,7 +43,9 @@
 //   of this file — confirmed against the pasted source, not assumed.
 //
 // TRIGGERS:
-//   pollForNewDrafts     — Time-driven, every 2 minutes
+//   pollForNewDrafts     — Time-driven, every 5 minutes (see the fix note
+//                          on registerTriggersIfNeeded_() below — "every 2
+//                          minutes" was never actually installable)
 //   onTeacherConfirmSubmit — onFormSubmit on Confirmation Form response sheet
 // =============================================================================
 
@@ -76,6 +78,19 @@ function onOpen() {
   registerTriggersIfNeeded_();
 }
 
+// FIX (found during live redeployment, same defect as
+// 37_FlowInputBuilder.js's installFlowInputTriggers()): ScriptApp's
+// time-based trigger API only accepts everyMinutes(1|5|10|15|30) —
+// everyMinutes(2) throws "The value you passed to everyMinutes was
+// invalid," confirmed directly against a real account. Because this runs
+// from onOpen() (a simple trigger, whose exceptions are swallowed rather
+// than surfaced to the editor), this has likely been throwing silently on
+// every open of every teacher's Teacher Matrix sheet since deployment,
+// with pollForNewDrafts never actually getting installed. Moved to the
+// nearest legal value, 5. Any spreadsheet that hit this before the fix
+// needs its own registerTriggersIfNeeded_() re-run (e.g. reopen the sheet,
+// or run it directly from the Apps Script editor) once the corrected code
+// is pushed — the hasPoll guard above makes that safe to do repeatedly.
 function registerTriggersIfNeeded_() {
   const existing = ScriptApp.getProjectTriggers();
   const hasPoll = existing.some(t => t.getHandlerFunction() === "pollForNewDrafts");
@@ -84,7 +99,7 @@ function registerTriggersIfNeeded_() {
   if (!hasPoll) {
     ScriptApp.newTrigger("pollForNewDrafts")
       .timeBased()
-      .everyMinutes(2)
+      .everyMinutes(5)
       .create();
     Logger.log("[08] pollForNewDrafts trigger registered.");
   }
@@ -172,7 +187,8 @@ const DU08 = {
 };
 
 // ---------------------------------------------------------------------------
-// pollForNewDrafts — time-driven trigger, every 2 minutes
+// pollForNewDrafts — time-driven trigger, every 5 minutes (see the fix
+// note on registerTriggersIfNeeded_() above)
 // Scans TeacherMatrix for STATUS = DRAFT rows that haven't had a
 // confirmation email sent yet, sends the pre-filled review email,
 // marks them REVIEW_SENT so they aren't re-processed
@@ -185,7 +201,7 @@ function pollForNewDrafts() {
   const drafts = ss.getSheetByName("DraftUnits");
   if (!matrix || !drafts) throw new Error("TeacherMatrix or DraftUnits tab not found.");
 
-  // LOCKED: this trigger fires every 2 minutes, but the STATUS flip to
+  // LOCKED: this trigger fires every 5 minutes, but the STATUS flip to
   // REVIEW_SENT (below) only happens *after* drafts.appendRow() and the
   // network-bound sendReviewEmail_() call for every DRAFT row in this same
   // pass. A run that's still working through a slow/rate-limited email send
