@@ -1899,3 +1899,148 @@ already paid for once with a ±6-line marker window.
 Also pinned: a declared `fallback` token must name something that exists in
 the source. A fallback pointer to a renamed function is worse than none, since
 it reads as an answer and leads nowhere.
+
+## 2026-09-04 — Flows 2-5 built in Studio and verified live
+
+The session `DEPLOYMENT_HANDOFF.md` had been pointing at since 2026-08-31:
+build each of Flows 2-5 by hand in Google Workspace Studio's UI from the
+generated `FlowBuildSpec` tab, then prove each one live with its own
+liveness check rather than trusting a green "Run Completed" banner. All four
+were built this session, in order (Flow 2, then Flow 3, Flow 4, Flow 5), and
+all four are now confirmed live — `checkFlow2Liveness()` and
+`checkWarmUpFlowLiveness()` both show every flow with `everReturned: true`
+and nothing left `ready`/unanswered. Combined with Flow 1 (already live since
+the 2026-08-31 session), **all five cas-ccps flows are now live and verified
+end to end.** "Verified" means a real Studio run against seeded fixture data
+(`installFlowFixtures()`/`installWarmUpFlowFixtures()`), not yet a real
+student submission — `cas-ccps/docs/IMPACT_DASHBOARD.html` keeps that
+distinction explicit in its own metrics.
+
+Two real bugs surfaced doing this, both found by building against the actual
+account rather than by static analysis, both fixed at the root cause:
+
+### Bug 1 — `everyMinutes(2)` is not a legal trigger interval
+
+`ScriptApp`'s time-based trigger API only accepts `everyMinutes(1|5|10|15|30)`.
+`installFlowInputTriggers()` (`37_FlowInputBuilder.js`) called
+`everyMinutes(2)` for `harvestFlowInputResults` and threw "The value you
+passed to everyMinutes was invalid" — confirmed directly against the real
+account, mid-session, not assumed. `buildFlowInputRows`'s own trigger had
+already installed successfully one line earlier, so the function aborted
+partway through, leaving `harvestFlowInputResults` never installed with no
+error surfaced anywhere else in the deployment checklist.
+
+Checking for the same pattern elsewhere in the codebase found an identical,
+independent instance: `registerTriggersIfNeeded_()` (`08_TeacherConfirmationStep.js`)
+called `everyMinutes(2)` for `pollForNewDrafts`. That one is worse in a
+different way — it runs from `onOpen()`, a simple trigger whose exceptions
+are swallowed rather than surfaced, so it had very likely been failing
+silently on every open of every teacher's Teacher Matrix sheet since that
+project was first deployed, with `pollForNewDrafts` never actually
+installing. Both fixed to `everyMinutes(5)` (`6893f05`) — chosen to keep the
+harvest/poll slower than its paired build/1-minute cadence, the actual design
+intent, rather than collapsing both to the same interval. Full test suite
+(765/765), gas-lint and doc-currency all stayed clean after the fix.
+
+### Bug 2 — Flow 2's build spec and binding check both told builders to
+skip a required write
+
+`42_FlowBuildSpec.js`'s generated `FlowBuildSpec` tab told the builder Flow
+2's update-row step writes *only* `GeminiFullOutput` ("The ONLY column the
+Flow writes"). `checkFlow2Binding()`'s own log line said the same: "change
+nothing else on the row." Flow 2 was built exactly as both instructed — one
+column, `GeminiFullOutput`, mapped to the Gemini step's output — and it ran
+successfully in Studio, producing a correct, well-formed evaluation. It was
+never harvested. `harvestFlowInputResults()` (same file) only ever processes
+rows where `ReadyStatus` has already become `EVALUATED`; nothing else in the
+codebase makes that transition. The row sat with real, unharvested output
+indefinitely — the exact silent-nothing-happened failure mode this whole
+build-spec/liveness-check apparatus exists to prevent, except this time the
+apparatus itself was the source of the wrong instruction.
+
+`37_FlowInputBuilder.js`'s own header comment had the correct contract all
+along ("write the raw Gemini output into THIS row's `GeminiFullOutput`
+column, set `ReadyStatus` = `"EVALUATED"`") — the build spec generator and
+the binding check simply didn't match what the harvest function it was
+diagnosing actually required. Fixed in both places (`5f9bbf9`):
+
+- `42_FlowBuildSpec.js`'s `_fbsAppendFlow2_()` now marks the `ReadyStatus`
+  row as a `write` (not just the trigger condition), with a note explaining
+  the Flow must set it to the literal `"EVALUATED"` in the same update-row
+  step that writes `GeminiFullOutput`. `GeminiFullOutput`'s own note no
+  longer claims exclusivity.
+- `checkFlow2Binding()` (`41_WarmUpFlowBridge.js`) no longer treats a
+  non-empty `GeminiFullOutput` as automatically healthy — it used to skip any
+  such row entirely. Rows with real output but `ReadyStatus` still `READY`
+  are now their own reported category, "stuck at READY," with a log line
+  naming the exact fix.
+- `tests/cas-ccps/flow-build-spec.test.js` updated to expect two `FlowInput`
+  write rows, not one.
+
+Verified against a real Studio run this session, not synthetically: this was
+the actual failure blocking Flow 2's first live harvest, diagnosed from the
+live symptom (`checkFlow2Liveness()` showing an answered-but-unharvested row)
+back to the root cause in the generator and the check, not worked around by
+telling the operator to just add a second column in Studio without also
+fixing why the tooling told them not to.
+
+### Follow-up — lessons and best practices for building the next flow in
+this repo
+
+Distilled for reuse; the full incident narratives are above and in
+`DEPLOYMENT_HANDOFF.md`'s status banner.
+
+1. **A green "Run Completed" banner in Studio proves nothing.** It cannot
+   distinguish "not built," "trigger matches nothing," "wrote to the wrong
+   column," or "erroring" — the same four-way ambiguity `checkFlowBinding()`
+   and the liveness checks exist to resolve. Run the actual check after every
+   build. This bit twice in one session: once when Flow 2's Studio test
+   reported success while writing to a column the harvest would never read,
+   and once when the immediate next question after any "it ran" report had to
+   be "did the diagnostic confirm it, or did you just see green."
+2. **When a harvest function gates on a specific status value, verify what
+   actually writes that value before trusting a "write column X" instruction
+   as complete.** Bug 2 above is the general form of this: the instruction
+   and the requirement drifted apart, and nothing caught it until a real run
+   proved it. The fix generalizes past this one flow — any time a build spec
+   or binding check describes what a Studio step should write, cross-check it
+   against the harvest function's own read condition, not just against the
+   generator's stated intent.
+3. **A `PromptText` chip is already fully substituted, including
+   mode-branching.** Flow 3's materializer resolves `Mode A`/`Mode B` and
+   picks the matching prompt template *before* writing `PromptText`
+   (`FLOW_3_PROMPT_MODE_A`/`FLOW_3_PROMPT_MODE_B`,
+   `41_WarmUpFlowBridge.js`). Binding Gemini directly to that chip — for
+   every one of Flows 2-5 — was correct and required no branching logic in
+   Studio. The older per-flow prompt files (`15_StudioFlowPrompts.js`,
+   `15b_StudioFlowPrompts_Flow2_Revised.js`) describe the pre-materializer
+   design (separate Sheets lookup steps, a relay/split step, a dedicated
+   evidence-write step) and are superseded for the actual Studio build — that
+   work now happens in `harvestFlowInputResults()`/`harvestWarmUpFlowReturns()`.
+   Building from those files instead of `FlowBuildSpec` would have produced a
+   Flow with steps duplicating what Apps Script already does.
+4. **Model-setting guidance is not prompt text.** Mid-session, a note about
+   recommended temperature/token-limit settings ended up pasted directly into
+   a Gemini step's prompt field instead of into a settings control, because
+   it read like it belonged with the rest of the step's configuration. Gemini
+   received it as literal instruction text rather than throwing an error,
+   which makes this class of mistake specifically easy to miss on a quick
+   read of a successful run.
+5. **A `consumed: 0` right after `everReturned: true` in
+   `checkWarmUpFlowLiveness()` is very likely a timing gap, not a bug.**
+   `harvestWarmUpFlowReturns()` marks the return row `HARVESTED` and then
+   separately calls `wfbConsumeInputRow_()` on the matching input row — two
+   writes, not one. A check landing between them sees the first without the
+   second. Happened twice this session (Flow 4, then Flow 5), self-resolved
+   within a couple of minutes both times with no code change. Confirm by
+   re-running the check before escalating; if it doesn't resolve, inspect the
+   `WarmUpFlowReturn` row's `HarvestStatus`/`Error` columns directly rather
+   than guessing further.
+6. **A zip export of the repo can nest a folder.** A "Download ZIP"-style
+   transfer to the SMP-004 air-gapped machine wrapped the repo in a top-level
+   folder named after the branch (`KOS-main`), so the extraction root and the
+   real repo root were one level apart. Every "path not found" error the
+   operator hit early this session traced back to that, not to a bad
+   transfer — confirmed with a plain directory listing before concluding
+   gitignored files (`cas-ccps/clasp/local/*.clasp.json`, the real script
+   IDs) had failed to survive the transfer, which they hadn't.
