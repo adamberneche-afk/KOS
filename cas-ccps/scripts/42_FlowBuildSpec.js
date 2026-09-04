@@ -151,10 +151,27 @@ function _fbsAppendFlow2_(rows) {
     let note = "Read it as a chip. Do not write to it.";
     if (i === FI.GEMINI_FULL_OUTPUT) {
       who = "the Flow";
-      note = "The ONLY column the Flow writes. harvestFlowInputResults() reads it here and " +
-        "nowhere else; checkFlow2Binding() diagnoses a write that lands elsewhere.";
+      // FIX (found during live redeployment, confirmed directly): this used
+      // to say "The ONLY column the Flow writes." That's wrong —
+      // harvestFlowInputResults() only processes rows already at
+      // ReadyStatus = EVALUATED, and nothing else in this codebase makes
+      // that transition. A Flow built to write only this column runs
+      // successfully in Studio, produces real output, and is then never
+      // harvested — the exact silent gap this whole build-spec/checkFlow2Binding()
+      // machinery exists to prevent. See the READY_STATUS row below for the
+      // other half of the same update-row step.
+      note = "One of TWO columns the Flow's update-row step must write (the other is " +
+        "ReadyStatus, see that row below) — both in the SAME step. harvestFlowInputResults() " +
+        "reads this column and nowhere else; checkFlow2Binding() diagnoses a write that lands " +
+        "elsewhere, or that arrives here while ReadyStatus is left at READY.";
     } else if (i === FI.READY_STATUS) {
-      note = "The trigger condition. The harvest updates it after applying the result.";
+      who = "the trigger, then the Flow";
+      note = "The trigger condition (READY). The SAME update-row step that writes " +
+        "GeminiFullOutput must ALSO set this column to the literal \"EVALUATED\" — " +
+        "harvestFlowInputResults() only processes rows already at EVALUATED, and does not " +
+        "make that transition itself. Leaving this column untouched is a real, confirmed " +
+        "failure mode: the row gets real output and is never harvested. checkFlow2Binding() " +
+        "flags this specific case as \"stuck at READY.\"";
     } else if (i === FI.PROMPT_TEXT) {
       note = "The pre-substituted system prompt. Bind the Gemini step to this chip. " +
         "{{STUDENT_TEXT}} is deliberately left standing — the Extract step fills it, so the " +
@@ -162,7 +179,7 @@ function _fbsAppendFlow2_(rows) {
     } else if (i === FI.STAGING_ROW_REF) {
       note = "Read-only. The harvest uses it to complete the STAGING_PIPELINE row.";
     }
-    rows.push(["Flow 2", i === FI.GEMINI_FULL_OUTPUT ? "write" : "read",
+    rows.push(["Flow 2", (i === FI.GEMINI_FULL_OUTPUT || i === FI.READY_STATUS) ? "write" : "read",
       "FlowInput", i + 1, key, who, note]);
   }
 
