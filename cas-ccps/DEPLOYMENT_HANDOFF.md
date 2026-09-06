@@ -131,10 +131,12 @@
 >    constants the harvest reads. Build each Flow from that tab, not from a
 >    comment block — the comment blocks normalize em-dashes, which is how a
 >    marker copied from a note silently matched nothing.
-> 4. **`meta/FLOW_DOCTRINE.md` exists**: thirteen rules with the incident
+> 4. **`meta/FLOW_DOCTRINE.md` exists**: fifteen rules with the incident
 >    behind each and an explicit note on whether anything enforces it. Read it
->    before changing how a flow is built. Nine of the thirteen are enforced by
->    `gas-lint` Checks G-K and `doc-currency` Check 5.
+>    before changing how a flow is built. Nine of the fifteen are enforced by
+>    `gas-lint` Checks G-K and `doc-currency` Check 5. Rule 15 is item 8 above,
+>    generalized: check groundedness at harvest, not just that the output
+>    parses.
 > 5. **The docs were corrected** where they still described the blocked path
 >    as live or as merely unpushed. `doc-currency` Check 5 now errors on that
 >    class, so a document cannot regress to it quietly.
@@ -366,7 +368,7 @@ like the first:
 
 | Question | cas-ccps | leader-hub | kos-personal |
 |---|---|---|---|
-| Is the structure sound? | `runFlowPreflightCheck()` | `runLeaderHubPreflight()` | — |
+| Is the structure sound? | `runFlowPreflightCheck()` | `runLeaderHubPreflight()` | `runKosPersonalPreflight()` |
 | Does the script half work? | `runFlow2Canary()`, `runWarmUpFlowCanary()` | `runAiFlowCanary()` | `runStudioReturnCanary()` |
 | Are the columns bound right? | `checkFlowBinding()`, `checkFlow2Binding()` | `checkAiFlowBinding()` | `checkStudioFlowBinding()` |
 | Has a Flow ever answered? | `checkFlow2Liveness()`, `checkWarmUpFlowLiveness()` | `checkAiFlowFixtures()` | `checkStudioFlowLiveness()` |

@@ -84,7 +84,9 @@ replacement for anything that already worked.
 > is pure numbers with nothing distinctive to check against, so it's
 > never gated by design — its own prompt explicitly instructs summarizing
 > a pattern rather than restating numbers, which a numeric-overlap check
-> would have flagged as suspect for doing correctly.
+> would have flagged as suspect for doing correctly. This whole pattern —
+> independently required by every flow surface in the repo — is
+> `meta/FLOW_DOCTRINE.md` rule 15.
 
 > **Not deployed yet?** This document assumes `leader-hub:app` is already a
 > live Apps Script Web App. If it isn't, start with
