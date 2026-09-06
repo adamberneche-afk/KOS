@@ -219,7 +219,7 @@ function harvestStudioReturns() {
     console.warn('[StudioReturn] ' + uid + ' attempt ' + attempts + ' failed: ' + outcome.error);
   }
 
-  result.pruned = _srPruneHarvested_(sheet);
+  result.pruned = _srPruneHarvested_(sheet) + _srPruneResolvedSuspectFabrication_(sheet, staging);
   console.log('[StudioReturn] harvest: ' + JSON.stringify(result));
   return result;
 }
@@ -439,7 +439,10 @@ function _srMarkReturnRow_(sheet, sheetRow, harvestStatus, error, attempts) {
 // HARVESTED rows are kept as an audit trail rather than deleted on success,
 // then pruned by age — the same trade STAGING_ARCHIVE already makes.
 // NEEDS_ATTENTION and FAILED rows are never pruned: they are the ones a
-// human still has to look at.
+// human still has to look at, and nothing else in this file ever revisits
+// them. SUSPECT_FABRICATION is NOT in that group — see
+// _srPruneResolvedSuspectFabrication_ below for why it gets different
+// treatment.
 function _srPruneHarvested_(sheet) {
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return 0;
@@ -451,6 +454,62 @@ function _srPruneHarvested_(sheet) {
     if (String(data[i][SR_COLS.HARVEST_STATUS] || '').trim() !== 'HARVESTED') continue;
     const at = new Date(data[i][SR_COLS.RETURNED_AT]).getTime();
     if (!at || at > cutoff) continue;
+    sheet.deleteRow(i + 2);
+    pruned++;
+  }
+  return pruned;
+}
+
+/**
+ * Prunes SUSPECT_FABRICATION rows once they stop being an open item — i.e.
+ * once the STAGING_PIPELINE row they belong to has moved past
+ * STUDIO_ACTIVE, or no longer exists at all.
+ *
+ * WHY THIS IS SAFE, UNLIKE FAILED/NEEDS_ATTENTION STAYING FOREVER. Those
+ * two are each about ONE bad attempt, and nothing else ever revisits them
+ * — they stay as a standing "a human has not looked at this" flag.
+ * SUSPECT_FABRICATION is different in kind: the SAME broken Flow
+ * configuration re-fires it every staleness cycle for as long as the
+ * payload keeps cycling, and it is 10_Turnstile.gs's own STUDIO_TIMEOUT
+ * escalation (CFG.TURNSTILE_STUCK_THRESHOLD resets) — not this row — that
+ * actually surfaces the problem for human review, with its own alert. So
+ * once the staging row has EITHER reached that terminal STUDIO_TIMEOUT
+ * (already alerted) OR simply succeeded on a later attempt
+ * (FLOW_COMPLETE), the older flagged rows for that UID are history, not an
+ * open item — keeping them forever would just be clutter from a bounded,
+ * self-resolving failure mode. A staging row that has vanished entirely
+ * (archived or removed elsewhere) is treated the same way: there is
+ * nothing left to investigate it against.
+ *
+ * A row whose STAGING_PIPELINE status is STILL STUDIO_ACTIVE is left
+ * alone — that payload hasn't resolved yet, and its SUSPECT_FABRICATION
+ * history may be the only evidence of why it keeps failing.
+ */
+function _srPruneResolvedSuspectFabrication_(sheet, staging) {
+  const stagingStatuses = {};
+  const sLast = staging.getLastRow();
+  if (sLast > 1) {
+    const SC = CFG.STAGING_COLS;
+    staging.getRange(2, 1, sLast - 1, 7).getValues().forEach(function (r) {
+      const uid = String(r[SC.PAYLOAD_UID]).trim();
+      if (uid) stagingStatuses[uid] = String(r[SC.STATUS]).trim();
+    });
+  }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return 0;
+  const width = Object.keys(SR_COLS).length;
+  const data = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+  let pruned = 0;
+  for (let i = data.length - 1; i >= 0; i--) {
+    if (String(data[i][SR_COLS.HARVEST_STATUS] || '').trim() !== 'SUSPECT_FABRICATION') continue;
+    const uid = String(data[i][SR_COLS.PAYLOAD_UID] || '').trim();
+    const stagingStatus = stagingStatuses[uid]; // undefined means the staging row is gone entirely
+    const resolved = stagingStatus === 'FLOW_COMPLETE' || stagingStatus === 'STUDIO_TIMEOUT' ||
+      stagingStatus === undefined;
+    if (!resolved) continue;
+    console.log('[StudioReturn] pruning resolved SUSPECT_FABRICATION row for ' + uid +
+      ' (staging is now ' + (stagingStatus || 'gone') + ')');
     sheet.deleteRow(i + 2);
     pruned++;
   }
@@ -474,6 +533,14 @@ function _srPruneHarvested_(sheet) {
 // at this point in the pipeline: the source document has NOT been
 // overwritten yet (see the file header — the Flow's last step never
 // touches it), so it is still here to compare against.
+//
+// A flagged row does not stay in STUDIO_RETURN forever the way
+// FAILED/NEEDS_ATTENTION do — see _srPruneResolvedSuspectFabrication_
+// below: once the payload's STAGING_PIPELINE row resolves (a later
+// attempt reaches FLOW_COMPLETE, or Turnstile's own staleness escalation
+// reaches the terminal STUDIO_TIMEOUT and has already alerted), the older
+// flagged rows for that UID are pruned as history rather than kept as
+// clutter from what is, by then, a resolved problem.
 
 // Below this length, a source document has no real "distinguishing"
 // vocabulary to check against at all — every fixture/canary scratch doc in

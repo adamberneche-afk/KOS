@@ -206,6 +206,29 @@ function stagingStatus(ctx) {
   return row ? String(row[5]).trim() : null;
 }
 
+// Simulates something outside this file changing the staging row's fate:
+// 10_Turnstile.gs's own STUDIO_TIMEOUT escalation, or a later successful
+// harvest reaching FLOW_COMPLETE.
+function setStagingStatus(ctx, status) {
+  const rows = ctx.staging.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (String(rows[i][1]).trim() === ctx.uid) {
+      ctx.staging.getRange(i + 1, 6).setValue(status);
+      return;
+    }
+  }
+  throw new Error('staging row not found for ' + ctx.uid);
+}
+
+// Simulates the staging row having been archived/removed entirely by
+// something else in this codebase, independent of this file.
+function deleteStagingRow(ctx) {
+  const rows = ctx.staging.getDataRange().getValues();
+  for (let i = rows.length - 1; i >= 1; i--) {
+    if (String(rows[i][1]).trim() === ctx.uid) { ctx.staging.deleteRow(i + 1); return; }
+  }
+}
+
 test('harvest: applies a return, marks FLOW_COMPLETE, and replaces the doc body', () => {
   const { exported, sandbox } = load();
   const ctx = seed(exported, sandbox, { auditor: '{"verdict":"PASS"}' });
@@ -379,6 +402,102 @@ test('groundedness gate: a document too short to have distinguishing words is no
   const check = exported._srDistinguishingWords_(
     'because however something everything although therefore '.repeat(20));
   assert.deepEqual(check, []);
+});
+
+// ── Pruning a resolved SUSPECT_FABRICATION row ───────────────────────────────
+//
+// FAILED and NEEDS_ATTENTION stay forever — each is about one bad attempt
+// nothing else ever revisits. SUSPECT_FABRICATION is different: the SAME
+// broken Flow config re-fires it every staleness cycle, and it's
+// 10_Turnstile.gs's own STUDIO_TIMEOUT escalation — not this row — that
+// actually surfaces the problem. So once the underlying payload resolves
+// (succeeds, or times out and already alerted), the old flagged rows are
+// history, not an open item, and get pruned instead of accumulating forever.
+
+test('pruning: a SUSPECT_FABRICATION row is kept while its payload is still STUDIO_ACTIVE', () => {
+  const { exported, sandbox } = load();
+  const word = 'zzqorbital42';
+  seed(exported, sandbox, {
+    docText: longSourceWith(word),
+    primary: '{"summary":"A generic session about something else entirely, unrelated to any of this."}',
+  });
+  exported.harvestStudioReturns();
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 1);
+
+  // Nothing has resolved the underlying payload yet — a later harvest pass
+  // (e.g. the next 5-minute trigger) must not discard the evidence.
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.pruned, 0, JSON.stringify(result));
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 1);
+});
+
+test('pruning: a SUSPECT_FABRICATION row is pruned once a later attempt succeeds', () => {
+  const { exported, sandbox } = load();
+  const word = 'zzqorbital42';
+  const ctx = seed(exported, sandbox, {
+    docText: longSourceWith(word),
+    primary: '{"summary":"A generic session about something else entirely, unrelated to any of this."}',
+  });
+  exported.harvestStudioReturns();
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 1);
+
+  // A later, grounded return for the SAME uid — e.g. after the operator
+  // fixed the Flow.
+  ctx.returns.appendRow([new Date(), ctx.uid, 'SESSION_LOG',
+    '{"summary":"Recapped the ' + word + ' rollout plan."}', '', '', 0, '']);
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 1, JSON.stringify(result));
+  assert.equal(stagingStatus(ctx), 'FLOW_COMPLETE');
+  // The same pass that applied the good return also pruned the earlier,
+  // now-resolved SUSPECT_FABRICATION row.
+  assert.equal(result.pruned, 1, JSON.stringify(result));
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 0);
+});
+
+test('pruning: a SUSPECT_FABRICATION row is pruned once its payload escalates to STUDIO_TIMEOUT', () => {
+  const { exported, sandbox } = load();
+  const word = 'zzqorbital42';
+  const ctx = seed(exported, sandbox, {
+    docText: longSourceWith(word),
+    primary: '{"summary":"A generic session about something else entirely, unrelated to any of this."}',
+  });
+  exported.harvestStudioReturns();
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 1);
+
+  setStagingStatus(ctx, 'STUDIO_TIMEOUT'); // simulates 10_Turnstile.gs's own escalation
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.pruned, 1, JSON.stringify(result));
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 0);
+});
+
+test('pruning: a SUSPECT_FABRICATION row is pruned once its staging row is gone entirely', () => {
+  const { exported, sandbox } = load();
+  const word = 'zzqorbital42';
+  const ctx = seed(exported, sandbox, {
+    docText: longSourceWith(word),
+    primary: '{"summary":"A generic session about something else entirely, unrelated to any of this."}',
+  });
+  exported.harvestStudioReturns();
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 1);
+
+  deleteStagingRow(ctx); // simulates the row being archived/removed elsewhere
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.pruned, 1, JSON.stringify(result));
+  assert.equal(exported.checkStudioReturns().suspectFabrication, 0);
+});
+
+test('pruning: FAILED and NEEDS_ATTENTION rows are never pruned this way, only SUSPECT_FABRICATION is', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox, { primary: '{not json' });
+  for (let i = 0; i < exported.SR_MAX_ATTEMPTS; i++) exported.harvestStudioReturns();
+  assert.equal(exported.checkStudioReturns().failed, 1);
+
+  // Even after the payload's staging row is gone — the one condition that
+  // prunes a resolved SUSPECT_FABRICATION row — a FAILED row is untouched.
+  deleteStagingRow(ctx);
+  const result = exported.harvestStudioReturns();
+  assert.equal(exported.checkStudioReturns().failed, 1, 'a FAILED row must not be swept up too');
+  assert.equal(result.pruned, 0, JSON.stringify(result));
 });
 
 // ── The breadcrumb ───────────────────────────────────────────────────────────
