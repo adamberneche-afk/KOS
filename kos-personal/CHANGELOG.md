@@ -1,6 +1,35 @@
 # KOS Changelog
 
 
+### `10_Turnstile.gs` gets its first test coverage
+
+The PENDING_FLOW → STUDIO_ACTIVE gate — the file every queued row passes
+through, and the one that carries the Say/Do Ledger #2 STUDIO_TIMEOUT
+escalation, the audit-retry priority queue, and the unknown-status
+catch-all — had zero tests before this: no file under `tests/` referenced
+`runMatrixTurnstile` at all.
+
+`tests/kos-personal/turnstile.test.js` now covers, against the real
+function rather than a re-description of it: the concurrency-gated release
+(including the default-concurrency-of-1 case), a stale `STUDIO_ACTIVE` row
+resetting (both the "no release-map entry at all" and the "past
+`TURNSTILE_STALE_MINS`" paths), the `STUDIO_TIMEOUT` escalation once
+`TURNSTILE_STUCK_THRESHOLD` is exceeded and that the escalated row frees its
+concurrency slot for the next one, audit-retry priority ordering and its
+one-shot pruning (both "consumed" and "UID no longer in the sheet"),
+release-map pruning, the unknown-status alert firing once per UID and never
+auto-fixing the row, `MANAGED_SERVICE` mode's fail-closed hand-off when the
+service isn't configured, and the script-lock guard.
+
+Found while writing it: `exported.CFG` (and any other exported non-function
+value) from `tests/harness/gas-sandbox.js` is a `structuredClone` of the
+vm's real object, not a live reference — mutating it to flip a config value
+for one test silently changes nothing the code under test sees. Worked
+around locally (`sandbox.__exported.CFG`, the vm's own pre-clone reference)
+rather than changing the shared harness; documented in the test file itself
+so the next test that needs to mutate a CFG value for one run doesn't
+rediscover this the slow way.
+
 ### `runKosPersonalPreflight()` — the last "—" in the four-causes table
 
 `meta/FLOW_DOCTRINE.md` rule 9 separates the four causes of "nothing

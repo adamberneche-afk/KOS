@@ -35,6 +35,20 @@ const fs = require('fs');
 // makes assert.deepStrictEqual report a false mismatch even when the
 // value is correct. structuredClone rebuilds it using the caller's own
 // built-ins before handing it back.
+//
+// CONSEQUENCE FOR CALLERS: every non-function name on `exported` (CFG
+// included) goes through this clone, so it is a SNAPSHOT — mutating
+// exported.CFG.SOME_VALUE from a test changes nothing the code under
+// test reads, and a mock object with methods (e.g. a Sheet returned by
+// exported._getOrCreateSheet()) comes back stripped down to plain data,
+// with every method gone (found via 10_Turnstile.gs's own test file,
+// which needs both: a live sheet to keep calling appendRow() on, and a
+// live CFG.INFERENCE_MODE flip to exercise its MANAGED_SERVICE branch).
+// For a sheet, get it from the live spreadsheet instead — call
+// ss.getSheetByName()/insertSheet() directly on an `ss` obtained via
+// sandbox.SpreadsheetApp, never through `exported`. For a value like CFG,
+// `sandbox.__exported.<name>` is the same object the vm code itself
+// reads, grabbed here before the clone — mutate that instead.
 function crossRealmSafe(value) {
   if (value === null || typeof value !== 'object') return value;
   return structuredClone(value);
