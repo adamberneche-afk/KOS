@@ -1391,3 +1391,41 @@ instructions to hand the operator rather than steps this session executed.
 `npm test` (770/770), `node tools/gas-lint/check.js` (0 errors, 5 warnings —
 unchanged) and `node tools/doc-currency/check.js` (0 errors, 8 warnings —
 unchanged) all confirmed clean after these changes.
+
+### Follow-up — SCHEMA_REFERENCE.md never documented STUDIO_RETURN, and a stale STUDIO_TIMEOUT rationale
+
+`SCHEMA_REFERENCE.md` postdates `12_StudioReturnHarvest.gs` having been
+added, so it never had a `STUDIO_RETURN` section — added one: the full
+column table and all `Harvest_Status` values. Its `STUDIO_TIMEOUT` row
+also said the cause was "no Studio flow ever completing it," which,
+now that `SUSPECT_FABRICATION` exists, is only one of two causes that
+land there identically (a Flow that never runs, and a Flow that runs
+every cycle but keeps failing the groundedness gate) — corrected to name
+both.
+
+### Follow-up — a resolved SUSPECT_FABRICATION row no longer accumulates forever
+
+Asked directly: would a Flow that fails the groundedness gate on every
+cycle just pile up `STUDIO_RETURN` clutter forever? Not structurally —
+`10_Turnstile.gs`'s own `STUDIO_TIMEOUT` escalation still bounds it, since
+that check is keyed on elapsed time at `STUDIO_ACTIVE`, not on the
+harvest's verdict — but the flagged rows themselves used to sit there
+permanently, the same treatment as `FAILED`/`NEEDS_ATTENTION`.
+
+That equivalence doesn't actually hold. `FAILED` and `NEEDS_ATTENTION` are
+each about one bad attempt that nothing else in this codebase ever
+revisits, so keeping them forever is the correct "a human hasn't looked at
+this yet" signal. `SUSPECT_FABRICATION` is different in kind: the same
+broken Flow configuration re-fires it every staleness cycle for as long as
+the payload keeps cycling, and it's Turnstile's own escalation — with its
+own alert — that actually surfaces the problem, not this row. So
+`_srPruneResolvedSuspectFabrication_` now prunes a flagged row once its
+STAGING_PIPELINE row is no longer `STUDIO_ACTIVE` (a later attempt reached
+`FLOW_COMPLETE`, or it escalated to the already-alerted `STUDIO_TIMEOUT`)
+or has been archived away entirely — folded into the same `pruned` count
+`harvestStudioReturns()` already reported for `HARVESTED` rows. A row
+whose payload is *still* `STUDIO_ACTIVE` is left alone: it may be the only
+evidence of why that payload keeps failing. Five new tests cover kept vs.
+pruned in all three resolution paths, plus a regression check that
+`FAILED` rows are never swept up by the same logic. `npm test` (775/775),
+gas-lint and doc-currency both unchanged.
