@@ -1,6 +1,43 @@
 # KOS Changelog
 
 
+### `runKosPersonalPreflight()` — the last "—" in the four-causes table
+
+`meta/FLOW_DOCTRINE.md` rule 9 separates the four causes of "nothing
+happened" and names a check for each; kos-personal had a canary
+(`runStudioReturnCanary()`), a binding probe (`checkStudioFlowBinding()`) and
+a liveness check (`checkStudioFlowLiveness()`), but nothing verifying the
+structure those three assume already exists — the cell in that table read
+"—", the only one of the three systems still missing it.
+
+`15_Preflight.gs` closes it, modeled on cas-ccps's `runFlowPreflightCheck()`
+and leader-hub's `runLeaderHubPreflight()`, adapted to what this project
+already has that neither of those does: a single `KOS_TRIGGER_HANDLERS` list
+(`1_Config_And_Deploy.gs`), added earlier this same round specifically
+because `setupAllTriggers()` and `teardownAllTriggers()` used to each keep
+their own independent copy, and both copies had already drifted. Rather than
+cas-ccps's one hand-written `_pfCheckTrigger_()` call per trigger,
+`runKosPersonalPreflight()` loops that one list directly — the check that
+would have caught the drift the moment it was introduced, instead of
+whenever an operator happened to notice a trigger silently not firing.
+
+Also checks: the four Studio-adjacent tabs' widths against their own
+column-index maps (`STAGING_PIPELINE`, `STUDIO_RETURN`, `CuratorInput`,
+`VectorClassifyInput` — all self-healing, so a missing tab is not a failure,
+but a present-and-narrower one is, since a Studio "add row to sheet" step
+bound to a column past the last one writes nowhere and still reports
+success), and whether `KOS_ADMIN_EMAIL` is set (soft — `sendDailyErrorReport()`
+already logs its own absence). `INDEX_ID` is deliberately not checked as its
+own script property: resolving the index spreadsheet either throws first (a
+single failure result, not a crash) or succeeds and caches `INDEX_ID` as a
+side effect, making a separate property check dead code by the time it would
+run — the same reasoning cas-ccps's own header gives for dropping its
+equivalent `ADMIN_SS_ID` check.
+
+Writes a `Preflight` tab in BRAIN_TRUST_INDEX, same shape as cas-ccps's
+report. `DEPLOYMENT_GUIDE.md`'s Phase 9 and `meta/FLOW_DOCTRINE.md`'s rule 9
+table both point to it now.
+
 ### Follow-up — the fixture now feeds both flows
 
 `installStudioFlowFixture()` planted one `SESSION_LOG` row, so the
