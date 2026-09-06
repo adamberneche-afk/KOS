@@ -193,29 +193,33 @@ deliberately — it verifies the code path, not the flow.
 
 ## Known gaps (carried forward so a future session doesn't re-derive them)
 
-1. **Flows 2-5 are not live: each one's Studio side still has to be built
-   by hand** — both `09_StudentRevisionGuidance_M1Base.js` and
-   `03_QueueBridge.js` assume Flow 2 exists, and Module 5 cannot go fully
-   live without it.
-   **⚠ Corrected twice.** It first read "never been built." It then read
-   "the custom-step code is written and tested; what's missing is
-   deployment — that project hasn't been pushed to a real Google account
-   (`.clasp.json.template`'s scriptId is still a placeholder)." Both are
-   now wrong, and the second one wrong in the expensive direction: the
-   `studio-steps` project **was** pushed successfully, and its steps still
-   never appeared in Studio's picker. A custom step is a Workspace Add-on
-   and needs a standard, non-default Cloud project; GCP is disabled
-   org-wide for `ccpsnet.net`. All 8 steps (2,113 tested lines) are
-   unreachable on this account, and so is `15c`'s `DIRECT_GEMINI` escape
-   hatch, which needs an API key, which needs the same project. Pushing
-   fixes none of it.
-   All five flows have since been **ported** to native Studio steps plus
-   an Apps Script harvest (`37_FlowInputBuilder.js`,
-   `41_WarmUpFlowBridge.js`) — a keyless path that does work here. So what
-   closes this gap is building each flow in Studio's builder from
-   `syncFlowBuildSpec()`'s generated tab, then `checkFlow2Liveness()` /
-   `checkWarmUpFlowLiveness()` reporting that something came back. "Code
-   exists," "reachable," and "wired and live" are three different facts.
+1. ~~Flows 2-5 are not live: each one's Studio side still has to be built
+   by hand~~ — **closed**. **⚠ Corrected three times, worth reading in
+   full before touching Flow 2-5 code again.** It first read "never been
+   built." It then read "the custom-step code is written and tested;
+   what's missing is deployment — that project hasn't been pushed to a
+   real Google account (`.clasp.json.template`'s scriptId is still a
+   placeholder)." Both were wrong, the second wrong in the expensive
+   direction: the `studio-steps` project **was** pushed successfully, and
+   its steps still never appeared in Studio's picker. A custom step is a
+   Workspace Add-on and needs a standard, non-default Cloud project; GCP
+   is disabled org-wide for `ccpsnet.net`. All 8 steps (2,113 tested
+   lines) are unreachable on this account, and so is `15c`'s
+   `DIRECT_GEMINI` escape hatch, which needs an API key, which needs the
+   same project. Pushing fixes none of it. All five flows were then
+   **ported** to native Studio steps plus an Apps Script harvest
+   (`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`) — a keyless path
+   that does work here — and, per `DEPLOYMENT_HANDOFF.md`'s current status
+   banner, all five have since been built in Studio and confirmed via
+   `checkFlow2Liveness()`/`checkWarmUpFlowLiveness()`. **One caveat that
+   still genuinely holds:** "verified" there means a real Studio run
+   against seeded fixture data, not yet a real student submission —
+   `docs/IMPACT_DASHBOARD.html` still shows zero recorded deployments, so
+   the plumbing is proven end-to-end but nobody has actually gone through
+   it as a real student yet. "Code exists," "reachable," "wired and
+   live," and "used by a real student" are four different facts — this
+   repo has now been burned by conflating the first three; don't conflate
+   the fourth either.
 2. ~~`TeacherMatrix` missing a `lesson_unit_id` column~~ — **closed**, see
    HISTORY.md's resolution 12.
 3. ~~`CompetencyRegistry.csv` not uploaded~~ — **closed**, see HISTORY.md's resolution 7.

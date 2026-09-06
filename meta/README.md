@@ -35,6 +35,19 @@ why this repo exists at all.
   carries inline `⚠ Stale` / **Done** annotations rather than being rewritten,
   matching this repo's convention of correcting a record in place instead of
   silently editing it.
+- **`PRODUCT_EXPERIENCE_GAP_AUDIT.md`** — a different axis than
+  `CODEBASE_REVIEW.md` above: not the code, but what a real student,
+  operator, or teacher actually perceives across all three systems as one
+  product — what's missing, what hinders adoption, and which parts of
+  each system's "world building" are genuinely reactive to what a player
+  does versus decorative narrative that never changes regardless of their
+  actions. Its central finding: the parts of each product that are
+  genuinely reactive are the least visible, and the parts that look most
+  alive are the least reactive — the same shape independently in all
+  three systems. Explicitly guards against reading "more engaging" as
+  "add gamification" — all three systems have already tried and rejected
+  exactly that, on the record, and the audit's own recommendations are
+  checked against that guardrail.
 - **`FLOW_INVENTORY.md`** — a single reference listing every "Flow"
   dependency (a human-built Google Workspace Studio/Flow or Gemini Gem
   conversation this repo's own code hands off to and cannot see or
