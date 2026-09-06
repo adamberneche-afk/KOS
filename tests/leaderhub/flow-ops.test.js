@@ -53,7 +53,7 @@ const EXPOSE = [
   // EmailBridge collaborators
   'queueAiJob_', 'checkAiJob_', 'getFlowHealth_', '_getFlowStats_',
   'AI_FLOW_TYPES', 'AI_QUEUE_HEADERS', 'AI_QUEUE_SHEET_NAME', 'AI_QUEUE_SHEET_PROP',
-  'AIQ_COL',
+  'AIQ_COL', '_checkAiResultPlausible_', '_aiDistinguishingWords_', '_aiCollectPayloadText_',
   // AiPrompts collaborators
   'syncAiPromptsToSheet', 'AI_PROMPT_TAB', 'AI_PROMPT_HEADERS',
 ];
@@ -587,4 +587,112 @@ test('binding probe: fixture rows pass it, so the two checks agree', () => {
   const report = exported.checkAiFlowBinding();
   assert.equal(report.rows, exported.AI_FLOW_TYPES.length);
   assert.equal(report.problems.length, 0, JSON.stringify(report.problems, null, 2));
+});
+
+// ── The plausibility gate ────────────────────────────────────────────────────
+//
+// Same defense as cas-ccps's _fiCheckPlausibility_ and kos-personal's
+// _srCheckGroundedness_: a Flow can return well-formed text without ever
+// engaging with what it was actually asked to write about. checkAiJob_
+// deletes a row's outcome the moment it's read, so this runs INLINE there
+// rather than in a separate harvest pass — a failure is handed back as
+// ERROR, which pollAiJob_'s existing null-on-ERROR handling already routes
+// through every call site's local deterministic-draft fallback.
+
+function completeJob(exported, sandbox, jobId, opts) {
+  const sheet = queueSheet(exported, sandbox);
+  const data = sheet.getDataRange().getValues();
+  const idx = data.findIndex((r) => r[exported.AIQ_COL.JOB_ID] === jobId);
+  sheet.getRange(idx + 1, exported.AIQ_COL.PAYLOAD + 1).setValue(opts.payload);
+  sheet.getRange(idx + 1, exported.AIQ_COL.RESULT + 1).setValue(opts.result);
+  sheet.getRange(idx + 1, exported.AIQ_COL.STATUS + 1).setValue('COMPLETE');
+}
+
+test('_aiCollectPayloadText_: collects strings out of a nested payload, not just top-level ones', () => {
+  const { exported } = load();
+  const strings = [];
+  exported._aiCollectPayloadText_({
+    winTitle: 'Regional DECA Championship',
+    tripInfo: { destination: 'Orlando Business Summit', chaperones: 'Ms. Smith' },
+    tags: ['leadership', 'entrepreneurship'],
+  }, strings);
+  assert.ok(strings.includes('Regional DECA Championship'));
+  assert.ok(strings.includes('Orlando Business Summit'), 'a nested object\'s strings must be reached');
+  assert.ok(strings.includes('leadership'), 'an array\'s strings must be reached');
+});
+
+test('checkAiJob_: a grounded result referencing the payload\'s own content completes normally', () => {
+  const { exported, sandbox } = load();
+  const real = exported.queueAiJob_({ type: 'BRAG_EMAIL',
+    payload: { winTitle: 'Regional DECA Championship victory', audience: 'green' } });
+  completeJob(exported, sandbox, real.jobId, {
+    payload: '{"winTitle":"Regional DECA Championship victory","audience":"green"}',
+    result: 'Thrilled to share our Regional DECA Championship win with the team this week!',
+  });
+
+  const res = exported.checkAiJob_({ jobId: real.jobId });
+  assert.equal(res.status, 'COMPLETE', JSON.stringify(res));
+  assert.equal(exported.getFlowHealth_().stats.BRAG_EMAIL.completed, 1);
+});
+
+test('checkAiJob_: a generic result sharing none of the payload\'s content is caught, not handed back', () => {
+  const { exported, sandbox } = load();
+  const real = exported.queueAiJob_({ type: 'BRAG_EMAIL',
+    payload: { winTitle: 'Regional DECA Championship victory', audience: 'green' } });
+  completeJob(exported, sandbox, real.jobId, {
+    payload: '{"winTitle":"Regional DECA Championship victory","audience":"green"}',
+    result: 'Great job everyone, keep up the excellent work this month!',
+  });
+
+  const res = exported.checkAiJob_({ jobId: real.jobId });
+  assert.equal(res.status, 'ERROR', JSON.stringify(res));
+  assert.match(res.error, /SUSPECT_FABRICATION/);
+  assert.equal(exported.getFlowHealth_().stats.BRAG_EMAIL.suspectFabrication, 1);
+  assert.equal(exported.getFlowHealth_().stats.BRAG_EMAIL.completed, 0,
+    'a caught result must not also count as a real completion');
+});
+
+test('checkAiJob_: a self-reported non-access phrase is caught the same way', () => {
+  const { exported, sandbox } = load();
+  const real = exported.queueAiJob_({ type: 'LP_ASSIST', payload: { question: 'How do I teach ROI?' } });
+  completeJob(exported, sandbox, real.jobId, {
+    payload: '{"question":"How do I teach ROI?"}',
+    result: 'I don\'t have enough context to answer that specific question.',
+  });
+
+  const res = exported.checkAiJob_({ jobId: real.jobId });
+  assert.equal(res.status, 'ERROR', JSON.stringify(res));
+  assert.match(res.error, /SUSPECT_FABRICATION/);
+});
+
+test('checkAiJob_: FIN_ANALYSIS\'s pure-numeric payload is never gated — nothing distinctive to check', () => {
+  const { exported, sandbox } = load();
+  const real = exported.queueAiJob_({ type: 'FIN_ANALYSIS',
+    payload: { reportType: 'roi', totalRev: 4820.50, margin: 40 } });
+  completeJob(exported, sandbox, real.jobId, {
+    payload: '{"reportType":"roi","totalRev":4820.50,"margin":40}',
+    // Deliberately generic — FIN_ANALYSIS_FLOW_PROMPT.md instructs finding a
+    // pattern, not restating numbers, so a numeric-overlap check would be
+    // wrong here and this text has no long distinguishing words either.
+    result: 'Margins are healthy this period; keep an eye on reorder timing.',
+  });
+
+  const res = exported.checkAiJob_({ jobId: real.jobId });
+  assert.equal(res.status, 'COMPLETE', JSON.stringify(res));
+});
+
+test('checkAiJob_: an ERROR row is untouched by the plausibility gate', () => {
+  const { exported, sandbox } = load();
+  const real = exported.queueAiJob_({ type: 'BRAG_EMAIL', payload: { winTitle: 'X' } });
+  const sheet = queueSheet(exported, sandbox);
+  const data = sheet.getDataRange().getValues();
+  const idx = data.findIndex((r) => r[exported.AIQ_COL.JOB_ID] === real.jobId);
+  sheet.getRange(idx + 1, exported.AIQ_COL.ERROR + 1).setValue('Gemini quota exceeded');
+  sheet.getRange(idx + 1, exported.AIQ_COL.STATUS + 1).setValue('ERROR');
+
+  const res = exported.checkAiJob_({ jobId: real.jobId });
+  assert.equal(res.status, 'ERROR');
+  assert.equal(res.error, 'Gemini quota exceeded', 'the real error message must survive, not be replaced');
+  assert.equal(exported.getFlowHealth_().stats.BRAG_EMAIL.errored, 1);
+  assert.equal(exported.getFlowHealth_().stats.BRAG_EMAIL.suspectFabrication, 0);
 });

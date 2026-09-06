@@ -258,10 +258,118 @@ function checkAiJob_(body) {
   // COMPLETE or ERROR — hand it back once, then remove the row. The client
   // is the only reader; there's nothing left to keep this row around for.
   sheet.deleteRow(rowIndex2 + 1);
-  _bumpFlowStat_(found[AIQ_COL.TYPE], status === 'ERROR' ? 'errored' : 'completed');
 
-  if (status === 'ERROR') return { ok: true, status: 'ERROR', error: found[AIQ_COL.ERROR] || 'Unknown error' };
-  return { ok: true, status: 'COMPLETE', result: found[AIQ_COL.RESULT] || '' };
+  if (status === 'ERROR') {
+    _bumpFlowStat_(found[AIQ_COL.TYPE], 'errored');
+    return { ok: true, status: 'ERROR', error: found[AIQ_COL.ERROR] || 'Unknown error' };
+  }
+
+  // Plausibility gate — same defense as cas-ccps's _fiCheckPlausibility_
+  // (37_FlowInputBuilder.js) and kos-personal's _srCheckGroundedness_
+  // (12_StudioReturnHarvest.gs): a Flow can return well-formed text
+  // without ever engaging with what it was actually asked to write about.
+  // Checked here, not in a separate harvest pass, because this file
+  // deletes the row the moment its outcome is read — there is no later
+  // pass to check it in. A failure is handed back as ERROR rather than
+  // COMPLETE: the client's own documented fallback (pollAiJob_ returns
+  // null on ERROR, every call site already falls through to its local
+  // deterministic draft) is exactly the "touch nothing you can't trust"
+  // behavior this needs, with no new client-side handling required.
+  const resultText = found[AIQ_COL.RESULT] || '';
+  const plausibility = _checkAiResultPlausible_(found[AIQ_COL.TYPE], found[AIQ_COL.PAYLOAD], resultText);
+  if (!plausibility.ok) {
+    _bumpFlowStat_(found[AIQ_COL.TYPE], 'suspectFabrication');
+    console.warn('[EmailBridge] job ' + jobId + ' (' + found[AIQ_COL.TYPE] + ') SUSPECT_FABRICATION: ' +
+      plausibility.reason);
+    return { ok: true, status: 'ERROR',
+      error: 'AI_SUSPECT_FABRICATION: the draft didn\'t look grounded in what was asked' };
+  }
+
+  _bumpFlowStat_(found[AIQ_COL.TYPE], 'completed');
+  return { ok: true, status: 'COMPLETE', result: resultText };
+}
+
+// ── AI result plausibility gate ─────────────────────────────────────────────
+// Same shape as cas-ccps's/kos-personal's own gates, adapted for a system
+// with no live document read to close and no FERPA boundary blocking this
+// file from seeing its own Payload column — it already wrote that column
+// itself, so checking Result against the FULL payload (not a narrowed
+// subset) crosses no new boundary the way it would have for cas-ccps's
+// Flow 2. Not a fact-checker: catches a model that says it lacked context,
+// or one that produced generic text sharing none of the job's own
+// distinguishing content — not one that engaged with the payload but got
+// the substance wrong.
+const AI_NON_ENGAGEMENT_PHRASES = [
+  "don't have access", 'do not have access', 'cannot access', "can't access",
+  'unable to access', 'no access to', 'not enough information', 'not enough context',
+  'insufficient information', 'insufficient context', 'unable to generate',
+  'i do not have', "i don't have",
+];
+
+// Long-but-common words that would pass the length filter below but say
+// nothing about whether the model engaged with THIS job's own content.
+const AI_PLAUSIBILITY_STOPWORDS = {
+  because: 1, however: 1, something: 1, everything: 1, although: 1, therefore: 1,
+  important: 1, specific: 1, generally: 1, actually: 1, additional: 1, different: 1,
+  another: 1, through: 1, without: 1, between: 1, should: 1, system: 1, process: 1,
+  student: 1, teacher: 1, session: 1, overall: 1, working: 1, general: 1,
+};
+
+function _aiDistinguishingWords_(text) {
+  const seen = {};
+  const words = [];
+  const matches = String(text).toLowerCase().match(/[a-z0-9]{6,}/g) || [];
+  matches.forEach(function (w) {
+    if (seen[w] || AI_PLAUSIBILITY_STOPWORDS[w]) return;
+    seen[w] = true;
+    words.push(w);
+  });
+  words.sort(function (a, b) { return b.length - a.length; });
+  return words.slice(0, 20);
+}
+
+// Recursively collects every string value out of a parsed payload —
+// several payload shapes nest (BRAG_EMAIL's trip/wbl detail objects), and
+// a shallow Object.values scan would miss nested content entirely.
+function _aiCollectPayloadText_(value, into) {
+  if (value === null || value === undefined) return;
+  if (typeof value === 'string') { into.push(value); return; }
+  if (Array.isArray(value)) { value.forEach(function (v) { _aiCollectPayloadText_(v, into); }); return; }
+  if (typeof value === 'object') {
+    Object.keys(value).forEach(function (k) { _aiCollectPayloadText_(value[k], into); });
+  }
+}
+
+/**
+ * @returns {{ok: true}} or {{ok: false, reason: string}}
+ */
+function _checkAiResultPlausible_(type, payloadJson, resultText) {
+  const lower = String(resultText || '').toLowerCase();
+
+  const nonEngagementHit = AI_NON_ENGAGEMENT_PHRASES.find(function (p) { return lower.indexOf(p) !== -1; });
+  if (nonEngagementHit) {
+    return { ok: false, reason: 'the model\'s own output says it lacked access or context ("' +
+      nonEngagementHit + '")' };
+  }
+
+  let payload;
+  try { payload = JSON.parse(payloadJson || '{}'); } catch (e) { payload = {}; }
+  const strings = [];
+  _aiCollectPayloadText_(payload, strings);
+  const candidates = _aiDistinguishingWords_(strings.join(' '));
+  // No candidates means the payload had nothing distinctive to check
+  // against — e.g. FIN_ANALYSIS is pure numbers with no free text at all,
+  // and its own prompt explicitly instructs NOT restating them verbatim,
+  // so a numeric-overlap check would flag correct output as suspect. Treat
+  // as grounded rather than invent a check with no real signal behind it.
+  if (!candidates.length) return { ok: true };
+
+  const engaged = candidates.some(function (w) { return lower.indexOf(w) !== -1; });
+  if (!engaged) {
+    return { ok: false, reason: 'the output shares none of this job\'s distinguishing payload ' +
+      'content (e.g. ' + candidates.slice(0, 6).join(', ') + ')' };
+  }
+  return { ok: true };
 }
 
 // ── AI Flow Health (Say/Do Ledger cross-portfolio Flow Health & Inventory
@@ -295,11 +403,11 @@ function _saveFlowStats_(stats) {
   PropertiesService.getScriptProperties().setProperty(AI_FLOW_STATS_PROP, JSON.stringify(stats));
 }
 
-// field: 'submitted' | 'completed' | 'errored' | 'sweptUnclaimed'
+// field: 'submitted' | 'completed' | 'errored' | 'sweptUnclaimed' | 'suspectFabrication'
 function _bumpFlowStat_(type, field) {
   if (!type) return; // defensive — a malformed row should never throw here
   const stats = _getFlowStats_();
-  if (!stats[type]) stats[type] = { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0 };
+  if (!stats[type]) stats[type] = { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0, suspectFabrication: 0 };
   stats[type][field] = (stats[type][field] || 0) + 1;
   _saveFlowStats_(stats);
 }
@@ -314,7 +422,7 @@ function getFlowHealth_() {
   const stats = _getFlowStats_();
   const out = {};
   AI_FLOW_TYPES.forEach(type => {
-    out[type] = stats[type] || { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0 };
+    out[type] = stats[type] || { submitted: 0, completed: 0, errored: 0, sweptUnclaimed: 0, suspectFabrication: 0 };
   });
   return { ok: true, stats: out, types: AI_FLOW_TYPES };
 }
