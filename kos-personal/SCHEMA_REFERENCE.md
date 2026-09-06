@@ -36,7 +36,7 @@ The central queue. Every session chunk passes through this sheet.
 |---|---|---|
 | `PENDING_FLOW` | Sensors 1, 2, 3 | Chunk created, waiting for Turnstile |
 | `STUDIO_ACTIVE` | Turnstile | Released to Studio for inference |
-| `STUDIO_TIMEOUT` | Turnstile | Reset for staleness more than CFG.TURNSTILE_STUCK_THRESHOLD times with no Studio flow ever completing it — terminal, human review required |
+| `STUDIO_TIMEOUT` | Turnstile | Reset for staleness more than CFG.TURNSTILE_STUCK_THRESHOLD times without ever reaching `FLOW_COMPLETE` — terminal, human review required. Covers two different underlying causes identically, since this check only measures elapsed time at `STUDIO_ACTIVE`: a Flow that never runs at all, and (since the groundedness gate below was added) a Flow that runs and returns every cycle but keeps failing that gate — see STUDIO_RETURN's `SUSPECT_FABRICATION` |
 | `FLOW_COMPLETE` | Studio | Inference complete, ready for queue processor |
 | `NEEDS_CURATOR` | Queue Processor | JSON parse failed, retry 1 or 2 |
 | `FAILED_PARSE` | Queue Processor | Retry cap hit, manual intervention required |
@@ -60,6 +60,42 @@ repo, current or archived, ever writes. `10_Turnstile.gs` alerts once per
 row via `_sendChatAlert()`, and `getQueueMetrics()`/`getQueueStatus()`
 count it as `unknown` rather than silently excluding it — see
 `CHANGELOG.md` for the fix.
+
+---
+
+### STUDIO_RETURN
+
+Where a Studio Flow's last step writes back — added when the custom-step
+write-back was ported into Apps Script (`12_StudioReturnHarvest.gs`; see
+`STUDIO_INTEGRATION_SPEC.md`'s banner for why). One row per Flow return,
+keyed by the same `Payload_UID` STAGING_PIPELINE queued it under. Not a
+STAGING_PIPELINE column extension deliberately — see that file's header
+for why a new tab was chosen over an 8th column.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Returned_At | DateTime | When the Flow's "add row to sheet" step fired |
+| B | Payload_UID | String | Must match the STAGING_PIPELINE row's Payload_UID exactly |
+| C | Payload_Type | Enum | Must match what STAGING_PIPELINE queued for this UID — selects the output contract (Curator merge-and-reserialize vs. Classification write-verbatim), not just a label |
+| D | Primary_JSON | String | The Curator or Classification step's raw model output |
+| E | Auditor_JSON | String | The optional Auditor pass's raw output, Curator flow only — blank otherwise |
+| F | Harvest_Status | Enum | Empty until the harvest processes this row — see below |
+| G | Attempts | Integer | Harvest attempts on this return row |
+| H | Error | String | Harvest's own diagnostic, if any |
+
+Columns A-E are the Flow's to write; F-H belong to the harvest — a Flow
+writing into F-H is a mis-binding, exactly what `checkStudioFlowBinding()`
+looks for.
+
+**Harvest_Status values**
+
+| Value | Meaning |
+|---|---|
+| *(empty)* | Not yet processed, or a recoverable failure below `SR_MAX_ATTEMPTS` — retried on the next harvest pass |
+| `HARVESTED` | Applied: doc overwritten, STAGING_PIPELINE row set `FLOW_COMPLETE`. Pruned after `SR_PRUNE_AFTER_DAYS` |
+| `FAILED` | Gave up after `SR_MAX_ATTEMPTS` (malformed JSON, usually) — the RETURN row only; STAGING_PIPELINE is deliberately left alone for the staleness guard. Never pruned |
+| `NEEDS_ATTENTION` | The doc was already overwritten but the STAGING_PIPELINE mark failed — the one state that can't be blindly retried, since the original source text is gone. Never pruned |
+| `SUSPECT_FABRICATION` | The groundedness gate (`_srCheckGroundedness_`) found no overlap between the model's own output and its source document's distinguishing vocabulary — the exact shape of the CHANGELOG.md Round 17 incident (Gemini proceeding without reading the document). The doc is left untouched and STAGING_PIPELINE stays `STUDIO_ACTIVE`, so this composes with the existing staleness/timeout mechanism above rather than needing one of its own: a Flow that keeps failing this gate every cycle still escalates to `STUDIO_TIMEOUT` after `CFG.TURNSTILE_STUCK_THRESHOLD` resets, identically to a Flow that never runs at all. Never pruned. Only engages for `SR_CURATOR_TYPES` above `SR_GROUNDEDNESS_MIN_CHARS` (500 chars), so it never fires on a fixture/canary doc |
 
 ---
 
