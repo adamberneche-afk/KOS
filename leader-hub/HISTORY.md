@@ -524,3 +524,59 @@ own 2026-09-04 `HISTORY.md` entry). `checkAiFlowBinding()`'s underlying
 specific failure mode was never a risk building leader-hub's six flows —
 confirmed by reading the check's source before relying on it, not
 assumed from the function name.
+
+## A plausibility gate — the last of three systems to get one
+
+A direct follow-up after cas-ccps's and kos-personal's own Flow harvests
+each got a check that a model's output actually engaged with what it was
+given, rather than just checking the output was non-empty and well-formed:
+did leader-hub have the same gap? It did. `checkAiJob_` handed back
+anything a Flow wrote to `Result` the moment `Status` read `COMPLETE`,
+with no check on the content at all.
+
+**Not a literal port of either — this system's own shape made the fix
+simpler than both.** cas-ccps's Flow 2 has a FERPA boundary blocking Apps
+Script from reading the student's own response text, so its check
+(`_fiCheckPlausibility_`) has to work around that gap. kos-personal's
+Curator flow used to read a live Drive document Studio itself couldn't
+see reliably. leader-hub has neither problem: every job's whole input is
+one JSON blob EmailBridge.gs itself already wrote into `Payload` — no
+live document read to fail, no student-record boundary to route around.
+So `_checkAiResultPlausible_` checks `Result` against the FULL `Payload`
+directly: a self-reported non-access phrase, or zero overlap with the
+job's own distinguishing content (recursively collected from the parsed
+payload, since several shapes nest — `BRAG_EMAIL`'s trip/WBL detail
+objects, for one).
+
+**The one design difference this system's shape forced.** cas-ccps and
+kos-personal each have a durable row to mark `SUSPECT_FABRICATION` and
+leave for a human to find later. `checkAiJob_` deletes a job's row the
+instant its outcome is read — there is no later pass to flag a row in,
+because there will be no row. So the gate runs INLINE in `checkAiJob_`
+itself, and a failure is handed back as `ERROR` rather than `COMPLETE`.
+That turned out to need no new client-side handling at all:
+`pollAiJob_` already treats `ERROR` exactly like a timeout (returns
+`null`, and every call site already falls through to its own local
+deterministic draft) — the existing "Nothing else in the app changes if
+you never build the Flow" fallback path this document's own handshake
+section describes turned out to already be the correct behavior for a
+suspect result too.
+
+**Surfaced where an operator would actually see it, unlike the other two
+systems.** cas-ccps's and kos-personal's gates are console-log-only —
+something to run from the Apps Script editor. leader-hub already has a
+live **AI Flow Health** panel (Settings) reading per-type lifetime
+counters, so `suspectFabrication` was added to that same counter
+(`_bumpFlowStat_`, `getFlowHealth_`) and the panel now shows it directly
+— "N completed, M looked ungrounded — Flow is connected," distinguishing
+that from "Flow may not be built yet," which reads identically to a
+human without the distinction.
+
+Both `EmailBridge.gs` and its rendering counterpart in
+`leader-hub/src/11-journal-cron-settings-and-sync.html` were edited (the
+assembled `student-leader-hub.html` is generated —
+`tools/leaderhub-build/build.js` regenerates it; never hand-edit it
+directly, which this session confirmed the hard way by doing exactly
+that once and having `tests/tools/leaderhub-build.test.js` catch it).
+9 new tests. `npm test` (815/815), gas-lint and doc-currency both
+unchanged.
