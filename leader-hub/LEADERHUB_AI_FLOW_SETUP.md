@@ -51,6 +51,8 @@ Browser               Polls action=checkAiJob {jobId} every ~3s
 Workspace Flow        Polls AI_Queue sheet for Status=PENDING rows
 Workspace Flow        Reads Payload, calls Gemini, writes Result
 Workspace Flow        Sets Status=COMPLETE (or ERROR)
+EmailBridge.gs        checkAiJob_ checks Result against Payload (plausibility
+                      gate, below) before handing anything back
 Browser               Next poll sees COMPLETE, shows the draft, stops polling
 EmailBridge.gs        Deletes the row once handed back — nothing to clean up later
 ```
@@ -61,6 +63,28 @@ times out after ~90 seconds of polling (see `pollAiJob_` in
 `student-leader-hub.html`) and falls back to the same local, deterministic
 draft the app has always produced. AI drafting is additive, not a
 replacement for anything that already worked.
+
+> **The plausibility gate.** Same defense cas-ccps's `_fiCheckPlausibility_`
+> and kos-personal's `_srCheckGroundedness_` each added after a real
+> incident of a model returning well-formed text without engaging with
+> what it was actually given: `checkAiJob_`'s `_checkAiResultPlausible_`
+> checks a COMPLETE row's `Result` for a self-reported non-access phrase
+> ("I don't have enough context," and similar), and for whether it shares
+> any of the job's own `Payload` content — the full payload, not a
+> narrowed subset, since (unlike cas-ccps's Flow 2 and its FERPA-protected
+> student text) this file already wrote that column itself, so reading it
+> back crosses no new boundary. A failure is handed back as `ERROR`
+> rather than `COMPLETE` — `pollAiJob_` already treats `ERROR` exactly
+> like a timeout, falling through to the same local deterministic draft,
+> so no client-side change was needed. Tracked per job type in the same
+> lifetime counters the **AI Flow Health** settings panel already reads —
+> a `suspectFabrication` count there means a Flow is connected and
+> responding, just not engaging with its own input, which reads
+> differently from "Flow may not be built yet." `FIN_ANALYSIS`'s payload
+> is pure numbers with nothing distinctive to check against, so it's
+> never gated by design — its own prompt explicitly instructs summarizing
+> a pattern rather than restating numbers, which a numeric-overlap check
+> would have flagged as suspect for doing correctly.
 
 > **Not deployed yet?** This document assumes `leader-hub:app` is already a
 > live Apps Script Web App. If it isn't, start with
