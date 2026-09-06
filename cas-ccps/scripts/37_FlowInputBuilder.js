@@ -121,7 +121,8 @@ const FI = {
   MILESTONE_3_COMPETENCY_ID:  17,
   MILESTONE_4_COMPETENCY_ID:  18,
   READY_STATUS:               19, // READY -> EVALUATED -> HARVESTED
-                                   // (or ERROR_EMPTY_OUTPUT / ERROR_HARVEST_FAILED)
+                                   // (or ERROR_EMPTY_OUTPUT / ERROR_SUSPECT_FABRICATION /
+                                   // ERROR_HARVEST_FAILED — see _fiCheckPlausibility_)
   GEMINI_FULL_OUTPUT:          20, // written by Studio Flow 2's own Step 4
   // Appended at the END of the schema on purpose. Every positional reader in
   // this system breaks on a column INSERTED before the end (see
@@ -420,12 +421,125 @@ function _fiBuildPromptText_(matrixRow) {
 }
 
 // ---------------------------------------------------------------------------
+// _fiCheckPlausibility_ — a FERPA-safe backstop against kos-personal's
+// Round 17 incident (CHANGELOG.md there, 12_StudioReturnHarvest.gs's
+// _srCheckGroundedness_ here means kos-personal): Gemini proceeding without
+// reading its source material and returning well-formed, schema-passing
+// output anyway. A green run and a real answer look identical from every
+// check that inspects only shape, never content.
+//
+// WHY THIS IS NOT A LITERAL PORT OF kos-personal's CHECK. That one opens the
+// source document itself and looks for shared vocabulary. Doing the
+// equivalent here — opening the student's Doc to compare against
+// geminiFullOutput — is exactly the read _fiBuildPromptText_'s comment
+// above says this file must never do, even transiently for a comparison
+// that stores nothing: "the same FERPA regression docs/FERPA_DATA_MAP.md's
+// pointer-based design exists to avoid." That design goes out of its way to
+// keep the student's own words out of this project's reach at all, not just
+// out of what gets persisted. So this checks two things that need NONE of
+// the student's own words:
+//
+//   1. Does geminiFullOutput contain a self-reported non-access phrase — the
+//      model saying, in its own returned text, that it couldn't reach
+//      something? This is the exact shape of kos-personal's incident log
+//      ("Workspace sources is turned off... sent without file
+//      references"), just checked against the output itself rather than a
+//      run log an operator has to remember to read.
+//   2. Does geminiFullOutput engage with ANY of the rubric content this row
+//      actually carries — persona, unit name, tier, or milestone text? All
+//      teacher-authored curriculum content already legitimately sitting in
+//      this row (the same fields _fiBuildPromptText_ substitutes into
+//      PromptText), never student content. A response mentioning none of
+//      it didn't even use the one thing Apps Script hands Gemini directly.
+//
+// WHAT THIS DOES NOT PROVE, UNLIKE kos-personal's CHECK: that the model
+// read the STUDENT'S text specifically. It cannot prove that without doing
+// the read this design forbids. This is a narrower, honest backstop — it
+// catches a model that announces non-access, or one that ignored the
+// rubric entirely, not one that read the rubric but fabricated a response
+// to the student's actual submission. Say so in the failure reason rather
+// than implying more (Flow Doctrine rule 10/13: a check states what it
+// cannot know).
+// ---------------------------------------------------------------------------
+const FI_NON_ACCESS_PHRASES = [
+  'workspace sources', "don't have access", 'do not have access', 'cannot access',
+  "can't access", 'unable to access', 'no access to the document', 'without reading',
+  'could not open', "couldn't open", 'unable to open', 'unable to view',
+  'was not provided', 'was not given', "i don't have the document", 'i do not have the document',
+];
+
+// Longest-unique-word-first, same proxy kos-personal's _srDistinguishingWords_
+// uses for "distinguishing": rare/specific terms (a persona name, a unit
+// title, curriculum vocabulary) tend to run longer than common English
+// filler. Reimplemented here rather than shared — GAS has no cross-project
+// function calls (this file's own header), and this project is a separate
+// one from kos-personal.
+const FI_PLAUSIBILITY_STOPWORDS = {
+  because: 1, however: 1, something: 1, everything: 1, although: 1, therefore: 1,
+  important: 1, specific: 1, generally: 1, actually: 1, additional: 1, different: 1,
+  another: 1, through: 1, without: 1, between: 1, should: 1, system: 1, process: 1,
+  student: 1, teacher: 1, milestone: 1, definition: 1, project: 1, working: 1, general: 1,
+};
+
+function _fiDistinguishingWords_(text) {
+  const seen = {};
+  const words = [];
+  const matches = String(text).toLowerCase().match(/[a-z0-9]{6,}/g) || [];
+  matches.forEach(function (w) {
+    if (seen[w] || FI_PLAUSIBILITY_STOPWORDS[w]) return;
+    seen[w] = true;
+    words.push(w);
+  });
+  words.sort(function (a, b) { return b.length - a.length; });
+  return words.slice(0, 20);
+}
+
+function _fiCheckPlausibility_(geminiFullOutput, fiRow) {
+  const text = String(geminiFullOutput || '');
+  const lower = text.toLowerCase();
+
+  const nonAccessHit = FI_NON_ACCESS_PHRASES.find(function (p) { return lower.indexOf(p) !== -1; });
+  if (nonAccessHit) {
+    return {
+      ok: false,
+      reason: 'the model\'s own output contains a self-reported non-access phrase ("' +
+        nonAccessHit + '") — the same shape as kos-personal\'s Round 17 incident, where Gemini ' +
+        'proceeded without reading its source material and said so in its own text.',
+    };
+  }
+
+  const rubricWords = _fiDistinguishingWords_([
+    fiRow[FI.PERSONA], fiRow[FI.UNIT_NAME], fiRow[FI.TIER],
+    fiRow[FI.MILESTONE_1], fiRow[FI.MILESTONE_2], fiRow[FI.MILESTONE_3], fiRow[FI.MILESTONE_4],
+  ].join(' '));
+  if (!rubricWords.length) return { ok: true }; // nothing distinctive in the rubric to check against
+
+  const engaged = rubricWords.some(function (w) { return lower.indexOf(w) !== -1; });
+  if (!engaged) {
+    return {
+      ok: false,
+      reason: 'the model\'s output shares none of this row\'s rubric content — e.g. ' +
+        rubricWords.slice(0, 6).join(', ') + '. Does not prove the student\'s own response went ' +
+        'unread (this check never opens that Doc — see its own comment for why), but the model ' +
+        'did not engage with the one thing this row hands it directly (@trigger.PromptText).',
+    };
+  }
+
+  return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
 // harvestFlowInputResults — for every FlowInput row Studio has finished
 // (ReadyStatus = "EVALUATED"), splits the Gemini output, writes the
 // student-facing feedback into their doc, writes CompetencyEvidence
 // rows, and marks the originating STAGING_PIPELINE row COMPLETE so the
 // already-deployed backPropagateCompletions() (03_QueueBridge.js) closes
 // the rest of the loop on its own next cycle.
+//
+// EVALUATED -> HARVESTED (or ERROR_EMPTY_OUTPUT / ERROR_SUSPECT_FABRICATION /
+// ERROR_HARVEST_FAILED). ERROR_SUSPECT_FABRICATION is _fiCheckPlausibility_'s
+// gate, checked before any write to the student's doc — same "touch nothing
+// on a suspect row" rule as the other two error paths.
 // ---------------------------------------------------------------------------
 function harvestFlowInputResults() {
   const lock = LockService.getDocumentLock();
@@ -477,6 +591,14 @@ function harvestFlowInputResults() {
         Logger.log("[FlowInputBuilder] Row " + rowNum +
                    " marked EVALUATED with no output — leaving for manual review.");
         fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_EMPTY_OUTPUT");
+        continue;
+      }
+
+      const plausibility = _fiCheckPlausibility_(geminiFullOutput, fiData[i]);
+      if (!plausibility.ok) {
+        Logger.log("[FlowInputBuilder] Row " + rowNum + " ERROR_SUSPECT_FABRICATION: " +
+                   plausibility.reason);
+        fiSheet.getRange(rowNum, FI.READY_STATUS + 1).setValue("ERROR_SUSPECT_FABRICATION");
         continue;
       }
 
