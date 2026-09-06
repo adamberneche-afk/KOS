@@ -115,6 +115,19 @@ for each row of the table below:
 | Email Composer | `EMAIL_COMPOSE_FLOW_PROMPT.md` | `EMAIL_COMPOSE` |
 | Financial Analysis summary | `FIN_ANALYSIS_FLOW_PROMPT.md` | `FIN_ANALYSIS` |
 
+> **Build row T's `Status = PENDING` condition alone first, before adding
+> `Type = <job type>`.** Wire the trigger with only `Status = PENDING`, run
+> it, and confirm the matched-row count equals every row genuinely at
+> `PENDING` — not the count once both conditions are combined. This is
+> `meta/FLOW_DOCTRINE.md` rule 14, written after kos-personal's Curator flow
+> build hit exactly this shape: a compound `AND` condition where a test run
+> reported far more matches than should have qualified, because the second
+> (`Payload_Type`) condition was doing all the filtering while `Status`
+> either wasn't wired or wasn't taking effect — invisible until the
+> matched-row count is actually checked. Same risk here, six times over: one
+> per job type in the table above, each a fresh `Status = PENDING AND Type =
+> <job type>` condition to build and verify the same way.
+
 ### Reading the prompt from a chip instead of pasting it
 
 Pasting works and nothing below is required. But a pasted prompt has no

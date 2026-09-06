@@ -99,6 +99,48 @@ looks for.
 
 ---
 
+### CuratorInput / VectorClassifyInput
+
+Materialized inputs for the two Studio flows — added by
+`13_StudioInputBuilder.gs` to close the live in-Studio Docs-read both
+flows used to have (the exact surface the CHANGELOG.md Round 17 incident
+hit: Gemini proceeding without reading the document because that live
+read silently failed, and returning well-formed output anyway). Same
+shape for both tabs; `CuratorInput` carries `SR_CURATOR_TYPES`
+(`SESSION_LOG`/`EXTERNAL_DATA`/`COG_STIMULUS`/`COG_EXHAUST`),
+`VectorClassifyInput` carries `VECTOR_CLASSIFY` only — two tabs rather
+than one shared tab so each Flow's own trigger stays a single condition
+(`Status = READY`) instead of the compound `AND` shape
+`meta/FLOW_DOCTRINE.md` rule 14 warns against.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Timestamp | DateTime | When this row was materialized |
+| B | Payload_UID | String | Matches the STAGING_PIPELINE row's Payload_UID exactly |
+| C | Payload_Type | Enum | One of the types this tab carries (see above) |
+| D | File_ID | String | Traceability only — the harvest re-derives its own from STAGING_PIPELINE, never from here |
+| E | SourceText | String | The materialized document text — what Studio used to read live via its own "Get document" step. Studio's Gemini step binds `@trigger.SourceText` directly |
+| F | Status | Enum | Always `READY` — this file never advances it. The Flow's own last step (native "add row to sheet" into `STUDIO_RETURN`, unchanged) is what signals an answer |
+
+**Never widened, never advanced past READY.** `buildStudioInputRows()` only
+ever appends; nothing in this system sets any other Status value here, and
+a row is never re-read once written except by `_ciKnownUids_` (dedup) and
+`checkStudioInputBuilder()` (reporting). `12_StudioReturnHarvest.gs`'s
+harvest does not read these tabs at all — it looks up `File_ID` from
+STAGING_PIPELINE directly, the same as before this file existed.
+
+**Diagnosing "nothing happened" now has a fifth cause.**
+`checkStudioFlowLiveness()` (`12_StudioReturnHarvest.gs`) already
+separates "never built," "trigger matches nothing," "wrong columns," and
+"the model call errored." None of those four can see a STUDIO_ACTIVE row
+that is perfectly healthy in every way except that `buildStudioInputRows()`
+never ran or keeps failing to open its doc — a Flow with a flawless
+trigger and binding still sees nothing, because there is nothing in
+either tab for it to match. `checkStudioInputBuilder()` is the check for
+that fifth cause specifically.
+
+---
+
 ### SESSION_LOG
 
 One row per processed session.
