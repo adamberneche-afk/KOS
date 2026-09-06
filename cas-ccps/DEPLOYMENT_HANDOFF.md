@@ -394,40 +394,54 @@ derived from the constants the code reads, and this file is prose.
 
 ```
 Read cas-ccps/DEPLOYMENT_HANDOFF.md's status banner, then
-leader-hub/DEPLOYMENT_GUIDE.md. I'm continuing the live deployment on
-the ccpsnet.net account: 8 cas-ccps projects exist, Module 1 and
-Module 2 (A+B) are set up, and all five cas-ccps flows are live and
-verified. leader-hub and kos-personal have never been deployed — that's
-what's next. I run every clasp/browser/Studio action myself (SMP-004)
-and paste logs back. Start by telling me the exact commands for step 1.
+kos-personal/DEPLOYMENT_GUIDE.md's status banner and CHANGELOG.md's
+most recent Round. I'm continuing the live deployment on the
+ccpsnet.net account: 8 cas-ccps projects exist and all five cas-ccps
+flows are live and verified; leader-hub is fully deployed with all six
+Flows live; kos-personal's code and infra are live but its Studio
+Curator flow build was paused after surfacing real problems (wrong
+trigger scope, Gemini fabricating output without reading the real
+document) — that's what's next, picking up from the corrected approach
+CHANGELOG.md's Round 17 describes. I run every clasp/browser/Studio
+action myself (SMP-004) and paste logs back. Start by telling me the
+exact commands to resume kos-personal's Curator flow.
 ```
 
 ## The other two systems
 
 This file is cas-ccps's. A fresh deployment session covers three, and each
-carries its own guide with its own sequence. Both are on the **same
+carries its own guide with its own sequence and its own status banner —
+**read each system's own guide for its current state; the summaries below
+are pointers, not the live record.** All three are on the **same
 `ccpsnet.net` account** as cas-ccps — do not read a system boundary as an
 account boundary, which is a mistake this repo made twice
 (`FLOW_DOCTRINE.md` rule 3).
 
-**leader-hub** — `leader-hub/DEPLOYMENT_GUIDE.md`. Never pushed, so it is a
-from-scratch deployment: create the project, push, deploy as a web app, then
-`syncAiPromptsToSheet()` → `runLeaderHubPreflight()` → `checkAiQueueSchema()`
-→ `runAiFlowCanary()` → `installAiFlowFixtures()`, then build the six Flows
-and confirm with `checkAiFlowFixtures()`. Its queue rows are deleted the
-moment their outcome is read, which is why liveness there is a durable
-counter rather than a row scan. Its D1 side — the browser calling cas-ccps's
-`doPost()` — is diagnosed from the cas-ccps end; see the paragraph above.
+**leader-hub** — `leader-hub/DEPLOYMENT_GUIDE.md`. **Deployed and live as of
+2026-09-05** — pushed, both Web App deployments made, all six AI Flows
+(`EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`, `LP_ASSIST`,
+`FIN_ANALYSIS`, `BRAG_EMAIL`) built and confirmed live via
+`checkAiFlowFixtures()`. Its own `HISTORY.md` has the deployment record.
+Its queue rows are deleted the moment their outcome is read, which is why
+liveness there is a durable counter rather than a row scan. Its D1 side —
+the browser calling cas-ccps's `doPost()` — is diagnosed from the cas-ccps
+end; see the paragraph above.
 
-**kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. Push, deploy the web
-app, then `setupAllTriggers()` (14 triggers, `harvestStudioReturns` among
-them), and build the two Flows with a native "add row to sheet" into
-`STUDIO_RETURN` as the last step. `installStudioFlowFixture()` plants a
-scratch doc plus a `PENDING_FLOW` staging row; verify with
-`runStudioReturnCanary()`, `checkStudioFlowBinding()` while wiring that last
-step, then `checkStudioFlowLiveness()`. Its consent-screen phase configures
-the *default* project and does **not** create a standard one — that
-distinction is what cost 2,113 lines here.
+**kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. **Code and infra
+live as of 2026-09-05; the Studio flow build is not done.** Pushed (13
+files — the guide's own file list was stale by one, since corrected),
+both deployments made, `setupAllTriggers()` confirmed all 14 installed and
+firing, a real session ingested and correctly advanced through the
+pipeline. The Curator flow's first build surfaced real problems (a
+trigger condition not actually filtering on `Status`, and Gemini
+fabricating output after a "Workspace sources is turned off" warning
+instead of reading the real source document) and was deliberately paused
+rather than patched around — see `kos-personal/CHANGELOG.md`'s most recent
+Round for the full incident and what to try next. Verify with
+`runStudioReturnCanary()`, `checkStudioFlowBinding()` while wiring the
+last step, then `checkStudioFlowLiveness()`. Its consent-screen phase
+configures the *default* project and does **not** create a standard one —
+that distinction is what cost 2,113 lines here.
 
 ## Order of operations
 
