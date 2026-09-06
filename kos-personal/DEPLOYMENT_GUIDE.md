@@ -1,43 +1,76 @@
 # KOS v8.0 — Deployment Guide
 
-> ## 🔄 STATUS (2026-09-05): CODE LIVE, INFRA VERIFIED — Studio flow build paused for rework
+> ## 🔄 STATUS (2026-09-06): CODE REBUILT AND STRUCTURALLY VERIFIED — Studio has never been built for real yet
 >
-> Phases 1-3 and 5-10 of this guide are done: the project already existed
-> (a real `scriptId` in `.clasp.json` from an earlier partial attempt, same
-> pattern leader-hub turned out to have — check there before assuming
-> Phase 1's browser-based project creation is actually needed), 13 files
-> pushed via `clasp push` (matches `tools/gas-lint/project-map.json`'s
-> `kos-personal` list exactly — see the corrected Phase 3 file list below,
-> which had been missing `12_StudioReturnHarvest.gs`), two fresh Web App
+> Phases 1-3 and 5-10 of this guide were done as of 2026-09-05: the project
+> already existed (a real `scriptId` in `.clasp.json` from an earlier
+> partial attempt, same pattern leader-hub turned out to have — check
+> there before assuming Phase 1's browser-based project creation is
+> actually needed), 13 files pushed via `clasp push`, two fresh Web App
 > deployments created, `KOS_ADMIN_EMAIL` set, all 14 triggers confirmed
 > installed and several already firing cleanly, and a real Phase 10 Ingest
-> test correctly advanced through `PENDING_FLOW` → `STUDIO_ACTIVE`.
+> test correctly advanced through `PENDING_FLOW` → `STUDIO_ACTIVE`. If a
+> fresh session is picking this up, re-run this phase's checks rather than
+> trusting this paragraph — it's a snapshot, not a live status.
 >
-> **Studio Integration (the section below) is NOT done.** A first build of
-> the Curator flow surfaced real problems — wrong trigger scope, and Studio
-> proceeding with a "Workspace sources is turned off" warning instead of
-> actually reading the source document, producing fabricated output that
-> looked plausible but wasn't grounded in anything real. That output was
-> deleted before it could reach `harvestStudioReturns()` (which would have
-> overwritten the real document body with it). See
-> `CHANGELOG.md`'s most recent Round for the full incident and the
-> corrected build approach to use next time — don't repeat the same Flow
-> configuration.
+> **What actually happened next: the Curator flow's first-ever Studio
+> build surfaced a real incident (Round 17, `CHANGELOG.md`) — wrong
+> trigger scope, and Studio proceeding with a "Workspace sources is turned
+> off" warning instead of reading the source document, so Gemini returned
+> fabricated output that looked plausible but wasn't grounded in
+> anything.** That output was deleted before `harvestStudioReturns()`
+> could overwrite the real document body with it, and the build was
+> paused rather than patched around. **This is the one and only Studio
+> build attempt this project has ever had.** Since then, the Flow was
+> never rebuilt in Studio — every session since has been rework on the
+> Apps Script side, described below, in preparation for a second attempt.
+> A fresh session opening this guide today is looking at a system that is
+> structurally ready but has **zero hours of real Studio runtime**.
 >
-> **Since that incident, `harvestStudioReturns()` runs an automated
-> defense against this exact failure mode: the groundedness gate.** A
-> Curator-type return whose output shares none of its own source
-> document's distinguishing vocabulary is now marked `SUSPECT_FABRICATION`
-> instead of applied — the doc is left untouched, exactly like every other
-> failure path in that file. This is a smoke test, not a fact-checker, and
-> it does not replace reading the Flow's own run log for the
-> "Workspace sources is turned off" warning before trusting a first build —
-> see `STUDIO_INTEGRATION_SPEC.md`'s banner for the full rebuild checklist
-> (verify the `Status` trigger condition in isolation first, check the run
-> log, then try an "Ask a Gem" step in place of a generic "Ask Gemini"
-> step). That checklist, not this paragraph, is what to follow when
-> actually rebuilding the Flow — nothing here can do that rebuild itself
-> (SMP-004: only the operator's own authenticated Studio session can).
+> **What changed since Round 17, closing the actual gap the incident
+> exposed rather than just adding a smoke test on top of it:**
+> `13_StudioInputBuilder.gs` now reads the source document itself, in
+> Apps Script, *before* Studio ever runs — the live "Get document" step
+> that failed silently in Round 17 no longer exists in either Flow at
+> all. `14_StudioFlowBuildSpec.gs` generates the exact tab names, column
+> numbers, headers and trigger conditions to build from
+> (`syncStudioFlowBuildSpec()`), derived from the same constants the code
+> reads, so there is nothing left to hand-transcribe from prose.
+> `15_Preflight.gs` (`runKosPersonalPreflight()`) checks tab widths,
+> trigger completeness and required script properties in one pass — run
+> it first, before touching Studio at all. The groundedness gate
+> (`_srCheckGroundedness_`, `harvestStudioReturns()`) is still there, but
+> is now genuinely defense-in-depth rather than the only thing standing
+> between a silent failure and a corrupted document — see
+> `STUDIO_INTEGRATION_SPEC.md`'s banner for the full current build
+> shape and why rule 14 (`meta/FLOW_DOCTRINE.md`) no longer applies to
+> this Flow's trigger.
+>
+> **Second-attempt build order, in full:**
+> 1. `runKosPersonalPreflight()` — confirm the structure is sound before
+>    touching Studio at all.
+> 2. `syncStudioFlowBuildSpec()` — writes the `FlowBuildSpec` tab; build
+>    both Flows from that tab, not from this document or
+>    `STUDIO_INTEGRATION_SPEC.md`'s prose (generated beats hand-copied —
+>    `meta/FLOW_DOCTRINE.md` rule 11).
+>    Read `STUDIO_INTEGRATION_SPEC.md`'s banner in full first — the
+>    trigger is now a **single condition** (`Status = READY` on
+>    `CuratorInput`/`VectorClassifyInput`), there is nothing to combine it
+>    with, and the whole "verify the more restrictive half in isolation"
+>    caution from Round 17 no longer applies to this design.
+> 3. Verify the materialize half: `runStudioInputCanary()`,
+>    `checkStudioInputBuilder()`.
+> 4. Wire the Flow's last step with `checkStudioFlowBinding()` open in a
+>    second tab, then verify the harvest half:
+>    `runStudioReturnCanary()`, `checkStudioFlowLiveness()`.
+> 5. Watch `checkStudioReturns()`'s `suspectFabrication` count once the
+>    Flow is live — a non-zero count now means look at the Flow's own
+>    output quality, not the harvest logic, since the live-read failure
+>    mode Round 17 hit is structurally closed.
+>
+> Nothing here can do the actual Studio build — SMP-004: only the
+> operator's own authenticated Studio session can. This paragraph is the
+> map; the checks above are the ground truth once you're in Studio.
 >
 > **A pre-existing project is not automatically a live-in-use one — verify
 > before trusting the label.** `clasp deployments` showed an old deployment
