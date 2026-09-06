@@ -1,5 +1,41 @@
 # KOS v8.0 — Deployment Guide
 
+> ## 🔄 STATUS (2026-09-05): CODE LIVE, INFRA VERIFIED — Studio flow build paused for rework
+>
+> Phases 1-3 and 5-10 of this guide are done: the project already existed
+> (a real `scriptId` in `.clasp.json` from an earlier partial attempt, same
+> pattern leader-hub turned out to have — check there before assuming
+> Phase 1's browser-based project creation is actually needed), 13 files
+> pushed via `clasp push` (matches `tools/gas-lint/project-map.json`'s
+> `kos-personal` list exactly — see the corrected Phase 3 file list below,
+> which had been missing `12_StudioReturnHarvest.gs`), two fresh Web App
+> deployments created, `KOS_ADMIN_EMAIL` set, all 14 triggers confirmed
+> installed and several already firing cleanly, and a real Phase 10 Ingest
+> test correctly advanced through `PENDING_FLOW` → `STUDIO_ACTIVE`.
+>
+> **Studio Integration (the section below) is NOT done.** A first build of
+> the Curator flow surfaced real problems — wrong trigger scope, and Studio
+> proceeding with a "Workspace sources is turned off" warning instead of
+> actually reading the source document, producing fabricated output that
+> looked plausible but wasn't grounded in anything real. That output was
+> deleted before it could reach `harvestStudioReturns()` (which would have
+> overwritten the real document body with it). See
+> `CHANGELOG.md`'s most recent Round for the full incident and the
+> corrected build approach to use next time — don't repeat the same Flow
+> configuration.
+>
+> **A pre-existing project is not automatically a live-in-use one — verify
+> before trusting the label.** `clasp deployments` showed an old deployment
+> literally named "V5.4 Core Router Initial Deployment" here, which reads
+> like a live-migration red flag per this guide's own "Migrating from
+> v5.4" section. Opening the actual web app resolved it in under a
+> minute: it showed v8.0's own already-bootstrapped UI (not the "Build My
+> Studio" screen), with a "Not started" status and an empty session log —
+> meaning a prior session got through Bootstrap under v8.0 itself and
+> never used it, and the "V5.4" label was older, unrelated history. Don't
+> skip this check on a system with any ambiguous deployment history, but
+> also don't let it block progress once actually checked.
+
 This guide takes you from zero to a fully deployed KOS instance with your first session processed. It assumes you have a Google account and basic familiarity with Google Drive.
 
 Estimated time: 20–30 minutes for first deploy. 5 minutes for subsequent deploys.
@@ -10,7 +46,7 @@ Estimated time: 20–30 minutes for first deploy. 5 minutes for subsequent deplo
 
 You need:
 - A Google account (personal Gmail or Google Workspace)
-- The 12 project files (1–11 numbered .gs files + appsscript.json + 8_WebApp_UI.html)
+- The 13 project files (1–12 numbered .gs files + appsscript.json + 8_WebApp_UI.html) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
 - A Workspace Studio subscription or equivalent AI inference tool for the processing step
 
 You do not need:
@@ -82,6 +118,11 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
 9_UI_Diagnostics
 10_Turnstile
 11_Registrar_CogRelay
+12_StudioReturnHarvest   ← ported the write-back around the blocked custom
+                           steps (see Studio Integration below); this file
+                           was missing from this list until 2026-09-05,
+                           confirmed against tools/gas-lint/project-map.json,
+                           the authoritative 13-file list for this project
 ```
 
 **Add the HTML file:**
