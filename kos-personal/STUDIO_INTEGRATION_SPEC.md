@@ -29,6 +29,58 @@
 > row to match, so a green "Run Completed" over zero rows is distinguishable
 > from success. See that file's header, `kos-personal/DEPLOYMENT_GUIDE.md`
 > and `tools/gas-lint/gcp-map.json`.
+>
+> **Automated defense, added after Round 17: the groundedness gate.**
+> `harvestStudioReturns()` now checks a Curator-type return's own output for
+> shared vocabulary with its source document BEFORE ever overwriting that
+> document — see `12_StudioReturnHarvest.gs`'s `_srCheckGroundedness_`. A
+> return that shares none of the source's distinguishing words is marked
+> `SUSPECT_FABRICATION` in `STUDIO_RETURN` instead of applied: the source
+> doc is left untouched and the staging row stays `STUDIO_ACTIVE` for the
+> staleness guard to recycle. This is a smoke test, not a fact-checker — it
+> catches "the model never read the document at all" (Round 17's exact
+> incident), not "read it and summarized it wrong." It only engages on
+> documents at or above `SR_GROUNDEDNESS_MIN_CHARS` (500 characters), so it
+> never fires against a fixture or canary scratch doc. Check
+> `checkStudioReturns()`'s `suspectFabrication` count, or watch for its
+> console warning.
+>
+> **Round 17 rework — read this before rebuilding the Curator flow.** The
+> first real build against a live `STUDIO_ACTIVE` row surfaced three
+> distinct problems at once (full incident and diagnosis in
+> `CHANGELOG.md`); the Flow was deliberately turned off rather than patched
+> around. Do these in order on the next build:
+>
+> 1. **Verify the trigger's `Status = STUDIO_ACTIVE` condition ALONE
+>    first**, before adding the `Payload_Type` filter on top. Build the
+>    trigger with only the `Status` condition, run it, and confirm the
+>    matched-row count equals the number of rows genuinely at
+>    `STUDIO_ACTIVE` — not the combined-condition count. Round 17's test
+>    run reported "Found 7 rows matching conditions" against a sheet where
+>    only 1 row should have qualified; `Payload_Type` alone was doing all
+>    the filtering, and `Status` either wasn't wired or wasn't taking
+>    effect. Only add `Payload_Type` back in once the `Status`-only count
+>    is confirmed correct.
+> 2. **Before trusting any first-build test run's output, check the run
+>    log for a file-access warning** — specifically anything like
+>    "Workspace sources is turned off" / "Request was sent without file
+>    references from variables." A run can return well-formed, schema-valid
+>    JSON that reads as a plausible summary while Gemini never actually
+>    opened the document — the single most dangerous false-positive in this
+>    integration, because it would silently overwrite the real source
+>    document with fabricated text. The groundedness gate above is an
+>    automated backstop against exactly this, not a substitute for reading
+>    the run log yourself before trusting a first build.
+> 3. **Try an "Ask a Gem" step instead of a generic "Ask Gemini" step**, if
+>    Studio's builder offers one — bind the Curator persona as a
+>    pre-configured Gem rather than pasting `CURATOR_PROMPT.md` into a
+>    generic step's system-prompt field. Not yet confirmed as of this
+>    writing; the working hypothesis is that a configured Gem may sidestep
+>    the Workspace-sources issue outright, and that the generic step's more
+>    manual variable/branch wiring is what let problems 1 and 2 above
+>    surface confusingly rather than cleanly. If this account's Studio
+>    doesn't offer that step type, fall back to the generic step and lean
+>    harder on step 2's log check.
 
 This document defines the complete contract between KOS v8.0 and Workspace Studio (or any AI inference engine used as a drop-in replacement). It is written for the developer building the Studio side of the integration.
 
