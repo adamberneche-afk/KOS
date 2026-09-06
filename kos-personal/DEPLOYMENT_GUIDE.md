@@ -268,6 +268,15 @@ Expected trigger list:
 - runRegistrarMicrobatch (every 15 min)
 - runRegistrarProcessor (every 10 min)
 
+**Or skip the manual count:** run `runKosPersonalPreflight()` (`15_Preflight.gs`).
+It checks the exact same 15-handler list (one call per handler, not a copy an
+operator has to keep matching this table) — plus the four Studio-adjacent
+tabs' widths (`STAGING_PIPELINE`, `STUDIO_RETURN`, `CuratorInput`,
+`VectorClassifyInput`) and whether `KOS_ADMIN_EMAIL` is set — and writes a
+`Preflight` tab in BRAIN_TRUST_INDEX with a pass/fail line per check. Safe to
+run any time, including before `deployFullSystem()` has ever run (it reports
+one clear failure rather than a Google Apps Script stack trace).
+
 ---
 
 ## Phase 10 — First Session Test
