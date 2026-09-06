@@ -106,7 +106,7 @@ I holds each flow to having all four.
 
 | Question | cas-ccps | leader-hub | kos-personal |
 |---|---|---|---|
-| Is the structure sound? | `runFlowPreflightCheck()` | `runLeaderHubPreflight()` | — |
+| Is the structure sound? | `runFlowPreflightCheck()` | `runLeaderHubPreflight()` | `runKosPersonalPreflight()` |
 | Does the script half work? | `runFlow2Canary()`, `runWarmUpFlowCanary()` | `runAiFlowCanary()` | `runStudioReturnCanary()` |
 | Are the columns bound right? | `checkFlowBinding()`, `checkFlow2Binding()` | `checkAiFlowBinding()` | `checkStudioFlowBinding()` |
 | Has a Flow ever answered? | `checkFlow2Liveness()`, `checkWarmUpFlowLiveness()` | `checkAiFlowFixtures()` | `checkStudioFlowLiveness()` |
