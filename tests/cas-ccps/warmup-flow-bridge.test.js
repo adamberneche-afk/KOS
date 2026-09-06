@@ -47,9 +47,14 @@ const EXPOSE = [
   '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding',
   'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_PROFILE_SNAP', 'WFB_RET',
   'WFB_RETURN_HEADERS', 'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
-  'WFB_INPUT_TABS',
+  'WFB_INPUT_TABS', 'WFB_RETURN_TAB',
   'RESPONSE_ZONE_MARKER', 'WQ25_COL_COUNT', 'WQ25_QUEUE_ID', 'WQ25_STATUS',
   'WQ25_LESSON_CTX_SNAP', 'WQ25_BRIDGE_OUTPUT',
+  // The plausibility gate and its harvest entry point
+  '_wfbCheckPlausible_', '_wfbCollectText_', 'harvestWarmUpFlowReturns', 'wfbFindQueueRow_',
+  'WQ25_RESPONSE_TEXT', 'WQ25_DOC_ID', 'WQ25_WORD_COUNT_SCORE', 'WQ25_EXTRA_CREDIT',
+  'WQ25_GRAMMAR_SCORE', 'WQ25_ENGAGEMENT_SCORE', 'WQ25_TOTAL_SCORE', 'WQ25_STUDENT_NAME',
+  'WQ25_GOOGLE_ID', 'WQ25_LESSON_DATE', 'getConfig_',
 ];
 
 function load() {
@@ -489,4 +494,237 @@ test('binding probe: a SHORT but valid output is not reported as missing', () =>
     assert.deepEqual(issues, [], 'flagged a valid short output ' + JSON.stringify(out) +
       ': ' + JSON.stringify(issues));
   });
+});
+
+// ── The plausibility gate ────────────────────────────────────────────────────
+//
+// Same defense _fiCheckPlausibility_ (37_FlowInputBuilder.js) added for
+// Flow 2, reused directly here rather than duplicated: a model can return
+// well-formed output without engaging with what it was actually given.
+// Flow 4's check needs no FERPA workaround the way Flow 2's did —
+// WQ25_RESPONSE_TEXT is already a documented, retained field this project
+// legitimately holds (docs/FERPA_DATA_MAP.md's WarmUpQueue section).
+
+function setUpLedger(sandbox, exported) {
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  props.setProperty('ADMIN_SS_ID', ss.getId());
+  const wq = ss.insertSheet('WarmUpQueue');
+  // wfbFindQueueRow_ reads from row 2 on — a header row here, or its first
+  // real data row is invisible to every apply function under test.
+  wq.appendRow(new Array(exported.WQ25_COL_COUNT).fill('header'));
+  return { ss, wq };
+}
+
+function wqRow(exported, overrides) {
+  const row = new Array(exported.WQ25_COL_COUNT).fill('');
+  Object.keys(overrides || {}).forEach((k) => { row[Number(k)] = overrides[k]; });
+  return row;
+}
+
+test('_wfbCollectText_: collects strings out of a nested source object', () => {
+  const { exported } = load();
+  const strings = [];
+  exported._wfbCollectText_({
+    courseName: 'Introduction to Marketing',
+    nested: { objective: 'Understand target demographics' },
+    tags: ['branding', 'positioning'],
+  }, strings);
+  assert.ok(strings.includes('Introduction to Marketing'));
+  assert.ok(strings.includes('Understand target demographics'), 'nested object strings must be reached');
+  assert.ok(strings.includes('branding'), 'array strings must be reached');
+});
+
+test('_wfbCheckPlausible_: a self-reported non-access phrase is caught directly', () => {
+  const { exported } = load();
+  const result = exported._wfbCheckPlausible_(
+    { courseObjective: 'Analyze market segmentation strategies' },
+    'I do not have access to the document, but here is a generic response.');
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /non-access phrase/);
+});
+
+test('_wfbCheckPlausible_: output referencing the source content passes', () => {
+  const { exported } = load();
+  const result = exported._wfbCheckPlausible_(
+    { courseObjective: 'Analyze market segmentation strategies' },
+    'Great work analyzing market segmentation in your response today.');
+  assert.equal(result.ok, true, JSON.stringify(result));
+});
+
+test('_wfbCheckPlausible_: output sharing none of a specific source is caught', () => {
+  const { exported } = load();
+  const result = exported._wfbCheckPlausible_(
+    { courseObjective: 'Analyze market segmentation strategies', priorConnection: 'Connects to branding unit' },
+    'Great job overall! Keep up the good work this week.');
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /shares none of this row.s distinguishing content/);
+});
+
+test('_wfbCheckPlausible_: a source with nothing distinctive never gates the output', () => {
+  const { exported } = load();
+  const result = exported._wfbCheckPlausible_(
+    { mode: 'A', stage: '2' }, // all short/generic, no candidates
+    'Totally unrelated text about something else entirely.');
+  assert.equal(result.ok, true, JSON.stringify(result));
+});
+
+// ── Flow 5, through the real harvest ─────────────────────────────────────────
+
+test('harvestWarmUpFlowReturns (Flow 5): a grounded bridge paragraph is applied normally', () => {
+  const { exported, sandbox } = load();
+  const { wq } = setUpLedger(sandbox, exported);
+  const queueId = 'WUQ-GROUNDED-5';
+  wq.appendRow(wqRow(exported, {
+    [exported.WQ25_QUEUE_ID]: queueId,
+    [exported.WQ25_STATUS]: 'PENDING_BRIDGE',
+    [exported.WQ25_LESSON_CTX_SNAP]: JSON.stringify({
+      flow5_prior_response: 'discussed supply chain bottlenecks',
+      pacing_prior_connection: 'connects to inventory management concepts',
+      course_name: 'Business Operations',
+    }),
+  }));
+
+  const returns = sandbox.SpreadsheetApp.openById(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
+    .insertSheet(exported.WFB_RETURN_TAB);
+  returns.appendRow(exported.WFB_RETURN_HEADERS);
+  returns.appendRow([new Date(), 5, queueId,
+    'Today\'s lesson connects to inventory management concepts from before.', '', 0, '']);
+
+  const result = exported.harvestWarmUpFlowReturns();
+  assert.equal(result.applied, 1, JSON.stringify(result));
+
+  const after = exported.wfbFindQueueRow_(wq, queueId);
+  assert.equal(after.row[exported.WQ25_STATUS], 'PENDING');
+});
+
+test('harvestWarmUpFlowReturns (Flow 5): a fabricated bridge paragraph is caught, not applied', () => {
+  const { exported, sandbox } = load();
+  const { wq } = setUpLedger(sandbox, exported);
+  const queueId = 'WUQ-FAB-5';
+  wq.appendRow(wqRow(exported, {
+    [exported.WQ25_QUEUE_ID]: queueId,
+    [exported.WQ25_STATUS]: 'PENDING_BRIDGE',
+    [exported.WQ25_LESSON_CTX_SNAP]: JSON.stringify({
+      flow5_prior_response: 'discussed supply chain bottlenecks',
+      pacing_prior_connection: 'connects to inventory management concepts',
+      course_name: 'Business Operations',
+    }),
+  }));
+
+  const returns = sandbox.SpreadsheetApp.openById(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
+    .insertSheet(exported.WFB_RETURN_TAB);
+  returns.appendRow(exported.WFB_RETURN_HEADERS);
+  returns.appendRow([new Date(), 5, queueId, 'Great job today, keep it up!', '', 0, '']);
+
+  const result = exported.harvestWarmUpFlowReturns();
+  assert.equal(result.applied, 0, JSON.stringify(result));
+
+  const after = exported.wfbFindQueueRow_(wq, queueId);
+  assert.equal(after.row[exported.WQ25_STATUS], 'PENDING_BRIDGE',
+    'the queue row must be left untouched, not advanced to PENDING');
+});
+
+// ── Flow 4, through the real harvest ─────────────────────────────────────────
+// No Drive access needed: WQ25_DOC_ID is left blank, so writeFeedbackToDoc_
+// is skipped (best-effort, per wfbApplyFlow4_'s own comment) and only the
+// score columns this test actually asserts on are touched.
+
+test('harvestWarmUpFlowReturns (Flow 4): a grounded evaluation is applied and scores are written', () => {
+  const { exported, sandbox } = load();
+  const { wq } = setUpLedger(sandbox, exported);
+  const queueId = 'WUQ-GROUNDED-4';
+  wq.appendRow(wqRow(exported, {
+    [exported.WQ25_QUEUE_ID]: queueId,
+    [exported.WQ25_STATUS]: 'PENDING_EVAL',
+    [exported.WQ25_RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
+    [exported.WQ25_WORD_COUNT_SCORE]: 2,
+    [exported.WQ25_EXTRA_CREDIT]: 0,
+  }));
+
+  const returns = sandbox.SpreadsheetApp.openById(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
+    .insertSheet(exported.WFB_RETURN_TAB);
+  returns.appendRow(exported.WFB_RETURN_HEADERS);
+  returns.appendRow([new Date(), 4, queueId,
+    JSON.stringify({ grammar: 2, engagement: 2,
+      feedback: 'Good identification of the vendor delay as the bottleneck cause.' }),
+    '', 0, '']);
+
+  const result = exported.harvestWarmUpFlowReturns();
+  assert.equal(result.applied, 1, JSON.stringify(result));
+
+  const after = exported.wfbFindQueueRow_(wq, queueId);
+  assert.equal(after.row[exported.WQ25_GRAMMAR_SCORE], 2);
+  assert.equal(after.row[exported.WQ25_TOTAL_SCORE], 6);
+});
+
+test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught before any score is written', () => {
+  const { exported, sandbox } = load();
+  const { wq } = setUpLedger(sandbox, exported);
+  const queueId = 'WUQ-FAB-4';
+  wq.appendRow(wqRow(exported, {
+    [exported.WQ25_QUEUE_ID]: queueId,
+    [exported.WQ25_STATUS]: 'PENDING_EVAL',
+    [exported.WQ25_RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
+    [exported.WQ25_WORD_COUNT_SCORE]: 2,
+    [exported.WQ25_EXTRA_CREDIT]: 0,
+  }));
+
+  const returns = sandbox.SpreadsheetApp.openById(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
+    .insertSheet(exported.WFB_RETURN_TAB);
+  returns.appendRow(exported.WFB_RETURN_HEADERS);
+  returns.appendRow([new Date(), 4, queueId,
+    JSON.stringify({ grammar: 4, engagement: 4, feedback: 'Great work overall, well done!' }),
+    '', 0, '']);
+
+  const result = exported.harvestWarmUpFlowReturns();
+  assert.equal(result.applied, 0, JSON.stringify(result));
+
+  const after = exported.wfbFindQueueRow_(wq, queueId);
+  assert.equal(String(after.row[exported.WQ25_GRAMMAR_SCORE] || ''), '',
+    'no score must be written for a fabricated evaluation');
+  assert.equal(after.row[exported.WQ25_STATUS], 'PENDING_EVAL', 'status must not advance to SCORED');
+});
+
+// ── Flow 3's rejection path — the doc-creation guard ─────────────────────────
+// The plausibility gate runs BEFORE any Drive access, so a rejected case
+// never reaches DriveApp — no folder/doc mocking needed to prove this half.
+
+test('harvestWarmUpFlowReturns (Flow 3): a fabricated warm-up prompt is caught before any Drive access', () => {
+  const { exported, sandbox } = load();
+  const { wq } = setUpLedger(sandbox, exported);
+  const queueId = 'WUQ-FAB-3';
+  wq.appendRow(wqRow(exported, {
+    [exported.WQ25_QUEUE_ID]: queueId,
+    [exported.WQ25_STATUS]: 'PENDING_PROMPT',
+    [exported.WQ25_STUDENT_NAME]: 'Jordan Smith',
+    [exported.WQ25_LESSON_CTX_SNAP]: JSON.stringify({
+      admin_root_folder_id: 'root-folder-id',
+      course_name: 'Business Operations',
+      teacher_name: 'Ms. Rivera',
+      period: 3,
+      course_objective: 'Analyze supply chain bottlenecks',
+    }),
+  }));
+
+  const returns = sandbox.SpreadsheetApp.openById(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
+    .insertSheet(exported.WFB_RETURN_TAB);
+  returns.appendRow(exported.WFB_RETURN_HEADERS);
+  returns.appendRow([new Date(), 3, queueId,
+    'Write about your favorite hobby and why you enjoy it.', '', 0, '']);
+
+  const result = exported.harvestWarmUpFlowReturns();
+  assert.equal(result.applied, 0, JSON.stringify(result));
+
+  const after = exported.wfbFindQueueRow_(wq, queueId);
+  assert.equal(String(after.row[exported.WQ25_DOC_ID] || ''), '',
+    'no doc must be created for a fabricated warm-up prompt');
+  assert.equal(after.row[exported.WQ25_STATUS], 'PENDING_PROMPT', 'status must not advance to DELIVERED');
 });

@@ -596,6 +596,62 @@ function wfbPromptFor_(flow, vars) {
   return substituteFlowPrompt_(template, vars || {}, true);
 }
 
+// ── Plausibility gate ────────────────────────────────────────────────────────
+//
+// Same defense _fiCheckPlausibility_ (37_FlowInputBuilder.js) added for
+// Flow 2: a model can return well-formed output without engaging with what
+// it was actually given. Reuses that file's own word-extraction and
+// non-access-phrase list directly (_fiDistinguishingWords_,
+// FI_NON_ACCESS_PHRASES) rather than a second copy — both files already
+// share this GAS project (tools/gas-lint/project-map.json's
+// cas-ccps:central-ledger), unlike kos-personal and leader-hub, which each
+// had to duplicate the same logic because GAS has no cross-project
+// function calls.
+//
+// NO FERPA BOUNDARY TO ROUTE AROUND HERE, UNLIKE FLOW 2. WarmUpQueue's
+// response text (WQ25_RESPONSE_TEXT) is already a documented, retained
+// field (docs/FERPA_DATA_MAP.md's WarmUpQueue section) — this project
+// already legitimately holds it, so Flow 4's check below compares straight
+// against the real response rather than working around a boundary the way
+// Flow 2's had to.
+
+function _wfbCollectText_(value, into) {
+  if (value === null || value === undefined) return;
+  if (typeof value === "string") { into.push(value); return; }
+  if (Array.isArray(value)) { value.forEach(function (v) { _wfbCollectText_(v, into); }); return; }
+  if (typeof value === "object") {
+    Object.keys(value).forEach(function (k) { _wfbCollectText_(value[k], into); });
+  }
+}
+
+/**
+ * @param sourceObj  Whatever this flow's own input actually is — an object,
+ *                    values collected recursively.
+ * @param outputText The model's raw output text to check.
+ * @returns {{ok: true}} or {{ok: false, reason: string}}
+ */
+function _wfbCheckPlausible_(sourceObj, outputText) {
+  const lower = String(outputText || "").toLowerCase();
+
+  const nonAccessHit = FI_NON_ACCESS_PHRASES.find(function (p) { return lower.indexOf(p) !== -1; });
+  if (nonAccessHit) {
+    return { ok: false, reason: "the model's own output contains a self-reported non-access phrase (\"" +
+      nonAccessHit + "\")" };
+  }
+
+  const strings = [];
+  _wfbCollectText_(sourceObj, strings);
+  const candidates = _fiDistinguishingWords_(strings.join(" "));
+  if (!candidates.length) return { ok: true }; // nothing distinctive in the source to check against
+
+  const engaged = candidates.some(function (w) { return lower.indexOf(w) !== -1; });
+  if (!engaged) {
+    return { ok: false, reason: "the output shares none of this row's distinguishing content (e.g. " +
+      candidates.slice(0, 6).join(", ") + ")" };
+  }
+  return { ok: true };
+}
+
 // ── Phase 2: harvest returns ─────────────────────────────────────────────────
 
 /**
@@ -694,6 +750,16 @@ function wfbApplyFlow5_(wqSheet, found, raw) {
   if (status === "PENDING" || status === "DELIVERED") {
     return { ok: true, duplicate: true }; // already bridged
   }
+
+  let lesson;
+  try { lesson = JSON.parse(String(found.row[WQ25_LESSON_CTX_SNAP] || "{}")); } catch (e) { lesson = {}; }
+  const plausibility = _wfbCheckPlausible_({
+    priorResponse: lesson.flow5_prior_response,
+    priorConnection: lesson.pacing_prior_connection,
+    courseName: lesson.course_name,
+  }, raw);
+  if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
+
   wqSheet.getRange(found.sheetRow, WQ25_BRIDGE_OUTPUT + 1).setValue(String(raw).trim());
   wqSheet.getRange(found.sheetRow, WQ25_STATUS + 1).setValue("PENDING");
   SpreadsheetApp.flush();
@@ -733,6 +799,14 @@ function wfbApplyFlow3_(wqSheet, found, queueId, raw) {
   if (!adminRoot || !courseName || !teacherName || !period) {
     return { ok: false, error: "FOLDER_PATH_FIELDS_MISSING" };
   }
+
+  // Plausibility gate BEFORE any Drive work — a fabricated warm-up prompt
+  // is the assignment text the student actually responds to, and the doc
+  // this creates can't cheaply be un-created (see the existingDocId guard
+  // above: a second attempt after a doc already exists is refused for
+  // exactly that reason).
+  const plausibility = _wfbCheckPlausible_(lesson, raw);
+  if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
 
   const studentName = String(row[WQ25_STUDENT_NAME] || "");
   const firstName = studentName.trim().split(/\s+/)[0] || "";
@@ -801,6 +875,16 @@ function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw) {
   const wordCountScore = Number(row[WQ25_WORD_COUNT_SCORE] || 0);
   const extraCredit = Number(row[WQ25_EXTRA_CREDIT] || 0);
   const total = wordCountScore + grammar + engagement + extraCredit;
+
+  // Plausibility gate BEFORE any score or feedback write — the highest-
+  // stakes of the three flows this file harvests: grammar/engagement
+  // become part of the student's real grade, and unlike Flow 2's
+  // FERPA-blocked student text, WQ25_RESPONSE_TEXT is already a
+  // documented, retained field this project legitimately holds (see this
+  // section's own header comment), so the check compares straight against
+  // the real response.
+  const plausibility = _wfbCheckPlausible_({ responseText: row[WQ25_RESPONSE_TEXT] }, feedback);
+  if (!plausibility.ok) return { ok: false, error: "SUSPECT_FABRICATION: " + plausibility.reason };
 
   writeFinalScores_(wqSheet, found.sheetRow, grammar, engagement, feedback, total);
 
@@ -1371,7 +1455,13 @@ function runWarmUpFlowCanary() {
     const built = buildWarmUpFlowInputs();
     step("buildWarmUpFlowInputs materialized a Flow 5 row", built.flow5 >= 1, JSON.stringify(built));
 
-    returns.appendRow([new Date(), 5, queueId, "A bridge paragraph.", "", 0, ""]);
+    // References the snapshot's own "connects" text deliberately — not
+    // decoration. The plausibility gate added to wfbApplyFlow5_ checks the
+    // bridge paragraph against this row's own lesson snapshot, and a purely
+    // generic bridge paragraph with no reference to it is exactly what that
+    // gate now flags as SUSPECT_FABRICATION.
+    returns.appendRow([new Date(), 5, queueId,
+      "A bridge paragraph that connects today's lesson to what came before.", "", 0, ""]);
     const harvested = harvestWarmUpFlowReturns();
     step("harvest applied the Flow 5 return", harvested.applied >= 1, JSON.stringify(harvested));
 
@@ -1381,7 +1471,8 @@ function runWarmUpFlowCanary() {
       String(after.row[WQ25_BRIDGE_OUTPUT]).indexOf("bridge paragraph") !== -1,
       after ? String(after.row[WQ25_STATUS]) : "row missing");
 
-    returns.appendRow([new Date(), 5, queueId, "A stale second bridge.", "", 0, ""]);
+    returns.appendRow([new Date(), 5, queueId,
+      "A stale second bridge that also connects to what came before.", "", 0, ""]);
     harvestWarmUpFlowReturns();
     const afterDup = wfbFindQueueRow_(wqSheet, queueId);
     // Reads the QUEUE row, not the return row — an earlier draft of this
