@@ -1504,3 +1504,44 @@ Flow, its trigger, or any Google account — SMP-004's boundary, same as
 every round before this one. The materialization is real, tested,
 deployable code; wiring the Flow to the new tabs is still the operator's
 next Studio session, now against a simpler build than Round 17 left.
+
+## Round 20 — the last friction-review finding: a generated build spec, closing the gap cas-ccps and leader-hub didn't have
+
+The one item left from the cross-system friction review: kos-personal was
+the only one of the three systems with no `FlowBuildSpec`-equivalent
+generated tab. Every trigger condition, column binding and prompt key an
+operator needs to build either Studio Flow lived only in
+`STUDIO_INTEGRATION_SPEC.md`'s hand-written prose — the same class of
+scatter that produced cas-ccps's one confirmed hazard (`42_FlowBuildSpec.js`'s
+own header: a comment block's em-dash-normalized marker text, copied by
+hand into Studio, matched nothing).
+
+**`14_StudioFlowBuildSpec.gs` (new), mirroring `cas-ccps/scripts/42_FlowBuildSpec.js`'s
+pattern exactly.** `syncStudioFlowBuildSpec()` writes a `FlowBuildSpec` tab:
+one row per column either Flow reads or writes, plus a trigger row and a
+prompt-file pointer, all derived from `CI_COLS`/`CI_CURATOR_TAB`/
+`CI_CLASSIFY_TAB` (`13_StudioInputBuilder.gs`) and `SR_COLS`/`SR_SHEET`
+(`12_StudioReturnHarvest.gs`) — never retyped. `checkStudioFlowBuildSpec()`
+reports when the tab has drifted from what the code would generate now.
+Same deliberate omission as cas-ccps's version: connector names, prompt
+text, temperature and token limits are NOT generated — those need
+judgement and don't drift, and copying them would make this sheet a third
+document to keep in sync with `STUDIO_INTEGRATION_SPEC.md` and the two
+`*_PROMPT.md` files.
+
+Landing this right after Round 19's materialization redesign, rather than
+before it, meant generating the tab from the NEW `CuratorInput`/
+`VectorClassifyInput` shape directly — no transitional generated-spec
+version describing the now-superseded live-Docs-read design ever existed.
+
+Both `STUDIO_INTEGRATION_SPEC.md` and `DEPLOYMENT_GUIDE.md` now point
+operators at `syncStudioFlowBuildSpec()` before wiring either Flow,
+matching cas-ccps's own guidance verbatim: "if this document and that tab
+ever disagree, the tab is right." 8 new tests. `npm test` (803/803),
+gas-lint and doc-currency both unchanged.
+
+With this, all four items the cross-system friction review named are
+closed: cas-ccps's plausibility gate (Round 18 follow-up), the
+`meta/FLOW_DOCTRINE.md` rule 14 promotion plus leader-hub's caution
+(Round 19), the materialized Docs-read (Round 19), and this generated
+build spec.

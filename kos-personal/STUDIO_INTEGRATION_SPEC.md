@@ -59,6 +59,15 @@
 >    `STAGING_PIPELINE`'s own `File_ID`, not from the new input tabs) and
 >    set the staging row to `FLOW_COMPLETE`.
 >
+> **Before building either Flow, run `syncStudioFlowBuildSpec()`**
+> (14_StudioFlowBuildSpec.gs) and build from the `FlowBuildSpec` tab it
+> writes — every tab name, column number, header and trigger condition
+> below, derived from the same constants `13_StudioInputBuilder.gs` and
+> `12_StudioReturnHarvest.gs` read, not transcribed by hand into this
+> document. `checkStudioFlowBuildSpec()` reports when the derived half has
+> drifted since the last sync. If this document and that tab ever
+> disagree, the tab is right — it's generated, this is prose.
+>
 > Verify with, in order: `runStudioInputCanary()` (13_StudioInputBuilder.gs —
 > proves the materialize half), `checkStudioInputBuilder()` (is anything
 > `STUDIO_ACTIVE` and NOT yet materialized? — a fifth cause of "nothing
