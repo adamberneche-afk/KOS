@@ -61,7 +61,7 @@ Estimated time: 20–30 minutes for first deploy. 5 minutes for subsequent deplo
 
 You need:
 - A Google account (personal Gmail or Google Workspace)
-- The 14 project files (1–13 numbered .gs files + appsscript.json + 8_WebApp_UI.html) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
+- The 15 project files (1–14 numbered .gs files + appsscript.json + 8_WebApp_UI.html) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
 - A Workspace Studio subscription or equivalent AI inference tool for the processing step
 
 You do not need:
@@ -141,6 +141,10 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
 13_StudioInputBuilder   ← ported the live Docs-read around the same wall,
                            closing the gap Round 17's incident found
                            (see Studio Integration below)
+14_StudioFlowBuildSpec  ← generates the FlowBuildSpec tab to build either
+                           Studio Flow from — run syncStudioFlowBuildSpec()
+                           once deployed, same pattern as cas-ccps's
+                           42_FlowBuildSpec.js
 ```
 
 **Add the HTML file:**
@@ -290,6 +294,11 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 > deployed on, despite SMP-004 describing a separate personal one. So
 > `kos-personal/studio-steps/`'s two steps cannot run, and the flow is not
 > live.
+>
+> **Run `syncStudioFlowBuildSpec()` first** (14_StudioFlowBuildSpec.gs) and
+> build both Flows from the `FlowBuildSpec` tab it writes — every tab
+> name, column number, header and trigger condition, generated from the
+> same constants the code reads rather than hand-copied from prose.
 >
 > **Build the Flow with native steps and let Apps Script materialize its
 > input and harvest its output.** As of `13_StudioInputBuilder.gs`, the
