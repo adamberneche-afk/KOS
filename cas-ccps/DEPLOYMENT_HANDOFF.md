@@ -104,6 +104,11 @@
 >    rubric content instead of comparing against the student's Doc directly.
 >    A hit sets `ReadyStatus` to a new terminal `ERROR_SUSPECT_FABRICATION`
 >    before anything is written. Full writeup in `HISTORY.md`.
+>    **Follow-up:** Flows 3/4/5 (`41_WarmUpFlowBridge.js`) had the identical
+>    gap and now reuse this same check directly (`_wfbCheckPlausible_`,
+>    same GAS project — no FERPA workaround needed there, since
+>    `WQ25_RESPONSE_TEXT` is already a documented, retained field). See
+>    `HISTORY.md`'s own entry for that follow-up.
 >
 > ### What changed to get here
 >
