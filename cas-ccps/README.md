@@ -29,7 +29,8 @@ archived to `docs/archived/KOS_Guide_IT__Admin_Security_PRE_V8_ARCHITECTURE.pdf`
 — **do not hand this to district IT as a current security statement.**
 The real, current compliance reference is `docs/SYSTEM_ARCHITECTURE.html`'s
 Security Model section (no API keys ever touch a student-facing surface,
-prompt-injection denylist, three-point turn-in validation, a forensic
+prompt-injection defense via delimiter markers plus an instruction telling
+the model to disregard anything inside them, three-point turn-in validation, a forensic
 version-history check with an *honestly documented* bypass: a student who
 selects-all-and-pastes a pre-written fake report in one fast paste can
 defeat it — treated as a manual-review signal, not proof) together with
