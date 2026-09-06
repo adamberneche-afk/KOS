@@ -17,10 +17,12 @@
  * the step never appears in Studio's picker, and nothing errors anywhere.
  * See `tools/gas-lint/gcp-map.json` and that folder's own README banner.
  *
- * THE SHAPE OF THE PORT. Only the write-back half moves. The Sheets
- * trigger, the Docs read, and both Gemini passes stay native and are
- * unaffected. Two properties make this far smaller than cas-ccps's
- * equivalent redesign (`cas-ccps/scripts/37_FlowInputBuilder.js`):
+ * THE SHAPE OF THE PORT, AS ORIGINALLY LANDED. Only the write-back half
+ * moved here — the Sheets trigger, the Docs read, and both Gemini passes
+ * stayed native. `13_StudioInputBuilder.gs` (added later, after Round 17)
+ * moved the Docs read too: see its own header for why. Two properties
+ * made the write-back-only port far smaller than cas-ccps's equivalent
+ * redesign (`cas-ccps/scripts/37_FlowInputBuilder.js`) at the time:
  *
  *   - The fixed-picker wall doesn't apply. What forced cas-ccps to
  *     materialize a whole lookup chain into a flat row was that a native
@@ -70,6 +72,14 @@
  * `SUSPECT_FABRICATION` in `STUDIO_RETURN`; the source doc is left
  * untouched and the staging row stays `STUDIO_ACTIVE` for the staleness
  * guard to recycle, exactly like every other failure path here.
+ *
+ * STILL WORTH KEEPING NOW THAT 13_StudioInputBuilder.gs EXISTS. That file
+ * closes the SPECIFIC mechanism Round 17 hit — a live Studio Docs-read
+ * permission toggle — structurally: there is no longer a live Docs-read
+ * step for that toggle to break. This gate is not made redundant by that;
+ * it is now defense-in-depth against the broader class that mechanism was
+ * one instance of — a model that ignores or fabricates past whatever text
+ * it was actually handed, materialized or not. Cheap insurance, kept.
  *
  * THE ONE STATE THAT IS NOT CLEANLY RETRYABLE, and which this file handles
  * better than the custom step could. Once the doc body is overwritten, the
@@ -762,9 +772,13 @@ function installStudioFlowFixture() {
   console.log('[StudioReturn] fixture installed: doc ' + fileId + ', rows ' +
     rows.map(function (r) { return r.type; }).join(' + '));
   console.log('[StudioReturn] Next: runMatrixTurnstile() releases them to STUDIO_ACTIVE ' +
-    '(it is TIER_1 gated, so a cold engine warns but still passes through), then a real Flow ' +
-    'should write a STUDIO_RETURN row for each. checkStudioFlowLiveness() reports whether that ' +
-    'ever happened, per payload type. Nothing else can tell you.');
+    '(it is TIER_1 gated, so a cold engine warns but still passes through), then ' +
+    'buildStudioInputRows() (13_StudioInputBuilder.gs) materializes them into CuratorInput/ ' +
+    'VectorClassifyInput — that is what a real Flow now triggers on, not STAGING_PIPELINE ' +
+    'directly. A real Flow should then write a STUDIO_RETURN row for each. ' +
+    'checkStudioFlowLiveness() reports whether that ever happened, per payload type; ' +
+    'checkStudioInputBuilder() reports whether the materialization step itself ran. Nothing ' +
+    'else can tell you either.');
   return { installed: true, fileId: fileId, uids: rows.map(function (r) { return r.uid; }) };
 }
 

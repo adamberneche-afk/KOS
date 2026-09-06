@@ -155,12 +155,13 @@
     },
     "kos-personal:studio-flows": {
       "project": "kos-personal",
+      "materialize": "buildStudioInputRows",
       "harvest": "harvestStudioReturns",
       "canary": "runStudioReturnCanary",
       "binding": "checkStudioFlowBinding",
       "liveness": "checkStudioFlowLiveness",
       "fixture": "installStudioFlowFixture",
-      "_note": "No materialize role: the payload already lives in a Drive Doc that a native step reads directly."
+      "_note": "materialize added when 13_StudioInputBuilder.gs closed the live in-Studio Docs-read both flows used to have (the exact surface CHANGELOG.md's Round 17 incident hit) -- the payload no longer lives ONLY in a Drive Doc a native step reads directly; it is copied into CuratorInput/VectorClassifyInput first. runStudioInputCanary() (13_StudioInputBuilder.gs) is the materialize-side canary; runStudioReturnCanary() above covers the harvest side, unchanged."
     }
   }
 }

@@ -61,7 +61,7 @@ Estimated time: 20–30 minutes for first deploy. 5 minutes for subsequent deplo
 
 You need:
 - A Google account (personal Gmail or Google Workspace)
-- The 13 project files (1–12 numbered .gs files + appsscript.json + 8_WebApp_UI.html) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
+- The 14 project files (1–13 numbered .gs files + appsscript.json + 8_WebApp_UI.html) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
 - A Workspace Studio subscription or equivalent AI inference tool for the processing step
 
 You do not need:
@@ -137,7 +137,10 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
                            steps (see Studio Integration below); this file
                            was missing from this list until 2026-09-05,
                            confirmed against tools/gas-lint/project-map.json,
-                           the authoritative 13-file list for this project
+                           the authoritative file list for this project
+13_StudioInputBuilder   ← ported the live Docs-read around the same wall,
+                           closing the gap Round 17's incident found
+                           (see Studio Integration below)
 ```
 
 **Add the HTML file:**
@@ -242,11 +245,12 @@ The daily error digest sends to the email address stored as `KOS_ADMIN_EMAIL` in
 2. Run `setupAllTriggers()` (select it from the function dropdown → click Run)
 3. Authorize any new permission prompts
 4. Go to **Triggers** (clock icon in the left sidebar)
-5. Confirm you see 14 triggers installed
+5. Confirm you see 15 triggers installed
 
 Expected trigger list:
 - sensor1_scanInboundSessions (every 5 min)
 - runMatrixTurnstile (every 5 min)
+- buildStudioInputRows (every 1 min)
 - harvestStudioReturns (every 5 min)
 - processInferenceQueue (every 10 min)
 - runSemanticSweeper (hourly)
@@ -287,9 +291,15 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 > `kos-personal/studio-steps/`'s two steps cannot run, and the flow is not
 > live.
 >
-> **Build the Flow with native steps and let Apps Script harvest the result.**
-> The trigger, the Docs read and both Gemini passes were always native and are
-> unaffected; only the write-back moves. Make the Flow's last step a native
+> **Build the Flow with native steps and let Apps Script materialize its
+> input and harvest its output.** As of `13_StudioInputBuilder.gs`, the
+> Flow no longer has a live Docs-read step at all — that was the exact
+> surface the Round 17 incident hit (a live "Get document" step silently
+> failing while Gemini still returned well-formed output). Trigger each
+> Flow on `Status = READY` in `CuratorInput` (Curator flow) or
+> `VectorClassifyInput` (classification flow) — a single condition, one
+> tab per flow, nothing to combine — bind Gemini's variable to
+> `@trigger.SourceText`, and make the Flow's last step a native
 > **"add row to sheet"** into the `STUDIO_RETURN` tab of the BRAIN_TRUST_INDEX
 > spreadsheet, writing:
 >
@@ -317,26 +327,33 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 > queued applies the wrong treatment silently, and the probe compares what
 > came back against what the pipeline queued for that UID.
 >
-> Verify with `runStudioReturnCanary()` (proves the Apps Script half with the
-> Flow stubbed), then `checkStudioFlowLiveness()` — the only thing that can
+> Verify in order: `runStudioInputCanary()` (`13_StudioInputBuilder.gs` —
+> proves the materialize half) and `checkStudioInputBuilder()` (is
+> anything `STUDIO_ACTIVE` and not yet materialized? — a fifth cause of
+> "nothing happened" this file alone can introduce), then
+> `runStudioReturnCanary()` (proves the harvest half with the Flow
+> stubbed), then `checkStudioFlowLiveness()` — the only thing that can
 > tell you whether a Flow has ever actually written back. A green "Run
-> Completed" in the Studio UI cannot: a Flow that matched zero rows reports
-> exactly the same thing.
+> Completed" in the Studio UI cannot: a Flow that matched zero rows
+> reports exactly the same thing.
 >
 > **Rebuilding after the Round 17 pause?** Read
-> `STUDIO_INTEGRATION_SPEC.md`'s banner in full before wiring the trigger —
-> it has the corrected, numbered rebuild order (verify `Status` alone
-> before adding `Payload_Type`, check the run log for a Workspace-sources
-> warning before trusting output, try an "Ask a Gem" step). Also watch
-> `checkStudioReturns()`'s `suspectFabrication` count once the Flow is
-> live: the groundedness gate added since that incident will flag (not
-> apply) a return that never actually read its source document, so a
-> non-zero count there means look at the Flow, not the harvest.
+> `STUDIO_INTEGRATION_SPEC.md`'s banner in full before wiring the trigger.
+> Its "verify `Status` alone before adding `Payload_Type`" caution no
+> longer applies — there is no second condition to add any more, since
+> each Flow's trigger now lives on its own dedicated tab. Its "try an Ask
+> a Gem step" hypothesis is now optional rather than load-bearing: a plain
+> "Ask Gemini" step has no live document access left to lose, since
+> `SourceText` is already a plain string on the trigger row. What's still
+> real: watch `checkStudioReturns()`'s `suspectFabrication` count once the
+> Flow is live — the groundedness gate is now defense-in-depth rather than
+> the only defense, but a non-zero count still means look at the Flow's
+> output quality, not the harvest.
 
 
 This is the critical unbuilt piece. Until the Studio integration is live, every session row requires a manual `devSetFlowComplete()` to advance.
 
-See `STUDIO_INTEGRATION_SPEC.md` for the complete specification of what Studio must implement, and `CURATOR_PROMPT.md` (Rule 8) for the optional Auditor accountability pass. The short version: Studio polls for `STUDIO_ACTIVE` rows in STAGING_PIPELINE, reads the Drive document at the `File_ID` column, runs inference, optionally runs a second Auditor step verifying the Curator's own claims against the transcript (merged into the same JSON as `auditor_sign_off` — never written as a second document), writes the JSON back to that document, and sets the `Status` column to `FLOW_COMPLETE`. A row whose `auditor_sign_off` fails verification never reaches the ledgers — it's archived to `AUDIT_LOG` and either retried or, past `CFG.MAX_RETRIES`, escalated to the terminal `AUDIT_REJECTED` status.
+See `STUDIO_INTEGRATION_SPEC.md` for the complete specification of what Studio must implement, and `CURATOR_PROMPT.md` (Rule 8) for the optional Auditor accountability pass. The short version: `13_StudioInputBuilder.gs` materializes `STUDIO_ACTIVE` rows into `CuratorInput`/`VectorClassifyInput` (reading the Drive document itself, once, in Apps Script), Studio polls those tabs for `Status = READY`, runs inference on `@trigger.SourceText`, optionally runs a second Auditor step verifying the Curator's own claims against that same text (merged into the same JSON as `auditor_sign_off` — never written as a second document), and adds one row to `STUDIO_RETURN`. `harvestStudioReturns()` then writes the JSON back to the original document and sets the `Status` column to `FLOW_COMPLETE`. A row whose `auditor_sign_off` fails verification never reaches the ledgers — it's archived to `AUDIT_LOG` and either retried or, past `CFG.MAX_RETRIES`, escalated to the terminal `AUDIT_REJECTED` status.
 
 ---
 

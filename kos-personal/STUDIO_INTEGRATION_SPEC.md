@@ -1,86 +1,103 @@
 # KOS v8.0 — Studio Integration Specification
 
-> **⚠ STEPS 6 AND 7 ARE SUPERSEDED. Read this before building the Flow.**
-> The write-back half moved into Apps Script. A custom Studio step is a
-> Workspace Add-on and needs a standard, non-default Cloud project; GCP is
-> disabled org-wide for the `ccpsnet.net` account this system is actually
-> deployed on (SMP-004 describes a separate personal account — that is not
-> what exists), so `studio-steps/`'s two steps install without error and
-> never appear in Studio's picker.
+> **⚠ STEPS 1, 6 AND 7 ARE ALL SUPERSEDED. Read this before building the
+> Flow — the shape below is simpler than everything after this banner.**
+> A custom Studio step is a Workspace Add-on and needs a standard,
+> non-default Cloud project; GCP is disabled org-wide for the
+> `ccpsnet.net` account this system is actually deployed on (SMP-004
+> describes a separate personal account — that is not what exists), so
+> `studio-steps/`'s two steps install without error and never appear in
+> Studio's picker. That was true when this banner last said so.
 >
-> **What the Flow does now:** everything through the model call, unchanged —
-> the Sheets trigger, the Docs read, both Gemini passes (Steps 1-5 and
-> connector rows T through 2b below are all still correct). Its **last step
-> is a native "add row to sheet" into a `STUDIO_RETURN` tab**, columns
-> `Returned_At | Payload_UID | Payload_Type | Primary_JSON | Auditor_JSON`.
-> It does **not** write the document and does **not** set a status.
+> **What changed since: the live Docs-read step is gone too, not just the
+> write-back.** `13_StudioInputBuilder.gs`'s `buildStudioInputRows()`
+> reads the source document itself — the thing Step 3 below (and the old
+> Step 1 of the connector table) used to ask Studio's own "Get document"
+> step to do live, at flow-run time — and writes the full text into a
+> flat `SourceText` column on a new tab: `CuratorInput` for
+> SESSION_LOG/EXTERNAL_DATA/COG_STIMULUS/COG_EXHAUST,
+> `VectorClassifyInput` for VECTOR_CLASSIFY. Both run on a 1-minute
+> trigger, filling in behind Turnstile's release.
 >
-> `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` then does both on a
-> 5-minute trigger: overwrite the source doc body and set the staging row to
-> `FLOW_COMPLETE`. Only the doc-body overwrite genuinely needed script — a
-> native insert-text step is not documented as able to clear existing
-> content first, and at that point the body still holds the raw source text.
-> The status machine is unchanged: a row stays `STUDIO_ACTIVE` until the
-> harvest sets `FLOW_COMPLETE`, and there is no new intermediate status.
+> **Why this changed.** CHANGELOG.md's Round 17 incident was Studio's own
+> Docs-read step silently failing ("Workspace sources is turned off...
+> sent without file references from variables") while Gemini still
+> returned well-formed, schema-valid output — nothing before that
+> incident could tell the difference from a real answer. The groundedness
+> gate (below) was built to catch that after the fact. This closes the
+> same gap a level earlier: with no live Docs-read step left in Studio at
+> all, for either flow, that specific failure mode cannot occur
+> structurally — the same reason it already can't for cas-ccps's Flows
+> 3/4/5 or any of leader-hub's six flows (none of them have a live
+> in-Studio document read either).
 >
-> Verify with `runStudioReturnCanary()`, `checkStudioFlowBinding()` (run it
-> while wiring that last step — it logs the exact column binding) and
-> `checkStudioFlowLiveness()`. `installStudioFlowFixture()` gives the Flow a
-> row to match, so a green "Run Completed" over zero rows is distinguishable
-> from success. See that file's header, `kos-personal/DEPLOYMENT_GUIDE.md`
-> and `tools/gas-lint/gcp-map.json`.
+> **What each Flow does now, end to end:**
 >
-> **Automated defense, added after Round 17: the groundedness gate.**
-> `harvestStudioReturns()` now checks a Curator-type return's own output for
-> shared vocabulary with its source document BEFORE ever overwriting that
-> document — see `12_StudioReturnHarvest.gs`'s `_srCheckGroundedness_`. A
-> return that shares none of the source's distinguishing words is marked
-> `SUSPECT_FABRICATION` in `STUDIO_RETURN` instead of applied: the source
-> doc is left untouched and the staging row stays `STUDIO_ACTIVE` for the
-> staleness guard to recycle. This is a smoke test, not a fact-checker — it
-> catches "the model never read the document at all" (Round 17's exact
-> incident), not "read it and summarized it wrong." It only engages on
-> documents at or above `SR_GROUNDEDNESS_MIN_CHARS` (500 characters), so it
-> never fires against a fixture or canary scratch doc. Check
-> `checkStudioReturns()`'s `suspectFabrication` count, or watch for its
-> console warning.
+> 1. **Trigger — a single condition, not a compound one.** `Status =
+>    READY` on `CuratorInput` (Curator flow) or `VectorClassifyInput`
+>    (classification flow). Nothing else to combine it with — the tab
+>    itself is what used to need `Payload_Type` to distinguish, because
+>    both flows polled the same `STAGING_PIPELINE` sheet. This is also
+>    why `meta/FLOW_DOCTRINE.md` rule 14 (verify a compound trigger's
+>    more restrictive half in isolation) no longer applies here: there is
+>    no second condition to layer on by mistake.
+> 2. **Native "Get row"** off the trigger row itself — `SourceText` is
+>    right there, already the full document text. No Docs connector, no
+>    Drive permission of any kind, needed by this step or any other in
+>    the Flow.
+> 3. **Ask Gemini** — system prompt: `CURATOR_PROMPT.md` (Curator) or
+>    `VECTOR_CLASSIFY_PROMPT.md` (classification), pasted verbatim ·
+>    variable: `@trigger.SourceText`. Same prompts, same contract, same
+>    optional Auditor pass (rows 2a/2b below) as before — none of that
+>    changed.
+> 4. **Native "add row to sheet"** into `STUDIO_RETURN`, exactly as
+>    before: `Returned_At | Payload_UID | Payload_Type | Primary_JSON |
+>    Auditor_JSON`. Still does **not** write the document and does
+>    **not** set a status — `12_StudioReturnHarvest.gs`'s
+>    `harvestStudioReturns()` still does both on its own 5-minute
+>    trigger, unchanged: overwrite the source doc body (found via
+>    `STAGING_PIPELINE`'s own `File_ID`, not from the new input tabs) and
+>    set the staging row to `FLOW_COMPLETE`.
 >
-> **Round 17 rework — read this before rebuilding the Curator flow.** The
-> first real build against a live `STUDIO_ACTIVE` row surfaced three
-> distinct problems at once (full incident and diagnosis in
-> `CHANGELOG.md`); the Flow was deliberately turned off rather than patched
-> around. Do these in order on the next build:
+> Verify with, in order: `runStudioInputCanary()` (13_StudioInputBuilder.gs —
+> proves the materialize half), `checkStudioInputBuilder()` (is anything
+> `STUDIO_ACTIVE` and NOT yet materialized? — a fifth cause of "nothing
+> happened," introduced by this file existing at all, that none of the
+> four checks below can see), `runStudioReturnCanary()` (proves the
+> harvest half), `checkStudioFlowBinding()` (run it while wiring the last
+> step — it logs the exact column binding) and `checkStudioFlowLiveness()`.
+> `installStudioFlowFixture()` still gives both flows a row to match, now
+> flowing through the materializer the same as a real submission would.
+> See `12_StudioReturnHarvest.gs` and `13_StudioInputBuilder.gs`'s own
+> headers, `kos-personal/DEPLOYMENT_GUIDE.md` and
+> `tools/gas-lint/gcp-map.json`.
 >
-> 1. **Verify the trigger's `Status = STUDIO_ACTIVE` condition ALONE
->    first**, before adding the `Payload_Type` filter on top. Build the
->    trigger with only the `Status` condition, run it, and confirm the
->    matched-row count equals the number of rows genuinely at
->    `STUDIO_ACTIVE` — not the combined-condition count. Round 17's test
->    run reported "Found 7 rows matching conditions" against a sheet where
->    only 1 row should have qualified; `Payload_Type` alone was doing all
->    the filtering, and `Status` either wasn't wired or wasn't taking
->    effect. Only add `Payload_Type` back in once the `Status`-only count
->    is confirmed correct.
-> 2. **Before trusting any first-build test run's output, check the run
->    log for a file-access warning** — specifically anything like
->    "Workspace sources is turned off" / "Request was sent without file
->    references from variables." A run can return well-formed, schema-valid
->    JSON that reads as a plausible summary while Gemini never actually
->    opened the document — the single most dangerous false-positive in this
->    integration, because it would silently overwrite the real source
->    document with fabricated text. The groundedness gate above is an
->    automated backstop against exactly this, not a substitute for reading
->    the run log yourself before trusting a first build.
-> 3. **Try an "Ask a Gem" step instead of a generic "Ask Gemini" step**, if
->    Studio's builder offers one — bind the Curator persona as a
->    pre-configured Gem rather than pasting `CURATOR_PROMPT.md` into a
->    generic step's system-prompt field. Not yet confirmed as of this
->    writing; the working hypothesis is that a configured Gem may sidestep
->    the Workspace-sources issue outright, and that the generic step's more
->    manual variable/branch wiring is what let problems 1 and 2 above
->    surface confusingly rather than cleanly. If this account's Studio
->    doesn't offer that step type, fall back to the generic step and lean
->    harder on step 2's log check.
+> **The groundedness gate stays, as defense-in-depth, not because the
+> live-read risk is still open.** `harvestStudioReturns()` still checks a
+> Curator-type return's own output for shared vocabulary with its source
+> document before ever overwriting that document — see
+> `12_StudioReturnHarvest.gs`'s `_srCheckGroundedness_`. It no longer
+> exists to catch a Docs-read permission toggle (that mechanism is closed
+> above); it is now a backstop against a model that reads a materialized
+> `SourceText` cell and fabricates anyway. A return sharing none of the
+> source's distinguishing words is marked `SUSPECT_FABRICATION` in
+> `STUDIO_RETURN` instead of applied: the source doc is left untouched
+> and the staging row stays `STUDIO_ACTIVE` for the staleness guard to
+> recycle. It only engages on documents at or above
+> `SR_GROUNDEDNESS_MIN_CHARS` (500 characters), so it never fires against
+> a fixture or canary scratch doc. Check `checkStudioReturns()`'s
+> `suspectFabrication` count, or watch for its console warning.
+>
+> **What this means for Round 17's other two open questions.** Its
+> "verify `Status` alone before adding `Payload_Type`" lesson is now
+> structural, not a build-order caution to remember — there is nothing to
+> combine. Its "try an Ask a Gem step" hypothesis, to sidestep the
+> Workspace-sources issue, is now optional rather than the working
+> hypothesis for closing a still-open risk: a plain "Ask Gemini" step has
+> nothing left to lose live document access to, since `SourceText` is
+> already a plain string on the trigger row. Still worth trying if this
+> account's Studio offers it and quality improves, just not load-bearing
+> for correctness the way it looked in Round 17.
 
 This document defines the complete contract between KOS v8.0 and Workspace Studio (or any AI inference engine used as a drop-in replacement). It is written for the developer building the Studio side of the integration.
 
@@ -97,9 +114,15 @@ KOS creates session documents and queues them for AI inference. Studio is respon
 ```
 KOS Sensor 1         Creates chunk doc in Drive
 KOS Turnstile        PENDING_FLOW → STUDIO_ACTIVE
-Studio               Reads STUDIO_ACTIVE rows
-Studio               Opens Drive doc at File_ID
-Studio               Runs inference on doc text
+KOS Input Builder    Opens the Drive doc at File_ID, writes the full text
+                     into CuratorInput/VectorClassifyInput's SourceText
+                     column, Status = READY (13_StudioInputBuilder.gs,
+                     1-minute trigger) — closes the live Docs-read Round
+                     17 hit; see the banner above
+Studio               Polls CuratorInput/VectorClassifyInput for
+                     Status = READY (single condition, own tab per flow)
+Studio               Reads @trigger.SourceText — no Docs connector
+Studio               Runs inference on that text
 Studio (optional)    Auditor verifies the Curator's own claims against
                      the transcript, merged in as auditor_sign_off —
                      see Step 7's connector table (steps 2a/2b) and
@@ -126,11 +149,20 @@ KOS Queue Processor  Parses JSON, checks auditor_sign_off — passes
 
 ## Step 1 — Authentication
 
+> **⚠ Partially superseded — see the banner at the top.** Studio no
+> longer needs its own Drive/Docs access at all. Every native step in
+> either Flow now reads and writes Sheets rows only (`CuratorInput`/
+> `VectorClassifyInput` in, `STUDIO_RETURN` out) — the Drive-doc read
+> moved into `13_StudioInputBuilder.gs`, which runs under this same
+> deployment's own Apps Script identity, not Studio's. The BRAIN_TRUST_INDEX
+> access requirement below is unchanged and still real; the second bullet
+> is what's gone.
+
 Studio must authenticate to Google with an account that has:
 - **Read/Write access to BRAIN_TRUST_INDEX** (the STAGING_PIPELINE spreadsheet)
-- **Read/Write access to the Drive docs** referenced in the File_ID column
+- ~~Read/Write access to the Drive docs referenced in the File_ID column~~ — no longer needed by Studio; only by Apps Script, which already has it
 
-The simplest approach: use the same Google account that owns the KOS deployment. If Studio runs as a different service account, that account must be granted explicit access to BRAIN_TRUST_INDEX and the relevant Drive folders.
+The simplest approach: use the same Google account that owns the KOS deployment. If Studio runs as a different service account, that account must be granted explicit access to BRAIN_TRUST_INDEX.
 
 BRAIN_TRUST_INDEX spreadsheet ID is stored in `PropertiesService` under the key `INDEX_ID`. For Studio to find it, you have two options:
 1. Hard-code the spreadsheet ID in your Studio configuration after first deploy
@@ -140,9 +172,15 @@ The spreadsheet URL is visible in the web app under Diagnostics → Sensor 2 web
 
 ---
 
-## Step 2 — Polling for STUDIO_ACTIVE Rows
+## Step 2 — Polling for READY Rows
 
-Studio polls STAGING_PIPELINE on a schedule. Recommended polling interval: every 5 minutes, offset from the KOS Turnstile trigger to avoid collision.
+> **⚠ Superseded — see the banner at the top.** Studio polls
+> `CuratorInput`/`VectorClassifyInput`, not `STAGING_PIPELINE` directly.
+> Kept below for the column shape of the sheet `13_StudioInputBuilder.gs`
+> reads FROM (still real, still worth knowing) — the polling target and
+> filter condition are what changed.
+
+**What `13_StudioInputBuilder.gs` polls, on Apps Script's own 1-minute trigger** (not Studio's):
 
 **Spreadsheet:** BRAIN_TRUST_INDEX (ID from `INDEX_ID` property)
 **Sheet tab:** `STAGING_PIPELINE`
@@ -159,41 +197,46 @@ Studio polls STAGING_PIPELINE on a schedule. Recommended polling interval: every
 | 5 | Status | Current pipeline status |
 | 6 | Retry_Count | Number of processing attempts |
 
-**Filter:** Fetch all rows where column index 5 (Status) = `STUDIO_ACTIVE`
+**Filter:** Fetch all rows where column index 5 (Status) = `STUDIO_ACTIVE`. Same filter as before — this half of the mechanism didn't change, only WHO does the fetching.
+
+**What Studio itself polls now:** `CuratorInput` (Curator flow) or `VectorClassifyInput`
+(classification flow), filtered to `Status = READY` — a single condition,
+each tab already scoped to one flow. See `SCHEMA_REFERENCE.md`'s
+`CuratorInput`/`VectorClassifyInput` sections for the column shape Studio
+actually reads.
 
 **Concurrency:** KOS is configured with `TURNSTILE_CONCURRENCY = 1`. Under normal operation, there will be at most one `STUDIO_ACTIVE` row at a time. Studio should handle multiple rows gracefully but is not required to process them in parallel.
 
-**Staleness guard:** KOS automatically resets `STUDIO_ACTIVE` rows that have been active for more than 30 minutes (configurable via `CFG.TURNSTILE_STALE_MINS`). If Studio takes longer than 25 minutes to process a document, it should write an in-progress marker to prevent the reset. A simple approach: overwrite the doc body with `{"status":"IN_PROGRESS","started_at":"..."}` as a provisional write, then replace with the full inference JSON when complete.
+**Staleness guard:** KOS automatically resets `STUDIO_ACTIVE` rows that have been active for more than 30 minutes (configurable via `CFG.TURNSTILE_STALE_MINS`). Unchanged by this file's own doc-read moving into Apps Script — a Flow still taking longer than that on a materialized row is still slow enough to recycle. The old "write an in-progress marker into the doc body" workaround below no longer applies (there's no doc body to provisionally write into from Studio's side any more) and was never load-bearing for a single-concurrency deployment.
 
 ---
 
 ## Step 3 — Reading the Source Document
 
-For each `STUDIO_ACTIVE` row, open the Drive document at `File_ID` (column index 4).
+> **⚠ Superseded — see the banner at the top.** No Studio step reads the
+> Drive document any more, for either flow. `13_StudioInputBuilder.gs`'s
+> `buildStudioInputRows()` does exactly what this section describes,
+> once, in Apps Script, before Studio ever runs — and writes the result
+> into `SourceText`. Kept below because it's still an accurate
+> description of *that* read, just relocated.
+
+`buildStudioInputRows()` opens the Drive document at `File_ID` for every not-yet-materialized `STUDIO_ACTIVE` row:
 
 ```javascript
-// Google Apps Script example
+// 13_StudioInputBuilder.gs's _ciReadDocText_
 const doc  = DocumentApp.openById(fileId);
 const text = doc.getBody().getText();
 ```
 
-```python
-# Python example (Google Drive API)
-from googleapiclient.discovery import build
-service = build('docs', 'v1', credentials=creds)
-document = service.documents().get(documentId=file_id).execute()
-text = extract_text(document)  # flatten the structural elements
-```
+The document body contains the raw session text submitted by the user. For `SESSION_LOG` payload type, this is an AI session transcript. For `COG_STIMULUS` payload type, it is a pre-structured stimulus document with persona context prepended. That full text lands verbatim in the materialized row's `SourceText` column — Studio's own Gemini step binds `@trigger.SourceText` directly, per the banner.
 
-The document body contains the raw session text submitted by the user. For `SESSION_LOG` payload type, this is an AI session transcript. For `COG_STIMULUS` payload type, it is a pre-structured stimulus document with persona context prepended.
-
-**Do not modify the source document before writing your output.** If inference fails mid-way, an empty or partial document body will cause a `NEEDS_CURATOR` status when the queue processor attempts to parse it.
+**This read does not modify the source document.** The doc stays exactly as submitted until `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` overwrites it with the final JSON, same as before this file existed.
 
 ---
 
 ## Step 4 — Running Inference
 
-Studio runs inference on the document text according to the payload type.
+Studio runs inference on `@trigger.SourceText` (the materialized document text — see Step 3) according to the payload type.
 
 ### SESSION_LOG inference
 
@@ -398,19 +441,25 @@ for (let i = 1; i < data.length; i++) {
 
 The KOS queue processor runs every 10 minutes and will pick up the `FLOW_COMPLETE` row on its next execution.
 
-**Connector configuration, step by step** — same table format as
-`VECTOR_CLASSIFY`'s own configuration table below, so both flows are
-documented at the same level of concreteness:
+**Connector configuration, step by step, as it actually stands today** —
+same table format as `VECTOR_CLASSIFY`'s own configuration table below,
+so both flows are documented at the same level of concreteness. Rows T
+and 1 below are the CURRENT shape (single-condition trigger, no Docs
+step); rows 3 and 4 are kept for the write CONTRACT they document — the
+one `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` actually
+implements — not as steps to build in Studio. The real last Studio step
+is the "add row to sheet into STUDIO_RETURN" row that replaces them,
+added at the end of this table.
 
 | # | Connector | Configuration | Notes |
 |---|---|---|---|
-| T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `STAGING_PIPELINE` · Condition: `Status = STUDIO_ACTIVE` AND `Payload_Type` in `SESSION_LOG`, `EXTERNAL_DATA`, `COG_STIMULUS` | The `Payload_Type` condition is what separates this flow from `VECTOR_CLASSIFY` polling the same sheet (that flow's own table below excludes these three the same way) — without it, both flows would race to claim every `STUDIO_ACTIVE` row. |
-| 1 | Google Docs — Get document | Document ID: `@trigger.File_ID` (column 4) | Raw session/external-data/stimulus text, per Step 3 above. Do not modify before writing output. |
-| 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md), pasted verbatim · Variable: the document text from Step 1 · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
-| 2a | *(optional)* Gemini — Generate content | An Auditor persona, instructed to check each checkable claim in `@step2.geminiOutput` against the original transcript (`@step1` output) and produce exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape — nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
-| 2b | *(required if 2a is used)* Merge/transform step | Combine `@step2.geminiOutput` and `@step2a.geminiOutput` into one JSON object: every key from Step 2's output, plus a new top-level `auditor_sign_off` key holding Step 2a's output verbatim | However your Studio setup supports this (a Code/Script step, or a follow-up Gemini call instructed to output the exact union and nothing else) — the requirement is just that Step 3 below writes ONE JSON object. Two JSON objects written back to back is not valid JSON and breaks `JSON.parse()` outright — confirmed directly against a real processed log that hit exactly this. |
-| 3 | Google Docs — Insert text (or overwrite body) | Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`, or `@step2b`'s merged output if 2a/2b are wired in — replacing the entire body | Same "JSON only, nothing else" contract as Step 6 above. |
-| 4 | Google Sheets — Update row | Row: `@trigger.row` · Status column (6): `FLOW_COMPLETE` | Must always run, even on a Step 2/3 failure path — leave `Status` at `STUDIO_ACTIVE` on failure instead (do **not** write `FLOW_COMPLETE` for malformed output) so the staleness guard resets it for retry rather than the queue processor trying to parse garbage — same rule as Error Handling below and as `VECTOR_CLASSIFY`'s own table. |
+| T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `CuratorInput` · Condition: `Status = READY` | Single condition — `CuratorInput` only ever carries Curator-type rows (`13_StudioInputBuilder.gs` sorts SESSION_LOG/EXTERNAL_DATA/COG_STIMULUS/COG_EXHAUST here, VECTOR_CLASSIFY into its own separate tab), so there is nothing to combine this with the way the old `Status = STUDIO_ACTIVE AND Payload_Type in (...)` condition needed to. See the banner's `meta/FLOW_DOCTRINE.md` rule 14 note. |
+| 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md), pasted verbatim · Variable: `@trigger.SourceText` (column 5 of `CuratorInput` — the materialized document text, per Step 3 above) · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
+| 2a | *(optional)* Gemini — Generate content | An Auditor persona, instructed to check each checkable claim in `@step2.geminiOutput` against the original transcript (`@trigger.SourceText`) and produce exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape — nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
+| 2b | *(required if 2a is used)* Merge/transform step | Combine `@step2.geminiOutput` and `@step2a.geminiOutput` into one JSON object: every key from Step 2's output, plus a new top-level `auditor_sign_off` key holding Step 2a's output verbatim | However your Studio setup supports this (a Code/Script step, or a follow-up Gemini call instructed to output the exact union and nothing else) — the requirement is just that the final step below writes ONE JSON object. Two JSON objects written back to back is not valid JSON and breaks `JSON.parse()` outright — confirmed directly against a real processed log that hit exactly this. |
+| ~~3~~ | ~~Google Docs — Insert text~~ | ~~Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`~~ | **Not a step to build.** This is the write `harvestStudioReturns()` performs, in Apps Script, on its own 5-minute trigger — kept here only as the contract that function implements. |
+| ~~4~~ | ~~Google Sheets — Update row~~ | ~~Status column: `FLOW_COMPLETE`~~ | **Not a step to build.** Same as above — `harvestStudioReturns()` sets this, never the Flow. |
+| **5** | **Google Sheets — Add row to sheet** | **Spreadsheet: `BRAIN_TRUST_INDEX` · Tab: `STUDIO_RETURN` · `Payload_UID`: `@trigger.Payload_UID` · `Payload_Type`: `@trigger.Payload_Type` · `Primary_JSON`: `@step2.geminiOutput` · `Auditor_JSON`: `@step2b`'s merged output if wired in, else blank** | **This is the actual last step.** Leave `Harvest_Status`, `Attempts`, `Error` empty — `harvestStudioReturns()` owns those. Must always run, even on a Step 2/2a/2b failure path — on failure, run this step with `Primary_JSON` however Studio's own error path shapes it (or skip the row entirely, letting the staleness guard recycle it) rather than writing `FLOW_COMPLETE` anywhere; nothing here should ever set that value. |
 
 **If 2a/2b are wired in:** a rejected `auditor_sign_off` (`status` not
 `PASSED`, or `unverified_claims_count > 0`) is caught by
@@ -486,7 +535,7 @@ The output JSON for `COG_STIMULUS` should contain only the `cog_registry` sectio
 
 **This is a second, independent Studio flow — not a mode of the SESSION_LOG flow above.** It exists specifically to enforce the Bifurcation Boundary (CE-SMP Vector Weight Calculation Engine v1.0, adopted as an operator decision): the Inference Flow is a *qualitative classifier only*. It is never trusted to compute a session-level vector weight — that arithmetic is 100% GAS, in `4_Vector_Router.gs`'s `_aggregateSentenceVectors_()`. If this flow's own guess at a session-level float ever leaked into VECTOR_MATRIX, that would defeat the entire point of building it.
 
-**Trigger:** identical mechanics to the flows above — poll `STAGING_PIPELINE` for `Status = STUDIO_ACTIVE` rows where `Payload_Type = VECTOR_CLASSIFY`. Same Turnstile gating, same staleness guard.
+**Trigger:** `Status = READY` on `VectorClassifyInput` — a single condition, same reasoning as the Curator flow's own trigger above (see the banner). `13_StudioInputBuilder.gs` is what still polls `STAGING_PIPELINE` for `Status = STUDIO_ACTIVE` rows where `Payload_Type = VECTOR_CLASSIFY`, in Apps Script, on its own 1-minute trigger; Studio itself never touches `STAGING_PIPELINE` for either flow any more. Same Turnstile gating, same staleness guard underneath.
 
 **System prompt:** the full, paste-verbatim text lives in [`VECTOR_CLASSIFY_PROMPT.md`](./VECTOR_CLASSIFY_PROMPT.md) — same convention as cas-ccps's `15_StudioFlowPrompts.js`: paste it exactly, don't paraphrase.
 
@@ -496,7 +545,7 @@ ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLI
 ```
 
 **What the flow does:**
-1. Read the source document (same mechanics as Step 3 above).
+1. Read `@trigger.SourceText` — materialized by `13_StudioInputBuilder.gs`, same mechanics as Step 3 above; no live document read left in this flow either.
 2. Split the text into exchanges (a human turn + the following AI turn) and, within each exchange, into individual sentences.
 3. For each exchange, classify it as `DECISION` (produced a binding decision, approved artifact, system law, or locked architectural direction) or `EXPLORATORY` (discussion, clarification, ideation, Q&A with no binding output).
 4. For each sentence, assign a relevance float 0.0–1.0 to each of the seven known vectors above, plus any additional theme signals you detect that aren't in that list (`unmapped_signals`) — this is how new themes eventually reach the Incubator. A sentence commonly carries several vectors at once ("the script must never execute if the status is changed by an API" is simultaneously SECURITY, GAS_DEVELOPMENT, and ARCHITECTURE) — assign all of them, don't force a single dominant theme.
@@ -533,23 +582,43 @@ ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLI
 ]
 ```
 
-Write this array as the document body (replacing the source text entirely — same convention as every other flow: JSON only, no markdown fences, no preamble). Then set `Status` to `FLOW_COMPLETE`, exactly like the other flows. `processInferenceQueue()` detects `Payload_Type = VECTOR_CLASSIFY` and routes to `processVectorClassificationPayload()` instead of the Curator intake path — everything downstream (aggregation, decay, Incubator promotion, the checksum) is GAS-only from there.
+**Write-back, as it actually stands today (this paragraph was itself stale even before this file's Docs-read update — corrected now):**
+this array is NOT written to the document body by the Flow, and the Flow
+does NOT set `Status` to `FLOW_COMPLETE` itself. Both of those moved into
+`12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` when the write-back
+half was ported (same file that handles the Curator flow's write-back —
+one harvest, both contracts, dispatched by `Payload_Type`). The Flow's
+real last step is a native "add row to sheet" into `STUDIO_RETURN`,
+`Primary_JSON` carrying this array (fence-stripped and validated as an
+Array by the harvest, then written to the doc body VERBATIM — see
+`_srPrepareDocText_`'s classification contract). `processInferenceQueue()`
+detects `Payload_Type = VECTOR_CLASSIFY` on the resulting `FLOW_COMPLETE`
+row and routes to `processVectorClassificationPayload()` instead of the
+Curator intake path — everything downstream (aggregation, decay,
+Incubator promotion, the checksum) is GAS-only from there.
 
-**Connector configuration, step by step** (kos-personal is single-user, so unlike cas-ccps's per-teacher flows there's no trigger-row variable to map — every value below is either static or comes straight off the `STAGING_PIPELINE` row itself):
+**Connector configuration, step by step** (kos-personal is single-user, so unlike cas-ccps's per-teacher flows there's no per-teacher variable to map — every value below is either static or comes straight off the `VectorClassifyInput` row itself):
 
 | # | Connector | Configuration | Notes |
 |---|---|---|---|
-| T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `STAGING_PIPELINE` · Condition: `Status = STUDIO_ACTIVE` AND `Payload_Type = VECTOR_CLASSIFY` | The `Payload_Type` condition is what separates this flow from the `SESSION_LOG` Curator flow polling the same sheet — without it, both flows would race to claim every `STUDIO_ACTIVE` row. |
-| 1 | Google Docs — Get document | Document ID: `@trigger.File_ID` (column 4) | Same source text the paired `SESSION_LOG` row for this session reads — this flow does not modify it before writing its own output. |
-| 2 | Gemini — Generate content | System prompt: full text of `VECTOR_CLASSIFY_PROMPT.md`, pasted verbatim · No variable mappings needed — the known-vectors list is hardcoded into the prompt itself (see above) · Output format: JSON only, no preamble or markdown | Malformed output here fails the same way every other flow's malformed output does — `NEEDS_CURATOR`, then retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
-| 3 | Google Docs — Insert text (or overwrite body) | Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`, replacing the entire body | Same "JSON only, nothing else" contract as Step 6 in the main handshake above. |
-| 4 | Google Sheets — Update row | Row: `@trigger.row` · Status column (6): `FLOW_COMPLETE` | Must always run, even on a Step 2/3 failure path — leave `Status` at `STUDIO_ACTIVE` on failure instead (do **not** write `FLOW_COMPLETE` for malformed output) so the staleness guard resets it for retry rather than the queue processor trying to parse garbage. |
+| T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` · Tab: `VectorClassifyInput` · Condition: `Status = READY` | Single condition — this tab only ever carries `VECTOR_CLASSIFY` rows (`13_StudioInputBuilder.gs` routes Curator types to the separate `CuratorInput` tab), so there is nothing to combine this with. |
+| 2 | Gemini — Generate content | System prompt: full text of `VECTOR_CLASSIFY_PROMPT.md`, pasted verbatim · Variable: `@trigger.SourceText` (column 5) — the known-vectors list is hardcoded into the prompt itself (see above), so this is the only variable mapping needed · Output format: JSON only, no preamble or markdown | Malformed output here fails the same way every other flow's malformed output does — `NEEDS_CURATOR`, then retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
+| **3** | **Google Sheets — Add row to sheet** | **Spreadsheet: `BRAIN_TRUST_INDEX` · Tab: `STUDIO_RETURN` · `Payload_UID`: `@trigger.Payload_UID` · `Payload_Type`: `@trigger.Payload_Type` (literally `VECTOR_CLASSIFY`) · `Primary_JSON`: `@step2.geminiOutput` · `Auditor_JSON`: leave blank — the classification contract has nothing to merge** | **The actual last step.** Leave `Harvest_Status`, `Attempts`, `Error` empty. Must always run, even on a Step 2 failure path — never write `FLOW_COMPLETE` anywhere; that value belongs to `harvestStudioReturns()` alone. |
 
 **Open integration question — not yet resolved in this repo:** for a `VECTOR_CLASSIFY` row's VECTOR_MATRIX write to land under the same `session_uid` as its paired `SESSION_LOG` row (so the two independently-completing flows correlate to one session), both rows need to share the same `Payload_UID` at the moment they're queued. `2_Ingestion_Sensors.gs`'s existing `_chunkAndQueue()` queues one `SESSION_LOG` row per chunk today and has not been modified to also queue a paired `VECTOR_CLASSIFY` row — that wiring depends on how session consolidation actually works in your live Studio setup (multiple raw chunk docs appear to already merge into one Curator output per the processed-log examples reviewed), which isn't something this repo can see. Decide and wire this once the Inference Flow itself is built and you can see the real shape of a completed classification against a real multi-chunk session.
 
 ---
 
 ## Testing the Integration
+
+The manual tests below bypass Studio (and, since this file's Docs-read
+update, `13_StudioInputBuilder.gs`'s materialization too) entirely — they
+write directly to the document and set `Status` by hand to exercise
+`processInferenceQueue()` in isolation. `runStudioInputCanary()`
+(`13_StudioInputBuilder.gs`) and `runStudioReturnCanary()`
+(`12_StudioReturnHarvest.gs`) are what actually test the materialize and
+harvest halves this file describes; these tests are a separate, older
+layer underneath both.
 
 ### Minimum viable test
 
@@ -618,13 +687,14 @@ If any ledger write failed, the `drip_failures` array in the queue processor log
 
 ## Quick Reference
 
-| What KOS does | What Studio does |
+| What KOS (Apps Script) does | What Studio does |
 |---|---|
-| Creates chunk docs in Drive | Opens chunk docs by File_ID |
-| Sets Status = STUDIO_ACTIVE | Polls STAGING_PIPELINE for STUDIO_ACTIVE |
-| Waits | Runs inference on doc text |
-| Waits | *(optional)* Auditor verifies the Curator's claims, output merged into the same JSON as `auditor_sign_off` — never a second object |
-| Waits | Writes the (possibly merged) JSON to doc body (replaces text entirely) |
-| Waits | Sets Status = FLOW_COMPLETE in STAGING_PIPELINE |
-| Parses JSON from doc, checks `auditor_sign_off` | Done |
+| Creates chunk docs in Drive, sets Status = STUDIO_ACTIVE (Turnstile) | Waits |
+| `buildStudioInputRows()` opens the doc, writes `SourceText` into `CuratorInput`/`VectorClassifyInput`, `Status = READY` | Waits |
+| Waits | Polls `CuratorInput`/`VectorClassifyInput` for `Status = READY` (single condition, own tab per flow) |
+| Waits | Reads `@trigger.SourceText` — no Docs connector, no Drive access, needed |
+| Waits | Runs inference · *(optional)* Auditor verifies the Curator's claims, merged into the same JSON as `auditor_sign_off` — never a second object |
+| Waits | Adds one row to `STUDIO_RETURN`: `Payload_UID`, `Payload_Type`, `Primary_JSON`, `Auditor_JSON` |
+| `harvestStudioReturns()` checks the groundedness gate, then writes the JSON to the doc body (replaces text entirely) and sets `Status = FLOW_COMPLETE` in STAGING_PIPELINE | Done |
+| `processInferenceQueue()` parses JSON from the doc, checks `auditor_sign_off` | Done |
 | Audit passed (or absent): routes data to all ledgers, sets PROCESSED · Audit failed: archives to AUDIT_LOG, then reverts to PENDING_FLOW (priority retry) or escalates to AUDIT_REJECTED past CFG.MAX_RETRIES | Done |

@@ -448,10 +448,11 @@ function executeBootstrap() {
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed (14 total — matches DEPLOYMENT_GUIDE.md's
+ * Triggers installed (15 total — matches DEPLOYMENT_GUIDE.md's
  * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
  *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
+ *   buildStudioInputRows          → every 1 min  (time-driven) — 13_StudioInputBuilder.gs
  *   harvestStudioReturns          → every 5 min  (time-driven) — 12_StudioReturnHarvest.gs
  *   processInferenceQueue         → every 10 min (time-driven)
  *   runSemanticSweeper            → hourly        (time-driven)
@@ -475,6 +476,14 @@ function setupAllTriggers() {
   const KOS_TRIGGERS = [
     'sensor1_scanInboundSessions',
     'runMatrixTurnstile',
+    'buildStudioInputRows',
+    // 'harvestStudioReturns' was missing from this list — found while
+    // adding buildStudioInputRows alongside it. Every OTHER trigger this
+    // function installs gets cleared before reinstalling; this one alone
+    // would have grown a duplicate on every re-run of setupAllTriggers()
+    // against an already-deployed instance, racing itself the same way
+    // 34_QueueWatchdog.js's own header warns a duplicate trigger does.
+    'harvestStudioReturns',
     'processInferenceQueue',
     'runSemanticSweeper',
     'sweepRootForExhaust',
@@ -516,6 +525,16 @@ function setupAllTriggers() {
   tryInstall('runMatrixTurnstile', () =>
     ScriptApp.newTrigger('runMatrixTurnstile')
       .timeBased().everyMinutes(5).create()
+  );
+
+  // ── Studio Input Builder — every 1 min (13_StudioInputBuilder.gs) ────
+  // Faster than Turnstile's own 5-minute release cadence, matching
+  // cas-ccps's buildFlowInputRows() precedent, so a row's CuratorInput/
+  // VectorClassifyInput material is ready well before either Flow or the
+  // next harvest cycle needs it.
+  tryInstall('buildStudioInputRows', () =>
+    ScriptApp.newTrigger('buildStudioInputRows')
+      .timeBased().everyMinutes(1).create()
   );
 
   // ── Studio Return Harvest — every 5 min (12_StudioReturnHarvest.gs) ──
