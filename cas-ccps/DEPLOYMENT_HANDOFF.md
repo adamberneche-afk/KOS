@@ -91,6 +91,19 @@
 >    level too high. Confirm with a plain directory listing before assuming
 >    gitignored files (like `cas-ccps/clasp/local/*.clasp.json`, the real
 >    script IDs) failed to survive the transfer.
+> 8. **A green "Run Completed" AND a schema-valid `GeminiFullOutput` still
+>    prove nothing about whether Gemini read the document it was given.**
+>    Found while porting kos-personal's own fix for this to cas-ccps: nothing
+>    in `harvestFlowInputResults()` checked the *content* of Flow 2's output
+>    before writing it into the student's own doc and generating
+>    `CompetencyEvidence` rows — only that it was non-empty. Closed by
+>    `_fiCheckPlausibility_` (`37_FlowInputBuilder.js`), which — because this
+>    system must never let Apps Script read the student's own text (see
+>    `docs/FERPA_DATA_MAP.md`'s `FlowInput` section) — checks the output for
+>    a self-reported non-access phrase and for engagement with the row's own
+>    rubric content instead of comparing against the student's Doc directly.
+>    A hit sets `ReadyStatus` to a new terminal `ERROR_SUSPECT_FABRICATION`
+>    before anything is written. Full writeup in `HISTORY.md`.
 >
 > ### What changed to get here
 >

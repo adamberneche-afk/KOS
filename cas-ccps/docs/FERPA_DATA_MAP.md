@@ -228,6 +228,17 @@ as a fast-follow once real usage volume justifies one, same as every
 other tab's retention mechanism was added after the fact, not
 speculatively up front.
 
+`harvestFlowInputResults()`'s `_fiCheckPlausibility_` gate (a backstop
+against a model returning well-formed output without ever reading the
+student's document — see `HISTORY.md`'s entry) respects this same
+boundary: it checks `GeminiFullOutput` against the row's own rubric
+fields (persona, unit name, tier, milestone text) and against a fixed
+list of self-reported non-access phrases, never against the student's
+Doc. It does not, and structurally cannot, open that Doc — doing so, even
+transiently for a comparison that persists nothing, would be the exact
+regression this tab's own design (`{{STUDENT_TEXT}}` left unsubstituted,
+above) exists to avoid.
+
 ### SCRSuggestions
 Student email, competency ID, AI-suggested rating (1–5), MET/NOT MET/PARTIAL
 counts, status, confirmed rating, confirmed-at, confirmed-by (the teacher who
