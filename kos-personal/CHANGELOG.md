@@ -1202,3 +1202,114 @@ teacher-facing dialog and the FERPA check-count all needed someone to read
 the prose against the code. Completeness is its worst failure mode: it can
 tell you a documented thing is gone, never that an undocumented thing
 exists.
+
+## Round 17 — first real deployment: code and infra live, Curator flow build paused for rework
+
+Code pushed and infrastructure verified live on the `ccpsnet.net` account —
+see `DEPLOYMENT_GUIDE.md`'s status banner for the full checklist. Two
+things worth recording that aren't just "deployment went fine":
+
+**A stale file list in this guide, found the same way cas-ccps's stale
+docs have been found all along — by actually pushing.** `DEPLOYMENT_GUIDE.md`'s
+own Phase 3 named 12 files; `tools/gas-lint/project-map.json`'s authoritative
+list has 13 — `12_StudioReturnHarvest.gs`, the file that ports the Studio
+write-back around the blocked custom steps, was missing from the guide's
+prose list even though it's been required since that port landed. Fixed
+in the guide directly. Same class of drift `doc-currency`'s checks exist
+to catch elsewhere in this repo; this file just isn't in its scope.
+
+**A deployment label that looked like a live-migration hazard, and wasn't
+— but needed actually checking, not assuming.** `clasp deployments` on
+this already-existing project listed a deployment named "V5.4 Core Router
+Initial Deployment" alongside the dev `@HEAD` one. This guide's own
+"Migrating from v5.4" section says outright not to deploy v8.0 into a
+project with a live v5.4 system. Rather than assume either way, opened
+the actual web app: it showed v8.0's own three-tab operational UI already
+bootstrapped (not "Build My Studio"), status "Not started," empty session
+log — proof a prior session got through v8.0's own Bootstrap and never
+used it, with the "V5.4" label being older, unrelated history rather than
+anything currently live. The generalizable move: a deployment's *name* is
+a hint, not a verdict; the fastest real signal in this specific system is
+what the web app actually shows on open, and it settled the question in
+under a minute where reasoning about it in the abstract would not have.
+
+### The Curator flow's first build — three real problems, not one
+
+Building the Curator Studio flow (`SESSION_LOG`/`EXTERNAL_DATA`/`COG_STIMULUS`
+→ `STUDIO_RETURN`) against a real `STUDIO_ACTIVE` row surfaced enough
+wrong at once that the right call was to stop and rework the approach
+rather than patch around each symptom:
+
+1. **The trigger's `Status = STUDIO_ACTIVE` condition wasn't actually
+   applied.** A test run reported "Found 7 rows matching conditions" —
+   `STAGING_PIPELINE` only had one row that should have qualified. The
+   other 6 were 5 old rows stuck at a garbled `AUDITING _LOG` status (dated
+   weeks earlier, unrelated to this session — see below) plus the one row
+   still legitimately at `PENDING_FLOW`. The `Payload_Type` half of the
+   compound trigger condition was evidently doing all the filtering; the
+   `Status` half either wasn't wired or wasn't taking effect. **Lesson
+   locked in: verify a compound trigger condition's more restrictive half
+   in isolation first** — confirm it alone matches the expected row
+   count — **before** layering a second filter on top, rather than
+   trusting the combined condition was built correctly and only
+   discovering the gap from a matched-row count that's obviously too
+   high.
+2. **Gemini proceeded without the source document and fabricated a
+   plausible-looking response.** The run log said outright: "Gemini
+   couldn't access files from variables in your prompt because Workspace
+   sources is turned off... Request was sent without file references from
+   variables." The JSON it returned was well-formed and matched the
+   output schema, but its content — a generic message about "Socratic
+   Onboarding" and an unarmed engine — bore no relation to any real
+   session text, because Gemini never received any. **This is the
+   dangerous case, not just an inconvenient one**: had this row's output
+   reached `harvestStudioReturns()`, it would have overwritten the real
+   source document's body with fabricated text and set the row
+   `FLOW_COMPLETE` — permanently. The row was caught and its
+   `STUDIO_RETURN` entry deleted before that could happen, but this is
+   exactly the kind of run a "Run Completed" banner cannot distinguish
+   from a real success (same lesson cas-ccps's and leader-hub's
+   deployments already established, applied here to a sharper
+   consequence — those two flows only ever wrote to their own queue
+   rows, never overwrote a source document). **Lesson locked in: before
+   trusting a first-build test run's output, confirm the run log shows no
+   file-access warning, and spot-check the output content against the
+   real source text — a plausible JSON shape is not evidence the model
+   ever saw the real document.**
+3. **The step type itself was likely wrong.** A generic "Ask Gemini" step
+   with a hand-pasted system prompt and manual variable wiring is what
+   `STUDIO_INTEGRATION_SPEC.md`'s connector table describes, but Studio
+   also offers an **"Ask a Gem"** step bound to a pre-configured Gem
+   (persona + instructions bundled once, reused by reference). Suspected
+   but not yet confirmed: the generic step's more manual variable/branch
+   setup is what let the trigger-scope and file-access problems above
+   surface distinctly from each other rather than cleanly, and a
+   configured Gem may sidestep the Workspace-sources issue outright
+   rather than needing a separate toggle found and enabled. **Not locked
+   in as best practice yet — to be tried and confirmed next session**,
+   but the working hypothesis going forward is: prefer an "Ask a Gem" step
+   with the Curator persona configured as a Gem over a generic Ask-Gemini
+   step with a pasted prompt, for any flow in this repo that needs to read
+   a live document.
+
+**What's confirmed unrelated, so it doesn't need chasing:** the 5
+`AUDITING _LOG` rows above are dated 8/19/2026, weeks before this
+deployment, same `Payload_UID` prefix across all five — old debris from
+whenever this project was first set up, not anything today's push or
+today's flow-build attempt caused. `SCHEMA_REFERENCE.md` already
+documents this exact garbled status as its own real-world example of a
+genuinely unrecognized value (`_isKnownStagingStatus_()` correctly
+recognizes every legacy v5.4 status as *known*, so these are something
+else entirely) — the web app's own "Unrecognized Status" tile is doing
+its job correctly, not reporting a new problem. Left in place, not
+cleaned up, since it's cosmetic (an alert count) rather than a functional
+blocker; worth clearing by hand eventually.
+
+**Current state, end of session:** the Curator flow is turned off in
+Studio, its bad `STUDIO_RETURN` row deleted. Nothing in `STAGING_PIPELINE`
+is at risk of being silently overwritten. Next session: rebuild the
+trigger with the `Status` condition verified in isolation, investigate
+the "Ask a Gem" approach, and re-test against the same real
+`STUDIO_ACTIVE` row (or a fresh one — Sensor 1 and the Turnstile are
+confirmed working end to end) before building the second flow
+(`VECTOR_CLASSIFY`).
