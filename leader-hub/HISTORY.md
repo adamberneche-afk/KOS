@@ -475,3 +475,52 @@ binding problems that do not exist, and a test pins that the two checks agree.
 The expected binding is logged from `AI_QUEUE_HEADERS` rather than
 transcribed, so it is the thing to copy from while wiring the step and cannot
 drift from what `checkAiJob_` reads.
+
+## 2026-09-05 — Deployed and all six Flows built live
+
+First real deployment: `clasp push` (9 files, matched
+`tools/gas-lint/project-map.json`'s `leader-hub:app` list exactly, no
+`.claspignore` allowlist gotcha), two Web App deployments, then all six
+Flows built in Studio and verified live — `checkAiFlowFixtures()` showed
+every one of `EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`,
+`LP_ASSIST`, `FIN_ANALYSIS`, `BRAG_EMAIL` move off `PENDING`, and
+`checkAiFlowBinding()` confirmed 6/6 rows clean.
+
+A pre-existing project shell was found before pushing: `.clasp.json`
+already carried a real script ID, and `clasp deployments` already listed
+an unlabelled `@1` plus a dev `@HEAD`, meaning a prior session got as far
+as creating the project and authorizing OAuth, then stopped. `clasp
+create` was skipped entirely (it would have made a duplicate project),
+and the push went straight into the existing shell. Worth checking for
+this pattern before assuming any "never deployed" system in this repo is
+truly starting from zero — kos-personal turned out to have the same
+shape the same session.
+
+**Why this build went faster than cas-ccps's did.** Every one of the six
+Flows is the same three-step shape — trigger, one Gemini call, update the
+triggering row in place — because every prompt is fully static (see
+`AiPrompts.gs`'s own header: "NO PLACEHOLDER SUBSTITUTION HERE,
+DELIBERATELY"). Each job type receives its whole input as one JSON blob
+on `Payload`; the Gemini step needs nothing but that blob and the
+matching `prompt_text` chip from `AI_Prompts`, no extraction step, no
+per-field variable mapping, no mode branching. One template, six
+substitution values (the `Type` literal), built back-to-back with no
+per-flow surprises. Contrast this directly with kos-personal's Curator
+flow the same session, which needed a source-document read, a
+structured multi-section prompt, and hit real trouble on the first
+build — see `kos-personal/CHANGELOG.md`'s 2026-09-05 entry. The lesson
+generalizes: a flow whose entire input is one opaque blob and whose
+prompt needs no runtime data is close to foolproof to build; a flow that
+reads a live document and must extract/interpret real content is where
+build time and failure modes both live.
+
+**No gap found building this, worth noting explicitly.** cas-ccps's
+`checkFlow2Binding()` had exactly this class of blind spot the same
+session (treated any row with output written as fully healthy, missing
+that the status half of the same write hadn't happened — see cas-ccps's
+own 2026-09-04 `HISTORY.md` entry). `checkAiFlowBinding()`'s underlying
+`_aiDiagnoseQueueRow_()` already checks for the equivalent case here
+("Result is filled but Status is still PENDING") by name, so this
+specific failure mode was never a risk building leader-hub's six flows —
+confirmed by reading the check's source before relying on it, not
+assumed from the function name.
