@@ -26,6 +26,7 @@ const EXPOSE = [
   'buildStudioInputRows', 'checkStudioInputBuilder', 'installStudioInputTrigger',
   'runStudioInputCanary', 'CI_COLS', 'CI_CURATOR_TAB', 'CI_CLASSIFY_TAB',
   'SR_CURATOR_TYPES', 'CFG', '_getSystemAsset', '_getOrCreateSheet',
+  'installStudioFlowFixture', 'removeStudioFlowFixtures',
 ];
 
 function load() {
@@ -207,6 +208,53 @@ test('installStudioInputTrigger: installs once, idempotent on a second call', ()
 });
 
 // ── runStudioInputCanary ──────────────────────────────────────────────────────
+
+// ── The real fixture, driven through the real materializer ──────────────────
+//
+// Every other test above seeds STAGING_PIPELINE by hand via seed(). This one
+// specifically drives installStudioFlowFixture()'s OWN planted rows and
+// document through buildStudioInputRows() — Flow Doctrine rule 5: "a fixture
+// is only as good as the consumer that reads it." Materialization is a NEW
+// consumer of that fixture that did not exist when the fixture was written,
+// so it needs its own proof the two actually agree, not just an updated
+// console.log pointing an operator at this sequence.
+
+test('the real fixture materializes correctly once released, for both payload types', () => {
+  const { exported, sandbox } = load();
+  const ss = indexSpreadsheet(exported, sandbox);
+  const installed = exported.installStudioFlowFixture();
+
+  // installStudioFlowFixture() plants PENDING_FLOW rows — simulates
+  // runMatrixTurnstile()'s release rather than depending on it, since
+  // 10_Turnstile.gs has no test harness of its own to drive that through.
+  const staging = tab(ss, exported.CFG.STAGING_SHEET, STAGING_HEADERS);
+  const rows = staging.getDataRange().getValues();
+  for (let i = 1; i < rows.length; i++) {
+    if (installed.uids.indexOf(String(rows[i][1]).trim()) !== -1) {
+      staging.getRange(i + 1, 6).setValue('STUDIO_ACTIVE');
+    }
+  }
+
+  const result = exported.buildStudioInputRows();
+  assert.equal(result.curatorBuilt, 1, JSON.stringify(result));
+  assert.equal(result.classifyBuilt, 1, JSON.stringify(result));
+
+  const curatorSheet = tab(ss, exported.CI_CURATOR_TAB, INPUT_HEADERS);
+  const classifySheet = tab(ss, exported.CI_CLASSIFY_TAB, INPUT_HEADERS);
+  const curatorUid = installed.uids.find((u) => u.indexOf('SESSION_LOG') !== -1);
+  const classifyUid = installed.uids.find((u) => u.indexOf('VECTOR_CLASSIFY') !== -1);
+  const curatorRow = findRow(curatorSheet, curatorUid);
+  const classifyRow = findRow(classifySheet, classifyUid);
+
+  assert.ok(curatorRow, 'the fixture\'s SESSION_LOG row was materialized');
+  assert.match(curatorRow[exported.CI_COLS.SOURCE_TEXT], /FIXTURE SESSION LOG/,
+    'the real fixture document\'s own text made it into SourceText');
+  assert.ok(classifyRow, 'the fixture\'s VECTOR_CLASSIFY row was materialized');
+  assert.equal(classifyRow[exported.CI_COLS.FILE_ID], curatorRow[exported.CI_COLS.FILE_ID],
+    'both rows point at the one shared fixture document, per the paired design');
+
+  exported.removeStudioFlowFixtures();
+});
 
 test('runStudioInputCanary: passes end to end and cleans up after itself', () => {
   const { exported, sandbox } = load();

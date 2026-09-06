@@ -444,6 +444,33 @@ function executeBootstrap() {
 // TRIGGER MANAGEMENT
 // ================================================================
 
+// Single source of truth for every trigger handler this file manages.
+// setupAllTriggers() and teardownAllTriggers() used to each keep their own
+// copy of this list — found while adding buildStudioInputRows to it:
+// teardownAllTriggers()'s copy was ALREADY missing harvestStudioReturns
+// (the same gap setupAllTriggers()'s own copy had), so "tear down
+// everything" would have silently left that trigger — and would have left
+// buildStudioInputRows too, had this stayed two lists — still running
+// after someone believed the teardown was complete. One list now; nothing
+// left to drift between the two functions that both need it.
+const KOS_TRIGGER_HANDLERS = [
+  'sensor1_scanInboundSessions',
+  'runMatrixTurnstile',
+  'buildStudioInputRows',
+  'harvestStudioReturns',
+  'processInferenceQueue',
+  'runSemanticSweeper',
+  'sweepRootForExhaust',
+  'sendDailyErrorReport',
+  'generateDailyPrimer',
+  'autoCouncilCheck',
+  'sensor3_externalTelemetry',
+  'onGovernanceEdit',
+  'runRegistrarIntake',
+  'runRegistrarMicrobatch',
+  'runRegistrarProcessor',
+];
+
 /**
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
@@ -473,34 +500,11 @@ function executeBootstrap() {
  */
 function setupAllTriggers() {
   const log = [];
-  const KOS_TRIGGERS = [
-    'sensor1_scanInboundSessions',
-    'runMatrixTurnstile',
-    'buildStudioInputRows',
-    // 'harvestStudioReturns' was missing from this list — found while
-    // adding buildStudioInputRows alongside it. Every OTHER trigger this
-    // function installs gets cleared before reinstalling; this one alone
-    // would have grown a duplicate on every re-run of setupAllTriggers()
-    // against an already-deployed instance, racing itself the same way
-    // 34_QueueWatchdog.js's own header warns a duplicate trigger does.
-    'harvestStudioReturns',
-    'processInferenceQueue',
-    'runSemanticSweeper',
-    'sweepRootForExhaust',
-    'sendDailyErrorReport',
-    'generateDailyPrimer',
-    'autoCouncilCheck',
-    'sensor3_externalTelemetry',
-    'onGovernanceEdit',
-    'runRegistrarIntake',
-    'runRegistrarMicrobatch',
-    'runRegistrarProcessor',
-  ];
 
   // ── Clear existing KOS triggers ────────────────────────────
   let removed = 0;
   ScriptApp.getProjectTriggers().forEach(t => {
-    if (KOS_TRIGGERS.includes(t.getHandlerFunction())) {
+    if (KOS_TRIGGER_HANDLERS.includes(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
       removed++;
     }
@@ -640,17 +644,9 @@ function setupAllTriggers() {
  * Use this before migrating to a new script or during debugging.
  */
 function teardownAllTriggers() {
-  const KOS_TRIGGERS = [
-    'sensor1_scanInboundSessions', 'runMatrixTurnstile',
-    'processInferenceQueue', 'runSemanticSweeper',
-    'sweepRootForExhaust', 'sendDailyErrorReport',
-    'generateDailyPrimer', 'autoCouncilCheck',
-    'sensor3_externalTelemetry', 'onGovernanceEdit',
-    'runRegistrarIntake', 'runRegistrarMicrobatch', 'runRegistrarProcessor',
-  ];
   let count = 0;
   ScriptApp.getProjectTriggers().forEach(t => {
-    if (KOS_TRIGGERS.includes(t.getHandlerFunction())) {
+    if (KOS_TRIGGER_HANDLERS.includes(t.getHandlerFunction())) {
       ScriptApp.deleteTrigger(t);
       count++;
     }
