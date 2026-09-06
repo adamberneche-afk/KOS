@@ -15,7 +15,8 @@
       "kos-personal/10_Turnstile.gs",
       "kos-personal/11_Registrar_CogRelay.gs",
       "kos-personal/12_StudioReturnHarvest.gs",
-      "kos-personal/13_StudioInputBuilder.gs"
+      "kos-personal/13_StudioInputBuilder.gs",
+      "kos-personal/14_StudioFlowBuildSpec.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"
