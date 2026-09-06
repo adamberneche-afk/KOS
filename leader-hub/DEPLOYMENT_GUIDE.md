@@ -1,8 +1,35 @@
 # leader-hub Deployment Guide
 
+> ## ✅ STATUS (2026-09-05): DEPLOYED AND LIVE — all 6 AI Flows verified
+>
+> leader-hub is fully deployed on the `ccpsnet.net` account: code pushed
+> (9 files, matches `tools/gas-lint/project-map.json`'s `leader-hub:app`
+> list exactly), two Web App deployments live, OAuth already authorized
+> from an earlier partial attempt, and all six AI Flows
+> (`EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`, `LP_ASSIST`,
+> `FIN_ANALYSIS`, `BRAG_EMAIL`) built in Studio and confirmed live —
+> `checkAiFlowFixtures()` showed all six moved from `PENDING` to
+> `COMPLETE`, and `checkAiFlowBinding()` reported 6/6 rows in a state the
+> code can act on. Nothing further needed here; see `HISTORY.md`'s
+> 2026-09-05 entry for the full build process and what to reuse building
+> the next Studio integration in this repo (cas-ccps's and kos-personal's
+> included).
+>
+> **A pre-existing project shell, same pattern as kos-personal.** Before
+> pushing, `leader-hub/.clasp.json` already held a real script ID and
+> `clasp deployments` already listed an unlabelled `@1` deployment and a
+> dev `@HEAD` one — meaning a prior session had gotten partway through
+> this exact guide (project created, OAuth granted) and stopped before
+> finishing. Skipped `clasp create` entirely (it would have made a
+> duplicate project) and pushed straight into the existing one. Check
+> `.clasp.json` for a real (non-placeholder) `scriptId` before running
+> Phase 1 of this guide from scratch — it may already be done.
+
 First deploy of `leader-hub:app` — from this repo to a live Apps Script Web
-App. leader-hub has never been pushed, so this is a from-scratch deployment,
-not a catch-up.
+App. leader-hub had never been pushed *with real content* before 2026-09-05
+(see the status banner above), so this document is written as a
+from-scratch deployment, not a catch-up — but check for a pre-existing
+project shell first, per that banner.
 
 Peer documents: `cas-ccps/DEPLOYMENT_HANDOFF.md` and
 `kos-personal/DEPLOYMENT_GUIDE.md`. This one existed only as a description
