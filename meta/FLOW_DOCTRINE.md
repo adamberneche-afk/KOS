@@ -24,8 +24,8 @@ they healthy*. This answers *how you build one, and why these rules*.
 **Enforcement is marked on every rule**, because the difference matters more
 than the rule does. A practice that is only prose gets rediscovered; a
 practice that is a check gets enforced. Of the rules below, the enforced ones
-have survived contact with three systems. The prose-only ones — 8, 10, 11 and
-13 — are the ones to distrust first.
+have survived contact with three systems. The prose-only ones — 8, 10, 11, 13
+and 14 — are the ones to distrust first.
 
 That list started at eight. Rules 4, 5, 7, 9 and 12 came off it by becoming
 `gas-lint` Checks H through K, and each of those checks found a live defect on
@@ -302,6 +302,35 @@ Same rule as 10, at the level of the whole report rather than one canary.
 
 **Enforced:** no.
 
+## 14. Verify a compound trigger condition's more restrictive half in isolation, before adding the second.
+
+kos-personal's Curator flow build (`CHANGELOG.md` Round 17) hit a compound
+`Status = STUDIO_ACTIVE AND Payload_Type in (...)` trigger where a test run
+reported "Found 7 rows matching conditions" against a sheet with only one row
+that should have qualified — `Payload_Type` alone was doing all the
+filtering, and `Status` either wasn't wired or wasn't taking effect. Nothing
+distinguishes a correctly-built compound condition from this one until the
+matched-row count is checked, and a wrong count that happens to land on a
+plausible small number (not zero, not obviously everything) reads as
+success.
+
+**Build the more restrictive half alone first, confirm its matched-row count
+against how many rows should genuinely qualify, then add the second
+condition on top.** This is not a kos-personal-specific risk: leader-hub's
+six Flows (`LEADERHUB_AI_FLOW_SETUP.md`) use the identical shape (`Status =
+PENDING AND Type = <job type>`) with no such caution anywhere in that
+document. It is a hazard of the AND-compound-condition shape itself,
+wherever it gets built — cas-ccps's own flows happen not to carry it only
+because their post-redesign triggers are single-condition by construction
+(materialization pre-filters everything before the row ever reaches
+STAGING_PIPELINE/WarmUpQueue), not because anyone applied this discipline
+there.
+
+**Enforced:** no. Nothing in this repo can observe how an operator builds a
+condition inside Studio's own UI; this is process discipline, written down
+once so it generalizes rather than being rediscovered per system, per the
+standing invitation in this document's own intro.
+
 ---
 
 ## Adding a flow
@@ -325,3 +354,6 @@ Same rule as 10, at the level of the whole report rather than one canary.
    Check H holds you to that (rule 7).
 7. Re-run `syncFlowBuildSpec()` and build the Studio side from that tab, with
    the binding probe open (rule 11).
+8. Building the trigger itself: if the condition is a compound AND, wire and
+   test the more restrictive half alone first — confirm its matched-row
+   count before adding the second condition on top (rule 14).
