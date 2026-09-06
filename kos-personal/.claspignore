@@ -26,3 +26,6 @@
 !10_Turnstile.gs
 !11_Registrar_CogRelay.gs
 !12_StudioReturnHarvest.gs
+!13_StudioInputBuilder.gs
+!14_StudioFlowBuildSpec.gs
+!15_Preflight.gs
