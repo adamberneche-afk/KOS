@@ -58,6 +58,19 @@
  * no failure marker in this design, by the spec's own choice. Every failure
  * path below returns without writing the doc or the staging row.
  *
+ * THE GROUNDEDNESS GATE (added after the Round 17 incident — see
+ * CHANGELOG.md). A Curator-type return is checked for shared vocabulary
+ * with its own source document BEFORE the doc is ever overwritten. Round
+ * 17's first real Studio build had Gemini proceed without reading the
+ * source doc at all ("Workspace sources is turned off") and return
+ * well-formed, schema-valid JSON that had nothing to do with the real
+ * content — the one failure mode that looks identical to success from
+ * every check that existed before this one. See `_srCheckGroundedness_`
+ * for the mechanics. A row that fails the gate is marked
+ * `SUSPECT_FABRICATION` in `STUDIO_RETURN`; the source doc is left
+ * untouched and the staging row stays `STUDIO_ACTIVE` for the staleness
+ * guard to recycle, exactly like every other failure path here.
+ *
  * THE ONE STATE THAT IS NOT CLEANLY RETRYABLE, and which this file handles
  * better than the custom step could. Once the doc body is overwritten, the
  * original source text is GONE — replaced by the model's JSON. If the
@@ -88,7 +101,8 @@
  *                                   a real Flow has something to match
  *   removeStudioFlowFixtures()    — take them back out, docs included
  *   runStudioReturnCanary()       — end-to-end test of this file with the
- *                                   Flow and Gemini both stubbed
+ *                                   Flow and Gemini both stubbed, including
+ *                                   the groundedness gate below
  */
 
 // STUDIO_RETURN column indices. A new tab, so these are safe to define
@@ -125,7 +139,7 @@ const SR_CURATOR_TYPES = ['SESSION_LOG', 'EXTERNAL_DATA', 'COG_EXHAUST', 'COG_ST
  * FLOW_COMPLETE. Installed on a 5-minute trigger.
  */
 function harvestStudioReturns() {
-  const result = { applied: 0, skipped: 0, failed: 0, attention: 0, pruned: 0 };
+  const result = { applied: 0, skipped: 0, failed: 0, attention: 0, suspectFabrication: 0, pruned: 0 };
 
   const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
   const sheet = _getOrCreateSheet(ss, SR_SHEET);
@@ -140,7 +154,8 @@ function harvestStudioReturns() {
     const row = data[i];
     const sheetRow = i + 2;
     const status = String(row[SR_COLS.HARVEST_STATUS] || '').trim();
-    if (status === 'HARVESTED' || status === 'NEEDS_ATTENTION' || status === 'FAILED') {
+    if (status === 'HARVESTED' || status === 'NEEDS_ATTENTION' || status === 'FAILED' ||
+        status === 'SUSPECT_FABRICATION') {
       result.skipped++;
       continue;
     }
@@ -171,6 +186,19 @@ function harvestStudioReturns() {
       result.attention++;
       _reportError('harvestStudioReturns',
         new Error('Payload ' + uid + ' needs attention: ' + outcome.error), null);
+      continue;
+    }
+
+    if (outcome.suspectFabrication) {
+      // The doc was never touched — the whole point of running the
+      // groundedness gate BEFORE the overwrite. No retry loop: unlike a
+      // JSON parse hiccup, a Flow that isn't actually reading its source
+      // document won't fix itself on attempt 2, so there's no reason to
+      // wait for SR_MAX_ATTEMPTS before surfacing it.
+      _srMarkReturnRow_(sheet, sheetRow, 'SUSPECT_FABRICATION', outcome.error, attempts);
+      result.suspectFabrication++;
+      _reportError('harvestStudioReturns',
+        new Error('Payload ' + uid + ' SUSPECT_FABRICATION: ' + outcome.error), null);
       continue;
     }
 
@@ -222,6 +250,15 @@ function _srApplyReturn_(staging, uid, row) {
   if (!alreadyWritten) {
     const prepared = _srPrepareDocText_(payloadType, primary, auditor);
     if (!prepared.ok) return { ok: false, error: prepared.error };
+
+    // Groundedness gate — Curator types only (SR_CURATOR_TYPES). The
+    // classification contract has no narrative text of its own to compare
+    // (see _srCheckGroundedness_), so it would only ever produce false
+    // positives there.
+    if (SR_CURATOR_TYPES.indexOf(payloadType) !== -1) {
+      const ground = _srCheckGroundedness_(found.fileId, prepared.text);
+      if (!ground.grounded) return { ok: false, suspectFabrication: true, error: ground.reason };
+    }
 
     try {
       _srOverwriteDocBody_(found.fileId, prepared.text);
@@ -421,6 +458,105 @@ function _srPruneHarvested_(sheet) {
 }
 
 // ================================================================
+// GROUNDEDNESS GATE
+// ================================================================
+//
+// WHY THIS EXISTS. Round 17's first real Curator build (CHANGELOG.md) hit a
+// run where Gemini's log said outright it proceeded without ever reading
+// the source document ("Workspace sources is turned off... Request was
+// sent without file references from variables") and still returned
+// well-formed, schema-valid JSON — a generic, plausible-sounding summary
+// bearing no relation to the real content. Had that reached this file, it
+// would have overwritten the real source document permanently, and every
+// check that existed before this one (a green "Run Completed" banner,
+// checkStudioFlowBinding()'s column-placement probe) would have called it
+// a pass. This is the one thing available to check for real, automatically,
+// at this point in the pipeline: the source document has NOT been
+// overwritten yet (see the file header — the Flow's last step never
+// touches it), so it is still here to compare against.
+
+// Below this length, a source document has no real "distinguishing"
+// vocabulary to check against at all — every fixture/canary scratch doc in
+// this file is far short of this, deliberately, so the gate never fires
+// against them. Real session logs run up to CFG.MAX_CHUNK_SIZE (25,000
+// characters by default) — this floor only ever engages on real content.
+const SR_GROUNDEDNESS_MIN_CHARS = 500;
+const SR_GROUNDEDNESS_MAX_CANDIDATES = 40;
+
+// Long-but-common English words that would pass the length filter below but
+// say nothing about whether a specific document was actually read. Leaving
+// them in would let almost any generic prose "match" almost any document.
+const SR_GROUNDEDNESS_STOPWORDS = {
+  because: 1, however: 1, something: 1, everything: 1, although: 1, therefore: 1,
+  important: 1, specific: 1, generally: 1, actually: 1, basically: 1, eventually: 1,
+  additional: 1, different: 1, another: 1, through: 1, without: 1, between: 1,
+  should: 1, system: 1, process: 1, session: 1, document: 1, content: 1, context: 1,
+  summary: 1, produce: 1, produced: 1, operator: 1, discuss: 1, discussion: 1,
+  discussed: 1, covering: 1, covered: 1, follow: 1, follows: 1, following: 1,
+  regarding: 1, involved: 1, various: 1, working: 1, general: 1, overall: 1,
+};
+
+// Longest-unique-word-first: rare, specific terms (proper nouns, IDs, domain
+// vocabulary) tend to run longer than common English filler, so this is a
+// cheap proxy for "distinguishing" without any real NLP.
+function _srDistinguishingWords_(text) {
+  const seen = {};
+  const words = [];
+  const matches = String(text).toLowerCase().match(/[a-z0-9]{6,}/g) || [];
+  matches.forEach(function (w) {
+    if (seen[w] || SR_GROUNDEDNESS_STOPWORDS[w]) return;
+    seen[w] = true;
+    words.push(w);
+  });
+  words.sort(function (a, b) { return b.length - a.length; });
+  return words.slice(0, SR_GROUNDEDNESS_MAX_CANDIDATES);
+}
+
+/**
+ * The groundedness gate. NOT a fact-checker — a cheap vocabulary-overlap
+ * smoke test: does the model's own output contain even one of the source
+ * document's most distinguishing words? A model that actually read the
+ * document almost always echoes at least one specific term from it; one
+ * that never saw it essentially never does by chance. This catches "never
+ * read the document at all" (Round 17's failure), not "read it and
+ * summarized it wrong" — it is not trying to be more than that.
+ *
+ * Deliberately permissive below SR_GROUNDEDNESS_MIN_CHARS, so every
+ * fixture and canary scratch doc in this file passes through ungated.
+ *
+ * @returns {ok object} { grounded: true } or { grounded: false, reason }.
+ */
+function _srCheckGroundedness_(fileId, outputText) {
+  let sourceText;
+  try {
+    sourceText = DocumentApp.openById(fileId).getBody().getText();
+  } catch (e) {
+    // Can't read the source to compare — not this gate's problem to solve;
+    // the overwrite attempt right after this call will surface its own
+    // DOC_WRITE_FAILED if the doc is genuinely unreachable.
+    return { grounded: true };
+  }
+
+  if (sourceText.length < SR_GROUNDEDNESS_MIN_CHARS) return { grounded: true };
+
+  const candidates = _srDistinguishingWords_(sourceText);
+  if (!candidates.length) return { grounded: true }; // nothing distinctive to check against
+
+  const haystack = String(outputText).toLowerCase();
+  const matched = candidates.some(function (w) { return haystack.indexOf(w) !== -1; });
+  if (matched) return { grounded: true };
+
+  return {
+    grounded: false,
+    reason: 'the model output shares none of the source document\'s ' + candidates.length +
+      ' most distinguishing word(s) (e.g. ' + candidates.slice(0, 6).join(', ') + '). This is the ' +
+      'exact shape of the Round 17 incident: Gemini proceeding without reading the document (look ' +
+      'for a "Workspace sources is turned off" warning in the Flow\'s run log) and returning ' +
+      'well-formed JSON unrelated to the real content. The source document has NOT been touched.',
+  };
+}
+
+// ================================================================
 // REPORTING, FIXTURES, CANARY
 // ================================================================
 
@@ -428,7 +564,8 @@ function _srPruneHarvested_(sheet) {
 function checkStudioReturns() {
   const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
   const sheet = _getOrCreateSheet(ss, SR_SHEET);
-  const report = { total: 0, unharvested: 0, harvested: 0, needsAttention: 0, failed: 0, fixtures: 0, rows: [] };
+  const report = { total: 0, unharvested: 0, harvested: 0, needsAttention: 0, failed: 0,
+                   suspectFabrication: 0, fixtures: 0, rows: [] };
   const lastRow = sheet.getLastRow();
 
   if (lastRow > 1) {
@@ -441,6 +578,7 @@ function checkStudioReturns() {
       if (status === 'HARVESTED') report.harvested++;
       else if (status === 'NEEDS_ATTENTION') report.needsAttention++;
       else if (status === 'FAILED') report.failed++;
+      else if (status === 'SUSPECT_FABRICATION') report.suspectFabrication++;
       else report.unharvested++;
       if (uid.indexOf(SR_FIXTURE_UID_PREFIX) === 0) report.fixtures++;
       report.rows.push({ uid: uid, type: String(row[SR_COLS.PAYLOAD_TYPE] || ''), status: status,
@@ -451,12 +589,20 @@ function checkStudioReturns() {
   const stranded = Object.keys(_srReadDocWrittenMap_());
   console.log('[StudioReturn] check: ' + JSON.stringify({
     total: report.total, unharvested: report.unharvested, harvested: report.harvested,
-    needsAttention: report.needsAttention, failed: report.failed, fixtures: report.fixtures,
+    needsAttention: report.needsAttention, failed: report.failed,
+    suspectFabrication: report.suspectFabrication, fixtures: report.fixtures,
   }));
   if (report.needsAttention) {
     console.warn('[StudioReturn] ' + report.needsAttention + ' row(s) NEED ATTENTION — their doc ' +
       'body is already model output, so the original source text is gone. Set the matching ' +
       'STAGING_PIPELINE Status to FLOW_COMPLETE by hand; do not let them be re-inferred.');
+  }
+  if (report.suspectFabrication) {
+    console.warn('[StudioReturn] ' + report.suspectFabrication + ' row(s) SUSPECT_FABRICATION — ' +
+      'the model output shared none of its source document\'s distinguishing vocabulary, the exact ' +
+      'shape of the Round 17 incident (Gemini proceeding without reading the doc). The source ' +
+      'document was left untouched. Check the Flow\'s run log for a "Workspace sources is turned ' +
+      'off" warning before re-running.');
   }
   if (stranded.length) {
     console.log('[StudioReturn] doc-written breadcrumbs outstanding for: ' + stranded.join(', ') +
@@ -995,8 +1141,62 @@ function runStudioReturnCanary() {
       bodyAfterDup === bodyNow, 'body unchanged');
   } catch (e) {
     step('canary ran without throwing', false, e.message);
+  }
+
+  // ── Groundedness gate ──────────────────────────────────────────────────
+  // Round 17's incident: Gemini proceeded without reading the source doc
+  // and returned well-formed but unrelated JSON. Unit-level first (direct
+  // calls, no sheet rows needed), then one integration pass through the
+  // real harvest path to prove the wiring, not just the standalone check.
+  let fabDoc = null;
+  const fabUid = 'CANARY-SR-FAB-' + stamp;
+  try {
+    const distinctive = 'canarytoken' + stamp.replace(/[^0-9]/g, '');
+    const longSource = 'A real session discussing ' + distinctive + ' and its rollout plan, ' +
+      'covering the risks involved and the follow-up owner for each one — repeated at enough ' +
+      'length to clear the groundedness floor this canary is exercising, since a short scratch ' +
+      'doc like the one above would skip the gate entirely by design.';
+    step('scratch source text clears the groundedness length floor',
+      longSource.length >= SR_GROUNDEDNESS_MIN_CHARS, longSource.length + ' chars');
+
+    fabDoc = DocumentApp.create('KOS Canary — Groundedness ' + stamp);
+    fabDoc.getBody().setText(longSource);
+    fabDoc.saveAndClose();
+    const fabFileId = fabDoc.getId();
+
+    const groundedOut = '{"summary":"Session covered ' + distinctive + ' rollout."}';
+    const fabricatedOut = '{"summary":"A generic session about something unrelated entirely."}';
+
+    const groundedCheck = _srCheckGroundedness_(fabFileId, groundedOut);
+    step('output sharing a source word passes the gate', groundedCheck.grounded,
+      JSON.stringify(groundedCheck));
+
+    const fabCheck = _srCheckGroundedness_(fabFileId, fabricatedOut);
+    step('output sharing no source word is caught by the gate',
+      !fabCheck.grounded, fabCheck.reason);
+
+    const shortCheck = _srCheckGroundedness_(fileId, fabricatedOut); // fileId: the short canary doc above
+    step('a source doc under the length floor is never gated', shortCheck.grounded, '');
+
+    // Integration pass: a real fabricated return through the real harvest path.
+    staging.appendRow([new Date(), fabUid, 'SESSION_LOG',
+      'https://docs.google.com/document/d/' + fabFileId, fabFileId, 'STUDIO_ACTIVE', 0]);
+    returns.appendRow([new Date(), fabUid, 'SESSION_LOG', fabricatedOut, '', '', 0, '']);
+    const fabResult = harvestStudioReturns();
+    step('the harvest flags a fabricated return instead of applying it',
+      fabResult.suspectFabrication >= 1, JSON.stringify(fabResult));
+
+    const fabStaging = _srFindStagingRow_(staging, fabUid);
+    step('the staging row is left untouched at STUDIO_ACTIVE, not advanced',
+      fabStaging && fabStaging.status === 'STUDIO_ACTIVE', fabStaging ? fabStaging.status : 'row missing');
+
+    const fabDocBody = DocumentApp.openById(fabFileId).getBody().getText();
+    step('the source document body was NOT overwritten',
+      fabDocBody === longSource, fabDocBody.substring(0, 60));
+  } catch (e) {
+    step('groundedness gate canary ran without throwing', false, e.message);
   } finally {
-    _srCanaryCleanUp_(staging, returns, uid, doc);
+    _srCanaryCleanUp_(staging, returns, [uid, fabUid], [doc, fabDoc]);
   }
 
   const passed = steps.filter(function (s) { return s.pass; }).length;
@@ -1011,27 +1211,32 @@ function runStudioReturnCanary() {
   return { ok: ok, passed: passed, total: steps.length, steps: steps };
 }
 
-function _srCanaryCleanUp_(staging, returns, uid, doc) {
+/** uids and docs may each be a single value or an array — cleans up all of them. */
+function _srCanaryCleanUp_(staging, returns, uids, docs) {
+  uids = [].concat(uids);
+  docs = [].concat(docs).filter(Boolean);
   try {
     const width = Object.keys(SR_COLS).length;
     const lastRow = returns.getLastRow();
     if (lastRow > 1) {
       const data = returns.getRange(2, 1, lastRow - 1, width).getValues();
       for (let i = data.length - 1; i >= 0; i--) {
-        if (String(data[i][SR_COLS.PAYLOAD_UID]).trim() === uid) returns.deleteRow(i + 2);
+        if (uids.indexOf(String(data[i][SR_COLS.PAYLOAD_UID]).trim()) !== -1) returns.deleteRow(i + 2);
       }
     }
     const sLast = staging.getLastRow();
     if (sLast > 1) {
       const sData = staging.getRange(2, 1, sLast - 1, 7).getValues();
       for (let i = sData.length - 1; i >= 0; i--) {
-        if (String(sData[i][CFG.STAGING_COLS.PAYLOAD_UID]).trim() === uid) staging.deleteRow(i + 2);
+        if (uids.indexOf(String(sData[i][CFG.STAGING_COLS.PAYLOAD_UID]).trim()) !== -1) staging.deleteRow(i + 2);
       }
     }
-    _srClearDocWritten_(uid);
-    if (doc) DriveApp.getFileById(doc.getId()).setTrashed(true);
+    uids.forEach(function (u) { _srClearDocWritten_(u); });
+    docs.forEach(function (d) {
+      try { DriveApp.getFileById(d.getId()).setTrashed(true); } catch (e) { /* best-effort */ }
+    });
   } catch (e) {
     console.warn('[StudioReturn] canary cleanup incomplete: ' + e.message +
-      ' — look for Payload_UID ' + uid);
+      ' — look for Payload_UID(s) ' + uids.join(', '));
   }
 }

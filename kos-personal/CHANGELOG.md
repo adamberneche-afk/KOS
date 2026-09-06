@@ -1313,3 +1313,81 @@ the "Ask a Gem" approach, and re-test against the same real
 `STUDIO_ACTIVE` row (or a fresh one — Sensor 1 and the Turnstile are
 confirmed working end to end) before building the second flow
 (`VECTOR_CLASSIFY`).
+
+## Round 18 — picking up the Curator flow rework: an automated defense, since the actual rebuild is SMP-004's
+
+Round 17 stopped because a real Studio build could return well-formed,
+schema-valid JSON that was completely unrelated to its source document,
+and nothing existing — a "Run Completed" banner, `checkStudioFlowBinding()`'s
+column-placement probe — could tell that apart from success. SMP-004 means
+this session cannot rebuild the Flow itself (only the operator's own
+authenticated Studio session can), so the two things actually doable from
+here were: build a real, automated defense against that exact failure mode,
+and hand the operator a corrected, concrete rebuild checklist rather than
+leaving Round 17's prose lessons to be re-read and re-applied by hand.
+
+**The groundedness gate.** `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()`
+now checks a Curator-type return's own output for shared vocabulary with its
+source document *before* the doc is ever overwritten — the one thing
+available to check for real at this point in the pipeline, since the Flow's
+last step never touches the doc (see the file's own header). The check
+(`_srCheckGroundedness_`) is deliberately cheap: pull the source document's
+longest, rarest words (a proxy for "distinguishing" — proper nouns, IDs,
+domain vocabulary tend to run longer than common English filler; a small
+stopword list excludes long-but-generic words like "however" or "document"
+that would otherwise pass the length filter and match almost anything), and
+check whether the model's own output contains even one of them. A model that
+actually read the document almost always echoes something specific from it;
+one that never saw it essentially never does by chance. This is a smoke
+test for "never read the document at all," not a fact-checker for "read it
+and summarized it wrong" — it isn't trying to be more than that.
+
+A row that fails the gate is marked `SUSPECT_FABRICATION` in `STUDIO_RETURN`
+instead of applied: the source doc is left untouched and the staging row
+stays `STUDIO_ACTIVE`, exactly the same "touch nothing on failure"
+philosophy every other path in that file already follows, so the staleness
+guard recycles it for a retry rather than this file inventing a second retry
+mechanism. Unlike a JSON parse failure, this doesn't wait for
+`SR_MAX_ATTEMPTS` before surfacing — a Flow that isn't reading its source
+document won't fix itself on attempt two, so there's no reason to delay the
+alert. `checkStudioReturns()` reports a `suspectFabrication` count and warns
+if it's non-zero. The gate only engages above `SR_GROUNDEDNESS_MIN_CHARS`
+(500 characters) specifically so it never fires against a fixture or canary
+scratch doc — real session logs run up to `CFG.MAX_CHUNK_SIZE` (25,000
+characters) — and it's scoped to `SR_CURATOR_TYPES` only, since
+`VECTOR_CLASSIFY`'s output is pure numeric vectors with no narrative text to
+compare against a source doc at all; applying the same check there would be
+a pure false-positive generator.
+
+Covered in both harnesses this repo has for this file: five new Node.js
+tests against the sandbox (a grounded return applies normally, a fabricated
+one is flagged and leaves the doc and staging row untouched, a short doc is
+never gated, `VECTOR_CLASSIFY` is never gated, an all-stopword doc yields no
+candidates) and new steps in `runStudioReturnCanary()` for the same cases,
+so an operator running the canary against a real account gets the same
+proof the Node suite already has.
+
+**The rebuild checklist, corrected and made concrete.** Round 17's three
+"lessons locked in" were prose describing what went wrong; they're now a
+numbered checklist in `STUDIO_INTEGRATION_SPEC.md`'s banner (and pointed to
+from `DEPLOYMENT_GUIDE.md`'s Studio Integration section) for the operator's
+next actual Studio session:
+1. Verify the trigger's `Status = STUDIO_ACTIVE` condition alone first —
+   confirm its matched-row count before ever adding the `Payload_Type`
+   filter on top, rather than trusting the combined condition was built
+   correctly.
+2. Check the run log for a "Workspace sources is turned off" (or similar
+   file-access) warning before trusting any first-build test run's output —
+   the groundedness gate above is a backstop, not a substitute for this.
+3. Try an "Ask a Gem" step bound to the Curator persona instead of a
+   generic "Ask Gemini" step with a pasted prompt, if Studio's builder here
+   offers one — still unconfirmed, the working hypothesis carried over
+   from Round 17 verbatim, to be tried and reported back.
+
+**What this session did not and could not do:** touch the actual Studio
+Flow, its trigger, or any Google account — that is exactly the boundary
+SMP-004 draws, and it's why the rebuild checklist above is written as
+instructions to hand the operator rather than steps this session executed.
+`npm test` (770/770), `node tools/gas-lint/check.js` (0 errors, 5 warnings —
+unchanged) and `node tools/doc-currency/check.js` (0 errors, 8 warnings —
+unchanged) all confirmed clean after these changes.

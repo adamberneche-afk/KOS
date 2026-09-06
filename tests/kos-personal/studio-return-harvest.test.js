@@ -44,6 +44,7 @@ const EXPOSE = [
   '_srIsDocWritten_', '_srMarkDocWritten_', '_srClearDocWritten_',
   'SR_COLS', 'SR_SHEET', 'SR_CURATOR_TYPES', 'SR_MAX_ATTEMPTS',
   '_srDiagnoseReturnRow_', 'checkStudioFlowBinding', 'SR_KNOWN_TYPES',
+  '_srCheckGroundedness_', '_srDistinguishingWords_', 'SR_GROUNDEDNESS_MIN_CHARS',
   'CFG', '_getSystemAsset', '_getOrCreateSheet',
 ];
 
@@ -288,7 +289,96 @@ test('harvest: empty return tab is a no-op', () => {
   const { exported, sandbox } = load();
   seed(exported, sandbox, { skipStaging: true, skipReturn: true });
   assert.deepEqual(exported.harvestStudioReturns(),
-    { applied: 0, skipped: 0, failed: 0, attention: 0, pruned: 0 });
+    { applied: 0, skipped: 0, failed: 0, attention: 0, suspectFabrication: 0, pruned: 0 });
+});
+
+// ── The groundedness gate ────────────────────────────────────────────────────
+//
+// Round 17's incident (CHANGELOG.md): Gemini proceeded without ever reading
+// the source document and returned well-formed, schema-valid JSON that had
+// nothing to do with the real content. Nothing before this gate could tell
+// that apart from success — a green "Run Completed" and even
+// checkStudioFlowBinding() (column placement only) both call it a pass.
+
+// A source doc long enough to clear SR_GROUNDEDNESS_MIN_CHARS, built from
+// generic filler plus one distinctive word — the same shape a real session
+// log has (mostly ordinary prose, plus specific terms a grounded summary
+// would be expected to echo).
+function longSourceWith(word) {
+  const filler = 'This session covered a range of small operational details and routine matters. '
+    .repeat(8);
+  return filler + 'The specific technical topic discussed today was ' + word + ' end to end.';
+}
+
+test('groundedness gate: a short source doc is never checked, output shares nothing', () => {
+  const { exported, sandbox } = load();
+  // seed()'s default docText ('ORIGINAL SOURCE TEXT') is far under the floor.
+  const ctx = seed(exported, sandbox, { primary: '{"summary":"totally unrelated text"}' });
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 1, JSON.stringify(result));
+  assert.equal(result.suspectFabrication, 0);
+  assert.equal(stagingStatus(ctx), 'FLOW_COMPLETE');
+});
+
+test('groundedness gate: a grounded curator return (echoes a source word) is applied normally', () => {
+  const { exported, sandbox } = load();
+  const word = 'zzqorbital42';
+  const ctx = seed(exported, sandbox, {
+    docText: longSourceWith(word),
+    primary: '{"summary":"Recapped the ' + word + ' rollout plan."}',
+  });
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 1, JSON.stringify(result));
+  assert.equal(result.suspectFabrication, 0);
+  assert.equal(stagingStatus(ctx), 'FLOW_COMPLETE');
+});
+
+test('groundedness gate: a fabricated return (shares no source word) is flagged, not applied', () => {
+  const { exported, sandbox } = load();
+  const word = 'zzqorbital42';
+  const ctx = seed(exported, sandbox, {
+    docText: longSourceWith(word),
+    primary: '{"summary":"A generic session about something else entirely, unrelated to any of this."}',
+  });
+  const before = sandbox.DocumentApp.openById(ctx.fileId).getBody().getText();
+
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.suspectFabrication, 1, JSON.stringify(result));
+  assert.equal(result.applied, 0);
+
+  // Same failure philosophy as every other path in this file: touch nothing.
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE', 'left for the staleness guard, not advanced');
+  assert.equal(sandbox.DocumentApp.openById(ctx.fileId).getBody().getText(), before,
+    'the source document must NOT be overwritten');
+
+  const report = exported.checkStudioReturns();
+  assert.equal(report.suspectFabrication, 1, JSON.stringify(report));
+});
+
+test('groundedness gate: VECTOR_CLASSIFY output is never gated (no narrative text to compare)', () => {
+  const { exported, sandbox } = load();
+  const word = 'zzqorbital42';
+  // A real classification result: numeric vectors, no text drawn from the
+  // source at all, so a vocabulary-overlap check would only ever produce a
+  // false positive here.
+  const ctx = seed(exported, sandbox, {
+    type: 'VECTOR_CLASSIFY',
+    docText: longSourceWith(word),
+    primary: '[{"exchange_type":"DECISION","sentences":[{"sentence_id":1,"vectors":{"UI":0.5}}]}]',
+  });
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.applied, 1, JSON.stringify(result));
+  assert.equal(result.suspectFabrication, 0);
+  assert.equal(stagingStatus(ctx), 'FLOW_COMPLETE');
+});
+
+test('groundedness gate: a document too short to have distinguishing words is not gated', () => {
+  const { exported } = load();
+  // A doc that clears the length floor but is uniform enough (or all
+  // stopwords) to have no distinguishing candidates at all.
+  const check = exported._srDistinguishingWords_(
+    'because however something everything although therefore '.repeat(20));
+  assert.deepEqual(check, []);
 });
 
 // ── The breadcrumb ───────────────────────────────────────────────────────────
