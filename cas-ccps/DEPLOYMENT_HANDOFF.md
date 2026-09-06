@@ -414,17 +414,24 @@ derived from the constants the code reads, and this file is prose.
 
 ```
 Read cas-ccps/DEPLOYMENT_HANDOFF.md's status banner, then
-kos-personal/DEPLOYMENT_GUIDE.md's status banner and CHANGELOG.md's
-most recent Round. I'm continuing the live deployment on the
-ccpsnet.net account: 8 cas-ccps projects exist and all five cas-ccps
-flows are live and verified; leader-hub is fully deployed with all six
-Flows live; kos-personal's code and infra are live but its Studio
-Curator flow build was paused after surfacing real problems (wrong
-trigger scope, Gemini fabricating output without reading the real
-document) — that's what's next, picking up from the corrected approach
-CHANGELOG.md's Round 17 describes. I run every clasp/browser/Studio
-action myself (SMP-004) and paste logs back. Start by telling me the
-exact commands to resume kos-personal's Curator flow.
+kos-personal/DEPLOYMENT_GUIDE.md's status banner, then
+kos-personal/STUDIO_INTEGRATION_SPEC.md's banner in full. I'm
+continuing the live deployment on the ccpsnet.net account: 8 cas-ccps
+projects exist and all five cas-ccps flows are live and verified;
+leader-hub is fully deployed with all six Flows live; kos-personal's
+code is pushed and structurally verified (851 tests, 0 gas-lint/
+doc-currency errors) but its two Studio flows have never been built for
+real — the only Studio build attempt this project ever had (Round 17,
+CHANGELOG.md) surfaced a real incident and was paused rather than
+patched around, and everything since has been Apps-Script-side rework
+closing the actual gap that incident exposed (the live Docs-read step
+is gone from both flows entirely; a FlowBuildSpec tab now generates the
+exact values to build from; a new preflight check verifies structural
+soundness first). This is the second attempt, and the first real one
+against the rebuilt design. I run every clasp/browser/Studio action
+myself (SMP-004) and paste logs back. Start by telling me the exact
+commands to run before opening Studio, then the exact build order for
+both flows.
 ```
 
 ## The other two systems
@@ -448,18 +455,33 @@ the browser calling cas-ccps's `doPost()` — is diagnosed from the cas-ccps
 end; see the paragraph above.
 
 **kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. **Code and infra
-live as of 2026-09-05; the Studio flow build is not done.** Pushed (13
-files — the guide's own file list was stale by one, since corrected),
-both deployments made, `setupAllTriggers()` confirmed all 14 installed and
-firing, a real session ingested and correctly advanced through the
-pipeline. The Curator flow's first build surfaced real problems (a
+live as of 2026-09-05; the Studio flow build has never been attempted a
+second time.** Pushed (13 files — the guide's own file list was stale by
+one, since corrected), both deployments made, `setupAllTriggers()`
+confirmed all 14 installed and firing, a real session ingested and
+correctly advanced through the pipeline. The Curator flow's first —
+and, as of this writing, only — Studio build surfaced real problems (a
 trigger condition not actually filtering on `Status`, and Gemini
 fabricating output after a "Workspace sources is turned off" warning
 instead of reading the real source document) and was deliberately paused
-rather than patched around — see `kos-personal/CHANGELOG.md`'s most recent
-Round for the full incident and what to try next. Verify with
-`runStudioReturnCanary()`, `checkStudioFlowBinding()` while wiring the
-last step, then `checkStudioFlowLiveness()`. Its consent-screen phase
+rather than patched around — see `kos-personal/CHANGELOG.md`'s Round 17
+for the full incident. Everything since has been Apps-Script-side rework
+closing the gap that incident exposed, not another Studio attempt: the
+live Docs-read step is gone from both flows entirely
+(`13_StudioInputBuilder.gs` reads the source document itself, before
+Studio ever runs), a generated `FlowBuildSpec` tab now supplies every
+value to build from (`syncStudioFlowBuildSpec()`,
+`14_StudioFlowBuildSpec.gs`), and a new preflight check
+(`runKosPersonalPreflight()`, `15_Preflight.gs`) verifies tab widths,
+trigger completeness and required properties before Studio is even
+opened. Build order for the second attempt: preflight, then
+`syncStudioFlowBuildSpec()` and build both flows from that tab (each
+trigger is now a **single condition**, not the compound one Round 17
+hit), then `runStudioInputCanary()`/`checkStudioInputBuilder()` for the
+materialize half, then `checkStudioFlowBinding()` while wiring the last
+step and `runStudioReturnCanary()`/`checkStudioFlowLiveness()` for the
+harvest half — full detail in `kos-personal/DEPLOYMENT_GUIDE.md`'s
+banner and `STUDIO_INTEGRATION_SPEC.md`'s. Its consent-screen phase
 configures the *default* project and does **not** create a standard one —
 that distinction is what cost 2,113 lines here.
 
