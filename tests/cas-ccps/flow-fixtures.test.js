@@ -763,9 +763,22 @@ test('the fixture is idempotent — a second install does not double the row', (
 // What Flow 2 writes back. The three machine-readable markers are the ones
 // 15c's parser reads — [SYSTEM: ...] for compliance (04_Form2_TurnInGate.js's
 // scanCompliance_), [SUGGESTED_SCORE: N], and the MILESTONE_OUTCOMES line.
+//
+// References the fixture's OWN rubric language (Campaign Pitch, target
+// demographic, promotional channels) deliberately — not decoration. A
+// generic answer with no such reference is exactly what
+// 37_FlowInputBuilder.js's _fiCheckPlausibility_ now flags as
+// ERROR_SUSPECT_FABRICATION (the FERPA-safe backstop against kos-personal's
+// Round 17 incident: a model returning well-formed output without engaging
+// with what it was actually given). A prior version of this fixture's stand-in
+// answer was itself exactly that — generic prose with no rubric reference at
+// all — and started failing the moment that gate existed, which is the
+// gate doing its job: a real Flow 2 response is expected to engage with the
+// specific assignment it was asked to evaluate.
 const FIXTURE_FLOW2_OUTPUT = [
-  'Strong work overall. Your evidence for the first two milestones is clear,',
-  'and the third needs one more concrete example.',
+  'Strong work overall on this Campaign Pitch. Your target demographic reasoning for the',
+  'first two milestones is clear, and the promotional channels milestone needs one more',
+  'concrete example.',
   '',
   '[SYSTEM: APPROVED]',
   '[SUGGESTED_SCORE: 3]',

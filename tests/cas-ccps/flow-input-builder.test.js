@@ -38,7 +38,7 @@ function load(extraGlobals) {
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
       'STG_STATUS', 'STG_STUDENT_FILE_ID', 'STG_CONFIG_ID', 'STG_TEACHER_EMAIL',
-      'LEDGER',
+      'LEDGER', '_fiCheckPlausibility_', '_fiDistinguishingWords_',
     ],
     extraGlobals,
   );
@@ -401,4 +401,145 @@ test('buildFlowInputRows: writes the Flow 2 prompt pre-substituted, leaving only
   // the FERPA regression docs/FERPA_DATA_MAP.md's pointer design avoids.
   assert.ok(prompt.indexOf('{{STUDENT_TEXT}}') !== -1,
     '{{STUDENT_TEXT}} must survive for Studio to map the extracted response into');
+});
+
+// ── _fiCheckPlausibility_ — the FERPA-safe backstop against kos-personal's ──
+// Round 17 failure mode (a model returning well-formed output without ever
+// reading its source material). Unlike kos-personal's _srCheckGroundedness_,
+// this never opens the student's Doc — only self-reported non-access
+// phrases and engagement with the row's own (non-student) rubric content.
+
+function plausibilityRow(exported, overrides = {}) {
+  const row = new Array(22).fill('');
+  row[exported.FI.UNIT_NAME] = overrides.unitName || '';
+  row[exported.FI.TIER] = overrides.tier || '';
+  row[exported.FI.PERSONA] = overrides.persona || '';
+  row[exported.FI.MILESTONE_1] = overrides.m1 || '';
+  return row;
+}
+
+test('_fiCheckPlausibility_: a self-reported non-access phrase is caught directly', () => {
+  const { exported } = load();
+  const row = plausibilityRow(exported, { persona: 'Skeptical Investor' });
+  const result = exported._fiCheckPlausibility_(
+    'I do not have access to the document, but here is a plausible-sounding evaluation anyway.',
+    row);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /non-access phrase/);
+});
+
+test('_fiCheckPlausibility_: output referencing the rubric passes', () => {
+  const { exported } = load();
+  const row = plausibilityRow(exported, { unitName: 'Campaign Pitch Deck', persona: 'Skeptical Investor' });
+  const result = exported._fiCheckPlausibility_(
+    'As the Skeptical Investor persona, your Campaign Pitch Deck milestone was strong.', row);
+  assert.equal(result.ok, true, JSON.stringify(result));
+});
+
+test('_fiCheckPlausibility_: output sharing none of a specific rubric is caught', () => {
+  const { exported } = load();
+  const row = plausibilityRow(exported, {
+    unitName: 'Campaign Pitch Deck', persona: 'Skeptical Investor',
+    m1: 'Articulate a compelling value proposition',
+  });
+  const result = exported._fiCheckPlausibility_(
+    'Great work overall! Keep it up and continue practicing your skills.', row);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /shares none of this row.s rubric content/);
+});
+
+test('_fiCheckPlausibility_: generic short rubric fields produce nothing to check, so any output passes', () => {
+  const { exported } = load();
+  // The same defaults teacherMatrixRow()'s fixture rows use elsewhere in
+  // this file ('Unit', 'Tier 1', 'Coach', 'M1') — all under the 6-char
+  // distinguishing-word floor, so there is nothing to check output against.
+  // This is why every EARLIER test in this file (built from those short
+  // defaults) still passes unaffected by this gate.
+  const row = plausibilityRow(exported, { unitName: 'Unit', tier: 'Tier 1', persona: 'Coach' });
+  const result = exported._fiCheckPlausibility_('Totally unrelated text about something else.', row);
+  assert.equal(result.ok, true, JSON.stringify(result));
+});
+
+// ── The same gate, wired into harvestFlowInputResults() end to end ──────────
+
+function setUpFlow2Scenario(sandbox, exported, rubricOverrides) {
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+
+  const doc = sandbox.DocumentApp.create('Student Doc');
+  const studentFileId = doc.getId();
+  doc.getBody().appendParagraph('[No feedback yet. Use the panel to run a check.]');
+
+  const staging = ledgerSs.getSheetByName('STAGING_PIPELINE');
+  staging.appendRow(stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));
+  ledgerSs.getSheetByName('Ledger').appendRow(
+    ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026', fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  const matrixSs = setUpTeacherMatrix(sandbox, 'matrix-ss-1');
+  matrixSs.getSheetByName('TeacherMatrix').appendRow(teacherMatrixRow(Object.assign({
+    configId: 'VDOE-ABC-2026', unitName: 'Campaign Pitch Deck', tier: 'Advanced',
+    persona: 'Skeptical Investor', m1: 'Articulate a compelling value proposition', c1: 'COMP-1',
+  }, rubricOverrides)));
+
+  exported.buildFlowInputRows();
+  return { ledgerSs, staging, doc, studentFileId };
+}
+
+test('harvestFlowInputResults: a fabricated evaluation is caught before it reaches the student doc or CompetencyEvidence', () => {
+  const { exported, sandbox } = load();
+  const { ledgerSs, staging, doc } = setUpFlow2Scenario(sandbox, exported);
+
+  // Well-formed, schema-passing — the same shape kos-personal's Round 17
+  // incident produced — but never engages with any of this row's rubric.
+  const fabricated = 'Great work overall! Keep it up and continue practicing your skills.\n' +
+    '[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 4]\n' +
+    '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"MET"}]';
+  const fiSheet = ledgerSs.getSheetByName('FlowInput');
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(fabricated);
+  fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+
+  exported.harvestFlowInputResults();
+
+  assert.equal(fiSheet.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'ERROR_SUSPECT_FABRICATION');
+  assert.equal(doc.getBody().getText(), '[No feedback yet. Use the panel to run a check.]',
+    'the student doc must not be touched');
+  const evidenceSheet = ledgerSs.getSheetByName('CompetencyEvidence');
+  assert.ok(!evidenceSheet || evidenceSheet.getLastRow() === 0, 'no evidence written for a suspect row');
+  assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'IN_PROCESS',
+    'the staging row must stay untouched, not marked COMPLETE');
+});
+
+test('harvestFlowInputResults: a self-reported non-access phrase in the output is caught the same way', () => {
+  const { exported, sandbox } = load();
+  const { ledgerSs, staging, doc } = setUpFlow2Scenario(sandbox, exported);
+
+  const fabricated = 'I do not have access to the document, but based on typical patterns this looks solid.\n' +
+    '[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 3]\n[MILESTONE_OUTCOMES: {"1":"MET"}]';
+  const fiSheet = ledgerSs.getSheetByName('FlowInput');
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(fabricated);
+  fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+
+  exported.harvestFlowInputResults();
+
+  assert.equal(fiSheet.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'ERROR_SUSPECT_FABRICATION');
+  assert.equal(doc.getBody().getText(), '[No feedback yet. Use the panel to run a check.]');
+  assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'IN_PROCESS');
+});
+
+test('harvestFlowInputResults: a grounded evaluation referencing real rubric content is still applied normally', () => {
+  const { exported, sandbox } = load();
+  const { ledgerSs, staging, doc } = setUpFlow2Scenario(sandbox, exported);
+
+  const grounded = 'Your Campaign Pitch Deck as the Skeptical Investor persona needs a stronger value proposition.\n' +
+    '[SYSTEM: APPROVED]\n[SUGGESTED_SCORE: 4]\n' +
+    '[MILESTONE_OUTCOMES: {"1":"MET","2":"MET","3":"MET","4":"MET"}]';
+  const fiSheet = ledgerSs.getSheetByName('FlowInput');
+  fiSheet.getRange(2, exported.FI.GEMINI_FULL_OUTPUT + 1).setValue(grounded);
+  fiSheet.getRange(2, exported.FI.READY_STATUS + 1).setValue('EVALUATED');
+
+  exported.harvestFlowInputResults();
+
+  assert.equal(fiSheet.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
+  assert.ok(doc.getBody().getText().indexOf('Campaign Pitch Deck') !== -1);
+  assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'COMPLETE');
 });

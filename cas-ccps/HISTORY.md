@@ -2044,3 +2044,67 @@ Distilled for reuse; the full incident narratives are above and in
    transfer — confirmed with a plain directory listing before concluding
    gitignored files (`cas-ccps/clasp/local/*.clasp.json`, the real script
    IDs) had failed to survive the transfer, which they hadn't.
+
+## Flow 2's harvest gets a plausibility gate — a real risk this system carried unmitigated
+
+Prompted by a direct question after `kos-personal`'s Curator flow added a
+groundedness check (`12_StudioReturnHarvest.gs`'s `_srCheckGroundedness_`,
+closing that system's own Round 17 incident: Gemini proceeding without
+reading its source document and returning well-formed output anyway): does
+this system have anything comparable? It didn't. `harvestFlowInputResults()`
+(`37_FlowInputBuilder.js`) only ever checked that `GeminiFullOutput` was
+non-empty before writing it into the student's own doc and generating
+`CompetencyEvidence` rows — the exact same blind spot, on a system that is
+actually live, feeding milestone MET/NOT_MET outcomes that become part of a
+student's real evidence record.
+
+**Why this isn't a literal port of kos-personal's check.** That one opens
+the source document and compares its vocabulary against the model's output.
+Flow 2 cannot do the equivalent — `_fiBuildPromptText_`'s own comment states
+why `{{STUDENT_TEXT}}` is deliberately left unsubstituted: reading the
+student's Doc from Apps Script, even transiently for a word-overlap
+comparison that stores nothing, is the exact FERPA regression
+`docs/FERPA_DATA_MAP.md`'s pointer-based design exists to avoid. So
+`_fiCheckPlausibility_` (new, same file) checks two things that need none of
+the student's own words: whether `GeminiFullOutput` contains a self-reported
+non-access phrase ("workspace sources," "don't have access," and similar —
+the same shape as kos-personal's incident log, checked against the output
+itself rather than a run log an operator has to remember to read), and
+whether it engages with ANY of the row's own rubric content (persona, unit
+name, tier, milestone text — teacher-authored curriculum content already
+legitimately in the row, never student content). A hit on either sets
+`ReadyStatus` to a new terminal value, `ERROR_SUSPECT_FABRICATION`, before
+the doc is touched or any evidence is written — same "touch nothing on a
+suspect row" treatment as the two error paths that already existed
+(`ERROR_EMPTY_OUTPUT`, `ERROR_HARVEST_FAILED`).
+
+**What this deliberately does not claim.** Unlike kos-personal's check, this
+one cannot prove the model read the student's actual submission — proving
+that would require the read this design forbids. It catches a model that
+announces non-access, or one that ignored the rubric entirely; it does not
+catch a model that read the rubric and fabricated a plausible-sounding
+response to a submission it never saw. Documented as exactly that
+narrower guarantee in the function's own header, not oversold.
+
+**A stale claim found and fixed along the way.** `41_WarmUpFlowBridge.js`'s
+own header claimed "the Docs read... is untouched" for Flows 3/4/5. It
+isn't, for any of the three — `wfbBuildFlow4Row_` already materializes
+`evaluateWarmUpDoc_()`'s extracted text into flat columns before Studio
+runs, and Flows 3/5 read everything from JSON snapshots already on the row.
+None of the three Studio Flows do their own document read at all; an
+operator building any of them from the stale claim would wire an
+unnecessary Docs-connector step with nothing to bind to. Corrected in the
+header directly.
+
+Covered by 6 new tests in `tests/cas-ccps/flow-input-builder.test.js`
+(the check in isolation, plus end-to-end through the harvest: a fabricated
+evaluation is caught before touching the doc or evidence, a self-reported
+non-access phrase is caught the same way, and a grounded evaluation
+referencing real rubric content still applies normally) and required
+fixing one existing fixture: `tests/cas-ccps/flow-fixtures.test.js`'s
+simulated Flow 2 answer was itself generic prose with no reference to the
+fixture's own rubric — exactly the shape this gate now flags. Made it
+reference the fixture's actual rubric language instead of weakening the
+check, since a real Flow 2 response is expected to engage with the specific
+assignment it evaluated. `npm test` (782/782), `gas-lint` and `doc-currency`
+(both unchanged) all clean after these changes.

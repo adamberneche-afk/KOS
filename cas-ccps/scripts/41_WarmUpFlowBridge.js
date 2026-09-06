@@ -25,8 +25,20 @@
  *   Flow 4 (Warm-Up Scoring)  input : ExtractWarmUpPromptTextStep
  *                             output: FinalizeWarmUpScoreStep
  *
- * Everything else in all three flows was already native and is untouched: the
- * Sheets trigger, the Docs read, and the Gemini call itself.
+ * Everything else in all three flows was already native and is untouched:
+ * the Sheets trigger and the Gemini call itself.
+ *
+ * CORRECTION: this used to also claim "the Docs read" was untouched. It
+ * isn't, for any of the three — Flow 4's input row already carries
+ * evaluateWarmUpDoc_()'s extracted promptText/responseText as flat columns
+ * (wfbBuildFlow4Row_ below), and Flows 3/5 read everything from JSON
+ * snapshots already sitting on the WarmUpQueue row (wfbBuildFlow3Row_,
+ * wfbBuildFlow5Row_). None of the three Studio Flows do their own document
+ * read at all — Apps Script materializes that before Studio ever runs, the
+ * same shape 37_FlowInputBuilder.js established for Flow 2's rubric/prompt
+ * half. An operator building any of these three from the stale claim would
+ * wire an unnecessary (and wrong) Docs-connector step that has nothing to
+ * bind to.
  *
  * HOW MUCH OF THIS IS GENUINELY NEW CODE: much less than 5 steps' worth,
  * because three of the five were duplicating Apps Script that already exists
