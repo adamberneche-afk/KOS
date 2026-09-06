@@ -24,6 +24,21 @@
 > corrected build approach to use next time — don't repeat the same Flow
 > configuration.
 >
+> **Since that incident, `harvestStudioReturns()` runs an automated
+> defense against this exact failure mode: the groundedness gate.** A
+> Curator-type return whose output shares none of its own source
+> document's distinguishing vocabulary is now marked `SUSPECT_FABRICATION`
+> instead of applied — the doc is left untouched, exactly like every other
+> failure path in that file. This is a smoke test, not a fact-checker, and
+> it does not replace reading the Flow's own run log for the
+> "Workspace sources is turned off" warning before trusting a first build —
+> see `STUDIO_INTEGRATION_SPEC.md`'s banner for the full rebuild checklist
+> (verify the `Status` trigger condition in isolation first, check the run
+> log, then try an "Ask a Gem" step in place of a generic "Ask Gemini"
+> step). That checklist, not this paragraph, is what to follow when
+> actually rebuilding the Flow — nothing here can do that rebuild itself
+> (SMP-004: only the operator's own authenticated Studio session can).
+>
 > **A pre-existing project is not automatically a live-in-use one — verify
 > before trusting the label.** `clasp deployments` showed an old deployment
 > literally named "V5.4 Core Router Initial Deployment" here, which reads
@@ -307,6 +322,16 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 > tell you whether a Flow has ever actually written back. A green "Run
 > Completed" in the Studio UI cannot: a Flow that matched zero rows reports
 > exactly the same thing.
+>
+> **Rebuilding after the Round 17 pause?** Read
+> `STUDIO_INTEGRATION_SPEC.md`'s banner in full before wiring the trigger —
+> it has the corrected, numbered rebuild order (verify `Status` alone
+> before adding `Payload_Type`, check the run log for a Workspace-sources
+> warning before trusting output, try an "Ask a Gem" step). Also watch
+> `checkStudioReturns()`'s `suspectFabrication` count once the Flow is
+> live: the groundedness gate added since that incident will flag (not
+> apply) a return that never actually read its source document, so a
+> non-zero count there means look at the Flow, not the harvest.
 
 
 This is the critical unbuilt piece. Until the Studio integration is live, every session row requires a manual `devSetFlowComplete()` to advance.
