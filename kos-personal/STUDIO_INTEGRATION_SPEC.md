@@ -95,7 +95,13 @@
 > recycle. It only engages on documents at or above
 > `SR_GROUNDEDNESS_MIN_CHARS` (500 characters), so it never fires against
 > a fixture or canary scratch doc. Check `checkStudioReturns()`'s
-> `suspectFabrication` count, or watch for its console warning.
+> `suspectFabrication` count, or watch for its console warning. This is
+> the incident behind `meta/FLOW_DOCTRINE.md` rule 15 — a green harvest
+> can still be a fabrication, so check groundedness at harvest, not just
+> that the output parses. cas-ccps's `_fiCheckPlausibility_`/
+> `_wfbCheckPlausible_` and leader-hub's `_checkAiResultPlausible_` are
+> the same rule, each adapted to that system's own FERPA/architecture
+> constraints.
 >
 > **What this means for Round 17's other two open questions.** Its
 > "verify `Status` alone before adding `Payload_Type`" lesson is now

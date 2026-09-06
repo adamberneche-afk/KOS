@@ -44,11 +44,11 @@ why this repo exists at all.
   panel renders to. Say/Do Ledger cross-portfolio Flow Health & Inventory
   extension.
 
-- **`FLOW_DOCTRINE.md`** — the thirteen rules this repo's Flow deployments
+- **`FLOW_DOCTRINE.md`** — the fifteen rules this repo's Flow deployments
   produced, each with the incident behind it, a pointer to where the
   reasoning already lives, and an explicit statement of whether anything
   **enforces** it. That last part is why it exists: a practice that is only
-  prose gets rediscovered, and four of the thirteen still have nothing behind
+  prose gets rediscovered, and six of the fifteen still have nothing behind
   them. It deliberately does not re-transcribe the file headers it points at
   — a rule restated in two places becomes two rules. Where
   `FLOW_INVENTORY.md` answers *what* the Flow dependencies are, this answers

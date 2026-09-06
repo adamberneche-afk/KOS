@@ -24,8 +24,8 @@ they healthy*. This answers *how you build one, and why these rules*.
 **Enforcement is marked on every rule**, because the difference matters more
 than the rule does. A practice that is only prose gets rediscovered; a
 practice that is a check gets enforced. Of the rules below, the enforced ones
-have survived contact with three systems. The prose-only ones — 8, 10, 11, 13
-and 14 — are the ones to distrust first.
+have survived contact with three systems. The prose-only ones — 8, 10, 11, 13,
+14 and 15 — are the ones to distrust first.
 
 That list started at eight. Rules 4, 5, 7, 9 and 12 came off it by becoming
 `gas-lint` Checks H through K, and each of those checks found a live defect on
@@ -204,6 +204,20 @@ downstream lookup.
 column maps for the same sheet and errors on disagreement. Before that, this
 rule lived in exactly one comment.
 
+The same failure shows up wherever two independent lists describe one set of
+facts, not just sheet columns. `kos-personal/1_Config_And_Deploy.gs`'s
+`setupAllTriggers()` and `teardownAllTriggers()` each kept their own copy of
+every trigger handler this project manages — and both copies had already
+drifted before anyone noticed: `setupAllTriggers()`'s list was missing
+`harvestStudioReturns`, and `teardownAllTriggers()`'s separate list was
+missing that one *and* `buildStudioInputRows`, so "tear down everything"
+would have silently left triggers running after an operator believed the
+teardown was complete. Fixed the same way as rule 7 itself: one
+`KOS_TRIGGER_HANDLERS` list, both functions read it, nothing left to drift.
+Check H only watches declared column maps — this shape of drift outside
+that scope is still something a human has to notice, same as before Check H
+existed for columns at all.
+
 ## 8. Load-bearing strings are referenced, never retyped.
 
 `evaluateWarmUpDoc_` finds a student's response by `indexOf` on
@@ -239,6 +253,21 @@ functions, and warns when a role is missing without a declared reason. Whether
 they *say anything useful* is not checkable. It found its first gap on its
 first run: Flow 2 had a preflight, a canary and a binding probe, but nothing
 answering "has a Flow ever answered?" — hence `checkFlow2Liveness()`.
+
+Filling in kos-personal's own "—" (`runKosPersonalPreflight()`,
+`15_Preflight.gs`) surfaced a smaller version of rule 7's lesson, applied to
+the preflight check itself: cas-ccps's `runFlowPreflightCheck()` verifies
+trigger installation with one hand-written `_pfCheckTrigger_()` call per
+trigger, hand-copying the trigger name each time. kos-personal's version
+instead loops `KOS_TRIGGER_HANDLERS` — the one list rule 7's addendum above
+describes fixing — so adding a fifteenth trigger to that project means
+adding it in one place, not two (the trigger installer) plus a third
+(the preflight check). cas-ccps's preflight could do the same the day it
+has one canonical trigger-handler list to loop instead of four separate
+`ScriptApp.newTrigger()` call sites to enumerate by hand; nothing has built
+that list yet. leader-hub's preflight has no trigger check at all, correctly
+— its Flows read `AI_Queue` via Studio's own trigger, not a time-driven
+Apps Script poll, so there is no installed-trigger set to verify.
 
 ## 10. A canary stubs what you do not control, and says so.
 
@@ -331,6 +360,57 @@ condition inside Studio's own UI; this is process discipline, written down
 once so it generalizes rather than being rediscovered per system, per the
 standing invitation in this document's own intro.
 
+## 15. A green harvest can still be a fabrication. Check groundedness, not just structure.
+
+Rule 9's four checks can all pass on the single most dangerous case: the
+trigger matched, the columns are bound right, the Flow answered, and the
+answer is still wrong — because the model never actually engaged the
+content it was supposed to read. That is exactly what Round 17's incident
+was (kos-personal, `CHANGELOG.md`): Studio's own "Get document" step
+silently failed, and Gemini returned confident, well-formed JSON anyway.
+Every structural check available at the time would have called that a
+success, because structurally it was one.
+
+**Check whether the model's own output shares content that could only come
+from having actually read the input — not just that its shape parses.** The
+pattern that generalized across every flow surface in this repo: extract a
+handful of "distinguishing words" from the real source content (long enough
+and rare enough that they would not appear by chance — ≥6 characters,
+stopword-filtered, longest first), and confirm at least one of them shows up
+in the model's output; separately, scan the output itself for a small static
+list of "I could not access…"-shaped phrases a model uses to self-report
+this exact failure. Either miss is a fabrication signal, and neither is a
+structural one — a flow can fail this check while passing every check rule 9
+names.
+
+Discovered once and then independently required by every flow surface in
+this repo, each adapted to its own FERPA/architecture constraints rather
+than copied verbatim:
+
+- `kos-personal/12_StudioReturnHarvest.gs`'s `_srCheckGroundedness_` — no
+  FERPA boundary on this content, so it checks directly against the source
+  document's own text.
+- `cas-ccps/scripts/37_FlowInputBuilder.js`'s `_fiCheckPlausibility_` —
+  Flow 2's FERPA boundary means the student's own submitted text must never
+  reach Apps Script (`{{STUDENT_TEXT}}` stays unsubstituted), so this checks
+  against rubric/config metadata instead.
+- `cas-ccps/scripts/41_WarmUpFlowBridge.js`'s `_wfbCheckPlausible_` — Flows
+  3/4/5's response text is already a documented, retained field with no such
+  boundary, so this checks directly against it; reuses Flow 2's own
+  word-extraction helper and non-access phrase list directly rather than
+  redeclaring them, since both files share one GAS project (rule 8's
+  reasoning, applied to a helper function instead of a string constant).
+- `leader-hub/EmailBridge.gs`'s `_checkAiResultPlausible_` — no boundary at
+  all, since Apps Script wrote the whole payload itself before ever queuing
+  the job, so this checks against the full payload.
+
+**Enforced:** no. Each implementation has its own unit and integration
+tests, but nothing checks that a flow surface *has* this role the way Check
+I requires materialize/harvest/canary/binding/liveness to exist —
+`flow-map.json`'s `flowSurfaces` schema has no field for it yet. A declared
+surface with no groundedness check today reads identically to one that was
+never designed to need one.
+
 ---
 
 ## Adding a flow
@@ -357,3 +437,7 @@ standing invitation in this document's own intro.
 8. Building the trigger itself: if the condition is a compound AND, wire and
    test the more restrictive half alone first — confirm its matched-row
    count before adding the second condition on top (rule 14).
+9. At harvest, check groundedness — not just that the output parses, but
+   that it shares distinguishing content with what the model was actually
+   given, adapted to whatever FERPA/architecture boundary this flow's own
+   input carries (rule 15).
