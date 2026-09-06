@@ -469,6 +469,24 @@ function _getOrCreateSheet(ss, name) {
       'Returned_At','Payload_UID','Payload_Type',
       'Primary_JSON','Auditor_JSON','Harvest_Status','Attempts','Error',
     ],
+    // CuratorInput / VectorClassifyInput (13_StudioInputBuilder.gs):
+    // materialized inputs for the two Studio flows, so neither needs its
+    // own live "Get document" step — SourceText is what used to be a
+    // Docs-read at flow-run time. Same shape for both; two tabs rather
+    // than one shared tab is what keeps each Flow's trigger a single
+    // condition instead of a compound one (meta/FLOW_DOCTRINE.md rule 14).
+    // Literal tab names, not CI_CURATOR_TAB/CI_CLASSIFY_TAB — those
+    // constants live in 13_StudioInputBuilder.gs, a different file, and
+    // this map already uses a literal for 'STUDIO_RETURN' above for the
+    // same reason: a sandbox loading this file without that one would
+    // hit a ReferenceError on an undeclared identifier, not a harmless
+    // undefined key.
+    'CuratorInput': [
+      'Timestamp','Payload_UID','Payload_Type','File_ID','SourceText','Status',
+    ],
+    'VectorClassifyInput': [
+      'Timestamp','Payload_UID','Payload_Type','File_ID','SourceText','Status',
+    ],
     'STAGING_ARCHIVE': [
       'Archived_At','Timestamp','Payload_UID','Payload_Type',
       'Doc_URL','File_ID','Status','Retry_Count',

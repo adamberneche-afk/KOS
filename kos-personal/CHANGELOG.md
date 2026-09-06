@@ -1429,3 +1429,78 @@ evidence of why that payload keeps failing. Five new tests cover kept vs.
 pruned in all three resolution paths, plus a regression check that
 `FAILED` rows are never swept up by the same logic. `npm test` (775/775),
 gas-lint and doc-currency both unchanged.
+
+## Round 19 — closing the live Docs-read, not just detecting what it breaks
+
+A direct follow-up question after Round 18's cross-system friction review:
+cas-ccps and leader-hub's redesigned flows all materialize their FULL input
+— including any document text — into a flat row before Studio ever runs,
+so there is no live Docs-read step for a permission toggle to break.
+kos-personal's Curator and classification flows never got that treatment;
+only the *write-back* half was ported (`12_StudioReturnHarvest.gs`). Both
+flows still had a live "Google Docs — Get document" step inside Studio,
+reading `@trigger.File_ID` at flow-run time — the exact surface Round 17's
+incident hit. The groundedness gate (Round 18) catches that failure after
+the fact; it does not close the surface itself.
+
+**`13_StudioInputBuilder.gs` (new) closes it.** `buildStudioInputRows()`,
+on its own 1-minute trigger, opens the Drive doc for every not-yet-
+materialized `STUDIO_ACTIVE` row and writes the full text into a flat
+`SourceText` column — `CuratorInput` for `SR_CURATOR_TYPES`,
+`VectorClassifyInput` for `VECTOR_CLASSIFY`. Two tabs, not one shared tab:
+that is what keeps each Flow's own trigger a **single condition**
+(`Status = READY` on its own tab) instead of the compound `Status =
+STUDIO_ACTIVE AND Payload_Type in (...)` shape that let Round 17's
+`Payload_Type` half do all the filtering while `Status` silently wasn't
+wired. That lesson is now `meta/FLOW_DOCTRINE.md` rule 14, written the
+same day this file landed — leader-hub's six Flows carry the identical
+compound-trigger shape with no such caution anywhere in that doc, so this
+generalizes well beyond kos-personal.
+
+**What this does and does not replace.** No Studio step in either Flow
+touches Drive or Docs any more — the Flow reads `@trigger.SourceText`
+(already a plain string on the trigger row) and its last step is still the
+same native "add row to sheet" into `STUDIO_RETURN`, unchanged.
+`12_StudioReturnHarvest.gs`'s own doc-overwrite logic is untouched too — it
+still looks up `File_ID` from `STAGING_PIPELINE` directly, never from the
+new tabs. The groundedness gate stays: it no longer exists to catch a
+Docs-read permission toggle (that mechanism is now structurally closed),
+but it is still real defense-in-depth against a model that reads a
+materialized cell and fabricates anyway.
+
+**A new, real failure mode this introduces, and its own check.**
+`checkStudioFlowLiveness()` already separates four causes of "nothing
+happened" (never built, trigger matches nothing, wrong columns, model
+call errored). None of those four can see a `STUDIO_ACTIVE` row that is
+perfectly healthy in every way except that `buildStudioInputRows()` never
+ran or keeps failing to open its doc — a Flow with a flawless trigger and
+binding still sees nothing, because there is nothing in `CuratorInput`/
+`VectorClassifyInput` for it to match. `checkStudioInputBuilder()` is the
+check for that fifth cause. `runStudioInputCanary()` proves the
+materialize half the same way `runStudioReturnCanary()` proves the
+harvest half — each stubs what it doesn't control and says so.
+
+**A real, pre-existing bug found and fixed along the way, unrelated to
+the above.** `setupAllTriggers()`'s own trigger-cleanup list
+(`KOS_TRIGGERS`) was missing `harvestStudioReturns` — every other trigger
+that function installs gets cleared before reinstalling; this one alone
+would have grown a duplicate on every re-run against an already-deployed
+instance. Found only because a new trigger was being added right next to
+it. Fixed in the same commit.
+
+`13_StudioInputBuilder.gs` registered in `tools/gas-lint/project-map.json`
+and `tools/gas-lint/flow-map.json` (a `materialize` role now exists for
+`kos-personal:studio-flows`, where none did before). `STUDIO_INTEGRATION_SPEC.md`,
+`DEPLOYMENT_GUIDE.md` and `SCHEMA_REFERENCE.md` all updated to match — the
+former two had several sections describing the now-superseded live-read
+design in enough procedural detail that an operator building from them
+would have wired a step with nothing to bind to. 13 new tests
+(`tests/kos-personal/studio-input-builder.test.js`). `npm test` (795/795),
+gas-lint (0 errors, 5 warnings — unchanged) and doc-currency (0 errors, 8
+warnings — unchanged) all clean.
+
+**What this session did not and could not do:** touch the actual Studio
+Flow, its trigger, or any Google account — SMP-004's boundary, same as
+every round before this one. The materialization is real, tested,
+deployable code; wiring the Flow to the new tabs is still the operator's
+next Studio session, now against a simpler build than Round 17 left.
