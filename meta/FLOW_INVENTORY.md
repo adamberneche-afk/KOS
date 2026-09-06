@@ -250,6 +250,14 @@ three-state semantics as the table above — "completed or errored ever" both
 count as healthy, matching the other two systems' own "a terminal outcome
 of either kind proves the Flow is alive" convention.
 
+**Update, first real deployment (`HISTORY.md`'s 2026-09-05 entry): all six
+are now built in Studio and confirmed live**, not hypothetical —
+`checkAiFlowFixtures()` showed every one of `EMAIL_COMPOSE`,
+`ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`, `LP_ASSIST`, `FIN_ANALYSIS` and
+`BRAG_EMAIL` move off `PENDING`, and `checkAiFlowBinding()` confirmed 6/6
+rows clean. The two-place "where to check" split above still holds — this
+just answers what it currently reports.
+
 ---
 
 ## meta / personal Drive — Drive Steward classification Flow
