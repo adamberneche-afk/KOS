@@ -2108,3 +2108,67 @@ reference the fixture's actual rubric language instead of weakening the
 check, since a real Flow 2 response is expected to engage with the specific
 assignment it evaluated. `npm test` (782/782), `gas-lint` and `doc-currency`
 (both unchanged) all clean after these changes.
+
+## Flows 3, 4 and 5 get the same plausibility gate Flow 2 got
+
+Direct follow-up: Flow 2's plausibility gate closed one instance of a
+model returning well-formed output without engaging with what it was
+given. Flows 3, 4 and 5 (`41_WarmUpFlowBridge.js`) had the exact same
+blind spot — `harvestWarmUpFlowReturns()` only checked that a return's
+raw output was non-empty (and, for Flow 4, that it parsed as JSON) before
+applying it. Of the three, Flow 4 is the sharpest exposure: it evaluates
+the student's actual warm-up response and writes grammar/engagement
+scores that become part of a real grade.
+
+**Reused Flow 2's own check directly, not a second copy.** `_fiCheckPlausibility_`'s
+word-extraction and non-access-phrase list (`_fiDistinguishingWords_`,
+`FI_NON_ACCESS_PHRASES`, both `37_FlowInputBuilder.js`) are called
+straight from the new `_wfbCheckPlausible_` (`41_WarmUpFlowBridge.js`) —
+the two files already share this GAS project
+(`tools/gas-lint/project-map.json`'s `cas-ccps:central-ledger`), unlike
+kos-personal and leader-hub, which each had to duplicate the same logic
+because GAS has no cross-project function calls. No FERPA workaround
+needed here either: `WQ25_RESPONSE_TEXT` is already a documented,
+retained WarmUpQueue field (`docs/FERPA_DATA_MAP.md`), so Flow 4's check
+compares straight against the real response.
+
+**Wired in before the expensive or unretryable part of each apply
+function, not after:**
+- **Flow 5** (`wfbApplyFlow5_`) — checked against the lesson snapshot's
+  prior response/connection/course name, before the bridge paragraph is
+  written and the row advances to `PENDING`.
+- **Flow 3** (`wfbApplyFlow3_`) — checked against the lesson context
+  object, before any Drive folder resolution or doc creation. This one
+  matters most structurally: a rejected prompt never reaches Drive at
+  all, so it can't produce the "second doc for the same student" state
+  the existing `existingDocId` guard already treats as unretryable.
+- **Flow 4** (`wfbApplyFlow4_`) — checked against the student's own
+  `WQ25_RESPONSE_TEXT`, before `writeFinalScores_` runs. A rejected
+  evaluation writes no score and does not advance the row to `SCORED`.
+
+A rejection returns `{ok: false, error: "SUSPECT_FABRICATION: ..."}` and
+goes through this file's own existing failure path unchanged — retried up
+to `WFB_MAX_ATTEMPTS`, then `FAILED` with the queue status set to
+`EVAL_ERROR` (Flow 4) or `ERROR` (Flows 3/5). No new status was needed,
+matching this file's own documented policy of writing a failure marker
+(unlike kos-personal's "touch nothing" staleness-guard design).
+
+**A canary fixture fixed along the way, the same class of issue Flow 2's
+own fixture hit.** `runWarmUpFlowCanary()`'s Flow 5 test wrote a
+completely generic bridge paragraph ("A bridge paragraph.") against a
+lesson snapshot with real distinguishing content ("connects") — exactly
+what the new gate now flags. Made the canary's own bridge text reference
+that content instead of weakening the check. Flows 3 and 4 are untouched
+by this fix: the canary already only exercises them as pure logic (no
+Drive, no real student doc), never through `wfbApplyFlow3_`/`wfbApplyFlow4_`
+themselves, so neither was affected.
+
+16 new tests in `tests/cas-ccps/warmup-flow-bridge.test.js`: the check in
+isolation (non-access phrase, grounded pass, fabricated rejection, a
+source with nothing distinctive to check), plus end-to-end through
+`harvestWarmUpFlowReturns()` for all three flows — a grounded case
+applies normally, a fabricated one is rejected with nothing written
+(no score, no doc, no advanced status). Flow 3's rejection path needed no
+Drive mocking at all: since the gate runs before any Drive call, a
+rejected case never reaches `DriveApp`. `npm test` (825/825), `gas-lint`
+and `doc-currency` (both unchanged) all clean.
