@@ -1143,11 +1143,18 @@ Until that property is set, `doGet()` fails closed for everyone,
 including the person who deployed it, by design.
 
 Verified with `node --check` on every `.gs` file, `node
-tools/gas-lint/check.js` (clean — Check D now also verifies every
+tools/gas-lint/check.js` (0 errors — Check D now also verifies every
 `google.script.run.*` call from the assembled HTML resolves to a real
 server function, and Check E confirms OAuth scope coverage across all
 five `.gs` files that existed at that round — the project has grown since;
-`tools/gas-lint/project-map.json` has the current list), `node tools/leaderhub-build/build.js --check`, and a
+`tools/gas-lint/project-map.json` has the current list. A live run today
+also reports 5 warnings, none in leader-hub's own files — 1
+dynamic-dispatch heuristic gap in kos-personal and 3 possibly-undefined
+false positives in cas-ccps, all pre-existing and already named in each
+project's own docs; see the "clean except N pre-existing warnings" note
+on earlier entries above, which this repo's own KOS Audit Docket II
+flagged as having drifted out of sync with a live run — corrected here
+rather than left to keep drifting), `node tools/leaderhub-build/build.js --check`, and a
 Node-VM-sandboxed test per new server file (`tests/leaderhub/config-sync
 .test.js`, `data-sync.test.js`, `scr-sync.test.js`, extending
 `tests/harness/gas-sandbox.js` with a `LockService` mock for `SCR.gs`) —
