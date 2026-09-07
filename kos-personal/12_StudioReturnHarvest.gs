@@ -1161,12 +1161,13 @@ function runStudioReturnCanary() {
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss');
   const uid = 'CANARY-SR-' + stamp + '-' + Utilities.getUuid().substring(0, 6).toUpperCase();
   let doc = null;
+  let fileId = null; // hoisted: the groundedness section below (a separate try block) needs it too
 
   try {
     doc = DocumentApp.create('KOS Canary — StudioReturn ' + stamp);
     doc.getBody().setText('ORIGINAL SOURCE TEXT — the harvest should replace this.');
     doc.saveAndClose();
-    const fileId = doc.getId();
+    fileId = doc.getId();
     step('scratch doc created', !!fileId, fileId);
 
     staging.appendRow([new Date(), uid, 'SESSION_LOG', 'https://docs.google.com/document/d/' + fileId,
@@ -1233,10 +1234,16 @@ function runStudioReturnCanary() {
   const fabUid = 'CANARY-SR-FAB-' + stamp;
   try {
     const distinctive = 'canarytoken' + stamp.replace(/[^0-9]/g, '');
-    const longSource = 'A real session discussing ' + distinctive + ' and its rollout plan, ' +
-      'covering the risks involved and the follow-up owner for each one — repeated at enough ' +
-      'length to clear the groundedness floor this canary is exercising, since a short scratch ' +
-      'doc like the one above would skip the gate entirely by design.';
+    const sentence = 'A real session discussing ' + distinctive + ' and its rollout plan, ' +
+      'covering the risks involved and the follow-up owner for each one. ';
+    // Actually repeated this time — one unrepeated copy of `sentence` alone is only ~140
+    // chars, well under SR_GROUNDEDNESS_MIN_CHARS (500), which silently routed both
+    // assertions below through the gate's permissive short-circuit instead of its real
+    // word-overlap check. Padding past the floor is the whole point of this sub-test.
+    const longSource = sentence.repeat(4) +
+      'This scratch document is deliberately padded past the groundedness length floor so ' +
+      'this canary actually exercises the real word-overlap check, not the permissive ' +
+      'short-circuit a shorter scratch doc would silently hit instead.';
     step('scratch source text clears the groundedness length floor',
       longSource.length >= SR_GROUNDEDNESS_MIN_CHARS, longSource.length + ' chars');
 
