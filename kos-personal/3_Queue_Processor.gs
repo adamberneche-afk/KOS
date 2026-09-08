@@ -123,8 +123,35 @@ function processInferenceQueue() {
         continue;
       }
 
+      const payloadUid = String(data[i][SC.PAYLOAD_UID] || '');
+
       try {
-        const raw = DocumentApp.openById(fileId).getBody().getText().trim();
+        // FIX (found verifying the rebuilt kos-personal Studio integration):
+        // this used to read DocumentApp.openById(fileId).getBody().getText()
+        // directly — but a File_ID is not exclusive to this row. Two
+        // different Payload_Type rows for the same session deliberately
+        // share one File_ID (see installStudioFlowFixture()'s own header in
+        // 12_StudioReturnHarvest.gs), and _srOverwriteDocBody_ replaces that
+        // doc's ENTIRE body on every harvest. If the companion row's return
+        // gets harvested later, its harvest silently overwrites this row's
+        // content with the companion's — both harvests still report success,
+        // so nothing here would ever see it happen. Reading the payload back
+        // from STUDIO_RETURN by this row's own Payload_UID instead is
+        // race-free: that row is never touched by a different UID's harvest.
+        // Falls back to the old doc read only if the STUDIO_RETURN row is
+        // genuinely gone (pruned after SR_PRUNE_AFTER_DAYS, or deleted by
+        // hand) — the doc is the last remaining record at that point,
+        // accepting the same small risk this fix exists to close in the
+        // common case.
+        const returned = _srGetHarvestedPayloadText_(payloadUid);
+        let raw;
+        if (returned.ok) {
+          raw = returned.text.trim();
+        } else {
+          console.warn('[Queue] Row ' + sheetRow + ' (' + payloadUid + '): ' + returned.error +
+            ' — falling back to reading the source doc directly.');
+          raw = DocumentApp.openById(fileId).getBody().getText().trim();
+        }
 
         // ── JSON Parse ──────────────────────────────────────────
         let parsed;
@@ -152,7 +179,8 @@ function processInferenceQueue() {
           continue;
         }
 
-        const payloadUid = String(data[i][SC.PAYLOAD_UID] || '');
+        // (payloadUid declared above, ahead of the STUDIO_RETURN lookup —
+        // both this audit gate and that lookup need this row's own UID.)
 
         // ── Audit gate ────────────────────────────────────────────
         // The Curator flow's own output can carry a nested
