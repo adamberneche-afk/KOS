@@ -48,8 +48,13 @@
 > 3. **Ask Gemini** — system prompt: `CURATOR_PROMPT.md` (Curator) or
 >    `VECTOR_CLASSIFY_PROMPT.md` (classification), pasted verbatim ·
 >    variable: `@trigger.SourceText`. Same prompts, same contract, same
->    optional Auditor pass (rows 2a/2b below) as before — none of that
->    changed.
+>    optional Auditor pass (row 2a below) as before — none of that
+>    changed. **Corrected since the Auditor step first shipped:** no
+>    merge step belongs in Studio at all — `_srPrepareDocText_`
+>    (`12_StudioReturnHarvest.gs`) takes the Curator's and Auditor's raw
+>    outputs as two separate arguments and merges them itself. Studio
+>    writes each raw output to its own `STUDIO_RETURN` column
+>    (`Primary_JSON`, `Auditor_JSON`) — see row 2a and step 5 below.
 > 4. **Native "add row to sheet"** into `STUDIO_RETURN`, exactly as
 >    before: `Returned_At | Payload_UID | Payload_Type | Primary_JSON |
 >    Auditor_JSON`. Still does **not** write the document and does
@@ -166,17 +171,20 @@ Studio               Polls CuratorInput/VectorClassifyInput for
 Studio               Reads @trigger.SourceText — no Docs connector
 Studio               Runs inference on that text
 Studio (optional)    Auditor verifies the Curator's own claims against
-                     the transcript, merged in as auditor_sign_off —
-                     see Step 7's connector table (steps 2a/2b) and
-                     CURATOR_PROMPT.md Rule 8. One JSON object either
-                     way — never two objects written back to back.
-Studio               Adds a row to STUDIO_RETURN carrying the JSON
-                     (with auditor_sign_off merged in, if the Auditor
-                     step ran) — see the banner above; Studio used to
-                     write the doc body and the status itself, and
-                     cannot on this account
-KOS Return Harvest   Overwrites the doc body, sets Status =
-                     FLOW_COMPLETE (12_StudioReturnHarvest.gs,
+                     the transcript, producing its own raw
+                     auditor_sign_off JSON — see Step 7's connector
+                     table (row 2a) and CURATOR_PROMPT.md Rule 8. NOT
+                     merged in Studio — that's Apps Script's job (below).
+Studio               Adds a row to STUDIO_RETURN carrying the Curator's
+                     raw JSON in Primary_JSON and (if the Auditor step
+                     ran) the Auditor's own raw JSON in Auditor_JSON —
+                     two separate, unmerged values; see the banner above.
+                     Studio used to write the doc body and the status
+                     itself, and cannot on this account
+KOS Return Harvest   Merges Auditor_JSON into Primary_JSON under
+                     auditor_sign_off (if present), overwrites the doc
+                     body with the result, sets Status = FLOW_COMPLETE
+                     (12_StudioReturnHarvest.gs's _srPrepareDocText_,
                      5-minute trigger)
 KOS Queue Processor  Reads FLOW_COMPLETE rows
 KOS Queue Processor  Parses JSON, checks auditor_sign_off — passes
@@ -497,13 +505,13 @@ added at the end of this table.
 |---|---|---|---|
 | T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `CuratorInput` · Condition: `Status = READY` | Single condition — `CuratorInput` only ever carries Curator-type rows (`13_StudioInputBuilder.gs` sorts SESSION_LOG/EXTERNAL_DATA/COG_STIMULUS/COG_EXHAUST here, VECTOR_CLASSIFY into its own separate tab), so there is nothing to combine this with the way the old `Status = STUDIO_ACTIVE AND Payload_Type in (...)` condition needed to. See the banner's `meta/FLOW_DOCTRINE.md` rule 14 note. |
 | 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md), pasted verbatim · Variable: `@trigger.SourceText` (column 5 of `CuratorInput` — the materialized document text, per Step 3 above) · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
-| 2a | *(optional)* Gemini — Generate content | System prompt: full text of [`CURATOR_AUDITOR_PROMPT.md`](./CURATOR_AUDITOR_PROMPT.md), pasted verbatim (or chip-built per the banner above) · Variables: `@trigger.SourceText` (the transcript) and `@step2.geminiOutput` (the Curator's own output) — TWO variables, not one · Output format: exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape, nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. It verifies the Curator's output — it does not re-extract the session itself. Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
-| 2b | *(required if 2a is used)* Merge/transform step | Combine `@step2.geminiOutput` and `@step2a.geminiOutput` into one JSON object: every key from Step 2's output, plus a new top-level `auditor_sign_off` key holding Step 2a's output verbatim | However your Studio setup supports this (a Code/Script step, or a follow-up Gemini call instructed to output the exact union and nothing else) — the requirement is just that the final step below writes ONE JSON object. Two JSON objects written back to back is not valid JSON and breaks `JSON.parse()` outright — confirmed directly against a real processed log that hit exactly this. |
+| 2a | *(optional)* Gemini — Generate content | System prompt: full text of [`CURATOR_AUDITOR_PROMPT.md`](./CURATOR_AUDITOR_PROMPT.md), pasted verbatim (or chip-built per the banner above) · Variables: `@trigger.SourceText` (the transcript) and `@step2.geminiOutput` (the Curator's own output) — TWO variables, not one · Output format: exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape, nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. It verifies the Curator's output — it does not re-extract the session itself. Its raw output goes straight into step 5's `Auditor_JSON` column below — **no merge step follows this one.** Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
+| ~~2b~~ | ~~Merge/transform step~~ | ~~Combine step 2's and step 2a's output into one object~~ | **Not a step to build, and never was — corrected here.** `_srPrepareDocText_` (`12_StudioReturnHarvest.gs`) takes the Curator's and Auditor's RAW outputs as two separate arguments and merges them itself (`curatorParsed.auditor_sign_off = auditorParsed`) when it writes the doc body. A Studio-side merge here was never part of the real contract; the two-separate-columns wiring in step 5 below is what to actually build. |
 | ~~3~~ | ~~Google Docs — Insert text~~ | ~~Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`~~ | **Not a step to build.** This is the write `harvestStudioReturns()` performs, in Apps Script, on its own 5-minute trigger — kept here only as the contract that function implements. |
 | ~~4~~ | ~~Google Sheets — Update row~~ | ~~Status column: `FLOW_COMPLETE`~~ | **Not a step to build.** Same as above — `harvestStudioReturns()` sets this, never the Flow. |
-| **5** | **Google Sheets — Add row to sheet** | **Spreadsheet: `BRAIN_TRUST_INDEX` · Tab: `STUDIO_RETURN` · `Payload_UID`: `@trigger.Payload_UID` · `Payload_Type`: `@trigger.Payload_Type` · `Primary_JSON`: `@step2.geminiOutput` · `Auditor_JSON`: `@step2b`'s merged output if wired in, else blank** | **This is the actual last step.** Leave `Harvest_Status`, `Attempts`, `Error` empty — `harvestStudioReturns()` owns those. Must always run, even on a Step 2/2a/2b failure path — on failure, run this step with `Primary_JSON` however Studio's own error path shapes it (or skip the row entirely, letting the staleness guard recycle it) rather than writing `FLOW_COMPLETE` anywhere; nothing here should ever set that value. |
+| **5** | **Google Sheets — Add row to sheet** | **Spreadsheet: `BRAIN_TRUST_INDEX` · Tab: `STUDIO_RETURN` · `Payload_UID`: `@trigger.Payload_UID` · `Payload_Type`: `@trigger.Payload_Type` · `Primary_JSON`: `@step2.geminiOutput` (the Curator's raw output, unmerged) · `Auditor_JSON`: `@step2a.geminiOutput` — the Auditor's own raw output, verbatim, if wired in, else blank** | **This is the actual last step.** Both `Primary_JSON` and `Auditor_JSON` are RAW model output — neither is merged with the other before landing here; `_srPrepareDocText_` does that merge server-side. Leave `Harvest_Status`, `Attempts`, `Error` empty — `harvestStudioReturns()` owns those. Must always run, even on a Step 2/2a failure path — on failure, run this step with `Primary_JSON` however Studio's own error path shapes it (or skip the row entirely, letting the staleness guard recycle it) rather than writing `FLOW_COMPLETE` anywhere; nothing here should ever set that value. |
 
-**If 2a/2b are wired in:** a rejected `auditor_sign_off` (`status` not
+**If 2a is wired in:** a rejected `auditor_sign_off` (`status` not
 `PASSED`, or `unverified_claims_count > 0`) is caught by
 `processInferenceQueue()` *after* `FLOW_COMPLETE`/parsing, not by this
 Flow — the row still reaches `FLOW_COMPLETE` normally; GAS decides

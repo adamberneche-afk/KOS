@@ -131,9 +131,11 @@ the output, `verdict` is `UNVERIFIED`.
 ```
 
 This is the entire output — not merged with anything, not wrapped in
-another object. `_srPrepareDocText_`/the Flow's own merge step (Step 2b, if
-wired per `STUDIO_INTEGRATION_SPEC.md`) is what folds this in under the
-Curator's own `auditor_sign_off` key; that is not your job to do.
+another object. Studio writes it, raw, straight into `STUDIO_RETURN`'s
+`Auditor_JSON` column — no merge step belongs in the Flow at all.
+`12_StudioReturnHarvest.gs`'s `_srPrepareDocText_` is what folds this in
+under the Curator's own `auditor_sign_off` key, server-side, at harvest
+time; that is not your job, and not Studio's either.
 
 ---
 

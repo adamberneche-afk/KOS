@@ -88,7 +88,7 @@ function _sfbsAppendCuratorFlow_(rows) {
   });
   rows.push(['Curator', 'prompt', '', '', '', 'CURATOR_PROMPT.md',
     'Paste verbatim as the Ask Gemini step\'s system prompt. See STUDIO_INTEGRATION_SPEC.md ' +
-    'Step 7\'s connector table for the optional Auditor pass (rows 2a/2b).']);
+    'Step 7\'s connector table for the optional Auditor pass (row 2a — no merge step follows it).']);
 }
 
 // The classification flow — VECTOR_CLASSIFY, via VectorClassifyInput.
