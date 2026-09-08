@@ -28,6 +28,7 @@
 
 const vm = require('vm');
 const fs = require('fs');
+const crypto = require('crypto');
 
 // See tests/harness/vm-run.js's crossRealmSafe for why this exists: a
 // plain object/array returned by a function that ran inside the vm
@@ -761,6 +762,22 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
       // all its iterations instantly, not actually wait real wall-clock
       // seconds per attempt.
       sleep() {},
+      // Real Apps Script API — Utilities.computeDigest(algorithm, value).
+      // First needed by kos-personal's 4_Vector_Router.gs
+      // (_computeMatrixRowChecksum_, the Vector Weight Calculation Engine's
+      // row-integrity hash). Real GAS returns a byte array of SIGNED bytes
+      // (-128..127, matching Java's byte type) — Node's Buffer is unsigned
+      // (0..255), so each byte is re-signed the same way real GAS would
+      // produce it, matching the >127 ? b-256 : b conversion callers
+      // already apply on the read side (e.g. that same function's own
+      // hex-encoding step).
+      DigestAlgorithm: { MD5: 'MD5', SHA_1: 'SHA_1', SHA_256: 'SHA_256', SHA_512: 'SHA_512' },
+      computeDigest(algorithm, value) {
+        const nodeAlgo = { MD5: 'md5', SHA_1: 'sha1', SHA_256: 'sha256', SHA_512: 'sha512' }[algorithm];
+        if (!nodeAlgo) throw new Error('computeDigest mock: unsupported algorithm "' + algorithm + '"');
+        const bytes = crypto.createHash(nodeAlgo).update(String(value), 'utf8').digest();
+        return Array.from(bytes, b => (b > 127 ? b - 256 : b));
+      },
     },
     // Every cas-ccps file logs through Logger.log(...) (Apps Script's
     // built-in logger, distinct from console) on essentially every code
