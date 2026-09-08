@@ -115,8 +115,12 @@
  *                                   the groundedness gate below
  */
 
-// STUDIO_RETURN column indices. A new tab, so these are safe to define
-// here — nothing else in the project reads this sheet.
+// STUDIO_RETURN column indices. A new tab, so these were safe to define
+// here originally. No longer true in one direction — processInferenceQueue()
+// (3_Queue_Processor.gs) now reads this sheet too, via
+// _srGetHarvestedPayloadText_ below, as the race-free source of a row's
+// payload text. Everything else about this sheet (writing return rows,
+// harvesting them) is still owned entirely by this file.
 const SR_COLS = {
   RETURNED_AT:    0,
   PAYLOAD_UID:    1,
@@ -394,6 +398,45 @@ function _srFindStagingRow_(staging, uid) {
     }
   }
   return null;
+}
+
+/**
+ * Finds the STUDIO_RETURN row for a given Payload_UID and reconstructs the
+ * exact payload text processInferenceQueue() should parse for it — the same
+ * text _srApplyReturn_ built (or would build) for that row's own doc write,
+ * via the same _srPrepareDocText_ contract logic (Curator-merge or
+ * Classification-array), so the two can never drift apart.
+ *
+ * WHY THIS EXISTS (found verifying the rebuilt kos-personal Studio
+ * integration): a Payload_UID's File_ID is not exclusive to that UID — two
+ * different Payload_Type rows for the same session deliberately share one
+ * File_ID (see installStudioFlowFixture()'s header above), and
+ * _srOverwriteDocBody_ replaces that doc's ENTIRE body on every harvest. If
+ * processInferenceQueue() re-reads the doc instead, and the companion row's
+ * return gets harvested later, it silently reads the companion's payload
+ * instead of its own. STUDIO_RETURN's own row is keyed by Payload_UID and
+ * is never overwritten by a different UID's harvest — reading from there is
+ * race-free regardless of what has happened to the shared doc since.
+ *
+ * @param  {string} uid  The STAGING_PIPELINE row's own Payload_UID.
+ * @returns {{ok:true, text:string}|{ok:false, error:string}}
+ */
+function _srGetHarvestedPayloadText_(uid) {
+  const ss    = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+  const sheet = _getOrCreateSheet(ss, SR_SHEET);
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) return { ok: false, error: 'STUDIO_RETURN is empty' };
+
+  const width = Object.keys(SR_COLS).length;
+  const data  = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+  for (let i = 0; i < data.length; i++) {
+    if (String(data[i][SR_COLS.PAYLOAD_UID]).trim() !== uid) continue;
+    const payloadType = String(data[i][SR_COLS.PAYLOAD_TYPE] || '').trim();
+    const primary      = String(data[i][SR_COLS.PRIMARY_JSON] || '');
+    const auditor      = String(data[i][SR_COLS.AUDITOR_JSON] || '');
+    return _srPrepareDocText_(payloadType, primary, auditor);
+  }
+  return { ok: false, error: 'No STUDIO_RETURN row for Payload_UID ' + uid };
 }
 
 // DocumentApp rather than a native connector: body.clear() before
