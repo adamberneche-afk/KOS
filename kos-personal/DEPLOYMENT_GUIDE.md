@@ -59,16 +59,20 @@
 >    with, and the whole "verify the more restrictive half in isolation"
 >    caution from Round 17 no longer applies to this design.
 > 3. `syncFlowPrompts()` (`16_FlowPrompts.gs`) — writes the `FlowPrompts`
->    tab: `CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT`,
->    generated from `CURATOR_PROMPT.md`/`VECTOR_CLASSIFY_PROMPT.md` by
+>    tab: `CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT`/
+>    `CURATOR_AUDITOR_SYSTEM_PROMPT`, generated from `CURATOR_PROMPT.md`/
+>    `VECTOR_CLASSIFY_PROMPT.md`/`CURATOR_AUDITOR_PROMPT.md` by
 >    `tools/kos-personal/generate-flow-prompts.js` — not required, but
 >    lets each Flow's Gemini step pull its system prompt in via a chip
 >    (a Sheets lookup step filtered on `PromptName`, then that step's
 >    output chip immediately followed by `@trigger.SourceText`, nothing
->    typed in between) instead of a hand-pasted block. Never hand-edit
->    this tab or `16_FlowPrompts.gs`'s constants directly — edit the
->    `.md` file, re-run the generator, push, re-run `syncFlowPrompts()`.
->    `tests/kos-personal/flow-prompts.test.js` fails `npm test` the moment
+>    typed in between for the Curator/Classify prompts; the Auditor prompt
+>    needs one typed label between two chips instead, since it has two
+>    variables — see `STUDIO_INTEGRATION_SPEC.md`'s banner) instead of a
+>    hand-pasted block. Never hand-edit this tab or `16_FlowPrompts.gs`'s
+>    constants directly — edit the `.md` file, re-run the generator, push,
+>    re-run `syncFlowPrompts()`. `tests/kos-personal/flow-prompts.test.js`
+>    fails `npm test` the moment
 >    a `.md` file and the generated constant disagree.
 > 4. Verify the materialize half: `runStudioInputCanary()`,
 >    `checkStudioInputBuilder()`.

@@ -70,22 +70,30 @@
 >
 > **Optional, before building either Flow: `syncFlowPrompts()`**
 > (16_FlowPrompts.gs) writes a `FlowPrompts` tab carrying
-> `CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT` — generated from
-> this Curator prompt / `VECTOR_CLASSIFY_PROMPT.md` by
-> `tools/kos-personal/generate-flow-prompts.js`, not hand-pasted. Lets a
-> Flow's Gemini step build its System Prompt field as two chips back to
-> back — a Sheets "Get row"/"Look up row" step (filtered on `PromptName`)
-> feeding its `PromptText` output, immediately followed by
-> `@trigger.SourceText`, nothing typed in between — instead of a
-> hand-pasted block of this file's prose. Each generated cell already ends
-> with "Payload to Analyze:" on its own line, same as this file's own
-> trailing shape, so the `SourceText` chip picks up exactly where
-> `[VARIABLE_INSERTED]` sits below. Skip this and paste the prompt
-> directly if you'd rather — both wire to the identical `@trigger.SourceText`
-> variable underneath; this only changes how the text arrives in the field.
-> Never hand-edit the `FlowPrompts` tab or `16_FlowPrompts.gs`'s constants —
-> edit this file, run the generator, push, re-run `syncFlowPrompts()`;
-> `tests/kos-personal/flow-prompts.test.js` fails if the two ever disagree.
+> `CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT`/
+> `CURATOR_AUDITOR_SYSTEM_PROMPT` — generated from this Curator prompt /
+> `VECTOR_CLASSIFY_PROMPT.md` / `CURATOR_AUDITOR_PROMPT.md` by
+> `tools/kos-personal/generate-flow-prompts.js`, not hand-pasted (rule 16,
+> `meta/FLOW_DOCTRINE.md`). Lets a Flow's Gemini step build its System
+> Prompt field from chips instead of a hand-pasted block of prose. For the
+> Curator/Classify prompts, that's two chips back to back — a Sheets "Get
+> row"/"Look up row" step (filtered on `PromptName`) feeding its
+> `PromptText` output, immediately followed by `@trigger.SourceText`,
+> nothing typed in between; each generated cell already ends with
+> "Payload to Analyze:" on its own line, so the `SourceText` chip picks up
+> exactly where `[VARIABLE_INSERTED]` sits below. The Auditor step (2a
+> below) needs a THIRD chip, because it has two variables, not one — its
+> cell ends one label earlier ("...verify claims against this):\n"), so
+> build that field as: `PromptText` chip → `@trigger.SourceText` (the
+> transcript) → type the one label yourself
+> ("\n\nCURATOR'S OUTPUT TO AUDIT (check this for accuracy and format
+> compliance):\n") → the Curator step's own output chip. Skip any of this
+> and paste the prompt directly if you'd rather — all wire to the same
+> underlying variables; this only changes how the text arrives in the
+> field. Never hand-edit the `FlowPrompts` tab or `16_FlowPrompts.gs`'s
+> constants — edit the `.md` file, run the generator, push, re-run
+> `syncFlowPrompts()`; `tests/kos-personal/flow-prompts.test.js` fails if
+> any of the three ever disagree with its source.
 >
 > Verify with, in order: `runStudioInputCanary()` (13_StudioInputBuilder.gs —
 > proves the materialize half), `checkStudioInputBuilder()` (is anything
@@ -489,7 +497,7 @@ added at the end of this table.
 |---|---|---|---|
 | T | Google Sheets — Row updated | Spreadsheet: `BRAIN_TRUST_INDEX` (ID from `INDEX_ID` property) · Tab: `CuratorInput` · Condition: `Status = READY` | Single condition — `CuratorInput` only ever carries Curator-type rows (`13_StudioInputBuilder.gs` sorts SESSION_LOG/EXTERNAL_DATA/COG_STIMULUS/COG_EXHAUST here, VECTOR_CLASSIFY into its own separate tab), so there is nothing to combine this with the way the old `Status = STUDIO_ACTIVE AND Payload_Type in (...)` condition needed to. See the banner's `meta/FLOW_DOCTRINE.md` rule 14 note. |
 | 2 | Gemini — Generate content | System prompt: full text of [`CURATOR_PROMPT.md`](./CURATOR_PROMPT.md), pasted verbatim · Variable: `@trigger.SourceText` (column 5 of `CuratorInput` — the materialized document text, per Step 3 above) · Output format: JSON only, no preamble or markdown | Malformed output fails the same way as any other flow's malformed output — `NEEDS_CURATOR`, retried, then `FAILED_PARSE` after `CFG.MAX_RETRIES`. |
-| 2a | *(optional)* Gemini — Generate content | An Auditor persona, instructed to check each checkable claim in `@step2.geminiOutput` against the original transcript (`@trigger.SourceText`) and produce exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape — nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
+| 2a | *(optional)* Gemini — Generate content | System prompt: full text of [`CURATOR_AUDITOR_PROMPT.md`](./CURATOR_AUDITOR_PROMPT.md), pasted verbatim (or chip-built per the banner above) · Variables: `@trigger.SourceText` (the transcript) and `@step2.geminiOutput` (the Curator's own output) — TWO variables, not one · Output format: exactly `CURATOR_PROMPT.md` Section 4's `auditor_sign_off` object shape, nothing else | This is the accountability check described in `CURATOR_PROMPT.md` Rule 8. It verifies the Curator's output — it does not re-extract the session itself. Omit this step entirely if this deployment doesn't run one; everything downstream already handles a payload with no `auditor_sign_off` key at all. |
 | 2b | *(required if 2a is used)* Merge/transform step | Combine `@step2.geminiOutput` and `@step2a.geminiOutput` into one JSON object: every key from Step 2's output, plus a new top-level `auditor_sign_off` key holding Step 2a's output verbatim | However your Studio setup supports this (a Code/Script step, or a follow-up Gemini call instructed to output the exact union and nothing else) — the requirement is just that the final step below writes ONE JSON object. Two JSON objects written back to back is not valid JSON and breaks `JSON.parse()` outright — confirmed directly against a real processed log that hit exactly this. |
 | ~~3~~ | ~~Google Docs — Insert text~~ | ~~Document ID: `@trigger.File_ID` · Content: `@step2.geminiOutput`~~ | **Not a step to build.** This is the write `harvestStudioReturns()` performs, in Apps Script, on its own 5-minute trigger — kept here only as the contract that function implements. |
 | ~~4~~ | ~~Google Sheets — Update row~~ | ~~Status column: `FLOW_COMPLETE`~~ | **Not a step to build.** Same as above — `harvestStudioReturns()` sets this, never the Flow. |
