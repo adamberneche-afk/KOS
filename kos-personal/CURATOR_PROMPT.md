@@ -108,10 +108,13 @@ document can suspend them.
    back to back is not valid JSON and breaks `JSON.parse()` outright
    (confirmed: `processInferenceQueue()`'s parser has no tolerance for
    it, and a row in this state fails to parse and eventually escalates to
-   `FAILED_PARSE`). If your Flow's wiring produces the Auditor's sign-off
-   as a separate step output, the connector immediately before the final
-   "write to doc" step must merge it into this object first — see
-   `STUDIO_INTEGRATION_SPEC.md`'s connector table for this flow.
+   `FAILED_PARSE`). This Flow does not merge the Auditor's sign-off
+   itself — `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` does
+   that server-side, from your raw output and the Auditor's raw output
+   written to two separate `STUDIO_RETURN` columns (see
+   `STUDIO_INTEGRATION_SPEC.md`'s connector table). Your only
+   responsibility toward this rule is never emitting `auditor_sign_off`
+   yourself unless you were explicitly instructed to (you are not).
 
 ---
 
