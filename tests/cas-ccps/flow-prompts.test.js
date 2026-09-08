@@ -13,7 +13,12 @@
 //                          lists as not-deployed, hence the duplicate)
 //
 // A failure here means "these two disagree," not "this code is broken" —
-// decide which one is right, then update the other.
+// and per meta/FLOW_DOCTRINE.md rule 16, the source (the HTML spec / file
+// 15) is always the side that's right: run
+// tools/cas-ccps/generate-flow-prompts.js to bring 40_FlowPrompts.js back
+// in step, rather than hand-editing either side to match the other. If a
+// prompt was tuned directly in 40_FlowPrompts.js instead, port that tune
+// into the source first — a direct hotfix never passed through this test.
 //
 // Loaded with 15b_StudioFlowPrompts_Flow2_Revised.js because the registry
 // resolves FLOW_2 through that file's own FLOW_2_SYSTEM_PROMPT rather than

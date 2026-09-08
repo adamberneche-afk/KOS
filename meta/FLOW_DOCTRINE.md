@@ -413,6 +413,60 @@ never designed to need one.
 
 ---
 
+## 16. A Flow's prompt has exactly one canonical source. The deployed constant is generated, never hand-edited.
+
+Rule 11 already says a generated artifact must not be re-transcribed by
+hand. This is the same rule applied to prompt text specifically, because a
+prompt has a failure mode the other generated artifacts in this repo don't:
+it's tempting, and structurally easy, to hotfix it directly in the deployed
+constant — no schema to violate, no test obviously in the way, just a string
+that reads better after the edit. That edit never went through the same
+gate every other code change does: nothing ran it past the tests, nothing
+confirms it didn't quietly break a downstream expectation (a placeholder
+token, a JSON-only instruction, a rule a later section of the same prompt
+depends on). `cas-ccps/scripts/40_FlowPrompts.js`'s own header used to
+invite exactly this ("change it HERE and let the test tell you the spec doc
+now disagrees") before this rule existed — read today, that sentence
+describes the failure mode, not a sanctioned shortcut. A hotfix's fidelity
+can't be verified after the fact the way a normal change can; the fix for a
+real improvement found via hotfix is to port it into the canonical source
+and let it flow through the normal path, not to leave the hotfix standing.
+
+**The canonical source is the authored document a human reads and edits;
+the deployed constant is a generated mirror of it, produced by a script, not
+by hand:**
+
+- `kos-personal/CURATOR_PROMPT.md` / `VECTOR_CLASSIFY_PROMPT.md` →
+  `tools/kos-personal/generate-flow-prompts.js` → `16_FlowPrompts.gs`'s
+  `CURATOR_SYSTEM_PROMPT` / `VECTOR_CLASSIFY_SYSTEM_PROMPT`.
+- `cas-ccps/docs/CAS_Flow3_Flow4_Specification.html` +
+  `cas-ccps/scripts/15_StudioFlowPrompts.js` →
+  `tools/cas-ccps/generate-flow-prompts.js` → `40_FlowPrompts.js`'s five
+  `FLOW_*_PROMPT` constants (Flow 2's `FLOW_2_SYSTEM_PROMPT` is a
+  standing exception — `15b_StudioFlowPrompts_Flow2_Revised.js` is itself
+  the deployed file, one level removed from the html/`15_` split the other
+  four went through).
+- `leader-hub/*_FLOW_PROMPT.md` → `tools/leader-hub/generate-ai-prompts.js`
+  → `AiPrompts.gs`'s six `AI_PROMPT_*` constants.
+
+Each generator does a targeted in-place replacement of only the prompt
+constant(s) — never a full-file rewrite — so the surrounding sync/check/
+substitution logic in `16_FlowPrompts.gs`/`40_FlowPrompts.js`/`AiPrompts.gs`
+is untouched by construction, not by care taken while editing.
+
+**Enforced: partially.** Each system's own drift test
+(`tests/kos-personal/flow-prompts.test.js`,
+`tests/cas-ccps/flow-prompts.test.js`, `tests/leaderhub/ai-prompts.test.js`)
+re-derives the constant from its canonical source at test time and fails on
+any mismatch — so a canonical source edited without regenerating the
+constant (or vice versa) is caught by `npm test`. What isn't enforced: a
+disciplined hand-edit of *both* the source and the constant, together, in
+the same commit, would still pass every test while having skipped the
+generator entirely — the tests confirm the two agree, not that a generator
+produced the agreement.
+
+---
+
 ## Adding a flow
 
 1. Decide what the Flow may do: make one model call. Anything else moves into

@@ -26,16 +26,21 @@
 // even clean. There is no version history of what the live prompt actually
 // says, and no way to tell whether Studio matches the spec.
 //
-// PROVENANCE — THE TEXT BELOW WAS EXTRACTED MECHANICALLY, NOT RETYPED. The
-// Flow 3/4/5 constants were lifted from the HTML spec's own `prompt-body` and
-// `<pre>` blocks by script (strip `<span class="kw">` wrappers, strip tags,
-// unescape entities, trim), and FLOW_1_PROMPT was copied from
-// 15_StudioFlowPrompts.js's own FLOW_1_SYSTEM_PROMPT. Nothing was
-// paraphrased, reordered, or "improved" in transit —
+// PROVENANCE — THE TEXT BELOW IS GENERATED, NEVER HAND-EDITED
+// (meta/FLOW_DOCTRINE.md rule 16). The Flow 3/4/5 constants come from the
+// HTML spec's own `prompt-body` and `<pre>` blocks (strip `<span
+// class="kw">` wrappers, strip tags, unescape entities, trim), and
+// FLOW_1_PROMPT from 15_StudioFlowPrompts.js's own FLOW_1_SYSTEM_PROMPT —
+// both extracted by tools/cas-ccps/generate-flow-prompts.js, not retyped.
+// Nothing is paraphrased, reordered, or "improved" in transit.
 // tests/cas-ccps/flow-prompts.test.js re-runs that same extraction against
 // the HTML and against file 15 and fails if either has drifted from what's
-// here. If you change a prompt, change it HERE and let that test tell you the
-// spec doc now disagrees.
+// here. TO CHANGE A PROMPT: edit the HTML spec (or file 15 for Flow 1),
+// run that generator script, then push — never hand-edit the constants
+// below directly. A direct hotfix here never passed through that gate, and
+// this file's own header used to invite exactly that shortcut; rule 16
+// exists because that instruction was the failure mode, not a shortcut
+// worth keeping.
 //
 // TWO PLACEHOLDER STYLES, BOTH DELIBERATE: Flows 1 and 2 use
 // {{DOUBLE_BRACE}}; Flows 3, 4 and 5 use {single_brace}. That split is how
