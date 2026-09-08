@@ -22,28 +22,22 @@
 // every other line, so a run against unchanged sources is a true no-op —
 // confirmed by diffing before writing, not assumed.
 //
-// ⚠️  DIRECTIONALITY WARNING — READ BEFORE RUNNING AFTER A PROMPT TUNE.
-// 40_FlowPrompts.js's own header sanctions a DIRECT hotfix to this file
-// ("If you change a prompt, change it HERE and let that test tell you the
-// spec doc now disagrees") — i.e. editing the deployed constant directly is
-// a legitimate way to ship a quick prompt tune, with the HTML spec expected
-// to lag until someone updates IT to match afterward. This script assumes
-// the OPPOSITE direction (spec is right, 40_FlowPrompts.js is regenerated
-// from it) — the same direction the file was originally built in
-// (cas-ccps/HISTORY.md's "Prompts get a deployable home" entry), but NOT
-// necessarily the direction a later intentional edit went. Running this
-// script after a direct hotfix to 40_FlowPrompts.js — rather than after
-// editing the HTML spec — will SILENTLY REVERT that hotfix back to the old
-// spec text. Before running this for real: if
-// tests/cas-ccps/flow-prompts.test.js is failing, confirm the SPEC is the
-// side that's now correct (a spec update not yet reflected in code) before
-// trusting this script's output — if instead a prompt was tuned directly in
-// 40_FlowPrompts.js, update docs/CAS_Flow3_Flow4_Specification.html by hand
-// to match FIRST, or this script has nothing to preserve that edit.
+// DIRECTIONALITY IS SETTLED, DELIBERATELY (meta/FLOW_DOCTRINE.md rule 16).
+// 40_FlowPrompts.js's header used to invite a direct hotfix to that file
+// ("change it HERE and let that test tell you the spec doc now disagrees")
+// — rule 16 closes that off on purpose: a hotfix never passes through the
+// same test gate a normal change does, so its fidelity can't be verified
+// the way a reviewed change's can. This script always regenerates
+// 40_FlowPrompts.js FROM the HTML spec / file 15 — that is the one
+// correct direction, not a default that happens to usually be right. If
+// tests/cas-ccps/flow-prompts.test.js is failing because someone edited
+// 40_FlowPrompts.js directly instead of the canonical source: that edit
+// was the mistake, not this script — port the improvement into the HTML
+// spec (or file 15 for Flow 1) and run this script to deploy it properly,
+// rather than treating the hotfix as something to preserve.
 //
 // tests/cas-ccps/flow-prompts.test.js remains the CI drift guard exactly as
-// before; this script is what you run when it fails and the sources (not
-// 40_FlowPrompts.js) are the ones that are right.
+// before; this script is what actually closes a drift it reports.
 //
 // Usage: node tools/cas-ccps/generate-flow-prompts.js
 //   (run from anywhere; paths below are repo-root-relative)
@@ -141,9 +135,10 @@ function main() {
     return;
   }
 
-  console.warn('⚠️  About to overwrite ' + changed.join(', ') + ' in ' + TARGET_PATH + '. ' +
-    'If this is reverting a direct hotfix made to that file rather than catching up to a spec ' +
-    'edit, STOP — see this script\'s own DIRECTIONALITY WARNING at the top before proceeding.');
+  console.log('[Prompts] Overwriting ' + changed.join(', ') + ' in ' + TARGET_PATH +
+    ' from the canonical source (meta/FLOW_DOCTRINE.md rule 16) — if a prompt was tuned by a ' +
+    'direct hotfix instead of via the HTML spec / file 15, that tune needs porting into the ' +
+    'canonical source first, or this overwrite is correct and the hotfix is what\'s being closed.');
   fs.writeFileSync(TARGET_PATH, target, 'utf8');
   console.log('Updated ' + TARGET_PATH + ': ' + changed.join(', ') +
     ' regenerated from source. Re-run tests/cas-ccps/flow-prompts.test.js and ' +
