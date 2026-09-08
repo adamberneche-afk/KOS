@@ -2063,13 +2063,23 @@ function _armEscHandler(e) {
 }
 
 function _armCaptureStep() {
-  const g = id => { const e = document.getElementById(id); return e ? e.value : undefined; };
+  // FIXED: g(id) used to return `undefined` outright when the element
+  // wasn't in the currently-rendered step's DOM (true for every field but
+  // the one(s) on whatever step is on screen right now), and Object.assign
+  // copies an `undefined` property value over whatever was already stored —
+  // silently wiping every earlier step's answer on each subsequent
+  // transition. armDT already had the right fallback (checked ? ... :
+  // armAnswers.armDT); every other field is now built the same way — fall
+  // back to the previously-captured value when this step's DOM doesn't
+  // have that element, instead of blindly overwriting with undefined.
+  const g = (id, key) => { const e = document.getElementById(id); return e ? e.value : armAnswers[key]; };
   const checked = document.querySelector('input[name="armDT"]:checked');
   Object.assign(armAnswers, {
     armDT: checked ? checked.value : armAnswers.armDT,
-    role: g('arm-role'), audience: g('arm-audience'), vision: g('arm-vision'),
-    adminGhost: g('arm-ghost'), struggle: g('arm-struggle'), targets: g('arm-targets'),
-    passphrase: g('arm-passphrase'), passphraseConfirm: g('arm-passphrase-confirm'), adminEmail: g('arm-email'),
+    role: g('arm-role', 'role'), audience: g('arm-audience', 'audience'), vision: g('arm-vision', 'vision'),
+    adminGhost: g('arm-ghost', 'adminGhost'), struggle: g('arm-struggle', 'struggle'), targets: g('arm-targets', 'targets'),
+    passphrase: g('arm-passphrase', 'passphrase'), passphraseConfirm: g('arm-passphrase-confirm', 'passphraseConfirm'),
+    adminEmail: g('arm-email', 'adminEmail'),
   });
 }
 
