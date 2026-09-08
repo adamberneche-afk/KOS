@@ -17,7 +17,8 @@
       "kos-personal/12_StudioReturnHarvest.gs",
       "kos-personal/13_StudioInputBuilder.gs",
       "kos-personal/14_StudioFlowBuildSpec.gs",
-      "kos-personal/15_Preflight.gs"
+      "kos-personal/15_Preflight.gs",
+      "kos-personal/16_FlowPrompts.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"
