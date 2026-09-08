@@ -125,10 +125,13 @@ document can suspend them.
    back to back is not valid JSON and breaks \`JSON.parse()\` outright
    (confirmed: \`processInferenceQueue()\`'s parser has no tolerance for
    it, and a row in this state fails to parse and eventually escalates to
-   \`FAILED_PARSE\`). If your Flow's wiring produces the Auditor's sign-off
-   as a separate step output, the connector immediately before the final
-   "write to doc" step must merge it into this object first — see
-   \`STUDIO_INTEGRATION_SPEC.md\`'s connector table for this flow.
+   \`FAILED_PARSE\`). This Flow does not merge the Auditor's sign-off
+   itself — \`12_StudioReturnHarvest.gs\`'s \`harvestStudioReturns()\` does
+   that server-side, from your raw output and the Auditor's raw output
+   written to two separate \`STUDIO_RETURN\` columns (see
+   \`STUDIO_INTEGRATION_SPEC.md\`'s connector table). Your only
+   responsibility toward this rule is never emitting \`auditor_sign_off\`
+   yourself unless you were explicitly instructed to (you are not).
 
 ---
 
@@ -543,9 +546,11 @@ the output, \`verdict\` is \`UNVERIFIED\`.
 \`\`\`
 
 This is the entire output — not merged with anything, not wrapped in
-another object. \`_srPrepareDocText_\`/the Flow's own merge step (Step 2b, if
-wired per \`STUDIO_INTEGRATION_SPEC.md\`) is what folds this in under the
-Curator's own \`auditor_sign_off\` key; that is not your job to do.
+another object. Studio writes it, raw, straight into \`STUDIO_RETURN\`'s
+\`Auditor_JSON\` column — no merge step belongs in the Flow at all.
+\`12_StudioReturnHarvest.gs\`'s \`_srPrepareDocText_\` is what folds this in
+under the Curator's own \`auditor_sign_off\` key, server-side, at harvest
+time; that is not your job, and not Studio's either.
 
 ---
 
