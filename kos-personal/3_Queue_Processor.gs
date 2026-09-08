@@ -490,7 +490,26 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
     // ── VECTOR ROUTER ────────────────────────────────────────────
     // BUG-01 FIX: call _routeVectorWeightsInternal directly
     // (not routeVectorWeights) since this function holds the lock.
-    const vr = _routeVectorWeightsInternal(pd, uid, ts);
+    //
+    // FIX (found verifying the rebuilt kos-personal Studio integration):
+    // this used to call _routeVectorWeightsInternal() unconditionally, for
+    // every payload type this function handles — including SESSION_LOG
+    // (Curator) payloads, whose vector_weights is explicitly null by the
+    // Bifurcation Boundary design (see 4_Vector_Router.gs's file header:
+    // the Curator never computes a session-level vector weight, only the
+    // Classification flow does). _routeVectorWeightsInternal defaults a
+    // null vector_weights to {} and still calls _writeMatrixRow(), which
+    // unconditionally appends a VECTOR_MATRIX row — harmless on an empty
+    // matrix (writes all zeros) but NOT harmless once real scores exist:
+    // _writeMatrixRow's decay branch (4_Vector_Router.gs:442-450) applies
+    // CFG.DECAY_FACTOR to the *previous* row's real score for any theme
+    // absent from `known`, so every Curator-only session would silently
+    // decay the entire real vector matrix regardless of whether any actual
+    // classification happened that session. Guarded the same way the
+    // MATRIX_LEDGER write just above already is.
+    const vr = (pd.vector_weights && typeof pd.vector_weights === 'object')
+      ? _routeVectorWeightsInternal(pd, uid, ts)
+      : { status: 'SKIPPED', reason: 'no vector_weights on this payload type' };
 
     return { status: 'SUCCESS', uid, vectorRouting: vr };
 
