@@ -58,12 +58,24 @@
 >    `CuratorInput`/`VectorClassifyInput`), there is nothing to combine it
 >    with, and the whole "verify the more restrictive half in isolation"
 >    caution from Round 17 no longer applies to this design.
-> 3. Verify the materialize half: `runStudioInputCanary()`,
+> 3. `syncFlowPrompts()` (`16_FlowPrompts.gs`) — writes the `FlowPrompts`
+>    tab: `CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT`,
+>    generated from `CURATOR_PROMPT.md`/`VECTOR_CLASSIFY_PROMPT.md` by
+>    `tools/kos-personal/generate-flow-prompts.js` — not required, but
+>    lets each Flow's Gemini step pull its system prompt in via a chip
+>    (a Sheets lookup step filtered on `PromptName`, then that step's
+>    output chip immediately followed by `@trigger.SourceText`, nothing
+>    typed in between) instead of a hand-pasted block. Never hand-edit
+>    this tab or `16_FlowPrompts.gs`'s constants directly — edit the
+>    `.md` file, re-run the generator, push, re-run `syncFlowPrompts()`.
+>    `tests/kos-personal/flow-prompts.test.js` fails `npm test` the moment
+>    a `.md` file and the generated constant disagree.
+> 4. Verify the materialize half: `runStudioInputCanary()`,
 >    `checkStudioInputBuilder()`.
-> 4. Wire the Flow's last step with `checkStudioFlowBinding()` open in a
+> 5. Wire the Flow's last step with `checkStudioFlowBinding()` open in a
 >    second tab, then verify the harvest half:
 >    `runStudioReturnCanary()`, `checkStudioFlowLiveness()`.
-> 5. Watch `checkStudioReturns()`'s `suspectFabrication` count once the
+> 6. Watch `checkStudioReturns()`'s `suspectFabrication` count once the
 >    Flow is live — a non-zero count now means look at the Flow's own
 >    output quality, not the harvest logic, since the live-read failure
 >    mode Round 17 hit is structurally closed.

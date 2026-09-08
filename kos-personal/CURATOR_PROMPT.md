@@ -4,9 +4,14 @@
 Paste this verbatim into the Gemini step's "System prompt" field for the
 `SESSION_LOG` / `EXTERNAL_DATA` / `COG_STIMULUS` Curator flow — same
 convention as `VECTOR_CLASSIFY_PROMPT.md` and cas-ccps's
-`15_StudioFlowPrompts.js`: do not abbreviate or paraphrase. See
+`15b_StudioFlowPrompts_Flow2_Revised.js` (`15_StudioFlowPrompts.js` is the
+superseded, not-deployed predecessor — see `project-map.json`'s
+`_excluded_not_deployed_scripts`): do not abbreviate or paraphrase. See
 `STUDIO_INTEGRATION_SPEC.md`'s Steps 1-7 for the full trigger/read/write/
-completion mechanics this prompt fires inside.
+completion mechanics this prompt fires inside. `16_FlowPrompts.gs`
+generates a `FlowPrompts` sheet tab from this file's body (Section 1
+onward) so a Studio Flow can pull it in via a chip instead of this paste —
+see that file's own header.
 
 This file did not previously exist. `STUDIO_INTEGRATION_SPEC.md` fully
 specified what this flow must produce (Steps 4-5) but, unlike its sibling

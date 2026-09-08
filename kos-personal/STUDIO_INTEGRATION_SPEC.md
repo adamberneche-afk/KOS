@@ -68,6 +68,25 @@
 > drifted since the last sync. If this document and that tab ever
 > disagree, the tab is right — it's generated, this is prose.
 >
+> **Optional, before building either Flow: `syncFlowPrompts()`**
+> (16_FlowPrompts.gs) writes a `FlowPrompts` tab carrying
+> `CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT` — generated from
+> this Curator prompt / `VECTOR_CLASSIFY_PROMPT.md` by
+> `tools/kos-personal/generate-flow-prompts.js`, not hand-pasted. Lets a
+> Flow's Gemini step build its System Prompt field as two chips back to
+> back — a Sheets "Get row"/"Look up row" step (filtered on `PromptName`)
+> feeding its `PromptText` output, immediately followed by
+> `@trigger.SourceText`, nothing typed in between — instead of a
+> hand-pasted block of this file's prose. Each generated cell already ends
+> with "Payload to Analyze:" on its own line, same as this file's own
+> trailing shape, so the `SourceText` chip picks up exactly where
+> `[VARIABLE_INSERTED]` sits below. Skip this and paste the prompt
+> directly if you'd rather — both wire to the identical `@trigger.SourceText`
+> variable underneath; this only changes how the text arrives in the field.
+> Never hand-edit the `FlowPrompts` tab or `16_FlowPrompts.gs`'s constants —
+> edit this file, run the generator, push, re-run `syncFlowPrompts()`;
+> `tests/kos-personal/flow-prompts.test.js` fails if the two ever disagree.
+>
 > Verify with, in order: `runStudioInputCanary()` (13_StudioInputBuilder.gs —
 > proves the materialize half), `checkStudioInputBuilder()` (is anything
 > `STUDIO_ACTIVE` and NOT yet materialized? — a fifth cause of "nothing
