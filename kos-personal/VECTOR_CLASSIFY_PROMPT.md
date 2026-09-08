@@ -3,9 +3,14 @@
 
 Paste this verbatim into the Gemini step's "System prompt" field for the
 `VECTOR_CLASSIFY` flow — same convention as cas-ccps's
-`15_StudioFlowPrompts.js`: do not abbreviate or paraphrase. See
+`15b_StudioFlowPrompts_Flow2_Revised.js` (`15_StudioFlowPrompts.js` is the
+superseded, not-deployed predecessor — see `project-map.json`'s
+`_excluded_not_deployed_scripts`): do not abbreviate or paraphrase. See
 `STUDIO_INTEGRATION_SPEC.md`'s "Inference Flow — Sentence Classification"
 section for the trigger/wiring context this prompt fires inside.
+`16_FlowPrompts.gs` generates a `FlowPrompts` sheet tab from this file's
+body (Section 1 onward) so a Studio Flow can pull it in via a chip instead
+of this paste — see that file's own header.
 
 ---
 
