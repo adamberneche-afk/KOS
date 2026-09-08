@@ -1,10 +1,10 @@
 'use strict';
-// Regenerates kos-personal/16_FlowPrompts.gs's two prompt constants FROM
-// CURATOR_PROMPT.md / VECTOR_CLASSIFY_PROMPT.md — the canonical, human-read
-// source stays the .md file; this constant is a generated mirror of it, the
-// same relationship 14_StudioFlowBuildSpec.gs's FlowBuildSpec tab has to the
-// code constants it's derived from (see that file's own header: "generated
-// beats hand-copied").
+// Regenerates kos-personal/16_FlowPrompts.gs's prompt constants FROM
+// CURATOR_PROMPT.md / VECTOR_CLASSIFY_PROMPT.md / CURATOR_AUDITOR_PROMPT.md —
+// the canonical, human-read source stays each .md file; the .gs constant is
+// a generated mirror of it, the same relationship 14_StudioFlowBuildSpec.gs's
+// FlowBuildSpec tab has to the code constants it's derived from (see that
+// file's own header: "generated beats hand-copied").
 //
 // WHY THIS EXISTS AT ALL. Apps Script can't read a repo's .md files at
 // runtime — clasp only pushes .gs/.html/appsscript.json (see .claspignore),
@@ -12,10 +12,10 @@
 // prompt sitting in a Sheet cell, and the only thing that can put it there
 // is code that's actually live in the script project. Hand-pasting the
 // prompt into a Sheet tab once (the original plan) works but silently
-// drifts the moment CURATOR_PROMPT.md changes and nobody remembers to
-// re-paste. This script removes the hand-paste step entirely: run it,
-// commit the regenerated 16_FlowPrompts.gs, push it with the rest of the
-// code, and syncFlowPrompts() (in that file) does the actual Sheet write.
+// drifts the moment a .md file changes and nobody remembers to re-paste.
+// This script removes the hand-paste step entirely: run it, commit the
+// regenerated 16_FlowPrompts.gs, push it with the rest of the code, and
+// syncFlowPrompts() (in that file) does the actual Sheet write.
 //
 // tests/kos-personal/flow-prompts.test.js re-runs this exact extraction at
 // test time and asserts it matches what's checked into 16_FlowPrompts.gs —
@@ -32,9 +32,19 @@ const path = require('path');
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const KP = path.join(REPO_ROOT, 'kos-personal');
 
+// `trailerKey` selects how syncFlowPrompts() finishes each Sheet cell — see
+// FP_TRAILERS in the generated footer. Every prompt here ends its .md body
+// at the same "---\n\nPayload to Analyze:" divider (so extraction below
+// stays one shared rule), but what comes after that divider differs: most
+// prompts have ONE variable (the trailer ends right where a single
+// @trigger.SourceText chip goes); CURATOR_AUDITOR_PROMPT.md has TWO
+// (the transcript, then the Curator's own output) — its trailer ends after
+// only the first label, so Studio needs one small typed label between the
+// two chips (syncFlowPrompts()'s own guidance names exactly which prompt).
 const SOURCES = [
-  { mdFile: 'CURATOR_PROMPT.md', constName: 'CURATOR_SYSTEM_PROMPT' },
-  { mdFile: 'VECTOR_CLASSIFY_PROMPT.md', constName: 'VECTOR_CLASSIFY_SYSTEM_PROMPT' },
+  { mdFile: 'CURATOR_PROMPT.md', constName: 'CURATOR_SYSTEM_PROMPT', trailerKey: 'single' },
+  { mdFile: 'VECTOR_CLASSIFY_PROMPT.md', constName: 'VECTOR_CLASSIFY_SYSTEM_PROMPT', trailerKey: 'single' },
+  { mdFile: 'CURATOR_AUDITOR_PROMPT.md', constName: 'CURATOR_AUDITOR_SYSTEM_PROMPT', trailerKey: 'auditor' },
 ];
 
 const START_MARKER = '## 1. IDENTITY & SCOPE';
@@ -44,9 +54,9 @@ const END_MARKER = '\n---\n\nPayload to Analyze:';
 // heading through the last real content line, excluding (a) the file's own
 // top-of-file usage note (instructions to the HUMAN pasting this — Gemini
 // never needs "same convention as..." or a pointer to another doc it can't
-// read) and (b) the trailing "---\n\nPayload to Analyze:\n[VARIABLE_INSERTED]"
-// boilerplate, which syncFlowPrompts() reconstructs itself so the Sheet
-// cell ends exactly where the @trigger.SourceText chip should pick up —
+// read) and (b) the trailing "---\n\nPayload to Analyze:\n..." boilerplate,
+// which syncFlowPrompts() reconstructs itself (per-prompt, via
+// FP_TRAILERS) so the Sheet cell ends exactly where a chip should pick up —
 // see 16_FlowPrompts.gs's _fpAssemblePromptText_.
 function extractPromptBody(mdText, mdFile) {
   const startIdx = mdText.indexOf(START_MARKER);
@@ -62,18 +72,18 @@ function extractPromptBody(mdText, mdFile) {
 
 // Template literals break on an unescaped backtick or `${` — both appear
 // throughout this prose (backtick-quoted field/function names everywhere,
-// and the JSON schema block uses ${}-free but backtick-adjacent syntax).
-// Escaping programmatically here means never hand-transcribing ~150 lines
-// of markdown into a JS string and hoping every backtick got caught.
+// and the JSON schema blocks use backtick-adjacent fencing). Escaping
+// programmatically here means never hand-transcribing ~150 lines of
+// markdown into a JS string and hoping every backtick got caught.
 function escapeForTemplateLiteral(text) {
   return text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 }
 
 function main() {
-  const constants = SOURCES.map(({ mdFile, constName }) => {
+  const constants = SOURCES.map(({ mdFile, constName, trailerKey }) => {
     const mdText = fs.readFileSync(path.join(KP, mdFile), 'utf8');
     const body = extractPromptBody(mdText, mdFile);
-    return { constName, mdFile, body };
+    return { constName, mdFile, trailerKey, body };
   });
 
   const header = `/**
@@ -82,11 +92,13 @@ function main() {
  * BOUND TO: kos-personal (main flat-folder project)
  * ================================================================
  *
- * GENERATED FILE — do not hand-edit the two prompt constants below.
+ * GENERATED FILE — do not hand-edit the prompt constants below.
  * Regenerate with: node tools/kos-personal/generate-flow-prompts.js
- * (reads CURATOR_PROMPT.md / VECTOR_CLASSIFY_PROMPT.md, which stay the
- * canonical, human-read prompt source). tests/kos-personal/flow-prompts.test.js
- * fails if this file and those two .md files ever disagree.
+ * (reads CURATOR_PROMPT.md / VECTOR_CLASSIFY_PROMPT.md /
+ * CURATOR_AUDITOR_PROMPT.md, which stay the canonical, human-read prompt
+ * source — meta/FLOW_DOCTRINE.md rule 16).
+ * tests/kos-personal/flow-prompts.test.js fails if this file and those
+ * .md files ever disagree.
  *
  * WHY THIS FILE EXISTS. Apps Script can't read a repo's .md files at
  * runtime — only what clasp actually pushes. A Studio Flow that wants to
@@ -123,22 +135,36 @@ const FP_NOTE = 'Generated by syncFlowPrompts() (16_FlowPrompts.gs) from the .md
     `const ${constName} = \`${escapeForTemplateLiteral(body)}\`;\n`
   ).join('\n');
 
-  const footer = `
-// Appended after the prompt body when writing the Sheet cell — reconstructs
-// the file's own trailing "---\\n\\nPayload to Analyze:\\n[VARIABLE_INSERTED]"
-// shape, minus the placeholder itself: the Gemini step's System Prompt
-// field ends with this chip, then the @trigger.SourceText chip
-// immediately after, with nothing typed in between.
-const FP_TRAILER = '\\n\\n---\\n\\nPayload to Analyze:\\n';
+  const fpPromptsEntries = constants.map(({ constName, mdFile, trailerKey }) =>
+    `  { name: '${constName}', body: ${constName}, sourceFile: '${mdFile}', ` +
+    `trailer: FP_TRAILERS.${trailerKey} },`
+  ).join('\n');
 
-function _fpAssemblePromptText_(body) {
-  return body + FP_TRAILER;
+  const footer = `
+// Appended after a prompt's body when writing its Sheet cell — reconstructs
+// that source .md file's own trailing "---\\n\\nPayload to Analyze:" shape,
+// minus the placeholder(s) themselves, so a Gemini step's System Prompt
+// field picks up exactly where the file's own [VARIABLE]-style placeholder
+// was. 'single' covers every prompt with ONE variable (the trailer ends
+// right where one @trigger.SourceText chip goes, nothing typed in
+// between). 'auditor' is CURATOR_AUDITOR_SYSTEM_PROMPT's own shape — TWO
+// variables (transcript, then the Curator's own output) — so its trailer
+// ends after only the first label; syncFlowPrompts()'s own console output
+// names the one small typed label Studio still needs before the second
+// chip, since there's no way around a second variable needing a second
+// insertion point.
+const FP_TRAILERS = {
+  single: '\\n\\n---\\n\\nPayload to Analyze:\\n',
+  auditor: '\\n\\n---\\n\\nPayload to Analyze:\\n\\n' +
+    'ORIGINAL TRANSCRIPT (verify claims against this):\\n',
+};
+
+function _fpAssemblePromptText_(body, trailer) {
+  return body + trailer;
 }
 
 const FP_PROMPTS = [
-  { name: 'CURATOR_SYSTEM_PROMPT', body: CURATOR_SYSTEM_PROMPT, sourceFile: 'CURATOR_PROMPT.md' },
-  { name: 'VECTOR_CLASSIFY_SYSTEM_PROMPT', body: VECTOR_CLASSIFY_SYSTEM_PROMPT,
-    sourceFile: 'VECTOR_CLASSIFY_PROMPT.md' },
+${fpPromptsEntries}
 ];
 
 /**
@@ -153,7 +179,7 @@ const FP_PROMPTS = [
 function syncFlowPrompts() {
   const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
   const rows = [FP_HEADERS.slice()].concat(FP_PROMPTS.map(function (p) {
-    return [p.name, _fpAssemblePromptText_(p.body), p.sourceFile, FP_NOTE];
+    return [p.name, _fpAssemblePromptText_(p.body, p.trailer), p.sourceFile, FP_NOTE];
   }));
 
   let sheet = ss.getSheetByName(FP_TAB);
@@ -164,11 +190,15 @@ function syncFlowPrompts() {
   sheet.setFrozenRows(1);
 
   console.log('[FlowPrompts] wrote ' + (rows.length - 1) + ' row(s) to ' + FP_TAB + '.');
-  console.log('[FlowPrompts] In Studio: add a Sheets "Get row"/"Look up row" step filtered on ' +
-    'PromptName = <the row you want>, then build the Gemini step\\'s System Prompt field as ' +
-    'exactly two chips back to back — that step\\'s PromptText output, then ' +
-    '@trigger.SourceText — nothing typed in between. Each cell already ends with ' +
-    '"Payload to Analyze:" on its own line, matching the source .md file\\'s original shape.');
+  console.log('[FlowPrompts] In Studio, for CURATOR_SYSTEM_PROMPT / VECTOR_CLASSIFY_SYSTEM_PROMPT: ' +
+    'add a Sheets "Get row"/"Look up row" step filtered on PromptName = <the row you want>, then ' +
+    'build the Gemini step\\'s System Prompt field as exactly two chips back to back — that step\\'s ' +
+    'PromptText output, then @trigger.SourceText — nothing typed in between.');
+  console.log('[FlowPrompts] For CURATOR_AUDITOR_SYSTEM_PROMPT specifically: TWO variables, not ' +
+    'one — build the field as PromptText chip, then @trigger.SourceText (the transcript), then ' +
+    'TYPE this label yourself: "\\n\\nCURATOR\\'S OUTPUT TO AUDIT (check this for accuracy and ' +
+    'format compliance):\\n", then the Curator step\\'s own output chip. That one label is the only ' +
+    'thing you type by hand in either flow — everything else is chips.');
   return { rows: rows.length - 1 };
 }
 
@@ -185,7 +215,7 @@ function checkFlowPrompts() {
   }
 
   const expected = [FP_HEADERS.slice()].concat(FP_PROMPTS.map(function (p) {
-    return [p.name, _fpAssemblePromptText_(p.body), p.sourceFile, FP_NOTE];
+    return [p.name, _fpAssemblePromptText_(p.body, p.trailer), p.sourceFile, FP_NOTE];
   }));
   const actual = sheet.getDataRange().getValues();
   const sameShape = actual.length === expected.length;
