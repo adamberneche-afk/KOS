@@ -1611,3 +1611,156 @@ closed: cas-ccps's plausibility gate (Round 18 follow-up), the
 `meta/FLOW_DOCTRINE.md` rule 14 promotion plus leader-hub's caution
 (Round 19), the materialized Docs-read (Round 19), and this generated
 build spec.
+
+## Round 21 — the second Studio build attempt happened, and both Flows were verified end to end
+
+Round 17 paused the Curator flow's first-ever Studio build after a real
+incident and never rebuilt it in Studio; every round since 18 was Apps
+Script-side prep for a second attempt. This round is that attempt.
+
+**A canonical Auditor prompt, previously undocumented.** The Curator
+flow's optional second pass (`CURATOR_PROMPT.md` Rule 8's `auditor_sign_off`)
+had never had its own prompt written down anywhere — `CURATOR_AUDITOR_PROMPT.md`
+(new) specifies its job precisely: verify the Curator's output for accuracy
+against the transcript and format compliance against `CURATOR_PROMPT.md`'s
+own rules; never re-ingest the session or re-extract independently. Output
+schema matches exactly what `_isAuditFailure_()` (`3_Queue_Processor.gs`)
+reads: `{status, unverified_claims_count, trace_log[]}`.
+
+**Prompts moved into the Sheet as chips, on a generated tab, never
+hand-pasted.** `16_FlowPrompts.gs` (new) writes a `FlowPrompts` tab —
+`CURATOR_SYSTEM_PROMPT`/`VECTOR_CLASSIFY_SYSTEM_PROMPT`/
+`CURATOR_AUDITOR_SYSTEM_PROMPT` — generated from `CURATOR_PROMPT.md`/
+`VECTOR_CLASSIFY_PROMPT.md`/`CURATOR_AUDITOR_PROMPT.md` by
+`tools/kos-personal/generate-flow-prompts.js`, which extracts each prompt's
+body between fixed markers and escapes it for a JS template literal. A
+Flow's Gemini step pulls its prompt via a Sheets-lookup chip instead of a
+pasted block — smaller, more reliable builds, and a prompt can be swapped
+without touching the Flow at all. The same generator pattern was mirrored
+for `cas-ccps` (`tools/cas-ccps/generate-flow-prompts.js`, targeting the
+already-existing `40_FlowPrompts.js`) and `leader-hub`
+(`tools/leader-hub/generate-ai-prompts.js`, targeting `AiPrompts.gs`), both
+of which already had the Sheet/chip half built but no generator. Codified
+as `meta/FLOW_DOCTRINE.md` rule 16: **a Flow's prompt has exactly one
+canonical source — the deployed constant is generated, never hand-edited.**
+The operator's own reasoning for closing this off rather than leaving a
+hotfix escape hatch: a hand-edit bypasses the same test gate a normal
+change goes through, and its fidelity can't be verified after the fact.
+`3_Queue_Processor.gs:404-413`'s `SESSION_LOG` write and
+`STUDIO_INTEGRATION_SPEC.md`'s connector table were also found and fixed to
+describe a Studio-side Curator/Auditor merge step that was never real —
+the merge has always happened server-side, in `_srPrepareDocText_`
+(`12_StudioReturnHarvest.gs`), from two separate raw columns.
+
+**The Arm Engine wizard had a real front-end bug, blocking the one thing
+standing between this and a real end-to-end test: Socratic Onboarding.**
+`completeOnboarding()` (`5_Error_And_Utilities.gs`) is the only working
+onboarding path on this standalone project — the legacy
+`runSocraticOnboarding()` wizard (`9_UI_Diagnostics.gs`) degrades to a
+headless mock here, since `_getUi()` has nothing to bind to. The Web App's
+"Arm Engine" modal (`8_WebApp_UI.html`) kept reporting "Role is required"
+after Step 1 was filled in correctly. Root cause: `_armCaptureStep()`'s
+`g(id)` helper returned bare `undefined` for any DOM element not present on
+the current step, and `Object.assign` then silently overwrote every prior
+step's real answer with that `undefined` on each step transition — the
+`armDT` field next to it already had the correct fallback pattern this one
+was missing. Fixed to `g(id, key)`, falling back to `armAnswers[key]`, the
+same as `armDT`.
+
+**With that fixed, onboarding completed for real** (engine status
+"Personalized", Day 1 of 21, `COLD_ENGINE_TIER_2` cleared), and both Flows
+were built in Studio from `FlowBuildSpec`/`FlowPrompts`, per
+`DEPLOYMENT_GUIDE.md`'s second-attempt build order. `installStudioFlowFixture()`
+plus `checkStudioFlowBinding()`/`checkStudioFlowLiveness()`/
+`checkStudioReturns()` confirmed both Flows genuinely wrote back — a real
+Auditor `PASSED` sign-off with a full, correct `trace_log` on the Curator
+side, real per-sentence relevance scores on the Classification side — and,
+past the harvest, real data landed in both final destination sheets: a
+genuine `SESSION_LOG` row carrying the Curator's actual summary, and a
+`VECTOR_MATRIX` row whose hand-computed aggregation (per
+`_aggregateSentenceVectors_`'s own formula) matched `dumpVectorState()`'s
+output exactly. This is the first real Studio runtime either Flow has ever
+had. `npm test` (862/862 at the point this work landed), gas-lint and
+doc-currency unchanged.
+
+## Round 22 — two real bugs found verifying the rebuild, both from genuine fixture data, not speculation
+
+Confirming Round 21's fixture actually reached both destination sheets
+surfaced two bugs neither existed to catch before — nothing in this
+project had ever driven a real payload all the way from a Studio return
+through `processInferenceQueue()` to `SESSION_LOG`/`VECTOR_MATRIX` before
+this round, because Studio itself had never run.
+
+**`VECTOR_MATRIX` gained a spurious all-zero row from the Curator fixture,
+sitting right next to the Classification fixture's real one.**
+`processIntakePayload()` (`3_Queue_Processor.gs`) called
+`_routeVectorWeightsInternal()` (`4_Vector_Router.gs`) unconditionally, for
+every payload type it handles — including `SESSION_LOG`, whose
+`vector_weights` is explicitly `null` by the Bifurcation Boundary design
+(the Curator never computes a vector weight; only the Classification flow
+does). That function defaults `null` to `{}` and still calls
+`_writeMatrixRow()`, which unconditionally appends a row. Harmless on an
+empty matrix (all zeros); on a matrix with real accumulated history,
+`_writeMatrixRow`'s own decay branch would instead apply `CFG.DECAY_FACTOR`
+to the *previous* row's real score for every theme, silently decaying the
+whole matrix on every Curator-only session regardless of whether any
+classification happened. Guarded the same way the adjacent `MATRIX_LEDGER`
+write already was: only route when `vector_weights` is genuinely an
+object.
+
+**The Curator's real, well-formed output never reached `SESSION_LOG`
+at all — a second, more fundamental bug, and the actual root cause of the
+first one's specific symptom this round.** `installStudioFlowFixture()`
+deliberately points a `SESSION_LOG` row and a `VECTOR_CLASSIFY` row at the
+*same* `File_ID` — real design intent (`CURATOR_PROMPT.md` Rule 1's
+paired-row citation, not yet built into real `_chunkAndQueue()` ingestion,
+so this fixture is the only place the race is currently reachable).
+`_srOverwriteDocBody_` replaces that doc's entire body on every harvest.
+The Curator's return was harvested first; the Classification return was
+harvested roughly half an hour later and overwrote the same doc with its
+own array — and `processInferenceQueue()` was `COLD_ENGINE_TIER_2`-blocked
+for the entire gap between those two harvests (onboarding wasn't done
+yet), so by the time it finally ran, the `SESSION_LOG` row's own
+`DocumentApp.openById(fileId).getBody().getText()` read the Classification
+flow's array, not its own Curator JSON. Parsed fine as JSON — just the
+wrong payload — so `pd.session_summary`/`pd.session_metadata` were both
+`undefined` and the write silently skipped, no error anywhere. Fixed with
+`_srGetHarvestedPayloadText_()` (new, `12_StudioReturnHarvest.gs`):
+`processInferenceQueue()` now reads a row's payload from its own
+`STUDIO_RETURN` entry (keyed by `Payload_UID`, never touched by a
+different UID's harvest) via the same `_srPrepareDocText_` contract logic
+the original doc write used, falling back to the old doc read only if that
+`STUDIO_RETURN` row is genuinely gone (pruned after `SR_PRUNE_AFTER_DAYS`,
+or deleted by hand).
+
+Both fixes verified against the *same* fixture data that exposed them —
+re-running `processInferenceQueue()` after each fix landed a real
+`SESSION_LOG` row with the Curator's actual summary and left `VECTOR_MATRIX`
+with only the one real `VECTOR_CLASSIFY` row, no new phantom entry. New
+regression tests reproduce both bugs against the pre-fix code (confirmed
+failing) and pass with the fix: a null-`vector_weights` payload never
+reaching the Vector Router, and a two-row shared-`File_ID` scenario where
+`processInferenceQueue()` correctly reads each row's own `STUDIO_RETURN`
+entry instead of whatever a companion row's harvest left in the shared doc.
+Also added: `Utilities.computeDigest`/`DigestAlgorithm` to the shared GAS
+test sandbox (`tests/harness/gas-sandbox.js`) — a real gap, needed to
+exercise `_writeMatrixRow`'s checksum path at all, not something specific
+to these tests. `npm test` (866/866), gas-lint and doc-currency both
+unchanged (0 errors either way).
+
+**A deployment pitfall, found redeploying the fix, worth recording
+separately from the code bugs above:** a local clasp working folder had
+accumulated zero-padded duplicate filenames
+(`01_Config_And_Deploy.gs` alongside the real `1_Config_And_Deploy.gs`,
+same for `02_`/`04_`/`05_`) for four core files, with no correctly-named
+file present for some of them at all. `.claspignore`'s allowlist matches
+exact filenames, so those four files silently fell outside it, and
+`clasp push`'s full-mirror behavior — anything not present locally (or
+excluded by `.claspignore`) is deleted from the live project — removed
+`1_Config_And_Deploy.gs`, `2_Ingestion_Sensors.gs`, `4_Vector_Router.gs`,
+and `5_Error_And_Utilities.gs` from the live script entirely, surfacing as
+`ReferenceError: _reportError is not defined` on the very next run. A
+missing `.clasp.json` (deleted at some point, cause unknown) compounded it
+by making the next push fail closed rather than silently repeat the
+mistake. See `DEPLOYMENT_GUIDE.md`'s status banner for the check to run
+before trusting any push's file count again.
