@@ -1,5 +1,11 @@
 # KOS v8.0 — Studio Integration Specification
 
+> **✅ STATUS (2026-09-08): both Flows built from this spec and verified
+> end to end** — real Studio returns, real `SESSION_LOG`/`VECTOR_MATRIX`
+> data, both confirmed against the same fixture. See `DEPLOYMENT_GUIDE.md`'s
+> status banner and `CHANGELOG.md` Rounds 21-22 for the full account,
+> including two real bugs the verification itself surfaced and fixed.
+
 > **⚠ STEPS 1, 6 AND 7 ARE ALL SUPERSEDED. Read this before building the
 > Flow — the shape below is simpler than everything after this banner.**
 > A custom Studio step is a Workspace Add-on and needs a standard,
