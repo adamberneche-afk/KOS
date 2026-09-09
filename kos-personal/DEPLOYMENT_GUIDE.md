@@ -1,6 +1,6 @@
 # KOS v8.0 — Deployment Guide
 
-> ## 🔄 STATUS (2026-09-06): CODE REBUILT AND STRUCTURALLY VERIFIED — Studio has never been built for real yet
+> ## ✅ STATUS (2026-09-08): BOTH STUDIO FLOWS BUILT AND VERIFIED END TO END — the second attempt succeeded
 >
 > Phases 1-3 and 5-10 of this guide were done as of 2026-09-05: the project
 > already existed (a real `scriptId` in `.clasp.json` from an earlier
@@ -99,6 +99,46 @@
 > never used it, and the "V5.4" label was older, unrelated history. Don't
 > skip this check on a system with any ambiguous deployment history, but
 > also don't let it block progress once actually checked.
+>
+> **The second attempt happened, and it worked (2026-09-08).** Both Flows
+> were built in Studio from `FlowBuildSpec`/`FlowPrompts` per the build
+> order above. Socratic Onboarding was completed via the Web App's "Arm
+> Engine" modal (`completeOnboarding()`, 5_Error_And_Utilities.gs — the
+> legacy `runSocraticOnboarding()` wizard does not work on this standalone
+> project; use the modal), clearing `COLD_ENGINE_TIER_2` and unblocking
+> `processInferenceQueue()`. `installStudioFlowFixture()` +
+> `checkStudioFlowBinding()`/`checkStudioFlowLiveness()`/
+> `checkStudioReturns()` confirmed both Flows genuinely wrote back
+> (`HARVESTED`, real Auditor `PASSED` sign-off on the Curator side, real
+> per-sentence scores on the Classification side) — and, past that, real
+> data landed in both final destination sheets: a genuine `SESSION_LOG`
+> row with the Curator's actual summary, and a `VECTOR_MATRIX` row whose
+> hand-checked aggregation matched `dumpVectorState()` exactly.
+>
+> **Verifying that last step surfaced two real bugs, both fixed and
+> tested (CHANGELOG.md Round 22):** `processIntakePayload()` used to call
+> the Vector Router unconditionally, writing a phantom `VECTOR_MATRIX` row
+> (and, on a matrix with real history, silently decaying it) for every
+> Curator-only session — now gated on `vector_weights` actually being an
+> object. And `processInferenceQueue()` used to re-read a row's source doc
+> directly, which a *different* row sharing that same `File_ID` (by
+> design — see `installStudioFlowFixture()`'s header) can silently
+> overwrite between harvest and processing; it now reads the row's own
+> `STUDIO_RETURN` entry instead, which no other row's harvest can touch.
+>
+> **One deployment pitfall worth knowing before your next `clasp push`:**
+> a local folder can silently drift from what git actually tracks — this
+> round's found `01_Config_And_Deploy.gs`/`02_Ingestion_Sensors.gs`/
+> `04_Vector_Router.gs`/`05_Error_And_Utilities.gs` (zero-padded, not the
+> real `1_`/`2_`/`4_`/`5_` names `.claspignore` allowlists) sitting
+> alongside — or instead of — the correctly-named files, and a
+> since-deleted `.clasp.json`. `clasp push` fully mirrors local → remote:
+> a file `.claspignore` doesn't match gets deleted from the live project,
+> silently, with no warning. Before a push you're not fully sure about,
+> confirm the local folder has exactly the 16 numbered files (no
+> zero-padded duplicates, no stray copies) and a real `.clasp.json` with
+> the correct `scriptId`, and that `clasp push`'s own output lists all 16
+> files plus `appsscript.json` — not fewer.
 
 This guide takes you from zero to a fully deployed KOS instance with your first session processed. It assumes you have a Google account and basic familiarity with Google Drive.
 
