@@ -1,6 +1,6 @@
 # cas-ccps Deployment Handoff
 
-> ## ⚠️ STATUS: cas-ccps IS FULLY LIVE. START HERE, THEN GO TO leader-hub.
+> ## ✅ STATUS: ALL THREE SYSTEMS ARE NOW LIVE — cas-ccps, leader-hub, kos-personal.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
 > projects are live in a real `ccpsnet.net` Workspace account, Module 1 and
@@ -11,14 +11,17 @@
 > fixture data, not yet a real student submission; `cas-ccps/docs/IMPACT_DASHBOARD.html`
 > keeps that distinction explicit in its own badges and metrics.
 >
-> **If you are a fresh session picking up deployment work, cas-ccps itself
-> needs nothing further right now — move to leader-hub, then kos-personal**
-> (["The other two systems"](#the-other-two-systems) below), both still
-> from-scratch deployments that have never been pushed. The rest of this
-> document — the already-live section, the Script Properties reference, the
-> from-scratch order of operations — is kept as reference for those two
-> systems and for standing up a *second* cas-ccps account, not as an active
-> checklist for this one.
+> **kos-personal closed the gap this banner used to describe (2026-09-08):
+> both its Studio flows are now built and verified end to end too** — see
+> ["The other two systems"](#the-other-two-systems) below and
+> `kos-personal/CHANGELOG.md` Rounds 21-22 for the full account, including
+> two real bugs the verification itself surfaced and fixed. **A fresh
+> session has nothing left to deploy from scratch across all three
+> systems.** The rest of this document — the already-live section, the
+> Script Properties reference, the from-scratch order of operations — is
+> kept as reference for standing up a *second* cas-ccps account, for
+> extending any of the three systems, or for onboarding a session that
+> needs the full history rather than just the current state.
 >
 > ### Lessons learned closing out Flows 2-5 — read before building a flow
 > anywhere else in this repo
@@ -415,23 +418,17 @@ derived from the constants the code reads, and this file is prose.
 ```
 Read cas-ccps/DEPLOYMENT_HANDOFF.md's status banner, then
 kos-personal/DEPLOYMENT_GUIDE.md's status banner, then
-kos-personal/STUDIO_INTEGRATION_SPEC.md's banner in full. I'm
-continuing the live deployment on the ccpsnet.net account: 8 cas-ccps
-projects exist and all five cas-ccps flows are live and verified;
-leader-hub is fully deployed with all six Flows live; kos-personal's
-code is pushed and structurally verified (851 tests, 0 gas-lint/
-doc-currency errors) but its two Studio flows have never been built for
-real — the only Studio build attempt this project ever had (Round 17,
-CHANGELOG.md) surfaced a real incident and was paused rather than
-patched around, and everything since has been Apps-Script-side rework
-closing the actual gap that incident exposed (the live Docs-read step
-is gone from both flows entirely; a FlowBuildSpec tab now generates the
-exact values to build from; a new preflight check verifies structural
-soundness first). This is the second attempt, and the first real one
-against the rebuilt design. I run every clasp/browser/Studio action
-myself (SMP-004) and paste logs back. Start by telling me the exact
-commands to run before opening Studio, then the exact build order for
-both flows.
+kos-personal/STUDIO_INTEGRATION_SPEC.md's banner in full. All three
+systems on the ccpsnet.net account are now live: 8 cas-ccps projects
+exist and all five cas-ccps flows are live and verified; leader-hub is
+fully deployed with all six Flows live; kos-personal's code is pushed
+and both its Studio flows are built and verified end to end
+(kos-personal/CHANGELOG.md Rounds 21-22 for the full account, including
+two real bugs the verification itself surfaced and fixed). There is
+nothing left to deploy from scratch. I run every clasp/browser/Studio
+action myself (SMP-004) and paste logs back. [Describe what you actually
+need: extending one of the three systems, investigating something that
+looks wrong, or standing up a second account from this same codebase.]
 ```
 
 ## The other two systems
@@ -454,36 +451,40 @@ liveness there is a durable counter rather than a row scan. Its D1 side —
 the browser calling cas-ccps's `doPost()` — is diagnosed from the cas-ccps
 end; see the paragraph above.
 
-**kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. **Code and infra
-live as of 2026-09-05; the Studio flow build has never been attempted a
-second time.** Pushed (13 files — the guide's own file list was stale by
-one, since corrected), both deployments made, `setupAllTriggers()`
-confirmed all 14 installed and firing, a real session ingested and
-correctly advanced through the pipeline. The Curator flow's first —
-and, as of this writing, only — Studio build surfaced real problems (a
+**kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. **Both Studio flows
+built and verified end to end (2026-09-08) — the second attempt succeeded.**
+The Curator flow's first Studio build attempt surfaced real problems (a
 trigger condition not actually filtering on `Status`, and Gemini
 fabricating output after a "Workspace sources is turned off" warning
 instead of reading the real source document) and was deliberately paused
 rather than patched around — see `kos-personal/CHANGELOG.md`'s Round 17
-for the full incident. Everything since has been Apps-Script-side rework
-closing the gap that incident exposed, not another Studio attempt: the
-live Docs-read step is gone from both flows entirely
-(`13_StudioInputBuilder.gs` reads the source document itself, before
-Studio ever runs), a generated `FlowBuildSpec` tab now supplies every
-value to build from (`syncStudioFlowBuildSpec()`,
-`14_StudioFlowBuildSpec.gs`), and a new preflight check
-(`runKosPersonalPreflight()`, `15_Preflight.gs`) verifies tab widths,
-trigger completeness and required properties before Studio is even
-opened. Build order for the second attempt: preflight, then
-`syncStudioFlowBuildSpec()` and build both flows from that tab (each
-trigger is now a **single condition**, not the compound one Round 17
-hit), then `runStudioInputCanary()`/`checkStudioInputBuilder()` for the
-materialize half, then `checkStudioFlowBinding()` while wiring the last
-step and `runStudioReturnCanary()`/`checkStudioFlowLiveness()` for the
-harvest half — full detail in `kos-personal/DEPLOYMENT_GUIDE.md`'s
-banner and `STUDIO_INTEGRATION_SPEC.md`'s. Its consent-screen phase
-configures the *default* project and does **not** create a standard one —
-that distinction is what cost 2,113 lines here.
+for that incident. Everything through Round 20 was Apps-Script-side rework
+closing the gap it exposed: the live Docs-read step removed from both
+flows entirely (`13_StudioInputBuilder.gs` reads the source document
+itself, before Studio ever runs), a generated `FlowBuildSpec` tab
+supplying every value to build from (`14_StudioFlowBuildSpec.gs`), a
+preflight check (`15_Preflight.gs`) verifying structural soundness first,
+and prompts moved onto a generated `FlowPrompts` chip tab
+(`16_FlowPrompts.gs`) instead of hand-pasted blocks. Round 21 is the
+second attempt itself: Socratic Onboarding completed (a real front-end bug
+in the Arm Engine wizard fixed first — `8_WebApp_UI.html`'s
+`_armCaptureStep()` was silently clobbering earlier steps' answers), both
+flows built from `FlowBuildSpec`/`FlowPrompts`, and
+`checkStudioFlowBinding()`/`checkStudioFlowLiveness()`/`checkStudioReturns()`
+confirmed both genuinely wrote back — a real Auditor `PASSED` sign-off on
+the Curator side, real per-sentence scores on the Classification side.
+Round 22 is what verifying *past* the harvest — real data actually
+reaching `SESSION_LOG`/`VECTOR_MATRIX`, not just `STUDIO_RETURN` — found
+and fixed: a phantom-`VECTOR_MATRIX`-row bug (the Vector Router was called
+unconditionally for every payload type, including Curator sessions with no
+vector data of their own) and a shared-`File_ID` race
+(`processInferenceQueue()` used to re-read a row's source doc directly,
+which a *different* row sharing that same `File_ID` by design can
+silently overwrite between harvest and processing — now reads the row's
+own `STUDIO_RETURN` entry instead). Full account, with exact logs and
+diagnosis, in `kos-personal/CHANGELOG.md` Rounds 21-22. Its consent-screen
+phase configures the *default* project and does **not** create a standard
+one — that distinction is what cost 2,113 lines here.
 
 ## Order of operations
 
