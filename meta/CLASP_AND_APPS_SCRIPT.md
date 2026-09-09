@@ -38,6 +38,67 @@ running your 3am–6am pipeline) is untouched.
 **Pull**: the reverse — brings down anything changed directly in the
 browser editor, so local and live never silently drift apart.
 
+## When there's no `git clone` at all — deploying from a downloaded zip
+
+Everything above assumes a real git working tree: `git clone`, then
+`git pull` to stay current, with git itself reconciling the folder on every
+pull — a file that was renamed or removed upstream is renamed or removed
+locally too. That assumption doesn't hold for every operator. A real,
+recurring alternative: downloading a zip of the repo (or of one branch) from
+GitHub or from a Claude Code session's own file delivery, and extracting it
+locally — no git repo on that machine at all, just a folder of files.
+
+**This is not a lesser workflow, but it has a real hazard git's own
+reconciliation quietly prevents, and kos-personal's Round 22
+(`kos-personal/CHANGELOG.md`) hit it for real:**
+
+- **A zip extraction only ever adds and overwrites — it never deletes.**
+  Extracting a newer zip into a folder that already holds an older
+  extraction leaves anything renamed or removed upstream sitting there
+  untouched, alongside the new version. Round 22's incident: an older
+  extraction's `01_Config_And_Deploy.gs`/`02_Ingestion_Sensors.gs`/
+  `04_Vector_Router.gs`/`05_Error_And_Utilities.gs` (zero-padded) sat next
+  to — for some numbers, *instead of* — the correctly-named
+  `1_`/`2_`/`4_`/`5_` files a fresh extraction should have produced.
+  `.claspignore`'s allowlist matches exact filenames, so those four
+  silently fell outside it, and `clasp push`'s full-mirror behavior
+  (anything not present locally, or excluded by `.claspignore`, is deleted
+  from the live project) turned a stale local folder into a real
+  production deletion — four core files gone from the live script, no
+  warning beyond the generic "manifest updated, overwrite?" prompt.
+- **`.clasp.json` never comes from a zip at all.** It's deliberately
+  gitignored — real script IDs are never committed, same convention this
+  repo uses for real Sheet/Doc IDs (see this file's own workflow section
+  above). A git clone only needs it created once, and `git pull` afterward
+  never touches it. A zip download has no equivalent "only once" — every
+  fresh extraction starts without it, and if a stale folder ever gets
+  cleaned up (by hand, or by re-extracting into what was believed to be an
+  empty directory), it can disappear with nothing to recreate it
+  automatically.
+
+**The safe procedure, given no git reconciliation to lean on:**
+
+1. **Delete the destination folder entirely before extracting a fresh
+   zip.** Never extract on top of an existing folder — that's the one
+   habit that lets stale files accumulate in the first place. A clean
+   extraction has no duplicates to accidentally allowlist or miss.
+2. **Save the real `scriptId` somewhere that survives a folder deletion**
+   — a password manager entry, a note outside the repo, wherever you keep
+   things `.gitignore` deliberately keeps out of source. After a fresh
+   extraction, recreate `.clasp.json` from it (matching
+   `.clasp.json.template`'s shape: `{"scriptId": "...", "rootDir": "."}`)
+   before the first `clasp push`.
+3. **Before trusting any `clasp push`, know the expected file count.**
+   For kos-personal's main project: 16 numbered `.gs`/`.html` files plus
+   `appsscript.json` = 17. Check `tools/gas-lint/project-map.json` for any
+   project's authoritative list rather than recounting by hand. If
+   `clasp push`'s own output lists fewer files than expected, stop —
+   don't assume it's fine, the missing ones are about to be deleted from
+   the live project the moment you continue.
+4. **After a push you're not fully confident about, spot-check the live
+   Apps Script editor's file list directly** against that same expected
+   count, before running anything that depends on the missing pieces.
+
 ## What this looks like for one real CAS script
 
 Take `29_PacingGuideManager.js` as a concrete, non-hypothetical example of
