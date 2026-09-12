@@ -62,6 +62,13 @@
  * PENDING_FLOW (incrementing Retry_Count), per STUDIO_INTEGRATION_SPEC.md
  * Step 2 ("Staleness guard").
  *
+ * FIX (process-hardening sprint, Phase 1a): release order is priority
+ * rows, then normal rows, then rows just stale-reset this run or a
+ * previous one — not pure sheet order — so a repeatedly-failing row
+ * doesn't cut back to the front of re-inference just because it's one of
+ * the oldest rows in the queue. See _markStaleDeprioritized_()
+ * (5_Error_And_Utilities.gs) for the mechanism and the incident it closes.
+ *
  * Fully headless — no ui.alert. Errors go to ERROR_LOG via _reportError().
  *
  * Fires: every 5 min via time-driven trigger (setupAllTriggers).
@@ -136,7 +143,16 @@ function runMatrixTurnstile() {
           staging.getRange(sheetRow, SC.STATUS      + 1).setValue('PENDING_FLOW');
           staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
           staleReset++;
-          console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') stale — reset to PENDING_FLOW.');
+          // FIX (process-hardening sprint, Phase 1a/1b): a row reset here
+          // is, by construction, one of the OLDEST rows in the queue —
+          // releasing purely oldest-first (Pass 2, below) meant it got
+          // released again almost immediately, ahead of every other
+          // PENDING_FLOW row, every single stale cycle. Marking it
+          // deprioritized instead means Pass 2 gives way to any other
+          // ready row first; see _markStaleDeprioritized_'s own header.
+          _markStaleDeprioritized_(uid, 'stale_reset', newRetries);
+          console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') stale — reset to PENDING_FLOW, ' +
+            'deprioritized for this run\'s release pass.');
         }
       } else {
         activeCount++;
@@ -149,20 +165,37 @@ function runMatrixTurnstile() {
     // FIRST, ahead of normal row order — "push the log back to the
     // start of the queue" without physically reordering sheet rows,
     // which would risk a row-shift race against a concurrent trigger run.
+    //
+    // Deprioritized rows (process-hardening sprint Phase 1a — just
+    // stale-reset by Pass 1 above, see _markStaleDeprioritized_()) release
+    // LAST, after every other PENDING_FLOW row — the mirror image of
+    // priority, for the mirror-image reason: a row that just failed
+    // shouldn't cut back to the front of re-inference the way sheet order
+    // alone would otherwise put it.
     freedSlots = Math.max(0, CFG.TURNSTILE_CONCURRENCY - activeCount);
     let releasedCount = 0;
 
-    const auditPriority   = _readAuditRetryPrioritySet_();
-    const releaseOrder    = [];
-    const priorityIndices = [];
-    const normalIndices   = [];
+    const auditPriority      = _readAuditRetryPrioritySet_();
+    const staleDeprioritized = _readStaleDeprioritizeSet_();
+    const releaseOrder       = [];
+    const priorityIndices      = [];
+    const normalIndices        = [];
+    const deprioritizedIndices = [];
     for (let i = 0; i < data.length; i++) {
       if (String(data[i][SC.STATUS]) !== 'PENDING_FLOW') continue;
-      const isPriority = !!auditPriority[String(data[i][SC.PAYLOAD_UID])];
-      (isPriority ? priorityIndices : normalIndices).push(i);
+      const uid = String(data[i][SC.PAYLOAD_UID]);
+      const isPriority = !!auditPriority[uid];
+      // Priority wins in the (expected to be rare, if it ever happens at
+      // all) case a row is somehow marked both ways at once — a row
+      // actively being retried at the audit gate's request shouldn't be
+      // held back by an unrelated, possibly-stale deprioritize entry.
+      if (isPriority) priorityIndices.push(i);
+      else if (staleDeprioritized[uid]) deprioritizedIndices.push(i);
+      else normalIndices.push(i);
     }
-    releaseOrder.push(...priorityIndices, ...normalIndices);
+    releaseOrder.push(...priorityIndices, ...normalIndices, ...deprioritizedIndices);
     const consumedPriorityUids = [];
+    const consumedDeprioritizedUids = [];
 
     if (freedSlots > 0) {
       for (let oi = 0; oi < releaseOrder.length && releasedCount < freedSlots; oi++) {
@@ -198,8 +231,11 @@ function runMatrixTurnstile() {
         released[uid] = nowMs;
         releasedCount++;
         if (auditPriority[uid]) consumedPriorityUids.push(uid);
+        if (staleDeprioritized[uid]) consumedDeprioritizedUids.push(uid);
         console.log('[Turnstile] Row ' + sheetRow + ' (' + uid + ') released to STUDIO_ACTIVE' +
-          (auditPriority[uid] ? ' (priority — audit retry)' : '') + '.');
+          (auditPriority[uid] ? ' (priority — audit retry)' :
+            staleDeprioritized[uid] ? ' (deprioritized — stale reset, attempt ' +
+              staleDeprioritized[uid].attempt + ')' : '') + '.');
       }
     }
 
@@ -214,6 +250,21 @@ function runMatrixTurnstile() {
         if (!uidsInSheet.has(uid)) { delete auditPriority[uid]; changed = true; }
       });
       if (changed) _writeAuditRetryPrioritySet_(auditPriority);
+    }
+
+    // Deprioritize entries are also one-shot: once a row is actually
+    // released (or vanishes from the sheet entirely), its entry is stale
+    // and would otherwise sit around forever — a row that gets stale-reset
+    // AGAIN on a later cycle re-marks it fresh via _markStaleDeprioritized_,
+    // so dropping a consumed entry here never loses real information.
+    if (consumedDeprioritizedUids.length > 0 || Object.keys(staleDeprioritized).length > 0) {
+      const uidsInSheet = new Set(data.map(r => String(r[SC.PAYLOAD_UID])));
+      let changed = false;
+      consumedDeprioritizedUids.forEach(uid => { delete staleDeprioritized[uid]; changed = true; });
+      Object.keys(staleDeprioritized).forEach(uid => {
+        if (!uidsInSheet.has(uid)) { delete staleDeprioritized[uid]; changed = true; }
+      });
+      if (changed) _writeStaleDeprioritizeSet_(staleDeprioritized);
     }
 
     // ── Prune the release map: drop any UID no longer present in

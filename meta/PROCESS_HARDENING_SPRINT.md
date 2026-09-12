@@ -104,12 +104,6 @@ Also added a root `README.md` section for the tool itself — it turned out
 (the PR-only `docs-check` CI job never caught it, since that Wave 2 work
 was pushed straight to a branch, no PR opened). Fixed alongside writing
 this playbook rather than left as a second gap.
-Write up "canonical JSON + generator + gas-lint drift check" as a named,
-repeatable playbook for the *next* cross-project constant/algorithm
-duplication — not just what `plausibility-phrases.json` happens to do, but
-the general shape (when this applies, how to add a new managed constant,
-how the drift check plugs into gas-lint) so the next occurrence is a known
-move, not a bespoke design exercise.
 
 ---
 
@@ -120,23 +114,55 @@ reading `runMatrixTurnstile()` that a stale-reset row is released again
 almost immediately, since it's released in sheet order and a repeatedly-
 failing row is necessarily one of the oldest.)*
 
-### 1a. Deprioritize-on-stale-reset 🔲
-Mirror `_markAuditRetryPriority_`/`_readAuditRetryPrioritySet_`/
-`_writeAuditRetryPrioritySet_` (`5_Error_And_Utilities.gs`) into their
-opposite — a Script-Property-backed set marked when Pass 1 stale-resets a
-row, consumed in Pass 2 as a third `releaseOrder` bucket appended *after*
-`normalIndices` (today's order is `priorityIndices, normalIndices`; add
-`deprioritizedIndices` last). A row that just failed gives way to any
-other `PENDING_FLOW` row ready to go, and only comes up again once nothing
-else is waiting — no effect when it's the only row in the queue, which
-matches exactly when this does and doesn't matter.
+### 1a. Deprioritize-on-stale-reset ✅
+Built exactly as sketched: `_markStaleDeprioritized_`/
+`_readStaleDeprioritizeSet_`/`_writeStaleDeprioritizeSet_`
+(`5_Error_And_Utilities.gs`) mirror the audit-retry priority set, and
+`runMatrixTurnstile()`'s `releaseOrder` now has three buckets — priority,
+normal, deprioritized — released in that order, with priority winning if a
+UID is somehow marked both ways. One-shot and pruned the same way the
+priority set already is.
 
-### 1b. Visible requeue reason 🔲
-Same code location as 1a (Pass 1's reset branch already knows *why*: stale
-timeout vs. count toward `TURNSTILE_STUCK_THRESHOLD`). Write a short reason
-alongside the existing `Retry_Count` bump — this is the smaller,
-shippable-now slice of the status-visibility idea; Phase 4 is where it
-becomes full per-stage tracking across a split Curator/Auditor flow.
+The regression test needed a second try: the first version seeded a
+`STUDIO_ACTIVE` row and a `PENDING_FLOW` row in the same
+`runMatrixTurnstile()` call and expected the stale-reset row to lose —
+it passed, but for the wrong reason. Pass 2 reads the SAME in-memory `data`
+snapshot Pass 1 already updated in-sheet, so a row Pass 1 just reset is
+never eligible for release again in that same call regardless of this fix
+— confirmed by running the test against the pre-fix code, where it also
+passed. The real incident spans separate 5-minute Turnstile cycles: a row
+stale-reset on run N is a plain `PENDING_FLOW` row by run N+1, and being
+one of the oldest rows in the sheet, pure sheet-order release picks it
+again ahead of anything newer that's been waiting. The test now calls
+`runMatrixTurnstile()` twice with a row added in between, and does fail
+against the pre-fix code when checked directly.
+
+### 1b. Visible requeue reason ✅
+`_markStaleDeprioritized_` stores `{reason, attempt, at}` per UID, not just
+a boolean — `STAGING_PIPELINE` has no spare column for this
+(`10_Turnstile.gs`'s own header explains why an 8th column isn't added
+lightly), so this Script Property is the durable, inspectable record until
+the entry is consumed. This is the smaller, shippable-now slice of the
+status-visibility idea; Phase 4 is where it becomes full per-stage
+tracking across a split Curator/Auditor flow.
+
+### 1c. Missing outer `LockService` guards ✅
+Added to both `harvestStudioReturns()` and `processInferenceQueue()`, the
+same `LockService.getScriptLock()`-then-`finally`-release shape
+`sensor1_scanInboundSessions()`/`runMatrixTurnstile()` already use.
+`processInferenceQueue()` already had a *different* lock inside
+`processIntakePayload()` protecting a different span (the duplicate-guard-
+through-queue-append race) — the new guard protects the outer row-scan
+loop itself, a separate concern.
+
+### 1d. Tests ✅
+Done alongside 1a-1c rather than as a separate pass: the two-run queue-
+fairness test (see 1a above) plus one-shot/pruning/priority-wins-ties
+coverage in `tests/kos-personal/turnstile.test.js`, and a
+"does nothing when it cannot acquire the script lock" test for each newly-
+locked function (`tests/kos-personal/studio-return-harvest.test.js`,
+`tests/kos-personal/queue-processor.test.js`), same pattern
+`runMatrixTurnstile()`'s own lock test already used.
 
 ### 1c. Missing outer `LockService` guards 🔲
 Found while verifying the two-pathway question: neither

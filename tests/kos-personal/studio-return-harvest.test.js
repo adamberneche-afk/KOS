@@ -414,6 +414,21 @@ test('harvest: empty return tab is a no-op', () => {
     { applied: 0, skipped: 0, failed: 0, attention: 0, suspectFabrication: 0, pruned: 0 });
 });
 
+// Process-hardening sprint, Phase 1c: harvestStudioReturns() previously had
+// no LockService guard at all, unlike sensor1_scanInboundSessions()/
+// runMatrixTurnstile(), which both do — same pattern
+// tests/kos-personal/turnstile.test.js's own lock test uses.
+test('harvest: does nothing when it cannot acquire the script lock', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  sandbox.LockService.getScriptLock = () => ({ tryLock: () => false, waitLock() {}, releaseLock() {} });
+
+  const result = exported.harvestStudioReturns();
+
+  assert.deepEqual(result, { applied: 0, skipped: 0, failed: 0, attention: 0, suspectFabrication: 0, pruned: 0 });
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE', 'a concurrent run holding the lock must leave this row untouched');
+});
+
 // ── The groundedness gate ────────────────────────────────────────────────────
 //
 // Round 17's incident (CHANGELOG.md): Gemini proceeded without ever reading
