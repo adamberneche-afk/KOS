@@ -404,12 +404,32 @@ than copied verbatim:
   all, since Apps Script wrote the whole payload itself before ever queuing
   the job, so this checks against the full payload.
 
-**Enforced:** no. Each implementation has its own unit and integration
-tests, but nothing checks that a flow surface *has* this role the way Check
-I requires materialize/harvest/canary/binding/liveness to exist —
-`flow-map.json`'s `flowSurfaces` schema has no field for it yet. A declared
-surface with no groundedness check today reads identically to one that was
-never designed to need one.
+Each of these three files' phrase list and stopword set was independently
+hand-tuned and had already drifted from the other two before a redundancy
+review caught it: cas-ccps caught "could not open" and leader-hub didn't;
+leader-hub caught "insufficient context" and cas-ccps didn't; kos-personal
+had no phrase list at all. `shared/flow-harness/plausibility-phrases.json`
+is now the one canonical source for the union of all three, materialized
+into each file by
+`tools/flow-harness-sync/sync-plausibility-phrases.js` — same "build-time
+materialization, not a runtime library" mechanism `tools/clasp-sync/sync.js`
+already uses for cas-ccps's own shared files, and the same directionality
+rule as rule 16 below: the canonical source is always the side that's
+right, never a live file's own copy. `41_WarmUpFlowBridge.js` needs no
+separate entry above or its own materialized copy — it reads
+`37_FlowInputBuilder.js`'s constants directly from their shared GAS project
+scope, so this fix reaches it automatically.
+
+**Enforced:** partly. gas-lint Check L (`checkPlausibilityGateDrift`) fails
+the build if any of the three files' phrase list, stopword set, or
+match-count threshold no longer matches the canonical source — the same
+class of silent disagreement Round 17 itself could never have been caught
+by, now closed. What is still not enforced: nothing checks that a flow
+surface *has* this role at all the way Check I requires
+materialize/harvest/canary/binding/liveness to exist — `flow-map.json`'s
+`flowSurfaces` schema has no field for it yet. A declared surface with no
+groundedness check today reads identically to one that was never designed
+to need one.
 
 ---
 

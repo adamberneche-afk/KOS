@@ -428,6 +428,20 @@ test('_fiCheckPlausibility_: a self-reported non-access phrase is caught directl
   assert.match(result.reason, /non-access phrase/);
 });
 
+test('_fiCheckPlausibility_: also catches phrases this system did not have before the phrase-list consolidation', () => {
+  // Redundancy review B1 / flow-harness proposal Phase 0: before
+  // shared/flow-harness/plausibility-phrases.json unified the three
+  // systems' phrase lists, this one only caught cas-ccps's own
+  // independently-tuned wording — "insufficient context" was leader-hub's
+  // phrase, and this file had no way to catch it. Now it does.
+  const { exported } = load();
+  const row = plausibilityRow(exported, { persona: 'Skeptical Investor' });
+  const result = exported._fiCheckPlausibility_(
+    'I have insufficient context to evaluate this properly, but here is my attempt anyway.', row);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /non-access phrase/);
+});
+
 test('_fiCheckPlausibility_: output referencing the rubric passes', () => {
   const { exported } = load();
   const row = plausibilityRow(exported, { unitName: 'Campaign Pitch Deck', persona: 'Skeptical Investor' });

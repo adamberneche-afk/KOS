@@ -684,20 +684,46 @@ function _srPruneResolvedSuspectFabrication_(sheet, staging) {
 // against them. Real session logs run up to CFG.MAX_CHUNK_SIZE (25,000
 // characters by default) — this floor only ever engages on real content.
 const SR_GROUNDEDNESS_MIN_CHARS = 500;
+// GENERATED from shared/flow-harness/plausibility-phrases.json.
 const SR_GROUNDEDNESS_MAX_CANDIDATES = 40;
 
-// Long-but-common English words that would pass the length filter below but
-// say nothing about whether a specific document was actually read. Leaving
-// them in would let almost any generic prose "match" almost any document.
+// GENERATED from shared/flow-harness/plausibility-phrases.json — do not
+// hand-edit; run `node tools/flow-harness-sync/sync-plausibility-phrases.js`.
+// Canonical across all three systems' plausibility/groundedness gates
+// (redundancy review B1 / flow-harness proposal Phase 0) — this file's own
+// runtime code stays separate from cas-ccps/leader-hub's (GAS has no
+// cross-project function calls), only this DATA is unified. Long-but-common
+// English words that would pass the length filter below but say nothing
+// about whether a specific document was actually read — leaving them in
+// would let almost any generic prose "match" almost any document.
 const SR_GROUNDEDNESS_STOPWORDS = {
-  because: 1, however: 1, something: 1, everything: 1, although: 1, therefore: 1,
-  important: 1, specific: 1, generally: 1, actually: 1, basically: 1, eventually: 1,
-  additional: 1, different: 1, another: 1, through: 1, without: 1, between: 1,
-  should: 1, system: 1, process: 1, session: 1, document: 1, content: 1, context: 1,
-  summary: 1, produce: 1, produced: 1, operator: 1, discuss: 1, discussion: 1,
-  discussed: 1, covering: 1, covered: 1, follow: 1, follows: 1, following: 1,
-  regarding: 1, involved: 1, various: 1, working: 1, general: 1, overall: 1,
+  actually: 1, additional: 1, although: 1, another: 1, basically: 1, because: 1,
+  between: 1, content: 1, context: 1, covered: 1, covering: 1, definition: 1,
+  different: 1, discuss: 1, discussed: 1, discussion: 1, document: 1, eventually: 1,
+  everything: 1, follow: 1, following: 1, follows: 1, general: 1, generally: 1,
+  however: 1, important: 1, involved: 1, milestone: 1, operator: 1, overall: 1,
+  process: 1, produce: 1, produced: 1, project: 1, regarding: 1, session: 1,
+  should: 1, something: 1, specific: 1, student: 1, summary: 1, system: 1,
+  teacher: 1, therefore: 1, through: 1, various: 1, without: 1, working: 1,
 };
+
+// GENERATED from shared/flow-harness/plausibility-phrases.json — see
+// SR_GROUNDEDNESS_STOPWORDS above. NEW (incident/redundancy review): this
+// system's groundedness gate previously had NO self-reported-non-access
+// phrase check at all — the only one of the three without it, despite
+// this file's own header quoting the exact real incident phrase
+// ("Workspace sources is turned off") a phrase check would have caught
+// immediately, cheaply, and unambiguously, rather than relying solely on
+// vocabulary overlap. See _srCheckGroundedness_ below for where this is
+// now used.
+const SR_NON_ACCESS_PHRASES = [
+  "can't access", 'cannot access', 'could not open', "couldn't open",
+  'do not have access', "don't have access", 'i do not have', "i don't have",
+  'insufficient context', 'insufficient information', 'no access to', 'not enough context',
+  'not enough information', 'unable to access', 'unable to generate', 'unable to open',
+  'unable to view', 'was not given', 'was not provided', 'without reading',
+  'workspace sources',
+];
 
 // Longest-unique-word-first: rare, specific terms (proper nouns, IDs, domain
 // vocabulary) tend to run longer than common English filler, so this is a
@@ -716,20 +742,45 @@ function _srDistinguishingWords_(text) {
 }
 
 /**
- * The groundedness gate. NOT a fact-checker — a cheap vocabulary-overlap
- * smoke test: does the model's own output contain even one of the source
- * document's most distinguishing words? A model that actually read the
- * document almost always echoes at least one specific term from it; one
- * that never saw it essentially never does by chance. This catches "never
- * read the document at all" (Round 17's failure), not "read it and
- * summarized it wrong" — it is not trying to be more than that.
+ * The groundedness gate. NOT a fact-checker — two cheap checks, neither a
+ * real NLP model:
  *
- * Deliberately permissive below SR_GROUNDEDNESS_MIN_CHARS, so every
- * fixture and canary scratch doc in this file passes through ungated.
+ *   1. A phrase check (SR_NON_ACCESS_PHRASES, new — see that constant's own
+ *      header) against the model's own output: did it say, in its own
+ *      words, that it couldn't access something? This is the exact shape
+ *      of Round 17's incident log ("Workspace sources is turned off...
+ *      sent without file references") — cheaper and more direct than the
+ *      vocabulary-overlap check below, and the only one of this gate's two
+ *      checks that fires even on a very short, otherwise-passing output.
+ *   2. Vocabulary-overlap: does the model's output contain even one of the
+ *      source document's most distinguishing words? A model that actually
+ *      read the document almost always echoes at least one specific term
+ *      from it; one that never saw it essentially never does by chance.
+ *
+ * Together these catch "never read the document at all" (Round 17's
+ * failure), not "read it and summarized it wrong" — this gate is not
+ * trying to be more than that.
+ *
+ * The vocabulary-overlap half is deliberately permissive below
+ * SR_GROUNDEDNESS_MIN_CHARS, so every fixture and canary scratch doc in
+ * this file passes through ungated — the phrase check has no such floor
+ * and always runs, since a self-reported non-access phrase is exactly as
+ * meaningful in a short output as a long one.
  *
  * @returns {ok object} { grounded: true } or { grounded: false, reason }.
  */
 function _srCheckGroundedness_(fileId, outputText) {
+  const lower = String(outputText).toLowerCase();
+  const nonAccessHit = SR_NON_ACCESS_PHRASES.find(function (p) { return lower.indexOf(p) !== -1; });
+  if (nonAccessHit) {
+    return {
+      grounded: false,
+      reason: 'the model\'s own output contains a self-reported non-access phrase ("' +
+        nonAccessHit + '") — the same shape as this project\'s own Round 17 incident, where ' +
+        'Gemini proceeded without reading its source material and said so in its own text.',
+    };
+  }
+
   let sourceText;
   try {
     sourceText = DocumentApp.openById(fileId).getBody().getText();

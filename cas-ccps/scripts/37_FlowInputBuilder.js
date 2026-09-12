@@ -461,11 +461,21 @@ function _fiBuildPromptText_(matrixRow) {
 // than implying more (Flow Doctrine rule 10/13: a check states what it
 // cannot know).
 // ---------------------------------------------------------------------------
+// GENERATED from shared/flow-harness/plausibility-phrases.json — do not
+// hand-edit; run `node tools/flow-harness-sync/sync-plausibility-phrases.js`.
+// Canonical across all three systems' plausibility/groundedness gates
+// (redundancy review B1 / flow-harness proposal Phase 0) — this file's own
+// runtime code stays separate from cas-ccps/leader-hub's (GAS has no
+// cross-project function calls), only this DATA is unified so the three
+// gates can't silently disagree on what counts as "the model said it
+// couldn't access something."
 const FI_NON_ACCESS_PHRASES = [
-  'workspace sources', "don't have access", 'do not have access', 'cannot access',
-  "can't access", 'unable to access', 'no access to the document', 'without reading',
-  'could not open', "couldn't open", 'unable to open', 'unable to view',
-  'was not provided', 'was not given', "i don't have the document", 'i do not have the document',
+  "can't access", 'cannot access', 'could not open', "couldn't open",
+  'do not have access', "don't have access", 'i do not have', "i don't have",
+  'insufficient context', 'insufficient information', 'no access to', 'not enough context',
+  'not enough information', 'unable to access', 'unable to generate', 'unable to open',
+  'unable to view', 'was not given', 'was not provided', 'without reading',
+  'workspace sources',
 ];
 
 // Longest-unique-word-first, same proxy kos-personal's _srDistinguishingWords_
@@ -474,12 +484,22 @@ const FI_NON_ACCESS_PHRASES = [
 // filler. Reimplemented here rather than shared — GAS has no cross-project
 // function calls (this file's own header), and this project is a separate
 // one from kos-personal.
+//
+// GENERATED from shared/flow-harness/plausibility-phrases.json — see
+// FI_NON_ACCESS_PHRASES above.
 const FI_PLAUSIBILITY_STOPWORDS = {
-  because: 1, however: 1, something: 1, everything: 1, although: 1, therefore: 1,
-  important: 1, specific: 1, generally: 1, actually: 1, additional: 1, different: 1,
-  another: 1, through: 1, without: 1, between: 1, should: 1, system: 1, process: 1,
-  student: 1, teacher: 1, milestone: 1, definition: 1, project: 1, working: 1, general: 1,
+  actually: 1, additional: 1, although: 1, another: 1, basically: 1, because: 1,
+  between: 1, content: 1, context: 1, covered: 1, covering: 1, definition: 1,
+  different: 1, discuss: 1, discussed: 1, discussion: 1, document: 1, eventually: 1,
+  everything: 1, follow: 1, following: 1, follows: 1, general: 1, generally: 1,
+  however: 1, important: 1, involved: 1, milestone: 1, operator: 1, overall: 1,
+  process: 1, produce: 1, produced: 1, project: 1, regarding: 1, session: 1,
+  should: 1, something: 1, specific: 1, student: 1, summary: 1, system: 1,
+  teacher: 1, therefore: 1, through: 1, various: 1, without: 1, working: 1,
 };
+
+// GENERATED from shared/flow-harness/plausibility-phrases.json.
+const FI_PLAUSIBILITY_MAX_CANDIDATES = 40;
 
 function _fiDistinguishingWords_(text) {
   const seen = {};
@@ -491,7 +511,7 @@ function _fiDistinguishingWords_(text) {
     words.push(w);
   });
   words.sort(function (a, b) { return b.length - a.length; });
-  return words.slice(0, 20);
+  return words.slice(0, FI_PLAUSIBILITY_MAX_CANDIDATES);
 }
 
 function _fiCheckPlausibility_(geminiFullOutput, fiRow) {

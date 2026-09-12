@@ -299,21 +299,41 @@ function checkAiJob_(body) {
 // or one that produced generic text sharing none of the job's own
 // distinguishing content — not one that engaged with the payload but got
 // the substance wrong.
+// GENERATED from shared/flow-harness/plausibility-phrases.json — do not
+// hand-edit; run `node tools/flow-harness-sync/sync-plausibility-phrases.js`.
+// Canonical across all three systems' plausibility/groundedness gates
+// (redundancy review B1 / flow-harness proposal Phase 0) — this file's own
+// runtime code stays separate from cas-ccps/kos-personal's (GAS has no
+// cross-project function calls), only this DATA is unified so the three
+// gates can't silently disagree on what counts as "the model said it
+// couldn't access something."
 const AI_NON_ENGAGEMENT_PHRASES = [
-  "don't have access", 'do not have access', 'cannot access', "can't access",
-  'unable to access', 'no access to', 'not enough information', 'not enough context',
-  'insufficient information', 'insufficient context', 'unable to generate',
-  'i do not have', "i don't have",
+  "can't access", 'cannot access', 'could not open', "couldn't open",
+  'do not have access', "don't have access", 'i do not have', "i don't have",
+  'insufficient context', 'insufficient information', 'no access to', 'not enough context',
+  'not enough information', 'unable to access', 'unable to generate', 'unable to open',
+  'unable to view', 'was not given', 'was not provided', 'without reading',
+  'workspace sources',
 ];
 
 // Long-but-common words that would pass the length filter below but say
 // nothing about whether the model engaged with THIS job's own content.
+//
+// GENERATED from shared/flow-harness/plausibility-phrases.json — see
+// AI_NON_ENGAGEMENT_PHRASES above.
 const AI_PLAUSIBILITY_STOPWORDS = {
-  because: 1, however: 1, something: 1, everything: 1, although: 1, therefore: 1,
-  important: 1, specific: 1, generally: 1, actually: 1, additional: 1, different: 1,
-  another: 1, through: 1, without: 1, between: 1, should: 1, system: 1, process: 1,
-  student: 1, teacher: 1, session: 1, overall: 1, working: 1, general: 1,
+  actually: 1, additional: 1, although: 1, another: 1, basically: 1, because: 1,
+  between: 1, content: 1, context: 1, covered: 1, covering: 1, definition: 1,
+  different: 1, discuss: 1, discussed: 1, discussion: 1, document: 1, eventually: 1,
+  everything: 1, follow: 1, following: 1, follows: 1, general: 1, generally: 1,
+  however: 1, important: 1, involved: 1, milestone: 1, operator: 1, overall: 1,
+  process: 1, produce: 1, produced: 1, project: 1, regarding: 1, session: 1,
+  should: 1, something: 1, specific: 1, student: 1, summary: 1, system: 1,
+  teacher: 1, therefore: 1, through: 1, various: 1, without: 1, working: 1,
 };
+
+// GENERATED from shared/flow-harness/plausibility-phrases.json.
+const AI_PLAUSIBILITY_MAX_CANDIDATES = 40;
 
 function _aiDistinguishingWords_(text) {
   const seen = {};
@@ -325,7 +345,7 @@ function _aiDistinguishingWords_(text) {
     words.push(w);
   });
   words.sort(function (a, b) { return b.length - a.length; });
-  return words.slice(0, 20);
+  return words.slice(0, AI_PLAUSIBILITY_MAX_CANDIDATES);
 }
 
 // Recursively collects every string value out of a parsed payload —
