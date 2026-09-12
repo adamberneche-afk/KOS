@@ -1,6 +1,6 @@
 // ================================================================
-// KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 6 of 11: Governance Engine
+// 6_Governance.gs — KOS v8.0
+// BOUND TO: kos-personal (main flat-folder project)
 // ================================================================
 //
 // Replaces: PART 10 (Governance Engine), PART 11 (Council

@@ -1,6 +1,6 @@
 // ================================================================
-// KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 7 of 11: Web App Server
+// 7_WebApp.gs — KOS v8.0
+// BOUND TO: kos-personal (main flat-folder project)
 // ================================================================
 //
 // This file contains the two GAS entry points for the web app
