@@ -120,9 +120,10 @@ itself *"The Module 3 threshold script"* while calling Script 29
 - `scripts/16_UnifiedManualSetup_M3_ADDENDUM_v2.js` → renamed
   `16_UnifiedManualSetup_M5_ADDENDUM_v2.js`.
 - `docs/CAS_Module3_Documentation_v1.0.docx` and `_v1.0_alt.docx` → merged
-  into `docs/CAS_Module5_Documentation_v1.1.docx` (see item 5 below); both
-  originals kept in `docs/`, neither deleted (not moved into
-  `docs/archived/` — see item 6 below).
+  into `docs/CAS_Module5_Documentation_v1.1.docx` (see item 6 below);
+  both originals kept, neither deleted, now archived at
+  `docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx` and
+  `..._v1.0_alt_SUPERSEDED.docx` (see item 6's follow-up).
 
 `docs/PLATFORM_DOCUMENTATION.html`'s Module 3 (Student Profile) was never
 part of this collision and is untouched.
@@ -170,11 +171,19 @@ needs a `lesson_unit_id` column" gap entry — independently, directly
 confirmed elsewhere in this repo (Known Gaps, in README.md) as still true — that
 `_alt` silently dropped. Resolution: `docs/CAS_Module5_Documentation_v1.1.docx`
 merges both, using `_alt` as the base (its guidance is strictly newer)
-with `v1.0`'s dropped gap entry restored. Both source `.docx` files stay
-in `docs/` unchanged (not physically moved into `docs/archived/`, unlike
-the other superseded docs this pass touched). The v3/v4 addendum file and the
+with `v1.0`'s dropped gap entry restored. The v3/v4 addendum file and the
 `LessonPrimarySecondary_Seed.csv` seed file referenced by the merged doc
 remain open known gaps — still not uploaded anywhere.
+
+**Follow-up, closed:** the two source `.docx` files sat in `docs/`
+unarchived for a full redundancy-review cycle after the paragraph above
+was written — an inconsistency with the exact convention item 5 above
+and item 13 below both establish (superseded doc → `docs/archived/`,
+`_SUPERSEDED` suffix). Now archived at
+`docs/archived/CAS_Module3_Documentation_v1.0_SUPERSEDED.docx` and
+`docs/archived/CAS_Module3_Documentation_v1.0_alt_SUPERSEDED.docx` (a
+`git mv`, no content change — same treatment item 13 gave
+`11_StudentFriendlyRejections`).
 
 ---
 
