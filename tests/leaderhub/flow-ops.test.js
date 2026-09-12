@@ -665,6 +665,23 @@ test('checkAiJob_: a self-reported non-access phrase is caught the same way', ()
   assert.match(res.error, /SUSPECT_FABRICATION/);
 });
 
+test('checkAiJob_: also catches phrases this system did not have before the phrase-list consolidation', () => {
+  // Redundancy review B1 / flow-harness proposal Phase 0: "could not open"
+  // was cas-ccps's own independently-tuned wording; this file had no way
+  // to catch it before shared/flow-harness/plausibility-phrases.json
+  // unified the three systems' phrase lists.
+  const { exported, sandbox } = load();
+  const real = exported.queueAiJob_({ type: 'LP_ASSIST', payload: { question: 'How do I teach ROI?' } });
+  completeJob(exported, sandbox, real.jobId, {
+    payload: '{"question":"How do I teach ROI?"}',
+    result: 'I could not open the referenced material, but here is my best guess anyway.',
+  });
+
+  const res = exported.checkAiJob_({ jobId: real.jobId });
+  assert.equal(res.status, 'ERROR', JSON.stringify(res));
+  assert.match(res.error, /SUSPECT_FABRICATION/);
+});
+
 test('checkAiJob_: FIN_ANALYSIS\'s pure-numeric payload is never gated — nothing distinctive to check', () => {
   const { exported, sandbox } = load();
   const real = exported.queueAiJob_({ type: 'FIN_ANALYSIS',
