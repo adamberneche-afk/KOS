@@ -245,17 +245,110 @@ Biggest design lift of the tooling items — needs a decision before
 building, and touches all 9 GAS projects' actual deployments, not just this
 repo's source.
 
-**Open decision:** each project self-reports a version marker (a debug
-function/endpoint returning a value set at push time, checked against
-local `git rev-parse HEAD` for that project's files) vs. leaning on `clasp
-status`/existing deployment metadata. Current lean: the self-report
-approach — same "declare a marker, verify it against source" shape the
-existing health/liveness checks already use — but this is worth deciding
-together before building, not assumed here.
+**Decision reached (discussed before building, not assumed):**
 
-### 3a. Design + prototype against one project 🔲
+The obvious-looking design — an external poller reads each project's live
+state and diffs it against git — turns out to only work for one of the 9
+projects. `access: MYSELF`/`DOMAIN` web apps (`kos-personal`,
+`leader-hub:app`, `cas-ccps:teacher-dashboard`) sit behind Google's own
+sign-in wall: an unauthenticated request never reaches `doGet()` at all, so
+polling them means either a production Google credential in CI (ruled out —
+the sandbox-deploy fence exists on purpose and Phase 3 isn't the thing that
+should erode it) or nothing. The 6 remaining projects with no web app at all
+(`central-ledger`, `unified-manual`, `master-student-template`,
+`rubric-response-sheet`, `teacher-matrix-sheet`, both `studio-steps`
+projects) have no inbound surface to poll regardless. Only
+`cas-ccps:student-dashboard` (`access: ANYONE`) is reachable by an anonymous
+external request.
+
+**So the design pushes instead of polls.** GAS already runs as a fully
+trusted execution context for itself — no credential is needed for it to
+call *out*. Each project self-reports its own version marker (git short-SHA
+of the last commit touching that project's files, stamped at push-prep
+time) via `UrlFetchApp` to GitHub's `repository_dispatch` API, which fires
+a workflow immediately: read the payload, compute what git currently
+expects for that project, compare, alert on mismatch. This is one uniform
+mechanism for all 9 projects — the `student-dashboard` special case
+dissolves; it can use the same self-report path as everything else instead
+of needing separate poll-based handling.
+
+The one new kind of secret this needs: a GitHub token living in each
+project's Script Properties, authenticating that outbound call. Decided:
+a **fine-grained personal access token, scoped to this one repo only, the
+narrowest permission the `repository_dispatch` endpoint actually requires**
+— never a broad classic `repo`-scope token, and never `Contents: write` or
+workflow-editing permission, which would turn a leak into a path to
+rewriting `.github/workflows/*.yml` and exfiltrating this repo's *other*
+secrets (the sandbox clasp credential). Under a minimally-scoped token, the
+worst case a leak or a bug enables is noise — spurious workflow runs, false
+or suppressed drift reports — never code, file, or secret damage. Repo
+visibility is public, which doesn't change that threat model (secrets stay
+protected regardless of visibility) but does mean the "wasted CI minutes"
+piece of that worst case costs nothing (public repos get free Actions
+minutes) and that the reacting workflow must never print anything beyond
+the version-marker payload into its (public) logs — not that it would ever
+need to.
+
+This keeps SMP-004's air-gap completely intact: the token only lets GAS
+write *to* the repo (trigger a workflow, nothing more); nothing in this
+design gives the repo, CI, or this agent session any new way to read live
+GAS state or push/deploy into any project. Drift, once found, still gets
+fixed by a human running a real `clasp push` + `clasp deploy`.
+
+### 3a. Design + prototype against one project 🟡
+Prototyped against `kos-personal` — the actual incident site, and it
+already carried the `script.external_request` OAuth scope this needs (no
+manifest change to build the mechanism itself). Built and tested:
+
+- `tools/deploy-drift/expected-marker.js` — pure git-log wrapper, "what
+  commit does git expect for project X's files."
+- `tools/deploy-drift/stamp.js` — writes current HEAD into a project's
+  marker file, as its own commit.
+- `tools/deploy-drift/check.js` + `.github/workflows/deploy-drift.yml` —
+  reacts to a `repository_dispatch` report, compares, opens/updates/closes
+  a pinned per-project tracking issue. Untrusted payload handled via `env:`
+  (never interpolated into `run:`) and re-validated inside check.js itself.
+- `kos-personal/17_DeployVersionReport.gs` + `18_DeployVersionMarker.gs` —
+  the reference GAS-side reporting function and its marker constant, wired
+  to its own new low-frequency trigger (`reportDeployVersion`,
+  `KOS_TRIGGER_HANDLERS` — 16 triggers now, `DEPLOYMENT_GUIDE.md` updated).
+  Fails closed to a no-op until `KOS_DEPLOY_DRIFT_GITHUB_TOKEN` is set,
+  same convention as `_sendChatAlert()`'s optional webhook.
+- 32 new tests across `tests/tools/deploy-drift-*.test.js` and
+  `tests/kos-personal/deploy-version-report.test.js`.
+
+**A real design problem found and resolved while building, not assumed
+up front:** a commit can't embed its own SHA — the SHA is a hash of the
+commit's content. Resolved by giving the marker its own dedicated file
+(`18_DeployVersionMarker.gs`), which `expected-marker.js` deliberately
+excludes from its own "what does git expect" computation
+(`MARKER_FILE_EXCLUSIONS`) — the marker is stamped in a SEPARATE commit,
+after the real code change, so it correctly matches once both land. See
+`tools/deploy-drift/README.md`'s "self-reference problem" section.
+
+**Still needs you, and can't be done from here (SMP-004):** generating
+the fine-grained PAT (repo-only, minimal permission — see the threat
+model discussed and agreed on before any of this was built), pasting it
+into `kos-personal`'s Script Properties as `KOS_DEPLOY_DRIFT_GITHUB_TOKEN`,
+and the actual `clasp push` + `clasp deploy` that puts this live. Not
+marked ✅ until that's done and a real report has been seen to work.
+
 ### 3b. Roll out to the remaining 8 projects (real redeploys required) 🔲
-### 3c. A way to surface drift when found (chat alert? dashboard? both already exist per-system) 🔲
+Same mechanism, no new design — but several projects (`leader-hub`
+confirmed, possibly some `cas-ccps` non-web-app ones) don't carry
+`script.external_request` yet, so this is a manifest scope addition *and*
+you re-consenting to the new scope on next deploy, per project that needs
+it. `student-dashboard` folds in here too now (same mechanism as
+everything else, no longer a special automated-poll case).
+
+### 3c. A way to surface drift when found (chat alert? dashboard? both already exist per-system) 🟡
+Built as part of 3a — `check.js` opens/updates a pinned `Deploy drift:
+<project>` issue on mismatch, closes it with a resolution comment once a
+report comes back clean, and never creates one for a project that's never
+drifted. Not marked ✅ until it's been seen to fire for a real mismatch;
+worth revisiting then whether that's enough signal or something should
+also ping `leader-hub`'s existing chat alert / `cas-ccps`'s admin
+health-check surface.
 
 ---
 

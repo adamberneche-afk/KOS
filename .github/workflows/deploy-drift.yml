@@ -1,0 +1,40 @@
+name: Deploy drift
+
+# Reacts to a GAS project self-reporting its live version. See
+# meta/PROCESS_HARDENING_SPRINT.md's Phase 3 for why this is push-based
+# (a GAS project calling OUT to this repo) rather than this repo polling
+# each project's live URL — most of them sit behind Google's own sign-in
+# wall, which an external poll can't get past without a production
+# credential this repo deliberately keeps out of CI.
+#
+# event_type must match whatever the reporting GAS project's UrlFetchApp
+# call sends as "event_type" in its JSON body.
+on:
+  repository_dispatch:
+    types: [gas-version-report]
+
+jobs:
+  deploy-drift:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history — expected-marker.js needs `git log` over each project's files, not just the latest commit
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Compare the reported version against what git expects
+        # The payload is UNTRUSTED input (see tools/deploy-drift/check.js's
+        # header) — it's passed through `env:`, never interpolated directly
+        # into this `run:` script's text, so a hostile payload value can't
+        # inject shell syntax. check.js re-validates both fields itself
+        # before using them for anything, including in an issue body.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEPLOY_DRIFT_PROJECT: ${{ github.event.client_payload.project }}
+          DEPLOY_DRIFT_SHA: ${{ github.event.client_payload.sha }}
+          DEPLOY_DRIFT_REPORTED_AT: ${{ github.event.client_payload.reportedAt }}
+        run: node tools/deploy-drift/check.js
