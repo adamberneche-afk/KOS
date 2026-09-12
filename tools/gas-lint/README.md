@@ -273,6 +273,23 @@ it — that gap is closed now.
     right verdict from the wrong program. That test now pins the failure
     *message* too, so the narrower scope cannot come back.
 
+12. **Plausibility-gate phrase-list drift** (`checkPlausibilityGateDrift`).
+    The AI-groundedness/plausibility gate exists three times — once per
+    system (`cas-ccps`, `leader-hub`, `kos-personal`), because GAS gives
+    each its own execution scope with no cross-project calls — and each
+    implementation's phrase list and stopword set had already drifted from
+    the other two independently before `shared/flow-harness/
+    plausibility-phrases.json` unified them: `cas-ccps` caught "could not
+    open" and `leader-hub` didn't; `leader-hub` caught "insufficient
+    context" and `cas-ccps` didn't; `kos-personal` had no phrase list at
+    all. This check calls `tools/flow-harness-sync/
+    sync-plausibility-phrases.js`'s own drift-detection logic and fails the
+    build the moment any of the three files stops matching that canonical
+    source — see that tool's own README for the general "canonical source +
+    generator + drift check" pattern this is one instance of, and
+    `meta/FLOW_DOCTRINE.md` rule 15 for the incident this whole gate exists
+    to catch in the first place.
+
     `sandboxScope.allow` in `flow-map.json` is the escape hatch, for a name
     genuinely absent in production too or one the analysis mis-reads. It is
     not for silencing a real gap: loading the file costs one line.
