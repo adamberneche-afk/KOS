@@ -403,12 +403,20 @@ class FakeDriveFile {
     // last-updated guard (see getLastUpdated below) can overwrite it to
     // simulate an older or newer file without waiting on wall-clock time.
     this.lastUpdated = new Date();
+    this.trashed = false;
   }
   getId() { return this.id; }
   getName() { return this.name; }
   getUrl() { return 'https://fake-drive.example/file/' + this.id; }
   setSharing(access, permission) { this.sharingAccess = access; this.sharingPermission = permission; return this; }
   addEditor(email) { this.editors.push(email); return this; }
+  // Real Apps Script API — File.isTrashed()/setTrashed(trashed). First
+  // needed by 6_Governance.gs's _writeLatestPrimer_(), which treats a
+  // trashed stored-ID file the same as a missing one (falls through to
+  // recreate). Defaults to false — a test simulating a manually-deleted
+  // doc calls setTrashed(true) rather than this mock guessing when.
+  isTrashed() { return this.trashed; }
+  setTrashed(trashed) { this.trashed = !!trashed; return this; }
   // Real Apps Script API — 6_Governance.gs's triggerSevenBridgesReview()
   // compares CURRENT_STATE's getLastUpdated() against
   // SEVEN_BRIDGES_LAST_RUN as its stasis guard ("has anything changed
@@ -508,6 +516,16 @@ class FakeParagraph {
     };
     return self;
   }
+  // Real Apps Script API — Paragraph.setText(text) and the Element cast
+  // Body.getChild(i).asParagraph() needs before it (getChild() returns a
+  // generic Element type in real GAS; every FakeDocBody child IS already
+  // a paragraph here, so the cast is a same-object no-op). Added for
+  // 6_Governance.gs's _clearDocBody_() — the Body.clear()-can-throw
+  // workaround (see that function's own header) removes every child but
+  // the last, then clears the survivor's text via exactly this path
+  // rather than removing it.
+  asParagraph() { return this; }
+  setText(text) { this.text = text; return this; }
 }
 
 class FakeDocBody {
@@ -518,8 +536,32 @@ class FakeDocBody {
     this.paragraphs.push(p);
     return p;
   }
+  // Real Apps Script API — Body.appendListItem(text). Treated as a
+  // paragraph here (same as every other FakeDocBody child): no test in
+  // this repo asserts on list-vs-paragraph rendering, only on the
+  // resulting text (getText() below joins every child the same way).
+  // First needed by 6_Governance.gs's _writePrimerBody_().
+  appendListItem(text) {
+    const p = new FakeParagraph(text);
+    this.paragraphs.push(p);
+    return p;
+  }
   setText(text) { this.paragraphs = [new FakeParagraph(text)]; return this; }
   getText() { return this.paragraphs.map((p) => p.text).join('\n'); }
+  // Real Apps Script API, backing _clearDocBody_()'s workaround above —
+  // getNumChildren()/getChild(i)/removeChild() rather than clear(), since
+  // real GAS's Body.clear() can throw "Can't remove the last paragraph in
+  // a document section" depending on document state (not reproduced by
+  // this mock — clear() above never throws — so this only exercises that
+  // the workaround's own child-management logic is correct, not the real
+  // exception path itself).
+  getNumChildren() { return this.paragraphs.length; }
+  getChild(i) { return this.paragraphs[i]; }
+  removeChild(child) {
+    const idx = this.paragraphs.indexOf(child);
+    if (idx !== -1) this.paragraphs.splice(idx, 1);
+    return this;
+  }
 }
 
 class FakeDoc {
