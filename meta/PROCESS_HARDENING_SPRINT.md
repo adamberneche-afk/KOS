@@ -88,19 +88,15 @@ warnings, not errors — a limit on what this tool can verify, not something
 a test fixes). Wired into CI (`.github/workflows/gas-lint.yml`). See
 `tools/coverage-gaps/README.md` for the full mechanism.
 
-### 0b. FLOW_DOCTRINE.md — new rule: retryable vs. deterministic-given-stored-input 🔲
-Codify the reasoning behind `_srPrepareDocText_`'s `unretryable` tag as its
-own numbered rule (17, following the existing 16): a harvest/queue loop's
-failure branches must classify each failure as either genuinely retryable
-(a fresh attempt might behave differently — a transient Drive/API hiccup)
-or deterministic given the same stored input (re-parsing/re-checking the
-same text can only ever fail the same way again) — and a deterministic
-failure must fail fast, not wait out a retry ceiling built for the
-transient case. Write it the same way rules 9 and 15 are written: the
-incident behind it, where the reasoning already lives in code
-(`12_StudioReturnHarvest.gs`'s `_srApplyReturn_`/`harvestStudioReturns`),
-and an honest "Enforced: no" until something actually checks new code
-against it.
+### 0b. FLOW_DOCTRINE.md — new rule: retryable vs. deterministic-given-stored-input ✅
+Landed as rule 17. Also added an "Adding a flow" checklist item (10) for it,
+and a mention of `tools/coverage-gaps/check.js` under checklist item 4 —
+that checklist is where a new flow actually gets built, so both new tools
+from this sprint are surfaced exactly where someone would need them.
+`meta/README.md`'s own rule count was already stale before this ("fifteen
+rules... six... have nothing behind them" — the file already had 16 rules
+and Check L's enforcement of rule 15 both predating this edit); fixed
+alongside adding rule 17 rather than compounding the drift.
 
 ### 0c. `tools/flow-harness-sync/README.md` 🔲
 Write up "canonical JSON + generator + gas-lint drift check" as a named,

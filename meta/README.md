@@ -67,16 +67,18 @@ why this repo exists at all.
   needing another external review. Five phases, sequenced by dependency and
   risk; tracked with the same 🔲/🟡/✅ status convention as `README.md`'s
   own "Known gaps."
-- **`FLOW_DOCTRINE.md`** — the fifteen rules this repo's Flow deployments
+- **`FLOW_DOCTRINE.md`** — the seventeen rules this repo's Flow deployments
   produced, each with the incident behind it, a pointer to where the
   reasoning already lives, and an explicit statement of whether anything
   **enforces** it. That last part is why it exists: a practice that is only
-  prose gets rediscovered, and six of the fifteen still have nothing behind
-  them. It deliberately does not re-transcribe the file headers it points at
-  — a rule restated in two places becomes two rules. Where
+  prose gets rediscovered, and five of the seventeen still have nothing
+  behind them. It deliberately does not re-transcribe the file headers it
+  points at — a rule restated in two places becomes two rules. Where
   `FLOW_INVENTORY.md` answers *what* the Flow dependencies are, this answers
   *how to build one*. Rules 4, 5, 7, 9 and 12 are enforced by `gas-lint`
-  Checks H through K, configured in `tools/gas-lint/flow-map.json`.
+  Checks H through K, configured in `tools/gas-lint/flow-map.json`; rule 15
+  is now partly enforced too, by Check L
+  (`checkPlausibilityGateDrift`).
 
 ## Why these are here and not under a system subtree
 
