@@ -28,6 +28,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { escapeForTemplateLiteral } = require('../lib/escape-template-literal');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const KP = path.join(REPO_ROOT, 'kos-personal');
@@ -68,15 +69,6 @@ function extractPromptBody(mdText, mdFile) {
     throw new Error(mdFile + ': end marker not found — "' + END_MARKER.trim() + '"');
   }
   return mdText.slice(startIdx, endIdx).trim();
-}
-
-// Template literals break on an unescaped backtick or `${` — both appear
-// throughout this prose (backtick-quoted field/function names everywhere,
-// and the JSON schema blocks use backtick-adjacent fencing). Escaping
-// programmatically here means never hand-transcribing ~150 lines of
-// markdown into a JS string and hoping every backtick got caught.
-function escapeForTemplateLiteral(text) {
-  return text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 }
 
 function main() {

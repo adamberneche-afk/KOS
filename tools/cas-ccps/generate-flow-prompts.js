@@ -44,6 +44,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { escapeForTemplateLiteral } = require('../lib/escape-template-literal');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const SCRIPTS = path.join(REPO_ROOT, 'cas-ccps', 'scripts');
@@ -78,14 +79,6 @@ function extractFlow1(src) {
   const m = src.match(/const FLOW_1_SYSTEM_PROMPT = `([\s\S]*?)`\.trim\(\);/);
   if (!m) throw new Error('15_StudioFlowPrompts.js: could not find FLOW_1_SYSTEM_PROMPT');
   return m[1].trim();
-}
-
-// Escapes for safe insertion into a template literal — backtick, `${`, and a
-// literal backslash all need it. None of these five prompts currently
-// contain a backtick (no fenced code in this HTML spec's prose), but this
-// stays defensive rather than assuming that never changes.
-function escapeForTemplateLiteral(text) {
-  return text.replace(/\\/g, '\\\\').replace(/`/g, '\\`').replace(/\$\{/g, '\\${');
 }
 
 // Replaces exactly one `const NAME = \`...\`.trim();` block in `src`,
