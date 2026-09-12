@@ -291,6 +291,14 @@ const CFG = {
     // Property, never hardcoded, same convention as the two keys above.
     CHAT_WEBHOOK_URL: 'KOS_CHAT_WEBHOOK_URL',
 
+    // A fine-grained GitHub personal access token, scoped to ONLY the
+    // adamberneche-afk/KOS repo, authorizing reportDeployVersion()
+    // (17_DeployVersionReport.gs) to self-report this project's live
+    // version via a repository_dispatch event — see that file's header
+    // and tools/deploy-drift/README.md. Optional, same
+    // degrades-to-no-op-when-unset convention as CHAT_WEBHOOK_URL above.
+    DEPLOY_DRIFT_GITHUB_TOKEN: 'KOS_DEPLOY_DRIFT_GITHUB_TOKEN',
+
     // The stable doc ID of KOS_LATEST_PRIMER (6_Governance.gs's
     // generateDailyPrimer()) — a single fixed-name doc that's overwritten
     // in place every run, purpose-built as an external-tool integration
@@ -528,13 +536,14 @@ const KOS_TRIGGER_HANDLERS = [
   'runRegistrarIntake',
   'runRegistrarMicrobatch',
   'runRegistrarProcessor',
+  'reportDeployVersion',
 ];
 
 /**
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed (15 total — matches DEPLOYMENT_GUIDE.md's
+ * Triggers installed (16 total — matches DEPLOYMENT_GUIDE.md's
  * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
  *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
@@ -551,6 +560,7 @@ const KOS_TRIGGER_HANDLERS = [
  *   runRegistrarIntake            → daily 01:00  (time-driven) — 11_Registrar_CogRelay.gs
  *   runRegistrarMicrobatch        → every 15 min (time-driven) — 11_Registrar_CogRelay.gs
  *   runRegistrarProcessor         → every 10 min (time-driven) — 11_Registrar_CogRelay.gs
+ *   reportDeployVersion           → every 6 hours (time-driven) — 17_DeployVersionReport.gs
  *
  * Note: Sensor 2 (COG_EXHAUST) is the doPost() web app endpoint —
  * it requires no installable trigger.
@@ -661,6 +671,15 @@ function setupAllTriggers() {
   tryInstall('runRegistrarProcessor', () =>
     ScriptApp.newTrigger('runRegistrarProcessor')
       .timeBased().everyMinutes(10).create()
+  );
+
+  // ── Deploy-version self-report — every 6 hours (17_DeployVersionReport.gs) ──
+  // Deliberately its own low-frequency, independent trigger rather than
+  // piggybacked on an existing one — a bug in this reporting logic should
+  // never affect any other trigger's error handling or cadence.
+  tryInstall('reportDeployVersion', () =>
+    ScriptApp.newTrigger('reportDeployVersion')
+      .timeBased().everyHours(6).create()
   );
 
   // ── Sensor 3 — onChange on BRAIN_TRUST_INDEX ───────────────

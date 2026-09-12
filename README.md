@@ -219,6 +219,19 @@ fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
 (CodeQL code scanning) round out the same "is the repo's own machinery
 healthy" floor.
 
+## [`tools/deploy-drift/`](./tools/deploy-drift/) — is what's live actually what git expects?
+
+Catches the gap behind two real incidents: a live GAS project silently
+missing a function its own committed source already had, and separately,
+genuine uncertainty over whether a redeploy had actually taken effect.
+Most of the 9 GAS projects sit behind Google's own sign-in wall or have no
+web app at all, so this repo can't poll them — instead, each project
+self-reports its own version marker outward via a `repository_dispatch`
+call, which `.github/workflows/deploy-drift.yml` compares against what
+`git log` says should be live, opening a tracking issue on mismatch. See
+that tool's own README for the full mechanism, the credential threat
+model, and why the marker has to live in its own file.
+
 ## [`tools/leaderhub-build/`](./tools/leaderhub-build/) — assembles `student-leader-hub.html`
 
 `leader-hub/student-leader-hub.html` (~22,000 lines) is generated from 14
