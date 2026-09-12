@@ -1,6 +1,6 @@
 // ================================================================
-// KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 4 of 11: Vector Router
+// 4_Vector_Router.gs — KOS v8.0
+// BOUND TO: kos-personal (main flat-folder project)
 // ================================================================
 //
 // Replaces: PART 12 (routeVectorWeights and sub-functions) from

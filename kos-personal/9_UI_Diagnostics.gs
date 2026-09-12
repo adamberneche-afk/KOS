@@ -1,6 +1,6 @@
 // ================================================================
-// KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 9 of 11: UI & Diagnostics (HITL Functions)
+// 9_UI_Diagnostics.gs — KOS v8.0
+// BOUND TO: kos-personal (main flat-folder project)
 // ================================================================
 //
 // ── PURPOSE & SCOPE ──────────────────────────────────────────
