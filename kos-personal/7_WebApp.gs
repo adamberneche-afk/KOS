@@ -17,9 +17,21 @@
 // Copy the deployment URL — this is your web app and your
 // Sensor 2 (COG_EXHAUST) webhook endpoint.
 //
+// ONE-TIME SETUP (external product review finding, closed — doGet()/
+// doPost() used to have no caller check at all): Project Settings →
+// Script Properties → set both of these before first use:
+//   KOS_OWNER_EMAIL          — gates doGet() (the operator UI) to this
+//                              one Google account, same pattern as
+//                              leader-hub's OWNER_EMAIL.
+//   KOS_WEBHOOK_SHARED_SECRET — gates doPost() (the Sensor 2 webhook).
+//                              Append `?secret=<that value>` to the
+//                              deployment URL every Cog caller uses below.
+// Until both are set, doGet() and doPost() fail closed for everyone,
+// including the deploying account — by design.
+//
 // SENSOR 2 WEBHOOK USAGE
 // ─────────────────────────────────────────────────────────────
-// POST {webAppUrl}
+// POST {webAppUrl}?secret={KOS_WEBHOOK_SHARED_SECRET}
 //   Content-Type: application/json
 //   Body: {
 //     "cog_name":      "ARCHITECT",
@@ -71,9 +83,39 @@
 
 
 /**
+ * Session.getActiveUser() vs. CFG.PROP.OWNER_EMAIL — the same
+ * single-owner allowlist pattern leader-hub's Code.gs
+ * (_isAuthorizedOwner_) and cas-ccps's dashboards already use. Kept as
+ * its own function (not inlined into doGet()) so it's the one place a
+ * future second gated entry point in this file would call, matching how
+ * this same shape already exists in the other two systems as a small,
+ * standalone check rather than logic embedded in doGet() itself.
+ *
+ * Fails closed on an unset OWNER_EMAIL — including for the deploying
+ * account — same convention as leader-hub's OWNER_EMAIL gate.
+ */
+function _isAuthorizedOwner_() {
+  const ownerEmail = PropertiesService.getScriptProperties().getProperty(CFG.PROP.OWNER_EMAIL);
+  const viewer = Session.getActiveUser().getEmail();
+  return !!(viewer && ownerEmail && viewer.toLowerCase() === ownerEmail.toLowerCase());
+}
+
+/**
  * Serves the web app HTML to GET requests.
  * The HTML file must be named "8_WebApp_UI" in the GAS project
  * (the .html extension is implicit in GAS file naming).
+ *
+ * FIX (external product review finding, closed): previously had no
+ * caller check at all — with this project's "Execute as: Me / Anyone
+ * with Google account" deployment, that meant any signed-in Google
+ * account (not just the deploying one) could load this operator UI and
+ * see this account's own operational data, and drive every
+ * google.script.run function this file documents above. Gated the same
+ * way leader-hub's doGet() already is — see _isAuthorizedOwner_().
+ * ONE-TIME SETUP for a fresh deployment: Project Settings → Script
+ * Properties → set KOS_OWNER_EMAIL (CFG.PROP.OWNER_EMAIL) to this
+ * deployment's Google account. Until set, doGet() fails closed for
+ * everyone.
  *
  * FIX (reconciliation decision 3): previously used
  * createHtmlOutputFromFile(), which never evaluates the
@@ -92,6 +134,14 @@
  * @returns {HtmlOutput}
  */
 function doGet(e) {
+  if (!_isAuthorizedOwner_()) {
+    return HtmlService.createHtmlOutput(
+      '<p>Not authorized. This KOS deployment is configured for a single ' +
+      'owner — sign in with that Google account. (First-time deploy? Set the ' +
+      '<code>KOS_OWNER_EMAIL</code> Script Property under Project Settings.)</p>'
+    ).setTitle('KOS v8.0 — Active Brain Trust');
+  }
+
   const indexId  = PropertiesService.getScriptProperties().getProperty('INDEX_ID');
   const template = HtmlService.createTemplateFromFile('8_WebApp_UI');
   template.mode  = indexId ? 'OPERATIONAL' : 'BOOTSTRAP';
@@ -116,6 +166,16 @@ function doGet(e) {
  * Always returns HTTP 200 — success/failure is in the JSON body.
  * GAS ContentService does not support custom status codes.
  *
+ * FIX (external product review finding, closed): previously accepted a
+ * POST from anyone who found the deployment URL, with no caller check
+ * at all. A Cog agent posting a verdict isn't necessarily an
+ * interactive Google sign-in the way doGet()'s caller is, so this is
+ * gated with a shared secret instead of Session.getActiveUser() — see
+ * CFG.PROP.WEBHOOK_SHARED_SECRET's own comment in 1_Config_And_Deploy.gs.
+ * ONE-TIME SETUP: Project Settings → Script Properties → set
+ * KOS_WEBHOOK_SHARED_SECRET, then append `?secret=<that value>` to every
+ * Cog caller's configured webhook URL. Until set, doPost() fails closed.
+ *
  * Expected body shape:
  *   { cog_name, task_id, verdict, artifact_text }
  *
@@ -127,11 +187,37 @@ function doGet(e) {
  * @param  {GoogleAppsScript.Events.DoPost} e
  * @returns {TextOutput}  JSON response.
  */
+/**
+ * Compares e.parameter.secret against CFG.PROP.WEBHOOK_SHARED_SECRET.
+ * Split out from doPost() itself (which also touches ContentService) so
+ * this check has its own small, directly-testable surface — same reason
+ * doGet()'s owner check is its own _isAuthorizedOwner_() function above
+ * rather than inline logic.
+ *
+ * Fails closed on an unset WEBHOOK_SHARED_SECRET, same convention as
+ * _isAuthorizedOwner_().
+ */
+function _isAuthorizedWebhookCall_(e) {
+  const expectedSecret = PropertiesService.getScriptProperties()
+    .getProperty(CFG.PROP.WEBHOOK_SHARED_SECRET);
+  const providedSecret = (e && e.parameter && e.parameter.secret) || '';
+  return !!(expectedSecret && providedSecret === expectedSecret);
+}
+
 function doPost(e) {
   const out = ContentService.createTextOutput()
     .setMimeType(ContentService.MimeType.JSON);
 
   try {
+    if (!_isAuthorizedWebhookCall_(e)) {
+      out.setContent(JSON.stringify({
+        success: false,
+        message: 'Unauthorized. This endpoint requires a `?secret=` query ' +
+          'parameter matching the KOS_WEBHOOK_SHARED_SECRET Script Property.',
+      }));
+      return out;
+    }
+
     // Validate that a body exists
     if (!e || !e.postData || !e.postData.contents) {
       out.setContent(JSON.stringify({
