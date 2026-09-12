@@ -276,6 +276,34 @@ const CFG = {
     // copies. Read-before-asking: once set, generateDailyPrimer() opens
     // this doc by ID instead of searching by name on every run.
     LATEST_PRIMER_DOC_ID: 'KOS_LATEST_PRIMER_DOC_ID',
+
+    // ── Access control (external product review finding, closed) ────────
+    // doGet()/doPost() in 7_WebApp.gs previously had NO caller check at
+    // all — unlike cas-ccps's dashboards (which compare
+    // Session.getActiveUser() against an allowlisted teacher email) and
+    // leader-hub (which compares it against OWNER_EMAIL), this project's
+    // "Execute as: Me / Anyone with Google account" deployment meant any
+    // signed-in Google account could load the operator UI and see this
+    // account's own operational data, and doPost()'s COG_EXHAUST webhook
+    // accepted a POST from anyone who found the URL.
+    //
+    // OWNER_EMAIL gates doGet() the same way leader-hub's Code.gs does —
+    // Session.getActiveUser() must match this Script Property, set once
+    // under Project Settings → Script Properties. Until set, doGet() fails
+    // closed for everyone, including the deploying account, same
+    // fail-closed convention as every other owner-gated surface in this
+    // repo.
+    OWNER_EMAIL: 'KOS_OWNER_EMAIL',
+
+    // WEBHOOK_SHARED_SECRET gates doPost() instead — Cog agents posting
+    // COG_EXHAUST verdicts aren't necessarily an interactive Google
+    // sign-in the way doGet()'s caller is, so this is a shared secret the
+    // caller includes as a `?secret=` query parameter on the deployment
+    // URL, not a Session.getActiveUser() check. Set once under Script
+    // Properties; every Cog caller's configured webhook URL needs the
+    // matching `?secret=` suffix appended. Until set, doPost() fails
+    // closed (same convention as OWNER_EMAIL above), not open.
+    WEBHOOK_SHARED_SECRET: 'KOS_WEBHOOK_SHARED_SECRET',
   },
 };
 
