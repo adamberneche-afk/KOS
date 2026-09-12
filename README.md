@@ -110,7 +110,7 @@ in the first place. See [`meta/README.md`](./meta/README.md).
 
 Built after a full codebase review kept turning up the same failure
 pattern: bugs that only exist because nothing checks for them
-automatically. Eleven checks now, each written for a bug that had already
+automatically. Twelve checks now, each written for a bug that had already
 shipped — duplicate top-level declarations across files that share an Apps
 Script project (a parse-time crash, or worse, a silent wrong-function-wins
 if the duplicates actually differ), undefined config keys,
@@ -119,11 +119,28 @@ used but not declared, cross-project calls that can't resolve, undeclared
 Google Cloud dependencies (the class that made 2,113 lines of custom Studio
 steps permanently unreachable), two files that map the same sheet's columns
 and disagree, a flow missing one of the four checks it needs, a fixture no
-consumer ever reads, and a test sandbox narrower than the scope its code
-runs in. The last four enforce `meta/FLOW_DOCTRINE.md`, and each found a
-live defect on its first run. Run `node tools/gas-lint/check.js` before
-trusting any change to `kos-personal/` or `cas-ccps/scripts/` is safe to
-deploy. See [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
+consumer ever reads, a test sandbox narrower than the scope its code runs
+in, and (the newest) three independent AI-plausibility-gate implementations
+silently drifting apart. Five of the twelve enforce `meta/FLOW_DOCTRINE.md`,
+and each found a live defect on its first run. Run
+`node tools/gas-lint/check.js` before trusting any change to
+`kos-personal/` or `cas-ccps/scripts/` is safe to deploy. See
+[`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
+
+## [`tools/coverage-gaps/`](./tools/coverage-gaps/) — scheduled functions with zero test coverage
+
+Process-hardening sprint, Phase 0a. `gas-lint` above is pure static
+analysis; this one actually re-runs the test suite under Node's built-in V8
+coverage instrumentation to answer a question static analysis can't:
+"does any test in this repo ever call this function at all." Scoped to
+`ScriptApp.newTrigger()`-registered handlers specifically, not every
+function — an unattended scheduled job is the one kind of function that
+fails silently, with nobody clicking a button that would notice, which is
+exactly what happened to `sensor1_scanInboundSessions()` (zero coverage for
+most of this repo's life, found by accident mid-incident-fix rather than by
+anything that would have flagged it in advance). Run
+`node tools/coverage-gaps/check.js`; see
+[`tools/coverage-gaps/README.md`](./tools/coverage-gaps/README.md).
 
 ## [`tools/doc-currency/`](./tools/doc-currency/) — checks the docs against the code
 

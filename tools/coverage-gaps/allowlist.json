@@ -1,0 +1,92 @@
+[
+  {
+    "file": "kos-personal/6_Governance.gs",
+    "function": "runSemanticSweeper",
+    "reason": "Pre-existing gap surfaced when this check was introduced (process-hardening sprint Phase 0a), not fixed as part of introducing it — genuinely untested today. Flagged for follow-up in meta/PROCESS_HARDENING_SPRINT.md rather than silently accepted."
+  },
+  {
+    "file": "kos-personal/6_Governance.gs",
+    "function": "sweepRootForExhaust",
+    "reason": "Same as runSemanticSweeper above — pre-existing gap, flagged for follow-up, not fixed as part of introducing this check."
+  },
+  {
+    "file": "kos-personal/5_Error_And_Utilities.gs",
+    "function": "sendDailyErrorReport",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up, not fixed as part of introducing this check."
+  },
+  {
+    "file": "kos-personal/6_Governance.gs",
+    "function": "generateDailyPrimer",
+    "reason": "The function it delegates to, _writeLatestPrimer_(), does have coverage (tests/kos-personal/governance-primer.test.js) — but generateDailyPrimer() itself, the actual trigger handler, is never called directly by any test. Pre-existing gap, flagged for follow-up."
+  },
+  {
+    "file": "kos-personal/11_Registrar_CogRelay.gs",
+    "function": "runRegistrarIntake",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up, not fixed as part of introducing this check."
+  },
+  {
+    "file": "kos-personal/11_Registrar_CogRelay.gs",
+    "function": "runRegistrarMicrobatch",
+    "reason": "Same as runRegistrarIntake above — pre-existing gap, flagged for follow-up."
+  },
+  {
+    "file": "kos-personal/11_Registrar_CogRelay.gs",
+    "function": "runRegistrarProcessor",
+    "reason": "Same as runRegistrarIntake above — pre-existing gap, flagged for follow-up."
+  },
+  {
+    "file": "kos-personal/2_Ingestion_Sensors.gs",
+    "function": "sensor3_externalTelemetry",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Notably the same file as Sensor 1, the incident that motivated this whole check; worth prioritizing over the others in this list precisely because of that."
+  },
+  {
+    "file": "kos-personal/6_Governance.gs",
+    "function": "onGovernanceEdit",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. An onEdit-shaped trigger (Sensor 3's spreadsheet-onChange sibling), not a time-based one, but still runs unattended in production. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/10_AdminRecoveryPanel.js",
+    "function": "autoHealthAlert",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/22_LessonContextHandler.js",
+    "function": "runAlignmentLogBackfill_",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Shared by 2 of cas-ccps's 8 sub-projects (central-ledger, teacher-dashboard); one allowlist entry covers both since they're the same file. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/25_WarmUpWriter.js",
+    "function": "registerDeliveredWarmUps",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/29_StudentContextAggregator.js",
+    "function": "runWeeklyStudentAggregation_",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Shared by 2 of cas-ccps's 8 sub-projects (central-ledger, teacher-dashboard); one allowlist entry covers both. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/30_SCRSuggestionEngine.js",
+    "function": "runWeeklySCRSuggestionUpdate_",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/37_FlowInputBuilder.js",
+    "function": "buildFlowInputRows",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. _fiCheckPlausibility_/_fiDistinguishingWords_ in this same file DO have direct coverage; this is specifically the outer scheduled entry point. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/37_FlowInputBuilder.js",
+    "function": "harvestFlowInputResults",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/08_TeacherConfirmationStep.js",
+    "function": "pollForNewDrafts",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
+  },
+  {
+    "file": "cas-ccps/scripts/08_TeacherConfirmationStep.js",
+    "function": "abandonStaleDrafts",
+    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
+  }
+]
