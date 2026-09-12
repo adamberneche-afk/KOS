@@ -296,42 +296,62 @@ GAS state or push/deploy into any project. Drift, once found, still gets
 fixed by a human running a real `clasp push` + `clasp deploy`.
 
 ### 3a. Design + prototype against one project 🟡
-Prototyped against `kos-personal` — the actual incident site, and it
-already carried the `script.external_request` OAuth scope this needs (no
-manifest change to build the mechanism itself). Built and tested:
+First built the mechanism itself, then prototyped it against
+`kos-personal` (the actual incident site, and it already carried the
+`script.external_request` OAuth scope this needs), then moved the live
+target to `leader-hub:app` once `kos-personal`'s own Script Properties
+turned out to be unavailable to add to — not a design problem, just which
+real project gets wired up first; `kos-personal`'s files stay in place
+as the reference implementation (harmless until wired up — Phase 3b picks
+it up regardless of which project went live first).
+
+Built and tested, project-agnostic:
 
 - `tools/deploy-drift/expected-marker.js` — pure git-log wrapper, "what
   commit does git expect for project X's files."
 - `tools/deploy-drift/stamp.js` — writes current HEAD into a project's
-  marker file, as its own commit.
+  marker file, as its own commit. `MARKER_FILES` now has both
+  `kos-personal` and `leader-hub:app` entries.
 - `tools/deploy-drift/check.js` + `.github/workflows/deploy-drift.yml` —
   reacts to a `repository_dispatch` report, compares, opens/updates/closes
   a pinned per-project tracking issue. Untrusted payload handled via `env:`
   (never interpolated into `run:`) and re-validated inside check.js itself.
+
+Two GAS-side implementations of the same shape, both real, both tested:
+
 - `kos-personal/17_DeployVersionReport.gs` + `18_DeployVersionMarker.gs` —
-  the reference GAS-side reporting function and its marker constant, wired
-  to its own new low-frequency trigger (`reportDeployVersion`,
-  `KOS_TRIGGER_HANDLERS` — 16 triggers now, `DEPLOYMENT_GUIDE.md` updated).
-  Fails closed to a no-op until `KOS_DEPLOY_DRIFT_GITHUB_TOKEN` is set,
-  same convention as `_sendChatAlert()`'s optional webhook.
-- 32 new tests across `tests/tools/deploy-drift-*.test.js` and
-  `tests/kos-personal/deploy-version-report.test.js`.
+  wired to its own new low-frequency trigger via the project's existing
+  bulk installer (`reportDeployVersion` added to `KOS_TRIGGER_HANDLERS` —
+  16 triggers now, `DEPLOYMENT_GUIDE.md` updated).
+- `leader-hub/DeployVersionReport.gs` + `DeployVersionMarker.gs` — this
+  project had no bulk trigger installer to fold into (no triggers at all,
+  before this), so it gets its own one-time, idempotent
+  `installDeployVersionReportTrigger()` instead. Manifest gained TWO new
+  scopes, not one — `script.external_request` for the outbound call and
+  `script.scriptapp` for installing the trigger itself, caught by
+  `gas-lint` (Check E) before it shipped as a silent runtime failure.
+
+Both fail closed to a no-op until their token Script Property is set, same
+convention as `_sendChatAlert()`'s optional webhook. 39 new tests total
+across `tests/tools/deploy-drift-*.test.js`,
+`tests/kos-personal/deploy-version-report.test.js`, and
+`tests/leaderhub/deploy-version-report.test.js`.
 
 **A real design problem found and resolved while building, not assumed
 up front:** a commit can't embed its own SHA — the SHA is a hash of the
 commit's content. Resolved by giving the marker its own dedicated file
-(`18_DeployVersionMarker.gs`), which `expected-marker.js` deliberately
-excludes from its own "what does git expect" computation
-(`MARKER_FILE_EXCLUSIONS`) — the marker is stamped in a SEPARATE commit,
-after the real code change, so it correctly matches once both land. See
-`tools/deploy-drift/README.md`'s "self-reference problem" section.
+per project, which `expected-marker.js` deliberately excludes from its
+own "what does git expect" computation (`MARKER_FILE_EXCLUSIONS`) — the
+marker is stamped in a SEPARATE commit, after the real code change, so it
+correctly matches once both land. See `tools/deploy-drift/README.md`'s
+"self-reference problem" section.
 
-**Still needs you, and can't be done from here (SMP-004):** generating
-the fine-grained PAT (repo-only, minimal permission — see the threat
-model discussed and agreed on before any of this was built), pasting it
-into `kos-personal`'s Script Properties as `KOS_DEPLOY_DRIFT_GITHUB_TOKEN`,
-and the actual `clasp push` + `clasp deploy` that puts this live. Not
-marked ✅ until that's done and a real report has been seen to work.
+**Still needs you, and can't be done from here (SMP-004):** the token is
+already in `leader-hub`'s Script Properties as
+`DEPLOY_DRIFT_GITHUB_TOKEN` — what's left is the actual `clasp push` +
+`clasp deploy` that puts this live, then running
+`installDeployVersionReportTrigger()` once from the Apps Script editor.
+Not marked ✅ until that's done and a real report has been seen to work.
 
 ### 3b. Roll out to the remaining 8 projects (real redeploys required) 🔲
 Same mechanism, no new design — but several projects (`leader-hub`

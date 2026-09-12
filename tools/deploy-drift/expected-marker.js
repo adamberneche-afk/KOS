@@ -47,6 +47,7 @@ const PROJECT_MAP = require('../gas-lint/project-map.json');
 // expect" computation, not to the project's file manifest in general.
 const MARKER_FILE_EXCLUSIONS = {
   'kos-personal': ['kos-personal/18_DeployVersionMarker.gs'],
+  'leader-hub:app': ['leader-hub/DeployVersionMarker.gs'],
 };
 
 function knownProjectNames() {
