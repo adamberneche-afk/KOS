@@ -164,38 +164,78 @@ locked function (`tests/kos-personal/studio-return-harvest.test.js`,
 `tests/kos-personal/queue-processor.test.js`), same pattern
 `runMatrixTurnstile()`'s own lock test already used.
 
-### 1c. Missing outer `LockService` guards 🔲
-Found while verifying the two-pathway question: neither
-`harvestStudioReturns()` nor `processInferenceQueue()` has an outer-level
-lock the way `sensor1_scanInboundSessions`/`runMatrixTurnstile` both do.
-Narrow risk (only bites if a run ever takes longer than its trigger
-interval), but cheap to close while already deep in this file, same pattern
-as the two functions that already have it.
-
-### 1d. Tests 🔲
-A synthetic multi-row backlog proving a bad row no longer blocks good rows
-behind it; regression coverage for the two newly-locked functions.
-
 ---
 
 ## Phase 2 — gas-lint hardening
 
 No pipeline risk — pure static analysis, same style as existing Checks A-L.
 
-### 2a. Check M — every `doGet`/`doPost` needs a visible caller check 🔲
-Heuristic, same shape as the OAuth-scope check (Check E): does this
-project's `doGet`/`doPost` reference `Session.getActiveUser()` or a
-shared-secret comparison anywhere in its body? Would have caught
-`kos-personal`'s original auth gap at write time — the pattern already
-existed in `leader-hub` and `cas-ccps`, nothing was enforcing it apply to a
-third project too.
+### 2a. Check M — every `doGet`/`doPost` needs a visible caller check ✅
+Built as `checkWebAppAuthChecks()`. The heuristic sketched above ("reference
+`Session.getActiveUser()` or a shared-secret comparison anywhere in its
+body") turned out to be too coarse the moment all five real `doGet`/`doPost`
+files in the repo were actually read side by side — they use four
+*different*, all-legitimate shapes, not one:
 
-### 2b. Check N — bounded-loop convention (warning-level) 🔲
-Genuinely fuzzier than the others, hence warning not error: a
-`while (...hasNext())`-shaped loop over an external resource (Drive, etc.)
-should reference a cap constant and a pacing call (`Utilities.sleep`)
-somewhere nearby. Flags the next sensor-shaped function that ships without
-either, the way Sensor 1 originally did.
+- `kos-personal/7_WebApp.gs`, `cas-ccps/07_TeacherDashboard.js`: a
+  dedicated checker called directly in each handler's own body.
+- `cas-ccps/13_StudentDashboard.js`: `doGet()` serves a static shell with
+  **no check of its own** — the real gate is on the data call
+  (`getStudentDashboardData()`'s `Session.getActiveUser()`), reached later
+  via `google.script.run`. Documented, intentional, and would have been a
+  false positive under the original "check the handler's own body" framing.
+- `leader-hub/EmailBridge.gs`: `doPost()` has no check of its own, and the
+  project's only checker (`_isAuthorizedOwner_`, in `Code.gs`) isn't called
+  from it. Genuinely ambiguous — the manifest's `access: "DOMAIN"`
+  restriction may be the intended gate, or this may be a real gap. Not
+  confidently either.
+
+So the shipped rule is asymmetric: `doGet()` is silent if a recognized
+check (`Session.getActiveUser()`, an `*Auth*`/`*Verify*`/`*Token*`/
+`*Secret*`-named call, or `e.parameter.secret`) exists **anywhere in the
+project**, error only if nothing exists anywhere (the "gate the data, not
+the shell" pattern is legitimate and common enough that flagging it would
+just be noise to silence). `doPost()` is silent only if the check is in its
+**own body** — a POST typically performs the action directly, so "gated
+downstream" doesn't apply the same way — warn if a check exists elsewhere
+in the project but isn't called from `doPost()` itself, error if nothing
+exists anywhere. Running it against the real repo produced exactly one
+finding: a warning on `leader-hub/EmailBridge.gs`'s `doPost()`, the
+genuinely ambiguous case above — surfaced for a human decision, not
+silently resolved either way. 9 unit tests in
+`tests/tools/gas-lint-webapp-auth.test.js` pin all four real shapes plus
+the comment-stripping edge case. See `tools/gas-lint/README.md` item 13 for
+the full writeup.
+
+### 2b. Check N — bounded-loop convention (warning-level) ✅
+Built as `checkBoundedLoopConvention()`, exactly as scoped: a
+`while (x.hasNext())` loop over a Drive/Docs/Sheets iterator should
+reference a cap (a `break`, or a `MAX`/`LIMIT`/`CAP`-named identifier) and a
+pacing call (`Utilities.sleep(...)`, a `*pacing*`/`*throttle*`/`*sleep*`-
+named call, or an elapsed-time budget check against `Date.now()`/
+`new Date()`). A grep across the repo before building it found seven real
+`while (...hasNext())` loops with neither today
+(`kos-personal/1_Config_And_Deploy.gs`, `5_Error_And_Utilities.gs`,
+`6_Governance.gs` ×3, `11_Registrar_CogRelay.gs`,
+`cas-ccps/10_AdminRecoveryPanel.js`) — confirming this is a genuinely new
+convention, not a retrofit, and why it's warning-level: erroring on all
+seven at once on introduction would make the check something to silence
+rather than act on. Those seven are now-visible, pre-existing findings,
+not a regression this change introduced — fixing them is follow-up work,
+not part of landing the check itself.
+
+One real bug caught while building this, before it ever ran on real code:
+the first cut of both regexes (`[A-Za-z_$][\w$]*(?:MAX|LIMIT|CAP)[\w$]*\b`
+and the pacing equivalent) could never match an identifier where
+MAX/LIMIT/CAP/sleep/pacing/throttle is the very *first* thing in the name
+(e.g. `MAX_FILES_PER_RUN`) — the mandatory single leading character
+consumed the identifier's own first letter, so the literal it was looking
+for was no longer there to find in what was left. Caught by a unit test
+asserting a `MAX_FILES_PER_RUN` reference should count as a cap, which
+failed against the first version; fixed by dropping the mandatory leading
+character in favor of a `\b` word boundary. 9 unit tests in
+`tests/tools/gas-lint-bounded-loop.test.js`. See `tools/gas-lint/README.md`
+item 14 for the full writeup.
 
 ---
 
