@@ -98,7 +98,12 @@ rules... six... have nothing behind them" — the file already had 16 rules
 and Check L's enforcement of rule 15 both predating this edit); fixed
 alongside adding rule 17 rather than compounding the drift.
 
-### 0c. `tools/flow-harness-sync/README.md` 🔲
+### 0c. `tools/flow-harness-sync/README.md` ✅
+Also added a root `README.md` section for the tool itself — it turned out
+`tools/flow-harness-sync/` never got one when it was first built in Wave 2
+(the PR-only `docs-check` CI job never caught it, since that Wave 2 work
+was pushed straight to a branch, no PR opened). Fixed alongside writing
+this playbook rather than left as a second gap.
 Write up "canonical JSON + generator + gas-lint drift check" as a named,
 repeatable playbook for the *next* cross-project constant/algorithm
 duplication — not just what `plausibility-phrases.json` happens to do, but

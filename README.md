@@ -127,6 +127,23 @@ and each found a live defect on its first run. Run
 `kos-personal/` or `cas-ccps/scripts/` is safe to deploy. See
 [`tools/gas-lint/README.md`](./tools/gas-lint/README.md).
 
+## [`tools/flow-harness-sync/`](./tools/flow-harness-sync/) — cross-project constant sync
+
+The standard remedy, now named and repeatable, for one specific class of
+duplication GAS forces on this repo: the same constant or algorithm
+hand-copied across two or more of `kos-personal`/`cas-ccps`/`leader-hub`
+(no `import`, ever — each is its own execution scope), with nothing
+watching the copies for drift. First real instance:
+`shared/flow-harness/plausibility-phrases.json` is the one canonical
+source for the AI-groundedness/plausibility gate's phrase lists and
+thresholds, materialized into all three systems by
+`sync-plausibility-phrases.js` and checked for drift by `gas-lint`'s Check
+L. See [`tools/flow-harness-sync/README.md`](./tools/flow-harness-sync/README.md)
+for the general four-part recipe (canonical source, targeted-replacement
+generator, a gas-lint check, a drift-guard test) this is one instance of —
+and, as importantly, when this does *not* apply: logic that's merely
+similar per system, not genuinely identical, stays separate.
+
 ## [`tools/coverage-gaps/`](./tools/coverage-gaps/) — scheduled functions with zero test coverage
 
 Process-hardening sprint, Phase 0a. `gas-lint` above is pure static
