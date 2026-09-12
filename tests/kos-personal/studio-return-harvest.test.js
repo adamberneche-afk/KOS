@@ -40,7 +40,7 @@ const EXPOSE = [
   'harvestStudioReturns', 'checkStudioReturns', 'checkStudioFlowLiveness',
   'removeStudioFlowFixtures',
   'installStudioFlowFixture',
-  '_srPrepareDocText_', '_srStripJsonFence_', '_srFindStagingRow_',
+  '_srPrepareDocText_', '_srStripJsonFence_', '_srExtractJsonLoose_', '_srFindStagingRow_',
   '_srIsDocWritten_', '_srMarkDocWritten_', '_srClearDocWritten_',
   'SR_COLS', 'SR_SHEET', 'SR_CURATOR_TYPES', 'SR_MAX_ATTEMPTS',
   '_srDiagnoseReturnRow_', 'checkStudioFlowBinding', 'SR_KNOWN_TYPES',
@@ -102,10 +102,75 @@ test('classification output must parse to an Array', () => {
 
 test('unparseable primary output fails with a contract-specific code', () => {
   const { exported } = load();
+  // No '{'/'}' pair for _srExtractJsonLoose_ to even try against — the
+  // narrative-recovery fallback (below) never gets a chance to fire here.
   assert.match(exported._srPrepareDocText_('SESSION_LOG', '{oops', '').error,
     /^CURATOR_JSON_PARSE_FAILED/);
   assert.match(exported._srPrepareDocText_('VECTOR_CLASSIFY', '{oops', '').error,
     /^CLASSIFICATION_JSON_PARSE_FAILED/);
+});
+
+test('every *_JSON_PARSE_FAILED / *_JSON_NOT_ARRAY failure is tagged unretryable', () => {
+  const { exported } = load();
+  assert.equal(exported._srPrepareDocText_('SESSION_LOG', '{oops', '').unretryable, true);
+  assert.equal(exported._srPrepareDocText_('VECTOR_CLASSIFY', '{oops', '').unretryable, true);
+  assert.equal(exported._srPrepareDocText_('VECTOR_CLASSIFY', '{"theme":"UI"}', '').unretryable, true);
+  assert.equal(exported._srPrepareDocText_('SESSION_LOG', '{"summary":"s"}', '{oops').unretryable, true);
+  assert.equal(exported._srPrepareDocText_('SESSION_LOG', '   ', '').unretryable, true);
+});
+
+// ── Narrative-wrapped JSON recovery (incident diagnosis #3) ─────────────────
+
+test('_srExtractJsonLoose_: recovers a JSON object embedded in a persona-styled narrative wrapper', () => {
+  const { exported } = load();
+  const narrative = '[🧹 THE CURATOR — internal notes]\n' +
+    'Here is my analysis of the session, formatted as requested:\n' +
+    '{"summary":"real content survives the wrapper"}\n' +
+    '— end of report —';
+  const result = exported._srExtractJsonLoose_(narrative, 'object');
+  assert.deepEqual(result, { summary: 'real content survives the wrapper' });
+});
+
+test('_srExtractJsonLoose_: recovers an array the same way, and returns null (not a throw) when nothing parses', () => {
+  const { exported } = load();
+  const arr = exported._srExtractJsonLoose_('prose before [1,2,3] prose after', 'array');
+  assert.deepEqual(arr, [1, 2, 3]);
+
+  assert.equal(exported._srExtractJsonLoose_('no brackets at all here', 'object'), null);
+  assert.equal(exported._srExtractJsonLoose_('{unterminated', 'object'), null);
+});
+
+test('curator output wrapped in a narrative report still gets applied, prose stripped from the doc', () => {
+  const { exported } = load();
+  const narrative = '[🧹 THE CURATOR]\nSummary of findings below.\n{"summary":"recovered curator output"}\n';
+  const out = exported._srPrepareDocText_('SESSION_LOG', narrative, '');
+  assert.equal(out.ok, true, out.error);
+  // The doc must receive clean JSON, never the surrounding prose.
+  assert.deepEqual(JSON.parse(out.text), { summary: 'recovered curator output' });
+});
+
+test('classification output wrapped in a narrative report is re-serialized, not written verbatim', () => {
+  const { exported } = load();
+  // Contrast with 'classification output is written VERBATIM' above — that
+  // rule only holds when the model's own text is already clean (just
+  // fenced). Once recovery from a narrative wrapper is needed, the ORIGINAL
+  // text still has prose in it, so writing it verbatim would put that prose
+  // in the doc despite `ok: true` — out.text must be the clean re-serialized
+  // array instead.
+  const narrative = 'Classification results:\n[{"theme":"UI"}]\nend.';
+  const out = exported._srPrepareDocText_('VECTOR_CLASSIFY', narrative, '');
+  assert.equal(out.ok, true, out.error);
+  assert.notEqual(out.text, narrative, 'must not write the narrative wrapper verbatim');
+  assert.deepEqual(JSON.parse(out.text), [{ theme: 'UI' }]);
+});
+
+test('a narrative wrapper with no recoverable JSON still fails, same as before this fix', () => {
+  const { exported } = load();
+  const out = exported._srPrepareDocText_('SESSION_LOG',
+    '[🧹 THE CURATOR] I was unable to complete this analysis.', '');
+  assert.equal(out.ok, false);
+  assert.match(out.error, /^CURATOR_JSON_PARSE_FAILED/);
+  assert.equal(out.unretryable, true);
 });
 
 test('empty model output is rejected before either contract runs', () => {
@@ -275,18 +340,52 @@ test('harvest: NOTHING is touched when the output is malformed', () => {
 
   exported.harvestStudioReturns();
 
-  // KOS's spec: leave the staging row alone so the staleness guard retries.
+  // KOS's spec: leave the STAGING row alone so the staleness guard retries
+  // the underlying payload — that's a separate concern from the RETURN
+  // row's own Harvest_Status, which the next test covers.
   assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
   assert.equal(sandbox.DocumentApp.openById(ctx.fileId).getBody().getText(), 'ORIGINAL SOURCE TEXT');
 });
 
-test('harvest: gives up on the RETURN row after SR_MAX_ATTEMPTS, staging still untouched', () => {
+test('harvest: an unretryable parse failure gives up on the RETURN row after ONE attempt, not SR_MAX_ATTEMPTS', () => {
+  // FIX (incident diagnosis #3, closed): this used to take SR_MAX_ATTEMPTS
+  // calls to reach FAILED for exactly this payload — re-parsing the same
+  // stored, permanently-malformed text every time, occupying the one
+  // Turnstile concurrency slot for up to ~90 minutes for a failure that
+  // could never have resolved differently on attempt 2 or 3.
   const { exported, sandbox } = load();
   const ctx = seed(exported, sandbox, { primary: '{not json' });
-  for (let i = 0; i < exported.SR_MAX_ATTEMPTS; i++) exported.harvestStudioReturns();
+
+  exported.harvestStudioReturns();
 
   const report = exported.checkStudioReturns();
   assert.equal(report.failed, 1, JSON.stringify(report));
+  assert.equal(report.rows[0].attempts, 1, 'must not have waited for further attempts');
+  // The separation that keeps this file from fighting the Turnstile: giving
+  // up on a return row never means giving up on the payload.
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
+});
+
+test('harvest: a genuinely retryable failure (doc write) still gives up only after SR_MAX_ATTEMPTS', () => {
+  // Contrast with the immediate-failure test above: DOC_WRITE_FAILED is
+  // NOT tagged unretryable (see _srApplyReturn_) because a transient Drive
+  // failure genuinely might succeed on a later attempt — this is the case
+  // the SR_MAX_ATTEMPTS retry loop still exists for.
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox); // valid, parseable primary JSON
+  sandbox.DocumentApp._docs.delete(ctx.fileId); // doc write throws DOC_WRITE_FAILED
+
+  for (let i = 0; i < exported.SR_MAX_ATTEMPTS - 1; i++) {
+    exported.harvestStudioReturns();
+    const midReport = exported.checkStudioReturns();
+    assert.equal(midReport.failed, 0, 'must still be retryable before SR_MAX_ATTEMPTS is reached');
+    assert.equal(midReport.unharvested, 1);
+  }
+  exported.harvestStudioReturns(); // the SR_MAX_ATTEMPTS-th attempt
+
+  const report = exported.checkStudioReturns();
+  assert.equal(report.failed, 1, JSON.stringify(report));
+  assert.equal(report.rows[0].attempts, exported.SR_MAX_ATTEMPTS);
   // The separation that keeps this file from fighting the Turnstile: giving
   // up on a return row never means giving up on the payload.
   assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
