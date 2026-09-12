@@ -1,6 +1,6 @@
 // ================================================================
-// KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 11 of 11: Registrar / Cog Relay (Automated Registrar Ledger)
+// 11_Registrar_CogRelay.gs — KOS v8.0
+// BOUND TO: kos-personal (main flat-folder project)
 // ================================================================
 //
 // NEW SYSTEM (built from 4 uploaded design docs — Master Operations

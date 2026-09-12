@@ -1,6 +1,6 @@
 // ================================================================
-// KOS v8.0 — THE HEADLESS STUDIO EDITION
-// FILE 10 of 11: Turnstile
+// 10_Turnstile.gs — KOS v8.0
+// BOUND TO: kos-personal (main flat-folder project)
 // ================================================================
 //
 // REBUILT (reconciliation decision 2) — the original 10_Turnstile.gs
