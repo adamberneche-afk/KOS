@@ -1,6 +1,11 @@
 # LeaderHub — Pacing Guide & Grading Weight Structure
 ## All Three Courses · 2025–26 · Aligned to Formative/Summative Model
 
+> **Dated snapshot, kept for history — not the current version.**
+> `LH_05_GRADING_STRUCTURE.md` is what `LEADERHUB_HANDOFF.md`'s working-doc
+> table points to today. See `README.md` for why all three grading docs
+> are kept rather than merged.
+
 **Version:** 1.0 · March 2026
 **Teacher:** Adam Berneche · Clover Hill High School · CCPS
 **Companion docs:** `LH_01_NAMING_CONVENTIONS.md` · `LH_02_INTEGRATION_GUIDE.md`
