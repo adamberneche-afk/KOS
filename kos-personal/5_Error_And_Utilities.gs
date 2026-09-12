@@ -1339,6 +1339,56 @@ function _markAuditRetryPriority_(payloadUid) {
   _writeAuditRetryPrioritySet_(set);
 }
 
+
+// ================================================================
+// STALE-RESET DEPRIORITIZE QUEUE (process-hardening sprint, Phase 1a/1b)
+// ================================================================
+// The mirror image of the audit-retry priority set above:
+// PropertiesService-backed set of Payload_UIDs whose STAGING_PIPELINE row
+// was just reset from STUDIO_ACTIVE back to PENDING_FLOW for staleness.
+// runMatrixTurnstile() checks this set LAST in its release pass, after
+// both priority and normal rows, so a row that just failed doesn't cut
+// back to the front of re-inference the way sheet order alone would
+// otherwise put it — a repeatedly-failing row is, by construction, one of
+// the OLDEST rows in the queue, so releasing purely oldest-first meant it
+// got released again almost immediately after every stale reset. With
+// CFG.TURNSTILE_CONCURRENCY == 1, that's a backlog of every other queued
+// row stalled behind one bad payload for as long as it keeps failing —
+// exactly what the incident diagnosis that motivated this observed
+// directly (~15 good rows stuck in one window).
+//
+// Stores {reason, attempt, at} per UID, not just a boolean — this is also
+// the "visible requeue reason" half of the same fix (Phase 1b).
+// STAGING_PIPELINE has no spare column for this kind of detail
+// (10_Turnstile.gs's own header explains why an 8th column isn't added
+// lightly: it would mean touching every hardcoded 7-column getRange()
+// call across 2/3/9_*.gs), so this Script Property is the durable,
+// inspectable record of why a row was deprioritized, until it's consumed.
+
+/** Reads the { Payload_UID: {reason, attempt, at} } deprioritize set. Returns {} if unset/corrupt. */
+function _readStaleDeprioritizeSet_() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty('KOS_STALE_DEPRIORITIZE');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn('[Turnstile] Deprioritize set corrupt — resetting. ' + e.message);
+    return {};
+  }
+}
+
+/** Persists the { Payload_UID: {reason, attempt, at} } deprioritize set. */
+function _writeStaleDeprioritizeSet_(set) {
+  PropertiesService.getScriptProperties()
+    .setProperty('KOS_STALE_DEPRIORITIZE', JSON.stringify(set));
+}
+
+/** Marks a Payload_UID to release AFTER normal rows on the next Turnstile run. */
+function _markStaleDeprioritized_(payloadUid, reason, attempt) {
+  const set = _readStaleDeprioritizeSet_();
+  set[String(payloadUid)] = { reason: reason, attempt: attempt, at: new Date().getTime() };
+  _writeStaleDeprioritizeSet_(set);
+}
+
 /**
  * Moves all terminal-status rows from STAGING_PIPELINE to
  * STAGING_ARCHIVE. Fully headless — no ui.alert.

@@ -151,114 +151,130 @@ const SR_CURATOR_TYPES = ['SESSION_LOG', 'EXTERNAL_DATA', 'COG_EXHAUST', 'COG_ST
  * Applies every unharvested STUDIO_RETURN row: overwrite the source doc
  * with the model's output, then mark the STAGING_PIPELINE row
  * FLOW_COMPLETE. Installed on a 5-minute trigger.
+ *
+ * FIX (process-hardening sprint, Phase 1c): this had no LockService guard
+ * at all — unlike sensor1_scanInboundSessions()/runMatrixTurnstile(),
+ * which both do — so an overlapping run (this one ever taking longer than
+ * its own 5-minute trigger interval) could double-process the same
+ * STUDIO_RETURN row. Narrow risk in practice, closed while already deep in
+ * this file for an unrelated reason, same pattern those two already use.
  */
 function harvestStudioReturns() {
-  const result = { applied: 0, skipped: 0, failed: 0, attention: 0, suspectFabrication: 0, pruned: 0 };
-
-  const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
-  const sheet = _getOrCreateSheet(ss, SR_SHEET);
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return result;
-
-  const width = Object.keys(SR_COLS).length;
-  const data = sheet.getRange(2, 1, lastRow - 1, width).getValues();
-  const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
-
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const sheetRow = i + 2;
-    const status = String(row[SR_COLS.HARVEST_STATUS] || '').trim();
-    if (status === 'HARVESTED' || status === 'NEEDS_ATTENTION' || status === 'FAILED' ||
-        status === 'SUSPECT_FABRICATION') {
-      result.skipped++;
-      continue;
-    }
-
-    const uid = String(row[SR_COLS.PAYLOAD_UID] || '').trim();
-    if (!uid) {
-      _srMarkReturnRow_(sheet, sheetRow, 'FAILED', 'No Payload_UID', SR_MAX_ATTEMPTS);
-      result.failed++;
-      continue;
-    }
-
-    const outcome = _srApplyReturn_(staging, uid, row);
-    const attempts = Number(row[SR_COLS.ATTEMPTS] || 0) + 1;
-
-    if (outcome.ok) {
-      _srMarkReturnRow_(sheet, sheetRow, 'HARVESTED', '', attempts);
-      _srClearDocWritten_(uid);
-      result.applied++;
-      console.log('[StudioReturn] ' + uid + ' applied — staging row FLOW_COMPLETE');
-      continue;
-    }
-
-    if (outcome.needsAttention) {
-      // Doc written, staging row unreachable, and the breadcrumb could not
-      // carry us through either. This is the one state a retry cannot fix
-      // blindly, so it stops here rather than looping.
-      _srMarkReturnRow_(sheet, sheetRow, 'NEEDS_ATTENTION', outcome.error, attempts);
-      result.attention++;
-      _reportError('harvestStudioReturns',
-        new Error('Payload ' + uid + ' needs attention: ' + outcome.error), null);
-      continue;
-    }
-
-    if (outcome.suspectFabrication) {
-      // The doc was never touched — the whole point of running the
-      // groundedness gate BEFORE the overwrite. No retry loop: a Flow
-      // that isn't actually reading its source document won't fix itself
-      // on attempt 2, so there's no reason to wait for SR_MAX_ATTEMPTS
-      // before surfacing it.
-      _srMarkReturnRow_(sheet, sheetRow, 'SUSPECT_FABRICATION', outcome.error, attempts);
-      result.suspectFabrication++;
-      _reportError('harvestStudioReturns',
-        new Error('Payload ' + uid + ' SUSPECT_FABRICATION: ' + outcome.error), null);
-      continue;
-    }
-
-    if (outcome.unretryable) {
-      // FIX (incident diagnosis #3, "downstream" half, closed): a JSON
-      // parse failure here is exactly as unrecoverable as
-      // SUSPECT_FABRICATION above, for the same reason — this function
-      // re-parses the ALREADY-STORED return text on every attempt, it
-      // never asks Studio to run again (see this file's header). Three
-      // retries on identical text fail identically three times by
-      // construction. The staging row used to sit occupying the one
-      // Turnstile concurrency slot for up to
-      // TURNSTILE_STUCK_THRESHOLD × TURNSTILE_STALE_MINS ≈ 90 minutes
-      // waiting on a staleness guard that was never going to fix THIS
-      // failure — reused the FAILED status (not a new one) since, unlike
-      // SUSPECT_FABRICATION, this is a single bad attempt with no
-      // recurring-flow-config angle that needs different pruning
-      // treatment; see _srPruneHarvested_()'s own header.
-      _srMarkReturnRow_(sheet, sheetRow, 'FAILED', outcome.error, attempts);
-      result.failed++;
-      _reportError('harvestStudioReturns',
-        new Error('Payload ' + uid + ' unretryable (' + outcome.error + ') — not waiting for ' +
-          'SR_MAX_ATTEMPTS, a retry re-parses the same stored text.'), null);
-      continue;
-    }
-
-    if (attempts >= SR_MAX_ATTEMPTS) {
-      // Give up on the RETURN row only. The staging row is deliberately
-      // left alone — the staleness guard owns retrying the inference, and
-      // that separation is what keeps this file from fighting the Turnstile.
-      _srMarkReturnRow_(sheet, sheetRow, 'FAILED', outcome.error, attempts);
-      result.failed++;
-      _reportError('harvestStudioReturns',
-        new Error('Payload ' + uid + ' failed after ' + attempts + ' attempt(s): ' + outcome.error +
-          '. Staging row untouched for the staleness guard.'), null);
-      continue;
-    }
-
-    _srMarkReturnRow_(sheet, sheetRow, '', outcome.error, attempts);
-    result.failed++;
-    console.warn('[StudioReturn] ' + uid + ' attempt ' + attempts + ' failed: ' + outcome.error);
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    console.log('[StudioReturn] Could not acquire lock — another run is active. Skipping.');
+    return { applied: 0, skipped: 0, failed: 0, attention: 0, suspectFabrication: 0, pruned: 0 };
   }
+  try {
+    const result = { applied: 0, skipped: 0, failed: 0, attention: 0, suspectFabrication: 0, pruned: 0 };
 
-  result.pruned = _srPruneHarvested_(sheet) + _srPruneResolvedSuspectFabrication_(sheet, staging);
-  console.log('[StudioReturn] harvest: ' + JSON.stringify(result));
-  return result;
+    const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const sheet = _getOrCreateSheet(ss, SR_SHEET);
+    const lastRow = sheet.getLastRow();
+    if (lastRow <= 1) return result;
+
+    const width = Object.keys(SR_COLS).length;
+    const data = sheet.getRange(2, 1, lastRow - 1, width).getValues();
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      const sheetRow = i + 2;
+      const status = String(row[SR_COLS.HARVEST_STATUS] || '').trim();
+      if (status === 'HARVESTED' || status === 'NEEDS_ATTENTION' || status === 'FAILED' ||
+          status === 'SUSPECT_FABRICATION') {
+        result.skipped++;
+        continue;
+      }
+
+      const uid = String(row[SR_COLS.PAYLOAD_UID] || '').trim();
+      if (!uid) {
+        _srMarkReturnRow_(sheet, sheetRow, 'FAILED', 'No Payload_UID', SR_MAX_ATTEMPTS);
+        result.failed++;
+        continue;
+      }
+
+      const outcome = _srApplyReturn_(staging, uid, row);
+      const attempts = Number(row[SR_COLS.ATTEMPTS] || 0) + 1;
+
+      if (outcome.ok) {
+        _srMarkReturnRow_(sheet, sheetRow, 'HARVESTED', '', attempts);
+        _srClearDocWritten_(uid);
+        result.applied++;
+        console.log('[StudioReturn] ' + uid + ' applied — staging row FLOW_COMPLETE');
+        continue;
+      }
+
+      if (outcome.needsAttention) {
+        // Doc written, staging row unreachable, and the breadcrumb could not
+        // carry us through either. This is the one state a retry cannot fix
+        // blindly, so it stops here rather than looping.
+        _srMarkReturnRow_(sheet, sheetRow, 'NEEDS_ATTENTION', outcome.error, attempts);
+        result.attention++;
+        _reportError('harvestStudioReturns',
+          new Error('Payload ' + uid + ' needs attention: ' + outcome.error), null);
+        continue;
+      }
+
+      if (outcome.suspectFabrication) {
+        // The doc was never touched — the whole point of running the
+        // groundedness gate BEFORE the overwrite. No retry loop: a Flow
+        // that isn't actually reading its source document won't fix itself
+        // on attempt 2, so there's no reason to wait for SR_MAX_ATTEMPTS
+        // before surfacing it.
+        _srMarkReturnRow_(sheet, sheetRow, 'SUSPECT_FABRICATION', outcome.error, attempts);
+        result.suspectFabrication++;
+        _reportError('harvestStudioReturns',
+          new Error('Payload ' + uid + ' SUSPECT_FABRICATION: ' + outcome.error), null);
+        continue;
+      }
+
+      if (outcome.unretryable) {
+        // FIX (incident diagnosis #3, "downstream" half, closed): a JSON
+        // parse failure here is exactly as unrecoverable as
+        // SUSPECT_FABRICATION above, for the same reason — this function
+        // re-parses the ALREADY-STORED return text on every attempt, it
+        // never asks Studio to run again (see this file's header). Three
+        // retries on identical text fail identically three times by
+        // construction. The staging row used to sit occupying the one
+        // Turnstile concurrency slot for up to
+        // TURNSTILE_STUCK_THRESHOLD × TURNSTILE_STALE_MINS ≈ 90 minutes
+        // waiting on a staleness guard that was never going to fix THIS
+        // failure — reused the FAILED status (not a new one) since, unlike
+        // SUSPECT_FABRICATION, this is a single bad attempt with no
+        // recurring-flow-config angle that needs different pruning
+        // treatment; see _srPruneHarvested_()'s own header.
+        _srMarkReturnRow_(sheet, sheetRow, 'FAILED', outcome.error, attempts);
+        result.failed++;
+        _reportError('harvestStudioReturns',
+          new Error('Payload ' + uid + ' unretryable (' + outcome.error + ') — not waiting for ' +
+            'SR_MAX_ATTEMPTS, a retry re-parses the same stored text.'), null);
+        continue;
+      }
+
+      if (attempts >= SR_MAX_ATTEMPTS) {
+        // Give up on the RETURN row only. The staging row is deliberately
+        // left alone — the staleness guard owns retrying the inference, and
+        // that separation is what keeps this file from fighting the Turnstile.
+        _srMarkReturnRow_(sheet, sheetRow, 'FAILED', outcome.error, attempts);
+        result.failed++;
+        _reportError('harvestStudioReturns',
+          new Error('Payload ' + uid + ' failed after ' + attempts + ' attempt(s): ' + outcome.error +
+            '. Staging row untouched for the staleness guard.'), null);
+        continue;
+      }
+
+      _srMarkReturnRow_(sheet, sheetRow, '', outcome.error, attempts);
+      result.failed++;
+      console.warn('[StudioReturn] ' + uid + ' attempt ' + attempts + ' failed: ' + outcome.error);
+    }
+
+    result.pruned = _srPruneHarvested_(sheet) + _srPruneResolvedSuspectFabrication_(sheet, staging);
+    console.log('[StudioReturn] harvest: ' + JSON.stringify(result));
+    return result;
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 /**
