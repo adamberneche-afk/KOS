@@ -89,6 +89,29 @@ const CFG = {
   // UI signal for rows that haven't hit the ceiling yet.
   TURNSTILE_STUCK_THRESHOLD: 3,
 
+  // ── Sensor 1 ingestion — incident diagnosis findings #4/#5, closed ──────
+  // sensor1_scanInboundSessions() used to process every file the inbound
+  // folder held in one run with no cap and no pacing between iterations —
+  // by far the largest source of ERROR_LOG volume, from two failure
+  // modes: a burst of files tripping Drive's per-run rate limit ("Service
+  // Documents failed while accessing document with id X"), and a single
+  // large/emoji-dense raw-log write exceeding Google Docs' internal
+  // change-tracking limit ("Too many changes applied before saving
+  // document..."). A file that failed once also had no escalation path —
+  // it stayed in the inbound folder and got retried in full on every
+  // future run, forever.
+  SENSOR1_MAX_FILES_PER_RUN: 8,      // stop after this many; the rest wait for next run
+  SENSOR1_PACING_MS: 300,            // Utilities.sleep() between files, shrinks burst rate
+  SENSOR1_QUARANTINE_THRESHOLD: 3,   // failures on the same file before it's quarantined,
+                                     // not retried forever (mirrors TURNSTILE_STUCK_THRESHOLD)
+  // Bounds a single _archiveRawLog_() write into multiple appendParagraph()
+  // calls (grouped on line boundaries, never mid-line — see that function's
+  // own header for why exact reconstruction matters) with a DocumentApp
+  // .flush() every few groups, instead of one setText(wholeRawText) call
+  // that can trip the same "too many changes" limit on a large log.
+  ARCHIVE_WRITE_CHUNK_CHARS: 20000,
+  ARCHIVE_WRITE_FLUSH_EVERY: 5,      // groups per DocumentApp.flush()
+
   // ── Shadow Matrix (reconciliation decision 1 / 5_Error_And_Utilities.gs) ──
   SHADOW_VERIFY_THRESHOLD: 0.75,  // confidence to mark a shadow question VERIFIED
 
@@ -276,6 +299,14 @@ const CFG = {
     // copies. Read-before-asking: once set, generateDailyPrimer() opens
     // this doc by ID instead of searching by name on every run.
     LATEST_PRIMER_DOC_ID: 'KOS_LATEST_PRIMER_DOC_ID',
+
+    // JSON blob { fileId: failureCount }, one entry per inbound file
+    // sensor1_scanInboundSessions() has failed on at least once — see
+    // that function's own header (incident diagnosis #4) and
+    // _recordSensor1Failure_()/_clearSensor1Failure_() in
+    // 2_Ingestion_Sensors.gs. Same "small JSON blob in a Script
+    // Property" shape KOS_PROMOTED_VECTORS already uses (7_WebApp.gs).
+    SENSOR1_FAILURE_COUNTS: 'KOS_SENSOR1_FAILURE_COUNTS',
 
     // ── Access control (external product review finding, closed) ────────
     // doGet()/doPost() in 7_WebApp.gs previously had NO caller check at

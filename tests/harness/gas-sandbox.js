@@ -382,6 +382,15 @@ class FakeDriveFolder {
     let i = 0;
     return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
   }
+  // Real Apps Script API — Folder.getFilesByName(name), scoped to this
+  // folder's own direct children (distinct from DriveApp.getFilesByName,
+  // which searches flat across all of Drive). First needed by
+  // 2_Ingestion_Sensors.gs's _archiveRawLog_() "already archived?" guard.
+  getFilesByName(name) {
+    const matches = this.files.filter((f) => f.name === name);
+    let i = 0;
+    return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
+  }
   createFolder(name) {
     const f = new FakeDriveFolder(name, 'fake-folder-' + (++FakeDriveFolder._counter));
     this.children.push(f);
@@ -389,11 +398,24 @@ class FakeDriveFolder {
   }
   addFile(file) { if (!this.files.includes(file)) this.files.push(file); return this; }
   removeFile(file) { this.files = this.files.filter((f) => f !== file); return this; }
+  // Real Apps Script API — Folder.getFiles(), non-recursive, same
+  // hasNext()/next() iterator shape as getFoldersByName. First needed by
+  // sensor1_scanInboundSessions()'s inbound-folder scan. Snapshots
+  // this.files at call time (real Drive's iterator is similarly a
+  // snapshot, not live) — a file moved out mid-scan by the caller itself
+  // (this loop's own moveTo() calls) doesn't retroactively shrink an
+  // iterator already in progress, matching how the production code
+  // relies on `scanned`/the loop's own bookkeeping, not re-querying Drive.
+  getFiles() {
+    const snapshot = this.files.slice();
+    let i = 0;
+    return { hasNext() { return i < snapshot.length; }, next() { return snapshot[i++]; } };
+  }
 }
 FakeDriveFolder._counter = 0;
 
 class FakeDriveFile {
-  constructor(id, name) {
+  constructor(id, name, mimeType) {
     this.id = id;
     this.name = name;
     this.sharingAccess = null;
@@ -404,9 +426,17 @@ class FakeDriveFile {
     // simulate an older or newer file without waiting on wall-clock time.
     this.lastUpdated = new Date();
     this.trashed = false;
+    // Real Apps Script API — File.getMimeType(). First needed by
+    // 2_Ingestion_Sensors.gs's sensor1_scanInboundSessions(), which skips
+    // any inbound file that isn't MimeType.GOOGLE_DOCS. Defaults to that
+    // same value below (DocumentApp.create() always makes a real Google
+    // Doc); a test simulating a non-Doc file passed in the inbound folder
+    // sets this explicitly.
+    this.mimeType = mimeType || 'application/vnd.google-apps.document';
   }
   getId() { return this.id; }
   getName() { return this.name; }
+  getMimeType() { return this.mimeType; }
   getUrl() { return 'https://fake-drive.example/file/' + this.id; }
   setSharing(access, permission) { this.sharingAccess = access; this.sharingPermission = permission; return this; }
   addEditor(email) { this.editors.push(email); return this; }
@@ -603,6 +633,13 @@ function makeDocumentAppMock(driveAppMock) {
       if (!docs.has(id)) throw new Error('Document not found: ' + id);
       return docs.get(id);
     },
+    // Real Apps Script API — DocumentApp.flush() applies all pending
+    // Document changes immediately rather than batching them. First
+    // needed by 2_Ingestion_Sensors.gs's _archiveRawLog_(), which calls it
+    // periodically during a large write specifically to avoid the "Too
+    // many changes applied before saving document" limit — a no-op here
+    // since this mock's writes are never actually batched/deferred.
+    flush() {},
   };
 }
 makeDocumentAppMock._counter = 0;
@@ -827,6 +864,11 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
     // mock, calling any of them throws "Logger is not defined" for a
     // reason that has nothing to do with the logic under test.
     Logger: { log: () => {} },
+    // Real Apps Script API — the top-level MimeType global (distinct from
+    // DriveApp.Access/Permission, which are namespaced under DriveApp).
+    // Only GOOGLE_DOCS is real so far — the one value
+    // sensor1_scanInboundSessions() checks against.
+    MimeType: { GOOGLE_DOCS: 'application/vnd.google-apps.document' },
     ...extraGlobals,
   };
   const context = vm.createContext(sandbox);

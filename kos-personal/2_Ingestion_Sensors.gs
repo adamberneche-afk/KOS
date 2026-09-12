@@ -44,8 +44,15 @@
 //    this map doesn't silently omit it.
 //
 // SHARED HELPERS
-//   _queuePayload()  → writes a single STAGING_PIPELINE row
-//   _chunkAndQueue() → splits text and calls _queuePayload per chunk
+//   _queuePayload()             → writes a single STAGING_PIPELINE row
+//   _chunkAndQueue()            → splits text and calls _queuePayload per chunk
+//   _archiveRawLog_()           → writes the untouched raw log doc both
+//                                 Sensor 1 paths used to duplicate
+//                                 (incident diagnosis #4/#5)
+//   _groupLinesForArchiveWrite_() → _archiveRawLog_()'s line-safe chunking
+//   _recordSensor1Failure_() / _clearSensor1Failure_() → per-file failure
+//                                 counter backing sensor1's quarantine
+//                                 escalation (incident diagnosis #4)
 //
 // DEPENDENCIES (defined in 5_Utilities.gs)
 //   _semanticChunker(text)
@@ -74,6 +81,13 @@
  * The WEB APP path (submitSessionLog) chunks directly for
  * immediate queue confirmation — it does not use this folder scan.
  *
+ * FIX (incident diagnosis #4, closed): stops after
+ * CFG.SENSOR1_MAX_FILES_PER_RUN files (the rest wait for the next run),
+ * sleeps CFG.SENSOR1_PACING_MS between files, and quarantines a file
+ * that's failed CFG.SENSOR1_QUARANTINE_THRESHOLD times instead of
+ * retrying it forever — see this file's SHARED HELPERS list above for
+ * the functions backing each.
+ *
  * Fires: every 5 min via time-driven trigger.
  */
 function sensor1_scanInboundSessions() {
@@ -101,6 +115,10 @@ function sensor1_scanInboundSessions() {
     // _PROCESSED subfolder: processed docs move here so getFiles()
     // (non-recursive) excludes them on all subsequent trigger runs.
     const processedFolder = _getOrCreateFolder('_PROCESSED', inboundFolder);
+    // _QUARANTINE subfolder: same exclusion effect, for a file that's
+    // failed CFG.SENSOR1_QUARANTINE_THRESHOLD times — see the failure
+    // branch below (incident diagnosis #4's missing-escalation-path fix).
+    const quarantineFolder = _getOrCreateFolder('_QUARANTINE', inboundFolder);
 
     const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
@@ -141,25 +159,61 @@ function sensor1_scanInboundSessions() {
         try { runHardeningAudit(rawText); } catch (_) {}
 
         // Archive full raw log as a single reference doc
-        const rawDocName = '[RAW]_' + logUUID;
-        if (!rawFolder.getFilesByName(rawDocName).hasNext()) {
-          const rawDoc = DocumentApp.create(rawDocName);
-          const rawDId = rawDoc.getId();
-          rawDoc.getBody().setText(rawText);
-          rawDoc.saveAndClose();
-          DriveApp.getFileById(rawDId).moveTo(rawFolder);
-          DriveApp.getFileById(rawDId)
-            .setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
-        }
+        _archiveRawLog_(rawFolder, '[RAW]_' + logUUID, rawText);
 
         const n = _chunkAndQueue(rawText, 'SESSION_LOG', logUUID, rawFolder, staging, ss);
         queued += n;
 
         // Move source to _PROCESSED — excluded from all future scans
         file.moveTo(processedFolder);
+        _clearSensor1Failure_(file.getId());
 
       } catch (docErr) {
         _reportError('sensor1:doc:' + file.getName(), docErr, null);
+        const failureCount = _recordSensor1Failure_(file.getId());
+        if (failureCount >= CFG.SENSOR1_QUARANTINE_THRESHOLD) {
+          // FIX (incident diagnosis #4): every other stage in this
+          // pipeline escalates a repeatedly-failing item to a terminal
+          // state instead of retrying it forever (Turnstile's
+          // STUDIO_TIMEOUT, harvestStudioReturns' FAILED). This file had
+          // no such path — it just sat in the inbound folder and got
+          // retried in full every 5 minutes. Quarantining stops that
+          // without silently losing the file: it's still in Drive, just
+          // out of the scan loop, for a human to look at.
+          try {
+            file.moveTo(quarantineFolder);
+            console.log('[Sensor1] Quarantined after ' + failureCount +
+              ' failures: ' + file.getName());
+          } catch (moveErr) {
+            _reportError('sensor1:quarantine:' + file.getName(), moveErr, null);
+          }
+          _clearSensor1Failure_(file.getId());
+        }
+      } finally {
+        // Deliberately in `finally`, `break` included — not after the
+        // try/catch. The near-empty and duplicate branches above both
+        // `continue` from inside the try block, which would skip any
+        // code placed after the try/catch entirely; a `finally` still
+        // always runs (and per JS spec, a `break` inside it overrides
+        // whatever `continue` was pending), so this is the one place
+        // that reliably runs once per file regardless of which branch
+        // it took above.
+        //
+        // FIX (incident diagnosis #4): no cap meant a burst of files in
+        // one run could trip Drive's own rate limit ("Service Documents
+        // failed while accessing document with id X") — every file this
+        // loop reaches called DocumentApp.openById() at least once
+        // (line ~121), skip branches included, so pacing has to apply to
+        // all of them, not just fully-processed ones. Files left
+        // unprocessed this run are untouched (still in inboundFolder,
+        // not moved), so the next 5-minute run picks them up — same
+        // natural continuation the folder-scan already relies on.
+        Utilities.sleep(CFG.SENSOR1_PACING_MS);
+        if (scanned >= CFG.SENSOR1_MAX_FILES_PER_RUN) {
+          console.log('[Sensor1] Reached SENSOR1_MAX_FILES_PER_RUN (' +
+            CFG.SENSOR1_MAX_FILES_PER_RUN + ') for this run — remaining files wait for the next.');
+          break;
+        }
       }
     }
 
@@ -242,16 +296,7 @@ function submitSessionLog(text) {
     }
 
     // Archive full raw log as a reference doc (not surfaced in queue)
-    const rawDocName = '[RAW]_' + logUUID;
-    if (!rawFolder.getFilesByName(rawDocName).hasNext()) {
-      const rawDoc = DocumentApp.create(rawDocName);
-      const rawDId = rawDoc.getId();
-      rawDoc.getBody().setText(rawText);
-      rawDoc.saveAndClose();
-      DriveApp.getFileById(rawDId).moveTo(rawFolder);
-      DriveApp.getFileById(rawDId)
-        .setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
-    }
+    _archiveRawLog_(rawFolder, '[RAW]_' + logUUID, rawText);
 
     const chunksQueued = _chunkAndQueue(rawText, 'SESSION_LOG', logUUID, rawFolder, staging, ss);
     SpreadsheetApp.flush();
@@ -839,6 +884,136 @@ function _chunkAndQueue(rawText, payloadType, logUUID, rawFolder, staging, ss) {
   } catch (_) {}
 
   return queued;
+}
+
+
+/**
+ * Splits rawText into groups of consecutive lines, each group under
+ * ~maxChars, WITHOUT ever splitting inside a line — a group boundary only
+ * ever falls where a '\n' already was in the original text. That's what
+ * lets _archiveRawLog_() write in bounded pieces and still reconstruct
+ * the exact original byte content: groups.join('\n') === rawText always,
+ * for any maxChars, because splitting rawText by '\n' and regrouping
+ * those same lines (never re-slicing a line itself) can only ever put
+ * '\n' back exactly where split() removed one.
+ *
+ * A single line longer than maxChars becomes its own (oversized) group
+ * rather than being cut mid-line — acceptable: the goal is bounding the
+ * NUMBER of edits DocumentApp.flush()-es between, not an absolute
+ * per-write ceiling, and real session logs are line-oriented text, not
+ * one unbroken multi-megabyte line.
+ */
+function _groupLinesForArchiveWrite_(rawText, maxChars) {
+  maxChars = maxChars || CFG.ARCHIVE_WRITE_CHUNK_CHARS;
+  const lines = rawText.split('\n');
+  const groups = [];
+  let current = [];
+  let currentLen = 0;
+
+  lines.forEach((line) => {
+    current.push(line);
+    currentLen += line.length + 1; // +1 for the '\n' this line needs when rejoined
+    if (currentLen >= maxChars) {
+      groups.push(current.join('\n'));
+      current = [];
+      currentLen = 0;
+    }
+  });
+  if (current.length > 0) groups.push(current.join('\n'));
+  return groups;
+}
+
+/**
+ * Archives rawText as a new Drive doc named rawDocName in rawFolder — the
+ * shared write both sensor1_scanInboundSessions() and submitSessionLog()
+ * used to duplicate (incident diagnosis #5: "the second copy would
+ * otherwise be one more place future changes have to remember to make").
+ *
+ * FIX (incident diagnosis #4): the original single
+ * `doc.getBody().setText(wholeRawText)` call can throw "Too many changes
+ * applied before saving document..." once a log is large or emoji-dense
+ * enough — a real Google Docs internal change-tracking limit, not a logic
+ * bug. Writes in bounded, line-safe groups (_groupLinesForArchiveWrite_())
+ * instead, flushing every CFG.ARCHIVE_WRITE_FLUSH_EVERY groups via
+ * DocumentApp.flush() to force incremental persistence rather than
+ * accumulating the whole write as one uncommitted batch.
+ *
+ * A brand-new Body starts with exactly one (empty) paragraph in real Docs
+ * — the first group reuses that paragraph via setText() instead of
+ * appendParagraph(), so the archived doc never gains a stray leading
+ * empty line. (This sandbox's DocumentApp mock starts a fresh Body with
+ * ZERO paragraphs rather than one, unlike real Docs — the
+ * body.getNumChildren() > 0 check below is what makes this function
+ * correct either way, not a mock-specific accommodation.)
+ *
+ * Same not-already-archived guard both call sites already had, now in
+ * one place: a no-op if rawDocName already exists in rawFolder.
+ *
+ * @param  {Folder} rawFolder   03.4_RAW_EXHAUST Drive folder.
+ * @param  {string} rawDocName  '[RAW]_' + logUUID.
+ * @param  {string} rawText     Full, untouched raw log text.
+ * @returns {boolean} true if a new doc was written; false if rawDocName
+ *          already existed (nothing written — same guard as before).
+ */
+function _archiveRawLog_(rawFolder, rawDocName, rawText) {
+  if (rawFolder.getFilesByName(rawDocName).hasNext()) return false;
+
+  const rawDoc = DocumentApp.create(rawDocName);
+  const rawDId = rawDoc.getId();
+  const body   = rawDoc.getBody();
+
+  const groups = _groupLinesForArchiveWrite_(rawText);
+  let sinceFlush = 0;
+  groups.forEach((groupText, idx) => {
+    if (idx === 0 && body.getNumChildren() > 0) {
+      body.getChild(0).asParagraph().setText(groupText);
+    } else {
+      body.appendParagraph(groupText);
+    }
+    sinceFlush++;
+    if (sinceFlush >= CFG.ARCHIVE_WRITE_FLUSH_EVERY) {
+      DocumentApp.flush();
+      sinceFlush = 0;
+    }
+  });
+
+  rawDoc.saveAndClose();
+  DriveApp.getFileById(rawDId).moveTo(rawFolder);
+  DriveApp.getFileById(rawDId).setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.EDIT);
+  return true;
+}
+
+
+/**
+ * Per-file failure counter for sensor1_scanInboundSessions(), backing its
+ * quarantine escalation (incident diagnosis #4: "a file that fails once
+ * stays in the inbound folder and gets retried in full on every future
+ * run, forever" — every other stage in this pipeline has an escalation
+ * path; this sensor didn't). Stored as one small JSON blob keyed by Drive
+ * file ID, same shape KOS_PROMOTED_VECTORS already uses — a per-file
+ * Script Property would work too, but this is one property to reason
+ * about instead of one per ever-failed file.
+ *
+ * @returns {number} the new failure count for fileId, after incrementing.
+ */
+function _recordSensor1Failure_(fileId) {
+  const props = PropertiesService.getScriptProperties();
+  const counts = JSON.parse(props.getProperty(CFG.PROP.SENSOR1_FAILURE_COUNTS) || '{}');
+  counts[fileId] = (counts[fileId] || 0) + 1;
+  props.setProperty(CFG.PROP.SENSOR1_FAILURE_COUNTS, JSON.stringify(counts));
+  return counts[fileId];
+}
+
+/** Clears fileId's failure count — called once it's quarantined (or on
+ * eventual success, so a transient failure doesn't count against a file
+ * that later processes cleanly). */
+function _clearSensor1Failure_(fileId) {
+  const props = PropertiesService.getScriptProperties();
+  const counts = JSON.parse(props.getProperty(CFG.PROP.SENSOR1_FAILURE_COUNTS) || '{}');
+  if (fileId in counts) {
+    delete counts[fileId];
+    props.setProperty(CFG.PROP.SENSOR1_FAILURE_COUNTS, JSON.stringify(counts));
+  }
 }
 
 
