@@ -1383,6 +1383,50 @@ function checkSandboxScope() {
 }
 
 // -----------------------------------------------------------------------
+// Check L — plausibility-gate phrase-list drift.
+//
+// The AI-groundedness/plausibility gate exists three times — cas-ccps's
+// _fiCheckPlausibility_, leader-hub's _checkAiResultPlausible_,
+// kos-personal's _srCheckGroundedness_ — one in each system, because GAS
+// gives each its own execution scope with no cross-project calls. Before
+// shared/flow-harness/plausibility-phrases.json existed, each
+// implementation's phrase list and stopword set had already drifted from
+// the other two independently: cas-ccps caught "could not open" and
+// leader-hub didn't; leader-hub caught "insufficient context" and cas-ccps
+// didn't; kos-personal had no phrase list at all. Nothing caught that
+// silently — this does.
+//
+// tools/flow-harness-sync/sync-plausibility-phrases.js owns the actual
+// regeneration logic; this just calls its --check equivalent
+// (computeUpdates()) and reports drift the same way Check A-K report
+// everything else, so `node tools/gas-lint/check.js` is still the one
+// command that catches this class of problem alongside every other one.
+function checkPlausibilityGateDrift() {
+  let updates;
+  try {
+    updates = require('../flow-harness-sync/sync-plausibility-phrases').computeUpdates();
+  } catch (e) {
+    err('harness-drift',
+      `Could not evaluate the plausibility-gate canonical source: ${e.message}. See ` +
+      `shared/flow-harness/plausibility-phrases.json and ` +
+      `tools/flow-harness-sync/sync-plausibility-phrases.js.`,
+      'shared/flow-harness/plausibility-phrases.json');
+    return;
+  }
+  updates.filter(u => u.changed).forEach(u => {
+    err('harness-drift',
+      `${path.relative(REPO_ROOT, u.file)}'s plausibility-gate phrase list, stopword set, or ` +
+      `match-count threshold no longer matches shared/flow-harness/plausibility-phrases.json ` +
+      `— the canonical source the other two systems' gates also read from. Run ` +
+      `\`node tools/flow-harness-sync/sync-plausibility-phrases.js\` to bring it back in step, ` +
+      `or port the improvement into the canonical source first if this file's version is the ` +
+      `one that should win (same directionality rule as flow-prompt drift — meta/FLOW_DOCTRINE.md ` +
+      `rule 16).`,
+      u.file);
+  });
+}
+
+// -----------------------------------------------------------------------
 // Reusable primitives
 //
 // stripCommentsAndStrings() is the piece other tools most need and most
@@ -1433,6 +1477,7 @@ checkColumnMapAgreement();
 checkFlowSurfaces();
 checkFixtureConsumers();
 checkSandboxScope();
+checkPlausibilityGateDrift();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

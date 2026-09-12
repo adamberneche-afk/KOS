@@ -477,6 +477,41 @@ test('groundedness gate: a fabricated return (shares no source word) is flagged,
   assert.equal(report.suspectFabrication, 1, JSON.stringify(report));
 });
 
+test('groundedness gate: a self-reported non-access phrase is caught directly, even on a short output', () => {
+  // NEW (redundancy review B1 / flow-harness proposal Phase 0): this gate
+  // previously had no phrase check at all — the only one of the three
+  // systems' plausibility/groundedness gates without one, despite this
+  // file's own CHANGELOG.md incident being the exact shape a phrase check
+  // catches directly ("Workspace sources is turned off"). Unlike the
+  // vocabulary-overlap check below it, this fires even when there's no
+  // source doc to compare against at all (skipStaging avoided here only
+  // because _srApplyReturn_ needs a real staging row to reach this gate;
+  // the short docText below is what proves the phrase check has no
+  // SR_GROUNDEDNESS_MIN_CHARS floor the way vocabulary-overlap does).
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox, {
+    primary: '{"summary":"I do not have access to the session materials, but here is my best guess."}',
+  });
+  const result = exported.harvestStudioReturns();
+  assert.equal(result.suspectFabrication, 1, JSON.stringify(result));
+  assert.equal(result.applied, 0);
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
+
+  const report = exported.checkStudioReturns();
+  assert.match(report.rows[0].error, /self-reported non-access phrase/);
+});
+
+test('_srCheckGroundedness_: the phrase check runs before the source doc is even opened', () => {
+  const { exported } = load();
+  // A bogus fileId would throw inside DocumentApp.openById() if this ever
+  // got that far — reaching a phrase-check verdict without throwing proves
+  // the phrase check short-circuits before that read.
+  const result = exported._srCheckGroundedness_('no-such-file-id',
+    'Unable to access the requested document, so this is a generic placeholder.');
+  assert.equal(result.grounded, false);
+  assert.match(result.reason, /self-reported non-access phrase/);
+});
+
 test('groundedness gate: VECTOR_CLASSIFY output is never gated (no narrative text to compare)', () => {
   const { exported, sandbox } = load();
   const word = 'zzqorbital42';
