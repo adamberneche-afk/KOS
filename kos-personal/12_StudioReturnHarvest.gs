@@ -205,14 +205,37 @@ function harvestStudioReturns() {
 
     if (outcome.suspectFabrication) {
       // The doc was never touched — the whole point of running the
-      // groundedness gate BEFORE the overwrite. No retry loop: unlike a
-      // JSON parse hiccup, a Flow that isn't actually reading its source
-      // document won't fix itself on attempt 2, so there's no reason to
-      // wait for SR_MAX_ATTEMPTS before surfacing it.
+      // groundedness gate BEFORE the overwrite. No retry loop: a Flow
+      // that isn't actually reading its source document won't fix itself
+      // on attempt 2, so there's no reason to wait for SR_MAX_ATTEMPTS
+      // before surfacing it.
       _srMarkReturnRow_(sheet, sheetRow, 'SUSPECT_FABRICATION', outcome.error, attempts);
       result.suspectFabrication++;
       _reportError('harvestStudioReturns',
         new Error('Payload ' + uid + ' SUSPECT_FABRICATION: ' + outcome.error), null);
+      continue;
+    }
+
+    if (outcome.unretryable) {
+      // FIX (incident diagnosis #3, "downstream" half, closed): a JSON
+      // parse failure here is exactly as unrecoverable as
+      // SUSPECT_FABRICATION above, for the same reason — this function
+      // re-parses the ALREADY-STORED return text on every attempt, it
+      // never asks Studio to run again (see this file's header). Three
+      // retries on identical text fail identically three times by
+      // construction. The staging row used to sit occupying the one
+      // Turnstile concurrency slot for up to
+      // TURNSTILE_STUCK_THRESHOLD × TURNSTILE_STALE_MINS ≈ 90 minutes
+      // waiting on a staleness guard that was never going to fix THIS
+      // failure — reused the FAILED status (not a new one) since, unlike
+      // SUSPECT_FABRICATION, this is a single bad attempt with no
+      // recurring-flow-config angle that needs different pruning
+      // treatment; see _srPruneHarvested_()'s own header.
+      _srMarkReturnRow_(sheet, sheetRow, 'FAILED', outcome.error, attempts);
+      result.failed++;
+      _reportError('harvestStudioReturns',
+        new Error('Payload ' + uid + ' unretryable (' + outcome.error + ') — not waiting for ' +
+          'SR_MAX_ATTEMPTS, a retry re-parses the same stored text.'), null);
       continue;
     }
 
@@ -263,7 +286,7 @@ function _srApplyReturn_(staging, uid, row) {
   const alreadyWritten = _srIsDocWritten_(uid);
   if (!alreadyWritten) {
     const prepared = _srPrepareDocText_(payloadType, primary, auditor);
-    if (!prepared.ok) return { ok: false, error: prepared.error };
+    if (!prepared.ok) return { ok: false, error: prepared.error, unretryable: prepared.unretryable };
 
     // Groundedness gate — Curator types only (SR_CURATOR_TYPES). The
     // classification contract has no narrative text of its own to compare
@@ -305,9 +328,23 @@ function _srApplyReturn_(staging, uid, row) {
  * Builds the exact text to write to the doc. The two contracts differ in
  * ways that look cosmetic and are not — both are carried over verbatim from
  * the custom steps they replace.
+ *
+ * FIX (incident diagnosis #3, "upstream" half): every *_JSON_PARSE_FAILED
+ * error below now falls back to _srExtractJsonLoose_() before giving up —
+ * real observed failures were the model returning a persona-styled
+ * narrative report ("[🧹 THE CURATOR..." — a formatted write-up, not the
+ * raw JSON the contract requires) with a valid JSON payload still present
+ * somewhere inside it. See that function's own header for exactly what
+ * this can and can't recover.
+ *
+ * Every failure this function returns is also tagged `unretryable: true` —
+ * see harvestStudioReturns()'s own header for why: these are deterministic
+ * given the SAME stored text a retry re-parses, not a fresh inference, so
+ * "wait and try again" was never going to help (diagnosis #3, "downstream"
+ * half).
  */
 function _srPrepareDocText_(payloadType, primary, auditor) {
-  if (String(primary).trim() === '') return { ok: false, error: 'Empty model output' };
+  if (String(primary).trim() === '') return { ok: false, error: 'Empty model output', unretryable: true };
 
   const isCurator = SR_CURATOR_TYPES.indexOf(payloadType) !== -1;
 
@@ -317,25 +354,38 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
     //      stripped only for the copy being validated. Re-serializing risks
     //      subtly reformatting floats or key order differently from what the
     //      model produced, and there is nothing to merge here, so there is no
-    //      reason to reconstruct it at all.
+    //      reason to reconstruct it at all. This rule assumes the model's
+    //      output IS the contract's JSON, just fenced — it does NOT hold once
+    //      _srExtractJsonLoose_() below has to recover a payload from inside
+    //      a narrative wrapper, since the original text then also contains
+    //      prose the doc must not receive; that path re-serializes instead.
     //   2. The parsed result must be an Array, or nothing is written.
+    const stripped = _srStripJsonFence_(primary);
     let parsed;
+    let recoveredFromNarrative = false;
     try {
-      parsed = JSON.parse(_srStripJsonFence_(primary));
+      parsed = JSON.parse(stripped);
     } catch (e) {
-      return { ok: false, error: 'CLASSIFICATION_JSON_PARSE_FAILED: ' + e.message };
+      parsed = _srExtractJsonLoose_(stripped, 'array');
+      if (parsed === null) return { ok: false, error: 'CLASSIFICATION_JSON_PARSE_FAILED: ' + e.message, unretryable: true };
+      recoveredFromNarrative = true;
     }
-    if (!Array.isArray(parsed)) return { ok: false, error: 'CLASSIFICATION_JSON_NOT_ARRAY' };
-    return { ok: true, text: primary };
+    if (!Array.isArray(parsed)) return { ok: false, error: 'CLASSIFICATION_JSON_NOT_ARRAY', unretryable: true };
+    return { ok: true, text: recoveredFromNarrative ? JSON.stringify(parsed) : primary };
   }
 
   // CURATOR CONTRACT (WriteCuratorOutputStep.gs). Here the output IS
-  // reconstructed, because the Auditor pass has to be merged in.
+  // reconstructed, because the Auditor pass has to be merged in — so
+  // whether curatorParsed came from a direct parse or the narrative-
+  // recovery fallback, the final JSON.stringify() below already discards
+  // any surrounding prose either way. No rule-1-style distinction needed
+  // here, unlike the classification branch above.
   let curatorParsed;
   try {
     curatorParsed = JSON.parse(_srStripJsonFence_(primary));
   } catch (e) {
-    return { ok: false, error: 'CURATOR_JSON_PARSE_FAILED: ' + e.message };
+    curatorParsed = _srExtractJsonLoose_(_srStripJsonFence_(primary), 'object');
+    if (curatorParsed === null) return { ok: false, error: 'CURATOR_JSON_PARSE_FAILED: ' + e.message, unretryable: true };
   }
 
   if (String(auditor).trim() !== '') {
@@ -343,11 +393,14 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
     try {
       auditorParsed = JSON.parse(_srStripJsonFence_(auditor));
     } catch (e) {
-      // A malformed Auditor pass is a FULL failure, not a reason to drop the
-      // audit and write an un-audited result. CURATOR_PROMPT.md's rule
-      // against a fabricated sign-off implies a broken one must not be
-      // papered over either.
-      return { ok: false, error: 'AUDITOR_JSON_PARSE_FAILED: ' + e.message };
+      auditorParsed = _srExtractJsonLoose_(_srStripJsonFence_(auditor), 'object');
+      if (auditorParsed === null) {
+        // A malformed Auditor pass is a FULL failure, not a reason to drop
+        // the audit and write an un-audited result. CURATOR_PROMPT.md's
+        // rule against a fabricated sign-off implies a broken one must not
+        // be papered over either.
+        return { ok: false, error: 'AUDITOR_JSON_PARSE_FAILED: ' + e.message, unretryable: true };
+      }
     }
     // CURATOR_PROMPT.md Rule 8 / Section 4: a single top-level key holding
     // the Auditor output verbatim — never a second JSON object appended
@@ -356,6 +409,36 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
   }
 
   return { ok: true, text: JSON.stringify(curatorParsed) };
+}
+
+// Fallback for the *_JSON_PARSE_FAILED cases above: the model returned a
+// persona-styled narrative report instead of raw JSON, with a valid JSON
+// payload still embedded somewhere inside it (real observed failures all
+// started "[🧹 THE CUR..." — a formatted write-up, not a parse-breaking
+// typo). Finds the first `{`/`[` and the LAST matching `}`/`]` in the text
+// and tries parsing just that slice.
+//
+// A BOUNDED HEURISTIC, NOT A JSON-IN-PROSE PARSER — tried only as a
+// fallback after a direct parse already failed, never in place of one.
+// It can be fooled by a stray closing bracket inside the narrative
+// wrapper itself (e.g. prose that happens to contain a literal "}"
+// after the real JSON ends) — that would grab too much text and fail to
+// parse, which just falls through to the original *_JSON_PARSE_FAILED
+// error exactly as before this fix existed. It cannot silently produce a
+// WRONG result: JSON.parse() either accepts the sliced substring as
+// exactly what it claims to be, or this returns null and the caller's
+// original failure stands.
+function _srExtractJsonLoose_(text, kind) {
+  const open = kind === 'array' ? '[' : '{';
+  const close = kind === 'array' ? ']' : '}';
+  const start = text.indexOf(open);
+  const end = text.lastIndexOf(close);
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    return JSON.parse(text.slice(start, end + 1));
+  } catch (e) {
+    return null;
+  }
 }
 
 // ================================================================
