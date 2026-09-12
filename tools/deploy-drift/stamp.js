@@ -28,6 +28,7 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 // checked explicitly, not assumed.
 const MARKER_FILES = {
   'kos-personal': { file: 'kos-personal/18_DeployVersionMarker.gs', constant: 'KOS_DEPLOY_VERSION_SHA' },
+  'leader-hub:app': { file: 'leader-hub/DeployVersionMarker.gs', constant: 'LH_DEPLOY_VERSION_SHA' },
 };
 
 function currentHeadSha() {

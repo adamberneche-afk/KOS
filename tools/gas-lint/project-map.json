@@ -163,7 +163,9 @@
       "leader-hub/Data.gs",
       "leader-hub/SCR.gs",
       "leader-hub/AiPrompts.gs",
-      "leader-hub/FlowOps.gs"
+      "leader-hub/FlowOps.gs",
+      "leader-hub/DeployVersionReport.gs",
+      "leader-hub/DeployVersionMarker.gs"
     ],
     "html": [
       "leader-hub/student-leader-hub.html"
