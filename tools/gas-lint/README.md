@@ -297,6 +297,77 @@ it — that gap is closed now.
     GAS code, including literal `loadGasFiles(...)` snippets that would
     otherwise be analysed as real sandboxes.
 
+13. **Web-app auth-check presence** (`checkWebAppAuthChecks`). Every
+    `doGet()`/`doPost()` needs a visible caller-identity check somewhere
+    reachable from it. This catches the exact bug class
+    `kos-personal/7_WebApp.gs`'s `doPost()` shipped with once — it
+    originally accepted a webhook POST from anyone who found the
+    deployment URL, no caller check anywhere in the project (see that
+    file's own FIX comment).
+
+    Reading all five `doGet`/`doPost` files in this repo before writing
+    this check turned up four *different*, all-legitimate shapes for "who's
+    allowed to call this" — so the rule is asymmetric by design:
+
+    - `doGet()` — silent if a recognized check
+      (`Session.getActiveUser()`, an `*Auth*`/`*Verify*`/`*Token*`/
+      `*Secret*`-named helper call, or an `e.parameter.secret` comparison)
+      exists **anywhere in the project**, not necessarily in `doGet()`'s own
+      body. Serving a page shell un-gated is normal when the real data is
+      gated downstream — `cas-ccps/13_StudentDashboard.js`'s `doGet()` has
+      no check of its own at all; `getStudentDashboardData()` does, and
+      only runs later via `google.script.run`. Flagging that would be a
+      false positive turned into noise to silence rather than signal to
+      act on. Error only if nothing recognizable exists anywhere in the
+      project.
+    - `doPost()` — silent only if the check is in `doPost()`'s **own
+      body** (`kos-personal/7_WebApp.gs`, `cas-ccps/07_TeacherDashboard.js`
+      each call their own dedicated checker directly). A POST typically
+      performs the action or returns the data directly, so "gated
+      downstream" doesn't apply the way it does to a page shell. Warn, not
+      error, if a check exists elsewhere in the project but isn't called
+      from `doPost()` itself — `leader-hub/EmailBridge.gs`'s `doPost()` is
+      exactly this case: the project's only checker (`_isAuthorizedOwner_`,
+      in `Code.gs`) isn't called from it. That might be fine — the
+      manifest's own `access: "DOMAIN"` restriction may be the intended
+      gate — or it might be a real gap nobody has looked at yet. This check
+      can't tell which, so it warns rather than deciding either way.
+
+    Like every other check here, this is a heuristic over stripped source,
+    not a real call-graph analysis — it can't prove a same-project checker
+    is actually reachable from the handler, only that one exists at all.
+
+14. **Bounded-loop convention** (`checkBoundedLoopConvention`) — warning
+    level. A `while (x.hasNext())` loop over a Drive/Docs/Sheets iterator
+    has no built-in size limit — it runs until the resource is exhausted,
+    however large that turns out to be. Two things can go wrong with that:
+    Apps Script has a hard 6-minute execution ceiling, so a big-enough
+    Drive folder just times out mid-loop with no partial-progress signal;
+    and a stuck or slow loop is a debugging dead end — there's no
+    checkpoint to point at, just "it didn't finish."
+
+    This is a **new** convention, not a retrofit of existing code, and it's
+    deliberately warning-level: a grep across the repo before writing it
+    turned up seven real production loops
+    (`kos-personal/1_Config_And_Deploy.gs`, `5_Error_And_Utilities.gs`,
+    `6_Governance.gs` (×3), `11_Registrar_CogRelay.gs`,
+    `cas-ccps/10_AdminRecoveryPanel.js`) with neither a cap nor a pacing
+    call today. Erroring on all of them at once would make this check
+    something to silence, not something to act on. These seven are expected,
+    pre-existing findings, not a regression this check introduced — see
+    `meta/PROCESS_HARDENING_SPRINT.md` phase 2b.
+
+    "References a cap" and "references pacing" are both read loosely on
+    purpose: a `break`, or any identifier whose name contains
+    `MAX`/`LIMIT`/`CAP`, counts as a cap; `Utilities.sleep(...)`, a
+    `*pacing*`/`*throttle*`/`*sleep*`-named call, or an elapsed-time
+    comparison against `Date.now()`/`new Date()` counts as pacing. Neither
+    can prove the cap is actually wired to loop termination — only that
+    something cap- or pacing-shaped is present in the loop body. A false
+    negative (a real cap this doesn't recognize) is the safer failure mode
+    here than a false positive on code that already does the right thing
+    under a naming style this didn't anticipate.
+
 ## What this is NOT
 
 Not a JS parser. Comments and string literals are stripped with a small

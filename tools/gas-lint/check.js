@@ -1427,6 +1427,248 @@ function checkPlausibilityGateDrift() {
 }
 
 // -----------------------------------------------------------------------
+// Check M — every doGet()/doPost() needs a visible caller-identity check
+// somewhere reachable from it.
+//
+// The bug class this catches already shipped once: kos-personal's doPost()
+// originally accepted a webhook POST from anyone who found the deployment
+// URL, with zero caller check anywhere in the project — see 7_WebApp.gs's
+// own FIX comment above _isAuthorizedWebhookCall_(). Nothing before this
+// caught that mechanically; it took an external product review to find it.
+//
+// Real deployments use several *different*, all-legitimate shapes for "who's
+// allowed to call this", found by reading all five doGet/doPost files in
+// this repo before writing this check:
+//   - kos-personal/7_WebApp.gs: doGet() and doPost() each call their own
+//     dedicated checker (_isAuthorizedOwner_, _isAuthorizedWebhookCall_)
+//     directly, in their own body.
+//   - cas-ccps/07_TeacherDashboard.js: same shape, one checker per handler
+//     (_isAuthorizedTeacher_, _verifyLeaderHubToken_).
+//   - cas-ccps/13_StudentDashboard.js: doGet() serves a static shell with NO
+//     check of its own — the real gate is on the data call
+//     (getStudentDashboardData()'s Session.getActiveUser() check), which
+//     only runs later via google.script.run. This is a legitimate,
+//     intentional pattern, documented in the file's own header comment.
+//     Flagging it would be a false positive that would make this check
+//     noise to be silenced rather than signal to act on.
+//   - leader-hub/EmailBridge.gs: doPost() has no check of its own, and the
+//     project's only checker (_isAuthorizedOwner_, in Code.gs) is not
+//     called from it. This is the genuinely ambiguous middle case — the
+//     manifest's own access:"DOMAIN" restriction may be the intended gate
+//     here, or this may be a real gap nobody has looked at. Not confidently
+//     either, so: warn, don't error, and don't silently decide it either way.
+//
+// So the rule below is asymmetric by design, not sloppy:
+//   doGet()  — silent if a recognized check exists ANYWHERE in the project
+//              (own body or not): serving a page shell un-gated is normal
+//              when the real data is gated downstream. ERROR only if
+//              nothing recognizable exists anywhere in the project.
+//   doPost() — silent only if the check is in doPost()'s OWN body (a POST
+//              typically performs the action or returns the data directly,
+//              so "gated downstream" doesn't apply the same way as it does
+//              to a page shell). WARN if a check exists elsewhere in the
+//              project but not in doPost() itself. ERROR if nothing exists
+//              anywhere in the project.
+//
+// Like Check A-L, this is a heuristic over the stripped source, not a real
+// call-graph analysis — it cannot tell whether a same-project checker is
+// actually reachable from the handler, only whether one exists at all. See
+// the module header's "WHAT THIS IS NOT" note.
+const AUTH_CALL_RE = /\bSession\s*\.\s*getActiveUser\s*\(|\b[A-Za-z_$][\w$]*(?:Auth|Verify|Token|Secret)[\w$]*\s*\(|\.\s*parameter\s*\.\s*secret\b/i;
+
+// Brace-matches the body of the first `function <name>(...) { ... }` found
+// in already-stripped source. Returns null if the function isn't declared
+// here at all, or its body has no balancing close brace (malformed source —
+// some other check will have already flagged that).
+function findFunctionBody(stripped, name) {
+  const m = new RegExp(`function\\s+${name}\\s*\\(`).exec(stripped);
+  if (!m) return null;
+  const braceStart = stripped.indexOf('{', m.index);
+  if (braceStart === -1) return null;
+  let depth = 0, end = -1;
+  for (let k = braceStart; k < stripped.length; k++) {
+    if (stripped[k] === '{') depth++;
+    else if (stripped[k] === '}') { depth--; if (depth === 0) { end = k; break; } }
+  }
+  if (end === -1) return null;
+  return stripped.slice(braceStart, end + 1);
+}
+
+// Pure decision logic, kept separate from file I/O so it's directly
+// testable with synthetic fixtures instead of real repo files (see
+// tests/tools/gas-lint-webapp-auth.test.js).
+//
+// `files` is [{ path, stripped }, ...] — every file bound to one GAS
+// project, already comment/string-stripped. Returns a list of
+// { handler, file, severity: 'error'|'warn', reason }.
+function evaluateWebAppAuthForProject(files) {
+  const findings = [];
+  const projectHasAuthPattern = files.some(f => AUTH_CALL_RE.test(f.stripped));
+
+  for (const handlerName of ['doGet', 'doPost']) {
+    const owner = files.find(f => new RegExp(`function\\s+${handlerName}\\s*\\(`).test(f.stripped));
+    if (!owner) continue; // this project doesn't define this handler at all
+
+    const body = findFunctionBody(owner.stripped, handlerName);
+    const directCheck = !!(body && AUTH_CALL_RE.test(body));
+    if (directCheck) continue;
+
+    if (!projectHasAuthPattern) {
+      findings.push({
+        handler: handlerName, file: owner.path, severity: 'error',
+        reason: 'no visible caller-identity check anywhere in the project',
+      });
+      continue;
+    }
+
+    if (handlerName === 'doPost') {
+      findings.push({
+        handler: handlerName, file: owner.path, severity: 'warn',
+        reason: 'a caller-identity check exists elsewhere in the project but not in doPost() itself',
+      });
+    }
+    // doGet with no direct check but a pattern elsewhere in the project:
+    // no finding — the accepted "gate the data, not the shell" shape.
+  }
+  return findings;
+}
+
+function checkWebAppAuthChecks() {
+  for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
+    if (projectName.startsWith('_')) continue;
+    const files = (def.files || [])
+      .filter(f => !f.endsWith('.html') && exists(f))
+      .map(f => ({ path: f, stripped: stripCommentsAndStrings(readFile(f)) }));
+    if (!files.length) continue;
+
+    for (const finding of evaluateWebAppAuthForProject(files)) {
+      const report = finding.severity === 'error' ? err : warn;
+      if (finding.severity === 'error') {
+        report('web-app-auth-check',
+          `${finding.file}'s ${finding.handler}() has no visible caller-identity check anywhere ` +
+          `in project "${projectName}" (no Session.getActiveUser(), *Auth*/*Verify*/*Token*/` +
+          `*Secret* helper call, or e.parameter.secret comparison found in any file of this ` +
+          `project). This is the exact bug class kos-personal/7_WebApp.gs's doPost() shipped ` +
+          `with once (see its own FIX comment) — anyone who finds the deployment URL can call ` +
+          `this handler. Add a check, or if the manifest's own access restriction ` +
+          `(webapp.access in the project's appsscript.json) is the intended gate, say so in a ` +
+          `comment so this doesn't look unintentional.`,
+          finding.file);
+      } else {
+        report('web-app-auth-check',
+          `${finding.file}'s doPost() has no caller-identity check in its own body, and the ` +
+          `check(s) found elsewhere in project "${projectName}" aren't called from it. A POST ` +
+          `handler usually performs the action or returns the data directly — unlike a doGet() ` +
+          `page shell, where gating the data call instead of the shell is a normal, intentional ` +
+          `pattern (see cas-ccps/13_StudentDashboard.js). Worth a look: confirm the project's ` +
+          `manifest access level (webapp.access) is the intended gate here, or add a direct check.`,
+          finding.file);
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
+// Check N — bounded-loop convention (warning-level).
+//
+// A `while (x.hasNext())` loop over a Drive/Docs/Sheets iterator
+// (DriveApp.getFiles(), .getFilesByName(), .searchFiles(), a folder's
+// .getFiles(), etc.) has no built-in size limit — it runs until the
+// resource is exhausted, however large that turns out to be. Two things
+// can go wrong with that: (1) Apps Script has a hard 6-minute execution
+// ceiling, so a big-enough Drive folder just times out mid-loop with no
+// partial-progress signal; (2) per the process-hardening brainstorm this
+// check came out of, a stuck or slow loop is a debugging dead end — there
+// is no checkpoint to point at, just "it didn't finish."
+//
+// This is a NEW convention, not a retrofit of existing code, and it is
+// deliberately warning-level, not error-level: grep before writing it
+// turned up real production loops (kos-personal/6_Governance.gs,
+// kos-personal/1_Config_And_Deploy.gs, cas-ccps/10_AdminRecoveryPanel.js,
+// among others) with neither a cap nor a pacing call today. Erroring on
+// all of them at once would make this check something to silence, not
+// something to act on — see meta/PROCESS_HARDENING_SPRINT.md phase 2b for
+// the up-front acknowledgment that these are now-visible, pre-existing
+// warnings, not regressions this change introduced.
+//
+// "References a cap" is read loosely on purpose (a `break`, or any
+// identifier whose name contains MAX/LIMIT/CAP) — this can't prove the cap
+// is actually wired to loop termination, only that something cap-shaped is
+// present in the loop body. Same looseness for "references pacing"
+// (Utilities.sleep(...), a *pacing*/*throttle*/*sleep*-named call, or an
+// elapsed-time comparison against Date.now()/new Date()). False negatives
+// (a real cap this regex doesn't recognize) are the safer failure mode for
+// a warning-level check than false positives on code that already does the
+// right thing under a naming style this didn't anticipate.
+const HASNEXT_WHILE_RE = /while\s*\(\s*([A-Za-z_$][\w$]*)\s*\.\s*hasNext\s*\(\s*\)\s*\)/g;
+// `\b[\w$]*(?:MAX|...)[\w$]*\b`, NOT `[A-Za-z_$][\w$]*(?:MAX|...)...` — the
+// latter looks stricter but silently can never match an identifier where
+// MAX/LIMIT/CAP is the very first thing in the name (e.g. `MAX_FILES`):
+// the mandatory single leading character consumes the identifier's own
+// first letter, so "MAX" is no longer there to find in what's left.
+const LOOP_CAP_RE = /\bbreak\b|\b[\w$]*(?:MAX|LIMIT|CAP)[\w$]*\b/i;
+const LOOP_PACING_RE = /Utilities\s*\.\s*sleep\s*\(|\b[\w$]*(?:pacing|throttle|sleep)[\w$]*\s*\(|(?:Date\s*\.\s*now\s*\(\s*\)|new\s+Date\s*\(\s*\)(?:\s*\.\s*getTime\s*\(\s*\))?)\s*-\s*[A-Za-z_$]/i;
+
+// Brace-matches a `while (...) { ... }` body, or — for the braceless
+// `while (x.hasNext()) doThing();` shape used a few places in this repo —
+// the single statement up to its terminating top-level `;`. `afterCond` is
+// the index right after the while condition's closing `)`.
+function extractWhileLoopBody(stripped, afterCond) {
+  let i = afterCond;
+  while (i < stripped.length && /\s/.test(stripped[i])) i++;
+  if (stripped[i] === '{') {
+    let depth = 0, end = -1;
+    for (let k = i; k < stripped.length; k++) {
+      if (stripped[k] === '{') depth++;
+      else if (stripped[k] === '}') { depth--; if (depth === 0) { end = k; break; } }
+    }
+    return end === -1 ? null : stripped.slice(i, end + 1);
+  }
+  let depth = 0, end = -1;
+  for (let k = i; k < stripped.length; k++) {
+    const c = stripped[k];
+    if (c === '(' || c === '[') depth++;
+    else if (c === ')' || c === ']') depth--;
+    else if (c === ';' && depth <= 0) { end = k; break; }
+  }
+  return end === -1 ? null : stripped.slice(i, end + 1);
+}
+
+function checkBoundedLoopConvention() {
+  const seenFiles = new Set();
+  for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
+    if (projectName.startsWith('_')) continue;
+    for (const relPath of def.files || []) {
+      if (relPath.endsWith('.html') || seenFiles.has(relPath) || !exists(relPath)) continue;
+      seenFiles.add(relPath);
+
+      const stripped = stripCommentsAndStrings(readFile(relPath));
+      HASNEXT_WHILE_RE.lastIndex = 0;
+      let m;
+      while ((m = HASNEXT_WHILE_RE.exec(stripped))) {
+        const body = extractWhileLoopBody(stripped, HASNEXT_WHILE_RE.lastIndex);
+        if (!body) continue;
+        const hasCap = LOOP_CAP_RE.test(body);
+        const hasPacing = LOOP_PACING_RE.test(body);
+        if (hasCap && hasPacing) continue;
+
+        const missing = [];
+        if (!hasCap) missing.push('a cap constant (a break, or a MAX_*/LIMIT_*/CAP_*-named reference)');
+        if (!hasPacing) missing.push('a pacing call (Utilities.sleep(...), or an elapsed-time budget check)');
+        warn('bounded-loop-convention',
+          `${relPath}:${lineAt(stripped, m.index)} — a \`while (${m[1]}.hasNext())\` loop over ` +
+          `what looks like a Drive/Docs/Sheets iterator doesn't reference ${missing.join(' or ')}` +
+          `. Apps Script has a hard 6-minute execution ceiling, and an unbounded loop over a ` +
+          `growing external resource times out mid-loop with no partial-progress signal — this ` +
+          `is a new convention (meta/PROCESS_HARDENING_SPRINT.md phase 2b), not yet applied ` +
+          `everywhere, so it's a warning: worth tightening when you're already in this function.`,
+          relPath);
+      }
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 // Reusable primitives
 //
 // stripCommentsAndStrings() is the piece other tools most need and most
@@ -1459,6 +1701,13 @@ module.exports = {
   lineAt,
   ALLOWLIST,
   DECL_RE,
+  AUTH_CALL_RE,
+  findFunctionBody,
+  evaluateWebAppAuthForProject,
+  HASNEXT_WHILE_RE,
+  LOOP_CAP_RE,
+  LOOP_PACING_RE,
+  extractWhileLoopBody,
 };
 
 if (require.main !== module) return;
@@ -1478,6 +1727,8 @@ checkFlowSurfaces();
 checkFixtureConsumers();
 checkSandboxScope();
 checkPlausibilityGateDrift();
+checkWebAppAuthChecks();
+checkBoundedLoopConvention();
 
 if (AS_JSON) {
   console.log(JSON.stringify(findings, null, 2));

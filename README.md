@@ -110,7 +110,7 @@ in the first place. See [`meta/README.md`](./meta/README.md).
 
 Built after a full codebase review kept turning up the same failure
 pattern: bugs that only exist because nothing checks for them
-automatically. Twelve checks now, each written for a bug that had already
+automatically. Fourteen checks now, each written for a bug that had already
 shipped — duplicate top-level declarations across files that share an Apps
 Script project (a parse-time crash, or worse, a silent wrong-function-wins
 if the duplicates actually differ), undefined config keys,
