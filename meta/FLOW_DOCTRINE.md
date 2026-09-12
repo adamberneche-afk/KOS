@@ -487,6 +487,59 @@ produced the agreement.
 
 ---
 
+## 17. A failure is either retryable or it isn't. Know which before writing the retry loop.
+
+`kos-personal`'s Curator/Auditor harvest treated every `_srPrepareDocText_`
+failure the same way: wait out `SR_MAX_ATTEMPTS`, *then* give up. Six real
+`CURATOR_JSON_PARSE_FAILED` payloads later, the pattern was obvious in
+hindsight — `harvestStudioReturns()` re-parses the ALREADY-STORED return
+text on every attempt; it never asks Studio to run again. A JSON parse
+failure against that same stored text fails identically on attempt 2 and
+attempt 3, by construction. The retry loop wasn't protecting against
+anything — it was just delaying a foregone conclusion by up to
+`TURNSTILE_STUCK_THRESHOLD × TURNSTILE_STALE_MINS` (≈90 minutes), holding
+the one Turnstile concurrency slot hostage the entire time. The
+groundedness gate's `SUSPECT_FABRICATION` case (rule 15) already had this
+exactly right — no retry loop, straight to a terminal status — for the
+same underlying reason, just never named as a general principle until a
+second, independent failure mode needed the identical fix.
+
+**Before writing a harvest/queue loop's failure branches, classify each
+failure as one of two kinds, and treat them differently:**
+
+- **Retryable** — a fresh *attempt* (not a re-check of the same already-
+  produced output) might genuinely behave differently: a transient Drive/
+  Docs API hiccup (`DOC_WRITE_FAILED`), a rate limit, a lock contention.
+  These are what `SR_MAX_ATTEMPTS`/`TURNSTILE_STUCK_THRESHOLD`-style retry
+  ceilings exist for, and they still make sense here.
+- **Deterministic given the same stored input** — re-parsing, re-validating,
+  or re-checking text that already exists and will not change can only ever
+  reach the same verdict again. Waiting out a retry ceiling for this case
+  wastes the ceiling's entire duration on a foregone conclusion, and (in a
+  concurrency-capped queue like `kos-personal`'s Turnstile)
+  starves every other row behind it for that same duration.
+
+A deterministic failure must fail fast — mark the terminal state
+immediately, the same way `SUSPECT_FABRICATION` and (since the sprint that
+produced this rule) `_srPrepareDocText_`'s own parse-failure paths
+(tagged `unretryable: true`, checked in `harvestStudioReturns()` before the
+`SR_MAX_ATTEMPTS` check) already do. Reusing an existing terminal status
+(`FAILED`) rather than inventing a new one is usually right, unless the
+failure is a recurring, self-resolving class like `SUSPECT_FABRICATION`
+that needs its own pruning treatment (rule 15's own header explains that
+distinction) — most deterministic failures are a single bad attempt, not
+that.
+
+**Enforced: no.** `_srPrepareDocText_`'s `unretryable` tag and
+`harvestStudioReturns()`'s fast-path are the one place this classification
+is actually made explicit in code today; nothing checks that a *new*
+harvest/queue loop makes the same distinction before shipping. Unlike rules
+4, 5, 7, 9, 12, and 15 (partially), this one has no static check behind
+it yet — a new loop that waits out a retry ceiling on a deterministic
+failure would ship exactly the same way the original bug did.
+
+---
+
 ## Adding a flow
 
 1. Decide what the Flow may do: make one model call. Anything else moves into
@@ -498,6 +551,9 @@ produced the agreement.
 4. Give it a harvest on its own time trigger. No polling: `pollForFlow4Result_`
    in `25_WarmUpWriter.js` is kept as dead code with a note explaining that
    twelve 15-second sleeps is three minutes of wall clock per row.
+   `tools/coverage-gaps/check.js` holds you to a test actually calling this
+   handler, once it's registered — a scheduled function is the one kind
+   that fails silently, with nobody clicking a button that would notice.
 5. Write a fixture from the consumer's shape, and a test that drives the
    fixture *through* the consumer (rules 4, 5) — Check J requires exactly
    that, and Check K requires the test's sandbox to load the scope the code
@@ -515,3 +571,9 @@ produced the agreement.
    that it shares distinguishing content with what the model was actually
    given, adapted to whatever FERPA/architecture boundary this flow's own
    input carries (rule 15).
+10. In that same harvest's failure branches, classify each failure as
+    retryable (a fresh attempt might behave differently) or deterministic
+    given the same stored input (re-checking already-produced output can
+    only reach the same verdict again) — and fail the deterministic ones
+    immediately, not after waiting out a retry ceiling built for the
+    transient case (rule 17).
