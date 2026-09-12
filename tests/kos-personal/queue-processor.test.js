@@ -146,6 +146,24 @@ function appendReturnRow(ss, { uid, type, primary, auditor }) {
   ]);
 }
 
+// Process-hardening sprint, Phase 1c: processInferenceQueue() previously
+// had no LockService guard at all, unlike sensor1_scanInboundSessions()/
+// runMatrixTurnstile(), which both do — same pattern
+// tests/kos-personal/turnstile.test.js's own lock test uses.
+test('processInferenceQueue: does nothing when it cannot acquire the script lock', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported._getOrCreateSheet(ss, 'STAGING_PIPELINE');
+  appendStagingRow(ss, { uid: 'UID-LOCKED', type: 'SESSION_LOG', fileId: 'file-1' });
+  sandbox.LockService.getScriptLock = () => ({ tryLock: () => false, waitLock() {}, releaseLock() {} });
+
+  exported.processInferenceQueue();
+
+  const rows = ss.getSheetByName('STAGING_PIPELINE').getDataRange().getValues();
+  const row = rows.find((r) => r[1] === 'UID-LOCKED');
+  assert.equal(row[5], 'FLOW_COMPLETE', 'a concurrent run holding the lock must leave this row untouched');
+});
+
 test('processInferenceQueue reads each row\'s own STUDIO_RETURN entry, not a doc a companion row already overwrote', () => {
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);

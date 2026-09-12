@@ -73,8 +73,24 @@
  * KEY DIFFERENCE FROM v5.4 / Phase 0 patch:
  *   v5.4   processed PENDING_FLOW rows (HITL: user pasted JSON)
  *   v8.0   processes FLOW_COMPLETE rows (Studio set the status)
+ *
+ * FIX (process-hardening sprint, Phase 1c): this had no LockService guard
+ * at all — unlike sensor1_scanInboundSessions()/runMatrixTurnstile(),
+ * which both do — so an overlapping run (this one ever taking longer than
+ * its own 10-minute trigger interval) could double-process the same
+ * FLOW_COMPLETE row. Narrow risk in practice, closed while already deep
+ * in this file for an unrelated reason, same pattern those two already
+ * use. processIntakePayload() (called below) already has its own,
+ * separate LockService guard — that one protects a different span (the
+ * duplicate-guard-through-queue-append race processIntakePayload's own
+ * header describes), not this function's own row-scan loop.
  */
 function processInferenceQueue() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    console.log('[Queue] Could not acquire lock — another run is active. Skipping.');
+    return;
+  }
   try {
     _coldEngineGate('processInferenceQueue', 'TIER_2');
 
@@ -294,6 +310,8 @@ function processInferenceQueue() {
 
   } catch (e) {
     _reportError('processInferenceQueue', e, null);
+  } finally {
+    lock.releaseLock();
   }
 }
 

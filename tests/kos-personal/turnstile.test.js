@@ -25,6 +25,7 @@ const EXPOSE = [
   'runMatrixTurnstile', 'CFG',
   '_readReleaseMap', '_writeReleaseMap',
   '_readAuditRetryPrioritySet_', '_writeAuditRetryPrioritySet_', '_markAuditRetryPriority_',
+  '_readStaleDeprioritizeSet_', '_writeStaleDeprioritizeSet_', '_markStaleDeprioritized_',
   '_readUnknownStatusAlertedSet_', '_writeUnknownStatusAlertedSet_',
 ];
 
@@ -250,6 +251,95 @@ test('runMatrixTurnstile: a priority UID no longer in the sheet at all is pruned
 
   const priority = exported._readAuditRetryPrioritySet_();
   assert.ok(!priority['LONG-GONE'], 'a priority entry for a row that no longer exists must not linger forever');
+});
+
+// ── Process-hardening sprint, Phase 1a/1b: deprioritize-on-stale-reset ──
+//
+// Incident shape: with TURNSTILE_CONCURRENCY == 1, releasing purely
+// oldest-first meant a row that just failed and got stale-reset — which is,
+// by construction, one of the OLDEST rows in the queue — got released
+// again almost immediately, ahead of every other waiting row, every single
+// stale cycle. These tests pin the fix: a just-reset row gives way to any
+// other ready row first.
+
+test('runMatrixTurnstile: a row stale-reset on an earlier run gives way to a row that has been waiting since, on the next run', () => {
+  // Two SEPARATE runMatrixTurnstile() calls, deliberately — Pass 2 reads
+  // the SAME in-memory `data` snapshot Pass 1 just updated in-sheet, so a
+  // row Pass 1 resets is never itself eligible for release again within
+  // that same run regardless of this fix (confirmed against the pre-fix
+  // code before writing this test: it already "protects" the same-run
+  // case, incidentally, for a completely different reason). The real
+  // incident this fix targets spans separate 5-minute Turnstile cycles:
+  // a row stale-reset on run N is sitting at plain PENDING_FLOW, same as
+  // any other row, by the time run N+1 starts — and being one of the
+  // OLDEST rows in the sheet, pure sheet-order release picks it again
+  // ahead of anything newer that has been waiting the whole time.
+  const { exported, sandbox } = load();
+  assert.equal(exported.CFG.TURNSTILE_CONCURRENCY, 1, 'this test relies on the default concurrency of 1');
+  const { staging } = seed(exported, sandbox, [{ uid: 'BAD', status: 'STUDIO_ACTIVE' }]);
+
+  exported.runMatrixTurnstile(); // run N: BAD is stale, resets to PENDING_FLOW, deprioritized
+  assert.equal(statusesByUid(staging)['BAD'].status, 'PENDING_FLOW');
+
+  // GOOD arrives after BAD's reset — later in the sheet, but not the row
+  // that just failed.
+  staging.appendRow(stagingRow({ uid: 'GOOD', status: 'PENDING_FLOW' }));
+
+  exported.runMatrixTurnstile(); // run N+1: both BAD and GOOD are plain PENDING_FLOW now
+
+  const after = statusesByUid(staging);
+  assert.equal(after['GOOD'].status, 'STUDIO_ACTIVE',
+    'a row that has been waiting should take the slot instead of the row that just failed last run');
+  assert.equal(after['BAD'].status, 'PENDING_FLOW');
+});
+
+test('runMatrixTurnstile: a deprioritized row still releases once nothing else is waiting', () => {
+  const { exported, sandbox } = load();
+  const { staging } = seed(exported, sandbox, [{ uid: 'ONLY-ONE', status: 'PENDING_FLOW' }]);
+  exported._markStaleDeprioritized_('ONLY-ONE', 'stale_reset', 1);
+
+  exported.runMatrixTurnstile();
+
+  assert.equal(statusesByUid(staging)['ONLY-ONE'].status, 'STUDIO_ACTIVE',
+    'deprioritized only means "let others go first," never "never release at all"');
+});
+
+test('runMatrixTurnstile: deprioritize is one-shot — a released UID is dropped from the set', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox, [{ uid: 'ONCE', status: 'PENDING_FLOW' }]);
+  exported._markStaleDeprioritized_('ONCE', 'stale_reset', 1);
+
+  exported.runMatrixTurnstile();
+
+  const set = exported._readStaleDeprioritizeSet_();
+  assert.ok(!set['ONCE'], 'a consumed deprioritize entry must not stay marked forever');
+});
+
+test('runMatrixTurnstile: a deprioritize entry for a row no longer in the sheet at all is pruned', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox, [{ uid: 'STILL-HERE', status: 'PENDING_FLOW' }]);
+  exported._markStaleDeprioritized_('LONG-GONE', 'stale_reset', 3); // never in the sheet
+
+  exported.runMatrixTurnstile();
+
+  const set = exported._readStaleDeprioritizeSet_();
+  assert.ok(!set['LONG-GONE'], 'a deprioritize entry for a row that no longer exists must not linger forever');
+});
+
+test('runMatrixTurnstile: priority wins over deprioritized if a UID is somehow marked both', () => {
+  const { exported, sandbox } = load();
+  assert.equal(exported.CFG.TURNSTILE_CONCURRENCY, 1, 'this test relies on the default concurrency of 1');
+  const { staging } = seed(exported, sandbox, [
+    { uid: 'OTHER', status: 'PENDING_FLOW' },
+    { uid: 'BOTH', status: 'PENDING_FLOW' },
+  ]);
+  exported._markAuditRetryPriority_('BOTH');
+  exported._markStaleDeprioritized_('BOTH', 'stale_reset', 1);
+
+  exported.runMatrixTurnstile();
+
+  assert.equal(statusesByUid(staging)['BOTH'].status, 'STUDIO_ACTIVE',
+    'an active retry request from the audit gate should not be held back by an unrelated deprioritize entry');
 });
 
 test('runMatrixTurnstile: the release map is pruned of UIDs no longer present in the sheet', () => {
