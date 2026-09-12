@@ -1,6 +1,12 @@
 # Grading Structure & Pacing Alignment
 ## Formative / Summative Weighting — All Three Courses
 
+> **Current:** this is the version `LEADERHUB_HANDOFF.md`'s working-doc
+> table points to. `LH_04_GRADING_STRUCTURE.md` and
+> `LH_05_PACING_AND_GRADING.md` are earlier dated snapshots of the same
+> working document, kept for history — see `README.md` — not conflicting
+> versions to reconcile.
+
 **Version:** 1.0 (Q4 2025–26)
 **Teacher:** Adam Berneche · Clover Hill High School · CCPS
 **Courses:** 8177 · 8175 · 6115
