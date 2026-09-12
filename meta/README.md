@@ -57,6 +57,16 @@ why this repo exists at all.
   panel renders to. Say/Do Ledger cross-portfolio Flow Health & Inventory
   extension.
 
+- **`PROCESS_HARDENING_SPRINT.md`** — a sprint plan from a retrospective on
+  the `consolidation-review-fixes` fix pass: not what got fixed, but what
+  should change about how this repo is built so the same bug *shapes*
+  (live-vs-source drift, a convention established once but not enforced
+  everywhere, an untested code path, retryable-vs-deterministic failure
+  handling, cross-project constant duplication, checks that only run after
+  an entire process finishes) get caught by tooling next time instead of
+  needing another external review. Five phases, sequenced by dependency and
+  risk; tracked with the same 🔲/🟡/✅ status convention as `README.md`'s
+  own "Known gaps."
 - **`FLOW_DOCTRINE.md`** — the fifteen rules this repo's Flow deployments
   produced, each with the incident behind it, a pointer to where the
   reasoning already lives, and an explicit statement of whether anything
