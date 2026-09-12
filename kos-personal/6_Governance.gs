@@ -896,6 +896,23 @@ function _writePrimerBody_(body, dateStr, onboardingDay, vision, vectorState, sh
 }
 
 /**
+ * FIX (external product review finding, closed): Body.clear() can throw
+ * "Can't remove the last paragraph in a document section" depending on the
+ * document's current state — a documented Apps Script gotcha, not a logic
+ * bug in this file. Standard workaround: remove every child except the
+ * last remaining one, then clear that last paragraph's text directly
+ * rather than removing it (a Body can never be left with zero children).
+ */
+function _clearDocBody_(body) {
+  let n = body.getNumChildren();
+  while (n > 1) {
+    body.removeChild(body.getChild(n - 1));
+    n--;
+  }
+  body.getChild(0).asParagraph().setText('');
+}
+
+/**
  * Maintains KOS_LATEST_PRIMER: one fixed-name doc in `folder`, overwritten
  * in place every run via CFG.PROP.LATEST_PRIMER_DOC_ID rather than found
  * by name — read-before-asking, same Contextual Gates philosophy cas-ccps
@@ -923,7 +940,7 @@ function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState
   if (isNew) {
     doc = DocumentApp.create('KOS_LATEST_PRIMER');
   } else {
-    doc.getBody().clear();
+    _clearDocBody_(doc.getBody());
   }
 
   _writePrimerBody_(doc.getBody(), dateStr, onboardingDay, vision, vectorState, shadowState);
