@@ -64,14 +64,29 @@ No pipeline risk; pure tooling and documentation. Do first because Phase 1
 and Phase 2 will both write new tests/conventions that should already be
 checked against this phase's own gates.
 
-### 0a. Test-harness-completeness check 🔲
-Cross-reference every `DriveApp`/`DocumentApp`/`SpreadsheetApp`/etc. method
-actually *called* in `kos-personal`/`cas-ccps`/`leader-hub` source against
-what `tests/harness/gas-sandbox.js` mocks. A method called in source with no
-corresponding mock is a warning: "this function cannot be exercised by this
-test suite at all." Natural home: a 13th gas-lint check, alongside Check L.
-Would have surfaced Sensor 1's total lack of coverage before an incident
-forced discovering it.
+### 0a. Test-harness-completeness check ✅
+Built as `tools/coverage-gaps/check.js`, its own tool rather than a 13th
+gas-lint check — it has to actually run the test suite under Node's
+built-in V8 coverage instrumentation to answer "was this function ever
+called," which is a fundamentally different (slower, execution-based) kind
+of check than gas-lint's static analysis, the same reason `doc-currency`
+and `html-lint` are already separate tools.
+
+**Scope changed from what's written above, deliberately, before building
+it — not silently.** Checking every top-level function in every project
+(the original framing) found 400+ zero-coverage functions, almost all
+legitimate (setup scripts, UI-dispatch callbacks, small helpers) with the
+real findings buried in noise nobody would read through. Rescoped to
+functions registered via `ScriptApp.newTrigger(...)` specifically — the one
+class of function that fails *silently*, with nobody clicking a button
+that would notice, which is exactly Sensor 1's shape and every other
+incident behind this whole sprint. That check found 18 pre-existing gaps
+(now in `tools/coverage-gaps/allowlist.json`, each with an honest reason,
+not fixed as part of introducing the tool — see that file) plus 4 trigger
+registrations whose handler name isn't a static literal (reported as
+warnings, not errors — a limit on what this tool can verify, not something
+a test fixes). Wired into CI (`.github/workflows/gas-lint.yml`). See
+`tools/coverage-gaps/README.md` for the full mechanism.
 
 ### 0b. FLOW_DOCTRINE.md — new rule: retryable vs. deterministic-given-stored-input 🔲
 Codify the reasoning behind `_srPrepareDocText_`'s `unretryable` tag as its
