@@ -338,7 +338,7 @@ The daily error digest sends to the email address stored as `KOS_ADMIN_EMAIL` in
 2. Run `setupAllTriggers()` (select it from the function dropdown → click Run)
 3. Authorize any new permission prompts
 4. Go to **Triggers** (clock icon in the left sidebar)
-5. Confirm you see 15 triggers installed
+5. Confirm you see 16 triggers installed
 
 Expected trigger list:
 - sensor1_scanInboundSessions (every 5 min)
@@ -356,9 +356,12 @@ Expected trigger list:
 - runRegistrarIntake (daily 01:00)
 - runRegistrarMicrobatch (every 15 min)
 - runRegistrarProcessor (every 10 min)
+- reportDeployVersion (every 6 hours) — optional; no-ops until
+  KOS_DEPLOY_DRIFT_GITHUB_TOKEN is set (see `17_DeployVersionReport.gs`
+  and `tools/deploy-drift/README.md`)
 
 **Or skip the manual count:** run `runKosPersonalPreflight()` (`15_Preflight.gs`).
-It checks the exact same 15-handler list (one call per handler, not a copy an
+It checks the exact same 16-handler list (one call per handler, not a copy an
 operator has to keep matching this table) — plus the four Studio-adjacent
 tabs' widths (`STAGING_PIPELINE`, `STUDIO_RETURN`, `CuratorInput`,
 `VectorClassifyInput`) and whether `KOS_ADMIN_EMAIL` is set — and writes a

@@ -18,7 +18,9 @@
       "kos-personal/13_StudioInputBuilder.gs",
       "kos-personal/14_StudioFlowBuildSpec.gs",
       "kos-personal/15_Preflight.gs",
-      "kos-personal/16_FlowPrompts.gs"
+      "kos-personal/16_FlowPrompts.gs",
+      "kos-personal/17_DeployVersionReport.gs",
+      "kos-personal/18_DeployVersionMarker.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"
