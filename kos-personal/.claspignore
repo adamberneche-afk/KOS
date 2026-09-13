@@ -30,3 +30,5 @@
 !14_StudioFlowBuildSpec.gs
 !15_Preflight.gs
 !16_FlowPrompts.gs
+!17_DeployVersionReport.gs
+!18_DeployVersionMarker.gs
