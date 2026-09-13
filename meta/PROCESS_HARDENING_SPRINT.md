@@ -384,13 +384,60 @@ both `kos-personal` and `leader-hub`'s copies.
 `kos-personal`'s copy of the same mechanism is still unwired (no live
 token) — Phase 3b's job, not blocking this being ✅ for `leader-hub`.
 
-### 3b. Roll out to the remaining 8 projects (real redeploys required) 🔲
-Same mechanism, no new design — but several projects (`leader-hub`
-confirmed, possibly some `cas-ccps` non-web-app ones) don't carry
-`script.external_request` yet, so this is a manifest scope addition *and*
-you re-consenting to the new scope on next deploy, per project that needs
-it. `student-dashboard` folds in here too now (same mechanism as
-everything else, no longer a special automated-poll case).
+### 3b. Roll out to the remaining projects (real redeploys required) 🟡
+Scope decided together before building: `kos-personal:studio-steps` and
+`cas-ccps:studio-steps` are both currently dead code (GCP disabled
+org-wide, per this repo's own docs) — skipped for now, no value in
+self-reporting code that never actually executes. Revisit if that
+constraint ever changes.
+
+Built and tested for the other 7 `cas-ccps` projects (`central-ledger`,
+`unified-manual`, `master-student-template`, `rubric-response-sheet`,
+`teacher-matrix-sheet`, `teacher-dashboard`, `student-dashboard`):
+
+- **A real architectural difference from `kos-personal`/`leader-hub`,
+  worth building around rather than fighting.** Those two each got their
+  own dedicated reporting file. `cas-ccps` shares `00_SharedConfig.js`
+  across all 7 projects, so 7 *separate* copies of the same `UrlFetchApp`
+  logic would be exactly the "same fact, N places, nothing watching for
+  drift" shape this whole sprint exists to close. Instead: one shared
+  `_reportDeployVersion_(projectName, sha)` in `00_SharedConfig.js`, and
+  each project gets only a tiny marker+wrapper file (e.g.
+  `cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js`) supplying
+  its own real `project-map.json` key and its own independently-stamped
+  SHA. All 7 marker files reuse the same constant/function names
+  (`DEPLOY_VERSION_SHA`, `reportDeployVersion`) safely, since none of
+  them ever shares a GAS project scope with another.
+- `tools/gas-lint/project-map.json`, `tools/deploy-drift/stamp.js`, and
+  `expected-marker.js`'s `MARKER_FILE_EXCLUSIONS` all extended with the 7
+  new entries.
+- 4 manifests gained `script.external_request` + `script.scriptapp`
+  (`master-student-template`, `rubric-response-sheet`, `student-dashboard`
+  needed both; `teacher-matrix-sheet` already had `scriptapp`, needed
+  only `external_request`) — `central-ledger`/`unified-manual`/
+  `teacher-dashboard` already carried both.
+- `node tools/clasp-sync/sync.js` confirmed building cleanly for all 7
+  with the new file included — no `.claspignore`-equivalent gap here the
+  way `kos-personal`/`leader-hub` hit: `sync.js` builds each project's
+  push folder directly from `project-map.json`, so there's no second file
+  list to forget.
+- 19 new tests (`tests/cas-ccps/deploy-version-report.test.js`) — the
+  shared implementation once, then every one of the 7 marker files
+  looped over, confirming each reports its own real project key (the one
+  thing easy to typo across 7 near-identical files).
+
+npm test: 1008/1008 passing. gas-lint/doc-currency: 0 errors.
+coverage-gaps: 41 handlers now (+7), still 0 errors — real test coverage
+for every new trigger, not an allowlist entry.
+
+**Still needs you, and can't be done from here (SMP-004):** you've
+already added `DEPLOY_DRIFT_GITHUB_TOKEN` to every project reachable via
+the Apps Script editor (your own action, ahead of this code existing).
+What's left, per project: `node tools/clasp-sync/sync.js <project>`,
+`clasp push` + `clasp deploy` from `cas-ccps/.clasp-build/<project>/`,
+then running `installDeployVersionReportTrigger()` once. Not marked ✅
+until each project has been seen to report live, the way `leader-hub`
+already has.
 
 ### 3c. A way to surface drift when found (chat alert? dashboard? both already exist per-system) 🟡
 Built as part of 3a — `check.js` opens/updates a pinned `Deploy drift:

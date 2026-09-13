@@ -82,6 +82,21 @@ Skipping step 2/3, or combining them with step 1, both break the match —
 by design, this is exactly the kind of slip the whole mechanism exists to
 surface, not silently tolerate.
 
+**A deliberate, narrower tradeoff in the `cas-ccps` marker files
+specifically:** `kos-personal`/`leader-hub`'s marker files hold *only*
+the SHA constant — every line of real reporting logic lives in a
+separate, fully-tracked file. `cas-ccps`'s 7 marker+wrapper files (e.g.
+`43_DeployVersionMarker_CentralLedger.js`) also carry the thin
+`reportDeployVersion()` wrapper and `installDeployVersionReportTrigger()`
+— both excluded from `expected-marker.js`'s computation along with the
+constant, since they're in the same file. A future edit to either
+wouldn't register as a "real" code change for that project's drift
+check. Accepted deliberately, not missed: the logic that actually matters
+(`_reportDeployVersion_()`'s `UrlFetchApp` call, error handling, payload
+shape) lives once in `00_SharedConfig.js`, fully tracked and drift-checked
+normally — only a one-time installer and a 3-line wrapper are exempted,
+and neither is expected to need a second edit once written.
+
 ## Wiring up a new project (one-time, per project — needs you, not this session)
 
 Nothing past step 1 below can be done from an agent session: SMP-004
@@ -89,21 +104,60 @@ means `clasp push`/`clasp deploy` is always a human's action, and
 generating a credential is inherently something only you can do.
 
 1. **Create a fine-grained GitHub personal access token**: scoped to
-   *only* `adamberneche-afk/KOS`, with the minimum permission GitHub's
-   token-creation UI says the "Create a repository dispatch event"
-   endpoint needs. **Never** a broad classic `repo`-scope token, and
-   **never** `Contents: write` or workflow-editing permission — see the
-   threat model below for exactly why that distinction matters. (This
-   repo's own network access couldn't confirm GitHub's exact current
-   fine-grained permission name for this endpoint while writing this doc
-   — pick the narrowest option the creation UI offers for it, and if the
-   first attempt gets a 403, the API's own error names what's missing.)
-2. Add a `MARKER_FILES` entry for the project in `tools/deploy-drift/stamp.js`, and a marker file matching `kos-personal/18_DeployVersionMarker.gs`'s shape.
-3. Add a reporting function matching `kos-personal/17_DeployVersionReport.gs`'s shape, wired to its own low-frequency time-based trigger.
-4. Add a `MARKER_FILE_EXCLUSIONS` entry in `tools/deploy-drift/expected-marker.js` for the new marker file.
-5. **Paste the token into that project's Script Properties** (Project Settings → Script Properties) — never committed, never handled by this session, same convention as every other secret this repo already uses (`KOS_WEBHOOK_SHARED_SECRET`, `KOS_OWNER_EMAIL`).
-6. If the project doesn't already carry the `script.external_request` OAuth scope, add it to that project's manifest and re-consent on next deploy.
-7. `clasp push` + `clasp deploy` as normal.
+   *only* `adamberneche-afk/KOS`, with **Contents: Read and write**
+   (GitHub's mobile UI labels this "Read and write access to code") —
+   confirmed live against `leader-hub`'s first real report, which 403'd
+   with `Resource not accessible by personal access token` until this
+   permission was added. **Never** a broad classic `repo`-scope token,
+   and **never** workflow-editing permission — see the threat model below
+   for exactly why that distinction matters.
+2. **kos-personal / leader-hub shape** (one project, one dedicated file
+   pair): add a `MARKER_FILES` entry in `tools/deploy-drift/stamp.js`, a
+   marker file matching `kos-personal/18_DeployVersionMarker.gs`'s shape,
+   a reporting function matching `kos-personal/17_DeployVersionReport.gs`'s
+   shape wired to its own low-frequency trigger, and a
+   `MARKER_FILE_EXCLUSIONS` entry in `expected-marker.js`.
+   **cas-ccps shape** (many projects sharing `00_SharedConfig.js`): the
+   actual `UrlFetchApp`/token logic lives ONCE, in
+   `00_SharedConfig.js`'s `_reportDeployVersion_(projectName, sha)` — a
+   new project just needs its own tiny marker+wrapper file (see
+   `cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js` for the
+   reference shape) calling into that shared function, plus the same
+   `MARKER_FILES`/`MARKER_FILE_EXCLUSIONS` entries as above.
+3. **Paste the token into that project's Script Properties** as
+   `DEPLOY_DRIFT_GITHUB_TOKEN` (Project Settings → Script Properties) —
+   never committed, never handled by this session, same convention as
+   every other secret this repo already uses (`KOS_WEBHOOK_SHARED_SECRET`,
+   `KOS_OWNER_EMAIL`). The same token value can be reused across every
+   project that needs one — it's scoped to the repo, not to any one GAS
+   project, so one token generated once covers all of them.
+4. If the project doesn't already carry `script.external_request` (the
+   outbound call) and `script.scriptapp` (installing the trigger) OAuth
+   scopes, add them to that project's manifest and re-consent on next
+   deploy.
+5. **For a project whose `.claspignore` is allowlist-style** (`**/**`
+   then explicit `!filename`, like `kos-personal`'s and `leader-hub`'s):
+   add the new file(s) there too. Missed once already — the mechanism was
+   wired into `project-map.json`, `stamp.js`, and each project's own
+   trigger setup, but not `.claspignore`, so `clasp push` silently
+   excluded both new files the first time. `cas-ccps` doesn't carry this
+   risk: `tools/clasp-sync/sync.js` builds each project's push folder
+   directly from `project-map.json`, so there's no second file list to
+   remember.
+6. `clasp push` + `clasp deploy` as normal — for `cas-ccps`, run
+   `node tools/clasp-sync/sync.js <project>` first, then push from
+   `cas-ccps/.clasp-build/<project>/`.
+7. **Merge to `main` before expecting anything to react.**
+   `repository_dispatch` only looks at workflow files on the repo's
+   *default* branch — `deploy-drift.yml` sitting on a feature branch is
+   invisible to GitHub no matter how correct a project's report is. Learned
+   live: `leader-hub`'s first report got a clean `204` from GitHub with
+   nothing on the repo side to show for it, because the branch carrying
+   `deploy-drift.yml` had never been merged.
+8. Run `installDeployVersionReportTrigger()` once from the Apps Script
+   editor's function dropdown, then run `reportDeployVersion` directly to
+   confirm — a clean execution log (or, once logging was added, a
+   "Reported ... successfully" line) means it worked.
 
 ## Threat model — what a leaked or misused token could actually do
 
@@ -151,5 +205,11 @@ fixed by a human running a real `clasp push` + `clasp deploy`.
 - `tests/tools/deploy-drift-check.test.js` — evaluate/publish logic, with
   an injectable `fetchImpl` (same convention `tools/watchdog/check.js`
   already uses) so no test makes a real GitHub API call.
-- `tests/kos-personal/deploy-version-report.test.js` — the reference
-  GAS-side reporting function, with a mocked `UrlFetchApp`.
+- `tests/kos-personal/deploy-version-report.test.js` /
+  `tests/leaderhub/deploy-version-report.test.js` — each project's
+  reporting function, with a mocked `UrlFetchApp`.
+- `tests/cas-ccps/deploy-version-report.test.js` — the shared
+  `_reportDeployVersion_()` in `00_SharedConfig.js` once, then every one
+  of the 7 per-project marker+wrapper files, confirming each reports its
+  own real `project-map.json` key and its own `DEPLOY_VERSION_SHA` — the
+  one thing easy to typo across 7 near-identical files.
