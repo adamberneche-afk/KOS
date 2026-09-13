@@ -29,6 +29,18 @@ const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const MARKER_FILES = {
   'kos-personal': { file: 'kos-personal/18_DeployVersionMarker.gs', constant: 'KOS_DEPLOY_VERSION_SHA' },
   'leader-hub:app': { file: 'leader-hub/DeployVersionMarker.gs', constant: 'LH_DEPLOY_VERSION_SHA' },
+  // The 7 cas-ccps entries below all use the same constant name
+  // (DEPLOY_VERSION_SHA) — safe because each marker file is scoped to
+  // exactly one project in project-map.json and none of the 7 ever
+  // shares a GAS global scope with another (Check A's collision check
+  // only cares about files that share a project).
+  'cas-ccps:central-ledger': { file: 'cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:unified-manual': { file: 'cas-ccps/scripts/44_DeployVersionMarker_UnifiedManual.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:master-student-template': { file: 'cas-ccps/scripts/45_DeployVersionMarker_MasterStudentTemplate.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:rubric-response-sheet': { file: 'cas-ccps/scripts/46_DeployVersionMarker_RubricResponseSheet.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:teacher-matrix-sheet': { file: 'cas-ccps/scripts/47_DeployVersionMarker_TeacherMatrixSheet.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:teacher-dashboard': { file: 'cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:student-dashboard': { file: 'cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js', constant: 'DEPLOY_VERSION_SHA' },
 };
 
 function currentHeadSha() {

@@ -48,6 +48,13 @@ const PROJECT_MAP = require('../gas-lint/project-map.json');
 const MARKER_FILE_EXCLUSIONS = {
   'kos-personal': ['kos-personal/18_DeployVersionMarker.gs'],
   'leader-hub:app': ['leader-hub/DeployVersionMarker.gs'],
+  'cas-ccps:central-ledger': ['cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js'],
+  'cas-ccps:unified-manual': ['cas-ccps/scripts/44_DeployVersionMarker_UnifiedManual.js'],
+  'cas-ccps:master-student-template': ['cas-ccps/scripts/45_DeployVersionMarker_MasterStudentTemplate.js'],
+  'cas-ccps:rubric-response-sheet': ['cas-ccps/scripts/46_DeployVersionMarker_RubricResponseSheet.js'],
+  'cas-ccps:teacher-matrix-sheet': ['cas-ccps/scripts/47_DeployVersionMarker_TeacherMatrixSheet.js'],
+  'cas-ccps:teacher-dashboard': ['cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js'],
+  'cas-ccps:student-dashboard': ['cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js'],
 };
 
 function knownProjectNames() {

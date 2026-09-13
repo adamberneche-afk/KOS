@@ -449,3 +449,66 @@ function getCompetencyTextMap_(registrySheet) {
 
   return compTextMap;
 }
+
+// =============================================================================
+// Deploy-drift self-report (process-hardening sprint Phase 3b —
+// meta/PROCESS_HARDENING_SPRINT.md). One shared implementation here since
+// 00_SharedConfig.js is already pasted into every cas-ccps project in
+// scope for this — each project's own small, project-specific marker
+// file (e.g. cas-ccps/scripts/CentralLedgerDeployVersion.js) supplies its
+// real tools/gas-lint/project-map.json key and its own stamped SHA, then
+// calls this. See kos-personal/17_DeployVersionReport.gs and
+// leader-hub/DeployVersionReport.gs — the two already-live reference
+// implementations this mirrors — and tools/deploy-drift/README.md for
+// the full mechanism, why this pushes instead of being polled, and the
+// threat model behind the GitHub token this reads.
+//
+// ONE-TIME SETUP per project: Script Properties → add
+// DEPLOY_DRIFT_GITHUB_TOKEN (a fine-grained GitHub PAT scoped to only
+// adamberneche-afk/KOS, minimum permission the "Create a repository
+// dispatch event" API needs — never a broad classic repo-scope token,
+// never Contents/workflow-editing permission beyond that). Until it's
+// set, this logs and returns false — fails closed to a no-op, not open.
+function _reportDeployVersion_(projectName, sha) {
+  try {
+    const token = PropertiesService.getScriptProperties().getProperty('DEPLOY_DRIFT_GITHUB_TOKEN');
+    if (!token) {
+      console.log('[DeployVersionReport] No DEPLOY_DRIFT_GITHUB_TOKEN configured for ' + projectName + ' — skipping (not an error; this project just isn\'t wired into deploy-drift yet).');
+      return false;
+    }
+
+    const payload = {
+      event_type: 'gas-version-report',
+      client_payload: {
+        // Must exactly match this project's key in tools/gas-lint/project-map.json.
+        project: projectName,
+        sha: sha,
+        reportedAt: new Date().toISOString(),
+      },
+    };
+
+    const resp = UrlFetchApp.fetch('https://api.github.com/repos/adamberneche-afk/KOS/dispatches', {
+      method: 'post',
+      contentType: 'application/json',
+      headers: {
+        Authorization: 'Bearer ' + token,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': projectName + '-deploy-version-report',
+      },
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    });
+
+    const code = resp.getResponseCode();
+    if (code !== 204) {
+      console.error('[DeployVersionReport] Unexpected response ' + code + ' for ' + projectName + ': ' + resp.getContentText());
+      return false;
+    }
+    console.log('[DeployVersionReport] Reported ' + projectName + ' @ ' + sha + ' successfully.');
+    return true;
+  } catch (e) {
+    console.error('[DeployVersionReport] Failed to report ' + projectName + ': ' + e.message);
+    return false;
+  }
+}

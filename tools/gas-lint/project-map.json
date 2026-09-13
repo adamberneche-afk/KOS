@@ -60,7 +60,8 @@
       "cas-ccps/scripts/39_FlowFixtures.js",
       "cas-ccps/scripts/40_FlowPrompts.js",
       "cas-ccps/scripts/41_WarmUpFlowBridge.js",
-      "cas-ccps/scripts/42_FlowBuildSpec.js"
+      "cas-ccps/scripts/42_FlowBuildSpec.js",
+      "cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js"
     ]
   },
   "cas-ccps:unified-manual": {
@@ -74,7 +75,8 @@
       "cas-ccps/scripts/19_ClonedSheetConfig.js",
       "cas-ccps/scripts/20_SetupCheckpoint.js",
       "cas-ccps/scripts/21_AutoInstaller.js",
-      "cas-ccps/scripts/28_Module2Setup.js"
+      "cas-ccps/scripts/28_Module2Setup.js",
+      "cas-ccps/scripts/44_DeployVersionMarker_UnifiedManual.js"
     ]
   },
   "cas-ccps:master-student-template": {
@@ -84,7 +86,8 @@
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/01_StudentDoc_ContainerScript.js",
       "cas-ccps/scripts/09_StudentRevisionGuidance_M1Base.js",
-      "cas-ccps/scripts/17_MasterStudentTemplate.js"
+      "cas-ccps/scripts/17_MasterStudentTemplate.js",
+      "cas-ccps/scripts/45_DeployVersionMarker_MasterStudentTemplate.js"
     ]
   },
   "cas-ccps:rubric-response-sheet": {
@@ -93,7 +96,8 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/05_TeacherIntakePipeline.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig.js"
+      "cas-ccps/scripts/19_ClonedSheetConfig.js",
+      "cas-ccps/scripts/46_DeployVersionMarker_RubricResponseSheet.js"
     ]
   },
   "cas-ccps:teacher-matrix-sheet": {
@@ -102,7 +106,8 @@
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
       "cas-ccps/scripts/08_TeacherConfirmationStep.js",
-      "cas-ccps/scripts/19_ClonedSheetConfig.js"
+      "cas-ccps/scripts/19_ClonedSheetConfig.js",
+      "cas-ccps/scripts/47_DeployVersionMarker_TeacherMatrixSheet.js"
     ]
   },
   "cas-ccps:teacher-dashboard": {
@@ -118,7 +123,8 @@
       "cas-ccps/scripts/29_StudentContextAggregator.js",
       "cas-ccps/scripts/31_PacingGuideManager.js",
       "cas-ccps/scripts/32_CompetencyRubricImporter.js",
-      "cas-ccps/scripts/36_WeeklyParentReport.js"
+      "cas-ccps/scripts/36_WeeklyParentReport.js",
+      "cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js"
     ]
   },
   "cas-ccps:student-dashboard": {
@@ -126,7 +132,8 @@
     "manifest": "cas-ccps/clasp/manifests/student-dashboard.appsscript.json",
     "files": [
       "cas-ccps/scripts/00_SharedConfig.js",
-      "cas-ccps/scripts/13_StudentDashboard.js"
+      "cas-ccps/scripts/13_StudentDashboard.js",
+      "cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js"
     ]
   },
   "cas-ccps:studio-steps": {
