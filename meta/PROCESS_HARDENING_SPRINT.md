@@ -295,7 +295,7 @@ design gives the repo, CI, or this agent session any new way to read live
 GAS state or push/deploy into any project. Drift, once found, still gets
 fixed by a human running a real `clasp push` + `clasp deploy`.
 
-### 3a. Design + prototype against one project 🟡
+### 3a. Design + prototype against one project ✅
 First built the mechanism itself, then prototyped it against
 `kos-personal` (the actual incident site, and it already carried the
 `script.external_request` OAuth scope this needs), then moved the live
@@ -346,12 +346,43 @@ marker is stamped in a SEPARATE commit, after the real code change, so it
 correctly matches once both land. See `tools/deploy-drift/README.md`'s
 "self-reference problem" section.
 
-**Still needs you, and can't be done from here (SMP-004):** the token is
-already in `leader-hub`'s Script Properties as
-`DEPLOY_DRIFT_GITHUB_TOKEN` — what's left is the actual `clasp push` +
-`clasp deploy` that puts this live, then running
-`installDeployVersionReportTrigger()` once from the Apps Script editor.
-Not marked ✅ until that's done and a real report has been seen to work.
+**Live and confirmed working, end to end.** Three real problems surfaced
+during actual rollout, each a genuine gap, not a design flaw, and each
+fixed as it appeared:
+
+1. **`consolidation-review-fixes` had never reached `main`.** `repository_dispatch`
+   only looks at workflow files on the repo's default branch — `deploy-drift.yml`
+   was invisible to GitHub until the whole branch was merged. Also explained why
+   a `clasp push` from a `main`-tracked local checkout couldn't find
+   `installDeployVersionReportTrigger` at all: the new files genuinely
+   weren't on `main` yet to push.
+2. **Both `kos-personal/.claspignore` and `leader-hub/.claspignore` are
+   allowlist-style** (`**/**` then explicit `!filename`) — a list of
+   project files nothing had touched when the new files were added
+   everywhere else (`project-map.json`, `stamp.js`,
+   `expected-marker.js`, each project's own trigger wiring). `clasp push`
+   silently excluded both new files as a result — caught live (the user's
+   first real push only sent the original 9 leader-hub files) and fixed
+   in both projects, not just the one that actually broke.
+3. **The fine-grained GitHub PAT was created with zero repository access
+   and zero permissions** — not over-broad, empty. `reportDeployVersion()`'s
+   403 (`Resource not accessible by personal access token`) correctly
+   surfaced this; fixed by scoping it to `adamberneche-afk/KOS` with
+   Contents: Read and write (GitHub's mobile UI labels this permission
+   "Read and write access to code").
+
+With all three fixed: `reportDeployVersion()` ran clean, and GitHub's own
+Actions history confirms the rest — `deploy-drift.yml`'s first-ever run
+(triggered by the `gas-version-report` dispatch, `main` @ `3e10895`)
+completed successfully, its comparison step passed, and no tracking issue
+was opened — the correct outcome for a clean match. Also caught in the
+process: `reportDeployVersion()` never logged anything on success, only
+on the "no token" and error paths, which is why the first clean run's
+execution log looked empty rather than confirming anything. Fixed in
+both `kos-personal` and `leader-hub`'s copies.
+
+`kos-personal`'s copy of the same mechanism is still unwired (no live
+token) — Phase 3b's job, not blocking this being ✅ for `leader-hub`.
 
 ### 3b. Roll out to the remaining 8 projects (real redeploys required) 🔲
 Same mechanism, no new design — but several projects (`leader-hub`
@@ -365,10 +396,13 @@ everything else, no longer a special automated-poll case).
 Built as part of 3a — `check.js` opens/updates a pinned `Deploy drift:
 <project>` issue on mismatch, closes it with a resolution comment once a
 report comes back clean, and never creates one for a project that's never
-drifted. Not marked ✅ until it's been seen to fire for a real mismatch;
-worth revisiting then whether that's enough signal or something should
-also ping `leader-hub`'s existing chat alert / `cas-ccps`'s admin
-health-check surface.
+drifted. `leader-hub`'s first live report confirmed the CLEAN-match path
+(no issue opened, correctly) — the mismatch/issue-opening path is still
+only unit-tested, not yet seen fire for a real drift. Not marked ✅ until
+that half has also been observed live; worth revisiting then whether a
+tracking issue is enough signal or something should also ping
+`leader-hub`'s existing chat alert / `cas-ccps`'s admin health-check
+surface.
 
 ---
 
