@@ -53,14 +53,20 @@ test('expectedMarkerForProject: returns a full 40-char SHA, not an abbreviated o
 });
 
 test('expectedMarkerForProject: agrees with an independently-run git log over the same files', () => {
-  const files = filesForProject('leader-hub:app');
+  // Deliberately a project with NO entry in MARKER_FILE_EXCLUSIONS
+  // (cas-ccps:teacher-dashboard, not kos-personal or leader-hub:app) — this
+  // test's whole point is confirming a plain, unmodified git log agrees
+  // with the function, which isn't true by design for a project whose own
+  // marker-stamp commit is the most recent one touching its files. See the
+  // dedicated "excludes the marker file itself" test below for that case.
+  const files = filesForProject('cas-ccps:teacher-dashboard');
   const expected = execFileSync(
     'git',
     ['log', '-1', '--format=%H', '--', ...files],
     { cwd: REPO_ROOT, encoding: 'utf8' }
   ).trim();
 
-  const result = expectedMarkerForProject('leader-hub:app');
+  const result = expectedMarkerForProject('cas-ccps:teacher-dashboard');
   assert.equal(result.sha, expected);
 });
 
@@ -91,6 +97,14 @@ test('expectedMarkerForProject: excludes the marker file itself from its own "wh
 
   const result = expectedMarkerForProject('kos-personal');
   assert.ok(!result.files.includes('kos-personal/18_DeployVersionMarker.gs'));
+});
+
+test('expectedMarkerForProject: same exclusion for leader-hub:app\'s own marker file', () => {
+  const allFiles = filesForProject('leader-hub:app');
+  assert.ok(allFiles.includes('leader-hub/DeployVersionMarker.gs'), 'sanity: should be a normal project file');
+
+  const result = expectedMarkerForProject('leader-hub:app');
+  assert.ok(!result.files.includes('leader-hub/DeployVersionMarker.gs'));
 });
 
 test('every known project resolves to a real, non-empty file list with at least one commit', () => {
