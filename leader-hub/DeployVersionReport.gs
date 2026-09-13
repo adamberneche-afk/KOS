@@ -60,6 +60,7 @@ function reportDeployVersion() {
       console.error('[DeployVersionReport] Unexpected response ' + code + ': ' + resp.getContentText());
       return false;
     }
+    console.log('[DeployVersionReport] Reported ' + LH_DEPLOY_VERSION_SHA + ' successfully.');
     return true;
   } catch (e) {
     console.error('[DeployVersionReport] Failed to report: ' + e.message);
