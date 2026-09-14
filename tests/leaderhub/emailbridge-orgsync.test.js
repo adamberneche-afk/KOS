@@ -23,6 +23,7 @@ function load() {
   return loadGasFile(EMAILBRIDGE_PATH, [
     'pushOrgSync_', 'pullOrgSync_', 'listOrgSyncs_',
     'queueAiJob_', 'checkAiJob_', 'markConsumed_',
+    'scanHorizonLabel_',
   ]);
 }
 
@@ -256,4 +257,22 @@ test('markConsumed_ caps the stored id list at 300 entries so it never exceeds P
 test('markConsumed_ with an empty list is a no-op', () => {
   const { exported } = load();
   assert.deepEqual(exported.markConsumed_([]), { ok: true, consumed: 0 });
+});
+
+// ── scanHorizonLabel_ (TEMPORARILY DISABLED — Gmail scope removal test) ────
+// See this function's own header in EmailBridge.gs: disabled as a decisive
+// test of whether GmailApp itself (any scope, not just how narrow) is the
+// trigger behind a real live OAuth-consent-dialog crash. GmailApp is
+// deliberately absent from this test harness's sandbox (gas-sandbox.js's
+// own header) — calling it would throw ReferenceError. This test is the
+// regression guard: it fails loudly if a future edit re-enables the
+// original body without also restoring GmailApp to the sandbox and
+// re-adding gmail.readonly to appsscript.json.
+
+test('scanHorizonLabel_: returns an empty list without touching GmailApp', () => {
+  const { exported } = load();
+  assert.doesNotThrow(() => {
+    const result = exported.scanHorizonLabel_();
+    assert.deepEqual(result, []);
+  });
 });
