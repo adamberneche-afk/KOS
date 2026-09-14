@@ -384,7 +384,7 @@ both `kos-personal` and `leader-hub`'s copies.
 `kos-personal`'s copy of the same mechanism is still unwired (no live
 token) — Phase 3b's job, not blocking this being ✅ for `leader-hub`.
 
-### 3b. Roll out to the remaining projects (real redeploys required) 🟡
+### 3b. Roll out to the remaining projects (real redeploys required) ✅
 Scope decided together before building: `kos-personal:studio-steps` and
 `cas-ccps:studio-steps` are both currently dead code (GCP disabled
 org-wide, per this repo's own docs) — skipped for now, no value in
@@ -430,26 +430,69 @@ npm test: 1008/1008 passing. gas-lint/doc-currency: 0 errors.
 coverage-gaps: 41 handlers now (+7), still 0 errors — real test coverage
 for every new trigger, not an allowlist entry.
 
-**Still needs you, and can't be done from here (SMP-004):** you've
-already added `DEPLOY_DRIFT_GITHUB_TOKEN` to every project reachable via
-the Apps Script editor (your own action, ahead of this code existing).
-What's left, per project: `node tools/clasp-sync/sync.js <project>`,
-`clasp push` + `clasp deploy` from `cas-ccps/.clasp-build/<project>/`,
-then running `installDeployVersionReportTrigger()` once. Not marked ✅
-until each project has been seen to report live, the way `leader-hub`
-already has.
+**Done live, 2026-09-14 (SMP-004 — user-executed, agent could only prep
+code and commands):** all 7 pushed via `node tools/clasp-sync/sync.js
+<project>` + `clasp push` from `cas-ccps/.clasp-build/<project>/`;
+`teacher-dashboard` and `student-dashboard` (the two with a web app)
+additionally versioned and promoted with `clasp deploy` — each had two
+deployment IDs with ambiguous/stale labels ("v1 - initial production
+deployment" on both a genuinely-live one and an apparently-abandoned
+one), resolved by updating both rather than guessing, since a stale
+deployment ID pointing at new code is harmless. `installDeployVersionReportTrigger()`
++ a manual `reportDeployVersion()` run on all 7, one at a time from the
+Apps Script editor (a few projects hit the Script Properties editor's
+~50-property display cap setting `DEPLOY_DRIFT_GITHUB_TOKEN` — worked
+around with a temporary in-editor-only function calling
+`PropertiesService.getScriptProperties().setProperty(...)` directly,
+deleted immediately after, never committed anywhere). All 7 reported
+clean on the first try — confirmed via GitHub Actions runs (all
+`success`) and zero new `kos-deploy-drift` issues opened.
 
-### 3c. A way to surface drift when found (chat alert? dashboard? both already exist per-system) 🟡
+One real bug found and fixed along the way, before it could reach a
+push: `unified-manual`'s manifest had shipped with a placeholder
+`CentralLedger` library dependency (`libraryId`/`version` both literally
+`REPLACE_WITH_...`) — `28_Module2Setup.js` really does call
+`CentralLedger.*` (guarded by `typeof` checks, so it degrades
+gracefully, but the manifest itself still has to be valid to push at
+all). Fixed by creating a real `central-ledger` library version and
+wiring the manifest to it for real.
+
+### 3c. A way to surface drift when found (chat alert? dashboard? both already exist per-system) ✅
 Built as part of 3a — `check.js` opens/updates a pinned `Deploy drift:
 <project>` issue on mismatch, closes it with a resolution comment once a
 report comes back clean, and never creates one for a project that's never
-drifted. `leader-hub`'s first live report confirmed the CLEAN-match path
-(no issue opened, correctly) — the mismatch/issue-opening path is still
-only unit-tested, not yet seen fire for a real drift. Not marked ✅ until
-that half has also been observed live; worth revisiting then whether a
-tracking issue is enough signal or something should also ping
-`leader-hub`'s existing chat alert / `cas-ccps`'s admin health-check
-surface.
+drifted. Both paths now confirmed live, not just unit-tested:
+
+- **Clean match, silent:** all 7 cas-ccps projects' first-ever reports,
+  plus every project's report after 3b's redeploys — no issue opened.
+- **Real mismatch → issue → auto-close:** issue #16
+  (`Deploy drift: leader-hub:app`) opened for real on 2026-09-13 when
+  `leader-hub` was still reporting a stale SHA from before its Phase 3a
+  redeploy, stayed open and kept re-showing the same stale value across
+  several of its own scheduled 6-hourly reports (proving the check
+  re-evaluates each time rather than only on first sight), and closed
+  itself automatically the moment a correct report landed — twice over,
+  in fact: first surfacing a *second*, distinct bug (see 3b) where
+  `leader-hub`'s own marker file had never been re-stamped after its
+  Phase 3a commit, so even a "successful" redeploy kept reporting the
+  same old stale SHA until that was fixed too.
+
+That second bug is worth its own note: it lives in `stamp.js`, the tool
+this entire mechanism depends on to write a correct marker in the first
+place. It stamped `git rev-parse HEAD` unconditionally, which is only
+correct if nothing unrelated has been committed since a project's last
+real change — true immediately after "commit code, immediately stamp,"
+false the moment other commits land first (exactly what happened here:
+3 cas-ccps-only commits landed between `leader-hub`'s real Phase 3a
+change and this re-stamp). Fixed to delegate to `expected-marker.js`'s
+own computation instead, so the two tools can never disagree about "what
+does git expect" again, however much unrelated history lands in
+between. Caught during this rollout, before it ever reached a push.
+
+No further action needed here — worth revisiting only if a tracking
+issue ever turns out to be too quiet a signal and something should also
+ping `leader-hub`'s existing chat alert / `cas-ccps`'s admin
+health-check surface.
 
 ---
 
