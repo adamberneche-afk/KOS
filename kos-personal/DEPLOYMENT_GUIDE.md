@@ -357,7 +357,8 @@ Expected trigger list:
 - runRegistrarMicrobatch (every 15 min)
 - runRegistrarProcessor (every 10 min)
 - reportDeployVersion (every 6 hours) — optional; no-ops until
-  KOS_DEPLOY_DRIFT_GITHUB_TOKEN is set (see `17_DeployVersionReport.gs`
+  DEPLOY_DRIFT_GITHUB_TOKEN is set (same unprefixed property name as
+  leader-hub/cas-ccps use for this — see `17_DeployVersionReport.gs`
   and `tools/deploy-drift/README.md`)
 
 **Or skip the manual count:** run `runKosPersonalPreflight()` (`15_Preflight.gs`).

@@ -54,34 +54,44 @@ test('expectedMarkerForProject: returns a full 40-char SHA, not an abbreviated o
 
 test('expectedMarkerForProject: agrees with an independently-run git log over the same files', () => {
   // Deliberately a project with NO entry in MARKER_FILE_EXCLUSIONS
-  // (cas-ccps:teacher-dashboard, not kos-personal or leader-hub:app) — this
+  // (cas-ccps:studio-steps, not kos-personal or leader-hub:app) — this
   // test's whole point is confirming a plain, unmodified git log agrees
   // with the function, which isn't true by design for a project whose own
   // marker-stamp commit is the most recent one touching its files. See the
   // dedicated "excludes the marker file itself" test below for that case.
-  const files = filesForProject('cas-ccps:teacher-dashboard');
+  //
+  // NOTE: this used to run against cas-ccps:teacher-dashboard, which was
+  // genuinely marker-free when this test was written — Phase 3b's rollout
+  // (stamp.js) later gave it a real marker+exclusion, so a plain git log
+  // stopped agreeing with the function for it specifically (its stamp
+  // commit is now its own most-recent touch). studio-steps is dead code
+  // deliberately left out of that rollout, so it's the one project that
+  // will keep genuinely having no exclusion entry.
+  const files = filesForProject('cas-ccps:studio-steps');
   const expected = execFileSync(
     'git',
     ['log', '-1', '--format=%H', '--', ...files],
     { cwd: REPO_ROOT, encoding: 'utf8' }
   ).trim();
 
-  const result = expectedMarkerForProject('cas-ccps:teacher-dashboard');
+  const result = expectedMarkerForProject('cas-ccps:studio-steps');
   assert.equal(result.sha, expected);
 });
 
 test('expectedMarkerForProject: picks the most recent commit across MULTIPLE files, not just the first one', () => {
-  // cas-ccps:central-ledger has 27 files with different edit histories —
-  // if this only looked at files[0] it would report a stale SHA whenever a
-  // later file in the list was the one most recently touched.
-  const files = filesForProject('cas-ccps:central-ledger');
+  // cas-ccps:studio-steps has 10 files (9 source + manifest) with
+  // different edit histories — if this only looked at files[0] it would
+  // report a stale SHA whenever a later file in the list was the one most
+  // recently touched. (Not central-ledger — see the comment on the test
+  // above for why that project no longer works for this.)
+  const files = filesForProject('cas-ccps:studio-steps');
   const expected = execFileSync(
     'git',
     ['log', '-1', '--format=%H', '--', ...files],
     { cwd: REPO_ROOT, encoding: 'utf8' }
   ).trim();
 
-  const result = expectedMarkerForProject('cas-ccps:central-ledger');
+  const result = expectedMarkerForProject('cas-ccps:studio-steps');
   assert.equal(result.sha, expected);
   assert.ok(result.committedAt, 'expected an ISO commit timestamp');
 });
