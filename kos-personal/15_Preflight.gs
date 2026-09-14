@@ -34,10 +34,22 @@
 //      bug the moment it was introduced, instead of whenever an operator
 //      happened to notice a trigger silently not firing.
 //
-//   3. Script properties. KOS_ADMIN_EMAIL only — soft/optional, since its
-//      only effect is that sendDailyErrorReport() has nowhere to send the
-//      digest (5_Error_And_Utilities.gs already logs that condition on its
-//      own). INDEX_ID is deliberately NOT checked here as its own property:
+//   3. Script properties. KOS_OWNER_EMAIL, KOS_WEBHOOK_SHARED_SECRET,
+//      KOS_ADMIN_EMAIL. FIX (found while diagnosing a real "Not authorized"
+//      surprise on first web-app open, DEPLOYMENT_GUIDE.md having never
+//      documented this step): KOS_OWNER_EMAIL is now checked and REQUIRED —
+//      unlike ADMIN_EMAIL, an unset KOS_OWNER_EMAIL fails doGet() closed for
+//      EVERYONE, including the deploying account (see _isAuthorizedOwner_(),
+//      7_WebApp.gs), so it is the more severe of the two despite having been
+//      the one with no check at all until now. KOS_WEBHOOK_SHARED_SECRET is
+//      soft, same reasoning as ADMIN_EMAIL below — Deployment B (the Sensor 2
+//      webhook) is explicitly optional to stand up right away
+//      (DEPLOYMENT_GUIDE.md Phase 5), so its absence degrades one inbound
+//      path rather than blocking the whole operator UI. KOS_ADMIN_EMAIL
+//      stays soft/optional, since its only effect is that
+//      sendDailyErrorReport() has nowhere to send the digest
+//      (5_Error_And_Utilities.gs already logs that condition on its own).
+//      INDEX_ID is deliberately NOT checked here as its own property:
 //      resolving `ss` below via _getSystemAsset() either throws (handled
 //      first, see below) or succeeds and caches INDEX_ID as a side effect —
 //      by the time any check below runs, the property is always already
@@ -78,6 +90,14 @@ function runKosPersonalPreflight() {
     results.push(_kpCheckTrigger_(handler));
   });
 
+  results.push(_kpCheckScriptProperty_('KOS_OWNER_EMAIL', true,
+    'doGet() (the operator UI) fails closed for everyone, including the deploying account, ' +
+    'until this is set to the exact Google account you\'ll sign into the web app with — see ' +
+    '_isAuthorizedOwner_(), 7_WebApp.gs.'));
+  results.push(_kpCheckScriptProperty_('KOS_WEBHOOK_SHARED_SECRET', false,
+    'Not set — doPost() (the Sensor 2 / COG_EXHAUST webhook) fails closed until this is set. ' +
+    'Soft because DEPLOYMENT_GUIDE.md Phase 5 says Deployment B (the webhook) can wait; nothing ' +
+    'else in the system depends on it existing yet.'));
   results.push(_kpCheckScriptProperty_('KOS_ADMIN_EMAIL', false));
 
   const failed = results.filter(function (r) { return !r.ok; });
@@ -138,15 +158,24 @@ function _kpCheckTrigger_(handlerName) {
   return { ok: true, label: 'Trigger: ' + handlerName, detail: 'installed once.' };
 }
 
-function _kpCheckScriptProperty_(key, required) {
+/**
+ * @param {string} key
+ * @param {boolean} required
+ * @param {string=} notSetDetail  Optional key-specific detail for the "not
+ *   set" case, covering both branches (prefixed with "Missing and
+ *   required." when required, used verbatim when soft). Omit for the
+ *   original ADMIN_EMAIL-shaped soft message this function was written for.
+ */
+function _kpCheckScriptProperty_(key, required, notSetDetail) {
   const value = PropertiesService.getScriptProperties().getProperty(key);
   if (!value) {
+    const defaultSoftDetail = 'Not set — sendDailyErrorReport() has nowhere to send the digest ' +
+      '(it already logs this condition itself; see 5_Error_And_Utilities.gs).';
     return {
       ok: !required, label: 'Script property: ' + key,
       detail: required
-        ? 'Missing and required.'
-        : 'Not set — sendDailyErrorReport() has nowhere to send the digest (it already logs ' +
-          'this condition itself; see 5_Error_And_Utilities.gs).',
+        ? 'Missing and required.' + (notSetDetail ? ' ' + notSetDetail : '')
+        : (notSetDetail || defaultSoftDetail),
     };
   }
   return { ok: true, label: 'Script property: ' + key, detail: 'Configured.' };

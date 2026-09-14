@@ -10,10 +10,18 @@
 //
 // DEPLOY AS WEB APP
 // ─────────────────────────────────────────────────────────────
+// FIX (doc-drift, found alongside the KOS_OWNER_EMAIL preflight gap below):
+// this used to say "Who has access: Anyone with Google account (or Anyone)"
+// — stale since reconciliation decision 4. appsscript.json's webapp.access
+// is "MYSELF", and DEPLOYMENT_GUIDE.md Phase 5 deploys BOTH the dashboard
+// and the Sensor 2 webhook restricted to yourself, deliberately, so no
+// anonymous endpoint is ever opened. _isAuthorizedOwner_()/
+// _isAuthorizedWebhookCall_() below are defense-in-depth on top of that
+// platform-level restriction, not the only thing enforcing it.
 // Apps Script → Deploy → New Deployment
 //   Type       : Web app
 //   Execute as : Me (so server functions can access Drive)
-//   Who has access: Anyone with Google account  (or Anyone)
+//   Who has access: Only myself
 // Copy the deployment URL — this is your web app and your
 // Sensor 2 (COG_EXHAUST) webhook endpoint.
 //
