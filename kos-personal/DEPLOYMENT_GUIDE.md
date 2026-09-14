@@ -293,6 +293,32 @@ only in which URL you hand to which caller. If you don't have anything
 that needs to POST to Sensor 2 yet, Deployment B can wait; nothing else
 in the system depends on it existing.
 
+**Before you open either URL — set `KOS_OWNER_EMAIL`.** `webapp.access:
+"MYSELF"` above restricts who Google itself lets execute the script at all,
+but `doGet()` has its own check on top of that (`_isAuthorizedOwner_()`,
+`7_WebApp.gs`) and fails closed — for everyone, including you, the deploying
+account — until this is set:
+
+1. In the Apps Script editor, go to **Project Settings** → **Script Properties**
+2. Add a property: Key = `KOS_OWNER_EMAIL`, Value = the exact Google account you'll sign into the web app with
+3. Save
+
+Skip this and Phase 6 below shows "Not authorized" instead of the
+authorization screen. (Got many properties to set at once, or already past
+this point and hitting the Script Properties editor's per-edit limits? Set
+it via `PropertiesService.getScriptProperties().setProperty(...)` from a
+throwaway function in the editor instead, run once, then delete the
+function — same "fill in → run once → clear" shape as `setupCalibration()`
+in Phase 7 below.)
+
+If you're standing up Deployment B (the Sensor 2 webhook) now rather than
+later, also set `KOS_WEBHOOK_SHARED_SECRET` the same way — `doPost()`'s own
+check (`_isAuthorizedWebhookCall_()`) fails closed on it identically, and
+whatever posts `COG_EXHAUST` payloads must append `?secret=<that value>` to
+the URL. `runKosPersonalPreflight()` (Phase 9) reports both as soft/hard
+findings if either is missing, so a later session picking this up cold can
+tell at a glance rather than rediscovering this by hitting the same wall.
+
 ---
 
 ## Phase 6 — Authorize and Bootstrap
@@ -501,6 +527,14 @@ If you have a live v5.4 system, do not deploy v8.0 into the same Apps Script pro
 ---
 
 ## Troubleshooting
+
+**"Not authorized" opening the web app URL**
+`KOS_OWNER_EMAIL` isn't set, or is set to a different address than the
+Google account this browser tab is signed into (see Phase 5 above). Check
+**Project Settings** → **Script Properties**, and check which account is
+signed in — a Chrome profile with more than one Google account active can
+land a `.../a/macros/<domain>/...` URL on the wrong one. `runKosPersonalPreflight()`
+(Phase 9) also flags this by name if you're not sure which it is.
 
 **"Something went wrong" on Bootstrap**
 Click "Show technical detail" and look for the first red line. Common causes:
