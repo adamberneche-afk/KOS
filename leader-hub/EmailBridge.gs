@@ -1,16 +1,28 @@
 /**
  * LeaderHub EmailBridge — Apps Script (Google Apps Script)
- * Deploy as: Web App → Execute as Me → Anyone in domain (or Anyone with link)
+ * Deploy as: Web App → Execute as Me → Anyone in domain
+ * (appsscript.json's webapp.access is "DOMAIN" — this used to also say "or
+ * Anyone with link" here, which was never actually true of the manifest and
+ * would have been a materially worse exposure if it had been; fixed as part
+ * of the doPost() auth-gate fix below.)
  *
- * POST endpoints (JSON body with "action" field):
+ * POST endpoints (JSON body with "action" field) — FIX (security finding):
+ * doPost() used to have no caller-identity check at all, so with
+ * webapp.access "DOMAIN" every action below was reachable, completely
+ * unauthenticated, by any signed-in ccpsnet.net account. Now gated to the
+ * same owner-only check doGet() already uses (see doPost()'s own comment,
+ * below the action table) for every action except the two Organization
+ * Sync actions marked (†), which stay open to any domain account by
+ * design — a co-advisor's own separate LeaderHub deployment calls THIS
+ * owner's URL for exactly those two:
  *   action: "subPlan"       → Create Google Doc sub plan  → {ok, docUrl}
  *   action: "bragEmail"     → Create Gmail draft           → {ok}
  *   action: "markConsumed"  → Mark horizon items consumed  → {ok, consumed}
  *   action: "aiDraft"       → Queue an AI drafting job      → {ok, jobId}
  *   action: "checkAiJob"    → Poll a queued AI job          → {ok, status, result|error}
  *   action: "flowHealth"    → Lifetime per-type AI job stats → {ok, stats, types}
- *   action: "pushOrgSync"   → Publish an org snapshot       → {ok, updatedAt} | {ok:false, conflict:true, ...}
- *   action: "pullOrgSync"   → Fetch an org's synced state   → {ok, found, ...}
+ *   action: "pushOrgSync"   → Publish an org snapshot       → {ok, updatedAt} | {ok:false, conflict:true, ...}  (†)
+ *   action: "pullOrgSync"   → Fetch an org's synced state   → {ok, found, ...}  (†)
  *   action: "listOrgSyncs"  → List orgs shared on this bridge → {ok, orgs:[...]}
  *
  * GET endpoint (unchanged):
@@ -21,6 +33,10 @@
  *   2. Deploy → New Deployment → Web App
  *      Execute as: Me | Access: Anyone in CCPS domain
  *   3. Copy /exec URL → LeaderHub Settings → Email Bridge URL
+ *   4. Project Settings → Script Properties → set OWNER_EMAIL to your own
+ *      Google account (same property doGet()'s gate already requires —
+ *      see Code.gs) — until set, every owner-only action above fails
+ *      closed, same fail-closed convention as OWNER_EMAIL itself.
  *
  * AI drafting (optional): see LEADERHUB_AI_FLOW_SETUP.md for how "aiDraft"/
  * "checkAiJob" bifurcate into a GAS-side job queue (this file) plus a
@@ -97,10 +113,52 @@ function _lhDispatchAction_(action, body) {
   return { ok: false, error: 'Unknown action: ' + action };
 }
 
+// FIX (security finding — gas-lint's web-app-auth-check): doPost() used to
+// have NO caller-identity check in its own body at all. appsscript.json's
+// webapp.access is "DOMAIN" ("Anyone in your domain"), not "MYSELF" the way
+// kos-personal's equivalent is — so, unlike there, the manifest access level
+// alone was never a sufficient gate: every action below was reachable,
+// completely unauthenticated, by any signed-in ccpsnet.net account that
+// found this URL, including creating a real Doc in the owner's Drive
+// (subPlan), a Gmail draft under the owner's account (bragEmail), and
+// enumerating every Organization Sync org on this bridge with no orgId
+// needed at all (listOrgSyncs).
+//
+// Gated to the same single-owner check doGet() already uses
+// (_isAuthorizedOwner_()/getConfig_(), Code.gs — same GAS project/execution
+// scope, so both are already in scope here) — for every action EXCEPT
+// Organization Sync's push/pull, which stay open by design: a co-advisor's
+// own, wholly separate LeaderHub deployment (their own OWNER_EMAIL, per
+// Code.gs's header) calls THIS owner's /exec URL for exactly those two
+// actions — gating them to owner-only would break the feature outright, not
+// tighten it. listOrgSyncs is NOT covered by that exception: a co-advisor's
+// own client already knows the specific orgId it wants to push/pull, so it
+// never needs "list everything on this bridge" — only the owner's own
+// Settings → Organizations page does. Closing that still leaves orgId
+// itself guessable (short human-chosen slugs like "deca"/"fbla", not a
+// random token — see _parseOrgJson(), leader-hub/src/11-...html) as a
+// smaller residual gap; closing that fully would need a real per-org
+// share token, a larger design change deliberately left for later rather
+// than folded into this fix.
+const LH_OWNER_ONLY_ACTIONS = [
+  'subPlan', 'bragEmail', 'markConsumed', 'aiDraft', 'checkAiJob',
+  'flowHealth', 'listOrgSyncs',
+];
+
+function _isOwnerOnlyAction_(action) {
+  return LH_OWNER_ONLY_ACTIONS.indexOf(action) !== -1;
+}
+
 function doPost(e) {
   try {
-    const body = JSON.parse(e.postData.contents || '{}');
-    return jsonResponse_(_lhDispatchAction_(body.action || '', body));
+    const body   = JSON.parse(e.postData.contents || '{}');
+    const action = body.action || '';
+
+    if (_isOwnerOnlyAction_(action) && !_isAuthorizedOwner_(getConfig_())) {
+      return jsonResponse_({ ok: false, error: 'Not authorized.' });
+    }
+
+    return jsonResponse_(_lhDispatchAction_(action, body));
   } catch (err) {
     return jsonResponse_({ ok: false, error: err.message });
   }
