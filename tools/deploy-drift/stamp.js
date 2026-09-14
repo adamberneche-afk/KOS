@@ -1,9 +1,13 @@
 #!/usr/bin/env node
 // =============================================================================
-// deploy-drift/stamp — writes the current HEAD SHA into a GAS project's
-// marker file (kos-personal/18_DeployVersionMarker.gs, for example), so
-// that project's next self-report matches what
-// tools/deploy-drift/expected-marker.js will compute.
+// deploy-drift/stamp — writes tools/deploy-drift/expected-marker.js's own
+// computed SHA for a project into that project's marker file
+// (kos-personal/18_DeployVersionMarker.gs, for example) — never bare
+// `git rev-parse HEAD`, which silently disagrees with expected-marker.js
+// the moment any commit unrelated to this project lands in between (see
+// the inline comment on the expected-marker.js call below for the
+// incident that caught this). This guarantees stamp.js and the drift
+// check can never disagree about what "current" means for a project.
 //
 // Run this AFTER committing a real code change, as its own SEPARATE commit
 // — never combined with the functional change, and never hand-edited. See
@@ -18,7 +22,7 @@
 
 const fs = require('fs');
 const path = require('path');
-const { execFileSync } = require('child_process');
+const { expectedMarkerForProject } = require('./expected-marker.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
@@ -43,10 +47,6 @@ const MARKER_FILES = {
   'cas-ccps:student-dashboard': { file: 'cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js', constant: 'DEPLOY_VERSION_SHA' },
 };
 
-function currentHeadSha() {
-  return execFileSync('git', ['rev-parse', 'HEAD'], { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
-}
-
 function stamp(projectName) {
   const config = MARKER_FILES[projectName];
   if (!config) {
@@ -56,7 +56,24 @@ function stamp(projectName) {
     );
   }
 
-  const sha = currentHeadSha();
+  // Bug fixed 2026-09-14 (caught live during the Phase 3b rollout, before
+  // it ever reached a push): this used to stamp `git rev-parse HEAD`
+  // unconditionally. That's only correct if nothing unrelated to this
+  // project has been committed since its last real change — true right
+  // after "commit the code change, immediately stamp" but false the
+  // moment any other commit lands first (exactly what happened here:
+  // leader-hub:app's marker got re-stamped with a HEAD that was 3
+  // cas-ccps-only commits past leader-hub's actual last change, which
+  // would have made expected-marker.js disagree with the very value this
+  // tool just wrote). Delegating to expected-marker.js's own computation
+  // means stamp.js and the drift check can never disagree about what
+  // "current" means for a project, however much unrelated history has
+  // landed in between.
+  const expected = expectedMarkerForProject(projectName);
+  if (!expected.sha) {
+    throw new Error(`expected-marker.js found no commit for "${projectName}" — nothing to stamp.`);
+  }
+  const sha = expected.sha;
   const filePath = path.join(REPO_ROOT, config.file);
   const src = fs.readFileSync(filePath, 'utf8');
   const re = new RegExp(`(const\\s+${config.constant}\\s*=\\s*)'[0-9a-f]{40}'`);
@@ -76,7 +93,7 @@ if (require.main === module) {
   } else {
     try {
       const result = stamp(projectName);
-      console.log(`Stamped ${result.file} with HEAD (${result.sha}).`);
+      console.log(`Stamped ${result.file} with ${result.sha} (expected-marker.js's computed SHA for "${result.project}").`);
       console.log('Commit ONLY this file now, as its own commit, before pushing.');
     } catch (e) {
       console.error(e.message);
