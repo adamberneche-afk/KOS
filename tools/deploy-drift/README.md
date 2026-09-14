@@ -82,6 +82,20 @@ Skipping step 2/3, or combining them with step 1, both break the match —
 by design, this is exactly the kind of slip the whole mechanism exists to
 surface, not silently tolerate.
 
+**Step 2 has to compute the SHA the same way the check does, not just
+"the current commit."** `stamp.js` delegates to `expected-marker.js`'s
+own `expectedMarkerForProject()` rather than a bare `git rev-parse HEAD`
+— the two were briefly different tools computing what was supposed to be
+the same answer, until a real live incident showed they could disagree:
+re-stamping `leader-hub:app` after 3 unrelated (cas-ccps-only) commits
+had already landed since its own last real change would have written
+`HEAD` at that later point — a different SHA than `expected-marker.js`
+itself would compute for the same project, since those 3 commits never
+touched any of leader-hub's files. Caught before it ever reached a push.
+Delegating means the two tools can't drift apart from each other again,
+however much unrelated history lands between a project's real change and
+its next stamp.
+
 **A deliberate, narrower tradeoff in the `cas-ccps` marker files
 specifically:** `kos-personal`/`leader-hub`'s marker files hold *only*
 the SHA constant — every line of real reporting logic lives in a
@@ -147,13 +161,23 @@ generating a credential is inherently something only you can do.
 6. `clasp push` + `clasp deploy` as normal — for `cas-ccps`, run
    `node tools/clasp-sync/sync.js <project>` first, then push from
    `cas-ccps/.clasp-build/<project>/`.
-7. **Merge to `main` before expecting anything to react.**
+7. **Merge to `main` before expecting anything to react — and keep
+   merging, every time this mechanism changes, not just the first time.**
    `repository_dispatch` only looks at workflow files on the repo's
    *default* branch — `deploy-drift.yml` sitting on a feature branch is
    invisible to GitHub no matter how correct a project's report is. Learned
-   live: `leader-hub`'s first report got a clean `204` from GitHub with
-   nothing on the repo side to show for it, because the branch carrying
-   `deploy-drift.yml` had never been merged.
+   live twice, in two different shapes: `leader-hub`'s first report got a
+   clean `204` from GitHub with nothing on the repo side to show for it,
+   because the branch carrying `deploy-drift.yml` itself had never been
+   merged (Phase 3a). Later, with the workflow long since on `main`, a
+   run of stamp/marker fixes (including a real bug in `stamp.js` — see
+   below) sat on a feature branch for hours while `main` stayed behind —
+   `kos-personal`'s drift issue stayed open against a report that was, by
+   then, actually correct, simply because `main` didn't yet agree. Treat
+   any commit touching a marker file, `stamp.js`, `expected-marker.js`, or
+   `check.js` as unfinished until it's on `main`, the same way a code
+   change isn't actually deployed until `clasp push`+`clasp deploy` happen
+   — not just the workflow file, once, at the start.
 8. Run `installDeployVersionReportTrigger()` once from the Apps Script
    editor's function dropdown, then run `reportDeployVersion` directly to
    confirm — a clean execution log (or, once logging was added, a
