@@ -12,9 +12,11 @@
  * unauthenticated, by any signed-in ccpsnet.net account. Now gated to the
  * same owner-only check doGet() already uses (see doPost()'s own comment,
  * below the action table) for every action except the two Organization
- * Sync actions marked (†), which stay open to any domain account by
+ * Sync actions marked (†), which stay open to any SAME-DOMAIN account by
  * design — a co-advisor's own separate LeaderHub deployment calls THIS
- * owner's URL for exactly those two:
+ * owner's URL for exactly those two. That domain boundary is now enforced
+ * in this file's own code (_isSameDomainAsOwner_()), not just left to
+ * appsscript.json's webapp.access setting:
  *   action: "subPlan"       → Create Google Doc sub plan  → {ok, docUrl}
  *   action: "bragEmail"     → Create Gmail draft           → {ok}
  *   action: "markConsumed"  → Mark horizon items consumed  → {ok, consumed}
@@ -134,27 +136,76 @@ function _lhDispatchAction_(action, body) {
 // tighten it. listOrgSyncs is NOT covered by that exception: a co-advisor's
 // own client already knows the specific orgId it wants to push/pull, so it
 // never needs "list everything on this bridge" — only the owner's own
-// Settings → Organizations page does. Closing that still leaves orgId
-// itself guessable (short human-chosen slugs like "deca"/"fbla", not a
-// random token — see _parseOrgJson(), leader-hub/src/11-...html) as a
-// smaller residual gap; closing that fully would need a real per-org
-// share token, a larger design change deliberately left for later rather
-// than folded into this fix.
+// Settings → Organizations page does.
+//
+// FIX (follow-up hardening — "tighten the org exploit, at the very least
+// make it domain locked"): push/pull used to rely ENTIRELY on
+// appsscript.json's webapp.access ("DOMAIN") to keep them same-domain —
+// nothing in this file's own code enforced it, so a deployment later
+// reconfigured to a looser access level (accidentally, by a co-advisor
+// following stale setup notes, or a future edit) would have silently
+// widened push/pull to the whole internet with no code change at all.
+// _isSameDomainAsOwner_() below is a second, independent, in-code
+// enforcement of the SAME boundary the manifest is supposed to provide —
+// derived from OWNER_EMAIL's own domain rather than a hardcoded
+// "ccpsnet.net", since a colleague forking this repo (Code.gs's header)
+// sets their own OWNER_EMAIL on a different domain entirely. This does NOT
+// fully close the exploit: orgId itself is still a short, human-chosen slug
+// ("deca", "fbla" — see _parseOrgJson(), leader-hub/src/11-...html), not a
+// random token, so anyone else already inside the SAME domain can still
+// guess a common one. Closing that fully needs a real per-org share token —
+// a larger design change, deliberately not folded into this pass; this is
+// the "at the very least" floor, not the ceiling.
 const LH_OWNER_ONLY_ACTIONS = [
   'subPlan', 'bragEmail', 'markConsumed', 'aiDraft', 'checkAiJob',
   'flowHealth', 'listOrgSyncs',
 ];
 
+const LH_DOMAIN_LOCKED_ACTIONS = ['pushOrgSync', 'pullOrgSync'];
+
 function _isOwnerOnlyAction_(action) {
   return LH_OWNER_ONLY_ACTIONS.indexOf(action) !== -1;
+}
+
+function _isDomainLockedAction_(action) {
+  return LH_DOMAIN_LOCKED_ACTIONS.indexOf(action) !== -1;
+}
+
+// Extracts the part after '@', lowercased. '' for anything without an '@'
+// (an empty/malformed email) rather than throwing — every caller below
+// treats '' as "no domain," which fails the comparison closed.
+function _emailDomain_(email) {
+  const at = String(email || '').indexOf('@');
+  return at === -1 ? '' : String(email).slice(at + 1).toLowerCase();
+}
+
+// Same-domain check for the two actions a co-advisor's OWN separate
+// deployment is meant to reach (see the block comment above). Deliberately
+// NOT the same check as _isAuthorizedOwner_() — that requires the exact
+// SAME account as OWNER_EMAIL; this only requires the SAME domain as
+// OWNER_EMAIL, which is the actual boundary Organization Sync's design
+// needs. Fails closed (false) if either email is missing or malformed —
+// including the known Apps Script gotcha where Session.getActiveUser()
+// returns '' for an external viewer under some Workspace identity-
+// visibility settings, same caveat KOS_OWNER_EMAIL's own setup notes
+// flag; if legitimate co-advisor push/pull calls start failing after this
+// ships, check that first before assuming a logic bug here.
+function _isSameDomainAsOwner_(cfg) {
+  const ownerDomain  = _emailDomain_(cfg && cfg.ownerEmail);
+  const callerDomain = _emailDomain_(Session.getActiveUser().getEmail());
+  return !!ownerDomain && !!callerDomain && ownerDomain === callerDomain;
 }
 
 function doPost(e) {
   try {
     const body   = JSON.parse(e.postData.contents || '{}');
     const action = body.action || '';
+    const cfg    = getConfig_();
 
-    if (_isOwnerOnlyAction_(action) && !_isAuthorizedOwner_(getConfig_())) {
+    if (_isOwnerOnlyAction_(action) && !_isAuthorizedOwner_(cfg)) {
+      return jsonResponse_({ ok: false, error: 'Not authorized.' });
+    }
+    if (_isDomainLockedAction_(action) && !_isSameDomainAsOwner_(cfg)) {
       return jsonResponse_({ ok: false, error: 'Not authorized.' });
     }
 

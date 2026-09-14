@@ -18,12 +18,22 @@
 // enumerated every org on this bridge to any caller with no orgId needed —
 // so it's gated like every other owner-only action.
 //
+// FOLLOW-UP FIX ("tighten the org exploit, at the very least make it domain
+// locked"): push/pull used to rely entirely on appsscript.json's
+// webapp.access ("DOMAIN") to keep them same-domain, with nothing in this
+// file's own code enforcing it — a deployment later reconfigured to a
+// looser access level would have silently widened them with no code
+// change at all. _isSameDomainAsOwner_() is now a second, independent,
+// in-code enforcement of that same boundary, derived from OWNER_EMAIL's
+// own domain rather than a hardcoded one (a colleague forking this repo
+// sets their own OWNER_EMAIL, possibly on a different domain entirely).
+//
 // doPost() itself is not called directly here — same reason
 // tests/kos-personal/web-app-auth.test.js gives: this harness deliberately
 // leaves ContentService unmocked (gas-sandbox.js's own header), so calling
-// doPost() would throw by design. _isOwnerOnlyAction_() (pure, no GAS
-// globals) and _isAuthorizedOwner_()/getConfig_() (the same pattern already
-// tested for kos-personal) are each fully exercisable without it.
+// doPost() would throw by design. _isOwnerOnlyAction_()/_isDomainLockedAction_()
+// (pure, no GAS globals) and _isAuthorizedOwner_()/_isSameDomainAsOwner_()/
+// getConfig_() are each fully exercisable without it.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -37,6 +47,7 @@ const FILES = [
 ];
 const EXPOSE = [
   '_isOwnerOnlyAction_', 'LH_OWNER_ONLY_ACTIONS',
+  '_isDomainLockedAction_', 'LH_DOMAIN_LOCKED_ACTIONS', '_isSameDomainAsOwner_',
   '_isAuthorizedOwner_', 'getConfig_',
 ];
 
@@ -90,4 +101,56 @@ test('_isAuthorizedOwner_: false when the viewer is a different domain account',
   const { exported, sandbox } = load(sessionAs('someone.else@ccpsnet.net'));
   sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'adam@ccpsnet.net');
   assert.equal(exported._isAuthorizedOwner_(exported.getConfig_()), false);
+});
+
+// ── _isDomainLockedAction_() / _isSameDomainAsOwner_() — the follow-up
+//    hardening: push/pull no longer rely solely on appsscript.json's
+//    webapp.access to stay same-domain. ──────────────────────────────────
+
+test('_isDomainLockedAction_: exactly pushOrgSync and pullOrgSync', () => {
+  const { exported } = load();
+  assert.equal(exported._isDomainLockedAction_('pushOrgSync'), true);
+  assert.equal(exported._isDomainLockedAction_('pullOrgSync'), true);
+  // Every owner-only action must NOT also be domain-locked — the two gates
+  // are mutually exclusive by construction (doPost() checks both
+  // independently), and a mistake here would mean an owner-only action
+  // silently accepted any same-domain caller instead of just the owner.
+  exported.LH_OWNER_ONLY_ACTIONS.forEach((action) =>
+    assert.equal(exported._isDomainLockedAction_(action), false, action));
+});
+
+test('_isSameDomainAsOwner_: true for a different account on the same domain as OWNER_EMAIL', () => {
+  const { exported, sandbox } = load(sessionAs('coadvisor@ccpsnet.net'));
+  sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'adam@ccpsnet.net');
+  assert.equal(exported._isSameDomainAsOwner_(exported.getConfig_()), true);
+});
+
+test('_isSameDomainAsOwner_: true for the owner\'s own account too', () => {
+  const { exported, sandbox } = load(sessionAs('adam@ccpsnet.net'));
+  sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'adam@ccpsnet.net');
+  assert.equal(exported._isSameDomainAsOwner_(exported.getConfig_()), true);
+});
+
+test('_isSameDomainAsOwner_: false for a caller on a different domain entirely', () => {
+  const { exported, sandbox } = load(sessionAs('stranger@gmail.com'));
+  sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'adam@ccpsnet.net');
+  assert.equal(exported._isSameDomainAsOwner_(exported.getConfig_()), false);
+});
+
+test('_isSameDomainAsOwner_: fails closed when OWNER_EMAIL is unset, even for a real domain caller', () => {
+  const { exported } = load(sessionAs('coadvisor@ccpsnet.net'));
+  assert.equal(exported._isSameDomainAsOwner_(exported.getConfig_()), false);
+});
+
+test('_isSameDomainAsOwner_: fails closed when the caller\'s email is empty (the getActiveUser() visibility gotcha)', () => {
+  const { exported, sandbox } = load(sessionAs(''));
+  sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'adam@ccpsnet.net');
+  assert.equal(exported._isSameDomainAsOwner_(exported.getConfig_()), false);
+});
+
+test('_isSameDomainAsOwner_: does not throw on a malformed OWNER_EMAIL with no "@"', () => {
+  const { exported, sandbox } = load(sessionAs('coadvisor@ccpsnet.net'));
+  sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'not-an-email');
+  assert.doesNotThrow(() => exported._isSameDomainAsOwner_(exported.getConfig_()));
+  assert.equal(exported._isSameDomainAsOwner_(exported.getConfig_()), false);
 });
