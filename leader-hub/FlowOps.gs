@@ -65,11 +65,12 @@
  *
  * SAFETY — WHY A FIXTURE ROW CANNOT SEND ANYTHING. A row in AI_Queue causes a
  * Flow to generate text and write it back into that row. It does not cause
- * GAS to act: the only outbound side effect in this project,
- * createBragDraft_()'s GmailApp.createDraft(), is reachable only from an
- * explicit bragEmail client action and never from a queue row. So a
- * fixture's result is written, read by nobody, and removed by the existing
- * 2-hour sweep in checkAiJob_. Verified before this file was written; do not
+ * GAS to act: the only outbound side effect in this project — createBragDraft_()
+ * queuing a row for sendBragQueue() to email to the owner — is reachable
+ * only from an explicit bragEmail client action and never from a queue
+ * row. So a fixture's result is written, read by nobody, and removed by
+ * the existing 2-hour sweep in checkAiJob_. Verified before this file was
+ * written; do not
  * wire a queue result into a send path without revisiting it.
  *
  * STATS HYGIENE. Fixtures write their rows directly rather than through
