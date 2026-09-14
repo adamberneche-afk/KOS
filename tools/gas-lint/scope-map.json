@@ -8,7 +8,10 @@
     "DocumentApp":     ["https://www.googleapis.com/auth/documents"],
     "FormApp":         ["https://www.googleapis.com/auth/forms"],
     "MailApp":         ["https://www.googleapis.com/auth/script.send_mail"],
-    "GmailApp":        ["https://mail.google.com/"],
+    "GmailApp":        [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.compose"
+    ],
     "CalendarApp":     ["https://www.googleapis.com/auth/calendar"],
     "ScriptApp":       ["https://www.googleapis.com/auth/script.scriptapp"],
     "Session":         ["https://www.googleapis.com/auth/userinfo.email"],
@@ -21,6 +24,7 @@
   ],
 
   "_notes": {
-    "Session": "Only actually needs userinfo.email if the code calls Session.getActiveUser()/getEffectiveUser() and reads .getEmail(); Session.getScriptTimeZone() needs no scope. This tool flags any Session.* usage conservatively (may over-flag getScriptTimeZone() calls as needing the scope when they don't) — check.js documents this in its own output rather than silently guessing which method was called."
+    "Session": "Only actually needs userinfo.email if the code calls Session.getActiveUser()/getEffectiveUser() and reads .getEmail(); Session.getScriptTimeZone() needs no scope. This tool flags any Session.* usage conservatively (may over-flag getScriptTimeZone() calls as needing the scope when they don't) — check.js documents this in its own output rather than silently guessing which method was called.",
+    "GmailApp": "Narrowed from the single full-mailbox https://mail.google.com/ scope (least-privilege fix, also the prime suspect in a real live OAuth-consent-dialog crash — see leader-hub's git history around the appsscript.json change this note came from) to the two scopes leader-hub's EmailBridge.gs actually uses: gmail.readonly (scanHorizonLabel_() reads message subject/body, never modifies) and gmail.compose (createBragDraft_() creates drafts, never sends). checkOAuthScopes() requires ALL scopes listed here to be present (AND semantics, same as every other service in this map) — correct for the one real GmailApp consumer in this repo today, but not a general \"any Gmail scope will do\" statement: a future project calling GmailApp methods that send, modify, or delete (not just read/compose) would need a broader scope this list doesn't cover, and this map has no per-method granularity to catch that automatically — extend it (or add a project-specific override) if that ever happens rather than assuming this list already covers it."
   }
 }

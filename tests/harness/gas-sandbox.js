@@ -20,11 +20,15 @@
 // from a test using this sandbox throws ReferenceError by design.
 //
 // GmailApp's absence is worth keeping. No cas-ccps code calls it, and
-// nothing should start: GmailApp requires the https://mail.google.com/
-// scope — full read/modify/delete on the user's whole mailbox — where
-// MailApp needs only script.send_mail, which every mail-sending cas-ccps
-// project already declares. A ReferenceError here is a cheaper way to
-// discover that than a scope-consent prompt in production.
+// nothing should start: GmailApp needs a real Gmail OAuth scope declared
+// in the calling project's manifest (leader-hub's EmailBridge.gs — the
+// one real consumer — declares gmail.readonly + gmail.compose for
+// exactly the methods it calls; a project needing to send/modify/delete
+// would need more, see tools/gas-lint/scope-map.json's own GmailApp
+// note), where MailApp needs only script.send_mail, which every
+// mail-sending cas-ccps project already declares. A ReferenceError here
+// is a cheaper way to discover a missing scope than a scope-consent
+// prompt in production.
 
 const vm = require('vm');
 const fs = require('fs');
