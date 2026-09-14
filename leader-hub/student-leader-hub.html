@@ -14411,7 +14411,13 @@ Thank you for covering my classes.`;
   refreshNextAction();
 }
 
-// ── 12. generateBragEmail → Apps Script creates Gmail draft ──────────────────
+// ── 12. generateBragEmail → Apps Script queues it, emailed to you shortly ────
+// FIX (Gmail-scope narrowing, round 2): this used to create a real Gmail
+// draft (bragEmail → GmailApp.createDraft()). Now the server queues the
+// draft and a 5-minute trigger (sendBragQueue(), EmailBridge.gs) emails it
+// to the owner's own inbox via MailApp instead — no more Gmail Drafts
+// access needed at all. The status-text copy below reflects that: no more
+// "check Drafts folder," since there's no Gmail draft to check.
 async function generateBragEmail() {
   // The Gmail-draft creation below is a real network round-trip with only a
   // small status-text change to show it's in flight — easy to miss, and a
@@ -14504,20 +14510,20 @@ async function _generateBragEmailInner() {
   _bragBodySnapshot = emailBody; // this exact text is now persisted — only further hand-edits are at risk
   refreshNextAction();
 
-  // Optionally send to Apps Script to create Gmail draft
+  // Optionally send to Apps Script to queue the draft for email delivery
   if (url) {
     try {
-      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Creating Gmail draft…';
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Queuing draft…';
       const to   = aud?.defaultTo || '';
       const subj = _subj || `Weekly Wins — Week of ${weekDisplay}`;
       const res  = await callGAS('bragEmail', { to, subject: subj, body: emailBody });
       if (res.ok) {
-        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Gmail draft created — check Drafts folder';
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Draft queued — you\'ll get it by email shortly';
       } else {
-        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (Gmail draft failed)';
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (queuing failed)';
       }
     } catch(e) {
-      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — Gmail unavailable';
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — queue unavailable';
     }
   }
 }
