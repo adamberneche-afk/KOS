@@ -426,7 +426,10 @@ Built and tested for the other 7 `cas-ccps` projects (`central-ledger`,
   looped over, confirming each reports its own real project key (the one
   thing easy to typo across 7 near-identical files).
 
-npm test: 1008/1008 passing. gas-lint/doc-currency: 0 errors.
+`npm test`: all passing as of this phase (run it yourself for the
+current count — a hardcoded number here just goes stale as more tests
+get added later, the same reasoning leader-hub/README.md's own `wc -l`
+pointer uses instead of a line count). gas-lint/doc-currency: 0 errors.
 coverage-gaps: 41 handlers now (+7), still 0 errors — real test coverage
 for every new trigger, not an allowlist entry.
 
