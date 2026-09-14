@@ -460,6 +460,44 @@ gracefully, but the manifest itself still has to be valid to push at
 all). Fixed by creating a real `central-ledger` library version and
 wiring the manifest to it for real.
 
+**`kos-personal` picked back up the same day, once its Script Property
+blocker cleared** (deferred earlier in 3b — see the note that used to be
+here). Two bugs specific to it, on top of the general rollout work:
+
+- **Its marker had never been re-stamped since Phase 3a.** Same root
+  cause as leader-hub's (see the stamp.js fix above), just never
+  noticed until this project's turn came — `18_DeployVersionMarker.gs`
+  was still carrying a SHA from before the Phase 3a "confirmed live"
+  commit. Re-stamped, twice over (a second real code change — the token
+  rename below — moved the expected SHA again after the first fix).
+- **Its `DEPLOY_DRIFT_GITHUB_TOKEN` Script Property had a project-specific
+  `KOS_`-prefixed name**, unlike the plain name every other project (this
+  file included) uses for the identical purpose — kos-personal prefixes
+  every one of its *own* Script Properties with `KOS_` as a real,
+  deliberate convention, and this key had followed it too, until setting
+  the same token across all 9 projects via one clasp-scripted property
+  push made kos-personal the one manual exception. Renamed to match the
+  other 8 — the one deliberate break from kos-personal's own prefix
+  convention, documented inline at both the config-mapping site
+  (`1_Config_And_Deploy.gs`) and the report function's own header
+  (`17_DeployVersionReport.gs`).
+
+**A third, more structural gap surfaced closing this out — the drift
+check itself can be blind, silently.** `main` had been sitting 6 commits
+behind `consolidation-review-fixes` (the stamp.js fix, both `unified-manual`
+and `kos-personal`'s corrections, this doc's own 3b/3c update) — `repository_dispatch`
+only ever reacts against the repo's *default* branch, so every one of
+those fixes was invisible to the live check until a PR merged them in.
+This is the same category of gap Phase 3a's very first live test already
+found once (a workflow file itself sitting unmerged) — recurring here in
+a different shape (the *commits feeding* an already-merged workflow going
+unmerged instead) confirms it's worth stating as a standing rule, not just
+a one-off incident: **treat any deploy-drift-related commit as unfinished
+until it's on `main`**, the same way a code change isn't actually deployed
+until `clasp push`+`clasp deploy` happen. Caught by kos-personal's issue
+(#17) staying open against a report that was, by then, actually correct —
+merged via PR #18, after which the same report closed it on the next try.
+
 ### 3c. A way to surface drift when found (chat alert? dashboard? both already exist per-system) ✅
 Built as part of 3a — `check.js` opens/updates a pinned `Deploy drift:
 <project>` issue on mismatch, closes it with a resolution comment once a
@@ -491,6 +529,14 @@ change and this re-stamp). Fixed to delegate to `expected-marker.js`'s
 own computation instead, so the two tools can never disagree about "what
 does git expect" again, however much unrelated history lands in
 between. Caught during this rollout, before it ever reached a push.
+
+`kos-personal`'s own issue (#17) reran the same mismatch → auto-close
+path a second time, independently — including a third variant on the
+theme: it stayed open for one extra report cycle even after a genuinely
+correct report landed, because that report was checked against a
+still-behind `main` (see 3b's note above). Confirms the auto-close path
+isn't a fluke of leader-hub's specific timing; it holds once the check
+actually has the right git state to compare against.
 
 No further action needed here — worth revisiting only if a tracking
 issue ever turns out to be too quiet a signal and something should also
