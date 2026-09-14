@@ -4,8 +4,8 @@
     "libraries": [
       {
         "userSymbol": "CentralLedger",
-        "libraryId": "REPLACE_WITH_REAL_CENTRAL_LEDGER_SCRIPT_ID",
-        "version": "REPLACE_WITH_LIBRARY_VERSION",
+        "libraryId": "1I1tkeOoalfDVo88yRgn6UwIzWQhzRqKapn-OpfZTV1UJILyMga2CbUXi",
+        "version": "3",
         "developmentMode": false
       }
     ]
