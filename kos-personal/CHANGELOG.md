@@ -1764,3 +1764,53 @@ missing `.clasp.json` (deleted at some point, cause unknown) compounded it
 by making the next push fail closed rather than silently repeat the
 mistake. See `DEPLOYMENT_GUIDE.md`'s status banner for the check to run
 before trusting any push's file count again.
+
+## Round 23 — deploy-drift picked back up: two of its own bugs found closing it out
+
+Phase 3 of the process-hardening sprint (`meta/PROCESS_HARDENING_SPRINT.md`)
+added self-reporting to kos-personal in an earlier round
+(`17_DeployVersionReport.gs`, `18_DeployVersionMarker.gs`) but never
+actually went live — blocked on a Script Property the Apps Script
+editor's own display cap wouldn't let get added by hand, until a
+clasp-scripted property push (covering several other projects at the same
+time) finally cleared it. Closing that out surfaced two real bugs, neither
+of which had anything to do with the property itself:
+
+1. **The marker had never been re-stamped since Phase 3a.**
+   `18_DeployVersionMarker.gs`'s `KOS_DEPLOY_VERSION_SHA` was still the
+   value from before the commit that actually finished Phase 3a — the
+   same bug leader-hub had, independently, caught the same way (an open
+   deploy-drift issue reporting a stale SHA that didn't match what git
+   actually expected). Re-stamped via
+   `node tools/deploy-drift/stamp.js kos-personal`.
+2. **The Script Property name itself didn't match the other 8 projects.**
+   kos-personal prefixes every one of its own Script Properties with
+   `KOS_` — a real, deliberate convention — and
+   `DEPLOY_DRIFT_GITHUB_TOKEN` had followed it too
+   (`KOS_DEPLOY_DRIFT_GITHUB_TOKEN`), unlike leader-hub and every
+   cas-ccps project, which use the plain, unprefixed name. Harmless in
+   isolation, but the whole point of setting this token via one
+   clasp-scripted property push across every project was to never
+   hand-manage a per-project exception — so kos-personal was renamed to
+   match the other 8 rather than kept as the one-off. `1_Config_And_Deploy.gs`,
+   `17_DeployVersionReport.gs`, its test file, and `DEPLOYMENT_GUIDE.md`
+   all updated; the marker had to be re-stamped a second time, since this
+   rename was itself a real code change.
+
+A third bug, not specific to kos-personal, surfaced closing this out and
+is the more consequential one long-term: `tools/deploy-drift/stamp.js`
+computed its SHA from a bare `git rev-parse HEAD` instead of the same
+computation `expected-marker.js` (and the reacting GitHub Action) actually
+use — correct only if nothing unrelated has been committed since a
+project's last real change, false the moment anything else lands first.
+Fixed to delegate to `expected-marker.js` directly. Full account,
+including a related gap this same close-out found (a run of fixes sitting
+on a feature branch while `main` — the only branch `repository_dispatch`
+reacts to — stayed behind, so the live check was evaluating everything
+against stale expectations until a PR merged them in) in
+`meta/PROCESS_HARDENING_SPRINT.md` and `tools/deploy-drift/README.md`.
+
+kos-personal now reports live and clean — confirmed via its own GitHub
+issue (#17), which opened for the stale report and closed itself once a
+correct one landed against a `main` that finally agreed. `npm test`:
+1009/1009 passing. gas-lint/doc-currency: 0 errors.
