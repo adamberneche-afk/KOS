@@ -740,6 +740,23 @@ hr{border:none;border-top:1px solid var(--border);margin:1rem 0;}
 // toggle so the same message/location the console gets is also available
 // on-page, on demand, without going back to a stack-trace-always-visible
 // banner for every user on every error.
+//
+// UPDATED AGAIN: a real live incident (a page-load crash whose src:line:col
+// pointed at Apps Script's own userCodeAppPanel wrapper, not a line that
+// existed in the source at all — the sandboxed serving origin doesn't
+// preserve raw source line numbers the way a plain file:// open does) made
+// msg+location alone insufficient to diagnose without DevTools. Now also
+// shows err.stack when the browser provides one (guarded — not every
+// error type populates it, a SyntaxError sometimes doesn't) since a stack
+// frame's FUNCTION NAME survives that same line-number mismatch and is
+// usually enough to find the right code by itself. Still behind the same
+// opt-in toggle, still not shown by default, for the same reason as
+// before. Also added a best-effort "Copy" button — a photo of small red
+// text on a screen is lossy for the exact line:col a fix needs; a paste
+// isn't. Falls back to "select the text to copy" if the Clipboard API
+// isn't available in this sandboxed serving context (unverified until a
+// real failure is seen — see Code.gs's own CSP-verification note for the
+// same class of "can't fully verify without a live deployment" caveat).
 window.onerror = function(msg, src, line, col, err) {
   console.error('[Uncaught error]', msg, 'at', src + ':' + line + ':' + col, err);
   if (document.getElementById('js-error-banner')) return false;
@@ -756,6 +773,10 @@ window.onerror = function(msg, src, line, col, err) {
   detailsBtn.textContent = 'Details';
   detailsBtn.setAttribute('aria-label', 'Show error details');
   detailsBtn.style.cssText = 'background:rgba(255,255,255,.15);border:none;color:#fff;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:4px;line-height:1;white-space:nowrap';
+  const copyBtn = document.createElement('button');
+  copyBtn.textContent = 'Copy';
+  copyBtn.setAttribute('aria-label', 'Copy error details');
+  copyBtn.style.cssText = 'background:rgba(255,255,255,.15);border:none;color:#fff;font-size:12px;cursor:pointer;padding:3px 8px;border-radius:4px;line-height:1;white-space:nowrap';
   const btn = document.createElement('button');
   btn.textContent = '✕';
   btn.setAttribute('aria-label', 'Dismiss');
@@ -763,17 +784,26 @@ window.onerror = function(msg, src, line, col, err) {
   btn.onclick = function() { d.remove(); };
   row.appendChild(msgSpan);
   row.appendChild(detailsBtn);
+  row.appendChild(copyBtn);
   row.appendChild(btn);
 
-  // Message + location only, not err.stack — enough to diagnose without
-  // reintroducing an always-visible raw-stack-trace banner.
+  const detailText = msg + ' — at ' + src + ':' + line + ':' + col +
+    (err && err.stack ? '\n\n' + err.stack : '');
   const detailRow = document.createElement('div');
-  detailRow.style.cssText = 'display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.3);font-family:ui-monospace,monospace;font-size:12px;word-break:break-all;opacity:.9';
-  detailRow.textContent = msg + ' — at ' + src + ':' + line + ':' + col;
+  detailRow.style.cssText = 'display:none;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.3);font-family:ui-monospace,monospace;font-size:12px;white-space:pre-wrap;word-break:break-all;opacity:.9;user-select:text';
+  detailRow.textContent = detailText;
   detailsBtn.onclick = function() {
     const showing = detailRow.style.display !== 'none';
     detailRow.style.display = showing ? 'none' : 'block';
     detailsBtn.textContent = showing ? 'Details' : 'Hide';
+  };
+  copyBtn.onclick = function() {
+    const done = function(ok) { copyBtn.textContent = ok ? 'Copied ✓' : 'Select & copy'; setTimeout(function() { copyBtn.textContent = 'Copy'; }, 2000); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(detailText).then(function() { done(true); }, function() { done(false); });
+    } else {
+      done(false);
+    }
   };
 
   d.appendChild(row);
