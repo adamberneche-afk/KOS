@@ -21,4 +21,4 @@
  *      (see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6) — pushing
  *      HEAD alone does not update the live web app's /exec deployment.
  */
-const LH_DEPLOY_VERSION_SHA = '570549e8d317c42e37a2887de09fd84929af520a'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
+const LH_DEPLOY_VERSION_SHA = '65a184285447085fed95e1d6a853017f6f4b2447'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
