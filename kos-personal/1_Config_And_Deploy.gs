@@ -297,7 +297,19 @@ const CFG = {
     // version via a repository_dispatch event — see that file's header
     // and tools/deploy-drift/README.md. Optional, same
     // degrades-to-no-op-when-unset convention as CHAT_WEBHOOK_URL above.
-    DEPLOY_DRIFT_GITHUB_TOKEN: 'KOS_DEPLOY_DRIFT_GITHUB_TOKEN',
+    //
+    // Deliberately UNPREFIXED, unlike every other key in this table —
+    // leader-hub and all 7 cas-ccps projects use this exact same property
+    // name (see their own equivalent files) for the identical purpose, and
+    // it's set the same way across every one of those projects (a single
+    // clasp-scripted property push, not a per-project manual entry). Giving
+    // kos-personal its own KOS_-prefixed variant here would mean either a
+    // silently-unset token (this property degrading to a no-op is by
+    // design, so a naming mismatch wouldn't even surface as an error) or a
+    // human having to remember kos-personal is the one exception every time
+    // this gets set. Consistency with the other 8 projects wins here over
+    // consistency with this file's own prefix convention.
+    DEPLOY_DRIFT_GITHUB_TOKEN: 'DEPLOY_DRIFT_GITHUB_TOKEN',
 
     // The stable doc ID of KOS_LATEST_PRIMER (6_Governance.gs's
     // generateDailyPrimer()) — a single fixed-name doc that's overwritten

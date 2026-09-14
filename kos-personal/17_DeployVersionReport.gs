@@ -13,19 +13,23 @@
  * can call OUT with no Google credential at all — just a GitHub token it
  * holds, authorizing exactly one thing (see below).
  *
- * ONE-TIME SETUP (Script Properties, same convention as
- * KOS_WEBHOOK_SHARED_SECRET/KOS_OWNER_EMAIL — never hardcoded):
- *   KOS_DEPLOY_DRIFT_GITHUB_TOKEN = a fine-grained GitHub personal access
+ * ONE-TIME SETUP (Script Property, never hardcoded):
+ *   DEPLOY_DRIFT_GITHUB_TOKEN = a fine-grained GitHub personal access
  *   token scoped to ONLY the adamberneche-afk/KOS repo, with the minimum
  *   permission the "Create a repository dispatch event" API endpoint
  *   requires — never a broad classic `repo`-scope token, and never
  *   Contents/workflow-editing permission (see
  *   tools/deploy-drift/README.md's threat-model section for exactly why:
  *   a leaked broadly-scoped token is a path to this repo's OTHER secrets,
- *   a leaked narrowly-scoped one is just noise). Until this Script
- *   Property is set, reportDeployVersion() logs and returns false — same
- *   fail-closed-to-a-no-op shape _sendChatAlert() already uses for its
- *   own optional webhook, not a fail-open default.
+ *   a leaked narrowly-scoped one is just noise). Deliberately the SAME
+ *   unprefixed property name leader-hub and all 7 cas-ccps projects use
+ *   for this (see CFG.PROP.DEPLOY_DRIFT_GITHUB_TOKEN's own comment in
+ *   1_Config_And_Deploy.gs for why this one key breaks kos-personal's own
+ *   KOS_-prefix convention on purpose) — one property name to set across
+ *   every project, not kos-personal as the one exception. Until this
+ *   Script Property is set, reportDeployVersion() logs and returns false
+ *   — same fail-closed-to-a-no-op shape _sendChatAlert() already uses for
+ *   its own optional webhook, not a fail-open default.
  *
  * Installed as its own low-frequency trigger (setupAllTriggers(),
  * 1_Config_And_Deploy.gs) — independent of any other trigger's cadence or
@@ -37,7 +41,7 @@ function reportDeployVersion() {
     const token = PropertiesService.getScriptProperties()
       .getProperty(CFG.PROP.DEPLOY_DRIFT_GITHUB_TOKEN);
     if (!token) {
-      console.log('[DeployVersionReport] No KOS_DEPLOY_DRIFT_GITHUB_TOKEN configured — skipping (not an error; this project just isn\'t wired into deploy-drift yet).');
+      console.log('[DeployVersionReport] No DEPLOY_DRIFT_GITHUB_TOKEN configured — skipping (not an error; this project just isn\'t wired into deploy-drift yet).');
       return false;
     }
 

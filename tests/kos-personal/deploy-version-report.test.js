@@ -47,7 +47,7 @@ test('reportDeployVersion: token configured — POSTs a repository_dispatch payl
       },
     },
   });
-  sandbox.PropertiesService.getScriptProperties().setProperty('KOS_DEPLOY_DRIFT_GITHUB_TOKEN', 'test-token-123');
+  sandbox.PropertiesService.getScriptProperties().setProperty('DEPLOY_DRIFT_GITHUB_TOKEN', 'test-token-123');
 
   const result = exported.reportDeployVersion();
   assert.equal(result, true);
@@ -71,7 +71,7 @@ test('reportDeployVersion: reports KOS_DEPLOY_VERSION_SHA specifically, not some
       fetch: (url, opts) => { capturedPayload = JSON.parse(opts.payload); return { getResponseCode: () => 204 }; },
     },
   });
-  sandbox.PropertiesService.getScriptProperties().setProperty('KOS_DEPLOY_DRIFT_GITHUB_TOKEN', 'tok');
+  sandbox.PropertiesService.getScriptProperties().setProperty('DEPLOY_DRIFT_GITHUB_TOKEN', 'tok');
   exported.reportDeployVersion();
   assert.equal(capturedPayload.client_payload.sha, exported.KOS_DEPLOY_VERSION_SHA);
 });
@@ -80,7 +80,7 @@ test('reportDeployVersion: a non-204 response is treated as failure, returns fal
   const { exported, sandbox } = load({
     UrlFetchApp: { fetch: () => ({ getResponseCode: () => 401, getContentText: () => 'Bad credentials' }) },
   });
-  sandbox.PropertiesService.getScriptProperties().setProperty('KOS_DEPLOY_DRIFT_GITHUB_TOKEN', 'bad-token');
+  sandbox.PropertiesService.getScriptProperties().setProperty('DEPLOY_DRIFT_GITHUB_TOKEN', 'bad-token');
   assert.equal(exported.reportDeployVersion(), false);
 });
 
@@ -88,7 +88,7 @@ test('reportDeployVersion: UrlFetchApp throwing is caught, never propagates, ret
   const { exported, sandbox } = load({
     UrlFetchApp: { fetch: () => { throw new Error('network down'); } },
   });
-  sandbox.PropertiesService.getScriptProperties().setProperty('KOS_DEPLOY_DRIFT_GITHUB_TOKEN', 'tok');
+  sandbox.PropertiesService.getScriptProperties().setProperty('DEPLOY_DRIFT_GITHUB_TOKEN', 'tok');
   assert.doesNotThrow(() => {
     assert.equal(exported.reportDeployVersion(), false);
   });
