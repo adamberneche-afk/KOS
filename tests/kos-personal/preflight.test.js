@@ -81,6 +81,7 @@ test('runKosPersonalPreflight: a freshly-deployed, fully-populated system passes
   exported._getOrCreateSheet(ss, exported.CI_CLASSIFY_TAB);
 
   exported.setupAllTriggers();
+  sandbox.PropertiesService.getScriptProperties().setProperty('KOS_OWNER_EMAIL', 'owner@example.com');
   sandbox.PropertiesService.getScriptProperties().setProperty('KOS_ADMIN_EMAIL', 'admin@example.com');
 
   const result = exported.runKosPersonalPreflight();
@@ -153,6 +154,36 @@ test('runKosPersonalPreflight: KOS_ADMIN_EMAIL is soft — unset does not fail t
   const check = findResult(result.results, 'Script property: KOS_ADMIN_EMAIL');
   assert.equal(check.ok, true);
   assert.match(check.detail, /nowhere to send/);
+});
+
+test('runKosPersonalPreflight: KOS_OWNER_EMAIL is required — unset fails the run', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  const result = exported.runKosPersonalPreflight();
+  const check = findResult(result.results, 'Script property: KOS_OWNER_EMAIL');
+  assert.equal(check.ok, false);
+  assert.match(check.detail, /Missing and required/);
+  assert.match(check.detail, /fails closed for everyone/);
+  assert.equal(result.failed >= 1, true);
+});
+
+test('runKosPersonalPreflight: KOS_OWNER_EMAIL set makes that check pass', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  sandbox.PropertiesService.getScriptProperties().setProperty('KOS_OWNER_EMAIL', 'owner@example.com');
+  const result = exported.runKosPersonalPreflight();
+  const check = findResult(result.results, 'Script property: KOS_OWNER_EMAIL');
+  assert.equal(check.ok, true);
+  assert.equal(check.detail, 'Configured.');
+});
+
+test('runKosPersonalPreflight: KOS_WEBHOOK_SHARED_SECRET is soft — unset does not fail the run', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  const result = exported.runKosPersonalPreflight();
+  const check = findResult(result.results, 'Script property: KOS_WEBHOOK_SHARED_SECRET');
+  assert.equal(check.ok, true);
+  assert.match(check.detail, /Sensor 2/);
 });
 
 test('runKosPersonalPreflight: writes a Preflight tab with one row per check', () => {
