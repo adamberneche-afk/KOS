@@ -580,3 +580,112 @@ directly, which this session confirmed the hard way by doing exactly
 that once and having `tests/tools/leaderhub-build.test.js` catch it).
 9 new tests. `npm test` (815/815), gas-lint and doc-currency both
 unchanged.
+
+## 2026-09-15 — OAuth-consent-dialog crash traced to the assembled page's size; fixed by minifying the giant inline script at build time
+
+A live redeploy started throwing `Uncaught SyntaxError: Unexpected
+identifier 'style'` from inside Google's own OAuth-consent-dialog bundle
+(`mae_html_user_bin_i18n_mae_html_user.js`, always the same reported
+line/column) the moment a visitor hit the `/exec` URL for the first
+time — before the page's own script ever ran. Confirmed reproducible on
+a completely fresh Apps Script project (new script ID, new deployment,
+same content), which ruled out anything specific to the live project's
+history or authorization state.
+
+**Ruled out, in order:** OAuth scope composition (three different scope
+sets — the original broad `mail.google.com`, narrowed to
+`gmail.readonly`, then no Gmail scope at all — all crashed identically);
+`GmailApp` usage itself (`scanHorizonLabel_()`, the last caller, was
+disabled entirely as a decisive test); deployment `access`/`executeAs`
+combination (`DOMAIN`/`MYSELF`, `USER_ACCESSING`/`USER_DEPLOYING`); raw
+page size alone (a synthetic page with ~1.5M characters of inert text,
+and separately 5,000 `style=`-attributed elements, both rendered clean);
+the page's Content-Security-Policy meta tag in isolation (a throwaway
+page using the real CSP verbatim also rendered clean). The giant inline
+`<script>` block's content, tested completely isolated from the rest of
+the real page (a minimal shell wrapping 100% of its real content), also
+never reproduced the crash on its own, at any size up to the full
+1.24M characters — only deploying the REAL, complete file (real
+`<head>`/CSP, the real small error-handler script, real markup, all
+together) ever reproduced it. That combination narrows the actual
+mechanism to something in Google's own page-serving/consent bundle
+triggered by the assembled page's overall size or complexity crossing an
+undocumented internal limit — not a specific leader-hub coding pattern —
+but the exact trigger inside Google's bundle was never fully pinned down —
+the byte-level bisection chasing it ran into two real bugs of its own,
+which cost real time before a usable fix could even be tried:
+
+- **A naive script-tag scanner double-counted a comment.** Every size
+  measurement taken during the investigation used a plain
+  `indexOf('<script'...)` scan that isn't comment-aware — it matched the
+  literal text `<script>` inside a real developer comment (prose
+  describing a past unrelated bug, of exactly the shape
+  `tools/html-lint/check.js`'s own header already warns about), landing
+  33,160 characters into what is actually static markup and inflating
+  every "giant script length" figure quoted mid-investigation by that
+  much. `tools/html-lint/check.js`'s existing, tested
+  `extractInlineScripts()` (comment-aware) gives the correct boundary;
+  `findInlineScriptBlocks()` was added there (offsets, not just
+  extracted text) so `build.js` could splice new content in at exactly
+  the right position without re-deriving this from scratch a third time.
+- **Splitting the script into multiple `<script>` tags would have
+  silently broken the app.** The natural-looking fix — cut the giant
+  script into several smaller `<script>` tags at existing fragment
+  boundaries — was seriously considered and correctly vetoed before
+  landing: separate classic `<script>` tags each get their OWN top-level
+  lexical scope for `let`/`const`/`class` (only `var`/function
+  declarations share the page's global object across tags), and this
+  codebase has roughly 2,200 top-level `let`/`const` declarations, some
+  referenced hundreds of lines and several fragments away from where
+  they're declared (`LS`, the localStorage wrapper declared in the first
+  few hundred characters of the giant script, alone has 300+ later
+  references). Splitting without first rewriting every cross-fragment
+  reference would have thrown `ReferenceError` at runtime the instant
+  any such reference executed — a regression the existing test suite
+  would not have caught, since it exercises individually-extracted
+  functions, not the assembled page's actual script-tag scoping.
+
+**The fix landed instead: comment/whitespace-only minification of the
+assembled inline scripts, at build time.** `tools/leaderhub-build/
+build.js` now runs every real `<script>` block's content (found via
+`findInlineScriptBlocks()`, the same comment-aware scan) through
+`strip-comments.js`'s `stripCommentsAndWhitespace()` before writing the
+assembled file — removing comments and collapsing dead
+whitespace/blank-lines while leaving every string/template/regex
+literal's actual content untouched, and never merging two lines that had
+a real newline between them (JS's automatic-semicolon-insertion can
+change meaning if a significant newline disappears). This is a pure
+size reduction with no logic change: the giant script shrank from
+1,210,216 to 974,033 characters (~19.5%), and the whole assembled file
+from 1,502,645 to 1,244,133 (~17.2%). Hand-rolled rather than reaching
+for a real minifier (terser, etc.) because this repo has zero npm
+dependencies today and network access to the npm registry from every
+machine that might run this build step couldn't be confirmed.
+
+Given a hand-rolled JS tokenizer is exactly the kind of thing that can
+be confidently wrong in a way `node --check` won't catch (syntactic
+validity doesn't prove nothing was silently altered), it was built and
+verified in stages: `js-lexer.js` is a small recursive-descent tokenizer
+(the recursion specifically handles template literals nested arbitrarily
+deep inside their own `${...}` expressions — this codebase has a real
+three-levels-deep case, a ternary of two templates where one branch's
+expression calls `.map()` with a callback that returns yet another
+template; a first version that tracked nesting with a fixed-depth
+counter instead of true recursion got this wrong on the very first
+real-file run). `verify-strip.js` independently tokenizes the original
+and the stripped output and asserts every non-comment, non-whitespace
+token is identical between them in the same order — this caught two real
+bugs before either reached the committed file (the fixed-depth template
+nesting above, and a missing cursor-advance before scanning a line
+comment found inside a template expression, which duplicated its `//`
+in the output) — and confirms, for the real assembled script, all
+130,327 significant tokens match exactly.
+
+`node tools/leaderhub-build/build.js --check`, `node tools/html-lint/
+check.js leader-hub/student-leader-hub.html` (both script blocks),
+`node tools/leaderhub-build/verify-strip.js` against the real script,
+and the full suite (`npm test`, 1036/1036) all pass against the
+regenerated file. What was NOT re-verified here: an actual live redeploy
+confirming the crash is gone — that requires a human at the Google
+account (this session's own constraint throughout), so the next
+deployment is the real confirmation.
