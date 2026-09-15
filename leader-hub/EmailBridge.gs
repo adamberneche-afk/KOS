@@ -270,14 +270,13 @@ function createSubPlanDoc_(body) {
 // inbox via MailApp — never to the original intended recipient directly.
 // The owner reviews it in their own inbox and forwards/sends it themselves.
 // This drops gmail.compose entirely; leader-hub's only remaining Gmail
-// scope was gmail.readonly, for scanHorizonLabel_()'s label scan — since
-// TEMPORARILY DISABLED and gmail.readonly removed too (see that
-// function's own header), leader-hub currently requests no Gmail-specific
-// scope at all, only script.send_mail for MailApp. Same
-// bifurcation shape as the AI Queue above (queue the request, a separate
-// step does the actual work) and the same "GAS orchestrates state, MailApp
-// only ever sends" pattern every other mail-capable project in this repo
-// already uses — see tools/gas-lint/scope-map.json's GmailApp note.
+// scope is gmail.readonly, for scanHorizonLabel_()'s label scan (see
+// that function's own header for why it was briefly disabled and how
+// that got ruled out). Bifurcation shape matches the AI Queue above
+// (queue the request, a separate step does the actual work) and the
+// same "GAS orchestrates state, MailApp only ever sends" pattern every
+// other mail-capable project in this repo already uses — see
+// tools/gas-lint/scope-map.json's GmailApp note.
 
 const BRAG_QUEUE_SHEET_PROP  = 'BRAG_QUEUE_SHEET_ID';
 const BRAG_QUEUE_SHEET_NAME  = 'Brag_Queue';
@@ -887,43 +886,30 @@ function listOrgSyncs_(body) {
   return { ok: true, orgs };
 }
 
-// ── Horizon label scanner (GET) — TEMPORARILY DISABLED ───────────────────────
-// FIX (Gmail-scope removal — "drop the Gmail permissions entirely, redeploy
-// with no permissions we haven't already given other working projects"):
-// this was the one remaining GmailApp caller in the whole file, needing
-// gmail.readonly — a scope no other project in this repo has ever
-// requested. With scope narrowing (twice) ruled out as the cause of the
-// live "Unexpected identifier 'style'" OAuth-consent-dialog crash (same
-// exact crash, same location, across three different scope sets — see
-// git history around this comment), this is the next, more decisive test:
-// remove GmailApp/gmail.readonly from the account's grant to this project
-// entirely and see whether the crash is specific to that one scope, not
-// just narrower-vs-broader Gmail access.
+// ── Horizon label scanner (GET) ───────────────────────────────────────────────
+// Scans a Gmail label for hashtag-tagged messages (#horizon:short/mid/long,
+// #deadline:YYYY-MM-DD, #role:...) and surfaces them as dashboard horizon
+// items — the one read-side use of Gmail in this file (send-side mail is
+// MailApp/the brag queue below, unrelated).
 //
-// Short-circuits to an empty result BEFORE ever touching GmailApp, so no
-// call into that service remains reachable in this file — gas-lint's
-// checkOAuthScopes() only flags scopes for services actually called, so
-// removing gmail.readonly from appsscript.json is safe with this in place.
-// _horizonItemsResult_()/emailBridgeGetHorizonItems_() already treat an
-// empty items array as a normal, no-op result (same "nothing enabled
-// until configured" shape every other optional feature in this file
-// already has), so nothing downstream needs to change.
-//
-// "We can address the lost data afterwards" — the original implementation
-// is left intact below, commented out, so this is a one-line revert (plus
-// re-adding gmail.readonly to appsscript.json) once this test concludes,
-// not a rewrite.
+// HISTORY: disabled entirely for a stretch (no GmailApp call reachable,
+// gmail.readonly dropped from the manifest) as a decisive test of whether
+// GmailApp itself — any scope, not just how narrow — was the trigger
+// behind a live "Unexpected identifier 'style'" OAuth-consent-dialog
+// crash. It wasn't: the same crash reproduced identically across three
+// different scope sets, including none at all, and was eventually traced
+// to the assembled page's overall size, unrelated to OAuth scope
+// composition — see leader-hub/HISTORY.md's 2026-09-15 entry for the full
+// investigation and the actual fix (build-time minification of the
+// assembled script). Restored once that was confirmed. gmail.readonly is
+// back in appsscript.json's oauthScopes to match.
 function scanHorizonLabel_() {
-  return [];
-
-  /* ORIGINAL IMPLEMENTATION — restore this and re-add gmail.readonly to
-   * appsscript.json's oauthScopes to re-enable.
   const items    = [];
   const prop     = PropertiesService.getScriptProperties();
   const consumed = JSON.parse(prop.getProperty('consumed') || '[]');
 
   let label;
-  try { label = GmailApp['getUserLabelByName'](CONFIG.horizonLabel); } catch(e) { return items; }
+  try { label = GmailApp.getUserLabelByName(CONFIG.horizonLabel); } catch(e) { return items; }
   if (!label) return items;
 
   label.getThreads(0, 20).forEach(thread => {
@@ -945,7 +931,6 @@ function scanHorizonLabel_() {
     });
   });
   return items;
-  */
 }
 
 // ── Mark consumed (POST) — unchanged ─────────────────────────────────────────
