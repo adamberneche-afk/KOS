@@ -13,6 +13,7 @@ const path = require('path');
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const MANIFEST_PATH = path.join(REPO_ROOT, 'tools', 'leaderhub-build', 'manifest.json');
 const manifest = JSON.parse(fs.readFileSync(MANIFEST_PATH, 'utf8'));
+const { build } = require('../../tools/leaderhub-build/build.js');
 
 test('every fragment listed in manifest.json actually exists', () => {
   manifest.fragments.forEach((relPath) => {
@@ -31,10 +32,14 @@ test('leader-hub/src/*.html on disk exactly matches manifest.json\'s fragment li
   assert.deepEqual(onDisk, listed, 'a fragment file exists that manifest.json does not list, or vice versa');
 });
 
-test('concatenating the fragments in manifest order reproduces the committed assembled file byte-for-byte', () => {
-  const assembled = manifest.fragments
-    .map((relPath) => fs.readFileSync(path.join(REPO_ROOT, relPath), 'utf8'))
-    .join('');
+test('running build.js\'s real algorithm on the fragments reproduces the committed assembled file byte-for-byte', () => {
+  // Calls the actual build() (fragment concatenation + inline-script
+  // minification), not a reimplementation of just the concatenation half
+  // — this used to only check raw concatenation, which stopped being
+  // meaningful the moment build() started minifying script blocks too
+  // (see build.js's own header for why: a real OAuth-consent-dialog
+  // crash traced to the giant inline script's size).
+  const assembled = build();
   const committed = fs.readFileSync(path.join(REPO_ROOT, manifest.output), 'utf8');
   assert.equal(
     assembled, committed,

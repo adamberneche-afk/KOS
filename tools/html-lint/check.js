@@ -43,50 +43,63 @@ function blankHtmlComments(html) {
   );
 }
 
-function extractInlineScripts(html) {
+// Finds every real top-level <script>...</script> block's CONTENT offsets
+// into `html` (no `src=` attribute -- inline blocks only), ignoring any
+// literal "<script>" text that's really just prose inside an HTML
+// comment. Returns {contentStart, contentEnd} pairs so a caller can
+// splice new content in at exactly those positions (tools/leaderhub-build/
+// build.js's minification step) as well as just read it back out
+// (extractInlineScripts below, for syntax-checking).
+//
+// FIXED (CodeQL js/bad-tag-filter, two rounds): the closing-tag half used
+// to be the rigid literal `<\/script>`. Round 1 loosened it to
+// `<\/script\s*>` (plain whitespace before `>`) - CodeQL correctly
+// flagged that as still incomplete: a real browser's script-data-end-tag
+// scan tolerates ANYTHING before the `>` (tabs/newlines, or even a bogus
+// attribute-like token, e.g. `</script foo="bar">`), not just spaces.
+// `[^>]*` - the exact same permissive convention the OPENING tag's own
+// group already used a few lines below - is what actually matches that.
+// Whatever a real `</script ...>` closing tag contains, this regex
+// skipping past it (into whatever the NEXT real `<\/script...>` happens
+// to be) would silently extract the wrong, oversized "block" instead of
+// erroring - which is the actual failure mode this exists to catch, not
+// a cosmetic completeness nitpick. The closing tag is its own capture
+// group (3) specifically so its real matched length is used below,
+// instead of assuming a fixed literal length.
+function findInlineScriptBlocks(html) {
   const blocks = [];
   const scannable = blankHtmlComments(html);
-  // Deliberately simple and line-number-preserving: replaces everything
-  // BEFORE a script block's content with newlines, so a syntax error's
-  // reported line number inside the extracted block still matches the
-  // real file's line number when read back by a human.
-  //
-  // FIXED (CodeQL js/bad-tag-filter, two rounds): the closing-tag half
-  // used to be the rigid literal `<\/script>`. Round 1 loosened it to
-  // `<\/script\s*>` (plain whitespace before `>`) - CodeQL correctly
-  // flagged that as still incomplete: a real browser's script-data-end-tag
-  // scan tolerates ANYTHING before the `>` (tabs/newlines, or even a bogus
-  // attribute-like token, e.g. `</script foo="bar">`), not just spaces.
-  // `[^>]*` - the exact same permissive convention the OPENING tag's own
-  // group already used a few lines below - is what actually matches that.
-  // Whatever a real `</script ...>` closing tag contains, this regex
-  // skipping past it (into whatever the NEXT real `<\/script...>` happens
-  // to be) would silently extract the wrong, oversized "block" instead of
-  // erroring - which is the actual failure mode this exists to catch, not
-  // a cosmetic completeness nitpick. The closing tag is its own capture
-  // group (3) specifically so its real matched length is used below,
-  // instead of assuming a fixed literal length.
   const re = /<script\b([^>]*)>([\s\S]*?)(<\/script[^>]*>)/gi;
   let m;
   while ((m = re.exec(scannable))) {
     const attrs = m[1] || '';
     if (/\bsrc\s*=/.test(attrs)) continue; // external script - nothing to check here
-    const blockStart = m.index + m[0].indexOf('>', m[1].length) + 1;
+    const contentStart = m.index + m[0].indexOf('>', m[1].length) + 1;
     // blankHtmlComments() only replaces comment CHARACTERS, never removes
     // any (same length, same newlines) - so an index/offset found against
     // `scannable` points at the exact same character in the real `html`.
-    // Slicing the real content back out here (rather than using m[2],
-    // which came from the blanked copy) matters because a genuine JS
+    const contentEnd = m.index + m[0].length - m[3].length;
+    blocks.push({ contentStart, contentEnd });
+  }
+  return blocks;
+}
+
+function extractInlineScripts(html) {
+  // Deliberately simple and line-number-preserving: replaces everything
+  // BEFORE a script block's content with newlines, so a syntax error's
+  // reported line number inside the extracted block still matches the
+  // real file's line number when read back by a human.
+  return findInlineScriptBlocks(html).map(({ contentStart, contentEnd }) => {
+    // Slicing the real content back out here (rather than the blanked
+    // copy findInlineScriptBlocks scanned) matters because a genuine JS
     // comment inside a real script block must reach `node --check`
     // unblanked — only HTML-level <!-- --> comments outside/around script
     // tags are the thing being blanked.
-    const contentEnd = m.index + m[0].length - m[3].length;
-    const before = html.slice(0, blockStart);
+    const before = html.slice(0, contentStart);
     const leadingNewlines = before.split('\n').length - 1;
-    const content = html.slice(blockStart, contentEnd);
-    blocks.push('\n'.repeat(leadingNewlines) + content);
-  }
-  return blocks;
+    const content = html.slice(contentStart, contentEnd);
+    return '\n'.repeat(leadingNewlines) + content;
+  });
 }
 
 function checkFile(filePath) {
@@ -138,4 +151,4 @@ function main() {
 
 if (require.main === module) main();
 
-module.exports = { extractInlineScripts, checkFile };
+module.exports = { extractInlineScripts, findInlineScriptBlocks, checkFile };
