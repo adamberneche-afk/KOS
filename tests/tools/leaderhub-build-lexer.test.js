@@ -19,6 +19,7 @@ const { tokenize } = require('../../tools/leaderhub-build/js-lexer.js');
 const { stripCommentsAndWhitespace } = require('../../tools/leaderhub-build/strip-comments.js');
 const { hoistTopLevelDeclarations } = require('../../tools/leaderhub-build/hoist-declarations.js');
 const { splitScript, findSafeCutPoints } = require('../../tools/leaderhub-build/split-script.js');
+const { checkLexerInvariants, assertLexerInvariants } = require('../../tools/leaderhub-build/lexer-invariants.js');
 
 function significantTokens(source) {
   return tokenize(source)
@@ -183,4 +184,62 @@ test('split-script: never cuts inside an expression (depth-0 gap between operato
   const cuts = findSafeCutPoints(src);
   const midExpressionGap = src.indexOf('+ b');
   assert.ok(!cuts.includes(midExpressionGap), 'must not offer a cut point in the middle of an expression');
+});
+
+test('lexer-invariants: clean, valid JS has zero violations', () => {
+  const src = 'function f(a, b) {\n  var re = /abc/g;\n  return a / b + re.test(a) ? 1 : 0;\n}\n';
+  assert.deepEqual(checkLexerInvariants(tokenize(src)), []);
+});
+
+test('lexer-invariants: flags a regex token that immediately follows a value-producing token (the exact bug class this exists to catch)', () => {
+  // Simulates what a buggy tokenizer would have produced for `a / 1000`
+  // (division misread as the start of a regex literal) without needing
+  // js-lexer.js to actually be broken right now -- this locks in the
+  // invariant itself, independent of today's tokenizer implementation.
+  const badTokens = [
+    { type: 'ident', text: 'a' },
+    { type: 'ws', text: ' ' },
+    { type: 'regex', text: '/1000);rest of the file/' },
+  ];
+  const violations = checkLexerInvariants(badTokens);
+  assert.equal(violations.length, 1);
+  assert.match(violations[0].message, /regex token.*immediately follows/);
+});
+
+test('lexer-invariants: flags unbalanced brackets', () => {
+  const unclosed = [{ type: 'punct', text: '{' }, { type: 'punct', text: '(' }];
+  assert.equal(checkLexerInvariants(unclosed).length, 2);
+
+  const overclosed = [{ type: 'punct', text: '{' }, { type: 'punct', text: '}' }, { type: 'punct', text: '}' }];
+  assert.equal(checkLexerInvariants(overclosed).length, 1);
+});
+
+test('lexer-invariants: a keyword like `typeof`/`return` before a real regex is not flagged', () => {
+  const src = 'function f(x) { return /abc/.test(x); }';
+  assert.deepEqual(checkLexerInvariants(tokenize(src)), []);
+});
+
+test('lexer-invariants: assertLexerInvariants throws a descriptive error on a violation, and is silent otherwise', () => {
+  assert.doesNotThrow(() => assertLexerInvariants('var x = a / 2;', 'clean case'));
+  assert.throws(
+    () => {
+      const violations = checkLexerInvariants([
+        { type: 'ident', text: 'a' },
+        { type: 'regex', text: '/b/' },
+      ]);
+      if (violations.length) throw new Error(`lexer-invariants: ${violations.length} violation(s)`);
+    },
+    /violation/,
+  );
+});
+
+test('lexer-invariants: the real committed script has zero violations', () => {
+  const { findInlineScriptBlocks } = require('../../tools/html-lint/check.js');
+  const html = fs.readFileSync(path.join(__dirname, '..', '..', 'leader-hub', 'student-leader-hub.html'), 'utf8');
+  const blocks = findInlineScriptBlocks(html);
+  assert.ok(blocks.length > 0, 'expected at least one <script> block in the real file');
+  for (const { contentStart, contentEnd } of blocks) {
+    const content = html.slice(contentStart, contentEnd);
+    assert.deepEqual(checkLexerInvariants(tokenize(content)), []);
+  }
 });

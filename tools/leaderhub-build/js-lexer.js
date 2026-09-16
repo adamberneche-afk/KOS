@@ -202,4 +202,4 @@ function tokenize(source) {
   return tokens;
 }
 
-module.exports = { tokenize };
+module.exports = { tokenize, KEYWORDS_BEFORE_REGEX };
