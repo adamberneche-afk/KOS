@@ -112,6 +112,15 @@ function tokenize(source) {
       if (ch === '}' && depth === 0) { s += '}'; i++; return s; }
       if (ch === '{') { depth++; s += ch; i++; localRegexAllowed = true; continue; }
       if (ch === '}') { depth--; s += ch; i++; localRegexAllowed = false; continue; }
+      if (/\s/.test(ch)) {
+        // Whitespace must NOT touch localRegexAllowed -- it needs to carry
+        // over from the last real token (e.g. `a / 1000` is division: the
+        // space between `a` and `/` must not reset the ident's `false`
+        // back to `true`, or `/` gets misread as a regex literal's start
+        // and scanRegex() runs away consuming the rest of the input).
+        while (i < n && /\s/.test(source[i])) { s += source[i]; i++; }
+        continue;
+      }
       if (ch === '/' && source[i + 1] === '/') { i += 2; s += '//' + scanLineComment(); continue; }
       if (ch === '/' && source[i + 1] === '*') { s += scanBlockComment(); continue; }
       if (ch === '"' || ch === "'") { s += scanString(ch); localRegexAllowed = false; continue; }

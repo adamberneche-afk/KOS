@@ -23,35 +23,55 @@
  * variable INITIALIZERS (not function declarations) still run in file
  * order — a fragment that reads a `const` some earlier fragment defines
  * would break if reordered. manifest.json's order is exactly today's
- * original file order for this reason; do not reorder it casually. This
- * is also exactly why the giant script got MINIFIED below rather than
- * split into several separate <script> tags to shrink it — separate
- * classic <script> tags each get their OWN top-level let/const/class
- * scope (only var/function declarations share the page's global object
- * across tags), and this file has ~2,200 top-level let/const bindings
- * referenced across fragment boundaries; splitting would have silently
- * broken every one of them with ReferenceErrors at runtime.
+ * original file order for this reason; do not reorder it casually.
  *
- * MINIFICATION (comments + dead whitespace only, added investigating a
- * live OAuth-consent-dialog crash — see leader-hub/HISTORY.md):
- * after concatenating fragments, every real inline <script> block's
- * CONTENT (found the same comment-aware way tools/html-lint/check.js
- * finds them, via findInlineScriptBlocks — NOT a naive `indexOf('<script'`
- * scan, which mistook a comment mentioning "<script>" as prose for a
- * real tag earlier in this investigation and threw every size
- * measurement off by ~33K characters) gets run through
- * strip-comments.js's stripCommentsAndWhitespace(). That removes
- * comments and collapses dead whitespace/blank lines while leaving every
- * string/template/regex literal's actual content untouched and never
- * merging two lines that had a real newline between them (JS's
- * automatic-semicolon-insertion can change meaning if a significant
- * newline gets removed) — a pure size reduction with no logic change,
- * verified against the real script with verify-strip.js's token-stream
- * equivalence check before this was wired in here. Hand-rolled instead
- * of using a real minifier (terser etc.) because this repo has no npm
- * dependencies today and network access to the npm registry from every
- * machine that runs this couldn't be confirmed - see js-lexer.js's
- * header for the tokenizer this relies on.
+ * Fragment concatenation always produces ONE logical script per original
+ * <script> block, never split at fragment boundaries — a fragment
+ * boundary is only guaranteed safe for pure textual concatenation (each
+ * fragment ends where the next begins, reproducing the original file
+ * exactly), not for standing alone as a separate <script> tag (a
+ * template literal can legitimately span what's a safe concatenation
+ * boundary). The actual <script>-tag splitting below happens later, at
+ * real statement boundaries found by tokenizing the assembled+minified
+ * result — see split-script.js.
+ *
+ * MINIFICATION + SPLITTING (added investigating a live OAuth-consent-
+ * dialog crash — see leader-hub/HISTORY.md's 2026-09-15 and follow-up
+ * entries): after concatenating fragments, every real inline <script>
+ * block's CONTENT (found the same comment-aware way tools/html-lint/
+ * check.js finds them, via findInlineScriptBlocks — NOT a naive
+ * `indexOf('<script'` scan, which mistook a comment mentioning
+ * "<script>" as prose for a real tag earlier in this investigation and
+ * threw every size measurement off by ~33K characters) gets:
+ *   1. run through strip-comments.js's stripCommentsAndWhitespace(),
+ *      which removes comments and collapses dead whitespace/blank lines
+ *      while leaving every string/template/regex literal's actual
+ *      content untouched and never merging two lines that had a real
+ *      newline between them (JS's automatic-semicolon-insertion can
+ *      change meaning if a significant newline gets removed) — a pure
+ *      size reduction with no logic change, verified against the real
+ *      script with verify-strip.js's token-stream equivalence check.
+ *      Hand-rolled instead of using a real minifier (terser etc.)
+ *      because this repo has no npm dependencies today and network
+ *      access to the npm registry from every machine that runs this
+ *      couldn't be confirmed — see js-lexer.js's header for the
+ *      tokenizer this relies on.
+ *   2. run through hoist-declarations.js's hoistTopLevelDeclarations(),
+ *      converting every top-level `let`/`const` to `var` — required
+ *      before a block can safely be split into multiple <script> tags
+ *      (see that file's header for why).
+ *   3. split into several <script> tags via split-script.js's
+ *      splitScript(), each kept comfortably under the ~100K-107K
+ *      per-tag character threshold established by live bisection on a
+ *      throwaway project (the actual crash cause: per-<script>-tag
+ *      size, confirmed unrelated to total page size or OAuth scope
+ *      composition), each independently verified with `node --check`.
+ * A block that was originally ONE <script>...</script> tag becomes
+ * several consecutive ones with no markup between them — this changes
+ * nothing about execution order or the shared global object (see above:
+ * var/function declarations become properties of the page's global
+ * object, shared across every script tag on the page in document
+ * order) now that every top-level let/const is a var.
  *
  * THE ASSEMBLED FILE IS GENERATED. Never hand-edit
  * leader-hub/student-leader-hub.html directly — edit the fragment(s)
@@ -77,9 +97,15 @@ const fs = require('fs');
 const path = require('path');
 const { findInlineScriptBlocks } = require('../html-lint/check.js');
 const { stripCommentsAndWhitespace } = require('./strip-comments.js');
+const { hoistTopLevelDeclarations } = require('./hoist-declarations.js');
+const { splitScript } = require('./split-script.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const MANIFEST = require(path.join(__dirname, 'manifest.json'));
+
+// Comfortably under the ~100K-107K per-<script>-tag crash threshold
+// established by live bisection (see this file's header comment).
+const MAX_SCRIPT_CHUNK_SIZE = 70000;
 
 function concatenateFragments() {
   const parts = MANIFEST.fragments.map((relPath) => {
@@ -96,22 +122,46 @@ function concatenateFragments() {
 }
 
 // Replaces every real inline <script> block's content with its
-// comment/whitespace-stripped version, leaving everything else (markup,
-// styles, HTML comments, attributes) byte-for-byte unchanged. Applies
-// the strip twice per block: it's not perfectly idempotent in one pass
-// (a same-line comment's own leading space can be left behind until a
-// second pass sees it adjacent to the following newline with nothing
-// between them — see strip-comments.js's header) but does reach a
-// stable fixed point by the second pass, verified with verify-strip.js.
+// comment/whitespace-stripped, let/const-hoisted version, then — only for
+// a block over MAX_SCRIPT_CHUNK_SIZE — splits it into several consecutive
+// <script>...</script> tags (same open/close tag text repeated, no markup
+// between them) at verified-safe statement boundaries. Everything else
+// (markup, styles, HTML comments, attributes) is left byte-for-byte
+// unchanged. Minification is applied twice per block: it's not perfectly
+// idempotent in one pass (a same-line comment's own leading space can be
+// left behind until a second pass sees it adjacent to the following
+// newline with nothing between them — see strip-comments.js's header)
+// but does reach a stable fixed point by the second pass, verified with
+// verify-strip.js.
 function minifyScriptBlocks(assembled) {
   const blocks = findInlineScriptBlocks(assembled);
   let out = '';
   let cursor = 0;
   for (const { contentStart, contentEnd } of blocks) {
-    out += assembled.slice(cursor, contentStart);
+    const beforeContent = assembled.slice(cursor, contentStart);
+    const openTagMatch = /<script\b[^>]*>$/i.exec(beforeContent);
+    if (!openTagMatch) {
+      throw new Error('build.js: could not locate this <script> block\'s own opening tag.');
+    }
+    const closeTagMatch = /^<\/script[^>]*>/i.exec(assembled.slice(contentEnd));
+    if (!closeTagMatch) {
+      throw new Error('build.js: could not locate this <script> block\'s own closing tag.');
+    }
+    const openTag = openTagMatch[0];
+    const closeTag = closeTagMatch[0];
+
+    out += beforeContent;
     const content = assembled.slice(contentStart, contentEnd);
-    const stripped = stripCommentsAndWhitespace(stripCommentsAndWhitespace(content));
-    out += stripped;
+    let processed = stripCommentsAndWhitespace(stripCommentsAndWhitespace(content));
+
+    if (processed.length > MAX_SCRIPT_CHUNK_SIZE) {
+      processed = hoistTopLevelDeclarations(processed);
+      const chunks = splitScript(processed, MAX_SCRIPT_CHUNK_SIZE);
+      out += chunks.join(`${closeTag}${openTag}`);
+    } else {
+      out += processed;
+    }
+
     cursor = contentEnd;
   }
   out += assembled.slice(cursor);

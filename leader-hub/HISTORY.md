@@ -689,3 +689,104 @@ regenerated file. What was NOT re-verified here: an actual live redeploy
 confirming the crash is gone — that requires a human at the Google
 account (this session's own constraint throughout), so the next
 deployment is the real confirmation.
+
+## Follow-up — minification alone wasn't enough; the real fix is per-`<script>`-tag size, not total page size
+
+The live redeploy of the minification-only fix above still crashed with
+the identical `Uncaught SyntaxError: Unexpected identifier 'style'`, on a
+genuinely fresh deployment (new deployment ID, not a reused one) — the
+~19.5% script-size reduction wasn't enough to cross whatever internal
+threshold Google's bundle trips on.
+
+**Bisection was re-run correctly this time**, on throwaway Apps Script
+projects (never the live one), using `findInlineScriptBlocks()` for every
+boundary instead of a naive scan (see the entry above — the original
+33,160-character measurement bug was corrected before this round even
+started, and every throwaway test result below was cross-checked against
+it). The bisection narrowed the crash to a precise threshold: **~100K–107K
+characters of minified script content in a single `<script>` tag**,
+combined with the real page's ~239K characters of surrounding furniture
+(head/CSP/markup/error-handler script) — the real giant script is
+970,734 minified characters, over nine times that. The decisive
+experiment: the exact same total script content, textually identical,
+split into 12 separate `<script>` tags each under ~113K characters,
+**completely eliminated the crash** — the dashboard rendered normally,
+leaving only an expected `ReferenceError` from a `let`/`const` binding
+declared in one tag and referenced from another (each classic `<script>`
+tag gets its own top-level lexical scope for `let`/`const`/`class`; only
+`var`/function declarations become shared properties of the page's global
+object, visible across tags in document order). This conclusively proved
+per-tag character count, not total page size or OAuth scope composition,
+is the actual mechanism — and that splitting is the real fix, provided
+every cross-tag `let`/`const` reference is converted to `var` first
+(exactly the risk the original entry above correctly flagged and used to
+veto splitting the first time — the difference now is a decisive live
+result narrowing the true constraint to something splitting-with-hoisting
+actually solves, rather than a guess).
+
+**The real fix, landed now:** two new build-time passes, run only on a
+`<script>` block that exceeds a conservative 70,000-character target
+(comfortably under the ~100K–107K measured threshold, with real margin):
+
+- `tools/leaderhub-build/hoist-declarations.js` converts every TOP-LEVEL
+  (bracket-depth-0 — not inside any function/block/for-head) `let`/
+  `const` to `var`, leaving every nested one alone. Safe because `var`'s
+  looser hoisting/redeclaration rules can only make more code work, never
+  break code that was valid under `let`/`const`'s stricter rules; the
+  codebase has no top-level `class` declarations to worry about (checked
+  directly). Verified against the real script with
+  `verify-hoist.js`'s token-stream comparison: every token identical
+  except `let`/`const` → `var` at exactly the rewritten positions (196
+  conversions on the real script).
+- `tools/leaderhub-build/split-script.js` then splits the hoisted,
+  minified source into several `<script>...</script>` tags at REAL
+  statement boundaries, found by tokenizing (never by naive bracket-depth
+  counting alone — a depth-0 gap can still sit in the middle of an
+  expression, e.g. between `a` and `+` in `a + b`, which would silently
+  change behavior rather than just fail to parse). A cut point is only
+  offered right after a top-level `;`, or right after a top-level `}`
+  whose next real token can't possibly continue the same statement (ruling
+  out `} else`, `} catch`, a do-while's `} while (...)`, and a `}` that's
+  actually the end of an object-literal/arrow-body inside a larger
+  expression). Every resulting chunk is independently verified with `node
+  --check` before the split is trusted. On the real script this produces
+  15 chunks (plus the untouched small error-handler script, 16 `<script>`
+  blocks total), each between ~45K and ~70K characters — well under the
+  measured crash threshold.
+
+Both passes are wired into `build.js`'s existing `minifyScriptBlocks()`
+step, only applying to blocks over the size threshold; the small
+error-handler script is untouched. `leader-hub/student-leader-hub.html`
+was regenerated: `node tools/leaderhub-build/build.js --check` passes, all
+16 `<script>` blocks pass `node tools/html-lint/check.js`, and the full
+suite passes (`npm test`, 1046/1046) — including a new
+`tests/tools/leaderhub-build-lexer.test.js` covering the tokenizer,
+minifier, hoister, and splitter directly (14 tests), on top of the
+existing build-drift regression test now exercising the real hoist+split
+path too.
+
+**A separate, real bug was found and fixed in `js-lexer.js` itself** while
+building the hoister (its depth-tracking surfaced a tokenization problem
+the minifier's own earlier "clean" verification hadn't caught, because it
+used the same buggy tokenizer on both sides of its comparison and was
+fooled self-consistently): inside a template literal's `${...}`
+expression, a run of whitespace fell through to the tokenizer's generic
+default handling, which incorrectly reset "is a following `/` a regex or
+division" tracking to "regex," so a real division operator preceded by a
+space (`a / 1000`, e.g. inside `` `${Math.round((Date.now() - start) /
+1000)}s)` ``) got misread as the start of a regex literal — the runaway
+regex scan then silently consumed everything up to the next literal `/`
+in the source (or end of file), corrupting tokenization for everything
+after it. Fixed by giving whitespace its own branch inside that scanning
+function that never touches regex-vs-division tracking (matching how the
+tokenizer's outer loop already handled whitespace correctly). Re-verified
+the ALREADY-SHIPPED minified output from the entry above against the
+original source with the fixed tokenizer: the shipped output was **not
+semantically corrupted** — the bug had caused some comments/whitespace
+inside a runaway "regex" token to survive un-stripped (a harmless,
+smaller-than-intended size reduction), never a change to actual code
+content.
+
+Not yet verified: an actual live redeploy of this split+hoisted version
+confirming the crash is gone on the real project — same constraint as
+the entry above, a human step at the Google account.
