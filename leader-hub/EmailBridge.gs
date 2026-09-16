@@ -18,7 +18,7 @@
  * in this file's own code (_isSameDomainAsOwner_()), not just left to
  * appsscript.json's webapp.access setting:
  *   action: "subPlan"       → Create Google Doc sub plan  → {ok, docUrl}
- *   action: "bragEmail"     → Create a Gmail draft                → {ok}
+ *   action: "bragEmail"     → Send an email via MailApp          → {ok}
  *   action: "markConsumed"  → Mark horizon items consumed  → {ok, consumed}
  *   action: "aiDraft"       → Queue an AI drafting job      → {ok, jobId}
  *   action: "checkAiJob"    → Poll a queued AI job          → {ok, status, result|error}
@@ -122,9 +122,9 @@ function _lhDispatchAction_(action, body) {
 // alone was never a sufficient gate: every action below was reachable,
 // completely unauthenticated, by any signed-in ccpsnet.net account that
 // found this URL, including creating a real Doc in the owner's Drive
-// (subPlan), a Gmail draft under the owner's account (bragEmail), and
-// enumerating every Organization Sync org on this bridge with no orgId
-// needed at all (listOrgSyncs).
+// (subPlan), sending a real email from the owner's account (bragEmail),
+// and enumerating every Organization Sync org on this bridge with no
+// orgId needed at all (listOrgSyncs).
 //
 // Gated to the same single-owner check doGet() already uses
 // (_isAuthorizedOwner_()/getConfig_(), Code.gs — same GAS project/execution
@@ -253,20 +253,26 @@ function createSubPlanDoc_(body) {
   return { ok: true, docUrl: 'https://docs.google.com/document/d/' + doc.getId() + '/edit' };
 }
 
-// ── Brag email → Gmail draft ──────────────────────────────────────────────────
-// HISTORY: this was replaced with a queue + MailApp-to-owner pattern for a
-// stretch (avoiding gmail.compose entirely) while chasing a live
-// OAuth-consent-dialog crash under the hypothesis that GmailApp/its scopes
-// were the trigger. They weren't — the crash was traced to the assembled
-// page's per-<script>-tag size, unrelated to OAuth scope composition at
-// all (see leader-hub/HISTORY.md's 2026-09-15 entry) — so this reverts to
-// the original, simpler direct-draft behavior now that the real fix
-// (build-time script splitting) doesn't require avoiding this scope.
+// ── Brag email → sent via MailApp ───────────────────────────────────────────────
+// HISTORY: this has moved twice now. It started as GmailApp.createDraft()
+// (gmail.compose); Round 2 (chasing a live OAuth-consent-dialog crash,
+// hypothesizing GmailApp/its scopes as the trigger) swapped it for a
+// queue + MailApp-to-owner pattern; once the crash was traced to the
+// assembled page's per-<script>-tag size — unrelated to OAuth scope
+// composition — it was reverted back to GmailApp.createDraft(). Then a
+// live redeploy of that size-based fix (build-time script splitting +
+// let/const hoisting) STILL crashed on a brand-new project/script ID,
+// which reopens the question of what's actually triggering it. Walking
+// the Gmail scope back out again (this function, and gmail.compose from
+// appsscript.json) is round 4 of narrowing the OAuth surface while that's
+// being re-investigated — see leader-hub/HISTORY.md's newest entry.
+// MailApp.sendEmail() sends immediately (no draft to review first) and
+// only needs script.send_mail, the least Gmail-adjacent scope available.
 function createBragDraft_(body) {
   const to      = body.to      || CONFIG.defaultBragTo;
   const subject = body.subject || 'Weekly Wins';
   const text    = body.body    || '(No content)';
-  GmailApp.createDraft(to, subject, text);
+  MailApp.sendEmail(to, subject, text);
   return { ok: true };
 }
 

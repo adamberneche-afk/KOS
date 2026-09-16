@@ -1319,7 +1319,7 @@ Thank you for covering my classes.`;
   refreshNextAction();
 }
 
-// ── 12. generateBragEmail → Apps Script creates Gmail draft ──────────────────
+// ── 12. generateBragEmail → Apps Script sends via MailApp ────────────────────
 async function generateBragEmail() {
   // The Gmail-draft creation below is a real network round-trip with only a
   // small status-text change to show it's in flight — easy to miss, and a
@@ -1412,20 +1412,20 @@ async function _generateBragEmailInner() {
   _bragBodySnapshot = emailBody; // this exact text is now persisted — only further hand-edits are at risk
   refreshNextAction();
 
-  // Optionally send to Apps Script to create Gmail draft
+  // Optionally send to Apps Script to email it via MailApp
   if (url) {
     try {
-      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Creating Gmail draft…';
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Sending email…';
       const to   = aud?.defaultTo || '';
       const subj = _subj || `Weekly Wins — Week of ${weekDisplay}`;
       const res  = await callGAS('bragEmail', { to, subject: subj, body: emailBody });
       if (res.ok) {
-        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Gmail draft created — check Drafts folder';
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Email sent';
       } else {
-        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (Gmail draft failed)';
+        if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (send failed)';
       }
     } catch(e) {
-      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — Gmail unavailable';
+      if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — email unavailable';
     }
   }
 }

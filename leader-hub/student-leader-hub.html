@@ -12052,17 +12052,17 @@ _bragBodySnapshot = emailBody;
 refreshNextAction();
 if (url) {
 try {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Creating Gmail draft…';
+if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Sending email…';
 const to = aud?.defaultTo || '';
 const subj = _subj || `Weekly Wins — Week of ${weekDisplay}`;
 const res = await callGAS('bragEmail', { to, subject: subj, body: emailBody });
 if (res.ok) {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Gmail draft created — check Drafts folder';
+if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✅') + ' Email sent';
 } else {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (Gmail draft failed)';
+if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready locally (send failed)';
 }
 } catch(e) {
-if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — Gmail unavailable';
+if (statusEl) statusEl.textContent = (usedAi ? '✨' : '✏️') + ' Draft ready — email unavailable';
 }
 }
 }

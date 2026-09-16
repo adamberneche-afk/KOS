@@ -821,3 +821,50 @@ All three covered by new tests in
 `tests/tools/leaderhub-build-lexer.test.js`; full suite, `html-lint`,
 `gas-lint`, and `doc-currency` all still pass against the regenerated
 file.
+
+### Follow-up — the split+hoisted fix still crashed live; walking the Gmail scope back out again (round 4)
+
+A live redeploy of the split+hoisted build above, on a brand-new Apps
+Script project with a brand-new script ID (ruling out any deployment- or
+project-level caching), still threw the identical `Uncaught SyntaxError:
+Unexpected identifier 'style'` from Google's own OAuth-consent-dialog
+bundle. This is a real result, not yet explained: either something about
+what got deployed didn't match the fixed build (still being checked), or
+the per-`<script>`-tag-size theory the throwaway-project bisection
+pointed to doesn't actually hold for the real project — that bisection's
+conclusion should be treated as unconfirmed, not settled, until this is
+sorted out.
+
+Independent of how that resolves, `gmail.compose` is being walked back
+out of the OAuth surface again: `createBragDraft_()` in `EmailBridge.gs`
+now calls `MailApp.sendEmail()` instead of `GmailApp.createDraft()` — the
+brag email is sent immediately rather than composed as a Gmail draft to
+review first. `appsscript.json`'s `oauthScopes` drops `gmail.compose` and
+adds back `script.send_mail`; `gmail.readonly` stays, since
+`scanHorizonLabel_()` still reads the `LeaderHub` Gmail label. This is
+round 4 of narrowing this particular scope (see
+`tools/gas-lint/scope-map.json`'s `GmailApp` note for the full round-by-
+round history) — rounds 1–3 already showed identical crashes across every
+Gmail-scope configuration tried, including none at all, so this round is
+about minimizing OAuth surface while the real cause is re-investigated,
+not a renewed suspicion that Gmail scope itself is the trigger.
+
+Updated: `EmailBridge.gs` (function body + header comments, the doPost()
+action-table comment), `appsscript.json`, the Brag Board status-text
+strings in `leader-hub/src/10-command-engine-ai-and-widgets.html`
+("Creating Gmail draft…" → "Sending email…", etc.), a stale comment in
+`leader-hub/src/11-journal-cron-settings-and-sync.html` still saying
+"Gmail draft", `FlowOps.gs`/`LEADERHUB_AI_FLOW_SETUP.md` (both already
+had a second stale reference describing a since-reverted queue+MailApp
+version of this function — fixed along the way), `LEADERHUB_HANDOFF.md`,
+and `tests/leaderhub/emailbridge-orgsync.test.js` (now asserts against
+`sandbox.MailApp.getSentMessages()` instead of a hand-rolled
+`GmailApp.createDraft` mock — `MailApp` is already in `gas-sandbox.js`'s
+shared default sandbox). `leader-hub/student-leader-hub.html` regenerated;
+full suite (1052/1052), `html-lint`, `gas-lint`, and `doc-currency` all
+pass.
+
+Still open: confirming what's actually live on the real project (the
+most likely explanation for the crash surviving the split+hoisted fix),
+and, if that checks out, reopening the investigation into what's really
+triggering this.
