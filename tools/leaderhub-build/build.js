@@ -73,6 +73,23 @@
  * object, shared across every script tag on the page in document
  * order) now that every top-level let/const is a var.
  *
+ * Before any of this is trusted, lexer-invariants.js's
+ * assertLexerInvariants() re-checks every raw block's own token stream
+ * for internal consistency (balanced brackets; no regex token following
+ * something only division could follow) — independent of the strip/
+ * hoist/split transforms themselves, so a js-lexer.js bug that fools
+ * verify-strip.js/verify-hoist.js's before-vs-after comparisons (both
+ * sides tokenized the same wrong way) still gets caught here. See that
+ * file's header for why this is a real, previously-hit blind spot, not
+ * a hypothetical one.
+ *
+ * Every resulting <script> block's content also gets a trailing
+ * `//# sourceURL=...` comment (a standard DevTools convention) giving it
+ * a stable, readable name in the browser's Sources panel and in stack
+ * traces — without it, a runtime error in a script tag that's the 7th of
+ * 15 chunks of one original block just says "VM123:4231" with no way to
+ * tell which chunk, let alone which original fragment, it came from.
+ *
  * THE ASSEMBLED FILE IS GENERATED. Never hand-edit
  * leader-hub/student-leader-hub.html directly — edit the fragment(s)
  * under leader-hub/src/ that hold the section you're changing, then run
@@ -91,6 +108,7 @@
  * USAGE
  *   node tools/leaderhub-build/build.js          # rebuild the assembled file
  *   node tools/leaderhub-build/build.js --check  # verify it's already up to date; exit 1 if not
+ *   node tools/leaderhub-build/build.js --stats  # rebuild, then print a per-block size report
  */
 
 const fs = require('fs');
@@ -99,6 +117,7 @@ const { findInlineScriptBlocks } = require('../html-lint/check.js');
 const { stripCommentsAndWhitespace } = require('./strip-comments.js');
 const { hoistTopLevelDeclarations } = require('./hoist-declarations.js');
 const { splitScript } = require('./split-script.js');
+const { assertLexerInvariants } = require('./lexer-invariants.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const MANIFEST = require(path.join(__dirname, 'manifest.json'));
@@ -121,6 +140,16 @@ function concatenateFragments() {
   return parts.join('');
 }
 
+// A stable, readable name for a script block/chunk's `//# sourceURL=`
+// comment (browser DevTools convention: naming a <script> block in the
+// Sources panel and in stack traces, instead of an anonymous "VM123").
+// Not a real file path — nothing on disk has to exist at this name.
+function sourceUrlFor(blockIndex, chunkIndex, chunkCount) {
+  const base = `leader-hub-block-${blockIndex}`;
+  if (chunkCount === 1) return `${base}.js`;
+  return `${base}-part-${chunkIndex + 1}-of-${chunkCount}.js`;
+}
+
 // Replaces every real inline <script> block's content with its
 // comment/whitespace-stripped, let/const-hoisted version, then — only for
 // a block over MAX_SCRIPT_CHUNK_SIZE — splits it into several consecutive
@@ -133,11 +162,15 @@ function concatenateFragments() {
 // newline with nothing between them — see strip-comments.js's header)
 // but does reach a stable fixed point by the second pass, verified with
 // verify-strip.js.
-function minifyScriptBlocks(assembled) {
+//
+// `statsOut`, if given an array, gets one entry pushed per original
+// <script> block: { blockIndex, originalLength, minifiedLength,
+// chunkSizes } — used by `--stats` mode; normal callers omit it.
+function minifyScriptBlocks(assembled, statsOut) {
   const blocks = findInlineScriptBlocks(assembled);
   let out = '';
   let cursor = 0;
-  for (const { contentStart, contentEnd } of blocks) {
+  blocks.forEach(({ contentStart, contentEnd }, blockIndex) => {
     const beforeContent = assembled.slice(cursor, contentStart);
     const openTagMatch = /<script\b[^>]*>$/i.exec(beforeContent);
     if (!openTagMatch) {
@@ -152,30 +185,71 @@ function minifyScriptBlocks(assembled) {
 
     out += beforeContent;
     const content = assembled.slice(contentStart, contentEnd);
+
+    // Independent sanity check on the RAW block, before any transform —
+    // see lexer-invariants.js's header for why this can catch a
+    // js-lexer.js bug that a before/after comparison alone would miss.
+    assertLexerInvariants(content, `<script> block ${blockIndex}`);
+
     let processed = stripCommentsAndWhitespace(stripCommentsAndWhitespace(content));
 
+    let chunks;
     if (processed.length > MAX_SCRIPT_CHUNK_SIZE) {
       processed = hoistTopLevelDeclarations(processed);
-      const chunks = splitScript(processed, MAX_SCRIPT_CHUNK_SIZE);
-      out += chunks.join(`${closeTag}${openTag}`);
+      chunks = splitScript(processed, MAX_SCRIPT_CHUNK_SIZE);
     } else {
-      out += processed;
+      chunks = [processed];
+    }
+
+    const named = chunks.map((chunk, i) => `${chunk}\n//# sourceURL=${sourceUrlFor(blockIndex, i, chunks.length)}`);
+    out += named.join(`${closeTag}${openTag}`);
+
+    if (statsOut) {
+      statsOut.push({
+        blockIndex,
+        originalLength: content.length,
+        minifiedLength: processed.length,
+        chunkSizes: chunks.map((c) => c.length),
+      });
     }
 
     cursor = contentEnd;
-  }
+  });
   out += assembled.slice(cursor);
   return out;
 }
 
-function build() {
-  return minifyScriptBlocks(concatenateFragments());
+function build(statsOut) {
+  return minifyScriptBlocks(concatenateFragments(), statsOut);
+}
+
+function printStats(concatenatedLength, stats) {
+  console.log('');
+  console.log('Per-<script>-block minification + splitting report:');
+  stats.forEach(({ blockIndex, originalLength, minifiedLength, chunkSizes }) => {
+    const pct = originalLength > 0 ? (100 * (1 - minifiedLength / originalLength)).toFixed(1) : '0.0';
+    console.log(`  block ${blockIndex}: ${originalLength} -> ${minifiedLength} chars (-${pct}%)`);
+    if (chunkSizes.length > 1) {
+      console.log(`    split into ${chunkSizes.length} <script> tags: [${chunkSizes.join(', ')}] (max ${Math.max(...chunkSizes)}, target ${MAX_SCRIPT_CHUNK_SIZE})`);
+    }
+  });
+  const totalOriginal = stats.reduce((s, b) => s + b.originalLength, 0);
+  const totalMinified = stats.reduce((s, b) => s + b.minifiedLength, 0);
+  const totalPct = totalOriginal > 0 ? (100 * (1 - totalMinified / totalOriginal)).toFixed(1) : '0.0';
+  console.log(`  all script content: ${totalOriginal} -> ${totalMinified} chars (-${totalPct}%)`);
+  console.log(`  concatenated fragments (pre-minify): ${concatenatedLength} chars`);
+  console.log('');
 }
 
 function main() {
   const checkMode = process.argv.includes('--check');
+  const statsMode = process.argv.includes('--stats');
   const outputPath = path.join(REPO_ROOT, MANIFEST.output);
-  const assembled = build();
+  const concatenated = concatenateFragments();
+  const stats = statsMode ? [] : undefined;
+  const assembled = minifyScriptBlocks(concatenated, stats);
+
+  if (statsMode) printStats(concatenated.length, stats);
 
   if (checkMode) {
     if (!fs.existsSync(outputPath)) {
