@@ -790,3 +790,34 @@ content.
 Not yet verified: an actual live redeploy of this split+hoisted version
 confirming the crash is gone on the real project — same constraint as
 the entry above, a human step at the Google account.
+
+### Follow-up — three tooling quality-of-life additions
+
+Reflecting on the toolchain above surfaced a real gap and two DX
+improvements worth landing while everything was already fresh:
+
+- **`tools/leaderhub-build/lexer-invariants.js`**, wired into `build.js`
+  as a hard gate run on every raw `<script>` block before any transform.
+  `verify-strip.js`/`verify-hoist.js` tokenize both an original and a
+  transformed file with the same `js-lexer.js` and compare — which
+  cannot catch a tokenizer bug that misclassifies the same input the
+  same way on both sides (exactly how the whitespace/regex bug above hid
+  from `verify-strip.js` for a while). This checks the tokenizer's own
+  internal consistency instead: brackets balanced, and no `regex` token
+  ever immediately following something only division could follow.
+- **`//# sourceURL=...` comments** appended to every `<script>` tag's
+  content (the standard DevTools convention), so a runtime error in, say,
+  the 7th of 15 split chunks shows up in the browser's Sources panel and
+  stack traces as `leader-hub-block-1-part-7-of-15.js` instead of an
+  anonymous `VM123:4231`.
+- **`node tools/leaderhub-build/build.js --stats`**, printing each
+  block's original/minified size and reduction percentage, and (for a
+  split block) every resulting chunk's size next to the 70,000-character
+  target — so size drift toward the ~100K–107K crash threshold is
+  visible on every build instead of only discoverable by re-running the
+  live-bisection investigation again.
+
+All three covered by new tests in
+`tests/tools/leaderhub-build-lexer.test.js`; full suite, `html-lint`,
+`gas-lint`, and `doc-currency` all still pass against the regenerated
+file.

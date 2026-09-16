@@ -74,6 +74,23 @@ will drift as the giant script grows or shrinks, so don't treat "16" as a
 fact to keep in sync here; `node tools/html-lint/check.js
 leader-hub/student-leader-hub.html` always reports the real current count.
 
+Before any of this runs, `lexer-invariants.js` re-checks each RAW block's
+own token stream for internal consistency (balanced brackets, no regex
+token following something only division could follow) — independent of
+any before/after comparison, so a tokenizer bug that would otherwise fool
+`verify-strip.js`/`verify-hoist.js` (both sides tokenized the same wrong
+way) still gets caught. `build.js` throws immediately if this ever fires.
+
+Every resulting `<script>` tag's content also gets a trailing
+`//# sourceURL=leader-hub-block-N[-part-i-of-M].js` comment — a standard
+DevTools convention that gives each one a stable, readable name in the
+browser's Sources panel and in stack traces, instead of an anonymous
+`VM123:4231`.
+
+Run `node tools/leaderhub-build/build.js --stats` for a per-block report:
+original vs. minified size, the reduction percentage, and (for a split
+block) every resulting chunk's size next to the target.
+
 **One region is honestly tangled, not cleanly modular:**
 `12-integrations-pacing-subplan-brag.html` (~3,600 lines, banner
 "LEADERHUB COMMAND ENGINE v3" continues into it) mixes the AI-job engine,
@@ -89,6 +106,7 @@ story than the source supports.
 ```
 node tools/leaderhub-build/build.js          # rebuild the assembled file from the fragments
 node tools/leaderhub-build/build.js --check  # verify it's already up to date; exits 1 if not (CI gate)
+node tools/leaderhub-build/build.js --stats  # rebuild, then print a per-block size report
 ```
 
 ## Files
@@ -96,8 +114,9 @@ node tools/leaderhub-build/build.js --check  # verify it's already up to date; e
 | File | Contents |
 |---|---|
 | `manifest.json` | Ordered list of `leader-hub/src/*.html` fragment paths, plus the output path. `build.js`'s only source of truth for fragment order. |
-| `build.js` | Reads each fragment in manifest order, `parts.join('')` (no separator — each fragment ends exactly where the next began), then runs each real `<script>` block's content through minify → (hoist + split, if over size) before writing the result. `--check` builds in memory and diffs against the committed file instead of writing, non-zero exit on drift. |
+| `build.js` | Reads each fragment in manifest order, `parts.join('')` (no separator — each fragment ends exactly where the next began), then runs each real `<script>` block's content through an invariant check → minify → (hoist + split, if over size) → sourceURL-tag before writing the result. `--check` builds in memory and diffs against the committed file instead of writing, non-zero exit on drift. `--stats` prints a size report. |
 | `js-lexer.js` | Small recursive-descent JS tokenizer (comments/strings/templates/regex/idents/numbers/punctuation/whitespace) — not a full parser, just enough to walk the source without corrupting arbitrarily-nested template literals. Everything else in this directory is built on it. |
+| `lexer-invariants.js` | Standalone sanity pass over a token stream: balanced brackets, and no regex token following something only division could follow. Catches a js-lexer.js bug directly, independent of (and a real blind spot for) the before/after comparisons below. |
 | `strip-comments.js` | Removes comment tokens and collapses dead whitespace/blank lines, leaving string/template/regex literal content and real newline placement untouched. |
 | `hoist-declarations.js` | Converts top-level (bracket-depth-0) `let`/`const` to `var`, leaving anything nested inside a function/block/for-head/object-key/method-name alone. |
 | `split-script.js` | Splits a source string into chunks no larger than a target size, cutting only at real statement boundaries (never mid-expression), and verifies each chunk independently with `node --check`. |
