@@ -2773,7 +2773,7 @@ async function renderAiFlowHealthSettings() {
 
 // Forward substitution — applied to a COPY of the Brag Board wins text used
 // only for the network payload sent to Gemini; the local draft shown in the
-// UI and the eventual Gmail draft always keep real names (see
+// UI and the eventual sent email always keep real names (see
 // _restoreNamesFromIds below, which undoes this on the way back).
 // Longest-name-first so e.g. "Jane Smith-Doe" isn't partially shadowed by a
 // shorter "Jane Smith" entry matching first; \b-anchored so a name can't

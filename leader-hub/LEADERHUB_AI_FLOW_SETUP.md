@@ -484,7 +484,7 @@ Two things worth knowing before you run 4:
 - **A fixture row cannot send anything.** A queue row makes a Flow generate
   text and write it back into that row; it does not make Apps Script act. The
   only outbound side effect in this project, `createBragDraft_()`'s
-  `GmailApp.createDraft()`, is reachable only from an explicit `bragEmail`
+  `MailApp.sendEmail()` call, is reachable only from an explicit `bragEmail`
   client action and never from a queue row.
 - **Fixtures don't show up as usage.** They're written straight to the sheet
   rather than through `queueAiJob_()`, so they never touch the per-type
