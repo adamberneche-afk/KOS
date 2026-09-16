@@ -18,8 +18,7 @@
  * in this file's own code (_isSameDomainAsOwner_()), not just left to
  * appsscript.json's webapp.access setting:
  *   action: "subPlan"       → Create Google Doc sub plan  → {ok, docUrl}
- *   action: "bragEmail"     → Queue a brag draft, emailed to the owner
- *                              by sendBragQueue()'s own trigger → {ok}
+ *   action: "bragEmail"     → Create a Gmail draft                → {ok}
  *   action: "markConsumed"  → Mark horizon items consumed  → {ok, consumed}
  *   action: "aiDraft"       → Queue an AI drafting job      → {ok, jobId}
  *   action: "checkAiJob"    → Poll a queued AI job          → {ok, status, result|error}
@@ -40,12 +39,6 @@
  *      Google account (same property doGet()'s gate already requires —
  *      see Code.gs) — until set, every owner-only action above fails
  *      closed, same fail-closed convention as OWNER_EMAIL itself.
- *   5. Run installBragQueueTrigger() once from the Apps Script editor's
- *      function dropdown — installs the 5-minute trigger that emails
- *      queued Brag Board drafts to OWNER_EMAIL. Without it, "bragEmail"
- *      requests queue in the Brag_Queue tab forever with nothing draining
- *      them, the same "nothing happened, no error anywhere" shape every
- *      other queue in this repo warns about until its trigger is installed.
  *
  * AI drafting (optional): see LEADERHUB_AI_FLOW_SETUP.md for how "aiDraft"/
  * "checkAiJob" bifurcate into a GAS-side job queue (this file) plus a
@@ -260,123 +253,21 @@ function createSubPlanDoc_(body) {
   return { ok: true, docUrl: 'https://docs.google.com/document/d/' + doc.getId() + '/edit' };
 }
 
-// ── Brag email → queued, delivered to the owner via MailApp ──────────────────
-// FIX (Gmail-scope narrowing, round 2 — "scope down to read only and use a
-// trigger to send an execution log to my email for drafts"): this used to
-// call the Gmail service's createDraft(to, subject, text) directly, needing the
-// gmail.compose scope. Replaced with a queue + time-driven trigger
-// (sendBragQueue() below): the web request only appends a row, and a
-// separate 5-minute trigger emails the drafted content to the OWNER's own
-// inbox via MailApp — never to the original intended recipient directly.
-// The owner reviews it in their own inbox and forwards/sends it themselves.
-// This drops gmail.compose entirely; leader-hub's only remaining Gmail
-// scope is gmail.readonly, for scanHorizonLabel_()'s label scan (see
-// that function's own header for why it was briefly disabled and how
-// that got ruled out). Bifurcation shape matches the AI Queue above
-// (queue the request, a separate step does the actual work) and the
-// same "GAS orchestrates state, MailApp only ever sends" pattern every
-// other mail-capable project in this repo already uses — see
-// tools/gas-lint/scope-map.json's GmailApp note.
-
-const BRAG_QUEUE_SHEET_PROP  = 'BRAG_QUEUE_SHEET_ID';
-const BRAG_QUEUE_SHEET_NAME  = 'Brag_Queue';
-const BRAG_QUEUE_HEADERS     = ['Timestamp', 'To', 'Subject', 'Body', 'Status', 'Attempts', 'Error'];
-// Column indices (0-based) matching the header row above.
-const BRAGQ_COL = { TIMESTAMP: 0, TO: 1, SUBJECT: 2, BODY: 3, STATUS: 4, ATTEMPTS: 5, ERROR: 6 };
-// A row failing this many sends is marked FAILED (terminal) rather than
-// retried forever — mirrors the escalate-to-terminal-state pattern
-// kos-personal/cas-ccps already use for their own queues.
-const BRAG_QUEUE_MAX_ATTEMPTS = 3;
-
-function _getBragQueueSheet_() {
-  const prop = PropertiesService.getScriptProperties();
-  let id = prop.getProperty(BRAG_QUEUE_SHEET_PROP);
-  let ss;
-  if (id) {
-    try { ss = SpreadsheetApp.openById(id); } catch (e) { ss = null; } // deleted/moved — rebuild below
-  }
-  if (!ss) {
-    ss = SpreadsheetApp.create('LeaderHub Brag Queue');
-    prop.setProperty(BRAG_QUEUE_SHEET_PROP, ss.getId());
-  }
-  let sheet = ss.getSheetByName(BRAG_QUEUE_SHEET_NAME);
-  if (!sheet) {
-    sheet = ss.getSheets()[0];
-    sheet.setName(BRAG_QUEUE_SHEET_NAME);
-    sheet.appendRow(BRAG_QUEUE_HEADERS);
-    sheet.setFrozenRows(1);
-  }
-  return sheet;
-}
-
+// ── Brag email → Gmail draft ──────────────────────────────────────────────────
+// HISTORY: this was replaced with a queue + MailApp-to-owner pattern for a
+// stretch (avoiding gmail.compose entirely) while chasing a live
+// OAuth-consent-dialog crash under the hypothesis that GmailApp/its scopes
+// were the trigger. They weren't — the crash was traced to the assembled
+// page's per-<script>-tag size, unrelated to OAuth scope composition at
+// all (see leader-hub/HISTORY.md's 2026-09-15 entry) — so this reverts to
+// the original, simpler direct-draft behavior now that the real fix
+// (build-time script splitting) doesn't require avoiding this scope.
 function createBragDraft_(body) {
   const to      = body.to      || CONFIG.defaultBragTo;
   const subject = body.subject || 'Weekly Wins';
   const text    = body.body    || '(No content)';
-  const sheet   = _getBragQueueSheet_();
-  sheet.appendRow([new Date(), to, subject, text, 'PENDING', 0, '']);
+  GmailApp.createDraft(to, subject, text);
   return { ok: true };
-}
-
-/**
- * Time-driven entry point — drains Brag_Queue, emailing each PENDING row's
- * would-be draft to the OWNER's own inbox via MailApp.sendEmail() (needs
- * only script.send_mail — no Gmail Drafts access, no mailbox read/write of
- * any kind). Never sends to the row's own "To" address; that's shown as
- * context inside the body for the owner to act on themselves.
- *
- * Installed on its own trigger (installBragQueueTrigger() below) — this
- * project has no bulk trigger installer, same reasoning
- * installDeployVersionReportTrigger() (DeployVersionReport.gs) documents.
- */
-function sendBragQueue() {
-  const cfg = getConfig_();
-  if (!cfg.ownerEmail) {
-    console.error('[BragQueue] OWNER_EMAIL not set — cannot deliver queued drafts. Set it under Project Settings.');
-    return;
-  }
-
-  const sheet = _getBragQueueSheet_();
-  const lastRow = sheet.getLastRow();
-  if (lastRow <= 1) return; // header only — nothing queued
-
-  const data = sheet.getRange(2, 1, lastRow - 1, BRAG_QUEUE_HEADERS.length).getValues();
-  for (let i = 0; i < data.length; i++) {
-    const row = data[i];
-    const sheetRow = i + 2;
-    if (String(row[BRAGQ_COL.STATUS]).trim() !== 'PENDING') continue;
-
-    try {
-      MailApp.sendEmail({
-        to: cfg.ownerEmail,
-        subject: '[LeaderHub Brag Draft] ' + row[BRAGQ_COL.SUBJECT],
-        body: 'Intended recipient: ' + (row[BRAGQ_COL.TO] || '(none specified)') +
-          '\n\n' + row[BRAGQ_COL.BODY],
-      });
-      sheet.getRange(sheetRow, BRAGQ_COL.STATUS + 1).setValue('SENT');
-    } catch (e) {
-      const attempts = (Number(row[BRAGQ_COL.ATTEMPTS]) || 0) + 1;
-      sheet.getRange(sheetRow, BRAGQ_COL.ATTEMPTS + 1).setValue(attempts);
-      sheet.getRange(sheetRow, BRAGQ_COL.ERROR + 1).setValue(String((e && e.message) || e));
-      if (attempts >= BRAG_QUEUE_MAX_ATTEMPTS) {
-        sheet.getRange(sheetRow, BRAGQ_COL.STATUS + 1).setValue('FAILED');
-        console.error('[BragQueue] Row ' + sheetRow + ' failed after ' + attempts + ' attempt(s): ' + e.message);
-      }
-    }
-  }
-}
-
-/**
- * One-time (idempotent) installer — run manually from the Apps Script
- * editor. Same shape as installDeployVersionReportTrigger()
- * (DeployVersionReport.gs).
- */
-function installBragQueueTrigger() {
-  ScriptApp.getProjectTriggers().forEach((t) => {
-    if (t.getHandlerFunction() === 'sendBragQueue') ScriptApp.deleteTrigger(t);
-  });
-  ScriptApp.newTrigger('sendBragQueue').timeBased().everyMinutes(5).create();
-  console.log('[BragQueue] Trigger installed: sendBragQueue, every 5 minutes.');
 }
 
 // ── AI job queue — bifurcated backend for AI drafting ─────────────────────────

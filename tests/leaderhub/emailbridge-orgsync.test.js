@@ -35,12 +35,14 @@ function load() {
 // rather than adding GmailApp to the shared default sandbox every other
 // test in this repo loads.
 //
-// Deep enough for scanHorizonLabel_()'s own call shape only:
-// getUserLabelByName -> label.getThreads(start, max) -> thread.getMessages()
-// -> message.getId()/getSubject()/getPlainBody(). `messagesByLabel` maps a
-// label name to an array of {id, subject, body} — a null/absent entry
-// means getUserLabelByName(name) returns null, matching a label that
-// doesn't exist yet in the account.
+// Deep enough for this repo's two real GmailApp call shapes:
+// scanHorizonLabel_() -- getUserLabelByName -> label.getThreads(start, max)
+// -> thread.getMessages() -> message.getId()/getSubject()/getPlainBody() --
+// and createBragDraft_() -- createDraft(to, subject, body), recorded rather
+// than sent, same "assertion surface" convention gas-sandbox.js's own
+// makeMailAppMock() uses. `messagesByLabel` maps a label name to an array
+// of {id, subject, body} — a null/absent entry means getUserLabelByName(name)
+// returns null, matching a label that doesn't exist yet in the account.
 function makeGmailAppMock(messagesByLabel) {
   function makeMessage({ id, subject, body }) {
     return {
@@ -52,6 +54,7 @@ function makeGmailAppMock(messagesByLabel) {
   function makeThread(messages) {
     return { getMessages: () => messages.map(makeMessage) };
   }
+  const drafts = [];
   return {
     getUserLabelByName(name) {
       const messages = messagesByLabel[name];
@@ -61,6 +64,11 @@ function makeGmailAppMock(messagesByLabel) {
       // regardless of how messages are grouped into threads.
       return { getThreads: () => messages.map((m) => makeThread([m])) };
     },
+    createDraft(to, subject, body) {
+      drafts.push({ to, subject, body });
+      return { getId: () => 'fake-draft-' + drafts.length };
+    },
+    __drafts: drafts,
   };
 }
 
@@ -70,6 +78,12 @@ function loadWithGmail(messagesByLabel) {
     ['scanHorizonLabel_'],
     { GmailApp: makeGmailAppMock(messagesByLabel) },
   );
+}
+
+function loadWithGmailForDraft() {
+  const gmailApp = makeGmailAppMock({});
+  const { exported } = loadGasFile(EMAILBRIDGE_PATH, ['createBragDraft_'], { GmailApp: gmailApp });
+  return { exported, gmailApp };
 }
 
 // ── Organization Sync: push / pull / list ─────────────────────────────────
@@ -363,4 +377,28 @@ test('scanHorizonLabel_: GmailApp throwing is caught and returns an empty list, 
   assert.doesNotThrow(() => {
     assert.deepEqual(exported.scanHorizonLabel_(), []);
   });
+});
+
+// ── createBragDraft_ ───────────────────────────────────────────────────────
+// See this function's own header in EmailBridge.gs: reverted back to a
+// direct GmailApp.createDraft() call (from a queue+MailApp workaround) once
+// the real OAuth-consent-dialog crash cause was found to be unrelated to
+// GmailApp/its scopes entirely.
+
+test('createBragDraft_: creates a real Gmail draft addressed to the given recipient', () => {
+  const { exported, gmailApp } = loadWithGmailForDraft();
+  const res = exported.createBragDraft_({ to: 'parent@example.com', subject: 'Weekly Wins', body: 'Great week!' });
+  assert.equal(res.ok, true);
+  assert.equal(gmailApp.__drafts.length, 1);
+  assert.deepEqual(gmailApp.__drafts[0], { to: 'parent@example.com', subject: 'Weekly Wins', body: 'Great week!' });
+});
+
+test('createBragDraft_: falls back to CONFIG.defaultBragTo/a default subject/"(No content)" when fields are omitted', () => {
+  const { exported, gmailApp } = loadWithGmailForDraft();
+  exported.createBragDraft_({});
+  assert.equal(gmailApp.__drafts.length, 1);
+  const draft = gmailApp.__drafts[0];
+  assert.equal(draft.to, ''); // CONFIG.defaultBragTo is blank until configured in Settings
+  assert.equal(draft.subject, 'Weekly Wins');
+  assert.equal(draft.body, '(No content)');
 });
