@@ -42,7 +42,7 @@ All files live at `/mnt/user-data/outputs/`. The app is a **single HTML file** �
 | File | Purpose | Touch? |
 |------|---------|--------|
 | `student-leader-hub.html` | **THE APP** — ~1MB; run `wc -l` for the current line count (22,822 at the time of writing) | Primary work target |
-| `EmailBridge.gs` | Google Apps Script — sub plan docs + Gmail drafts | Update when adding GAS endpoints |
+| `EmailBridge.gs` | Google Apps Script — sub plan docs + brag emails (sent via MailApp) | Update when adding GAS endpoints |
 | `LEADERHUB_PRINCIPLES.md` | Six guiding principles — the constitution | Read before every session |
 | `LEADERHUB_WIP.md` | Historical work log | Reference only |
 | `LEADERHUB_README.md` | Architecture overview | Reference only |
@@ -132,7 +132,7 @@ LP_C_COLORS / LP_C_LABELS — Course color palette and labels
 
 `callGAS(action, payload)` — calls the EmailBridge URL stored in `LS.get('lh_email_bridge_url')`. Endpoints:
 - `action: 'subPlan'` → creates Google Doc, returns `{ok, docUrl}`
-- `action: 'bragEmail'` → creates Gmail draft, returns `{ok}`
+- `action: 'bragEmail'` → sends an email via MailApp, returns `{ok}`
 - `action: 'markConsumed'` → marks horizon email items consumed
 - GET (no action) → scans Gmail label "LeaderHub" for horizon items
 
