@@ -789,45 +789,26 @@ function listOrgSyncs_(body) {
 // items — the one read-side use of Gmail in this file (send-side mail is
 // MailApp/the brag queue below, unrelated).
 //
-// HISTORY: disabled entirely for a stretch (no GmailApp call reachable,
-// gmail.readonly dropped from the manifest) as a decisive test of whether
-// GmailApp itself — any scope, not just how narrow — was the trigger
-// behind a live "Unexpected identifier 'style'" OAuth-consent-dialog
-// crash. It wasn't: the same crash reproduced identically across three
-// different scope sets, including none at all, and was eventually traced
-// to the assembled page's overall size, unrelated to OAuth scope
-// composition — see leader-hub/HISTORY.md's 2026-09-15 entry for the full
-// investigation and the actual fix (build-time minification of the
-// assembled script). Restored once that was confirmed. gmail.readonly is
-// back in appsscript.json's oauthScopes to match.
+// HISTORY: disabled entirely once before (round 3 of this investigation)
+// as a decisive test of whether GmailApp itself — any scope, not just how
+// narrow — was the trigger behind a live "Unexpected identifier 'style'"
+// OAuth-consent-dialog crash. It wasn't, at the time: the same crash
+// reproduced identically across three different scope sets, including
+// none at all, and was traced to the assembled page's overall size,
+// unrelated to OAuth scope composition — see leader-hub/HISTORY.md's
+// 2026-09-15 entry. Restored once that was confirmed.
+//
+// Disabled again now (round 5) because a live redeploy of BOTH the
+// size-based fix (script splitting + hoisting) AND round 4's gmail.compose
+// removal still crashed identically — reopening the question of whether
+// Gmail scope really is unrelated. This round removes gmail.readonly too,
+// leaving zero Gmail scope in appsscript.json, so nothing in this project
+// asks for or depends on Gmail access at all. See leader-hub/HISTORY.md's
+// newest entry. Returns an empty list rather than throwing so callers
+// (both the horizon-items GET path and the client's local fallback) don't
+// need their own special case for "this feature is off."
 function scanHorizonLabel_() {
-  const items    = [];
-  const prop     = PropertiesService.getScriptProperties();
-  const consumed = JSON.parse(prop.getProperty('consumed') || '[]');
-
-  let label;
-  try { label = GmailApp.getUserLabelByName(CONFIG.horizonLabel); } catch(e) { return items; }
-  if (!label) return items;
-
-  label.getThreads(0, 20).forEach(thread => {
-    thread.getMessages().forEach(msg => {
-      const id = msg.getId();
-      if (consumed.includes(id)) return;
-      const text = msg.getSubject() + ' ' + msg.getPlainBody().slice(0, 500);
-      const hm   = text.match(/#horizon:(short|mid|long)/i);
-      const dm   = text.match(/#deadline:(\d{4}-\d{2}-\d{2})/i);
-      const rm   = text.match(/#role:(teach|store|deca|esports|trips|general)/i);
-      items.push({
-        id,
-        text:         msg.getSubject() || msg.getPlainBody().slice(0, 80),
-        horizon:      hm ? hm[1].toLowerCase() : 'mid',
-        deadlineDate: dm ? dm[1]               : null,
-        role:         rm ? rm[1].toLowerCase() : 'general',
-        source:       'email',
-      });
-    });
-  });
-  return items;
+  return [];
 }
 
 // ── Mark consumed (POST) — unchanged ─────────────────────────────────────────
