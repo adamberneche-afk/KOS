@@ -531,6 +531,33 @@ function checkGoogleScriptRunCalls() {
 // Check E — OAuth scope coverage (only for projects with a checked-in
 // manifest that declares an explicit oauthScopes list)
 // -----------------------------------------------------------------------
+
+// Pure unit: `files` is [{path, stripped}] (source already run through
+// stripCommentsAndStrings() — see below for why that matters), `serviceMap`
+// is scope-map.json's `services` object. Returns [{service, missing, file}]
+// findings, one per service whose scope requirement isn't fully covered.
+//
+// FIXED: this used to regex each file's RAW, un-stripped source, so a
+// comment merely mentioning e.g. "GmailApp.createDraft()" while narrating
+// history (leader-hub/EmailBridge.gs does exactly this) false-positived as
+// real usage — the same "naive scanner mistakes prose for code" bug class
+// tools/html-lint/check.js's own header already warns about. Every other
+// check in this file already runs source through stripCommentsAndStrings()
+// first; this one just hadn't — now callers pass already-stripped source
+// in, matching evaluateWebAppAuthForProject()'s convention.
+function findMissingOAuthScopes(files, declaredScopes, serviceMap) {
+  const findings = [];
+  for (const { path, stripped } of files) {
+    for (const [service, scopes] of Object.entries(serviceMap)) {
+      const re = new RegExp(`\\b${service}\\.`);
+      if (!re.test(stripped)) continue;
+      const missing = scopes.filter(s => !declaredScopes.has(s));
+      if (missing.length > 0) findings.push({ service, missing, file: path });
+    }
+  }
+  return findings;
+}
+
 function checkOAuthScopes() {
   for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
     if (projectName.startsWith('_')) continue;
@@ -541,24 +568,17 @@ function checkOAuthScopes() {
     if (!Array.isArray(manifest.oauthScopes)) continue; // no explicit list => GAS auto-detects, nothing to check
 
     const declaredScopes = new Set(manifest.oauthScopes);
-    const files = (def.files || []).concat(def.html || []);
-    for (const relPath of files) {
-      if (!exists(relPath)) continue;
-      const src = readFile(relPath);
-      for (const [service, scopes] of Object.entries(SCOPE_MAP.services)) {
-        const re = new RegExp(`\\b${service}\\.`);
-        if (!re.test(src)) continue;
-        const missing = scopes.filter(s => !declaredScopes.has(s));
-        if (missing.length > 0) {
-          err(
-            'missing-oauth-scope',
-            `${relPath} calls ${service}.* but project "${projectName}"'s manifest (${def.manifest}) does not declare: ${missing.join(', ')}. ` +
-            `Once a manifest lists oauthScopes explicitly, GAS stops auto-detecting — this call will fail authorization at runtime, typically silently if it's wrapped in a try/catch.` +
-            (service === 'Session' ? ' (Session note: this tool flags any Session.* call conservatively — see scope-map.json._notes.Session.)' : ''),
-            relPath
-          );
-        }
-      }
+    const relPaths = (def.files || []).concat(def.html || []).filter(exists);
+    const files = relPaths.map(relPath => ({ path: relPath, stripped: stripCommentsAndStrings(readFile(relPath)) }));
+
+    for (const { service, missing, file } of findMissingOAuthScopes(files, declaredScopes, SCOPE_MAP.services)) {
+      err(
+        'missing-oauth-scope',
+        `${file} calls ${service}.* but project "${projectName}"'s manifest (${def.manifest}) does not declare: ${missing.join(', ')}. ` +
+        `Once a manifest lists oauthScopes explicitly, GAS stops auto-detecting — this call will fail authorization at runtime, typically silently if it's wrapped in a try/catch.` +
+        (service === 'Session' ? ' (Session note: this tool flags any Session.* call conservatively — see scope-map.json._notes.Session.)' : ''),
+        file
+      );
     }
   }
 }
@@ -1704,6 +1724,7 @@ module.exports = {
   AUTH_CALL_RE,
   findFunctionBody,
   evaluateWebAppAuthForProject,
+  findMissingOAuthScopes,
   HASNEXT_WHILE_RE,
   LOOP_CAP_RE,
   LOOP_PACING_RE,
