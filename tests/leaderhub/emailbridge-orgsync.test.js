@@ -30,47 +30,9 @@ function load() {
 // GmailApp is deliberately absent from the shared harness (gas-sandbox.js's
 // own header) — calling it without a mock throws ReferenceError, by design,
 // so a missing OAuth scope is caught by a test rather than a live consent
-// prompt. scanHorizonLabel_() is this repo's one real GmailApp caller, so
-// it gets its own narrow mock passed via loadGasFile's extraGlobals,
-// rather than adding GmailApp to the shared default sandbox every other
-// test in this repo loads.
-//
-// Deep enough for this repo's one real GmailApp call shape:
-// scanHorizonLabel_() -- getUserLabelByName -> label.getThreads(start, max)
-// -> thread.getMessages() -> message.getId()/getSubject()/getPlainBody().
-// `messagesByLabel` maps a label name to an array of {id, subject, body} --
-// a null/absent entry means getUserLabelByName(name) returns null, matching
-// a label that doesn't exist yet in the account.
-function makeGmailAppMock(messagesByLabel) {
-  function makeMessage({ id, subject, body }) {
-    return {
-      getId: () => id,
-      getSubject: () => subject || '',
-      getPlainBody: () => body || '',
-    };
-  }
-  function makeThread(messages) {
-    return { getMessages: () => messages.map(makeMessage) };
-  }
-  return {
-    getUserLabelByName(name) {
-      const messages = messagesByLabel[name];
-      if (!messages) return null;
-      // One thread per message is enough here -- scanHorizonLabel_()
-      // flattens getThreads().forEach(thread => thread.getMessages()...)
-      // regardless of how messages are grouped into threads.
-      return { getThreads: () => messages.map((m) => makeThread([m])) };
-    },
-  };
-}
-
-function loadWithGmail(messagesByLabel) {
-  return loadGasFile(
-    EMAILBRIDGE_PATH,
-    ['scanHorizonLabel_'],
-    { GmailApp: makeGmailAppMock(messagesByLabel) },
-  );
-}
+// prompt. This repo's only real GmailApp caller (scanHorizonLabel_(), used
+// to have its own mock here) is currently disabled (see its own tests
+// below) and calls no Gmail API at all, so no such mock is needed anymore.
 
 // ── Organization Sync: push / pull / list ─────────────────────────────────
 
@@ -305,64 +267,25 @@ test('markConsumed_ with an empty list is a no-op', () => {
 });
 
 // ── scanHorizonLabel_ ──────────────────────────────────────────────────────
-// See this function's own header in EmailBridge.gs for why it was briefly
-// disabled (a decisive test that GmailApp itself wasn't the trigger behind
-// a live OAuth-consent-dialog crash) and restored once that was ruled out.
+// See this function's own header in EmailBridge.gs: disabled again (round 5
+// of this repo's long OAuth-consent-dialog-crash investigation) after a live
+// redeploy of the split+hoisted fix AND round 4's gmail.compose removal
+// still crashed identically. This project currently requests zero Gmail
+// scope, so the function no longer touches GmailApp at all -- these tests
+// assert exactly that, using the plain load() helper (no GmailApp mock
+// needed, unlike before): scanHorizonLabel_() must work even with NO
+// GmailApp global present at all, proving it has zero Gmail dependency
+// right now.
 
-test('scanHorizonLabel_: no such label yet returns an empty list, not an error', () => {
-  const { exported } = loadWithGmail({}); // 'LeaderHub' label absent entirely
+test('scanHorizonLabel_: disabled -- always returns an empty list, without needing GmailApp at all', () => {
+  const { exported } = load();
   assert.deepEqual(exported.scanHorizonLabel_(), []);
 });
 
-test('scanHorizonLabel_: parses #horizon/#deadline/#role tags out of the subject+body', () => {
-  const { exported } = loadWithGmail({
-    LeaderHub: [{
-      id: 'msg1',
-      subject: 'Trip forms due #horizon:short #deadline:2026-10-01 #role:trips',
-      body: 'Please submit by the deadline.',
-    }],
-  });
-  assert.deepEqual(exported.scanHorizonLabel_(), [{
-    id: 'msg1',
-    text: 'Trip forms due #horizon:short #deadline:2026-10-01 #role:trips',
-    horizon: 'short',
-    deadlineDate: '2026-10-01',
-    role: 'trips',
-    source: 'email',
-  }]);
-});
-
-test('scanHorizonLabel_: an untagged message still comes back, with default horizon/role and no deadline', () => {
-  const { exported } = loadWithGmail({
-    LeaderHub: [{ id: 'msg2', subject: 'Just a note', body: 'Nothing tagged here.' }],
-  });
-  const [item] = exported.scanHorizonLabel_();
-  assert.equal(item.horizon, 'mid');
-  assert.equal(item.role, 'general');
-  assert.equal(item.deadlineDate, null);
-});
-
-test('scanHorizonLabel_: a message whose id is already in the consumed list is excluded', () => {
-  const { exported, sandbox } = loadWithGmail({
-    LeaderHub: [
-      { id: 'seen', subject: '#horizon:short', body: '' },
-      { id: 'new', subject: '#horizon:long', body: '' },
-    ],
-  });
-  sandbox.PropertiesService.getScriptProperties().setProperty('consumed', JSON.stringify(['seen']));
-  const ids = exported.scanHorizonLabel_().map((item) => item.id);
-  assert.deepEqual(ids, ['new']);
-});
-
-test('scanHorizonLabel_: GmailApp throwing is caught and returns an empty list, not an error', () => {
-  const { exported } = loadGasFile(
-    EMAILBRIDGE_PATH,
-    ['scanHorizonLabel_'],
-    { GmailApp: { getUserLabelByName() { throw new Error('simulated Gmail API failure'); } } },
-  );
-  assert.doesNotThrow(() => {
-    assert.deepEqual(exported.scanHorizonLabel_(), []);
-  });
+test('scanHorizonLabel_: ignores arguments and script properties -- there is no logic left to feed', () => {
+  const { exported, sandbox } = load();
+  sandbox.PropertiesService.getScriptProperties().setProperty('consumed', JSON.stringify(['anything']));
+  assert.deepEqual(exported.scanHorizonLabel_(), []);
 });
 
 // ── createBragDraft_ ───────────────────────────────────────────────────────

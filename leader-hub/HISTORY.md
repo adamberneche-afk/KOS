@@ -868,3 +868,68 @@ Still open: confirming what's actually live on the real project (the
 most likely explanation for the crash surviving the split+hoisted fix),
 and, if that checks out, reopening the investigation into what's really
 triggering this.
+
+### Follow-up — round 5: gmail.readonly dropped too; the crash still reproduced, but real functionality kept working
+
+Round 4's redeploy (gmail.compose removed, brag email via MailApp) still
+crashed identically. Live inspection of that deployment surfaced two
+things worth recording:
+
+- **The app itself renders and works despite the banner.** The red banner
+  is our own `02-error-handler.html`'s global `window.onerror` handler,
+  catching an error from a resource on `script.googleusercontent.com` —
+  Google's own OAuth-consent-dialog UI, a separate resource from anything
+  in this repo — and displaying it. The dashboard, DECA Events (real data,
+  fully interactive), and other sections rendered and worked normally
+  alongside the banner, in both an Incognito window and a normal signed-in
+  session (ruling out session/cookie state as a variable). This reframes
+  the banner as possibly non-blocking rather than a hard failure — our own
+  error handler has no way today to distinguish "a real error in our own
+  code" from "an error in a Google-hosted resource we don't control and
+  that may not affect anything."
+- **A genuine, separate bug surfaced while testing this**: navigating to
+  Field Trips threw "Nav error (trips): renderTrips is not defined" — a
+  real `ReferenceError`, unrelated to the OAuth banner. `renderTrips` is a
+  normal top-level `function` declaration (verified in the committed
+  source, inside one of the 15 split chunks, passing `node --check` and
+  every automated verification locally) that should hoist to the page's
+  shared global object regardless of which `<script>` tag it's in. This
+  was NOT reproduced on a later check ("all individual sections seem to be
+  accessible except for the email items"), so it may have been a
+  transient/first-load issue rather than a standing bug — flagged here in
+  case it recurs, since it would point at something real in the split
+  build if it does.
+
+`gmail.readonly` is now dropped too: `scanHorizonLabel_()` (the one
+remaining GmailApp caller — reading the `LeaderHub` Gmail label for
+horizon items) now always returns an empty list without calling GmailApp
+at all, matching round 3's earlier "disable entirely" precedent.
+`appsscript.json` now declares zero Gmail scope. The in-app Email Bridge
+Setup modal and `LEADERHUB_HANDOFF.md` were updated to say so plainly
+rather than silently going quiet. Test coverage rewritten to match
+(`scanHorizonLabel_()` now needs no GmailApp mock at all — it doesn't
+touch Gmail).
+
+Also found and fixed, incidentally, while verifying this round:
+`tools/gas-lint/check.js`'s `checkOAuthScopes()` regexed each file's RAW
+source rather than its comment-stripped source (every other check in that
+file already does this) — so this round's own history comments narrating
+"...reverted back to `GmailApp.createDraft()`..." false-positived as real
+GmailApp usage the instant the real call site was removed. Fixed by
+routing it through the same `stripCommentsAndStrings()` every other check
+uses, refactored into a small pure `findMissingOAuthScopes()` unit (same
+shape as `evaluateWebAppAuthForProject()`) with its own new test file —
+this check had zero test coverage before.
+
+One hypothesis worth naming, not yet tested: every redeploy in this whole
+investigation has changed `appsscript.json`'s `oauthScopes` from the
+previous deployment, which may force Apps Script into a "permissions
+changed, please re-authorize" flow distinct from a brand-new project's
+first-ever consent (the one condition that hasn't crashed so far). If
+so, the fix might not be about which scopes are requested at all, but
+about avoiding a scope-changing redeploy on an already-authorized
+project. Not yet confirmed either way.
+
+`leader-hub/student-leader-hub.html` regenerated; full suite (1056/1056,
+was 1052 before the two new test files), `html-lint`, `gas-lint`, and
+`doc-currency` all pass.

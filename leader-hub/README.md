@@ -999,9 +999,12 @@ web app" below; this is the one place this list is spelled out in prose, and
 `tools/gas-lint/project-map.json` is what the tooling actually reads) is laid out
 exactly the way [clasp](https://github.com/google/clasp) wants — a flat
 folder. It has a committed `appsscript.json` (derived from actual service
-usage: `GmailApp`, `DriveApp`, `DocumentApp`, `SpreadsheetApp`, plus the
+usage: `MailApp`, `DriveApp`, `DocumentApp`, `SpreadsheetApp`, plus the
 `webapp` `executeAs`/`access` block — "Execute as: Me · Access: Anyone in
-your domain"), a `.claspignore` that allowlists exactly those `.gs`
+your domain"). `GmailApp` is currently unused — Gmail scope was walked back
+entirely while a live OAuth-consent-dialog crash is being investigated, see
+`leader-hub/HISTORY.md`'s newest entries. A `.claspignore` that allowlists
+exactly those `.gs`
 files plus `appsscript.json` and `student-leader-hub.html` (everything
 else here — the `LEADERHUB_*`/`LH_0*` docs, `student-leader-hub.jsx`,
 `archived/`, and `drive-tools/`'s one-off paste-and-run utilities — is
