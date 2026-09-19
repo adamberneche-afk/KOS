@@ -92,12 +92,31 @@ function declaredNamesFromSource(src) {
   return names;
 }
 
+// FIXED: used to be `rel === d || rel.startsWith(d + '/')`, inlined at the
+// call site below - that only matched an exclude name at the repo ROOT
+// (e.g. a top-level node_modules); a nested occurrence
+// (kos-personal/inference-service/node_modules) matched neither branch,
+// unlike .gitignore's own bare `node_modules/` pattern, which excludes a
+// directory with that name at any depth. Splitting `rel` into path
+// segments and checking each one against excludeDirs matches that same
+// any-depth semantics - every entry in excludeDirs (.git, node_modules,
+// .github, archived) is a bare directory name, not a compound path, so
+// segment-matching is the correct comparison. Extracted into its own named,
+// exported function so this bug class - a directory-exclusion check that
+// only worked at the root - has a real regression test pinning it down,
+// the same way declaredNamesFromSource/paragraphAround/docLevelStatus
+// already do for the other two bugs this tool shipped with (see this
+// file's own test file header comment).
+function isExcludedDir(rel) {
+  return CONFIG.excludeDirs.some(d => rel.split('/').includes(d));
+}
+
 function walk(dirRel, out) {
   const abs = path.join(REPO_ROOT, dirRel);
   if (!fs.existsSync(abs)) return out;
   for (const entry of fs.readdirSync(abs, { withFileTypes: true })) {
     const rel = path.posix.join(dirRel, entry.name);
-    if (CONFIG.excludeDirs.some(d => rel === d || rel.startsWith(d + '/'))) continue;
+    if (isExcludedDir(rel)) continue;
     if (entry.isDirectory()) walk(rel, out);
     else out.push(rel);
   }
@@ -611,6 +630,7 @@ module.exports = {
   DOC_TOKEN_RE,
   blockedSurfaces,
   auditBlockedMentions,
+  isExcludedDir,
   CONFIG,
 };
 

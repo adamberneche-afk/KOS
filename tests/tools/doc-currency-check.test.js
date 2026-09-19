@@ -31,6 +31,7 @@ const {
   docLevelStatus,
   normalizeBlockquotes,
   DOC_TOKEN_RE,
+  isExcludedDir,
 } = require('../../tools/doc-currency/check.js');
 
 // ── declaredNamesFromSource ────────────────────────────────────────────
@@ -230,4 +231,40 @@ test('an ordinary single-line count still matches after normalization', () => {
   const raw = 'the suite reports 374 passing tests today.';
   assert.equal(normalizeBlockquotes(raw), raw);
   assert.match(normalizeBlockquotes(raw), /374\s+passing/);
+});
+
+// ── isExcludedDir ───────────────────────────────────────────────────────
+// THE third bug this tool shipped with: `rel === d || rel.startsWith(d + '/')`
+// only matched an exclude name at the repo ROOT. A live run against this
+// repo reported 36 errors, every single one from vendored third-party
+// README files under kos-personal/inference-service/node_modules/ — a
+// nested occurrence the old check couldn't see, unlike .gitignore's own
+// bare `node_modules/` pattern, which excludes a directory with that name
+// at any depth.
+
+test('isExcludedDir matches an excluded name at the repo root', () => {
+  assert.ok(isExcludedDir('node_modules'));
+  assert.ok(isExcludedDir('.git'));
+});
+
+test('isExcludedDir matches an excluded name nested arbitrarily deep — the actual bug', () => {
+  assert.ok(isExcludedDir('kos-personal/inference-service/node_modules'),
+    'a nested node_modules must be excluded, not just a top-level one');
+  assert.ok(isExcludedDir('a/b/c/d/archived'));
+});
+
+test('isExcludedDir matches a file INSIDE an excluded nested directory, not just the directory entry itself', () => {
+  assert.ok(isExcludedDir('kos-personal/inference-service/node_modules/some-pkg/README.md'));
+});
+
+test('isExcludedDir does not false-positive on a name that only contains an excluded name as a substring', () => {
+  // "archived" is excluded; "archived_old" and "not_archived" are real,
+  // different directory names that must not be swept up by a naive
+  // substring/startsWith check on the unsplit path.
+  assert.ok(!isExcludedDir('archived_old/README.md'));
+  assert.ok(!isExcludedDir('cas-ccps/not_archived/README.md'));
+});
+
+test('isExcludedDir does not match an ordinary tracked path', () => {
+  assert.ok(!isExcludedDir('cas-ccps/scripts/29_StudentContextAggregator.js'));
 });
