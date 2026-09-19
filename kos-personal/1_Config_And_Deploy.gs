@@ -820,6 +820,13 @@ function _buildFolderTree() {
 function _registerAllProperties(folders, ss) {
   const props = PropertiesService.getScriptProperties();
   const map = {
+    // Deploy-time cache for _isWithinSystemFolderTree_()'s ownership check
+    // (5_Error_And_Utilities.gs, guards 6_Governance.gs's applyMutation())
+    // — without this, that check's first call after a fresh deploy would
+    // fall back to a DriveApp.getFoldersByName() name search instead of a
+    // direct getFolderById() lookup. Not part of the numbered ID_0N_*
+    // subtree below; it's their shared parent.
+    'ID_ROOT_SYSTEM_FOLDER':    folders.root,
     'ID_01_1_SCRIPTS':          folders.f01_1,
     'ID_01_2_SOP_AND_FLOWS':    folders.f01_2,
     'ID_01_3_SMP_PROPOSALS':    folders.f01_3,
