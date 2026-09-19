@@ -18,7 +18,7 @@
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { findMissingOAuthScopes, stripCommentsAndStrings } = require('../../tools/gas-lint/check.js');
+const { findMissingOAuthScopes, findUnusedOAuthScopes, stripCommentsAndStrings } = require('../../tools/gas-lint/check.js');
 
 // Build a { path, stripped } fixture the way the real checker does.
 function file(path, src) {
@@ -93,4 +93,80 @@ test('a service requiring multiple scopes: AND semantics — missing lists every
 test('no service usage at all across any file: no findings', () => {
   const files = [file('p.gs', 'function helper_() { return 1; }')];
   assert.deepEqual(findMissingOAuthScopes(files, new Set(), SERVICE_MAP), []);
+});
+
+// ── findUnusedOAuthScopes — the opposite direction ───────────────────────
+//
+// Rollout item #1 in the account's own audit ledger ("audit OAuth/API
+// scopes against what the code actually calls") asked for over-broad-scope
+// detection. findMissingOAuthScopes above catches under-declaration
+// (needed but not granted); it does NOT catch a scope granted but never
+// actually needed. This is that other half — deliberately narrower than
+// "narrowest sufficient scope" (see this function's own header comment):
+// it only flags a scope with ZERO matching service usage anywhere in the
+// project, not a broader-than-strictly-needed one that's still genuinely
+// in use (e.g. `drive` when `drive.file` would cover the real usage).
+
+test('a declared scope backed by a real call anywhere in the project: no findings', () => {
+  const files = [file('p.gs', 'function f() { DriveApp.getRootFolder(); }')];
+  const declared = new Set(['https://www.googleapis.com/auth/drive']);
+  assert.deepEqual(findUnusedOAuthScopes(files, declared, SERVICE_MAP), []);
+});
+
+test('a declared scope with no matching service call anywhere: one finding naming the scope and the service(s) that would use it', () => {
+  const files = [file('p.gs', 'function f() { DriveApp.getRootFolder(); }')]; // no GmailApp anywhere
+  const declared = new Set([
+    'https://www.googleapis.com/auth/drive',
+    'https://www.googleapis.com/auth/gmail.readonly',
+  ]);
+  const findings = findUnusedOAuthScopes(files, declared, SERVICE_MAP);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].scope, 'https://www.googleapis.com/auth/gmail.readonly');
+  assert.deepEqual(findings[0].services, ['GmailApp']);
+});
+
+test('a scope only mentioned in a comment/string does not count as used — still flagged unused', () => {
+  const files = [file('p.gs', '// GmailApp.createDraft() used to be called here\nfunction f() {}')];
+  const declared = new Set(['https://www.googleapis.com/auth/gmail.readonly']);
+  const findings = findUnusedOAuthScopes(files, declared, SERVICE_MAP);
+  assert.equal(findings.length, 1);
+  assert.equal(findings[0].scope, 'https://www.googleapis.com/auth/gmail.readonly');
+});
+
+test('a scope with no matching entry in serviceMap at all is never flagged — unknown, stay silent', () => {
+  // scope-map.json documents itself as "NOT exhaustive." A declared scope
+  // this tool has no service mapping for must not be guessed at either way.
+  const files = [file('p.gs', 'function f() {}')];
+  const declared = new Set(['https://www.googleapis.com/auth/calendar.readonly']); // not in SERVICE_MAP
+  assert.deepEqual(findUnusedOAuthScopes(files, declared, SERVICE_MAP), []);
+});
+
+test('checked across ALL files in the project, not just one — a call in a different file still counts as used', () => {
+  const files = [
+    file('a.gs', 'function f() {}'),
+    file('b.gs', 'function g() { GmailApp.getUserLabelByName("x"); }'),
+  ];
+  const declared = new Set(['https://www.googleapis.com/auth/gmail.readonly']);
+  assert.deepEqual(findUnusedOAuthScopes(files, declared, SERVICE_MAP), []);
+});
+
+test('two services sharing one scope: the scope is used if EITHER service is called, not only the first one checked', () => {
+  const map = { DriveApp: ['scope/drive'], Drive: ['scope/drive'] };
+  const files = [file('p.gs', 'function f() { Drive.Files.get("x"); }')]; // only the Advanced Service, not DriveApp
+  const declared = new Set(['scope/drive']);
+  assert.deepEqual(findUnusedOAuthScopes(files, declared, map), []);
+});
+
+test('two services sharing one scope, neither called: one finding listing both service names', () => {
+  const map = { DriveApp: ['scope/drive'], Drive: ['scope/drive'] };
+  const files = [file('p.gs', 'function f() {}')];
+  const declared = new Set(['scope/drive']);
+  const findings = findUnusedOAuthScopes(files, declared, map);
+  assert.equal(findings.length, 1);
+  assert.deepEqual(findings[0].services, ['DriveApp', 'Drive']);
+});
+
+test('an empty declared-scopes set: no findings (nothing to judge as unused)', () => {
+  const files = [file('p.gs', 'function f() {}')];
+  assert.deepEqual(findUnusedOAuthScopes(files, new Set(), SERVICE_MAP), []);
 });
