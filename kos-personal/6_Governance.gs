@@ -255,6 +255,20 @@ function applyMutation(docId, searchTag, payload) {
   if (!docId || !searchTag) {
     throw new Error('applyMutation: Missing docId or searchTag.');
   }
+  // Confused-deputy gap, closed: docId reaches here straight from an
+  // operator-editable Blackboard cell (onGovernanceEdit()'s Target_Doc_ID
+  // / Alt_Doc_ID), with only a non-blank check before this point. Without
+  // this, any Doc ID typed or pasted into that cell gets opened and
+  // find/replaced using this script's own full-Drive-scoped identity.
+  // _isWithinSystemFolderTree_() (5_Error_And_Utilities.gs) is the
+  // ownership boundary — see its own header for why folder-tree
+  // membership, not a separate allow-list, is the right check here.
+  if (!_isWithinSystemFolderTree_(docId)) {
+    throw new Error(
+      'applyMutation: Refusing to mutate doc ' + docId +
+      ' — it is not inside this system\'s own folder tree (' + CFG.SYSTEM_NAME + ').'
+    );
+  }
   const body = DocumentApp.openById(docId).getBody();
   const el   = body.findText(_escapeRegexForFindText_(searchTag));
   if (!el) {
