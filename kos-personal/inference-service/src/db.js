@@ -237,6 +237,21 @@ async function findActiveOrCompletedJob(userId, payloadUid) {
 
 async function getNextQueuedJob() {
   // Atomic fetch-and-lock: grab the oldest queued job and mark it processing
+  //
+  // FIXED: the RETURNING clause used to end
+  // `RETURNING *, (SELECT * FROM users WHERE id = jobs.user_id) AS user_row`.
+  // A scalar subquery in a select list may return exactly one column, and
+  // `SELECT *` over users returns sixteen, so Postgres rejected the whole
+  // statement with "subquery must return only one column" — at parse time,
+  // before touching any data, which means this threw on EVERY call rather
+  // than only when a job existed. processNextJob's outer catch-all logged
+  // it and moved on with jobRecord still null, so the worker logged an
+  // error every POLL_INTERVAL_MS and never processed a single job: every
+  // submitted job sat in 'queued' forever. Invisible until now only
+  // because this service has never been deployed.
+  //
+  // The subquery's result was never used either way — the query below
+  // re-fetches the user by id — so removing it is the whole fix.
   const { rows } = await pool.query(
     `UPDATE jobs
      SET status = 'processing', started_at = NOW()
@@ -248,7 +263,7 @@ async function getNextQueuedJob() {
        FOR UPDATE SKIP LOCKED
        LIMIT 1
      )
-     RETURNING *, (SELECT * FROM users WHERE id = jobs.user_id) AS user_row`
+     RETURNING *`
   );
   if (rows.length === 0) return null;
   // Fetch user separately for clarity
