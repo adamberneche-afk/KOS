@@ -269,7 +269,11 @@ No other fields. No explanation. Valid JSON only.`;
  * @returns {{ output, inputTokens, outputTokens, model }}
  */
 async function runInference({ sessionText, payloadUid, payloadType, operatorMeta, driveContext }) {
-  const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5';
+  // claude-sonnet-4-5 is a previous-generation id; current ones carry no
+  // date suffix (claude-opus-5, claude-sonnet-5, claude-haiku-4-5). Set
+  // ANTHROPIC_MODEL to override per deployment — this is only the fallback
+  // for a deployment that doesn't set it.
+  const model = process.env.ANTHROPIC_MODEL || 'claude-opus-5';
 
   let systemPrompt;
   if (payloadType === 'COG_STIMULUS') {
