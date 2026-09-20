@@ -397,11 +397,23 @@ class FakeDriveFolder {
   }
   createFolder(name) {
     const f = new FakeDriveFolder(name, 'fake-folder-' + (++FakeDriveFolder._counter));
+    f._parent = this; // so getParents() below can walk back up, same as FakeDriveFile
     this.children.push(f);
     return f;
   }
   addFile(file) { if (!this.files.includes(file)) this.files.push(file); return this; }
   removeFile(file) { this.files = this.files.filter((f) => f !== file); return this; }
+  // Real Apps Script API — Folder.getParents(). First needed by
+  // kos-personal's applyMutation() ownership check (6_Governance.gs),
+  // which walks a target doc's folder chain up to the system's own root
+  // folder before allowing a mutation. Root itself (DriveApp.getRootFolder(),
+  // "My Drive") has no _parent, so this returns an empty iterator there —
+  // matching real Drive, where My Drive's own getParents() is also empty.
+  getParents() {
+    const parents = this._parent ? [this._parent] : [];
+    let i = 0;
+    return { hasNext() { return i < parents.length; }, next() { return parents[i++]; } };
+  }
   // Real Apps Script API — Folder.getFiles(), non-recursive, same
   // hasNext()/next() iterator shape as getFoldersByName. First needed by
   // sensor1_scanInboundSessions()'s inbound-folder scan. Snapshots
@@ -472,6 +484,14 @@ class FakeDriveFile {
     }
     return this;
   }
+  // Real Apps Script API — File.getParents(). See FakeDriveFolder.getParents()
+  // above for why this exists; a file's parent chain starts here and
+  // continues through folders.
+  getParents() {
+    const parents = this._parent ? [this._parent] : [];
+    let i = 0;
+    return { hasNext() { return i < parents.length; }, next() { return parents[i++]; } };
+  }
 }
 
 function makeDriveAppMock() {
@@ -505,6 +525,17 @@ function makeDriveAppMock() {
     // hasNext()/next() iterator shape as getFoldersByName.
     getFilesByName(name) {
       const matches = [...files.values()].filter((f) => f.name === name);
+      let i = 0;
+      return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
+    },
+    // Real Apps Script API — flat, top-level name search across all
+    // folders in Drive, the folder-side counterpart to getFilesByName
+    // above. First needed by _getSystemAsset(..., isFolder=true)
+    // (5_Error_And_Utilities.gs), called from kos-personal's
+    // applyMutation() ownership check when no cached PropertiesService ID
+    // exists yet for the system's own root folder.
+    getFoldersByName(name) {
+      const matches = [...folders.values()].filter((f) => f.name === name);
       let i = 0;
       return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
     },
@@ -560,6 +591,25 @@ class FakeParagraph {
   // rather than removing it.
   asParagraph() { return this; }
   setText(text) { this.text = text; return this; }
+  // Real Apps Script API — Element.asText(), the Text-typed view
+  // findText()'s callers mutate through (deleteText/insertText), rather
+  // than paragraph.setText() directly. First needed by 6_Governance.gs's
+  // applyMutation(), which does exactly that find/delete/insert sequence
+  // on the RangeElement findText() below returns.
+  asText() {
+    const para = this;
+    return {
+      getText() { return para.text; },
+      deleteText(startOffset, endOffsetInclusive) {
+        para.text = para.text.slice(0, startOffset) + para.text.slice(endOffsetInclusive + 1);
+        return this;
+      },
+      insertText(offset, str) {
+        para.text = para.text.slice(0, offset) + str + para.text.slice(offset);
+        return this;
+      },
+    };
+  }
 }
 
 class FakeDocBody {
@@ -595,6 +645,30 @@ class FakeDocBody {
     const idx = this.paragraphs.indexOf(child);
     if (idx !== -1) this.paragraphs.splice(idx, 1);
     return this;
+  }
+  // Real Apps Script API — Body.findText(searchPattern), regex-based
+  // (same as real GAS — 6_Governance.gs's applyMutation() relies on this,
+  // pre-escaping literal operator input via _escapeRegexForFindText_()
+  // before calling in). Returns a RangeElement (getElement/getStartOffset/
+  // getEndOffsetInclusive) for the first match across paragraphs in
+  // order, or null — same shape and null-on-miss behavior as real Docs.
+  // No `from` RangeElement argument support (no caller in this repo needs
+  // a search-after-position resumed scan).
+  findText(searchPattern) {
+    const re = new RegExp(searchPattern);
+    for (const p of this.paragraphs) {
+      const m = re.exec(p.text);
+      if (m) {
+        const start = m.index;
+        const end = start + m[0].length - 1;
+        return {
+          getElement() { return p; },
+          getStartOffset() { return start; },
+          getEndOffsetInclusive() { return end; },
+        };
+      }
+    }
+    return null;
   }
 }
 

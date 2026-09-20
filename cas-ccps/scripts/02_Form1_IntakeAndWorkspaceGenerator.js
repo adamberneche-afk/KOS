@@ -43,6 +43,19 @@ function onFormSubmit_Intake(e) {
     return;
   }
 
+  // The intake form's "Student Google Account" field is free-text, not a
+  // validated picker — googleId below flows straight into addEditor()/
+  // addViewer() in shareToStudentDrive_(). _studentIdPattern_() (defined in
+  // 29_StudentContextAggregator.js, same shared GAS scope) already exists
+  // and is used correctly on the read/reporting side, but was never applied
+  // at this, the one call site that actually grants Drive access — a typo
+  // or a bad-faith entry here shares the class folder and student doc with
+  // an unrelated Google account while the real student is locked out.
+  if (!_studentIdPattern_().test(googleId)) {
+    Logger.log("Form 1 rejected — '" + googleId + "' is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
+    return;
+  }
+
   // Fetch LIVE assignment from Teacher Matrix via MatrixRegistry
   const assignment = fetchAssignment_(cfg, unitConfigId);
   if (!assignment) {

@@ -439,6 +439,72 @@ function _getSystemAsset(name, propKey, isFolder) {
 
 
 /**
+ * Confused-deputy gap, closed: 6_Governance.gs's applyMutation() opens
+ * and find/replaces whatever Doc ID an operator types into the
+ * Blackboard sheet's Target_Doc_ID/Alt_Doc_ID columns, using this
+ * script's own full-Drive-scoped identity — with no prior check that the
+ * ID belongs to this system at all. Every document kos-personal itself
+ * creates (DocumentApp.create(), across every .gs file that makes one)
+ * is immediately moved under CFG.SYSTEM_NAME's own root folder (see
+ * _buildFolderTree() in 1_Config_And_Deploy.gs) — so membership in that
+ * folder tree IS this system's own definition of "a document we own,"
+ * and the one existing ID a genuine governance target could fail to
+ * satisfy (a doc moved out or never filed under it) is the same case a
+ * flat allow-list of doc IDs would also have to be kept in sync with,
+ * except this needs no separate registry to go stale.
+ *
+ * Walks the file's own parent chain (not just its immediate parent,
+ * since most targets sit several silo folders deep) up to that root,
+ * breadth-first across every parent at each level — real Drive files can
+ * have more than one — with a cycle guard (`visited`) and a depth cap,
+ * neither of which real Drive should ever need, but a check standing
+ * between untrusted input and full-Drive-scoped writes doesn't get to
+ * assume the tree is well-formed. Walks live Folder/File objects
+ * (chaining each one's own .getParents(), not re-resolving by ID through
+ * DriveApp at every level) so the walk needs nothing beyond what Drive's
+ * own parent links already give it.
+ *
+ * @param  {string} fileId  The Doc (or any Drive file) ID to check.
+ * @returns {boolean} true only if `fileId` is inside the system's own tree.
+ */
+function _isWithinSystemFolderTree_(fileId) {
+  let rootId;
+  try {
+    rootId = _getSystemAsset(CFG.SYSTEM_NAME, 'ID_ROOT_SYSTEM_FOLDER', true).getId();
+  } catch (e) {
+    return false; // no system root exists yet — nothing can be "owned"
+  }
+
+  let start;
+  try {
+    start = DriveApp.getFileById(fileId);
+  } catch (e) {
+    try { start = DriveApp.getFolderById(fileId); }
+    catch (e2) { return false; } // id doesn't resolve as a file or folder at all
+  }
+
+  let frontier = [start];
+  const visited = new Set();
+  for (let depth = 0; depth < 25 && frontier.length; depth++) {
+    const next = [];
+    for (const node of frontier) {
+      const id = node.getId();
+      if (visited.has(id)) continue;
+      visited.add(id);
+      const parents = node.getParents();
+      while (parents.hasNext()) {
+        const p = parents.next();
+        if (p.getId() === rootId) return true;
+        next.push(p);
+      }
+    }
+    frontier = next;
+  }
+  return false;
+}
+
+
+/**
  * Returns the named sheet tab from `ss`, creating it with the
  * correct header row if it does not yet exist.
  *
