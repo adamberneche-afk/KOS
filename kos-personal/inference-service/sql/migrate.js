@@ -21,6 +21,20 @@
 
 const fs   = require('fs');
 const path = require('path');
+
+// Checked before requiring db.js, because pg treats an undefined
+// connectionString as "use the libpq defaults" and silently dials
+// localhost:5432 instead of erroring. On a deployment with no
+// DATABASE_URL that surfaced as an opaque connection failure against an
+// address the operator never configured — and on Node 26 the failure is
+// an AggregateError whose own .message is empty, so the log line read
+// exactly "[migrate] Failed: " with nothing after it.
+if (!process.env.DATABASE_URL) {
+  console.error('[migrate] DATABASE_URL is not set — refusing to run.');
+  console.error('[migrate] Set it to the database connection string; see .env.example.');
+  process.exit(1);
+}
+
 const { pool } = require('../src/db');
 
 async function migrate() {
@@ -36,6 +50,10 @@ migrate()
   .then(() => pool.end())
   .then(() => process.exit(0))
   .catch((err) => {
-    console.error('[migrate] Failed:', err.message);
+    // The whole error, not err.message: an AggregateError (which is what
+    // a failed multi-address connect throws) carries its real causes in
+    // .errors and has an empty .message, so logging only the message
+    // printed a bare "[migrate] Failed:" and threw away the diagnosis.
+    console.error('[migrate] Failed:', err);
     pool.end().finally(() => process.exit(1));
   });
