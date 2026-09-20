@@ -179,6 +179,28 @@ jobs:
     defaults:
       run:
         working-directory: kos-personal/inference-service
+    # A real Postgres, because the fake pool structurally cannot catch a
+    # query that isn't valid SQL. getNextQueuedJob shipped with a
+    # multi-column scalar subquery in its RETURNING clause that Postgres
+    # rejects at parse time — it threw on every call, the worker never
+    # processed a single job, and the suite stayed green throughout
+    # because the fake pool matches queries by substring and hands back
+    # canned rows. test/db-sql.test.js closes that gap; it skips itself
+    # when DATABASE_URL is unset, so a contributor with no local database
+    # still gets a passing `npm test`.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: kostest
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -189,10 +211,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
       - name: Run tests
-        # See test/credits.test.js's own header comment for how this
-        # exercises real db.js logic (deductCredits/addCredits/
-        # markJobFailed) against an in-memory fake Postgres pool, with no
-        # real DATABASE_URL, Stripe key, or network access needed.
+        # Two complementary layers, both run by this one command:
+        # test/credits.test.js drives real db.js decision logic
+        # (deductCredits/addCredits/markJobFailed) against an in-memory
+        # fake pool needing no database at all, and test/db-sql.test.js
+        # executes every SQL-issuing function against the real Postgres
+        # service above. See each file's own header for why both exist.
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/kostest
+          # db.js encrypts OAuth tokens at rest (src/token-crypto.js) and
+          # refuses to operate without a key. Throwaway value — this
+          # database is created and destroyed with the job.
+          TOKEN_ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000001'
         run: npm test
 
   # ── Sandbox deploy (R10 — tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5) ──

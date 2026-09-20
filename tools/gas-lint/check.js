@@ -558,6 +558,54 @@ function findMissingOAuthScopes(files, declaredScopes, serviceMap) {
   return findings;
 }
 
+// The OPPOSITE direction from findMissingOAuthScopes above: a scope a
+// project's manifest declares that no service requiring it is ever called
+// anywhere in that project's own file set - dead-weight access nobody
+// asked the user to consent to. Pure unit, same {path, stripped} input
+// shape (source pre-run through stripCommentsAndStrings(), same reasoning
+// as the missing-scope check above - a comment merely narrating past
+// DriveApp usage must not count as real usage here either).
+//
+// Deliberately conservative in one specific way, matching this file's
+// existing philosophy for Session (see scope-map.json._notes.Session): a
+// declared scope that maps to NO service in serviceMap at all (the map
+// documents itself as "NOT exhaustive") is never flagged as unused - this
+// function can only judge what it has a mapping for, and staying silent on
+// the unknown is safer than a false "unused" claim. Two or more services
+// can require the same scope (DriveApp and Drive both need drive) - the
+// scope only counts as unused if NONE of the services that need it are
+// used anywhere.
+//
+// Named finding: catches scope bloat (a feature removed but its scope
+// left behind, a manifest copy-pasted from a broader project). It does
+// NOT catch a scope that's broader than the code strictly needs but still
+// genuinely in use - e.g. drive.* usage that only ever touches files the
+// script itself created, where the narrower drive.file would suffice but
+// drive is still "used" by this check's own definition. That narrower
+// question needs real per-method knowledge of what each call actually
+// touches, which this one-scope-per-service map has no granularity for -
+// a real, still-open, and different problem from the one this function
+// solves.
+function findUnusedOAuthScopes(files, declaredScopes, serviceMap) {
+  const combinedStripped = files.map(f => f.stripped).join('\n');
+  const scopeToServices = new Map();
+  for (const [service, scopes] of Object.entries(serviceMap)) {
+    for (const scope of scopes) {
+      if (!scopeToServices.has(scope)) scopeToServices.set(scope, []);
+      scopeToServices.get(scope).push(service);
+    }
+  }
+
+  const findings = [];
+  for (const scope of declaredScopes) {
+    const services = scopeToServices.get(scope);
+    if (!services) continue; // not in serviceMap at all - unknown, stay silent
+    const anyUsed = services.some(service => new RegExp(`\\b${service}\\.`).test(combinedStripped));
+    if (!anyUsed) findings.push({ scope, services });
+  }
+  return findings;
+}
+
 function checkOAuthScopes() {
   for (const [projectName, def] of Object.entries(PROJECT_MAP)) {
     if (projectName.startsWith('_')) continue;
@@ -578,6 +626,15 @@ function checkOAuthScopes() {
         `Once a manifest lists oauthScopes explicitly, GAS stops auto-detecting — this call will fail authorization at runtime, typically silently if it's wrapped in a try/catch.` +
         (service === 'Session' ? ' (Session note: this tool flags any Session.* call conservatively — see scope-map.json._notes.Session.)' : ''),
         file
+      );
+    }
+
+    for (const { scope, services } of findUnusedOAuthScopes(files, declaredScopes, SCOPE_MAP.services)) {
+      warn(
+        'unused-oauth-scope',
+        `Project "${projectName}"'s manifest (${def.manifest}) declares ${scope}, but no ${services.join('/')} call appears anywhere in this project's file set — dead-weight access nobody asked the user to consent to. ` +
+        `Warning, not an error: this only means the scope is completely unused, not that a narrower variant (e.g. drive.file instead of drive) would cover what IS actually used — that needs a human check, this tool has no per-method granularity for it.`,
+        def.manifest
       );
     }
   }
@@ -1725,6 +1782,7 @@ module.exports = {
   findFunctionBody,
   evaluateWebAppAuthForProject,
   findMissingOAuthScopes,
+  findUnusedOAuthScopes,
   HASNEXT_WHILE_RE,
   LOOP_CAP_RE,
   LOOP_PACING_RE,

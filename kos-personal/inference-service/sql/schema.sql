@@ -10,7 +10,16 @@ CREATE TABLE IF NOT EXISTS users (
   email                VARCHAR(255) NOT NULL,
   -- The user's BRAIN_TRUST_INDEX spreadsheet ID
   index_spreadsheet_id VARCHAR(255) NOT NULL,
-  -- OAuth tokens for accessing the user's Drive on their behalf
+  -- OAuth tokens for accessing the user's Drive on their behalf.
+  -- ENCRYPTED AT REST — these hold "v1:<iv>:<tag>:<ciphertext>", not the
+  -- raw token (see src/token-crypto.js for the format and the why).
+  -- db.js encrypts on write and decrypts on read, so application code
+  -- still sees plaintext; anything reading this table directly (psql, a
+  -- backup, an ad-hoc query) sees ciphertext and needs
+  -- TOKEN_ENCRYPTION_KEY to make sense of it. No column-type change was
+  -- needed — TEXT already holds the longer encrypted form. Rows written
+  -- before encryption existed hold plaintext and are still readable;
+  -- they re-encrypt on that user's next token write.
   access_token         TEXT,
   refresh_token        TEXT NOT NULL,
   token_expiry         TIMESTAMPTZ,
@@ -123,6 +132,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- DROP-then-CREATE because CREATE TRIGGER has no IF NOT EXISTS form: this
+-- was the one statement in this file that was not re-runnable, so a second
+-- `npm run migrate` against an already-migrated database failed with
+-- "trigger users_updated_at for relation users already exists". The service
+-- runs migrate on every boot, so every redeploy hit it.
+DROP TRIGGER IF EXISTS users_updated_at ON users;
 CREATE TRIGGER users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();

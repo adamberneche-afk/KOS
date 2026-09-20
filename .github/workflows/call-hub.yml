@@ -1,0 +1,48 @@
+# Heartbeat workflow that pings the AI CTO Hub (adamberneche-afk/Mothership)
+# for an autonomous debug/hunt/refactor review, targeting the Hub's Apps
+# Script deployment.
+#
+# Requires two repo secrets (Settings -> Secrets and variables -> Actions):
+#   - APPS_SCRIPT_URL: the Hub's deployed Web App URL (ask the Hub's
+#     operator, or see Mothership's README.md "Alternative: Deploy
+#     Without Vercel" section).
+#   - TENANT_CALLER_KEY: this repo maps to the Hub's "default" tenant,
+#     which requires a caller key (gas/autonomous_agent.js's tenant-
+#     resolution fix - see Mothership's README.md Multi-Tenancy section).
+#     A request missing this field, or carrying the wrong value, gets a
+#     401 from the Hub. Ask the Hub's operator for the current value; it
+#     must match the DEFAULT_TENANT_CALLER_KEY Script Property on the
+#     live deployment.
+name: Ping CTO Hub
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # -> debug
+    - cron: '0 0 * * 0'      # Sunday midnight -> refactor
+    - cron: '0 12 * * 3'     # Wednesday noon -> hunt
+  workflow_dispatch:
+
+jobs:
+  call-central-brain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine Mode
+        id: mode
+        run: |
+          case "${{ github.event.schedule }}" in
+            '0 0 * * 0') echo "mode=refactor" >> "$GITHUB_OUTPUT" ;;
+            '0 12 * * 3') echo "mode=hunt" >> "$GITHUB_OUTPUT" ;;
+            *) echo "mode=debug" >> "$GITHUB_OUTPUT" ;;
+          esac
+      - name: Send Payload to Hub
+        env:
+          APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
+          TENANT_CALLER_KEY: ${{ secrets.TENANT_CALLER_KEY }}
+        run: |
+          curl --fail-with-body -sS -X POST "${APPS_SCRIPT_URL}?endpoint=autonomous_agent" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "owner": "${{ github.repository_owner }}",
+              "repo": "${{ github.event.repository.name }}",
+              "mode": "${{ steps.mode.outputs.mode }}",
+              "callerKey": "${{ secrets.TENANT_CALLER_KEY }}"
+            }'
