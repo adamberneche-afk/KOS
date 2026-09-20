@@ -933,3 +933,15 @@ project. Not yet confirmed either way.
 `leader-hub/student-leader-hub.html` regenerated; full suite (1056/1056,
 was 1052 before the two new test files), `html-lint`, `gas-lint`, and
 `doc-currency` all pass.
+
+---
+
+> **This investigation is still open, so its current state does not live
+> here.** Everything above is the round-by-round record of what was tried
+> and what it showed — which is what this file is for. The live summary
+> (what is ruled out, what the app currently does, the two untested next
+> steps, and the working constraints that shaped every result) is
+> `README.md`'s **"OPEN — the OAuth-consent-dialog crash"** section, per
+> this file's own header convention: closed items here, live state there.
+> Read that section before starting another round, and move its content
+> down here once this is finally closed.

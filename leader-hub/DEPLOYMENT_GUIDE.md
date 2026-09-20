@@ -80,10 +80,17 @@ GCP dependency appears here undeclared.
 ```bash
 cd leader-hub
 clasp login                      # once per machine, against the real account
-clasp create --type webapp --title "LeaderHub"   # no live project exists yet
+clasp create-script --type webapp --title "LeaderHub"   # no live project exists yet
 # — or, if one already exists —
 clasp clone <scriptId>
 ```
+
+> **clasp v3 renamed most of these verbs**, and the old names fail with
+> unhelpful errors rather than a "renamed" hint. The ones this guide
+> uses: `create-script` (was `create`), `create-deployment` (was
+> `deploy`), `open-web-app` (was `open`). Confirmed against a live v3
+> install; if a command here errors out, check `clasp --help` before
+> assuming the project is misconfigured.
 
 Then copy the template and fill in the real ID:
 
@@ -95,6 +102,16 @@ cp .clasp.json.template .clasp.json    # drop the _comment key
 `.clasp.json` is gitignored on purpose — real script IDs are never committed,
 the same convention this repo uses for Sheet and Doc IDs living in Script
 Properties rather than source.
+
+**This bites every fresh checkout.** A ZIP download or new clone has no
+`.clasp.json`, and `clasp push` then fails with exactly
+`Project settings not found.` — which reads like a clasp installation
+problem rather than a missing file. Recreate it before pushing; a
+one-liner works if you don't want the template:
+
+```powershell
+'{"scriptId":"<YOUR_SCRIPT_ID>","rootDir":"."}' | Out-File -Encoding utf8 .clasp.json
+```
 
 ## Phase 2 — Regenerate the front end, then push
 
@@ -109,8 +126,15 @@ node tools/leaderhub-build/build.js --check  # verifies it is in sync
 Then, from `leader-hub/`:
 
 ```bash
-clasp push
+clasp push --force
 ```
+
+`--force` is not optional in practice: without it clasp prompts before
+overwriting the manifest, and in a non-interactive shell that means
+`appsscript.json` — the file carrying `oauthScopes` and the webapp
+settings — quietly does not go up while every other file does. A push
+that reports success while leaving stale scopes live is exactly the kind
+of failure this guide exists to prevent.
 
 > **The one gotcha that fails silently.** `.claspignore` here is an
 > **allowlist** — `**/**` followed by explicit `!` un-ignores. A file that
@@ -121,8 +145,10 @@ clasp push
 > authoritative file list; prose lists elsewhere point at it rather than
 > re-enumerating, because that duplication has drifted twice already.
 
-Verify the push landed by opening the editor (`clasp open`) and confirming
-every file in the project-map entry is present.
+Verify the push landed by opening the editor (`clasp open-script`, or the
+project's URL directly) and confirming every file in the project-map entry
+is present. `clasp push --force` also prints the file list it pushed —
+check `appsscript.json` and `student-leader-hub.html` are both in it.
 
 ## Phase 3 — Deploy as a Web App and authorize
 
@@ -134,17 +160,27 @@ owns the backing spreadsheets, so a co-advisor never needs Drive sharing of
 their own — they point their own LeaderHub Settings at this same `/exec` URL.
 
 ```bash
-clasp deploy --description "v1"
+clasp create-deployment --description "v1"
+clasp deployments                        # lists IDs; the newest is yours
+clasp open-web-app --deploymentId <id>   # or open https://script.google.com/macros/s/<id>/exec
 ```
 
 Then in the editor: **Deploy → Test deployments** (or Run any function once)
-and complete the OAuth consent prompt. The manifest declares five scopes
-explicitly — Gmail, Drive, Docs, Sheets, and userinfo.email — and once a
-manifest lists `oauthScopes` explicitly, GAS stops auto-detecting: a scope
-that isn't listed fails at the call site, often silently inside a
-`try/catch`. gas-lint's Check E validates that list against actual service
-usage, so run `node tools/gas-lint/check.js` before pushing if you added any
-service call.
+and complete the OAuth consent prompt. The manifest declares seven scopes
+explicitly — `script.send_mail`, Drive, Docs, Sheets, `userinfo.email`,
+`script.external_request` and `script.scriptapp` — and **no Gmail scope at
+all** (deliberately; see `README.md`'s "OPEN — the OAuth-consent-dialog
+crash"). Once a manifest lists `oauthScopes` explicitly, GAS stops
+auto-detecting: a scope that isn't listed fails at the call site, often
+silently inside a `try/catch`. gas-lint's Check E validates that list
+against actual service usage, so run `node tools/gas-lint/check.js` before
+pushing if you added any service call.
+
+> **Changing `oauthScopes` forces a re-authorization on next load**, and
+> that is currently suspected — unconfirmed — of being what triggers the
+> open consent-dialog crash. If you are testing that specific question,
+> the manifest must stay untouched between the deploy and the reload; see
+> the OPEN section in `README.md`.
 
 ## Phase 4 — Nothing to configure by hand
 
@@ -197,6 +233,20 @@ drafting, they are not a hard dependency.
 ---
 
 ## Troubleshooting: the failure modes that don't announce themselves
+
+**A red "Something went wrong" banner citing `Unexpected identifier
+'style'`.** Known and open — not something you introduced, and not a
+reason to roll back a deploy. It is thrown from Google's own
+OAuth-consent-dialog bundle on `script.googleusercontent.com`, caught by
+this app's own `window.onerror` handler and displayed. The app itself has
+kept rendering and working normally every time it has been seen. Read
+`README.md`'s "OPEN — the OAuth-consent-dialog crash" before
+investigating, so you don't repeat one of the five rounds already ruled
+out.
+
+**`Project settings not found.` on `clasp push`.** No `.clasp.json` in
+this directory — it is gitignored, so every fresh checkout needs it
+recreated. Phase 1.
 
 **A Flow reports "Run Completed" and nothing happened.** It matched zero
 rows. That is reported identically to success. `checkAiFlowFixtures()` is the

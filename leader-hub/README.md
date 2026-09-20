@@ -34,7 +34,7 @@ key at all).
 |---|---|
 | `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser. **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so opening it needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
 | `src/` | The 14 fragments `student-leader-hub.html` is generated from, in file order — `00-shell-head.html` through `13-markup-modals-tail.html`. This is where you actually make edits. |
-| `EmailBridge.gs` | Optional companion Apps Script (Gmail → Sheet → app polling, sub-plan/brag-email creation, and — see below — the AI-drafting job queue) — see `LEADERHUB_EMAIL_SETUP.md` and `LEADERHUB_AI_FLOW_SETUP.md` |
+| `EmailBridge.gs` | Apps Script bridge — sub-plan Docs, brag emails (sent via `MailApp`), horizon-item polling, Organization Sync, and the AI-drafting job queue (see below). Its Gmail-label horizon scan is currently **disabled**, along with every Gmail scope — see the OPEN section below. `LEADERHUB_AI_FLOW_SETUP.md` covers the queue; `LEADERHUB_EMAIL_SETUP.md` is superseded/historical. |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
 | `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md`, `LP_ASSIST_FLOW_PROMPT.md`, `EMAIL_COMPOSE_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
@@ -59,6 +59,108 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
+## OPEN — the OAuth-consent-dialog crash (unresolved)
+
+**Read this before touching OAuth scopes, `appsscript.json`, or
+`tools/leaderhub-build/`.** This is the one genuinely open investigation
+in this project. It lives here rather than in `HISTORY.md` because
+`HISTORY.md` is for closed items; the round-by-round narration of what
+was tried is there, the current state and what's left to try is here.
+
+**Symptom.** On loading the deployed `/exec` URL, a red banner appears:
+
+```
+Uncaught SyntaxError: Unexpected identifier 'style'
+  — at https://n-<hash>-script.googleusercontent.com/userCodeAppPanel?createOAuthDialog=true:570:25
+```
+
+That URL is **Google's own OAuth-consent-dialog bundle**, not any file in
+this repo. The banner itself is ours — `src/02-error-handler.html`'s
+global `window.onerror` handler catching the error and displaying it.
+
+**The app works anyway.** This matters and was only discovered late:
+the dashboard, DECA Events, Field Trips, Classroom and the rest all
+render and function normally with the banner showing, verified in both
+an Incognito window and a normal signed-in session. Whatever this is, it
+has not been shown to block real functionality. The one thing observed
+failing is Gmail-sourced horizon items — which are now deliberately off
+anyway (see below), and which plausibly failed simply because the
+consent flow that would grant Gmail access never completed.
+
+**Already ruled out — do not spend another round on these:**
+
+| Tried | Result |
+|---|---|
+| OAuth scope composition — full `mail.google.com`, then `gmail.readonly`+`gmail.compose`, then `readonly` only, then **zero Gmail scope** | Crashes identically every time (rounds 1–5) |
+| `GmailApp` usage itself — every call site disabled | Crashes identically (rounds 3 and 5) |
+| Deployment `access`/`executeAs` combinations (`DOMAIN`/`MYSELF`, `USER_ACCESSING`/`USER_DEPLOYING`) | No change |
+| Raw page size alone — a synthetic ~1.5M-character inert page, and separately 5,000 `style=`-attributed elements | Both render clean |
+| The CSP `<meta>` tag in isolation | Renders clean |
+| The giant script alone in a minimal shell, at any size up to full | Never reproduced |
+| Per-`<script>`-tag size — the real fix now shipped: 15 chunks, each ≤ 70,000 chars, every top-level `let`/`const` hoisted to `var` | **Still crashes live** |
+| A brand-new Apps Script project with a new script ID | Crashes identically |
+| Incognito vs. normal signed-in session | Identical |
+
+The per-tag-size theory deserves a specific note: careful bisection on a
+*throwaway* project established a threshold (~100K–107K characters in one
+tag alongside ~239K of page furniture), and splitting the same content
+into 12 tags there **did** eliminate the crash. That result has never
+reproduced on a real project. Either the throwaway differed in some way
+not yet identified, or that success was coincidental. Treat the
+per-tag-size conclusion as **unconfirmed**, not settled — while noting the
+split build is worth keeping regardless (it is verified correct, and it
+is the only configuration that has ever rendered clean anywhere).
+
+**Not yet tried — the two highest-value next steps:**
+
+1. **A different network.** Every test so far ran on a district-managed
+   device on a district network that is known to do content filtering
+   (it blocks `github.com`). A filtering/SSL-inspecting proxy that
+   rewrites or truncates a response would explain a malformed-JS error
+   in a file served by *Google*, which is otherwise hard to account for.
+   Load the same `/exec` URL from a phone on cellular data, or any
+   non-managed device on a home network. This is cheap and would
+   immediately rule the network in or out.
+2. **First-ever consent vs. re-authorization.** Every redeploy in this
+   investigation changed `oauthScopes` from the previous deployment,
+   which may push Apps Script into a "permissions changed, please
+   re-authorize" flow — a different code path from a brand-new project's
+   first-ever consent. The single throwaway test that *did* render clean
+   was a first-ever deployment. If this is the mechanism, the trigger is
+   the scope *change*, not the scope *contents*, and the test is: deploy
+   once to a fresh project and then reload without ever changing the
+   manifest again.
+
+**Watch for:** "Nav error (trips): renderTrips is not defined" appeared
+once on the Field Trips view and did not reproduce on later checks.
+`renderTrips` is a normal top-level `function` declaration that passes
+every local verification, so this may have been a transient first-load
+artifact — but if it recurs, it points at something real in the split
+build and should be chased immediately.
+
+**Working constraints** (these shaped every result above, and still apply):
+
+- The assistant never touches the live Google account. The user runs
+  every `clasp`, browser and deploy action and reports back.
+- **DevTools is blocked** by district admin policy — no console, no
+  Sources panel, no network inspection. All testing is black-box:
+  screenshots and described behavior only. The `//# sourceURL=` tags the
+  build emits were added for exactly this kind of debugging and are
+  currently unusable for that reason.
+- `.clasp.json` is gitignored, so it must be recreated in each fresh
+  checkout before `clasp push` will work (`Project settings not found.`
+  is what its absence looks like).
+- The user deploys by downloading a branch ZIP from GitHub and
+  extracting in place — `git` is not available on that machine.
+- clasp v3 names: `create-script`, `create-deployment`, `open-web-app`;
+  `clasp push --force` is required for the manifest to go up.
+
+**Current state as of this writing:** zero Gmail scope in
+`appsscript.json` (7 scopes, none Gmail); `createBragDraft_()` sends via
+`MailApp.sendEmail()`; `scanHorizonLabel_()` returns `[]` without calling
+GmailApp; the assembled file carries 16 `<script>` blocks (the small
+error handler plus 15 chunks, largest 69,949 chars).
+
 ## Process history
 
 Bug-fix narration for closed items — the Apps Script bridge's two
@@ -67,7 +169,10 @@ radius bugs" pass, plus the nine-round UI/UX hardening log — now lives in
 `HISTORY.md`, not here (external product review, Finding 10 /
 "structural" tier). Read `HISTORY.md` when you need to know *why*
 something is the way it is; this file stays focused on what the system
-currently does and how to work with it.
+currently does and how to work with it. The OAuth-consent-dialog crash
+is the exception that proves the rule: its history is in `HISTORY.md`,
+but because it is still *open*, its current state and next steps are in
+the section directly above.
 
 ---
 
@@ -964,6 +1069,22 @@ despite 189+ scattered top-level declarations and no central config
 object) and one region flagged honestly as tangled, not cleanly modular
 (`12-integrations-pacing-subplan-brag.html`, ~3,600 lines mixing several
 genuinely unrelated features).
+
+**The build does more than concatenate now.** Chasing the
+OAuth-consent-dialog crash (see the OPEN section near the top of this
+file) added three passes after the fragment join, all documented in
+`tools/leaderhub-build/README.md`: comments and dead whitespace are
+stripped, every top-level `let`/`const` is rewritten to `var`, and the
+giant script is split into several `<script>` tags at real, tokenizer-
+verified statement boundaries — 15 of them today, each under 70,000
+characters, each independently `node --check`ed. Each emitted tag also
+carries a `//# sourceURL=` comment so a runtime error can be traced to a
+specific chunk in browser DevTools. `build.js --stats` prints a
+per-block size report; `build.js --check` is the drift gate. All of it
+is hand-rolled with zero npm dependencies, on a small tokenizer
+(`js-lexer.js`) that has its own invariant checker, verification scripts
+and unit tests — the tokenizer has had three real bugs found in it, so
+do not assume it is beyond suspicion.
 
 **The assembled file stays committed at its current path — never
 gitignored, never hand-edited directly.** Edit the fragment under `src/`
