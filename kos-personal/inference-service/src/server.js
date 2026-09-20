@@ -42,6 +42,16 @@ if (process.env.NODE_ENV === 'production' && !process.env.WEBHOOK_SECRET) {
   process.exit(1);
 }
 
+// Same shape of problem, same fix: db.js passes DATABASE_URL straight to
+// pg as connectionString, and pg reads an undefined one as "use the libpq
+// defaults", so a deployment that forgot the variable does not fail at
+// startup — it comes up healthy-looking and then fails every query
+// against localhost:5432, an address nobody configured.
+if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+  logger.error('[Server] DATABASE_URL is required in production — refusing to start.');
+  process.exit(1);
+}
+
 // Unconditional, unlike the production-only guard above, and deliberately
 // so: a missing WEBHOOK_SECRET still leaves a server that serves requests
 // (badly), but a missing TOKEN_ENCRYPTION_KEY means every user read and
