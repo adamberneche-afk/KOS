@@ -91,6 +91,18 @@ places where raw JavaScript was rendering as visible garbage text because
 it sat outside any `<script>` tag, silently disabling a rating widget
 since it was first added.
 
+**One investigation is still open here** — a live OAuth-consent-dialog
+crash (`Uncaught SyntaxError: Unexpected identifier 'style'`, thrown from
+Google's own consent bundle, not from anything in this repo). Five rounds
+have ruled out OAuth scope composition entirely, `GmailApp` usage,
+deployment settings, raw page size, the CSP tag, and per-`<script>`-tag
+size; the app renders and works despite the banner. Read
+[`leader-hub/README.md`](./leader-hub/README.md)'s "OPEN — the
+OAuth-consent-dialog crash" section **before** touching OAuth scopes,
+`leader-hub/appsscript.json`, or `tools/leaderhub-build/` — it lists what
+is already disproven (so no round gets repeated) and the two untested
+next steps.
+
 ## [`drive-curation/`](./drive-curation/) — filed for reference, not a system
 
 Personal Google Drive housekeeping/audit material, plus curriculum
@@ -239,7 +251,15 @@ ordered fragments under `leader-hub/src/` — edit the fragment, run `node
 tools/leaderhub-build/build.js`, never hand-edit the assembled file
 directly. `--check` mode builds in memory and diffs against the committed
 file for a CI drift gate (external product review, Finding 4 / "this
-quarter" maintainability fix). See
+quarter" maintainability fix); `--stats` prints a per-block size report.
+
+Beyond concatenation it now strips comments/dead whitespace, rewrites
+top-level `let`/`const` to `var`, and splits the giant script into
+several `<script>` tags at tokenizer-verified statement boundaries (each
+`node --check`ed, each tagged with `//# sourceURL=`) — all added chasing
+the open OAuth-dialog crash above, all hand-rolled with zero npm
+dependencies on a small tokenizer with its own invariant checker and unit
+tests. See
 [`tools/leaderhub-build/README.md`](./tools/leaderhub-build/README.md).
 
 ## [`tests/`](./tests/) — regression coverage for the GAS systems
