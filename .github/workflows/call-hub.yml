@@ -29,9 +29,9 @@ jobs:
         id: mode
         run: |
           case "${{ github.event.schedule }}" in
-            '0 0 * * 0') echo "mode=refactor" >> $GITHUB_OUTPUT ;;
-            '0 12 * * 3') echo "mode=hunt" >> $GITHUB_OUTPUT ;;
-            *) echo "mode=debug" >> $GITHUB_OUTPUT ;;
+            '0 0 * * 0') echo "mode=refactor" >> "$GITHUB_OUTPUT" ;;
+            '0 12 * * 3') echo "mode=hunt" >> "$GITHUB_OUTPUT" ;;
+            *) echo "mode=debug" >> "$GITHUB_OUTPUT" ;;
           esac
       - name: Send Payload to Hub
         env:
