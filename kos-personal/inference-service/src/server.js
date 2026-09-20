@@ -22,6 +22,7 @@ const db      = require('./db');
 const google  = require('./google');
 const billing = require('./billing');
 const logger  = require('./logger');
+const tokenCrypto = require('./token-crypto');
 const { startWorker } = require('./worker');
 
 const app  = express();
@@ -38,6 +39,20 @@ const PORT = process.env.PORT || 8080;
 // path that imports this module without going through app.listen.
 if (process.env.NODE_ENV === 'production' && !process.env.WEBHOOK_SECRET) {
   logger.error('[Server] WEBHOOK_SECRET is required in production — refusing to start.');
+  process.exit(1);
+}
+
+// Unconditional, unlike the production-only guard above, and deliberately
+// so: a missing WEBHOOK_SECRET still leaves a server that serves requests
+// (badly), but a missing TOKEN_ENCRYPTION_KEY means every user read and
+// write throws — token-crypto.js can neither encrypt on the way in nor
+// decrypt on the way out. Booting into a guaranteed-broken state just
+// moves the failure from startup to the first user's OAuth callback,
+// where it surfaces as a stack trace instead of this line.
+try {
+  tokenCrypto.assertKeyConfigured();
+} catch (err) {
+  logger.error(`[Server] ${err.message} Refusing to start.`);
   process.exit(1);
 }
 
@@ -76,7 +91,18 @@ async function requireApiKey(req, res, next) {
   const key = req.headers['x-kos-api-key'];
   if (!key) return res.status(401).json({ error: 'Missing X-KOS-API-Key header' });
 
-  const user = await db.findUserByApiKey(key).catch(() => null);
+  // The catch was a bare `() => null`: a lookup that genuinely failed and
+  // a genuinely unknown key produced an identical silent 401. That matters
+  // more now than it did — user rows decrypt on read (db.js's
+  // decryptUserRow), so a wrong (but correctly-sized) TOKEN_ENCRYPTION_KEY
+  // after a botched rotation also lands here, turning a config mistake
+  // into "Invalid API key" on every request with nothing in the log to
+  // explain it. The response is unchanged — still a bare 401, no detail
+  // leaked to the caller — but the cause is now visible to the operator.
+  const user = await db.findUserByApiKey(key).catch((err) => {
+    logger.error(`[Auth] API-key lookup failed: ${err.message}`);
+    return null;
+  });
   if (!user) return res.status(401).json({ error: 'Invalid API key' });
 
   req.user = user;
