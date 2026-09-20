@@ -5,6 +5,7 @@
 
 const { Pool } = require('pg');
 const crypto   = require('crypto');
+const tokens   = require('./token-crypto');
 
 // FIXED: this used to be `{ rejectUnauthorized: false }` unconditionally in
 // production — Dockerfile sets NODE_ENV=production in every deployed
@@ -40,12 +41,45 @@ pool.on('error', (err) => {
 
 // ── Users ────────────────────────────────────────────────────────
 
+// FIXED: users.access_token/refresh_token were stored as plaintext. They
+// are now encrypted at rest (see token-crypto.js for the full why). This
+// is the single seam where that is undone: every function below that
+// hands a user row to a caller runs it through here first, so nothing
+// outside db.js — google.js, worker.js, server.js — has to know the
+// values are encrypted in the first place, and no caller can forget.
+//
+// Deliberately NOT applied to billing.js's own inline
+// `SELECT * FROM users WHERE stripe_customer_id = $1`: that path reads
+// subscription_tier/credit_balance and never touches a token, so its row
+// keeps the tokens as ciphertext. If a token read is ever added there,
+// call this on the row — it is exported for exactly that.
+function decryptUserRow(row) {
+  if (!row) return row;
+
+  // Warn once per row, not per field, and only for a genuinely legacy
+  // plaintext value — this is how an operator learns that rows predating
+  // encryption are still sitting in the database, and that they will
+  // stay that way until each user's next token write.
+  if (!tokens.isEncrypted(row.refresh_token) && row.refresh_token) {
+    console.warn(
+      `[DB] User ${row.id} has a pre-encryption plaintext refresh_token. ` +
+      'It will be encrypted on this user\'s next OAuth reconnect or token refresh.'
+    );
+  }
+
+  return {
+    ...row,
+    access_token:  tokens.decryptToken(row.access_token),
+    refresh_token: tokens.decryptToken(row.refresh_token),
+  };
+}
+
 async function findUserByGoogleId(googleUserId) {
   const { rows } = await pool.query(
     'SELECT * FROM users WHERE google_user_id = $1',
     [googleUserId]
   );
-  return rows[0] || null;
+  return rows[0] ? decryptUserRow(rows[0]) : null;
 }
 
 async function findUserByApiKey(apiKey) {
@@ -53,7 +87,7 @@ async function findUserByApiKey(apiKey) {
     'SELECT * FROM users WHERE api_key = $1',
     [apiKey]
   );
-  return rows[0] || null;
+  return rows[0] ? decryptUserRow(rows[0]) : null;
 }
 
 async function upsertUser({ googleUserId, email, indexSpreadsheetId, accessToken, refreshToken, tokenExpiry }) {
@@ -75,20 +109,24 @@ async function upsertUser({ googleUserId, email, indexSpreadsheetId, accessToken
       googleUserId,
       email,
       indexSpreadsheetId,
-      accessToken,
-      refreshToken,
+      // Encrypted on the way in; decryptUserRow below puts the caller
+      // back where it expects to be. An existing row's plaintext tokens
+      // are replaced with encrypted ones by this same write, which is
+      // what eventually retires the legacy rows decryptUserRow warns about.
+      tokens.encryptToken(accessToken),
+      tokens.encryptToken(refreshToken),
       tokenExpiry,
       apiKey,
       parseInt(process.env.FREE_CREDITS_ON_SIGNUP || '50'),
     ]
   );
-  return rows[0];
+  return rows[0] ? decryptUserRow(rows[0]) : rows[0];
 }
 
 async function updateUserTokens(userId, { accessToken, tokenExpiry }) {
   await pool.query(
     'UPDATE users SET access_token = $1, token_expiry = $2, last_active_at = NOW() WHERE id = $3',
-    [accessToken, tokenExpiry, userId]
+    [tokens.encryptToken(accessToken), tokenExpiry, userId]
   );
 }
 
@@ -219,7 +257,10 @@ async function getNextQueuedJob() {
     'SELECT * FROM users WHERE id = $1',
     [job.user_id]
   );
-  return { job, user: userRows[0] };
+  // The worker hands this user straight to google.readDocumentText/
+  // readOperatorContext, which read access_token/refresh_token off it —
+  // so this row has to be decrypted like any other.
+  return { job, user: userRows[0] ? decryptUserRow(userRows[0]) : userRows[0] };
 }
 
 async function markJobCompleted(jobId, { inputTokens, outputTokens, modelUsed }) {
@@ -330,6 +371,7 @@ async function getUserStats(userId) {
 
 module.exports = {
   pool,
+  decryptUserRow,
   findUserByGoogleId,
   findUserByApiKey,
   upsertUser,
