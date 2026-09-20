@@ -138,7 +138,7 @@ GOOGLE_CLIENT_ID          from Phase 2b
 GOOGLE_CLIENT_SECRET      from Phase 2b
 GOOGLE_REDIRECT_URI       https://YOUR-URL.run.app/auth/callback
 ANTHROPIC_API_KEY         from console.anthropic.com
-ANTHROPIC_MODEL           claude-sonnet-4-5
+ANTHROPIC_MODEL           claude-opus-5   (no date suffix; claude-sonnet-5 / claude-haiku-4-5 also valid)
 DATABASE_URL              from Phase 1
 STRIPE_SECRET_KEY         sk_live_... from Stripe dashboard
 STRIPE_WEBHOOK_SECRET     whsec_... from Phase 3b
