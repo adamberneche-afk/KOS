@@ -17,3 +17,13 @@ cas-ccps/.clasp-build/
 .clasp.json
 .clasprc.json
 cas-ccps/clasp/local/
+
+# Real environment files, once created from kos-personal/inference-service's
+# .env.example — these hold live OAuth client secrets, the Anthropic and
+# Stripe API keys, the database URL and TOKEN_ENCRYPTION_KEY. The service's
+# own deployment doc tells operators to `cp .env.example .env` in the repo
+# working tree, so without this rule the very next `git add -A` commits
+# every one of those credentials.
+.env
+.env.*
+!.env.example
