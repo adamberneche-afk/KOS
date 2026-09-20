@@ -146,9 +146,31 @@ STRIPE_PRICE_STARTER      price_... from Phase 3a
 STRIPE_PRICE_PROFESSIONAL price_... from Phase 3a
 STRIPE_PRICE_CREATOR      price_... from Phase 3a
 WEBHOOK_SECRET            any long random string (openssl rand -hex 32)
+TOKEN_ENCRYPTION_KEY      32 bytes, hex or base64 (openssl rand -hex 32)
 PORT                      8080
 NODE_ENV                  production
 ```
+
+**`TOKEN_ENCRYPTION_KEY` is required and the server refuses to start
+without it** — unconditionally, not just in production. It encrypts
+`users.access_token` / `users.refresh_token` at rest. A refresh token is
+a long-lived bearer credential for the full Drive scope this service
+requests, so a database dump or backup carrying them in plaintext is a
+full account compromise for every connected user. See
+`src/token-crypto.js` for the format and the reasoning.
+
+Two things to get right:
+
+- **Store it somewhere other than the database it protects** — a secret
+  manager or the platform's env-var store, never a row in Postgres, which
+  would defeat the point entirely.
+- **Losing it is not recoverable.** Every stored token becomes
+  undecryptable and every connected user has to reconnect their Drive via
+  OAuth. Back it up wherever you back up `STRIPE_SECRET_KEY`.
+
+Rotation is not automated yet: the stored format is versioned (`v1:…`) so
+a future rotation can tell old ciphertext from new, but nothing
+re-encrypts existing rows today. Rotating now means every user reconnects.
 
 ---
 
