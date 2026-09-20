@@ -58,18 +58,15 @@ const SCHEMA_PATH = path.join(__dirname, '..', 'sql', 'schema.sql');
 let seq = 0;
 const uniq = (p) => `${p}-${process.pid}-${++seq}`;
 
-// Applies schema.sql, then clears the tables. schema.sql is written to be
-// re-runnable (CREATE TABLE IF NOT EXISTS etc.) except for its trigger,
-// which has no IF NOT EXISTS — tolerated here so a repeat local run
-// against an already-migrated database still works.
+// Applies schema.sql, then clears the tables. schema.sql is fully
+// re-runnable — IF NOT EXISTS throughout, and a DROP TRIGGER IF EXISTS
+// ahead of the one CREATE TRIGGER that has no such form — so a repeat run
+// against an already-migrated database applies cleanly rather than
+// erroring. A failure here is a real defect in schema.sql and must
+// surface, so nothing is swallowed.
 test.before(async () => {
   if (!HAS_DB) return;
-  const sql = fs.readFileSync(SCHEMA_PATH, 'utf8');
-  try {
-    await db.pool.query(sql);
-  } catch (err) {
-    if (!/already exists/i.test(err.message)) throw err;
-  }
+  await db.pool.query(fs.readFileSync(SCHEMA_PATH, 'utf8'));
   await db.pool.query('TRUNCATE billing_events, jobs, users RESTART IDENTITY CASCADE');
 });
 

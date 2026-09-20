@@ -132,6 +132,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- DROP-then-CREATE because CREATE TRIGGER has no IF NOT EXISTS form: this
+-- was the one statement in this file that was not re-runnable, so a second
+-- `npm run migrate` against an already-migrated database failed with
+-- "trigger users_updated_at for relation users already exists". The service
+-- runs migrate on every boot, so every redeploy hit it.
+DROP TRIGGER IF EXISTS users_updated_at ON users;
 CREATE TRIGGER users_updated_at
   BEFORE UPDATE ON users
   FOR EACH ROW EXECUTE FUNCTION update_updated_at();
