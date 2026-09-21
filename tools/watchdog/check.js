@@ -10,7 +10,7 @@
 // exactly this in another repo in this account (four workflow files
 // silently invalid for five months, from one bad batch edit).
 //
-// Two checks, one pinned issue (updated in place on every run, never a
+// Three checks, one pinned issue (updated in place on every run, never a
 // fresh issue each time):
 //   1. actionlint against every .github/workflows/*.yml file — catches
 //      both plain YAML errors and GitHub-Actions-expression-context
@@ -20,6 +20,11 @@
 //      recent scheduled run's conclusion via the Actions REST API —
 //      flagged only if that run's conclusion isn't 'success', never based
 //      on how long ago it ran.
+//   3. Open pull requests older than STALE_PR_MAX_AGE_DAYS. Added after
+//      six dependabot PRs sat open for three weeks — all mergeable, all
+//      green, and therefore invisible: nothing in this repo distinguishes
+//      a green PR nobody merged from one that landed. Unlike 1 and 2 this
+//      never fails the run; see the note in main().
 //
 // No dependencies beyond Node's own built-ins + global fetch (Node 20+),
 // matching every other tool in tools/ — GitHub API calls go through plain
@@ -41,6 +46,11 @@ const WORKFLOWS_DIR = path.join(__dirname, '..', '..', '.github', 'workflows');
 const WATCHDOG_ISSUE_LABEL = 'kos-watchdog';
 const WATCHDOG_ISSUE_TITLE = 'KOS Scheduled-Job Watchdog';
 const GITHUB_API = 'https://api.github.com';
+// Chosen against the incident that added check 3: six dependabot PRs sat
+// open for three weeks. Two weeks is comfortably longer than anything this
+// repo normally takes to merge (same-day is typical) and short enough to
+// catch that class before it compounds into a conflicting pile.
+const STALE_PR_MAX_AGE_DAYS = 14;
 
 function listWorkflowFiles(dir = WORKFLOWS_DIR) {
   if (!fs.existsSync(dir)) return [];
@@ -127,7 +137,67 @@ async function checkScheduledWorkflowRuns(owner, repo, token, { dir = WORKFLOWS_
   return findings;
 }
 
-function buildWatchdogReport({ yamlFindings, runFindings, checkedAt }) {
+/**
+ * Open pull requests that have gone quiet — older than `maxAgeDays` with
+ * nothing having closed them.
+ *
+ * Added after six dependabot PRs sat open for three weeks. Nothing was
+ * wrong with any of them: each was individually mergeable and CI had gone
+ * green on all six. They simply produced no signal after that first day —
+ * a green PR nobody merges looks exactly like a merged one from every
+ * dashboard this repo had. Meanwhile their CI aged into meaninglessness
+ * (those runs were against a base main had long since moved past) and,
+ * because all five npm ones touched the same package-lock.json, they
+ * silently became a pile that could only be landed one rebase at a time.
+ *
+ * Age is measured from creation, deliberately, not from the last update:
+ * dependabot rebases bump `updated_at` without anyone having looked at
+ * the PR, so "recently updated" would have hidden exactly these six.
+ *
+ * Drafts are reported, marked as such. A draft is a weaker call to action,
+ * not an exemption — a forgotten one is precisely the thing that rots
+ * invisibly, and the report updates one pinned issue in place, so a
+ * deliberately-parked draft costs a line rather than a notification.
+ */
+async function checkStalePullRequests(
+  owner,
+  repo,
+  token,
+  { maxAgeDays = STALE_PR_MAX_AGE_DAYS, now = Date.now(), fetchImpl = fetch } = {}
+) {
+  try {
+    // Oldest first, and one page: a repo with more than 100 open PRs has a
+    // different problem than this check is for, and paginating would bury
+    // the oldest few under the noise anyway.
+    const res = await fetchImpl(
+      `${GITHUB_API}/repos/${owner}/${repo}/pulls?state=open&sort=created&direction=asc&per_page=100`,
+      { headers: githubHeaders(token) }
+    );
+    if (!res.ok) return [{ issue: `could not list pull requests: HTTP ${res.status}` }];
+    const prs = await res.json();
+    const findings = [];
+    for (const pr of Array.isArray(prs) ? prs : []) {
+      if (!pr) continue;
+      const created = Date.parse(pr.created_at);
+      if (Number.isNaN(created)) continue;
+      const ageDays = Math.floor((now - created) / 86400000);
+      if (ageDays < maxAgeDays) continue;
+      findings.push({
+        number: pr.number,
+        title: pr.title,
+        author: (pr.user && pr.user.login) || 'unknown',
+        ageDays,
+        draft: !!pr.draft,
+        url: pr.html_url
+      });
+    }
+    return findings;
+  } catch (e) {
+    return [{ issue: `could not list pull requests: ${e.message}` }];
+  }
+}
+
+function buildWatchdogReport({ yamlFindings, runFindings, prFindings = [], checkedAt }) {
   const lines = [];
   lines.push(`_Last checked: ${checkedAt}_`, '');
 
@@ -148,6 +218,25 @@ function buildWatchdogReport({ yamlFindings, runFindings, checkedAt }) {
     lines.push("✅ Every scheduled workflow's most recent run concluded successfully.");
   } else {
     for (const f of runFindings) lines.push(`- ❌ **${f.file}** — ${f.issue}`);
+  }
+  lines.push('');
+
+  lines.push(`## Open pull requests older than ${STALE_PR_MAX_AGE_DAYS} days`);
+  if (prFindings.length === 0) {
+    lines.push(`✅ No open pull request has been waiting more than ${STALE_PR_MAX_AGE_DAYS} days.`);
+  } else {
+    for (const f of prFindings) {
+      if (f.issue) {
+        lines.push(`- ❌ ${f.issue}`);
+        continue;
+      }
+      const draft = f.draft ? ' _(draft)_' : '';
+      lines.push(`- ⏳ [#${f.number}](${f.url}) **${f.title}** — ${f.ageDays} days old, by \`${f.author}\`${draft}`);
+    }
+    lines.push('');
+    lines.push('_A green PR nobody merges looks exactly like a merged one from every other ' +
+      'dashboard here. Its CI also ages out: a check that passed against a base `main` has ' +
+      'since moved past says nothing about merging it today._');
   }
 
   return lines.join('\n');
@@ -198,21 +287,28 @@ async function main() {
   const token = process.env.GITHUB_TOKEN;
 
   let runFindings = [];
+  let prFindings = [];
   let publishResult = null;
   if (owner && repo && token) {
     runFindings = await checkScheduledWorkflowRuns(owner, repo, token);
-    const body = buildWatchdogReport({ yamlFindings, runFindings, checkedAt: new Date().toISOString() });
+    prFindings = await checkStalePullRequests(owner, repo, token);
+    const body = buildWatchdogReport({ yamlFindings, runFindings, prFindings, checkedAt: new Date().toISOString() });
     publishResult = await publishWatchdogReport(owner, repo, token, body);
   } else {
-    console.log('GITHUB_REPOSITORY/GITHUB_TOKEN not set — skipping the run-history check and issue publish (local run).');
+    console.log('GITHUB_REPOSITORY/GITHUB_TOKEN not set — skipping the run-history and stale-PR checks and the issue publish (local run).');
   }
 
+  // A stale PR is deliberately NOT a failure. Nothing is broken — someone
+  // just has a decision to make — and exiting 1 on it would turn a weekly
+  // green tick into a permanent red one that stops being read, taking the
+  // two checks that DO mean something down with it. It reports, loudly, in
+  // the pinned issue.
   const hasFailures = Object.values(yamlFindings).some((e) => e.length > 0) || runFindings.length > 0;
 
   if (asJson) {
-    console.log(JSON.stringify({ yamlFindings, runFindings, publishResult }, null, 2));
+    console.log(JSON.stringify({ yamlFindings, runFindings, prFindings, publishResult }, null, 2));
   } else {
-    console.log(buildWatchdogReport({ yamlFindings, runFindings, checkedAt: new Date().toISOString() }));
+    console.log(buildWatchdogReport({ yamlFindings, runFindings, prFindings, checkedAt: new Date().toISOString() }));
     if (publishResult) console.log(`\nWatchdog report ${publishResult.action}: ${publishResult.issueUrl}`);
   }
 
@@ -231,6 +327,8 @@ module.exports = {
   hasScheduleTrigger,
   runActionlint,
   checkScheduledWorkflowRuns,
+  checkStalePullRequests,
   buildWatchdogReport,
-  publishWatchdogReport
+  publishWatchdogReport,
+  STALE_PR_MAX_AGE_DAYS
 };
