@@ -281,8 +281,9 @@ reimplementation of the suggestion engine's confirm/override logic,
 native to that separate Apps Script project — see
 `cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
 Dashboard for real");
-`tests/leaderhub/` covers escaping/XSS guards and the pacing/calendar
-helpers; `tests/kos-personal/` covers the `kos-personal/studio-steps/`
+`tests/leaderhub/` covers escaping/XSS guards (including the School
+Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`)
+and the pacing/calendar helpers; `tests/kos-personal/` covers the `kos-personal/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows); `tests/tools/` covers
 the lint tools and the `leaderhub-build` drift gate.
 
