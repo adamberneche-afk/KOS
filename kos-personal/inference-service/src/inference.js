@@ -268,6 +268,32 @@ No other fields. No explanation. Valid JSON only.`;
  * @param  {Object} params.driveContext  Context read from their spreadsheet.
  * @returns {{ output, inputTokens, outputTokens, model }}
  */
+/**
+ * The model's text output, from a response whose `content` is a list of
+ * typed blocks.
+ *
+ * This used to be `response.content[0]?.text`, which assumes the first
+ * block is the text one. That is false whenever thinking is on, and on the
+ * default model here (claude-opus-5) thinking is on BY DEFAULT — its
+ * thinking blocks sit in `content` ahead of the text, carrying empty text
+ * under the default `display: "omitted"`. Index 0 was therefore the
+ * thinking block, rawOutput became '', and runInference() failed every
+ * single call with "Model produced invalid JSON". Only ever dormant
+ * because CFG.INFERENCE_MODE defaults to STUDIO, so nothing reaches here.
+ *
+ * Joins every text block rather than taking the first: one block is the
+ * common case and joins to itself, but a response can legitimately split
+ * into several (interleaved thinking, citations), and taking only the
+ * first would hand JSON.parse a truncated fragment.
+ */
+function extractTextOutput(content) {
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter((block) => block && block.type === 'text')
+    .map((block) => block.text || '')
+    .join('');
+}
+
 async function runInference({ sessionText, payloadUid, payloadType, operatorMeta, driveContext }) {
   // claude-sonnet-4-5 is a previous-generation id; current ones carry no
   // date suffix (claude-opus-5, claude-sonnet-5, claude-haiku-4-5). Set
@@ -296,7 +322,7 @@ async function runInference({ sessionText, payloadUid, payloadType, operatorMeta
     messages: [{ role: 'user', content: userMessage }],
   });
 
-  const rawOutput    = response.content[0]?.text || '';
+  const rawOutput    = extractTextOutput(response.content);
   const inputTokens  = response.usage?.input_tokens  || 0;
   const outputTokens = response.usage?.output_tokens || 0;
 
@@ -353,6 +379,7 @@ function getCreditCost(payloadType) {
 
 module.exports = {
   runInference,
+  extractTextOutput,
   getCreditCost,
   OUTPUT_SCHEMA,
   COG_STIMULUS_OUTPUT_SCHEMA,
