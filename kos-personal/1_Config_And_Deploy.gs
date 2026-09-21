@@ -110,7 +110,7 @@ const CFG = {
   // .flush() every few groups, instead of one setText(wholeRawText) call
   // that can trip the same "too many changes" limit on a large log.
   ARCHIVE_WRITE_CHUNK_CHARS: 20000,
-  ARCHIVE_WRITE_FLUSH_EVERY: 5,      // groups per DocumentApp.flush()
+  ARCHIVE_WRITE_FLUSH_EVERY: 5,      // groups per saveAndClose()+reopen commit
 
   // ── Shadow Matrix (reconciliation decision 1 / 5_Error_And_Utilities.gs) ──
   SHADOW_VERIFY_THRESHOLD: 0.75,  // confidence to mark a shadow question VERIFIED

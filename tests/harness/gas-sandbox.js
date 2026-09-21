@@ -711,13 +711,14 @@ function makeDocumentAppMock(driveAppMock) {
       if (!docs.has(id)) throw new Error('Document not found: ' + id);
       return docs.get(id);
     },
-    // Real Apps Script API — DocumentApp.flush() applies all pending
-    // Document changes immediately rather than batching them. First
-    // needed by 2_Ingestion_Sensors.gs's _archiveRawLog_(), which calls it
-    // periodically during a large write specifically to avoid the "Too
-    // many changes applied before saving document" limit — a no-op here
-    // since this mock's writes are never actually batched/deferred.
-    flush() {},
+    // DELIBERATELY ABSENT: flush(). Real DocumentApp has no such method —
+    // only SpreadsheetApp does. This mock used to define one, described as
+    // "Real Apps Script API", so _archiveRawLog_()'s DocumentApp.flush()
+    // call passed every test here while throwing "DocumentApp.flush is not
+    // a function" 57 times in production. A mock that invents a method the
+    // real API lacks cannot fail the one test that would matter, so this
+    // surface stays honest: Document changes commit via
+    // Document.saveAndClose(), and nothing else.
   };
 }
 makeDocumentAppMock._counter = 0;
