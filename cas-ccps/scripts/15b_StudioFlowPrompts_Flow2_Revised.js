@@ -75,6 +75,19 @@
 //   {{MILESTONE_4}}    -> TeacherMatrix.Milestone4
 //   {{DOD}}            -> TeacherMatrix.DefinitionOfDone
 //   {{STUDENT_TEXT}}   -> extracted student response zone from the doc
+//
+// SECURITY NOTE ON {{STUDENT_TEXT}} (Audit Docket II rec #2): this text is
+// untrusted, and the <<<STUDENT_SUBMISSION>>>/<<<END_STUDENT_SUBMISSION>>>
+// markers below are the only thing telling Gemini where it starts and
+// ends. This file is a pasted-verbatim spec, so it cannot itself escape a
+// student submission that happens to contain those literal marker
+// strings -- that has to happen as a real processing step BEFORE
+// {{STUDENT_TEXT}} is substituted in, not as more prose here. The
+// DIRECT_GEMINI code path (15c_Flow2DirectEvaluationService.js's
+// _buildFlow2Prompt_) does this via _sanitizeFlow2StudentText_ -- do not
+// remove that call when editing 15c. A real Studio Flow build of Flow 2
+// still needs an equivalent sanitizing step of its own ahead of the
+// Gemini step; nothing in Studio provides this for free.
 // =============================================================================
 const FLOW_2_SYSTEM_PROMPT = `
 You are an automated academic evaluation coach operating inside a secure,
