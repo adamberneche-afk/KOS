@@ -899,7 +899,7 @@ function _chunkAndQueue(rawText, payloadType, logUUID, rawFolder, staging, ss) {
  *
  * A single line longer than maxChars becomes its own (oversized) group
  * rather than being cut mid-line — acceptable: the goal is bounding the
- * NUMBER of edits DocumentApp.flush()-es between, not an absolute
+ * NUMBER of edits each commit spans, not an absolute
  * per-write ceiling, and real session logs are line-oriented text, not
  * one unbroken multi-megabyte line.
  */
@@ -934,9 +934,18 @@ function _groupLinesForArchiveWrite_(rawText, maxChars) {
  * applied before saving document..." once a log is large or emoji-dense
  * enough — a real Google Docs internal change-tracking limit, not a logic
  * bug. Writes in bounded, line-safe groups (_groupLinesForArchiveWrite_())
- * instead, flushing every CFG.ARCHIVE_WRITE_FLUSH_EVERY groups via
- * DocumentApp.flush() to force incremental persistence rather than
- * accumulating the whole write as one uncommitted batch.
+ * instead, committing every CFG.ARCHIVE_WRITE_FLUSH_EVERY groups to force
+ * incremental persistence rather than accumulating the whole write as one
+ * uncommitted batch.
+ *
+ * That commit is saveAndClose() followed by a reopen, which is the only
+ * mechanism DocumentApp actually has. This used to call
+ * `DocumentApp.flush()` — a method that does not exist on DocumentApp
+ * (only SpreadsheetApp has flush()), so every archive write past the
+ * first CFG.ARCHIVE_WRITE_FLUSH_EVERY groups threw "DocumentApp.flush is
+ * not a function" instead of the change-limit error it was added to
+ * prevent. saveAndClose() invalidates its own Document and Body handles,
+ * so both are re-fetched after each commit.
  *
  * A brand-new Body starts with exactly one (empty) paragraph in real Docs
  * — the first group reuses that paragraph via setText() instead of
@@ -958,9 +967,9 @@ function _groupLinesForArchiveWrite_(rawText, maxChars) {
 function _archiveRawLog_(rawFolder, rawDocName, rawText) {
   if (rawFolder.getFilesByName(rawDocName).hasNext()) return false;
 
-  const rawDoc = DocumentApp.create(rawDocName);
+  let rawDoc = DocumentApp.create(rawDocName);
   const rawDId = rawDoc.getId();
-  const body   = rawDoc.getBody();
+  let body   = rawDoc.getBody();
 
   const groups = _groupLinesForArchiveWrite_(rawText);
   let sinceFlush = 0;
@@ -972,7 +981,9 @@ function _archiveRawLog_(rawFolder, rawDocName, rawText) {
     }
     sinceFlush++;
     if (sinceFlush >= CFG.ARCHIVE_WRITE_FLUSH_EVERY) {
-      DocumentApp.flush();
+      rawDoc.saveAndClose();
+      rawDoc = DocumentApp.openById(rawDId);
+      body = rawDoc.getBody();
       sinceFlush = 0;
     }
   });
