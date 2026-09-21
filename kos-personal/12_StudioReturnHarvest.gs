@@ -1317,6 +1317,25 @@ function _srDiagnoseReturnRow_(row, knownUids, stagingTypes) {
       'either a mis-binding or a leftover from copying the Curator flow\'s step.');
   }
 
+  // The Auditor step bound to the wrong prompt. Every column can be bound
+  // perfectly and the row still fails, because the value itself is the chat
+  // persona's prose report rather than the sign-off JSON — the cause behind
+  // 95 of 113 unretryable AUDITOR_JSON_PARSE_FAILED rows in the live tab,
+  // and invisible to every binding check above. Reuses the harvest's own
+  // extractor rather than a second heuristic: if that cannot find a JSON
+  // object anywhere in the cell, neither can _srPrepareDocText_().
+  const auditorCell = cell(SR_COLS.AUDITOR_JSON);
+  if (auditorCell && returnedType && SR_CURATOR_TYPES.indexOf(returnedType) !== -1 &&
+      _srExtractJsonLoose_(_srStripJsonFence_(auditorCell), 'object') === null) {
+    issues.push('Auditor_JSON holds no JSON object at all — it starts "' +
+      auditorCell.substring(0, 24).replace(/\s+/g, ' ') + '". The Auditor step is bound to a ' +
+      'prompt that returns a prose report (rtp-core-router/PERSONA_AUDITOR_V5_1.md mandates ' +
+      'exactly that shape); it needs CURATOR_AUDITOR_SYSTEM_PROMPT from the FlowPrompts tab, ' +
+      'which returns one raw JSON object. Every row from this step fails as ' +
+      'AUDITOR_JSON_PARSE_FAILED and no retry can recover it — see the "prompt (auditor)" row ' +
+      'in FlowBuildSpec.');
+  }
+
   // The harvest's own columns must arrive empty, unless it has already run.
   const processed = ['HARVESTED', 'FAILED', 'NEEDS_ATTENTION']
     .indexOf(cell(SR_COLS.HARVEST_STATUS)) !== -1;
