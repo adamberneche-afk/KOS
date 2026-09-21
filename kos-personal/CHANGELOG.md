@@ -1814,3 +1814,55 @@ kos-personal now reports live and clean — confirmed via its own GitHub
 issue (#17), which opened for the stale report and closed itself once a
 correct one landed against a `main` that finally agreed. `npm test`:
 1009/1009 passing. gas-lint/doc-currency: 0 errors.
+
+## The inference service's OAuth scope, narrowed for real (Open Items #6)
+
+`inference-service/src/google.js`'s `getAuthUrl` requested
+`https://www.googleapis.com/auth/drive` — full read/write access to a
+connected user's entire Google Drive — since the service was first
+written. Open Items #6 had flagged this for months as needing narrowing
+to `auth/drive.file`, with a standing caveat that it "still needs a
+deliberate pass against a live deployed script" before anyone touched it,
+because the naive swap could plausibly break the one thing this service
+exists to do.
+
+**That caveat turned out to be exactly right, and pointed at the wrong
+fix.** Grepping the whole service for `google.drive(`/`drive.files.`
+turns up nothing — this service has never called the Drive API at all.
+Every real Google API call is `google.docs()` (`readDocumentText`/
+`writeDocumentContent`, reading and writing the session document) or
+`google.sheets()` (`setFlowComplete`/`readOperatorContext`, against
+`BRAIN_TRUST_INDEX`), and both are fully authorized by the
+`documents`/`spreadsheets` scopes already in the same list — Drive access
+has been dead weight since day one, not a mistakenly-broad version of
+something actually used.
+
+Swapping to `drive.file` — the original proposed fix — would have been
+the deliberate pass's first casualty: `drive.file` only grants access to
+files this app created, or that the user picked through an app-scoped
+Picker UI. Neither ever happens here. Session documents are created by an
+entirely separate Apps Script project (`10_Turnstile.gs`'s hand-off to
+this service), which this service's own OAuth grant has nothing to do
+with. Requesting `drive.file` would have added a scope that authorizes
+nothing this service actually reads or writes — a narrower version of the
+same nothing `drive` already was, while looking like a real fix.
+
+**Actual fix: drop Drive access entirely**, keeping `documents` +
+`spreadsheets` + the two `userinfo` scopes — verified against every real
+call site, not just the OAuth consent line. `token-crypto.js`'s header
+comment (which had explicitly named `auth/drive` as the reason a stolen,
+decrypted token was a full-Drive compromise) and
+`INFERENCE_SERVICE_DEPLOYMENT.md`'s setup steps (which had operators
+enable `drive.googleapis.com` and add a Drive consent-screen scope neither
+was ever needed) are both corrected to match. A token issued under the
+old scope keeps it until that user disconnects and reconnects — this
+fixes what new connections request, not retroactively narrows one already
+granted.
+
+4 new tests in `inference-service/test/google.test.js`: the exact scope
+set requested, that neither `drive` nor `drive.file` sneaks back in, that
+the CSRF state round-trips, and that `access_type=offline` +
+`prompt=consent` are still set (the two params that make a `refresh_token`
+come back at all). `inference-service`'s own `npm test`: 31/31 passing (8
+Postgres-only tests skip without `DATABASE_URL`, same as always).
+gas-lint/doc-currency at the repo root: unchanged, 0 errors.
