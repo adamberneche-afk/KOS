@@ -945,3 +945,39 @@ was 1052 before the two new test files), `html-lint`, `gas-lint`, and
 > this file's own header convention: closed items here, live state there.
 > Read that section before starting another round, and move its content
 > down here once this is finally closed.
+
+## The School Store Sales Log's unescaped innerHTML sink, closed (Open Items #10)
+
+`09-wbl-lessonplans-procurement-finance-esports.html`'s `renderFinance()`
+interpolated a shift's `staff` and `notes` fields directly into an
+`innerHTML` template string with no escaping. `saveSales()` only
+`.trim()`s both — free-text `<input>`/`<textarea>` fields, not
+browser-constrained the way `date` is (an `<input type="date">`, left
+alone here — the browser itself won't hand back anything but a real date
+string or empty through normal use). Every comparable user-entered field
+elsewhere in this same file already goes through the `escH()` helper
+(`06-tasks-trips-and-modals-core.html`) before interpolation — this was
+the one sink that had been missed: whoever logs a shift with e.g.
+`<img src=x onerror=...>` in "Staff" or "Notes" gets it executed for
+anyone who later opens the Finance tab.
+
+Fixed by wrapping both fields with `escH()`, matching the file's own
+established convention exactly — a two-line change. Confirmed real before
+fixing (not just theorized): reverting the fix locally and re-running the
+new test below reproduces the failure via `extractLines()`'s own
+`mustContain` guard, which is the harness noticing the call sites no
+longer match what the test expects — the intended signal for "the fix is
+gone," not a false alarm.
+
+5 new tests in `tests/leaderhub/finance-sales-log-escaping.test.js`,
+exercising the real extracted `renderFinance()` sink (not a
+re-description of it, same convention as `tests/leaderhub/escaping.test.js`):
+an HTML tag in `staff` is escaped, a `<script>` tag in `notes` is escaped,
+an ordinary name with an apostrophe renders unchanged (no double-escaping
+regression), a blank `notes` field still renders no notes block at all,
+and multiple sales in the same log all get escaped, not just the first.
+
+`leader-hub/student-leader-hub.html` regenerated via
+`node tools/leaderhub-build/build.js`, verified with `--check` (no
+drift). Full suite: 1128/1128 (was 1123). `html-lint`, `gas-lint`, and
+`doc-currency` all pass, all three unchanged from baseline.
