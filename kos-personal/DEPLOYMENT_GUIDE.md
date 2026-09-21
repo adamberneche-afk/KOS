@@ -1,5 +1,22 @@
 # KOS v8.0 — Deployment Guide
 
+> ## ⛔ SUPERSEDED IN PART (2026-09-21): both Curator Flow Gemini steps are bound to the wrong prompt
+>
+> **Read `STUDIO_REBIND_HANDOFF.md` before acting on the banner below.** The
+> 2026-09-08 banner is accurate about what it claims — both Flows were built,
+> and they do write back — but "verified end to end" has not held since. A
+> live export taken 2026-09-20 shows 114 of 233 `STUDIO_RETURN` rows failing
+> at harvest and 55 `AUDIT_LOG` rejections, all from one cause: the Curator
+> step and the Auditor step are bound to `rtp-core-router/PERSONA_*_V5_1.md`,
+> the interactive chat personas, rather than to `CURATOR_PROMPT.md` /
+> `CURATOR_AUDITOR_PROMPT.md`. The personas require the preamble, the
+> populated `vector_weights` and the prose report that the contracts forbid,
+> so the harvest cannot parse the Auditor and the audit gate correctly
+> rejects the Curator.
+>
+> Nothing downstream is broken; it is a prompt binding, and the rebind is an
+> operator action. That handoff has the evidence, the steps and the checks.
+>
 > ## ✅ STATUS (2026-09-08): BOTH STUDIO FLOWS BUILT AND VERIFIED END TO END — the second attempt succeeded
 >
 > Phases 1-3 and 5-10 of this guide were done as of 2026-09-05: the project

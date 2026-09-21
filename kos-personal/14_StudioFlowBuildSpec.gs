@@ -87,8 +87,18 @@ function _sfbsAppendCuratorFlow_(rows) {
         'document text. No Docs connector needed.' : '']);
   });
   rows.push(['Curator', 'prompt', '', '', '', 'CURATOR_PROMPT.md',
-    'Paste verbatim as the Ask Gemini step\'s system prompt. See STUDIO_INTEGRATION_SPEC.md ' +
-    'Step 7\'s connector table for the optional Auditor pass (row 2a — no merge step follows it).']);
+    'Bind the Ask Gemini step\'s System Prompt to the CURATOR_SYSTEM_PROMPT chip from the ' +
+    'FlowPrompts tab (syncFlowPrompts(), 16_FlowPrompts.gs) — not a pasted copy. The Auditor ' +
+    'pass that follows it has its own row below.']);
+  rows.push(['Curator', 'prompt (auditor)', '', '', '', 'CURATOR_AUDITOR_PROMPT.md',
+    'Second Ask Gemini step, writing Auditor_JSON. Bind its System Prompt to the ' +
+    'CURATOR_AUDITOR_SYSTEM_PROMPT chip from the FlowPrompts tab. OUTPUT CONTRACT: exactly one ' +
+    'raw JSON object, starting "{" and ending "}" — no prose, no persona header, no fence. ' +
+    'Do NOT bind this step to kos-personal/rtp-core-router/PERSONA_AUDITOR_V5_1.md: that is the ' +
+    'interactive chat persona and its Section 9 mandates a "[<shield> THE AUDITOR]:" prose ' +
+    'report containing no JSON at all, which _srPrepareDocText_() (12_StudioReturnHarvest.gs) ' +
+    'cannot parse. A malformed Auditor pass fails the WHOLE row as AUDITOR_JSON_PARSE_FAILED, ' +
+    'unretryable — it does not degrade to an un-audited result.']);
 }
 
 // The classification flow — VECTOR_CLASSIFY, via VectorClassifyInput.

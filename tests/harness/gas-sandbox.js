@@ -154,6 +154,11 @@ class FakeSheet {
   setFrozenColumns(n) { this.frozenColumns = n; return this; }
   clear() { this.rows = []; return this; }
   deleteRow(rowNum1Based) { this.rows.splice(rowNum1Based - 1, 1); }
+  // Real Apps Script API — Sheet.deleteRows(rowPosition, howMany), the
+  // bulk form of deleteRow() above. archiveErrorLog() needs it: sweeping a
+  // 15,000-row backlog one deleteRow() call at a time does not finish
+  // inside Apps Script's 6-minute ceiling.
+  deleteRows(rowNum1Based, howMany) { this.rows.splice(rowNum1Based - 1, howMany); }
   // Real Apps Script API — the sheet's used-range column count. Same
   // width calculation as getDataRange() above (the widest row seen so
   // far), 0 rather than 1 on a genuinely empty sheet (matching real
@@ -711,13 +716,14 @@ function makeDocumentAppMock(driveAppMock) {
       if (!docs.has(id)) throw new Error('Document not found: ' + id);
       return docs.get(id);
     },
-    // Real Apps Script API — DocumentApp.flush() applies all pending
-    // Document changes immediately rather than batching them. First
-    // needed by 2_Ingestion_Sensors.gs's _archiveRawLog_(), which calls it
-    // periodically during a large write specifically to avoid the "Too
-    // many changes applied before saving document" limit — a no-op here
-    // since this mock's writes are never actually batched/deferred.
-    flush() {},
+    // DELIBERATELY ABSENT: flush(). Real DocumentApp has no such method —
+    // only SpreadsheetApp does. This mock used to define one, described as
+    // "Real Apps Script API", so _archiveRawLog_()'s DocumentApp.flush()
+    // call passed every test here while throwing "DocumentApp.flush is not
+    // a function" 57 times in production. A mock that invents a method the
+    // real API lacks cannot fail the one test that would matter, so this
+    // surface stays honest: Document changes commit via
+    // Document.saveAndClose(), and nothing else.
   };
 }
 makeDocumentAppMock._counter = 0;

@@ -11,6 +11,19 @@ The core problem it solves: you spend hours in AI sessions making decisions, bui
 
 This README documents the system as it is today. The full history of what was found and fixed — the original reconciliation pass, the Round 3 reupload batch, and nine rounds of dedicated UI/UX hardening — is in [`CHANGELOG.md`](./CHANGELOG.md), split out from here so this file stays a current-state reference instead of a changelog with documentation mixed in.
 
+> **⛔ One open item, and it is upstream of most of the pipeline:** both Ask
+> Gemini steps in the Curator Flow are bound to the RTP chat personas
+> (`rtp-core-router/PERSONA_*_V5_1.md`) rather than to the machine contracts
+> the harvest and audit gate read (`CURATOR_PROMPT.md` /
+> `CURATOR_AUDITOR_PROMPT.md`). The personas require the prose preamble, the
+> populated `vector_weights` and the prose Auditor report that the contracts
+> forbid, so a 2026-09-20 export shows 114 of 233 returns failing at harvest
+> and 55 correct audit rejections behind it. The pipeline described below is
+> not broken — it is rejecting non-conforming output exactly as designed.
+> Rebinding is an operator action in Studio:
+> [`STUDIO_REBIND_HANDOFF.md`](./STUDIO_REBIND_HANDOFF.md) has the evidence,
+> the steps and the checks.
+
 ---
 
 ## Architecture in Two Paragraphs

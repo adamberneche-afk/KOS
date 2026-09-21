@@ -98,6 +98,8 @@ function runMatrixTurnstile() {
     _alertOnUnknownStatuses_(data, SC);
 
     let staleReset = 0, activeCount = 0, freedSlots = 0;
+    // Built on first use by Pass 1's terminal branch only — see there.
+    let auditRejectedUids = null;
 
     // ── Pass 1: reset stale STUDIO_ACTIVE rows, count still-active ──
     for (let i = 0; i < data.length; i++) {
@@ -128,16 +130,39 @@ function runMatrixTurnstile() {
         if (newRetries > CFG.TURNSTILE_STUCK_THRESHOLD) {
           const uidStr    = String(data[i][SC.PAYLOAD_UID]);
           const fileIdStr = String(data[i][SC.FILE_ID]);
-          staging.getRange(sheetRow, SC.STATUS      + 1).setValue('STUDIO_TIMEOUT');
+          // Which terminal state is the truth here? "No Studio flow ever
+          // completed this row" is only one of two ways to run the retry
+          // budget out, and it was reported for both. A row the audit gate
+          // rejected comes back to PENDING_FLOW (3_Queue_Processor.gs) and
+          // re-enters this loop, so its remaining retries get spent on
+          // staleness and it dies here — labelled as if Studio had never
+          // answered, when Studio answered and the Auditor refused the
+          // output. Observed: 55 AUDIT_LOG rejections, every one of them
+          // ending at STUDIO_TIMEOUT, and AUDIT_REJECTED never once reached
+          // — so the alert sent a reader to Studio while the real evidence
+          // sat in AUDIT_LOG. The priority set cannot answer this (it is
+          // one-shot, consumed at release, see Pass 2), so AUDIT_LOG itself
+          // does — read lazily, only for a row actually terminating.
+          if (auditRejectedUids === null) auditRejectedUids = _readAuditRejectedUidSet_(ss);
+          const auditRejected = !!auditRejectedUids[uidStr];
+          const terminal = auditRejected ? 'AUDIT_REJECTED' : 'STUDIO_TIMEOUT';
+          staging.getRange(sheetRow, SC.STATUS      + 1).setValue(terminal);
           staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
           staleReset++;
-          console.error('[Turnstile] Row ' + sheetRow + ' (' + uid + ') → STUDIO_TIMEOUT after ' +
+          console.error('[Turnstile] Row ' + sheetRow + ' (' + uid + ') → ' + terminal + ' after ' +
             newRetries + ' stale resets (threshold ' + CFG.TURNSTILE_STUCK_THRESHOLD + ').');
           _sendChatAlert(
-            '🔴 STUDIO_TIMEOUT — kos-personal Turnstile\n' +
-            'Row: ' + sheetRow + ' (' + uidStr + ', file ' + fileIdStr + ')\n' +
-            'No Studio flow ever completed this row after ' + newRetries + ' stale resets. ' +
-            'Human review required — see STAGING_PIPELINE.'
+            (auditRejected
+              ? '🔴 AUDIT_REJECTED — kos-personal Turnstile\n' +
+                'Row: ' + sheetRow + ' (' + uidStr + ', file ' + fileIdStr + ')\n' +
+                'Studio DID answer this row — the Auditor rejected its output, and the retries ' +
+                'that followed ran out here. This is not a Studio timeout: see AUDIT_LOG for ' +
+                'this Payload_UID, which holds the rejected payload and the trace log naming ' +
+                'each unverified claim.'
+              : '🔴 STUDIO_TIMEOUT — kos-personal Turnstile\n' +
+                'Row: ' + sheetRow + ' (' + uidStr + ', file ' + fileIdStr + ')\n' +
+                'No Studio flow ever completed this row after ' + newRetries + ' stale resets. ' +
+                'Human review required — see STAGING_PIPELINE.')
           );
         } else {
           staging.getRange(sheetRow, SC.STATUS      + 1).setValue('PENDING_FLOW');
