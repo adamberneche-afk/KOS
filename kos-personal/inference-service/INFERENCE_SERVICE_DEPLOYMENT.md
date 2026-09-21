@@ -68,10 +68,12 @@ Your `DATABASE_URL` is the URI from step 5.
    ```
    gcloud services enable run.googleapis.com \
      cloudbuild.googleapis.com \
-     drive.googleapis.com \
      docs.googleapis.com \
      sheets.googleapis.com
    ```
+   Not `drive.googleapis.com` — this service never calls the Drive API
+   (Open Items #6; see `src/google.js`'s `getAuthUrl`). Docs and Sheets
+   access alone cover every real API call this service makes.
 
 ### 2b. Configure OAuth credentials
 
@@ -90,7 +92,7 @@ This is the same GCP project used for the KOS Apps Script OAuth screen — or a 
 1. **APIs & Services → OAuth consent screen**
 2. User type: **External**
 3. App name: `KOS Inference Service`
-4. Scopes: Add Drive, Docs, Sheets, and userinfo scopes
+4. Scopes: Add Docs, Sheets, and userinfo scopes (not Drive — see 2a's note)
 5. Test users: Add your email address
 6. Submit for verification when ready for production (not required for testing)
 
@@ -154,10 +156,12 @@ NODE_ENV                  production
 **`TOKEN_ENCRYPTION_KEY` is required and the server refuses to start
 without it** — unconditionally, not just in production. It encrypts
 `users.access_token` / `users.refresh_token` at rest. A refresh token is
-a long-lived bearer credential for the full Drive scope this service
-requests, so a database dump or backup carrying them in plaintext is a
-full account compromise for every connected user. See
-`src/token-crypto.js` for the format and the reasoning.
+a long-lived bearer credential for whatever this service asks the user to
+grant (Docs + Sheets access, as of Open Items #6 — no longer the full
+Drive scope this line used to describe), so a database dump or backup
+carrying them in plaintext is a real account compromise for every
+connected user regardless. See `src/token-crypto.js` for the format and
+the reasoning.
 
 Two things to get right:
 
