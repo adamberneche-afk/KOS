@@ -100,6 +100,21 @@ jobs here was still unbuilt — that's now stale; the wiring above is live.
 Treat `MANAGED_SERVICE` mode today as fully wired end to end, gated
 behind `CFG.INFERENCE_MODE`, off by default.
 
+**Reading the model's output: select the text block, never index into
+`content`.** The Messages API returns `content` as a list of typed blocks,
+and this service's default model (`claude-opus-5`) runs thinking by
+default — so a thinking block sits ahead of the text one, carrying empty
+text under the default `display: "omitted"`. `src/inference.js` used to
+read `response.content[0]?.text`, which therefore picked up the thinking
+block, produced an empty string, and failed every call with "Model
+produced invalid JSON". It never surfaced only because `CFG.INFERENCE_MODE`
+defaults to `STUDIO` and nothing reached it. `extractTextOutput()` now
+filters by `type === 'text'` and joins every such block — one block is the
+common case and joins to itself, but interleaved thinking and citations
+can legitimately split one answer across several, and taking just the
+first would hand `JSON.parse` a fragment. Anything added here that reads a
+model response should do the same.
+
 **The Auditor accountability gate applies here too.** `processInferenceQueue()`'s
 check of a payload's `auditor_sign_off` (see `CURATOR_PROMPT.md` Rule 8)
 happens entirely on the `.gs` side, after this service's job comes back
