@@ -275,7 +275,12 @@ direct-evaluation escape hatch, the `cas-ccps/studio-steps/` custom steps
 (Flows 1-5, kept covered even though they cannot run on this account), the
 queue watchdog, the preflight and canaries, the Flow 2 and Flows 3/4/5
 ports and their harvests, the fixtures driven through the code that
-consumes them, the binding probes, and the generated build spec;
+consumes them, the binding probes, the generated build spec, and the
+Teacher Dashboard's own SCR confirm/override review queue (a from-scratch
+reimplementation of the suggestion engine's confirm/override logic,
+native to that separate Apps Script project — see
+`cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
+Dashboard for real");
 `tests/leaderhub/` covers escaping/XSS guards and the pacing/calendar
 helpers; `tests/kos-personal/` covers the `kos-personal/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows); `tests/tools/` covers
