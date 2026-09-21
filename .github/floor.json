@@ -1,0 +1,10 @@
+{
+  "_comment": "Per-repo configuration for the portfolio CI/CD floor - see the Mothership hub's CICD_FLOOR.md, which is the standard this repo is a consumer of. Only the checks this repo actually adopted from the floor read this file; KOS's own tools/doc-currency and tools/coverage-gaps predate the floor and are the versions Mothership's were built FROM, so they keep their own configuration and are not driven from here. scripts/secrets-doctor.mjs is byte-identical to Mothership's copy and must not be edited locally - a change belongs upstream. The generated env block in .github/workflows/secrets-doctor.yml is rewritten by `node scripts/secrets-doctor.mjs --sync` and drift-gated on every pull request by its own `drift` job.",
+  "floorVersion": "1",
+  "doctor": {
+    "optionalSecrets": {
+      "CAS_SANDBOX_SCRIPT_IDS": "gas-lint.yml's check-sandbox-secrets job emits configured=true/false from this and CLASP_SANDBOX_CREDENTIALS, and every downstream job gates on that output rather than on secrets.* directly - the floor's \"graceful degradation, not perpetual red\" convention. Absent means the sandbox push lane is off, which is a supported state.",
+      "CLASP_SANDBOX_CREDENTIALS": "same gate as CAS_SANDBOX_SCRIPT_IDS - see gas-lint.yml's check-sandbox-secrets job."
+    }
+  }
+}
