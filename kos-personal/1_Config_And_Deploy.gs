@@ -106,11 +106,23 @@ const CFG = {
                                      // not retried forever (mirrors TURNSTILE_STUCK_THRESHOLD)
   // Bounds a single _archiveRawLog_() write into multiple appendParagraph()
   // calls (grouped on line boundaries, never mid-line — see that function's
-  // own header for why exact reconstruction matters) with a DocumentApp
-  // .flush() every few groups, instead of one setText(wholeRawText) call
-  // that can trip the same "too many changes" limit on a large log.
+  // own header for why exact reconstruction matters), committing every few
+  // groups, instead of one setText(wholeRawText) call that can trip the
+  // same "too many changes" limit on a large log.
   ARCHIVE_WRITE_CHUNK_CHARS: 20000,
   ARCHIVE_WRITE_FLUSH_EVERY: 5,      // groups per saveAndClose()+reopen commit
+
+  // ── ERROR_LOG volume control ──
+  // A blocked TIER_2 cold gate is an expected steady state, not an event:
+  // it recurs on every trigger firing for as long as the engine is unarmed.
+  // Recording each one produced 15,000 of the live log's 17,218 rows (87%)
+  // across four months — two rows per firing, since the gate reported AND
+  // threw into a caller that reported again. Report it at most this often
+  // per caller instead; the throw itself is unchanged, so callers still
+  // abort exactly as before.
+  COLD_GATE_REPORT_INTERVAL_MINS: 360,   // 6h — once a shift, not every 10 min
+  ERROR_LOG_RETENTION_DAYS: 30,          // archiveErrorLog() sweeps older rows aside
+  ERROR_LOG_ARCHIVE_SHEET: 'ERROR_LOG_ARCHIVE',  // swept rows move here, never deleted
 
   // ── Shadow Matrix (reconciliation decision 1 / 5_Error_And_Utilities.gs) ──
   SHADOW_VERIFY_THRESHOLD: 0.75,  // confidence to mark a shadow question VERIFIED
@@ -970,7 +982,22 @@ function _coldEngineGate(callerFunction, tier) {
       `[COLD_ENGINE_TIER_2] ${callerFunction} is blocked. ` +
       `The engine has not been armed. Complete Socratic Onboarding via the web app.`
     );
-    _reportError(`COLD_ENGINE_GATE — ${callerFunction}`, err, null);
+    // A blocked gate is a steady state, not an event: it recurs on every
+    // firing of a 10-minute trigger for as long as the engine is unarmed,
+    // and recording each one buried the log — 15,000 of 17,218 rows, 87%,
+    // across four months, none of which said anything the first row had
+    // not. Report it once per CFG.COLD_GATE_REPORT_INTERVAL_MINS per
+    // caller; mark it logged either way so the caller's own catch never
+    // adds the second row of the pair. The throw is unchanged, so every
+    // caller still aborts exactly as before, and console.error still runs
+    // on every firing — only the sheet is spared.
+    if (_coldGateShouldReport_(callerFunction)) {
+      _reportError(`COLD_ENGINE_GATE — ${callerFunction}`, err, null);
+    } else {
+      _markErrorLogged_(err);
+      console.warn(`[COLD_ENGINE_TIER_2] ${callerFunction} blocked (already reported ` +
+        `within the last ${CFG.COLD_GATE_REPORT_INTERVAL_MINS} minutes).`);
+    }
     throw err;  // aborts the trigger cleanly
   }
 
@@ -979,6 +1006,36 @@ function _coldEngineGate(callerFunction, tier) {
     `[COLD_ENGINE_TIER_1] ${callerFunction}: Engine cold. ` +
     `Vector scoring inactive. Complete Socratic Onboarding to arm.`
   );
+}
+
+/**
+ * Whether this caller's blocked-gate condition is due to be written to
+ * ERROR_LOG again. Per-caller, so a rarely-run entry point is not silenced
+ * by a 10-minute trigger that reported moments earlier.
+ *
+ * Stamps the clock as a side effect when it returns true. Fails OPEN — if
+ * the property store cannot be read or written, the condition is reported,
+ * because under-reporting an unarmed engine is worse than an extra row.
+ */
+function _coldGateShouldReport_(callerFunction) {
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const key   = 'KOS_COLD_GATE_LAST_REPORT';
+    let   map   = {};
+    try { map = JSON.parse(props.getProperty(key) || '{}'); } catch (_) { map = {}; }
+
+    const nowMs    = new Date().getTime();
+    const lastMs   = Number(map[callerFunction]) || 0;
+    const windowMs = CFG.COLD_GATE_REPORT_INTERVAL_MINS * 60 * 1000;
+    if (lastMs && (nowMs - lastMs) < windowMs) return false;
+
+    map[callerFunction] = nowMs;
+    props.setProperty(key, JSON.stringify(map));
+    return true;
+  } catch (e) {
+    console.warn('[ColdGate] Could not read/write the report clock — reporting anyway. ' + e.message);
+    return true;
+  }
 }
 
 
