@@ -935,6 +935,37 @@ test('binding probe: an Auditor value on a Curator row is perfectly fine', () =>
     returnRow(exported, 'UID-1', { [C.AUDITOR_JSON]: '{"verdict":"PASS"}' }), KNOWN, QUEUED), []);
 });
 
+// The cause behind 95 of 113 unretryable AUDITOR_JSON_PARSE_FAILED rows in
+// the live tab, and the one every binding check above is blind to: columns
+// bound perfectly, value is the chat persona's prose report instead of the
+// sign-off JSON.
+test('binding probe: an Auditor returning the chat persona\'s prose report is named as a prompt mis-binding', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  const issues = exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1', {
+    [C.AUDITOR_JSON]: '[\u{1F6E1} THE AUDITOR]:\n\n[TRIGGER: PROPOSAL STRESS-TEST]\n\n' +
+      '[\u{1F4CB} CONSTRAINTS CITED]:\n- PIVOTS_AND_LESSONS: no JSON anywhere in this report.',
+  }), KNOWN, QUEUED);
+  assert.ok(issues.some((m) => /holds no JSON object at all/.test(m)), JSON.stringify(issues));
+  assert.ok(issues.some((m) => /PERSONA_AUDITOR_V5_1\.md/.test(m)),
+    'names the wrong prompt by file: ' + JSON.stringify(issues));
+  assert.ok(issues.some((m) => /CURATOR_AUDITOR_SYSTEM_PROMPT/.test(m)),
+    'and the right one to bind instead: ' + JSON.stringify(issues));
+});
+
+test('binding probe: an Auditor wrapped in prose but still carrying its JSON is NOT flagged', () => {
+  const { exported } = load();
+  const C = exported.SR_COLS;
+  // _srExtractJsonLoose_() recovers this shape, so the harvest succeeds and
+  // the probe must stay quiet — flagging it would train the reader to ignore
+  // the real case above. This is exactly what the Curator side does, which is
+  // why its 113 live primaries all parsed while the Auditor's did not.
+  assert.deepEqual(exported._srDiagnoseReturnRow_(returnRow(exported, 'UID-1', {
+    [C.AUDITOR_JSON]: '[\u{1F6E1} THE AUDITOR]: verification gate passed.\n\n' +
+      '{"status":"PASSED","unverified_claims_count":0,"trace_log":[]}',
+  }), KNOWN, QUEUED), []);
+});
+
 test('binding probe: no output at all is not blamed on Returned_At', () => {
   const { exported } = load();
   const C = exported.SR_COLS;
