@@ -647,6 +647,221 @@ function teacherOverrideTurnInScore(configId, score) {
   return _recordTurnInDecision_(cfg, configId, cfg.teacherEmail, score, "OVERRIDDEN");
 }
 
+// ── SCR REVIEW (Open Items #4 — Module 5 competency SCR confirm/override) ──
+// The teacher's own confirm/override decision on an AI-suggested Module 5
+// competency rating (SCRSuggestions, computed weekly by
+// 30_SCRSuggestionEngine.js's runWeeklySCRSuggestionUpdate_()). Until this,
+// nothing anywhere actually called that file's recordConfirmation_/
+// recordOverride_/getSCRDashboardData_ except tests, because those
+// functions live in cas-ccps:central-ledger — a DIFFERENT Apps Script
+// project from this standalone dashboard (cas-ccps:teacher-dashboard, see
+// tools/gas-lint/project-map.json) — with no shared runtime. This section
+// reimplements the same confirm/override/query logic natively in THIS
+// project, following that file's locked rules exactly (freeze on decision,
+// reject re-deciding, ratings 1 and 5 reserved for a teacher's own
+// judgment, never auto-suggested) — the same relationship
+// teacherConfirmTurnInScore/teacherOverrideTurnInScore above already have
+// to 04_Form2_TurnInGate.js's turn-in gate logic, one project over.
+//
+// DASHBOARD_SCRS below is a deliberate, minimal duplicate of
+// 30_SCRSuggestionEngine.js's own SCRS column map. That file's header
+// explains why SCRS never moved to 00_SharedConfig.js (unlike SCRDL,
+// which did): nothing outside central-ledger had any business reading
+// SCRSuggestions, an AI-values-nobody-has-acted-on-yet tab, so a
+// dashboard-project file referencing it would fail loudly at load rather
+// than quietly render an unreviewed rating. This dashboard is now a real,
+// teacher-scoped consumer of that data, so it needs its own copy of the
+// schema — named distinctly (not "SCRS") so nobody mistakes this for a
+// shared constant if the two files are ever read side by side. Column
+// order must stay byte-identical to Script 30's SCRS — covered by
+// tests/cas-ccps/teacher-dashboard-scr-review.test.js's schema-compat check.
+const DASHBOARD_SCRS = {
+  STUDENT_EMAIL: 0,
+  COMPETENCY_ID: 1,
+  SUGGESTED_RATING: 2,
+  MET_COUNT: 3,
+  NOT_MET_COUNT: 4,
+  PARTIAL_COUNT: 5,
+  STATUS: 6,
+  LAST_COMPUTED_AT: 7,
+  CONFIRMED_RATING: 8,
+  CONFIRMED_AT: 9,
+  CONFIRMED_BY: 10,
+};
+
+// ---------------------------------------------------------------------------
+// getScrReviewQueue — called client-side via google.script.run. Returns
+// every NON-FROZEN SCRSuggestions row (status SUGGESTED or
+// INSUFFICIENT_EVIDENCE) for students on THIS teacher's own roster.
+// Unlike 30_SCRSuggestionEngine.js's getSCRDashboardData_() — which despite
+// its own comment claiming to scope to "the calling teacher's students" has
+// no such filter at all (that function is untested and uncalled in
+// production; see its own header for the correction) — this one actually
+// joins against the Ledger via _getRosterForEmail_ (already used above for
+// the leader-hub API) to enforce that scoping for real.
+// ---------------------------------------------------------------------------
+function getScrReviewQueue() {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  if (!suggestionsSheet) return { success: true, suggestions: [] };
+
+  const roster   = _getRosterForEmail_(cfg, cfg.teacherEmail);
+  const myEmails = new Set(roster.map(function (s) { return s.email.toLowerCase(); }));
+  const nameByEmail = {};
+  roster.forEach(function (s) { nameByEmail[s.email.toLowerCase()] = s.name; });
+
+  const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
+  const compTextMap   = getCompetencyTextMap_(registrySheet);
+
+  const data = suggestionsSheet.getDataRange().getValues();
+  const results = [];
+  for (let i = 1; i < data.length; i++) {
+    const row   = data[i];
+    const email = String(row[DASHBOARD_SCRS.STUDENT_EMAIL]).trim();
+    if (!myEmails.has(email.toLowerCase())) continue; // real per-teacher scoping — Open Items #4
+
+    const status = String(row[DASHBOARD_SCRS.STATUS]).trim();
+    if (status !== "SUGGESTED" && status !== "INSUFFICIENT_EVIDENCE") continue;
+
+    const compId = String(row[DASHBOARD_SCRS.COMPETENCY_ID]).trim();
+    results.push({
+      studentEmail:    email,
+      studentName:     nameByEmail[email.toLowerCase()] || email,
+      competencyId:    compId,
+      competencyText:  compTextMap[compId] || "(text not found in registry)",
+      suggestedRating: row[DASHBOARD_SCRS.SUGGESTED_RATING] === "" ? null : Number(row[DASHBOARD_SCRS.SUGGESTED_RATING]),
+      metCount:        Number(row[DASHBOARD_SCRS.MET_COUNT]) || 0,
+      notMetCount:     Number(row[DASHBOARD_SCRS.NOT_MET_COUNT]) || 0,
+      partialCount:    Number(row[DASHBOARD_SCRS.PARTIAL_COUNT]) || 0,
+      status:          status,
+    });
+  }
+
+  results.sort(function (a, b) {
+    return a.studentName.localeCompare(b.studentName) || a.competencyId.localeCompare(b.competencyId);
+  });
+
+  return { success: true, suggestions: results, generatedAt: new Date().toISOString() };
+}
+
+// ---------------------------------------------------------------------------
+// _generateScrDecisionId_ — same "SCD-" + yyyyMMdd + "-" + 4-hex-char shape
+// as 30_SCRSuggestionEngine.js's own generateDecisionId_(), duplicated for
+// the same cross-project reason as DASHBOARD_SCRS above — both writers of
+// SCRDecisionLog should produce IDs in one recognizable format even though
+// they're two independent GAS projects that can't share a literal function.
+// ---------------------------------------------------------------------------
+function _generateScrDecisionId_() {
+  const now  = new Date();
+  const yyyy = now.getFullYear();
+  const mm   = String(now.getMonth() + 1).padStart(2, "0");
+  const dd   = String(now.getDate()).padStart(2, "0");
+  const hex  = Math.floor(Math.random() * 0xffff).toString(16).toUpperCase().padStart(4, "0");
+  return "SCD-" + yyyy + mm + dd + "-" + hex;
+}
+
+// ---------------------------------------------------------------------------
+// _recordScrDecision_ — shared logic for confirm and override, mirroring
+// 30_SCRSuggestionEngine.js's recordDecision_() shape exactly (freeze on
+// decision, reject re-deciding, evidence-snapshot denormalization), plus
+// one check that file doesn't need: a real roster-ownership check, since
+// this project (unlike central-ledger) is reachable by exactly one
+// teacher's deployment but reads a Ledger shared across every teacher.
+// ---------------------------------------------------------------------------
+function _recordScrDecision_(cfg, studentEmail, competencyId, overrideRating, decisionType) {
+  const roster   = _getRosterForEmail_(cfg, cfg.teacherEmail);
+  const myEmails = new Set(roster.map(function (s) { return s.email.toLowerCase(); }));
+  if (!myEmails.has(String(studentEmail || "").toLowerCase())) {
+    return { success: false, error: "This student is not on your roster." };
+  }
+
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+  const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
+  if (!suggestionsSheet || !decisionLogSheet) {
+    return { success: false, error: "SCRSuggestions or SCRDecisionLog tab not found." };
+  }
+
+  const data = suggestionsSheet.getDataRange().getValues();
+  let rowIndex = -1;
+  let row = null;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][DASHBOARD_SCRS.STUDENT_EMAIL]).trim().toLowerCase() === studentEmail.toLowerCase() &&
+        String(data[i][DASHBOARD_SCRS.COMPETENCY_ID]).trim() === competencyId) {
+      rowIndex = i + 1;
+      row = data[i];
+      break;
+    }
+  }
+  if (!row) {
+    return { success: false, error: "No suggestion row found for " + studentEmail + " / " + competencyId + "." };
+  }
+
+  const currentStatus = String(row[DASHBOARD_SCRS.STATUS]).trim();
+  if (currentStatus === "CONFIRMED" || currentStatus === "OVERRIDDEN") {
+    return { success: false, error: "This competency has already been decided (" + currentStatus + ")." };
+  }
+
+  const suggestedRating = row[DASHBOARD_SCRS.SUGGESTED_RATING] === "" ? null : Number(row[DASHBOARD_SCRS.SUGGESTED_RATING]);
+
+  if (decisionType === "CONFIRMED" && suggestedRating === null) {
+    return { success: false, error: "Cannot confirm — there is no suggestion to confirm (status is INSUFFICIENT_EVIDENCE). Use an override instead." };
+  }
+
+  const finalRating = decisionType === "CONFIRMED" ? suggestedRating : Number(overrideRating);
+  if (decisionType === "OVERRIDDEN" && (!Number.isInteger(finalRating) || finalRating < 1 || finalRating > 5)) {
+    return { success: false, error: "Rating must be an integer from 1 to 5." };
+  }
+
+  const now = new Date();
+  suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.STATUS + 1).setValue(decisionType);
+  suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_RATING + 1).setValue(finalRating);
+  suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_AT + 1).setValue(now);
+  suggestionsSheet.getRange(rowIndex, DASHBOARD_SCRS.CONFIRMED_BY + 1).setValue(cfg.teacherEmail);
+
+  const evidenceSnapshot = "MET:" + row[DASHBOARD_SCRS.MET_COUNT] +
+    " NOT_MET:" + row[DASHBOARD_SCRS.NOT_MET_COUNT] +
+    " PARTIALLY_MET:" + row[DASHBOARD_SCRS.PARTIAL_COUNT];
+
+  decisionLogSheet.appendRow([
+    _generateScrDecisionId_(),
+    studentEmail,
+    competencyId,
+    suggestedRating === null ? "" : suggestedRating,
+    finalRating,
+    decisionType,
+    now,
+    cfg.teacherEmail,
+    evidenceSnapshot,
+    "", // archive_status — blank until _archiveExpiredScrDecisions_() (Script 30) ages it out
+  ]);
+
+  SpreadsheetApp.flush();
+  Logger.log("[S07] SCR decision recorded — " + decisionType + " | " + studentEmail +
+    " | " + competencyId + " | final rating: " + finalRating);
+
+  return { success: true, finalRating: finalRating, decisionType: decisionType };
+}
+
+// Exposed entry points, called via google.script.run from the SCR Review
+// modal's client JS below. Both gate on _isAuthorizedTeacher_ first,
+// matching every other exported function in this file (see the ACCESS
+// MODEL note at the top of this file).
+function teacherConfirmScrRating(studentEmail, competencyId) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _recordScrDecision_(cfg, studentEmail, competencyId, null, "CONFIRMED");
+}
+
+function teacherOverrideScrRating(studentEmail, competencyId, rating) {
+  const cfg = getConfig_();
+  if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
+  return _recordScrDecision_(cfg, studentEmail, competencyId, rating, "OVERRIDDEN");
+}
+
 // ── Weekly parent reports (36_WeeklyParentReport.js) ────────────────────────
 // Two more google.script.run entry points, same _isAuthorizedTeacher_ gate as
 // everything else exported from this file.
@@ -1179,6 +1394,10 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
        list; nothing is sent until the teacher enters an address and
        presses Send on one student. -->
   <button id="parent-report-btn" onclick="openParentReportModal()">✉ Parent Reports</button>
+  <!-- SCR review (Open Items #4 — 30_SCRSuggestionEngine.js). Opens a
+       review queue of AI-suggested Module 5 competency ratings; nothing
+       is decided until the teacher confirms or overrides one. -->
+  <button id="scr-review-btn" onclick="openScrReviewModal()">🎓 SCR Reviews</button>
   <button id="refresh-btn" onclick="loadData()">↻ Refresh</button>
   <label for="term-filter" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap">Filter by term</label>
   <select id="term-filter" onchange="loadData()" aria-label="Filter by term">
@@ -1371,6 +1590,23 @@ footer{text-align:center;padding:16px;font-size:11px;color:var(--text-secondary)
       <button class="modal-close" onclick="closeParentReportModal()" aria-label="Close">×</button>
     </div>
     <div class="modal-body" id="parent-report-modal-body">
+      <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
+    </div>
+  </div>
+</div>
+
+<!-- SCR Review modal — Open Items #4 (30_SCRSuggestionEngine.js). List-based
+     like the Weekly Parent Reports modal above — an SCR queue entry is
+     keyed on student+competency, not a single roster row, so this reuses
+     that per-row-status pattern rather than the single-item Pending
+     Review modal's pattern. -->
+<div class="modal-backdrop" id="scr-review-modal-backdrop" onclick="if(event.target===this)closeScrReviewModal()">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="scr-review-modal-title" style="max-width:720px">
+    <div class="modal-header">
+      <h2 id="scr-review-modal-title">SCR reviews</h2>
+      <button class="modal-close" onclick="closeScrReviewModal()" aria-label="Close">×</button>
+    </div>
+    <div class="modal-body" id="scr-review-modal-body">
       <p style="font-size:13px;color:var(--text-secondary)">Loading…</p>
     </div>
   </div>
@@ -1792,6 +2028,143 @@ function submitParentReportSend(i) {
       msg.textContent = e && e.message ? e.message : "Could not send — try again.";
     })
     .teacherSendWeeklyParentReport(report.studentEmail, addr);
+}
+
+// ── SCR Review modal (Open Items #4) ────────────────────────────────────────
+// List-based like the Weekly Parent Reports modal just above — an SCR queue
+// entry is keyed on student+competency, not a single roster row, so this
+// reuses that per-row-status pattern rather than the single-item Pending
+// Review modal's pattern (openScoreReview() etc. above).
+let _scrQueue = [];
+
+function openScrReviewModal() {
+  const backdrop = document.getElementById("scr-review-modal-backdrop");
+  backdrop.classList.add("open");
+  document.addEventListener("keydown", _modalTrapKeydown);
+  document.getElementById("scr-review-modal-body").innerHTML =
+    '<p style="font-size:13px;color:var(--text-secondary)">Loading…</p>';
+  google.script.run
+    .withSuccessHandler(renderScrReviewModal)
+    .withFailureHandler(function(e) {
+      document.getElementById("scr-review-modal-body").innerHTML =
+        '<p style="color:#d93025;font-size:13px">Could not load: ' +
+        esc(e && e.message ? e.message : "unknown error") + '</p>';
+    })
+    .getScrReviewQueue();
+}
+
+function closeScrReviewModal() {
+  const backdrop = document.getElementById("scr-review-modal-backdrop");
+  backdrop.classList.remove("open");
+  document.removeEventListener("keydown", _modalTrapKeydown);
+}
+
+function renderScrReviewModal(data) {
+  const body = document.getElementById("scr-review-modal-body");
+  if (!data || !data.success) {
+    body.innerHTML = '<p style="color:#d93025;font-size:13px">' +
+      esc((data && data.error) || "Could not load SCR reviews.") + '</p>';
+    return;
+  }
+  _scrQueue = data.suggestions || [];
+
+  if (!_scrQueue.length) {
+    body.innerHTML = '<p style="font-size:13px;color:var(--text-secondary)">' +
+      'No competency ratings are waiting on your review right now.</p>';
+    return;
+  }
+
+  let html = '<p style="font-size:12.5px;color:var(--text-secondary);margin-bottom:14px">' +
+    esc(_scrQueue.length) + ' competenc' + (_scrQueue.length === 1 ? 'y' : 'ies') +
+    ' waiting on your review.</p>';
+
+  _scrQueue.forEach(function(item, i) {
+    const suggested = item.suggestedRating;
+    const evidenceNote = 'Evidence so far: ' + esc(item.metCount) + ' met, ' +
+      esc(item.notMetCount) + ' not met, ' + esc(item.partialCount) + ' partially met.';
+
+    html +=
+      '<div style="border:1px solid #e8eaed;border-radius:8px;padding:14px;margin-bottom:12px">' +
+        '<div style="font-weight:600;font-size:14px">' + esc(item.studentName) + '</div>' +
+        '<div style="font-size:12.5px;color:var(--text-secondary);margin-bottom:6px">' +
+          esc(item.competencyText) + ' (' + esc(item.competencyId) + ')</div>' +
+        '<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px">' + evidenceNote + '</div>' +
+        (suggested
+          ? '<p style="font-size:13px;margin-bottom:10px">AI-suggested rating: <strong>' + esc(suggested) + '/5</strong></p>' +
+            '<button onclick="submitScrConfirm(' + i + ')" style="margin-right:8px;background:#9334e6;color:white;' +
+            'border:none;border-radius:4px;padding:6px 14px;font-size:13px;font-weight:600;cursor:pointer">Confirm ' +
+            esc(suggested) + '/5</button>'
+          : '<p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Not enough evidence yet for ' +
+            'an AI suggestion — enter a rating directly below if you\\'re ready to decide.</p>') +
+        '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px">' +
+          '<label for="scr-override-' + i + '" style="font-size:12.5px">Or enter 1–5</label>' +
+          '<input id="scr-override-' + i + '" type="number" min="1" max="5" step="1" ' +
+            'style="width:70px;padding:6px 8px;border:1px solid #dadce0;border-radius:4px;font-size:13px">' +
+          '<div class="hint" style="font-size:11px;color:var(--text-secondary)">5 is reserved for your own judgment.</div>' +
+          '<button onclick="submitScrOverride(' + i + ')" style="background:none;border:1px solid #9334e6;color:#9334e6;' +
+            'border-radius:4px;padding:5px 13px;font-size:13px;font-weight:500;cursor:pointer">Submit</button>' +
+        '</div>' +
+        '<div id="scr-msg-' + i + '" role="status" aria-live="polite" style="font-size:12.5px;margin-top:8px"></div>' +
+      '</div>';
+  });
+
+  body.innerHTML = html;
+}
+
+function submitScrConfirm(i) {
+  const item = _scrQueue[i];
+  if (!item) return;
+  const msg = document.getElementById("scr-msg-" + i);
+  msg.style.color = "var(--text-secondary)";
+  msg.textContent = "Saving…";
+  google.script.run
+    .withSuccessHandler(function(res) { _handleScrDecisionResult(res, i); })
+    .withFailureHandler(function(e) {
+      msg.style.color = "#d93025";
+      msg.textContent = e && e.message ? e.message : "Could not save — try again.";
+    })
+    .teacherConfirmScrRating(item.studentEmail, item.competencyId);
+}
+
+function submitScrOverride(i) {
+  const item  = _scrQueue[i];
+  if (!item) return;
+  const input = document.getElementById("scr-override-" + i);
+  const msg   = document.getElementById("scr-msg-" + i);
+  const val   = input ? parseInt(input.value, 10) : NaN;
+  if (!Number.isInteger(val) || val < 1 || val > 5) {
+    msg.style.color = "#d93025";
+    msg.textContent = "Enter a whole number from 1 to 5.";
+    return;
+  }
+  msg.style.color = "var(--text-secondary)";
+  msg.textContent = "Saving…";
+  google.script.run
+    .withSuccessHandler(function(res) { _handleScrDecisionResult(res, i); })
+    .withFailureHandler(function(e) {
+      msg.style.color = "#d93025";
+      msg.textContent = e && e.message ? e.message : "Could not save — try again.";
+    })
+    .teacherOverrideScrRating(item.studentEmail, item.competencyId, val);
+}
+
+// On success, the decided item is removed from the queue and the whole
+// list re-rendered from the shrunk array — the smallest state change that
+// reflects what just happened, same preference as the roster refresh after
+// a turn-in decision above, without a second round-trip to re-fetch a
+// queue this client already knows the new shape of.
+function _handleScrDecisionResult(res, i) {
+  const msg = document.getElementById("scr-msg-" + i);
+  if (!res || !res.success) {
+    if (msg) {
+      msg.style.color = "#d93025";
+      msg.textContent = (res && res.error) || "Could not save — try again.";
+    }
+    return;
+  }
+  showToast("✅ SCR rating recorded — " + res.finalRating + "/5");
+  _scrQueue.splice(i, 1);
+  renderScrReviewModal({ success: true, suggestions: _scrQueue });
 }
 
 // Per-term client cache — switching the term filter back and forth used to
