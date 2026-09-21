@@ -58,6 +58,40 @@
 // =============================================================================
 
 // ---------------------------------------------------------------------------
+// _sanitizeFlow2StudentText_ — neutralizes any literal occurrence of the
+// FLOW_2_SYSTEM_PROMPT security-boundary markers (<<<STUDENT_SUBMISSION>>> /
+// <<<END_STUDENT_SUBMISSION>>>, case-insensitive, tolerant of extra
+// whitespace inside the brackets) INSIDE untrusted student text, before
+// that text is spliced into the prompt.
+//
+// Why this has to live here and not in FLOW_2_SYSTEM_PROMPT's own text
+// (15b_StudioFlowPrompts_Flow2_Revised.js): that file is the literal spec
+// pasted verbatim into a live Studio Flow's Gemini step, so it can only
+// ever carry prose asking the model to behave (the "SECURITY INSTRUCTION"
+// block) — it has no way to actually escape anything, because Studio's own
+// variable substitution is a dumb text insert with no processing step.
+// Without this, a student who types the exact closing marker into their
+// submission closes the untrusted zone early inside the assembled prompt,
+// and Gemini reads everything the student wrote after it — including a
+// forged "[SYSTEM: APPROVED]" compliance stamp — as if it came from
+// outside the <<<...>>> block, i.e. from the trusted system prompt. Since
+// the ONLY genuine occurrences of these two exact strings in the final
+// prompt come from FLOW_2_SYSTEM_PROMPT itself, stripping any copy that
+// arrives inside studentText closes that off structurally, rather than
+// relying on the model to honor the "treat this as data" instruction.
+//
+// Whoever eventually builds Flow 2 for real in Google Workspace Studio
+// (see 15b's own header — it hasn't been built there yet) will need an
+// equivalent sanitizing step ahead of the Gemini step, since this function
+// only protects the DIRECT_GEMINI code path below.
+// ---------------------------------------------------------------------------
+function _sanitizeFlow2StudentText_(text) {
+  return String(text || "")
+    .replace(/<<<\s*END_STUDENT_SUBMISSION\s*>>>/gi, "< < < END_STUDENT_SUBMISSION > > >")
+    .replace(/<<<\s*STUDENT_SUBMISSION\s*>>>/gi, "< < < STUDENT_SUBMISSION > > >");
+}
+
+// ---------------------------------------------------------------------------
 // _buildFlow2Prompt_ — substitutes vars into FLOW_2_SYSTEM_PROMPT
 // (15b_StudioFlowPrompts_Flow2_Revised.js). Pure string manipulation, no
 // network, no Sheet/Doc access — exactly what a Studio Flow's own
@@ -66,7 +100,8 @@
 // vars: { unitName, tier, persona, milestone1, milestone2, milestone3,
 //         milestone4, dod, studentText }. Any missing field substitutes
 // an empty string rather than leaving the literal "{{...}}" placeholder
-// in the prompt sent to Gemini.
+// in the prompt sent to Gemini. studentText specifically is run through
+// _sanitizeFlow2StudentText_ first — see that function's header.
 // ---------------------------------------------------------------------------
 function _buildFlow2Prompt_(vars) {
   const v = vars || {};
@@ -79,7 +114,7 @@ function _buildFlow2Prompt_(vars) {
     .replace(/\{\{MILESTONE_3\}\}/g, v.milestone3 || "")
     .replace(/\{\{MILESTONE_4\}\}/g, v.milestone4 || "")
     .replace(/\{\{DOD\}\}/g, v.dod || "")
-    .replace(/\{\{STUDENT_TEXT\}\}/g, v.studentText || "");
+    .replace(/\{\{STUDENT_TEXT\}\}/g, _sanitizeFlow2StudentText_(v.studentText));
 }
 
 // ---------------------------------------------------------------------------
