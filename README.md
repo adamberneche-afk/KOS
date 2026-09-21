@@ -316,3 +316,22 @@ from `tools/clasp-sync/sync.js` and CI refuses a build with an unmerged
 addendum. The two named-but-not-uploaded files this section used to list
 (`27_LessonFrameGenerator` in cas-ccps, the `PERSONA_*` duplicates in
 kos-personal) are both in the repo now.
+
+## Floor check 10 — secrets-doctor
+
+`scripts/secrets-doctor.mjs` confirms every secret this repo's workflows reference is actually configured and non-empty. It is a **byte-identical copy** of the canonical file in the Mothership hub (see that repo's `CICD_FLOOR.md`) and must not be edited here — a change belongs upstream.
+
+The expected list is **derived from the workflow files**, never hand-written. That is the whole design: the two doctors that predate it, in Mothership and TSO, name their secrets in source, and TSO's has already drifted — it checks three while its workflows reference five. A list someone has to remember to extend is the same shape as the bug.
+
+| command | does |
+|---|---|
+| `node scripts/secrets-doctor.mjs --sync` | regenerates the env block in `.github/workflows/secrets-doctor.yml` |
+| `node scripts/secrets-doctor.mjs --check` | fails if that block has fallen behind, in either direction |
+
+The workflow splits by what each half needs to see. Its `drift` job runs on **every pull request** with no access to the secrets context at all, so a workflow that starts needing a new secret turns a PR red until the block is regenerated. Its `probe` job runs on dispatch only and receives one boolean per secret — `${{ secrets.NAME != '' }}`, compared inside the expression — so a job is shipped only the secret it names and no value ever reaches the environment.
+
+Four secrets are in scope here. `APPS_SCRIPT_URL` and `TENANT_CALLER_KEY` (`call-hub.yml`) are required. `CAS_SANDBOX_SCRIPT_IDS` and `CLASP_SANDBOX_CREDENTIALS` are declared optional in `.github/floor.json`, because `gas-lint.yml`'s `check-sandbox-secrets` job turns them into a `configured` output that every downstream job gates on — absent simply means the sandbox push lane is off, which is a supported state.
+
+Worth noting for anyone extending the scanner: `gas-lint.yml` explains itself with the phrase *"a bare `secrets.X` reference inside an `if:` conditional"*, and `needs.check-sandbox-secrets.outputs.configured` contains the substring `secrets.outputs`. A naive scan reports two credentials named `X` and `outputs` that nobody needs. Both were found against this repo while the extractor was being written, and both are pinned by tests upstream — comments are stripped and a left boundary is required.
+
+Not adopted here: floor checks 6 and 9. KOS's own `tools/doc-currency` and `tools/coverage-gaps` predate the floor and are the versions Mothership's were built **from**, so they keep their own configuration and are not driven from `.github/floor.json`.
