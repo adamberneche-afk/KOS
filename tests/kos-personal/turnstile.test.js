@@ -195,6 +195,57 @@ test('runMatrixTurnstile: escalates to STUDIO_TIMEOUT once stale resets exceed T
   assert.equal(after['UID-1'].retries, threshold + 1);
 });
 
+// STUDIO_TIMEOUT means "no Studio flow ever completed this row", but the
+// retry budget has two ways to run out. A row the audit gate rejected is
+// reverted to PENDING_FLOW (3_Queue_Processor.gs), re-enters this loop, and
+// spends its remaining retries on staleness — dying here labelled as if
+// Studio had never answered, when Studio answered and the Auditor refused
+// the output. Live: 55 AUDIT_LOG rejections, every one ending at
+// STUDIO_TIMEOUT, AUDIT_REJECTED never once reached.
+const AUDIT_LOG_HEADERS = ['Timestamp', 'Payload_UID', 'Staging_Row', 'Retry_Count',
+  'Audit_Status', 'Unverified_Claims_Count', 'Trace_Log', 'Rejected_Payload'];
+
+function seedAuditRejection(exported, ss, uid) {
+  const log = tab(ss, exported.CFG.AUDIT_LOG_SHEET, AUDIT_LOG_HEADERS);
+  log.appendRow([new Date(), uid, 2, 1, 'FAILED', 3, '[]', '{}']);
+  return log;
+}
+
+test('runMatrixTurnstile: a row AUDIT_LOG has rejected terminates as AUDIT_REJECTED, not STUDIO_TIMEOUT', () => {
+  const { exported, sandbox } = load();
+  const threshold = exported.CFG.TURNSTILE_STUCK_THRESHOLD;
+  const { ss, staging } = seed(exported, sandbox, [
+    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: threshold },
+  ]);
+  seedAuditRejection(exported, ss, 'UID-1');
+  const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
+  exported._writeReleaseMap({ 'UID-1': new Date().getTime() - staleMs - 1000 });
+
+  exported.runMatrixTurnstile();
+
+  const after = statusesByUid(staging);
+  assert.equal(after['UID-1'].status, 'AUDIT_REJECTED',
+    'Studio answered this row — the audit rejected it, and the status must say so');
+  assert.equal(after['UID-1'].retries, threshold + 1);
+});
+
+test('runMatrixTurnstile: a row with no audit history still terminates as STUDIO_TIMEOUT', () => {
+  const { exported, sandbox } = load();
+  const threshold = exported.CFG.TURNSTILE_STUCK_THRESHOLD;
+  // An AUDIT_LOG exists and holds a rejection for a DIFFERENT row — the
+  // lookup must be per-UID, not "has anything ever been rejected".
+  const { ss, staging } = seed(exported, sandbox, [
+    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: threshold },
+  ]);
+  seedAuditRejection(exported, ss, 'SOMEONE-ELSE');
+  const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
+  exported._writeReleaseMap({ 'UID-1': new Date().getTime() - staleMs - 1000 });
+
+  exported.runMatrixTurnstile();
+
+  assert.equal(statusesByUid(staging)['UID-1'].status, 'STUDIO_TIMEOUT');
+});
+
 test('runMatrixTurnstile: escalated STUDIO_TIMEOUT rows free their concurrency slot for others', () => {
   const { exported, sandbox } = load();
   const threshold = exported.CFG.TURNSTILE_STUCK_THRESHOLD;
