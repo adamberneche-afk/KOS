@@ -441,11 +441,22 @@ function generateDecisionId_() {
 }
 
 // ---------------------------------------------------------------------------
-// getSCRDashboardData_ — ENTRY POINT for Script 07's teacher-facing view.
-// Returns all NON-FROZEN suggestions (status = SUGGESTED or
-// INSUFFICIENT_EVIDENCE) for the calling teacher's students, grouped by
-// student, with competency text denormalized for readability — same
-// rationale as every other denormalized log in this codebase.
+// getSCRDashboardData_ — NOT Script 07's actual entry point (correcting
+// this function's own former claim — Open Items #4). Script 07
+// (cas-ccps:teacher-dashboard) is a separate Apps Script project from this
+// one (cas-ccps:central-ledger, see tools/gas-lint/project-map.json) with
+// no shared runtime, so it structurally cannot call this function. The
+// dashboard's real, teacher-scoped entry point is getScrReviewQueue() in
+// 07_TeacherDashboard.js, a from-scratch reimplementation of this same
+// query plus the per-teacher roster filter this function has never
+// actually had, despite once claiming to scope to "the calling teacher's
+// students" — the loop below returns every non-frozen suggestion for
+// EVERY teacher's students, with no filter at all. Kept here as an
+// untested, uncalled-in-production utility (still exercised only by
+// tests/cas-ccps/scr-suggestion-engine.test.js) in case a future
+// central-ledger-bound admin view wants an all-teachers version of this
+// same data — do not assume it is teacher-scoped without adding that
+// filter first.
 // ---------------------------------------------------------------------------
 function getSCRDashboardData_() {
   const cfg = getConfig_();
