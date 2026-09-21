@@ -15,6 +15,7 @@ jobs:
       contents: read
       actions: read
       issues: write
+      pull-requests: read  # check 3 lists open PRs to find ones that have gone quiet
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v7
@@ -24,7 +25,7 @@ jobs:
       - name: Install actionlint
         run: bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
 
-      - name: Check every workflow file is valid and every scheduled workflow's last run succeeded
+      - name: Check workflow validity, scheduled-run health, and open PRs that have gone quiet
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
