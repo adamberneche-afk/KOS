@@ -100,6 +100,55 @@ test('_archiveRawLog_: a large multi-line log still reconstructs exactly, across
   assert.equal(doc.getBody().getText(), rawText);
 });
 
+// _archiveRawLog_() used to commit its batches with DocumentApp.flush(), a
+// method DocumentApp does not have — only SpreadsheetApp does. It passed
+// every test because the sandbox defined one anyway, while production threw
+// "DocumentApp.flush is not a function" 57 times and, on writes too small to
+// reach the first commit, the "Too many changes applied before saving
+// document" error the batching existed to prevent 180 more. Google's own
+// text for that one prescribes the fix: save in smaller batches using
+// Document.saveAndClose(), then reopen.
+test('sandbox: DocumentApp does not fabricate a flush() the real API lacks', () => {
+  const { sandbox } = load();
+  assert.equal(typeof sandbox.DocumentApp.flush, 'undefined',
+    'a mock that invents a method cannot fail the one test that would catch its use');
+  assert.equal(typeof sandbox.SpreadsheetApp.flush, 'function',
+    'SpreadsheetApp.flush() is real and must stay');
+});
+
+test('_archiveRawLog_: commits with saveAndClose()+reopen between batches, not a non-existent flush', () => {
+  const { exported, sandbox } = load();
+  const rawFolder = sandbox.DriveApp.getRootFolder().createFolder('RAW_EXHAUST');
+  sandbox.__exported.CFG.ARCHIVE_WRITE_CHUNK_CHARS = 40;
+  sandbox.__exported.CFG.ARCHIVE_WRITE_FLUSH_EVERY = 2;
+
+  let saves = 0;
+  const realOpen = sandbox.DocumentApp.openById;
+  const instrument = (doc) => {
+    if (!doc._saveInstrumented) {
+      const realSave = doc.saveAndClose.bind(doc);
+      doc.saveAndClose = () => { saves++; return realSave(); };
+      doc._saveInstrumented = true;
+    }
+    return doc;
+  };
+  const realCreate = sandbox.DocumentApp.create;
+  sandbox.DocumentApp.create = (t) => instrument(realCreate.call(sandbox.DocumentApp, t));
+  sandbox.DocumentApp.openById = (id) => instrument(realOpen.call(sandbox.DocumentApp, id));
+
+  const rawText = Array.from({ length: 30 }, (_, i) => 'session log line number ' + i).join('\n');
+  exported._archiveRawLog_(rawFolder, '[RAW]_commits', rawText);
+
+  sandbox.DocumentApp.create = realCreate;
+  sandbox.DocumentApp.openById = realOpen;
+
+  assert.ok(saves > 1,
+    'a multi-batch write commits mid-write, not only once at the end (saves=' + saves + ')');
+  const file = rawFolder.getFiles().next();
+  assert.equal(sandbox.DocumentApp.openById(file.getId()).getBody().getText(), rawText,
+    'and the reopened handle still reconstructs the text exactly');
+});
+
 test('_archiveRawLog_: a no-op (returns false, writes nothing new) if the name already exists', () => {
   const { exported, sandbox } = load();
   const rawFolder = sandbox.DriveApp.getRootFolder().createFolder('RAW_EXHAUST');

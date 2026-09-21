@@ -87,6 +87,42 @@ test('syncStudioFlowBuildSpec: column numbers and headers are derived from CI_CO
   assert.match(sourceTextRow[6], /@trigger\.SourceText/);
 });
 
+// The Auditor step had no row here at all, so the only place its prompt
+// binding was written down was STUDIO_INTEGRATION_SPEC.md's prose — and a
+// real build reached for rtp-core-router/PERSONA_AUDITOR_V5_1.md instead,
+// whose mandatory "[shield] THE AUDITOR]:" report carries no JSON. That
+// produced 95 unretryable AUDITOR_JSON_PARSE_FAILED rows against 1 success
+// in the live STUDIO_RETURN tab.
+test('syncStudioFlowBuildSpec: the Auditor step has its own prompt row naming CURATOR_AUDITOR_PROMPT.md', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.syncStudioFlowBuildSpec();
+  const ss = indexSpreadsheet(exported, sandbox);
+  const rows = ss.getSheetByName(exported.SFBS_TAB).getDataRange().getValues();
+
+  const auditorRow = rows.find((r) => r[0] === 'Curator' && r[1] === 'prompt (auditor)');
+  assert.ok(auditorRow, 'the Auditor pass has its own row, not just a mention in the Curator note');
+  assert.equal(auditorRow[5], 'CURATOR_AUDITOR_PROMPT.md');
+  assert.match(auditorRow[6], /CURATOR_AUDITOR_SYSTEM_PROMPT/,
+    'names the FlowPrompts chip to bind, so the binding is generated rather than hand-copied');
+});
+
+test('syncStudioFlowBuildSpec: the Auditor row states the raw-JSON contract and warns off the chat persona', () => {
+  const { exported, sandbox } = load();
+  indexSpreadsheet(exported, sandbox);
+  exported.syncStudioFlowBuildSpec();
+  const ss = indexSpreadsheet(exported, sandbox);
+  const rows = ss.getSheetByName(exported.SFBS_TAB).getDataRange().getValues();
+  const note = rows.find((r) => r[0] === 'Curator' && r[1] === 'prompt (auditor)')[6];
+
+  assert.match(note, /PERSONA_AUDITOR_V5_1\.md/,
+    'names the exact wrong document a real build reached for');
+  assert.match(note, /AUDITOR_JSON_PARSE_FAILED/,
+    'names the failure a mis-bound Auditor actually produces');
+  assert.match(note, /one\s+raw JSON object/,
+    'states the output contract rather than pointing at prose for it');
+});
+
 test('syncStudioFlowBuildSpec: STUDIO_RETURN rows say who owns each column, harvest columns marked EMPTY', () => {
   const { exported, sandbox } = load();
   indexSpreadsheet(exported, sandbox);
