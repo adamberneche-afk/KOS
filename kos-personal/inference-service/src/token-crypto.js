@@ -5,15 +5,24 @@
 //
 // WHY THIS EXISTS: users.refresh_token / users.access_token were stored
 // as plaintext TEXT (see sql/schema.sql). A refresh token is a
-// long-lived bearer credential for the FULL Drive scope this service
-// asks every user to grant (google.js's getAuthUrl requests
-// auth/drive, not auth/drive.file) — anyone holding a database dump, a
-// backup, or a leaked log line carrying one can read and write that
-// user's entire Drive indefinitely, with no password prompt, no 2FA
-// challenge, and no further action from the user. Encrypting at rest
-// means a stolen dump alone is not enough: the attacker also needs
-// TOKEN_ENCRYPTION_KEY, which lives in the process environment or a
-// secret manager, never in the database.
+// long-lived bearer credential for whatever this service asks every user
+// to grant — anyone holding a database dump, a backup, or a leaked log
+// line carrying one can act as that user indefinitely, with no password
+// prompt, no 2FA challenge, and no further action from the user.
+// Encrypting at rest means a stolen dump alone is not enough: the
+// attacker also needs TOKEN_ENCRYPTION_KEY, which lives in the process
+// environment or a secret manager, never in the database.
+//
+// UPDATE (Open Items #6): the scope this line originally warned about —
+// google.js's getAuthUrl requesting the full 'auth/drive' scope, read/write
+// to the user's entire Drive, for a service that never calls the Drive
+// API at all — is fixed; see that function's own comment. A stolen,
+// decrypted token today is still a real compromise (read/write to every
+// Google Doc and Sheet the user can access, not just their session
+// documents), just a narrower one than "their entire Drive." This applies
+// only to tokens issued after the fix — a token already granted under the
+// old scope keeps that scope until the user disconnects and reconnects,
+// since Google doesn't retroactively narrow an already-granted grant.
 //
 // AES-256-GCM with a fresh random 12-byte IV per encryption. The GCM
 // auth tag is stored alongside the ciphertext, so a tampered value

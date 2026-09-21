@@ -62,6 +62,29 @@ async function getAuthClientForUser(user) {
  *                         attack this closes).
  * @returns {string} Authorization URL
  */
+// SCOPE LIST (Open Items #6 — narrowed from the original 'auth/drive').
+// This service was requesting full Drive access (read/write to every file
+// in the user's Drive — photos, PDFs, other apps' files, all of it) even
+// though nothing in this codebase ever calls the Drive API: grep the whole
+// service for `google.drive(`/`drive.files.` and it isn't there. Every
+// real call is `google.docs()` (readDocumentText/writeDocumentContent,
+// below) or `google.sheets()` (setFlowComplete/readOperatorContext), which
+// are authorized by the `documents`/`spreadsheets` scopes already in this
+// list on their own — Drive access adds nothing those two don't already
+// cover for the file types this service actually touches.
+//
+// Deliberately NOT swapped for 'auth/drive.file' either, which was this
+// item's original proposed fix (see kos-personal/CHANGELOG.md's own
+// writeup). drive.file only grants access to files this app created or
+// that the user opened through an app-scoped picker — neither ever
+// happens here, since every session document is created by a separate
+// Apps Script project (10_Turnstile.gs's hand-off) that this service
+// never touches via Drive at all. Requesting drive.file would have added
+// a scope that grants nothing real, same as 'drive' does today, just a
+// smaller nothing. Dropping Drive access entirely is both safer (Open
+// Items #6's actual goal) and the only version of this fix verified not
+// to break the one thing this service exists to do: read and write the
+// user's session Doc via the Docs API.
 function getAuthUrl(state) {
   const oauth2 = makeOAuthClient();
   return oauth2.generateAuthUrl({
@@ -69,7 +92,6 @@ function getAuthUrl(state) {
     prompt:        'consent',  // forces refresh_token to be returned every time
     state:         state,
     scope: [
-      'https://www.googleapis.com/auth/drive',
       'https://www.googleapis.com/auth/spreadsheets',
       'https://www.googleapis.com/auth/documents',
       'https://www.googleapis.com/auth/userinfo.email',
