@@ -72,9 +72,26 @@ function _reportError(context, error, ui) {
 
   console.error('[ERROR] ' + context + ': ' + message);
 
+  // One event, one row. An error that is reported and then rethrown reaches
+  // a caller whose own catch reports it again — two ERROR_LOG rows for one
+  // thing that happened, under two different contexts, with nothing tying
+  // them together. _coldEngineGate() does exactly this and produced 7,500
+  // matched pairs in the live log before anyone noticed they were pairs.
+  // The flag rides the error object, so it survives the rethrow that causes
+  // the problem and nothing else needs to know about it; the more specific
+  // context wins, because whoever threw it reports first. Console output is
+  // deliberately NOT suppressed — an execution log reading twice is fine,
+  // and losing the line at the catch site would make the throw harder to
+  // follow, not easier.
+  // Scoped to the sheet write alone, deliberately: a HITL caller that
+  // passes `ui` still gets its alert below even when the row is a duplicate.
+  const alreadyLogged = !!(error && error.__kosErrorLogged);
+
   // Write to ERROR_LOG sheet — non-blocking
   try {
-    const indexId = PropertiesService.getScriptProperties().getProperty('INDEX_ID');
+    const indexId = alreadyLogged
+      ? null
+      : PropertiesService.getScriptProperties().getProperty('INDEX_ID');
     if (indexId) {
       const ss  = SpreadsheetApp.openById(indexId);
       let   log = ss.getSheetByName(CFG.ERROR_LOG_SHEET);
@@ -85,10 +102,12 @@ function _reportError(context, error, ui) {
         log.setFrozenRows(1);
       }
       log.appendRow([ts, context, message, stack, '']);
+      _markErrorLogged_(error);
     }
   } catch (sheetErr) {
     console.error('[_reportError] Could not write to ERROR_LOG: ' + sheetErr.message);
   }
+
 
   // Optional UI alert for HITL callers
   if (ui) {
@@ -99,6 +118,120 @@ function _reportError(context, error, ui) {
         ui.ButtonSet.OK
       );
     } catch (_) {}
+  }
+}
+
+/**
+ * Marks an error as already present in ERROR_LOG, so a catch further up the
+ * rethrow chain reports it to the console without adding a second row for
+ * the same event. Non-enumerable so it never shows up in a JSON.stringify()
+ * of the error, and wrapped because a frozen or primitive throw value
+ * cannot take a property — in that case the duplicate row is the acceptable
+ * outcome, not a thrown error inside the error handler itself.
+ */
+function _markErrorLogged_(error) {
+  if (!error || typeof error !== 'object') return;
+  try {
+    Object.defineProperty(error, '__kosErrorLogged', {
+      value: true, enumerable: false, writable: true, configurable: true,
+    });
+  } catch (_) { /* frozen/sealed — one extra row beats throwing in the handler */ }
+}
+
+/**
+ * Sweeps ERROR_LOG rows older than `retentionDays` into ERROR_LOG_ARCHIVE.
+ *
+ * ERROR_LOG had no retention of any kind — _reportError() appends and
+ * nothing ever removes, so the live sheet reached 17,218 rows, 87% of them
+ * one recurring condition. The two fixes above stop it refilling; this is
+ * what clears what is already there, and keeps it clear afterwards.
+ *
+ * Moves rather than deletes, the same choice archiveStagingPipeline() makes
+ * for the same reason: an error nobody has read yet is still evidence, and
+ * a sweep is not the moment to decide it is worthless. Takes the same
+ * script-wide lock, because _reportError() can append from any trigger
+ * mid-sweep and a row-shift under a concurrent write is the one way this
+ * could corrupt rather than merely annoy.
+ *
+ * Only the leading contiguous block of old rows is swept. ERROR_LOG is
+ * chronological by construction (appendRow only), so in practice that is
+ * all of them — but the sweep stops at the first row inside the retention
+ * window rather than trusting that ordering and deleting by index across
+ * anything newer. Deleting a still-relevant error to save a second pass is
+ * the wrong trade; the next run picks up whatever this one left.
+ *
+ * @param {number} [retentionDays] Defaults to CFG.ERROR_LOG_RETENTION_DAYS.
+ * @returns {{success: boolean, archived: number, remaining: number, busy?: boolean}}
+ */
+function archiveErrorLog(retentionDays) {
+  const days = Number(retentionDays) > 0
+    ? Number(retentionDays)
+    : CFG.ERROR_LOG_RETENTION_DAYS;
+
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    return { success: true, busy: true, archived: 0, remaining: 0,
+      message: 'System busy — try again in a moment.' };
+  }
+  try {
+    const ss  = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const log = ss.getSheetByName(CFG.ERROR_LOG_SHEET);
+    if (!log || log.getLastRow() < 2) {
+      console.log('[ErrorLog] Nothing to archive.');
+      return { success: true, archived: 0, remaining: 0 };
+    }
+
+    const cutoffMs = new Date().getTime() - (days * 24 * 60 * 60 * 1000);
+    const rows     = log.getRange(2, 1, log.getLastRow() - 1, 5).getValues();
+
+    let sweepCount = 0;
+    for (let i = 0; i < rows.length; i++) {
+      // Never sweep a row sendDailyErrorReport() has not sent yet, however
+      // old it is. Reported_At is what makes this function safe to call on
+      // a schedule rather than only by hand: a digest that has been failing
+      // for a month must not have its backlog quietly filed away unread.
+      if (String(rows[i][4] || '').trim() === '') break;
+      const stamped = new Date(rows[i][0]).getTime();
+      // An unparseable timestamp is swept with the block it sits in: it
+      // carries no evidence of its own age, and leaving it would stop the
+      // contiguous run dead for every future call as well.
+      if (!isNaN(stamped) && stamped >= cutoffMs) break;
+      sweepCount++;
+    }
+
+    if (sweepCount === 0) {
+      console.log('[ErrorLog] No rows older than ' + days + ' day(s).');
+      return { success: true, archived: 0, remaining: rows.length };
+    }
+
+    let archive = ss.getSheetByName(CFG.ERROR_LOG_ARCHIVE_SHEET);
+    if (!archive) {
+      archive = ss.insertSheet(CFG.ERROR_LOG_ARCHIVE_SHEET);
+      archive.appendRow(['Archived_At','Timestamp','Context','Message','Stack','Reported_At']);
+      archive.getRange('1:1').setFontWeight('bold').setBackground('#f0e2d5');
+      archive.setFrozenRows(1);
+    }
+
+    const archivedAt = Utilities.formatDate(
+      new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+    const toWrite = rows.slice(0, sweepCount).map(function (r) {
+      return [archivedAt, r[0], r[1], r[2], r[3], r[4]];
+    });
+    // One setValues() and one deleteRows(), not sweepCount of each — at
+    // 15,000 rows the per-row forms do not finish inside the 6-minute
+    // execution ceiling.
+    archive.getRange(archive.getLastRow() + 1, 1, toWrite.length, 6).setValues(toWrite);
+    log.deleteRows(2, sweepCount);
+
+    const remaining = Math.max(0, rows.length - sweepCount);
+    console.log('[ErrorLog] Archived ' + sweepCount + ' row(s) older than ' + days +
+      ' day(s) to ' + CFG.ERROR_LOG_ARCHIVE_SHEET + '; ' + remaining + ' row(s) remain.');
+    return { success: true, archived: sweepCount, remaining: remaining };
+  } catch (e) {
+    _reportError('archiveErrorLog', e, null);
+    return { success: false, archived: 0, remaining: 0, error: e.message };
+  } finally {
+    lock.releaseLock();
   }
 }
 
@@ -163,6 +296,17 @@ function _sendChatAlert(message) {
  */
 function sendDailyErrorReport() {
   try {
+    // Retention, before reading rather than after: several of the paths
+    // below return early (nothing new to report is the common case), and a
+    // sweep placed after them would run on exactly the days it was least
+    // needed. Safe here because archiveErrorLog() never touches a row that
+    // has no Reported_At — nothing this function is about to send can be
+    // swept out from under it. Failure is non-fatal: the digest matters
+    // more than the housekeeping.
+    try { archiveErrorLog(); } catch (e) {
+      console.warn('[DailyReport] Retention sweep skipped: ' + e.message);
+    }
+
     const ss       = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const logSheet = ss.getSheetByName(CFG.ERROR_LOG_SHEET);
 

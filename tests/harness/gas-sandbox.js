@@ -154,6 +154,11 @@ class FakeSheet {
   setFrozenColumns(n) { this.frozenColumns = n; return this; }
   clear() { this.rows = []; return this; }
   deleteRow(rowNum1Based) { this.rows.splice(rowNum1Based - 1, 1); }
+  // Real Apps Script API — Sheet.deleteRows(rowPosition, howMany), the
+  // bulk form of deleteRow() above. archiveErrorLog() needs it: sweeping a
+  // 15,000-row backlog one deleteRow() call at a time does not finish
+  // inside Apps Script's 6-minute ceiling.
+  deleteRows(rowNum1Based, howMany) { this.rows.splice(rowNum1Based - 1, howMany); }
   // Real Apps Script API — the sheet's used-range column count. Same
   // width calculation as getDataRange() above (the widest row seen so
   // far), 0 rather than 1 on a genuinely empty sheet (matching real
