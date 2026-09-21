@@ -1370,6 +1370,36 @@ function _archiveAuditFailure_(ss, payloadUid, sheetRow, retryCount, fullPayload
   }
 }
 
+/**
+ * The { Payload_UID: true } set of every row AUDIT_LOG has ever recorded a
+ * rejection for. Unlike the audit-retry priority set below, this is durable:
+ * that set is one-shot and is consumed the moment the Turnstile releases the
+ * row, so by the time a row exhausts its retries nothing is left to say the
+ * audit gate is what sent it back.
+ *
+ * runMatrixTurnstile() needs exactly that, and only at the moment a row is
+ * about to terminate, so it reads this lazily rather than on every run.
+ * Returns {} when AUDIT_LOG does not exist yet or cannot be read — a row
+ * then terminates as STUDIO_TIMEOUT exactly as it did before, which is the
+ * safe direction to be wrong in.
+ */
+function _readAuditRejectedUidSet_(ss) {
+  try {
+    const log = ss.getSheetByName(CFG.AUDIT_LOG_SHEET);
+    if (!log || log.getLastRow() < 2) return {};
+    const uids = log.getRange(2, 2, log.getLastRow() - 1, 1).getValues();
+    const set = {};
+    uids.forEach(function (r) {
+      const uid = String(r[0] || '').trim();
+      if (uid) set[uid] = true;
+    });
+    return set;
+  } catch (e) {
+    console.warn('[AuditRejected] Could not read AUDIT_LOG: ' + e.message);
+    return {};
+  }
+}
+
 
 // ================================================================
 // AUDIT-RETRY PRIORITY QUEUE
