@@ -2181,3 +2181,69 @@ applies normally, a fabricated one is rejected with nothing written
 Drive mocking at all: since the gate runs before any Drive call, a
 rejected case never reaches `DriveApp`. `npm test` (825/825), `gas-lint`
 and `doc-currency` (both unchanged) all clean.
+
+## SCR confirm/override is wired into the Teacher Dashboard for real (Open Items #4)
+
+`30_SCRSuggestionEngine.js`'s `recordConfirmation_`/`recordOverride_`/
+`getSCRDashboardData_` had been dead in production since the day they were
+written — nothing but
+`tests/cas-ccps/scr-suggestion-engine.test.js` ever called them, because
+that file is bound to `cas-ccps:central-ledger`, a *different* Apps Script
+project from the standalone Teacher Dashboard (`cas-ccps:teacher-dashboard`,
+see `tools/gas-lint/project-map.json`) with no shared runtime.
+`07_TeacherDashboard.js:568`'s own comment about "mirroring" that file's
+shape was honest — it mirrors the *pattern* for a same-project, different
+feature (`teacherConfirmTurnInScore`/`teacherOverrideTurnInScore`, turn-in
+scores) — but nothing anywhere actually bridged the two. Consequence:
+`36_WeeklyParentReport.js`'s "Progress so far" competency section
+(`_readConfirmedCompetencyDecisions_`, reading `SCRDecisionLog`) was
+structurally always empty, since nothing could ever populate that tab
+outside a test.
+
+**Fix: a native, from-scratch reimplementation in the dashboard project
+itself**, not a shared call — Apps Script has no cross-project function
+calls, and Script 30's own `SCRS` column map deliberately never moved to
+`00_SharedConfig.js` (its header explains why: nothing outside
+central-ledger had any business reading `SCRSuggestions`, an
+AI-values-nobody-has-acted-on-yet tab). `07_TeacherDashboard.js` now has:
+- `DASHBOARD_SCRS` — a deliberate, minimal duplicate of Script 30's `SCRS`,
+  named distinctly, schema-compat-tested against it.
+- `getScrReviewQueue()` — the dashboard's real entry point, replacing
+  `getSCRDashboardData_()` in that role. Also closes a real correctness gap
+  in that function along the way: despite its own header claiming to scope
+  results to "the calling teacher's students," it never actually filtered
+  by teacher at all. `getScrReviewQueue()` joins against the Ledger (via
+  the same `_getRosterForEmail_` the leader-hub API already uses) to
+  enforce that scoping for real. `getSCRDashboardData_()`'s header now says
+  so plainly, kept as an untested-in-that-sense-but-test-covered utility
+  rather than deleted, in case a future central-ledger-bound admin view
+  wants an all-teachers version of the same query.
+- `teacherConfirmScrRating()` / `teacherOverrideScrRating()` and the shared
+  `_recordScrDecision_()` — mirror `recordConfirmation_`/`recordOverride_`/
+  `recordDecision_`'s locked rules exactly (freeze on decision, reject
+  re-deciding, ratings 1 and 5 reserved for a teacher's own judgment, never
+  auto-suggested), plus one check Script 30 doesn't need: a real
+  roster-ownership check, since this project reads a Ledger shared across
+  every teacher's deployment.
+- A new "🎓 SCR Reviews" header button and modal, list-based like the
+  Weekly Parent Reports modal (an SCR queue entry is keyed on
+  student+competency, not a single roster row) rather than the single-item
+  Pending Review modal.
+
+**Noticed, not fixed (out of scope for this pass):** `openParentReportModal()`/
+`closeParentReportModal()` toggle a `"show"` class on `#parent-report-modal-backdrop`,
+but the CSS only makes `.modal-backdrop.open` visible — `.show` has no rule
+at all. This looks like a real, pre-existing bug independent of this
+change (the new SCR modal correctly uses `"open"`, matching the Pending
+Review and Lesson Context modals) — worth its own look separately.
+
+13 new tests in `tests/cas-ccps/teacher-dashboard-scr-review.test.js`:
+authorization and roster-ownership denial, the real per-teacher filter
+(a same-tab row belonging to a different teacher's student is excluded),
+confirm/override happy paths (SCRSuggestions frozen, SCRDecisionLog
+appended with the right evidence snapshot), the INSUFFICIENT_EVIDENCE /
+no-suggestion-to-confirm case, rating validation (1 and 5 accepted,
+out-of-range and non-integer rejected), the freeze-on-decision rule, a
+missing-row error, a missing-tab non-throw, and the `DASHBOARD_SCRS`/`SCRS`
+schema-compat check. `npm test` (1123/1123) and `gas-lint` (0 errors, same
+13 pre-existing warnings) both clean.
