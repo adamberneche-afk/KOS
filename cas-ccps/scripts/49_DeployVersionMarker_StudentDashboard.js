@@ -13,10 +13,11 @@
  *   1. Commit your real student-dashboard code change(s) normally.
  *   2. node tools/deploy-drift/stamp.js cas-ccps:student-dashboard
  *   3. Commit ONLY the resulting change to this file, by itself.
- *   4. node tools/clasp-sync/sync.js student-dashboard, then clasp push + clasp
- *      deploy from cas-ccps/.clasp-build/student-dashboard/ to actually promote it
- *      (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6) — pushing HEAD
- *      alone does not update a live web app's /exec deployment.
+ *   4. node tools/clasp-sync/sync.js student-dashboard, then from
+ *      cas-ccps/.clasp-build/student-dashboard/: clasp push, clasp version, and
+ *      clasp update-deployment <id> --versionNumber <n> to actually promote
+ *      it (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.6, or run.ps1) — pushing
+ *      HEAD alone does not update a live web app's /exec deployment.
  *
  * ONE-TIME SETUP: Script Properties → DEPLOY_DRIFT_GITHUB_TOKEN (a
  * fine-grained GitHub PAT scoped to only adamberneche-afk/KOS — see

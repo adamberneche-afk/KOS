@@ -70,7 +70,7 @@ happens once, ever, no matter how many steps get added later:
 node tools/clasp-sync/sync.js studio-steps
 cd cas-ccps/.clasp-build/studio-steps
 clasp push
-clasp deploy --description "v1"
+clasp create-deployment --description "v1"
 ```
 
 Then, once: **Apps Script editor → Deploy → Test deployments → Install
