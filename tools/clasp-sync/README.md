@@ -140,9 +140,10 @@ before it fails silently at runtime.
 
 ## What this doesn't do
 
-It doesn't run `clasp push` for you, and it doesn't know your real
+`sync.js` doesn't run `clasp push` for you, and it doesn't know your real
 script IDs — those two steps are inherently manual/credentialed and
-outside what this repo's tooling can reach into. It also doesn't solve
+outside what CI can reach into. [`run.ps1`](#runps1--the-whole-push-from-windows)
+(below) drives them from the operator's own machine instead. It also doesn't solve
 propagating an update to a teacher's already-cloned
 `rubric-response-sheet`/`teacher-matrix-sheet` copy — see the table note
 above.
@@ -180,3 +181,59 @@ building sandbox copies before touching real cas-ccps projects, the CI
 job that automates sandbox pushes, and the human-run production-promotion
 steps for all three systems in this repo — see
 [`DEPLOYMENT_RUNBOOK.md`](./DEPLOYMENT_RUNBOOK.md) (same folder).
+
+## run.ps1 — the whole push from Windows
+
+`run.ps1` drives the clasp side of a full push across every in-scope
+project (kos-personal, leader-hub and the cas-ccps projects; the two
+studio-steps projects are out while the GCP block holds). It runs on the
+operator's machine, never in CI. It automates the process and leaves two
+decisions to a human, recorded once in a **registry** folder that lives
+*outside* the checkout. The script reads the registry but never writes to
+it, and it never falls back to `clasp create`:
+
+```
+clasp-registry\
+  kos-personal\.clasp.json                 which real project (from clasp clone)
+  kos-personal\deployments.txt             which deployments stay live
+  leader-hub\.clasp.json + deployments.txt
+  cas-ccps\teacher-dashboard\.clasp.json + deployments.txt
+  cas-ccps\unified-manual\.clasp.json      (push-only: no deployments.txt)
+  ...
+```
+
+A project missing its `.clasp.json` is skipped, and so is a web app
+missing its `deployments.txt`. In that case the script prints the live
+deployments so you can fill the file in.
+
+**Web apps are promoted, never redeployed.** For kos-personal, leader-hub,
+teacher-dashboard and student-dashboard it runs `clasp push`, then one
+`clasp version`, then `clasp update-deployment <id> --versionNumber N` for
+each ID in `deployments.txt`. The deployment IDs never change, and so
+every `/exec` URL, bookmark, Script Property and leader-hub setting that
+holds one stays valid. To roll back, point the deployment at the previous
+version number. Live deployments that aren't listed are reported and left
+alone, and no version is cut when clasp says the script is already up to
+date. The other projects are push-only.
+
+**`-Zip`** takes a fresh GitHub "Download ZIP" of main and replaces the
+checkout with it before anything runs. A stale folder therefore can't be
+pushed, and a file deleted upstream can't linger locally and get pushed
+back (`clasp push` mirrors the whole folder). It refuses to delete a folder
+that isn't a KOS checkout, a folder your shell is standing in, or one
+holding a real `.clasp.json` the registry doesn't have a copy of.
+
+Each project prints its deploy-marker SHA before it pushes, and a summary
+at the end lists them. After the run, reload each editor tab and run
+`reportDeployVersion`; it should report the same SHA. `clasp run` can't do
+that step for you, because it needs a GCP project.
+
+```powershell
+cd C:\Users\<you>\kos                  # the folder holding run.ps1, the registry and the checkout
+.\run.ps1 -Zip $HOME\Downloads\KOS-main.zip -RepoRoot kos-main
+.\run.ps1 -RepoRoot kos-main -Only teacher-dashboard,student-dashboard
+```
+
+Keep your working copy of the script next to the registry, not inside
+the checkout, because `-Zip` deletes the checkout. central-ledger is marked
+on hold in the manifest and runs only when it's named in `-Only`.

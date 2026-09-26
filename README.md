@@ -213,7 +213,12 @@ for `sync.js`'s own mechanics, and
 [`tools/clasp-sync/DEPLOYMENT_RUNBOOK.md`](./tools/clasp-sync/DEPLOYMENT_RUNBOOK.md)
 for the actual command-by-command runbook (all three systems, sandbox-first
 for cas-ccps, human-gated production promotion — folded in from an
-external review pass, Addendum 22 R9).
+external review pass, Addendum 22 R9). [`tools/clasp-sync/run.ps1`](./tools/clasp-sync/run.ps1)
+automates that runbook's clasp steps from the operator's Windows machine.
+It reads a registry of real `.clasp.json` files and deployment IDs, and it
+promotes web apps in place with `clasp update-deployment`, so `/exec` URLs
+never change. See the
+[clasp-sync README](./tools/clasp-sync/README.md#runps1--the-whole-push-from-windows).
 
 ## [`tools/watchdog/`](./tools/watchdog/check.js) — scheduled-job watchdog
 
