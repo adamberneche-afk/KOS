@@ -19,8 +19,10 @@
  *   1. Commit your real kos-personal code change(s) normally.
  *   2. Run `node tools/deploy-drift/stamp.js kos-personal`.
  *   3. Commit ONLY the resulting change to this file, by itself.
- *   4. clasp push, then clasp deploy -i <id> -V <n> to actually promote it
- *      (see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6) — pushing
- *      HEAD alone does not update the live web app's /exec deployment.
+ *   4. clasp push, clasp version, then clasp update-deployment <id>
+ *      --versionNumber <n> for each live deployment to actually promote it
+ *      (see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.6, or run.ps1) —
+ *      pushing HEAD alone does not update the live web app's /exec
+ *      deployment.
  */
 const KOS_DEPLOY_VERSION_SHA = '00106df3fb8879f6ab098576da11c060f66a97d3'; // stamped by tools/deploy-drift/stamp.js — never hand-edit

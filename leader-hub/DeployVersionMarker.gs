@@ -17,8 +17,10 @@
  *   1. Commit your real leader-hub code change(s) normally.
  *   2. Run `node tools/deploy-drift/stamp.js leader-hub:app`.
  *   3. Commit ONLY the resulting change to this file, by itself.
- *   4. clasp push, then clasp deploy -i <id> -V <n> to actually promote it
- *      (see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6) — pushing
- *      HEAD alone does not update the live web app's /exec deployment.
+ *   4. clasp push, clasp version, then clasp update-deployment <id>
+ *      --versionNumber <n> for each live deployment to actually promote it
+ *      (see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.6, or run.ps1) —
+ *      pushing HEAD alone does not update the live web app's /exec
+ *      deployment.
  */
 const LH_DEPLOY_VERSION_SHA = '397ff58daabb81bcea87c40477d59e349fe0df37'; // stamped by tools/deploy-drift/stamp.js — never hand-edit

@@ -161,7 +161,7 @@ their own — they point their own LeaderHub Settings at this same `/exec` URL.
 
 ```bash
 clasp create-deployment --description "v1"
-clasp deployments                        # lists IDs; the newest is yours
+clasp list-deployments                   # lists IDs; the newest is yours
 clasp open-web-app --deploymentId <id>   # or open https://script.google.com/macros/s/<id>/exec
 ```
 
