@@ -148,6 +148,23 @@ to fill in with a real `scriptId` once you've run `clasp login` +
 target the *master template* — there's no single live script ID once
 teachers have their own copies.
 
+## Where settings come from
+
+`getConfig_()` (`00_SharedConfig.js`) checks three places in order:
+1. The project's own Script Properties.
+2. For the Central Ledger ID only, the spreadsheet the project is attached to.
+3. The Central Ledger's `_CONFIG` tab, for district-wide values: the admin
+   folder and email, the Student Dashboard URL, the email domain, the
+   leader-hub OAuth client ID and the master template IDs.
+
+A project that is attached to the Ledger, or to a teacher's cloned sheet,
+therefore needs no properties for these at all. The dashboards need only
+`CENTRAL_LEDGER_SS_ID`. Per-teacher values and secrets are never read from
+the shared tab. `seedLedgerConfigTab()` builds the tab from existing
+properties; `showConfigSources()` shows where each value came from. See
+[`DEPLOYMENT_HANDOFF.md`](./DEPLOYMENT_HANDOFF.md#script-properties-reference)
+for which properties are safe to delete afterwards.
+
 ## Module status
 
 | Module | Purpose | Status |

@@ -9,6 +9,21 @@
 //   const cfg = getConfig_();
 //   const ss  = SpreadsheetApp.openById(cfg.ledgerSsId);
 //
+// WHERE EACH VALUE COMES FROM (first match wins):
+//   1. This project's Script Properties — unchanged, so anything set there
+//      today keeps working and still overrides everything below.
+//   2. The Central Ledger ID, when no property names it, from the
+//      spreadsheet this project is attached to. Its _CONFIG tab either
+//      marks it as the Ledger itself (SYSTEM_ROLE = CENTRAL_LEDGER), or, on
+//      a teacher's cloned sheet, carries CENTRAL_LEDGER_SS_ID (written by
+//      the setup wizard via 19_ClonedSheetConfig.js). ADMIN_SS_ID defaults
+//      to the Ledger ID: every installer and the setup wizard set the two
+//      to the same spreadsheet.
+//   3. District-wide settings (SHARED_CONFIG_KEYS, below) from the Central
+//      Ledger's own _CONFIG tab — one place instead of one property per
+//      project. seedLedgerConfigTab() creates it; showConfigSources() says
+//      where each value came from.
+//
 // ADMIN-ONLY PROPERTIES (set manually before distributing teacher manuals):
 //   ADMIN_ROOT_FOLDER_ID  — admin Assignments root folder
 //   CENTRAL_LEDGER_SS_ID  — Distribution Ledger + Queue spreadsheet
@@ -28,17 +43,7 @@
 // =============================================================================
 
 function getConfig_() {
-  const p = PropertiesService.getScriptProperties().getProperties();
-
-  // Validate the minimum required properties are present
-  const required = ["ADMIN_SS_ID", "CENTRAL_LEDGER_SS_ID"];
-  const missing  = required.filter(key => !p[key]);
-  if (missing.length > 0) {
-    throw new Error(
-      "Script Properties not configured. Missing: " + missing.join(", ") + "\n" +
-      "Run the Teacher Manual setup wizard or contact your system administrator."
-    );
-  }
+  const p = _resolveConfigValues_().values;
 
   return {
     // ── Admin-level (set by admin before distributing manuals) ──
@@ -199,6 +204,246 @@ function getConfig_() {
       parentReportLog:    "ParentReportLog"
     }
   };
+}
+
+// =============================================================================
+// CONFIG RESOLUTION — Script Properties, then the attached sheet, then the
+// Central Ledger's _CONFIG tab (see this file's header for the order).
+// =============================================================================
+
+// The only keys the Ledger's shared _CONFIG tab may supply: district-wide
+// values that are the same for every project. Per-teacher values and
+// secrets are deliberately absent. TEACHER_EMAIL is the Teacher
+// Dashboard's access gate (_isAuthorizedTeacher_), so a shared tab
+// supplying it would authorize that one address on every dashboard that
+// hadn't set its own. TEACHER_DASHBOARD_URL is per teacher too: each
+// teacher gets their own deployment. M2_ENABLED is left out because seven
+// files read it straight from Script Properties; supplied only here, it
+// would switch Module 2 on for getConfig_() and off for all of them.
+//
+// Only getConfig_() reads this tab. Code that calls getProperty() directly
+// still needs the property: the Unified Manual's setup wizard and
+// installer (where these values originate), and student docs (01), which
+// run as the student and can't open the Ledger anyway.
+const SHARED_CONFIG_KEYS = [
+  "ADMIN_ROOT_FOLDER_ID",
+  "ADMIN_NOTIFY_EMAIL",
+  "STUDENT_DASHBOARD_URL",
+  "STUDENT_EMAIL_DOMAIN",
+  "LEADER_HUB_OAUTH_CLIENT_ID",
+  "MASTER_STUDENT_TEMPLATE_ID",
+  "MASTER_RUBRIC_RESPONSE_SS_ID",
+  "MASTER_TEACHER_MATRIX_SS_ID"
+];
+
+// Same Key | Value tab 19_ClonedSheetConfig.js already writes into each
+// teacher's cloned sheets. On the Ledger, a SYSTEM_ROLE row marks it.
+const CONFIG_TAB_NAME   = "_CONFIG";
+const LEDGER_ROLE_KEY   = "SYSTEM_ROLE";
+const LEDGER_ROLE_VALUE = "CENTRAL_LEDGER";
+
+// Edits to the Ledger's _CONFIG tab reach each project within this long.
+const SHARED_CONFIG_CACHE_TTL_SECONDS = 10 * 60;
+const SHARED_CONFIG_CACHE_PREFIX      = "cas_shared_config_v1:";
+
+// One read per execution at most; getConfig_() is called many times per run.
+let _sharedConfigMemo_ = null;
+
+// Returns { values, sources }: every Script Property plus the resolved
+// fallbacks, and for each fallback key where it came from.
+function _resolveConfigValues_() {
+  const props  = PropertiesService.getScriptProperties().getProperties();
+  const values = {};
+  const sources = {};
+  Object.keys(props).forEach(function (k) {
+    // A blank property is unset. The setup wizard writes "" placeholders
+    // (MASTER_STUDENT_TEMPLATE_ID, the dashboard URLs), and those must not
+    // hide a real value further down.
+    if (props[k] !== "" && props[k] !== null && props[k] !== undefined) {
+      values[k] = props[k];
+      sources[k] = "Script Property";
+    }
+  });
+
+  if (!values.CENTRAL_LEDGER_SS_ID) {
+    const fromSheet = _ledgerIdFromAttachedSheet_();
+    if (fromSheet) {
+      values.CENTRAL_LEDGER_SS_ID = fromSheet.id;
+      sources.CENTRAL_LEDGER_SS_ID = fromSheet.source;
+    }
+  }
+  if (!values.CENTRAL_LEDGER_SS_ID) {
+    throw new Error(
+      "Script Properties not configured. Missing: CENTRAL_LEDGER_SS_ID\n" +
+      "Run the Teacher Manual setup wizard, set CENTRAL_LEDGER_SS_ID in Script Properties, " +
+      "or contact your system administrator."
+    );
+  }
+  if (!values.ADMIN_SS_ID) {
+    values.ADMIN_SS_ID = values.CENTRAL_LEDGER_SS_ID;
+    sources.ADMIN_SS_ID = "same as CENTRAL_LEDGER_SS_ID";
+  }
+
+  if (SHARED_CONFIG_KEYS.some(function (k) { return !values[k]; })) {
+    const shared = _readSharedConfig_(values.CENTRAL_LEDGER_SS_ID);
+    SHARED_CONFIG_KEYS.forEach(function (k) {
+      if (!values[k] && shared[k]) {
+        values[k] = shared[k];
+        sources[k] = "Central Ledger _CONFIG tab";
+      }
+    });
+  }
+  return { values: values, sources: sources };
+}
+
+// Key -> value from a spreadsheet's _CONFIG tab; {} when there isn't one.
+function _readConfigTab_(ss) {
+  const sheet = ss.getSheetByName(CONFIG_TAB_NAME);
+  if (!sheet) return {};
+  const rows = sheet.getDataRange().getValues();
+  const map = {};
+  for (let i = 0; i < rows.length; i++) {
+    const key = String(rows[i][0] === undefined ? "" : rows[i][0]).trim();
+    const val = String(rows[i][1] === undefined ? "" : rows[i][1]).trim();
+    if (key && key !== "Key" && val) map[key] = val;
+  }
+  return map;
+}
+
+// { id, source } for the Ledger, from the spreadsheet this project is
+// attached to, or null. Web apps, Doc-bound projects and simple triggers
+// have no attached spreadsheet (or can't read one), which is fine: they
+// fall through to the Script Property.
+function _ledgerIdFromAttachedSheet_() {
+  try {
+    if (typeof SpreadsheetApp.getActiveSpreadsheet !== "function") return null;
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    if (!ss) return null;
+    const tab = _readConfigTab_(ss);
+    // The Ledger itself: getId() is always right, even in a copy made for
+    // testing, where a stored ID would still point at the original.
+    if (tab[LEDGER_ROLE_KEY] === LEDGER_ROLE_VALUE) {
+      return { id: ss.getId(), source: "this spreadsheet (marked CENTRAL_LEDGER)" };
+    }
+    if (tab.CENTRAL_LEDGER_SS_ID) {
+      return { id: tab.CENTRAL_LEDGER_SS_ID, source: "attached sheet's _CONFIG tab" };
+    }
+  } catch (e) { /* no attached spreadsheet — fall through */ }
+  return null;
+}
+
+// SHARED_CONFIG_KEYS values from the Ledger's _CONFIG tab. A successful
+// read is cached for the whole project. A failed one (a simple trigger,
+// which can't open other files; a wrong Ledger ID) is not cached beyond
+// this execution: remembering it would hide the values from the next
+// fully authorized run by the same person, and anyone who uses
+// getConfig_() can already open the Ledger (the Student Dashboard reads it
+// as the student).
+function _readSharedConfig_(ledgerId) {
+  if (_sharedConfigMemo_ && _sharedConfigMemo_.id === ledgerId) return _sharedConfigMemo_.values;
+  const cacheKey = SHARED_CONFIG_CACHE_PREFIX + ledgerId;
+  let values = null;
+
+  try {
+    const hit = CacheService.getScriptCache().get(cacheKey);
+    if (hit) values = JSON.parse(hit);
+  } catch (e) { /* cache unavailable — read the tab */ }
+
+  if (!values) {
+    try {
+      const tab = _readConfigTab_(SpreadsheetApp.openById(ledgerId));
+      values = {};
+      SHARED_CONFIG_KEYS.forEach(function (k) { if (tab[k]) values[k] = tab[k]; });
+      try {
+        CacheService.getScriptCache().put(cacheKey, JSON.stringify(values), SHARED_CONFIG_CACHE_TTL_SECONDS);
+      } catch (e) { /* uncached is only slower */ }
+    } catch (e) {
+      values = {};
+    }
+  }
+
+  _sharedConfigMemo_ = { id: ledgerId, values: values };
+  return values;
+}
+
+// Run once from the Apps Script editor of a project whose Script
+// Properties hold the district-wide values (the Unified Manual's, where
+// the setup wizard writes them, or central-ledger's). Creates the Central
+// Ledger's _CONFIG tab if needed, marks it SYSTEM_ROLE = CENTRAL_LEDGER,
+// and copies in each SHARED_CONFIG_KEYS value this project has that the
+// tab doesn't. It never overwrites or deletes a row: a value that differs
+// from the tab is logged as a conflict for you to settle by hand. Safe to
+// run from several projects to fill different gaps.
+function seedLedgerConfigTab() {
+  const resolved = _resolveConfigValues_();
+  const ledgerId = resolved.values.CENTRAL_LEDGER_SS_ID;
+  const props    = PropertiesService.getScriptProperties().getProperties();
+  const ss       = SpreadsheetApp.openById(ledgerId);
+  // Marking the wrong spreadsheet CENTRAL_LEDGER would make every project
+  // attached to it treat it as the Ledger.
+  if (!ss.getSheetByName("Ledger")) {
+    throw new Error("Spreadsheet " + ledgerId + " has no Ledger tab, so it isn't the Central " +
+      "Ledger. Check this project's CENTRAL_LEDGER_SS_ID before seeding.");
+  }
+
+  let sheet = ss.getSheetByName(CONFIG_TAB_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CONFIG_TAB_NAME);
+    sheet.appendRow(["Key", "Value"]);
+    try {
+      const protection = sheet.protect();
+      protection.setDescription("District-wide cas-ccps settings — read by every project's getConfig_()");
+      protection.setWarningOnly(true);
+    } catch (e) { /* protection is best effort */ }
+  }
+
+  const existing = _readConfigTab_(ss);
+  const added = [];
+  const conflicts = [];
+  if (existing[LEDGER_ROLE_KEY] !== LEDGER_ROLE_VALUE) {
+    if (existing[LEDGER_ROLE_KEY]) {
+      conflicts.push(LEDGER_ROLE_KEY + ": tab says \"" + existing[LEDGER_ROLE_KEY] + "\"");
+    } else {
+      sheet.appendRow([LEDGER_ROLE_KEY, LEDGER_ROLE_VALUE]);
+      added.push(LEDGER_ROLE_KEY);
+    }
+  }
+  SHARED_CONFIG_KEYS.forEach(function (k) {
+    const mine = String(props[k] || "").trim();
+    if (!mine) return;
+    if (!existing[k]) {
+      sheet.appendRow([k, mine]);
+      added.push(k);
+    } else if (existing[k] !== mine) {
+      conflicts.push(k + ": tab has \"" + existing[k] + "\", this project has \"" + mine + "\"");
+    }
+  });
+
+  try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
+  _sharedConfigMemo_ = null;
+
+  Logger.log("[CONFIG] Ledger _CONFIG tab: added " + (added.length ? added.join(", ") : "nothing") + ".");
+  if (conflicts.length) {
+    Logger.log("[CONFIG] Left as they are, settle by hand:\n  " + conflicts.join("\n  "));
+  }
+  return { ledgerId: ledgerId, added: added, conflicts: conflicts };
+}
+
+// Run from the Apps Script editor to see where each setting came from
+// before deleting a Script Property the tab now covers. Values are only
+// file IDs, URLs and addresses; no secret is ever a SHARED_CONFIG_KEYS entry.
+function showConfigSources() {
+  const resolved = _resolveConfigValues_();
+  const keys = ["CENTRAL_LEDGER_SS_ID", "ADMIN_SS_ID"].concat(SHARED_CONFIG_KEYS);
+  const report = {};
+  keys.forEach(function (k) {
+    report[k] = {
+      value:  resolved.values[k] || "",
+      source: resolved.sources[k] || "not set (default applies)"
+    };
+    Logger.log("[CONFIG] " + k + " = " + (report[k].value || "(blank)") + "  <- " + report[k].source);
+  });
+  return report;
 }
 
 // =============================================================================
