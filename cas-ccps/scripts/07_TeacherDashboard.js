@@ -108,7 +108,7 @@ function runLeaderHubConnectionCheck() {
   try { registry = _apiGetCompetencyRegistry_(cfg, email); }
   catch (err) { registry = { success: false, message: err.message }; }
   record("getCompetencyRegistry returns data", _lhcHasRows_(registry),
-    _lhcDescribe_(registry, "competency row"));
+    _lhcDescribe_(registry, "course"));
 
   let roster;
   try { roster = _apiGetRoster_(cfg, email); }
@@ -151,10 +151,21 @@ function _lhcHasRows_(result) {
 }
 
 function _lhcCount_(result) {
-  if (!result) return 0;
+  if (!result || typeof result !== "object") return 0;
   const keys = Object.keys(result);
   for (let i = 0; i < keys.length; i++) {
     if (Array.isArray(result[keys[i]])) return result[keys[i]].length;
+  }
+  // Nothing at the top level, so look one object down. getCompetencyRegistry
+  // wraps its payload as data.courses where the other two return units and
+  // students directly, and a top-level-only search reported a registry of
+  // 245 competencies as "0 rows — the source tab is empty".
+  for (let i = 0; i < keys.length; i++) {
+    const value = result[keys[i]];
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      const n = _lhcCount_(value);
+      if (n > 0) return n;
+    }
   }
   return 0;
 }
@@ -162,7 +173,7 @@ function _lhcCount_(result) {
 function _lhcDescribe_(result, noun) {
   if (!result) return "Handler returned nothing at all.";
   if (result.success === false) {
-    return "Handler failed: " + (result.message || "no message") + ".";
+    return "Handler failed: " + String(result.message || "no message").replace(/\.+$/, "") + ".";
   }
   const n = _lhcCount_(result);
   if (n === 0) {
@@ -361,7 +372,18 @@ function _apiGetPacingGuide_() {
  * re-deriving it, so this function has no gate of its own to get wrong.
  */
 function _apiGetCompetencyRegistry_(cfg, email) {
-  return { success: true, data: _getCompetenciesForEmail_(cfg, email) };
+  try {
+    const result = _getCompetenciesForEmail_(cfg, email);
+    // _getCompetenciesForEmail_ reports a missing tab or zero visible rows as
+    // { error } rather than throwing (getCompetencies() hands that straight to
+    // the dashboard UI). Wrapped as-is, that went out as success:true with
+    // the error buried under data — a caller checking success saw a healthy
+    // response with no courses in it.
+    if (result.error) return { success: false, message: result.error };
+    return { success: true, data: result };
+  } catch (e) {
+    return { success: false, message: e.message };
+  }
 }
 
 /**
