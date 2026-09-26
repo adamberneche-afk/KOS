@@ -766,6 +766,11 @@ const GCP_PATTERNS = [
   { name: 'studio-custom-step', source: '"workflowElements"', jsonOnly: true },
   { name: 'gemini-api-endpoint', source: 'generativelanguage\\.googleapis\\.com' },
   { name: 'vertex-endpoint', source: 'aiplatform\\.googleapis\\.com' },
+  // Google sign-in with this repo's own OAuth client ID: the GIS library on
+  // the browser side, the ID-token check against that client on the server
+  // side. The endpoints are keyless, but the client ID they are checked
+  // against can only be registered inside a standard Cloud project.
+  { name: 'google-oauth-client', source: 'oauth2\\.googleapis\\.com/tokeninfo|accounts\\.google\\.com/gsi/client' },
 ];
 
 // Pure and path-only-by-extension, so tests can drive it with literal
