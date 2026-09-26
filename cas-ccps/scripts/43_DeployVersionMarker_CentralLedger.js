@@ -13,17 +13,17 @@
  *   1. Commit your real central-ledger code change(s) normally.
  *   2. node tools/deploy-drift/stamp.js cas-ccps:central-ledger
  *   3. Commit ONLY the resulting change to this file, by itself.
- *   4. node tools/clasp-sync/sync.js central-ledger, then clasp push + clasp
- *      deploy from cas-ccps/.clasp-build/central-ledger/ to actually promote it
- *      (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6) — pushing HEAD
- *      alone does not update a live web app's /exec deployment.
+ *   4. node tools/clasp-sync/sync.js central-ledger, then clasp push from
+ *      cas-ccps/.clasp-build/central-ledger/ (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md
+ *      §3.5, or run.ps1). Not a web app, so HEAD is what runs and the push is
+ *      the whole deploy.
  *
  * ONE-TIME SETUP: Script Properties → DEPLOY_DRIFT_GITHUB_TOKEN (a
  * fine-grained GitHub PAT scoped to only adamberneche-afk/KOS — see
  * tools/deploy-drift/README.md), then run
  * installDeployVersionReportTrigger() once from the Apps Script editor.
  */
-const DEPLOY_VERSION_SHA = '75d6a80c98d52acd95409ae14cfa6d91b49bc4f3'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
+const DEPLOY_VERSION_SHA = '206ce1de79b5de39c255c9b38abb48588dacbc68'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
 
 function reportDeployVersion() {
   return _reportDeployVersion_('cas-ccps:central-ledger', DEPLOY_VERSION_SHA);

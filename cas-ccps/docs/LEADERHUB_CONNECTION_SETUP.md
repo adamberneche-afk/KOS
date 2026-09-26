@@ -41,6 +41,34 @@ deployment is a second, independent front door onto the same code, and
 `doPost()`'s own token check is the only thing that decides whether a
 request through it gets anything back.
 
+## Blocked today: this needs a Cloud project the district account can't create
+
+**Read this before starting.** Step 1 below needs a standard Google Cloud
+project, because an OAuth Client ID can only be created inside one. GCP
+access is **disabled for the ccpsnet.net organization**. That was confirmed
+directly when cas-ccps's custom Studio steps hit the same wall (see
+`tools/gas-lint/gcp-map.json`). On the live teacher-dashboard,
+`runLeaderHubConnectionCheck` reports `LEADER_HUB_OAUTH_CLIENT_ID` unset
+(checked 2026-09-26), so this setup has never been completed.
+
+What that leaves:
+
+- **Confirm the block**: open console.cloud.google.com with the ccpsnet.net
+  account. If the organization block appears, nothing below can be done
+  from that account.
+- **Ask a Workspace admin** to enable GCP for the account, or to create the
+  client for you. One client serves every teacher, so this is a single
+  request.
+- **A client from a project outside the organization** is untested. It
+  can't use the **Internal** user type in step 2, which only works inside
+  the organization, and the district would have to allow that third-party
+  app to sign in ccpsnet.net users.
+
+Until one of those happens, leader-hub keeps working from its own local
+pacing data and the connection stays off. Both halves of this dependency
+are declared in `tools/gas-lint/gcp-map.json` (`google-oauth-client`), and
+that is where the status changes once a client exists.
+
 ## One-time: register the OAuth Client ID (do this once, not per teacher)
 
 leader-hub is one app — every teacher's Teacher Dashboard checks incoming
@@ -83,6 +111,11 @@ For each teacher's Teacher Dashboard project:
 3. Paste that second URL into leader-hub → Settings → "Connect to
    cas-ccps" → cas-ccps API URL, along with the same OAuth Client ID from
    the registration step above.
+4. Add that second deployment's ID to
+   `clasp-registry\cas-ccps\teacher-dashboard\deployments.txt`, next to the
+   human-facing one. `tools/clasp-sync/run.ps1` only promotes the deployments
+   listed there. An unlisted one stays on its old version, and leader-hub
+   keeps calling old code after every push.
 
 ## What this actually exposes
 
