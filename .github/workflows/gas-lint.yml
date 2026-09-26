@@ -344,7 +344,7 @@ jobs:
           if [ ! -f "cas-ccps/clasp/local/studio-steps.clasp.json" ]; then echo "Skipping studio-steps — no sandbox Script ID configured."; exit 0; fi
           node tools/clasp-sync/sync.js studio-steps
           (cd "cas-ccps/.clasp-build/studio-steps" && clasp push --force)
-          # Deliberately no `clasp deploy` here, sandbox or production — the
+          # Deliberately no `clasp create-deployment` here, sandbox or production — the
           # one-time "Test deployments → Install" step that actually makes
           # these steps usable in Studio has no clasp equivalent and stays a
           # human action, same as DEPLOYMENT_RUNBOOK.md §3.7 describes.

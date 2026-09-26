@@ -73,9 +73,10 @@ commits have landed. The ritual, every time:
 1. Commit your real code change(s) normally.
 2. node tools/deploy-drift/stamp.js <projectName>
 3. Commit ONLY the resulting marker-file change, by itself.
-4. clasp push, then clasp deploy -i <id> -V <n> to actually promote it —
+4. clasp push; for a web app, then clasp version and
+   clasp update-deployment <id> --versionNumber <n> to actually promote it —
    pushing HEAD alone does not update a web app's live /exec deployment
-   (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6).
+   (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6, or run.ps1).
 ```
 
 Skipping step 2/3, or combining them with step 1, both break the match —
@@ -158,7 +159,8 @@ generating a credential is inherently something only you can do.
    risk: `tools/clasp-sync/sync.js` builds each project's push folder
    directly from `project-map.json`, so there's no second file list to
    remember.
-6. `clasp push` + `clasp deploy` as normal — for `cas-ccps`, run
+6. `clasp push`, plus `clasp version` + `clasp update-deployment` for a web
+   app, as normal (or `tools/clasp-sync/run.ps1`) — for `cas-ccps`, run
    `node tools/clasp-sync/sync.js <project>` first, then push from
    `cas-ccps/.clasp-build/<project>/`.
 7. **Merge to `main` before expecting anything to react — and keep

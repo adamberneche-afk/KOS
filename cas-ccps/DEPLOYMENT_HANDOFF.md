@@ -273,10 +273,10 @@ this stage, but a second account would start here):
   Studio's picker because of a placeholder `logoUrl`.
 - **Part 3.6 — production promotion**: the 5 trigger/menu-driven projects go
   live on `clasp push` alone. The 2 web apps (`teacher-dashboard`,
-  `student-dashboard`) need an explicit `clasp version` + `clasp deploy
-  --deploymentId <id> --versionNumber <n>` after every push, or the live `/exec`
+  `student-dashboard`) need an explicit `clasp version` + `clasp update-deployment
+  <id> --versionNumber <n>` after every push, or the live `/exec`
   URL never updates.
-- **Part 3.7 — studio-steps**: after `clasp push`/`clasp deploy`, there's one
+- **Part 3.7 — studio-steps**: after `clasp push`/`clasp create-deployment`, there's one
   manual, no-clasp-equivalent step in the Apps Script editor: Deploy → Test
   deployments → Install. Skipping this is why "pushed" and "usable in Studio's
   step picker" are different states.

@@ -80,8 +80,9 @@ function buildDriftIssueBody({ project, expected, reportedSha, reportedAt }) {
     `- Live project reported: \`${reportedSha}\` as of ${reportedAt}`,
     '',
     'This usually means either a `clasp push` didn\'t fully land, or the code was ' +
-      'pushed but never promoted to the live deployment (`clasp deploy -i <id> -V <n>` ' +
-      '— see tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6). Push and/or promote the ' +
+      'pushed but never promoted to the live deployment (`clasp version`, then ' +
+      '`clasp update-deployment <id> --versionNumber <n>` — see ' +
+      'tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6). Push and/or promote the ' +
       'deployment, then this closes itself on the project\'s next scheduled report.',
     '',
     `_Last checked: ${new Date().toISOString()}_`,
