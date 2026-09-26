@@ -148,8 +148,12 @@ function runFlowPreflightCheck() {
   // fails silently and late: Flow 3's harvest resolves the student's warm-up
   // folder from it, so an unset value means every warm-up doc has nowhere to
   // go — discovered only when a doc fails to appear.
-  results.push(_pfCheckScriptProperty_('ADMIN_ROOT_FOLDER_ID', true));
-  results.push(_pfCheckScriptProperty_('CENTRAL_LEDGER_SS_ID', true));
+  // Checked as resolved settings, not raw properties: getConfig_() also
+  // finds these on the attached sheet or the Ledger's _CONFIG tab
+  // (00_SharedConfig.js), and a property-only check would fail a project
+  // that is correctly configured that way.
+  results.push(_pfCheckSetting_('ADMIN_ROOT_FOLDER_ID', true));
+  results.push(_pfCheckSetting_('CENTRAL_LEDGER_SS_ID', true));
 
   const failed = results.filter(function (r) { return !r.ok; });
   _pfWriteReport_(ss, results);
@@ -236,6 +240,23 @@ function _pfCheckScriptProperty_(key, required) {
     };
   }
   return { ok: true, label: 'Script property: ' + key, detail: 'Configured.' };
+}
+
+// Like _pfCheckScriptProperty_, for a key getConfig_() can also resolve
+// from somewhere other than Script Properties. Says where it came from.
+function _pfCheckSetting_(key, required) {
+  let resolved = null;
+  try { resolved = _resolveConfigValues_(); } catch (e) { /* reported below */ }
+  const value = resolved && resolved.values[key];
+  if (!value) {
+    return {
+      ok: !required, label: 'Setting: ' + key,
+      detail: required
+        ? 'Missing and required: not a Script Property, not on the attached sheet, not on the Central Ledger\'s _CONFIG tab.'
+        : 'Not set.',
+    };
+  }
+  return { ok: true, label: 'Setting: ' + key, detail: 'Configured (' + resolved.sources[key] + ').' };
 }
 
 function _pfWriteReport_(ss, results) {

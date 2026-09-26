@@ -125,7 +125,7 @@ test('runFlowPreflightCheck: a deployment-ready state passes every check', () =>
     'Tab: Flow3Input', 'Tab: Flow4Input', 'Tab: Flow5Input', 'Tab: WarmUpFlowReturn',
     'Trigger: buildFlowInputRows', 'Trigger: harvestFlowInputResults',
     'Trigger: buildWarmUpFlowInputs', 'Trigger: harvestWarmUpFlowReturns',
-    'Script property: ADMIN_ROOT_FOLDER_ID', 'Script property: CENTRAL_LEDGER_SS_ID',
+    'Setting: ADMIN_ROOT_FOLDER_ID', 'Setting: CENTRAL_LEDGER_SS_ID',
     'Script property: CAS_CHAT_WEBHOOK_URL',
   ].forEach((label) => {
     assert.ok(labels.indexOf(label) !== -1, 'missing check: ' + label);
@@ -174,8 +174,24 @@ test('runFlowPreflightCheck: an unset ADMIN_ROOT_FOLDER_ID is a failure', () => 
   // unset means every warm-up doc has nowhere to go — and you find out when
   // a doc fails to appear, not when you deploy.
   const result = exported.runFlowPreflightCheck();
-  const check = result.results.find((r) => r.label === 'Script property: ADMIN_ROOT_FOLDER_ID');
+  const check = result.results.find((r) => r.label === 'Setting: ADMIN_ROOT_FOLDER_ID');
   assert.equal(check.ok, false);
+});
+
+test('runFlowPreflightCheck: ADMIN_ROOT_FOLDER_ID supplied by the Ledger\'s _CONFIG tab passes, and says so', () => {
+  const { exported, sandbox } = load(['runFlowPreflightCheck']);
+  const ss = makeFullyPassingAdminSs(sandbox);
+  setUpConfig(sandbox, ss, { adminRootFolderId: null });
+  const ledger = sandbox.SpreadsheetApp.create('Central Ledger');
+  const tab = ledger.insertSheet('_CONFIG');
+  tab.appendRow(['Key', 'Value']);
+  tab.appendRow(['ADMIN_ROOT_FOLDER_ID', 'root-from-ledger']);
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ledger.getId());
+
+  const result = exported.runFlowPreflightCheck();
+  const check = result.results.find((r) => r.label === 'Setting: ADMIN_ROOT_FOLDER_ID');
+  assert.equal(check.ok, true, check.detail);
+  assert.match(check.detail, /Central Ledger _CONFIG tab/);
 });
 
 test('runFlowPreflightCheck: the bridge tabs are self-healing, so absent is not a failure', () => {
