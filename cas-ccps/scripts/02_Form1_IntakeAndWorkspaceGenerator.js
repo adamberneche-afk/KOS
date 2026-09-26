@@ -27,7 +27,10 @@ function onFormSubmit_Intake(e) {
 
   const cfg = getConfig_();
 
-  const googleId     = r["Student Google Account"]?.[0]?.trim() || "";
+  // Lowercased: Google account addresses are case-insensitive, and the
+  // student-ID check below is not, so "1234567@CCPSNET.NET" (a phone's
+  // auto-capitalization, or caps lock) was rejected as an invalid account.
+  const googleId     = (r["Student Google Account"]?.[0]?.trim() || "").toLowerCase();
   const studentName  = r["Student Full Name"]?.[0]?.trim()      || "";
   const block        = r["Block"]?.[0]?.trim()                  || "";
   const className    = r["Class Name"]?.[0]?.trim()             || "";
@@ -53,6 +56,13 @@ function onFormSubmit_Intake(e) {
   // an unrelated Google account while the real student is locked out.
   if (!_studentIdPattern_().test(googleId)) {
     Logger.log("Form 1 rejected — '" + googleId + "' is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
+    notifyIntakeRejected_(cfg, {
+      studentName: studentName, googleId: googleId,
+      teacherEmail: teacherEmail, unitConfigId: unitConfigId,
+      reason: "\"" + googleId + "\" is not a district student account. Student accounts " +
+              "are 7 digits @" + _studentEmailDomain_() + ".",
+      fix:    "Have the student resubmit the intake form with their school account."
+    });
     return;
   }
 
@@ -60,6 +70,13 @@ function onFormSubmit_Intake(e) {
   const assignment = fetchAssignment_(cfg, unitConfigId);
   if (!assignment) {
     Logger.log("Form 1 rejected — no LIVE assignment for ConfigID: " + unitConfigId);
+    notifyIntakeRejected_(cfg, {
+      studentName: studentName, googleId: googleId,
+      teacherEmail: teacherEmail, unitConfigId: unitConfigId,
+      reason: "No LIVE assignment has Assignment Config ID \"" + unitConfigId + "\".",
+      fix:    "Check that the ID on the form matches a row in your Teacher Matrix and " +
+              "that the row's status is LIVE, then have the student resubmit."
+    });
     return;
   }
 
@@ -157,6 +174,40 @@ function onFormSubmit_Intake(e) {
 // Uses ConfigID prefix lookup to go directly to the right matrix SS
 // avoiding O(n×m) scan across all teacher spreadsheets
 // ---------------------------------------------------------------------------
+// Both rejections above used to end at Logger.log, which only the script
+// owner's execution log ever shows. The student got no document, the
+// teacher saw nothing, and the student simply never appeared. This emails
+// the teacher named on the form, and the admin, the same way the
+// MASTER_STUDENT_TEMPLATE_ID failure does. No Ledger row is written: the
+// account may be someone else's, or not an account at all, and the Ledger
+// is what other scripts share documents from.
+// Mail is best effort: a quota or bad-address failure is logged, never
+// thrown, so it can't turn a rejected submission into a failed trigger.
+function notifyIntakeRejected_(cfg, d) {
+  const subject = "⚠️ Student Registration Failed — " + (d.studentName || d.googleId || "unknown student");
+  const body =
+    "A student intake form submission was not processed, so no student document was created.\n\n" +
+    "Student: " + (d.studentName || "(blank)") + "\n" +
+    "Account entered: " + (d.googleId || "(blank)") + "\n" +
+    "Assignment Config ID: " + (d.unitConfigId || "(blank)") + "\n\n" +
+    "REASON: " + d.reason + "\n\n" +
+    "TO FIX: " + d.fix + "\n";
+
+  const recipients = [];
+  if (d.teacherEmail) recipients.push(d.teacherEmail);
+  if (cfg.adminNotifyEmail &&
+      cfg.adminNotifyEmail.toLowerCase() !== String(d.teacherEmail || "").toLowerCase()) {
+    recipients.push(cfg.adminNotifyEmail);
+  }
+  if (!recipients.length) {
+    Logger.log("Form 1 rejection not emailed — no Teacher Email on the form and no ADMIN_NOTIFY_EMAIL set.");
+  }
+  recipients.forEach(function (to) {
+    try { MailApp.sendEmail(to, subject, body); }
+    catch (e) { Logger.log("Form 1 rejection email to " + to + " failed: " + e.message); }
+  });
+}
+
 function fetchAssignment_(cfg, unitConfigId) {
   try {
     const centralSs = SpreadsheetApp.openById(cfg.ledgerSsId);
