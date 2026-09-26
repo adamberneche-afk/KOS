@@ -13,10 +13,10 @@
  *   1. Commit your real master-student-template code change(s) normally.
  *   2. node tools/deploy-drift/stamp.js cas-ccps:master-student-template
  *   3. Commit ONLY the resulting change to this file, by itself.
- *   4. node tools/clasp-sync/sync.js master-student-template, then clasp push + clasp
- *      deploy from cas-ccps/.clasp-build/master-student-template/ to actually promote it
- *      (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6) — pushing HEAD
- *      alone does not update a live web app's /exec deployment.
+ *   4. node tools/clasp-sync/sync.js master-student-template, then clasp push from
+ *      cas-ccps/.clasp-build/master-student-template/ (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md
+ *      §3.5, or run.ps1). Not a web app, so HEAD is what runs and the push is
+ *      the whole deploy.
  *
  * ONE-TIME SETUP: Script Properties → DEPLOY_DRIFT_GITHUB_TOKEN (a
  * fine-grained GitHub PAT scoped to only adamberneche-afk/KOS — see

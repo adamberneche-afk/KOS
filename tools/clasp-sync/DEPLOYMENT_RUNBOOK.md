@@ -149,7 +149,7 @@ pass as 1.1, then the same everyday loop as 1.2 (`clasp push`,
 production follows the same "push, version, deploy" pattern as
 cas-ccps's own web apps (see Part 3's `teacher-dashboard`/`student-dashboard`
 promotion steps) — a `clasp push` alone updates the code but not the live
-deployment users hit until `clasp deploy` points a real version at it.
+deployment users hit until `clasp update-deployment` points a real version at it.
 
 ---
 
@@ -367,7 +367,7 @@ included — `.github/workflows/gas-lint.yml`'s `sandbox-deploy` job pushes
 its sandbox copy the same way as everything else), this is safe to fully
 automate — the CI credential only ever has keys to the sandbox copies,
 never to the real district-owned projects. (`studio-steps` gets `clasp
-push` in CI like everything else, but never `clasp deploy`, sandbox or
+push` in CI like everything else, but never `clasp create-deployment`, sandbox or
 production — see 3.7: the one-time "Test deployments → Install" step
 that actually makes the steps usable in Studio has no clasp equivalent
 and stays a human action.)
@@ -460,9 +460,10 @@ actually look.
 *do* have a safety buffer, and getting the command sequence right here
 matters: `clasp push` alone only updates HEAD, testable at the `/dev` URL
 — the live `/exec` URL students use doesn't move until a version is
-created and explicitly deployed. Create the version first (this is what
-actually assigns it a version number — you can't invent one), then deploy
-that exact version to the existing production deployment:
+created and the existing deployment is pointed at it. Create the version
+first (this is what actually assigns it a version number — you can't
+invent one), then move the existing production deployment to that exact
+version:
 
 ```
 cd cas-ccps\.clasp-build\teacher-dashboard
@@ -475,27 +476,39 @@ number, not a guessed one, in the next command:
 
 ```
 clasp list-deployments
-clasp deploy --deploymentId <the existing production deployment ID> --versionNumber <the number clasp version just printed>
+clasp update-deployment <the existing production deployment ID> --versionNumber <the number clasp version just printed> --description "what changed"
 ```
 
 `clasp list-deployments` shows you the current production deployment ID
-if you don't have it handy. That last `clasp deploy` command is the
-actual "open the stadium doors" moment for the two web apps — everything
-before it, including the `clasp push`, was still just rehearsal.
+if you don't have it handy. That last `clasp update-deployment` command is
+the actual "open the stadium doors" moment for the two web apps —
+everything before it, including the `clasp push`, was still just
+rehearsal.
+
+These are clasp **3.x** command names. The 2.x spelling this section used
+to give, `clasp deploy --deploymentId <id> --versionNumber <n>`, is what
+`update-deployment` replaced. Never use `clasp create-deployment` (2.x:
+`clasp deploy` with no ID) to promote: it mints a **new** deployment with a
+new `/exec` URL, and every bookmark, Script Property and leader-hub
+setting holding the old URL keeps serving the old version. Rolling back is
+the same command with the previous version number.
+[`run.ps1`](./README.md#runps1--the-whole-push-from-windows) does this
+push → version → update-deployment sequence for every web app, using the
+deployment IDs you list in its registry.
 
 ### 3.7 `studio-steps` (both cas-ccps and kos-personal) — a different shape again
 
 Neither of the two other patterns above quite fits. `studio-steps` is
 standalone (not sheet/doc-bound, so no "which spreadsheet is this bound
 to" step), and it's a Workspace Studio add-on, not a web app — there's no
-`/exec` URL and no `clasp deploy -i <id>` promoting a version to a live
+`/exec` URL and no `clasp update-deployment` promoting a version to a live
 audience the way 3.6's web apps work. Promotion here means:
 
 ```
 node tools/clasp-sync/sync.js studio-steps
 cd cas-ccps\.clasp-build\studio-steps
 clasp push
-clasp deploy --description "v1"
+clasp create-deployment --description "v1"
 ```
 
 ...followed by a **manual, one-time Apps Script editor action with no
@@ -517,14 +530,15 @@ flat-folder `clasp create --type standalone` pattern from Part 1, not
 
 | Situation | Command sequence |
 |---|---|
-| kos-personal (main project), any change | `clasp push` → `clasp open-script` |
-| kos-personal `studio-steps`, any change | `clasp push` → `clasp deploy --description "..."` (test-install already done once — see `kos-personal/studio-steps/README.md`) |
+| kos-personal (main project), any change | `clasp push` → `clasp version "..."` → `clasp update-deployment <id> --versionNumber <n>` for each of its live deployments — it's a web app, so a push alone leaves every `/exec` URL on the old version |
+| kos-personal `studio-steps`, any change | `clasp push` → `clasp create-deployment --description "..."` (test-install already done once — see `kos-personal/studio-steps/README.md`) |
 | cas-ccps, no live projects exist yet | `clasp create --type <sheets\|docs\|standalone>` per project (see 3.2b; `studio-steps` follows 3.7 instead) |
 | leader-hub (`leader-hub:app`), any change | same "push → version → deploy" pattern as a cas-ccps web app, once ownership is confirmed — see 2.2 |
 | cas-ccps, testing a change | push to `main`, let sandbox-deploy CI job run |
 | cas-ccps trigger-driven project, promoting to production | `node tools/clasp-sync/sync.js <name>` → fill in production `.clasp.json` → `clasp push` |
-| cas-ccps web app, promoting to production | `clasp push` → `clasp version "..."` → `clasp list-deployments` → `clasp deploy -i <id> -V <the number just printed>` |
-| cas-ccps `studio-steps`, any change | `node tools/clasp-sync/sync.js studio-steps` → `clasp push` → `clasp deploy --description "..."` (see 3.7) |
+| cas-ccps web app, promoting to production | `clasp push` → `clasp version "..."` → `clasp list-deployments` → `clasp update-deployment <id> --versionNumber <the number just printed>` |
+| cas-ccps `studio-steps`, any change | `node tools/clasp-sync/sync.js studio-steps` → `clasp push` → `clasp create-deployment --description "..."` (see 3.7) |
+| any of the above, from Windows | `run.ps1` (same folder) — see [its README section](./README.md#runps1--the-whole-push-from-windows) |
 
 ## Recommended order
 

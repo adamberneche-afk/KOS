@@ -184,7 +184,7 @@ node tools/clasp-sync/sync.js  # kos-personal isn't cas-ccps-prefixed, so this b
 cd kos-personal/studio-steps
 clasp create --type standalone --title "kos-personal Studio Steps"
 clasp push
-clasp deploy --description "v1"
+clasp create-deployment --description "v1"
 ```
 
 Then, once: **Apps Script editor → Deploy → Test deployments → Install

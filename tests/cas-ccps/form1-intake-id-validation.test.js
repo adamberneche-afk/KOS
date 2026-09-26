@@ -121,3 +121,97 @@ test('onFormSubmit_Intake: the pre-existing "missing required fields" rejection 
 
   assert.equal(openByIdCalls.length, 0);
 });
+
+// ── Rejections reach a person ────────────────────────────────────────────
+// Both rejections used to end at Logger.log, which only the script owner's
+// execution log shows: no student doc, no word to the teacher, and the
+// student simply never appeared.
+
+function mailTo(sandbox) {
+  return sandbox.MailApp.getSentMessages();
+}
+
+test('onFormSubmit_Intake: an invalid account emails the teacher on the form, with the reason and the fix', () => {
+  const { exported, sandbox } = load();
+  setUpFixture(sandbox);
+
+  exported.onFormSubmit_Intake(makeEvent({ 'Student Google Account': ['12345@ccpsnet.net'] }));
+
+  const sent = mailTo(sandbox);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, 'teacher@ccpsnet.net');
+  assert.match(sent[0].subject, /Registration Failed — Alice Example/);
+  assert.match(sent[0].body, /12345@ccpsnet\.net/);
+  assert.match(sent[0].body, /7 digits @ccpsnet\.net/);
+  assert.match(sent[0].body, /resubmit/);
+});
+
+test('onFormSubmit_Intake: the admin is copied too, but only once when admin and teacher are the same person', () => {
+  const { exported, sandbox } = load();
+  setUpFixture(sandbox);
+  const props = sandbox.PropertiesService.getScriptProperties();
+
+  props.setProperty('ADMIN_NOTIFY_EMAIL', 'admin@ccpsnet.net');
+  exported.onFormSubmit_Intake(makeEvent({ 'Student Google Account': ['John Smith'] }));
+  assert.deepEqual(mailTo(sandbox).map((m) => m.to), ['teacher@ccpsnet.net', 'admin@ccpsnet.net']);
+
+  const second = load();
+  setUpFixture(second.sandbox);
+  second.sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_NOTIFY_EMAIL', 'Teacher@ccpsnet.net');
+  second.exported.onFormSubmit_Intake(makeEvent({ 'Student Google Account': ['John Smith'] }));
+  assert.deepEqual(mailTo(second.sandbox).map((m) => m.to), ['teacher@ccpsnet.net']);
+});
+
+test('onFormSubmit_Intake: an assignment ID with no LIVE assignment emails the teacher instead of vanishing', () => {
+  const { exported, sandbox } = load();
+  setUpFixture(sandbox);
+
+  // Valid account, so it clears the ID gate and fetchAssignment_ returns
+  // null (the fixture has no MatrixRegistry tab).
+  exported.onFormSubmit_Intake(makeEvent({ 'Assignment Config ID': ['CFG-TYPO'] }));
+
+  const sent = mailTo(sandbox);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].to, 'teacher@ccpsnet.net');
+  assert.match(sent[0].body, /No LIVE assignment has Assignment Config ID "CFG-TYPO"/);
+  assert.match(sent[0].body, /Teacher Matrix/);
+});
+
+test('onFormSubmit_Intake: a rejection writes no Ledger row', () => {
+  const { exported, sandbox } = load();
+  const { ss } = setUpFixture(sandbox);
+  const ledger = ss.insertSheet('Ledger');
+  const before = ledger.getLastRow();
+
+  exported.onFormSubmit_Intake(makeEvent({ 'Student Google Account': ['someone.else@gmail.com'] }));
+
+  // The account may belong to someone else, and the Ledger is what other
+  // scripts share documents from.
+  assert.equal(ledger.getLastRow(), before);
+});
+
+test('onFormSubmit_Intake: a failing or impossible email never throws out of the trigger', () => {
+  const { exported, sandbox } = load();
+  setUpFixture(sandbox);
+  sandbox.MailApp.sendEmail = () => { throw new Error('Service invoked too many times: email'); };
+  assert.doesNotThrow(() =>
+    exported.onFormSubmit_Intake(makeEvent({ 'Student Google Account': ['12345@ccpsnet.net'] })));
+
+  const second = load();
+  setUpFixture(second.sandbox);
+  assert.doesNotThrow(() =>
+    second.exported.onFormSubmit_Intake(makeEvent({
+      'Student Google Account': ['12345@ccpsnet.net'], 'Teacher Email': [''],
+    })));
+  assert.equal(mailTo(second.sandbox).length, 0);
+});
+
+test('onFormSubmit_Intake: a valid account typed in capitals is accepted, not rejected', () => {
+  const { exported, sandbox } = load();
+  const { openByIdCalls } = setUpFixture(sandbox);
+
+  exported.onFormSubmit_Intake(makeEvent({ 'Student Google Account': ['1234567@CCPSNET.NET'] }));
+
+  assert.equal(openByIdCalls.length, 1, 'a capitalized but valid account must clear the ID gate');
+  assert.doesNotMatch(mailTo(sandbox).map((m) => m.body).join('\n'), /not a district student account/);
+});

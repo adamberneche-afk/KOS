@@ -127,6 +127,37 @@ test('Vertex is detected as its own pattern', () => {
   assert.equal(hits[0].status, 'live');
 });
 
+test('Google sign-in against our own OAuth client is detected, from either side', () => {
+  // leader-hub's connection to cas-ccps depends on an OAuth client ID that
+  // only a standard Cloud project can hold. It went undeclared because the
+  // endpoints themselves are keyless, so none of the other patterns fired.
+  const server = findGcpSurfaces('x/y.js',
+    'var r = UrlFetchApp.fetch("https://oauth2.googleapis.com/tokeninfo?id_token=" + t);');
+  assert.deepEqual(server.map((h) => [h.pattern, h.status]), [['google-oauth-client', 'live']]);
+  const browser = findGcpSurfaces('x/y.html',
+    '<script src="https://accounts.google.com/gsi/client" async defer></script>');
+  assert.deepEqual(browser.map((h) => [h.pattern, h.status]), [['google-oauth-client', 'live']]);
+});
+
+test('other Google sign-in hosts are not mistaken for our OAuth client', () => {
+  // A CSP connect-src naming accounts.google.com, or the token endpoint an
+  // Apps Script library uses, is not a client-ID dependency.
+  assert.deepEqual(findGcpSurfaces('x/y.html',
+    "connect-src 'self' https://accounts.google.com;"), []);
+  assert.deepEqual(findGcpSurfaces('x/y.js',
+    'var u = "https://oauth2.googleapis.com/token";'), []);
+});
+
+test('both halves of the leader-hub connection are declared, with the same status', () => {
+  const server = GCP_MAP.surfaces['cas-ccps/scripts/07_TeacherDashboard.js'];
+  const browser = GCP_MAP.surfaces['leader-hub/student-leader-hub.html'];
+  assert.ok(server && browser, 'one half declared without the other hides the dependency');
+  assert.equal(server.pattern, 'google-oauth-client');
+  assert.equal(browser.pattern, 'google-oauth-client');
+  // One client ID serves both, so they can only be blocked or working together.
+  assert.equal(server.status, browser.status);
+});
+
 test('a file carrying two different patterns reports both', () => {
   const hits = findGcpSurfaces('x/y.gs',
     'var a = "' + ENDPOINT + '";\nvar b = "https://aiplatform.googleapis.com/v1";');

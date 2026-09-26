@@ -13,10 +13,10 @@
  *   1. Commit your real unified-manual code change(s) normally.
  *   2. node tools/deploy-drift/stamp.js cas-ccps:unified-manual
  *   3. Commit ONLY the resulting change to this file, by itself.
- *   4. node tools/clasp-sync/sync.js unified-manual, then clasp push + clasp
- *      deploy from cas-ccps/.clasp-build/unified-manual/ to actually promote it
- *      (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md §3.5-3.6) — pushing HEAD
- *      alone does not update a live web app's /exec deployment.
+ *   4. node tools/clasp-sync/sync.js unified-manual, then clasp push from
+ *      cas-ccps/.clasp-build/unified-manual/ (tools/clasp-sync/DEPLOYMENT_RUNBOOK.md
+ *      §3.5, or run.ps1). Not a web app, so HEAD is what runs and the push is
+ *      the whole deploy.
  *
  * ONE-TIME SETUP: Script Properties → DEPLOY_DRIFT_GITHUB_TOKEN (a
  * fine-grained GitHub PAT scoped to only adamberneche-afk/KOS — see
