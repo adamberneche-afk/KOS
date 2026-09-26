@@ -35,7 +35,7 @@ const INTAKE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '02_
 function load() {
   return loadGasFiles(
     [SHARED_CONFIG_PATH, AGGREGATOR_PATH, INTAKE_PATH],
-    ['onFormSubmit_Intake'],
+    ['onFormSubmit_Intake', 'SHARED_CONFIG_CACHE_PREFIX'],
   );
 }
 
@@ -49,6 +49,12 @@ function setUpFixture(sandbox) {
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+
+  // getConfig_() reads the Ledger's shared _CONFIG tab once per cache
+  // window (00_SharedConfig.js). Start as if an earlier run already had,
+  // so the openById count below measures the intake path alone.
+  sandbox.CacheService.getScriptCache().put(
+    sandbox.__exported.SHARED_CONFIG_CACHE_PREFIX + ss.getId(), '{}');
 
   const openByIdCalls = [];
   const realOpenById = sandbox.SpreadsheetApp.openById;
