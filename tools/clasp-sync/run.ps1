@@ -66,6 +66,12 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# clasp writes UTF-8 (its push file list draws tree lines), but Windows
+# PowerShell 5.1 decodes a native program's output with the console's OEM
+# code page, which turned each tree line into mojibake. Best effort: a host
+# with no real console (the ISE, some remoting) throws on this.
+try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false } catch { }
+
 # `powershell -File run.ps1 -Only a,b` hands over one string "a,b" rather
 # than an array; split so both spellings work.
 $Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
