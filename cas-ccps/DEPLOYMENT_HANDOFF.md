@@ -607,9 +607,43 @@ reports when a column has moved since the last sync.
 
 ## Script Properties reference
 
-**Hard-required** (fresh deployment throws without these — `00_SharedConfig.js`):
-`ADMIN_SS_ID`, `CENTRAL_LEDGER_SS_ID` — the second is also required by
-`teacher-dashboard`/`student-dashboard` directly, not just central-ledger.
+**Where `getConfig_()` looks, in order** (`00_SharedConfig.js`):
+1. The project's own Script Properties. These always win, so anything set
+   today keeps working unchanged.
+2. For the Central Ledger ID only: the spreadsheet the project is attached
+   to. The Ledger's `_CONFIG` tab carries `SYSTEM_ROLE = CENTRAL_LEDGER`, so
+   central-ledger uses its own ID. A teacher's cloned Matrix or Rubric sheet
+   uses the `CENTRAL_LEDGER_SS_ID` row the setup wizard wrote into its own
+   `_CONFIG` tab.
+3. District-wide settings from the Central Ledger's `_CONFIG` tab:
+   `ADMIN_ROOT_FOLDER_ID`, `ADMIN_NOTIFY_EMAIL`, `STUDENT_DASHBOARD_URL`,
+   `STUDENT_EMAIL_DOMAIN`, `LEADER_HUB_OAUTH_CLIENT_ID` and the three
+   `MASTER_*` template IDs. Nothing else is read from that tab. Per-teacher
+   values and secrets stay in Script Properties: `TEACHER_EMAIL` is the
+   Teacher Dashboard's access gate, so a shared value would let that one
+   address into every dashboard that hadn't set its own.
+
+**Setting it up, once:**
+- Run `seedLedgerConfigTab()` from the Unified Manual's Apps Script editor.
+  The setup wizard wrote the district-wide values there. It creates the
+  Ledger's `_CONFIG` tab, adds the `SYSTEM_ROLE` row and copies in each
+  value the tab doesn't already have. It never overwrites a row; a
+  mismatch is logged for you to settle by hand. Running it again from
+  central-ledger fills any gaps.
+- In each project, run `showConfigSources()` to see where every setting now
+  comes from. Once a value shows as coming from the `_CONFIG` tab, you can
+  delete the duplicate Script Property from that project. Edits to the tab
+  reach every project within 10 minutes.
+- Keep the properties in three places: the Unified Manual, whose setup
+  wizard and installer read them directly; the master student template,
+  whose student-doc copies run as the student and can't open the Ledger;
+  and `M2_ENABLED` wherever it's set, since seven files read it directly.
+
+**Hard-required:** only the Central Ledger ID, found by step 1 or 2 above.
+Without it `getConfig_()` throws. `ADMIN_SS_ID` defaults to the same
+spreadsheet (every installer sets the two equal). `teacher-dashboard` and
+`student-dashboard` aren't attached to a spreadsheet, so they still need
+`CENTRAL_LEDGER_SS_ID` as a Script Property.
 
 **Written automatically, don't set by hand:**
 - Script 16 (teacher setup wizard) writes `TEACHER_*`, `*_RESPONSE_SS_ID`,
@@ -624,6 +658,8 @@ reports when a column has moved since the last sync.
 - `CURRENT_TERM` — no code default; falls back to `""`/`"All Terms"`/`"ALL"`
   per call site if unset (degraded, not fatal, but set it).
 - `ADMIN_ROOT_FOLDER_ID`, `ADMIN_NOTIFY_EMAIL` — admin-tier, no wizard sets these.
+  Set them once on the Ledger's `_CONFIG` tab (see above) rather than in
+  every project.
 
 **Optional, all default-safe, worth setting eventually:** the 5 retention
 properties (`SCR_RETENTION_YEARS`, `LEDGER_RETENTION_YEARS`,
