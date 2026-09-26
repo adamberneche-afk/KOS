@@ -48,6 +48,7 @@ function load() {
 }
 
 const TEACHER = 'teacher@ccpsnet.net';
+const REGISTRY_HEADERS = ['competency_id', 'competency_text', 'subject', 'teacher_email', 'active'];
 
 // Builds an admin/ledger spreadsheet with the three tabs the API reads. `rows`
 // controls whether each carries data, so case 3 can be driven directly.
@@ -105,6 +106,15 @@ test('the row count is found whichever key the handler names its array', () => {
   assert.equal(exported._lhcCount_({ success: true }), 0);
 });
 
+test('the registry\'s wrapped payload is counted, not read as empty', () => {
+  const { exported } = load();
+  // The shape _apiGetCompetencyRegistry_ actually returns. The fixture above
+  // used a flat { competencies: [...] } it never produces, which is how a
+  // live registry of 26 courses / 245 competencies came back as "0 rows".
+  assert.equal(exported._lhcCount_({ success: true, data: { courses: [{}, {}] } }), 2);
+  assert.equal(exported._lhcCount_({ success: true, data: { courses: [] } }), 0);
+});
+
 test('pluralisation does not produce "1 students"', () => {
   const { exported } = load();
   assert.match(exported._lhcDescribe_({ success: true, students: [1] }, 'student'),
@@ -151,7 +161,8 @@ test('empty source tabs fail the check rather than passing it', () => {
   // Case 3, driven end to end: both properties set, so authorization is fine,
   // and nothing to return. A naive "did it throw?" check would call this
   // healthy and send someone to debug OAuth.
-  setUp(sandbox);
+  const ss = setUp(sandbox);
+  ss.insertSheet('CompetencyRegistry').appendRow(REGISTRY_HEADERS);
   const result = exported.runLeaderHubConnectionCheck();
   const dataChecks = result.checks.filter((c) => /returns data/.test(c.name));
   assert.equal(dataChecks.length, 3);
@@ -161,9 +172,41 @@ test('empty source tabs fail the check rather than passing it', () => {
     // sandbox, _apiGetPacingGuide_ died on a ReferenceError and this check
     // still read as "fails on empty" — the correct verdict from an incorrect
     // program. Pinning the message keeps the narrower scope from coming back.
-    assert.match(c.detail, /Handler succeeded but returned 0/,
+    // The registry is the exception: it reports an empty tab as a failure
+    // with its own message, which is the more useful of the two.
+    const expected = /getCompetencyRegistry/.test(c.name)
+      ? /Handler failed: No competencies found/
+      : /Handler succeeded but returned 0/;
+    assert.match(c.detail, expected,
       c.name + ' failed for some reason other than an empty tab: ' + c.detail);
   });
+});
+
+test('a populated registry passes, counted by course', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const reg = ss.insertSheet('CompetencyRegistry');
+  reg.appendRow(REGISTRY_HEADERS);
+  reg.appendRow(['8177-1', 'Explain the thing', 'Course A', '', 'TRUE']);
+  reg.appendRow(['8177-2', 'Explain the next thing', 'Course A', '', 'TRUE']);
+  reg.appendRow(['8175-1', 'Another course', 'Course B', '', 'TRUE']);
+
+  const result = exported.runLeaderHubConnectionCheck();
+  const check = result.checks.find((c) => c.name.indexOf('getCompetencyRegistry') !== -1);
+  assert.equal(check.ok, true, check.detail);
+  assert.match(check.detail, /^2 courses returned/);
+});
+
+test('a missing registry tab is reported as missing, not as a successful empty payload', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const result = exported.runLeaderHubConnectionCheck();
+  const check = result.checks.find((c) => c.name.indexOf('getCompetencyRegistry') !== -1);
+  assert.equal(check.ok, false);
+  // Before, the handler wrapped { error } as success:true, so leader-hub
+  // would have received a "successful" response with the reason buried.
+  assert.match(check.detail, /Handler failed: CompetencyRegistry tab not found/);
+  assert.doesNotMatch(check.detail, /\.\.$/, 'the handler\'s own full stop is not doubled');
 });
 
 test('the roster check reports a count and never a name or an email', () => {
