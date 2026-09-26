@@ -111,19 +111,24 @@ function Update-Checkout {
         if (-not (Test-Path (Join-Path $RepoRoot "tools\clasp-sync\sync.js"))) {
             throw "$RepoRoot exists but doesn't look like a KOS checkout (no tools\clasp-sync\sync.js). Not deleting it."
         }
-        # cas-ccps\clasp\local\ is gitignored, so the zip never brings it
-        # back. Anything there with no registry copy would be lost for good.
+        # Real configs are gitignored, so the zip never brings them back.
+        # Any with no registry copy would be lost for good.
+        $orphans = @()
         $localDir = Join-Path $RepoRoot "cas-ccps\clasp\local"
         if (Test-Path $localDir) {
-            $orphans = Get-ChildItem $localDir -Filter *.clasp.json | Where-Object {
+            $orphans += @(Get-ChildItem $localDir -Filter *.clasp.json | Where-Object {
                 $name = $_.Name -replace '\.clasp\.json$', ''
                 -not (Test-Path (Join-Path $Registry "cas-ccps\$name\.clasp.json"))
-            }
-            if ($orphans) {
-                throw ("These real configs exist only inside RepoRoot and would be deleted: " +
-                    ($orphans.FullName -join ', ') +
-                    ". Copy each to $Registry\cas-ccps\<name>\.clasp.json first.")
-            }
+            } | ForEach-Object { "$($_.FullName) -> $Registry\cas-ccps\$($_.Name -replace '\.clasp\.json$', '')\.clasp.json" })
+        }
+        foreach ($flat in @($Manifest | Where-Object { $_.Type -eq "flat" })) {
+            $inRepo = Join-Path $RepoRoot "$($flat.Name)\.clasp.json"
+            $inReg  = Join-Path $Registry "$($flat.Name)\.clasp.json"
+            if ((Test-Path $inRepo) -and -not (Test-Path $inReg)) { $orphans += "$inRepo -> $inReg" }
+        }
+        if ($orphans.Count -gt 0) {
+            throw ("These real configs exist only inside RepoRoot and would be deleted. Copy each first:`n  " +
+                ($orphans -join "`n  "))
         }
     }
 
