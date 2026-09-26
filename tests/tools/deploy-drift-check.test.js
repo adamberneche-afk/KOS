@@ -90,7 +90,11 @@ test('buildDriftIssueBody: names both the expected and reported sha', () => {
   });
   assert.match(body, new RegExp(REAL_SHA));
   assert.match(body, new RegExp(OTHER_SHA));
-  assert.match(body, /clasp deploy/);
+  // clasp 3.x: update-deployment promotes in place. The 2.x `clasp deploy -i`
+  // this used to name is what update-deployment replaced, and create-deployment
+  // would mint a new /exec URL instead.
+  assert.match(body, /clasp update-deployment/);
+  assert.doesNotMatch(body, /clasp deploy\b/);
 });
 
 // ── publishDriftStatus (fake fetch — no real GitHub calls) ──────────────
