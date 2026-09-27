@@ -266,13 +266,27 @@ function Get-Marker {
 # Description } with Version "HEAD" for the test deployment. Lines look like:
 #   - AKfycb...xyz @9 - description
 #   - AKfycb...abc @HEAD
+# Parsed by splitting on whitespace, the way the first working version of
+# this script read the IDs, after stripping terminal colour codes and
+# trimming. A strict whole-line regex found no @HEAD line on a real
+# Windows run. Every raw line is kept in $script:LastDeploymentLines so a
+# caller that finds nothing can show what clasp actually printed.
 function Get-Deployments {
+    $script:LastDeploymentLines = @()
     clasp list-deployments | ForEach-Object {
-        $m = [regex]::Match("$_", '^\s*-\s+(\S+)\s+@(\w+)(?:\s+-\s+(.*))?$')
-        if ($m.Success) {
-            [pscustomobject]@{ Id = $m.Groups[1].Value; Version = $m.Groups[2].Value; Description = $m.Groups[3].Value }
-        }
+        $line = ("$_" -replace "$([char]27)\[[0-9;]*[A-Za-z]", '').Trim()
+        $script:LastDeploymentLines += $line
+        if (-not $line.StartsWith('-')) { return }
+        $parts = $line.Substring(1).Trim() -split '\s+', 3
+        if ($parts.Count -lt 2 -or -not $parts[1].StartsWith('@')) { return }
+        $desc = if ($parts.Count -ge 3) { ($parts[2] -replace '^-\s*', '').Trim() } else { '' }
+        [pscustomobject]@{ Id = $parts[0]; Version = $parts[1].Substring(1); Description = $desc }
     }
+}
+
+function Show-DeploymentLines {
+    Write-Warning "  couldn't read the deployments -- clasp list-deployments printed:"
+    $script:LastDeploymentLines | ForEach-Object { Write-Host "      [$_]" }
 }
 
 # Deployment IDs to keep live, from a project's registry deployments.txt.
@@ -378,6 +392,7 @@ function Invoke-PushAndPromote {
         Write-Host "    created version $n"
 
         $all  = @(Get-Deployments | Where-Object { $_.Version -ne 'HEAD' })
+        if ($all.Count -eq 0) { Show-DeploymentLines }
         $live = @($all | ForEach-Object { $_.Id })
         $was  = @($all | Where-Object { $_.Id -in $keep } | ForEach-Object { $_.Version } | Sort-Object -Unique)
         $promoted = 0
@@ -436,6 +451,7 @@ function Invoke-HeadOnly {
         if ($head) {
             Add-Link -Project $ProjectName -Label "/dev" -Url "https://script.google.com/macros/s/$($head.Id)/dev"
         }
+        else { Show-DeploymentLines }
         $what = if ($state -eq "unchanged") { "unchanged (already up to date)" } else { "pushed to HEAD" }
         return "$what; live deployments untouched, test at /dev"
     }
