@@ -85,7 +85,7 @@ test('getConfig_: an explicitly configured STUDENT_EMAIL_DOMAIN overrides the "c
 // Ledger ID from the attached spreadsheet, then district-wide keys from
 // the Central Ledger's _CONFIG tab.
 
-const RESOLUTION_EXPORTS = ['getConfig_', 'seedLedgerConfigTab', 'showConfigSources',
+const RESOLUTION_EXPORTS = ['getConfig_', 'seedLedgerConfigTab', 'showConfigSources', 'refreshSharedConfig',
   'SHARED_CONFIG_KEYS', 'SHARED_CONFIG_CACHE_PREFIX'];
 
 function makeLedger(sandbox, rows) {
@@ -283,6 +283,34 @@ test('seedLedgerConfigTab then getConfig_: a project with only the Ledger ID get
   props.deleteProperty('STUDENT_DASHBOARD_URL');
   assert.equal(seeder.exported.getConfig_().studentDashboardUrl,
     'https://script.google.com/macros/s/student/exec');
+});
+
+test('refreshSharedConfig: an edit to the tab is picked up now, not after the cache expires', () => {
+  const { exported, sandbox } = load(RESOLUTION_EXPORTS);
+  const ledger = makeLedger(sandbox, [
+    ['SYSTEM_ROLE', 'CENTRAL_LEDGER'],
+    ['ADMIN_NOTIFY_EMAIL', 'old@ccpsnet.net'],
+  ]);
+  attach(sandbox, ledger);
+  assert.equal(exported.getConfig_().adminNotifyEmail, 'old@ccpsnet.net'); // now cached
+
+  const tab = ledger.getSheetByName('_CONFIG');
+  tab.rows.find((r) => r[0] === 'ADMIN_NOTIFY_EMAIL')[1] = 'new@ccpsnet.net';
+  assert.equal(exported.getConfig_().adminNotifyEmail, 'old@ccpsnet.net', 'still cached before the refresh');
+
+  const report = exported.refreshSharedConfig();
+  assert.equal(report.ADMIN_NOTIFY_EMAIL.value, 'new@ccpsnet.net');
+  assert.equal(exported.getConfig_().adminNotifyEmail, 'new@ccpsnet.net');
+});
+
+test('refreshSharedConfig: works in a project found through CENTRAL_LEDGER_SS_ID too', () => {
+  const { exported, sandbox } = load(RESOLUTION_EXPORTS);
+  const ledger = makeLedger(sandbox, [['STUDENT_DASHBOARD_URL', 'https://old.example/exec']]);
+  sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ledger.getId());
+  exported.getConfig_();
+  ledger.getSheetByName('_CONFIG').rows.find((r) => r[0] === 'STUDENT_DASHBOARD_URL')[1] = 'https://new.example/exec';
+
+  assert.equal(exported.refreshSharedConfig().STUDENT_DASHBOARD_URL.value, 'https://new.example/exec');
 });
 
 test('showConfigSources: says where each value came from', () => {
