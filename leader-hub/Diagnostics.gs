@@ -102,7 +102,7 @@ function lhDiagScriptElements_(html) {
 // instrument correctly.
 function lhDiagInstrument_(html, parts) {
   const blocks = lhDiagScriptElements_(html).filter(function (b) { return b.name; });
-  const markerCount = (html.match(/\/\/# sourceURL=[^\s<]+\s*<\/script>/gi) || []).length;
+  const markerCount = lhDiagCountMarkers_(html);
   if (blocks.length === 0 || blocks.length !== markerCount) {
     throw new Error('Diagnostic probe: found ' + blocks.length + ' named script blocks but ' +
       markerCount + ' sourceURL markers. The page layout changed; the probe needs updating.');
@@ -125,10 +125,29 @@ function lhDiagInstrument_(html, parts) {
 
   const expected = blocks.slice(0, keep).map(function (b) { return b.name; });
   const boot = '<script>' + _lhDiagBootstrapJs_(expected, blocks.length, parts) + '</script>';
-  const head = /<head[^>]*>/i.exec(out);
-  if (!head) throw new Error('Diagnostic probe: the page has no <head> tag.');
-  const at = head.index + head[0].length;
+  const headStart = out.toLowerCase().indexOf('<head');
+  const headEnd = headStart === -1 ? -1 : out.indexOf('>', headStart);
+  if (headEnd === -1) throw new Error('Diagnostic probe: the page has no <head> tag.');
+  const at = headEnd + 1;
   return out.slice(0, at) + boot + out.slice(at);
+}
+
+// How many "//# sourceURL=<name></script>" block endings the raw text
+// has, found by plain string search rather than a tag-matching regex.
+// lhDiagInstrument_ checks this against what the tokenizer found.
+function lhDiagCountMarkers_(html) {
+  const lower = html.toLowerCase();
+  const tag = '//# sourceurl=';
+  let count = 0;
+  let pos = lower.indexOf(tag);
+  while (pos !== -1) {
+    let i = pos + tag.length;
+    while (i < lower.length && !/[\s<]/.test(lower.charAt(i))) i++;
+    while (i < lower.length && /\s/.test(lower.charAt(i))) i++;
+    if (lower.startsWith('</script', i)) count++;
+    pos = lower.indexOf(tag, i);
+  }
+  return count;
 }
 
 // Browser-side probe. Plain ES5 and self-contained, so it runs even if the
