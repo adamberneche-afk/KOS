@@ -165,7 +165,12 @@ test('parts=N serves exactly the first N blocks and leaves all other markup alon
   const out = exported.lhDiagInstrument_(APP_HTML, n);
   assert.deepEqual(markerNames(out), names.slice(0, n));
   names.slice(n).forEach((name) => assert.ok(out.includes('<!-- lh-diag: ' + name + ' not served')));
-  assert.ok(out.includes('https://accounts.google.com/gsi/client'), 'unnamed scripts are left in');
+  // Unnamed scripts (the Google sign-in loader) are left in. The probe adds
+  // its own unnamed ones, the bootstrap and one marker per served block,
+  // so the count is exact. (Counted rather than matched on the loader's
+  // URL: CodeQL reads a URL substring check as a weak host allowlist.)
+  const unnamed = (h) => exported.lhDiagScriptElements_(h).filter((b) => !b.name).length;
+  assert.equal(unnamed(out), unnamed(APP_HTML) + 1 + n);
   // Markup outside the scripts is still there.
   assert.ok(out.includes('<header'));
   assert.ok(out.includes('EMAIL BRIDGE MODAL'));
