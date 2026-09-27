@@ -115,7 +115,7 @@ function lhDiagInstrument_(html, parts) {
     out += html.slice(pos, b.start);
     if (i < keep) {
       out += html.slice(b.start, b.end) +
-        '<script>window.__lhDiagRan && window.__lhDiagRan(' + JSON.stringify(b.name) + ')</script>';
+        '<script>window.__lhDiagRan && window.__lhDiagRan(' + lhDiagJsLiteral_(b.name) + ')</script>';
     } else {
       out += '<!-- lh-diag: ' + b.name + ' not served (parts=' + keep + ') -->';
     }
@@ -130,6 +130,20 @@ function lhDiagInstrument_(html, parts) {
   if (headEnd === -1) throw new Error('Diagnostic probe: the page has no <head> tag.');
   const at = headEnd + 1;
   return out.slice(0, at) + boot + out.slice(at);
+}
+
+// A value as a JavaScript literal that is safe inside an inline <script>.
+// JSON.stringify alone leaves <, >, / and the U+2028/U+2029 line
+// separators as they are, so a value containing "</script>" would end the
+// script element early. Block names can't contain "<" today (the marker
+// pattern stops at it), but the probe shouldn't depend on that.
+function lhDiagJsLiteral_(value) {
+  return JSON.stringify(value)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/\//g, '\\u002f')
+    .replace(/\u2028/g, '\\u2028')
+    .replace(/\u2029/g, '\\u2029');
 }
 
 // How many "//# sourceURL=<name></script>" block endings the raw text
@@ -155,7 +169,7 @@ function lhDiagCountMarkers_(html) {
 // window.onerror, which the app's error handler replaces. The panel is
 // attached to <html> straight away and moved into <body> once there is one.
 function _lhDiagBootstrapJs_(expected, total, parts) {
-  const cfg = JSON.stringify({ expected: expected, total: total, parts: parts });
+  const cfg = lhDiagJsLiteral_({ expected: expected, total: total, parts: parts });
   return '(' + function (CFG) {
     var t0 = Date.now();
     var st = { expected: CFG.expected, total: CFG.total, parts: CFG.parts, ran: [], errors: [], events: [],
