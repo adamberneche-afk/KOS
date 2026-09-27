@@ -172,7 +172,8 @@
       "leader-hub/AiPrompts.gs",
       "leader-hub/FlowOps.gs",
       "leader-hub/DeployVersionReport.gs",
-      "leader-hub/DeployVersionMarker.gs"
+      "leader-hub/DeployVersionMarker.gs",
+      "leader-hub/Diagnostics.gs"
     ],
     "html": [
       "leader-hub/student-leader-hub.html"
