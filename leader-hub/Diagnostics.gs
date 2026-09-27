@@ -244,6 +244,7 @@ function _lhDiagBootstrapJs_(expected, total, parts) {
 // browser. Everything past the signed-in address is owner-only.
 function _lhDiagServerPage_(cfg, owner) {
   const viewer = Session.getActiveUser().getEmail();
+  let scriptTable = '';
   const rows = [
     ['Time (server)', new Date().toISOString()],
     ['Signed in as', viewer || '(no address visible to this script)'],
@@ -253,10 +254,14 @@ function _lhDiagServerPage_(cfg, owner) {
   if (owner) {
     try {
       const html = HtmlService.createHtmlOutputFromFile('student-leader-hub').getContent();
-      const blocks = lhDiagScriptElements_(html).filter(function (b) { return b.name; });
+      const all = lhDiagScriptElements_(html);
+      const blocks = all.filter(function (b) { return b.name; });
       const sizes = blocks.map(function (b) { return b.end - b.start; });
       rows.push(['App page size', html.length + ' characters']);
       rows.push(['Named script blocks', blocks.length + ' (largest ' + Math.max.apply(null, sizes) + ' characters)']);
+      rows.push(['All script elements', String(all.length)]);
+      rows.push(['sourceURL markers in raw text', String(lhDiagCountMarkers_(html))]);
+      scriptTable = _lhDiagScriptTable_(html, all);
     } catch (err) {
       rows.push(['App page', 'could not be read: ' + err.message]);
     }
@@ -276,6 +281,7 @@ function _lhDiagServerPage_(cfg, owner) {
     '<p>The app loads and saves settings, data and SCR scores through private <code>_</code> ' +
     'functions. If the private call fails while the public one works, none of that ' +
     'is reaching the server.</p>' +
+    scriptTable +
     '<p>Probe the full app: add <code>?diag=probe</code> to this URL (or ' +
     '<code>?diag=probe&amp;parts=8</code> to serve only the first 8 blocks).</p>' +
     '<script>(function(){' +
@@ -294,8 +300,26 @@ function _lhDiagServerPage_(cfg, owner) {
     'body{font:14px/1.5 system-ui,sans-serif;margin:24px;color:#222}' +
     'th{text-align:left;padding:4px 14px 4px 0;vertical-align:top;white-space:nowrap}' +
     'td{padding:4px 0;font-family:monospace}h1{font-size:20px}h2{font-size:16px;margin-top:22px}' +
+    'table.blocks td,table.blocks th{padding:2px 8px;font-size:11px;border-bottom:1px solid #ddd;word-break:break-all}' +
     '</style></head><body><h1>LeaderHub diagnostic</h1><table>' + table + '</table>' +
     browser + '</body></html>';
+}
+
+// Every script element in the page as Apps Script serves it: position,
+// size, name, and how it starts and ends. Compare against the repo's built
+// student-leader-hub.html, where no named block is over ~70,000
+// characters. If what's served differs, the difference is on Google's side
+// of the push, not in the build.
+function _lhDiagScriptTable_(html, all) {
+  const rows = all.map(function (b, i) {
+    const el = html.slice(b.start, b.end);
+    const flat = function (t) { return t.replace(/\s+/g, ' '); };
+    return '<tr><td>' + (i + 1) + '</td><td>' + b.start + '</td><td>' + (b.end - b.start) + '</td><td>' +
+      _lhDiagEsc_(b.name || '(unnamed)') + '</td><td>' + _lhDiagEsc_(flat(el.slice(0, 70))) + '</td><td>' +
+      _lhDiagEsc_(flat(el.slice(-70))) + '</td></tr>';
+  }).join('');
+  return '<h2>Script elements as served</h2><table class="blocks"><tr><th>#</th><th>starts at</th>' +
+    '<th>size</th><th>name</th><th>begins</th><th>ends</th></tr>' + rows + '</table>';
 }
 
 function _lhDiagEsc_(s) {
