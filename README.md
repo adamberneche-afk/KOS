@@ -287,8 +287,9 @@ native to that separate Apps Script project — see
 `cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
 Dashboard for real");
 `tests/leaderhub/` covers escaping/XSS guards (including the School
-Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`)
-and the pacing/calendar helpers; `tests/kos-personal/` covers the `kos-personal/studio-steps/`
+Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
+the pacing/calendar helpers, and the `?diag` modes (`diagnostics.test.js`,
+run against the real built page); `tests/kos-personal/` covers the `kos-personal/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced);
