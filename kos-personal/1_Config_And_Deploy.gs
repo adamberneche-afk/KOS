@@ -888,8 +888,9 @@ function _registerDocPointers(folders) {
     'ID_PIVOTS_AND_LESSONS': { folder: folders.f03_2, name: 'PIVOTS_AND_LESSONS_V1.0' },
   };
   Object.entries(docMap).forEach(([key, { folder, name }]) => {
-    const it = folder.getFilesByName(name);
-    if (it.hasNext()) props.setProperty(key, it.next().getId());
+    const found = _findSystemAssetByName_(name, false, folder);
+    if (found.id) props.setProperty(key, found.id);
+    else if (!found.notFound) console.error('[_registerDocPointers] ' + key + ': ' + found.error);
   });
 }
 
@@ -898,59 +899,82 @@ function _registerDocPointers(folders) {
  * Headless version of setupRoutingProperties — re-indexes Drive
  * for all folder/file IDs and writes them to PropertiesService.
  * Use this if folders were manually moved or renamed.
+ *
+ * A stored ID that still opens is kept: a move or rename doesn't change
+ * a Drive ID, and replacing a working ID with a name match is how a copy
+ * or backup becomes the live asset. Only missing or broken IDs are
+ * re-found by name, through _findSystemAssetByName_ (5_Error_And_Utilities.gs),
+ * which skips the trash and refuses to choose between duplicates.
  */
 function setupRoutingProperties() {
-  function fetchId(name, isFolder) {
-    const it = isFolder ? DriveApp.getFoldersByName(name) : DriveApp.getFilesByName(name);
-    if (it.hasNext()) return it.next().getId();
-    console.error('[setupRoutingProperties] NOT FOUND: ' + name);
+  const props = PropertiesService.getScriptProperties();
+  const ambiguous = [];
+  let kept = 0;
+  function fetchId(key, name, isFolder) {
+    const current = props.getProperty(key);
+    if (current) {
+      try {
+        const item = isFolder ? DriveApp.getFolderById(current) : DriveApp.getFileById(current);
+        let trashed = false;
+        try { trashed = item.isTrashed(); } catch (e) { /* treat as live */ }
+        if (!trashed) { kept++; return current; }
+      } catch (e) { /* broken — look it up by name below */ }
+    }
+    const found = _findSystemAssetByName_(name, isFolder);
+    if (found.id) return found.id;
+    if (found.notFound) {
+      console.error('[setupRoutingProperties] NOT FOUND: ' + name);
+    } else {
+      console.error('[setupRoutingProperties] ' + key + ': ' + found.error);
+      ambiguous.push(key);
+    }
     return null;
   }
-  const props = PropertiesService.getScriptProperties();
   const map = {
-    'ID_01_1_SCRIPTS':          fetchId('01.1_SCRIPTS',              true),
-    'ID_01_2_SOP_AND_FLOWS':    fetchId('01.2_SOP_AND_FLOWS',        true),
-    'ID_01_3_SMP_PROPOSALS':    fetchId('01.3_SMP_PROPOSALS',        true),
-    'ID_02_COUNCIL_ALIGNMENTS': fetchId('02_Council_Alignments',     true),
-    'ID_03_DYNAMIC_STATE':      fetchId('03_Dynamic_State',          true),
-    'ID_03_1_CURRENT_STATE':    fetchId('03.1_CURRENT_STATE',        true),
-    'ID_03_2_PIVOTS':           fetchId('03.2_PIVOTS_AND_LESSONS',   true),
-    'ID_03_3_PROCESSED':        fetchId('03.3_PROCESSED_EXHAUST',    true),
-    'ID_00_RAW_EXHAUST':        fetchId('03.4_RAW_EXHAUST',          true),
-    'FOLDER_ID':                fetchId('03.4_RAW_EXHAUST',          true),
-    'ID_03_5_INBOUND_SESSIONS': fetchId('03.5_INBOUND_SESSIONS',     true),  // v8.0
-    'ID_04_COUNCIL_LOGS':       fetchId('04_Council_Logs',           true),
-    'ID_04_1_ARCHITECT':        fetchId('04.1_ARCHITECT_SILO',       true),
-    'ID_04_2_AUDITOR':          fetchId('04.2_AUDITOR_SILO',         true),
-    'ID_04_3_MUSE':             fetchId('04.3_MUSE_SILO',            true),
-    'ID_04_4_DEVELOPER':        fetchId('04.4_DEVELOPER_SILO',       true),
-    'ID_04_5_ALIGNER':          fetchId('04.5_ALIGNER_SILO',        true),
-    'ID_04_6_CURATOR':          fetchId('04.6_CURATOR_SILO',         true),
-    'ID_04_7_RTP':              fetchId('04.7_RTP_SILO',             true),
-    'ID_04_8_GRAVEYARD':        fetchId('04.8_COG_GRAVEYARD',        true),
-    'ID_05_VECTOR_REPOSITORY':  fetchId('05_Vector_Repository',      true),
-    'ID_06_CLASSROOM_ASSETS':   fetchId('06_CLASSROOM_ASSETS',       true),
-    'ID_06_1_LESSON_PLANS':     fetchId('06.1_LESSON_PLANS',         true),
-    'ID_06_2_STUDENT_FACING':   fetchId('06.2_STUDENT_FACING',       true),
-    'ID_06_3_ASSESSMENTS':      fetchId('06.3_ASSESSMENTS',          true),
-    'ID_06_4_COMMUNICATIONS':   fetchId('06.4_COMMUNICATIONS',       true),
-    'ID_07_MEMORY_VAULT':       fetchId('07_Memory_Vault',           true),
-    'ID_08_PROJECT_AUTOPSIES':  fetchId('08_Project_Autopsies',      true),
-    'ID_CCPS_MASTER_TEMPLATES': fetchId('CCPS_MASTER_TEMPLATES',     true),
-    'ID_09_UNC':                fetchId(CFG.REGISTRAR_UNC_FOLDER,    true),
-    'ID_09_1_HLD':              fetchId(CFG.REGISTRAR_HLD_FOLDER,    true),
-    'INDEX_ID':                 fetchId('BRAIN_TRUST_INDEX',         false),
-    'ID_CURRENT_STATE':         fetchId('CURRENT_STATE',             false),
-    'ID_PIVOTS_AND_LESSONS':    fetchId('PIVOTS_AND_LESSONS_V1.0',   false),
+    'ID_01_1_SCRIPTS':          fetchId('ID_01_1_SCRIPTS', '01.1_SCRIPTS',              true),
+    'ID_01_2_SOP_AND_FLOWS':    fetchId('ID_01_2_SOP_AND_FLOWS', '01.2_SOP_AND_FLOWS',        true),
+    'ID_01_3_SMP_PROPOSALS':    fetchId('ID_01_3_SMP_PROPOSALS', '01.3_SMP_PROPOSALS',        true),
+    'ID_02_COUNCIL_ALIGNMENTS': fetchId('ID_02_COUNCIL_ALIGNMENTS', '02_Council_Alignments',     true),
+    'ID_03_DYNAMIC_STATE':      fetchId('ID_03_DYNAMIC_STATE', '03_Dynamic_State',          true),
+    'ID_03_1_CURRENT_STATE':    fetchId('ID_03_1_CURRENT_STATE', '03.1_CURRENT_STATE',        true),
+    'ID_03_2_PIVOTS':           fetchId('ID_03_2_PIVOTS', '03.2_PIVOTS_AND_LESSONS',   true),
+    'ID_03_3_PROCESSED':        fetchId('ID_03_3_PROCESSED', '03.3_PROCESSED_EXHAUST',    true),
+    'ID_00_RAW_EXHAUST':        fetchId('ID_00_RAW_EXHAUST', '03.4_RAW_EXHAUST',          true),
+    'FOLDER_ID':                fetchId('FOLDER_ID', '03.4_RAW_EXHAUST',          true),
+    'ID_03_5_INBOUND_SESSIONS': fetchId('ID_03_5_INBOUND_SESSIONS', '03.5_INBOUND_SESSIONS',     true),  // v8.0
+    'ID_04_COUNCIL_LOGS':       fetchId('ID_04_COUNCIL_LOGS', '04_Council_Logs',           true),
+    'ID_04_1_ARCHITECT':        fetchId('ID_04_1_ARCHITECT', '04.1_ARCHITECT_SILO',       true),
+    'ID_04_2_AUDITOR':          fetchId('ID_04_2_AUDITOR', '04.2_AUDITOR_SILO',         true),
+    'ID_04_3_MUSE':             fetchId('ID_04_3_MUSE', '04.3_MUSE_SILO',            true),
+    'ID_04_4_DEVELOPER':        fetchId('ID_04_4_DEVELOPER', '04.4_DEVELOPER_SILO',       true),
+    'ID_04_5_ALIGNER':          fetchId('ID_04_5_ALIGNER', '04.5_ALIGNER_SILO',        true),
+    'ID_04_6_CURATOR':          fetchId('ID_04_6_CURATOR', '04.6_CURATOR_SILO',         true),
+    'ID_04_7_RTP':              fetchId('ID_04_7_RTP', '04.7_RTP_SILO',             true),
+    'ID_04_8_GRAVEYARD':        fetchId('ID_04_8_GRAVEYARD', '04.8_COG_GRAVEYARD',        true),
+    'ID_05_VECTOR_REPOSITORY':  fetchId('ID_05_VECTOR_REPOSITORY', '05_Vector_Repository',      true),
+    'ID_06_CLASSROOM_ASSETS':   fetchId('ID_06_CLASSROOM_ASSETS', '06_CLASSROOM_ASSETS',       true),
+    'ID_06_1_LESSON_PLANS':     fetchId('ID_06_1_LESSON_PLANS', '06.1_LESSON_PLANS',         true),
+    'ID_06_2_STUDENT_FACING':   fetchId('ID_06_2_STUDENT_FACING', '06.2_STUDENT_FACING',       true),
+    'ID_06_3_ASSESSMENTS':      fetchId('ID_06_3_ASSESSMENTS', '06.3_ASSESSMENTS',          true),
+    'ID_06_4_COMMUNICATIONS':   fetchId('ID_06_4_COMMUNICATIONS', '06.4_COMMUNICATIONS',       true),
+    'ID_07_MEMORY_VAULT':       fetchId('ID_07_MEMORY_VAULT', '07_Memory_Vault',           true),
+    'ID_08_PROJECT_AUTOPSIES':  fetchId('ID_08_PROJECT_AUTOPSIES', '08_Project_Autopsies',      true),
+    'ID_CCPS_MASTER_TEMPLATES': fetchId('ID_CCPS_MASTER_TEMPLATES', 'CCPS_MASTER_TEMPLATES',     true),
+    'ID_09_UNC':                fetchId('ID_09_UNC', CFG.REGISTRAR_UNC_FOLDER,    true),
+    'ID_09_1_HLD':              fetchId('ID_09_1_HLD', CFG.REGISTRAR_HLD_FOLDER,    true),
+    'INDEX_ID':                 fetchId('INDEX_ID', 'BRAIN_TRUST_INDEX',         false),
+    'ID_CURRENT_STATE':         fetchId('ID_CURRENT_STATE', 'CURRENT_STATE',             false),
+    'ID_PIVOTS_AND_LESSONS':    fetchId('ID_PIVOTS_AND_LESSONS', 'PIVOTS_AND_LESSONS_V1.0',   false),
   };
   let ok = 0, miss = 0;
   Object.entries(map).forEach(([k, id]) => {
     if (id) { props.setProperty(k, id); ok++; }
     else miss++;
   });
-  const msg = `setupRoutingProperties: ${ok} registered, ${miss} missing.`;
+  const msg = `setupRoutingProperties: ${ok} registered (${kept} kept as they were), ` +
+    `${miss} missing` + (ambiguous.length ? `, ${ambiguous.length} ambiguous: ${ambiguous.join(', ')}` : '') + '.';
   console.log('[' + msg + ']');
-  return { ok, miss };
+  return { ok, miss, kept, ambiguous };
 }
 
 

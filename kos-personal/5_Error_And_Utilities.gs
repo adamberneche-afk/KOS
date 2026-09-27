@@ -572,13 +572,70 @@ function _getSystemAsset(name, propKey, isFolder) {
       return isFolder ? DriveApp.getFolderById(id) : SpreadsheetApp.openById(id);
     } catch (_) {}  // stale ID — fall through
   }
-  const it = isFolder ? DriveApp.getFoldersByName(name) : DriveApp.getFilesByName(name);
-  if (!it.hasNext()) {
-    throw new Error('Asset not found: "' + name + '". Run deployFullSystem() first.');
+  const found = _findSystemAssetByName_(name, isFolder);
+  if (!found.id) {
+    throw new Error(found.notFound
+      ? 'Asset not found: "' + name + '". Run deployFullSystem() first.'
+      : 'Asset "' + name + '" (' + propKey + '): ' + found.error);
   }
-  const asset = it.next();
-  props.setProperty(propKey, asset.getId());
-  return isFolder ? asset : SpreadsheetApp.openById(asset.getId());
+  props.setProperty(propKey, found.id);
+  return isFolder ? DriveApp.getFolderById(found.id) : SpreadsheetApp.openById(found.id);
+}
+
+
+// Upper bound on items a name search looks at. Real Drive rarely has more
+// than a couple with the same name; this keeps a pathological Drive (or a
+// name like "Untitled") from walking thousands.
+const ASSET_SEARCH_MAX_SCAN = 50;
+
+/**
+ * Finds the one Drive item called `name`, for when a stored ID is missing
+ * or broken. Returns { id } or { error, notFound }. It never guesses: the
+ * first match used to win, so a "Copy of" folder, a backup or a file
+ * shared with this account could silently become the live asset — worse
+ * than a missing ID, which at least fails loudly.
+ *
+ *   - Trashed items don't count.
+ *   - One match: that's it.
+ *   - Several: the single one inside the system's own folder tree wins
+ *     (ID_ROOT_SYSTEM_FOLDER, read directly rather than through
+ *     _getSystemAsset, which is what's calling this). Otherwise it
+ *     refuses and names the problem.
+ *
+ * @param {string}  name
+ * @param {boolean} isFolder
+ * @param {Folder=} parent  Search only this folder's direct children.
+ * @returns {{id: string}|{error: string, notFound: boolean}}
+ */
+function _findSystemAssetByName_(name, isFolder, parent) {
+  const source = parent || DriveApp;
+  const it = isFolder ? source.getFoldersByName(name) : source.getFilesByName(name);
+  const found = [];
+  let scanned = 0;
+  while (it.hasNext() && scanned < ASSET_SEARCH_MAX_SCAN) {
+    scanned++;
+    const item = it.next();
+    let trashed = false;
+    try { trashed = item.isTrashed(); } catch (e) { /* treat as live */ }
+    if (!trashed) found.push(item);
+  }
+
+  if (found.length === 0) return { error: 'not found', notFound: true };
+  if (found.length === 1) return { id: found[0].getId() };
+
+  if (!parent) {
+    const rootId = PropertiesService.getScriptProperties().getProperty('ID_ROOT_SYSTEM_FOLDER');
+    if (rootId) {
+      const inside = found.filter(function (item) { return _isUnderFolderId_(item, rootId); });
+      if (inside.length === 1) return { id: inside[0].getId() };
+    }
+  }
+  const where = parent ? ' in folder "' + parent.getName() + '"' : ' in Drive';
+  return {
+    error: found.length + ' items named "' + name + '"' + where + ' — refusing to guess. ' +
+      'Trash or rename the extras, or set the ID in Script Properties by hand.',
+    notFound: false,
+  };
 }
 
 
@@ -626,7 +683,15 @@ function _isWithinSystemFolderTree_(fileId) {
     try { start = DriveApp.getFolderById(fileId); }
     catch (e2) { return false; } // id doesn't resolve as a file or folder at all
   }
+  return _isUnderFolderId_(start, rootId);
+}
 
+// The parent-chain walk behind _isWithinSystemFolderTree_ (see its header
+// for why it's breadth-first with a cycle guard and a depth cap), taking a
+// live Drive item and the root's ID. Split out so _findSystemAssetByName_
+// can use it without resolving the root through _getSystemAsset, which
+// would recurse whenever the root folder's own ID is the broken one.
+function _isUnderFolderId_(start, rootId) {
   let frontier = [start];
   const visited = new Set();
   for (let depth = 0; depth < 25 && frontier.length; depth++) {
