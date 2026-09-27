@@ -274,12 +274,16 @@ test('?diag=probe serves nothing of the app to anyone else', () => {
 });
 
 test('?diag=1 shows the owner the page facts and both server calls', () => {
-  const { doGet, outputs } = load(OWNER);
+  const { doGet, outputs, exported } = load(OWNER);
   doGet({ parameter: { diag: '1' } });
   const page = outputs[outputs.length - 1].content;
   assert.match(page, /App page size<\/th><td>\d+ characters/);
   assert.match(page, new RegExp('Named script blocks</th><td>' + markerNames(APP_HTML).length + ' '));
   assert.match(page, /lhDiagPing\(\)/);
+  // One table row per script element, the served page's own layout.
+  const elements = exported.lhDiagScriptElements_(APP_HTML).length;
+  assert.equal((page.split('<table class="blocks">')[1].match(/<tr><td>/g) || []).length, elements);
+  assert.match(page, new RegExp('All script elements</th><td>' + elements + '<'));
   assert.match(page, /lhGetAllConfig_\(\)/);
   // The page's own script must at least parse.
   const js = between(page, '<script>', '</script>');
