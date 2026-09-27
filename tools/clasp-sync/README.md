@@ -235,5 +235,26 @@ cd C:\Users\<you>\kos                  # the folder holding run.ps1, the registr
 ```
 
 Keep your working copy of the script next to the registry, not inside
-the checkout, because `-Zip` deletes the checkout. central-ledger is marked
-on hold in the manifest and runs only when it's named in `-Only`.
+the checkout, because `-Zip` deletes the checkout.
+
+**Faster test cycles:**
+
+| Option | What it does |
+|---|---|
+| `-Latest` | Uses the newest `KOS-main*.zip` in the current folder or `~\Downloads` as `-Zip`, and prints which one it picked and when it was saved. |
+| `-HeadOnly` | Pushes without cutting a version or moving a deployment. Live users keep the current version; test the new code at the printed `/dev` link. Push-only projects have no such buffer and are pushed as normal. |
+| `-RollbackTo <n>` | Points every deployment in `deployments.txt` back to version *n*, pushing nothing. Takes exactly one web app in `-Only`. A promote run prints the version it replaced. |
+
+A release run after a `-HeadOnly` test still releases. clasp reports the
+code as "already up to date", but the script checks each deployment's
+description (it writes `<marker> v<n>` on every promote) and cuts a
+version from HEAD if any deployment isn't on the current marker yet.
+
+The summary ends with each project's editor link and its `/exec` or
+`/dev` links.
+
+```powershell
+.\run.ps1 -Latest -HeadOnly -Only leader-hub      # try a fix without touching users
+.\run.ps1 -Latest -Only leader-hub                # release it
+.\run.ps1 -RollbackTo 6 -Only leader-hub          # undo the release
+```
