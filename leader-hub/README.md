@@ -111,6 +111,20 @@ per-tag-size conclusion as **unconfirmed**, not settled — while noting the
 split build is worth keeping regardless (it is verified correct, and it
 is the only configuration that has ever rendered clean anywhere).
 
+**New evidence (2026-09-27, `?diag=1` on `/dev` at `fdfc82b`).** The page
+Apps Script holds is not the page clasp pushed. `getContent()` returns
+1,215,405 characters with 9 named script blocks, the largest 250,040
+characters; the repo build has 16, none over 69,966. Seven blocks
+(`block-0` and parts 2, 5, 6, 10, 12 and 13) lost their closing
+`</script>`, so each one runs on into the next. After `block-0`, that pulls
+the page's markup into a script, which is where `Unexpected token '>'` and
+`Unexpected identifier 'style'` come from. The later `LS is not defined`
+errors follow, because `LS` is defined in a block that no longer parses.
+These counts come from the server, before anything crosses the network,
+so **the district network is ruled out** (next step 1 below). What exactly
+happens to each closing tag is the next thing to read, in the
+"Block endings as served" table.
+
 **Not yet tried — the two highest-value next steps:**
 
 1. **A different network.** Every test so far ran on a district-managed
@@ -172,6 +186,12 @@ one of these to the deployment's URL. They're owner-only, like the app.
 | `?diag=1` | A small server-checks page with no app code. It shows who you're signed in as, whether that's the owner, the served page's size and script-block count, and whether JavaScript runs. It also makes two live `google.script.run` calls: one to a public function and one to the private `lhGetAllConfig_()`. |
 | `?diag=probe` | The full app, plus a status panel pinned to the bottom of the screen. The panel shows which script blocks ran (and which didn't), every error with its block and line, failed resource loads, and page-load milestones. The same summary is logged by `lhDiagReport` about 3 seconds after the page loads and again at 20 seconds. |
 | `?diag=probe&parts=N` | The same, but only the first *N* named script blocks are served. Use this to bisect a block that hangs the page before the panel can paint. |
+| `?diag=raw` | The app page exactly as Apps Script holds it (`getContent()`), as plain text. Ctrl+S saves it. Add `&from=N&len=M` for one stretch, using positions from `?diag=1`. |
+
+`?diag=1` also has two tables. **Script elements as served** lists every
+`<script>` element as a browser would find it. **Block endings as
+served** lists every `//# sourceURL=` marker and whether a `</script>`
+follows it, with the next 60 characters shown with escapes visible.
 
 To try a change without touching users, push it to HEAD and use the
 `/dev` link that `run.ps1` prints:
@@ -187,7 +207,10 @@ refuses to run a function whose name ends in `_` when it's called through
 `lhGetScrScores_` and `lhSaveScrScores_`. If the public call succeeds and
 the private one fails, none of that sync reaches the server. The page
 treats those failures as warnings, so on its own this wouldn't blank the
-screen.
+screen. On `/dev` at `fdfc82b` the private call never answered, most likely
+because `google.script.run` has no such method, so the call throws
+in the browser before reaching the server. `?diag=1` now reports that case
+as FAILED.
 
 ## Process history
 

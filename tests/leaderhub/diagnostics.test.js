@@ -30,7 +30,7 @@ const APP_HTML = fs.readFileSync(path.join(LH, 'student-leader-hub.html'), 'utf8
 const FILES = [path.join(LH, 'Code.gs'), path.join(LH, 'EmailBridge.gs'), path.join(LH, 'Diagnostics.gs'),
   path.join(LH, 'DeployVersionMarker.gs')];
 const EXPOSE = ['doGet', 'lhDiagScriptElements_', 'lhDiagInstrument_', 'lhDiagPing', 'lhDiagReport',
-  '_lhDiagBootstrapJs_', 'lhDiagJsLiteral_'];
+  '_lhDiagBootstrapJs_', 'lhDiagJsLiteral_', 'lhDiagRawSlice_', 'lhDiagBlockEndings_'];
 const OWNER = 'owner@ccpsnet.net';
 
 function fakeHtmlService(fileContent) {
@@ -59,8 +59,17 @@ function load(viewer, opts) {
   const o = opts || {};
   const html = fakeHtmlService(o.fileContent !== undefined ? o.fileContent : APP_HTML);
   const logs = [];
+  const texts = [];
   const loaded = loadGasFiles(FILES, EXPOSE, {
     HtmlService: html.service,
+    ContentService: {
+      MimeType: { TEXT: 'TEXT' },
+      createTextOutput(t) {
+        const o = { content: String(t), mime: null, setMimeType(m) { this.mime = m; return this; } };
+        texts.push(o);
+        return o;
+      },
+    },
     Session: { getActiveUser() { return { getEmail() { return viewer; } }; } },
     console: { log: (m) => logs.push(m), warn() {}, error() {} },
   });
@@ -71,7 +80,7 @@ function load(viewer, opts) {
   // harness's structuredClone-based cross-realm copy can't carry, so call
   // the sandbox's own function and read what it produced from `outputs`.
   const doGet = (e) => { loaded.sandbox.__exported.doGet(e); };
-  return Object.assign(loaded, { outputs: html.outputs, logs, doGet });
+  return Object.assign(loaded, { outputs: html.outputs, texts, logs, doGet });
 }
 
 // Block names in page order, by plain string search. (No tag-matching
@@ -285,6 +294,13 @@ test('?diag=1 shows the owner the page facts and both server calls', () => {
   assert.equal((page.split('<table class="blocks">')[1].match(/<tr><td>/g) || []).length, elements);
   assert.match(page, new RegExp('All script elements</th><td>' + elements + '<'));
   assert.match(page, /lhGetAllConfig_\(\)/);
+  // A private function missing from google.script.run is reported, not
+  // left on "waiting" by a TypeError.
+  assert.match(page, /typeof priv\.lhGetAllConfig_!=="function"/);
+  // Every block ending is listed, and in the repo build each one closes.
+  const endings = page.split('<h2>Block endings as served</h2>')[1];
+  assert.equal((endings.match(/<tr><td>/g) || []).length, markerNames(APP_HTML).length);
+  assert.ok(!endings.includes('<b>NO</b>'));
   // The page's own script must at least parse.
   const js = between(page, '<script>', '</script>');
   assert.doesNotThrow(() => new vm.Script(js));
@@ -320,4 +336,39 @@ test('lhDiagPing returns only the caller\'s own address', () => {
   assert.equal(r.ok, true);
   assert.equal(r.you, 'someone@ccpsnet.net');
   assert.deepEqual(Object.keys(r).sort(), ['ok', 'server_time', 'you']);
+});
+
+// ── ?diag=raw and the block-endings view ─────────────────────────────────
+
+test('?diag=raw gives the owner the page text as held, whole or a stretch', () => {
+  const { doGet, texts } = load(OWNER);
+  doGet({ parameter: { diag: 'raw' } });
+  assert.equal(texts[0].content, APP_HTML);
+  assert.equal(texts[0].mime, 'TEXT');
+  doGet({ parameter: { diag: 'raw', from: '100', len: '50' } });
+  assert.equal(texts[1].content, APP_HTML.slice(100, 150));
+});
+
+test('?diag=raw serves nothing of the app to anyone else', () => {
+  const { doGet, texts, outputs } = load('someone@ccpsnet.net');
+  doGet({ parameter: { diag: 'raw' } });
+  assert.equal(texts.length, 0);
+  assert.match(outputs[outputs.length - 1].content, /Not authorized/);
+});
+
+test('lhDiagRawSlice_ ignores values that are not plain numbers', () => {
+  const { exported } = load(OWNER);
+  assert.equal(exported.lhDiagRawSlice_('abcdef', 'x', '2'), 'abcdef');
+  assert.equal(exported.lhDiagRawSlice_('abcdef', '2', ''), 'cdef');
+  assert.equal(exported.lhDiagRawSlice_('abcdef', '1', '-3'), 'bcdef');
+});
+
+test('lhDiagBlockEndings_ flags a block whose closing tag went missing', () => {
+  const { exported } = load(OWNER);
+  const html = '<script>a()\n//# sourceURL=one.js</script><script>b()\n//# sourceURL=two.js<\\/script>c()' +
+    '\n//# sourceURL=three.js\n</script>';
+  const r = exported.lhDiagBlockEndings_(html);
+  assert.deepEqual(r.map((b) => [b.name, b.closes]), [['one.js', true], ['two.js', false], ['three.js', true]]);
+  assert.equal(r[1].after, '<\\/script>c()\n//# sourceURL=three.js\n</script>');
+  assert.equal(html.slice(r[1].at, r[1].at + 14), '//# sourceURL=');
 });
