@@ -30,7 +30,7 @@ const APP_HTML = fs.readFileSync(path.join(LH, 'student-leader-hub.html'), 'utf8
 const FILES = [path.join(LH, 'Code.gs'), path.join(LH, 'EmailBridge.gs'), path.join(LH, 'Diagnostics.gs'),
   path.join(LH, 'DeployVersionMarker.gs')];
 const EXPOSE = ['doGet', 'lhDiagScriptElements_', 'lhDiagInstrument_', 'lhDiagPing', 'lhDiagReport',
-  '_lhDiagBootstrapJs_'];
+  '_lhDiagBootstrapJs_', 'lhDiagJsLiteral_'];
 const OWNER = 'owner@ccpsnet.net';
 
 function fakeHtmlService(fileContent) {
@@ -125,12 +125,13 @@ test('"<script" inside an HTML comment or a JavaScript string is not a block', (
 
 // ── instrumenting ────────────────────────────────────────────────────────
 
+let exportedLiteral = null;
 function stripProbe(html, names) {
   const bootStart = html.indexOf('<script>(function (CFG)');
   const bootEnd = html.indexOf('</script>', bootStart) + '</script>'.length;
   let out = html.slice(0, bootStart) + html.slice(bootEnd);
   names.forEach((n) => {
-    out = out.split('<script>window.__lhDiagRan && window.__lhDiagRan(' + JSON.stringify(n) + ')</script>').join('');
+    out = out.split('<script>window.__lhDiagRan && window.__lhDiagRan(' + exportedLiteral(n) + ')</script>').join('');
   });
   return out;
 }
@@ -139,9 +140,10 @@ test('probing the full page adds only the bootstrap and one marker per block', (
   const { exported } = load(OWNER);
   const out = exported.lhDiagInstrument_(APP_HTML, null);
   const names = markerNames(APP_HTML);
+  exportedLiteral = exported.lhDiagJsLiteral_;
   assert.equal(stripProbe(out, names), APP_HTML, 'removing what the probe added gives back the original');
   names.forEach((n) => {
-    assert.ok(out.includes('//# sourceURL=' + n + '</script><script>window.__lhDiagRan && window.__lhDiagRan("' + n + '")</script>'),
+    assert.ok(out.includes('//# sourceURL=' + n + '</script><script>window.__lhDiagRan && window.__lhDiagRan(' + exported.lhDiagJsLiteral_(n) + ')</script>'),
       'marker right after ' + n);
   });
 });
@@ -180,6 +182,15 @@ test('a page the probe can\'t map is refused, not half-instrumented', () => {
   // A marker only inside a comment: the counts disagree.
   const html = '<head></head><body><!-- //# sourceURL=x.js</script> --></body>';
   assert.throws(() => exported.lhDiagInstrument_(html, null), /layout changed/);
+});
+
+test('values written into generated script can\'t close the script element', () => {
+  const { exported } = load(OWNER);
+  const lit = exported.lhDiagJsLiteral_('a</script><script>alert(1)//\u2028');
+  assert.ok(!lit.includes('<') && !lit.includes('>') && !lit.includes('/'));
+  assert.ok(!lit.includes('\u2028'));
+  // Still the same value once the browser parses it.
+  assert.equal(vm.runInNewContext(lit), 'a</script><script>alert(1)//\u2028');
 });
 
 // ── the browser-side panel, run against a bare fake DOM ──────────────────
