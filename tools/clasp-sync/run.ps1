@@ -44,6 +44,25 @@
         <Registry>\cas-ccps\unified-manual\.clasp.json
         ...
 
+.PARAMETER Latest
+    Use the newest KOS-main*.zip in this folder or ~\Downloads as -Zip. A
+    browser saves each new download as "KOS-main (N).zip" or "KOS-main N.zip",
+    so the newest one is the one you want; its name and time are printed.
+
+.PARAMETER HeadOnly
+    Push code without cutting a version or moving any deployment. Web apps
+    keep serving their current version to users, and you test the new code
+    at the printed /dev link instead. Use it for fast fix-and-retry cycles;
+    run without it to release. Push-only projects have no such buffer (their
+    triggers and menus run the pushed code straight away), so they are
+    pushed as normal.
+
+.PARAMETER RollbackTo
+    Point every deployment in deployments.txt back to this version number,
+    without pushing anything. Needs exactly one web app in -Only, since
+    version numbers are per project. A promote run prints each deployment's
+    previous version for this.
+
 .PARAMETER Only
     Optional. Run only the named project(s). This is also the only way to run
     a project marked OnHold in the manifest.
@@ -55,10 +74,21 @@
 .EXAMPLE
     .\run.ps1 -Only teacher-dashboard
     Just that one, against the checkout already on disk.
+
+.EXAMPLE
+    .\run.ps1 -Latest -HeadOnly -Only leader-hub
+    Newest zip, push leader-hub's code to HEAD only, print its /dev link.
+
+.EXAMPLE
+    .\run.ps1 -RollbackTo 6 -Only leader-hub
+    Put every registered leader-hub deployment back on version 6.
 #>
 
 param(
     [string]$Zip,
+    [switch]$Latest,
+    [switch]$HeadOnly,
+    [int]$RollbackTo = 0,
     [string]$RepoRoot = "KOS-main",
     [string]$Registry = "clasp-registry",
     [string[]]$Only = @()
@@ -76,10 +106,36 @@ try { [Console]::OutputEncoding = New-Object System.Text.UTF8Encoding $false } c
 # than an array; split so both spellings work.
 $Only = @($Only | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ })
 
+if ($Latest -and $Zip) { throw "Pass -Zip or -Latest, not both." }
+if ($RollbackTo -and ($HeadOnly -or $Zip -or $Latest)) {
+    throw "-RollbackTo pushes nothing, so it can't be combined with -HeadOnly, -Zip or -Latest."
+}
+if ($RollbackTo -and $Only.Count -ne 1) {
+    throw "-RollbackTo needs exactly one project in -Only: version numbers are per project."
+}
+if ($Latest) {
+    $candidates = @(@((Get-Location).Path, (Join-Path $HOME "Downloads")) |
+        Where-Object { Test-Path $_ } |
+        ForEach-Object { Get-ChildItem $_ -File -Filter "KOS-main*.zip" } |
+        Sort-Object LastWriteTime -Descending)
+    if ($candidates.Count -eq 0) {
+        throw "-Latest found no KOS-main*.zip here or in ~\Downloads."
+    }
+    $Zip = $candidates[0].FullName
+    Write-Host ("Using newest zip: {0} (saved {1})" -f $candidates[0].Name, $candidates[0].LastWriteTime)
+}
+
 # Resolve once, up front: several steps Push-Location elsewhere, and a
 # relative path would silently start meaning something different.
-$RepoRoot = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $RepoRoot))
-$Registry = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $Registry))
+# Path.Combine keeps an absolute second argument as it is; Join-Path glued
+# it onto the current folder, so an absolute -Zip, -RepoRoot or -Registry
+# (e.g. -Zip $HOME\Downloads\KOS-main.zip) never worked.
+function Resolve-FullPath {
+    param([Parameter(Mandatory)] [string]$Path)
+    return [System.IO.Path]::GetFullPath([System.IO.Path]::Combine((Get-Location).Path, $Path))
+}
+$RepoRoot = Resolve-FullPath $RepoRoot
+$Registry = Resolve-FullPath $Registry
 
 if (-not (Test-Path $Registry)) {
     throw "Registry folder not found: $Registry"
@@ -103,7 +159,7 @@ function Write-Utf8NoBom {
 function Update-Checkout {
     param([Parameter(Mandatory)] [string]$ZipPath)
 
-    $ZipPath = [System.IO.Path]::GetFullPath((Join-Path (Get-Location) $ZipPath))
+    $ZipPath = Resolve-FullPath $ZipPath
     if (-not (Test-Path $ZipPath)) { throw "Zip not found: $ZipPath" }
 
     if (Test-Path $RepoRoot) {
@@ -206,13 +262,31 @@ function Get-Marker {
     return "(none)"
 }
 
-# Deployment IDs from `clasp list-deployments`, HEAD excluded. Lines look
-# like:  - AKfycb...xyz @9 - description
-function Get-LiveDeployments {
-    clasp list-deployments |
-        Where-Object { $_ -match '@' -and $_ -notmatch '@HEAD' } |
-        ForEach-Object { ($_.Trim() -split '\s+')[1] } |
-        Where-Object { $_ }
+# Every deployment from `clasp list-deployments`, as { Id, Version,
+# Description } with Version "HEAD" for the test deployment. Lines look like:
+#   - AKfycb...xyz @9 - description
+#   - AKfycb...abc @HEAD
+function Get-Deployments {
+    clasp list-deployments | ForEach-Object {
+        $m = [regex]::Match("$_", '^\s*-\s+(\S+)\s+@(\w+)(?:\s+-\s+(.*))?$')
+        if ($m.Success) {
+            [pscustomobject]@{ Id = $m.Groups[1].Value; Version = $m.Groups[2].Value; Description = $m.Groups[3].Value }
+        }
+    }
+}
+
+# Deployment IDs to keep live, from a project's registry deployments.txt.
+function Get-KeepList {
+    param([Parameter(Mandatory)] [string]$DeploymentsFile)
+    if (-not (Test-Path $DeploymentsFile)) { return $null }
+    return @(Get-Content $DeploymentsFile | ForEach-Object { $_.Trim() } |
+        Where-Object { $_ -and -not $_.StartsWith('#') })
+}
+
+function Add-Link {
+    param([string]$Project, [string]$Label, [string]$Url)
+    if (-not $script:Links.Contains($Project)) { $script:Links[$Project] = @() }
+    $script:Links[$Project] += ("{0,-8} {1}" -f $Label, $Url)
 }
 
 # `clasp push`, echoing its output. Returns "failed", "unchanged" or "pushed".
@@ -254,18 +328,18 @@ function Invoke-PushAndPromote {
     param(
         [Parameter(Mandatory)] [string]$WorkingDir,
         [Parameter(Mandatory)] [string]$DeploymentsFile,
-        [Parameter(Mandatory)] [string]$Marker
+        [Parameter(Mandatory)] [string]$Marker,
+        [Parameter(Mandatory)] [string]$ProjectName
     )
 
     Push-Location $WorkingDir
     try {
-        if (-not (Test-Path $DeploymentsFile)) {
+        $keep = Get-KeepList -DeploymentsFile $DeploymentsFile
+        if ($null -eq $keep) {
             Write-Warning "  no $DeploymentsFile -- skipping. Put the deployment IDs to keep live in it, one per line. Currently live on this project:"
             clasp list-deployments | ForEach-Object { Write-Host "    $_" }
             return "SKIPPED: no deployments.txt"
         }
-        $keep = @(Get-Content $DeploymentsFile | ForEach-Object { $_.Trim() } |
-            Where-Object { $_ -and -not $_.StartsWith('#') })
         if ($keep.Count -eq 0) {
             Write-Warning "  $DeploymentsFile lists no deployment IDs -- skipping."
             return "SKIPPED: empty deployments.txt"
@@ -277,11 +351,20 @@ function Invoke-PushAndPromote {
                 return "FAILED: push"
             }
             "unchanged" {
-                # Apps Script caps versions per project, so don't burn one
-                # on identical code. If you expected changes, the checkout
-                # is stale -- check the marker above.
-                Write-Warning "  nothing new pushed -- no version cut, deployments left where they are."
-                return "unchanged (already up to date)"
+                # HEAD already has this code. That alone doesn't mean it's
+                # released: a -HeadOnly test push, or a push whose promote
+                # step never ran, leaves HEAD ahead of the deployments. This
+                # script describes each deployment it promotes as
+                # "<marker> v<n>", so a deployment already carrying this
+                # build's marker is current. Apps Script caps versions per
+                # project, so only cut one when something isn't.
+                $current = @(Get-Deployments | Where-Object { $_.Id -in $keep })
+                $behind  = @($current | Where-Object { -not ($_.Description -like "$Marker *") })
+                if ($current.Count -eq $keep.Count -and $behind.Count -eq 0) {
+                    Write-Warning "  nothing new pushed and every deployment is already on $Marker -- nothing to do."
+                    return "unchanged (already up to date)"
+                }
+                Write-Host "    code already on HEAD, but not every deployment is on $Marker yet -- cutting a version from HEAD"
             }
         }
 
@@ -294,7 +377,9 @@ function Invoke-PushAndPromote {
         $n = $m.Groups[1].Value
         Write-Host "    created version $n"
 
-        $live = @(Get-LiveDeployments)
+        $all  = @(Get-Deployments | Where-Object { $_.Version -ne 'HEAD' })
+        $live = @($all | ForEach-Object { $_.Id })
+        $was  = @($all | Where-Object { $_.Id -in $keep } | ForEach-Object { $_.Version } | Sort-Object -Unique)
         $promoted = 0
         $problems = @()
         foreach ($id in $keep) {
@@ -308,7 +393,10 @@ function Invoke-PushAndPromote {
                 Write-Warning "  update-deployment failed for $id"
                 $problems += "update failed: $id"
             }
-            else { $promoted++ }
+            else {
+                $promoted++
+                Add-Link -Project $ProjectName -Label "/exec" -Url "https://script.google.com/macros/s/$id/exec"
+            }
         }
         $unlisted = @($live | Where-Object { $_ -notin $keep })
         if ($unlisted.Count -gt 0) {
@@ -317,6 +405,81 @@ function Invoke-PushAndPromote {
         clasp list-deployments | ForEach-Object { Write-Host "    $_" }
 
         $result = "v$n -> $promoted/$($keep.Count) deployment(s)"
+        if ($was.Count -eq 1) { $result += " (was v$($was[0]); undo: -RollbackTo $($was[0]))" }
+        elseif ($was.Count -gt 1) {
+            # One -RollbackTo can't restore deployments that started on different versions.
+            $result += " (were on v$($was -join '/v'); to undo, update-deployment each back by hand)"
+        }
+        if ($problems.Count -gt 0) { return "FAILED: $result; $($problems -join '; ')" }
+        return $result
+    }
+    finally { Pop-Location }
+}
+
+# ---------------------------------------------------------------------------
+# -HeadOnly for a web app: push, then print the /dev link that serves HEAD.
+# Nothing is versioned and no deployment moves, so users see no change.
+# ---------------------------------------------------------------------------
+function Invoke-HeadOnly {
+    param(
+        [Parameter(Mandatory)] [string]$WorkingDir,
+        [Parameter(Mandatory)] [string]$ProjectName
+    )
+    Push-Location $WorkingDir
+    try {
+        $state = Invoke-ClaspPush
+        if ($state -eq "failed") {
+            Write-Warning "  clasp push failed (exit $LASTEXITCODE)"
+            return "FAILED: push"
+        }
+        $head = @(Get-Deployments | Where-Object { $_.Version -eq 'HEAD' }) | Select-Object -First 1
+        if ($head) {
+            Add-Link -Project $ProjectName -Label "/dev" -Url "https://script.google.com/macros/s/$($head.Id)/dev"
+        }
+        $what = if ($state -eq "unchanged") { "unchanged (already up to date)" } else { "pushed to HEAD" }
+        return "$what; live deployments untouched, test at /dev"
+    }
+    finally { Pop-Location }
+}
+
+# ---------------------------------------------------------------------------
+# -RollbackTo: point every registered deployment at an existing version.
+# Pushes nothing.
+# ---------------------------------------------------------------------------
+function Invoke-Rollback {
+    param(
+        [Parameter(Mandatory)] [string]$WorkingDir,
+        [Parameter(Mandatory)] [string]$DeploymentsFile,
+        [Parameter(Mandatory)] [int]$Version,
+        [Parameter(Mandatory)] [string]$ProjectName
+    )
+    $keep = Get-KeepList -DeploymentsFile $DeploymentsFile
+    if (-not $keep -or $keep.Count -eq 0) {
+        Write-Warning "  no deployment IDs in $DeploymentsFile -- nothing to roll back."
+        return "SKIPPED: no deployments.txt"
+    }
+    Push-Location $WorkingDir
+    try {
+        $all  = @(Get-Deployments | Where-Object { $_.Version -ne 'HEAD' })
+        $live = @($all | ForEach-Object { $_.Id })
+        $moved = 0
+        $problems = @()
+        foreach ($id in $keep) {
+            if ($id -notin $live) {
+                Write-Warning "  $id is in deployments.txt but not live on this project -- skipped"
+                $problems += "not live: $id"
+                continue
+            }
+            clasp update-deployment $id --versionNumber $Version --description "rollback to v$Version" |
+                ForEach-Object { Write-Host "    $_" }
+            if ($LASTEXITCODE -ne 0) { $problems += "update failed: $id" }
+            else {
+                $moved++
+                Add-Link -Project $ProjectName -Label "/exec" -Url "https://script.google.com/macros/s/$id/exec"
+            }
+        }
+        clasp list-deployments | ForEach-Object { Write-Host "    $_" }
+        $result = "rolled back to v$Version -> $moved/$($keep.Count) deployment(s)"
         if ($problems.Count -gt 0) { return "FAILED: $result; $($problems -join '; ')" }
         return $result
     }
@@ -360,15 +523,33 @@ function Invoke-Project {
         $workingDir = Join-Path $RepoRoot "cas-ccps\.clasp-build\$($P.Name)"
     }
 
+    try {
+        $scriptId = (Get-Content (Join-Path $regDir ".clasp.json") -Raw | ConvertFrom-Json).scriptId
+        Add-Link -Project $P.Name -Label "editor" -Url "https://script.google.com/d/$scriptId/edit"
+    } catch { <# the link is only a convenience #> }
+
+    $deploymentsFile = Join-Path $regDir "deployments.txt"
+    if ($RollbackTo) {
+        if ($P.Mode -eq "push") {
+            return "SKIPPED: not a web app -- HEAD is what runs, so roll back by pushing the older code"
+        }
+        return Invoke-Rollback -WorkingDir $workingDir -DeploymentsFile $deploymentsFile `
+            -Version $RollbackTo -ProjectName $P.Name
+    }
+
     $marker = Get-Marker -Dir $workingDir
     Write-Host "  marker in this build: $marker  (reportDeployVersion should say the same after the push)"
     $script:Markers[$P.Name] = $marker
 
     if ($P.Mode -eq "push") {
+        if ($HeadOnly) { Write-Host "  (-HeadOnly: this project has no /dev buffer; its triggers run the pushed code)" }
         return Invoke-PushOnly -WorkingDir $workingDir
     }
+    if ($HeadOnly) {
+        return Invoke-HeadOnly -WorkingDir $workingDir -ProjectName $P.Name
+    }
     return Invoke-PushAndPromote -WorkingDir $workingDir `
-        -DeploymentsFile (Join-Path $regDir "deployments.txt") -Marker $marker
+        -DeploymentsFile $deploymentsFile -Marker $marker -ProjectName $P.Name
 }
 
 # ---------------------------------------------------------------------------
@@ -379,14 +560,15 @@ function Invoke-Project {
 #            HEAD for developmentMode consumers)
 #   promote  web app: /exec serves a pinned version, so it must be moved
 #
-# OnHold projects run only when named in -Only.
+# A project marked OnHold = $true runs only when named in -Only (none are,
+# today; central-ledger's hold was lifted once its intake fix went live).
 # ---------------------------------------------------------------------------
 $Manifest = @(
     # central-ledger is also a library: unified-manual pins it at version 3
     # (developmentMode false), so pushing HEAD here does not change what
     # unified-manual runs until a new library version is cut and that pin
     # bumped in cas-ccps\clasp\manifests\unified-manual.appsscript.json.
-    @{ Name = "central-ledger";          Type = "cas-ccps"; Mode = "push"; OnHold = $true }
+    @{ Name = "central-ledger";          Type = "cas-ccps"; Mode = "push" }
     @{ Name = "unified-manual";          Type = "cas-ccps"; Mode = "push" }
     # makeCopy templates: new copies get this code, existing copies don't.
     @{ Name = "master-student-template"; Type = "cas-ccps"; Mode = "push" }
@@ -422,6 +604,7 @@ if (-not (Test-Path (Join-Path $RepoRoot "tools\clasp-sync\sync.js"))) {
 }
 
 $script:Markers = @{}
+$script:Links = [ordered]@{}
 $results = [ordered]@{}
 foreach ($p in $targets) {
     # One project failing doesn't stop the rest; the summary says which.
@@ -438,9 +621,27 @@ foreach ($name in $results.Keys) {
     $marker = if ($script:Markers.ContainsKey($name)) { $script:Markers[$name] } else { "-" }
     Write-Host ("  {0,-24} {1,-9} {2}" -f $name, $marker, $results[$name])
 }
+if ($script:Links.Count -gt 0) {
+    Write-Host ""
+    Write-Host "================ Links =================="
+    foreach ($name in $script:Links.Keys) {
+        Write-Host "  $name"
+        $script:Links[$name] | ForEach-Object { Write-Host "    $_" }
+    }
+}
 Write-Host ""
-Write-Host "Next, by hand: reload each pushed project's editor tab and run reportDeployVersion."
-Write-Host "It should report the marker above. (clasp run can't do this -- it needs a GCP project.)"
-Write-Host "Deployment IDs are unchanged, so no URLs need re-pasting anywhere."
+if ($RollbackTo) {
+    Write-Host "Rolled back only -- nothing was pushed. Deployment IDs are unchanged."
+}
+else {
+    Write-Host "Next, by hand: reload each pushed project's editor tab and run reportDeployVersion."
+    Write-Host "It should report the marker above. (clasp run can't do this -- it needs a GCP project.)"
+    if ($HeadOnly) {
+        Write-Host "-HeadOnly: web apps' live deployments were not moved. Test at the /dev links; run again without -HeadOnly to release."
+    }
+    else {
+        Write-Host "Deployment IDs are unchanged, so no URLs need re-pasting anywhere."
+    }
+}
 
 if (@($results.Values | Where-Object { $_ -like 'FAILED*' }).Count -gt 0) { exit 1 }
