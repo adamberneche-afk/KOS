@@ -83,6 +83,10 @@ function doGet(e) {
   if (e && e.parameter && e.parameter.api === 'horizon') {
     return emailBridgeGetHorizonItems_(e);
   }
+  // ?diag=1 / ?diag=probe[&parts=N] — Diagnostics.gs. Owner-gated there.
+  if (e && e.parameter && e.parameter.diag) {
+    return lhDiagnosticResponse_(e);
+  }
   const cfg = getConfig_();
   if (!_isAuthorizedOwner_(cfg)) {
     return HtmlService.createHtmlOutput(

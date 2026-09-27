@@ -161,6 +161,34 @@ build and should be chased immediately.
 GmailApp; the assembled file carries 16 `<script>` blocks (the small
 error handler plus 15 chunks, largest 69,949 chars).
 
+## Diagnosing a broken page without DevTools
+
+DevTools is blocked on district devices, so `Diagnostics.gs` puts the
+information on the page itself and in the editor's **Executions** log. Add
+one of these to the deployment's URL. They're owner-only, like the app.
+
+| URL suffix | Shows |
+|---|---|
+| `?diag=1` | A small server-checks page with no app code. It shows who you're signed in as, whether that's the owner, the served page's size and script-block count, and whether JavaScript runs. It also makes two live `google.script.run` calls: one to a public function and one to the private `lhGetAllConfig_()`. |
+| `?diag=probe` | The full app, plus a status panel pinned to the bottom of the screen. The panel shows which script blocks ran (and which didn't), every error with its block and line, failed resource loads, and page-load milestones. The same summary is logged by `lhDiagReport` about 3 seconds after the page loads and again at 20 seconds. |
+| `?diag=probe&parts=N` | The same, but only the first *N* named script blocks are served. Use this to bisect a block that hangs the page before the panel can paint. |
+
+To try a change without touching users, push it to HEAD and use the
+`/dev` link that `run.ps1` prints:
+
+```powershell
+.\run.ps1 -Latest -HeadOnly -Only leader-hub
+```
+
+The private-call check on `?diag=1` is there for a reason. Apps Script
+refuses to run a function whose name ends in `_` when it's called through
+`google.script.run`. The page's server sync calls exactly such functions:
+`lhGetAllConfig_`, `lhSaveConfig_`, `lhPushData_`, `lhPullData_`,
+`lhGetScrScores_` and `lhSaveScrScores_`. If the public call succeeds and
+the private one fails, none of that sync reaches the server. The page
+treats those failures as warnings, so on its own this wouldn't blank the
+screen.
+
 ## Process history
 
 Bug-fix narration for closed items — the Apps Script bridge's two
