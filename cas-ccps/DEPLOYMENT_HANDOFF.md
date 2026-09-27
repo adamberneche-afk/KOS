@@ -633,7 +633,8 @@ reports when a column has moved since the last sync.
 - In each project, run `showConfigSources()` to see where every setting now
   comes from. Once a value shows as coming from the `_CONFIG` tab, you can
   delete the duplicate Script Property from that project. Edits to the tab
-  reach every project within 10 minutes.
+  reach every project within 10 minutes. To use an edit in a project now,
+  run `refreshSharedConfig()` there; it clears only that project's cache.
 - Keep the properties in three places: the Unified Manual, whose setup
   wizard and installer read them directly; the master student template,
   whose student-doc copies run as the student and can't open the Ledger;
