@@ -386,6 +386,10 @@ class FakeDriveFolder {
   }
   getId() { return this.id; }
   getName() { return this.name; }
+  // Real Apps Script API — Folder.isTrashed()/setTrashed(). First needed by
+  // kos-personal's _findSystemAssetByName_(), which ignores trashed items.
+  isTrashed() { return !!this.trashed; }
+  setTrashed(trashed) { this.trashed = !!trashed; return this; }
   getFoldersByName(name) {
     const matches = this.children.filter((f) => f.name === name);
     let i = 0;
