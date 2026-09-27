@@ -429,6 +429,26 @@ function seedLedgerConfigTab() {
   return { ledgerId: ledgerId, added: added, conflicts: conflicts };
 }
 
+// Run from the Apps Script editor after editing the Ledger's _CONFIG tab
+// to use the new values in this project now, instead of within 10 minutes.
+// Each project caches separately, so this clears only the project it runs
+// in: run it in each one that needs the change straight away. Then reports
+// the fresh values, same as showConfigSources().
+function refreshSharedConfig() {
+  const props = PropertiesService.getScriptProperties().getProperties();
+  let ledgerId = props.CENTRAL_LEDGER_SS_ID || "";
+  if (!ledgerId) {
+    const fromSheet = _ledgerIdFromAttachedSheet_();
+    ledgerId = fromSheet ? fromSheet.id : "";
+  }
+  if (ledgerId) {
+    try { CacheService.getScriptCache().remove(SHARED_CONFIG_CACHE_PREFIX + ledgerId); } catch (e) { /* ignore */ }
+  }
+  _sharedConfigMemo_ = null;
+  Logger.log("[CONFIG] Shared settings cache cleared for this project.");
+  return showConfigSources();
+}
+
 // Run from the Apps Script editor to see where each setting came from
 // before deleting a Script Property the tab now covers. Values are only
 // file IDs, URLs and addresses; no secret is ever a SHARED_CONFIG_KEYS entry.
