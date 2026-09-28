@@ -324,7 +324,16 @@ function makeCacheServiceMock() {
 // overlapping flushes) can load and run at all — not to test locking
 // behavior itself, which no test in this repo needs.
 function makeLockServiceMock() {
-  const lock = { waitLock() {}, releaseLock() {}, tryLock() { return true; }, hasLock() { return true; } };
+  // hasLock() tracks the real state: true only between an acquire and a
+  // release. It used to always return true, which hid a nested-lock bug in
+  // kos-personal (an inner releaseLock() freeing the caller's lock).
+  let held = false;
+  const lock = {
+    waitLock() { held = true; },
+    tryLock() { held = true; return true; },
+    releaseLock() { held = false; },
+    hasLock() { return held; },
+  };
   return { getScriptLock() { return lock; }, getUserLock() { return lock; }, getDocumentLock() { return lock; } };
 }
 

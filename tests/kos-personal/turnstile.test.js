@@ -404,6 +404,31 @@ test('runMatrixTurnstile: the release map is pruned of UIDs no longer present in
   assert.ok(!released['ARCHIVED-AWAY'], 'an archived row\'s stale release-map entry must not grow the map forever');
 });
 
+test('runMatrixTurnstile: the release map keeps only STUDIO_ACTIVE rows and this run\'s releases', () => {
+  const { exported, sandbox } = load();
+  const recent = new Date().getTime() - 60000;
+  seed(exported, sandbox, [
+    { uid: 'FINISHED', status: 'PROCESSED' },
+    { uid: 'IN-FLIGHT', status: 'STUDIO_ACTIVE' },
+    { uid: 'NEXT-UP', status: 'PENDING_FLOW' },
+  ]);
+  exported._writeReleaseMap({ 'FINISHED': recent, 'IN-FLIGHT': recent });
+
+  exported.runMatrixTurnstile();
+
+  const released = exported._readReleaseMap();
+  assert.ok(!released['FINISHED'], 'a finished row\'s entry would otherwise sit in the map for good');
+  assert.equal(released['IN-FLIGHT'], recent, 'an active row keeps its release time');
+  assert.ok(!released['NEXT-UP'], 'concurrency 1 is taken by IN-FLIGHT, so NEXT-UP is not released');
+});
+
+test('runMatrixTurnstile: a row released this run keeps its new entry', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox, [{ uid: 'NEXT-UP', status: 'PENDING_FLOW' }]);
+  exported.runMatrixTurnstile();
+  assert.ok(exported._readReleaseMap()['NEXT-UP']);
+});
+
 test('runMatrixTurnstile: an unrecognized Status is alerted on once, and not repeated on the next run', () => {
   const { exported, sandbox } = load();
   seed(exported, sandbox, [{ uid: 'WEIRD', status: 'AUDITING _LOG' }]); // the real incident's typo'd status

@@ -287,7 +287,8 @@ Teacher Dashboard's own SCR confirm/override review queue (a from-scratch
 reimplementation of the suggestion engine's confirm/override logic,
 native to that separate Apps Script project — see
 `cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
-Dashboard for real");
+Dashboard for real"), and the turn-in score review's teacher-ownership check
+(`teacher-dashboard-turn-in-review.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers, the `?diag` modes (`diagnostics.test.js`,
@@ -298,7 +299,8 @@ lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
 batched requeue of terminal staging rows (`staging-requeue.test.js`), and
 per-session vector classification and its backfill
-(`vector-classify-sessions.test.js`);
+(`vector-classify-sessions.test.js`), incubator decay (`incubator-decay.test.js`),
+and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
 the lint tools, the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
