@@ -292,10 +292,10 @@ test('?diag=1 shows the owner the page facts and both server calls', () => {
   const elements = exported.lhDiagScriptElements_(APP_HTML).length;
   assert.equal((page.split('<table class="blocks">')[1].match(/<tr><td>/g) || []).length, elements);
   assert.match(page, new RegExp('All script elements</th><td>' + elements + '<'));
-  assert.match(page, /lhGetAllConfig_\(\)/);
-  // A private function missing from google.script.run is reported, not
-  // left on "waiting" by a TypeError.
-  assert.match(page, /typeof priv\.lhGetAllConfig_!=="function"/);
+  assert.match(page, /priv\.lhGetAllConfig\(\)/);
+  // A method missing from google.script.run is reported, not left on
+  // "waiting" by a TypeError.
+  assert.match(page, /typeof priv\.lhGetAllConfig!=="function"/);
   assert.match(page, new RegExp('Block names in raw text</th><td>' + markerNames(APP_HTML).length + '<'));
   assert.match(page, /sourceURL comments in raw text<\/th><td>0 /);
   // The page's own script must at least parse.
