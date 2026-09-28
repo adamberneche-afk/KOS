@@ -209,14 +209,14 @@ compute a session-level vector weight itself. Concretely:
   shipped using `RELATIONAL`, and there was no reason to force a choice
   between two live conventions when tracking both costs nothing).
 
-**What this doesn't include yet:** the Studio-side Inference Flow itself
-isn't built — the spec above is what to build it against. Once it
-exists, wiring `2_Ingestion_Sensors.gs` to queue a paired
-`VECTOR_CLASSIFY` row alongside each `SESSION_LOG` chunk (sharing the
-same `Payload_UID` so the two flows' outputs correlate to one session)
-is flagged as an open integration question in the spec doc — it depends
-on how session consolidation actually works against the real, multi-chunk
-Studio setup, which isn't visible from this repo.
+**Session pairing (2026-09-28):** `2_Ingestion_Sensors.gs` now queues each
+session's classification alongside its `SESSION_LOG` chunks, as parts of at
+most 8,000 characters (`LOG-xxxxxxxx_VC01of03`) so each fits one Sheets
+cell. `20_VectorClassifySessions.gs` aggregates them into one
+`VECTOR_MATRIX` row per session under the log UUID, and backfills sessions
+ingested earlier. See the spec's "Session pairing" note. The
+Studio-side Classify Flow itself still has to exist and answer for any of
+this to produce data.
 
 **Migrating an existing live sheet.** If your `BRAIN_TRUST_INDEX`
 spreadsheet already has `VECTOR_MATRIX`/`INCUBATOR` tabs from before this
