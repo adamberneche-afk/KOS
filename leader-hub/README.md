@@ -121,9 +121,22 @@ the page's markup into a script, which is where `Unexpected token '>'` and
 `Unexpected identifier 'style'` come from. The later `LS is not defined`
 errors follow, because `LS` is defined in a block that no longer parses.
 These counts come from the server, before anything crosses the network,
-so **the district network is ruled out** (next step 1 below). What exactly
-happens to each closing tag is the next thing to read, in the
-"Block endings as served" table.
+so **the district network is ruled out** (next step 1 below).
+
+**Cause found (2026-09-28, `?diag=raw` at `a650295`).** Comparing the
+held page with the build, HtmlService parses and re-serializes the page.
+It drops HTML and CSS comments and entity-escapes attributes, which is
+harmless. It also deletes some `//# sourceURL=` comments: 7 of the 16,
+for no reason visible from outside. Each of those comments sat directly
+against its closing tag, and the deletion took `</script` with it:
+`//# sourceURL=leader-hub-block-1-part-2-of-15.js</script><script>` became
+`><script>`. That left a stray `>` in the JavaScript, with no closing tag,
+in exactly the seven blocks that merged. Nothing else inside any script
+changed. **Fix:** the build no longer writes `sourceURL` comments at all.
+Blocks are named by a `data-lh-block` attribute on the opening tag
+instead (`tools/leaderhub-build/build.js`). To confirm it live,
+`?diag=1` on `/dev` should show 16 named blocks and 0 `sourceURL`
+comments, and `?diag=probe` should show no `SyntaxError`.
 
 **Not yet tried — the two highest-value next steps:**
 
@@ -158,9 +171,8 @@ build and should be chased immediately.
   every `clasp`, browser and deploy action and reports back.
 - **DevTools is blocked** by district admin policy — no console, no
   Sources panel, no network inspection. All testing is black-box:
-  screenshots and described behavior only. The `//# sourceURL=` tags the
-  build emits were added for exactly this kind of debugging and are
-  currently unusable for that reason.
+  screenshots and described behavior only. `Diagnostics.gs`'s `?diag`
+  modes exist for this reason.
 - `.clasp.json` is gitignored, so it must be recreated in each fresh
   checkout before `clasp push` will work (`Project settings not found.`
   is what its absence looks like).
@@ -188,10 +200,11 @@ one of these to the deployment's URL. They're owner-only, like the app.
 | `?diag=probe&parts=N` | The same, but only the first *N* named script blocks are served. Use this to bisect a block that hangs the page before the panel can paint. |
 | `?diag=raw` | The app page exactly as Apps Script holds it (`getContent()`), as plain text. Ctrl+S saves it. Add `&from=N&len=M` for one stretch, using positions from `?diag=1`. |
 
-`?diag=1` also has two tables. **Script elements as served** lists every
-`<script>` element as a browser would find it. **Block endings as
-served** lists every `//# sourceURL=` marker and whether a `</script>`
-follows it, with the next 60 characters shown with escapes visible.
+`?diag=1` also lists every `<script>` element as a browser would find it
+in the page Apps Script holds, under **Script elements as served**. Each
+app block is named by the `data-lh-block` attribute the build writes, so a
+healthy page shows 16 named blocks, none over 70,000 characters, and zero
+`sourceURL` comments.
 
 To try a change without touching users, push it to HEAD and use the
 `/dev` link that `run.ps1` prints:
@@ -1129,8 +1142,8 @@ stripped, every top-level `let`/`const` is rewritten to `var`, and the
 giant script is split into several `<script>` tags at real, tokenizer-
 verified statement boundaries — 15 of them today, each under 70,000
 characters, each independently `node --check`ed. Each emitted tag also
-carries a `//# sourceURL=` comment so a runtime error can be traced to a
-specific chunk in browser DevTools. `build.js --stats` prints a
+carries a `data-lh-block` name. (It used to be a `//# sourceURL=`
+comment; see the open crash section for why that had to go.) `build.js --stats` prints a
 per-block size report; `build.js --check` is the drift gate. All of it
 is hand-rolled with zero npm dependencies, on a small tokenizer
 (`js-lexer.js`) that has its own invariant checker, verification scripts
