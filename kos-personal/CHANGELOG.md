@@ -1,6 +1,40 @@
 # KOS Changelog
 
 
+### `19_StagingRequeue.gs`: a requeue helper for STUDIO_TIMEOUT / AUDIT_REJECTED rows
+
+Both handoffs asked for one instead of hand-editing statuses. A row's
+state lives in five places, and a requeue that resets only the Status
+cell times out again. `requeueStagingRows()` resets them together:
+
+- the staging row goes to `PENDING_FLOW` / `Retry_Count 0`;
+- its entries in the Turnstile's release map, audit-retry priority set
+  and stale-deprioritize set are removed, along with the harvest's
+  doc-written breadcrumb;
+- its old `CuratorInput` / `VectorClassifyInput` row is deleted.
+  `buildStudioInputRows()` skips any UID it has built before, and the Flow
+  only fires on a new input row, so while the old row exists the Flow
+  never sees the requeued row. That is also why every audit-gate
+  retry ran out on staleness: the retry went back to `PENDING_FLOW`, but
+  nothing new ever reached the Flow;
+- its old `STUDIO_RETURN` rows are deleted, because
+  `_srGetHarvestedPayloadText_()` reads the first row for a UID and an old
+  FAILED row would shadow the new answer;
+- the source doc is restored from the input row's `SourceText` when they
+  differ. A successful harvest overwrites the doc with the model's output
+  before the audit gate runs, so an audit-rejected row's doc no longer
+  holds its transcript. A row whose doc holds model output and has no
+  `SourceText` is skipped as `SOURCE_LOST`.
+
+`previewStagingRequeue()` is the dry run. `requeueStagingBatch()` applies
+one batch, which only tops the in-flight count (`PENDING_FLOW`,
+`STUDIO_ACTIVE`, `FLOW_COMPLETE`) up to 10, so running it twice does
+nothing until the first batch drains. Fixture and canary rows are never
+touched. `AUDIT_LOG` is left alone, so a requeued row that later times out
+for real is still labelled `AUDIT_REJECTED`.
+
+5 tests in `tests/kos-personal/staging-requeue.test.js`.
+
 ### `generateDailyPrimer` stops failing every morning; `KOS_LATEST_PRIMER` keeps its file ID
 
 From 2026-09-18 every run logged "Can't remove the last paragraph in a
