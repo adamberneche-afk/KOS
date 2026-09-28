@@ -23,6 +23,16 @@ This README documents the system as it is today. The full history of what was fo
 > Rebinding is an operator action in Studio:
 > [`STUDIO_REBIND_HANDOFF.md`](./STUDIO_REBIND_HANDOFF.md) has the evidence,
 > the steps and the checks.
+>
+> **2026-09-28:** the rebind is still pending, and a fresh export found three
+> more causes:
+> - nothing staged since Sept 10;
+> - no code path ever queues a real session for vector classification, so
+>   `VECTOR_MATRIX` holds only fixture rows;
+> - `generateDailyPrimer` fails every morning.
+>
+> [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) is the starting point
+> for the next session.
 
 ---
 
