@@ -1,6 +1,30 @@
 # KOS Changelog
 
 
+### `generateDailyPrimer` stops failing every morning; `KOS_LATEST_PRIMER` keeps its file ID
+
+From 2026-09-18 every run logged "Can't remove the last paragraph in a
+document section". `_clearDocBody_()` (`6_Governance.gs`) removed the
+body's children from the end, and Docs refuses to remove a body's final
+element, so the first removal threw on any doc that already had content.
+It now appends one empty paragraph and removes everything in front of it,
+so the last element is never removed and a list item (which `asParagraph()`
+can't cast) no longer matters. The dated `DAILY_PRIMER_<date>` docs were
+being created all along; only the fixed doc went stale.
+
+`KOS_LATEST_PRIMER` is now a notebook and RTP-gem source held by ID, so
+`_writeLatestPrimer_()` no longer replaces it on any error. A trashed doc
+is restored; a transient Drive/Docs error fails the run and the next run
+retries the same ID; only a doc that is really gone is recreated, with a
+warning that names the new doc to re-add. The doc now opens on its heading
+instead of a blank line.
+
+The test harness hid the bug: `FakeDocBody.removeChild()` allowed removing
+the last child, and list items were plain paragraphs. It now throws the
+real error and the real cast failure. Six tests in
+`tests/kos-personal/governance-primer.test.js`, five failing against the
+old code.
+
 ### `10_Turnstile.gs` gets its first test coverage
 
 The PENDING_FLOW → STUDIO_ACTIVE gate — the file every queued row passes
