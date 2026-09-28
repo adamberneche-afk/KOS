@@ -33,3 +33,4 @@
 !17_DeployVersionReport.gs
 !18_DeployVersionMarker.gs
 !19_StagingRequeue.gs
+!20_VectorClassifySessions.gs
