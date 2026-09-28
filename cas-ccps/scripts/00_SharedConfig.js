@@ -492,6 +492,41 @@ function showConfigSources() {
 // Extend tabs map with RubricQueue (add this line to getConfig_() tabs object)
 
 // =============================================================================
+// School year — student-data access policy, rule 1: student data is visible
+// only during the current school year. Years are "2025-26" style: the part
+// of a term like "2025-26 S1" before the space. The current year is
+// CURRENT_TERM's (the admin's own setting) when it has that shape, else the
+// one today falls in, starting in August. A Ledger row's year is its
+// AcademicYear term's, else the one its timestamp falls in.
+// =============================================================================
+const SCHOOL_YEAR_RE_ = /^\d{4}-\d{2}$/;
+
+function _schoolYearForDate_(d) {
+  const date = d instanceof Date ? d : new Date(d);
+  if (isNaN(date.getTime())) return "";
+  const start = date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
+  return start + "-" + String((start + 1) % 100).padStart(2, "0");
+}
+
+function _schoolYearOfTerm_(term) {
+  const prefix = String(term || "").trim().split(/\s+/)[0];
+  return SCHOOL_YEAR_RE_.test(prefix) ? prefix : "";
+}
+
+function _currentSchoolYear_(now) {
+  const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM");
+  return _schoolYearOfTerm_(term) || _schoolYearForDate_(now || new Date());
+}
+
+function _rowSchoolYear_(row) {
+  return _schoolYearOfTerm_(row[LEDGER.ACADEMIC_YEAR]) || _schoolYearForDate_(row[LEDGER.TIMESTAMP]);
+}
+
+function _isCurrentSchoolYearRow_(row, currentYear) {
+  return _rowSchoolYear_(row) === (currentYear || _currentSchoolYear_());
+}
+
+// =============================================================================
 // CLIENT_ESC_JS — exact source of the client-side esc() HTML-escaping
 // helper, shared verbatim by every dashboard's inline <script> block so
 // the three copies (07_TeacherDashboard.js's buildDashboardHtml_() and
