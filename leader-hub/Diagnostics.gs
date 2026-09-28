@@ -22,6 +22,9 @@
 //                      served. Use it to bisect a block that hangs the page
 //                      before anything paints, when even the panel can't
 //                      appear.
+//   ?diag=raw          The app page exactly as Apps Script holds it, as
+//                      plain text (Ctrl+S saves it). Add &from=N&len=M for
+//                      just that stretch, with positions from ?diag=1.
 //
 // Owner-only, like the app: ?diag=1 tells anyone else only the address
 // they're signed in as, and probe mode serves nothing to them.
@@ -34,12 +37,28 @@
 // before its closing tag). Every block the probe tracks carries one.
 const LH_DIAG_BLOCK_MARKER = /\/\/# sourceURL=([^\s<]+)\s*$/;
 
+// ?diag=raw's text: the whole page, or html.slice(from, from + len) when
+// from is given. Non-numeric values are ignored rather than guessed at.
+function lhDiagRawSlice_(html, from, len) {
+  const num = function (v) { return /^\d+$/.test(String(v || '').trim()) ? parseInt(v, 10) : null; };
+  const start = num(from);
+  if (start === null) return html;
+  const size = num(len);
+  return html.slice(start, size === null ? html.length : start + size);
+}
+
 // Called from doGet() whenever ?diag is present.
 function lhDiagnosticResponse_(e) {
   const mode = String((e && e.parameter && e.parameter.diag) || '');
   const cfg = getConfig_();
   const owner = _isAuthorizedOwner_(cfg);
 
+  if (mode === 'raw') {
+    if (!owner) return _lhDiagNotOwner_();
+    const html = HtmlService.createHtmlOutputFromFile('student-leader-hub').getContent();
+    return ContentService.createTextOutput(lhDiagRawSlice_(html, e.parameter.from, e.parameter.len))
+      .setMimeType(ContentService.MimeType.TEXT);
+  }
   if (mode === 'probe') {
     if (!owner) return _lhDiagNotOwner_();
     const raw = String((e.parameter && e.parameter.parts) || '').trim();
@@ -261,7 +280,7 @@ function _lhDiagServerPage_(cfg, owner) {
       rows.push(['Named script blocks', blocks.length + ' (largest ' + Math.max.apply(null, sizes) + ' characters)']);
       rows.push(['All script elements', String(all.length)]);
       rows.push(['sourceURL markers in raw text', String(lhDiagCountMarkers_(html))]);
-      scriptTable = _lhDiagScriptTable_(html, all);
+      scriptTable = _lhDiagScriptTable_(html, all) + _lhDiagEndingsTable_(html);
     } catch (err) {
       rows.push(['App page', 'could not be read: ' + err.message]);
     }
@@ -291,8 +310,11 @@ function _lhDiagServerPage_(cfg, owner) {
     'set("gsr","available");' +
     'google.script.run.withSuccessHandler(function(r){set("pub","OK -- "+JSON.stringify(r));})' +
     '.withFailureHandler(function(e){set("pub","FAILED -- "+((e&&e.message)||e));}).lhDiagPing();' +
-    'google.script.run.withSuccessHandler(function(){set("priv","OK -- private functions are callable here");})' +
-    '.withFailureHandler(function(e){set("priv","FAILED -- "+((e&&e.message)||e));}).lhGetAllConfig_();' +
+    'var priv=google.script.run.withSuccessHandler(function(){set("priv","OK -- private functions are callable here");})' +
+    '.withFailureHandler(function(e){set("priv","FAILED -- "+((e&&e.message)||e));});' +
+    'if(typeof priv.lhGetAllConfig_!=="function"){set("priv","FAILED -- google.script.run has no lhGetAllConfig_: ' +
+    'private functions are not exposed to the browser");return;}' +
+    'priv.lhGetAllConfig_();' +
     '})();</script>'
   ) : '';
 
@@ -320,6 +342,39 @@ function _lhDiagScriptTable_(html, all) {
   }).join('');
   return '<h2>Script elements as served</h2><table class="blocks"><tr><th>#</th><th>starts at</th>' +
     '<th>size</th><th>name</th><th>begins</th><th>ends</th></tr>' + rows + '</table>';
+}
+
+// Every "//# sourceURL=" in the raw text, whether or not a closing
+// </script> follows it, with the characters right after it shown with
+// escapes visible. A block whose closing tag is missing, moved or
+// rewritten shows up here even though the element table can't see it.
+function lhDiagBlockEndings_(html) {
+  const lower = html.toLowerCase();
+  const tag = '//# sourceurl=';
+  const out = [];
+  let pos = lower.indexOf(tag);
+  while (pos !== -1) {
+    let i = pos + tag.length;
+    while (i < lower.length && !/[\s<]/.test(lower.charAt(i))) i++;
+    const name = html.slice(pos + tag.length, i);
+    let j = i;
+    while (j < lower.length && /\s/.test(lower.charAt(j))) j++;
+    out.push({ at: pos, name: name, closes: lower.startsWith('</script', j), after: html.slice(i, i + 60) });
+    pos = lower.indexOf(tag, i);
+  }
+  return out;
+}
+
+function _lhDiagEndingsTable_(html) {
+  const rows = lhDiagBlockEndings_(html).map(function (b) {
+    return '<tr><td>' + b.at + '</td><td>' + _lhDiagEsc_(b.name) + '</td><td>' +
+      (b.closes ? 'yes' : '<b>NO</b>') + '</td><td>' + _lhDiagEsc_(JSON.stringify(b.after)) + '</td></tr>';
+  }).join('');
+  return '<h2>Block endings as served</h2><p>Every <code>//# sourceURL=</code> in the page. ' +
+    'In the repo build each one is followed straight away by <code>&lt;/script&gt;</code>.</p>' +
+    '<table class="blocks"><tr><th>at</th><th>name</th><th>closes the script?</th>' +
+    '<th>next 60 characters</th></tr>' + rows + '</table>' +
+    '<p>Full text: <code>?diag=raw</code>. One stretch: <code>?diag=raw&amp;from=N&amp;len=400</code>.</p>';
 }
 
 function _lhDiagEsc_(s) {
