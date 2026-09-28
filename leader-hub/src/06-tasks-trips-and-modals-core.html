@@ -284,7 +284,7 @@ function generateFormPreview(id) {
         <div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:.25rem">Field Trip Permission Request Attachment</div>
         <div style="text-align:center;font-size:.75rem;color:#666;margin-bottom:1rem">(Revised 7-17-23) — CCPS</div>
         <div class="excl" style="margin-bottom:.75rem">🚫 Field Trip Exclusions: Laser Tag · Trampoline Parks · Go-Karts · Zip Lines</div>
-        ${prow2('Date Request Entered', fd(new Date().toISOString().slice(0,10)), 'Trip Sponsor', t.sponsor)}
+        ${prow2('Date Request Entered', fd(_localDateStr_()), 'Trip Sponsor', t.sponsor)}
         ${prow2('School Trip Coordinator', t.coord, 'Contact Phone', t.cell)}
         ${prow2('Trip Name', t.name, 'Trip Date', fd(t.date))}
         ${prow2('Trip Type', t.sub?.replace('-',' '), 'Activity Type', t.acttype)}
