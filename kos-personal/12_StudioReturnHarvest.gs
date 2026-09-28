@@ -919,10 +919,11 @@ function installStudioReturnTrigger() {
  * Array) had never been exercised against a real queued row. The two rows
  * share one FileID because that is what the design intends:
  * CURATOR_PROMPT.md's Rule 1 has the Curator citing a completed, independent
- * VECTOR_CLASSIFY row *for the same session*, and README.md:192 records the
- * open gap that `_chunkAndQueue()` doesn't yet queue that paired row. Until
- * it does, this fixture is the only place the paired shape exists — so it
- * also serves as a worked example of what that fix should produce.
+ * VECTOR_CLASSIFY row *for the same session*. Real sessions now get theirs
+ * from 20_VectorClassifySessions.gs, in a different shape: separate part
+ * docs (LOG-xxxxxxxx_VC01of03) aggregated into one matrix row per session.
+ * This fixture's single shared-doc pair still works, because a UID that
+ * isn't a part UID keeps the one-row-one-matrix-row path.
  *
  * An earlier version planted a STUDIO_RETURN row instead, which was the wrong
  * side of the handshake: STUDIO_RETURN is where the Flow WRITES, so a fixture

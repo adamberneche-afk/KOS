@@ -26,6 +26,7 @@ const FILES = [
   path.join(KP, '5_Error_And_Utilities.gs'),
   path.join(KP, '4_Vector_Router.gs'),
   path.join(KP, '12_StudioReturnHarvest.gs'),
+  path.join(KP, '20_VectorClassifySessions.gs'), // VECTOR_CLASSIFY session parts
   path.join(KP, '3_Queue_Processor.gs'),
 ];
 

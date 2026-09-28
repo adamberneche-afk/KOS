@@ -468,10 +468,16 @@ function _generateLogUUID(text) {
  * an oversized block was previously returned whole as its own
  * over-limit chunk.
  *
- * @param  {string}   text  Raw session log text.
- * @returns {string[]}      Array of chunk strings, each ≤ MAX_CHUNK_SIZE chars.
+ * `maxSize` defaults to CFG.MAX_CHUNK_SIZE. 20_VectorClassifySessions.gs
+ * passes a smaller one: the classifier's per-sentence JSON runs about
+ * twice the length of its input, and it has to fit one STUDIO_RETURN cell.
+ *
+ * @param  {string}   text     Raw session log text.
+ * @param  {number=}  maxSize  Chunk ceiling in chars.
+ * @returns {string[]}      Array of chunk strings, each ≤ maxSize chars.
  */
-function _semanticChunker(text) {
+function _semanticChunker(text, maxSize) {
+  maxSize = maxSize || CFG.MAX_CHUNK_SIZE;
   const splits = text.split(CFG.DELIMITER);
   const chunks = [];
   let   cur    = '';
@@ -481,7 +487,7 @@ function _semanticChunker(text) {
     const block = (i === 0 && !text.startsWith(CFG.DELIMITER))
       ? s
       : CFG.DELIMITER + s;
-    if ((cur.length + block.length) > CFG.MAX_CHUNK_SIZE) {
+    if ((cur.length + block.length) > maxSize) {
       if (cur) chunks.push(cur.trim());
       // FIXED: a single CFG.DELIMITER-bounded block bigger than
       // CFG.MAX_CHUNK_SIZE on its own used to become `cur` here
@@ -492,8 +498,8 @@ function _semanticChunker(text) {
       // truncated/failed inference that got misdiagnosed as a
       // Studio-side problem rather than an unsplit chunk. Split it
       // further instead of carrying it forward whole.
-      if (block.length > CFG.MAX_CHUNK_SIZE) {
-        chunks.push(..._splitOversizedBlock_(block));
+      if (block.length > maxSize) {
+        chunks.push(..._splitOversizedBlock_(block, maxSize));
         cur = '';
       } else {
         cur = block;
@@ -521,20 +527,21 @@ function _semanticChunker(text) {
  * @param  {string} block  A single block, block.length > CFG.MAX_CHUNK_SIZE.
  * @returns {string[]} One or more sub-chunks, each ≤ CFG.MAX_CHUNK_SIZE.
  */
-function _splitOversizedBlock_(block) {
+function _splitOversizedBlock_(block, maxSize) {
+  maxSize = maxSize || CFG.MAX_CHUNK_SIZE;
   const paragraphs = block.split('\n\n');
   const subChunks   = [];
   let   cur         = '';
 
   paragraphs.forEach(p => {
     if (!p.trim()) return;
-    if (p.length > CFG.MAX_CHUNK_SIZE) {
+    if (p.length > maxSize) {
       // Tier 2 — a single paragraph alone exceeds the limit.
       if (cur) { subChunks.push(cur.trim()); cur = ''; }
-      for (let i = 0; i < p.length; i += CFG.MAX_CHUNK_SIZE) {
-        subChunks.push(p.substring(i, i + CFG.MAX_CHUNK_SIZE));
+      for (let i = 0; i < p.length; i += maxSize) {
+        subChunks.push(p.substring(i, i + maxSize));
       }
-    } else if ((cur.length + p.length) > CFG.MAX_CHUNK_SIZE) {
+    } else if ((cur.length + p.length) > maxSize) {
       if (cur) subChunks.push(cur.trim());
       cur = p;
     } else {
