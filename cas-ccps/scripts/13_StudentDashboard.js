@@ -185,6 +185,10 @@ function resolveStudentStatus_(status, pipeline) {
     case "ACTIVE":              return "Not started yet";
     case "PENDING": case "STAGED": return "Queued for evaluation…";
     case "COMPLETE":            return "Evaluated — feedback ready, check your document";
+    // Where every passing turn-in lands (04_Form2_TurnInGate.js) until the
+    // teacher confirms its score. It used to fall through to "Status
+    // unavailable", flagged as an issue, on every submitted assignment.
+    case "PENDING_TEACHER_REVIEW": return "Submitted — awaiting teacher review";
     case "COMPLIANT":           return "Submitted — compliant ✓";
     default:
       // Never show a raw Ledger status string to a student — a blank cell
@@ -210,6 +214,7 @@ function resolveStudentClass_(status, pipeline) {
     case "ACTIVE":              return "NOT_STARTED";
     case "PENDING": case "STAGED": return "IN_PROGRESS";
     case "COMPLETE":            return "NEEDS_ACTION";
+    case "PENDING_TEACHER_REVIEW": return "IN_PROGRESS";
     case "COMPLIANT":           return "DONE";
     default:                    return "ISSUE";
   }

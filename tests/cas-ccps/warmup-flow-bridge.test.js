@@ -276,6 +276,21 @@ test('an unparseable date degrades to the raw string rather than throwing', () =
   assert.equal(exported.wfbNormalizeDateIso_('2026-03-04'), '2026-03-04');
 });
 
+test('a bare yyyy-MM-dd date is the lesson day, not the day before', () => {
+  // The harness formats in this process's zone, so run it in the script's
+  // zone (America/New_York); in UTC the old bug could not show.
+  const prevTz = process.env.TZ;
+  process.env.TZ = 'America/New_York';
+  try {
+    const { exported } = load();
+    // Parsed as UTC midnight this used to format as March 3.
+    assert.equal(exported.wfbFormatReadableDate_('2026-03-04'), 'March 4, 2026');
+    assert.equal(exported.wfbNormalizeDateIso_('2026-03-04'), '2026-03-04');
+  } finally {
+    if (prevTz === undefined) delete process.env.TZ; else process.env.TZ = prevTz;
+  }
+});
+
 // ── Schema and wiring invariants ─────────────────────────────────────────────
 
 test('the profile snapshot column is named, and matches the writer', () => {
@@ -651,7 +666,7 @@ test('harvestWarmUpFlowReturns (Flow 4): a grounded evaluation is applied and sc
     .insertSheet(exported.WFB_RETURN_TAB);
   returns.appendRow(exported.WFB_RETURN_HEADERS);
   returns.appendRow([new Date(), 4, queueId,
-    JSON.stringify({ grammar: 2, engagement: 2,
+    JSON.stringify({ grammar: 1, engagement: 2,
       feedback: 'Good identification of the vendor delay as the bottleneck cause.' }),
     '', 0, '']);
 
@@ -659,8 +674,8 @@ test('harvestWarmUpFlowReturns (Flow 4): a grounded evaluation is applied and sc
   assert.equal(result.applied, 1, JSON.stringify(result));
 
   const after = exported.wfbFindQueueRow_(wq, queueId);
-  assert.equal(after.row[exported.WQ25_GRAMMAR_SCORE], 2);
-  assert.equal(after.row[exported.WQ25_TOTAL_SCORE], 6);
+  assert.equal(after.row[exported.WQ25_GRAMMAR_SCORE], 1);
+  assert.equal(after.row[exported.WQ25_TOTAL_SCORE], 5);
 });
 
 test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught before any score is written', () => {
@@ -680,7 +695,7 @@ test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught befor
     .insertSheet(exported.WFB_RETURN_TAB);
   returns.appendRow(exported.WFB_RETURN_HEADERS);
   returns.appendRow([new Date(), 4, queueId,
-    JSON.stringify({ grammar: 4, engagement: 4, feedback: 'Great work overall, well done!' }),
+    JSON.stringify({ grammar: 1, engagement: 3, feedback: 'Great work overall, well done!' }),
     '', 0, '']);
 
   const result = exported.harvestWarmUpFlowReturns();
@@ -690,6 +705,34 @@ test('harvestWarmUpFlowReturns (Flow 4): a fabricated evaluation is caught befor
   assert.equal(String(after.row[exported.WQ25_GRAMMAR_SCORE] || ''), '',
     'no score must be written for a fabricated evaluation');
   assert.equal(after.row[exported.WQ25_STATUS], 'PENDING_EVAL', 'status must not advance to SCORED');
+});
+
+test('harvestWarmUpFlowReturns (Flow 4): a score outside the rubric\'s range is never written', () => {
+  const { exported, sandbox } = load();
+  const { wq } = setUpLedger(sandbox, exported);
+  const queueId = 'WUQ-RANGE-4';
+  wq.appendRow(wqRow(exported, {
+    [exported.WQ25_QUEUE_ID]: queueId,
+    [exported.WQ25_STATUS]: 'PENDING_EVAL',
+    [exported.WQ25_RESPONSE_TEXT]: 'I think the supply chain bottleneck was caused by the vendor delay.',
+    [exported.WQ25_WORD_COUNT_SCORE]: 2,
+    [exported.WQ25_EXTRA_CREDIT]: 0,
+  }));
+  const returns = sandbox.SpreadsheetApp.openById(
+    sandbox.PropertiesService.getScriptProperties().getProperty('CENTRAL_LEDGER_SS_ID'))
+    .insertSheet(exported.WFB_RETURN_TAB);
+  returns.appendRow(exported.WFB_RETURN_HEADERS);
+  // Grammar is 0 or 1 and engagement 0-3 (40_FlowPrompts.js).
+  returns.appendRow([new Date(), 4, queueId,
+    JSON.stringify({ grammar: 1, engagement: 5,
+      feedback: 'Good identification of the vendor delay as the bottleneck cause.' }),
+    '', 0, '']);
+
+  const result = exported.harvestWarmUpFlowReturns();
+  assert.equal(result.applied, 0, JSON.stringify(result));
+  const after = exported.wfbFindQueueRow_(wq, queueId);
+  assert.equal(String(after.row[exported.WQ25_TOTAL_SCORE] || ''), '', 'no total may be written');
+  assert.notEqual(after.row[exported.WQ25_STATUS], 'SCORED');
 });
 
 // ── Flow 3's rejection path — the doc-creation guard ─────────────────────────
