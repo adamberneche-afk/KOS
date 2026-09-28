@@ -895,7 +895,7 @@ function _applyOrgNavLabels() {
   const accHd = document.getElementById('acc-deca');
   if (accHd) {
     const arrowTxt = accHd.querySelector('.acc-arrow')?.textContent || '▶';
-    accHd.innerHTML = `<span>${icon}</span> ${escH(name)} <span class="acc-arrow">${arrowTxt}</span>`;
+    accHd.innerHTML = `<span>${escH(icon)}</span> ${escH(name)} <span class="acc-arrow">${escH(arrowTxt)}</span>`;
   }
 
   const decaOrg  = ORGANIZATIONS.deca;
