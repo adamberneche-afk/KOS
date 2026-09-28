@@ -251,8 +251,11 @@ function processInferenceQueue() {
         // intake path; every other payload type is unchanged.
         const payloadType = String(data[i][SC.PAYLOAD_TYPE] || '');
         const nowFormatted = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
+        // VECTOR_CLASSIFY rows are session parts: stored until the
+        // session's last part lands, then aggregated into one
+        // VECTOR_MATRIX row (20_VectorClassifySessions.gs).
         const result = (payloadType === 'VECTOR_CLASSIFY')
-          ? processVectorClassificationPayload(JSON.stringify(parsed), payloadUid, nowFormatted)
+          ? _processVectorClassifyPart_(parsed, payloadUid, nowFormatted)
           : processIntakePayload(JSON.stringify(parsed), payloadUid);
 
         if (result.status === 'SUCCESS') {
