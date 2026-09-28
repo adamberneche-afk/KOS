@@ -3437,7 +3437,7 @@ if (typeof renderArchive === 'function') renderArchive();
 },
 deca_results: arr => {
 localStorage.setItem('lh_deca_results', JSON.stringify(arr));
-if (typeof renderDecaResults === 'function') renderDecaResults();
+if (typeof renderOrgHub === 'function' && document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
 },
 wbl_roster: arr => {
 WBL_STUDENTS = arr;
@@ -4317,7 +4317,7 @@ document.getElementById('preview-body').innerHTML = `
         <div style="font-weight:700;font-size:1rem;text-align:center;margin-bottom:.25rem">Field Trip Permission Request Attachment</div>
         <div style="text-align:center;font-size:.75rem;color:#666;margin-bottom:1rem">(Revised 7-17-23) — CCPS</div>
         <div class="excl" style="margin-bottom:.75rem">🚫 Field Trip Exclusions: Laser Tag · Trampoline Parks · Go-Karts · Zip Lines</div>
-        ${prow2('Date Request Entered', fd(new Date().toISOString().slice(0,10)), 'Trip Sponsor', t.sponsor)}
+        ${prow2('Date Request Entered', fd(_localDateStr_()), 'Trip Sponsor', t.sponsor)}
         ${prow2('School Trip Coordinator', t.coord, 'Contact Phone', t.cell)}
         ${prow2('Trip Name', t.name, 'Trip Date', fd(t.date))}
         ${prow2('Trip Type', t.sub?.replace('-',' '), 'Activity Type', t.acttype)}
@@ -5688,7 +5688,7 @@ const resultRow = r => `<tr>
     </td>
     <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
     <td style="padding:.35rem .5rem;text-align:right">
-      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
+      <button onclick="deleteOrgResult('${escJsAttr(orgId)}','${escJsAttr(r.id)}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
     </td>
   </tr>`;
 const resultTableHead = `<thead><tr style="background:#f3f4f6">
@@ -5976,7 +5976,7 @@ function renderOrgTabs() {
 const wrap = document.getElementById('org-tabs');
 if (!wrap) return;
 wrap.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) =>
-`<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${id}" onclick="setOrgTab('${id}',this)">${o.icon||'🧩'} ${escH(o.name)}</button>`
+`<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${id}" onclick="setOrgTab('${escJsAttr(id)}',this)">${escH(o.icon||'🧩')} ${escH(o.name)}</button>`
 ).join('');
 }
 function setOrgTab(orgId, btn) {
@@ -6612,7 +6612,7 @@ dirty = true;
 });
 if (dirty) persistSlips();
 }
-function persistNextSlipId() { LS.set('lh_next_slip_id', nextSlipId); }
+function persistNextSlipId() { LS.set('lh_next_slip_id', nextSlipId); }</script><script data-lh-block="leader-hub-block-1-part-4-of-16">
 function resolveSlipStudent(slip) {
 if (slip.studentId) {
 const s = students.find(m => m.id === slip.studentId);
@@ -6644,7 +6644,7 @@ email: slip.email || '', parentEmail: slip.parentEmail || '',
 dietaryNeeds: slip.dietaryNeeds || '', shirtSize: slip.shirtSize || '',
 grade: slip.grade || '', competEvent: '',
 };
-}</script><script data-lh-block="leader-hub-block-1-part-4-of-16">
+}
 function getSlipRoster(tripId) {
 return slipRosters[tripId] || [];
 }
@@ -6964,7 +6964,7 @@ function exportSlipList() {
 const tripId = parseInt(document.getElementById('slip-trip-sel').value);
 const roster = getSlipRoster(tripId).filter(s=>s.status!=='returned');
 const trip = trips.find(t=>t.id===tripId);
-const text = `MISSING/PENDING SLIPS — ${trip?.name||'Trip'}\n${fd(new Date().toISOString().slice(0,10))}\n\n`
+const text = `MISSING/PENDING SLIPS — ${trip?.name||'Trip'}\n${fd(_localDateStr_())}\n\n`
 + roster.map((s,i)=>{
 const p = resolveSlipStudent(s);
 return `${i+1}. ${p.first} ${p.last} — ${s.status.toUpperCase()}${p.parentPhone?' — '+p.parentPhone:p.phone?' — '+p.phone:''}${s.notes?' ('+s.notes+')':''}`;
@@ -8312,7 +8312,7 @@ return `<tr style="border-bottom:1px solid #e5e7eb">
 const w = window.open('','_blank');
 w.document.write(`<html><head><title>SBE Checklist — Cavalier Shop</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;font-size:13px}table{width:100%;border-collapse:collapse}th{background:#1a3560;color:#fff;padding:8px;text-align:left}</style></head><body>
     <h2 style="color:#1a3560">🏪 SBE Approval Checklist — Cavalier Shop (8177)</h2>
-    <p style="color:#666">Progress: ${done}/${SBE_ELEMENTS.length} elements complete | Printed: ${fd(new Date().toISOString().slice(0,10))}</p>
+    <p style="color:#666">Progress: ${done}/${SBE_ELEMENTS.length} elements complete | Printed: ${fd(_localDateStr_())}</p>
     <table><thead><tr><th style="width:60px">Done</th><th>Element</th><th style="width:180px">Owner</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <p style="margin-top:1.5rem;font-size:11px;color:#999">Per CCPS SBE Tool Kit — Group III Procedures. Approval required by school principal.</p>
@@ -8358,7 +8358,7 @@ if (calView) { calView.style.display = 'block'; }
 if (btnCal) { btnCal.style.background = 'var(--navy)'; btnCal.style.color = '#fff'; }
 const qSel = document.getElementById('lpcal-q');
 if (qSel && !qSel.dataset.initialized) {
-const todayKey = new Date().toISOString().slice(0, 10);
+const todayKey = _localDateStr_();
 let curQ = null;
 for (const [qn, r] of Object.entries(LP_QUARTERS)) {
 if (todayKey >= r.start && todayKey <= r.end) { curQ = qn; break; }
@@ -8938,7 +8938,7 @@ const blob = new Blob([csv], {type:'text/csv'});
 const url = URL.createObjectURL(blob);
 const a = document.createElement('a');
 a.href = url;
-a.download = `SCR_${scrActiveCourse}_${scrActivePeriod}_${new Date().toISOString().slice(0,10)}.csv`;
+a.download = `SCR_${scrActiveCourse}_${scrActivePeriod}_${_localDateStr_()}.csv`;
 a.click();
 URL.revokeObjectURL(url);
 }
@@ -9546,7 +9546,7 @@ function closeMatchModal() { document.getElementById('es-match-modal').style.dis
 function saveMatch() {
 const opp = document.getElementById('match-opp').value.trim();
 if (!opp) { _showToast('Please enter opponent school.', 2500, '#991b1b'); return; }
-const matchDateVal = document.getElementById('match-date')?.value || new Date().toISOString().slice(0,10);
+const matchDateVal = document.getElementById('match-date')?.value || _localDateStr_();
 ES_MATCHES.push({
 id:'m'+Date.now(),
 date: matchDateVal,
@@ -10563,7 +10563,7 @@ const [bg, border, txtColor, icon] = allCrit
 ? ['#fffbeb', '#fde68a', '#92400e', '🟡']
 : ['#fef2f2', '#fca5a5', '#991b1b', '📋'];
 if (allCrit && critical.length > 0) {
-const _opDate = new Date().toISOString().slice(0,10);
+const _opDate = _localDateStr_();
 const _opLog = LS.get('lh_daily_log', []);
 if (!_opLog.some(e => e.type === 'obs_prep_ready' && (e.date||'').slice(0,10) === _opDate)) {
 _logDaily({ date: new Date().toISOString(), type: 'obs_prep_ready',
@@ -11084,7 +11084,7 @@ const teachScrNext = _scrDaysAgo === null
 : `SCR last scored ${_scrDaysAgo}d ago`;
 let teachPacingIndicator = '';
 try {
-const _pNow = new Date().toISOString().slice(0,10);
+const _pNow = _localDateStr_();
 let _q = 1;
 for (const [qn, r] of Object.entries(LP_QUARTERS)) {
 if (_pNow >= r.start && _pNow <= r.end) { _q = parseInt(qn); break; }
@@ -12692,7 +12692,7 @@ const el = document.getElementById('course-catalog-list');
 if (!el) return;
 el.innerHTML = Object.entries(SCR_COURSES).map(([code, c]) => `
     <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
-      <span>${c.icon||'🧩'}</span>
+      <span>${escH(c.icon||'🧩')}</span>
       <span style="flex:1"><strong>${escH(code)}</strong> — ${escH(c.name)} <span style="color:var(--muted)">(${c.competencies.length} ${escH((c.standardsLabel||'competencies').toLowerCase())})</span></span>
       ${c.custom
         ? `<button onclick="lhRemoveCustomCourse('${code}')" aria-label="Remove course ${escH(code)}" title="Remove course" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
@@ -12815,20 +12815,20 @@ const sync = ORG_SYNC[id];
 const syncRow = (sync && sync.enabled)
 ? `<div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;flex-wrap:wrap;padding-left:1.75rem">
            <span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
-           <button onclick="lhPullOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
-           <button onclick="lhPushOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
-           <button onclick="lhStopSharingOrg('${id}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
+           <button onclick="lhPullOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
+           <button onclick="lhPushOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
+           <button onclick="lhStopSharingOrg('${escJsAttr(id)}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
          </div>`
 : `<div style="padding-left:1.75rem;margin-top:.3rem">
-           <button onclick="lhShareOrg('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.68rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
+           <button onclick="lhShareOrg('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.68rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
          </div>`;
 return `
     <div style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
       <div style="display:flex;align-items:center;gap:.5rem">
-        <span>${o.icon||'🧩'}</span>
+        <span>${escH(o.icon||'🧩')}</span>
         <span style="flex:1"><strong>${escH(o.name)}</strong> <span style="color:var(--muted)">(${o.officerPositions.length} officer position(s)${o.levels && o.levels.length ? ', '+o.levels.length+' level(s)' : ''})</span></span>
         ${o.custom
-          ? `<button onclick="lhRemoveCustomOrg('${id}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+          ? `<button onclick="lhRemoveCustomOrg('${escJsAttr(id)}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
           : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
       </div>
       ${syncRow}
@@ -13147,7 +13147,7 @@ const blob = new Blob([JSON.stringify(payload, null, 2)], {type:'application/jso
 const url = URL.createObjectURL(blob);
 const a = document.createElement('a');
 a.href = url;
-a.download = 'leaderhub-backup-' + new Date().toISOString().slice(0,10) + '.json';
+a.download = 'leaderhub-backup-' + _localDateStr_() + '.json';
 document.body.appendChild(a);
 a.click();
 document.body.removeChild(a);
@@ -13534,7 +13534,7 @@ const obsItems = typeof OBS_PREP_ITEMS !== 'undefined' ? OBS_PREP_ITEMS : [];
 const critical = obsItems.filter(i => i.critical);
 const critDone = critical.filter(i => saved[i.key]).length;
 if (val && critDone === critical.length && critical.length > 0) {
-const _ocToday = new Date().toISOString().slice(0, 10);
+const _ocToday = _localDateStr_();
 const _ocLog = LS.get('lh_daily_log', []);
 if (!_ocLog.some(e => e.type === 'obs_prep_complete' && (e.date||'').slice(0,10) === _ocToday)) {
 _logDaily({ date: new Date().toISOString(), type: 'obs_prep_complete',
@@ -14554,7 +14554,7 @@ if (idx < 0 || idx >= lessons.length) return null;
 return lessons[idx];
 }
 function openSubPlanModal() {
-const today = new Date().toISOString().slice(0, 10);
+const today = _localDateStr_();
 document.getElementById('sp-date').value = today;
 const saved = LS.get('lh_sub_settings', {});
 document.getElementById('sp-loc-subfolder').value = saved.subfolder || SP_STATIC_DEFAULTS.subfolder;
@@ -14764,7 +14764,7 @@ const d = new Date();
 const day = d.getDay();
 const diff = (day === 0) ? -6 : 1 - day;
 d.setDate(d.getDate() + diff);
-const iso = d.toISOString().slice(0, 10);
+const iso = _localDateStr_(d);
 document.getElementById('brag-week-start').value = iso;
 setBragTab(_bragTab, document.getElementById('brag-tab-' + _bragTab));
 gatherBragData();

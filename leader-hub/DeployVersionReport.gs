@@ -75,6 +75,10 @@ function reportDeployVersion() {
  * DEPLOY_DRIFT_GITHUB_TOKEN (see this file's header).
  */
 function installDeployVersionReportTrigger() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it changes shared state, so it is owner-only. Running it
+  // from the editor as the owner still works.
+  _lhRequireOwner_();
   ScriptApp.getProjectTriggers().forEach((t) => {
     if (t.getHandlerFunction() === 'reportDeployVersion') ScriptApp.deleteTrigger(t);
   });

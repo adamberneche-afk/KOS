@@ -1073,3 +1073,28 @@ and multiple sales in the same log all get escaped, not just the first.
 `node tools/leaderhub-build/build.js`, verified with `--check` (no
 drift). Full suite: 1128/1128 (was 1123). `html-lint`, `gas-lint`, and
 `doc-currency` all pass, all three unchanged from baseline.
+
+## Codebase sweep, 2026-09-28
+
+- **XSS through Org Sync.** An org's icon and a result's id, both of which
+  a same-domain co-advisor can set through a push, went into the page and
+  into onclick handlers unescaped. They're escaped now, along with the
+  org ids in the share/pull/remove buttons.
+- **Editor-only maintenance functions had no owner check.** They're
+  public, so any page this web app serves could call them through
+  `google.script.run`: `repairAiQueueSchema`, `installAiFlowFixtures`,
+  `removeAiFlowFixtures`, `runAiFlowCanary`, `cleanUpAiFlowCanary`,
+  `syncAiPromptsToSheet` and `installDeployVersionReportTrigger`. Each
+  now calls `_lhRequireOwner_()`; running them from the editor as the
+  owner still works.
+- **"Today" was computed in UTC in twelve places**, so after 8 pm Eastern
+  the brag-board week, the sub-plan date, the current quarter, the pacing
+  indicator and several printed dates rolled to tomorrow. All use
+  `_localDateStr_()` now.
+- **A DECA results sync never repainted an open hub.**
+
+Found and left for a decision: stale server copies can overwrite newer
+local edits at boot after a failed save; co-advisor Join can't work
+(`listOrgSyncs` is owner-only, and org sync calls go to the co-advisor's
+own server); `?api=horizon` has no owner check (harmless while the Gmail
+scan returns nothing).
