@@ -24,6 +24,21 @@ const PRICE_TO_TIER = {
 };
 
 
+/** The tier a configured price ID sells, or null. Unset env vars never match. */
+function tierForPrice(priceId) {
+  if (!priceId || priceId === 'undefined') return null;
+  return Object.prototype.hasOwnProperty.call(PRICE_TO_TIER, priceId) ? PRICE_TO_TIER[priceId] : null;
+}
+
+/** The CREDIT_BUNDLES entry with exactly this many credits, or null. */
+function resolveCreditBundle(credits) {
+  const n = Number(credits);
+  return CREDIT_BUNDLES.find((b) => b.credits === n) || null;
+}
+
+class BadRequestError extends Error {}
+
+
 // ── Customer management ───────────────────────────────────────────
 
 /**
@@ -82,12 +97,18 @@ async function createSubscriptionCheckout(user, priceId, returnUrl) {
  * Creates a Stripe Checkout session for a one-time credit purchase.
  *
  * @param  {Object} user       User row.
- * @param  {number} credits    Number of credits to purchase.
- * @param  {number} priceInCents  Price in cents (e.g. 1000 = $10.00).
+ * @param  {number} credits    The `credits` of one CREDIT_BUNDLES entry.
  * @param  {string} returnUrl  URL to return to after checkout.
  * @returns {string} Checkout session URL.
  */
-async function createCreditPurchaseCheckout(user, credits, priceInCents, returnUrl) {
+async function createCreditPurchaseCheckout(user, credits, returnUrl) {
+  // The bundle, and so the price, comes from CREDIT_BUNDLES on the server.
+  // It used to take both credits and price from the request body, so a
+  // caller could buy any number of credits at any price they named.
+  const bundle = resolveCreditBundle(credits);
+  if (!bundle) throw new BadRequestError('Unknown credit bundle: ' + credits);
+  const priceInCents = bundle.priceInCents;
+  credits = bundle.credits;
   const customerId = await getOrCreateStripeCustomer(user);
 
   const session = await stripe.checkout.sessions.create({
@@ -162,8 +183,15 @@ async function handleWebhook(rawBody, signature) {
         // its actual price ID.
         const subscription = await stripe.subscriptions.retrieve(session.subscription);
         const priceId       = subscription.items?.data?.[0]?.price?.id;
-        const tier          = PRICE_TO_TIER[priceId] || 'starter';
-        const credits       = TIER_CREDITS[tier] || 500;
+        // Grant nothing for a price this service doesn't sell. Falling back
+        // to 'starter' let any cheap price in the Stripe account buy 500
+        // credits a month.
+        const tier          = tierForPrice(priceId);
+        if (!tier) {
+          logger.error(`[Billing] Subscription for user ${userId} uses unknown price ${priceId}; no credits granted`);
+          break;
+        }
+        const credits       = TIER_CREDITS[tier];
         await db.pool.query(
           `UPDATE users SET subscription_status = 'active', subscription_tier = $1 WHERE id = $2`,
           [tier, userId]
@@ -303,4 +331,7 @@ module.exports = {
   handleWebhook,
   CREDIT_BUNDLES,
   SUBSCRIPTION_TIERS,
+  tierForPrice,
+  resolveCreditBundle,
+  BadRequestError,
 };
