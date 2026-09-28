@@ -38,6 +38,7 @@ const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const JOB_TYPES = ['EMAIL_COMPOSE', 'ARCHIVE_INSIGHTS', 'WBL_INSIGHTS',
                    'LP_ASSIST', 'FIN_ANALYSIS', 'BRAG_EMAIL'];
 const FILES = [
+  path.join(LH, 'Code.gs'), // _lhRequireOwner_(): the mutating functions are owner-only
   path.join(LH, 'EmailBridge.gs'),
   path.join(LH, 'AiPrompts.gs'),
   path.join(LH, 'FlowOps.gs'),
@@ -59,7 +60,10 @@ const EXPOSE = [
 ];
 
 function load() {
-  return loadGasFiles(FILES, EXPOSE);
+  // The sandbox's Session user is teacher@example.com; make them the owner.
+  const loaded = loadGasFiles(FILES, EXPOSE);
+  loaded.sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'teacher@example.com');
+  return loaded;
 }
 
 function queueSheet(exported, sandbox) {

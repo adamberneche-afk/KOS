@@ -16,12 +16,11 @@
  *   2. The Turnstile's Script Properties: the release map, the audit-retry
  *      priority set and the stale-deprioritize set. Stale entries would
  *      misorder the release or misjudge staleness.
- *   3. The row's CuratorInput / VectorClassifyInput row.
- *      buildStudioInputRows() skips any UID it has materialized before,
- *      and the Flow only fires on a NEW input row, so while the old row
- *      exists the Flow never sees the requeued row, and it dies at the
- *      Turnstile again. (This is also why the audit gate's own
- *      revert-to-PENDING_FLOW retries all ran out on staleness.)
+ *   3. The row's CuratorInput / VectorClassifyInput row. The Flow only
+ *      fires on a NEW input row. buildStudioInputRows() now replaces an
+ *      input row built before the row's latest release, but it needs the
+ *      release map to tell, and step 2 clears that entry; so the old row
+ *      is removed here and the builder reads the restored doc instead.
  *   4. Its STUDIO_RETURN rows. _srGetHarvestedPayloadText_() reads the
  *      FIRST return row for a UID, so an old FAILED row would shadow the
  *      new answer. The harvest's doc-written breadcrumb is cleared too.

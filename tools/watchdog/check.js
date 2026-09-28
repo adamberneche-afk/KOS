@@ -244,7 +244,7 @@ function buildWatchdogReport({ yamlFindings, runFindings, prFindings = [], check
 
 async function findExistingWatchdogIssue(owner, repo, token, fetchImpl) {
   const res = await fetchImpl(
-    `${GITHUB_API}/repos/${owner}/${repo}/issues?labels=${encodeURIComponent(WATCHDOG_ISSUE_LABEL)}&state=all&per_page=10`,
+    `${GITHUB_API}/repos/${owner}/${repo}/issues?labels=${encodeURIComponent(WATCHDOG_ISSUE_LABEL)}&state=all&per_page=100`,
     { headers: githubHeaders(token) }
   );
   if (!res.ok) throw new Error(`could not list issues: HTTP ${res.status}`);

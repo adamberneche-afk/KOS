@@ -528,11 +528,20 @@ function _srGetHarvestedPayloadText_(uid) {
 
   const width = Object.keys(SR_COLS).length;
   const data  = sheet.getRange(2, 1, lastRow - 1, width).getValues();
-  for (let i = 0; i < data.length; i++) {
+  // A retried row has one return row per attempt, and the earlier ones are
+  // the answers that were rejected. Take the newest HARVESTED row (the one
+  // whose harvest set FLOW_COMPLETE), else the newest row at all. Taking the
+  // first used to re-read the rejected answer on every retry.
+  let pick = -1;
+  for (let i = data.length - 1; i >= 0; i--) {
     if (String(data[i][SR_COLS.PAYLOAD_UID]).trim() !== uid) continue;
-    const payloadType = String(data[i][SR_COLS.PAYLOAD_TYPE] || '').trim();
-    const primary      = String(data[i][SR_COLS.PRIMARY_JSON] || '');
-    const auditor      = String(data[i][SR_COLS.AUDITOR_JSON] || '');
+    if (pick === -1) pick = i;
+    if (String(data[i][SR_COLS.HARVEST_STATUS] || '').trim() === 'HARVESTED') { pick = i; break; }
+  }
+  if (pick !== -1) {
+    const payloadType = String(data[pick][SR_COLS.PAYLOAD_TYPE] || '').trim();
+    const primary      = String(data[pick][SR_COLS.PRIMARY_JSON] || '');
+    const auditor      = String(data[pick][SR_COLS.AUDITOR_JSON] || '');
     return _srPrepareDocText_(payloadType, primary, auditor);
   }
   return { ok: false, error: 'No STUDIO_RETURN row for Payload_UID ' + uid };

@@ -72,3 +72,19 @@ test('buildSessionContext: omits the CORE FACTS section entirely when nothing is
   const text = latestDocText(sandbox);
   assert.doesNotMatch(text, /CORE FACTS/);
 });
+
+test('buildSessionContext: the vector primer lists theme columns only, not INCUBATOR_SIGNALS or CHECKSUM', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const matrix = ss.insertSheet('VECTOR_MATRIX');
+  matrix.appendRow(['Session_UID', 'Timestamp', 'ARCHITECTURE', 'UI', 'INCUBATOR_SIGNALS', 'CHECKSUM']);
+  matrix.appendRow(['LOG-1', 't', 0.5, 0.25, 0, 'abc123']);
+
+  exported.buildSessionContext();
+
+  const text = latestDocText(sandbox);
+  assert.match(text, /ARCHITECTURE\s+0\.5/);
+  assert.match(text, /UI\s+0\.25/);
+  assert.doesNotMatch(text, /INCUBATOR_SIGNALS/);
+  assert.doesNotMatch(text, /CHECKSUM/);
+});

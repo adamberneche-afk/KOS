@@ -30,6 +30,7 @@ const SCRIPTS = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts');
 function loadCentralLedger() {
   return loadGasFiles([
     path.join(SCRIPTS, '00_SharedConfig.js'),
+    path.join(SCRIPTS, '04_Form2_TurnInGate.js'),
     path.join(SCRIPTS, '22_LessonContextHandler.js'),
     path.join(SCRIPTS, '23_StudentProfileManager.js'),
     path.join(SCRIPTS, '25_WarmUpWriter.js'),
