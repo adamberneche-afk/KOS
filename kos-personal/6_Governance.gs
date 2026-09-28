@@ -910,30 +910,52 @@ function _writePrimerBody_(body, dateStr, onboardingDay, vision, vectorState, sh
 }
 
 /**
- * FIX (external product review finding, closed): Body.clear() can throw
- * "Can't remove the last paragraph in a document section" depending on the
- * document's current state — a documented Apps Script gotcha, not a logic
- * bug in this file. Standard workaround: remove every child except the
- * last remaining one, then clear that last paragraph's text directly
- * rather than removing it (a Body can never be left with zero children).
+ * Empties `body` in place, leaving one empty NORMAL paragraph.
+ *
+ * Docs refuses to remove a body's final element ("Can't remove the last
+ * paragraph in a document section"). The previous version removed
+ * children from the end, so its first removeChild() threw on every run
+ * against a populated doc, and generateDailyPrimer failed every morning
+ * from 2026-09-18. It also cast the survivor with asParagraph(), which
+ * throws when that survivor is a list item.
+ *
+ * Instead: append a fresh empty paragraph as the new last element, then
+ * remove everything in front of it. The last element is never removed,
+ * and whatever type the old children were (paragraph, list item, table)
+ * no longer matters.
  */
 function _clearDocBody_(body) {
-  let n = body.getNumChildren();
-  while (n > 1) {
-    body.removeChild(body.getChild(n - 1));
-    n--;
+  body.appendParagraph('').setHeading(DocumentApp.ParagraphHeading.NORMAL);
+  while (body.getNumChildren() > 1) {
+    body.removeChild(body.getChild(0));
   }
-  body.getChild(0).asParagraph().setText('');
 }
 
 /**
- * Maintains KOS_LATEST_PRIMER: one fixed-name doc in `folder`, overwritten
- * in place every run via CFG.PROP.LATEST_PRIMER_DOC_ID rather than found
- * by name — read-before-asking, same Contextual Gates philosophy cas-ccps
- * already uses elsewhere in this repo. Falls back to creating it fresh if
- * the stored ID is missing, stale, or points at a trashed file, so a
- * manually-deleted doc self-heals on the next run instead of silently
- * going stale.
+ * True when a Drive/Docs lookup error means the file really is gone (or
+ * this account lost access to it), rather than a transient service error.
+ * Only a gone file justifies creating a replacement with a new ID.
+ */
+function _isMissingFileError_(e) {
+  return /not found|no item with the given id|document is missing|does not exist/i
+    .test(String(e && e.message || e));
+}
+
+/**
+ * Maintains KOS_LATEST_PRIMER: one fixed doc in `folder`, overwritten in
+ * place every run via CFG.PROP.LATEST_PRIMER_DOC_ID rather than found by
+ * name.
+ *
+ * THE FILE ID MUST NOT CHANGE. The operator adds this doc to a notebook
+ * and to the RTP gem as a daily-refreshed source, and both hold it by ID;
+ * a new doc silently strands them on the last good copy. So:
+ *   - a trashed doc is restored, not replaced;
+ *   - a transient Drive/Docs error is thrown, so the run fails and the
+ *     next one retries the same ID (the old code treated ANY error here
+ *     as "stale" and created a new doc, which the occasional Drive
+ *     service errors in ERROR_LOG could trigger);
+ *   - only a doc that is verifiably gone is recreated, and that is logged
+ *     loudly with the new ID, because the notebook and gem need re-adding.
  */
 function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState, shadowState) {
   const props    = PropertiesService.getScriptProperties();
@@ -942,11 +964,15 @@ function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState
 
   if (storedId) {
     try {
-      if (!DriveApp.getFileById(storedId).isTrashed()) {
-        doc = DocumentApp.openById(storedId);
+      const file = DriveApp.getFileById(storedId);
+      if (file.isTrashed()) {
+        file.setTrashed(false);
+        console.warn('[KOS_LATEST_PRIMER] Doc ' + storedId + ' was in the trash; restored it to keep its ID.');
       }
+      doc = DocumentApp.openById(storedId);
     } catch (e) {
-      doc = null; // stored ID stale/deleted — fall through to recreate
+      if (!_isMissingFileError_(e)) throw e;
+      doc = null; // verifiably gone — fall through to recreate
     }
   }
 
@@ -957,16 +983,31 @@ function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState
     _clearDocBody_(doc.getBody());
   }
 
-  _writePrimerBody_(doc.getBody(), dateStr, onboardingDay, vision, vectorState, shadowState);
+  const body = doc.getBody();
+  _writePrimerBody_(body, dateStr, onboardingDay, vision, vectorState, shadowState);
+
+  // Both paths leave one empty paragraph ahead of the heading (the cleared
+  // survivor, or a new doc's own first paragraph). Drop it so the doc
+  // opens on its title. It is never the last element here.
+  const lead = body.getChild(0);
+  if (body.getNumChildren() > 1 &&
+      lead.getType() === DocumentApp.ElementType.PARAGRAPH &&
+      lead.asParagraph().getText() === '') {
+    body.removeChild(lead);
+  }
+
   doc.saveAndClose();
 
   if (isNew) {
     const newId = doc.getId();
     DriveApp.getFileById(newId).moveTo(folder);
     props.setProperty(CFG.PROP.LATEST_PRIMER_DOC_ID, newId);
+    if (storedId) {
+      console.warn('[KOS_LATEST_PRIMER] Stored doc ' + storedId + ' is gone; created ' + newId +
+        '. Re-add the new doc to the notebook and the RTP gem: ' + doc.getUrl());
+    }
   }
 }
-
 
 // ================================================================
 // AUTO-COUNCIL CHECK — TIME-DRIVEN ENTRY POINT
