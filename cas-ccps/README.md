@@ -70,6 +70,33 @@ retrieved from that branch by path.
 | `curriculum/` | Pacing guide (3 formats) + per-stage lesson card decks. `curriculum/archived/` held the pre-v2 pacing guide JSON — removed; see the note above. |
 | `forms/` | Setup spec for the Warm-Up Response Google Form |
 
+## Student data access policy
+
+Set by the operator on 2026-09-28:
+
+1. Student data is visible only to the student and their teachers, and only
+   during the current school year.
+2. Only the student can edit, and only before submission.
+3. Only the teacher who assigned the work can grade it and give feedback.
+
+How the code enforces it:
+
+| Where | What it does |
+|---|---|
+| Intake (`02`) | The assigning teacher is the owner of the matrix the assignment came from (MatrixRegistry), not the form's student-typed "Teacher Email". The doc is shared with its student (edit) and that teacher (comment) only. It no longer goes into a class folder every classmate could view. |
+| Submission (`04`, `25`) | A passing turn-in locks the doc: the student can read it, not edit it. A rejected turn-in stays editable so the student can fix it. A warm-up locks when its extra-credit window closes. |
+| School year (`00`) | `_currentSchoolYear_()` is `CURRENT_TERM`'s "2025-26" prefix, else the year today falls in (starting in August). The Teacher Dashboard, the roster, the student dashboard and parent reports show the current year only, whatever term the page asks for. |
+| Grading (`07`, `10`) | Turn-in scores need the row's `TEACHER_EMAIL`. SCR ratings are shown to, and decided by, the teacher whose assignment produced the evidence (CompetencyEvidence's `config_id`). `manuallyMarkCompliant` checks the signed-in user. |
+| Parent reports (`36`) | Scoped to the dashboard's own teacher, this year, and only that teacher's courses and decisions. |
+| SCR export (`30`) | Private, shared only with named central-office staff; student accounts are refused. |
+| Student dashboard | Runs as the deploying admin with domain access, so students need no access to the Central Ledger. |
+| Existing files, year end (`50`) | `previewStudentDataAccessRepair()` then `applyStudentDataAccessRepair()`: fixes this year's docs, revokes earlier years' (the files stay as records), removes class-folder sharing, makes exports private, and reports any student access to the Ledger. Run it again after `CURRENT_TERM` moves to a new school year. |
+
+AI feedback and warm-up scoring stay automatic, by the operator's choice.
+Known gaps that remain: the Student Context doc (`29`) spans every teacher
+and every year; the student doc's own menu script (`01`) reads the Ledger
+as the student.
+
 ## What Module 1 (the base system) actually is
 
 The base system is **8 separate Apps Script projects** working together

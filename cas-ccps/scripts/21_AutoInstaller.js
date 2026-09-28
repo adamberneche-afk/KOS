@@ -244,7 +244,7 @@ function runInstallation_(props) {
     name:       "Assignment System — Student Dashboard",
     files:      registry["STUDENT_DASHBOARD"] || [],
     properties: buildStudentDashboardProps_(assetIds),
-    executeAs:  "MYSELF",           // Server code runs as the deploying admin,
+    executeAs:  "USER_DEPLOYING",   // Server code runs as the deploying admin,
     // not the visiting student — USER_ACCESSING previously meant
     // getStudentDashboardData() opened the Central Ledger under the
     // *student's own* identity, which only works if every student already

@@ -32,9 +32,10 @@ Your workspace lives entirely within Google Drive. The folder structure is organ
       📬 [Name] — Rubric Upload Form
       📬 [Name] — Assignment Review Form
       📬 [Name] — Student Registration Form
-  📁 _Student Shared Folders/                ← student docs live here
-    📁 [Block - Class - Teacher]/            ← per-class folder
-      📄 [Assignment] — [Student Name]
+  📁 _Student Shared Folders/                ← no longer used for new work: each
+                                             student's doc is shared with that
+                                             student and you only, and appears in
+                                             their "Shared with me"
 ```
 
 > 🚫 **Don't edit the Teacher Matrix directly.** It's managed by the system. Editing rows there can break the evaluation pipeline for your students.
@@ -152,7 +153,7 @@ The system tracks which academic term each student registration belongs to. This
 | Prompt template document | ✅ Yes | Edit it anytime. Changes affect students registered after the edit — already-registered students have the prompt injected at creation time |
 | Assignment criteria (milestones, persona) | ⚠️ Create new assignment | Use the rubric upload flow to create a new assignment with updated criteria. Don't edit the Teacher Matrix directly |
 | Student registration details | ❌ Contact admin | Student name, email, class, period — these are locked in the Ledger. Admin can correct them |
-| Student's assignment document | ⚠️ With care | You have editor access to every student doc. Only edit the response zone if absolutely necessary — do not touch the footer or compliance stamps |
+| Student's assignment document | 🚫 No | You have comment access to your own students' docs, for feedback. Only the student edits, and only until they turn it in; after that it's read-only for them too. Other teachers and classmates have no access |
 | Student compliant status | ✅ Via admin | Ask admin to use "Manually Mark Student Compliant" if you've personally reviewed a FORENSIC_FAILURE case |
 | Turn-In Form | ❌ Do not edit | Shared across all teachers and managed by admin |
 | Teacher Matrix spreadsheet | ❌ Do not edit | System-managed. Editing rows directly can corrupt the evaluation pipeline |
