@@ -142,30 +142,34 @@ test('safeDocUrl() allowlists only real Google Docs/Drive URLs in the served das
   );
 });
 
-test('esc()-then-&#39; round-trips a name with both " and \' safely into an onclick attribute', () => {
-  // Regression test for the exact interaction the esc()-quote-escaping fix
-  // created: wrNameSafe/rvNameSafe in 07_TeacherDashboard.js used to do
-  // esc(name).replace(/'/g,"\\\\'") — once esc() itself started escaping
-  // ' to &#39;, that .replace() found no raw ' left to match and became a
-  // silent no-op, leaving &#39; in the onclick attribute. The browser
-  // decodes &#39; back to ' before the inline-JS parser sees it, which
-  // would break the string boundary for any name containing an apostrophe.
-  // Both sites were changed to target &#39; instead — this test runs that
-  // exact expression through the real served esc() and confirms the
-  // result is safe to drop into a single-quoted onclick string.
+// A student name comes from Form 1, so it's student-controlled. jsAttr()
+// puts it inside onclick="f('...')": check the value survives the browser's
+// entity decoding and the JS parser intact, and can't break out.
+test('jsAttr() round-trips hostile names through a real onclick handler', () => {
   const html = renderDashboard().buildDashboardHtml_();
-  const context = firstContextWith(html, ['esc']);
+  const context = firstContextWith(html, ['jsAttr']);
+  const names = [
+    "O'Brien \"Ace\"",
+    "\\');alert(1)//",
+    'trailing backslash \\',
+    '</script><img src=x onerror=alert(1)>',
+    'two\nlines',
+  ];
+  names.forEach((name) => {
+    const attr = "f('" + context.jsAttr(name) + "')";
+    assert.ok(!/["<>]/.test(attr), 'nothing that can end the attribute or open a tag: ' + attr);
+    // What the browser hands the JS parser after decoding the attribute.
+    const decoded = attr.replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+      .replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    const seen = [];
+    vm.runInNewContext(decoded, { f: (v) => seen.push(v), alert: () => seen.push('ALERT') });
+    assert.deepEqual(seen, [name]);
+  });
+});
 
-  const name = `O'Brien "Ace"`;
-  const nameSafe = context.esc(name).replace(/&#39;/g, "\\\\'");
-
-  assert.ok(!/&#39;/.test(nameSafe), 'no bare &#39; must remain — it must have been converted to \\\'');
-  assert.ok(!/(?<!\\)'/.test(nameSafe), 'no unescaped raw \' may remain — it would close the JS string early');
-
-  // Round-trip: what a browser would actually hand the inline-JS parser
-  // after (1) decoding the &quot;-wrapped HTML attribute and (2) parsing
-  // the resulting single-quoted JS string literal.
-  const htmlDecoded = nameSafe.replace(/&quot;/g, '"');
-  const jsUnescaped = htmlDecoded.replace(/\\\\'/g, "'");
-  assert.equal(jsUnescaped, name, 'must round-trip back to the original name');
+test('the dashboard\'s onclick buttons use jsAttr() for names and ids', () => {
+  const src = require('fs').readFileSync(path.join(SCRIPTS, '07_TeacherDashboard.js'), 'utf8');
+  ['wrIdSafe', 'wrNameSafe', 'rvConfigSafe', 'rvNameSafe'].forEach((v) => {
+    assert.match(src, new RegExp('const ' + v + '\\s*=\\s*jsAttr\\('), v);
+  });
 });

@@ -2639,7 +2639,7 @@ function handlePinToCore(btn) {
       btn.disabled = true;
       btn.className = 'btn btn-sm';
       btn.innerHTML = '<i class="ti ti-loader-2"></i>Pinning…';
-      showDiagStatus('Pinning "' + esc(theme) + '" to Core…', undefined, gen);
+      showDiagStatus('Pinning "' + theme + '" to Core…', undefined, gen);
       callServer('pinThemeToCore', [theme], (res) => {
         btn.disabled = false;
         const isError = res && res.success === false;
@@ -2754,8 +2754,8 @@ function handleCouncil() {
           // expected outcomes, not failures. Render neutrally instead of red.
           showDiagStatus(res.message, undefined, gen);
         } else if (res && res.success) {
-          showDiagStatus(
-            'Stimulus ready — Council ID <strong>' + res.councilId + '</strong>. ' +
+          showDiagStatusHtml(
+            'Stimulus ready — Council ID <strong>' + esc(res.councilId) + '</strong>. ' +
             'Send it to each cog independently (separate Gemini conversation per cog, ' +
             'no shared context), then log each verdict under this Council ID via ' +
             '<strong>Ingest → Cog Verdict</strong>.',
@@ -2845,7 +2845,15 @@ function resetBtn(id, icon, label) {
 let _diagActionGen = 0;
 function beginDiagAction() { return ++_diagActionGen; }
 
-function showDiagStatus(html, type, token) {
+// Plain text by default: several messages carry server text (error
+// messages, theme names that came out of the classifier's model output),
+// which must never be parsed as HTML. showDiagStatusHtml() is for the one
+// message that needs markup, with every value in it escaped.
+function showDiagStatus(text, type, token) {
+  showDiagStatusHtml(esc(text), type, token);
+}
+
+function showDiagStatusHtml(html, type, token) {
   if (token !== undefined && token !== _diagActionGen) return; // superseded by a newer action
   const el = document.getElementById('diag-status');
   el.innerHTML = html;

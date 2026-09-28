@@ -19,6 +19,7 @@ const FILES = [
   path.join(KP, '1_Config_And_Deploy.gs'),
   path.join(KP, '5_Error_And_Utilities.gs'),
   path.join(KP, '12_StudioReturnHarvest.gs'), // SR_CURATOR_TYPES lives here
+  path.join(KP, '10_Turnstile.gs'), // _readReleaseMap: an input row is built once per release
   path.join(KP, '13_StudioInputBuilder.gs'),
 ];
 
@@ -26,7 +27,7 @@ const EXPOSE = [
   'buildStudioInputRows', 'checkStudioInputBuilder', 'installStudioInputTrigger',
   'runStudioInputCanary', 'CI_COLS', 'CI_CURATOR_TAB', 'CI_CLASSIFY_TAB',
   'SR_CURATOR_TYPES', 'CFG', '_getSystemAsset', '_getOrCreateSheet',
-  'installStudioFlowFixture', 'removeStudioFlowFixtures',
+  'installStudioFlowFixture', 'removeStudioFlowFixtures', '_srGetHarvestedPayloadText_',
 ];
 
 function load() {
@@ -161,6 +162,43 @@ test('buildStudioInputRows: a second pass does not duplicate an already-material
     'exactly one CuratorInput row for this UID, not two');
 });
 
+// A retried row (stale reset, NEEDS_CURATOR, audit rejection) is released
+// again with its old input row still present. The Flow fires only on a new
+// input row, so the builder must replace the old one on each new release.
+test('buildStudioInputRows: a row released again after its input row was built gets a fresh one', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  ctx.curatorSheet.appendRow([new sandbox.Date(Date.now() - 60 * 60000), ctx.uid, 'SESSION_LOG',
+    ctx.fileId, 'THE TRANSCRIPT', 'READY']);
+  // The harvest overwrote the doc with the rejected answer before the audit ran.
+  ctx.doc.getBody().setText('{"session_summary":"rejected curator output"}');
+  sandbox.PropertiesService.getScriptProperties()
+    .setProperty('KOS_TURNSTILE_RELEASED', JSON.stringify({ [ctx.uid]: Date.now() - 60000 }));
+
+  const r = exported.buildStudioInputRows();
+
+  assert.equal(r.curatorBuilt, 1);
+  assert.equal(r.rebuilt, 1);
+  const rows = ctx.curatorSheet.getDataRange().getValues().slice(1).filter((x) => x[1] === ctx.uid);
+  assert.equal(rows.length, 1, 'the old input row is replaced, not kept alongside');
+  assert.equal(rows[0][4], 'THE TRANSCRIPT', 'rebuilt from the stored transcript, not the overwritten doc');
+  assert.equal(ctx.doc.getBody().getText(), 'THE TRANSCRIPT', 'the source doc is restored');
+
+  const again = exported.buildStudioInputRows();
+  assert.equal(again.curatorBuilt, 0, 'built for this release; nothing to do until the next one');
+});
+
+test('buildStudioInputRows: an input row built after the latest release is left alone', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox);
+  sandbox.PropertiesService.getScriptProperties()
+    .setProperty('KOS_TURNSTILE_RELEASED', JSON.stringify({ [ctx.uid]: Date.now() - 60000 }));
+  exported.buildStudioInputRows();
+  const second = exported.buildStudioInputRows();
+  assert.equal(second.curatorBuilt, 0);
+  assert.equal(ctx.curatorSheet.getLastRow(), 2);
+});
+
 test('buildStudioInputRows: materializing does not modify the source document', () => {
   const { exported, sandbox } = load();
   const ctx = seed(exported, sandbox, { docText: 'Untouched original text.' });
@@ -267,4 +305,21 @@ test('runStudioInputCanary: passes end to end and cleans up after itself', () =>
   const rows = staging ? staging.getDataRange().getValues().slice(1) : [];
   assert.equal(rows.filter((r) => String(r[1]).indexOf('CANARY-CI-') === 0).length, 0,
     'canary staging rows must be cleaned up');
+});
+
+// 12_StudioReturnHarvest.gs: a retried row has one STUDIO_RETURN row per
+// attempt. processInferenceQueue must parse the answer that was harvested,
+// not the first (rejected) one.
+test('_srGetHarvestedPayloadText_: reads the newest HARVESTED return, not the first', () => {
+  const { exported, sandbox } = load();
+  const ss = indexSpreadsheet(exported, sandbox);
+  const ret = tab(ss, 'STUDIO_RETURN', ['Returned_At', 'Payload_UID', 'Payload_Type', 'Primary_JSON',
+    'Auditor_JSON', 'Harvest_Status', 'Attempts', 'Error']);
+  ret.appendRow([new sandbox.Date(), 'UID-R', 'VECTOR_CLASSIFY', '[{"attempt":1}]', '', 'HARVESTED', 1, '']);
+  ret.appendRow([new sandbox.Date(), 'UID-R', 'VECTOR_CLASSIFY', '[{"attempt":2}]', '', 'HARVESTED', 1, '']);
+  ret.appendRow([new sandbox.Date(), 'UID-R', 'VECTOR_CLASSIFY', 'not json', '', 'FAILED', 1, 'x']);
+
+  const r = exported._srGetHarvestedPayloadText_('UID-R');
+  assert.equal(r.ok, true);
+  assert.match(r.text, /"attempt":2/);
 });

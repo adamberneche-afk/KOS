@@ -492,7 +492,7 @@ function exportSlipList() {
   const tripId = parseInt(document.getElementById('slip-trip-sel').value);
   const roster = getSlipRoster(tripId).filter(s=>s.status!=='returned');
   const trip = trips.find(t=>t.id===tripId);
-  const text = `MISSING/PENDING SLIPS — ${trip?.name||'Trip'}\n${fd(new Date().toISOString().slice(0,10))}\n\n`
+  const text = `MISSING/PENDING SLIPS — ${trip?.name||'Trip'}\n${fd(_localDateStr_())}\n\n`
     + roster.map((s,i)=>{
         const p = resolveSlipStudent(s);
         return `${i+1}. ${p.first} ${p.last} — ${s.status.toUpperCase()}${p.parentPhone?' — '+p.parentPhone:p.phone?' — '+p.phone:''}${s.notes?' ('+s.notes+')':''}`;

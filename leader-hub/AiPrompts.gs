@@ -560,6 +560,10 @@ function _getAiPromptSheet_() {
 // than left for Sheets to truncate silently.
 // ---------------------------------------------------------------------------
 function syncAiPromptsToSheet() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it changes shared state, so it is owner-only. Running it
+  // from the editor as the owner still works.
+  _lhRequireOwner_();
   const CELL_LIMIT = 50000;
   const sheet = _getAiPromptSheet_();
   const now = new Date();

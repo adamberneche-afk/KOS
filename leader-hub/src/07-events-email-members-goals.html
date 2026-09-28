@@ -818,7 +818,7 @@ function renderOrgResults(orgId) {
     </td>
     <td style="padding:.35rem .5rem;font-size:.72rem;color:var(--muted)">${escH(r.notes||'')}</td>
     <td style="padding:.35rem .5rem;text-align:right">
-      <button onclick="deleteOrgResult('${orgId}','${r.id}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
+      <button onclick="deleteOrgResult('${escJsAttr(orgId)}','${escJsAttr(r.id)}')" style="font-size:.65rem;background:none;border:none;color:#dc2626;cursor:pointer;padding:2px 4px" title="Remove" aria-label="Remove result">✕</button>
     </td>
   </tr>`;
   const resultTableHead = `<thead><tr style="background:#f3f4f6">
@@ -1224,7 +1224,7 @@ function renderOrgTabs() {
   const wrap = document.getElementById('org-tabs');
   if (!wrap) return;
   wrap.innerHTML = Object.entries(ORGANIZATIONS).map(([id, o]) =>
-    `<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${id}" onclick="setOrgTab('${id}',this)">${o.icon||'🧩'} ${escH(o.name)}</button>`
+    `<button class="scr-tab${id===activeOrgId?' active':''}" id="orgtab-${id}" onclick="setOrgTab('${escJsAttr(id)}',this)">${escH(o.icon||'🧩')} ${escH(o.name)}</button>`
   ).join('');
 }
 
