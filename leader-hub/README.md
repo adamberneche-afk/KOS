@@ -59,6 +59,26 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
+**Open: the Settings school-calendar importer misreads real calendars**
+(seen live 2026-09-28: 0 no-school dates, 22 early-release dates and no
+quarters from the district calendar). Two bugs are in
+`parseCountyCalendarText()` (`src/11-journal-cron-settings-and-sync.html`):
+
+1. Any short line mentioning early release or dismissal switches the
+   importer into early-release mode, even one carrying a date. The mode
+   then lasts for the rest of the document and overrides holiday names,
+   so holidays get filed as early release. The fix: a named holiday always
+   counts as no-school, and only a heading line with no date may switch
+   modes.
+2. Quarters are only recognized as "Quarter N" or "Nth Nine Weeks" with
+   two dates on the same line. Real calendars say "End of First Quarter –
+   Oct 30", "Q1" or "Marking Period 1".
+
+Get the actual calendar text from the operator and use it as a test
+fixture. Until this is fixed, the import dialog's **Cancel** is the safe
+answer. The import only adds dates, so wrong ones would have to be removed
+by hand.
+
 ## Fixed — the OAuth-consent-dialog crash (2026-09-28)
 
 **Read this before touching `tools/leaderhub-build/` or the way the page
