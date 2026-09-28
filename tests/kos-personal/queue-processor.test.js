@@ -236,3 +236,33 @@ test('processInferenceQueue reads each row\'s own STUDIO_RETURN entry, not a doc
   assert.equal(matrixRows.length, 1,
     'no phantom VECTOR_MATRIX row from the SESSION_LOG UID');
 });
+
+// processInferenceQueue() holds the script lock while it calls
+// processIntakePayload(). Apps Script locks aren't counted, so an inner
+// releaseLock() used to free the caller's lock after the first row.
+test('processIntakePayload leaves a lock its caller already holds', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  const lock = sandbox.LockService.getScriptLock();
+  lock.tryLock(10000);
+
+  exported.processIntakePayload(JSON.stringify({
+    session_uid: 'FIXTURE-LOCK', session_summary: 'Lock ownership check.',
+    session_metadata: { session_type: 'WORKING', cold_start: false, rtp_version: 'v8.0' },
+    vector_weights: null,
+  }), 'FIXTURE-LOCK');
+
+  assert.equal(lock.hasLock(), true, 'the caller must still hold its lock');
+  lock.releaseLock();
+});
+
+test('processIntakePayload takes and releases the lock when called on its own', () => {
+  const { exported, sandbox } = load();
+  setUp(sandbox);
+  exported.processIntakePayload(JSON.stringify({
+    session_uid: 'FIXTURE-LOCK2', session_summary: 'Standalone call.',
+    session_metadata: { session_type: 'WORKING', cold_start: false, rtp_version: 'v8.0' },
+    vector_weights: null,
+  }), 'FIXTURE-LOCK2');
+  assert.equal(sandbox.LockService.getScriptLock().hasLock(), false);
+});
