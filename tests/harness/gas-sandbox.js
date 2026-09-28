@@ -564,6 +564,9 @@ function makeDriveAppMock() {
 class FakeParagraph {
   constructor(text) { this.text = text; }
   getText() { return this.text; }
+  // Real Apps Script API — Element.getType(), compared against
+  // DocumentApp.ElementType (mocked below).
+  getType() { return 'PARAGRAPH'; }
   // Real Apps Script API — chained directly off appendParagraph() by
   // every doc-building function in kos-personal (e.g. 6_Governance.gs's
   // triggerSevenBridgesReview() sets HEADING1/HEADING2 on its section
@@ -600,6 +603,7 @@ class FakeParagraph {
   // rather than removing it.
   asParagraph() { return this; }
   setText(text) { this.text = text; return this; }
+  setGlyphType() { return this; }
   // Real Apps Script API — Element.asText(), the Text-typed view
   // findText()'s callers mutate through (deleteText/insertText), rather
   // than paragraph.setText() directly. First needed by 6_Governance.gs's
@@ -621,6 +625,16 @@ class FakeParagraph {
   }
 }
 
+// Real Apps Script API — a ListItem is its own Element type, not a
+// Paragraph: getChild(i).asParagraph() on one throws in real GAS. This
+// mock used to treat list items as paragraphs, so _clearDocBody_()'s
+// asParagraph() call on a list item could never fail here.
+class FakeListItem extends FakeParagraph {
+  getType() { return 'LIST_ITEM'; }
+  asParagraph() { throw new Error('Cannot cast a ListItem to a Paragraph.'); }
+  asListItem() { return this; }
+}
+
 class FakeDocBody {
   constructor() { this.paragraphs = []; }
   clear() { this.paragraphs = []; return this; }
@@ -635,7 +649,7 @@ class FakeDocBody {
   // resulting text (getText() below joins every child the same way).
   // First needed by 6_Governance.gs's _writePrimerBody_().
   appendListItem(text) {
-    const p = new FakeParagraph(text);
+    const p = new FakeListItem(text);
     this.paragraphs.push(p);
     return p;
   }
@@ -650,8 +664,14 @@ class FakeDocBody {
   // exception path itself).
   getNumChildren() { return this.paragraphs.length; }
   getChild(i) { return this.paragraphs[i]; }
+  // Real Docs refuses to remove a body's final element, and throws exactly
+  // this message; 6_Governance.gs's _clearDocBody_() removed from the end
+  // and failed every morning from Sept 18 because this mock allowed it.
   removeChild(child) {
     const idx = this.paragraphs.indexOf(child);
+    if (idx !== -1 && idx === this.paragraphs.length - 1) {
+      throw new Error("Can't remove the last paragraph in a document section.");
+    }
     if (idx !== -1) this.paragraphs.splice(idx, 1);
     return this;
   }
@@ -688,6 +708,7 @@ class FakeDoc {
     this.body = new FakeDocBody();
   }
   getId() { return this.id; }
+  getUrl() { return 'https://docs.google.com/document/d/' + this.id + '/edit'; }
   getBody() { return this.body; }
   saveAndClose() {}
 }
@@ -700,6 +721,8 @@ function makeDocumentAppMock(driveAppMock) {
     // Paragraph.setHeading(). Values are opaque to this mock (setHeading
     // is a no-op); it exists so `DocumentApp.ParagraphHeading.HEADING1`
     // resolves instead of throwing on undefined.
+    // Real Apps Script API — the Element.getType() enum.
+    ElementType: { PARAGRAPH: 'PARAGRAPH', LIST_ITEM: 'LIST_ITEM', TABLE: 'TABLE' },
     ParagraphHeading: {
       NORMAL: 'NORMAL', TITLE: 'TITLE', SUBTITLE: 'SUBTITLE',
       HEADING1: 'HEADING1', HEADING2: 'HEADING2', HEADING3: 'HEADING3',
