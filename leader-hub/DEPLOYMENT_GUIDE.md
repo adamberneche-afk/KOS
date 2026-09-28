@@ -165,22 +165,29 @@ clasp list-deployments                   # lists IDs; the newest is yours
 clasp open-web-app --deploymentId <id>   # or open https://script.google.com/macros/s/<id>/exec
 ```
 
+That `create-deployment` is for the **first** deployment only. Every later
+release updates the same deployment in place, so the `/exec` URL never
+changes. Use `tools/clasp-sync/run.ps1`:
+`.\run.ps1 -Latest -HeadOnly -Only leader-hub` pushes to HEAD for testing
+at `/dev`; `.\run.ps1 -Latest -Only leader-hub` releases. See
+`tools/clasp-sync/README.md`. Put the new deployment's ID in the
+registry's `leader-hub\deployments.txt` so `run.ps1` keeps it live.
+
 Then in the editor: **Deploy → Test deployments** (or Run any function once)
 and complete the OAuth consent prompt. The manifest declares seven scopes
 explicitly — `script.send_mail`, Drive, Docs, Sheets, `userinfo.email`,
 `script.external_request` and `script.scriptapp` — and **no Gmail scope at
-all** (deliberately; see `README.md`'s "OPEN — the OAuth-consent-dialog
-crash"). Once a manifest lists `oauthScopes` explicitly, GAS stops
+all**. Gmail was removed while chasing the consent-dialog crash, which
+turned out to have other causes (see `README.md`'s "Fixed — the
+OAuth-consent-dialog crash"), so adding it back is a separate decision. Once a manifest lists `oauthScopes` explicitly, GAS stops
 auto-detecting: a scope that isn't listed fails at the call site, often
 silently inside a `try/catch`. gas-lint's Check E validates that list
 against actual service usage, so run `node tools/gas-lint/check.js` before
 pushing if you added any service call.
 
-> **Changing `oauthScopes` forces a re-authorization on next load**, and
-> that is currently suspected — unconfirmed — of being what triggers the
-> open consent-dialog crash. If you are testing that specific question,
-> the manifest must stay untouched between the deploy and the reload; see
-> the OPEN section in `README.md`.
+> **Changing `oauthScopes` forces a re-authorization on next load.** That
+> was once suspected of causing the consent-dialog crash; it wasn't. The
+> crash is fixed (see `README.md`).
 
 ## Phase 4 — Nothing to configure by hand
 
@@ -234,15 +241,27 @@ drafting, they are not a hard dependency.
 
 ## Troubleshooting: the failure modes that don't announce themselves
 
-**A red "Something went wrong" banner citing `Unexpected identifier
-'style'`.** Known and open — not something you introduced, and not a
-reason to roll back a deploy. It is thrown from Google's own
-OAuth-consent-dialog bundle on `script.googleusercontent.com`, caught by
-this app's own `window.onerror` handler and displayed. The app itself has
-kept rendering and working normally every time it has been seen. Read
-`README.md`'s "OPEN — the OAuth-consent-dialog crash" before
-investigating, so you don't repeat one of the five rounds already ruled
-out.
+**A red "Something went wrong" banner, or a blank page.** The banner is
+this app's own `window.onerror` handler showing an error; the URL it cites
+(`userCodeAppPanel?createOAuthDialog=true`) is just where Apps Script
+serves the page, not where the fault is. Don't guess. Open the same
+deployment with `?diag=1`, then `?diag=probe` (see `README.md`'s
+"Diagnosing a broken page without DevTools"):
+
+- `?diag=1` shows the page as Apps Script holds it. A healthy page has
+  every block named, none over 70,000 characters, and 0 `sourceURL`
+  comments.
+- `?diag=probe` lists which blocks ran and every error with its block and
+  line.
+
+The `Unexpected identifier 'style'` banner of September 2026 was fixed
+this way (`README.md`'s "Fixed" section).
+
+**Settings, data or SCR scores not reaching the server.** `?diag=1`'s
+"Settings sync call" should read OK. The browser can only call public,
+owner-checked functions (`lhGetAllConfig` and the rest in `Code.gs`); a
+call to a name ending in `_` fails before it reaches the server, and
+gas-lint rejects one.
 
 **`Project settings not found.` on `clasp push`.** No `.clasp.json` in
 this directory — it is gitignored, so every fresh checkout needs it
