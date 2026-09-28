@@ -2,6 +2,12 @@
 
 > ## ⛔ OPEN: both Gemini steps in the Curator Flow are bound to the wrong prompt
 >
+> **Still open at the 2026-09-28 export:** all 114 `STUDIO_RETURN` rows
+> are failures of exactly this shape. See
+> [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) for the current
+> numbers and the three other causes found alongside it. This file is
+> still the rebind procedure.
+>
 > **Written:** 2026-09-21, from a live `BRAIN_TRUST_INDEX` export taken
 > 2026-09-20.
 >
