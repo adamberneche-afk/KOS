@@ -1,6 +1,59 @@
 # KOS Changelog
 
 
+### Codebase sweep (2026-09-28): retries that never re-ran, a nested lock, and smaller fixes
+
+**Retries now actually reach the Flow.** Every in-pipeline retry (a
+Turnstile stale reset, a NEEDS_CURATOR requeue, an audit-gate rejection)
+put the row back to `PENDING_FLOW`, but `buildStudioInputRows()` skipped
+any UID it had built before, and the Flow only fires on a new input row.
+So no retry ever ran again, and each one died at the Turnstile. The
+builder now rebuilds an input row when the one on hand predates the row's
+latest release. It rebuilds from the old row's `SourceText`, and restores
+the source doc from it too, because a harvest overwrites the doc before
+the audit gate runs. `_srGetHarvestedPayloadText_()` now reads the newest
+HARVESTED return for a UID; it used to read the first, the rejected one.
+
+**A nested lock release.** `processInferenceQueue()` holds the script
+lock while it calls `processIntakePayload()` and
+`processVectorClassificationPayload()`, which each took and released it
+again. Apps Script locks aren't counted, so the inner release freed the
+queue's lock after its first row. They now leave a lock their caller
+holds. The harness's fake lock always claimed to be held; it now tracks
+state.
+
+**Smaller fixes:**
+- Incubator decay re-applied the whole gap since `Last_Touched` on every
+  run, so an idle theme lost a week's decay again each session. It now
+  decays only the time since the last run.
+- The Turnstile's and the Registrar's release maps kept an entry for every
+  finished row. That grows toward Script Properties' ~9KB value limit,
+  after which every release fails. Only active rows keep one now.
+- The Registrar's validators threw on valid JSON that isn't an object
+  (`null`, a string), leaving the row stuck; they now bounce it.
+- `processVectorClassificationPayload()` reported SUCCESS when
+  VECTOR_MATRIX had no theme columns and nothing was written, so the
+  session's stored parts were deleted. It now returns ERROR.
+  `checkVectorClassifySessions()` flags a session whose parts are all in
+  but whose aggregation failed.
+- The classification backfill could classify a partial session when some
+  chunks had been archived. It now requires chunks 1..N with no gaps, and
+  N to match the intake's "N chunk(s) created" note.
+- The Diagnostics status line put server messages (some carrying theme
+  names from model output) into the page as HTML. It's text by default
+  now; the one message that needs markup escapes its value.
+- `buildSessionContext()`'s vector primer listed INCUBATOR_SIGNALS and
+  CHECKSUM as if they were vectors.
+- Inference service: `/checkout/credits` took both credits and price from
+  the request body. The price now always comes from `CREDIT_BUNDLES`, and a
+  subscription grants credits only for a configured price (an unknown one
+  used to fall back to the starter tier).
+
+New tests: `incubator-decay.test.js`, `registrar-validators.test.js`,
+`inference-service/test/billing-pricing.test.js`, and additions to the
+input-builder, queue-processor, Turnstile, build-session-context and
+vector-classify suites.
+
 ### Vector classification: one `VECTOR_MATRIX` row per real session
 
 `VECTOR_MATRIX` held only install fixtures, because no code queued a

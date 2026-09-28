@@ -248,8 +248,13 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
  * @returns {Object} { status: 'SUCCESS'|'LOCKED'|'ERROR', matrixRow?, promotions?, message? }
  */
 function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestamp) {
+  // processInferenceQueue() already holds the script lock when it calls
+  // this. Apps Script locks aren't counted, so releasing here would free
+  // the caller's lock partway through its loop. Only take and release the
+  // lock when nobody up the stack holds it.
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) return { status: 'LOCKED', message: 'System busy.' };
+  const ownsLock = !lock.hasLock();
+  if (ownsLock && !lock.tryLock(15000)) return { status: 'LOCKED', message: 'System busy.' };
   try {
     let exchanges;
     try { exchanges = JSON.parse(rawJSONPayload); }
@@ -268,6 +273,14 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
     const incubSheet  = _getOrCreateSheet(ss, CFG.INCUBATOR_SHEET);
 
     const matrixRow = _writeMatrixRow(matrixSheet, aggregated.known, sessionUid, timestamp);
+    // _writeMatrixRow() writes nothing and returns {} when VECTOR_MATRIX has
+    // no theme columns. Reporting SUCCESS then let callers treat the
+    // session as classified (20_VectorClassifySessions.gs deletes its
+    // stored parts on SUCCESS) with no row written at all.
+    if (!matrixRow || !matrixRow.sessionUid) {
+      return { status: 'ERROR', message: 'VECTOR_MATRIX has no theme columns; session ' + sessionUid +
+        ' was not written. Run setupRoutingProperties() or deployFullSystem() to restore its headers.' };
+    }
     _logToIncubator(incubSheet, aggregated.unknown, sessionUid, timestamp);
     _applyIncubatorDecay_(incubSheet, timestamp);
     const promotions = _checkPromotionCandidates(incubSheet, matrixSheet);
@@ -298,7 +311,7 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
     _reportError('processVectorClassificationPayload', e, null);
     return { status: 'ERROR', message: e.message };
   } finally {
-    lock.releaseLock();
+    if (ownsLock) lock.releaseLock();
   }
 }
 
@@ -634,11 +647,18 @@ function _applyIncubatorDecay_(sheet, timestamp) {
   const now  = new Date(timestamp).getTime() || Date.now();
   const data = sheet.getRange(2, 1, sheet.getLastRow() - 1, 7).getValues();
 
+  // The stored score is already decayed up to the last run, so each run may
+  // only decay the time since then. Decaying from Last_Touched every run
+  // (as this used to) re-applied the whole gap each session: a theme left
+  // alone for a week lost a week's decay again on every later session.
+  const props       = PropertiesService.getScriptProperties();
+  const lastDecayMs = Number(props.getProperty('KOS_INCUBATOR_LAST_DECAY_MS')) || 0;
+
   data.forEach((row, i) => {
     const [, , lastTouched, , cumulative, , status] = row;
     if (status === 'PROMOTED' || status === 'PROMOTED_MANUAL' || status === 'DECAYED') return;
 
-    const lastMs        = new Date(lastTouched).getTime() || now;
+    const lastMs        = Math.max(new Date(lastTouched).getTime() || now, lastDecayMs);
     const daysSince      = Math.max(0, (now - lastMs) / 86400000);
     const decayFactor    = Math.pow(0.5, daysSince / CFG.INCUBATOR_HALF_LIFE_DAYS);
     const decayed        = parseFloat((parseFloat(cumulative) || 0) * decayFactor);
@@ -649,6 +669,8 @@ function _applyIncubatorDecay_(sheet, timestamp) {
       sheet.getRange(sr, 7).setValue('DECAYED');
     }
   });
+
+  props.setProperty('KOS_INCUBATOR_LAST_DECAY_MS', String(Math.max(now, lastDecayMs)));
 }
 
 
