@@ -665,6 +665,25 @@ function _wfbCheckPlausible_(sourceObj, outputText) {
  */
 function harvestWarmUpFlowReturns() {
   const result = { applied: 0, skipped: 0, failed: 0, attention: 0, pruned: 0 };
+  // Same lock as 37_FlowInputBuilder.js's harvest. Two overlapping runs (one
+  // taking longer than the 5-minute trigger) could each create a Flow 3 doc
+  // for the same queue row, and a prune's deleteRow() in one could shift
+  // the row numbers the other is writing to.
+  const lock = LockService.getDocumentLock();
+  try {
+    lock.waitLock(15000);
+  } catch (e) {
+    Logger.log("[WFB] Another harvest holds the lock — standing down until the next run.");
+    return result;
+  }
+  try {
+    return wfbHarvestUnderLock_(result);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function wfbHarvestUnderLock_(result) {
   const ctx = wfbLedger_();
   const returns = wfbTab_(ctx.ss, WFB_RETURN_TAB, WFB_RETURN_HEADERS);
   const lastRow = returns.getLastRow();
@@ -869,8 +888,15 @@ function wfbApplyFlow4_(wqSheet, wrSheet, found, queueId, raw) {
     return { ok: false, error: "GEMINI_JSON_PARSE_FAILED: " + e.message };
   }
 
-  const grammar = Number(parsed.grammar) || 0;
-  const engagement = Number(parsed.engagement) || 0;
+  // The prompt allows grammar 0-1 and engagement 0-3. Anything else is a
+  // model error (or a response that talked it into inflating a score), and
+  // it must not reach the gradebook: fail the row instead of writing it.
+  const grammar = Number(parsed.grammar);
+  const engagement = Number(parsed.engagement);
+  if (!wfbScoreInRange_(grammar, 0, 1) || !wfbScoreInRange_(engagement, 0, 3)) {
+    return { ok: false, error: "GEMINI_SCORE_OUT_OF_RANGE: grammar=" + parsed.grammar +
+      ", engagement=" + parsed.engagement };
+  }
   const feedback = String(parsed.feedback || "Your response has been reviewed.");
   const wordCountScore = Number(row[WQ25_WORD_COUNT_SCORE] || 0);
   const extraCredit = Number(row[WQ25_EXTRA_CREDIT] || 0);
@@ -970,16 +996,30 @@ function wfbCreateWarmUpDoc_(parentFolder, dateIso, firstName, dateReadable, pro
   return file;
 }
 
+function wfbScoreInRange_(n, lo, hi) {
+  return Number.isInteger(n) && n >= lo && n <= hi;
+}
+
+// A bare "yyyy-MM-dd" string parses as UTC midnight, which is the evening
+// before in America/New_York, so every warm-up doc was headed with the day
+// before its lesson. Parse it as local midnight instead, as 22/31 already do.
+function wfbParseDate_(raw) {
+  if (typeof raw === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.trim())) {
+    return new Date(raw.trim() + "T00:00:00");
+  }
+  return new Date(raw);
+}
+
 // Degrades to the raw string rather than throwing when Date parsing fails —
 // a Sheets Date cell's exact handed-back shape isn't guaranteed.
 function wfbNormalizeDateIso_(raw) {
-  const d = new Date(raw);
+  const d = wfbParseDate_(raw);
   if (isNaN(d.getTime())) return String(raw);
   return Utilities.formatDate(d, Session.getScriptTimeZone(), "yyyy-MM-dd");
 }
 
 function wfbFormatReadableDate_(iso) {
-  const d = new Date(iso);
+  const d = wfbParseDate_(iso);
   if (isNaN(d.getTime())) return null;
   return Utilities.formatDate(d, Session.getScriptTimeZone(), "MMMM d, yyyy");
 }
