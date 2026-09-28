@@ -70,6 +70,14 @@ it — that gap is closed now.
    is also the whole app (leader-hub), and template literals inside `.js`
    (both cas-ccps dashboards).
 
+   A client call to a name ending in `_` is an error
+   (`private-server-function`), even when that function exists. Apps Script
+   never exposes `_` functions to `google.script.run`, so the call throws in
+   the browser and never reaches the server. leader-hub shipped eight of
+   these, which meant none of its server sync ever ran. The fix is a public,
+   owner-checked entry point that delegates to the `_` function (see
+   `leader-hub/Code.gs`).
+
    **This check used to verify nothing, and the way it failed is worth
    knowing before touching it.** It scanned raw source with a per-*line*
    regex, and every real call in this repo defeats one half or the other:
