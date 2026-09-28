@@ -1,6 +1,34 @@
 # KOS Changelog
 
 
+### Vector classification: one `VECTOR_MATRIX` row per real session
+
+`VECTOR_MATRIX` held only install fixtures, because no code queued a
+`VECTOR_CLASSIFY` row for a real session. `20_VectorClassifySessions.gs`
+closes `STUDIO_INTEGRATION_SPEC.md`'s open integration question.
+
+- **One row per session**, keyed by the log UUID (`LOG-xxxxxxxx`), the stem
+  the Curator chunks share. One row per chunk would decay every theme the
+  chunk doesn't score, once per chunk.
+- **Classified in parts.** Both the input cell (`VectorClassifyInput`) and
+  the output cell (`STUDIO_RETURN`) cap at 50,000 characters, and the
+  per-sentence JSON runs about twice its input. So `_chunkAndQueue()` also
+  queues parts of at most 8,000 characters (`LOG-xxxxxxxx_VC01of03`), all
+  or nothing. `processInferenceQueue()` stores each finished part in a new
+  `VectorClassifyParts` tab and aggregates the session when its last part
+  lands. That is exactly the result of one call over the whole session,
+  since the aggregation sums per sentence. A part delivered again later
+  writes nothing. The install fixture's UID keeps its old behavior.
+- **Backfill:** `previewVectorClassifyBackfill()` /
+  `queueVectorClassifyBackfillBatch()` queue older sessions from their
+  `CuratorInput` text, oldest first, 3 per batch, never while an earlier
+  batch is in flight. `checkVectorClassifySessions()` lists sessions still
+  waiting on a part.
+
+`_semanticChunker()` / `_splitOversizedBlock_()` take an optional size;
+their default is unchanged. 9 tests in
+`tests/kos-personal/vector-classify-sessions.test.js`.
+
 ### `19_StagingRequeue.gs`: a requeue helper for STUDIO_TIMEOUT / AUDIT_REJECTED rows
 
 Both handoffs asked for one instead of hand-editing statuses. A row's
