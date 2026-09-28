@@ -295,7 +295,9 @@ custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced);
 `tests/tools/` covers
-the lint tools and the `leaderhub-build` drift gate.
+the lint tools, the `leaderhub-build` drift gate, and the split script's
+load order (`leaderhub-build-load-order.test.js`, which runs the real
+built tags one after another).
 
 ## Still pending
 

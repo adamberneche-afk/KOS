@@ -58,7 +58,18 @@ full story of why this exists:
    scope for `let`/`const`/`class` (only `var`/function declarations
    become shared properties of the page's global object, visible across
    tags in document order).
-3. **`split-script.js`** splits a block over `MAX_SCRIPT_CHUNK_SIZE`
+3. **`order-declarations.js`** moves every top-level function
+   declaration ahead of every other statement (in original order), after
+   one `var a,b,…;` line naming every top-level var. In one script, every
+   function and var exists before any statement runs; split into tags,
+   each exists only once its own tag has run. Without this step, a
+   load-time statement that names a function from a later tag throws.
+   That happened live (`_lpHasUnsavedChanges is not defined`, 2026-09-28).
+   The new order is the order one script already sets things up in, so
+   nothing changes when the block is in a single tag.
+   `tests/tools/leaderhub-build-load-order.test.js` runs the real built
+   tags one after another in a shared context to prove it.
+4. **`split-script.js`** splits a block over `MAX_SCRIPT_CHUNK_SIZE`
    (currently 70,000 characters — comfortably under the ~100K–107K
    per-tag threshold live bisection measured as the actual crash trigger)
    into several consecutive `<script>...</script>` tags, cut only at real
@@ -66,7 +77,7 @@ full story of why this exists:
    bare bracket-depth-0 gap that could sit mid-expression. Every resulting
    chunk is verified with `node --check` before the split is trusted.
 
-Only a block that actually exceeds the size threshold gets hoisted+split;
+Only a block that actually exceeds the size threshold gets hoisted, reordered and split;
 the small error-handler script is minified but left as one tag. This is
 why the real assembled file currently has 16 `<script>` blocks (the small
 error-handler one, plus 15 chunks of the giant one), not 2 — that count
@@ -120,11 +131,12 @@ node tools/leaderhub-build/build.js --stats  # rebuild, then print a per-block s
 | File | Contents |
 |---|---|
 | `manifest.json` | Ordered list of `leader-hub/src/*.html` fragment paths, plus the output path. `build.js`'s only source of truth for fragment order. |
-| `build.js` | Reads each fragment in manifest order, `parts.join('')` (no separator — each fragment ends exactly where the next began), then runs each real `<script>` block's content through an invariant check → minify → (hoist + split, if over size) → sourceURL-tag before writing the result. `--check` builds in memory and diffs against the committed file instead of writing, non-zero exit on drift. `--stats` prints a size report. |
+| `build.js` | Reads each fragment in manifest order, `parts.join('')` (no separator — each fragment ends exactly where the next began), then runs each real `<script>` block's content through an invariant check → minify → (hoist + reorder + split, if over size) → a `data-lh-block` name on each tag before writing the result. `--check` builds in memory and diffs against the committed file instead of writing, non-zero exit on drift. `--stats` prints a size report. |
 | `js-lexer.js` | Small recursive-descent JS tokenizer (comments/strings/templates/regex/idents/numbers/punctuation/whitespace) — not a full parser, just enough to walk the source without corrupting arbitrarily-nested template literals. Everything else in this directory is built on it. |
 | `lexer-invariants.js` | Standalone sanity pass over a token stream: balanced brackets, and no regex token following something only division could follow. Catches a js-lexer.js bug directly, independent of (and a real blind spot for) the before/after comparisons below. |
 | `strip-comments.js` | Removes comment tokens and collapses dead whitespace/blank lines, leaving string/template/regex literal content and real newline placement untouched. |
 | `hoist-declarations.js` | Converts top-level (bracket-depth-0) `let`/`const` to `var`, leaving anything nested inside a function/block/for-head/object-key/method-name alone. |
+| `order-declarations.js` | Puts a block's top-level var names, then its function declarations, ahead of its other statements, so a split can't make load-time code name something a later tag declares. |
 | `split-script.js` | Splits a source string into chunks no larger than a target size, cutting only at real statement boundaries (never mid-expression), and verifies each chunk independently with `node --check`. |
 | `verify-strip.js` | CLI: tokenizes an original and a stripped file, asserts every non-comment/non-whitespace token matches. `node tools/leaderhub-build/verify-strip.js <original.js> <stripped.js>` |
 | `verify-hoist.js` | CLI: same idea as `verify-strip.js`, but allows `let`/`const` ↔ `var` at matching positions. `node tools/leaderhub-build/verify-hoist.js <original.js> <hoisted.js>` |

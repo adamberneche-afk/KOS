@@ -74,3 +74,18 @@ test('escJsAttr also applies escH\'s HTML-attribute escaping on top of the JS-st
   assert.ok(escaped.includes('&lt;b&gt;'), 'HTML tags must still be escaped');
   assert.ok(escaped.includes('&quot;'), 'double quotes must still be escaped for the surrounding HTML attribute');
 });
+
+// The DECA season notice is the one stored field rendered as markup on
+// purpose (its default uses <strong>). It comes from localStorage or the
+// JSON season editor, so everything is escaped and only <strong> comes back.
+test('_decaNoticeHtml keeps <strong> and escapes everything else', () => {
+  const html07 = path.join(__dirname, '..', '..', 'leader-hub', 'src', '07-events-email-members-goals.html');
+  const source = extractLines(HTML_PATH, 1461, 1463, ['function escH(']) + '\n' +
+    extractLines(html07, 1067, 1069, ['function _decaNoticeHtml(']);
+  const { _decaNoticeHtml } = runInSandbox(source, {}, ['_decaNoticeHtml']);
+  assert.equal(_decaNoticeHtml('<strong>Due NOW.</strong> 45 days'), '<strong>Due NOW.</strong> 45 days');
+  assert.equal(_decaNoticeHtml('<img src=x onerror=alert(1)><strong>ok</strong>'),
+    '&lt;img src=x onerror=alert(1)&gt;<strong>ok</strong>');
+  assert.equal(_decaNoticeHtml('<strong onclick="x()">no</strong>'), '&lt;strong onclick=&quot;x()&quot;&gt;no</strong>');
+  assert.equal(_decaNoticeHtml(null), '');
+});

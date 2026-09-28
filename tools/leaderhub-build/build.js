@@ -120,6 +120,7 @@ const { findInlineScriptBlocks } = require('../html-lint/check.js');
 const { stripCommentsAndWhitespace } = require('./strip-comments.js');
 const { hoistTopLevelDeclarations } = require('./hoist-declarations.js');
 const { splitScript } = require('./split-script.js');
+const { orderDeclarations } = require('./order-declarations.js');
 const { assertLexerInvariants } = require('./lexer-invariants.js');
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -202,8 +203,13 @@ function minifyScriptBlocks(assembled, statsOut) {
     let processed = stripCommentsAndWhitespace(stripCommentsAndWhitespace(content));
 
     let chunks;
+    let order = null;
     if (processed.length > MAX_SCRIPT_CHUNK_SIZE) {
       processed = hoistTopLevelDeclarations(processed);
+      // Functions and var names first, so no tag's load-time code can name
+      // something a later tag declares (see order-declarations.js).
+      order = orderDeclarations(processed);
+      processed = order.source;
       chunks = splitScript(processed, MAX_SCRIPT_CHUNK_SIZE);
     } else {
       chunks = [processed];
@@ -221,6 +227,7 @@ function minifyScriptBlocks(assembled, statsOut) {
         originalLength: content.length,
         minifiedLength: processed.length,
         chunkSizes: chunks.map((c) => c.length),
+        order: order && { functions: order.functions, statements: order.statements, vars: order.vars },
       });
     }
 
@@ -237,9 +244,12 @@ function build(statsOut) {
 function printStats(concatenatedLength, stats) {
   console.log('');
   console.log('Per-<script>-block minification + splitting report:');
-  stats.forEach(({ blockIndex, originalLength, minifiedLength, chunkSizes }) => {
+  stats.forEach(({ blockIndex, originalLength, minifiedLength, chunkSizes, order }) => {
     const pct = originalLength > 0 ? (100 * (1 - minifiedLength / originalLength)).toFixed(1) : '0.0';
     console.log(`  block ${blockIndex}: ${originalLength} -> ${minifiedLength} chars (-${pct}%)`);
+    if (order) {
+      console.log(`    reordered: ${order.vars} var names up front, then ${order.functions} functions, then ${order.statements} other statements`);
+    }
     if (chunkSizes.length > 1) {
       console.log(`    split into ${chunkSizes.length} <script> tags: [${chunkSizes.join(', ')}] (max ${Math.max(...chunkSizes)}, target ${MAX_SCRIPT_CHUNK_SIZE})`);
     }

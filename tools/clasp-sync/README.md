@@ -235,7 +235,13 @@ cd C:\Users\<you>\kos                  # the folder holding run.ps1, the registr
 ```
 
 Keep your working copy of the script next to the registry, not inside
-the checkout, because `-Zip` deletes the checkout.
+the checkout, because `-Zip` deletes the checkout. That also means a new
+zip never updates your copy. So before pushing anything, `run.ps1`
+compares itself with the checkout's `tools\clasp-sync\run.ps1`. If they
+differ, it stops and prints the `Copy-Item` command that updates it; run
+that, then run your command again. `-SkipScriptCheck` runs your copy
+anyway, for testing a local edit. (An old copy from before this check
+won't do this, so update it by hand once.)
 
 **Faster test cycles:**
 
@@ -243,6 +249,7 @@ the checkout, because `-Zip` deletes the checkout.
 |---|---|
 | `-Latest` | Uses the newest `KOS-main*.zip` in the current folder or `~\Downloads` as `-Zip`, and prints which one it picked and when it was saved. |
 | `-HeadOnly` | Pushes without cutting a version or moving a deployment. Live users keep the current version; test the new code at the printed `/dev` link. Push-only projects have no such buffer and are pushed as normal. |
+| `-SkipScriptCheck` | Runs this copy of `run.ps1` even though it differs from the checkout's. |
 | `-RollbackTo <n>` | Points every deployment in `deployments.txt` back to version *n*, pushing nothing. Takes exactly one web app in `-Only`. A promote run prints the version it replaced. |
 
 A release run after a `-HeadOnly` test still releases. clasp reports the

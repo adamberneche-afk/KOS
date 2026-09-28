@@ -218,7 +218,7 @@ function buildJournalSummary(){
       <span class="sr-icon">${r.icon}</span>
       <div class="sr-body">
         <div class="sr-label">${r.label}</div>
-        <div class="sr-val ${!r.val?'empty':''}">${r.val || '(skipped)'}</div>
+        <div class="sr-val ${!r.val?'empty':''}">${r.val ? escH(r.val) : '(skipped)'}</div>
       </div>
     </div>`).join('');
 }
