@@ -20,13 +20,17 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const FILES = [
+  path.join(LH, 'Code.gs'), // _lhRequireOwner_()
   path.join(LH, 'DeployVersionMarker.gs'),
   path.join(LH, 'DeployVersionReport.gs'),
 ];
 const EXPOSE = ['reportDeployVersion', 'installDeployVersionReportTrigger', 'LH_DEPLOY_VERSION_SHA'];
 
 function load(overrides = {}) {
-  return loadGasFiles(FILES, EXPOSE, overrides);
+  const loaded = loadGasFiles(FILES, EXPOSE, overrides);
+  // The sandbox's Session user is teacher@example.com; make them the owner.
+  loaded.sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'teacher@example.com');
+  return loaded;
 }
 
 test('reportDeployVersion: no token configured — no-ops, returns false, never calls UrlFetchApp', () => {

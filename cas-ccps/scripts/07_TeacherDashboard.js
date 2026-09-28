@@ -437,9 +437,12 @@ function _getRosterForEmail_(cfg, teacherEmail) {
   const wanted = String(teacherEmail || "").trim().toLowerCase();
 
   const byEmail = new Map(); // dedup — a student can have multiple Ledger rows (one per assignment)
+  const year = _currentSchoolYear_();
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== wanted) continue;
+    // Access policy: a teacher's students are this school year's only.
+    if (!_isCurrentSchoolYearRow_(row, year)) continue;
     const email = String(row[LEDGER.GOOGLE_ID] || "").trim();
     if (!email || byEmail.has(email.toLowerCase())) continue;
     byEmail.set(email.toLowerCase(), {
@@ -490,11 +493,15 @@ function getDashboardData(termFilter) {
   const students  = [];
   const unitMap   = {};
   const allTerms  = new Set();
+  const year      = _currentSchoolYear_();
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row = ledgerData[i];
     if (String(row[LEDGER.TEACHER_EMAIL]).toLowerCase() !== teacherEmail.toLowerCase()) continue;
     if (!row[LEDGER.GOOGLE_ID]) continue;
+    // Access policy: only this school year's work is visible, whatever term
+    // the client asks for ("ALL" means every term of this year).
+    if (!_isCurrentSchoolYearRow_(row, year)) continue;
 
     const rowTerm    = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
     const ledgerStatus = String(row[LEDGER.STATUS]).trim();
@@ -621,6 +628,14 @@ function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, deci
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][LEDGER.CONFIG_ID]).trim() !== configId) continue;
 
+    // The Ledger is shared across every teacher, so a ConfigID alone could
+    // finalize another teacher's student's score. Same ownership rule as
+    // _recordScrDecision_(); fails closed on a blank teacherEmail.
+    const rowTeacher = String(data[i][LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    if (!teacherEmail || rowTeacher !== String(teacherEmail).trim().toLowerCase()) {
+      return { success: false, error: "This submission is not in your classes." };
+    }
+
     const currentStatus = String(data[i][LEDGER.STATUS]).trim();
     if (currentStatus !== "PENDING_TEACHER_REVIEW") {
       return { success: false, error: "This submission is not awaiting review (current status: " + currentStatus + ")." };
@@ -722,6 +737,65 @@ const DASHBOARD_SCRS = {
 // joins against the Ledger via _getRosterForEmail_ (already used above for
 // the leader-hub API) to enforce that scoping for real.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// _scrOwnership_ — student-data access policy, rule 3: only the teacher who
+// assigned the work rates it. A competency rating is built from
+// CompetencyEvidence rows, and each carries the config_id of the Ledger
+// row (the assignment) it came from, which names the assigning teacher. A
+// student+competency pair is this teacher's when any of its evidence comes
+// from their own assignment this school year.
+//
+// Evidence written before config_id existed can't be traced; for a pair
+// with no traceable evidence at all, the current-year roster decides, as it
+// did before this check.
+//
+// Returns { owned: Set<pairKey>, traced: Set<pairKey> }; pairKey is
+// lowercased student email + "|" + competency id.
+// ---------------------------------------------------------------------------
+function _scrPairKey_(email, competencyId) {
+  return String(email || "").trim().toLowerCase() + "|" + String(competencyId || "").trim();
+}
+
+function _scrOwnership_(cfg, teacherEmail) {
+  const out = { owned: new Set(), traced: new Set() };
+  const teacher = String(teacherEmail || "").trim().toLowerCase();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+
+  const year = _currentSchoolYear_();
+  const teacherByConfig = {};
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (ledger && ledger.getLastRow() > 1) {
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row) {
+      const configId = String(row[LEDGER.CONFIG_ID] || "").trim();
+      if (!configId || !_isCurrentSchoolYearRow_(row, year)) return;
+      teacherByConfig[configId] = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    });
+  }
+
+  const evidence = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!evidence || evidence.getLastRow() < 2) return out;
+  const data = evidence.getDataRange().getValues();
+  const h = data[0].map(function (x) { return String(x).trim(); });
+  const iEmail = h.indexOf("student_email"), iComp = h.indexOf("competency_id");
+  const iConfig = h.indexOf("config_id"), iArchive = h.indexOf("archive_status");
+  if (iEmail === -1 || iComp === -1 || iConfig === -1) return out;
+  for (let i = 1; i < data.length; i++) {
+    if (iArchive !== -1 && String(data[i][iArchive] || "").trim() !== "") continue;
+    const configId = String(data[i][iConfig] || "").trim();
+    if (!configId) continue;
+    const key = _scrPairKey_(data[i][iEmail], data[i][iComp]);
+    out.traced.add(key);
+    if (teacher && teacherByConfig[configId] === teacher) out.owned.add(key);
+  }
+  return out;
+}
+
+function _scrIsMine_(ownership, rosterEmails, email, competencyId) {
+  const key = _scrPairKey_(email, competencyId);
+  if (ownership.traced.has(key)) return ownership.owned.has(key);
+  return rosterEmails.has(String(email || "").trim().toLowerCase());
+}
+
 function getScrReviewQueue() {
   const cfg = getConfig_();
   if (!_isAuthorizedTeacher_(cfg)) return { success: false, error: "Not authorized." };
@@ -738,17 +812,19 @@ function getScrReviewQueue() {
   const registrySheet = ss.getSheetByName(cfg.tabs.competencyRegistry);
   const compTextMap   = getCompetencyTextMap_(registrySheet);
 
+  const ownership = _scrOwnership_(cfg, cfg.teacherEmail);
   const data = suggestionsSheet.getDataRange().getValues();
   const results = [];
   for (let i = 1; i < data.length; i++) {
     const row   = data[i];
     const email = String(row[DASHBOARD_SCRS.STUDENT_EMAIL]).trim();
-    if (!myEmails.has(email.toLowerCase())) continue; // real per-teacher scoping — Open Items #4
+    const compId = String(row[DASHBOARD_SCRS.COMPETENCY_ID]).trim();
+    // Only ratings built from this teacher's own assignments (rule 3).
+    if (!_scrIsMine_(ownership, myEmails, email, compId)) continue;
 
     const status = String(row[DASHBOARD_SCRS.STATUS]).trim();
     if (status !== "SUGGESTED" && status !== "INSUFFICIENT_EVIDENCE") continue;
 
-    const compId = String(row[DASHBOARD_SCRS.COMPETENCY_ID]).trim();
     results.push({
       studentEmail:    email,
       studentName:     nameByEmail[email.toLowerCase()] || email,
@@ -798,6 +874,11 @@ function _recordScrDecision_(cfg, studentEmail, competencyId, overrideRating, de
   const myEmails = new Set(roster.map(function (s) { return s.email.toLowerCase(); }));
   if (!myEmails.has(String(studentEmail || "").toLowerCase())) {
     return { success: false, error: "This student is not on your roster." };
+  }
+  // Rule 3: only the teacher whose assignments produced this competency's
+  // evidence rates it, not every teacher who has the student.
+  if (!_scrIsMine_(_scrOwnership_(cfg, cfg.teacherEmail), myEmails, studentEmail, competencyId)) {
+    return { success: false, error: "This competency's evidence comes from another teacher's assignments." };
   }
 
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
@@ -2440,8 +2521,8 @@ If you expect to see students here:
         // describes for any student name containing an apostrophe. Now
         // targets the entity esc() actually produces. wrIdSafe is
         // unaffected — googleId is never passed through esc() first.
-        const wrIdSafe   = s.googleId.replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const wrNameSafe = esc(s.name).replace(/&#39;/g,"\\\\'");
+        const wrIdSafe   = jsAttr(s.googleId);
+        const wrNameSafe = jsAttr(s.name);
         wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
       }
       // NEW (Say/Do Ledger cas-ccps finding #1): shown on every
@@ -2454,8 +2535,8 @@ If you expect to see students here:
       // fix for rvNameSafe.
       let reviewNextStep = "";
       if (s.statusClass === "pending-review") {
-        const rvConfigSafe = String(s.configId||"").replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const rvNameSafe   = esc(s.name).replace(/&#39;/g,"\\\\'");
+        const rvConfigSafe = jsAttr(s.configId);
+        const rvNameSafe   = jsAttr(s.name);
         const rvScoreArg   = s.suggestedScore == null ? "null" : String(s.suggestedScore);
         const rvScoreNote  = s.suggestedScore == null
           ? "No AI-suggested score — assign one directly."

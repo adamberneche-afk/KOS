@@ -252,7 +252,12 @@ function _turnInScoreOrNull_(cell) {
 // parent most wants to know, and would be invisible if this filtered on
 // SubmissionTS alone.
 // ---------------------------------------------------------------------------
-function getWeeklyAssignments_(ledgerSheet, windowStart) {
+// opts.teacherEmail / opts.schoolYear, when given, keep only that teacher's
+// rows from that school year (student-data access policy: a teacher sees
+// only their own students' work, this year's only).
+function getWeeklyAssignments_(ledgerSheet, windowStart, opts) {
+  const o = opts || {};
+  const onlyTeacher = o.teacherEmail ? String(o.teacherEmail).trim().toLowerCase() : "";
   // Bounded to LEDGER_COL_COUNT (00_SharedConfig.js), not getDataRange() —
   // external product review Finding 6.
   const data = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
@@ -262,6 +267,8 @@ function getWeeklyAssignments_(ledgerSheet, windowStart) {
     const row = data[i];
     const email = String(row[1] || "").trim();
     if (!email || !_studentIdPattern_().test(email)) continue;
+    if (onlyTeacher && String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== onlyTeacher) continue;
+    if (o.schoolYear && !_isCurrentSchoolYearRow_(row, o.schoolYear)) continue;
 
     const submissionTs = row[LEDGER.SUBMISSION_TS];
     const fallbackTs = row[LEDGER.TIMESTAMP];

@@ -80,6 +80,19 @@ function onFormSubmit_Intake(e) {
     return;
   }
 
+  // The assigning teacher is the owner of the matrix the assignment came
+  // from (MatrixRegistry). The form's "Teacher Email" is typed by the
+  // student, so it can't decide access or grading. Fall back to it only for
+  // a registry row with no email, and say so.
+  const assignedTeacherEmail = assignment.teacherEmail || teacherEmail.toLowerCase();
+  if (!assignment.teacherEmail) {
+    Logger.log("Form 1 — MatrixRegistry has no TeacherEmail for the matrix holding " + unitConfigId +
+      "; using the form's Teacher Email (" + teacherEmail + ").");
+  } else if (teacherEmail && assignment.teacherEmail !== teacherEmail.toLowerCase()) {
+    Logger.log("Form 1 — the form says teacher " + teacherEmail + " but " + unitConfigId +
+      " belongs to " + assignment.teacherEmail + "'s matrix; using the matrix owner.");
+  }
+
   // Generate student-specific CONFIG_ID
   const studentConfigId = generateConfigId_();
 
@@ -154,12 +167,13 @@ function onFormSubmit_Intake(e) {
     promptContent, cfg.ledgerSsId, cfg.adminSsId, cfg.studentDashboardUrl
   );
 
-  // Share into student Drive under [Block - Class - Teacher] folder
-  shareToStudentDrive_(cfg, docFile, googleId, block, className, teacherName);
+  // Share the doc with its student (edit, until submission) and the
+  // assigning teacher (comment). Nobody else.
+  shareToStudentDrive_(cfg, docFile, googleId, assignedTeacherEmail);
 
   // Register in Ledger
   registerLedger_(cfg, googleId, studentName, studentConfigId, fileId,
-                  block, className, teacherName, teacherEmail,
+                  block, className, teacherName, assignedTeacherEmail,
                   subject, courseName, period, docFile.getUrl());
 
   Logger.log(
@@ -240,7 +254,12 @@ function fetchAssignment_(cfg, unitConfigId) {
               configId:         String(data[i][0]).trim(),
               unitName:         String(data[i][1]).trim(),
               tier:             String(data[i][2]).trim(),
-              promptTemplateId: String(data[i][12]).trim()
+              promptTemplateId: String(data[i][12]).trim(),
+              // The matrix's owner is the teacher who assigned the work.
+              // This, not the form's student-typed "Teacher Email", decides
+              // who may see, comment on and grade the student's doc.
+              teacherEmail:     String(regData[r][1] || "").trim().toLowerCase(),
+              teacherName:      String(regData[r][0] || "").trim()
             };
           }
         }
@@ -374,19 +393,25 @@ function stampDocument_(fileId, configId, studentName, block,
 // ---------------------------------------------------------------------------
 // shareToStudentDrive_
 // ---------------------------------------------------------------------------
-function shareToStudentDrive_(cfg, docFile, googleId, block, className, teacherName) {
-  const folderName  = block + " - " + className + " - " + teacherName;
-  const adminRoot   = DriveApp.getFolderById(cfg.adminRootFolderId);
-  const sharedRoot  = resolveFolder_(adminRoot, "_Student Shared Folders");
-  const classFolder = resolveFolder_(sharedRoot, folderName);
-
+function shareToStudentDrive_(cfg, docFile, googleId, teacherEmail) {
+  // Access policy: a student's work is visible only to that student and the
+  // teacher who assigned it. The doc used to be moved into a shared
+  // "Block - Class - Teacher" folder that every student in the class could
+  // view, so each classmate inherited view access to every other student's
+  // doc. It now stays in the admin folder it was copied into, shared
+  // directly: the student can edit (until submission, see
+  // 04_Form2_TurnInGate.js) and the assigning teacher can comment.
   try {
-    classFolder.addViewer(googleId);
     docFile.addEditor(googleId);
-    docFile.moveTo(classFolder);
   } catch (err) {
     Logger.log("Share warning for " + googleId + ": " + err.message);
-    docFile.addEditor(googleId);
+  }
+  if (teacherEmail) {
+    try {
+      docFile.addCommenter(teacherEmail);
+    } catch (err) {
+      Logger.log("Teacher comment access warning for " + teacherEmail + ": " + err.message);
+    }
   }
 }
 

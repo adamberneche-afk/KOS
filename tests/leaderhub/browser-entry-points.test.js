@@ -95,3 +95,18 @@ test('the built page calls only these entry points, and each one checks the owne
     assert.ok(body.startsWith('_lhRequireOwner_();'), name + ' checks the owner before anything else');
   });
 });
+
+// Editor-run maintenance functions are public too, so any page this web app
+// serves can reach them through google.script.run. The ones that change
+// shared state are owner-only.
+test('editor-only functions that change shared state refuse anyone but the owner', () => {
+  const MUTATING = ['repairAiQueueSchema', 'installAiFlowFixtures', 'removeAiFlowFixtures',
+    'runAiFlowCanary', 'cleanUpAiFlowCanary', 'syncAiPromptsToSheet', 'installDeployVersionReportTrigger'];
+  const files = FILES.concat(['AiPrompts.gs', 'FlowOps.gs', 'DeployVersionMarker.gs', 'DeployVersionReport.gs']
+    .map((f) => path.join(LH, f)));
+  const { exported, sandbox } = loadGasFiles(files, MUTATING, {
+    Session: { getActiveUser() { return { getEmail() { return 'someone@ccpsnet.net'; } }; } },
+  });
+  sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', OWNER);
+  MUTATING.forEach((name) => assert.throws(() => exported[name](), /Not authorized/, name));
+});
