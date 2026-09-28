@@ -24,7 +24,7 @@
  * tools/deploy-drift/README.md), then run
  * installDeployVersionReportTrigger() once from the Apps Script editor.
  */
-const DEPLOY_VERSION_SHA = '182a68cd38fbf636c6c2ebaaa75600b6935b242c'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
+const DEPLOY_VERSION_SHA = '35921acc08a4d6c27e094b7404a0fae7e40871f4'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
 
 function reportDeployVersion() {
   return _reportDeployVersion_('cas-ccps:teacher-dashboard', DEPLOY_VERSION_SHA);
