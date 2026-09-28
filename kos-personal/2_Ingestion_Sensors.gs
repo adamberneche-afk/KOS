@@ -874,6 +874,17 @@ function _chunkAndQueue(rawText, payloadType, logUUID, rawFolder, staging, ss) {
     }
   });
 
+  // One VECTOR_MATRIX row per session: queue the session's classification
+  // parts alongside its Curator chunks (20_VectorClassifySessions.gs). A
+  // failure here never blocks intake; the backfill can queue it later.
+  if (payloadType === 'SESSION_LOG') {
+    try {
+      _queueClassifyParts_(rawText, logUUID, rawFolder, staging);
+    } catch (vcErr) {
+      _reportError('_chunkAndQueue:VECTOR_CLASSIFY:' + logUUID, vcErr, null);
+    }
+  }
+
   // SESSION_LOG row for intake traceability (non-critical)
   try {
     _getOrCreateSheet(ss, CFG.SESSION_LOG_SHEET).appendRow([
