@@ -76,6 +76,7 @@ function setUp(sandbox, opts) {
 // A minimal Ledger row for a student on TEACHER's roster.
 function ledgerRow(email, name, teacherEmail) {
   const row = new Array(23).fill('');
+  row[0] = new Date();      // TIMESTAMP: this school year (rosters are current-year only)
   row[1] = email;           // GOOGLE_ID
   row[4] = name;            // STUDENT_NAME
   row[6] = 'Period 3';      // CLASS_NAME
@@ -281,4 +282,44 @@ test('DASHBOARD_SCRS column order is byte-identical to 30_SCRSuggestionEngine.js
   const dashboard = loadGasFiles(FILES, ['DASHBOARD_SCRS']);
   const engine = loadGasFiles([S('00_SharedConfig.js'), S('30_SCRSuggestionEngine.js')], ['SCRS']);
   assert.deepEqual(dashboard.exported.DASHBOARD_SCRS, engine.exported.SCRS);
+});
+
+
+// ── Access policy, rule 3: only the assigning teacher rates ─────────────────
+// CompetencyEvidence rows carry the config_id of the assignment they came
+// from. A rating is this teacher's when its evidence comes from their own
+// assignment; a teacher who merely has the student in another course can't
+// see or decide it.
+function withEvidence(ss, rows) {
+  const ev = ss.insertSheet('CompetencyEvidence');
+  ev.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text', 'outcome',
+    'config_id', 'evaluated_at', 'student_file_id', 'archive_status']);
+  rows.forEach((r) => ev.appendRow(['EVD-' + r.configId, r.email, r.compId, '', 'MET', r.configId, new Date(), '', '']));
+}
+
+test('SCR ratings built from another teacher\'s assignment are hidden and refused', () => {
+  const { exported, sandbox } = load();
+  const mine = ledgerRow('alice@ccpsnet.net', 'Alice');
+  mine[2] = 'CFG-MINE';
+  const theirs = ledgerRow('alice@ccpsnet.net', 'Alice', OTHER_TEACHER);
+  theirs[2] = 'CFG-THEIRS';
+  const fx = setUp(sandbox, {
+    ledgerRows: [mine, theirs],
+    scrRows: [
+      scrRow('alice@ccpsnet.net', 'MKT-1', 3, 'SUGGESTED'),
+      scrRow('alice@ccpsnet.net', 'CHEM-1', 3, 'SUGGESTED'),
+    ],
+  });
+  withEvidence(fx.ss, [
+    { email: 'alice@ccpsnet.net', compId: 'MKT-1', configId: 'CFG-MINE' },
+    { email: 'alice@ccpsnet.net', compId: 'CHEM-1', configId: 'CFG-THEIRS' },
+  ]);
+
+  const queue = exported.getScrReviewQueue();
+  assert.deepEqual(queue.suggestions.map((q) => q.competencyId), ['MKT-1']);
+
+  const refused = exported.teacherConfirmScrRating('alice@ccpsnet.net', 'CHEM-1');
+  assert.equal(refused.success, false);
+  assert.match(refused.error, /another teacher/);
+  assert.equal(exported.teacherConfirmScrRating('alice@ccpsnet.net', 'MKT-1').success, true);
 });

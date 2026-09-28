@@ -257,8 +257,12 @@ this stage, but a second account would start here):
      once.
   3. `teacher-dashboard`/`student-dashboard` both need `ADMIN_SS_ID` set (not
      just `CENTRAL_LEDGER_SS_ID`), and `student-dashboard`'s manifest must have
-     `executeAs: "USER_ACCESSING"` (already correct in the tracked manifest —
-     just don't overwrite it).
+     `executeAs: "USER_DEPLOYING"` and `access: "DOMAIN"` (corrected
+     2026-09-28: it used to say `USER_ACCESSING` with `ANYONE`, which meant
+     every student needed read access to the whole Central Ledger, and any
+     Google account could reach the page. Running as the deploying admin,
+     the page filters rows to the signed-in student, who needs no Ledger
+     access at all).
   4. **Found during the real deployment, not predicted:** the from-scratch path
      also skips the **Central Turn-In Form**. The admin wizard creates it
      normally; a `clasp create` + `clasp push` deployment never runs that path.

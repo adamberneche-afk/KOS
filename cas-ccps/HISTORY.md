@@ -2279,3 +2279,29 @@ the student-dashboard manifest says USER_ACCESSING + ANYONE while the
 installer says MYSELF + DOMAIN; weekly parent reports aren't scoped to
 the calling teacher; and an errored FlowInput row blocks that
 submission's retries.
+
+## Student data access policy, 2026-09-28
+
+The operator set it: student data is visible only to the student and their
+teachers, during the current school year; only the student edits, and only
+before submission; only the assigning teacher grades and gives feedback.
+README.md's "Student data access policy" section says how each part is
+enforced. What was wrong before:
+
+- Every doc was moved into a class folder shared with every student in the
+  class, so each student could open every classmate's work.
+- The "assigning teacher" was the Teacher Email the student typed on Form 1.
+  It now comes from MatrixRegistry.
+- Nothing ever removed a student's edit access, even after grading.
+- Rosters, dashboards and parent reports accepted any term, or "ALL".
+- Parent reports covered every teacher's students.
+- Any teacher who had a student could decide that student's SCR ratings
+  from another teacher's course.
+- The SCR export was shared with the whole domain, students included.
+- The student dashboard's manifest ran as the visiting student, which
+  requires every student to read the whole Central Ledger.
+
+`50_StudentDataAccess.js` fixes files made before the change and revokes
+earlier school years. Kept by the operator's choice: automatic AI feedback
+and warm-up scoring. Parent reports stay, scoped to the teacher.
+

@@ -148,6 +148,11 @@ function onTurnInSubmit(e) {
     // above already rejects before this point is ever reached.
     const suggestedScore = extractSuggestedScore_(docText);
     markPendingReview_(cfg, ledgerRow.rowIndex, suggestedScore);
+    // The submission is final: the student can read the doc but no longer
+    // edit it, and only the assigning teacher can comment. A rejected
+    // turn-in (every branch above) keeps edit access so the student can fix
+    // it and resubmit.
+    _lockSubmittedDoc_(cfg, ledgerRow);
     notifyTeacher_(ledgerRow, submittedDocUrl, suggestedScore);
 
     Logger.log("Turn-in PENDING TEACHER REVIEW — GoogleID: " + googleId +
@@ -343,6 +348,72 @@ function markPendingReview_(cfg, rowIndex, suggestedScore) {
     : "All checks passed — awaiting teacher review. No AI-suggested score available " +
       "(this submission was evaluated before scoring was added to Flow 2 — assign a score directly via Override).");
   sheet.getRange(rowIndex, 20).setValue(suggestedScore == null ? "" : suggestedScore);
+}
+
+// =============================================================================
+// _lockDocAfterSubmission_ (central-ledger only: it needs the Drive scope,
+// which the student-run master-student-template project must not ask for) — student-data access policy, rule 2: only the
+// student edits, and only before submission. Called once a submission is
+// final (a passing turn-in, or a warm-up whose extra-credit window closed).
+// Every editor other than the file's owner becomes a viewer, so the
+// student keeps reading their work and its feedback but can't change it;
+// the assigning teacher, if given, ends as a commenter (rule 3: feedback
+// comes from the assigning teacher). Works from the file's own permission
+// list, so it doesn't depend on which column holds the student's account.
+//
+// Returns { locked: [emails], failed: [{email, error}] }. Never throws:
+// the submission itself has already been recorded, and a failure here is
+// reported to the caller instead of undoing it.
+// =============================================================================
+function _lockDocAfterSubmission_(fileId, teacherEmail) {
+  const out = { locked: [], failed: [] };
+  let file;
+  try {
+    file = DriveApp.getFileById(fileId);
+  } catch (e) {
+    out.failed.push({ email: "", error: "could not open file " + fileId + ": " + e.message });
+    return out;
+  }
+  let owner = "";
+  try { owner = String(file.getOwner().getEmail() || "").toLowerCase(); } catch (e) { /* shared drive: no owner */ }
+  const teacher = String(teacherEmail || "").trim().toLowerCase();
+
+  file.getEditors().forEach(function (u) {
+    const email = String(u.getEmail() || "").toLowerCase();
+    if (!email || email === owner) return;
+    try {
+      file.removeEditor(email);
+      if (email === teacher) file.addCommenter(email);
+      else file.addViewer(email);
+      out.locked.push(email);
+    } catch (e) {
+      out.failed.push({ email: email, error: e.message });
+    }
+  });
+  if (teacher && teacher !== owner) {
+    try { file.addCommenter(teacher); } catch (e) { out.failed.push({ email: teacher, error: e.message }); }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------------------
+// _lockSubmittedDoc_ — see _lockDocAfterSubmission_ above.
+// A failure is written to the row's Notes so it's visible on the dashboard,
+// not only in the execution log.
+// ---------------------------------------------------------------------------
+function _lockSubmittedDoc_(cfg, ledgerRow) {
+  const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sheet = ss.getSheetByName(cfg.tabs.ledger);
+  const row   = sheet.getRange(ledgerRow.rowIndex, 1, 1, LEDGER.ACADEMIC_YEAR + 1).getValues()[0];
+  const fileId = String(row[LEDGER.FILE_ID] || "").trim();
+  if (!fileId) return;
+  const res = _lockDocAfterSubmission_(fileId, row[LEDGER.TEACHER_EMAIL]);
+  if (res.failed.length) {
+    const note = " Could not lock the submitted doc for: " +
+      res.failed.map(function (f) { return (f.email || "file") + " (" + f.error + ")"; }).join("; ") + ".";
+    sheet.getRange(ledgerRow.rowIndex, LEDGER.NOTES + 1).setValue(String(row[LEDGER.NOTES] || "") + note);
+    Logger.log("[S04] " + note);
+  }
 }
 
 // ---------------------------------------------------------------------------

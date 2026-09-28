@@ -192,7 +192,8 @@ function _weekWindow_(now) {
 // past the retention window a row is restricted pending disposition, and
 // putting it in front of a parent is exactly the use it's restricted from.
 // ---------------------------------------------------------------------------
-function _readConfirmedCompetencyDecisions_(cfg) {
+function _readConfirmedCompetencyDecisions_(cfg, decidedBy) {
+  const onlyBy = decidedBy ? String(decidedBy).trim().toLowerCase() : "";
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog);
   const byStudent = new Map();
@@ -217,6 +218,7 @@ function _readConfirmedCompetencyDecisions_(cfg) {
     if (!email || !compId) continue;
 
     if (String(row[SCRDL.ARCHIVE_STATUS] || "").trim() !== "") continue;
+    if (onlyBy && String(row[SCRDL.DECIDED_BY] || "").trim().toLowerCase() !== onlyBy) continue;
 
     const rating = row[SCRDL.FINAL_RATING];
     if (rating === "" || rating === null || rating === undefined) continue;
@@ -384,9 +386,21 @@ function generateWeeklyParentReports(now) {
     return { weekStart: null, weekEnd: null, reports: [], excludedStudentCount: 0 };
   }
 
+  // Access policy: a teacher reports only on their own students, this
+  // school year, and only their own courses and decisions. This runs in the
+  // teacher's own dashboard project, so cfg.teacherEmail is that teacher;
+  // with none configured there is nobody to scope to, so report nothing.
+  const teacher = String(cfg.teacherEmail || "").trim().toLowerCase();
+  if (!teacher) {
+    Logger.log("[S36] TEACHER_EMAIL is not set — no reports prepared.");
+    return { weekStart: null, weekEnd: null, reports: [], excludedStudentCount: 0 };
+  }
+  const schoolYear = _currentSchoolYear_(now instanceof Date ? now : undefined);
+
   const window = _weekWindow_(now);
-  const assignmentsByStudent = getWeeklyAssignments_(ledgerSheet, window.start);
-  const decisionsByStudent = _readConfirmedCompetencyDecisions_(cfg);
+  const assignmentsByStudent = getWeeklyAssignments_(ledgerSheet, window.start,
+    { teacherEmail: teacher, schoolYear: schoolYear });
+  const decisionsByStudent = _readConfirmedCompetencyDecisions_(cfg, teacher);
 
   // Names and the excluded count both come from the Ledger directly rather
   // than from getWeeklyAssignments_, which drops the name and, by design,

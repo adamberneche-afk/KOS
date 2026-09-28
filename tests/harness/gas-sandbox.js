@@ -386,6 +386,41 @@ function makeAddOnsResponseServiceMock() {
 // reference within a single test's registry, same spirit as
 // FakeSpreadsheet's id-keyed registry above — good enough to exercise the
 // real folder-chain logic without a real Drive account.
+// Real Apps Script API — Drive sharing on a File or Folder, following the
+// real rules: one role per user (editor > commenter > viewer); addViewer()
+// never downgrades and addCommenter() never downgrades an editor;
+// removeViewer() removes viewers AND commenters and does nothing to an
+// editor; removeEditor() removes an editor only; getViewers() returns
+// viewers and commenters, as the real one does. Folders have no commenter
+// role in Apps Script, so addCommenter() exists on files only.
+function _fakeUser_(email) { return { getEmail() { return email; } }; }
+const FakeSharingMixin = {
+  _roles() { if (!this._roleMap) this._roleMap = new Map(); return this._roleMap; },
+  _roleOf(email) { return this._roles().get(String(email).toLowerCase()) || null; },
+  _setRole(email, role) { this._roles().set(String(email).toLowerCase(), role); },
+  addEditor(email) { this._setRole(email, 'editor'); return this; },
+  addViewer(email) { if (!this._roleOf(email)) this._setRole(email, 'viewer'); return this; },
+  removeEditor(user) {
+    const email = typeof user === 'string' ? user : user.getEmail();
+    if (this._roleOf(email) === 'editor') this._roles().delete(String(email).toLowerCase());
+    return this;
+  },
+  removeViewer(user) {
+    const email = typeof user === 'string' ? user : user.getEmail();
+    const role = this._roleOf(email);
+    if (role === 'viewer' || role === 'commenter') this._roles().delete(String(email).toLowerCase());
+    return this;
+  },
+  getEditors() { return [...this._roles()].filter(([, r]) => r === 'editor').map(([e]) => _fakeUser_(e)); },
+  getViewers() { return [...this._roles()].filter(([, r]) => r !== 'editor').map(([e]) => _fakeUser_(e)); },
+  getOwner() { return _fakeUser_(this.ownerEmail || 'admin@example.com'); },
+  getSharingAccess() { return this.sharingAccess || 'PRIVATE'; },
+  getSharingPermission() { return this.sharingPermission || 'NONE'; },
+  setSharing(access, permission) { this.sharingAccess = access; this.sharingPermission = permission; return this; },
+  // Test-only: the role a user holds, or null. Not a real API.
+  _access(email) { return this._roleOf(email); },
+};
+
 class FakeDriveFolder {
   constructor(name, id) {
     this.name = name;
@@ -420,6 +455,12 @@ class FakeDriveFolder {
     return f;
   }
   addFile(file) { if (!this.files.includes(file)) this.files.push(file); return this; }
+  // Real Apps Script API — Folder.getFolders(), direct sub-folders only.
+  getFolders() {
+    const snapshot = this.children.slice();
+    let i = 0;
+    return { hasNext() { return i < snapshot.length; }, next() { return snapshot[i++]; } };
+  }
   removeFile(file) { this.files = this.files.filter((f) => f !== file); return this; }
   // Real Apps Script API — Folder.getParents(). First needed by
   // kos-personal's applyMutation() ownership check (6_Governance.gs),
@@ -447,6 +488,7 @@ class FakeDriveFolder {
   }
 }
 FakeDriveFolder._counter = 0;
+Object.assign(FakeDriveFolder.prototype, FakeSharingMixin);
 
 class FakeDriveFile {
   constructor(id, name, mimeType) {
@@ -454,7 +496,6 @@ class FakeDriveFile {
     this.name = name;
     this.sharingAccess = null;
     this.sharingPermission = null;
-    this.editors = [];
     // Real Drive stamps this at creation; tests that exercise a
     // last-updated guard (see getLastUpdated below) can overwrite it to
     // simulate an older or newer file without waiting on wall-clock time.
@@ -472,8 +513,14 @@ class FakeDriveFile {
   getName() { return this.name; }
   getMimeType() { return this.mimeType; }
   getUrl() { return 'https://fake-drive.example/file/' + this.id; }
-  setSharing(access, permission) { this.sharingAccess = access; this.sharingPermission = permission; return this; }
-  addEditor(email) { this.editors.push(email); return this; }
+  addCommenter(email) { if (this._roleOf(email) !== 'editor') this._setRole(email, 'commenter'); return this; }
+  removeCommenter(user) {
+    const email = typeof user === 'string' ? user : user.getEmail();
+    if (this._roleOf(email) === 'commenter') this._roles().delete(String(email).toLowerCase());
+    return this;
+  }
+  // `editors` kept for older assertions: the emails holding edit access.
+  get editors() { return this.getEditors().map((u) => u.getEmail()); }
   // Real Apps Script API — File.isTrashed()/setTrashed(trashed). First
   // needed by 6_Governance.gs's _writeLatestPrimer_(), which treats a
   // trashed stored-ID file the same as a missing one (falls through to
@@ -511,6 +558,10 @@ class FakeDriveFile {
     return { hasNext() { return i < parents.length; }, next() { return parents[i++]; } };
   }
 }
+
+Object.keys(FakeSharingMixin).forEach((k) => {
+  if (!Object.prototype.hasOwnProperty.call(FakeDriveFile.prototype, k)) FakeDriveFile.prototype[k] = FakeSharingMixin[k];
+});
 
 function makeDriveAppMock() {
   const folders = new Map();
@@ -558,6 +609,14 @@ function makeDriveAppMock() {
       return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
     },
     _registerFile(file) { files.set(file.id, file); },
+    // Real Apps Script API — DriveApp.searchFiles(query). Only the
+    // 'title contains "..."' form is supported, which is all this repo uses.
+    searchFiles(query) {
+      const m = /title contains "([^"]*)"/.exec(String(query));
+      const matches = m ? [...files.values()].filter((f) => String(f.name).includes(m[1])) : [];
+      let i = 0;
+      return { hasNext() { return i < matches.length; }, next() { return matches[i++]; } };
+    },
   };
 }
 

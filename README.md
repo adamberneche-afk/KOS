@@ -287,8 +287,12 @@ Teacher Dashboard's own SCR confirm/override review queue (a from-scratch
 reimplementation of the suggestion engine's confirm/override logic,
 native to that separate Apps Script project — see
 `cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
-Dashboard for real"), and the turn-in score review's teacher-ownership check
-(`teacher-dashboard-turn-in-review.test.js`);
+Dashboard for real"), the turn-in score review's teacher-ownership check
+(`teacher-dashboard-turn-in-review.test.js`), and the student-data access
+policy: intake sharing, locking at submission, school-year scoping and the
+repair tool (`student-data-access-intake.test.js`,
+`lock-doc-after-submission.test.js`, `school-year-scope.test.js`,
+`student-data-access-repair.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers, the `?diag` modes (`diagnostics.test.js`,

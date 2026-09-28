@@ -54,9 +54,13 @@ function getStudentDashboardData(termFilter) {
   const assignments    = [];
   const availableTerms = new Set();
 
+  const year = _currentSchoolYear_();
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     if (String(row[LEDGER.GOOGLE_ID]).toLowerCase() !== googleId.toLowerCase()) continue;
+    // Access policy: only this school year's work is visible, whatever term
+    // the page asks for.
+    if (!_isCurrentSchoolYearRow_(row, year)) continue;
 
     // Collect all terms for this student regardless of filter
     const rowTerm = String(row[LEDGER.ACADEMIC_YEAR] || "").trim();
