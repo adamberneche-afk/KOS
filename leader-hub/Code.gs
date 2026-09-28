@@ -123,3 +123,30 @@ function lhApiCall_(action, payload) {
     return { ok: false, error: err.message };
   }
 }
+
+// ── What the browser actually calls ─────────────────────────────────────────
+// google.script.run only exposes functions whose names don't end in "_", so
+// every call the page made to the "_" functions above and in Config.gs,
+// Data.gs and SCR.gs failed in the browser before reaching the server:
+// settings, data, SCR scores, the AI/email bridge and the horizon list never
+// synced (confirmed live with ?diag=1, 2026-09-28). These are the public
+// names the page calls instead. Each one is owner-only: anything public here
+// can be called by any signed-in domain user from any page this script
+// serves, including the "not authorized" page, so the check has to live in
+// the function itself, not just in doGet(). The "_" versions stay as the
+// implementations, and the tests exercise them directly.
+
+function _lhRequireOwner_() {
+  if (!_isAuthorizedOwner_(getConfig_())) {
+    throw new Error('Not authorized: LeaderHub is owner-only (OWNER_EMAIL).');
+  }
+}
+
+function lhApiCall(action, payload) { _lhRequireOwner_(); return lhApiCall_(action, payload); }
+function lhGetHorizonItems() { _lhRequireOwner_(); return lhGetHorizonItems_(); }
+function lhGetAllConfig() { _lhRequireOwner_(); return lhGetAllConfig_(); }
+function lhSaveConfig(key, value) { _lhRequireOwner_(); return lhSaveConfig_(key, value); }
+function lhPushData(body) { _lhRequireOwner_(); return lhPushData_(body); }
+function lhPullData(body) { _lhRequireOwner_(); return lhPullData_(body); }
+function lhGetScrScores() { _lhRequireOwner_(); return lhGetScrScores_(); }
+function lhSaveScrScores(changes) { _lhRequireOwner_(); return lhSaveScrScores_(changes); }

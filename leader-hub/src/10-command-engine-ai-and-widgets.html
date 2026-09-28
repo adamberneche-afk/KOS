@@ -340,7 +340,7 @@ async function callGAS(action, payload) {
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-        .lhApiCall_(action, payload || {});
+        .lhApiCall(action, payload || {});
     });
   }
 
