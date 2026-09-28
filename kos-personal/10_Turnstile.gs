@@ -220,6 +220,7 @@ function runMatrixTurnstile() {
     }
     releaseOrder.push(...priorityIndices, ...normalIndices, ...deprioritizedIndices);
     const consumedPriorityUids = [];
+    const releasedNow = new Set();
     const consumedDeprioritizedUids = [];
 
     if (freedSlots > 0) {
@@ -254,6 +255,7 @@ function runMatrixTurnstile() {
 
         staging.getRange(sheetRow, SC.STATUS + 1).setValue('STUDIO_ACTIVE');
         released[uid] = nowMs;
+        releasedNow.add(uid);
         releasedCount++;
         if (auditPriority[uid]) consumedPriorityUids.push(uid);
         if (staleDeprioritized[uid]) consumedDeprioritizedUids.push(uid);
@@ -298,9 +300,18 @@ function runMatrixTurnstile() {
     // harmless — Pass 1 above only ever reads entries for rows whose
     // current status is STUDIO_ACTIVE — but pruning fully-gone rows
     // keeps this map from growing unbounded over the system's lifetime.
-    const uidsInSheet = new Set(data.map(r => String(r[SC.PAYLOAD_UID])));
+    //
+    // Only STUDIO_ACTIVE rows need an entry (Pass 1 and the input builder
+    // read nothing else), so every other entry goes too. Pruning only rows
+    // gone from the sheet let the map grow with every finished row until it
+    // passed Script Properties' ~9KB per-value limit, and then every write,
+    // and so every release, failed. `data` was read before this run's
+    // releases, so rows released just now are kept via releasedNow.
+    const activeUids = new Set(data
+      .filter(r => String(r[SC.STATUS]) === 'STUDIO_ACTIVE')
+      .map(r => String(r[SC.PAYLOAD_UID])));
     Object.keys(released).forEach(uid => {
-      if (!uidsInSheet.has(uid)) delete released[uid];
+      if (!activeUids.has(uid) && !releasedNow.has(uid)) delete released[uid];
     });
     _writeReleaseMap(released);
 

@@ -241,6 +241,19 @@ function _vcsMatrixSessions_(ss) {
   return set;
 }
 
+/** { sessionUid: chunkCount } from the intake's SESSION_LOG rows, where present. */
+function _vcsIntakeChunkCounts_(ss) {
+  const out = {};
+  const sheet = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
+  if (!sheet || sheet.getLastRow() <= 1) return out;
+  sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues().forEach(function (r) {
+    if (String(r[3]).trim() !== 'SENSOR_INTAKE') return;
+    const m = /^(\d+) chunk\(s\) created/.exec(String(r[5]));
+    if (m) out[String(r[0]).trim()] = parseInt(m[1], 10);
+  });
+  return out;
+}
+
 function _vcsMatrixHasSession_(ss, sessionUid) {
   return !!_vcsMatrixSessions_(ss)[sessionUid];
 }
@@ -253,7 +266,8 @@ function _vcsMatrixHasSession_(ss, sessionUid) {
  * Read-only. Lists sessions with some parts stored and others still
  * outstanding, and where each outstanding part's staging row stands, so a
  * part that died (STUDIO_TIMEOUT, FAILED_PARSE) is visible rather than
- * holding its session back silently. 19_StagingRequeue.gs requeues it.
+ * holding its session back silently. 19_StagingRequeue.gs requeues it:
+ * STUDIO_TIMEOUT by default, any other status by passing opts.statuses.
  */
 function checkVectorClassifySessions() {
   const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
@@ -283,13 +297,19 @@ function checkVectorClassifySessions() {
       const uid = _vcsPartUid_(sid, n, s.of);
       waiting.push({ uid: uid, status: statusByUid[uid] || 'NO_STAGING_ROW' });
     }
-    return { sessionUid: sid, of: s.of, stored: s.stored.length, waiting: waiting };
+    // All parts stored but no matrix row: the final aggregation failed
+    // (its row reads INTAKE_ERROR). Re-deliver any one part to retry it.
+    return { sessionUid: sid, of: s.of, stored: s.stored.length, waiting: waiting,
+      aggregationFailed: waiting.length === 0 };
   });
 
   console.log('[VectorClassify] ' + report.length + ' session(s) partly classified');
   report.forEach(function (s) {
-    console.log('[VectorClassify]   ' + s.sessionUid + ': ' + s.stored + ' of ' + s.of + ' stored; waiting on ' +
-      s.waiting.map(function (w) { return w.uid + ' (' + w.status + ')'; }).join(', '));
+    console.log('[VectorClassify]   ' + s.sessionUid + ': ' + s.stored + ' of ' + s.of + ' stored; ' +
+      (s.aggregationFailed
+        ? 'every part is in but aggregation failed. Fix the cause (see ERROR_LOG), then requeue ' +
+          'one part: requeueStagingRows({apply: true, uids: [...], statuses: [<its status>]}).'
+        : 'waiting on ' + s.waiting.map(function (w) { return w.uid + ' (' + w.status + ')'; }).join(', ')));
   });
   return report;
 }
@@ -353,6 +373,7 @@ function queueVectorClassifyBackfill(opts) {
       });
   }
   const classified = _vcsMatrixSessions_(ss);
+  const expectedChunks = _vcsIntakeChunkCounts_(ss);
 
   const ordered = Object.keys(sessions).map(function (k) { return sessions[k]; })
     .sort(function (a, b) { return new Date(a.firstAt) - new Date(b.firstAt); });
@@ -364,6 +385,18 @@ function queueVectorClassifyBackfill(opts) {
     if (classified[s.sessionUid]) return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_CLASSIFIED' });
     if (hasParts[s.sessionUid])   return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_QUEUED' });
     s.chunks.sort(function (a, b) { return a.n - b.n; });
+    // Every chunk must be here. Archived rows leave STAGING_PIPELINE, and
+    // classifying the chunks that happen to remain would mark a partial
+    // session done for good. Chunks run 1..N with no gaps, and N matches
+    // the intake's own "N chunk(s) created" note when it has one.
+    const expected = expectedChunks[s.sessionUid];
+    const last = s.chunks[s.chunks.length - 1].n;
+    const gapless = s.chunks.every(function (c, idx) { return c.n === idx + 1; });
+    if (!gapless || (expected && expected !== last)) {
+      return skipped.push({ sessionUid: s.sessionUid, reason: 'CHUNKS_INCOMPLETE: have ' +
+        s.chunks.map(function (c) { return c.n; }).join(',') +
+        (expected ? ' of ' + expected : '') + ' (some may be archived)' });
+    }
     const missing = s.chunks.filter(function (c) { return !sourceByUid[c.uid]; });
     if (missing.length) {
       return skipped.push({ sessionUid: s.sessionUid, reason: 'SOURCE_INCOMPLETE: no CuratorInput text for ' +
