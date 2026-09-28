@@ -514,6 +514,14 @@ function showConfigSources() {
 // for "/' are never themselves double-escaped.
 const CLIENT_ESC_JS = `function esc(s) {
   return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+function jsAttr(s) {
+  // For a value inside a single-quoted JS string inside a double-quoted HTML
+  // attribute: onclick="f('\${jsAttr(x)}')". JS-escape first (backslash
+  // before quote, so a trailing backslash can't swallow the closing quote),
+  // then esc() for the attribute. The browser decodes the entities before
+  // the JS parser runs, which leaves exactly the JS escapes.
+  return esc(String(s||"").replace(/\\\\/g,"\\\\\\\\").replace(/'/g,"\\\\'").replace(/\\n/g,"\\\\n").replace(/\\r/g,"\\\\r"));
 }`;
 
 // =============================================================================
