@@ -62,6 +62,12 @@ function evaluateReport({ project, reportedSha, reportedAt }, expectedMarkerFn =
     return { status: 'invalid', reason: `reported sha "${reportedSha}" is not a 40-char hex commit SHA` };
   }
 
+  // reportedAt is untrusted payload text that ends up in an issue body, like
+  // project and sha (both validated above). Keep only a real timestamp, in
+  // one canonical form, so it can't carry Markdown or @mentions.
+  const at = Date.parse(reportedAt);
+  reportedAt = Number.isNaN(at) ? 'an unreported time' : new Date(at).toISOString();
+
   const expected = expectedMarkerFn(project);
   if (!expected.sha) {
     return { status: 'invalid', reason: `git has no commit history for project "${project}"'s files` };
@@ -91,7 +97,7 @@ function buildDriftIssueBody({ project, expected, reportedSha, reportedAt }) {
 
 async function findExistingIssue(owner, repo, token, project, fetchImpl) {
   const res = await fetchImpl(
-    `${GITHUB_API}/repos/${owner}/${repo}/issues?labels=${encodeURIComponent(issueLabel())}&state=all&per_page=10`,
+    `${GITHUB_API}/repos/${owner}/${repo}/issues?labels=${encodeURIComponent(issueLabel())}&state=all&per_page=100`,
     { headers: githubHeaders(token) }
   );
   if (!res.ok) throw new Error(`could not list issues: HTTP ${res.status}`);
