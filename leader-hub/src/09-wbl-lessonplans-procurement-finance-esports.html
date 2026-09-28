@@ -1863,7 +1863,7 @@ function renderFinance() {
   if (!INVENTORY.length) {
     invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs yet — click "+ Add SKU" to start tracking inventory.</div>`;
   } else if (!invFiltered.length) {
-    invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs match "${invSearch}".</div>`;
+    invEl.innerHTML = `<div style="text-align:center;padding:1.5rem;color:var(--muted);font-size:.77rem">No SKUs match "${escH(invSearch)}".</div>`;
   } else {
     invEl.innerHTML = invFiltered.map(item => {
       const low    = item.qty <= item.reorder;

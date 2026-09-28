@@ -1146,9 +1146,11 @@ genuinely unrelated features).
 OAuth-consent-dialog crash (see the OPEN section near the top of this
 file) added three passes after the fragment join, all documented in
 `tools/leaderhub-build/README.md`: comments and dead whitespace are
-stripped, every top-level `let`/`const` is rewritten to `var`, and the
+stripped, every top-level `let`/`const` is rewritten to `var`, top-level
+functions and var names are moved ahead of other statements (so the split
+can't make load-time code name something a later tag declares), and the
 giant script is split into several `<script>` tags at real, tokenizer-
-verified statement boundaries — 15 of them today, each under 70,000
+verified statement boundaries — 16 of them today, each under 70,000
 characters, each independently `node --check`ed. Each emitted tag also
 carries a `data-lh-block` name. (It used to be a `//# sourceURL=`
 comment; see the open crash section for why that had to go.) `build.js --stats` prints a
