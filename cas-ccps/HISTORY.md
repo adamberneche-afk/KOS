@@ -2303,5 +2303,6 @@ enforced. What was wrong before:
 
 `50_StudentDataAccess.js` fixes files made before the change and revokes
 earlier school years. Kept by the operator's choice: automatic AI feedback
-and warm-up scoring. Parent reports stay, scoped to the teacher.
+and warm-up scoring, and Student Context docs shared across teachers.
+Parent reports stay, scoped to the teacher.
 

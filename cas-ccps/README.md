@@ -92,10 +92,10 @@ How the code enforces it:
 | Student dashboard | Runs as the deploying admin with domain access, so students need no access to the Central Ledger. |
 | Existing files, year end (`50`) | `previewStudentDataAccessRepair()` then `applyStudentDataAccessRepair()`: fixes this year's docs, revokes earlier years' (the files stay as records), removes class-folder sharing, makes exports private, and reports any student access to the Ledger. Run it again after `CURRENT_TERM` moves to a new school year. |
 
-AI feedback and warm-up scoring stay automatic, by the operator's choice.
-Known gaps that remain: the Student Context doc (`29`) spans every teacher
-and every year; the student doc's own menu script (`01`) reads the Ledger
-as the student.
+By the operator's choice: AI feedback and warm-up scoring stay automatic,
+and the Student Context doc (`29`), which spans every teacher and year, may
+stay shared with the student and their teachers. Known gap: the student
+doc's own menu script (`01`) reads the Ledger as the student.
 
 ## What Module 1 (the base system) actually is
 
