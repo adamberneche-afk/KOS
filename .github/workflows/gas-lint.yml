@@ -351,7 +351,7 @@ jobs:
       - name: kos-personal (no live audience — safe to fold in here too)
         run: |
           if [ -f "kos-personal/.clasp.json" ]; then
-            (cd kos-personal && clasp push)
+            (cd kos-personal && clasp push --force)
           else
             echo "Skipping kos-personal — no sandbox Script ID configured."
           fi
