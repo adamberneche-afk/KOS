@@ -303,10 +303,13 @@ unchanged for every project.
    Step 10 was missing this (now fixed there too) —
    `00_SharedConfig.js`'s `getConfig_()` hard-requires both, same value.
    While setting these, also confirm `student-dashboard`'s manifest has
-   `executeAs: "USER_ACCESSING"` — a real bug (`"MYSELF"`, not even a
-   valid value for that field) shipped there until this same deployment
-   caught it; already fixed in the tracked manifest, just noting it here
-   in case you're working from an older checkout.
+   `executeAs: "USER_DEPLOYING"` and `access: "DOMAIN"` (changed
+   2026-09-28 for the student-data access policy). It used to be
+   `USER_ACCESSING` with `ANYONE`, which only works if every student can
+   read the whole Central Ledger. After redeploying, remove any student
+   access from the Ledger itself: `previewStudentDataAccessRepair()`
+   (10_AdminRecoveryPanel.js) lists it. (`"MYSELF"`, which an older
+   installer used, is not a valid value for that field.)
 
 ### 3.3 Extending the pattern to the other 6 projects
 
