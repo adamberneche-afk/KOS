@@ -508,6 +508,18 @@ function checkGoogleScriptRunCalls() {
     }
 
     for (const [name, locs] of called.entries()) {
+      // Apps Script never exposes a function whose name ends in "_" to
+      // google.script.run, so this call throws in the browser (the method
+      // doesn't exist) and never reaches the server, however the server
+      // side is written. leader-hub shipped eight of these, and none of its
+      // sync ever ran. Call a public, owner-checked entry point instead.
+      if (name.endsWith('_')) {
+        err(
+          'private-server-function',
+          `google.script.run.${name}(...) is called from ${locs[0].file}:${locs[0].line} (+${locs.length - 1} more), but Apps Script does not expose functions ending in "_" to the browser, so this call fails before reaching the server. Call a public function (no trailing underscore) that checks who is calling, and have it delegate to "${name}".`,
+          locs[0].file
+        );
+      }
       if (!declared.has(name)) {
         err(
           'missing-server-function',

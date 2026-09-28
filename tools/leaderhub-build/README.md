@@ -81,11 +81,17 @@ any before/after comparison, so a tokenizer bug that would otherwise fool
 `verify-strip.js`/`verify-hoist.js` (both sides tokenized the same wrong
 way) still gets caught. `build.js` throws immediately if this ever fires.
 
-Every resulting `<script>` tag's content also gets a trailing
-`//# sourceURL=leader-hub-block-N[-part-i-of-M].js` comment — a standard
-DevTools convention that gives each one a stable, readable name in the
-browser's Sources panel and in stack traces, instead of an anonymous
-`VM123:4231`.
+Every resulting `<script>` tag also gets a
+`data-lh-block="leader-hub-block-N[-part-i-of-M]"` attribute, a stable,
+readable name that `leader-hub/Diagnostics.gs` uses to map the page as
+Apps Script serves it.
+
+These names used to be trailing `//# sourceURL=` comments. **Don't bring
+them back.** Apps Script's HtmlService strips some of those comments from
+the page it holds. When one sat directly against `</script>`, it took
+`</script` with it and left a stray `>`, so the block ran on into the
+next. That was the page-load `SyntaxError` behind the long-open
+consent-dialog crash (see `leader-hub/README.md`).
 
 Run `node tools/leaderhub-build/build.js --stats` for a per-block report:
 original vs. minified size, the reduction percentage, and (for a split
