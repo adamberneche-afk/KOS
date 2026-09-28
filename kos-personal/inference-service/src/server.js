@@ -465,6 +465,9 @@ app.post('/api/v1/checkout/subscribe', requireApiKey, async (req, res) => {
   if (!price_id || !return_url) {
     return res.status(400).json({ error: 'price_id and return_url required' });
   }
+  if (!billing.tierForPrice(price_id)) {
+    return res.status(400).json({ error: 'Unknown price_id' });
+  }
   try {
     const url = await billing.createSubscriptionCheckout(req.user, price_id, return_url);
     res.json({ checkout_url: url });
@@ -474,12 +477,17 @@ app.post('/api/v1/checkout/subscribe', requireApiKey, async (req, res) => {
 });
 
 app.post('/api/v1/checkout/credits', requireApiKey, async (req, res) => {
-  const { credits, price_in_cents, return_url } = req.body;
-  if (!credits || !price_in_cents || !return_url) {
-    return res.status(400).json({ error: 'credits, price_in_cents, and return_url required' });
+  // `credits` names one of GET /api/v1/pricing's credit_bundles; the price
+  // is always the server's own for that bundle.
+  const { credits, return_url } = req.body;
+  if (!credits || !return_url) {
+    return res.status(400).json({ error: 'credits and return_url required' });
+  }
+  if (!billing.resolveCreditBundle(credits)) {
+    return res.status(400).json({ error: 'credits must match one of /api/v1/pricing credit_bundles' });
   }
   try {
-    const url = await billing.createCreditPurchaseCheckout(req.user, credits, price_in_cents, return_url);
+    const url = await billing.createCreditPurchaseCheckout(req.user, credits, return_url);
     res.json({ checkout_url: url });
   } catch (err) {
     res.status(500).json({ error: err.message });

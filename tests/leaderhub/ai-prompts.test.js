@@ -25,6 +25,7 @@ const path = require('path');
 const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
+const CODE_PATH = path.join(LH, 'Code.gs'); // _lhRequireOwner_()
 const EMAILBRIDGE_PATH = path.join(LH, 'EmailBridge.gs');
 const AI_PROMPTS_PATH = path.join(LH, 'AiPrompts.gs');
 
@@ -32,12 +33,15 @@ const JOB_TYPES = ['EMAIL_COMPOSE', 'ARCHIVE_INSIGHTS', 'WBL_INSIGHTS',
                    'LP_ASSIST', 'FIN_ANALYSIS', 'BRAG_EMAIL'];
 
 function load() {
-  return loadGasFiles([EMAILBRIDGE_PATH, AI_PROMPTS_PATH], [
+  const loaded = loadGasFiles([CODE_PATH, EMAILBRIDGE_PATH, AI_PROMPTS_PATH], [
     'syncAiPromptsToSheet', 'checkAiPrompts', 'aiPromptText_',
     'AI_PROMPT_TAB', 'AI_PROMPT_HEADERS', 'AI_PROMPT_TITLES',
     'AI_FLOW_TYPES', 'AI_QUEUE_SHEET_PROP', 'AI_QUEUE_SHEET_NAME',
     'queueAiJob_',
   ]);
+  // The sandbox's Session user is teacher@example.com; make them the owner.
+  loaded.sandbox.PropertiesService.getScriptProperties().setProperty('OWNER_EMAIL', 'teacher@example.com');
+  return loaded;
 }
 
 // The same split AiPrompts.gs's header documents: everything after the first

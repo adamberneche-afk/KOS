@@ -3018,7 +3018,7 @@ let _spPeriods = []; // built on date change
 
 function openSubPlanModal() {
   // Set default date to today
-  const today = new Date().toISOString().slice(0, 10);
+  const today = _localDateStr_(); // local, not UTC
   document.getElementById('sp-date').value = today;
 
   // Load saved static locations
@@ -3320,7 +3320,7 @@ function openBragBoard(autoPrompt) {
   const day = d.getDay();
   const diff = (day === 0) ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
-  const iso = d.toISOString().slice(0, 10);
+  const iso = _localDateStr_(d); // local, not UTC: toISOString() rolls to tomorrow after 8pm ET
   document.getElementById('brag-week-start').value = iso;
 
   setBragTab(_bragTab, document.getElementById('brag-tab-' + _bragTab));

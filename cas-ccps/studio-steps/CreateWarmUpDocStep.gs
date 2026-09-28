@@ -300,7 +300,9 @@ function normalizeDateIso_(raw) {
 }
 
 function formatReadableDate_(iso) {
-  var d = new Date(iso);
+  // A bare "yyyy-MM-dd" is UTC midnight, the evening before in New York.
+  var d = (typeof iso === "string" && /^\d{4}-\d{2}-\d{2}$/.test(iso.trim()))
+    ? new Date(iso.trim() + "T00:00:00") : new Date(iso);
   if (isNaN(d.getTime())) return null;
   return Utilities.formatDate(d, Session.getScriptTimeZone(), "MMMM d, yyyy");
 }

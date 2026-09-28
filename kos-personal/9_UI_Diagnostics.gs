@@ -405,7 +405,8 @@ function buildSessionContext() {
         const h = matrix.getRange(1, 1, 1, matrix.getLastColumn()).getValues()[0];
         const r = matrix.getRange(matrix.getLastRow(), 1, 1, matrix.getLastColumn()).getValues()[0];
         let primer = '## VECTOR_MATRIX — STARTUP CALIBRATION\n';
-        h.slice(2).forEach((t, i) => {
+        // Theme columns only: the last two are INCUBATOR_SIGNALS and CHECKSUM.
+        h.slice(2, -2).forEach((t, i) => {
           primer += '  ' + String(t).padEnd(22) + r[i + 2] + '\n';
         });
         sections.push(primer);

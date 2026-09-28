@@ -569,6 +569,17 @@ function _ensureWarmUpRegistryExtraCreditColumn_(wrSheet) {
 // once a row is found (crediting it) or ages out of the window (giving up),
 // which is what stops the sweep from re-scanning a row forever.
 // ---------------------------------------------------------------------------
+// A warm-up is final once its extra-credit window closes (the student may
+// reply to the feedback until then, see above). From then on the student
+// can read it but not edit it: student-data access policy, rule 2.
+function _lockWarmUpDoc_(docId, teacherEmail) {
+  const res = _lockDocAfterSubmission_(docId, teacherEmail);
+  if (res.failed.length) {
+    Logger.log("[S25-J2-recheck] Could not lock warm-up doc " + docId + ": " +
+      res.failed.map(function (f) { return (f.email || "file") + " (" + f.error + ")"; }).join("; "));
+  }
+}
+
 function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId) {
   _ensureWarmUpRegistryExtraCreditColumn_(wrSheet);
 
@@ -610,6 +621,7 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
       Logger.log("[S25-J2-recheck] " + result.error);
       if (pastWindow) {
         wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
+        _lockWarmUpDoc_(docId, tEmail);
         expired++;
       }
       continue;
@@ -619,6 +631,7 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
       const newTotal = Number(totalScore) + 1;
       writeRegistryScores_(wrSheet, i + 1, newTotal, 1);
       wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
+      _lockWarmUpDoc_(docId, tEmail);
 
       const queueRowNum = queueRowByQueueId[queueId];
       if (queueRowNum) {
@@ -629,6 +642,7 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
     } else if (pastWindow) {
       // No reply found and the window has closed — stop looking.
       wrSheet.getRange(i + 1, WR_EXTRA_CREDIT_CHECKED + 1).setValue(new Date());
+      _lockWarmUpDoc_(docId, tEmail);
       expired++;
     }
     // else: still within the window, no reply yet — leave unstamped so a

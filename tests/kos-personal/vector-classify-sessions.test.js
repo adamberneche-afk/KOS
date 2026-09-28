@@ -226,3 +226,38 @@ test('queueVectorClassifyBackfill: queues the session text in chunk order, then 
   assert.match(again.message, /still in flight/);
   assert.ok(!stagingData(env.staging).some((row) => /^LOG-s5_VC/.test(row[1])));
 });
+
+test('_processVectorClassifyPart_: keeps the stored parts when no matrix row could be written', () => {
+  const { exported, ss } = setup();
+  const matrix = ss.insertSheet('VECTOR_MATRIX');
+  matrix.appendRow(['Session_UID', 'Timestamp']); // no theme columns
+
+  const r = exported._processVectorClassifyPart_(exchanges(0.5, 0.5), 'LOG-gggg7777_VC01of01', 't');
+
+  assert.equal(r.status, 'ERROR');
+  assert.equal(matrixRows(ss).length, 0);
+  assert.equal(ss.getSheetByName('VectorClassifyParts').getLastRow(), 2, 'the part is kept for a retry');
+
+  const report = exported.checkVectorClassifySessions();
+  assert.equal(report[0].aggregationFailed, true);
+});
+
+test('queueVectorClassifyBackfill: skips a session with a chunk missing from the middle or the end', () => {
+  const env = setup();
+  const { staging, curator, ss } = env;
+  const chunk = (uid) => staging.appendRow([new Date('2026-09-11'), uid, 'SESSION_LOG', 'u', 'f-' + uid, 'PROCESSED', 0]);
+  const source = (uid) => curator.appendRow([new Date(), uid, 'SESSION_LOG', 'f-' + uid, 'text ' + uid, 'READY']);
+  // Gap: chunk 2 was archived.
+  chunk('LOG-gap_CH01'); chunk('LOG-gap_CH03'); source('LOG-gap_CH01'); source('LOG-gap_CH03');
+  // Tail: intake made 3 chunks, only 2 remain.
+  chunk('LOG-tail_CH01'); chunk('LOG-tail_CH02'); source('LOG-tail_CH01'); source('LOG-tail_CH02');
+  const log = ss.insertSheet('SESSION_LOG');
+  log.appendRow(['Session_UID', 'Timestamp', 'Type', 'Stage', 'Version', 'Note']);
+  log.appendRow(['LOG-tail', new Date(), 'SESSION_LOG', 'SENSOR_INTAKE', 'v8', '3 chunk(s) created']);
+
+  const r = env.exported.queueVectorClassifyBackfill({ apply: false });
+
+  assert.equal(r.eligible, 0);
+  const reasons = Object.fromEntries(r.skipped.map((s) => [s.sessionUid, s.reason.split(':')[0]]));
+  assert.deepEqual(reasons, { 'LOG-gap': 'CHUNKS_INCOMPLETE', 'LOG-tail': 'CHUNKS_INCOMPLETE' });
+});

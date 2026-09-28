@@ -236,6 +236,7 @@ function runRegistrarMicrobatch() {
     let freed = Math.max(0, CFG.REGISTRAR_MICROBATCH_SIZE - activeCount);
     let releasedCount = 0;
 
+    const releasedNow = new Set();
     const releaseByState = (fromState, toState) => {
       for (let i = 0; i < data.length && releasedCount < freed; i++) {
         const sheetRow = i + 2;
@@ -243,15 +244,23 @@ function runRegistrarMicrobatch() {
         const fileId = String(data[i][RC.FILE_ID]);
         ledger.getRange(sheetRow, RC.STATE + 1).setValue(toState);
         released[fileId] = nowMs;
+        releasedNow.add(fileId);
         releasedCount++;
       }
     };
     releaseByState('READY_FOR_COG_2', 'COG_2_ACTIVE');
     releaseByState('QUEUED_FOR_COG_1', 'COG_1_ACTIVE');
 
-    // Prune release-map entries for rows no longer in the ledger at all.
-    const idsInSheet = new Set(data.map(r => String(r[RC.FILE_ID])));
-    Object.keys(released).forEach(id => { if (!idsInSheet.has(id)) delete released[id]; });
+    // Keep entries only for rows still *_ACTIVE, plus this run's releases
+    // (`data` predates them). Pruning only rows gone from the ledger, which
+    // is never archived, let the map grow past Script Properties' ~9KB
+    // per-value limit, after which every write, and so every release, failed.
+    const activeIds = new Set(data
+      .filter(r => { const st = String(r[RC.STATE]); return st === 'COG_1_ACTIVE' || st === 'COG_2_ACTIVE'; })
+      .map(r => String(r[RC.FILE_ID])));
+    Object.keys(released).forEach(id => {
+      if (!activeIds.has(id) && !releasedNow.has(id)) delete released[id];
+    });
     _writeRegistrarReleaseMap(released);
 
     if (staleReset + releasedCount > 0) SpreadsheetApp.flush();
@@ -422,6 +431,11 @@ function _validateRegistrarStage1(ledger, sheetRow, row) {
     return;
   }
 
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    _bounceRegistrarRow(ledger, sheetRow, row, 'QUEUED_FOR_COG_1', 'Stage 1 output is not a JSON object.');
+    return;
+  }
+
   const missing = REGISTRAR_SCHEMA_1_KEYS.filter(k => !(k in parsed));
   if (missing.length > 0) {
     _bounceRegistrarRow(
@@ -456,6 +470,11 @@ function _validateRegistrarStage2(ledger, sheetRow, row) {
     parsed = JSON.parse(row[RC.COG2_JSON]);
   } catch (e) {
     _bounceRegistrarRow(ledger, sheetRow, row, 'READY_FOR_COG_2', 'Stage 2 JSON.parse failed: ' + e.message);
+    return;
+  }
+
+  if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+    _bounceRegistrarRow(ledger, sheetRow, row, 'READY_FOR_COG_2', 'Stage 2 output is not a JSON object.');
     return;
   }
 

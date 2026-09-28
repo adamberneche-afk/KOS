@@ -1530,7 +1530,7 @@ function updateLessonStrip() {
         : ['#fef2f2', '#fca5a5', '#991b1b', '📋'];
     // Log to daily_log when all critical items are checked — observation-readiness evidence
     if (allCrit && critical.length > 0) {
-      const _opDate = new Date().toISOString().slice(0,10);
+      const _opDate = _localDateStr_();
       const _opLog  = LS.get('lh_daily_log', []);
       if (!_opLog.some(e => e.type === 'obs_prep_ready' && (e.date||'').slice(0,10) === _opDate)) {
         _logDaily({ date: new Date().toISOString(), type: 'obs_prep_ready',
@@ -2238,7 +2238,7 @@ function getPulseData(){
   // Quick single-course check: most recently active course
   let teachPacingIndicator = '';
   try {
-    const _pNow = new Date().toISOString().slice(0,10);
+    const _pNow = _localDateStr_(); // local, not UTC
     let _q = 1;
     for (const [qn, r] of Object.entries(LP_QUARTERS)) {
       if (_pNow >= r.start && _pNow <= r.end) { _q = parseInt(qn); break; }

@@ -1049,20 +1049,16 @@ function exportToWorkbookGrid_() {
   const exportSs = SpreadsheetApp.create(
     "SCR Export — " + Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd")
   );
-  // FIXED (Say/Do Ledger cas-ccps finding #5 — newly-discovered gap): this
-  // spreadsheet holds real student names + competency ratings and used to
-  // land with Sheets' default (private-to-creator) sharing — meaning
-  // ordinary Drive sharing (a well-meaning "share with the whole team"
-  // click) was the one place student data could actually leave the org,
-  // with nothing in this codebase stopping it. Restricted at creation time
-  // instead of trusting whoever exports it to remember to restrict it by
-  // hand; DriveApp.Access.DOMAIN scopes to the file owner's own Workspace
-  // domain automatically, so there's no domain string to hardcode or drift.
+  // Student-data access policy: this spreadsheet holds every student's name
+  // and competency ratings. It stays private to its creator, shared only
+  // with the named central-office viewers below. It used to be widened to
+  // the whole domain (DriveApp.Access.DOMAIN), and students are on that
+  // domain, so every student could open every student's ratings.
   try {
     DriveApp.getFileById(exportSs.getId())
-      .setSharing(DriveApp.Access.DOMAIN, DriveApp.Permission.VIEW);
+      .setSharing(DriveApp.Access.PRIVATE, DriveApp.Permission.NONE);
   } catch (e) {
-    Logger.log("[S30] Could not restrict SCR export sharing: " + e.message);
+    Logger.log("[S30] Could not make the SCR export private: " + e.message);
   }
   // Remove the default blank sheet once real ones exist
   const defaultSheet = exportSs.getActiveSheet();
@@ -1143,7 +1139,9 @@ function exportScrDecisionLogForAudit() {
   const rejected    = [];
   rawEmails.forEach(function(e) {
     const domain = (e.split("@")[1] || "").toLowerCase();
-    if (domain && myDomain && domain === myDomain) validEmails.push(e);
+    // A student account is on the same domain, so the domain check alone
+    // let an export of every student's ratings be shared with a student.
+    if (domain && myDomain && domain === myDomain && !_studentIdPattern_().test(e)) validEmails.push(e);
     else rejected.push(e);
   });
 

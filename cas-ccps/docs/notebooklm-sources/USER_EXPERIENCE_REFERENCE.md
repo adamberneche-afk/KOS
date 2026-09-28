@@ -61,7 +61,7 @@ Four zones. Created once by Script 02. Maintained throughout the assignment life
         📁 James Okafor/
           📄 Research Essay — James Okafor
   📁 _Student Shared Folders/
-    📁 2O - AP Biology - Ms. Carter/         ← shared with all students in this class
+    📁 2O - AP Biology - Ms. Carter/         ← older work only; no longer shared with the class
       📄 Research Essay — Emma Rodriguez
       📄 Research Essay — James Okafor
 ```

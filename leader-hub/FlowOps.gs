@@ -249,6 +249,10 @@ function checkAiQueueSchema() {
  * rebuilding the way 38_LedgerSchemaGuard.js does.
  */
 function repairAiQueueSchema() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it changes shared state, so it is owner-only. Running it
+  // from the editor as the owner still works.
+  _lhRequireOwner_();
   const before = checkAiQueueSchema();
   const result = { repaired: [], refused: [], alreadyOk: [] };
 
@@ -381,6 +385,10 @@ function _flowOpsFindFixtureRows_() {
  * as traffic in the AI Flow Health panel.
  */
 function installAiFlowFixtures() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it changes shared state, so it is owner-only. Running it
+  // from the editor as the owner still works.
+  _lhRequireOwner_();
   removeAiFlowFixtures();
   const sheet = _getAiQueueSheet_();
   const stamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyyMMdd-HHmmss');
@@ -446,6 +454,10 @@ function checkAiFlowFixtures() {
 
 /** Removes every fixture row, bottom-up so deletions never shift later indices. */
 function removeAiFlowFixtures() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it changes shared state, so it is owner-only. Running it
+  // from the editor as the owner still works.
+  _lhRequireOwner_();
   const sheet = _getAiQueueSheet_();
   const rows = _flowOpsFindFixtureRows_();
   for (let i = rows.length - 1; i >= 0; i--) sheet.deleteRow(rows[i].rowNumber);
@@ -628,6 +640,10 @@ function _aiDiagnoseQueueRow_(row) {
  * whole file exists to eliminate.
  */
 function runAiFlowCanary() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it changes shared state, so it is owner-only. Running it
+  // from the editor as the owner still works.
+  _lhRequireOwner_();
   const steps = [];
   function step(name, pass, detail) { steps.push({ name: name, pass: !!pass, detail: detail || '' }); }
 
@@ -692,6 +708,10 @@ function runAiFlowCanary() {
 
 /** Drops the canary's stats key. Purely cosmetic — nothing reads it. */
 function cleanUpAiFlowCanary() {
+  // Public, so reachable through google.script.run from any page this web
+  // app serves; it changes shared state, so it is owner-only. Running it
+  // from the editor as the owner still works.
+  _lhRequireOwner_();
   const stats = _getFlowStats_();
   const had = !!stats[AI_CANARY_JOB_TYPE];
   delete stats[AI_CANARY_JOB_TYPE];

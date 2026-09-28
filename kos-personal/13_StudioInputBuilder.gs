@@ -117,8 +117,10 @@ function buildStudioInputRows() {
 
   const curatorSheet  = _getOrCreateSheet(ss, CI_CURATOR_TAB);
   const classifySheet = _getOrCreateSheet(ss, CI_CLASSIFY_TAB);
-  const knownCurator  = _ciKnownUids_(curatorSheet);
-  const knownClassify = _ciKnownUids_(classifySheet);
+  const knownCurator  = _ciIndexRows_(curatorSheet);
+  const knownClassify = _ciIndexRows_(classifySheet);
+  const released      = _readReleaseMap();
+  const deletes       = { curator: [], classify: [] };
 
   const SC = CFG.STAGING_COLS;
   const data = staging.getRange(2, 1, lastRow - 1, 7).getValues();
@@ -145,20 +147,49 @@ function buildStudioInputRows() {
 
     const sheet = isCurator ? curatorSheet : classifySheet;
     const known = isCurator ? knownCurator : knownClassify;
-    if (known[uid]) continue; // already materialized on an earlier pass
+    const prior = known[uid] || [];
+    if (_ciBuiltForRelease_(prior, released[uid])) continue;
 
-    const text = _ciReadDocText_(fileId);
-    if (text === null) {
-      result.skippedUnreadable++;
-      console.warn('[StudioInput] ' + uid + ': could not open File_ID ' + fileId +
-        ' — will retry next pass.');
-      continue;
+    // A row sent back for another try (stale reset, NEEDS_CURATOR, an audit
+    // rejection) is released again with its old input row still here. The
+    // Flow fires only on a NEW input row, so skipping it, as this used to,
+    // meant no retry ever reached the Flow and every one ran out on
+    // staleness. Rebuild from the old row's SourceText, not the doc: a
+    // successful harvest overwrites the doc with the model's output before
+    // the audit gate runs, so the doc is restored from it too.
+    let text;
+    if (prior.length) {
+      text = prior[prior.length - 1].sourceText;
+      const docText = _ciReadDocText_(fileId);
+      if (docText !== null && docText.trim() !== text.trim()) {
+        try {
+          _srOverwriteDocBody_(fileId, text);
+        } catch (e) {
+          console.warn('[StudioInput] ' + uid + ': could not restore the source doc: ' + e.message);
+        }
+      }
+      prior.forEach(function (p) { deletes[isCurator ? 'curator' : 'classify'].push(p.row); });
+    } else {
+      text = _ciReadDocText_(fileId);
+      if (text === null) {
+        result.skippedUnreadable++;
+        console.warn('[StudioInput] ' + uid + ': could not open File_ID ' + fileId +
+          ' — will retry next pass.');
+        continue;
+      }
     }
 
     sheet.appendRow([new Date(), uid, type, fileId, text, 'READY']);
-    known[uid] = true; // so a second STUDIO_ACTIVE row this same pass can't double-add
+    // So a second STUDIO_ACTIVE row for this UID in the same pass can't double-add.
+    known[uid] = [{ row: -1, at: Infinity, sourceText: text }];
+    if (prior.length) result.rebuilt = (result.rebuilt || 0) + 1;
     if (isCurator) { result.curatorBuilt++; } else { result.classifyBuilt++; }
   }
+
+  // Old rows go last, bottom-up, so the row numbers read above stay valid
+  // while the loop runs; the appended rows are all below them.
+  _ciDeleteRows_(curatorSheet, deletes.curator);
+  _ciDeleteRows_(classifySheet, deletes.classify);
 
   if (result.curatorBuilt || result.classifyBuilt) {
     console.log('[StudioInput] built ' + result.curatorBuilt + ' CuratorInput row(s), ' +
@@ -179,16 +210,39 @@ function _ciReadDocText_(fileId) {
   }
 }
 
-function _ciKnownUids_(sheet) {
+/** { uid: [{row, at, sourceText}, ...] } for one input tab, in sheet order. */
+function _ciIndexRows_(sheet) {
   const known = {};
   const lastRow = sheet.getLastRow();
   if (lastRow <= 1) return known;
   const width = Object.keys(CI_COLS).length;
-  sheet.getRange(2, 1, lastRow - 1, width).getValues().forEach(function (r) {
+  sheet.getRange(2, 1, lastRow - 1, width).getValues().forEach(function (r, i) {
     const uid = String(r[CI_COLS.PAYLOAD_UID] || '').trim();
-    if (uid) known[uid] = true;
+    if (!uid) return;
+    (known[uid] = known[uid] || []).push({
+      row: i + 2,
+      at: new Date(r[CI_COLS.TIMESTAMP]).getTime() || 0,
+      sourceText: String(r[CI_COLS.SOURCE_TEXT]),
+    });
   });
   return known;
+}
+
+/**
+ * True when an input row already exists for the row's current release.
+ * With no release time on record (the Turnstile's map was pruned, or a
+ * canary planted the row STUDIO_ACTIVE directly), any existing row counts,
+ * which is how this behaved before retries were rebuilt.
+ */
+function _ciBuiltForRelease_(prior, releasedAt) {
+  if (!prior.length) return false;
+  if (!releasedAt) return true;
+  return prior[prior.length - 1].at >= releasedAt;
+}
+
+function _ciDeleteRows_(sheet, rowNums) {
+  rowNums.slice().sort(function (a, b) { return b - a; })
+    .forEach(function (n) { sheet.deleteRow(n); });
 }
 
 // ================================================================
@@ -212,8 +266,9 @@ function checkStudioInputBuilder() {
   const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
   const curatorSheet  = _getOrCreateSheet(ss, CI_CURATOR_TAB);
   const classifySheet = _getOrCreateSheet(ss, CI_CLASSIFY_TAB);
-  const knownCurator  = _ciKnownUids_(curatorSheet);
-  const knownClassify = _ciKnownUids_(classifySheet);
+  const knownCurator  = _ciIndexRows_(curatorSheet);
+  const knownClassify = _ciIndexRows_(classifySheet);
+  const released      = _readReleaseMap();
 
   const report = { active: 0, materialized: 0, awaitingMaterialization: [], oldestAwaitingMins: 0 };
   const lastRow = staging.getLastRow();
@@ -234,7 +289,7 @@ function checkStudioInputBuilder() {
 
     report.active++;
     const known = isCurator ? knownCurator : knownClassify;
-    if (known[uid]) { report.materialized++; return; }
+    if (_ciBuiltForRelease_(known[uid] || [], released[uid])) { report.materialized++; return; }
 
     const ageMins = Math.round((nowMs - new Date(row[SC.TIMESTAMP]).getTime()) / 60000);
     report.awaitingMaterialization.push({ uid: uid, type: type, ageMins: ageMins });

@@ -340,7 +340,9 @@ async function lhRefreshDataDomainsFromServer_() {
       // LS.get('lh_deca_results', []) fresh, so the localStorage write is
       // the whole refresh; re-render only if that view happens to be open.
       localStorage.setItem('lh_deca_results', JSON.stringify(arr));
-      if (typeof renderDecaResults === 'function') renderDecaResults();
+      // renderDecaResults() only returns an HTML string; the hub repaints
+      // through renderOrgHub(), the same way switching org tabs does.
+      if (typeof renderOrgHub === 'function' && document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
     },
     wbl_roster: arr => {
       WBL_STUDENTS = arr;

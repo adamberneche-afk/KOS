@@ -94,6 +94,8 @@ function setUpFixture(sandbox, exported, opts) {
   const props = sandbox.PropertiesService.getScriptProperties();
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   props.setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+  // Reports are scoped to the dashboard's own teacher (access policy).
+  props.setProperty('TEACHER_EMAIL', (opts && opts.teacherEmail) || 'teacher@ccpsnet.net');
 
   const ledger = ss.insertSheet('Ledger');
   ledger.appendRow(new Array(23).fill('header'));
@@ -492,4 +494,40 @@ test('installing twice does not create a second trigger', () => {
   const second = exported.installWeeklyParentReportTrigger();
   assert.equal(second.installed, false);
   assert.equal(sandbox.ScriptApp.getProjectTriggers().length, 1);
+});
+
+// ── Access policy: the teacher's own students, this school year ─────────────
+
+test('a teacher\'s reports cover only their own students, courses and decisions', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' }),
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '7654321@ccpsnet.net', name: 'Bob',
+        teacherEmail: 'other.teacher@ccpsnet.net' }),
+      // Alice in another teacher's course: not this teacher's to report.
+      (sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice',
+        configId: 'CFG-OTHER', courseName: 'Chemistry', teacherEmail: 'other.teacher@ccpsnet.net' }),
+    ],
+    scrRows: [
+      scrRow({ studentEmail: '1234567@ccpsnet.net', competencyId: 'MKT-1', finalRating: 2 }),
+      scrRow({ decisionId: 'dec-2', studentEmail: '1234567@ccpsnet.net', competencyId: 'CHEM-1',
+        finalRating: 1, decidedBy: 'other.teacher@ccpsnet.net' }),
+    ],
+  });
+
+  const out = exported.generateWeeklyParentReports(fx.now);
+
+  assert.deepEqual(out.reports.map((r) => r.studentEmail), ['1234567@ccpsnet.net']);
+  const text = exported.renderWeeklyParentReportText_(out.reports[0]);
+  assert.doesNotMatch(text, /Chemistry|CHEM-1/);
+});
+
+test('with no TEACHER_EMAIL configured there is nobody to scope to, so no reports', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox, exported, {
+    ledgerRows: [(sb, ts) => ledgerRow(sb, { timestamp: ts, googleId: '1234567@ccpsnet.net', name: 'Alice' })],
+  });
+  sandbox.PropertiesService.getScriptProperties().deleteProperty('TEACHER_EMAIL');
+  assert.equal(exported.generateWeeklyParentReports(fx.now).reports.length, 0);
 });

@@ -171,3 +171,13 @@ test('publishDriftStatus: clean report + existing already-CLOSED issue → stays
   const pub = await publishDriftStatus('o', 'r', 'tok', result, { fetchImpl: api.fetchImpl });
   assert.equal(pub.action, 'none');
 });
+
+test('evaluateReport: reportedAt keeps only a real timestamp, since it lands in an issue body', () => {
+  const ok = evaluateReport({ project: 'kos-personal', reportedSha: OTHER_SHA,
+    reportedAt: '2026-01-02T00:00:00Z' }, fakeExpected(REAL_SHA));
+  assert.equal(ok.reportedAt, '2026-01-02T00:00:00.000Z');
+  const hostile = evaluateReport({ project: 'kos-personal', reportedSha: OTHER_SHA,
+    reportedAt: '@someone [click](https://evil.example)' }, fakeExpected(REAL_SHA));
+  assert.equal(hostile.reportedAt, 'an unreported time');
+  assert.doesNotMatch(buildDriftIssueBody(hostile), /@someone|evil\.example/);
+});

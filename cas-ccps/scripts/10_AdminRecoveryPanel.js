@@ -184,14 +184,16 @@ function _ferpaHealthChecks_() {
   // (c) exportToWorkbookGrid_() (30_SCRSuggestionEngine.js) restricts its
   // export spreadsheet's sharing at creation time, but sharing can always
   // be widened by hand afterward — spot-check any file matching its naming
-  // pattern for sharing broader than the organization's own domain.
+  // pattern for sharing broader than private (named viewers only).
   let overShared = [];
   try {
     const files = DriveApp.searchFiles('title contains "SCR Export — "');
     while (files.hasNext()) {
       const f = files.next();
       const access = f.getSharingAccess();
-      if (access === DriveApp.Access.ANYONE || access === DriveApp.Access.ANYONE_WITH_LINK) {
+      // Domain-wide counts too: students are on the domain, and the export
+      // holds every student's ratings (student-data access policy).
+      if (access !== DriveApp.Access.PRIVATE) {
         overShared.push(f.getName());
       }
     }
@@ -1165,11 +1167,22 @@ function manuallyMarkCompliant() {
   const sheet    = ss.getSheetByName(cfg.tabs.ledger);
   const data     = sheet.getDataRange().getValues();
 
+  // Student-data access policy, rule 3: only the teacher who assigned the
+  // work grades it. The Ledger menu is open to anyone who can edit the
+  // Ledger, so check the signed-in user against the row's teacher.
+  const me = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][2]).trim() !== configId) continue;
+    const rowTeacher = String(data[i][LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    if (!me || me !== rowTeacher) {
+      ui.alert("⚠️ Only the teacher who assigned this work (" + (rowTeacher || "unknown") +
+        ") can mark it compliant.");
+      return;
+    }
     sheet.getRange(i + 1, 13).setValue("COMPLIANT");
     sheet.getRange(i + 1, 14).setValue(new Date());
-    sheet.getRange(i + 1, 15).setValue("Manually marked compliant by administrator.");
+    sheet.getRange(i + 1, 15).setValue("Manually marked compliant by " + me + ".");
     SpreadsheetApp.flush();
     ui.alert("✅ " + data[i][4] + " marked COMPLIANT.");
     return;

@@ -26,6 +26,7 @@ const PATHS = [
   path.join(SCRIPTS, '00_SharedConfig.js'),
   path.join(SCRIPTS, '22_LessonContextHandler.js'),
   path.join(SCRIPTS, '23_StudentProfileManager.js'),
+  path.join(SCRIPTS, '04_Form2_TurnInGate.js'), // _lockDocAfterSubmission_
   path.join(SCRIPTS, '25_WarmUpWriter.js'),
 ];
 const EXPORTS = [
@@ -217,4 +218,53 @@ test('self-healing: extra_credit_checked column is added to a pre-existing WarmU
   exported.runWarmUpEvaluation();
 
   assert.equal(wr.getRange(1, 14).getValue(), 'extra_credit_checked');
+});
+
+// Student-data access policy, rule 2: only the student edits, and only
+// before submission. A warm-up's submission is final once its extra-credit
+// window closes, so the doc locks then, and not before.
+function shareWithStudent(sandbox, docId) {
+  const file = sandbox.DriveApp.getFileById(docId);
+  file.addEditor('1234567@ccpsnet.net');
+  return file;
+}
+
+test('the warm-up doc locks when extra credit is credited: the student can read, not edit', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox);
+  const docId = scoredDocWithReply(sandbox, 'This is a genuine extra credit reply with plenty of words in it.');
+  const file = shareWithStudent(sandbox, docId);
+  fx.wq.appendRow(makeQueueRow(exported, { queueId: 'WUQ-L1', totalScore: 6 }));
+  fx.wr.appendRow(makeRegistryRow(exported, { queueId: 'WUQ-L1', docId, lessonDate: daysAgoStr(3), totalScore: 6 }));
+
+  exported.runWarmUpEvaluation();
+
+  assert.equal(file._access('1234567@ccpsnet.net'), 'viewer');
+  assert.equal(file._access('teacher@ccpsnet.net'), 'commenter');
+});
+
+test('the warm-up doc locks when the window closes with no reply', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox);
+  const docId = scoredDocWithReply(sandbox, '');
+  const file = shareWithStudent(sandbox, docId);
+  fx.wq.appendRow(makeQueueRow(exported, { queueId: 'WUQ-L2', totalScore: 3 }));
+  fx.wr.appendRow(makeRegistryRow(exported, { queueId: 'WUQ-L2', docId, lessonDate: daysAgoStr(10), totalScore: 3 }));
+
+  exported.runWarmUpEvaluation();
+
+  assert.equal(file._access('1234567@ccpsnet.net'), 'viewer');
+});
+
+test('the warm-up doc stays editable while the extra-credit window is open', () => {
+  const { exported, sandbox } = load();
+  const fx = setUpFixture(sandbox);
+  const docId = scoredDocWithReply(sandbox, '');
+  const file = shareWithStudent(sandbox, docId);
+  fx.wq.appendRow(makeQueueRow(exported, { queueId: 'WUQ-L3', totalScore: 4 }));
+  fx.wr.appendRow(makeRegistryRow(exported, { queueId: 'WUQ-L3', docId, lessonDate: daysAgoStr(2), totalScore: 4 }));
+
+  exported.runWarmUpEvaluation();
+
+  assert.equal(file._access('1234567@ccpsnet.net'), 'editor', 'the student may still reply for extra credit');
 });

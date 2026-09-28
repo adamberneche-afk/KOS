@@ -355,8 +355,13 @@ function processInferenceQueue() {
  * @returns {Object} { status: 'SUCCESS'|'LOCKED'|'ERROR', uid, vectorRouting?, message? }
  */
 function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
+  // processInferenceQueue() already holds the script lock when it calls
+  // this. Apps Script locks aren't counted, so releasing here would free
+  // the caller's lock partway through its loop. Only take and release the
+  // lock when nobody up the stack holds it.
   const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) return { status: 'LOCKED', message: 'System busy.' };
+  const ownsLock = !lock.hasLock();
+  if (ownsLock && !lock.tryLock(15000)) return { status: 'LOCKED', message: 'System busy.' };
 
   try {
     // ── Parse ───────────────────────────────────────────────────
@@ -566,7 +571,7 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
     _reportError('processIntakePayload', error, null);
     return { status: 'ERROR', message: error.message };
   } finally {
-    lock.releaseLock();
+    if (ownsLock) lock.releaseLock();
   }
 }
 

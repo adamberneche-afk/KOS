@@ -154,8 +154,17 @@ function onFinalizeWarmUpScoreExecute(event) {
       });
     }
 
-    var grammar = Number(evalParsed.grammar) || 0;
-    var engagement = Number(evalParsed.engagement) || 0;
+    var grammar = Number(evalParsed.grammar);
+    var engagement = Number(evalParsed.engagement);
+    // Same range check as 41_WarmUpFlowBridge.js's live path.
+    if (!(Number.isInteger(grammar) && grammar >= 0 && grammar <= 1) ||
+        !(Number.isInteger(engagement) && engagement >= 0 && engagement <= 3)) {
+      try { writeWarmUpQueueStatus_(ledgerSsId, queueId, "EVAL_ERROR"); } catch (e2) {}
+      return buildOutputRenderAction_({
+        writeStatus: stringVar_("GEMINI_SCORE_OUT_OF_RANGE"),
+        registryUpdateStatus: stringVar_("SKIPPED"),
+      });
+    }
     var feedback = String(evalParsed.feedback || "Your response has been reviewed.");
     var total = wordCountScore + grammar + engagement + extraCredit;
 
