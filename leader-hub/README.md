@@ -34,7 +34,7 @@ key at all).
 |---|---|
 | `student-leader-hub.html` | The live app (single file, over 20,000 lines and still growing — run `wc -l student-leader-hub.html` for the exact current count rather than trusting a number here, since a prior version of this table went stale mid-project) — open directly in a browser. **Generated** (external product review, Finding 4 / "this quarter" maintainability fix) from `src/*.html` via `tools/leaderhub-build/build.js` — stays committed at this path so opening it needs no build step, but **never hand-edit it directly**; edit the relevant fragment under `src/` and rebuild. See `tools/leaderhub-build/README.md`. |
 | `src/` | The 14 fragments `student-leader-hub.html` is generated from, in file order — `00-shell-head.html` through `13-markup-modals-tail.html`. This is where you actually make edits. |
-| `EmailBridge.gs` | Apps Script bridge — sub-plan Docs, brag emails (sent via `MailApp`), horizon-item polling, Organization Sync, and the AI-drafting job queue (see below). Its Gmail-label horizon scan is currently **disabled**, along with every Gmail scope — see the OPEN section below. `LEADERHUB_AI_FLOW_SETUP.md` covers the queue; `LEADERHUB_EMAIL_SETUP.md` is superseded/historical. |
+| `EmailBridge.gs` | Apps Script bridge — sub-plan Docs, brag emails (sent via `MailApp`), horizon-item polling, Organization Sync, and the AI-drafting job queue (see below). Its Gmail-label horizon scan is currently **disabled**, along with every Gmail scope. They were removed while chasing the consent-dialog crash, which turned out to be unrelated (see the Fixed section below), so restoring them is now a separate decision. `LEADERHUB_AI_FLOW_SETUP.md` covers the queue; `LEADERHUB_EMAIL_SETUP.md` is superseded/historical. |
 | `LEADERHUB_*.md` | Project reference docs (README, principles, handoff notes, WIP, Gem prompt, email setup, AI drafting Flow setup) |
 | `BRAG_EMAIL_FLOW_PROMPT.md`, `ARCHIVE_INSIGHTS_FLOW_PROMPT.md`, `WBL_INSIGHTS_FLOW_PROMPT.md`, `LP_ASSIST_FLOW_PROMPT.md`, `EMAIL_COMPOSE_FLOW_PROMPT.md` | Exact Gemini system prompts for each AI job type — see `LEADERHUB_AI_FLOW_SETUP.md` |
 | `LH_0*.md` | Numbered reference docs — naming conventions, integration guide, Canvas ideas, email audit, and 3 grading/pacing structure iterations (`LH_04_GRADING_STRUCTURE.md`, `LH_05_GRADING_STRUCTURE.md`, `LH_05_PACING_AND_GRADING.md` — successive dated drafts of the same working document, not conflicting versions to reconcile; kept as-is per this tool's own iterative working style) |
@@ -59,133 +59,67 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
-## OPEN — the OAuth-consent-dialog crash (unresolved)
+## Fixed — the OAuth-consent-dialog crash (2026-09-28)
 
-**Read this before touching OAuth scopes, `appsscript.json`, or
-`tools/leaderhub-build/`.** This is the one genuinely open investigation
-in this project. It lives here rather than in `HISTORY.md` because
-`HISTORY.md` is for closed items; the round-by-round narration of what
-was tried is there, the current state and what's left to try is here.
+**Read this before touching `tools/leaderhub-build/` or the way the page
+is served.** For two weeks the deployed page threw
+`Uncaught SyntaxError: Unexpected identifier 'style'` (reported against
+Google's `userCodeAppPanel?createOAuthDialog=true:570:25`), with
+`LS is not defined` errors after it. On `/dev` at `2a3dd4a` the page now
+loads with all 17 blocks run and 0 errors (`?diag=probe`), and settings
+sync reaches the server (`?diag=1`). **Still to confirm:** the same on
+`/exec` after the release. The full investigation, including every theory
+ruled out along the way, is in `HISTORY.md`.
 
-**Symptom.** On loading the deployed `/exec` URL, a red banner appears:
+There were three separate faults, all found with `Diagnostics.gs`'s
+`?diag` modes:
 
-```
-Uncaught SyntaxError: Unexpected identifier 'style'
-  — at https://n-<hash>-script.googleusercontent.com/userCodeAppPanel?createOAuthDialog=true:570:25
-```
+1. **HtmlService stripped `//# sourceURL=` comments, taking `</script`
+   with them.** Apps Script parses and re-serializes the page it holds.
+   It dropped 7 of the 16 `sourceURL` comments the build wrote. Each
+   comment sat directly against its closing tag, and `</script` went with
+   it, leaving a stray `>` and merging that block into the next. The
+   first merge pulled page markup into a script, which caused the
+   `'style'` error. **Fix:** the build writes no `sourceURL` comments;
+   each block is named by a `data-lh-block` attribute instead. Don't
+   bring the comments back.
+2. **Splitting changed load order.** In one script, every function and
+   var exists before any line runs. Split into tags, each exists only
+   once its own tag has run, so load-time code naming something from a
+   later tag threw (`_lpHasUnsavedChanges is not defined`). **Fix:**
+   `tools/leaderhub-build/order-declarations.js` puts var names, then
+   functions, ahead of all other statements before the split.
+   `tests/tools/leaderhub-build-load-order.test.js` runs the real built
+   tags in sequence to prove it.
+3. **Every browser call to the server targeted a private `_` function**,
+   which `google.script.run` never exposes. This didn't blank the page,
+   but no sync ever ran. See "Server sync goes through public,
+   owner-only functions" below.
 
-That URL is **Google's own OAuth-consent-dialog bundle**, not any file in
-this repo. The banner itself is ours — `src/02-error-handler.html`'s
-global `window.onerror` handler catching the error and displaying it.
+The 70,000-character per-tag limit stays. The only clean render before
+this fix was a throwaway project that got the split build *without*
+`sourceURL` comments. Those comments were added 35 minutes after the
+split, before any live test, which is the likeliest reason the split
+"still crashed" on every real deploy.
 
-**The app works anyway.** This matters and was only discovered late:
-the dashboard, DECA Events, Field Trips, Classroom and the rest all
-render and function normally with the banner showing, verified in both
-an Incognito window and a normal signed-in session. Whatever this is, it
-has not been shown to block real functionality. The one thing observed
-failing is Gmail-sourced horizon items — which are now deliberately off
-anyway (see below), and which plausibly failed simply because the
-consent flow that would grant Gmail access never completed.
-
-**Already ruled out — do not spend another round on these:**
-
-| Tried | Result |
-|---|---|
-| OAuth scope composition — full `mail.google.com`, then `gmail.readonly`+`gmail.compose`, then `readonly` only, then **zero Gmail scope** | Crashes identically every time (rounds 1–5) |
-| `GmailApp` usage itself — every call site disabled | Crashes identically (rounds 3 and 5) |
-| Deployment `access`/`executeAs` combinations (`DOMAIN`/`MYSELF`, `USER_ACCESSING`/`USER_DEPLOYING`) | No change |
-| Raw page size alone — a synthetic ~1.5M-character inert page, and separately 5,000 `style=`-attributed elements | Both render clean |
-| The CSP `<meta>` tag in isolation | Renders clean |
-| The giant script alone in a minimal shell, at any size up to full | Never reproduced |
-| Per-`<script>`-tag size — the real fix now shipped: 15 chunks, each ≤ 70,000 chars, every top-level `let`/`const` hoisted to `var` | **Still crashes live** |
-| A brand-new Apps Script project with a new script ID | Crashes identically |
-| Incognito vs. normal signed-in session | Identical |
-
-The per-tag-size theory deserves a specific note: careful bisection on a
-*throwaway* project established a threshold (~100K–107K characters in one
-tag alongside ~239K of page furniture), and splitting the same content
-into 12 tags there **did** eliminate the crash. That result has never
-reproduced on a real project. Either the throwaway differed in some way
-not yet identified, or that success was coincidental. Treat the
-per-tag-size conclusion as **unconfirmed**, not settled — while noting the
-split build is worth keeping regardless (it is verified correct, and it
-is the only configuration that has ever rendered clean anywhere).
-
-**New evidence (2026-09-27, `?diag=1` on `/dev` at `fdfc82b`).** The page
-Apps Script holds is not the page clasp pushed. `getContent()` returns
-1,215,405 characters with 9 named script blocks, the largest 250,040
-characters; the repo build has 16, none over 69,966. Seven blocks
-(`block-0` and parts 2, 5, 6, 10, 12 and 13) lost their closing
-`</script>`, so each one runs on into the next. After `block-0`, that pulls
-the page's markup into a script, which is where `Unexpected token '>'` and
-`Unexpected identifier 'style'` come from. The later `LS is not defined`
-errors follow, because `LS` is defined in a block that no longer parses.
-These counts come from the server, before anything crosses the network,
-so **the district network is ruled out** (next step 1 below).
-
-**Cause found (2026-09-28, `?diag=raw` at `a650295`).** Comparing the
-held page with the build, HtmlService parses and re-serializes the page.
-It drops HTML and CSS comments and entity-escapes attributes, which is
-harmless. It also deletes some `//# sourceURL=` comments: 7 of the 16,
-for no reason visible from outside. Each of those comments sat directly
-against its closing tag, and the deletion took `</script` with it:
-`//# sourceURL=leader-hub-block-1-part-2-of-15.js</script><script>` became
-`><script>`. That left a stray `>` in the JavaScript, with no closing tag,
-in exactly the seven blocks that merged. Nothing else inside any script
-changed. **Fix:** the build no longer writes `sourceURL` comments at all.
-Blocks are named by a `data-lh-block` attribute on the opening tag
-instead (`tools/leaderhub-build/build.js`). To confirm it live,
-`?diag=1` on `/dev` should show 16 named blocks and 0 `sourceURL`
-comments, and `?diag=probe` should show no `SyntaxError`.
-
-**Not yet tried — the two highest-value next steps:**
-
-1. **A different network.** Every test so far ran on a district-managed
-   device on a district network that is known to do content filtering
-   (it blocks `github.com`). A filtering/SSL-inspecting proxy that
-   rewrites or truncates a response would explain a malformed-JS error
-   in a file served by *Google*, which is otherwise hard to account for.
-   Load the same `/exec` URL from a phone on cellular data, or any
-   non-managed device on a home network. This is cheap and would
-   immediately rule the network in or out.
-2. **First-ever consent vs. re-authorization.** Every redeploy in this
-   investigation changed `oauthScopes` from the previous deployment,
-   which may push Apps Script into a "permissions changed, please
-   re-authorize" flow — a different code path from a brand-new project's
-   first-ever consent. The single throwaway test that *did* render clean
-   was a first-ever deployment. If this is the mechanism, the trigger is
-   the scope *change*, not the scope *contents*, and the test is: deploy
-   once to a fresh project and then reload without ever changing the
-   manifest again.
-
-**Watch for:** "Nav error (trips): renderTrips is not defined" appeared
-once on the Field Trips view and did not reproduce on later checks.
-`renderTrips` is a normal top-level `function` declaration that passes
-every local verification, so this may have been a transient first-load
-artifact — but if it recurs, it points at something real in the split
-build and should be chased immediately.
-
-**Working constraints** (these shaped every result above, and still apply):
+**Working constraints** (these still apply):
 
 - The assistant never touches the live Google account. The user runs
   every `clasp`, browser and deploy action and reports back.
-- **DevTools is blocked** by district admin policy — no console, no
-  Sources panel, no network inspection. All testing is black-box:
+- **DevTools is blocked** by district admin policy: no console, no
+  Sources panel, no network inspection. All testing is black-box, with
   screenshots and described behavior only. `Diagnostics.gs`'s `?diag`
   modes exist for this reason.
-- `.clasp.json` is gitignored, so it must be recreated in each fresh
-  checkout before `clasp push` will work (`Project settings not found.`
-  is what its absence looks like).
-- The user deploys by downloading a branch ZIP from GitHub and
-  extracting in place — `git` is not available on that machine.
-- clasp v3 names: `create-script`, `create-deployment`, `open-web-app`;
-  `clasp push --force` is required for the manifest to go up.
+- `.clasp.json` is gitignored. `tools/clasp-sync/run.ps1` copies each
+  project's real one in from the registry outside the checkout.
+- The user deploys from a GitHub ZIP of main with
+  `tools/clasp-sync/run.ps1`; `git` is not available on that machine.
 
-**Current state as of this writing:** zero Gmail scope in
-`appsscript.json` (7 scopes, none Gmail); `createBragDraft_()` sends via
-`MailApp.sendEmail()`; `scanHorizonLabel_()` returns `[]` without calling
-GmailApp; the assembled file carries 16 `<script>` blocks (the small
-error handler plus 15 chunks, largest 69,949 chars).
+**Current state:** zero Gmail scope in `appsscript.json` (7 scopes, none
+Gmail); `createBragDraft_()` sends via `MailApp.sendEmail()`;
+`scanHorizonLabel_()` returns `[]` without calling GmailApp; the assembled
+file carries 17 `<script>` blocks (the small error handler plus 16 parts
+of the main script, each under 70,000 characters).
 
 ## Diagnosing a broken page without DevTools
 
@@ -241,10 +175,9 @@ radius bugs" pass, plus the nine-round UI/UX hardening log — now lives in
 `HISTORY.md`, not here (external product review, Finding 10 /
 "structural" tier). Read `HISTORY.md` when you need to know *why*
 something is the way it is; this file stays focused on what the system
-currently does and how to work with it. The OAuth-consent-dialog crash
-is the exception that proves the rule: its history is in `HISTORY.md`,
-but because it is still *open*, its current state and next steps are in
-the section directly above.
+currently does and how to work with it. The OAuth-consent-dialog
+crash's full investigation is there too; the section near the top of
+this file keeps only what a maintainer needs to know about its fix.
 
 ---
 
@@ -1143,8 +1076,8 @@ object) and one region flagged honestly as tangled, not cleanly modular
 genuinely unrelated features).
 
 **The build does more than concatenate now.** Chasing the
-OAuth-consent-dialog crash (see the OPEN section near the top of this
-file) added three passes after the fragment join, all documented in
+OAuth-consent-dialog crash (see the Fixed section near the top of this
+file) added four passes after the fragment join, all documented in
 `tools/leaderhub-build/README.md`: comments and dead whitespace are
 stripped, every top-level `let`/`const` is rewritten to `var`, top-level
 functions and var names are moved ahead of other statements (so the split
@@ -1153,7 +1086,7 @@ giant script is split into several `<script>` tags at real, tokenizer-
 verified statement boundaries — 16 of them today, each under 70,000
 characters, each independently `node --check`ed. Each emitted tag also
 carries a `data-lh-block` name. (It used to be a `//# sourceURL=`
-comment; see the open crash section for why that had to go.) `build.js --stats` prints a
+comment; see the Fixed section for why that had to go.) `build.js --stats` prints a
 per-block size report; `build.js --check` is the drift gate. All of it
 is hand-rolled with zero npm dependencies, on a small tokenizer
 (`js-lexer.js`) that has its own invariant checker, verification scripts
@@ -1196,9 +1129,10 @@ exactly the way [clasp](https://github.com/google/clasp) wants — a flat
 folder. It has a committed `appsscript.json` (derived from actual service
 usage: `MailApp`, `DriveApp`, `DocumentApp`, `SpreadsheetApp`, plus the
 `webapp` `executeAs`/`access` block — "Execute as: Me · Access: Anyone in
-your domain"). `GmailApp` is currently unused — Gmail scope was walked back
-entirely while a live OAuth-consent-dialog crash is being investigated, see
-`leader-hub/HISTORY.md`'s newest entries. A `.claspignore` that allowlists
+your domain"). `GmailApp` is currently unused. Gmail scope was walked back
+entirely while chasing the OAuth-consent-dialog crash, which turned out to
+have other causes (see the Fixed section near the top of this file, and
+`leader-hub/HISTORY.md`). A `.claspignore` that allowlists
 exactly those `.gs`
 files plus `appsscript.json` and `student-leader-hub.html` (everything
 else here — the `LEADERHUB_*`/`LH_0*` docs, `student-leader-hub.jsx`,
