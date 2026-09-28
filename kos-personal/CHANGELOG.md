@@ -1,6 +1,92 @@
 # KOS Changelog
 
 
+### Vector classification: one `VECTOR_MATRIX` row per real session
+
+`VECTOR_MATRIX` held only install fixtures, because no code queued a
+`VECTOR_CLASSIFY` row for a real session. `20_VectorClassifySessions.gs`
+closes `STUDIO_INTEGRATION_SPEC.md`'s open integration question.
+
+- **One row per session**, keyed by the log UUID (`LOG-xxxxxxxx`), the stem
+  the Curator chunks share. One row per chunk would decay every theme the
+  chunk doesn't score, once per chunk.
+- **Classified in parts.** Both the input cell (`VectorClassifyInput`) and
+  the output cell (`STUDIO_RETURN`) cap at 50,000 characters, and the
+  per-sentence JSON runs about twice its input. So `_chunkAndQueue()` also
+  queues parts of at most 8,000 characters (`LOG-xxxxxxxx_VC01of03`), all
+  or nothing. `processInferenceQueue()` stores each finished part in a new
+  `VectorClassifyParts` tab and aggregates the session when its last part
+  lands. That is exactly the result of one call over the whole session,
+  since the aggregation sums per sentence. A part delivered again later
+  writes nothing. The install fixture's UID keeps its old behavior.
+- **Backfill:** `previewVectorClassifyBackfill()` /
+  `queueVectorClassifyBackfillBatch()` queue older sessions from their
+  `CuratorInput` text, oldest first, 3 per batch, never while an earlier
+  batch is in flight. `checkVectorClassifySessions()` lists sessions still
+  waiting on a part.
+
+`_semanticChunker()` / `_splitOversizedBlock_()` take an optional size;
+their default is unchanged. 9 tests in
+`tests/kos-personal/vector-classify-sessions.test.js`.
+
+### `19_StagingRequeue.gs`: a requeue helper for STUDIO_TIMEOUT / AUDIT_REJECTED rows
+
+Both handoffs asked for one instead of hand-editing statuses. A row's
+state lives in five places, and a requeue that resets only the Status
+cell times out again. `requeueStagingRows()` resets them together:
+
+- the staging row goes to `PENDING_FLOW` / `Retry_Count 0`;
+- its entries in the Turnstile's release map, audit-retry priority set
+  and stale-deprioritize set are removed, along with the harvest's
+  doc-written breadcrumb;
+- its old `CuratorInput` / `VectorClassifyInput` row is deleted.
+  `buildStudioInputRows()` skips any UID it has built before, and the Flow
+  only fires on a new input row, so while the old row exists the Flow
+  never sees the requeued row. That is also why every audit-gate
+  retry ran out on staleness: the retry went back to `PENDING_FLOW`, but
+  nothing new ever reached the Flow;
+- its old `STUDIO_RETURN` rows are deleted, because
+  `_srGetHarvestedPayloadText_()` reads the first row for a UID and an old
+  FAILED row would shadow the new answer;
+- the source doc is restored from the input row's `SourceText` when they
+  differ. A successful harvest overwrites the doc with the model's output
+  before the audit gate runs, so an audit-rejected row's doc no longer
+  holds its transcript. A row whose doc holds model output and has no
+  `SourceText` is skipped as `SOURCE_LOST`.
+
+`previewStagingRequeue()` is the dry run. `requeueStagingBatch()` applies
+one batch, which only tops the in-flight count (`PENDING_FLOW`,
+`STUDIO_ACTIVE`, `FLOW_COMPLETE`) up to 10, so running it twice does
+nothing until the first batch drains. Fixture and canary rows are never
+touched. `AUDIT_LOG` is left alone, so a requeued row that later times out
+for real is still labelled `AUDIT_REJECTED`.
+
+5 tests in `tests/kos-personal/staging-requeue.test.js`.
+
+### `generateDailyPrimer` stops failing every morning; `KOS_LATEST_PRIMER` keeps its file ID
+
+From 2026-09-18 every run logged "Can't remove the last paragraph in a
+document section". `_clearDocBody_()` (`6_Governance.gs`) removed the
+body's children from the end, and Docs refuses to remove a body's final
+element, so the first removal threw on any doc that already had content.
+It now appends one empty paragraph and removes everything in front of it,
+so the last element is never removed and a list item (which `asParagraph()`
+can't cast) no longer matters. The dated `DAILY_PRIMER_<date>` docs were
+being created all along; only the fixed doc went stale.
+
+`KOS_LATEST_PRIMER` is now a notebook and RTP-gem source held by ID, so
+`_writeLatestPrimer_()` no longer replaces it on any error. A trashed doc
+is restored; a transient Drive/Docs error fails the run and the next run
+retries the same ID; only a doc that is really gone is recreated, with a
+warning that names the new doc to re-add. The doc now opens on its heading
+instead of a blank line.
+
+The test harness hid the bug: `FakeDocBody.removeChild()` allowed removing
+the last child, and list items were plain paragraphs. It now throws the
+real error and the real cast failure. Six tests in
+`tests/kos-personal/governance-primer.test.js`, five failing against the
+old code.
+
 ### `10_Turnstile.gs` gets its first test coverage
 
 The PENDING_FLOW → STUDIO_ACTIVE gate — the file every queued row passes
