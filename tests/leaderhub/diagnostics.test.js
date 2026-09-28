@@ -30,7 +30,7 @@ const APP_HTML = fs.readFileSync(path.join(LH, 'student-leader-hub.html'), 'utf8
 const FILES = [path.join(LH, 'Code.gs'), path.join(LH, 'EmailBridge.gs'), path.join(LH, 'Diagnostics.gs'),
   path.join(LH, 'DeployVersionMarker.gs')];
 const EXPOSE = ['doGet', 'lhDiagScriptElements_', 'lhDiagInstrument_', 'lhDiagPing', 'lhDiagReport',
-  '_lhDiagBootstrapJs_', 'lhDiagJsLiteral_', 'lhDiagRawSlice_', 'lhDiagBlockEndings_'];
+  '_lhDiagBootstrapJs_', 'lhDiagJsLiteral_', 'lhDiagRawSlice_', 'lhDiagBlockName_', 'lhDiagCountNames_'];
 const OWNER = 'owner@ccpsnet.net';
 
 function fakeHtmlService(fileContent) {
@@ -83,20 +83,19 @@ function load(viewer, opts) {
   return Object.assign(loaded, { outputs: html.outputs, texts, logs, doGet });
 }
 
-// Block names in page order, by plain string search. (No tag-matching
-// regexes in this file: CodeQL reads any regex over "<script" as an HTML
-// filter, and none of these filter anything.)
+// Block names in page order, by plain string search for the data-lh-block
+// attribute build.js writes. (No tag-matching regexes in this file: CodeQL
+// reads any regex over "<script" as an HTML filter, and none of these
+// filter anything.)
 function markerNames(html) {
   const names = [];
-  const tag = '//# sourceURL=';
-  let pos = html.indexOf(tag);
+  const attr = 'data-lh-block="';
+  let pos = html.indexOf(attr);
   while (pos !== -1) {
-    let i = pos + tag.length;
-    let name = '';
-    while (i < html.length && !/[\s<]/.test(html[i])) name += html[i++];
-    while (i < html.length && /\s/.test(html[i])) i++;
-    if (html.startsWith('</script>', i)) names.push(name);
-    pos = html.indexOf(tag, i);
+    const from = pos + attr.length;
+    const to = html.indexOf('"', from);
+    names.push(html.slice(from, to));
+    pos = html.indexOf(attr, to);
   }
   return names;
 }
@@ -124,11 +123,11 @@ test('every named block in the real page is found, in order, with exact bounds',
 test('"<script" inside an HTML comment or a JavaScript string is not a block', () => {
   const { exported } = load(OWNER);
   const html = '<head><!-- a <script> tag here is just text --></head><body>' +
-    '<script>var t = "<script>inner<\\/script>"; //# sourceURL=a.js</script>' +
+    '<script data-lh-block="a">var t = "<script>inner<\\/script>";</script>' +
     '<script src="x.js"></script></body>';
   const els = exported.lhDiagScriptElements_(html);
   assert.equal(els.length, 2);
-  assert.equal(els[0].name, 'a.js');
+  assert.equal(els[0].name, 'a');
   assert.equal(els[1].name, null, 'an unnamed script is found but carries no name');
 });
 
@@ -151,9 +150,9 @@ test('probing the full page adds only the bootstrap and one marker per block', (
   const names = markerNames(APP_HTML);
   exportedLiteral = exported.lhDiagJsLiteral_;
   assert.equal(stripProbe(out, names), APP_HTML, 'removing what the probe added gives back the original');
-  names.forEach((n) => {
-    assert.ok(out.includes('//# sourceURL=' + n + '</script><script>window.__lhDiagRan && window.__lhDiagRan(' + exported.lhDiagJsLiteral_(n) + ')</script>'),
-      'marker right after ' + n);
+  exported.lhDiagScriptElements_(APP_HTML).filter((b) => b.name).forEach((b) => {
+    assert.ok(out.includes(APP_HTML.slice(b.start, b.end) + '<script>window.__lhDiagRan && window.__lhDiagRan(' +
+      exported.lhDiagJsLiteral_(b.name) + ')</script>'), 'marker right after ' + b.name);
   });
 });
 
@@ -193,8 +192,8 @@ test('parts=0 serves no named block, and a count past the end serves them all', 
 
 test('a page the probe can\'t map is refused, not half-instrumented', () => {
   const { exported } = load(OWNER);
-  // A marker only inside a comment: the counts disagree.
-  const html = '<head></head><body><!-- //# sourceURL=x.js</script> --></body>';
+  // A block name only inside a comment: the counts disagree.
+  const html = '<head></head><body><!-- <script data-lh-block="x"></script> --></body>';
   assert.throws(() => exported.lhDiagInstrument_(html, null), /layout changed/);
 });
 
@@ -293,14 +292,12 @@ test('?diag=1 shows the owner the page facts and both server calls', () => {
   const elements = exported.lhDiagScriptElements_(APP_HTML).length;
   assert.equal((page.split('<table class="blocks">')[1].match(/<tr><td>/g) || []).length, elements);
   assert.match(page, new RegExp('All script elements</th><td>' + elements + '<'));
-  assert.match(page, /lhGetAllConfig_\(\)/);
-  // A private function missing from google.script.run is reported, not
-  // left on "waiting" by a TypeError.
-  assert.match(page, /typeof priv\.lhGetAllConfig_!=="function"/);
-  // Every block ending is listed, and in the repo build each one closes.
-  const endings = page.split('<h2>Block endings as served</h2>')[1];
-  assert.equal((endings.match(/<tr><td>/g) || []).length, markerNames(APP_HTML).length);
-  assert.ok(!endings.includes('<b>NO</b>'));
+  assert.match(page, /priv\.lhGetAllConfig\(\)/);
+  // A method missing from google.script.run is reported, not left on
+  // "waiting" by a TypeError.
+  assert.match(page, /typeof priv\.lhGetAllConfig!=="function"/);
+  assert.match(page, new RegExp('Block names in raw text</th><td>' + markerNames(APP_HTML).length + '<'));
+  assert.match(page, /sourceURL comments in raw text<\/th><td>0 /);
   // The page's own script must at least parse.
   const js = between(page, '<script>', '</script>');
   assert.doesNotThrow(() => new vm.Script(js));
@@ -363,12 +360,23 @@ test('lhDiagRawSlice_ ignores values that are not plain numbers', () => {
   assert.equal(exported.lhDiagRawSlice_('abcdef', '1', '-3'), 'bcdef');
 });
 
-test('lhDiagBlockEndings_ flags a block whose closing tag went missing', () => {
+test('lhDiagBlockName_ reads the name from an opening tag, and only there', () => {
   const { exported } = load(OWNER);
-  const html = '<script>a()\n//# sourceURL=one.js</script><script>b()\n//# sourceURL=two.js<\\/script>c()' +
-    '\n//# sourceURL=three.js\n</script>';
-  const r = exported.lhDiagBlockEndings_(html);
-  assert.deepEqual(r.map((b) => [b.name, b.closes]), [['one.js', true], ['two.js', false], ['three.js', true]]);
-  assert.equal(r[1].after, '<\\/script>c()\n//# sourceURL=three.js\n</script>');
-  assert.equal(html.slice(r[1].at, r[1].at + 14), '//# sourceURL=');
+  assert.equal(exported.lhDiagBlockName_('<script data-lh-block="leader-hub-block-0">'), 'leader-hub-block-0');
+  assert.equal(exported.lhDiagBlockName_('<SCRIPT DATA-LH-BLOCK="b">'), 'b');
+  assert.equal(exported.lhDiagBlockName_('<script>'), null);
+  assert.equal(exported.lhDiagBlockName_('<script data-lh-block="">'), null);
+  assert.equal(exported.lhDiagCountNames_('<script data-lh-block="a"></script><script data-lh-block="b">'), 2);
+});
+
+// Every block in the real page is named, so none depends on a
+// "//# sourceURL=" comment, which HtmlService strips and which then took
+// the closing tag with it.
+test('the built page names every inline script by attribute and has no sourceURL comments', () => {
+  const { exported } = load(OWNER);
+  assert.ok(!APP_HTML.includes('//# sourceURL='));
+  const inline = exported.lhDiagScriptElements_(APP_HTML)
+    .filter((b) => !APP_HTML.slice(b.start, APP_HTML.indexOf('>', b.start)).includes(' src='));
+  assert.ok(inline.length >= 2);
+  inline.forEach((b) => assert.ok(b.name, 'unnamed inline script at ' + b.start));
 });

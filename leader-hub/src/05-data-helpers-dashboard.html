@@ -114,7 +114,7 @@ function _lhSyncConfigKeyToServer_(key, value) {
   if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
   google.script.run
     .withFailureHandler(err => console.warn('[LeaderHub] config sync failed for ' + key + ':', (err && err.message) || err))
-    .lhSaveConfig_(key, value);
+    .lhSaveConfig(key, value);
 }
 
 // Called once at boot (see the boot sequence's EMAIL_BRIDGE.poll() call) —
@@ -133,7 +133,7 @@ async function lhRefreshConfigFromServer_() {
   let remote;
   try {
     remote = await new Promise((resolve, reject) => {
-      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig_();
+      google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig();
     });
   } catch (e) {
     console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.message) || e);
@@ -296,7 +296,7 @@ async function _lhSyncDataKeyToServer_(key, value) {
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-        .lhPushData_({ domain, headers: ['Id', 'RecordJSON'], rows, expectedUpdatedAt: tracker.lastKnownRemoteUpdatedAt });
+        .lhPushData({ domain, headers: ['Id', 'RecordJSON'], rows, expectedUpdatedAt: tracker.lastKnownRemoteUpdatedAt });
     });
   } catch (e) {
     console.warn('[LeaderHub] Sync failed for ' + domain + ':', (e && e.message) || e);
@@ -418,7 +418,7 @@ async function lhRefreshDataDomainsFromServer_() {
         google.script.run
           .withSuccessHandler(resolve)
           .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-          .lhPullData_({ domain });
+          .lhPullData({ domain });
       });
     } catch (e) {
       console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
@@ -472,7 +472,7 @@ async function _lhFlushScrScoreSync_() {
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-        .lhSaveScrScores_(batch);
+        .lhSaveScrScores(batch);
     });
   } catch (e) {
     // Not re-queued automatically — the edit is already safe in scrScores/
@@ -497,7 +497,7 @@ async function lhRefreshScrScoresFromServer_() {
       google.script.run
         .withSuccessHandler(resolve)
         .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-        .lhGetScrScores_();
+        .lhGetScrScores();
     });
   } catch (e) {
     console.warn('[LeaderHub] Could not refresh SCR scores from server:', (e && e.message) || e);

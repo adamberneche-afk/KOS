@@ -10,9 +10,8 @@
 //   ?diag=1            A tiny server-checks page, no app code: who you're
 //                      signed in as, whether you're the owner, how big the
 //                      served app is, and two live google.script.run calls
-//                      (one public, one to a private `_` function, since
-//                      Apps Script refuses to run private functions from
-//                      the browser).
+//                      (a ping, and lhGetAllConfig, the owner-only entry
+//                      point the app's settings sync uses).
 //   ?diag=probe        The full app, plus a status panel pinned to the
 //                      bottom of the screen: which of the page's script
 //                      blocks actually ran, every error with its block and
@@ -33,9 +32,20 @@
 //   .\run.ps1 -Latest -HeadOnly -Only leader-hub
 // =============================================================================
 
-// The name build.js stamps on each script block ("//# sourceURL=..." just
-// before its closing tag). Every block the probe tracks carries one.
-const LH_DIAG_BLOCK_MARKER = /\/\/# sourceURL=([^\s<]+)\s*$/;
+// The attribute build.js puts on each script block's opening tag
+// (data-lh-block="leader-hub-block-1-part-2-of-15"). Every block the probe
+// tracks carries one. It used to be a "//# sourceURL=" comment; HtmlService
+// strips some of those, and took the closing tag with them (see build.js).
+const LH_DIAG_BLOCK_ATTR = 'data-lh-block="';
+
+// The block name in one opening tag, or null.
+function lhDiagBlockName_(tag) {
+  const at = tag.toLowerCase().indexOf(LH_DIAG_BLOCK_ATTR);
+  if (at === -1) return null;
+  const from = at + LH_DIAG_BLOCK_ATTR.length;
+  const to = tag.indexOf('"', from);
+  return to === -1 || to === from ? null : tag.slice(from, to);
+}
 
 // ?diag=raw's text: the whole page, or html.slice(from, from + len) when
 // from is given. Non-numeric values are ignored rather than guessed at.
@@ -86,7 +96,7 @@ function _lhDiagNotOwner_() {
 // closing tag counts. A plain search would trip on "<script" text inside
 // a comment in the head, or inside a JavaScript string (a print template
 // in block 1 builds a whole page as a string). Returns
-// [{ start, end, name }] where name is the block's sourceURL, or null.
+// [{ start, end, name }] where name is the block's data-lh-block, or null.
 function lhDiagScriptElements_(html) {
   const out = [];
   const lower = html.toLowerCase();
@@ -105,9 +115,7 @@ function lhDiagScriptElements_(html) {
     const closeTag = lower.indexOf('</script', tagEnd + 1);
     if (tagEnd === -1 || closeTag === -1) break;
     const end = html.indexOf('>', closeTag) + 1;
-    const body = html.slice(tagEnd + 1, closeTag);
-    const m = LH_DIAG_BLOCK_MARKER.exec(body);
-    out.push({ start: script, end: end, name: m ? m[1] : null });
+    out.push({ start: script, end: end, name: lhDiagBlockName_(html.slice(script, tagEnd + 1)) });
     pos = end;
   }
   return out;
@@ -121,10 +129,10 @@ function lhDiagScriptElements_(html) {
 // instrument correctly.
 function lhDiagInstrument_(html, parts) {
   const blocks = lhDiagScriptElements_(html).filter(function (b) { return b.name; });
-  const markerCount = lhDiagCountMarkers_(html);
-  if (blocks.length === 0 || blocks.length !== markerCount) {
+  const nameCount = lhDiagCountNames_(html);
+  if (blocks.length === 0 || blocks.length !== nameCount) {
     throw new Error('Diagnostic probe: found ' + blocks.length + ' named script blocks but ' +
-      markerCount + ' sourceURL markers. The page layout changed; the probe needs updating.');
+      nameCount + ' block names in the raw text. The page layout changed; the probe needs updating.');
   }
   const keep = parts === null || parts === undefined ? blocks.length : Math.max(0, parts);
 
@@ -165,20 +173,17 @@ function lhDiagJsLiteral_(value) {
     .replace(/\u2029/g, '\\u2029');
 }
 
-// How many "//# sourceURL=<name></script>" block endings the raw text
-// has, found by plain string search rather than a tag-matching regex.
-// lhDiagInstrument_ checks this against what the tokenizer found.
-function lhDiagCountMarkers_(html) {
+// How many data-lh-block names the raw text has, by plain string search
+// rather than a tag-matching regex. lhDiagInstrument_ checks this against
+// what the tokenizer found, so a name it can't place (inside a comment, or
+// in a tag that no longer opens a script) stops the probe.
+function lhDiagCountNames_(html) {
   const lower = html.toLowerCase();
-  const tag = '//# sourceurl=';
   let count = 0;
-  let pos = lower.indexOf(tag);
+  let pos = lower.indexOf(LH_DIAG_BLOCK_ATTR);
   while (pos !== -1) {
-    let i = pos + tag.length;
-    while (i < lower.length && !/[\s<]/.test(lower.charAt(i))) i++;
-    while (i < lower.length && /\s/.test(lower.charAt(i))) i++;
-    if (lower.startsWith('</script', i)) count++;
-    pos = lower.indexOf(tag, i);
+    count++;
+    pos = lower.indexOf(LH_DIAG_BLOCK_ATTR, pos + LH_DIAG_BLOCK_ATTR.length);
   }
   return count;
 }
@@ -279,8 +284,10 @@ function _lhDiagServerPage_(cfg, owner) {
       rows.push(['App page size', html.length + ' characters']);
       rows.push(['Named script blocks', blocks.length + ' (largest ' + Math.max.apply(null, sizes) + ' characters)']);
       rows.push(['All script elements', String(all.length)]);
-      rows.push(['sourceURL markers in raw text', String(lhDiagCountMarkers_(html))]);
-      scriptTable = _lhDiagScriptTable_(html, all) + _lhDiagEndingsTable_(html);
+      rows.push(['Block names in raw text', String(lhDiagCountNames_(html))]);
+      rows.push(['sourceURL comments in raw text', String(html.split('//# sourceURL=').length - 1) +
+        ' (the build writes none; see build.js)']);
+      scriptTable = _lhDiagScriptTable_(html, all);
     } catch (err) {
       rows.push(['App page', 'could not be read: ' + err.message]);
     }
@@ -295,14 +302,16 @@ function _lhDiagServerPage_(cfg, owner) {
     '<tr><th>JavaScript runs</th><td id="js">NO -- scripts are blocked or failed to load</td></tr>' +
     '<tr><th>google.script.run</th><td id="gsr">not checked</td></tr>' +
     '<tr><th>Public server call (lhDiagPing)</th><td id="pub">waiting</td></tr>' +
-    '<tr><th>Private server call (lhGetAllConfig_)</th><td id="priv">waiting</td></tr>' +
+    '<tr><th>Settings sync call (lhGetAllConfig)</th><td id="priv">waiting</td></tr>' +
     '</table>' +
-    '<p>The app loads and saves settings, data and SCR scores through private <code>_</code> ' +
-    'functions. If the private call fails while the public one works, none of that ' +
-    'is reaching the server.</p>' +
+    '<p>The app loads and saves settings, data and SCR scores through owner-only public ' +
+    'functions (Code.gs). If this call fails while the ping works, none of that is ' +
+    'reaching the server.</p>' +
     scriptTable +
     '<p>Probe the full app: add <code>?diag=probe</code> to this URL (or ' +
-    '<code>?diag=probe&amp;parts=8</code> to serve only the first 8 blocks).</p>' +
+    '<code>?diag=probe&amp;parts=8</code> to serve only the first 8 blocks). The page text as ' +
+    'Apps Script holds it: <code>?diag=raw</code>, or one stretch with ' +
+    '<code>?diag=raw&amp;from=N&amp;len=400</code>.</p>' +
     '<script>(function(){' +
     'function set(id,t){document.getElementById(id).textContent=t;}' +
     'set("js","yes");' +
@@ -310,11 +319,11 @@ function _lhDiagServerPage_(cfg, owner) {
     'set("gsr","available");' +
     'google.script.run.withSuccessHandler(function(r){set("pub","OK -- "+JSON.stringify(r));})' +
     '.withFailureHandler(function(e){set("pub","FAILED -- "+((e&&e.message)||e));}).lhDiagPing();' +
-    'var priv=google.script.run.withSuccessHandler(function(){set("priv","OK -- private functions are callable here");})' +
+    'var priv=google.script.run.withSuccessHandler(function(){set("priv","OK -- settings sync reaches the server");})' +
     '.withFailureHandler(function(e){set("priv","FAILED -- "+((e&&e.message)||e));});' +
-    'if(typeof priv.lhGetAllConfig_!=="function"){set("priv","FAILED -- google.script.run has no lhGetAllConfig_: ' +
-    'private functions are not exposed to the browser");return;}' +
-    'priv.lhGetAllConfig_();' +
+    'if(typeof priv.lhGetAllConfig!=="function"){set("priv","FAILED -- google.script.run has no lhGetAllConfig ' +
+    '(this deployment predates the public entry points)");return;}' +
+    'priv.lhGetAllConfig();' +
     '})();</script>'
   ) : '';
 
@@ -342,39 +351,6 @@ function _lhDiagScriptTable_(html, all) {
   }).join('');
   return '<h2>Script elements as served</h2><table class="blocks"><tr><th>#</th><th>starts at</th>' +
     '<th>size</th><th>name</th><th>begins</th><th>ends</th></tr>' + rows + '</table>';
-}
-
-// Every "//# sourceURL=" in the raw text, whether or not a closing
-// </script> follows it, with the characters right after it shown with
-// escapes visible. A block whose closing tag is missing, moved or
-// rewritten shows up here even though the element table can't see it.
-function lhDiagBlockEndings_(html) {
-  const lower = html.toLowerCase();
-  const tag = '//# sourceurl=';
-  const out = [];
-  let pos = lower.indexOf(tag);
-  while (pos !== -1) {
-    let i = pos + tag.length;
-    while (i < lower.length && !/[\s<]/.test(lower.charAt(i))) i++;
-    const name = html.slice(pos + tag.length, i);
-    let j = i;
-    while (j < lower.length && /\s/.test(lower.charAt(j))) j++;
-    out.push({ at: pos, name: name, closes: lower.startsWith('</script', j), after: html.slice(i, i + 60) });
-    pos = lower.indexOf(tag, i);
-  }
-  return out;
-}
-
-function _lhDiagEndingsTable_(html) {
-  const rows = lhDiagBlockEndings_(html).map(function (b) {
-    return '<tr><td>' + b.at + '</td><td>' + _lhDiagEsc_(b.name) + '</td><td>' +
-      (b.closes ? 'yes' : '<b>NO</b>') + '</td><td>' + _lhDiagEsc_(JSON.stringify(b.after)) + '</td></tr>';
-  }).join('');
-  return '<h2>Block endings as served</h2><p>Every <code>//# sourceURL=</code> in the page. ' +
-    'In the repo build each one is followed straight away by <code>&lt;/script&gt;</code>.</p>' +
-    '<table class="blocks"><tr><th>at</th><th>name</th><th>closes the script?</th>' +
-    '<th>next 60 characters</th></tr>' + rows + '</table>' +
-    '<p>Full text: <code>?diag=raw</code>. One stretch: <code>?diag=raw&amp;from=N&amp;len=400</code>.</p>';
 }
 
 function _lhDiagEsc_(s) {

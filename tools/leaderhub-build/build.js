@@ -83,12 +83,15 @@
  * file's header for why this is a real, previously-hit blind spot, not
  * a hypothetical one.
  *
- * Every resulting <script> block's content also gets a trailing
- * `//# sourceURL=...` comment (a standard DevTools convention) giving it
- * a stable, readable name in the browser's Sources panel and in stack
- * traces — without it, a runtime error in a script tag that's the 7th of
- * 15 chunks of one original block just says "VM123:4231" with no way to
- * tell which chunk, let alone which original fragment, it came from.
+ * Every resulting <script> tag also gets a `data-lh-block="..."`
+ * attribute giving it a stable, readable name, which
+ * leader-hub/Diagnostics.gs uses to map the page as Apps Script serves it.
+ * These used to be trailing `//# sourceURL=...` comments. Don't bring them
+ * back: Apps Script's HtmlService strips some of them from the page it
+ * holds, and when one sat directly against `</script>` it took `</script`
+ * with it, leaving a stray `>` and running that block on into the next.
+ * That was the page-load SyntaxError in leader-hub/README.md's open crash
+ * section.
  *
  * THE ASSEMBLED FILE IS GENERATED. Never hand-edit
  * leader-hub/student-leader-hub.html directly — edit the fragment(s)
@@ -140,14 +143,18 @@ function concatenateFragments() {
   return parts.join('');
 }
 
-// A stable, readable name for a script block/chunk's `//# sourceURL=`
-// comment (browser DevTools convention: naming a <script> block in the
-// Sources panel and in stack traces, instead of an anonymous "VM123").
-// Not a real file path — nothing on disk has to exist at this name.
-function sourceUrlFor(blockIndex, chunkIndex, chunkCount) {
+// A stable, readable name for a script block/chunk, written into its
+// opening tag as data-lh-block="...". Only letters, digits and hyphens, so
+// it never needs escaping inside the attribute.
+function blockNameFor(blockIndex, chunkIndex, chunkCount) {
   const base = `leader-hub-block-${blockIndex}`;
-  if (chunkCount === 1) return `${base}.js`;
-  return `${base}-part-${chunkIndex + 1}-of-${chunkCount}.js`;
+  if (chunkCount === 1) return base;
+  return `${base}-part-${chunkIndex + 1}-of-${chunkCount}`;
+}
+
+// The block's own opening tag with the name added as its first attribute.
+function namedOpenTag(openTag, name) {
+  return openTag.replace(/^<script\b/i, `<script data-lh-block="${name}"`);
 }
 
 // Replaces every real inline <script> block's content with its
@@ -183,7 +190,8 @@ function minifyScriptBlocks(assembled, statsOut) {
     const openTag = openTagMatch[0];
     const closeTag = closeTagMatch[0];
 
-    out += beforeContent;
+    // The opening tag is written below, with the chunk's name added.
+    out += beforeContent.slice(0, beforeContent.length - openTag.length);
     const content = assembled.slice(contentStart, contentEnd);
 
     // Independent sanity check on the RAW block, before any transform —
@@ -201,8 +209,11 @@ function minifyScriptBlocks(assembled, statsOut) {
       chunks = [processed];
     }
 
-    const named = chunks.map((chunk, i) => `${chunk}\n//# sourceURL=${sourceUrlFor(blockIndex, i, chunks.length)}`);
-    out += named.join(`${closeTag}${openTag}`);
+    // The last chunk's closing tag is the original one, copied with the
+    // rest of the page after contentEnd.
+    out += chunks.map((chunk, i) =>
+      (i === 0 ? '' : closeTag) + namedOpenTag(openTag, blockNameFor(blockIndex, i, chunks.length)) + chunk
+    ).join('');
 
     if (statsOut) {
       statsOut.push({
