@@ -295,7 +295,10 @@ run against the real built page), and the owner-only functions the page
 calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-personal/` covers the `kos-personal/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
-duplicates refused rather than guessed, working IDs never replaced);
+duplicates refused rather than guessed, working IDs never replaced), the
+batched requeue of terminal staging rows (`staging-requeue.test.js`), and
+per-session vector classification and its backfill
+(`vector-classify-sessions.test.js`);
 `tests/tools/` covers
 the lint tools, the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
