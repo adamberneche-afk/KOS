@@ -288,8 +288,9 @@ native to that separate Apps Script project — see
 Dashboard for real");
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
-the pacing/calendar helpers, and the `?diag` modes (`diagnostics.test.js`,
-run against the real built page); `tests/kos-personal/` covers the `kos-personal/studio-steps/`
+the pacing/calendar helpers, the `?diag` modes (`diagnostics.test.js`,
+run against the real built page), and the owner-only functions the page
+calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-personal/` covers the `kos-personal/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced);
