@@ -936,15 +936,107 @@ was 1052 before the two new test files), `html-lint`, `gas-lint`, and
 
 ---
 
-> **This investigation is still open, so its current state does not live
-> here.** Everything above is the round-by-round record of what was tried
-> and what it showed — which is what this file is for. The live summary
-> (what is ruled out, what the app currently does, the two untested next
-> steps, and the working constraints that shaped every result) is
-> `README.md`'s **"OPEN — the OAuth-consent-dialog crash"** section, per
-> this file's own header convention: closed items here, live state there.
-> Read that section before starting another round, and move its content
-> down here once this is finally closed.
+### Closed — 2026-09-27/28: three real causes, found with `?diag`
+
+The investigation ended once the page could report on itself.
+`Diagnostics.gs` (PRs #39, #42 and #48) added `?diag=1`, `?diag=probe` and
+`?diag=raw` because DevTools is blocked on district devices. They showed
+three separate faults, none of them anything the five rounds above had
+tested.
+
+**1. Apps Script's copy of the page wasn't the page clasp pushed.**
+`?diag=1` (computed server-side from
+`HtmlService.createHtmlOutputFromFile().getContent()`) showed:
+
+- 9 named script blocks instead of 16, one of 250,040 characters;
+- 1,215,405 characters in all, against 1,233,962 in the build.
+
+That ruled out the district network, the untested "next step 1" above:
+the damage existed before anything left Google. `?diag=raw` gave the
+held text, and a diff against the build showed that HtmlService parses
+and re-serializes the page. Most of what it does is harmless:
+
+- 195 HTML and 60 CSS comments dropped;
+- `&`, `+` and `>` in attributes entity-escaped.
+
+It also deleted 7 of the 16 `//# sourceURL=` comments the build appended
+to each block (why those 7 is not visible from outside). Each comment sat
+directly against its closing tag, and the deletion took `</script` with
+it:
+
+```
+build:   //# sourceURL=leader-hub-block-1-part-2-of-15.js</script><script>
+held:    ><script>
+```
+
+So each of those blocks ran on into the next with a stray `>`. After
+`block-0` that pulled the page's markup into a script, which is where the
+`Unexpected identifier 'style'` (at `userCodeAppPanel...:570:25`, which is
+only where Apps Script serves the page) and `Unexpected token '>'` came
+from. The `LS is not defined` errors in later blocks followed from `LS`'s
+block no longer parsing. Nothing else inside any script changed.
+
+**Fix (PR #49):** the build writes no `sourceURL` comments; each tag
+carries `data-lh-block="..."` instead. Live, `?diag=1` then showed 17
+named blocks and 0 `sourceURL` comments.
+
+This also explains why the split "still crashed live" (round 4). The
+split landed on 2026-09-16 at 17:23, and the `sourceURL` comments at 17:59
+(`06743e7`), before any live test of the split. The one clean render, the
+12-tag throwaway, never had them. The per-tag-size finding from the
+bisection was probably right all along; the 70,000-character limit stays.
+
+**2. Splitting changed load order.** With the page intact, `?diag=probe`
+showed one error: `_lpHasUnsavedChanges is not defined`. In one script,
+every top-level function and var exists before any statement runs. Split
+into tags, each exists only once its own tag has run. Fragment 06's
+load-time `_unsavedWorkChecks = [_lpHasUnsavedChanges, ...]` ran two tags
+before fragment 09 declared the function, and the rest of that tag's
+load-time code was skipped. Round 5's one-off "renderTrips is not
+defined" is the same class of fault.
+
+**Fix (PR #50):** `tools/leaderhub-build/order-declarations.js` emits one
+`var` list of every top-level name, then every top-level function, then
+every other statement, before splitting. That is the order one script
+already sets things up in. `tests/tools/leaderhub-build-load-order.test.js`
+runs the real built tags in sequence in a shared `vm` context. The
+previous build reproduces the live error exactly under it; the fixed
+build runs with no errors. Live: `?diag=probe` 17 of 17 blocks run,
+0 errors, and the dashboard loads with no banner.
+
+**3. The page's server sync had never worked.** Apps Script never exposes
+a function ending in `_` to `google.script.run`. All eight browser calls
+(`lhGetAllConfig_`, `lhSaveConfig_`, `lhPushData_`, `lhPullData_`,
+`lhGetScrScores_`, `lhSaveScrScores_`, `lhApiCall_`,
+`lhGetHorizonItems_`) threw in the browser; the page logged them as
+warnings.
+
+**Fix (PR #49):** public entry points without the `_` in `Code.gs`, each
+checking `OWNER_EMAIL` first because anything public is callable by any
+signed-in domain user. gas-lint now rejects a browser call to a `_` name.
+Live: `?diag=1`'s "Settings sync call" reads OK.
+
+**What the rounds above ruled out, for the record** (none of it was the
+cause):
+
+| Tried | Result |
+|---|---|
+| OAuth scope composition: full `mail.google.com`, then `gmail.readonly`+`gmail.compose`, then `readonly` only, then zero Gmail scope | Crashed identically every time (rounds 1-5) |
+| `GmailApp` usage itself, every call site disabled | Crashed identically (rounds 3 and 5) |
+| Deployment `access`/`executeAs` combinations | No change |
+| Raw page size alone (a synthetic ~1.5M-character inert page; 5,000 `style=` elements) | Both rendered clean |
+| The CSP `<meta>` tag in isolation | Rendered clean |
+| The giant script alone in a minimal shell | Never reproduced |
+| Per-tag size: 15 chunks under 70,000 characters | Still crashed live, because of the `sourceURL` comments |
+| A brand-new project with a new script ID | Crashed identically |
+| Incognito vs. normal session | Identical |
+
+Gmail scope is still off. Since scopes weren't the cause, restoring it is
+now an ordinary feature decision.
+
+Remaining at close: confirm `/exec` after the release (`/dev` is verified
+at `2a3dd4a`). The School calendar importer in Settings misfiles holidays
+as early release; that is a separate, open bug.
 
 ## The School Store Sales Log's unescaped innerHTML sink, closed (Open Items #10)
 

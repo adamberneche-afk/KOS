@@ -804,7 +804,10 @@ function listOrgSyncs_(body) {
 // Gmail scope really is unrelated. This round removes gmail.readonly too,
 // leaving zero Gmail scope in appsscript.json, so nothing in this project
 // asks for or depends on Gmail access at all. See leader-hub/HISTORY.md's
-// newest entry. Returns an empty list rather than throwing so callers
+// newest entry. RESOLVED 2026-09-28: Gmail was not the cause (HtmlService
+// stripping sourceURL comments with their closing tags, then split load
+// order; see HISTORY.md's closing entry), so turning this back on is now an
+// ordinary feature decision. Returns an empty list rather than throwing so callers
 // (both the horizon-items GET path and the client's local fallback) don't
 // need their own special case for "this feature is off."
 function scanHorizonLabel_() {
