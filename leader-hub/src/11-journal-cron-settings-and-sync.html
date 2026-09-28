@@ -1846,7 +1846,7 @@ function renderCourseCatalogSettings() {
   if (!el) return;
   el.innerHTML = Object.entries(SCR_COURSES).map(([code, c]) => `
     <div style="display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
-      <span>${c.icon||'🧩'}</span>
+      <span>${escH(c.icon||'🧩')}</span>
       <span style="flex:1"><strong>${escH(code)}</strong> — ${escH(c.name)} <span style="color:var(--muted)">(${c.competencies.length} ${escH((c.standardsLabel||'competencies').toLowerCase())})</span></span>
       ${c.custom
         ? `<button onclick="lhRemoveCustomCourse('${code}')" aria-label="Remove course ${escH(code)}" title="Remove course" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
@@ -1988,20 +1988,20 @@ function renderOrgCatalogSettings() {
     const syncRow = (sync && sync.enabled)
       ? `<div style="display:flex;align-items:center;gap:.4rem;margin-top:.3rem;flex-wrap:wrap;padding-left:1.75rem">
            <span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
-           <button onclick="lhPullOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
-           <button onclick="lhPushOrgSync('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
-           <button onclick="lhStopSharingOrg('${id}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
+           <button onclick="lhPullOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
+           <button onclick="lhPushOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
+           <button onclick="lhStopSharingOrg('${escJsAttr(id)}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
          </div>`
       : `<div style="padding-left:1.75rem;margin-top:.3rem">
-           <button onclick="lhShareOrg('${id}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.68rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
+           <button onclick="lhShareOrg('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .55rem;font-size:.68rem;cursor:pointer;color:#1e3a6e">🔗 Share with a co-advisor</button>
          </div>`;
     return `
     <div style="padding:.4rem .6rem;border:1px solid var(--border);border-radius:8px;margin-bottom:.35rem;font-size:.78rem">
       <div style="display:flex;align-items:center;gap:.5rem">
-        <span>${o.icon||'🧩'}</span>
+        <span>${escH(o.icon||'🧩')}</span>
         <span style="flex:1"><strong>${escH(o.name)}</strong> <span style="color:var(--muted)">(${o.officerPositions.length} officer position(s)${o.levels && o.levels.length ? ', '+o.levels.length+' level(s)' : ''})</span></span>
         ${o.custom
-          ? `<button onclick="lhRemoveCustomOrg('${id}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
+          ? `<button onclick="lhRemoveCustomOrg('${escJsAttr(id)}')" aria-label="Remove organization ${escH(o.name)}" title="Remove organization" style="background:none;border:none;color:#dc2626;cursor:pointer;font-size:.85rem;padding:.2rem">✕</button>`
           : `<span style="font-size:.65rem;color:var(--muted);font-style:italic">built-in</span>`}
       </div>
       ${syncRow}
@@ -2451,7 +2451,7 @@ function lhExportBackup(){
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement('a');
   a.href = url;
-  a.download = 'leaderhub-backup-' + new Date().toISOString().slice(0,10) + '.json';
+  a.download = 'leaderhub-backup-' + _localDateStr_() + '.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -3011,7 +3011,7 @@ function toggleObsCheck(key, val) {
   const critDone  = critical.filter(i => saved[i.key]).length;
   if (val && critDone === critical.length && critical.length > 0) {
     // Dedup: only log once per calendar day — prevents inflation if user unchecks/rechecks
-    const _ocToday = new Date().toISOString().slice(0, 10);
+    const _ocToday = _localDateStr_();
     const _ocLog   = LS.get('lh_daily_log', []);
     if (!_ocLog.some(e => e.type === 'obs_prep_complete' && (e.date||'').slice(0,10) === _ocToday)) {
       _logDaily({ date: new Date().toISOString(), type: 'obs_prep_complete',

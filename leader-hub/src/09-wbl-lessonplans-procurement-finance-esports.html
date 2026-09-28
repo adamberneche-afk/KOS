@@ -410,7 +410,7 @@ function sbePrintChecklist() {
   const w = window.open('','_blank');
   w.document.write(`<html><head><title>SBE Checklist — Cavalier Shop</title><style>body{font-family:sans-serif;max-width:800px;margin:2rem auto;font-size:13px}table{width:100%;border-collapse:collapse}th{background:#1a3560;color:#fff;padding:8px;text-align:left}</style></head><body>
     <h2 style="color:#1a3560">🏪 SBE Approval Checklist — Cavalier Shop (8177)</h2>
-    <p style="color:#666">Progress: ${done}/${SBE_ELEMENTS.length} elements complete | Printed: ${fd(new Date().toISOString().slice(0,10))}</p>
+    <p style="color:#666">Progress: ${done}/${SBE_ELEMENTS.length} elements complete | Printed: ${fd(_localDateStr_())}</p>
     <table><thead><tr><th style="width:60px">Done</th><th>Element</th><th style="width:180px">Owner</th></tr></thead>
     <tbody>${rows}</tbody></table>
     <p style="margin-top:1.5rem;font-size:11px;color:#999">Per CCPS SBE Tool Kit — Group III Procedures. Approval required by school principal.</p>
@@ -754,7 +754,7 @@ function lpSetView(view) {
       // quarter dates instead; outside the whole defined range, fall back
       // to whichever end is closer (before Q1 → Q1, after Q4 → Q4) rather
       // than silently defaulting to Q1 regardless of which side we're on.
-      const todayKey = new Date().toISOString().slice(0, 10);
+      const todayKey = _localDateStr_(); // local, not UTC
       let curQ = null;
       for (const [qn, r] of Object.entries(LP_QUARTERS)) {
         if (todayKey >= r.start && todayKey <= r.end) { curQ = qn; break; }
@@ -1472,7 +1472,7 @@ function exportSCR() {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `SCR_${scrActiveCourse}_${scrActivePeriod}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `SCR_${scrActiveCourse}_${scrActivePeriod}_${_localDateStr_()}.csv`;
   a.click();
   URL.revokeObjectURL(url);
 }
@@ -2320,7 +2320,7 @@ function saveMatch() {
   // Falls back to today when the date field is left blank — was computed
   // here but never actually used below, so a blank date field silently
   // saved an empty date instead of falling back.
-  const matchDateVal = document.getElementById('match-date')?.value || new Date().toISOString().slice(0,10);
+  const matchDateVal = document.getElementById('match-date')?.value || _localDateStr_();
   ES_MATCHES.push({
     id:'m'+Date.now(),
     date:  matchDateVal,
