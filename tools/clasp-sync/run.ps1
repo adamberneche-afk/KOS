@@ -63,6 +63,11 @@
     version numbers are per project. A promote run prints each deployment's
     previous version for this.
 
+.PARAMETER SkipScriptCheck
+    Run this copy of run.ps1 even though it differs from the one in the
+    checkout. Without it, a differing copy stops before anything is pushed
+    and prints the command that updates it.
+
 .PARAMETER Only
     Optional. Run only the named project(s). This is also the only way to run
     a project marked OnHold in the manifest.
@@ -91,6 +96,7 @@ param(
     [int]$RollbackTo = 0,
     [string]$RepoRoot = "KOS-main",
     [string]$Registry = "clasp-registry",
+    [switch]$SkipScriptCheck,
     [string[]]$Only = @()
 )
 
@@ -617,6 +623,29 @@ else {
 if ($Zip) { Update-Checkout -ZipPath $Zip }
 if (-not (Test-Path (Join-Path $RepoRoot "tools\clasp-sync\sync.js"))) {
     throw "$RepoRoot doesn't look like a KOS checkout. Pass -Zip or -RepoRoot."
+}
+
+# The copy of this script you run lives outside the checkout (-Zip replaces
+# the checkout wholesale), so a new zip never updates it. An old copy
+# silently lacks whatever the new one fixes: on 2026-09-28 that meant no
+# /dev link, and a stale bookmark got tested instead. So stop, before
+# anything is pushed, when this copy differs from the checkout's.
+$checkoutScript = Join-Path $RepoRoot "tools\clasp-sync\run.ps1"
+if (-not $SkipScriptCheck -and $PSCommandPath -and (Test-Path $checkoutScript)) {
+    $mine = (Get-Content -LiteralPath $PSCommandPath -Raw) -replace "`r`n", "`n"
+    $theirs = (Get-Content -LiteralPath $checkoutScript -Raw) -replace "`r`n", "`n"
+    if ($mine -cne $theirs) {
+        Write-Host ""
+        Write-Host "This run.ps1 differs from the one in the checkout. Nothing was pushed." -ForegroundColor Red
+        Write-Host "  running:  $PSCommandPath"
+        Write-Host "  checkout: $checkoutScript"
+        Write-Host "Update it, then run the same command again:"
+        Write-Host ""
+        Write-Host "  Copy-Item `"$checkoutScript`" `"$PSCommandPath`" -Force"
+        Write-Host ""
+        Write-Host "(-SkipScriptCheck runs this copy anyway.)"
+        exit 1
+    }
 }
 
 $script:Markers = @{}
