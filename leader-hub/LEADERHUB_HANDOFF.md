@@ -134,7 +134,7 @@ LP_C_COLORS / LP_C_LABELS — Course color palette and labels
 - `action: 'subPlan'` → creates Google Doc, returns `{ok, docUrl}`
 - `action: 'bragEmail'` → sends an email via MailApp, returns `{ok}`
 - `action: 'markConsumed'` → marks horizon email items consumed
-- GET (no action) → scans Gmail label "LeaderHub" for horizon items (currently disabled — always returns an empty list; this project requests zero Gmail scope while a live OAuth-consent-dialog crash is being investigated, see `HISTORY.md`)
+- GET (no action) → scans Gmail label "LeaderHub" for horizon items (currently disabled — always returns an empty list; this project requests zero Gmail scope; it was removed while chasing an OAuth-consent-dialog crash that turned out to have other causes, see `HISTORY.md`)
 
 ---
 
