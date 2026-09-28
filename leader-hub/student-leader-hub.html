@@ -3346,14 +3346,14 @@ if (LH_SERVER_SYNCED_CONFIG_KEYS.indexOf(key) === -1) return;
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
 google.script.run
 .withFailureHandler(err => console.warn('[LeaderHub] config sync failed for ' + key + ':', (err && err.message) || err))
-.lhSaveConfig_(key, value);
+.lhSaveConfig(key, value);
 }
 async function lhRefreshConfigFromServer_() {
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
 let remote;
 try {
 remote = await new Promise((resolve, reject) => {
-google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig_();
+google.script.run.withSuccessHandler(resolve).withFailureHandler(reject).lhGetAllConfig();
 });
 } catch (e) {
 console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.message) || e);
@@ -3464,7 +3464,7 @@ res = await new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhPushData_({ domain, headers: ['Id', 'RecordJSON'], rows, expectedUpdatedAt: tracker.lastKnownRemoteUpdatedAt });
+.lhPushData({ domain, headers: ['Id', 'RecordJSON'], rows, expectedUpdatedAt: tracker.lastKnownRemoteUpdatedAt });
 });
 } catch (e) {
 console.warn('[LeaderHub] Sync failed for ' + domain + ':', (e && e.message) || e);
@@ -3568,7 +3568,7 @@ res = await new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhPullData_({ domain });
+.lhPullData({ domain });
 });
 } catch (e) {
 console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
@@ -3605,7 +3605,7 @@ await new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhSaveScrScores_(batch);
+.lhSaveScrScores(batch);
 });
 } catch (e) {
 console.warn('[LeaderHub] SCR score sync failed for ' + batch.length + ' cell(s):', (e && e.message) || e);
@@ -3619,7 +3619,7 @@ res = await new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhGetScrScores_();
+.lhGetScrScores();
 });
 } catch (e) {
 console.warn('[LeaderHub] Could not refresh SCR scores from server:', (e && e.message) || e);
@@ -11264,7 +11264,7 @@ return new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhApiCall_(action, payload || {});
+.lhApiCall(action, payload || {});
 });
 }
 const url = EMAIL_BRIDGE.url();
@@ -15375,7 +15375,7 @@ data = await new Promise((resolve, reject) => {
 google.script.run
 .withSuccessHandler(resolve)
 .withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
-.lhGetHorizonItems_();
+.lhGetHorizonItems();
 });
 } else {
 const resp = await fetch(url + (url.includes('?') ? '&' : '?') + 'api=horizon', { method: 'GET' });

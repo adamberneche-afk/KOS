@@ -148,6 +148,10 @@ test('every real client call in the repo resolves to a declared server function'
         totalCalls++;
         assert.ok(declared.has(c.name),
           `${relPath}:${c.line} calls google.script.run.${c.name}() but project "${projectName}" declares no such top-level function`);
+        // Apps Script hides "_" functions from google.script.run, so such a
+        // call can never reach the server.
+        assert.ok(!c.name.endsWith('_'),
+          `${relPath}:${c.line} calls google.script.run.${c.name}(), which the browser can never reach`);
       });
     });
   });
@@ -171,6 +175,6 @@ test('leader-hub\'s multi-line chains are covered', () => {
   const rel = 'leader-hub/student-leader-hub.html';
   const found = findGoogleScriptRunCalls(rel, fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8'));
   const got = [...new Set(found.calls.map((c) => c.name))].sort();
-  assert.deepEqual(got, ['lhApiCall_', 'lhGetAllConfig_', 'lhGetHorizonItems_', 'lhGetScrScores_',
-                         'lhPullData_', 'lhPushData_', 'lhSaveConfig_', 'lhSaveScrScores_']);
+  assert.deepEqual(got, ['lhApiCall', 'lhGetAllConfig', 'lhGetHorizonItems', 'lhGetScrScores',
+                         'lhPullData', 'lhPushData', 'lhSaveConfig', 'lhSaveScrScores']);
 });

@@ -10,9 +10,8 @@
 //   ?diag=1            A tiny server-checks page, no app code: who you're
 //                      signed in as, whether you're the owner, how big the
 //                      served app is, and two live google.script.run calls
-//                      (one public, one to a private `_` function, since
-//                      Apps Script refuses to run private functions from
-//                      the browser).
+//                      (a ping, and lhGetAllConfig, the owner-only entry
+//                      point the app's settings sync uses).
 //   ?diag=probe        The full app, plus a status panel pinned to the
 //                      bottom of the screen: which of the page's script
 //                      blocks actually ran, every error with its block and
@@ -303,11 +302,11 @@ function _lhDiagServerPage_(cfg, owner) {
     '<tr><th>JavaScript runs</th><td id="js">NO -- scripts are blocked or failed to load</td></tr>' +
     '<tr><th>google.script.run</th><td id="gsr">not checked</td></tr>' +
     '<tr><th>Public server call (lhDiagPing)</th><td id="pub">waiting</td></tr>' +
-    '<tr><th>Private server call (lhGetAllConfig_)</th><td id="priv">waiting</td></tr>' +
+    '<tr><th>Settings sync call (lhGetAllConfig)</th><td id="priv">waiting</td></tr>' +
     '</table>' +
-    '<p>The app loads and saves settings, data and SCR scores through private <code>_</code> ' +
-    'functions. If the private call fails while the public one works, none of that ' +
-    'is reaching the server.</p>' +
+    '<p>The app loads and saves settings, data and SCR scores through owner-only public ' +
+    'functions (Code.gs). If this call fails while the ping works, none of that is ' +
+    'reaching the server.</p>' +
     scriptTable +
     '<p>Probe the full app: add <code>?diag=probe</code> to this URL (or ' +
     '<code>?diag=probe&amp;parts=8</code> to serve only the first 8 blocks). The page text as ' +
@@ -320,11 +319,11 @@ function _lhDiagServerPage_(cfg, owner) {
     'set("gsr","available");' +
     'google.script.run.withSuccessHandler(function(r){set("pub","OK -- "+JSON.stringify(r));})' +
     '.withFailureHandler(function(e){set("pub","FAILED -- "+((e&&e.message)||e));}).lhDiagPing();' +
-    'var priv=google.script.run.withSuccessHandler(function(){set("priv","OK -- private functions are callable here");})' +
+    'var priv=google.script.run.withSuccessHandler(function(){set("priv","OK -- settings sync reaches the server");})' +
     '.withFailureHandler(function(e){set("priv","FAILED -- "+((e&&e.message)||e));});' +
-    'if(typeof priv.lhGetAllConfig_!=="function"){set("priv","FAILED -- google.script.run has no lhGetAllConfig_: ' +
-    'private functions are not exposed to the browser");return;}' +
-    'priv.lhGetAllConfig_();' +
+    'if(typeof priv.lhGetAllConfig!=="function"){set("priv","FAILED -- google.script.run has no lhGetAllConfig ' +
+    '(this deployment predates the public entry points)");return;}' +
+    'priv.lhGetAllConfig();' +
     '})();</script>'
   ) : '';
 
