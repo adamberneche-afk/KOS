@@ -2247,3 +2247,35 @@ out-of-range and non-integer rejected), the freeze-on-decision rule, a
 missing-row error, a missing-tab non-throw, and the `DASHBOARD_SCRS`/`SCRS`
 schema-compat check. `npm test` (1123/1123) and `gas-lint` (0 errors, same
 13 pre-existing warnings) both clean.
+
+## Codebase sweep, 2026-09-28
+
+- **Students saw "Status unavailable" on every submitted assignment.**
+  `13_StudentDashboard.js` had no case for `PENDING_TEACHER_REVIEW`, where
+  every passing turn-in lands. It now reads "Submitted — awaiting teacher
+  review".
+- **Flow 4 scores weren't range-checked.** The harvest wrote whatever
+  grammar/engagement numbers came back straight into the grade. Anything
+  outside the prompt's 0-1 / 0-3 now fails the row instead
+  (`41_WarmUpFlowBridge.js`, and the same guard in the unused custom
+  step). Two existing tests used out-of-range scores and were corrected.
+- **Warm-up docs were dated the day before their lesson.** A bare
+  `yyyy-MM-dd` parsed as UTC midnight, the evening before in New York.
+- **A teacher could finalize another teacher's student's turn-in score**
+  by ConfigID, because the Ledger is shared. `_recordTurnInDecision_()`
+  now checks the row's `TEACHER_EMAIL`, as the SCR review already did.
+- **onclick handlers built from student names didn't escape backslashes**,
+  so a name from Form 1 could run script in the teacher's dashboard. A
+  shared client `jsAttr()` now does the JS-then-HTML escaping, and a test
+  runs the rendered handler through a real parser.
+- **The Flow 3/4/5 harvest had no lock**, so two overlapping runs could
+  each create a warm-up doc for the same queue row. It now takes the
+  document lock, like Flow 2's harvest.
+
+Found in the same sweep and left for a decision (see the sweep report):
+student shared folders give every student in a class view access to
+every classmate's doc; the SCR export is shared with the whole domain;
+the student-dashboard manifest says USER_ACCESSING + ANYONE while the
+installer says MYSELF + DOMAIN; weekly parent reports aren't scoped to
+the calling teacher; and an errored FlowInput row blocks that
+submission's retries.

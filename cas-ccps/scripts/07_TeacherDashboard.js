@@ -621,6 +621,14 @@ function _recordTurnInDecision_(cfg, configId, teacherEmail, overrideScore, deci
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][LEDGER.CONFIG_ID]).trim() !== configId) continue;
 
+    // The Ledger is shared across every teacher, so a ConfigID alone could
+    // finalize another teacher's student's score. Same ownership rule as
+    // _recordScrDecision_(); fails closed on a blank teacherEmail.
+    const rowTeacher = String(data[i][LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    if (!teacherEmail || rowTeacher !== String(teacherEmail).trim().toLowerCase()) {
+      return { success: false, error: "This submission is not in your classes." };
+    }
+
     const currentStatus = String(data[i][LEDGER.STATUS]).trim();
     if (currentStatus !== "PENDING_TEACHER_REVIEW") {
       return { success: false, error: "This submission is not awaiting review (current status: " + currentStatus + ")." };
@@ -2440,8 +2448,8 @@ If you expect to see students here:
         // describes for any student name containing an apostrophe. Now
         // targets the entity esc() actually produces. wrIdSafe is
         // unaffected — googleId is never passed through esc() first.
-        const wrIdSafe   = s.googleId.replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const wrNameSafe = esc(s.name).replace(/&#39;/g,"\\\\'");
+        const wrIdSafe   = jsAttr(s.googleId);
+        const wrNameSafe = jsAttr(s.name);
         wrNextStep = '<button onclick="openStudentProfile(\\'' + wrIdSafe + '\\', \\'' + wrNameSafe + '\\')" style="margin-top:6px;background:none;border:1px solid #1a73e8;color:#1a73e8;border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer">View Profile →</button>';
       }
       // NEW (Say/Do Ledger cas-ccps finding #1): shown on every
@@ -2454,8 +2462,8 @@ If you expect to see students here:
       // fix for rvNameSafe.
       let reviewNextStep = "";
       if (s.statusClass === "pending-review") {
-        const rvConfigSafe = String(s.configId||"").replace(/"/g,"&quot;").replace(/'/g,"\\\\'");
-        const rvNameSafe   = esc(s.name).replace(/&#39;/g,"\\\\'");
+        const rvConfigSafe = jsAttr(s.configId);
+        const rvNameSafe   = jsAttr(s.name);
         const rvScoreArg   = s.suggestedScore == null ? "null" : String(s.suggestedScore);
         const rvScoreNote  = s.suggestedScore == null
           ? "No AI-suggested score — assign one directly."
