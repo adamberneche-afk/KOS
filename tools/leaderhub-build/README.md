@@ -46,8 +46,8 @@ order. Don't reorder `manifest.json` casually.
 
 After concatenating fragments, `build.js` runs each real `<script>` block's
 content through a small hand-rolled toolchain — see
-`leader-hub/HISTORY.md`'s two OAuth-consent-dialog-crash entries for the
-full story of why this exists:
+`leader-hub/HISTORY.md`'s OAuth-consent-dialog-crash entries (the last one
+closes it) for the full story of why this exists:
 
 1. **`strip-comments.js`** removes comments and collapses dead whitespace
    (a pure size reduction — string/template/regex literal content and
@@ -70,8 +70,11 @@ full story of why this exists:
    `tests/tools/leaderhub-build-load-order.test.js` runs the real built
    tags one after another in a shared context to prove it.
 4. **`split-script.js`** splits a block over `MAX_SCRIPT_CHUNK_SIZE`
-   (currently 70,000 characters — comfortably under the ~100K–107K
-   per-tag threshold live bisection measured as the actual crash trigger)
+   (currently 70,000 characters, comfortably under the ~100K–107K per-tag
+   threshold a throwaway-project bisection measured; that threshold was
+   never confirmed on a real project, because every real deploy of the
+   split also carried the `sourceURL` comments described below, so the
+   limit stays as a precaution)
    into several consecutive `<script>...</script>` tags, cut only at real
    statement boundaries found by tokenizing (`js-lexer.js`), never at a
    bare bracket-depth-0 gap that could sit mid-expression. Every resulting
@@ -79,9 +82,9 @@ full story of why this exists:
 
 Only a block that actually exceeds the size threshold gets hoisted, reordered and split;
 the small error-handler script is minified but left as one tag. This is
-why the real assembled file currently has 16 `<script>` blocks (the small
-error-handler one, plus 15 chunks of the giant one), not 2 — that count
-will drift as the giant script grows or shrinks, so don't treat "16" as a
+why the real assembled file currently has 17 `<script>` blocks (the small
+error-handler one, plus 16 chunks of the giant one), not 2 — that count
+will drift as the giant script grows or shrinks, so don't treat "17" as a
 fact to keep in sync here; `node tools/html-lint/check.js
 leader-hub/student-leader-hub.html` always reports the real current count.
 
@@ -101,8 +104,8 @@ These names used to be trailing `//# sourceURL=` comments. **Don't bring
 them back.** Apps Script's HtmlService strips some of those comments from
 the page it holds. When one sat directly against `</script>`, it took
 `</script` with it and left a stray `>`, so the block ran on into the
-next. That was the page-load `SyntaxError` behind the long-open
-consent-dialog crash (see `leader-hub/README.md`).
+next. That was the page-load `SyntaxError` behind the consent-dialog
+crash (see `leader-hub/README.md`'s "Fixed" section).
 
 Run `node tools/leaderhub-build/build.js --stats` for a per-block report:
 original vs. minified size, the reduction percentage, and (for a split

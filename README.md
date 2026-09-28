@@ -91,17 +91,17 @@ places where raw JavaScript was rendering as visible garbage text because
 it sat outside any `<script>` tag, silently disabling a rating widget
 since it was first added.
 
-**One investigation is still open here** — a live OAuth-consent-dialog
-crash (`Uncaught SyntaxError: Unexpected identifier 'style'`, thrown from
-Google's own consent bundle, not from anything in this repo). Five rounds
-have ruled out OAuth scope composition entirely, `GmailApp` usage,
-deployment settings, raw page size, the CSP tag, and per-`<script>`-tag
-size; the app renders and works despite the banner. Read
-[`leader-hub/README.md`](./leader-hub/README.md)'s "OPEN — the
-OAuth-consent-dialog crash" section **before** touching OAuth scopes,
-`leader-hub/appsscript.json`, or `tools/leaderhub-build/` — it lists what
-is already disproven (so no round gets repeated) and the two untested
-next steps.
+**The long-running OAuth-consent-dialog crash is fixed** (2026-09-28;
+confirmed on `/dev`, `/exec` still to confirm after the release). The
+`Uncaught SyntaxError: Unexpected identifier 'style'` came from Apps
+Script stripping the build's `//# sourceURL=` comments along with their
+closing tags. A second fault followed: the split script's load order. Separately,
+the page's server sync had never worked, because every browser call
+targeted a private `_` function. Read
+[`leader-hub/README.md`](./leader-hub/README.md)'s "Fixed — the
+OAuth-consent-dialog crash" section **before** touching
+`tools/leaderhub-build/` or how the page is served; the full
+investigation is in `leader-hub/HISTORY.md`.
 
 ## [`drive-curation/`](./drive-curation/) — filed for reference, not a system
 
@@ -261,8 +261,10 @@ quarter" maintainability fix); `--stats` prints a per-block size report.
 Beyond concatenation it now strips comments/dead whitespace, rewrites
 top-level `let`/`const` to `var`, and splits the giant script into
 several `<script>` tags at tokenizer-verified statement boundaries (each
-`node --check`ed, each tagged with `//# sourceURL=`) — all added chasing
-the open OAuth-dialog crash above, all hand-rolled with zero npm
+`node --check`ed, each named with a `data-lh-block` attribute), after
+moving top-level functions and var names ahead of other statements so the
+split can't change load order — all added chasing the OAuth-dialog crash
+above, all hand-rolled with zero npm
 dependencies on a small tokenizer with its own invariant checker and unit
 tests. See
 [`tools/leaderhub-build/README.md`](./tools/leaderhub-build/README.md).
