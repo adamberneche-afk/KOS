@@ -218,7 +218,7 @@ function onLessonContextSubmit_(payload) {
       // still in RECEIVED. There is no backfill trigger for S27; a deferred
       // frame just means frameDocUrl stays null this time.
       Logger.log("[S22] S26 call failed for " + lessonId + ": " + alignResult.error);
-      writeErrorNote_(lcSheet, lessonId, "Alignment logging deferred: " + alignResult.error);
+      writeErrorNote_(lcSheet, lessonId, LC_NOTE_DEFERRED + ": " + alignResult.error);
     } else {
       // ── Call Script 27 directly ─────────────────────────────────────────
       // Synchronous, deterministic compile — see 27_LessonFrameGenerator.js's
@@ -245,7 +245,7 @@ function onLessonContextSubmit_(payload) {
   } catch (err) {
     // Non-fatal — row is written, backfill trigger will catch it
     Logger.log("[S22] S26 threw: " + err.message);
-    writeErrorNote_(lcSheet, lessonId, "Alignment logging deferred: " + err.message);
+    writeErrorNote_(lcSheet, lessonId, LC_NOTE_DEFERRED + ": " + err.message);
   }
 
   // ── Return success ────────────────────────────────────────────────────────
@@ -452,7 +452,28 @@ function generateLessonId_() {
 // Picks up any RECEIVED rows where alignment_logged_at is empty,
 // i.e. rows where the direct S26 call in onLessonContextSubmit_ failed.
 // Install via Script 22's self-registering trigger setup (below).
+//
+// FIXED: a lesson S26 could never log (row edited to have no
+// competency_ids, AlignmentLog tab gone) used to be retried every 5 minutes
+// forever, adding a failure line to the log each time. Now each failed
+// attempt is counted in the row's error_notes, and the backfill stops after
+// LC_BACKFILL_MAX_ATTEMPTS (at once when S26 says retrying can't help):
+// status becomes ERROR and error_notes says why. To try again, fix the row
+// and set status back to RECEIVED. A lock-busy stand-down isn't counted,
+// since nothing was tried. A row that later succeeds has its deferred note
+// cleared.
 // ---------------------------------------------------------------------------
+const LC_BACKFILL_MAX_ATTEMPTS = 6;
+const LC_NOTE_DEFERRED = "Alignment logging deferred";
+
+// How many backfill attempts error_notes records for this row: 0 for the
+// direct path's "Alignment logging deferred: ..." note, N for
+// "Alignment logging deferred (attempt N of M): ...".
+function _backfillAttemptsFromNote_(note) {
+  const m = /^Alignment logging deferred \(attempt (\d+) of \d+\)/.exec(String(note || ""));
+  return m ? Number(m[1]) : 0;
+}
+
 function runAlignmentLogBackfill_() {
   const cfg    = getConfig_();
   const ss     = SpreadsheetApp.openById(cfg.ledgerSsId);
@@ -471,16 +492,39 @@ function runAlignmentLogBackfill_() {
     const lessonId = String(data[i][LC_LESSON_ID]).trim();
     if (!lessonId) continue;
 
+    const note = String(data[i][LC_ERROR_NOTES] || "");
+    let result;
     try {
-      const result = logAlignmentForLesson_(lessonId);
-      if (result.success) {
-        processed++;
-        Logger.log("[S22 BACKFILL] Processed " + lessonId);
-      } else {
-        Logger.log("[S22 BACKFILL] S26 returned failure for " + lessonId + ": " + result.error);
-      }
+      result = logAlignmentForLesson_(lessonId);
     } catch (err) {
-      Logger.log("[S22 BACKFILL] Error for " + lessonId + ": " + err.message);
+      result = { success: false, error: err.message };
+    }
+
+    // LessonContext rows are only ever appended, so row i + 1 is still
+    // this lesson's row.
+    const sheetRow = i + 1;
+    if (result.success) {
+      processed++;
+      Logger.log("[S22 BACKFILL] Processed " + lessonId);
+      if (note.indexOf(LC_NOTE_DEFERRED) === 0) {
+        lcSheet.getRange(sheetRow, LC_ERROR_NOTES + 1).setValue("");
+      }
+      continue;
+    }
+    if (result.busy) continue;
+
+    const attempts = _backfillAttemptsFromNote_(note) + 1;
+    if (result.retry === false || attempts >= LC_BACKFILL_MAX_ATTEMPTS) {
+      Logger.log("[S22 BACKFILL] Giving up on " + lessonId + " after " + attempts +
+                 " attempt(s): " + result.error);
+      lcSheet.getRange(sheetRow, LC_STATUS + 1).setValue(LC_STATUS_ERROR);
+      lcSheet.getRange(sheetRow, LC_ERROR_NOTES + 1).setValue(
+        "Alignment logging stopped after " + attempts + " attempt(s): " + result.error +
+        " Fix the row, then set status back to " + LC_STATUS_RECEIVED + " to retry.");
+    } else {
+      Logger.log("[S22 BACKFILL] S26 returned failure for " + lessonId + ": " + result.error);
+      lcSheet.getRange(sheetRow, LC_ERROR_NOTES + 1).setValue(
+        LC_NOTE_DEFERRED + " (attempt " + attempts + " of " + LC_BACKFILL_MAX_ATTEMPTS + "): " + result.error);
     }
   }
 
