@@ -68,7 +68,11 @@ closes that gap.
 4. **Never fabricate a hollow `PASSED` sign-off.** A `trace_log` with zero
    entries is only honest if the Curator's output genuinely contained
    nothing checkable and genuinely violated no rule — not a default you
-   reach for when checking feels like extra work.
+   reach for when checking feels like extra work. `_isAuditFailure_()`
+   rejects a `PASSED` with an empty `trace_log` whenever the Curator's
+   output has a next step, deferred decision, pivot, action item, cog
+   verdict or non-null alignment signal: record what you checked, even
+   when every entry is `VERIFIED`.
 5. **Do not skip the format check because the JSON parses.** Syntactically
    valid JSON that violates `CURATOR_PROMPT.md`'s own rules — a populated
    `vector_weights`, a missing `alignment_observations` key, an invalid
