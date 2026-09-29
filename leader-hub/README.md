@@ -59,25 +59,28 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
-**Open: the Settings school-calendar importer misreads real calendars**
-(seen live 2026-09-28: 0 no-school dates, 22 early-release dates and no
-quarters from the district calendar). Two bugs are in
-`parseCountyCalendarText()` (`src/11-journal-cron-settings-and-sync.html`):
+**Fixed 2026-09-29: the Settings school-calendar importer misread real
+calendars** (seen live 2026-09-28: 0 no-school dates, 22 early-release dates
+and no quarters). In `parseCountyCalendarText()`
+(`src/11-journal-cron-settings-and-sync.html`):
 
-1. Any short line mentioning early release or dismissal switches the
-   importer into early-release mode, even one carrying a date. The mode
-   then lasts for the rest of the document and overrides holiday names,
-   so holidays get filed as early release. The fix: a named holiday always
-   counts as no-school, and only a heading line with no date may switch
-   modes.
-2. Quarters are only recognized as "Quarter N" or "Nth Nine Weeks" with
-   two dates on the same line. Real calendars say "End of First Quarter –
-   Oct 30", "Q1" or "Marking Period 1".
+1. Any short line mentioning early release switched the importer into
+   early-release mode for the rest of the document, and that mode outranked
+   holiday names. Now only a heading (a short line with no date) sets the
+   mode, and what a dated line says wins: early release or dismissal is
+   early release, and a named holiday or "closed"/"no school"/"break" is
+   no-school. First-day, last-day and report-card lines are never days off.
+2. Quarters were only recognized as "Quarter N" or "Nth Nine Weeks" with two
+   dates. Now "Q1", "Qtr 1", "MP1", "Marking Period 1" and "First Quarter"
+   count too. A quarter given only as "End of First Quarter – Oct 30" gets
+   its start from the first day of school, or the next school day after the
+   previous quarter ends.
 
-Get the actual calendar text from the operator and use it as a test
-fixture. Until this is fixed, the import dialog's **Cancel** is the safe
-answer. The import only adds dates, so wrong ones would have to be removed
-by hand.
+Tests: `tests/leaderhub/pacing-and-calendar.test.js`, built from calendar
+lines in the shapes described above. The real district calendar hasn't been
+run through it yet: paste it into the importer, review the preview before
+saving, and send the text if anything is still misfiled so it can become a
+fixture.
 
 ## Fixed — the OAuth-consent-dialog crash (2026-09-28)
 

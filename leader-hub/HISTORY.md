@@ -1146,3 +1146,13 @@ carries the sharing advisor's bridge URL: the sharer copies a share code
 relays that org's push/pull to the sharer's bridge with the co-advisor's
 own token, where the same-domain lock admits them.
 
+## School-calendar importer, 2026-09-29
+
+`parseCountyCalendarText()` let any short early-release line switch the
+rest of the document into early-release mode, outranking holiday names, and
+recognized quarters only as "Quarter N"/"Nth Nine Weeks" ranges. A heading
+now sets the mode, a dated line's own words win, and quarters are read in
+the Q1/MP1/Marking Period/First Quarter forms, including "End of First
+Quarter" end dates (start inferred from the first day of school or the
+previous quarter's end). See README.md.
+
