@@ -90,12 +90,18 @@ How the code enforces it:
 | Parent reports (`36`) | Scoped to the dashboard's own teacher, this year, and only that teacher's courses and decisions. |
 | SCR export (`30`) | Private, shared only with named central-office staff; student accounts are refused. |
 | Student dashboard | Runs as the deploying admin with domain access, so students need no access to the Central Ledger. |
+| Student doc menu (`01`, `13`) | "Run Assignment Check" and "Check My Status" run as the student, so they no longer open the Ledger or the Admin sheet. They POST to the student dashboard web app (`13`'s `doPost()`), which identifies the signed-in student itself and answers only for that student's own Ledger row. `02` stamps the web app's URL into each new doc (`[SYS_DASHBOARD_URL:…]`). The doc's manifest adds `drive.readonly`, which Google requires on the token for calling a web app. |
 | Existing files, year end (`50`) | `previewStudentDataAccessRepair()` then `applyStudentDataAccessRepair()`: fixes this year's docs, revokes earlier years' (the files stay as records), removes class-folder sharing, makes exports private, and reports any student access to the Ledger. Run it again after `CURRENT_TERM` moves to a new school year. |
 
 By the operator's choice: AI feedback and warm-up scoring stay automatic,
 and the Student Context doc (`29`), which spans every teacher and year, may
-stay shared with the student and their teachers. Known gap: the student
-doc's own menu script (`01`) reads the Ledger as the student.
+stay shared with the student and their teachers.
+
+Known gap: each student doc carries its own copy of the menu script, made
+when the doc was created, and a push only changes the master template. Docs
+created before the `01` change still read the Ledger and write the
+ReviewQueue as the student, so their menu keeps needing student access to
+the Central Ledger spreadsheet until those docs age out at year end.
 
 ## What Module 1 (the base system) actually is
 
