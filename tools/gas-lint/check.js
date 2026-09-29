@@ -192,7 +192,9 @@ function checkDuplicateDeclarations() {
     const seen = new Map(); // name -> [{file, line}]
     for (const relPath of files) {
       if (!exists(relPath)) {
-        warn('missing-file', `${relPath} is listed in project "${projectName}" but does not exist — project-map.json is stale.`, relPath);
+        // An error, not a warning: tools/clasp-sync would push the project
+        // without this file, and every call into it would fail at runtime.
+        err('missing-file', `${relPath} is listed in project "${projectName}" but does not exist — project-map.json is stale.`, relPath);
         continue;
       }
       if (relPath.endsWith('.html')) continue; // HTML client code isn't in GAS's server global scope
@@ -219,6 +221,55 @@ function checkDuplicateDeclarations() {
 // -----------------------------------------------------------------------
 // Check B — kos-personal CFG key usage vs. definition
 // -----------------------------------------------------------------------
+// -----------------------------------------------------------------------
+// Check — every deployable source file belongs to a project
+// -----------------------------------------------------------------------
+// project-map.json is what tools/clasp-sync copies into each Apps Script
+// project and what every other check here scans. A new file nobody added
+// to it is never pushed and never linted, and the first sign is a
+// ReferenceError in production. Every script (and web-app HTML) file in a
+// deployable folder must be in some project's files/html, or listed in
+// _excluded_not_deployed_scripts on purpose.
+const DEPLOYABLE_SOURCE_DIRS = [
+  { dir: 'cas-ccps/scripts',           exts: ['.js', '.gs'] },
+  { dir: 'cas-ccps/studio-steps',      exts: ['.gs', '.js'] },
+  { dir: 'kos-personal',               exts: ['.gs', '.html'] },
+  { dir: 'kos-personal/studio-steps',  exts: ['.gs', '.js'] },
+  { dir: 'leader-hub',                 exts: ['.gs'] },
+  { dir: 'leader-hub/drive-tools',     exts: ['.gs'] },
+];
+
+function findUnmappedFiles(candidates, projectMap) {
+  const accounted = new Set(projectMap._excluded_not_deployed_scripts || []);
+  for (const [name, def] of Object.entries(projectMap)) {
+    if (name.startsWith('_') || !def || typeof def !== 'object') continue;
+    (def.files || []).concat(def.html || []).forEach(f => accounted.add(f));
+  }
+  return candidates.filter(f => !accounted.has(f)).sort();
+}
+
+function listDeployableSourceFiles() {
+  const out = [];
+  for (const { dir, exts } of DEPLOYABLE_SOURCE_DIRS) {
+    const abs = path.join(REPO_ROOT, dir);
+    if (!fs.existsSync(abs)) continue;
+    for (const ent of fs.readdirSync(abs, { withFileTypes: true })) {
+      if (ent.isFile() && exts.includes(path.extname(ent.name))) out.push(dir + '/' + ent.name);
+    }
+  }
+  return out;
+}
+
+function checkProjectMapCoverage() {
+  for (const relPath of findUnmappedFiles(listDeployableSourceFiles(), PROJECT_MAP)) {
+    err('unmapped-file',
+      `${relPath} is in no project in tools/gas-lint/project-map.json, so tools/clasp-sync never pushes it ` +
+      `and no check here scans it. Add it to the project its header names (BOUND TO: / INCLUDE IN:), ` +
+      `or to _excluded_not_deployed_scripts if it is not deployed.`,
+      relPath);
+  }
+}
+
 function checkKosPersonalCfgKeys() {
   const cfgFile = 'kos-personal/1_Config_And_Deploy.gs';
   if (!exists(cfgFile)) return;
@@ -1792,6 +1843,8 @@ module.exports = {
   GCP_STATUSES,
   findTopLevelDecls,
   findAnyDepthDeclNames,
+  findUnmappedFiles,
+  listDeployableSourceFiles,
   lineAt,
   ALLOWLIST,
   DECL_RE,
@@ -1812,6 +1865,7 @@ if (require.main !== module) return;
 // Run everything
 // -----------------------------------------------------------------------
 checkDuplicateDeclarations();
+checkProjectMapCoverage();
 checkKosPersonalCfgKeys();
 checkCasCcpsConfigKeys();
 checkGoogleScriptRunCalls();
