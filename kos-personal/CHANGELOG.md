@@ -1,6 +1,22 @@
 # KOS Changelog
 
 
+### Audits must check claims, and owners come from the transcript (2026-09-29)
+
+After the gate learned to reject an empty `trace_log`, the next fixture
+run came back `PASSED` with four format checks and no check of any claim
+against the transcript. `CURATOR_AUDITOR_PROMPT.md` now has each
+`trace_log` entry carry a `kind` (`ACCURACY` or `FORMAT`, §3.3), and
+`_isHollowAudit_()` rejects a `PASSED` with no `ACCURACY` entry when the
+Curator's output has claims to check. An entry with no `kind` doesn't
+count. `AUDIT_LOG` marks these `PASSED (HOLLOW: no ACCURACY check)`.
+
+Every fixture run also gave the action item an owner, `"Developer"`, that
+the transcript never names. `CURATOR_PROMPT.md` asked for "an owner" with
+an example value of `"Name or role"`. It now says the owner is the one the
+transcript names, or `null`, never invented. The ledgers already show a
+null owner as `unassigned`.
+
 ### The audit gate rejects a hollow pass (2026-09-29)
 
 The rebuilt Curator flow's second fixture run came back `PASSED` with an

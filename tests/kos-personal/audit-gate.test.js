@@ -4,7 +4,9 @@
 // (2026-09-29) came back PASSED with an empty trace_log, on an output with
 // a next step, three pivots and an action item whose owner the transcript
 // never names. The gate read only status and unverified_claims_count, so
-// the row went through as audited.
+// the row went through as audited. The third run (after the gate learned to
+// reject an empty trace) came back PASSED with four format checks and no
+// accuracy check at all, so the gate now requires an ACCURACY entry.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -34,7 +36,15 @@ const CURATOR = {
 };
 const HOLLOW = { status: 'PASSED', unverified_claims_count: 0, trace_log: [] };
 const TRACED = { status: 'PASSED', unverified_claims_count: 0,
-  trace_log: [{ json_claim: 'next step', source_evidence: 'transcript line', verdict: 'VERIFIED' }] };
+  trace_log: [{ json_claim: 'next step', source_evidence: 'transcript line', verdict: 'VERIFIED', kind: 'ACCURACY' }] };
+// The third fixture run's sign-off, verbatim apart from the kind field it
+// didn't have yet.
+const FORMAT_ONLY = { status: 'PASSED', unverified_claims_count: 0, trace_log: [
+  { json_claim: 'vector_weights is null', source_evidence: 'The field vector_weights is exactly null as required.', verdict: 'VERIFIED' },
+  { json_claim: 'alignment_observations completeness', source_evidence: 'All five signal fields and all five confidence_deltas are present.', verdict: 'VERIFIED' },
+  { json_claim: 'relational_status_at_closeout value', source_evidence: "The value 'GREEN' is present.", verdict: 'VERIFIED' },
+  { json_claim: 'confidence_deltas range', source_evidence: 'All values are 0.0.', verdict: 'VERIFIED' },
+] };
 
 function gate() {
   return loadGasFiles(['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs'].map((f) => path.join(KP, f)),
@@ -45,8 +55,18 @@ test('a PASSED with an empty trace_log on a Curator output with claims is a fail
   assert.equal(gate()(HOLLOW, CURATOR), true);
 });
 
-test('a PASSED that records what it checked still passes', () => {
+test('a PASSED that checked a claim against the transcript still passes', () => {
   assert.equal(gate()(TRACED, CURATOR), false);
+  const lower = { status: 'PASSED', unverified_claims_count: 0,
+    trace_log: [Object.assign({}, TRACED.trace_log[0], { kind: ' accuracy ' })] };
+  assert.equal(gate()(lower, CURATOR), false, 'kind is read case- and space-insensitively');
+});
+
+test('format checks alone are not an audit', () => {
+  assert.equal(gate()(FORMAT_ONLY, CURATOR), true);
+  const tagged = { status: 'PASSED', unverified_claims_count: 0,
+    trace_log: FORMAT_ONLY.trace_log.map((e) => Object.assign({ kind: 'FORMAT' }, e)) };
+  assert.equal(gate()(tagged, CURATOR), true, 'FORMAT entries only');
 });
 
 test('an empty trace_log is fine when the Curator output had nothing to check', () => {
@@ -99,5 +119,5 @@ test('processInferenceQueue sends a hollow pass back for a retry and logs why', 
   assert.equal(staging.getRange(2, 7).getValue(), 1);
   const log = ss.getSheetByName('AUDIT_LOG');
   assert.ok(log, 'AUDIT_LOG was written');
-  assert.equal(log.getRange(2, 5).getValue(), 'PASSED (HOLLOW: empty trace_log)');
+  assert.equal(log.getRange(2, 5).getValue(), 'PASSED (HOLLOW: no ACCURACY check)');
 });
