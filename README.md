@@ -192,9 +192,9 @@ is for. `node tools/doc-currency/check.js`; see
 
 `leader-hub/` and the main `kos-personal/` project are each already laid
 out the way [clasp](https://github.com/google/clasp) wants — a flat
-folder, one script ID; `kos-personal/studio-steps/` (whose two custom steps
+folder, one script ID; `kos-personal/archive/studio-steps/` (whose two custom steps
 are blocked on this account — the write-back moved to
-`12_StudioReturnHarvest.gs`) is a second, separate flat-folder project
+`12_StudioReturnHarvest.gs`; archived 2026-09-29, not deployed) was a second, separate flat-folder project
 alongside it (a separate Apps Script project, not a
 shared global scope — SMP-004 describes a personal/district *account* split
 as well, but that is not what is deployed: both live on the same ccpsnet.net
@@ -305,7 +305,7 @@ Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
 the pacing/calendar helpers, the page's sync code never overwriting an
 edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,
 run against the real built page), and the owner-only functions the page
-calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-personal/` covers the `kos-personal/studio-steps/`
+calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-personal/` covers the archived `kos-personal/archive/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the

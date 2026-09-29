@@ -1,4 +1,10 @@
-# kos-personal Studio Steps
+# kos-personal Studio Steps (archived)
+
+> **Archived 2026-09-29** from `kos-personal/studio-steps/`. Not a deployable
+> project any more: it's out of `tools/gas-lint/project-map.json`, clasp-sync
+> and deploy-drift, and kos-personal's `.claspignore` allowlist never pushes
+> it. `12_StudioReturnHarvest.gs` does its job. The code is kept for reference
+> and its tests (`tests/kos-personal/write-*-step.test.js`) still run.
 
 > ## ⚠️ STATUS: BLOCKED — the flow is not live, and this project cannot make it live
 >

@@ -1,6 +1,15 @@
 # KOS Changelog
 
 
+### `studio-steps/` archived (2026-09-29)
+
+The two custom Workspace Studio steps (`WriteCuratorOutputStep`,
+`WriteClassificationOutputStep`) could never be published on this account
+(GCP is off org-wide), and `12_StudioReturnHarvest.gs` replaced them. The
+folder moved to `archive/studio-steps/` with its history. It is out of
+gas-lint's project map, the GCP map and the deployable-folder scan; the
+`.claspignore` allowlist never pushed it. Its tests still run.
+
 ### Cleanup: dead code and a duplicated back-fill (2026-09-29)
 
 Removed three functions nothing called: `getQueueStatus()` (the web app

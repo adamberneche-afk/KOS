@@ -38,6 +38,7 @@ const {
 } = require('../../tools/gas-lint/check.js');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
+const PROJECT_MAP = require('../../tools/gas-lint/project-map.json');
 const GCP_MAP = JSON.parse(
   fs.readFileSync(path.join(REPO_ROOT, 'tools', 'gas-lint', 'gcp-map.json'), 'utf8'));
 
@@ -234,7 +235,7 @@ test('the known-blocked cas-ccps surfaces are still declared blocked', () => {
     'live-blocked');
 });
 
-test('kos-personal\'s custom steps are blocked too — same account, confirmed', () => {
+test('kos-personal\'s custom steps, blocked on the same account, are archived rather than declared', () => {
   // This entry has been wrong twice, in the same direction both times, so it
   // is pinned. It first read GCP as "very likely fine" from a deployment
   // doc's mention of a GCP project (a consent screen lives in the DEFAULT
@@ -243,8 +244,10 @@ test('kos-personal\'s custom steps are blocked too — same account, confirmed',
   // since confirmed is also wrong: kos-personal is on the SAME ccpsnet.net
   // account and its flow is not live. Anything moving this off live-blocked
   // should be a deliberate change with new evidence, not an inference.
-  assert.equal(GCP_MAP.surfaces['kos-personal/studio-steps/appsscript.json'].status,
-    'live-blocked');
+  // Archived 2026-09-29 (kos-personal/archive/studio-steps/): no longer a
+  // project or a surface this repo needs, so it is not declared at all.
+  assert.equal(GCP_MAP.surfaces['kos-personal/studio-steps/appsscript.json'], undefined);
+  assert.equal(PROJECT_MAP['kos-personal:studio-steps'], undefined);
 });
 
 test('a declared surface marked scanned:false is not a GAS file', () => {

@@ -1,6 +1,6 @@
 'use strict';
 // Regression tests for
-// kos-personal/studio-steps/WriteClassificationOutputStep.gs —
+// kos-personal/archive/studio-steps/WriteClassificationOutputStep.gs —
 // VECTOR_CLASSIFY Flow Steps 3 + 4: validate JSON array shape, write
 // Gemini's output through byte-for-byte unchanged, mark
 // STAGING_PIPELINE complete only on success.
@@ -10,8 +10,8 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { loadGasFiles, makeStudioEvent } = require('../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'studio-steps', 'StepsShared.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'studio-steps', 'WriteClassificationOutputStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'archive', 'studio-steps', 'StepsShared.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'archive', 'studio-steps', 'WriteClassificationOutputStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, STEP_PATH], exposeNames);
