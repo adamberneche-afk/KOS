@@ -251,7 +251,7 @@ The spreadsheet URL is visible in the web app under Diagnostics → Sensor 2 web
 | 3 | Doc_URL | Full Google Drive URL of the chunk document |
 | 4 | File_ID | Google Drive file ID of the chunk document |
 | 5 | Status | Current pipeline status |
-| 6 | Retry_Count | Number of processing attempts |
+| 6 | Retry_Count | Queue Processor retries (parse, audit, processing). Turnstile stale resets are counted separately, in the `KOS_TURNSTILE_STALE_COUNTS` Script Property |
 
 **Filter:** Fetch all rows where column index 5 (Status) = `STUDIO_ACTIVE`. Same filter as before — this half of the mechanism didn't change, only WHO does the fetching.
 
@@ -532,7 +532,7 @@ and `_isAuditFailure_()`/`_archiveAuditFailure_()` (`5_Error_And_Utilities.gs`).
 
 ### If inference fails
 
-Do not write anything to the document body. Do not update the STAGING_PIPELINE row. KOS's staleness guard will reset the row to `PENDING_FLOW` after `TURNSTILE_STALE_MINS` (default 30 minutes), and the Turnstile will re-release it on its next run. The `Retry_Count` column will increment.
+Do not write anything to the document body. Do not update the STAGING_PIPELINE row. KOS's staleness guard will reset the row to `PENDING_FLOW` after `TURNSTILE_STALE_MINS` (default 30 minutes), and the Turnstile will re-release it on its next run. The row's stale count (`KOS_TURNSTILE_STALE_COUNTS`) will increment; `Retry_Count` does not.
 
 After 3 failed retries, the row becomes `FAILED_PARSE` and requires manual intervention.
 

@@ -237,6 +237,27 @@ test('processInferenceQueue reads each row\'s own STUDIO_RETURN entry, not a doc
     'no phantom VECTOR_MATRIX row from the SESSION_LOG UID');
 });
 
+// The Turnstile counts stale resets in KOS_TURNSTILE_STALE_COUNTS, not
+// Retry_Count. Once Studio answers a row, its run of stale resets is over.
+test('processInferenceQueue clears a FLOW_COMPLETE row\'s Turnstile stale count, and only that row\'s', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported._getOrCreateSheet(ss, 'STAGING_PIPELINE');
+  exported._getOrCreateSheet(ss, 'STUDIO_RETURN');
+  const doc = sandbox.DocumentApp.create('answered-doc');
+  appendStagingRow(ss, { uid: 'ANSWERED', type: 'SESSION_LOG', fileId: doc.getId() });
+  appendReturnRow(ss, { uid: 'ANSWERED', type: 'SESSION_LOG', primary: '{not json' });
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('KOS_TURNSTILE_STALE_COUNTS', JSON.stringify({ ANSWERED: 2, WAITING: 1 }));
+
+  exported.processInferenceQueue();
+
+  assert.deepEqual(JSON.parse(props.getProperty('KOS_TURNSTILE_STALE_COUNTS')), { WAITING: 1 });
+  const row = ss.getSheetByName('STAGING_PIPELINE').getDataRange().getValues().find((r) => r[1] === 'ANSWERED');
+  assert.equal(row[5], 'NEEDS_CURATOR', 'a first bad parse is a retry, not FAILED_PARSE');
+  assert.equal(row[6], 1);
+});
+
 // processInferenceQueue() holds the script lock while it calls
 // processIntakePayload(). Apps Script locks aren't counted, so an inner
 // releaseLock() used to free the caller's lock after the first row.
