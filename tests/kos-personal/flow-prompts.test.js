@@ -194,3 +194,18 @@ test('inference-service/src/flow-prompts.js matches VECTOR_CLASSIFY_PROMPT.md', 
   assert.equal(VECTOR_CLASSIFY_SYSTEM_PROMPT, extractPromptBody(md),
     'stale — run node tools/kos-personal/generate-flow-prompts.js');
 });
+
+// Asked for "an owner" with an example value of "Name or role", the Curator
+// filled in "Developer" on every fixture run, a name the transcript never
+// gives. The prompt now says null when the transcript names no one.
+test('CURATOR_SYSTEM_PROMPT never asks for an owner the transcript does not give', () => {
+  const { exported } = load();
+  const text = exported.CURATOR_SYSTEM_PROMPT;
+  assert.ok(!/"owner": "Name or role"/.test(text), 'the bare "Name or role" example invites an invented owner');
+  assert.match(text, /Never invent one/);
+});
+
+test('CURATOR_AUDITOR_SYSTEM_PROMPT asks for the kind field _isHollowAudit_ reads', () => {
+  const { exported } = load();
+  assert.match(exported.CURATOR_AUDITOR_SYSTEM_PROMPT, /"kind": "ACCURACY \| FORMAT"/);
+});
