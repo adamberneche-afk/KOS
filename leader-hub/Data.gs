@@ -157,6 +157,19 @@ function _readLhDataTab_(ss, tabName) {
 function lhPushData_(body) {
   const domain = body.domain || '';
   if (LH_DATA_TABS.indexOf(domain) === -1) return { ok: false, error: 'Unknown data domain: ' + domain };
+  // The version check below and the write after it must not interleave with
+  // another push, or two pushes can both pass the check and one overwrites
+  // the other unseen.
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) return { ok: false, busy: true, error: 'Another save is in progress; try again.' };
+  try {
+    return _lhPushDataLocked_(body, domain);
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _lhPushDataLocked_(body, domain) {
 
   const ss = _getLhDataSpreadsheet_();
   const metaSheet = _getLhDataMetaSheet_();
