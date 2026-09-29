@@ -404,6 +404,8 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
     if (curatorParsed === null) return { ok: false, error: 'CURATOR_JSON_PARSE_FAILED: ' + e.message, unretryable: true };
   }
 
+  _srNormalizeCuratorPayload_(curatorParsed);
+
   if (String(auditor).trim() !== '') {
     let auditorParsed;
     try {
@@ -425,6 +427,40 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
   }
 
   return { ok: true, text: JSON.stringify(curatorParsed) };
+}
+
+// CURATOR_PROMPT.md Rules 1 and 2, enforced on the harvest side. On real
+// sessions the Curator has copied the RTP Curator JSON block the transcript
+// itself ends with (schema_version 5.0, build_state, numeric vector_weights,
+// no alignment_observations). A payload with numeric vector_weights would
+// write made-up scores to MATRIX_LEDGER and VECTOR_MATRIX at intake if an
+// audit ever let it through; only a VECTOR_CLASSIFY row may do that. A
+// missing alignment_observations gets the empty skeleton, which reads as
+// "no evidence this session" (all deltas 0.0).
+//
+// This does NOT change the audit verdict. The Auditor ran in Studio on the
+// Curator's raw output, and its sign-off is merged below unchanged, so a
+// FAILED audit is still rejected by _isAuditFailure_ and still uses a retry.
+function _srNormalizeCuratorPayload_(pd) {
+  if (!pd || typeof pd !== 'object' || Array.isArray(pd)) return pd;
+  pd.vector_weights = null;
+  if (!pd.alignment_observations || typeof pd.alignment_observations !== 'object') {
+    pd.alignment_observations = {
+      admin_ghost_signal: null,
+      relational_signal: null,
+      necessary_struggle_signal: null,
+      prime_directive_signal: null,
+      temporal_signal: null,
+      confidence_deltas: {
+        admin_ghost: 0,
+        relational_targets: 0,
+        necessary_struggle: 0,
+        prime_directive: 0,
+        temporal_constraints: 0,
+      },
+    };
+  }
+  return pd;
 }
 
 // Fallback for the *_JSON_PARSE_FAILED cases above: the model returned a
