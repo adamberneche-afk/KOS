@@ -1458,8 +1458,11 @@ function deleteTrip(id) {
 }
 
 // ── Escape HTML helper for values in inputs ───────────────────────────────
+// Escapes for HTML text and for attribute values in either quote style. It
+// used to leave ' alone, so a value inside a single-quoted attribute
+// (title='${escH(x)}') could close the attribute and add its own.
 function escH(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
 // Safe for interpolating a value into a single-quoted JS string literal that

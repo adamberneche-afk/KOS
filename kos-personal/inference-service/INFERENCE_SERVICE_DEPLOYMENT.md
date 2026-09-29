@@ -130,6 +130,11 @@ in the dashboard. Everything the handler reads (`session.metadata`,
 `session.subscription`, `invoice.customer`, `subscription.customer`) has the
 same shape across versions, so any endpoint version works.
 
+Errors: a request that fails for an internal reason returns
+`{"error": "Internal server error", "ref": "<8 hex>"}` and logs the full
+error with that `ref`, so search the service logs for it. A bad request
+(400) and insufficient credits (402) still return their message.
+
 ---
 
 ## Phase 4 — Environment Variables

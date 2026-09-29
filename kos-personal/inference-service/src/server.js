@@ -24,6 +24,7 @@ const billing = require('./billing');
 const logger  = require('./logger');
 const tokenCrypto = require('./token-crypto');
 const { startWorker } = require('./worker');
+const { sendError } = require('./http-errors');
 
 const app  = express();
 const PORT = process.env.PORT || 8080;
@@ -225,7 +226,8 @@ app.get('/health', async (req, res) => {
     await db.pool.query('SELECT 1');
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
   } catch (e) {
-    res.status(503).json({ status: 'error', message: e.message });
+    logger.error('[Server] Health check failed:', e);
+    res.status(503).json({ status: 'error' });
   }
 });
 
@@ -325,8 +327,9 @@ app.get('/auth/callback', async (req, res) => {
     `);
 
   } catch (err) {
-    logger.error('[Auth] Callback error:', err);
-    res.status(500).send(`Connection failed: ${err.message}`);
+    const ref = crypto.randomBytes(4).toString('hex');
+    logger.error(`[Auth] Callback error (ref ${ref}):`, err);
+    res.status(500).send(`Connection failed. Try again, and quote reference ${ref} if it keeps happening.`);
   }
 });
 
@@ -400,8 +403,7 @@ app.post('/api/v1/jobs', requireApiKey, validateWebhookSignature, async (req, re
     res.status(201).json({ job_id: job.id, status: 'queued' });
 
   } catch (err) {
-    logger.error('[Server] Job creation error:', err);
-    res.status(500).json({ error: err.message });
+    sendError(logger, res, err, 'Job creation');
   }
 });
 
@@ -426,7 +428,7 @@ app.get('/api/v1/jobs/:id', requireApiKey, async (req, res) => {
       error:       j.error_message || null,
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(logger, res, err, req.method + ' ' + req.path);
   }
 });
 
@@ -453,7 +455,7 @@ app.get('/api/v1/account', requireApiKey, async (req, res) => {
       },
     });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(logger, res, err, req.method + ' ' + req.path);
   }
 });
 
@@ -472,7 +474,7 @@ app.post('/api/v1/checkout/subscribe', requireApiKey, async (req, res) => {
     const url = await billing.createSubscriptionCheckout(req.user, price_id, return_url);
     res.json({ checkout_url: url });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(logger, res, err, req.method + ' ' + req.path);
   }
 });
 
@@ -490,7 +492,7 @@ app.post('/api/v1/checkout/credits', requireApiKey, async (req, res) => {
     const url = await billing.createCreditPurchaseCheckout(req.user, credits, return_url);
     res.json({ checkout_url: url });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    sendError(logger, res, err, req.method + ' ' + req.path);
   }
 });
 
@@ -511,8 +513,13 @@ app.post('/webhooks/stripe', async (req, res) => {
     await billing.handleWebhook(req.body, signature);
     res.json({ received: true });
   } catch (err) {
-    logger.error('[Stripe] Webhook error:', err.message);
-    res.status(400).json({ error: err.message });
+    // A bad signature is the sender's problem (400). Anything else is ours:
+    // answer 500 so Stripe redelivers, without echoing internal detail.
+    if (/^Webhook signature verification failed/.test(err.message)) {
+      logger.warn('[Stripe] ' + err.message);
+      return res.status(400).json({ error: 'Invalid signature' });
+    }
+    sendError(logger, res, err, 'Stripe webhook');
   }
 });
 
