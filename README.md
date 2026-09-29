@@ -308,7 +308,7 @@ per-session vector classification and its backfill
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the harness's own fake Sheets ranges (`gas-sandbox-range.test.js`), the lint tools, the `leaderhub-build` drift gate, and the split script's
+the harness's own fake Sheets ranges (`gas-sandbox-range.test.js`), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 
