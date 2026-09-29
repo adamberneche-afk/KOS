@@ -994,20 +994,6 @@ function _getOrCreateFolder(name, parent) {
 }
 
 
-/**
- * Finds a named folder inside parent without creating it.
- *
- * @param  {string} name    Folder name.
- * @param  {Folder} parent  Parent to search.
- * @returns {Folder|null}
- */
-function _findFolder(name, parent) {
-  if (!parent) return null;
-  const it = parent.getFoldersByName(name);
-  return it.hasNext() ? it.next() : null;
-}
-
-
 // ================================================================
 // SECURITY & IDENTITY
 // ================================================================
@@ -1545,7 +1531,7 @@ function getRelationalTargets() {
 // ================================================================
 
 // Canonical list of permanently-stuck / failed-intake status prefixes —
-// shared with getQueueMetrics()/getQueueStatus() (3_Queue_Processor.gs) so
+// shared with getQueueMetrics() (3_Queue_Processor.gs) so
 // the Queue tab can count and surface these rows instead of silently
 // excluding them from every visible total, the same way archiveStagingPipeline()
 // below already recognizes them for cleanup. Matched via startsWith(), not

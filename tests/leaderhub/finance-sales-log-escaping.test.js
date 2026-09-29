@@ -40,7 +40,7 @@ function renderSalesLog(salesLog) {
   // innerHTML. Extracted as-is (not reimplemented) so this test fails if
   // the real source stops escaping, not just if a hand-written copy of
   // the logic would.
-  const sinkSource = extractLines(FINANCE_PATH, 1829, 1846, [
+  const sinkSource = extractLines(FINANCE_PATH, 1828, 1845, [
     'logEl.innerHTML = [...SALES_LOG]', 'escH(s.staff)', 'escH(s.notes)', "}).join('');",
   ]);
 
