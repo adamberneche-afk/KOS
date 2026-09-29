@@ -4,7 +4,8 @@
 // PURPOSE: Student-facing dashboard. Authenticated by Google account (any domain).
 //          Shows only the active student's own assignments, grouped by
 //          [Block - Class - Teacher] folder label.
-// DEPLOY: Execute as: User accessing the web app · Access: Anyone with Google account
+// DEPLOY: Execute as: Me (the admin) · Access: anyone in the district domain.
+//         The page and doPost() identify the student by their signed-in account.
 // =============================================================================
 
 function doGet() {
@@ -171,6 +172,75 @@ function getStudentDashboardData(termFilter) {
     availableTerms: [...availableTerms].sort().reverse(),
     generatedAt:    formatDate_(new Date())
   };
+}
+
+// ---------------------------------------------------------------------------
+// doPost — the student doc's menu (01_StudentDoc_ContainerScript.js) calls
+// this instead of opening the Ledger itself.
+//
+// Access policy: the doc's menu runs as the student, so it used to read the
+// whole Ledger and append to the Admin sheet's ReviewQueue with the
+// student's own permissions. That only worked if every student could read
+// the Ledger (every student's rows) and edit the Admin spreadsheet. This
+// project runs as the admin (appsscript.json: executeAs USER_DEPLOYING,
+// access DOMAIN), so the Ledger can stay admin-only. The caller is whoever
+// Google says is signed in, never an email in the request, and they only
+// get back or act on the one Ledger row for their own doc.
+//
+// Request body (JSON): { action: "status" | "submit", fileId, configId, text? }
+// Response (JSON): { ok: true, info } | { ok: true } | { ok: false, error }
+// ---------------------------------------------------------------------------
+const STUDENT_DOC_MAX_TEXT_CHARS = 100000;
+
+function doPost(e) {
+  const googleId = Session.getActiveUser().getEmail();
+  let req = {};
+  try { req = JSON.parse((e && e.postData && e.postData.contents) || "{}"); } catch (_) {}
+  const result = handleStudentDocRequest_(googleId, req);
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function handleStudentDocRequest_(googleId, req) {
+  if (!googleId) return { ok: false, error: "NO_USER" };
+  const fileId   = String((req && req.fileId)   || "").trim();
+  const configId = String((req && req.configId) || "").trim();
+  const action   = String((req && req.action)   || "");
+  if (!fileId || !configId) return { ok: false, error: "BAD_REQUEST" };
+  if (action !== "status" && action !== "submit") return { ok: false, error: "BAD_ACTION" };
+
+  const cfg   = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+  const data  = sheet.getDataRange().getValues();
+  let row = null;
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][LEDGER.GOOGLE_ID]).toLowerCase() === googleId.toLowerCase() &&
+        String(data[i][LEDGER.CONFIG_ID]) === configId &&
+        String(data[i][LEDGER.FILE_ID])   === fileId) { row = data[i]; break; }
+  }
+  if (!row) return { ok: false, error: "NOT_REGISTERED" };
+
+  if (action === "status") {
+    return {
+      ok: true,
+      info: {
+        status:      String(row[LEDGER.STATUS]).trim(),
+        submittedAt: row[LEDGER.SUBMISSION_TS] ? String(row[LEDGER.SUBMISSION_TS]) : null,
+        lastEval:    row[LEDGER.LAST_EVAL] ? String(row[LEDGER.LAST_EVAL]) : null,
+        unitCode:    String(row[LEDGER.COURSE_NAME]).trim(),
+        teacherName: String(row[LEDGER.TEACHER_NAME] || "").trim(),
+        term:        String(row[LEDGER.ACADEMIC_YEAR] || "").trim()
+      }
+    };
+  }
+
+  const text = String((req && req.text) || "");
+  if (!text.trim()) return { ok: false, error: "EMPTY" };
+  const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
+  if (!queue) return { ok: false, error: "NO_QUEUE" };
+  queue.appendRow([new Date(), googleId, fileId, configId,
+    text.substring(0, STUDENT_DOC_MAX_TEXT_CHARS), "PENDING", ""]);
+  return { ok: true };
 }
 
 function resolveStudentStatus_(status, pipeline) {
