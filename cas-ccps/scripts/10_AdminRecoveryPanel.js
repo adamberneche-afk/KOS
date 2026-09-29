@@ -141,11 +141,10 @@ function _ferpaHealthChecks_() {
   const checks = [];
   const scriptProps = PropertiesService.getScriptProperties();
 
-  // (a) 25_WarmUpWriter.js's callFlow4_() has a dead direct-Gemini-API
-  // code path (documented placeholder, returns null) that would go live —
-  // bypassing the Walled Garden's Studio-Flow-only boundary entirely — the
-  // moment a GEMINI_API_KEY Script Property exists. This key should never
-  // be set in a correctly-configured deployment.
+  // (a) GEMINI_API_KEY was read only by a commented-out direct-Gemini call
+  // in 25_WarmUpWriter.js (since removed) that would have bypassed the
+  // Walled Garden's Studio-Flow-only boundary. Nothing reads it now, and
+  // it should never be set in a correctly-configured deployment.
   const geminiKeySet = !!scriptProps.getProperty("GEMINI_API_KEY");
   checks.push({
     ok: !geminiKeySet,

@@ -1123,3 +1123,15 @@ has are kept). Data pushes for one domain run one at a time.
 shows, and `lhPushData_` holds the script lock across its version check
 and write.
 
+## Cleanup: stubs, unused functions, a duplicated data-tab pair, escH, 2026-09-29
+
+- Removed six empty "compatibility stubs" (`addBlockTask`,
+  `initBlockDefaults`, `renderAllBlocks`, `renderDontForget`,
+  `renderPulse`, `renderWeekStrip`) and four client functions nothing
+  called (`filterEv`, `deleteEvent`, which duplicated `delEv`,
+  `toggleScrView` and `cockpitGo`).
+- `Data.gs` and `EmailBridge.gs` each had an identical tab read/write pair.
+  One pair, `_writeDataTab_`/`_readDataTab_`, now lives in `Data.gs`.
+- `escH` now escapes `'` as `&#39;`, so a value in a single-quoted
+  attribute can't close it.
+

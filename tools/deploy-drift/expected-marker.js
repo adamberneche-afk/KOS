@@ -45,16 +45,21 @@ const PROJECT_MAP = require('../gas-lint/project-map.json');
 // part of the project's live scope) — this is a second, narrower
 // exclusion that applies only to this one script's own "what does git
 // expect" computation, not to the project's file manifest in general.
-const MARKER_FILE_EXCLUSIONS = {
-  'kos-personal': ['kos-personal/18_DeployVersionMarker.gs'],
-  'leader-hub:app': ['leader-hub/DeployVersionMarker.gs'],
-  'cas-ccps:central-ledger': ['cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js'],
-  'cas-ccps:unified-manual': ['cas-ccps/scripts/44_DeployVersionMarker_UnifiedManual.js'],
-  'cas-ccps:master-student-template': ['cas-ccps/scripts/45_DeployVersionMarker_MasterStudentTemplate.js'],
-  'cas-ccps:rubric-response-sheet': ['cas-ccps/scripts/46_DeployVersionMarker_RubricResponseSheet.js'],
-  'cas-ccps:teacher-matrix-sheet': ['cas-ccps/scripts/47_DeployVersionMarker_TeacherMatrixSheet.js'],
-  'cas-ccps:teacher-dashboard': ['cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js'],
-  'cas-ccps:student-dashboard': ['cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js'],
+// The one list of marker files: stamp.js writes `constant` in `file`, and
+// this script leaves `file` out of its own computation. `constant` must
+// match the name declared in `file` exactly (stamp.js checks). The 7
+// cas-ccps entries share one constant name (DEPLOY_VERSION_SHA), which is
+// safe because no two of those files share an Apps Script project.
+const MARKER_FILES = {
+  'kos-personal': { file: 'kos-personal/18_DeployVersionMarker.gs', constant: 'KOS_DEPLOY_VERSION_SHA' },
+  'leader-hub:app': { file: 'leader-hub/DeployVersionMarker.gs', constant: 'LH_DEPLOY_VERSION_SHA' },
+  'cas-ccps:central-ledger': { file: 'cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:unified-manual': { file: 'cas-ccps/scripts/44_DeployVersionMarker_UnifiedManual.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:master-student-template': { file: 'cas-ccps/scripts/45_DeployVersionMarker_MasterStudentTemplate.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:rubric-response-sheet': { file: 'cas-ccps/scripts/46_DeployVersionMarker_RubricResponseSheet.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:teacher-matrix-sheet': { file: 'cas-ccps/scripts/47_DeployVersionMarker_TeacherMatrixSheet.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:teacher-dashboard': { file: 'cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:student-dashboard': { file: 'cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js', constant: 'DEPLOY_VERSION_SHA' },
 };
 
 function knownProjectNames() {
@@ -76,7 +81,7 @@ function filesForProject(projectName) {
 // Runs `git log -1` with every one of the project's files as a pathspec —
 // this returns the single most recent commit that touched ANY of them, not
 // just the first file, which is exactly "when did this project's live
-// surface last change." Excludes MARKER_FILE_EXCLUSIONS entries — see their
+// surface last change." Excludes the project's MARKER_FILES entry — see their
 // comment above for why.
 function expectedMarkerForProject(projectName) {
   const allFiles = filesForProject(projectName);
@@ -86,7 +91,7 @@ function expectedMarkerForProject(projectName) {
       `Known projects: ${knownProjectNames().join(', ')}`
     );
   }
-  const excluded = new Set(MARKER_FILE_EXCLUSIONS[projectName] || []);
+  const excluded = new Set(MARKER_FILES[projectName] ? [MARKER_FILES[projectName].file] : []);
   const files = allFiles.filter((f) => !excluded.has(f));
   const existing = files.filter((f) => {
     try { execFileSync('git', ['cat-file', '-e', `HEAD:${f}`], { cwd: REPO_ROOT }); return true; }
@@ -113,7 +118,7 @@ function expectedMarkerForProject(projectName) {
   return { project: projectName, sha, committedAt, subject, files: existing };
 }
 
-module.exports = { expectedMarkerForProject, filesForProject, knownProjectNames };
+module.exports = { expectedMarkerForProject, filesForProject, knownProjectNames, MARKER_FILES };
 
 if (require.main === module) {
   const arg = process.argv[2];
