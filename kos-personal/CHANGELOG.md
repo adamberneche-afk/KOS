@@ -1,6 +1,16 @@
 # KOS Changelog
 
 
+### Auditor no longer rejects null alignment signals (2026-09-29)
+
+The first fixture run through the rebuilt Curator flow came back
+`FAILED`: the Auditor read `CURATOR_AUDITOR_PROMPT.md` §3.2's "fully
+populated" as "non-null" and flagged the five `null` signal fields. The
+Curator was right; `CURATOR_PROMPT.md` Rule 2 says null and 0.0 are the
+correct values with no evidence. §3.2 now says it checks that the keys are
+present, not what they hold. Rejections like this would have sent every
+quiet session back through the retry loop.
+
 ### Managed service: classification gets the classifier prompt (2026-09-29)
 
 In `MANAGED_SERVICE` mode (off by default), `VECTOR_CLASSIFY` parts went
