@@ -377,10 +377,15 @@ function stampDocument_(fileId, configId, studentName, block,
 
   // Zone 4b: System ID block — invisible white 1pt text for Script 01 fallback
   // Must be last so body.clear() earlier in this function doesn't wipe it
+  // SYS_DASHBOARD_URL is what the doc's menu actually uses now: it asks the
+  // Student Dashboard web app (which runs as the admin) for the student's
+  // Ledger row, rather than opening the Ledger as the student. The two
+  // spreadsheet IDs stay for older copies of Script 01.
   if (ledgerSsId && adminSsId) {
     const sysBlock =
       "[SYS_LEDGER_SS_ID:" + ledgerSsId + "]" +
-      "[SYS_ADMIN_SS_ID:"  + adminSsId  + "]";
+      "[SYS_ADMIN_SS_ID:"  + adminSsId  + "]" +
+      (studentDashboardUrl ? "[SYS_DASHBOARD_URL:" + studentDashboardUrl + "]" : "");
     const sysPara = body.appendParagraph(sysBlock);
     sysPara.editAsText()
       .setFontSize(1)

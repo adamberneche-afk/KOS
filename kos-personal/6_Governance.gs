@@ -1057,15 +1057,11 @@ function autoCouncilCheck() {
 
     if (!sessionLog || sessionLog.getLastRow() <= 1) return;
 
-    const timestamps = sessionLog
-      .getRange(2, 2, sessionLog.getLastRow() - 1, 1)  // col B = Timestamp
-      .getValues()
-      .flat();
+    const rows = sessionLog
+      .getRange(2, 1, sessionLog.getLastRow() - 1, 4)  // Session_UID..Cold_Start
+      .getValues();
 
-    const newSessions = timestamps.filter(ts => {
-      const ms = new Date(ts).getTime();
-      return !isNaN(ms) && ms > lastRunMs;
-    }).length;
+    const newSessions = _countSessionsSince_(rows, lastRunMs);
 
     if (newSessions < CFG.COUNCIL_AUTO_TRIGGER_SESSIONS) {
       console.log('[autoCouncilCheck] ' + newSessions + '/' + CFG.COUNCIL_AUTO_TRIGGER_SESSIONS + ' sessions — not yet due.');

@@ -86,16 +86,22 @@ How the code enforces it:
 | Intake (`02`) | The assigning teacher is the owner of the matrix the assignment came from (MatrixRegistry), not the form's student-typed "Teacher Email". The doc is shared with its student (edit) and that teacher (comment) only. It no longer goes into a class folder every classmate could view. |
 | Submission (`04`, `25`) | A passing turn-in locks the doc: the student can read it, not edit it. A rejected turn-in stays editable so the student can fix it. A warm-up locks when its extra-credit window closes. |
 | School year (`00`) | `_currentSchoolYear_()` is `CURRENT_TERM`'s "2025-26" prefix, else the year today falls in (starting in August). The Teacher Dashboard, the roster, the student dashboard and parent reports show the current year only, whatever term the page asks for. |
-| Grading (`07`, `10`) | Turn-in scores need the row's `TEACHER_EMAIL`. SCR ratings are shown to, and decided by, the teacher whose assignment produced the evidence (CompetencyEvidence's `config_id`). `manuallyMarkCompliant` checks the signed-in user. |
+| Grading (`07`, `10`) | Turn-in scores need the row's `TEACHER_EMAIL`. SCR ratings are shown to, and decided by, the teacher whose assignment produced the evidence (CompetencyEvidence's `config_id`). The central-ledger writers (`30`'s `recordDecision_`, `30b`'s `confirmRetryImprovement_`) apply the same rule, and require the teacher they're given to be the signed-in user. `manuallyMarkCompliant` checks the signed-in user. |
 | Parent reports (`36`) | Scoped to the dashboard's own teacher, this year, and only that teacher's courses and decisions. |
 | SCR export (`30`) | Private, shared only with named central-office staff; student accounts are refused. |
 | Student dashboard | Runs as the deploying admin with domain access, so students need no access to the Central Ledger. |
+| Student doc menu (`01`, `13`) | "Run Assignment Check" and "Check My Status" run as the student, so they no longer open the Ledger or the Admin sheet. They POST to the student dashboard web app (`13`'s `doPost()`), which identifies the signed-in student itself and answers only for that student's own Ledger row. `02` stamps the web app's URL into each new doc (`[SYS_DASHBOARD_URL:…]`). The doc's manifest adds `drive.readonly`, which Google requires on the token for calling a web app. |
 | Existing files, year end (`50`) | `previewStudentDataAccessRepair()` then `applyStudentDataAccessRepair()`: fixes this year's docs, revokes earlier years' (the files stay as records), removes class-folder sharing, makes exports private, and reports any student access to the Ledger. Run it again after `CURRENT_TERM` moves to a new school year. |
 
 By the operator's choice: AI feedback and warm-up scoring stay automatic,
 and the Student Context doc (`29`), which spans every teacher and year, may
-stay shared with the student and their teachers. Known gap: the student
-doc's own menu script (`01`) reads the Ledger as the student.
+stay shared with the student and their teachers.
+
+Known gap: each student doc carries its own copy of the menu script, made
+when the doc was created, and a push only changes the master template. Docs
+created before the `01` change still read the Ledger and write the
+ReviewQueue as the student, so their menu keeps needing student access to
+the Central Ledger spreadsheet until those docs age out at year end.
 
 ## What Module 1 (the base system) actually is
 
