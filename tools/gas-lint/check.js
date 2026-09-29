@@ -234,7 +234,6 @@ const DEPLOYABLE_SOURCE_DIRS = [
   { dir: 'cas-ccps/scripts',           exts: ['.js', '.gs'] },
   { dir: 'cas-ccps/studio-steps',      exts: ['.gs', '.js'] },
   { dir: 'kos-personal',               exts: ['.gs', '.html'] },
-  { dir: 'kos-personal/studio-steps',  exts: ['.gs', '.js'] },
   { dir: 'leader-hub',                 exts: ['.gs'] },
   { dir: 'leader-hub/drive-tools',     exts: ['.gs'] },
 ];

@@ -40,10 +40,11 @@ test('listDeployableSourceFiles covers the folders clasp-sync deploys from', () 
     'cas-ccps/scripts/00_SharedConfig.js',
     'kos-personal/10_Turnstile.gs',
     'kos-personal/8_WebApp_UI.html',
-    'kos-personal/studio-steps/StepsShared.gs',
+    'cas-ccps/studio-steps/StepsShared.gs',
     'leader-hub/Code.gs',
   ]) {
     assert.ok(fs.existsSync(path.join(REPO_ROOT, expected)), expected + ' should exist');
     assert.ok(files.includes(expected), expected + ' should be scanned');
   }
+  assert.ok(!files.some((f) => f.startsWith('kos-personal/archive/')), 'archived code is not deployable');
 });

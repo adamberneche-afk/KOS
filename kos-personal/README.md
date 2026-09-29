@@ -347,9 +347,8 @@ Properties, not source. See
 the full rationale and cas-ccps's harder version of this problem (8
 overlapping Apps Script projects, not 1).
 
-**A second, separate project lives alongside it — and it cannot be published
-on this account:**
-[`kos-personal/studio-steps/`](./studio-steps/README.md) — the custom
+**Archived: a second project that could never be published on this account.**
+[`kos-personal/archive/studio-steps/`](./archive/studio-steps/README.md) — the custom
 Workspace Studio steps behind the Curator and VECTOR_CLASSIFY flows
 (`WriteCuratorOutputStep.gs`, `WriteClassificationOutputStep.gs`, plus
 shared helpers). A custom step is a Workspace Add-on and needs a standard,
