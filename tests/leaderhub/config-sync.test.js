@@ -89,3 +89,12 @@ test('LH_CONFIG_KEYS covers every singleton config domain the client\'s write-th
   const clientKeys = m[1].match(/'([^']+)'/g).map((s) => s.slice(1, -1));
   assert.deepEqual(clientKeys.slice().sort(), [...exported.LH_CONFIG_KEYS].sort());
 });
+
+test('lhSaveConfig_ refuses a value past Script Properties\' 9KB limit, with a reason, and writes nothing', () => {
+  const { exported, sandbox } = load();
+  const res = exported.lhSaveConfig_('lh_keyContacts', [{ note: 'x'.repeat(10000) }]);
+  assert.equal(res.ok, false);
+  assert.equal(res.tooLarge, true);
+  assert.match(res.error, /limit is 9 KB/);
+  assert.equal(exported.lhGetConfig_('lh_keyContacts'), null);
+});
