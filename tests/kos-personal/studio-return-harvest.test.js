@@ -146,7 +146,8 @@ test('curator output wrapped in a narrative report still gets applied, prose str
   const out = exported._srPrepareDocText_('SESSION_LOG', narrative, '');
   assert.equal(out.ok, true, out.error);
   // The doc must receive clean JSON, never the surrounding prose.
-  assert.deepEqual(JSON.parse(out.text), { summary: 'recovered curator output' });
+  assert.equal(JSON.parse(out.text).summary, 'recovered curator output');
+  assert.ok(!/THE CURATOR|Summary of findings/.test(out.text), out.text);
 });
 
 test('classification output wrapped in a narrative report is re-serialized, not written verbatim', () => {
@@ -1014,4 +1015,40 @@ test('binding probe: a SHORT but valid output is not reported as missing', () =>
     assert.deepEqual(issues, [], 'flagged a valid short output ' + JSON.stringify(out) +
       ': ' + JSON.stringify(issues));
   });
+});
+
+// On real sessions the Curator copied the RTP Curator JSON the transcript
+// ends with: numeric vector_weights and no alignment_observations. Intake
+// writes a MATRIX_LEDGER row for any object-valued vector_weights, so the
+// harvest forces CURATOR_PROMPT.md Rules 1 and 2 before the doc is written.
+test('curator output: numeric vector_weights become null, a missing alignment_observations gets the empty skeleton', () => {
+  const { exported } = load();
+  const copied = JSON.stringify({
+    schema_version: '5.0',
+    session_metadata: { session_id: 'x' },
+    vector_weights: { ARCHITECTURE: 0.9, GAS_DEVELOPMENT: 0.7 },
+  });
+  const out = exported._srPrepareDocText_('SESSION_LOG', copied, '{"status":"FAILED","unverified_claims_count":2}');
+  assert.equal(out.ok, true, out.error);
+  const parsed = JSON.parse(out.text);
+  assert.equal(parsed.vector_weights, null);
+  assert.equal(parsed.alignment_observations.relational_signal, null);
+  assert.deepEqual(parsed.alignment_observations.confidence_deltas, {
+    admin_ghost: 0, relational_targets: 0, necessary_struggle: 0, prime_directive: 0, temporal_constraints: 0,
+  });
+  // The audit verdict is merged unchanged: a FAILED audit is still rejected.
+  assert.deepEqual(parsed.auditor_sign_off, { status: 'FAILED', unverified_claims_count: 2 });
+});
+
+test('curator output: alignment_observations the Curator did write is kept as is', () => {
+  const { exported } = load();
+  const ao = { relational_signal: 'Protected the Friday block', confidence_deltas: { relational_targets: 0.05 } };
+  const out = exported._srPrepareDocText_('SESSION_LOG', JSON.stringify({ vector_weights: null, alignment_observations: ao }), '');
+  assert.deepEqual(JSON.parse(out.text).alignment_observations, ao);
+});
+
+test('classification output is not normalized', () => {
+  const { exported } = load();
+  const raw = '[{"exchange_type":"DECISION","sentences":[]}]';
+  assert.equal(exported._srPrepareDocText_('VECTOR_CLASSIFY', raw, '').text, raw);
 });
