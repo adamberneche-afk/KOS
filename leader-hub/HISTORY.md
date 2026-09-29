@@ -1098,3 +1098,28 @@ local edits at boot after a failed save; co-advisor Join can't work
 (`listOrgSyncs` is owner-only, and org sync calls go to the co-advisor's
 own server); `?api=horizon` has no owner check (harmless while the Gmail
 scan returns nothing).
+
+## 2026-09-29 — a load no longer undoes unsaved edits
+
+Settings and row data are saved to localStorage and written through to the
+server. The boot refresh then replaced localStorage with the server's copy
+unconditionally, so any save the server hadn't accepted was silently undone
+on the next load. Three ways that happened:
+
+- a setting past Script Properties' 9KB per-value limit (`lh_lp_edits`,
+  `lh_org_results`, `lh_horizon`, `lh_slip_rosters` can all grow that far):
+  every later save failed with only a console line;
+- two saves of one data domain inside one round trip sent the same
+  expected version, so the second was rejected as a conflict with the
+  first, and the toast said to reload;
+- a real conflict with another device.
+
+Now every write-through marks its key pending until the server accepts it
+(`lh_sync_pending`). The boot refresh keeps pending settings and pushes
+them again, and merges a pending data domain with the server's copy by
+record id (this device's version of a record wins; records only one side
+has are kept). Data pushes for one domain run one at a time.
+`lhSaveConfig_` refuses an oversized value with a reason, which the page
+shows, and `lhPushData_` holds the script lock across its version check
+and write.
+
