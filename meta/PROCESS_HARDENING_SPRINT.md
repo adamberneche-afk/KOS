@@ -555,7 +555,7 @@ no Apps-Script-visible checkpoint between them — a malformed Curator output
 still reaches the Auditor, and nothing sees either output until the Flow's
 last step writes both to `STUDIO_RETURN`. A literal mid-Flow Apps Script
 step is blocked by the same GCP-disabled-org-wide wall that already forced
-`kos-personal/studio-steps/`'s custom steps to be dead code — so this has
+`kos-personal/archive/studio-steps/`'s custom steps to be dead code — so this has
 to be a genuine flow split, not a step insertion.
 
 ### 4a. Apps Script side — buildable and testable ahead of the Studio work 🔲
