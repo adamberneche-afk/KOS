@@ -1,6 +1,19 @@
 # KOS Changelog
 
 
+### Cleanup: dead code and a duplicated back-fill (2026-09-29)
+
+Removed three functions nothing called: `getQueueStatus()` (the web app
+uses `getQueueMetrics()`), `routeVectorWeights()` (the queue calls
+`_routeVectorWeightsInternal()` directly) and `_findFolder()`. Both routing
+paths carried the same promoted-theme back-fill; it is now
+`_backfillPromotedScores_()`, with a test. `consolidateInferenceChunks()`
+stays: it is a live spreadsheet menu item.
+
+The inference service takes five dependency updates (stripe 15 → 22
+among them), no longer returns internal error text to callers, and boots
+without a Stripe key again (stripe 22 threw at load without one).
+
 ### Archived logs stay duplicates (2026-09-29)
 
 Sensor 1, `submitSessionLog()` and `submitExternalData()` checked for a
