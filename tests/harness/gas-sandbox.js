@@ -915,6 +915,13 @@ function formatDateMock(date, timeZone, format) {
     return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`
       + `-${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
   }
+  // kos-personal sendDailyErrorReport(): per-entry stamp and subject date.
+  if (format === 'MM-dd HH:mm:ss') {
+    return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
+  }
+  if (format === 'MMM dd yyyy') {
+    return `${monthsAbbr[date.getMonth()]} ${pad2(date.getDate())} ${date.getFullYear()}`;
+  }
   throw new Error('formatDateMock: unsupported format "' + format + '" — add it to tests/harness/gas-sandbox.js');
 }
 
