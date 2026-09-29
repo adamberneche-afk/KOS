@@ -103,6 +103,9 @@ function processInferenceQueue() {
     const SC   = CFG.STAGING_COLS;
 
     let processed = 0, requeued = 0, failed = 0;
+    // Studio answered these rows, so the Turnstile's run of stale resets
+    // for each is over (see _readTurnstileStaleCounts_).
+    const answeredUids = [];
 
     for (let i = 0; i < data.length; i++) {
       const sheetRow = i + 2;  // 1-indexed, skipping header
@@ -124,6 +127,7 @@ function processInferenceQueue() {
 
       // ── Only process rows Studio has marked FLOW_COMPLETE ────
       if (status !== 'FLOW_COMPLETE') continue;
+      answeredUids.push(String(data[i][SC.PAYLOAD_UID]));
 
       const fileId = data[i][SC.FILE_ID];
       if (!fileId) {
@@ -301,6 +305,8 @@ function processInferenceQueue() {
         failed++;
       }
     }
+
+    if (answeredUids.length > 0) _clearTurnstileStaleCounts_(answeredUids);
 
     if (processed + requeued + failed > 0) SpreadsheetApp.flush();
     if (processed > 0) { try { _advanceOnboardingDay(); } catch (_) {} }
@@ -704,8 +710,8 @@ function getQueueMetrics() {
     let queued = 0, active = 0, needsReview = 0, processed = 0, failed = 0;
     // Say/Do Ledger kos-personal finding #2: a row cycling PENDING_FLOW ↔
     // STUDIO_ACTIVE with no Studio flow ever completing it isn't a distinct
-    // STATUS — it's a PENDING_FLOW/STUDIO_ACTIVE row whose Retry_Count
-    // (10_Turnstile.gs's stale-reset counter) has crossed
+    // STATUS — it's a PENDING_FLOW/STUDIO_ACTIVE row whose stale-reset
+    // count (KOS_TURNSTILE_STALE_COUNTS, not Retry_Count) has crossed
     // CFG.TURNSTILE_STUCK_THRESHOLD. Counted separately here so the client
     // can surface it as an early warning, but still folds into
     // queued/active above for the existing bucket totals — this is a UI
@@ -716,6 +722,7 @@ function getQueueMetrics() {
     // (TERMINAL_FAILED_STATUSES, 5_Error_And_Utilities.gs) below — this
     // counter only ever sees rows still short of that ceiling.
     let cycling = 0;
+    const staleCounts = _readTurnstileStaleCounts_();
     // Rows whose Status matches none of the branches below — not a new
     // pipeline state, a visibility fix for one: see
     // 5_Error_And_Utilities.gs's _isKnownStagingStatus_() and
@@ -758,7 +765,7 @@ function getQueueMetrics() {
         else if (!_isKnownStagingStatus_(s))                          unknown++;
 
         if ((s === 'PENDING_FLOW' || s === 'STUDIO_ACTIVE') &&
-            (parseInt(row[SC.RETRY_COUNT]) || 0) >= CFG.TURNSTILE_STUCK_THRESHOLD) {
+            (Number(staleCounts[String(row[SC.PAYLOAD_UID])]) || 0) >= CFG.TURNSTILE_STUCK_THRESHOLD) {
           cycling++;
         }
 

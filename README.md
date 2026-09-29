@@ -305,9 +305,10 @@ duplicates refused rather than guessed, working IDs never replaced), the
 batched requeue of terminal staging rows (`staging-requeue.test.js`), and
 per-session vector classification and its backfill
 (`vector-classify-sessions.test.js`), incubator decay (`incubator-decay.test.js`),
+the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the harness's own fake Sheets ranges (`gas-sandbox-range.test.js`), the lint tools, the `leaderhub-build` drift gate, and the split script's
+the harness's own fake Sheets ranges (`gas-sandbox-range.test.js`), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 

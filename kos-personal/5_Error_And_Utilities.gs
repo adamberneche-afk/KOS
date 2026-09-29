@@ -294,6 +294,11 @@ function _sendChatAlert(message) {
  *   failure did, so the web app couldn't tell them apart and always
  *   rendered neutral (never danger) styling.
  */
+/** Error-digest body cap, well under MailApp's ~200KB per-message limit. */
+const DIGEST_MAX_BODY_CHARS    = 60000;
+/** Longest message or stack line one digest entry shows. */
+const DIGEST_MAX_MESSAGE_CHARS = 500;
+
 function sendDailyErrorReport() {
   try {
     // Retention, before reading rather than after: several of the paths
@@ -372,22 +377,50 @@ function sendDailyErrorReport() {
       '',
     ];
 
+    // MailApp refuses a body over ~200KB, and a failed send marked nothing
+    // reported, so the log grew and every later digest failed the same way
+    // (archiveErrorLog() only sweeps reported rows). The body is capped:
+    // each message is clipped, and once the budget is spent the remaining
+    // occurrences are counted rather than listed. Every row is still
+    // marked reported, because ERROR_LOG itself holds the full text.
+    const budget = DIGEST_MAX_BODY_CHARS - 2000; // room for the footer
+    let used = lines.join('\n').length;
+    let omitted = 0;
     Object.entries(grouped).forEach(([ctx, errors]) => {
-      lines.push('[' + ctx + ']  —  ' + errors.length + ' occurrence(s)');
-      errors.forEach((e, i) => {
+      const heading = '[' + ctx + ']  —  ' + errors.length + ' occurrence(s)';
+      if (used + heading.length + 1 > budget) { omitted += errors.length; return; }
+      lines.push(heading);
+      used += heading.length + 1;
+      let shown = 0;
+      for (let i = 0; i < errors.length; i++) {
+        const e = errors[i];
         let errTs = '?';
         try {
           errTs = Utilities.formatDate(
             new Date(e.ts), Session.getScriptTimeZone(), 'MM-dd HH:mm:ss');
         } catch (_) {}
-        lines.push('  ' + (i + 1) + '. ' + errTs);
-        lines.push('     ' + e.msg);
-        if (e.stack) lines.push('     ' + e.stack.split('\n')[0]);
-      });
+        const entry = ['  ' + (i + 1) + '. ' + errTs,
+          '     ' + _truncateWithMarker_(e.msg, DIGEST_MAX_MESSAGE_CHARS)];
+        if (e.stack) entry.push('     ' + _truncateWithMarker_(e.stack.split('\n')[0], DIGEST_MAX_MESSAGE_CHARS));
+        const size = entry.join('\n').length + 1;
+        if (used + size > budget) break;
+        entry.forEach(l => lines.push(l));
+        used += size;
+        shown++;
+      }
+      if (shown < errors.length) {
+        omitted += errors.length - shown;
+        lines.push('  … ' + (errors.length - shown) + ' more not shown');
+      }
       lines.push('');
+      used += 1;
     });
 
     lines.push(DASH);
+    if (omitted > 0) {
+      lines.push(omitted + ' occurrence(s) left out to keep this email under MailApp\'s size limit.');
+      lines.push('They are marked reported; read them in ERROR_LOG.');
+    }
     lines.push('ERROR_LOG: ' + ss.getUrl());
     lines.push('');
     lines.push('This digest covers all unreported errors since the last run.');
@@ -398,10 +431,11 @@ function sendDailyErrorReport() {
 
     MailApp.sendEmail(adminEmail, subject, lines.join('\n'));
 
-    // Mark rows as reported
-    unreported.forEach(({ sheetRow }) =>
-      logSheet.getRange(sheetRow, 5).setValue(ts)
-    );
+    // Mark rows as reported: one write for the whole column, not one call
+    // per row, so a large backlog can't run out the clock after the send.
+    const reportedCol = data.map(row => [row[4] || '']);
+    unreported.forEach(({ sheetRow }) => { reportedCol[sheetRow - 2] = [ts]; });
+    logSheet.getRange(2, 5, reportedCol.length, 1).setValues(reportedCol);
     SpreadsheetApp.flush();
 
     console.log('[DailyReport] Sent to ' + adminEmail + ' — ' + unreported.length + ' error(s).');
@@ -1699,6 +1733,48 @@ function _markStaleDeprioritized_(payloadUid, reason, attempt) {
   const set = _readStaleDeprioritizeSet_();
   set[String(payloadUid)] = { reason: reason, attempt: attempt, at: new Date().getTime() };
   _writeStaleDeprioritizeSet_(set);
+}
+
+
+// ================================================================
+// TURNSTILE STALE-RESET COUNTS
+// ================================================================
+// { Payload_UID: n } — how many times in a row the Turnstile has reset
+// this row from STUDIO_ACTIVE for staleness since Studio last answered it.
+// This used to be Retry_Count, the same column the Queue Processor spends
+// on parse, audit and processing retries (MAX_RETRIES), so two stale
+// resets left a row one parse failure from FAILED_PARSE, and two audit
+// retries left it one timeout from STUDIO_TIMEOUT. Retry_Count is now the
+// Queue Processor's alone. processInferenceQueue() clears a row's entry
+// when it sees FLOW_COMPLETE, and runMatrixTurnstile() drops entries for
+// rows no longer PENDING_FLOW or STUDIO_ACTIVE, which keeps the value far
+// below Script Properties' ~9KB limit.
+
+/** Reads the { Payload_UID: n } stale-reset counts. Returns {} if unset/corrupt. */
+function _readTurnstileStaleCounts_() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty('KOS_TURNSTILE_STALE_COUNTS');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn('[Turnstile] Stale-count map corrupt — resetting. ' + e.message);
+    return {};
+  }
+}
+
+/** Persists the { Payload_UID: n } stale-reset counts. */
+function _writeTurnstileStaleCounts_(map) {
+  PropertiesService.getScriptProperties()
+    .setProperty('KOS_TURNSTILE_STALE_COUNTS', JSON.stringify(map));
+}
+
+/** Drops these Payload_UIDs' stale-reset counts. A no-op when none have one. */
+function _clearTurnstileStaleCounts_(uids) {
+  const map = _readTurnstileStaleCounts_();
+  let changed = false;
+  uids.forEach(uid => {
+    if (Object.prototype.hasOwnProperty.call(map, String(uid))) { delete map[String(uid)]; changed = true; }
+  });
+  if (changed) _writeTurnstileStaleCounts_(map);
 }
 
 /**
