@@ -21,6 +21,9 @@ on:
     - cron: '0 12 * * 3'     # Wednesday noon -> hunt
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   call-central-brain:
     runs-on: ubuntu-latest
@@ -37,12 +40,16 @@ jobs:
         env:
           APPS_SCRIPT_URL: ${{ secrets.APPS_SCRIPT_URL }}
           TENANT_CALLER_KEY: ${{ secrets.TENANT_CALLER_KEY }}
+          OWNER: ${{ github.repository_owner }}
+          REPO: ${{ github.event.repository.name }}
+          MODE: ${{ steps.mode.outputs.mode }}
+        # The key and every other value reach the script as environment
+        # variables and are JSON-encoded by jq. The key used to be pasted
+        # into the script text by ${{ }} expansion, which puts the secret in
+        # the generated script and lets any quote in a value break the JSON.
         run: |
+          jq -n --arg owner "$OWNER" --arg repo "$REPO" --arg mode "$MODE" --arg key "$TENANT_CALLER_KEY" \
+            '{owner: $owner, repo: $repo, mode: $mode, callerKey: $key}' |
           curl --fail-with-body -sS -X POST "${APPS_SCRIPT_URL}?endpoint=autonomous_agent" \
             -H "Content-Type: application/json" \
-            -d '{
-              "owner": "${{ github.repository_owner }}",
-              "repo": "${{ github.event.repository.name }}",
-              "mode": "${{ steps.mode.outputs.mode }}",
-              "callerKey": "${{ secrets.TENANT_CALLER_KEY }}"
-            }'
+            --data-binary @-
