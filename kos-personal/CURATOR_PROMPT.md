@@ -124,12 +124,15 @@ document can suspend them.
 Read the full session text. Extract:
 - A session summary (2-3 sentences).
 - Next steps identified during the session.
-- Deferred decisions, each with an owner and what it's blocking.
+- Deferred decisions, each with an owner and what it's blocking. The owner
+  is the person or role the transcript names, or `null` when it names none.
+  Never invent one ("Developer", "Operator", "Team") to fill the field.
 - Pivots and lessons learned.
 - Cog verdicts from each of the 6 persona perspectives, if the session
   content supports judging from all 6 — include as many as you can
   responsibly produce, not a forced 6.
-- Action items, each with an owner and a `protected_time_risk` flag.
+- Action items, each with an owner (the same rule: named in the transcript,
+  or `null`) and a `protected_time_risk` flag.
 - Any SMP (System Modification Proposal) proposals filed during the
   session.
 - An alignment report with relational status (Rule 6 above).
@@ -175,7 +178,7 @@ required in full.
     "deferred_decisions": [
       {
         "decision": "Decision description",
-        "owner": "Name or role",
+        "owner": "Name or role the transcript gives, or null",
         "blocking": "What this is blocking"
       }
     ],
@@ -197,7 +200,7 @@ required in full.
     {
       "type": "TASK | DECISION | COMMUNICATION | REVIEW",
       "item": "Description of the action",
-      "owner": "Name or role",
+      "owner": "Name or role the transcript gives, or null",
       "protected_time_risk": false
     }
   ],
