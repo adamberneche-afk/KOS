@@ -295,7 +295,8 @@ repair tool (`student-data-access-intake.test.js`,
 `student-data-access-repair.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
-the pacing/calendar helpers, the `?diag` modes (`diagnostics.test.js`,
+the pacing/calendar helpers, the page's sync code never overwriting an
+edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,
 run against the real built page), and the owner-only functions the page
 calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-personal/` covers the `kos-personal/studio-steps/`
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
@@ -306,7 +307,7 @@ per-session vector classification and its backfill
 (`vector-classify-sessions.test.js`), incubator decay (`incubator-decay.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the lint tools, the `leaderhub-build` drift gate, and the split script's
+the harness's own fake Sheets ranges (`gas-sandbox-range.test.js`), the lint tools, the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 
