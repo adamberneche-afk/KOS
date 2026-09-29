@@ -10,11 +10,6 @@
     "reason": "Same as runSemanticSweeper above — pre-existing gap, flagged for follow-up, not fixed as part of introducing this check."
   },
   {
-    "file": "kos-personal/5_Error_And_Utilities.gs",
-    "function": "sendDailyErrorReport",
-    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up, not fixed as part of introducing this check."
-  },
-  {
     "file": "kos-personal/6_Governance.gs",
     "function": "generateDailyPrimer",
     "reason": "The function it delegates to, _writeLatestPrimer_(), does have coverage (tests/kos-personal/governance-primer.test.js) — but generateDailyPrimer() itself, the actual trigger handler, is never called directly by any test. Pre-existing gap, flagged for follow-up."
@@ -67,16 +62,6 @@
   {
     "file": "cas-ccps/scripts/30_SCRSuggestionEngine.js",
     "function": "runWeeklySCRSuggestionUpdate_",
-    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
-  },
-  {
-    "file": "cas-ccps/scripts/37_FlowInputBuilder.js",
-    "function": "buildFlowInputRows",
-    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. _fiCheckPlausibility_/_fiDistinguishingWords_ in this same file DO have direct coverage; this is specifically the outer scheduled entry point. Flagged for follow-up."
-  },
-  {
-    "file": "cas-ccps/scripts/37_FlowInputBuilder.js",
-    "function": "harvestFlowInputResults",
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
   },
   {

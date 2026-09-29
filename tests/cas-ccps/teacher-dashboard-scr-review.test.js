@@ -47,7 +47,7 @@ function setUp(sandbox, opts) {
   props.setProperty('TEACHER_EMAIL', o.teacherEmail === undefined ? TEACHER : o.teacherEmail);
 
   const ledger = ss.insertSheet('Ledger');
-  const ledgerHeader = new Array(23).fill('');
+  const ledgerHeader = new Array(23).fill('header');
   ledger.appendRow(ledgerHeader);
   (o.ledgerRows || []).forEach((row) => ledger.appendRow(row));
 
@@ -157,7 +157,7 @@ test('getScrReviewQueue: a missing SCRSuggestions tab returns an empty queue rat
   props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   props.setProperty('ADMIN_SS_ID', ss.getId());
   props.setProperty('TEACHER_EMAIL', TEACHER);
-  ss.insertSheet('Ledger').appendRow(new Array(23).fill(''));
+  ss.insertSheet('Ledger').appendRow(new Array(23).fill('header'));
 
   const result = exported.getScrReviewQueue();
   assert.deepEqual(result, { success: true, suggestions: [] });

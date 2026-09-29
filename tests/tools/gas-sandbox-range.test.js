@@ -44,3 +44,75 @@ test('A1 notation: cells, blocks, whole rows and whole columns', () => {
   assert.deepEqual(s.getRange('1:1').getValues(), [['a', 'b', 'c']]);
   assert.deepEqual(s.getRange('C:C').getValues(), [['c'], ['f']]);
 });
+
+// ── More places the fakes used to be looser than Apps Script ───────────────
+
+test('getLastRow ignores rows whose cells were cleared, and appendRow writes after the last real row', () => {
+  const s = sheet();
+  s.appendRow(['h']); s.appendRow(['a']); s.appendRow(['b']);
+  s.getRange(3, 1).setValue('');
+  assert.equal(s.getLastRow(), 2);
+  s.getRange(2, 1, 1, 1).clearContent();
+  assert.equal(s.getLastRow(), 1);
+  s.appendRow(['c']);
+  assert.equal(s.getLastRow(), 2);
+  assert.deepEqual(s.getDataRange().getValues(), [['h'], ['c']]);
+  // An all-blank row is not content, so it doesn't move the next append.
+  s.appendRow(['', '']);
+  s.appendRow(['d']);
+  assert.equal(s.getRange(3, 1).getValue(), 'd');
+});
+
+test('getLastColumn is the last column with content', () => {
+  const s = sheet();
+  s.appendRow(['a', 'b', '']);
+  assert.equal(s.getLastColumn(), 2);
+  s.getRange(1, 2).setValue('');
+  assert.equal(s.getLastColumn(), 1);
+});
+
+test('insertSheet refuses a duplicate name and names an unnamed sheet', () => {
+  const { sandbox } = loadGasFiles([], []);
+  const ss = sandbox.SpreadsheetApp.create('x');
+  ss.insertSheet('Tab');
+  assert.throws(() => ss.insertSheet('Tab'), /A sheet with the name "Tab" already exists/);
+  const unnamed = ss.insertSheet().getName();
+  assert.match(unnamed, /^Sheet\d+$/);
+  assert.equal(ss.getSheets().filter((t) => t.getName() === unnamed).length, 1);
+});
+
+test('a new doc body is one empty paragraph, like real Docs', () => {
+  const { sandbox } = loadGasFiles([], []);
+  const body = sandbox.DocumentApp.create('d').getBody();
+  assert.equal(body.getNumChildren(), 1);
+  assert.equal(body.getText(), '');
+  body.appendParagraph('x');
+  assert.equal(body.getText(), '\nx');
+  body.clear();
+  assert.equal(body.getNumChildren(), 1);
+});
+
+test('Utilities.formatDate applies the time zone it is given', () => {
+  const { sandbox } = loadGasFiles([], []);
+  const f = sandbox.Utilities.formatDate;
+  const d = new Date('2026-03-04T02:30:00Z');
+  assert.equal(f(d, 'UTC', 'yyyy-MM-dd HH:mm'), '2026-03-04 02:30');
+  assert.equal(f(d, 'America/New_York', 'yyyy-MM-dd HH:mm'), '2026-03-03 21:30');
+  assert.equal(f(d, 'America/New_York', 'MMM d, yyyy h:mm a'), 'Mar 3, 2026 9:30 PM');
+  assert.throws(() => f(d, 'UTC', 'yyyy-QQ'), /unsupported format token "QQ"/);
+  assert.throws(() => f(d, 'Not/AZone', 'yyyy'), /invalid time zone/);
+});
+
+test('each loaded file runs under its own filename, sharing one global scope', () => {
+  const fs = require('fs');
+  const os = require('os');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'gas-sandbox-'));
+  const a = path.join(dir, 'a.gs'), b = path.join(dir, 'b.gs');
+  fs.writeFileSync(a, 'const SHARED = 2;\nfunction whereA() { return new Error().stack; }\n');
+  fs.writeFileSync(b, 'function useShared() { return SHARED * 3; }\n');
+  const { exported } = loadGasFiles([a, b], ['useShared', 'whereA']);
+  assert.equal(exported.useShared(), 6, 'a later file sees an earlier file\'s top-level const');
+  assert.match(exported.whereA(), /a\.gs:2/, 'code in a.gs is credited to a.gs, not to the last file');
+  fs.rmSync(dir, { recursive: true, force: true });
+});

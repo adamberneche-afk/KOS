@@ -24,7 +24,7 @@ function setUp(rowTeacher) {
   props.setProperty('ADMIN_SS_ID', ss.getId());
   props.setProperty('TEACHER_EMAIL', TEACHER);
   const ledger = ss.insertSheet('Ledger');
-  ledger.appendRow(new Array(23).fill(''));
+  ledger.appendRow(new Array(23).fill('header'));
   const row = new Array(23).fill('');
   row[1] = 'student@ccpsnet.net';
   row[2] = 'CFG-1';

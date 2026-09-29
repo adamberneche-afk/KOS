@@ -1188,7 +1188,6 @@ function lpNewPickerCreate() {
 // A saved preference always wins; absent one, start in Cards below a
 // mobile breakpoint and Grid on desktop.
 let scrViewMode = LS.get('lh_scr_view_mode', null) || (window.innerWidth < 700 ? 'list' : 'grid');
-function toggleScrView() { setScrViewMode(scrViewMode === 'grid' ? 'list' : 'grid'); }
 // A manual choice always overrides the auto-default afterward — this is
 // the one place scrViewMode should ever be assigned from (all view-tab
 // buttons route through it) so the persisted preference stays accurate.
