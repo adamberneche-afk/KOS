@@ -143,6 +143,7 @@ function _lhRequireOwner_() {
 }
 
 function lhApiCall(action, payload) { _lhRequireOwner_(); return lhApiCall_(action, payload); }
+function lhOrgSyncCall(bridgeUrl, action, payload) { _lhRequireOwner_(); return lhOrgSyncCall_(bridgeUrl, action, payload); }
 function lhGetHorizonItems() { _lhRequireOwner_(); return lhGetHorizonItems_(); }
 function lhGetAllConfig() { _lhRequireOwner_(); return lhGetAllConfig_(); }
 function lhSaveConfig(key, value) { _lhRequireOwner_(); return lhSaveConfig_(key, value); }

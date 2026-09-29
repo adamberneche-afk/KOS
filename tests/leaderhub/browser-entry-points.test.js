@@ -27,7 +27,7 @@ const { findGoogleScriptRunCalls } = require('../../tools/gas-lint/check.js');
 const LH = path.join(__dirname, '..', '..', 'leader-hub');
 const FILES = ['Code.gs', 'EmailBridge.gs', 'Config.gs', 'Data.gs', 'SCR.gs'].map((f) => path.join(LH, f));
 const ENTRY_POINTS = ['lhApiCall', 'lhGetHorizonItems', 'lhGetAllConfig', 'lhSaveConfig',
-  'lhPushData', 'lhPullData', 'lhGetScrScores', 'lhSaveScrScores'];
+  'lhPushData', 'lhPullData', 'lhGetScrScores', 'lhSaveScrScores', 'lhOrgSyncCall'];
 const OWNER = 'owner@ccpsnet.net';
 
 function load(viewer, ownerEmail) {
