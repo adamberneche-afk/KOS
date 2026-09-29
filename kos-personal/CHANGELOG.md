@@ -1,6 +1,21 @@
 # KOS Changelog
 
 
+### One failure, one ERROR_LOG row (2026-09-29)
+
+`processIntakePayload()` and `processVectorClassificationPayload()` log
+their own failures, then `processInferenceQueue()` logged the same failure
+again from the ERROR result: 2 rows per failure, 3 on the intake parse path,
+which also logged before rethrowing. A result that was already logged now
+carries `reported: true`, and the queue logs only what nothing else did. A
+Registrar row whose stored JSON failed to parse at translation stayed
+`READY_FOR_TRANSLATION` and logged a new row every 10 minutes; it now goes
+back to Stage 2 validation under the usual retry limit.
+
+The inference service's worker could refund a failed job twice: if marking
+the job failed threw after the refund, the catch-all refunded again. Fixed,
+with a test.
+
 ### `studio-steps/` archived (2026-09-29)
 
 The two custom Workspace Studio steps (`WriteCuratorOutputStep`,
