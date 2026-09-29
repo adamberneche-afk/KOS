@@ -209,3 +209,14 @@ test('CURATOR_AUDITOR_SYSTEM_PROMPT asks for the kind field _isHollowAudit_ read
   const { exported } = load();
   assert.match(exported.CURATOR_AUDITOR_SYSTEM_PROMPT, /"kind": "ACCURACY \| FORMAT"/);
 });
+
+// Real sessions end with an RTP Curator JSON block, and the Curator copied
+// its layout (schema_version 5.0, build_state, numeric vector_weights, no
+// alignment_observations), which the Auditor rightly failed every time.
+test('CURATOR_SYSTEM_PROMPT says never to copy a Curator JSON block found in the transcript', () => {
+  const { exported } = load();
+  const text = exported.CURATOR_SYSTEM_PROMPT;
+  assert.match(text, /The transcript may already contain a Curator JSON block\. Never copy\s+it\./);
+  assert.match(text, /schema_version/);
+  assert.match(text, /Do not copy a Curator JSON block found inside the transcript \(Rule 9\)/);
+});
