@@ -849,30 +849,46 @@ function _queuePayload(payloadUid, payloadType, docUrl, fileId, staging) {
  * @param  {Folder} rawFolder    03.4_RAW_EXHAUST Drive folder.
  * @param  {Sheet}  staging      Open STAGING_PIPELINE sheet.
  * @param  {Spreadsheet} ss      Open BRAIN_TRUST_INDEX spreadsheet.
- * @returns {number} Number of chunks successfully queued.
+ * @returns {number} Number of chunks queued: all of them, or it throws.
  */
 function _chunkAndQueue(rawText, payloadType, logUUID, rawFolder, staging, ss) {
   const chunks = _semanticChunker(rawText);
-  let queued = 0;
 
-  chunks.forEach((chunkText, idx) => {
-    const padded    = (idx + 1).toString().padStart(2, '0');
-    const chunkUID  = logUUID + '_CH' + padded;
-    const chunkName = '[CHUNK_' + padded + ']_' + logUUID;
-    try {
-      const doc  = DocumentApp.create(chunkName);
-      const dId  = doc.getId();              // BUG-03 pattern: capture ID first
+  // All or nothing. Every chunk's doc is created before any is queued. A
+  // chunk used to fail on its own (a Docs rate limit, say), get logged, and
+  // be skipped, while the caller still moved the inbound file to _PROCESSED.
+  // The duplicate check (any Payload_UID starting with this logUUID) then
+  // refused a resubmission, so that part of the session was lost for good.
+  // Now a failure trashes the docs already made and throws: nothing is
+  // queued, the inbound file stays where it is, and the next run retries it
+  // (sensor1 quarantines it after CFG.SENSOR1_QUARANTINE_THRESHOLD tries).
+  const made = [];
+  let current = 0;
+  try {
+    chunks.forEach((chunkText, idx) => {
+      current = idx + 1;
+      const padded = (idx + 1).toString().padStart(2, '0');
+      const doc = DocumentApp.create('[CHUNK_' + padded + ']_' + logUUID);
+      const dId = doc.getId();              // BUG-03 pattern: capture ID first
+      made.push({ uid: logUUID + '_CH' + padded, id: dId });
       doc.getBody().setText(chunkText);
       doc.saveAndClose();
       DriveApp.getFileById(dId).moveTo(rawFolder);
+    });
+  } catch (chunkErr) {
+    made.forEach((m) => {
+      try { DriveApp.getFileById(m.id).setTrashed(true); } catch (_) {}
+    });
+    throw new Error('Could not create chunk ' + current + ' of ' + chunks.length +
+      ' for ' + logUUID + ' (' + chunkErr.message + '). Nothing was queued; the log will be retried.');
+  }
 
-      const docUrl   = DriveApp.getFileById(dId).getUrl();
-      const didQueue = _queuePayload(chunkUID, payloadType, docUrl, dId, staging);
-      if (didQueue) queued++;
-    } catch (chunkErr) {
-      _reportError('_chunkAndQueue:CH' + padded + ':' + logUUID, chunkErr, null);
-    }
-  });
+  // One write for every chunk row, so a session is never left half-queued.
+  const rows = made.map((m) => [
+    new Date(), m.uid, payloadType, DriveApp.getFileById(m.id).getUrl(), m.id, 'PENDING_FLOW', 0,
+  ]);
+  staging.getRange(staging.getLastRow() + 1, 1, rows.length, 7).setValues(rows);
+  const queued = rows.length;
 
   // One VECTOR_MATRIX row per session: queue the session's classification
   // parts alongside its Curator chunks (20_VectorClassifySessions.gs). A

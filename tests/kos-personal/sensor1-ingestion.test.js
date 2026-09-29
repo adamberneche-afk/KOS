@@ -27,7 +27,7 @@ const FILES = [
 const EXPOSE = [
   'sensor1_scanInboundSessions', 'submitSessionLog',
   '_groupLinesForArchiveWrite_', '_archiveRawLog_',
-  '_recordSensor1Failure_', '_clearSensor1Failure_',
+  '_recordSensor1Failure_', '_clearSensor1Failure_', '_chunkAndQueue',
   'CFG',
 ];
 
@@ -252,4 +252,68 @@ test('sensor1_scanInboundSessions: quarantines a file after SENSOR1_QUARANTINE_T
 
   exported.sensor1_scanInboundSessions(); // failure #2 — hits the threshold
   assert.equal(inbound.files.length, 0, 'moved out of inbound once the threshold is reached');
+});
+
+// ── Intake never loses a chunk ──────────────────────────────────────────────
+// A chunk that failed to create used to be logged and skipped while the
+// inbound file still moved to _PROCESSED; the duplicate check then refused
+// the log for good. Now nothing is queued, the file stays, and the next run
+// retries it.
+
+function stagingRows(ss) {
+  const sheet = ss.getSheetByName('STAGING_PIPELINE');
+  return sheet ? sheet.rows.slice(1) : [];
+}
+
+test('sensor1_scanInboundSessions: a chunk that fails to create leaves the log in inbound, nothing queued', () => {
+  const { exported, sandbox } = load();
+  const { ss, inbound } = setUpSensor1(sandbox);
+  sandbox.__exported.CFG.SENSOR1_PACING_MS = 0;
+  addInboundDoc(sandbox, inbound, 'doc-chunkfail',
+    'A real session log with enough words in it to clear the near-empty guard easily.');
+
+  const realCreate = sandbox.DocumentApp.create;
+  sandbox.DocumentApp.create = (name) => {
+    if (/^\[CHUNK_/.test(name)) throw new Error('Service Documents failed');
+    return realCreate.call(sandbox.DocumentApp, name);
+  };
+  try {
+    exported.sensor1_scanInboundSessions();
+  } finally {
+    sandbox.DocumentApp.create = realCreate;
+  }
+
+  assert.equal(inbound.files.length, 1, 'the log stays in inbound for the next run');
+  assert.equal(stagingRows(ss).filter((r) => /_CH\d+$/.test(r[1])).length, 0, 'no chunk was queued');
+
+  // The next run, with Docs healthy again, processes it in full.
+  exported.sensor1_scanInboundSessions();
+  assert.equal(inbound.files.length, 0);
+  assert.ok(stagingRows(ss).some((r) => /_CH01$/.test(r[1])), 'the chunk is queued on the retry');
+});
+
+test('_chunkAndQueue: a later chunk failing trashes the chunk docs already made', () => {
+  const { exported, sandbox } = load();
+  const { ss, rawExhaust } = setUpSensor1(sandbox);
+  const staging = ss.insertSheet('STAGING_PIPELINE');
+  staging.appendRow(['Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count']);
+  const delim = sandbox.__exported.CFG.DELIMITER;
+  const big = sandbox.__exported.CFG.MAX_CHUNK_SIZE;
+  const text = delim + ' one] ' + 'a'.repeat(big - 50) + '\n\n' + delim + ' two] ' + 'b'.repeat(big - 50);
+
+  const realCreate = sandbox.DocumentApp.create;
+  sandbox.DocumentApp.create = (name) => {
+    if (/^\[CHUNK_02\]/.test(name)) throw new Error('Service Documents failed');
+    return realCreate.call(sandbox.DocumentApp, name);
+  };
+  try {
+    assert.throws(() => exported._chunkAndQueue(text, 'SESSION_LOG', 'LOG-abc', rawExhaust, staging, ss),
+      /chunk 2 of 2.*Nothing was queued/);
+  } finally {
+    sandbox.DocumentApp.create = realCreate;
+  }
+
+  assert.equal(staging.getLastRow(), 1, 'no staging rows');
+  const first = [...sandbox.DriveApp._files.values()].find((f) => /^\[CHUNK_01\]_LOG-abc/.test(f.name));
+  assert.ok(first && first.isTrashed(), 'chunk 1 is trashed, not left orphaned');
 });
