@@ -1,6 +1,16 @@
 # KOS Changelog
 
 
+### Intake never loses a chunk (2026-09-29)
+
+`_chunkAndQueue()` used to log a chunk that failed to create and carry on,
+while sensor1 still moved the inbound file to `_PROCESSED`. The duplicate
+check then refused the log for good. It is now all or nothing: a failure
+trashes the chunk docs already made and throws, nothing is queued, and the
+file stays in inbound for the next run (quarantined after
+`SENSOR1_QUARANTINE_THRESHOLD` tries). Chunk rows are written in one
+`setValues()`.
+
 ### Codebase sweep (2026-09-28): retries that never re-ran, a nested lock, and smaller fixes
 
 **Retries now actually reach the Flow.** Every in-pipeline retry (a
