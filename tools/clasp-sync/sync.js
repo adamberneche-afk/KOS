@@ -103,6 +103,19 @@ for (const [projectKey, def] of Object.entries(PROJECT_MAP)) {
     continue;
   }
 
+  // A listed file that isn't on disk used to be skipped with a warning, so
+  // the project was pushed without it and every call into it failed at
+  // runtime. Refuse the whole project instead.
+  const missingFiles = candidateFiles.filter(relPath => !fs.existsSync(path.join(REPO_ROOT, relPath)));
+  if (missingFiles.length > 0) {
+    console.error(
+      `[${shortName}] REFUSED to build — project-map.json lists file(s) missing on disk: ` +
+      `${missingFiles.join(', ')}. Restore them or fix project-map.json before pushing.`
+    );
+    refusedUnmerged++;
+    continue;
+  }
+
   const outDir = path.join(BUILD_DIR, shortName);
   fs.rmSync(outDir, { recursive: true, force: true });
   fs.mkdirSync(outDir, { recursive: true });
@@ -114,10 +127,6 @@ for (const [projectKey, def] of Object.entries(PROJECT_MAP)) {
   let copied = 0;
   for (const relPath of files) {
     const src = path.join(REPO_ROOT, relPath);
-    if (!fs.existsSync(src)) {
-      console.warn(`  [${shortName}] WARNING: ${relPath} listed in project-map.json but missing on disk — skipped.`);
-      continue;
-    }
     fs.copyFileSync(src, path.join(outDir, path.basename(relPath)));
     copied++;
   }

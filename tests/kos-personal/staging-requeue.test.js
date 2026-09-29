@@ -90,6 +90,7 @@ function setup() {
   props.setProperty('KOS_TURNSTILE_RELEASED', JSON.stringify({ 'UID-A': 1, 'UID-C': 2 }));
   props.setProperty('KOS_AUDIT_RETRY_PRIORITY', JSON.stringify({ 'UID-A': true }));
   props.setProperty('KOS_STALE_DEPRIORITIZE', JSON.stringify({ 'UID-A': { reason: 'stale_reset' } }));
+  props.setProperty('KOS_TURNSTILE_STALE_COUNTS', JSON.stringify({ 'UID-A': 3 }));
   props.setProperty('KOS_STUDIO_DOC_WRITTEN', JSON.stringify({ 'UID-A': 1 }));
 
   return { exported, sandbox, props, staging, curator, returns, files };
@@ -144,6 +145,7 @@ test('requeueStagingRows: resets every piece of a row\'s state together', () => 
   assert.deepEqual(JSON.parse(props.getProperty('KOS_TURNSTILE_RELEASED')), { 'UID-C': 2 });
   assert.deepEqual(JSON.parse(props.getProperty('KOS_AUDIT_RETRY_PRIORITY')), {});
   assert.deepEqual(JSON.parse(props.getProperty('KOS_STALE_DEPRIORITIZE')), {});
+  assert.deepEqual(JSON.parse(props.getProperty('KOS_TURNSTILE_STALE_COUNTS')), {});
   assert.deepEqual(JSON.parse(props.getProperty('KOS_STUDIO_DOC_WRITTEN')), {});
 });
 

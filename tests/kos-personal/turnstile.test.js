@@ -27,6 +27,7 @@ const EXPOSE = [
   '_readAuditRetryPrioritySet_', '_writeAuditRetryPrioritySet_', '_markAuditRetryPriority_',
   '_readStaleDeprioritizeSet_', '_writeStaleDeprioritizeSet_', '_markStaleDeprioritized_',
   '_readUnknownStatusAlertedSet_', '_writeUnknownStatusAlertedSet_',
+  '_readTurnstileStaleCounts_', '_writeTurnstileStaleCounts_',
 ];
 
 function load() {
@@ -143,7 +144,8 @@ test('runMatrixTurnstile: a STUDIO_ACTIVE row with no release-map entry is treat
 
   const after = statusesByUid(staging);
   assert.equal(after['UID-1'].status, 'PENDING_FLOW');
-  assert.equal(after['UID-1'].retries, 1);
+  assert.equal(exported._readTurnstileStaleCounts_()['UID-1'], 1);
+  assert.equal(after['UID-1'].retries, 0, 'a stale reset must not spend the queue\'s Retry_Count');
 });
 
 test('runMatrixTurnstile: a STUDIO_ACTIVE row within its stale window is left alone and counted active', () => {
@@ -161,19 +163,21 @@ test('runMatrixTurnstile: a STUDIO_ACTIVE row within its stale window is left al
   assert.equal(after['UID-1'].retries, 0);
 });
 
-test('runMatrixTurnstile: a STUDIO_ACTIVE row past its stale window resets to PENDING_FLOW, Retry_Count incremented', () => {
+test('runMatrixTurnstile: a STUDIO_ACTIVE row past its stale window resets to PENDING_FLOW, stale count incremented', () => {
   const { exported, sandbox } = load();
   const { staging } = seed(exported, sandbox, [
     { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: 1 },
   ]);
   const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
   exported._writeReleaseMap({ 'UID-1': new Date().getTime() - staleMs - 1000 });
+  exported._writeTurnstileStaleCounts_({ 'UID-1': 1 });
 
   exported.runMatrixTurnstile();
 
   const after = statusesByUid(staging);
   assert.equal(after['UID-1'].status, 'PENDING_FLOW');
-  assert.equal(after['UID-1'].retries, 2);
+  assert.equal(exported._readTurnstileStaleCounts_()['UID-1'], 2);
+  assert.equal(after['UID-1'].retries, 1, 'Retry_Count belongs to the Queue Processor and stays put');
   const released = exported._readReleaseMap();
   assert.ok(!released['UID-1'], 'the stale entry should be cleared, not left dangling');
 });
@@ -182,17 +186,51 @@ test('runMatrixTurnstile: escalates to STUDIO_TIMEOUT once stale resets exceed T
   const { exported, sandbox } = load();
   const threshold = exported.CFG.TURNSTILE_STUCK_THRESHOLD;
   const { staging } = seed(exported, sandbox, [
-    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: threshold }, // one more reset tips it over
+    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: 0 },
   ]);
   const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
   exported._writeReleaseMap({ 'UID-1': new Date().getTime() - staleMs - 1000 });
+  exported._writeTurnstileStaleCounts_({ 'UID-1': threshold }); // one more reset tips it over
 
   exported.runMatrixTurnstile();
 
   const after = statusesByUid(staging);
   assert.equal(after['UID-1'].status, 'STUDIO_TIMEOUT',
     'a row stuck past the threshold must stop cycling and surface for human review');
-  assert.equal(after['UID-1'].retries, threshold + 1);
+  assert.equal(after['UID-1'].retries, 0);
+  assert.ok(!('UID-1' in exported._readTurnstileStaleCounts_()),
+    'a terminal row\'s stale count is dropped, not kept forever');
+});
+
+// Retry_Count used to double as this stale counter, so a row's parse and
+// audit retries (3_Queue_Processor.gs, CFG.MAX_RETRIES) and its stale
+// resets shared one budget: a row with two audit retries died at its first
+// timeout, and a row with two timeouts died at its first bad parse.
+test('runMatrixTurnstile: a row with queue retries spent still gets its full run of stale resets', () => {
+  const { exported, sandbox } = load();
+  const { staging } = seed(exported, sandbox, [
+    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: exported.CFG.TURNSTILE_STUCK_THRESHOLD },
+  ]);
+  const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
+  exported._writeReleaseMap({ 'UID-1': new Date().getTime() - staleMs - 1000 });
+
+  exported.runMatrixTurnstile();
+
+  assert.equal(statusesByUid(staging)['UID-1'].status, 'PENDING_FLOW',
+    'a first stale reset must not time the row out because of its audit retries');
+});
+
+test('runMatrixTurnstile: stale counts are dropped for rows no longer waiting on Studio', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox, [
+    { uid: 'DONE', status: 'FLOW_COMPLETE' },
+    { uid: 'WAITING', status: 'PENDING_FLOW' },
+  ]);
+  exported._writeTurnstileStaleCounts_({ DONE: 2, WAITING: 1, GONE: 3 });
+
+  exported.runMatrixTurnstile();
+
+  assert.deepEqual(exported._readTurnstileStaleCounts_(), { WAITING: 1 });
 });
 
 // STUDIO_TIMEOUT means "no Studio flow ever completed this row", but the
@@ -215,18 +253,18 @@ test('runMatrixTurnstile: a row AUDIT_LOG has rejected terminates as AUDIT_REJEC
   const { exported, sandbox } = load();
   const threshold = exported.CFG.TURNSTILE_STUCK_THRESHOLD;
   const { ss, staging } = seed(exported, sandbox, [
-    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: threshold },
+    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: 1 },
   ]);
   seedAuditRejection(exported, ss, 'UID-1');
   const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
   exported._writeReleaseMap({ 'UID-1': new Date().getTime() - staleMs - 1000 });
+  exported._writeTurnstileStaleCounts_({ 'UID-1': threshold });
 
   exported.runMatrixTurnstile();
 
   const after = statusesByUid(staging);
   assert.equal(after['UID-1'].status, 'AUDIT_REJECTED',
     'Studio answered this row — the audit rejected it, and the status must say so');
-  assert.equal(after['UID-1'].retries, threshold + 1);
 });
 
 test('runMatrixTurnstile: a row with no audit history still terminates as STUDIO_TIMEOUT', () => {
@@ -235,11 +273,12 @@ test('runMatrixTurnstile: a row with no audit history still terminates as STUDIO
   // An AUDIT_LOG exists and holds a rejection for a DIFFERENT row — the
   // lookup must be per-UID, not "has anything ever been rejected".
   const { ss, staging } = seed(exported, sandbox, [
-    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: threshold },
+    { uid: 'UID-1', status: 'STUDIO_ACTIVE', retries: 0 },
   ]);
   seedAuditRejection(exported, ss, 'SOMEONE-ELSE');
   const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
   exported._writeReleaseMap({ 'UID-1': new Date().getTime() - staleMs - 1000 });
+  exported._writeTurnstileStaleCounts_({ 'UID-1': threshold });
 
   exported.runMatrixTurnstile();
 
@@ -251,11 +290,12 @@ test('runMatrixTurnstile: escalated STUDIO_TIMEOUT rows free their concurrency s
   const threshold = exported.CFG.TURNSTILE_STUCK_THRESHOLD;
   assert.equal(exported.CFG.TURNSTILE_CONCURRENCY, 1, 'this test relies on the default concurrency of 1');
   const { staging } = seed(exported, sandbox, [
-    { uid: 'STUCK', status: 'STUDIO_ACTIVE', retries: threshold },
+    { uid: 'STUCK', status: 'STUDIO_ACTIVE', retries: 0 },
     { uid: 'WAITING', status: 'PENDING_FLOW' },
   ]);
   const staleMs = exported.CFG.TURNSTILE_STALE_MINS * 60 * 1000;
   exported._writeReleaseMap({ STUCK: new Date().getTime() - staleMs - 1000 });
+  exported._writeTurnstileStaleCounts_({ STUCK: threshold });
 
   exported.runMatrixTurnstile();
 
