@@ -288,7 +288,8 @@ reimplementation of the suggestion engine's confirm/override logic,
 native to that separate Apps Script project — see
 `cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
 Dashboard for real"), the turn-in score review's teacher-ownership check
-(`teacher-dashboard-turn-in-review.test.js`), and the student-data access
+(`teacher-dashboard-turn-in-review.test.js`), the central-ledger SCR
+writers' ownership check (`scr-retry-ownership.test.js`), and the student-data access
 policy: intake sharing, locking at submission, school-year scoping, the
 repair tool, and the student doc's menu calling the dashboard web app
 instead of the Ledger (`student-doc-service.test.js`,

@@ -526,6 +526,85 @@ function _isCurrentSchoolYearRow_(row, currentYear) {
   return _rowSchoolYear_(row) === (currentYear || _currentSchoolYear_());
 }
 
+// ---------------------------------------------------------------------------
+// _scrOwnership_ — student-data access policy, rule 3: only the teacher who
+// assigned the work rates it. A competency rating is built from
+// CompetencyEvidence rows, and each carries the config_id of the Ledger
+// row (the assignment) it came from, which names the assigning teacher. A
+// student+competency pair is this teacher's when any of its evidence comes
+// from their own assignment this school year.
+//
+// Evidence written before config_id existed can't be traced; for a pair
+// with no traceable evidence at all, the current-year roster decides, as it
+// did before this check.
+//
+// Returns { owned: Set<pairKey>, traced: Set<pairKey> }; pairKey is
+// lowercased student email + "|" + competency id.
+// ---------------------------------------------------------------------------
+function _scrPairKey_(email, competencyId) {
+  return String(email || "").trim().toLowerCase() + "|" + String(competencyId || "").trim();
+}
+
+function _scrOwnership_(cfg, teacherEmail) {
+  const out = { owned: new Set(), traced: new Set() };
+  const teacher = String(teacherEmail || "").trim().toLowerCase();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+
+  const year = _currentSchoolYear_();
+  const teacherByConfig = {};
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (ledger && ledger.getLastRow() > 1) {
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row) {
+      const configId = String(row[LEDGER.CONFIG_ID] || "").trim();
+      if (!configId || !_isCurrentSchoolYearRow_(row, year)) return;
+      teacherByConfig[configId] = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
+    });
+  }
+
+  const evidence = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
+  if (!evidence || evidence.getLastRow() < 2) return out;
+  const data = evidence.getDataRange().getValues();
+  const h = data[0].map(function (x) { return String(x).trim(); });
+  const iEmail = h.indexOf("student_email"), iComp = h.indexOf("competency_id");
+  const iConfig = h.indexOf("config_id"), iArchive = h.indexOf("archive_status");
+  if (iEmail === -1 || iComp === -1 || iConfig === -1) return out;
+  for (let i = 1; i < data.length; i++) {
+    if (iArchive !== -1 && String(data[i][iArchive] || "").trim() !== "") continue;
+    const configId = String(data[i][iConfig] || "").trim();
+    if (!configId) continue;
+    const key = _scrPairKey_(data[i][iEmail], data[i][iComp]);
+    out.traced.add(key);
+    if (teacher && teacherByConfig[configId] === teacher) out.owned.add(key);
+  }
+  return out;
+}
+
+function _scrIsMine_(ownership, rosterEmails, email, competencyId) {
+  const key = _scrPairKey_(email, competencyId);
+  if (ownership.traced.has(key)) return ownership.owned.has(key);
+  return rosterEmails.has(String(email || "").trim().toLowerCase());
+}
+
+// _scrTeacherMayDecide_ — rule 3 for a writer that has no teacher-dashboard
+// roster at hand (30_SCRSuggestionEngine.js, 30b_SCRRetryRemediation.js in
+// the central-ledger project). The fallback roster is every student the
+// teacher is TEACHER_EMAIL for on a current-year Ledger row.
+function _scrTeacherMayDecide_(cfg, teacherEmail, studentEmail, competencyId) {
+  const teacher = String(teacherEmail || "").trim().toLowerCase();
+  if (!teacher) return false;
+  const roster = new Set();
+  const ledger = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+  if (ledger && ledger.getLastRow() > 1) {
+    const year = _currentSchoolYear_();
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row) {
+      if (!_isCurrentSchoolYearRow_(row, year)) return;
+      if (String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase() !== teacher) return;
+      roster.add(String(row[LEDGER.GOOGLE_ID] || "").trim().toLowerCase());
+    });
+  }
+  return _scrIsMine_(_scrOwnership_(cfg, teacher), roster, studentEmail, competencyId);
+}
+
 // =============================================================================
 // CLIENT_ESC_JS — exact source of the client-side esc() HTML-escaping
 // helper, shared verbatim by every dashboard's inline <script> block so
