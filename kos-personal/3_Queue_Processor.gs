@@ -214,7 +214,7 @@ function processInferenceQueue() {
         // same MAX_RETRIES-then-escalate discipline as the JSON-parse
         // failure path above, so a persistently-failing audit can't
         // loop forever either.
-        if (parsed.auditor_sign_off && _isAuditFailure_(parsed.auditor_sign_off)) {
+        if (parsed.auditor_sign_off && _isAuditFailure_(parsed.auditor_sign_off, parsed)) {
           const newRetries = retries + 1;
           _archiveAuditFailure_(ss, payloadUid, sheetRow, newRetries, parsed, parsed.auditor_sign_off);
 
