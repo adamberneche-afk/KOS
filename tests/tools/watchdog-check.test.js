@@ -87,6 +87,22 @@ test('runActionlint: a missing/unspawnable binary is a finding on every file, ne
   fs.rmSync(dir, { recursive: true, force: true });
 });
 
+test('runActionlint: a failed run with no per-file finding is a finding on every file, not clean', () => {
+  const dir = makeWorkflowsDir({ 'a.yml': SIMPLE_WORKFLOW, 'b.yml': SIMPLE_WORKFLOW });
+  const fakeExec = () => {
+    const err = new Error('exit 1');
+    err.status = 1;
+    err.stdout = '';
+    err.stderr = 'could not read config file ".github/actionlint.yaml": yaml: line 2\n';
+    throw err;
+  };
+  const results = runActionlint(dir, { execFn: fakeExec });
+  assert.equal(results['a.yml'].length, 1);
+  assert.equal(results['b.yml'].length, 1);
+  assert.match(results['a.yml'][0], /failed without a per-file finding: could not read config file/);
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 test('checkScheduledWorkflowRuns only queries workflows that actually declare a schedule trigger', async () => {
   const dir = makeWorkflowsDir({ 'push-only.yml': SIMPLE_WORKFLOW, 'scheduled.yml': SCHEDULED_WORKFLOW });
   const calls = [];

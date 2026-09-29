@@ -189,11 +189,28 @@ function buildFlowInputRows() {
     const stagingData = stagingSheet.getDataRange().getValues();
     if (stagingData.length < 2) return;
 
+    // A key is taken while its FlowInput row is still READY/EVALUATED.
+    // An ERROR_* row (empty output, suspected fabrication, failed harvest)
+    // used to take its key for good, so every later submission of that doc
+    // was skipped here, timed out in the lane, and never got feedback
+    // again. Now an errored row blocks only the submission it was built
+    // for: a STAGING_PIPELINE row stamped after it is a new submission and
+    // gets a fresh evaluation. The same submission is never rebuilt, even
+    // after an admin resets its staging row, so a suspect row can't re-run
+    // on every pass.
     const fiData = fiSheet.getDataRange().getValues();
     const existingKeys = new Set();
+    const lastErrorAt = {};
     for (let i = 1; i < fiData.length; i++) {
-      if (String(fiData[i][FI.READY_STATUS]).trim() === "HARVESTED") continue;
-      existingKeys.add(fiData[i][FI.STUDENT_FILE_ID] + "|" + fiData[i][FI.CONFIG_ID]);
+      const fiStatus = String(fiData[i][FI.READY_STATUS]).trim();
+      if (fiStatus === "HARVESTED") continue;
+      const fiKey = fiData[i][FI.STUDENT_FILE_ID] + "|" + fiData[i][FI.CONFIG_ID];
+      if (fiStatus.indexOf("ERROR_") === 0) {
+        const at = new Date(fiData[i][FI.TIMESTAMP]).getTime() || 0;
+        lastErrorAt[fiKey] = Math.max(lastErrorAt[fiKey] || 0, at);
+        continue;
+      }
+      existingKeys.add(fiKey);
     }
 
     let built = 0;
@@ -206,6 +223,10 @@ function buildFlowInputRows() {
 
       const key = studentFileId + "|" + configId;
       if (existingKeys.has(key)) continue;
+      if (lastErrorAt[key] !== undefined) {
+        const stagedAt = new Date(stagingData[i][STG_TIMESTAMP]).getTime();
+        if (!(stagedAt > lastErrorAt[key])) continue;
+      }
 
       const ledgerRow = _fiFindLedgerRow_(cfg, configId, studentFileId);
       if (!ledgerRow) {

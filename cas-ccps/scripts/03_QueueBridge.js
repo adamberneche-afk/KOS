@@ -27,6 +27,7 @@ const RQ_STATUS    = 5;
 // Ledger project's global scope. SP_TEACHER_EMAIL=4 here vs. SP_TEACHER_EMAIL=3
 // there was a real duplicate-declaration crash, caught by
 // tools/gas-lint/check.js, not just a naming coincidence.
+const STG_TIMESTAMP       = 0;
 const STG_QUEUE_ROW_REF   = 1;
 const STG_STUDENT_FILE_ID = 2;
 const STG_CONFIG_ID       = 3;

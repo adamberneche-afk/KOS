@@ -231,7 +231,11 @@ most recent scheduled run actually conclude successfully, publishing both to one
 pinned "KOS Scheduled-Job Watchdog" issue updated in place rather than a
 fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
 (the day after `codeql.yml`'s own schedule, so that run has landed);
-`node tools/watchdog/check.js` runs it locally. `.github/dependabot.yml`
+`node tools/watchdog/check.js` runs it locally. A failed actionlint run
+that names no file counts as a finding on every file, never as clean.
+actionlint is pinned to one version (1.7.7) in both `watchdog.yml` and
+`gas-lint.yml`, and every workflow defaults to read-only `permissions:`.
+`.github/dependabot.yml`
 (weekly npm + GitHub Actions updates) and `.github/workflows/codeql.yml`
 (CodeQL code scanning) round out the same "is the repo's own machinery
 healthy" floor.
@@ -288,9 +292,12 @@ reimplementation of the suggestion engine's confirm/override logic,
 native to that separate Apps Script project — see
 `cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
 Dashboard for real"), the turn-in score review's teacher-ownership check
-(`teacher-dashboard-turn-in-review.test.js`), and the student-data access
-policy: intake sharing, locking at submission, school-year scoping and the
-repair tool (`student-data-access-intake.test.js`,
+(`teacher-dashboard-turn-in-review.test.js`), the central-ledger SCR
+writers' ownership check (`scr-retry-ownership.test.js`), and the student-data access
+policy: intake sharing, locking at submission, school-year scoping, the
+repair tool, and the student doc's menu calling the dashboard web app
+instead of the Ledger (`student-doc-service.test.js`,
+`student-data-access-intake.test.js`,
 `lock-doc-after-submission.test.js`, `school-year-scope.test.js`,
 `student-data-access-repair.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School

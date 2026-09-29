@@ -18,11 +18,30 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 const SCR_ENGINE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '30_SCRSuggestionEngine.js');
 
-function load() {
+function load(signedInAs = 'teacher@ccpsnet.net') {
   return loadGasFiles(
     [SHARED_CONFIG_PATH, SCR_ENGINE_PATH],
     ['computeSuggestion_', 'recordConfirmation_', 'recordOverride_', 'createSCRTabs_'],
+    {
+      Session: {
+        getActiveUser() { return { getEmail() { return signedInAs; } }; },
+        getEffectiveUser() { return { getEmail() { return 'admin@ccpsnet.net'; } }; },
+        getScriptTimeZone() { return 'America/New_York'; },
+      },
+    },
   );
+}
+
+// A current-year Ledger row making `teacherEmail` the assigning teacher of
+// `studentEmail` on assignment `configId`.
+function ledgerRow(studentEmail, teacherEmail, configId) {
+  const row = new Array(23).fill('');
+  row[0] = '2025-09-15';
+  row[1] = studentEmail;
+  row[2] = configId;
+  row[8] = teacherEmail;
+  row[18] = '2025-26';
+  return row;
 }
 
 // A fresh SCRSuggestions/SCRDecisionLog pair, with the Ledger's required
@@ -30,10 +49,22 @@ function load() {
 // SUGGESTED row ready for a teacher decision. Mirrors gas-sandbox.js's own
 // documented pattern of reaching into `sandbox` directly to set up state
 // the public API doesn't expose.
-function setUpSuggestionsFixture(sandbox, { suggestedRating = 3, status = 'SUGGESTED' } = {}) {
+function setUpSuggestionsFixture(sandbox, { suggestedRating = 3, status = 'SUGGESTED', evidenceConfigIds = [] } = {}) {
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
   sandbox.PropertiesService.getScriptProperties().setProperty('ADMIN_SS_ID', 'fake-admin-ss');
+  sandbox.PropertiesService.getScriptProperties().setProperty('CURRENT_TERM', '2025-26');
+
+  // teacher@ assigned CFG-T to the student; other@ assigned CFG-O.
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(23).fill('header'));
+  ledger.appendRow(ledgerRow('student@ccpsnet.net', 'teacher@ccpsnet.net', 'CFG-T'));
+  ledger.appendRow(ledgerRow('student@ccpsnet.net', 'other@ccpsnet.net', 'CFG-O'));
+  const evidence = ss.insertSheet('CompetencyEvidence');
+  evidence.appendRow(['evidence_id', 'student_email', 'competency_id', 'milestone_text',
+    'outcome', 'config_id', 'evaluated_at', 'student_file_id']);
+  evidenceConfigIds.forEach((c, i) => evidence.appendRow(
+    ['EVD-' + i, 'student@ccpsnet.net', 'CAS-M5-1', 'm', 'MET', c, new Date(), 'f']));
 
   const suggestions = ss.insertSheet('SCRSuggestions');
   suggestions.appendRow(['student_email', 'competency_id', 'suggested_rating',
@@ -168,7 +199,7 @@ test('recordDecision_ (via recordConfirmation_): no matching suggestion row -> a
   const { exported, sandbox } = load();
   setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
 
-  const result = exported.recordConfirmation_('nobody@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net');
+  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-NOPE', 'teacher@ccpsnet.net');
   assert.equal(result.success, false);
   assert.match(result.error, /No suggestion row found/);
 });
@@ -228,4 +259,45 @@ test('createSCRTabs_: safe to re-run -- skips a tab that already has real data r
   assert.equal(evidence.getLastRow(), 2, 'the existing real row must survive a re-run untouched');
   assert.ok(ss.getSheetByName('SCRSuggestions'), 'the two tabs that did NOT already exist still get created');
   assert.ok(ss.getSheetByName('SCRDecisionLog'));
+});
+
+// ── Access policy, rule 3: only the assigning teacher rates ────────────────
+// recordDecision_() used to trust the teacherEmail it was given.
+
+test('recordConfirmation_: refuses when the named teacher is not the signed-in user', () => {
+  const { exported, sandbox } = load('other@ccpsnet.net');
+  const { suggestions } = setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
+
+  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net');
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /signed-in teacher/);
+  assert.equal(suggestions.getRange(2, 7).getValue(), 'SUGGESTED');
+});
+
+test('recordConfirmation_: refuses a teacher whose assignments did not produce the evidence', () => {
+  const { exported, sandbox } = load('other@ccpsnet.net');
+  setUpSuggestionsFixture(sandbox, { suggestedRating: 3, evidenceConfigIds: ['CFG-T'] });
+
+  const result = exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'other@ccpsnet.net');
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /whose assignments produced/);
+});
+
+test('recordConfirmation_: the teacher whose assignment produced the evidence may rate', () => {
+  const { exported, sandbox } = load('teacher@ccpsnet.net');
+  setUpSuggestionsFixture(sandbox, { suggestedRating: 3, evidenceConfigIds: ['CFG-T'] });
+
+  assert.equal(exported.recordConfirmation_('student@ccpsnet.net', 'CAS-M5-1', 'teacher@ccpsnet.net').success, true);
+});
+
+test('recordOverride_: a teacher who does not have the student at all is refused', () => {
+  const { exported, sandbox } = load('stranger@ccpsnet.net');
+  setUpSuggestionsFixture(sandbox, { suggestedRating: 3 });
+
+  const result = exported.recordOverride_('student@ccpsnet.net', 'CAS-M5-1', 2, 'stranger@ccpsnet.net');
+
+  assert.equal(result.success, false);
+  assert.match(result.error, /whose assignments produced/);
 });

@@ -407,6 +407,10 @@ function attemptPrimaryRetry_(studentEmail, primaryCompetencyId) {
 // that a retry occurred at all.
 // ---------------------------------------------------------------------------
 function confirmRetryImprovement_(studentEmail, primaryCompetencyId, teacherEmail) {
+  // Access policy, rule 3 — same check as recordDecision_()
+  // (30_SCRSuggestionEngine.js); this used to trust teacherEmail as given.
+  const refusal = _scrDecisionRefusal_(getConfig_(), teacherEmail, studentEmail, primaryCompetencyId);
+  if (refusal) return { success: false, error: refusal };
   const retryResult = attemptPrimaryRetry_(studentEmail, primaryCompetencyId);
   if (!retryResult.retryPossible) {
     return { success: false, error: retryResult.reason };

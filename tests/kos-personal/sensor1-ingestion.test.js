@@ -25,7 +25,7 @@ const FILES = [
   path.join(KP, '2_Ingestion_Sensors.gs'),
 ];
 const EXPOSE = [
-  'sensor1_scanInboundSessions', 'submitSessionLog',
+  'sensor1_scanInboundSessions', 'submitSessionLog', 'submitExternalData', 'archiveStagingPipeline',
   '_groupLinesForArchiveWrite_', '_archiveRawLog_',
   '_recordSensor1Failure_', '_clearSensor1Failure_', '_chunkAndQueue',
   'CFG',
@@ -316,4 +316,63 @@ test('_chunkAndQueue: a later chunk failing trashes the chunk docs already made'
   assert.equal(staging.getLastRow(), 1, 'no staging rows');
   const first = [...sandbox.DriveApp._files.values()].find((f) => /^\[CHUNK_01\]_LOG-abc/.test(f.name));
   assert.ok(first && first.isTrashed(), 'chunk 1 is trashed, not left orphaned');
+});
+
+// ── Duplicate guards read STAGING_ARCHIVE too ──────────────────────────────
+// archiveStagingPipeline() moves finished rows to STAGING_ARCHIVE, and the
+// guards used to read STAGING_PIPELINE alone, so an archived log could be
+// ingested a second time.
+
+function archiveEverything(exported, ss, status) {
+  const staging = ss.getSheetByName('STAGING_PIPELINE');
+  for (let r = 2; r <= staging.getLastRow(); r++) staging.getRange(r, 6).setValue(status);
+  exported.archiveStagingPipeline();
+  assert.equal(staging.getLastRow(), 1, 'every row should have been archived');
+}
+
+const LOG_TEXT = 'A full session log, long enough to clear the near-empty guard. '.repeat(3);
+
+test('submitSessionLog: a log whose rows were archived as processed is still a duplicate', () => {
+  const { exported, sandbox } = load();
+  const { ss } = setUpSensor1(sandbox);
+  assert.equal(exported.submitSessionLog(LOG_TEXT).success, true);
+  archiveEverything(exported, ss, 'PROCESSED');
+
+  const again = exported.submitSessionLog(LOG_TEXT);
+
+  assert.equal(again.duplicate, true);
+  assert.equal(stagingRows(ss).length, 0, 'nothing re-queued');
+});
+
+test('submitSessionLog: a log archived as failed can be resubmitted', () => {
+  const { exported, sandbox } = load();
+  const { ss } = setUpSensor1(sandbox);
+  assert.equal(exported.submitSessionLog(LOG_TEXT).success, true);
+  archiveEverything(exported, ss, 'FAILED_PARSE');
+
+  assert.equal(exported.submitSessionLog(LOG_TEXT).success, true);
+});
+
+test('sensor1_scanInboundSessions: skips an inbound log whose rows were archived', () => {
+  const { exported, sandbox } = load();
+  const { ss, inbound } = setUpSensor1(sandbox);
+  sandbox.__exported.CFG.SENSOR1_PACING_MS = 0;
+  assert.equal(exported.submitSessionLog(LOG_TEXT).success, true);
+  archiveEverything(exported, ss, 'PROCESSED');
+  addInboundDoc(sandbox, inbound, 'same-log', LOG_TEXT);
+
+  exported.sensor1_scanInboundSessions();
+
+  assert.equal(stagingRows(ss).length, 0, 'the archived log must not be queued again');
+  assert.equal(inbound.files.length, 0, 'the duplicate still leaves inbound');
+});
+
+test('submitExternalData: content whose row was archived is still a duplicate', () => {
+  const { exported, sandbox } = load();
+  const { ss } = setUpSensor1(sandbox);
+  const text = 'External article body that is long enough to queue.';
+  assert.equal(exported.submitExternalData(text, 'Article').success, true);
+  archiveEverything(exported, ss, 'PROCESSED');
+
+  assert.equal(exported.submitExternalData(text, 'Article').duplicate, true);
 });

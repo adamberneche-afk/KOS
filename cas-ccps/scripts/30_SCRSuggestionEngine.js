@@ -352,10 +352,31 @@ function recordOverride_(studentEmail, competencyId, overrideRating, teacherEmai
 }
 
 // ---------------------------------------------------------------------------
+// _scrDecisionRefusal_ — the error a central-ledger SCR writer returns, or
+// null when the signed-in user may record this decision. The teacher named
+// in the call must be the signed-in user, and must own the rating (rule 3).
+// 30b_SCRRetryRemediation.js (same project) uses it too.
+function _scrDecisionRefusal_(cfg, teacherEmail, studentEmail, competencyId) {
+  const caller = String(Session.getActiveUser().getEmail() || "").trim().toLowerCase();
+  if (!caller || caller !== String(teacherEmail || "").trim().toLowerCase()) {
+    return "Decisions are recorded under the signed-in teacher's own account.";
+  }
+  if (!_scrTeacherMayDecide_(cfg, caller, studentEmail, competencyId)) {
+    return "Only the teacher whose assignments produced this competency's evidence can rate it.";
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // recordDecision_ — shared logic for confirm and override
 // ---------------------------------------------------------------------------
 function recordDecision_(studentEmail, competencyId, teacherEmail, overrideRating, decisionType) {
   const cfg = getConfig_();
+  // Access policy, rule 3. This used to trust the teacherEmail it was
+  // given, so anyone who could run code in this project could rate any
+  // student under any teacher's name.
+  const refusal = _scrDecisionRefusal_(cfg, teacherEmail, studentEmail, competencyId);
+  if (refusal) return { success: false, error: refusal };
   const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
   const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
   const decisionLogSheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
