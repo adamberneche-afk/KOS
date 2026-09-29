@@ -1,6 +1,19 @@
 # KOS Changelog
 
 
+### A retried row reaches Studio again (2026-09-29)
+
+After `LOG-ee994593_CH04` failed audit at 18:05, Studio ran no KOS flow
+for over an hour. With concurrency 1, every queued row, the new classify
+parts included, waited behind it. When a retried row is released again,
+`buildStudioInputRows()` appended a fresh CuratorInput row and deleted the
+old one in the same run. The tab stayed the same length, and Studio's
+"When a sheet changes" trigger never fired on it. Each stale reset rebuilt
+it the same way, so the row would have ended AUDIT_REJECTED without Studio
+ever seeing the retry. The builder now keeps the old row. Every reader
+already takes a UID's newest row.
+
+
 ### The Curator writes fresh output, not the transcript's own Curator JSON (2026-09-29)
 
 The first requeued chunks of `LOG-ee994593` (CH02, CH03, CH04) all failed
