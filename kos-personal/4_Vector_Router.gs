@@ -149,30 +149,10 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
     // Back-fill promoted column scores for the triggering session.
     // _writeMatrixRow resolves headers before _checkPromotionCandidates
     // inserts the new column, so the triggering session always writes
-    // a zero for the newly promoted theme. If that theme had a signal
-    // in this session's unknown weights, patch the row now. Backported
-    // from an earlier draft found in the reupload batch — without this,
-    // the session that actually earned a theme's promotion is the one
-    // session whose row for it reads 0.
-    if (promotions.length > 0) {
-      try {
-        const updatedHeaders = matrixSheet
-          .getRange(1, 1, 1, matrixSheet.getLastColumn()).getValues()[0];
-        const lastDataRow    = matrixSheet.getLastRow();
-        if (lastDataRow > 1) {
-          promotions.forEach(theme => {
-            const colIdx = updatedHeaders.indexOf(theme);
-            if (colIdx === -1) return;
-            const sessionScore = parseFloat(unknown[theme]) || 0;
-            if (sessionScore > 0) {
-              matrixSheet.getRange(lastDataRow, colIdx + 1).setValue(
-                parseFloat(sessionScore.toFixed(4))
-              );
-            }
-          });
-        }
-      } catch (_) {}  // non-fatal — next session will score normally
-    }
+    // a zero for the newly promoted theme. Without this, the session that
+    // actually earned a theme's promotion is the one session whose row
+    // for it reads 0.
+    _backfillPromotedScores_(matrixSheet, promotions, unknown);
 
     SpreadsheetApp.flush();
     return {
@@ -260,25 +240,8 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
     _applyIncubatorDecay_(incubSheet, timestamp);
     const promotions = _checkPromotionCandidates(incubSheet, matrixSheet);
 
-    // Same triggering-session back-fill _routeVectorWeightsInternal
-    // already applies — a theme promoted THIS session shouldn't read 0
-    // in the very row that earned its promotion.
-    if (promotions.length > 0) {
-      try {
-        const updatedHeaders = matrixSheet.getRange(1, 1, 1, matrixSheet.getLastColumn()).getValues()[0];
-        const lastDataRow    = matrixSheet.getLastRow();
-        if (lastDataRow > 1) {
-          promotions.forEach(theme => {
-            const colIdx = updatedHeaders.indexOf(theme);
-            if (colIdx === -1) return;
-            const sessionScore = parseFloat(aggregated.unknown[theme]) || 0;
-            if (sessionScore > 0) {
-              matrixSheet.getRange(lastDataRow, colIdx + 1).setValue(parseFloat(sessionScore.toFixed(4)));
-            }
-          });
-        }
-      } catch (_) {}  // non-fatal — next session will score normally
-    }
+    // Same triggering-session back-fill as _routeVectorWeightsInternal.
+    _backfillPromotedScores_(matrixSheet, promotions, aggregated.unknown);
 
     SpreadsheetApp.flush();
     return { status: 'SUCCESS', matrixRow, promotions };
@@ -288,6 +251,34 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
   } finally {
     if (ownsLock) lock.releaseLock();
   }
+}
+
+
+/**
+ * Writes this session's own score for each theme it just promoted into
+ * the session's VECTOR_MATRIX row (the last row), which was written as 0
+ * before the promotion added the column. Non-fatal: on failure the next
+ * session scores the theme normally.
+ *
+ * @param {Sheet}    matrixSheet  VECTOR_MATRIX.
+ * @param {string[]} promotions   Themes promoted this session.
+ * @param {Object}   unknown      This session's { THEME: score } for unmapped themes.
+ */
+function _backfillPromotedScores_(matrixSheet, promotions, unknown) {
+  if (!promotions || promotions.length === 0) return;
+  try {
+    const headers     = matrixSheet.getRange(1, 1, 1, matrixSheet.getLastColumn()).getValues()[0];
+    const lastDataRow = matrixSheet.getLastRow();
+    if (lastDataRow <= 1) return;
+    promotions.forEach(theme => {
+      const colIdx = headers.indexOf(theme);
+      if (colIdx === -1) return;
+      const sessionScore = parseFloat(unknown[theme]) || 0;
+      if (sessionScore > 0) {
+        matrixSheet.getRange(lastDataRow, colIdx + 1).setValue(parseFloat(sessionScore.toFixed(4)));
+      }
+    });
+  } catch (_) {}
 }
 
 

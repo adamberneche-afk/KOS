@@ -27,7 +27,7 @@
  *
  * Same wholesale-tab-rewrite-on-save, real-rows-not-a-JSON-blob, and
  * optimistic-concurrency compare-and-swap conflict model EmailBridge.gs's
- * Org Sync already proved out (_writeOrgDataTab_/_readOrgDataTab_/
+ * Org Sync already proved out (_writeDataTab_/_readDataTab_/
  * pushOrgSync_) — this is that same shape, generalized to one shared
  * spreadsheet with a domain name in place of an orgId. Conflict handling
  * matters even for a single-owner deployment: "single owner" doesn't mean
@@ -113,12 +113,13 @@ function _findLhDataMetaRow_(sheet, domain) {
   return null;
 }
 
-// Client sends its own header row on every push; the server never
-// hardcodes a domain's field shape, so a client-side schema change never
-// needs a matching server-side change — identical rationale to
-// EmailBridge.gs's _writeOrgDataTab_/_readOrgDataTab_, generalized here to
-// any tab name instead of an org-scoped one.
-function _writeLhDataTab_(ss, tabName, headers, rows) {
+// Gets (creating if needed) a data tab and rewrites it wholesale with the
+// header + rows the client supplied; either may be empty. The client sends
+// its own header row on every push, so the server never hardcodes a tab's
+// field shape and a client-side schema change needs no server change.
+// Shared by this file's per-domain tabs and EmailBridge.gs's per-org
+// roster/results tabs, which used to carry an identical copy.
+function _writeDataTab_(ss, tabName, headers, rows) {
   let sheet = ss.getSheetByName(tabName);
   if (!sheet) sheet = ss.insertSheet(tabName);
   sheet.clear();
@@ -140,7 +141,7 @@ function _writeLhDataTab_(ss, tabName, headers, rows) {
   }
 }
 
-function _readLhDataTab_(ss, tabName) {
+function _readDataTab_(ss, tabName) {
   const sheet = ss.getSheetByName(tabName);
   if (!sheet || sheet.getLastRow() < 1) return { headers: [], rows: [] };
   const data = sheet.getDataRange().getValues();
@@ -195,7 +196,7 @@ function _lhPushDataLocked_(body, domain) {
     }
   }
 
-  _writeLhDataTab_(ss, domain, body.headers || [], body.rows || []);
+  _writeDataTab_(ss, domain, body.headers || [], body.rows || []);
 
   const now = new Date();
   const newRow = [domain, now, body.updatedBy || ''];
@@ -216,7 +217,7 @@ function lhPullData_(body) {
   const existing = _findLhDataMetaRow_(metaSheet, domain);
   if (!existing) return { ok: true, found: false };
 
-  const data = _readLhDataTab_(ss, domain);
+  const data = _readDataTab_(ss, domain);
   const updatedAtRaw = existing.row[1];
   return {
     ok: true,

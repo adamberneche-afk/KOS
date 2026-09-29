@@ -15,12 +15,14 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('path');
-const { loadGasFile } = require('../harness/gas-sandbox');
+const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const EMAILBRIDGE_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'EmailBridge.gs');
+// _writeDataTab_/_readDataTab_ live in Data.gs, same Apps Script project.
+const DATA_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'Data.gs');
 
 function load() {
-  return loadGasFile(EMAILBRIDGE_PATH, [
+  return loadGasFiles([DATA_PATH, EMAILBRIDGE_PATH], [
     'pushOrgSync_', 'pullOrgSync_', 'listOrgSyncs_',
     'queueAiJob_', 'checkAiJob_', 'markConsumed_',
     'scanHorizonLabel_', 'createBragDraft_',
