@@ -170,6 +170,12 @@ header comment) — only on a file that's genuinely still just notes.
 Merge the addendum into its base file, then remove the addendum's entry
 from `project-map.json`, to clear the refusal.
 
+It also refuses a project whose `project-map.json` entry lists a file
+that isn't on disk. That used to be a warning and a skip, which pushed
+the project without the file. `tools/gas-lint` catches the same thing
+(`missing-file`) and the reverse, a script file no project lists
+(`unmapped-file`), in CI.
+
 This check — plus a plain `node tools/clasp-sync/sync.js` run — is part
 of `.github/workflows/gas-lint.yml`'s CI job, alongside gas-lint itself.
 
