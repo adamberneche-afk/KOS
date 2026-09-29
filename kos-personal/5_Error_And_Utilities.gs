@@ -1585,14 +1585,49 @@ function _isKnownStagingStatus_(status) {
 
 /**
  * True if a parsed payload's `auditor_sign_off` indicates the Curator's
- * own claims did NOT clear the Auditor's verification pass — either an
- * explicit non-PASSED status, or any unverified claim at all.
+ * own claims did NOT clear the Auditor's verification pass — an explicit
+ * non-PASSED status, any unverified claim at all, or a hollow pass (see
+ * _isHollowAudit_).
+ *
+ * @param {Object} auditorSignOff
+ * @param {Object=} curatorPayload the Curator output it signs off on.
+ *   Without it, a hollow pass can't be detected.
  */
-function _isAuditFailure_(auditorSignOff) {
+function _isAuditFailure_(auditorSignOff, curatorPayload) {
   if (!auditorSignOff) return false; // no audit step wired in this Flow — nothing to gate on
   const status = String(auditorSignOff.status || '').toUpperCase();
   const unverified = parseInt(auditorSignOff.unverified_claims_count) || 0;
-  return status !== 'PASSED' || unverified > 0;
+  return status !== 'PASSED' || unverified > 0 || _isHollowAudit_(auditorSignOff, curatorPayload);
+}
+
+/**
+ * A PASSED sign-off with an empty trace_log, on a Curator output that had
+ * something to check. CURATOR_AUDITOR_PROMPT.md Rule 4 forbids it, and the
+ * rebuilt Curator flow's second fixture run (2026-09-29) returned exactly
+ * that: PASSED, no trace entries, on an output with a next step, three
+ * pivots and an action item whose owner the transcript never names. A
+ * status check alone let it through as audited. An empty trace_log is
+ * still honest when there was nothing to check, so this only counts the
+ * claims the Auditor's §3.1 names.
+ */
+function _isHollowAudit_(auditorSignOff, curatorPayload) {
+  if (!auditorSignOff || !curatorPayload) return false;
+  const trace = auditorSignOff.trace_log;
+  if (Array.isArray(trace) && trace.length > 0) return false;
+  return _auditCheckableClaimCount_(curatorPayload) > 0;
+}
+
+/** How many of the Curator's claims the Auditor is required to check. */
+function _auditCheckableClaimCount_(pd) {
+  const len = function (v) { return Array.isArray(v) ? v.length : 0; };
+  const ds = pd.dynamic_state || {};
+  const obs = pd.alignment_observations || {};
+  let n = len(ds.next_steps) + len(ds.deferred_decisions) + len(ds.pivots_and_lessons) +
+    len(pd.action_exhaust) + len((pd.cog_registry || {}).cog_verdicts);
+  Object.keys(obs).forEach(function (k) {
+    if (/_signal$/.test(k) && obs[k] !== null && obs[k] !== undefined && obs[k] !== '') n++;
+  });
+  return n;
 }
 
 /**
@@ -1626,7 +1661,8 @@ function _archiveAuditFailure_(ss, payloadUid, sheetRow, retryCount, fullPayload
     // linked Drive doc per rejection, not a bigger cell.
     log.appendRow([
       ts, payloadUid, sheetRow, retryCount,
-      String(auditorSignOff.status || ''),
+      String(auditorSignOff.status || '') +
+        (_isHollowAudit_(auditorSignOff, fullPayload) ? ' (HOLLOW: empty trace_log)' : ''),
       parseInt(auditorSignOff.unverified_claims_count) || 0,
       JSON.stringify(auditorSignOff.trace_log || []),
       JSON.stringify(fullPayload),

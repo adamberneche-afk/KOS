@@ -309,7 +309,7 @@ calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-p
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
-batched requeue of terminal staging rows (`staging-requeue.test.js`), and
+batched requeue of terminal staging rows (`staging-requeue.test.js`), the audit gate rejecting a hollow `PASSED` with an empty `trace_log` (`audit-gate.test.js`), and
 per-session vector classification and its backfill
 (`vector-classify-sessions.test.js`), incubator decay (`incubator-decay.test.js`),
 the size-capped error digest (`error-digest.test.js`),
