@@ -22,21 +22,22 @@ const { runInSandbox } = require('../harness/vm-run');
 const HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '06-tasks-trips-and-modals-core.html');
 
 function loadEscapers() {
-  const source = extractLines(HTML_PATH, 1461, 1479, ['function escH(', 'function escJsAttr(']);
+  const source = extractLines(HTML_PATH, 1464, 1482, ['function escH(', 'function escJsAttr(']);
   return runInSandbox(source, {}, ['escH', 'escJsAttr']);
 }
 
-test('escH escapes all 4 HTML-significant characters (&, ", <, >)', () => {
+test('escH escapes all 5 HTML-significant characters (&, ", \', <, >)', () => {
   const { escH } = loadEscapers();
   assert.equal(
     escH(`<script>alert("x")</script> & 'y'`),
-    `&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; 'y'`
+    `&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &amp; &#39;y&#39;`
   );
 });
 
-test('escH leaves a bare single quote untouched (documented: it protects the HTML-attribute boundary only, not a JS string literal)', () => {
+test('escH escapes a single quote, so a value cannot close a single-quoted attribute', () => {
   const { escH } = loadEscapers();
-  assert.equal(escH(`it's fine`), `it's fine`);
+  // It used to leave ' alone, so title='${escH(x)}' could be broken out of.
+  assert.equal(escH(`x' onmouseover='alert(1)`), `x&#39; onmouseover=&#39;alert(1)`);
 });
 
 test('escH treats null/undefined as an empty string rather than the literal text "null"/"undefined"', () => {
@@ -58,7 +59,9 @@ test('escJsAttr escapes a literal backslash before escaping quotes, so a trailin
   // ending in \' would produce \\' in the output - which JS parses as an
   // escaped backslash followed by an unescaped, string-terminating quote.
   const escaped = escJsAttr(`end\\'`);
-  assert.equal(escaped, `end\\\\\\'`);
+  // The JS escape comes first (end\\\'), then escH turns the quote into
+  // &#39;, which the browser decodes back to ' before the JS runs.
+  assert.equal(escaped, `end\\\\\\&#39;`);
 });
 
 test('escJsAttr collapses embedded newlines/carriage returns to escaped literals, never a real line break', () => {
@@ -80,8 +83,8 @@ test('escJsAttr also applies escH\'s HTML-attribute escaping on top of the JS-st
 // JSON season editor, so everything is escaped and only <strong> comes back.
 test('_decaNoticeHtml keeps <strong> and escapes everything else', () => {
   const html07 = path.join(__dirname, '..', '..', 'leader-hub', 'src', '07-events-email-members-goals.html');
-  const source = extractLines(HTML_PATH, 1461, 1463, ['function escH(']) + '\n' +
-    extractLines(html07, 1067, 1069, ['function _decaNoticeHtml(']);
+  const source = extractLines(HTML_PATH, 1464, 1466, ['function escH(']) + '\n' +
+    extractLines(html07, 1066, 1068, ['function _decaNoticeHtml(']);
   const { _decaNoticeHtml } = runInSandbox(source, {}, ['_decaNoticeHtml']);
   assert.equal(_decaNoticeHtml('<strong>Due NOW.</strong> 45 days'), '<strong>Due NOW.</strong> 45 days');
   assert.equal(_decaNoticeHtml('<img src=x onerror=alert(1)><strong>ok</strong>'),

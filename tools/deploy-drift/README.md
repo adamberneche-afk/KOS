@@ -65,7 +65,7 @@ content, so "the SHA of the commit that sets this marker" isn't knowable
 until after that commit exists. Splitting the marker into its own
 dedicated file (`kos-personal/18_DeployVersionMarker.gs`) resolves this:
 `expected-marker.js` excludes that one file from its own "what does git
-expect" computation (`MARKER_FILE_EXCLUSIONS`), so the value — stamped in
+expect" computation (`MARKER_FILES`), so the value — stamped in
 a SEPARATE commit, after a real code change — correctly matches once both
 commits have landed. The ritual, every time:
 
@@ -127,18 +127,18 @@ generating a credential is inherently something only you can do.
    and **never** workflow-editing permission — see the threat model below
    for exactly why that distinction matters.
 2. **kos-personal / leader-hub shape** (one project, one dedicated file
-   pair): add a `MARKER_FILES` entry in `tools/deploy-drift/stamp.js`, a
-   marker file matching `kos-personal/18_DeployVersionMarker.gs`'s shape,
-   a reporting function matching `kos-personal/17_DeployVersionReport.gs`'s
-   shape wired to its own low-frequency trigger, and a
-   `MARKER_FILE_EXCLUSIONS` entry in `expected-marker.js`.
+   pair): add a `MARKER_FILES` entry in `tools/deploy-drift/expected-marker.js`
+   (stamp.js reads the same table), a marker file matching
+   `kos-personal/18_DeployVersionMarker.gs`'s shape, and a reporting
+   function matching `kos-personal/17_DeployVersionReport.gs`'s shape wired
+   to its own low-frequency trigger.
    **cas-ccps shape** (many projects sharing `00_SharedConfig.js`): the
    actual `UrlFetchApp`/token logic lives ONCE, in
    `00_SharedConfig.js`'s `_reportDeployVersion_(projectName, sha)` — a
    new project just needs its own tiny marker+wrapper file (see
    `cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js` for the
    reference shape) calling into that shared function, plus the same
-   `MARKER_FILES`/`MARKER_FILE_EXCLUSIONS` entries as above.
+   `MARKER_FILES` entry as above.
 3. **Paste the token into that project's Script Properties** as
    `DEPLOY_DRIFT_GITHUB_TOKEN` (Project Settings → Script Properties) —
    never committed, never handled by this session, same convention as

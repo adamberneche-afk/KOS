@@ -549,8 +549,8 @@ failure would ship exactly the same way the original bug did.
 3. Materialize its inputs into a flat literal row on a new tab — never new
    columns on an existing one (rule 6).
 4. Give it a harvest on its own time trigger. No polling: `pollForFlow4Result_`
-   in `25_WarmUpWriter.js` is kept as dead code with a note explaining that
-   twelve 15-second sleeps is three minutes of wall clock per row.
+   in `25_WarmUpWriter.js` (removed 2026-09-29) blocked on twelve 15-second
+   sleeps, three minutes of wall clock per row.
    `tools/coverage-gaps/check.js` holds you to a test actually calling this
    handler, once it's registered — a scheduled function is the one kind
    that fails silently, with nobody clicking a button that would notice.
