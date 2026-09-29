@@ -164,7 +164,9 @@ test('buildStudioInputRows: a second pass does not duplicate an already-material
 
 // A retried row (stale reset, NEEDS_CURATOR, audit rejection) is released
 // again with its old input row still present. The Flow fires only on a new
-// input row, so the builder must replace the old one on each new release.
+// input row, so the builder adds a fresh one on each new release, and keeps
+// the old one: an append plus a delete in the same run leaves the tab the
+// same length, and Studio never fired on LOG-ee994593_CH04's rebuilds.
 test('buildStudioInputRows: a row released again after its input row was built gets a fresh one', () => {
   const { exported, sandbox } = load();
   const ctx = seed(exported, sandbox);
@@ -175,13 +177,16 @@ test('buildStudioInputRows: a row released again after its input row was built g
   sandbox.PropertiesService.getScriptProperties()
     .setProperty('KOS_TURNSTILE_RELEASED', JSON.stringify({ [ctx.uid]: Date.now() - 60000 }));
 
+  const before = ctx.curatorSheet.getLastRow();
   const r = exported.buildStudioInputRows();
 
   assert.equal(r.curatorBuilt, 1);
   assert.equal(r.rebuilt, 1);
+  assert.equal(ctx.curatorSheet.getLastRow(), before + 1, 'the tab grows by one row, so Studio sees a new row');
   const rows = ctx.curatorSheet.getDataRange().getValues().slice(1).filter((x) => x[1] === ctx.uid);
-  assert.equal(rows.length, 1, 'the old input row is replaced, not kept alongside');
-  assert.equal(rows[0][4], 'THE TRANSCRIPT', 'rebuilt from the stored transcript, not the overwritten doc');
+  assert.equal(rows.length, 2, 'the old input row is kept, not deleted in the same run');
+  assert.ok(new Date(rows[1][0]).getTime() > new Date(rows[0][0]).getTime(), 'the new row is the newest');
+  assert.equal(rows[1][4], 'THE TRANSCRIPT', 'rebuilt from the stored transcript, not the overwritten doc');
   assert.equal(ctx.doc.getBody().getText(), 'THE TRANSCRIPT', 'the source doc is restored');
 
   const again = exported.buildStudioInputRows();
