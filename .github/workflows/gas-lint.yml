@@ -10,6 +10,10 @@ on:
     branches: ['**']
   pull_request:
 
+# Read-only by default; a job that needs more says so itself.
+permissions:
+  contents: read
+
 jobs:
   gas-lint:
     runs-on: ubuntu-latest
@@ -92,8 +96,11 @@ jobs:
         # generic YAML parser like PyYAML/js-yaml doesn't catch this, since
         # it's a GitHub Actions expression-context rule, not a YAML syntax
         # error). Official install method, no third-party marketplace action.
+        # Pinned: the script and the binary it fetches are both v1.7.7, and
+        # -f makes a failed download fail the step instead of running an
+        # error page as a script.
         run: |
-          bash <(curl -s https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          bash <(curl -sSfL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.7/scripts/download-actionlint.bash) 1.7.7
           ./actionlint
 
   # This repo has six READMEs, not one (root plus one per top-level system) —

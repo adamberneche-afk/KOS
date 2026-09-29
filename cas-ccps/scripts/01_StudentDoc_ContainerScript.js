@@ -7,6 +7,7 @@
 const RESPONSE_MARKER  = "── YOUR RESPONSE BEGINS HERE ──";
 const CONFIG_ID_MARKER = "[CONFIG_ID:";
 const SYS_ID_MARKER    = "[SYS_LEDGER_SS_ID:";
+const SYS_SERVICE_MARKER_RE = /\[SYS_DASHBOARD_URL:(https:\/\/[^\]\s]+)\]/;
 
 // Cooldown: prevent duplicate queue submissions within this window (ms)
 const SUBMISSION_COOLDOWN_MS = 90000; // 90 seconds
@@ -14,6 +15,10 @@ const SUBMISSION_COOLDOWN_MS = 90000; // 90 seconds
 // Minimum response length with a human-readable explanation
 const MIN_RESPONSE_CHARS = 150;
 const MIN_RESPONSE_WORDS = 25;
+
+const SERVICE_DOWN_MESSAGE =
+  "The assignment system didn't answer. Your work is safe in this document.\n\n" +
+  "Try again in a minute. If it keeps happening, tell your teacher.";
 
 // ---------------------------------------------------------------------------
 // _aiFlowsLive_ (external UX audit) — reads the same AI_FLOWS_LIVE Script
@@ -53,21 +58,51 @@ function openStudentDashboard() {
 // ---------------------------------------------------------------------------
 // readSystemIds — self-contained, no Script 17 dependency
 // ---------------------------------------------------------------------------
+// Returns { serviceUrl } or null. serviceUrl is the Student Dashboard web
+// app (13_StudentDashboard.js), which runs as the admin: this menu runs as
+// the student, so it asks that app for the student's own Ledger row and to
+// queue their work, instead of opening the Ledger and the Admin sheet
+// itself (which needed every student to have access to both).
+// Script Properties don't copy with the doc, so a student's copy finds the
+// URL in the invisible system block 02 stamps, or failing that in the
+// "Your assignment dashboard:" line.
 function readSystemIds() {
-  const props = PropertiesService.getScriptProperties();
-  const lp    = props.getProperty("CENTRAL_LEDGER_SS_ID");
-  const ap    = props.getProperty("ADMIN_SS_ID");
-  if (lp && ap) return { ledgerSsId: lp, adminSsId: ap };
+  const prop = PropertiesService.getScriptProperties().getProperty("STUDENT_DASHBOARD_URL");
+  if (prop) return { serviceUrl: prop };
 
   try {
     const text = DocumentApp.getActiveDocument().getBody().getText();
-    const lm   = text.match(/\[SYS_LEDGER_SS_ID:([a-zA-Z0-9_-]+)\]/);
-    const am   = text.match(/\[SYS_ADMIN_SS_ID:([a-zA-Z0-9_-]+)\]/);
-    if (lm && am) return { ledgerSsId: lm[1], adminSsId: am[1] };
+    const sm   = text.match(SYS_SERVICE_MARKER_RE);
+    if (sm) return { serviceUrl: sm[1] };
+    const dm   = text.match(/Your assignment dashboard: (https:\/\/\S+)/);
+    if (dm) return { serviceUrl: dm[1] };
   } catch (e) {
     Logger.log("readSystemIds fallback error: " + e.message);
   }
   return null;
+}
+
+// POSTs one request to the Student Dashboard web app as the signed-in
+// student. The app identifies them from this token, never from the body.
+// Returns the app's JSON reply, or { ok: false, error } on any failure.
+function callStudentService_(ids, body) {
+  try {
+    const res = UrlFetchApp.fetch(ids.serviceUrl, {
+      method: "post",
+      contentType: "application/json",
+      payload: JSON.stringify(body),
+      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+      followRedirects: true,
+      muteHttpExceptions: true
+    });
+    if (res.getResponseCode() !== 200) {
+      return { ok: false, error: "HTTP_" + res.getResponseCode() };
+    }
+    return JSON.parse(res.getContentText());
+  } catch (e) {
+    Logger.log("callStudentService_ error: " + e.message);
+    return { ok: false, error: "UNREACHABLE" };
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -146,7 +181,12 @@ function runSystemCheck() {
     }
   }
 
-  if (!validateRoster_(ids, googleId, fileId, configId)) {
+  const roster = validateRoster_(ids, googleId, fileId, configId);
+  if (roster.error && roster.error !== "NOT_REGISTERED") {
+    ui.alert("Couldn't Reach the Assignment System", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
+    return;
+  }
+  if (!roster.ok) {
     ui.alert(
       "Account Not Recognized",
       "The Google account you're using (" + googleId + ") isn't registered for this assignment.\n\n" +
@@ -178,7 +218,12 @@ function runSystemCheck() {
     return;
   }
 
-  submitToQueue_(ids, googleId, fileId, configId, studentText);
+  try {
+    submitToQueue_(ids, googleId, fileId, configId, studentText);
+  } catch (e) {
+    ui.alert("Couldn't Submit", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
+    return;
+  }
 
   // Record submission timestamp for cooldown
   PropertiesService.getScriptProperties().setProperty(cooldownKey, Date.now().toString());
@@ -206,23 +251,12 @@ function countWords_(text) {
 // ---------------------------------------------------------------------------
 // validateRoster_
 // ---------------------------------------------------------------------------
+// Returns the service reply: { ok: true, info } when this account owns this
+// doc's Ledger row, { ok: false, error: "NOT_REGISTERED" } when it doesn't,
+// any other error when the service couldn't answer. googleId is unused: the
+// web app reads who is signed in itself.
 function validateRoster_(ids, googleId, fileId, configId) {
-  try {
-    const ss    = SpreadsheetApp.openById(ids.ledgerSsId);
-    const sheet = ss.getSheetByName("Ledger");
-    const data  = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (
-        data[i][1].toString().toLowerCase() === googleId.toLowerCase() &&
-        data[i][2].toString()               === configId               &&
-        data[i][3].toString()               === fileId
-      ) return true;
-    }
-    return false;
-  } catch (e) {
-    Logger.log("validateRoster_ error: " + e.message);
-    return false;
-  }
+  return callStudentService_(ids, { action: "status", fileId: fileId, configId: configId });
 }
 
 // ---------------------------------------------------------------------------
@@ -251,10 +285,10 @@ function extractStudentResponse_(fullText) {
 // submitToQueue_
 // ---------------------------------------------------------------------------
 function submitToQueue_(ids, googleId, fileId, configId, studentText) {
-  const ss    = SpreadsheetApp.openById(ids.adminSsId);
-  const sheet = ss.getSheetByName("ReviewQueue");
-  if (!sheet) throw new Error("ReviewQueue tab not found.");
-  sheet.appendRow([new Date(), googleId, fileId, configId, studentText, "PENDING", ""]);
+  const res = callStudentService_(ids, {
+    action: "submit", fileId: fileId, configId: configId, text: studentText
+  });
+  if (!res.ok) throw new Error("Could not submit (" + res.error + ").");
   Logger.log("Queue submission — ConfigID: " + configId);
 }
 
@@ -280,7 +314,12 @@ function checkSubmissionStatus() {
     return;
   }
 
-  const info = fetchStatus_(ids, googleId, fileId, configId);
+  const res = validateRoster_(ids, googleId, fileId, configId);
+  if (res.error && res.error !== "NOT_REGISTERED") {
+    ui.alert("Status Unavailable", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
+    return;
+  }
+  const info = res.ok ? res.info : null;
   if (!info) {
     ui.alert(
       "Not Registered",
@@ -295,36 +334,6 @@ function checkSubmissionStatus() {
   ui.alert("📬 Your Status", buildStatusMessage_(info, configId), ui.ButtonSet.OK);
 }
 
-// ---------------------------------------------------------------------------
-// fetchStatus_
-// ---------------------------------------------------------------------------
-function fetchStatus_(ids, googleId, fileId, configId) {
-  try {
-    const ss    = SpreadsheetApp.openById(ids.ledgerSsId);
-    const sheet = ss.getSheetByName("Ledger");
-    const data  = sheet.getDataRange().getValues();
-    for (let i = 1; i < data.length; i++) {
-      if (
-        data[i][1].toString().toLowerCase() === googleId.toLowerCase() &&
-        data[i][2].toString()               === configId               &&
-        data[i][3].toString()               === fileId
-      ) {
-        return {
-          status:      String(data[i][12]).trim(),
-          submittedAt: data[i][13] ? String(data[i][13]) : null,
-          lastEval:    data[i][15] ? String(data[i][15]) : null,
-          unitCode:    String(data[i][10]).trim(),
-          teacherName: String(data[i][7]  || "").trim(),
-          term:        String(data[i][18] || "").trim()
-        };
-      }
-    }
-    return null;
-  } catch (e) {
-    Logger.log("fetchStatus_ error: " + e.message);
-    return null;
-  }
-}
 
 // ---------------------------------------------------------------------------
 // buildStatusMessage_ — plain language, meets students where they are
