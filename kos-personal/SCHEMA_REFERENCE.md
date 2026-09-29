@@ -18,7 +18,7 @@ The central queue. Every session chunk passes through this sheet.
 | D | Doc_URL | String | Full Google Drive URL of the chunk document |
 | E | File_ID | String | Google Drive file ID (used to open the document) |
 | F | Status | Enum | Current pipeline status — see Status Lifecycle below |
-| G | Retry_Count | Integer | Number of processing attempts (resets on manual re-queue) |
+| G | Retry_Count | Integer | Queue Processor retries: parse, audit and processing (resets on manual re-queue). Turnstile stale resets are counted in the `KOS_TURNSTILE_STALE_COUNTS` Script Property instead |
 
 **Payload Types**
 

@@ -108,7 +108,7 @@ deployed system creates on first run (`deployFullSystem()` /
 ```
 Sensor creates chunk       PENDING_FLOW
 Turnstile releases         PENDING_FLOW  →  STUDIO_ACTIVE
-Studio stalls too long     STUDIO_ACTIVE →  PENDING_FLOW (stale reset, Retry_Count++)
+Studio stalls too long     STUDIO_ACTIVE →  PENDING_FLOW (stale reset, stale count++)
 Stale resets exceed cap    STUDIO_ACTIVE →  STUDIO_TIMEOUT (terminal — no Flow ever completed it)
 Studio processes           STUDIO_ACTIVE →  FLOW_COMPLETE
 Queue processor            FLOW_COMPLETE →  PROCESSED

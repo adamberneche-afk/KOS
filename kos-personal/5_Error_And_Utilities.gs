@@ -1701,6 +1701,48 @@ function _markStaleDeprioritized_(payloadUid, reason, attempt) {
   _writeStaleDeprioritizeSet_(set);
 }
 
+
+// ================================================================
+// TURNSTILE STALE-RESET COUNTS
+// ================================================================
+// { Payload_UID: n } — how many times in a row the Turnstile has reset
+// this row from STUDIO_ACTIVE for staleness since Studio last answered it.
+// This used to be Retry_Count, the same column the Queue Processor spends
+// on parse, audit and processing retries (MAX_RETRIES), so two stale
+// resets left a row one parse failure from FAILED_PARSE, and two audit
+// retries left it one timeout from STUDIO_TIMEOUT. Retry_Count is now the
+// Queue Processor's alone. processInferenceQueue() clears a row's entry
+// when it sees FLOW_COMPLETE, and runMatrixTurnstile() drops entries for
+// rows no longer PENDING_FLOW or STUDIO_ACTIVE, which keeps the value far
+// below Script Properties' ~9KB limit.
+
+/** Reads the { Payload_UID: n } stale-reset counts. Returns {} if unset/corrupt. */
+function _readTurnstileStaleCounts_() {
+  try {
+    const raw = PropertiesService.getScriptProperties().getProperty('KOS_TURNSTILE_STALE_COUNTS');
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    console.warn('[Turnstile] Stale-count map corrupt — resetting. ' + e.message);
+    return {};
+  }
+}
+
+/** Persists the { Payload_UID: n } stale-reset counts. */
+function _writeTurnstileStaleCounts_(map) {
+  PropertiesService.getScriptProperties()
+    .setProperty('KOS_TURNSTILE_STALE_COUNTS', JSON.stringify(map));
+}
+
+/** Drops these Payload_UIDs' stale-reset counts. A no-op when none have one. */
+function _clearTurnstileStaleCounts_(uids) {
+  const map = _readTurnstileStaleCounts_();
+  let changed = false;
+  uids.forEach(uid => {
+    if (Object.prototype.hasOwnProperty.call(map, String(uid))) { delete map[String(uid)]; changed = true; }
+  });
+  if (changed) _writeTurnstileStaleCounts_(map);
+}
+
 /**
  * Moves all terminal-status rows from STAGING_PIPELINE to
  * STAGING_ARCHIVE. Fully headless — no ui.alert.

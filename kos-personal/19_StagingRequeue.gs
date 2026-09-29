@@ -12,9 +12,9 @@
  * times out again:
  *
  *   1. STAGING_PIPELINE Status / Retry_Count. Reset to PENDING_FLOW / 0,
- *      so the Turnstile's STUDIO_TIMEOUT ceiling starts fresh.
+ *      so the queue's MAX_RETRIES budget starts fresh.
  *   2. The Turnstile's Script Properties: the release map, the audit-retry
- *      priority set and the stale-deprioritize set. Stale entries would
+ *      priority set, the stale-deprioritize set and the stale-reset counts. Stale entries would
  *      misorder the release or misjudge staleness.
  *   3. The row's CuratorInput / VectorClassifyInput row. The Flow only
  *      fires on a NEW input row. buildStudioInputRows() now replaces an
@@ -245,16 +245,19 @@ function _rqApply_(staging, curator, classify, returns, rows) {
   const priority     = _readAuditRetryPrioritySet_();
   const deprioritize = _readStaleDeprioritizeSet_();
   const docWritten   = _srReadDocWrittenMap_();
+  const staleCounts  = _readTurnstileStaleCounts_();
   todo.forEach(function (p) {
     delete released[p.uid];
     delete priority[p.uid];
     delete deprioritize[p.uid];
     delete docWritten[p.uid];
+    delete staleCounts[p.uid];
   });
   _writeReleaseMap(released);
   _writeAuditRetryPrioritySet_(priority);
   _writeStaleDeprioritizeSet_(deprioritize);
   _srSaveDocWrittenMap_(docWritten);
+  _writeTurnstileStaleCounts_(staleCounts);
 
   todo.forEach(function (p) {
     staging.getRange(p.sheetRow, SC.STATUS + 1).setValue('PENDING_FLOW');
