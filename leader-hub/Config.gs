@@ -104,9 +104,21 @@ function lhSaveConfig_(key, value) {
   if (LH_CONFIG_KEYS.indexOf(key) === -1) {
     return { ok: false, error: 'Unknown config key: ' + key };
   }
-  PropertiesService.getScriptProperties().setProperty(_lhConfigPropName_(key), JSON.stringify(value));
+  const json = JSON.stringify(value);
+  // Script Properties hold at most 9KB per value, and setProperty() throws
+  // past it. Refuse with a reason instead, so the page can say why the
+  // setting didn't save rather than failing silently.
+  const bytes = unescape(encodeURIComponent(json)).length;
+  if (bytes > LH_CONFIG_MAX_BYTES) {
+    return { ok: false, tooLarge: true,
+      error: 'too large to save (' + Math.ceil(bytes / 1024) + ' KB; the limit is 9 KB)' };
+  }
+  PropertiesService.getScriptProperties().setProperty(_lhConfigPropName_(key), json);
   return { ok: true };
 }
+
+// Script Properties' per-value limit is 9KB; stay just under it.
+const LH_CONFIG_MAX_BYTES = 9000;
 
 function lhGetConfig_(key) {
   if (LH_CONFIG_KEYS.indexOf(key) === -1) return null;
