@@ -60,7 +60,15 @@ function crossRealmSafe(value) {
 }
 
 class FakeRange {
+  // Validated the way real Sheets does, with its messages. The mock used to
+  // accept a 0-row range and hand back [], so removing a
+  // `getLastRow() <= 1` guard passed every test while production threw on
+  // any empty tab.
   constructor(sheet, row, col, numRows, numCols) {
+    if (!(row >= 1)) throw new Error('The starting row of the range is too small.');
+    if (!(col >= 1)) throw new Error('The starting column of the range is too small.');
+    if (!(numRows >= 1)) throw new Error('The number of rows in the range must be at least 1.');
+    if (!(numCols >= 1)) throw new Error('The number of columns in the range must be at least 1.');
     this.sheet = sheet;
     this.row = row;
     this.col = col;
@@ -68,6 +76,18 @@ class FakeRange {
     this.numCols = numCols;
   }
   setValues(values) {
+    // Real Sheets refuses data whose shape doesn't match the range; the mock
+    // used to truncate it, or write undefined, silently.
+    if (!Array.isArray(values) || values.length !== this.numRows) {
+      throw new Error('The number of rows in the data does not match the number of rows in the range. ' +
+        'The data has ' + (Array.isArray(values) ? values.length : 0) + ' but the range has ' + this.numRows + '.');
+    }
+    values.forEach((line) => {
+      if (!Array.isArray(line) || line.length !== this.numCols) {
+        throw new Error('The number of columns in the data does not match the number of columns in the range. ' +
+          'The data has ' + (Array.isArray(line) ? line.length : 0) + ' but the range has ' + this.numCols + '.');
+      }
+    });
     for (let r = 0; r < this.numRows; r++) {
       const targetRow = this.row - 1 + r;
       while (this.sheet.rows.length <= targetRow) this.sheet.rows.push([]);
@@ -142,10 +162,33 @@ class FakeSheet {
   setName(n) { this.name = n; return this; }
   appendRow(arr) { this.rows.push(arr.slice()); return this; }
   getLastRow() { return this.rows.length; }
-  getRange(row, col, numRows = 1, numCols = 1) { return new FakeRange(this, row, col, numRows, numCols); }
+  getRange(row, col, numRows = 1, numCols = 1) {
+    if (typeof row === 'string') return this._a1Range_(row);
+    return new FakeRange(this, row, col, numRows, numCols);
+  }
+  // Real Apps Script API — getRange(a1Notation): "A1", "A1:C3", "1:1" (whole
+  // rows) and "A:C" (whole columns). Whole rows span the sheet's used width,
+  // whole columns its used height, at least one cell either way.
+  _a1Range_(a1) {
+    const colNum = (letters) => letters.toUpperCase().split('').reduce((n, ch) => n * 26 + (ch.charCodeAt(0) - 64), 0);
+    const width = Math.max(1, this.getLastColumn());
+    const height = Math.max(1, this.getLastRow());
+    const parts = String(a1).trim().split(':');
+    const parse = (ref) => {
+      const m = /^([A-Za-z]*)(\d*)$/.exec(ref);
+      if (!m || (!m[1] && !m[2])) throw new Error('Range not found');
+      return { col: m[1] ? colNum(m[1]) : null, row: m[2] ? parseInt(m[2], 10) : null };
+    };
+    const a = parse(parts[0]);
+    const b = parts[1] !== undefined ? parse(parts[1]) : a;
+    const r1 = a.row || 1, r2 = b.row || (a.row ? r1 : height);
+    const c1 = a.col || 1, c2 = b.col || (a.col ? c1 : width);
+    return new FakeRange(this, r1, c1, r2 - r1 + 1, c2 - c1 + 1);
+  }
+  // Real Sheets: an empty sheet's data range is A1, never 0 rows.
   getDataRange() {
     const width = this.rows.reduce((m, r) => Math.max(m, r.length), 0) || 1;
-    return new FakeRange(this, 1, 1, this.rows.length, width);
+    return new FakeRange(this, 1, 1, Math.max(1, this.rows.length), width);
   }
   setFrozenRows(n) { this.frozenRows = n; return this; }
   // Recorded rather than ignored, like setFrozenRows above: which columns an
