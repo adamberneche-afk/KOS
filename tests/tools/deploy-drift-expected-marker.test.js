@@ -53,7 +53,7 @@ test('expectedMarkerForProject: returns a full 40-char SHA, not an abbreviated o
 });
 
 test('expectedMarkerForProject: agrees with an independently-run git log over the same files', () => {
-  // Deliberately a project with NO entry in MARKER_FILE_EXCLUSIONS
+  // Deliberately a project with NO entry in MARKER_FILES
   // (cas-ccps:studio-steps, not kos-personal or leader-hub:app) — this
   // test's whole point is confirming a plain, unmodified git log agrees
   // with the function, which isn't true by design for a project whose own

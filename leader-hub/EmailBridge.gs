@@ -650,37 +650,8 @@ function _findOrgMetaRow_(sheet, orgId) {
   return null;
 }
 
-// Gets (creating if needed) a per-org data tab, and rewrites it wholesale
-// with the header + rows the client supplied. `rows` is a 2D array; `headers`
-// is a 1D array. Either may be empty (an org with no results yet, say).
-function _writeOrgDataTab_(ss, tabName, headers, rows) {
-  let sheet = ss.getSheetByName(tabName);
-  if (!sheet) sheet = ss.insertSheet(tabName);
-  sheet.clear();
-  if (headers && headers.length) {
-    sheet.getRange(1, 1, 1, headers.length).setValues([headers]);
-    sheet.setFrozenRows(1);
-  }
-  if (rows && rows.length) {
-    // Pad/trim every row to the header width so setValues doesn't throw on a
-    // ragged 2D array — the client is trusted to send matching widths, but a
-    // defensive normalize costs nothing and avoids an opaque GAS error.
-    const width = headers && headers.length ? headers.length : (rows[0] || []).length;
-    const normalized = rows.map(r => {
-      const row = r.slice(0, width);
-      while (row.length < width) row.push('');
-      return row;
-    });
-    sheet.getRange(2, 1, normalized.length, width).setValues(normalized);
-  }
-}
-
-function _readOrgDataTab_(ss, tabName) {
-  const sheet = ss.getSheetByName(tabName);
-  if (!sheet || sheet.getLastRow() < 1) return { headers: [], rows: [] };
-  const data = sheet.getDataRange().getValues();
-  return { headers: data[0] || [], rows: data.slice(1) };
-}
+// Per-org roster/results tabs are read and written by _writeDataTab_/
+// _readDataTab_ in Data.gs (same project), which the Data sync shares.
 
 function pushOrgSync_(body) {
   const orgId = body.orgId || '';
@@ -719,8 +690,8 @@ function pushOrgSync_(body) {
   }
 
   const now = new Date();
-  _writeOrgDataTab_(ss, 'roster_' + orgId, body.rosterHeaders || [], body.rosterRows || []);
-  _writeOrgDataTab_(ss, 'results_' + orgId, body.resultHeaders || [], body.resultRows || []);
+  _writeDataTab_(ss, 'roster_' + orgId, body.rosterHeaders || [], body.rosterRows || []);
+  _writeDataTab_(ss, 'results_' + orgId, body.resultHeaders || [], body.resultRows || []);
 
   const configJson = JSON.stringify(body.config || {});
   const updatedBy  = body.updatedBy || Session.getActiveUser().getEmail() || '';
@@ -743,8 +714,8 @@ function pullOrgSync_(body) {
   const existing  = _findOrgMetaRow_(metaSheet, orgId);
   if (!existing) return { ok: true, found: false };
 
-  const roster  = _readOrgDataTab_(ss, 'roster_' + orgId);
-  const results = _readOrgDataTab_(ss, 'results_' + orgId);
+  const roster  = _readDataTab_(ss, 'roster_' + orgId);
+  const results = _readDataTab_(ss, 'results_' + orgId);
   const updatedAtRaw = existing.row[OM_COL.UPDATED_AT];
 
   let config = {};
