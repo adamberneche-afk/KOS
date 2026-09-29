@@ -12442,12 +12442,30 @@ function _normYear(y) {
 y = parseInt(y);
 return y < 100 ? 2000 + y : y;
 }
+function _calendarQuarterOfLine_(lower) {
+let m = lower.match(/\b(?:quarter|qtr|marking\s*period|mp|q)\s*([1-4])\b/);
+if (m) return parseInt(m[1]);
+m = lower.match(/\b(1st|2nd|3rd|4th|first|second|third|fourth)\s*(?:quarter|qtr|nine\s*weeks|marking\s*period)\b/);
+return m ? ORDINAL_Q[m[1]] : 0;
+}
+function _nextSchoolDay_(iso, skip) {
+const [y, mo, d] = iso.split('-').map(Number);
+const dt = new Date(y, mo - 1, d);
+for (let i = 0; i < 30; i++) {
+dt.setDate(dt.getDate() + 1);
+const next = _iso(dt.getFullYear(), dt.getMonth(), dt.getDate());
+if (dt.getDay() !== 0 && dt.getDay() !== 6 && !skip.has(next)) return next;
+}
+return null;
+}
 function parseCountyCalendarText(text, refYear) {
 const warnings = [];
 const lines = text.split(/\r?\n/);
 const quarters = {};
+const quarterEnds = {};
 const noSchoolSet = new Set();
 const earlyReleaseSet = new Set();
+let firstDay = null;
 let yearContext = refYear;
 let section = null;
 lines.forEach(line => {
@@ -12456,33 +12474,50 @@ if (!trimmed) { return; }
 const lower = trimmed.toLowerCase();
 const yearsOnLine = trimmed.match(/\b(20\d{2})\b/g);
 if (yearsOnLine) yearContext = parseInt(yearsOnLine[yearsOnLine.length - 1]);
-if (/early\s*release|early\s*dismissal/i.test(lower) && lower.length < 60) { section = 'earlyrelease'; }
-else if (/(holiday|no\s*school|break|closed)/i.test(lower) && lower.length < 60 && !/\d/.test(lower)) { section = 'noschool'; }
-const qMatch = lower.match(/(?:quarter|qtr)\s*([1-4])\b/) || lower.match(/(1st|2nd|3rd|4th|first|second|third|fourth)\s*nine\s*weeks/);
-if (qMatch) {
-const qNum = qMatch[1].length <= 1 ? parseInt(qMatch[1]) : ORDINAL_Q[qMatch[1]];
+const qNum = _calendarQuarterOfLine_(lower);
+if (qNum) {
 const bounds = extractDateRangeBounds(trimmed, yearContext);
 if (bounds && bounds.end) {
-quarters[qNum] = bounds;
+quarters[qNum] = { start: bounds.start, end: bounds.end };
 } else if (bounds && bounds.start) {
-warnings.push(`Quarter ${qNum}: only found one date ("${bounds.start}") — needs a start AND end date, check this line manually.`);
+quarterEnds[qNum] = bounds.start;
 } else {
-warnings.push(`Found a "Quarter ${qNum}" label but no parseable date range on that line: "${trimmed.slice(0,80)}"`);
+warnings.push(`Found a "Quarter ${qNum}" label but no parseable date on that line: "${trimmed.slice(0,80)}"`);
 }
 return;
 }
-const isNamedHoliday = HOLIDAY_KEYWORDS.some(k => lower.includes(k));
-if (section === 'earlyrelease') {
-extractDatesFromText(trimmed, yearContext).forEach(d => earlyReleaseSet.add(d));
-} else if (section === 'noschool' || isNamedHoliday) {
-extractDatesFromText(trimmed, yearContext).forEach(d => noSchoolSet.add(d));
+const dates = extractDatesFromText(trimmed, yearContext);
+const mentionsEarly = /early\s*(release|dismissal)|half[\s-]*day|early\s+close/.test(lower);
+const mentionsClosed = /holiday|no\s*school|schools?\s+(are\s+)?closed|\bclosed\b|\bbreak\b|work\s*day/.test(lower);
+if (!dates.length) {
+if (lower.length < 60) section = mentionsEarly ? 'earlyrelease' : (mentionsClosed ? 'noschool' : null);
+return;
 }
+if (/first\s+day\s+(of\s+school|for\s+students)|students'?\s+first\s+day/.test(lower)) {
+if (!firstDay) firstDay = dates[0];
+return;
+}
+if (/last\s+day|report\s*cards?|school\s+(begins|opens|resumes)|classes\s+resume|graduation/.test(lower)) return;
+const isNamedHoliday = HOLIDAY_KEYWORDS.some(k => lower.includes(k));
+let target = null;
+if (mentionsEarly) target = earlyReleaseSet;
+else if (isNamedHoliday || mentionsClosed) target = noSchoolSet;
+else if (section === 'earlyrelease') target = earlyReleaseSet;
+else if (section === 'noschool') target = noSchoolSet;
+if (target) dates.forEach(d => target.add(d));
 });
+for (let q = 1; q <= 4; q++) {
+if (quarters[q] || !quarterEnds[q]) continue;
+const prevEnd = q === 1 ? null : (quarters[q - 1] && quarters[q - 1].end);
+const start = q === 1 ? firstDay : (prevEnd ? _nextSchoolDay_(prevEnd, noSchoolSet) : null);
+if (start) quarters[q] = { start, end: quarterEnds[q] };
+else warnings.push(`Quarter ${q}: found its end (${quarterEnds[q]}) but not its start — fill in the start manually.`);
+}
 if (!Object.keys(quarters).length) {
-warnings.push('No quarter date ranges recognized — enter them manually below (look for "Quarter 1/2/3/4" or "1st/2nd/3rd/4th Nine Weeks" lines with two dates).');
+warnings.push('No quarter date ranges recognized — enter them manually below (look for "Quarter 1", "Q1", "Marking Period 1" or "End of First Quarter" lines).');
 }
 for (let q = 1; q <= 4; q++) {
-if (!quarters[q]) warnings.push(`Quarter ${q} not found — fill in manually if your document has it.`);
+if (!quarters[q] && !quarterEnds[q]) warnings.push(`Quarter ${q} not found — fill in manually if your document has it.`);
 }
 return {
 quarters,
@@ -12507,7 +12542,7 @@ map[i] = sel && sel.value ? sel.value : null;
 }
 saveScheduleConfig({ dayOfWeekMap: map });
 _schedSaveStatus('✓ Saved');
-}
+}</script><script data-lh-block="leader-hub-block-1-part-9-of-16">
 function lhSaveQuarters() {
 const quarters = {};
 [1, 2, 3, 4].forEach(q => {
@@ -12546,7 +12581,7 @@ if (el) { el.textContent = '⚠ Could not read that file.'; el.style.color = '#9
 fileInput.value = '';
 };
 reader.readAsText(file);
-}</script><script data-lh-block="leader-hub-block-1-part-9-of-16">
+}
 function lhParseCountyCalendar() {
 const text = document.getElementById('sched-import-text')?.value || '';
 const statusEl = document.getElementById('sched-import-status');
@@ -13901,7 +13936,7 @@ return String(name || '').trim().toLowerCase().replace(/\s+/g, ' ');
 function _periodNumber_(periodStr) {
 const m = String(periodStr || '').match(/(\d+)/);
 return m ? m[1] : null;
-}
+}</script><script data-lh-block="leader-hub-block-1-part-10-of-16">
 function _reconcileCasCcpsRoster_(casStudents) {
 const report = { matchedNow: [], alreadySynced: 0, ambiguous: [], casUnmatched: [], leaderHubUnmatched: [] };
 const alreadyMatchedEmails = new Set();
@@ -13945,7 +13980,7 @@ for (const { code, period, stu } of unmatchedPool) {
 report.leaderHubUnmatched.push({ code, period, name: stu.name });
 }
 return report;
-}</script><script data-lh-block="leader-hub-block-1-part-10-of-16">
+}
 function _rekeyScrScoresForMatch_(course, period, oldName, newKey) {
 const bucket = scrScores[course] && scrScores[course][period];
 if (!bucket || oldName === newKey || !bucket[oldName]) return;
@@ -15220,7 +15255,7 @@ var _lhDataConflictWarned = {};
 var _lhDataPushChain = {};
 var SCR_SYNC_DEBOUNCE_MS = 2000;
 var _scrSyncQueue = [];
-var _scrSyncTimer = null;
+var _scrSyncTimer = null;</script><script data-lh-block="leader-hub-block-1-part-11-of-16">
 var trips = [
 {id:1, name:'City Museum Field Trip', sub:'same-day', date:'2026-03-18',
 origin:'Chester Middle School', depTime:'09:45', retTime:'13:30', depDate:'2026-03-18', retDate:'2026-03-18',
@@ -15260,7 +15295,7 @@ reason:'STEM enrichment', acttype:'Science Center Visit',
 notes:'Innovation exhibit + engineering challenge.',
 ap:{coord:false,principal:false,bookkeeper:false,risk:false,transport:false}
 },
-];</script><script data-lh-block="leader-hub-block-1-part-11-of-16">
+];
 trips.push(
 {id:3, name:'DECA Ultimate Power Trip', sub:'overnight', date:'2025-11-21',
 origin:'Clover Hill High School', depTime:'08:00', retTime:'17:00', depDate:'2025-11-21', retDate:'2025-11-23',
