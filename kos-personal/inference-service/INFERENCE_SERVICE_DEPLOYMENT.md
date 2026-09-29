@@ -124,6 +124,12 @@ Creator        $49/month   → note the Price ID
    - `customer.subscription.deleted`
 4. Note the **Signing secret** (`whsec_...`)
 
+The service's Stripe SDK (v22) sends API version `2026-08-26.dahlia` on its
+own calls. The webhook payloads follow the endpoint's own API version, set
+in the dashboard. Everything the handler reads (`session.metadata`,
+`session.subscription`, `invoice.customer`, `subscription.customer`) has the
+same shape across versions, so any endpoint version works.
+
 ---
 
 ## Phase 4 — Environment Variables
