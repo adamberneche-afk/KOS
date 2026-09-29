@@ -754,6 +754,64 @@ function listOrgSyncs_(body) {
   return { ok: true, orgs };
 }
 
+// ── Organization Sync across deployments ─────────────────────────────────────
+// A shared org lives in ONE advisor's bridge spreadsheet (the owner's).
+// Each advisor runs their own LeaderHub deployment, and the page's
+// google.script.run calls only ever reach the deployment serving it, so a
+// co-advisor's push/pull used to land in their own, empty spreadsheet and
+// "Join a Shared Organization" could never work. A browser can't call
+// another domain-restricted deployment itself (it would need the user's
+// Google login across origins), so this server does it: it POSTs to the
+// owner's /exec URL with the signed-in co-advisor's own OAuth token. The
+// owner's doPost() then sees a same-domain user, which is exactly what
+// push/pull already allow (_isSameDomainAsOwner_). With no bridge URL, or
+// this deployment's own URL, the action runs here, as before.
+const LH_ORG_SYNC_RELAY_ACTIONS = ['pushOrgSync', 'pullOrgSync'];
+// Only real Apps Script web-app URLs, so this can't be pointed at any
+// other host (a Workspace-domain URL or a plain one).
+// Two real shapes: /macros/s/<id>/exec and /a/macros/<domain>/s/<id>/exec.
+const LH_BRIDGE_URL_RE = /^https:\/\/script\.google\.com\/(?:macros|a\/macros\/[A-Za-z0-9.-]+)\/s\/[A-Za-z0-9_-]+\/exec$/;
+
+function _lhIsOwnBridgeUrl_(url) {
+  try { return !!url && url === ScriptApp.getService().getUrl(); } catch (_) { return false; }
+}
+
+function lhOrgSyncCall_(bridgeUrl, action, payload) {
+  if (LH_ORG_SYNC_RELAY_ACTIONS.indexOf(action) === -1) {
+    return { ok: false, error: 'Not an organization sync action: ' + action };
+  }
+  const url = String(bridgeUrl || '').trim();
+  if (!url || _lhIsOwnBridgeUrl_(url)) {
+    const res = _lhDispatchAction_(action, payload || {});
+    // The owner hands this URL to co-advisors inside the share code.
+    if (res && res.ok) { try { res.bridgeUrl = ScriptApp.getService().getUrl(); } catch (_) {} }
+    return res;
+  }
+  if (!LH_BRIDGE_URL_RE.test(url)) {
+    return { ok: false, error: 'That share code\'s bridge address is not an Apps Script web app URL.' };
+  }
+  let resp;
+  try {
+    resp = UrlFetchApp.fetch(url, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(Object.assign({}, payload || {}, { action: action })),
+      headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+      followRedirects: true,
+      muteHttpExceptions: true,
+    });
+  } catch (err) {
+    return { ok: false, error: 'Could not reach the shared organization\'s bridge: ' + err.message };
+  }
+  const code = resp.getResponseCode();
+  if (code !== 200) {
+    return { ok: false, error: 'The shared organization\'s bridge answered HTTP ' + code +
+      (code === 401 || code === 403 ? ' (are you signed in with your school account?)' : '') + '.' };
+  }
+  try { return JSON.parse(resp.getContentText()); }
+  catch (_) { return { ok: false, error: 'The shared organization\'s bridge did not answer with JSON.' }; }
+}
+
 // ── Horizon label scanner (GET) ───────────────────────────────────────────────
 // Scans a Gmail label for hashtag-tagged messages (#horizon:short/mid/long,
 // #deadline:YYYY-MM-DD, #role:...) and surfaces them as dashboard horizon

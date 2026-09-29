@@ -628,12 +628,26 @@ three new POST actions and a **second, independent Spreadsheet**
 datastore.
 
 **Access model.** Because the Web App is deployed "Execute as Me,"
-whichever teacher deploys it owns the backing Spreadsheet — a co-advisor
-never needs their own Google Drive sharing permissions on it. They only
-need the same `/exec` URL, pasted into their own Settings → Email Bridge,
-exactly like every other Email Bridge feature. Sharing one organization
-does not expose the AI Queue's data or vice versa — they're two separate
-Spreadsheets behind the same URL.
+whichever teacher shares an org owns the backing Spreadsheet — a co-advisor
+never needs their own Google Drive sharing permissions on it. Sharing one
+organization does not expose the AI Queue's data or vice versa — they're
+two separate Spreadsheets behind the same URL.
+
+**How a co-advisor joins (fixed 2026-09-29).** Each advisor runs their own
+LeaderHub deployment, and the page's `google.script.run` only ever reaches
+the deployment serving it. So a co-advisor's push, pull and join used to
+land in their *own*, empty org-sync spreadsheet, and the join list (owner-
+only) could never show the other advisor's orgs. Now:
+- The sharing advisor clicks **📋 Copy share code** on a shared org. The
+  code is `<orgId>@<their bridge /exec URL>`.
+- The co-advisor pastes it under **Join a Shared Organization**.
+- From then on that org's push/pull go through `lhOrgSyncCall()` on the
+  co-advisor's own server, which POSTs to the sharing advisor's bridge with
+  the co-advisor's own OAuth token (`lhOrgSyncCall_`, `EmailBridge.gs`). The
+  bridge's `doPost()` sees a same-domain user, which push/pull already allow;
+  `listOrgSyncs` stays owner-only. Only Apps Script `/exec` URLs are relayed
+  to.
+- Opened as a local file, the browser POSTs to the bridge URL directly.
 
 **Layout on the Sheet side.** A `_org_meta` tab (one row per shared org:
 `OrgId, OrgName, ConfigJSON, UpdatedAt, UpdatedBy`) plus per-org
@@ -666,16 +680,17 @@ possible interleaving.
 
 **Client-side additions:**
 - `lh_org_sync` localStorage — per org, `{enabled, lastKnownRemoteUpdatedAt,
-  lastSyncedAt, lastSyncedBy}`.
+  lastSyncedAt, lastSyncedBy, bridgeUrl, ownBridgeUrl}`. `bridgeUrl` is the
+  sharing advisor's `/exec` URL ('' = this deployment's own);
+  `ownBridgeUrl` is this deployment's URL, which goes into the share code.
 - Settings → Organizations gained, per org: a **Share with a co-advisor**
   button (first push) when not yet shared, or **Pull** / **Push** /
   **Stop sharing** controls once it is — deliberately separate Pull and
   Push actions rather than one merged "Sync," so a teacher always knows
   which direction data is about to move before it moves.
-- **Join a Shared Organization** — calls the new `listOrgSyncs` endpoint
-  and lists every org shared on that bridge deployment, with a Join (new
-  locally) or Pull Latest (already have it) button per row. A co-advisor
-  doesn't need to already know an org's exact id.
+- **Join a Shared Organization** — takes a share code (above). For the
+  bridge's own owner it also lists every org shared on that bridge
+  (`listOrgSyncs`), with a Join or Pull Latest button per row.
 - A conflict dialog (`_showOrgSyncConflictModal`) for the rejected-push
   case described above.
 - Pulling a **non-DECA** org also adopts its shared config (officer

@@ -1135,3 +1135,14 @@ and write.
 - `escH` now escapes `'` as `&#39;`, so a value in a single-quoted
   attribute can't close it.
 
+## Co-advisor "Join a Shared Organization" works, 2026-09-29
+
+It never could. Each advisor runs their own deployment and
+`google.script.run` only reaches the deployment serving the page, so a
+co-advisor's push, pull and join all went to their own, empty org-sync
+spreadsheet, and `listOrgSyncs` is owner-only by design. Now a shared org
+carries the sharing advisor's bridge URL: the sharer copies a share code
+(`<orgId>@<bridge URL>`), the co-advisor pastes it, and `lhOrgSyncCall()`
+relays that org's push/pull to the sharer's bridge with the co-advisor's
+own token, where the same-domain lock admits them.
+
