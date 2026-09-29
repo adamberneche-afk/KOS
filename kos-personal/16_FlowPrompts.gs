@@ -512,8 +512,12 @@ wrong or unsupported.
 
 Confirm, specifically:
 - \`vector_weights\` is exactly \`null\` (Rule 1) — never a populated object.
-- \`alignment_observations\` is fully populated: all five signal fields and
-  all five \`confidence_deltas\`, none omitted (Rule 2).
+- \`alignment_observations\` has every key: all five signal fields and all
+  five \`confidence_deltas\`, none omitted (Rule 2). This checks that the keys
+  are present, not what they hold. A signal field of \`null\` and a delta of
+  \`0.0\` are the correct values when the session gave no evidence for that
+  question, and are never a violation. Flag only a missing key, or a
+  non-null signal or non-zero delta the transcript doesn't support (§3.1).
 - No schema key is missing — an empty array or \`null\` is correct where
   there's nothing to report; an absent key is not (Rule 5).
 - \`alignment_report.relational_status_at_closeout\` is exactly one of
