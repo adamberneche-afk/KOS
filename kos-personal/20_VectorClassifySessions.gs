@@ -247,7 +247,9 @@ function _vcsIntakeChunkCounts_(ss) {
   const sheet = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
   if (!sheet || sheet.getLastRow() <= 1) return out;
   sheet.getRange(2, 1, sheet.getLastRow() - 1, 6).getValues().forEach(function (r) {
-    if (String(r[3]).trim() !== 'SENSOR_INTAKE') return;
+    // Session_Type (C) since the intake row's columns were fixed;
+    // Cold_Start (D) in rows written before that.
+    if (!_isIntakeSessionLogRow_(r)) return;
     const m = /^(\d+) chunk\(s\) created/.exec(String(r[5]));
     if (m) out[String(r[0]).trim()] = parseInt(m[1], 10);
   });

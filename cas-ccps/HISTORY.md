@@ -2306,3 +2306,39 @@ earlier school years. Kept by the operator's choice: automatic AI feedback
 and warm-up scoring, and Student Context docs shared across teachers.
 Parent reports stay, scoped to the teacher.
 
+## Student doc menu no longer reads the Ledger, 2026-09-29
+
+The last gap against the access policy. The student doc's menu (`01`) runs
+as the student, and it opened the Central Ledger to check the roster and
+read status, and appended to the Admin sheet's ReviewQueue to request
+feedback. That only worked if every student could read every student's
+Ledger rows and edit the spreadsheet. It now POSTs to the student dashboard
+web app (`13`'s `doPost()`), which runs as the admin and answers only for
+the signed-in student's own row. A service that can't be reached is
+reported as such, not as "Account Not Recognized". Docs created before this
+keep their old copy of the script.
+
+## SCR writers in the central-ledger project check ownership, 2026-09-29
+
+`30`'s `recordConfirmation_`/`recordOverride_` (via `recordDecision_`) and
+`30b`'s `confirmRetryImprovement_` wrote a rating under whatever teacher
+email they were handed. Nothing calls them (the Teacher Dashboard has its
+own writer in `07`), but anyone who could edit the project could run them.
+They now refuse unless that email is the signed-in user and the rating is
+theirs under rule 3. `_scrOwnership_`/`_scrIsMine_` moved from `07` to
+`00_SharedConfig.js` so both projects apply one rule.
+
+## An errored Flow 2 evaluation no longer blocks the doc for good, 2026-09-29
+
+`buildFlowInputRows()` (`37`) skipped any staging row whose
+StudentFileID+ConfigID already had a FlowInput row that wasn't HARVESTED.
+An `ERROR_EMPTY_OUTPUT`, `ERROR_SUSPECT_FABRICATION` or
+`ERROR_HARVEST_FAILED` row kept its key forever, so every later submission
+of that doc sat in the teacher's lane until `ERROR_TIMEOUT` and never got
+feedback. Treating errored rows as free would have rebuilt the same
+submission on every pass, re-running a suspected fabrication. Now an
+errored row blocks only the submission it was built for: a staging row
+stamped after it is a new submission and gets a fresh row. The errored
+submission itself is never rebuilt, even after an admin resets its
+staging row.
+
