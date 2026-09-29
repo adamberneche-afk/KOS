@@ -120,7 +120,6 @@ function buildStudioInputRows() {
   const knownCurator  = _ciIndexRows_(curatorSheet);
   const knownClassify = _ciIndexRows_(classifySheet);
   const released      = _readReleaseMap();
-  const deletes       = { curator: [], classify: [] };
 
   const SC = CFG.STAGING_COLS;
   const data = staging.getRange(2, 1, lastRow - 1, 7).getValues();
@@ -157,6 +156,14 @@ function buildStudioInputRows() {
     // staleness. Rebuild from the old row's SourceText, not the doc: a
     // successful harvest overwrites the doc with the model's output before
     // the audit gate runs, so the doc is restored from it too.
+    //
+    // The old row is KEPT. Appending the new row and deleting the old one
+    // in the same run left the tab the same length, and Studio's "When a
+    // sheet changes" trigger never fired on it: LOG-ee994593_CH04 was
+    // rebuilt at every stale reset from 18:05 on, and Studio ran nothing
+    // after 5:54 PM while it held the only Turnstile slot. Every reader
+    // takes a UID's newest row, and retries are capped, so the old rows
+    // cost a few lines per chunk.
     let text;
     if (prior.length) {
       text = prior[prior.length - 1].sourceText;
@@ -168,7 +175,6 @@ function buildStudioInputRows() {
           console.warn('[StudioInput] ' + uid + ': could not restore the source doc: ' + e.message);
         }
       }
-      prior.forEach(function (p) { deletes[isCurator ? 'curator' : 'classify'].push(p.row); });
     } else {
       text = _ciReadDocText_(fileId);
       if (text === null) {
@@ -185,11 +191,6 @@ function buildStudioInputRows() {
     if (prior.length) result.rebuilt = (result.rebuilt || 0) + 1;
     if (isCurator) { result.curatorBuilt++; } else { result.classifyBuilt++; }
   }
-
-  // Old rows go last, bottom-up, so the row numbers read above stay valid
-  // while the loop runs; the appended rows are all below them.
-  _ciDeleteRows_(curatorSheet, deletes.curator);
-  _ciDeleteRows_(classifySheet, deletes.classify);
 
   if (result.curatorBuilt || result.classifyBuilt) {
     console.log('[StudioInput] built ' + result.curatorBuilt + ' CuratorInput row(s), ' +
@@ -238,11 +239,6 @@ function _ciBuiltForRelease_(prior, releasedAt) {
   if (!prior.length) return false;
   if (!releasedAt) return true;
   return prior[prior.length - 1].at >= releasedAt;
-}
-
-function _ciDeleteRows_(sheet, rowNums) {
-  rowNums.slice().sort(function (a, b) { return b - a; })
-    .forEach(function (n) { sheet.deleteRow(n); });
 }
 
 // ================================================================
