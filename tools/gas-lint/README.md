@@ -170,10 +170,9 @@ it — that gap is closed now.
    source. That's what `stripCommentsAndStrings`'s `keepStrings` option
    is for — an endpoint in live code sits inside a string literal, one
    left in a commented-out reference implementation does not, and the
-   default (blank both) can't tell them apart. `25_WarmUpWriter.js` is
-   the real case: `callFlow4_` deliberately keeps a commented-out
-   direct-Gemini block so check #5 above stays able to see the
-   `script.external_request` requirement it would need. The
+   default (blank both) can't tell them apart. `25_WarmUpWriter.js` was
+   the real case: `callFlow4_` kept a commented-out direct-Gemini block
+   (removed 2026-09-29, along with its `gcp-map.json` entry). The
    `workflowElements` pattern is scoped to `.json` manifests for the same
    reason — several `.gs` headers discuss the wall at length, and prose
    about a dependency is not a dependency.

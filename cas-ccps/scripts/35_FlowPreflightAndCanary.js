@@ -357,10 +357,8 @@ function runFlow1Canary() {
   }
   console.log('[Canary:Flow1] Wrote synthetic row ' + newRowNum + ' (marker: ' + marker + '). Waiting for Flow 1...');
 
-  // Poll every 15s for up to 3 minutes — same cadence
-  // 25_WarmUpWriter.js's own (unused) pollForFlow4Result_ already
-  // established as reasonable for "wait on a Studio flow" in this
-  // codebase.
+  // Poll every 15s for up to 3 minutes: a canary is one row run by hand,
+  // so waiting on a Studio flow here is fine (unlike a per-row trigger).
   const maxAttempts = 12;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     Utilities.sleep(15000);

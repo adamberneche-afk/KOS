@@ -316,8 +316,8 @@ function markLessonContextDelivered_(lcSheet, lcData, lessonId) {
 // For each: opens the doc once, extracts response text and checks for
 // extra credit reply in the same pass. Writes response_text to WarmUpQueue.
 // Zero-response docs are stamped INCOMPLETE immediately, skipping Flow 4.
-// Non-zero responses are queued as PENDING_EVAL for Flow 4.
-// After Flow 4 returns scores, computes total and writes feedback to doc.
+// Non-zero responses are queued as PENDING_EVAL for Flow 4, which
+// 41_WarmUpFlowBridge.js runs and scores.
 // ---------------------------------------------------------------------------
 function runWarmUpEvaluation() {
   const cfg = getConfig_();
@@ -422,7 +422,7 @@ function runWarmUpEvaluation() {
   Logger.log("[S25-J2] Evaluating " + toEvaluate.length +
              " warm-up(s) from " + yesterdayStr);
 
-  let scored      = 0;
+  let parked      = 0;
   let incomplete  = 0;
   let errors      = 0;
 
@@ -443,72 +443,20 @@ function runWarmUpEvaluation() {
         continue;
       }
 
-      // Write response text and word count score to WarmUpQueue
-      // Set status PENDING_EVAL — Flow 4 will pick this up
+      // Write response text and word count score to WarmUpQueue and park
+      // the row at PENDING_EVAL. 41_WarmUpFlowBridge.js builds the Flow 4
+      // input from it and harvestWarmUpFlowReturns() writes the scores,
+      // registry row and doc feedback. This used to call callFlow4_(), a
+      // stub that always returned null, ahead of a scoring path that could
+      // therefore never run; both are gone.
       writePreEvalScores_(
         wqSheet, item.queueRowNum,
         result.wordCount, result.wordCountScore, result.responseText,
         result.extraCredit
       );
-
-      // Call Flow 4 for grammar and engagement evaluation
-      const flow4Result = callFlow4_(
-        result.responseText,
-        result.promptText,
-        result.wordCountScore
-      );
-
-      if (!flow4Result) {
-        // EXPECTED, NOT AN ERROR, since 41_WarmUpFlowBridge.js exists.
-        // callFlow4_() is a stub that always returns null (see its own
-        // header). writePreEvalScores_ above has already parked this row at
-        // PENDING_EVAL with its response text and word-count score, which is
-        // exactly the state buildWarmUpFlowInputs() collects for Flow 4.
-        // The scoring then happens asynchronously in
-        // harvestWarmUpFlowReturns(), so counting it as an error here made
-        // every nightly run look like a total failure in the log.
-        Logger.log("[S25-J2] Queue " + item.queueId +
-                   " parked at PENDING_EVAL for the Flow 4 bridge — " +
-                   "41_WarmUpFlowBridge.js will materialize and score it.");
-        continue;
-      }
-      if (flow4Result.error) {
-        Logger.log("[S25-J2] Flow 4 failed for queue " + item.queueId +
-                   ": " + flow4Result.error);
-        errors++;
-        continue;
-      }
-
-      // Compute total score
-      const total = result.wordCountScore +
-                    (flow4Result.grammar    || 0) +
-                    (flow4Result.engagement || 0) +
-                    result.extraCredit;
-
-      // Write final scores to WarmUpQueue
-      writeFinalScores_(
-        wqSheet, item.queueRowNum,
-        flow4Result.grammar, flow4Result.engagement,
-        flow4Result.feedback, total
-      );
-
-      // Write scores to WarmUpRegistry
-      writeRegistryScores_(
-        wrSheet, item.wrRowNum,
-        total, result.extraCredit
-      );
-
-      // Stamp feedback into the warm-up doc
-      writeFeedbackToDoc_(
-        item.docId,
-        flow4Result.feedback,
-        result.wordCountScore,
-        flow4Result.grammar,
-        flow4Result.engagement,
-        total
-      );
-
-      scored++;
+      Logger.log("[S25-J2] Queue " + item.queueId +
+                 " parked at PENDING_EVAL for the Flow 4 bridge.");
+      parked++;
 
     } catch (err) {
       Logger.log("[S25-J2] Unexpected error for doc " + item.docId +
@@ -517,7 +465,7 @@ function runWarmUpEvaluation() {
     }
   }
 
-  Logger.log("[S25-J2] Evaluation complete. Scored: " + scored +
+  Logger.log("[S25-J2] Evaluation complete. Parked for Flow 4: " + parked +
              " | Incomplete: " + incomplete +
              " | Errors: " + errors);
 
@@ -850,162 +798,6 @@ function evaluateWarmUpDoc_(fileId, queueId) {
   }
 
   return { responseText, wordCount, wordCountScore, promptText, extraCredit, error: null };
-}
-
-// ---------------------------------------------------------------------------
-// callFlow4_
-// Calls Studio Flow 4 via the Gemini API to evaluate grammar and engagement.
-// Passes the prompt text, student response, and pre-computed word count score.
-// Flow 4 returns structured JSON: { grammar, engagement, feedback }
-//
-// Flow 4 is instructed to:
-//   - Never mention points, scores, or grades in feedback
-//   - Write feedback in a pedagogical tone that advances thinking
-//   - Keep feedback to 1-3 sentences
-//   - Return ONLY valid JSON with no preamble or markdown
-//
-// Returns: { grammar, engagement, feedback } or { error: "..." }
-// ---------------------------------------------------------------------------
-function callFlow4_(responseText, promptText, wordCountScore) {
-  // Flow 4 is implemented as a Studio Flow triggered by WarmUpQueue status.
-  // This function constructs the payload written to the queue row that
-  // Flow 4 reads, then polls for the result.
-  //
-  // In the current architecture, Flow 4 reads from PENDING_EVAL WarmUpQueue
-  // rows and writes back grammar_score, engagement_score, and flow4_feedback.
-  // Script 25 then reads those values back in the next pass.
-  //
-  // For direct synchronous evaluation (if using Gemini API directly rather
-  // than Studio), the implementation below can replace the queue-based approach.
-  // Uncomment and configure if direct API access is available.
-  //
-  // NOTE on the OAuth scope this needs: a prior audit flagged
-  // script.external_request as an unused, over-broad scope in
-  // central-ledger.appsscript.json, since nothing live calls UrlFetchApp
-  // — only this commented-out block does. Deliberately NOT removed:
-  // tools/gas-lint/check.js's OAuth-scope check reads raw file text (by
-  // design — see its Session.* note) and doesn't distinguish commented
-  // code from live code, so it already treats this reference
-  // implementation as "using" the scope. Stripping the scope to satisfy
-  // that check would just make the linter blind to the real requirement
-  // the moment someone uncomments this block — worse than the modest,
-  // inert over-grant of keeping it declared today.
-
-  /*
-  // ── Direct Gemini API call (alternative to Studio Flow queue) ─────────────
-  const prompt = buildFlow4Prompt_(responseText, promptText, wordCountScore);
-  const url    = "https://generativelanguage.googleapis.com/v1beta/models/" +
-                 "gemini-pro:generateContent?key=" +
-                 PropertiesService.getScriptProperties().getProperty("GEMINI_API_KEY");
-
-  const payload = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: { temperature: 0.2, maxOutputTokens: 256 }
-  };
-
-  const response = UrlFetchApp.fetch(url, {
-    method: "post",
-    contentType: "application/json",
-    payload: JSON.stringify(payload)
-  });
-
-  const data = JSON.parse(response.getContentText());
-  const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
-  const clean = raw.replace(/```json|```/g, "").trim();
-
-  try {
-    return JSON.parse(clean);
-  } catch (e) {
-    return { error: "Flow 4 JSON parse error: " + e.message + " | Raw: " + raw };
-  }
-  */
-
-  // ── Studio Flow queue-based approach ──────────────────────────────────────
-  // Flow 4 reads PENDING_EVAL rows. Script 25 polls for SCORED status.
-  // This function is called after writePreEvalScores_() has set the status
-  // to PENDING_EVAL. We poll the queue row until Flow 4 writes results back.
-  // Implementation: see pollForFlow4Result_() below.
-  return null; // placeholder — actual call via Studio Flow polling
-}
-
-// ---------------------------------------------------------------------------
-// buildFlow4Prompt_
-// Constructs the evaluation prompt sent to Flow 4.
-// ---------------------------------------------------------------------------
-function buildFlow4Prompt_(responseText, promptText, wordCountScore) {
-  return [
-    "You are evaluating a high school CTE student's warm-up response.",
-    "The warm-up prompt was:",
-    "---",
-    promptText,
-    "---",
-    "The student's response was:",
-    "---",
-    responseText,
-    "---",
-    "The word count score has already been computed: " + wordCountScore + " points.",
-    "",
-    "Evaluate the response on two criteria:",
-    "",
-    "1. GRAMMAR AND SENTENCE STRUCTURE (0 or 1 point):",
-    "   1 = Cohesive sentences with no significant errors that impede comprehension.",
-    "   0 = Significant errors that impede comprehension.",
-    "",
-    "2. ENGAGEMENT (0, 1, 2, or 3 points):",
-    "   3 = Genuine — directly addresses the prompt with original thought.",
-    "   2 = Surface — on-topic but formulaic or thin.",
-    "   1 = Minimal — tangentially related or very thin.",
-    "   0 = Off-topic or filler — does not engage with the prompt.",
-    "",
-    "Also write 1-3 sentences of pedagogical feedback for the student.",
-    "IMPORTANT: Never mention points, scores, or grades in the feedback.",
-    "The feedback should advance the student's thinking about the topic.",
-    "It will appear in their document before next class.",
-    "",
-    "Respond ONLY with valid JSON. No preamble, no markdown, no explanation.",
-    "Format:",
-    '{ "grammar": 0_or_1, "engagement": 0_1_2_or_3, "feedback": "your feedback here" }'
-  ].join("\n");
-}
-
-// ---------------------------------------------------------------------------
-// pollForFlow4Result_
-// Polls a WarmUpQueue row for Flow 4's result (status changes from
-// PENDING_EVAL to SCORED by Studio Flow 4).
-// Polls every 15 seconds for up to 3 minutes.
-// Returns the scored row data or null on timeout.
-// ---------------------------------------------------------------------------
-// DEAD CODE, AND MUST STAY THAT WAY. Nothing calls this — 35_FlowPreflightAndCanary.js
-// already noted it as unused. Do not wire it up: twelve 15-second sleeps is
-// three minutes of wall clock PER ROW inside a trigger, so ten students would
-// need thirty minutes of sleeping and blow every Apps Script execution limit.
-// 41_WarmUpFlowBridge.js's harvestWarmUpFlowReturns() replaces the whole idea
-// — it applies whatever has come back on each pass and returns immediately,
-// so there is nothing to poll for. Kept only because the shape of the result
-// object below documents what Flow 4 is expected to write.
-function pollForFlow4Result_(wqSheet, queueRowNum, queueId) {
-  const MAX_ATTEMPTS  = 12; // 12 × 15s = 3 minutes
-  const POLL_INTERVAL = 15 * 1000; // 15 seconds
-
-  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
-    Utilities.sleep(POLL_INTERVAL);
-
-    // Re-read the specific queue row
-    const rowData = wqSheet.getRange(queueRowNum, 1, 1, WQ25_COL_COUNT).getValues()[0];
-    const status  = String(rowData[WQ25_STATUS] || "").trim();
-
-    if (status === "SCORED") {
-      return {
-        grammar:    Number(rowData[WQ25_GRAMMAR_SCORE]    || 0),
-        engagement: Number(rowData[WQ25_ENGAGEMENT_SCORE] || 0),
-        feedback:   String(rowData[WQ25_FLOW4_FEEDBACK]   || "").trim()
-      };
-    }
-  }
-
-  Logger.log("[S25-J2] Flow 4 timeout for queue row " + queueRowNum +
-             " (" + queueId + ") after 3 minutes.");
-  return null;
 }
 
 // ---------------------------------------------------------------------------

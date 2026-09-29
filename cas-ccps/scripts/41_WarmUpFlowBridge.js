@@ -66,7 +66,7 @@
  * string silently breaks Flow 4.
  *
  * A REAL BUG THIS REMOVES, not just a wall it works around.
- * pollForFlow4Result_() (25_WarmUpWriter.js) blocks on
+ * pollForFlow4Result_() (25_WarmUpWriter.js, since removed) blocked on
  * Utilities.sleep(15000) twelve times — three minutes of wall clock per row,
  * inside a trigger. Ten students would need thirty minutes of sleeping, well
  * past any Apps Script execution limit, so Flow 4 could never have scaled
@@ -75,11 +75,11 @@
  * as unused — so this port does not have to unwire anything; a note at its
  * definition now says plainly that it must stay dead, and why.
  *
- * What runWarmUpEvaluation() DOES do is call callFlow4_(), a stub that always
- * returns null. Its null branch counted that as an error, so every nightly
- * run logged a failure for every row even though writePreEvalScores_ had
- * correctly parked each one at PENDING_EVAL — which is exactly the state this
- * file collects. That branch now says so instead of crying wolf.
+ * What runWarmUpEvaluation() does is park each response at PENDING_EVAL via
+ * writePreEvalScores_, which is exactly the state this file collects. It
+ * used to call callFlow4_(), a stub that always returned null, and count
+ * that as an error on every row; the stub and its unreachable scoring path
+ * have been removed.
  *
  * THE TABS, AND WHY NOT NEW WarmUpQueue COLUMNS. WarmUpQueue is 21 columns
  * read by hardcoded WQ*_ index constants in Scripts 23, 24 and 25

@@ -71,8 +71,6 @@
 //
 //   Queue tab:
 //     getQueueMetrics()                → 3_Queue_Processor.gs
-//     getQueueStatus()                 → 3_Queue_Processor.gs (legacy shape,
-//                                        still callable; no client call site)
 //
 //   Diagnostics tab:
 //     getVectorState()                → 4_Vector_Router.gs

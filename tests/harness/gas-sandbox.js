@@ -30,6 +30,15 @@
 // is a cheaper way to discover a missing scope than a scope-consent
 // prompt in production.
 
+// In Apps Script, JavaScript's local time zone is the script's time zone.
+// Session.getScriptTimeZone() below reports America/New_York, so the host
+// process runs in it too; otherwise `new Date('2026-03-04T00:00:00')` is
+// UTC midnight here but New York midnight in production, and
+// Utilities.formatDate() (which honors its timeZone argument) shows the
+// wrong day.
+const HARNESS_SCRIPT_TIME_ZONE = 'America/New_York';
+process.env.TZ = HARNESS_SCRIPT_TIME_ZONE;
+
 const vm = require('vm');
 const fs = require('fs');
 const crypto = require('crypto');
@@ -152,6 +161,9 @@ class FakeRange {
   setNumberFormat() { return this; }
 }
 
+function _cellHasContent_(v) { return v !== '' && v !== null && v !== undefined; }
+function _rowHasContent_(r) { return !!r && r.some(_cellHasContent_); }
+
 class FakeSheet {
   constructor(name) {
     this.name = name;
@@ -160,8 +172,22 @@ class FakeSheet {
   }
   getName() { return this.name; }
   setName(n) { this.name = n; return this; }
-  appendRow(arr) { this.rows.push(arr.slice()); return this; }
-  getLastRow() { return this.rows.length; }
+  // Real Sheets appends after the last row with content, not after rows
+  // that were cleared.
+  appendRow(arr) {
+    this.rows.length = this.getLastRow();
+    this.rows.push(arr.slice());
+    return this;
+  }
+  // Real Sheets: the last row with any content. A row whose cells were
+  // cleared (clearContent, setValue('')) no longer counts, which this mock
+  // used to miss: it counted every row ever written.
+  getLastRow() {
+    for (let i = this.rows.length - 1; i >= 0; i--) {
+      if (_rowHasContent_(this.rows[i])) return i + 1;
+    }
+    return 0;
+  }
   getRange(row, col, numRows = 1, numCols = 1) {
     if (typeof row === 'string') return this._a1Range_(row);
     return new FakeRange(this, row, col, numRows, numCols);
@@ -185,10 +211,10 @@ class FakeSheet {
     const c1 = a.col || 1, c2 = b.col || (a.col ? c1 : width);
     return new FakeRange(this, r1, c1, r2 - r1 + 1, c2 - c1 + 1);
   }
-  // Real Sheets: an empty sheet's data range is A1, never 0 rows.
+  // Real Sheets: A1 to the last row and column with content; an empty
+  // sheet's data range is A1, never 0 rows.
   getDataRange() {
-    const width = this.rows.reduce((m, r) => Math.max(m, r.length), 0) || 1;
-    return new FakeRange(this, 1, 1, Math.max(1, this.rows.length), width);
+    return new FakeRange(this, 1, 1, Math.max(1, this.getLastRow()), Math.max(1, this.getLastColumn()));
   }
   setFrozenRows(n) { this.frozenRows = n; return this; }
   // Recorded rather than ignored, like setFrozenRows above: which columns an
@@ -207,7 +233,15 @@ class FakeSheet {
   // far), 0 rather than 1 on a genuinely empty sheet (matching real
   // Sheets: getLastColumn() on a blank sheet is 0, unlike getDataRange()
   // which always returns at least a 1x1 range).
-  getLastColumn() { return this.rows.reduce((m, r) => Math.max(m, r.length), 0); }
+  getLastColumn() {
+    let last = 0;
+    for (const r of this.rows) {
+      for (let c = r.length - 1; c >= last; c--) {
+        if (_cellHasContent_(r[c])) { last = c + 1; break; }
+      }
+    }
+    return last;
+  }
   // Cosmetic only — no test in this repo asserts on column width.
   autoResizeColumns() { return this; }
   // Real Apps Script API — inserts a blank column before the given 1-based
@@ -242,7 +276,17 @@ class FakeSpreadsheet {
   getUrl() { return 'https://docs.google.com/spreadsheets/d/' + this.id + '/edit'; }
   getSheets() { return this.sheets; }
   getSheetByName(name) { return this.sheets.find((s) => s.name === name) || null; }
+  // Real Sheets refuses a duplicate name, and names an unnamed sheet
+  // "SheetN" with the next free N.
   insertSheet(name) {
+    if (name === undefined || name === null || name === '') {
+      let n = this.sheets.length + 1;
+      while (this.getSheetByName('Sheet' + n)) n++;
+      name = 'Sheet' + n;
+    }
+    if (this.getSheetByName(name)) {
+      throw new Error('A sheet with the name "' + name + '" already exists. Please enter another name.');
+    }
     const s = new FakeSheet(name);
     this.sheets.push(s);
     return s;
@@ -340,7 +384,7 @@ function makeSessionMock(email = 'teacher@example.com') {
     // CreateWarmUpDocStep.gs uses this rather than a hardcoded timezone
     // string; see that file's own header. A fixed value is enough here —
     // no test in this repo needs real per-environment timezone behavior.
-    getScriptTimeZone() { return 'America/New_York'; },
+    getScriptTimeZone() { return HARNESS_SCRIPT_TIME_ZONE; },
   };
 }
 
@@ -746,9 +790,13 @@ class FakeListItem extends FakeParagraph {
   asListItem() { return this; }
 }
 
+// Real Docs: a body always holds at least one paragraph. A new document's
+// body is one empty paragraph, and clear() leaves one, so appendParagraph()
+// on a fresh doc gives getText() === "\n" + text. This mock used to start
+// (and clear to) no paragraphs at all.
 class FakeDocBody {
-  constructor() { this.paragraphs = []; }
-  clear() { this.paragraphs = []; return this; }
+  constructor() { this.paragraphs = [new FakeParagraph('')]; }
+  clear() { this.paragraphs = [new FakeParagraph('')]; return this; }
   appendParagraph(text) {
     const p = new FakeParagraph(text);
     this.paragraphs.push(p);
@@ -867,62 +915,44 @@ function makeDocumentAppMock(driveAppMock) {
 makeDocumentAppMock._counter = 0;
 
 // Real Apps Script API — Utilities.formatDate(date, timeZone, format).
-// Only implements the handful of format tokens this repo's studio-steps
-// actually use (yyyy-MM-dd, MMMM d, yyyy) — good enough to exercise real
+// Implements the SimpleDateFormat tokens this repo actually uses (yyyy,
+// MMMM, MMM, MM, dd, d, HH, h, mm, ss, a) — enough to exercise real
 // date-formatting call sites without pulling in a full date-format
-// library. timeZone is accepted (steps must pass one; several past bugs
-// in this repo were hardcoded timezone strings — see
-// CreateWarmUpDocStep.gs's own header) but not applied to the underlying
-// Date's fields, since a synchronous VM sandbox test controls its input
-// Date directly rather than needing real timezone-conversion behavior.
+// library. timeZone is applied (several past bugs in this repo were
+// hardcoded timezone strings — see CreateWarmUpDocStep.gs's own header).
 function formatDateMock(date, timeZone, format) {
   const months = ['January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'];
-  const monthsAbbr = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const pad2 = (n) => String(n).padStart(2, '0');
-  // First hit from tests/cas-ccps/lesson-frame-generator.test.js, the first
-  // test to ever call 26_CompetencyAlignmentLog.js's generateAlignmentReport()
-  // — that function has used this format since before any test exercised it.
-  if (format === 'MMM d, yyyy h:mm a') {
-    const h24 = date.getHours();
-    const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
-    const ampm = h24 < 12 ? 'AM' : 'PM';
-    return `${monthsAbbr[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()} ${h12}:${pad2(date.getMinutes())} ${ampm}`;
+  // The date's fields in timeZone, as real Apps Script computes them. This
+  // mock used to read the host's local fields and ignore timeZone, so a
+  // late-evening date in America/New_York formatted as the next day on a
+  // UTC CI runner, and a code path that passed the wrong zone was never
+  // caught.
+  let fields;
+  try {
+    fields = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+      timeZone: timeZone, hourCycle: 'h23',
+      year: 'numeric', month: 'numeric', day: 'numeric',
+      hour: 'numeric', minute: 'numeric', second: 'numeric',
+    }).formatToParts(date).map((p) => [p.type, p.value]));
+  } catch (e) {
+    throw new Error('formatDateMock: invalid time zone "' + timeZone + '": ' + e.message);
   }
-  if (format === 'yyyy-MM-dd') {
-    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`;
-  }
-  if (format === 'MMMM d, yyyy') {
-    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
-  }
-  if (format === 'yyyyMMdd') {
-    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`;
-  }
-  if (format === 'yyyy-MM-dd HH:mm') {
-    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-  }
-  if (format === 'yyyy-MM-dd HH:mm:ss') {
-    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
-  }
-  if (format === 'yyyy-MM-dd_HH-mm') {
-    return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}_${pad2(date.getHours())}-${pad2(date.getMinutes())}`;
-  }
-  // cas-ccps/scripts/38_LedgerSchemaGuard.js's _lsgBackupTab_() — names the
-  // pre-repair backup tab, so two repairs in the same minute can't collide
-  // on one name (hence seconds, unlike the formats above).
-  if (format === 'yyyyMMdd-HHmmss') {
-    return `${date.getFullYear()}${pad2(date.getMonth() + 1)}${pad2(date.getDate())}`
-      + `-${pad2(date.getHours())}${pad2(date.getMinutes())}${pad2(date.getSeconds())}`;
-  }
-  // kos-personal sendDailyErrorReport(): per-entry stamp and subject date.
-  if (format === 'MM-dd HH:mm:ss') {
-    return `${pad2(date.getMonth() + 1)}-${pad2(date.getDate())} ${pad2(date.getHours())}:${pad2(date.getMinutes())}:${pad2(date.getSeconds())}`;
-  }
-  if (format === 'MMM dd yyyy') {
-    return `${monthsAbbr[date.getMonth()]} ${pad2(date.getDate())} ${date.getFullYear()}`;
-  }
-  throw new Error('formatDateMock: unsupported format "' + format + '" — add it to tests/harness/gas-sandbox.js');
+  const y = +fields.year, M = +fields.month, d = +fields.day;
+  const H = +fields.hour % 24, m = +fields.minute, sec = +fields.second;
+  const tokens = {
+    yyyy: String(y), MMMM: months[M - 1], MMM: months[M - 1].slice(0, 3),
+    MM: pad2(M), dd: pad2(d), d: String(d), HH: pad2(H),
+    h: String(H % 12 === 0 ? 12 : H % 12), mm: pad2(m), ss: pad2(sec), a: H < 12 ? 'AM' : 'PM',
+  };
+  // SimpleDateFormat-style: runs of one letter are a token; anything else
+  // is literal. An unsupported token throws rather than guessing.
+  return String(format).replace(/([A-Za-z])\1*/g, (run) => {
+    if (Object.prototype.hasOwnProperty.call(tokens, run)) return tokens[run];
+    throw new Error('formatDateMock: unsupported format token "' + run + '" in "' + format +
+      '" — add it to tests/harness/gas-sandbox.js');
+  });
 }
 
 // Loads a real .gs file's source into a fresh vm context with the mocks
@@ -1032,7 +1062,6 @@ function makeScriptAppMock() {
 }
 
 function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
-  const source = absPaths.map((p) => fs.readFileSync(p, 'utf8')).join('\n;\n');
   const driveAppMock = makeDriveAppMock();
   const sandbox = {
     console,
@@ -1102,7 +1131,16 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
   };
   const context = vm.createContext(sandbox);
   const footer = `\n;globalThis.__exported = { ${exposeNames.join(', ')} };`;
-  vm.runInContext(source + footer, context, { filename: absPaths[absPaths.length - 1] });
+  // One script per file, each under its own filename, so V8 coverage (and
+  // stack traces) credit code to the file it lives in. The files used to be
+  // concatenated and run as the LAST file, which credited everything to it;
+  // tools/coverage-gaps then misreported which file a test covered. Separate
+  // scripts in one context still share a global scope, top-level const/let
+  // included, the same as the files of one Apps Script project.
+  for (const p of absPaths) {
+    vm.runInContext(fs.readFileSync(p, 'utf8'), context, { filename: p });
+  }
+  vm.runInContext(footer, context, { filename: 'gas-sandbox-exports.js' });
 
   // vm.createContext's sandbox object does NOT gain standard built-ins
   // (Date, Array, ...) as ordinary properties just by being contextified —

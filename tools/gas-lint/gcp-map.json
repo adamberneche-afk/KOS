@@ -75,13 +75,6 @@
         ]
       }
     },
-    "cas-ccps/scripts/25_WarmUpWriter.js": {
-      "pattern": "gemini-api-endpoint",
-      "status": "latent",
-      "why": "A commented-out direct-Gemini reference implementation inside callFlow4_, kept deliberately: that function's own header explains that gas-lint's OAuth-scope check reads raw file text, so deleting the block would make the linter blind to the script.external_request requirement the moment someone uncommented it. Note it reads a GEMINI_API_KEY property — a different name from 15c's DIRECT_GEMINI_API_KEY, so the two paths were never wired together.",
-      "if_unavailable": "Nothing executes it. The live path is the Studio Flow 4 queue (PENDING_EVAL -> SCORED) plus pollForFlow4Result_.",
-      "revisit": "Uncommenting it is a real decision, not a cleanup. It would need a key, a project, and a second key-management story alongside 15c's."
-    },
     "kos-personal/studio-steps/appsscript.json": {
       "pattern": "studio-custom-step",
       "status": "live-blocked",
