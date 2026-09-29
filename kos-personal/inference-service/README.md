@@ -61,6 +61,7 @@ inference-service/
 │   ├── db.js            Postgres access layer
 │   ├── google.js        Google OAuth (account linking)
 │   ├── inference.js     Anthropic SDK wrapper
+│   ├── flow-prompts.js  Generated copy of VECTOR_CLASSIFY_PROMPT.md
 │   └── logger.js        Winston logger setup
 └── sql/
     └── schema.sql        Postgres schema (users, jobs, credit ledger)
@@ -99,6 +100,19 @@ anywhere in the `.gs` files and that wiring `10_Turnstile.gs` to submit
 jobs here was still unbuilt — that's now stale; the wiring above is live.
 Treat `MANAGED_SERVICE` mode today as fully wired end to end, gated
 behind `CFG.INFERENCE_MODE`, off by default.
+
+**Prompts by payload type.** `VECTOR_CLASSIFY` jobs get the same
+classifier prompt the Studio flow uses (`src/flow-prompts.js`, generated
+from `../VECTOR_CLASSIFY_PROMPT.md` by
+`tools/kos-personal/generate-flow-prompts.js`) and must return its
+top-level array of exchanges; they used to get the Curator prompt, so every
+classification failed at intake in GAS. `COG_STIMULUS` jobs get the council
+prompt. Everything else gets the Curator prompt, which returns
+`vector_weights: null` per `CURATOR_PROMPT.md` Rule 1: GAS writes a
+`VECTOR_MATRIX` row for any payload that has weights, so a Curator estimate
+would add a second row per session and decay every theme it left out. The
+service sets it to null whatever the model returns. As in Studio mode,
+`MATRIX_LEDGER` (the prompt's "recent vector history") no longer gains rows.
 
 **Reading the model's output: select the text block, never index into
 `content`.** The Messages API returns `content` as a list of typed blocks,

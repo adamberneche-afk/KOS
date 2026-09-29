@@ -1,5 +1,5 @@
 'use strict';
-// Regression tests for kos-personal/studio-steps/WriteCuratorOutputStep.gs —
+// Regression tests for kos-personal/archive/studio-steps/WriteCuratorOutputStep.gs —
 // Curator Flow Steps 2b + 3 + 4: merge Auditor sign-off, overwrite doc
 // body, mark STAGING_PIPELINE complete only on success.
 
@@ -8,8 +8,8 @@ const assert = require('node:assert/strict');
 const path = require('path');
 const { loadGasFiles, makeStudioEvent } = require('../harness/gas-sandbox');
 
-const SHARED_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'studio-steps', 'StepsShared.gs');
-const STEP_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'studio-steps', 'WriteCuratorOutputStep.gs');
+const SHARED_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'archive', 'studio-steps', 'StepsShared.gs');
+const STEP_PATH = path.join(__dirname, '..', '..', 'kos-personal', 'archive', 'studio-steps', 'WriteCuratorOutputStep.gs');
 
 function load(exposeNames) {
   return loadGasFiles([SHARED_PATH, STEP_PATH], exposeNames);

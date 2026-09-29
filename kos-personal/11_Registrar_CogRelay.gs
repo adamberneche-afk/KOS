@@ -521,9 +521,12 @@ function _translateAndRouteRegistrarRow(ledger, sheetRow, row) {
     schema2 = JSON.parse(row[RC.COG2_JSON]);
   } catch (e) {
     _reportError('_translateAndRouteRegistrarRow:parse', e, null);
-    ledger.getRange(sheetRow, RC.ERROR_LOG + 1).setValue(
-      String(row[RC.ERROR_LOG] || '') + '\nTranslation-phase parse failure: ' + e.message
-    );
+    // Back to Stage 2 validation, which re-reads the JSON and bounces or
+    // escalates with the usual Attempt_Tracker limit. It used to stay
+    // READY_FOR_TRANSLATION, so every 10-minute run failed the same way and
+    // wrote another ERROR_LOG row, indefinitely.
+    _bounceRegistrarRow(ledger, sheetRow, row, 'PENDING_VALIDATION_2',
+      'Translation-phase parse failure: ' + e.message);
     return;
   }
 

@@ -215,7 +215,7 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
     try { exchanges = JSON.parse(rawJSONPayload); }
     catch (pe) {
       _reportError('processVectorClassificationPayload:parse', pe, null);
-      return { status: 'ERROR', message: 'Malformed JSON: ' + pe.message };
+      return { status: 'ERROR', message: 'Malformed JSON: ' + pe.message, reported: true };
     }
     if (!Array.isArray(exchanges)) {
       return { status: 'ERROR', message: 'Expected a top-level JSON array of exchanges.' };
@@ -234,7 +234,8 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
     // stored parts on SUCCESS) with no row written at all.
     if (!matrixRow || !matrixRow.sessionUid) {
       return { status: 'ERROR', message: 'VECTOR_MATRIX has no theme columns; session ' + sessionUid +
-        ' was not written. Run setupRoutingProperties() or deployFullSystem() to restore its headers.' };
+        ' was not written. Run setupRoutingProperties() or deployFullSystem() to restore its headers.',
+        reported: true };  // _writeMatrixRow() already logged _writeMatrixRow:NO_HEADERS
     }
     _logToIncubator(incubSheet, aggregated.unknown, sessionUid, timestamp);
     _applyIncubatorDecay_(incubSheet, timestamp);
@@ -247,7 +248,7 @@ function processVectorClassificationPayload(rawJSONPayload, sessionUid, timestam
     return { status: 'SUCCESS', matrixRow, promotions };
   } catch (e) {
     _reportError('processVectorClassificationPayload', e, null);
-    return { status: 'ERROR', message: e.message };
+    return { status: 'ERROR', message: e.message, reported: true };
   } finally {
     if (ownsLock) lock.releaseLock();
   }

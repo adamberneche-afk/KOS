@@ -45,11 +45,6 @@
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."
   },
   {
-    "file": "cas-ccps/scripts/22_LessonContextHandler.js",
-    "function": "runAlignmentLogBackfill_",
-    "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Shared by 2 of cas-ccps's 8 sub-projects (central-ledger, teacher-dashboard); one allowlist entry covers both since they're the same file. Flagged for follow-up."
-  },
-  {
     "file": "cas-ccps/scripts/25_WarmUpWriter.js",
     "function": "registerDeliveredWarmUps",
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up."

@@ -18,6 +18,14 @@
 // RETURNS (logAlignmentForLesson_):
 //   { success: true,  rowsWritten: N }
 //   { success: false, error: "human-readable message" }
+//   plus, on some failures:
+//     busy:  true  — another run held the lock. Nothing was tried; the
+//                    backfill doesn't count it as an attempt.
+//     retry: false — retrying can't help until someone fixes the row
+//                    (row gone, no competency_ids). The backfill stops
+//                    at once instead of retrying every 5 minutes.
+//   This function doesn't log its own failures; both callers log the
+//   returned error, so logging here too wrote every failure twice.
 //
 // APPEND-ONLY RULE:
 //   This script NEVER updates or deletes AlignmentLog rows.
@@ -63,8 +71,7 @@ function logAlignmentForLesson_(lessonId) {
   try {
     lock.waitLock(15000);
   } catch (e) {
-    Logger.log("[S26] Parallel run congestion for " + lessonId + " — standing down.");
-    return { success: false, error: "System busy — try again in a moment." };
+    return { success: false, busy: true, error: "System busy — try again in a moment." };
   }
 
   try {
@@ -90,7 +97,7 @@ function logAlignmentForLesson_(lessonId) {
   }
 
   if (!lessonRow) {
-    return { success: false, error: "LessonContext row not found for ID: " + lessonId };
+    return { success: false, retry: false, error: "LessonContext row not found for ID: " + lessonId };
   }
 
   // ── Guard: only process RECEIVED rows ────────────────────────────────────
@@ -110,12 +117,12 @@ function logAlignmentForLesson_(lessonId) {
   // ── Parse competency IDs ──────────────────────────────────────────────────
   const rawIds = String(lessonRow[LC_COMPETENCY_IDS]).trim();
   if (!rawIds) {
-    return { success: false, error: "No competency_ids on LessonContext row " + lessonId };
+    return { success: false, retry: false, error: "No competency_ids on LessonContext row " + lessonId };
   }
 
   const competencyIds = rawIds.split(",").map(id => id.trim()).filter(Boolean);
   if (competencyIds.length === 0) {
-    return { success: false, error: "competency_ids parsed to empty list for " + lessonId };
+    return { success: false, retry: false, error: "competency_ids parsed to empty list for " + lessonId };
   }
 
   // ── Look up competency text + strand from registry ────────────────────────
@@ -154,27 +161,27 @@ function logAlignmentForLesson_(lessonId) {
   }
 
   // ── Write all AlignmentLog rows in a single batch ─────────────────────────
-  // appendRow() is called per-row rather than setValues() because we're
-  // appending to an existing sheet of unknown length. Acceptable at lesson
-  // scale (typically 1–5 competencies per lesson).
+  // FIXED: this used to call appendRow() once per competency. A failure
+  // part way through left some rows written and the lesson still RECEIVED,
+  // so the backfill's next run wrote the whole set again and the lesson's
+  // first competencies were counted twice in the coverage report. One
+  // setValues() either writes every row or none. The lock above means
+  // nothing else appends to AlignmentLog between getLastRow() and the write.
   try {
-    for (const alRow of rowsToAppend) {
-      alSheet.appendRow(alRow);
-    }
+    alSheet.getRange(alSheet.getLastRow() + 1, 1, rowsToAppend.length, rowsToAppend[0].length)
+      .setValues(rowsToAppend);
   } catch (err) {
-    Logger.log("[S26] appendRow error for " + lessonId + ": " + err.message);
     return { success: false, error: "Could not write AlignmentLog rows: " + err.message };
   }
 
   // ── Update LessonContext status ───────────────────────────────────────────
-  // Two writes: status column and alignment_logged_at column.
-  // Using getRange() by row index (1-based) + column index (1-based).
+  // status and alignment_logged_at are next to each other, so one write sets
+  // both. Two writes could leave status changed and the time blank, or the
+  // reverse.
   try {
     const sheetRow = lessonRowIdx + 1; // +1 for 1-based index
-    lcSheet.getRange(sheetRow, LC_STATUS + 1)
-      .setValue("ALIGNMENT_LOGGED");
-    lcSheet.getRange(sheetRow, LC_ALIGNMENT_LOGGED_AT + 1)
-      .setValue(loggedAt);
+    lcSheet.getRange(sheetRow, LC_STATUS + 1, 1, 2)
+      .setValues([[LC_STATUS_ALIGNMENT_LOGGED, loggedAt]]);
   } catch (err) {
     // AlignmentLog rows were written — this is a partial failure.
     // Log it but return success so S22 doesn't retry and double-write.

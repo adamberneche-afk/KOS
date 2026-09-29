@@ -340,7 +340,7 @@ body{font-family:var(--body);background:var(--void);color:var(--text);font-size:
         <div><span class="ev">ALIGNMENT_LOGGED</span><span class="ec">→ S26 has written AlignmentLog rows for this lesson.</span></div>
         <div><span class="ev">FRAME_GENERATED</span><span class="ec">→ S27 has created the Lesson Frame Document.</span></div>
         <div><span class="ev">SUPERSEDED</span><span class="ec">→ Teacher resubmitted the same lesson (same teacher_email + lesson_date + period_or_class); a new row exists with a new lesson_id. S26 skips SUPERSEDED rows.</span></div>
-        <div><span class="ev">ERROR</span><span class="ec">→ A script encountered a failure. See error_notes. Retryable.</span></div>
+        <div><span class="ev">ERROR</span><span class="ec">→ A script encountered a failure. See error_notes. Retryable. The S22 backfill sets this when S26 has failed 6 times in a row, or once when retrying can't help (no competency_ids, row missing). Fix the row and set status back to RECEIVED to retry.</span></div>
       </div>
     </div>
 

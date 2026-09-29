@@ -142,14 +142,14 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 > operator: kos-personal is deployed on the same `ccpsnet.net` account as
 > cas-ccps — not the separate personal account SMP-004 describes — so the
 > district's org-wide GCP block reaches it, and the two custom steps in
-> `kos-personal/studio-steps/` cannot be published. The flow is not running.
+> `kos-personal/archive/studio-steps/` cannot be published. The flow is not running.
 > Everything below describes the intended design and the state machine, all
 > of which still holds; what changed is that the write-back half came back
 > into Apps Script rather than being a custom step. That port is done:
 > `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` overwrites the
 > source doc and sets `FLOW_COMPLETE` on a 5-minute trigger, and the Flow's
 > last step is a native add-row into `STUDIO_RETURN`. See
-> `kos-personal/studio-steps/README.md`'s status banner for the port's shape
+> `kos-personal/archive/studio-steps/README.md`'s status banner for the port's shape
 > and its one hard constraint (do not widen `STAGING_PIPELINE`), and
 > `tools/gas-lint/gcp-map.json` for the declaration.
 

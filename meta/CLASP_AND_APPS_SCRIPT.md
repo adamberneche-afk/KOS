@@ -217,7 +217,7 @@ The layout each system needs, which hasn't changed:
   `clasp clone`/`create`) and a `.claspignore` that allowlists only the
   real script files, so the legacy/archived material and (for
   kos-personal) the separate Node.js `inference-service/` never get swept
-  into a push. `kos-personal/studio-steps/` (blocked on this account — its
+  into a push. `kos-personal/archive/studio-steps/` (blocked on this account — its
   write-back moved to `12_StudioReturnHarvest.gs`) is a second, separate
   flat-folder project alongside the main one (a separate Apps Script
   project, not a shared global scope — note this is a PROJECT split, not

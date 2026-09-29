@@ -425,7 +425,7 @@ function makeLockServiceMock() {
 }
 
 // Real Workspace Add-ons API — the Studio custom-step output wrapper
-// (cas-ccps/studio-steps/*.gs, kos-personal/studio-steps/*.gs). A step's
+// (cas-ccps/studio-steps/*.gs, kos-personal/archive/studio-steps/*.gs). A step's
 // onXExecute never returns its output values directly; every one funnels
 // them through StepsShared.gs's stringVar_()/intVar_() ->
 // buildOutputRenderAction_() chain, built on top of
@@ -1163,7 +1163,7 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
 }
 
 // Builds a fake Workspace Studio step-execution event: every
-// cas-ccps/studio-steps and kos-personal/studio-steps file reads its
+// cas-ccps/studio-steps and kos-personal/archive/studio-steps file reads its
 // inputs from event.workflow.actionInvocation.inputs[name].stringValues[0]
 // (via StepsShared.gs's inStr_()). inputMap's values become each input's
 // sole stringValues entry; pass null (not "") for a field to leave it

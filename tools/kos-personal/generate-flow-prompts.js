@@ -226,6 +226,27 @@ function checkFlowPrompts() {
   const outPath = path.join(KP, '16_FlowPrompts.gs');
   fs.writeFileSync(outPath, output, 'utf8');
   console.log('Wrote ' + outPath + ' (' + constants.map(c => c.constName).join(', ') + ')');
+
+  // The managed inference service classifies VECTOR_CLASSIFY rows with the
+  // same prompt the Studio flow uses. It is deployed on its own (its
+  // Dockerfile copies only inference-service/src), so it gets a generated
+  // copy rather than reading the .md file at runtime.
+  const classify = constants.find(c => c.constName === 'VECTOR_CLASSIFY_SYSTEM_PROMPT');
+  const servicePath = path.join(KP, 'inference-service', 'src', 'flow-prompts.js');
+  fs.writeFileSync(servicePath, SERVICE_HEADER +
+    `const VECTOR_CLASSIFY_SYSTEM_PROMPT = \`${escapeForTemplateLiteral(classify.body)}\`;\n\n` +
+    `module.exports = { VECTOR_CLASSIFY_SYSTEM_PROMPT };\n`, 'utf8');
+  console.log('Wrote ' + servicePath + ' (VECTOR_CLASSIFY_SYSTEM_PROMPT)');
 }
+
+const SERVICE_HEADER = `'use strict';
+// GENERATED FILE — do not hand-edit.
+// Regenerate with: node tools/kos-personal/generate-flow-prompts.js
+// The body of kos-personal/VECTOR_CLASSIFY_PROMPT.md, the same text the
+// Studio VECTOR_CLASSIFY flow uses (16_FlowPrompts.gs). inference.js sends
+// it for VECTOR_CLASSIFY jobs. tests/kos-personal/flow-prompts.test.js
+// fails if this file and the .md file disagree.
+
+`;
 
 main();
