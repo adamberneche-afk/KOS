@@ -273,6 +273,38 @@ function _sendChatAlert(message) {
 
 
 /**
+ * True for the traceability row _chunkAndQueue() writes to SESSION_LOG at
+ * intake, not a processed session. Current rows say SENSOR_INTAKE in
+ * Session_Type (C); rows written before their columns were fixed say it in
+ * Cold_Start (D).
+ * @param {Array} row  A SESSION_LOG row, at least 4 columns.
+ */
+function _isIntakeSessionLogRow_(row) {
+  return String(row[2]).trim() === 'SENSOR_INTAKE' || String(row[3]).trim() === 'SENSOR_INTAKE';
+}
+
+/**
+ * Counts the distinct sessions in SESSION_LOG processed after sinceMs. A
+ * session split into chunks writes one row per chunk (LOG-xxxxxxxx_CH01,
+ * _CH02, ...) plus an intake row, and each used to count as a session, so
+ * a threshold of 5 fired after about 2 real sessions.
+ * @param {Array[]} rows  SESSION_LOG rows (Session_UID, Timestamp, Session_Type, Cold_Start).
+ * @param {number} sinceMs
+ * @return {number}
+ */
+function _countSessionsSince_(rows, sinceMs) {
+  const sessions = new Set();
+  rows.forEach(r => {
+    if (_isIntakeSessionLogRow_(r)) return;
+    const ms = new Date(r[1]).getTime();
+    if (isNaN(ms) || ms <= sinceMs) return;
+    sessions.add(String(r[0]).trim().replace(/_CH\d+$/, ''));
+  });
+  return sessions.size;
+}
+
+
+/**
  * Reads all unreported rows from ERROR_LOG, sends a grouped
  * digest email to the admin, and marks rows as REPORTED.
  *

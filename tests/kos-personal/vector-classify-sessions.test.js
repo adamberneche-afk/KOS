@@ -254,10 +254,15 @@ test('queueVectorClassifyBackfill: skips a session with a chunk missing from the
   const log = ss.insertSheet('SESSION_LOG');
   log.appendRow(['Session_UID', 'Timestamp', 'Type', 'Stage', 'Version', 'Note']);
   log.appendRow(['LOG-tail', new Date(), 'SESSION_LOG', 'SENSOR_INTAKE', 'v8', '3 chunk(s) created']);
+  // Same, with the intake row written in the fixed column layout.
+  chunk('LOG-new_CH01'); source('LOG-new_CH01');
+  log.appendRow(['LOG-new', new Date(), 'SENSOR_INTAKE', '', 'v8', '2 chunk(s) created (SESSION_LOG)']);
 
   const r = env.exported.queueVectorClassifyBackfill({ apply: false });
 
   assert.equal(r.eligible, 0);
   const reasons = Object.fromEntries(r.skipped.map((s) => [s.sessionUid, s.reason.split(':')[0]]));
-  assert.deepEqual(reasons, { 'LOG-gap': 'CHUNKS_INCOMPLETE', 'LOG-tail': 'CHUNKS_INCOMPLETE' });
+  assert.deepEqual(reasons, {
+    'LOG-gap': 'CHUNKS_INCOMPLETE', 'LOG-tail': 'CHUNKS_INCOMPLETE', 'LOG-new': 'CHUNKS_INCOMPLETE',
+  });
 });
