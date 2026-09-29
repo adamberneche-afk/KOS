@@ -1,6 +1,25 @@
 # KOS Changelog
 
 
+### Managed service: classification gets the classifier prompt (2026-09-29)
+
+In `MANAGED_SERVICE` mode (off by default), `VECTOR_CLASSIFY` parts went
+through the inference service's Curator prompt and schema. GAS's
+`_processVectorClassifyPart_()` accepts only the classifier's array of
+exchanges, so every part failed at intake and no session got a
+`VECTOR_MATRIX` row. The service now sends these jobs the same prompt the
+Studio flow uses (a generated copy, checked against
+`VECTOR_CLASSIFY_PROMPT.md` by `tests/kos-personal/flow-prompts.test.js`),
+validates the array against that prompt's schema and known vectors, and
+allows 16,000 output tokens, since the classifier writes about twice as much
+as it reads. Output cut off at the token limit now says so.
+
+The service's Curator prompt also asked for numeric session-level
+`vector_weights`, which `CURATOR_PROMPT.md` Rule 1 forbids. With
+classification working, that would have written a second matrix row per
+session. It now returns null, as in Studio mode. `CREDITS_VECTOR_CLASSIFY`
+sets the classification price (default 5, unchanged).
+
 ### One failure, one ERROR_LOG row (2026-09-29)
 
 `processIntakePayload()` and `processVectorClassificationPayload()` log

@@ -345,7 +345,7 @@ app.get('/auth/callback', async (req, res) => {
  *   payload_uid:          string,
  *   file_id:              string,
  *   doc_url:              string,
- *   payload_type:         'SESSION_LOG' | 'COG_STIMULUS' | 'EXTERNAL_DATA',
+ *   payload_type:         'SESSION_LOG' | 'COG_STIMULUS' | 'EXTERNAL_DATA' | 'VECTOR_CLASSIFY',
  *   index_spreadsheet_id: string  (this GAS instance's own Index spreadsheet
  *                                  ID — see setIndexSpreadsheetIdIfMissing)
  * }
