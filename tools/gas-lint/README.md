@@ -50,6 +50,14 @@ it — that gap is closed now.
    this repo (see `20_SetupCheckpoint.js` vs. `cas-ccps/README.md`'s
    Module 1 table, which disagree — the file's own header wins here).
 
+   A file `project-map.json` lists that isn't on disk is an **error**
+   (`missing-file`), and so is the reverse (`unmapped-file`): a script in
+   `cas-ccps/scripts/`, either `studio-steps/` folder, `kos-personal/`
+   (`.gs` and `.html`) or `leader-hub/` (`.gs`, including `drive-tools/`)
+   that is in no project and not in `_excluded_not_deployed_scripts`.
+   `tools/clasp-sync` only pushes what the map lists, so an unmapped file
+   is never deployed and never scanned by anything here.
+
 2. **`kos-personal` CFG key usage vs. definition.** Parses the literal
    `const CFG = { ... }` object in `1_Config_And_Deploy.gs` for its
    top-level and `PROP.*` keys, then flags any `CFG.X` / `CFG.PROP.X`
