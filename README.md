@@ -231,7 +231,11 @@ most recent scheduled run actually conclude successfully, publishing both to one
 pinned "KOS Scheduled-Job Watchdog" issue updated in place rather than a
 fresh issue each run. Runs weekly via `.github/workflows/watchdog.yml`
 (the day after `codeql.yml`'s own schedule, so that run has landed);
-`node tools/watchdog/check.js` runs it locally. `.github/dependabot.yml`
+`node tools/watchdog/check.js` runs it locally. A failed actionlint run
+that names no file counts as a finding on every file, never as clean.
+actionlint is pinned to one version (1.7.7) in both `watchdog.yml` and
+`gas-lint.yml`, and every workflow defaults to read-only `permissions:`.
+`.github/dependabot.yml`
 (weekly npm + GitHub Actions updates) and `.github/workflows/codeql.yml`
 (CodeQL code scanning) round out the same "is the repo's own machinery
 healthy" floor.

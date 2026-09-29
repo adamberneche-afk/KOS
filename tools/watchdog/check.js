@@ -91,9 +91,18 @@ function runActionlint(dir = WORKFLOWS_DIR, { actionlintBin = 'actionlint', exec
       return results;
     }
     const output = `${e.stdout || ''}${e.stderr || ''}`;
+    let matched = 0;
     for (const line of output.split('\n')) {
       const m = line.match(/^\.github\/workflows\/([^:]+):/);
-      if (m && results[m[1]] !== undefined) results[m[1]].push(line.trim());
+      if (m && results[m[1]] !== undefined) { results[m[1]].push(line.trim()); matched++; }
+    }
+    // actionlint failed but said nothing in the per-file shape (a config
+    // error, a crash, a file it names differently). That used to leave
+    // every file with no findings, so a failed lint run read as clean.
+    if (matched === 0) {
+      const first = output.trim().split('\n')[0] || `exit status ${e.status}`;
+      const reason = `actionlint failed without a per-file finding: ${first}`;
+      for (const f of Object.keys(results)) results[f].push(reason);
     }
     return results;
   }
