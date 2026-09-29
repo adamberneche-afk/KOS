@@ -2317,3 +2317,14 @@ web app (`13`'s `doPost()`), which runs as the admin and answers only for
 the signed-in student's own row. A service that can't be reached is
 reported as such, not as "Account Not Recognized". Docs created before this
 keep their old copy of the script.
+
+## SCR writers in the central-ledger project check ownership, 2026-09-29
+
+`30`'s `recordConfirmation_`/`recordOverride_` (via `recordDecision_`) and
+`30b`'s `confirmRetryImprovement_` wrote a rating under whatever teacher
+email they were handed. Nothing calls them (the Teacher Dashboard has its
+own writer in `07`), but anyone who could edit the project could run them.
+They now refuse unless that email is the signed-in user and the rating is
+theirs under rule 3. `_scrOwnership_`/`_scrIsMine_` moved from `07` to
+`00_SharedConfig.js` so both projects apply one rule.
+
