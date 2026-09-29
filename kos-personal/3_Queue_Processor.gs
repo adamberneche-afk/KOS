@@ -51,7 +51,7 @@
 //   they get archived out on the next sweep instead of accumulating.
 //
 // WEB APP CALLABLE
-//   getQueueStatus() → Queue tab status counts + curator list
+//   getQueueMetrics() → Queue tab status counts + curator list
 // ================================================================
 
 
@@ -549,7 +549,7 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
 
     // ── VECTOR ROUTER ────────────────────────────────────────────
     // BUG-01 FIX: call _routeVectorWeightsInternal directly
-    // (not routeVectorWeights) since this function holds the lock.
+    // since this function holds the lock.
     //
     // FIX (found verifying the rebuilt kos-personal Studio integration):
     // this used to call _routeVectorWeightsInternal() unconditionally, for
@@ -587,86 +587,11 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
 // ================================================================
 
 /**
- * Returns live status counts and NEEDS_CURATOR row details for
- * the web app Queue tab.
- *
- * Called by the web app via:
- *   google.script.run
- *     .withSuccessHandler(renderQueue)
- *     .getQueueStatus()
- *
- * @returns {Object} {
- *   success, counts, needs_curator[], total, last_updated
- * }
- */
-function getQueueStatus() {
-  try {
-    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
-    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
-    const SC      = CFG.STAGING_COLS;
-
-    const counts = { pending: 0, ready: 0, needs_curator: 0, processed: 0, failed: 0, unknown: 0 };
-    const needsCuratorRows = [];
-
-    if (staging.getLastRow() > 1) {
-      const data = staging
-        .getRange(2, 1, staging.getLastRow() - 1, 7)
-        .getValues();
-
-      data.forEach(row => {
-        const s = String(row[SC.STATUS]);
-        if      (s === 'PENDING_FLOW')                               counts.pending++;
-        else if (s === 'FLOW_COMPLETE')                              counts.ready++;
-        else if (s === 'NEEDS_CURATOR')                              counts.needs_curator++;
-        else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      counts.processed++;
-        // FIXED: these used to be silently excluded from every count, so a
-        // row that hit a terminal failure (e.g. a brand-new user's very
-        // first submission) was invisible everywhere in the Queue tab —
-        // including making totalActivity read 0, which showed the "your
-        // queue is empty, get started" onboarding message instead of any
-        // indication something had actually failed. See TERMINAL_FAILED_STATUSES
-        // (5_Error_And_Utilities.gs), the same list archiveStagingPipeline()
-        // uses to identify these rows for cleanup.
-        else if (TERMINAL_FAILED_STATUSES.some(p => s.startsWith(p)))  counts.failed++;
-        // Catch-all, same fix and same reasoning as getQueueMetrics()
-        // above — checked against _isKnownStagingStatus_() rather than
-        // treated as unknown outright, so legacy-but-recognized statuses
-        // (PARTITIONED/CONSOLIDATED) don't start reading as alarming.
-        // Only a genuinely unrecognized status (e.g. a real "AUDITING
-        // _LOG" row) used to be silently uncounted here.
-        else if (!_isKnownStagingStatus_(s))                          counts.unknown++;
-
-        if (s === 'NEEDS_CURATOR') {
-          needsCuratorRows.push({
-            uid:     String(row[SC.PAYLOAD_UID]),
-            type:    String(row[SC.PAYLOAD_TYPE]),
-            url:     String(row[SC.DOC_URL]),
-            retries: parseInt(row[SC.RETRY_COUNT]) || 0,
-          });
-        }
-      });
-    }
-
-    return {
-      success:       true,
-      counts,
-      needs_curator: needsCuratorRows,
-      total:         Object.values(counts).reduce((a, b) => a + b, 0),
-      last_updated:  new Date().toLocaleTimeString(),
-    };
-
-  } catch (e) {
-    _reportError('getQueueStatus', e, null);
-    return { success: false, message: e.message };
-  }
-}
-
-
-/**
  * Returns live status counts for the web app Queue tab, in the shape
  * 8_WebApp_UI.html actually expects (reconciliation decision 3) —
  * `{queued, pending, active, needs_review, needs_curator, processed}`
- * rather than getQueueStatus()'s `{pending, ready, needs_curator, processed}`.
+ * (the older getQueueStatus() shape, `{pending, ready, needs_curator,
+ * processed}`, had no caller and was removed).
  *
  * Status → bucket mapping:
  *   queued        = PENDING_FLOW        (waiting for the Turnstile)
@@ -745,8 +670,7 @@ function getQueueMetrics() {
         else if (s === 'STUDIO_ACTIVE' || s === 'FLOW_COMPLETE')     active++;
         else if (s === 'NEEDS_CURATOR')                              needsReview++;
         else if (s === 'PROCESSED' || s === 'INTAKE_PROCESSED')      processed++;
-        // FIXED: these used to be silently excluded — see the matching
-        // comment in getQueueStatus() above. A row stuck in one of these
+        // FIXED: these used to be silently excluded. A row stuck in one of these
         // terminal-failure statuses was invisible in every Queue tab tile,
         // and could make totalActivity read 0 (renderQueue(), 8_WebApp_UI.html),
         // showing the "empty queue, get started" message even when the

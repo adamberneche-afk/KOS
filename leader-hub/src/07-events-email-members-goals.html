@@ -49,7 +49,6 @@ function renderEvents(type) {
   const pipeline = document.getElementById('deca-pipeline');
   if(pipeline) renderDECAPipeline();
 }
-function filterEv(type,btn){document.querySelectorAll('.si').forEach(b=>b.classList.remove('active'));btn.classList.add('active');showView('events');renderEvents(type);}
 function delEv(id){
   const ev=otherEvents.find(e=>e.id===id); if(!ev) return;
   const _saved=[...otherEvents];
@@ -1179,13 +1178,6 @@ function saveEvent(){
   renderEvents();
 }
 
-function deleteEvent(id) {
-  const ev = otherEvents.find(e => e.id === id);
-  const _saved=[...otherEvents];
-  otherEvents = otherEvents.filter(e => e.id !== id);
-  persistEvents(); renderEvents();
-  _undoToast(ev ? `"${(ev.name||'').slice(0,40)}" removed` : 'Event removed', ()=>{otherEvents=_saved;persistEvents();renderEvents();});
-}
 
 
 // ============================================================
