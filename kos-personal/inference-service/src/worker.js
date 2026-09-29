@@ -73,6 +73,9 @@ async function processNextJob() {
       if (creditsDeducted) {
         try {
           await db.addCredits(user.id, creditCost, `Refund — job ${job.id} did not complete: ${msg}`);
+          // Refunded: if markJobFailed below throws, the catch-all must not
+          // refund again. It used to, crediting the user twice.
+          creditsDeducted = false;
         } catch (refundErr) {
           logger.error(`[Worker] Job ${job.id}: CREDIT REFUND FAILED (needs manual reconciliation): ${refundErr.message}`);
         }

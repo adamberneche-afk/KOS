@@ -272,11 +272,15 @@ function processInferenceQueue() {
         } else {
           staging.getRange(sheetRow, SC.STATUS + 1)
                  .setValue('INTAKE_ERROR: ' + result.message.substring(0, 120));
-          _reportError(
-            'processInferenceQueue:row' + sheetRow,
-            new Error(result.message),
-            null,
-          );
+          // An error the intake/classify path already wrote to ERROR_LOG is
+          // flagged `reported`; logging it here too made 2-3 rows per failure.
+          if (!result.reported) {
+            _reportError(
+              'processInferenceQueue:row' + sheetRow,
+              new Error(result.message),
+              null,
+            );
+          }
           failed++;
         }
 
@@ -374,7 +378,7 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
     let pd;
     try { pd = JSON.parse(rawJSONPayload); }
     catch (pe) {
-      _reportError('processIntakePayload:parse', pe, null);
+      // Reported once, by the catch below; this used to report too.
       throw new Error('Malformed JSON: ' + pe.message);
     }
 
@@ -575,7 +579,8 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
 
   } catch (error) {
     _reportError('processIntakePayload', error, null);
-    return { status: 'ERROR', message: error.message };
+    // reported: processInferenceQueue() must not log this one again.
+    return { status: 'ERROR', message: error.message, reported: true };
   } finally {
     if (ownsLock) lock.releaseLock();
   }
