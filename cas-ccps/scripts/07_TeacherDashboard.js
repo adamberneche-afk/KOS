@@ -737,64 +737,9 @@ const DASHBOARD_SCRS = {
 // joins against the Ledger via _getRosterForEmail_ (already used above for
 // the leader-hub API) to enforce that scoping for real.
 // ---------------------------------------------------------------------------
-// ---------------------------------------------------------------------------
-// _scrOwnership_ — student-data access policy, rule 3: only the teacher who
-// assigned the work rates it. A competency rating is built from
-// CompetencyEvidence rows, and each carries the config_id of the Ledger
-// row (the assignment) it came from, which names the assigning teacher. A
-// student+competency pair is this teacher's when any of its evidence comes
-// from their own assignment this school year.
-//
-// Evidence written before config_id existed can't be traced; for a pair
-// with no traceable evidence at all, the current-year roster decides, as it
-// did before this check.
-//
-// Returns { owned: Set<pairKey>, traced: Set<pairKey> }; pairKey is
-// lowercased student email + "|" + competency id.
-// ---------------------------------------------------------------------------
-function _scrPairKey_(email, competencyId) {
-  return String(email || "").trim().toLowerCase() + "|" + String(competencyId || "").trim();
-}
-
-function _scrOwnership_(cfg, teacherEmail) {
-  const out = { owned: new Set(), traced: new Set() };
-  const teacher = String(teacherEmail || "").trim().toLowerCase();
-  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
-
-  const year = _currentSchoolYear_();
-  const teacherByConfig = {};
-  const ledger = ss.getSheetByName(cfg.tabs.ledger);
-  if (ledger && ledger.getLastRow() > 1) {
-    ledger.getRange(2, 1, ledger.getLastRow() - 1, LEDGER.ACADEMIC_YEAR + 1).getValues().forEach(function (row) {
-      const configId = String(row[LEDGER.CONFIG_ID] || "").trim();
-      if (!configId || !_isCurrentSchoolYearRow_(row, year)) return;
-      teacherByConfig[configId] = String(row[LEDGER.TEACHER_EMAIL] || "").trim().toLowerCase();
-    });
-  }
-
-  const evidence = ss.getSheetByName(cfg.tabs.competencyEvidence || "CompetencyEvidence");
-  if (!evidence || evidence.getLastRow() < 2) return out;
-  const data = evidence.getDataRange().getValues();
-  const h = data[0].map(function (x) { return String(x).trim(); });
-  const iEmail = h.indexOf("student_email"), iComp = h.indexOf("competency_id");
-  const iConfig = h.indexOf("config_id"), iArchive = h.indexOf("archive_status");
-  if (iEmail === -1 || iComp === -1 || iConfig === -1) return out;
-  for (let i = 1; i < data.length; i++) {
-    if (iArchive !== -1 && String(data[i][iArchive] || "").trim() !== "") continue;
-    const configId = String(data[i][iConfig] || "").trim();
-    if (!configId) continue;
-    const key = _scrPairKey_(data[i][iEmail], data[i][iComp]);
-    out.traced.add(key);
-    if (teacher && teacherByConfig[configId] === teacher) out.owned.add(key);
-  }
-  return out;
-}
-
-function _scrIsMine_(ownership, rosterEmails, email, competencyId) {
-  const key = _scrPairKey_(email, competencyId);
-  if (ownership.traced.has(key)) return ownership.owned.has(key);
-  return rosterEmails.has(String(email || "").trim().toLowerCase());
-}
+// _scrPairKey_/_scrOwnership_/_scrIsMine_ live in 00_SharedConfig.js, so
+// 30_SCRSuggestionEngine.js's writers in the central-ledger project apply
+// the same rule 3 check.
 
 function getScrReviewQueue() {
   const cfg = getConfig_();
