@@ -2342,3 +2342,12 @@ stamped after it is a new submission and gets a fresh row. The errored
 submission itself is never rebuilt, even after an admin resets its
 staging row.
 
+## Warm-up Flow 4 stub and polling removed, 2026-09-29
+
+`25_WarmUpWriter.js`'s `callFlow4_()` always returned null, so the scoring
+path after it in `runWarmUpEvaluation()` could never run, and
+`pollForFlow4Result_()` was marked dead. Both are gone, along with the
+commented-out direct-Gemini block and `buildFlow4Prompt_()`. The 41 bridge
+does the scoring. `runWarmUpEvaluation()` now logs how many rows it parked
+for Flow 4 instead of a `Scored: 0` that was always 0.
+
