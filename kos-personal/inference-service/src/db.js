@@ -6,6 +6,7 @@
 const { Pool } = require('pg');
 const crypto   = require('crypto');
 const tokens   = require('./token-crypto');
+const { INSUFFICIENT_CREDITS } = require('./http-errors');
 
 // FIXED: this used to be `{ rejectUnauthorized: false }` unconditionally in
 // production — Dockerfile sets NODE_ENV=production in every deployed
@@ -154,7 +155,7 @@ async function deductCredits(userId, amount) {
      RETURNING credit_balance`,
     [amount, userId]
   );
-  if (rows.length === 0) throw new Error('Insufficient credits');
+  if (rows.length === 0) throw new Error(INSUFFICIENT_CREDITS);
   return rows[0].credit_balance;
 }
 
