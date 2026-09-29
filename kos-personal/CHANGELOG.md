@@ -1,6 +1,19 @@
 # KOS Changelog
 
 
+### The audit gate rejects a hollow pass (2026-09-29)
+
+The rebuilt Curator flow's second fixture run came back `PASSED` with an
+empty `trace_log`, on an output with a next step, three pivots and an
+action item whose owner the transcript never names. `_isAuditFailure_()`
+read only `status` and `unverified_claims_count`, so the row went through
+as audited. It now also fails a `PASSED` with no trace entries when the
+Curator's output has anything the Auditor must check (a next step,
+deferred decision, pivot, action item, cog verdict or non-null alignment
+signal). The row takes the normal audit-retry path, then `AUDIT_REJECTED`,
+and `AUDIT_LOG` records it as `PASSED (HOLLOW: empty trace_log)`.
+`CURATOR_AUDITOR_PROMPT.md` Rule 4 now says so.
+
 ### Auditor no longer rejects null alignment signals (2026-09-29)
 
 The first fixture run through the rebuilt Curator flow came back
