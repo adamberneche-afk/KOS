@@ -47,8 +47,8 @@
 //             Decayed_Score, Session_Count, Promoted
 //
 // PUBLIC ENTRY POINTS
-//   routeVectorWeights()     standalone caller (acquires lock)
-//   _routeVectorWeightsInternal()  lock-free (called by intake)
+//   _routeVectorWeightsInternal()  lock-free; the caller holds the
+//                            script lock (processIntakePayload does)
 //   processVectorClassificationPayload()  VECTOR_CLASSIFY flow entry
 //   getVectorState()         web app Diagnostics tab
 //   runPromotionCheck()      web app Diagnostics tab button
@@ -79,33 +79,8 @@
 // ================================================================
 
 /**
- * Safe standalone entry point. Acquires the script lock, runs
- * the full routing pipeline, releases the lock.
- *
- * Use this when calling from a menu item, diagnostic function,
- * or any context where processIntakePayload is NOT the caller.
- * Never call this from processIntakePayload — it will deadlock
- * (use _routeVectorWeightsInternal directly instead).
- *
- * @param  {Object} pd          Parsed inference JSON payload.
- * @param  {string} sessionUid  Session UID for row labelling.
- * @param  {string} timestamp   Formatted timestamp string.
- * @returns {Object} Routing result from _routeVectorWeightsInternal.
- */
-function routeVectorWeights(pd, sessionUid, timestamp) {
-  const lock = LockService.getScriptLock();
-  if (!lock.tryLock(15000)) return { status: 'LOCKED' };
-  try {
-    return _routeVectorWeightsInternal(pd, sessionUid, timestamp);
-  } finally {
-    lock.releaseLock();
-  }
-}
-
-
-/**
  * Core routing pipeline. No lock — callers must own the script
- * lock before calling (or call via routeVectorWeights).
+ * lock before calling.
  *
  * PIPELINE
  *   1. Split vector_weights into known (VECTOR_MATRIX target) and

@@ -5262,7 +5262,6 @@ return `<div style="border:${urgentBorder};border-radius:10px;background:${isCom
 const pipeline = document.getElementById('deca-pipeline');
 if(pipeline) renderDECAPipeline();
 }
-function filterEv(type,btn){document.querySelectorAll('.si').forEach(b=>b.classList.remove('active'));btn.classList.add('active');showView('events');renderEvents(type);}
 function delEv(id){
 const ev=otherEvents.find(e=>e.id===id); if(!ev) return;
 const _saved=[...otherEvents];
@@ -6044,13 +6043,6 @@ persistEvents();
 closeModal('newEvent');['ne-name','ne-loc','ne-stu','ne-notes','ne-date'].forEach(id=>document.getElementById(id).value='');
 renderEvents();
 }
-function deleteEvent(id) {
-const ev = otherEvents.find(e => e.id === id);
-const _saved=[...otherEvents];
-otherEvents = otherEvents.filter(e => e.id !== id);
-persistEvents(); renderEvents();
-_undoToast(ev ? `"${(ev.name||'').slice(0,40)}" removed` : 'Event removed', ()=>{otherEvents=_saved;persistEvents();renderEvents();});
-}
 function _officerPositionsFor(orgId){ return (ORGANIZATIONS[orgId] && ORGANIZATIONS[orgId].officerPositions) || OFFICER_POSITIONS; }
 function isOfficer(s){ return _officerPositionsFor(s.org).includes(s.position); }
 function renderOrgTabs() {
@@ -6693,7 +6685,7 @@ dirty = true;
 });
 if (dirty) persistSlips();
 }
-function persistNextSlipId() { LS.set('lh_next_slip_id', nextSlipId); }</script><script data-lh-block="leader-hub-block-1-part-4-of-16">
+function persistNextSlipId() { LS.set('lh_next_slip_id', nextSlipId); }
 function resolveSlipStudent(slip) {
 if (slip.studentId) {
 const s = students.find(m => m.id === slip.studentId);
@@ -6731,7 +6723,7 @@ return slipRosters[tripId] || [];
 }
 function _tripHasRoster(tripId) {
 return Object.prototype.hasOwnProperty.call(slipRosters, tripId);
-}
+}</script><script data-lh-block="leader-hub-block-1-part-4-of-16">
 function _syncTripStuAttFromRoster(tripId) {
 const t = trips.find(tr => tr.id === tripId);
 if (!t || !_tripHasRoster(tripId)) return;
@@ -8797,7 +8789,6 @@ document.getElementById('lp-new-title').value = '';
 openLPModal(newLP.id);
 renderLessonPlans();
 }
-function toggleScrView() { setScrViewMode(scrViewMode === 'grid' ? 'list' : 'grid'); }
 function setScrViewMode(mode) {
 scrViewMode = mode;
 LS.set('lh_scr_view_mode', mode);
@@ -8961,14 +8952,14 @@ const course = scrActiveCourse, period = scrActivePeriod;
 const current = (scrScores[course]?.[period]?.[stuName]?.[compNum]) || 0;
 setScore(stuName, compNum, el, current <= 0 ? 5 : current - 1);
 }
-}</script><script data-lh-block="leader-hub-block-1-part-6-of-16">
+}
 function cycleScore(stuName, compNum, el) {
 const course = scrActiveCourse;
 const period = scrActivePeriod;
 const current = (scrScores[course]?.[period]?.[stuName]?.[compNum]) || 0;
 const next = current >= 5 ? 0 : current + 1;
 setScore(stuName, compNum, el, next);
-}
+}</script><script data-lh-block="leader-hub-block-1-part-6-of-16">
 function setScore(stuName, compNum, el, next) {
 const course = scrActiveCourse;
 const period = scrActivePeriod;
@@ -11108,7 +11099,6 @@ _safeRender(renderChoiceCards,'renderChoiceCards');
 _safeRender(updateJournalCTA, 'updateJournalCTA');
 _safeRender(renderRecentWins, 'renderRecentWins');
 }
-function cockpitGo(){ if(_naNav) showView(_naNav); }
 function getPulseData(){
 const wblTotal=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.length:0;
 const wblSigned=typeof WBL_STUDENTS!=='undefined'?WBL_STUDENTS.filter(s=>s.agreement!=='pending').length:0;
@@ -12039,12 +12029,6 @@ return `<div style="border:1px solid var(--border);border-radius:12px;padding:.8
     </div>`;
 }).join('');
 }
-function addBlockTask(){}
-function initBlockDefaults(){}
-function renderAllBlocks(){}
-function renderDontForget(){}
-function renderPulse(){}
-function renderWeekStrip(){}
 function _setAccBodyTabbable(body, tabbable) {
 body.querySelectorAll('.si').forEach(btn => {
 if (tabbable) btn.removeAttribute('tabindex');
@@ -12546,7 +12530,7 @@ const overrides = {};
 _parseDateList(document.getElementById('sched-earlyrelease')?.value).forEach(d => { overrides[d] = 'EARLY3'; });
 saveScheduleConfig({ overrides });
 _schedSaveStatus('✓ Saved');
-}</script><script data-lh-block="leader-hub-block-1-part-9-of-16">
+}
 function lhLoadCountyCalendarFile(fileInput) {
 const file = fileInput.files && fileInput.files[0];
 if (!file) return;
@@ -12562,7 +12546,7 @@ if (el) { el.textContent = '⚠ Could not read that file.'; el.style.color = '#9
 fileInput.value = '';
 };
 reader.readAsText(file);
-}
+}</script><script data-lh-block="leader-hub-block-1-part-9-of-16">
 function lhParseCountyCalendar() {
 const text = document.getElementById('sched-import-text')?.value || '';
 const statusEl = document.getElementById('sched-import-status');
@@ -13916,7 +13900,7 @@ const bucket = scrScores[course] && scrScores[course][period];
 if (!bucket || oldName === newKey || !bucket[oldName]) return;
 bucket[newKey] = bucket[newKey] ? Object.assign({}, bucket[oldName], bucket[newKey]) : bucket[oldName];
 delete bucket[oldName];
-}</script><script data-lh-block="leader-hub-block-1-part-10-of-16">
+}
 function _showCasCcpsRosterReport_(report) {
 const needsReview = report.ambiguous.length + report.casUnmatched.length + report.leaderHubUnmatched.length;
 const section = (title, caption, rows) => rows.length ? `
@@ -13951,7 +13935,7 @@ modal.innerHTML = `<div style="background:#fff;max-width:560px;width:95%;border-
     </div>
   </div>`;
 document.body.appendChild(modal);
-}
+}</script><script data-lh-block="leader-hub-block-1-part-10-of-16">
 function emailBridgeToast_(h, d) {
 const old = document.getElementById('eb-toast'); if (old) old.remove();
 const total = h + d;

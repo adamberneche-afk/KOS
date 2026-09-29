@@ -377,9 +377,9 @@ payload. Investigated options:
 dialog) now checks eight things — one per retention policy above, plus the
 three original safety-property checks:
 
-1. **`GEMINI_API_KEY` is not set** — this property existing would mean the
-   dead direct-Gemini-API code path in `25_WarmUpWriter.js`'s `callFlow4_()`
-   could go live, bypassing the Studio Flow boundary entirely.
+1. **`GEMINI_API_KEY` is not set** — it was read only by a commented-out
+   direct-Gemini call in `25_WarmUpWriter.js` (removed 2026-09-29) that would
+   have bypassed the Studio Flow boundary. Nothing reads it now.
 2. **`FERPA_FLOW3_FULL_NAME_OVERRIDE` is not set to `"true"`** — see above.
 3. **No file matching `exportToWorkbookGrid_()`'s "SCR Export — " naming
    pattern is shared broader than the organization's domain** — a spot-check

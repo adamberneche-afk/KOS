@@ -675,10 +675,10 @@ retention schedule** (`cas-ccps/docs/FERPA_DATA_MAP.md`). Treat these as
 placeholders, not a policy decision already made — flag for the district's
 records staff, don't silently accept the default as correct.
 
-**Must never be set:** `GEMINI_API_KEY`. `25_WarmUpWriter.js`'s `callFlow4_()`
-has a dead direct-Gemini-API code path (a documented, deliberately-retained
-placeholder) that would go live — bypassing the "Walled Garden" Studio-Flow-only
-boundary entirely — the moment this property exists.
+**Must never be set:** `GEMINI_API_KEY`. It was read only by a commented-out
+direct-Gemini call in `25_WarmUpWriter.js` (removed 2026-09-29) that would have
+bypassed the "Walled Garden" Studio-Flow-only boundary. Nothing reads it now,
+and a deployment that sets it is misconfigured.
 `10_AdminRecoveryPanel.js`'s daily health check alerts loudly if it's ever set;
 don't set it during deployment troubleshooting even temporarily. Same caution
 for `FERPA_FLOW3_FULL_NAME_OVERRIDE` — must stay unset/false.

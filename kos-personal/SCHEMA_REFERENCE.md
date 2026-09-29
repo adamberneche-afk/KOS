@@ -57,7 +57,7 @@ Status value is any of the 15 above — an exact match, or (for
 suffix) a prefix match. Anything else is genuinely unrecognized: found in
 production as a row stuck at `AUDITING _LOG`, a status no code in this
 repo, current or archived, ever writes. `10_Turnstile.gs` alerts once per
-row via `_sendChatAlert()`, and `getQueueMetrics()`/`getQueueStatus()`
+row via `_sendChatAlert()`, and `getQueueMetrics()`
 count it as `unknown` rather than silently excluding it — see
 `CHANGELOG.md` for the fix.
 
