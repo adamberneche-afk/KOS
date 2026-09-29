@@ -34,7 +34,7 @@ const ESCH_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '06-task
 const FINANCE_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '09-wbl-lessonplans-procurement-finance-esports.html');
 
 function renderSalesLog(salesLog) {
-  const escHSource = extractLines(ESCH_PATH, 1461, 1463, ['function escH(']);
+  const escHSource = extractLines(ESCH_PATH, 1464, 1466, ['function escH(']);
   // The real sink: the else-branch of renderFinance()'s sales-log block,
   // which assigns the rendered rows straight into a DOM element's
   // innerHTML. Extracted as-is (not reimplemented) so this test fails if
@@ -74,7 +74,9 @@ test('a notes field containing a script tag is escaped, not executed', () => {
 
 test('an ordinary staff name and notes render unchanged, with no double-escaping', () => {
   const html = renderSalesLog([sale({ staff: "O'Brien", notes: 'Ran low on drinks' })]);
-  assert.ok(html.includes("O'Brien"));
+  // &#39; displays as ' in the page; it is escH's single-quote escape.
+  assert.ok(html.includes("O&#39;Brien"));
+  assert.ok(!html.includes('&amp;#39;'), 'not double-escaped');
   assert.ok(html.includes('Ran low on drinks'));
 });
 
