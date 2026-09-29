@@ -257,7 +257,7 @@ test('harvestFlowInputResults: writes feedback to the doc, CompetencyEvidence ro
 
   const doc = sandbox.DocumentApp.create('Student Doc');
   const studentFileId = doc.getId();
-  doc.getBody().appendParagraph('[No feedback yet. Use the panel to run a check.]');
+  doc.getBody().setText('[No feedback yet. Use the panel to run a check.]');
 
   const staging = ledgerSs.getSheetByName('STAGING_PIPELINE');
   staging.appendRow(stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));
@@ -482,7 +482,7 @@ function setUpFlow2Scenario(sandbox, exported, rubricOverrides) {
 
   const doc = sandbox.DocumentApp.create('Student Doc');
   const studentFileId = doc.getId();
-  doc.getBody().appendParagraph('[No feedback yet. Use the panel to run a check.]');
+  doc.getBody().setText('[No feedback yet. Use the panel to run a check.]');
 
   const staging = ledgerSs.getSheetByName('STAGING_PIPELINE');
   staging.appendRow(stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' }));

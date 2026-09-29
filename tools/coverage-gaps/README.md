@@ -109,3 +109,11 @@ A **new** scheduled function shipping with zero coverage is not
 pre-allowlisted, and fails the build — that's the actual point of this
 tool: not retroactively fixing today's gaps, but making sure the *next*
 sensor-1-shaped one doesn't ship unnoticed.
+
+An allowlisted handler that a test now calls is reported as a
+`stale-allowlist` warning: remove its entry so the check guards it again.
+Until 2026-09-29 the test harness ran every loaded file as one script named
+after the last file, so V8 credited all of it to that file. Handlers tested
+from a file that wasn't loaded last (`buildFlowInputRows`,
+`harvestFlowInputResults`) looked untested and were allowlisted. The harness
+now runs each file as its own script, and those entries are gone.

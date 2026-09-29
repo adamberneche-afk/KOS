@@ -197,6 +197,7 @@ function main() {
   fs.rmSync(covDir, { recursive: true, force: true });
 
   const findings = [];
+  const staleAllowlist = [];
   for (const handler of resolvedHandlers) {
     // Find which file in this SAME project actually defines the handler —
     // often (cas-ccps, mostly) the same file that registers it, but not
@@ -215,10 +216,15 @@ function main() {
       continue;
     }
 
-    if (allowlist.has(definingFile.relPath + '::' + handler.name)) continue;
-
     const key = path.join(REPO_ROOT, definingFile.relPath) + '::' + handler.name;
     const total = hits.get(key) || 0;
+
+    if (allowlist.has(definingFile.relPath + '::' + handler.name)) {
+      // An allowlisted gap that a test now covers: the entry is stale and
+      // would hide the handler if that test were later deleted.
+      if (total > 0) staleAllowlist.push({ file: definingFile.relPath, function: handler.name });
+      continue;
+    }
     if (total > 0) continue;
 
     findings.push({
@@ -236,6 +242,13 @@ function main() {
   const warnings = [];
   for (const u of unresolvedCalls) {
     warnings.push({ type: 'unresolved-trigger-name', project: u.project, file: u.file, line: u.line, expr: u.expr });
+  }
+  const seenStale = new Set();
+  for (const e of staleAllowlist) {
+    const k = e.file + '::' + e.function;
+    if (seenStale.has(k)) continue;
+    seenStale.add(k);
+    warnings.push({ type: 'stale-allowlist', file: e.file, function: e.function });
   }
 
   if (AS_JSON) {
@@ -264,6 +277,12 @@ function main() {
     if (warnings.length) {
       console.log('\nWARNINGS\n');
       warnings.forEach((f, i) => {
+        if (f.type === 'stale-allowlist') {
+          console.log(`${i + 1}. [stale-allowlist] ${f.function}() in ${f.file} is in ` +
+            `tools/coverage-gaps/allowlist.json, but a test now calls it. Remove the entry so this ` +
+            `check guards it again.\n`);
+          return;
+        }
         console.log(`${i + 1}. [unresolved-trigger-name] [${f.project}] ${f.file}:${f.line} registers a ` +
           `trigger with a non-literal handler name (\`${f.expr}\`) — this tool can't resolve which ` +
           `function that is statically, so it isn't covered by this check at all. Reported so the gap ` +
