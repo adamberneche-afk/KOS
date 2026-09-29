@@ -557,3 +557,58 @@ test('harvestFlowInputResults: a grounded evaluation referencing real rubric con
   assert.ok(doc.getBody().getText().indexOf('Campaign Pitch Deck') !== -1);
   assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'COMPLETE');
 });
+
+// ── An errored evaluation blocks only its own submission ──────────────────
+// An ERROR_* FlowInput row used to take its StudentFileID|ConfigID key for
+// good, so every later submission of that doc was skipped, timed out in the
+// lane, and never got feedback. Now a staging row stamped after the errored
+// FlowInput row is a new submission and gets a fresh row, while the same
+// submission (even reset by an admin) is never rebuilt.
+
+function setUpErroredScenario(sandbox, exported, stagedAt, erroredAt, errorStatus) {
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+  const studentFileId = sandbox.DocumentApp.create('Student Doc').getId();
+  const staging = stagingRow({ studentFileId, configId: 'VDOE-ABC-2026', teacherEmail: 'teacher@example.com' });
+  staging[0] = stagedAt;
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(staging);
+  ledgerSs.getSheetByName('Ledger').appendRow(
+    ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-ABC-2026', fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported)
+  );
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  setUpTeacherMatrix(sandbox, 'matrix-ss-1').getSheetByName('TeacherMatrix')
+    .appendRow(teacherMatrixRow({ configId: 'VDOE-ABC-2026' }));
+  const fiSheet = ledgerSs.insertSheet('FlowInput');
+  fiSheet.appendRow(exported.FI_HEADERS);
+  const errored = flowInputRow(exported, { studentFileId, configId: 'VDOE-ABC-2026', readyStatus: errorStatus });
+  errored[exported.FI.TIMESTAMP] = erroredAt;
+  fiSheet.appendRow(errored);
+  return fiSheet;
+}
+
+for (const errorStatus of ['ERROR_SUSPECT_FABRICATION', 'ERROR_EMPTY_OUTPUT', 'ERROR_HARVEST_FAILED']) {
+  test('buildFlowInputRows: a resubmission after ' + errorStatus + ' gets a fresh FlowInput row', () => {
+    const { exported, sandbox } = load();
+    const fiSheet = setUpErroredScenario(sandbox, exported,
+      '2026-03-04T10:30:00Z', '2026-03-04T10:00:00Z', errorStatus);
+
+    exported.buildFlowInputRows();
+
+    const rows = fiSheet.getDataRange().getValues().slice(1);
+    assert.equal(rows.length, 2);
+    assert.equal(rows[1][exported.FI.READY_STATUS], 'READY');
+  });
+}
+
+test('buildFlowInputRows: the submission that errored is never rebuilt, so a suspect row cannot loop', () => {
+  const { exported, sandbox } = load();
+  // Staged before the FlowInput row was built: the same submission, e.g.
+  // an admin reset its ERROR_TIMEOUT staging row back into the lane.
+  const fiSheet = setUpErroredScenario(sandbox, exported,
+    '2026-03-04T09:55:00Z', '2026-03-04T10:00:00Z', 'ERROR_SUSPECT_FABRICATION');
+
+  exported.buildFlowInputRows();
+  exported.buildFlowInputRows();
+
+  assert.equal(fiSheet.getLastRow(), 2, 'header + the errored row only');
+});

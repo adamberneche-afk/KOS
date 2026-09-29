@@ -2328,3 +2328,17 @@ They now refuse unless that email is the signed-in user and the rating is
 theirs under rule 3. `_scrOwnership_`/`_scrIsMine_` moved from `07` to
 `00_SharedConfig.js` so both projects apply one rule.
 
+## An errored Flow 2 evaluation no longer blocks the doc for good, 2026-09-29
+
+`buildFlowInputRows()` (`37`) skipped any staging row whose
+StudentFileID+ConfigID already had a FlowInput row that wasn't HARVESTED.
+An `ERROR_EMPTY_OUTPUT`, `ERROR_SUSPECT_FABRICATION` or
+`ERROR_HARVEST_FAILED` row kept its key forever, so every later submission
+of that doc sat in the teacher's lane until `ERROR_TIMEOUT` and never got
+feedback. Treating errored rows as free would have rebuilt the same
+submission on every pass, re-running a suspected fabrication. Now an
+errored row blocks only the submission it was built for: a staging row
+stamped after it is a new submission and gets a fresh row. The errored
+submission itself is never rebuilt, even after an admin resets its
+staging row.
+
