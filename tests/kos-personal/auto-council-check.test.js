@@ -182,3 +182,34 @@ test('the shared-context generator is gone — not merely uncalled', () => {
   assert.equal(typeof sandbox.triggerCouncilSimulation, 'undefined');
   assert.equal(typeof exported.triggerCouncilSimulation, 'undefined');
 });
+
+// A chunked session writes one SESSION_LOG row per Curator chunk
+// (LOG-x_CH01, _CH02, ...) plus the intake's traceability row, and each used
+// to count as a session: a threshold of 5 fired after about 2 real sessions.
+function appendChunkedSession(sessionLog, logId, chunks, intakeLayout) {
+  // Intake rows written before the column fix put SENSOR_INTAKE in Cold_Start.
+  sessionLog.appendRow(intakeLayout === 'old'
+    ? [logId, new Date(), 'SESSION_LOG', 'SENSOR_INTAKE', 'v8.0', chunks + ' chunk(s) created']
+    : [logId, new Date(), 'SENSOR_INTAKE', '', 'v8.0', chunks + ' chunk(s) created (SESSION_LOG)']);
+  for (let c = 1; c <= chunks; c++) {
+    sessionLog.appendRow([logId + '_CH' + String(c).padStart(2, '0'), new Date(), 'WORKING', 'false', 'v8.0', 'summary']);
+  }
+}
+
+test('autoCouncilCheck: counts sessions, not chunk and intake rows', () => {
+  const { exported, sandbox } = load();
+  const { ss } = setUp(sandbox, 0);
+  const sessionLog = ss.getSheetByName('SESSION_LOG');
+  const threshold = exported.CFG.COUNCIL_AUTO_TRIGGER_SESSIONS;
+  for (let i = 0; i < threshold - 1; i++) {
+    appendChunkedSession(sessionLog, 'LOG-' + i, 3, i % 2 ? 'old' : 'new');
+  }
+
+  exported.autoCouncilCheck();
+  assert.equal(stimulusDocs(sandbox).length, 0,
+    (threshold - 1) + ' chunked sessions are ' + ((threshold - 1) * 4) + ' rows but still one short of the threshold');
+
+  appendChunkedSession(sessionLog, 'LOG-last', 2, 'new');
+  exported.autoCouncilCheck();
+  assert.equal(stimulusDocs(sandbox).length, 1);
+});

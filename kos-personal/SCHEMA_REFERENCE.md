@@ -154,6 +154,14 @@ One row per processed session.
 | E | RTP_Version | String | System version at time of processing |
 | F | Session_Summary | String | 2-3 sentence summary from inference |
 
+Two kinds of row share this sheet. A processed chunk writes one row per
+Curator chunk (`LOG-xxxxxxxx_CH01`, `_CH02`, ...). Intake writes one
+traceability row per log: `Session_UID` is the log ID, `Session_Type` is
+`SENSOR_INTAKE`, and `Session_Summary` is `N chunk(s) created (TYPE)`.
+Intake rows written before 2026-09-29 have the payload type in
+`Session_Type` and `SENSOR_INTAKE` in `Cold_Start`. `autoCouncilCheck()`
+skips intake rows and counts a log's chunks as one session.
+
 ---
 
 ### MATRIX_LEDGER

@@ -1,6 +1,17 @@
 # KOS Changelog
 
 
+### The auto-council counts sessions, not rows (2026-09-29)
+
+`autoCouncilCheck()` counted every SESSION_LOG row as a session: each
+Curator chunk and the intake's traceability row. A three-chunk session
+counted as four, so `COUNCIL_AUTO_TRIGGER_SESSIONS` (5) fired after about
+two real sessions. It now skips intake rows and counts a log's chunks
+(`_CH01`, `_CH02`, ...) as one session. The intake row also wrote the
+payload type into `Session_Type` and `SENSOR_INTAKE` into `Cold_Start`;
+it now puts `SENSOR_INTAKE` in `Session_Type` and the payload type in the
+summary. The classify backfill reads both layouts.
+
 ### The error digest always fits in one email (2026-09-29)
 
 `sendDailyErrorReport()` put every unreported error in the body with no

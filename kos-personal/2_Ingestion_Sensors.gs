@@ -901,12 +901,15 @@ function _chunkAndQueue(rawText, payloadType, logUUID, rawFolder, staging, ss) {
     }
   }
 
-  // SESSION_LOG row for intake traceability (non-critical)
+  // SESSION_LOG row for intake traceability (non-critical). Its columns
+  // follow the sheet's header: Session_Type is SENSOR_INTAKE, which is how
+  // autoCouncilCheck() tells it from a processed session. It used to put
+  // the payload type in Session_Type and SENSOR_INTAKE in Cold_Start.
   try {
     _getOrCreateSheet(ss, CFG.SESSION_LOG_SHEET).appendRow([
-      logUUID, new Date(), payloadType, 'SENSOR_INTAKE',
+      logUUID, new Date(), 'SENSOR_INTAKE', '',
       CFG.SYSTEM_VERSION,
-      chunks.length + ' chunk(s) created',
+      chunks.length + ' chunk(s) created (' + payloadType + ')',
     ]);
   } catch (_) {}
 
