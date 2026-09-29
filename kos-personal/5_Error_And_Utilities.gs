@@ -1601,19 +1601,27 @@ function _isAuditFailure_(auditorSignOff, curatorPayload) {
 }
 
 /**
- * A PASSED sign-off with an empty trace_log, on a Curator output that had
- * something to check. CURATOR_AUDITOR_PROMPT.md Rule 4 forbids it, and the
- * rebuilt Curator flow's second fixture run (2026-09-29) returned exactly
- * that: PASSED, no trace entries, on an output with a next step, three
+ * A PASSED sign-off that never checked a claim against the transcript, on a
+ * Curator output that had claims to check. CURATOR_AUDITOR_PROMPT.md Rule 4
+ * forbids it. The rebuilt Curator flow's fixture runs (2026-09-29) returned
+ * it twice: first PASSED with an empty trace_log, then PASSED with four
+ * format checks and no accuracy check, both on an output with a next step,
  * pivots and an action item whose owner the transcript never names. A
- * status check alone let it through as audited. An empty trace_log is
- * still honest when there was nothing to check, so this only counts the
- * claims the Auditor's §3.1 names.
+ * status check alone let both through as audited.
+ *
+ * An accuracy check is a trace_log entry with kind "ACCURACY" (§3.3 of the
+ * prompt). An entry without a kind doesn't count, so a model that ignores
+ * the field is sent back rather than trusted. An audit with nothing to
+ * check is still honest with no entries, so this only applies when the
+ * output has one of the claims the Auditor's §3.1 names.
  */
 function _isHollowAudit_(auditorSignOff, curatorPayload) {
   if (!auditorSignOff || !curatorPayload) return false;
-  const trace = auditorSignOff.trace_log;
-  if (Array.isArray(trace) && trace.length > 0) return false;
+  const trace = Array.isArray(auditorSignOff.trace_log) ? auditorSignOff.trace_log : [];
+  const checkedAccuracy = trace.some(function (e) {
+    return e && String(e.kind || '').trim().toUpperCase() === 'ACCURACY';
+  });
+  if (checkedAccuracy) return false;
   return _auditCheckableClaimCount_(curatorPayload) > 0;
 }
 
@@ -1662,7 +1670,7 @@ function _archiveAuditFailure_(ss, payloadUid, sheetRow, retryCount, fullPayload
     log.appendRow([
       ts, payloadUid, sheetRow, retryCount,
       String(auditorSignOff.status || '') +
-        (_isHollowAudit_(auditorSignOff, fullPayload) ? ' (HOLLOW: empty trace_log)' : ''),
+        (_isHollowAudit_(auditorSignOff, fullPayload) ? ' (HOLLOW: no ACCURACY check)' : ''),
       parseInt(auditorSignOff.unverified_claims_count) || 0,
       JSON.stringify(auditorSignOff.trace_log || []),
       JSON.stringify(fullPayload),

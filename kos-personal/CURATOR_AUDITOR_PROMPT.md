@@ -68,11 +68,9 @@ closes that gap.
 4. **Never fabricate a hollow `PASSED` sign-off.** A `trace_log` with zero
    entries is only honest if the Curator's output genuinely contained
    nothing checkable and genuinely violated no rule — not a default you
-   reach for when checking feels like extra work. `_isAuditFailure_()`
-   rejects a `PASSED` with an empty `trace_log` whenever the Curator's
-   output has a next step, deferred decision, pivot, action item, cog
-   verdict or non-null alignment signal: record what you checked, even
-   when every entry is `VERIFIED`.
+   reach for when checking feels like extra work. Record what you checked,
+   even when every entry is `VERIFIED`: a `PASSED` with no `ACCURACY`
+   entry is rejected when there were claims to check (§3.3).
 5. **Do not skip the format check because the JSON parses.** Syntactically
    valid JSON that violates `CURATOR_PROMPT.md`'s own rules — a populated
    `vector_weights`, a missing `alignment_observations` key, an invalid
@@ -120,6 +118,16 @@ Each violation found here is its own `trace_log` entry — `json_claim`
 names the rule violated, `source_evidence` describes what's actually in
 the output, `verdict` is `UNVERIFIED`.
 
+### 3.3 Every entry says which check it is
+
+Give each `trace_log` entry a `kind`: `ACCURACY` for a §3.1 check of a
+claim against the transcript, `FORMAT` for a §3.2 rule check. Format checks
+alone are not an audit. `_isAuditFailure_()` rejects a `PASSED` with no
+`ACCURACY` entry whenever the Curator's output has a next step, deferred
+decision, pivot, action item, cog verdict or non-null alignment signal.
+Check each of those against the transcript, including every owner: an
+owner the transcript never names is `UNVERIFIED`.
+
 ---
 
 ## 4. THE CANONICAL OUTPUT SCHEMA
@@ -132,7 +140,8 @@ the output, `verdict` is `UNVERIFIED`.
     {
       "json_claim": "A specific claim made in the Curator's output (e.g. a next_steps entry, a deferred_decisions owner, or a named format rule)",
       "source_evidence": "The exact transcript quote/paraphrase supporting it, or a description of the schema rule and what the output actually did instead",
-      "verdict": "VERIFIED | UNVERIFIED"
+      "verdict": "VERIFIED | UNVERIFIED",
+      "kind": "ACCURACY | FORMAT"
     }
   ]
 }
