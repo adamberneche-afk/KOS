@@ -2351,3 +2351,19 @@ commented-out direct-Gemini block and `buildFlow4Prompt_()`. The 41 bridge
 does the scoring. `runWarmUpEvaluation()` now logs how many rows it parked
 for Flow 4 instead of a `Scored: 0` that was always 0.
 
+## Alignment backfill stops retrying a lesson it can't log, 2026-09-29
+
+`runAlignmentLogBackfill_()` (`22`, every 5 minutes) retried every
+RECEIVED lesson S26 had failed on, forever. A lesson with no
+competency_ids, or a missing AlignmentLog tab, added a failure to the log
+every 5 minutes, and S26 logged each failure a second time. Now each
+attempt is counted in the row's error_notes ("attempt N of 6"). After 6,
+or at once when S26 says retrying can't help, the row is set to ERROR with
+a note saying why and how to retry. A lock-busy stand-down isn't counted,
+and a later success clears the deferred note.
+
+S26 also wrote AlignmentLog rows one `appendRow()` at a time. A failure
+part way left some rows written and the lesson still RECEIVED, so the
+retry wrote the full set again and the coverage report counted those
+competencies twice. It now writes them in one `setValues()`, and sets
+status and alignment_logged_at in one write.

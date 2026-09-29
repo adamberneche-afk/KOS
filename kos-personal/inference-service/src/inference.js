@@ -11,6 +11,8 @@
 const Anthropic = require('@anthropic-ai/sdk');
 const Ajv       = require('ajv');
 
+const { VECTOR_CLASSIFY_SYSTEM_PROMPT } = require('./flow-prompts');
+
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const ajv    = new Ajv({ allErrors: true, coerceTypes: true });
 
@@ -19,7 +21,7 @@ const ajv    = new Ajv({ allErrors: true, coerceTypes: true });
 
 const OUTPUT_SCHEMA = {
   type: 'object',
-  required: ['session_uid', 'session_summary', 'dynamic_state', 'vector_weights', 'alignment_report'],
+  required: ['session_uid', 'session_summary', 'dynamic_state', 'alignment_report'],
   properties: {
     session_uid:      { type: 'string' },
     session_summary:  { type: 'string', minLength: 10 },
@@ -39,18 +41,8 @@ const OUTPUT_SCHEMA = {
         pivots_and_lessons:   { type: 'array', items: { type: 'string' } },
       },
     },
-    vector_weights: {
-      type: 'object',
-      required: ['ARCHITECTURE','UI','SECURITY','PEDAGOGY','GAS_DEVELOPMENT','RELATIONAL'],
-      properties: {
-        ARCHITECTURE:    { type: 'number', minimum: 0, maximum: 1 },
-        UI:              { type: 'number', minimum: 0, maximum: 1 },
-        SECURITY:        { type: 'number', minimum: 0, maximum: 1 },
-        PEDAGOGY:        { type: 'number', minimum: 0, maximum: 1 },
-        GAS_DEVELOPMENT: { type: 'number', minimum: 0, maximum: 1 },
-        RELATIONAL:      { type: 'number', minimum: 0, maximum: 1 },
-      },
-    },
+    // Always null: see CURATOR_PROMPT.md Rule 1 and runInference() below.
+    vector_weights: { type: 'null' },
     cog_registry:    { type: 'object' },
     action_exhaust:  { type: 'array' },
     session_delta:   { type: 'object' },
@@ -104,6 +96,109 @@ const COG_STIMULUS_OUTPUT_SCHEMA = {
 };
 
 const validateCogStimulus = ajv.compile(COG_STIMULUS_OUTPUT_SCHEMA);
+
+// FIXED: VECTOR_CLASSIFY jobs used to go through the Curator prompt and
+// OUTPUT_SCHEMA like any other payload type. The Studio flow classifies
+// them with VECTOR_CLASSIFY_PROMPT.md, whose output is a top-level array
+// of exchanges; 3_Queue_Processor.gs hands a VECTOR_CLASSIFY doc to
+// _processVectorClassifyPart_(), which rejects anything that isn't an
+// array. So every managed-service classification job wrote a Curator
+// object into the part doc and failed at intake, and no session got a
+// VECTOR_MATRIX row. These jobs now get the classifier prompt (the same
+// generated text Studio uses) and this schema, which is section 4 of that
+// prompt.
+//
+// The known vectors are read from the prompt's own section 3 list, so the
+// schema can't require a different set than the prompt asks for.
+function parseKnownVectors(promptText) {
+  const m = /## 3\. KNOWN VECTORS[\s\S]*?```\s*\n([^`]*?)\n```/.exec(promptText);
+  if (!m) throw new Error('VECTOR_CLASSIFY prompt has no known-vectors list');
+  return m[1].split(',').map((v) => v.trim()).filter(Boolean);
+}
+
+const KNOWN_VECTORS = parseKnownVectors(VECTOR_CLASSIFY_SYSTEM_PROMPT);
+
+const CLASSIFICATION_OUTPUT_SCHEMA = {
+  type: 'array',
+  items: {
+    type: 'object',
+    required: ['exchange_type', 'sentences'],
+    properties: {
+      exchange_type: { type: 'string', enum: ['DECISION', 'EXPLORATORY'] },
+      sentences: {
+        type: 'array',
+        items: {
+          type: 'object',
+          required: ['sentence_id', 'vectors', 'unmapped_signals'],
+          properties: {
+            sentence_id: { type: 'integer', minimum: 1 },
+            vectors: {
+              type: 'object',
+              required: KNOWN_VECTORS,
+              properties: Object.fromEntries(KNOWN_VECTORS.map((v) =>
+                [v, { type: 'number', minimum: 0, maximum: 1 }])),
+            },
+            unmapped_signals: {
+              type: 'array',
+              items: {
+                type: 'object',
+                required: ['theme', 'weight'],
+                properties: {
+                  theme:  { type: 'string', minLength: 1 },
+                  weight: { type: 'number', minimum: 0, maximum: 1 },
+                },
+              },
+            },
+          },
+        },
+      },
+    },
+  },
+};
+
+const validateClassification = ajv.compile(CLASSIFICATION_OUTPUT_SCHEMA);
+
+// A classification's per-sentence JSON runs about twice the length of the
+// text it reads (20_VectorClassifySessions.gs), and a part is up to 8,000
+// characters, so 4,096 tokens cut the array off part way. 16,000 fits a
+// full part with room for thinking, and stays under the size the SDK
+// refuses without streaming.
+const MAX_TOKENS = { VECTOR_CLASSIFY: 16000 };
+const DEFAULT_MAX_TOKENS = 4096;
+
+/**
+ * What runInference() sends for one payload type: the system prompt, the
+ * user message, the token budget and the output validator.
+ */
+function buildRequest({ sessionText, payloadUid, payloadType, operatorMeta, driveContext }) {
+  if (payloadType === 'VECTOR_CLASSIFY') {
+    return {
+      system:    VECTOR_CLASSIFY_SYSTEM_PROMPT,
+      // The Studio flow's system prompt ends "Payload to Analyze:" and the
+      // session text follows it; here the text goes in the user turn.
+      user:      `Payload to Analyze:\n${sessionText}`,
+      maxTokens: MAX_TOKENS.VECTOR_CLASSIFY,
+      validator: validateClassification,
+    };
+  }
+  if (payloadType === 'COG_STIMULUS') {
+    // Extract persona name from the stimulus document header
+    const personaMatch = sessionText.match(/Cog\s*:\s*(PERSONA_\w+)/i);
+    const personaName  = personaMatch ? personaMatch[1] : 'PERSONA_UNKNOWN';
+    return {
+      system:    buildCouncilSystemPrompt(personaName),
+      user:      `Process this council stimulus:\n\n${sessionText}`,
+      maxTokens: DEFAULT_MAX_TOKENS,
+      validator: validateCogStimulus,
+    };
+  }
+  return {
+    system:    buildSystemPrompt(operatorMeta, driveContext),
+    user:      `Extract structured knowledge from this session. The session_uid should be "${payloadUid}".\n\n${sessionText}`,
+    maxTokens: DEFAULT_MAX_TOKENS,
+    validator: validate,
+  };
+}
 
 
 // ── Prompt assembly ───────────────────────────────────────────────
@@ -185,10 +280,6 @@ THEME_ARCHITECTURE   : ${themeArchitecture}
 THEME_PEDAGOGY       : ${themePedagogy}
 THEME_FAMILY_ALIGN   : ${themeFamilyAlign}
 
-Calibration note: Vector weights you assign will be multiplied
-by (theme_calibration / 0.75) in the KOS pipeline. Score based
-on raw session presence — KOS applies the calibration.
-
 ═══ AMBIENT CALIBRATION (SHADOW MATRIX) ════════════════════
 ${shadowLines}
 
@@ -202,9 +293,7 @@ ${recentSummaries}
 1. Extract only what is present in the session. Do not generate content that wasn't discussed.
 2. next_steps must be concrete and actionable — not vague intentions.
 3. deferred_decisions must have a decision description and a blocking reason.
-4. vector_weights: score 0.0–1.0 for each domain based on how prominently it featured in this specific session. 0.0 = not present, 1.0 = the entire session was about this domain.
-   vector_weights must include exactly these 6 keys, every time, all present even if 0.0:
-   ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL
+4. vector_weights: always null. Never estimate a session-level weight. KOS computes vector weights itself, from a separate sentence-level classification of the same session.
 5. alignment_report: relational_status_at_closeout must be GREEN, YELLOW, or RED. Use RED only if a relational boundary was clearly violated. YELLOW if one was approached. GREEN otherwise. If the session text itself shows ALIGNMENT raising a value-consistency-drift flag (a decision contradicting a Core fact the operator had pinned), record "D_VALUE_CONSISTENCY_DRIFT" in thresholds_crossed_this_session at YELLOW or higher — do not infer this on your own from vector history or session summaries alone; only relay it if the transcript shows ALIGNMENT actually raising it.
 6. alignment_observations.confidence_deltas: use small values (0.02–0.08) when the session provides evidence for a shadow question. Use 0.0 when there is no relevant evidence. Do NOT use negative values.
 7. Return ONLY the JSON object. No markdown, no code fences, no explanation before or after.
@@ -263,7 +352,7 @@ No other fields. No explanation. Valid JSON only.`;
  * @param  {Object} params
  * @param  {string} params.sessionText   Raw session text from the chunk doc.
  * @param  {string} params.payloadUid    Payload UID for the session_uid field.
- * @param  {string} params.payloadType   SESSION_LOG | COG_STIMULUS | EXTERNAL_DATA
+ * @param  {string} params.payloadType   SESSION_LOG | COG_STIMULUS | EXTERNAL_DATA | VECTOR_CLASSIFY
  * @param  {Object} params.operatorMeta  Operator metadata from the user record.
  * @param  {Object} params.driveContext  Context read from their spreadsheet.
  * @returns {{ output, inputTokens, outputTokens, model }}
@@ -301,30 +390,24 @@ async function runInference({ sessionText, payloadUid, payloadType, operatorMeta
   // for a deployment that doesn't set it.
   const model = process.env.ANTHROPIC_MODEL || 'claude-opus-5';
 
-  let systemPrompt;
-  if (payloadType === 'COG_STIMULUS') {
-    // Extract persona name from the stimulus document header
-    const personaMatch = sessionText.match(/Cog\s*:\s*(PERSONA_\w+)/i);
-    const personaName  = personaMatch ? personaMatch[1] : 'PERSONA_UNKNOWN';
-    systemPrompt = buildCouncilSystemPrompt(personaName);
-  } else {
-    systemPrompt = buildSystemPrompt(operatorMeta, driveContext);
-  }
-
-  const userMessage = payloadType === 'COG_STIMULUS'
-    ? `Process this council stimulus:\n\n${sessionText}`
-    : `Extract structured knowledge from this session. The session_uid should be "${payloadUid}".\n\n${sessionText}`;
+  const request = buildRequest({ sessionText, payloadUid, payloadType, operatorMeta, driveContext });
 
   const response = await client.messages.create({
     model,
-    max_tokens: 4096,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userMessage }],
+    max_tokens: request.maxTokens,
+    system: request.system,
+    messages: [{ role: 'user', content: request.user }],
   });
 
   const rawOutput    = extractTextOutput(response.content);
   const inputTokens  = response.usage?.input_tokens  || 0;
   const outputTokens = response.usage?.output_tokens || 0;
+
+  // Cut off at the token limit: the JSON is incomplete, so say that rather
+  // than report the parse error it would cause.
+  if (response.stop_reason === 'max_tokens') {
+    throw new Error(`Model output was cut off at max_tokens (${request.maxTokens}) before the JSON was complete.`);
+  }
 
   // Strip any accidental markdown fences the model adds
   const cleaned = rawOutput
@@ -340,14 +423,23 @@ async function runInference({ sessionText, payloadUid, payloadType, operatorMeta
     throw new Error(`Model produced invalid JSON: ${parseErr.message}. Raw output (first 200 chars): ${cleaned.substring(0, 200)}`);
   }
 
-  // Ensure session_uid is set
-  if (!parsed.session_uid) {
-    parsed.session_uid = payloadUid;
+  if (payloadType !== 'VECTOR_CLASSIFY') {
+    // Ensure session_uid is set (a classification is a bare array)
+    if (parsed && typeof parsed === 'object' && !parsed.session_uid) {
+      parsed.session_uid = payloadUid;
+    }
+    // CURATOR_PROMPT.md Rule 1: the Curator never supplies vector_weights.
+    // GAS writes a VECTOR_MATRIX row for any payload that has them, so a
+    // model estimate here would add a second row per session next to the
+    // classified one and decay every theme it left out. The prompt asks
+    // for null; this makes it so whatever the model returned.
+    if (payloadType !== 'COG_STIMULUS' && parsed && typeof parsed === 'object') {
+      parsed.vector_weights = null;
+    }
   }
 
-  // Validate against schema — COG_STIMULUS uses its own, much smaller
-  // schema, matching what buildCouncilSystemPrompt actually asks for.
-  const validator = payloadType === 'COG_STIMULUS' ? validateCogStimulus : validate;
+  // Validate against the schema for this payload type — see buildRequest().
+  const validator = request.validator;
   const valid = validator(parsed);
   if (!valid) {
     const errors = validator.errors.map(e => `${e.instancePath} ${e.message}`).join('; ');
@@ -371,6 +463,7 @@ function getCreditCost(payloadType) {
     SESSION_LOG:        parseInt(process.env.CREDITS_SESSION_LOG     || '5'),
     EXTERNAL_DATA:      parseInt(process.env.CREDITS_EXTERNAL_DATA   || '2'),
     COG_STIMULUS:       parseInt(process.env.CREDITS_COG_STIMULUS    || '5'),
+    VECTOR_CLASSIFY:    parseInt(process.env.CREDITS_VECTOR_CLASSIFY || '5'),
     EXTERNAL_TELEMETRY: parseInt(process.env.CREDITS_EXTERNAL_DATA   || '2'),
   };
   return costs[payloadType] || 5;
@@ -379,8 +472,12 @@ function getCreditCost(payloadType) {
 
 module.exports = {
   runInference,
+  buildRequest,
   extractTextOutput,
   getCreditCost,
+  parseKnownVectors,
+  KNOWN_VECTORS,
   OUTPUT_SCHEMA,
   COG_STIMULUS_OUTPUT_SCHEMA,
+  CLASSIFICATION_OUTPUT_SCHEMA,
 };

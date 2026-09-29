@@ -69,7 +69,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 11_Registrar_CogRelay.gs   Curriculum-drafts auditing pipeline (Registrar) ✅ in repo — see "Registrar / Cog Relay" below
 KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) — not needed
 KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)   — not needed
-inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README (its OAuth grant no longer requests Drive access at all — Open Items #6, CHANGELOG.md; and read a model response by block type, never content[0] — its README's "Reading the model's output" note; checkout now takes its price from the server: `/checkout/credits` accepts only a `credits` value from `/api/v1/pricing`'s bundles, and a subscription grants credits only for a configured price, `test/billing-pricing.test.js`; failed requests return `Internal server error` plus a logged `ref`, never the raw error text, except a 400's or a 402's own message, `src/http-errors.js` and `test/http-errors.test.js`)
+inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README (its OAuth grant no longer requests Drive access at all — Open Items #6, CHANGELOG.md; and read a model response by block type, never content[0] — its README's "Reading the model's output" note; checkout now takes its price from the server: `/checkout/credits` accepts only a `credits` value from `/api/v1/pricing`'s bundles, and a subscription grants credits only for a configured price, `test/billing-pricing.test.js`; failed requests return `Internal server error` plus a logged `ref`, never the raw error text, except a 400's or a 402's own message, `src/http-errors.js` and `test/http-errors.test.js`; `VECTOR_CLASSIFY` jobs get the Studio classifier prompt from the generated `src/flow-prompts.js`, not the Curator one, `test/inference-classify.test.js`)
 rtp-core-router/protocols/ 10 governance/protocol docs                    ✅ filed in — see CHANGELOG.md
 studio-steps/              Custom Studio steps — SEPARATE Apps Script project, not part of this one; see its own README
 ```
@@ -347,9 +347,8 @@ Properties, not source. See
 the full rationale and cas-ccps's harder version of this problem (8
 overlapping Apps Script projects, not 1).
 
-**A second, separate project lives alongside it — and it cannot be published
-on this account:**
-[`kos-personal/studio-steps/`](./studio-steps/README.md) — the custom
+**Archived: a second project that could never be published on this account.**
+[`kos-personal/archive/studio-steps/`](./archive/studio-steps/README.md) — the custom
 Workspace Studio steps behind the Curator and VECTOR_CLASSIFY flows
 (`WriteCuratorOutputStep.gs`, `WriteClassificationOutputStep.gs`, plus
 shared helpers). A custom step is a Workspace Add-on and needs a standard,

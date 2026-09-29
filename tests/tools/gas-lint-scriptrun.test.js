@@ -176,5 +176,5 @@ test('leader-hub\'s multi-line chains are covered', () => {
   const found = findGoogleScriptRunCalls(rel, fs.readFileSync(path.join(REPO_ROOT, rel), 'utf8'));
   const got = [...new Set(found.calls.map((c) => c.name))].sort();
   assert.deepEqual(got, ['lhApiCall', 'lhGetAllConfig', 'lhGetHorizonItems', 'lhGetScrScores',
-                         'lhPullData', 'lhPushData', 'lhSaveConfig', 'lhSaveScrScores']);
+                         'lhOrgSyncCall', 'lhPullData', 'lhPushData', 'lhSaveConfig', 'lhSaveScrScores']);
 });

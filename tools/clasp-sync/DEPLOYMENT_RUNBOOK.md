@@ -18,7 +18,7 @@ Three projects, three different shapes:
 
 | Project | Script projects involved | Who it's for | Stakes |
 |---|---|---|---|
-| kos-personal | 2 (the main flat-folder project, plus `kos-personal/studio-steps/` — a second, separate standalone project, not a shared global scope) | You. SMP-004 describes a personal account here; in practice it is the same `ccpsnet.net` account as cas-ccps, which is why the org-wide GCP block reaches its Studio steps too | Low — no students touch this |
+| kos-personal | 1 (the main flat-folder project; `kos-personal/archive/studio-steps/`, a second standalone project that could never be published on this account, is archived and not deployed) | You. SMP-004 describes a personal account here; in practice it is the same `ccpsnet.net` account as cas-ccps, which is why the org-wide GCP block reaches its Studio steps too | Low — no students touch this |
 | leader-hub | 1 (`leader-hub:app` — every `.gs` file in `leader-hub/`, one real Web App deployment; authoritative list in `tools/gas-lint/project-map.json`) | **Belongs to Adam Berneche per its own README, not confirmed as yours** | Depends on ownership — see Part 2 |
 | cas-ccps | 8 (`central-ledger`, `unified-manual`, `master-student-template`, `rubric-response-sheet`, `teacher-matrix-sheet`, `teacher-dashboard`, `student-dashboard`, `studio-steps`) | Students, district account | High — this is the one the whole air-gap policy (SMP-004) exists for |
 
@@ -522,10 +522,8 @@ the code for everyone who already installed it, no re-install needed.
 Same human-at-keyboard model as everything else in this runbook applies
 here too — see `cas-ccps/studio-steps/README.md`'s own deployment section
 for the full command block and this project's specific file list.
-kos-personal's `studio-steps` project follows the same shape but the
-flat-folder `clasp create --type standalone` pattern from Part 1, not
-`sync.js` (it isn't `cas-ccps:`-prefixed) — see
-`kos-personal/studio-steps/README.md`.
+kos-personal's `studio-steps` project is archived
+(`kos-personal/archive/studio-steps/README.md`) and is not deployed.
 
 ---
 
@@ -534,7 +532,6 @@ flat-folder `clasp create --type standalone` pattern from Part 1, not
 | Situation | Command sequence |
 |---|---|
 | kos-personal (main project), any change | `clasp push` → `clasp version "..."` → `clasp update-deployment <id> --versionNumber <n>` for each of its live deployments — it's a web app, so a push alone leaves every `/exec` URL on the old version |
-| kos-personal `studio-steps`, any change | `clasp push` → `clasp create-deployment --description "..."` (test-install already done once — see `kos-personal/studio-steps/README.md`) |
 | cas-ccps, no live projects exist yet | `clasp create --type <sheets\|docs\|standalone>` per project (see 3.2b; `studio-steps` follows 3.7 instead) |
 | leader-hub (`leader-hub:app`), any change | same "push → version → deploy" pattern as a cas-ccps web app, once ownership is confirmed — see 2.2 |
 | cas-ccps, testing a change | push to `main`, let sandbox-deploy CI job run |
