@@ -1,6 +1,49 @@
 # KOS Changelog
 
 
+### Managed service: classification gets the classifier prompt (2026-09-29)
+
+In `MANAGED_SERVICE` mode (off by default), `VECTOR_CLASSIFY` parts went
+through the inference service's Curator prompt and schema. GAS's
+`_processVectorClassifyPart_()` accepts only the classifier's array of
+exchanges, so every part failed at intake and no session got a
+`VECTOR_MATRIX` row. The service now sends these jobs the same prompt the
+Studio flow uses (a generated copy, checked against
+`VECTOR_CLASSIFY_PROMPT.md` by `tests/kos-personal/flow-prompts.test.js`),
+validates the array against that prompt's schema and known vectors, and
+allows 16,000 output tokens, since the classifier writes about twice as much
+as it reads. Output cut off at the token limit now says so.
+
+The service's Curator prompt also asked for numeric session-level
+`vector_weights`, which `CURATOR_PROMPT.md` Rule 1 forbids. With
+classification working, that would have written a second matrix row per
+session. It now returns null, as in Studio mode. `CREDITS_VECTOR_CLASSIFY`
+sets the classification price (default 5, unchanged).
+
+### One failure, one ERROR_LOG row (2026-09-29)
+
+`processIntakePayload()` and `processVectorClassificationPayload()` log
+their own failures, then `processInferenceQueue()` logged the same failure
+again from the ERROR result: 2 rows per failure, 3 on the intake parse path,
+which also logged before rethrowing. A result that was already logged now
+carries `reported: true`, and the queue logs only what nothing else did. A
+Registrar row whose stored JSON failed to parse at translation stayed
+`READY_FOR_TRANSLATION` and logged a new row every 10 minutes; it now goes
+back to Stage 2 validation under the usual retry limit.
+
+The inference service's worker could refund a failed job twice: if marking
+the job failed threw after the refund, the catch-all refunded again. Fixed,
+with a test.
+
+### `studio-steps/` archived (2026-09-29)
+
+The two custom Workspace Studio steps (`WriteCuratorOutputStep`,
+`WriteClassificationOutputStep`) could never be published on this account
+(GCP is off org-wide), and `12_StudioReturnHarvest.gs` replaced them. The
+folder moved to `archive/studio-steps/` with its history. It is out of
+gas-lint's project map, the GCP map and the deployable-folder scan; the
+`.claspignore` allowlist never pushed it. Its tests still run.
+
 ### Cleanup: dead code and a duplicated back-fill (2026-09-29)
 
 Removed three functions nothing called: `getQueueStatus()` (the web app

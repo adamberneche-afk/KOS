@@ -437,7 +437,7 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 > Workspace Add-on needs a standard, non-default Cloud project, and GCP is
 > switched off org-wide for `ccpsnet.net` — which is the account this is
 > deployed on, despite SMP-004 describing a separate personal one. So
-> `kos-personal/studio-steps/`'s two steps cannot run, and the flow is not
+> `kos-personal/archive/studio-steps/`'s two steps cannot run, and the flow is not
 > live.
 >
 > **Run `syncStudioFlowBuildSpec()` first** (14_StudioFlowBuildSpec.gs) and
