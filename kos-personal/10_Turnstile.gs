@@ -20,7 +20,7 @@
 //                 → STUDIO_ACTIVE
 //   STUDIO_ACTIVE → [Studio infers, writes JSON, sets FLOW_COMPLETE]
 //   STUDIO_ACTIVE → [stuck > CFG.TURNSTILE_STALE_MINS] → reset to
-//                    PENDING_FLOW, Retry_Count incremented
+//                    PENDING_FLOW, stale count incremented (not Retry_Count)
 //
 // MANAGED_SERVICE MODE (CFG.INFERENCE_MODE, 1_Config_And_Deploy.gs)
 // ─────────────────────────────────────────────────────────────
@@ -59,7 +59,7 @@
  * Releases PENDING_FLOW rows to STUDIO_ACTIVE up to
  * CFG.TURNSTILE_CONCURRENCY, and resets STUDIO_ACTIVE rows that have
  * been active longer than CFG.TURNSTILE_STALE_MINS back to
- * PENDING_FLOW (incrementing Retry_Count), per STUDIO_INTEGRATION_SPEC.md
+ * PENDING_FLOW (incrementing its stale count, KOS_TURNSTILE_STALE_COUNTS), per STUDIO_INTEGRATION_SPEC.md
  * Step 2 ("Staleness guard").
  *
  * FIX (process-hardening sprint, Phase 1a): release order is priority
@@ -92,6 +92,10 @@ function runMatrixTurnstile() {
     const SC       = CFG.STAGING_COLS;
     const data     = staging.getRange(2, 1, lastRow - 1, 7).getValues();
     const released = _readReleaseMap();
+    // Stale resets are counted here, not in Retry_Count: that column is
+    // the Queue Processor's parse/audit/processing budget (see
+    // _readTurnstileStaleCounts_, 5_Error_And_Utilities.gs).
+    const staleCounts = _readTurnstileStaleCounts_();
     const nowMs    = new Date().getTime();
     const staleMs  = CFG.TURNSTILE_STALE_MINS * 60 * 1000;
 
@@ -112,12 +116,13 @@ function runMatrixTurnstile() {
       const isStale     = releasedAt ? (nowMs - releasedAt) > staleMs : true;
 
       if (isStale) {
-        const newRetries = (parseInt(data[i][SC.RETRY_COUNT]) || 0) + 1;
+        const newRetries = (Number(staleCounts[uid]) || 0) + 1;
+        staleCounts[uid] = newRetries;
         delete released[uid];
 
         // Say/Do Ledger kos-personal finding #2, closed: a row with no
         // Studio flow ever completing it used to cycle PENDING_FLOW →
-        // STUDIO_ACTIVE → (stale reset) forever, Retry_Count climbing
+        // STUDIO_ACTIVE → (stale reset) forever, its stale count climbing
         // without bound — CFG.TURNSTILE_STUCK_THRESHOLD was a UI-only
         // "call this row stuck" signal (getQueueMetrics()) that never
         // actually stopped the cycle. Same escalate-to-failure pattern
@@ -134,8 +139,8 @@ function runMatrixTurnstile() {
           // completed this row" is only one of two ways to run the retry
           // budget out, and it was reported for both. A row the audit gate
           // rejected comes back to PENDING_FLOW (3_Queue_Processor.gs) and
-          // re-enters this loop, so its remaining retries get spent on
-          // staleness and it dies here — labelled as if Studio had never
+          // re-enters this loop, and if Studio then stalls on it it dies
+          // here — labelled as if Studio had never
           // answered, when Studio answered and the Auditor refused the
           // output. Observed: 55 AUDIT_LOG rejections, every one of them
           // ending at STUDIO_TIMEOUT, and AUDIT_REJECTED never once reached
@@ -147,7 +152,6 @@ function runMatrixTurnstile() {
           const auditRejected = !!auditRejectedUids[uidStr];
           const terminal = auditRejected ? 'AUDIT_REJECTED' : 'STUDIO_TIMEOUT';
           staging.getRange(sheetRow, SC.STATUS      + 1).setValue(terminal);
-          staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
           staleReset++;
           console.error('[Turnstile] Row ' + sheetRow + ' (' + uid + ') → ' + terminal + ' after ' +
             newRetries + ' stale resets (threshold ' + CFG.TURNSTILE_STUCK_THRESHOLD + ').');
@@ -166,7 +170,6 @@ function runMatrixTurnstile() {
           );
         } else {
           staging.getRange(sheetRow, SC.STATUS      + 1).setValue('PENDING_FLOW');
-          staging.getRange(sheetRow, SC.RETRY_COUNT + 1).setValue(newRetries);
           staleReset++;
           // FIX (process-hardening sprint, Phase 1a/1b): a row reset here
           // is, by construction, one of the OLDEST rows in the queue —
@@ -314,6 +317,19 @@ function runMatrixTurnstile() {
       if (!activeUids.has(uid) && !releasedNow.has(uid)) delete released[uid];
     });
     _writeReleaseMap(released);
+
+    // Stale counts matter only while a row is still waiting on Studio.
+    // `data` predates this run's writes, so a row reset or timed out just
+    // now is judged by what Pass 1 made it.
+    const waitingUids = new Set();
+    data.forEach(r => {
+      const st = String(r[SC.STATUS]);
+      if (st === 'PENDING_FLOW' || st === 'STUDIO_ACTIVE') waitingUids.add(String(r[SC.PAYLOAD_UID]));
+    });
+    Object.keys(staleCounts).forEach(uid => {
+      if (!waitingUids.has(uid) || staleCounts[uid] > CFG.TURNSTILE_STUCK_THRESHOLD) delete staleCounts[uid];
+    });
+    _writeTurnstileStaleCounts_(staleCounts);
 
     if (staleReset + releasedCount > 0) SpreadsheetApp.flush();
 

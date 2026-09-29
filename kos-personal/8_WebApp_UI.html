@@ -805,7 +805,7 @@ textarea { line-height: 1.55; }
       </div>
       <!-- NEW (Say/Do Ledger kos-personal finding #2). Hidden unless
            counts.cycling > 0 — a PENDING_FLOW/STUDIO_ACTIVE row whose
-           Retry_Count has crossed CFG.TURNSTILE_STUCK_THRESHOLD
+           stale-reset count has crossed CFG.TURNSTILE_STUCK_THRESHOLD
            (3_Queue_Processor.gs's getQueueMetrics()), meaning Turnstile
            keeps handing it off but nothing is completing it. Distinct
            from "Failed" — this isn't a terminal state, just an honest

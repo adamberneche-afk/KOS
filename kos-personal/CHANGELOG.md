@@ -1,6 +1,19 @@
 # KOS Changelog
 
 
+### Stale resets get their own count (2026-09-29)
+
+The Turnstile counted its stale resets in `Retry_Count`, the column the
+Queue Processor spends on parse, audit and processing retries. The two
+budgets drained each other: a row with two stale resets failed for good
+at its first bad parse, and a row with two audit retries timed out at
+its first stale reset. Stale resets now live in the
+`KOS_TURNSTILE_STALE_COUNTS` Script Property. `processInferenceQueue()`
+clears a row's count when Studio answers it (`FLOW_COMPLETE`), the
+Turnstile drops counts for rows no longer waiting on Studio, and the
+requeue helper clears them too. `Retry_Count` is the Queue Processor's
+alone. The "cycling" Queue tile reads the new count.
+
 ### Intake never loses a chunk (2026-09-29)
 
 `_chunkAndQueue()` used to log a chunk that failed to create and carry on,
