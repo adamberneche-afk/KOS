@@ -125,6 +125,8 @@ function sensor1_scanInboundSessions() {
 
     const files = inboundFolder.getFiles();
     let scanned = 0, queued = 0, skipped = 0;
+    // Read once per run, and only if a file gets that far.
+    let archivedUids = null;
 
     while (files.hasNext()) {
       const file = files.next();
@@ -142,17 +144,15 @@ function sensor1_scanInboundSessions() {
 
         const logUUID = _generateLogUUID(rawText);
 
-        // Duplicate guard: check Payload_UID column for this logUUID prefix
-        if (staging.getLastRow() > 1) {
-          const existingUids = staging
-            .getRange(2, CFG.STAGING_COLS.PAYLOAD_UID + 1, staging.getLastRow() - 1, 1)
-            .getValues().flat().map(String);
-          if (existingUids.some(u => u.startsWith(logUUID))) {
-            console.log('[Sensor1] Duplicate skipped: ' + file.getName());
-            file.moveTo(processedFolder);
-            skipped++;
-            continue;
-          }
+        // Duplicate guard: check Payload_UID column for this logUUID prefix,
+        // in STAGING_PIPELINE and in STAGING_ARCHIVE (see _archivedPayloadUids_).
+        if (archivedUids === null) archivedUids = _archivedPayloadUids_(ss);
+        const stagedUids = _stagingPayloadUids_(staging);
+        if (stagedUids.concat(archivedUids).some(u => u.startsWith(logUUID))) {
+          console.log('[Sensor1] Duplicate skipped: ' + file.getName());
+          file.moveTo(processedFolder);
+          skipped++;
+          continue;
         }
 
         // Optional hardening audit — non-fatal if function absent
@@ -282,17 +282,13 @@ function submitSessionLog(text) {
     const ss        = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const staging   = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
 
-    // Duplicate guard
-    if (staging.getLastRow() > 1) {
-      const existingUids = staging
-        .getRange(2, CFG.STAGING_COLS.PAYLOAD_UID + 1, staging.getLastRow() - 1, 1)
-        .getValues().flat().map(String);
-      if (existingUids.some(u => u.startsWith(logUUID))) {
-        // duplicate:true lets the web app style this as "already handled,
-        // no action needed" rather than a real failure — the pipeline did
-        // exactly what it should here, this isn't an error.
-        return { success: false, duplicate: true, message: 'Duplicate: this session log has already been queued.' };
-      }
+    // Duplicate guard, live and archived rows (see _archivedPayloadUids_)
+    const knownUids = _stagingPayloadUids_(staging).concat(_archivedPayloadUids_(ss));
+    if (knownUids.some(u => u.startsWith(logUUID))) {
+      // duplicate:true lets the web app style this as "already handled,
+      // no action needed" rather than a real failure — the pipeline did
+      // exactly what it should here, this isn't an error.
+      return { success: false, duplicate: true, message: 'Duplicate: this session log has already been queued.' };
     }
 
     // Archive full raw log as a reference doc (not surfaced in queue)
@@ -598,15 +594,11 @@ function submitExternalData(text, title) {
     // fire; the "Duplicate" branch was unreachable dead code. Now checks
     // PAYLOAD_UID directly against this content's deterministic hash,
     // same as the session-log dedup checks.
-    if (staging.getLastRow() > 1) {
-      const existingUids = staging
-        .getRange(2, CFG.STAGING_COLS.PAYLOAD_UID + 1, staging.getLastRow() - 1, 1)
-        .getValues().flat().map(String);
-      if (existingUids.includes(uid)) {
-        // duplicate:true lets the web app style this as "already handled,
-        // no action needed" rather than a real failure.
-        return { success: false, duplicate: true, message: 'Duplicate: this content has already been queued.' };
-      }
+    // Archived rows count too (see _archivedPayloadUids_).
+    if (_stagingPayloadUids_(staging).concat(_archivedPayloadUids_(ss)).includes(uid)) {
+      // duplicate:true lets the web app style this as "already handled,
+      // no action needed" rather than a real failure.
+      return { success: false, duplicate: true, message: 'Duplicate: this content has already been queued.' };
     }
 
     const rawFolder = DriveApp.getFolderById(rawId);
@@ -802,6 +794,36 @@ function submitCogVerdict(councilId, cogName, status, summary) {
 // ================================================================
 // SHARED PIPELINE HELPERS
 // ================================================================
+
+/** Every Payload_UID in STAGING_PIPELINE, as strings. */
+function _stagingPayloadUids_(staging) {
+  if (staging.getLastRow() <= 1) return [];
+  return staging
+    .getRange(2, CFG.STAGING_COLS.PAYLOAD_UID + 1, staging.getLastRow() - 1, 1)
+    .getValues().flat().map(String);
+}
+
+/**
+ * Payload_UIDs in STAGING_ARCHIVE whose row did not end in failure.
+ * archiveStagingPipeline() moves finished rows there, and the duplicate
+ * guards used to read STAGING_PIPELINE alone, so once a log's rows were
+ * archived the same log could be ingested again. A row archived with a
+ * TERMINAL_FAILED_STATUSES status doesn't count, so a log that failed can
+ * still be resubmitted.
+ * STAGING_ARCHIVE columns: Archived_At, then STAGING_PIPELINE's seven.
+ */
+function _archivedPayloadUids_(ss) {
+  const archive = ss.getSheetByName('STAGING_ARCHIVE');
+  if (!archive || archive.getLastRow() <= 1) return [];
+  const uidCol = CFG.STAGING_COLS.PAYLOAD_UID + 1;
+  const statusCol = CFG.STAGING_COLS.STATUS + 1;
+  return archive.getRange(2, 1, archive.getLastRow() - 1, statusCol + 1).getValues()
+    .filter(r => {
+      const status = String(r[statusCol]);
+      return !TERMINAL_FAILED_STATUSES.some(p => status.startsWith(p));
+    })
+    .map(r => String(r[uidCol]));
+}
 
 /**
  * Appends a single row to STAGING_PIPELINE.

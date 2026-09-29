@@ -1,6 +1,16 @@
 # KOS Changelog
 
 
+### Archived logs stay duplicates (2026-09-29)
+
+Sensor 1, `submitSessionLog()` and `submitExternalData()` checked for a
+duplicate in STAGING_PIPELINE only. `archiveStagingPipeline()` moves
+finished rows to STAGING_ARCHIVE, so once a log's rows were archived the
+same log could be ingested and curated again. The guards now read
+STAGING_ARCHIVE too. A row archived with a failed status
+(`TERMINAL_FAILED_STATUSES`) doesn't count, so a log that failed can
+still be resubmitted.
+
 ### The auto-council counts sessions, not rows (2026-09-29)
 
 `autoCouncilCheck()` counted every SESSION_LOG row as a session: each
