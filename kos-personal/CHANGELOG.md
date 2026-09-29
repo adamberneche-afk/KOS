@@ -1,6 +1,17 @@
 # KOS Changelog
 
 
+### The error digest always fits in one email (2026-09-29)
+
+`sendDailyErrorReport()` put every unreported error in the body with no
+limit. MailApp refuses a body over about 200KB, and a failed send marked
+nothing reported, so the backlog grew, every later digest failed the same
+way, and `archiveErrorLog()` (which only sweeps reported rows) could never
+shrink ERROR_LOG. The body is now capped at 60,000 characters: each
+message and stack line is clipped to 500, and past the cap the digest
+counts the rest instead of listing them. Every row is still marked
+reported, in one column write, since ERROR_LOG holds the full text.
+
 ### Stale resets get their own count (2026-09-29)
 
 The Turnstile counted its stale resets in `Retry_Count`, the column the
