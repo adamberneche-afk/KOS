@@ -31,7 +31,7 @@ const CALENDAR_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src',
 const PACING_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '12-integrations-pacing-subplan-brag.html');
 
 function loadCalendarParser() {
-  const source = extractLines(CALENDAR_HTML_PATH, 1276, 1513, [
+  const source = extractLines(CALENDAR_HTML_PATH, 1276, 1566, [
     'function extractDateRangeBounds(',
     'function extractDatesFromText(',
     'function parseCountyCalendarText(',
@@ -184,4 +184,94 @@ test('getQuarterForDate falls back to the nearest edge quarter for a date outsid
 test('getQuarterForDate defaults to 1 rather than throwing when no quarters are configured at all', () => {
   const { getQuarterForDate } = loadPacing({ LP_QUARTERS: {} });
   assert.equal(getQuarterForDate('2026-09-15'), 1);
+});
+
+// ── The two live misreads (seen 2026-09-28: 0 no-school, 22 early release,
+//    no quarters from the district calendar) ─────────────────────────────
+
+const REAL_SHAPED_CALENDAR = [
+  'Chesterfield County Public Schools 2026-2027 Calendar',
+  'August 24, 2026 First Day for Students',
+  'Early Release Days',
+  'October 2 - Early Release for Students',
+  'November 25 - Two-Hour Early Dismissal',
+  'Holidays and Schools Closed',
+  'September 7 - Labor Day (Schools Closed)',
+  'October 12 - Student Holiday / Teacher Workday',
+  'November 26-27 - Thanksgiving Break',
+  'December 21, 2026 - January 1, 2027 - Winter Break',
+  'January 18, 2027 - Martin Luther King Jr. Day',
+  'Marking Periods',
+  'End of First Quarter - October 30, 2026',
+  'End of Second Quarter - January 15, 2027',
+  'End of Third Quarter - March 26, 2027',
+  'End of Fourth Quarter - June 11, 2027',
+].join('\n');
+
+test('an early-release heading does not capture the holidays listed after it', () => {
+  const { parseCountyCalendarText } = loadCalendarParser();
+  const r = parseCountyCalendarText(REAL_SHAPED_CALENDAR, 2026);
+  assert.deepEqual(r.earlyRelease, ['2026-10-02', '2026-11-25']);
+  for (const d of ['2026-09-07', '2026-10-12', '2026-11-26', '2026-11-27', '2026-12-21', '2027-01-01', '2027-01-18']) {
+    assert.ok(r.noSchool.includes(d), d + ' should be no-school, got ' + r.noSchool.join(','));
+    assert.ok(!r.earlyRelease.includes(d), d + ' must not be early release');
+  }
+});
+
+test('a dated line mentioning early release is early release for that line only', () => {
+  const { parseCountyCalendarText } = loadCalendarParser();
+  const r = parseCountyCalendarText([
+    'Early Release - September 30, 2026',
+    'Veterans Day - November 11, 2026',
+  ].join('\n'), 2026);
+  assert.deepEqual(r.earlyRelease, ['2026-09-30']);
+  assert.deepEqual(r.noSchool, ['2026-11-11']);
+});
+
+test('quarters given only as "End of Nth Quarter" dates are filled from the first day of school', () => {
+  const { parseCountyCalendarText } = loadCalendarParser();
+  const r = parseCountyCalendarText(REAL_SHAPED_CALENDAR, 2026);
+  assert.deepEqual(r.quarters[1], { start: '2026-08-24', end: '2026-10-30' });
+  // Oct 30 2026 is a Friday, so Q2 starts the next school day, Monday.
+  assert.deepEqual(r.quarters[2], { start: '2026-11-02', end: '2027-01-15' });
+  assert.equal(r.quarters[3].end, '2027-03-26');
+  assert.deepEqual(r.quarters[4], { start: '2027-03-29', end: '2027-06-11' });
+});
+
+test('Q1, "Marking Period 2" and "First Quarter" ranges are all recognized', () => {
+  const { parseCountyCalendarText } = loadCalendarParser();
+  const r = parseCountyCalendarText([
+    'Q1: August 24 - October 30, 2026',
+    'Marking Period 2: November 2, 2026 - January 15, 2027',
+    'Third Quarter: January 19 - March 26, 2027',
+    'MP4 March 29 - June 11, 2027',
+  ].join('\n'), 2026);
+  assert.deepEqual(Object.keys(r.quarters).sort(), ['1', '2', '3', '4']);
+  assert.deepEqual(r.quarters[2], { start: '2026-11-02', end: '2027-01-15' });
+  assert.equal(r.quarters[4].start, '2027-03-29');
+});
+
+test('with no holiday heading at all, holidays after an early-release heading are still no-school', () => {
+  const { parseCountyCalendarText } = loadCalendarParser();
+  const r = parseCountyCalendarText([
+    'Early Release Days',
+    'October 2, 2026',
+    'November 25, 2026 - Two-Hour Early Dismissal',
+    'October 12, 2026 - Student Holiday',
+    'November 26-27, 2026 - Thanksgiving',
+    'September 7, 2026 - Labor Day',
+  ].join('\n'), 2026);
+  assert.deepEqual(r.earlyRelease, ['2026-10-02', '2026-11-25']);
+  assert.deepEqual(r.noSchool, ['2026-09-07', '2026-10-12', '2026-11-26', '2026-11-27']);
+});
+
+test('the first day of school and report-card days are never filed as days off', () => {
+  const { parseCountyCalendarText } = loadCalendarParser();
+  const r = parseCountyCalendarText([
+    'Holidays',
+    'August 24, 2026 - First Day for Students',
+    'November 6, 2026 - Report Cards Issued',
+    'November 11, 2026 - Veterans Day',
+  ].join('\n'), 2026);
+  assert.deepEqual(r.noSchool, ['2026-11-11']);
 });
