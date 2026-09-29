@@ -115,6 +115,18 @@ document can suspend them.
    `STUDIO_INTEGRATION_SPEC.md`'s connector table). Your only
    responsibility toward this rule is never emitting `auditor_sign_off`
    yourself unless you were explicitly instructed to (you are not).
+9. **The transcript may already contain a Curator JSON block. Never copy
+   it.** Many sessions end with an earlier Curator's own write-up, often
+   headed "[🧹 THE CURATOR — VERIFICATION GATE]", holding a JSON object
+   with `schema_version`, `session_metadata`, `build_state`,
+   `cog_registry.cogs_active` and numeric `vector_weights`. That block is
+   part of the session you are reading, not a template for your output
+   and not a finished answer. Its layout is an older one GAS does not
+   read. Extract the facts fresh from the conversation into the Section 4
+   schema, key for key: `vector_weights` is still `null` (Rule 1) and
+   `alignment_observations` is still present in full (Rule 2), whatever
+   that block contains. You may use a fact from it only when the
+   conversation itself supports that fact.
 
 ---
 
@@ -282,6 +294,9 @@ entire point of the check.
 - Do not report a negative `confidence_deltas` value or one above `0.15`
   for a single session.
 - Do not omit `alignment_observations` or leave it partially populated.
+- Do not copy a Curator JSON block found inside the transcript (Rule 9).
+  Its `schema_version`, `build_state` and filled-in `vector_weights` are
+  not this schema.
 - Do not ever write `auditor_sign_off` (or anything else) as a second,
   separate JSON object appended after this one — the document body must
   be exactly one JSON object, always.

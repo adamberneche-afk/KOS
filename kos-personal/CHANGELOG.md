@@ -1,6 +1,25 @@
 # KOS Changelog
 
 
+### The Curator writes fresh output, not the transcript's own Curator JSON (2026-09-29)
+
+The first requeued chunks of `LOG-ee994593` (CH02, CH03, CH04) all failed
+audit the same way. Every accuracy check passed, but each output had
+numeric `vector_weights` and no `alignment_observations`, in a layout
+(`schema_version` 5.0, `build_state`, `cog_registry.cogs_active`) that
+`CURATOR_PROMPT.md` never asks for. The sessions end with the RTP
+Curator's own JSON block, and the Curator was copying it.
+`CURATOR_PROMPT.md` Rule 9 now says that block is part of the session, not
+a template: extract fresh into the Section 4 schema.
+
+`_srPrepareDocText_()` also enforces Rules 1 and 2 on Curator output before
+the doc is written: `vector_weights` is set to `null`, and a missing
+`alignment_observations` gets the empty skeleton. Intake writes a
+`MATRIX_LEDGER` row for any object-valued `vector_weights`, so this keeps
+made-up scores out if an audit ever passes one. The audit verdict is
+merged unchanged, so a failed audit is still rejected.
+
+
 ### Audits must check claims, and owners come from the transcript (2026-09-29)
 
 After the gate learned to reject an empty `trace_log`, the next fixture
