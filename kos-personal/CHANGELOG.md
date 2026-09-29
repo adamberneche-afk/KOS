@@ -1,6 +1,30 @@
 # KOS Changelog
 
 
+### The error digest always fits in one email (2026-09-29)
+
+`sendDailyErrorReport()` put every unreported error in the body with no
+limit. MailApp refuses a body over about 200KB, and a failed send marked
+nothing reported, so the backlog grew, every later digest failed the same
+way, and `archiveErrorLog()` (which only sweeps reported rows) could never
+shrink ERROR_LOG. The body is now capped at 60,000 characters: each
+message and stack line is clipped to 500, and past the cap the digest
+counts the rest instead of listing them. Every row is still marked
+reported, in one column write, since ERROR_LOG holds the full text.
+
+### Stale resets get their own count (2026-09-29)
+
+The Turnstile counted its stale resets in `Retry_Count`, the column the
+Queue Processor spends on parse, audit and processing retries. The two
+budgets drained each other: a row with two stale resets failed for good
+at its first bad parse, and a row with two audit retries timed out at
+its first stale reset. Stale resets now live in the
+`KOS_TURNSTILE_STALE_COUNTS` Script Property. `processInferenceQueue()`
+clears a row's count when Studio answers it (`FLOW_COMPLETE`), the
+Turnstile drops counts for rows no longer waiting on Studio, and the
+requeue helper clears them too. `Retry_Count` is the Queue Processor's
+alone. The "cycling" Queue tile reads the new count.
+
 ### Intake never loses a chunk (2026-09-29)
 
 `_chunkAndQueue()` used to log a chunk that failed to create and carry on,
