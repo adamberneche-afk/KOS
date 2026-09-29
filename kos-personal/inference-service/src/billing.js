@@ -7,7 +7,14 @@ const Stripe = require('stripe');
 const db     = require('./db');
 const logger = require('./logger');
 
-const stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+// Created on first use. stripe v22 throws at construction when the key is
+// unset (v15 did not), and this module is loaded at boot, so building the
+// client here crashed the whole service on a deployment without Stripe.
+let _stripe = null;
+function stripeClient() {
+  if (!_stripe) _stripe = Stripe(process.env.STRIPE_SECRET_KEY);
+  return _stripe;
+}
 
 // Credit amounts per subscription tier
 const TIER_CREDITS = {
@@ -36,7 +43,7 @@ function resolveCreditBundle(credits) {
   return CREDIT_BUNDLES.find((b) => b.credits === n) || null;
 }
 
-class BadRequestError extends Error {}
+const { BadRequestError } = require('./http-errors');
 
 
 // ── Customer management ───────────────────────────────────────────
@@ -51,7 +58,7 @@ class BadRequestError extends Error {}
 async function getOrCreateStripeCustomer(user) {
   if (user.stripe_customer_id) return user.stripe_customer_id;
 
-  const customer = await stripe.customers.create({
+  const customer = await stripeClient().customers.create({
     email:    user.email,
     metadata: { kos_user_id: user.id, google_user_id: user.google_user_id },
   });
@@ -78,7 +85,7 @@ async function getOrCreateStripeCustomer(user) {
 async function createSubscriptionCheckout(user, priceId, returnUrl) {
   const customerId = await getOrCreateStripeCustomer(user);
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await stripeClient().checkout.sessions.create({
     customer:   customerId,
     mode:       'subscription',
     line_items: [{ price: priceId, quantity: 1 }],
@@ -111,7 +118,7 @@ async function createCreditPurchaseCheckout(user, credits, returnUrl) {
   credits = bundle.credits;
   const customerId = await getOrCreateStripeCustomer(user);
 
-  const session = await stripe.checkout.sessions.create({
+  const session = await stripeClient().checkout.sessions.create({
     customer: customerId,
     mode:     'payment',
     line_items: [{
@@ -150,7 +157,7 @@ async function createCreditPurchaseCheckout(user, credits, returnUrl) {
 async function handleWebhook(rawBody, signature) {
   let event;
   try {
-    event = stripe.webhooks.constructEvent(
+    event = stripeClient().webhooks.constructEvent(
       rawBody,
       signature,
       process.env.STRIPE_WEBHOOK_SECRET
@@ -181,7 +188,7 @@ async function handleWebhook(rawBody, signature) {
         // succeeded below just re-reads whatever subscription_tier was
         // stored here). Retrieve the real subscription object to read
         // its actual price ID.
-        const subscription = await stripe.subscriptions.retrieve(session.subscription);
+        const subscription = await stripeClient().subscriptions.retrieve(session.subscription);
         const priceId       = subscription.items?.data?.[0]?.price?.id;
         // Grant nothing for a price this service doesn't sell. Falling back
         // to 'starter' let any cheap price in the Stripe account buy 500
