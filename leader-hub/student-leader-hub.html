@@ -3297,13 +3297,66 @@ return false;
 </div>
 
 
-<script data-lh-block="leader-hub-block-1-part-1-of-16">var _lsWriteFailWarned,_lsReadFailWarned,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SERVER_SYNCED_DATA_KEYS,_lhDataConflictWarned,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE;
+<script data-lh-block="leader-hub-block-1-part-1-of-16">var _lsWriteFailWarned,_lsReadFailWarned,LS,LH_SERVER_SYNCED_CONFIG_KEYS,LH_SYNC_PENDING_KEY,_lhSyncFailWarned,LH_SERVER_SYNCED_DATA_KEYS,_lhDataConflictWarned,_lhDataPushChain,SCR_SYNC_DEBOUNCE_MS,_scrSyncQueue,_scrSyncTimer,trips,_otherEventsDefault,otherEvents,PROFILE_DEFAULTS,PROFILE,KEY_CONTACTS_DEFAULTS,MODULES_DEFAULT,MODULES,ORG_DEFAULTS,CUSTOM_ORGS,ORGANIZATIONS,activeOrgId,_studentsDefault,students,goals,TRIPS_SEED,nextId,currentTripId,currentFilter,REQUIRED_FIELDS,fd,du,dn,leadDays,isOvernightTrip,subDeadline,fmtDeadline,tagClass,tagEmoji,rcColors,gcColors,sponsorSteps,coordSteps,postSteps,_activeMoName,_activeMoReturnFocus,RAW_MODAL_CLOSERS,_rawModalReturnFocus,_rawModalWasVisible,_rawModalOpenStack,_rawModalObserver,_unsavedWorkChecks,MO_CLOSE_GUARDS,WZ_STEPS,_wzStep,_wzMaxStepReached,_wzDraft,_origOpenModal,emailTab,emailContextTripId,EMAIL_TEMPLATES,DECA_RESULT_EVENTS,DECA_PLACE_OPTIONS,lastDecaConf,lastDecaPlace,ORG_RESULTS,_lastOrgResultLevel,_lastOrgResultPlace,ORG_SYNC,ORG_WELCOME_SEEN,DECA_APPROVAL_EVENTS,DECA_SEASON_DEFAULT,DECA_SEASON,memberTab,MEMBER_STATUS_MAP,OFFICER_POSITIONS,_DECA_ROLE_HTML,_DECA_STATUS_HTML,slipRosters,nextSlipId,currentSlipFilter,_asSource,ftPermOverrides,confLeaveRecords,CONF_REQUIRED,FT_PERM_REQUIRED,_origRenderDashboard,tripArchive,archiveFilter,archivingTripId,archiveFilterCurrent,SCR_COURSES,CUSTOM_COURSES,SCR_STUDENT_EMAILS,PACING_8175,PACING_6115,PACING_8177,scrActiveCourse,scrActivePeriod,scrScores,SCR_SCORE_LABELS,PACING_REGISTRY,Q_COLORS_BG,Q_COLORS_HDR,Q_COLORS_BDR,WBL_STUDENTS,SBE_ELEMENTS,SBE_STATUS,_sbeNoteTimer,_sbeNotePending,LESSON_PLANS,UNIT_PLANS,LP_EDITS,lpActivePlan,GRADING_STRUCTURE,LP_Q_COLORS,LP_Q_BG,LP_C_LABELS,LP_C_COLORS,_lpCurrentView,scrViewMode,PROC_STEPS,PURCHASE_ORDERS,poCounter,RECEIVING_CHECKS,RECEIVING_STATUS,SALES_LOG,INVENTORY,ES_PLAYERS,ES_MATCHES,SSBU_CHECKLIST,SSBU_CHECK_STATUS,MK8_CHECK_STATUS_LOADED,MK8_CHECKLIST,MK8_CHECK_STATUS,_activeToasts,DB_ROLES,BELL_SCHEDULES_DEFAULT,SCHEDULE_OVERRIDES_DEFAULT,NO_SCHOOL_DEFAULT,DAY_SCHEDULE_MAP_DEFAULT,SCHOOL_PERIODS,BELL_SCHEDULES,CCPS_SCHEDULE_OVERRIDES,CCPS_NO_SCHOOL,DAY_SCHEDULE_MAP,_emailAiReqId,_lpAiReqId,_ord,DEADLINES,_editingDeadlineId,_naNav,CHOICE_SNOOZED,_lastChoiceCardsSig,HORIZON,MOOD_LABELS,MOOD_ADVICE,MOOD_COLORS,_journalMood,_journalStep,_journalOpenSnapshot,JOURNAL_TOTAL_STEPS,JOURNAL_DRAFT_KEY,_journalDraftTimer,_cronChecked,_journalForced,_journalAutoShownDate,_depositReminderShownDate,_commsTriageShownDate,_ACC_IDS,IMPROVEMENTS,surveyAnswers,_profSaveStatusTimer,MONTHS,MONTH_RE,ORDINAL_Q,HOLIDAY_KEYWORDS,_schedSaveStatusTimer,ORG_ROSTER_SYNC_FIELDS,ORG_RESULT_SYNC_FIELDS,AI_FLOW_LABELS,SYNC_PLATFORMS,OBS_PREP_ITEMS,EMAIL_BRIDGE,CAS_CCPS_BRIDGE,QUARTERS_DEFAULT,LP_QUARTERS,CAS_PACING_UNITS,CAS_PACING_COURSES,CAS_PACING_NOTES,CUSTOM_PACING_UNITS,_calendarExpiredBannerDismissed,SP_STATIC_DEFAULTS,_spPeriods,_bragTab,_bragData,_bragBodySnapshot,_bragSubjectSnapshot,BRAG_AUDIENCE;
 
+function _lhPendingAll_() {
+try {
+const v = JSON.parse(localStorage.getItem(LH_SYNC_PENDING_KEY) || 'null');
+return (v && typeof v === 'object') ? { config: v.config || {}, data: v.data || {} } : { config: {}, data: {} };
+} catch (e) { return { config: {}, data: {} }; }
+}
+function _lhPendingSave_(all) {
+try { localStorage.setItem(LH_SYNC_PENDING_KEY, JSON.stringify(all)); } catch (e) {}
+}
+function _lhPendingMark_(kind, key) {
+const all = _lhPendingAll_();
+const seq = (Number(all[kind][key]) || 0) + 1;
+all[kind][key] = seq;
+_lhPendingSave_(all);
+return seq;
+}
+function _lhPendingClear_(kind, key, seq) {
+const all = _lhPendingAll_();
+if (Number(all[kind][key]) === seq) { delete all[kind][key]; _lhPendingSave_(all); }
+}
+function _lhPendingKeys_(kind) { return Object.keys(_lhPendingAll_()[kind]); }
+function _lhIsLatestSave_(kind, key, seq) { return Number(_lhPendingAll_()[kind][key]) === seq; }
+function _lhMergeById_(serverArr, localArr) {
+const out = [];
+const at = {};
+(serverArr || []).forEach(r => {
+if (!r || r.id == null) return;
+at[String(r.id)] = out.length;
+out.push(r);
+});
+(localArr || []).forEach(r => {
+if (!r) return;
+if (r.id == null) { out.push(r); return; }
+const id = String(r.id);
+if (id in at) out[at[id]] = r;
+else { at[id] = out.length; out.push(r); }
+});
+return out;
+}
+function _lhWarnSyncFailedOnce_(key, message) {
+console.warn('[LeaderHub] ' + key + ' was not saved to the server: ' + message);
+if (_lhSyncFailWarned[key]) return;
+_lhSyncFailWarned[key] = true;
+if (typeof _showToast === 'function') {
+_showToast('⚠ ' + key + ' is saved on this device but not on the server (' + message +
+'). It stays safe here and will be retried.', 8000, '#b45309');
+}
+}
 function _lhSyncConfigKeyToServer_(key, value) {
 if (LH_SERVER_SYNCED_CONFIG_KEYS.indexOf(key) === -1) return;
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+const seq = _lhPendingMark_('config', key);
 google.script.run
-.withFailureHandler(err => console.warn('[LeaderHub] config sync failed for ' + key + ':', (err && err.message) || err))
+.withSuccessHandler(res => {
+if (res && res.ok === false) { _lhWarnSyncFailedOnce_(key, res.error || 'refused'); return; }
+_lhPendingClear_('config', key, seq);
+})
+.withFailureHandler(err => _lhWarnSyncFailedOnce_(key, (err && err.message) || String(err)))
 .lhSaveConfig(key, value);
 }
 async function lhRefreshConfigFromServer_() {
@@ -3318,6 +3371,16 @@ console.warn('[LeaderHub] Could not refresh settings from server:', (e && e.mess
 return;
 }
 if (!remote) return;
+const pendingConfig = _lhPendingKeys_('config');
+pendingConfig.forEach(k => { delete remote[k]; });
+setTimeout(() => {
+pendingConfig.forEach(k => {
+try {
+const raw = localStorage.getItem(k);
+if (raw != null) _lhSyncConfigKeyToServer_(k, JSON.parse(raw));
+} catch (e) {}
+});
+}, 0);
 const _write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 ['lh_keyContacts', 'lh_student_id_map', 'lh_cas_ccps_api_url',
 'lh_cas_ccps_oauth_client_id', 'lh_sub_settings',
@@ -3388,10 +3451,18 @@ function _lhGetDataTracker_(domain) { return LS.get(_lhDataTrackerKey_(domain), 
 function _lhSetDataTracker_(domain, tracker) {
 try { localStorage.setItem(_lhDataTrackerKey_(domain), JSON.stringify(tracker)); } catch (e) {}
 }
-async function _lhSyncDataKeyToServer_(key, value) {
+function _lhSyncDataKeyToServer_(key, value) {
 const domain = LH_SERVER_SYNCED_DATA_KEYS[key];
 if (!domain) return;
 if (!(typeof google !== 'undefined' && google.script && google.script.run)) return;
+const seq = _lhPendingMark_('data', key);
+const prev = _lhDataPushChain[domain] || Promise.resolve();
+const next = prev.then(() => _lhPushDataNow_(key, domain, value, seq)).catch(() => {});
+_lhDataPushChain[domain] = next;
+return next;
+}
+async function _lhPushDataNow_(key, domain, value, seq) {
+if (!_lhIsLatestSave_('data', key, seq)) return;
 const tracker = _lhGetDataTracker_(domain);
 const rows = (Array.isArray(value) ? value : []).map(rec => [
 (rec && rec.id != null) ? String(rec.id) : '',
@@ -3411,13 +3482,14 @@ return;
 }
 if (res && res.ok) {
 _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+_lhPendingClear_('data', key, seq);
 return;
 }
 if (res && res.conflict && !_lhDataConflictWarned[domain]) {
 _lhDataConflictWarned[domain] = true;
 console.warn('[LeaderHub] ' + domain + ' has changes from elsewhere this browser hasn\'t synced yet — this edit stayed safe locally but wasn\'t pushed to the server.');
 if (typeof _showToast === 'function') {
-_showToast('⚠ ' + domain + ' changed elsewhere — reload once things settle to catch up', 6000, '#b45309');
+_showToast('⚠ ' + domain + ' also changed on another device. Your edit is safe here and will be merged when the app next loads.', 8000, '#b45309');
 }
 }
 }
@@ -3513,13 +3585,22 @@ google.script.run
 console.warn('[LeaderHub] Could not refresh ' + domain + ' from server:', (e && e.message) || e);
 continue;
 }
+const pending = _lhPendingKeys_('data').indexOf(key) !== -1;
+let local = null;
+if (pending) {
+try { local = JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { local = null; }
+}
 if (res && res.ok && res.found) {
-const arr = (res.rows || [])
+let arr = (res.rows || [])
 .map(r => { try { return JSON.parse(r[1]); } catch (e) { return null; } })
 .filter(Boolean);
+if (pending && Array.isArray(local)) arr = _lhMergeById_(arr, local);
 const apply = APPLY[domain];
 if (apply) apply(arr);
 _lhSetDataTracker_(domain, { lastKnownRemoteUpdatedAt: res.updatedAt });
+if (pending) _lhSyncDataKeyToServer_(key, arr);
+} else if (res && res.ok && pending && Array.isArray(local)) {
+_lhSyncDataKeyToServer_(key, local);
 }
 }
 }
@@ -4366,7 +4447,7 @@ openModal('preview');
 function prow1(label, val) {
 const empty = !val || val==='';
 return `<div style="display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0ebe0"><div style="min-width:220px;font-weight:600;color:#333;font-size:.78rem">${label}</div><div style="flex:1;color:${empty?'#b91c1c':'#444'};font-size:.79rem">${empty?'⚠ MISSING':val}</div></div>`;
-}
+}</script><script data-lh-block="leader-hub-block-1-part-2-of-16">
 function prow2(l1, v1, l2, v2) {
 const e1=!v1||v1===''; const e2=!v2||v2==='';
 return `<div style="display:flex;gap:.5rem;padding:.3rem 0;border-bottom:1px solid #f0ebe0"><div style="flex:1;display:flex;gap:.3rem"><span style="font-weight:600;font-size:.78rem;min-width:130px">${l1}</span><span style="color:${e1?'#b91c1c':'#444'};font-size:.79rem">${e1&&l1?'⚠ MISSING':v1||''}</span></div><div style="flex:1;display:flex;gap:.3rem"><span style="font-weight:600;font-size:.78rem;min-width:130px">${l2}</span><span style="color:${e2&&l2?'#b91c1c':'#444'};font-size:.79rem">${e2&&l2?'⚠ MISSING':v2||''}</span></div></div>`;
@@ -4389,7 +4470,7 @@ sel.innerHTML = trips.map(t => `<option value="${t.id}">${escH(t.name)} — ${fd
 if (prevVal && trips.some(t => String(t.id) === prevVal)) sel.value = prevVal;
 else if (trips.length) sel.value = trips[0].id;
 renderTripFlow();
-}</script><script data-lh-block="leader-hub-block-1-part-2-of-16">
+}
 function renderTripFlow() {
 const sel = document.getElementById('tripflow-trip-sel');
 const tripId = sel ? parseInt(sel.value) : NaN;
@@ -15080,6 +15161,8 @@ var LH_SERVER_SYNCED_CONFIG_KEYS = [
 'lh_lp_edits', 'lh_lp_edit_meta',
 'lh_unit_notes',
 ];
+var LH_SYNC_PENDING_KEY = 'lh_sync_pending';
+var _lhSyncFailWarned = {};
 var LH_SERVER_SYNCED_DATA_KEYS = {
 lh_trips: 'trips',
 lh_trip_archive: 'trip_archive',
@@ -15099,6 +15182,7 @@ lh_obs_history: 'observation_history',
 lh_brag_manual_wins: 'brag_manual_wins',
 };
 var _lhDataConflictWarned = {};
+var _lhDataPushChain = {};
 var SCR_SYNC_DEBOUNCE_MS = 2000;
 var _scrSyncQueue = [];
 var _scrSyncTimer = null;
