@@ -12882,6 +12882,7 @@ const syncRow = (sync && sync.enabled)
            <span style="font-size:.68rem;color:#166534;font-weight:600">${_orgSyncStatusLine_(id)}</span>
            <button onclick="lhPullOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬇️ Pull</button>
            <button onclick="lhPushOrgSync('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">⬆️ Push</button>
+           <button onclick="lhCopyOrgShareCode('${escJsAttr(id)}')" style="background:none;border:1px solid var(--border);border-radius:5px;padding:.2rem .5rem;font-size:.68rem;cursor:pointer">📋 Copy share code</button>
            <button onclick="lhStopSharingOrg('${escJsAttr(id)}')" style="background:none;border:none;color:#dc2626;font-size:.68rem;cursor:pointer;text-decoration:underline">Stop sharing</button>
          </div>`
 : `<div style="padding-left:1.75rem;margin-top:.3rem">
@@ -12924,6 +12925,42 @@ const sync = ORG_SYNC[orgId];
 if (!sync || !sync.enabled) return '';
 return `🔗 Shared${sync.lastSyncedAt ? ' · synced ' + escH(new Date(sync.lastSyncedAt).toLocaleString()) : ''}`;
 }
+function _orgSyncCall_(orgId, action, payload, bridgeUrl) {
+const url = bridgeUrl !== undefined ? bridgeUrl : ((ORG_SYNC[orgId] && ORG_SYNC[orgId].bridgeUrl) || '');
+if (typeof google !== 'undefined' && google.script && google.script.run) {
+return new Promise((resolve, reject) => {
+google.script.run
+.withSuccessHandler(resolve)
+.withFailureHandler(err => reject(new Error((err && err.message) || String(err))))
+.lhOrgSyncCall(url, action, payload || {});
+});
+}
+if (!url) return callGAS(action, payload);
+return fetch(url, {
+method: 'POST',
+headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+body: JSON.stringify(Object.assign({}, payload || {}, { action })),
+}).then(resp => { if (!resp.ok) throw new Error('GAS HTTP ' + resp.status); return resp.json(); });
+}
+function _orgShareCode_(orgId) {
+const sync = ORG_SYNC[orgId] || {};
+const url = sync.bridgeUrl || sync.ownBridgeUrl || EMAIL_BRIDGE.url() || '';
+return url ? orgId + '@' + url : '';
+}
+function _parseOrgShareCode_(code) {
+const m = /^\s*([a-z0-9_-]+)@(https:\/\/script\.google\.com\/\S+\/exec)\s*$/i.exec(String(code || ''));
+return m ? { orgId: m[1].toLowerCase(), bridgeUrl: m[2] } : null;
+}
+function lhCopyOrgShareCode(orgId) {
+const code = _orgShareCode_(orgId);
+if (!code) { _showToast('⚠ Push once first; the share code comes from the bridge that holds this organization.', 4500, '#991b1b'); return; }
+const done = () => _showToast('📋 Share code copied. Send it to your co-advisor; they paste it under "Join a Shared Organization".', 5000, '#166534');
+if (navigator.clipboard && navigator.clipboard.writeText) {
+navigator.clipboard.writeText(code).then(done, () => window.prompt('Copy this share code:', code));
+} else {
+window.prompt('Copy this share code:', code);
+}
+}
 function lhShareOrg(orgId) {
 const org = ORGANIZATIONS[orgId];
 if (!org) return;
@@ -12957,7 +12994,7 @@ return;
 const state = ORG_SYNC[orgId];
 let res;
 try {
-res = await callGAS('pushOrgSync', {
+res = await _orgSyncCall_(orgId, 'pushOrgSync', {
 orgId,
 orgName: org.name,
 config: org,
@@ -12974,7 +13011,8 @@ return;
 }
 if (res && res.conflict) { _showOrgSyncConflictModal(orgId, res); return; }
 if (!res || !res.ok) { _showToast('⚠ Push failed: ' + ((res && res.error) || 'unknown error'), 4500, '#991b1b'); return; }
-ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
+ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: PROFILE.email || '', localSnapshotHash: _orgSyncSnapshot_(orgId),
+bridgeUrl: (state && state.bridgeUrl) || '', ownBridgeUrl: res.bridgeUrl || (state && state.ownBridgeUrl) || '' };
 persistOrgSync();
 renderOrgCatalogSettings();
 if (document.getElementById('view-deca')?.classList.contains('active')) renderOrgHub();
@@ -12990,7 +13028,7 @@ _showConfirm(
 { confirmLabel: 'Pull', danger: false, ariaLabel: `Pull organization ${orgName}` }
 );
 }
-async function _doPullOrgSync(orgId) {
+async function _doPullOrgSync(orgId, bridgeUrl) {
 if (!_lhBridgeAvailable_()) {
 _showToast('⚙️ Apps Script URL not set — open Settings → Email Bridge to configure', 4000, '#991b1b');
 return false;
@@ -13002,7 +13040,7 @@ return false;
 }
 let res;
 try {
-res = await callGAS('pullOrgSync', { orgId });
+res = await _orgSyncCall_(orgId, 'pullOrgSync', { orgId }, bridgeUrl);
 } catch (e) {
 _showToast('⚠ Could not reach Apps Script bridge.', 4000, '#991b1b');
 return false;
@@ -13042,7 +13080,9 @@ LS.set('lh_deca_results', resultRows.map(r => ({ id: r.id || ('dr' + Date.now() 
 ORG_RESULTS[orgId] = resultRows.map(r => ({ id: r.id || ('or' + Date.now() + Math.random().toString(36).slice(2,6)), student: r.student, event: r.event, levelKey: r.level, place: r.place, notes: r.notes, addedAt: r.addedAt }));
 persistOrgResults();
 }
-ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '', localSnapshotHash: _orgSyncSnapshot_(orgId) };
+ORG_SYNC[orgId] = { enabled: true, lastKnownRemoteUpdatedAt: res.updatedAt, lastSyncedAt: new Date().toISOString(), lastSyncedBy: res.updatedBy || '', localSnapshotHash: _orgSyncSnapshot_(orgId),
+bridgeUrl: bridgeUrl !== undefined ? bridgeUrl : ((priorState && priorState.bridgeUrl) || ''),
+ownBridgeUrl: res.bridgeUrl || (priorState && priorState.ownBridgeUrl) || '' };
 persistOrgSync();
 renderOrgTabs();
 _applyOrgNavLabels();
@@ -13156,6 +13196,12 @@ modal.innerHTML = `<div style="background:#fff;max-width:460px;width:92%;max-hei
       <h3 style="margin:0;font-size:1rem">Join a Shared Organization</h3>
       <button id="org-join-close" aria-label="Close" style="background:none;border:none;font-size:1.1rem;cursor:pointer">✕</button>
     </div>
+    <label for="org-join-code" style="display:block;font-size:.75rem;font-weight:600;margin-bottom:.3rem">Paste the share code your co-advisor sent you</label>
+    <div style="display:flex;gap:.4rem;margin-bottom:.9rem">
+      <input id="org-join-code" type="text" placeholder="deca@https://script.google.com/…/exec" style="flex:1;padding:.4rem .5rem;border:1px solid var(--border);border-radius:6px;font-size:.75rem">
+      <button id="org-join-code-go" style="background:var(--navy);color:#fff;border:none;border-radius:6px;padding:.4rem .8rem;font-size:.75rem;font-weight:600;cursor:pointer">Join</button>
+    </div>
+    <div style="font-size:.72rem;font-weight:600;margin-bottom:.3rem">Shared from this bridge</div>
     <div id="org-join-list" style="font-size:.8rem;color:var(--muted)">Loading shared organizations…</div>
   </div>`;
 document.body.appendChild(modal);
@@ -13163,11 +13209,16 @@ const closeIt = () => modal.remove();
 modal._onCancel = closeIt;
 modal.addEventListener('click', (e) => { if (e.target === modal) closeIt(); });
 document.getElementById('org-join-close').onclick = closeIt;
+document.getElementById('org-join-code-go').onclick = () => {
+const parsed = _parseOrgShareCode_(document.getElementById('org-join-code').value);
+if (!parsed) { _showToast('⚠ That doesn\'t look like a share code (org@https://script.google.com/…/exec).', 4500, '#991b1b'); return; }
+lhJoinOrg(parsed.orgId, parsed.bridgeUrl);
+};
 const listEl = document.getElementById('org-join-list');
 let res;
 try { res = await callGAS('listOrgSyncs', {}); }
 catch (e) { listEl.textContent = '⚠ Could not reach Apps Script bridge.'; return; }
-if (!res || !res.ok) { listEl.textContent = '⚠ Could not load: ' + ((res && res.error) || 'unknown error'); return; }
+if (!res || !res.ok) { listEl.textContent = 'Only the advisor who owns this bridge can list it. Use a share code above.'; return; }
 if (!res.orgs.length) { listEl.textContent = 'No organizations have been shared on this bridge yet.'; return; }
 listEl.innerHTML = res.orgs.map(o => {
 const existsLocally = !!ORGANIZATIONS[o.orgId];
@@ -13179,11 +13230,11 @@ return `<div style="display:flex;align-items:center;gap:.5rem;padding:.5rem;bord
     </div>`;
 }).join('');
 }
-function lhJoinOrg(orgId) {
+function lhJoinOrg(orgId, bridgeUrl) {
 const existing = ORGANIZATIONS[orgId];
 const doPull = () => {
 const m = document.getElementById('org-join-modal'); if (m) m.remove();
-_doPullOrgSync(orgId).then(ok => {
+_doPullOrgSync(orgId, bridgeUrl).then(ok => {
 if (ok && !ORG_WELCOME_SEEN[orgId]) {
 ORG_WELCOME_SEEN[orgId] = true;
 persistOrgWelcomeSeen();
@@ -13894,7 +13945,7 @@ for (const { code, period, stu } of unmatchedPool) {
 report.leaderHubUnmatched.push({ code, period, name: stu.name });
 }
 return report;
-}
+}</script><script data-lh-block="leader-hub-block-1-part-10-of-16">
 function _rekeyScrScoresForMatch_(course, period, oldName, newKey) {
 const bucket = scrScores[course] && scrScores[course][period];
 if (!bucket || oldName === newKey || !bucket[oldName]) return;
@@ -13935,7 +13986,7 @@ modal.innerHTML = `<div style="background:#fff;max-width:560px;width:95%;border-
     </div>
   </div>`;
 document.body.appendChild(modal);
-}</script><script data-lh-block="leader-hub-block-1-part-10-of-16">
+}
 function emailBridgeToast_(h, d) {
 const old = document.getElementById('eb-toast'); if (old) old.remove();
 const total = h + d;
