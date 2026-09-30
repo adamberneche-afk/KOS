@@ -33,6 +33,7 @@ const KP = path.join(__dirname, '..', '..', 'kos-personal');
 const FILES = [
   path.join(KP, '1_Config_And_Deploy.gs'),
   path.join(KP, '5_Error_And_Utilities.gs'),
+  path.join(KP, '10_Turnstile.gs'),
   path.join(KP, '12_StudioReturnHarvest.gs'),
 ];
 
@@ -365,6 +366,34 @@ test('harvest: an unretryable parse failure gives up on the RETURN row after ONE
   // The separation that keeps this file from fighting the Turnstile: giving
   // up on a return row never means giving up on the payload.
   assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE');
+});
+
+// Gemini answered one real chunk with a list of follow-up questions. The
+// return can never be used, so the Turnstile gets the row back on its next
+// pass instead of waiting out TURNSTILE_STALE_MINS with the only slot held.
+test('harvest: an unretryable parse failure expires the row\'s release, so the Turnstile recycles it at once', () => {
+  const { exported, sandbox } = load();
+  const ctx = seed(exported, sandbox, { primary: '- What is the immediate priority?\n- How should the audit work?' });
+  const other = { 'UID-OTHER': Date.now() - 60000 };
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('KOS_TURNSTILE_RELEASED', JSON.stringify(Object.assign({ [ctx.uid]: Date.now() - 60000 }, other)));
+
+  exported.harvestStudioReturns();
+
+  assert.deepEqual(JSON.parse(props.getProperty('KOS_TURNSTILE_RELEASED')), other,
+    'only this row\'s release is dropped');
+  assert.equal(stagingStatus(ctx), 'STUDIO_ACTIVE', 'the Turnstile, not the harvest, resets the row');
+  assert.equal(ctx.doc.getBody().getText(), 'ORIGINAL SOURCE TEXT', 'the doc is untouched');
+});
+
+test('harvest: a retryable failure keeps the row\'s release', () => {
+  const { exported, sandbox } = load();
+  seed(exported, sandbox, { skipStaging: true });
+  const props = sandbox.PropertiesService.getScriptProperties();
+  const map = JSON.stringify({ 'UID-1': Date.now() - 60000 });
+  props.setProperty('KOS_TURNSTILE_RELEASED', map);
+  exported.harvestStudioReturns();
+  assert.equal(props.getProperty('KOS_TURNSTILE_RELEASED'), map);
 });
 
 test('harvest: a genuinely retryable failure (doc write) still gives up only after SR_MAX_ATTEMPTS', () => {

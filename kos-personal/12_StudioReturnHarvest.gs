@@ -246,9 +246,18 @@ function harvestStudioReturns() {
         // treatment; see _srPruneHarvested_()'s own header.
         _srMarkReturnRow_(sheet, sheetRow, 'FAILED', outcome.error, attempts);
         result.failed++;
+        // The staging row is known dead too: the answer Studio gave for this
+        // release can't be used, and waiting out TURNSTILE_STALE_MINS cost
+        // the queue 30 minutes for each one (observed: Gemini answering with
+        // follow-up questions instead of JSON). Expiring the release lets
+        // the Turnstile's next pass treat it as stale at once. The Turnstile
+        // still makes the call, with its own counting, deprioritizing and
+        // terminal-status rules; the doc was never touched.
+        const expired = _srExpireRelease_(staging, uid);
         _reportError('harvestStudioReturns',
           new Error('Payload ' + uid + ' unretryable (' + outcome.error + ') — not waiting for ' +
-            'SR_MAX_ATTEMPTS, a retry re-parses the same stored text.'), null);
+            'SR_MAX_ATTEMPTS, a retry re-parses the same stored text.' +
+            (expired ? ' Release expired so the Turnstile recycles the row on its next pass.' : '')), null);
         continue;
       }
 
@@ -461,6 +470,20 @@ function _srNormalizeCuratorPayload_(pd) {
     };
   }
   return pd;
+}
+
+/**
+ * Drops a STUDIO_ACTIVE row's release time, so 10_Turnstile.gs's next pass
+ * sees it as stale and resets it. Returns true when there was one to drop.
+ */
+function _srExpireRelease_(staging, uid) {
+  const found = _srFindStagingRow_(staging, uid);
+  if (!found || found.status !== 'STUDIO_ACTIVE') return false;
+  const released = _readReleaseMap();
+  if (!Object.prototype.hasOwnProperty.call(released, uid)) return false;
+  delete released[uid];
+  _writeReleaseMap(released);
+  return true;
 }
 
 // Fallback for the *_JSON_PARSE_FAILED cases above: the model returned a
