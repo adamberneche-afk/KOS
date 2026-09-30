@@ -1,6 +1,16 @@
 # KOS Changelog
 
 
+### An unusable Studio answer doesn't hold the queue for 30 minutes (2026-09-29)
+
+Gemini answered one real chunk with a list of follow-up questions instead
+of JSON. The harvest marked the return FAILED at once, but the staging row
+stayed STUDIO_ACTIVE until the Turnstile's 30-minute staleness reset, with
+the only concurrency slot held. The harvest now drops that row's release
+time, so the Turnstile's next pass resets it right away, with its usual
+counting and terminal-status rules. The doc is never touched.
+
+
 ### A retried row reaches Studio again (2026-09-29)
 
 After `LOG-ee994593_CH04` failed audit at 18:05, Studio ran no KOS flow
