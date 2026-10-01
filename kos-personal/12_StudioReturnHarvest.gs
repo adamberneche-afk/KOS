@@ -406,10 +406,11 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
   // any surrounding prose either way. No rule-1-style distinction needed
   // here, unlike the classification branch above.
   let curatorParsed;
+  const curatorText = _srUnwrapStudioLinks_(_srStripJsonFence_(primary));
   try {
-    curatorParsed = JSON.parse(_srStripJsonFence_(primary));
+    curatorParsed = _srParseJson_(curatorText);
   } catch (e) {
-    curatorParsed = _srExtractJsonLoose_(_srStripJsonFence_(primary), 'object');
+    curatorParsed = _srExtractJsonLoose_(curatorText, 'object');
     if (curatorParsed === null) return { ok: false, error: 'CURATOR_JSON_PARSE_FAILED: ' + e.message, unretryable: true };
   }
 
@@ -417,10 +418,11 @@ function _srPrepareDocText_(payloadType, primary, auditor) {
 
   if (String(auditor).trim() !== '') {
     let auditorParsed;
+    const auditorText = _srUnwrapStudioLinks_(_srStripJsonFence_(auditor));
     try {
-      auditorParsed = JSON.parse(_srStripJsonFence_(auditor));
+      auditorParsed = _srParseJson_(auditorText);
     } catch (e) {
-      auditorParsed = _srExtractJsonLoose_(_srStripJsonFence_(auditor), 'object');
+      auditorParsed = _srExtractJsonLoose_(auditorText, 'object');
       if (auditorParsed === null) {
         // A malformed Auditor pass is a FULL failure, not a reason to drop
         // the audit and write an un-audited result. CURATOR_PROMPT.md's
@@ -510,10 +512,59 @@ function _srExtractJsonLoose_(text, kind) {
   const end = text.lastIndexOf(close);
   if (start === -1 || end === -1 || end <= start) return null;
   try {
-    return JSON.parse(text.slice(start, end + 1));
+    return _srParseJson_(text.slice(start, end + 1));
   } catch (e) {
     return null;
   }
+}
+
+// JSON.parse, plus one repair models need often: \' is not a JSON escape,
+// and an Auditor writing "Auditor\'s threshold" lost a whole sign-off to
+// AUDITOR_JSON_PARSE_FAILED. Only tried after a plain parse fails, and the
+// first error is the one thrown, so a real problem reads the same as before.
+function _srParseJson_(text) {
+  try {
+    return JSON.parse(text);
+  } catch (e) {
+    if (text.indexOf("\\'") === -1) throw e;
+    try {
+      return JSON.parse(text.replace(/\\'/g, "'"));
+    } catch (e2) {
+      throw e;
+    }
+  }
+}
+
+// Workspace Studio rewrites anything that looks like a web address into a
+// Google redirect link when it fills a variable: "smart_drop_zone.gs"
+// becomes https://www.google.com/url?q=https://smart_drop_zone.gs&sa=E&source=workflows,
+// and a value that passes through two steps is wrapped twice, the inner
+// link URL-encoded. Each one is replaced with what it wraps, so the doc and
+// the ledgers say smart_drop_zone.gs. The https:// Studio added is dropped
+// only when what's left can't be a real host (it has an underscore, or ends
+// in a code-file extension); a real link keeps its scheme.
+const SR_STUDIO_LINK_RE = /https?:\/\/www\.google\.com\/url\?q=([^&\s"\\]+)&sa=E&source=workflows/g;
+const SR_FILE_EXT_RE = /\.(gs|md|js|ts|py|json|html|css|sh|txt|csv|ya?ml)$/i;
+
+function _srUnwrapStudioLinks_(text) {
+  let out = String(text == null ? '' : text);
+  for (let pass = 0; pass < 5; pass++) {
+    const next = out.replace(SR_STUDIO_LINK_RE, function (link, q) {
+      let target;
+      try {
+        target = decodeURIComponent(q);
+      } catch (e) {
+        return link;
+      }
+      if (/["\\]/.test(target)) return link;
+      const bare = /^https?:\/\/([^\/\s?#]+)$/.exec(target);
+      if (bare && (bare[1].indexOf('_') !== -1 || SR_FILE_EXT_RE.test(bare[1]))) return bare[1];
+      return target;
+    });
+    if (next === out) break;
+    out = next;
+  }
+  return out;
 }
 
 // ================================================================
