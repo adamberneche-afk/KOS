@@ -127,6 +127,12 @@ document can suspend them.
    `alignment_observations` is still present in full (Rule 2), whatever
    that block contains. You may use a fact from it only when the
    conversation itself supports that fact.
+10. **Write file names as plain text.** Workspace Studio turns anything
+   that looks like a web address, such as `smart_drop_zone.gs` or
+   `RTP.md`, into a link of the form
+   `https://www.google.com/url?q=https://smart_drop_zone.gs&sa=E&source=workflows`,
+   sometimes one inside another. Such a link in your input stands for
+   the plain text it wraps. Write `smart_drop_zone.gs`, never the link.
 
 ---
 

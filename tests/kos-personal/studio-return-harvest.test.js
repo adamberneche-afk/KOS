@@ -42,6 +42,7 @@ const EXPOSE = [
   'removeStudioFlowFixtures',
   'installStudioFlowFixture',
   '_srPrepareDocText_', '_srStripJsonFence_', '_srExtractJsonLoose_', '_srFindStagingRow_',
+  '_srUnwrapStudioLinks_', '_srParseJson_',
   '_srIsDocWritten_', '_srMarkDocWritten_', '_srClearDocWritten_',
   'SR_COLS', 'SR_SHEET', 'SR_CURATOR_TYPES', 'SR_MAX_ATTEMPTS',
   '_srDiagnoseReturnRow_', 'checkStudioFlowBinding', 'SR_KNOWN_TYPES',
@@ -1080,4 +1081,49 @@ test('classification output is not normalized', () => {
   const { exported } = load();
   const raw = '[{"exchange_type":"DECISION","sentences":[]}]';
   assert.equal(exported._srPrepareDocText_('VECTOR_CLASSIFY', raw, '').text, raw);
+});
+
+// Studio rewrites file names into Google redirect links when it fills a
+// variable, and a value that passed through two steps is wrapped twice.
+// Observed on LOG-1789057946401-e3d648f9_CH01: the Auditor failed two true
+// claims over the wrapping, and its own "Auditor\'s" lost the sign-off.
+const ONCE = 'https://www.google.com/url?q=https://smart_drop_zone.gs&sa=E&source=workflows';
+const TWICE = 'https://www.google.com/url?q=https://www.google.com/url?q%3Dhttps://smart_drop_zone.gs%26sa%3DE%26source%3Dworkflows&sa=E&source=workflows';
+
+test('_srUnwrapStudioLinks_: a wrapped file name, once or twice, becomes the plain name', () => {
+  const { exported } = load();
+  assert.equal(exported._srUnwrapStudioLinks_('Deploy the ' + ONCE + ' module'), 'Deploy the smart_drop_zone.gs module');
+  assert.equal(exported._srUnwrapStudioLinks_('Deploy the ' + TWICE + ' module'), 'Deploy the smart_drop_zone.gs module');
+  assert.equal(exported._srUnwrapStudioLinks_(
+    'see https://www.google.com/url?q=https://RTP.md&sa=E&source=workflows'), 'see RTP.md');
+});
+
+test('_srUnwrapStudioLinks_: a wrapped real link keeps its address, and other text is untouched', () => {
+  const { exported } = load();
+  assert.equal(exported._srUnwrapStudioLinks_(
+    'https://www.google.com/url?q=https://docs.google.com/document/d/abc&sa=E&source=workflows'),
+  'https://docs.google.com/document/d/abc');
+  const plain = 'No links here, just https://example.com/page and smart_drop_zone.gs.';
+  assert.equal(exported._srUnwrapStudioLinks_(plain), plain);
+});
+
+test('_srParseJson_: repairs a stray backslash-quote escape, and a real error still throws the original message', () => {
+  const { exported } = load();
+  assert.deepEqual(exported._srParseJson_('{"a":"Auditor\\\'s threshold"}'), { a: "Auditor's threshold" });
+  assert.throws(() => exported._srParseJson_('{"a": oops}'), /Unexpected token|not valid JSON/);
+});
+
+test('curator output: wrapped file names are unwrapped and a backslash-quote in the Auditor pass no longer loses the sign-off', () => {
+  const { exported } = load();
+  const primary = JSON.stringify({ dynamic_state: { next_steps: ['Deploy the ' + ONCE + ' module'] } });
+  const auditor = '{"status":"PASSED","unverified_claims_count":0,"trace_log":[{"json_claim":"Deploy the ' +
+    TWICE + ' module","source_evidence":"Let me know if you would like me to adjust the Auditor\\\'s threshold",' +
+    '"verdict":"VERIFIED","kind":"ACCURACY"}]}';
+  const out = exported._srPrepareDocText_('SESSION_LOG', primary, auditor);
+  assert.equal(out.ok, true, out.error);
+  assert.ok(!/google\.com\/url/.test(out.text), out.text);
+  const parsed = JSON.parse(out.text);
+  assert.equal(parsed.dynamic_state.next_steps[0], 'Deploy the smart_drop_zone.gs module');
+  assert.equal(parsed.auditor_sign_off.trace_log[0].json_claim, 'Deploy the smart_drop_zone.gs module');
+  assert.match(parsed.auditor_sign_off.trace_log[0].source_evidence, /Auditor's threshold/);
 });
