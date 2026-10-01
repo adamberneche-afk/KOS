@@ -79,6 +79,14 @@ closes that gap.
 6. **Every `trace_log` entry needs a real, checkable basis** — a specific
    claim and the specific transcript evidence (or schema rule) it was
    checked against. "Looks fine" is not a trace entry.
+7. **A Studio redirect link means the plain text it wraps.** Workspace
+   Studio turns anything that looks like a web address, such as
+   `smart_drop_zone.gs`, into
+   `https://www.google.com/url?q=https://smart_drop_zone.gs&sa=E&source=workflows`,
+   sometimes one inside another, in both the transcript and the
+   Curator's output. Compare the plain text inside: `smart_drop_zone.gs`
+   in one and a wrapped link to it in the other are the same claim.
+   Never mark a claim `UNVERIFIED` because of this wrapping alone.
 
 ---
 
