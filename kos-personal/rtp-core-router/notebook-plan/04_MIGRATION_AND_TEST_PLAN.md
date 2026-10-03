@@ -15,7 +15,7 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 | 0.3 | Fix carried-forward values and re-derive the matrix. **Cause:** `_aggregateSentenceVectors_` drops themes a session scored 0, and `_writeMatrixRow` then wrote the *previous row's* value × 0.92 for them, where the previous row was a different session in backfill order, so one session's scores leaked into the next. Blending would not fix that. **Built:** each row now holds only its session's own scores (0 where it scored nothing); the 0.92 decay is applied when the matrix is read (`_vmDecayedState_`, used by `getVectorState()` and the startup primer), over all sessions in date order; `previewVectorMatrixRederive()` / `applyVectorMatrixRederive()` rebuild every row from the session's classify part docs and sort the rows by session date. | Rederive preview lists no kept rows (or each kept row has a stated reason); no row holds a value its own session did not score |
 | 0.4 | Verify unknowns U1–U6 (below) | Each answered in writing |
 | 0.5 | Record the baseline: current router behavior on the conformance suite (below) | Baseline results saved |
-| 0.6 | ~~Resolve the hosting-account question (U7).~~ **Answered:** the school account hosts the notebook. Remaining: confirm its admin policy allows notebooks and the extensions. | ADR-008 accepted; a throwaway notebook works on the account |
+| 0.6 | ~~Resolve the hosting-account question (U7).~~ **Answered:** the school account hosts the notebook, and the Operator confirmed notebooks are available on it (2026-10-03). Remaining: whether the Connected Apps work alongside a notebook (the U2 test). | ADR-008 accepted; a throwaway notebook works on the account |
 | 0.7 | ~~Record the 9/29 Curator format fix and any Flow steps bound to the RTP Gem (U10).~~ **Answered** (02_PRD §10): the Ask a Gem steps were replaced with Ask Gemini, the trigger rebound to `CuratorInput`; no Flow step uses the Gem. | Note in `kos-personal/CHANGELOG.md` |
 | 0.8 | Choose the target surface (ADR-010): Gem now, skill, or Gemini-app notebook Instructions. Check in the real account which are available. | Written decision; U2 and U4 re-tested on that surface |
 | 0.9 | Confirm which copies of `PIVOTS_AND_LESSONS` and `CURRENT_STATE` the Gem reads; the Drive copies seen on 2026-10-03 were near-empty or the unfilled template | Both hold real content, or the router stops citing them as authorities |
@@ -73,14 +73,14 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 | ID | Question | How to check |
 |---|---|---|
 | U1 | Is notebook source sync automatic? **Documented: yes, every few minutes.** | Still time one edit end to end. |
-| U2 | Notebook plus Workspace extensions in one Gem? | Attach the notebook to the test Gem and run `@Startup`; confirm Calendar, Gmail, and Tasks fetches still run. |
+| U2 | Notebook plus Workspace extensions in one Gem? **Researched; not documented for Gems, nearest yes is the Gemini-app notebook (02_PRD §10). The RTP Gem already has the RTP notebook attached, so test (b) can run on it directly.** | Test both surfaces with one throwaway notebook: (a) the notebook opened in the Gemini app with a short instruction, (b) a Gem with that notebook as Knowledge. In each, one turn that needs the source plus `@Calendar`, `@Gmail` and `@Google Tasks`. Also confirm the notebook is still attached to the Gem in a new chat the next day. |
 | U3 | Source limits; do Sheets sync? | Check the product's current limits before adding the full set. |
-| U4 | Does retrieval preserve persona rules? | Ask for a persona-specific hard constraint three ways; compare with the source doc. |
+| U4 | Does retrieval preserve persona rules? **Researched; documentation can't answer it (retrieval is passage-based, with no equal-coverage promise).** | Ask for a persona-specific hard constraint three ways; compare with the source doc and the cited passage. Use two personas, one whose constraint sits in a single section and one whose rule spans sections. |
 | U5 | Does an in-place GAS update sync? | Overwrite a test Doc via the Drive API; confirm the Gem sees the new content. |
 | U6 | Do tables and code blocks survive conversion? | Convert one persona doc and one protocol; diff against the source. |
 | U7 | ~~Which account hosts the notebook?~~ The school account. Does it allow notebooks and extensions? | Test with a throwaway notebook on the account. |
 | U8 | What do "Active Files in Context" and truncation checks mean under retrieval? | Ask a document-dependent question with one source removed; see what the Gem flags. |
-| U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER`? | Open the Gem's sources and the notebook; confirm the doc ID matches the stored property. |
+| U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER`? **Gem → RTP notebook: yes (2026-10-03).** | Open the RTP notebook's sources; confirm one is `KOS_LATEST_PRIMER` and its doc ID matches `KOS_LATEST_PRIMER_DOC_ID`. Also diff the Gem's Instructions against `RTP_CORE_ROUTER_V5_8.md`; the live text opens differently. |
 | U10 | ~~What changed for the 9/29 format fix; any Flow bound to the Gem?~~ Answered (02_PRD §10). | None. |
 
 ---
@@ -120,4 +120,4 @@ CT-01, CT-02, CT-03, CT-11, CT-13 and CT-16 test **new** behavior and are expect
 4. Phase 4 one-week cutover with fallback.
 
 ## Verification status (2026-10-03)
-Answered from documentation: U1, U3, and the platform timeline (ADR-010). Not documented, needs your test: U2, U4, U8. Likely but untested: U5. Cannot be checked from here: U9. Answered by the Operator: U7 (school account) and U10 (see 02_PRD §10).
+Answered from documentation: U1, U3, and the platform timeline (ADR-010). Researched 2026-10-03, still needs your test: U2 (a test for both the Gem and the Gemini-app notebook surface) and U4 (CT-11). Not documented, needs your test: U8. Likely but untested: U5. Cannot be checked from here: U9. Answered by the Operator: U7 (school account, notebooks available) and U10 (see 02_PRD §10). New constraint: a notebook's Instructions field holds at most 10,000 characters (02_PRD §10, finding 5).
