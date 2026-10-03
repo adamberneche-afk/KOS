@@ -97,7 +97,8 @@ const DB_ROLES = {
 
 // ─── SCHOOL CALENDAR / BELL SCHEDULE — Settings → School Calendar & Bell
 // Schedule ───────────────────────────────────────────────────────────────
-// Defaults below are Clover Hill's actual 2025-26 calendar and bell times —
+// Defaults below are the CCPS 2026-27 calendar (school board calendar as
+// published) and Clover Hill's bell times —
 // every one of them expires at the end of a school year and none had a UI
 // path to update. The _DEFAULT consts stay as literal fallbacks; the live
 // bindings (BELL_SCHEDULES, CCPS_SCHEDULE_OVERRIDES, CCPS_NO_SCHOOL,
@@ -191,30 +192,32 @@ const BELL_SCHEDULES_DEFAULT = {
   },
 };
 
+// School year the _DEFAULT calendar below (and QUARTERS_DEFAULT, and
+// CCPS_CALENDAR_DEADLINES_DEFAULT) describes; shown in Settings.
+const SCHOOL_CALENDAR_YEAR = '2026-27';
+
 const SCHEDULE_OVERRIDES_DEFAULT = {
-  // Early release days → EARLY3
-  '2025-09-19': 'EARLY3',
-  '2025-10-22': 'EARLY3',
-  '2025-11-14': 'EARLY3',
-  '2026-01-13': 'EARLY3',
-  '2026-02-06': 'EARLY3',
-  '2026-03-19': 'EARLY3',
-  '2026-04-17': 'EARLY3',
-  '2026-05-28': 'EARLY3',
-  '2026-05-29': 'EARLY3',
+  // Three-hour early release days → EARLY3 (2026-27)
+  '2026-10-30': 'EARLY3',  // end of Q1
+  '2026-11-13': 'EARLY3',
+  '2027-01-22': 'EARLY3',  // end of Q2
+  '2027-02-05': 'EARLY3',
+  '2027-04-23': 'EARLY3',
+  '2027-06-03': 'EARLY3',
+  '2027-06-04': 'EARLY3',  // end of Q4, last day of school
 };
 
+// Weekday holidays and breaks, 2026-27.
 const NO_SCHOOL_DEFAULT = [
-  '2025-08-29','2025-09-01',
-  '2025-10-02',
-  '2025-11-03','2025-11-04','2025-11-26','2025-11-27','2025-11-28',
-  '2025-12-22','2025-12-23','2025-12-24','2025-12-25','2025-12-26',
-  '2025-12-29','2025-12-30','2025-12-31',
-  '2026-01-01','2026-01-02','2026-01-19',
-  '2026-02-16',
-  '2026-03-20','2026-03-30','2026-03-31',
-  '2026-04-01','2026-04-02','2026-04-03',
-  '2026-05-25',
+  '2026-09-04','2026-09-07','2026-09-21',
+  '2026-11-02','2026-11-03','2026-11-25','2026-11-26','2026-11-27',
+  '2026-12-21','2026-12-22','2026-12-23','2026-12-24','2026-12-25',
+  '2026-12-28','2026-12-29','2026-12-30','2026-12-31',
+  '2027-01-01','2027-01-18',
+  '2027-02-15',
+  '2027-03-09','2027-03-26','2027-03-29','2027-03-30','2027-03-31',
+  '2027-04-01','2027-04-02',
+  '2027-05-31',
 ];
 
 // Sun=0..Sat=6 → schedule type key (null = no school that day of week).
@@ -1581,6 +1584,20 @@ function dbTick() {
 }
 
 // ── Deadlines ─────────────────────────────────────────────
+// The CCPS calendar's own dates (ids cal_*), 2026-27. Settings → School
+// Calendar → "Use the built-in calendar" swaps a saved list's cal_* entries
+// for these, so they're kept separate from the hand-entered deadlines.
+const CCPS_CALENDAR_DEADLINES_DEFAULT = [
+  { id:'cal_q1_end',   title:'End of Q1 — 3-Hr Early Release (Oct 30)',      date:'2026-10-30', role:'teach' },
+  { id:'cal_er_nov13', title:'3-Hr Early Release (Nov 13)',                  date:'2026-11-13', role:'teach' },
+  { id:'cal_q2_end',   title:'End of Q2 — 3-Hr Early Release (Jan 22)',      date:'2027-01-22', role:'teach' },
+  { id:'cal_er_feb5',  title:'3-Hr Early Release (Feb 5)',                   date:'2027-02-05', role:'teach' },
+  { id:'cal_q3_end',   title:'End of Q3 — Grades Due (Mar 25)',              date:'2027-03-25', role:'teach' },
+  { id:'cal_spring',   title:'Spring Break Begins (Mar 29)',                 date:'2027-03-29', role:'teach' },
+  { id:'cal_er_apr23', title:'3-Hr Early Release (Apr 23)',                  date:'2027-04-23', role:'teach' },
+  { id:'cal_er_jun3',  title:'3-Hr Early Release (Jun 3)',                   date:'2027-06-03', role:'teach' },
+  { id:'cal_q4_end',   title:'End of Q4 / Last Day of School — 3-Hr Early Release (Jun 4)', date:'2027-06-04', role:'teach' },
+];
 let DEADLINES = LS.get('lh_deadlines', [
   // ── CTE PLC Monthly Meetings ─────────────────────────────────────────────
   { id:'dl_plc_mar',   title:'CTE PLC — Monthly Meeting',                    date:'2026-03-19', role:'meeting' },
@@ -1598,16 +1615,7 @@ let DEADLINES = LS.get('lh_deadlines', [
   { id:'dl5',          title:'Field Trip Form Submission Deadline',           date:'2026-04-22', role:'trips' },
   // ── WBL / Store ────────────────────────────────────────────────────────────
   { id:'dl2',          title:'WBL Training Agreements Due to CEC',           date:'2026-03-31', role:'store' },
-  // ── CCPS Calendar — Quarter End Dates ──────────────────────────────────────
-  { id:'cal_q3_end',   title:'End of Q3 — Grades Due',                      date:'2026-03-19', role:'teach' },
-  { id:'cal_q4_end',   title:'End of Q4 / Last Day of School',               date:'2026-05-29', role:'teach' },
-  // ── CCPS Calendar — Early Release Days ────────────────────────────────────
-  { id:'cal_er_mar',   title:'3-Hr Early Release / Q3 End (Mar 19)',         date:'2026-03-19', role:'teach' },
-  { id:'cal_er_apr',   title:'3-Hr Early Release (Apr 17)',                  date:'2026-04-17', role:'teach' },
-  { id:'cal_er_may28', title:'3-Hr Early Release (May 28)',                  date:'2026-05-28', role:'teach' },
-  // ── CCPS Calendar — Breaks & Holidays ─────────────────────────────────────
-  { id:'cal_spring',   title:'Spring Break Begins (Mar 30)',                 date:'2026-03-30', role:'teach' },
-  { id:'cal_summer',   title:'First Day of Summer School (Jun 22)',          date:'2026-06-22', role:'teach' },
+  ...CCPS_CALENDAR_DEADLINES_DEFAULT.map(d => Object.assign({}, d)),
   { id:'dl4',          title:'SBE Business Plan — Principal Sign-Off',       date:'2026-04-15', role:'store' },
   // ── E-Sports ───────────────────────────────────────────────────────────────
   { id:'dl3',          title:'E-Sports Playoff Roster Lock',                 date:'2026-04-07', role:'esports' },

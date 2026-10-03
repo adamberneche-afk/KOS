@@ -31,7 +31,7 @@ const CALENDAR_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src',
 const PACING_HTML_PATH = path.join(__dirname, '..', '..', 'leader-hub', 'src', '12-integrations-pacing-subplan-brag.html');
 
 function loadCalendarParser() {
-  const source = extractLines(CALENDAR_HTML_PATH, 1276, 1566, [
+  const source = extractLines(CALENDAR_HTML_PATH, 1277, 1578, [
     'function extractDateRangeBounds(',
     'function extractDatesFromText(',
     'function parseCountyCalendarText(',
@@ -40,7 +40,7 @@ function loadCalendarParser() {
 }
 
 function loadPacing(globals) {
-  const source = extractLines(PACING_HTML_PATH, 2110, 2182, [
+  const source = extractLines(PACING_HTML_PATH, 2111, 2183, [
     'CAS_PACING_COURSES',
     'function getPacingUnitsForCourse(',
     'function getQuarterForDate(',
@@ -274,4 +274,47 @@ test('the first day of school and report-card days are never filed as days off',
     'November 11, 2026 - Veterans Day',
   ].join('\n'), 2026);
   assert.deepEqual(r.noSchool, ['2026-11-11']);
+});
+
+// ── The CCPS 2026-27 calendar as the district publishes it (pasted
+// 2026-10-03). It used to come in with no quarters, 2 of 7 early releases
+// and phantom days off: "Aug."/"Oct."/"Nov." weren't months, "December
+// 2026" read as December 20, and "Nov. 25, to Friday, Nov. 27" wasn't a
+// range. Its result is also what the built-in 2026-27 calendar holds.
+test('the published CCPS 2026-27 calendar imports whole', () => {
+  const { parseCountyCalendarText } = loadCalendarParser();
+  const text = require('fs').readFileSync(path.join(__dirname, 'fixtures', 'ccps-2026-27-calendar.txt'), 'utf8');
+  const r = parseCountyCalendarText(text, 2026);
+
+  assert.deepEqual(r.warnings, []);
+  assert.deepEqual(r.quarters, {
+    1: { start: '2026-08-24', end: '2026-10-30' },
+    2: { start: '2026-11-04', end: '2027-01-22' },
+    3: { start: '2027-01-25', end: '2027-03-25' },
+    4: { start: '2027-04-05', end: '2027-06-04' },
+  });
+  assert.deepEqual(r.earlyRelease,
+    ['2026-10-30', '2026-11-13', '2027-01-22', '2027-02-05', '2027-04-23', '2027-06-03', '2027-06-04']);
+  const weekdays = r.noSchool.filter((d) => { const w = new Date(d + 'T12:00:00Z').getUTCDay(); return w >= 1 && w <= 5; });
+  assert.deepEqual(weekdays, [
+    '2026-09-04', '2026-09-07', '2026-09-21',
+    '2026-11-02', '2026-11-03', '2026-11-25', '2026-11-26', '2026-11-27',
+    '2026-12-21', '2026-12-22', '2026-12-23', '2026-12-24', '2026-12-25',
+    '2026-12-28', '2026-12-29', '2026-12-30', '2026-12-31',
+    '2027-01-01', '2027-01-18', '2027-02-15',
+    '2027-03-09', '2027-03-26', '2027-03-29', '2027-03-30', '2027-03-31',
+    '2027-04-01', '2027-04-02', '2027-05-31',
+  ]);
+});
+
+test('a range that wraps December into January with only the end year dates its start the year before', () => {
+  const { extractDatesFromText } = loadCalendarParser();
+  const dates = extractDatesFromText('Winter break: Dec. 28 to Jan. 1, 2027', 2026);
+  assert.deepEqual(dates, ['2026-12-28', '2026-12-29', '2026-12-30', '2026-12-31', '2027-01-01']);
+});
+
+test('a month heading with a year is not a date, and "Marking" is not March', () => {
+  const { extractDatesFromText } = loadCalendarParser();
+  assert.deepEqual(extractDatesFromText('December 2026', 2026), []);
+  assert.deepEqual(extractDatesFromText('Marking 3 periods', 2026), []);
 });
