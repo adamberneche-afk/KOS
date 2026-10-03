@@ -863,17 +863,41 @@ const SR_NON_ACCESS_PHRASES = [
 // Longest-unique-word-first: rare, specific terms (proper nouns, IDs, domain
 // vocabulary) tend to run longer than common English filler, so this is a
 // cheap proxy for "distinguishing" without any real NLP.
+//
+// Code identifiers (camelCase, snake_case) come last. A session that pastes
+// code is full of them, and they are also the longest tokens it has, so
+// they used to fill all 40 places: on 2026-10-03 LOG-adfeae91_CH02 was
+// flagged SUSPECT_FABRICATION because its candidates were all function
+// names (integratePendingGovernance, backgroundCapacityCheck, ...) while
+// the Curator's summary, which the Auditor verified against verbatim
+// transcript quotes, used the session's prose words. A summary rarely
+// repeats a function name; a model that never read the document doesn't
+// share its prose words either, so prose words first keeps the gate.
+// Identifiers still fill any places the prose leaves, so a source that is
+// almost all code is still checked.
 function _srDistinguishingWords_(text) {
   const seen = {};
-  const words = [];
-  const matches = String(text).toLowerCase().match(/[a-z0-9]{6,}/g) || [];
-  matches.forEach(function (w) {
-    if (seen[w] || SR_GROUNDEDNESS_STOPWORDS[w]) return;
-    seen[w] = true;
-    words.push(w);
+  const prose = [];
+  const code = [];
+  const matches = String(text).match(/[A-Za-z0-9_]{6,}/g) || [];
+  matches.forEach(function (tok) {
+    const isCode = /[a-z][A-Z]/.test(tok) || tok.indexOf('_') !== -1;
+    // Score a snake_case identifier's parts as words too, as the old
+    // [a-z0-9] split did.
+    const parts = isCode && tok.indexOf('_') !== -1
+      ? [tok].concat(tok.split('_').filter(function (p) { return p.length >= 6; }))
+      : [tok];
+    parts.forEach(function (part, i) {
+      const w = part.toLowerCase();
+      if (w.length < 6 || seen[w] || SR_GROUNDEDNESS_STOPWORDS[w]) return;
+      seen[w] = true;
+      (isCode && i === 0 ? code : prose).push(w);
+    });
   });
-  words.sort(function (a, b) { return b.length - a.length; });
-  return words.slice(0, SR_GROUNDEDNESS_MAX_CANDIDATES);
+  const byLength = function (a, b) { return b.length - a.length; };
+  prose.sort(byLength);
+  code.sort(byLength);
+  return prose.concat(code).slice(0, SR_GROUNDEDNESS_MAX_CANDIDATES);
 }
 
 /**
