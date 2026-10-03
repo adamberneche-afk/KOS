@@ -218,6 +218,17 @@ ingested earlier. See the spec's "Session pairing" note. The
 Studio-side Classify Flow itself still has to exist and answer for any of
 this to produce data.
 
+**One session per row (2026-10-03):** each `VECTOR_MATRIX` row holds only
+its session's own scores, 0 for a theme it didn't score. The 0.92 decay is
+applied when the matrix is read (`_vmDecayedState_()`, used by
+`getVectorState()` and the startup primer), over every session in date
+order. `21_VectorMatrixRepair.gs` repairs rows written before that:
+`previewDuplicateSessions()`/`applyDuplicateSessions()` keep one session
+per content hash and mark the other copies `DUPLICATE`, and
+`previewVectorMatrixRederive()`/`applyVectorMatrixRederive()` rebuild
+every row from its classify parts in date order. Run the duplicates pair
+first, then the rederive.
+
 **Migrating an existing live sheet.** If your `BRAIN_TRUST_INDEX`
 spreadsheet already has `VECTOR_MATRIX`/`INCUBATOR` tabs from before this
 engine landed, `_getOrCreateSheet()` will NOT upgrade their headers on its

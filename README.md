@@ -311,7 +311,7 @@ lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
 batched requeue of terminal staging rows (`staging-requeue.test.js`), the audit gate rejecting a hollow `PASSED` with an empty `trace_log` (`audit-gate.test.js`), and
 per-session vector classification and its backfill
-(`vector-classify-sessions.test.js`), incubator decay (`incubator-decay.test.js`),
+(`vector-classify-sessions.test.js`), the matrix repair (one session per row, decay at read time, duplicate sessions, rederive: `vector-matrix-repair.test.js`), incubator decay (`incubator-decay.test.js`),
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers

@@ -132,7 +132,8 @@ function _routeVectorWeightsInternal(pd, sessionUid, timestamp) {
       const upper = t.toUpperCase().trim();
       if (knownList.includes(upper)) {
         if (score > 0) known[upper] = score;
-        // score === 0 for a known theme: treated as absent, decays instead.
+        // score === 0 for a known theme: absent, stored as 0; the decay is
+        // applied when the matrix is read (_vmDecayedState_).
       } else if (score >= CFG.INCUBATOR_THRESHOLD) {
         unknown[upper] = score;
       }
@@ -358,12 +359,15 @@ function _aggregateSentenceVectors_(exchanges) {
 // ================================================================
 
 /**
- * Appends one row to VECTOR_MATRIX (wide-format, decayed state).
+ * Appends one row to VECTOR_MATRIX: this session's own scores.
  *
- * For each theme column in the sheet:
- *   - If the current session has a score for that theme → use it.
- *   - Otherwise → apply DECAY_FACTOR to the previous row's score.
- *   - If no previous score exists → write 0.
+ * For each theme column in the sheet, the session's score, or 0 when it
+ * didn't score that theme. Each row holds one session and nothing else.
+ * This used to write DECAY_FACTOR × the previous row's score for an
+ * absent theme, and the previous row was whichever session the backfill
+ * happened to write last, so one session's scores leaked into the next
+ * and read as its own. Decay is applied when the matrix is read, over
+ * all sessions in date order: _vmDecayedState_().
  *
  * The final column (INCUBATOR_SIGNALS) records how many incoming
  * themes were routed to the incubator rather than known columns.
@@ -402,47 +406,107 @@ function _writeMatrixRow(sheet, known, sessionUid, timestamp) {
   }
 
   const themes = headers.slice(themeStart, -2);  // exclude trailing INCUBATOR_SIGNALS + CHECKSUM
+  const built = _buildMatrixRow_(themes, known, sessionUid, timestamp);
+  const row = built.row;
+  const result = built.result;
 
-  // Read last row for decay baseline
-  const lastScores = {};
-  if (sheet.getLastRow() > 1) {
-    const lr = sheet.getRange(
-      sheet.getLastRow(), 1, 1, sheet.getLastColumn()
-    ).getValues()[0];
-    themes.forEach((t, i) => {
-      const v = parseFloat(lr[themeStart + i]);
-      if (!isNaN(v)) lastScores[t] = v;
-    });
-  }
+  sheet.appendRow(row);
+  return result;
+}
 
-  // Build new row with decay applied to absent themes
+
+/**
+ * One VECTOR_MATRIX row from a session's known-theme scores: the session's
+ * score per theme column, 0 where it has none, then INCUBATOR_SIGNALS and
+ * CHECKSUM. Shared by _writeMatrixRow() and rederiveVectorMatrix().
+ *
+ * @returns {{row: Array, result: Object}}
+ */
+function _buildMatrixRow_(themes, known, sessionUid, timestamp) {
   const row    = [sessionUid, timestamp];
   const result = { sessionUid, timestamp };
-
   themes.forEach(t => {
-    let score;
-    if (known[t] !== undefined) {
-      score = parseFloat(known[t].toFixed(4));
-    } else if (lastScores[t] !== undefined) {
-      score = parseFloat((lastScores[t] * CFG.DECAY_FACTOR).toFixed(4));
-    } else {
-      score = 0;
-    }
+    const v = known[t];
+    const score = (v !== undefined && !isNaN(parseFloat(v))) ? parseFloat(parseFloat(v).toFixed(4)) : 0;
     row.push(score);
     result[t] = score;
   });
-
   // INCUBATOR_SIGNALS: count of incoming themes that didn't map to a column
-  const incubCount = Object.keys(known).filter(k => !themes.includes(k)).length;
-  row.push(incubCount);
-
+  row.push(Object.keys(known).filter(k => !themes.includes(k)).length);
   // CHECKSUM: corruption-detection only (Law 5 — Matrix Row Integrity),
   // not a security control. Hashes session_uid + every theme score in a
   // fixed order so a duplicate/altered row is detectable on audit.
   row.push(_computeMatrixRowChecksum_(sessionUid, themes.map(t => result[t])));
+  return { row, result };
+}
 
-  sheet.appendRow(row);
-  return result;
+
+/**
+ * When each session happened, for ordering VECTOR_MATRIX rows: the epoch
+ * in an old-style UID (LOG-1789057924659-6c6944a8), else the earliest
+ * STAGING_PIPELINE timestamp of the session's chunks or parts. Sessions
+ * found in neither are left out; callers fall back to the row's own
+ * timestamp.
+ *
+ * @returns {Object<string, number>} { sessionUid: ms }
+ */
+function _vmSessionDates_(ss) {
+  const out = {};
+  const staging = ss.getSheetByName(CFG.STAGING_SHEET);
+  if (staging && staging.getLastRow() > 1) {
+    const SC = CFG.STAGING_COLS;
+    staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues().forEach(r => {
+      const m = /^(.+?)_(?:CH\d+|VC\d+of\d+)$/.exec(String(r[SC.PAYLOAD_UID] || '').trim());
+      if (!m) return;
+      const t = new Date(r[SC.TIMESTAMP]).getTime();
+      if (isNaN(t)) return;
+      if (out[m[1]] === undefined || t < out[m[1]]) out[m[1]] = t;
+    });
+  }
+  return out;
+}
+
+function _vmSessionTime_(sessionUid, dates, rowTimestamp) {
+  const epoch = /^LOG-(\d{12,})-/.exec(String(sessionUid));
+  if (epoch) return Number(epoch[1]);
+  if (dates[sessionUid] !== undefined) return dates[sessionUid];
+  const t = new Date(rowTimestamp).getTime();
+  return isNaN(t) ? 0 : t;
+}
+
+
+/**
+ * The decayed vector state, computed from every VECTOR_MATRIX row in
+ * session date order: a theme a session scores takes that score, a theme
+ * it doesn't score keeps its previous value × DECAY_FACTOR. This is the
+ * rule _writeMatrixRow() used to bake into each row, now applied when the
+ * matrix is read, so the rows themselves stay one session each.
+ *
+ * @returns {{themes: string[], scores: Object<string, number>, latest: Array|null, rowCount: number}}
+ */
+function _vmDecayedState_(ss, matrix) {
+  const lastCol = matrix.getLastColumn();
+  const headers = matrix.getRange(1, 1, 1, lastCol).getValues()[0];
+  const themes = headers.slice(2).map(String)
+    .filter(h => h && h !== 'INCUBATOR_SIGNALS' && h !== 'CHECKSUM');
+  const scores = {};
+  themes.forEach(t => { scores[t] = 0; });
+  if (matrix.getLastRow() <= 1) return { themes, scores, latest: null, rowCount: 0 };
+
+  const dates = _vmSessionDates_(ss);
+  const rows = matrix.getRange(2, 1, matrix.getLastRow() - 1, lastCol).getValues()
+    .filter(r => String(r[0] || '').trim())
+    .map((r, i) => ({ r, i, t: _vmSessionTime_(String(r[0]).trim(), dates, r[1]) }))
+    .sort((a, b) => (a.t - b.t) || (a.i - b.i));
+
+  rows.forEach(({ r }) => {
+    themes.forEach((t, k) => {
+      const v = parseFloat(r[2 + k]);
+      scores[t] = (!isNaN(v) && v > 0) ? v : scores[t] * CFG.DECAY_FACTOR;
+    });
+  });
+  themes.forEach(t => { scores[t] = parseFloat(scores[t].toFixed(4)); });
+  return { themes, scores, latest: rows[rows.length - 1].r, rowCount: rows.length };
 }
 
 
@@ -1141,21 +1205,13 @@ function getVectorState() {
       };
     }
 
-    const headers    = matrix.getRange(1, 1, 1, matrix.getLastColumn()).getValues()[0];
-    const lastRow    = matrix.getRange(
-      matrix.getLastRow(), 1, 1, matrix.getLastColumn()
-    ).getValues()[0];
+    // Decayed over every session in date order, not read off the last
+    // row: each row now holds one session's own scores (_writeMatrixRow).
+    const state   = _vmDecayedState_(ss, matrix);
+    const lastRow = state.latest || [];
 
-    const themeStart = 2;
-    // Exclude the trailing INCUBATOR_SIGNALS + CHECKSUM columns
-    const themes = headers.slice(themeStart).filter(h => h !== 'INCUBATOR_SIGNALS' && h !== 'CHECKSUM');
-
-    const vectors = themes
-      .map((name, i) => ({
-        name:  String(name),
-        score: parseFloat((parseFloat(lastRow[themeStart + i] || 0)).toFixed(2)),
-      }))
-      .filter(v => v.name)
+    const vectors = state.themes
+      .map(name => ({ name: name, score: parseFloat(state.scores[name].toFixed(2)) }))
       .sort((a, b) => b.score - a.score);
 
     // Incubator candidates (INCUBATING + DECAYED — exclude PROMOTED rows,
