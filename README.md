@@ -336,13 +336,17 @@ What is actually pending: **all five cas-ccps flows plus kos-personal's
 two have been ported** to native Studio steps with an Apps Script harvest
 (`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`,
 `kos-personal/12_StudioReturnHarvest.gs`), which is a keyless path that
-works on this account. Only Flow 1 is verified live end to end. Each
-remaining flow's Studio side has to be built by hand in the Workspace UI —
-nothing in this repo can automate it, but `syncFlowBuildSpec()` generates
-the sheet to build from, and the preflight, canaries, binding probes and
-liveness checks answer the four separate causes of "nothing happened."
+works on this account. All of them are now built in Studio: cas-ccps's
+Flows 1-5 are verified against seeded fixtures (no real student
+submission has gone through yet), and kos-personal's Curator and Classify
+Flows process real sessions. Studio flows are built by hand in the
+Workspace UI; `syncFlowBuildSpec()` generates the sheet to build from, and
+the preflight, canaries, binding probes and liveness checks answer the
+four separate causes of "nothing happened."
 `cas-ccps/DEPLOYMENT_HANDOFF.md` is the operator's document; the
-`clasp`-side work is a human's, per SMP-004's air-gap.
+`clasp`-side work is a human's, per SMP-004's air-gap. The latest
+cross-system session handoff, with what is merged but not yet deployed,
+is [`HANDOFF_2026-10-03.md`](./HANDOFF_2026-10-03.md).
 
 Clasp adoption is no longer scaffolding: all 8 cas-ccps projects build
 from `tools/clasp-sync/sync.js` and CI refuses a build with an unmerged

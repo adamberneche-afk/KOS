@@ -1,12 +1,13 @@
 # kos-personal — Studio Rebind Handoff
 
-> ## ⛔ OPEN: both Gemini steps in the Curator Flow are bound to the wrong prompt
+> ## ✅ CLOSED (2026-10-03): the Curator Flow's Gemini steps are fixed
 >
-> **Still open at the 2026-09-28 export:** all 114 `STUDIO_RETURN` rows
-> are failures of exactly this shape. See
-> [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) for the current
-> numbers and the three other causes found alongside it. This file is
-> still the rebind procedure.
+> The persona output came from "Ask a Gem" steps, not a chip binding. On
+> 9/29 they were replaced with plain Ask Gemini steps reading the
+> `FlowPrompts` tab, and the trigger was rebound from `VectorClassifyInput`
+> to `CuratorInput`. Most chunks now pass audit on the first try. Kept as
+> a record; the current handoff is
+> [`../HANDOFF_2026-10-03.md`](../HANDOFF_2026-10-03.md).
 >
 > **Written:** 2026-09-21, from a live `BRAIN_TRUST_INDEX` export taken
 > 2026-09-20.
