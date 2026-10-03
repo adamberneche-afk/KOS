@@ -229,6 +229,18 @@ per content hash and mark the other copies `DUPLICATE`, and
 every row from its classify parts in date order. Run the duplicates pair
 first, then the rederive.
 
+**Notebook briefing docs (2026-10-03):** the RTP notebook's pipeline-written
+sources (`rtp-core-router/notebook-plan/`, Phase 1). `generateDailyPrimer()`
+now stamps `KOS_LATEST_PRIMER` with a generated-at line and adds a Data
+Quality block, then `22_BriefingDocs.gs` writes `KOS_RECENT_SESSIONS`,
+`KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS` (also on demand with
+`generateBriefingDocs()`). Each keeps one Drive file ID and is overwritten
+in place; a failed run leaves the old doc and its old stamp. Open decisions
+come from the new `DECISION_REGISTER` sheet: the intake records each
+deferred decision as OPEN, and `resolveDecision()` or a Status edit closes
+it. `previewDecisionRegisterBackfill()`/`applyDecisionRegisterBackfill()`
+read in the decisions already in CURRENT_STATE.
+
 **Migrating an existing live sheet.** If your `BRAIN_TRUST_INDEX`
 spreadsheet already has `VECTOR_MATRIX`/`INCUBATOR` tabs from before this
 engine landed, `_getOrCreateSheet()` will NOT upgrade their headers on its
