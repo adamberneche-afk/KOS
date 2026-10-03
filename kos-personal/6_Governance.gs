@@ -1021,6 +1021,17 @@ function _primerDataQuality_(vectorState) {
   if (unclassifiedCount) {
     flags.push(unclassifiedCount + ' processed session(s) have no Vector State row yet');
   }
+  let rebuildPending = 0;
+  try { rebuildPending = JSON.parse(props.getProperty(CFG.PROP.VM_REDERIVE_DONE) || '[]').length; } catch (_) {}
+  if (rebuildPending) {
+    flags.push('the VECTOR_MATRIX rebuild is part-way through (' + rebuildPending +
+      ' session(s) rebuilt so far); applyVectorMatrixRederive() has more to do');
+  }
+  const unrebuildable = Number(props.getProperty(CFG.PROP.VM_REDERIVE_KEPT) || 0);
+  if (unrebuildable) {
+    flags.push(unrebuildable + ' VECTOR_MATRIX row(s) could not be rebuilt from their classify parts and may ' +
+      'still hold another session\'s scores');
+  }
 
   const lines = [];
   lines.push({ kind: 'p', text: flags.length
