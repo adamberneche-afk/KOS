@@ -59,6 +59,37 @@ Actively developed (~20 sessions per its own `LEADERHUB_WIP.md`). The
 **not yet run against real data** — treat them as drafts pending a
 deliberate execution decision, not as already-applied changes.
 
+**2026-10-03: the built-in school calendar is CCPS 2026-27**, and the
+importer reads the district's published calendar. The `_DEFAULT` consts
+(`src/10-command-engine-ai-and-widgets.html`, `QUARTERS_DEFAULT` in `src/12`)
+held Clover Hill's 2025-26 dates; they now hold 2026-27 (`SCHOOL_CALENDAR_YEAR`):
+quarters Aug 24–Oct 30, Nov 4–Jan 22, Jan 25–Mar 25, Apr 5–Jun 4, every
+weekday holiday and break, and the seven three-hour early releases. The CCPS
+entries in Deadlines (ids `cal_*`) are `CCPS_CALENDAR_DEADLINES_DEFAULT`.
+A saved calendar (`lh_schedule_config`) still wins over the defaults, so
+Settings → School Calendar has a **"Use the built-in 2026-27 CCPS calendar"**
+button: it replaces the saved quarters, no-school and early-release dates
+(the importer only adds, so last year's dates would stay) and swaps the
+`cal_*` deadlines, keeping bell times, the day-of-week map and hand-entered
+deadlines. Pasting the district's calendar into the importer gave no
+quarters and 2 of 7 early releases: `Aug.`/`Oct.`/`Nov.` weren't months,
+"December 2026" read as December 20, "Nov. 25, to Friday, Nov. 27" wasn't a
+range, and an early release on a quarter's last day was dropped. All four
+are fixed, and the published text is a test fixture
+(`tests/leaderhub/fixtures/ccps-2026-27-calendar.txt`); the consistency of
+the built-in dates is `tests/leaderhub/school-calendar-defaults.test.js`.
+
+The DECA season is Virginia DECA's 2026-27 calendar too: the season
+pipeline (`DECA_SEASON_DEFAULT`, `src/07`: Camp DECA, Power Trip, DLC, SLC
+registration/testing/conference, ICDC registration/payment, ICDC Anaheim
+Apr 17–20; every stage `statusAuto`) and its deadlines from October on
+(`DECA_DEADLINES_DEFAULT`, ids `deca_*`, `src/10`). A season saved in an
+earlier year wins over the default, so the season editor has **"Use the
+built-in 2026-27 season"**, which replaces the season and the `deca_*`
+deadlines (plus last season's two built-in DECA deadlines) and keeps
+hand-entered ones. The dashboard's hard-coded 2026 ICDC alert stopped
+showing after 2026-04-30 and is left as it was.
+
 **Fixed 2026-09-29: the Settings school-calendar importer misread real
 calendars** (seen live 2026-09-28: 0 no-school dates, 22 early-release dates
 and no quarters). In `parseCountyCalendarText()`
@@ -849,10 +880,8 @@ real source this round imports — not a new dataset invented for this app.
   configured (Settings → School Calendar) and falls back to the nearest
   edge quarter for a date outside every configured range — so this stays
   correct once a teacher updates the calendar for a new year, rather than
-  silently misfiling every unit into the wrong quarter. (Note: `LP_QUARTERS`
-  /`QUARTERS_DEFAULT` itself still needs updating in Settings for the
-  2026-27 year once CCPS publishes it — official calendar dates aren't
-  something this round fabricates.)
+  silently misfiling every unit into the wrong quarter. (`QUARTERS_DEFAULT`
+  holds the published CCPS 2026-27 quarters as of 2026-10-03; see Status.)
 
 **Deliberately not done:** authoring real 6115 curriculum content — there's
 no equivalent external real source for it in this repo, and inventing one

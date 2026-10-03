@@ -84,7 +84,7 @@ test('escJsAttr also applies escH\'s HTML-attribute escaping on top of the JS-st
 test('_decaNoticeHtml keeps <strong> and escapes everything else', () => {
   const html07 = path.join(__dirname, '..', '..', 'leader-hub', 'src', '07-events-email-members-goals.html');
   const source = extractLines(HTML_PATH, 1464, 1466, ['function escH(']) + '\n' +
-    extractLines(html07, 1066, 1068, ['function _decaNoticeHtml(']);
+    extractLines(html07, 1074, 1076, ['function _decaNoticeHtml(']);
   const { _decaNoticeHtml } = runInSandbox(source, {}, ['_decaNoticeHtml']);
   assert.equal(_decaNoticeHtml('<strong>Due NOW.</strong> 45 days'), '<strong>Due NOW.</strong> 45 days');
   assert.equal(_decaNoticeHtml('<img src=x onerror=alert(1)><strong>ok</strong>'),

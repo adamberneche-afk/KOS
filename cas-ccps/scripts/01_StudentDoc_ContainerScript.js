@@ -219,7 +219,7 @@ function runSystemCheck() {
   }
 
   try {
-    submitToQueue_(ids, googleId, fileId, configId, studentText);
+    submitToQueue_(ids, googleId, fileId, configId);
   } catch (e) {
     ui.alert("Couldn't Submit", SERVICE_DOWN_MESSAGE, ui.ButtonSet.OK);
     return;
@@ -284,9 +284,11 @@ function extractStudentResponse_(fullText) {
 // ---------------------------------------------------------------------------
 // submitToQueue_
 // ---------------------------------------------------------------------------
-function submitToQueue_(ids, googleId, fileId, configId, studentText) {
+// Sends only that there is writing to evaluate (checked just above), never
+// the writing itself: Flow 2 reads it from this Doc.
+function submitToQueue_(ids, googleId, fileId, configId) {
   const res = callStudentService_(ids, {
-    action: "submit", fileId: fileId, configId: configId, text: studentText
+    action: "submit", fileId: fileId, configId: configId, hasText: true
   });
   if (!res.ok) throw new Error("Could not submit (" + res.error + ").");
   Logger.log("Queue submission — ConfigID: " + configId);
