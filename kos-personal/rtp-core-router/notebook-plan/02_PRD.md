@@ -81,11 +81,13 @@ All sources must be Google Docs (Drive-native) so they can sync. The repo's `.md
 
 | Source | Purpose |
 |---|---|
-| `KOS_LATEST_PRIMER` | Today: onboarding day, 90-day vision, a name: score Vector State, and shadow-matrix calibration status; the heading carries its date. Regenerated daily at 06:00 by `generateDailyPrimer()`. To add (Phase 1): Genesis status and the data-quality block. Doc ID must never change (the code notes the operator holds it by ID in a notebook and in the Gem). |
+| `KOS_LATEST_PRIMER` | Today: onboarding day, 90-day vision, a name: score Vector State, the Data Quality block (built 2026-10-03), and shadow-matrix calibration status; the heading carries its date and a generated-at stamp sits under it. Regenerated daily at 06:00 by `generateDailyPrimer()`. Still to add: Genesis status. Doc ID must never change (the code notes the operator holds it by ID in a notebook and in the Gem). |
 | `CURRENT_STATE` | Architect-owned structural state; flagged stale after 3 sessions without update. |
 | `PIVOTS_AND_LESSONS_V1.0` | Supreme project law (truth hierarchy level 2). |
 | `CORE_THESIS` | Sealed personal statement (role, who it serves, relational targets, 90-day vision). Verified: the code combines its text with a salt to generate the Identity Key, and re-running `generateIdentityKey()` after an edit overwrites that key. Reading it as a notebook source is safe; do not edit it casually. |
-| Recent sessions (rolling doc) | Latest Curator JSON plus any session with open `deferred_decisions`. |
+| `KOS_RECENT_SESSIONS` | The five newest processed sessions' summaries, plus any older session with an open decision. (Built 2026-10-03; carries summaries rather than the full Curator JSON.) |
+| `KOS_OPEN_DECISIONS` | Every OPEN row of `DECISION_REGISTER`; a decision leaves when the operator marks it RESOLVED or DROPPED. (Built 2026-10-03.) |
+| `KOS_CORE_FACTS` | The operator-pinned Core facts under the heading ALIGNMENT Threshold D reads, plus the relational targets. Answers the "Related need" below. (Built 2026-10-03.) |
 
 **Tier B — stable, changed only on version bumps**
 
@@ -94,7 +96,7 @@ All sources must be Google Docs (Drive-native) so they can sync. The repo's `.md
 - **Do not add:** `COLD_START_ORIENTATION` (a dated snapshot of one past Cold Boot run, not a living protocol), `HEREDITARY_WATCHLIST` (candidate rules held pending review and explicitly not merged into any live protocol; retrieval could resurrect them as if they were law), `ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW` (planning-methodology reference; its own note says it does not specify anything implemented), and `Drive_Steward_Methodology_and_Prompt` (separate, on-request Gem).
 - A "Turn Loop Reference" doc holding the explanatory rules moved out of the router.
 
-**Related need:** ALIGNMENT Threshold D checks decisions against a "CORE FACTS (Operator-Pinned)" block in the session's context injection. The pinned-core-facts doc is the natural source for that block; confirm what supplies it today.
+**Related need:** ALIGNMENT Threshold D checks decisions against a "CORE FACTS (Operator-Pinned)" block in the session's context injection. Today `buildSessionContext()` supplies it from the `PROMOTED_MANUAL` rows of INCUBATOR (set by `pinThemeToCore()`); `KOS_CORE_FACTS` now carries the same block as a notebook source.
 
 **Excluded:** Studio/Flow contract prompts; `CURRENT_STATE_DRAFT_v2` (sample output); raw session logs and staging sheets; `BRAIN_TRUST_INDEX` and `VECTOR_MATRIX` (until the data fixes in 04 Phase 0 land); anything with CAS, roster, or student data; `COG_STIMULUS`; the white paper and superseded files.
 

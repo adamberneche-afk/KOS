@@ -428,6 +428,9 @@ function queueVectorClassifyBackfill(opts) {
       if (planned[i].queuedParts) queuedSessions++;
     });
     SpreadsheetApp.flush();
+    if (queuedSessions) {
+      PropertiesService.getScriptProperties().setProperty(CFG.PROP.VC_LAST_BACKFILL_AT, new Date().toISOString());
+    }
   }
 
   const message = (apply ? 'Queued ' + queuedSessions : 'DRY RUN, would queue ' + batch.length) +
