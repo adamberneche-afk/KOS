@@ -353,6 +353,12 @@ const CFG = {
     VM_LAST_DEDUPE_AT:     'KOS_VM_LAST_DEDUPE_AT',
     VM_LAST_REDERIVE_AT:   'KOS_VM_LAST_REDERIVE_AT',
     VC_LAST_BACKFILL_AT:   'KOS_VC_LAST_BACKFILL_AT',
+    // applyVectorMatrixRederive() across runs: the session UIDs already
+    // rebuilt (JSON list) while a rebuild is unfinished, and how many rows
+    // the last finished rebuild had to keep because they had no usable
+    // classify parts.
+    VM_REDERIVE_DONE:      'KOS_VM_REDERIVE_DONE',
+    VM_REDERIVE_KEPT:      'KOS_VM_REDERIVE_KEPT',
 
     // JSON blob { fileId: failureCount }, one entry per inbound file
     // sensor1_scanInboundSessions() has failed on at least once — see
