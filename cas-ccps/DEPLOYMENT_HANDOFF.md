@@ -6,9 +6,10 @@
 > used to say all three systems were live with nothing left to deploy. As
 > of 2026-10-03 that is not true:
 >
-> - **kos-personal:** about 71% of Curator Flow rows fail, and the Classify
->   Flow has never produced a real result. See
->   `kos-personal/HANDOFF_2026-09-28.md`.
+> - **kos-personal:** about 71% of Curator Flow rows failed Sept 10-17
+>   (the steps called the RTP Gem; fixed in Studio Sept 29). The backlog
+>   still needs requeuing, and the Classify Flow has not yet classified a
+>   real session. See `kos-personal/HANDOFF_2026-09-28.md`.
 > - **leader-hub:** paused. It works on `/dev`, but `/exec` still needs its
 >   release. See `leader-hub/README.md`'s "Status".
 > - **cas-ccps:** the seven projects `run.ps1` deploys (all eight except the
@@ -25,8 +26,8 @@
 > keeps that distinction explicit in its own badges and metrics.
 >
 > **kos-personal's two Studio flows were built and verified on 2026-09-08**
-> (`kos-personal/CHANGELOG.md` Rounds 21-22), but that verification has
-> not held: see the kos-personal bullet above. **Nothing needs deploying
+> (`kos-personal/CHANGELOG.md` Rounds 21-22), but failed in use from
+> Sept 10 until a Sept 29 fix: see the kos-personal bullet above. **Nothing needs deploying
 > from scratch**, but all three systems have pushes or fixes pending. The
 > rest of this document — the already-live section, the
 > Script Properties reference, the from-scratch order of operations — is
@@ -438,10 +439,10 @@ kos-personal/HANDOFF_2026-09-28.md, then leader-hub/README.md's
 "Status" section. All three systems are on the same ccpsnet.net account.
 cas-ccps: 8 projects exist and all five flows are live and verified
 against fixture data; the seven run.ps1 projects are waiting on a
-run.ps1 -Latest push. kos-personal: the Curator Flow returns persona
-output instead of contract JSON (about 71% of rows failed), and the
-Classify Flow has never produced a real result; the handoff has the
-test to run first. leader-hub: paused, works on /dev, /exec still needs
+run.ps1 -Latest push. kos-personal: about 71% of Curator rows failed
+Sept 10-17 because the Flow called the RTP Gem (fixed in Studio Sept
+29); the backlog still needs requeuing and the Classify Flow has not yet
+classified a real session. leader-hub: paused, works on /dev, /exec still needs
 its release. Nothing needs deploying from scratch. I run every
 clasp/browser/Studio action myself (SMP-004) and paste logs back.
 [Describe what you actually need: one of the open items above,
@@ -474,9 +475,9 @@ end; see the paragraph above.
 
 **kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. **Both Studio flows
 were built and verified end to end on 2026-09-08 (the second attempt), but
-the pipeline has failed since:** from Sept 10 about 71% of Curator rows
-failed on persona output, and the Classify Flow has never classified a real
-session. `kos-personal/HANDOFF_2026-09-28.md` is the current record; the
+the pipeline failed in use:** Sept 10-17 about 71% of Curator rows failed
+on persona output (the steps called the RTP Gem; fixed in Studio Sept 29),
+and the Classify Flow has not yet classified a real session. `kos-personal/HANDOFF_2026-09-28.md` is the current record; the
 history below is how the flows got built.
 The Curator flow's first Studio build attempt surfaced real problems (a
 trigger condition not actually filtering on `Status`, and Gemini
