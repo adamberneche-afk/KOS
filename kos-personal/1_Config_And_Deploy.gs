@@ -62,6 +62,14 @@ const CFG = {
   EXTERNAL_TELEMETRY_SHEET: 'EXTERNAL_TELEMETRY',      // v8.0 — Sensor 3 target
   ERROR_LOG_SHEET:          'ERROR_LOG',                // v8.0 — error digest source
   AUDIT_LOG_SHEET:          'AUDIT_LOG',                // Auditor accountability check rejections — see 3_Queue_Processor.gs's audit gate
+  DECISION_REGISTER_SHEET:  'DECISION_REGISTER',        // deferred decisions, OPEN until the operator resolves them — see 22_BriefingDocs.gs
+  // Its header row, in column order. 22_BriefingDocs.gs derives its column
+  // map from this list (FLOW_DOCTRINE rule 7), so reorder nothing by hand.
+  // Status is OPEN when written; the operator sets RESOLVED or DROPPED.
+  DECISION_REGISTER_HEADERS: [
+    'Decision_ID', 'Session_UID', 'Recorded_At', 'Owner', 'Decision',
+    'Blocking', 'Status', 'Resolved_At', 'Resolution_Note',
+  ],
 
   // ── STAGING_PIPELINE Column Index Map ────────────────────────
   // Single source of truth — replaces the SC const in Phase 0 patch.
@@ -332,6 +340,20 @@ const CFG = {
     // this doc by ID instead of searching by name on every run.
     LATEST_PRIMER_DOC_ID: 'KOS_LATEST_PRIMER_DOC_ID',
 
+    // The other notebook briefing docs (22_BriefingDocs.gs), held by ID for
+    // the same reason as the primer: a notebook source follows one Drive
+    // file, so each doc is overwritten in place and its ID never changes.
+    RECENT_SESSIONS_DOC_ID: 'KOS_RECENT_SESSIONS_DOC_ID',
+    OPEN_DECISIONS_DOC_ID:  'KOS_OPEN_DECISIONS_DOC_ID',
+    CORE_FACTS_DOC_ID:      'KOS_CORE_FACTS_DOC_ID',
+
+    // When the VECTOR_MATRIX repairs and the classify backfill last wrote
+    // anything (ISO timestamps). The primer's Data Quality block reports
+    // them, so the Gem knows whether the matrix has been repaired yet.
+    VM_LAST_DEDUPE_AT:     'KOS_VM_LAST_DEDUPE_AT',
+    VM_LAST_REDERIVE_AT:   'KOS_VM_LAST_REDERIVE_AT',
+    VC_LAST_BACKFILL_AT:   'KOS_VC_LAST_BACKFILL_AT',
+
     // JSON blob { fileId: failureCount }, one entry per inbound file
     // sensor1_scanInboundSessions() has failed on at least once — see
     // that function's own header (incident diagnosis #4) and
@@ -421,6 +443,7 @@ function deployFullSystem() {
       CFG.EXTERNAL_TELEMETRY_SHEET,   // v8.0 — Sensor 3
       CFG.ERROR_LOG_SHEET,            // v8.0 — error digest
       CFG.AUDIT_LOG_SHEET,            // Auditor accountability check rejections
+      CFG.DECISION_REGISTER_SHEET,    // deferred decisions (22_BriefingDocs.gs)
     ];
     sheetNames.forEach(n => _getOrCreateSheet(ss, n));
     _seedBlackboardTemplateRow(ss);
