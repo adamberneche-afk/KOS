@@ -23,4 +23,4 @@
  *      pushing HEAD alone does not update the live web app's /exec
  *      deployment.
  */
-const LH_DEPLOY_VERSION_SHA = '7aa9df25b52812032f682ef68679d6f51efee8d7'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
+const LH_DEPLOY_VERSION_SHA = 'd7583390a270179d3517313a67129458ee6c6eed'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
