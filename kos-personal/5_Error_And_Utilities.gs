@@ -1552,7 +1552,11 @@ const TERMINAL_FAILED_STATUSES = ['FAILED_PARSE', 'PHASE_2_ERROR', 'INTAKE_ERROR
 // so sat invisible to every one of them, forever.
 const KNOWN_STAGING_STATUSES = [
   'PENDING_FLOW', 'STUDIO_ACTIVE', 'FLOW_COMPLETE', 'NEEDS_CURATOR',
-  'PROCESSED', 'INTAKE_PROCESSED', 'PARTITIONED', 'CONSOLIDATED'
+  'PROCESSED', 'INTAKE_PROCESSED', 'PARTITIONED', 'CONSOLIDATED',
+  // A later copy of a session already in the pipeline under another UID
+  // (findDuplicateSessions, 21_VectorMatrixRepair.gs). Terminal: nothing
+  // releases, requeues or classifies it again.
+  'DUPLICATE',
 ];
 
 /**
