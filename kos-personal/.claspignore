@@ -34,3 +34,5 @@
 !18_DeployVersionMarker.gs
 !19_StagingRequeue.gs
 !20_VectorClassifySessions.gs
+!21_VectorMatrixRepair.gs
+!22_BriefingDocs.gs

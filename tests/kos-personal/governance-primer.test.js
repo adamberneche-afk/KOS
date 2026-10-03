@@ -23,7 +23,7 @@ const FILES = [
   path.join(KP, '1_Config_And_Deploy.gs'),
   path.join(KP, '6_Governance.gs'),
 ];
-const EXPOSE = ['_writeLatestPrimer_', '_clearDocBody_', 'CFG'];
+const EXPOSE = ['_writeLatestPrimer_', '_primerBlocks_', '_clearDocBody_', 'CFG'];
 
 function load() {
   return loadGasFiles(FILES, EXPOSE);
@@ -38,10 +38,12 @@ const SHADOW_FULL = {
   questions: [{ label: 'Q1', status: 'OPEN', confidence: 0.4, inferred: '' }],
 };
 
+const QUALITY = { lines: [{ kind: 'p', text: 'Status: OK. No known data-quality problems.' }] };
+
 function write(exported, sandbox, dateStr, vision, vectorState, shadowState) {
   exported._writeLatestPrimer_(
-    sandbox.DriveApp.getRootFolder(), dateStr, 1, vision,
-    vectorState || VECTOR_EMPTY, shadowState || SHADOW_EMPTY
+    sandbox.DriveApp.getRootFolder(), 'DAILY PRIMER — ' + dateStr, 'Generated at: ' + dateStr + ' 06:00',
+    exported._primerBlocks_(1, vision, vectorState || VECTOR_EMPTY, shadowState || SHADOW_EMPTY, QUALITY)
   );
   return sandbox.PropertiesService.getScriptProperties()
     .getProperty(exported.CFG.PROP.LATEST_PRIMER_DOC_ID);
@@ -89,6 +91,26 @@ test('_writeLatestPrimer_: a second run reuses the same doc ID and leaves no lef
   assert.doesNotMatch(body.getText(), /first vision/);
   assert.equal(body.getChild(0).getText(), 'DAILY PRIMER — 2026-09-11',
     'the doc should open on its heading, not a blank line');
+  assert.equal(body.getChild(1).getText(), 'Generated at: 2026-09-11 06:00',
+    'the generated-at stamp sits directly under the heading');
+  assert.match(body.getText(), /Data Quality\nStatus: OK/);
+});
+
+test('_writeLatestPrimer_: a run that fails partway leaves no stamp, so the doc reads as stale', () => {
+  const { exported, sandbox } = load();
+  const id = write(exported, sandbox, '2026-09-10', 'first vision', VECTOR_FULL, SHADOW_FULL);
+
+  // Fail on the third block written: after the old content is cleared and
+  // some new content is in, before the title and stamp go on top.
+  const body = sandbox.DocumentApp.openById(id).getBody();
+  const realAppend = body.appendParagraph.bind(body);
+  let calls = 0;
+  body.appendParagraph = (t) => { if (++calls === 3) throw new Error('Service Documents failed'); return realAppend(t); };
+  assert.throws(() => write(exported, sandbox, '2026-09-11', 'second vision', VECTOR_FULL, SHADOW_FULL),
+    /Service Documents failed/);
+
+  assert.doesNotMatch(body.getText(), /Generated at: 2026-09-11/, 'a failed run must not write a fresh stamp');
+  assert.doesNotMatch(body.getText(), /Generated at: 2026-09-10/, 'nor leave the old stamp over new content');
 });
 
 test('_writeLatestPrimer_: a trashed doc is restored, not replaced', () => {

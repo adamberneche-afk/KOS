@@ -839,29 +839,52 @@ function generateDailyPrimer() {
     }
     const folder = DriveApp.getFolderById(folderId);
 
-    const dateStr = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+    const now     = new Date();
+    const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
     const docName = 'DAILY_PRIMER_' + dateStr;
+
+    // Everything the primer says is read before any doc is touched, so a
+    // failed read leaves KOS_LATEST_PRIMER and its stamp as they were
+    // (RTP notebook plan, ADR-006: a failed run must not advance the stamp).
+    const vectorState = getVectorState();
+    if (!vectorState.success) {
+      throw new Error('getVectorState failed: ' + (vectorState.message || 'no message'));
+    }
+    const shadowState = getShadowMatrixStatus();
+    const quality     = _primerDataQuality_(vectorState);
+    const vision       = props.getProperty(CFG.PROP.VISION_90_DAY) || 'Not defined';
+    const onboardingDay = props.getProperty(CFG.PROP.ONBOARDING_DAY) || '0';
+    const blocks = _primerBlocks_(onboardingDay, vision, vectorState, shadowState, quality);
+    const title  = 'DAILY PRIMER — ' + dateStr;
+    const stamp  = _briefingStamp_(now, 'generateDailyPrimer');
 
     // Idempotent: remove today's primer if this already ran once today.
     const existing = folder.getFilesByName(docName);
     while (existing.hasNext()) existing.next().setTrashed(true);
 
-    const vectorState = getVectorState();
-    const shadowState = getShadowMatrixStatus();
-    const vision       = props.getProperty(CFG.PROP.VISION_90_DAY) || 'Not defined';
-    const onboardingDay = props.getProperty(CFG.PROP.ONBOARDING_DAY) || '0';
-
     const doc  = DocumentApp.create(docName);
     const dId  = doc.getId();
-    _writePrimerBody_(doc.getBody(), dateStr, onboardingDay, vision, vectorState, shadowState);
+    _appendBlocks_(doc.getBody(), [{ kind: 'h1', text: title }, { kind: 'p', text: stamp }].concat(blocks));
     doc.saveAndClose();
     DriveApp.getFileById(dId).moveTo(folder);
     const docUrl = DriveApp.getFileById(dId).getUrl();
 
-    _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState, shadowState);
+    _writeLatestPrimer_(folder, title, stamp, blocks);
+
+    // The other notebook sources (22_BriefingDocs.gs). Each is written on
+    // its own, so one failure doesn't hold back the rest; failures are in
+    // ERROR_LOG and named in the result.
+    const briefing = generateBriefingDocs_(folder, now);
 
     console.log('[generateDailyPrimer] Created: ' + docName);
-    return { success: true, docName, docUrl, message: 'Daily primer saved to 03.1_CURRENT_STATE.' };
+    const ok = briefing.failed.length === 0;
+    return {
+      success: ok, docName, docUrl,
+      message: 'Daily primer saved to 03.1_CURRENT_STATE.' + (ok
+        ? ' Briefing docs updated: ' + briefing.written.join(', ') + '.'
+        : ' Briefing docs NOT updated: ' + briefing.failed.map(f => f.doc + ' (' + f.message + ')').join('; ') +
+          '. Their stamps were left unchanged, so they read as stale.'),
+    };
 
   } catch (e) {
     _reportError('generateDailyPrimer', e, null);
@@ -870,43 +893,148 @@ function generateDailyPrimer() {
 }
 
 /**
- * Writes the primer's actual content into `body` — the one shared source
+ * The generated-at line every briefing doc carries directly under its
+ * title. The RTP Gem compares its date with today and flags a stale doc
+ * (ADR-006); a doc with no such line is treated as stale too, which is
+ * what a run that failed partway through leaves behind (_writeStableDoc_
+ * writes the title and this line last).
+ */
+function _briefingStamp_(now, generator) {
+  const tz = Session.getScriptTimeZone();
+  return 'Generated at: ' + Utilities.formatDate(now, tz, 'yyyy-MM-dd HH:mm') + ' (' + tz + ') by ' +
+    generator + '. Overwritten in place by the KOS pipeline; do not edit by hand.';
+}
+
+/**
+ * Appends `blocks` ({kind: 'h1'|'h2'|'p'|'li', text}) to `body`, in order.
+ * The one renderer for every briefing doc, the dated primer included.
+ */
+function _appendBlocks_(body, blocks) {
+  blocks.forEach(b => {
+    if (b.kind === 'li') {
+      body.appendListItem(b.text);
+    } else {
+      const p = body.appendParagraph(b.text);
+      if (b.kind === 'h1') p.setHeading(DocumentApp.ParagraphHeading.HEADING1);
+      if (b.kind === 'h2') p.setHeading(DocumentApp.ParagraphHeading.HEADING2);
+    }
+  });
+}
+
+/**
+ * The primer's content below its title and stamp — the one shared source
  * for both the dated archival doc and KOS_LATEST_PRIMER, so the two can
  * never drift out of sync with each other (the exact bug class a prior
  * audit found and fixed elsewhere in this repo — see
  * meta/CODEBASE_REVIEW.md — when the same content was hand-duplicated
  * instead of shared).
  */
-function _writePrimerBody_(body, dateStr, onboardingDay, vision, vectorState, shadowState) {
-  body.appendParagraph('DAILY PRIMER — ' + dateStr)
-      .setHeading(DocumentApp.ParagraphHeading.HEADING1);
-  body.appendParagraph('Onboarding Day ' + onboardingDay + ' of ' + CFG.ONBOARDING_DAYS);
+function _primerBlocks_(onboardingDay, vision, vectorState, shadowState, quality) {
+  const out = [];
+  out.push({ kind: 'p', text: 'Onboarding Day ' + onboardingDay + ' of ' + CFG.ONBOARDING_DAYS });
 
-  body.appendParagraph('90-Day Vision').setHeading(DocumentApp.ParagraphHeading.HEADING2);
-  body.appendParagraph(vision);
+  out.push({ kind: 'h2', text: '90-Day Vision' });
+  out.push({ kind: 'p', text: vision });
 
-  body.appendParagraph('Vector State').setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  out.push({ kind: 'h2', text: 'Vector State' });
   if (vectorState.success && vectorState.vectors.length > 0) {
-    vectorState.vectors.forEach(v =>
-      body.appendListItem(v.name + ': ' + v.score.toFixed(2))
-    );
+    vectorState.vectors.forEach(v => out.push({ kind: 'li', text: v.name + ': ' + v.score.toFixed(2) }));
   } else {
-    body.appendParagraph('No sessions processed yet.');
+    out.push({ kind: 'p', text: 'No sessions processed yet.' });
   }
 
-  body.appendParagraph('Shadow Matrix — Calibration Status')
-      .setHeading(DocumentApp.ParagraphHeading.HEADING2);
+  out.push({ kind: 'h2', text: 'Data Quality' });
+  quality.lines.forEach(l => out.push(l));
+
+  out.push({ kind: 'h2', text: 'Shadow Matrix — Calibration Status' });
   if (shadowState.success) {
-    body.appendParagraph('Engine mode: ' + shadowState.engine_mode);
-    shadowState.questions.forEach(q =>
-      body.appendListItem(
-        q.label + ': ' + q.status + ' (' + Math.round(q.confidence * 100) + '%)' +
-        (q.inferred ? ' — ' + q.inferred : '')
-      )
-    );
+    out.push({ kind: 'p', text: 'Engine mode: ' + shadowState.engine_mode });
+    shadowState.questions.forEach(q => out.push({ kind: 'li', text:
+      q.label + ': ' + q.status + ' (' + Math.round(q.confidence * 100) + '%)' +
+      (q.inferred ? ' — ' + q.inferred : '') }));
   } else {
-    body.appendParagraph('Shadow matrix unavailable.');
+    out.push({ kind: 'p', text: 'Shadow matrix unavailable.' });
   }
+  return out;
+}
+
+/**
+ * The primer's Data Quality block (RTP notebook plan, ADR-007 / US-16):
+ * what the Gem needs to know before it trusts Vector State. Throws on a
+ * read failure, so the primer is not written with a block that hides one.
+ *
+ * Flags (any one makes the status FLAGGED):
+ *   - duplicate sessions still counted (findDuplicateSessions dry run);
+ *   - the matrix not rebuilt since the carried-forward-value fix
+ *     (KOS_VM_LAST_REDERIVE_AT unset while the matrix has rows);
+ *   - processed sessions with no VECTOR_MATRIX row yet.
+ *
+ * @param {Object} vectorState  getVectorState()'s result.
+ * @returns {{flagged: boolean, flags: string[], lines: Object[]}}
+ */
+function _primerDataQuality_(vectorState) {
+  const props = PropertiesService.getScriptProperties();
+  const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+  const inMatrix = _vcsMatrixSessions_(ss);
+  const matrixRows = Object.keys(inMatrix).length;
+
+  const dupGroups = findDuplicateSessions({ apply: false }).groups;
+  const dropped = {};
+  dupGroups.forEach(g => g.drop.forEach(u => { dropped[u] = true; }));
+
+  // Processed sessions (SESSION_LOG Curator rows, one per chunk) that have
+  // no VECTOR_MATRIX row. A copy already marked DUPLICATE is not counted.
+  const staging = ss.getSheetByName(CFG.STAGING_SHEET);
+  const resolvedDup = {};
+  if (staging && staging.getLastRow() > 1) {
+    const SC = CFG.STAGING_COLS;
+    staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues().forEach(r => {
+      if (String(r[SC.STATUS]).trim() !== 'DUPLICATE') return;
+      resolvedDup[String(r[SC.PAYLOAD_UID]).trim().replace(/_(?:CH\d+|VC\d+of\d+)$/, '')] = true;
+    });
+  }
+  const unclassified = {};
+  const log = ss.getSheetByName(CFG.SESSION_LOG_SHEET);
+  if (log && log.getLastRow() > 1) {
+    log.getRange(2, 1, log.getLastRow() - 1, 6).getValues().forEach(r => {
+      if (_isIntakeSessionLogRow_(r)) return;
+      const stem = String(r[0]).trim().replace(/_CH\d+$/, '');
+      if (!/^LOG-/.test(stem) || inMatrix[stem] || dropped[stem] || resolvedDup[stem]) return;
+      unclassified[stem] = true;
+    });
+  }
+  const unclassifiedCount = Object.keys(unclassified).length;
+
+  const day = iso => iso ? String(iso).slice(0, 10) : '';
+  const rederiveAt  = props.getProperty(CFG.PROP.VM_LAST_REDERIVE_AT);
+  const dedupeAt    = props.getProperty(CFG.PROP.VM_LAST_DEDUPE_AT);
+  const backfillAt  = props.getProperty(CFG.PROP.VC_LAST_BACKFILL_AT);
+  const incubating  = (vectorState.incubating || []).length;
+
+  const flags = [];
+  if (dupGroups.length) {
+    flags.push(dupGroups.length + ' duplicate session group(s) are counted more than once in Vector State');
+  }
+  if (matrixRows && !rederiveAt) {
+    flags.push('VECTOR_MATRIX has not been rebuilt since the carried-forward-value fix, so older rows may hold another session\'s scores');
+  }
+  if (unclassifiedCount) {
+    flags.push(unclassifiedCount + ' processed session(s) have no Vector State row yet');
+  }
+
+  const lines = [];
+  lines.push({ kind: 'p', text: flags.length
+    ? 'Status: FLAGGED. Qualify any Vector State claim with the flags below.'
+    : 'Status: OK. No known data-quality problems.' });
+  flags.forEach(f => lines.push({ kind: 'li', text: 'FLAG: ' + f + '.' }));
+  lines.push({ kind: 'li', text: 'VECTOR_MATRIX sessions: ' + matrixRows });
+  lines.push({ kind: 'li', text: 'Duplicate session groups: ' + dupGroups.length +
+    (dedupeAt ? ' (last repaired ' + day(dedupeAt) + ')' : ' (never repaired)') });
+  lines.push({ kind: 'li', text: 'Matrix last rebuilt from classify parts: ' + (day(rederiveAt) || 'never') });
+  lines.push({ kind: 'li', text: 'Processed sessions not yet classified: ' + unclassifiedCount });
+  lines.push({ kind: 'li', text: 'Last classify backfill batch: ' + (day(backfillAt) || 'never') });
+  lines.push({ kind: 'li', text: 'Incubating themes: ' + incubating });
+  return { flagged: flags.length > 0, flags: flags, lines: lines };
 }
 
 /**
@@ -942,12 +1070,13 @@ function _isMissingFileError_(e) {
 }
 
 /**
- * Maintains KOS_LATEST_PRIMER: one fixed doc in `folder`, overwritten in
- * place every run via CFG.PROP.LATEST_PRIMER_DOC_ID rather than found by
- * name.
+ * Maintains one notebook briefing doc: a fixed doc in `folder`, held by
+ * the ID in Script Property `propKey` and overwritten in place every run,
+ * never found by name. KOS_LATEST_PRIMER was the first; 22_BriefingDocs.gs
+ * adds the others.
  *
- * THE FILE ID MUST NOT CHANGE. The operator adds this doc to a notebook
- * and to the RTP gem as a daily-refreshed source, and both hold it by ID;
+ * THE FILE ID MUST NOT CHANGE. The operator adds these docs to a notebook
+ * and to the RTP gem as daily-refreshed sources, and both hold them by ID;
  * a new doc silently strands them on the last good copy. So:
  *   - a trashed doc is restored, not replaced;
  *   - a transient Drive/Docs error is thrown, so the run fails and the
@@ -956,10 +1085,16 @@ function _isMissingFileError_(e) {
  *     service errors in ERROR_LOG could trigger);
  *   - only a doc that is verifiably gone is recreated, and that is logged
  *     loudly with the new ID, because the notebook and gem need re-adding.
+ *
+ * The content is written first and the title and stamp last, so a run
+ * that fails partway leaves a doc with no stamp, which the Gem reads as
+ * stale, never a fresh stamp over half-written content.
+ *
+ * @returns {string} the doc's ID.
  */
-function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState, shadowState) {
+function _writeStableDoc_(folder, propKey, docName, title, stamp, blocks) {
   const props    = PropertiesService.getScriptProperties();
-  const storedId = props.getProperty(CFG.PROP.LATEST_PRIMER_DOC_ID);
+  const storedId = props.getProperty(propKey);
   let doc = null;
 
   if (storedId) {
@@ -967,7 +1102,7 @@ function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState
       const file = DriveApp.getFileById(storedId);
       if (file.isTrashed()) {
         file.setTrashed(false);
-        console.warn('[KOS_LATEST_PRIMER] Doc ' + storedId + ' was in the trash; restored it to keep its ID.');
+        console.warn('[' + docName + '] Doc ' + storedId + ' was in the trash; restored it to keep its ID.');
       }
       doc = DocumentApp.openById(storedId);
     } catch (e) {
@@ -978,35 +1113,37 @@ function _writeLatestPrimer_(folder, dateStr, onboardingDay, vision, vectorState
 
   const isNew = !doc;
   if (isNew) {
-    doc = DocumentApp.create('KOS_LATEST_PRIMER');
+    doc = DocumentApp.create(docName);
   } else {
     _clearDocBody_(doc.getBody());
   }
 
+  // Both paths leave one empty paragraph (the cleared survivor, or a new
+  // doc's own first paragraph). The content goes after it, then the
+  // survivor is dropped and the title and stamp go in at the top.
   const body = doc.getBody();
-  _writePrimerBody_(body, dateStr, onboardingDay, vision, vectorState, shadowState);
-
-  // Both paths leave one empty paragraph ahead of the heading (the cleared
-  // survivor, or a new doc's own first paragraph). Drop it so the doc
-  // opens on its title. It is never the last element here.
-  const lead = body.getChild(0);
-  if (body.getNumChildren() > 1 &&
-      lead.getType() === DocumentApp.ElementType.PARAGRAPH &&
-      lead.asParagraph().getText() === '') {
-    body.removeChild(lead);
-  }
+  _appendBlocks_(body, blocks.length ? blocks : [{ kind: 'p', text: '' }]);
+  body.removeChild(body.getChild(0));
+  body.insertParagraph(0, title).setHeading(DocumentApp.ParagraphHeading.HEADING1);
+  body.insertParagraph(1, stamp);
 
   doc.saveAndClose();
 
   if (isNew) {
     const newId = doc.getId();
     DriveApp.getFileById(newId).moveTo(folder);
-    props.setProperty(CFG.PROP.LATEST_PRIMER_DOC_ID, newId);
+    props.setProperty(propKey, newId);
     if (storedId) {
-      console.warn('[KOS_LATEST_PRIMER] Stored doc ' + storedId + ' is gone; created ' + newId +
+      console.warn('[' + docName + '] Stored doc ' + storedId + ' is gone; created ' + newId +
         '. Re-add the new doc to the notebook and the RTP gem: ' + doc.getUrl());
     }
   }
+  return doc.getId();
+}
+
+/** KOS_LATEST_PRIMER: the primer as a stable-ID notebook source. */
+function _writeLatestPrimer_(folder, title, stamp, blocks) {
+  return _writeStableDoc_(folder, CFG.PROP.LATEST_PRIMER_DOC_ID, 'KOS_LATEST_PRIMER', title, stamp, blocks);
 }
 
 // ================================================================
