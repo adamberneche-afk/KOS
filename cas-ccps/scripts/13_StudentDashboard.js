@@ -187,11 +187,14 @@ function getStudentDashboardData(termFilter) {
 // Google says is signed in, never an email in the request, and they only
 // get back or act on the one Ledger row for their own doc.
 //
-// Request body (JSON): { action: "status" | "submit", fileId, configId, text? }
+// Request body (JSON): { action: "status" | "submit", fileId, configId, hasText? }
+//
+// A submit never carries or stores the student's writing: Flow 2 reads it
+// from the student's own Doc, and nothing reads ReviewQueue's StudentText
+// column. Docs made before this send `text` instead of `hasText`; it is
+// checked for being non-empty and then dropped, never written.
 // Response (JSON): { ok: true, info } | { ok: true } | { ok: false, error }
 // ---------------------------------------------------------------------------
-const STUDENT_DOC_MAX_TEXT_CHARS = 100000;
-
 function doPost(e) {
   const googleId = Session.getActiveUser().getEmail();
   let req = {};
@@ -234,12 +237,12 @@ function handleStudentDocRequest_(googleId, req) {
     };
   }
 
-  const text = String((req && req.text) || "");
-  if (!text.trim()) return { ok: false, error: "EMPTY" };
+  const hasText = (req && req.hasText === true) || !!String((req && req.text) || "").trim();
+  if (!hasText) return { ok: false, error: "EMPTY" };
   const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
   if (!queue) return { ok: false, error: "NO_QUEUE" };
-  queue.appendRow([new Date(), googleId, fileId, configId,
-    text.substring(0, STUDENT_DOC_MAX_TEXT_CHARS), "PENDING", ""]);
+  // Column 5 (StudentText) stays empty; see the header comment above.
+  queue.appendRow([new Date(), googleId, fileId, configId, "", "PENDING", ""]);
   return { ok: true };
 }
 
