@@ -5,7 +5,8 @@
 // student's Ledger rows and edit the Admin spreadsheet. It now asks the
 // Student Dashboard web app (13_StudentDashboard.js, which runs as the
 // admin) through doPost(), which answers only for the signed-in student's
-// own row.
+// own row. A submit carries only that there is writing to evaluate, never the
+// writing, and nothing stores it in ReviewQueue.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -86,15 +87,26 @@ test('doPost status: another student\'s doc is NOT_REGISTERED, whatever the body
   assert.deepEqual(res, { ok: false, error: 'NOT_REGISTERED' });
 });
 
-test('doPost submit: queues the work under the signed-in account', () => {
+test('doPost submit: queues the work under the signed-in account, without the writing', () => {
   const { exported, queue } = loadService('ben@ccpsnet.net');
   const res = post(exported, {
-    action: 'submit', fileId: 'file-b', configId: 'CFG-B', text: 'My answer.', googleId: 'amy@ccpsnet.net',
+    action: 'submit', fileId: 'file-b', configId: 'CFG-B', hasText: true, googleId: 'amy@ccpsnet.net',
   });
   assert.equal(res.ok, true);
   const rows = queue.getDataRange().getValues().slice(1);
   assert.equal(rows.length, 1);
-  assert.deepEqual(rows[0].slice(1, 6), ['ben@ccpsnet.net', 'file-b', 'CFG-B', 'My answer.', 'PENDING']);
+  assert.deepEqual(rows[0].slice(1, 6), ['ben@ccpsnet.net', 'file-b', 'CFG-B', '', 'PENDING']);
+});
+
+test('doPost submit: a doc made before the fix sends its text; it is checked, then never stored', () => {
+  const { exported, queue } = loadService('ben@ccpsnet.net');
+  assert.equal(post(exported, { action: 'submit', fileId: 'file-b', configId: 'CFG-B', text: '   ' }).error, 'EMPTY');
+  assert.equal(post(exported, { action: 'submit', fileId: 'file-b', configId: 'CFG-B' }).error, 'EMPTY');
+  const res = post(exported, { action: 'submit', fileId: 'file-b', configId: 'CFG-B', text: 'My whole essay.' });
+  assert.equal(res.ok, true);
+  const rows = queue.getDataRange().getValues().slice(1);
+  assert.equal(rows.length, 1);
+  assert.ok(!JSON.stringify(rows).includes('My whole essay'), 'the student\'s writing must not reach ReviewQueue');
 });
 
 test('doPost submit: refuses someone else\'s doc and queues nothing', () => {
@@ -164,7 +176,14 @@ test('validateRoster_: an unreachable service is reported as such, not as an unk
   assert.equal(exported.validateRoster_({ serviceUrl: URL }, 'amy', 'f', 'c').error, 'UNREACHABLE');
 });
 
+test('submitToQueue_: sends that there is writing, never the writing', () => {
+  const { exported, calls } = loadDocScript('', { ok: true });
+  exported.submitToQueue_({ serviceUrl: URL }, 'amy', 'file-a', 'CFG-A');
+  assert.deepEqual(JSON.parse(calls[0].opts.payload),
+    { action: 'submit', fileId: 'file-a', configId: 'CFG-A', hasText: true });
+});
+
 test('submitToQueue_: throws when the service refuses', () => {
   const { exported } = loadDocScript('', { ok: false, error: 'NOT_REGISTERED' });
-  assert.throws(() => exported.submitToQueue_({ serviceUrl: URL }, 'amy', 'f', 'c', 'text'), /NOT_REGISTERED/);
+  assert.throws(() => exported.submitToQueue_({ serviceUrl: URL }, 'amy', 'f', 'c'), /NOT_REGISTERED/);
 });

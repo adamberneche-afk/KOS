@@ -205,6 +205,21 @@ aggregation; actual deletion is never automatic. Reversible via the
 `♻️ Reactivate Competency Evidence` menu item
 (`reactivateCompetencyEvidence()`), unlike SCRDecisionLog's archival below.
 
+### ReviewQueue
+On the Admin spreadsheet. One row per "Run Assignment Check": timestamp,
+**student email**, student file ID, ConfigID, status, result ref. The fifth
+column (`StudentText`) is always empty. Until 2026-10-03 the Student
+Dashboard (`13_StudentDashboard.js`) copied the student's whole response
+into it, up to 100,000 characters, though nothing ever read it; it now
+receives only that there is writing to evaluate, and a doc made before the
+fix that still sends its text has it checked for being non-empty and
+dropped. Docs older than the `01` change append to ReviewQueue directly
+from their own menu, text included, so `bridgeQueue()` (`03`) empties the
+column on every run. `previewReviewQueueTextScrub()` / `applyReviewQueueTextScrub()`
+(`50_StudentDataAccess.js`) empty the column in older rows, and the health
+check flags any row that still holds text (check (i) in
+`_ferpaHealthChecks_()`).
+
 ### FlowInput
 Added by `37_FlowInputBuilder.js` as part of Flow 2's native-Studio
 redesign (Google Workspace Studio custom steps are blocked entirely for

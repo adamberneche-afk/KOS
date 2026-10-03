@@ -359,6 +359,31 @@ function _ferpaHealthChecks_() {
       : "✅  No WarmUpQueue rows past retention awaiting archival",
   });
 
+  // ── (i) Student writing copied into ReviewQueue ──
+  // The Student Dashboard used to store each submission's full text in
+  // ReviewQueue's StudentText column; it no longer does, and nothing read
+  // it. Rows still holding text predate that fix (or come from an old
+  // deployment of 13_StudentDashboard.js).
+  let reviewQueueRowsWithText = 0;
+  try {
+    reviewQueueRowsWithText = _countReviewQueueRowsWithText_();
+  } catch (e) {
+    Logger.log("[FERPA HEALTH] ReviewQueue text scan failed: " + e.message);
+  }
+  checks.push({
+    ok: reviewQueueRowsWithText === 0,
+    alertText: reviewQueueRowsWithText
+      ? "🚨 STUDENT WRITING IS STORED IN REVIEWQUEUE\n" +
+        "   " + reviewQueueRowsWithText + " ReviewQueue row(s) hold a copy of a student's response.\n" +
+        "   Student writing belongs only in the student's own Doc.\n" +
+        "   Action: run applyReviewQueueTextScrub() from the editor. If new rows\n" +
+        "   keep appearing, redeploy the student-dashboard web app."
+      : "",
+    displayLine: reviewQueueRowsWithText
+      ? "🚨  " + reviewQueueRowsWithText + " ReviewQueue row(s) hold student writing — see admin alert"
+      : "✅  ReviewQueue holds no student writing",
+  });
+
   return checks;
 }
 
