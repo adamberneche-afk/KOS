@@ -1,6 +1,33 @@
 # KOS Changelog
 
 
+### VECTOR_MATRIX rows hold one session each; duplicates and ghost values repaired (2026-10-03)
+
+A theme a session scored 0 was written as the previous row's value × 0.92,
+and the previous row was another session, in whatever order the backfill
+ran, so one session's scores showed up in the next one's row. The same log
+pasted twice under old `LOG-{epoch}-{hash}` UIDs was also classified and
+counted twice (`edd1075a` three times).
+
+- `_writeMatrixRow()` writes 0 for a theme the session didn't score. Decay
+  moves to read time: `_vmDecayedState_()` applies it over every row in
+  session date order, for `getVectorState()` and the startup primer.
+- New `21_VectorMatrixRepair.gs`. `previewDuplicateSessions()` /
+  `applyDuplicateSessions()` keep one session per content hash, mark the
+  other copies' staging rows `DUPLICATE` (a new terminal status), and
+  remove their matrix rows; the vector backfill skips `DUPLICATE`
+  sessions. `previewVectorMatrixRederive()` /
+  `applyVectorMatrixRederive()` rebuild every row from its classify part
+  docs and put the rows in date order; a session it can't rebuild keeps
+  its row and is listed with the reason.
+- RTP notebook planning docs added under `rtp-core-router/notebook-plan/`.
+  U7: the school account hosts the notebook. U10: until 9/29 the Curator
+  flow's steps 3 and 5 were Ask a Gem steps (the source of the old
+  `schema_version 5.0` layout) and its trigger watched `VectorClassifyInput`;
+  both were fixed in Studio, with #63–#66 in the repo. No Flow step uses
+  the RTP Gem now.
+
+
 ### Studio's redirect links and a stray escape no longer fail good audits (2026-10-01)
 
 Workspace Studio rewrites anything that looks like a web address into a

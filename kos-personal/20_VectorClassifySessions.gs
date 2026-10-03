@@ -349,6 +349,7 @@ function queueVectorClassifyBackfill(opts) {
   // Sessions from their SESSION_LOG chunk rows, and which already have parts.
   const sessions = {};
   const hasParts = {};
+  const duplicate = {};
   let inFlight = 0;
   rows.forEach(function (r) {
     const uid = String(r[SC.PAYLOAD_UID] || '').trim();
@@ -362,6 +363,7 @@ function queueVectorClassifyBackfill(opts) {
     }
     const m = /^(.+)_CH(\d+)$/.exec(uid);
     if (type !== 'SESSION_LOG' || !m) return;
+    if (status === 'DUPLICATE') duplicate[m[1]] = true;
     const s = sessions[m[1]] = sessions[m[1]] || { sessionUid: m[1], chunks: [], firstAt: r[SC.TIMESTAMP] };
     s.chunks.push({ uid: uid, n: parseInt(m[2], 10) });
     if (new Date(r[SC.TIMESTAMP]) < new Date(s.firstAt)) s.firstAt = r[SC.TIMESTAMP];
@@ -384,6 +386,7 @@ function queueVectorClassifyBackfill(opts) {
   const eligible = [];
   ordered.forEach(function (s) {
     if (_rqIsTestUid_(s.sessionUid)) return;
+    if (duplicate[s.sessionUid])  return skipped.push({ sessionUid: s.sessionUid, reason: 'DUPLICATE' });
     if (classified[s.sessionUid]) return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_CLASSIFIED' });
     if (hasParts[s.sessionUid])   return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_QUEUED' });
     s.chunks.sort(function (a, b) { return a.n - b.n; });
