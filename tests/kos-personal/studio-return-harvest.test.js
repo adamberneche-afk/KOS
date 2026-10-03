@@ -575,6 +575,51 @@ test('groundedness gate: VECTOR_CLASSIFY output is never gated (no narrative tex
   assert.equal(stagingStatus(ctx), 'FLOW_COMPLETE');
 });
 
+// LOG-adfeae91_CH02 (2026-10-03): a session that pasted code. Its 40 longest
+// tokens were all function names, which a real summary doesn't repeat, so a
+// grounded Curator return was flagged SUSPECT_FABRICATION.
+function codeHeavySource() {
+  const prose = 'The developer acknowledged truncation errors and hallucinated comments, ' +
+    'then pasted the unadulterated deployer and synapsing engine so the microloop could be tested. ';
+  const code = ['integratePendingGovernance', 'backgroundCapacityCheck', 'buildAscensionDashboard',
+    'deployRtpInfrastructure', 'setHorizontalAlignment', 'seedPersonaAlignments', 'register_pending_cogs']
+    .map((f, i) => 'function ' + f + i + '() { return ' + f + 'Helper' + i + '(sheetReference' + i + '); }\n')
+    .join('');
+  // More than SR_GROUNDEDNESS_MAX_CANDIDATES identifiers, all longer than
+  // any prose word, as in the real chunk.
+  const more = Array.from({ length: 45 }, (_, i) =>
+    'const synchronizeGovernanceLedgerEntry' + i + ' = computeAlignmentCheckpointValue' + i + '();\n').join('');
+  return prose + code + more;
+}
+
+test('groundedness gate: prose words outrank code identifiers in a code-heavy source', () => {
+  const { exported } = load();
+  const words = exported._srDistinguishingWords_(codeHeavySource());
+  assert.ok(words.includes('unadulterated') && words.includes('microloop'),
+    'the session\'s own prose words are candidates: ' + words.join(', '));
+  const firstCode = words.findIndex((w) => /^(synchronize|compute|integrate|background|build|deploy|set|seed)/.test(w));
+  assert.ok(firstCode > words.indexOf('unadulterated'), 'prose words come before identifiers');
+  assert.equal(words.length, 40, 'identifiers still fill the places the prose leaves');
+});
+
+test('groundedness gate: a grounded summary of a code-heavy session is applied, a fabricated one still flagged', () => {
+  const grounded = load();
+  const ok = seed(grounded.exported, grounded.sandbox, {
+    docText: codeHeavySource(),
+    primary: '{"session_summary":"Fixed the microloop after code truncation errors."}',
+  });
+  assert.equal(grounded.exported.harvestStudioReturns().applied, 1);
+  assert.equal(stagingStatus(ok), 'FLOW_COMPLETE');
+
+  const fab = load();
+  const bad = seed(fab.exported, fab.sandbox, {
+    docText: codeHeavySource(),
+    primary: '{"session_summary":"A planning conversation about quarterly marketing budgets."}',
+  });
+  assert.equal(fab.exported.harvestStudioReturns().suspectFabrication, 1);
+  assert.equal(stagingStatus(bad), 'STUDIO_ACTIVE');
+});
+
 test('groundedness gate: a document too short to have distinguishing words is not gated', () => {
   const { exported } = load();
   // A doc that clears the length floor but is uniform enough (or all
