@@ -1032,29 +1032,37 @@ function toggleDecaCheck(eventId, stepKey, val) {
 
 // The season pipeline used to be a hardcoded array baked into this function —
 // accurate for 25–26, permanently stale (and permanently showing the old
-// ICDC alert) the moment that season ended. It's now app data instead: seeded
-// once with the same 25–26 content, persisted to localStorage, and editable
-// from the pipeline header each year without touching code.
+// ICDC alert) the moment that season ended. It's now app data instead,
+// persisted to localStorage and editable from the pipeline header. The
+// default is Virginia DECA's 2026-27 calendar; a season saved in an earlier
+// year keeps winning over it until "Use the built-in season" in the season
+// editor (lhUseBuiltInDecaSeason) is applied. Every stage is statusAuto, so
+// none needs hand-marking done as the year goes.
+const DECA_SEASON_YEAR = '2026-27';
 const DECA_SEASON_DEFAULT = {
-  title: 'DECA 25–26 Season Pipeline',
+  title: 'DECA 26–27 Season Pipeline',
   stages: [
-    { label:'Ultimate Power Trip', date:'2025-11-21', endDate:'2025-11-23', icon:'🚂', status:'done',
-      detail:'13 students · Arlington, VA · Amtrak · PO# 26-316-3418', color:'var(--green)' },
-    { label:'DLC', date:'2025-12-03', icon:'🏆', status:'done',
-      detail:'15 students competed · Chesterfield Towne Center · Account 4280', color:'var(--green)' },
-    { label:'SLC Testing', date:'2026-02-09', endDate:'2026-02-13', icon:'📝', status:'done',
-      detail:'Feb 9–13 · 70% required for ICDC · No make-up days', color:'var(--green)' },
-    { label:'State (SLC)', date:'2026-02-27', endDate:'2026-03-02', icon:'🎤', status:'done',
-      detail:'15 students · Virginia Beach · Charter: Winn · PO# 26-0368-2559', color:'var(--green)' },
-    { label:'ICDC Registration', date:'2026-03-02', endDate:'2026-03-13', icon:'📋', statusAuto:true,
-      detail:'Mar 2–13 · $155/student · Top 8 + bumps · 70% test required', color:'var(--gold)', urgent:true },
-    { label:'ICDC Payment', date:'2026-04-01', icon:'💳', statusAuto:true,
-      detail:'$155/student due Apr 1 · Atlanta Hilton $260/night · 4/room', color:'var(--orange)' },
-    { label:'ICDC Atlanta', date:'2026-04-25', endDate:'2026-04-29', icon:'✈️', statusAuto:true,
-      detail:'Apr 25–29 · Atlanta, GA · ~$1,000/student · Start field trip form NOW!', color:'var(--navy)', urgent:true },
+    { label:'Camp DECA', date:'2026-09-25', endDate:'2026-09-27', icon:'🏕️', statusAuto:true,
+      detail:'Great Wolf Lodge · Williamsburg, VA', color:'var(--green)' },
+    { label:'Ultimate Power Trip', date:'2026-11-20', endDate:'2026-11-22', icon:'🚂', statusAuto:true,
+      detail:'Registration due Oct 15 · deca.org/power', color:'var(--green)' },
+    { label:'DLC', date:'2026-12-18', icon:'🏆', statusAuto:true,
+      detail:'District conferences end Dec 18 · set your district\'s date here', color:'var(--green)' },
+    { label:'SLC Registration', date:'2027-01-11', endDate:'2027-01-15', icon:'📋', statusAuto:true,
+      detail:'Closes Jan 15, 11:59pm · adjustments Jan 18–22 by change form · locked after', color:'var(--gold)', urgent:true },
+    { label:'SLC Testing', date:'2027-02-08', endDate:'2027-02-12', icon:'📝', statusAuto:true,
+      detail:'Feb 8–12 · SLC payment due Feb 5', color:'var(--gold)' },
+    { label:'State (SLC)', date:'2027-02-26', endDate:'2027-02-28', icon:'🎤', statusAuto:true,
+      detail:'Virginia Beach', color:'var(--orange)' },
+    { label:'ICDC Registration', date:'2027-03-01', endDate:'2027-03-05', icon:'📋', statusAuto:true,
+      detail:'Accept/decline spots by Mar 3 · bump-ups end Mar 5, 5pm · locked after', color:'var(--gold)', urgent:true },
+    { label:'ICDC Payment', date:'2027-04-01', icon:'💳', statusAuto:true,
+      detail:'Due Apr 1 · prepared submissions due Mar 30', color:'var(--orange)' },
+    { label:'ICDC Anaheim', date:'2027-04-17', endDate:'2027-04-20', icon:'✈️', statusAuto:true,
+      detail:'Apr 17–20 · Anaheim, CA · out-of-state field trip form ~45 days ahead (~Mar 3)', color:'var(--navy)', urgent:true },
   ],
   notice: {
-    text: '<strong>ICDC Field Trip Form is due NOW.</strong> Out-of-state overnight trips require 45 days lead time — deadline to submit is <strong>~March 11, 2026</strong>. Registration opens March 2 and closes March 13. Confirm SLC qualifiers (Top 8 + possible bumps to Top 10) and their 70% test scores before registering.',
+    text: '<strong>ICDC 2027 is in Anaheim, CA (April 17–20).</strong> Out-of-state overnight trips need 45 days lead time, so the field trip form is due by <strong>~March 3, 2027</strong> — the same day ICDC spots must be accepted or declined.',
     ctaLabel: '+ Start ICDC Field Trip Form',
   },
 };
@@ -1146,6 +1154,7 @@ function openDecaSeasonEditor() {
     <textarea id="deca-season-json" style="width:100%;height:340px;font-family:'DM Mono',monospace;font-size:.76rem;border:1px solid var(--border);border-radius:8px;padding:.6rem">${JSON.stringify(DECA_SEASON, null, 2).replace(/</g,"&lt;")}</textarea>
     <div id="deca-season-err" style="color:#dc2626;font-size:.75rem;margin-top:.4rem"></div>
     <div style="display:flex;justify-content:flex-end;gap:.5rem;margin-top:.75rem">
+      <button class="btn btn-outline" onclick="lhUseBuiltInDecaSeason()" style="margin-right:auto" title="Replaces the season and the Virginia DECA entries in Deadlines">📅 Use the built-in ${escH(DECA_SEASON_YEAR)} season</button>
       <button class="btn btn-outline" onclick="this.closest('#deca-season-editor').remove()">Cancel</button>
       <button class="btn btn-primary" onclick="saveDecaSeasonEditor()">Save</button>
     </div>
@@ -1167,6 +1176,27 @@ function saveDecaSeasonEditor() {
   } catch (e) {
     errEl.textContent = '⚠ ' + e.message;
   }
+}
+
+// Replaces the saved season with DECA_SEASON_DEFAULT and the Virginia DECA
+// entries in Deadlines (ids deca_*, plus last season's two built-in DECA
+// deadlines) with DECA_DEADLINES_DEFAULT. Hand-entered deadlines are kept.
+function lhUseBuiltInDecaSeason() {
+  _showConfirm('Replace the season pipeline with the built-in Virginia DECA ' + DECA_SEASON_YEAR +
+    ' season?\n\nIn Deadlines, only the Virginia DECA entries are replaced; ones you added yourself are kept.', () => {
+    DECA_SEASON = JSON.parse(JSON.stringify(DECA_SEASON_DEFAULT));
+    persistDecaSeason();
+    const stale = new Set(['dl_icdc_pay', 'dl6']);
+    DEADLINES = DEADLINES.filter(d => !String(d.id || '').startsWith('deca_') && !stale.has(d.id))
+      .concat(DECA_DEADLINES_DEFAULT.map(d => Object.assign({}, d)));
+    LS.set('lh_deadlines', DEADLINES);
+    const editor = document.getElementById('deca-season-editor');
+    if (editor) editor.remove();
+    renderDECAPipeline();
+    renderDeadlines();
+    refreshNextAction();
+    _showToast('✅ ' + DECA_SEASON_YEAR + ' season loaded');
+  }, { confirmLabel: 'Use built-in season', danger: false, ariaLabel: 'Use the built-in DECA season' });
 }
 
 function saveEvent(){
