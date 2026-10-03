@@ -402,12 +402,12 @@ function buildSessionContext() {
       const ss     = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
       const matrix = _getOrCreateSheet(ss, CFG.VECTOR_MATRIX_SHEET);
       if (matrix.getLastRow() > 1) {
-        const h = matrix.getRange(1, 1, 1, matrix.getLastColumn()).getValues()[0];
-        const r = matrix.getRange(matrix.getLastRow(), 1, 1, matrix.getLastColumn()).getValues()[0];
+        // The decayed state over every session, not the last row: each
+        // row holds one session's own scores (_writeMatrixRow).
+        const state = _vmDecayedState_(ss, matrix);
         let primer = '## VECTOR_MATRIX — STARTUP CALIBRATION\n';
-        // Theme columns only: the last two are INCUBATOR_SIGNALS and CHECKSUM.
-        h.slice(2, -2).forEach((t, i) => {
-          primer += '  ' + String(t).padEnd(22) + r[i + 2] + '\n';
+        state.themes.forEach(t => {
+          primer += '  ' + String(t).padEnd(22) + state.scores[t] + '\n';
         });
         sections.push(primer);
         loaded.push('BRAIN_TRUST_INDEX (Vector Primer)');

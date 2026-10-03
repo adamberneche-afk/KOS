@@ -73,3 +73,11 @@ number is the correct one this time). Every superseded file, alongside
 per the note above the table; retrievable from the `pre-archive-cleanup`
 branch, historical reference only, never something to paste into a live
 Studio flow.
+
+## notebook-plan/
+
+Planning docs for moving the RTP Gem's context into a Gemini notebook
+fed by GAS-generated Google Docs (user stories, PRD, ADRs, migration and
+test plan). Phase 0, the `VECTOR_MATRIX` repair, is built in
+`kos-personal/21_VectorMatrixRepair.gs`. The school account hosts the
+notebook (U7, ADR-008); no student or district data is ever a source.
