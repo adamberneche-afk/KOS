@@ -1,12 +1,18 @@
 # kos-personal — Studio Rebind Handoff
 
-> ## ⛔ OPEN: both Gemini steps in the Curator Flow are bound to the wrong prompt
+> ## ✅ CLOSED (2026-09-29): the cause was the RTP Gem, not a binding. This rebind was never needed
 >
-> **Still open at the 2026-09-28 export:** all 114 `STUDIO_RETURN` rows
-> are failures of exactly this shape. See
-> [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) for the current
-> numbers and the three other causes found alongside it. This file is
-> still the rebind procedure.
+> The Curator Flow's steps 3 and 5 were "Ask a Gem" steps calling the RTP
+> Gem. On Sept 29 they were replaced with Ask Gemini steps reading
+> `FlowPrompts`, and the Curator trigger was rebound to `CuratorInput`
+> (`rtp-core-router/notebook-plan/02_PRD.md` §10, U10). The diagnosis
+> below (a wrong prompt chip) was wrong. Kept as history; for current
+> state read [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md).
+>
+> Also out of date below: a requeue helper now exists
+> (`19_StagingRequeue.gs`), and the four "prerequisite" commits are all
+> merged to `main`. The `AUDIT_LOG` counts in the second table (39 and 38)
+> disagree with the Sept 28 handoff's 51 and 51 for the same 55 rows.
 >
 > **Written:** 2026-09-21, from a live `BRAIN_TRUST_INDEX` export taken
 > 2026-09-20.
@@ -197,9 +203,10 @@ Once fresh returns are harvesting clean:
 - **87 `STUDIO_TIMEOUT`** rows are terminal and will not retry themselves. 13
   of them are audit rejections mislabelled by the bug `a7682ac` fixes; the
   other 74 never completed. Both need a deliberate requeue.
-- There is **no requeue helper in the repo yet.** Ask for one rather than
-  hand-editing 87 statuses in the sheet — the retry counters and the
-  release map both have to agree with whatever you set.
+- Use the requeue helper, `19_StagingRequeue.gs` (built 2026-09-28;
+  `HANDOFF_2026-09-28.md` "The backlog" has the steps), rather than
+  hand-editing statuses in the sheet. The retry counters and the release
+  map both have to agree with whatever you set.
 
 ---
 
@@ -219,7 +226,5 @@ Once fresh returns are harvesting clean:
 
 ## If you only read one thing
 
-Both Gemini steps in the Curator Flow are pointed at the RTP chat personas.
-Point them at the `FlowPrompts` chips instead — `CURATOR_SYSTEM_PROMPT` and
-`CURATOR_AUDITOR_SYSTEM_PROMPT` — then run `checkStudioFlowBinding()`. If it
-reports nothing, this is closed.
+This file is closed. The persona output came from "Ask a Gem" steps,
+replaced on 2026-09-29. Read `HANDOFF_2026-09-28.md` for what remains.
