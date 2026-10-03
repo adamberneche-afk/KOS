@@ -197,6 +197,29 @@ test('applyDuplicateSessions: marks the dropped copies DUPLICATE and removes the
   assert.equal(again.groups.filter((g) => !g.skipped).length, 0, 'a second run finds nothing left to do');
 });
 
+// Seen live 2026-10-03: a copy whose staging rows were archived still has
+// its VECTOR_MATRIX row, and still counts in Vector State.
+test('applyDuplicateSessions: finds a copy that is only in VECTOR_MATRIX (its staging rows archived)', () => {
+  const env = setup();
+  stage(env, 12, 'LOG-1789200000000-edd1075a_CH01', 'PROCESSED');
+  seedMatrix(env, [['LOG-1789200000000-edd1075a', 0.5, 0.5], ['LOG-1789050000000-edd1075a', 0.5, 0.5],
+    ['LOG-1789900000000-edd1075a', 0.5, 0.5], ['LOG-11112222', 0.1, 0.1]]);
+
+  const preview = env.exported.previewDuplicateSessions();
+  assert.equal(preview.groups.length, 1, JSON.stringify(preview.groups));
+  const g = preview.groups[0];
+  assert.equal(g.keep, 'LOG-1789200000000-edd1075a', 'the copy still in staging, with a PROCESSED chunk, is kept');
+  assert.deepEqual(g.drop.slice().sort(), ['LOG-1789050000000-edd1075a', 'LOG-1789900000000-edd1075a']);
+  assert.equal(g.rowsToMark, 0, 'the archived copies have no staging rows to mark');
+  assert.equal(g.matrixRowsToRemove, 2);
+
+  const r = env.exported.applyDuplicateSessions();
+  assert.equal(r.matrixRowsRemoved, 2);
+  assert.deepEqual(rowsOf(env.ss, 'VECTOR_MATRIX').map((row) => row[0]),
+    ['LOG-1789200000000-edd1075a', 'LOG-11112222']);
+  assert.equal(env.exported.previewDuplicateSessions().groups.length, 0, 'nothing left after one apply');
+});
+
 test('queueVectorClassifyBackfill: skips a session marked DUPLICATE', () => {
   const env = setup();
   const curator = env.ss.insertSheet('CuratorInput');

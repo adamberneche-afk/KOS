@@ -92,6 +92,20 @@ function findDuplicateSessions(opts) {
       if (!isNaN(t) && t < s.firstAt) s.firstAt = t;
     });
 
+    // A copy whose staging rows were archived (archiveStagingPipeline moves
+    // finished rows out) can still have a VECTOR_MATRIX row, and is still
+    // counted in Vector State. Seen 2026-10-03: edd1075a, cd01a44e and
+    // 79edf49b were missing from the first live preview. Add each matrix
+    // session the staging scan didn't see, with no rows to mark.
+    Object.keys(inMatrix).forEach(function (uid) {
+      if (sessions[uid]) return;
+      const h = VMR_LOG_UID_RE.exec(uid);
+      if (!h) return;
+      const epoch = /^LOG-(\d{12,})-/.exec(uid);
+      sessions[uid] = { sessionUid: uid, hash: h[1], rows: [], processed: 0, inFlight: 0,
+        firstAt: epoch ? Number(epoch[1]) : Infinity, duplicate: false };
+    });
+
     const byHash = {};
     Object.keys(sessions).forEach(function (k) {
       const s = sessions[k];
