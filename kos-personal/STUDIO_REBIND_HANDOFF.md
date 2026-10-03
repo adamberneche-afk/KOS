@@ -1,15 +1,13 @@
 # kos-personal — Studio Rebind Handoff
 
-> ## ⚠ SUPERSEDED: the diagnosis below is probably wrong. Read [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) instead
+> ## ✅ CLOSED (2026-09-29): the cause was the RTP Gem, not a binding. This rebind was never needed
 >
-> The symptom is still open: at the 2026-09-28 export all 114
-> `STUDIO_RETURN` rows fail with persona output. But the cause this file
-> gives (a wrong prompt binding) is now the less likely one. Both Ask
-> Gemini steps call the RTP Gem, and their chips already read the
-> `FlowPrompts` tab at run time, so the personas most likely come from the
-> Gem's own instructions. A rebind would not fix that.
-> `HANDOFF_2026-09-28.md` cause 1 has the test that tells the two apart.
-> Use the rebind steps below only if that test points at the binding.
+> The Curator Flow's steps 3 and 5 were "Ask a Gem" steps calling the RTP
+> Gem. On Sept 29 they were replaced with Ask Gemini steps reading
+> `FlowPrompts`, and the Curator trigger was rebound to `CuratorInput`
+> (`rtp-core-router/notebook-plan/02_PRD.md` §10, U10). The diagnosis
+> below (a wrong prompt chip) was wrong. Kept as history; for current
+> state read [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md).
 >
 > Also out of date below: a requeue helper now exists
 > (`19_StagingRequeue.gs`), and the four "prerequisite" commits are all
@@ -228,8 +226,5 @@ Once fresh returns are harvesting clean:
 
 ## If you only read one thing
 
-Read `HANDOFF_2026-09-28.md` cause 1 instead. This file's one-line answer
-("point both steps at the `FlowPrompts` chips") assumed a wrong binding.
-The chips most likely already read `FlowPrompts`, and the personas come
-from the RTP Gem the steps call. Rebind only if that handoff's test
-points at the binding.
+This file is closed. The persona output came from "Ask a Gem" steps,
+replaced on 2026-09-29. Read `HANDOFF_2026-09-28.md` for what remains.
