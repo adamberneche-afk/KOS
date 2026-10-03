@@ -18,6 +18,7 @@ const L_TERM      = 18;  // AcademicYear/Term column added for term management
 const RQ_GOOGLE_ID = 1;
 const RQ_FILE_ID   = 2;
 const RQ_CONFIG_ID = 3;
+const RQ_STUDENT_TEXT = 4; // always emptied; see bridgeQueue()
 const RQ_STATUS    = 5;
 
 // STAGING_PIPELINE column indices (0-based)
@@ -72,6 +73,16 @@ function bridgeQueue() {
 
     const queueData   = queueSheet.getDataRange().getValues();
     const stagingData = stagingSheet.getDataRange().getValues();
+
+    // Student writing never stays in ReviewQueue: nothing reads it (Flow 2
+    // reads the student's Doc). The Student Dashboard no longer stores it,
+    // but docs made before the 01 change still append it here directly
+    // from their own menu, so empty the column whenever any row has some.
+    if (queueData.slice(1).some(r => String(r[RQ_STUDENT_TEXT]).trim() !== "")) {
+      queueSheet.getRange(2, RQ_STUDENT_TEXT + 1, queueData.length - 1, 1)
+        .setValues(queueData.slice(1).map(() => [""]));
+      Logger.log("[BRIDGE] Emptied student text from ReviewQueue.");
+    }
 
     // Build set of already-staged QueueRowRefs
     const alreadyStaged = new Set();

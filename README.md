@@ -299,10 +299,11 @@ repair tool, and the student doc's menu calling the dashboard web app
 instead of the Ledger (`student-doc-service.test.js`,
 `student-data-access-intake.test.js`,
 `lock-doc-after-submission.test.js`, `school-year-scope.test.js`,
-`student-data-access-repair.test.js`);
+`student-data-access-repair.test.js`, and no student writing in ReviewQueue:
+`review-queue-text-scrub.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
-the pacing/calendar helpers, the page's sync code never overwriting an
+the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
 edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,
 run against the real built page), and the owner-only functions the page
 calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-personal/` covers the archived `kos-personal/archive/studio-steps/`
@@ -311,7 +312,7 @@ lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
 batched requeue of terminal staging rows (`staging-requeue.test.js`), the audit gate rejecting a hollow `PASSED` with an empty `trace_log` (`audit-gate.test.js`), and
 per-session vector classification and its backfill
-(`vector-classify-sessions.test.js`), incubator decay (`incubator-decay.test.js`),
+(`vector-classify-sessions.test.js`), the matrix repair (one session per row, decay at read time, duplicate sessions, rederive: `vector-matrix-repair.test.js`), incubator decay (`incubator-decay.test.js`),
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers

@@ -39,6 +39,9 @@
 //                                      budget and resumes where it stopped
 //                                      on the next run, so run it until it
 //                                      reports "done".
+//   previewReviewQueueTextScrub()    — counts ReviewQueue rows still holding
+//                                      a student's writing; changes nothing.
+//   applyReviewQueueTextScrub()      — empties that column (see below).
 // =============================================================================
 
 const SDA_SUBMITTED_STATUSES = ["PENDING_TEACHER_REVIEW", "COMPLIANT"];
@@ -270,4 +273,55 @@ function _sdaLedgerStudentAccess_(cfg) {
   } catch (e) {
     return [];
   }
+}
+
+// ── ReviewQueue's StudentText column ────────────────────────────────────────
+// Until the Student Dashboard stopped storing it (13_StudentDashboard.js),
+// every "Run Assignment Check" copied the student's whole response, up to
+// 100,000 characters, into column 5 of ReviewQueue on the Admin spreadsheet.
+// Nothing ever read it (Flow 2 reads the student's own Doc), so emptying it
+// loses nothing. The rows themselves stay: the bridge tracks them by status.
+const SDA_RQ_TEXT_COL = 5; // 1-based
+
+function previewReviewQueueTextScrub() {
+  return scrubReviewQueueText_({ apply: false });
+}
+
+function applyReviewQueueTextScrub() {
+  return scrubReviewQueueText_({ apply: true });
+}
+
+/**
+ * @param {{apply?: boolean}} opts
+ * @returns {{apply: boolean, rowsWithText: number, cleared: number, message: string}}
+ */
+function scrubReviewQueueText_(opts) {
+  const apply = !!(opts && opts.apply);
+  const sheet = _sdaReviewQueue_();
+  const rows = sheet && sheet.getLastRow() > 1
+    ? sheet.getRange(2, SDA_RQ_TEXT_COL, sheet.getLastRow() - 1, 1).getValues()
+    : [];
+  const rowsWithText = rows.filter(function (r) { return String(r[0]).trim() !== ""; }).length;
+  let cleared = 0;
+  if (apply && rowsWithText) {
+    sheet.getRange(2, SDA_RQ_TEXT_COL, rows.length, 1)
+      .setValues(rows.map(function () { return [""]; }));
+    cleared = rowsWithText;
+  }
+  const message = apply
+    ? "Emptied the student text in " + cleared + " ReviewQueue row(s)."
+    : "DRY RUN: " + rowsWithText + " ReviewQueue row(s) hold a student's writing; applyReviewQueueTextScrub() empties them.";
+  Logger.log("[ReviewQueue scrub] " + message);
+  return { apply: apply, rowsWithText: rowsWithText, cleared: cleared, message: message };
+}
+
+// For the health check (10_AdminRecoveryPanel.js): ReviewQueue rows still
+// holding a student's writing. 0 when the tab is missing.
+function _countReviewQueueRowsWithText_() {
+  return scrubReviewQueueText_({ apply: false }).rowsWithText;
+}
+
+function _sdaReviewQueue_() {
+  const cfg = getConfig_();
+  return SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
 }
