@@ -1,5 +1,13 @@
 # cas-ccps Deployment Handoff
 
+> **Merged, not yet pushed to Apps Script (2026-10-03):** the student-data
+> access policy (2026-09-28/29) and the fix that keeps student writing out
+> of `ReviewQueue` (PR #67). Push `central-ledger`,
+> `master-student-template` and `student-dashboard` (with `clasp version` +
+> `update-deployment` for the web app), then run
+> `applyReviewQueueTextScrub()` and the health check before any real
+> student work. Steps and open items: [`../HANDOFF_2026-10-03.md`](../HANDOFF_2026-10-03.md).
+
 > ## ✅ STATUS: ALL THREE SYSTEMS ARE NOW LIVE — cas-ccps, leader-hub, kos-personal.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps

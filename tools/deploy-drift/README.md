@@ -18,8 +18,9 @@ would need a production Google credential in CI — deliberately ruled out
 (see `tools/clasp-sync/SANDBOX_CI_SETUP.md`'s fence between sandbox and
 production credentials; Phase 3 isn't the thing that should erode it). The
 6 remaining projects with no web app at all have no inbound surface to
-poll regardless. Only `cas-ccps:student-dashboard` (`access: ANYONE`) is
-reachable by an anonymous external request.
+poll regardless. `cas-ccps:student-dashboard` used to be `access: ANYONE`, reachable by an
+anonymous request; since the student-data access policy (2026-09-28) it
+is `access: DOMAIN` like the others.
 
 So the design pushes instead. Apps Script already runs as a fully trusted
 execution context for itself — no credential is needed for it to call
