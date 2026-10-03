@@ -25,4 +25,4 @@
  *      pushing HEAD alone does not update the live web app's /exec
  *      deployment.
  */
-const KOS_DEPLOY_VERSION_SHA = 'fe4e4112860200acdeafa9f1cbf4b68816a561de'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
+const KOS_DEPLOY_VERSION_SHA = '17f300a2c834d7408bd567ae3153536da77f20d0'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
