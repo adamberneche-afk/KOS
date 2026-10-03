@@ -32,7 +32,7 @@ const FILES = [
 const EXPOSE = [
   'processVectorClassificationPayload', 'getVectorState', '_vmDecayedState_', '_buildMatrixRow_',
   'previewDuplicateSessions', 'applyDuplicateSessions', 'queueVectorClassifyBackfill',
-  'previewVectorMatrixRederive', 'applyVectorMatrixRederive', 'KNOWN_STAGING_STATUSES', 'CFG',
+  'previewVectorMatrixRederive', 'applyVectorMatrixRederive', 'rederiveVectorMatrix', 'KNOWN_STAGING_STATUSES', 'CFG',
 ];
 
 const STAGING_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count'];
@@ -279,6 +279,37 @@ test('applyVectorMatrixRederive: rewrites rows from their parts, in session date
   assert.deepEqual(rows[2].slice(2, 4), [0.552, 0.9], 'C, with no parts, is kept as it was');
   assert.equal(rows[1][5], env.exported._buildMatrixRow_(['ARCHITECTURE', 'UI'], { ARCHITECTURE: 0.6 }, 'LOG-bbbbbbbb', 't').row[5],
     'the checksum matches the rebuilt scores');
+});
+
+// Live 2026-10-03: the preview stopped at the 5-minute budget after 14 of
+// 39 rows, and an apply that timed out wrote nothing, so it could never finish.
+test('applyVectorMatrixRederive: a run that runs out of time writes what it rebuilt and the next run resumes', () => {
+  const env = setup();
+  seedRederive(env);
+  const props = env.sandbox.PropertiesService.getScriptProperties();
+
+  const first = env.exported.rederiveVectorMatrix({ apply: true, maxRows: 1 });
+  assert.equal(first.finished, false);
+  assert.equal(first.rebuilt, 1);
+  assert.match(first.message, /Run applyVectorMatrixRederive\(\) again/);
+  assert.equal(props.getProperty(env.exported.CFG.PROP.VM_LAST_REDERIVE_AT), null, 'not finished, so not stamped');
+  const afterFirst = rowsOf(env.ss, 'VECTOR_MATRIX');
+  assert.deepEqual(afterFirst.find((r) => r[0] === 'LOG-bbbbbbbb').slice(2, 4), [0.6, 0], 'the rebuilt row is written');
+
+  const second = env.exported.rederiveVectorMatrix({ apply: true, maxRows: 1 });
+  assert.equal(second.finished, false);
+  assert.equal(second.alreadyDone, 1, 'the first run\'s row is not read again');
+
+  const third = env.exported.applyVectorMatrixRederive();
+  assert.equal(third.finished, true);
+  assert.equal(third.alreadyDone, 2);
+  const rows = rowsOf(env.ss, 'VECTOR_MATRIX');
+  assert.deepEqual(rows.map((r) => r[0]), ['LOG-aaaaaaaa', 'LOG-bbbbbbbb', 'LOG-cccccccc']);
+  assert.deepEqual(rows[0].slice(2, 4), [0, 0.4]);
+  assert.deepEqual(rows[1].slice(2, 4), [0.6, 0]);
+  assert.equal(props.getProperty(env.exported.CFG.PROP.VM_REDERIVE_DONE), null, 'progress cleared once finished');
+  assert.equal(props.getProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT), '1', 'C had no parts and was kept');
+  assert.ok(props.getProperty(env.exported.CFG.PROP.VM_LAST_REDERIVE_AT));
 });
 
 test('rederive: an unreadable part keeps the session\'s row', () => {
