@@ -1,6 +1,18 @@
 # KOS Changelog
 
 
+### The VECTOR_MATRIX rebuild resumes across runs (2026-10-03)
+
+The first live `previewVectorMatrixRederive()` stopped at its 5-minute
+budget after 14 of 39 rows (reading part docs takes about 20 seconds a
+session), and an apply that ran out of time wrote nothing, so it could
+never finish. `applyVectorMatrixRederive()` now writes the rows it rebuilt,
+records their sessions in `KOS_VM_REDERIVE_DONE`, and the next run starts
+after them; run it until it reports it has finished. Only a finished
+rebuild sets `KOS_VM_LAST_REDERIVE_AT`. It also records how many rows had
+no usable classify parts (`KOS_VM_REDERIVE_KEPT`), and the primer's Data
+Quality block flags both an unfinished rebuild and those rows.
+
 ### The duplicate finder sees copies whose staging rows were archived (2026-10-03)
 
 The first live `previewDuplicateSessions()` found four groups but missed

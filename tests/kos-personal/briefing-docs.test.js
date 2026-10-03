@@ -284,6 +284,17 @@ test('Data Quality reads OK once the repairs have run and every session is class
   assert.match(text, /Last classify backfill batch: 2026-10-03/);
 });
 
+test('Data Quality flags a matrix rebuild that is part-way through, and rows it could not rebuild', () => {
+  const env = setup();
+  matrix(env, ['LOG-00000001']);
+  sessionLog(env, 'LOG-00000001_CH01', new Date('2026-09-10'), 's');
+  env.props.setProperty(env.exported.CFG.PROP.VM_REDERIVE_DONE, JSON.stringify(['LOG-00000001']));
+  env.props.setProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT, '7');
+  const text = env.exported._primerDataQuality_(env.exported.getVectorState()).lines.map((l) => l.text).join('\n');
+  assert.match(text, /FLAG: the VECTOR_MATRIX rebuild is part-way through \(1 session\(s\) rebuilt so far\)/);
+  assert.match(text, /FLAG: 7 VECTOR_MATRIX row\(s\) could not be rebuilt/);
+});
+
 test('generateDailyPrimer: a failed Vector State read leaves KOS_LATEST_PRIMER and its stamp untouched', () => {
   const env = setup();
   const first = env.exported.generateDailyPrimer();
