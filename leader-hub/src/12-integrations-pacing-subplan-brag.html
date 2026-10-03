@@ -560,15 +560,16 @@ function openEmailBridgeModal_() {
 // PACING CALENDAR — renders lessons across real school-day weeks for a quarter
 // ══════════════════════════════════════════════════════════════════════════════
 
-// CCPS quarter date ranges (from official 2025-26 calendar). Also the
+// CCPS quarter date ranges (2026-27 calendar: quarters end Oct 30, Jan 22,
+// Mar 25 and Jun 4; each starts on the next school day). Also the
 // school-year-start date LP_QUARTERS[1].start feeds the Odd/Even day
 // calculation everywhere below — editable via Settings → School Calendar,
 // see _applyScheduleConfig()/saveScheduleConfig() above.
 const QUARTERS_DEFAULT = {
-  1: { start: '2025-08-18', end: '2025-10-22', label: 'Q1' },
-  2: { start: '2025-10-23', end: '2026-01-13', label: 'Q2' },
-  3: { start: '2026-01-14', end: '2026-03-19', label: 'Q3' },
-  4: { start: '2026-03-23', end: '2026-05-29', label: 'Q4' },
+  1: { start: '2026-08-24', end: '2026-10-30', label: 'Q1' },
+  2: { start: '2026-11-04', end: '2027-01-22', label: 'Q2' },
+  3: { start: '2027-01-25', end: '2027-03-25', label: 'Q3' },
+  4: { start: '2027-04-05', end: '2027-06-04', label: 'Q4' },
 };
 let LP_QUARTERS = QUARTERS_DEFAULT;
 function _applyQuartersConfig() {
@@ -580,7 +581,7 @@ _applyQuartersConfig(); // safe here: getScheduleConfig/QUARTERS_DEFAULT are bot
 // CCPS no-school dates (holidays, breaks) — from CCPS_NO_SCHOOL already defined
 // We reuse that set. Early release days are still school days.
 
-// Odd/Even day schedule — Clover Hill HS starts Aug 18 (Odd)
+// Odd/Even day schedule — counted from Q1's start (2026-27: Aug 24, Odd)
 // Alternates each school day. Weekends/holidays don't advance the counter.
 function buildOddEvenMap(startDate, endDate) {
   const map = {};

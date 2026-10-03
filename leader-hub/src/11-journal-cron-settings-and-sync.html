@@ -1071,7 +1071,8 @@ function openSurveyModal(){
         <button onclick="document.getElementById('sched-import-file').click()" style="background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer">⬆️ Upload File (.txt/.csv)</button>
         <input type="file" id="sched-import-file" accept=".txt,.csv,text/plain,text/csv" style="display:none" onchange="lhLoadCountyCalendarFile(this)">
       </div>
-      <div id="sched-import-status" style="font-size:.74rem;margin-bottom:1.2rem;min-height:1.1em"></div>
+      <div id="sched-import-status" style="font-size:.74rem;margin-bottom:.6rem;min-height:1.1em"></div>
+      <button onclick="lhUseBuiltInSchoolCalendar()" style="width:100%;background:none;border:1.5px solid var(--border);border-radius:8px;padding:.6rem 1rem;font-size:.8rem;cursor:pointer;margin-bottom:1.2rem">📅 Use the built-in ${escH(SCHOOL_CALENDAR_YEAR)} CCPS calendar (replaces quarters, no-school and early-release dates)</button>
 
       <div style="font-size:.72rem;font-weight:700;color:var(--muted);margin-bottom:.4rem">Day-of-Week Default Schedule</div>
       <div class="fgrid" style="grid-template-columns:repeat(7,1fr);gap:.35rem;margin-bottom:.9rem">
@@ -1319,21 +1320,12 @@ function _expandFullRange(y1, m1, d1, y2, m2, d2) {
 // pattern matches (covers "Quarter 1: August 25, October 23, 2026" phrasing
 // without a dash).
 function extractDateRangeBounds(text, refYear) {
-  const crossRe = new RegExp(
-    `(${MONTH_RE})\\s+(\\d{1,2})(?:,?\\s*(\\d{4}))?\\s*(?:[-–—]|to|through)\\s*(${MONTH_RE})\\s+(\\d{1,2}),?\\s*(\\d{4})`,
-    'i'
-  );
-  let m = crossRe.exec(text);
+  let m = new RegExp(CROSS_RANGE_SRC, 'i').exec(text);
   if (m) {
-    const mon1 = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
-    const mon2 = MONTHS[m[4].toLowerCase().replace(/\.$/, '')];
-    if (mon1 != null && mon2 != null) {
-      const y1 = m[3] ? parseInt(m[3]) : parseInt(m[6]);
-      const y2 = parseInt(m[6]);
-      return { start: _iso(y1, mon1, parseInt(m[2])), end: _iso(y2, mon2, parseInt(m[5])) };
-    }
+    const r = _crossRangeEnds_(m, refYear);
+    if (r) return { start: _iso(r.y1, r.mon1, r.d1), end: _iso(r.y2, r.mon2, r.d2) };
   }
-  const sameMonRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})\\s*[-–—]\\s*(\\d{1,2}),?\\s*(\\d{4})?`, 'i');
+  const sameMonRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})\\s*[-–—]\\s*(\\d{1,2})(?!\\d),?\\s*(\\d{4})?`, 'i');
   m = sameMonRe.exec(text);
   if (m) {
     const mon = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
@@ -1354,7 +1346,30 @@ function extractDateRangeBounds(text, refYear) {
   return null;
 }
 
-const MONTH_RE = '(?:' + Object.keys(MONTHS).filter(k => k.length > 3 || k === 'may').join('|') + ')\\.?';
+// Whole words only, so three-letter forms ("Aug. 24", "Oct 30") count
+// without "mar" matching inside "Marking". Longest first, so "sept" wins
+// over "sep".
+const MONTH_RE = '\\b(?:' + Object.keys(MONTHS).sort((a, b) => b.length - a.length).join('|') + ')\\b\\.?';
+
+// "Dec 21, 2026 - Jan 1, 2027", "Nov. 25, to Friday, Nov. 27" (a weekday
+// name may follow "to"), "Mar 29 through Apr 2". Either year may be left
+// out; see _crossRangeEnds_().
+const CROSS_RANGE_SRC =
+  `(${MONTH_RE})\\s+(\\d{1,2})(?!\\d)(?:,?\\s*(\\d{4}))?,?\\s*(?:[-–—]|to|through)\\s*` +
+  `(?:(?:mon|tues|wednes|thurs|fri|satur|sun)day,?\\s*)?` +
+  `(${MONTH_RE})\\s+(\\d{1,2})(?!\\d)(?:,?\\s*(\\d{4}))?`;
+
+// The two ends of a CROSS_RANGE_SRC match. A missing end year is refYear; a
+// missing start year is the end's, or the year before when the range wraps
+// December into January.
+function _crossRangeEnds_(m, refYear) {
+  const mon1 = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
+  const mon2 = MONTHS[m[4].toLowerCase().replace(/\.$/, '')];
+  if (mon1 == null || mon2 == null) return null;
+  const y2 = m[6] ? parseInt(m[6]) : refYear;
+  const y1 = m[3] ? parseInt(m[3]) : (mon1 > mon2 ? y2 - 1 : y2);
+  return { y1, mon1, d1: parseInt(m[2]), y2, mon2, d2: parseInt(m[5]) };
+}
 
 // Finds every date-like span in `text` and returns ISO dates (ranges
 // expanded to every included day). Order of alternatives matters — most
@@ -1367,24 +1382,18 @@ function extractDatesFromText(text, refYear) {
   const isFree = (start, end) => !consumed.some(([s, e]) => start < e && end > s);
 
   // 1. Cross-month/cross-year range: "Dec 21, 2026 - Jan 1, 2027" or "Dec 21 - Jan 1, 2027"
-  const crossRe = new RegExp(
-    `(${MONTH_RE})\\s+(\\d{1,2})(?:,?\\s*(\\d{4}))?\\s*(?:[-–—]|to|through)\\s*(${MONTH_RE})\\s+(\\d{1,2}),?\\s*(\\d{4})`,
-    'gi'
-  );
+  const crossRe = new RegExp(CROSS_RANGE_SRC, 'gi');
   let m;
   while ((m = crossRe.exec(text))) {
     if (!isFree(m.index, m.index + m[0].length)) continue;
-    const mon1 = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
-    const mon2 = MONTHS[m[4].toLowerCase().replace(/\.$/, '')];
-    if (mon1 == null || mon2 == null) continue;
-    const y1 = m[3] ? parseInt(m[3]) : parseInt(m[6]); // if first date has no year, borrow the range's year
-    const y2 = parseInt(m[6]);
-    dates.push(..._expandFullRange(y1, mon1, parseInt(m[2]), y2, mon2, parseInt(m[5])));
+    const r = _crossRangeEnds_(m, refYear);
+    if (!r) continue;
+    dates.push(..._expandFullRange(r.y1, r.mon1, r.d1, r.y2, r.mon2, r.d2));
     markConsumed(m.index, m.index + m[0].length);
   }
 
   // 2. Same-month day range: "November 25-27, 2026" / "Nov. 25-27"
-  const sameMonRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})\\s*[-–—]\\s*(\\d{1,2}),?\\s*(\\d{4})?`, 'gi');
+  const sameMonRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})\\s*[-–—]\\s*(\\d{1,2})(?!\\d),?\\s*(\\d{4})?`, 'gi');
   while ((m = sameMonRe.exec(text))) {
     if (!isFree(m.index, m.index + m[0].length)) continue;
     const mon = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
@@ -1395,7 +1404,7 @@ function extractDatesFromText(text, refYear) {
   }
 
   // 3. Single date: "August 25, 2026" / "Aug. 25" (year inferred if absent)
-  const singleRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s*(\\d{4})?`, 'gi');
+  const singleRe = new RegExp(`(${MONTH_RE})\\s+(\\d{1,2})(?!\\d)(?:st|nd|rd|th)?,?\\s*(\\d{4})?`, 'gi');
   while ((m = singleRe.exec(text))) {
     if (!isFree(m.index, m.index + m[0].length)) continue;
     const mon = MONTHS[m[1].toLowerCase().replace(/\.$/, '')];
@@ -1508,7 +1517,10 @@ function parseCountyCalendarText(text, refYear) {
       } else {
         warnings.push(`Found a "Quarter ${qNum}" label but no parseable date on that line: "${trimmed.slice(0,80)}"`);
       }
-      return; // a quarter line is never also a holiday/early-release line
+      // "Friday, Oct. 30: end of first quarter; three-hour early release" —
+      // the quarter's last day can be an early release too. Never a holiday.
+      if (bounds && !bounds.end && /early\s*(release|dismissal)|half[\s-]*day/.test(lower)) earlyReleaseSet.add(bounds.start);
+      return;
     }
 
     const dates = extractDatesFromText(trimmed, yearContext);
@@ -1614,6 +1626,43 @@ function lhSaveEarlyRelease() {
   _parseDateList(document.getElementById('sched-earlyrelease')?.value).forEach(d => { overrides[d] = 'EARLY3'; });
   saveScheduleConfig({ overrides });
   _schedSaveStatus('✓ Saved');
+}
+
+// Replaces the saved quarters, no-school and early-release dates with the
+// built-in ones (QUARTERS_DEFAULT, NO_SCHOOL_DEFAULT,
+// SCHEDULE_OVERRIDES_DEFAULT) — unlike the import above, which only ever
+// adds dates, so last year's would stay. Also swaps the CCPS calendar
+// entries in Deadlines (ids cal_*) for this year's. Bell times, the
+// day-of-week map and hand-entered deadlines are kept.
+function lhUseBuiltInSchoolCalendar() {
+  const msg = 'Replace your quarter dates, no-school dates and early-release dates with the built-in ' +
+    SCHOOL_CALENDAR_YEAR + ' CCPS calendar?\n\nBell times and the day-of-week schedule are kept. In Deadlines, only the CCPS calendar entries are replaced.';
+  _showConfirm(msg, () => {
+    saveScheduleConfig({
+      quarters: JSON.parse(JSON.stringify(QUARTERS_DEFAULT)),
+      noSchool: NO_SCHOOL_DEFAULT.slice(),
+      overrides: Object.assign({}, SCHEDULE_OVERRIDES_DEFAULT),
+    });
+    [1, 2, 3, 4].forEach(q => {
+      const startEl = document.getElementById('sched-q' + q + '-start');
+      const endEl   = document.getElementById('sched-q' + q + '-end');
+      if (startEl) startEl.value = LP_QUARTERS[q].start;
+      if (endEl)   endEl.value   = LP_QUARTERS[q].end;
+    });
+    const noSchoolEl = document.getElementById('sched-noschool');
+    if (noSchoolEl) noSchoolEl.value = [...CCPS_NO_SCHOOL].sort().join('\n');
+    const earlyEl = document.getElementById('sched-earlyrelease');
+    if (earlyEl) earlyEl.value = Object.keys(CCPS_SCHEDULE_OVERRIDES).sort().join('\n');
+
+    DEADLINES = DEADLINES.filter(d => !String(d.id || '').startsWith('cal_'))
+      .concat(CCPS_CALENDAR_DEADLINES_DEFAULT.map(d => Object.assign({}, d)));
+    LS.set('lh_deadlines', DEADLINES);
+    renderDeadlines();
+    refreshNextAction();
+
+    const statusEl = document.getElementById('sched-import-status');
+    if (statusEl) { statusEl.textContent = '✅ ' + SCHOOL_CALENDAR_YEAR + ' calendar applied.'; statusEl.style.color = '#166534'; }
+  }, { confirmLabel: 'Use built-in calendar', danger: false, ariaLabel: 'Use the built-in school calendar' });
 }
 
 // ── County Calendar Document import — the review/apply half ────────────
