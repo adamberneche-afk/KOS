@@ -99,7 +99,7 @@ All 12 of these are individual files sitting directly at Drive root (no folder).
 
 ### 2d. Personal media originals — delete only after visual confirmation
 
-A "Personal Media" folder already exists in this Drive with confirmed-personal copies of the 24 files below. **Before deleting each original, open the corresponding copy in the Personal Media folder and visually confirm it matches** — this is the one category in this whole list worth a human (or your own) sanity check before deleting, since these are irreplaceable personal photos/videos, not regenerable documents.
+A "Personal Media" folder already exists in this Drive with confirmed-personal copies of the 25 files below. **Before deleting each original, open the corresponding copy in the Personal Media folder and visually confirm it matches** — this is the one category in this whole list worth a human (or your own) sanity check before deleting, since these are irreplaceable personal photos/videos, not regenerable documents.
 
 | Original file (delete after confirming copy) | ID |
 |---|---|
@@ -154,7 +154,7 @@ These were flagged but never content-verified. Open each and use your judgment; 
 **Do not act on these. Do not delete, rename, move, or otherwise modify anything related to the items below.** They require Adam's own decision. Your job here is only to present them clearly if asked, not to resolve them:
 
 1. **The IEP document and named-student brochure at Drive root** — sensitive student content. Never touched throughout this entire project. Leave exactly as-is unless Adam gives explicit, specific instructions for these particular files.
-1a. **All Google Form "(Responses)" spreadsheets, and any individually-named student document** — confirmed during a later audit pass to contain real student names, CCPS student email addresses, and personal disclosures (e.g., "AI Usage Disclosure (Responses)," "Mission Associates - Agency Contract Portal (Responses)," "AI Usage disclosure - Jassen Marquez"). This is a systemic pattern across this Drive, not isolated files — treat any file with "(Responses)" in its name, or any file whose name includes what looks like a real first-and-last name, as sensitive by default unless Adam confirms otherwise. Do not open, move, rename, or reference these in any output shown to a third party.
+1a. **All Google Form "(Responses)" spreadsheets, and any individually-named student document** — confirmed during a later audit pass to contain real student names, CCPS student email addresses, and personal disclosures (e.g., "AI Usage Disclosure (Responses)," "Mission Associates - Agency Contract Portal (Responses)," and an AI Usage disclosure doc titled with one student's full name). This is a systemic pattern across this Drive, not isolated files — treat any file with "(Responses)" in its name, or any file whose name includes what looks like a real first-and-last name, as sensitive by default unless Adam confirms otherwise. Do not open, move, rename, or reference these in any output shown to a third party.
 2. **Units 2, 3, and 4 of the Marketing Exploration plan have zero confirmed matches** in the Legacy Archive — this needs Adam to confirm whether these are actually taught as written.
 3. **The 7 large video files** (85-259MB each, listed in the master index) were never able to be reviewed by the prior tooling due to file-size limits. If your tools can preview video content, you may review these and report back what you find — but do not delete or move any of them without Adam's explicit go-ahead based on your findings.
 4. **The other side projects** (Knowledge Operating System, Argoloth Sandbox, Active_Brain_Trust_System) — no decision has been made about these. Leave them alone.
@@ -184,7 +184,7 @@ Report back with a simple completion checklist:
 - [ ] Phase 2a: 10 items deleted, 4 "do not delete" items confirmed untouched
 - [ ] Phase 2b: loose files deleted from Tesseract and CAS folders, both subfolders (V5.28, and the 3 dated CAS folders) confirmed untouched
 - [ ] Phase 2c: 12 files deleted, 10_TURNSTILE.txt reviewed and handled appropriately
-- [ ] Phase 2d: all 24 personal media originals visually confirmed against their copies before deletion
+- [ ] Phase 2d: all 25 personal media originals visually confirmed against their copies before deletion
 - [ ] Phase 2e: 4 housekeeping items deleted
 - [ ] Phase 2f: your findings on the 2 items needing manual review (deleted, kept, or still undecided)
 - [ ] Phase 3: confirmed nothing in this section was touched
