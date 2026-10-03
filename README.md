@@ -312,11 +312,11 @@ lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
 batched requeue of terminal staging rows (`staging-requeue.test.js`), the audit gate rejecting a hollow `PASSED` with an empty `trace_log` (`audit-gate.test.js`), and
 per-session vector classification and its backfill
-(`vector-classify-sessions.test.js`), the matrix repair (one session per row, decay at read time, duplicate sessions, rederive: `vector-matrix-repair.test.js`), incubator decay (`incubator-decay.test.js`),
+(`vector-classify-sessions.test.js`), the matrix repair (one session per row, decay at read time, duplicate sessions, rederive: `vector-matrix-repair.test.js`), the notebook briefing docs and `DECISION_REGISTER` (stable doc IDs, stamps that never advance on a failed run, the primer's Data Quality block: `briefing-docs.test.js`), incubator decay (`incubator-decay.test.js`),
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), the `leaderhub-build` drift gate, and the split script's
+the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 
