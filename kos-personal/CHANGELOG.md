@@ -1,6 +1,24 @@
 # KOS Changelog
 
 
+### A session that pastes code is no longer flagged as fabricated (2026-10-03)
+
+`LOG-adfeae91_CH02` came back `SUSPECT_FABRICATION`, although the
+Auditor had verified each claim against verbatim transcript quotes. The
+groundedness gate checks that the Curator's output repeats at least one
+of the source's 40 longest words. That chunk pasted code, so all 40 were
+function names (`integratePendingGovernance`, `backgroundCapacityCheck`,
+...), which no summary repeats.
+
+- `_srDistinguishingWords_()` ranks prose words first and code identifiers
+  (camelCase, snake_case) after them. Identifiers still fill any places
+  the prose leaves, so a source that is almost all code is still checked,
+  and an unrelated answer is still flagged.
+- To recover the flagged chunk once this is pushed: its staging row is
+  retried when the Turnstile finds it stale; if it has already reached
+  `STUDIO_TIMEOUT`, requeue it with `requeueStagingBatch()`.
+
+
 ### Notebook briefing docs: stamped primer, Data Quality, three new sources (2026-10-03)
 
 Phase 1 of the RTP notebook plan (`rtp-core-router/notebook-plan/`).
