@@ -302,7 +302,7 @@ instead of the Ledger (`student-doc-service.test.js`,
 `student-data-access-repair.test.js`);
 `tests/leaderhub/` covers escaping/XSS guards (including the School
 Store Sales Log's own renderer — Open Items #10, `leader-hub/HISTORY.md`),
-the pacing/calendar helpers, the page's sync code never overwriting an
+the pacing/calendar helpers (with the published CCPS 2026-27 calendar as an import fixture, `fixtures/ccps-2026-27-calendar.txt`, and the built-in calendar's own consistency, `school-calendar-defaults.test.js`), the page's sync code never overwriting an
 edit the server hasn't accepted (`sync-pending.test.js`), the `?diag` modes (`diagnostics.test.js`,
 run against the real built page), and the owner-only functions the page
 calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-personal/` covers the archived `kos-personal/archive/studio-steps/`
