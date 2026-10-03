@@ -1,6 +1,17 @@
 # KOS Changelog
 
 
+### The duplicate finder sees copies whose staging rows were archived (2026-10-03)
+
+The first live `previewDuplicateSessions()` found four groups but missed
+`edd1075a`, `cd01a44e` and `79edf49b`. `findDuplicateSessions()` only
+read STAGING_PIPELINE, and `archiveStagingPipeline()` moves finished rows
+out of it, so a copy with only a VECTOR_MATRIX row left was invisible
+while still counting in Vector State. It now adds every matrix session
+the staging scan didn't see. Such a copy has no staging rows to mark;
+applying removes its matrix row.
+
+
 ### A session that pastes code is no longer flagged as fabricated (2026-10-03)
 
 `LOG-adfeae91_CH02` came back `SUSPECT_FABRICATION`, although the
