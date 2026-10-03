@@ -812,6 +812,14 @@ class FakeDocBody {
     this.paragraphs.push(p);
     return p;
   }
+  // Real Apps Script API — Body.insertParagraph(childIndex, text). First
+  // needed by 6_Governance.gs's _writeStableDoc_(), which writes a
+  // briefing doc's title and stamp at the top after its content.
+  insertParagraph(index, text) {
+    const p = new FakeParagraph(text);
+    this.paragraphs.splice(index, 0, p);
+    return p;
+  }
   setText(text) { this.paragraphs = [new FakeParagraph(text)]; return this; }
   getText() { return this.paragraphs.map((p) => p.text).join('\n'); }
   // Real Apps Script API, backing _clearDocBody_()'s workaround above —

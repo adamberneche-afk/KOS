@@ -97,7 +97,7 @@ test('the old rules still hold', () => {
 test('processInferenceQueue sends a hollow pass back for a retry and logs why', () => {
   const { exported, sandbox } = loadGasFiles(
     ['1_Config_And_Deploy.gs', '5_Error_And_Utilities.gs', '4_Vector_Router.gs', '12_StudioReturnHarvest.gs',
-      '20_VectorClassifySessions.gs', '3_Queue_Processor.gs'].map((f) => path.join(KP, f)),
+      '20_VectorClassifySessions.gs', '22_BriefingDocs.gs', '3_Queue_Processor.gs'].map((f) => path.join(KP, f)),
     ['processInferenceQueue', '_getOrCreateSheet']);
   const ss = sandbox.SpreadsheetApp.create('BRAIN_TRUST_INDEX');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);

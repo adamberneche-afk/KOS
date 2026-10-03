@@ -1,6 +1,49 @@
 # KOS Changelog
 
 
+### Notebook briefing docs: stamped primer, Data Quality, three new sources (2026-10-03)
+
+Phase 1 of the RTP notebook plan (`rtp-core-router/notebook-plan/`).
+Every doc below keeps one Drive file ID and is overwritten in place, so a
+notebook source added once keeps following it.
+
+- **Generated-at stamp.** `KOS_LATEST_PRIMER` and the new docs open on
+  their title, then `Generated at: <date time> (<zone>) by <generator>`.
+  Everything a doc says is read before the doc is touched, and the title
+  and stamp are written last, so a failed run leaves the old doc (or a doc
+  with no stamp), never a fresh stamp over stale or half-written content.
+  `generateDailyPrimer()` now fails instead of writing "No sessions
+  processed yet" when `getVectorState()` itself fails.
+- **Data Quality block** in the primer: Status OK or FLAGGED, and why.
+  It flags duplicate sessions still counted, a matrix not rebuilt since the
+  carried-forward-value fix, and processed sessions with no Vector State
+  row, and reports the matrix row count, incubating themes and the last
+  repair and backfill dates. Those dates are new Script Properties set by
+  `applyDuplicateSessions()`, `applyVectorMatrixRederive()` and
+  `queueVectorClassifyBackfillBatch()`.
+- **New `22_BriefingDocs.gs`**, run by `generateDailyPrimer()` every
+  morning or on demand with `generateBriefingDocs()`:
+  - `KOS_RECENT_SESSIONS`: the five newest processed sessions' summaries,
+    plus any older session with an open decision.
+  - `KOS_OPEN_DECISIONS`: every OPEN row of the new `DECISION_REGISTER`.
+  - `KOS_CORE_FACTS`: the pinned Core facts, under the exact heading
+    ALIGNMENT Threshold D looks for, and the relational targets. A read
+    failure fails the doc rather than printing "None pinned".
+  Each doc is written on its own; one failing leaves its old content and
+  stamp and is named in ERROR_LOG and in the primer's result.
+- **`DECISION_REGISTER`.** The intake still appends deferred decisions to
+  CURRENT_STATE, and now also records each as an OPEN row
+  (`<uid>#<position>`, so a reprocessed chunk adds nothing). Close one by
+  setting Status to RESOLVED or DROPPED, or with `resolveDecision(id,
+  note)`. `previewDecisionRegisterBackfill()` /
+  `applyDecisionRegisterBackfill()` read the decisions already in
+  CURRENT_STATE in, once, all OPEN.
+- **`.claspignore` was missing `21_VectorMatrixRepair.gs`** (added
+  2026-10-03), so a push would have left the Phase 0 repairs out. It now
+  lists 21 and 22, and `tests/tools/claspignore-coverage.test.js` holds
+  both flat projects' `.claspignore` to `project-map.json`.
+
+
 ### VECTOR_MATRIX rows hold one session each; duplicates and ghost values repaired (2026-10-03)
 
 A theme a session scored 0 was written as the previous row's value × 0.92,

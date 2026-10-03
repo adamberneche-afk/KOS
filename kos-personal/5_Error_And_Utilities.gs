@@ -899,6 +899,7 @@ function _getOrCreateSheet(ss, name) {
       'Session_UID','Timestamp','Type','Item',
       'Owner','Protected_Time_Risk','Status',
     ],
+    [CFG.DECISION_REGISTER_SHEET]: CFG.DECISION_REGISTER_HEADERS,
     [CFG.SESSION_LOG_SHEET]: [
       'Session_UID','Timestamp','Session_Type',
       'Cold_Start','RTP_Version','Session_Summary',
