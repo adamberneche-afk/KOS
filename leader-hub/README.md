@@ -79,6 +79,17 @@ are fixed, and the published text is a test fixture
 (`tests/leaderhub/fixtures/ccps-2026-27-calendar.txt`); the consistency of
 the built-in dates is `tests/leaderhub/school-calendar-defaults.test.js`.
 
+The DECA season is Virginia DECA's 2026-27 calendar too: the season
+pipeline (`DECA_SEASON_DEFAULT`, `src/07`: Camp DECA, Power Trip, DLC, SLC
+registration/testing/conference, ICDC registration/payment, ICDC Anaheim
+Apr 17–20; every stage `statusAuto`) and its deadlines from October on
+(`DECA_DEADLINES_DEFAULT`, ids `deca_*`, `src/10`). A season saved in an
+earlier year wins over the default, so the season editor has **"Use the
+built-in 2026-27 season"**, which replaces the season and the `deca_*`
+deadlines (plus last season's two built-in DECA deadlines) and keeps
+hand-entered ones. The dashboard's hard-coded 2026 ICDC alert stopped
+showing after 2026-04-30 and is left as it was.
+
 **Fixed 2026-09-29: the Settings school-calendar importer misread real
 calendars** (seen live 2026-09-28: 0 no-school dates, 22 early-release dates
 and no quarters). In `parseCountyCalendarText()`

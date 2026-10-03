@@ -7,7 +7,8 @@
 // Pins: every date is a real YYYY-MM-DD weekday inside the school year;
 // quarters run in order and the gap between two quarters holds only
 // weekends and no-school days; no date is both a day off and an early
-// release; and the CCPS calendar deadlines' quarter ends match the quarters.
+// release; the CCPS calendar deadlines' quarter ends match the quarters; and
+// the Virginia DECA season and deadlines are the same school year, in order.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -18,14 +19,17 @@ const { runInSandbox } = require('../harness/vm-run');
 const SRC = path.join(__dirname, '..', '..', 'leader-hub', 'src');
 const F10 = path.join(SRC, '10-command-engine-ai-and-widgets.html');
 const F12 = path.join(SRC, '12-integrations-pacing-subplan-brag.html');
+const F07 = path.join(SRC, '07-events-email-members-goals.html');
 
 function load() {
   const cal = extractLines(F10, 197, 225, [
     "const SCHOOL_CALENDAR_YEAR", 'const SCHEDULE_OVERRIDES_DEFAULT', 'const NO_SCHOOL_DEFAULT',
   ]);
-  const deadlines = extractLines(F10, 1590, 1600, ['const CCPS_CALENDAR_DEADLINES_DEFAULT']);
+  const deadlines = extractLines(F10, 1590, 1633, ['const DECA_DEADLINES_DEFAULT', 'const CCPS_CALENDAR_DEADLINES_DEFAULT']);
+  const season = extractLines(F07, 1041, 1068, ['const DECA_SEASON_YEAR', 'const DECA_SEASON_DEFAULT']);
   const quarters = extractLines(F12, 568, 573, ['const QUARTERS_DEFAULT']);
-  return runInSandbox([cal, deadlines, quarters].join('\n'), {}, [
+  return runInSandbox([cal, deadlines, quarters, season].join('\n'), {}, [
+    'DECA_SEASON_YEAR', 'DECA_SEASON_DEFAULT', 'DECA_DEADLINES_DEFAULT',
     'SCHOOL_CALENDAR_YEAR', 'SCHEDULE_OVERRIDES_DEFAULT', 'NO_SCHOOL_DEFAULT',
     'CCPS_CALENDAR_DEADLINES_DEFAULT', 'QUARTERS_DEFAULT',
   ]);
@@ -83,4 +87,32 @@ test('the CCPS calendar deadlines match the quarters and are all cal_* entries',
     assert.ok(isDate(d.date), d.id);
   });
   [1, 2, 3, 4].forEach((q) => assert.equal(byId['cal_q' + q + '_end'].date, c.QUARTERS_DEFAULT[q].end, 'Q' + q));
+});
+
+test('the built-in DECA season and deadlines are one school year, in date order', () => {
+  const c = load();
+  assert.equal(c.DECA_SEASON_YEAR, c.SCHOOL_CALENDAR_YEAR);
+  const from = c.SCHOOL_CALENDAR_YEAR.slice(0, 4) + '-07-01';
+  const to = (parseInt(c.SCHOOL_CALENDAR_YEAR.slice(0, 4)) + 1) + '-06-30';
+  const inYear = (s) => isDate(s) && s >= from && s <= to;
+
+  let prev = '';
+  c.DECA_SEASON_DEFAULT.stages.forEach((s) => {
+    assert.ok(inYear(s.date), s.label);
+    if (s.endDate) assert.ok(inYear(s.endDate) && s.endDate >= s.date, s.label);
+    assert.ok(s.date >= prev, s.label + ' is out of order');
+    assert.equal(s.statusAuto, true, s.label + ' should track its own dates');
+    prev = s.date;
+  });
+  assert.match(c.DECA_SEASON_DEFAULT.title, /26–27/);
+
+  const ids = new Set();
+  prev = '';
+  c.DECA_DEADLINES_DEFAULT.forEach((d) => {
+    assert.ok(d.id.startsWith('deca_') && !ids.has(d.id), d.id);
+    ids.add(d.id);
+    assert.ok(inYear(d.date), d.id);
+    assert.ok(d.date >= prev, d.id + ' is out of order');
+    prev = d.date;
+  });
 });

@@ -1584,6 +1584,39 @@ function dbTick() {
 }
 
 // ── Deadlines ─────────────────────────────────────────────
+// Virginia DECA's 2026-27 calendar, from October on (ids deca_*). The
+// season editor's "Use the built-in season" (lhUseBuiltInDecaSeason) swaps
+// a saved list's deca_* entries for these.
+const DECA_DEADLINES_DEFAULT = [
+  { id:'deca_power_reg',   title:'DECA Ultimate Power Trip Registration Due',             date:'2026-10-15', role:'deca' },
+  { id:'deca_officer_app', title:'DECA State Officer Application Due',                     date:'2026-11-03', role:'deca' },
+  { id:'deca_roster',      title:'DECA Initial Online Membership Roster Due',              date:'2026-11-15', role:'deca' },
+  { id:'deca_campaigns',   title:'DECA Chapter + Membership Campaigns Due',                date:'2026-12-01', role:'deca' },
+  { id:'deca_sem_reg',     title:'DECA Sports Conference Registration Due',                date:'2026-12-02', role:'deca' },
+  { id:'deca_va_day',      title:'VA DECA Day Submission, Blazer Challenge, Honor & Merit Apps Due', date:'2026-12-04', role:'deca' },
+  { id:'deca_va_schol',    title:'VA DECA Scholarship Applications Due',                   date:'2026-12-11', role:'deca' },
+  { id:'deca_delegates',   title:'DECA Membership Deadline for SLC Voting Delegates',      date:'2026-12-31', role:'deca' },
+  { id:'deca_diamond',     title:'VA DECA Diamond Fund Form Due',                          date:'2027-01-05', role:'deca' },
+  { id:'deca_inc_schol',   title:'DECA Inc. Scholarship Applications Due',                 date:'2027-01-11', role:'deca' },
+  { id:'deca_sbe_cert',    title:'DECA SBE Certification Due',                             date:'2027-01-14', role:'deca' },
+  { id:'deca_slc_reg',     title:'DECA SLC Registration Closes (11:59pm) + Membership Paid', date:'2027-01-15', role:'deca' },
+  { id:'deca_annual',      title:'DECA Advisor Scholarship, Outstanding Advisor, Friends of DECA, Annual Report Due', date:'2027-01-20', role:'deca' },
+  { id:'deca_slc_lock',    title:'DECA SLC Registration Lock — No Changes',                date:'2027-01-22', role:'deca' },
+  { id:'deca_prepared',    title:'DECA Prepared Events + Emerging Leader Apps Due',        date:'2027-02-01', role:'deca' },
+  { id:'deca_slc_pay',     title:'DECA SLC Payment Due',                                   date:'2027-02-05', role:'deca' },
+  { id:'deca_icdc_member', title:'DECA ICDC Final Membership Eligibility',                 date:'2027-02-15', role:'deca' },
+  { id:'deca_icdc_prereg', title:'DECA ICDC Pre-Registration Closes (SBE, Academy, Virtual)', date:'2027-02-18', role:'deca' },
+  { id:'deca_icdc_trip',   title:'ICDC Field Trip Form (~45 days before Anaheim)',         date:'2027-03-03', role:'trips' },
+  { id:'deca_icdc_accept', title:'DECA Accept/Decline ICDC Spots',                         date:'2027-03-03', role:'deca' },
+  { id:'deca_icdc_lock',   title:'DECA ICDC Registration Lock (bump-ups end 5pm)',         date:'2027-03-05', role:'deca' },
+  { id:'deca_icdc_house',  title:'DECA ICDC Rooming List + Housing Deposit Due',           date:'2027-03-15', role:'deca' },
+  { id:'deca_blazer',      title:'DECA ICDC Blazer Order Deadline',                        date:'2027-03-23', role:'deca' },
+  { id:'deca_icdc_prep',   title:'DECA ICDC Prepared Submissions Due',                     date:'2027-03-30', role:'deca' },
+  { id:'deca_emerging',    title:'DECA Emerging Leader Honor Award Applications Due',      date:'2027-03-31', role:'deca' },
+  { id:'deca_icdc_pay',    title:'DECA ICDC Payment Due',                                  date:'2027-04-01', role:'deca' },
+  { id:'deca_icdc',        title:'DECA ICDC — Anaheim, CA (Apr 17–20)',                     date:'2027-04-17', role:'deca' },
+];
+
 // The CCPS calendar's own dates (ids cal_*), 2026-27. Settings → School
 // Calendar → "Use the built-in calendar" swaps a saved list's cal_* entries
 // for these, so they're kept separate from the hand-entered deadlines.
@@ -1608,9 +1641,7 @@ let DEADLINES = LS.get('lh_deadlines', [
   { id:'dl_syn2',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-04-04', role:'teach' },
   { id:'dl_syn3',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-04-18', role:'teach' },
   { id:'dl_syn4',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-05-02', role:'teach' },
-  // ── DECA ───────────────────────────────────────────────────────────────────
-  { id:'dl_icdc_pay',  title:'DECA ICDC Payment Due',                        date:'2026-04-01', role:'deca' },
-  { id:'dl6',          title:'DECA ICDC Atlanta',                            date:'2026-04-25', role:'deca' },
+  ...DECA_DEADLINES_DEFAULT.map(d => Object.assign({}, d)),
   // ── Field Trips ────────────────────────────────────────────────────────────
   { id:'dl5',          title:'Field Trip Form Submission Deadline',           date:'2026-04-22', role:'trips' },
   // ── WBL / Store ────────────────────────────────────────────────────────────
