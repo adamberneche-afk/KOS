@@ -73,14 +73,14 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 | ID | Question | How to check |
 |---|---|---|
 | U1 | Is notebook source sync automatic? **Documented: yes, every few minutes.** | Still time one edit end to end. |
-| U2 | Notebook plus Workspace extensions in one Gem? **Researched; not documented for Gems, nearest yes is the Gemini-app notebook (02_PRD §10).** | Test both surfaces with one throwaway notebook: (a) the notebook opened in the Gemini app with a short instruction, (b) a Gem with that notebook as Knowledge. In each, one turn that needs the source plus `@Calendar`, `@Gmail` and `@Google Tasks`. Also confirm the notebook is still attached to the Gem in a new chat the next day. |
+| U2 | Notebook plus Workspace extensions in one Gem? **Researched; not documented for Gems, nearest yes is the Gemini-app notebook (02_PRD §10). The RTP Gem already has the RTP notebook attached, so test (b) can run on it directly.** | Test both surfaces with one throwaway notebook: (a) the notebook opened in the Gemini app with a short instruction, (b) a Gem with that notebook as Knowledge. In each, one turn that needs the source plus `@Calendar`, `@Gmail` and `@Google Tasks`. Also confirm the notebook is still attached to the Gem in a new chat the next day. |
 | U3 | Source limits; do Sheets sync? | Check the product's current limits before adding the full set. |
 | U4 | Does retrieval preserve persona rules? **Researched; documentation can't answer it (retrieval is passage-based, with no equal-coverage promise).** | Ask for a persona-specific hard constraint three ways; compare with the source doc and the cited passage. Use two personas, one whose constraint sits in a single section and one whose rule spans sections. |
 | U5 | Does an in-place GAS update sync? | Overwrite a test Doc via the Drive API; confirm the Gem sees the new content. |
 | U6 | Do tables and code blocks survive conversion? | Convert one persona doc and one protocol; diff against the source. |
 | U7 | ~~Which account hosts the notebook?~~ The school account. Does it allow notebooks and extensions? | Test with a throwaway notebook on the account. |
 | U8 | What do "Active Files in Context" and truncation checks mean under retrieval? | Ask a document-dependent question with one source removed; see what the Gem flags. |
-| U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER`? | Open the Gem's sources and the notebook; confirm the doc ID matches the stored property. |
+| U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER`? **Gem → RTP notebook: yes (2026-10-03).** | Open the RTP notebook's sources; confirm one is `KOS_LATEST_PRIMER` and its doc ID matches `KOS_LATEST_PRIMER_DOC_ID`. Also diff the Gem's Instructions against `RTP_CORE_ROUTER_V5_8.md`; the live text opens differently. |
 | U10 | ~~What changed for the 9/29 format fix; any Flow bound to the Gem?~~ Answered (02_PRD §10). | None. |
 
 ---
