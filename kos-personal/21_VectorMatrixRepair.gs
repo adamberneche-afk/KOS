@@ -92,6 +92,20 @@ function findDuplicateSessions(opts) {
       if (!isNaN(t) && t < s.firstAt) s.firstAt = t;
     });
 
+    // A copy whose staging rows were archived (archiveStagingPipeline moves
+    // finished rows out) can still have a VECTOR_MATRIX row, and is still
+    // counted in Vector State. Seen 2026-10-03: edd1075a, cd01a44e and
+    // 79edf49b were missing from the first live preview. Add each matrix
+    // session the staging scan didn't see, with no rows to mark.
+    Object.keys(inMatrix).forEach(function (uid) {
+      if (sessions[uid]) return;
+      const h = VMR_LOG_UID_RE.exec(uid);
+      if (!h) return;
+      const epoch = /^LOG-(\d{12,})-/.exec(uid);
+      sessions[uid] = { sessionUid: uid, hash: h[1], rows: [], processed: 0, inFlight: 0,
+        firstAt: epoch ? Number(epoch[1]) : Infinity, duplicate: false };
+    });
+
     const byHash = {};
     Object.keys(sessions).forEach(function (k) {
       const s = sessions[k];
@@ -191,6 +205,15 @@ function rederiveVectorMatrix(opts) {
   opts = opts || {};
   const apply = opts.apply === true;
   const started = Date.now();
+  const budgetMs = VMR_TIME_BUDGET_MS;
+  const props = PropertiesService.getScriptProperties();
+  // Sessions an earlier, unfinished apply already rebuilt. Reading part docs
+  // is slow (about 20 seconds a session on the live account), so a large
+  // matrix takes several runs; each run writes what it rebuilt and resumes.
+  const done = {};
+  try {
+    JSON.parse(props.getProperty(CFG.PROP.VM_REDERIVE_DONE) || '[]').forEach(function (u) { done[u] = true; });
+  } catch (_) {}
   const lock = apply ? LockService.getScriptLock() : null;
   if (lock && !lock.tryLock(10000)) {
     return { apply: apply, rebuilt: 0, changed: 0, kept: [],
@@ -230,10 +253,16 @@ function rederiveVectorMatrix(opts) {
     let rebuilt = 0;
     let changed = 0;
     let timedOut = false;
+    let alreadyDone = 0;
+    const rebuiltUids = [];
     const out = current.map(function (r) {
       const uid = String(r[0]).trim();
       const entry = { r: r, t: _vmSessionTime_(uid, dates, r[1]) };
-      if (timedOut || Date.now() - started > VMR_TIME_BUDGET_MS) {
+      if (done[uid]) {
+        alreadyDone++;
+        return entry;
+      }
+      if (timedOut || Date.now() - started > budgetMs || (opts.maxRows != null && rebuilt >= opts.maxRows)) {
         timedOut = true;
         kept.push({ sessionUid: uid, reason: 'TIME_BUDGET' });
         return entry;
@@ -246,6 +275,7 @@ function rederiveVectorMatrix(opts) {
       const known = _aggregateSentenceVectors_(exchanges.list).known;
       const row = _buildMatrixRow_(themes, known, uid, r[1]).row;
       rebuilt++;
+      rebuiltUids.push(uid);
       const differs = themes.some(function (t, k) {
         return Math.abs((parseFloat(r[2 + k]) || 0) - row[2 + k]) > 0.00005;
       });
@@ -257,26 +287,44 @@ function rederiveVectorMatrix(opts) {
     out.sort(function (a, b) { return a.t - b.t; });
     const reordered = out.some(function (e, i) { return String(e.r[0]).trim() !== String(current[i][0]).trim(); });
 
-    if (apply && timedOut) {
-      return { apply: apply, rebuilt: rebuilt, changed: changed, kept: kept,
-        message: 'Stopped at the ' + (VMR_TIME_BUDGET_MS / 60000) + '-minute budget before reading every part doc. ' +
-          'Nothing was written; run applyVectorMatrixRederive() again.' };
-    }
     if (apply) {
       matrix.getRange(2, 1, out.length, lastCol).setValues(out.map(function (e) { return e.r; }));
       const extra = matrix.getLastRow() - 1 - out.length;
       if (extra > 0) matrix.deleteRows(out.length + 2, extra);
       SpreadsheetApp.flush();
-      PropertiesService.getScriptProperties().setProperty(CFG.PROP.VM_LAST_REDERIVE_AT, new Date().toISOString());
+      if (timedOut) {
+        // Keep what this run rebuilt; the next run starts after it.
+        props.setProperty(CFG.PROP.VM_REDERIVE_DONE, JSON.stringify(Object.keys(done).concat(rebuiltUids)));
+      } else {
+        props.deleteProperty(CFG.PROP.VM_REDERIVE_DONE);
+        props.setProperty(CFG.PROP.VM_REDERIVE_KEPT, String(kept.length));
+        props.setProperty(CFG.PROP.VM_LAST_REDERIVE_AT, new Date().toISOString());
+      }
+    }
+
+    const remaining = kept.filter(function (k) { return k.reason === 'TIME_BUDGET'; }).length;
+    if (timedOut) {
+      const message = (apply
+        ? 'Rebuilt ' + rebuilt + ' row(s) this run and wrote them (' + (alreadyDone + rebuilt) + ' of ' +
+          current.length + ' done); ' + remaining + ' left. Run applyVectorMatrixRederive() again to continue.'
+        : 'DRY RUN, stopped at the ' + Math.round(budgetMs / 60000) + '-minute budget after ' + rebuilt +
+          ' row(s) (' + changed + ' with changed scores); ' + remaining + ' not read. ' +
+          'applyVectorMatrixRederive() works through them across several runs.');
+      console.log('[Rederive] ' + message);
+      kept.forEach(function (k) { if (k.reason !== 'TIME_BUDGET') console.log('[Rederive]   kept ' + k.sessionUid + ': ' + k.reason); });
+      return { apply: apply, rebuilt: rebuilt, changed: changed, kept: kept, alreadyDone: alreadyDone,
+        remaining: remaining, finished: false, message: message };
     }
 
     const message = (apply ? 'Rewrote' : 'DRY RUN, would rewrite') + ' VECTOR_MATRIX: ' + rebuilt + ' of ' +
-      current.length + ' row(s) rebuilt from their classify parts, ' + changed + ' with changed scores' +
+      current.length + ' row(s) rebuilt from their classify parts' +
+      (alreadyDone ? ' (and ' + alreadyDone + ' rebuilt by earlier runs)' : '') + ', ' + changed + ' with changed scores' +
       (kept.length ? ', ' + kept.length + ' kept as they are' : '') +
       (reordered ? ', rows put in session date order' : '') + '.';
     console.log('[Rederive] ' + message);
     kept.forEach(function (k) { console.log('[Rederive]   kept ' + k.sessionUid + ': ' + k.reason); });
-    return { apply: apply, rebuilt: rebuilt, changed: changed, kept: kept, reordered: reordered, message: message };
+    return { apply: apply, rebuilt: rebuilt, changed: changed, kept: kept, alreadyDone: alreadyDone,
+      remaining: 0, finished: true, reordered: reordered, message: message };
   } finally {
     if (lock) lock.releaseLock();
   }
