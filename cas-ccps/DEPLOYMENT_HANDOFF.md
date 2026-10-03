@@ -1,6 +1,19 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: ALL THREE SYSTEMS ARE NOW LIVE — cas-ccps, leader-hub, kos-personal.
+> ## ✅ STATUS: cas-ccps is live. kos-personal and leader-hub each have open work (corrected 2026-10-03)
+>
+> **Read the other two systems' own handoffs for their state.** This banner
+> used to say all three systems were live with nothing left to deploy. As
+> of 2026-10-03 that is not true:
+>
+> - **kos-personal:** about 71% of Curator Flow rows fail, and the Classify
+>   Flow has never produced a real result. See
+>   `kos-personal/HANDOFF_2026-09-28.md`.
+> - **leader-hub:** paused. It works on `/dev`, but `/exec` still needs its
+>   release. See `leader-hub/README.md`'s "Status".
+> - **cas-ccps:** the seven projects `run.ps1` deploys (all eight except the
+>   blocked `studio-steps`) are waiting on a `run.ps1 -Latest` push of
+>   current `main`.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
 > projects are live in a real `ccpsnet.net` Workspace account, Module 1 and
@@ -11,13 +24,11 @@
 > fixture data, not yet a real student submission; `cas-ccps/docs/IMPACT_DASHBOARD.html`
 > keeps that distinction explicit in its own badges and metrics.
 >
-> **kos-personal closed the gap this banner used to describe (2026-09-08):
-> both its Studio flows are now built and verified end to end too** — see
-> ["The other two systems"](#the-other-two-systems) below and
-> `kos-personal/CHANGELOG.md` Rounds 21-22 for the full account, including
-> two real bugs the verification itself surfaced and fixed. **A fresh
-> session has nothing left to deploy from scratch across all three
-> systems.** The rest of this document — the already-live section, the
+> **kos-personal's two Studio flows were built and verified on 2026-09-08**
+> (`kos-personal/CHANGELOG.md` Rounds 21-22), but that verification has
+> not held: see the kos-personal bullet above. **Nothing needs deploying
+> from scratch**, but all three systems have pushes or fixes pending. The
+> rest of this document — the already-live section, the
 > Script Properties reference, the from-scratch order of operations — is
 > kept as reference for standing up a *second* cas-ccps account, for
 > extending any of the three systems, or for onboarding a session that
@@ -134,10 +145,12 @@
 >    constants the harvest reads. Build each Flow from that tab, not from a
 >    comment block — the comment blocks normalize em-dashes, which is how a
 >    marker copied from a note silently matched nothing.
-> 4. **`meta/FLOW_DOCTRINE.md` exists**: fifteen rules with the incident
->    behind each and an explicit note on whether anything enforces it. Read it
->    before changing how a flow is built. Nine of the fifteen are enforced by
->    `gas-lint` Checks G-K and `doc-currency` Check 5. Rule 15 is item 8 above,
+> 4. **`meta/FLOW_DOCTRINE.md` exists**: seventeen rules (fifteen when this
+>    was written) with the incident behind each and an explicit note on
+>    whether anything enforces it. Read it before changing how a flow is
+>    built. Nine of the first fifteen are enforced by `gas-lint` Checks G-K
+>    and `doc-currency` Check 5; rule 16 partially, by drift tests, and rule
+>    17 not at all. Rule 15 is item 8 above,
 >    generalized: check groundedness at harvest, not just that the output
 >    parses.
 > 5. **The docs were corrected** where they still described the blocked path
@@ -421,17 +434,18 @@ derived from the constants the code reads, and this file is prose.
 
 ```
 Read cas-ccps/DEPLOYMENT_HANDOFF.md's status banner, then
-kos-personal/DEPLOYMENT_GUIDE.md's status banner, then
-kos-personal/STUDIO_INTEGRATION_SPEC.md's banner in full. All three
-systems on the ccpsnet.net account are now live: 8 cas-ccps projects
-exist and all five cas-ccps flows are live and verified; leader-hub is
-fully deployed with all six Flows live; kos-personal's code is pushed
-and both its Studio flows are built and verified end to end
-(kos-personal/CHANGELOG.md Rounds 21-22 for the full account, including
-two real bugs the verification itself surfaced and fixed). There is
-nothing left to deploy from scratch. I run every clasp/browser/Studio
-action myself (SMP-004) and paste logs back. [Describe what you actually
-need: extending one of the three systems, investigating something that
+kos-personal/HANDOFF_2026-09-28.md, then leader-hub/README.md's
+"Status" section. All three systems are on the same ccpsnet.net account.
+cas-ccps: 8 projects exist and all five flows are live and verified
+against fixture data; the seven run.ps1 projects are waiting on a
+run.ps1 -Latest push. kos-personal: the Curator Flow returns persona
+output instead of contract JSON (about 71% of rows failed), and the
+Classify Flow has never produced a real result; the handoff has the
+test to run first. leader-hub: paused, works on /dev, /exec still needs
+its release. Nothing needs deploying from scratch. I run every
+clasp/browser/Studio action myself (SMP-004) and paste logs back.
+[Describe what you actually need: one of the open items above,
+extending one of the three systems, investigating something that
 looks wrong, or standing up a second account from this same codebase.]
 ```
 
@@ -450,13 +464,20 @@ account boundary, which is a mistake this repo made twice
 (`EMAIL_COMPOSE`, `ARCHIVE_INSIGHTS`, `WBL_INSIGHTS`, `LP_ASSIST`,
 `FIN_ANALYSIS`, `BRAG_EMAIL`) built and confirmed live via
 `checkAiFlowFixtures()`. Its own `HISTORY.md` has the deployment record.
+**Since then (2026-10-03): paused.** After the OAuth-consent-dialog crash
+fix it works on `/dev`, but `/exec` still needs its release; see
+`leader-hub/README.md`'s "Status".
 Its queue rows are deleted the moment their outcome is read, which is why
 liveness there is a durable counter rather than a row scan. Its D1 side —
 the browser calling cas-ccps's `doPost()` — is diagnosed from the cas-ccps
 end; see the paragraph above.
 
 **kos-personal** — `kos-personal/DEPLOYMENT_GUIDE.md`. **Both Studio flows
-built and verified end to end (2026-09-08) — the second attempt succeeded.**
+were built and verified end to end on 2026-09-08 (the second attempt), but
+the pipeline has failed since:** from Sept 10 about 71% of Curator rows
+failed on persona output, and the Classify Flow has never classified a real
+session. `kos-personal/HANDOFF_2026-09-28.md` is the current record; the
+history below is how the flows got built.
 The Curator flow's first Studio build attempt surfaced real problems (a
 trigger condition not actually filtering on `Status`, and Gemini
 fabricating output after a "Workspace sources is turned off" warning
