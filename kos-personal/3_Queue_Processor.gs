@@ -422,6 +422,11 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
         '[' + (d.owner || 'unassigned') + '] ' +
         (d.decision || '') + ' — Blocking: ' + (d.blocking || 'unknown')
       ));
+      // And to DECISION_REGISTER, where each stays OPEN until the operator
+      // resolves it; the KOS_OPEN_DECISIONS briefing doc reads it
+      // (22_BriefingDocs.gs). Keyed by uid + position, so a reprocessed
+      // chunk doesn't record its decisions twice.
+      _recordDeferredDecisions_(ss, uid, ts, dd);
     }
 
     // ── PIVOTS_AND_LESSONS ───────────────────────────────────────

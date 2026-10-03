@@ -144,6 +144,7 @@ function findDuplicateSessions(opts) {
       }
       const partsSheet = ss.getSheetByName(VCS_PARTS_TAB);
       if (partsSheet) Object.keys(dropUids).forEach(function (uid) { _vcsDeleteSessionParts_(partsSheet, uid); });
+      PropertiesService.getScriptProperties().setProperty(CFG.PROP.VM_LAST_DEDUPE_AT, new Date().toISOString());
     }
 
     groups.forEach(function (g) { delete g._drop; });
@@ -266,6 +267,7 @@ function rederiveVectorMatrix(opts) {
       const extra = matrix.getLastRow() - 1 - out.length;
       if (extra > 0) matrix.deleteRows(out.length + 2, extra);
       SpreadsheetApp.flush();
+      PropertiesService.getScriptProperties().setProperty(CFG.PROP.VM_LAST_REDERIVE_AT, new Date().toISOString());
     }
 
     const message = (apply ? 'Rewrote' : 'DRY RUN, would rewrite') + ' VECTOR_MATRIX: ' + rebuilt + ' of ' +

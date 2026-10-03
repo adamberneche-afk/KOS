@@ -24,9 +24,13 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 
 ## Phase 1 — Build the briefing docs (GAS)
 
-1. Create the stable-ID docs: recent sessions (rolling), open decisions, core facts. Reuse the existing primer pattern.
-2. Add the generated-at stamp and the data-quality block (ADR-006, ADR-007) to the primer.
-3. Generators are idempotent; on error they log and leave the stamp unchanged.
+**Built 2026-10-03, not yet live** (`22_BriefingDocs.gs`, `6_Governance.gs`; `kos-personal/CHANGELOG.md` has the detail).
+
+1. Create the stable-ID docs: recent sessions (rolling), open decisions, core facts. Reuse the existing primer pattern. **Built:** `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS`, `KOS_CORE_FACTS`, all through `_writeStableDoc_()`. Open decisions come from a new `DECISION_REGISTER` sheet (the intake records each deferred decision as OPEN; the operator sets RESOLVED or DROPPED). **Deviation:** recent sessions carries each session's SESSION_LOG summary, not the full Curator JSON. Next steps stay in CURRENT_STATE, which is its own Tier A source.
+2. Add the generated-at stamp and the data-quality block (ADR-006, ADR-007) to the primer. **Built.** The stamp line is `Generated at: YYYY-MM-DD HH:mm (<zone>) by <generator>`, directly under each doc's title. A doc with no stamp line is stale too (that is what a run that fails partway leaves).
+3. Generators are idempotent; on error they log and leave the stamp unchanged. **Built and tested** (`tests/kos-personal/briefing-docs.test.js`, `governance-primer.test.js`).
+
+**To make it live:** push kos-personal; run `previewDecisionRegisterBackfill()`, then `applyDecisionRegisterBackfill()`, and resolve any decision already settled; run `generateBriefingDocs()` and note the three doc IDs it logs; the next 06:00 run then refreshes all four docs.
 
 **Gate:** two consecutive daily runs produce correct docs; a forced failure leaves the stamp unchanged.
 

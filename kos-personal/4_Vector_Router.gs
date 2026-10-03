@@ -956,22 +956,31 @@ function _ensureIncubatorCoreFactColumn_(incubSheet) {
  */
 function getManuallyPinnedCoreFacts() {
   try {
-    const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
-    const incubSheet = ss.getSheetByName(CFG.INCUBATOR_SHEET);
-    if (!incubSheet || incubSheet.getLastRow() <= 1) return [];
-
-    return incubSheet
-      .getRange(2, 1, incubSheet.getLastRow() - 1, 8)
-      .getValues()
-      .filter(r => r[6] === 'PROMOTED_MANUAL')
-      .map(r => ({
-        theme: String(r[0]),
-        fact:  String(r[7] || '').trim() || String(r[0]),
-      }));
+    return _readPinnedCoreFacts_(_getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false));
   } catch (e) {
     _reportError('getManuallyPinnedCoreFacts', e, null);
     return [];
   }
+}
+
+/**
+ * The pinned {theme, fact} pairs, throwing on a read failure. The
+ * KOS_CORE_FACTS briefing doc (22_BriefingDocs.gs) uses this rather than
+ * getManuallyPinnedCoreFacts(): an empty list there tells the Gem
+ * "nothing pinned", which turns ALIGNMENT Threshold D off, so a read
+ * failure must fail the doc instead of looking like an empty list.
+ */
+function _readPinnedCoreFacts_(ss) {
+  const incubSheet = ss.getSheetByName(CFG.INCUBATOR_SHEET);
+  if (!incubSheet || incubSheet.getLastRow() <= 1) return [];
+  return incubSheet
+    .getRange(2, 1, incubSheet.getLastRow() - 1, 8)
+    .getValues()
+    .filter(r => r[6] === 'PROMOTED_MANUAL')
+    .map(r => ({
+      theme: String(r[0]),
+      fact:  String(r[7] || '').trim() || String(r[0]),
+    }));
 }
 
 

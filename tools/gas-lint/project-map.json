@@ -23,7 +23,8 @@
       "kos-personal/18_DeployVersionMarker.gs",
       "kos-personal/19_StagingRequeue.gs",
       "kos-personal/20_VectorClassifySessions.gs",
-      "kos-personal/21_VectorMatrixRepair.gs"
+      "kos-personal/21_VectorMatrixRepair.gs",
+      "kos-personal/22_BriefingDocs.gs"
     ],
     "html": [
       "kos-personal/8_WebApp_UI.html"
