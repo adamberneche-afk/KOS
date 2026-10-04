@@ -37,7 +37,7 @@ const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 // tabs — the right answer for the wrong reason, which is what gas-lint's
 // Check K (FLOW_DOCTRINE.md rule 12) exists to stop.
 const FILES = [S('00_SharedConfig.js'), S('07_TeacherDashboard.js'),
-               S('31_PacingGuideManager.js')];
+               S('31_PacingGuideManager.js'), S('22_LessonContextHandler.js'), S('23_StudentProfileManager.js')];
 
 const EXPOSE = [
   'runLeaderHubConnectionCheck', '_lhcHasRows_', '_lhcCount_', '_lhcDescribe_',

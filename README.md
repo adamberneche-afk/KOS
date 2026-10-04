@@ -279,7 +279,7 @@ tests. See
 tests/cas-ccps/*.test.js tests/kos-personal/*.test.js` (`npm test`) runs
 real Node-`vm`-sandboxed coverage against the actual `.gs`/`.js` source
 via [`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
-`tests/cas-ccps/` covers the SCR suggestion engine's threshold/state
+`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), the SCR suggestion engine's threshold/state
 machine, the student-context aggregator, `getCompetencyTextMap_`'s
 cache-with-fail-open behavior, Ledger retention, the opt-in Flow 2
 direct-evaluation escape hatch, the `cas-ccps/studio-steps/` custom steps
@@ -316,7 +316,7 @@ per-session vector classification and its backfill
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the `leaderhub-build` drift gate, and the split script's
+the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics matching their generator (`unit-rubrics.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 

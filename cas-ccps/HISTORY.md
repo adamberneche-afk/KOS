@@ -2367,3 +2367,29 @@ part way left some rows written and the lesson still RECEIVED, so the
 retry wrote the full set again and the coverage report counted those
 competencies twice. It now writes them in one `setValues()`, and sets
 status and alignment_logged_at in one write.
+
+## Course year builder: course data, rolling lessons, unit rubrics, 2026-10-04
+
+The repo held all of 8175/8177's data, but nothing confirmed it was in the
+live Ledger, and nothing built lessons from the pacing guide: warm-ups only
+run for a LessonContext row for tomorrow, and those came only from the
+dashboard's New Lesson form.
+
+- New `51_CourseYearBuilder.js`: `importCourseData()` / `checkCourseData()`,
+  and a nightly `buildUpcomingLessons()` that drafts the next 7 days of
+  lessons per class period from the pacing guide, skipping weekends,
+  NoSchoolDays (CCPS 2026-27) and any slot that already has a lesson.
+- `31_PacingGuideManager.js`: unit dates are written as text and read back
+  through `_normalizeLessonDateCell_()`. Sheets turned the written
+  "YYYY-MM-DD" into Date cells, which read back as "Fri Sep 25 2026 ...",
+  so `resolveUnitForDate_()` could not match any unit.
+- `31_PacingGuideManager.js`: `getWarmUpAnchor_()` takes the course's own
+  unit. S8-U2 (8177 only) overlaps S7-U1 (8175 only), and the first unit
+  covering the date was returned whatever the course, so 8177 classes had
+  no anchor from mid-April to mid-May.
+- `22_LessonContextHandler.js`: `_normalizeLessonDateCell_()` also
+  recognises a Date that fails `instanceof`.
+- `curriculum/unit-rubrics/`: one rubric and prompt template per unit and
+  course for the Rubric Upload Form, generated from the pacing guide and
+  CompetencyRubrics.json.
+
