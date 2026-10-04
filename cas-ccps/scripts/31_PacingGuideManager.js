@@ -192,6 +192,9 @@ function importPacingGuide() {
   ]);
 
   // ── Batch write ────────────────────────────────────────────────────────────
+  // Keep the dates as text: a written "YYYY-MM-DD" otherwise becomes a Date
+  // cell, which _loadPacingGuide_ used to read back as "Fri Sep 25 2026 ...".
+  pgSheet.getRange(2, PG_APPROX_START + 1, rows.length, 2).setNumberFormat("@");
   pgSheet.getRange(2, 1, rows.length, PG_COL_COUNT).setValues(rows);
 
   // ── Invalidate cache ──────────────────────────────────────────────────────
@@ -304,7 +307,11 @@ function resolveUnitForDate_(dateStr) {
 
   const result = match || fallback;
   if (!result) return null;
+  return _pgUnitView_(result);
+}
 
+// The unit object resolveUnitForDate_ and getWarmUpAnchor_ hand to callers.
+function _pgUnitView_(result) {
   return {
     unit_id:               result.lesson_unit_id,
     stage:                 result.stage,
@@ -332,6 +339,37 @@ function resolveUnitForDate_(dateStr) {
   };
 }
 
+/**
+ * The pacing-guide unit that covers dateStr for this course. Units overlap
+ * (S8-U2, 8177 only, runs inside S7 and S8-U1), so the first unit covering
+ * the date is not always one the course takes; this skips units marked
+ * "<other course> only" or with no competencies for the course. Falls back
+ * to the course's nearest earlier unit, like resolveUnitForDate_. Used by getWarmUpAnchor_ below and
+ * by 51_CourseYearBuilder.js.
+ */
+function resolveUnitForCourseDate_(dateStr, courseCode) {
+  const units = _loadPacingGuide_() || [];
+  const target = new Date(dateStr + "T00:00:00");
+  const other = courseCode === "8175" ? "8177" : "8175";
+  let match = null;
+  let fallback = null;
+  units.forEach(u => {
+    if (!u.approx_start || !u.approx_end) return;
+    if (courseCode) {
+      if (String(u.overlap_type || "").trim() === other + " only") return;
+      if (!String(u["competency_ids_" + courseCode] || "").trim()) return;
+    }
+    const start = new Date(u.approx_start + "T00:00:00");
+    const end = new Date(u.approx_end + "T23:59:59");
+    if (target >= start && target <= end) {
+      if (!match) match = u;
+    } else if (target > end && (!fallback || start > new Date(fallback.approx_start + "T00:00:00"))) {
+      fallback = u;
+    }
+  });
+  return match || fallback;
+}
+
 // ---------------------------------------------------------------------------
 // getWarmUpAnchor_
 // Returns the warmup_anchor string for a given date and course name.
@@ -347,14 +385,23 @@ function resolveUnitForDate_(dateStr) {
 //            studio_flow_hooks } or null
 // ---------------------------------------------------------------------------
 function getWarmUpAnchor_(dateStr, courseName) {
-  const unit = resolveUnitForDate_(dateStr);
-  if (!unit) return null;
-
   // Select course-specific objective
   const is8175 = courseName && courseName.includes("8175") ||
                  (courseName && courseName.toLowerCase().includes("marketing"));
   const is8177 = courseName && courseName.includes("8177") ||
                  (courseName && courseName.toLowerCase().includes("management"));
+
+  // Units overlap: S8-U2 (8177 only) runs inside S7-U1 (8175 only), S7-U2
+  // and S8-U1, and resolveUnitForDate_ returns the first unit covering the
+  // date whatever the course, so an 8177 class got the 8175-only unit and
+  // no anchor at all. For a known course, take that course's own unit.
+  let unit = resolveUnitForDate_(dateStr);
+  const courseCode = is8175 ? "8175" : (is8177 ? "8177" : "");
+  if (courseCode) {
+    const own = resolveUnitForCourseDate_(dateStr, courseCode);
+    if (own) unit = _pgUnitView_(own);
+  }
+  if (!unit) return null;
 
   let courseObjective = "";
   if (is8175)      courseObjective = unit.objective_8175;
@@ -527,8 +574,9 @@ function _loadPacingGuide_() {
       stage:                 row[idx.stage] !== undefined ? row[idx.stage] : "",
       stage_name:            String(row[idx.stage_name]             || "").trim(),
       lesson_unit_name:      String(row[idx.lesson_unit_name]       || "").trim(),
-      approx_start:          String(row[idx.approx_start]           || "").trim(),
-      approx_end:            String(row[idx.approx_end]             || "").trim(),
+      // Sheets turns a written "YYYY-MM-DD" into a Date cell; read either.
+      approx_start:          _normalizeLessonDateCell_(row[idx.approx_start]),
+      approx_end:            _normalizeLessonDateCell_(row[idx.approx_end]),
       overlap_type:          String(row[idx.overlap_type]           || "").trim(),
       objective_8175:        String(row[idx.objective_8175]         || "").trim(),
       objective_8177:        String(row[idx.objective_8177]         || "").trim(),

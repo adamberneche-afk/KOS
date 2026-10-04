@@ -375,7 +375,10 @@ function validateCompetencyIds_(ids, cfg, ss) {
 // this for both already-coerced (existing) rows and any future ones.
 // Shared with 24_WarmUpBridge.js's findLesson_().
 function _normalizeLessonDateCell_(value) {
-  if (value instanceof Date) return formatDateYMD_(value);
+  // Not just `instanceof Date`: a Date from another realm fails that check.
+  if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
+    return formatDateYMD_(value);
+  }
   return String(value || "").trim();
 }
 
