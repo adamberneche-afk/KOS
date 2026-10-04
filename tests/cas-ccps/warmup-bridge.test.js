@@ -18,9 +18,12 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 
 const LESSON_CONTEXT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '22_LessonContextHandler.js');
 const WARMUP_BRIDGE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '24_WarmUpBridge.js');
+// formatDateYMD_, which _normalizeLessonDateCell_ calls for a Date cell. Same
+// Central Ledger project in production.
+const PROFILE_MANAGER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '23_StudentProfileManager.js');
 
 function load() {
-  return loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH], [
+  return loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
     'getPriorWarmUpResponse_',
     'WQ24_QUEUE_ID', 'WQ24_LESSON_ID', 'WQ24_STUDENT_EMAIL', 'WQ24_LESSON_DATE',
     'WQ24_STATUS', 'WQ24_TOTAL_SCORE', 'WQ24_RESPONSE_TEXT',
