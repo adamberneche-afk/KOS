@@ -66,7 +66,8 @@
       "cas-ccps/scripts/41_WarmUpFlowBridge.js",
       "cas-ccps/scripts/42_FlowBuildSpec.js",
       "cas-ccps/scripts/43_DeployVersionMarker_CentralLedger.js",
-      "cas-ccps/scripts/50_StudentDataAccess.js"
+      "cas-ccps/scripts/50_StudentDataAccess.js",
+      "cas-ccps/scripts/51_CourseYearBuilder.js"
     ]
   },
   "cas-ccps:unified-manual": {
