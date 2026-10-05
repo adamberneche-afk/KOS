@@ -1,6 +1,30 @@
 # KOS Changelog
 
 
+### V6.0 draft 2, and briefing docs name themselves (2026-10-05)
+
+The first V6.0 test runs (`rtp-core-router/notebook-plan/05_TEST_LOG.md`)
+passed CT-05, CT-06 and CT-08. `@Startup` failed, because the Gem couldn't
+find the primer and called no apps. Two causes:
+- notebook retrieval matches a source's text, and no briefing doc's text
+  contained its source name;
+- Gemini calls a connected app only through a chip (typed `@`, picked from
+  the menu); plain text naming an app calls nothing.
+
+- **`_writeStableDoc_` (`6_Governance.gs`)** writes
+  `Notebook source: {NAME}.` under the stamp of `KOS_LATEST_PRIMER` and the
+  three `KOS_*` briefing docs. The router searches for that line.
+- **Router draft 2** (`RTP_CORE_ROUTER_V6_0.md`, about 8,900 characters):
+  - `@Startup` runs only when sent, not on any first message;
+  - apps are called only from chips in the operator's message (chips in the instructions were tried and call nothing); `@Startup` is sent with `@Google Calendar`, `@Workspace` and `@Google Tasks`, mail goes through `@Workspace` (`@Gmail` reported 0 where `@Workspace` found 5), and a missing chip reads `NOT INVOKED`;
+  - no persona cold-start block at startup, the FLAGGED qualifier once rather than on every line, and citations to the source a claim came from;
+  - the ALIGNMENT pause resumes only on an explicit A, B or C;
+  - no calendar, inbox or task claim without an app call that turn, and no
+    offers to create, send or schedule;
+  - RID is shown as R, I and D;
+  - a request for student data gets "no access" and nothing else.
+
+
 ### RTP Core Router V6.0 drafted (2026-10-05)
 
 `rtp-core-router/RTP_CORE_ROUTER_V6_0.md`, Phase 3 of the RTP notebook plan:
