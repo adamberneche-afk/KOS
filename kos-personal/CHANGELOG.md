@@ -16,7 +16,8 @@ find the primer and called no apps. Two causes:
   three `KOS_*` briefing docs. The router searches for that line.
 - **Router draft 2** (`RTP_CORE_ROUTER_V6_0.md`, about 8,900 characters):
   - `@Startup` runs only when sent, not on any first message;
-  - the Calendar, Workspace and Tasks app chips go in the Gem's instructions (the router marks their places as `⟨@…⟩`, replaced with real chips when pasted), and an app the Gem can't call reads `NOT INVOKED`;
+  - apps are called only from chips in the operator's message (chips in the instructions were tried and call nothing); `@Startup` is sent with `@Google Calendar`, `@Workspace` and `@Google Tasks`, mail goes through `@Workspace` (`@Gmail` reported 0 where `@Workspace` found 5), and a missing chip reads `NOT INVOKED`;
+  - no persona cold-start block at startup, the FLAGGED qualifier once rather than on every line, and citations to the source a claim came from;
   - the ALIGNMENT pause resumes only on an explicit A, B or C;
   - no calendar, inbox or task claim without an app call that turn, and no
     offers to create, send or schedule;
