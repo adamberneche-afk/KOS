@@ -216,7 +216,11 @@ session's classification alongside its `SESSION_LOG` chunks, as parts of at
 most 8,000 characters (`LOG-xxxxxxxx_VC01of03`) so each fits one Sheets
 cell. `20_VectorClassifySessions.gs` aggregates them into one
 `VECTOR_MATRIX` row per session under the log UUID, and backfills sessions
-ingested earlier. See the spec's "Session pairing" note. The
+ingested earlier, from chunk rows in `STAGING_PIPELINE` or `STAGING_ARCHIVE`.
+`installClassifyBackfillTrigger()` runs the 3-session batch every 15 minutes
+and removes itself when nothing is left to queue. It is not in
+`KOS_TRIGGER_HANDLERS`, so the preflight doesn't expect it. See the spec's
+"Session pairing" note. The
 Studio-side Classify Flow itself still has to exist and answer for any of
 this to produce data.
 
