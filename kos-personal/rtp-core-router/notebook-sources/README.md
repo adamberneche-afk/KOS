@@ -19,6 +19,16 @@ A notebook retrieves passages, not whole docs. So each edition:
 Everything else is the canonical `../PERSONA_*_V5_1.md`, unchanged. Council
 Gems keep using the canonical docs (ADR-003): never attach the notebook to them.
 
+## TURN_LOOP_REFERENCE.md
+
+Not a persona edition and not generated: the explanatory rules the V6.0
+router (`../RTP_CORE_ROUTER_V6_0.md`) moved out of its instructions, such as
+the Genesis Protocol, Cold Boot, CURRENT_STATE ownership, RID scoring and
+WRITE_AUTHORITY. Edit it by hand. Every heading starts
+`## Turn Loop Reference · `, so a retrieved passage names its source;
+`tests/kos-personal/rtp-router-v6.test.js` checks that and the sections the
+router points to. Load it into the notebook the same way as the editions.
+
 ## Changing one
 
 Edit the canonical doc or its core block, then run
