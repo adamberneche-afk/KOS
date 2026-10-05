@@ -31,6 +31,7 @@ const EXPOSE = [
   '_queueClassifyParts_', '_processVectorClassifyPart_', '_chunkAndQueue',
   'processVectorClassificationPayload', 'queueVectorClassifyBackfill',
   'checkVectorClassifySessions', 'CFG',
+  'installClassifyBackfillTrigger', 'removeClassifyBackfillTrigger', 'runClassifyBackfillTrigger',
 ];
 
 const STAGING_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count'];
@@ -303,4 +304,64 @@ test('queueVectorClassifyBackfill: reads chunks archived out of STAGING_PIPELINE
   const part = stagingData(staging).find((row) => row[1] === 'LOG-split_VC01of01');
   assert.equal(env.sandbox.DocumentApp.openById(part[4]).getBody().getText(),
     'text LOG-split_CH01\n\ntext LOG-split_CH02\n\ntext LOG-split_CH03');
+});
+
+const backfillTriggers = (sandbox) =>
+  sandbox.ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === 'runClassifyBackfillTrigger');
+
+test('installClassifyBackfillTrigger: one 15-minute trigger, however often it is run', () => {
+  const env = setup();
+  assert.equal(env.exported.installClassifyBackfillTrigger().installed, true);
+  assert.equal(env.exported.installClassifyBackfillTrigger().installed, false);
+  const t = backfillTriggers(env.sandbox);
+  assert.equal(t.length, 1);
+  assert.deepEqual(t[0].__calls.find((c) => c.method === 'everyMinutes').args, [15]);
+
+  assert.equal(env.exported.removeClassifyBackfillTrigger(), 1);
+  assert.equal(backfillTriggers(env.sandbox).length, 0);
+});
+
+test('runClassifyBackfillTrigger: queues a batch per run and removes itself once nothing is left', () => {
+  const env = setup();
+  seedBackfill(env);
+  env.exported.installClassifyBackfillTrigger();
+
+  const first = env.exported.runClassifyBackfillTrigger();
+  assert.equal(first.ran, true);
+  assert.equal(first.result.selected, 2, 'LOG-s1 and LOG-s5 fit one default batch');
+  assert.equal(first.removed, false);
+  assert.equal(backfillTriggers(env.sandbox).length, 1);
+
+  // Both are queued now, so nothing is eligible, though their parts are still in flight.
+  const second = env.exported.runClassifyBackfillTrigger();
+  assert.equal(second.result.selected, 0);
+  assert.equal(second.result.eligible, 0);
+  assert.equal(second.removed, true);
+  assert.equal(backfillTriggers(env.sandbox).length, 0);
+  assert.equal(env.sandbox.LockService.getScriptLock().hasLock(), false, 'the lock is released');
+});
+
+test('runClassifyBackfillTrigger: keeps its trigger while sessions are waiting on a batch in flight', () => {
+  const env = setup();
+  seedBackfill(env);
+  env.staging.appendRow([new Date(), 'LOG-zz_VC01of01', 'VECTOR_CLASSIFY', 'u', 'f-zz', 'PENDING_FLOW', 0]);
+  env.exported.installClassifyBackfillTrigger();
+
+  const r = env.exported.runClassifyBackfillTrigger();
+  assert.equal(r.result.selected, 0);
+  assert.equal(r.result.eligible, 2);
+  assert.equal(r.removed, false);
+  assert.equal(backfillTriggers(env.sandbox).length, 1);
+});
+
+test('runClassifyBackfillTrigger: an error is reported and the trigger stays for the next run', () => {
+  const env = setup();
+  env.exported.installClassifyBackfillTrigger();
+  env.sandbox.PropertiesService.getScriptProperties().deleteProperty('INDEX_ID');
+
+  const r = env.exported.runClassifyBackfillTrigger();
+  assert.equal(r.ran, false);
+  assert.ok(r.error);
+  assert.equal(backfillTriggers(env.sandbox).length, 1);
+  assert.equal(env.sandbox.LockService.getScriptLock().hasLock(), false);
 });
