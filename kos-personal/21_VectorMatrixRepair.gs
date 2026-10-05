@@ -26,7 +26,13 @@
  *   doc still holds its classification JSON), with 0 for a theme the
  *   session didn't score, and writes the rows in session date order.
  *
- * Neither touches the Curator's ledgers. A duplicate session's chunks that
+ *   UNREBUILDABLE ROWS. A row the rederive had to keep (no classify parts,
+ *   or one missing) still holds the old carried-forward values.
+ *   resetUnrebuildableRows() removes it and queues the session to be
+ *   classified again from its CuratorInput text, the backfill's source, so
+ *   a fresh row lands when the parts come back.
+ *
+ * None of these touches the Curator's ledgers. A duplicate session's chunks that
  * were already processed stay in CURRENT_STATE and the other docs; only
  * the matrix and the queue are corrected.
  */
@@ -35,6 +41,11 @@ const VMR_LOG_UID_RE = /^LOG-(?:\d{12,}-)?([0-9a-f]{8})$/;
 const VMR_ROW_UID_RE = /^(LOG-.+?)_(?:CH\d+|VC\d+of\d+)$/;
 const VMR_IN_FLIGHT = ['STUDIO_ACTIVE', 'FLOW_COMPLETE'];
 const VMR_TIME_BUDGET_MS = 5 * 60 * 1000;
+// The status a reset gives a session's old classify part rows. They move to
+// STAGING_ARCHIVE under it, so neither the rederive nor the reset reads
+// them again (both take PROCESSED parts only); the new parts reuse their
+// UIDs, and a row left in STAGING_PIPELINE would be matched first.
+const VMR_SUPERSEDED = 'SUPERSEDED';
 
 // ================================================================
 // DUPLICATE SESSIONS
@@ -235,18 +246,8 @@ function rederiveVectorMatrix(opts) {
     const current = matrix.getRange(2, 1, matrix.getLastRow() - 1, lastCol).getValues()
       .filter(function (r) { return String(r[0] || '').trim(); });
 
-    // Each session's classify part docs, from STAGING_PIPELINE.
-    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
-    const SC = CFG.STAGING_COLS;
-    const parts = {};
-    if (staging.getLastRow() > 1) {
-      staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues().forEach(function (r) {
-        const p = _vcsParsePartUid_(String(r[SC.PAYLOAD_UID] || '').trim());
-        if (!p || String(r[SC.STATUS]).trim() !== 'PROCESSED') return;
-        const s = parts[p.sessionUid] = parts[p.sessionUid] || { of: p.of, files: {} };
-        s.files[p.part] = String(r[SC.FILE_ID] || '').trim();
-      });
-    }
+    // Each session's classify part docs, from STAGING_PIPELINE and STAGING_ARCHIVE.
+    const parts = _vmrSessionParts_(ss);
 
     const dates = _vmSessionDates_(ss);
     const kept = [];
@@ -298,6 +299,7 @@ function rederiveVectorMatrix(opts) {
       } else {
         props.deleteProperty(CFG.PROP.VM_REDERIVE_DONE);
         props.setProperty(CFG.PROP.VM_REDERIVE_KEPT, String(kept.length));
+        props.setProperty(CFG.PROP.VM_REDERIVE_KEPT_UIDS, JSON.stringify(kept));
         props.setProperty(CFG.PROP.VM_LAST_REDERIVE_AT, new Date().toISOString());
       }
     }
@@ -328,6 +330,300 @@ function rederiveVectorMatrix(opts) {
   } finally {
     if (lock) lock.releaseLock();
   }
+}
+
+// ================================================================
+// UNREBUILDABLE ROWS
+// ================================================================
+
+function previewUnrebuildableReset() {
+  return resetUnrebuildableRows({ apply: false });
+}
+
+function applyUnrebuildableReset() {
+  return resetUnrebuildableRows({ apply: true });
+}
+
+/**
+ * Also removes the rows of sessions whose text is gone (NO_SOURCE), without
+ * queueing them; Vector State then simply has no row for them.
+ */
+function dropUnrebuildableRowsWithoutSource() {
+  return resetUnrebuildableRows({ apply: true, dropWithoutSource: true });
+}
+
+/**
+ * Finds the VECTOR_MATRIX rows that can't be rebuilt from classify parts
+ * and, for each, removes the row and queues the session to be classified
+ * again. A row is unrebuildable when its session has no complete set of
+ * PROCESSED part rows (live or archived), when the last finished rederive
+ * kept it (that also covers a part doc that wouldn't parse), or when it is
+ * named in opts.uids (a full session UID or its 8-character hash).
+ *
+ * Per session, in one go: the new parts are queued from the session's
+ * CuratorInput text (every chunk, 1..N, must be there); only if that worked
+ * are the old part rows moved to STAGING_ARCHIVE as SUPERSEDED, its
+ * VectorClassifyParts rows cleared and its matrix row removed. Like the
+ * backfill, a run queues at most VCS_BACKFILL_BATCH sessions and none while
+ * classify parts are still in flight.
+ *
+ * @param {{apply?: boolean, uids?: string[], dropWithoutSource?: boolean}} opts
+ * @returns {{apply, candidates: Object[], requeued: string[], dropped: string[], message: string}}
+ */
+function resetUnrebuildableRows(opts) {
+  opts = opts || {};
+  const apply = opts.apply === true;
+  const lock = apply ? LockService.getScriptLock() : null;
+  if (lock && !lock.tryLock(10000)) {
+    return { apply: apply, candidates: [], requeued: [], dropped: [],
+      message: 'Another pipeline run holds the script lock. Nothing changed; try again in a minute.' };
+  }
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const ss = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const matrix = ss.getSheetByName(CFG.VECTOR_MATRIX_SHEET);
+    const inMatrix = matrix ? _vcsMatrixSessions_(ss) : {};
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+    const SC = CFG.STAGING_COLS;
+    const stagingRows = staging.getLastRow() > 1 ? staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues() : [];
+
+    // Why each matrix session is a candidate.
+    const reasons = {};
+    const parts = _vmrSessionParts_(ss);
+    Object.keys(inMatrix).forEach(function (uid) {
+      if (_rqIsTestUid_(uid) || !/^LOG-/.test(uid)) return;
+      const p = parts[uid];
+      if (!p) { reasons[uid] = 'NO_PARTS'; return; }
+      for (let n = 1; n <= p.of; n++) {
+        if (!p.files[n]) { reasons[uid] = 'PART_MISSING: part ' + n + ' of ' + p.of; return; }
+      }
+    });
+    let keptByRederive = [];
+    try { keptByRederive = JSON.parse(props.getProperty(CFG.PROP.VM_REDERIVE_KEPT_UIDS) || '[]'); } catch (_) {}
+    keptByRederive.forEach(function (k) {
+      if (inMatrix[k.sessionUid] && !reasons[k.sessionUid]) reasons[k.sessionUid] = 'KEPT_BY_REDERIVE: ' + k.reason;
+    });
+    (opts.uids || []).forEach(function (u) {
+      const want = String(u).trim();
+      Object.keys(inMatrix).forEach(function (uid) {
+        const h = VMR_LOG_UID_RE.exec(uid);
+        if ((uid === want || (h && h[1] === want)) && !reasons[uid]) reasons[uid] = 'NAMED';
+      });
+    });
+
+    // Where each candidate stands.
+    const inFlightBySession = {};
+    let inFlight = 0;
+    stagingRows.forEach(function (r) {
+      const p = _vcsParsePartUid_(String(r[SC.PAYLOAD_UID] || '').trim());
+      if (p && VCS_IN_FLIGHT.indexOf(String(r[SC.STATUS]).trim()) !== -1) {
+        inFlight++;
+        inFlightBySession[p.sessionUid] = true;
+      }
+    });
+    const source = _vmrSourceIndex_(ss, stagingRows);
+    const candidates = Object.keys(reasons).sort().map(function (uid) {
+      const c = { sessionUid: uid, reason: reasons[uid] };
+      if (inFlightBySession[uid]) { c.plan = 'SKIP'; c.detail = 'IN_FLIGHT: its parts are at Studio'; return c; }
+      const text = _vmrSessionText_(source, uid);
+      if (!text.ok) { c.plan = opts.dropWithoutSource ? 'DROP' : 'NO_SOURCE'; c.detail = text.reason; return c; }
+      c.plan = 'REQUEUE';
+      c._text = text.text;
+      c.chunks = text.chunks;
+      c.parts = _semanticChunker(text.text, VCS_PART_MAX_CHARS).filter(function (x) { return x.trim(); }).length;
+      return c;
+    });
+
+    const room = inFlight > 0 ? 0 : VCS_BACKFILL_BATCH;
+    const toQueue = candidates.filter(function (c) { return c.plan === 'REQUEUE'; }).slice(0, room);
+    const toDrop = candidates.filter(function (c) { return c.plan === 'DROP'; });
+    const requeued = [];
+    const dropped = [];
+
+    if (apply && (toQueue.length || toDrop.length)) {
+      const partsSheet = ss.getSheetByName(VCS_PARTS_TAB);
+      let rawFolder = null;
+      if (toQueue.length) {
+        const rawId = props.getProperty('ID_00_RAW_EXHAUST');
+        if (!rawId) throw new Error('ID_00_RAW_EXHAUST not set. Run deployFullSystem().');
+        rawFolder = DriveApp.getFolderById(rawId);
+      }
+      toQueue.forEach(function (c) {
+        // The old part rows, found before the new ones are appended under the same UIDs.
+        const oldRows = [];
+        staging.getRange(2, 1, Math.max(staging.getLastRow() - 1, 1), 7).getValues().forEach(function (r, i) {
+          const p = _vcsParsePartUid_(String(r[SC.PAYLOAD_UID] || '').trim());
+          if (p && p.sessionUid === c.sessionUid) oldRows.push(i + 2);
+        });
+        c.queuedParts = _queueClassifyParts_(c._text, c.sessionUid, rawFolder, staging);
+        if (!c.queuedParts) { c.plan = 'QUEUE_FAILED'; c.detail = 'no part doc could be created; see ERROR_LOG'; return; }
+        _vmrSupersedeParts_(ss, staging, oldRows, c.sessionUid);
+        if (partsSheet) _vcsDeleteSessionParts_(partsSheet, c.sessionUid);
+        _vmrDeleteMatrixRow_(matrix, c.sessionUid);
+        requeued.push(c.sessionUid);
+      });
+      toDrop.forEach(function (c) {
+        if (partsSheet) _vcsDeleteSessionParts_(partsSheet, c.sessionUid);
+        _vmrDeleteMatrixRow_(matrix, c.sessionUid);
+        dropped.push(c.sessionUid);
+      });
+      SpreadsheetApp.flush();
+
+      // The primer's "could not be rebuilt" flag counts these; drop the ones handled.
+      const handled = {};
+      requeued.concat(dropped).forEach(function (u) { handled[u] = true; });
+      const stillKept = keptByRederive.filter(function (k) { return !handled[k.sessionUid]; });
+      if (props.getProperty(CFG.PROP.VM_REDERIVE_KEPT) != null) {
+        props.setProperty(CFG.PROP.VM_REDERIVE_KEPT, String(stillKept.length));
+        props.setProperty(CFG.PROP.VM_REDERIVE_KEPT_UIDS, JSON.stringify(stillKept));
+      }
+      if (requeued.length) props.setProperty(CFG.PROP.VC_LAST_BACKFILL_AT, new Date().toISOString());
+    }
+
+    const waiting = candidates.filter(function (c) { return c.plan === 'REQUEUE'; }).length - toQueue.length;
+    const noSource = candidates.filter(function (c) { return c.plan === 'NO_SOURCE'; }).length;
+    const message = (apply
+      ? 'Removed ' + (requeued.length + dropped.length) + ' VECTOR_MATRIX row(s): ' + requeued.length +
+        ' re-queued for classification' + (dropped.length ? ', ' + dropped.length + ' dropped without a requeue' : '')
+      : 'DRY RUN: ' + candidates.length + ' row(s) cannot be rebuilt; ' + toQueue.length + ' would be removed and re-queued' +
+        (toDrop.length ? ', ' + toDrop.length + ' removed without a requeue' : '')) +
+      (waiting > 0 ? '; ' + waiting + ' more after this batch' : '') +
+      (inFlight > 0 ? '. ' + inFlight + ' classify part(s) are still in flight: wait for them to finish, then run again' : '') +
+      (noSource ? '. ' + noSource + ' have no complete CuratorInput text and stay as they are ' +
+        '(dropUnrebuildableRowsWithoutSource() removes them)' : '') + '.';
+    console.log('[Reset] ' + message);
+    candidates.forEach(function (c) {
+      console.log('[Reset]   ' + c.sessionUid + ' (' + c.reason + '): ' + c.plan +
+        (c.plan === 'REQUEUE' ? ', ' + c.chunks + ' chunk(s) → ' + c.parts + ' part(s)' : '') +
+        (c.detail ? ', ' + c.detail : ''));
+    });
+    candidates.forEach(function (c) { delete c._text; });
+    return { apply: apply, candidates: candidates, requeued: requeued, dropped: dropped, inFlight: inFlight, message: message };
+  } finally {
+    if (lock) lock.releaseLock();
+  }
+}
+
+/**
+ * What a session's text can be rebuilt from: CuratorInput's text per chunk
+ * UID, and the highest chunk number each session is known to have (its
+ * SESSION_LOG rows, live or archived, and the intake's "N chunk(s) created"
+ * note), so a session missing its last chunks isn't taken as whole.
+ */
+function _vmrSourceIndex_(ss, stagingRows) {
+  const SC = CFG.STAGING_COLS;
+  const text = {};
+  const curator = ss.getSheetByName(CI_CURATOR_TAB);
+  if (curator && curator.getLastRow() > 1) {
+    curator.getRange(2, 1, curator.getLastRow() - 1, Object.keys(CI_COLS).length).getValues().forEach(function (r) {
+      const uid = String(r[CI_COLS.PAYLOAD_UID] || '').trim();
+      if (uid && String(r[CI_COLS.SOURCE_TEXT] || '').trim()) text[uid] = String(r[CI_COLS.SOURCE_TEXT]);
+    });
+  }
+  const maxChunk = {};
+  const seen = function (uid) {
+    const m = /^(.+)_CH(\d+)$/.exec(String(uid || '').trim());
+    if (m) maxChunk[m[1]] = Math.max(maxChunk[m[1]] || 0, parseInt(m[2], 10));
+  };
+  stagingRows.forEach(function (r) { seen(r[SC.PAYLOAD_UID]); });
+  const archive = ss.getSheetByName('STAGING_ARCHIVE');
+  if (archive && archive.getLastRow() > 1) {
+    archive.getRange(2, 2 + SC.PAYLOAD_UID, archive.getLastRow() - 1, 1).getValues().forEach(function (r) { seen(r[0]); });
+  }
+  Object.keys(text).forEach(seen);
+  const intake = _vcsIntakeChunkCounts_(ss);
+  Object.keys(intake).forEach(function (uid) { maxChunk[uid] = Math.max(maxChunk[uid] || 0, intake[uid]); });
+  return { text: text, maxChunk: maxChunk };
+}
+
+/** { ok, text, chunks } for one session, or { ok: false, reason }. */
+function _vmrSessionText_(source, sessionUid) {
+  const n = source.maxChunk[sessionUid] || 0;
+  if (!n) return { ok: false, reason: 'NO_SOURCE: no chunk of this session in CuratorInput or STAGING' };
+  const missing = [];
+  const parts = [];
+  for (let i = 1; i <= n; i++) {
+    const uid = sessionUid + '_CH' + (i < 10 ? '0' : '') + i;
+    if (source.text[uid] == null) missing.push(i); else parts.push(source.text[uid]);
+  }
+  if (missing.length) {
+    return { ok: false, reason: 'NO_SOURCE: no CuratorInput text for chunk(s) ' + missing.join(',') + ' of ' + n };
+  }
+  return { ok: true, text: parts.join('\n\n'), chunks: n };
+}
+
+/**
+ * Moves a session's old classify part rows (sheet rows, found before the
+ * new parts were queued) to STAGING_ARCHIVE as SUPERSEDED, and marks its
+ * already-archived PROCESSED part rows SUPERSEDED too, so no later rederive
+ * mixes the old split's parts with the new one's.
+ */
+function _vmrSupersedeParts_(ss, staging, sheetRows, sessionUid) {
+  const SC = CFG.STAGING_COLS;
+  let archive = ss.getSheetByName('STAGING_ARCHIVE');
+  if (!archive) {
+    archive = ss.insertSheet('STAGING_ARCHIVE');
+    archive.appendRow(['Archived_At', 'Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count']);
+  } else if (archive.getLastRow() > 1) {
+    const rows = archive.getRange(2, 1, archive.getLastRow() - 1, 8).getValues();
+    rows.forEach(function (r, i) {
+      const p = _vcsParsePartUid_(String(r[1 + SC.PAYLOAD_UID] || '').trim());
+      if (p && p.sessionUid === sessionUid && String(r[1 + SC.STATUS]).trim() === 'PROCESSED') {
+        archive.getRange(i + 2, 2 + SC.STATUS).setValue(VMR_SUPERSEDED);
+      }
+    });
+  }
+  const now = new Date();
+  sheetRows.slice().sort(function (a, b) { return b - a; }).forEach(function (row) {
+    const r = staging.getRange(row, 1, 1, 7).getValues()[0];
+    r[SC.STATUS] = VMR_SUPERSEDED;
+    archive.appendRow([now].concat(r));
+    staging.deleteRow(row);
+  });
+}
+
+function _vmrDeleteMatrixRow_(matrix, sessionUid) {
+  if (!matrix || matrix.getLastRow() <= 1) return;
+  const uids = matrix.getRange(2, 1, matrix.getLastRow() - 1, 1).getValues();
+  for (let i = uids.length - 1; i >= 0; i--) {
+    if (String(uids[i][0]).trim() === sessionUid) matrix.deleteRow(i + 2);
+  }
+}
+
+/**
+ * { sessionUid: { of, files: { part: fileId } } } from every PROCESSED
+ * classify part row, in STAGING_PIPELINE and in STAGING_ARCHIVE.
+ * archiveStagingPipeline() moves PROCESSED rows out, so a session whose
+ * parts finished before an archive run has some or all of them only in the
+ * archive; their docs are still there. A live row wins over an archived
+ * one for the same part. Parts from a different split (another part count)
+ * than the session's live rows are ignored.
+ */
+function _vmrSessionParts_(ss) {
+  const SC = CFG.STAGING_COLS;
+  const parts = {};
+  const add = function (rows, offset, live) {
+    rows.forEach(function (r) {
+      const p = _vcsParsePartUid_(String(r[offset + SC.PAYLOAD_UID] || '').trim());
+      if (!p || String(r[offset + SC.STATUS]).trim() !== 'PROCESSED') return;
+      const fileId = String(r[offset + SC.FILE_ID] || '').trim();
+      if (!fileId) return;
+      let s = parts[p.sessionUid];
+      if (!s) s = parts[p.sessionUid] = { of: p.of, files: {}, live: live };
+      if (s.of !== p.of) {
+        // An archived split that doesn't match the live one is stale; two
+        // archived splits: keep the larger, which is the later backfill.
+        if (s.live || p.of < s.of) return;
+        s.of = p.of; s.files = {};
+      }
+      if (!s.files[p.part]) s.files[p.part] = fileId;
+    });
+  };
+  const staging = ss.getSheetByName(CFG.STAGING_SHEET);
+  if (staging && staging.getLastRow() > 1) add(staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues(), 0, true);
+  const archive = ss.getSheetByName('STAGING_ARCHIVE');
+  if (archive && archive.getLastRow() > 1) add(archive.getRange(2, 1, archive.getLastRow() - 1, 8).getValues(), 1, false);
+  return parts;
 }
 
 /** Every part's exchange array for one session, read from the part docs. */
