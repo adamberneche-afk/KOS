@@ -311,10 +311,11 @@ this stage, but a second account would start here):
 **This is the operation that actually applies now**, and it is not the
 from-scratch sequence below. The 8 projects exist, Module 1 and Module 2
 (Phase A + B) are set up, and Flow 1 works against real data — but HEAD has
-moved a long way since that push. Scripts `35`, `37`, `39`, `40`, `41` and
-`42` plus the Ledger schema guard (`38`) all landed afterwards, and **none of
-them do anything until they are pushed and their setup functions are run
-once.** That is what this section is.
+moved a long way since that push. Scripts `35`, `37`, `39`–`42`, the Ledger
+schema guard (`38`), the student-data access repair (`50`), the course year
+builder (`51`) and the Canvas roster import (`52`) all landed afterwards, and
+**none of them do anything until they are pushed and their setup functions
+are run once.** That is what this section is.
 
 Everything here runs at **the operator's own keyboard** (SMP-004: an agent
 session must never `clasp push` to production). From the repo:
@@ -369,6 +370,20 @@ the Flow (`FLOW_DOCTRINE.md` rule 1).
 |---|---|---|
 | 11 | `checkFlow2Liveness()` | Whether anything has ever been written into `FI.GEMINI_FULL_OUTPUT`, and whether rows have sat READY with nothing coming back. |
 | 12 | `checkWarmUpFlowLiveness()` | Per flow: how many jobs are waiting, and has that flow **ever** written to `WarmUpFlowReturn`. |
+
+### Phase 6 — course content and rosters (after Module 2 Phase A + B)
+
+In this order: each step needs the one before it. From Central Ledger unless
+noted.
+
+| # | Function / action | Why, and what to expect |
+|---|---|---|
+| 13 | `importCourseData()` | Runs the competency registry, pacing guide and rubric importers (they find `CompetencyRegistry.csv`, `PacingGuide_CAS_Context.json` and `CompetencyRubrics.json` in Drive by name, so upload the current repo copies first), then `checkCourseData()`: 113/108 competencies and rubrics, 20 units, readable dates. It also creates the `NoSchoolDays` tab from the CCPS 2026-27 calendar; edit it for snow days. Safe to re-run. |
+| 14 | `previewUpcomingLessons()`, then `buildUpcomingLessons()` | Drafts a LessonContext row (and its Lesson Frame doc) for each ClassSchedule period on each school day in the next 7 days, from the pacing guide. Needs Phase B's ClassSchedule. Never overwrites a slot that already has a lesson. |
+| 15 | `installLessonPlanTrigger()` | Runs `buildUpcomingLessons` daily at about 2am, before the 3:30am warm-up queue build. `removeLessonPlanTrigger()` undoes it. |
+| 16 | Rubric Upload Form, once per unit, from `curriculum/unit-rubrics/<unit>_<course>.md` | Flow 1 drafts the TeacherMatrix row; confirm it in the Teacher Matrix to make it LIVE. That Config ID is what step 17 needs. |
+| 17 | Upload each Canvas course's gradebook export (Grades → Export → Export Entire Gradebook) to Drive; `previewRosterEnrollment("<Config ID>")`; put each section's period in `CanvasSectionMap`; preview again; `applyRosterEnrollment("<Config ID>")` | Enrolls the roster through `intakeStudent_()` (02), exactly as the intake form would. Needs a LIVE assignment and ClassSchedule. |
+| 18 | Import `curriculum/canvas-cartridges/8175.imscc` / `8177.imscc` into each Canvas course (Settings → Import Course Content → Common Cartridge 1.x Package); a sandbox course first | Its assignments ask students to submit their CAS document's link, so do it once students have their docs (step 17). |
 
 These two are the only things that can tell you a Flow is live. A Flow that
 matched zero rows also reports a green "Run Completed".
@@ -543,6 +558,9 @@ one — that distinction is what cost 2,113 lines here.
      dialogs with the exact settings to enter by hand.
    Both phases end with an inline (not doc-deferred) list of remaining manual
    steps — read the completion alerts, don't skip past them.
+   Then, from Central Ledger, `importCourseData()` and
+   `installLessonPlanTrigger()` (a sixth nightly trigger,
+   `buildUpcomingLessons` at about 2am), and the rest of Phase 6 above.
 6. **Redeploy Script 07 (Teacher Dashboard) as a new web-app version** after
    Phase A — the wizard tells you this in its completion alert; it can't do it
    itself.
@@ -721,7 +739,8 @@ for `FERPA_FLOW3_FULL_NAME_OVERRIDE` — must stay unset/false.
   beyond the Studio Flow one above (e.g. Gap #6: `30b_SCRRetryRemediation.js`'s
   thresholds are provisional/unvalidated; Gap #11: nothing has actually run
   `importCompetencyRegistry()` against the in-repo CSV in a live deployment
-  yet — that's what step 5 above does).
+  yet — that's what step 5 above does; `importCourseData()` (51) now runs all
+  three importers, and `checkCourseData()` reports what is live).
 
 ## Verification, before and after
 

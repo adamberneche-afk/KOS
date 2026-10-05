@@ -10,7 +10,7 @@ redeploy had actually taken effect.
 ## Why this pushes instead of polling
 
 The obvious design — something in this repo reads each project's live
-state and diffs it against git — only works for one of the 9 GAS projects.
+state and diffs it against git — only works for one of the 10 GAS projects in `tools/gas-lint/project-map.json`.
 `access: MYSELF`/`DOMAIN` web apps (`kos-personal`, `leader-hub:app`,
 `cas-ccps:teacher-dashboard`) sit behind Google's own sign-in wall: an
 unauthenticated request never reaches `doGet()` at all, so polling them

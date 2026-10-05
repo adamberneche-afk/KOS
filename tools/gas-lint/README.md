@@ -52,7 +52,7 @@ it — that gap is closed now.
 
    A file `project-map.json` lists that isn't on disk is an **error**
    (`missing-file`), and so is the reverse (`unmapped-file`): a script in
-   `cas-ccps/scripts/`, either `studio-steps/` folder, `kos-personal/`
+   `cas-ccps/scripts/`, `cas-ccps/studio-steps/`, `kos-personal/`
    (`.gs` and `.html`) or `leader-hub/` (`.gs`, including `drive-tools/`)
    that is in no project and not in `_excluded_not_deployed_scripts`.
    `tools/clasp-sync` only pushes what the map lists, so an unmapped file
@@ -329,14 +329,14 @@ it — that gap is closed now.
       `*Secret*`-named helper call, or an `e.parameter.secret` comparison)
       exists **anywhere in the project**, not necessarily in `doGet()`'s own
       body. Serving a page shell un-gated is normal when the real data is
-      gated downstream — `cas-ccps/13_StudentDashboard.js`'s `doGet()` has
+      gated downstream — `cas-ccps/scripts/13_StudentDashboard.js`'s `doGet()` has
       no check of its own at all; `getStudentDashboardData()` does, and
       only runs later via `google.script.run`. Flagging that would be a
       false positive turned into noise to silence rather than signal to
       act on. Error only if nothing recognizable exists anywhere in the
       project.
     - `doPost()` — silent only if the check is in `doPost()`'s **own
-      body** (`kos-personal/7_WebApp.gs`, `cas-ccps/07_TeacherDashboard.js`
+      body** (`kos-personal/7_WebApp.gs`, `cas-ccps/scripts/07_TeacherDashboard.js`
       each call their own dedicated checker directly). A POST typically
       performs the action or returns the data directly, so "gated
       downstream" doesn't apply the way it does to a page shell. Warn, not
@@ -366,7 +366,7 @@ it — that gap is closed now.
     turned up seven real production loops
     (`kos-personal/1_Config_And_Deploy.gs`, `5_Error_And_Utilities.gs`,
     `6_Governance.gs` (×3), `11_Registrar_CogRelay.gs`,
-    `cas-ccps/10_AdminRecoveryPanel.js`) with neither a cap nor a pacing
+    `cas-ccps/scripts/10_AdminRecoveryPanel.js`) with neither a cap nor a pacing
     call today. Erroring on all of them at once would make this check
     something to silence, not something to act on. These seven are expected,
     pre-existing findings, not a regression this check introduced — see
