@@ -93,6 +93,8 @@ test('_writeLatestPrimer_: a second run reuses the same doc ID and leaves no lef
     'the doc should open on its heading, not a blank line');
   assert.equal(body.getChild(1).getText(), 'Generated at: 2026-09-11 06:00',
     'the generated-at stamp sits directly under the heading');
+  assert.equal(body.getChild(2).getText(), 'Notebook source: KOS_LATEST_PRIMER.',
+    'the doc names itself, so a notebook search for the source name finds it');
   assert.match(body.getText(), /Data Quality\nStatus: OK/);
 });
 

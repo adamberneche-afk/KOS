@@ -1097,6 +1097,10 @@ function _isMissingFileError_(e) {
  *   - only a doc that is verifiably gone is recreated, and that is logged
  *     loudly with the new ID, because the notebook and gem need re-adding.
  *
+ * Under the stamp sits a "Notebook source: <docName>." line: notebook
+ * retrieval matches a doc's text, not its title, so the name has to be in
+ * the text for the RTP Gem to find the doc by it.
+ *
  * The content is written first and the title and stamp last, so a run
  * that fails partway leaves a doc with no stamp, which the Gem reads as
  * stale, never a fresh stamp over half-written content.
@@ -1137,6 +1141,9 @@ function _writeStableDoc_(folder, propKey, docName, title, stamp, blocks) {
   body.removeChild(body.getChild(0));
   body.insertParagraph(0, title).setHeading(DocumentApp.ParagraphHeading.HEADING1);
   body.insertParagraph(1, stamp);
+  // The notebook retrieves by content, not by source name, so the doc
+  // names itself: the RTP router searches for it by this name.
+  body.insertParagraph(2, 'Notebook source: ' + docName + '.');
 
   doc.saveAndClose();
 

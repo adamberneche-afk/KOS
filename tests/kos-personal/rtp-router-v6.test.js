@@ -39,6 +39,13 @@ test('V6.0 keeps every rule that must fire on every turn', () => {
     'SMP loop': '00_SMP_PROPOSALS',
     'Genesis override': '@GenesisOverride',
     'kill switch pointer': 'KILL_SWITCH_PROTOCOL',
+    'app not invoked': 'NOT INVOKED',
+    'Calendar chip placeholder': '⟨@Google Calendar⟩',
+    'mail chip placeholder': '⟨@Workspace⟩',
+    'Tasks chip placeholder': '⟨@Google Tasks⟩',
+    'explicit pause answer': 'explicit A, B or C',
+    'primer found by its source line': 'Notebook source: KOS_LATEST_PRIMER.',
+    'no student data': 'say you have no access to it, and stop',
   };
   for (const [what, text] of Object.entries(required)) {
     assert.ok(v6.includes(text), `V6.0 is missing the ${what}: ${text}`);
