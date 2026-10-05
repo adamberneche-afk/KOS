@@ -13,7 +13,7 @@ The central queue. Every session chunk passes through this sheet.
 | Col | Name | Type | Description |
 |---|---|---|---|
 | A | Timestamp | DateTime | When the row was created by a sensor |
-| B | Payload_UID | String | Unique identifier — `LOG-{ms}-{8char_hash}` |
+| B | Payload_UID | String | Unique identifier — `LOG-{8char_hash}` plus `_CHnn` (a Curator chunk) or `_VCnnofmm` (a classify part). Rows from before the epoch was dropped carry `LOG-{ms}-{8char_hash}` |
 | C | Payload_Type | Enum | See Payload Types below |
 | D | Doc_URL | String | Full Google Drive URL of the chunk document |
 | E | File_ID | String | Google Drive file ID (used to open the document) |
@@ -28,7 +28,7 @@ The central queue. Every session chunk passes through this sheet.
 | `EXTERNAL_DATA` | Research or context submitted via web app Research tab |
 | `COG_STIMULUS` | Council stimulus doc — **one shared document per council run**, not one per cog. Sequestration is enforced by the operator running each persona in its own separate Gem conversation against that shared stimulus (BRIDGE_FIDELITY_001), not by minting a doc per cog. **No `.gs` writes a STAGING_PIPELINE row with this Payload_Type**: `generateSevenBridgesStimulus()` / `triggerSevenBridgesReview()` produce the Drive doc, and verdicts come back through `submitCogVerdict()`. The value is live in the Studio prompt contract (`CURATOR_PROMPT.md` §3.3) rather than in the intake pipeline |
 | `EXTERNAL_TELEMETRY` | Data from Sensor 3 (onChange on BRAIN_TRUST_INDEX) |
-| `VECTOR_CLASSIFY` | Sentence-level vector classification flow, paired with a SESSION_LOG chunk — see STUDIO_INTEGRATION_SPEC.md's "Inference Flow — Sentence Classification" |
+| `VECTOR_CLASSIFY` | Sentence-level vector classification, one row per part of a session (at most 8,000 characters, `LOG-xxxxxxxx_VC01of03`); the parts are aggregated into one VECTOR_MATRIX row per session (`20_VectorClassifySessions.gs`) — see STUDIO_INTEGRATION_SPEC.md's "Inference Flow — Sentence Classification" |
 
 **Status Lifecycle**
 
@@ -48,11 +48,12 @@ The central queue. Every session chunk passes through this sheet.
 | `PARTITIONED` | Legacy | v5.4 chunking status, not used in v8.0 |
 | `CONSOLIDATED` | Legacy | v5.4 Phase 4 status, not used in v8.0 |
 | `PHASE_2_ERROR` | Legacy | Pre-v8.0 catch-all processing error (`archived/legacy-pre-v8/`) — no current code writes this, but it's kept in `TERMINAL_FAILED_STATUSES` (`5_Error_And_Utilities.gs`) so an old row surviving from that era is still recognized as terminal rather than falling through as unrecognized (see `KNOWN_STAGING_STATUSES` / `_isKnownStagingStatus_()` below) |
+| `DUPLICATE` | `applyDuplicateSessions()` (`21_VectorMatrixRepair.gs`) | A later copy of a session already in the pipeline under another UID. Terminal: nothing releases, requeues or classifies it again |
 | `AUDIT_REJECTED` | Queue Processor | The Curator's own output carried a nested `auditor_sign_off` (see `CURATOR_PROMPT.md`) that didn't clear the Auditor's verification pass, and this row exhausted `CFG.MAX_RETRIES` retries — terminal, human review required. The rejected payload and trace log are archived to `AUDIT_LOG` before this status is set (the Drive doc body itself gets overwritten by Studio's next attempt, so this is the only durable record). Below `MAX_RETRIES`, a failed audit instead reverts the row to `PENDING_FLOW` with priority re-release — see `KOS_AUDIT_RETRY_PRIORITY` in `10_Turnstile.gs`. |
 
 **Recognized vs. unrecognized statuses:** `5_Error_And_Utilities.gs`'s
 `_isKnownStagingStatus_()` is the single source of truth for whether a
-Status value is any of the 15 above — an exact match, or (for
+Status value is any of the 16 above — an exact match, or (for
 `PROCESSING_ERROR`/`INTAKE_ERROR`, which can carry a `: <message>`
 suffix) a prefix match. Anything else is genuinely unrecognized: found in
 production as a row stuck at `AUDITING _LOG`, a status no code in this
@@ -209,7 +210,7 @@ Wide-format living vector state. One row per session, one column per known vecto
 |---|---|---|---|
 | A | Session_UID | String | Payload_UID |
 | B | Timestamp | DateTime | Processing timestamp |
-| C–I | [Known vectors] | Float | Decayed score per domain — 7 columns today (`CFG.KNOWN_VECTORS`: ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLIANCE); columns expand further on future promotion |
+| C–I | [Known vectors] | Float | This session's own score per domain, 0 if it didn't score it. The 0.92 decay is applied when the matrix is read (`_vmDecayedState_()`), never stored — 7 columns today (`CFG.KNOWN_VECTORS`: ARCHITECTURE, UI, SECURITY, PEDAGOGY, GAS_DEVELOPMENT, RELATIONAL, DOMAIN_COMPLIANCE); columns expand further on future promotion |
 | Second-to-last | INCUBATOR_SIGNALS | String | Comma-separated emerging themes observed this session |
 | Last | CHECKSUM | String | MD5 (default; `CFG.MATRIX_ROW_CHECKSUM_ALGO`) of the session UID + every theme score — corruption detection only, not a security control (Law 5, Matrix Row Integrity) |
 
@@ -396,6 +397,48 @@ Completed STAGING_PIPELINE rows moved by `archiveStagingPipeline()`.
 | A | Archived_At | DateTime | When the row was archived |
 | B–H | [All STAGING_PIPELINE columns] | — | Exact copy of the original row |
 
+Two readers besides the duplicate guards: the VECTOR_MATRIX rederive takes
+PROCESSED classify parts from here as well as from STAGING_PIPELINE, and
+`applyUnrebuildableReset()` moves a session's old classify part rows here
+with the status `SUPERSEDED` (archive-only; the re-queued parts reuse their
+UIDs, so nothing reads a `SUPERSEDED` row again).
+
+### VectorClassifyParts
+
+Finished classify parts held until the session's last part lands
+(`20_VectorClassifySessions.gs`), then aggregated into one VECTOR_MATRIX
+row and removed. `applyUnrebuildableReset()` clears a session's rows.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Stored_At | DateTime | When the part was stored |
+| B | Session_UID | String | `LOG-xxxxxxxx` |
+| C | Part_UID | String | `LOG-xxxxxxxx_VC01of03` |
+| D | Part | Integer | Part number |
+| E | Of | Integer | Parts in the session |
+| F | Exchanges_JSON | String | The part's classified exchange array |
+
+### DECISION_REGISTER
+
+Deferred decisions, one row each (`22_BriefingDocs.gs`). The intake records
+each `dynamic_state.deferred_decisions` entry as OPEN; `KOS_OPEN_DECISIONS`
+lists the OPEN rows.
+
+| Col | Name | Type | Description |
+|---|---|---|---|
+| A | Decision_ID | String | `<payload uid>#<position>` |
+| B | Session_UID | String | The session that deferred it |
+| C | Recorded_At | DateTime | When the intake recorded it |
+| D | Owner | String | From the Curator output |
+| E | Decision | String | The decision text |
+| F | Blocking | Boolean | From the Curator output |
+| G | Status | Enum | `OPEN`, `RESOLVED` or `DROPPED`. The operator closes a row by editing it or with `resolveDecision(id, note, status)` |
+| H | Resolved_At | DateTime | Set when the row is closed |
+| I | Resolution_Note | String | Why |
+
+`previewDecisionRegisterBackfill()` / `applyDecisionRegisterBackfill()`
+read in the decisions already in CURRENT_STATE, once.
+
 ### Inference_Buffer
 
 Provisioned by `deployFullSystem()` (`1_Config_And_Deploy.gs`, via
@@ -469,7 +512,10 @@ something else.
 | `CURRENT_STATE` | 03.1_Current_State | Rolling state document — next steps and deferred decisions |
 | `PIVOTS_AND_LESSONS` | 03.2_Pivots_And_Lessons | Rolling lessons log — updated each session |
 | `DAILY_PRIMER_YYYY-MM-DD` | 03.1_Current_State | Daily session starter (generated 06:00 each morning) — one new file per day, kept forever as an audit trail |
-| `KOS_LATEST_PRIMER` | 03.1_Current_State | The same content as the dated primer above, but as one fixed-name doc overwritten in place every run instead of a new file each day — the integration point for anything external that watches a single Drive file for edits rather than a folder for new files (e.g. a NotebookLM source, which only auto-syncs an existing Drive-native file). Its doc ID is tracked in `CFG.PROP.LATEST_PRIMER_DOC_ID` so it's found by ID, not by name search, after the first run. |
+| `KOS_LATEST_PRIMER` | 03.1_Current_State | The same content as the dated primer above, but as one fixed-name doc overwritten in place every run instead of a new file each day — the integration point for anything external that watches a single Drive file for edits rather than a folder for new files (e.g. a NotebookLM source, which only auto-syncs an existing Drive-native file). Its doc ID is tracked in `CFG.PROP.LATEST_PRIMER_DOC_ID` so it's found by ID, not by name search, after the first run. Opens with a `Generated at:` stamp and a Data Quality block (OK or FLAGGED, and why). |
+| `KOS_RECENT_SESSIONS` | 03.1_Current_State | The five newest processed sessions' summaries, plus any older session with an open decision (`22_BriefingDocs.gs`). Like the three below it, overwritten in place under one doc ID (`CFG.PROP.RECENT_SESSIONS_DOC_ID`), with a `Generated at:` stamp under the title; written after the primer each morning and on demand by `generateBriefingDocs()` |
+| `KOS_OPEN_DECISIONS` | 03.1_Current_State | Every OPEN row of `DECISION_REGISTER` (`CFG.PROP.OPEN_DECISIONS_DOC_ID`) |
+| `KOS_CORE_FACTS` | 03.1_Current_State | The operator-pinned Core facts ALIGNMENT Threshold D reads, plus the relational targets (`CFG.PROP.CORE_FACTS_DOC_ID`) |
 | `PERSONA_[NAME]_V5` | 02_Council_Alignments | AI persona calibration docs — one per `CFG.PERSONAS` entry (6), plus any archived version duplicates |
 
 ---
@@ -555,6 +601,7 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_MANAGED_SERVICE_WEBHOOK_SECRET` | `CFG.PROP.MANAGED_SERVICE_WEBHOOK_SECRET` | Shared HMAC secret matching `inference-service`'s `WEBHOOK_SECRET` env var; signs `POST /api/v1/jobs`. **Optional only against a dev service.** A production `inference-service` exits at startup without `WEBHOOK_SECRET` and 401s an unsigned request, so leaving this unset against production means every job submission fails. Read by `_submitManagedServiceJob_()` in `3_Queue_Processor.gs` |
 | `KOS_CHAT_WEBHOOK_URL` | `CFG.PROP.CHAT_WEBHOOK_URL` | Google Chat incoming webhook for `_sendChatAlert()` (Registrar Fail Loud Protocol, Apollo Kill-Switch). Degrades to a console.log no-op if unset |
 | `KOS_LATEST_PRIMER_DOC_ID` | `CFG.PROP.LATEST_PRIMER_DOC_ID` | Stable doc ID of `KOS_LATEST_PRIMER`. Written on the first `generateDailyPrimer()` run so later runs open the doc by ID instead of searching by name |
+| `KOS_RECENT_SESSIONS_DOC_ID`, `KOS_OPEN_DECISIONS_DOC_ID`, `KOS_CORE_FACTS_DOC_ID` | `CFG.PROP.RECENT_SESSIONS_DOC_ID` etc. | Stable doc IDs of the three briefing docs, written on their first run |
 
 ### Runtime State
 
@@ -566,6 +613,10 @@ All keys stored via `PropertiesService.getScriptProperties()`.
 | `KOS_UNKNOWN_STATUS_ALERTED` | JSON set — `{ Payload_UID: true }` for rows whose unknown status has already raised an alert, so the same row doesn't alert twice (`_readUnknownStatusAlertedSet_()`, `10_Turnstile.gs`) |
 | `KOS_REGISTRAR_RELEASED` | JSON map — the Registrar's own release-timestamp ledger (`_readRegistrarReleaseMap()`, `11_Registrar_CogRelay.gs`) |
 | `KOS_AUDIT_RETRY_PRIORITY` | JSON set — `{ Payload_UID: true }` for payloads to be retried ahead of the queue, without physically reordering sheet rows (`_readAuditRetryPrioritySet_()`, `5_Error_And_Utilities.gs`) |
+| `KOS_TURNSTILE_STALE_COUNTS` | JSON map — Payload_UID → how many times the Turnstile reset the row for staleness (`10_Turnstile.gs`); past `CFG.TURNSTILE_STUCK_THRESHOLD` the row goes `STUDIO_TIMEOUT` |
+| `KOS_VM_LAST_DEDUPE_AT`, `KOS_VM_LAST_REDERIVE_AT`, `KOS_VC_LAST_BACKFILL_AT` | ISO timestamps of the last duplicate repair, the last *finished* rederive, and the last classify backfill or reset batch; the primer's Data Quality block reports them |
+| `KOS_VM_REDERIVE_DONE` | JSON list — session UIDs an unfinished rederive has already rebuilt; cleared when a run finishes |
+| `KOS_VM_REDERIVE_KEPT`, `KOS_VM_REDERIVE_KEPT_UIDS` | How many rows the last finished rederive kept (couldn't rebuild), and which (JSON `[{sessionUid, reason}]`). The primer flags the count; `resetUnrebuildableRows()` reads the list and lowers both as it resets rows |
 | `KOS_ADMIN_EMAIL` | Also listed under Operator Properties — recipient of the daily error digest |
 | `SEVEN_BRIDGES_LAST_RUN` | Unix ms timestamp of the last Seven Bridges review. Serves double duty: `triggerSevenBridgesReview()`'s stasis guard (don't mint a new stimulus unless CURRENT_STATE has changed) **and** `autoCouncilCheck()`'s session-count anchor. That coupling is deliberate and load-bearing — the callee advancing this key is what stops the 2-hourly trigger from re-firing. See `6_Governance.gs`. |
 | `COUNCIL_LAST_RUN` | **Legacy — no longer read or written by any code.** Was the guard for the shared-context council generator deleted in Round 14 (see `CHANGELOG.md`). An existing stored value is a harmless orphan; there is no migration. |

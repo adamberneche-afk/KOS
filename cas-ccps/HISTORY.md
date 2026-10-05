@@ -2434,3 +2434,17 @@ events industry" split at its comma, and an older term list in S4-U1 (the
 pricing, ...). New `tools/cas-ccps/sync-pacing-vocabulary.js` sets both
 fields from each card's VOCABULARY table, changing nothing else; every
 definition a term already had is unchanged. 150 terms became 134.
+
+## Canvas roster import runs without Unified Manual properties, 2026-10-05
+
+`52_CanvasRosterImport.js` runs in Central Ledger, but the setup wizard
+writes `TEACHER_FOLDER_ID` and `TEACHER_NAME` into the Unified Manual
+project, so on a real account the import would have found no export and
+enrolled students with a blank teacher name (the admin folder path uses it).
+It now takes the teacher name from the assignment's MatrixRegistry row, and
+without `TEACHER_FOLDER_ID` it reads the gradebook CSVs from the teacher's own
+Drive. Docs brought up to date in the same pass: DEPLOYMENT_HANDOFF (a Phase 6
+for course data, lessons, rubrics, roster and cartridges), the FERPA data map
+(NoSchoolDays, unit rubrics and cartridges, drafted lessons), README's script
+inventory, the notebook reference sources and REGISTRY_SHEET_SETUP (marked out
+of date).

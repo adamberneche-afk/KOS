@@ -185,6 +185,10 @@ To use it: find the document named `DAILY_PRIMER_[today's date]` in your Drive, 
 
 You can also generate a fresh primer on demand from the Diagnostics tab: **Generate today's session starter**.
 
+The same content is kept in `KOS_LATEST_PRIMER`, one doc overwritten in place (for a notebook or Gem that follows a single file). It opens with a `Generated at:` stamp and a **Data Quality** block: OK, or FLAGGED with the reasons (for example a `VECTOR_MATRIX` repair still to finish). Three more docs are rewritten with it each morning: `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS` and `KOS_CORE_FACTS`. To refresh them now, run `generateBriefingDocs()` in the Apps Script editor.
+
+**Closing a deferred decision.** Each decision a session defers is recorded as OPEN in the `DECISION_REGISTER` sheet and listed in `KOS_OPEN_DECISIONS`. Set its Status to RESOLVED or DROPPED (or run `resolveDecision(id, note)`) and it leaves that doc on the next run.
+
 ---
 
 ## The Council Review
@@ -287,6 +291,7 @@ Your BRAIN_TRUST_INDEX spreadsheet contains all the system's structured outputs.
 | Blackboard | System modification proposals (SMP governance) |
 | ERROR_LOG | All errors with timestamps and context |
 | STAGING_ARCHIVE | Completed queue rows (after archiving) |
+| DECISION_REGISTER | Deferred decisions and whether each is still open |
 
 The session documents themselves (CURRENT_STATE, PIVOTS_AND_LESSONS, daily primers) live in the Drive folder hierarchy under your root KOS folder.
 

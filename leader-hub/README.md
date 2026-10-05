@@ -1242,7 +1242,7 @@ answers external callers directly, and its action dispatch
 `fetch()`.
 
 **Auth**: a single owner, fail-closed, matching
-`_isAuthorizedTeacher_()`'s shape in `cas-ccps/00_SharedConfig.js` — a new
+`_isAuthorizedTeacher_()`'s shape in `cas-ccps/scripts/00_SharedConfig.js` — a new
 `OWNER_EMAIL` Script Property compared against
 `Session.getActiveUser().getEmail()`. leader-hub has no second legitimate
 viewer role the way teacher-dashboard has a student "My Context" view, so

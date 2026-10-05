@@ -193,7 +193,7 @@ by themselves, stop the instinct that produced seven codebase copies in
 the first place — that's a habit, not a tooling gap, and worth watching
 for even once the tooling exists to make the old habit unnecessary.
 
-## Status: cas-ccps is live; kos-personal and leader-hub are not
+## Status: all three systems are live
 
 Everything above was written while this was still a proposal, and the
 heading here used to say "scaffolded, not yet connected to a live account."
@@ -205,8 +205,10 @@ it in the repo. `cas-ccps/HISTORY.md`'s deployment section records what that
 first push found, including three Studio walls that only a live account
 could reveal.
 
-`kos-personal`'s two projects and `leader-hub`'s one are still at the
-one-credentialed-step-away stage described below.
+`kos-personal`'s main project and `leader-hub`'s one are live too, pushed
+the same way by `tools/clasp-sync/run.ps1`. kos-personal's second project,
+`archive/studio-steps/`, was archived on 2026-09-29 (blocked on this
+account, like cas-ccps's).
 
 The layout each system needs, which hasn't changed:
 
@@ -230,7 +232,7 @@ The layout each system needs, which hasn't changed:
   it started as, but it's still exactly one Apps Script project either
   way, so the flat-folder model still applies unchanged.
 - **`cas-ccps/scripts/`** doesn't fit the one-folder-one-project model —
-  it's actually 7 separate bound/standalone projects sharing overlapping
+  it's actually 8 separate projects (7 bound or web-app projects plus the standalone `studio-steps`) sharing overlapping
   files (`00_SharedConfig.js` alone is pasted into 5 of them). See
   [`tools/clasp-sync/README.md`](../tools/clasp-sync/README.md) for how
   that's reconciled: a small script generates a throwaway per-project
@@ -242,15 +244,15 @@ The layout each system needs, which hasn't changed:
   later for the Studio Steps adoption — standalone, sharing no files with
   the other 7, but handled by the same tool and the same `cas-ccps:*`
   scope.
-- Every one of the 11 real projects (kos-personal's 2 + cas-ccps's 8 +
-  leader-hub's 1) now has a committed `appsscript.json` —`cas-ccps` and
+- Every one of the 10 real projects (kos-personal's 1 + cas-ccps's 8 +
+  leader-hub's 1; kos-personal's archived studio-steps project kept its
+  own) now has a committed `appsscript.json` —`cas-ccps` and
   `leader-hub` had none before this reconciliation; `oauthScopes` were
   derived from actual code usage against `tools/gas-lint/scope-map.json`,
-  and `gas-lint`'s existing OAuth-scope check now validates all 11 of
+  and `gas-lint`'s existing OAuth-scope check now validates all 10 of
   them, not just `kos-personal`'s main project.
-- **What's left is entirely credentialed and can't be done from a repo
-  session** — and for `cas-ccps` it is already done. For the remaining 3
-  projects (`kos-personal`'s 2, `leader-hub`'s 1): run `clasp login`
+- **Setting up a second account is entirely credentialed and can't be
+  done from a repo session** (for this account it is done): run `clasp login`
   against the real Google account, then `clasp clone` (or `clasp create`,
   for the two "cloned per teacher" projects — target the *master* template,
   not any individual teacher's copy), and drop the resulting `scriptId`

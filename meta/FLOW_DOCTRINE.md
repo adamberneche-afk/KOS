@@ -25,7 +25,7 @@ they healthy*. This answers *how you build one, and why these rules*.
 than the rule does. A practice that is only prose gets rediscovered; a
 practice that is a check gets enforced. Of the rules below, the enforced ones
 have survived contact with three systems. The prose-only ones — 8, 10, 11, 13,
-14 and 15 — are the ones to distrust first.
+14 and 17 (15 and 16 are now partly enforced) — are the ones to distrust first.
 
 That list started at eight. Rules 4, 5, 7, 9 and 12 came off it by becoming
 `gas-lint` Checks H through K, and each of those checks found a live defect on
