@@ -117,14 +117,14 @@ for the Studio Steps adoption — see its own row below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (turn-in gate), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
 | Teacher Matrix Sheet (cloned per teacher) | cloned sheet | `00`, `08`, `19` |
 | Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26`/`27` (lesson-context logging + alignment log + synchronous lesson frame generation, called by Script 07's `submitLessonContext()`), `32` (competency rubric lookup, called by Script 27's frame generation — dual-placed here and in Central Ledger since Script 27 runs in both), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's review-and-send panel; it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header) |
 | Student Dashboard | standalone web app | `13` |
-| Studio Steps | standalone (not bound to a spreadsheet/doc) | **Blocked on this account** — needs a standard Cloud project; all five flows were ported to `37_FlowInputBuilder.js`/`41_WarmUpFlowBridge.js` instead. 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Written and tested, not yet pushed to a live Studio deployment. |
+| Studio Steps | standalone (not bound to a spreadsheet/doc) | **Blocked on this account** — needs a standard Cloud project; all five flows were ported to `37_FlowInputBuilder.js`/`41_WarmUpFlowBridge.js` instead. 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Pushed, but unreachable from Studio's step picker on this account (see Known gap 1). |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
 
@@ -269,7 +269,10 @@ the only way in used to be the intake form. `52_CanvasRosterImport.js`
 (Central Ledger) enrolls a whole roster from Canvas gradebook exports:
 
 1. In each Canvas course, Grades → Export → Export Entire Gradebook, and
-   upload the CSV to your teacher folder.
+   upload the CSV to your Drive. The import reads any `.csv` with "Grades" in
+   its name from the `TEACHER_FOLDER_ID` folder if Central Ledger has that
+   property, otherwise from anywhere in your own Drive (the setup wizard
+   writes `TEACHER_*` properties into the Unified Manual project, not this one).
 2. `previewRosterEnrollment("<Config ID>")` against a LIVE assignment lists
    who would be enrolled and fills the `CanvasSectionMap` tab with every
    Canvas section; put each section's class period next to it.
@@ -364,7 +367,7 @@ deliberately — it verifies the code path, not the flow.
 10. ~~`curriculum/PacingGuide_CAS_Context.csv` and `.docx` are stale~~ —
     **closed.** Both regenerated from the adopted v2 JSON — see
     HISTORY.md's resolution 8 for how each was rebuilt/verified. Prior versions archived at
-    `curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.csv`/`.docx`.
+    `curriculum/archived/PacingGuide_CAS_Context_v1_SUPERSEDED.csv`/`.docx` (since removed; on the `pre-archive-cleanup` branch).
 11. **`data/CompetencyRegistry.csv` and `data/sol-correlations/` are not
     yet imported into any Sheet** — the files exist in the repo (HISTORY.md's resolution
     7), but nothing has run `importCompetencyRegistry()` (Script `22b`)

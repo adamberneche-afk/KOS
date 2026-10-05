@@ -7,7 +7,7 @@
  * Phase 0 of the RTP notebook plan
  * (rtp-core-router/notebook-plan/04_MIGRATION_AND_TEST_PLAN.md): the
  * Gem's Vector State comes from VECTOR_MATRIX, so the matrix has to be
- * right before anything briefs from it. Two repairs, each a preview
+ * right before anything briefs from it. Three repairs, each a preview
  * first and an apply second, the same shape as the staging requeue:
  *
  *   DUPLICATE SESSIONS. Older session UIDs were LOG-{epoch}-{hash}, the
@@ -22,9 +22,10 @@
  *   REDERIVED ROWS. _writeMatrixRow() used to fill a theme a session
  *   didn't score with DECAY_FACTOR × the previous row's value, and the
  *   previous row was a different session. rederiveVectorMatrix() rebuilds
- *   every row it can from the session's own classify parts (each part's
- *   doc still holds its classification JSON), with 0 for a theme the
- *   session didn't score, and writes the rows in session date order.
+ *   every row it can from the session's own classify parts, live or
+ *   archived (each part's doc still holds its classification JSON), with 0
+ *   for a theme the session didn't score, and writes the rows in session
+ *   date order.
  *
  *   UNREBUILDABLE ROWS. A row the rederive had to keep (no classify parts,
  *   or one missing) still holds the old carried-forward values.
@@ -469,11 +470,14 @@ function resetUnrebuildableRows(opts) {
       });
       SpreadsheetApp.flush();
 
-      // The primer's "could not be rebuilt" flag counts these; drop the ones handled.
+      // The primer's "could not be rebuilt" flag counts these; drop the ones
+      // handled. Only when the rederive recorded which rows it kept: a count
+      // from a rederive that ran before KOS_VM_REDERIVE_KEPT_UIDS existed
+      // can't be matched to sessions, so it stands until the next rederive.
       const handled = {};
       requeued.concat(dropped).forEach(function (u) { handled[u] = true; });
       const stillKept = keptByRederive.filter(function (k) { return !handled[k.sessionUid]; });
-      if (props.getProperty(CFG.PROP.VM_REDERIVE_KEPT) != null) {
+      if (props.getProperty(CFG.PROP.VM_REDERIVE_KEPT_UIDS) != null) {
         props.setProperty(CFG.PROP.VM_REDERIVE_KEPT, String(stillKept.length));
         props.setProperty(CFG.PROP.VM_REDERIVE_KEPT_UIDS, JSON.stringify(stillKept));
       }
