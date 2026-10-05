@@ -100,12 +100,23 @@ enforced anywhere.
 |---|---|
 | **Fields** | Timestamp, GoogleID (student's district **email**, not a Google account ID — see note below), ConfigID, FileID, StudentName, Block, ClassName, TeacherName, TeacherEmail, Subject, CourseName, Period, Status, SubmissionTS, Notes, LastEval, AdminFileURL, StudentFileURL, AcademicYear |
 | **Why collected** | The system-of-record for every assignment: who submitted what, when, to which teacher, with what evaluation outcome. Every other tab in cas-ccps traces back to a Ledger row. |
-| **Written by** | Scripts 02 (intake), 04 (turn-in gate), 10 (manual `archiveCompletedTerm()` and automatic `_archiveExpiredLedgerRows_()` — both only ever set `Status` to `ARCHIVED`, never any other field) |
+| **Written by** | Scripts 02 (intake, from the form or from 52's Canvas roster import, both through `intakeStudent_()`), 04 (turn-in gate), 10 (manual `archiveCompletedTerm()` and automatic `_archiveExpiredLedgerRows_()` — both only ever set `Status` to `ARCHIVED`, never any other field) |
 | **Read by** | Scripts 03, 07 (Teacher Dashboard), 10 (Admin Recovery Panel), 13 (Student Dashboard), 23, 24, 29, 30, 33 |
 | **Visible to** | The student's own teacher (Teacher Dashboard, gated by `_isAuthorizedTeacher_()`); the student themselves (Student Dashboard, own row only); admin (Admin Recovery Panel) |
 | **Retention** | `LEDGER_RETENTION_YEARS` (Script Property, default 5, unconfirmed — see above) via `_archiveExpiredLedgerRows_()`, run automatically on every daily health check and every on-demand admin health check. A `COMPLIANT`/`ACTIVE`/`COMPLETE` row past the window gets `Status` set to `ARCHIVED`; `ERROR`-prefixed rows are left for admin review. Actual deletion is never automatic. |
 
 > **Naming note:** the column labeled `GoogleID` throughout this codebase (here and in every tab below) is populated with the student's district **email address**, not a separate Google account identifier. There is no non-PII stable student ID anywhere in cas-ccps today — a fact that matters for the Bonus-2 fix below.
+
+### Canvas gradebook exports and CanvasSectionMap (S52)
+*Teacher's own Drive folder; Central Ledger tab*
+
+| | |
+|---|---|
+| **Fields** | The exports are Canvas's own gradebook CSVs and hold names, logins and grades. `52_CanvasRosterImport.js` reads only Student, SIS Login ID and Section, ignores every grade column, and writes nothing from them but the Ledger row `intakeStudent_()` writes for any enrolled student. `CanvasSectionMap` holds Canvas section names and class periods: no student data. |
+| **Why collected** | Enrolling a class roster without each student submitting the intake form. |
+| **Written by** | The teacher uploads the exports; S52 adds section names to `CanvasSectionMap`. |
+| **Visible to** | The exports: the teacher, in their own folder. The execution log names accounts, not students. |
+| **Retention** | The exports are the teacher's files; delete them after enrolling. Nothing else is kept. |
 
 ### StudentProfiles
 *Teacher-scoped, one row per student per teacher*

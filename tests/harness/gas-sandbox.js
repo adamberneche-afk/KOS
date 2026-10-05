@@ -1107,6 +1107,29 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
       // all its iterations instantly, not actually wait real wall-clock
       // seconds per attempt.
       sleep() {},
+      // Real Apps Script API — Utilities.parseCsv(csv), RFC 4180: quoted
+      // fields may hold commas, doubled quotes and newlines. First needed by
+      // cas-ccps 52_CanvasRosterImport.js (Canvas gradebook exports).
+      parseCsv(csv) {
+        const text = String(csv);
+        const rows = [];
+        let row = [], cell = '', quoted = false;
+        for (let i = 0; i < text.length; i++) {
+          const c = text[i];
+          if (quoted) {
+            if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+            else if (c === '"') quoted = false;
+            else cell += c;
+          } else if (c === '"') quoted = true;
+          else if (c === ',') { row.push(cell); cell = ''; }
+          else if (c === '\n' || c === '\r') {
+            if (c === '\r' && text[i + 1] === '\n') i++;
+            row.push(cell); rows.push(row); row = []; cell = '';
+          } else cell += c;
+        }
+        if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+        return rows;
+      },
       // Real Apps Script API — Utilities.computeDigest(algorithm, value).
       // First needed by kos-personal's 4_Vector_Router.gs
       // (_computeMatrixRowChecksum_, the Vector Weight Calculation Engine's
