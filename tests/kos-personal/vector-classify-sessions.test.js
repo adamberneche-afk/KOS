@@ -247,7 +247,7 @@ test('queueVectorClassifyBackfill: skips a session with a chunk missing from the
   const { staging, curator, ss } = env;
   const chunk = (uid) => staging.appendRow([new Date('2026-09-11'), uid, 'SESSION_LOG', 'u', 'f-' + uid, 'PROCESSED', 0]);
   const source = (uid) => curator.appendRow([new Date(), uid, 'SESSION_LOG', 'f-' + uid, 'text ' + uid, 'READY']);
-  // Gap: chunk 2 was archived.
+  // Gap: chunk 2 is in neither sheet.
   chunk('LOG-gap_CH01'); chunk('LOG-gap_CH03'); source('LOG-gap_CH01'); source('LOG-gap_CH03');
   // Tail: intake made 3 chunks, only 2 remain.
   chunk('LOG-tail_CH01'); chunk('LOG-tail_CH02'); source('LOG-tail_CH01'); source('LOG-tail_CH02');
@@ -265,4 +265,42 @@ test('queueVectorClassifyBackfill: skips a session with a chunk missing from the
   assert.deepEqual(reasons, {
     'LOG-gap': 'CHUNKS_INCOMPLETE', 'LOG-tail': 'CHUNKS_INCOMPLETE', 'LOG-new': 'CHUNKS_INCOMPLETE',
   });
+});
+
+test('queueVectorClassifyBackfill: reads chunks archived out of STAGING_PIPELINE', () => {
+  const env = setup();
+  const { staging, curator, ss } = env;
+  const archive = ss.insertSheet('STAGING_ARCHIVE');
+  archive.appendRow(['Archived_At'].concat(STAGING_HEADERS));
+  const live = (uid, day) => staging.appendRow([new Date('2026-09-' + day), uid, 'SESSION_LOG', 'u', 'f-' + uid, 'PROCESSED', 0]);
+  const gone = (uid, day, type, status) => archive.appendRow(
+    [new Date(), new Date('2026-09-' + day), uid, type || 'SESSION_LOG', 'u', 'f-' + uid, status || 'PROCESSED', 0]);
+  const source = (uid) => curator.appendRow([new Date(), uid, 'SESSION_LOG', 'f-' + uid, 'text ' + uid, 'READY']);
+
+  // Split: chunk 2 archived, chunks 1 and 3 live; chunk 1 archived as well.
+  live('LOG-split_CH01', 12); live('LOG-split_CH03', 12); gone('LOG-split_CH02', 12); gone('LOG-split_CH01', 12);
+  ['LOG-split_CH01', 'LOG-split_CH02', 'LOG-split_CH03'].forEach(source);
+  // Every chunk archived; older than LOG-split.
+  gone('LOG-old_CH01', 10); gone('LOG-old_CH02', 10); source('LOG-old_CH01'); source('LOG-old_CH02');
+  // Archived, and its parts were archived PROCESSED: already queued.
+  gone('LOG-done_CH01', 11); source('LOG-done_CH01');
+  gone('LOG-done_VC01of01', 11, 'VECTOR_CLASSIFY', 'PROCESSED');
+  // Archived, its only parts SUPERSEDED by the reset: still eligible.
+  gone('LOG-reset_CH01', 13); source('LOG-reset_CH01');
+  gone('LOG-reset_VC01of02', 13, 'VECTOR_CLASSIFY', 'SUPERSEDED');
+  // An archived part never counts as in flight.
+  gone('LOG-old_VC01of01', 9, 'VECTOR_CLASSIFY', 'PENDING_FLOW');
+
+  const r = env.exported.queueVectorClassifyBackfill({ apply: false, limit: 5 });
+
+  assert.equal(r.inFlight, 0);
+  assert.deepEqual(r.sessions.map((s) => [s.sessionUid, s.chunks]), [['LOG-split', 3], ['LOG-reset', 1]]);
+  const reasons = Object.fromEntries(r.skipped.map((s) => [s.sessionUid, s.reason.split(':')[0]]));
+  assert.deepEqual(reasons, { 'LOG-old': 'ALREADY_QUEUED', 'LOG-done': 'ALREADY_QUEUED' });
+
+  const applied = env.exported.queueVectorClassifyBackfill({ apply: true, limit: 1 });
+  assert.deepEqual(applied.sessions.map((s) => s.sessionUid), ['LOG-split']);
+  const part = stagingData(staging).find((row) => row[1] === 'LOG-split_VC01of01');
+  assert.equal(env.sandbox.DocumentApp.openById(part[4]).getBody().getText(),
+    'text LOG-split_CH01\n\ntext LOG-split_CH02\n\ntext LOG-split_CH03');
 });
