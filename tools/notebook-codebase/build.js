@@ -131,19 +131,31 @@ function demote(text) {
   }).join('\n');
 }
 
+// Repeats a replacement until the text stops changing, so a removal can't
+// leave behind a fragment that forms a new match (e.g. "<scr<script>ipt>").
+function untilStable(text, re, rep) {
+  let prev;
+  do { prev = text; text = text.replace(re, rep); } while (text !== prev);
+  return text;
+}
+
 // Just enough HTML-to-Markdown for the styled guides: drop styles and
 // scripts, keep headings, list items, table cells and paragraph breaks.
+// Every tag is removed (repeatedly, until none is left), and so is any
+// stray "<" after that: in well-formed HTML a literal "<" in text is
+// written "&lt;", which the entity step below turns back into "<".
 function htmlToText(html) {
   const ent = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ', mdash: '—', ndash: '–', rarr: '→', larr: '←', hellip: '…', middot: '·' };
-  return html
-    .replace(/<(style|script|head|svg)[\s\S]*?<\/\1>/gi, '')
-    .replace(/<!--[\s\S]*?-->/g, '')
+  let text = untilStable(html, /<(style|script|head|svg)\b[\s\S]*?<\/\1\s*>/gi, '');
+  text = untilStable(text, /<!--[\s\S]*?-->/g, '');
+  text = text
     .replace(/<h([1-4])[^>]*>/gi, (m, n) => '\n\n' + '#'.repeat(Number(n)) + ' ')
     .replace(/<\/h[1-4]>/gi, '\n\n')
     .replace(/<li[^>]*>/gi, '\n- ')
     .replace(/<\/(td|th)>/gi, ' | ')
-    .replace(/<(br|\/p|\/div|\/tr|\/li|\/ul|\/ol|\/table|\/section|\/pre|\/blockquote)[^>]*>/gi, '\n')
-    .replace(/<[^>]+>/g, '')
+    .replace(/<(br|\/p|\/div|\/tr|\/li|\/ul|\/ol|\/table|\/section|\/pre|\/blockquote)[^>]*>/gi, '\n');
+  text = untilStable(text, /<[^>]*>/g, '').replace(/</g, '');
+  return text
     .replace(/&(#\d+|#x[0-9a-f]+|[a-z]+);/gi, (m, e) => e[0] === '#'
       ? String.fromCodePoint(e[1] === 'x' || e[1] === 'X' ? parseInt(e.slice(2), 16) : parseInt(e.slice(1), 10))
       : (ent[e.toLowerCase()] !== undefined ? ent[e.toLowerCase()] : m))
