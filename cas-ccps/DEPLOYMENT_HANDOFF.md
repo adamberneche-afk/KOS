@@ -7,9 +7,12 @@
 > of 2026-10-03 that is not true:
 >
 > - **kos-personal:** about 71% of Curator Flow rows failed Sept 10-17
->   (the steps called the RTP Gem; fixed in Studio Sept 29). The backlog
->   still needs requeuing, and the Classify Flow has not yet classified a
->   real session. See `kos-personal/HANDOFF_2026-09-28.md`.
+>   (the steps called the RTP Gem; fixed in Studio Sept 29). The Classify
+>   Flow now returns real parts; what remains is requeuing the backlog and
+>   finishing the VECTOR_MATRIX repair. See `kos-personal/HANDOFF_2026-09-28.md`.
+>
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-05.md`](../meta/HANDOFF_2026-10-05.md)**:
+> every system's state and the operator's queue in order.
 > - **leader-hub:** paused. It works on `/dev`, but `/exec` still needs its
 >   release. See `leader-hub/README.md`'s "Status".
 > - **cas-ccps:** the seven projects `run.ps1` deploys (all eight except the

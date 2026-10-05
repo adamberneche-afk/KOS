@@ -16,6 +16,10 @@ get filed into the matching subtree, not left loose at the root. See
 `meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
 rationale behind moving to this git-based structure in the first place.
 
+**Picking this up?** Start with [`meta/HANDOFF_2026-10-05.md`](./meta/HANDOFF_2026-10-05.md):
+where each system stands, what is merged but not yet live, and the
+operator's queue in order.
+
 ## [`kos-personal/`](./kos-personal/) — Knowledge Operating System v8.0
 
 A personal AI-session knowledge pipeline: ingests one operator's AI working
