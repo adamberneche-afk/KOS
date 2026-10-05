@@ -17,8 +17,8 @@ This notebook holds the KOS repository (github.com/adamberneche-afk/KOS): three 
 | `KOS_CODE_CAS_CCPS_DOCS` | cas-ccps: docs and guides | 25 | 66,085 | `8fd888be6799` |
 | `KOS_CODE_LEADER_HUB_SOURCE` | leader-hub: Apps Script and page source | 27 | 162,514 | `24c454cbac7b` |
 | `KOS_CODE_LEADER_HUB_DOCS` | leader-hub: docs | 23 | 62,369 | `a74a7f85b21a` |
-| `KOS_CODE_TOOLS` | Repo tools, CI workflows and scripts | 48 | 71,725 | `d5f8e6061420` |
-| `KOS_CODE_TESTS` | Tests and the GAS sandbox harness | 128 | 143,874 | `4d2151723690` |
+| `KOS_CODE_TOOLS` | Repo tools, CI workflows and scripts | 49 | 73,562 | `acaed227bd9a` |
+| `KOS_CODE_TESTS` | Tests and the GAS sandbox harness | 129 | 144,328 | `b5afc71dc0b6` |
 | `KOS_CODE_META` | Repo-wide docs: handoffs, process, Drive curation | 37 | 63,907 | `d4c7eaf21c5a` |
 
 ## KOS_CODE_00_INDEX · Left out
@@ -362,6 +362,7 @@ This notebook holds the KOS repository (github.com/adamberneche-afk/KOS): three 
 - `tools/leaderhub-build/verify-hoist.js`
 - `tools/leaderhub-build/verify-strip.js`
 - `tools/lib/escape-template-literal.js`
+- `tools/notebook-codebase/build.js`
 - `tools/watchdog/check.js`
 
 ## KOS_CODE_00_INDEX · KOS_CODE_TESTS
@@ -492,6 +493,7 @@ This notebook holds the KOS repository (github.com/adamberneche-afk/KOS): three 
 - `tests/tools/leaderhub-build-lexer.test.js`
 - `tests/tools/leaderhub-build-load-order.test.js`
 - `tests/tools/leaderhub-build.test.js`
+- `tests/tools/notebook-codebase.test.js`
 - `tests/tools/unit-rubrics.test.js`
 - `tests/tools/watchdog-check.test.js`
 

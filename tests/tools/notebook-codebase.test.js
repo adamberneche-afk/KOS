@@ -62,4 +62,7 @@ test('helpers: headings demoted outside fences, fences longer than any inner run
   assert.equal(fence('plain'), '```');
   const t = htmlToText('<style>x{}</style><h2>Steps</h2><ul><li>One &amp; two</li></ul><script>bad()</script><p>Done&nbsp;now</p>');
   assert.equal(t, '## Steps\n\n- One & two\n\nDone now');
+  // Nested or broken fragments can't survive as a tag; an escaped "<" in text does.
+  assert.doesNotMatch(htmlToText('<scr<script>x</script>ipt>alert(1)<!-<!-- -->- -->ok <b'), /<(script|!--|b)/i);
+  assert.equal(htmlToText('<p>a &lt;tag&gt; in text</p>'), 'a <tag> in text');
 });
