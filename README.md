@@ -299,6 +299,15 @@ dependencies, like the rest of `tools/`.
   - `generate-flow-prompts.js` regenerates `16_FlowPrompts.gs`.
 - **leader-hub:** `generate-ai-prompts.js` regenerates `AiPrompts.gs`.
 
+## [`tools/notebook-codebase/`](./tools/notebook-codebase/build.js) — the repo as Gemini notebook sources
+
+Writes `meta/notebook-codebase/`: the whole repo (code, docs, tools, tests)
+as 12 Markdown sources plus an index, for a "KOS Codebase" notebook. Every
+section heading names its source and file, and every source carries its
+`Notebook source:` line. Unlike the generators above, its output is not held
+to staleness by `npm test`; `--check` reports stale sources, and each source
+carries a content fingerprint. See `meta/notebook-codebase/README.md`.
+
 ## [`tools/html-lint/`](./tools/html-lint/check.js) — inline `<script>` syntax check
 
 Runs `node --check` on every inline `<script>` block of
@@ -347,7 +356,7 @@ per-session vector classification and its backfill
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `canvas-cartridge.test.js`), the `leaderhub-build` drift gate, and the split script's
+the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `canvas-cartridge.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 
