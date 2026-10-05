@@ -48,14 +48,24 @@
  *   previewVectorClassifyBackfill()    — dry run of the next backfill batch.
  *   queueVectorClassifyBackfillBatch() — queue it.
  *   queueVectorClassifyBackfill(opts)  — { apply: bool, limit: number }.
+ *   installClassifyBackfillTrigger()   — run the batch every 15 minutes
+ *                                        until nothing is left to queue.
+ *   removeClassifyBackfillTrigger()    — stop it early.
  *
  * The backfill is for sessions ingested before this file existed. It reads
  * each session's chunks from STAGING_PIPELINE and STAGING_ARCHIVE, its text
  * back from CuratorInput in chunk order, and refuses to start a batch while
  * an earlier batch's parts are still in flight, so the queue never floods.
  * VECTOR_MATRIX rows land in the order sessions finish, so backfilled
- * sessions append after whatever is already there; run the backfill before new sessions arrive to keep the decay
- * baseline roughly chronological.
+ * sessions append after whatever is already there; run the backfill before
+ * new sessions arrive to keep the decay baseline roughly chronological.
+ *
+ * installClassifyBackfillTrigger() runs the batch every 15 minutes, so the
+ * backfill drains without someone at the editor. Each run is the same batch
+ * as queueVectorClassifyBackfillBatch(), and the trigger removes itself once
+ * no session is left to queue. removeClassifyBackfillTrigger() stops it
+ * early. It is deliberately not in KOS_TRIGGER_HANDLERS: it is temporary,
+ * and the preflight would flag it as missing once it has removed itself.
  */
 
 const VCS_PART_MAX_CHARS = 8000;
@@ -64,6 +74,8 @@ const VCS_PARTS_HEADERS = ['Stored_At', 'Session_UID', 'Part_UID', 'Part', 'Of',
 const VCS_PARTS_COLS = { STORED_AT: 0, SESSION_UID: 1, PART_UID: 2, PART: 3, OF: 4, EXCHANGES_JSON: 5 };
 const VCS_BACKFILL_BATCH = 3;
 const VCS_IN_FLIGHT = ['PENDING_FLOW', 'STUDIO_ACTIVE', 'FLOW_COMPLETE'];
+const VCS_BACKFILL_TRIGGER_HANDLER = 'runClassifyBackfillTrigger';
+const VCS_BACKFILL_TRIGGER_MINUTES = 15;
 
 // ================================================================
 // UIDS
@@ -461,4 +473,64 @@ function queueVectorClassifyBackfill(opts) {
 
   return { apply: apply, inFlight: inFlight, eligible: eligible.length, selected: batch.length,
     skipped: skipped, sessions: planned, message: message };
+}
+
+// ================================================================
+// BACKFILL TRIGGER — drains the backfill one batch at a time
+// ================================================================
+
+/** Idempotent: a second install leaves the existing trigger alone. */
+function installClassifyBackfillTrigger() {
+  const existing = _vcsBackfillTriggers_();
+  if (existing.length) {
+    console.log('[VectorClassify] backfill trigger already installed (' + existing.length + ')');
+    return { installed: false, existing: existing.length };
+  }
+  // A literal name, so coverage-gaps can check the handler is tested.
+  ScriptApp.newTrigger('runClassifyBackfillTrigger').timeBased()
+    .everyMinutes(VCS_BACKFILL_TRIGGER_MINUTES).create();
+  console.log('[VectorClassify] installed ' + VCS_BACKFILL_TRIGGER_HANDLER + ' every ' +
+    VCS_BACKFILL_TRIGGER_MINUTES + ' minutes; it removes itself when the backfill is done');
+  return { installed: true, existing: 0 };
+}
+
+function removeClassifyBackfillTrigger() {
+  const existing = _vcsBackfillTriggers_();
+  existing.forEach(function (t) { ScriptApp.deleteTrigger(t); });
+  console.log('[VectorClassify] removed ' + existing.length + ' backfill trigger(s)');
+  return existing.length;
+}
+
+/**
+ * The trigger's handler: one backfill batch, under the script lock so it
+ * can't overlap a manual run or itself. When no session is left to queue it
+ * removes its own trigger; parts already queued still finish through the
+ * Classify Flow as usual.
+ */
+function runClassifyBackfillTrigger() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(10000)) {
+    console.log('[VectorClassify] backfill trigger: script lock busy; trying again next run');
+    return { ran: false, removed: false };
+  }
+  try {
+    const r = queueVectorClassifyBackfill({ apply: true });
+    if (r.eligible === 0) {
+      const removed = removeClassifyBackfillTrigger();
+      console.log('[VectorClassify] backfill trigger: nothing left to queue; trigger removed');
+      return { ran: true, removed: removed > 0, result: r };
+    }
+    return { ran: true, removed: false, result: r };
+  } catch (e) {
+    _reportError('runClassifyBackfillTrigger', e, null);
+    return { ran: false, removed: false, error: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function _vcsBackfillTriggers_() {
+  return ScriptApp.getProjectTriggers().filter(function (t) {
+    return t.getHandlerFunction() === VCS_BACKFILL_TRIGGER_HANDLER;
+  });
 }

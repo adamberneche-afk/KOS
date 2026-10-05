@@ -1,6 +1,19 @@
 # KOS Changelog
 
 
+### A trigger drains the classify backfill (2026-10-05)
+
+With the archive read in, the live backfill had 73 sessions to queue, at 3 a
+batch and only once the last batch was out of flight: about 25 manual runs.
+`installClassifyBackfillTrigger()` runs `runClassifyBackfillTrigger()` every
+15 minutes. Each run is the same batch as `queueVectorClassifyBackfillBatch()`,
+under the script lock. When no session is left to queue, the trigger removes
+itself; an error is logged and the trigger kept for the next run.
+`removeClassifyBackfillTrigger()` stops it early. It is left out of
+`KOS_TRIGGER_HANDLERS` on purpose, since the preflight would report a
+temporary trigger as missing once it had removed itself.
+
+
 ### The classify backfill reads archived chunks (2026-10-05)
 
 `queueVectorClassifyBackfill()` found a session's chunks only in
