@@ -499,7 +499,7 @@ the same command with the previous version number.
 push → version → update-deployment sequence for every web app, using the
 deployment IDs you list in its registry.
 
-### 3.7 `studio-steps` (both cas-ccps and kos-personal) — a different shape again
+### 3.7 cas-ccps `studio-steps` — a different shape again
 
 Neither of the two other patterns above quite fits. `studio-steps` is
 standalone (not sheet/doc-bound, so no "which spreadsheet is this bound

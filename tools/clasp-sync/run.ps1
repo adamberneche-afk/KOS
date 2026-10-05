@@ -1,8 +1,9 @@
 <#
 .SYNOPSIS
     Drives the clasp CLI side of a full push across the in-scope KOS
-    Apps Script projects (the two studio-steps projects are out: custom
-    Studio steps are blocked by the org-wide GCP restriction).
+    Apps Script projects (cas-ccps's studio-steps project is out: custom
+    Studio steps are blocked by the org-wide GCP restriction; kos-personal's
+    was archived 2026-09-29).
 
 .DESCRIPTION
     This script automates PROCESS, not JUDGMENT. Two decisions are made by
@@ -602,7 +603,7 @@ $Manifest = @(
     @{ Name = "teacher-dashboard";       Type = "cas-ccps"; Mode = "promote" }
     @{ Name = "student-dashboard";       Type = "cas-ccps"; Mode = "promote" }
 )
-# kos-personal:studio-steps and cas-ccps:studio-steps are deliberately absent --
+# cas-ccps:studio-steps is deliberately absent (kos-personal's was archived 2026-09-29) --
 # out of scope while the org-wide GCP block on custom Studio steps holds.
 
 # Plain ForEach-Object rather than $Manifest.Name: member enumeration over

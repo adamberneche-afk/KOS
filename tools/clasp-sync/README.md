@@ -45,14 +45,16 @@ contents — every run).
 
 | Project | Bound to | Files |
 |---|---|---|
-| `central-ledger` | Central Ledger spreadsheet | 25 |
-| `unified-manual` | Assignment System Manual Doc (setup wizard) | 8 |
-| `master-student-template` | Master Student Template Doc | 4 |
-| `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 3 |
-| `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 3 |
-| `teacher-dashboard` | Standalone web app | 10 |
-| `student-dashboard` | Standalone web app | 2 |
+| `central-ledger` | Central Ledger spreadsheet | 35 |
+| `unified-manual` | Assignment System Manual Doc (setup wizard) | 9 |
+| `master-student-template` | Master Student Template Doc | 5 |
+| `rubric-response-sheet` | Rubric Response Sheet — **cloned per teacher** | 4 |
+| `teacher-matrix-sheet` | Teacher Matrix Sheet — **cloned per teacher** | 4 |
+| `teacher-dashboard` | Standalone web app | 11 |
+| `student-dashboard` | Standalone web app | 3 |
 | `studio-steps` | Standalone — not bound to a spreadsheet/doc | 9 |
+
+File counts as of 2026-10-05; `tools/gas-lint/project-map.json` is the authoritative list.
 
 **The two "cloned per teacher" projects don't have one live script ID —
 they have one per teacher's copy.** clasp can only meaningfully target

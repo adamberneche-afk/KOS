@@ -9,9 +9,12 @@
  * them.
  *
  *   1. In each Canvas course: Grades → Export → Export Entire Gradebook.
- *      Upload the CSV(s) to your teacher folder (TEACHER_FOLDER_ID). Canvas
- *      names them "<date>_Grades-<course>.csv"; any .csv with "Grades" in
- *      its name is read.
+ *      Upload the CSV(s) to your Drive. Canvas names them
+ *      "<date>_Grades-<course>.csv"; any .csv with "Grades" in its name is
+ *      read: from the TEACHER_FOLDER_ID folder when this project has that
+ *      property, otherwise from anywhere in your own Drive. (The setup
+ *      wizard writes TEACHER_* properties into the Unified Manual project,
+ *      not this one.)
  *   2. previewRosterEnrollment("<Assignment Config ID>") lists who would be
  *      enrolled, and fills the CanvasSectionMap tab with every Canvas
  *      section it found. Put each section's class period in that tab.
@@ -68,11 +71,15 @@ function enrollCanvasRoster_(opts) {
     return result;
   }
   const teacherEmail = (assignment.teacherEmail || cfg.teacherEmail || "").toLowerCase();
+  // From the assignment's MatrixRegistry row: TEACHER_NAME is set in the
+  // Unified Manual project, so it is usually blank here.
+  const teacherName = assignment.teacherName || cfg.teacherName || "";
 
   const files = _criFindExports_(cfg);
   result.files = files.length;
   if (!files.length) {
-    result.message = "No Canvas gradebook export (.csv with \"Grades\" in the name) in your teacher folder.";
+    result.message = "No Canvas gradebook export (.csv with \"Grades\" in the name) found in " +
+      (cfg.teacherFolderId ? "your teacher folder (TEACHER_FOLDER_ID)." : "your Drive.");
     Logger.log("[S52] " + result.message);
     return result;
   }
@@ -134,7 +141,7 @@ function enrollCanvasRoster_(opts) {
     const res = intakeStudent_(cfg, {
       googleId: s.account, studentName: s.name, block: period, className: courseName,
       subject: courseName, courseName: courseName, period: period,
-      teacherName: cfg.teacherName, teacherEmail: teacherEmail, unitConfigId: configId
+      teacherName: teacherName, teacherEmail: teacherEmail, unitConfigId: configId
     });
     if (res.ok) {
       result.enrolled++;
@@ -170,11 +177,15 @@ function enrollCanvasRoster_(opts) {
   return result;
 }
 
-/** Canvas gradebook exports in the teacher folder, newest first. */
+/**
+ * Canvas gradebook exports, newest first: in the TEACHER_FOLDER_ID folder
+ * when this project has one, otherwise any you own in Drive.
+ */
 function _criFindExports_(cfg) {
-  if (!cfg.teacherFolderId) return [];
   const out = [];
-  const it = DriveApp.getFolderById(cfg.teacherFolderId).getFiles();
+  const it = cfg.teacherFolderId
+    ? DriveApp.getFolderById(cfg.teacherFolderId).getFiles()
+    : DriveApp.searchFiles('title contains "Grades" and trashed = false and \'me\' in owners');
   let n = 0;
   while (it.hasNext() && n < 500) {
     n++;

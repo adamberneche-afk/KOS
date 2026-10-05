@@ -115,7 +115,7 @@ enforced anywhere.
 | **Fields** | The exports are Canvas's own gradebook CSVs and hold names, logins and grades. `52_CanvasRosterImport.js` reads only Student, SIS Login ID and Section, ignores every grade column, and writes nothing from them but the Ledger row `intakeStudent_()` writes for any enrolled student. `CanvasSectionMap` holds Canvas section names and class periods: no student data. |
 | **Why collected** | Enrolling a class roster without each student submitting the intake form. |
 | **Written by** | The teacher uploads the exports; S52 adds section names to `CanvasSectionMap`. |
-| **Visible to** | The exports: the teacher, in their own folder. The execution log names accounts, not students. |
+| **Visible to** | The exports: the teacher, in their own Drive. They are read by `52_CanvasRosterImport.js` in the Central Ledger project, which runs as the teacher (from the `TEACHER_FOLDER_ID` folder if set, otherwise any matching CSV the teacher owns). The execution log names accounts, not students. |
 | **Retention** | The exports are the teacher's files; delete them after enrolling. Nothing else is kept. |
 
 ### StudentProfiles
@@ -131,7 +131,7 @@ enforced anywhere.
 | **Retention** | Indefinite — not yet defined |
 
 ### LessonContext / AlignmentLog
-*Teacher-authored, class-level — no student PII*
+*Teacher-authored, or drafted from the pacing guide by `buildUpcomingLessons()` (51); class-level — no student PII*
 
 Lesson plans and competency-coverage logs. Included here only to confirm they
 were checked and contain no student-identifiable fields — teacher email is
@@ -153,7 +153,7 @@ content.
 | | |
 |---|---|
 | **Fields** | The Doc's body text (objective/activity/prior-connection/competency-alignment prose, plus a fixed warm-up placeholder — never real student content); `ReportRegistry` gains a row (`docId`, `docUrl`, `teacherEmail`, `generatedAt`, `reportType: "LESSON_FRAME"`) via the same `registerReport_()` used by Script 26's alignment reports |
-| **Written by** | Script 27, called from Script 22 immediately after successful alignment logging |
+| **Written by** | Script 27, called from Script 22 immediately after successful alignment logging (including the lessons Script 51 drafts, which go through the same `onLessonContextSubmit_()`) |
 | **Read by** | The teacher, via the Teacher Dashboard's `window.open()` hook (`07_TeacherDashboard.js`) once `frameDocUrl` is non-null |
 | **Visible to** | The doc lives in `cfg.teacherFolderId` (or Drive root if unset) — same Drive-sharing surface as every other generated report doc in this repo (25/26/29/36); no broader sharing is set by Script 27 itself |
 | **Retention** | Indefinite — not yet defined (same as every other Drive-doc artifact in this map) |
@@ -309,6 +309,19 @@ retention decision matters more for this tab than for any other.
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness
 since it's a central, shared tab.
+
+### NoSchoolDays
+District calendar dates only (seeded from the CCPS 2026-27 calendar by
+`checkCourseData()`, 51; edited by hand). No student PII. Included for
+completeness since it's a central tab.
+
+### Unit rubrics and Canvas course cartridges
+`curriculum/unit-rubrics/*.md` and `curriculum/canvas-cartridges/*.imscc` are
+generated in the repo from the pacing guide, the lesson cards and
+CompetencyRubrics.json: curriculum only, no student or teacher data (checked:
+neither cartridge holds an email address or a name). Once a cartridge is
+imported, Canvas holds whatever students submit to its assignments (a link to
+their CAS document), under Canvas's own controls, outside cas-ccps.
 
 ---
 
