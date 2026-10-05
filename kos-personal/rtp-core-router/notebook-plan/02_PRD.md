@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Product Requirements
 
-**Status:** Draft v0.5 (U3 conflict, U2 live test, Phase 0–2 status) · **Date:** 2026-10-05
+**Status:** Draft v0.6 (V6.0 drafted; finding 8) · **Date:** 2026-10-05
 
 > **Platform note (changes the plan):** Google is retiring Gems in favor of skills. Personal accounts transition in November 2026, Workspace business/enterprise no sooner than March 2027, Workspace education no sooner than June 2027 (see §10). "RTP Gem" in these documents therefore means "the RTP custom-instruction surface": a Gem now, a skill (or notebook instructions) after the transition. ADR-010 covers this. · **Companion docs:** 01_USER_STORIES, 03_ADRs, 04_MIGRATION_AND_TEST_PLAN
 
@@ -190,3 +190,4 @@ Sources: Google's current Help Center and Workspace admin pages (cited in the co
    - **Claimed writes it cannot make.** CURATOR reported items "staged in `STAGING_PIPELINE`", and every State Sync carried a made-up staging UID in the retired `LOG-{epoch}-{hash}` format. The Gem has no write path to the sheet (ADR-001).
    - **RID was not computed.** It read 0.40/0.30/0.20/0.10 on every turn, whatever the prompt (CT-09, CT-10).
    - **Student data reached the chat.** The Gmail read put a counselor's email about a named student's medication into the transcript. That transcript must not go into the KOS intake as it stands; see NFR-4.
+8. **(2026-10-05) Two `@Startup` runs on V5.8, same Gem and notebook, disagree** (`05_TEST_LOG.md`). The morning run read the primer and cited the notebook on almost every line. The afternoon run never read the primer, reported "BRAIN_TRUST_INDEX: 0 vectors", and from that invented a Genesis 0/30 status, an uncalibrated Shadow Matrix, a Cold Boot, and a 90-day vision found in no source. Two causes: V5.8's `@Startup` asks for a BRAIN_TRUST_INDEX query the Gem cannot make, and retrieval of the primer is not guaranteed (U4). V6.0 removes the query, makes the primer the first and only source of state, and treats an unreadable count as unknown. The notebook is a standalone Gemini Notebook (`notebook.google.com`), so its cap is the higher one (U3), and `KOS_LATEST_PRIMER` is one of its sources (U9).
