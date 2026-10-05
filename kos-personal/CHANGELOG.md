@@ -1,6 +1,47 @@
 # KOS Changelog
 
 
+### RTP Core Router V6.0 drafted (2026-10-05)
+
+`rtp-core-router/RTP_CORE_ROUTER_V6_0.md`, Phase 3 of the RTP notebook plan:
+the router for the Gem's instructions once the notebook holds the detail.
+About 8,100 characters, down from V5.8's 17,600, so it also fits the
+notebook's 10,000-character Instructions field.
+
+What changed from V5.8:
+- **Removed:** the Morning Cache, the Persona Activity Ledger, the Live Fetch
+  Rule, the version notes and the §7 loop diagram. Also the BRAIN_TRUST_INDEX
+  query in `@Startup`: the Gem can't read that sheet, and an afternoon run
+  that day reported its count as 0, which set off a false Genesis 0/30 and a
+  Cold Boot.
+- **`@Startup`:** reads `KOS_LATEST_PRIMER` first. If the primer's date isn't
+  today, the reply opens `[PRIMER STALE — generated …]`; if the primer can't
+  be retrieved, it opens `[UNCONFIRMED — KOS_LATEST_PRIMER]` and gives no
+  state. It then runs the three live reads, opening with a startup block that
+  labels the brief FULL or PARTIAL. Vector State, the vision, onboarding,
+  Genesis and Cold Boot all come only from the primer.
+- **Added to the instructions:** the ALIGNMENT core (passive flag, thresholds
+  A–D, the pause block). A FLAGGED Data Quality block qualifies every
+  Vector State claim. "Retrieve the persona before speaking", with
+  `[PERSONA DOC UNRETRIEVED — NAME]` if retrieval fails. RTP has no write
+  access and never claims a write. Student details from mail are never
+  repeated or recorded.
+- **Changed:** "Active Files in Context" became "Sources this turn" (only
+  sources actually retrieved). The Verification Gate flags an unretrieved
+  source as `[UNCONFIRMED — source]`, and the truncation check is retired for
+  notebook sources (ADR-009). `@SMP` drafts the proposal for the Operator to
+  file. Persona prefixes follow the persona docs, emoji included.
+- **Moved to the notebook:** Genesis, Cold Boot, CURRENT_STATE ownership, the
+  RID rubric, the Two-Tiered State Audit and WRITE_AUTHORITY, all in the new
+  source `notebook-sources/TURN_LOOP_REFERENCE.md`.
+
+`tests/kos-personal/rtp-router-v6.test.js` holds the router under 10,000
+characters, checks the required rules are present and the removed ones stay
+out. The two V5.8 `@Startup` runs are the first rows of
+`rtp-core-router/notebook-plan/05_TEST_LOG.md`. V5.8 stays canonical until
+V6.0 passes the conformance suite on a test copy of the Gem.
+
+
 ### A trigger drains the classify backfill (2026-10-05)
 
 With the archive read in, the live backfill had 73 sessions to queue, at 3 a

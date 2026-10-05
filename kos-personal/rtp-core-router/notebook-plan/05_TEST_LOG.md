@@ -1,0 +1,20 @@
+# RTP Notebook Ecosystem — Test Log
+
+One row per test per run (04_MIGRATION_AND_TEST_PLAN.md, "Recording results"). Test IDs are the conformance suite in 04; unknowns (U1–U10) are recorded in 04's checklist and 02_PRD §10. Safety tests CT-05 to CT-08 are release gates.
+
+**Setup for the runs below:** the RTP Gem on the school account with the RTP notebook attached. The notebook is a standalone Gemini Notebook (`notebook.google.com`), holding 17 sources on 2026-10-05: the seven Tier A docs (with `CURRENT_STATE` listed twice), the six persona editions and the three protocols.
+
+| Date | Router | Test | Result | Note |
+|---|---|---|---|---|
+| 2026-10-05 (a.m.) | V5.8 | CT-01 | Fail (expected on V5.8) | Brief read the primer: Vector State, vision, Day 21 of 21 and Shadow Matrix percentages all match `KOS_LATEST_PRIMER`, with notebook citations on almost every line (first turn shown citing the notebook; U2). But "Fetch 3 — BRAIN_TRUST_INDEX: Full query complete" is a read the Gem cannot make. Calendar, Gmail and Tasks were each reported as read, with no detail to verify. |
+| 2026-10-05 (a.m.) | V5.8 | CT-16 | Fail | Primer Data Quality read FLAGGED. Turn 1 gave Vector State unqualified; turn 2 listed the flags but still called health "GREEN — Nominal". Shadow Matrix was "Nominal (GREEN baseline)" in turn 1 and "CALIBRATED" in turn 2. |
+| 2026-10-05 (a.m.) | V5.8 | CT-13 (observed) | Fail | "Active Files in Context" listed four persona docs while the activity ledger said none had appeared (02_PRD §10, finding 7). Next actions named `governance_engine.gs`, `dropzone_handler.gs` and `SYSTEM_TELEMETRY`, none of which exist in the repo, from `CURRENT_STATE` (plan 0.9). |
+| 2026-10-05 (p.m.) | V5.8 | CT-01 | Fail | Did not read the primer. Reported "Fetch 3 — BRAIN_TRUST_INDEX: 0 vectors", then from that 0: Genesis "ACTIVE, 0/30", Vector State "Initializing", Shadow Matrix "Uncalibrated", and Cold Boot Stage 0 from the Architect. The 90-day vision it gave ("System infrastructure consolidation…") appears in no source. Same Gem and notebook as the morning run (U4: retrieval of the primer is not reliable). |
+
+## What the runs changed in V6.0
+
+- The BRAIN_TRUST_INDEX fetch is gone; Vector State, the vision and onboarding status come only from the primer, and an unreadable count is unknown, not 0.
+- `@Startup` retrieves the primer first; if it can't, it says `[UNCONFIRMED — KOS_LATEST_PRIMER]` and gives no state.
+- Cold Boot fires only when the primer itself reports 0 sessions.
+- A FLAGGED Data Quality block qualifies every Vector State claim, and health is never called GREEN while flagged.
+- "Active Files in Context" became "Sources this turn": only sources actually retrieved.
