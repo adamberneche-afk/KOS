@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — User Stories
 
-**Status:** Draft v0.4 (U7 and U10 answered; Phase 0 corrections) · **Date:** 2026-10-03 · "RTP Gem" below means the RTP custom-instruction surface (a Gem today, likely a skill after Google's transition; see 03_ADRs ADR-010). · **Companion docs:** 02_PRD, 03_ADRs, 04_MIGRATION_AND_TEST_PLAN
+**Status:** Draft v0.5 (Phase 1 status) · **Date:** 2026-10-05 · "RTP Gem" below means the RTP custom-instruction surface (a Gem today, likely a skill after Google's transition; see 03_ADRs ADR-010). · **Companion docs:** 02_PRD, 03_ADRs, 04_MIGRATION_AND_TEST_PLAN
 
 Priority uses MoSCoW (Must / Should / Could). Acceptance criteria are written Given / When / Then so each one can become a conformance test (see 04).
 
@@ -22,7 +22,7 @@ Tags: **[EXISTING]** behavior router V5.8 already specifies and that must be pre
 
 **US-01 (Must) [CHANGED] Morning Brief from current state.**
 As the Operator, I want `@Startup` to give me a Morning Brief built from the synced primer and live Calendar, Gmail, and Tasks, so I start the day with current context and no manual assembly.
-- *Given* the primer's generated-at date is today, *when* I send `@Startup` as the first message, *then* the reply reports the three live fetches and a brief that cites the primer's 90-day vision, Vector State, and shadow-matrix calibration status. Genesis status and open decisions are included once the generators add them (04 Phase 1); the primer does not carry them today.
+- *Given* the primer's generated-at date is today, *when* I send `@Startup` as the first message, *then* the reply reports the three live fetches and a brief that cites the primer's 90-day vision, Vector State, and shadow-matrix calibration status. Open decisions come from `KOS_OPEN_DECISIONS` (built 2026-10-03); Genesis status is not generated yet.
 - *And* no persona documents are bulk-loaded as a "Morning Cache."
 
 **US-02 (Must) [NEW] Visible staleness.**
@@ -106,7 +106,7 @@ As the Maintainer, I want each briefing doc updated in place under a stable docu
 
 **US-16 (Must) Honest data quality.**
 As the Operator, I want the primer to disclose data-quality limits so the Gem cannot over-trust the matrix.
-- [NEW] The primer gains a data-quality block: `VECTOR_MATRIX` row count, duplicate-session flags, last backfill date, and incubator candidate count. Today it holds only the vision, a name: score Vector State, and the shadow-matrix status.
+- [NEW] The primer gains a data-quality block: `VECTOR_MATRIX` row count, duplicate-session flags, last backfill date, and incubator candidate count. **Built 2026-10-03:** the Data Quality block reports OK or FLAGGED, the matrix session count, duplicate groups, the last rebuild and backfill dates, unclassified sessions and incubating themes.
 
 **US-17 (Should) Fail loudly.**
 - *Given* a generator error, *then* it is written to the existing error log and the doc's stamp does not advance, so US-02 fires instead of stale data passing as fresh.
@@ -117,18 +117,18 @@ As the Operator, I want the primer to disclose data-quality limits so the Gem ca
 - Each council persona Gem receives only its own persona doc plus `COG_STIMULUS`. The RTP notebook is never attached.
 
 **US-19 (Should) Flows do not depend on the Gem.**
-- Studio Flow steps use plain Gemini steps with contract prompts only. Whether any Flow is bound to the RTP Gem today is not established (the 9/29 tracker says the mechanism of the Curator format fix was not recorded), so first record the current bindings.
+- Studio Flow steps use plain Gemini steps with contract prompts only. No Flow step is bound to the RTP Gem (U10, 02_PRD §10): the Curator Flow's Ask-a-Gem steps became Ask Gemini steps on 2026-09-29.
 
 ## Epic 7 — Maintainability
 
 **US-20 (Must) One source of truth.**
-- The repo is canonical. A deploy step pushes persona and protocol docs to Drive under their exact filenames. Drive copies are never hand-edited.
+- The repo is canonical. A deploy step pushes persona and protocol docs to Drive under their exact filenames (not built yet; for now they are converted by hand, `notebook-sources/README.md`). Drive copies are never hand-edited.
 
 **US-21 (Should) Conformance before ship.**
 - The conformance suite (04) passes before any router or persona change goes live.
 
 **US-22 (Could) Instruction budget.**
-- Router instructions stay at or under roughly 12k characters (an estimate; V5.8 is about 17.5k), checked as part of the deploy step.
+- Router instructions stay at or under roughly 12k characters (an estimate; V5.8 is about 17.5k), or 10,000 on the notebook-Instructions surface, checked as part of the deploy step.
 
 ---
 

@@ -26,6 +26,11 @@ const FILES = ['00_SharedConfig.js', '29_StudentContextAggregator.js', '02_Form1
 const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', '_criParseGradebook_'];
 const TEACHER = 'owner.teacher@ccpsnet.net';
 
+function csvFile(id, name, csv, minute) {
+  return { id, name, getName: () => name, getLastUpdated: () => new Date(2026, 9, 4, 18, minute),
+    getBlob: () => ({ getDataAsString: () => csv }) };
+}
+
 const GRADEBOOK = [
   'Student,ID,SIS User ID,SIS Login ID,Section,Unit 1 Quiz (101),Current Score',
   '    Points Possible,,,,,10,',
@@ -174,4 +179,28 @@ test('a missing master template stops the run at the first student', () => {
   assert.equal(calls.length, 1);
   assert.equal(r.failed[0].reason, 'NO_MASTER_TEMPLATE');
   assert.equal(r.enrolled, 0);
+});
+
+// The setup wizard writes TEACHER_FOLDER_ID and TEACHER_NAME into the Unified
+// Manual project, so Central Ledger, where this runs, usually has neither.
+test('without TEACHER_FOLDER_ID, the exports are found in Drive and the teacher name comes from the registry', () => {
+  const { exported, sandbox, calls } = setup({ sectionMap: MAPPED, exports: [] });
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.deleteProperty('TEACHER_FOLDER_ID');
+  props.deleteProperty('TEACHER_NAME');
+  sandbox.DriveApp._registerFile(csvFile('g1', '2026-10-04T1830_Grades-8175.csv', GRADEBOOK, 30));
+  sandbox.DriveApp._registerFile(csvFile('g2', 'Grades notes.txt', 'x', 31));
+
+  const r = exported.applyRosterEnrollment('CFG-1');
+
+  assert.equal(r.files, 1);
+  assert.equal(r.enrolled, 3);
+  assert.ok(calls.every((c) => c.teacherName === 'Mr. Owner'), 'from the MatrixRegistry row');
+  assert.match(exported.previewRosterEnrollment('CFG-1').message, /DRY RUN/);
+});
+
+test('with no export anywhere, the message says where it looked', () => {
+  const { exported, sandbox } = setup({ sectionMap: MAPPED, exports: [] });
+  sandbox.PropertiesService.getScriptProperties().deleteProperty('TEACHER_FOLDER_ID');
+  assert.match(exported.previewRosterEnrollment('CFG-1').message, /found in your Drive\.$/);
 });

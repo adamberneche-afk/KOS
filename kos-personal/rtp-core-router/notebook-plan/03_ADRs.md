@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Architecture Decision Records
 
-**Status of all records:** Proposed · **Version:** v0.4 (ADR-008 accepted 2026-10-03) · **Date:** 2026-10-03
+**Status of all records:** Proposed · **Version:** v0.5 (ADR-010 Instructions limit) · **Date:** 2026-10-05
 
 Each record: context, decision, consequences. Change the status to Accepted or Rejected as you decide.
 
@@ -147,6 +147,6 @@ Each record: context, decision, consequences. Change the status to Accepted or R
 **Consequences.**
 - (+) The repo-as-source-of-truth decision (ADR-005) already fits: `.md` uploads to skills without conversion.
 - (+) The slim router (ADR-002) fits a skill's "keep it concise" guidance better than 17.5k of instructions.
-- (−) Notebook-in-skill is not available yet; the notebook-backed design may need to wait for it, or use the Gemini-app notebook's own Instructions field (limits unverified).
+- (−) Notebook-in-skill is not available yet; the notebook-backed design may need to wait for it, or use the Gemini-app notebook's own Instructions field (capped at 10,000 characters; 02_PRD §10 finding 5).
 - (−) A skill's reference files are static uploads until Drive/notebook sources arrive, which weakens the "dynamic data" goal; the primer would need to be attached via notebook, not file.
 - (−) Education accounts keep Gems longest (June 2027) but get skills last; account choice (ADR-008) now drives which surface is available.
