@@ -78,8 +78,10 @@ Studio flow.
 
 Planning docs for moving the RTP Gem's context into a Gemini notebook
 fed by GAS-generated Google Docs (user stories, PRD, ADRs, migration and
-test plan). Phase 0, the `VECTOR_MATRIX` repair, is built in
-`kos-personal/21_VectorMatrixRepair.gs`. The school account hosts the
+test plan). Phase 0 (the `VECTOR_MATRIX` repair) is built in
+`kos-personal/21_VectorMatrixRepair.gs`, Phase 1 (briefing docs) in
+`22_BriefingDocs.gs` and `6_Governance.gs`, and Phase 2 step 1 in
+`notebook-sources/`; live status is in `04_MIGRATION_AND_TEST_PLAN.md`. The school account hosts the
 notebook (U7, ADR-008); no student or district data is ever a source.
 
 ## notebook-sources/
@@ -87,5 +89,5 @@ notebook (U7, ADR-008); no student or district data is ever a source.
 The notebook edition of each persona doc (Phase 2): a cited core block
 first and the persona name in every heading, so a retrieved passage stays
 attributable. Generated from the docs above by
-`tools/kos-personal/build-notebook-personas.js`; see its README for loading
+`tools/kos-personal/build-notebook-personas.js`; see `notebook-sources/README.md` for loading
 them and for the inconsistencies the core drafts found in the canonical docs.

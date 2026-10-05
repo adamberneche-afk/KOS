@@ -103,7 +103,7 @@ Module 2 is the one part of this system that gets more useful the more you use i
 
 **"My Context" tab.** A roster view of every student's document, aggregating their lesson history, evaluation activity, and warm-up responses in one place — regenerated weekly, not live. Use it to see what a student's document actually contains without opening each one individually.
 
-**Warm-up readiness.** The panel at the top of your dashboard shows how many students have enough history (evaluation results, warm-up responses, logged lesson context) for the system to generate a genuinely personalized warm-up question, versus a generic one. Click any of those numbers to filter your roster to exactly those students — the "building a personalized learning profile" group's next step is always the same: log more Lesson Context for that class.
+**Warm-up readiness.** The panel at the top of your dashboard shows how many students have enough history (evaluation results, warm-up responses, logged lesson context) for the system to generate a genuinely personalized warm-up question, versus a generic one. Click any of those numbers to filter your roster to exactly those students — the "building a personalized learning profile" group's next step is always the same: log more Lesson Context for that class (lessons drafted nightly from the pacing guide count too; adjusting a drafted lesson's competencies improves them).
 
 > 🔗 The throughline: Lesson Context + competency checkboxes → SCR evidence and warm-up readiness → more personalized questions and feedback for that class. Skipping the checkboxes doesn't break anything today, but it's the one habit that determines how much value Module 2 actually delivers later.
 

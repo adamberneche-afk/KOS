@@ -16,6 +16,10 @@ get filed into the matching subtree, not left loose at the root. See
 `meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
 rationale behind moving to this git-based structure in the first place.
 
+**Picking this up?** Start with [`meta/HANDOFF_2026-10-05.md`](./meta/HANDOFF_2026-10-05.md):
+where each system stands, what is merged but not yet live, and the
+operator's queue in order.
+
 ## [`kos-personal/`](./kos-personal/) — Knowledge Operating System v8.0
 
 A personal AI-session knowledge pipeline: ingests one operator's AI working
@@ -38,6 +42,9 @@ rounds of dedicated UI/UX auditing (see
 [`kos-personal/CHANGELOG.md`](./kos-personal/CHANGELOG.md#uiux-hardening--rounds-19))
 have fixed real bugs including a race condition, an unguarded status-line
 race, and a data-loss bug where Escape could wipe an in-progress wizard.
+Since late September: a staging requeue, per-session vector classification,
+a `VECTOR_MATRIX` repair and the RTP notebook's briefing docs (files `19_`
+to `22_`; see [`kos-personal/README.md`](./kos-personal/README.md)).
 
 ## [`cas-ccps/`](./cas-ccps/) — Classroom Agency System (CCPS)
 
@@ -132,8 +139,10 @@ Google Cloud dependencies (the class that made 2,113 lines of custom Studio
 steps permanently unreachable), two files that map the same sheet's columns
 and disagree, a flow missing one of the four checks it needs, a fixture no
 consumer ever reads, a test sandbox narrower than the scope its code runs
-in, and (the newest) three independent AI-plausibility-gate implementations
-silently drifting apart. Five of the twelve enforce `meta/FLOW_DOCTRINE.md`,
+in, three independent AI-plausibility-gate implementations silently
+drifting apart, a web app with no auth check, and (warning-level) an
+unbounded Drive-iterator loop. Five of the fourteen (Checks H–L) enforce
+`meta/FLOW_DOCTRINE.md`,
 and each found a live defect on its first run. Run
 `node tools/gas-lint/check.js` before trusting any change to
 `kos-personal/` or `cas-ccps/scripts/` is safe to deploy. See
@@ -245,7 +254,7 @@ healthy" floor.
 Catches the gap behind two real incidents: a live GAS project silently
 missing a function its own committed source already had, and separately,
 genuine uncertainty over whether a redeploy had actually taken effect.
-Most of the 9 GAS projects sit behind Google's own sign-in wall or have no
+Most of the 9 deployed GAS projects (`cas-ccps:studio-steps` is blocked) sit behind Google's own sign-in wall or have no
 web app at all, so this repo can't poll them — instead, each project
 self-reports its own version marker outward via a `repository_dispatch`
 call, which `.github/workflows/deploy-drift.yml` compares against what
@@ -272,6 +281,28 @@ above, all hand-rolled with zero npm
 dependencies on a small tokenizer with its own invariant checker and unit
 tests. See
 [`tools/leaderhub-build/README.md`](./tools/leaderhub-build/README.md).
+
+## Generators: [`tools/cas-ccps/`](./tools/cas-ccps/), [`tools/kos-personal/`](./tools/kos-personal/), [`tools/leader-hub/`](./tools/leader-hub/)
+
+Each writes committed files that are generated, never hand-edited; a test
+fails when a committed copy drifts from its generator. Zero npm
+dependencies, like the rest of `tools/`.
+
+- **cas-ccps:**
+  - `build-unit-rubrics.js` writes `cas-ccps/curriculum/unit-rubrics/` (a Flow 1 rubric and prompt per unit and course).
+  - `build-canvas-cartridge.js` writes the 8175/8177 Canvas cartridges in `cas-ccps/curriculum/canvas-cartridges/`, using `lesson-cards.js` (a `.docx` lesson-card reader) and `zip.js` (a zlib-only zip reader and writer).
+  - `sync-pacing-vocabulary.js` sets the pacing guide's vocabulary fields from the lesson cards.
+  - `generate-flow-prompts.js` regenerates `40_FlowPrompts.js`.
+  - The first three take `--check`.
+- **kos-personal:**
+  - `build-notebook-personas.js` writes the notebook persona editions in `kos-personal/rtp-core-router/notebook-sources/` (`--check`).
+  - `generate-flow-prompts.js` regenerates `16_FlowPrompts.gs`.
+- **leader-hub:** `generate-ai-prompts.js` regenerates `AiPrompts.gs`.
+
+## [`tools/html-lint/`](./tools/html-lint/check.js) — inline `<script>` syntax check
+
+Runs `node --check` on every inline `<script>` block of
+`leader-hub/student-leader-hub.html`, in `gas-lint.yml`.
 
 ## [`tests/`](./tests/) — regression coverage for the GAS systems
 
@@ -336,13 +367,16 @@ What is actually pending: **all five cas-ccps flows plus kos-personal's
 two have been ported** to native Studio steps with an Apps Script harvest
 (`37_FlowInputBuilder.js`, `41_WarmUpFlowBridge.js`,
 `kos-personal/12_StudioReturnHarvest.gs`), which is a keyless path that
-works on this account. Only Flow 1 is verified live end to end. Each
-remaining flow's Studio side has to be built by hand in the Workspace UI —
-nothing in this repo can automate it, but `syncFlowBuildSpec()` generates
-the sheet to build from, and the preflight, canaries, binding probes and
-liveness checks answer the four separate causes of "nothing happened."
-`cas-ccps/DEPLOYMENT_HANDOFF.md` is the operator's document; the
-`clasp`-side work is a human's, per SMP-004's air-gap.
+works on this account, and all of them are built in Studio. The five
+cas-ccps flows are verified live with their own liveness checks
+(`checkFlow2Liveness()`, `checkWarmUpFlowLiveness()`; see
+`cas-ccps/DEPLOYMENT_HANDOFF.md`). kos-personal's Curator flow was fixed in
+Studio on 2026-09-29 and its classify flow is returning real parts
+(`kos-personal/HANDOFF_2026-09-28.md`). What is left is operator work, not
+builds: pushes of current `main` (`tools/clasp-sync/run.ps1 -Latest`) and the
+setup functions each new script needs, listed in
+`cas-ccps/DEPLOYMENT_HANDOFF.md` and `kos-personal/HANDOFF_2026-09-28.md`.
+The `clasp`-side work is a human's, per SMP-004's air-gap.
 
 Clasp adoption is no longer scaffolding: all 8 cas-ccps projects build
 from `tools/clasp-sync/sync.js` and CI refuses a build with an unmerged
