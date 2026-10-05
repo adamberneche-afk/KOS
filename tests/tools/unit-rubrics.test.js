@@ -42,3 +42,17 @@ test('the vocabulary comes from the lesson card, not the card table labels in th
   });
   assert.match(build()['S1-U1_8175.md'], /Use these terms accurately: Sports, entertainment & events industry, Hospitality, Experience economy, Esports, Niche event, Stakeholder\./);
 });
+
+test('the pacing guide\'s vocabulary matches the lesson cards (JSON and CSV)', () => {
+  const sync = require('../../tools/cas-ccps/sync-pacing-vocabulary.js');
+  const out = sync.build();
+  const CUR = path.join(__dirname, '..', '..', 'cas-ccps', 'curriculum');
+  assert.equal(fs.readFileSync(path.join(CUR, 'PacingGuide_CAS_Context.json'), 'utf8'), out.json,
+    'run: node tools/cas-ccps/sync-pacing-vocabulary.js');
+  assert.equal(fs.readFileSync(path.join(CUR, 'PacingGuide_CAS_Context.csv'), 'utf8'), out.csv,
+    'run: node tools/cas-ccps/sync-pacing-vocabulary.js');
+  const units = JSON.parse(out.json).pacing_guide;
+  units.forEach((u) => assert.doesNotMatch(u.key_vocabulary, /What students do|Distribution chain node|Role context|Career plan component|STRENGTHS/, u.lesson_unit_id));
+  assert.match(units.find((u) => u.lesson_unit_id === 'S1-U1').key_vocabulary, /^Sports, entertainment & events industry, Hospitality/);
+  assert.equal(sync.pyJson([{ term: 'Café — x', definition: 'a "b"' }]), '[{"term": "Caf\\u00e9 \\u2014 x", "definition": "a \\"b\\""}]');
+});
