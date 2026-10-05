@@ -171,6 +171,8 @@ test('each briefing doc opens on its title and stamp, and keeps its file ID acro
   assert.equal(body.getChild(0).getText(), 'CORE FACTS — 2026-10-05');
   assert.match(body.getChild(1).getText(), /^Generated at: 2026-10-05 06:00 \(America\/New_York\) by generateBriefingDocs\./);
   assert.equal(body.getText().match(/Generated at:/g).length, 1, 'the old stamp is gone');
+  assert.equal(body.getChild(2).getText(), 'Notebook source: KOS_CORE_FACTS.');
+  assert.equal(body.getText().match(/Notebook source:/g).length, 1, 'a rewrite leaves one source line');
 });
 
 test('KOS_RECENT_SESSIONS: newest sessions first, chunks grouped, older sessions only when a decision is open', () => {

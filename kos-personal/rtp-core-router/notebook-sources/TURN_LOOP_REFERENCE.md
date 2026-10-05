@@ -84,7 +84,9 @@ Pre-authorization never covers deletions, external communications, or writes to 
 
 No persona documents are loaded at startup. Each persona's document is retrieved when that persona speaks.
 
-A live read that fails is named in the startup block, and the brief is labelled `PARTIAL`; the rest of the brief still comes from the notebook.
+Gemini calls a connected app only through a chip: type `@`, pick the app from the menu, and it becomes a highlighted chip. Text that merely reads "@Google Calendar" calls nothing. Chips in the Gem's instructions do not make it call the apps (tested 2026-10-05); only chips in the operator's message do. So `@Startup` is sent with the `@Google Calendar`, `@Workspace` and `@Google Tasks` chips in the same message. Mail is read through `@Workspace`: a `@Gmail` read reported 0 messages needing action where `@Workspace` found 5. An app with no chip in the message is reported `NOT INVOKED`; one whose call returns an error is `FAILED`. Either way the brief is labelled `PARTIAL`, and the rest still comes from the notebook.
+
+Each `KOS_*` briefing doc carries the line `Notebook source: {NAME}.` under its generated-at stamp. Notebook retrieval matches a source's text, not its title, so that line is what a search by name finds.
 
 ## Turn Loop Reference · Closeout
 
