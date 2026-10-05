@@ -2393,3 +2393,14 @@ dashboard's New Lesson form.
   course for the Rubric Upload Form, generated from the pacing guide and
   CompetencyRubrics.json.
 
+## Canvas roster import, 2026-10-05
+
+A student only existed for warm-ups and dashboards once they had submitted
+the intake form for an assignment. New `52_CanvasRosterImport.js` enrolls a
+roster from Canvas gradebook exports (Student, SIS Login ID and Section only;
+grades ignored), mapping Canvas sections to periods through a
+`CanvasSectionMap` tab. The intake form's workspace steps moved into
+`intakeStudent_()` in 02, which the form and the import both call, so a
+roster-enrolled student gets exactly what a form submission produces. The
+form's rejection emails and the missing-template error row are unchanged.
+

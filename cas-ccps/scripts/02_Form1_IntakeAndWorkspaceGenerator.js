@@ -54,7 +54,14 @@ function onFormSubmit_Intake(e) {
   // at this, the one call site that actually grants Drive access — a typo
   // or a bad-faith entry here shares the class folder and student doc with
   // an unrelated Google account while the real student is locked out.
-  if (!_studentIdPattern_().test(googleId)) {
+  const res = intakeStudent_(cfg, {
+    googleId: googleId, studentName: studentName, block: block, className: className,
+    subject: subject, courseName: courseName, period: period, teacherName: teacherName,
+    teacherEmail: teacherEmail, unitConfigId: unitConfigId
+  });
+  if (res.ok) return;
+
+  if (res.code === "INVALID_ACCOUNT") {
     Logger.log("Form 1 rejected — '" + googleId + "' is not a valid student Google account (expected 7 digits @" + _studentEmailDomain_() + ").");
     notifyIntakeRejected_(cfg, {
       studentName: studentName, googleId: googleId,
@@ -66,9 +73,7 @@ function onFormSubmit_Intake(e) {
     return;
   }
 
-  // Fetch LIVE assignment from Teacher Matrix via MatrixRegistry
-  const assignment = fetchAssignment_(cfg, unitConfigId);
-  if (!assignment) {
+  if (res.code === "NO_LIVE_ASSIGNMENT") {
     Logger.log("Form 1 rejected — no LIVE assignment for ConfigID: " + unitConfigId);
     notifyIntakeRejected_(cfg, {
       studentName: studentName, googleId: googleId,
@@ -80,31 +85,7 @@ function onFormSubmit_Intake(e) {
     return;
   }
 
-  // The assigning teacher is the owner of the matrix the assignment came
-  // from (MatrixRegistry). The form's "Teacher Email" is typed by the
-  // student, so it can't decide access or grading. Fall back to it only for
-  // a registry row with no email, and say so.
-  const assignedTeacherEmail = assignment.teacherEmail || teacherEmail.toLowerCase();
-  if (!assignment.teacherEmail) {
-    Logger.log("Form 1 — MatrixRegistry has no TeacherEmail for the matrix holding " + unitConfigId +
-      "; using the form's Teacher Email (" + teacherEmail + ").");
-  } else if (teacherEmail && assignment.teacherEmail !== teacherEmail.toLowerCase()) {
-    Logger.log("Form 1 — the form says teacher " + teacherEmail + " but " + unitConfigId +
-      " belongs to " + assignment.teacherEmail + "'s matrix; using the matrix owner.");
-  }
-
-  // Generate student-specific CONFIG_ID
-  const studentConfigId = generateConfigId_();
-
-  // Resolve admin folder hierarchy
-  const adminStudentFolder = resolveAdminPath_(cfg.adminRootFolderId, [
-    subject, courseName, teacherName, "Period " + period, studentName
-  ]);
-
-  // Copy MASTER STUDENT TEMPLATE (not teacher's prompt doc)
-  // This ensures Script 01 is pre-bound on every student doc
-  const masterTemplateId = cfg.masterStudentTemplateId;
-  if (!masterTemplateId) {
+  if (res.code === "NO_MASTER_TEMPLATE") {
     const errMsg =
       "Student registration failed for " + studentName + ".\n\n" +
       "REASON: The Master Student Template has not been configured.\n\n" +
@@ -146,8 +127,69 @@ function onFormSubmit_Intake(e) {
 
     Logger.log("Form 1 error — MASTER_STUDENT_TEMPLATE_ID not set. " +
                "Student: " + studentName);
-    return;
   }
+}
+
+// ---------------------------------------------------------------------------
+// intakeStudent_ — the one path that creates a student's workspace
+// Validates the account, looks up the LIVE assignment, copies the master
+// template, stamps the doc, shares it with the student and the assigning
+// teacher, and writes the Ledger row. Called by onFormSubmit_Intake (Form 1)
+// and by 52_CanvasRosterImport.js, so a student enrolled from a Canvas
+// roster is set up exactly as one who submitted the form.
+//
+// s: { googleId, studentName, block, className, subject, courseName,
+//      period, teacherName, teacherEmail, unitConfigId }
+// Returns { ok: true, studentConfigId, fileId, docUrl } or
+//         { ok: false, code: INVALID_ACCOUNT | NO_LIVE_ASSIGNMENT | NO_MASTER_TEMPLATE }
+// Nothing is written on failure; the caller decides how to report it.
+// ---------------------------------------------------------------------------
+function intakeStudent_(cfg, s) {
+  const googleId = String(s.googleId || "").trim().toLowerCase();
+  const studentName = s.studentName, block = s.block, className = s.className;
+  const subject = s.subject, courseName = s.courseName, period = s.period;
+  const teacherName = s.teacherName, teacherEmail = s.teacherEmail || "";
+  const unitConfigId = s.unitConfigId;
+
+  // The intake form's "Student Google Account" field is free-text, not a
+  // validated picker — googleId below flows straight into addEditor()/
+  // addViewer() in shareToStudentDrive_(). _studentIdPattern_() (defined in
+  // 29_StudentContextAggregator.js, same shared GAS scope) already exists
+  // and is used correctly on the read/reporting side, but was never applied
+  // at this, the one call site that actually grants Drive access — a typo
+  // or a bad-faith entry here shares the class folder and student doc with
+  // an unrelated Google account while the real student is locked out.
+  if (!_studentIdPattern_().test(googleId)) return { ok: false, code: "INVALID_ACCOUNT" };
+
+  // Fetch LIVE assignment from Teacher Matrix via MatrixRegistry
+  const assignment = fetchAssignment_(cfg, unitConfigId);
+  if (!assignment) return { ok: false, code: "NO_LIVE_ASSIGNMENT" };
+
+  // The assigning teacher is the owner of the matrix the assignment came
+  // from (MatrixRegistry). The form's "Teacher Email" is typed by the
+  // student, so it can't decide access or grading. Fall back to it only for
+  // a registry row with no email, and say so.
+  const assignedTeacherEmail = assignment.teacherEmail || teacherEmail.toLowerCase();
+  if (!assignment.teacherEmail) {
+    Logger.log("Form 1 — MatrixRegistry has no TeacherEmail for the matrix holding " + unitConfigId +
+      "; using the form's Teacher Email (" + teacherEmail + ").");
+  } else if (teacherEmail && assignment.teacherEmail !== teacherEmail.toLowerCase()) {
+    Logger.log("Form 1 — the form says teacher " + teacherEmail + " but " + unitConfigId +
+      " belongs to " + assignment.teacherEmail + "'s matrix; using the matrix owner.");
+  }
+
+  // Copy MASTER STUDENT TEMPLATE (not teacher's prompt doc)
+  // This ensures Script 01 is pre-bound on every student doc
+  const masterTemplateId = cfg.masterStudentTemplateId;
+  if (!masterTemplateId) return { ok: false, code: "NO_MASTER_TEMPLATE" };
+
+  // Generate student-specific CONFIG_ID
+  const studentConfigId = generateConfigId_();
+
+  // Resolve admin folder hierarchy
+  const adminStudentFolder = resolveAdminPath_(cfg.adminRootFolderId, [
+    subject, courseName, teacherName, "Period " + period, studentName
+  ]);
 
   const masterFile = DriveApp.getFileById(masterTemplateId);
   const docFile    = masterFile.makeCopy(
@@ -181,6 +223,8 @@ function onFormSubmit_Intake(e) {
     " | ConfigID: " + studentConfigId +
     " | Block: " + block + " P" + period
   );
+  return { ok: true, studentConfigId: studentConfigId, fileId: fileId, docUrl: docFile.getUrl(),
+    teacherEmail: assignedTeacherEmail };
 }
 
 // ---------------------------------------------------------------------------
