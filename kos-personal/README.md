@@ -11,28 +11,18 @@ The core problem it solves: you spend hours in AI sessions making decisions, bui
 
 This README documents the system as it is today. The full history of what was found and fixed — the original reconciliation pass, the Round 3 reupload batch, and nine rounds of dedicated UI/UX hardening — is in [`CHANGELOG.md`](./CHANGELOG.md), split out from here so this file stays a current-state reference instead of a changelog with documentation mixed in.
 
-> **⛔ One open item, and it is upstream of most of the pipeline:** both Ask
-> Gemini steps in the Curator Flow are bound to the RTP chat personas
-> (`rtp-core-router/PERSONA_*_V5_1.md`) rather than to the machine contracts
-> the harvest and audit gate read (`CURATOR_PROMPT.md` /
-> `CURATOR_AUDITOR_PROMPT.md`). The personas require the prose preamble, the
-> populated `vector_weights` and the prose Auditor report that the contracts
-> forbid, so a 2026-09-20 export shows 114 of 233 returns failing at harvest
-> and 55 correct audit rejections behind it. The pipeline described below is
-> not broken — it is rejecting non-conforming output exactly as designed.
-> Rebinding is an operator action in Studio:
-> [`STUDIO_REBIND_HANDOFF.md`](./STUDIO_REBIND_HANDOFF.md) has the evidence,
-> the steps and the checks.
->
-> **2026-09-28:** the rebind is still pending, and a fresh export found three
-> more causes:
-> - nothing staged since Sept 10;
-> - no code path ever queues a real session for vector classification, so
->   `VECTOR_MATRIX` holds only fixture rows;
-> - `generateDailyPrimer` fails every morning.
->
-> [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) is the starting point
-> for the next session.
+> **Status (2026-10-05).** The Curator Flow's persona-shaped output (the
+> 2026-09-20 export's 114 harvest failures) was fixed in Studio on
+> 2026-09-29: its Ask-a-Gem steps became Ask Gemini steps reading the
+> `FlowPrompts` tab, so the rebind [`STUDIO_REBIND_HANDOFF.md`](./STUDIO_REBIND_HANDOFF.md)
+> describes was never needed (that file is closed). Real sessions are now
+> classified per session (`20_VectorClassifySessions.gs`) and the primer's
+> failure is fixed in code. What remains is operator work in the editor:
+> requeue the terminal backlog (`19_StagingRequeue.gs`) and finish the
+> `VECTOR_MATRIX` repair (`21_VectorMatrixRepair.gs`: duplicates, then the
+> rederive until it reports finished, then the unrebuildable-row reset).
+> [`HANDOFF_2026-09-28.md`](./HANDOFF_2026-09-28.md) has the steps; the
+> primer's Data Quality block shows what is left.
 
 ---
 
@@ -56,7 +46,7 @@ has it in history.
 
 ```
 appsscript.json            OAuth scopes, web app config                    ✅ in repo — scopes verified against actual code usage, clean
-1_Config_And_Deploy.gs     CFG constants, deploy, triggers                 ✅ in repo — all documented CFG keys present, 10-trigger install
+1_Config_And_Deploy.gs     CFG constants, deploy, triggers                 ✅ in repo — all documented CFG keys present, 16-trigger install
 2_Ingestion_Sensors.gs     Sensor 1 (Drive), Sensor 2 (webhook), Sensor 3   ✅ in repo
 3_Queue_Processor.gs       Queue processor, processIntakePayload           ✅ in repo — getQueueMetrics() + shadow matrix hook added
 4_Vector_Router.gs         Vector routing, incubator, decay, promotion     ✅ in repo
@@ -67,11 +57,20 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 9_UI_Diagnostics.gs        HITL functions, Socratic onboarding, menu       ✅ in repo
 10_Turnstile.gs            Matrix turnstile state machine                 ✅ in repo — rebuilt against the real schema (original was in archived/, removed — see the dead-code cleanup note below)
 11_Registrar_CogRelay.gs   Curriculum-drafts auditing pipeline (Registrar) ✅ in repo — see "Registrar / Cog Relay" below
-KOS_PHASE0_PATCHES.gs      v5.4 migration patch (DO NOT add to v8.0 project) — not needed
-KOS_GAPS_AND_FIXES.gs      Reference document only (DO NOT add to project)   — not needed
+12_StudioReturnHarvest.gs  STUDIO_RETURN harvest, groundedness gate        ✅ in repo
+13_StudioInputBuilder.gs   CuratorInput / VectorClassifyInput rows         ✅ in repo
+14_StudioFlowBuildSpec.gs  FlowBuildSpec tab                               ✅ in repo
+15_Preflight.gs            runKosPersonalPreflight()                       ✅ in repo
+16_FlowPrompts.gs          FlowPrompts tab (generated from the prompt .md files) ✅ in repo
+17_DeployVersionReport.gs  reportDeployVersion() (deploy-drift)            ✅ in repo
+18_DeployVersionMarker.gs  Deploy SHA marker (stamped, never hand-edited)  ✅ in repo
+19_StagingRequeue.gs       previewStagingRequeue() / requeueStagingBatch() ✅ in repo
+20_VectorClassifySessions.gs  Per-session classify parts and backfill      ✅ in repo
+21_VectorMatrixRepair.gs   Duplicates, rederive, unrebuildable-row reset   ✅ in repo
+22_BriefingDocs.gs         Notebook briefing docs, DECISION_REGISTER       ✅ in repo
 inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README (its OAuth grant no longer requests Drive access at all — Open Items #6, CHANGELOG.md; and read a model response by block type, never content[0] — its README's "Reading the model's output" note; checkout now takes its price from the server: `/checkout/credits` accepts only a `credits` value from `/api/v1/pricing`'s bundles, and a subscription grants credits only for a configured price, `test/billing-pricing.test.js`; failed requests return `Internal server error` plus a logged `ref`, never the raw error text, except a 400's or a 402's own message, `src/http-errors.js` and `test/http-errors.test.js`; `VECTOR_CLASSIFY` jobs get the Studio classifier prompt from the generated `src/flow-prompts.js`, not the Curator one, `test/inference-classify.test.js`)
 rtp-core-router/protocols/ 10 governance/protocol docs                    ✅ filed in — see CHANGELOG.md
-studio-steps/              Custom Studio steps — SEPARATE Apps Script project, not part of this one; see its own README
+archive/studio-steps/      Archived custom Studio steps — SEPARATE Apps Script project, unpublishable without GCP; see its own README
 ```
 
 All 6 persona cog docs, plus the Core Router doc itself (7 files total —
@@ -80,7 +79,7 @@ All 6 persona cog docs, plus the Core Router doc itself (7 files total —
 `ALIGNMENT`, plus the Core Router). `CFG.PERSONAS` (`1_Config_And_Deploy.gs`)
 is the real, current source of truth for this — 6 entries, matching this
 list exactly; "Seven Bridges" (the sequestered-council feature's own name,
-see line 20 above) is aspirational branding, not a literal persona count.
+see Architecture above) is aspirational branding, not a literal persona count.
 Two of them carried duplicate versions — **now reconciled**: extracting the
 PDF text and cross-checking each version's schema against what
 `3_Queue_Processor.gs` actually reads at runtime confirmed
@@ -150,13 +149,16 @@ Council cog verdict        COG_VERDICT  (submitCogVerdict(), skips PENDING_FLOW/
 | `runSemanticSweeper` | Hourly | Routes CE-tagged files to correct folders |
 | `sweepRootForExhaust` | Hourly | Catches CE: / KOS: docs in Drive root |
 | `sendDailyErrorReport` | Daily 08:00 | Emails ERROR_LOG digest to admin |
-| `generateDailyPrimer` | Daily 06:00 | Creates session starter doc |
+| `generateDailyPrimer` | Daily 06:00 | Creates the session starter doc; rewrites `KOS_LATEST_PRIMER` and the three briefing docs |
 | `autoCouncilCheck` | Every 2 hours | Generates a Seven Bridges stimulus when the session threshold is met — the operator still fans it out |
 | `sensor3_externalTelemetry` | onChange | Watches BRAIN_TRUST_INDEX for external data |
 | `onGovernanceEdit` | onEdit | Watches Blackboard Deploy_Trigger checkbox |
 | `runRegistrarIntake` | Daily 01:00 | Scans 09_Unclassified_Curriculum_Drafts for new files |
 | `runRegistrarMicrobatch` | Every 15 min | Registrar concurrency gate + stale-row reset |
 | `runRegistrarProcessor` | Every 10 min | Registrar validation, translation, and routing |
+| `buildStudioInputRows` | Every 1 min | Writes CuratorInput / VectorClassifyInput rows for STUDIO_ACTIVE payloads |
+| `harvestStudioReturns` | Every 5 min | Harvests STUDIO_RETURN rows into the payload docs and sets FLOW_COMPLETE |
+| `reportDeployVersion` | Every 6 hours | Reports the deploy marker (no-op without `DEPLOY_DRIFT_GITHUB_TOKEN`) |
 
 ---
 
@@ -401,7 +403,7 @@ still-open design questions it carries forward.
 
 - **First deploy:** See `DEPLOYMENT_GUIDE.md`
 - **Using the web app:** See `USER_GUIDE.md`
-- **Building the Studio integration:** See `STUDIO_INTEGRATION_SPEC.md` — and read its top banner first: the write-back half is no longer a custom step. `studio-steps/`'s two steps cannot be published on this account (GCP is disabled org-wide for `ccpsnet.net`), so the Flow's last step is a native "add row to sheet" into `STUDIO_RETURN` and `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` writes the document and sets `FLOW_COMPLETE`. [`studio-steps/README.md`](./studio-steps/README.md) carries the same status banner and stays accurate for an account that has GCP access.
+- **Building the Studio integration:** See `STUDIO_INTEGRATION_SPEC.md` — and read its top banner first: the write-back half is no longer a custom step. `archive/studio-steps/`'s two steps cannot be published on this account (GCP is disabled org-wide for `ccpsnet.net`), so the Flow's last step is a native "add row to sheet" into `STUDIO_RETURN` and `12_StudioReturnHarvest.gs`'s `harvestStudioReturns()` writes the document and sets `FLOW_COMPLETE`. [`archive/studio-steps/README.md`](./archive/studio-steps/README.md) carries the same status banner and stays accurate for an account that has GCP access.
 - **Understanding the data model:** See `SCHEMA_REFERENCE.md`
 - **Debugging a specific issue:** Check ERROR_LOG sheet in BRAIN_TRUST_INDEX
 - **Licensing:** See `LICENSE` (Polyform Noncommercial 1.0.0 + Fidelity Clause)
@@ -420,7 +422,7 @@ KOS is not a note-taking tool. It does not replace Notion, Obsidian, or any docu
 
 KOS is not a SaaS product. It is infrastructure you deploy and maintain. When something breaks, you fix it. The code is readable and the error log is descriptive, but there is no support team.
 
-KOS is not finished. The Studio integration that closes the loop between STAGING_PIPELINE and structured inference is the critical unbuilt piece. Until it is complete, the queue requires a manual `devSetFlowComplete()` step to advance rows. Everything else is operational.
+KOS is not finished. Both Studio Flows run, but they are built by hand in Studio's UI, and some repairs (the terminal backlog, the `VECTOR_MATRIX` repair) are run by the operator from the editor. `devSetFlowComplete()` is only for testing without Studio.
 
 ---
 

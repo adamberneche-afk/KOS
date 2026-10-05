@@ -62,8 +62,12 @@ built in Studio." That's no longer accurate: `CommitStudentEvaluationStep.gs`
 (`cas-ccps/studio-steps/`) is now Flow 2's real, tested writer code. What
 remains true is that it isn't *live* — and the reason is not the one this
 paragraph used to give ("that project hasn't been pushed to a real Google
-account"). It was pushed, successfully; see the correction below. No flow
-has been wired together in Studio's builder, so today a row that reaches
+account"). It was pushed, successfully; see the correction below. **Update
+(`cas-ccps/DEPLOYMENT_HANDOFF.md`, 2026-10-03): Flow 2 is now built in
+Studio on the native-step port and verified live with
+`checkFlow2Binding()`/`checkFlow2Liveness()`, so the `ERROR_TIMEOUT` age-out
+below is the failure path, not the only outcome.** Before that, no flow
+had been wired together in Studio's builder, so today a row that reaches
 `IN_PROCESS` still has nothing
 actually watching it in a real deployment; it sits there until
 `06_StagingPipeline_Turnstile.js`'s timeout logic ages it out to
@@ -136,8 +140,25 @@ checkable from `STAGING_PIPELINE` itself, unlike leader-hub's AI_Queue below.
 
 ---
 
+## cas-ccps — Flows 1, 3, 4 and 5
+
+Flow 1 (rubric intake: the Rubric Upload Form → a TeacherMatrix draft the
+teacher confirms) and the warm-up flows 3, 4 and 5 (`41_WarmUpFlowBridge.js`:
+materialize, then harvest from `WarmUpFlowReturn`) are built in Studio on the
+same native-step pattern and verified live; `checkFlowBinding()` and
+`checkWarmUpFlowLiveness()` are their checks (`cas-ccps/DEPLOYMENT_HANDOFF.md`).
+
+---
+
 ## kos-personal — Studio ingestion/inference Flow
 
+> **Update: built and verified 2026-09-08 on the native-step port**
+> (`kos-personal/CHANGELOG.md`, Rounds 21–22). The Curator flow's output went
+> wrong from Sept 10 and was fixed in Studio on Sept 29 (its Ask-a-Gem steps
+> became Ask Gemini steps). A second flow, VECTOR_CLASSIFY, reads
+> `VectorClassifyInput` and feeds `20_VectorClassifySessions.gs`, one row
+> per part of a session. The banner below is the state before the port.
+>
 > **⚠ NOT LIVE, AND BLOCKED IN ITS CURRENT SHAPE.** Confirmed by the
 > operator: kos-personal is deployed on the same `ccpsnet.net` account as
 > cas-ccps — not the separate personal account SMP-004 describes — so the

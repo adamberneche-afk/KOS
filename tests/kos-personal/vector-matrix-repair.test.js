@@ -449,3 +449,17 @@ test('resetUnrebuildableRows: a row named by its hash is reset even when its par
   assert.equal(a.reason, 'NAMED');
   assert.equal(a.plan, 'REQUEUE');
 });
+
+// Live 2026-10-05: the rederive that kept 6 rows ran before it recorded which
+// ones, so a reset must not zero the primer's count from an empty list.
+test('applyUnrebuildableReset: leaves a kept-row count it cannot match to sessions', () => {
+  const env = setupReset();
+  const props = env.sandbox.PropertiesService.getScriptProperties();
+  props.setProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT, '6');
+
+  const r = env.exported.applyUnrebuildableReset();
+
+  assert.equal(r.requeued.length, 2);
+  assert.equal(props.getProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT), '6');
+  assert.equal(props.getProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT_UIDS), null);
+});

@@ -10,11 +10,6 @@
     "reason": "Same as runSemanticSweeper above — pre-existing gap, flagged for follow-up, not fixed as part of introducing this check."
   },
   {
-    "file": "kos-personal/6_Governance.gs",
-    "function": "generateDailyPrimer",
-    "reason": "The function it delegates to, _writeLatestPrimer_(), does have coverage (tests/kos-personal/governance-primer.test.js) — but generateDailyPrimer() itself, the actual trigger handler, is never called directly by any test. Pre-existing gap, flagged for follow-up."
-  },
-  {
     "file": "kos-personal/11_Registrar_CogRelay.gs",
     "function": "runRegistrarIntake",
     "reason": "Pre-existing gap surfaced when this check was introduced — genuinely untested today. Flagged for follow-up, not fixed as part of introducing this check."
