@@ -1,6 +1,20 @@
 # KOS Changelog
 
 
+### Notebook editions of the persona docs (2026-10-05)
+
+Phase 2 step 1 of the RTP notebook plan. `tools/kos-personal/build-notebook-personas.js`
+writes `rtp-core-router/notebook-sources/PERSONA_*_V5_1.md`: each canonical
+persona doc with its preamble (Gem label, version notes, addenda) replaced
+by a core block from `notebook-sources/cores/`, and the persona's name in
+every heading. A core block summarizes role, prefix, triggers, hard rules
+and hand-offs, each cited to its section, so a retrieval of the top of the
+doc carries the essentials and any passage says whose rule it is. The
+canonical docs are unchanged; `notebook-sources/README.md` lists the
+inconsistencies the core drafts found in them (prefix spelling in MUSE and
+ARCHITECT, CURATOR's output order, and others).
+
+
 ### The VECTOR_MATRIX rebuild resumes across runs (2026-10-03)
 
 The first live `previewVectorMatrixRederive()` stopped at its 5-minute
