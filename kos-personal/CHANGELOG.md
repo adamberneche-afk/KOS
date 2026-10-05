@@ -1,6 +1,19 @@
 # KOS Changelog
 
 
+### The classify backfill reads archived chunks (2026-10-05)
+
+`queueVectorClassifyBackfill()` found a session's chunks only in
+`STAGING_PIPELINE`, but `archiveStagingPipeline()` moves PROCESSED chunk
+rows to `STAGING_ARCHIVE`. A session with some chunks archived was skipped
+as `CHUNKS_INCOMPLETE` on every run, and one with all of them archived was
+never seen. On the live account that was 23 and about 30 of the primer's 76
+"processed sessions not yet classified". The backfill now reads chunk rows
+from both sheets (text still comes from CuratorInput). An archived classify
+part counts as queued unless the unrebuildable reset marked it SUPERSEDED,
+and an archived part is never counted as in flight.
+
+
 ### The reset no longer clears a kept-row count it can't match (2026-10-05)
 
 The live rederive that kept 6 rows ran before it recorded which ones
