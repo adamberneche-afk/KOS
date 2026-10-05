@@ -81,3 +81,11 @@ fed by GAS-generated Google Docs (user stories, PRD, ADRs, migration and
 test plan). Phase 0, the `VECTOR_MATRIX` repair, is built in
 `kos-personal/21_VectorMatrixRepair.gs`. The school account hosts the
 notebook (U7, ADR-008); no student or district data is ever a source.
+
+## notebook-sources/
+
+The notebook edition of each persona doc (Phase 2): a cited core block
+first and the persona name in every heading, so a retrieved passage stays
+attributable. Generated from the docs above by
+`tools/kos-personal/build-notebook-personas.js`; see its README for loading
+them and for the inconsistencies the core drafts found in the canonical docs.
