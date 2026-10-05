@@ -35,3 +35,10 @@ test('each rubric clears the intake\'s 100-character minimum and lists its compe
     assert.match(doc, /## Prompt template\n\n```\n[\s\S]+?\n```/, name);
   });
 });
+
+test('the vocabulary comes from the lesson card, not the card table labels in the pacing guide', () => {
+  Object.entries(build()).forEach(([name, doc]) => {
+    assert.doesNotMatch(doc, /What students do|Distribution chain node|Role context|STRENGTHS/, name);
+  });
+  assert.match(build()['S1-U1_8175.md'], /Use these terms accurately: Sports, entertainment & events industry, Hospitality, Experience economy, Esports, Niche event, Stakeholder\./);
+});
