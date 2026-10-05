@@ -2419,3 +2419,18 @@ table. The pacing guide's `key_vocabulary` column also holds card table
 labels: "What students do" in 19 units, "Distribution chain node" and "Role
 context" in Stage 0, and SWOT table text in S8-U1. Those had reached the
 rubrics' passing standard and the student prompt.
+
+## Pacing guide vocabulary from the lesson cards, 2026-10-05
+
+`key_vocabulary` (which feeds the warm-up prompts) and
+`vocabulary_with_definitions` in `PacingGuide_CAS_Context.json` and `.csv`
+had been scraped from the lesson cards' tables and picked up the wrong rows:
+table labels ("What students do" in 19 units, "Distribution chain node" and
+"Role context" in Stage 0, "Career plan component" in S9-U1), SWOT table
+text in S8-U1, no first term in seven units (DECA, Brand, Esports, Division,
+Distribution channel, Risk assessment, Bundling), "Sports, entertainment &
+events industry" split at its comma, and an older term list in S4-U1 (the
+.docx pacing guide and the card both list COGS, gross margin, cost-plus
+pricing, ...). New `tools/cas-ccps/sync-pacing-vocabulary.js` sets both
+fields from each card's VOCABULARY table, changing nothing else; every
+definition a term already had is unchanged. 150 terms became 134.
