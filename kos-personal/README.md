@@ -226,8 +226,12 @@ order. `21_VectorMatrixRepair.gs` repairs rows written before that:
 `previewDuplicateSessions()`/`applyDuplicateSessions()` keep one session
 per content hash and mark the other copies `DUPLICATE`, and
 `previewVectorMatrixRederive()`/`applyVectorMatrixRederive()` rebuild
-every row from its classify parts in date order. Run the duplicates pair
-first, then the rederive.
+every row from its classify parts (live or archived) in date order. Run
+the duplicates pair first, then the rederive. A row the rederive has to
+keep (its parts are gone) still holds old values:
+`previewUnrebuildableReset()`/`applyUnrebuildableReset()` remove it and
+re-queue the session for classification from its CuratorInput text, and
+`dropUnrebuildableRowsWithoutSource()` also removes rows whose text is gone.
 
 **Notebook briefing docs (2026-10-03):** the RTP notebook's pipeline-written
 sources (`rtp-core-router/notebook-plan/`, Phase 1). `generateDailyPrimer()`

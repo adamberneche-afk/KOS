@@ -1,6 +1,33 @@
 # KOS Changelog
 
 
+### Unrebuildable VECTOR_MATRIX rows can be reset (2026-10-05)
+
+The live rebuild finished with 6 rows it couldn't rebuild from classify
+parts, so they kept their old carried-forward values.
+
+- The rederive now also reads part rows from STAGING_ARCHIVE.
+  `archiveStagingPipeline()` moves PROCESSED rows there, and a session
+  whose parts finished before an archive run (`ee994593`: "part 1 of 18"
+  missing) looked partless though its docs were intact. A finished
+  rederive also records which rows it kept and why
+  (`KOS_VM_REDERIVE_KEPT_UIDS`).
+- `previewUnrebuildableReset()` / `applyUnrebuildableReset()`: for each
+  row with no complete set of parts (or kept by the last rederive), queue
+  the session's classification again from its CuratorInput text, then move
+  its old part rows to STAGING_ARCHIVE as `SUPERSEDED` (the new parts reuse
+  their UIDs), clear its VectorClassifyParts rows and remove its matrix
+  row. A fresh row lands when the new parts come back. At most 3 sessions a
+  run, and none while classify parts are in flight, like the backfill.
+- A session missing any chunk's text is left as it is and listed;
+  `dropUnrebuildableRowsWithoutSource()` removes those rows too.
+
+To use once pushed: run `applyVectorMatrixRederive()` until it reports it
+has finished (it now records the kept rows, and may rebuild some of the 6
+from archived parts), then `previewUnrebuildableReset()`, then
+`applyUnrebuildableReset()`, repeating after each batch's parts come back.
+
+
 ### The VECTOR_MATRIX rebuild resumes across runs (2026-10-03)
 
 The first live `previewVectorMatrixRederive()` stopped at its 5-minute
