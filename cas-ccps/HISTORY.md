@@ -2404,3 +2404,18 @@ grades ignored), mapping Canvas sections to periods through a
 roster-enrolled student gets exactly what a form submission produces. The
 form's rejection emails and the missing-template error row are unchanged.
 
+## Canvas course cartridges, 2026-10-05
+
+New `tools/cas-ccps/build-canvas-cartridge.js` writes
+`curriculum/canvas-cartridges/8175.imscc` and `8177.imscc`: a module per
+unit, with stage overview and lesson pages from the lesson card decks and an
+assignment that sends students to their CAS document. It reads the .docx
+decks itself (`tools/cas-ccps/lesson-cards.js`, on a zlib-only zip reader
+and writer in `tools/cas-ccps/zip.js`, since the repo has no npm
+dependencies).
+
+The unit rubrics' vocabulary now comes from each lesson card's VOCABULARY
+table. The pacing guide's `key_vocabulary` column also holds card table
+labels: "What students do" in 19 units, "Distribution chain node" and "Role
+context" in Stage 0, and SWOT table text in S8-U1. Those had reached the
+rubrics' passing standard and the student prompt.

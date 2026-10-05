@@ -8,8 +8,10 @@
  * in 15_StudioFlowPrompts.js).
  *
  * Sources: curriculum/PacingGuide_CAS_Context.json (units, objectives,
- * competency IDs per course) and data/CompetencyRubrics.json
- * (demonstration standards and indicators). A unit a course doesn't take
+ * competency IDs per course), data/CompetencyRubrics.json (demonstration
+ * standards and indicators) and the VOCABULARY table of each unit's lesson
+ * card (curriculum/lesson-cards/; the pacing guide's key_vocabulary column
+ * also holds card table labels such as "What students do", so it isn't used). A unit a course doesn't take
  * ("8175 only" / "8177 only", or no competency IDs for it) gets no file.
  *
  *   node tools/cas-ccps/build-unit-rubrics.js          write the files
@@ -18,6 +20,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const { loadDecks, findCard, cardVocabulary } = require('./lesson-cards.js');
 
 const ROOT = path.join(__dirname, '..', '..');
 const OUT_DIR = path.join(ROOT, 'cas-ccps', 'curriculum', 'unit-rubrics');
@@ -38,8 +41,12 @@ function ids(list) {
   return String(list || '').split(',').map((s) => s.trim()).filter(Boolean);
 }
 
-/** The rubric for one unit and course, or null when the course doesn't take the unit. */
-function unitRubric(unit, code, rubrics) {
+/**
+ * The rubric for one unit and course, or null when the course doesn't take
+ * the unit: { file, doc, title, objective, rubricText, promptText }.
+ * build-canvas-cartridge.js uses promptText for the Canvas assignments.
+ */
+function unitRubric(unit, code, rubrics, decks) {
   const other = code === '8175' ? '8177' : '8175';
   if (String(unit.overlap_type || '').trim() === other + ' only') return null;
   const compIds = ids(unit['competency_ids_' + code]);
@@ -57,7 +64,7 @@ function unitRubric(unit, code, rubrics) {
   });
 
   const title = unit.lesson_unit_id + ' ' + unit.lesson_unit_name + ' (' + code + ')';
-  const vocab = String(unit.key_vocabulary || '').trim();
+  const vocab = cardVocabulary(findCard(decks || loadDecks(), unit)).join(', ');
   const objective = String(unit['objective_' + code] || '').trim();
 
   const rubricText = [
@@ -134,15 +141,16 @@ function unitRubric(unit, code, rubrics) {
     '```',
     '',
   ].join('\n');
-  return { file: unit.lesson_unit_id + '_' + code + '.md', doc };
+  return { file: unit.lesson_unit_id + '_' + code + '.md', doc, title, objective, rubricText, promptText };
 }
 
 function build() {
   const { pacing, rubrics } = load();
+  const decks = loadDecks();
   const out = {};
   pacing.forEach((unit) => {
     Object.keys(COURSES).forEach((code) => {
-      const r = unitRubric(unit, code, rubrics);
+      const r = unitRubric(unit, code, rubrics, decks);
       if (r) out[r.file] = r.doc;
     });
   });
@@ -176,4 +184,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, unitRubric };
+module.exports = { build, unitRubric, load, COURSES };
