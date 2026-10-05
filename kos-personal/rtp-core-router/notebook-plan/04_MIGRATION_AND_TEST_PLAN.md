@@ -17,7 +17,7 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 | 0.5 | Record the baseline: current router behavior on the conformance suite (below) | Baseline results saved |
 | 0.6 | ~~Resolve the hosting-account question (U7).~~ **Answered:** the school account hosts the notebook, and the Operator confirmed notebooks are available on it (2026-10-03). Remaining: Tasks read and one turn that cites the notebook (U2, 02_PRD §10). | ADR-008 accepted; a throwaway notebook works on the account |
 | 0.7 | ~~Record the 9/29 Curator format fix and any Flow steps bound to the RTP Gem (U10).~~ **Answered** (02_PRD §10): the Ask a Gem steps were replaced with Ask Gemini, the trigger rebound to `CuratorInput`; no Flow step uses the Gem. | Note in `kos-personal/CHANGELOG.md` |
-| 0.8 | Choose the target surface (ADR-010): Gem now, skill, or Gemini-app notebook Instructions. Check in the real account which are available. | Written decision; U2 and U4 re-tested on that surface |
+| 0.8 | Choose the target surface (ADR-010): Gem now, skill, or Gemini-app notebook Instructions. Check in the real account which are available. **2026-10-05:** the Gem for now. It followed the router's frame and passed CT-05, CT-06 and CT-08; the notebook surface with the same router read the apps equally well (`05_TEST_LOG.md`). Next surface: a skill, once skills reach the school account (rollout through mid-November 2026; Gems retire for education on 2027-06-01; ADR-010 update). | Written decision; U2 and U4 re-tested on that surface |
 | 0.9 | Confirm which copies of `PIVOTS_AND_LESSONS` and `CURRENT_STATE` the Gem reads; the Drive copies seen on 2026-10-03 were near-empty or the unfilled template | Both hold real content, or the router stops citing them as authorities |
 
 **Live (Operator, 2026-10-03):** duplicates applied (39 → 36 rows); the rederive finished with 6 rows kept, on code from before it read archived parts or recorded which rows it kept.
@@ -88,6 +88,7 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 | U8 | What do "Active Files in Context" and truncation checks mean under retrieval? | Ask a document-dependent question with one source removed; see what the Gem flags. |
 | U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER`? **Gem → RTP notebook: yes (2026-10-03). `KOS_LATEST_PRIMER` is a notebook source: yes (2026-10-05 screenshot).** | Open the RTP notebook's sources; confirm one is `KOS_LATEST_PRIMER` and its doc ID matches `KOS_LATEST_PRIMER_DOC_ID`. Also diff the Gem's Instructions against `RTP_CORE_ROUTER_V5_8.md`; the live text opens differently. |
 | U10 | ~~What changed for the 9/29 format fix; any Flow bound to the Gem?~~ Answered (02_PRD §10). | None. |
+| U11 | Can the Gem call apps without chips in the message? Google's help says enabled apps are used automatically; in testing, only message chips worked (`05_TEST_LOG.md`). | Check that Gemini Apps Activity is on and that Connected Apps lists Workspace, Calendar and Tasks; look at the Gem's **Default tool** options; then send plain `@Startup` in a new chat. If the apps run, drop the chip requirement from the router. Repeat on a skill when skills arrive. |
 
 ---
 
