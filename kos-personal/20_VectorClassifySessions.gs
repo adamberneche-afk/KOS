@@ -50,11 +50,11 @@
  *   queueVectorClassifyBackfill(opts)  — { apply: bool, limit: number }.
  *
  * The backfill is for sessions ingested before this file existed. It reads
- * each session's text back from its CuratorInput rows, in chunk order, and
- * refuses to start a batch while an earlier batch's parts are still in
- * flight, so the queue never floods. VECTOR_MATRIX rows land in the order
- * sessions finish, so backfilled sessions append after whatever is already
- * there; run the backfill before new sessions arrive to keep the decay
+ * each session's chunks from STAGING_PIPELINE and STAGING_ARCHIVE, its text
+ * back from CuratorInput in chunk order, and refuses to start a batch while
+ * an earlier batch's parts are still in flight, so the queue never floods.
+ * VECTOR_MATRIX rows land in the order sessions finish, so backfilled
+ * sessions append after whatever is already there; run the backfill before new sessions arrive to keep the decay
  * baseline roughly chronological.
  */
 
@@ -345,29 +345,44 @@ function queueVectorClassifyBackfill(opts) {
   const rows = staging.getLastRow() > 1
     ? staging.getRange(2, 1, staging.getLastRow() - 1, 7).getValues()
     : [];
+  // archiveStagingPipeline() moves PROCESSED chunk rows to STAGING_ARCHIVE
+  // (Archived_At, then STAGING_PIPELINE's seven), so a session's chunks can
+  // be split between the two sheets or be archived entirely. The text comes
+  // from CuratorInput either way.
+  const archive = ss.getSheetByName('STAGING_ARCHIVE');
+  const archived = archive && archive.getLastRow() > 1
+    ? archive.getRange(2, 2, archive.getLastRow() - 1, 7).getValues()
+    : [];
 
   // Sessions from their SESSION_LOG chunk rows, and which already have parts.
   const sessions = {};
   const hasParts = {};
   const duplicate = {};
   let inFlight = 0;
-  rows.forEach(function (r) {
+  const addRow = function (r, live) {
     const uid = String(r[SC.PAYLOAD_UID] || '').trim();
     const type = String(r[SC.PAYLOAD_TYPE] || '').trim();
     const status = String(r[SC.STATUS]).trim();
     const part = _vcsParsePartUid_(uid);
     if (type === 'VECTOR_CLASSIFY' && part) {
-      hasParts[part.sessionUid] = true;
-      if (VCS_IN_FLIGHT.indexOf(status) !== -1) inFlight++;
+      // An archived part the unrebuildable reset SUPERSEDED was replaced by
+      // a new split; it doesn't mean the session is queued.
+      if (live || status !== 'SUPERSEDED') hasParts[part.sessionUid] = true;
+      if (live && VCS_IN_FLIGHT.indexOf(status) !== -1) inFlight++;
       return;
     }
     const m = /^(.+)_CH(\d+)$/.exec(uid);
     if (type !== 'SESSION_LOG' || !m) return;
     if (status === 'DUPLICATE') duplicate[m[1]] = true;
-    const s = sessions[m[1]] = sessions[m[1]] || { sessionUid: m[1], chunks: [], firstAt: r[SC.TIMESTAMP] };
-    s.chunks.push({ uid: uid, n: parseInt(m[2], 10) });
+    const s = sessions[m[1]] = sessions[m[1]] || { sessionUid: m[1], chunks: [], seen: {}, firstAt: r[SC.TIMESTAMP] };
     if (new Date(r[SC.TIMESTAMP]) < new Date(s.firstAt)) s.firstAt = r[SC.TIMESTAMP];
-  });
+    // A chunk can be in both sheets, or archived twice after a requeue.
+    if (s.seen[uid]) return;
+    s.seen[uid] = true;
+    s.chunks.push({ uid: uid, n: parseInt(m[2], 10) });
+  };
+  rows.forEach(function (r) { addRow(r, true); });
+  archived.forEach(function (r) { addRow(r, false); });
 
   const sourceByUid = {};
   if (curator.getLastRow() > 1) {
@@ -390,17 +405,17 @@ function queueVectorClassifyBackfill(opts) {
     if (classified[s.sessionUid]) return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_CLASSIFIED' });
     if (hasParts[s.sessionUid])   return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_QUEUED' });
     s.chunks.sort(function (a, b) { return a.n - b.n; });
-    // Every chunk must be here. Archived rows leave STAGING_PIPELINE, and
-    // classifying the chunks that happen to remain would mark a partial
-    // session done for good. Chunks run 1..N with no gaps, and N matches
-    // the intake's own "N chunk(s) created" note when it has one.
+    // Every chunk must be here, live or archived: classifying the chunks
+    // that happen to remain would mark a partial session done for good.
+    // Chunks run 1..N with no gaps, and N matches the intake's own
+    // "N chunk(s) created" note when it has one.
     const expected = expectedChunks[s.sessionUid];
     const last = s.chunks[s.chunks.length - 1].n;
     const gapless = s.chunks.every(function (c, idx) { return c.n === idx + 1; });
     if (!gapless || (expected && expected !== last)) {
       return skipped.push({ sessionUid: s.sessionUid, reason: 'CHUNKS_INCOMPLETE: have ' +
         s.chunks.map(function (c) { return c.n; }).join(',') +
-        (expected ? ' of ' + expected : '') + ' (some may be archived)' });
+        (expected ? ' of ' + expected : '') + ', in STAGING_PIPELINE and STAGING_ARCHIVE' });
     }
     const missing = s.chunks.filter(function (c) { return !sourceByUid[c.uid]; });
     if (missing.length) {
