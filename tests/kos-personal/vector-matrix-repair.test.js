@@ -9,8 +9,11 @@
 // order; the duplicate finder keeps one session per content hash, marks the
 // other copies DUPLICATE, removes their matrix rows, and leaves a group with
 // a copy at Studio alone; the backfill skips DUPLICATE sessions; and the
-// rederive rebuilds rows from the classify part docs, keeps what it can't
-// rebuild, puts rows in date order, and writes nothing in a dry run.
+// rederive rebuilds rows from the classify part docs (live or archived),
+// keeps what it can't rebuild and records which, puts rows in date order,
+// and writes nothing in a dry run; and the reset removes an unrebuildable
+// row and re-queues its session from CuratorInput, retiring the old part
+// rows, and leaves a session whose text is gone (unless told to drop it).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -33,6 +36,7 @@ const EXPOSE = [
   'processVectorClassificationPayload', 'getVectorState', '_vmDecayedState_', '_buildMatrixRow_',
   'previewDuplicateSessions', 'applyDuplicateSessions', 'queueVectorClassifyBackfill',
   'previewVectorMatrixRederive', 'applyVectorMatrixRederive', 'rederiveVectorMatrix', 'KNOWN_STAGING_STATUSES', 'CFG',
+  'previewUnrebuildableReset', 'applyUnrebuildableReset', 'dropUnrebuildableRowsWithoutSource', 'resetUnrebuildableRows',
 ];
 
 const STAGING_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count'];
@@ -322,4 +326,126 @@ test('rederive: an unreadable part keeps the session\'s row', () => {
   assert.equal(r.rebuilt, 0);
   assert.equal(r.kept[0].reason.split(':')[0], 'PART_UNREADABLE');
   assert.deepEqual(rowsOf(env.ss, 'VECTOR_MATRIX')[0].slice(2, 4), [0.3, 0.4]);
+});
+
+test('rederive: reads a part whose row was archived', () => {
+  const env = setup();
+  seedMatrix(env, [['LOG-aaaaaaaa', 0.3, 0.4]]);
+  stage(env, 10, 'LOG-aaaaaaaa_VC02of02', 'PROCESSED', partDoc(env, JSON.stringify(exchanges({ UI: 0.4 }))));
+  const archive = env.ss.insertSheet('STAGING_ARCHIVE');
+  archive.appendRow(['Archived_At'].concat(STAGING_HEADERS));
+  archive.appendRow([new Date(), new Date('2026-09-10'), 'LOG-aaaaaaaa_VC01of02', 'VECTOR_CLASSIFY', 'u',
+    partDoc(env, JSON.stringify(exchanges({ UI: 0.4 }))), 'PROCESSED', 0]);
+  // A part from an older split (other part count) is ignored.
+  archive.appendRow([new Date(), new Date('2026-09-09'), 'LOG-aaaaaaaa_VC01of01', 'VECTOR_CLASSIFY', 'u', 'gone', 'PROCESSED', 0]);
+
+  const r = env.exported.applyVectorMatrixRederive();
+  assert.equal(r.rebuilt, 1);
+  assert.deepEqual(rowsOf(env.ss, 'VECTOR_MATRIX')[0].slice(2, 4), [0, 0.4]);
+});
+
+test('rederive: a finished run records which rows it kept, and why', () => {
+  const env = setup();
+  seedRederive(env);
+  env.exported.applyVectorMatrixRederive();
+  const kept = JSON.parse(env.sandbox.PropertiesService.getScriptProperties()
+    .getProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT_UIDS));
+  assert.deepEqual(kept.map((k) => [k.sessionUid, k.reason.split(':')[0]]), [['LOG-cccccccc', 'NO_PARTS']]);
+});
+
+// ── reset of unrebuildable rows ──────────────────────────────────────
+
+function setupReset() {
+  const env = setup();
+  const rawFolder = env.sandbox.DriveApp.getRootFolder().createFolder('RAW_EXHAUST');
+  env.sandbox.DriveApp._registerFolder(rawFolder);
+  env.sandbox.PropertiesService.getScriptProperties().setProperty('ID_00_RAW_EXHAUST', rawFolder.id);
+  env.curator = env.ss.insertSheet('CuratorInput');
+  env.curator.appendRow(['Timestamp', 'Payload_UID', 'Payload_Type', 'File_ID', 'Source_Text', 'Status']);
+  env.source = (uid, text) => env.curator.appendRow([new Date(), uid, 'SESSION_LOG', 'f', text, 'READY']);
+  // A: rebuildable. B: no parts, text complete. C: one part of two, text complete.
+  // D: no parts, chunk 2 of 2 has no text.
+  seedMatrix(env, [['LOG-aaaaaaaa', 0.1, 0.1], ['LOG-bbbbbbbb', 0.2, 0.2], ['LOG-cccccccc', 0.3, 0.3], ['LOG-dddddddd', 0.4, 0.4]]);
+  stage(env, 10, 'LOG-aaaaaaaa_VC01of01', 'PROCESSED', partDoc(env, '[]'));
+  stage(env, 11, 'LOG-cccccccc_VC02of02', 'PROCESSED', 'c-part-2');
+  ['bbbbbbbb', 'cccccccc', 'dddddddd'].forEach((h) => {
+    stage(env, 10, 'LOG-' + h + '_CH01', 'PROCESSED');
+    stage(env, 10, 'LOG-' + h + '_CH02', 'PROCESSED');
+    env.source('LOG-' + h + '_CH01', 'first half of ' + h + '. '.repeat(10));
+    if (h !== 'dddddddd') env.source('LOG-' + h + '_CH02', 'second half of ' + h + '. '.repeat(10));
+  });
+  return env;
+}
+
+test('previewUnrebuildableReset: plans a requeue for each row with its text, and changes nothing', () => {
+  const env = setupReset();
+  const before = JSON.stringify([rowsOf(env.ss, 'VECTOR_MATRIX'), rowsOf(env.ss, env.exported.CFG.STAGING_SHEET)]);
+
+  const r = env.exported.previewUnrebuildableReset();
+
+  assert.deepEqual(r.candidates.map((c) => [c.sessionUid, c.reason.split(':')[0], c.plan]), [
+    ['LOG-bbbbbbbb', 'NO_PARTS', 'REQUEUE'],
+    ['LOG-cccccccc', 'PART_MISSING', 'REQUEUE'],
+    ['LOG-dddddddd', 'NO_PARTS', 'NO_SOURCE'],
+  ]);
+  assert.match(r.candidates[2].detail, /chunk\(s\) 2 of 2/);
+  assert.match(r.message, /^DRY RUN: 3 row\(s\) cannot be rebuilt; 2 would be removed and re-queued/);
+  assert.equal(JSON.stringify([rowsOf(env.ss, 'VECTOR_MATRIX'), rowsOf(env.ss, env.exported.CFG.STAGING_SHEET)]), before);
+});
+
+test('applyUnrebuildableReset: removes the rows, queues fresh parts and retires the old ones', () => {
+  const env = setupReset();
+  const props = env.sandbox.PropertiesService.getScriptProperties();
+  props.setProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT, '3');
+  props.setProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT_UIDS, JSON.stringify(
+    ['LOG-bbbbbbbb', 'LOG-cccccccc', 'LOG-dddddddd'].map((u) => ({ sessionUid: u, reason: 'NO_PARTS' }))));
+
+  const r = env.exported.applyUnrebuildableReset();
+
+  assert.deepEqual(r.requeued, ['LOG-bbbbbbbb', 'LOG-cccccccc']);
+  assert.deepEqual(rowsOf(env.ss, 'VECTOR_MATRIX').map((x) => x[0]), ['LOG-aaaaaaaa', 'LOG-dddddddd'],
+    'D has no complete text, so its row stays');
+  const staging = rowsOf(env.ss, env.exported.CFG.STAGING_SHEET);
+  const vc = staging.filter((x) => /_VC/.test(x[1]));
+  assert.deepEqual(vc.filter((x) => x[5] === 'PENDING_FLOW').map((x) => x[1]).sort(),
+    ['LOG-bbbbbbbb_VC01of01', 'LOG-cccccccc_VC01of01']);
+  assert.ok(!vc.some((x) => x[4] === 'c-part-2'), 'C\'s old part row left STAGING_PIPELINE');
+  const archived = rowsOf(env.ss, 'STAGING_ARCHIVE');
+  assert.deepEqual(archived.map((x) => [x[2], x[5], x[6]]), [['LOG-cccccccc_VC02of02', 'c-part-2', 'SUPERSEDED']]);
+  assert.equal(props.getProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT), '1');
+  assert.deepEqual(JSON.parse(props.getProperty(env.exported.CFG.PROP.VM_REDERIVE_KEPT_UIDS)).map((k) => k.sessionUid),
+    ['LOG-dddddddd']);
+
+  // The new parts' text is the session's chunks in order.
+  const doc = env.sandbox.DocumentApp.openById(vc.find((x) => x[1] === 'LOG-bbbbbbbb_VC01of01')[4]);
+  assert.match(doc.getBody().getText(), /^first half of bbbbbbbb[\s\S]*second half of bbbbbbbb/);
+
+  // A second run finds only D left.
+  const again = env.exported.previewUnrebuildableReset();
+  assert.deepEqual(again.candidates.map((c) => [c.sessionUid, c.plan]), [['LOG-dddddddd', 'NO_SOURCE']]);
+});
+
+test('applyUnrebuildableReset: queues nothing while classify parts are in flight', () => {
+  const env = setupReset();
+  stage(env, 12, 'LOG-eeeeeeee_VC01of01', 'STUDIO_ACTIVE');
+  const r = env.exported.applyUnrebuildableReset();
+  assert.deepEqual(r.requeued, []);
+  assert.equal(rowsOf(env.ss, 'VECTOR_MATRIX').length, 4);
+  assert.match(r.message, /still in flight/);
+});
+
+test('dropUnrebuildableRowsWithoutSource: also removes a row whose session text is gone', () => {
+  const env = setupReset();
+  const r = env.exported.dropUnrebuildableRowsWithoutSource();
+  assert.deepEqual(r.dropped, ['LOG-dddddddd']);
+  assert.deepEqual(rowsOf(env.ss, 'VECTOR_MATRIX').map((x) => x[0]), ['LOG-aaaaaaaa']);
+});
+
+test('resetUnrebuildableRows: a row named by its hash is reset even when its parts look complete', () => {
+  const env = setupReset();
+  env.source('LOG-aaaaaaaa_CH01', 'only chunk of a');
+  const r = env.exported.resetUnrebuildableRows({ apply: false, uids: ['aaaaaaaa'] });
+  const a = r.candidates.find((c) => c.sessionUid === 'LOG-aaaaaaaa');
+  assert.equal(a.reason, 'NAMED');
+  assert.equal(a.plan, 'REQUEUE');
 });
