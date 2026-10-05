@@ -9,7 +9,7 @@
     ],
     "total_units": 20,
     "total_warmup_anchors": 20,
-    "total_vocab_terms": 150,
+    "total_vocab_terms": 134,
     "ambiguities": [],
     "ambiguities_resolved": {
       "type_a_stage0_range_only": "76 flags — expected, Stage 0 uses range-only format by design",
@@ -34,20 +34,8 @@
       "objective_8177": "Same — competencies 1–22 are identical across both courses.",
       "competency_ids_8175": "8175-1,8175-2,8175-3,8175-4,8175-5,8175-6,8175-7,8175-8,8175-9,8175-10,8175-11,8175-12,8175-13,8175-14,8175-15,8175-16,8175-17,8175-18,8175-19,8175-20,8175-21,8175-22",
       "competency_ids_8177": "8177-1,8177-2,8177-3,8177-4,8177-5,8177-6,8177-7,8177-8,8177-9,8177-10,8177-11,8177-12,8177-13,8177-14,8177-15,8177-16,8177-17,8177-18,8177-19,8177-20,8177-21,8177-22",
-      "key_vocabulary": "Distribution chain node, What students do, Role context, Work ethic, Professionalism, Information literacy, Big-picture thinking, SCR rating",
+      "key_vocabulary": "Work ethic, Professionalism, Information literacy, Big-picture thinking, SCR rating",
       "vocabulary_with_definitions": [
-        {
-          "term": "Distribution chain node",
-          "definition": "You as a Professional"
-        },
-        {
-          "term": "What students do",
-          "definition": "Students reflect on and document their professional behaviors through journal entries, peer feedback, and role charter language. Each student's WBL role description references these competencies explicitly."
-        },
-        {
-          "term": "Role context",
-          "definition": "All students, both courses, before division assignments are made. This is the first shared work product of the year."
-        },
         {
           "term": "Work ethic",
           "definition": "Consistent effort, reliability, and commitment to quality in professional settings"
@@ -89,20 +77,8 @@
       "objective_8177": "Same — competencies 23–30 are identical across both courses.",
       "competency_ids_8175": "8175-23,8175-24,8175-25,8175-26,8175-27,8175-28,8175-29,8175-30",
       "competency_ids_8177": "8177-23,8177-24,8177-25,8177-26,8177-27,8177-28,8177-29,8177-30",
-      "key_vocabulary": "Distribution chain node, What students do, Role context, Industry dimensions, Vertical integration, Conglomerate, Org chart, Labor relations",
+      "key_vocabulary": "Industry dimensions, Vertical integration, Conglomerate, Org chart, Labor relations",
       "vocabulary_with_definitions": [
-        {
-          "term": "Distribution chain node",
-          "definition": "You as a Professional"
-        },
-        {
-          "term": "What students do",
-          "definition": "Students map all eight industry dimensions onto the conglomerate structure. Which division owns planning? Finance? Community? This becomes the initial org chart."
-        },
-        {
-          "term": "Role context",
-          "definition": "All students contribute. 8177 students lead the mapping exercise as part of their management orientation."
-        },
         {
           "term": "Industry dimensions",
           "definition": "The eight functional areas present in any industry: planning, management, finance, technical/production, technology, labor, community, and health/safety"
@@ -144,19 +120,11 @@
       "objective_8177": "Same — competencies 31–38 are identical across both courses.",
       "competency_ids_8175": "8175-31,8175-32,8175-33,8175-34,8175-35,8175-36,8175-37,8175-38",
       "competency_ids_8177": "8177-31,8177-32,8177-33,8177-34,8177-35,8177-36,8177-37,8177-38",
-      "key_vocabulary": "Distribution chain node, What students do, Role context, Work-based learning (WBL), Role charter, Acceptable use, Cooperative education",
+      "key_vocabulary": "DECA, Work-based learning (WBL), Role charter, Acceptable use, Cooperative education",
       "vocabulary_with_definitions": [
         {
-          "term": "Distribution chain node",
-          "definition": "You as a Professional"
-        },
-        {
-          "term": "What students do",
-          "definition": "Students receive their division role assignment (or rotation schedule) and complete a WBL intake document: what is my role, what will I produce, how will I be evaluated, and how does my work connect to the conglomerate's goals?"
-        },
-        {
-          "term": "Role context",
-          "definition": "This is the moment the class becomes a business. Role assignments happen here. The General Manager is identified. Division structures are announced."
+          "term": "DECA",
+          "definition": "A student organization that prepares emerging leaders and entrepreneurs for careers in marketing, finance, hospitality, and management"
         },
         {
           "term": "Work-based learning (WBL)",
@@ -195,12 +163,8 @@
       "objective_8177": "Students can define the role of the sports/entertainment/event manager, identify management traits, evaluate career opportunities, and analyze emerging events.",
       "competency_ids_8175": "8175-44,8175-45,8175-46,8175-47",
       "competency_ids_8177": "8177-39,8177-40,8177-41,8177-42,8177-43,8177-44,8177-45,8177-46,8177-47,8177-48",
-      "key_vocabulary": "What students do, Sports, entertainment & events industry, Hospitality, Experience economy, Niche event, Stakeholder",
+      "key_vocabulary": "Sports, entertainment & events industry, Hospitality, Experience economy, Esports, Niche event, Stakeholder",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students research where esports and gaming sit within the broader sports and entertainment industry. They position the conglomerate — its school store, apparel production, media, and events — within the real industry landscape."
-        },
         {
           "term": "Sports, entertainment & events industry",
           "definition": "Three overlapping segments — sports, entertainment, and events — that generate revenue through live and digital experiences"
@@ -212,6 +176,10 @@
         {
           "term": "Experience economy",
           "definition": "A market shift where consumers pay for memorable experiences and identity affiliation, not just products or services"
+        },
+        {
+          "term": "Esports",
+          "definition": "Organized, competitive video gaming — a rapidly growing segment that spans sports, entertainment, and events simultaneously"
         },
         {
           "term": "Niche event",
@@ -242,12 +210,8 @@
       "objective_8177": "Students can explore organizational structures within the industry and explain for-profit vs. nonprofit operation.",
       "competency_ids_8175": "8175-68,8175-69",
       "competency_ids_8177": "8177-52,8177-53",
-      "key_vocabulary": "What students do, Business ownership type, Organizational structure, Vertical integration, For-profit organization, Nonprofit organization",
+      "key_vocabulary": "Business ownership type, Organizational structure, Vertical integration, For-profit organization, Nonprofit organization, Division",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students examine the conglomerate's structure formally: is it organized correctly? Does the reporting structure make sense? Are the divisions the right size? This is a management design exercise, not just a vocabulary lesson."
-        },
         {
           "term": "Business ownership type",
           "definition": "The legal structure of a business — sole proprietorship, partnership, corporation, LLC, cooperative, or franchise — each with different liability and tax implications"
@@ -267,6 +231,10 @@
         {
           "term": "Nonprofit organization",
           "definition": "An organization that reinvests revenue into its mission rather than distributing profit — subject to different tax and regulatory rules"
+        },
+        {
+          "term": "Division",
+          "definition": "A distinct operational unit within a larger organization, responsible for a specific function or product line"
         }
       ],
       "prior_lesson_connection": "Directly informs the General Manager's role charter — specifically the decision-making authority and reporting structure. Also feeds Stage 3 (economics) where students examine how business structure affects financial outcomes.",
@@ -289,12 +257,8 @@
       "objective_8177": "Students can identify entrepreneurship opportunities, describe the entrepreneurial mindset, map a business using the Business Model Canvas, and explain how small businesses drive economic growth.",
       "competency_ids_8175": "",
       "competency_ids_8177": "8177-54,8177-55,8177-56,8177-57",
-      "key_vocabulary": "What students do, Entrepreneurship, Entrepreneurial mindset, Business Model Canvas (BMC), Value proposition, Revenue stream, Cost structure",
+      "key_vocabulary": "Entrepreneurship, Entrepreneurial mindset, Business Model Canvas (BMC), Value proposition, Revenue stream, Cost structure",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students complete a Business Model Canvas for the conglomerate and then a simplified canvas for their own division. Management students lead the exercise; marketing students contribute the customer segment and value proposition sections from a marketing perspective."
-        },
         {
           "term": "Entrepreneurship",
           "definition": "The process of identifying an opportunity, taking initiative, and building something new to create value — accepting risk in exchange for potential reward"
@@ -340,11 +304,11 @@
       "objective_8177": "Students can identify ethical issues, investigate social/environmental concerns, explain licensing purposes, and describe how legal requirements shape operations.",
       "competency_ids_8175": "8175-56,8175-57,8175-58,8175-59",
       "competency_ids_8177": "8177-63,8177-64,8177-69,8177-70,8177-71,8177-72,8177-73,8177-74,8177-75,8177-76",
-      "key_vocabulary": "What students do, Trademark, Licensing, Brand protection, Rebranding, ADA (Americans with Disabilities Act), Trade dress",
+      "key_vocabulary": "Brand, Trademark, Licensing, Brand protection, Rebranding, ADA (Americans with Disabilities Act), Trade dress",
       "vocabulary_with_definitions": [
         {
-          "term": "What students do",
-          "definition": "Students in Creative Studio develop the conglomerate brand identity: name, logo, color palette, typography, and brand voice. This is not a design exercise in isolation — it is done with reference to licensing rules, trademark basics, and the ethical framework that governs what the brand can claim."
+          "term": "Brand",
+          "definition": "The total perception of an organization — name, logo, voice, reputation, and associations — in the minds of its audience"
         },
         {
           "term": "Trademark",
@@ -391,12 +355,8 @@
       "objective_8177": "Task 74 contextual — external factors. 8177 students contribute as stakeholders reviewing product catalog feasibility.",
       "competency_ids_8175": "8175-60,8175-61,8175-62,8175-63,8175-64,8175-65",
       "competency_ids_8177": "8177-74",
-      "key_vocabulary": "What students do, Product life cycle, Product positioning, Primary research, SKU (Stock Keeping Unit), Uncontrollable factors, Market research",
+      "key_vocabulary": "Product life cycle, Product positioning, Primary research, SKU (Stock Keeping Unit), Uncontrollable factors, Market research",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Marketing Advisor rotation students produce the first product catalog — a structured SKU list with positioning statements for each item. What does the school store carry? What custom items does Apparel & Merch produce? What are the product tiers (standard vs. premium)? Students back every product decision with market research data from a school community survey."
-        },
         {
           "term": "Product life cycle",
           "definition": "The four stages a product moves through from launch to obsolescence: introduction, growth, maturity, and decline — each requiring a different strategy"
@@ -442,12 +402,8 @@
       "objective_8177": "Students can analyze U.S. economic indicators, examine how sports/events affect local economies, and identify global cultural and political economic factors.",
       "competency_ids_8175": "8175-98,8175-99,8175-100,8175-101",
       "competency_ids_8177": "8177-49,8177-50,8177-51",
-      "key_vocabulary": "What students do, Supply and demand, Business cycle, Opportunity cost, Economic indicator, Direct competition, Economic impact, Consumer confidence",
+      "key_vocabulary": "Supply and demand, Business cycle, Opportunity cost, Economic indicator, Direct competition, Economic impact, Consumer confidence",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Before placing the first purchase order, the Wholesale Manager conducts an economic environment check: what is the current cost of raw materials? Has inflation affected blank garment pricing? What is the school community's spending capacity? This unit gives students the vocabulary and framework for that analysis."
-        },
         {
           "term": "Supply and demand",
           "definition": "The economic relationship between how much of a product is available (supply) and how much consumers want at a given price (demand) — their intersection determines market price"
@@ -497,12 +453,8 @@
       "objective_8177": "Students can explain market research applications, identify data sources, develop a market segmentation analysis, design a full research project, and evaluate results.",
       "competency_ids_8175": "8175-62,8175-63,8175-103",
       "competency_ids_8177": "8177-77,8177-78,8177-79,8177-80,8177-81,8177-82,8177-83,8177-84",
-      "key_vocabulary": "What students do, Market research, Market segmentation, Primary research, Secondary research, Price sensitivity, Data triangulation, Recommendation",
+      "key_vocabulary": "Market research, Market segmentation, Primary research, Secondary research, Price sensitivity, Data triangulation, Recommendation",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students conduct a full market research project on the school community as a consumer base. Segmentation analysis identifies which student groups are most likely to buy esports merchandise, attend events, or use the school store. Findings are presented to the full class and formally handed to the Wholesale Manager as sourcing guidance."
-        },
         {
           "term": "Market research",
           "definition": "The systematic process of gathering, analyzing, and interpreting information about a market — its customers, competitors, and conditions — to support business decisions"
@@ -552,27 +504,43 @@
       "objective_8177": "Students can identify budget components, identify revenue sources and expenditures, and analyze financial statements.",
       "competency_ids_8175": "8175-66,8175-67",
       "competency_ids_8177": "8177-85,8177-86,8177-87,8177-88",
-      "key_vocabulary": "Dynamic pricing, Break-even point, Contribution margin, Revenue stream, Price elasticity",
+      "key_vocabulary": "Cost of goods sold (COGS), Gross margin, Cost-plus pricing, Value-based pricing, Break-even point, Fixed cost, Variable cost, Revenue stream, Income statement",
       "vocabulary_with_definitions": [
         {
-          "term": "Dynamic pricing",
-          "definition": "A pricing strategy where prices change based on real-time demand."
+          "term": "Cost of goods sold (COGS)",
+          "definition": "The direct costs of producing the items sold — blank garments, ink, transfer paper, and direct labor. Does not include overhead or operating expenses."
+        },
+        {
+          "term": "Gross margin",
+          "definition": "Revenue minus COGS, expressed as a percentage of revenue — the portion of each sale available to cover overhead and generate profit"
+        },
+        {
+          "term": "Cost-plus pricing",
+          "definition": "A pricing method that adds a fixed markup to the cost of production — straightforward but ignores market conditions and perceived value"
+        },
+        {
+          "term": "Value-based pricing",
+          "definition": "Setting price based on the customer's perceived value of the product, not the cost to produce it — the school brand and esports identity add perceived value above production cost"
         },
         {
           "term": "Break-even point",
-          "definition": "The sales volume at which total revenue equals total costs."
+          "definition": "The sales volume at which total revenue equals total costs — no profit, no loss. Below this point the conglomerate is losing money on each production run."
         },
         {
-          "term": "Contribution margin",
-          "definition": "Revenue minus variable costs."
+          "term": "Fixed cost",
+          "definition": "Costs that do not change with production volume — equipment, software, and classroom overhead are fixed regardless of how many jerseys are printed"
+        },
+        {
+          "term": "Variable cost",
+          "definition": "Costs that change with production volume — blank garments, ink, and shipping are variable: more units means more cost"
         },
         {
           "term": "Revenue stream",
-          "definition": "A specific source of income for a business."
+          "definition": "A distinct source of income — merchandise sales, custom orders, event tickets, and sponsorship are four separate revenue streams in the conglomerate"
         },
         {
-          "term": "Price elasticity",
-          "definition": "How sensitive demand is to price changes."
+          "term": "Income statement",
+          "definition": "A financial document showing revenue, expenses, and net income over a period — the conglomerate's primary financial tracking document"
         }
       ],
       "prior_lesson_connection": "Stage 2 branding established value; now students attach a price to that value.",
@@ -595,12 +563,8 @@
       "objective_8177": "Students can identify ethical issues, investigate social/environmental concerns, examine media bias effects on public perception, and describe community value of the industry.",
       "competency_ids_8175": "8175-51,8175-52,8175-53,8175-54,8175-55,8175-56,8175-57,8175-58,8175-59,8175-60,8175-61,8175-62,8175-63,8175-64,8175-65,8175-66,8175-67,8175-68,8175-69,8175-70,8175-71,8175-72,8175-73,8175-74,8175-75,8175-76,8175-77,8175-78,8175-79,8175-80,8175-81,8175-82,8175-83,8175-84,8175-85,8175-86",
       "competency_ids_8177": "8177-63,8177-64,8177-65,8177-66",
-      "key_vocabulary": "What students do, Business ethics, Reputational risk, Media bias, Social responsibility, Escalation path, Code of conduct, Transparency",
+      "key_vocabulary": "Business ethics, Reputational risk, Media bias, Social responsibility, Escalation path, Code of conduct, Transparency",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students draft the conglomerate's Social Media & Communications Policy — a one-page document that establishes what can be posted, who approves it, how negative feedback is handled, and what the escalation path is for a reputational incident. This becomes a standing operating document for the Media & PR division."
-        },
         {
           "term": "Business ethics",
           "definition": "The application of ethical principles to business decisions — honesty, fairness, accountability, and respect for all stakeholders"
@@ -651,12 +615,8 @@
       "objective_8177": "Students can demonstrate customer service techniques, describe retention methods, respond to inquiries/feedback, explain company policy, and explain the value of constructive feedback.",
       "competency_ids_8175": "8175-52,8175-53,8175-54,8175-55",
       "competency_ids_8177": "8177-58,8177-59,8177-60,8177-61,8177-62",
-      "key_vocabulary": "What students do, Customer touchpoint, Complaint resolution, Customer retention, Internal customer, Constructive feedback, Service standard, Escalation",
+      "key_vocabulary": "Customer touchpoint, Complaint resolution, Customer retention, Internal customer, Constructive feedback, Service standard, Escalation",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students draft the Conglomerate Customer Service Standards — a two-page document covering in-person store interactions, custom order consultations, social media response standards, event-day customer management, and the complaint resolution process. Each division reviews the standards for role-specific applicability."
-        },
         {
           "term": "Customer touchpoint",
           "definition": "Any moment of contact between a customer and the organization — in-store, online, at an event, or through a custom order consultation"
@@ -706,11 +666,11 @@
       "objective_8177": "Students can identify how e-commerce and digital transactions affect sports, entertainment, and event businesses.",
       "competency_ids_8175": "8175-78,8175-79,8175-80,8175-81,8175-82",
       "competency_ids_8177": "8177-47",
-      "key_vocabulary": "What students do, Content calendar, Conversion, Engagement, E-commerce, Streaming",
+      "key_vocabulary": "Distribution channel, Content calendar, Conversion, Engagement, E-commerce, Streaming, Discord",
       "vocabulary_with_definitions": [
         {
-          "term": "What students do",
-          "definition": "Students audit the conglomerate's current digital footprint, build a platform strategy using market research data, establish a content calendar for the next four weeks, and connect the school store's POS to a simple digital order intake process. The large format printer produces a digital channel map — which platform serves which audience segment — for classroom display."
+          "term": "Distribution channel",
+          "definition": "The path through which a product or service reaches the end consumer — physical store, online store, event, and social media are all distribution channels"
         },
         {
           "term": "Content calendar",
@@ -731,6 +691,10 @@
         {
           "term": "Streaming",
           "definition": "Live or recorded video broadcast over the internet — the primary distribution channel for esports match coverage and the conglomerate's live content"
+        },
+        {
+          "term": "Discord",
+          "definition": "A community communication platform organized into servers and channels — the standard platform for esports team and league community management"
         }
       ],
       "prior_lesson_connection": "Stage 7 (Promotion) — digital channels are the primary delivery mechanism for promotional content. Everything built here is infrastructure that Stage 7 fills with campaign content. Stage 8 (Synthesis) — the marketing plan's distribution strategy section is drawn directly from the platform strategy produced in this unit.",
@@ -753,11 +717,11 @@
       "objective_8177": "Students can examine risk assessment and management strategies, examine uncontrollable variable challenges, explain security types, explain venue/event security needs, and explain emergency preparedness plans.",
       "competency_ids_8175": "8175-22",
       "competency_ids_8177": "8177-67,8177-68,8177-89,8177-90,8177-91",
-      "key_vocabulary": "What students do, Risk register, Incident commander, Contingency plan, Life safety, Tabletop exercise, Risk matrix",
+      "key_vocabulary": "Risk assessment, Risk register, Incident commander, Contingency plan, Life safety, Tabletop exercise, Risk matrix",
       "vocabulary_with_definitions": [
         {
-          "term": "What students do",
-          "definition": "Students produce three safety and security documents: the Production Area Safety Protocol (Apparel & Merch), the School Store Safety Checklist, and the Event Safety & Emergency Preparedness Plan. The third document is submitted to school administration before the first public event. Events Manager owns the preparedness plan; General Manager signs off; teacher reviews before submission."
+          "term": "Risk assessment",
+          "definition": "The systematic process of identifying potential hazards, evaluating their likelihood and severity, and determining appropriate responses"
         },
         {
           "term": "Risk register",
@@ -804,12 +768,8 @@
       "objective_8177": "No formal competency requirement — 8177 students participate as campaign commissioners and stakeholder representatives.",
       "competency_ids_8175": "8175-72,8175-73,8175-74,8175-75,8175-76,8175-77,8175-83,8175-84,8175-85,8175-87,8175-88,8175-89,8175-90,8175-91,8175-92,8175-93",
       "competency_ids_8177": "",
-      "key_vocabulary": "What students do, Promotional mix, Campaign brief, Public relations (PR), Sponsorship, Endorsement, Sales promotion, Stakeholder, Promotional campaign",
+      "key_vocabulary": "Promotional mix, Campaign brief, Public relations (PR), Sponsorship, Endorsement, Sales promotion, Stakeholder, Promotional campaign",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students design and execute a three-week promotional campaign for the first home esports match. Week one: campaign strategy and asset production. Week two: content rollout and community outreach. Week three: urgency push, event-day promotion, and day-of activation. The large format printer runs continuously producing signage, posters, and bracket displays. Every piece of promotional content is approved against the Social Media Policy from Stage 5 before posting."
-        },
         {
           "term": "Promotional mix",
           "definition": "The combination of advertising, publicity, sales promotion, direct marketing, and personal selling used to communicate with a target audience"
@@ -863,12 +823,8 @@
       "objective_8177": "Students can explain on-site revenue streams as they relate to sports, entertainment, and event facilities.",
       "competency_ids_8175": "8175-94,8175-95,8175-96,8175-97",
       "competency_ids_8177": "8177-46",
-      "key_vocabulary": "What students do, Selling process, Upselling, On-site merchandising, Revenue stream, Average transaction value, Post-event reconciliation",
+      "key_vocabulary": "Selling process, Upselling, Bundling, On-site merchandising, Revenue stream, Average transaction value, Post-event reconciliation",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students plan and execute the full on-site sales operation for the first home esports match. Pre-event: merchandise table layout, inventory selection and quantity, signage production, bundle offer finalization, and sales role assignments. Event-day: table setup, active selling throughout the event, transaction tracking. Post-event: revenue reconciliation, unsold inventory return to store, and sales performance report."
-        },
         {
           "term": "Selling process",
           "definition": "The seven-step sequence of a professional sales interaction: prospecting, pre-approach, approach, needs assessment, presentation, objection handling, and closing"
@@ -876,6 +832,10 @@
         {
           "term": "Upselling",
           "definition": "Encouraging a customer to purchase a higher-value item or add-on — suggesting the bundle when a customer picks up a single jersey"
+        },
+        {
+          "term": "Bundling",
+          "definition": "Combining two or more products or services at a package price that creates perceived value over individual purchase — increases average transaction value"
         },
         {
           "term": "On-site merchandising",
@@ -914,20 +874,8 @@
       "objective_8177": "Students can develop a marketing plan for an event — applying the full planning framework to a real upcoming event.",
       "competency_ids_8175": "8175-102,8175-103,8175-104,8175-105",
       "competency_ids_8177": "8177-97",
-      "key_vocabulary": "STRENGTHS\nInternal positives — what does the conglomerate do well?, OPPORTUNITIES\nExternal positives — what trends or conditions favor growth?, What students do, Marketing plan, Situation analysis, SWOT analysis, Return on investment (ROI), Marketing objective, Executive summary, Implementation timeline",
+      "key_vocabulary": "Marketing plan, Situation analysis, SWOT analysis, Return on investment (ROI), Marketing objective, Executive summary, Implementation timeline",
       "vocabulary_with_definitions": [
-        {
-          "term": "STRENGTHS\nInternal positives — what does the conglomerate do well?",
-          "definition": "WEAKNESSES\nInternal negatives — where does the conglomerate fall short?"
-        },
-        {
-          "term": "OPPORTUNITIES\nExternal positives — what trends or conditions favor growth?",
-          "definition": "THREATS\nExternal negatives — what forces could harm the conglomerate?"
-        },
-        {
-          "term": "What students do",
-          "definition": "Each division contributes its section of the marketing plan: Creative Studio contributes brand strategy evidence, Wholesale & Sourcing contributes supply chain context, Production contributes capacity and cost data, Store Manager contributes sales actuals, Media & PR contributes digital performance data, Events Division contributes event execution data, Esports Division contributes league performance data. The General Manager assembles and edits the full document. The final plan is presented to the class and submitted to administration."
-        },
         {
           "term": "Marketing plan",
           "definition": "A comprehensive document defining an organization's marketing objectives, strategies, implementation timeline, and financial projections — the synthesis of all prior planning work"
@@ -977,12 +925,8 @@
       "objective_8177": "Students can explain the event planning process, describe consumer motivation factors, explain popularity/competitive factors on attendance, analyze personnel needs, analyze financial resources, develop an event marketing plan and budget, develop post-event recognition, manage a live event, and evaluate overall success.",
       "competency_ids_8175": "",
       "competency_ids_8177": "8177-92,8177-93,8177-94,8177-95,8177-96,8177-97,8177-98,8177-99,8177-100,8177-101",
-      "key_vocabulary": "What students do, Run-of-show, Personnel plan, Event P&L, Consumer motivation, Post-event evaluation, Competitive calendar, Recognition protocol",
+      "key_vocabulary": "Run-of-show, Personnel plan, Event P&L, Consumer motivation, Post-event evaluation, Competitive calendar, Recognition protocol",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students plan and execute the full sequence of home matches for the league season. Each match is treated as a distinct event with its own planning cycle — personnel analysis, budget, marketing plan, run-of-show, and post-event evaluation. The General Manager chairs the planning meeting for each match. Division managers report their division's readiness status. The run-of-show template above is completed and distributed before every event."
-        },
         {
           "term": "Run-of-show",
           "definition": "A timed sequence document that specifies every activity in an event, who is responsible for each, and the status of completion — the event manager's primary operational tool"
@@ -1032,16 +976,8 @@
       "objective_8177": "Students can identify career information sources, identify career opportunities at multiple levels, describe education/training requirements, identify employment barriers, identify professional development opportunities, research a prospective employer, and develop a career plan.",
       "competency_ids_8175": "8175-106,8175-107,8175-108,8175-109,8175-110,8175-111,8175-112,8175-113",
       "competency_ids_8177": "8177-102,8177-103,8177-104,8177-105,8177-106,8177-107,8177-108",
-      "key_vocabulary": "What students do, Career plan component, Portfolio, Behavioral interview question, PAR statement, Networking, Career plan, Professional development, Informational interview, Employer research",
+      "key_vocabulary": "Portfolio, Behavioral interview question, PAR statement, Networking, Career plan, Professional development, Informational interview, Employer research",
       "vocabulary_with_definitions": [
-        {
-          "term": "What students do",
-          "definition": "Students conduct a reverse audit of their year: every role they held, every deliverable they produced, and every competency they demonstrated. This audit becomes the raw material for the résumé, cover letter, and career plan. Students who held management specializations have deeper documentation of a narrower range. Students who rotated across marketing tracks have broader documentation of multiple functions."
-        },
-        {
-          "term": "Career plan component",
-          "definition": "My response"
-        },
         {
           "term": "Portfolio",
           "definition": "A curated collection of work samples that demonstrate skills, experience, and professional growth — in this program, every WBL artifact is a potential portfolio piece"
