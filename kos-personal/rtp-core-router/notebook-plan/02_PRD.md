@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Product Requirements
 
-**Status:** Draft v0.4 (U7 and U10 answered; Phase 0 corrections 2026-10-03) · **Date:** 2026-10-03
+**Status:** Draft v0.5 (U3 conflict, U2 live test, Phase 0–2 status) · **Date:** 2026-10-05
 
 > **Platform note (changes the plan):** Google is retiring Gems in favor of skills. Personal accounts transition in November 2026, Workspace business/enterprise no sooner than March 2027, Workspace education no sooner than June 2027 (see §10). "RTP Gem" in these documents therefore means "the RTP custom-instruction surface": a Gem now, a skill (or notebook instructions) after the transition. ADR-010 covers this. · **Companion docs:** 01_USER_STORIES, 03_ADRs, 04_MIGRATION_AND_TEST_PLAN
 
@@ -11,13 +11,13 @@ The RTP Core Router (V5.8) is about 17.5k characters of instructions. About 2.6k
 Consequences today:
 - Instruction bulk competes with the work and is costly to maintain.
 - The ledger and cache logic are prompt-level and can drift.
-- The Gem's "Vector State" depends on `VECTOR_MATRIX`, which currently contains duplicate session rows and carried-forward ("ghost") values.
-- The 9/29 tracker records that Curator output had persona prose in it, that the format problem was apparently fixed that evening, and that the mechanism (Gem instructions, Flow binding, or both) was not written down. Whether any Flow step is bound to the RTP Gem is not established.
+- The Gem's "Vector State" depends on `VECTOR_MATRIX`, which contained duplicate session rows and carried-forward ("ghost") values. The duplicates are repaired on the live account (39 → 36 rows); 6 rows still to rebuild or reset (04 Phase 0.3).
+- The 9/29 tracker records that Curator output had persona prose in it, that the format problem was apparently fixed that evening, and that the mechanism (Gem instructions, Flow binding, or both) was not written down. Whether any Flow step is bound to the RTP Gem is not established. Since answered: none is (U10, §10).
 
 ## 2. Goals and non-goals
 
 **Goals**
-1. Cut the router instructions to the rules that must fire every turn (estimate: roughly 12k characters, down from about 17.5k; see §4).
+1. Cut the router instructions to the rules that must fire every turn (estimate: roughly 12k characters, down from about 17.5k; see §4), or at most 10,000 if the notebook's own Instructions field is the surface (§10 finding 5).
 2. Move reference material into a notebook whose Drive-synced sources update without edits to the Gem.
 3. Make GAS the only writer of live context, and the Gem a reader.
 4. Make staleness and data-quality limits visible to the Operator.
@@ -75,7 +75,7 @@ Measured sizes come from the V5.8 text. Everything marked "estimate" is to be co
 
 ## 5. Notebook source inventory
 
-All sources must be Google Docs (Drive-native) so they can sync. The repo's `.md` files are converted on deploy.
+All sources must be Google Docs (Drive-native) so they can sync. The repo's `.md` files are converted by hand for now (`rtp-core-router/notebook-sources/README.md`); a deploy step is ADR-005's goal.
 
 **Tier A — dynamic, written by GAS, overwritten in place under a stable ID**
 
@@ -91,7 +91,7 @@ All sources must be Google Docs (Drive-native) so they can sync. The repo's `.md
 
 **Tier B — stable, changed only on version bumps**
 
-- The six `PERSONA_*_V5_1` docs. Each gets a short self-contained "core" block at the top and the persona name in every section heading, so retrieved chunks stay attributable.
+- The six `PERSONA_*_V5_1` docs. Each gets a short self-contained "core" block at the top and the persona name in every section heading, so retrieved chunks stay attributable. **Built 2026-10-05:** load the editions in `rtp-core-router/notebook-sources/`, not the canonical docs.
 - Protocols (read 2026-10-03): `COLD_BOOT_PROTOCOL` (fires only when the Core Asset Record count is 0), `KILL_SWITCH_PROTOCOL` (manual emergency stop; add a one-line pointer in the instructions so it is retrievable on demand), `RULE_CONFLICT_RESOLUTION_PROTOCOL`.
 - **Do not add:** `COLD_START_ORIENTATION` (a dated snapshot of one past Cold Boot run, not a living protocol), `HEREDITARY_WATCHLIST` (candidate rules held pending review and explicitly not merged into any live protocol; retrieval could resurrect them as if they were law), `ZONE_SPECIFICATION_MIRROR_MATRIX_FLOW` (planning-methodology reference; its own note says it does not specify anything implemented), and `Drive_Steward_Methodology_and_Prompt` (separate, on-request Gem).
 - A "Turn Loop Reference" doc holding the explanatory rules moved out of the router.
@@ -123,7 +123,7 @@ All sources must be Google Docs (Drive-native) so they can sync. The repo's `.md
 
 | Metric | Target |
 |---|---|
-| Router instruction size | ≤ ~12k chars (from ~17.5k; estimate) |
+| Router instruction size | ≤ ~12k chars (from ~17.5k; estimate); ≤ 10,000 on the notebook-Instructions surface |
 | Safety conformance tests (HITL, ALIGNMENT, hierarchy) | 100% pass |
 | Other conformance tests | ≥ 90% pass on first run, 100% before ship |
 | `@Startup` completes in one reply | Yes, across 5 consecutive runs |
@@ -151,14 +151,14 @@ All sources must be Google Docs (Drive-native) so they can sync. The repo's `.md
 | ID | Question |
 |---|---|
 | U1 | Is notebook source sync automatic, or does it need a click? **Answered: automatic (every few minutes), with a manual sync button. See §10.** |
-| U2 | Can one Gem use a notebook and the Workspace extensions together? |
-| U3 | Source count and size limits; do Sheets sources sync? |
-| U4 | Does retrieval preserve multi-section persona rules? |
+| U2 | Can one Gem use a notebook and the Workspace extensions together? **Partly tested; see §10.** |
+| U3 | Source count and size limits; do Sheets sources sync? **Answered, with a conflict; see §10.** |
+| U4 | Does retrieval preserve multi-section persona rules? **Researched; needs CT-11.** |
 | U5 | Does a GAS in-place Doc update sync cleanly? |
 | U6 | Do tables and code blocks survive `.md` to Google Doc conversion? |
 | U7 | Which Google account hosts the Gem and notebook (personal or the district `ccpsnet.net` account), and does that tenancy allow Gems, notebooks, and the extensions? **Answered: the school account; see §10.** |
 | U8 | Under retrieval, what do "Active Files in Context" and the truncation check mean in practice? |
-| U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER` as the code notes describe? |
+| U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER` as the code notes describe? **Half answered; see §10.** |
 | U10 | What changed for the 9/29 Curator format fix, and are any Flow steps bound to the RTP Gem? **Answered; see §10.** |
 
 ## 10. Verification results (2026-10-03)
@@ -169,7 +169,7 @@ Sources: Google's current Help Center and Workspace admin pages (cited in the co
 |---|---|
 | U1 sync | **Answered.** Drive-sourced notebook sources auto-update every few minutes; a manual "sync with Drive" control exists. Keep the `[PRIMER STALE]` check anyway. |
 | U2 notebook + extensions in one Gem | **Researched 2026-10-03; still needs one live test.** Three findings. (1) **In a Gem:** a Gem can take a notebook as Knowledge, and Connected Apps (Gmail, Calendar, Tasks, Drive, Docs, Keep) are called per conversation with `@`. No source says the two conflict, and none says they work together. The Gem-plus-notebook link itself has a poor record: community reports from March and April 2026 of notebooks that would not attach or would not stay attached to a Gem, and a shared Gem cannot take a notebook at all (the owner's notebook permissions don't carry over). (2) **In a notebook opened in the Gemini app:** Google's notebook help says responses there are "grounded in your notebook sources, but may also include web search and other tools" (in Gemini Notebook itself they are grounded in the sources only). That is the nearest thing to a documented yes. (3) **Notebook custom instructions** are one set, synced across Gemini Notebook, the Gemini app and AI Mode, and capped at **10,000 characters** (third-party reports; the help page was not reachable from here). See finding 5 below. **Test:** in the Gemini app, open a throwaway notebook with one source, give it a two-line instruction, and ask one question that needs the source and `@Calendar`, `@Gmail` and `@Google Tasks` in the same turn. Then repeat in a Gem with that notebook as Knowledge. Record which surface ran all three fetches. **Live test, 2026-10-03 (Operator, RTP Gem on the school account, RTP notebook attached):** Gmail read **worked**, but only through `@Workspace`; the first `@Gmail` turn fetched nothing and asked for a paste. Calendar read **worked** (`@Google Calendar`, with a citation). Drive/Docs read **worked**: it found `KOS_LATEST_PRIMER` in `03.1_Current_State` and pasted its contents. Tasks **write failed** twice: the Gem said the connector exposes no Tasks write. Tasks *read*, which `@Startup` needs, was not tried. No turn cited the notebook, so "notebook and apps in one turn" is still unshown, and the primer came from a Drive search rather than the notebook (U9 stays open). **So for Gems: notebook attached plus Gmail, Calendar and Drive in one chat works; Tasks is unproven for reads and failed for writes.** |
-| U3 limits | **Answered.** Notebook: up to 50 sources per the education Classroom help (paid tiers reportedly higher, per secondary sources). Gem: about 10 knowledge files. Docs, Slides (up to 100 slides) and Sheets (up to 100k tokens) are supported; multi-tab Docs and Sheets import as one source; comments and footnotes are not imported. |
+| U3 limits | **Answered, with a conflict.** The plan needs 17 sources (7 in Tier A, 10 in Tier B). A notebook created in the Gemini app holds up to 10; the standalone Gemini Notebook up to 50 per the education Classroom help. Check where the RTP notebook was created; if its cap is 10, combine sources (a multi-tab Doc imports as one source, so the six persona editions can be one six-tab Doc and the three protocols another). Notebook: up to 50 sources per the education Classroom help (paid tiers reportedly higher, per secondary sources). Gem: about 10 knowledge files. Docs, Slides (up to 100 slides) and Sheets (up to 100k tokens) are supported; multi-tab Docs and Sheets import as one source; comments and footnotes are not imported. |
 | U4 retrieval fidelity | **Researched 2026-10-03: the documentation cannot answer it; a test is required.** What is documented: notebook chat retrieves relevant passages rather than reading every source whole, and answers cite the passages used; there is no public promise that every source, or every section of a long source, is weighed equally; and answers grow more generic as the source count rises. Per-source cap: 500,000 words (or 200 MB), on every plan. Notebooks created in the Gemini app hold up to 10 sources (the standalone Gemini Notebook holds more). What this means for the design: a rule split across sections of a persona doc can be retrieved in part, which is what the persona "core" blocks and per-section persona headings (02 §5) are for, and the instructions must carry every rule that has to fire each turn (ADR-002). **Test (CT-11):** for two personas, ask for one hard constraint three ways (direct, paraphrased, embedded in a task) and compare each answer with the source doc and its cited passage. Then run CT-13 with one doc removed. |
 | U5 in-place update | **Likely, not documented for API writes.** Drive-backed sources re-sync from the Drive file; verify with one generator write. |
 | U6 conversion | **Changes with the surface.** Skills accept `.md` directly (no `.docx`); notebooks take Google Docs from Drive. |
@@ -179,14 +179,14 @@ Sources: Google's current Help Center and Workspace admin pages (cited in the co
 | U10 Flow bindings / 9/29 fix | **Answered.** Until about 20:30 on 9/29 the Curator flow's steps 3 and 5 were "Ask a Gem" steps; that Gem produced the old RTP layout (`schema_version 5.0`, `build_state`, numeric `vector_weights`). They were replaced with Ask Gemini steps that read their prompts from the FlowPrompts tab, and the Curator trigger, which had been bound to the `VectorClassifyInput` sheet, was rebound to `CuratorInput`. The classify flow already used Ask Gemini. No Flow step is bound to the RTP Gem now. Repo fixes from the same week: PRs #63–#66 (Curator payload normalising, Studio link unwrapping, prompt trailers). New Studio flows can no longer add an "Ask a Gem" step in any case. |
 
 **Findings that change the plan**
+1. **Gems are retiring** (ADR-010).
+2. **The Drive copies of the two highest-ranked project documents are essentially empty** in the connected account: `PIVOTS_AND_LESSONS_V1.0` holds one active pivot and an archive stub, and `CURRENT_STATE` is the unfilled template, unmodified since 2026-05-12. If the Gem reads these (or copies of them), the truth hierarchy's level 2 and the CURRENT_STATE staleness flag are working from placeholders. Confirm which copies the Gem actually reads.
+3. **Cross-account access:** resolved by U7. The notebook is on the school account with the primer, so nothing has to be shared across accounts.
+4. **Ghost values in `VECTOR_MATRIX` had a specific cause** (see 04 Phase 0.3): a theme a session scored 0 was written as the previous row's value × 0.92, and the previous row was a different session in backfill order.
+5. **(2026-10-03) A notebook's own Instructions field is a fourth candidate surface, and it has a hard 10,000-character cap.** Notebooks opened in the Gemini app keep one synced set of custom instructions and may use other tools, which is the Gem's job today without the fragile Gem-to-notebook link. The router target in §4 (about 11k to 12k) does not fit. If this surface is chosen (ADR-010, plan 0.8), V6.0 has to come in under 10,000 characters, or move more of the borderline rules into a Tier B source. Measure the slimmed router against 10,000, not 12,000.
+6. **(2026-10-03) The Gem-to-notebook link is the least reliable part of the current design.** Community reports (March and April 2026) describe notebooks that would not attach or stay attached to Gems, and shared Gems cannot take notebooks at all. Test it before Phase 2 depends on it.
 7. **(2026-10-03) The live Gem test shows four router behaviours to fix in V6.0.**
    - **Claimed context it never loaded.** Every turn listed `CURRENT_STATE, PIVOTS_AND_LESSONS, BRAIN_TRUST_INDEX` under Active Files in Context, though nothing fetched them. That is the Ghost Data Risk the Verification Gate exists to flag (ADR-009, CT-13).
    - **Claimed writes it cannot make.** CURATOR reported items "staged in `STAGING_PIPELINE`", and every State Sync carried a made-up staging UID in the retired `LOG-{epoch}-{hash}` format. The Gem has no write path to the sheet (ADR-001).
    - **RID was not computed.** It read 0.40/0.30/0.20/0.10 on every turn, whatever the prompt (CT-09, CT-10).
    - **Student data reached the chat.** The Gmail read put a counselor's email about a named student's medication into the transcript. That transcript must not go into the KOS intake as it stands; see NFR-4.
-5. **(2026-10-03) A notebook's own Instructions field is a fourth candidate surface, and it has a hard 10,000-character cap.** Notebooks opened in the Gemini app keep one synced set of custom instructions and may use other tools, which is the Gem's job today without the fragile Gem-to-notebook link. The router target in §4 (about 11k to 12k) does not fit. If this surface is chosen (ADR-010, plan 0.8), V6.0 has to come in under 10,000 characters, or move more of the borderline rules into a Tier B source. Measure the slimmed router against 10,000, not 12,000.
-6. **(2026-10-03) The Gem-to-notebook link is the least reliable part of the current design.** Community reports (March and April 2026) describe notebooks that would not attach or stay attached to Gems, and shared Gems cannot take notebooks at all. Test it before Phase 2 depends on it.
-1. **Gems are retiring** (ADR-010).
-2. **The Drive copies of the two highest-ranked project documents are essentially empty** in the connected account: `PIVOTS_AND_LESSONS_V1.0` holds one active pivot and an archive stub, and `CURRENT_STATE` is the unfilled template, unmodified since 2026-05-12. If the Gem reads these (or copies of them), the truth hierarchy's level 2 and the CURRENT_STATE staleness flag are working from placeholders. Confirm which copies the Gem actually reads.
-3. **Cross-account access:** resolved by U7. The notebook is on the school account with the primer, so nothing has to be shared across accounts.
-4. **Ghost values in `VECTOR_MATRIX` had a specific cause** (see 04 Phase 0.3): a theme a session scored 0 was written as the previous row's value × 0.92, and the previous row was a different session in backfill order.

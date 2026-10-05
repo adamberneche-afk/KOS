@@ -1,6 +1,20 @@
 # KOS Changelog
 
 
+### The reset no longer clears a kept-row count it can't match (2026-10-05)
+
+The live rederive that kept 6 rows ran before it recorded which ones
+(`KOS_VM_REDERIVE_KEPT_UIDS`). `applyUnrebuildableReset()` then rewrote
+`KOS_VM_REDERIVE_KEPT` from that empty list, to 0, clearing the primer's
+"could not be rebuilt" flag while the rows were still there. It now updates
+the count only when the rederive recorded the list; otherwise the count
+stands until the next finished rederive. Docs brought up to date in the same
+pass: README (status, file list 12_–22_, triggers), SCHEMA_REFERENCE
+(DECISION_REGISTER, VectorClassifyParts, `DUPLICATE`/`SUPERSEDED`, the new
+property keys, the briefing docs), USER_GUIDE, DEPLOYMENT_GUIDE and the
+9/28 handoff.
+
+
 ### Notebook editions of the persona docs (2026-10-05)
 
 Phase 2 step 1 of the RTP notebook plan. `tools/kos-personal/build-notebook-personas.js`

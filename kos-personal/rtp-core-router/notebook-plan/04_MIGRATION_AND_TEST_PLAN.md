@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Migration and Test Plan
 
-**Status:** Draft v0.4 (Phase 0 corrections 2026-10-03) · **Date:** 2026-10-03 · **Companion docs:** 01_USER_STORIES, 02_PRD, 03_ADRs
+**Status:** Draft v0.5 (Phase 0 reset tool, Phase 2 persona editions) · **Date:** 2026-10-05 · **Companion docs:** 01_USER_STORIES, 02_PRD, 03_ADRs
 
 Each phase has an exit gate. Do not start the next phase until the gate is met.
 
@@ -10,33 +10,37 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 
 | # | Task | Exit check |
 |---|---|---|
-| 0.1 | Resolve every duplicate session (same content hash under two or more UIDs): `edd1075a` (three copies, including `1789059068989`), `21effb1c`, `cd01a44e`, `79edf49b`, `7aaa527d`, `ef84ff31`, `80bbaf1b`. Keep one per hash. **Built:** `previewDuplicateSessions()` / `applyDuplicateSessions()` (`21_VectorMatrixRepair.gs`) keep the copy with a matrix row, then the one with the most processed chunks, then the earliest; mark the other copies' STAGING_PIPELINE rows `DUPLICATE`; and remove their `VECTOR_MATRIX` rows. A group with a copy at Studio waits for a later run. | Preview lists zero groups to resolve; one row per content hash |
+| 0.1 | Resolve every duplicate session (same content hash under two or more UIDs): `edd1075a` (three copies, including `1789059068989`), `21effb1c`, `cd01a44e`, `79edf49b`, `7aaa527d`, `ef84ff31`, `80bbaf1b`. Keep one per hash. **Built:** `previewDuplicateSessions()` / `applyDuplicateSessions()` (`21_VectorMatrixRepair.gs`) keep the copy with a matrix row, then the one with the most processed chunks, then the earliest; mark the other copies' STAGING_PIPELINE rows `DUPLICATE`; and remove their `VECTOR_MATRIX` rows. It also finds copies that exist only in `VECTOR_MATRIX` (their staging rows archived) and removes their rows. A group with a copy at Studio waits for a later run. | Preview lists zero groups to resolve; one row per content hash |
 | 0.2 | Keep duplicates out of the backfill and the requeue. **Built:** `DUPLICATE` is a terminal status the requeue never picks up, and `queueVectorClassifyBackfill()` skips a session marked `DUPLICATE`. New UIDs are `LOG-{hash}` already, so a re-paste no longer creates a second session. | Backfill dry run lists the dropped copies as skipped `DUPLICATE` |
-| 0.3 | Fix carried-forward values and re-derive the matrix. **Cause:** `_aggregateSentenceVectors_` drops themes a session scored 0, and `_writeMatrixRow` then wrote the *previous row's* value × 0.92 for them, where the previous row was a different session in backfill order, so one session's scores leaked into the next. Blending would not fix that. **Built:** each row now holds only its session's own scores (0 where it scored nothing); the 0.92 decay is applied when the matrix is read (`_vmDecayedState_`, used by `getVectorState()` and the startup primer), over all sessions in date order; `previewVectorMatrixRederive()` / `applyVectorMatrixRederive()` rebuild every row from the session's classify part docs (live or archived) and sort the rows by session date; `previewUnrebuildableReset()` / `applyUnrebuildableReset()` re-queue a row the rederive had to keep. | Rederive preview lists no kept rows (or each kept row has a stated reason); no row holds a value its own session did not score |
+| 0.3 | Fix carried-forward values and re-derive the matrix. **Cause:** `_aggregateSentenceVectors_` drops themes a session scored 0, and `_writeMatrixRow` then wrote the *previous row's* value × 0.92 for them, where the previous row was a different session in backfill order, so one session's scores leaked into the next. Blending would not fix that. **Built:** each row now holds only its session's own scores (0 where it scored nothing); the 0.92 decay is applied when the matrix is read (`_vmDecayedState_`, used by `getVectorState()` and the startup primer), over all sessions in date order; `previewVectorMatrixRederive()` / `applyVectorMatrixRederive()` rebuild every row from the session's classify part docs (live or archived) and sort the rows by session date; `previewUnrebuildableReset()` / `applyUnrebuildableReset()` remove a row the rederive kept (or one with no complete parts, live or archived) and re-queue its session from its CuratorInput text; `dropUnrebuildableRowsWithoutSource()` removes rows whose text is gone; a finished rederive records its kept rows in `KOS_VM_REDERIVE_KEPT_UIDS`. | `previewUnrebuildableReset()` lists no candidates; no row holds a value its own session did not score |
 | 0.4 | Verify unknowns U1–U6 (below) | Each answered in writing |
 | 0.5 | Record the baseline: current router behavior on the conformance suite (below) | Baseline results saved |
-| 0.6 | ~~Resolve the hosting-account question (U7).~~ **Answered:** the school account hosts the notebook, and the Operator confirmed notebooks are available on it (2026-10-03). Remaining: whether the Connected Apps work alongside a notebook (the U2 test). | ADR-008 accepted; a throwaway notebook works on the account |
+| 0.6 | ~~Resolve the hosting-account question (U7).~~ **Answered:** the school account hosts the notebook, and the Operator confirmed notebooks are available on it (2026-10-03). Remaining: Tasks read and one turn that cites the notebook (U2, 02_PRD §10). | ADR-008 accepted; a throwaway notebook works on the account |
 | 0.7 | ~~Record the 9/29 Curator format fix and any Flow steps bound to the RTP Gem (U10).~~ **Answered** (02_PRD §10): the Ask a Gem steps were replaced with Ask Gemini, the trigger rebound to `CuratorInput`; no Flow step uses the Gem. | Note in `kos-personal/CHANGELOG.md` |
 | 0.8 | Choose the target surface (ADR-010): Gem now, skill, or Gemini-app notebook Instructions. Check in the real account which are available. | Written decision; U2 and U4 re-tested on that surface |
 | 0.9 | Confirm which copies of `PIVOTS_AND_LESSONS` and `CURRENT_STATE` the Gem reads; the Drive copies seen on 2026-10-03 were near-empty or the unfilled template | Both hold real content, or the router stops citing them as authorities |
 
-**Gate:** 0.1–0.3 applied on the live account (deploy, then the duplicate apply, then the rederive apply), U1, U2, U4 answered, baseline recorded. U7 is answered.
+**Live (Operator, 2026-10-03):** duplicates applied (39 → 36 rows); the rederive finished with 6 rows kept, on code from before it read archived parts or recorded which rows it kept.
+
+**To finish 0.3:** push kos-personal; run `applyVectorMatrixRederive()` until it reports it has finished (it may now rebuild some of the 6 from archived parts, and it records the rest in `KOS_VM_REDERIVE_KEPT_UIDS`); then `previewUnrebuildableReset()` and `applyUnrebuildableReset()`, repeating after each batch's classify parts come back (3 sessions a run, none while parts are in flight). A row listed NO_SOURCE stays unless you run `dropUnrebuildableRowsWithoutSource()`.
+
+**Gate:** `previewDuplicateSessions()` lists zero groups, `previewUnrebuildableReset()` lists no candidates, and the primer's Data Quality block reads OK; U1, U2 and U4 answered; baseline recorded. U7 is answered.
 
 ## Phase 1 — Build the briefing docs (GAS)
 
-**Built 2026-10-03, not yet live** (`22_BriefingDocs.gs`, `6_Governance.gs`; `kos-personal/CHANGELOG.md` has the detail).
+**Built 2026-10-03; live status not recorded** (the steps were given to the Operator) (`22_BriefingDocs.gs`, `6_Governance.gs`; `kos-personal/CHANGELOG.md` has the detail).
 
 1. Create the stable-ID docs: recent sessions (rolling), open decisions, core facts. Reuse the existing primer pattern. **Built:** `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS`, `KOS_CORE_FACTS`, all through `_writeStableDoc_()`. Open decisions come from a new `DECISION_REGISTER` sheet (the intake records each deferred decision as OPEN; the operator sets RESOLVED or DROPPED). **Deviation:** recent sessions carries each session's SESSION_LOG summary, not the full Curator JSON. Next steps stay in CURRENT_STATE, which is its own Tier A source.
 2. Add the generated-at stamp and the data-quality block (ADR-006, ADR-007) to the primer. **Built.** The stamp line is `Generated at: YYYY-MM-DD HH:mm (<zone>) by <generator>`, directly under each doc's title. A doc with no stamp line is stale too (that is what a run that fails partway leaves).
 3. Generators are idempotent; on error they log and leave the stamp unchanged. **Built and tested** (`tests/kos-personal/briefing-docs.test.js`, `governance-primer.test.js`).
 
-**To make it live:** push kos-personal; run `previewDecisionRegisterBackfill()`, then `applyDecisionRegisterBackfill()`, and resolve any decision already settled; run `generateBriefingDocs()` and note the three doc IDs it logs; the next 06:00 run then refreshes all four docs.
+**To make it live:** push kos-personal; run `previewDecisionRegisterBackfill()`, then `applyDecisionRegisterBackfill()`, and resolve any decision already settled; run `generateBriefingDocs()` and note the three doc IDs it logs; the next 06:00 run then refreshes all four docs. The primer's Data Quality block reads FLAGGED until Phase 0.3 is finished; that is expected.
 
 **Gate:** two consecutive daily runs produce correct docs; a forced failure leaves the stamp unchanged.
 
 ## Phase 2 — Assemble the notebook
 
-1. Convert the Tier B `.md` files to Google Docs; add the persona "core" blocks and attributable headings. **Persona editions built 2026-10-05** (`rtp-core-router/notebook-sources/`, generated by `tools/kos-personal/build-notebook-personas.js`): each opens with a cited core block and names the persona in every heading. Still to do: convert them to Docs (and check U6 on one), and the protocols.
+1. Convert the Tier B `.md` files to Google Docs (load the persona editions in `rtp-core-router/notebook-sources/`, not the canonical docs); add the persona "core" blocks and attributable headings. **Persona editions built 2026-10-05** (`rtp-core-router/notebook-sources/`, generated by `tools/kos-personal/build-notebook-personas.js`): each opens with a cited core block and names the persona in every heading. Still to do: convert them to Docs (and check U6 on one), and the protocols.
 2. Create the Turn Loop Reference doc from the explanatory rules being moved out of the router.
 3. Add the Tier A and Tier B sources. Do not attach it to any council Gem.
 4. Attach the notebook to a **test copy** of the RTP Gem (never the production Gem).
@@ -47,7 +51,7 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 
 1. Draft V6.0 from V5.8 using the split in 02 §4. Move version notes to the repo changelog.
 2. Add the staleness rule and the "retrieve the persona before speaking" rule. Carry the ALIGNMENT core (passive flag, thresholds A to D, pause block), the adapted Verification Gate (ADR-009), Math-Before-Muse, and the `@SMP` loop in the instructions. Update the Pre-Flight and State Sync templates to drop the ledger and live-fetch lines.
-3. Check instruction size against the ~12k target (estimate; V5.8 is about 17.5k).
+3. Check instruction size: at most 10,000 characters if the notebook's own Instructions field is the surface (0.8; 02_PRD §10 finding 5), otherwise the ~12k target (estimate; V5.8 is about 17.5k).
 4. Run the full conformance suite on the test Gem.
 
 **Gate:** all Safety tests (CT-05 to CT-08) pass; every other test passes or has a documented, accepted deviation.
@@ -73,8 +77,8 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 | ID | Question | How to check |
 |---|---|---|
 | U1 | Is notebook source sync automatic? **Documented: yes, every few minutes.** | Still time one edit end to end. |
-| U2 | Notebook plus Workspace extensions in one Gem? **Researched; not documented for Gems, nearest yes is the Gemini-app notebook (02_PRD §10). The RTP Gem already has the RTP notebook attached, so test (b) can run on it directly.** | Test both surfaces with one throwaway notebook: (a) the notebook opened in the Gemini app with a short instruction, (b) a Gem with that notebook as Knowledge. In each, one turn that needs the source plus `@Calendar`, `@Gmail` and `@Google Tasks`. Also confirm the notebook is still attached to the Gem in a new chat the next day. |
-| U3 | Source limits; do Sheets sync? | Check the product's current limits before adding the full set. |
+| U2 | Notebook plus Workspace extensions in one Gem? **Researched; not documented for Gems, nearest yes is the Gemini-app notebook (02_PRD §10). Live test (b), 2026-10-03:** Gmail (through `@Workspace`), Calendar and Drive worked in the RTP Gem with the notebook attached; Tasks write failed; Tasks read untried; no turn cited the notebook. | Remaining: one turn citing the notebook plus all three fetches, Tasks read, and surface (a). Test both surfaces with one throwaway notebook: (a) the notebook opened in the Gemini app with a short instruction, (b) a Gem with that notebook as Knowledge. In each, one turn that needs the source plus `@Calendar`, `@Gmail` and `@Google Tasks`. Also confirm the notebook is still attached to the Gem in a new chat the next day. |
+| U3 | Source limits; do Sheets sync? **Answered (02_PRD §10), with a conflict:** the plan has 17 sources, and a notebook created in the Gemini app holds 10. | Check where the RTP notebook was created; if its cap is 10, combine sources into multi-tab Docs (one multi-tab Doc imports as one source). |
 | U4 | Does retrieval preserve persona rules? **Researched; documentation can't answer it (retrieval is passage-based, with no equal-coverage promise).** | Ask for a persona-specific hard constraint three ways; compare with the source doc and the cited passage. Use two personas, one whose constraint sits in a single section and one whose rule spans sections. |
 | U5 | Does an in-place GAS update sync? | Overwrite a test Doc via the Drive API; confirm the Gem sees the new content. |
 | U6 | Do tables and code blocks survive conversion? | Convert one persona doc and one protocol; diff against the source. |
@@ -89,7 +93,7 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 
 Run on the baseline (V5.8) first, then on the test Gem with V6.0. Each test is a fixed prompt plus the observable result that passes.
 
-CT-01, CT-02, CT-03, CT-11, CT-13 and CT-16 test **new** behavior and are expected to fail on V5.8; the rest preserve existing behavior and should pass on both.
+CT-01, CT-02, CT-03, CT-04, CT-11, CT-13 and CT-16 test **new or changed** behavior and are expected to fail on V5.8; the rest preserve existing behavior and should pass on both.
 
 | ID | Story | Prompt / setup | Pass if |
 |---|---|---|---|
@@ -120,4 +124,4 @@ CT-01, CT-02, CT-03, CT-11, CT-13 and CT-16 test **new** behavior and are expect
 4. Phase 4 one-week cutover with fallback.
 
 ## Verification status (2026-10-03)
-Answered from documentation: U1, U3, and the platform timeline (ADR-010). Researched 2026-10-03, still needs your test: U2 (a test for both the Gem and the Gemini-app notebook surface) and U4 (CT-11). Not documented, needs your test: U8. Likely but untested: U5. Cannot be checked from here: U9. Answered by the Operator: U7 (school account, notebooks available) and U10 (see 02_PRD §10). New constraint: a notebook's Instructions field holds at most 10,000 characters (02_PRD §10, finding 5).
+Answered from documentation: U1, U3, and the platform timeline (ADR-010). Researched 2026-10-03, still needs your test: U2 (a test for both the Gem and the Gemini-app notebook surface) and U4 (CT-11). Not documented, needs your test: U8. Likely but untested: U5. Half answered: U9 (the Gem has the RTP notebook attached; the primer as a notebook source is still open). U2 is partly tested live (02_PRD §10). Answered by the Operator: U7 (school account, notebooks available) and U10 (see 02_PRD §10). New constraint: a notebook's Instructions field holds at most 10,000 characters (02_PRD §10, finding 5).

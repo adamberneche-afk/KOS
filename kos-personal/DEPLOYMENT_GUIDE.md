@@ -167,7 +167,7 @@ Estimated time: 20–30 minutes for first deploy. 5 minutes for subsequent deplo
 
 You need:
 - A Google account (personal Gmail or Google Workspace)
-- The 15 project files (1–14 numbered .gs files + appsscript.json + 8_WebApp_UI.html) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
+- The 23 project files (21 numbered .gs files, 1–22 without 8, plus 8_WebApp_UI.html and appsscript.json) — see the corrected Phase 3 list, `tools/gas-lint/project-map.json` is authoritative
 - A Workspace Studio subscription or equivalent AI inference tool for the processing step
 
 You do not need:
@@ -251,7 +251,18 @@ For each file, click **+** (Add a file) → **Script**, name it exactly as liste
                            Studio Flow from — run syncStudioFlowBuildSpec()
                            once deployed, same pattern as cas-ccps's
                            42_FlowBuildSpec.js
+15_Preflight
+16_FlowPrompts          ← generated; run syncFlowPrompts() once deployed
+17_DeployVersionReport
+18_DeployVersionMarker  ← stamped by tools/deploy-drift/stamp.js
+19_StagingRequeue
+20_VectorClassifySessions
+21_VectorMatrixRepair
+22_BriefingDocs
 ```
+
+`clasp push` (`tools/clasp-sync/run.ps1`) sends exactly these files, from
+`.claspignore`; a hand paste is only for an account without clasp.
 
 **Add the HTML file:**
 Click **+** → **HTML**, name it exactly `8_WebApp_UI` (no extension — GAS adds .html automatically). Paste the contents of `8_WebApp_UI.html`.
@@ -505,7 +516,7 @@ At this point the row is at `PENDING_FLOW`. The Turnstile will advance it to `ST
 > output quality, not the harvest.
 
 
-This is the critical unbuilt piece. Until the Studio integration is live, every session row requires a manual `devSetFlowComplete()` to advance.
+Both Flows are built (see the status banner at the top). `devSetFlowComplete()` is only for testing without Studio.
 
 See `STUDIO_INTEGRATION_SPEC.md` for the complete specification of what Studio must implement, and `CURATOR_PROMPT.md` (Rule 8) for the optional Auditor accountability pass. The short version: `13_StudioInputBuilder.gs` materializes `STUDIO_ACTIVE` rows into `CuratorInput`/`VectorClassifyInput` (reading the Drive document itself, once, in Apps Script), Studio polls those tabs for `Status = READY`, runs inference on `@trigger.SourceText`, optionally runs a second Auditor step verifying the Curator's own claims against that same text (merged into the same JSON as `auditor_sign_off` — never written as a second document), and adds one row to `STUDIO_RETURN`. `harvestStudioReturns()` then writes the JSON back to the original document and sets the `Status` column to `FLOW_COMPLETE`. A row whose `auditor_sign_off` fails verification never reaches the ledgers — it's archived to `AUDIT_LOG` and either retried or, past `CFG.MAX_RETRIES`, escalated to the terminal `AUDIT_REJECTED` status.
 
