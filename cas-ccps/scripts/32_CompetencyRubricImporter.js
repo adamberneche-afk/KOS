@@ -139,6 +139,8 @@ function importCompetencyRubrics() {
   ]);
 
   // ── Batch write ────────────────────────────────────────────────────────────
+  // IDs as text: see competencyIdText_ for what Sheets does to "8175-1".
+  crSheet.getRange(2, CR_COMPETENCY_ID + 1, rows.length, 1).setNumberFormat("@");
   crSheet.getRange(2, 1, rows.length, CR_COL_COUNT).setValues(rows);
 
   // ── Invalidate cache ───────────────────────────────────────────────────────
@@ -148,6 +150,23 @@ function importCompetencyRubrics() {
   Logger.log("[S32] Cache invalidated.");
 
   validateRubricImport();
+}
+
+// ---------------------------------------------------------------------------
+// competencyIdText_
+// A competency_id cell as text. Sheets reads "8175-1" through "8175-12" (and
+// 8177's) as a year and month and stores a Date, so getValues() returns a
+// Date for 24 of the 221 IDs. Seen live 2026-10-06: checkCourseData counted
+// 101/96 rows instead of 113/108, and the registry import, not recognizing
+// the Date cells, appended those 24 IDs again. Writers format the column as
+// text first (CR / registry imports); readers go through this.
+// ---------------------------------------------------------------------------
+function competencyIdText_(value) {
+  // Not just `instanceof Date`: a Date from another realm fails that check.
+  if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
+    return value.getFullYear() + "-" + (value.getMonth() + 1);
+  }
+  return String(value === null || value === undefined ? "" : value).trim();
 }
 
 // ---------------------------------------------------------------------------
@@ -174,7 +193,7 @@ function validateRubricImport() {
 
   for (let i = 1; i < data.length; i++) {
     const row    = data[i];
-    const compId = String(row[CR_COMPETENCY_ID] || "").trim();
+    const compId = competencyIdText_(row[CR_COMPETENCY_ID]);
     const course  = String(row[CR_COURSE]        || "").trim();
     if (!compId && !course) continue;
     total++;
@@ -253,7 +272,7 @@ function getRubricForCompetency_(compId) {
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
-    if (String(row[CR_COMPETENCY_ID]).trim() !== compId) continue;
+    if (competencyIdText_(row[CR_COMPETENCY_ID]) !== compId) continue;
 
     let indicators = [], questions = [];
     try { indicators = JSON.parse(row[CR_DEMONSTRATION_INDICATORS] || "[]"); } catch(e) {}
