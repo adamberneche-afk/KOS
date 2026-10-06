@@ -282,9 +282,13 @@ the only way in used to be the intake form. `52_CanvasRosterImport.js`
    `intakeStudent_()` (02), the same function the intake form uses: their
    doc for that assignment, shared with them and you, and a Ledger row.
 
-It reads only Student, SIS Login ID and Section, refuses any login that isn't
-a district student account, skips students already in the Ledger for you
-this term, and reports (never removes) students who left the course.
+It reads only Student, SIS Login ID and Section, and refuses any login that
+isn't a district student account. It enrolls only students whose class
+period is in the assignment's course (TeacherMatrix CourseName, 8175 or
+8177), so run it once per course with that course's Config ID; the rest are
+skipped as `OTHER_COURSE`. It skips students who already have a Ledger row
+for this assignment (an earlier unit's row doesn't count), and reports, never
+removes, students who left the course.
 
 ## Canvas course cartridges
 

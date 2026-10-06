@@ -2478,3 +2478,21 @@ and the 245-row registry repaired to 221).
 With no ID passed, script 52 now reads the `ROSTER_CONFIG_ID` Script
 Property; an ID passed in still wins. Test:
 `tests/cas-ccps/canvas-roster-import.test.js`.
+
+## The roster import enrolls one course at a time, 2026-10-06
+
+Reviewing script 52 before its first live run found two problems:
+
+- **Every student in every export went into the one assignment.** Run with
+  8175's S1-U1, the 8177 students would have been enrolled in an 8175
+  assignment.
+- **"Already enrolled" meant any Ledger row this term.** A student enrolled
+  in S1-U1 could never be imported into S1-U2.
+
+Now the import enrolls only students whose class period's course matches
+the assignment's TeacherMatrix `CourseName` (`fetchAssignment_()` returns
+it). The others are skipped as `OTHER_COURSE`, and an assignment with no
+CourseName enrolls nobody. A student is skipped only if they already have a
+row for this assignment. Run it once per course. Phase 6 step 14 also now
+says to set `M2_ENABLED` in Central Ledger, which the Module 2 wizard never
+does. Tests: `tests/cas-ccps/canvas-roster-import.test.js`.
