@@ -23,7 +23,7 @@ const { loadGasFiles, FakeDriveFolder } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '29_StudentContextAggregator.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
   '51_CourseYearBuilder.js', '52_CanvasRosterImport.js'].map(S);
-const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', '_criParseGradebook_'];
+const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', 'prepareRosterSections', '_criParseGradebook_'];
 const TEACHER = 'owner.teacher@ccpsnet.net';
 
 function csvFile(id, name, csv, minute) {
@@ -244,4 +244,33 @@ test('with no export anywhere, the message says where it looked', () => {
   const { exported, sandbox } = setup({ sectionMap: MAPPED, exports: [] });
   sandbox.PropertiesService.getScriptProperties().deleteProperty('TEACHER_FOLDER_ID');
   assert.match(exported.previewRosterEnrollment('CFG-1').message, /found in your Drive\.$/);
+});
+
+test('prepareRosterSections fills CanvasSectionMap and counts each section, with no Config ID and no enrollment', () => {
+  const { exported, ledgerSs, calls } = setup();
+  const first = exported.prepareRosterSections();
+  assert.equal(first.files, 1);
+  assert.deepEqual(first.unmapped, ['8175 - Block 3', '8175 - Block 7', '8177 - Block 5']);
+  const map = ledgerSs.getSheetByName('CanvasSectionMap');
+  assert.equal(map.getLastRow(), 4, 'one row per section');
+  assert.match(first.message, /Nothing enrolled\.$/);
+
+  // The teacher maps two sections; the next run shows each period's course.
+  map.getRange(2, 1, 3, 2).getValues().forEach((r, i) => {
+    const period = { '8175 - Block 3': '3', '8177 - Block 5': '5' }[r[0]] || '';
+    map.getRange(i + 2, 2).setValue(period);
+  });
+  const second = exported.prepareRosterSections();
+  const by = Object.fromEntries(second.sections.map((s) => [s.section, s]));
+  assert.deepEqual([by['8175 - Block 3'].students, by['8175 - Block 3'].period, by['8175 - Block 3'].course], [2, '3', '8175']);
+  assert.deepEqual([by['8177 - Block 5'].period, by['8177 - Block 5'].course], ['5', '8177']);
+  assert.ok(by['8177 - Block 5'].notStudentAccounts >= 1, 'jdoe is not a student account');
+  assert.deepEqual(second.unmapped, ['8175 - Block 7']);
+  assert.equal(map.getLastRow(), 4, 'a second run adds no duplicate rows');
+  assert.equal(calls.length, 0, 'never enrolls');
+});
+
+test('with no Config ID, preview points to prepareRosterSections', () => {
+  const { exported } = setup();
+  assert.match(exported.previewRosterEnrollment().message, /run prepareRosterSections\(\)/);
 });
