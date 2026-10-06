@@ -156,3 +156,21 @@ test('_writeLatestPrimer_: a doc that is really gone is recreated under a new ID
   assert.notEqual(after, id);
   assert.match(sandbox.DocumentApp.openById(after).getBody().getText(), /second vision/);
 });
+
+test('_primerBlocks_: the Data Quality status rides on the Vector State heading and its first line', () => {
+  // Notebook retrieval returns passages: a Vector State passage retrieved
+  // without the Data Quality block must still carry its qualifier
+  // (RTP test log, 2026-10-06).
+  const { exported } = load();
+  const flagged = { flagged: true, flags: ['56 processed session(s) have no Vector State row yet'],
+    lines: [{ kind: 'p', text: 'Status: FLAGGED. Qualify any Vector State claim with the flags below.' }] };
+  const blocks = exported._primerBlocks_(21, 'vision', VECTOR_FULL, SHADOW_FULL, flagged);
+  const i = blocks.findIndex((b) => b.kind === 'h2' && /^Vector State/.test(b.text));
+  assert.equal(blocks[i].text, 'Vector State (Data Quality FLAGGED)');
+  assert.equal(blocks[i + 1].text, 'Data Quality: FLAGGED. 56 processed session(s) have no Vector State row yet.');
+  assert.equal(blocks[i + 2].text, 'Craft: 0.50', 'the scores follow the qualifier');
+
+  const ok = exported._primerBlocks_(21, 'vision', VECTOR_FULL, SHADOW_FULL, QUALITY);
+  const k = ok.findIndex((b) => b.kind === 'h2' && /^Vector State/.test(b.text));
+  assert.deepEqual([ok[k].text, ok[k + 1].text], ['Vector State (Data Quality OK)', 'Data Quality: OK.']);
+});
