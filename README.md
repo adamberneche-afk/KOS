@@ -16,7 +16,7 @@ get filed into the matching subtree, not left loose at the root. See
 `meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
 rationale behind moving to this git-based structure in the first place.
 
-**Picking this up?** Start with [`meta/HANDOFF_2026-10-05.md`](./meta/HANDOFF_2026-10-05.md):
+**Picking this up?** Start with [`meta/HANDOFF_2026-10-06.md`](./meta/HANDOFF_2026-10-06.md):
 where each system stands, what is merged but not yet live, and the
 operator's queue in order.
 
@@ -99,7 +99,8 @@ it sat outside any `<script>` tag, silently disabling a rating widget
 since it was first added.
 
 **The long-running OAuth-consent-dialog crash is fixed** (2026-09-28;
-confirmed on `/dev`, `/exec` still to confirm after the release). The
+confirmed on `/dev`; `/exec` was released 2026-10-05 (v20) and still needs its
+`?diag=probe` check). The
 `Uncaught SyntaxError: Unexpected identifier 'style'` came from Apps
 Script stripping the build's `//# sourceURL=` comments along with their
 closing tags. A second fault followed: the split script's load order. Separately,
