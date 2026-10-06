@@ -135,3 +135,54 @@ test('getPriorWarmUpResponse_: a Date-coerced lesson_date cell (Sheets auto-conv
   const result = exported.getPriorWarmUpResponse_(data, 'student@example.com', 'today-lesson');
   assert.ok(result, 'a Date-coerced lesson_date cell must still be recognized as a qualifying row');
 });
+
+// ── shared periods (8175 and 8177 in the same period, different students) ──
+
+function loadShared() {
+  return loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+    'findLesson_', 'getEnrolledStudents_', 'sharedPeriods_', 'lessonPeriodKey_', 'courseCodeFromName_',
+  ]);
+}
+
+test('sharedPeriods_ / lessonPeriodKey_: only a period with two courses is keyed by course', () => {
+  const { exported } = loadShared();
+  const meeting = [
+    { period: '1', courseName: 'Sports Entertainment and Event Marketing' },
+    { period: '1', courseName: 'Sports Entertainment and Event Management' },
+    { period: '3', courseName: '8175 Marketing' },
+  ];
+  const shared = exported.sharedPeriods_(meeting);
+  assert.deepEqual([...shared], ['1']);
+  assert.equal(exported.lessonPeriodKey_('1', meeting[0].courseName, true), '1-8175');
+  assert.equal(exported.lessonPeriodKey_('1', meeting[1].courseName, true), '1-8177');
+  assert.equal(exported.lessonPeriodKey_('3', meeting[2].courseName, false), '3');
+});
+
+test('findLesson_: with a list of keys, the most recent matching row wins', () => {
+  const { exported } = loadShared();
+  const lc = (id, period, status) => {
+    const r = new Array(15).fill('');
+    r[0] = id; r[1] = 'teacher@ccpsnet.net'; r[3] = '2026-10-07'; r[4] = period; r[10] = status || 'RECEIVED';
+    return r;
+  };
+  const data = [['header'], lc('draft-8175', '1-8175'), lc('draft-8177', '1-8177'), lc('mine', '1')];
+  assert.equal(exported.findLesson_(data, 'teacher@ccpsnet.net', ['1-8175', '1'], '2026-10-07').lessonId, 'mine');
+  assert.equal(exported.findLesson_(data.slice(0, 3), 'teacher@ccpsnet.net', ['1-8177', '1'], '2026-10-07').lessonId,
+    'draft-8177');
+  assert.equal(exported.findLesson_(data, 'teacher@ccpsnet.net', '1-8175', '2026-10-07').lessonId, 'draft-8175');
+});
+
+test('getEnrolledStudents_: a course code keeps only that course\'s students in the period', () => {
+  const { exported } = loadShared();
+  const st = (email, course) => {
+    const r = new Array(19).fill('');
+    r[1] = email; r[4] = 'Student'; r[8] = 'teacher@ccpsnet.net'; r[10] = course; r[11] = '1'; r[12] = 'ACTIVE';
+    return r;
+  };
+  const data = [['header'], st('a@x', 'Sports Entertainment and Event Marketing'),
+    st('b@x', 'Sports Entertainment and Event Management'), st('c@x', '')];
+  const emails = (code) => exported.getEnrolledStudents_(data, 'teacher@ccpsnet.net', '1', '', code).map((s) => s.email);
+  assert.deepEqual(emails('8175'), ['a@x']);
+  assert.deepEqual(emails('8177'), ['b@x']);
+  assert.deepEqual(emails(''), ['a@x', 'b@x', 'c@x'], 'no code: every student in the period, as before');
+});

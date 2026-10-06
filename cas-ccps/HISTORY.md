@@ -2526,3 +2526,24 @@ its non-student logins and, once mapped, its period and course. It enrolls
 no one and logs no names or accounts. Without a Config ID,
 `previewRosterEnrollment()` now points to it. Test:
 `tests/cas-ccps/canvas-roster-import.test.js`.
+
+## Both courses in one period: a lesson and warm-ups per course, 2026-10-06
+
+8175 and 8177 meet in the same periods (same room, no student in both).
+LessonContext was keyed by teacher, date and period alone, so the lesson
+builder's preview listed both courses but a real run would have written
+only the first and skipped the second as LESSON_EXISTS, and the warm-up
+queue sent every student in the period the same course's lesson.
+
+- `24_WarmUpBridge.js`: a period where more than one course meets
+  (`sharedPeriods_()`) keys each course's lesson as `1-8175` / `1-8177`
+  (`lessonPeriodKey_()`). `findLesson_()` takes a list of keys, so a shared
+  period uses its course's lesson or one the teacher entered for the whole
+  period ("1"), whichever was submitted last. `getEnrolledStudents_()`
+  takes a course code and keeps only students whose Ledger CourseName is
+  that course. Single-course periods are unchanged.
+- `51_CourseYearBuilder.js` drafts one lesson per course in a shared
+  period; a lesson the teacher entered for the period still wins.
+
+Tests: `tests/cas-ccps/course-year-builder.test.js`,
+`tests/cas-ccps/warmup-bridge.test.js`.

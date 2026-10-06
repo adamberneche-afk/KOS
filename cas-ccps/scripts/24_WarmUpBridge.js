@@ -99,6 +99,7 @@ const CS_ACTIVE        = 4;
 const LD24_GOOGLE_ID     = 1;
 const LD24_STUDENT_NAME  = 4;
 const LD24_TEACHER_EMAIL = 8;
+const LD24_COURSE_NAME   = 10;
 const LD24_PERIOD        = 11;
 const LD24_STATUS        = 12;
 const LD24_TERM          = 18;
@@ -180,18 +181,28 @@ function buildWarmUpQueues() {
   let totalSkipped = 0;
 
   // ── Process each period ───────────────────────────────────────────────────
+  // A period where two courses meet (8175 and 8177 in the same room,
+  // different students) has one lesson per course, keyed "1-8175".
+  const shared = sharedPeriods_(meetingPeriods);
+
   for (const periodInfo of meetingPeriods) {
     const { period, courseName } = periodInfo;
+    const isShared   = shared.has(period);
+    const courseCode = isShared ? courseCodeFromName_(courseName) : "";
+    const slotKey    = lessonPeriodKey_(period, courseName, isShared);
 
     // ── Find LessonContext for this teacher + period + tomorrow ──────────
-    const lesson = findLesson_(lcData, teacherEmail, period, tomorrowStr);
+    // In a shared period, the course's own lesson or one the teacher entered
+    // for the whole period, whichever was submitted last.
+    const lesson = findLesson_(lcData, teacherEmail,
+      isShared ? [slotKey, period] : period, tomorrowStr);
     if (!lesson) {
-      Logger.log("[S24] No LessonContext found for period " + period +
+      Logger.log("[S24] No LessonContext found for period " + slotKey +
                  " on " + tomorrowStr + " — skipping.");
       continue;
     }
 
-    Logger.log("[S24] Period " + period + " | LessonID: " + lesson.lessonId +
+    Logger.log("[S24] Period " + slotKey + " | LessonID: " + lesson.lessonId +
                " | Objective: " + lesson.objective.substring(0, 60) + "…");
 
     // ── Build lesson context snapshot ────────────────────────────────────
@@ -272,15 +283,15 @@ function buildWarmUpQueues() {
 
     // ── Get enrolled students for this period ────────────────────────────
     const students = getEnrolledStudents_(
-      ledgerData, teacherEmail, period, currentTerm
+      ledgerData, teacherEmail, period, currentTerm, courseCode
     );
 
     if (students.length === 0) {
-      Logger.log("[S24] No students enrolled in period " + period + " — skipping.");
+      Logger.log("[S24] No students enrolled in period " + slotKey + " — skipping.");
       continue;
     }
 
-    Logger.log("[S24] Period " + period + ": " + students.length + " students.");
+    Logger.log("[S24] Period " + slotKey + ": " + students.length + " students.");
 
     // ── Build queue rows in memory ────────────────────────────────────────
     const rowsToWrite = [];
@@ -460,12 +471,47 @@ function getPeriodsForDay_(scheduleData, teacherEmail, dayType) {
 }
 
 // ---------------------------------------------------------------------------
+// Shared periods
+// Two courses can meet in one period (8175 and 8177 taught in the same room,
+// no student in both). Such a period gets one LessonContext row per course,
+// period_or_class "1-8175" and "1-8177", and its warm-ups go to that course's
+// students only. A single-course period keeps its plain period key.
+// ---------------------------------------------------------------------------
+
+/** "8175", "8177" or "" from a course name (same rule as getWarmUpAnchor_ in 31). */
+function courseCodeFromName_(courseName) {
+  const name = String(courseName || "");
+  if (name.indexOf("8175") !== -1 || /marketing/i.test(name)) return "8175";
+  if (name.indexOf("8177") !== -1 || /management/i.test(name)) return "8177";
+  return "";
+}
+
+/** The periods in getPeriodsForDay_()'s list where more than one course meets. */
+function sharedPeriods_(meetingPeriods) {
+  const courses = {};
+  meetingPeriods.forEach(p => {
+    const c = courseCodeFromName_(p.courseName) || String(p.courseName || "").trim().toLowerCase();
+    (courses[p.period] = courses[p.period] || new Set()).add(c);
+  });
+  return new Set(Object.keys(courses).filter(k => courses[k].size > 1));
+}
+
+/** LessonContext period_or_class for one course's lesson: "1-8175" in a shared period, else "1". */
+function lessonPeriodKey_(period, courseName, shared) {
+  const code = shared ? courseCodeFromName_(courseName) : "";
+  return code ? String(period) + "-" + code : String(period);
+}
+
+// ---------------------------------------------------------------------------
 // findLesson_
 // Searches LessonContext for a row matching teacher + period + date.
+// `period` may be a list of keys (a shared period: ["1-8175", "1"]); the most
+// recent row matching any of them wins.
 // Returns a structured lesson object or null if not found.
 // Skips SUPERSEDED rows — only uses the most recent RECEIVED or ALIGNMENT_LOGGED row.
 // ---------------------------------------------------------------------------
 function findLesson_(lcData, teacherEmail, period, dateStr) {
+  const periods = [].concat(period).map(String);
   // Scan in reverse — most recent submission wins if multiple exist
   for (let i = lcData.length - 1; i >= 1; i--) {
     const row = lcData[i];
@@ -482,7 +528,7 @@ function findLesson_(lcData, teacherEmail, period, dateStr) {
 
     if (tEmail  !== teacherEmail.toLowerCase()) continue;
     if (lDate   !== dateStr)                    continue;
-    if (lPeriod !== period)                     continue;
+    if (periods.indexOf(lPeriod) === -1)        continue;
     if (status  === "SUPERSEDED")               continue;
 
     return {
@@ -503,10 +549,11 @@ function findLesson_(lcData, teacherEmail, period, dateStr) {
 // getEnrolledStudents_
 // Returns all active students for this teacher + period from the Ledger.
 // Deduplicates by email — a student with multiple assignments in the same
-// period appears once.
+// period appears once. With courseCode ("8175"/"8177", for a shared period),
+// only that course's students: their Ledger CourseName decides it.
 // Returns: [{ email, name }]
 // ---------------------------------------------------------------------------
-function getEnrolledStudents_(ledgerData, teacherEmail, period, currentTerm) {
+function getEnrolledStudents_(ledgerData, teacherEmail, period, currentTerm, courseCode) {
   const seen     = new Set();
   const students = [];
 
@@ -522,6 +569,7 @@ function getEnrolledStudents_(ledgerData, teacherEmail, period, currentTerm) {
     if (lPeriod !== period)                     continue;
     if (status  === "ARCHIVED")                 continue;
     if (currentTerm && term && term !== currentTerm) continue;
+    if (courseCode && courseCodeFromName_(row[LD24_COURSE_NAME]) !== courseCode) continue;
     if (!email || seen.has(email))              continue;
 
     seen.add(email);

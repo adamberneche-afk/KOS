@@ -164,7 +164,7 @@ function _cybNoSchoolDays_(ss) {
   return set;
 }
 
-/** "8175", "8177" or "" from a ClassSchedule course name (same rule as getWarmUpAnchor_ in 31). */
+/** "8175", "8177" or "" from a ClassSchedule course name (same rule as courseCodeFromName_ in 24). */
 function _cybCourseCode_(courseName) {
   const name = String(courseName || "");
   if (name.indexOf("8175") !== -1 || /marketing/i.test(name)) return "8175";
@@ -246,9 +246,16 @@ function buildUpcomingLessonPlan_(opts) {
 
     const dayType = getDayType_(day);
     for (const teacher of teachers) {
-      for (const p of getPeriodsForDay_(schedule, teacher, dayType)) {
-        const slot = { date: dateStr, teacher: teacher, period: p.period, course: p.courseName };
-        if (taken.has([teacher, dateStr, String(p.period).toLowerCase()].join("|"))) {
+      const meeting = getPeriodsForDay_(schedule, teacher, dayType);
+      // A period where both courses meet gets one lesson per course ("1-8175",
+      // "1-8177"); a lesson the teacher entered for the whole period still wins.
+      const shared = sharedPeriods_(meeting);
+      for (const p of meeting) {
+        const isShared = shared.has(p.period);
+        const key = lessonPeriodKey_(p.period, p.courseName, isShared);
+        const slot = { date: dateStr, teacher: teacher, period: key, course: p.courseName };
+        if (taken.has([teacher, dateStr, key.toLowerCase()].join("|")) ||
+            (isShared && taken.has([teacher, dateStr, String(p.period).toLowerCase()].join("|")))) {
           result.skipped.push(Object.assign(slot, { reason: "LESSON_EXISTS" }));
           continue;
         }
@@ -257,7 +264,7 @@ function buildUpcomingLessonPlan_(opts) {
         const unit = resolveUnitForCourseDate_(dateStr, code);
         if (!unit) { result.skipped.push(Object.assign(slot, { reason: "NO_UNIT" })); continue; }
 
-        const payload = _cybLessonPayload_(teacher, dateStr, p.period, code, unit);
+        const payload = _cybLessonPayload_(teacher, dateStr, key, code, unit);
         slot.unit = unit.lesson_unit_id;
         result.planned.push(slot);
         if (!apply) continue;
@@ -265,7 +272,7 @@ function buildUpcomingLessonPlan_(opts) {
         const res = onLessonContextSubmit_(payload);
         if (res && res.success) {
           result.written++;
-          taken.add([teacher, dateStr, String(p.period).toLowerCase()].join("|"));
+          taken.add([teacher, dateStr, key.toLowerCase()].join("|"));
         } else {
           result.failed.push(Object.assign({}, slot, { error: (res && res.error) || "unknown error" }));
         }
