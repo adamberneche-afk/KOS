@@ -14,6 +14,11 @@
  *   loadDecks() → { stage: { intro: blocks, cards: [{ title, badge, blocks }] } }
  *   findCard(decks, unit) → the card for a pacing-guide unit (matched by title)
  *   cardVocabulary(card) → the terms in the card's VOCABULARY table
+ *   cardRow(card, label) → the second cell of the first two-column table row
+ *     whose first cell is `label` ("Work product", "8175 role", "What students
+ *     do"), or ''
+ *   cardExtension(card, code) → the course's "goes deeper on" items under
+ *     COURSE-SPECIFIC EXTENSION
  */
 
 const fs = require('fs');
@@ -132,4 +137,29 @@ function cardVocabulary(card) {
   return table ? table.rows.map((r) => textOf(r[0])).filter(Boolean) : [];
 }
 
-module.exports = { parseDocx, parseDocumentXml, textOf, loadDecks, findCard, cardVocabulary };
+function cardRow(card, label) {
+  for (const b of card.blocks) {
+    if (b.type !== 'table') continue;
+    const row = b.rows.find((r) => r.length >= 2 && textOf(r[0]).trim() === label);
+    if (row) return textOf(row[1]).trim();
+  }
+  return '';
+}
+
+function cardExtension(card, code) {
+  const i = card.blocks.findIndex((b) => b.type === 'p' && textOf(b) === 'COURSE-SPECIFIC EXTENSION');
+  if (i === -1) return [];
+  const items = [];
+  let course = '';
+  for (const b of card.blocks.slice(i + 1)) {
+    if (b.type !== 'p') break;
+    const t = textOf(b).trim();
+    if (t === 'VOCABULARY') break;
+    const head = /^(817[57])\b.*goes deeper on:?$/.exec(t);
+    if (head) { course = head[1]; continue; }
+    if (t && b.list && course === code) items.push(t);
+  }
+  return items;
+}
+
+module.exports = { parseDocx, parseDocumentXml, textOf, loadDecks, findCard, cardVocabulary, cardRow, cardExtension };
