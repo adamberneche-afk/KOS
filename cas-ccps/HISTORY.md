@@ -2496,3 +2496,23 @@ CourseName enrolls nobody. A student is skipped only if they already have a
 row for this assignment. Run it once per course. Phase 6 step 14 also now
 says to set `M2_ENABLED` in Central Ledger, which the Module 2 wizard never
 does. Tests: `tests/cas-ccps/canvas-roster-import.test.js`.
+
+## Unit rubrics carry the lesson cards' planned work, 2026-10-06
+
+The 36 unit rubrics took only the vocabulary from last year's lesson cards,
+and every prompt was the same generic "choose an organization in sports,
+entertainment or events". The operator wanted the assignments to be the
+work the lessons had planned. `build-unit-rubrics.js` now reads, from each
+unit's card:
+
+- the planned work product;
+- the course's role (Stage 0's shared "Role context");
+- what students do;
+- the course's "goes deeper on" extension.
+
+The rubric gains `PLANNED WORK PRODUCT` and `COURSE ROLE`, and the passing
+standard asks for the work product applied to the class conglomerate. The
+prompt template is the planned work, followed by the competencies the work
+must show. The Canvas cartridges, which reuse the prompts, were rebuilt.
+Helpers: `cardRow()` and `cardExtension()` in `tools/cas-ccps/lesson-cards.js`.
+Test: `tests/tools/unit-rubrics.test.js`.
