@@ -19,8 +19,8 @@ The Knowledge Operating System (KOS) is a cognitive harness designed to
 protect human presence from digital extraction. In a market flooded with
 sterile AI productivity tools, the KOS shifts the focus from efficiency of
 output to density of insight. By leveraging a Council of specialized
-personas and a structured onboarding protocol, the KOS enables a 500%
-increase in human value creation while strictly safeguarding the
+personas and a structured onboarding protocol, the KOS aims to raise the
+value of the operator's own judgment while strictly safeguarding the
 operator's relational bandwidth — running, by default, on infrastructure
 the operator already owns, with no external server or vendor billing
 relationship in the loop (Section 3).
@@ -124,13 +124,19 @@ ecosystem. See [`LICENSE`](LICENSE) for the full text, including the
 three-clause Fidelity Clause (Alignment Cog, HITL Firewall, Cold Engine
 Protocol) that any commercial license requires preserving.
 
-## 6. Technical Shielding: The Identity Key
+## 6. The Identity Key: An Onboarding Gate
 
-The system is released as a "Cold Engine." Full activation requires the
-generation of a unique Identity Key derived from the user's specific
-`CORE_THESIS` during the Socratic setup. This technical barrier prevents
-"one-click" automated wrappers from mass-deploying the technology in an
-extractive, non-aligned fashion.
+The system is released as a "Cold Engine." Activation requires an Identity
+Key, generated from the operator's own `CORE_THESIS` during the Socratic
+setup, and the engine stays cold until that key exists. The key is a
+deliberate step, not a security control: it is a hash of the thesis and a
+salt, and the gate checks only that the key has been set. Its purpose is to
+make sure every installation starts from a thesis the operator wrote, so
+the Alignment Cog has something real to align against.
+
+It does not stop a determined developer from wrapping or mass-deploying the
+code. That protection is the license (Section 5): commercial use requires a
+negotiated license that preserves the Fidelity Clause.
 
 ## 7. The Relational Moat & Commercial Path
 
