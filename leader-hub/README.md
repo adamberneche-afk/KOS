@@ -121,8 +121,9 @@ is served.** For two weeks the deployed page threw
 Google's `userCodeAppPanel?createOAuthDialog=true:570:25`), with
 `LS is not defined` errors after it. On `/dev` at `2a3dd4a` the page now
 loads with all 17 blocks run and 0 errors (`?diag=probe`), and settings
-sync reaches the server (`?diag=1`). **Still to confirm:** the same on
-`/exec` after the release. The full investigation, including every theory
+sync reaches the server (`?diag=1`). `/exec` was released on 2026-10-05
+(v20, every deployment). **Still to confirm:** the same `?diag=probe`
+result on `/exec`, and that a non-owner account is refused. The full investigation, including every theory
 ruled out along the way, is in `HISTORY.md`.
 
 There were three separate faults, all found with `Diagnostics.gs`'s

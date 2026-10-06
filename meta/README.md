@@ -6,10 +6,11 @@ why this repo exists at all.
 
 ## Contents
 
-- **`HANDOFF_2026-10-05.md`** — the repo-wide session handoff: which
+- **`HANDOFF_2026-10-06.md`** — the repo-wide session handoff: which
   handoff docs are current, where each system stands (merged vs. live),
   the operator's queue in order, open decisions, and the rules for an agent
-  session picking the work up. Start here.
+  session picking the work up. Start here. `HANDOFF_2026-10-05.md` is the
+  day before's, superseded.
 - **`PSD_Version_Controlled_CAS_Workspace.md`** — a Product Specification
   Document proposing exactly what this repo now is: moving both CAS
   (Classroom Agency System) and KOS off dated-Drive-folder-copy versioning
