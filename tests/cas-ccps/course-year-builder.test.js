@@ -318,3 +318,39 @@ test('installLessonPlanTrigger installs one daily trigger, once', () => {
   assert.deepEqual(handlers.filter((h) => h === 'buildUpcomingLessons'), ['buildUpcomingLessons']);
   assert.equal(exported.removeLessonPlanTrigger(), 1);
 });
+
+// ── shared periods: 8175 and 8177 in the same period, different students ──
+
+const SHARED_SCHEDULE = [
+  [TEACHER, '1', 'DAILY', 'Sports Entertainment and Event Marketing', 'TRUE'],
+  [TEACHER, '1', 'DAILY', 'Sports Entertainment and Event Management', 'TRUE'],
+];
+
+function schoolDays() {
+  return expectedSlots().filter((s) => s[1] === '1').map((s) => s[0]);
+}
+
+test('a period where both courses meet gets one lesson per course, keyed by course', () => {
+  const { exported, ss } = setup({ units: liveUnits(), schedule: SHARED_SCHEDULE });
+  const preview = exported.buildUpcomingLessonPlan_({ apply: false, today: TODAY });
+  const want = [];
+  schoolDays().forEach((d) => { want.push([d, '1-8175']); want.push([d, '1-8177']); });
+  assert.deepEqual(preview.planned.map((s) => [s.date, s.period]), want);
+
+  const r = exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY });
+  assert.equal(r.written, want.length, 'used to write only the first course: the second read LESSON_EXISTS');
+  rows(ss, 'LessonContext').forEach((row) => {
+    assert.equal(row[6], row[4] === '1-8175' ? 'Students plan a promotion.' : 'Students plan an event.');
+  });
+  assert.equal(exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY }).written, 0);
+});
+
+test('in a shared period, a lesson the teacher entered for the whole period wins over both drafts', () => {
+  const { exported, ss } = setup({ units: liveUnits(), schedule: SHARED_SCHEDULE });
+  const day = schoolDays()[0];
+  exported.onLessonContextSubmit_({ teacherEmail: TEACHER, lessonDate: day, periodOrClass: '1',
+    activityDescription: 'Both groups together.', learningObjective: 'Mine.', competencyIds: '8175-1' });
+  exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY });
+  const slot = rows(ss, 'LessonContext').filter((row) => row[3] === day);
+  assert.deepEqual(slot.map((row) => row[4]), ['1']);
+});
