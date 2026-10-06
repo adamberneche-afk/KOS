@@ -22,7 +22,7 @@ const { loadGasFiles, FakeDriveFolder } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '29_StudentContextAggregator.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
-  '52_CanvasRosterImport.js'].map(S);
+  '51_CourseYearBuilder.js', '52_CanvasRosterImport.js'].map(S);
 const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', '_criParseGradebook_'];
 const TEACHER = 'owner.teacher@ccpsnet.net';
 
@@ -72,7 +72,16 @@ function setup(opts) {
   tm.appendRow(new Array(13).fill('h'));
   const row = new Array(13).fill('');
   row[0] = 'CFG-1'; row[1] = 'S1-U1 Industry Overview'; row[11] = 'LIVE';
+  row[14] = '8175 Sports Entertainment and Event Marketing';
   tm.appendRow(row);
+  // The same unit for the other course.
+  const row2 = row.slice();
+  row2[0] = 'CFG-2'; row2[14] = '8177 Sports Entertainment and Event Management';
+  tm.appendRow(row2);
+  // A LIVE row with no CourseName.
+  const row3 = row.slice();
+  row3[0] = 'CFG-X'; row3[14] = '';
+  tm.appendRow(row3);
 
   const ledger = ledgerSs.insertSheet('Ledger');
   ledger.appendRow(['Timestamp', 'GoogleID', 'ConfigID', 'FileID', 'StudentName', 'Block', 'ClassName', 'TeacherName',
@@ -127,41 +136,60 @@ test('preview plans the mapped students, refuses a non-student login, and writes
   const { exported, calls } = setup({ sectionMap: MAPPED });
   const r = exported.previewRosterEnrollment('CFG-1');
   assert.deepEqual(r.planned.map((p) => [p.account, p.period]), [
-    ['1234567@ccpsnet.net', '3'], ['2345678@ccpsnet.net', '3'], ['3456789@ccpsnet.net', '5']]);
+    ['1234567@ccpsnet.net', '3'], ['2345678@ccpsnet.net', '3']]);
+  assert.ok(r.skipped.some((s) => s.reason === 'OTHER_COURSE' && s.account === '3456789@ccpsnet.net'),
+    'an 8177 student is not enrolled in the 8175 assignment');
   assert.ok(r.skipped.some((s) => s.reason === 'INVALID_ACCOUNT' && s.sisLogin === 'jdoe'));
   assert.ok(r.skipped.some((s) => s.reason === 'SECTION_NOT_MAPPED' && s.section === '8175 - Block 7'));
-  assert.match(r.message, /^DRY RUN: 3 student\(s\) would be enrolled in S1-U1 Industry Overview \(CFG-1\)/);
+  assert.match(r.message, /^DRY RUN: 2 student\(s\) would be enrolled in S1-U1 Industry Overview \(CFG-1\)/);
   assert.equal(calls.length, 0);
 });
 
-test('apply enrolls each student through intakeStudent_ with the period and course from ClassSchedule', () => {
+test('apply enrolls each course\'s students in that course\'s assignment, with the period and course from ClassSchedule', () => {
   const { exported, calls } = setup({ sectionMap: MAPPED });
-  const r = exported.applyRosterEnrollment('CFG-1');
-  assert.equal(r.enrolled, 3);
+  assert.equal(exported.applyRosterEnrollment('CFG-1').enrolled, 2);
+  assert.equal(exported.applyRosterEnrollment('CFG-2').enrolled, 1);
   assert.deepEqual(calls.map((c) => [c.googleId, c.studentName, c.period, c.courseName, c.unitConfigId, c.teacherEmail]), [
     ['1234567@ccpsnet.net', 'Ana Rivera', '3', '8175 Sports Entertainment and Event Marketing', 'CFG-1', TEACHER],
     ['2345678@ccpsnet.net', 'Ben Chen', '3', '8175 Sports Entertainment and Event Marketing', 'CFG-1', TEACHER],
-    ['3456789@ccpsnet.net', 'Chi Okafor', '5', '8177 Sports Entertainment and Event Management', 'CFG-1', TEACHER],
+    ['3456789@ccpsnet.net', 'Chi Okafor', '5', '8177 Sports Entertainment and Event Management', 'CFG-2', TEACHER],
   ]);
 });
 
-test('a student already in the Ledger this term is skipped; one who left Canvas is reported, not removed', () => {
-  const row = (acct, term) => [new Date(), acct, 'X', 'f', 'n', '3', 'c', 't', TEACHER, 's', 'c', '3', 'ACTIVE',
-    '', '', '', '', '', term];
+test('an assignment with no CourseName enrolls no one', () => {
+  const { exported, calls } = setup({ sectionMap: MAPPED });
+  const r = exported.applyRosterEnrollment('CFG-X');
+  assert.match(r.message, /Can't tell which course CFG-X is for/);
+  assert.equal(calls.length, 0);
+});
+
+test('a student already enrolled in this assignment is skipped; one who left Canvas is reported, not removed', () => {
+  const row = (acct, term, cfgId) => [new Date(), acct, cfgId || 'CFG-1', 'f', 'n', '3', 'c', 't', TEACHER, 's', 'c', '3',
+    'ACTIVE', '', '', '', '', '', term];
   const { exported, calls, ledgerSs } = setup({ sectionMap: MAPPED,
-    ledgerRows: [row('1234567@ccpsnet.net', '2026-27'), row('7654321@ccpsnet.net', '2026-27'), row('2345678@ccpsnet.net', '2025-26')] });
+    ledgerRows: [row('1234567@ccpsnet.net', '2026-27'), row('7654321@ccpsnet.net', '2026-27'),
+      row('2345678@ccpsnet.net', '2025-26')] });
   const r = exported.applyRosterEnrollment('CFG-1');
   assert.ok(r.skipped.some((s) => s.account === '1234567@ccpsnet.net' && s.reason === 'ALREADY_ENROLLED'));
-  assert.deepEqual(calls.map((c) => c.googleId), ['2345678@ccpsnet.net', '3456789@ccpsnet.net'],
+  assert.deepEqual(calls.map((c) => c.googleId), ['2345678@ccpsnet.net'],
     'last year\'s row does not count as enrolled');
   assert.deepEqual(r.notInCanvas, ['7654321@ccpsnet.net']);
   assert.equal(ledgerSs.getSheetByName('Ledger').getLastRow(), 4, 'no Ledger row removed');
 });
 
+test('a row for an earlier unit doesn\'t block enrolling the same student in the next unit', () => {
+  const row = [new Date(), '1234567@ccpsnet.net', 'CFG-0', 'f', 'n', '3', 'c', 't', TEACHER, 's', 'c', '3', 'ACTIVE',
+    '', '', '', '', '', '2026-27'];
+  const { exported, calls } = setup({ sectionMap: MAPPED, ledgerRows: [row] });
+  const r = exported.applyRosterEnrollment('CFG-1');
+  assert.deepEqual(calls.map((c) => c.googleId), ['1234567@ccpsnet.net', '2345678@ccpsnet.net']);
+  assert.deepEqual(r.notInCanvas, []);
+});
+
 test('a student in two exports is enrolled once', () => {
   const { exported, calls } = setup({ sectionMap: MAPPED, exports: [GRADEBOOK, GRADEBOOK] });
   exported.applyRosterEnrollment('CFG-1');
-  assert.equal(calls.length, 3);
+  assert.equal(calls.length, 2);
 });
 
 test('an unknown or not-LIVE Config ID enrolls no one', () => {
@@ -178,11 +206,11 @@ test('run from the editor with no argument, the Config ID comes from ROSTER_CONF
   assert.match(exported.previewRosterEnrollment().message, /Set the ROSTER_CONFIG_ID Script Property/);
 
   props.setProperty('ROSTER_CONFIG_ID', ' CFG-1 ');
-  assert.match(exported.previewRosterEnrollment().message, /^DRY RUN: 3 student\(s\) would be enrolled in .*\(CFG-1\)/);
+  assert.match(exported.previewRosterEnrollment().message, /^DRY RUN: 2 student\(s\) would be enrolled in .*\(CFG-1\)/);
   assert.match(exported.previewRosterEnrollment({ triggerUid: 'x' }).message, /\(CFG-1\)/, 'an event object is not an ID');
   assert.match(exported.applyRosterEnrollment('NOPE').message, /Config ID NOPE/, 'a passed ID wins');
-  assert.equal(exported.applyRosterEnrollment().enrolled, 3);
-  assert.equal(calls.length, 3);
+  assert.equal(exported.applyRosterEnrollment().enrolled, 2);
+  assert.equal(calls.length, 2);
 });
 
 test('a missing master template stops the run at the first student', () => {
@@ -207,7 +235,7 @@ test('without TEACHER_FOLDER_ID, the exports are found in Drive and the teacher 
   const r = exported.applyRosterEnrollment('CFG-1');
 
   assert.equal(r.files, 1);
-  assert.equal(r.enrolled, 3);
+  assert.equal(r.enrolled, 2);
   assert.ok(calls.every((c) => c.teacherName === 'Mr. Owner'), 'from the MatrixRegistry row');
   assert.match(exported.previewRosterEnrollment('CFG-1').message, /DRY RUN/);
 });
