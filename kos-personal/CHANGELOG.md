@@ -1,6 +1,22 @@
 # KOS Changelog
 
 
+### STAGING_PIPELINE is archived nightly, finished rows only (2026-10-06)
+
+Nothing archived `STAGING_PIPELINE` except the web app button, so it had
+grown to ~400 rows, nearly all PROCESSED. `archiveFinishedStagingRows()`
+(`5_Error_And_Utilities.gs`) now runs daily at 02:00 from
+`setupAllTriggers()` (17 triggers). It moves only finished rows
+(PROCESSED, INTAKE_PROCESSED, PARTITIONED, CONSOLIDATED). Failed rows such
+as STUDIO_TIMEOUT stay, because `requeueStagingRows()` and
+`checkVectorClassifySessions()` read `STAGING_PIPELINE` only. DUPLICATE
+rows stay, because the duplicate finder, the matrix repair and the
+governance count read them there. Both archive paths now move rows with
+one `setValues()` and one `deleteRows()` per contiguous run instead of a
+call per row. Test: `tests/kos-personal/staging-archive.test.js`.
+Re-run `setupAllTriggers()` after pushing.
+
+
 ### The KOS thinking partner moves to a Claude Project (2026-10-06)
 
 `kos-personal/claude-project/` replaces the RTP Gem as the place to plan
