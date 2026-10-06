@@ -16,7 +16,7 @@ get filed into the matching subtree, not left loose at the root. See
 `meta/PSD_Version_Controlled_CAS_Workspace.md` for the actual design
 rationale behind moving to this git-based structure in the first place.
 
-**Picking this up?** Start with [`meta/HANDOFF_2026-10-06.md`](./meta/HANDOFF_2026-10-06.md):
+**Picking this up?** The order of work is [`meta/PLAN_2026-10.md`](./meta/PLAN_2026-10.md). Then read [`meta/HANDOFF_2026-10-06.md`](./meta/HANDOFF_2026-10-06.md):
 where each system stands, what is merged but not yet live, and the
 operator's queue in order.
 
