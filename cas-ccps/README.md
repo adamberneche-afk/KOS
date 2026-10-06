@@ -276,6 +276,10 @@ the only way in used to be the intake form. `52_CanvasRosterImport.js`
    its name from the `TEACHER_FOLDER_ID` folder if Central Ledger has that
    property, otherwise from anywhere in your own Drive (the setup wizard
    writes `TEACHER_*` properties into the Unified Manual project, not this one).
+   Before any assignment is LIVE you can run `prepareRosterSections()`: it
+   fills the `CanvasSectionMap` tab from the exports and logs each section's
+   student count (and, once mapped, its period and course). It needs no
+   Config ID and enrolls no one.
 2. Set the Script Property `ROSTER_CONFIG_ID` to a LIVE assignment's Config ID
    (the editor's Run button can't pass an argument; an ID passed in wins).
    Then `previewRosterEnrollment()` against that assignment lists
