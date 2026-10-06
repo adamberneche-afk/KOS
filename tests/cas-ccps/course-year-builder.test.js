@@ -26,7 +26,7 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_Competen
 const EXPOSE = ['checkCourseData', 'previewUpcomingLessons', 'buildUpcomingLessonPlan_', 'onLessonContextSubmit_',
   'resolveUnitForCourseDate_', 'getWarmUpAnchor_', '_loadPacingGuide_', 'installLessonPlanTrigger',
   'removeLessonPlanTrigger', 'CYB_NO_SCHOOL_2026_27', 'COURSE_DATA_EXPECTED', 'PG_HEADERS',
-  'importCompetencyRegistry', 'competencyIdText_'];
+  'importCompetencyRegistry', 'competencyIdText_', 'removeDraftedLessons_', '_lessonPeriodText_'];
 
 const TEACHER = 'teacher@ccpsnet.net';
 const pad = (n) => String(n).padStart(2, '0');
@@ -334,13 +334,13 @@ test('a period where both courses meet gets one lesson per course, keyed by cour
   const { exported, ss } = setup({ units: liveUnits(), schedule: SHARED_SCHEDULE });
   const preview = exported.buildUpcomingLessonPlan_({ apply: false, today: TODAY });
   const want = [];
-  schoolDays().forEach((d) => { want.push([d, '1-8175']); want.push([d, '1-8177']); });
+  schoolDays().forEach((d) => { want.push([d, '1 (8175)']); want.push([d, '1 (8177)']); });
   assert.deepEqual(preview.planned.map((s) => [s.date, s.period]), want);
 
   const r = exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY });
   assert.equal(r.written, want.length, 'used to write only the first course: the second read LESSON_EXISTS');
   rows(ss, 'LessonContext').forEach((row) => {
-    assert.equal(row[6], row[4] === '1-8175' ? 'Students plan a promotion.' : 'Students plan an event.');
+    assert.equal(row[6], row[4] === '1 (8175)' ? 'Students plan a promotion.' : 'Students plan an event.');
   });
   assert.equal(exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY }).written, 0);
 });
@@ -353,4 +353,44 @@ test('in a shared period, a lesson the teacher entered for the whole period wins
   exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY });
   const slot = rows(ss, 'LessonContext').filter((row) => row[3] === day);
   assert.deepEqual(slot.map((row) => row[4]), ['1']);
+});
+
+test('_lessonPeriodText_: a period Sheets stored as a date reads back as written', () => {
+  const { exported } = setup();
+  // Sheets reads "1-8177" as January 8177 (seen live: a second build wrote every lesson again).
+  assert.equal(exported._lessonPeriodText_(new Date(8177, 0, 1)), '1-8177');
+  assert.equal(exported._lessonPeriodText_(3), '3');
+  assert.equal(exported._lessonPeriodText_(' 1 (8175) '), '1 (8175)');
+});
+
+// ── unbuild ───────────────────────────────────────────────────────────
+
+test('removeDraftedLessons_ supersedes drafts from today on and trashes their Docs; the teacher\'s and past ones stay', () => {
+  const { exported, ss, sandbox } = setup({ units: liveUnits(), schedule: SHARED_SCHEDULE });
+  const days = schoolDays();
+  exported.onLessonContextSubmit_({ teacherEmail: TEACHER, lessonDate: days[1], periodOrClass: '1',
+    activityDescription: 'My own lesson.', learningObjective: 'Mine.', competencyIds: '8175-1' });
+  exported.buildUpcomingLessonPlan_({ apply: true, today: TODAY });
+  const lcSheet = ss.getSheetByName('LessonContext');
+  // One draft moved into the past: before today, so left alone.
+  const pastRow = rows(ss, 'LessonContext').findIndex((r) => r[4] === '1 (8175)' && r[3] === days[0]) + 2;
+  lcSheet.getRange(pastRow, 4).setValue(ymd(addDays(TODAY, -1)));
+
+  const drafts = () => rows(ss, 'LessonContext').filter((r) => String(r[5]).indexOf('Auto-drafted') === 0);
+  const liveDrafts = drafts().filter((r) => r[3] >= ymd(TODAY));
+  const preview = exported.removeDraftedLessons_({ apply: false, today: TODAY });
+  assert.equal(preview.rows.length, liveDrafts.length);
+  assert.ok(drafts().every((r) => r[10] !== 'SUPERSEDED'), 'a dry run changes nothing');
+
+  const r = exported.removeDraftedLessons_({ apply: true, today: TODAY });
+  assert.equal(r.superseded, liveDrafts.length);
+  assert.equal(r.docsTrashed, liveDrafts.length);
+  liveDrafts.forEach((d) => assert.equal(sandbox.DriveApp.getFileById(d[15]).isTrashed(), true));
+  drafts().forEach((d) => assert.equal(d[10] === 'SUPERSEDED', d[3] >= ymd(TODAY)));
+  const mine = rows(ss, 'LessonContext').find((x) => x[5] === 'My own lesson.');
+  assert.notEqual(mine[10], 'SUPERSEDED');
+
+  // The slots are free again.
+  const again = exported.buildUpcomingLessonPlan_({ apply: false, today: TODAY });
+  assert.equal(again.planned.length, liveDrafts.length + 1, 'the past draft\'s slot is drafted again too');
 });

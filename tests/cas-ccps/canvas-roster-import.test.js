@@ -274,3 +274,45 @@ test('with no Config ID, preview points to prepareRosterSections', () => {
   const { exported } = setup();
   assert.match(exported.previewRosterEnrollment().message, /run prepareRosterSections\(\)/);
 });
+
+// ── both courses in one period (sections named by course, "-P01" codes) ──
+
+const SHARED_GRADEBOOK = [
+  'Student,ID,SIS User ID,SIS Login ID,Section',
+  '    Points Possible,,,,',
+  '"Rivera, Ana",11,S1,1234567,"SPORTS, ENTERTAINMENT, & EVENTS MARKETING-Owner [74-C8175O-P01]"',
+  '"Chen, Ben",12,S2,2345678,"HON SPORTS, ENTERTAINMENT, & EVENTS MANAGEMENT-Owner [74-C8177H-P01]"',
+].join('\n');
+
+function sharedSetup() {
+  const t = setup({ exports: [SHARED_GRADEBOOK] });
+  const cs = t.ledgerSs.getSheetByName('ClassSchedule');
+  cs.appendRow([TEACHER, '1', 'DAILY', 'Sports Entertainment and Event Management', 'TRUE']);
+  cs.appendRow([TEACHER, '1', 'DAILY', 'Sports Entertainment and Event Marketing', 'TRUE']);
+  return t;
+}
+
+test('in a period both courses share, the section name decides the course, and the period comes from "-P01"', () => {
+  const { exported, ledgerSs, calls } = sharedSetup();
+  const map = exported.prepareRosterSections();
+  assert.deepEqual(map.sections.map((s) => [s.period, s.course]), [['1', '8177'], ['1', '8175']]);
+  const tab = ledgerSs.getSheetByName('CanvasSectionMap');
+  assert.deepEqual(tab.getRange(2, 2, tab.getLastRow() - 1, 1).getValues().map((x) => String(x[0])), ['1', '1'],
+    'the guessed period is written to the tab, where it can be corrected');
+
+  const r = exported.applyRosterEnrollment('CFG-1');
+  assert.deepEqual(r.planned.map((p) => p.account), ['1234567@ccpsnet.net'],
+    'used to follow the period\'s first ClassSchedule course, so one course\'s sections were refused');
+  assert.equal(calls[0].courseName, 'Sports Entertainment and Event Marketing');
+  assert.ok(r.skipped.some((s) => s.reason === 'OTHER_COURSE' && s.account === '2345678@ccpsnet.net'));
+});
+
+test('a period typed into CanvasSectionMap wins over the section code', () => {
+  const { exported, ledgerSs } = sharedSetup();
+  const m = ledgerSs.insertSheet('CanvasSectionMap');
+  m.appendRow(['canvas_section', 'period']);
+  m.appendRow(['SPORTS, ENTERTAINMENT, & EVENTS MARKETING-Owner [74-C8175O-P01]', '3']);
+  const r = exported.prepareRosterSections();
+  const s = r.sections.find((x) => /MARKETING/.test(x.section));
+  assert.equal(s.period, '3');
+});
