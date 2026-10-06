@@ -104,7 +104,7 @@ function checkCourseData() {
     if (!sheet || sheet.getLastRow() < 2) return null;
     const counts = {};
     sheet.getRange(2, 1, sheet.getLastRow() - 1, sheet.getLastColumn()).getValues().forEach(r => {
-      const id = String(r[col] || "").trim();
+      const id = competencyIdText_(r[col]);
       if (!id) return;
       const course = id.split("-")[0];
       counts[course] = (counts[course] || 0) + 1;
