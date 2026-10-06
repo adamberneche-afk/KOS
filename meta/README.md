@@ -6,6 +6,10 @@ why this repo exists at all.
 
 ## Contents
 
+- **`PLAN_2026-10.md`** — the plan of record agreed on 2026-10-06: which AI
+  does what (Gemini runs the Google-side flows; a Claude Project is the
+  thinking partner), CAS live by Oct 30 one feature a week, the kos-personal
+  pipeline kept and repaired, and the RTP Gem frozen.
 - **`HANDOFF_2026-10-06.md`** — the repo-wide session handoff: which
   handoff docs are current, where each system stands (merged vs. live),
   the operator's queue in order, open decisions, and the rules for an agent
