@@ -78,9 +78,12 @@ contention.
 
 ## 4. Diagnose: cheapest first (operator runs these)
 
-1. `getQueueStatus()`: count and oldest timestamp per status. Many
-   `PENDING_FLOW` rows while `STUDIO_ACTIVE` sits at 0–1 means the single
-   slot is the limit.
+1. Queue counts: the web app's Queue tab (`getQueueMetrics()`, run from
+   the editor works too) gives queued / active / needs-curator / processed
+   / failed counts; sort `STAGING_PIPELINE` by timestamp for the oldest
+   `PENDING_FLOW` row. Many `PENDING_FLOW` rows while `STUDIO_ACTIVE` sits
+   at 0–1 means the single slot is the limit. (The reviewed plan named a
+   queue-status function that does not exist in this repo.)
 2. Executions log: count "Could not acquire lock" lines per function per
    day. This shows whether contention happens in practice.
 3. `STAGING_PIPELINE` row count against how many are terminal (would be
