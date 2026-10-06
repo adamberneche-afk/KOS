@@ -11,6 +11,13 @@ or record is "a student matter" with no name. The test log also records
 that `@Startup` fails mostly as a chat's first message; resending it in the
 same chat has worked (`rtp-core-router/README.md`).
 
+Later the same day, naming the sources in the message
+(`@Startup Read the DAILY PRIMER and KOS_OPEN_DECISIONS sources first.`)
+got them retrieved where plain `@Startup` didn't; that is now the standard
+startup message. One such run called a FLAGGED primer's data quality
+NOMINAL, so the router now copies the primer's Data Quality `Status:` line
+word for word and never calls it GREEN, NOMINAL or OK.
+
 
 ### The classify backfill never classifies a second copy of a session (2026-10-06)
 
