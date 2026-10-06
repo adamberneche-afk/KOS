@@ -592,13 +592,14 @@ const KOS_TRIGGER_HANDLERS = [
   'runRegistrarMicrobatch',
   'runRegistrarProcessor',
   'reportDeployVersion',
+  'archiveFinishedStagingRows',
 ];
 
 /**
  * Installs all background triggers for the v8.0 headless system.
  * Idempotent — removes existing KOS triggers before re-installing.
  *
- * Triggers installed (16 total — matches DEPLOYMENT_GUIDE.md's
+ * Triggers installed (17 total — matches DEPLOYMENT_GUIDE.md's
  * "Expected trigger list"):
  *   sensor1_scanInboundSessions   → every 5 min  (time-driven)
  *   runMatrixTurnstile            → every 5 min  (time-driven) — 10_Turnstile.gs
@@ -616,6 +617,7 @@ const KOS_TRIGGER_HANDLERS = [
  *   runRegistrarMicrobatch        → every 15 min (time-driven) — 11_Registrar_CogRelay.gs
  *   runRegistrarProcessor         → every 10 min (time-driven) — 11_Registrar_CogRelay.gs
  *   reportDeployVersion           → every 6 hours (time-driven) — 17_DeployVersionReport.gs
+ *   archiveFinishedStagingRows    → daily 02:00  (time-driven) — 5_Error_And_Utilities.gs
  *
  * Note: Sensor 2 (COG_EXHAUST) is the doPost() web app endpoint —
  * it requires no installable trigger.
@@ -735,6 +737,13 @@ function setupAllTriggers() {
   tryInstall('reportDeployVersion', () =>
     ScriptApp.newTrigger('reportDeployVersion')
       .timeBased().everyHours(6).create()
+  );
+
+  // ── Staging archive — daily 02:00 (5_Error_And_Utilities.gs) ──
+  // Finished rows only; failed rows stay where requeue can reach them.
+  tryInstall('archiveFinishedStagingRows', () =>
+    ScriptApp.newTrigger('archiveFinishedStagingRows')
+      .timeBased().atHour(2).everyDays(1).create()
   );
 
   // ── Sensor 3 — onChange on BRAIN_TRUST_INDEX ───────────────
