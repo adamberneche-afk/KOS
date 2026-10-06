@@ -304,9 +304,10 @@ dependencies, like the rest of `tools/`.
 Writes `meta/notebook-codebase/`: the whole repo (code, docs, tools, tests)
 as 12 Markdown sources plus an index, for a "KOS Codebase" notebook. Every
 section heading names its source and file, and every source carries its
-`Notebook source:` line. Unlike the generators above, its output is not held
-to staleness by `npm test`; `--check` reports stale sources, and each source
-carries a content fingerprint. See `meta/notebook-codebase/README.md`.
+`Notebook source:` line. Unlike the generators above, its output is not
+committed (it is gitignored): run it in the unzipped copy of `main`, which
+needs no git, and upload what it writes. `--check` reports which sources
+changed since the last build. See `meta/notebook-codebase/README.md`.
 
 ## [`tools/html-lint/`](./tools/html-lint/check.js) — inline `<script>` syntax check
 
@@ -359,6 +360,12 @@ and the Registrar's stage validators (`registrar-validators.test.js`);
 the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `canvas-cartridge.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
+
+`npm test` also runs in an unzipped copy of `main`, which has no `.git`:
+the seven tests that read git history (deploy-drift's expected marker and
+stamp, the notebook-codebase walk check) skip there with a reason, via
+[`tests/harness/git.js`](./tests/harness/git.js). CI always has the
+history, so they always run there.
 
 ## Still pending
 
