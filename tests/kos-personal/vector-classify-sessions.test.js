@@ -365,3 +365,33 @@ test('runClassifyBackfillTrigger: an error is reported and the trigger stays for
   assert.equal(backfillTriggers(env.sandbox).length, 1);
   assert.equal(env.sandbox.LockService.getScriptLock().hasLock(), false);
 });
+
+test('queueVectorClassifyBackfill: never classifies a second copy of the same content', () => {
+  const env = setup();
+  const { staging, curator, ss } = env;
+  const archive = ss.insertSheet('STAGING_ARCHIVE');
+  archive.appendRow(['Archived_At'].concat(STAGING_HEADERS));
+  const gone = (uid, day) => archive.appendRow(
+    [new Date(), new Date('2026-09-' + day), uid, 'SESSION_LOG', 'u', 'f-' + uid, 'PROCESSED', 0]);
+  const live = (uid, day) => staging.appendRow([new Date('2026-09-' + day), uid, 'SESSION_LOG', 'u', 'f-' + uid, 'PROCESSED', 0]);
+  const source = (uid) => curator.appendRow([new Date(), uid, 'SESSION_LOG', 'f-' + uid, 'text ' + uid, 'READY']);
+
+  // The 2026-10-06 case: the kept copy is classified; the dropped copy's
+  // chunks were archived before the repair, so none of them reads DUPLICATE.
+  const matrix = ss.insertSheet('VECTOR_MATRIX');
+  matrix.appendRow(['Session_UID', 'Timestamp', 'ARCHITECTURE']);
+  matrix.appendRow(['LOG-1789058964096-edd1075a', new Date(), 0.5]);
+  gone('LOG-1789059068989-edd1075a_CH01', 10); source('LOG-1789059068989-edd1075a_CH01');
+  // Two unclassified copies of new content: only the older is eligible.
+  live('LOG-1789000000001-aaaa1111_CH01', 11); source('LOG-1789000000001-aaaa1111_CH01');
+  live('LOG-aaaa1111_CH01', 12); source('LOG-aaaa1111_CH01');
+  // A different hash is unaffected.
+  live('LOG-bbbb2222_CH01', 13); source('LOG-bbbb2222_CH01');
+
+  const r = env.exported.queueVectorClassifyBackfill({ apply: false, limit: 5 });
+
+  assert.deepEqual(r.sessions.map((s) => s.sessionUid), ['LOG-1789000000001-aaaa1111', 'LOG-bbbb2222']);
+  const reasons = Object.fromEntries(r.skipped.map((s) => [s.sessionUid, s.reason]));
+  assert.equal(reasons['LOG-1789059068989-edd1075a'], 'DUPLICATE_HASH: same content as LOG-1789058964096-edd1075a');
+  assert.equal(reasons['LOG-aaaa1111'], 'DUPLICATE_HASH: same content as LOG-1789000000001-aaaa1111');
+});
