@@ -153,8 +153,8 @@ test('sharedPeriods_ / lessonPeriodKey_: only a period with two courses is keyed
   ];
   const shared = exported.sharedPeriods_(meeting);
   assert.deepEqual([...shared], ['1']);
-  assert.equal(exported.lessonPeriodKey_('1', meeting[0].courseName, true), '1-8175');
-  assert.equal(exported.lessonPeriodKey_('1', meeting[1].courseName, true), '1-8177');
+  assert.equal(exported.lessonPeriodKey_('1', meeting[0].courseName, true), '1 (8175)');
+  assert.equal(exported.lessonPeriodKey_('1', meeting[1].courseName, true), '1 (8177)');
   assert.equal(exported.lessonPeriodKey_('3', meeting[2].courseName, false), '3');
 });
 
@@ -165,11 +165,11 @@ test('findLesson_: with a list of keys, the most recent matching row wins', () =
     r[0] = id; r[1] = 'teacher@ccpsnet.net'; r[3] = '2026-10-07'; r[4] = period; r[10] = status || 'RECEIVED';
     return r;
   };
-  const data = [['header'], lc('draft-8175', '1-8175'), lc('draft-8177', '1-8177'), lc('mine', '1')];
-  assert.equal(exported.findLesson_(data, 'teacher@ccpsnet.net', ['1-8175', '1'], '2026-10-07').lessonId, 'mine');
-  assert.equal(exported.findLesson_(data.slice(0, 3), 'teacher@ccpsnet.net', ['1-8177', '1'], '2026-10-07').lessonId,
+  const data = [['header'], lc('draft-8175', '1 (8175)'), lc('draft-8177', '1 (8177)'), lc('mine', '1')];
+  assert.equal(exported.findLesson_(data, 'teacher@ccpsnet.net', ['1 (8175)', '1'], '2026-10-07').lessonId, 'mine');
+  assert.equal(exported.findLesson_(data.slice(0, 3), 'teacher@ccpsnet.net', ['1 (8177)', '1'], '2026-10-07').lessonId,
     'draft-8177');
-  assert.equal(exported.findLesson_(data, 'teacher@ccpsnet.net', '1-8175', '2026-10-07').lessonId, 'draft-8175');
+  assert.equal(exported.findLesson_(data, 'teacher@ccpsnet.net', '1 (8175)', '2026-10-07').lessonId, 'draft-8175');
 });
 
 test('getEnrolledStudents_: a course code keeps only that course\'s students in the period', () => {
