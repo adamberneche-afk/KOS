@@ -25,7 +25,8 @@ const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '22b_Competen
   '51_CourseYearBuilder.js'].map(S);
 const EXPOSE = ['checkCourseData', 'previewUpcomingLessons', 'buildUpcomingLessonPlan_', 'onLessonContextSubmit_',
   'resolveUnitForCourseDate_', 'getWarmUpAnchor_', '_loadPacingGuide_', 'installLessonPlanTrigger',
-  'removeLessonPlanTrigger', 'CYB_NO_SCHOOL_2026_27', 'COURSE_DATA_EXPECTED', 'PG_HEADERS'];
+  'removeLessonPlanTrigger', 'CYB_NO_SCHOOL_2026_27', 'COURSE_DATA_EXPECTED', 'PG_HEADERS',
+  'importCompetencyRegistry', 'competencyIdText_'];
 
 const TEACHER = 'teacher@ccpsnet.net';
 const pad = (n) => String(n).padStart(2, '0');
@@ -167,6 +168,57 @@ test('checkCourseData: names what is missing', () => {
   const r = exported.checkCourseData();
   assert.equal(r.ok, false);
   assert.ok(r.problems.some((p) => /CompetencyRubrics: 8175 has 108 row\(s\), expected 113/.test(p)), r.problems.join('; '));
+});
+
+// ── competency IDs Sheets stores as dates ─────────────────────────────
+// Sheets reads "8175-1".."8175-12" as a year and month (seen live
+// 2026-10-06: checkCourseData counted 101/96, and the registry import
+// appended those 24 IDs again). The sandbox doesn't auto-convert, so these
+// tests put the Date in the cell the way Sheets leaves it.
+const sheetsDate = (id) => { const [y, m] = id.split('-').map(Number); return new Date(y, m - 1, 1); };
+const dateShaped = (id) => /^\d{4}-(?:[1-9]|1[0-2])$/.test(id);
+
+test('competencyIdText_: a Date cell reads back as its competency ID', () => {
+  const { exported } = setup();
+  assert.equal(exported.competencyIdText_(sheetsDate('8175-1')), '8175-1');
+  assert.equal(exported.competencyIdText_(sheetsDate('8177-12')), '8177-12');
+  assert.equal(exported.competencyIdText_(' 8175-45 '), '8175-45');
+  assert.equal(exported.competencyIdText_(''), '');
+});
+
+test('checkCourseData: counts competency IDs that Sheets stored as dates', () => {
+  const { exported, ss } = setup();
+  ['CompetencyRegistry', 'CompetencyRubrics'].forEach((tab) => {
+    ss.getSheetByName(tab).rows.slice(1).forEach((r) => { if (dateShaped(String(r[0]))) r[0] = sheetsDate(r[0]); });
+  });
+  assert.equal(ss.getSheetByName('CompetencyRegistry').rows.filter((r) => r[0] instanceof Date).length, 24);
+  const r = exported.checkCourseData();
+  assert.equal(r.ok, true, r.problems.join('; '));
+});
+
+test('importCompetencyRegistry: turns Date IDs back into text and removes the rows a past import appended again', () => {
+  const { exported, ss, sandbox, props } = setup();
+  const reg = ss.getSheetByName('CompetencyRegistry');
+  // The live state: the 24 date-shaped IDs stored as Dates, then appended
+  // a second time (also as Dates) by an import that didn't recognize them.
+  const mangled = reg.rows.slice(1).filter((r) => dateShaped(String(r[0])));
+  mangled.forEach((r) => { r[0] = sheetsDate(r[0]); });
+  mangled.forEach((r) => reg.appendRow([new Date(r[0].getTime())].concat(r.slice(1))));
+  assert.equal(reg.getLastRow() - 1, 245);
+
+  const csv = fs.readFileSync(path.join(ROOT, 'cas-ccps/data/CompetencyRegistry.csv'), 'utf8');
+  const folder = sandbox.DriveApp.getFolderById(props.getProperty('TEACHER_FOLDER_ID'));
+  folder.files.push({ name: 'CompetencyRegistry.csv', getName: () => 'CompetencyRegistry.csv',
+    getId: () => 'csv-1', getBlob: () => ({ getDataAsString: () => csv }) });
+
+  exported.importCompetencyRegistry();
+
+  const ids = reg.rows.slice(1).map((r) => r[0]);
+  assert.equal(ids.length, 221, 'the 24 re-appended rows are gone and nothing new is appended');
+  assert.ok(ids.every((id) => typeof id === 'string'), 'every ID is text');
+  assert.equal(new Set(ids).size, 221);
+  assert.deepEqual(ids.slice().sort(), REGISTRY.slice(1).map((r) => r[0]).sort());
+  assert.equal(exported.checkCourseData().ok, true);
 });
 
 // ── pacing guide reads ────────────────────────────────────────────────

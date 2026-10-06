@@ -2448,3 +2448,25 @@ for course data, lessons, rubrics, roster and cartridges), the FERPA data map
 (NoSchoolDays, unit rubrics and cartridges, drafted lessons), README's script
 inventory, the notebook reference sources and REGISTRY_SHEET_SETUP (marked out
 of date).
+
+## Competency IDs that Sheets stored as dates, 2026-10-06
+
+The first live `importCourseData()` (2026-10-06) reported "Course data
+INCOMPLETE": 101/96 registry and rubric rows against 113/108, while the
+rubric import itself counted 113/108. Sheets reads `8175-1` through
+`8175-12` (and 8177's) as a year and month and stores a Date, so 24 of the
+221 IDs came back from `getValues()` as Dates. The check didn't count them,
+and the registry import, not recognizing them as existing, appended the 24
+again (221 → 245 rows).
+
+- `competencyIdText_()` (`32_CompetencyRubricImporter.js`) reads a
+  competency_id cell as text, turning a Date back into `YYYY-M`.
+  `checkCourseData()` (51), the rubric validator and `getRubricForCompetency_`
+  use it.
+- Both importers format the ID column as text before writing.
+- `importCompetencyRegistry()` (22b) turns Date ID cells back into text and
+  deletes a later row whose ID is already present, so one re-run of
+  `importCourseData()` repairs a live registry.
+
+Tests: `tests/cas-ccps/course-year-builder.test.js` (the 24 IDs as Dates,
+and the 245-row registry repaired to 221).
