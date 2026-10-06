@@ -24,6 +24,11 @@
  * Config ID comes from the ROSTER_CONFIG_ID Script Property (Project
  * Settings → Script properties). An ID passed in wins over the property.
  *
+ * Only students whose class period (ClassSchedule) is in the assignment's
+ * course (its TeacherMatrix CourseName, 8175 or 8177) are enrolled: one run
+ * per course, each with that course's assignment. A student who already has
+ * a Ledger row for this assignment is skipped.
+ *
  * Each student is set up by intakeStudent_() (02), the same function the
  * intake form uses: their own copy of the master template for that LIVE
  * assignment, shared with them and the assigning teacher, and a Ledger row
@@ -79,6 +84,15 @@ function enrollCanvasRoster_(opts) {
     Logger.log("[S52] " + result.message);
     return result;
   }
+  // Which course this assignment is for. Without it every export's students
+  // would be enrolled in one course's assignment (seen in review 2026-10-06).
+  const assignmentCourse = _cybCourseCode_(assignment.courseName);
+  if (!assignmentCourse) {
+    result.message = "Can't tell which course " + configId + " is for: its TeacherMatrix CourseName is \"" +
+      (assignment.courseName || "") + "\". Nothing enrolled.";
+    Logger.log("[S52] " + result.message);
+    return result;
+  }
   const teacherEmail = (assignment.teacherEmail || cfg.teacherEmail || "").toLowerCase();
   // From the assignment's MatrixRegistry row: TEACHER_NAME is set in the
   // Unified Manual project, so it is usually blank here.
@@ -111,6 +125,10 @@ function enrollCanvasRoster_(opts) {
 
   // Accounts already in the Ledger for this teacher and term.
   const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  // inTerm: this teacher's students this term (for the "left the course"
+  // report). enrolled: those with a row for THIS assignment, so the next
+  // unit's assignment can be imported for the same students.
+  const inTerm = {};
   const enrolled = {};
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (ledger && ledger.getLastRow() > 1) {
@@ -118,10 +136,12 @@ function enrollCanvasRoster_(opts) {
       if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
       if (String(r[12] || "").trim() === "ARCHIVED") return;
       if (term && String(r[18] || "").trim() && String(r[18]).trim() !== term) return;
-      enrolled[String(r[1] || "").trim().toLowerCase()] = true;
+      const account = String(r[1] || "").trim().toLowerCase();
+      inTerm[account] = true;
+      if (String(r[2] || "").trim() === configId) enrolled[account] = true;
     });
   }
-  result.notInCanvas = Object.keys(enrolled).filter(a => !seenAccounts[a]);
+  result.notInCanvas = Object.keys(inTerm).filter(a => !seenAccounts[a]);
 
   const unmapped = {};
   let timedOut = false;
@@ -135,6 +155,10 @@ function enrollCanvasRoster_(opts) {
     if (!period) {
       unmapped[s.section] = true;
       result.skipped.push(Object.assign(row, { reason: "SECTION_NOT_MAPPED" }));
+      continue;
+    }
+    if (_cybCourseCode_(courseByPeriod[period]) !== assignmentCourse) {
+      result.skipped.push(Object.assign(row, { reason: "OTHER_COURSE", period: period }));
       continue;
     }
     if (enrolled[s.account]) {

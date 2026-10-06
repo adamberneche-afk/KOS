@@ -299,6 +299,7 @@ function fetchAssignment_(cfg, unitConfigId) {
               unitName:         String(data[i][1]).trim(),
               tier:             String(data[i][2]).trim(),
               promptTemplateId: String(data[i][12]).trim(),
+              courseName:       String(data[i][14] || "").trim(),
               // The matrix's owner is the teacher who assigned the work.
               // This, not the form's student-typed "Teacher Email", decides
               // who may see, comment on and grade the student's doc.
