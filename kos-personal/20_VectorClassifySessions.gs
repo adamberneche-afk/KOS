@@ -76,6 +76,9 @@ const VCS_BACKFILL_BATCH = 3;
 const VCS_IN_FLIGHT = ['PENDING_FLOW', 'STUDIO_ACTIVE', 'FLOW_COMPLETE'];
 const VCS_BACKFILL_TRIGGER_HANDLER = 'runClassifyBackfillTrigger';
 const VCS_BACKFILL_TRIGGER_MINUTES = 15;
+// A session UID's content hash: LOG-{hash} or the older LOG-{epoch}-{hash}
+// (same shape as VMR_LOG_UID_RE in 21_VectorMatrixRepair.gs).
+const VCS_LOG_HASH_RE = /^LOG-(?:\d{12,}-)?([0-9a-f]{8})$/;
 
 // ================================================================
 // UIDS
@@ -409,6 +412,19 @@ function queueVectorClassifyBackfill(opts) {
   const ordered = Object.keys(sessions).map(function (k) { return sessions[k]; })
     .sort(function (a, b) { return new Date(a.firstAt) - new Date(b.firstAt); });
 
+  // One session per content hash. A copy the duplicate repair resolved while
+  // its chunks were archived has no DUPLICATE row to find (the repair only
+  // marks live rows), so without this the backfill classifies it again once
+  // its matrix row is gone. Seen 2026-10-06: LOG-1789059068989-edd1075a came
+  // back next to LOG-1789058964096-edd1075a.
+  const hashOwner = {};
+  const claimHash = function (uid) {
+    const h = VCS_LOG_HASH_RE.exec(uid);
+    if (h && !hashOwner[h[1]]) hashOwner[h[1]] = uid;
+  };
+  Object.keys(classified).forEach(claimHash);
+  Object.keys(hasParts).forEach(claimHash);
+
   const skipped = [];
   const eligible = [];
   ordered.forEach(function (s) {
@@ -416,6 +432,10 @@ function queueVectorClassifyBackfill(opts) {
     if (duplicate[s.sessionUid])  return skipped.push({ sessionUid: s.sessionUid, reason: 'DUPLICATE' });
     if (classified[s.sessionUid]) return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_CLASSIFIED' });
     if (hasParts[s.sessionUid])   return skipped.push({ sessionUid: s.sessionUid, reason: 'ALREADY_QUEUED' });
+    const hash = VCS_LOG_HASH_RE.exec(s.sessionUid);
+    if (hash && hashOwner[hash[1]] && hashOwner[hash[1]] !== s.sessionUid) {
+      return skipped.push({ sessionUid: s.sessionUid, reason: 'DUPLICATE_HASH: same content as ' + hashOwner[hash[1]] });
+    }
     s.chunks.sort(function (a, b) { return a.n - b.n; });
     // Every chunk must be here, live or archived: classifying the chunks
     // that happen to remain would mark a partial session done for good.
@@ -435,6 +455,7 @@ function queueVectorClassifyBackfill(opts) {
         missing.map(function (c) { return c.uid; }).join(', ') });
     }
     s.text = s.chunks.map(function (c) { return sourceByUid[c.uid]; }).join('\n\n');
+    claimHash(s.sessionUid);
     eligible.push(s);
   });
 

@@ -1,6 +1,26 @@
 # KOS Changelog
 
 
+### The classify backfill never classifies a second copy of a session (2026-10-06)
+
+The primer reported a duplicate group again on 2026-10-06:
+`previewDuplicateSessions()` found `LOG-1789059068989-edd1075a` back next
+to `LOG-1789058964096-edd1075a`. The 2026-10-03 repair had removed that
+copy's matrix row, but its chunks were archived by then, so no row was
+marked DUPLICATE. Once the backfill read archived chunks (2026-10-05), it
+saw an unclassified session and classified it again.
+
+- **`queueVectorClassifyBackfill()` (`20_VectorClassifySessions.gs`)** keeps
+  one session per content hash. It skips a session as `DUPLICATE_HASH` when
+  another copy is classified, has parts, or is earlier in the same run.
+  Test: `vector-classify-sessions.test.js`.
+- **Router:** open decisions come only from the `KOS_OPEN_DECISIONS` source.
+  A run that couldn't retrieve the primer listed decisions from a Drive
+  search under that name.
+
+To clear the live duplicate after pushing: `applyDuplicateSessions()`.
+
+
 ### V6.0 draft 2: CT-01 passes; two router rules (2026-10-06)
 
 `@Startup` with the three chips passed CT-01 twice on 2026-10-06: the
