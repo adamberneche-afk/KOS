@@ -79,6 +79,16 @@ are fixed, and the published text is a test fixture
 (`tests/leaderhub/fixtures/ccps-2026-27-calendar.txt`); the consistency of
 the built-in dates is `tests/leaderhub/school-calendar-defaults.test.js`.
 
+**2026-10-06: last spring's sample deadlines are retired.** Eight built-in
+deadlines from spring 2026 (four "Synergy Grades — 2-Week Update Due", the
+field-trip form, WBL agreements, SBE sign-off and the E-Sports roster lock)
+never rolled forward and sat at the top of the dashboard as "198d OVERDUE".
+They are no longer defaults, and `dropRetiredDefaultDeadlines()` (`src/10`)
+removes a saved copy on load and on server sync, but only while it still has
+its original date, so one you re-dated stays. Synergy's 2-week cadence is
+still tracked in Settings as a 14-day recurring check. PLC meetings are
+attendance records and stay.
+
 The DECA season is Virginia DECA's 2026-27 calendar too: the season
 pipeline (`DECA_SEASON_DEFAULT`, `src/07`: Camp DECA, Power Trip, DLC, SLC
 registration/testing/conference, ICDC registration/payment, ICDC Anaheim

@@ -505,7 +505,9 @@ async function lhRefreshDataDomainsFromServer_() {
       if (typeof refreshNextAction === 'function') refreshNextAction();
     },
     deadlines: arr => {
-      DEADLINES = arr;
+      // The server copy can still hold last spring's built-ins
+      // (RETIRED_DEFAULT_DEADLINES, src/10).
+      DEADLINES = typeof dropRetiredDefaultDeadlines === 'function' ? dropRetiredDefaultDeadlines(arr) : arr;
       localStorage.setItem('lh_deadlines', JSON.stringify(DEADLINES));
       if (typeof renderDeadlines === 'function') renderDeadlines();
     },

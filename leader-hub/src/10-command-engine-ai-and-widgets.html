@@ -1631,26 +1631,32 @@ const CCPS_CALENDAR_DEADLINES_DEFAULT = [
   { id:'cal_er_jun3',  title:'3-Hr Early Release (Jun 3)',                   date:'2027-06-03', role:'teach' },
   { id:'cal_q4_end',   title:'End of Q4 / Last Day of School — 3-Hr Early Release (Jun 4)', date:'2027-06-04', role:'teach' },
 ];
+// Built-in sample deadlines from spring 2026. They never rolled forward, so
+// on a saved list they sat at the top of the dashboard as "198d OVERDUE"
+// (seen live 2026-10-06). A saved copy is dropped only while it still has
+// its original date: one the operator re-dated is theirs. dl_plc_* stay:
+// they are meeting attendance records (_isActionable).
+const RETIRED_DEFAULT_DEADLINES = {
+  dl_syn1: '2026-03-21', dl_syn2: '2026-04-04', dl_syn3: '2026-04-18', dl_syn4: '2026-05-02',
+  dl5: '2026-04-22', dl2: '2026-03-31', dl4: '2026-04-15', dl3: '2026-04-07',
+};
+function dropRetiredDefaultDeadlines(arr) {
+  return (Array.isArray(arr) ? arr : []).filter(d =>
+    !(d && Object.prototype.hasOwnProperty.call(RETIRED_DEFAULT_DEADLINES, d.id) &&
+      RETIRED_DEFAULT_DEADLINES[d.id] === d.date));
+}
 let DEADLINES = LS.get('lh_deadlines', [
   // ── CTE PLC Monthly Meetings ─────────────────────────────────────────────
   { id:'dl_plc_mar',   title:'CTE PLC — Monthly Meeting',                    date:'2026-03-19', role:'meeting' },
   { id:'dl_plc_apr',   title:'CTE PLC — Monthly Meeting',                    date:'2026-04-16', role:'meeting' },
   { id:'dl_plc_may',   title:'CTE PLC — Monthly Meeting',                    date:'2026-05-14', role:'meeting' },
-  // ── Synergy Grading Cadence (2-week required update cycle) ─────────────────
-  { id:'dl_syn1',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-03-21', role:'teach' },
-  { id:'dl_syn2',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-04-04', role:'teach' },
-  { id:'dl_syn3',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-04-18', role:'teach' },
-  { id:'dl_syn4',      title:'Synergy Grades — 2-Week Update Due',           date:'2026-05-02', role:'teach' },
   ...DECA_DEADLINES_DEFAULT.map(d => Object.assign({}, d)),
-  // ── Field Trips ────────────────────────────────────────────────────────────
-  { id:'dl5',          title:'Field Trip Form Submission Deadline',           date:'2026-04-22', role:'trips' },
-  // ── WBL / Store ────────────────────────────────────────────────────────────
-  { id:'dl2',          title:'WBL Training Agreements Due to CEC',           date:'2026-03-31', role:'store' },
   ...CCPS_CALENDAR_DEADLINES_DEFAULT.map(d => Object.assign({}, d)),
-  { id:'dl4',          title:'SBE Business Plan — Principal Sign-Off',       date:'2026-04-15', role:'store' },
-  // ── E-Sports ───────────────────────────────────────────────────────────────
-  { id:'dl3',          title:'E-Sports Playoff Roster Lock',                 date:'2026-04-07', role:'esports' },
 ]);
+{
+  const kept = dropRetiredDefaultDeadlines(DEADLINES);
+  if (kept.length !== DEADLINES.length) { DEADLINES = kept; LS.set('lh_deadlines', DEADLINES); }
+}
 
 function daysUntil(dateStr) {
   const t = new Date(dateStr+'T23:59:59'), n = new Date();
