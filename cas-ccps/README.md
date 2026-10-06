@@ -273,10 +273,12 @@ the only way in used to be the intake form. `52_CanvasRosterImport.js`
    its name from the `TEACHER_FOLDER_ID` folder if Central Ledger has that
    property, otherwise from anywhere in your own Drive (the setup wizard
    writes `TEACHER_*` properties into the Unified Manual project, not this one).
-2. `previewRosterEnrollment("<Config ID>")` against a LIVE assignment lists
+2. Set the Script Property `ROSTER_CONFIG_ID` to a LIVE assignment's Config ID
+   (the editor's Run button can't pass an argument; an ID passed in wins).
+   Then `previewRosterEnrollment()` against that assignment lists
    who would be enrolled and fills the `CanvasSectionMap` tab with every
    Canvas section; put each section's class period next to it.
-3. `applyRosterEnrollment("<Config ID>")` enrolls each student through
+3. `applyRosterEnrollment()` enrolls each student through
    `intakeStudent_()` (02), the same function the intake form uses: their
    doc for that assignment, shared with them and you, and a Ledger row.
 

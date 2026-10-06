@@ -169,7 +169,20 @@ test('an unknown or not-LIVE Config ID enrolls no one', () => {
   const r = exported.applyRosterEnrollment('NOPE');
   assert.match(r.message, /No LIVE assignment has Config ID NOPE/);
   assert.equal(calls.length, 0);
-  assert.match(exported.previewRosterEnrollment('').message, /Pass the Assignment Config ID/);
+  assert.match(exported.previewRosterEnrollment('').message, /Set the ROSTER_CONFIG_ID Script Property/);
+});
+
+test('run from the editor with no argument, the Config ID comes from ROSTER_CONFIG_ID', () => {
+  const { exported, sandbox, calls } = setup({ sectionMap: MAPPED });
+  const props = sandbox.PropertiesService.getScriptProperties();
+  assert.match(exported.previewRosterEnrollment().message, /Set the ROSTER_CONFIG_ID Script Property/);
+
+  props.setProperty('ROSTER_CONFIG_ID', ' CFG-1 ');
+  assert.match(exported.previewRosterEnrollment().message, /^DRY RUN: 3 student\(s\) would be enrolled in .*\(CFG-1\)/);
+  assert.match(exported.previewRosterEnrollment({ triggerUid: 'x' }).message, /\(CFG-1\)/, 'an event object is not an ID');
+  assert.match(exported.applyRosterEnrollment('NOPE').message, /Config ID NOPE/, 'a passed ID wins');
+  assert.equal(exported.applyRosterEnrollment().enrolled, 3);
+  assert.equal(calls.length, 3);
 });
 
 test('a missing master template stops the run at the first student', () => {

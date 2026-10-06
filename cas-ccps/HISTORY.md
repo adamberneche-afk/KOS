@@ -2470,3 +2470,11 @@ again (221 → 245 rows).
 
 Tests: `tests/cas-ccps/course-year-builder.test.js` (the 24 IDs as Dates,
 and the 245-row registry repaired to 221).
+
+## The roster import runs from the editor, 2026-10-06
+
+`previewRosterEnrollment()` run from the Apps Script editor stopped at
+"Pass the Assignment Config ID": the Run button can't pass an argument.
+With no ID passed, script 52 now reads the `ROSTER_CONFIG_ID` Script
+Property; an ID passed in still wins. Test:
+`tests/cas-ccps/canvas-roster-import.test.js`.
