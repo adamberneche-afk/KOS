@@ -352,7 +352,7 @@ calls through `google.script.run` (`browser-entry-points.test.js`); `tests/kos-p
 custom steps (Curator and VECTOR_CLASSIFY flows) and the name-based Drive
 lookups (`asset-lookup-hardening.test.js`: trashed items skipped,
 duplicates refused rather than guessed, working IDs never replaced), the
-batched requeue of terminal staging rows (`staging-requeue.test.js`), the audit gate rejecting a hollow `PASSED` with an empty `trace_log` (`audit-gate.test.js`), and
+batched requeue of terminal staging rows (`staging-requeue.test.js`), the nightly finished-rows-only staging archive (`staging-archive.test.js`), the audit gate rejecting a hollow `PASSED` with an empty `trace_log` (`audit-gate.test.js`), and
 per-session vector classification and its backfill
 (`vector-classify-sessions.test.js`), the matrix repair (one session per row, decay at read time, duplicate sessions, rederive: `vector-matrix-repair.test.js`), the notebook briefing docs and `DECISION_REGISTER` (stable doc IDs, stamps that never advance on a failed run, the primer's Data Quality block: `briefing-docs.test.js`), the notebook persona editions (core block first, the persona named in every heading, the canonical text otherwise unchanged: `notebook-personas.test.js`), the V6.0 router (under the 10,000-character instructions cap, every must-fire rule present, the V5.8 Morning Cache and BRAIN_TRUST_INDEX query gone, the Turn Loop Reference sections it points to: `rtp-router-v6.test.js`), incubator decay (`incubator-decay.test.js`),
 the size-capped error digest (`error-digest.test.js`),

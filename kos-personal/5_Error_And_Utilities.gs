@@ -1898,17 +1898,7 @@ function archiveStagingPipeline() {
   try {
     const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
     const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
-    let   archive = ss.getSheetByName('STAGING_ARCHIVE');
-
-    if (!archive) {
-      archive = ss.insertSheet('STAGING_ARCHIVE');
-      archive.appendRow([
-        'Archived_At','Timestamp','Payload_UID','Payload_Type',
-        'Doc_URL','File_ID','Status','Retry_Count',
-      ]);
-      archive.getRange('1:1').setFontWeight('bold').setBackground('#f0e2d5');
-      archive.setFrozenRows(1);
-    }
+    const archive = _stagingArchiveSheet_(ss);
 
     // These two groups are both "terminal" (never revisited by the
     // pipeline) but very differently worth knowing about: succeeded rows
@@ -1918,23 +1908,12 @@ function archiveStagingPipeline() {
     // "Archive completed queue rows" silently sweeping up never-shown
     // failures with zero indication was the actual problem, not the
     // archiving itself.
-    const succeededStatuses = ['PROCESSED','INTAKE_PROCESSED','PARTITIONED','CONSOLIDATED'];
+    const succeededStatuses = STAGING_SUCCEEDED_STATUSES;
     const failedStatuses    = TERMINAL_FAILED_STATUSES;
-    const terminal = succeededStatuses.concat(failedStatuses);
-    const data = staging.getDataRange().getValues();
-    const now  = new Date();
-    let   done = 0, succeeded = 0, failed = 0;
-
-    // Reverse iteration: row deletions don't shift unprocessed indices
-    for (let i = data.length - 1; i >= 1; i--) {
-      const rowStatus = String(data[i][CFG.STAGING_COLS.STATUS]);
-      if (terminal.some(s => rowStatus.startsWith(s))) {
-        archive.appendRow([now, ...data[i]]);
-        staging.deleteRow(i + 1);
-        done++;
-        if (failedStatuses.some(s => rowStatus.startsWith(s))) failed++; else succeeded++;
-      }
-    }
+    const r = _moveStagingRowsToArchive_(staging, archive, succeededStatuses.concat(failedStatuses));
+    const done = r.moved.length;
+    const failed = r.moved.filter(s => failedStatuses.some(f => s.startsWith(f))).length;
+    const succeeded = done - failed;
 
     if (done > 0) SpreadsheetApp.flush();
     console.log('[archiveStagingPipeline] Archived ' + done + ' row(s) (' + succeeded + ' succeeded, ' + failed + ' failed intake).');
@@ -1948,6 +1927,97 @@ function archiveStagingPipeline() {
   }
 }
 
+
+/**
+ * Nightly trigger handler (setupAllTriggers, 02:00). Moves only the rows
+ * that finished successfully (STAGING_SUCCEEDED_STATUSES) to
+ * STAGING_ARCHIVE. Unlike archiveStagingPipeline(), it leaves every failed
+ * row in place: requeueStagingRows() and checkVectorClassifySessions() read
+ * STAGING_PIPELINE only, so a STUDIO_TIMEOUT part archived on a timer could
+ * no longer be requeued, and its session's matrix row would stay
+ * incomplete. DUPLICATE rows stay too; the duplicate finder, the matrix
+ * repair and the governance count look for them in STAGING_PIPELINE.
+ *
+ * Nothing archived STAGING_PIPELINE except the web app button, so the
+ * sheet had reached ~400 rows, nearly all PROCESSED (2026-10-06).
+ *
+ * @returns {{success: boolean, archived: number, remaining: number, busy?: boolean, message?: string}}
+ */
+function archiveFinishedStagingRows() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(15000)) {
+    console.log('[archiveFinishedStagingRows] Script lock busy; next run picks it up.');
+    return { success: true, busy: true, archived: 0, remaining: 0 };
+  }
+  try {
+    const ss      = _getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false);
+    const staging = _getOrCreateSheet(ss, CFG.STAGING_SHEET);
+    const r = _moveStagingRowsToArchive_(staging, _stagingArchiveSheet_(ss), STAGING_SUCCEEDED_STATUSES);
+    if (r.moved.length > 0) SpreadsheetApp.flush();
+    console.log('[archiveFinishedStagingRows] Archived ' + r.moved.length + ' finished row(s); ' +
+      r.remaining + ' row(s) remain in ' + CFG.STAGING_SHEET + '.');
+    return { success: true, archived: r.moved.length, remaining: r.remaining };
+  } catch (e) {
+    _reportError('archiveFinishedStagingRows', e, null);
+    return { success: false, archived: 0, remaining: 0, message: e.message };
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Statuses that mean a staging row finished successfully.
+const STAGING_SUCCEEDED_STATUSES = ['PROCESSED', 'INTAKE_PROCESSED', 'PARTITIONED', 'CONSOLIDATED'];
+
+function _stagingArchiveSheet_(ss) {
+  let archive = ss.getSheetByName('STAGING_ARCHIVE');
+  if (!archive) {
+    archive = ss.insertSheet('STAGING_ARCHIVE');
+    archive.appendRow([
+      'Archived_At','Timestamp','Payload_UID','Payload_Type',
+      'Doc_URL','File_ID','Status','Retry_Count',
+    ]);
+    archive.getRange('1:1').setFontWeight('bold').setBackground('#f0e2d5');
+    archive.setFrozenRows(1);
+  }
+  return archive;
+}
+
+/**
+ * Moves every STAGING_PIPELINE row whose status starts with one of
+ * `statuses` to STAGING_ARCHIVE, keeping their order. The caller holds the
+ * script lock. One setValues() for the archive and one deleteRows() per
+ * contiguous run, not one appendRow() and deleteRow() per row: a few
+ * hundred rows one call at a time ran close to the 6-minute ceiling.
+ *
+ * @returns {{moved: string[], remaining: number}} moved = each moved row's status
+ */
+function _moveStagingRowsToArchive_(staging, archive, statuses) {
+  const data = staging.getDataRange().getValues();
+  const now  = new Date();
+  const rowsToMove = [];   // 1-based sheet rows, ascending
+  const toWrite = [];
+  const moved = [];
+  for (let i = 1; i < data.length; i++) {
+    const rowStatus = String(data[i][CFG.STAGING_COLS.STATUS]);
+    if (!statuses.some(s => rowStatus.startsWith(s))) continue;
+    rowsToMove.push(i + 1);
+    toWrite.push([now].concat(data[i]));
+    moved.push(rowStatus);
+  }
+  if (toWrite.length === 0) return { moved: moved, remaining: Math.max(0, data.length - 1) };
+
+  archive.getRange(archive.getLastRow() + 1, 1, toWrite.length, toWrite[0].length).setValues(toWrite);
+
+  // Delete from the bottom up, so earlier row numbers stay valid.
+  let end = rowsToMove.length - 1;
+  while (end >= 0) {
+    let start = end;
+    while (start > 0 && rowsToMove[start - 1] === rowsToMove[start] - 1) start--;
+    staging.deleteRows(rowsToMove[start], end - start + 1);
+    end = start - 1;
+  }
+  return { moved: moved, remaining: data.length - 1 - moved.length };
+}
 
 /**
  * Clears routing pointer cache from PropertiesService while
