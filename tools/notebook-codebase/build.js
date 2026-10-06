@@ -5,16 +5,18 @@
 // about in plain language. Output: meta/notebook-codebase/*.md.
 //
 //   node tools/notebook-codebase/build.js           write the sources
-//   node tools/notebook-codebase/build.js --check   exit 1 if any is stale
+//   node tools/notebook-codebase/build.js --check   exit 1 if any differs from disk
 //
 // WHY A SCRIPT. cas-ccps/docs/notebooklm-sources/ was converted by hand and
 // its README says it goes stale silently; this repo's answer to that is a
 // generator (tools/kos-personal/build-notebook-personas.js and others).
-// The output is committed so it arrives in the zip of main the operator
-// downloads, but it is NOT held to staleness by npm test: it would make
-// every code change fail CI until regenerated. Each source carries a
-// content fingerprint instead, and the INDEX lists them, so a notebook copy
-// can be compared with the repo, and --check says which are stale.
+// The output is NOT committed (.gitignore): at 8+ MB it bloated every
+// clone, and a committed copy goes stale with every code change. The
+// operator runs this in the unzipped copy of main (no .git needed; the file
+// list falls back to a walk of the folder) and uploads what it writes. Each
+// source carries a content fingerprint, and the INDEX lists them, so a
+// notebook copy can be compared with a fresh build: --check says which
+// changed.
 //
 // HOW THE SOURCES ARE CUT. A notebook retrieves passages, not whole files,
 // so every file is its own section whose heading names the source and the
@@ -95,9 +97,34 @@ const SOURCES = [
     test: (p) => /^(meta|drive-curation)\//.test(p) || /^[^/]+\.md$/.test(p) },
 ];
 
+// Tracked files from git when there is a checkout; otherwise (a zip of
+// main has no .git) every file on disk, minus what .gitignore keeps out of
+// git. Both give the same list on a clean copy of main.
+const UNTRACKED = /(^|\/)(\.git|node_modules|\.clasp-build)(\/|$)|(^|\/)(\.clasp\.json|\.clasprc\.json|\.env(\..*)?)$|^cas-ccps\/clasp\/local\//;
+
+function walk(dir, out) {
+  for (const entry of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
+    const rel = dir ? dir + '/' + entry.name : entry.name;
+    if (UNTRACKED.test(rel) && rel !== '.env.example' && !rel.endsWith('/.env.example')) continue;
+    if (entry.isDirectory()) walk(rel, out);
+    else if (entry.isFile()) out.push(rel);
+  }
+  return out;
+}
+
+function repoFiles() {
+  try {
+    const top = execFileSync('git', ['rev-parse', '--show-toplevel'],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    if (path.resolve(top) === path.resolve(ROOT)) {
+      return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' }).split('\n').filter(Boolean);
+    }
+  } catch (e) { /* no git: fall through to the walk */ }
+  return walk('', []);
+}
+
 function listFiles() {
-  return execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
-    .split('\n').filter(Boolean)
+  return repoFiles()
     .filter((p) => TEXT_EXT.test(p))
     .filter((p) => !ALWAYS_EXCLUDE.some((re) => re.test(p)))
     .sort();
@@ -258,5 +285,5 @@ function main() {
   console.log((stale ? 'Wrote ' + stale : 'No changes to') + ' source(s) in meta/notebook-codebase/.');
 }
 
-module.exports = { build, demote, fence, htmlToText, SOURCES, WORD_CAP };
+module.exports = { build, demote, fence, htmlToText, listFiles, walk, SOURCES, WORD_CAP };
 if (require.main === module) main();
