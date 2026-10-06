@@ -72,6 +72,19 @@ It is never called speculatively. It never makes decisions for the user. It hand
 
 The FERPA boundary is non-negotiable: student names never leave the browser. Anonymization happens before every AI call. This is not a setting — it is structural.
 
+> **⚠ Not true of the shipped app — read this before relying on the
+> sentence above.** All five AI features (Brag Board, Archive Insights,
+> WBL Program Summary, Lesson Plan Helper, Email Composer) send free-text
+> content to Gemini **with real student names by default**. Substitution
+> is opt-in: upload a roster CSV under Settings → "Student ID Lookup — AI
+> Privacy" and matched names are swapped for a CCPS ID before the request
+> leaves the browser; names not on the roster still go through as-is. The
+> README's "Names by default, with an opt-in substitution path" section
+> and `LEADERHUB_AI_FLOW_SETUP.md` give the rationale (personal
+> professional communication, not education records). Student records
+> are also no longer browser-only: the deployed Web App syncs them to one
+> private, owner-only Spreadsheet (`Data.gs`).
+
 ### 5. The system trusts the user's professional judgment
 
 There are no confirmation dialogs before every action. There is no "are you sure?" on most deletions. The app is built for an adult professional who knows what they're doing and needs the tool to move at the speed of their thinking.
@@ -126,6 +139,12 @@ At any point — before a meeting with Ms. Green, before a check-in with adminis
 ## What This Is Not
 
 LeaderHub is not a gradebook. It does not replace Synergy or Canvas — it tracks whether those systems are current. It is not a communication platform — it drafts emails and opens the mail client. It is not a student-facing tool. It is not designed to scale to other teachers or other schools.
+
+> **⚠ Partly stale** — the shipped app now has a server (an Apps Script
+> Web App), an owner sign-in gate (`Code.gs`'s `OWNER_EMAIL` check), a
+> private sync spreadsheet (`Data.gs`), and Organization Sync for sharing
+> an org with a co-advisor (`EmailBridge.gs`). It is still built for one
+> owner. See `README.md`'s "Status".
 
 Every shortcut in its architecture — single HTML file, localStorage persistence, no server, no auth — is a deliberate choice made in service of the specific constraint that this tool needs to work immediately, with zero IT involvement, in a CCPS browser, for one person.
 
