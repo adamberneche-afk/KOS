@@ -27,9 +27,12 @@
  * Config ID comes from the ROSTER_CONFIG_ID Script Property (Project
  * Settings → Script properties). An ID passed in wins over the property.
  *
- * Only students whose class period (ClassSchedule) is in the assignment's
- * course (its TeacherMatrix CourseName, 8175 or 8177) are enrolled: one run
- * per course, each with that course's assignment. A student who already has
+ * Only students whose section is in the assignment's course (its
+ * TeacherMatrix CourseName, 8175 or 8177) are enrolled: one run per course,
+ * each with that course's assignment. The section's own name decides the
+ * course ("...MARKETING... [74-C8175H-P01]"), since both courses can meet in
+ * one period; a section without one takes its period's course (ClassSchedule).
+ * A section's period defaults to its code's "-P01" suffix. A student who already has
  * a Ledger row for this assignment is skipped.
  *
  * Each student is set up by intakeStudent_() (02), the same function the
@@ -99,7 +102,7 @@ function prepareRosterSections() {
   Object.keys(bySection).sort().forEach(name => {
     const s = bySection[name];
     s.period = sectionMap[name] || "";
-    s.course = s.period ? (_cybCourseCode_(courseByPeriod[s.period]) || "?") : "";
+    s.course = s.period ? (_criSectionCourse_(name, s.period, courseByPeriod).code || "?") : "";
     result.students += s.students;
     if (!s.period) result.unmapped.push(name);
     result.sections.push(s);
@@ -219,7 +222,8 @@ function enrollCanvasRoster_(opts) {
       result.skipped.push(Object.assign(row, { reason: "SECTION_NOT_MAPPED" }));
       continue;
     }
-    if (_cybCourseCode_(courseByPeriod[period]) !== assignmentCourse) {
+    const course = _criSectionCourse_(s.section, period, courseByPeriod);
+    if (course.code !== assignmentCourse) {
       result.skipped.push(Object.assign(row, { reason: "OTHER_COURSE", period: period }));
       continue;
     }
@@ -232,7 +236,7 @@ function enrollCanvasRoster_(opts) {
     if (!apply) continue;
     if (Date.now() - started > CRI_TIME_BUDGET_MS) { timedOut = true; break; }
 
-    const courseName = courseByPeriod[period] || "";
+    const courseName = course.name;
     const res = intakeStudent_(cfg, {
       googleId: s.account, studentName: s.name, block: period, className: courseName,
       subject: courseName, courseName: courseName, period: period,
@@ -323,7 +327,8 @@ function _criParseGradebook_(text) {
 
 /**
  * { "<Canvas section>": "<period>" } from the CanvasSectionMap tab, adding a
- * row (period blank) for every section seen that isn't there yet.
+ * row for every section seen that isn't there yet. The period comes from the
+ * section code ("-P01]" → 1) when the tab has none.
  */
 function _criSectionMap_(ss, sections) {
   let sheet = ss.getSheetByName(CRI_SECTION_MAP_TAB);
@@ -334,17 +339,27 @@ function _criSectionMap_(ss, sections) {
   const map = {};
   const known = {};
   if (sheet.getLastRow() > 1) {
-    sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach(r => {
+    sheet.getRange(2, 1, sheet.getLastRow() - 1, 2).getValues().forEach((r, i) => {
       const sec = String(r[0] || "").trim();
       if (!sec) return;
       known[sec] = true;
-      const p = String(r[1] || "").trim();
+      let p = String(r[1] || "").trim();
+      // A blank period is filled from the section code ("-P01]" → 1), in the
+      // tab, so the operator sees it and can correct it.
+      if (!p && (p = _criPeriodFromSection_(sec))) {
+        sheet.getRange(i + 2, 2).setNumberFormat("@").setValue(p);
+      }
       if (p) map[sec] = p;
     });
   }
   const add = [];
   sections.forEach(sec => {
-    if (sec && !known[sec]) { known[sec] = true; add.push([sec, ""]); }
+    if (sec && !known[sec]) {
+      known[sec] = true;
+      const p = _criPeriodFromSection_(sec);
+      if (p) map[sec] = p;
+      add.push([sec, p]);
+    }
   });
   if (add.length) {
     sheet.getRange(2, 2, sheet.getLastRow() + add.length, 1).setNumberFormat("@");
@@ -353,7 +368,7 @@ function _criSectionMap_(ss, sections) {
   return map;
 }
 
-/** { period: course_name } from this teacher's active ClassSchedule rows. */
+/** { period: [course_name, ...] } from this teacher's active ClassSchedule rows. */
 function _criCourseByPeriod_(ss, cfg, teacherEmail) {
   const out = {};
   const sheet = ss.getSheetByName(cfg.tabs.classSchedule);
@@ -362,7 +377,29 @@ function _criCourseByPeriod_(ss, cfg, teacherEmail) {
     if (String(r[0] || "").trim().toLowerCase() !== teacherEmail) return;
     if (String(r[4] || "TRUE").trim().toUpperCase() === "FALSE") return;
     const p = String(r[1] || "").trim();
-    if (p && !out[p]) out[p] = String(r[3] || "").trim();
+    const name = String(r[3] || "").trim();
+    if (!p || !name) return;
+    out[p] = out[p] || [];
+    if (out[p].indexOf(name) === -1) out[p].push(name);
   });
   return out;
+}
+
+/**
+ * A section's course: { code: "8175"|"8177"|"", name: ClassSchedule course
+ * name }. 8175 and 8177 can meet in the same period, so the section's own
+ * name decides when it carries the course ("...MARKETING... [74-C8175H-P01]");
+ * otherwise the period's only course does.
+ */
+function _criSectionCourse_(section, period, courseByPeriod) {
+  const names = courseByPeriod[period] || [];
+  const code = _cybCourseCode_(section) || (names.length === 1 ? _cybCourseCode_(names[0]) : "");
+  const name = names.filter(n => code && _cybCourseCode_(n) === code)[0] || "";
+  return { code: name ? code : "", name: name };
+}
+
+/** "1" from a CCPS section code ending "-P01]"; "" when there is none. */
+function _criPeriodFromSection_(section) {
+  const m = /-P0*(\d+)\]\s*$/.exec(String(section || ""));
+  return m ? m[1] : "";
 }
