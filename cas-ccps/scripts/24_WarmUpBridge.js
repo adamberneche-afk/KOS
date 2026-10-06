@@ -182,7 +182,7 @@ function buildWarmUpQueues() {
 
   // ── Process each period ───────────────────────────────────────────────────
   // A period where two courses meet (8175 and 8177 in the same room,
-  // different students) has one lesson per course, keyed "1-8175".
+  // different students) has one lesson per course, keyed "1 (8175)".
   const shared = sharedPeriods_(meetingPeriods);
 
   for (const periodInfo of meetingPeriods) {
@@ -474,7 +474,7 @@ function getPeriodsForDay_(scheduleData, teacherEmail, dayType) {
 // Shared periods
 // Two courses can meet in one period (8175 and 8177 taught in the same room,
 // no student in both). Such a period gets one LessonContext row per course,
-// period_or_class "1-8175" and "1-8177", and its warm-ups go to that course's
+// period_or_class "1 (8175)" and "1 (8177)", and its warm-ups go to that course's
 // students only. A single-course period keeps its plain period key.
 // ---------------------------------------------------------------------------
 
@@ -496,16 +496,19 @@ function sharedPeriods_(meetingPeriods) {
   return new Set(Object.keys(courses).filter(k => courses[k].size > 1));
 }
 
-/** LessonContext period_or_class for one course's lesson: "1-8175" in a shared period, else "1". */
+/**
+ * LessonContext period_or_class for one course's lesson: "1 (8175)" in a
+ * shared period, else "1". Not "1-8175": Sheets stores that as a date.
+ */
 function lessonPeriodKey_(period, courseName, shared) {
   const code = shared ? courseCodeFromName_(courseName) : "";
-  return code ? String(period) + "-" + code : String(period);
+  return code ? String(period) + " (" + code + ")" : String(period);
 }
 
 // ---------------------------------------------------------------------------
 // findLesson_
 // Searches LessonContext for a row matching teacher + period + date.
-// `period` may be a list of keys (a shared period: ["1-8175", "1"]); the most
+// `period` may be a list of keys (a shared period: ["1 (8175)", "1"]); the most
 // recent row matching any of them wins.
 // Returns a structured lesson object or null if not found.
 // Skips SUPERSEDED rows — only uses the most recent RECEIVED or ALIGNMENT_LOGGED row.
@@ -523,7 +526,7 @@ function findLesson_(lcData, teacherEmail, period, dateStr) {
     // comparison fail for every such row and silently stop the nightly
     // warm-up queue from ever finding tomorrow's lesson.
     const lDate   = _normalizeLessonDateCell_(row[LC24_LESSON_DATE]);
-    const lPeriod = String(row[LC24_PERIOD_OR_CLASS] || "").trim();
+    const lPeriod = _lessonPeriodText_(row[LC24_PERIOD_OR_CLASS]); // 22: Sheets can store a Date
     const status  = String(row[LC24_STATUS]          || "").trim();
 
     if (tEmail  !== teacherEmail.toLowerCase()) continue;
