@@ -385,7 +385,7 @@ noted.
 | 14 | `previewUpcomingLessons()`, then `buildUpcomingLessons()` | Drafts a LessonContext row (and its Lesson Frame doc) for each ClassSchedule period on each school day in the next 7 days, from the pacing guide. Needs Phase B's ClassSchedule. Never overwrites a slot that already has a lesson. |
 | 15 | `installLessonPlanTrigger()` | Runs `buildUpcomingLessons` daily at about 2am, before the 3:30am warm-up queue build. `removeLessonPlanTrigger()` undoes it. |
 | 16 | Rubric Upload Form, once per unit, from `curriculum/unit-rubrics/<unit>_<course>.md` | Flow 1 drafts the TeacherMatrix row; confirm it in the Teacher Matrix to make it LIVE. That Config ID is what step 17 needs. |
-| 17 | Upload each Canvas course's gradebook export (Grades → Export → Export Entire Gradebook) to Drive; `previewRosterEnrollment("<Config ID>")`; put each section's period in `CanvasSectionMap`; preview again; `applyRosterEnrollment("<Config ID>")` | Enrolls the roster through `intakeStudent_()` (02), exactly as the intake form would. Needs a LIVE assignment and ClassSchedule. |
+| 17 | Upload each Canvas course's gradebook export (Grades → Export → Export Entire Gradebook) to Drive; set the Script Property `ROSTER_CONFIG_ID` to the LIVE assignment's Config ID; `previewRosterEnrollment()`; put each section's period in `CanvasSectionMap`; preview again; `applyRosterEnrollment()` | Enrolls the roster through `intakeStudent_()` (02), exactly as the intake form would. Needs a LIVE assignment and ClassSchedule. |
 | 18 | Import `curriculum/canvas-cartridges/8175.imscc` / `8177.imscc` into each Canvas course (Settings → Import Course Content → Common Cartridge 1.x Package); a sandbox course first | Its assignments ask students to submit their CAS document's link, so do it once students have their docs (step 17). |
 
 These two are the only things that can tell you a Flow is live. A Flow that
@@ -693,6 +693,9 @@ Without it `getConfig_()` throws. `ADMIN_SS_ID` defaults to the same
 spreadsheet (every installer sets the two equal). `teacher-dashboard` and
 `student-dashboard` aren't attached to a spreadsheet, so they still need
 `CENTRAL_LEDGER_SS_ID` as a Script Property.
+
+**Set by hand when you need it:** `ROSTER_CONFIG_ID` (central-ledger), the
+LIVE assignment the Canvas roster import enrolls into (script 52).
 
 **Written automatically, don't set by hand:**
 - Script 16 (teacher setup wizard) writes `TEACHER_*`, `*_RESPONSE_SS_ID`,
