@@ -85,11 +85,31 @@ function importCompetencyRegistry() {
   const sheetHeaders = existingData[0].map(h => String(h).trim().toLowerCase());
   const sheetIdCol   = sheetHeaders.indexOf("competency_id");
 
+  // Sheets stores "8175-1".."8175-12" (and 8177's) as Dates
+  // (competencyIdText_, 32_CompetencyRubricImporter.js). Turn those cells
+  // back into text, and delete a later row whose ID is already in the
+  // registry: an earlier import, not recognizing the Date cells, appended
+  // those IDs a second time.
+  let repaired = 0;
+  const duplicateRows = [];
   if (sheetIdCol !== -1) {
     for (let i = 1; i < existingData.length; i++) {
-      const id = String(existingData[i][sheetIdCol]).trim();
-      if (id) existingIds.add(id);
+      const raw = existingData[i][sheetIdCol];
+      const id = competencyIdText_(raw);
+      if (!id) continue;
+      if (existingIds.has(id)) { duplicateRows.push(i + 1); continue; }
+      existingIds.add(id);
+      if (typeof raw !== "string") {
+        regSheet.getRange(i + 1, sheetIdCol + 1).setNumberFormat("@").setValue(id);
+        repaired++;
+      }
     }
+  }
+  for (let k = duplicateRows.length - 1; k >= 0; k--) regSheet.deleteRow(duplicateRows[k]);
+  if (repaired || duplicateRows.length) {
+    Logger.log("[IMPORT] Repaired " + repaired + " date-formatted competency_id cell(s); removed " +
+      duplicateRows.length + " duplicate row(s).");
+    try { CacheService.getScriptCache().remove(COMPETENCY_REGISTRY_CACHE_KEY); } catch (e) { /* non-fatal */ }
   }
 
   Logger.log("[IMPORT] Existing IDs in registry: " + existingIds.size);
@@ -133,6 +153,7 @@ function importCompetencyRegistry() {
   // ── Batch write ───────────────────────────────────────────────────────────
   // Write all new rows in a single setValues() call for performance.
   const startRow = regSheet.getLastRow() + 1;
+  regSheet.getRange(startRow, 1, toAppend.length, 1).setNumberFormat("@"); // see competencyIdText_
   regSheet.getRange(startRow, 1, toAppend.length, 7).setValues(toAppend);
 
   // Invalidate getCompetencyTextMap_()'s CacheService entry (00_SharedConfig.js)
