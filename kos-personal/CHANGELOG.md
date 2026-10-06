@@ -1,6 +1,17 @@
 # KOS Changelog
 
 
+### Router: no email addresses, and non-staff senders about students go unnamed (2026-10-06)
+
+A CT-01 run listed a Work-Based Learning request under the sender's name
+and personal email address. The Gem can't tell who is a student, so the
+rule no longer depends on that: it never prints an email address, and a
+sender who isn't district staff writing about a student's work, placement
+or record is "a student matter" with no name. The test log also records
+that `@Startup` fails mostly as a chat's first message; resending it in the
+same chat has worked (`rtp-core-router/README.md`).
+
+
 ### The classify backfill never classifies a second copy of a session (2026-10-06)
 
 The primer reported a duplicate group again on 2026-10-06:
