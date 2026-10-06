@@ -5,13 +5,17 @@
 // notebook's per-source cap, attributes every section to its source and
 // file, leaves out what it says it leaves out, and is deterministic.
 //
-// The committed output is not held to staleness here on purpose (see the
-// generator's header); `node tools/notebook-codebase/build.js --check`
-// reports it.
+// The output is generated locally and never committed (see the generator's
+// header). The build works without git (a zip of main), so the file walk is
+// checked against git ls-files whenever there is a checkout.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { build, demote, fence, htmlToText, WORD_CAP } = require('../../tools/notebook-codebase/build.js');
+const { execFileSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+const { build, demote, fence, htmlToText, walk, WORD_CAP } = require('../../tools/notebook-codebase/build.js');
+const { NEEDS_GIT } = require('../harness/git.js');
 
 const result = build();
 
@@ -65,4 +69,13 @@ test('helpers: headings demoted outside fences, fences longer than any inner run
   // Nested or broken fragments can't survive as a tag; an escaped "<" in text does.
   assert.doesNotMatch(htmlToText('<scr<script>x</script>ipt>alert(1)<!-<!-- -->- -->ok <b'), /<(script|!--|b)/i);
   assert.equal(htmlToText('<p>a &lt;tag&gt; in text</p>'), 'a <tag> in text');
+});
+
+test('without git, the folder walk finds every tracked file (a zip of main builds the same sources)', NEEDS_GIT, () => {
+  const root = path.join(__dirname, '..', '..');
+  const tracked = execFileSync('git', ['ls-files'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const walked = new Set(walk('', []));
+  const missing = tracked.filter((p) => !walked.has(p) && fs.existsSync(path.join(root, p)));
+  assert.deepEqual(missing, []);
+  for (const p of walked) assert.doesNotMatch(p, /(^|\/)(\.git|node_modules)\//, 'never walks ' + p);
 });

@@ -17,6 +17,7 @@ const {
   filesForProject,
   knownProjectNames,
 } = require('../../tools/deploy-drift/expected-marker.js');
+const { NEEDS_GIT } = require('../harness/git.js');
 
 const REPO_ROOT = path.join(__dirname, '..', '..');
 const FULL_SHA_RE = /^[0-9a-f]{40}$/;
@@ -47,12 +48,12 @@ test('expectedMarkerForProject: throws with a helpful message for an unknown pro
   );
 });
 
-test('expectedMarkerForProject: returns a full 40-char SHA, not an abbreviated one', () => {
+test('expectedMarkerForProject: returns a full 40-char SHA, not an abbreviated one', NEEDS_GIT, () => {
   const result = expectedMarkerForProject('kos-personal');
   assert.match(result.sha, FULL_SHA_RE);
 });
 
-test('expectedMarkerForProject: agrees with an independently-run git log over the same files', () => {
+test('expectedMarkerForProject: agrees with an independently-run git log over the same files', NEEDS_GIT, () => {
   // Deliberately a project with NO entry in MARKER_FILES
   // (cas-ccps:studio-steps, not kos-personal or leader-hub:app) — this
   // test's whole point is confirming a plain, unmodified git log agrees
@@ -78,7 +79,7 @@ test('expectedMarkerForProject: agrees with an independently-run git log over th
   assert.equal(result.sha, expected);
 });
 
-test('expectedMarkerForProject: picks the most recent commit across MULTIPLE files, not just the first one', () => {
+test('expectedMarkerForProject: picks the most recent commit across MULTIPLE files, not just the first one', NEEDS_GIT, () => {
   // cas-ccps:studio-steps has 10 files (9 source + manifest) with
   // different edit histories — if this only looked at files[0] it would
   // report a stale SHA whenever a later file in the list was the one most
@@ -117,7 +118,7 @@ test('expectedMarkerForProject: same exclusion for leader-hub:app\'s own marker 
   assert.ok(!result.files.includes('leader-hub/DeployVersionMarker.gs'));
 });
 
-test('every known project resolves to a real, non-empty file list with at least one commit', () => {
+test('every known project resolves to a real, non-empty file list with at least one commit', NEEDS_GIT, () => {
   for (const name of knownProjectNames()) {
     const result = expectedMarkerForProject(name);
     assert.match(result.sha, FULL_SHA_RE, `${name} should have a resolvable SHA`);

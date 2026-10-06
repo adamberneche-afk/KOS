@@ -5,14 +5,17 @@ Apps Script file, page source, tool, test and doc, cut into 12 sources plus
 an index, so the code can be asked about in plain language ("where does the
 backfill read archived chunks?", "what writes CURRENT_STATE?").
 
-**Generated. Never edit the `KOS_CODE_*.md` files.** Regenerate with:
+**Generated locally, not committed.** Only this README is in the repo; the
+`KOS_CODE_*.md` files are gitignored (8+ MB that went stale with every code
+change). Build them with Node from the repo root (your `KOS-main` folder
+after unzipping; no git needed):
 
 ```
-node tools/notebook-codebase/build.js            # write the sources
-node tools/notebook-codebase/build.js --check    # list stale sources, change nothing
+node tools/notebook-codebase/build.js            # write the sources here
+node tools/notebook-codebase/build.js --check    # list changed sources, change nothing
 ```
 
-Run it from the repo root (in your `KOS-main` folder after unzipping).
+Never edit the generated files; rebuild them.
 
 ## How the sources are cut
 
@@ -47,7 +50,7 @@ Run it from the repo root (in your `KOS-main` folder after unzipping).
    with the school account. Don't add these to the RTP notebook: answers get
    vaguer as sources pile up, and the RTP Gem's sources should stay the 17
    briefing, persona and protocol docs.
-2. Upload the 13 `.md` files in this folder.
+2. Build, then upload the 13 `KOS_CODE_*.md` files in this folder.
 3. Optionally paste these instructions into the notebook's settings:
 
    ```
@@ -61,12 +64,10 @@ Run it from the repo root (in your `KOS-main` folder after unzipping).
 
 ## Keeping it current
 
-The output is committed so it arrives in the zip of `main`, but `npm test`
-does not hold it to staleness: that would fail every code change until
-someone regenerated. Each source carries a content fingerprint instead,
-listed in `KOS_CODE_00_INDEX`.
+Each source carries a content fingerprint, listed in `KOS_CODE_00_INDEX`.
 
-To refresh:
-1. Run `--check` to see which sources changed.
-2. Regenerate.
+To refresh after downloading a newer zip of `main`:
+1. Copy your last build's `KOS_CODE_*.md` files into the new folder, or
+   compare fingerprints with the INDEX in the notebook.
+2. Run `--check` to see which sources changed, then build.
 3. In the notebook, replace only the sources whose fingerprints changed.
