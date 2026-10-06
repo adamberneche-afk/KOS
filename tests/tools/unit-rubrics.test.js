@@ -56,3 +56,21 @@ test('the pacing guide\'s vocabulary matches the lesson cards (JSON and CSV)', (
   assert.match(units.find((u) => u.lesson_unit_id === 'S1-U1').key_vocabulary, /^Sports, entertainment & events industry, Hospitality/);
   assert.equal(sync.pyJson([{ term: 'Café — x', definition: 'a "b"' }]), '[{"term": "Caf\\u00e9 \\u2014 x", "definition": "a \\"b\\""}]');
 });
+
+test('each assignment is the lesson card\'s planned work: its work product, the course\'s role and extension', () => {
+  const files = build();
+  Object.entries(files).forEach(([name, doc]) => {
+    assert.match(doc, /^PLANNED WORK PRODUCT: \S/m, name);
+    assert.match(doc, /^What you will make: \S/m, name);
+    assert.doesNotMatch(doc, /Choose an organization in sports, entertainment or events/, name + ' still has the old generic prompt');
+  });
+  const m = files['S1-U1_8175.md'];
+  assert.match(m, /PLANNED WORK PRODUCT: Industry landscape document: a one-page brief per student/);
+  assert.match(m, /COURSE ROLE: Marketing rotation students focus on consumer-facing trends/);
+  assert.match(m, /- Hospitality \(Task 46\): how does hospitality function as a marketing tool\?/);
+  assert.doesNotMatch(m, /Organizational chart \(Task 44\)/, '8177\'s extension stays out of the 8175 rubric');
+  const g = files['S1-U1_8177.md'];
+  assert.match(g, /COURSE ROLE: Management specialization students map industry management functions/);
+  assert.match(g, /- Organizational chart \(Task 44\): students draft the conglomerate org chart/);
+  assert.match(files['S0-U1_8175.md'], /^COURSE ROLE: \S/m, 'Stage 0 uses the shared Role context row');
+});
