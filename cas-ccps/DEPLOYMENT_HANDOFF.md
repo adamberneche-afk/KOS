@@ -227,7 +227,7 @@ Studio and verified all five live end to end — see the status banner and
 
 ## Current repo state
 
-- Deployment work continues on `claude/new-session-l8yvnj`, merged to `main`.
+- Work lands on `main` through PRs from `claude/*` branches; the operator pushes `main` with `run.ps1 -Latest` (last full push 2026-10-05).
 - **Zero errors is the gate. The warning counts are not** — both tools warn
   about accepted, documented things, and both numbers move whenever a check is
   added or a warning is legitimately resolved (gas-lint has gone 4 → 5,
@@ -484,8 +484,9 @@ account boundary, which is a mistake this repo made twice
 `FIN_ANALYSIS`, `BRAG_EMAIL`) built and confirmed live via
 `checkAiFlowFixtures()`. Its own `HISTORY.md` has the deployment record.
 **Since then (2026-10-03): paused.** After the OAuth-consent-dialog crash
-fix it works on `/dev`, but `/exec` still needs its release; see
-`leader-hub/README.md`'s "Status".
+fix it works on `/dev`. `/exec` was released 2026-10-05 (v20) and still
+needs its `?diag=probe` check; see `leader-hub/README.md`'s "Fixed — the
+OAuth-consent-dialog crash".
 Its queue rows are deleted the moment their outcome is read, which is why
 liveness there is a durable counter rather than a row scan. Its D1 side —
 the browser calling cas-ccps's `doPost()` — is diagnosed from the cas-ccps
