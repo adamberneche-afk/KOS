@@ -14,6 +14,8 @@ const fs = require('fs');
 const os = require('os');
 const path = require('path');
 
+const { NEEDS_GIT } = require('../harness/git.js');
+
 const STAMP_PATH = require.resolve('../../tools/deploy-drift/stamp.js');
 
 // stamp.js resolves REPO_ROOT from its own file location and reads
@@ -35,7 +37,7 @@ const { stamp, MARKER_FILES } = require(STAMP_PATH);
 const { expectedMarkerForProject } = require('../../tools/deploy-drift/expected-marker.js');
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 
-test('stamp: replaces the 40-hex-char constant value with expected-marker.js\'s computed SHA, leaves everything else untouched', () => {
+test('stamp: replaces the 40-hex-char constant value with expected-marker.js\'s computed SHA, leaves everything else untouched', NEEDS_GIT, () => {
   const relPath = 'tools/deploy-drift/__test_marker_fixture.gs';
   const absPath = path.join(REPO_ROOT, relPath);
   fs.writeFileSync(absPath, "// a header comment\nconst FIXTURE_SHA = '0000000000000000000000000000000000000000'; // trailing comment\n");
@@ -74,7 +76,7 @@ test('stamp: throws for a project name expected-marker.js doesn\'t recognize, wr
   }
 });
 
-test('stamp: throws if the constant name/format in the file doesn\'t match — never silently no-ops', () => {
+test('stamp: throws if the constant name/format in the file doesn\'t match — never silently no-ops', NEEDS_GIT, () => {
   const relPath = 'tools/deploy-drift/__test_marker_fixture2.gs';
   const absPath = path.join(REPO_ROOT, relPath);
   fs.writeFileSync(absPath, "const WRONG_NAME = '0000000000000000000000000000000000000000';\n");
