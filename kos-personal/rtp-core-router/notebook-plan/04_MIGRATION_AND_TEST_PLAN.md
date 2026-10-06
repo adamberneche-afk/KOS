@@ -1,6 +1,6 @@
 # RTP Notebook Ecosystem — Migration and Test Plan
 
-**Status:** Draft v0.6 (V6.0 router drafted, test log started) · **Date:** 2026-10-05 · **Companion docs:** 01_USER_STORIES, 02_PRD, 03_ADRs
+**Status:** Draft v0.7 (Phase 0.3 repair and Phase 1 live; V6.0 draft 2 under test) · **Date:** 2026-10-06 · **Companion docs:** 01_USER_STORIES, 02_PRD, 03_ADRs
 
 Each phase has an exit gate. Do not start the next phase until the gate is met.
 
@@ -20,36 +20,43 @@ Each phase has an exit gate. Do not start the next phase until the gate is met.
 | 0.8 | Choose the target surface (ADR-010): Gem now, skill, or Gemini-app notebook Instructions. Check in the real account which are available. **2026-10-05:** the Gem for now. It followed the router's frame and passed CT-05, CT-06 and CT-08; the notebook surface with the same router read the apps equally well (`05_TEST_LOG.md`). Next surface: a skill, once skills reach the school account (rollout through mid-November 2026; Gems retire for education on 2027-06-01; ADR-010 update). | Written decision; U2 and U4 re-tested on that surface |
 | 0.9 | Confirm which copies of `PIVOTS_AND_LESSONS` and `CURRENT_STATE` the Gem reads; the Drive copies seen on 2026-10-03 were near-empty or the unfilled template | Both hold real content, or the router stops citing them as authorities |
 
-**Live (Operator, 2026-10-03):** duplicates applied (39 → 36 rows); the rederive finished with 6 rows kept, on code from before it read archived parts or recorded which rows it kept.
+**Live (Operator):**
+- 2026-10-03: duplicates applied (39 → 36 rows).
+- 2026-10-05, after the push:
+  - duplicates: 0 groups;
+  - `applyVectorMatrixRederive()` finished: all 42 rows rebuilt from classify parts (37 by earlier runs), 2 with changed scores;
+  - `previewUnrebuildableReset()` listed no candidates.
 
-**To finish 0.3:** push kos-personal; run `applyVectorMatrixRederive()` until it reports it has finished (it may now rebuild some of the 6 from archived parts, and it records the rest in `KOS_VM_REDERIVE_KEPT_UIDS`); then `previewUnrebuildableReset()` and `applyUnrebuildableReset()`, repeating after each batch's classify parts come back (3 sessions a run, none while parts are in flight). A row listed NO_SOURCE stays unless you run `dropUnrebuildableRowsWithoutSource()`.
+The repair half of 0.3 is done.
+
+**What's left for the gate:** the primer's Data Quality block stays FLAGGED while processed sessions have no matrix row (73 unclassified on 2026-10-05, once the backfill counted archived parts). The self-removing trigger (`installClassifyBackfillTrigger()`, every 15 minutes, 3 sessions a run, none while parts are in flight) drains them. If a later rederive keeps rows, run `previewUnrebuildableReset()` / `applyUnrebuildableReset()`. A row listed NO_SOURCE stays unless you run `dropUnrebuildableRowsWithoutSource()`.
 
 **Gate:** `previewDuplicateSessions()` lists zero groups, `previewUnrebuildableReset()` lists no candidates, and the primer's Data Quality block reads OK; U1, U2 and U4 answered; baseline recorded. U7 is answered.
 
 ## Phase 1 — Build the briefing docs (GAS)
 
-**Built 2026-10-03; live status not recorded** (the steps were given to the Operator) (`22_BriefingDocs.gs`, `6_Governance.gs`; `kos-personal/CHANGELOG.md` has the detail).
+**Built 2026-10-03; live 2026-10-05** (`22_BriefingDocs.gs`, `6_Governance.gs`; `kos-personal/CHANGELOG.md` has the detail). The decision register backfill recorded 62 open decisions, and `generateBriefingDocs()` created the three docs. Since PR #88 each doc carries `Notebook source: {NAME}.`; that needs a push and one regeneration.
 
 1. Create the stable-ID docs: recent sessions (rolling), open decisions, core facts. Reuse the existing primer pattern. **Built:** `KOS_RECENT_SESSIONS`, `KOS_OPEN_DECISIONS`, `KOS_CORE_FACTS`, all through `_writeStableDoc_()`. Open decisions come from a new `DECISION_REGISTER` sheet (the intake records each deferred decision as OPEN; the operator sets RESOLVED or DROPPED). **Deviation:** recent sessions carries each session's SESSION_LOG summary, not the full Curator JSON. Next steps stay in CURRENT_STATE, which is its own Tier A source.
 2. Add the generated-at stamp and the data-quality block (ADR-006, ADR-007) to the primer. **Built.** The stamp line is `Generated at: YYYY-MM-DD HH:mm (<zone>) by <generator>`, directly under each doc's title. A doc with no stamp line is stale too (that is what a run that fails partway leaves).
 3. Generators are idempotent; on error they log and leave the stamp unchanged. **Built and tested** (`tests/kos-personal/briefing-docs.test.js`, `governance-primer.test.js`).
 
-**To make it live:** push kos-personal; run `previewDecisionRegisterBackfill()`, then `applyDecisionRegisterBackfill()`, and resolve any decision already settled; run `generateBriefingDocs()` and note the three doc IDs it logs; the next 06:00 run then refreshes all four docs. The primer's Data Quality block reads FLAGGED until Phase 0.3 is finished; that is expected.
+**After a push:** the 06:00 run refreshes all four docs; run `generateBriefingDocs()` and `generateDailyPrimer()` to refresh them sooner. Resolve settled decisions in `DECISION_REGISTER` (RESOLVED or DROPPED). The primer's Data Quality block reads FLAGGED until the backfill drains; that is expected.
 
 **Gate:** two consecutive daily runs produce correct docs; a forced failure leaves the stamp unchanged.
 
 ## Phase 2 — Assemble the notebook
 
-1. Convert the Tier B `.md` files to Google Docs (load the persona editions in `rtp-core-router/notebook-sources/`, not the canonical docs); add the persona "core" blocks and attributable headings. **Persona editions built 2026-10-05** (`rtp-core-router/notebook-sources/`, generated by `tools/kos-personal/build-notebook-personas.js`): each opens with a cited core block and names the persona in every heading. Still to do: convert them to Docs (and check U6 on one), and the protocols.
+1. Convert the Tier B `.md` files to Google Docs (load the persona editions in `rtp-core-router/notebook-sources/`, not the canonical docs); add the persona "core" blocks and attributable headings. **Persona editions built 2026-10-05** (`rtp-core-router/notebook-sources/`, generated by `tools/kos-personal/build-notebook-personas.js`): each opens with a cited core block and names the persona in every heading. **Loaded 2026-10-05:** the RTP notebook holds the six persona editions and the three protocols (17 sources with Tier A; `05_TEST_LOG.md` setup). U6 (did tables and code blocks survive?) is still unchecked.
 2. Create the Turn Loop Reference doc from the explanatory rules being moved out of the router. **Drafted 2026-10-05:** `notebook-sources/TURN_LOOP_REFERENCE.md`; add it as a source alongside V6.0.
 3. Add the Tier A and Tier B sources. Do not attach it to any council Gem.
-4. Attach the notebook to a **test copy** of the RTP Gem (never the production Gem).
+4. Attach the notebook to a **test copy** of the RTP Gem (never the production Gem). **Deviation 2026-10-05:** it was attached to the RTP Gem itself, with V5.8 kept as the rollback.
 
 **Gate:** from a test chat, the Gem can answer a question from each source and cite which one.
 
 ## Phase 3 — Slim router (V6.0)
 
-**Drafted 2026-10-05; not yet tested** (`rtp-core-router/RTP_CORE_ROUTER_V6_0.md`, about 8,100 characters, for the Gem's instructions; the explanatory rules it points to are in the new notebook source `notebook-sources/TURN_LOOP_REFERENCE.md`; `tests/kos-personal/rtp-router-v6.test.js` holds it under 10,000 characters and checks the required rules are present). Two `@Startup` runs on V5.8 that day shaped it (`05_TEST_LOG.md`): the BRAIN_TRUST_INDEX fetch is removed, the primer is read first and is the only source of state, and a count the Gem can't read is unknown, never 0. Decisions made in the draft: the `Turn: [N]` counter stays; "Active Files in Context" became "Sources this turn"; `@SMP` drafts a proposal for the Operator to file, since the Gem cannot write (CT-14 checks for the draft and the approval wait, not a filed row).
+**Draft 2 in the RTP Gem since 2026-10-05; under test** (CT-05, CT-06 and CT-08 pass; CT-01 waits on a push, `05_TEST_LOG.md`) (`rtp-core-router/RTP_CORE_ROUTER_V6_0.md`, about 9,300 characters, for the Gem's instructions; the explanatory rules it points to are in the new notebook source `notebook-sources/TURN_LOOP_REFERENCE.md`; `tests/kos-personal/rtp-router-v6.test.js` holds it under 10,000 characters and checks the required rules are present). Two `@Startup` runs on V5.8 that day shaped it (`05_TEST_LOG.md`): the BRAIN_TRUST_INDEX fetch is removed, the primer is read first and is the only source of state, and a count the Gem can't read is unknown, never 0. Decisions made in the draft: the `Turn: [N]` counter stays; "Active Files in Context" became "Sources this turn"; `@SMP` drafts a proposal for the Operator to file, since the Gem cannot write (CT-14 checks for the draft and the approval wait, not a filed row).
 
 1. Draft V6.0 from V5.8 using the split in 02 §4. Move version notes to the repo changelog.
 2. Add the staleness rule and the "retrieve the persona before speaking" rule. Carry the ALIGNMENT core (passive flag, thresholds A to D, pause block), the adapted Verification Gate (ADR-009), Math-Before-Muse, and the `@SMP` loop in the instructions. Update the Pre-Flight and State Sync templates to drop the ledger and live-fetch lines.
@@ -126,5 +133,15 @@ CT-01, CT-02, CT-03, CT-04, CT-11, CT-13 and CT-16 test **new or changed** behav
 3. Phase 3 router V6.0 draft (writing), then the test run.
 4. Phase 4 one-week cutover with fallback.
 
-## Verification status (2026-10-03)
+## Verification status (2026-10-06)
+
+**Since 2026-10-03:**
+- U3 answered: a standalone notebook, so there is no 10-source cap.
+- U9 answered: the primer is a notebook source.
+- U2 answered for apps: only chips typed in the message call an app. Whether
+  the Gem can do it without chips is U11.
+- Surface 0.8 decided: the Gem for now.
+- Still open: U4 (CT-11), U5, U6, U8 and U11.
+
+**As of 2026-10-03:**
 Answered from documentation: U1, U3, and the platform timeline (ADR-010). Researched 2026-10-03, still needs your test: U2 (a test for both the Gem and the Gemini-app notebook surface) and U4 (CT-11). Not documented, needs your test: U8. Likely but untested: U5. Half answered: U9 (the Gem has the RTP notebook attached; the primer as a notebook source is still open). U2 is partly tested live (02_PRD §10). Answered by the Operator: U7 (school account, notebooks available) and U10 (see 02_PRD §10). New constraint: a notebook's Instructions field holds at most 10,000 characters (02_PRD §10, finding 5).

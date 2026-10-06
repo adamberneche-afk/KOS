@@ -594,9 +594,8 @@ deliberately — it verifies the code path, not the flow.
     was never created by any setup script, silently stranding Flow 2's
     evidence writes on a fresh deployment; now fixed in
     `createSCRTabs_()`), both added to `cas-ccps:central-ledger`. This
-    closes Finding 17's underlying gap in code, but not in deployment —
-    see Known Gap #1: the project exists and is tested, not yet pushed
-    live. See `cas-ccps/HISTORY.md` for the full adoption record.
+    closes Finding 17's underlying gap in code and, since central-ledger's
+    pushes (most recently 2026-10-05), in deployment too. See `cas-ccps/HISTORY.md` for the full adoption record.
 
 ## Naming note
 
