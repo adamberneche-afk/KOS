@@ -936,7 +936,14 @@ function _primerBlocks_(onboardingDay, vision, vectorState, shadowState, quality
   out.push({ kind: 'h2', text: '90-Day Vision' });
   out.push({ kind: 'p', text: vision });
 
-  out.push({ kind: 'h2', text: 'Vector State' });
+  // The Data Quality status rides on the Vector State heading and its first
+  // line. Notebook retrieval returns passages, not whole docs: on 2026-10-06
+  // the RTP Gem retrieved the Vector State list without the Data Quality
+  // block and gave the scores unqualified (05_TEST_LOG.md).
+  out.push({ kind: 'h2', text: 'Vector State (Data Quality ' + (quality.flagged ? 'FLAGGED' : 'OK') + ')' });
+  out.push({ kind: 'p', text: quality.flagged
+    ? 'Data Quality: FLAGGED. ' + quality.flags.join('; ') + '.'
+    : 'Data Quality: OK.' });
   if (vectorState.success && vectorState.vectors.length > 0) {
     vectorState.vectors.forEach(v => out.push({ kind: 'li', text: v.name + ': ' + v.score.toFixed(2) }));
   } else {
