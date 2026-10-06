@@ -390,7 +390,7 @@ Every Curator output rejected by the Auditor accountability check (`_archiveAudi
 
 ### STAGING_ARCHIVE
 
-Completed STAGING_PIPELINE rows moved by `archiveStagingPipeline()`.
+Completed STAGING_PIPELINE rows moved by `archiveStagingPipeline()` (the web app button: finished and failed rows) and by `archiveFinishedStagingRows()` (nightly at 02:00: finished rows only).
 
 | Col | Name | Type | Description |
 |---|---|---|---|
