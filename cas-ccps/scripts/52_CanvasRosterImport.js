@@ -15,6 +15,9 @@
  *      property, otherwise from anywhere in your own Drive. (The setup
  *      wizard writes TEACHER_* properties into the Unified Manual project,
  *      not this one.)
+ *   1a. Before any assignment is LIVE: prepareRosterSections() fills the
+ *      CanvasSectionMap tab from the exports and logs each section's student
+ *      count, so periods can be mapped ahead of time. It enrolls no one.
  *   2. previewRosterEnrollment("<Assignment Config ID>") lists who would be
  *      enrolled, and fills the CanvasSectionMap tab with every Canvas
  *      section it found. Put each section's class period in that tab.
@@ -54,6 +57,64 @@ function applyRosterEnrollment(assignmentConfigId) {
 }
 
 /**
+ * Fills CanvasSectionMap from the gradebook exports and logs, per section,
+ * how many student accounts it holds, how many logins aren't district student
+ * accounts, and (once mapped) the period and its ClassSchedule course. Needs
+ * no Config ID and enrolls no one: the mapping step done ahead of time.
+ * Logs counts and section names only, never student names or accounts.
+ *
+ * @returns {{files: number, students: number, sections: Object[], unmapped: string[], message: string}}
+ */
+function prepareRosterSections() {
+  const cfg = getConfig_();
+  const result = { files: 0, students: 0, sections: [], unmapped: [], message: "" };
+  const files = _criFindExports_(cfg);
+  result.files = files.length;
+  if (!files.length) {
+    result.message = "No Canvas gradebook export (.csv with \"Grades\" in the name) found in " +
+      (cfg.teacherFolderId ? "your teacher folder (TEACHER_FOLDER_ID)." : "your Drive.");
+    Logger.log("[S52] " + result.message);
+    return result;
+  }
+  const bySection = {};
+  const seen = {};
+  files.forEach(file => {
+    _criParseGradebook_(file.getBlob().getDataAsString("UTF-8")).forEach(s => {
+      if (s.account && seen[s.account]) return;
+      if (s.account) seen[s.account] = true;
+      const sec = bySection[s.section] = bySection[s.section] || { section: s.section, students: 0, notStudentAccounts: 0 };
+      if (s.account && _studentIdPattern_().test(s.account)) sec.students++; else sec.notStudentAccounts++;
+    });
+  });
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const sectionMap = _criSectionMap_(ss, Object.keys(bySection));
+  // TEACHER_EMAIL is set in the Unified Manual project, so here it usually
+  // comes from the MatrixRegistry row.
+  let teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const registry = ss.getSheetByName(cfg.tabs.matrixRegistry);
+  if (!teacherEmail && registry && registry.getLastRow() > 1) {
+    teacherEmail = String(registry.getRange(2, 2).getValue() || "").trim().toLowerCase();
+  }
+  const courseByPeriod = _criCourseByPeriod_(ss, cfg, teacherEmail);
+  Object.keys(bySection).sort().forEach(name => {
+    const s = bySection[name];
+    s.period = sectionMap[name] || "";
+    s.course = s.period ? (_cybCourseCode_(courseByPeriod[s.period]) || "?") : "";
+    result.students += s.students;
+    if (!s.period) result.unmapped.push(name);
+    result.sections.push(s);
+  });
+  result.message = "Read " + result.files + " export(s): " + result.students + " student account(s) in " +
+    result.sections.length + " section(s); " + result.unmapped.length + " section(s) still need a period in " +
+    CRI_SECTION_MAP_TAB + ". Nothing enrolled.";
+  Logger.log("[S52] " + result.message);
+  result.sections.forEach(s => Logger.log("[S52]   " + s.section + ": " + s.students + " student(s)" +
+    (s.notStudentAccounts ? ", " + s.notStudentAccounts + " not a student account" : "") +
+    (s.period ? " → period " + s.period + (s.course ? " (" + s.course + ")" : "") : " → no period yet")));
+  return result;
+}
+
+/**
  * @param {{apply?: boolean, assignmentConfigId: string}} opts
  * @returns {{apply, files, students, planned: Object[], enrolled: number,
  *            skipped: Object[], failed: Object[], unmappedSections: string[],
@@ -74,7 +135,8 @@ function enrollCanvasRoster_(opts) {
 
   if (!configId) {
     result.message = "No Config ID. Set the ROSTER_CONFIG_ID Script Property (Project Settings → Script " +
-      "properties) to a LIVE assignment's Config ID and run again, or call previewRosterEnrollment(\"ABC123\").";
+      "properties) to a LIVE assignment's Config ID and run again, or call previewRosterEnrollment(\"ABC123\"). " +
+      "To map sections before any assignment is LIVE, run prepareRosterSections().";
     Logger.log("[S52] " + result.message);
     return result;
   }
