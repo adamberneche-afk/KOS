@@ -20,6 +20,10 @@
  *      section it found. Put each section's class period in that tab.
  *   3. applyRosterEnrollment("<Assignment Config ID>") enrolls them.
  *
+ * The editor's Run button can't pass an argument, so run with none and the
+ * Config ID comes from the ROSTER_CONFIG_ID Script Property (Project
+ * Settings → Script properties). An ID passed in wins over the property.
+ *
  * Each student is set up by intakeStudent_() (02), the same function the
  * intake form uses: their own copy of the master template for that LIVE
  * assignment, shared with them and the assigning teacher, and a Ledger row
@@ -54,13 +58,18 @@ function enrollCanvasRoster_(opts) {
   opts = opts || {};
   const apply = opts.apply === true;
   const started = Date.now();
-  const configId = String(opts.assignmentConfigId || "").trim();
+  // Run from the editor, the argument is undefined (or, from a trigger, an
+  // event object), so only a string counts.
+  const passed = typeof opts.assignmentConfigId === "string" ? opts.assignmentConfigId.trim() : "";
+  const configId = passed ||
+    String(PropertiesService.getScriptProperties().getProperty("ROSTER_CONFIG_ID") || "").trim();
   const cfg = getConfig_();
   const result = { apply: apply, files: 0, students: 0, planned: [], enrolled: 0, skipped: [], failed: [],
     unmappedSections: [], notInCanvas: [], message: "" };
 
   if (!configId) {
-    result.message = "Pass the Assignment Config ID of a LIVE assignment, e.g. previewRosterEnrollment(\"ABC123\").";
+    result.message = "No Config ID. Set the ROSTER_CONFIG_ID Script Property (Project Settings → Script " +
+      "properties) to a LIVE assignment's Config ID and run again, or call previewRosterEnrollment(\"ABC123\").";
     Logger.log("[S52] " + result.message);
     return result;
   }
