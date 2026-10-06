@@ -2536,7 +2536,7 @@ only the first and skipped the second as LESSON_EXISTS, and the warm-up
 queue sent every student in the period the same course's lesson.
 
 - `24_WarmUpBridge.js`: a period where more than one course meets
-  (`sharedPeriods_()`) keys each course's lesson as `1-8175` / `1-8177`
+  (`sharedPeriods_()`) keys each course's lesson as `1 (8175)` / `1 (8177)`
   (`lessonPeriodKey_()`). `findLesson_()` takes a list of keys, so a shared
   period uses its course's lesson or one the teacher entered for the whole
   period ("1"), whichever was submitted last. `getEnrolledStudents_()`
@@ -2547,3 +2547,25 @@ queue sent every student in the period the same course's lesson.
 
 Tests: `tests/cas-ccps/course-year-builder.test.js`,
 `tests/cas-ccps/warmup-bridge.test.js`.
+
+## Shared-period keys Sheets kept as dates; unbuild; roster course by section, 2026-10-06
+
+- **Keys.** The live second build wrote all 30 lessons again: Sheets stored
+  the period `1-8177` as a date (January 8177), so the builder did not see
+  the lessons it had just written. Shared-period lessons are now keyed
+  `1 (8175)` / `1 (8177)`, and `_lessonPeriodText_()` (22) reads a Date
+  period cell back as written, in `supersedeDuplicates_()`, `findLesson_()`
+  (24) and the builder (51).
+- **Unbuild.** `previewRemoveDraftedLessons()` / `removeDraftedLessons()`
+  (51) supersede every drafted lesson dated today or later and trash its
+  Lesson Frame Doc. Lessons the teacher entered stay.
+- **Roster course.** `52_CanvasRosterImport.js` took a section's course from
+  its period's first ClassSchedule course, so in a period both courses share
+  one course's sections would have been refused as `OTHER_COURSE` and the
+  rest labelled with the wrong course. The section's own name now decides
+  ("...MARKETING... [74-C8175H-P01]"); a blank period in `CanvasSectionMap`
+  is filled from the section code's `-P01` suffix.
+
+Tests: `tests/cas-ccps/course-year-builder.test.js`,
+`tests/cas-ccps/warmup-bridge.test.js`,
+`tests/cas-ccps/canvas-roster-import.test.js`.

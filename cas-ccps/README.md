@@ -249,7 +249,8 @@ real content. Everything it writes is teacher- and class-level.
 |---|---|
 | `importCourseData()` | Runs the registry (22b), pacing guide (31) and rubric (32) importers, which find `CompetencyRegistry.csv`, `PacingGuide_CAS_Context.json` and `CompetencyRubrics.json` in Drive by name, then `checkCourseData()`. Safe to re-run. |
 | `checkCourseData()` | Compares the live tabs with the repo's data (113 + 108 competencies and rubrics, 20 units, readable unit dates), and seeds the `NoSchoolDays` tab from the CCPS 2026-27 calendar (a copy of leader-hub's; a test keeps them equal). Edit that tab for snow days. |
-| `previewUpcomingLessons()` / `buildUpcomingLessons()` | For each school day in the next 7 days and each ClassSchedule period meeting it, writes a LessonContext row from that course's pacing-guide unit through `onLessonContextSubmit_()`, so alignment logging and the Lesson Frame Doc happen as for a hand-entered lesson. A slot that already has a lesson is never touched; a teacher's own submission for a slot replaces the drafted one. A period where both courses meet gets one lesson per course (`period_or_class` `1-8175`, `1-8177`), and its warm-ups go to that course's students only (Ledger CourseName). |
+| `previewUpcomingLessons()` / `buildUpcomingLessons()` | For each school day in the next 7 days and each ClassSchedule period meeting it, writes a LessonContext row from that course's pacing-guide unit through `onLessonContextSubmit_()`, so alignment logging and the Lesson Frame Doc happen as for a hand-entered lesson. A slot that already has a lesson is never touched; a teacher's own submission for a slot replaces the drafted one. A period where both courses meet gets one lesson per course (`period_or_class` `1 (8175)`, `1 (8177)`), and its warm-ups go to that course's students only (Ledger CourseName). |
+| `previewRemoveDraftedLessons()` / `removeDraftedLessons()` | Unbuild: marks every drafted lesson dated today or later SUPERSEDED and trashes its Lesson Frame Doc, so the next build drafts those slots again. Lessons you entered are never touched. |
 | `installLessonPlanTrigger()` | Runs `buildUpcomingLessons()` daily near 2am, before the 3:30am warm-up queue reads tomorrow's lessons. `removeLessonPlanTrigger()` undoes it. |
 
 Units overlap in the pacing guide (S8-U2, 8177 only, runs inside S7-U1, 8175
@@ -284,15 +285,19 @@ the only way in used to be the intake form. `52_CanvasRosterImport.js`
    (the editor's Run button can't pass an argument; an ID passed in wins).
    Then `previewRosterEnrollment()` against that assignment lists
    who would be enrolled and fills the `CanvasSectionMap` tab with every
-   Canvas section; put each section's class period next to it.
+   Canvas section; put each section's class period next to it. A section
+   code ending `-P01]` fills in period 1 for you; check it and correct it
+   in the tab if it's wrong.
 3. `applyRosterEnrollment()` enrolls each student through
    `intakeStudent_()` (02), the same function the intake form uses: their
    doc for that assignment, shared with them and you, and a Ledger row.
 
 It reads only Student, SIS Login ID and Section, and refuses any login that
-isn't a district student account. It enrolls only students whose class
-period is in the assignment's course (TeacherMatrix CourseName, 8175 or
-8177), so run it once per course with that course's Config ID; the rest are
+isn't a district student account. It enrolls only students whose section
+is in the assignment's course (TeacherMatrix CourseName, 8175 or 8177): the
+section's own name decides ("...MARKETING... [74-C8175H-P01]"), because both
+courses can meet in one period, and a section without one takes its period's
+course. Run it once per course with that course's Config ID; the rest are
 skipped as `OTHER_COURSE`. It skips students who already have a Ledger row
 for this assignment (an earlier unit's row doesn't count), and reports, never
 removes, students who left the course.

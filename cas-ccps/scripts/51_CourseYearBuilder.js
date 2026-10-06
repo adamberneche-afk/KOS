@@ -41,6 +41,8 @@ const CYB_LOOKAHEAD_DAYS = 7;          // matches validateLessonPayload_'s 7-day
 const CYB_TIME_BUDGET_MS = 5 * 60 * 1000;
 const CYB_NO_SCHOOL_TAB = "NoSchoolDays";
 const CYB_TRIGGER_FN = "buildUpcomingLessons";
+// Every drafted lesson's activity_description starts with this; removeDraftedLessons() finds them by it.
+const CYB_DRAFT_PREFIX = "Auto-drafted from the pacing guide: ";
 
 // What the repo's data files hold. A drift test checks these against
 // cas-ccps/data/CompetencyRegistry.csv, CompetencyRubrics.json and
@@ -226,7 +228,7 @@ function buildUpcomingLessonPlan_(opts) {
     if (String(r[LC_STATUS] || "").trim() === LC_STATUS_SUPERSEDED) return;
     taken.add([String(r[LC_TEACHER_EMAIL] || "").trim().toLowerCase(),
       _normalizeLessonDateCell_(r[LC_LESSON_DATE]),
-      String(r[LC_PERIOD_OR_CLASS] || "").trim().toLowerCase()].join("|"));
+      _lessonPeriodText_(r[LC_PERIOD_OR_CLASS]).toLowerCase()].join("|"));
   });
 
   const noSchool = _cybNoSchoolDays_(ss);
@@ -247,8 +249,8 @@ function buildUpcomingLessonPlan_(opts) {
     const dayType = getDayType_(day);
     for (const teacher of teachers) {
       const meeting = getPeriodsForDay_(schedule, teacher, dayType);
-      // A period where both courses meet gets one lesson per course ("1-8175",
-      // "1-8177"); a lesson the teacher entered for the whole period still wins.
+      // A period where both courses meet gets one lesson per course ("1 (8175)",
+      // "1 (8177)"); a lesson the teacher entered for the whole period still wins.
       const shared = sharedPeriods_(meeting);
       for (const p of meeting) {
         const isShared = shared.has(p.period);
@@ -295,6 +297,75 @@ function buildUpcomingLessonPlan_(opts) {
   return result;
 }
 
+// ================================================================
+// UNBUILD — supersede drafted lessons from today on
+// ================================================================
+
+/** Dry run of removeDraftedLessons(). Changes nothing. */
+function previewRemoveDraftedLessons() {
+  return removeDraftedLessons_({ apply: false });
+}
+
+/**
+ * Marks every drafted lesson (CYB_DRAFT_PREFIX) dated today or later
+ * SUPERSEDED and moves its Lesson Frame Doc to the trash, so the next
+ * buildUpcomingLessons() drafts those slots again. Lessons the teacher
+ * entered are never touched. Also trashes the Docs of drafts already marked
+ * SUPERSEDED by hand. AlignmentLog rows stay (26 never deletes them).
+ */
+function removeDraftedLessons() {
+  return removeDraftedLessons_({ apply: true });
+}
+
+function removeDraftedLessons_(opts) {
+  opts = opts || {};
+  const apply = opts.apply === true;
+  const ss = SpreadsheetApp.openById(getConfig_().ledgerSsId);
+  const lcSheet = ss.getSheetByName(getConfig_().tabs.lessonContext);
+  const result = { apply: apply, superseded: 0, docsTrashed: 0, docsFailed: 0, rows: [] };
+  if (!lcSheet || lcSheet.getLastRow() < 2) {
+    Logger.log("[S51] No LessonContext rows.");
+    return result;
+  }
+  const today = formatDateYMD_(opts.today || new Date());
+  const data = lcSheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    const r = data[i];
+    if (String(r[LC_ACTIVITY_DESCRIPTION] || "").indexOf(CYB_DRAFT_PREFIX) !== 0) continue;
+    const date = _normalizeLessonDateCell_(r[LC_LESSON_DATE]);
+    if (date < today) continue;
+    const live = String(r[LC_STATUS] || "").trim() !== LC_STATUS_SUPERSEDED;
+    const docId = String(r[LC_FRAME_DOC_ID] || "").trim();
+    if (!live && !docId) continue;
+    result.rows.push({ row: i + 1, lessonId: String(r[LC_LESSON_ID]), date: date,
+      period: _lessonPeriodText_(r[LC_PERIOD_OR_CLASS]), live: live, docId: docId });
+  }
+
+  if (apply) {
+    result.rows.forEach(x => {
+      if (x.live) {
+        lcSheet.getRange(x.row, LC_STATUS + 1).setValue(LC_STATUS_SUPERSEDED);
+        result.superseded++;
+      }
+      if (x.docId) {
+        try { DriveApp.getFileById(x.docId).setTrashed(true); result.docsTrashed++; }
+        catch (e) { result.docsFailed++; }
+      }
+    });
+  }
+
+  const live = result.rows.filter(x => x.live).length;
+  const docs = result.rows.filter(x => x.docId).length;
+  Logger.log("[S51] " + (apply
+    ? "Superseded " + result.superseded + " drafted lesson(s); trashed " + result.docsTrashed + " frame Doc(s)" +
+      (result.docsFailed ? " (" + result.docsFailed + " could not be trashed)" : "") + "."
+    : "DRY RUN: " + live + " drafted lesson(s) from " + today + " on would be superseded, " +
+      docs + " frame Doc(s) trashed."));
+  result.rows.forEach(x => Logger.log("[S51]   " + x.date + " " + x.period + " " + x.lessonId +
+    (x.live ? "" : " (already superseded)")));
+  return result;
+}
+
 function _cybLessonPayload_(teacher, dateStr, period, code, unit) {
   const anchor = String(unit.warmup_anchor || "").trim();
   return {
@@ -302,7 +373,7 @@ function _cybLessonPayload_(teacher, dateStr, period, code, unit) {
     lessonDate: dateStr,
     periodOrClass: String(period),
     learningObjective: String(unit["objective_" + code] || "").trim() || unit.lesson_unit_name,
-    activityDescription: "Auto-drafted from the pacing guide: " + unit.lesson_unit_id + " " +
+    activityDescription: CYB_DRAFT_PREFIX + unit.lesson_unit_id + " " +
       unit.lesson_unit_name + "." + (anchor ? " Warm-up: " + anchor : "") +
       " Submit a lesson for this period to replace it.",
     keyVocabulary: String(unit.key_vocabulary || "").trim(),

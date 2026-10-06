@@ -382,6 +382,18 @@ function _normalizeLessonDateCell_(value) {
   return String(value || "").trim();
 }
 
+// A period_or_class cell as text. Sheets reads "1-8177" as a month and year
+// and stores a Date (seen live 2026-10-06: the lesson builder's shared-period
+// keys, so a second build wrote all 30 lessons again). Read back as the
+// "1-8177" it was written as. Shared with findLesson_() (24) and the lesson
+// builder (51).
+function _lessonPeriodText_(value) {
+  if (value instanceof Date || Object.prototype.toString.call(value) === "[object Date]") {
+    return (value.getMonth() + 1) + "-" + value.getFullYear();
+  }
+  return String(value === null || value === undefined ? "" : value).trim();
+}
+
 // ---------------------------------------------------------------------------
 // supersedeDuplicates_
 // Marks any existing RECEIVED rows for the same teacher+date+period slot
@@ -395,7 +407,7 @@ function supersedeDuplicates_(lcSheet, teacherEmail, lessonDate, periodOrClass) 
   for (let i = 1; i < data.length; i++) {
     const rowEmail  = String(data[i][LC_TEACHER_EMAIL]).trim().toLowerCase();
     const rowDate   = _normalizeLessonDateCell_(data[i][LC_LESSON_DATE]);
-    const rowPeriod = String(data[i][LC_PERIOD_OR_CLASS]).trim().toLowerCase();
+    const rowPeriod = _lessonPeriodText_(data[i][LC_PERIOD_OR_CLASS]).toLowerCase();
     const rowStatus = String(data[i][LC_STATUS]).trim();
 
     if (
