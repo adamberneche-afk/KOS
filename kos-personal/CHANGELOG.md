@@ -1,6 +1,19 @@
 # KOS Changelog
 
 
+### The primer's Vector State carries its own Data Quality status (2026-10-06)
+
+Notebook retrieval returns passages, not whole docs. A CT-01 run retrieved
+the primer's Vector State list without its Data Quality block and printed
+the scores unqualified. `_primerBlocks_()` (`6_Governance.gs`) now heads
+the section `Vector State (Data Quality FLAGGED|OK)` and puts the status
+and flags on its first line, so a retrieved Vector State passage carries
+its qualifier. The router opens Vector State with `(Data Quality not
+retrieved)` when it has no status, and never calls health or data quality
+GREEN, NOMINAL or OK while flagged or unknown. Test:
+`governance-primer.test.js`.
+
+
 ### Router: no email addresses, and non-staff senders about students go unnamed (2026-10-06)
 
 A CT-01 run listed a Work-Based Learning request under the sender's name
