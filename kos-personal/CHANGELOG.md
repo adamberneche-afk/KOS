@@ -1,6 +1,20 @@
 # KOS Changelog
 
 
+### V6.0 draft 2: CT-01 passes; two router rules (2026-10-06)
+
+`@Startup` with the three chips passed CT-01 twice on 2026-10-06: the
+primer retrieved, all three apps read, the brief FULL
+(`rtp-core-router/notebook-plan/05_TEST_LOG.md`). Two runs typed
+`@startup` in lowercase and got no sources and no apps; both capitalised
+runs passed, so type `@Startup`. Two router changes (`RTP_CORE_ROUTER_V6_0.md`,
+about 9,400 characters):
+- a calendar, mail or task item cites its app, never a notebook source
+  (the first run cited every mail item to `KOS_LATEST_PRIMER`);
+- a mail message whose sender is a student is "a student matter" with no
+  name (a run listed a Work-Based Learning request under its sender's name).
+
+
 ### V6.0 draft 2, and briefing docs name themselves (2026-10-05)
 
 The first V6.0 test runs (`rtp-core-router/notebook-plan/05_TEST_LOG.md`)
