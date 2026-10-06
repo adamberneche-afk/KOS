@@ -2516,3 +2516,13 @@ prompt template is the planned work, followed by the competencies the work
 must show. The Canvas cartridges, which reuse the prompts, were rebuilt.
 Helpers: `cardRow()` and `cardExtension()` in `tools/cas-ccps/lesson-cards.js`.
 Test: `tests/tools/unit-rubrics.test.js`.
+
+## Map Canvas sections before the assignment is LIVE, 2026-10-06
+
+The roster import needed a LIVE Config ID even for the mapping step, so the
+exports sat waiting for Flow 1. `prepareRosterSections()` (52) reads the
+exports, fills `CanvasSectionMap`, and logs each section's student count,
+its non-student logins and, once mapped, its period and course. It enrolls
+no one and logs no names or accounts. Without a Config ID,
+`previewRosterEnrollment()` now points to it. Test:
+`tests/cas-ccps/canvas-roster-import.test.js`.
