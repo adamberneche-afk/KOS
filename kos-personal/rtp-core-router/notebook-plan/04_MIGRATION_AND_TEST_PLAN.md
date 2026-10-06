@@ -52,6 +52,8 @@ The repair half of 0.3 is done.
 3. Add the Tier A and Tier B sources. Do not attach it to any council Gem.
 4. Attach the notebook to a **test copy** of the RTP Gem (never the production Gem). **Deviation 2026-10-05:** it was attached to the RTP Gem itself, with V5.8 kept as the rollback.
 
+**Keep the source list to the 17 deliberate sources.** On 2026-10-06 the notebook held three "Chats from Gemini" sources it had saved itself: two failed `@Startup` runs (whose wrong state retrieval could cite as fact) and an unrelated personal chat. Saved chats can also carry student text into the notebook, which the FERPA rule forbids. Remove any saved chat and leave notebook memory off ("Use notebook memory" in the notebook's settings).
+
 **Gate:** from a test chat, the Gem can answer a question from each source and cite which one.
 
 ## Phase 3 — Slim router (V6.0)
@@ -95,7 +97,7 @@ The repair half of 0.3 is done.
 | U8 | What do "Active Files in Context" and truncation checks mean under retrieval? | Ask a document-dependent question with one source removed; see what the Gem flags. |
 | U9 | Are the notebook and Gem already attached to `KOS_LATEST_PRIMER`? **Gem → RTP notebook: yes (2026-10-03). `KOS_LATEST_PRIMER` is a notebook source: yes (2026-10-05 screenshot).** | Open the RTP notebook's sources; confirm one is `KOS_LATEST_PRIMER` and its doc ID matches `KOS_LATEST_PRIMER_DOC_ID`. Also diff the Gem's Instructions against `RTP_CORE_ROUTER_V5_8.md`; the live text opens differently. |
 | U10 | ~~What changed for the 9/29 format fix; any Flow bound to the Gem?~~ Answered (02_PRD §10). | None. |
-| U11 | Can the Gem call apps without chips in the message? Google's help says enabled apps are used automatically; in testing, only message chips worked (`05_TEST_LOG.md`). | Check that Gemini Apps Activity is on and that Connected Apps lists Workspace, Calendar and Tasks; look at the Gem's **Default tool** options; then send plain `@Startup` in a new chat. If the apps run, drop the chip requirement from the router. Repeat on a skill when skills arrive. |
+| U11 | Can the Gem call apps without chips in the message? Google's help says enabled apps are used automatically; in testing, only message chips worked (`05_TEST_LOG.md`). **2026-10-06, partly answered:** the Gem's Default tool offers no app (only Guided Learning, Create image, Create music, Canvas and Deep research), so it stays on No default tool; the Apps page has Google Workspace on (Gmail, Calendar, Chat, Docs, Drive, Keep, Tasks) and Classroom off, which stays off (FERPA). | Remaining: check that Gemini Apps Activity is on, then send plain `@Startup` in a new chat. If the apps run, drop the chip requirement from the router. Repeat on a skill when skills arrive. |
 
 ---
 
