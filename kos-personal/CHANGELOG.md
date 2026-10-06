@@ -1,6 +1,23 @@
 # KOS Changelog
 
 
+### The KOS thinking partner moves to a Claude Project (2026-10-06)
+
+`kos-personal/claude-project/` replaces the RTP Gem as the place to plan
+and decide (`meta/PLAN_2026-10.md`):
+
+- `PROJECT_INSTRUCTIONS.md`: RTP, the six-persona council, ALIGNMENT's A–D
+  pause and the HITL firewall, carried over from V6.0 without the Gemini
+  workarounds. It opens `KOS_LATEST_PRIMER`, `KOS_OPEN_DECISIONS` and
+  `KOS_CORE_FACTS` by link through the Google Drive connector (whole docs,
+  no notebook retrieval). It has no school mail and no student data.
+- `SESSION_LOG_FORMAT.md`: what `log this` writes. Each exchange starts
+  with the `[🧠 RTP` delimiter that `_semanticChunker` splits on, and it
+  ends with a plain-text closeout (no JSON, per Curator rule 9). The
+  operator pastes it into a Google Doc in `03.5_INBOUND_SESSIONS`, and
+  Sensor 1 takes it from there.
+
+
 ### The primer's Vector State carries its own Data Quality status (2026-10-06)
 
 Notebook retrieval returns passages, not whole docs. A CT-01 run retrieved

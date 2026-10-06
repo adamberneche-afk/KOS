@@ -70,6 +70,7 @@ appsscript.json            OAuth scopes, web app config                    ✅ i
 22_BriefingDocs.gs         Notebook briefing docs, DECISION_REGISTER       ✅ in repo
 inference-service/         Optional Node.js managed-inference backend     ✅ filed in — see CHANGELOG.md + its own README (its OAuth grant no longer requests Drive access at all — Open Items #6, CHANGELOG.md; and read a model response by block type, never content[0] — its README's "Reading the model's output" note; checkout now takes its price from the server: `/checkout/credits` accepts only a `credits` value from `/api/v1/pricing`'s bundles, and a subscription grants credits only for a configured price, `test/billing-pricing.test.js`; failed requests return `Internal server error` plus a logged `ref`, never the raw error text, except a 400's or a 402's own message, `src/http-errors.js` and `test/http-errors.test.js`; `VECTOR_CLASSIFY` jobs get the Studio classifier prompt from the generated `src/flow-prompts.js`, not the Curator one, `test/inference-classify.test.js`)
 rtp-core-router/protocols/ 10 governance/protocol docs                    ✅ filed in — see CHANGELOG.md
+claude-project/            Claude Project instructions + session-log format ✅ in repo — replaces the RTP Gem (meta/PLAN_2026-10.md)
 archive/studio-steps/      Archived custom Studio steps — SEPARATE Apps Script project, unpublishable without GCP; see its own README
 ```
 
