@@ -2591,3 +2591,11 @@ the repo.
   the current pacing unit. A unit already in the matrix is skipped.
 
 Test: `tests/cas-ccps/assignment-seeder.test.js`.
+
+## Intake log without student names, 2026-10-07
+
+`intakeStudent_()` (02) logged "Workspace created — <student name>" for every
+student, so a roster import's execution log carried the whole class list,
+and that log was pasted out of the account. It now logs the student's
+workspace Config ID, the assignment and the period. The name stays in the
+Ledger row.
