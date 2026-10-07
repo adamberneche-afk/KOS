@@ -291,10 +291,11 @@ dependencies, like the rest of `tools/`.
 
 - **cas-ccps:**
   - `build-unit-rubrics.js` writes `cas-ccps/curriculum/unit-rubrics/` (a Flow 1 rubric and prompt per unit and course).
-  - `build-canvas-cartridge.js` writes the 8175/8177 Canvas cartridges in `cas-ccps/curriculum/canvas-cartridges/`, using `lesson-cards.js` (a `.docx` lesson-card reader) and `zip.js` (a zlib-only zip reader and writer).
+  - `build-lesson-assignments.js` turns the teacher's lesson docs (`cas-ccps/curriculum/lessons/`) into `55b_LessonAssignmentData.js` and `lessons/COMPETENCY_REVIEW.md`.
+  - `build-canvas-cartridge.js` writes the 8175/8177 Canvas cartridges (from the teacher's lessons) in `cas-ccps/curriculum/canvas-cartridges/`, using `lesson-cards.js` (a `.docx` lesson-card reader) and `zip.js` (a zlib-only zip reader and writer).
   - `sync-pacing-vocabulary.js` sets the pacing guide's vocabulary fields from the lesson cards.
   - `generate-flow-prompts.js` regenerates `40_FlowPrompts.js`.
-  - The first three take `--check`.
+  - All but the last take `--check`.
 - **kos-personal:**
   - `build-notebook-personas.js` writes the notebook persona editions in `kos-personal/rtp-core-router/notebook-sources/` (`--check`).
   - `generate-flow-prompts.js` regenerates `16_FlowPrompts.gs`.
@@ -321,7 +322,7 @@ Runs `node --check` on every inline `<script>` block of
 tests/cas-ccps/*.test.js tests/kos-personal/*.test.js` (`npm test`) runs
 real Node-`vm`-sandboxed coverage against the actual `.gs`/`.js` source
 via [`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
-`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), the Canvas roster import (`canvas-roster-import.test.js`), LIVE assignments seeded from the repo's unit rubrics (`assignment-seeder.test.js`), the SCR suggestion engine's threshold/state
+`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), the Canvas roster import (`canvas-roster-import.test.js`), the teacher's lessons on LessonSchedule dates (`lesson-schedule.test.js`), LIVE assignments seeded from the repo's unit rubrics (`assignment-seeder.test.js`), the SCR suggestion engine's threshold/state
 machine, the student-context aggregator, `getCompetencyTextMap_`'s
 cache-with-fail-open behavior, Ledger retention, the opt-in Flow 2
 direct-evaluation escape hatch, the `cas-ccps/studio-steps/` custom steps
@@ -358,7 +359,7 @@ per-session vector classification and its backfill
 the size-capped error digest (`error-digest.test.js`),
 and the Registrar's stage validators (`registrar-validators.test.js`);
 `tests/tools/` covers
-the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
+the harness's own fakes behaving like Apps Script (`gas-sandbox-range.test.js`: ranges, cleared rows, duplicate tab names, doc bodies, time zones, per-file loading), the lint tools (including the project-map coverage check, `gas-lint-project-map.test.js`), each flat project's `.claspignore` letting in every file it declares (`claspignore-coverage.test.js`), the generated cas-ccps unit rubrics, lesson assignments, Canvas cartridges and pacing guide vocabulary matching their generators (`unit-rubrics.test.js`, `lesson-assignments.test.js`, `canvas-cartridge.test.js`), LeaderHub's retired spring-2026 default deadlines (`retired-default-deadlines.test.js`), the notebook-codebase generator (every source names itself, stays under the notebook cap and attributes every section: `notebook-codebase.test.js`), the `leaderhub-build` drift gate, and the split script's
 load order (`leaderhub-build-load-order.test.js`, which runs the real
 built tags one after another).
 

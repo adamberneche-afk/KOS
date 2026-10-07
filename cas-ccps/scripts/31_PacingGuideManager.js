@@ -348,6 +348,11 @@ function _pgUnitView_(result) {
  * by 51_CourseYearBuilder.js.
  */
 function resolveUnitForCourseDate_(dateStr, courseCode) {
+  // The teacher's own lessons on the dates in LessonSchedule (55) come first;
+  // the pacing guide covers the dates before the first scheduled lesson.
+  const scheduled = courseCode && typeof scheduledLessonUnit_ === "function"
+    ? scheduledLessonUnit_(dateStr, courseCode) : null;
+  if (scheduled) return scheduled;
   const units = _loadPacingGuide_() || [];
   const target = new Date(dateStr + "T00:00:00");
   const other = courseCode === "8175" ? "8177" : "8175";
