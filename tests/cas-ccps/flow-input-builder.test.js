@@ -30,11 +30,13 @@ const TURNIN_GATE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts',
 const FLOW2_PROMPT_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15b_StudioFlowPrompts_Flow2_Revised.js');
 const SERVICE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '15c_Flow2DirectEvaluationService.js');
 const BUILDER_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '37_FlowInputBuilder.js');
+const ASSIGNMENTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '54_StudentAssignments.js');
 const PROMPTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '40_FlowPrompts.js');
 
 function load(extraGlobals) {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PROMPTS_PATH],
+    [SHARED_CONFIG_PATH, QUEUE_BRIDGE_PATH, TURNIN_GATE_PATH, FLOW2_PROMPT_PATH, SERVICE_PATH, BUILDER_PATH, PROMPTS_PATH,
+      ASSIGNMENTS_PATH],
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
       'STG_STATUS', 'STG_STUDENT_FILE_ID', 'STG_CONFIG_ID', 'STG_TEACHER_EMAIL',

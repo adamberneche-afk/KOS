@@ -70,7 +70,8 @@
       "cas-ccps/scripts/51_CourseYearBuilder.js",
       "cas-ccps/scripts/52_CanvasRosterImport.js",
       "cas-ccps/scripts/53_AssignmentSeeder.js",
-      "cas-ccps/scripts/53b_UnitAssignmentData.js"
+      "cas-ccps/scripts/53b_UnitAssignmentData.js",
+      "cas-ccps/scripts/54_StudentAssignments.js"
     ]
   },
   "cas-ccps:unified-manual": {
