@@ -132,23 +132,35 @@ function page(title, body) {
 const fmtDate = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
 function assignmentXml(id, title, promptText, unit) {
-  const promptHtml = promptText.split(/\n{2,}/).map((para) => {
+  let paras = promptText.split(/\n{2,}/);
+  if (unit) {
+    paras.shift(); // the unit title line; Canvas shows the assignment title
+    paras.pop();   // "Write your response in the response zone below." is for the CAS doc itself
+  } else {
+    // A teacher's lesson: drop its title line and its Canvas "Submission:" part,
+    // which the CAS instructions below replace.
+    paras = paras.filter((para) => !/^(Title:|Assignment:)/.test(para.trim()));
+    const sub = paras.findIndex((para) => /^Submission:\s*$/.test(para.trim()));
+    if (sub !== -1) paras = paras.slice(0, sub);
+  }
+  const promptHtml = paras.map((para) => {
     const lines = para.split('\n');
     if (lines.every((l) => l.startsWith('- '))) return '<ul>\n' + lines.map((l) => '<li>' + esc(l.slice(2)) + '</li>').join('\n') + '\n</ul>';
+    if (lines.length === 1 && /^[A-Z][^.!?]{0,60}:$/.test(lines[0].trim())) return '<h3>' + esc(lines[0].trim().replace(/:$/, '')) + '</h3>';
     return '<p>' + lines.map(esc).join('<br>') + '</p>';
   });
-  promptHtml.shift(); // the unit title line; Canvas shows the assignment title
-  promptHtml.pop();   // "Write your response in the response zone below." is for the CAS doc itself
+  const where = unit ? 'unit' : 'lesson';
   const html = [
     ...promptHtml,
     '<h3>Where to do this work</h3>',
-    '<p>Work in your CAS document for this unit, not in Canvas. It is shared with you in Google Drive ' +
-      '(<strong>Shared with me</strong>) and its name starts with this unit\'s name and ends with your name. ' +
+    '<p>Work in your CAS document for this ' + where + ', not in Canvas. It is shared with you in Google Drive ' +
+      '(<strong>Shared with me</strong>) and its name starts with this ' + where + '\'s name and ends with your name. ' +
       'Write your response in its response zone.</p>',
     '<h3>How to submit</h3>',
     '<p>When you are finished, copy the link to that document, then choose <strong>Start Assignment</strong> → ' +
       '<strong>Website URL</strong> here and paste it.</p>',
-    '<p><em>Pacing guide dates for this unit: ' + esc(fmtDate(unit.approx_start)) + ' to ' + esc(fmtDate(unit.approx_end)) + '.</em></p>',
+    ...(unit ? ['<p><em>Pacing guide dates for this unit: ' + esc(fmtDate(unit.approx_start)) + ' to ' +
+      esc(fmtDate(unit.approx_end)) + '.</em></p>'] : []),
   ].join('\n');
   return '<?xml version="1.0" encoding="UTF-8"?>\n' +
     '<assignment xmlns="http://www.imsglobal.org/xsd/imscc_extensions/assignment" ' +
@@ -208,7 +220,35 @@ function buildCourse(code, decks, data) {
       items });
   });
 
-  const manifest = [
+  return { name: code + '.imscc', entries: [['imsmanifest.xml', manifestXml(code, courseTitle, modules, resources)], ...files], modules };
+}
+
+/**
+ * [[path, content], ...] for one course's cartridge from the teacher's own
+ * lessons (build-lesson-assignments.js), in teaching order: one module per
+ * lesson, holding its assignment. The lesson docs' teacher sections (bell
+ * ringer, hook, grading tip) are not student pages, so there is no lesson
+ * page; dates live in the LessonSchedule tab, so none are printed.
+ */
+function buildLessonCourse(code, lessons) {
+  const courseTitle = code + ' ' + rubrics.COURSES[code];
+  const files = [];
+  const resources = [];
+  const modules = [];
+  (lessons.order[code] || []).forEach((key) => {
+    const a = lessons.assignments[key];
+    const asgId = ident(code, 'lesson-assignment', key);
+    const asgHref = asgId + '/assignment.xml';
+    files.push([asgHref, assignmentXml(asgId, a.unitName, a.promptText, null)]);
+    resources.push({ id: asgId, type: 'assignment_xmlv1p0', href: asgHref });
+    modules.push({ id: ident(code, 'lesson-module', key), title: a.unitName,
+      items: [{ id: ident(code, 'lesson-item', key), ref: asgId, title: a.unitName }] });
+  });
+  return { name: code + '.imscc', entries: [['imsmanifest.xml', manifestXml(code, courseTitle, modules, resources)], ...files], modules };
+}
+
+function manifestXml(code, courseTitle, modules, resources) {
+  return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<manifest identifier="' + ident(code, 'manifest') + '" xmlns="http://www.imsglobal.org/xsd/imsccv1p3/imscp_v1p1" ' +
       'xmlns:lom="http://ltsc.ieee.org/xsd/imsccv1p3/LOM/resource" xmlns:lomimscc="http://ltsc.ieee.org/xsd/imsccv1p3/LOM/manifest" ' +
@@ -244,14 +284,14 @@ function buildCourse(code, decks, data) {
     '</manifest>',
     '',
   ].join('\n');
-
-  return { name: code + '.imscc', entries: [['imsmanifest.xml', manifest], ...files], modules };
 }
 
+// Since 2026-10-07 the courses run on the teacher's own lessons
+// (cas-ccps/curriculum/lessons/), so the cartridges carry those. buildCourse
+// (the pacing-guide units) is kept for reference and its tests.
 function build() {
-  const data = rubrics.load();
-  const decks = loadDecks();
-  return Object.keys(rubrics.COURSES).map((code) => buildCourse(code, decks, data));
+  const lessons = require('./build-lesson-assignments.js').build();
+  return Object.keys(rubrics.COURSES).map((code) => buildLessonCourse(code, lessons));
 }
 
 function main() {
@@ -276,4 +316,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, buildCourse, filterForCourse, blocksHtml };
+module.exports = { build, buildCourse, buildLessonCourse, filterForCourse, blocksHtml };
