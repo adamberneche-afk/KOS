@@ -54,3 +54,84 @@ function readStudentAssignments_(ss) {
   });
   return out;
 }
+
+// ---------------------------------------------------------------------------
+// Retire an assignment: previewArchiveAssignment() / archiveAssignment()
+//
+// For the assignment in the Script Property ARCHIVE_CONFIG_ID (e.g.
+// CAS-S1-U1-8175): every student workspace recorded for it gets Status
+// ARCHIVED and a Notes line in the Ledger, its doc goes to the trash, and the
+// TeacherMatrix row is set ARCHIVED so nothing enrolls into it again. Used
+// when the teacher replaced the pacing-guide units with his own lessons
+// (2026-10-07). Logs counts only.
+// ---------------------------------------------------------------------------
+function previewArchiveAssignment() {
+  return archiveAssignment_({ apply: false });
+}
+
+function archiveAssignment() {
+  return archiveAssignment_({ apply: true });
+}
+
+function archiveAssignment_(opts) {
+  opts = opts || {};
+  const apply = opts.apply === true;
+  const configId = String(opts.configId ||
+    PropertiesService.getScriptProperties().getProperty("ARCHIVE_CONFIG_ID") || "").trim();
+  const result = { apply: apply, configId: configId, workspaces: 0, archived: 0, trashed: 0, matrixRows: 0, message: "" };
+  if (!configId) {
+    result.message = "Set the ARCHIVE_CONFIG_ID Script Property to the assignment's Config ID. Nothing archived.";
+    Logger.log("[S54] " + result.message);
+    return result;
+  }
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const students = {};
+  const byStudent = readStudentAssignments_(ss).byStudent;
+  Object.keys(byStudent).forEach(sid => { if (byStudent[sid] === configId) students[sid] = true; });
+
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  const rows = [];
+  if (ledger && ledger.getLastRow() > 1) {
+    ledger.getRange(2, 1, ledger.getLastRow() - 1, 15).getValues().forEach((r, i) => {
+      if (!students[String(r[2] || "").trim()] || String(r[12] || "").trim() === "ARCHIVED") return;
+      rows.push({ row: i + 2, fileId: String(r[3] || "").trim(), notes: String(r[14] || "") });
+    });
+  }
+  result.workspaces = rows.length;
+
+  // The TeacherMatrix row(s), in every registered matrix.
+  const matrixRows = [];
+  const registry = ss.getSheetByName(cfg.tabs.matrixRegistry);
+  if (registry && registry.getLastRow() > 1) {
+    registry.getRange(2, 3, registry.getLastRow() - 1, 1).getValues().forEach(r => {
+      const id = String(r[0] || "").trim();
+      if (!id) return;
+      const tm = SpreadsheetApp.openById(id).getSheetByName(cfg.tabs.teacherMatrix);
+      if (!tm || tm.getLastRow() < 2) return;
+      tm.getRange(2, 1, tm.getLastRow() - 1, 12).getValues().forEach((m, i) => {
+        if (String(m[0]).trim() === configId && String(m[11]).trim() !== "ARCHIVED") matrixRows.push({ sheet: tm, row: i + 2 });
+      });
+    });
+  }
+  result.matrixRows = matrixRows.length;
+
+  if (apply) {
+    const today = new Date().toISOString().slice(0, 10);
+    rows.forEach(x => {
+      ledger.getRange(x.row, 13).setValue("ARCHIVED");
+      ledger.getRange(x.row, 15).setValue((x.notes ? x.notes + " | " : "") +
+        "Assignment " + configId + " retired; archived " + today + ".");
+      result.archived++;
+      try { DriveApp.getFileById(x.fileId).setTrashed(true); result.trashed++; } catch (e) { /* counted by the gap */ }
+    });
+    matrixRows.forEach(m => m.sheet.getRange(m.row, 12).setValue("ARCHIVED"));
+  }
+
+  result.message = (apply
+    ? "Archived " + result.archived + " workspace(s) for " + configId + " and trashed " + result.trashed + " doc(s)"
+    : "DRY RUN: " + result.workspaces + " workspace(s) for " + configId + " would be archived and their docs trashed") +
+    "; " + result.matrixRows + " TeacherMatrix row(s) " + (apply ? "set" : "would be set") + " ARCHIVED.";
+  Logger.log("[S54] " + result.message);
+  return result;
+}

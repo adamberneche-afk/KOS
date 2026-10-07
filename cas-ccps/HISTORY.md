@@ -2621,3 +2621,31 @@ tab (`UNRECORDED_WORKSPACE`), and `previewRosterRepair()` /
 doc name and the TeacherMatrix, keep the earliest per student and assignment,
 archive the rest (Status ARCHIVED, a Notes line) and trash their docs. Tests:
 `canvas-roster-import.test.js`, `flow-input-builder.test.js`.
+
+## The teacher's own lessons on a LessonSchedule, 2026-10-07
+
+The operator replaced the generated pacing-guide units with his own lessons
+(two Drive folders: 8175 Lessons 01–36; the 8177 lesson plans and pacing
+guide), starting 8175 Lesson 06 and 8177 "Venue Operations & The Employee
+Handbook" on 2026-10-08, and keeps the dates himself.
+
+- `curriculum/lessons/`: verbatim copies of the lesson docs.
+- `tools/cas-ccps/build-lesson-assignments.js` → `scripts/55b_LessonAssignmentData.js`:
+  8175's prompt is each lesson's own Canvas assignment text and its warm-up
+  the bell ringer; 8177 plans have no student assignment, so a lesson is used
+  once `lessons/8177/prompts/<lesson>.md` holds a teacher-approved prompt
+  (Employee Handbook so far). About a third of the 8175 docs' competency
+  numbers name a different state competency, and some 8177 ones do too, so a
+  number counts only when its state wording matches; the rest stay as rubric
+  criteria with no ID, listed in `lessons/COMPETENCY_REVIEW.md`.
+- New `55_LessonSchedule.js`: the `LessonSchedule` tab (`seedLessonSchedule()`)
+  and `scheduledLessonUnit_()`, which `resolveUnitForCourseDate_()` (31) uses
+  before the pacing guide, so the lesson builder (51), warm-ups (24/31) and
+  seeder (53) follow the teacher's dates.
+- 53 seeds lessons (`CAS-8175-L06`) starting within 7 days; 54 gains
+  `archiveAssignment()` to retire S1-U1.
+- The Canvas cartridges now carry the lessons: one module and assignment per
+  lesson, the Canvas text without its title and submission lines.
+
+Tests: `lesson-schedule.test.js`, `tests/tools/lesson-assignments.test.js`,
+`canvas-cartridge.test.js`.

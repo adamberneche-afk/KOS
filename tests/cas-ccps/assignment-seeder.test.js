@@ -15,7 +15,8 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '22_LessonContextHandler.js', '23_StudentProfileManager.js',
   '31_PacingGuideManager.js', '02_Form1_IntakeAndWorkspaceGenerator.js', '29_StudentContextAggregator.js',
-  '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js', '54_StudentAssignments.js'].map(S);
+  '53b_UnitAssignmentData.js', '53_AssignmentSeeder.js', '54_StudentAssignments.js',
+  '55b_LessonAssignmentData.js', '55_LessonSchedule.js'].map(S);
 const EXPOSE = ['previewAssignmentSeed', 'seedAssignments_', 'fetchAssignment_', 'getConfig_', 'UNIT_ASSIGNMENTS'];
 const TEACHER = 'owner.teacher@ccpsnet.net';
 
