@@ -18,8 +18,10 @@
  *                            MatrixRegistry names for this teacher (adding
  *                            the TeacherMatrix tab if it is missing).
  *
- * Which units: the Script Property SEED_UNITS ("S1-U1" or "S1-U1,S1-U2"),
- * else each course's current pacing-guide unit. A unit and course already in
+ * Which units: the Script Property SEED_UNITS ("S1-U1", or the teacher's
+ * lessons by key, "8175-L06,8177-employee-handbook-operations"), else each
+ * course's assignment for today plus any lesson LessonSchedule (55) starts in
+ * the next 7 days. A lesson's Config ID is "CAS-8175-L06" (lessonConfigId_). A unit and course already in
  * the TeacherMatrix is never written again. Config IDs are "CAS-<unit>-<code>"
  * (CAS-S1-U1-8175), so each one is the same in every run.
  *
@@ -77,14 +79,16 @@ function seedAssignments_(opts) {
 
   ["8175", "8177"].forEach(code => {
     units[code].forEach(unitId => {
-      const configId = assignmentConfigId_(unitId, code);
-      const a = UNIT_ASSIGNMENTS[unitId + "_" + code];
-      if (!a) { result.skipped.push({ configId: configId, reason: "NOT_IN_COURSE" }); return; }
+      const found = _asAssignment_(unitId, code);
+      if (found === "OTHER_COURSE") return;
+      const configId = found ? found.configId : assignmentConfigId_(unitId, code);
+      if (!found) { result.skipped.push({ configId: configId, reason: "NOT_IN_COURSE" }); return; }
       if (existing[configId]) {
         result.skipped.push({ configId: configId, reason: "ALREADY_IN_MATRIX (" + existing[configId] + ")" });
         return;
       }
-      result.planned.push({ key: unitId + "_" + code, configId: configId, unitName: a.unitName, courseName: a.courseName,
+      const a = found.a;
+      result.planned.push({ a: a, configId: configId, unitName: a.unitName, courseName: a.courseName,
         competencies: a.milestoneCompetencyIds.filter(Boolean).join(", ") });
     });
   });
@@ -93,7 +97,7 @@ function seedAssignments_(opts) {
     const tab = sheet || _asAddTab_(matrix.ss);
     const folder = _asParentFolder_(matrix.ss.getId());
     result.planned.forEach(p => {
-      const a = UNIT_ASSIGNMENTS[p.key];
+      const a = p.a;
       const doc = DocumentApp.create(a.unitName + " (" + a.code + ") — Prompt template");
       doc.getBody().setText(a.promptText);
       doc.saveAndClose();
@@ -104,7 +108,7 @@ function seedAssignments_(opts) {
         a.definitionOfDone, matrix.teacherEmail, new Date(), "LIVE",
         doc.getId(), a.subject, a.courseName,
         a.milestoneCompetencyIds[0], a.milestoneCompetencyIds[1],
-        a.milestoneCompetencyIds[2], a.milestoneCompetencyIds[3], a.unitId
+        a.milestoneCompetencyIds[2], a.milestoneCompetencyIds[3], a.unitId || a.key
       ];
       const at = tab.getLastRow() + 1;
       // Text first: Sheets reads "8175-1" as a date (competencyIdText_, 32).
@@ -126,17 +130,42 @@ function seedAssignments_(opts) {
   return result;
 }
 
-/** { "8175": [unitId...], "8177": [...] } from SEED_UNITS or today's pacing units. */
+/**
+ * A pacing-guide unit ("S1-U1") or one of the teacher's lessons ("8175-L06",
+ * 55b) for a course: { a, configId }, "OTHER_COURSE" for a lesson of the
+ * other course, or null.
+ */
+function _asAssignment_(id, code) {
+  const lessons = typeof LESSON_ASSIGNMENTS !== "undefined" ? LESSON_ASSIGNMENTS : {};
+  if (lessons[id]) {
+    return lessons[id].code === code ? { a: lessons[id], configId: lessonConfigId_(id) } : "OTHER_COURSE";
+  }
+  const a = UNIT_ASSIGNMENTS[id + "_" + code];
+  return a ? { a: a, configId: assignmentConfigId_(id, code) } : null;
+}
+
+/**
+ * { "8175": [id...], "8177": [...] } from SEED_UNITS (unit IDs or lesson
+ * keys), else each course's assignment for today plus any scheduled lesson
+ * (55) starting in the next 7 days, so a lesson can be seeded the day before.
+ */
 function _asUnits_(opts) {
   const prop = opts.units ||
     String(PropertiesService.getScriptProperties().getProperty("SEED_UNITS") || "")
       .split(",").map(s => s.trim()).filter(Boolean);
   if (prop.length) return { "8175": prop, "8177": prop };
-  const today = formatDateYMD_(opts.today || new Date());
+  const now = opts.today || new Date();
+  const today = formatDateYMD_(now);
+  const soon = formatDateYMD_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 7));
   const out = {};
   ["8175", "8177"].forEach(code => {
     const unit = resolveUnitForCourseDate_(today, code); // 31
     out[code] = unit ? [unit.lesson_unit_id] : [];
+    if (typeof _lsRows_ === "function") {
+      (_lsRows_()[code] || []).forEach(r => {
+        if (r.start > today && r.start <= soon && out[code].indexOf(r.key) === -1) out[code].push(r.key);
+      });
+    }
   });
   return out;
 }
