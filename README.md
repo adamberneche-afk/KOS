@@ -321,7 +321,7 @@ Runs `node --check` on every inline `<script>` block of
 tests/cas-ccps/*.test.js tests/kos-personal/*.test.js` (`npm test`) runs
 real Node-`vm`-sandboxed coverage against the actual `.gs`/`.js` source
 via [`tests/harness/gas-sandbox.js`](./tests/harness/gas-sandbox.js) —
-`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), the Canvas roster import (`canvas-roster-import.test.js`), the SCR suggestion engine's threshold/state
+`tests/cas-ccps/` covers the course year builder (course data check, the CCPS calendar copy, course-aware pacing units, the rolling lesson drafts: `course-year-builder.test.js`), the Canvas roster import (`canvas-roster-import.test.js`), LIVE assignments seeded from the repo's unit rubrics (`assignment-seeder.test.js`), the SCR suggestion engine's threshold/state
 machine, the student-context aggregator, `getCompetencyTextMap_`'s
 cache-with-fail-open behavior, Ledger retention, the opt-in Flow 2
 direct-evaluation escape hatch, the `cas-ccps/studio-steps/` custom steps
