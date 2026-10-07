@@ -299,9 +299,13 @@ is in the assignment's course (TeacherMatrix CourseName, 8175 or 8177): the
 section's own name decides ("...MARKETING... [74-C8175H-P01]"), because both
 courses can meet in one period, and a section without one takes its period's
 course. Run it once per course with that course's Config ID; the rest are
-skipped as `OTHER_COURSE`. It skips students who already have a Ledger row
-for this assignment (an earlier unit's row doesn't count), and reports, never
-removes, students who left the course.
+skipped as `OTHER_COURSE`. It skips students who already have a workspace
+for this assignment (an earlier unit's doesn't count), as recorded in the
+`StudentAssignments` tab, and reports, never removes, students who left the
+course. A workspace made before that tab existed is skipped as
+`UNRECORDED_WORKSPACE` until `previewRosterRepair()` / `repairRosterDuplicates()`
+records its assignment (from the doc's name and the TeacherMatrix), keeping each
+student's earliest workspace and archiving the duplicates that re-runs made.
 
 ## Canvas course cartridges
 
