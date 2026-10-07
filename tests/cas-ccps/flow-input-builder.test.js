@@ -38,7 +38,7 @@ function load(extraGlobals) {
     [
       'buildFlowInputRows', 'harvestFlowInputResults', 'FI', 'FI_HEADERS', 'FI_TAB_NAME',
       'STG_STATUS', 'STG_STUDENT_FILE_ID', 'STG_CONFIG_ID', 'STG_TEACHER_EMAIL',
-      'LEDGER', '_fiCheckPlausibility_', '_fiDistinguishingWords_',
+      'LEDGER', '_fiCheckPlausibility_', '_fiDistinguishingWords_', 'recordStudentAssignment_',
     ],
     extraGlobals,
   );
@@ -148,6 +148,33 @@ test('buildFlowInputRows: resolves the full 3-hop chain into one flat FlowInput 
   assert.equal(row[exported.FI.MILESTONE_1_COMPETENCY_ID], 'COMP-1');
   assert.equal(row[exported.FI.READY_STATUS], 'READY');
   assert.equal(row[exported.FI.GEMINI_FULL_OUTPUT], '');
+});
+
+test('buildFlowInputRows: a real student\'s workspace ID finds its assignment through StudentAssignments', () => {
+  // The Ledger and staging carry the student's own workspace ID (VDOE-…);
+  // the TeacherMatrix row is the assignment's (CAS-…). Looking the matrix up
+  // by the student's ID never matched for a real student (only the canary,
+  // which uses one ID for both).
+  const { exported, sandbox } = load();
+  const ledgerSs = setUpCentralLedger(sandbox);
+  setUpConfig(sandbox, ledgerSs);
+  const studentFileId = sandbox.DocumentApp.create('Student Doc').getId();
+  ledgerSs.getSheetByName('STAGING_PIPELINE').appendRow(
+    stagingRow({ studentFileId, configId: 'VDOE-STU-2026', teacherEmail: 'teacher@example.com' }));
+  ledgerSs.getSheetByName('Ledger').appendRow(ledgerRow({ googleId: 'student@example.com', configId: 'VDOE-STU-2026',
+    fileId: studentFileId, teacherEmail: 'teacher@example.com' }, exported));
+  ledgerSs.getSheetByName('MatrixRegistry').appendRow(['Ms. Smith', 'teacher@example.com', 'matrix-ss-1', new Date()]);
+  setUpTeacherMatrix(sandbox, 'matrix-ss-1').getSheetByName('TeacherMatrix')
+    .appendRow(teacherMatrixRow({ configId: 'CAS-S1-U1-8175', unitName: 'S1-U1 Industry Overview', c1: '8175-44' }));
+  exported.recordStudentAssignment_(ledgerSs, 'VDOE-STU-2026', 'student@example.com', 'CAS-S1-U1-8175');
+
+  exported.buildFlowInputRows();
+
+  const fi = ledgerSs.getSheetByName('FlowInput').getDataRange().getValues();
+  assert.equal(fi.length, 2, 'header + one built row');
+  assert.equal(fi[1][exported.FI.CONFIG_ID], 'VDOE-STU-2026', 'the row still carries the student\'s own ID');
+  assert.equal(fi[1][exported.FI.UNIT_NAME], 'S1-U1 Industry Overview');
+  assert.equal(fi[1][exported.FI.MILESTONE_1_COMPETENCY_ID], '8175-44');
 });
 
 test('buildFlowInputRows: running twice on the same STAGING_PIPELINE row does not duplicate', () => {
