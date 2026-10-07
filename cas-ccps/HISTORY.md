@@ -2569,3 +2569,25 @@ Tests: `tests/cas-ccps/course-year-builder.test.js`,
 Tests: `tests/cas-ccps/course-year-builder.test.js`,
 `tests/cas-ccps/warmup-bridge.test.js`,
 `tests/cas-ccps/canvas-roster-import.test.js`.
+
+## Assignments seeded from the repo, without Studio Flow 1, 2026-10-07
+
+No assignment could go LIVE, so the roster import had no Config ID. The only
+RubricQueue row (2026-09-02) was still PENDING_EXTRACTION, the 2026-10-06
+rubric submission never reached the queue, and the Teacher Matrix that
+MatrixRegistry names had no TeacherMatrix tab. Operator decision: seed from
+the repo.
+
+- `tools/cas-ccps/build-unit-rubrics.js` also writes
+  `scripts/53b_UnitAssignmentData.js`: each unit and course's TeacherMatrix
+  fields (unit name, tier, persona, four milestones with a competency each,
+  the rubric as the definition of done, the prompt template). Milestones are
+  one competency each when a unit has four or fewer (the rest are the work
+  product and the vocabulary), else the competencies in four runs.
+- New `53_AssignmentSeeder.js`: `previewAssignmentSeed()` /
+  `seedAssignments()` write one LIVE row per unit and course, Config ID
+  `CAS-<unit>-<code>`, with a prompt-template Doc beside the matrix, adding
+  the TeacherMatrix tab when it is missing. Units come from `SEED_UNITS`, else
+  the current pacing unit. A unit already in the matrix is skipped.
+
+Test: `tests/cas-ccps/assignment-seeder.test.js`.
