@@ -191,7 +191,7 @@ const PERSONAS = {
  * milestone's competency ID is its first competency's.
  */
 function milestones(comps, workProduct, vocab) {
-  const line = (r) => r.competency_id + ' ' + r.competency_text.replace(/\.$/, '').trim() + '.';
+  const line = (r) => (r.competency_id ? r.competency_id + ' ' : '') + r.competency_text.replace(/\.$/, '').trim() + '.';
   const out = [];
   if (comps.length <= 4) {
     comps.forEach((r) => out.push({ text: line(r), id: r.competency_id }));
@@ -204,7 +204,7 @@ function milestones(comps, workProduct, vocab) {
   } else {
     for (let i = 0; i < 4; i++) {
       const run = comps.slice(Math.floor(i * comps.length / 4), Math.floor((i + 1) * comps.length / 4));
-      out.push({ text: run.map(line).join(' '), id: run[0].competency_id });
+      out.push({ text: run.map(line).join(' '), id: (run.find((r) => r.competency_id) || {}).competency_id || '' });
     }
   }
   return { milestones: out.map((m) => m.text), milestoneCompetencyIds: out.map((m) => m.id) };
@@ -286,4 +286,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, buildData, unitRubric, load, COURSES };
+module.exports = { build, buildData, unitRubric, load, COURSES, milestones, PERSONAS };
