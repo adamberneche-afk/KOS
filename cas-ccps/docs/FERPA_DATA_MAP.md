@@ -107,6 +107,18 @@ enforced anywhere.
 
 > **Naming note:** the column labeled `GoogleID` throughout this codebase (here and in every tab below) is populated with the student's district **email address**, not a separate Google account identifier. There is no non-PII stable student ID anywhere in cas-ccps today — a fact that matters for the Bonus-2 fix below.
 
+### StudentAssignments
+*Central Ledger tab*
+
+| | |
+|---|---|
+| **Fields** | StudentConfigID (the student's workspace ID, the Ledger's ConfigID), GoogleID (district email), AssignmentConfigID (the TeacherMatrix assignment, e.g. `CAS-S1-U1-8175`), RecordedAt. No names. |
+| **Why collected** | The Ledger's ConfigID is the student's own workspace ID, so nothing recorded which assignment a workspace belongs to. Without it the roster import re-enrolled students on every re-run and Flow 2's input builder could not find a real student's rubric. |
+| **Written by** | `intakeStudent_()` (02), one row per workspace; `repairRosterDuplicates()` (52) for workspaces made before the tab existed. |
+| **Read by** | 37 (`buildFlowInputRows`, the TeacherMatrix lookup) and 52 (who is already enrolled). |
+| **Visible to** | Whoever can open the Central Ledger: the same people as the Ledger. |
+| **Retention** | Kept with the Ledger. A row whose Ledger row is archived is harmless and isn't read for anything else. |
+
 ### Canvas gradebook exports and CanvasSectionMap (S52)
 *Teacher's own Drive folder; Central Ledger tab*
 
