@@ -2649,3 +2649,29 @@ Handbook" on 2026-10-08, and keeps the dates himself.
 
 Tests: `lesson-schedule.test.js`, `tests/tools/lesson-assignments.test.js`,
 `canvas-cartridge.test.js`.
+
+## Switched to the teacher's lessons, live, 2026-10-07
+
+The operator ran step 17a after pushing central-ledger at PR #113:
+
+- **Assignments:** `seedAssignments()` wrote `CAS-8175-L06` and
+  `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS` LIVE. The first preview planned
+  nothing new because `SEED_UNITS` was still `S1-U1` from step 16, and a set
+  `SEED_UNITS` wins over the LessonSchedule. Setting it to the two lesson
+  keys fixed it; delete it after seeding.
+- **Archive:** `archiveAssignment()` retired `CAS-S1-U1-8175` (71
+  workspaces, 71 docs trashed) and `CAS-S1-U1-8177` (21 and 21), and set
+  both TeacherMatrix rows ARCHIVED. A first preview with both IDs
+  comma-separated in `ARCHIVE_CONFIG_ID` matched nothing; it takes one ID
+  per run.
+- **Lessons:** `removeDraftedLessons()` superseded the 36 drafted lessons
+  from Oct 7 on and trashed 102 frame docs. `buildUpcomingLessons()` (two
+  runs) rebuilt them through Oct 14: L06 for 8175 periods (6 rubric
+  links) and Employee Handbook for 8177 (4).
+- **Roster:** every rostered student is enrolled in the new assignment,
+  71 in 8175 and 21 in 8177, each with a new workspace doc. The 2 Ledger
+  students in no Canvas export are still unexplained; nothing removed them.
+
+The `seedLessonSchedule()` log was not pasted, but the build placing the
+lessons by key shows the tab exists and its Oct 8 dates read back. Not yet
+done: the Canvas cartridge import (step 18).
