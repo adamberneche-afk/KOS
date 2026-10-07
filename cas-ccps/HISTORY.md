@@ -2613,7 +2613,7 @@ nothing recorded the assignment (`CAS-S1-U1-8175`). Two live consequences:
   (37) looked up the TeacherMatrix by the student's workspace ID. The canary
   passed only because it uses one ID for both.
 
-Fix: a `StudentAssignments` tab (helpers in `00_SharedConfig.js`), written by
+Fix: a `StudentAssignments` tab (helpers in `54_StudentAssignments.js`), written by
 `intakeStudent_()` (02); 52 and 37 read it (37 falls back to the row's own ID,
 so the canary is unchanged). 52 skips a student whose workspace predates the
 tab (`UNRECORDED_WORKSPACE`), and `previewRosterRepair()` /
