@@ -1,6 +1,8 @@
 # kos-personal ingestion: test, diagnose, harden
 
-**Status:** plan, not started. Written 2026-10-06 from an outside review,
+**Status:** B done (PR #107, live 2026-10-06: kos-personal has 18
+triggers, including the nightly `archiveFinishedStagingRows`). Diagnosis
+(§4), C and A not started. Written 2026-10-06 from an outside review,
 corrected against the code on `main` the same day.
 
 **Symptom:** payloads queue faster than they clear. On 2026-10-05 a
@@ -45,7 +47,7 @@ Why a backlog gets worse instead of clearing:
 
 1. **`archiveStagingPipeline()` is not scheduled.** It isn't in
    `setupAllTriggers()`; it runs only from the web app. Terminal rows stay
-   in `STAGING_PIPELINE`.
+   in `STAGING_PIPELINE`. (Fixed by B, 2026-10-06.)
 2. **`processInferenceQueue()` reads the whole sheet every run**
    (`3_Queue_Processor.gs:102`), with no cursor or cap, so its cost grows
    with item 1.
@@ -93,7 +95,10 @@ contention.
 
 ## 5. Harden, in order
 
-- **B. Schedule `archiveStagingPipeline()`** (hourly) in
+- **B. Done 2026-10-06 (PR #107), nightly rather than hourly:**
+  `archiveFinishedStagingRows()` at 02:00 moves succeeded rows only; failed
+  rows stay for requeue. As planned:
+  Schedule `archiveStagingPipeline()` (hourly) in
   `setupAllTriggers()`. This is safe now because the rederive and the
   backfill read the archive (§1). *Accept:* the trigger-list test includes
   it, and a test shows terminal rows move to `STAGING_ARCHIVE` and
