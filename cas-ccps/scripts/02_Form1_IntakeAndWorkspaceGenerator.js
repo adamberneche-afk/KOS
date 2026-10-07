@@ -217,6 +217,7 @@ function intakeStudent_(cfg, s) {
   registerLedger_(cfg, googleId, studentName, studentConfigId, fileId,
                   block, className, teacherName, assignedTeacherEmail,
                   subject, courseName, period, docFile.getUrl());
+  recordStudentAssignment_(SpreadsheetApp.openById(cfg.ledgerSsId), studentConfigId, googleId, unitConfigId);
 
   // No name: execution logs get copied out of the account (a roster import's
   // log, pasted 2026-10-07, carried every student's name). The Ledger row has it.
