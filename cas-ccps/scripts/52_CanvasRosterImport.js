@@ -191,10 +191,18 @@ function enrollCanvasRoster_(opts) {
   // Accounts already in the Ledger for this teacher and term.
   const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
   // inTerm: this teacher's students this term (for the "left the course"
-  // report). enrolled: those with a row for THIS assignment, so the next
-  // unit's assignment can be imported for the same students.
+  // report). enrolled: those with a workspace for THIS assignment
+  // (StudentAssignments, 02), so the next unit's assignment can be imported
+  // for the same students. The Ledger's ConfigID is the student's own
+  // workspace ID, so it can't say which assignment a row is for; comparing it
+  // with the assignment ID never matched, and every re-run enrolled everyone
+  // again (seen live 2026-10-07). unrecorded: accounts with a workspace from
+  // before StudentAssignments existed. They are not enrolled again until
+  // repairRosterDuplicates() records their assignment.
   const inTerm = {};
   const enrolled = {};
+  const unrecorded = {};
+  const assignments = readStudentAssignments_(ss);
   const ledger = ss.getSheetByName(cfg.tabs.ledger);
   if (ledger && ledger.getLastRow() > 1) {
     ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues().forEach(r => {
@@ -203,7 +211,9 @@ function enrollCanvasRoster_(opts) {
       if (term && String(r[18] || "").trim() && String(r[18]).trim() !== term) return;
       const account = String(r[1] || "").trim().toLowerCase();
       inTerm[account] = true;
-      if (String(r[2] || "").trim() === configId) enrolled[account] = true;
+      const assignment = assignments.byStudent[String(r[2] || "").trim()];
+      if (assignment === configId) enrolled[account] = true;
+      if (!assignment) unrecorded[account] = true;
     });
   }
   result.notInCanvas = Object.keys(inTerm).filter(a => !seenAccounts[a]);
@@ -229,6 +239,10 @@ function enrollCanvasRoster_(opts) {
     }
     if (enrolled[s.account]) {
       result.skipped.push(Object.assign(row, { reason: "ALREADY_ENROLLED" }));
+      continue;
+    }
+    if (unrecorded[s.account]) {
+      result.skipped.push(Object.assign(row, { reason: "UNRECORDED_WORKSPACE" }));
       continue;
     }
     row.period = period;
@@ -266,6 +280,10 @@ function enrollCanvasRoster_(opts) {
   const counts = {};
   result.skipped.forEach(s => { counts[s.reason] = (counts[s.reason] || 0) + 1; });
   Object.keys(counts).forEach(k => Logger.log("[S52]   skipped " + k + ": " + counts[k]));
+  if (counts.UNRECORDED_WORKSPACE) {
+    Logger.log("[S52] " + counts.UNRECORDED_WORKSPACE + " student(s) already have a workspace from before " +
+      "assignments were recorded. Run previewRosterRepair(), then repairRosterDuplicates(), then this again.");
+  }
   result.skipped.filter(s => s.reason === "INVALID_ACCOUNT")
     .forEach(s => Logger.log("[S52]   not a student account: SIS Login ID \"" + s.sisLogin + "\""));
   result.failed.forEach(f => Logger.log("[S52]   FAILED " + f.account + ": " + f.reason));
@@ -396,6 +414,106 @@ function _criSectionCourse_(section, period, courseByPeriod) {
   const code = _cybCourseCode_(section) || (names.length === 1 ? _cybCourseCode_(names[0]) : "");
   const name = names.filter(n => code && _cybCourseCode_(n) === code)[0] || "";
   return { code: name ? code : "", name: name };
+}
+
+// ================================================================
+// REPAIR — duplicate workspaces from re-runs before StudentAssignments
+// ================================================================
+
+function previewRosterRepair() {
+  return repairRosterDuplicates_({ apply: false });
+}
+
+/**
+ * For this teacher's Ledger rows this term with no StudentAssignments entry:
+ * works out the assignment from the workspace doc's name ("<UnitName> — …",
+ * 02) and the TeacherMatrix row with that UnitName in the student's course;
+ * keeps each student's earliest workspace per assignment and records its
+ * assignment; archives the later ones (Status ARCHIVED, a Notes line) and
+ * trashes their docs. Rows whose assignment can't be worked out are left
+ * alone and counted. Logs counts only, no names or accounts.
+ */
+function repairRosterDuplicates() {
+  return repairRosterDuplicates_({ apply: true });
+}
+
+function repairRosterDuplicates_(opts) {
+  opts = opts || {};
+  const apply = opts.apply === true;
+  const cfg = getConfig_();
+  const ss = SpreadsheetApp.openById(cfg.ledgerSsId);
+  const result = { apply: apply, kept: 0, duplicates: 0, unresolved: 0, recorded: 0, archived: 0, trashed: 0,
+    message: "" };
+  const ledger = ss.getSheetByName(cfg.tabs.ledger);
+  if (!ledger || ledger.getLastRow() < 2) { result.message = "No Ledger rows."; Logger.log("[S52] " + result.message); return result; }
+
+  let teacherEmail = String(cfg.teacherEmail || "").trim().toLowerCase();
+  const registry = ss.getSheetByName(cfg.tabs.matrixRegistry);
+  if (!teacherEmail && registry && registry.getLastRow() > 1) {
+    teacherEmail = String(registry.getRange(2, 2).getValue() || "").trim().toLowerCase();
+  }
+  // TeacherMatrix: "<UnitName>|<course code>" → ConfigID.
+  const byUnit = {};
+  if (registry && registry.getLastRow() > 1) {
+    registry.getRange(2, 1, registry.getLastRow() - 1, 3).getValues().forEach(r => {
+      if (String(r[1] || "").trim().toLowerCase() !== teacherEmail || !String(r[2] || "").trim()) return;
+      const tm = SpreadsheetApp.openById(String(r[2]).trim()).getSheetByName(cfg.tabs.teacherMatrix);
+      if (!tm || tm.getLastRow() < 2) return;
+      tm.getRange(2, 1, tm.getLastRow() - 1, 15).getValues().forEach(m => {
+        if (String(m[11]).trim() !== "LIVE") return;
+        byUnit[String(m[1]).trim() + "|" + _cybCourseCode_(m[14])] = String(m[0]).trim();
+      });
+    });
+  }
+
+  const term = PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "";
+  const assignments = readStudentAssignments_(ss);
+  const data = ledger.getRange(2, 1, ledger.getLastRow() - 1, 19).getValues();
+  const groups = {};
+  data.forEach((r, i) => {
+    if (String(r[8] || "").trim().toLowerCase() !== teacherEmail) return;
+    if (String(r[12] || "").trim() === "ARCHIVED") return;
+    if (term && String(r[18] || "").trim() && String(r[18]).trim() !== term) return;
+    const sid = String(r[2] || "").trim();
+    const account = String(r[1] || "").trim().toLowerCase();
+    let assignment = assignments.byStudent[sid] || "";
+    const recorded = !!assignment;
+    if (!assignment) {
+      let name = "";
+      try { name = DriveApp.getFileById(String(r[3]).trim()).getName(); } catch (e) { name = ""; }
+      assignment = byUnit[name.split(" — ")[0].trim() + "|" + _cybCourseCode_(r[10])] || "";
+    }
+    if (!assignment) { result.unresolved++; return; }
+    const key = account + "|" + assignment;
+    (groups[key] = groups[key] || []).push({ row: i + 2, at: new Date(r[0]).getTime() || 0, sid: sid,
+      account: account, fileId: String(r[3]).trim(), assignment: assignment, recorded: recorded,
+      notes: String(r[14] || "") });
+  });
+
+  Object.keys(groups).forEach(key => {
+    // Keep a recorded workspace if there is one, else the earliest.
+    const g = groups[key].sort((a, b) => (b.recorded - a.recorded) || (a.at - b.at));
+    const keep = g[0];
+    result.kept++;
+    result.duplicates += g.length - 1;
+    if (!apply) return;
+    if (!keep.recorded) { recordStudentAssignment_(ss, keep.sid, keep.account, keep.assignment); result.recorded++; }
+    g.slice(1).forEach(d => {
+      ledger.getRange(d.row, 13).setValue("ARCHIVED");
+      ledger.getRange(d.row, 15).setValue((d.notes ? d.notes + " | " : "") +
+        "Duplicate workspace from a roster import re-run; archived " + new Date().toISOString().slice(0, 10) + ".");
+      result.archived++;
+      try { DriveApp.getFileById(d.fileId).setTrashed(true); result.trashed++; } catch (e) { /* counted by the gap */ }
+    });
+  });
+
+  result.message = (apply
+    ? "Kept " + result.kept + " workspace(s) (" + result.recorded + " newly recorded); archived " +
+      result.archived + " duplicate(s) and trashed " + result.trashed + " doc(s)"
+    : "DRY RUN: " + result.kept + " workspace(s) to keep, " + result.duplicates + " duplicate(s) to archive") +
+    "; " + result.unresolved + " row(s) whose assignment couldn't be found were left alone.";
+  Logger.log("[S52] " + result.message);
+  return result;
 }
 
 /** "1" from a CCPS section code ending "-P01]"; "" when there is none. */

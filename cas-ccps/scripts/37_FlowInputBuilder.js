@@ -213,6 +213,11 @@ function buildFlowInputRows() {
       existingKeys.add(fiKey);
     }
 
+    // The student's workspace ID → its assignment's TeacherMatrix ConfigID
+    // (StudentAssignments, 02). A row with none (the canary, which uses one
+    // ID for both) is looked up by its own ID, as before.
+    const assignments = readStudentAssignments_(ledgerSs).byStudent;
+
     let built = 0;
     for (let i = 1; i < stagingData.length; i++) {
       if (String(stagingData[i][STG_STATUS]).trim() !== "IN_PROCESS") continue;
@@ -245,14 +250,14 @@ function buildFlowInputRows() {
 
       let matrixRow;
       try {
-        matrixRow = _fiFindTeacherMatrixRow_(matrixSsId, configId);
+        matrixRow = _fiFindTeacherMatrixRow_(matrixSsId, assignments[configId] || configId);
       } catch (e) {
         Logger.log("[FlowInputBuilder] Could not read TeacherMatrix " + matrixSsId +
                    ": " + e.message + " — will retry next cycle.");
         continue;
       }
       if (!matrixRow) {
-        Logger.log("[FlowInputBuilder] No TeacherMatrix row for ConfigID " + configId +
+        Logger.log("[FlowInputBuilder] No TeacherMatrix row for ConfigID " + (assignments[configId] || configId) +
                    " in " + matrixSsId + " — will retry next cycle.");
         continue;
       }
