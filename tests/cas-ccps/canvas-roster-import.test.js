@@ -22,8 +22,9 @@ const { loadGasFiles, FakeDriveFolder } = require('../harness/gas-sandbox');
 
 const S = (f) => path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', f);
 const FILES = ['00_SharedConfig.js', '29_StudentContextAggregator.js', '02_Form1_IntakeAndWorkspaceGenerator.js',
-  '51_CourseYearBuilder.js', '52_CanvasRosterImport.js'].map(S);
-const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', 'prepareRosterSections', '_criParseGradebook_'];
+  '51_CourseYearBuilder.js', '52_CanvasRosterImport.js', '54_StudentAssignments.js'].map(S);
+const EXPOSE = ['previewRosterEnrollment', 'applyRosterEnrollment', 'prepareRosterSections', '_criParseGradebook_',
+  'repairRosterDuplicates_'];
 const TEACHER = 'owner.teacher@ccpsnet.net';
 
 function csvFile(id, name, csv, minute) {
@@ -100,8 +101,20 @@ function setup(opts) {
     opts.sectionMap.forEach((r) => m.appendRow(r));
   }
 
+  // StudentAssignments rows: [studentConfigId, account, assignmentConfigId].
+  (opts.assignments || []).forEach((a) => sandbox.recordStudentAssignment_(ledgerSs, a[0], a[1], a[2]));
+
+  // Stands in for intakeStudent_ (02): a Ledger row under the student's own
+  // workspace ID, and its StudentAssignments row, as the real one writes.
   const calls = [];
-  sandbox.intakeStudent_ = (cfg, s) => { calls.push(s); return { ok: true, studentConfigId: 'S-' + calls.length }; };
+  sandbox.intakeStudent_ = (cfg, s) => {
+    calls.push(s);
+    const sid = 'VDOE-T' + calls.length;
+    ledger.appendRow([new Date(), s.googleId, sid, 'file-' + sid, s.studentName, s.block, s.className, s.teacherName,
+      s.teacherEmail, s.subject, s.courseName, s.period, 'ACTIVE', '', '', '', '', '', '2026-27']);
+    sandbox.recordStudentAssignment_(ledgerSs, sid, s.googleId, s.unitConfigId);
+    return { ok: true, studentConfigId: sid };
+  };
   return { exported, sandbox, ledgerSs, calls };
 }
 
@@ -163,24 +176,46 @@ test('an assignment with no CourseName enrolls no one', () => {
   assert.equal(calls.length, 0);
 });
 
+// A Ledger row's ConfigID is the student's own workspace ID (VDOE-…); which
+// assignment it belongs to is in StudentAssignments.
+const ledgerRow = (acct, term, sid) => [new Date(), acct, sid, 'f', 'n', '3', 'c', 't', TEACHER, 's', 'c', '3',
+  'ACTIVE', '', '', '', '', '', term];
+
 test('a student already enrolled in this assignment is skipped; one who left Canvas is reported, not removed', () => {
-  const row = (acct, term, cfgId) => [new Date(), acct, cfgId || 'CFG-1', 'f', 'n', '3', 'c', 't', TEACHER, 's', 'c', '3',
-    'ACTIVE', '', '', '', '', '', term];
   const { exported, calls, ledgerSs } = setup({ sectionMap: MAPPED,
-    ledgerRows: [row('1234567@ccpsnet.net', '2026-27'), row('7654321@ccpsnet.net', '2026-27'),
-      row('2345678@ccpsnet.net', '2025-26')] });
+    ledgerRows: [ledgerRow('1234567@ccpsnet.net', '2026-27', 'VDOE-A'), ledgerRow('7654321@ccpsnet.net', '2026-27', 'VDOE-B'),
+      ledgerRow('2345678@ccpsnet.net', '2025-26', 'VDOE-C')],
+    assignments: [['VDOE-A', '1234567@ccpsnet.net', 'CFG-1'], ['VDOE-B', '7654321@ccpsnet.net', 'CFG-1'],
+      ['VDOE-C', '2345678@ccpsnet.net', 'CFG-1']] });
   const r = exported.applyRosterEnrollment('CFG-1');
   assert.ok(r.skipped.some((s) => s.account === '1234567@ccpsnet.net' && s.reason === 'ALREADY_ENROLLED'));
   assert.deepEqual(calls.map((c) => c.googleId), ['2345678@ccpsnet.net'],
     'last year\'s row does not count as enrolled');
   assert.deepEqual(r.notInCanvas, ['7654321@ccpsnet.net']);
-  assert.equal(ledgerSs.getSheetByName('Ledger').getLastRow(), 4, 'no Ledger row removed');
+  assert.equal(ledgerSs.getSheetByName('Ledger').getLastRow(), 5, 'no Ledger row removed; one added');
+});
+
+test('a re-run enrolls no one twice (it used to enroll everyone again: seen live)', () => {
+  const { exported, calls } = setup({ sectionMap: MAPPED });
+  exported.applyRosterEnrollment('CFG-1');
+  assert.equal(calls.length, 2);
+  const again = exported.applyRosterEnrollment('CFG-1');
+  assert.equal(calls.length, 2, 'nobody enrolled a second time');
+  assert.equal(again.skipped.filter((s) => s.reason === 'ALREADY_ENROLLED').length, 2);
+});
+
+test('a workspace with no recorded assignment blocks a second enrollment until repaired', () => {
+  const { exported, calls } = setup({ sectionMap: MAPPED,
+    ledgerRows: [ledgerRow('1234567@ccpsnet.net', '2026-27', 'VDOE-OLD')] });
+  const r = exported.applyRosterEnrollment('CFG-1');
+  assert.ok(r.skipped.some((s) => s.account === '1234567@ccpsnet.net' && s.reason === 'UNRECORDED_WORKSPACE'));
+  assert.deepEqual(calls.map((c) => c.googleId), ['2345678@ccpsnet.net']);
 });
 
 test('a row for an earlier unit doesn\'t block enrolling the same student in the next unit', () => {
-  const row = [new Date(), '1234567@ccpsnet.net', 'CFG-0', 'f', 'n', '3', 'c', 't', TEACHER, 's', 'c', '3', 'ACTIVE',
-    '', '', '', '', '', '2026-27'];
-  const { exported, calls } = setup({ sectionMap: MAPPED, ledgerRows: [row] });
+  const row = ledgerRow('1234567@ccpsnet.net', '2026-27', 'VDOE-0');
+  const { exported, calls } = setup({ sectionMap: MAPPED, ledgerRows: [row],
+    assignments: [['VDOE-0', '1234567@ccpsnet.net', 'CFG-0']] });
   const r = exported.applyRosterEnrollment('CFG-1');
   assert.deepEqual(calls.map((c) => c.googleId), ['1234567@ccpsnet.net', '2345678@ccpsnet.net']);
   assert.deepEqual(r.notInCanvas, []);
@@ -315,4 +350,37 @@ test('a period typed into CanvasSectionMap wins over the section code', () => {
   const r = exported.prepareRosterSections();
   const s = r.sections.find((x) => /MARKETING/.test(x.section));
   assert.equal(s.period, '3');
+});
+
+// ── repair: duplicate workspaces from re-runs before StudentAssignments ──
+
+test('repairRosterDuplicates_ keeps each student\'s earliest workspace, archives the rest, and records the assignment', () => {
+  const t = setup({ sectionMap: MAPPED });
+  const { exported, sandbox, ledgerSs } = t;
+  const doc = (name) => sandbox.DocumentApp.create(name).getId();
+  const mk = (acct, sid, day, fileId, course) => [new Date(2026, 9, 7, 23, day), acct, sid, fileId, 'n', '3', 'c',
+    't', TEACHER, 's', course, '3', 'ACTIVE', '', '', '', '', '', ''];
+  const M = '8175 Sports Entertainment and Event Marketing';
+  const first = doc('S1-U1 Industry Overview — A');
+  const dup = doc('S1-U1 Industry Overview — A');
+  const ledger = ledgerSs.getSheetByName('Ledger');
+  [mk('1234567@ccpsnet.net', 'VDOE-1', 1, first, M), mk('1234567@ccpsnet.net', 'VDOE-2', 9, dup, M),
+    mk('2345678@ccpsnet.net', 'VDOE-3', 2, doc('S1-U1 Industry Overview — B'), M),
+    mk('4567890@ccpsnet.net', 'VDOE-4', 3, doc('Some old assignment — C'), M)].forEach((r) => ledger.appendRow(r));
+
+  const preview = exported.repairRosterDuplicates_({ apply: false });
+  assert.deepEqual([preview.kept, preview.duplicates, preview.unresolved], [2, 1, 1]);
+  assert.equal(ledger.getRange(3, 13).getValue(), 'ACTIVE', 'a dry run changes nothing');
+
+  const r = exported.repairRosterDuplicates_({ apply: true });
+  assert.deepEqual([r.recorded, r.archived, r.trashed], [2, 1, 1]);
+  assert.equal(ledger.getRange(2, 13).getValue(), 'ACTIVE', 'the earliest stays');
+  assert.equal(ledger.getRange(3, 13).getValue(), 'ARCHIVED');
+  assert.match(ledger.getRange(3, 15).getValue(), /Duplicate workspace/);
+  assert.equal(sandbox.DriveApp.getFileById(dup).isTrashed(), true);
+  assert.equal(sandbox.DriveApp.getFileById(first).isTrashed(), false);
+
+  const again = exported.applyRosterEnrollment('CFG-1');
+  assert.deepEqual(again.skipped.filter((s) => s.reason === 'ALREADY_ENROLLED').map((s) => s.account).sort(),
+    ['1234567@ccpsnet.net', '2345678@ccpsnet.net']);
 });
