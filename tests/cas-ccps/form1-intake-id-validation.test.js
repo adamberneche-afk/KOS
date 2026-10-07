@@ -31,10 +31,11 @@ const { loadGasFiles } = require('../harness/gas-sandbox');
 const SHARED_CONFIG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '00_SharedConfig.js');
 const AGGREGATOR_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '29_StudentContextAggregator.js');
 const INTAKE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '02_Form1_IntakeAndWorkspaceGenerator.js');
+const ASSIGNMENTS_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '54_StudentAssignments.js');
 
 function load() {
   return loadGasFiles(
-    [SHARED_CONFIG_PATH, AGGREGATOR_PATH, INTAKE_PATH],
+    [SHARED_CONFIG_PATH, AGGREGATOR_PATH, INTAKE_PATH, ASSIGNMENTS_PATH],
     ['onFormSubmit_Intake', 'SHARED_CONFIG_CACHE_PREFIX'],
   );
 }
