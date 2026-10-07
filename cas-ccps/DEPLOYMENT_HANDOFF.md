@@ -1,23 +1,18 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live. kos-personal and leader-hub each have open work (corrected 2026-10-03)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-07)
 >
-> **Read the other two systems' own handoffs for their state.** This banner
-> used to say all three systems were live with nothing left to deploy. As
-> of 2026-10-03 that is not true:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-07.md`](../meta/HANDOFF_2026-10-07.md)**:
+> every system's state and the operator's queue in order. The other two
+> systems' state is there and in their own handoffs.
 >
-> - **kos-personal:** about 71% of Curator Flow rows failed Sept 10-17
->   (the steps called the RTP Gem; fixed in Studio Sept 29). The Classify
->   Flow now returns real parts; what remains is requeuing the backlog and
->   finishing the VECTOR_MATRIX repair. See `kos-personal/HANDOFF_2026-09-28.md`.
->
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-05.md`](../meta/HANDOFF_2026-10-05.md)**:
-> every system's state and the operator's queue in order.
-> - **leader-hub:** paused. It works on `/dev`, but `/exec` still needs its
->   release. See `leader-hub/README.md`'s "Status".
-> - **cas-ccps:** the seven projects `run.ps1` deploys (all eight except the
->   blocked `studio-steps`) are waiting on a `run.ps1 -Latest` push of
->   current `main`.
+> - **cas-ccps:** central-ledger is pushed at `main` as of PR #113. Phase 6
+>   (below) has run through step 17a: course data, the lesson builder and
+>   its nightly trigger, LIVE assignments `CAS-8175-L06` and
+>   `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS` (the S1-U1 ones archived),
+>   and every rostered student enrolled in them (71 in 8175, 21 in 8177).
+>   Left: step 18 (import the Canvas cartridges), then the first real
+>   Flow 2 run when students submit.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
 > projects are live in a real `ccpsnet.net` Workspace account, Module 1 and
@@ -30,8 +25,8 @@
 >
 > **kos-personal's two Studio flows were built and verified on 2026-09-08**
 > (`kos-personal/CHANGELOG.md` Rounds 21-22), but failed in use from
-> Sept 10 until a Sept 29 fix: see the kos-personal bullet above. **Nothing needs deploying
-> from scratch**, but all three systems have pushes or fixes pending. The
+> Sept 10 until a Sept 29 fix (`kos-personal/HANDOFF_2026-09-28.md`). **Nothing needs deploying
+> from scratch**; the repo-wide handoff lists what is still pending. The
 > rest of this document — the already-live section, the
 > Script Properties reference, the from-scratch order of operations — is
 > kept as reference for standing up a *second* cas-ccps account, for
@@ -384,9 +379,9 @@ noted.
 | 13 | `importCourseData()` | Runs the competency registry, pacing guide and rubric importers (they find `CompetencyRegistry.csv`, `PacingGuide_CAS_Context.json` and `CompetencyRubrics.json` in Drive by name, so upload the current repo copies first), then `checkCourseData()`: 113/108 competencies and rubrics, 20 units, readable dates. It also creates the `NoSchoolDays` tab from the CCPS 2026-27 calendar; edit it for snow days. Safe to re-run. |
 | 14 | Set `M2_ENABLED` = `true` in **Central Ledger's** Script Properties (the Module 2 wizard sets it only in the Unified Manual project), then `previewUpcomingLessons()`, then `buildUpcomingLessons()` | Without it these log "Module 2 is not enabled" and build nothing. Drafts a LessonContext row (and its Lesson Frame doc) for each ClassSchedule period on each school day in the next 7 days, from the pacing guide. Needs Phase B's ClassSchedule. Never overwrites a slot that already has a lesson. |
 | 15 | `installLessonPlanTrigger()` | Runs `buildUpcomingLessons` daily at about 2am, before the 3:30am warm-up queue build. `removeLessonPlanTrigger()` undoes it. |
-| 16 | Set the Script Property `SEED_UNITS` (e.g. `S1-U1`), then `previewAssignmentSeed()`, then `seedAssignments()` (53) | Writes each unit's LIVE TeacherMatrix row for both courses from the repo's unit rubrics, with Config IDs `CAS-S1-U1-8175` / `CAS-S1-U1-8177`: what step 17 needs. Replaces the Rubric Upload Form → Studio Flow 1 → confirmation path, which never produced an assignment (2026-10-06). |
+| 16 | Set the Script Property `SEED_UNITS` (e.g. `S1-U1`), then `previewAssignmentSeed()`, then `seedAssignments()` (53) | Writes each unit's LIVE TeacherMatrix row for both courses from the repo's unit rubrics, with Config IDs `CAS-S1-U1-8175` / `CAS-S1-U1-8177`: what step 17 needs. Replaces the Rubric Upload Form → Studio Flow 1 → confirmation path, which never produced an assignment (2026-10-06). Delete `SEED_UNITS` afterwards: while set, it overrides the LessonSchedule (step 17a). |
 | 17 | Upload each Canvas course's gradebook export (Grades → Export → Export Entire Gradebook) to Drive; `prepareRosterSections()` and put each section's period in `CanvasSectionMap` (this can be done before step 16); then **once per course**: set the Script Property `ROSTER_CONFIG_ID` to that course's LIVE assignment Config ID; `previewRosterEnrollment()`; put each section's period in `CanvasSectionMap`; preview again; `applyRosterEnrollment()` | Enrolls the roster through `intakeStudent_()` (02), exactly as the intake form would. Only students whose period is in the assignment's course (its TeacherMatrix CourseName) are enrolled; the others are skipped as `OTHER_COURSE`. Needs a LIVE assignment and ClassSchedule. |
-| 17a | **Switch to the teacher's lessons** (2026-10-07): `seedLessonSchedule()`, then type start dates in the `LessonSchedule` tab (a lesson runs until the next starts); `previewAssignmentSeed()` / `seedAssignments()` (seeds lessons starting within 7 days); set `ARCHIVE_CONFIG_ID` to each retired assignment (`CAS-S1-U1-8175`, `CAS-S1-U1-8177`) and run `previewArchiveAssignment()` / `archiveAssignment()`; `previewRemoveDraftedLessons()` / `removeDraftedLessons()` then `buildUpcomingLessons()` so drafted lessons follow the schedule; then step 17 with the new Config IDs (`CAS-8175-L06`, …) | The lesson builder, warm-ups and assignments then follow LessonSchedule; see the cas-ccps README, "The teacher's lessons and the LessonSchedule tab". |
+| 17a | **Switch to the teacher's lessons. Done live 2026-10-07** (`HISTORY.md`). In order: `seedLessonSchedule()`, then type start dates in the `LessonSchedule` tab (a lesson runs until the next starts); set `SEED_UNITS` to the lesson keys (`8175-L06,8177-employee-handbook-operations`) or delete it, then `previewAssignmentSeed()` / `seedAssignments()` and delete `SEED_UNITS`; set `ARCHIVE_CONFIG_ID` to **one** retired assignment at a time (`CAS-S1-U1-8175`, then `CAS-S1-U1-8177`) and run `previewArchiveAssignment()` / `archiveAssignment()` for each; `previewRemoveDraftedLessons()` / `removeDraftedLessons()` (after the last class of the day: it trashes today's frame docs too) then `buildUpcomingLessons()`, twice if it stops early; then step 17 with the new Config IDs (`CAS-8175-L06`, …) | The lesson builder, warm-ups and assignments then follow LessonSchedule; see the cas-ccps README, "The teacher's lessons and the LessonSchedule tab". A `SEED_UNITS` left at `S1-U1` makes the seeder plan nothing new, and a comma-separated `ARCHIVE_CONFIG_ID` archives nothing (both seen live). |
 | 18 | Import `curriculum/canvas-cartridges/8175.imscc` / `8177.imscc` into each Canvas course (Settings → Import Course Content → Common Cartridge 1.x Package); a sandbox course first | Its assignments ask students to submit their CAS document's link, so do it once students have their docs (step 17). |
 
 These two are the only things that can tell you a Flow is live. A Flow that

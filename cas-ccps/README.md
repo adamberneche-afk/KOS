@@ -334,8 +334,8 @@ guide, so the lesson builder, warm-ups and assignment seeder follow it.
 | Function | What it does |
 |---|---|
 | `seedLessonSchedule()` (55) | Adds a row per lesson not yet in the tab, in teaching order, with its Config ID (`CAS-8175-L06`). Never changes a date you typed. |
-| `previewAssignmentSeed()` / `seedAssignments()` (53) | With no `SEED_UNITS`, seeds today's assignment and any lesson starting in the next 7 days. `SEED_UNITS` also takes lesson keys (`8175-L06`). |
-| `previewArchiveAssignment()` / `archiveAssignment()` (54) | Retires the assignment in the Script Property `ARCHIVE_CONFIG_ID`: its student workspaces are archived in the Ledger and their docs trashed, and its TeacherMatrix row is set ARCHIVED. |
+| `previewAssignmentSeed()` / `seedAssignments()` (53) | With no `SEED_UNITS`, seeds today's assignment and any lesson starting in the next 7 days. `SEED_UNITS` also takes lesson keys (`8175-L06`). **A set `SEED_UNITS` wins over the schedule:** left at `S1-U1` it seeds nothing new (seen live 2026-10-07), so delete it once its assignments are LIVE. |
+| `previewArchiveAssignment()` / `archiveAssignment()` (54) | Retires the assignment in the Script Property `ARCHIVE_CONFIG_ID`: its student workspaces are archived in the Ledger and their docs trashed (restorable from Drive's trash for 30 days), and its TeacherMatrix row is set ARCHIVED. **One Config ID per run:** a comma-separated list matches nothing and reports 0. |
 
 ## Canvas course cartridges
 
@@ -384,7 +384,9 @@ deliberately — it verifies the code path, not the flow.
    against seeded fixture data, not yet a real student submission —
    `docs/IMPACT_DASHBOARD.html` still shows zero recorded deployments, so
    the plumbing is proven end-to-end but nobody has actually gone through
-   it as a real student yet. "Code exists," "reachable," "wired and
+   it as a real student yet. (As of 2026-10-07 every rostered student has
+   a real workspace doc, 71 in 8175 and 21 in 8177, but none has submitted;
+   the first real Flow 2 run is the week of 2026-10-13.) "Code exists," "reachable," "wired and
    live," and "used by a real student" are four different facts — this
    repo has now been burned by conflating the first three; don't conflate
    the fourth either.
