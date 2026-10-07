@@ -2599,3 +2599,25 @@ student, so a roster import's execution log carried the whole class list,
 and that log was pasted out of the account. It now logs the student's
 workspace Config ID, the assignment and the period. The name stays in the
 Ledger row.
+
+## Which assignment a student workspace belongs to: StudentAssignments, 2026-10-07
+
+The Ledger's ConfigID is each student's own workspace ID (`VDOE-…`), and
+nothing recorded the assignment (`CAS-S1-U1-8175`). Two live consequences:
+
+- **Roster import re-enrolled everyone on every re-run.** Its "already
+  enrolled" check compared the Ledger ConfigID with the assignment ID, which
+  never matched, so each run after the time budget made a second workspace
+  for students it had already done.
+- **Flow 2 could not find a real student's rubric.** `buildFlowInputRows()`
+  (37) looked up the TeacherMatrix by the student's workspace ID. The canary
+  passed only because it uses one ID for both.
+
+Fix: a `StudentAssignments` tab (helpers in `00_SharedConfig.js`), written by
+`intakeStudent_()` (02); 52 and 37 read it (37 falls back to the row's own ID,
+so the canary is unchanged). 52 skips a student whose workspace predates the
+tab (`UNRECORDED_WORKSPACE`), and `previewRosterRepair()` /
+`repairRosterDuplicates()` work out each such workspace's assignment from its
+doc name and the TeacherMatrix, keep the earliest per student and assignment,
+archive the rest (Status ARCHIVED, a Notes line) and trash their docs. Tests:
+`canvas-roster-import.test.js`, `flow-input-builder.test.js`.
