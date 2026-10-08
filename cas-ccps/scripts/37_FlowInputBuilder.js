@@ -761,9 +761,14 @@ function _fiFormatFeedbackBlock_(studentFacingReport, complianceStatus) {
     ? "✅ RESULT: YOUR WORK MEETS THE STANDARD"
     : "✏️  RESULT: REVISIONS REQUIRED";
 
+  // Each block carries its own next steps (03_QueueBridge.js's
+  // buildNextStepsText_, same project). 03 adds a next-steps block only to a
+  // doc that has none, so on a resubmission the first evaluation's steps
+  // used to stay put while new results arrived below them.
   return "\n── EVALUATION " + timestamp + " ──\n" +
     resultLine + "\n\n" +
-    studentFacingReport +
+    studentFacingReport + "\n" +
+    buildNextStepsText_(complianceStatus) +
     "\n── END EVALUATION ──\n";
 }
 
