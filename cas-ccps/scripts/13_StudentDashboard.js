@@ -763,7 +763,7 @@ function submitWork(btn) {
     .withSuccessHandler(function(res) {
       if (res && res.ok) {
         done({ ok: true, text: res.aiFlowsLive
-          ? "✅ Submitted. Your feedback will appear at the top of your document in 1–3 minutes. Refresh the document to see it."
+          ? "✅ Submitted. Your feedback will appear at the end of your document in a few minutes. Refresh the document to see it."
           : "✅ Submitted. Your teacher can see your work and will review it directly." });
         return;
       }
