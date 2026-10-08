@@ -89,7 +89,7 @@ How the code enforces it:
 | Grading (`07`, `10`) | Turn-in scores need the row's `TEACHER_EMAIL`. SCR ratings are shown to, and decided by, the teacher whose assignment produced the evidence (CompetencyEvidence's `config_id`). The central-ledger writers (`30`'s `recordDecision_`, `30b`'s `confirmRetryImprovement_`) apply the same rule, and require the teacher they're given to be the signed-in user. `manuallyMarkCompliant` checks the signed-in user. |
 | Parent reports (`36`) | Scoped to the dashboard's own teacher, this year, and only that teacher's courses and decisions. |
 | SCR export (`30`) | Private, shared only with named central-office staff; student accounts are refused. |
-| Student dashboard | Runs as the deploying admin with domain access, so students need no access to the Central Ledger. |
+| Student dashboard | Runs as the deploying admin with domain access, so students need no access to the Central Ledger. Its **Submit for Feedback** button (`submitMyWork()`) is how students submit: the district turns Apps Script off for student accounts, so the doc menu (`01`) never appears for them (found 2026-10-08). The button checks the signed-in student owns the Ledger row, reads the doc as the admin to apply the menu's minimums (150 characters, 25 words below the response line), and queues the same `ReviewQueue` row. The writing is counted, never returned or stored. Reading the doc is why the manifest has the `documents` scope. |
 | Student doc menu (`01`, `13`) | "Run Assignment Check" and "Check My Status" run as the student, so they no longer open the Ledger or the Admin sheet. They POST to the student dashboard web app (`13`'s `doPost()`), which identifies the signed-in student itself and answers only for that student's own Ledger row. `02` stamps the web app's URL into each new doc (`[SYS_DASHBOARD_URL:…]`). The doc's manifest adds `drive.readonly`, which Google requires on the token for calling a web app. |
 | Student writing (`01`, `13`, `50`) | Stays in the student's own Doc. "Run Assignment Check" sends only that there is writing to evaluate; `ReviewQueue`'s `StudentText` column stays empty (it used to get a full copy that nothing read), and the bridge (`03`) empties it each run in case an older doc's menu wrote it directly. `previewReviewQueueTextScrub()` then `applyReviewQueueTextScrub()` empty it in older rows; the health check flags any row still holding text. |
 | Existing files, year end (`50`) | `previewStudentDataAccessRepair()` then `applyStudentDataAccessRepair()`: fixes this year's docs, revokes earlier years' (the files stay as records), removes class-folder sharing, makes exports private, and reports any student access to the Ledger. Run it again after `CURRENT_TERM` moves to a new school year. |
@@ -134,8 +134,9 @@ below.
 
 **Pipeline in one paragraph:** A student's doc is created from the Master
 Student Template (Script 02) with four zones and invisible system-ID
-stamps. The student clicks "Run Assignment Check" (Script 01's menu),
-which appends a row to `ReviewQueue`. Script 03's `bridgeQueue` (1-min
+stamps. The student clicks **Submit for Feedback** on their dashboard
+(Script 13; Script 01's "Run Assignment Check" menu does the same where
+student accounts may run Apps Script), which appends a row to `ReviewQueue`. Script 03's `bridgeQueue` (1-min
 trigger) moves `PENDING` rows to `STAGING_PIPELINE`, deduplicating against
 in-flight evaluations. Script 06's turnstile (1-min trigger) releases one
 `PENDING_INFERENCE` row **per teacher lane** to `IN_PROCESS` — a
