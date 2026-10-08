@@ -363,6 +363,10 @@ test('LEDGER: matches registerLedger_\'s real column order exactly', () => {
     TURN_IN_FINAL_SCORE: 20,
     TURN_IN_SCORE_DECIDED_BY: 21,
     TURN_IN_SCORE_DECIDED_AT: 22,
+    CHECK_COUNT: 23,
+    LAST_RESULT: 24,
+    FIRST_PASSED_AT: 25,
+    LAST_SUGGESTED_SCORE: 26,
   });
 });
 

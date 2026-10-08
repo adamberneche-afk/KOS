@@ -335,6 +335,13 @@ test('harvestFlowInputResults: writes feedback to the doc, CompetencyEvidence ro
 
   assert.equal(staging.getRange(2, exported.STG_STATUS + 1).getValue(), 'COMPLETE');
   assert.equal(fiSheet.getRange(2, exported.FI.READY_STATUS + 1).getValue(), 'HARVESTED');
+
+  // The result reaches the Ledger for the Teacher Dashboard.
+  const ledgerRowValues = ledgerSs.getSheetByName('Ledger').getRange(2, 1, 1, 27).getValues()[0];
+  assert.equal(ledgerRowValues[exported.LEDGER.CHECK_COUNT], 1);
+  assert.equal(ledgerRowValues[exported.LEDGER.LAST_RESULT], 'PASSED');
+  assert.equal(Object.prototype.toString.call(ledgerRowValues[exported.LEDGER.FIRST_PASSED_AT]), '[object Date]');
+  assert.equal(ledgerRowValues[exported.LEDGER.LAST_SUGGESTED_SCORE], 4);
 });
 
 test('harvestFlowInputResults: skips a milestone with no competency ID rather than guessing', () => {
