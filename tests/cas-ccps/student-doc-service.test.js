@@ -187,3 +187,116 @@ test('submitToQueue_: throws when the service refuses', () => {
   const { exported } = loadDocScript('', { ok: false, error: 'NOT_REGISTERED' });
   assert.throws(() => exported.submitToQueue_({ serviceUrl: URL }, 'amy', 'f', 'c'), /NOT_REGISTERED/);
 });
+
+// ── The dashboard's Submit for Feedback button ─────────────────────────────
+// The district turns Apps Script off for student accounts, so the doc's menu
+// never appears for them (2026-10-08). The dashboard runs as the admin and
+// does the menu's check-and-submit itself: submitMyWork() reads the doc,
+// applies 01's minimums and queues the same ReviewQueue row.
+
+const MARKER = '── YOUR RESPONSE BEGINS HERE ──';
+const ENOUGH = 'I would set up the stand near the gym entrance because that is where ' +
+  'most students walk after lunch, and I would price drinks at one dollar so the ' +
+  'team covers its costs while staying cheaper than the vending machines nearby.';
+
+function loadSubmit(signedInAs, docBody, status) {
+  const loaded = loadGasFiles(
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '13_StudentDashboard.js')],
+    ['submitMyWork', 'getStudentDashboardData', 'dashExtractResponse_'],
+    { ContentService: FakeContentService, Session: sessionAs(signedInAs) });
+  const { sandbox } = loaded;
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
+  props.setProperty('ADMIN_SS_ID', ss.getId());
+  props.setProperty('CURRENT_TERM', '2025-26'); // ledgerRow()'s term
+  const doc = sandbox.DocumentApp.create('Lesson 06 — student');
+  doc.getBody().setText(docBody);
+  const ledger = ss.insertSheet('Ledger');
+  ledger.appendRow(new Array(23).fill('header'));
+  ledger.appendRow(ledgerRow('ben@ccpsnet.net', 'CFG-B', doc.getId(), status || 'ACTIVE'));
+  const queue = ss.insertSheet('ReviewQueue');
+  queue.appendRow(['Timestamp', 'GoogleID', 'FileID', 'ConfigID', 'Text', 'Status', 'Notes']);
+  return Object.assign({ ss, ledger, queue, doc, fileId: doc.getId() }, loaded);
+}
+
+const docWith = (response) => 'Prompt text\n' + MARKER + '\n' + response + '\n[CONFIG_ID: CFG-B]';
+
+test('submitMyWork: reads the doc, queues the work, and never stores or returns the writing', () => {
+  const { exported, queue, fileId } = loadSubmit('Ben@ccpsnet.net', docWith(ENOUGH));
+  const res = exported.submitMyWork(fileId, 'CFG-B');
+  assert.equal(res.ok, true);
+  assert.ok(!JSON.stringify(res).includes('gym entrance'));
+  const rows = queue.getDataRange().getValues().slice(1);
+  assert.equal(rows.length, 1);
+  assert.deepEqual(rows[0].slice(1, 6), ['Ben@ccpsnet.net', fileId, 'CFG-B', '', 'PENDING']);
+});
+
+test('submitMyWork: too little writing is refused with the word count, and nothing is queued', () => {
+  const { exported, queue, fileId } = loadSubmit('ben@ccpsnet.net', docWith('Just a start on this.'));
+  assert.deepEqual(exported.submitMyWork(fileId, 'CFG-B'), { ok: false, error: 'TOO_SHORT', words: 5 });
+  assert.equal(queue.getLastRow(), 1);
+});
+
+test('submitMyWork: a doc without the response line says so instead of counting zero words', () => {
+  const { exported, fileId } = loadSubmit('ben@ccpsnet.net', ENOUGH + '\n[CONFIG_ID: CFG-B]');
+  assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, 'NO_RESPONSE_SECTION');
+});
+
+test('submitMyWork: another student\'s doc is refused before it is opened', () => {
+  const { exported, queue, fileId, sandbox } = loadSubmit('amy@ccpsnet.net', docWith(ENOUGH));
+  sandbox.DocumentApp.openById = () => { throw new Error('must not open someone else\'s doc'); };
+  assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, 'NOT_REGISTERED');
+  assert.equal(queue.getLastRow(), 1);
+});
+
+test('submitMyWork: a second click while the first is still queued is refused', () => {
+  const { exported, queue, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH));
+  assert.equal(exported.submitMyWork(fileId, 'CFG-B').ok, true);
+  assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, 'ALREADY_QUEUED');
+  assert.equal(queue.getLastRow(), 2);
+});
+
+test('submitMyWork: queued, turned-in and archived work cannot be submitted', () => {
+  for (const [status, error] of [['PENDING', 'ALREADY_QUEUED'], ['STAGED', 'ALREADY_QUEUED'],
+    ['PENDING_TEACHER_REVIEW', 'ALREADY_TURNED_IN'], ['COMPLIANT', 'ALREADY_TURNED_IN'],
+    ['ARCHIVED', 'NOT_REGISTERED']]) {
+    const { exported, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), status);
+    assert.equal(exported.submitMyWork(fileId, 'CFG-B').error, error, status);
+  }
+  // Feedback came back and the student revised: that's a resubmission.
+  const { exported, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'COMPLETE');
+  assert.equal(exported.submitMyWork(fileId, 'CFG-B').ok, true);
+});
+
+test('submitMyWork: no signed-in user or a missing ID is refused', () => {
+  assert.equal(loadSubmit('', docWith(ENOUGH)).exported.submitMyWork('f', 'CFG-B').error, 'NO_USER');
+  const { exported, fileId } = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH));
+  assert.equal(exported.submitMyWork(fileId, '').error, 'BAD_REQUEST');
+});
+
+test('getStudentDashboardData: offers Submit only where there is something to submit', () => {
+  const open = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'ACTIVE');
+  const a = open.exported.getStudentDashboardData('ALL').assignments[0];
+  assert.equal(a.canSubmit, true);
+  assert.equal(a.fileId, open.fileId);
+  const done = loadSubmit('ben@ccpsnet.net', docWith(ENOUGH), 'COMPLIANT');
+  assert.equal(done.exported.getStudentDashboardData('ALL').assignments[0].canSubmit, false);
+});
+
+test('dashExtractResponse_ reads the same span as the doc menu\'s extractStudentResponse_', () => {
+  const dash = loadSubmit('ben@ccpsnet.net', '').exported;
+  const { sandbox } = loadGasFiles(
+    [path.join(SCRIPTS, '00_SharedConfig.js'), path.join(SCRIPTS, '01_StudentDoc_ContainerScript.js')],
+    ['extractStudentResponse_']);
+  const samples = [
+    docWith(ENOUGH),
+    'Prompt\n' + MARKER + '\nMy answer.\n[SYS_LEDGER_SS_ID:l][CONFIG_ID: X]',
+    'Prompt\n' + MARKER + '\n  spaced answer  \n',
+    'No marker at all',
+    'Prompt\n' + MARKER + '\nfirst\n\nsecond paragraph\n[CONFIG_ID: X]\n[SYS_LEDGER_SS_ID:l]',
+  ];
+  for (const s of samples) {
+    assert.equal(dash.dashExtractResponse_(s), sandbox.extractStudentResponse_(s), JSON.stringify(s));
+  }
+});
