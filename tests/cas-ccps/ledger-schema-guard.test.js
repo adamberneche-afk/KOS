@@ -81,13 +81,25 @@ test('checkLedgerSchema: a canonical 23-column Ledger (turn-in columns self-heal
   const { exported, sandbox } = load();
   const ss = setUp(sandbox);
   const sheet = ss.insertSheet('Ledger');
-  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice());
+  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice(0, 23));
   const row = canonicalRow(sandbox).concat(['', '', '', '']);
   sheet.appendRow(row);
 
   const result = exported.checkLedgerSchema();
   assert.equal(result.ok, true);
   assert.equal(result.width, 23);
+});
+
+test('checkLedgerSchema: a 27-column Ledger (evaluation result columns added) also reports ok', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  const sheet = ss.insertSheet('Ledger');
+  sheet.appendRow(exported.LEDGER_CANONICAL_HEADERS.slice());
+  sheet.appendRow(canonicalRow(sandbox).concat(['', '', '', '', 2, 'PASSED', '', 3]));
+
+  const result = exported.checkLedgerSchema();
+  assert.equal(result.ok, true);
+  assert.equal(result.width, 27);
 });
 
 // ── Case A: header-only shift, safe to repair ────────────────────────────────
