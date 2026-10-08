@@ -1,7 +1,7 @@
 'use strict';
 // Regression tests for 30_SCRSuggestionEngine.js's two highest-risk pieces
 // flagged by the external product review (Finding 2 / "this month" test
-// coverage): THE THRESHOLD RULE (computeSuggestion_) and the
+// coverage): THE RULE (computeSuggestion_, aggregateEvidence_) and the
 // suggest -> confirm/override lifecycle (recordConfirmation_/recordOverride_,
 // via the shared recordDecision_).
 //
@@ -21,7 +21,7 @@ const SCR_ENGINE_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', 
 function load(signedInAs = 'teacher@ccpsnet.net') {
   return loadGasFiles(
     [SHARED_CONFIG_PATH, SCR_ENGINE_PATH],
-    ['computeSuggestion_', 'recordConfirmation_', 'recordOverride_', 'createSCRTabs_'],
+    ['computeSuggestion_', 'aggregateEvidence_', 'recordConfirmation_', 'recordOverride_', 'createSCRTabs_'],
     {
       Session: {
         getActiveUser() { return { getEmail() { return signedInAs; } }; },
@@ -83,11 +83,12 @@ function setUpSuggestionsFixture(sandbox, { suggestedRating = 3, status = 'SUGGE
   return { ss, suggestions, decisionLog };
 }
 
-// ── THE THRESHOLD RULE (computeSuggestion_) — restated in the file's own
-//    header comment as a locked design decision; these pin down every
-//    branch exactly as specified there. ─────────────────────────────────────
+// ── THE RULE (computeSuggestion_) — restated in the file's own header: the
+//    average of the 3 best pieces (MET = 2, PARTIALLY_MET = 3, NOT_MET = 4),
+//    rounded to the nearest rating. Counts are pieces: one per assignment,
+//    at its best outcome (aggregateEvidence_ below). ───────────────────────
 
-test('computeSuggestion_: fewer than 3 total evidence rows -> INSUFFICIENT_EVIDENCE', () => {
+test('computeSuggestion_: fewer than 3 pieces -> INSUFFICIENT_EVIDENCE', () => {
   const { exported } = load();
   assert.deepEqual(
     exported.computeSuggestion_({ metCount: 1, notMetCount: 1, partialCount: 0 }),
@@ -95,31 +96,31 @@ test('computeSuggestion_: fewer than 3 total evidence rows -> INSUFFICIENT_EVIDE
   );
 });
 
-test('computeSuggestion_: 3+ NOT_MET -> suggest 4, regardless of other counts', () => {
+test('computeSuggestion_: averages only the 3 best pieces, so earlier misses do not count against them', () => {
   const { exported } = load();
   assert.deepEqual(
-    exported.computeSuggestion_({ metCount: 5, notMetCount: 3, partialCount: 2 }),
-    { suggestedRating: 4, status: 'SUGGESTED' },
-  );
-});
-
-test('computeSuggestion_: 3+ MET and zero NOT_MET -> suggest 2', () => {
-  const { exported } = load();
-  assert.deepEqual(
-    exported.computeSuggestion_({ metCount: 3, notMetCount: 0, partialCount: 1 }),
+    exported.computeSuggestion_({ metCount: 3, notMetCount: 5, partialCount: 2 }),
     { suggestedRating: 2, status: 'SUGGESTED' },
   );
 });
 
-test('computeSuggestion_: mixed evidence that clears neither the 4 nor the 2 rule -> suggest 3', () => {
+test('computeSuggestion_: rounds the average to the nearest rating', () => {
   const { exported } = load();
-  // 3 MET but 1 NOT_MET present — fails the "notMetCount === 0" requirement
-  // for a 2, and notMetCount is below the threshold for a 4 — falls through
-  // to the default middle suggestion.
-  assert.deepEqual(
-    exported.computeSuggestion_({ metCount: 3, notMetCount: 1, partialCount: 0 }),
-    { suggestedRating: 3, status: 'SUGGESTED' },
-  );
+  const cases = [
+    [{ metCount: 2, partialCount: 1, notMetCount: 0 }, 2], // 2.33
+    [{ metCount: 1, partialCount: 2, notMetCount: 0 }, 3], // 2.67
+    [{ metCount: 2, partialCount: 0, notMetCount: 1 }, 3], // 2.67
+    [{ metCount: 1, partialCount: 1, notMetCount: 1 }, 3], // 3
+    [{ metCount: 0, partialCount: 3, notMetCount: 0 }, 3], // 3
+    [{ metCount: 0, partialCount: 2, notMetCount: 1 }, 3], // 3.33
+    [{ metCount: 1, partialCount: 0, notMetCount: 2 }, 3], // 3.33
+    [{ metCount: 0, partialCount: 1, notMetCount: 2 }, 4], // 3.67
+    [{ metCount: 0, partialCount: 0, notMetCount: 3 }, 4], // 4
+  ];
+  for (const [counts, rating] of cases) {
+    assert.deepEqual(exported.computeSuggestion_(counts), { suggestedRating: rating, status: 'SUGGESTED' },
+      JSON.stringify(counts));
+  }
 });
 
 test('computeSuggestion_: never auto-suggests 1 or 5 across a wide sweep of count combinations', () => {
@@ -300,4 +301,72 @@ test('recordOverride_: a teacher who does not have the student at all is refused
 
   assert.equal(result.success, false);
   assert.match(result.error, /whose assignments produced/);
+});
+
+// ── Pieces of evidence: one per assignment, at its best outcome ────────────
+// Every Submit for Feedback writes CompetencyEvidence rows, so drafts of one
+// assignment must not count as separate evidence.
+
+function evidenceSheet(sandbox, rows) {
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const sheet = ss.insertSheet('CompetencyEvidence');
+  sheet.appendRow(['student_email', 'competency_id', 'outcome', 'config_id', 'evaluated_at', 'student_file_id', 'archive_status']);
+  rows.forEach(([email, comp, outcome, configId, fileId]) =>
+    sheet.appendRow([email, comp, outcome, configId || '', '2026-10-14', fileId || '', '']));
+  return sheet;
+}
+
+test('aggregateEvidence_: three missed drafts and a passing fourth of ONE assignment are one MET piece', () => {
+  const { exported, sandbox } = load();
+  const sheet = evidenceSheet(sandbox, [
+    ['amy@ccpsnet.net', 'C1', 'NOT_MET', 'VDOE-1'],
+    ['amy@ccpsnet.net', 'C1', 'NOT_MET', 'VDOE-1'],
+    ['amy@ccpsnet.net', 'C1', 'PARTIALLY_MET', 'VDOE-1'],
+    ['amy@ccpsnet.net', 'C1', 'MET', 'VDOE-1'],
+  ]);
+  const counts = exported.aggregateEvidence_(sheet).get('amy@ccpsnet.net|||C1');
+  assert.deepEqual(counts, { metCount: 1, notMetCount: 0, partialCount: 0 });
+  assert.equal(exported.computeSuggestion_(counts).status, 'INSUFFICIENT_EVIDENCE');
+});
+
+test('aggregateEvidence_: three passing checks of one assignment are not enough for a rating', () => {
+  const { exported, sandbox } = load();
+  const sheet = evidenceSheet(sandbox, [
+    ['amy@ccpsnet.net', 'C1', 'MET', 'VDOE-1'],
+    ['amy@ccpsnet.net', 'C1', 'MET', 'VDOE-1'],
+    ['amy@ccpsnet.net', 'C1', 'MET', 'VDOE-1'],
+  ]);
+  assert.deepEqual(exported.aggregateEvidence_(sheet).get('amy@ccpsnet.net|||C1'),
+    { metCount: 1, notMetCount: 0, partialCount: 0 });
+});
+
+test('aggregateEvidence_: separate assignments are separate pieces; a competency and a student are kept apart', () => {
+  const { exported, sandbox } = load();
+  const sheet = evidenceSheet(sandbox, [
+    ['amy@ccpsnet.net', 'C1', 'MET', 'VDOE-1'],
+    ['amy@ccpsnet.net', 'C1', 'NOT_MET', 'VDOE-2'],
+    ['amy@ccpsnet.net', 'C1', 'PARTIALLY_MET', 'VDOE-3'],
+    ['amy@ccpsnet.net', 'C1', 'MET', 'VDOE-4'],
+    ['amy@ccpsnet.net', 'C2', 'NOT_MET', 'VDOE-1'],
+    ['ben@ccpsnet.net', 'C1', 'NOT_MET', 'VDOE-9'],
+  ]);
+  const agg = exported.aggregateEvidence_(sheet);
+  const amy = agg.get('amy@ccpsnet.net|||C1');
+  assert.deepEqual(amy, { metCount: 2, notMetCount: 1, partialCount: 1 });
+  // Best three: MET, MET, PARTIALLY_MET = 2.33 -> 2.
+  assert.equal(exported.computeSuggestion_(amy).suggestedRating, 2);
+  assert.deepEqual(agg.get('amy@ccpsnet.net|||C2'), { metCount: 0, notMetCount: 1, partialCount: 0 });
+  assert.deepEqual(agg.get('ben@ccpsnet.net|||C1'), { metCount: 0, notMetCount: 1, partialCount: 0 });
+});
+
+test('aggregateEvidence_: falls back to the doc ID, then counts a row with neither on its own', () => {
+  const { exported, sandbox } = load();
+  const sheet = evidenceSheet(sandbox, [
+    ['amy@ccpsnet.net', 'C1', 'NOT_MET', '', 'doc-1'],
+    ['amy@ccpsnet.net', 'C1', 'MET', '', 'doc-1'],
+    ['amy@ccpsnet.net', 'C1', 'MET', '', ''],
+    ['amy@ccpsnet.net', 'C1', 'NOT_MET', '', ''],
+  ]);
+  assert.deepEqual(exported.aggregateEvidence_(sheet).get('amy@ccpsnet.net|||C1'),
+    { metCount: 2, notMetCount: 1, partialCount: 0 });
 });

@@ -14,24 +14,28 @@
 //
 // PURPOSE: The Module 5 threshold script. Reads CompetencyEvidence (Flow 2's
 //          output — see 15b_StudioFlowPrompts_Flow2_Revised.js), computes a
-//          suggested SCR rating per student+competency using the locked
-//          threshold rule, and manages the suggest -> confirm/override
+//          suggested SCR rating per student+competency using the rule
+//          below, and manages the suggest -> confirm/override
 //          lifecycle a teacher acts on. Also produces an Excel-workbook-
 //          shaped export matching the official SCR record format.
 //
-// THE THRESHOLD RULE (locked design decision — restated here verbatim so
-// this file is self-explanatory without needing the design conversation
-// that produced it):
-//   Given a student + competency_id, over all CompetencyEvidence rows:
-//     metCount     = count where outcome = MET
-//     notMetCount  = count where outcome = NOT_MET
-//     partialCount = count where outcome = PARTIALLY_MET
-//     totalCount   = metCount + notMetCount + partialCount
+// THE RULE (the teacher's decision, 2026-10-08 — restated here so this file
+// is self-explanatory without the conversation that produced it):
+//   A PIECE of evidence is one assignment, at its best outcome. Students
+//   resubmit drafts for feedback as often as they like, and every check
+//   writes CompetencyEvidence rows, so each assignment counts once per
+//   competency (see bestOutcomesByAssignment_()).
+//   Given a student + competency_id:
+//     metCount / partialCount / notMetCount = pieces at each best outcome
 //
-//   IF totalCount < 3                          -> INSUFFICIENT_EVIDENCE
-//   ELSE IF notMetCount >= 3                    -> suggest 4
-//   ELSE IF metCount >= 3 AND notMetCount == 0  -> suggest 2
-//   ELSE                                         -> suggest 3
+//   IF fewer than 3 pieces                     -> INSUFFICIENT_EVIDENCE
+//   ELSE average the 3 best pieces, scoring MET = 2, PARTIALLY_MET = 3,
+//        NOT_MET = 4, and round to the nearest rating -> suggest 2, 3 or 4
+//   (MET, MET, PARTIALLY_MET = 2.33 -> 2; MET, PARTIALLY_MET, NOT_MET = 3)
+//
+//   It replaced a count rule (3+ NOT_MET -> 4; 3+ MET and no NOT_MET -> 2;
+//   else 3) that counted every draft: three early drafts of one assignment
+//   suggested a 4 even after the fourth passed.
 //
 //   Ratings 1 ("can teach others") and 5 ("cannot perform") are NEVER
 //   auto-suggested. These are the two most consequential claims on the
@@ -101,7 +105,9 @@ const SCRS = {
 // unreviewed rating to someone.
 
 const VALID_OUTCOMES = ["MET", "PARTIALLY_MET", "NOT_MET"];
-const EVIDENCE_THRESHOLD = 3; // N, locked design decision
+const EVIDENCE_THRESHOLD = 3; // pieces needed for a suggestion, and how many are averaged
+// SCR rating each best outcome contributes to the average.
+const OUTCOME_SCR_SCORE = { MET: 2, PARTIALLY_MET: 3, NOT_MET: 4 };
 
 // ---------------------------------------------------------------------------
 // runWeeklySCRSuggestionUpdate_ — primary entry point, time-triggered
@@ -127,8 +133,8 @@ function runWeeklySCRSuggestionUpdate_() {
 
   // ── Step 1: aggregate ALL evidence by student+competency pair ──────────
   // Unlike Module 4's weekly trigger, this does NOT filter to a trailing
-  // window — the threshold rule operates over ALL accumulated evidence
-  // for a pair, not just this week's. The weekly CADENCE controls how
+  // window — the rule's best three pieces come from ALL accumulated
+  // evidence for a pair, not just this week's. The weekly CADENCE controls how
   // often we recompute, not what window of evidence we consider.
   const aggregates = aggregateEvidence_(evidenceSheet);
   Logger.log("[S30] Aggregated evidence for " + aggregates.size + " student+competency pair(s).");
@@ -181,7 +187,8 @@ function runWeeklySCRSuggestionUpdate_() {
 
 // ---------------------------------------------------------------------------
 // aggregateEvidence_
-// Returns Map<"email|||competencyId", { metCount, notMetCount, partialCount }>
+// Returns Map<"email|||competencyId", { metCount, notMetCount, partialCount }>,
+// counting pieces of evidence: one per assignment, at its best outcome.
 // Scans the ENTIRE CompetencyEvidence tab — no time window. Skips rows
 // with an outcome value outside the three valid tokens, logging each
 // distinct bad value once rather than failing the whole aggregation.
@@ -196,8 +203,10 @@ function aggregateEvidence_(evidenceSheet) {
   // as "nothing is archived" below (row[-1] is always undefined), not a
   // required column, so an old sheet still aggregates exactly as before.
   const iArchiveStatus = headers.indexOf("archive_status");
+  const iConfigId = headers.indexOf("config_id");
+  const iFileId = headers.indexOf("student_file_id");
 
-  const result = new Map();
+  const best = new Map(); // pairKey -> Map(assignmentKey -> best outcome)
   const badOutcomesSeen = new Set();
 
   if (iEmail === -1 || iCompId === -1 || iOutcome === -1) {
@@ -230,21 +239,56 @@ function aggregateEvidence_(evidenceSheet) {
     }
 
     const pairKey = email + "|||" + compId;
-    if (!result.has(pairKey)) {
-      result.set(pairKey, { metCount: 0, notMetCount: 0, partialCount: 0 });
-    }
-    const counts = result.get(pairKey);
-    if (outcome === "MET") counts.metCount++;
-    else if (outcome === "NOT_MET") counts.notMetCount++;
-    else if (outcome === "PARTIALLY_MET") counts.partialCount++;
+    if (!best.has(pairKey)) best.set(pairKey, new Map());
+    keepBestOutcome_(best.get(pairKey), evidenceAssignmentKey_(row, iConfigId, iFileId, i), outcome);
   }
 
+  const result = new Map();
+  for (const [pairKey, byAssignment] of best.entries()) {
+    result.set(pairKey, countOutcomes_(byAssignment));
+  }
   return result;
 }
 
 // ---------------------------------------------------------------------------
-// computeSuggestion_ — THE THRESHOLD RULE, implemented exactly as locked.
-// Input: { metCount, notMetCount, partialCount }
+// One piece of evidence per assignment. These three are shared with
+// 30b_SCRRetryRemediation.js (same project).
+//
+// evidenceAssignmentKey_: the assignment a CompetencyEvidence row came from,
+// its config_id (the student's workspace for that assignment), else its
+// student_file_id. A row with neither, written before those columns
+// existed, is its own piece.
+// ---------------------------------------------------------------------------
+function evidenceAssignmentKey_(row, iConfigId, iFileId, rowIndex) {
+  const configId = iConfigId !== -1 ? String(row[iConfigId] || "").trim() : "";
+  if (configId) return "config:" + configId;
+  const fileId = iFileId !== -1 ? String(row[iFileId] || "").trim() : "";
+  if (fileId) return "file:" + fileId;
+  return "row:" + rowIndex;
+}
+
+// Keeps the better of an assignment's outcomes: MET over PARTIALLY_MET over
+// NOT_MET.
+function keepBestOutcome_(byAssignment, assignmentKey, outcome) {
+  const current = byAssignment.get(assignmentKey);
+  if (!current || OUTCOME_SCR_SCORE[outcome] < OUTCOME_SCR_SCORE[current]) {
+    byAssignment.set(assignmentKey, outcome);
+  }
+}
+
+function countOutcomes_(byAssignment) {
+  const counts = { metCount: 0, notMetCount: 0, partialCount: 0 };
+  for (const outcome of byAssignment.values()) {
+    if (outcome === "MET") counts.metCount++;
+    else if (outcome === "NOT_MET") counts.notMetCount++;
+    else if (outcome === "PARTIALLY_MET") counts.partialCount++;
+  }
+  return counts;
+}
+
+// ---------------------------------------------------------------------------
+// computeSuggestion_ — THE RULE (header): the average of the 3 best pieces.
+// Input: { metCount, notMetCount, partialCount }, counted in pieces
 // Output: { suggestedRating: 2|3|4|null, status: string }
 // ---------------------------------------------------------------------------
 function computeSuggestion_(counts) {
@@ -253,13 +297,18 @@ function computeSuggestion_(counts) {
   if (totalCount < EVIDENCE_THRESHOLD) {
     return { suggestedRating: null, status: "INSUFFICIENT_EVIDENCE" };
   }
-  if (counts.notMetCount >= EVIDENCE_THRESHOLD) {
-    return { suggestedRating: 4, status: "SUGGESTED" };
-  }
-  if (counts.metCount >= EVIDENCE_THRESHOLD && counts.notMetCount === 0) {
-    return { suggestedRating: 2, status: "SUGGESTED" };
-  }
-  return { suggestedRating: 3, status: "SUGGESTED" };
+  // The best pieces are the METs, then the PARTIALLY_METs, then the NOT_METs.
+  let left = EVIDENCE_THRESHOLD;
+  let sum = 0;
+  [["MET", counts.metCount], ["PARTIALLY_MET", counts.partialCount], ["NOT_MET", counts.notMetCount]]
+    .forEach(([outcome, n]) => {
+      const take = Math.min(n, left);
+      sum += take * OUTCOME_SCR_SCORE[outcome];
+      left -= take;
+    });
+  // sum is a whole number from 6 to 12, so the average is a third at worst
+  // and never lands on .5: Math.round is nearest-rating rounding.
+  return { suggestedRating: Math.round(sum / EVIDENCE_THRESHOLD), status: "SUGGESTED" };
 }
 
 // ---------------------------------------------------------------------------
