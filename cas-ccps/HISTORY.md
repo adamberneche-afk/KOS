@@ -2675,3 +2675,48 @@ The operator ran step 17a after pushing central-ledger at PR #113:
 The `seedLessonSchedule()` log was not pasted, but the build placing the
 lessons by key shows the tab exists and its Oct 8 dates read back. Not yet
 done: the Canvas cartridge import (step 18).
+
+## Students submit from the dashboard; SCR from each assignment's best; the teacher sees four states, 2026-10-08
+
+Found live on the first lesson day: the documents distributed overnight
+showed the teacher the "📊 AI Evaluation Panel" menu, but students saw no
+menu at all. The district turns Apps Script off for student accounts, so a
+doc's bound script never runs for them. They could open the Student
+Dashboard, a web app that runs as the admin. Students turn in on Canvas,
+where the teacher grades; the CAS Turn-In Form was never given to students
+and is retired from everything students see.
+
+- **#115, Submit for Feedback on the Student Dashboard (13).**
+  `submitMyWork()` checks that the signed-in student owns the Ledger row,
+  refuses work already queued, turned in or archived, reads the doc as the
+  admin, applies the menu's minimums (150 characters, 25 words below the
+  response line) and queues the same ReviewQueue row. The writing is
+  counted, never stored. The manifest gains the `documents` scope. The doc
+  menu still works where scripts run.
+- **#116, SCR and next steps (30, 30b, 37, 03, 02).** The teacher's rule:
+  a piece of evidence is one assignment at its best outcome, and a
+  suggestion is the average of the three best pieces (Met 2, Partially met
+  3, Not met 4), rounded to the nearest rating. Counting rows had let three
+  early drafts of one assignment suggest a 4 after it passed. 30b's retry
+  counts pieces the same way. Each evaluation block now carries its own
+  "What to do next" (03 added one only to a doc with none, so a
+  resubmission kept the first result's steps). Passing suggests turning in
+  on Canvas, or another check; it doesn't require it. The Ledger row moves
+  to COMPLETE after an evaluation (it stayed ACTIVE, so the student's card
+  said "Not started yet"). Wording now says feedback is added at the end of
+  the doc, which is where Flow 2's harvest puts it.
+- **#117, the Teacher Dashboard (07, 37, 00, 38).** 37 records each
+  evaluation's result on the Ledger (columns 24-27: CheckCount, LastResult,
+  FirstPassedAt, LastSuggestedScore). The dashboard opens on each course's
+  current lesson (LessonSchedule), groups by lesson through
+  StudentAssignments, and shows four states as filtering cards and badges:
+  not checked yet, checked but not passing yet, passed, passed before with
+  the latest needing revision. Rows show checks, first pass and the latest
+  suggested score, by period then name.
+
+Docs: the Student Quick Start, Teacher Reference Guide and Teacher Quick
+Start describe the dashboard, Canvas and the new SCR rule; the architecture
+and admin references carry a "current as of 2026-10-08" note.
+
+Not yet live: nothing above is pushed. No real student submission has gone
+through Flow 2 yet.
