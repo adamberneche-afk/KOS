@@ -229,6 +229,7 @@ function backPropagateCompletions() {
 
       markQueueRow_(queueSheet, rowNum, "COMPLETE");
       updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId);
+      markLedgerEvaluated_(ledgerSheet, fileId, configId);
 
       // Post-processing: backup placeholder removal + next-steps block
       // Studio should have handled these already in Flow 2 Steps 4-5,
@@ -305,6 +306,13 @@ function appendNextSteps_(body, complianceResult) {
 // ---------------------------------------------------------------------------
 // buildNextStepsText_
 // ---------------------------------------------------------------------------
+// Students submit from their Student Dashboard (the doc's menu doesn't run
+// for student accounts) and turn in on Canvas, which is where grades are
+// given. A passing result suggests turning in without requiring it, and
+// still offers another check; turning in before it passes is allowed (the
+// teacher sees the latest result in the doc).
+// 37_FlowInputBuilder.js puts this in every evaluation block it writes, so
+// each one carries its own next steps.
 function buildNextStepsText_(complianceResult) {
   if (complianceResult === "APPROVED") {
     return (
@@ -312,12 +320,14 @@ function buildNextStepsText_(complianceResult) {
       "──────────────────────────────────────────────────\n" +
       "✅  WHAT TO DO NEXT\n" +
       "──────────────────────────────────────────────────\n\n" +
-      "Your work meets the standard. Here's what to do:\n\n" +
-      "  1. Read the feedback above to understand your strengths.\n" +
-      "  2. Make any final polish edits you feel are needed.\n" +
-      "  3. Submit your work using the Turn-In Form your teacher provided.\n\n" +
-      "⚠️  Do not delete or edit any evaluation report in this document.\n" +
-      "    It is part of your verified submission record.\n"
+      "Your work meets the standard. You have two choices:\n\n" +
+      "  • Done with it? Turn it in on Canvas: copy this document's link, open\n" +
+      "    the Canvas assignment, choose Start Assignment → Website URL and paste it.\n" +
+      "  • Want to make it stronger? Keep revising, then open your assignment\n" +
+      "    dashboard (the link is near the top of this document) and click\n" +
+      "    Submit for Feedback again.\n\n" +
+      "⚠️  Do not delete or edit the feedback in this document.\n" +
+      "    It is part of your record.\n"
     );
   }
   return (
@@ -325,15 +335,14 @@ function buildNextStepsText_(complianceResult) {
     "──────────────────────────────────────────────────\n" +
     "✏️   WHAT TO DO NEXT\n" +
     "──────────────────────────────────────────────────\n\n" +
-    "Your work needs revision before you can submit. Here's what to do:\n\n" +
+    "Your work needs revision. Here's what to do:\n\n" +
     "  1. Read the REQUIRED REVISIONS list above carefully.\n" +
     "  2. Update your response below the\n" +
     "     ── YOUR RESPONSE BEGINS HERE ── line.\n" +
-    "  3. When ready, click:\n" +
-    "     📊 AI Evaluation Panel → Run Assignment Check\n" +
+    "  3. Open your assignment dashboard (the link is near the top of this\n" +
+    "     document) and click Submit for Feedback.\n" +
     "  4. Repeat until you see a ✅ passing result.\n\n" +
-    "💡  You can run as many checks as you need — no penalty for revising.\n" +
-    "⚠️  Do not submit via the Turn-In Form until you see a ✅ passing result.\n"
+    "💡  You can check as many times as you need — no penalty for revising.\n"
   );
 }
 
@@ -401,6 +410,28 @@ function updateLedgerEvalTimestamp_(ledgerSheet, fileId, configId) {
       String(data[i][L_CONFIG_ID]).trim() === configId
     ) {
       ledgerSheet.getRange(i + 1, L_LAST_EVAL + 1).setValue(new Date());
+      return;
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// markLedgerEvaluated_ — an evaluation came back, so the Ledger row moves to
+// COMPLETE ("Evaluated — feedback ready" on the Student Dashboard). Nothing
+// set it before, so a student's card still read "Not started yet" after
+// feedback arrived. Only from a not-yet-evaluated state: a turned-in or
+// archived row keeps its status.
+// ---------------------------------------------------------------------------
+function markLedgerEvaluated_(ledgerSheet, fileId, configId) {
+  const data = ledgerSheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][L_FILE_ID]).trim() === fileId &&
+        String(data[i][L_CONFIG_ID]).trim() === configId) {
+      const status = String(data[i][L_STATUS]).trim();
+      if (status === "ACTIVE" || status === "PENDING" || status === "STAGED" ||
+          status === "ERROR_TIMEOUT" || status === "") {
+        ledgerSheet.getRange(i + 1, L_STATUS + 1).setValue("COMPLETE");
+      }
       return;
     }
   }

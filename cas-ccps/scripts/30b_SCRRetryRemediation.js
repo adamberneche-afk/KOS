@@ -169,12 +169,11 @@ function checkRetryEligibility_(studentEmail, primaryCompetencyId) {
   //   Clause A: totalMetCount >= 5
   //     "5 or more total competency assignments met" -- combining BOTH
   //     primary and secondary MET evidence linked to this retry
-  //     attempt. Counts EVIDENCE ROWS, not distinct competencies --
-  //     consistent with how every other threshold in this system counts
-  //     (Script 30's primary suggestion rule counts rows, never distinct
-  //     competency_ids). This is the one place this convention was an
-  //     explicit choice rather than an unambiguous reading of the
-  //     instruction -- flagged here rather than silently assumed.
+  //     attempt. Counts pieces of evidence (one per assignment and
+  //     competency, at its best outcome; Script 30's
+  //     keepBestOutcome_()), not distinct competencies -- the same
+  //     unit Script 30's suggestion rule counts. Until 2026-10-08 it
+  //     counted rows, so every draft a student resubmitted counted again.
   //   Clause B: secondaryMetCount >= 2 * primaryNotMetCount
   //     "2 secondary assignments met for every primary assignment not
   //     met" -- a RATIO, not a flat bar. Scales the secondary
@@ -255,6 +254,8 @@ function clauseBReasonText_(secondaryMetCount, primaryNotMetCount) {
 // SET of competency_ids (the linked secondaries), filtered by
 // evidence_role. Pools counts across all matching competency_ids into a
 // single combined tally -- see pooling rationale in checkRetryEligibility_.
+// Counts pieces like Script 30: one per assignment and competency, at its
+// best outcome.
 // ---------------------------------------------------------------------------
 function aggregateEvidenceForStudentAcrossCompetencies_(evidenceSheet, studentEmail, competencyIds, requiredRole) {
   const data = evidenceSheet.getDataRange().getValues();
@@ -263,11 +264,13 @@ function aggregateEvidenceForStudentAcrossCompetencies_(evidenceSheet, studentEm
   const iCompId = headers.indexOf("competency_id");
   const iOutcome = headers.indexOf("outcome");
   const iRole = headers.indexOf("evidence_role");
+  const iConfigId = headers.indexOf("config_id");
+  const iFileId = headers.indexOf("student_file_id");
 
-  const counts = { metCount: 0, notMetCount: 0, partialCount: 0 };
+  const best = new Map(); // competency + assignment -> best outcome
   const compIdSet = new Set(competencyIds);
 
-  if (iEmail === -1 || iCompId === -1 || iOutcome === -1) return counts;
+  if (iEmail === -1 || iCompId === -1 || iOutcome === -1) return countOutcomes_(best);
 
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
@@ -288,12 +291,10 @@ function aggregateEvidenceForStudentAcrossCompetencies_(evidenceSheet, studentEm
     if (effectiveRole !== requiredRole) continue;
 
     if (!VALID_OUTCOMES.includes(outcome)) continue;
-    if (outcome === "MET") counts.metCount++;
-    else if (outcome === "NOT_MET") counts.notMetCount++;
-    else if (outcome === "PARTIALLY_MET") counts.partialCount++;
+    keepBestOutcome_(best, compId + "|||" + evidenceAssignmentKey_(row, iConfigId, iFileId, i), outcome);
   }
 
-  return counts;
+  return countOutcomes_(best);
 }
 
 // ---------------------------------------------------------------------------
