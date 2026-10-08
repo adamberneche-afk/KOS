@@ -1,5 +1,7 @@
 # Classroom Agency System — User Experience & Reference Guide
 
+> **Current as of 2026-10-08:** students submit for feedback from the Student Dashboard (*Submit for Feedback*), because the district turns Apps Script off for student accounts and the doc's 📊 menu never appears for them. They turn in on Canvas (their document's link), where grades are given; the Turn-In Form is retired. Each evaluation is added at the end of the student's document. Where this page describes the doc menu or the Turn-In Form as the student's path, that part is out of date. The Student Quick Start and the Teacher Reference Guide are current.
+
 Module 1's role-by-role walkthroughs and structural reference material — extracted from an earlier deployment guide during the CAS/KOS reconciliation pass. For deployment steps, see the Admin Deployment Walkthrough instead; this document covers what each role's day-to-day experience of the running system actually looks like.
 
 ## The Admin Experience
