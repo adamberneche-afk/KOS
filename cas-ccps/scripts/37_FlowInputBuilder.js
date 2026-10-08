@@ -682,6 +682,9 @@ function harvestFlowInputResults() {
           competencyIds, milestoneTexts, parsed.milestoneOutcomes
         );
 
+        recordEvaluationResult_(ledgerSs.getSheetByName(cfg.tabs.ledger), studentFileId, configId,
+          parsed.complianceStatus, parsed.suggestedScore);
+
         if (stagingSheet) {
           _fiMarkStagingComplete_(stagingSheet, stagingRowRef, studentFileId, configId);
         }
@@ -703,6 +706,31 @@ function harvestFlowInputResults() {
   } finally {
     lock.releaseLock();
   }
+}
+
+// recordEvaluationResult_ — the evaluation's result on the student's Ledger
+// row, for the Teacher Dashboard: one more check, the latest result, when it
+// first passed (kept even if a later check needs revision) and the latest
+// suggested score. The result was only ever written into the doc before, so
+// "checked but not passing" and "never checked" looked the same.
+function recordEvaluationResult_(ledgerSheet, fileId, configId, complianceStatus, suggestedScore) {
+  if (!ledgerSheet) return;
+  const data = ledgerSheet.getRange(1, 1, Math.max(1, ledgerSheet.getLastRow()), LEDGER_COL_COUNT).getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][LEDGER.FILE_ID]).trim() !== fileId ||
+        String(data[i][LEDGER.CONFIG_ID]).trim() !== configId) continue;
+    _ensureEvaluationResultColumns_(ledgerSheet);
+    const passed = complianceStatus === "APPROVED";
+    const firstPassed = data[i][LEDGER.FIRST_PASSED_AT] || (passed ? new Date() : "");
+    ledgerSheet.getRange(i + 1, LEDGER.CHECK_COUNT + 1, 1, 4).setValues([[
+      (Number(data[i][LEDGER.CHECK_COUNT]) || 0) + 1,
+      passed ? "PASSED" : "NEEDS_REVISION",
+      firstPassed,
+      suggestedScore == null ? "" : suggestedScore,
+    ]]);
+    return;
+  }
+  Logger.log("[FlowInputBuilder] No Ledger row for ConfigID " + configId + " to record its result on.");
 }
 
 // Tries the cheap path first (StagingRowRef as a direct row number,
