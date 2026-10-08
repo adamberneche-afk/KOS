@@ -320,6 +320,15 @@ test('harvestFlowInputResults: writes feedback to the doc, CompetencyEvidence ro
   assert.ok(docText.indexOf('Great work overall') !== -1, 'the actual report text is present');
   assert.ok(docText.indexOf('[MILESTONE_OUTCOMES:') === -1, 'the machine-readable line must never reach the student');
   assert.ok(docText.indexOf('[SUGGESTED_SCORE: 4]') !== -1, 'the suggested-score line must survive — 04_Form2_TurnInGate.js reads it at turn-in time');
+  // Each evaluation carries its own next steps: a passing one suggests
+  // turning in on Canvas and still offers another check.
+  assert.ok(docText.indexOf('WHAT TO DO NEXT') !== -1, 'the block carries its next steps');
+  assert.ok(docText.indexOf('Turn it in on Canvas') !== -1);
+  assert.ok(docText.indexOf('Submit for Feedback again') !== -1);
+  assert.ok(docText.indexOf('Turn-In Form') === -1 && docText.indexOf('AI Evaluation Panel') === -1,
+    'no pointer to the form students never got or the menu that does not run for them');
+  assert.ok(docText.indexOf('WHAT TO DO NEXT') < docText.indexOf('── END EVALUATION ──'),
+    'the next steps sit inside the block, before its END marker');
 
   const evidence = ledgerSs.getSheetByName('CompetencyEvidence').getDataRange().getValues();
   assert.equal(evidence.length, 5, 'header + 4 milestones — all 4 have both a competency ID and a valid outcome');
