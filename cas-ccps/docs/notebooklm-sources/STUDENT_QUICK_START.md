@@ -32,11 +32,11 @@ Your document has four distinct zones. Each one has a specific purpose.
 When you're ready to get feedback on your work, the assignment has a built-in evaluation tool. You can use it as many times as you need — there's no penalty for running multiple checks.
 
 1. **Write your response** — Write your work below the "── YOUR RESPONSE BEGINS HERE ──" line. Aim for at least 25 words — shorter responses don't give the system enough to evaluate meaningfully.
-2. **Click the evaluation menu** — In the document menu bar, click **📊 AI Evaluation Panel → Run Assignment Check**. A dialog will confirm your work has been submitted.
+2. **Submit it from your dashboard** — Open your assignment dashboard (the link is in your document, under "Your assignment dashboard") and click **Submit for Feedback** on the assignment. The dashboard tells you right there whether it went through, or what's missing. If your document also shows a **📊 AI Evaluation Panel** menu, **Run Assignment Check** there does the same thing.
 3. **Wait 1–3 minutes** — Keep the document open. Your feedback will appear at the top of the document automatically. Refresh the page if it doesn't appear after 3 minutes.
 4. **Read your feedback** — Scroll to the top of the document. Your evaluation report will be there, along with instructions for what to do next.
 
-> 💡 **Check your status anytime.** Click **📊 AI Evaluation Panel → Check My Status** to see where you stand without waiting for feedback to arrive.
+> 💡 **Check your status anytime.** Your dashboard shows where each assignment stands without waiting for feedback to arrive.
 
 ## 4. Reading Your Evaluation
 
@@ -72,7 +72,7 @@ Once you've received a passing evaluation, you're ready to submit. The Turn-In F
 This usually means you're not signed into the correct Google account, or you opened a copy of the document rather than your original. Close the document, sign out of Google, sign back in with the correct account, and reopen the document from "Shared with me" in Drive. If the menu still doesn't appear after refreshing, contact your teacher.
 
 **I submitted for feedback but nothing appeared after 5 minutes.**
-First, refresh the page — feedback sometimes appears without the page updating automatically. If it's still not there, use **📊 AI Evaluation Panel → Check My Status** to see if your submission is queued. If status says "Being Evaluated Right Now", give it another minute. If status says "In Progress" for more than 10 minutes, let your teacher know.
+First, refresh the page — feedback sometimes appears without the page updating automatically. If it's still not there, check your dashboard to see if your submission is queued. If it says "Evaluating now…", give it another minute. If there's still no feedback 10 minutes after you submitted, let your teacher know.
 
 **The system says "Not Enough to Evaluate Yet" when I try to run a check.**
 Your response needs to be at least 25 words before the system can give you meaningful feedback. Check how many words you've written — if it's close, try adding a few more sentences to fully express your ideas.
