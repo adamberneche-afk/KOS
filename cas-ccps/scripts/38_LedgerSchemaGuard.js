@@ -68,6 +68,7 @@ const LEDGER_CANONICAL_HEADERS = [
   "CourseName", "Period", "Status", "SubmissionTS", "Notes",
   "LastEval", "AdminFileURL", "StudentFileURL", "AcademicYear",
   "SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt",
+  "CheckCount", "LastResult", "FirstPassedAt", "LastSuggestedScore",
 ];
 
 const LEDGER_MIN_CANONICAL_WIDTH = 19;

@@ -340,7 +340,10 @@ writers' ownership check (`scr-retry-ownership.test.js`), SCR evidence counted o
 piece per assignment at its best outcome, for suggestions and retries alike
 (`scr-suggestion-engine.test.js`, `scr-retry-evidence-pieces.test.js`), what an
 evaluation leaves behind: the Ledger moved to COMPLETE and next steps pointing at
-the dashboard and Canvas (`evaluation-next-steps.test.js`), and the student-data access
+the dashboard and Canvas (`evaluation-next-steps.test.js`), each evaluation's result on
+the Ledger (`evaluation-result-record.test.js`), the Teacher Dashboard's four states
+(not checked, not passing yet, passed, passed before) and its lesson grouping
+(`teacher-dashboard-eval-states.test.js`), and the student-data access
 policy: intake sharing, locking at submission, school-year scoping, the
 repair tool, and the student doc's menu calling the dashboard web app
 instead of the Ledger (`student-doc-service.test.js`,

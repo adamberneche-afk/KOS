@@ -494,6 +494,7 @@ function getDashboardData(termFilter) {
   const unitMap   = {};
   const allTerms  = new Set();
   const year      = _currentSchoolYear_();
+  const lessonCtx = _tdLessonContext_(ss);
 
   for (let i = 1; i < ledgerData.length; i++) {
     const row = ledgerData[i];
@@ -524,7 +525,23 @@ function getDashboardData(termFilter) {
     const suggestedScore = (suggestedScoreRaw === undefined || suggestedScoreRaw === "")
       ? null : Number(suggestedScoreRaw);
 
+    const studentConfigId = String(row[LEDGER.CONFIG_ID]).trim();
+    const assignmentId    = lessonCtx.assignmentOf[studentConfigId] || "";
+    const lesson          = lessonCtx.lessons[assignmentId];
+    const lastResult      = String(row[LEDGER.LAST_RESULT] || "").trim();
+    const scoreRaw        = row[LEDGER.LAST_SUGGESTED_SCORE];
+
     students.push({
+      // The lesson this workspace is for (StudentAssignments → LessonSchedule).
+      // A workspace from before StudentAssignments falls back to its course.
+      assignmentId:   assignmentId,
+      assignmentName: lesson ? lesson.name : (assignmentId || unitCode || "Unassigned"),
+      isCurrentLesson: !!assignmentId && lessonCtx.current.has(assignmentId),
+      // Each evaluation's result (37's recordEvaluationResult_).
+      evalState:       _tdEvalState_(lastResult, row[LEDGER.FIRST_PASSED_AT]),
+      checkCount:      Number(row[LEDGER.CHECK_COUNT]) || 0,
+      firstPassedAt:   row[LEDGER.FIRST_PASSED_AT] ? formatDate_(row[LEDGER.FIRST_PASSED_AT]) : null,
+      lastSuggestedScore: (scoreRaw === undefined || scoreRaw === "") ? null : Number(scoreRaw),
       name:        String(row[LEDGER.STUDENT_NAME]).trim()  || "—",
       googleId:    String(row[LEDGER.GOOGLE_ID]).trim(),
       block:       String(row[LEDGER.BLOCK]).trim(),
@@ -579,6 +596,8 @@ function getDashboardData(termFilter) {
 
   return {
     students:       students,
+    // Every lesson on the schedule a student here belongs to, current first.
+    lessons:        _tdLessonList_(lessonCtx, students),
     unitSummary:    unitMap,
     teacherEmail:   teacherEmail,
     activeTerm:     activeTerm,
@@ -1227,6 +1246,81 @@ function getStudentShadowProfile(studentEmail) {
 // ---------------------------------------------------------------------------
 // Existing helper functions — unchanged
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// The four states a student's work can be in for the teacher, from the
+// Ledger's evaluation result columns:
+//   NOT_CHECKED    no evaluation has come back
+//   NOT_PASSING    checked, never passed
+//   PASSED         the latest check passed
+//   PASSED_BEFORE  passed once, the latest check needs revision
+// ---------------------------------------------------------------------------
+function _tdEvalState_(lastResult, firstPassedAt) {
+  if (lastResult === "PASSED") return "PASSED";
+  if (lastResult === "NEEDS_REVISION") return firstPassedAt ? "PASSED_BEFORE" : "NOT_PASSING";
+  return "NOT_CHECKED";
+}
+
+// Which lesson each student workspace is for, and which lessons are on now.
+// Reads two central-ledger tabs directly: StudentAssignments (written by
+// 54_StudentAssignments.js) and LessonSchedule (55_LessonSchedule.js), neither
+// of which is in this project. A course's current lesson is the one with the
+// latest start_date on or before today, the same rule 55 uses.
+// Returns { assignmentOf: {studentConfigId: assignmentId},
+//           lessons: {assignmentId: {name, course, start}}, current: Set }.
+function _tdLessonContext_(ss) {
+  const out = { assignmentOf: {}, lessons: {}, current: new Set() };
+  try {
+    const sa = ss.getSheetByName("StudentAssignments");
+    if (sa && sa.getLastRow() > 1) {
+      sa.getRange(2, 1, sa.getLastRow() - 1, 3).getValues().forEach(r => {
+        const sid = String(r[0] || "").trim(), aid = String(r[2] || "").trim();
+        if (sid && aid) out.assignmentOf[sid] = aid;
+      });
+    }
+    const ls = ss.getSheetByName("LessonSchedule");
+    if (ls && ls.getLastRow() > 1) {
+      const rows = ls.getDataRange().getValues();
+      const h = rows[0].map(x => String(x).trim());
+      const iCourse = h.indexOf("course"), iLesson = h.indexOf("lesson"),
+        iStart = h.indexOf("start_date"), iId = h.indexOf("config_id");
+      if (iCourse !== -1 && iLesson !== -1 && iStart !== -1 && iId !== -1) {
+        const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM-dd");
+        const latestByCourse = {};
+        rows.slice(1).forEach(r => {
+          const id = String(r[iId] || "").trim();
+          if (!id) return;
+          const start = _normalizeLessonDateCell_(r[iStart]);
+          const course = String(r[iCourse] || "").trim();
+          out.lessons[id] = { name: String(r[iLesson] || "").trim() || id, course: course,
+            start: /^\d{4}-\d{2}-\d{2}$/.test(start) ? start : "" };
+          if (out.lessons[id].start && out.lessons[id].start <= today &&
+              (!latestByCourse[course] || out.lessons[id].start > out.lessons[latestByCourse[course]].start)) {
+            latestByCourse[course] = id;
+          }
+        });
+        Object.keys(latestByCourse).forEach(c => out.current.add(latestByCourse[c]));
+      }
+    }
+  } catch (e) {
+    Logger.log("[S07] Lesson context not read: " + e.message);
+  }
+  return out;
+}
+
+// The lessons the dashboard's lesson picker offers: those this teacher's
+// students belong to, current ones first, then newest first.
+function _tdLessonList_(lessonCtx, students) {
+  const seen = {};
+  students.forEach(s => {
+    if (!s.assignmentId || seen[s.assignmentId]) return;
+    const l = lessonCtx.lessons[s.assignmentId] || {};
+    seen[s.assignmentId] = { id: s.assignmentId, name: s.assignmentName, course: l.course || "",
+      start: l.start || "", current: lessonCtx.current.has(s.assignmentId) };
+  });
+  return Object.keys(seen).map(k => seen[k]).sort((a, b) =>
+    (b.current - a.current) || (a.start < b.start ? 1 : a.start > b.start ? -1 : 0) || a.name.localeCompare(b.name));
+}
+
 function resolveDisplay_(ledger, pipeline) {
   if (pipeline === "IN_PROCESS")        return "EVALUATING NOW";
   if (pipeline === "PENDING_INFERENCE") return "QUEUED";
@@ -1316,6 +1410,20 @@ header h1{font-size:18px;font-weight:500;flex:1}
    trouble, it's a fast, deliberate step the teacher takes. Clickable, like
    the warm-up-readiness stats already are — see .card-pending-review:hover. */
 .card-pending-review .count{color:#9334e6}
+.card-passed .count{color:#1e8e3e}.card-passed-before .count{color:#00796b}
+.card-not-passing .count{color:#e37400}.card-not-checked .count{color:#5f6368}
+.card-filter{cursor:pointer;transition:box-shadow .15s}
+.card-filter:hover{box-shadow:0 3px 10px rgba(0,0,0,.15)}
+.card-filter.card-active{outline:2px solid #1a73e8}
+.lesson-picker{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-wrap:wrap}
+.lesson-picker label{font-size:13px;color:var(--text-secondary)}
+.lesson-picker select{padding:6px 10px;border-radius:4px;border:1px solid #dadce0;font-size:13px;max-width:100%}
+.badges{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.badge-passed-before{background:#e0f2f1;color:#00695c}
+.student-row.es-PASSED:not(.flagged){border-left-color:#1e8e3e}
+.student-row.es-PASSED_BEFORE:not(.flagged){border-left-color:#00796b}
+.student-row.es-NOT_PASSING:not(.flagged){border-left-color:#e37400}
+.student-row.es-NOT_CHECKED:not(.flagged){border-left-color:#dadce0}
 .card-pending-review{cursor:pointer;transition:box-shadow .15s}
 .card-pending-review:hover{box-shadow:0 3px 10px rgba(0,0,0,.15)}
 .unit-section{margin-bottom:28px}
@@ -1746,6 +1854,32 @@ function clearWrFilter() {
 // only ever one thing to filter to (mirrors applyWrFilter()/clearWrFilter()'s
 // re-render-from-cache shape, just simpler since there's no bucket to pick).
 let _activePendingReviewFilter = false;
+// Lesson picker and the summary-card filters (render()). null = default:
+// the current lesson(s), no filter.
+let _lessonView = null;
+let _evalFilter = null;
+const EVAL_LABEL = {
+  PASSED: "✅ Passed", PASSED_BEFORE: "↩️ Passed before · latest needs revision",
+  NOT_PASSING: "✏️ Checked · not passing yet", NOT_CHECKED: "⚪ Not checked yet"
+};
+const EVAL_BADGE = {
+  PASSED: "badge-compliant", PASSED_BEFORE: "badge-passed-before",
+  NOT_PASSING: "badge-queued", NOT_CHECKED: "badge-not-started"
+};
+const EVAL_FILTER_LABEL = {
+  PASSED: "passed", PASSED_BEFORE: "passed before, latest needs revision",
+  NOT_PASSING: "checked, not passing yet", NOT_CHECKED: "not checked yet", FLAGGED: "need attention"
+};
+function setLessonView(v) {
+  _lessonView = v;
+  _evalFilter = null;
+  if (_lastDashData) render(_lastDashData);
+}
+function toggleEvalFilter(key) {
+  _evalFilter = (key && _evalFilter !== key) ? key : null;
+  if (_lastDashData) render(_lastDashData);
+}
+
 function togglePendingReviewFilter() {
   _activePendingReviewFilter = !_activePendingReviewFilter;
   if (_lastDashData) render(_lastDashData);
@@ -2367,35 +2501,46 @@ If you expect to see students here:
     return;
   }
 
-  const total     = data.students.length;
-  const compliant = data.students.filter(s => s.statusClass === "compliant").length;
-  const flagged   = data.students.filter(s => s.statusClass === "flagged").length;
-  // "In progress" is everything not yet compliant or flagged (queued,
-  // evaluating now, evaluated, not started, unknown) — computed as the
-  // remainder rather than an explicit allowlist so it can never silently
-  // exclude a real status and leave the three cards short of the total,
-  // the exact bug that made "NOT STARTED"/"EVALUATED" students vanish before.
-  const pending   = total - compliant - flagged;
-  // NEW (Say/Do Ledger cas-ccps finding #1): a slice of "In progress" above
-  // — every pending-review row is already counted there too (the remainder
-  // formula doesn't exclude it), so this doesn't change what "In progress"
-  // means. It's a separate, clickable card into the same roster, the same
-  // relationship the warm-up-readiness stats already have to the roster below.
-  const pendingReview = data.students.filter(s => s.statusClass === "pending-review").length;
+  // The lesson picker: the current lesson(s) by default (LessonSchedule
+  // dates), any one lesson, or everything.
+  const lessons = data.lessons || [];
+  const hasCurrent = lessons.some(l => l.current);
+  const view = _lessonView || (hasCurrent ? "CURRENT" : "ALL");
+  const inView = data.students.filter(s =>
+    view === "ALL" ? true : view === "CURRENT" ? s.isCurrentLesson : s.assignmentId === view);
+  const currentNames = lessons.filter(l => l.current).map(l => l.name).join(" · ");
+  let html = \`<div class="lesson-picker">
+    <label for="lesson-view">Showing</label>
+    <select id="lesson-view" onchange="setLessonView(this.value)">
+      \${hasCurrent ? \`<option value="CURRENT"\${view === "CURRENT" ? " selected" : ""}>Current lesson\${lessons.filter(l => l.current).length === 1 ? "" : "s"}: \${esc(currentNames)}</option>\` : ""}
+      \${lessons.map(l => \`<option value="\${esc(l.id)}"\${view === l.id ? " selected" : ""}>\${esc(l.name)}\${l.start ? " (from " + esc(l.start) + ")" : ""}</option>\`).join("")}
+      <option value="ALL"\${view === "ALL" ? " selected" : ""}>All assignments</option>
+    </select>
+  </div>\`;
 
-  let html = \`<div class="summary-grid">
-    <div class="summary-card card-total"><div class="count">\${total}</div><div class="label">Students</div></div>
-    <div class="summary-card card-compliant"><div class="count">\${compliant}</div><div class="label">Submitted</div></div>
-    <div class="summary-card card-pending"><div class="count">\${pending}</div><div class="label">In progress</div></div>
+  // Summary cards for what's in view. Not checked and checked-but-not-passing
+  // are different situations, so they are separate cards. Each card filters
+  // the list below; clicking it again clears the filter.
+  const count = st => inView.filter(s => s.evalState === st).length;
+  const flagged = inView.filter(s => s.statusClass === "flagged").length;
+  const pendingReview = inView.filter(s => s.statusClass === "pending-review").length;
+  const card = (key, cls, n, label) =>
+    \`<div class="summary-card \${cls} card-filter\${_evalFilter === key ? " card-active" : ""}" onclick="toggleEvalFilter('\${key}')" role="button" tabindex="0" aria-pressed="\${_evalFilter === key}" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleEvalFilter('\${key}');}"><div class="count">\${n}</div><div class="label">\${label}</div></div>\`;
+  html += \`<div class="summary-grid">
+    <div class="summary-card card-total"><div class="count">\${inView.length}</div><div class="label">Students</div></div>
+    \${card("PASSED", "card-passed", count("PASSED"), "✅ Passed")}
+    \${card("PASSED_BEFORE", "card-passed-before", count("PASSED_BEFORE"), "↩️ Passed before, now revising")}
+    \${card("NOT_PASSING", "card-not-passing", count("NOT_PASSING"), "✏️ Checked, not passing yet")}
+    \${card("NOT_CHECKED", "card-not-checked", count("NOT_CHECKED"), "⚪ Not checked yet")}
     \${pendingReview ? \`<div class="summary-card card-pending-review" onclick="togglePendingReviewFilter()" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();togglePendingReviewFilter();}"><div class="count">\${pendingReview}</div><div class="label">Pending Review</div></div>\` : ""}
-    <div class="summary-card card-flagged"><div class="count">\${flagged}</div><div class="label">Needs attention</div></div>
+    \${card("FLAGGED", "card-flagged", flagged, "Needs attention")}
   </div>\`;
 
   // NEW (finding #13): the warm-up readiness panel's stats are clickable
   // filters into this roster — apply the active one (if any) before
   // building the unit groups below. Summary cards above stay whole-class;
   // only the roster list is filtered, with a visible banner explaining why.
-  let studentsToShow = data.students;
+  let studentsToShow = inView;
   if (_activeWrFilter && data.warmUpReadiness) {
     const emailKey = WR_FILTER_EMAIL_KEY[_activeWrFilter];
     const emailSet = new Set((data.warmUpReadiness[emailKey] || []).map(e => e.toLowerCase()));
@@ -2417,11 +2562,26 @@ If you expect to see students here:
     </div>\`;
   }
 
+  if (_evalFilter) {
+    studentsToShow = studentsToShow.filter(s =>
+      _evalFilter === "FLAGGED" ? s.statusClass === "flagged" : s.evalState === _evalFilter);
+    html += \`<div style="background:#f1f3f4;border-radius:8px;padding:10px 16px;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+      <span style="font-size:13px;color:#3c4043">Showing \${studentsToShow.length}: \${esc(EVAL_FILTER_LABEL[_evalFilter] || "")}</span>
+      <button onclick="toggleEvalFilter(null)" style="background:none;border:1px solid #5f6368;color:#3c4043;border-radius:4px;padding:4px 10px;font-size:12px;cursor:pointer">Clear filter</button>
+    </div>\`;
+  }
+
+  // One section per lesson (its assignment), students by period then name,
+  // the order SpeedGrader is easiest to follow in.
   const units = {};
+  const unitNames = {};
   studentsToShow.forEach(s => {
-    if (!units[s.unitCode]) units[s.unitCode] = [];
-    units[s.unitCode].push(s);
+    const key = s.assignmentId || s.assignmentName;
+    if (!units[key]) { units[key] = []; unitNames[key] = s.assignmentName; }
+    units[key].push(s);
   });
+  Object.keys(units).forEach(k => units[k].sort((a, b) =>
+    String(a.period).localeCompare(String(b.period), undefined, { numeric: true }) || a.name.localeCompare(b.name)));
 
   const badgeMap = {
     compliant:"badge-compliant", active:"badge-active", queued:"badge-queued",
@@ -2430,14 +2590,19 @@ If you expect to see students here:
     flagged:"badge-flagged", unknown:"badge-unknown"
   };
 
-  if ((_activeWrFilter || _activePendingReviewFilter) && studentsToShow.length === 0) {
+  if ((_activeWrFilter || _activePendingReviewFilter || _evalFilter) && studentsToShow.length === 0) {
     html += \`<div style="text-align:center;padding:40px 24px;color:var(--text-secondary)">No students match this filter right now.</div>\`;
   }
 
-  Object.keys(units).sort().forEach(unit => {
-    const u = data.unitSummary[unit] || {};
+  Object.keys(units).sort((a, b) => unitNames[a].localeCompare(unitNames[b])).forEach(unit => {
+    const list = units[unit];
+    const n = st => list.filter(s => s.evalState === st).length;
+    const parts = [list.length + " student" + (list.length === 1 ? "" : "s"),
+      n("PASSED") + " passed", n("PASSED_BEFORE") ? n("PASSED_BEFORE") + " passed before" : "",
+      n("NOT_PASSING") + " not passing yet", n("NOT_CHECKED") + " not checked"].filter(Boolean);
+    const unitFlagged = list.filter(s => s.statusClass === "flagged").length;
     html += \`<div class="unit-section">
-      <div class="unit-header">\${esc(unit) || "Unassigned unit"} <span style="font-weight:400;margin-left:8px;">\${u.total||0} student\${(u.total||0)===1?'':'s'} · \${u.compliant||0} submitted · \${u.pending||0} in progress\${u.flagged ? ' · <span style="color:#d93025">'+u.flagged+' flagged</span>' : ''}</span></div>\`;
+      <div class="unit-header">\${esc(unitNames[unit])} <span style="font-weight:400;margin-left:8px;">\${parts.join(" · ")}\${unitFlagged ? ' · <span style="color:#d93025">' + unitFlagged + ' flagged</span>' : ''}</span></div>\`;
     units[unit].forEach(s => {
       // NEW (finding #13): a bucket-appropriate next step per filtered row —
       // "building profile" students get a note to log more lesson context
@@ -2489,12 +2654,15 @@ If you expect to see students here:
         reviewNextStep = '<div style="font-size:12px;color:#9334e6;margin-top:4px">' + rvScoreNote + '</div>' +
           '<button onclick="openScoreReview(\\'' + rvConfigSafe + '\\', \\'' + rvNameSafe + '\\', ' + rvScoreArg + ')" style="margin-top:6px;background:#9334e6;color:white;border:none;border-radius:4px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer">Review Submission →</button>';
       }
-      html += \`<div class="student-row \${s.statusClass}">
+      const pipelineBadge = ["active", "queued", "flagged", "pending-review"].includes(s.statusClass)
+        ? \`<div class="status-badge \${badgeMap[s.statusClass] || 'badge-unknown'}">\${esc(s.status)}</div>\` : "";
+      html += \`<div class="student-row \${s.statusClass} es-\${s.evalState}">
         <div>
           <div class="student-name">\${esc(s.name)}</div>
           <div class="student-meta">\${[s.block && "Block "+esc(s.block), s.period && "Period "+esc(s.period), esc(s.subject)].filter(Boolean).join(" · ") || "No class info on file"}</div>
-          <div class="last-eval">Last evaluation: \${esc(s.lastEval)}</div>
-          \${s.submittedAt && s.submittedAt !== "—" ? \`<div class="last-eval">Submitted: \${esc(s.submittedAt)}</div>\` : ""}
+          <div class="last-eval">\${s.checkCount ? s.checkCount + " check" + (s.checkCount === 1 ? "" : "s") + " · last " + esc(s.lastEval) : "No checks yet"}</div>
+          \${s.firstPassedAt ? \`<div class="last-eval">First passed \${esc(s.firstPassedAt)}</div>\` : ""}
+          \${s.lastSuggestedScore != null ? \`<div class="last-eval">Suggested score (latest check): <b>\${esc(s.lastSuggestedScore)}</b>/5</div>\` : ""}
           \${safeDocUrl(s.docUrl)
             ? \`<a class="doc-link" href="\${esc(safeDocUrl(s.docUrl))}" target="_blank">Open document ↗</a>\`
             : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
@@ -2502,7 +2670,7 @@ If you expect to see students here:
           \${wrNextStep}
           \${reviewNextStep}
         </div>
-        <div><div class="status-badge \${badgeMap[s.statusClass]||'badge-unknown'}">\${esc(s.status)}</div></div>
+        <div class="badges"><div class="status-badge \${EVAL_BADGE[s.evalState] || 'badge-unknown'}">\${esc(EVAL_LABEL[s.evalState] || s.evalState)}</div>\${pipelineBadge}</div>
       </div>\`;
     });
     html += "</div>";
