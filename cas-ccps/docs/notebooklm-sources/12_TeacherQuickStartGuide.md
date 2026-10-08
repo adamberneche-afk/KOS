@@ -44,7 +44,7 @@ Before registering students, you need at least one assignment. Creating one gene
 2. **Fill in the student's details** — Student Google account email (must be exact), name, block, class name, subject, course name, period, your details, and the Config ID.
 
    > ⚠️ **The Google account email must be exact.** A typo means the student can't use the evaluation system.
-3. **Tell the student their document is ready** — Within 1–2 minutes it appears in their Google Drive under "Shared with me." Their Turn-In Form link is already in the document footer.
+3. **Tell the student their document is ready** — Within 1–2 minutes it appears in their Google Drive under "Shared with me." The link to their assignment dashboard, where they click Submit for Feedback, is near the top of the document. They turn in on Canvas.
 
 > 💡 **Registering a whole class?** Submit once per student. Register in groups of 20–30. Check your dashboard after each batch.
 
@@ -55,10 +55,10 @@ Before registering students, you need at least one assignment. Creating one gene
 | Create a new assignment | `⚙️ Assignment System → Create New Assignment` |
 | Register a student | `⚙️ Assignment System → Register a Student` |
 | Open your dashboard | `⚙️ Assignment System → Open My Dashboard` |
-| Share Turn-In Form with students | Copy the Turn-In Form URL from your Teacher Setup Details page |
+| See who has passed a check | Dashboard: it opens on the current lesson, with ⚪ not checked / ✏️ not passing yet / ✅ passed counts |
 | View a student's document | Dashboard → "Open document ↗" next to any student |
-| Understand a rejection notice | Open student's document — notice explains exactly what happened |
-| Manually mark a student complete | Ask your admin — Admin Controls → Manually Mark Student Compliant |
+| Grade a turn-in | In Canvas (SpeedGrader); students submit their document's link there |
+| Review SCR suggestions | Dashboard → SCR review: confirm or override each one |
 
 ## 5. Setup Checklist
 

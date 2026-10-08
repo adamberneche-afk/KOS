@@ -1,8 +1,8 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-07)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-08)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-07.md`](../meta/HANDOFF_2026-10-07.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-08.md`](../meta/HANDOFF_2026-10-08.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -11,7 +11,14 @@
 >   its nightly trigger, LIVE assignments `CAS-8175-L06` and
 >   `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS` (the S1-U1 ones archived),
 >   and every rostered student enrolled in them (71 in 8175, 21 in 8177).
->   Left: step 18 (import the Canvas cartridges), then the first real
+> - **Merged 2026-10-08, not yet pushed (#115-#117):** students submit from
+>   the Student Dashboard (the doc menu doesn't run for student accounts)
+>   and turn in on Canvas; SCR suggestions average each student's three
+>   best assignments; the Teacher Dashboard shows not checked / not
+>   passing / passed by current lesson. Push central-ledger,
+>   student-dashboard and teacher-dashboard, and update both web apps'
+>   existing deployments (`cas-ccps/HISTORY.md`, newest entry).
+> - Left: step 18 (import the Canvas cartridges), then the first real
 >   Flow 2 run when students submit.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
