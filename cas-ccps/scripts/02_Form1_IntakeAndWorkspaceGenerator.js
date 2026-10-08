@@ -372,9 +372,12 @@ function stampDocument_(fileId, configId, studentName, block,
 
   body.appendParagraph("── FEEDBACK ──");
 
+  // Must start "[No feedback yet." — 03_QueueBridge.js finds and removes it
+  // by that prefix once the first evaluation arrives. Students submit from
+  // the dashboard: the doc's menu doesn't run for student accounts.
   body.appendParagraph(
-    "[No feedback yet. Use 📊 AI Evaluation Panel → Run Assignment Check " +
-    "to request your first evaluation.]"
+    "[No feedback yet. When you're ready, open your assignment dashboard (link below) " +
+    "and click Submit for Feedback. Your feedback will appear at the end of this document.]"
   );
 
   // External UX audit: the Student Dashboard web app was fully built but
