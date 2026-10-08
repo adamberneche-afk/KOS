@@ -117,6 +117,10 @@ function getStudentDashboardData(termFilter) {
       docUrl:        fileId
         ? "https://docs.google.com/document/d/" + fileId + "/edit"
         : null,
+      // For the Submit for Feedback button (submitMyWork). The student's
+      // own doc, which docUrl already carries.
+      fileId:        fileId,
+      canSubmit:     !!fileId && !DASH_NO_SUBMIT_STATUSES[status],
       folderLabel:   String(row[LEDGER.BLOCK]).trim() + " - " +
                      String(row[LEDGER.CLASS_NAME]).trim() + " - " +
                      String(row[LEDGER.TEACHER_NAME]).trim()
@@ -212,15 +216,8 @@ function handleStudentDocRequest_(googleId, req) {
   if (!fileId || !configId) return { ok: false, error: "BAD_REQUEST" };
   if (action !== "status" && action !== "submit") return { ok: false, error: "BAD_ACTION" };
 
-  const cfg   = getConfig_();
-  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
-  const data  = sheet.getDataRange().getValues();
-  let row = null;
-  for (let i = 1; i < data.length; i++) {
-    if (String(data[i][LEDGER.GOOGLE_ID]).toLowerCase() === googleId.toLowerCase() &&
-        String(data[i][LEDGER.CONFIG_ID]) === configId &&
-        String(data[i][LEDGER.FILE_ID])   === fileId) { row = data[i]; break; }
-  }
+  const cfg = getConfig_();
+  const row = findOwnLedgerRow_(cfg, googleId, fileId, configId);
   if (!row) return { ok: false, error: "NOT_REGISTERED" };
 
   if (action === "status") {
@@ -239,11 +236,106 @@ function handleStudentDocRequest_(googleId, req) {
 
   const hasText = (req && req.hasText === true) || !!String((req && req.text) || "").trim();
   if (!hasText) return { ok: false, error: "EMPTY" };
+  return queueSubmission_(cfg, googleId, fileId, configId);
+}
+
+// The signed-in student's Ledger row for this doc, or null. All three must
+// match, so a student can only ever reach their own row.
+function findOwnLedgerRow_(cfg, googleId, fileId, configId) {
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+  const data  = sheet.getDataRange().getValues();
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][LEDGER.GOOGLE_ID]).toLowerCase() === googleId.toLowerCase() &&
+        String(data[i][LEDGER.CONFIG_ID]) === configId &&
+        String(data[i][LEDGER.FILE_ID])   === fileId) return data[i];
+  }
+  return null;
+}
+
+function queueSubmission_(cfg, googleId, fileId, configId) {
   const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
   if (!queue) return { ok: false, error: "NO_QUEUE" };
   // Column 5 (StudentText) stays empty; see the header comment above.
   queue.appendRow([new Date(), googleId, fileId, configId, "", "PENDING", ""]);
   return { ok: true };
+}
+
+// ---------------------------------------------------------------------------
+// submitMyWork — the dashboard's "Submit for Feedback" button
+//
+// The doc's own menu (01) runs as the student, and the district turns Apps
+// Script off for student accounts: on 2026-10-08 the teacher saw the menu
+// on a student's doc and the student didn't. This page runs as the admin,
+// so it can do the menu's check-and-submit itself: it reads the student's
+// doc, applies the menu's minimums, and queues the same ReviewQueue row.
+// The writing is read only to count it. It is never returned or stored.
+// Returns { ok: true, aiFlowsLive } or { ok: false, error, words? }.
+// ---------------------------------------------------------------------------
+const DASH_RESPONSE_MARKER    = "── YOUR RESPONSE BEGINS HERE ──"; // 01's RESPONSE_MARKER
+const DASH_MIN_RESPONSE_CHARS = 150; // 01's MIN_RESPONSE_CHARS
+const DASH_MIN_RESPONSE_WORDS = 25;  // 01's MIN_RESPONSE_WORDS
+// Ledger statuses with nothing to submit: already queued, already turned in,
+// or retired.
+const DASH_NO_SUBMIT_STATUSES = {
+  PENDING: "ALREADY_QUEUED", STAGED: "ALREADY_QUEUED",
+  PENDING_TEACHER_REVIEW: "ALREADY_TURNED_IN", COMPLIANT: "ALREADY_TURNED_IN",
+  ARCHIVED: "NOT_REGISTERED"
+};
+
+function submitMyWork(fileId, configId) {
+  const googleId = Session.getActiveUser().getEmail();
+  if (!googleId) return { ok: false, error: "NO_USER" };
+  fileId   = String(fileId   || "").trim();
+  configId = String(configId || "").trim();
+  if (!fileId || !configId) return { ok: false, error: "BAD_REQUEST" };
+
+  const cfg = getConfig_();
+  const row = findOwnLedgerRow_(cfg, googleId, fileId, configId);
+  if (!row) return { ok: false, error: "NOT_REGISTERED" };
+  const blocked = DASH_NO_SUBMIT_STATUSES[String(row[LEDGER.STATUS]).trim()];
+  if (blocked) return { ok: false, error: blocked };
+
+  // A second click before the queue bridge picks up the first: the bridge
+  // would mark it DUPLICATE anyway, but the student should hear why.
+  const queue = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.reviewQueue);
+  if (!queue) return { ok: false, error: "NO_QUEUE" };
+  // Columns 2 and 5 are 03's RQ_FILE_ID and RQ_STATUS.
+  const pending = queue.getDataRange().getValues().slice(1).some(r =>
+    String(r[2]).trim() === fileId && String(r[5]).trim() === "PENDING");
+  if (pending) return { ok: false, error: "ALREADY_QUEUED" };
+
+  let fullText;
+  try {
+    fullText = DocumentApp.openById(fileId).getBody().getText();
+  } catch (e) {
+    Logger.log("submitMyWork: couldn't open doc for ConfigID " + configId + ": " + e.message);
+    return { ok: false, error: "DOC_UNREADABLE" };
+  }
+  if (fullText.indexOf(DASH_RESPONSE_MARKER) === -1) return { ok: false, error: "NO_RESPONSE_SECTION" };
+  const text  = dashExtractResponse_(fullText);
+  const words = text ? text.split(/\s+/).filter(w => w.length > 0).length : 0;
+  if (text.length < DASH_MIN_RESPONSE_CHARS || words < DASH_MIN_RESPONSE_WORDS) {
+    return { ok: false, error: "TOO_SHORT", words: words };
+  }
+
+  const res = queueSubmission_(cfg, googleId, fileId, configId);
+  if (!res.ok) return res;
+  Logger.log("Dashboard submission — ConfigID: " + configId);
+  return { ok: true, aiFlowsLive: !!cfg.aiFlowsLive };
+}
+
+// Same span as 01's extractStudentResponse_(): from the line after the
+// response marker to the first system marker. 01 isn't in this project,
+// and a test holds the two to the same answers.
+function dashExtractResponse_(fullText) {
+  const start = fullText.indexOf(DASH_RESPONSE_MARKER);
+  if (start === -1) return "";
+  const from = fullText.indexOf("\n", start);
+  if (from === -1) return "";
+  const ends = [fullText.indexOf("[CONFIG_ID:"), fullText.indexOf("[SYS_LEDGER_SS_ID:")]
+    .filter(n => n !== -1);
+  const to = ends.length > 0 ? Math.min(...ends) : fullText.length;
+  return fullText.substring(from, to).trim();
 }
 
 function resolveStudentStatus_(status, pipeline) {
@@ -391,6 +483,13 @@ function buildStudentDashboardHtml_() {
   .open-btn.done-btn{background:#1e8e3e}
   .open-btn.done-btn:hover{background:#137333}
   .submitted-note{font-size:12px;color:#1e8e3e;margin-top:8px;font-weight:500}
+  .card-actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+  .submit-btn{background:white;color:#1e8e3e;border:1px solid #1e8e3e;padding:8px 18px;border-radius:6px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit}
+  .submit-btn:hover{background:#e6f4ea}
+  .submit-btn:disabled{opacity:.6;cursor:default}
+  .submit-msg{font-size:13px;margin-top:8px;line-height:1.45;white-space:pre-line}
+  .submit-msg.ok{color:#137333}
+  .submit-msg.err{color:#c5221f}
   .empty-state{text-align:center;padding:60px 24px;color:var(--text-secondary);white-space:pre-line}
   .empty-state .icon{font-size:48px;margin-bottom:16px}
   footer{text-align:center;padding:20px;font-size:12px;color:var(--text-secondary);border-top:1px solid #e8eaed;margin-top:32px}
@@ -447,6 +546,9 @@ let _isFirstLoad = true;
 // a term-filter change doesn't need to re-derive "what's on file."
 let _lastDashData = null;
 let _myInfoOpen = false;
+// fileId -> { ok, text } from this visit's Submit clicks, so a refresh or
+// term change that rebuilds the cards doesn't wipe the student's answer.
+let _submitMsgs = {};
 
 // A round-trip that happens to finish in well under this many ms would
 // otherwise flash the spinner on and off almost instantly, which reads as
@@ -598,9 +700,19 @@ function render(data) {
              pattern (07_TeacherDashboard.js's student-meta line). -->
         <div class="card-meta">\${[a.period && "Period "+esc(a.period), esc(a.subject)].filter(Boolean).join(" &nbsp;·&nbsp; ") || "No class info on file"}</div>
         <div class="eval-line">Last evaluation: \${esc(a.lastEval)}</div>
+        <div class="card-actions">
         \${safeDocUrl(a.docUrl)
           ? \`<a href="\${esc(safeDocUrl(a.docUrl))}" target="_blank" class="open-btn \${isDone?"done-btn":""}">Open My Document ↗</a>\`
           : '<span style="color:var(--text-secondary);font-size:13px;">Document not yet available</span>'
+        }
+        \${a.canSubmit
+          ? \`<button class="submit-btn" data-file="\${esc(a.fileId)}" data-config="\${esc(a.configId)}" onclick="submitWork(this)">Submit for Feedback</button>\`
+          : ""
+        }
+        </div>
+        \${_submitMsgs[a.fileId]
+          ? \`<div class="submit-msg \${_submitMsgs[a.fileId].ok ? "ok" : "err"}" role="status">\${esc(_submitMsgs[a.fileId].text)}</div>\`
+          : ""
         }
         \${isDone && a.submittedAt
           ? \`<div class="submitted-note">Submitted \${esc(a.submittedAt)}</div>\`
@@ -622,6 +734,51 @@ function render(data) {
     "Last refreshed: " + data.generatedAt + "  ·  " + data.googleId;
 
   _populateTermDropdown(data);
+}
+
+// Submit for Feedback: the doc's own menu can't run for student accounts
+// (district setting), so the dashboard submits instead. The server reads
+// the doc and checks it; this only shows the answer under the card.
+const SUBMIT_ERRORS = {
+  TOO_SHORT: null, // worded below with the word count
+  NO_RESPONSE_SECTION: "Your document is missing its \\"── YOUR RESPONSE BEGINS HERE ──\\" line, so there's nothing to check. Ask your teacher.",
+  ALREADY_QUEUED: "This is already waiting for feedback. Check back in a few minutes.",
+  ALREADY_TURNED_IN: "You've already turned this in.",
+  NOT_REGISTERED: "This assignment isn't open for you any more. Ask your teacher.",
+  NO_USER: "Sign into your school Google account and refresh this page."
+};
+const SUBMIT_FALLBACK = "The assignment system didn't answer. Your work is safe in your document.\\nTry again in a minute. If it keeps happening, tell your teacher.";
+
+function submitWork(btn) {
+  const fileId = btn.getAttribute("data-file");
+  const configId = btn.getAttribute("data-config");
+  btn.disabled = true;
+  btn.textContent = "Submitting…";
+  const done = function(msg) {
+    _submitMsgs[fileId] = msg;
+    _dashCache = {};
+    if (_lastDashData) render(_lastDashData);
+  };
+  google.script.run
+    .withSuccessHandler(function(res) {
+      if (res && res.ok) {
+        done({ ok: true, text: res.aiFlowsLive
+          ? "✅ Submitted. Your feedback will appear at the top of your document in 1–3 minutes. Refresh the document to see it."
+          : "✅ Submitted. Your teacher can see your work and will review it directly." });
+        return;
+      }
+      const code = res && res.error;
+      if (code === "TOO_SHORT") {
+        const w = res.words || 0;
+        done({ ok: false, text: "Not enough to evaluate yet. " +
+          (w > 0 ? "You've written about " + w + " word" + (w === 1 ? "" : "s") + "." : "You haven't written anything in the response section yet.") +
+          "\\nAim for at least 25 words below the \\"── YOUR RESPONSE BEGINS HERE ──\\" line." });
+        return;
+      }
+      done({ ok: false, text: SUBMIT_ERRORS[code] || SUBMIT_FALLBACK });
+    })
+    .withFailureHandler(function() { done({ ok: false, text: SUBMIT_FALLBACK }); })
+    .submitMyWork(fileId, configId);
 }
 
 // NEW (finding #7): an immediate, in-app "just registered" notice —
