@@ -708,6 +708,14 @@ const LEDGER = {
   TURN_IN_FINAL_SCORE:      20,
   TURN_IN_SCORE_DECIDED_BY: 21,
   TURN_IN_SCORE_DECIDED_AT: 22,
+  // Each Flow 2 evaluation's result, written by 37_FlowInputBuilder.js's
+  // harvest (recordEvaluationResult_) and read by the Teacher Dashboard.
+  // Headers come from _ensureEvaluationResultColumns_() below; absent on a
+  // Ledger no evaluation has reached yet, read as undefined like the four above.
+  CHECK_COUNT:            23,  // evaluations returned
+  LAST_RESULT:            24,  // PASSED | NEEDS_REVISION
+  FIRST_PASSED_AT:        25,  // when an evaluation first passed; never cleared
+  LAST_SUGGESTED_SCORE:   26,  // Flow 2's [SUGGESTED_SCORE: N] on the latest check, "" if none
 };
 
 // One past the highest LEDGER index above — the Ledger's real, schema-known
@@ -723,7 +731,24 @@ const LEDGER = {
 // no more, no less — used by the handful of call sites (10_AdminRecoveryPanel.js,
 // 29_StudentContextAggregator.js, 30_SCRSuggestionEngine.js) that read the
 // whole Ledger tab rather than a header-driven dynamic column set.
-const LEDGER_COL_COUNT = 23;
+const LEDGER_COL_COUNT = 27;
+
+// Headers for the columns after AcademicYear, which a Ledger only gets on
+// first use: the turn-in review's four (07/04's _ensureTurnInReviewColumns_)
+// and the evaluation result's four. Fills blank header cells only, and the
+// turn-in ones too, so 38_LedgerSchemaGuard.js never sees a gap in the middle.
+const LEDGER_LATER_HEADERS = [
+  "SuggestedScore", "FinalScore", "ScoreDecidedBy", "ScoreDecidedAt",
+  "CheckCount", "LastResult", "FirstPassedAt", "LastSuggestedScore",
+];
+
+function _ensureEvaluationResultColumns_(sheet) {
+  const first = LEDGER.TURN_IN_SUGGESTED_SCORE + 1;
+  const range = sheet.getRange(1, first, 1, LEDGER_LATER_HEADERS.length);
+  const have = range.getValues()[0];
+  if (have.every((h, i) => String(h).trim() === LEDGER_LATER_HEADERS[i])) return;
+  range.setValues([LEDGER_LATER_HEADERS.map((h, i) => String(have[i] || "").trim() || h)]);
+}
 
 // =============================================================================
 // SCRDecisionLog column indices (0-based) — canonical order
