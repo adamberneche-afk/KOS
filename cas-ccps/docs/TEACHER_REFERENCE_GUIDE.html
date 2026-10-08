@@ -125,7 +125,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
   <div class="sb-section">
     <span class="sb-section-label">Student Support</span>
     <a class="sb-link" href="#problems">When Students Have Problems</a>
-    <a class="sb-link" href="#turnin">Turn-In Rejections</a>
+    <a class="sb-link" href="#turnin">Turning In, Grading and the SCR</a>
   </div>
   <div class="sb-section">
     <span class="sb-section-label">End of Term</span>
@@ -168,7 +168,8 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
       <tr><td class="td-label">Teacher Manual Doc</td><td>Your operational hub — contains all your links and the ⚙️ Assignment System menu</td><td>In your Google Drive — the document you ran setup from</td></tr>
       <tr><td class="td-label">Rubric Upload Form</td><td>Submit a new rubric to create an assignment</td><td>Link in your Teacher Setup Details page (end of manual)</td></tr>
       <tr><td class="td-label">Student Registration Form</td><td>Register a student for an assignment</td><td>Link in your Teacher Setup Details page</td></tr>
-      <tr><td class="td-label">Turn-In Form</td><td>Students submit their final work here — shared across all teachers</td><td>Link in your Teacher Setup Details page — share this with students</td></tr>
+      <tr><td class="td-label">Canvas assignment</td><td>Where students turn in (their document's link) and where you grade</td><td>Your Canvas course (imported from the CAS cartridges)</td></tr>
+      <tr><td class="td-label">Student Dashboard</td><td>Where students submit for feedback and see where each assignment stands</td><td>The link near the top of every student document</td></tr>
       <tr><td class="td-label">Teacher Matrix Sheet</td><td>Your assignment configurations — do not edit directly</td><td>Link in your Teacher Setup Details page</td></tr>
       <tr><td class="td-label">Teacher Dashboard</td><td>Live view of all your students' progress</td><td>⚙️ Assignment System → Open My Dashboard</td></tr>
     </tbody>
@@ -316,7 +317,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
       <div class="step-n">4</div>
       <div class="step-body">
         <strong>Tell the student to check Shared with me</strong>
-        <p>Send the student a quick message that their document is ready. They find it in Google Drive → Shared with me. Their Turn-In Form link is already in the document footer.</p>
+        <p>Send the student a quick message that their document is ready. They find it in Google Drive → Shared with me. The link to their assignment dashboard, where they submit for feedback, is near the top of the document.</p>
       </div>
     </div>
   </div>
@@ -340,17 +341,21 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
     <h2>Your Dashboard</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px">Your teacher dashboard shows all your students and their current assignment status. Open it from <span class="inline-code">⚙️ Assignment System → Open My Dashboard</span>.</p>
+<p style="color:var(--mid);margin-bottom:20px">Your teacher dashboard shows where each student's work stands. Open it from <span class="inline-code">⚙️ Assignment System → Open My Dashboard</span>.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Term filter:</strong> Use the dropdown at the top to filter by academic term. The current term is selected by default. Select "All Terms" to see every student across all terms.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Lesson picker:</strong> the dashboard opens on the <strong>current lesson</strong> for each course: the lesson in the LessonSchedule tab with the latest start date on or before today. The dropdown at the top switches to any other lesson, or to <strong>All assignments</strong>.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Sorting:</strong> Flagged students appear first. Within each assignment group, students are sorted alphabetically. Students with flagged submissions (turn-in errors, processing failures) appear at the very top.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Summary cards:</strong> at the top, a count for each state (see Understanding Student Status). Click a card to show only those students; click it again to clear the filter.</p>
 
-  <p style="color:var(--mid);margin-bottom:20px"><strong>Refresh:</strong> The dashboard doesn't update automatically — click the ↻ Refresh button to see the latest status.</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Order:</strong> one section per lesson, students by period, then name, which is easiest to follow alongside SpeedGrader.</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Each student:</strong> their state, how many checks they've run, the date of the last one, when they first passed, and the <strong>suggested score</strong> from their latest check (a reference only; you grade in Canvas).</p>
+
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Term filter and Refresh:</strong> the term dropdown shows the current term by default. The dashboard doesn't update by itself; click ↻ Refresh to see the latest.</p>
 
   <div class="callout callout-teal">
     <span class="callout-icon">💡</span>
-    <div class="callout-body">Click a student's "Open document ↗" link to go directly to their assignment document. You can read their response, see their full evaluation history, and check the compliance stamps from there.</div>
+    <div class="callout-body">Click a student's "Open document ↗" link to open their document. Their evaluations are at the end of it, newest last, so it is the same view you get when you open their Canvas submission.</div>
   </div>
 </div>
 
@@ -393,39 +398,43 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
     <h2>Understanding Student Status</h2>
   </div>
 
+  <p style="color:var(--mid);margin-bottom:20px">Every student's work for a lesson is in one of four states:</p>
   <div style="margin-top:4px">
     <div class="status-row">
-      <div><span class="status-badge s-active">NOT STARTED</span></div>
-      <div class="status-desc">Document was created, student hasn't run their first evaluation yet. Normal for the first few days after registration.</div>
+      <div><span class="status-badge" style="background:#f1f3f4;color:#5f6368;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">⚪ NOT CHECKED</span></div>
+      <div class="status-desc">No evaluation has come back. The student hasn't clicked Submit for Feedback, or their first check is still running.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge s-staged">QUEUED</span></div>
-      <div class="status-desc">Student clicked "Run Assignment Check" — work is queued for evaluation. Should resolve to EVALUATED within 3 minutes.</div>
+      <div><span class="status-badge" style="background:#fef3e2;color:#9c5000;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">✏️ NOT PASSING YET</span></div>
+      <div class="status-desc">One or more checks have come back and none passed. This is different from not checked: the student is working on it.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#dbeafe;color:#1e40af;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">EVALUATING</span></div>
-      <div class="status-desc">Evaluation is actively running right now. Normal — this resolves within 1–2 minutes.</div>
+      <div><span class="status-badge" style="background:#e6f4ea;color:#1e8e3e;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">✅ PASSED</span></div>
+      <div class="status-desc">The latest check meets the standard. The student may turn it in on Canvas, or keep improving it.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#f3e8fd;color:#6b21a8;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">EVALUATED</span></div>
-      <div class="status-desc">Feedback has been delivered. Student either passed or needs to revise. Open their document to see the result.</div>
+      <div><span class="status-badge" style="background:#e0f2f1;color:#00695c;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">↩️ PASSED BEFORE</span></div>
+      <div class="status-desc">An earlier check passed, and the latest one needs revision.</div>
+    </div>
+  </div>
+  <p style="color:var(--mid);margin-bottom:20px">A second badge appears while a check is in progress or needs attention:</p>
+  <div style="margin-top:4px">
+    <div class="status-row">
+      <div><span class="status-badge" style="background:#fef3e2;color:#9c5000;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">QUEUED</span></div>
+      <div class="status-desc">The student clicked Submit for Feedback; the work is waiting to be evaluated. It should move on within a few minutes.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge" style="background:#f3e8fd;color:#9334e6;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">PENDING REVIEW</span></div>
-      <div class="status-desc"><strong>New:</strong> student submitted via the Turn-In Form and passed all automated checks — but this is no longer the final step. Your dashboard's <strong>Pending Review</strong> card shows every submission waiting here, each with an AI-suggested score. Click a student's "Review Submission →" button to accept the suggested score as-is, or enter your own — either action is what finally makes it COMPLIANT. Nothing becomes final without you.</div>
+      <div><span class="status-badge" style="background:#dbeafe;color:#1e40af;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">EVALUATING NOW</span></div>
+      <div class="status-desc">The evaluation is running.</div>
     </div>
     <div class="status-row">
-      <div><span class="status-badge s-compliant">COMPLIANT ✓</span></div>
-      <div class="status-desc">You've reviewed and confirmed (or overridden) the submission's final score. Work is complete.</div>
+      <div><span class="status-badge" style="background:#fce8e6;color:#d93025;min-width:100px;text-align:center;font-size:11px;font-weight:700;padding:3px 10px;border-radius:12px;">FLAGGED ⚠</span></div>
+      <div class="status-desc">Something went wrong (a processing failure or timeout). Open the student's document; contact the admin if it doesn't clear.</div>
     </div>
-    <div class="status-row">
-      <div><span class="status-badge s-archived">ARCHIVED</span></div>
-      <div class="status-desc">Archived at end of term by the admin. No longer visible in the default dashboard view — select "All Terms" to see archived students.</div>
-    </div>
-    <div class="status-row">
-      <div><span class="status-badge s-error">FLAGGED ⚠</span></div>
-      <div class="status-desc">Something went wrong — submission error, processing failure, or a turn-in rejection that needs investigation. Open the student's document to read the error notice.</div>
-    </div>
+  </div>
+  <div class="callout callout-teal">
+    <span class="callout-icon">💡</span>
+    <div class="callout-body">Passing isn't required before a student turns in on Canvas. If a submission arrives in Canvas from a student who is ⚪ or ✏️ here, that's your flag that it hasn't passed a check.</div>
   </div>
 </div>
 
@@ -469,18 +478,23 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
     <tbody>
       <tr>
         <td class="td-label">"I don't see the 📊 menu in my document"</td>
-        <td>Wrong Google account, or they opened a copy/new doc instead of their shared original</td>
-        <td>Ask them to sign out and sign into the correct account, then find the document in "Shared with me" in Drive</td>
+        <td>Expected: the district turns Apps Script off for student accounts, so the menu never appears for them</td>
+        <td>Send them to their assignment dashboard (link near the top of their document) and have them click <strong>Submit for Feedback</strong></td>
       </tr>
       <tr>
         <td class="td-label">"I submitted for feedback but nothing appeared"</td>
-        <td>Evaluation may still be running, or a pipeline issue</td>
-        <td>Ask them to check status via the menu and wait another 2 minutes. If nothing after 5 min, check the dashboard — if still QUEUED, contact admin to check the pipeline</td>
+        <td>The evaluation may still be running, or a pipeline issue</td>
+        <td>Feedback is added at the <strong>end</strong> of the document. Ask them to refresh it. If nothing after 10 minutes, check your dashboard: if they're still QUEUED, contact the admin to check the pipeline</td>
       </tr>
       <tr>
-        <td class="td-label">"The system says I haven't written enough"</td>
-        <td>Response is under 25 words</td>
-        <td>Ask them to write more — the system needs enough content to evaluate meaningfully</td>
+        <td class="td-label">"The dashboard says I haven't written enough"</td>
+        <td>Fewer than 25 words below the response line</td>
+        <td>Ask them to write more below "── YOUR RESPONSE BEGINS HERE ──"</td>
+      </tr>
+      <tr>
+        <td class="td-label">"My assignment isn't on my dashboard"</td>
+        <td>Signed into the wrong Google account, or not registered</td>
+        <td>Have them sign into their school account. If they still don't appear on your dashboard, their registration may have failed</td>
       </tr>
       <tr>
         <td class="td-label">"I accidentally deleted something in the document"</td>
@@ -490,62 +504,28 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
       <tr>
         <td class="td-label">"I can't find my document"</td>
         <td>Looking in the wrong place or wrong account</td>
-        <td>Tell them to go to drive.google.com → "Shared with me". If still missing, check your dashboard — if the student doesn't appear, their registration may have failed. Re-register them</td>
+        <td>Tell them to go to drive.google.com → "Shared with me", or open it from their dashboard</td>
       </tr>
       <tr>
-        <td class="td-label">"The Turn-In Form gave me an error"</td>
-        <td>Various — see Turn-In Rejections section below</td>
-        <td>Ask them to open their document — a notice has been written in the feedback zone explaining exactly what to do</td>
+        <td class="td-label">"How do I turn it in?"</td>
+        <td>They turn in on Canvas</td>
+        <td>Copy the document's link, open the Canvas assignment, Start Assignment → Website URL, paste, Submit</td>
       </tr>
     </tbody>
   </table>
 </div>
 
-<!-- TURN-IN REJECTIONS -->
+<!-- TURNING IN, GRADING AND THE SCR -->
 <div class="topic" id="turnin">
   <a class="topic-anchor"></a>
   <div class="topic-header">
     <div class="topic-icon icon-rose">📬</div>
-    <h2>Turn-In Rejections</h2>
+    <h2>Turning In, Grading and the SCR</h2>
   </div>
 
-  <p style="color:var(--mid);margin-bottom:20px">When a turn-in submission is rejected, a plain-language notice is written directly into the student's document explaining what happened and what to do. You receive a notification email for each rejection. Here's what each code means:</p>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>Turning in happens in Canvas.</strong> Each Canvas assignment asks students for their CAS document's link (Website URL). You grade there; CAS doesn't send grades to Canvas. The CAS Turn-In Form is retired and was never given to students.</p>
 
-  <table class="ref-table">
-    <thead><tr><th style="width:25%">Rejection Code</th><th>Cause</th><th>Resolution</th></tr></thead>
-    <tbody>
-      <tr>
-        <td class="td-label">NO_EVALUATION_FOUND</td>
-        <td>No evaluation has been run yet, or the evaluation stamp is missing</td>
-        <td>Student needs to run an evaluation first via the 📊 menu</td>
-      </tr>
-      <tr>
-        <td class="td-label">REVISION_REQUIRED</td>
-        <td>Most recent evaluation showed revisions needed</td>
-        <td>Student needs to revise and pass another evaluation before submitting</td>
-      </tr>
-      <tr>
-        <td class="td-label">MISSING_CONFIG_ID</td>
-        <td>Student submitted the wrong document — one without the assignment tracking code</td>
-        <td>Student needs to find their original assignment document in "Shared with me"</td>
-      </tr>
-      <tr>
-        <td class="td-label">LEDGER_MISMATCH</td>
-        <td>Google account signed into the Turn-In Form doesn't match the registered account</td>
-        <td>Student needs to sign into the correct Google account before opening the Turn-In Form link</td>
-      </tr>
-      <tr>
-        <td class="td-label">FORENSIC_FAILURE</td>
-        <td>System couldn't verify the evaluation report's authenticity</td>
-        <td>You need to manually review the student's document. Use Admin Controls → Manually Mark Student Compliant if you're satisfied the work is genuine</td>
-      </tr>
-    </tbody>
-  </table>
-
-  <div class="callout callout-teal">
-    <span class="callout-icon">💡</span>
-    <div class="callout-body">Most turn-in rejections are self-resolving — the notice in the student's document tells them exactly what to do. You only need to take action for <strong>FORENSIC_FAILURE</strong> cases.</div>
-  </div>
+  <p style="color:var(--mid);margin-bottom:20px"><strong>CAS keeps the SCR current.</strong> Every check writes competency evidence for the competencies its milestones are tied to. The weekly SCR suggestion counts <strong>one piece of evidence per assignment</strong>, using that assignment's best result, so drafts don't count against a student. It averages the student's <strong>three best pieces</strong> (Met = 2, Partially met = 3, Not met = 4) and rounds to the nearest rating. With fewer than three assignments the competency shows "insufficient evidence". Ratings 1 and 5 are never suggested; they're yours to enter as an override. Confirm or override each suggestion in the dashboard's SCR review.</p>
 </div>
 
 <!-- TERM MANAGEMENT -->
@@ -574,7 +554,7 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
 
   <div class="callout callout-gold">
     <span class="callout-icon">💡</span>
-    <div class="callout-body"><strong>Before the term ends:</strong> make sure all student statuses are resolved. Students still showing EVALUATED or NOT STARTED at term-end won't be automatically handled — reach out to them directly before the admin archives the term.</div>
+    <div class="callout-body"><strong>Before the term ends:</strong> check for students still ⚪ Not checked or ✏️ Not passing on assignments you expect to be finished, and reach out to them before the admin archives the term.</div>
   </div>
 </div>
 
@@ -593,8 +573,8 @@ footer{background:var(--slate);color:rgba(255,255,255,0.3);text-align:center;pad
       <tr><td class="td-label">Assignment criteria (milestones, persona)</td><td class="td-action">⚠️ Create new assignment</td><td>Use the rubric upload flow to create a new assignment with updated criteria. Don't edit the Teacher Matrix directly</td></tr>
       <tr><td class="td-label">Student registration details</td><td class="td-action">❌ Contact admin</td><td>Student name, email, class, period — these are locked in the Ledger. Admin can correct them</td></tr>
       <tr><td class="td-label">Student's assignment document</td><td class="td-action">🚫 No</td><td>You have comment access to your own students' docs, for feedback. Only the student edits, and only until they turn it in; after that it's read-only for them too. Other teachers and classmates have no access</td></tr>
-      <tr><td class="td-label">Student compliant status</td><td class="td-action">✅ Via admin</td><td>Ask admin to use "Manually Mark Student Compliant" if you've personally reviewed a FORENSIC_FAILURE case</td></tr>
-      <tr><td class="td-label">Turn-In Form</td><td class="td-action">❌ Do not edit</td><td>Shared across all teachers and managed by admin</td></tr>
+      <tr><td class="td-label">Grades</td><td class="td-action">✅ In Canvas</td><td>CAS shows a suggested score as a reference; the grade is yours, in Canvas</td></tr>
+      <tr><td class="td-label">SCR ratings</td><td class="td-action">✅ In your dashboard</td><td>Confirm or override each suggestion in SCR review</td></tr>
       <tr><td class="td-label">Teacher Matrix spreadsheet</td><td class="td-action">❌ Do not edit</td><td>System-managed. Editing rows directly can corrupt the evaluation pipeline</td></tr>
     </tbody>
   </table>
