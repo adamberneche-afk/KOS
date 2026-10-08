@@ -336,7 +336,11 @@ native to that separate Apps Script project — see
 `cas-ccps/HISTORY.md`'s "SCR confirm/override is wired into the Teacher
 Dashboard for real"), the turn-in score review's teacher-ownership check
 (`teacher-dashboard-turn-in-review.test.js`), the central-ledger SCR
-writers' ownership check (`scr-retry-ownership.test.js`), and the student-data access
+writers' ownership check (`scr-retry-ownership.test.js`), SCR evidence counted one
+piece per assignment at its best outcome, for suggestions and retries alike
+(`scr-suggestion-engine.test.js`, `scr-retry-evidence-pieces.test.js`), what an
+evaluation leaves behind: the Ledger moved to COMPLETE and next steps pointing at
+the dashboard and Canvas (`evaluation-next-steps.test.js`), and the student-data access
 policy: intake sharing, locking at submission, school-year scoping, the
 repair tool, and the student doc's menu calling the dashboard web app
 instead of the Ledger (`student-doc-service.test.js`,
