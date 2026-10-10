@@ -2820,3 +2820,24 @@ waits, or P5-05's layout, would close that.
 Not yet live: push every cas-ccps project (00 changed); version the
 Student Dashboard on its existing deployment; run
 `syncFlowPromptsToSheet()` so the FlowPrompts tab carries the new 15b text.
+
+## P0-06: the Canvas cartridges link the assignment dashboard, 2026-10-10
+
+Students can only get feedback through the Student Dashboard (Apps Script is
+off for student accounts), and until now the only way to find it was a line
+inside their CAS document. The cartridges, not yet imported, now say where.
+
+- **build-canvas-cartridge.js.** Each assignment gains a "Get feedback"
+  section between "Where to do this work" and "How to submit": a link to the
+  assignment dashboard and Submit for Feedback, and that a passing check
+  first is a good idea but not required (the Student Quick Start's words).
+  Each module holds only its assignment, so that is also each module's
+  first page.
+- **data/deployment-urls.json.** The Student Dashboard's URL, taken from a
+  student doc's "Your assignment dashboard:" line, committed so `--check`
+  stays deterministic. The builder refuses anything that isn't a web app
+  `/exec` URL.
+- Both cartridges regenerated.
+
+Not yet live: import the cartridges as they are now. An import made before
+this would need its modules deleted first, or Canvas duplicates them.
