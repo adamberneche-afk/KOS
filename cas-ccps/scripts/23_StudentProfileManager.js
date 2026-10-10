@@ -536,7 +536,7 @@ function extractIndicatorsFromDoc_(fileId, docsOpened) {
 //
 // Returns: {
 //   student_email: {
-//     scores: [{ lesson_id, date, word_count_score, grammar,
+//     scores: [{ queue_id, lesson_id, date, word_count_score, grammar,
 //                engagement, extra_credit, total }],  // last 10
 //     extraCreditCount: N  // running total this term
 //   }
@@ -555,6 +555,7 @@ function buildWarmupData_(wqData) {
     if (status !== "SCORED" && status !== "INCOMPLETE") continue;
 
     const email      = String(row[WQ23_STUDENT_EMAIL]  || "").trim().toLowerCase();
+    const queueId    = String(row[WQ23_QUEUE_ID]       || "").trim();
     const lessonId   = String(row[WQ23_LESSON_ID]      || "").trim();
     // _normalizeLessonDateCell_ (22_LessonContextHandler.js) — WarmUpQueue's
     // lesson_date column has the same Sheets auto-coercion risk as
@@ -573,6 +574,7 @@ function buildWarmupData_(wqData) {
     if (!result[email]) result[email] = { scores: [], extraCreditCount: 0 };
 
     result[email].scores.push({
+      queue_id:         queueId,
       lesson_id:        lessonId,
       date:             date,
       word_count_score: wcScore,
@@ -605,7 +607,7 @@ function buildWarmupData_(wqData) {
 //   {
 //     "S1-U2": {
 //       "archetype_history": [
-//         { "warmup_id": "WUP-...", "archetype": "PARADOX", "engagement": 3,
+//         { "warmup_id": "WUQ-...", "archetype": "PARADOX", "engagement": 3,
 //           "date": "2026-10-12" }
 //       ],
 //       "best_archetype":    "PARADOX",   // archetype with highest avg engagement
@@ -629,18 +631,24 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
 
   const matrix = existing || {};
 
-  // Build a lookup of warmup_id → archetype from WarmUpQueue
-  // The archetype is stored in the student_profile_snapshot JSON
-  // under the key "selected_archetype" — Flow 3 writes this back
-  // to the queue row when it selects the archetype during generation.
-  // Column index WQ23_ARCHETYPE is read here.
+  // Build a lookup of queue_id → archetype from WarmUpQueue column 19
+  // (WQ23_ARCHETYPE), which 41's buildWarmUpFlowInputs() writes when it
+  // chooses the archetype for a warm-up.
+  //
+  // FIX (P0-02, meta/PRD_CAS_RESEARCH_PIVOT.md): this map is keyed by
+  // queue_id ("WUQ-…"), but each score used to be looked up by its
+  // lesson_id ("LES-…"), which never matches. Every archetype came back
+  // UNKNOWN and was skipped, so archetype_history stayed empty,
+  // best_archetype stayed null and the early-unit rule gave every student
+  // BRIDGE. Scores now carry queue_id (buildWarmupData_) and are looked up
+  // and logged by it.
   const archetypeByWarmUpId = {};
   for (let i = 1; i < wqData.length; i++) {
     const row    = wqData[i];
     const email  = String(row[WQ23_STUDENT_EMAIL] || "").trim().toLowerCase();
     if (email !== studentEmail) continue;
     const queueId   = String(row[WQ23_QUEUE_ID]    || "").trim();
-    const archetype = String(row[WQ23_ARCHETYPE]   || "").trim(); // col 19 — added below
+    const archetype = String(row[WQ23_ARCHETYPE]   || "").trim(); // col 19
     if (queueId && archetype) archetypeByWarmUpId[queueId] = archetype;
   }
 
@@ -652,7 +660,8 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
     if (!unitObj) continue;
     const unitId = unitObj.unit_id;
 
-    const archetype = archetypeByWarmUpId[score.lesson_id] || "UNKNOWN";
+    const warmupId  = score.queue_id || "";
+    const archetype = (warmupId && archetypeByWarmUpId[warmupId]) || "UNKNOWN";
 
     if (!matrix[unitId]) {
       matrix[unitId] = {
@@ -668,11 +677,11 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
 
     // Add to history if not already present (idempotent)
     const alreadyLogged = unitData.archetype_history
-      .some(h => h.warmup_id === score.lesson_id);
+      .some(h => h.warmup_id === warmupId);
 
     if (!alreadyLogged && archetype !== "UNKNOWN") {
       unitData.archetype_history.push({
-        warmup_id:  score.lesson_id,
+        warmup_id:  warmupId,
         archetype:  archetype,
         engagement: score.engagement,
         date:       score.date

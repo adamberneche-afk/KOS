@@ -43,7 +43,7 @@ const EXPOSE = [
   'wfbSelectArchetype_', 'wfbBuildFlow3Fields_', 'wfbNormalizeArchetypeName_',
   'wfbUnionIndicatorTags_', 'wfbHasPersistentGap_', 'wfbFormatCompetencyTexts_',
   'wfbFormatList_', 'wfbFormatEvaluationSignals_', 'wfbStripFence_',
-  'wfbNormalizeDateIso_', 'wfbFormatReadableDate_',
+  'wfbNormalizeDateIso_', 'wfbFormatReadableDate_', 'pivotFlagFor_', 'checkShadowMatrixInterrupts_',
   '_wfbDiagnoseReturnRow_', 'checkFlowBinding', 'checkFlow2Binding',
   'WFB_ARCHETYPES', 'WFB_TRIGGER_STATUS', 'WFB_PROFILE_SNAP', 'WFB_RET',
   'WFB_RETURN_HEADERS', 'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
@@ -63,6 +63,10 @@ function load() {
 
 // ── Archetype selection ──────────────────────────────────────────────────────
 
+// The lock tests pass { lockEnabled: true }: since P0-02 the cross-unit lock
+// is off unless PIVOT_ARCHETYPE_LOCK enables it, and the caller resolves that.
+const LOCK_ON = { lockEnabled: true };
+
 test('a high-confidence shadow-matrix entry overrides the decision table', () => {
   const { exported } = load();
   const archetype = exported.wfbSelectArchetype_({}, {
@@ -71,8 +75,20 @@ test('a high-confidence shadow-matrix entry overrides the decision table', () =>
     // Decision-table inputs that would otherwise pick PROVOCATION — the
     // override has to win, or the shadow matrix is decorative.
     avg_engagement_score: 3, extra_credit_count: 2, evaluation_signals: [],
-  });
+  }, LOCK_ON);
   assert.equal(archetype, 'PARADOX');
+});
+
+test('with the lock flag off (the default), a lock-level entry does not override', () => {
+  const { exported } = load();
+  const profile = {
+    unit_current: 'U1',
+    shadow_matrix: { U1: { cross_confidence: 0.9, within_confidence: 1, best_archetype: 'PARADOX' } },
+    avg_engagement_score: 3, extra_credit_count: 2, evaluation_signals: [],
+  };
+  assert.equal(exported.wfbSelectArchetype_({}, profile), 'PROVOCATION', 'no opts: lock off');
+  assert.equal(exported.wfbSelectArchetype_({}, profile, { lockEnabled: false }), 'PROVOCATION');
+  assert.equal(exported.wfbSelectArchetype_({}, profile, LOCK_ON), 'PARADOX');
 });
 
 test('the override threshold is a floor, not a ceiling', () => {
@@ -81,7 +97,7 @@ test('the override threshold is a floor, not a ceiling', () => {
     unit_current: 'U1',
     shadow_matrix: { U1: { cross_confidence: c, best_archetype: 'PARADOX' } },
     competency_gaps: ['g1'],
-  });
+  }, LOCK_ON);
   assert.equal(at(0.75), 'PARADOX', '0.75 exactly must override');
   assert.equal(at(0.74), 'BRIDGE', 'below it, the decision table decides');
 });
@@ -797,7 +813,7 @@ function loadWithPrompts() {
 function builtPrompt(exported, builder, row) {
   let appended = null;
   const ok = exported[builder]({ appendRow: (r) => { appended = r; } }, row, 'WUQ-TEST');
-  assert.equal(ok, true, builder + ' wrote no row');
+  assert.ok(ok, builder + ' wrote no row');
   return appended[appended.length - 1];
 }
 
@@ -893,4 +909,46 @@ test('an absent field fills its placeholder with "", never literal braces', () =
     assert.ok(prompt.length > 0, 'flow ' + flow + ' resolved no template');
     assert.deepEqual(exported.flowPromptPlaceholders_(prompt), [], 'flow ' + flow);
   });
+});
+
+// ── PIVOT_ARCHETYPE_LOCK and pivotFlagFor_ (P0-02) ───────────────────────────
+
+test('pivotFlagFor_: off by default, "all" for everyone, a course code for one course', () => {
+  const { exported, sandbox } = load();
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('CENTRAL_LEDGER_SS_ID', 'ledger-1');
+  const f = exported.pivotFlagFor_;
+  assert.equal(f('PIVOT_ARCHETYPE_LOCK', '8175'), false, 'unset is off');
+  props.setProperty('PIVOT_ARCHETYPE_LOCK', 'off');
+  assert.equal(f('PIVOT_ARCHETYPE_LOCK', '8175'), false);
+  props.setProperty('PIVOT_ARCHETYPE_LOCK', '8177');
+  assert.equal(f('PIVOT_ARCHETYPE_LOCK', '8177'), true);
+  assert.equal(f('PIVOT_ARCHETYPE_LOCK', '8175'), false);
+  assert.equal(f('PIVOT_ARCHETYPE_LOCK', null), false, 'no course: only "all" counts');
+  props.setProperty('PIVOT_ARCHETYPE_LOCK', ' ALL ');
+  assert.equal(f('PIVOT_ARCHETYPE_LOCK', '8175'), true);
+  assert.equal(f('PIVOT_ARCHETYPE_LOCK', null), true);
+});
+
+test('pivotFlagFor_: an unconfigured project keeps every flag off rather than throwing', () => {
+  const { exported } = load();
+  assert.equal(exported.pivotFlagFor_('PIVOT_ARCHETYPE_LOCK', '8175'), false);
+});
+
+test('the lock digest email only runs when PIVOT_ARCHETYPE_LOCK is "all"', () => {
+  const { exported, sandbox } = load();
+  const props = sandbox.PropertiesService.getScriptProperties();
+  props.setProperty('CENTRAL_LEDGER_SS_ID', 'ledger-1');
+  let opened = 0;
+  const ss = { getSheetByName: () => { opened++; return null; } };
+  const cfg = { teacherEmail: 't@example.invalid', tabs: { studentProfiles: 'StudentProfiles' } };
+
+  exported.checkShadowMatrixInterrupts_(ss, cfg);
+  props.setProperty('PIVOT_ARCHETYPE_LOCK', '8175');
+  exported.checkShadowMatrixInterrupts_(ss, cfg);
+  assert.equal(opened, 0, 'off, or one course only: StudentProfiles is never read');
+
+  props.setProperty('PIVOT_ARCHETYPE_LOCK', 'all');
+  exported.checkShadowMatrixInterrupts_(ss, cfg);
+  assert.equal(opened, 1);
 });

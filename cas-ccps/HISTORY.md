@@ -2747,3 +2747,42 @@ repeats the row's ResponseText.
 
 Not yet live: run `runWarmUpFlowCanary()` and one real warm-up before the
 warm-up triggers go on.
+
+## P0-02: warm-up archetypes recorded, the lock held off, 2026-10-10
+
+Found while checking `meta/PRD_CAS_RESEARCH_PIVOT.md` against the code.
+23's shadow matrix keyed archetypes by queue ID (`WUQ-…`) and looked each
+scored warm-up up by its lesson ID (`LES-…`), so nothing ever matched; and
+nothing wrote the chosen archetype to WarmUpQueue column 19 in the first
+place. `archetype_history` stayed empty, `best_archetype` null, and once a
+student had a scored warm-up in a unit the early-unit rule gave them BRIDGE
+every day. The cross-unit lock and its teacher email never fired.
+
+- **41.** `buildWarmUpFlowInputs()` writes the archetype it chose to column
+  19 when it builds a row's Flow 3 input (never over a value already
+  there). `wfbSelectArchetype_()` skips the cross-unit lock unless
+  `PIVOT_ARCHETYPE_LOCK` enables it for the row's course.
+- **23.** Scores carry `queue_id`; the matrix looks archetypes up and logs
+  history by it.
+- **25.** The lock digest email runs only when the flag is `all`.
+- **00.** `pivotFlagFor_()` reads `PIVOT_*` flags (blank/`off`, `all`, or a
+  course code) from Script Properties, then the Ledger's `_CONFIG` tab,
+  which now carries them (`SHARED_CONFIG_KEYS`). This touched all seven
+  projects' deploy markers.
+- **studio-steps.** `SelectWarmUpArchetypeStep.gs` gets a superseded note;
+  its logic is unchanged.
+- **Tests.** The first tests of `updateShadowMatrix_()`; column 19 written
+  through the warm-up fixtures; the lock on and off; the flag's values; the
+  email gate.
+
+Why the lock stays off: with archetypes recorded, `cross_confidence` would
+reach 0.75 for a student with four full prior units after one sample in a
+new unit, and lock them on that one sample. P2-04's rules come first.
+
+Effect once pushed: after three scored warm-ups in a unit a student leaves
+the early-unit rule and the decision table chooses, so teachers will see
+archetypes other than BRIDGE for the first time. Past warm-ups never
+recorded an archetype, so history starts with the next ones.
+
+Not yet live: push every cas-ccps project (00 changed), then let a few
+warm-ups score and check that StudentProfiles' shadow_matrix fills.
