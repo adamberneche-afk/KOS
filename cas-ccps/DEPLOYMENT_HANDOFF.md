@@ -1,6 +1,6 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-08)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-10)
 >
 > **The repo-wide handoff is [`meta/HANDOFF_2026-10-10.md`](../meta/HANDOFF_2026-10-10.md)**:
 > every system's state and the operator's queue in order. The other two
@@ -18,8 +18,17 @@
 >   passing / passed by current lesson. Push central-ledger,
 >   student-dashboard and teacher-dashboard, and update both web apps'
 >   existing deployments (`cas-ccps/HISTORY.md`, newest entry).
-> - Left: step 18 (import the Canvas cartridges), then the first real
->   Flow 2 run when students submit.
+> - **Merged 2026-10-10, not yet pushed (#120-#126, `meta/PRD_CAS_RESEARCH_PIVOT.md`
+>   Phase 0):** warm-up prompts filled before Gemini sees them; warm-up
+>   archetypes recorded, with the cross-unit lock held off behind
+>   `PIVOT_ARCHETYPE_LOCK`; the Student Dashboard refuses copied system
+>   text; the Canvas cartridges link the dashboard; the Turn-In Form
+>   handler and its setup-wizard form retired. `00_SharedConfig.js` changed,
+>   so push **every** cas-ccps project, update both web apps' existing
+>   deployments, and run `syncFlowPromptsToSheet()`. The order is in
+>   `meta/HANDOFF_2026-10-10.md`.
+> - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-10), then
+>   the first real Flow 2 run when students submit.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
 > projects are live in a real `ccpsnet.net` Workspace account, Module 1 and

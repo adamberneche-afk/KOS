@@ -76,6 +76,9 @@ First, refresh the page — feedback sometimes appears without the page updating
 **My dashboard says "Not enough to evaluate yet" when I click Submit for Feedback.**
 Your response needs to be at least 25 words before the system can give you meaningful feedback. Check how many words you've written — if it's close, try adding a few more sentences to fully express your ideas.
 
+**My dashboard says my response "has text copied from a feedback block."**
+Your response contains a line that belongs to a feedback block, such as one starting with [SYSTEM: or [SUGGESTED_SCORE. The dashboard shows which text it found. Delete that line from your response (the part above the [CONFIG_ID: line) and click Submit for Feedback again. Your own writing is fine; the system only refuses text that looks like its own.
+
 **Do I have to pass before I turn it in on Canvas?**
 No. A passing check first is recommended, because it means your work meets the standard, but you can turn it in on Canvas whenever you're done. Your teacher sees your latest result in your document.
 
