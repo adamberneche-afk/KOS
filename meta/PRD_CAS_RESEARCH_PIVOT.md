@@ -82,9 +82,9 @@ The pivot succeeds when CAS can show, from its own data, whether students learn 
 
 ## Constraints and repo conventions
 
-These come from `meta/HANDOFF_2026-10-08.md` and the tools in `tools/`. A PR that breaks one is not done.
+These come from `meta/HANDOFF_2026-10-08.md` (now `HANDOFF_2026-10-10.md`) and the tools in `tools/`. A PR that breaks one is not done.
 
-**Read first.** `meta/HANDOFF_2026-10-08.md`, then `cas-ccps/README.md` and `cas-ccps/DEPLOYMENT_HANDOFF.md`.
+**Read first.** `meta/HANDOFF_2026-10-10.md`, then `cas-ccps/README.md` and `cas-ccps/DEPLOYMENT_HANDOFF.md`.
 
 **Workflow.**
 - One PR per requirement, from a `claude/*` branch, titled with its ID (for example, `P0-01: fill warm-up prompt placeholders`).
