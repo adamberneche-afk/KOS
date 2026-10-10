@@ -2720,3 +2720,30 @@ and admin references carry a "current as of 2026-10-08" note.
 
 Not yet live: nothing above is pushed. No real student submission has gone
 through Flow 2 yet.
+
+## P0-01: warm-up prompts filled before Gemini sees them, 2026-10-10
+
+Found while checking `meta/PRD_CAS_RESEARCH_PIVOT.md` against the code.
+Studio binds each warm-up Flow's Gemini step to its input tab's PromptText
+chip (42), but 41 handed its fields to `substituteFlowPrompt_()` as-is.
+That function only upper-cases keys, so camelCase `warmupAnchor` never
+matched `{warmup_anchor}`: Flow 3 filled only `{archetype}` and
+`{objective}`, Flow 4 filled none of its three, and Flow 5 was passed an
+empty object. Gemini would have received the rest as literal braces.
+
+- **41.** `WFB_PROMPT_VARS` maps each flow's placeholders to the fields that
+  fill them (explicitly, since names differ beyond case:
+  `competencyTexts` fills `{competency_texts_formatted}`). An absent field
+  fills its placeholder with "". Flow 4 now passes the response and the
+  word-count score; Flow 5 its prior response, prior connection and course.
+- **Tests** run the real row builders with 40 loaded and assert no
+  placeholder survives, Mode A and Mode B, and that every placeholder in
+  the generated prompts has a row in the map.
+
+Effect once pushed: warm-up prompts carry the student's first name, the
+lesson anchor, competencies and engagement for the first time, so Gemini's
+output will differ from anything seen so far. Flow4Input's PromptText now
+repeats the row's ResponseText.
+
+Not yet live: run `runWarmUpFlowCanary()` and one real warm-up before the
+warm-up triggers go on.
