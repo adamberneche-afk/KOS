@@ -19,13 +19,20 @@
  *
  * Assignments keep CAS as the place students work: each one tells the
  * student to write in their CAS document for the unit (made by the intake
- * form or the Canvas roster import, script 52) and to submit that
- * document's link. No Canvas rubric or outcome is included; CAS evaluates
- * against the competencies.
+ * form or the Canvas roster import, script 52), links their assignment
+ * dashboard for feedback, and asks them to submit that document's link. No
+ * Canvas rubric or outcome is included; CAS evaluates against the
+ * competencies.
+ *
+ * The dashboard link is the Student Dashboard's one stable deployment URL,
+ * from cas-ccps/data/deployment-urls.json (P0-06,
+ * meta/PRD_CAS_RESEARCH_PIVOT.md). It is committed so --check stays
+ * deterministic; it changes only if the web app is redeployed as a new
+ * deployment, which every student doc already forbids.
  *
  * Sources: curriculum/PacingGuide_CAS_Context.json, curriculum/lesson-cards/
- * Stage<N>_Lesson_Cards.docx and data/CompetencyRubrics.json (through
- * build-unit-rubrics.js). The output is byte-for-byte reproducible.
+ * Stage<N>_Lesson_Cards.docx, data/CompetencyRubrics.json (through
+ * build-unit-rubrics.js) and data/deployment-urls.json. The output is byte-for-byte reproducible.
  *
  *   node tools/cas-ccps/build-canvas-cartridge.js          write the cartridges
  *   node tools/cas-ccps/build-canvas-cartridge.js --check  exit 1 if either is out of date
@@ -40,6 +47,19 @@ const rubrics = require('./build-unit-rubrics.js');
 
 const ROOT = path.join(__dirname, '..', '..');
 const OUT_DIR = path.join(ROOT, 'cas-ccps', 'curriculum', 'canvas-cartridges');
+const DEPLOYMENT_URLS = path.join(ROOT, 'cas-ccps', 'data', 'deployment-urls.json');
+// A web app's /exec URL, with or without the domain (/a/macros/<domain>/) segment.
+const WEB_APP_URL_RE = /^https:\/\/script\.google\.com\/(a\/macros\/[^/]+|macros)\/s\/[A-Za-z0-9_-]+\/exec$/;
+
+/** The Student Dashboard URL from data/deployment-urls.json; throws if it isn't a web app URL. */
+function studentDashboardUrl(file = DEPLOYMENT_URLS) {
+  const url = String(JSON.parse(fs.readFileSync(file, 'utf8')).studentDashboardUrl || '').trim();
+  if (!WEB_APP_URL_RE.test(url)) {
+    throw new Error(path.relative(ROOT, file) + ': studentDashboardUrl must be the Student Dashboard ' +
+      'web app\'s /exec URL (its existing deployment), got ' + JSON.stringify(url));
+  }
+  return url;
+}
 const POINTS = 100;
 
 const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -131,7 +151,7 @@ function page(title, body) {
 
 const fmtDate = (d) => new Date(d + 'T12:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 
-function assignmentXml(id, title, promptText, unit) {
+function assignmentXml(id, title, promptText, unit, dashboardUrl) {
   let paras = promptText.split(/\n{2,}/);
   if (unit) {
     paras.shift(); // the unit title line; Canvas shows the assignment title
@@ -156,6 +176,12 @@ function assignmentXml(id, title, promptText, unit) {
     '<p>Work in your CAS document for this ' + where + ', not in Canvas. It is shared with you in Google Drive ' +
       '(<strong>Shared with me</strong>) and its name starts with this ' + where + '\'s name and ends with your name. ' +
       'Write your response in its response zone.</p>',
+    ...(dashboardUrl ? [
+      '<h3>Get feedback</h3>',
+      '<p>To have your work checked, open your <a href="' + esc(dashboardUrl) + '">assignment dashboard</a> and click ' +
+        '<strong>Submit for Feedback</strong> on this assignment. Feedback is added at the end of your CAS document. ' +
+        'A passing check before you turn it in is a good idea, but it isn\'t required.</p>',
+    ] : []),
     '<h3>How to submit</h3>',
     '<p>When you are finished, copy the link to that document, then choose <strong>Start Assignment</strong> → ' +
       '<strong>Website URL</strong> here and paste it.</p>',
@@ -175,7 +201,7 @@ function assignmentXml(id, title, promptText, unit) {
 }
 
 /** [[path, content], ...] for one course's cartridge. */
-function buildCourse(code, decks, data) {
+function buildCourse(code, decks, data, dashboardUrl) {
   const courseTitle = code + ' ' + rubrics.COURSES[code];
   const files = [];
   const resources = [];
@@ -211,7 +237,7 @@ function buildCourse(code, decks, data) {
     const asgTitle = unit.lesson_unit_id + ' ' + unit.lesson_unit_name;
     const asgId = ident(code, 'assignment', unit.lesson_unit_id);
     const asgHref = asgId + '/assignment.xml';
-    files.push([asgHref, assignmentXml(asgId, asgTitle, r.promptText, unit)]);
+    files.push([asgHref, assignmentXml(asgId, asgTitle, r.promptText, unit, dashboardUrl)]);
     resources.push({ id: asgId, type: 'assignment_xmlv1p0', href: asgHref });
     items.push({ id: ident(code, 'item', 'assignment', unit.lesson_unit_id), ref: asgId, title: asgTitle });
 
@@ -230,7 +256,7 @@ function buildCourse(code, decks, data) {
  * ringer, hook, grading tip) are not student pages, so there is no lesson
  * page; dates live in the LessonSchedule tab, so none are printed.
  */
-function buildLessonCourse(code, lessons) {
+function buildLessonCourse(code, lessons, dashboardUrl) {
   const courseTitle = code + ' ' + rubrics.COURSES[code];
   const files = [];
   const resources = [];
@@ -239,7 +265,7 @@ function buildLessonCourse(code, lessons) {
     const a = lessons.assignments[key];
     const asgId = ident(code, 'lesson-assignment', key);
     const asgHref = asgId + '/assignment.xml';
-    files.push([asgHref, assignmentXml(asgId, a.unitName, a.promptText, null)]);
+    files.push([asgHref, assignmentXml(asgId, a.unitName, a.promptText, null, dashboardUrl)]);
     resources.push({ id: asgId, type: 'assignment_xmlv1p0', href: asgHref });
     modules.push({ id: ident(code, 'lesson-module', key), title: a.unitName,
       items: [{ id: ident(code, 'lesson-item', key), ref: asgId, title: a.unitName }] });
@@ -291,7 +317,8 @@ function manifestXml(code, courseTitle, modules, resources) {
 // (the pacing-guide units) is kept for reference and its tests.
 function build() {
   const lessons = require('./build-lesson-assignments.js').build();
-  return Object.keys(rubrics.COURSES).map((code) => buildLessonCourse(code, lessons));
+  const dashboardUrl = studentDashboardUrl();
+  return Object.keys(rubrics.COURSES).map((code) => buildLessonCourse(code, lessons, dashboardUrl));
 }
 
 function main() {
@@ -316,4 +343,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, buildCourse, buildLessonCourse, filterForCourse, blocksHtml };
+module.exports = { build, buildCourse, buildLessonCourse, filterForCourse, blocksHtml, studentDashboardUrl };
