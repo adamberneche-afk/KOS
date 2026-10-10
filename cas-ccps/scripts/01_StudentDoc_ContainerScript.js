@@ -373,8 +373,8 @@ function buildStatusMessage_(info, configId) {
       return header + "\n\n" +
         "📋  Feedback Has Been Delivered\n\n" +
         evalLine + "\n\n" +
-        "Scroll to the top of this document to read your feedback.\n\n" +
-        "If it says your work passed → use the Turn-In Form to submit.\n" +
+        "Scroll to the end of this document to read your feedback.\n\n" +
+        "If it says your work passed → turn it in on Canvas when you're ready.\n" +
         "If it says revisions are needed → fix your work and run another check.";
 
     // NEW (Say/Do Ledger cas-ccps finding #1): a genuine-complete submission
