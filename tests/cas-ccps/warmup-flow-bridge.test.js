@@ -771,3 +771,126 @@ test('harvestWarmUpFlowReturns (Flow 3): a fabricated warm-up prompt is caught b
     'no doc must be created for a fabricated warm-up prompt');
   assert.equal(after.row[exported.WQ25_STATUS], 'PENDING_PROMPT', 'status must not advance to DELIVERED');
 });
+
+// ── Prompt substitution (P0-01) ──────────────────────────────────────────────
+//
+// Studio binds the Gemini step to each input tab's PromptText chip
+// (42_FlowBuildSpec.js), so whatever wfbPromptFor_() leaves unfilled reaches
+// Gemini as literal text. It used to fill only {archetype} and {objective}:
+// the fields are camelCase, the placeholders snake_case, and
+// substituteFlowPrompt_() only upper-cases. These load 40_FlowPrompts.js
+// (the tests above deliberately don't, so PromptText is "" there) and check
+// the substituted text itself, through the real row builders.
+
+const PROMPT_FILES = FILES.concat([path.join(CC, '40_FlowPrompts.js')]);
+const PROMPT_EXPOSE = EXPOSE.concat([
+  'wfbPromptFor_', 'wfbBuildFlow3Row_', 'wfbBuildFlow4Row_', 'wfbBuildFlow5Row_',
+  'WFB_PROMPT_VARS', 'flowPromptPlaceholders_',
+  'FLOW_3_PROMPT_MODE_A', 'FLOW_3_PROMPT_MODE_B', 'FLOW_4_PROMPT', 'FLOW_5_PROMPT',
+]);
+
+function loadWithPrompts() {
+  return loadGasFiles(PROMPT_FILES, PROMPT_EXPOSE);
+}
+
+// Runs a row builder against a sheet stub and returns the PromptText cell.
+function builtPrompt(exported, builder, row) {
+  let appended = null;
+  const ok = exported[builder]({ appendRow: (r) => { appended = r; } }, row, 'WUQ-TEST');
+  assert.equal(ok, true, builder + ' wrote no row');
+  return appended[appended.length - 1];
+}
+
+function queueRow(exported, lesson, profile) {
+  const row = new Array(exported.WQ25_COL_COUNT).fill('');
+  row[exported.WQ25_LESSON_CTX_SNAP] = JSON.stringify(lesson);
+  row[exported.WFB_PROFILE_SNAP] = JSON.stringify(profile || {});
+  return row;
+}
+
+const FULL_LESSON = {
+  warmup_anchor: 'ANCHOR-TEXT', pacing_unit_name: 'UNIT-NAME', pacing_stage: 3,
+  course_objective: 'COURSE-OBJ', pacing_prior_connection: 'PRIOR-CONN',
+  pacing_key_vocabulary: 'KEY-VOCAB', course_name: 'COURSE-NAME',
+  objective: 'LESSON-OBJ', activity: 'ACTIVITY-TEXT', vocabulary: 'VOCAB-TEXT',
+  prior_connection: 'LESSON-PRIOR', flow5_prior_response: 'PRIOR-RESPONSE',
+};
+const FULL_PROFILE = {
+  student_name: 'Ada Lovelace', competencies_addressed: ['8175-1'],
+  competency_gaps: ['8175-2'], avg_engagement_score: 2.5, extra_credit_count: 1,
+  shadow_archetype_note: 'SHADOW-NOTE',
+};
+
+test('every placeholder in each warm-up prompt has a row in WFB_PROMPT_VARS', () => {
+  const { exported } = loadWithPrompts();
+  const templates = {
+    3: [exported.FLOW_3_PROMPT_MODE_A, exported.FLOW_3_PROMPT_MODE_B],
+    4: [exported.FLOW_4_PROMPT],
+    5: [exported.FLOW_5_PROMPT],
+  };
+  Object.keys(templates).forEach((flow) => {
+    templates[flow].forEach((text) => {
+      exported.flowPromptPlaceholders_(text).forEach((p) => {
+        const bare = p.replace(/[{}]/g, '');
+        assert.ok(Object.prototype.hasOwnProperty.call(exported.WFB_PROMPT_VARS[flow], bare),
+          'Flow ' + flow + ' prompt uses ' + p + ' but WFB_PROMPT_VARS has no row for it');
+      });
+    });
+  });
+});
+
+test('WFB_PROMPT_VARS names only fields the Flow 3 builder actually produces', () => {
+  const { exported } = loadWithPrompts();
+  const fields = exported.wfbBuildFlow3Fields_({}, {});
+  Object.keys(exported.WFB_PROMPT_VARS[3]).forEach((p) => {
+    const field = exported.WFB_PROMPT_VARS[3][p];
+    assert.ok(Object.prototype.hasOwnProperty.call(fields, field),
+      '{' + p + '} maps to "' + field + '", which wfbBuildFlow3Fields_ never returns');
+  });
+});
+
+test('Flow 3 PromptText is fully substituted, Mode A and Mode B', () => {
+  const { exported } = loadWithPrompts();
+  [FULL_LESSON, Object.assign({}, FULL_LESSON, { warmup_anchor: '' })].forEach((lesson) => {
+    const prompt = builtPrompt(exported, 'wfbBuildFlow3Row_', queueRow(exported, lesson, FULL_PROFILE));
+    assert.deepEqual(exported.flowPromptPlaceholders_(prompt), [],
+      'unfilled placeholders reach Gemini (Mode ' + (lesson.warmup_anchor ? 'A' : 'B') + ')');
+    assert.match(prompt, /Ada/);
+    assert.match(prompt, /COURSE-NAME/);
+    assert.match(prompt, /LESSON-OBJ/);
+  });
+  const modeA = builtPrompt(exported, 'wfbBuildFlow3Row_', queueRow(exported, FULL_LESSON, FULL_PROFILE));
+  assert.match(modeA, /ANCHOR-TEXT/);
+  assert.match(modeA, /SHADOW-NOTE/);
+});
+
+test('Flow 4 PromptText carries the prompt, the response and the word-count score', () => {
+  const { exported, sandbox } = loadWithPrompts();
+  sandbox.evaluateWarmUpDoc_ = () => ({ promptText: 'ORIGINAL-PROMPT', responseText: 'STUDENT-RESPONSE' });
+  const row = queueRow(exported, {}, {});
+  row[exported.WQ25_DOC_ID] = 'doc-1';
+  row[exported.WQ25_WORD_COUNT_SCORE] = 5;
+  const prompt = builtPrompt(exported, 'wfbBuildFlow4Row_', row);
+  assert.deepEqual(exported.flowPromptPlaceholders_(prompt), []);
+  assert.match(prompt, /ORIGINAL-PROMPT/);
+  assert.match(prompt, /STUDENT-RESPONSE/);
+  assert.match(prompt, /\b5\b/);
+});
+
+test('Flow 5 PromptText carries the prior response it bridges from', () => {
+  const { exported } = loadWithPrompts();
+  const prompt = builtPrompt(exported, 'wfbBuildFlow5Row_', queueRow(exported, FULL_LESSON, {}));
+  assert.deepEqual(exported.flowPromptPlaceholders_(prompt), []);
+  assert.match(prompt, /PRIOR-RESPONSE/);
+  assert.match(prompt, /PRIOR-CONN/);
+  assert.match(prompt, /COURSE-NAME/);
+});
+
+test('an absent field fills its placeholder with "", never literal braces', () => {
+  const { exported } = loadWithPrompts();
+  [[3, { mode: 'A' }], [3, { mode: 'B' }], [4, {}], [5, {}]].forEach(([flow, vars]) => {
+    const prompt = exported.wfbPromptFor_(flow, vars);
+    assert.ok(prompt.length > 0, 'flow ' + flow + ' resolved no template');
+    assert.deepEqual(exported.flowPromptPlaceholders_(prompt), [], 'flow ' + flow);
+  });
+});
