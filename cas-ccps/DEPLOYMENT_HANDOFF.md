@@ -283,10 +283,9 @@ this stage, but a second account would start here):
      the page filters rows to the signed-in student, who needs no Ledger
      access at all).
   4. **Found during the real deployment, not predicted:** the from-scratch path
-     also skips the **Central Turn-In Form**. The admin wizard creates it
-     normally; a `clasp create` + `clasp push` deployment never runs that path.
-     Same remedy as #2 — call the wizard's form-creation step from a throwaway
-     function once.
+     also skipped the **Central Turn-In Form**. No longer needed: the form and
+     its handler were retired on 2026-10-10 (students turn in on Canvas), and
+     the admin wizard no longer creates one.
 
   Two manifest bugs also surfaced on first push, both now fixed in the tracked
   manifests (`bcc772c`, `83f6f76`) — neither was detectable by tests or lint,
