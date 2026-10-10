@@ -269,7 +269,7 @@ function queueSubmission_(cfg, googleId, fileId, configId) {
 // so it can do the menu's check-and-submit itself: it reads the student's
 // doc, applies the menu's minimums, and queues the same ReviewQueue row.
 // The writing is read only to count it. It is never returned or stored.
-// Returns { ok: true, aiFlowsLive } or { ok: false, error, words? }.
+// Returns { ok: true, aiFlowsLive } or { ok: false, error, words?, found? }.
 // ---------------------------------------------------------------------------
 const DASH_RESPONSE_MARKER    = "── YOUR RESPONSE BEGINS HERE ──"; // 01's RESPONSE_MARKER
 const DASH_MIN_RESPONSE_CHARS = 150; // 01's MIN_RESPONSE_CHARS
@@ -317,6 +317,11 @@ function submitMyWork(fileId, configId) {
   if (text.length < DASH_MIN_RESPONSE_CHARS || words < DASH_MIN_RESPONSE_WORDS) {
     return { ok: false, error: "TOO_SHORT", words: words };
   }
+  // P0-03: a pasted feedback stamp or submission delimiter would reach
+  // Flow 2's prompt as system text. Only the matched token goes back, never
+  // the student's writing.
+  const systemText = findSystemText_(text);
+  if (systemText) return { ok: false, error: "SYSTEM_TEXT_IN_RESPONSE", found: systemText };
 
   const res = queueSubmission_(cfg, googleId, fileId, configId);
   if (!res.ok) return res;
@@ -773,6 +778,11 @@ function submitWork(btn) {
         done({ ok: false, text: "Not enough to evaluate yet. " +
           (w > 0 ? "You've written about " + w + " word" + (w === 1 ? "" : "s") + "." : "You haven't written anything in the response section yet.") +
           "\\nAim for at least 25 words below the \\"── YOUR RESPONSE BEGINS HERE ──\\" line." });
+        return;
+      }
+      if (code === "SYSTEM_TEXT_IN_RESPONSE") {
+        done({ ok: false, text: "Your response has text copied from a feedback block: " +
+          (res.found || "[SYSTEM:") + "\\nDelete that line from your response and submit again." });
         return;
       }
       done({ ok: false, text: SUBMIT_ERRORS[code] || SUBMIT_FALLBACK });

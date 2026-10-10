@@ -267,7 +267,19 @@ function processCompletedEvaluation_(fileId, configId) {
 
     removePlaceholder_(body);
 
-    const complianceResult = text.indexOf("[SYSTEM: APPROVED]") !== -1
+    // P0-03: Studio reads the doc when it evaluates, not when the student
+    // submits, so text added after the dashboard's check still reaches
+    // Flow 2. Flag it for the operator, and judge the result only from text
+    // outside the response zone, so a typed "[SYSTEM: APPROVED]" there can't
+    // decide which next steps are added.
+    const zone = responseZoneBounds_(text);
+    const typed = zone ? findSystemText_(text.substring(zone.from, zone.to)) : "";
+    if (typed) {
+      Logger.log("[09] WARNING — ConfigID " + configId + ": the response zone contains " +
+                 "system text (" + typed + "). Check this evaluation by hand.");
+    }
+    const outsideZone = zone ? text.substring(0, zone.from) + text.substring(zone.to) : text;
+    const complianceResult = outsideZone.indexOf("[SYSTEM: APPROVED]") !== -1
       ? "APPROVED" : "REVISION_REQUIRED";
 
     // Only append next-steps if not already present
@@ -281,6 +293,20 @@ function processCompletedEvaluation_(fileId, configId) {
   } catch (err) {
     Logger.log("[09] Error — FileID: " + fileId + " | " + err.message);
   }
+}
+
+// The student's response zone in a doc's text: from the response marker to
+// the first system end marker, the same span 01's extractStudentResponse_()
+// and 13's dashExtractResponse_() read. { from, to }, or null with no marker.
+const BRIDGE_RESPONSE_MARKER = "── YOUR RESPONSE BEGINS HERE ──"; // 01's RESPONSE_MARKER
+
+function responseZoneBounds_(fullText) {
+  const start = fullText.indexOf(BRIDGE_RESPONSE_MARKER);
+  if (start === -1) return null;
+  const from = start + BRIDGE_RESPONSE_MARKER.length;
+  const ends = [fullText.indexOf("[CONFIG_ID:", from), fullText.indexOf("[SYS_LEDGER_SS_ID:", from)]
+    .filter(n => n !== -1);
+  return { from: from, to: ends.length > 0 ? Math.min.apply(null, ends) : fullText.length };
 }
 
 // ---------------------------------------------------------------------------
