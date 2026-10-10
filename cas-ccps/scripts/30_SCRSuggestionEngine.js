@@ -212,7 +212,10 @@ function aggregateEvidence_(evidenceSheet) {
   if (iEmail === -1 || iCompId === -1 || iOutcome === -1) {
     Logger.log("[S30] CompetencyEvidence missing required columns " +
       "(student_email, competency_id, outcome). Cannot aggregate.");
-    return result;
+    // FIX (P0-05): this returned `result`, declared further down, so the
+    // const's temporal dead zone threw a ReferenceError here instead of
+    // returning nothing to aggregate.
+    return new Map();
   }
 
   for (let i = 1; i < data.length; i++) {
