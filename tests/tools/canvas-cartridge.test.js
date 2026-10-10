@@ -12,7 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('fs');
 const path = require('path');
-const { build, buildCourse } = require('../../tools/cas-ccps/build-canvas-cartridge.js');
+const { build, buildCourse, studentDashboardUrl } = require('../../tools/cas-ccps/build-canvas-cartridge.js');
 const rubrics = require('../../tools/cas-ccps/build-unit-rubrics.js');
 const { loadDecks } = require('../../tools/cas-ccps/lesson-cards.js');
 const { readZip, writeZip } = require('../../tools/cas-ccps/zip.js');
@@ -81,6 +81,45 @@ test('a lesson assignment is the Canvas text without its title and submission li
   const eh = Object.values(course('8177').files).find((x) => /Cavalier Shop Operations Brief|Part 1: The Team/.test(x));
   assert.match(eh, /Part 4: The Rush/);
   assert.match(eh, /Use these terms accurately/);
+});
+
+// P0-06: the cartridges link the Student Dashboard, where students submit for
+// feedback (Apps Script is off for student accounts, so the doc menu doesn't
+// run for them). The URL is the one stable deployment, from data/.
+test('every assignment in both cartridges links the assignment dashboard from deployment-urls.json', () => {
+  const url = JSON.parse(fs.readFileSync(path.join(__dirname, '..', '..', 'cas-ccps', 'data',
+    'deployment-urls.json'), 'utf8')).studentDashboardUrl;
+  ['8175', '8177'].forEach((code) => {
+    const xml = Object.entries(course(code).files).filter(([p]) => p.endsWith('assignment.xml'));
+    assert.ok(xml.length > 0, code);
+    xml.forEach(([p, x]) => {
+      assert.ok(x.includes('&lt;a href=&quot;' + url + '&quot;&gt;assignment dashboard&lt;/a&gt;'), code + ' ' + p);
+      assert.match(x, /Submit for Feedback/, code + ' ' + p);
+      assert.ok(x.indexOf('Get feedback') < x.indexOf('How to submit'), 'feedback comes before turning in');
+    });
+  });
+});
+
+test('studentDashboardUrl accepts only a web app /exec URL', () => {
+  const os = require('os');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'deploy-urls-'));
+  const at = (url) => {
+    const f = path.join(dir, 'u.json');
+    fs.writeFileSync(f, JSON.stringify({ studentDashboardUrl: url }));
+    return () => studentDashboardUrl(f);
+  };
+  assert.equal(at('https://script.google.com/macros/s/AKfy_x-1/exec')(), 'https://script.google.com/macros/s/AKfy_x-1/exec');
+  assert.equal(at(' https://script.google.com/a/macros/ccpsnet.net/s/AKfy/exec ')(),
+    'https://script.google.com/a/macros/ccpsnet.net/s/AKfy/exec');
+  for (const bad of ['', 'https://script.google.com/macros/s/AKfy/dev', 'http://script.google.com/macros/s/AKfy/exec',
+    'https://evil.example/macros/s/AKfy/exec', 'https://script.google.com/macros/s/AKfy/exec?x=1']) {
+    assert.throws(at(bad), /studentDashboardUrl must be/, JSON.stringify(bad));
+  }
+});
+
+test('the unit builder leaves the feedback section out when given no dashboard URL', () => {
+  const x = Object.values(unitCourse('8175').files).find((v) => /<assignment /.test(v));
+  assert.doesNotMatch(x, /Get feedback/);
 });
 
 test('unit builder: one module per unit the course takes, in pacing order, each with a lesson page and an assignment', () => {
