@@ -193,8 +193,7 @@ function runAdminSetup_() {
     "Admin setup creates all shared infrastructure:\n" +
     "  • Central spreadsheet (Ledger, Queue, Staging, Registry tabs)\n" +
     "  • Admin Assignments folder hierarchy\n" +
-    "  • Master template sheets for teacher onboarding\n" +
-    "  • Student Turn-In Form\n\n" +
+    "  • Master template sheets for teacher onboarding\n\n" +
     "After admin setup, your personal teacher workspace will be configured automatically.\n\n" +
     "Click OK to begin. This takes about 60 seconds.",
     ui.ButtonSet.OK_CANCEL
@@ -457,42 +456,12 @@ function createAdminAssets_(adminEmail, orgName) {
   const rubricMasterSs = SpreadsheetApp.openById(templatesResult.masterRubricSsId);
   const matrixMasterSs = SpreadsheetApp.openById(templatesResult.masterMatrixSsId);
 
-  // ── 5. TURN-IN FORM (FORM 2) ───────────────────────────────────────────────
-  // Central — shared across all teachers, responses go to central ledger.
-  // FIXED (same investigation): also had no checkpoint before this fix —
-  // checkpointed now under CHECKPOINT_ADMIN_TURNIN, another key
-  // 20_SetupCheckpoint.js already documented but nothing used until now.
-  const turninFormId = resumeOrCreate_("ADMIN_TURNIN", () => {
-    const form = FormApp.create(safe + " — Assignment Turn-In");
-    form.setDescription(
-      "Submit your completed assignment. " +
-      "You must have a passing evaluation in your document before submitting."
-    );
-    form.setCollectEmail(false);
-
-    form.addTextItem()
-      .setTitle("Your Google Account").setRequired(true)
-      .setHelpText("Enter the Google account email you used when registered. Must match exactly.");
-
-    form.addTextItem()
-      .setTitle("Assignment Document Link").setRequired(true)
-      .setHelpText("Open your document, copy the full URL from your browser, and paste here.");
-
-    form.addCheckboxItem()
-      .setTitle("I confirm this is my own original work")
-      .setChoiceValues(["Yes, this is my own work"])
-      .setRequired(true);
-
-    form.setDestination(FormApp.DestinationType.SPREADSHEET, ledgerSs.getId());
-    DriveApp.getFileById(form.getId()).moveTo(assignmentsFolder);
-    return form.getId();
-  });
-  const turninForm = FormApp.openById(turninFormId);
-
-  // Store Turn-In URL immediately so Script 02 can append it to student docs
-  PropertiesService.getScriptProperties().setProperty(
-    "CENTRAL_TURNIN_FORM_URL", turninForm.getPublishedUrl()
-  );
+  // ── 5. (retired) TURN-IN FORM ─────────────────────────────────────────────
+  // Setup used to create a central Turn-In Form here (checkpoint
+  // ADMIN_TURNIN). Students turn in on Canvas, and the form's handler was
+  // retired on 2026-10-10 (P0-04), so a new install no longer creates one.
+  // An existing install's form and CENTRAL_TURNIN_FORM_* properties are
+  // left alone; submissions to it are ignored.
 
   // ── 6. MASTER STUDENT TEMPLATE DOC PLACEHOLDER ───────────────────────────
   // The master student template is a Google Doc with Scripts 00+01+09+17 bound.
@@ -515,7 +484,7 @@ function createAdminAssets_(adminEmail, orgName) {
       "   00_SharedConfig.js\n" +
       "   02_Form1_IntakeAndWorkspaceGenerator.js\n" +
       "   03_QueueBridge.js\n" +
-      "   04_Form2_TurnInGate.js\n" +
+      "   04_Form2_TurnInGate.js (shared helpers; the turn-in handler is retired)\n" +
       "   06_StagingPipeline_Turnstile.js\n" +
       "   10_AdminRecoveryPanel.js\n" +
       "   18_FormSubmitDispatcher.js\n\n" +
@@ -555,9 +524,6 @@ function createAdminAssets_(adminEmail, orgName) {
     masterMatrixSsId:       matrixMasterSs.getId(),
     masterMatrixSsUrl:      matrixMasterSs.getUrl(),
 
-    // Turn-In form
-    turninFormId:           turninForm.getId(),
-    turninFormUrl:          turninForm.getPublishedUrl(),
 
     adminEmail:             adminEmail,
     orgName:                orgName
@@ -600,9 +566,6 @@ function _verifyAdminAssets_(result) {
     });
   } catch (e) { missing.push("Master Teacher Matrix Sheet (" + result.masterMatrixSsUrl + ")"); }
 
-  try { FormApp.openById(result.turninFormId); }
-  catch (e) { missing.push("Central Turn-In Form (" + result.turninFormUrl + ")"); }
-
   return missing;
 }
 
@@ -624,10 +587,6 @@ function persistAdminProperties_(result, adminEmail, orgName) {
     // Master template pointers — hardened references
     MASTER_RUBRIC_RESPONSE_SS_ID: result.masterRubricSsId,
     MASTER_TEACHER_MATRIX_SS_ID:  result.masterMatrixSsId,
-
-    // Central Turn-In form — shared across all teachers
-    CENTRAL_TURNIN_FORM_URL:      result.turninFormUrl,
-    CENTRAL_TURNIN_FORM_ID:       result.turninFormId,
 
     // Master student template — admin fills in after manual creation (see summary)
     MASTER_STUDENT_TEMPLATE_ID:   "",
@@ -676,9 +635,6 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
   appendLink_(body, "📁  System Templates Folder",
     result.templatesFolderUrl,
     "Master Rubric Response Sheet and Master Teacher Matrix Sheet.");
-  appendLink_(body, "📬  Central Turn-In Form",
-    result.turninFormUrl,
-    "Share this URL with students when they are ready to submit.");
 
   body.appendParagraph("").appendHorizontalRule();
 
@@ -778,8 +734,7 @@ function writeAdminSummaryPage_(result, adminEmail, orgName) {
     ["Central Ledger SS ID",           result.ledgerSsId],
     ["Admin Root Folder ID",           result.assignmentsFolderId],
     ["Master Rubric Response SS ID",   result.masterRubricSsId],
-    ["Master Teacher Matrix SS ID",    result.masterMatrixSsId],
-    ["Central Turn-In Form ID",        result.turninFormId]
+    ["Master Teacher Matrix SS ID",    result.masterMatrixSsId]
   ].forEach(([k, v]) => appendKV_(body, k, v));
 
   doc.saveAndClose();
@@ -1202,9 +1157,6 @@ function createTeacherAssets_(teacherName, teacherEmail, subject, props) {
     confirmFormUrl:    formsResult.confirmFormUrl,
     intakeFormId:      formsResult.intakeFormId,
     intakeFormUrl:     formsResult.intakeFormUrl,
-    // Turn-in form is central — read from props
-    turninFormUrl:     PropertiesService.getScriptProperties()
-                         .getProperty("CENTRAL_TURNIN_FORM_URL") || "",
     confirmEntryIds:   formsResult.confirmEntryIds
   };
 }
@@ -1362,7 +1314,6 @@ function persistTeacherProperties_(result, teacherName, teacherEmail, subject) {
     CONFIRM_REVIEW_FORM_URL:  result.confirmFormUrl,
     INTAKE_FORM_ID:           result.intakeFormId,
     INTAKE_FORM_URL:          result.intakeFormUrl,
-    TURNIN_FORM_URL:          result.turninFormUrl,
     ...result.confirmEntryIds
   });
   Logger.log("[TEACHER SETUP] Teacher Script Properties written.");
@@ -1398,8 +1349,6 @@ function writeTeacherSummaryPage_(result, teacherName, teacherEmail, subject) {
     "Use this to create new assignments. AI extracts your criteria automatically.");
   appendLink_(body, "👥  Student Registration Form",     result.intakeFormUrl,
     "Use this to register each student. Their document is created automatically.");
-  appendLink_(body, "📬  Student Turn-In Form",          result.turninFormUrl,
-    "Share this link with students when they are ready to submit.");
 
   body.appendParagraph("").appendHorizontalRule();
 
@@ -1530,7 +1479,6 @@ function showTeacherSummary() {
     "Subject: " + (p.TEACHER_SUBJECT || "—") + "\n\n" +
     "Rubric Form:\n"     + (p.RUBRIC_FORM_URL  || "—") + "\n\n" +
     "Registration Form:\n" + (p.INTAKE_FORM_URL  || "—") + "\n\n" +
-    "Turn-In Form:\n"    + (p.TURNIN_FORM_URL  || "—") + "\n\n" +
     "Scroll to Your Teacher Setup Details for full information.",
     DocumentApp.getUi().ButtonSet.OK);
 }
