@@ -1,7 +1,8 @@
 'use strict';
 // Student-data access policy, rule 2 (only the student edits, and only
 // before submission) and rule 3 (feedback comes from the assigning
-// teacher): cas-ccps/scripts/04_Form2_TurnInGate.js's _lockDocAfterSubmission_().
+// teacher): cas-ccps/scripts/04_Form2_TurnInGate.js's _lockDocAfterSubmission_(),
+// and the retired Turn-In Form's dispatcher path (P0-04).
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -36,22 +37,27 @@ test('_lockDocAfterSubmission_: an unopenable file is reported, never thrown', (
   assert.equal(res.failed.length, 1);
 });
 
-test('_lockSubmittedDoc_ (04_Form2_TurnInGate.js): a passing turn-in locks that row\'s doc for its assigning teacher', () => {
-  const { exported, sandbox } = loadGasFiles([S('00_SharedConfig.js'), S('04_Form2_TurnInGate.js')],
-    ['_lockSubmittedDoc_', 'getConfig_']);
+// P0-04: the Turn-In Form is retired. _lockSubmittedDoc_() and the handler
+// that called it are gone from 04; the helper above stays for 25's warm-ups.
+// A Form 2 submission reaching the dispatcher must change nothing.
+test('dispatchFormSubmit: a Turn-In Form submission is ignored by the only handler left', () => {
+  // The whole central-ledger project, as GAS loads it.
+  const files = require('../../tools/gas-lint/project-map.json')['cas-ccps:central-ledger'].files
+    .map((f) => path.join(__dirname, '..', '..', f));
+  const { exported, sandbox } = loadGasFiles(files, ['dispatchFormSubmit']);
+  assert.equal(typeof sandbox.onTurnInSubmit, 'undefined', 'the turn-in handler is gone');
   const ss = sandbox.SpreadsheetApp.create('Central Ledger');
   sandbox.SpreadsheetApp._registry.set(ss.getId(), ss);
   sandbox.PropertiesService.getScriptProperties().setProperty('CENTRAL_LEDGER_SS_ID', ss.getId());
-  const file = fileWith(sandbox, { editors: ['1234567@ccpsnet.net'] });
   const ledger = ss.insertSheet('Ledger');
-  ledger.appendRow(new Array(23).fill('h'));
-  const row = new Array(23).fill('');
-  row[1] = '1234567@ccpsnet.net'; row[3] = file.getId(); row[8] = 'teacher@ccpsnet.net';
-  row[12] = 'PENDING_TEACHER_REVIEW';
-  ledger.appendRow(row);
-
-  exported._lockSubmittedDoc_(exported.getConfig_(), { rowIndex: 2 });
-
-  assert.equal(file._access('1234567@ccpsnet.net'), 'viewer');
-  assert.equal(file._access('teacher@ccpsnet.net'), 'commenter');
+  ledger.appendRow(['h']);
+  const logs = [];
+  sandbox.Logger.log = (m) => logs.push(String(m));
+  const fileId = 'abcdefghijklmnopqrstuvwxyz0123';
+  exported.dispatchFormSubmit({ namedValues: {
+    'Your Google Account': ['1234567@ccpsnet.net'],
+    'Assignment Document Link': ['https://docs.google.com/document/d/' + fileId + '/edit'],
+  } });
+  assert.equal(ledger.getLastRow(), 1, 'nothing is written to the Ledger');
+  assert.ok(!logs.some((l) => /handler error/.test(l)), logs.join('\n'));
 });

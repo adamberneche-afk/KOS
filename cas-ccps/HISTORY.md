@@ -2856,3 +2856,42 @@ From `meta/PRD_CAS_RESEARCH_PIVOT.md`'s check against the code.
   weights in `cross_confidence`. `compareUnitIds_()` orders by stage, then
   unit, as numbers. The pacing guide stops at S9 with at most three units
   per stage, so nothing changes today; it is preventive.
+
+## P0-04: the Turn-In Form handler is retired, 2026-10-10
+
+Students turn in on Canvas and were never given the Turn-In Form, but
+`dispatchFormSubmit()` still ran its handler on every form submission, and
+its checks were weak: `scanCompliance_()` accepted a "[SYSTEM: APPROVED]"
+anywhere in the student-editable doc (a typed one, or an old block's), the
+account was typed into the form, and the "forensic" revision check passed
+on any two autosaves 15 seconds apart and passed outright on a Drive API
+error. The operator chose to retire it rather than harden it (PRD Q5).
+
+- **18.** `dispatchFormSubmit()` calls only the intake handler (02), which
+  skips a Form 2 submission.
+- **04.** `onTurnInSubmit()` is gone, with the helpers only it used:
+  `runForensicCheck_()`, `markPendingReview_()`, `_lockSubmittedDoc_()`,
+  `notifyTeacher_()`, `flagRejection_()`, `writeRejectionToDoc_()`. The file
+  stays in central-ledger for the helpers other files call:
+  `findLedgerRow_`, `scanCompliance_`, `extractSuggestedScore_`,
+  `_ensureTurnInReviewColumns_`, `_lockDocAfterSubmission_`,
+  `extractFileId_`.
+- **10.** The health check's Drive Advanced Service warning guarded only the
+  forensic check, and is removed.
+- **01, 09.** Two leftover lines told students to "use the Turn-In Form";
+  they now say to turn in on Canvas (01's also said feedback is at the top).
+- **Tests.** The `_lockSubmittedDoc_()` test went with the function; a
+  dispatcher test shows a Form 2 submission writes nothing.
+
+Left as they were: the PENDING_TEACHER_REVIEW → COMPLIANT path in 07 (its
+Pending Review queue, `TURN_IN_FINAL_SCORE`, 36's "This week" section, 13's
+`ALREADY_TURNED_IN`) is now unreachable but harmless; 16's setup wizard
+still creates a Turn-In Form for a new install, which now receives nothing;
+the Drive advanced service and `drive` scope stay in central-ledger's
+manifest (removing a scope changes the consent screen, and P5-06 may use
+it); the HTML architecture and admin references still describe the gate and
+carry their "current as of 2026-10-08" notes.
+
+Not yet live: push central-ledger (04, 10, 18) and master-student-template
+(01, 09). The live Form 2 and its trigger can be deleted from Drive, or
+left: submissions are ignored.

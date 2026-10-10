@@ -230,7 +230,9 @@ To resolve a row's course, use the same lookup existing course-scoped code uses,
 
 ### P0-04 Retire the turn-in handler, keep its helpers
 
-**Change.**
+**Status: done 2026-10-10.** The handler and its forensic check were removed (`cas-ccps/HISTORY.md`, P0-04). Two corrections from doing it: `10` only mentioned `runForensicCheck_()` in its Drive health check, which was removed with it; and `16`'s wizard still creates the form for a new install, deferred as a separate cleanup.
+
+**Change** (as specified; the functions named here were removed):
 - Remove the `onTurnInSubmit()` call from `dispatchFormSubmit()`.
 - Delete `onTurnInSubmit()` and the functions only it uses: the stamp gate, the three-point match and the forensic revision check.
 - **Keep `04_Form2_TurnInGate.js` in central-ledger** and update its header, because it hosts helpers other files call:

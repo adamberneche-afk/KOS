@@ -30,10 +30,9 @@ archived to `docs/archived/KOS_Guide_IT__Admin_Security_PRE_V8_ARCHITECTURE.pdf`
 The real, current compliance reference is `docs/SYSTEM_ARCHITECTURE.html`'s
 Security Model section (no API keys ever touch a student-facing surface,
 prompt-injection defense via delimiter markers plus an instruction telling
-the model to disregard anything inside them, three-point turn-in validation, a forensic
-version-history check with an *honestly documented* bypass: a student who
-selects-all-and-pastes a pre-written fake report in one fast paste can
-defeat it — treated as a manual-review signal, not proof) together with
+the model to disregard anything inside them; the turn-in validation and
+forensic version-history check it also describes were retired with the
+Turn-In Form on 2026-10-10 — students turn in on Canvas) together with
 `docs/FERPA_DATA_MAP.md` (the actual field-by-field FERPA inventory, Say/Do
 Ledger finding #5) — these two are the canonical pair now, not the archived
 PDF.
@@ -148,16 +147,13 @@ milestones (set up via Script 05 → Flow 1 → Script 08's confirmation step),
 and writes the full formatted report directly into the doc (Script 09
 M1Base — see HISTORY.md's resolution 1), then flips the staging row to
 `COMPLETE`. Script 03's `backPropagateCompletions` (2-min trigger) closes
-out the queue/ledger rows and appends the "what to do next" block. When
-the student turns in via the Turn-In Form, Script 04 runs a 3-point ledger
-match plus a forensic Drive-revision check — a genuine complete attempt
-lands in `PENDING_TEACHER_REVIEW` with an AI-suggested score (1-5 scale,
-5 reserved for teacher judgment alone) rather than a terminal `COMPLIANT`;
-the teacher confirms or overrides it from the Teacher Dashboard's Pending
-Review queue, which is what actually makes the status/score final (Say/Do
-Ledger cas-ccps finding #1). A partial or not-a-real-attempt submission
-never reaches this queue at all — it goes back through the same
-revision-feedback path as before, unchanged.
+out the queue/ledger rows and appends the "what to do next" block.
+Students turn in on Canvas, where the teacher grades. The Turn-In Form and
+its handler (Script 04's 3-point match, stamp check and forensic
+Drive-revision check) were retired on 2026-10-10 (HISTORY.md, P0-04): no
+student was given the form, and the stamp it trusted could be typed. The
+Teacher Dashboard's Pending Review queue (`PENDING_TEACHER_REVIEW` →
+`COMPLIANT`) was fed only by that handler, so it stays empty.
 
 ## Version control (clasp)
 
