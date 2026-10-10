@@ -15,6 +15,11 @@ why this repo exists at all.
   the operator's queue in order, open decisions, and the rules for an agent
   session picking the work up. Start here. `HANDOFF_2026-10-07.md`, `HANDOFF_2026-10-06.md` and
   `HANDOFF_2026-10-05.md` are earlier days', superseded.
+- **`PRD_CAS_RESEARCH_PIVOT.md`** — the cas-ccps research-alignment PRD
+  (revised 2026-10-10, checked against the code): a Phase 0 of live defects
+  to fix before the warm-up week, then measurement, pedagogy and
+  student-experience requirements, each with its secondary effects. It runs
+  alongside `PLAN_2026-10.md`, which stays the plan of record.
 - **`PSD_Version_Controlled_CAS_Workspace.md`** — a Product Specification
   Document proposing exactly what this repo now is: moving both CAS
   (Classroom Agency System) and KOS off dated-Drive-folder-copy versioning
