@@ -2,7 +2,7 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-08)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-08.md`](../meta/HANDOFF_2026-10-08.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-10.md`](../meta/HANDOFF_2026-10-10.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
