@@ -611,6 +611,13 @@ function _recheckExtraCredit_(wrSheet, wqSheet, teacherEmail, queueRowByQueueId)
 // Sends one batched email digest, then marks each crossing as notified.
 // ---------------------------------------------------------------------------
 function checkShadowMatrixInterrupts_(ss, cfg) {
+  // P0-02: this digest reports archetype locks, and the lock is off unless
+  // PIVOT_ARCHETYPE_LOCK enables it. Course-wide, so it needs "all": while
+  // one course trials the lock, the email would name students in the other.
+  if (typeof pivotFlagFor_ === "function" && !pivotFlagFor_("PIVOT_ARCHETYPE_LOCK", null)) {
+    Logger.log("[S25] Shadow matrix: lock email off (PIVOT_ARCHETYPE_LOCK is not 'all').");
+    return;
+  }
   const CONFIDENCE_THRESHOLD = 0.75;
   const props       = PropertiesService.getScriptProperties();
   const teacherEmail = cfg.teacherEmail;

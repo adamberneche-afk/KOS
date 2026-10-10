@@ -1,6 +1,14 @@
 // =============================================================================
 // FILE: SelectWarmUpArchetypeStep.gs
 // PROJECT: cas-ccps:studio-steps (standalone; see tools/gas-lint/project-map.json)
+//
+// SUPERSEDED (2026-10-10, P0-02 in meta/PRD_CAS_RESEARCH_PIVOT.md): custom
+// steps are unreachable on the district account (studio-steps/README.md);
+// the live selection is wfbSelectArchetype_() in
+// cas-ccps/scripts/41_WarmUpFlowBridge.js. That copy now holds the
+// cross-unit lock off unless PIVOT_ARCHETYPE_LOCK enables it, and records
+// the chosen archetype on the WarmUpQueue row. This file's logic is left
+// as it was; do not port new behaviour here.
 // PURPOSE: Flow 3's (Warm-Up Generation) pre-processing step, as specified
 //          in cas-ccps/docs/CAS_Flow3_Flow4_Specification.html: "Archetype
 //          selection happens inside Flow 3's pre-processing step — before
