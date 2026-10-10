@@ -2841,3 +2841,18 @@ inside their CAS document. The cartridges, not yet imported, now say where.
 
 Not yet live: import the cartridges as they are now. An import made before
 this would need its modules deleted first, or Canvas duplicates them.
+
+## P0-05: two small correctness fixes, 2026-10-10
+
+From `meta/PRD_CAS_RESEARCH_PIVOT.md`'s check against the code.
+
+- **30.** `aggregateEvidence_()`'s missing-columns guard returned `result`
+  before the `const` was declared, so a CompetencyEvidence tab without
+  `student_email`, `competency_id` or `outcome` threw a ReferenceError
+  instead of logging and returning nothing. It now returns an empty map
+  (the log line was already there).
+- **23.** The shadow matrix ordered units with a plain `.sort()`, which is
+  alphabetical: S1-U10 before S1-U2, S10 before S2, reversing the decay
+  weights in `cross_confidence`. `compareUnitIds_()` orders by stage, then
+  unit, as numbers. The pacing guide stops at S9 with at most three units
+  per stage, so nothing changes today; it is preventive.
