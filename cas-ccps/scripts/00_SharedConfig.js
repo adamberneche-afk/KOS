@@ -233,8 +233,32 @@ const SHARED_CONFIG_KEYS = [
   "LEADER_HUB_OAUTH_CLIENT_ID",
   "MASTER_STUDENT_TEMPLATE_ID",
   "MASTER_RUBRIC_RESPONSE_SS_ID",
-  "MASTER_TEACHER_MATRIX_SS_ID"
+  "MASTER_TEACHER_MATRIX_SS_ID",
+  // Research-pivot feature flags (meta/PRD_CAS_RESEARCH_PIVOT.md). Here so
+  // one _CONFIG row reaches every project; read through pivotFlagFor_().
+  "PIVOT_ARCHETYPE_LOCK"
 ];
+
+// Whether a research-pivot flag is on for a course. Values: blank or "off"
+// (default), "all", or a course code ("8175" / "8177") to enable one course
+// first. With no courseCode, only "all" turns a flag on, so a course-wide
+// action (a digest email, say) never runs while one course is still trialling
+// the feature. Read fresh on each call: Script Property first, then the
+// Ledger's _CONFIG tab (SHARED_CONFIG_KEYS).
+function pivotFlagFor_(flagName, courseCode) {
+  let raw;
+  try {
+    raw = _resolveConfigValues_().values[flagName];
+  } catch (e) {
+    return false; // unconfigured project: every pivot feature stays off
+  }
+  const value = String(raw === undefined || raw === null ? "" : raw).trim().toLowerCase();
+  if (value === "" || value === "off") return false;
+  if (value === "all") return true;
+  const course = String(courseCode === undefined || courseCode === null ? "" : courseCode)
+    .trim().toLowerCase();
+  return course !== "" && value === course;
+}
 
 // Same Key | Value tab 19_ClonedSheetConfig.js already writes into each
 // teacher's cloned sheets. On the Ledger, a SYSTEM_ROLE row marks it.
