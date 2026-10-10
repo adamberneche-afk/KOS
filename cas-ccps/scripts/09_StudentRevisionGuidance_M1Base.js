@@ -116,7 +116,8 @@ function buildNextStepsText_(complianceResult) {
       "Your work meets the standard. Here's what to do:\n\n" +
       "  1. Read the feedback above to understand your strengths.\n" +
       "  2. Make any final polish edits you feel are needed.\n" +
-      "  3. Submit your work using the Turn-In Form your teacher provided.\n\n" +
+      "  3. When you're done, turn it in on Canvas: copy this document's link,\n" +
+      "     open the Canvas assignment, choose Start Assignment → Website URL.\n\n" +
       "⚠️  Do not delete or edit any evaluation report in this document.\n" +
       "    It is part of your verified submission record.\n"
     );
@@ -136,7 +137,7 @@ function buildNextStepsText_(complianceResult) {
     "  4. Repeat until you receive a passing result.\n\n" +
     "💡  You can run as many checks as you need.\n" +
     "    There is no penalty for revising.\n" +
-    "⚠️  Do not submit using the Turn-In Form until\n" +
-    "    you have a passing result.\n"
+    "💡  A passing check before you turn it in on Canvas\n" +
+    "    is a good idea, but it isn't required.\n"
   );
 }
