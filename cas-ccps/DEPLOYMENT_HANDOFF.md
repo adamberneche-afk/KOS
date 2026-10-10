@@ -668,8 +668,13 @@ reports when a column has moved since the last sync.
    `_CONFIG` tab.
 3. District-wide settings from the Central Ledger's `_CONFIG` tab:
    `ADMIN_ROOT_FOLDER_ID`, `ADMIN_NOTIFY_EMAIL`, `STUDENT_DASHBOARD_URL`,
-   `STUDENT_EMAIL_DOMAIN`, `LEADER_HUB_OAUTH_CLIENT_ID` and the three
-   `MASTER_*` template IDs. Nothing else is read from that tab. Per-teacher
+   `STUDENT_EMAIL_DOMAIN`, `LEADER_HUB_OAUTH_CLIENT_ID`, the three
+   `MASTER_*` template IDs, and the research-pivot feature flags
+   (`PIVOT_*`, `meta/PRD_CAS_RESEARCH_PIVOT.md`). Nothing else is read from
+   that tab. Each flag is off unless its row says `all` or a course code
+   (`8175` / `8177`); add the row by hand when a feature is turned on. The
+   first is `PIVOT_ARCHETYPE_LOCK`: off, warm-up archetypes are recorded but
+   never locked and the lock digest email is not sent. Per-teacher
    values and secrets stay in Script Properties: `TEACHER_EMAIL` is the
    Teacher Dashboard's access gate, so a shared value would let that one
    address into every dashboard that hadn't set its own.

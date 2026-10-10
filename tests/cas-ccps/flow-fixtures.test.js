@@ -59,6 +59,7 @@ function load() {
     // 41_WarmUpFlowBridge.js — the fixtures exist to feed it, so the
     // end-to-end tests at the bottom of this file drive it directly.
     'buildWarmUpFlowInputs', 'wfbBuildFlow3Fields_', 'evaluateWarmUpDoc_',
+    'WQ25_ARCHETYPE',
     'WQ24_DOC_ID', 'WQ24_WORD_COUNT_SCORE', 'WFB_INPUT_TABS',
     'WFB_FLOW3_HEADERS', 'WFB_FLOW4_HEADERS', 'WFB_FLOW5_HEADERS',
     'RESPONSE_ZONE_MARKER',
@@ -422,6 +423,34 @@ test('the seeded profile drives a real archetype branch, not the fallback tail',
   assert.match(fields.evaluationSignals, /strengths: application/);
   assert.ok(fields.evaluationSignals.indexOf('strengths: None') === -1,
     'a string-array signal would render as None here');
+});
+
+// P0-02: the archetype chosen when Flow 3's input row is built is written to
+// WarmUpQueue column 19, where 23's shadow matrix reads it back. Nothing used
+// to write it, so the matrix never learned anything.
+test('building Flow 3\'s input records the chosen archetype on the queue row, once', () => {
+  const { exported, sandbox } = load();
+  const ss = setUp(sandbox);
+  exported.installWarmUpFixtures();
+  const archetypeOf = (suffix) => {
+    const rows = ss.getSheetByName('WarmUpQueue').getDataRange().getValues();
+    const r = rows.find((x) => String(x[exported.WQ24_QUEUE_ID]).indexOf(suffix) !== -1);
+    return String(r[exported.WQ25_ARCHETYPE] || '');
+  };
+  assert.equal(archetypeOf('F3'), '', 'blank before the input row is built');
+
+  exported.buildWarmUpFlowInputs();
+  assert.equal(archetypeOf('F3'), 'CONCRETE_SCENARIO');
+  assert.equal(archetypeOf('F5'), '', 'only Flow 3 chooses an archetype');
+  assert.equal(archetypeOf('F4'), '');
+
+  // A second build skips the row, and a value already on it is kept.
+  const sheet = ss.getSheetByName('WarmUpQueue');
+  const rows = sheet.getDataRange().getValues();
+  const idx = rows.findIndex((x) => String(x[exported.WQ24_QUEUE_ID]).indexOf('F3') !== -1);
+  sheet.getRange(idx + 1, exported.WQ25_ARCHETYPE + 1).setValue('PARADOX');
+  exported.buildWarmUpFlowInputs();
+  assert.equal(archetypeOf('F3'), 'PARADOX');
 });
 
 test('removeFlowFixtures clears the bridge tabs too', () => {
