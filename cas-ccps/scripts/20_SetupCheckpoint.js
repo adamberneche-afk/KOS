@@ -10,7 +10,7 @@
 //   CHECKPOINT_ADMIN_FOLDER     — Assignments root folder created
 //   CHECKPOINT_ADMIN_LEDGER     — Central ledger spreadsheet created
 //   CHECKPOINT_ADMIN_TEMPLATES  — Master template sheets created
-//   CHECKPOINT_ADMIN_TURNIN     — Turn-in form created
+//   CHECKPOINT_ADMIN_TURNIN     — Turn-in form created (retired 2026-10-10; no longer set)
 //   CHECKPOINT_TEACHER_FOLDER   — Teacher folder created
 //   CHECKPOINT_TEACHER_RUBRIC   — Rubric response sheet cloned
 //   CHECKPOINT_TEACHER_MATRIX   — Teacher matrix sheet cloned
