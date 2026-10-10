@@ -230,7 +230,7 @@ To resolve a row's course, use the same lookup existing course-scoped code uses,
 
 ### P0-04 Retire the turn-in handler, keep its helpers
 
-**Status: done 2026-10-10.** The handler and its forensic check were removed (`cas-ccps/HISTORY.md`, P0-04). Two corrections from doing it: `10` only mentioned `runForensicCheck_()` in its Drive health check, which was removed with it; and `16`'s wizard still creates the form for a new install, deferred as a separate cleanup.
+**Status: done 2026-10-10.** The handler and its forensic check were removed (`cas-ccps/HISTORY.md`, P0-04). Two corrections from doing it: `10` only mentioned `runForensicCheck_()` in its Drive health check, which was removed with it; and `16`'s wizard no longer creating the form was a follow-up PR the same day.
 
 **Change** (as specified; the functions named here were removed):
 - Remove the `onTurnInSubmit()` call from `dispatchFormSubmit()`.
@@ -921,7 +921,7 @@ Claude Code must not resolve these on its own. Each blocks the requirement shown
 - [ ] Q2 (P1-04): Enter checkpoint scores in the Teacher Dashboard, or import them from a Canvas gradebook export?
 - [ ] Q3 (P1-03): Is 20% the right blind sample rate?
 - [ ] Q4 (P2-03): One retrieval warm-up in three, or another cadence?
-- [ ] Q5 (P0-04): Confirm retiring the turn-in handler. The Oct 9 draft offered hardening instead, but nothing student-facing uses the form.
+- [x] Q5 (P0-04): Confirm retiring the turn-in handler. The Oct 9 draft offered hardening instead, but nothing student-facing uses the form. **Answered 2026-10-10: retire** (done, P0-04).
 - [ ] Q6 (P3-01, P3-02): Who authors prerequisites and answer keys, and on what schedule?
 - [ ] Q7 (all): This PRD runs alongside `PLAN_2026-10.md`, with Phase 0 ahead of the warm-up week. Confirm.
 - [ ] Q8 (P5-01): Once feedback is on the dashboard, should legacy docs keep full feedback blocks or switch to a one-line pointer?
@@ -929,8 +929,8 @@ Claude Code must not resolve these on its own. Each blocks the requirement shown
 - [ ] Q10 (Pre-registration): Confirm or change the thresholds before P1-04 goes live.
 - [ ] Q11 (P1-04): Should unaided checkpoint scores count as SCR evidence?
 - [ ] Q12 (P2-01): Fix `competency_gaps`' timing? This would activate the decision table's gaps → BRIDGE branch and change the archetype mix.
-- [ ] Q13 (P0-01): Did the operator bind the `PromptText` chip in the warm-up Flows, or columns one by one?
-- [ ] Q14 (P5-05): Is Studio Flow 2 built and running, or still to be built? The repo disagrees with itself (`15c:6-11` vs the 10-08 handoff).
+- [x] Q13 (P0-01): Did the operator bind the `PromptText` chip in the warm-up Flows, or columns one by one? **Answered 2026-10-10: the `PromptText` chip**, so P0-01 changes what Gemini receives live.
+- [x] Q14 (P5-05): Is Studio Flow 2 built and running, or still to be built? **Answered 2026-10-10: built.** `15c`'s header was corrected.
 
 ## Risks
 

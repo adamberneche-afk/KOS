@@ -2895,3 +2895,20 @@ carry their "current as of 2026-10-08" notes.
 Not yet live: push central-ledger (04, 10, 18) and master-student-template
 (01, 09). The live Form 2 and its trigger can be deleted from Drive, or
 left: submissions are ignored.
+
+## The setup wizard no longer creates a Turn-In Form, 2026-10-10
+
+Follow-up to P0-04. `createAdminAssets_()` (16) no longer creates the
+central Turn-In Form, and nothing in the wizard refers to one: not the
+welcome dialog, the asset read-back, the admin or teacher Script
+Properties (`CENTRAL_TURNIN_FORM_*`, `TURNIN_FORM_URL`), the admin and
+teacher summary pages, or `showTeacherSummary()`. The Ledger's SETUP
+INSTRUCTIONS tab still lists `04_Form2_TurnInGate.js`, now marked as shared
+helpers, because other files call them. An existing install keeps its form
+and properties; submissions to the form are ignored. `00`'s `turninFormUrl`
+and `turninResponseSsId` config fields are left (unused; removing them would
+touch all seven projects).
+
+Also recorded: the operator confirmed that the warm-up Flows bind the
+PromptText chip (so P0-01 changes live prompts) and that Studio Flow 2 is
+built; 15c's header no longer says it was never built.
