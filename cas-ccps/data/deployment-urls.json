@@ -1,0 +1,4 @@
+{
+  "_comment": "Stable web app URLs built into generated files (tools/cas-ccps/build-canvas-cartridge.js). Each is the web app's one existing deployment: never create a new deployment, or every student doc and both Canvas cartridges point at a dead link. Source: a student doc's 'Your assignment dashboard:' line, 2026-10-10.",
+  "studentDashboardUrl": "https://script.google.com/macros/s/AKfycbxuuHCC2__vm_ecaUk5-S23qhgIalxy321_1u_rwIWis3XPljdX0HZbKc4-icgt-0lv/exec"
+}
