@@ -186,3 +186,75 @@ test('getEnrolledStudents_: a course code keeps only that course\'s students in 
   assert.deepEqual(emails('8177'), ['b@x']);
   assert.deepEqual(emails(''), ['a@x', 'b@x', 'c@x'], 'no code: every student in the period, as before');
 });
+
+// ── 23's shadow matrix records archetypes (P0-02) ────────────────────────────
+//
+// updateShadowMatrix_ keys archetypes by queue_id (column 0) but used to look
+// each score up by lesson_id, which never matches: archetype_history stayed
+// empty, best_archetype null, and the early-unit rule gave every student
+// BRIDGE. resolveUnitForDate_ lives in 31; it is stubbed to one unit here.
+
+function loadProfile() {
+  return loadGasFiles([LESSON_CONTEXT_PATH, WARMUP_BRIDGE_PATH, PROFILE_MANAGER_PATH], [
+    'buildWarmupData_', 'updateShadowMatrix_',
+    'WQ23_QUEUE_ID', 'WQ23_LESSON_ID', 'WQ23_STUDENT_EMAIL', 'WQ23_LESSON_DATE',
+    'WQ23_STATUS', 'WQ23_ENGAGEMENT_SCORE', 'WQ23_ARCHETYPE',
+  ]);
+}
+
+function shadowQueue(exported, specs) {
+  const header = new Array(21).fill('h');
+  return [header].concat(specs.map((s) => {
+    const r = new Array(21).fill('');
+    r[exported.WQ23_QUEUE_ID] = s.queueId;
+    r[exported.WQ23_LESSON_ID] = s.lessonId;
+    r[exported.WQ23_STUDENT_EMAIL] = s.email || 'ada@example.invalid';
+    r[exported.WQ23_LESSON_DATE] = s.date;
+    r[exported.WQ23_STATUS] = 'SCORED';
+    r[exported.WQ23_ENGAGEMENT_SCORE] = s.engagement;
+    r[exported.WQ23_ARCHETYPE] = s.archetype || '';
+    return r;
+  }));
+}
+
+const SHADOW_SPECS = [
+  { queueId: 'WUQ-1', lessonId: 'LES-1', date: '2026-10-20', engagement: 3, archetype: 'PARADOX' },
+  { queueId: 'WUQ-2', lessonId: 'LES-2', date: '2026-10-22', engagement: 3, archetype: 'PARADOX' },
+  { queueId: 'WUQ-3', lessonId: 'LES-3', date: '2026-10-24', engagement: 1, archetype: 'BRIDGE' },
+  // No archetype recorded: never logged as UNKNOWN.
+  { queueId: 'WUQ-4', lessonId: 'LES-4', date: '2026-10-26', engagement: 2 },
+  // Another student's row must not leak in.
+  { queueId: 'WUQ-9', lessonId: 'LES-1', date: '2026-10-20', engagement: 0,
+    archetype: 'PROVOCATION', email: 'other@example.invalid' },
+];
+
+test('scores carry their queue_id, so the shadow matrix can find their archetype', () => {
+  const { exported } = loadProfile();
+  const data = exported.buildWarmupData_(shadowQueue(exported, SHADOW_SPECS));
+  assert.deepEqual(data['ada@example.invalid'].scores.map((s) => s.queue_id),
+    ['WUQ-1', 'WUQ-2', 'WUQ-3', 'WUQ-4']);
+});
+
+test('updateShadowMatrix_ logs each recorded archetype and picks the best', () => {
+  const { exported, sandbox } = loadProfile();
+  sandbox.resolveUnitForDate_ = () => ({ unit_id: 'S1-U2' });
+  const wq = shadowQueue(exported, SHADOW_SPECS);
+  const scores = exported.buildWarmupData_(wq)['ada@example.invalid'].scores;
+  const unit = exported.updateShadowMatrix_('ada@example.invalid', {}, scores, wq)['S1-U2'];
+
+  assert.deepEqual(unit.archetype_history.map((h) => [h.warmup_id, h.archetype]),
+    [['WUQ-1', 'PARADOX'], ['WUQ-2', 'PARADOX'], ['WUQ-3', 'BRIDGE']]);
+  assert.equal(unit.best_archetype, 'PARADOX');
+  assert.equal(unit.within_confidence, 3 / 8,
+    'three logged warm-ups: past the 0.3 early-unit floor, so BRIDGE is no longer forced');
+});
+
+test('updateShadowMatrix_ is idempotent across nightly runs', () => {
+  const { exported, sandbox } = loadProfile();
+  sandbox.resolveUnitForDate_ = () => ({ unit_id: 'S1-U2' });
+  const wq = shadowQueue(exported, SHADOW_SPECS);
+  const scores = exported.buildWarmupData_(wq)['ada@example.invalid'].scores;
+  const first = exported.updateShadowMatrix_('ada@example.invalid', {}, scores, wq);
+  const second = exported.updateShadowMatrix_('ada@example.invalid', first, scores, wq);
+  assert.equal(second['S1-U2'].archetype_history.length, 3);
+});

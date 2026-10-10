@@ -195,12 +195,18 @@ const WFB_SHADOW_WITHIN_CONFIDENCE_EARLY_UNIT_THRESHOLD = 0.3;
  * and that is the one that governs. Preserved rather than tidied, because
  * "tidying" it silently changes which prompt a student gets.
  */
-function wfbSelectArchetype_(lesson, profile) {
+function wfbSelectArchetype_(lesson, profile, opts) {
   const shadowMatrix = profile.shadow_matrix || {};
   const unitCurrent = profile.unit_current || "";
   const shadowEntry = unitCurrent ? shadowMatrix[unitCurrent] : null;
 
-  if (shadowEntry && typeof shadowEntry.cross_confidence === "number" &&
+  // P0-02: the cross-unit lock is off unless PIVOT_ARCHETYPE_LOCK enables it
+  // (the caller resolves the flag, so this stays pure). Until archetypes were
+  // recorded the lock could never fire; now that they are, it would lock a
+  // student on one sample after about four full units, so it waits for the
+  // v2 rules (P2-04).
+  const lockEnabled = !!(opts && opts.lockEnabled);
+  if (lockEnabled && shadowEntry && typeof shadowEntry.cross_confidence === "number" &&
       shadowEntry.cross_confidence >= WFB_SHADOW_CROSS_CONFIDENCE_THRESHOLD &&
       shadowEntry.best_archetype) {
     return wfbNormalizeArchetypeName_(shadowEntry.best_archetype);
@@ -325,7 +331,7 @@ function wfbFormatEvaluationSignals_(signals) {
  * plain strings. Pure — no sheet or Drive access — so the whole archetype
  * decision is unit-testable without a live queue.
  */
-function wfbBuildFlow3Fields_(lesson, profile) {
+function wfbBuildFlow3Fields_(lesson, profile, opts) {
   const mode = (lesson.warmup_anchor !== null && lesson.warmup_anchor !== undefined &&
     lesson.warmup_anchor !== "") ? "A" : "B";
   const addressed = (profile.competencies_addressed || []).length;
@@ -333,7 +339,7 @@ function wfbBuildFlow3Fields_(lesson, profile) {
 
   return {
     mode: mode,
-    archetype: wfbSelectArchetype_(lesson, profile),
+    archetype: wfbSelectArchetype_(lesson, profile, opts),
     firstName: String(profile.student_name || "").trim().split(/\s+/)[0] || "",
     warmupAnchor: lesson.warmup_anchor || "",
     pacingUnitName: lesson.pacing_unit_name || "",
@@ -471,8 +477,20 @@ function buildWarmUpFlowInputs() {
         if (wfbBuildFlow5Row_(tabs[5], row, queueId)) result.flow5++;
         else result.skipped++;
       } else if (flow === 3) {
-        if (wfbBuildFlow3Row_(tabs[3], row, queueId)) result.flow3++;
-        else result.skipped++;
+        const archetype = wfbBuildFlow3Row_(tabs[3], row, queueId);
+        if (archetype) {
+          result.flow3++;
+          // FIX (P0-02): nothing used to write the chosen archetype back, so
+          // 23's shadow matrix never saw one and every student got BRIDGE
+          // from the early-unit rule forever. Written once, here, where the
+          // choice is made; 25's full-row writes re-read the row first, so
+          // they keep it.
+          if (!String(row[WQ25_ARCHETYPE] || "").trim()) {
+            wqSheet.getRange(i + 2, WQ25_ARCHETYPE + 1).setValue(archetype);
+          }
+        } else {
+          result.skipped++;
+        }
       } else {
         if (wfbBuildFlow4Row_(tabs[4], row, queueId)) result.flow4++;
         else result.skipped++;
@@ -532,7 +550,11 @@ function wfbBuildFlow3Row_(sheet, row, queueId) {
     return false;
   }
 
-  const f = wfbBuildFlow3Fields_(lesson, profile);
+  const courseCode = typeof courseCodeFromName_ === "function"
+    ? courseCodeFromName_(lesson.course_name) : "";
+  const lockEnabled = typeof pivotFlagFor_ === "function" &&
+    pivotFlagFor_("PIVOT_ARCHETYPE_LOCK", courseCode);
+  const f = wfbBuildFlow3Fields_(lesson, profile, { lockEnabled: lockEnabled });
   sheet.appendRow([
     new Date(), queueId, "READY",
     f.mode, f.archetype, f.firstName, f.warmupAnchor,
@@ -546,7 +568,9 @@ function wfbBuildFlow3Row_(sheet, row, queueId) {
     row[WQ25_LESSON_DATE],
     wfbPromptFor_(3, f),
   ]);
-  return true;
+  // The caller records this on the WarmUpQueue row (column 19), where the
+  // shadow matrix reads it back.
+  return f.archetype;
 }
 
 function wfbBuildFlow4Row_(sheet, row, queueId) {
