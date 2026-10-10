@@ -45,14 +45,18 @@ that was built. The three-state *meaning* stays the same either way.
 
 ---
 
-## cas-ccps — Flow 2 (Turn-In evaluation)
+## cas-ccps — Flow 2 (student evaluation)
 
-**What it does (or would, once built):** a student's Turn-In Gate
-submission (`04_Form2_TurnInGate.js`) is queued to `ReviewQueue`, bridged
-into `STAGING_PIPELINE` (`03_QueueBridge.js`), and is meant to be picked
-up by a Studio Flow that evaluates the submission against its rubric and
-writes the result back — the one Flow this entire system depends on to
-ever turn a submission `COMPLETE`.
+**What it does:** a student clicks **Submit for Feedback** on the Student
+Dashboard (`submitMyWork()` in `13_StudentDashboard.js`; the district turns
+Apps Script off for students, so the doc menu is not their path). The
+submission is queued to `ReviewQueue`, bridged into `STAGING_PIPELINE`
+(`03_QueueBridge.js`), materialized as a `FlowInput` row
+(`37_FlowInputBuilder.js`), evaluated by the Studio Flow against its rubric,
+and harvested back — the one Flow this system depends on to turn a
+submission `COMPLETE`. **Current as of 2026-10-10:** the Studio Flow is
+built (operator confirmed); no real student submission has gone through it
+yet; the Turn-In Form that used to feed this queue (`04`) is retired.
 
 **Corrected (this document previously described Flow 2 as already
 human-built and live — it is not; then, later, as never built at all,
