@@ -258,3 +258,26 @@ test('updateShadowMatrix_ is idempotent across nightly runs', () => {
   const second = exported.updateShadowMatrix_('ada@example.invalid', first, scores, wq);
   assert.equal(second['S1-U2'].archetype_history.length, 3);
 });
+
+// P0-05: units are ordered by stage then unit number, so the newest unit gets
+// the full decay weight even past S9 or U9.
+test('compareUnitIds_ orders units numerically, not alphabetically', () => {
+  const { sandbox } = loadProfile();
+  const ids = ['S10-U1', 'S1-U10', 'S2-U1', 'S1-U2', 'S0-U3', 'misc'];
+  assert.deepEqual(ids.slice().sort(sandbox.compareUnitIds_),
+    ['S0-U3', 'S1-U2', 'S1-U10', 'S2-U1', 'S10-U1', 'misc']);
+});
+
+test('cross_confidence weights the numerically newest unit most', () => {
+  const { exported, sandbox } = loadProfile();
+  // S1-U10 is newer than S1-U2; alphabetically it would sort first and get
+  // the smaller weight. Full new unit (1.0) + empty older unit (0): newest
+  // weighted 1, older 0.85 → 1 / 1.85 ≈ 0.54. Reversed it would be 0.46.
+  const matrix = {
+    'S1-U2':  { archetype_history: [], within_confidence: 0, cross_confidence: 0, trend: 'flat' },
+    'S1-U10': { archetype_history: [], within_confidence: 1, cross_confidence: 0, trend: 'flat' },
+  };
+  sandbox.resolveUnitForDate_ = () => null;
+  const out = exported.updateShadowMatrix_('ada@example.invalid', matrix, [], [new Array(21).fill('h')]);
+  assert.equal(out['S1-U10'].cross_confidence, 0.54);
+});
