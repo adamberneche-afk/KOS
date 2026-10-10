@@ -239,6 +239,30 @@ const SHARED_CONFIG_KEYS = [
   "PIVOT_ARCHETYPE_LOCK"
 ];
 
+// System text a student response must not contain (P0-03,
+// meta/PRD_CAS_RESEARCH_PIVOT.md). Studio's Flow 2 pastes the doc's response
+// zone straight into its prompt with no escaping step (15b's security note),
+// so a pasted feedback stamp or a submission delimiter would reach Gemini as
+// if it were the system's own. Feedback blocks show "[SYSTEM: …]" to the
+// student by design, which makes pasting one back the likely way in.
+// Matched case-insensitively, with loose spacing.
+const SYSTEM_TEXT_PATTERNS = [
+  /<<<\s*(END_)?STUDENT_SUBMISSION\s*>>>/i,
+  /\[\s*SYSTEM\s*:/i,
+  /\[\s*SUGGESTED_SCORE/i,
+  /\[\s*MILESTONE_OUTCOMES/i,
+];
+
+// The first system-text token in `text` (for example "[SYSTEM:"), or "".
+function findSystemText_(text) {
+  const s = String(text === undefined || text === null ? "" : text);
+  for (let i = 0; i < SYSTEM_TEXT_PATTERNS.length; i++) {
+    const m = s.match(SYSTEM_TEXT_PATTERNS[i]);
+    if (m) return m[0];
+  }
+  return "";
+}
+
 // Whether a research-pivot flag is on for a course. Values: blank or "off"
 // (default), "all", or a course code ("8175" / "8177") to enable one course
 // first. With no courseCode, only "all" turns a flag on, so a course-wide
