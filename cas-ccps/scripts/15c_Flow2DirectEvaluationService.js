@@ -3,8 +3,9 @@
 // BOUND TO: Central Ledger spreadsheet
 //
 // PURPOSE: Opt-in escape hatch for Flow 2 (Student Evaluation) — external
-// product review, Finding 3, "this quarter" tier. Flow 2 has never been
-// built in Studio (see cas-ccps/README.md), and 15_StudioFlowPrompts.js /
+// product review, Finding 3, "this quarter" tier. When this was written
+// Flow 2 had not been built in Studio (see cas-ccps/README.md); the operator
+// confirmed on 2026-10-10 that it is built now. 15_StudioFlowPrompts.js /
 // 15b_StudioFlowPrompts_Flow2_Revised.js are specs to paste into a Studio
 // Gemini step, not runnable code — meaning there was no way to actually
 // exercise Flow 2's evaluation logic (prompt construction, response

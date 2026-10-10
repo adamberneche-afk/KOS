@@ -61,3 +61,10 @@ test('dispatchFormSubmit: a Turn-In Form submission is ignored by the only handl
   assert.equal(ledger.getLastRow(), 1, 'nothing is written to the Ledger');
   assert.ok(!logs.some((l) => /handler error/.test(l)), logs.join('\n'));
 });
+
+test('the setup wizard no longer creates or advertises a Turn-In Form', () => {
+  const src = require('fs').readFileSync(S('16_UnifiedManualSetup.js'), 'utf8');
+  assert.doesNotMatch(src, /Assignment Turn-In"/, 'no form is created');
+  assert.doesNotMatch(src, /TURNIN_FORM_URL\s*:|turninFormUrl\s*:|Turn-In Form",|Turn-In Form:\\n/,
+    'no property, summary link or alert line points at one');
+});
