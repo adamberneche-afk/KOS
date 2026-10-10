@@ -370,3 +370,18 @@ test('aggregateEvidence_: falls back to the doc ID, then counts a row with neith
   assert.deepEqual(exported.aggregateEvidence_(sheet).get('amy@ccpsnet.net|||C1'),
     { metCount: 2, notMetCount: 1, partialCount: 0 });
 });
+
+// P0-05: the missing-columns guard returned `result` before its declaration,
+// so it threw a ReferenceError instead of returning nothing.
+test('aggregateEvidence_: a tab missing a required column returns an empty map and says why', () => {
+  const { exported, sandbox } = load();
+  const logs = [];
+  sandbox.Logger.log = (m) => logs.push(String(m));
+  const ss = sandbox.SpreadsheetApp.create('Central Ledger');
+  const sheet = ss.insertSheet('CompetencyEvidence');
+  sheet.appendRow(['evidence_id', 'student_email', 'competency_id']); // no outcome column
+  sheet.appendRow(['E1', 'amy@ccpsnet.net', 'C1']);
+  const agg = exported.aggregateEvidence_(sheet);
+  assert.equal(agg.size, 0);
+  assert.ok(logs.some((l) => /missing required columns/.test(l)), logs.join('\n'));
+});
