@@ -264,6 +264,8 @@ footer{background:var(--surface);border-top:1px solid var(--border);padding:36px
 
   <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px">Archetype selection now uses a two-layer model. The shadow matrix is checked first — if cross-unit confidence has crossed 0.75 for a student × archetype combination, that archetype is used directly. If confidence is below threshold or no shadow matrix data exists, the decision table below applies. The decision table is the fallback, not the primary selector for students with established history.</p>
 
+  <p style="font-size:14px;color:var(--text-dim);line-height:1.8;margin-bottom:16px"><strong>Current as of 2026-10-10 (P0-02, <code>meta/PRD_CAS_RESEARCH_PIVOT.md</code>):</strong> the shadow-matrix override above is <strong>off</strong> unless the <code>PIVOT_ARCHETYPE_LOCK</code> flag enables it (Ledger <code>_CONFIG</code> tab: <code>all</code> or a course code), and so is Script 25's lock email (it needs <code>all</code>). Until then the early-unit BRIDGE rule and the decision table choose. The chosen archetype is recorded on the WarmUpQueue row (column 19) when the Flow 3 input row is built, which is what lets the shadow matrix learn; before this fix nothing recorded it and every student got BRIDGE.</p>
+
   <table class="decision-table" style="margin-bottom:28px">
     <thead>
       <tr><th>Archetype</th><th>Trigger condition (decision table — used when shadow confidence &lt; 0.75)</th><th>Shadow matrix override</th></tr>
