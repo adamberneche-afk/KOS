@@ -508,7 +508,11 @@ function wfbBuildFlow5Row_(sheet, row, queueId) {
   sheet.appendRow([
     new Date(), queueId, "READY",
     String(prior), lesson.pacing_prior_connection || "", lesson.course_name || "",
-    wfbPromptFor_(5, {}),
+    wfbPromptFor_(5, {
+      priorResponse: String(prior),
+      pacingPriorConnection: lesson.pacing_prior_connection || "",
+      courseName: lesson.course_name || "",
+    }),
   ]);
   return true;
 }
@@ -563,18 +567,72 @@ function wfbBuildFlow4Row_(sheet, row, queueId) {
   const responseText = (extracted && extracted.responseText) ||
     String(row[WQ25_RESPONSE_TEXT] || "");
 
+  const wordCountScore = Number(row[WQ25_WORD_COUNT_SCORE] || 0);
+
   sheet.appendRow([
     new Date(), queueId, "READY",
     originalPrompt, responseText,
-    Number(row[WQ25_WORD_COUNT_SCORE] || 0), Number(row[WQ25_EXTRA_CREDIT] || 0), docId,
-    wfbPromptFor_(4, { originalPrompt: originalPrompt }),
+    wordCountScore, Number(row[WQ25_EXTRA_CREDIT] || 0), docId,
+    wfbPromptFor_(4, {
+      originalPrompt: originalPrompt,
+      responseText: responseText,
+      wordCountScore: String(wordCountScore),
+    }),
   ]);
   return true;
 }
 
+// Each flow's prompt placeholder -> the field that fills it.
+//
+// FIX (P0-01, meta/PRD_CAS_RESEARCH_PIVOT.md): the fields used to be handed
+// to substituteFlowPrompt_() as-is. It only upper-cases keys, so camelCase
+// `warmupAnchor` never matched `{warmup_anchor}` and only {archetype} and
+// {objective} were ever filled — Studio, bound to the PromptText chip, would
+// have sent Gemini the rest as literal text. The names also differ beyond
+// case (competencyTexts fills {competency_texts_formatted}), which is why
+// this is an explicit map rather than a case conversion. A placeholder added
+// to the spec without a row here fails warmup-flow-bridge.test.js.
+const WFB_PROMPT_VARS = {
+  3: {
+    warmup_anchor: "warmupAnchor",
+    pacing_unit_name: "pacingUnitName",
+    pacing_stage: "pacingStage",
+    course_objective: "courseObjective",
+    pacing_prior_connection: "pacingPriorConnection",
+    pacing_key_vocabulary: "pacingKeyVocabulary",
+    course_name: "courseName",
+    objective: "objective",
+    activity: "activity",
+    vocabulary: "vocabulary",
+    prior_connection: "priorConnection",
+    competency_texts_formatted: "competencyTexts",
+    first_name: "firstName",
+    competency_gaps_formatted: "competencyGaps",
+    evaluation_signals_formatted: "evaluationSignals",
+    avg_engagement_score: "avgEngagementScore",
+    extra_credit_count: "extraCreditCount",
+    shadow_archetype_note: "shadowArchetypeNote",
+    archetype: "archetype",
+    competencies_addressed_count: "competenciesAddressedCount",
+    total_competencies: "totalCompetencies",
+  },
+  4: {
+    original_prompt_text: "originalPrompt",
+    response_text: "responseText",
+    word_count_score: "wordCountScore",
+  },
+  5: {
+    flow5_prior_response: "priorResponse",
+    pacing_prior_connection: "pacingPriorConnection",
+    course_name: "courseName",
+  },
+};
+
 /**
- * The system prompt for a flow, pre-substituted, with any placeholder the
- * Flow itself must fill left standing.
+ * The system prompt for a flow, pre-substituted.
+ *
+ * Every placeholder in WFB_PROMPT_VARS is filled; one whose field is absent
+ * gets "" rather than reaching Gemini as literal text.
  *
  * Resolves through 40_FlowPrompts.js so a prompt change stays a `clasp push`
  * plus one function run. Returns "" rather than throwing when that file is
@@ -593,7 +651,14 @@ function wfbPromptFor_(flow, vars) {
     if (!modeA && typeof FLOW_3_PROMPT_MODE_B === "string") template = FLOW_3_PROMPT_MODE_B;
   }
   if (!template) return "";
-  return substituteFlowPrompt_(template, vars || {}, true);
+  const map = WFB_PROMPT_VARS[flow] || {};
+  const fields = vars || {};
+  const resolved = {};
+  Object.keys(map).forEach(function (placeholder) {
+    const value = fields[map[placeholder]];
+    resolved[placeholder] = (value === null || value === undefined) ? "" : String(value);
+  });
+  return substituteFlowPrompt_(template, resolved, true);
 }
 
 // ── Plausibility gate ────────────────────────────────────────────────────────
