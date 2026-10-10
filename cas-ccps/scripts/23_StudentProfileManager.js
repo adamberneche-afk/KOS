@@ -728,7 +728,7 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
   // Cross-unit confidence = decayed average of within_confidence across all units
   // More recent units weighted higher via DECAY_FACTOR
   const allUnitIds = Object.keys(matrix)
-    .sort(); // sort by unit ID (S0-U1, S0-U2, etc.)
+    .sort(compareUnitIds_); // stage then unit, numerically (S0-U1, S0-U2, …)
 
   if (allUnitIds.length > 0) {
     let weightedSum = 0, weightSum = 0, weight = 1;
@@ -746,6 +746,20 @@ function updateShadowMatrix_(studentEmail, existing, warmupScores, wqData) {
   }
 
   return matrix;
+}
+
+// Orders unit IDs like "S1-U2" by stage, then unit, as numbers. A plain sort
+// is alphabetical and would put S1-U10 before S1-U2 (or S10 before S2),
+// which reverses the decay weights above. Today's pacing guide stops at S9
+// with at most three units per stage, so this changes nothing yet (P0-05).
+// IDs that don't match the pattern sort after those that do, alphabetically.
+function compareUnitIds_(a, b) {
+  const pa = /^S(\d+)-U(\d+)$/.exec(String(a));
+  const pb = /^S(\d+)-U(\d+)$/.exec(String(b));
+  if (pa && pb) return (Number(pa[1]) - Number(pb[1])) || (Number(pa[2]) - Number(pb[2]));
+  if (pa) return -1;
+  if (pb) return 1;
+  return String(a).localeCompare(String(b));
 }
 
 // ---------------------------------------------------------------------------
