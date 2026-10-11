@@ -1,10 +1,10 @@
 <!-- lesson: promotional-flyer-design -->
 <!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
 <!-- Drafted from the lesson plan ("Venue Promotion & Flyer Design").
-     HOURS AND LOCATION NEED THE TEACHER'S CALL: the plan says 8:00 AM -
-     8:30 PM, "2nd Floor, between Room 301 and 401"; the Employee Handbook
-     says the four lunch blocks, 11:30 AM - 1:30 PM. This draft uses the
-     handbook's hours and leaves the location for the teacher to confirm.
+     Hours and location: the plan's 8:00 AM - 8:30 PM and "2nd Floor,
+     between Room 301 and 401" were last year's, and this year's hours
+     aren't set (teacher, 2026-10-11), so students get both from the
+     teacher rather than from this prompt.
      Background where the plan is thin is listed in the PR that added it. -->
 
 ## Prompt
@@ -16,8 +16,7 @@ Design a flyer that gets students into the Cavalier Shop. It will be printed in 
 Your flyer must include:
 
 - The official Cavalier Shop logo (your teacher will share it), checked to make sure it still looks good in black and white
-- The hours: open during all four lunch blocks, 11:30 AM to 1:30 PM
-- The location, as your teacher gives it
+- The store's hours and location, as your teacher gives them
 - At least three items the store sells, with their real prices (check the price tags or ask the Shift Manager)
 - A headline that makes someone stop walking
 
@@ -61,7 +60,7 @@ Posting rules: flyers can only go up in approved spots, with blue painter's tape
 A sample flyer layout, top to bottom.
 
 - Headline, huge and bold: "GAME DAY GEAR STARTS HERE"
-- Big black box with white text: "Cavalier Shop | Lunch, 11:30–1:30"
+- Big black box with white text: the store name and its hours
 - Three items in a bold list with prices, e.g., "Rally towels $8, Spirit pins $3, Beanies $15" (yours must use real prices)
 - The logo in solid black at the bottom, with the location under it in smaller text
 - A wide white border all the way around, so nothing touches the edge of the paper
