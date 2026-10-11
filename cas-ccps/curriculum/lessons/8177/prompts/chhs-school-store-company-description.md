@@ -36,9 +36,9 @@ Every business plan starts with a company description: a short paragraph that te
 
 The Cavalier Shop is a school-based enterprise: a real store run by students, inside the school, as part of their class. It can't beat Amazon on selection or Walmart on price. It doesn't have to. Customers choose it for other reasons:
 
-- It's the official home of the Cavalier brand. It sells Clover Hill gear you can't get anywhere else.
+- It's the official home of the Cavalier brand. Students design and make its products right here in the classroom, on the store's own sublimation printer, heat press and large-format printer, so its Clover Hill gear can't be bought anywhere else.
 - It's right here on event days. Need a shirt for a spirit day or a hat before a game tonight? It's down the hall, not two days away in shipping.
-- Every purchase supports students. The money goes back into student activities, and the employees are students learning to run a business.
+- Every purchase supports students. The money goes back into student activities, and the designers, makers and employees are students learning to run a business.
 - It's part of school pride. Wearing Cavalier gear says you belong to the community.
 
 That one thing a business offers that its competitors can't is its unique selling proposition (USP). A strong company description builds around the USP.
