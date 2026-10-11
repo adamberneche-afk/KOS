@@ -318,6 +318,11 @@ them into `scripts/55b_LessonAssignmentData.js`:
   grading tip.
 - **8177:** the plans have no student assignment, so a lesson is used only
   once `lessons/8177/prompts/<lesson>.md` holds a prompt the teacher approved.
+  A prompt file can also carry `## Background`, `## Key terms` and
+  `## Example`: the background a student needs, in plain classroom language.
+  They come first in the student's doc and in Canvas, under those headings,
+  with the task after them under "Your Task". A file marked `status: draft`
+  is not used.
 - **Competency numbers:** the lesson docs number competencies their own way,
   and many name a different competency in the state list. A number counts
   only when the state wording matches the doc's (or `COMPETENCY_MAP.json`

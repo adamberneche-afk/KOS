@@ -53,6 +53,22 @@ test('8177: only lessons with an approved prompt; Employee Handbook uses the app
   assert.match(a.warmupAnchor, /Starbucks in Richmond/);
 });
 
+test('8177: Background, Key Terms and Example come before the task, under plain headings', () => {
+  const t = built.assignments['8177-employee-handbook-operations'].promptText;
+  const at = (h) => t.indexOf('\n\n' + h + ':\n\n');
+  assert.ok(at('Background') > 0 && at('Background') < at('Key Terms') && at('Key Terms') < at('Example') &&
+    at('Example') < at('Your Task'), 'title, Background, Key Terms, Example, Your Task');
+  assert.match(t, /Step 1, Safety: unlock the doors/, 'the handbook students never had is in the prompt');
+  assert.match(t.slice(at('Your Task')), /Part 1: The Team/);
+  assert.equal(gen.studentPrompt('## Prompt\n\nAssignment: X\n\nDo it.\n'), 'Assignment: X\n\nDo it.',
+    'a prompt file with no support sections is used as written');
+});
+
+test('8177: a draft prompt file is not used', () => {
+  assert.ok(!built.order[8177].includes('8177-product-pitch-financial-analysis'));
+  assert.ok(!built.order[8177].includes('8177-school-store-planogram-customer-experience'));
+});
+
 test('a competency number whose state wording differs keeps the doc\'s words and no ID', () => {
   const a = built.assignments['8177-employee-handbook-operations'];
   assert.ok(!a.competencyIds.includes('8177-85'), '8177-85 is "Identify the components of a budget", not venue management');
