@@ -4,6 +4,8 @@ The KOS thinking partner as a **Claude Project**, replacing the RTP Gem as
 the place where the operator plans, decides and builds
 (`meta/PLAN_2026-10.md`). The Gem and `RTP_CORE_ROUTER_V6_0.md` are frozen.
 
+**Status:** set up 2026-10-11 with the knowledge files; `start` passed.
+
 | File | What it is |
 |---|---|
 | `PROJECT_INSTRUCTIONS.md` | Paste into the Project's Instructions, after filling in the three doc links |
