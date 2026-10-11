@@ -3,44 +3,47 @@
 <!-- Drafted from the lesson plan ("The Back Room (Distribution & Inventory
      Management)"). The plan's box simulation is physical; this written
      version supplies its own purchase order, packing slip and unboxing
-     count. Answers: hoodies 2 short; 12 t-shirts wrong color; 3 towels
-     damaged; 5 beanies backordered. Usable stock: 22 hoodies, 36 gray
-     t-shirts, 47 towels, 15 beanies. Credit due: 2 hoodies ($36) and
-     3 towels ($9) = $45; replace 12 t-shirts; ship 5 beanies.
+     count. The store makes its products in class (sublimation printer, heat
+     press), so the delivery is blanks and supplies. Answers: hoodies 2
+     short; 12 t-shirts black instead of white (can't be sublimated); 3
+     towels torn; 2 packs of transfer paper backordered. Usable stock: 22
+     hoodies, 36 white t-shirts, 47 towels, 2 packs of paper. Credit due:
+     2 hoodies ($28) and 3 towels ($4.80) = $32.80; replace 12 t-shirts;
+     ship 2 packs of paper.
      Background where the plan is thin is listed in the PR that added it. -->
 
 ## Prompt
 
 Assignment: The Receiving Report
 
-A delivery just arrived at the Cavalier Shop's back room, and you're on receiving duty. Compare what we ordered, what the supplier says it sent, and what's actually in the boxes, then write up what you find.
+We make our products right here in the classroom, so before we can print anything, the blanks and supplies have to arrive. A delivery just came in, and you're on receiving duty. Compare what we ordered, what the supplier says it sent, and what's actually in the boxes, then write up what you find.
 
-What we ordered (Purchase Order #CS-1042 to Spirit Threads Custom Printing):
+What we ordered (Purchase Order #CS-1042 to Blank Canvas Wholesale):
 
-- Navy hoodies: 24 at $18 each
-- Gray t-shirts: 48 at $6 each
-- Rally towels: 50 at $3 each
-- Beanies: 20 at $7 each
+- White polyester hoodies: 24 at $14 each
+- White polyester t-shirts: 48 at $4 each
+- Blank polyester rally towels: 50 at $1.60 each
+- Sublimation transfer paper: 4 packs (100 sheets each) at $15 a pack
 
 What the supplier says it sent (packing slip taped to the box):
 
-- Navy hoodies: 24
-- Gray t-shirts: 48
-- Rally towels: 50
-- Beanies: 15 shipped, 5 backordered
+- White polyester hoodies: 24
+- White polyester t-shirts: 48
+- Blank polyester rally towels: 50
+- Sublimation transfer paper: 2 packs shipped, 2 backordered
 
 What you found when you opened the boxes and counted:
 
-- Navy hoodies: 22
-- T-shirts: 48, but 12 are white instead of gray
+- Hoodies: 22
+- T-shirts: 48, but 12 are black instead of white
 - Rally towels: 50, but 3 are torn
-- Beanies: 15
+- Transfer paper: 2 packs
 
 Part 1: The Discrepancy Log. For each item, compare the purchase order, the packing slip and your count. List every problem: what's missing, what's wrong, what's damaged, and what's backordered.
 
-Part 2: The Inventory Update. Make a table (in this doc or in Google Sheets) showing, for each item, how many usable items we actually received and can put on the shelves.
+Part 2: The Inventory Update. Make a table (in this doc or in Google Sheets) showing, for each item, how many usable items we actually received and can print on. Explain why any item you didn't count can't be used.
 
-Part 3: The Supplier Email. Write a professional email to Spirit Threads that lists each problem and asks for what we need: a credit for missing or damaged items, replacements for wrong items, and a ship date for the backorder. Include the purchase order number and the dollar amount of any credit.
+Part 3: The Supplier Email. Write a professional email to Blank Canvas Wholesale that lists each problem and asks for what we need: a credit for missing or damaged items, replacements for wrong items, and a ship date for the backorder. Include the purchase order number and the dollar amount of any credit.
 
 Use these terms accurately: supply chain, channel of distribution, purchase order, packing slip, receiving, shrink, inventory control.
 
@@ -51,11 +54,14 @@ Imagine it's the third quarter of the homecoming game and the concession stand r
 How a product gets to the fan (the channel of distribution):
 
 - Manufacturer: a factory makes the blank hoodie.
-- Wholesaler or custom printer: buys blanks in bulk and prints the Cavalier logo.
-- Retailer: the Cavalier Shop buys the finished hoodies and sells them.
+- Wholesaler: buys blanks from factories in bulk and sells them to businesses like ours.
+- Our class: prints the Cavalier design on the blank with the sublimation printer and heat press.
+- Retailer: the Cavalier Shop sells the finished hoodie.
 - Consumer: the fan who buys one.
 
-A direct channel skips the middle steps (a band selling its own merch online). An indirect channel goes through one or more businesses in between.
+Because we make and sell our own products, our channel is shorter than most stores'. A direct channel skips the middle steps (a band selling its own merch online). An indirect channel goes through one or more businesses in between.
+
+Know your blanks. Sublimation only works on white or light-colored polyester: the heat turns the ink into a gas that bonds with polyester fibers. On a black shirt or on cotton, the design won't show up or won't last. A blank in the wrong color or fabric is as unusable as a missing one.
 
 Technology that tracks inventory:
 
@@ -64,7 +70,7 @@ Technology that tracks inventory:
 - RFID tags: small chips that let big stadiums count thousands of jerseys in seconds without scanning each one.
 - Point of sale (POS) system: every sale lowers the count in the system automatically, so managers can see what's running low and reorder in time.
 
-Receiving is checking a delivery before it goes on the shelves. Two documents matter:
+Receiving is checking a delivery before anything is used or sold. Two documents matter:
 
 - The purchase order (PO): what we asked for. We write it.
 - The packing slip: what the supplier says it shipped. It comes with the box.
@@ -90,9 +96,9 @@ Why it matters: shrink is merchandise that disappears through theft, damage or m
 
 A short sample for a different delivery.
 
-- PO: 30 water bottles. Packing slip: 30. Count: 27. Problem: 3 short. The supplier says it sent 30, but only 27 arrived.
-- Inventory update: water bottles, 27 usable.
-- Email line: "Our purchase order #CS-0988 was for 30 water bottles at $4 each, and the packing slip lists 30, but our count found 27. Please issue a credit of $12 for the 3 missing bottles or ship them by Friday."
+- PO: 30 blank sublimation tumblers. Packing slip: 30. Count: 27. Problem: 3 short. The supplier says it sent 30, but only 27 arrived.
+- Inventory update: blank tumblers, 27 usable.
+- Email line: "Our purchase order #CS-0988 was for 30 blank tumblers at $4 each, and the packing slip lists 30, but our count found 27. Please issue a credit of $12 for the 3 missing tumblers or ship them by Friday."
 
 ## Warm-up
 
