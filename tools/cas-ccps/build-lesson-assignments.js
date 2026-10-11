@@ -189,6 +189,25 @@ const uniq = (comps) => comps.filter((r, i) => comps.findIndex((x) =>
 
 const slug = (s) => String(s).toLowerCase().replace(/&/g, ' ').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
+// The student-facing support an 8177 prompt file can carry ahead of the task,
+// in plain classroom language: what the student needs to know to do it.
+const SUPPORT = [['Background', /^## Background/], ['Key Terms', /^## Key terms/i], ['Example', /^## Example/]];
+
+/**
+ * The prompt a student sees: the assignment title, then Background, Key
+ * Terms and Example when the file has them, then the task under "Your Task:".
+ * Each heading stands alone so Canvas shows it as a heading.
+ */
+function studentPrompt(p) {
+  const task = section(p, /^## Prompt/).trim();
+  const parts = SUPPORT.map(([h, re]) => [h, section(p, re).trim()]).filter(([, body]) => body);
+  if (!parts.length) return task;
+  const paras = task.split(/\n{2,}/);
+  const title = /^Assignment:/.test(paras[0]) ? paras.shift() : '';
+  return [title, ...parts.map(([h, body]) => h + ':\n\n' + body), 'Your Task:\n\n' + paras.join('\n\n')]
+    .filter(Boolean).join('\n\n');
+}
+
 function lesson8177(file, rubrics) {
   const text = fs.readFileSync(path.join(LESSONS, '8177', file), 'utf8');
   const s = file.replace(/\.md$/, '');
@@ -207,7 +226,7 @@ function lesson8177(file, rubrics) {
   if (!comps.length) throw new Error('8177 ' + file + ': no competencies');
   comps.splice(0, comps.length, ...uniq(comps));
   const objectives = plain(section(text, /Learning Objectives/i));
-  const prompt = section(p, /^## Prompt/).trim();
+  const prompt = studentPrompt(p);
   const warm = section(p, /^## Warm-up/).trim();
   const vocab = section(p, /^## Vocabulary/).trim();
   const a = {
@@ -297,4 +316,4 @@ function main() {
 }
 
 if (require.main === module) main();
-module.exports = { build, dataFile, slug };
+module.exports = { build, dataFile, slug, studentPrompt };
