@@ -376,3 +376,20 @@ test('submitExternalData: content whose row was archived is still a duplicate', 
 
   assert.equal(exported.submitExternalData(text, 'Article').duplicate, true);
 });
+
+test('sensor1_scanInboundSessions: a hardening-audit hit is logged, and the log is still ingested', () => {
+  const logged = [];
+  const capture = { ...console, log: (...a) => logged.push(a.join(' ')) };
+  const { exported, sandbox } = loadGasFiles(FILES, EXPOSE, { console: capture });
+  const { ss, inbound } = setUpSensor1(sandbox);
+  sandbox.__exported.CFG.SENSOR1_PACING_MS = 0;
+  addInboundDoc(sandbox, inbound, 'flagged-log',
+    'session notes: we set threshold = 0.75 for the matrix today ' + ' '.repeat(10));
+
+  exported.sensor1_scanInboundSessions();
+
+  assert.ok(logged.some(l => l.includes('[Sensor1] Hardening audit flagged flagged-log') &&
+    l.includes('Hardcoded threshold value')), 'the audit hit must be logged');
+  assert.ok(stagingRows(ss).length > 0, 'the audit stays non-fatal: the log is still queued');
+  assert.equal(inbound.files.length, 0);
+});
