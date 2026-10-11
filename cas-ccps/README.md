@@ -322,7 +322,7 @@ them into `scripts/55b_LessonAssignmentData.js`:
   `## Example`: the background a student needs, in plain classroom language.
   They come first in the student's doc and in Canvas, under those headings,
   with the task after them under "Your Task". A file marked `status: draft`
-  is not used.
+  is not used; the teacher reviews drafts in batches, in pacing-guide order.
 - **Competency numbers:** the lesson docs number competencies their own way,
   and many name a different competency in the state list. A number counts
   only when the state wording matches the doc's (or `COMPETENCY_MAP.json`
