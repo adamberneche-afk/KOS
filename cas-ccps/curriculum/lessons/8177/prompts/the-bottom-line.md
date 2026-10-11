@@ -24,7 +24,7 @@ The vendor price list:
 - Event insurance: $200
 - Trophies: $150
 - Marketing (flyers and social media ads): $150
-- Player t-shirts: $8 each (16 teams of 6 players)
+- Player t-shirts, made in our classroom: $8 each for the blank, ink and transfer paper (16 teams of 6 players)
 - Concession items: cost $1.25 each to stock; you choose the selling price
 
 What to expect:
