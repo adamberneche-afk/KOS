@@ -1,0 +1,75 @@
+<!-- lesson: promotional-flyer-design -->
+<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- Drafted from the lesson plan ("Venue Promotion & Flyer Design").
+     HOURS AND LOCATION NEED THE TEACHER'S CALL: the plan says 8:00 AM -
+     8:30 PM, "2nd Floor, between Room 301 and 401"; the Employee Handbook
+     says the four lunch blocks, 11:30 AM - 1:30 PM. This draft uses the
+     handbook's hours and leaves the location for the teacher to confirm.
+     Background where the plan is thin is listed in the PR that added it. -->
+
+## Prompt
+
+Assignment: The Cavalier Shop Flyer
+
+Design a flyer that gets students into the Cavalier Shop. It will be printed in black and white on the school copier and hung in a busy hallway, so it has to grab attention fast with no color at all.
+
+Your flyer must include:
+
+- The official Cavalier Shop logo (your teacher will share it), checked to make sure it still looks good in black and white
+- The hours: open during all four lunch blocks, 11:30 AM to 1:30 PM
+- The location, as your teacher gives it
+- At least three items the store sells, with their real prices (check the price tags or ask the Shift Manager)
+- A headline that makes someone stop walking
+
+Part 1: Design It. Build your flyer in Canva, Adobe Express or Google Slides. Download it as a PDF and add it (or its link) to this document.
+
+Part 2: Explain It. In a short paragraph, explain your design choices: what you made biggest and why, how you used contrast, and where you left empty space on purpose.
+
+Part 3: The 10-Foot Test. Print it, or view it at a small size on your screen, and step back. What can you read from far away? What did you change after testing it?
+
+Use these terms accurately: contrast, visual hierarchy, negative space, headline, copy, grayscale.
+
+## Background
+
+Most small businesses, and every school store, have a tight marketing budget. Full-color glossy posters cost money. Black-and-white copies are nearly free. A good designer can make black and white look bold on purpose.
+
+What makes a black-and-white flyer work:
+
+- Contrast: solid black next to bright white is the strongest contrast there is. Avoid light grays and thin text. They turn muddy or disappear on a copier.
+- Visual hierarchy: decide what matters most and make it biggest. Someone walking by sees one thing first (usually the headline), then the next (what's on sale), then the details (hours and location).
+- Negative space: the empty space around words and images. Crowding everything together makes a flyer hard to read. Space makes the important parts stand out.
+- Fonts: use one or two bold, simple fonts. Fancy script fonts are hard to read from a distance.
+- Copy: the words on the flyer. Keep it short. People walking past read for about three seconds.
+
+The 10-foot rule: the headline should be readable from about 10 feet away, across the hallway. The details (hours, prices) only need to be readable up close, at about 2 feet.
+
+Check your logo in grayscale. A logo that looks great in color can turn into a gray blob in black and white. Most design tools let you preview in grayscale before you print.
+
+Posting rules: flyers can only go up in approved spots, with blue painter's tape, after the Student Activities Director or administration approves them.
+
+## Key terms
+
+- Contrast: the difference between light and dark that makes things stand out.
+- Visual hierarchy: arranging a design so the most important information is seen first.
+- Negative space: the empty space around text and images.
+- Headline: the large, attention-grabbing words at the top of an ad.
+- Copy: the written text in an ad.
+- Grayscale: an image made only of black, white and shades of gray.
+
+## Example
+
+A sample flyer layout, top to bottom.
+
+- Headline, huge and bold: "GAME DAY GEAR STARTS HERE"
+- Big black box with white text: "Cavalier Shop | Lunch, 11:30–1:30"
+- Three items in a bold list with prices, e.g., "Rally towels $8, Spirit pins $3, Beanies $15" (yours must use real prices)
+- The logo in solid black at the bottom, with the location under it in smaller text
+- A wide white border all the way around, so nothing touches the edge of the paper
+
+## Warm-up
+
+Think about the last flyer or poster you actually stopped to read. What made you stop?
+
+## Vocabulary
+
+contrast, visual hierarchy, negative space, headline, copy, grayscale
