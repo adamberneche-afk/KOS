@@ -17,7 +17,7 @@ Your flyer must include:
 
 - The official Cavalier Shop logo (your teacher will share it), checked to make sure it still looks good in black and white
 - The store's hours and location, as your teacher gives them
-- At least three items the store sells, with their real prices (check the price tags or ask the Shift Manager)
+- At least three items our class makes and the store sells, with their real prices (ask your teacher or the Shift Manager)
 - A headline that makes someone stop walking
 
 Part 1: Design It. Build your flyer in Canva, Adobe Express or Google Slides. Download it as a PDF and add it (or its link) to this document.
@@ -61,7 +61,7 @@ A sample flyer layout, top to bottom.
 
 - Headline, huge and bold: "GAME DAY GEAR STARTS HERE"
 - Big black box with white text: the store name and its hours
-- Three items in a bold list with prices, e.g., "Rally towels $8, Spirit pins $3, Beanies $15" (yours must use real prices)
+- Three items in a bold list with prices, e.g., "Custom Cavalier tees $15, Rally towels $8, Logo stickers $2" (yours must use real prices)
 - The logo in solid black at the bottom, with the location under it in smaller text
 - A wide white border all the way around, so nothing touches the edge of the paper
 
