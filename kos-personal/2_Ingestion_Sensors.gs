@@ -155,8 +155,11 @@ function sensor1_scanInboundSessions() {
           continue;
         }
 
-        // Optional hardening audit — non-fatal if function absent
-        try { runHardeningAudit(rawText); } catch (_) {}
+        // Hardening audit: non-fatal (a session log can quote a weight or
+        // threshold), but a hit is logged rather than silently discarded.
+        try { runHardeningAudit(rawText); } catch (e) {
+          console.log('[Sensor1] Hardening audit flagged ' + file.getName() + ': ' + e.message);
+        }
 
         // Archive full raw log as a single reference doc
         _archiveRawLog_(rawFolder, '[RAW]_' + logUUID, rawText);
