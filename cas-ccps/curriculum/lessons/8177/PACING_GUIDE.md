@@ -170,6 +170,9 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
   - Evaluating GDP, inflation, interest rates, and stadium funding.
   - *Lesson:* **The Stadium Economy (Macroeconomics & Venue Funding)**
   - *Competencies:* 29, 45, 49, 50, 66.
+  - Weighing the pros and cons of data centers, with and without AI, and the small businesses around them.
+  - *Lesson:* **The Cloud Behind the Game (Data Centers, AI & the Community)**
+  - *Competencies:* 15, 44, 48, 55, 57, 64, 65.
 
 <!-- end list -->
 
