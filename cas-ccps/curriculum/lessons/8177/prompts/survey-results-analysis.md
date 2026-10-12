@@ -1,5 +1,5 @@
 <!-- lesson: survey-results-analysis -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("Survey Results Analysis & Management
      Decisions"). Students use the class's real survey results, which the
      teacher shares; the Example uses invented numbers. Background where the

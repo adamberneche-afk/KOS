@@ -1,5 +1,5 @@
 <!-- lesson: the-global-expansion -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Global Expansion (International
      Sports & Marketing)"). Students use today's real exchange rates, per
      the plan; the rates in the Example are the plan's own sample rates,

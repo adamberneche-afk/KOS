@@ -65,8 +65,19 @@ test('8177: Background, Key Terms and Example come before the task, under plain 
 });
 
 test('8177: a draft prompt file is not used', () => {
-  assert.ok(!built.order[8177].includes('8177-product-pitch-financial-analysis'));
-  assert.ok(!built.order[8177].includes('8177-school-store-planogram-customer-experience'));
+  assert.equal(built.order[8177].length, 29, 'every 8177 prompt is approved');
+  const file = path.join(ROOT, 'cas-ccps/curriculum/lessons/8177/prompts/product-pitch-financial-analysis.md');
+  const read = fs.readFileSync;
+  fs.readFileSync = function (f, ...rest) {
+    const s = read.call(fs, f, ...rest);
+    return path.resolve(String(f)) === file ? String(s).replace(/status:\s*approved/, 'status: draft') : s;
+  };
+  try {
+    assert.ok(!gen.build().order[8177].includes('8177-product-pitch-financial-analysis'));
+  } finally {
+    fs.readFileSync = read;
+    gen.build();
+  }
 });
 
 test('a competency number whose state wording differs keeps the doc\'s words and no ID', () => {
