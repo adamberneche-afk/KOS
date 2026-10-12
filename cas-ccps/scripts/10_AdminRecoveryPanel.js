@@ -14,8 +14,8 @@ function onOpen() {
     .addItem("🗑️ Clear Entire Staging Pipeline",       "clearStagingPipeline")
     .addSeparator()
     .addItem("📅 Set Current Term",                   "setCurrentTerm")
-    .addItem("📦 Archive Completed Term",             "archiveCompletedTerm")
-    .addItem("♻️ Reactivate an Archived Term",         "reactivateArchivedTerm")
+    .addItem("📦 Archive a Completed School Year",    "archiveCompletedTerm")
+    .addItem("♻️ Reactivate an Archived School Year",  "reactivateArchivedTerm")
     .addItem("📈 View Term Summary",                  "viewTermSummary")
     .addSeparator()
     .addItem("📧 Re-Send Student Document Link",      "resendStudentDocLink")
@@ -856,7 +856,10 @@ function resendStudentDocLink() {
 
 // ---------------------------------------------------------------------------
 // setCurrentTerm — updates the CURRENT_TERM Script Property used by
-// Scripts 02, 07, and 13 to tag and filter student records by term
+// Scripts 02 and 52 to tag new Ledger rows, and by the dashboards' term
+// dropdowns. The format is the school year plus the marking period,
+// "2627_MP1" (MP 1-4; decided 2026-10-12). Changing it at a new marking
+// period hides no one: the dashboards show the whole school year by default.
 // ---------------------------------------------------------------------------
 function setCurrentTerm() {
   const ui  = SpreadsheetApp.getUi();
@@ -864,92 +867,135 @@ function setCurrentTerm() {
 
   const res = ui.prompt(
     "Set Current Term",
-    "Enter the term identifier for new student registrations.\n\n" +
+    "Enter the school year and marking period, like 2627_MP1\n" +
+    "(2627 is the 2026-27 school year; MP is 1 to 4).\n\n" +
     "Current term: " + cur + "\n\n" +
-    "Format examples:  2025-26 S1  |  2025-26 S2  |  Fall 2025  |  Spring 2026\n\n" +
-    "All students registered AFTER this change will be tagged with the new term.\n" +
-    "Existing registrations are not affected.",
+    "Students registered or imported after this change are tagged with the new term.\n" +
+    "Existing rows keep theirs, and the dashboards still show the whole school year.",
     ui.ButtonSet.OK_CANCEL
   );
   if (res.getSelectedButton() !== ui.Button.OK) return;
 
-  const newTerm = res.getResponseText().trim();
-  if (!newTerm) { ui.alert("Term cannot be blank."); return; }
+  const newTerm = res.getResponseText().trim().toUpperCase();
+  const check = _validateTermInput_(newTerm);
+  if (check) { ui.alert(check); return; }
 
   PropertiesService.getScriptProperties().setProperty("CURRENT_TERM", newTerm);
   ui.alert(
     "✅ Current Term Updated",
     "New term: " + newTerm + "\n\n" +
-    "All new student registrations will be tagged with this term.\n" +
-    "Teacher and student dashboards will default to showing this term.",
+    "New student registrations will be tagged with this term.\n" +
+    "The dashboards keep showing the whole school year; pick a term in their dropdown to narrow it.",
     ui.ButtonSet.OK
   );
 }
 
+// "" when term is a valid "2627_MP1"-style term, else the reason it isn't.
+function _validateTermInput_(term) {
+  if (!term) return "Term cannot be blank.";
+  if (!MP_TERM_RE_.test(term) || !_schoolYearOfTerm_(term)) {
+    return "\"" + term + "\" isn't a term. Use the school year and marking period, like 2627_MP1 " +
+      "(two consecutive years, then _MP and 1 to 4).";
+  }
+  return "";
+}
+
+// A school year typed for archive or reactivate: "2627" or "2026-27".
+// Returns { year: "2026-27" } or { error }. A marking period is refused:
+// courses run all year, so archiving one would hide students mid-year.
+function _parseSchoolYearInput_(text) {
+  const t = String(text || "").trim().toUpperCase();
+  if (!t) return { error: "School year cannot be blank." };
+  if (MP_TERM_RE_.test(t)) {
+    return { error: "\"" + t + "\" is one marking period. Courses run all year, so archive the whole " +
+      "school year at its end instead: enter " + t.slice(0, 4) + "." };
+  }
+  if (/^\d{4}$/.test(t)) {
+    const year = _schoolYearOfTerm_(t + "_MP1");
+    return year ? { year: year } : { error: "\"" + t + "\" isn't a school year (two consecutive years, like 2627)." };
+  }
+  if (SCHOOL_YEAR_RE_.test(t)) return { year: t };
+  return { error: "\"" + t + "\" isn't a school year. Enter it like 2627 (or 2026-27)." };
+}
+
+// Archives one school year's COMPLIANT, ACTIVE and COMPLETE Ledger rows (a
+// row's year is its term's, else its timestamp's; see 00). Returns counts.
+function _archiveSchoolYearRows_(sheet, year) {
+  const data = sheet.getDataRange().getValues();
+  let archived = 0, skipped = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (_rowSchoolYear_(data[i]) !== year) continue;
+    const rowStatus = String(data[i][LEDGER.STATUS]).trim();
+    // Archive COMPLIANT and ACTIVE rows — leave ERROR rows for admin review
+    if (rowStatus === "COMPLIANT" || rowStatus === "ACTIVE" || rowStatus === "COMPLETE") {
+      sheet.getRange(i + 1, LEDGER.STATUS + 1).setValue("ARCHIVED");
+      archived++;
+    } else if (rowStatus !== "ARCHIVED") {
+      skipped++;
+    }
+  }
+  return { archived: archived, skipped: skipped };
+}
+
+// Sets one school year's ARCHIVED Ledger rows back to ACTIVE.
+function _reactivateSchoolYearRows_(sheet, year) {
+  const data = sheet.getDataRange().getValues();
+  let reactivated = 0;
+  for (let i = 1; i < data.length; i++) {
+    if (_rowSchoolYear_(data[i]) !== year) continue;
+    if (String(data[i][LEDGER.STATUS]).trim() !== "ARCHIVED") continue;
+    sheet.getRange(i + 1, LEDGER.STATUS + 1).setValue("ACTIVE");
+    reactivated++;
+  }
+  return reactivated;
+}
+
 // ---------------------------------------------------------------------------
-// archiveCompletedTerm — marks all COMPLIANT and stale ACTIVE rows
-// from a selected term as ARCHIVED so dashboards filter them out
+// archiveCompletedTerm — at the end of a school year, marks its COMPLIANT,
+// ACTIVE and COMPLETE rows ARCHIVED so dashboards filter them out. It takes
+// a school year ("2627"), never a marking period: a term is one marking
+// period of a year-long course (since 2026-10-12), and archiving one would
+// hide students' work mid-year. The menu name is kept so existing menus work.
 // ---------------------------------------------------------------------------
 function archiveCompletedTerm() {
   const ui  = SpreadsheetApp.getUi();
   const cfg = getConfig_();
 
   const termRes = ui.prompt(
-    "Archive a Completed Term",
-    "Enter the term to archive (e.g. 2025-26 S1).\n\n" +
-    "What gets archived:\n" +
-    "  • All COMPLIANT submissions from that term\n" +
-    "  • All ACTIVE (unfinished) rows from that term\n\n" +
+    "Archive a Completed School Year",
+    "Enter the school year to archive, like 2627 (for 2026-27).\n" +
+    "Do this once the year is over; a single marking period can't be archived.\n\n" +
+    "What gets archived from that year:\n" +
+    "  • All COMPLIANT and COMPLETE submissions\n" +
+    "  • All ACTIVE (unfinished) rows\n\n" +
     "Archived rows stay in the Ledger for records but are hidden from dashboards.\n\n" +
-    "To undo this later, use ♻️ Reactivate an Archived Term in this same menu.",
+    "To undo this later, use ♻️ Reactivate an Archived School Year in this same menu.",
     ui.ButtonSet.OK_CANCEL
   );
   if (termRes.getSelectedButton() !== ui.Button.OK) return;
 
-  const termToArchive = termRes.getResponseText().trim();
-  if (!termToArchive) { ui.alert("Term cannot be blank."); return; }
+  const parsed = _parseSchoolYearInput_(termRes.getResponseText());
+  if (parsed.error) { ui.alert(parsed.error); return; }
+  const year = parsed.year;
 
   const confirm = ui.alert(
-    // FIX (found while verifying reconciliation decision 10): the literal
-    // quote characters meant to wrap termToArchive in the displayed message
-    // (e.g. Archive "2024-2025"?) were unescaped, breaking the string
-    // literal boundary — same class of bug as the newline fixes above.
-    "Archive \"" + termToArchive + "\"?",
-    "This will mark all student records from \"" + termToArchive + "\" as ARCHIVED.\n\n" +
+    "Archive " + year + "?",
+    "This will mark all student records from the " + year + " school year as ARCHIVED.\n\n" +
     "They will no longer appear in teacher or student dashboards.\n\n" +
     "Are you sure?",
     ui.ButtonSet.YES_NO
   );
   if (confirm !== ui.Button.YES) return;
 
-  const ledgerSs  = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet     = ledgerSs.getSheetByName(cfg.tabs.ledger);
-  const data      = sheet.getDataRange().getValues();
-  let   archived  = 0;
-  let   skipped   = 0;
-
-  for (let i = 1; i < data.length; i++) {
-    const rowTerm  = String(data[i][18] || "").trim();
-    const rowStatus = String(data[i][12]).trim();
-
-    if (rowTerm !== termToArchive) continue;
-
-    // Archive COMPLIANT and ACTIVE rows — leave ERROR rows for admin review
-    if (rowStatus === "COMPLIANT" || rowStatus === "ACTIVE" || rowStatus === "COMPLETE") {
-      sheet.getRange(i + 1, 13).setValue("ARCHIVED");
-      archived++;
-    } else {
-      skipped++;
-    }
-  }
-
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+  const r = _archiveSchoolYearRows_(sheet, year);
   SpreadsheetApp.flush();
 
   ui.alert(
     "✅ Archive Complete",
-    "Term archived: " + termToArchive + "\n\n" +
-    "Rows archived: " + archived + "\n" +
-    (skipped > 0 ? "Rows skipped (errors/other): " + skipped + "\n" : "") +
+    "School year archived: " + year + "\n\n" +
+    "Rows archived: " + r.archived + "\n" +
+    (r.skipped > 0 ? "Rows skipped (errors/other): " + r.skipped + "\n" : "") +
     "\nThese records are still in the Ledger for your records.\n" +
     "They will no longer appear in dashboards.",
     ui.ButtonSet.OK
@@ -964,7 +1010,7 @@ function archiveCompletedTerm() {
 // cannot be undone automatically — contact your admin to restore"). This
 // IS that restore path.
 //
-// Sets a matching term's ARCHIVED rows back to ACTIVE — a deliberate
+// Sets a school year's ARCHIVED rows back to ACTIVE — a deliberate
 // simplification, not a bug: archiveCompletedTerm() overwrites whichever
 // of COMPLIANT/ACTIVE/COMPLETE a row had with a single ARCHIVED value, so
 // that original distinction isn't recoverable through the round trip.
@@ -976,9 +1022,9 @@ function reactivateArchivedTerm() {
   const cfg = getConfig_();
 
   const termRes = ui.prompt(
-    "Reactivate an Archived Term",
-    "Enter the term to reactivate (e.g. 2025-26 S1).\n\n" +
-    "This sets every ARCHIVED row from that term back to ACTIVE so it " +
+    "Reactivate an Archived School Year",
+    "Enter the school year to reactivate, like 2627 (for 2026-27).\n\n" +
+    "This sets every ARCHIVED row from that year back to ACTIVE so it " +
     "appears on dashboards again.\n\n" +
     "Note: the original distinction between COMPLIANT/ACTIVE/COMPLETE is " +
     "not restored — every reactivated row becomes ACTIVE.",
@@ -986,37 +1032,27 @@ function reactivateArchivedTerm() {
   );
   if (termRes.getSelectedButton() !== ui.Button.OK) return;
 
-  const term = termRes.getResponseText().trim();
-  if (!term) { ui.alert("Term cannot be blank."); return; }
+  const parsed = _parseSchoolYearInput_(termRes.getResponseText());
+  if (parsed.error) { ui.alert(parsed.error); return; }
+  const year = parsed.year;
 
   const confirm = ui.alert(
-    "Reactivate \"" + term + "\"?",
-    "This will set all ARCHIVED student records from \"" + term + "\" to ACTIVE.\n\n" +
+    "Reactivate " + year + "?",
+    "This will set all ARCHIVED student records from the " + year + " school year to ACTIVE.\n\n" +
     "Are you sure?",
     ui.ButtonSet.YES_NO
   );
   if (confirm !== ui.Button.YES) return;
 
-  const ledgerSs = SpreadsheetApp.openById(cfg.ledgerSsId);
-  const sheet    = ledgerSs.getSheetByName(cfg.tabs.ledger);
-  const data     = sheet.getDataRange().getValues();
-  let reactivated = 0;
-
-  for (let i = 1; i < data.length; i++) {
-    const rowTerm   = String(data[i][LEDGER.ACADEMIC_YEAR] || "").trim();
-    const rowStatus = String(data[i][LEDGER.STATUS]).trim();
-    if (rowTerm !== term || rowStatus !== "ARCHIVED") continue;
-    sheet.getRange(i + 1, LEDGER.STATUS + 1).setValue("ACTIVE");
-    reactivated++;
-  }
-
+  const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.ledger);
+  const reactivated = _reactivateSchoolYearRows_(sheet, year);
   if (reactivated > 0) SpreadsheetApp.flush();
 
   ui.alert(
     "✅ Reactivate Complete",
     reactivated > 0
-      ? "Term reactivated: " + term + "\n\nRows reactivated: " + reactivated
-      : "No ARCHIVED rows found for term: " + term,
+      ? "School year reactivated: " + year + "\n\nRows reactivated: " + reactivated
+      : "No ARCHIVED rows found for " + year,
     ui.ButtonSet.OK
   );
 }
