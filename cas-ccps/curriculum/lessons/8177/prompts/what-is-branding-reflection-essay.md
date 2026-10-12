@@ -1,5 +1,5 @@
 <!-- lesson: what-is-branding-reflection-essay -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("'What is Branding?' Synthesis Essay").
      The pacing guide puts this at the end of Q1, so the examples point to
      the Q1 projects. Background where the plan is thin is listed in the PR
