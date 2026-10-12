@@ -15,13 +15,14 @@
 >   `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS`, every rostered student enrolled
 >   (71 in 8175, 21 in 8177). The curricula are complete: every state task is
 >   covered in both courses, and every lesson doc in Drive matches the repo.
-> - **Done after the push:** `AI_FLOWS_LIVE` = `true` in the **Student
->   Dashboard** project (2026-10-12).
-> - **Not yet reported done after the push:** `syncFlowPromptsToSheet()`;
->   `seedLessonSchedule()` and start dates for the new 8177 lessons; the
->   Canvas cartridge imports (`8175.imscc`, 36 modules; `8177.imscc`, 31;
->   in progress 2026-10-12); the first end-to-end Flow 2 test. The order is
->   in `meta/HANDOFF_2026-10-12.md`.
+> - **Done after the push (2026-10-12):** `syncFlowPromptsToSheet()`;
+>   `seedLessonSchedule()` and the first new start dates (2026-10-14, as
+>   `YYYY-MM-DD`); `AI_FLOWS_LIVE` = `true` in the **Student Dashboard**
+>   project.
+> - **Not yet reported done:** the Canvas cartridge imports
+>   (`8175.imscc`, 36 modules; `8177.imscc`, 31; in progress 2026-10-12);
+>   the first end-to-end Flow 2 test. The order is in
+>   `meta/HANDOFF_2026-10-12.md`.
 > - **Live 2026-10-12: the Family Mail Sentinel**
 >   (`cas-ccps:family-sentinel`, scripts 60-62). A ninth project, on a
 >   private sheet: it labels student and parent mail, has a Gemini flow
