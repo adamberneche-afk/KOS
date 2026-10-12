@@ -19,13 +19,13 @@ Every streamed game, mobile ticket, fantasy app and esports tournament runs thro
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 15:** Demonstrate information-literacy skills (Checking where a statistic comes from before repeating it).
+  - **Competency 15:** Demonstrate information-literacy skills (Fact-checking each claim in a news story against its source, and checking where a statistic comes from before repeating it).
   - **Competency 44:** Document the different roles in sports, entertainment, and event management using an organizational chart (Building an org chart for a sports or event startup at launch and as it grows).
   - **Competency 48:** Analyze the effect of niche or emerging events in the sports, entertainment, and event industries (How esports and streaming-only events depend on data centers).
   - **Competency 55:** Describe the entrepreneurial mindset (Spotting a problem the data center creates, or a need it opens up, as a business opportunity).
   - **Competency 57:** Describe how small businesses drive job creation, income generation, and economic growth (Comparing a data center's few permanent jobs with the local small businesses and jobs that grow around it).
   - **Competency 64:** Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries (Weighing electricity, water, noise and land use, with and without AI).
-  - **Competency 65:** Examine the effect of media bias on public perception and opinion (Comparing two news stories written from the same facts).
+  - **Competency 65:** Examine the effect of media bias on public perception and opinion (Showing that two accurate stories built from the same facts can leave opposite impressions through selection, framing, headlines and quotes).
 
 ## **3. Learning Objectives**
 
@@ -33,7 +33,7 @@ By the end of this lesson, students will be able to:
 
 1.  Explain how streaming, ticketing, analytics and esports depend on data centers, and which of those uses rely on AI.
 2.  Evaluate the economic, social and environmental pros and cons of a data center, and how AI changes them.
-3.  Identify loaded language, missing facts and one-sided sources in news coverage, and rewrite a biased headline neutrally.
+3.  Fact-check news coverage against a source, and explain how accurate stories can still be biased through selection, framing, headlines and quotes.
 4.  Describe the entrepreneurial mindset and use it to design a small business connected to sports, entertainment or events.
 5.  Build an organizational chart for that business and explain how small businesses create jobs.
 
@@ -57,9 +57,12 @@ By the end of this lesson, students will be able to:
   - **The AI Factor:** AI data centers pack in more powerful chips that use more electricity and give off more heat. In 2025, the International Energy Agency projected that data centers' electricity use worldwide could roughly double by 2030, with AI the biggest driver.
   - **The Jobs Question (Comp 57):** Once built, a data center employs relatively few permanent workers. Compare that with the small businesses that grow around it: electricians, HVAC and security contractors, restaurants and suppliers. Small businesses create most new jobs in the U.S.
 
-### **D. Read the Headlines (15 Minutes)**
+### **D. Fact-Check the News (20 Minutes)**
 
-  - **Media Bias (Comp 65):** Display the two news excerpts from the student prompt. They are written from the same fact sheet. Have students circle loaded words, list facts each story leaves out, and note whom each story quotes. Then rewrite one headline neutrally as a class.
+  - **Media Bias (Comp 65 & 15):** Display the two news stories from the student prompt. Every number in both stories comes from the fact sheet, so both are accurate, yet one reads like an ad and the other like a warning.
+  - **The Fact-Check:** Students trace each claim in both stories back to the fact sheet and mark it true, true but missing context, or not on the fact sheet. Let them discover that everything checks out.
+  - **The Discussion:** *"If both stories are true, why do they make you feel so differently?"* Pull out the techniques: which facts each story selects or leaves out, framing the same number two ways ("$25 million a year" vs. "about 2.5% of the budget"), comparisons ("more than every home in the county"), headlines, loaded words ("boost," "massive"), and quotes that are opinions rather than facts.
+  - **The Rewrite:** Students write a balanced headline and three-sentence story using facts from both sides.
 
 ### **E. The Startup Lab (30 Minutes)**
 
@@ -73,7 +76,7 @@ Students submit the student prompt's five parts:
 
 1.  **Follow the Game:** How one sports or entertainment experience depends on data centers, and a sort of uses into "needs AI" and "doesn't need AI."
 2.  **The Pros & Cons:** A T-chart from the fact sheet, plus how the picture changes for an AI data center.
-3.  **Read the Headlines:** The bias analysis and a neutral headline.
+3.  **Fact-Check the News:** A claim-by-claim fact-check of both stories, how two accurate stories create opposite impressions, and a balanced headline and story.
 4.  **The Startup:** A small-business idea tied to sports, entertainment or events, the mindset behind it, an org chart at launch and in year three, and the jobs it creates.
 5.  **The Recommendation:** Support, oppose or support with conditions, backed by evidence.
 
