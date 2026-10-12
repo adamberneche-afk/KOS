@@ -10,7 +10,7 @@
 
 **Framework:** VDOE Sports, Entertainment, and Event Management (12163-II), 2025 revision: 108 tasks.
 
-**Status:** 98 tasks are cited by the 30 lesson plans, 6 are addressed outside them (DECA and work-based learning), and 4 are not yet covered.
+**Status:** All 108 tasks are covered: 102 by the 31 lesson plans and 6 outside them (DECA and work-based learning).
 
 Earlier versions of this tracker and the lesson plans used a different numbering, so most numbers did not match the state task list. Every lesson's competencies have been re-matched to the 2025 list, and the counts below come from those lessons.
 
@@ -30,7 +30,7 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **7:** Demonstrate listening and speaking skills. *(The Venue Buyer's Product Pitch, Survey Deployment & Statistical Significance)*
   - **8:** Demonstrate respect for diversity. *(The Sponsorship Negotiation)*
   - **9:** Demonstrate customer service skills. *(The Front Lines)*
-  - **10:** Collaborate with team members. *(Venue Operations & The Employee Handbook, The 4 Ps of the Fan Experience)*
+  - **10:** Collaborate with team members. *(Venue Operations & The Employee Handbook, Game Day Takeover, The 4 Ps of the Fan Experience)*
 
 **Demonstrating Professional Competencies**
 
@@ -96,7 +96,7 @@ Earlier versions of this tracker and the lesson plans used a different numbering
 
 **Developing Customer Service Skills**
 
-  - **58:** Demonstrate customer-service techniques. *(Venue Operations & The Employee Handbook)*
+  - **58:** Demonstrate customer-service techniques. *(Venue Operations & The Employee Handbook, Game Day Takeover)*
   - **59:** Describe methods used to encourage customer retention. *(The Front Lines)*
   - **60:** Respond to inquiries and suggestions from customers, coworkers, and supervisors in a sports, entertainment, and event context. *(The Front Lines)*
   - **61:** Explain company policy to a customer in a sports, entertainment, and event context. *(The Front Lines)*
@@ -131,6 +131,7 @@ Earlier versions of this tracker and the lesson plans used a different numbering
 **Understanding Market Research**
 
   - **77:** Explain market research and its use in the sports, entertainment, and event industries. *(Survey Results Analysis & Management Decisions)*
+  - **78:** Explain the need for market research for all functions of marketing. *(Survey Results Analysis & Management Decisions)*
   - **79:** Identify sources of data for market research in the sports, entertainment, and event industries. *(Venue Market Research & Survey Design)*
   - **80:** Describe external factors affecting the sports, entertainment, and event marketing process. *(The Global Expansion)*
   - **81:** Develop a market segmentation analysis. *(Venue Market Research & Survey Design)*
@@ -156,17 +157,20 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **92:** Explain the process for planning an event. *(Venue Layout & The Cavalier Shop Planogram, The Richmond Festival Blueprint)*
   - **93:** Describe factors that motivate consumers to attend sports, entertainment, and event occasions. *(The Brand Board Project, Crafting the Management Perspective Company Description, Venue Market Research & Survey Design, The Venue Buyer's Product Pitch, The Battle for the Entertainment Dollar)*
   - **94:** Explain how event popularity and competitive factors relate to attendance. *(The Battle for the Entertainment Dollar, The Business of the Game, The Economics of the Arena)*
-  - **95:** Analyze personnel needs for an event. *(Venue Operations & The Employee Handbook, Venue Layout & The Cavalier Shop Planogram, The Richmond Festival Blueprint)*
+  - **95:** Analyze personnel needs for an event. *(Venue Operations & The Employee Handbook, Game Day Takeover, Venue Layout & The Cavalier Shop Planogram, The Richmond Festival Blueprint)*
   - **96:** Analyze the financial resources required for each event activity. *(The Venue Buyer's Product Pitch, The Richmond Festival Blueprint, Tournament Sponsorship Proposals)*
   - **97:** Develop a marketing plan for an event. *(The Brand Board Project, Venue Promotion & Flyer Design, The 4 Ps of the Fan Experience, The Hype Machine, The Richmond Festival Blueprint, Tournament Sponsorship Proposals, "What is Branding?" Synthesis Essay)*
   - **98:** Develop a budget for an event. *(The Bottom Line)*
-  - **101:** (Optional) Evaluate the event’s overall success. *(The Final Whistle)*
+  - **99:** Develop follow-up activities to recognize and thank participants after an event. *(Game Day Takeover)*
+  - **100:** (Optional) Manage a sports, entertainment, and event occasion. *(Game Day Takeover)*
+  - **101:** (Optional) Evaluate the event’s overall success. *(Game Day Takeover, The Final Whistle)*
 
 **Developing Career Goals**
 
   - **102:** Identify career and employment-related information sources. *(The Final Whistle)*
   - **103:** Identify career opportunities at different levels in sports, entertainment, and event management. *(The Final Whistle)*
   - **104:** Describe education and training needed for a sports, entertainment, and event management career. *(The Final Whistle)*
+  - **105:** (Optional) Identify barriers to employment and strategies to overcome them. *(The Final Whistle)*
   - **106:** Identify professional development opportunities in the sports, entertainment, and event industries. *(The Final Whistle)*
   - **107:** Collect information about a prospective employer. *(The Final Whistle)*
   - **108:** Develop a career plan. *(The Final Whistle)*
@@ -187,20 +191,5 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **36:** Reflect on lessons learned during the WBL experience. *(work-based learning)*
   - **37:** Explore career opportunities related to the WBL experience. *(work-based learning)*
   - **38:** Participate in a WBL experience, when appropriate. *(work-based learning)*
-
-### **⭕ Part 3: Not Yet Covered**
-
-**Understanding Market Research**
-
-  - **78:** Explain the need for market research for all functions of marketing.
-
-**Understanding Event Management**
-
-  - **99:** Develop follow-up activities to recognize and thank participants after an event.
-  - **100:** (Optional) Manage a sports, entertainment, and event occasion.
-
-**Developing Career Goals**
-
-  - **105:** (Optional) Identify barriers to employment and strategies to overcome them.
 
 Tasks marked (Optional) are optional in the state framework.
