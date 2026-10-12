@@ -39,7 +39,7 @@ By the end of this lesson, students will be able to:
 
 ### **A. The "Who Cares?" Discussion (10 Minutes)**
 
-  - **Target Audience (Comp 46):** Brainstorm with the class: Who actually has the purchasing power? Are we marketing to freshmen who want spirit wear, or parents who have the credit cards?
+  - **Target Audience (Comp 81):** Brainstorm with the class: Who actually has the purchasing power? Are we marketing to freshmen who want spirit wear, or parents who have the credit cards?
   - **Concept:** You cannot market to "everyone." If you market to everyone, you reach no one.
 
 ### **B. The "Bias Bootcamp" (15 Minutes)**
@@ -50,7 +50,7 @@ By the end of this lesson, students will be able to:
 
 ### **C. Digital Application Lab (35 Minutes)**
 
-  - **Independent Work (Comp 18 & 42):** Students log into Google Workspace and create a Google Form.
+  - **Independent Work (Comp 18 & 83):** Students log into Google Workspace and create a Google Form.
   - They must input the three standardized questions (below) and ensure the settings are adjusted to easily share the link via Canvas or email.
 
 ## **5. Project Deliverables: The 3-Question Survey**
