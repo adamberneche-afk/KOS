@@ -3129,9 +3129,10 @@ CAS sheets; its only view of CAS is a counts-only signal doc).
 `34b_CasAttentionSignal.js` writes `KOS_CAS_SIGNAL` at the end of every
 `runQueueWatchdog()` run, even a failed one (the signal then says the
 watchdog failed). Students and families first, admin second, a line only
-above zero, "unavailable" when a count can't be read. "Not yet at SCR 2"
-counts students with a current rating of 3, 4 or 5 (1 is the highest; the
-teacher's definition). SCR counts are re-read at most hourly; the retry scan
+above zero, "unavailable" when a count can't be read. The SCR line counts
+students with a current rating of 4 or 5: on the state scale (the 2025
+Student Competency Record) 1 is the highest and 1-3 are satisfactory, and the
+teacher set the bar at greater than 3. SCR counts are re-read at most hourly; the retry scan
 runs once a day under a 90-second budget. `retryCandidates_()` was factored
 out of `getAllRetryEligibleStudents_()` (30b) for it.
 
