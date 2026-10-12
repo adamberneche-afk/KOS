@@ -20,12 +20,10 @@ In the event management industry, a brilliant marketing campaign means nothing i
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 57:** Explain the nature and scope of channel management (Understanding the flow of goods from manufacturer to consumer).
-  - **Competency 58:** Explain the nature of channels of distribution (Direct vs. Indirect channels, wholesalers, and retailers).
-  - **Competency 59:** Describe the use of technology in the channel management function (Barcodes, RFID tags, and automated reordering).
-  - **Competency 60:** Explain the receiving process (Checking packing slips against Purchase Orders).
-  - **Competency 61:** Explain equipment used in receiving (Hand trucks, pallet jacks, box cutters, and scanning guns).
-  - **Competency 62:** Explain the nature of inventory control systems (Point of Sale software and physical stock counts).
+  - **Competency 14:** Manage time and resources (Point of Sale software and physical stock counts).
+  - **Competency 26:** Examine technical and production skills required of workers within an industry/organization (Checking packing slips against Purchase Orders; Hand trucks, pallet jacks, box cutters, and scanning guns).
+  - **Competency 27:** Examine principles of technology that underlie an industry/organization (Barcodes, RFID tags, and automated reordering).
+  - **Competency 41:** Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees (Understanding the flow of goods from manufacturer to consumer; Direct vs. Indirect channels, wholesalers, and retailers).
 
 ## **3. Learning Objectives**
 

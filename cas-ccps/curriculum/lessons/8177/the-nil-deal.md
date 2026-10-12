@@ -20,10 +20,9 @@ The days of relying solely on television commercials to sell sports merchandise 
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 52:** Explain the role of endorsements in sports/entertainment (Why brands pay individuals to represent their products).
-  - **Competency 83:** Explain the use of specialized sponsorships (Creating unique, event-specific, or personality-driven sponsorship packages).
-  - **Competency 84:** Explain the use of digital endorsements/sponsorships (Social media influencer campaigns, affiliate links, and sponsored content).
-  - **Competency 20:** Demonstrate professionalism (Understanding the FTC disclosure rules for digital marketing).
+  - **Competency 20:** Demonstrate professionalism (Choosing a public figure whose image fits CHHS's core values).
+  - **Competency 42:** Evaluate the sports, entertainment, and event manager’s role in decision-making for campaigns, employees, and partners (Choosing the right public figure to partner with, and why brands pay individuals to represent their products; Creating unique, event-specific, or personality-driven sponsorship packages).
+  - **Competency 75:** Describe the effects of national, state, and local laws and regulations on the sports, entertainment, and event industries (FTC disclosure rules for social media influencer campaigns and sponsored content).
 
 ## **3. Learning Objectives**
 

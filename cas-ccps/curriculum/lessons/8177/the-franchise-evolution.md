@@ -20,13 +20,11 @@ Every product—from a new style of athletic shoe to a mega-music festival—goe
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 47:** Explain the concept of product mix (Analyzing all the different product lines a venue offers).
-  - **Competency 48:** Describe the nature of product bundling (Packaging tickets, parking, and food for one price).
-  - **Competency 49:** Describe the product life cycle (Introduction, Growth, Maturity, Decline).
-  - **Competency 50:** Explain the nature of product extension in the sports/entertainment industry (Launching a spin-off product, like a mascot-themed cereal).
-  - **Competency 51:** Describe the role of product/service branding (How a strong brand identity allows for higher profit margins).
-  - **Competency 54:** Explain the role of naming rights (Selling the title of a stadium or specific venue zone to a corporate sponsor).
-  - **Competency 55:** Explain the role of licensing (Renting the team logo to third-party manufacturers like Nike or EA Sports).
+  - **Competency 23:** Examine aspects of planning within an industry/organization (Planning new growth when a brand reaches maturity in the product life cycle: Introduction, Growth, Maturity, Decline).
+  - **Competency 46:** Explain on-site revenue streams as they relate to sports, entertainment, and event facilities (Packaging tickets, parking, and food for one price).
+  - **Competency 54:** Identify entrepreneurship opportunities related to sports, entertainment, and event management (Launching a spin-off product, like a mascot-themed cereal; How a strong brand identity allows for higher profit margins).
+  - **Competency 76:** Identify the purposes of licensing (Renting the team logo to third-party manufacturers like Nike or EA Sports).
+  - **Competency 86:** Identify revenue sources related to the sports, entertainment, and event industries (Analyzing all the different product lines a venue offers; Selling the title of a stadium or specific venue zone to a corporate sponsor).
 
 ## **3. Learning Objectives**
 
