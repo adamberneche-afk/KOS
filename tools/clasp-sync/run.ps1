@@ -597,6 +597,8 @@ $Manifest = @(
     @{ Name = "master-student-template"; Type = "cas-ccps"; Mode = "push" }
     @{ Name = "rubric-response-sheet";   Type = "cas-ccps"; Mode = "push" }
     @{ Name = "teacher-matrix-sheet";    Type = "cas-ccps"; Mode = "push" }
+    # Container-bound to the private Family Mail Sentinel sheet; no web app.
+    @{ Name = "family-sentinel";         Type = "cas-ccps"; Mode = "push" }
 
     @{ Name = "kos-personal";            Type = "flat";     Mode = "promote" }
     @{ Name = "leader-hub";              Type = "flat";     Mode = "promote" }

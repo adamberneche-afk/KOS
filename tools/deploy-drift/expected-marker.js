@@ -47,7 +47,7 @@ const PROJECT_MAP = require('../gas-lint/project-map.json');
 // expect" computation, not to the project's file manifest in general.
 // The one list of marker files: stamp.js writes `constant` in `file`, and
 // this script leaves `file` out of its own computation. `constant` must
-// match the name declared in `file` exactly (stamp.js checks). The 7
+// match the name declared in `file` exactly (stamp.js checks). The 8
 // cas-ccps entries share one constant name (DEPLOY_VERSION_SHA), which is
 // safe because no two of those files share an Apps Script project.
 const MARKER_FILES = {
@@ -60,6 +60,7 @@ const MARKER_FILES = {
   'cas-ccps:teacher-matrix-sheet': { file: 'cas-ccps/scripts/47_DeployVersionMarker_TeacherMatrixSheet.js', constant: 'DEPLOY_VERSION_SHA' },
   'cas-ccps:teacher-dashboard': { file: 'cas-ccps/scripts/48_DeployVersionMarker_TeacherDashboard.js', constant: 'DEPLOY_VERSION_SHA' },
   'cas-ccps:student-dashboard': { file: 'cas-ccps/scripts/49_DeployVersionMarker_StudentDashboard.js', constant: 'DEPLOY_VERSION_SHA' },
+  'cas-ccps:family-sentinel': { file: 'cas-ccps/scripts/62_DeployVersionMarker_FamilySentinel.js', constant: 'DEPLOY_VERSION_SHA' },
 };
 
 function knownProjectNames() {
