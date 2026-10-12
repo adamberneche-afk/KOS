@@ -71,6 +71,10 @@ why this repo exists at all.
   panel renders to. Say/Do Ledger cross-portfolio Flow Health & Inventory
   extension.
 
+- **`SMP_PROCESS.md`** — where System Modification Proposals are stored
+  (the `SMP_REGISTER` tab and `01.3_SMP_PROPOSALS` in Drive, read by the
+  KOS Project as `KOS_SMP_REGISTER`), how a new one is filed and numbered,
+  and the 2026-10-12 renumbering table.
 - **`PROCESS_HARDENING_SPRINT.md`** — a sprint plan from a retrospective on
   the `consolidation-review-fixes` fix pass: not what got fixed, but what
   should change about how this repo is built so the same bug *shapes*
