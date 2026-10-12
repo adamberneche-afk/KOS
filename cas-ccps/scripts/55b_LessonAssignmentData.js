@@ -21,23 +21,25 @@ const LESSON_ASSIGNMENTS = {
     "warmupAnchor": "How did your grandparents buy groceries compared to how you buy food today? (Think: Milkman vs. Instacart). What changed? Was it the *product* or the *process*?",
     "vocabulary": "",
     "competencyIds": [
-      "8175-11"
+      "8175-11",
+      "8175-41",
+      "8175-45"
     ],
     "approved": true,
     "source": "lessons/8175/L01.md",
     "milestones": [
       "8175-11 Demonstrate big-picture thinking.",
-      "Explain the marketing concept.",
-      "Describe the history of the sports, entertainment, and event industries.",
+      "8175-41 Describe the marketing concept as related to the sports, entertainment, and event industries.",
+      "8175-45 Describe the past, present, and future of the sports, entertainment, and event industries.",
       "The planned work product is complete and applied to the class conglomerate: EVOLUTION OF MARKETING (FROM TRADE TO TIKTOK)"
     ],
     "milestoneCompetencyIds": [
       "8175-11",
-      "",
-      "",
+      "8175-41",
+      "8175-45",
       ""
     ],
-    "definitionOfDone": "ASSIGNMENT: L01 EVOLUTION OF MARKETING (FROM TRADE TO TIKTOK)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-11\n\nCRITERIA\n- 8175-11 Demonstrate big-picture thinking.\n    * Evidence of defining big-picture thinking as an understanding of one's role in fulfilling the mission of the workplace and a consideration of the social, economic, and environmental effects of one's actions\n    * Evidence of identifying the organization’s structure, culture, policies, and procedures, as well as its role and position within the community, industry, and economy\n- Explain the marketing concept.\n- Describe the history of the sports, entertainment, and event industries.\n\nTEACHER GRADING NOTES\nCheck the \"Future Prediction\" section.\n\n- Eras: Did they list the 7 eras correctly?\n- Prediction: Did they offer a thoughtful idea for the \"Next Era\"?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L01 EVOLUTION OF MARKETING (FROM TRADE TO TIKTOK)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-11, 8175-41, 8175-45\n\nCRITERIA\n- 8175-11 Demonstrate big-picture thinking.\n    * Evidence of defining big-picture thinking as an understanding of one's role in fulfilling the mission of the workplace and a consideration of the social, economic, and environmental effects of one's actions\n    * Evidence of identifying the organization’s structure, culture, policies, and procedures, as well as its role and position within the community, industry, and economy\n- 8175-41 Describe the marketing concept as related to the sports, entertainment, and event industries.\n    * Evidence of identifying customers\n    * Evidence of recognizing customer wants and needs\n    * Evidence of satisfying diverse and changing customer wants and needs\n    * Evidence of earning a return on investment (ROI) and managing spend (i.e., money allocated for marketing activities [e.g., costs])\n- 8175-45 Describe the past, present, and future of the sports, entertainment, and event industries.\n    * Evidence of evolution of the industries from the social, technological (e.g., artificial intelligence [AI]), and economic perspectives\n    * Evidence of expansion of the industries to national and global audiences\n    * Evidence of key developments and people within the industries\n\nTEACHER GRADING NOTES\nCheck the \"Future Prediction\" section.\n\n- Eras: Did they list the 7 eras correctly?\n- Prediction: Did they offer a thoughtful idea for the \"Next Era\"?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: The Seven Eras of Marketing (Timeline Analysis)\n\nDescription:\n\nMarketing hasn't always been about Instagram likes and Super Bowl commercials. It has evolved over centuries, changing as technology and society changed. To understand where we are going, we must look at where we started.\n\nThe Task:\n\nUsing the class slides, create a summary of the Seven Eras of Marketing.\n\nPart 1: The Timeline\n\nFor each of the eras below, identify the Time Period and the Primary Focus (1 sentence per era).\n\n- Trade Era\n- Production Era\n- Selling Era\n- Marketing Department Era\n- Marketing Company Era\n- Relationship Marketing\n- Collaboration Era\n\nPart 2: The Shift\n\nExplain the difference between the Selling Era and the Marketing Company Era.\n\n- *Hint: In the Selling Era, businesses tried to trick people into buying. In the Marketing Era, businesses tried to... what?*\n\nPart 3: The Future (Critical Thinking)\n\nBased on what you see with AI, Virtual Reality, and privacy laws, write a 3-sentence prediction for what the *next* Era of Marketing will be called.\n\nSubmission:\n\nSubmit your responses as a Text Entry or File Upload."
   },
   "8175-L02": {
@@ -87,23 +89,24 @@ const LESSON_ASSIGNMENTS = {
     "vocabulary": "",
     "competencyIds": [
       "8175-12",
+      "8175-56",
       "8175-107"
     ],
     "approved": true,
     "source": "lessons/8175/L03.md",
     "milestones": [
       "8175-12 Demonstrate career- and life-management skills.",
-      "Identify the components of branding. (Applied to the individual).",
+      "8175-56 Explain branding.",
       "8175-107 Identify personal skills and interests applicable to the sports, entertainment, and event industries.",
       "The planned work product is complete and applied to the class conglomerate: PERSONAL BRANDING (DEFINING YOUR USP)"
     ],
     "milestoneCompetencyIds": [
       "8175-12",
-      "",
+      "8175-56",
       "8175-107",
       ""
     ],
-    "definitionOfDone": "ASSIGNMENT: L03 PERSONAL BRANDING (DEFINING YOUR USP)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-12, 8175-107\n\nCRITERIA\n- 8175-12 Demonstrate career- and life-management skills.\n    * Evidence of recognizing the importance of education and career planning (e.g., minimum job qualifications, advancement and professional-development opportunities)\n    * Evidence of identifying available benefits and professional resources (e.g., labor unions, professional organizations, employee-assistance programs, insurance and retirement benefits)\n    * Evidence of managing personal growth and wellness (e.g., stress management, self-care, financial planning)\n    * Evidence of setting goals (e.g., specific, measurable, attainable, realistic, time-bound [SMART] goals)\n- Identify the components of branding. (Applied to the individual).\n- 8175-107 Identify personal skills and interests applicable to the sports, entertainment, and event industries.\n    * Evidence of individual personal skills (e.g., leadership ability, problem-solving ability, organizational ability)\n    * Evidence of interests (e.g., sports, theater, music, physical fitness, recreational activities, volunteer activities)\n    * Evidence of networking with local business representatives\n    * Evidence of volunteering or working in sports, entertainment, and event industries to gauge one’s interest in the business of sports, entertainment, and events and to gain valuable work experience\n\nTEACHER GRADING NOTES\nDo not grade for \"correct\" answers, as this is personal. Grade for effort and completion.\n\n- Did they answer all three sections?\n- Is the \"Unique Selling Proposition\" specific or descriptive? Give higher points for descriptive answers.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L03 PERSONAL BRANDING (DEFINING YOUR USP)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-12, 8175-56, 8175-107\n\nCRITERIA\n- 8175-12 Demonstrate career- and life-management skills.\n    * Evidence of recognizing the importance of education and career planning (e.g., minimum job qualifications, advancement and professional-development opportunities)\n    * Evidence of identifying available benefits and professional resources (e.g., labor unions, professional organizations, employee-assistance programs, insurance and retirement benefits)\n    * Evidence of managing personal growth and wellness (e.g., stress management, self-care, financial planning)\n    * Evidence of setting goals (e.g., specific, measurable, attainable, realistic, time-bound [SMART] goals)\n- 8175-56 Explain branding.\n    * Evidence of brand personality\n    * Evidence of brand name\n    * Evidence of brand mark\n    * Evidence of trade name\n    * Evidence of trade character\n    * Evidence of trademark\n    * Evidence of brand tagline\n- 8175-107 Identify personal skills and interests applicable to the sports, entertainment, and event industries.\n    * Evidence of individual personal skills (e.g., leadership ability, problem-solving ability, organizational ability)\n    * Evidence of interests (e.g., sports, theater, music, physical fitness, recreational activities, volunteer activities)\n    * Evidence of networking with local business representatives\n    * Evidence of volunteering or working in sports, entertainment, and event industries to gauge one’s interest in the business of sports, entertainment, and events and to gain valuable work experience\n\nTEACHER GRADING NOTES\nDo not grade for \"correct\" answers, as this is personal. Grade for effort and completion.\n\n- Did they answer all three sections?\n- Is the \"Unique Selling Proposition\" specific or descriptive? Give higher points for descriptive answers.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: Defining Your Personal Brand (The CEO of YOU)\n\nDescription:\n\nIt is important to understand your own personal brand. When you understand who you are and what you stand for, you can find new opportunities and ways to strengthen your weaknesses. A brand statement also helps others understand who you are, what you are great at, and how you differentiate yourself from others.\n\nThe Task:\n\nAnswer the questions below to create your personal brand statement. Be honest and dig deep.\n\n1. Your Value\n\n- What value can you provide the world (or people) with your strengths and attributes?\n\n2. Your USP (Unique Selling Proposition)\n\n- What is your Unique Selling Proposition?\n- What is the one thing that makes you stand out from the crowd? Why should a team pick you over the 100 other people applying for the job?\n\n3. Your Audience\n\n- Who do you want to help, serve, or would benefit the most from what you can offer?\n\nSubmission:\n\nSubmit your answers in a text entry box or a Google Doc."
   },
   "8175-L04": {
@@ -119,23 +122,26 @@ const LESSON_ASSIGNMENTS = {
     "warmupAnchor": "Think of a celebrity or athlete who 'ruined' their reputation recently. Without naming names, write down one action they took that damaged their brand. How hard do you think it will be for them to fix it?",
     "vocabulary": "",
     "competencyIds": [
-      "8175-2"
+      "8175-2",
+      "8175-56",
+      "8175-105",
+      "8175-57"
     ],
     "approved": true,
     "source": "lessons/8175/L04.md",
     "milestones": [
       "8175-2 Demonstrate critical thinking and problem-solving.",
-      "Explain the concept of branding.",
-      "Identify the components of branding.",
-      "Describe the characteristics of effective branding."
+      "8175-56 Explain branding.",
+      "8175-105 Identify the components of a SWOT analysis.",
+      "8175-57 Explain the concept of branding as it relates to sports, entertainment, and event marketing."
     ],
     "milestoneCompetencyIds": [
       "8175-2",
-      "",
-      "",
-      ""
+      "8175-56",
+      "8175-105",
+      "8175-57"
     ],
-    "definitionOfDone": "ASSIGNMENT: L04 PERSONAL BRAND ANALYSIS (PUBLIC FIGURES)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-2\n\nCRITERIA\n- 8175-2 Demonstrate critical thinking and problem-solving.\n    * Evidence of recognizing and analyzing problems\n    * Evidence of evaluating potential solutions and resources\n    * Evidence of using a logical approach to make decisions and solve problems\n    * Evidence of implementing effective courses of action\n- Explain the concept of branding.\n- Identify the components of branding.\n- Describe the characteristics of effective branding.\n\nTEACHER GRADING NOTES\nLook for depth in the \"Motivation\" and \"How others describe this person\" answers. The \"Strengths and Weaknesses\" section is a good check for critical thinking.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L04 PERSONAL BRAND ANALYSIS (PUBLIC FIGURES)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-2, 8175-56, 8175-105, 8175-57\n\nCRITERIA\n- 8175-2 Demonstrate critical thinking and problem-solving.\n    * Evidence of recognizing and analyzing problems\n    * Evidence of evaluating potential solutions and resources\n    * Evidence of using a logical approach to make decisions and solve problems\n    * Evidence of implementing effective courses of action\n- 8175-56 Explain branding.\n    * Evidence of brand personality\n    * Evidence of brand name\n    * Evidence of brand mark\n    * Evidence of trade name\n    * Evidence of trade character\n    * Evidence of trademark\n    * Evidence of brand tagline\n- 8175-105 Identify the components of a SWOT analysis.\n    * Evidence of strengths\n    * Evidence of weaknesses\n    * Evidence of opportunities\n    * Evidence of threats\n- 8175-57 Explain the concept of branding as it relates to sports, entertainment, and event marketing.\n    * Evidence of the importance of brand development\n    * Evidence of team vs. individual branding\n    * Evidence of the importance of brands in product/service planning\n    * Evidence of how brand names are generated\n    * Evidence of branding strategies (e.g., brand extension, brand licensing, mixed brands, co-branding)\n    * Evidence of stages or levels of brand recognition\n\nTEACHER GRADING NOTES\nLook for depth in the \"Motivation\" and \"How others describe this person\" answers. The \"Strengths and Weaknesses\" section is a good check for critical thinking.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: Personal Brand Analysis (The Celebrity Case Study)\n\nDescription:\n\nEverybody has a personal brand. Whether you realize it or not, your actions mold your personal brand. You will be taking a closer look at a public figure's personal brand to see how they manage their reputation and career.\n\nThe Task:\n\nAnswer the following questions about the individual's personal brand. Please write in complete sentences.\n\n1. The Subject\n\n- Who is the public figure you chose?\n- What makes this individual well known?\n\n2. The SWOT Analysis\n\n- What is a major Strength this individual has?\n- What is a Weakness or challenge they face?\n\n3. The Public Perception\n\n- How do others describe this person?\n- Does their public reputation match who they really seem to be?\n\n4. The Core Drivers\n\n- What do you think motivates this individual?\n- What do you think they are passionate about outside of their job?\n\nSubmission:\n\nSubmit your responses in a text entry box."
   },
   "8175-L05": {
@@ -222,7 +228,9 @@ const LESSON_ASSIGNMENTS = {
     "competencyIds": [
       "8175-4",
       "8175-6",
-      "8175-20"
+      "8175-20",
+      "8175-51",
+      "8175-49"
     ],
     "approved": true,
     "source": "lessons/8175/L07.md",
@@ -230,15 +238,15 @@ const LESSON_ASSIGNMENTS = {
       "8175-4 Demonstrate integrity.",
       "8175-6 Demonstrate conflict-resolution skills.",
       "8175-20 Demonstrate professionalism.",
-      "Explain the nature of business ethics. Demonstrate ethical behavior in business relationships."
+      "8175-51 Identify ethical and unethical business practices. 8175-49 Identify the role of communication in work relationships."
     ],
     "milestoneCompetencyIds": [
       "8175-4",
       "8175-6",
       "8175-20",
-      ""
+      "8175-51"
     ],
-    "definitionOfDone": "ASSIGNMENT: L07 ETHICAL DILEMMAS DISCUSSION\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-4, 8175-6, 8175-20\n\nCRITERIA\n- 8175-4 Demonstrate integrity.\n    * Evidence of defining integrity\n    * Evidence of recognizing the importance of having integrity in the workplace\n    * Evidence of complying with local, state, and federal laws\n    * Evidence of adhering to workplace policies and procedures\n    * Evidence of exhibiting honesty, fairness, and respect toward self, others, and property\n- 8175-6 Demonstrate conflict-resolution skills.\n    * Evidence of Demonstrate conflict-resolution skills\n- 8175-20 Demonstrate professionalism.\n    * Evidence of defining professionalism\n    * Evidence of practicing punctuality and attendance\n    * Evidence of adhering to work-schedule expectations\n    * Evidence of exercising etiquette (e.g., language, manners, and behaviors suitable for the workplace and online; appropriate verbal and nonverbal communication)\n    * Evidence of exhibiting professional self-representation (e.g., using a firm handshake, introducing oneself, making eye contact)\n    * Evidence of maintaining professional appearance (e.g., maintaining personal hygiene, adhering to a dress code)\n- Explain the nature of business ethics.\n- Demonstrate ethical behavior in business relationships.\n\nTEACHER GRADING NOTES\nThis is a Discussion Board assignment.\n\n- Initial Post (10 points): Did they choose a scenario and explain their reaction professionally?\n- Peer Replies (10 points): Did they reply to two classmates with constructive feedback?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L07 ETHICAL DILEMMAS DISCUSSION\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-4, 8175-6, 8175-20, 8175-51, 8175-49\n\nCRITERIA\n- 8175-4 Demonstrate integrity.\n    * Evidence of defining integrity\n    * Evidence of recognizing the importance of having integrity in the workplace\n    * Evidence of complying with local, state, and federal laws\n    * Evidence of adhering to workplace policies and procedures\n    * Evidence of exhibiting honesty, fairness, and respect toward self, others, and property\n- 8175-6 Demonstrate conflict-resolution skills.\n    * Evidence of Demonstrate conflict-resolution skills\n- 8175-20 Demonstrate professionalism.\n    * Evidence of defining professionalism\n    * Evidence of practicing punctuality and attendance\n    * Evidence of adhering to work-schedule expectations\n    * Evidence of exercising etiquette (e.g., language, manners, and behaviors suitable for the workplace and online; appropriate verbal and nonverbal communication)\n    * Evidence of exhibiting professional self-representation (e.g., using a firm handshake, introducing oneself, making eye contact)\n    * Evidence of maintaining professional appearance (e.g., maintaining personal hygiene, adhering to a dress code)\n- 8175-51 Identify ethical and unethical business practices.\n    * Evidence of defining ethics and ethical\n    * Evidence of distinguishing between what is legal and what is ethical\n    * Evidence of summarizing commonly encountered ethical and unethical business practices, including explanations of such matters as use of AI, bribery, privacy/confidentiality, liability, slander, financial integrity, and accountability\n    * Evidence of describing ways to ensure ethical practices in a business environment\n    * Evidence of explaining possible consequences of employing unethical business practices\n- 8175-49 Identify the role of communication in work relationships.\n    * Evidence of Identify the role of communication in work relationships\n\nTEACHER GRADING NOTES\nThis is a Discussion Board assignment.\n\n- Initial Post (10 points): Did they choose a scenario and explain their reaction professionally?\n- Peer Replies (10 points): Did they reply to two classmates with constructive feedback?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Discussion: Ethical Dilemmas in the Workplace\n\nDescription:\n\nIn the business world, the \"right answer\" is not always easy to find. Ethical leaders cannot stand back and let unethical behavior take place.\n\nThe Task:\n\n- Select: Pick one of the four scenarios below.\n- Post: Tell us which scenario you chose. Then, outline how you would react. Be sure to maintain professionalism in your planned response.\n- Reply: Once you have posted your response, reply to two of your classmates.\n\nScenario 1: The Server\n\nOverhearing coworkers making derogatory comments about customers. Do you confront them?\n\nScenario 2: The Hiring Manager\n\nConsidering hiring a qualified friend. Is this favoritism?\n\nScenario 3: The Treasurer\n\nAsked to fudge numbers in the budget to cover costs. Everyone else agrees. What do you do?\n\nScenario 4: The Bystander\n\nWitnessing intimidation of a younger student in the hallway. How do you intervene?\n\nSubmission:\n\nPost your initial response and two replies in the Discussion Board."
   },
   "8175-L08": {
@@ -289,23 +297,25 @@ const LESSON_ASSIGNMENTS = {
     "vocabulary": "",
     "competencyIds": [
       "8175-2",
-      "8175-21"
+      "8175-21",
+      "8175-56",
+      "8175-57"
     ],
     "approved": true,
     "source": "lessons/8175/L09.md",
     "milestones": [
       "8175-2 Demonstrate critical thinking and problem-solving.",
       "8175-21 Demonstrate reading and writing skills.",
-      "Explain the concept of branding.",
-      "Explain the nature of brand loyalty."
+      "8175-56 Explain branding.",
+      "8175-57 Explain the concept of branding as it relates to sports, entertainment, and event marketing."
     ],
     "milestoneCompetencyIds": [
       "8175-2",
       "8175-21",
-      "",
-      ""
+      "8175-56",
+      "8175-57"
     ],
-    "definitionOfDone": "ASSIGNMENT: L09 DEFINING BRANDING (THE MENTOR CHALLENGE)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-2, 8175-21\n\nCRITERIA\n- 8175-2 Demonstrate critical thinking and problem-solving.\n    * Evidence of recognizing and analyzing problems\n    * Evidence of evaluating potential solutions and resources\n    * Evidence of using a logical approach to make decisions and solve problems\n    * Evidence of implementing effective courses of action\n- 8175-21 Demonstrate reading and writing skills.\n    * Evidence of reading and interpreting workplace documents\n    * Evidence of ability to convey messages with clarity\n    * Evidence of professional tone, appropriate to audience\n    * Evidence of grammar\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n- Explain the concept of branding.\n- Explain the nature of brand loyalty.\n\nTEACHER GRADING NOTES\nUse the provided rubric structure for speed grading:\n\n- Clarity (20 pts): Did they move beyond just saying \"it is a logo\"?\n- The Promise (Critical Check): Look for the section where they define branding as a \"promise\" or \"trust.\"\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L09 DEFINING BRANDING (THE MENTOR CHALLENGE)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-2, 8175-21, 8175-56, 8175-57\n\nCRITERIA\n- 8175-2 Demonstrate critical thinking and problem-solving.\n    * Evidence of recognizing and analyzing problems\n    * Evidence of evaluating potential solutions and resources\n    * Evidence of using a logical approach to make decisions and solve problems\n    * Evidence of implementing effective courses of action\n- 8175-21 Demonstrate reading and writing skills.\n    * Evidence of reading and interpreting workplace documents\n    * Evidence of ability to convey messages with clarity\n    * Evidence of professional tone, appropriate to audience\n    * Evidence of grammar\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n- 8175-56 Explain branding.\n    * Evidence of brand personality\n    * Evidence of brand name\n    * Evidence of brand mark\n    * Evidence of trade name\n    * Evidence of trade character\n    * Evidence of trademark\n    * Evidence of brand tagline\n- 8175-57 Explain the concept of branding as it relates to sports, entertainment, and event marketing.\n    * Evidence of the importance of brand development\n    * Evidence of team vs. individual branding\n    * Evidence of the importance of brands in product/service planning\n    * Evidence of how brand names are generated\n    * Evidence of branding strategies (e.g., brand extension, brand licensing, mixed brands, co-branding)\n    * Evidence of stages or levels of brand recognition\n\nTEACHER GRADING NOTES\nUse the provided rubric structure for speed grading:\n\n- Clarity (20 pts): Did they move beyond just saying \"it is a logo\"?\n- The Promise (Critical Check): Look for the section where they define branding as a \"promise\" or \"trust.\"\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: What IS Branding? (The Mentor Challenge)\n\nDescription:\n\nWe have spent the year looking at logos, slogans, and the emotional connections companies make with consumers. Now, it is time to synthesize that information.\n\nThe Scenario:\n\nImagine that a younger student, or perhaps a relative with absolutely no business background, comes up to you and asks: \"I keep hearing people talk about 'branding,' but I don't get it. What actually IS branding?\"\n\nThe Task:\n\nStep into the role of the teacher. Write out your response to this person (Minimum 250 words).\n\nStructure:\n\n- The Introduction: Start by telling them what branding is not. Define it simply.\n- The Examples: Use a real example (like Apple or Coca Cola). Explain *why* people buy that brand.\n- The Promise: Explain how a brand is a promise to the customer. That trust is branding.\n- The Conclusion: Wrap it up by telling them why it matters.\n\nSubmission:\n\nSubmit your response as a Text Entry."
   },
   "8175-L10": {
@@ -355,23 +365,26 @@ const LESSON_ASSIGNMENTS = {
     "warmupAnchor": "Write down the first three words that come to your mind when I say 'Clover Hill High School.' Do not overthink it. Be honest.",
     "vocabulary": "",
     "competencyIds": [
-      "8175-21"
+      "8175-21",
+      "8175-42",
+      "8175-57",
+      "8175-59"
     ],
     "approved": true,
     "source": "lessons/8175/L11.md",
     "milestones": [
       "8175-21 Demonstrate reading and writing skills.",
-      "Describe the concept of market identification.",
-      "Explain the concept of branding.",
-      "Describe the characteristics of effective branding."
+      "8175-42 Explain the concept of target marketing.",
+      "8175-57 Explain the concept of branding as it relates to sports, entertainment, and event marketing.",
+      "8175-59 Explain the concept of and reasons for rebranding."
     ],
     "milestoneCompetencyIds": [
       "8175-21",
-      "",
-      "",
-      ""
+      "8175-42",
+      "8175-57",
+      "8175-59"
     ],
-    "definitionOfDone": "ASSIGNMENT: L11 CHHS BRAND AUDIT (INTERNAL ANALYSIS)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-21\n\nCRITERIA\n- 8175-21 Demonstrate reading and writing skills.\n    * Evidence of reading and interpreting workplace documents\n    * Evidence of ability to convey messages with clarity\n    * Evidence of professional tone, appropriate to audience\n    * Evidence of grammar\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n- Describe the concept of market identification.\n- Explain the concept of branding.\n- Describe the characteristics of effective branding.\n\nTEACHER GRADING NOTES\nFocus assessment on Section 2 (Brand Quality). Read the student's critique carefully. If they utilize vocabulary words such as \"Target Market\" or \"Demographics\" correctly in context, award full credit.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L11 CHHS BRAND AUDIT (INTERNAL ANALYSIS)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-21, 8175-42, 8175-57, 8175-59\n\nCRITERIA\n- 8175-21 Demonstrate reading and writing skills.\n    * Evidence of reading and interpreting workplace documents\n    * Evidence of ability to convey messages with clarity\n    * Evidence of professional tone, appropriate to audience\n    * Evidence of grammar\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n    * Evidence of forms and conventions (e.g., formatting documents, using an email signature)\n- 8175-42 Explain the concept of target marketing.\n    * Evidence of target marketing\n    * Evidence of area of dominant influence (ADI)\n    * Evidence of market segmentation\n    * Evidence of customer persona\n    * Evidence of customer persona\n    * Evidence of addressing the importance of demographics, psychographics, geographics, and buying behaviors of local, state, and national markets as they relate to target markets in the sports, entertainment, and event industries\n- 8175-57 Explain the concept of branding as it relates to sports, entertainment, and event marketing.\n    * Evidence of the importance of brand development\n    * Evidence of team vs. individual branding\n    * Evidence of the importance of brands in product/service planning\n    * Evidence of how brand names are generated\n    * Evidence of branding strategies (e.g., brand extension, brand licensing, mixed brands, co-branding)\n    * Evidence of stages or levels of brand recognition\n- 8175-59 Explain the concept of and reasons for rebranding.\n    * Evidence of new target market(s)\n    * Evidence of company image and identification\n    * Evidence of new product line\n    * Evidence of altered public image\n    * Evidence of new revenue potential\n    * Evidence of changes in technology\n    * Evidence of cultural or societal trends\n    * Evidence of cultural or societal trends\n    * Evidence of identification of brand quality and target market\n\nTEACHER GRADING NOTES\nFocus assessment on Section 2 (Brand Quality). Read the student's critique carefully. If they utilize vocabulary words such as \"Target Market\" or \"Demographics\" correctly in context, award full credit.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: CHHS Brand Audit (The Home Field Advantage)\n\nDescription:\n\nYou walk the halls every day, but have you ever looked at Clover Hill High School as a brand? Just like a sports team or a clothing line, our school has an image, a target audience, and a reputation.\n\nThe Task:\n\nConduct a brand audit of Clover Hill High School. Write a 250 word (minimum) essay covering the following three areas.\n\n1. Target Market Identification (Min. 75 words)\n\n- Who are we serving?\n- Identify the target market (Demographics and Psychographics).\n\n2. Brand Quality Assessment (Min. 100 words)\n\n- Assess the quality of the current \"Cavalier\" brand.\n- What do the logo, the colors, and the reputation say to the community?\n- Determine specific areas for improvement.\n\n3. Cultural and Societal Trends (Min. 75 words)\n\n- Analyze current cultural and societal trends that may impact rebranding efforts (e.g., social media, mental health awareness).\n\nSubmission:\n\nSubmit your essay as a Text Entry."
   },
   "8175-L12": {
@@ -525,22 +538,27 @@ const LESSON_ASSIGNMENTS = {
     "objective": "Setting a price isn't just guessing. It is a mathematical balance between covering your costs and what the customer is willing to pay.",
     "warmupAnchor": "A bottle of water costs 1 dollar at the grocery store, 3 dollars at a gas station, and 8 dollars at a baseball stadium. Is the water different? If not, why is the price different?",
     "vocabulary": "",
-    "competencyIds": [],
+    "competencyIds": [
+      "8175-66",
+      "8175-67",
+      "8175-19",
+      "8175-101"
+    ],
     "approved": true,
     "source": "lessons/8175/L16.md",
     "milestones": [
-      "Explain the nature of pricing.",
-      "Explain pricing strategies.",
-      "Calculate break-even point.",
-      "Explain the impact of competition on pricing."
+      "8175-66 Explain pricing and the factors that affect pricing decisions.",
+      "8175-67 Identify pricing strategies as they relate to the sports, entertainment, and event industries.",
+      "8175-19 Apply mathematical skills to job-specific tasks.",
+      "8175-101 Explain competition as it relates to the sports, entertainment, and event industries."
     ],
     "milestoneCompetencyIds": [
-      "",
-      "",
-      "",
-      ""
+      "8175-66",
+      "8175-67",
+      "8175-19",
+      "8175-101"
     ],
-    "definitionOfDone": "ASSIGNMENT: L16 THE PRICE IS RIGHT (PRICING STRATEGIES)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: (see criteria)\n\nCRITERIA\n- Explain the nature of pricing.\n- Explain pricing strategies.\n- Calculate break-even point.\n- Explain the impact of competition on pricing.\n\nTEACHER GRADING NOTES\nCheck the Break-Even Math section.\n\n- Formula: Did they show their work? (Fixed Costs / Profit per unit).\n- Strategy: Did they correctly identify \"Skimming\" vs. \"Penetration\"?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L16 THE PRICE IS RIGHT (PRICING STRATEGIES)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-66, 8175-67, 8175-19, 8175-101\n\nCRITERIA\n- 8175-66 Explain pricing and the factors that affect pricing decisions.\n    * Evidence of creates a competitive edge\n    * Evidence of affects profits and company image\n    * Evidence of establishes value\n    * Evidence of correlates with quality\n    * Evidence of affects secondary markets\n- 8175-67 Identify pricing strategies as they relate to the sports, entertainment, and event industries.\n    * Evidence of group sales\n    * Evidence of personal seat license (PSL) promotions\n    * Evidence of discounts\n    * Evidence of prestige pricing\n    * Evidence of odd-even pricing\n    * Evidence of promotional pricing\n    * Evidence of price lining\n    * Evidence of tiered pricing\n    * Evidence of pricing enticements\n    * Evidence of dynamic and variable pricing\n    * Evidence of bundling\n- 8175-19 Apply mathematical skills to job-specific tasks.\n    * Evidence of performing calculations (e.g., percentages, fractions, addition, subtraction, averages, measurement, conversions, monetary transactions)\n    * Evidence of applying mathematical processes to accomplish job-specific tasks (e.g., estimating required supplies, completing expense reports)\n    * Evidence of managing personal finance (e.g., understanding wage rates, paycheck deductions, taxes, sales receipts)\n- 8175-101 Explain competition as it relates to the sports, entertainment, and event industries.\n    * Evidence of direct competition\n    * Evidence of indirect competition\n    * Evidence of price competition\n    * Evidence of non-price competition\n\nTEACHER GRADING NOTES\nCheck the Break-Even Math section.\n\n- Formula: Did they show their work? (Fixed Costs / Profit per unit).\n- Strategy: Did they correctly identify \"Skimming\" vs. \"Penetration\"?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: The Pizza Break-Even Challenge\n\nDescription:\n\nSetting a price isn't just guessing. It is a mathematical balance between covering your costs and what the customer is willing to pay.\n\nThe Task:\n\nYou are opening a concession stand at the football stadium selling Pizza. You need to determine your price.\n\nPart 1: The Math (Break-Even Analysis)\n\n- Data: Fixed Costs: 500 dollars. Variable Cost (per pizza): 5 dollars.\n- Scenario A: You sell the pizza for 10 dollars. How many pizzas must you sell to cover your 500 dollar rent? (Show your work).\n- Scenario B: You lower the price to 7 dollars. How many pizzas must you sell *now* to cover your rent?\n\nPart 2: The Strategy\n\n- Question: Which pricing strategy would you use for a *new* pizza brand?\n\n- Price Skimming: Setting a high price to look exclusive.\n- Market Penetration: Setting a low price to get people to try it.\n- Justification: Explain your choice in 2 sentences.\n\nSubmission:\n\nSubmit your calculations and strategy as a Text Entry."
   },
   "8175-L17": {
@@ -555,22 +573,27 @@ const LESSON_ASSIGNMENTS = {
     "objective": "Distribution is the process of getting the product to the customer. The path a ticket takes from the stadium to your phone involves \"Intermediaries\" (Middlemen), and each one charges a fee.",
     "warmupAnchor": "Have you ever tried to buy concert tickets and they sold out instantly, only to appear on another site for triple the price? Who made that extra money: The Artist or the Reseller?",
     "vocabulary": "",
-    "competencyIds": [],
+    "competencyIds": [
+      "8175-70",
+      "8175-71",
+      "8175-100",
+      "8175-51"
+    ],
     "approved": true,
     "source": "lessons/8175/L17.md",
     "milestones": [
-      "Explain the nature of channels of distribution.",
-      "Describe the role of intermediaries.",
-      "Describe the importance of venue to the industry.",
-      "Explain ticket sales and distribution."
+      "8175-70 Explain distribution and how it relates to the sports, entertainment, and event industries.",
+      "8175-71 Identify challenges for distributing sports, entertainment, and event services.",
+      "8175-100 Explain the concept of supply and demand.",
+      "8175-51 Identify ethical and unethical business practices."
     ],
     "milestoneCompetencyIds": [
-      "",
-      "",
-      "",
-      ""
+      "8175-70",
+      "8175-71",
+      "8175-100",
+      "8175-51"
     ],
-    "definitionOfDone": "ASSIGNMENT: L17 GETTING IT THERE (DISTRIBUTION AND VENUES)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: (see criteria)\n\nCRITERIA\n- Explain the nature of channels of distribution.\n- Describe the role of intermediaries.\n- Describe the importance of venue to the industry.\n- Explain ticket sales and distribution.\n\nTEACHER GRADING NOTES\nFocus on the Ethics of Scalping section. Look for critical thinking. Ensure they use the word \"Intermediary\" correctly.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L17 GETTING IT THERE (DISTRIBUTION AND VENUES)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-70, 8175-71, 8175-100, 8175-51\n\nCRITERIA\n- 8175-70 Explain distribution and how it relates to the sports, entertainment, and event industries.\n    * Evidence of emphasize that distribution includes all the activities necessary to deliver products to the intermediaries and the end user\n    * Evidence of list the channels, intermediaries, outlets, and modes of transportation\n- 8175-71 Identify challenges for distributing sports, entertainment, and event services.\n    * Evidence of maintaining sell-out attendance sports, entertainment, and event occasions\n    * Evidence of current trends (e.g., blackouts) of at-home or mobile viewing of events through television (e.g., cable, streaming, satellite services) and the Internet (e.g., online subscription of viewing games via team website, social networks, mobile apps)\n- 8175-100 Explain the concept of supply and demand.\n    * Evidence of a definition of supply and demand with examples from the sports, entertainment, and event industries\n    * Evidence of the relationship of supply and demand to price and value associated with the sports, entertainment, and event industries\n- 8175-51 Identify ethical and unethical business practices.\n    * Evidence of defining ethics and ethical\n    * Evidence of distinguishing between what is legal and what is ethical\n    * Evidence of summarizing commonly encountered ethical and unethical business practices, including explanations of such matters as use of AI, bribery, privacy/confidentiality, liability, slander, financial integrity, and accountability\n    * Evidence of describing ways to ensure ethical practices in a business environment\n    * Evidence of explaining possible consequences of employing unethical business practices\n\nTEACHER GRADING NOTES\nFocus on the Ethics of Scalping section. Look for critical thinking. Ensure they use the word \"Intermediary\" correctly.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: The Ticketmaster Problem (Distribution Channels)\n\nDescription:\n\nDistribution is the process of getting the product to the customer. The path a ticket takes from the stadium to your phone involves \"Intermediaries\" (Middlemen), and each one charges a fee.\n\nThe Task:\n\nAnalyze the distribution channel of a major concert ticket.\n\n1. The Chain of Command\n\n- Identify the 3 parties involved in a standard ticket sale (The Producer, The Intermediary, The Consumer).\n\n2. The Venue Impact\n\n- Why does the Venue (Stadium vs. Club) matter for distribution?\n\n3. The Ethics of the \"Secondary Market\"\n\n- Scenario: A scalper uses a \"Bot\" to buy 100 tickets in 1 second, then resells them for double the price.\n- Question: Is this smart business (Supply and Demand) or unethical behavior? Should it be illegal?\n- Response: Write a 100 word opinion piece. Defend your stance.\n\nSubmission:\n\nSubmit your analysis as a Text Entry."
   },
   "8175-L18": {
@@ -587,23 +610,25 @@ const LESSON_ASSIGNMENTS = {
     "vocabulary": "",
     "competencyIds": [
       "8175-10",
+      "8175-42",
+      "8175-60",
       "8175-87"
     ],
     "approved": true,
     "source": "lessons/8175/L18.md",
     "milestones": [
       "8175-10 Collaborate with team members.",
-      "Identify target markets.",
-      "Describe the development of a sports product.",
+      "8175-42 Explain the concept of target marketing.",
+      "8175-60 Explain product and service planning in sports, entertainment, and events.",
       "8175-87 Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries."
     ],
     "milestoneCompetencyIds": [
       "8175-10",
-      "",
-      "",
+      "8175-42",
+      "8175-60",
       "8175-87"
     ],
-    "definitionOfDone": "ASSIGNMENT: L18 MAKE AN OLYMPIC SPORT (PRODUCT DEVELOPMENT)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-10, 8175-87\n\nCRITERIA\n- 8175-10 Collaborate with team members.\n    * Evidence of defining collaboration and teamwork\n    * Evidence of discussing the benefits of teamwork\n    * Evidence of establishing expectations, roles, and goals\n    * Evidence of contributing to the success of the team by sharing responsibility\n    * Evidence of respecting the thoughts, opinions, and contributions of other team members\n- Identify target markets.\n- Describe the development of a sports product.\n- 8175-87 Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.\n    * Evidence of the definition of sponsorship\n    * Evidence of the definition of endorsement\n    * Evidence of the differences between sponsorship and endorsement\n    * Evidence of types of sponsorship (e.g., naming rights, signage, exclusivity)\n\nTEACHER GRADING NOTES\nFocus on the Sponsor Alignment. Award points for explaining the *strategy* behind the sponsor choice, not just listing a famous brand.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L18 MAKE AN OLYMPIC SPORT (PRODUCT DEVELOPMENT)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-10, 8175-42, 8175-60, 8175-87\n\nCRITERIA\n- 8175-10 Collaborate with team members.\n    * Evidence of defining collaboration and teamwork\n    * Evidence of discussing the benefits of teamwork\n    * Evidence of establishing expectations, roles, and goals\n    * Evidence of contributing to the success of the team by sharing responsibility\n    * Evidence of respecting the thoughts, opinions, and contributions of other team members\n- 8175-42 Explain the concept of target marketing.\n    * Evidence of target marketing\n    * Evidence of area of dominant influence (ADI)\n    * Evidence of market segmentation\n    * Evidence of customer persona\n    * Evidence of customer persona\n    * Evidence of addressing the importance of demographics, psychographics, geographics, and buying behaviors of local, state, and national markets as they relate to target markets in the sports, entertainment, and event industries\n- 8175-60 Explain product and service planning in sports, entertainment, and events.\n    * Evidence of product (both tangible and intangible)\n    * Evidence of service\n    * Evidence of service\n    * Evidence of a description of sports, entertainment, and event products (e.g., merchandise, concessions) and services (e.g., athletic training, theaters, public parks)\n    * Evidence of definition of product planning\n    * Evidence of a description of the types of decisions involved in sports, entertainment, and event product planning (e.g., related to product/service management, selling, promotion)\n- 8175-87 Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.\n    * Evidence of the definition of sponsorship\n    * Evidence of the definition of endorsement\n    * Evidence of the differences between sponsorship and endorsement\n    * Evidence of types of sponsorship (e.g., naming rights, signage, exclusivity)\n\nTEACHER GRADING NOTES\nFocus on the Sponsor Alignment. Award points for explaining the *strategy* behind the sponsor choice, not just listing a famous brand.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Project: The First E-Sports Olympic Games\n\nDescription:\n\nYou are responsible for creating a new sport to be introduced as a competition at the first E-Sports Olympic Games. As part of this process, you will also be identifying potential sponsors.\n\nThe Task:\n\nChoose a partner. Create a presentation or proposal addressing the three sections below.\n\nSection 1: The New Sport (Product Development)\n\n- Name & Concept: What is it called? How does it work?\n- The Rules: What are the rules of competition?\n- The Appeal: Why would this be a good event for the Olympics?\n\nSection 2: The Fan (Target Market)\n\n- Demographics: Who is watching?\n- Psychographics: Why will your event appeal to this group?\n\nSection 3: The Money (Sponsorships)\n\n- Select Sponsors: Identify specific companies that would want to pay to be associated with your sport.\n- The Strategy: Why would they be likely sponsors?\n- Advertising: How will advertising play a role in the event?\n\nSubmission:\n\nSubmit your project as a File Upload."
   },
   "8175-L19": {
@@ -618,22 +643,27 @@ const LESSON_ASSIGNMENTS = {
     "objective": "After months in the studio, your band’s album is finally ready to be released. Now you just have to make people care! You will be provided with a vinyl record for this assignment.",
     "warmupAnchor": "Vinyl records are back. Why would someone pay $30 for inconvenient plastic when Spotify is free? Write down one reason.",
     "vocabulary": "",
-    "competencyIds": [],
+    "competencyIds": [
+      "8175-61",
+      "8175-42",
+      "8175-60",
+      "8175-93"
+    ],
     "approved": true,
     "source": "lessons/8175/L19.md",
     "milestones": [
-      "Describe the product life cycle.",
-      "Explain factors motivating fans.",
-      "Describe the development of an entertainment product.",
-      "Create a promotional plan."
+      "8175-61 Explain product life cycle.",
+      "8175-42 Explain the concept of target marketing.",
+      "8175-60 Explain product and service planning in sports, entertainment, and events.",
+      "8175-93 Describe the elements of sports, entertainment, and event promotional campaigns."
     ],
     "milestoneCompetencyIds": [
-      "",
-      "",
-      "",
-      ""
+      "8175-61",
+      "8175-42",
+      "8175-60",
+      "8175-93"
     ],
-    "definitionOfDone": "ASSIGNMENT: L19 ALBUM RELEASE PROJECT (THE DROP)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: (see criteria)\n\nCRITERIA\n- Describe the product life cycle.\n- Explain factors motivating fans.\n- Describe the development of an entertainment product.\n- Create a promotional plan.\n\nTEACHER GRADING NOTES\nUse the Checkpoints to pace the grading.\n\n- Day 1 (Product): Pass/Fail check. Did they alter the sleeve AND the record?\n- Day 2 (Timeline): Spot check the \"7 activities.\"\n- Day 3 (Presentation): Grade the \"Cohesive Branding.\"\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L19 ALBUM RELEASE PROJECT (THE DROP)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-61, 8175-42, 8175-60, 8175-93\n\nCRITERIA\n- 8175-61 Explain product life cycle.\n    * Evidence of introduction\n    * Evidence of growth\n    * Evidence of maturity\n    * Evidence of decline\n- 8175-42 Explain the concept of target marketing.\n    * Evidence of target marketing\n    * Evidence of area of dominant influence (ADI)\n    * Evidence of market segmentation\n    * Evidence of customer persona\n    * Evidence of customer persona\n    * Evidence of addressing the importance of demographics, psychographics, geographics, and buying behaviors of local, state, and national markets as they relate to target markets in the sports, entertainment, and event industries\n- 8175-60 Explain product and service planning in sports, entertainment, and events.\n    * Evidence of product (both tangible and intangible)\n    * Evidence of service\n    * Evidence of service\n    * Evidence of a description of sports, entertainment, and event products (e.g., merchandise, concessions) and services (e.g., athletic training, theaters, public parks)\n    * Evidence of definition of product planning\n    * Evidence of a description of the types of decisions involved in sports, entertainment, and event product planning (e.g., related to product/service management, selling, promotion)\n- 8175-93 Describe the elements of sports, entertainment, and event promotional campaigns.\n    * Evidence of event, product, or service\n    * Evidence of campaign objectives\n    * Evidence of target marketing\n    * Evidence of campaign activities and schedule\n    * Evidence of budget\n    * Evidence of key performance indicators (KPI)\n\nTEACHER GRADING NOTES\nUse the Checkpoints to pace the grading.\n\n- Day 1 (Product): Pass/Fail check. Did they alter the sleeve AND the record?\n- Day 2 (Timeline): Spot check the \"7 activities.\"\n- Day 3 (Presentation): Grade the \"Cohesive Branding.\"\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Project: The Album Drop (Product and Promotion)\n\nDescription:\n\nAfter months in the studio, your band’s album is finally ready to be released. Now you just have to make people care! You will be provided with a vinyl record for this assignment.\n\nDay 1 Checkpoint: The Product and The Brand\n\n- Alter the Sleeve: Design a cover that clearly displays the Artist Name and Album Name.\n- Alter the Vinyl: Modify the record itself.\n- Value Check: Every alteration should add \"perceived value.\"\n\nDay 2 Checkpoint: The Hype Cycle\n\n- Timeline: Map out 2 months (1 month before release, 1 month after).\n- Schedule: Plan 7 unique promotional activities per week.\n- Required Events: 1 Public Appearance, 1 Fan Interaction, 1 Interview.\n\nDay 3 Checkpoint: The Pitch\n\n- Presentation: Create a pitch outlining your plan.\n- Include: Customer Profile, Branding Message, Ad Mockup, PR Talking Points, and Measurable Success Metrics.\n\nSubmission:\n\nSubmit your Presentation Slides here."
   },
   "8175-L20": {
@@ -682,22 +712,27 @@ const LESSON_ASSIGNMENTS = {
     "objective": "Sports teams make massive amounts of money by selling the name of their stadium. This is called Naming Rights. Other brands try to cheat the system by advertising *near* the event without paying the fee. This is called Ambush Marketing.",
     "warmupAnchor": "Look at the Madden NFL video game. How much money do you think the NFL gets just for letting EA Sports use their logo? (Answer: About 1.5 Billion dollars).",
     "vocabulary": "",
-    "competencyIds": [],
+    "competencyIds": [
+      "8175-58",
+      "8175-91",
+      "8175-87",
+      "8175-89"
+    ],
     "approved": true,
     "source": "lessons/8175/L21.md",
     "milestones": [
-      "Describe the use of licensing in branding.",
-      "Explain the nature of licensing in the sports industries.",
-      "Explain the use of naming rights.",
-      "Explain the nature of ambush marketing."
+      "8175-58 Explain product licensing and brand protection.",
+      "8175-91 Describe the components and relationships between stakeholders.",
+      "8175-87 Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.",
+      "8175-89 Identify legal restrictions placed on endorsements and sponsorships."
     ],
     "milestoneCompetencyIds": [
-      "",
-      "",
-      "",
-      ""
+      "8175-58",
+      "8175-91",
+      "8175-87",
+      "8175-89"
     ],
-    "definitionOfDone": "ASSIGNMENT: L21 WHO OWNS IT? (LICENSING AND LAW)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: (see criteria)\n\nCRITERIA\n- Describe the use of licensing in branding.\n- Explain the nature of licensing in the sports industries.\n- Explain the use of naming rights.\n- Explain the nature of ambush marketing.\n\nTEACHER GRADING NOTES\nCheck for the definition of Ambush Marketing.\n\n- Correct: A brand trying to look like a sponsor without paying for it.\n- The Bid: In the stadium activity, award creativity points for the \"activation\" ideas.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L21 WHO OWNS IT? (LICENSING AND LAW)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-58, 8175-91, 8175-87, 8175-89\n\nCRITERIA\n- 8175-58 Explain product licensing and brand protection.\n    * Evidence of licensing\n    * Evidence of royalties\n    * Evidence of licensor\n    * Evidence of licensee\n    * Evidence of intellectual property (IP)\n    * Evidence of broadcast flags\n    * Evidence of piracy\n- 8175-91 Describe the components and relationships between stakeholders.\n    * Evidence of the event triangle\n    * Evidence of stakeholders (e.g., the event, community, attendee, sponsors, media)\n    * Evidence of the role of media broadcasting in the decision a sponsor will make in negotiating a contract with the venue\n    * Evidence of the roles of the event staff, the venue, and the sponsor\n- 8175-87 Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries.\n    * Evidence of the definition of sponsorship\n    * Evidence of the definition of endorsement\n    * Evidence of the differences between sponsorship and endorsement\n    * Evidence of types of sponsorship (e.g., naming rights, signage, exclusivity)\n- 8175-89 Identify legal restrictions placed on endorsements and sponsorships.\n    * Evidence of exclusivity terms in contracts\n    * Evidence of intellectual property ownership\n    * Evidence of restrictions put in place by the Federal Trade Commission (e.g., regarding truthful opinions, real experience with the product, and deceptive ads)\n\nTEACHER GRADING NOTES\nCheck for the definition of Ambush Marketing.\n\n- Correct: A brand trying to look like a sponsor without paying for it.\n- The Bid: In the stadium activity, award creativity points for the \"activation\" ideas.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: The Naming Rights Bid and Ambush Marketing\n\nDescription:\n\nSports teams make massive amounts of money by selling the name of their stadium. This is called Naming Rights. Other brands try to cheat the system by advertising *near* the event without paying the fee. This is called Ambush Marketing.\n\nThe Task:\n\nComplete the two sections below.\n\nPart 1: The Naming Rights Bid\n\n- Scenario: Clover Hill High School is selling the naming rights to the football stadium.\n- Select a Brand: Choose a real company.\n- The Pitch: Write a 5 sentence proposal. Why does this brand want their name on our field?\n\nPart 2: Ambush Marketing Analysis\n\n- Define It: What is Ambush Marketing?\n- The Example: Brands finding ways to get on camera without paying the Olympic Committee.\n- The Verdict: Is Ambush Marketing genius or dishonest? Explain your answer in 2 sentences.\n\nSubmission:\n\nSubmit your Bid and Analysis as a Text Entry."
   },
   "8175-L22": {
@@ -784,23 +819,24 @@ const LESSON_ASSIGNMENTS = {
     "vocabulary": "",
     "competencyIds": [
       "8175-7",
-      "8175-10"
+      "8175-10",
+      "8175-94"
     ],
     "approved": true,
     "source": "lessons/8175/L24.md",
     "milestones": [
       "8175-7 Demonstrate listening and speaking skills.",
       "8175-10 Collaborate with team members.",
-      "Describe the types of promotion (Personal Selling).",
+      "8175-94 Explain the types of selling and why they are important in the sports, entertainment, and event industries.",
       "The planned work product is complete and applied to the class conglomerate: THE ART OF THE SALE (METHODS AND PROCESS)"
     ],
     "milestoneCompetencyIds": [
       "8175-7",
       "8175-10",
-      "",
+      "8175-94",
       ""
     ],
-    "definitionOfDone": "ASSIGNMENT: L24 THE ART OF THE SALE (METHODS AND PROCESS)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-7, 8175-10\n\nCRITERIA\n- 8175-7 Demonstrate listening and speaking skills.\n    * Evidence of defining nonverbal cues\n    * Evidence of employing active listening techniques (e.g., asking clarifying questions, paraphrasing what was said)\n    * Evidence of exhibiting public speaking skills (e.g., making presentations)\n    * Evidence of articulating ideas in a manner appropriate to the setting and audience (e.g., considering the chosen communication method and audience’s level of knowledge)\n- 8175-10 Collaborate with team members.\n    * Evidence of defining collaboration and teamwork\n    * Evidence of discussing the benefits of teamwork\n    * Evidence of establishing expectations, roles, and goals\n    * Evidence of contributing to the success of the team by sharing responsibility\n    * Evidence of respecting the thoughts, opinions, and contributions of other team members\n- Describe the types of promotion (Personal Selling).\n\nTEACHER GRADING NOTES\nThis assignment has three parts.\n\n- The Worksheet: Check for the \"Benefits vs. Negatives\" analysis.\n- The Process: Ensure they listed the 6 steps correctly.\n- The Roleplay: Grade the written reflection based on whether they acknowledge that \"Selling is listening.\"\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L24 THE ART OF THE SALE (METHODS AND PROCESS)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-7, 8175-10, 8175-94\n\nCRITERIA\n- 8175-7 Demonstrate listening and speaking skills.\n    * Evidence of defining nonverbal cues\n    * Evidence of employing active listening techniques (e.g., asking clarifying questions, paraphrasing what was said)\n    * Evidence of exhibiting public speaking skills (e.g., making presentations)\n    * Evidence of articulating ideas in a manner appropriate to the setting and audience (e.g., considering the chosen communication method and audience’s level of knowledge)\n- 8175-10 Collaborate with team members.\n    * Evidence of defining collaboration and teamwork\n    * Evidence of discussing the benefits of teamwork\n    * Evidence of establishing expectations, roles, and goals\n    * Evidence of contributing to the success of the team by sharing responsibility\n    * Evidence of respecting the thoughts, opinions, and contributions of other team members\n- 8175-94 Explain the types of selling and why they are important in the sports, entertainment, and event industries.\n    * Evidence of recognizing the importance of selling as part of the marketing concept\n    * Evidence of explaining and making a distinction between\n    * Evidence of personal selling (e.g., salespeople, merchandise sales, interviewing)\n    * Evidence of technology-based selling (e.g., online sales, email marketing, social media marketing)\n\nTEACHER GRADING NOTES\nThis assignment has three parts.\n\n- The Worksheet: Check for the \"Benefits vs. Negatives\" analysis.\n- The Process: Ensure they listed the 6 steps correctly.\n- The Roleplay: Grade the written reflection based on whether they acknowledge that \"Selling is listening.\"\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: Sales Training Camp (Methods and Roleplay)\n\nDescription:\n\nThere are two main ways products are sold: Personal Selling and Non-Personal Selling. To be effective in business, you must understand the pros and cons of both.\n\nThe Task:\n\nComplete the three sections below based on the class lecture.\n\nPart 1: Methods of Selling Analysis\n\n- Personal Selling: Define it. List 2 Benefits and 2 Negatives.\n- Non-Personal Selling: Define it. List 2 Benefits and 2 Negatives.\n\nPart 2: The 6 Steps of a Sale\n\n- List the 6 Steps of the Selling Process in order.\n- Key Concept: Complete this sentence: \"Selling is __________.\"\n\nPart 3: The \"No, No, Yes\" Roleplay\n\n- Instructions: Get into groups of two. Act as Salesperson and Customer.\n- The Rule: The Customer must reject the Salesperson twice before saying \"Yes.\"\n- Reflection: How did it feel to be rejected twice? Did you have to change your strategy?\n\nSubmission:\n\nSubmit your responses as a Text Entry."
   },
   "8175-L25": {
@@ -884,23 +920,25 @@ const LESSON_ASSIGNMENTS = {
     "warmupAnchor": "Did you buy anything over break because you saw it on TikTok, Instagram, or a billboard? If not, what is the last ad you remember seeing? Why did it stick?",
     "vocabulary": "",
     "competencyIds": [
-      "8175-2"
+      "8175-2",
+      "8175-72",
+      "8175-78"
     ],
     "approved": true,
     "source": "lessons/8175/L27.md",
     "milestones": [
       "8175-2 Demonstrate critical thinking and problem-solving.",
-      "Explain the role of promotion.",
-      "Explain the use of social media in sports marketing.",
+      "8175-72 Explain promotion and promotional mix.",
+      "8175-78 Define current electronic marketing tools and platforms.",
       "The planned work product is complete and applied to the class conglomerate: SPRING BREAK FIELD REPORT (MARKETING IN THE WILD)"
     ],
     "milestoneCompetencyIds": [
       "8175-2",
-      "",
-      "",
+      "8175-72",
+      "8175-78",
       ""
     ],
-    "definitionOfDone": "ASSIGNMENT: L27 SPRING BREAK FIELD REPORT (MARKETING IN THE WILD)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-2\n\nCRITERIA\n- 8175-2 Demonstrate critical thinking and problem-solving.\n    * Evidence of recognizing and analyzing problems\n    * Evidence of evaluating potential solutions and resources\n    * Evidence of using a logical approach to make decisions and solve problems\n    * Evidence of implementing effective courses of action\n- Explain the role of promotion.\n- Explain the use of social media in sports marketing.\n\nTEACHER GRADING NOTES\nFocus on the \"Process Description\" section. Did they try to explain *how* the ad was made? Award points for students who think about the work behind the ad.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L27 SPRING BREAK FIELD REPORT (MARKETING IN THE WILD)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-2, 8175-72, 8175-78\n\nCRITERIA\n- 8175-2 Demonstrate critical thinking and problem-solving.\n    * Evidence of recognizing and analyzing problems\n    * Evidence of evaluating potential solutions and resources\n    * Evidence of using a logical approach to make decisions and solve problems\n    * Evidence of implementing effective courses of action\n- 8175-72 Explain promotion and promotional mix.\n    * Evidence of a definition of promotion\n    * Evidence of a description of the elements in the promotional mix (i.e., advertising, publicity, personal selling, sales promotion, direct marketing)\n    * Evidence of the relationship among promotion, publicity, and advertising of a product and/or service\n- 8175-78 Define current electronic marketing tools and platforms.\n    * Evidence of websites\n    * Evidence of online video\n    * Evidence of web marketing\n    * Evidence of social media\n    * Evidence of mobile marketing platforms\n\nTEACHER GRADING NOTES\nFocus on the \"Process Description\" section. Did they try to explain *how* the ad was made? Award points for students who think about the work behind the ad.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: Spring Break Field Report (Marketing in the Wild)\n\nDescription:\n\nYou have just spent a week away from school, but you were likely surrounded by business the entire time.\n\nThe Task:\n\nUsing at least 200 words, write a reflection on the marketing you encountered over Spring Break.\n\n1. The Observation (The What)\n\n- Tell me specific examples of marketing that you noticed (e.g., sponsored posts, billboards, movie trailers).\n\n2. The Reverse Engineering (The How)\n\n- Describe the processes that you imagine went into the development of this marketing campaign.\n- How did they get it from an idea to what you experienced? Who had to approve the budget? Who designed the graphics?\n\nSubmission:\n\nSubmit your reflection as a Text Entry."
   },
   "8175-L28": {
@@ -985,23 +1023,24 @@ const LESSON_ASSIGNMENTS = {
     "vocabulary": "",
     "competencyIds": [
       "8175-17",
+      "8175-63",
       "8175-103"
     ],
     "approved": true,
     "source": "lessons/8175/L30.md",
     "milestones": [
       "8175-17 Maintain working knowledge of current information-technology (IT) systems.",
-      "Explain the nature of market segmentation.",
+      "8175-63 Create a survey to conduct primary research.",
       "8175-103 Describe the importance of research in developing a marketing plan.",
       "The planned work product is complete and applied to the class conglomerate: SURVEY CREATION (SEGMENTATION VERIFICATION)"
     ],
     "milestoneCompetencyIds": [
       "8175-17",
-      "",
+      "8175-63",
       "8175-103",
       ""
     ],
-    "definitionOfDone": "ASSIGNMENT: L30 SURVEY CREATION (SEGMENTATION VERIFICATION)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-17, 8175-103\n\nCRITERIA\n- 8175-17 Maintain working knowledge of current information-technology (IT) systems.\n    * Evidence of hardware and devices (e.g., peripherals)\n    * Evidence of software and applications\n    * Evidence of cloud-based services\n    * Evidence of file-sharing techniques\n    * Evidence of emerging technologies\n    * Evidence of troubleshooting protocols and techniques\n- Explain the nature of market segmentation.\n- 8175-103 Describe the importance of research in developing a marketing plan.\n    * Evidence of Describe the importance of research in developing a marketing plan\n\nTEACHER GRADING NOTES\nCheck the structure. Are there exactly 10 Closed Questions and 2 Open Questions? Do the questions actually ask about the customer's identity?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L30 SURVEY CREATION (SEGMENTATION VERIFICATION)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-17, 8175-63, 8175-103\n\nCRITERIA\n- 8175-17 Maintain working knowledge of current information-technology (IT) systems.\n    * Evidence of hardware and devices (e.g., peripherals)\n    * Evidence of software and applications\n    * Evidence of cloud-based services\n    * Evidence of file-sharing techniques\n    * Evidence of emerging technologies\n    * Evidence of troubleshooting protocols and techniques\n- 8175-63 Create a survey to conduct primary research.\n    * Evidence of identifying survey goals\n    * Evidence of determining the audience for the survey\n    * Evidence of deciding on the appropriate length of the survey\n    * Evidence of using different types of questions (e.g., multiple choice, open-ended)\n- 8175-103 Describe the importance of research in developing a marketing plan.\n    * Evidence of Describe the importance of research in developing a marketing plan\n\nTEACHER GRADING NOTES\nCheck the structure. Are there exactly 10 Closed Questions and 2 Open Questions? Do the questions actually ask about the customer's identity?\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Assignment: Data-Driven Segmentation (Survey Build)\n\nDescription:\n\nWe have spent time developing \"Market Segments.\" Now, we need to prove those segments actually exist and find out how to talk to them.\n\nThe Task:\n\nUse Google Forms to create a complete market research survey.\n\nRequirements:\n\n- Question Structure:\n\n- Create 10 Closed Questions (Multiple Choice, Checkbox, Scale).\n- Create 2 Open Questions (Short Answer/Paragraph).\n\n- Purpose of Data:\n\n- Your questions should be designed to verify that the market segments we developed are correct.\n- The data should give us insight into how to best reach these segments.\n\nSubmission:\n\nWhen completed, click \"Send,\" copy the link, and paste the URL to fill out the survey in this assignment."
   },
   "8175-L31": {
@@ -1185,23 +1224,24 @@ const LESSON_ASSIGNMENTS = {
     "vocabulary": "",
     "competencyIds": [
       "8175-1",
-      "8175-20"
+      "8175-20",
+      "8175-106"
     ],
     "approved": true,
     "source": "lessons/8175/L36.md",
     "milestones": [
       "8175-1 Demonstrate creativity and innovation.",
       "8175-20 Demonstrate professionalism.",
-      "Evaluate a promotional campaign.",
+      "8175-106 Identify occupations within the sports, entertainment, and event industries.",
       "The planned work product is complete and applied to the class conglomerate: COURSE EVALUATION BROCHURE (THE EXIT INTERVIEW)"
     ],
     "milestoneCompetencyIds": [
       "8175-1",
       "8175-20",
-      "",
+      "8175-106",
       ""
     ],
-    "definitionOfDone": "ASSIGNMENT: L36 COURSE EVALUATION BROCHURE (THE EXIT INTERVIEW)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-1, 8175-20\n\nCRITERIA\n- 8175-1 Demonstrate creativity and innovation.\n    * Evidence of discussing the importance of creativity and innovation in the workplace\n    * Evidence of brainstorming and contributing ideas, strategies, and solutions\n    * Evidence of developing and/or improving products, services, or processes\n    * Evidence of identifying and allocating available resources\n- 8175-20 Demonstrate professionalism.\n    * Evidence of defining professionalism\n    * Evidence of practicing punctuality and attendance\n    * Evidence of adhering to work-schedule expectations\n    * Evidence of exercising etiquette (e.g., language, manners, and behaviors suitable for the workplace and online; appropriate verbal and nonverbal communication)\n    * Evidence of exhibiting professional self-representation (e.g., using a firm handshake, introducing oneself, making eye contact)\n    * Evidence of maintaining professional appearance (e.g., maintaining personal hygiene, adhering to a dress code)\n- Evaluate a promotional campaign.\n\nTEACHER GRADING NOTES\nFocus on Panel Four (Overview of Mr. Berneche). Did they list \"Pros and Cons\" respectfully? Award points for honesty if it is phrased professionally.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
+    "definitionOfDone": "ASSIGNMENT: L36 COURSE EVALUATION BROCHURE (THE EXIT INTERVIEW)\nCOURSE: 8175 Sports Entertainment and Event Marketing\nCOMPETENCIES ASSESSED: 8175-1, 8175-20, 8175-106\n\nCRITERIA\n- 8175-1 Demonstrate creativity and innovation.\n    * Evidence of discussing the importance of creativity and innovation in the workplace\n    * Evidence of brainstorming and contributing ideas, strategies, and solutions\n    * Evidence of developing and/or improving products, services, or processes\n    * Evidence of identifying and allocating available resources\n- 8175-20 Demonstrate professionalism.\n    * Evidence of defining professionalism\n    * Evidence of practicing punctuality and attendance\n    * Evidence of adhering to work-schedule expectations\n    * Evidence of exercising etiquette (e.g., language, manners, and behaviors suitable for the workplace and online; appropriate verbal and nonverbal communication)\n    * Evidence of exhibiting professional self-representation (e.g., using a firm handshake, introducing oneself, making eye contact)\n    * Evidence of maintaining professional appearance (e.g., maintaining personal hygiene, adhering to a dress code)\n- 8175-106 Identify occupations within the sports, entertainment, and event industries.\n    * Evidence of a distinction between the concepts of career cluster and occupation\n    * Evidence of specific high demand occupations\n    * Evidence of how most career clusters are represented\n    * Evidence of an organizational chart for a company or organization\n    * Evidence of salary expectation for entry-level positions\n\nTEACHER GRADING NOTES\nFocus on Panel Four (Overview of Mr. Berneche). Did they list \"Pros and Cons\" respectfully? Award points for honesty if it is phrased professionally.\n\nPASSING STANDARD\nThe work passes when it completes every part of the assignment above, in the student's own words, and shows evidence for each competency listed. Specific examples, not general statements. Work that skips a part, or restates the prompt without doing it, does not pass.",
     "promptText": "Title: Project: The Course Brochure (Honest Feedback)\n\nDescription:\n\nYou will use your Marketing knowledge while providing Mr. Berneche honest feedback about the course you have experienced this year.\n\nThe Task:\n\nCreate a brochure for this course using a template or Canva.\n\nBrochure Requirements:\n\n- Front Cover: A creative Logo.\n- Panel TWO: Showcase a memorable project from the course.\n- Panel THREE: What are three careers this class might prepare you for?\n- Panel FOUR: The Teacher Review (Pros and Cons of the teaching approach).\n- Panel FIVE: Share \"Student Reviews\" (quotes).\n- Back Panel: Contact Info for Mr. Berneche.\n\nSubmission:\n\nSubmit your Brochure as a PDF or Image file."
   },
   "8177-the-business-of-the-game": {
