@@ -24,6 +24,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 24:** Examine aspects of management within an industry/organization (Analyzing who owns and runs a franchise in the multi-billion dollar sports/entertainment industry).
   - **Competency 50:** Examine how sports, entertainment, and events affect local, state, and national economies (Evaluating how a sports franchise impacts its local city's economy and community).
   - **Competency 52:** Explore the organizational structures within the sports, entertainment, and event industries (Identifying whether the franchise is a sole proprietorship, partnership, or corporation).
+  - **Competency 53:** Explain the advantages and disadvantages of operating as a for-profit or nonprofit organization (Comparing the nonprofit, fan-owned Green Bay Packers with a privately owned franchise).
   - **Competency 86:** Identify revenue sources related to the sports, entertainment, and event industries (Breaking down revenue streams: media rights, gate receipts, merchandising).
   - **Competency 94:** Explain how event popularity and competitive factors relate to attendance (Understanding that a sports team competes not just with other teams, but with movies, concerts, and streaming services for discretionary income).
 

@@ -22,6 +22,7 @@ This lesson addresses the final macro-economic and marketing competencies from t
 
   - **Competency 51:** (Optional) Identify cultural and political environmental factors and their economic impact on the global sports, entertainment, and event industries (Understanding how merchandise is manufactured globally and how sports products/broadcasts are exported to foreign markets; Adapting brand messaging, event times, and promotional strategies to fit different cultural norms and global time zones).
   - **Competency 74:** Describe external factors affecting the sports, entertainment, and event industries (Calculating how a strong or weak US Dollar affects the profit margin of a jersey sold in Euros, Pounds, or Yen).
+  - **Competency 80:** Describe external factors affecting the sports, entertainment, and event marketing process (Adapting a marketing campaign to a foreign audience's culture).
 
 ## **3. Learning Objectives**
 
@@ -41,8 +42,8 @@ By the end of this lesson, students will be able to:
 
 ### **B. Global Trade & The Exchange Rate Math (20 Minutes)**
 
-  - **Global Supply Chains (Comp 39):** Discuss where a typical team jersey is actually made (often Southeast Asia or Central America), shipped to the US, and then sold globally. That is the definition of global trade.
-  - **The Currency Factor (Comp 40):** If an NFL team sells a sweatshirt at the London game for £80 (British Pounds), how much is that in US Dollars?
+  - **Global Supply Chains (Comp 51):** Discuss where a typical team jersey is actually made (often Southeast Asia or Central America), shipped to the US, and then sold globally. That is the definition of global trade.
+  - **The Currency Factor (Comp 74):** If an NFL team sells a sweatshirt at the London game for £80 (British Pounds), how much is that in US Dollars?
 
 <!-- end list -->
 
@@ -50,7 +51,7 @@ By the end of this lesson, students will be able to:
 
 ### **C. The International Expansion Lab (60 Minutes)**
 
-  - **Cultural Marketing (Comp 41):** You can't just copy/paste an American ad in Tokyo or Madrid. You have to translate the language, adjust for cultural values, and change the pricing strategy.
+  - **Cultural Marketing (Comp 51):** You can't just copy/paste an American ad in Tokyo or Madrid. You have to translate the language, adjust for cultural values, and change the pricing strategy.
   - **Independent/Pair Work:** Students act as the VP of International Development for a major US sports team, music festival, or entertainment brand (e.g., WWE, a specific NBA team, Coachella). They must plan a single major event in a foreign country of their choice.
 
 ## **5. Project Deliverables: The Expansion Proposal**

@@ -22,6 +22,8 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 11:** Demonstrate big-picture thinking (Venue layout impact on total event/store success).
   - **Competency 22:** Demonstrate workplace safety (Maintaining egress and fire safety codes).
   - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (Atmospherics and physical layout; Traffic patterns and purchase points).
+  - **Competency 72:** Explain how the Americans with Disabilities Act (ADA) has influenced the planning of events and design of facilities (The 36-inch rule for wheelchair access).
+  - **Competency 73:** Explain how legal requirements influence operations in the sports, entertainment, and event industries (Fire code and egress requirements shape the layout).
   - **Competency 92:** Explain the process for planning an event (Visualizing the "event" of a store opening/shift).
   - **Competency 95:** Analyze personnel needs for an event (Strategic placement of staff within the planogram).
 
