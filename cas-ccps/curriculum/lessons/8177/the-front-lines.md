@@ -24,6 +24,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 41:** Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees (Understanding the difference between B2B and B2C sales in sports).
   - **Competency 59:** Describe methods used to encourage customer retention (Understanding how retention is cheaper than acquisition).
   - **Competency 60:** Respond to inquiries and suggestions from customers, coworkers, and supervisors in a sports, entertainment, and event context (Mastering the 6 steps of the selling process, from approach to close, while answering a customer's questions).
+  - **Competency 61:** Explain company policy to a customer in a sports, entertainment, and event context (Explaining what the box office can offer an upset fan: a seat change, a refund or a future ticket).
 
 ## **3. Learning Objectives**
 

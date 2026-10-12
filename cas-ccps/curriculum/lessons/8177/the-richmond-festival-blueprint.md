@@ -22,6 +22,8 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
 
   - **Competency 1:** Demonstrate creativity and innovation (Conceptualizing a unique festival theme and vibe).
   - **Competency 67:** Examine the importance of risk assessment and management strategies in the sports, entertainment, and event industries (Identifying potential threats like weather or power outages and planning mitigations).
+  - **Competency 68:** Examine the challenges posed by uncontrollable variables in the sports, entertainment, and event industries (Planning for weather and power outages at an outdoor festival).
+  - **Competency 87:** Identify expenditures related to the sports, entertainment, and event industries (Listing the festival's major "Money Out" expenses).
   - **Competency 92:** Explain the process for planning an event (Structuring the blueprint from vision to execution).
   - **Competency 95:** Analyze personnel needs for an event (Identifying 5 specific job roles necessary to operate the festival).
   - **Competency 96:** Analyze the financial resources required for each event activity (Determining "Money In" revenue streams and "Money Out" major expenses).

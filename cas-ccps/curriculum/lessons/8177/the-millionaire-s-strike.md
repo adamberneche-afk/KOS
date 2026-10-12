@@ -23,6 +23,7 @@ This lesson addresses the following macro-economic competencies from the **8177*
   - **Competency 28:** Examine labor issues related to an industry/organization (How much revenue a player generates vs. their cost; Why a franchise quarterback is irreplaceable, giving the union extreme negotiating leverage).
   - **Competency 49:** Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries (Analyzing the "collateral damage" of a strike on the hourly venue workers who lose their income).
   - **Competency 50:** Examine how sports, entertainment, and events affect local, state, and national economies (How a prolonged lockout disrupts the economic cycle of a sports city).
+  - **Competency 69:** Identify purposes, types, and terms of contracts (Negotiating a collective bargaining agreement, the contract between owners and players).
   - **Competency 71:** Identify unions relevant to labor relations in the sports, entertainment, and event industries (Defining Unions, CBA, Strikes, and Lockouts).
 
 ## **3. Learning Objectives**
@@ -39,13 +40,13 @@ By the end of this lesson, students will be able to:
 ### **A. The Hook: The Highest Paid Union Workers (10 Minutes)**
 
   - **Discussion:** Write "UNION WORKER" on the board. Ask students to name professions that belong to a union. (They will say teachers, plumbers, auto workers). Then, show a picture of the NFL Players Association logo.
-  - **Concept (Comp 31):** Explain that every major pro sports league has a union. Athletes negotiate their healthcare, minimum salaries, and safety rules exactly like factory workers do.
+  - **Concept (Comp 71):** Explain that every major pro sports league has a union. Athletes negotiate their healthcare, minimum salaries, and safety rules exactly like factory workers do.
 
 ### **B. Leverage & The Ripple Effect (20 Minutes)**
 
-  - **Specialization (Comp 30):** Why can't the NFL just fire the striking players and hire guys off the street? (Because the product drops in quality, and fans won't pay to watch amateurs).
+  - **Specialization (Comp 28):** Why can't the NFL just fire the striking players and hire guys off the street? (Because the product drops in quality, and fans won't pay to watch amateurs).
   - **Global Labor Mobility:** What happens if there is a lockout? Discuss how elite athletes (like US NBA players) can simply take their highly specialized skills to European or Asian leagues to continue earning income during a strike or the off-season. The owners, however, cannot move their physical stadiums, giving the players a unique upper hand in the global market.
-  - **The Collateral Damage (Comp 35 & 38):** If the NBA locks out its players, the players are fine (they are rich or playing overseas). Who actually suffers? *The usher. The hot dog vendor. The bartender across the street from the arena.* Discuss how a strike creates localized unemployment and disrupts the business cycle of an entire city.
+  - **The Collateral Damage (Comp 49 & 50):** If the NBA locks out its players, the players are fine (they are rich or playing overseas). Who actually suffers? *The usher. The hot dog vendor. The bartender across the street from the arena.* Discuss how a strike creates localized unemployment and disrupts the business cycle of an entire city.
 
 ### **C. The CBA Negotiation Simulation (60 Minutes)**
 
