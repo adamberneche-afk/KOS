@@ -24,8 +24,10 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 13:** Demonstrate continuous learning and adaptability.
   - **Competency 32:** Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult (e.g., DECA, FBLA).
   - **Competency 43:** Evaluate career opportunities in sports, entertainment, and event management (Identifying at least three career paths in sports and event management beyond being an athlete).
+  - **Competency 102:** Identify career and employment-related information sources (Job boards like TeamWork Online and LinkedIn, team and venue careers pages, and the Occupational Outlook Handbook).
   - **Competency 101:** (Optional) Evaluate the event’s overall success (Conducting a post-event SWOT analysis).
   - **Competency 103:** Identify career opportunities at different levels in sports, entertainment, and event management.
+  - **Competency 104:** Describe education and training needed for a sports, entertainment, and event management career (Degrees, internships, game-day jobs and industry certifications).
   - **Competency 106:** Identify professional development opportunities in the sports, entertainment, and event industries (Building a digital presence like LinkedIn).
   - **Competency 107:** Collect information about a prospective employer (Preparing for a job interview by researching the employer).
   - **Competency 108:** Develop a career plan (Building a professional resume and portfolio).
@@ -35,7 +37,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
 By the end of this lesson, students will be able to:
 
 1.  Define and measure "Event Success" using financial data (ROI) and qualitative data (fan surveys).
-2.  Identify at least three distinct career paths within the sports/event management industry.
+2.  Identify at least three distinct career paths within the sports/event management industry, where to research them, and the education and training each requires.
 3.  Translate classroom projects into professional, action-oriented resume bullet points.
 4.  Develop a basic networking strategy and identify professional organizations that can accelerate career growth.
 5.  Answer behavioral interview questions using the S.T.A.R. (Situation, Task, Action, Result) method.
@@ -55,6 +57,8 @@ By the end of this lesson, students will be able to:
 ### **B. Career Pathways & Professional Organizations (15 Minutes)**
 
   - **Exploration (Comp 43 & 103):** Break the myth that you have to be a professional athlete to work in sports. Highlight "Front Office" careers.
+  - **Research the Job (Comp 102):** Show students where real career information lives: **TeamWork Online** (the sports industry's main job board), **LinkedIn** and **Indeed**, the careers pages of local teams and venues (Richmond Flying Squirrels, VCU Athletics, Richmond Raceway), and the U.S. Bureau of Labor Statistics' **Occupational Outlook Handbook** for pay, outlook and required education. Model one search live.
+  - **Get the Training (Comp 104):** Most front-office jobs ask for a bachelor's degree (sports management, business, marketing or communications), but the real separator is experience: internships, part-time game-day jobs (ticket taker, usher, concessions) and volunteering at events. Some careers add industry certifications later, like the Certified Meeting Professional (CMP) for event planners or the Certified Facilities Executive (CFE) for venue managers.
   - **Organizations:** Discuss how joining organizations like DECA, FBLA, or the Public Relations Society of America (PRSA) provides a massive competitive advantage on a resume.
 
 ### **C. Building Your Roster: Networking (15 Minutes)**

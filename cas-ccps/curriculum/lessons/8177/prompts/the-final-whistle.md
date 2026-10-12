@@ -12,7 +12,12 @@ The season's over. Like a front office after the final game, you'll evaluate an 
 
 Part 1: The Post-Event Evaluation. Pick a real school event you attended or helped with (a game, a dance, a spirit week, the Cavalier Shop's busiest day). Write a SWOT analysis: at least two strengths, two weaknesses, two opportunities and two threats. Then name one thing you'd measure next time to judge success (attendance, profit, survey ratings, social media comments).
 
-Part 2: Your Career Paths. Name three different jobs in sports, entertainment or event management that interest you. For each, write one sentence on what the job involves and one sentence on which project from this class prepared you for it.
+Part 2: Your Career Paths. Name three different jobs in sports, entertainment or event management that interest you. For each, write:
+
+- one sentence on what the job involves
+- the source where you researched it (a real job posting, a team or venue careers page, or the Occupational Outlook Handbook)
+- the education and training it usually requires (a degree, an internship, a certification, experience)
+- one sentence on which project from this class prepared you for it
 
 Part 3: Your Resume Bullets. Write five resume bullet points based on projects from this class. Each one must start with an action verb, describe a specific task, and include a result or number where you can. Link your full one-page resume if you have one.
 
@@ -22,7 +27,7 @@ Part 5: Your Network. Name one professional organization (like DECA) you could j
 
 Everything on a resume must be true. Never exaggerate what you did.
 
-Use these terms accurately: SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview.
+Use these terms accurately: SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview, internship, certification.
 
 ## Background
 
@@ -44,6 +49,19 @@ A SWOT analysis sorts what you learned into four boxes:
 - Threats: outside risks (bad weather, a competing event the same night).
 
 You don't have to be an athlete to work in sports. Front-office careers include ticket sales, marketing, social media, event operations, sponsorship sales, public relations, facility management, merchandising and data analysis. Professional organizations like DECA, FBLA and the Public Relations Society of America (PRSA) help you build skills, compete and meet people in the industry.
+
+Where to research a career:
+
+- Job boards: TeamWork Online is the main job board for the sports industry. LinkedIn and Indeed list jobs in every field.
+- Team and venue websites: most teams, colleges and venues have a "Careers" or "Jobs" page. Locally, try the Richmond Flying Squirrels, VCU Athletics or Richmond Raceway.
+- The Occupational Outlook Handbook: a free U.S. Bureau of Labor Statistics website that lists what a job pays, how fast it's growing, and the education it requires.
+- People: informational interviews, your school counselor, and DECA advisors and judges.
+
+The education and training you'll need:
+
+- Most front-office jobs ask for a bachelor's degree, often in sports management, business, marketing or communications.
+- Experience matters as much as the degree. Internships, part-time game-day jobs (ticket taker, usher, concessions) and event volunteering are how most people get their first full-time job in sports.
+- Some careers add a professional certification after a few years of work, like the Certified Meeting Professional (CMP) for event planners or the Certified Facilities Executive (CFE) for venue managers.
 
 Networking means building relationships with people in the field. An informational interview is a short, polite conversation with someone who has a job you're curious about, where you ask about their career. You're not asking for a job, just advice. A professional online presence (like a LinkedIn profile, when you're old enough) helps people find you.
 
@@ -69,6 +87,8 @@ The STAR method answers interview questions with a real story:
 - STAR method: a way to answer interview questions with a story: situation, task, action, result.
 - Networking: building professional relationships that can help your career.
 - Informational interview: a short conversation with someone in a job you're curious about, to learn about their career.
+- Internship: a short-term job, paid or unpaid, where you learn a career by doing it.
+- Certification: a credential from a professional organization showing you've met its standards, usually by passing an exam.
 
 ## Example
 
@@ -85,4 +105,4 @@ Think of a job in sports or entertainment that doesn't involve playing the sport
 
 ## Vocabulary
 
-SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview
+SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview, internship, certification
