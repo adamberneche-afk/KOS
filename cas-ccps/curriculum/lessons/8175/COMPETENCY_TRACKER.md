@@ -9,7 +9,7 @@
 
 **Framework:** VDOE Sports, Entertainment, and Event Marketing, 2025 revision: 113 tasks (5 optional: 36, 38, 85, 99, 113).
 
-**Status:** 56 tasks are cited by the 36 lesson plans; 57 are not yet covered.
+**Status:** 87 tasks are covered: 80 by the 36 lesson plans and 7 outside them (DECA and work-based learning). 26 are not yet covered.
 
 Lessons are listed by number (L01–L36). Earlier versions of the lesson plans used a different numbering, so many numbers did not match the state task list. Every lesson's competencies have been re-matched to the 2025 list, and the counts below come from those lessons.
 
@@ -44,20 +44,37 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
   - **20:** Demonstrate professionalism. *(L06, L07, L36)*
   - **21:** Demonstrate reading and writing skills. *(L06, L09, L10, L11, L15)*
 
+**Examining All Aspects of an Industry**
+
+  - **29:** Examine community issues related to an industry/organization. *(L15)*
+
+**Addressing Elements of Student Life**
+
+  - **34:** Identify Internet safety issues and procedures for complying with acceptable use standards. *(L33)*
+
 **Developing an Overview of Marketing**
 
+  - **39:** Explain marketing as it relates to the sports, entertainment, and event industries. *(L01)*
   - **41:** Describe the marketing concept as related to the sports, entertainment, and event industries. *(L01)*
   - **42:** Explain the concept of target marketing. *(L11, L18, L19)*
 
 **Understanding the Importance of Sports, Entertainment, and Event Marketing**
 
+  - **44:** Explain the importance of the sports, entertainment, and event industries. *(L14)*
   - **45:** Describe the past, present, and future of the sports, entertainment, and event industries. *(L01)*
+  - **46:** Explain hospitality as it relates to the sports, entertainment, and event industries. *(L10)*
+  - **47:** Analyze trends and innovations in the sports, entertainment, and event industries. *(L01, L11, L14)*
 
 **Developing Interpersonal Skills**
 
   - **49:** Identify the role of communication in work relationships. *(L07)*
   - **50:** Develop presentation skills as a form of business communication. *(L08, L13, L14, L22, L23)*
   - **51:** Identify ethical and unethical business practices. *(L07, L17)*
+
+**Developing Customer Service Skills**
+
+  - **52:** Explain the importance of customer service as it relates to the sports, entertainment, and event industries. *(L10)*
+  - **53:** Compare various types of customer interaction. *(L10)*
 
 **Exploring the Concept of Branding**
 
@@ -70,12 +87,18 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
 
   - **60:** Explain product and service planning in sports, entertainment, and events. *(L18, L19)*
   - **61:** Explain product life cycle. *(L19)*
+  - **62:** Describe the role of market research. *(L28)*
   - **63:** Create a survey to conduct primary research. *(L30)*
+  - **64:** Explain the role of product positioning. *(L03)*
 
 **Exploring Pricing Strategies**
 
   - **66:** Explain pricing and the factors that affect pricing decisions. *(L16)*
   - **67:** Identify pricing strategies as they relate to the sports, entertainment, and event industries. *(L16)*
+
+**Understanding the Business Structure of Sports, Entertainment, and Event Marketing**
+
+  - **68:** Explain business as it relates to the sports, entertainment, and event industries. *(L14)*
 
 **Exploring Distribution Strategies**
 
@@ -85,15 +108,32 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
 **Developing a Promotional Mix**
 
   - **72:** Explain promotion and promotional mix. *(L27)*
+  - **73:** Identify the roles of advertising, publicity, sales promotion, direct marketing, and personal selling in the sports, entertainment, and event industries. *(L19)*
+  - **74:** Identify methods of communication used in sports, entertainment, and event promotion. *(L22)*
+
+**Exploring the Forms and Techniques of Advertising**
+
+  - **75:** Describe the elements of an advertisement. *(L19, L23)*
+  - **76:** Explain advertising as related to the sports, entertainment, and event industries. *(L18)*
+  - **77:** Identify the goals of advertising and the methods of evaluating an advertisement’s success. *(L19)*
 
 **Using Digital Media**
 
   - **78:** Define current electronic marketing tools and platforms. *(L27)*
+  - **80:** Identify target markets’ preferred platforms for various electronic marketing tools. *(L27)*
+  - **81:** Compare traditional marketing and digital media marketing. *(L23)*
+
+**Exploring Public Relations and Media Relations**
+
+  - **83:** Explain public relations as related to the sports, entertainment, and event industries. *(L20)*
+  - **84:** Describe public relations (PR) tools. *(L19)*
+  - **86:** Analyze the effects of negative media. *(L04)*
 
 **Exploring Sponsorship and Endorsements**
 
   - **87:** Explain sponsorship and endorsements as they relate to the sports, entertainment, and event industries. *(L18, L21, L22)*
   - **89:** Identify legal restrictions placed on endorsements and sponsorships. *(L21)*
+  - **90:** Identify current trends in sponsorship within the sports, entertainment, and event industries. *(L20)*
   - **91:** Describe the components and relationships between stakeholders. *(L21)*
 
 **Exploring Sales Promotion**
@@ -103,6 +143,7 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
 **Describing the Sales Process**
 
   - **94:** Explain the types of selling and why they are important in the sports, entertainment, and event industries. *(L24)*
+  - **96:** Explain the steps of the selling process. *(L24)*
 
 **Describing the Economics of the Sports, Entertainment, and Event Industries**
 
@@ -124,8 +165,27 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
   - **110:** Develop a résumé and cover letter. *(L33)*
   - **111:** Complete a job application. *(L33)*
   - **112:** Describe the job interview process. *(L06, L34, L35)*
+  - **113:** (Optional) Participate in a mock interview or an informational interview with a local employer. *(L35)*
 
-### **⭕ Part 2: Not Yet Covered**
+### **🔄 Part 2: Addressed Outside the Lesson Plans**
+
+**Addressing Elements of Student Life**
+
+  - **31:** Identify the purposes and goals of the student organization. *(DECA chapter activities)*
+  - **32:** Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult. *(DECA chapter activities)*
+
+**Exploring Career and Technical Student Organizations**
+
+  - **33:** Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects. *(DECA chapter activities)*
+
+**Exploring Work-Based Learning**
+
+  - **35:** Identify the types of work-based learning (WBL) opportunities. *(work-based learning)*
+  - **36:** (Optional) Reflect on lessons learned during the WBL experience. *(work-based learning)*
+  - **37:** Explore career opportunities related to the WBL experience. *(work-based learning)*
+  - **38:** (Optional) Participate in a WBL experience, when appropriate. *(work-based learning)*
+
+### **⭕ Part 3: Not Yet Covered**
 
 **Demonstrating Professional Competencies**
 
@@ -140,40 +200,12 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
   - **26:** Examine technical and production skills required of workers within an industry/organization.
   - **27:** Examine principles of technology that underlie an industry/organization.
   - **28:** Examine labor issues related to an industry/organization.
-  - **29:** Examine community issues related to an industry/organization.
   - **30:** Examine health, safety, and environmental issues related to an industry/organization.
-
-**Addressing Elements of Student Life**
-
-  - **31:** Identify the purposes and goals of the student organization.
-  - **32:** Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult.
-
-**Exploring Career and Technical Student Organizations**
-
-  - **33:** Demonstrate leadership skills through participation in student organization activities, such as meetings, programs, and projects.
-
-**Addressing Elements of Student Life**
-
-  - **34:** Identify Internet safety issues and procedures for complying with acceptable use standards.
-
-**Exploring Work-Based Learning**
-
-  - **35:** Identify the types of work-based learning (WBL) opportunities.
-  - **36:** (Optional) Reflect on lessons learned during the WBL experience.
-  - **37:** Explore career opportunities related to the WBL experience.
-  - **38:** (Optional) Participate in a WBL experience, when appropriate.
 
 **Developing an Overview of Marketing**
 
-  - **39:** Explain marketing as it relates to the sports, entertainment, and event industries.
   - **40:** Identify the components (the Ps) of the marketing mix as they relate to sports, entertainment, and event marketing.
   - **43:** Describe the marketing functions.
-
-**Understanding the Importance of Sports, Entertainment, and Event Marketing**
-
-  - **44:** Explain the importance of the sports, entertainment, and event industries.
-  - **46:** Explain hospitality as it relates to the sports, entertainment, and event industries.
-  - **47:** Analyze trends and innovations in the sports, entertainment, and event industries.
 
 **Developing Interpersonal Skills**
 
@@ -181,51 +213,29 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
 
 **Developing Customer Service Skills**
 
-  - **52:** Explain the importance of customer service as it relates to the sports, entertainment, and event industries.
-  - **53:** Compare various types of customer interaction.
   - **54:** Translate technical language into commonly understood language.
   - **55:** Describe procedures for handling a customer complaint.
 
 **Describing Product Development**
 
-  - **62:** Describe the role of market research.
-  - **64:** Explain the role of product positioning.
   - **65:** Describe the impact of uncontrollable factors on sports, entertainment, and event product development.
 
 **Understanding the Business Structure of Sports, Entertainment, and Event Marketing**
 
-  - **68:** Explain business as it relates to the sports, entertainment, and event industries.
   - **69:** Compare the types of business ownership and their roles in the sports, entertainment, and event industries.
-
-**Developing a Promotional Mix**
-
-  - **73:** Identify the roles of advertising, publicity, sales promotion, direct marketing, and personal selling in the sports, entertainment, and event industries.
-  - **74:** Identify methods of communication used in sports, entertainment, and event promotion.
-
-**Exploring the Forms and Techniques of Advertising**
-
-  - **75:** Describe the elements of an advertisement.
-  - **76:** Explain advertising as related to the sports, entertainment, and event industries.
-  - **77:** Identify the goals of advertising and the methods of evaluating an advertisement’s success.
 
 **Using Digital Media**
 
   - **79:** Identify methods for attracting customers and establishing and maintaining customer relationships.
-  - **80:** Identify target markets’ preferred platforms for various electronic marketing tools.
-  - **81:** Compare traditional marketing and digital media marketing.
   - **82:** Explain how digital media can be used to generate revenue.
 
 **Exploring Public Relations and Media Relations**
 
-  - **83:** Explain public relations as related to the sports, entertainment, and event industries.
-  - **84:** Describe public relations (PR) tools.
   - **85:** (Optional) Explain the internal and external aspects of public relations.
-  - **86:** Analyze the effects of negative media.
 
 **Exploring Sponsorship and Endorsements**
 
   - **88:** Compare the reasons for using sponsorships vs. endorsements.
-  - **90:** Identify current trends in sponsorship within the sports, entertainment, and event industries.
 
 **Exploring Sales Promotion**
 
@@ -234,7 +244,6 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
 **Describing the Sales Process**
 
   - **95:** Explain the concept of bundling products and/or services.
-  - **96:** Explain the steps of the selling process.
   - **97:** Explain on-site merchandising and concessions as they relate to sports, entertainment, and event facilities.
 
 **Describing the Economics of the Sports, Entertainment, and Event Industries**
@@ -248,6 +257,5 @@ Lessons are listed by number (L01–L36). Earlier versions of the lesson plans u
 **Developing Job Search Skills**
 
   - **108:** Identify resources for a job search in the sports, entertainment, and event industries.
-  - **113:** (Optional) Participate in a mock interview or an informational interview with a local employer.
 
 Tasks marked (Optional) are optional in the state framework.
