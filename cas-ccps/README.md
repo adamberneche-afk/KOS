@@ -337,7 +337,8 @@ them into `scripts/55b_LessonAssignmentData.js`:
   shows which tasks the lessons cover. The 8175 lessons were re-matched the
   same way on 2026-10-12 (the repo's 113 tasks match the state's 2025
   Student Competency Record); `lessons/8175/COMPETENCY_TRACKER.md` shows
-  their coverage, 56 of 113 tasks.
+  their coverage: 87 of 113 tasks (80 in lessons, 7 through DECA and
+  work-based learning).
 
 Dates come from the **LessonSchedule** tab in the Central Ledger, which the
 teacher edits: one row per lesson, a start date, and a lesson runs until the
