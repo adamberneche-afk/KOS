@@ -3105,3 +3105,10 @@ data as decoded bytes, not the API's base64url string, and
 won't return is now skipped and counted (`errors`) instead of stopping the
 scan, and the scan mark is held back so it is retried. The same run's
 harvest answered the fixture, so the Flow works end to end.
+
+Added at the teacher's request: `runFamilySafetyAlertFixture()`, a
+notification fixture. It puts a synthetic safety row in `FamilyMailLog`,
+runs the real alert path (topic, daily cap, push, `Alerted_At`), checks the
+row was marked, and removes it. The push is titled "KOS TEST" and starts
+"Test:"; if a real safety message is due at the same moment, the push is a
+real one. Fixture rows never reach the signal doc.
