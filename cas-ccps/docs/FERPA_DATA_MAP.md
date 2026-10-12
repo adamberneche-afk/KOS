@@ -44,16 +44,17 @@ first shipped) drives `_archiveExpiredLedgerRows_()`
 (`10_AdminRecoveryPanel.js`), run on the same daily/on-demand triggers as
 the SCRDecisionLog archival above. It reuses the Ledger's own pre-existing
 `Status` column value "ARCHIVED" — the same value the manual, admin-triggered
-"📦 Archive Completed Term" menu item (`archiveCompletedTerm()`) already
+"📦 Archive a Completed School Year" menu item (`archiveCompletedTerm()`) already
 writes, and the same value `13_StudentDashboard.js` already excludes from
 a student's own dashboard — rather than adding a second, parallel
 archive-flag column. Only rows already in a terminal status
 (`COMPLIANT`/`ACTIVE`/`COMPLETE`) are eligible; an `ERROR`-prefixed row is
 left alone for admin review, same as `archiveCompletedTerm()`'s own rule.
 Never deletes anything, same as SCRDecisionLog's archival. A new
-`♻️ Reactivate an Archived Term` menu item (`reactivateArchivedTerm()`) is
+`♻️ Reactivate an Archived School Year` menu item (`reactivateArchivedTerm()`) is
 the genuinely missing half this extension had lacked until now: it sets a
-matching term's `ARCHIVED` rows back to `ACTIVE` (the original
+school year's `ARCHIVED` rows back to `ACTIVE` (both menu items take a
+whole school year, like `2627`, never a single marking period) (the original
 `COMPLIANT`/`ACTIVE`/`COMPLETE` distinction is not recoverable through the
 round trip — every reactivated row becomes `ACTIVE`).
 
