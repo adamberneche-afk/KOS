@@ -214,6 +214,38 @@ test('scan labels and queues family mail, and leaves everything else alone', () 
   assert.equal(rows(fx.ss, 'FamilyMailInput').length, 3);
 });
 
+test('bodies come back as byte arrays or unpadded base64url; both decode, and one bad message does not stop the scan', () => {
+  const fx = setUp([MAIL.student, MAIL.colleague]);
+  const real = fx.gmail.Users.Messages.get;
+  fx.gmail.Users.Messages.get = (u, id, o) => {
+    const m = real(u, id, o);
+    const part = m.payload.parts[0];
+    if (id === 'm1') {
+      // What Apps Script's advanced service actually returns: decoded bytes.
+      part.body.data = Array.from(Buffer.from(MAIL.student.body, 'utf8'), (b) => (b > 127 ? b - 256 : b));
+    } else {
+      part.body.data = part.body.data.replace(/=+$/, ''); // the API's unpadded form
+    }
+    return m;
+  };
+  const out = fx.exported.scanFamilyMail();
+  assert.equal(out.queued, 2);
+  assert.equal(out.errors, 0);
+  const prompts = rows(fx.ss, 'FamilyMailInput').map((r) => String(r[3]));
+  assert.match(prompts[0], /make up the quiz/);
+  assert.match(prompts[1], /Schedule a meeting/);
+
+  // A message Gmail won't return is skipped, the rest still scanned, and the
+  // scan mark is held back so it is tried again.
+  const fx2 = setUp([MAIL.student, MAIL.colleague]);
+  const real2 = fx2.gmail.Users.Messages.get;
+  fx2.gmail.Users.Messages.get = (u, id, o) => { if (id === 'm1') throw new Error('Could not decode string.'); return real2(u, id, o); };
+  const out2 = fx2.exported.scanFamilyMail();
+  assert.equal(out2.errors, 1);
+  assert.equal(out2.queued, 1);
+  assert.equal(fx2.props.getProperty('FAMILY_SENTINEL_LAST_SCAN_AT'), null);
+});
+
 test('what Gemini is given is redacted: no names, addresses or phone numbers', () => {
   const fx = setUp([MAIL.student, MAIL.parent], { contacts: [['pat.lopez@example.com', 'mlopez@student.ccpsnet.net', '']] });
   fx.exported.scanFamilyMail();
