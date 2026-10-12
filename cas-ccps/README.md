@@ -310,7 +310,9 @@ student's earliest workspace and archiving the duplicates that re-runs made.
 Since 2026-10-07 the courses run on the teacher's own lessons, not the
 generated pacing-guide units. `curriculum/lessons/` holds verbatim copies of
 the two Drive lesson folders (8175: Lessons 01–36; 8177: the lesson plans and
-the 8177 pacing guide). `tools/cas-ccps/build-lesson-assignments.js` turns
+the 8177 pacing guide). One 8177 lesson, `the-cloud-behind-the-game.md`
+(data centers and AI; competencies 44, 48, 55, 57, 64, 65), was written in
+the repo and has no Drive copy yet. `tools/cas-ccps/build-lesson-assignments.js` turns
 them into `scripts/55b_LessonAssignmentData.js`:
 
 - **8175:** the prompt is the lesson's own "Canvas assignment text", the
@@ -327,7 +329,10 @@ them into `scripts/55b_LessonAssignmentData.js`:
   and many name a different competency in the state list. A number counts
   only when the state wording matches the doc's (or `COMPETENCY_MAP.json`
   maps it); the rest stay as rubric criteria in the doc's words with no ID,
-  listed in `lessons/COMPETENCY_REVIEW.md` for the teacher to map.
+  listed in `lessons/COMPETENCY_REVIEW.md` for the teacher to map. The 8177
+  lessons were re-matched to the 2025 state task list (12163-II) in October
+  2026 and cite its numbers and wording; `lessons/8177/COMPETENCY_TRACKER.md`
+  shows which tasks the lessons cover.
 
 Dates come from the **LessonSchedule** tab in the Central Ledger, which the
 teacher edits: one row per lesson, a start date, and a lesson runs until the
