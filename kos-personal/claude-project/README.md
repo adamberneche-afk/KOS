@@ -6,8 +6,11 @@ the place where the operator plans, decides and builds
 
 **Status:** set up 2026-10-11 with the knowledge files; `start` passed.
 Gmail and Google Calendar connectors added 2026-10-11, with sending turned
-off; `start` now reads them (2026-10-12). Re-paste the instructions and
-re-test `start` ("Setting it up", steps 3, 5 and 6).
+off; `start` now reads them, and student and parent mail through the
+`KOS_FAMILY_SIGNAL` doc (2026-10-12). The operator re-pasted the
+instructions on 2026-10-12; the knowledge files are unchanged since setup.
+Left: the `KOS_FAMILY_SIGNAL` link in the instructions, if not yet pasted,
+then re-test `start`.
 
 | File | What it is |
 |---|---|
