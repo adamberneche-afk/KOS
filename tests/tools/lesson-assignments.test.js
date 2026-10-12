@@ -65,7 +65,7 @@ test('8177: Background, Key Terms and Example come before the task, under plain 
 });
 
 test('8177: a draft prompt file is not used', () => {
-  assert.equal(built.order[8177].length, 30, 'every 8177 prompt is approved');
+  assert.equal(built.order[8177].length, 31, 'every 8177 prompt is approved');
   const file = path.join(ROOT, 'cas-ccps/curriculum/lessons/8177/prompts/product-pitch-financial-analysis.md');
   const read = fs.readFileSync;
   fs.readFileSync = function (f, ...rest) {
