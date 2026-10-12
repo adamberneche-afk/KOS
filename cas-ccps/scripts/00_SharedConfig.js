@@ -539,13 +539,20 @@ function showConfigSources() {
 
 // =============================================================================
 // School year — student-data access policy, rule 1: student data is visible
-// only during the current school year. Years are "2025-26" style: the part
-// of a term like "2025-26 S1" before the space. The current year is
-// CURRENT_TERM's (the admin's own setting) when it has that shape, else the
-// one today falls in, starting in August. A Ledger row's year is its
+// only during the current school year. Years are "2025-26" style. A term is
+// the school year plus the marking period, "2627_MP1" (MP 1-4; the
+// teacher's format since 2026-10-12), whose year is 2026-27; older terms
+// like "2025-26 S1" give the part before the space. The current year is
+// CURRENT_TERM's (the admin's own setting) when it has either shape, else
+// the one today falls in, starting in August. A Ledger row's year is its
 // AcademicYear term's, else the one its timestamp falls in.
+//
+// The marking period only labels a row. Courses run all year, so the
+// dashboards show the whole current year by default, and a term is
+// archived a whole year at a time (10's archiveCompletedTerm).
 // =============================================================================
 const SCHOOL_YEAR_RE_ = /^\d{4}-\d{2}$/;
+const MP_TERM_RE_ = /^(\d{2})(\d{2})_MP([1-4])$/;
 
 function _schoolYearForDate_(d) {
   const date = d instanceof Date ? d : new Date(d);
@@ -556,6 +563,9 @@ function _schoolYearForDate_(d) {
 
 function _schoolYearOfTerm_(term) {
   const prefix = String(term || "").trim().split(/\s+/)[0];
+  const mp = MP_TERM_RE_.exec(prefix);
+  // The two halves must be consecutive years: "2627" is 2026-27.
+  if (mp) return (Number(mp[1]) + 1) % 100 === Number(mp[2]) ? "20" + mp[1] + "-" + mp[2] : "";
   return SCHOOL_YEAR_RE_.test(prefix) ? prefix : "";
 }
 
