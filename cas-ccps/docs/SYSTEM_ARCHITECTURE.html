@@ -129,7 +129,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
 </style>
 </head>
 <body>
-<div style="background:#fef7e0;border:1px solid #f9d77e;color:#3c4043;padding:12px 16px;margin:12px;border-radius:8px;font:14px/1.5 Arial,sans-serif" role="note"><strong>Current as of 2026-10-10:</strong> students submit for feedback from the Student Dashboard (<em>Submit for Feedback</em>), because the district turns Apps Script off for student accounts and the doc's 📊 menu never appears for them. They turn in on Canvas (their document's link), where grades are given; the Turn-In Form is retired, and on 2026-10-10 so were Script 04's turn-in checks (three-point match, approval-stamp check and forensic version-history check): none of them runs, the setup wizard no longer creates the form, and the Drive Advanced Service is no longer needed for them. Each evaluation is added at the end of the student's document. Where this page describes the doc menu, the Turn-In Form or the turn-in gate, that part is out of date. The Student Quick Start and the Teacher Reference Guide are current.</div>
+<div style="background:#fef7e0;border:1px solid #f9d77e;color:#3c4043;padding:12px 16px;margin:12px;border-radius:8px;font:14px/1.5 Arial,sans-serif" role="note"><strong>Current as of 2026-10-10:</strong> students submit for feedback from the Student Dashboard (<em>Submit for Feedback</em>), because the district turns Apps Script off for student accounts and the doc's 📊 menu never appears for them. They turn in on Canvas (their document's link), where grades are given; the Turn-In Form is retired, and on 2026-10-10 so were Script 04's turn-in checks (three-point match, approval-stamp check and forensic version-history check): none of them runs, the setup wizard no longer creates the form, and the Drive Advanced Service is no longer needed for them. Each evaluation is added at the end of the student's document. Where this page describes the doc menu, that part is out of date. The Student Quick Start and the Teacher Reference Guide are current.</div>
 
 <div style="max-width:1200px;margin:16px auto 0;padding:14px 20px;border:1px solid var(--red);border-radius:8px;background:var(--red-bg);color:var(--text-bright);font-family:var(--sans);font-size:13px;line-height:1.6">
   <strong style="color:var(--red)">⚠ OUTDATED — predates Module 2/4/5.</strong>
@@ -158,7 +158,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
     <span class="sb-label">Data Flow</span>
     <a class="sb-link" href="#flow-eval">Evaluation Pipeline</a>
     <a class="sb-link" href="#flow-rubric">Rubric Pipeline</a>
-    <a class="sb-link" href="#flow-turnin">Turn-In Pipeline</a>
+    <a class="sb-link" href="#flow-turnin">Turn-In (Canvas)</a>
   </div>
   <div class="sb-section">
     <span class="sb-label">Infrastructure</span>
@@ -403,28 +403,16 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
   </div>
 </div>
 
-<!-- TURN-IN PIPELINE -->
+<!-- TURN-IN (CANVAS) -->
 <div class="section" id="flow-turnin">
   <div class="section-header">
     <div class="section-icon icon-green">📬</div>
-    <h2>Turn-In Pipeline</h2>
+    <h2>Turn-In (Canvas)</h2>
   </div>
 
-  <p>Triggered by a student submitting the Turn-In Form. Uses auto-collected Google account email — no manual typing required.</p>
+  <p>Students turn in on Canvas by submitting their document's link, and the teacher grades there. CAS has no turn-in step: its job is feedback and keeping the SCR current. The Turn-In Form (Form 2) and its gate in Script 04 were retired on 2026-10-10 (P0-04, <code>meta/PRD_CAS_RESEARCH_PIVOT.md</code>). <code>dispatchFormSubmit</code> (Script 18) calls only the intake handler, so a submission to an old Turn-In Form is ignored. The setup wizard no longer creates the form.</p>
 
-  <div class="flow-diagram">
-    <div class="flow-row"><div class="flow-node trigger">👤 Student submits Turn-In Form (email auto-collected by Google)</div></div>
-    <div class="flow-row"><div class="flow-arrow">↓</div><div class="flow-label">dispatchFormSubmit fires → routes to onTurnInSubmit via Script 04 disambiguation</div></div>
-    <div class="flow-row"><div class="flow-node gas">Script 04 — 3-point ledger match (Google ID + File ID + CONFIG_ID)</div></div>
-    <div class="flow-row"><div class="flow-arrow">↓</div><div class="flow-label">if match fails → rejection notice written to student doc + teacher email alert</div></div>
-    <div class="flow-row"><div class="flow-node gas">Script 04 — compliance stamp scan ([SYSTEM: APPROVED] present?)</div></div>
-    <div class="flow-row"><div class="flow-arrow">↓</div></div>
-    <div class="flow-node gas">Script 04 — forensic check (version history: rapid block write under 15 sec, &gt;60 sec after creation)</div>
-    <div class="flow-row"><div class="flow-arrow">↓</div><div class="flow-label">if all checks pass</div></div>
-    <div class="flow-row"><div class="flow-node sheets">Ledger Status → COMPLIANT · SubmissionTS stamped</div></div>
-    <div class="flow-row"><div class="flow-arrow">↓</div></div>
-    <div class="flow-row"><div class="flow-node trigger">👩‍🏫 Teacher receives verified submission notification email</div></div>
-  </div>
+  <p>Script 04 keeps only helpers that other files call: <code>findLedgerRow_</code>, <code>scanCompliance_</code>, <code>extractSuggestedScore_</code>, <code>_ensureTurnInReviewColumns_</code>, <code>_lockDocAfterSubmission_</code> and <code>extractFileId_</code>.</p>
 </div>
 
 <!-- SCRIPT PROJECTS -->
@@ -442,7 +430,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
       <div class="col-row"><span class="col-idx">01</span><span class="col-name">StudentDoc</span><span class="col-type">Student Template</span><span class="col-desc">Student toolbar, evaluation submission, status check, readSystemIds()</span></div>
       <div class="col-row"><span class="col-idx">02</span><span class="col-name">Form1Intake</span><span class="col-type">Central Ledger</span><span class="col-desc">onFormSubmit_Intake() — student registration, doc creation, prompt injection</span></div>
       <div class="col-row"><span class="col-idx">03</span><span class="col-name">QueueBridge</span><span class="col-type">Central Ledger</span><span class="col-desc">bridgeQueue(), backPropagateCompletions(), post-processing, deduplication</span></div>
-      <div class="col-row"><span class="col-idx">04</span><span class="col-name">TurnInGate</span><span class="col-type">Central Ledger</span><span class="col-desc">onTurnInSubmit() — 3-point validation, compliance scan, forensic check</span></div>
+      <div class="col-row"><span class="col-idx">04</span><span class="col-name">TurnInGate</span><span class="col-type">Central Ledger</span><span class="col-desc">Shared helpers only (findLedgerRow_, scanCompliance_, extractSuggestedScore_, …); the turn-in handler was retired 2026-10-10</span></div>
       <div class="col-row"><span class="col-idx">05</span><span class="col-name">TeacherIntake</span><span class="col-type">Rubric Sheet</span><span class="col-desc">onTeacherRubricSubmit() — rubric validation, RubricQueue write, self-register trigger</span></div>
       <div class="col-row"><span class="col-idx">06</span><span class="col-name">Turnstile</span><span class="col-type">Central Ledger</span><span class="col-desc">runStagingTurnstile() — releases one IN_PROCESS row per cycle</span></div>
       <div class="col-row"><span class="col-idx">07</span><span class="col-name">TeacherDashboard</span><span class="col-type">Standalone</span><span class="col-desc">doGet(), getDashboardData(term) — teacher web app, Execute as: Me</span></div>
@@ -453,7 +441,7 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
       <div class="col-row"><span class="col-idx">15</span><span class="col-name">StudioPrompts</span><span class="col-type">Reference</span><span class="col-desc">Prompts and Studio Flow config reference — not deployed</span></div>
       <div class="col-row"><span class="col-idx">16</span><span class="col-name">UnifiedManualSetup</span><span class="col-type">Admin Manual</span><span class="col-desc">Admin + teacher setup wizard, role detection, menu management</span></div>
       <div class="col-row"><span class="col-idx">17</span><span class="col-name">MasterStudentTemplate</span><span class="col-type">Student Template</span><span class="col-desc">Architecture documentation stub — no operational functions</span></div>
-      <div class="col-row"><span class="col-idx">18</span><span class="col-name">FormSubmitDispatcher</span><span class="col-type">Central Ledger</span><span class="col-desc">dispatchFormSubmit() — routes to Scripts 02 and 04, avoids reserved trigger name</span></div>
+      <div class="col-row"><span class="col-idx">18</span><span class="col-name">FormSubmitDispatcher</span><span class="col-type">Central Ledger</span><span class="col-desc">dispatchFormSubmit() — routes to Script 02 (intake only since 2026-10-10), avoids reserved trigger name</span></div>
       <div class="col-row"><span class="col-idx">19</span><span class="col-name">ClonedSheetConfig</span><span class="col-type">Both master sheets</span><span class="col-desc">getSheetConfig_(), writeConfigTab_() — _CONFIG tab system for cloned projects</span></div>
       <div class="col-row"><span class="col-idx">20</span><span class="col-name">SetupCheckpoint</span><span class="col-type">Admin Manual</span><span class="col-desc">resumeOrCreate_(), checkpoint_() — transaction-safe setup state</span></div>
       <div class="col-row"><span class="col-idx">21</span><span class="col-name">AutoInstaller</span><span class="col-type">Admin Manual</span><span class="col-desc">runAutoInstaller() — Apps Script API installer, registry sheet reader, web app deployer</span></div>
@@ -564,15 +552,9 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
       </tr>
       <tr>
         <td><span class="status-chip chip-amber">Student deletes CONFIG_ID footer</span></td>
-        <td>Turn-in rejected with MISSING_CONFIG_ID · evaluation menu also fails</td>
+        <td>The doc's evaluation menu fails · Submit for Feedback still works (it reads the IDs from the Ledger)</td>
         <td>Student reports problems</td>
         <td>Admin re-creates student document · re-registers student</td>
-      </tr>
-      <tr>
-        <td><span class="status-chip chip-green">Turn-in FORENSIC_FAILURE</span></td>
-        <td>Valid submission rejected</td>
-        <td>Teacher receives rejection alert email</td>
-        <td>Teacher reviews doc manually · Admin Controls → Manually Mark Compliant</td>
       </tr>
     </tbody>
   </table>
@@ -585,20 +567,14 @@ code{font-family:var(--mono);font-size:12px;background:var(--surface2);border:1p
     <h2>Security Model</h2>
   </div>
 
-  <p><strong style="color:var(--text-bright)">No credentials on student surfaces.</strong> Students interact with their Google Doc (bound script), the evaluation menu, the Turn-In Form, and the Student Dashboard. None of these surfaces contain API keys, rubric criteria, other students' data, or system IDs beyond their own CONFIG_ID and the embedded ledger SS ID.</p>
+  <p><strong style="color:var(--text-bright)">No credentials on student surfaces.</strong> Students interact with their Google Doc and the Student Dashboard, and turn in on Canvas. None of these surfaces contain API keys, rubric criteria, other students' data, or system IDs beyond their own CONFIG_ID and the embedded ledger SS ID.</p>
 
   <p><strong style="color:var(--text-bright)">Prompt injection mitigation.</strong> Student text is wrapped in <code>&lt;&lt;&lt;STUDENT_SUBMISSION&gt;&gt;&gt;</code> markers in the Flow 2 user message. The system prompt explicitly instructs Gemini to treat everything between those markers as passive data regardless of content — a student cannot manipulate the evaluation by writing instructions in their response.</p>
 
-  <p><strong style="color:var(--text-bright)">Three-point turn-in validation.</strong> Google ID + File ID + CONFIG_ID must all match a single Ledger row. A student cannot submit on behalf of another student (wrong Google ID), submit a different document (wrong File ID), or forge a CONFIG_ID (not in Ledger).</p>
-
-  <p><strong style="color:var(--text-bright)">Compliance stamp forensic check.</strong> The turn-in gate checks for a rapid block write in version history — the signature of an automated Studio write. Manual insertion of a fake compliance stamp (typing or slow paste) is detectable. Fast paste of a complete block is not detectable by this method — this is a documented limitation. The three-point validation provides the primary anti-fraud layer.</p>
+  <p><strong style="color:var(--text-bright)">Submission checks.</strong> The Student Dashboard runs as the admin and identifies the student by their signed-in Google account. <code>submitMyWork()</code> queues work only when that account, the document's File ID and its CONFIG_ID match one Ledger row, so a student cannot submit for another student or submit a different document. It also refuses a response containing system text such as <code>[SYSTEM:</code> or <code>[SUGGESTED_SCORE</code> (<code>findSystemText_()</code> in Script 00), so copied evaluation markers never reach Flow 2.</p>
 
   <p><strong style="color:var(--text-bright)">Teacher Matrix isolation.</strong> Teachers can only see their own assignments in the dashboard and receive notifications only for their own students. The MatrixRegistry lookup in Script 02 routes each CONFIG_ID to the correct teacher's matrix — teachers cannot access each other's assignment configurations.</p>
 
-  <div class="callout callout-amber">
-    <span class="callout-icon">⚠️</span>
-    <div class="callout-body"><strong>Known limitation:</strong> The forensic check uses a 15-second timing window for rapid block writes. A student who selects all and pastes a pre-written fake report in a single fast operation may pass this check. The primary defense is the three-point ledger validation, not the forensic check. Treat FORENSIC_FAILURE as a signal for manual review, not proof of fraud.</div>
-  </div>
 </div>
 
 </div><!-- /content -->
