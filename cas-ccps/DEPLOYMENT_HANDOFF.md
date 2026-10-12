@@ -39,13 +39,15 @@
 >   keys removed from `00_SharedConfig.js`. Push every cas-ccps project and
 >   import the rebuilt `8175.imscc` (36 modules). Every lesson doc in Drive
 >   matches the repo.
-> - **New 2026-10-12, not yet set up: the Family Mail Sentinel**
+> - **Live 2026-10-12: the Family Mail Sentinel**
 >   (`cas-ccps:family-sentinel`, scripts 60-62). A ninth project, on a
 >   private sheet: it labels student and parent mail, has a Gemini flow
 >   triage it with names redacted, and writes the name-free
 >   `KOS_FAMILY_SIGNAL` doc the KOS Claude Project reads; a safety message
->   pushes to the teacher's phone (ntfy). Setup, nine steps:
->   `docs/FAMILY_MAIL_SENTINEL.md`.
+>   pushes to the teacher's phone (ntfy). Pushed with `run.ps1`
+>   (`clasp-registry\cas-ccps\family-sentinel`), the Flow built, the
+>   trigger installed, and the safety alert tested end to end by the
+>   teacher. Setup and checks: `docs/FAMILY_MAIL_SENTINEL.md`.
 > - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-12), then
 >   the first real Flow 2 run when students submit.
 >

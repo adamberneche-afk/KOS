@@ -167,8 +167,9 @@ doc the KOS Claude Project reads.
 **Where to check:** `checkFamilyMailFlowLiveness()`. No jobs submitted yet →
 no family mail yet; never completed → `FamilyMailLog` has no CLASSIFIED,
 NOT_FAMILY or fixture row; healthy → it has one. The other three rule 9
-checks are in `docs/FAMILY_MAIL_SENTINEL.md`. Built 2026-10-12, not yet
-deployed or run against real mail.
+checks are in `docs/FAMILY_MAIL_SENTINEL.md`. Live 2026-10-12: the Flow
+answered the fixture on the first run, and the safety push was tested end to
+end.
 
 ---
 
