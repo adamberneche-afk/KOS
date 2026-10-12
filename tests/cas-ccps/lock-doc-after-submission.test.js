@@ -68,3 +68,8 @@ test('the setup wizard no longer creates or advertises a Turn-In Form', () => {
   assert.doesNotMatch(src, /TURNIN_FORM_URL\s*:|turninFormUrl\s*:|Turn-In Form",|Turn-In Form:\\n/,
     'no property, summary link or alert line points at one');
 });
+
+test('shared config no longer carries Turn-In Form fields', () => {
+  const src = require('fs').readFileSync(S('00_SharedConfig.js'), 'utf8');
+  assert.doesNotMatch(src, /turninFormUrl|turninResponseSsId|TURNIN_FORM_URL|TURNIN_RESPONSE_SS_ID/);
+});
