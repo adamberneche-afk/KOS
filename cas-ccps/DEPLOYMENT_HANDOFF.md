@@ -6,18 +6,13 @@
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
-> - **Merged 2026-10-12, not yet pushed: #169** (every cas-ccps project:
->   `00_SharedConfig.js` changed). Terms are marking periods
->   (`CURRENT_TERM` = `2627_MP1`): both dashboards show the whole school
->   year by default, and archive/reactivate take a school year. Push with
->   `run.ps1` and let it update both web apps' existing deployments.
-> - **Merged 2026-10-12, not yet pushed: #167** (central-ledger only). The
->   CAS attention signal (`34b`, the counts-only `KOS_CAS_SIGNAL` doc
->   rewritten by the watchdog), and the staging fixes (`06`: a row
->   `IN_PROCESS` with no timestamp no longer holds the lane; `10`: the
->   health check reports such rows and unknown-status rows). Push with
->   `run.ps1`, then run `runQueueWatchdog` once from the editor to create
->   the doc (`meta/HANDOFF_2026-10-12.md`, queue item 3).
+> - **Pushed 2026-10-12: #167 and #169.** Terms are marking periods
+>   (`CURRENT_TERM` = `2627_MP1`), and the CAS attention signal
+>   (`34b`, the counts-only `KOS_CAS_SIGNAL` doc) is live: the operator ran
+>   `runQueueWatchdog` once to create it, and installed the watchdog's
+>   10-minute trigger by hand (it had never been installed;
+>   `installQueueWatchdogTrigger()` does it now, Phase 2 step 6a). The
+>   Health tab no longer reads DRY RUN.
 > - **cas-ccps: everything else merged is pushed (2026-10-12).** The operator
 >   pushed `main` to every project with `run.ps1` on 2026-10-12, so #115–#117,
 >   #120–#126, #135–#157 and #160–#162 are live. run.ps1's promote step
@@ -32,8 +27,7 @@
 >   `YYYY-MM-DD`); `AI_FLOWS_LIVE` = `true` in the **Student Dashboard**
 >   project. Step 18: both Canvas cartridges imported (`8175.imscc`, 36
 >   modules; `8177.imscc`, 31) and the next lessons scheduled.
-> - **Not yet reported done:** the #167 push and the first end-to-end Flow 2
->   test. The order is in `meta/HANDOFF_2026-10-12.md`.
+> - **Not yet reported done:** the first end-to-end Flow 2 test. The order is in `meta/HANDOFF_2026-10-12.md`.
 > - **Retired 2026-10-12:** both Turn-In Form files are in Drive's trash.
 >   The Ledger's `dispatchFormSubmit` trigger stays; it serves the intake
 >   form.
@@ -377,6 +371,7 @@ unreadable.
 | 4 | `installFlowFixtures()` | Seeds dummy rows at all five flows' trigger conditions, so a Flow has something to match. Without them a Flow reports a green "Run Completed" over zero rows, which is indistinguishable from success and is where a lot of last session went. `checkFlowFixtures()` reports what is present; `removeFlowFixtures()` takes them out. Fixture data uses `.invalid` addresses and `*-FIXTURE-*` IDs — the Flow-2 fixture's `StagingRowRef` is the literal `FIXTURE` precisely so the harvest cannot complete a real student's submission. |
 | 5 | `installFlowInputTriggers()` | Flow 2's two time triggers (1-minute build, 2-minute harvest). This is what makes `FlowInput` populate at all. |
 | 6 | `installWarmUpFlowTriggers()` | Flows 3/4/5's two triggers (materialize + harvest, both 5-minute). Nothing in `41_WarmUpFlowBridge.js` runs until this is done. |
+| 6a | `installQueueWatchdogTrigger()` | The queue watchdog (`34`), every 10 minutes: it escalates stuck rows, rewrites the `Health` tab, and writes the `KOS_CAS_SIGNAL` doc. Nothing else installs it (the live Ledger ran without it until 2026-10-12). Safe to re-run; `removeQueueWatchdogTrigger()` undoes it. It runs in dry run until the Script Property `CAS_WATCHDOG_DRY_RUN` is exactly `false`. |
 
 ### Phase 3 — does the Apps Script half work, with Studio stubbed?
 

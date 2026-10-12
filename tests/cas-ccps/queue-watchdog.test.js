@@ -21,7 +21,7 @@ const WATCHDOG_PATH = path.join(__dirname, '..', '..', 'cas-ccps', 'scripts', '3
 function load(extraGlobals) {
   return loadGasFiles(
     [SHARED_CONFIG_PATH, WATCHDOG_PATH],
-    ['runQueueWatchdog', 'runQueueWatchdogNow'],
+    ['runQueueWatchdog', 'runQueueWatchdogNow', 'installQueueWatchdogTrigger', 'removeQueueWatchdogTrigger'],
     extraGlobals,
   );
 }
@@ -371,4 +371,19 @@ test('a missing CAS_CHAT_WEBHOOK_URL never throws -- the run still completes and
   sheet.appendRow(rubricRow('SOME_TYPO_STATUS')); // triggers an alert path
   assert.doesNotThrow(() => exported.runQueueWatchdog());
   assert.ok(ss.getSheetByName('Health'));
+});
+
+// ── Trigger installer ───────────────────────────────────────────────────────
+
+test('installQueueWatchdogTrigger: one 10-minute trigger, and a re-run adds no second copy', () => {
+  const { exported, sandbox } = load();
+  assert.equal(exported.installQueueWatchdogTrigger(), true);
+  assert.equal(exported.installQueueWatchdogTrigger(), false);
+  const triggers = sandbox.ScriptApp.getProjectTriggers();
+  assert.equal(triggers.length, 1);
+  assert.equal(triggers[0].getHandlerFunction(), 'runQueueWatchdog');
+  assert.deepEqual(triggers[0].__calls.map((c) => c.method), ['timeBased', 'everyMinutes']);
+  assert.deepEqual(triggers[0].__calls[1].args, [10]);
+  assert.equal(exported.removeQueueWatchdogTrigger(), 1);
+  assert.equal(sandbox.ScriptApp.getProjectTriggers().length, 0);
 });
