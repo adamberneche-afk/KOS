@@ -26,7 +26,9 @@ Part 3: The Collateral Damage Report. If a Richmond team (like the Flying Squirr
 
 Part 4: Who Has the Leverage? Explain why owners can't just fire striking players and hire replacements, and why players who can play overseas have extra bargaining power.
 
-Use these terms accurately: union, collective bargaining agreement, strike, lockout, leverage, specialization, unemployment.
+Part 5: The Law. In a short paragraph, explain what right the National Labor Relations Act gives the players, and why the owners would rather have the draft and salary cap written into a CBA than just agree on them among themselves.
+
+Use these terms accurately: union, collective bargaining agreement, strike, lockout, leverage, specialization, unemployment, labor law, antitrust law.
 
 ## Background
 
@@ -44,6 +46,13 @@ Leverage is the power one side has in a negotiation. Players have leverage becau
 
 The ripple effect: during a strike, the players and owners can usually afford to wait. The people who lose their paychecks are the ushers, ticket takers, concession workers, parking attendants and security staff, plus the restaurants, bars and hotels near the stadium that count on game-day crowds. When many people lose income at once, they spend less, and that spreads to other businesses. That's how a sports dispute turns into local unemployment and a slowdown for a whole city.
 
+The law behind the bargaining table. Two federal laws shape every sports labor fight:
+
+- Labor law: the National Labor Relations Act (1935) gives workers, including pro athletes, the right to form a union and bargain as a group. An employer can't refuse to negotiate with its workers' union.
+- Antitrust law: the Sherman Antitrust Act (1890) bans businesses from teaming up to limit competition. When all the owners in a league agree to a draft (players can't pick their team) or a salary cap (a limit on what teams can pay), that would normally look like competitors teaming up to hold down pay.
+- The trade-off: rules that owners and the players' union agree to in a CBA are protected from antitrust lawsuits. So owners actually need a CBA. In the 2011 NFL and NBA lockouts, the players' unions disbanded so that players could sue their leagues under antitrust law, which put pressure on owners to make a deal.
+- Baseball is the exception: a 1922 Supreme Court decision exempted MLB from antitrust law. In 1998, Congress passed the Curt Flood Act, which removed that exemption for issues about major league players' employment.
+
 How to negotiate professionally: listen to the other side, look for trades ("we'll accept 52/48 if you drop the extra games"), and never insult the other side. In a real negotiation, a deal both sides can live with is better than no season at all.
 
 ## Key terms
@@ -56,6 +65,8 @@ How to negotiate professionally: listen to the other side, look for trades ("we'
 - Specialization: when workers have rare, specific skills that are hard to replace.
 - Unemployment: when people who want to work can't find a job or lose their income.
 - Productivity: how much value a worker produces compared with what they cost.
+- Labor law: laws that protect workers' right to form unions and bargain with employers, like the National Labor Relations Act.
+- Antitrust law: laws that stop businesses from teaming up to limit competition, like the Sherman Antitrust Act.
 
 ## Example
 
@@ -69,4 +80,4 @@ Name as many jobs as you can whose workers belong to a union. Do you think profe
 
 ## Vocabulary
 
-union, collective bargaining agreement, strike, lockout, leverage, specialization, unemployment
+union, collective bargaining agreement, strike, lockout, leverage, specialization, unemployment, labor law, antitrust law
