@@ -1,5 +1,5 @@
 <!-- lesson: chhs-school-store-company-description -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("Crafting the Management Perspective
      Company Description"). The plan's own sample description is about the
      Cavalier Shop, so the Example here is for an invented team store, to

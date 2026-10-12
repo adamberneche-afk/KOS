@@ -1,5 +1,5 @@
 <!-- lesson: the-sponsorship-negotiation -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Sponsorship Negotiation (Sales & SEL
      Integration)"). The plan's mock CRM template isn't in the repo, so its
      columns are listed in the task. The plan's "$1,500 of new business"

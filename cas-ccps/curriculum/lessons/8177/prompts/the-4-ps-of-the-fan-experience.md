@@ -1,5 +1,5 @@
 <!-- lesson: the-4-ps-of-the-fan-experience -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The 4 Ps of the Fan Experience
      (Marketing Mix)"). The plan is a team pitch; this is each student's own
      written plan for the team's item. Background where the plan is thin is

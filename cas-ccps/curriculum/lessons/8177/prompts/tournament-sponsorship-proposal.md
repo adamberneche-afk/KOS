@@ -1,5 +1,5 @@
 <!-- lesson: tournament-sponsorship-proposal -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("Tournament Sponsorship Proposals").
      The plan doesn't name the tournament, so students get its details
      (name, date, expected attendance, what a sponsor receives) from the
