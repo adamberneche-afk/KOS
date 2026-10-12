@@ -5,6 +5,9 @@ the place where the operator plans, decides and builds
 (`meta/PLAN_2026-10.md`). The Gem and `RTP_CORE_ROUTER_V6_0.md` are frozen.
 
 **Status:** set up 2026-10-11 with the knowledge files; `start` passed.
+Gmail and Google Calendar connectors added 2026-10-11, with sending turned
+off; `start` now reads them (2026-10-12). Re-paste the instructions and
+re-test `start` ("Setting it up", steps 3, 5 and 6).
 
 | File | What it is |
 |---|---|
@@ -21,9 +24,14 @@ the place where the operator plans, decides and builds
   2026-10-06; none of the three holds student data).
 - **No app chips, no first-message resend, no 10,000-character cap.** Those
   were Gemini workarounds.
-- **No school mail or calendar.** Mail can carry student information, so it
-  stays in Google. `start` gives the KOS state and open decisions, then
-  asks what the session is for.
+- **Mail and calendar, read-only.** The operator connected Gmail and Google
+  Calendar on 2026-10-11 and turned off sending. `start` adds today's
+  calendar (school, Canvas due dates and a personal calendar if one is
+  subscribed) and the mail that needs the operator. Mail can carry student
+  information, so every mail search excludes `student.ccpsnet.net`, and
+  mail from parents or about a student is counted, never read or quoted.
+  This narrows what reaches Claude; it can't promise none does, since a
+  colleague can name a student. The operator decided that trade-off.
 - **Same council and guardrails.** The six personas, ALIGNMENT's A–D
   thresholds and pause, and the HITL firewall carry over from V6.0, made
   lighter: personas speak when they sharpen the thinking, without a
@@ -53,13 +61,19 @@ the place where the operator plans, decides and builds
    - `rtp-core-router/notebook-sources/TURN_LOOP_REFERENCE.md`;
    - `rtp-core-router/protocols/COLD_BOOT_PROTOCOL.md`,
      `KILL_SWITCH_PROTOCOL.md` and `RULE_CONFLICT_RESOLUTION_PROTOCOL.md`.
-5. Connect the **Google Drive** connector on the school account, and allow
-   it in the Project.
+5. Connect the **Google Drive**, **Gmail** and **Google Calendar**
+   connectors on the school account, and allow them in the Project. In
+   Gmail's connector settings, turn off sending (done 2026-10-11).
+   Optional, for personal events: see "Personal calendar" below.
 6. Test it: start a chat and say `start`. Pass means:
    - the primer's date is today's;
    - the vision is quoted exactly;
    - Vector State opens with the Data Quality status;
-   - five open decisions are listed with their IDs.
+   - five open decisions are listed with their IDs;
+   - "Today" lists today's events from the school calendar and Canvas,
+     and personal ones marked `(personal)` if that calendar is subscribed;
+   - "Mail" lists up to five messages from the last day, with no student
+     names and no student mail.
 
 ## Daily use
 
@@ -69,8 +83,30 @@ the place where the operator plans, decides and builds
   `03.5_INBOUND_SESSIONS`. The pipeline picks it up within 5 minutes, and
   the next morning's primer and decisions reflect it.
 
+## Personal calendar (iPhone)
+
+Claude reads calendars through the school Google account, so a personal
+calendar shows up only if that account subscribes to it. Its events then sit
+in the school account, which the district can see; subscribe only a
+calendar you're comfortable having there.
+
+- **iCloud calendar** (the iPhone default): on the iPhone, open Calendar,
+  tap **Calendars**, tap ⓘ next to the calendar, turn on **Public
+  Calendar** and share the link to yourself. Anyone with the link can see
+  the events. In Google Calendar on the web (school account), choose
+  **Other calendars → + → From URL** and paste it. The Canvas calendar was
+  added the same way, so the school account allows it.
+- **Personal Google calendar:** share it with `adam_berneche@ccpsnet.net`
+  from the personal account (Settings → Share with specific people). The
+  district may block sharing from outside it; if so, use the iCloud route.
+
+Google refreshes a URL subscription every few hours, so a personal event
+added this morning may not appear in today's `start`.
+
 ## Commute trial (one week from setup)
 
 Use Claude voice in this Project on some days, and Gemini Live with the RTP
 Gem as it is on others. Note which gave a consistent brief and a useful
 conversation. Report the result; it decides whether the Gem retires early.
+Both now read mail and calendar (the Gem through its app chips), so compare
+the whole brief: state, decisions, today's calendar and mail.
