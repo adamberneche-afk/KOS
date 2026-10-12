@@ -30,6 +30,7 @@ const MARKER_FILES = [
   { file: '47_DeployVersionMarker_TeacherMatrixSheet.js', project: 'cas-ccps:teacher-matrix-sheet' },
   { file: '48_DeployVersionMarker_TeacherDashboard.js', project: 'cas-ccps:teacher-dashboard' },
   { file: '49_DeployVersionMarker_StudentDashboard.js', project: 'cas-ccps:student-dashboard' },
+  { file: '62_DeployVersionMarker_FamilySentinel.js', project: 'cas-ccps:family-sentinel' },
 ];
 
 // ── shared implementation, tested once ───────────────────────────────────
