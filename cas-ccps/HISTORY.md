@@ -2912,3 +2912,46 @@ touch all seven projects).
 Also recorded: the operator confirmed that the warm-up Flows bind the
 PromptText chip (so P0-01 changes live prompts) and that Studio Flow 2 is
 built; 15c's header no longer says it was never built.
+
+## 8177: student prompts, the 2025 task list, every task covered, 2026-10-11 to 10-12
+
+Before this, 8177 had one usable lesson: its plans had no student
+assignment, and their competency lines restated VDOE tasks with nothing to
+build on. Over #135–#149:
+
+- **Student prompts (#135–#142, #144).** Every lesson got
+  `lessons/8177/prompts/<slug>.md`: the task, plus Background, Key terms and
+  an Example written in plain classroom language (the teacher asked for
+  conventional classroom terms, not the system's own vocabulary, and no
+  handout). `studentPrompt()` in `build-lesson-assignments.js` puts those
+  sections ahead of the task under "Your Task". Handouts the plans mention
+  but Drive doesn't hold (a demand worksheet, persona cards, a P&L) are
+  written into the prompts, with their math checked. Products are made in
+  the classroom (#141), and this year's store hours aren't set, so no prompt
+  states hours. The teacher approved the drafts in #144.
+- **The 2025 task list (#143).** The repo's `CompetencyRubrics.json`
+  matches the 2025 printable framework (12163-II, ©2025, 108 tasks) task for
+  task. The lesson plans used an older numbering in which most numbers named
+  a different task, and one number could mean different things in different
+  lessons (85 was venue management in one lesson and atmospherics in
+  another), so a number-to-number `COMPETENCY_MAP.json` couldn't fix it.
+  Each alignment line was rewritten to the closest 2025 task, keeping the
+  lesson's own note in parentheses. Lessons teaching marketing-course
+  content with no 8177 task (channels, the promotional mix, the selling
+  process) got the nearest management task; #143 lists them.
+- **Coverage (#145–#149).** Orphaned tasks were cited where lessons already
+  teach them (#145), three lessons were expanded (#146), and two lessons were
+  added: The Cloud Behind the Game (#147; data centers with and without AI,
+  and a fact-check of two accurate, opposite news stories) and Game Day
+  Takeover (#149; a real pop-up, then thank-yous and an evaluation; its
+  prompt is still a draft). DECA (31, 33) and work-based learning (35–38)
+  are taught outside the lessons. All 108 tasks are covered.
+- **Drive (2026-10-12, through #148).** The tracker, pacing guide and 28
+  lesson-plan docs were edited in place with the Google Docs connector,
+  changing only the characters that differ and checking each doc against
+  the 2026-10-07 copy first (none had changed). The Cloud Behind the Game's
+  doc was created in the lesson folder. #149 is not in Drive yet.
+
+Not yet live: push central-ledger (`55b`), re-import `8177.imscc` (30
+modules).
+
