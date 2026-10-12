@@ -6,7 +6,14 @@
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
-> - **cas-ccps: everything merged is pushed (2026-10-12).** The operator
+> - **Merged 2026-10-12, not yet pushed: #167** (central-ledger only). The
+>   CAS attention signal (`34b`, the counts-only `KOS_CAS_SIGNAL` doc
+>   rewritten by the watchdog), and the staging fixes (`06`: a row
+>   `IN_PROCESS` with no timestamp no longer holds the lane; `10`: the
+>   health check reports such rows and unknown-status rows). Push with
+>   `run.ps1`, then run `runQueueWatchdog` once from the editor to create
+>   the doc (`meta/HANDOFF_2026-10-12.md`, queue item 3).
+> - **cas-ccps: everything else merged is pushed (2026-10-12).** The operator
 >   pushed `main` to every project with `run.ps1` on 2026-10-12, so #115–#117,
 >   #120–#126, #135–#157 and #160–#162 are live. run.ps1's promote step
 >   versions and updates both web apps' existing deployments; if it was
@@ -20,8 +27,11 @@
 >   `YYYY-MM-DD`); `AI_FLOWS_LIVE` = `true` in the **Student Dashboard**
 >   project. Step 18: both Canvas cartridges imported (`8175.imscc`, 36
 >   modules; `8177.imscc`, 31) and the next lessons scheduled.
-> - **Not yet reported done:** the first end-to-end Flow 2 test. The order
->   is in `meta/HANDOFF_2026-10-12.md`.
+> - **Not yet reported done:** the #167 push and the first end-to-end Flow 2
+>   test. The order is in `meta/HANDOFF_2026-10-12.md`.
+> - **Retired 2026-10-12:** both Turn-In Form files are in Drive's trash.
+>   The Ledger's `dispatchFormSubmit` trigger stays; it serves the intake
+>   form.
 > - **Live 2026-10-12: the Family Mail Sentinel**
 >   (`cas-ccps:family-sentinel`, scripts 60-62). A ninth project, on a
 >   private sheet: it labels student and parent mail, has a Gemini flow
