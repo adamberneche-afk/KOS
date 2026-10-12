@@ -209,11 +209,12 @@ alongside it (a separate Apps Script project, not a
 shared global scope — SMP-004 describes a personal/district *account* split
 as well, but that is not what is deployed: both live on the same ccpsnet.net
 account, which is why the org-wide GCP block reaches the Studio steps in
-both systems). `cas-ccps/scripts/` isn't: it's actually 8 separate Apps Script
+both systems). `cas-ccps/scripts/` isn't: it's actually 9 separate Apps Script
 projects sharing overlapping files (5 spreadsheet/doc-bound projects, the
-standalone Teacher and Student Dashboard web apps, and the standalone
-`studio-steps` project holding every custom Workspace Studio step). This tool generates a throwaway per-project push folder for
-each of the 8 from `tools/gas-lint/project-map.json`, so `cas-ccps/scripts/`
+standalone Teacher and Student Dashboard web apps, the standalone
+`studio-steps` project holding every custom Workspace Studio step, and
+`family-sentinel`, bound to the teacher's private Family Mail Sentinel sheet). This tool generates a throwaway per-project push folder for
+each of the 9 from `tools/gas-lint/project-map.json`, so `cas-ccps/scripts/`
 itself never gets reorganized or duplicated in git. Every real project
 across the repo now has a committed `appsscript.json`. `clasp
 login` against a real Google account is now working — see
@@ -403,7 +404,7 @@ setup functions each new script needs, listed in
 `cas-ccps/DEPLOYMENT_HANDOFF.md` and `kos-personal/HANDOFF_2026-09-28.md`.
 The `clasp`-side work is a human's, per SMP-004's air-gap.
 
-Clasp adoption is no longer scaffolding: all 8 cas-ccps projects build
+Clasp adoption is no longer scaffolding: all 9 cas-ccps projects build
 from `tools/clasp-sync/sync.js` and CI refuses a build with an unmerged
 addendum. The two named-but-not-uploaded files this section used to list
 (`27_LessonFrameGenerator` in cas-ccps, the `PERSONA_*` duplicates in

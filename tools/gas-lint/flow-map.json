@@ -162,6 +162,15 @@
       "liveness": "checkStudioFlowLiveness",
       "fixture": "installStudioFlowFixture",
       "_note": "materialize added when 13_StudioInputBuilder.gs closed the live in-Studio Docs-read both flows used to have (the exact surface CHANGELOG.md's Round 17 incident hit) -- the payload no longer lives ONLY in a Drive Doc a native step reads directly; it is copied into CuratorInput/VectorClassifyInput first. runStudioInputCanary() (13_StudioInputBuilder.gs) is the materialize-side canary; runStudioReturnCanary() above covers the harvest side, unchanged."
+    },
+    "cas-ccps:family-mail": {
+      "project": "cas-ccps:family-sentinel",
+      "materialize": "scanFamilyMail",
+      "harvest": "harvestFamilyMailReturns",
+      "canary": "runFamilyMailCanary",
+      "binding": "checkFamilyMailFlowBinding",
+      "liveness": "checkFamilyMailFlowLiveness",
+      "fixture": "installFamilyMailFixture"
     }
   }
 }

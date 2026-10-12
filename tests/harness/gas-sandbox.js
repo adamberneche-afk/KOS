@@ -28,7 +28,10 @@
 // note), where MailApp needs only script.send_mail, which every
 // mail-sending cas-ccps project already declares. A ReferenceError here
 // is a cheaper way to discover a missing scope than a scope-consent
-// prompt in production.
+// prompt in production. (cas-ccps:family-sentinel reads mail through the
+// advanced Gmail service instead, `Gmail`, in its own project with its
+// own gmail.modify scope; its test passes a fake `Gmail` as an extra
+// global rather than this harness growing one.)
 
 // In Apps Script, JavaScript's local time zone is the script's time zone.
 // Session.getScriptTimeZone() below reports America/New_York, so the host
@@ -745,6 +748,13 @@ class FakeParagraph {
       setForegroundColor() { return self; },
       setItalic() { return self; },
       setBold() { return self; },
+      // Real Apps Script API — Text.setLinkUrl(start, endInclusive, url).
+      // Recorded on the paragraph so a test can assert which text links
+      // where (cas-ccps 60_FamilyMailSentinel.js's "open" links).
+      setLinkUrl: (start, end, url) => {
+        (this.links = this.links || []).push({ text: this.text.slice(start, end + 1), url });
+        return self;
+      },
     };
     return self;
   }
@@ -1139,6 +1149,17 @@ function loadGasFiles(absPaths, exposeNames, extraGlobals = {}) {
       // produce it, matching the >127 ? b-256 : b conversion callers
       // already apply on the read side (e.g. that same function's own
       // hex-encoding step).
+      // Real Apps Script API — base64DecodeWebSafe(string) returns a byte
+      // array, and newBlob(bytes).getDataAsString(charset) turns it back into
+      // text. First needed by cas-ccps 60_FamilyMailSentinel.js, which
+      // decodes Gmail API message bodies (base64url) this way.
+      base64DecodeWebSafe(data) {
+        return Array.from(Buffer.from(String(data), 'base64url'), b => (b > 127 ? b - 256 : b));
+      },
+      newBlob(bytes) {
+        const buf = Buffer.from(Array.from(bytes, b => (b < 0 ? b + 256 : b)));
+        return { getDataAsString: () => buf.toString('utf8') };
+      },
       DigestAlgorithm: { MD5: 'MD5', SHA_1: 'SHA_1', SHA_256: 'SHA_256', SHA_512: 'SHA_512' },
       computeDigest(algorithm, value) {
         const nodeAlgo = { MD5: 'md5', SHA_1: 'sha1', SHA_256: 'sha256', SHA_512: 'sha512' }[algorithm];
