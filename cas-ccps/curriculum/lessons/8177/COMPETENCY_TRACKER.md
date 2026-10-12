@@ -10,7 +10,7 @@
 
 **Framework:** VDOE Sports, Entertainment, and Event Management (12163-II), 2025 revision: 108 tasks.
 
-**Status:** 92 tasks are cited by the 29 lesson plans, 6 are addressed outside them (DECA and work-based learning), and 10 are not yet covered.
+**Status:** 98 tasks are cited by the 30 lesson plans, 6 are addressed outside them (DECA and work-based learning), and 4 are not yet covered.
 
 Earlier versions of this tracker and the lesson plans used a different numbering, so most numbers did not match the state task list. Every lesson's competencies have been re-matched to the 2025 list, and the counts below come from those lessons.
 
@@ -38,7 +38,7 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **12:** Demonstrate career- and life-management skills. *(The Final Whistle)*
   - **13:** Demonstrate continuous learning and adaptability. *(The Final Whistle)*
   - **14:** Manage time and resources. *(Venue Operations & The Employee Handbook, Venue Promotion & Flyer Design, Survey Deployment & Statistical Significance, The Back Room)*
-  - **15:** Demonstrate information-literacy skills. *(The Business of the Game, Tournament Sponsorship Proposals)*
+  - **15:** Demonstrate information-literacy skills. *(The Business of the Game, The Cloud Behind the Game, Tournament Sponsorship Proposals)*
   - **16:** Demonstrate an understanding of information security. *(The Bottom Line)*
   - **17:** Maintain working knowledge of current information-technology (IT) systems. *(The Sponsorship Negotiation)*
   - **18:** Demonstrate proficiency with technologies, tools, and machines common to a specific occupation. *(Venue Market Research & Survey Design, Venue Promotion & Flyer Design)*
@@ -70,9 +70,11 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **41:** Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees. *(The Back Room, The Front Lines, The Sponsorship Negotiation, The Ticket Office)*
   - **42:** Evaluate the sports, entertainment, and event manager’s role in decision-making for campaigns, employees, and partners. *(The Brand Board Project, The Hype Machine, The NIL Deal, The Ticket Office)*
   - **43:** Evaluate career opportunities in sports, entertainment, and event management. *(The Final Whistle)*
+  - **44:** Document the different roles in sports, entertainment, and event management using an organizational chart. *(The Cloud Behind the Game)*
   - **45:** Explain facilities management as it relates to the sports, entertainment, and event industries. *(The Brand Board Project, Venue Operations & The Employee Handbook, Venue Layout & The Cavalier Shop Planogram, Survey Results Analysis & Management Decisions, The Stadium Economy)*
   - **46:** Explain on-site revenue streams as they relate to sports, entertainment, and event facilities. *(The 4 Ps of the Fan Experience, The Franchise Evolution)*
   - **47:** Identify how e-commerce and digital transactions affect sports, entertainment, and event businesses. *(The 4 Ps of the Fan Experience)*
+  - **48:** Analyze the effect of niche or emerging events in the sports, entertainment, and event industries. *(The Cloud Behind the Game)*
 
 **Describing the Economics of the Sports, Entertainment, and Event Industries**
 
@@ -88,7 +90,9 @@ Earlier versions of this tracker and the lesson plans used a different numbering
 **Exploring Entrepreneurship in Sports, Entertainment, and Event Management**
 
   - **54:** Identify entrepreneurship opportunities related to sports, entertainment, and event management. *(The Franchise Evolution)*
+  - **55:** Describe the entrepreneurial mindset. *(The Cloud Behind the Game)*
   - **56:** Identify the steps involved in starting a new business, using the Business Model Canvas (BMC). *(Crafting the Management Perspective Company Description)*
+  - **57:** Describe how small businesses drive job creation, income generation, and economic growth. *(The Cloud Behind the Game)*
 
 **Developing Customer Service Skills**
 
@@ -101,6 +105,8 @@ Earlier versions of this tracker and the lesson plans used a different numbering
 **Exploring Ethical Issues in the Sports, Entertainment, and Event Industries**
 
   - **63:** Identify ethical issues related to the sports, entertainment, and event industries. *(The Ticket Office)*
+  - **64:** Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries. *(The Cloud Behind the Game)*
+  - **65:** Examine the effect of media bias on public perception and opinion. *(The Cloud Behind the Game)*
   - **66:** Describe the value of the sports, entertainment, and event industries to the community. *(The Stadium Economy)*
 
 **Exploring the Legal Aspects of Sports, Entertainment, and Event Industries**
@@ -183,21 +189,6 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **38:** Participate in a WBL experience, when appropriate. *(work-based learning)*
 
 ### **⭕ Part 3: Not Yet Covered**
-
-**Exploring Sports, Entertainment, and Event Management**
-
-  - **44:** Document the different roles in sports, entertainment, and event management using an organizational chart.
-  - **48:** Analyze the effect of niche or emerging events in the sports, entertainment, and event industries.
-
-**Exploring Entrepreneurship in Sports, Entertainment, and Event Management**
-
-  - **55:** Describe the entrepreneurial mindset.
-  - **57:** Describe how small businesses drive job creation, income generation, and economic growth.
-
-**Exploring Ethical Issues in the Sports, Entertainment, and Event Industries**
-
-  - **64:** Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries.
-  - **65:** Examine the effect of media bias on public perception and opinion.
 
 **Understanding Market Research**
 
