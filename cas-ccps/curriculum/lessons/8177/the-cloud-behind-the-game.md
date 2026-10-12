@@ -1,5 +1,6 @@
-<!-- written in the repo 2026-10-12 to cover competencies 44, 48, 55, 57, 64 and 65; there is no Drive copy yet -->
+<!-- source: Google Doc 1LDfdyzgvcLE1SP683ahkqmeSFY7R_Nt8TELt7K132NA -->
 <!-- title: Lesson Plan: The Cloud Behind the Game -->
+<!-- written in the repo 2026-10-12 (competencies 44, 48, 55, 57, 64, 65); the Drive doc was created from this file the same day -->
 
 # **Lesson Plan: The Cloud Behind the Game (Data Centers, AI & the Community)**
 
