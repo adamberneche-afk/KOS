@@ -334,7 +334,10 @@ them into `scripts/55b_LessonAssignmentData.js`:
   listed in `lessons/COMPETENCY_REVIEW.md` for the teacher to map. The 8177
   lessons were re-matched to the 2025 state task list (12163-II) in October
   2026 and cite its numbers and wording; `lessons/8177/COMPETENCY_TRACKER.md`
-  shows which tasks the lessons cover.
+  shows which tasks the lessons cover. The 8175 lessons were re-matched the
+  same way on 2026-10-12 (the repo's 113 tasks match the state's 2025
+  Student Competency Record); `lessons/8175/COMPETENCY_TRACKER.md` shows
+  their coverage, 56 of 113 tasks.
 
 Dates come from the **LessonSchedule** tab in the Central Ledger, which the
 teacher edits: one row per lesson, a start date, and a lesson runs until the

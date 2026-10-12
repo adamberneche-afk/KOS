@@ -67,14 +67,15 @@ function plain(md) {
     .join('\n').replace(/\n{3,}/g, '\n\n').trim();
 }
 
-// The lesson docs number competencies their own way, and about a third of the
-// 8175 numbers name a different competency in the state list (L16's "041:
-// Calculate break-even point" is 8175-41 "Describe the marketing concept…").
-// Matching by wording picks the wrong one too often, so a number counts only
-// when its state wording matches the doc's, or when COMPETENCY_MAP.json maps
-// it. Any other keeps the doc's wording as a criterion with no ID (nothing is
-// logged against a competency it may not be), and is listed in
-// COMPETENCY_REVIEW.md for the teacher to map.
+// The lesson docs used to number competencies their own way, and many numbers
+// named a different competency in the state list (L16's "041: Calculate
+// break-even point" was 8175-41 "Describe the marketing concept…"). Both
+// courses' lessons now cite the 2025 task list, but the check stays for any
+// line added later. Matching by wording picks the wrong one too often, so a
+// number counts only when its state wording matches the doc's, or when
+// COMPETENCY_MAP.json maps it. Any other keeps the doc's wording as a
+// criterion with no ID (nothing is logged against a competency it may not
+// be), and is listed in COMPETENCY_REVIEW.md for the teacher to map.
 const STOP = new Set(('the a an of and or to in as it its for with on by is are be related relates ' +
   'sports entertainment event events industry industries').split(' '));
 const words = (s) => String(s).toLowerCase().replace(/\(.*?\)/g, '').replace(/[^a-z ]/g, ' ')
