@@ -28,6 +28,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 101:** (Optional) Evaluate the event’s overall success (Conducting a post-event SWOT analysis).
   - **Competency 103:** Identify career opportunities at different levels in sports, entertainment, and event management.
   - **Competency 104:** Describe education and training needed for a sports, entertainment, and event management career (Degrees, internships, game-day jobs and industry certifications).
+  - **Competency 105:** (Optional) Identify barriers to employment and strategies to overcome them (Naming what could stand between a student and a first job in sports or events, like no experience, transportation or event-night schedules, and a plan for each).
   - **Competency 106:** Identify professional development opportunities in the sports, entertainment, and event industries (Building a digital presence like LinkedIn).
   - **Competency 107:** Collect information about a prospective employer (Preparing for a job interview by researching the employer).
   - **Competency 108:** Develop a career plan (Building a professional resume and portfolio).
@@ -41,6 +42,7 @@ By the end of this lesson, students will be able to:
 3.  Translate classroom projects into professional, action-oriented resume bullet points.
 4.  Develop a basic networking strategy and identify professional organizations that can accelerate career growth.
 5.  Answer behavioral interview questions using the S.T.A.R. (Situation, Task, Action, Result) method.
+6.  Identify barriers to getting a first job in the industry and a strategy to overcome each.
 
 ## **4. Instructional Sequence**
 
@@ -60,6 +62,8 @@ By the end of this lesson, students will be able to:
   - **Research the Job (Comp 102):** Show students where real career information lives: **TeamWork Online** (the sports industry's main job board), **LinkedIn** and **Indeed**, the careers pages of local teams and venues (Richmond Flying Squirrels, VCU Athletics, Richmond Raceway), and the U.S. Bureau of Labor Statistics' **Occupational Outlook Handbook** for pay, outlook and required education. Model one search live.
   - **Get the Training (Comp 104):** Most front-office jobs ask for a bachelor's degree (sports management, business, marketing or communications), but the real separator is experience: internships, part-time game-day jobs (ticket taker, usher, concessions) and volunteering at events. Some careers add industry certifications later, like the Certified Meeting Professional (CMP) for event planners or the Certified Facilities Executive (CFE) for venue managers.
   - **Organizations:** Discuss how joining organizations like DECA, FBLA, or the Public Relations Society of America (PRSA) provides a massive competitive advantage on a resume.
+
+  - **Clearing the Path (Comp 105):** Ask: *"What could stop you from getting your first job in sports or events?"* List the answers on the board: no experience yet, no way to get there, event jobs that run nights and weekends, age limits on some roles, not knowing anyone in the industry, and internships that don't pay. Pair each one with a strategy: volunteering and school events for experience, carpools and planning a route, picking roles that fit a school schedule, DECA and informational interviews to build a network, and looking for paid internships or ones that offer school credit.
 
 ### **C. Building Your Roster: Networking (15 Minutes)**
 
