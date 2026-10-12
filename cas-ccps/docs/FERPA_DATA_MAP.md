@@ -318,6 +318,25 @@ specifically to answer "what did we tell whom," which is the question a
 records request asks — so the gap between a placeholder default and a real
 retention decision matters more for this tab than for any other.
 
+### Family Mail Sentinel tabs (FamilyMailInput, FamilyMailReturn, FamilyMailLog, FamilyContacts)
+| | |
+|---|---|
+| **Where** | The teacher's private *Family Mail Sentinel* spreadsheet, not the Central Ledger (`cas-ccps:family-sentinel`, `60_FamilyMailSentinel.js`) |
+| **Fields** | `FamilyMailInput`: the Gemini prompt with one student or parent email, names, addresses, phone numbers and long numbers redacted. `FamilyMailReturn`: Gemini's JSON answer. `FamilyMailLog`: Gmail message and thread IDs, received time, source (student/parent/staff/canvas/external), a hashed family key, course, period, status, category, urgency, safety and sensitive flags, a one-line ask checked to name nobody, a due date. `FamilyContacts`: parent address → student email, entered by the teacher. |
+| **Why collected** | So the KOS Claude Project can say how urgent student and parent mail is without reading it: the log feeds the name-free `KOS_FAMILY_SIGNAL` doc. |
+| **Read by** | `60_FamilyMailSentinel.js` and the Workspace Flow (which reads `FamilyMailInput` and writes `FamilyMailReturn`). The roster comes from the Central Ledger's `Ledger` tab and parent addresses from `ParentReportLog`, both read-only. |
+| **Visible to** | The teacher who owns the sheet. |
+| **Retention** | `FamilyMailInput` and `FamilyMailReturn` rows are deleted once harvested, and any input row after 48 hours unanswered. `FamilyMailLog` rows after 30 days (fixture rows kept). The mail itself stays in Gmail as before. |
+
+**What leaves the sheet.** Only the `KOS_FAMILY_SIGNAL` doc, which the KOS
+Claude Project reads: course, period, source, category, the ask, hours
+waiting and a repeat-contact count. Sensitive categories (accommodation,
+health, discipline, family situation, safety) show only "sensitive" and the
+wait. No name, address or message text. The Project's own mail search
+excludes the `KOS/Family` label, `student.ccpsnet.net` and Canvas, so Claude
+does not open these messages; mail that arrives between two 15-minute scans
+is the remaining gap (`docs/FAMILY_MAIL_SENTINEL.md`).
+
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness
 since it's a central, shared tab.

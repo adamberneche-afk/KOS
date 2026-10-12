@@ -1,6 +1,6 @@
 # clasp-sync
 
-Bridges cas-ccps's 8 separate Apps Script projects to
+Bridges cas-ccps's 9 separate Apps Script projects to
 [clasp](https://github.com/google/clasp), Google's own CLI for pushing
 local files to a live, bound Apps Script project. See
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../../meta/CLASP_AND_APPS_SCRIPT.md) for
@@ -31,7 +31,7 @@ missing files a project needs. An 8th project, `cas-ccps/studio-steps/`,
 is standalone and shares no files with the other 7, but is still handled
 by this same tool under its `cas-ccps:*` scope.
 
-`sync.js` reads that same `project-map.json` and, for each of the 8
+`sync.js` reads that same `project-map.json` and, for each of the 9
 `cas-ccps:*` projects, generates a throwaway push folder under
 `cas-ccps/.clasp-build/<project-name>/` containing exactly that
 project's files (flattened to basenames — Apps Script projects are a
@@ -115,7 +115,7 @@ cd cas-ccps/.clasp-build/central-ledger && clasp push
 
 Running `sync.js` with no real script IDs configured yet is still
 useful — it's a way to inspect exactly which files and manifest would go
-to each of the 8 live projects, with zero Google credentials involved.
+to each of the 9 projects, with zero Google credentials involved.
 The script prints `(no real scriptId yet — ready to inspect, not to
 push)` for any project still on the placeholder template.
 
