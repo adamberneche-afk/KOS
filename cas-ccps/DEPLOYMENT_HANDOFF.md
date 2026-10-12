@@ -6,6 +6,11 @@
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
+> - **Merged 2026-10-12, not yet pushed: #169** (every cas-ccps project:
+>   `00_SharedConfig.js` changed). Terms are marking periods
+>   (`CURRENT_TERM` = `2627_MP1`): both dashboards show the whole school
+>   year by default, and archive/reactivate take a school year. Push with
+>   `run.ps1` and let it update both web apps' existing deployments.
 > - **Merged 2026-10-12, not yet pushed: #167** (central-ledger only). The
 >   CAS attention signal (`34b`, the counts-only `KOS_CAS_SIGNAL` doc
 >   rewritten by the watchdog), and the staging fixes (`06`: a row
