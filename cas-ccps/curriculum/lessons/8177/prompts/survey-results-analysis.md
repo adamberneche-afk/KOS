@@ -17,9 +17,11 @@ Part 2: One Change. Recommend one specific change to how the Cavalier Shop is se
 
 Part 3: Back It Up. Explain how one or more of your three data points supports your recommendation. Use the numbers.
 
+Part 4: One Survey, Every Function. Marketing has several functions. For three of them (choose from product, pricing, promotion, place/distribution and selling), write one sentence on how our survey results help that part of the store, or one question a future survey should ask to help it.
+
 Write it as one professional report of at least 250 words, the kind you could hand to the principal. Use only the real survey results: making up or changing numbers is an academic integrity violation.
 
-Use these terms accurately: data point, trend, quantitative data, qualitative data, executive summary, recommendation.
+Use these terms accurately: data point, trend, quantitative data, qualitative data, executive summary, recommendation, marketing functions.
 
 ## Background
 
@@ -41,6 +43,18 @@ Cite the data. A manager's recommendation is only as strong as its evidence.
 - Weak: "A lot of people want hoodies."
 - Strong: "According to the survey, 31% of written suggestions asked for hoodies, more than any other item."
 
+Every part of marketing needs research. Businesses (and DECA) describe marketing as seven functions, and each one makes better decisions with data:
+
+- Product/service management: what to sell. (Question 3 asked what customers want.)
+- Pricing: what to charge. (Our survey didn't ask this; a future one could.)
+- Promotion: how to reach customers. (Question 1 asked where people get school news.)
+- Channel management (place): where and how customers buy, like in the store, at games or online.
+- Selling: what to say to a customer. (Question 2 shows whether "it funds student activities" is a strong selling point.)
+- Market planning: who to target and what the overall plan is.
+- Marketing-information management: collecting and organizing the data itself, which is what this whole project is.
+
+A store that guesses on even one of these, like pricing, can lose money even when everything else is right.
+
 An executive summary is a short report written for a busy decision-maker. It gets to the point fast: what we found, what it means, and what we recommend. Use complete sentences, a professional tone and no slang.
 
 ## Key terms
@@ -49,6 +63,7 @@ An executive summary is a short report written for a busy decision-maker. It get
 - Trend: a pattern that shows up across the data.
 - Quantitative data: results in numbers, like percentages and ratings.
 - Qualitative data: results in words, like written suggestions.
+- Marketing functions: the parts of marketing a business manages, including product, pricing, promotion, channel management (place) and selling.
 - Executive summary: a short, professional report that gives a decision-maker the key findings and a recommendation.
 - Recommendation: a specific action the business should take, backed by evidence.
 
@@ -64,4 +79,4 @@ If 80% of students said they get school news from Instagram and only 10% from Mo
 
 ## Vocabulary
 
-data point, trend, quantitative data, qualitative data, executive summary, recommendation
+data point, trend, quantitative data, qualitative data, executive summary, recommendation, marketing functions
