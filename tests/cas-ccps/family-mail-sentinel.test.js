@@ -32,6 +32,7 @@ const EXPORTS = [
   'scanFamilyMail', 'harvestFamilyMailReturns', 'writeFamilySignal',
   'runFamilySentinelPreflight', 'runFamilyMailCanary', 'checkFamilyMailFlowBinding',
   'checkFamilyMailFlowLiveness', 'installFamilyMailFixture', 'syncFamilyMailFlowBuildSpec',
+  'sendFamilySafetyAlerts', 'sendFamilyAlertTest', 'makeFamilyAlertTopic',
   'FAMILY_MAIL_TRIAGE_PROMPT', 'FMS_LOG', 'FMS_LOG_HEADERS',
 ];
 
@@ -102,7 +103,14 @@ const ROSTER = [
 function setUp(messages, opts) {
   opts = opts || {};
   const gmail = makeGmail(messages);
-  const { exported, sandbox } = loadGasFiles(PATHS, EXPORTS, { Gmail: gmail });
+  const pushes = [];
+  const urlFetch = {
+    fetch(url, opts) {
+      pushes.push({ url, body: opts.payload, headers: opts.headers });
+      return { getResponseCode: () => (urlFetch.failWith || 200) };
+    },
+  };
+  const { exported, sandbox } = loadGasFiles(PATHS, EXPORTS, { Gmail: gmail, UrlFetchApp: urlFetch });
   sandbox.Session.getEffectiveUser = () => ({ getEmail: () => OPERATOR });
   const props = sandbox.PropertiesService.getScriptProperties();
 
@@ -123,7 +131,7 @@ function setUp(messages, opts) {
     const tab = ss.getSheetByName('FamilyContacts');
     opts.contacts.forEach((c) => tab.appendRow(c));
   }
-  return { exported, sandbox, gmail, ss, props };
+  return { exported, sandbox, gmail, ss, props, pushes, urlFetch };
 }
 
 function rows(ss, tab) {
@@ -262,6 +270,96 @@ test('a safety message is flagged before Gemini runs and is never summarized', (
   const text = signalText(fx.sandbox, fx.props);
   assert.match(text, /NEEDS YOU NOW: 1 message, not summarized\./);
   assert.doesNotMatch(text, /hurt|safe\b|8175/i);
+});
+
+test('a safety message pushes to the phone once, with no detail, before Gemini answers', () => {
+  const safe1 = {
+    id: 's1', threadId: 'ts1', internalDate: now - 1 * HOUR,
+    from: 'Jordan Rivers <jrivers@student.ccpsnet.net>', subject: 'help', body: 'I want to hurt myself.',
+  };
+  const safe2 = Object.assign({}, safe1, { id: 's2', threadId: 'ts2' });
+  const fx = setUp([safe1, safe2]);
+  assert.equal(fx.exported.sendFamilySafetyAlerts().reason, 'FAMILY_ALERT_NTFY_TOPIC not set');
+  fx.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
+
+  const run = fx.exported.runFamilySentinel();
+  assert.equal(run.alertAfterScan.sent, 1, 'pushed after the scan, before any Gemini answer');
+  assert.equal(run.alertAfterScan.threads, 2);
+  assert.equal(fx.pushes.length, 1, 'one push for both threads');
+  const p = fx.pushes[0];
+  assert.equal(p.url, 'https://ntfy.sh/kos-abc123');
+  assert.equal(p.body, '2 family messages need you now. Open Gmail, label KOS/Family/Now.');
+  assert.equal(p.headers.Title, 'KOS');
+  assert.equal(p.headers.Priority, 'urgent');
+  assert.doesNotMatch(JSON.stringify(p), /jordan|rivers|8175|hurt/i);
+
+  // Later runs send nothing more for the same threads.
+  fx.exported.runFamilySentinel();
+  assert.equal(fx.pushes.length, 1);
+  const LOG = fx.exported.FMS_LOG;
+  assert.ok(logByMessage(fx.ss, LOG, 's1')[LOG.ALERTED_AT]);
+});
+
+test('a failed push is retried on the next run', () => {
+  const msg = {
+    id: 's3', threadId: 'ts3', internalDate: now - 1 * HOUR,
+    from: 'Jordan Rivers <jrivers@student.ccpsnet.net>', subject: 'help', body: 'I want to hurt myself.',
+  };
+  const fx = setUp([msg]);
+  fx.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
+  fx.exported.scanFamilyMail();
+  fx.urlFetch.failWith = 503;
+  const failed = fx.exported.sendFamilySafetyAlerts();
+  assert.equal(failed.sent, 0);
+  assert.match(failed.error, /503/);
+  const LOG = fx.exported.FMS_LOG;
+  assert.equal(logByMessage(fx.ss, LOG, 's3')[LOG.ALERTED_AT], '');
+  fx.urlFetch.failWith = 0;
+  assert.equal(fx.exported.sendFamilySafetyAlerts().sent, 1);
+});
+
+test('a safety flag from Gemini alone also pushes, and the singular reads right', () => {
+  const fx = setUp([MAIL.student]);
+  fx.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
+  fx.exported.scanFamilyMail();
+  assert.equal(fx.exported.sendFamilySafetyAlerts().sent, 0, 'nothing tripped yet');
+  playFlow(fx.ss, () => ({ is_family: true, category: 'safety_wellbeing', urgency: 5, safety: true, ask: '', due: '' }));
+  fx.exported.harvestFamilyMailReturns();
+  assert.equal(fx.exported.sendFamilySafetyAlerts().sent, 1);
+  assert.equal(fx.pushes[0].body, 'A family message needs you now. Open Gmail, label KOS/Family/Now.');
+});
+
+test('safety pushes stop at the daily cap, and an old message is not pushed', () => {
+  const old = {
+    id: 'o1', threadId: 'to1', internalDate: now - 30 * HOUR,
+    from: 'Jordan Rivers <jrivers@student.ccpsnet.net>', subject: 'x', body: 'I want to hurt myself.',
+  };
+  const fx = setUp([old]);
+  fx.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
+  fx.exported.scanFamilyMail();
+  assert.equal(fx.exported.sendFamilySafetyAlerts().sent, 0, 'older than 24 hours');
+
+  const fresh = setUp([Object.assign({}, old, { id: 'f1', threadId: 'tf1', internalDate: now - 1 * HOUR })]);
+  fresh.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
+  const day = fresh.sandbox.Utilities.formatDate(new Date(), 'America/New_York', 'yyyyMMdd');
+  fresh.props.setProperty('FAMILY_ALERT_COUNT_' + day, '10');
+  fresh.exported.scanFamilyMail();
+  const out = fresh.exported.sendFamilySafetyAlerts();
+  assert.equal(out.sent, 0);
+  assert.equal(out.reason, 'daily cap reached');
+});
+
+test('makeFamilyAlertTopic makes one private topic and keeps it; the test push uses it', () => {
+  const fx = setUp([]);
+  assert.throws(() => fx.exported.sendFamilyAlertTest(), /makeFamilyAlertTopic/);
+  const made = fx.exported.makeFamilyAlertTopic();
+  assert.equal(made.created, true);
+  assert.match(made.topic, /^kos-[0-9a-f]{32}$/);
+  assert.equal(fx.exported.makeFamilyAlertTopic().topic, made.topic, 'not replaced unless asked');
+  assert.notEqual(fx.exported.makeFamilyAlertTopic(true).topic, made.topic);
+  fx.exported.sendFamilyAlertTest();
+  assert.equal(fx.pushes.length, 1);
+  assert.equal(fx.pushes[0].headers.Priority, 'default');
 });
 
 test('the tripwire matches whole words only', () => {
@@ -487,6 +585,10 @@ test('preflight passes once set up and the trigger is installed', () => {
   assert.equal(fx.exported.runFamilySentinelPreflight().ok, false, 'no trigger yet');
   fx.exported.installFamilySentinelTrigger();
   assert.equal(fx.exported.installFamilySentinelTrigger().installed, false);
+  const noText = fx.exported.runFamilySentinelPreflight();
+  assert.equal(noText.ok, false, 'no ntfy topic yet');
+  assert.match(noText.checks.find((c) => c.name === 'safety pushes').detail, /FAMILY_ALERT_NTFY_TOPIC not set/);
+  fx.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
   const out = fx.exported.runFamilySentinelPreflight();
   assert.equal(out.ok, true, JSON.stringify(out.checks.filter((c) => !c.ok)));
 });

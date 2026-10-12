@@ -138,8 +138,8 @@ kind Claude must not read. `60_FamilyMailSentinel.js` labels it `KOS/Family`
 triage it with names redacted, and writes `KOS_FAMILY_SIGNAL`: one line per
 thread waiting on the teacher, with course, period, category, a one-line ask
 and hours waiting, and no names. A safety message is flagged before Gemini
-runs and is never summarized. Setup, the data boundary and the open question
-(reaching the teacher's phone for a safety message):
+runs, is never summarized, and pushes to the teacher's phone (ntfy, no
+details). Setup and the data boundary:
 [`docs/FAMILY_MAIL_SENTINEL.md`](./docs/FAMILY_MAIL_SENTINEL.md).
 
 Each of these 8 projects now has a real, committed `appsscript.json` and
