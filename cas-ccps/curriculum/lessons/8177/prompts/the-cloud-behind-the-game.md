@@ -1,5 +1,5 @@
 <!-- lesson: the-cloud-behind-the-game -->
-<!-- status: draft 2026-10-12, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 -->
 <!-- Written with the lesson plan ("The Cloud Behind the Game"). The
      Chesterfield proposal and every number on its fact sheet are made up
      for practice. The two news stories use only facts from that sheet,
@@ -28,6 +28,8 @@ A technology company wants to build a data center campus in Chesterfield County.
 - Water: up to 500,000 gallons a day on hot days, for cooling. That's about as much as 1,700 homes use in a day.
 - Noise: a constant hum from cooling fans, plus 40 diesel backup generators tested every month.
 - The AI option: if the campus is built for AI, it would use about twice the electricity and more water for cooling, with about the same number of jobs.
+
+This assignment takes two days. Day 1: Parts 1–3. Day 2: Parts 4–5.
 
 Part 1: Follow the Game. Pick one sports or entertainment experience (a streamed game, a mobile ticket, an esports tournament, a fantasy sports app). Explain step by step how it depends on data centers. Then sort these eight uses into "needs AI" and "doesn't need AI": streaming a game live, automatic highlight clips, scanning a mobile ticket, a chatbot on a team's website, buying a hot dog with a card, prices that change by themselves as demand changes, storing photos from the game, computer-generated play-by-play commentary.
 
