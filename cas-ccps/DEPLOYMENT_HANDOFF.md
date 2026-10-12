@@ -6,39 +6,21 @@
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
-> - **cas-ccps:** central-ledger is pushed at `main` as of PR #113. Phase 6
->   (below) has run through step 17a: course data, the lesson builder and
->   its nightly trigger, LIVE assignments `CAS-8175-L06` and
->   `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS` (the S1-U1 ones archived),
->   and every rostered student enrolled in them (71 in 8175, 21 in 8177).
-> - **Merged 2026-10-08, not yet pushed (#115-#117):** students submit from
->   the Student Dashboard (the doc menu doesn't run for student accounts)
->   and turn in on Canvas; SCR suggestions average each student's three
->   best assignments; the Teacher Dashboard shows not checked / not
->   passing / passed by current lesson. Push central-ledger,
->   student-dashboard and teacher-dashboard, and update both web apps'
->   existing deployments (`cas-ccps/HISTORY.md`, newest entry).
-> - **Merged 2026-10-10, not yet pushed (#120-#126, `meta/PRD_CAS_RESEARCH_PIVOT.md`
->   Phase 0):** warm-up prompts filled before Gemini sees them; warm-up
->   archetypes recorded, with the cross-unit lock held off behind
->   `PIVOT_ARCHETYPE_LOCK`; the Student Dashboard refuses copied system
->   text; the Canvas cartridges link the dashboard; the Turn-In Form
->   handler and its setup-wizard form retired. `00_SharedConfig.js` changed,
->   so push **every** cas-ccps project, update both web apps' existing
->   deployments, and run `syncFlowPromptsToSheet()`. The order is in
->   `meta/HANDOFF_2026-10-12.md`.
-> - **Merged 2026-10-11/12, not yet pushed (#135–#149):** the 8177
->   curriculum: a student prompt for every lesson, competency lines on the
->   2025 task list, two new lessons, all 108 tasks covered
->   (`cas-ccps/HISTORY.md`, newest entry). Push central-ledger (`55b`) and
->   import the rebuilt `8177.imscc` (31 modules; Game Day
->   Takeover's prompt approved 2026-10-12).
-> - **Merged 2026-10-12, not yet pushed (#151–#157):** the 8175
->   curriculum: competency lines re-matched to the 2025 task list, cited
->   and expanded lessons, all 113 tasks covered; the Turn-In Form config
->   keys removed from `00_SharedConfig.js`. Push every cas-ccps project and
->   import the rebuilt `8175.imscc` (36 modules). Every lesson doc in Drive
->   matches the repo.
+> - **cas-ccps: everything merged is pushed (2026-10-12).** The operator
+>   pushed `main` to every project with `run.ps1` on 2026-10-12, so #115–#117,
+>   #120–#126, #135–#157 and #160–#162 are live. run.ps1's promote step
+>   versions and updates both web apps' existing deployments; if it was
+>   skipped, do that by hand. Phase 6 (below) ran through
+>   step 17a earlier: LIVE assignments `CAS-8175-L06` and
+>   `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS`, every rostered student enrolled
+>   (71 in 8175, 21 in 8177). The curricula are complete: every state task is
+>   covered in both courses, and every lesson doc in Drive matches the repo.
+> - **Not yet reported done after the push:** `syncFlowPromptsToSheet()`;
+>   `seedLessonSchedule()` and start dates for the new 8177 lessons;
+>   `AI_FLOWS_LIVE` = `true` in the **Student Dashboard** project; the
+>   Canvas cartridge imports (`8175.imscc`, 36 modules; `8177.imscc`, 31;
+>   in progress 2026-10-12); the first end-to-end Flow 2 test. The order is
+>   in `meta/HANDOFF_2026-10-12.md`.
 > - **Live 2026-10-12: the Family Mail Sentinel**
 >   (`cas-ccps:family-sentinel`, scripts 60-62). A ninth project, on a
 >   private sheet: it labels student and parent mail, has a Gemini flow
@@ -48,8 +30,8 @@
 >   (`clasp-registry\cas-ccps\family-sentinel`), the Flow built, the
 >   trigger installed, and the safety alert tested end to end by the
 >   teacher. Setup and checks: `docs/FAMILY_MAIL_SENTINEL.md`.
-> - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-12), then
->   the first real Flow 2 run when students submit.
+> - Left: step 18 (import the Canvas cartridges), then the first real Flow
+>   2 run when students submit.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
 > projects are live in a real `ccpsnet.net` Workspace account, Module 1 and
