@@ -9,7 +9,8 @@ lines re-matched to the 2025 task list, lessons expanded) and the Drive docs wer
 to match on 2026-10-12. Two 8177 lessons were written in the repo first:
 `the-cloud-behind-the-game.md` (its Drive doc was created from it) and
 `game-day-takeover.md` (likewise). The 8175 lessons' competency lines were re-matched to
-the 2025 task list on 2026-10-12, in the repo first (see below for Drive).
+the 2025 task list on 2026-10-12 in the repo, and the Drive docs were updated to match the
+same day.
 
 | Folder | Course | Drive folder ID | Contents |
 |---|---|---|---|
