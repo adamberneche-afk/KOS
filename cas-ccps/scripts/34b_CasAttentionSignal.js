@@ -4,7 +4,7 @@
 // TRIGGERS: none of its own. runQueueWatchdog() (34) calls writeCasSignal_()
 //           at the end of every run, so the doc is rewritten every 10 minutes.
 //
-// PURPOSE: the CAS attention signal (KOS session 2026-10-12, SMP-005). The
+// PURPOSE: the CAS attention signal (KOS session 2026-10-12, SMP-018). The
 // KOS Claude Project may not read CAS sheets, so this doc is its only view of
 // CAS: counts of what needs the teacher, students and families first, admin
 // second, rewritten in place (same file ID every time, like KOS_FAMILY_SIGNAL
