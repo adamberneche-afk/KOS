@@ -1,5 +1,5 @@
 <!-- lesson: product-pitch-financial-analysis -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Venue Buyer's Product Pitch").
      Background where the plan is thin is marked in the PR that added this
      file for the teacher to check. Revised 2026-10-11: the store's products

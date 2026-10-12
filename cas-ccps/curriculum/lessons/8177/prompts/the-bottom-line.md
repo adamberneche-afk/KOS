@@ -1,5 +1,5 @@
 <!-- lesson: the-bottom-line -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Bottom Line (Event Budgeting &
      Finance)"). The plan's "Vendor Price List" isn't in the repo, so one is
      written into the task. Baseline check: 16 teams at $150, 400 tickets at

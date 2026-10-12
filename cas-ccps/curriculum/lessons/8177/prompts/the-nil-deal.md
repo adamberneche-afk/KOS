@@ -1,5 +1,5 @@
 <!-- lesson: the-nil-deal -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The NIL Deal (Endorsements & Digital
      Sponsorships)"). The products are ones the class makes (the store's
      products are made in the classroom), not the plan's Nike jacket.

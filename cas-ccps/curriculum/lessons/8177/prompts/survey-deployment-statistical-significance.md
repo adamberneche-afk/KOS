@@ -1,5 +1,5 @@
 <!-- lesson: survey-deployment-statistical-significance -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("Survey Deployment & Statistical
      Significance"). The plan's grade is the response count (15 per student);
      this is the written part that goes with it in the CAS doc: the pitch, the
