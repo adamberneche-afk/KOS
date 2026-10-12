@@ -40,8 +40,14 @@
 // summarized: KOS/Family/Now goes on the thread, and the signal doc lists it
 // first as "needs you now". Two independent checks set it: Gemini's safety
 // flag, and a keyword tripwire here (FMS_SAFETY_TERMS) that runs before
-// Gemini sees anything, so a Flow that is down cannot hide one. How that
-// reaches the teacher's phone directly is still open; nothing here sends.
+// Gemini sees anything, so a Flow that is down cannot hide one.
+// sendFamilySafetyAlerts() then pushes a notification to the teacher's phone
+// through ntfy (the free ntfy app, subscribed to a private topic the
+// sentinel makes, Script Property FAMILY_ALERT_NTFY_TOPIC, never in the
+// repo): one push per run however many threads, each thread once, at any
+// hour. The push is FMS_ALERT_TITLE and FMS_ALERT_TEXT with a count. No
+// name, course or word of the message goes to ntfy. (Email-to-text was the
+// first choice; AT&T, the teacher's carrier, no longer has a gateway.)
 //
 // SENSITIVE categories (FMS_SENSITIVE_CATEGORIES) show no course, period or
 // ask: in a 21-student class, "IEP question, period 2" can identify a child.
@@ -64,8 +70,9 @@
 // installFamilyMailFixture() gives the Flow a synthetic row to match.
 //
 // GMAIL: the advanced Gmail service (Gmail API v1), scope gmail.modify, for
-// reading messages and adding labels. Nothing here sends, drafts, archives,
-// trashes or deletes mail.
+// reading messages and adding labels. Through Gmail it never sends, drafts,
+// archives, trashes or deletes. The one send is the safety push, through
+// ntfy, to the teacher's own phone (sendFamilySafetyAlerts()).
 // =============================================================================
 
 const FMS_INPUT_TAB = "FamilyMailInput";
@@ -80,12 +87,12 @@ const FMS_LOG_TAB = "FamilyMailLog";
 const FMS_LOG_HEADERS = [
   "Message_ID", "Thread_ID", "Received_At", "Source", "Family_Key", "Course",
   "Period", "Status", "Category", "Urgency", "Safety", "Sensitive", "Ask",
-  "Due", "Classified_At", "Note",
+  "Due", "Classified_At", "Note", "Alerted_At",
 ];
 const FMS_LOG = {
   MESSAGE_ID: 0, THREAD_ID: 1, RECEIVED_AT: 2, SOURCE: 3, FAMILY_KEY: 4,
   COURSE: 5, PERIOD: 6, STATUS: 7, CATEGORY: 8, URGENCY: 9, SAFETY: 10,
-  SENSITIVE: 11, ASK: 12, DUE: 13, CLASSIFIED_AT: 14, NOTE: 15,
+  SENSITIVE: 11, ASK: 12, DUE: 13, CLASSIFIED_AT: 14, NOTE: 15, ALERTED_AT: 16,
 };
 
 const FMS_CONTACTS_TAB = "FamilyContacts";
@@ -126,6 +133,15 @@ const FMS_LOG_KEEP_DAYS = 30;
 const FMS_TRIGGER_HANDLER = "runFamilySentinel";
 const FMS_TRIGGER_MINUTES = 15;
 const FMS_SIGNAL_TITLE = "KOS_FAMILY_SIGNAL";
+
+// The whole push ntfy ever sees: no student, sender, course or message
+// detail; "{n}" is the only variable. Anyone who learned the topic name could
+// read it, which is why it carries nothing else.
+const FMS_ALERT_TITLE = "KOS";
+const FMS_ALERT_TEXT = "{n} now. Open Gmail, label KOS/Family/Now.";
+const FMS_ALERT_LOOKBACK_HOURS = 24;  // older safety messages are not pushed
+const FMS_ALERT_DAILY_CAP = 10;       // pushes per day, in case something loops
+const FMS_NTFY_SERVER = "https://ntfy.sh";
 
 const FMS_CATEGORIES = {
   absence_makeup: "absence or makeup",
@@ -196,7 +212,10 @@ function runFamilySentinel() {
   const result = {};
   try {
     try { result.scan = scanFamilyMail(); } catch (e) { result.scan = { error: String(e) }; }
+    // Texted before the harvest waits on Gemini: the tripwire alone is enough.
+    try { result.alertAfterScan = sendFamilySafetyAlerts(); } catch (e) { result.alertAfterScan = { error: String(e) }; }
     try { result.harvest = harvestFamilyMailReturns(); } catch (e) { result.harvest = { error: String(e) }; }
+    try { result.alertAfterHarvest = sendFamilySafetyAlerts(); } catch (e) { result.alertAfterHarvest = { error: String(e) }; }
     try { result.signal = writeFamilySignal(); } catch (e) { result.signal = { error: String(e) }; }
   } finally {
     lock.releaseLock();
@@ -970,6 +989,104 @@ function _fmsEnsureLabels_() {
   return out;
 }
 
+// ── Safety pushes (ntfy) ─────────────────────────────────────────────────────
+
+// Pushes once for every thread that turned "needs you now" in the last
+// FMS_ALERT_LOOKBACK_HOURS and hasn't been pushed. One push per call, with a
+// count. A failed push leaves Alerted_At blank, so the next run tries again.
+// Without FAMILY_ALERT_NTFY_TOPIC it does nothing (preflight says so).
+function sendFamilySafetyAlerts(now) {
+  now = now ? new Date(now) : new Date();
+  const props = PropertiesService.getScriptProperties();
+  const topic = String(props.getProperty("FAMILY_ALERT_NTFY_TOPIC") || "").trim();
+  if (!topic) return { sent: 0, reason: "FAMILY_ALERT_NTFY_TOPIC not set" };
+
+  const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const rows = _fmsRows_(logSheet);
+  const since = now.getTime() - FMS_ALERT_LOOKBACK_HOURS * 3600 * 1000;
+  const alertedThreads = {};
+  rows.forEach(function (r) { if (r[FMS_LOG.ALERTED_AT]) alertedThreads[String(r[FMS_LOG.THREAD_ID])] = true; });
+
+  const due = [];
+  const threads = {};
+  rows.forEach(function (r, i) {
+    const thread = String(r[FMS_LOG.THREAD_ID] || "");
+    const st = String(r[FMS_LOG.STATUS]);
+    if (!thread || !_fmsTrue_(r[FMS_LOG.SAFETY]) || r[FMS_LOG.ALERTED_AT]) return;
+    if (st === FMS_STATUS.NOT_FAMILY || st === FMS_STATUS.FIXTURE) return;
+    if (new Date(r[FMS_LOG.RECEIVED_AT]).getTime() < since) return;
+    due.push(i);
+    if (!alertedThreads[thread]) threads[thread] = true;
+  });
+  if (!due.length) return { sent: 0 };
+
+  const n = Object.keys(threads).length;
+  if (n) {
+    const dayKey = "FAMILY_ALERT_COUNT_" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd");
+    const today = Number(props.getProperty(dayKey)) || 0;
+    if (today >= FMS_ALERT_DAILY_CAP) return { sent: 0, reason: "daily cap reached", waiting: n };
+    const push = _fmsPush_(topic, _fmsAlertText_(n), "urgent");
+    if (!push.ok) return { sent: 0, error: push.error, waiting: n };
+    props.setProperty(dayKey, String(today + 1));
+  }
+  // Every due row is marked, including a second message in a thread already
+  // pushed: one push per thread, not per message.
+  due.forEach(function (i) {
+    rows[i][FMS_LOG.ALERTED_AT] = now;
+    logSheet.getRange(i + 2, 1, 1, FMS_LOG_HEADERS.length).setValues([rows[i]]);
+  });
+  return { sent: n ? 1 : 0, threads: n };
+}
+
+function _fmsAlertText_(n) {
+  return FMS_ALERT_TEXT.replace("{n}", n === 1 ? "A family message needs you" : n + " family messages need you");
+}
+
+// One POST to ntfy. "urgent" is ntfy's top priority (5): a long vibration
+// burst, and on iPhone a time-sensitive notification, which Focus can let
+// through. Returns { ok } or { ok:false, error }.
+function _fmsPush_(topic, text, priority) {
+  try {
+    const res = UrlFetchApp.fetch(FMS_NTFY_SERVER + "/" + encodeURIComponent(topic), {
+      method: "post",
+      payload: text,
+      headers: { Title: FMS_ALERT_TITLE, Priority: priority, Tags: "rotating_light" },
+      muteHttpExceptions: true,
+    });
+    const code = res.getResponseCode();
+    return code >= 200 && code < 300 ? { ok: true } : { ok: false, error: "ntfy answered " + code };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+// One-time: makes a private, unguessable topic name, stores it, and logs it
+// so the operator can subscribe to it in the ntfy app. Won't replace an
+// existing topic unless asked, since the phone is subscribed to that one.
+function makeFamilyAlertTopic(replace) {
+  const props = PropertiesService.getScriptProperties();
+  const existing = props.getProperty("FAMILY_ALERT_NTFY_TOPIC");
+  if (existing && replace !== true) {
+    Logger.log("Topic already set: " + existing + " (makeFamilyAlertTopic(true) makes a new one).");
+    return { topic: existing, created: false };
+  }
+  const topic = "kos-" + Utilities.getUuid().replace(/-/g, "");
+  props.setProperty("FAMILY_ALERT_NTFY_TOPIC", topic);
+  Logger.log("In the ntfy app: + → Subscribe to topic → " + topic + " (server ntfy.sh). Then run sendFamilyAlertTest().");
+  return { topic: topic, created: true };
+}
+
+// Sends one test push at normal priority, so the operator can confirm the
+// phone gets it.
+function sendFamilyAlertTest() {
+  const topic = String(PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_NTFY_TOPIC") || "").trim();
+  if (!topic) throw new Error("Run makeFamilyAlertTopic() first and subscribe to its topic in the ntfy app.");
+  const push = _fmsPush_(topic, "Test. Family Mail Sentinel alerts will look like this.", "default");
+  if (!push.ok) throw new Error("The test push failed: " + push.error);
+  Logger.log("Test push sent to " + topic + ". If the phone didn't show it, check the ntfy app's subscription and notification settings.");
+  return { sent: true };
+}
+
 // ── Checks (meta/FLOW_DOCTRINE.md rule 9) ────────────────────────────────────
 
 // Is the structure sound? Tabs and headers, roster, labels, trigger, doc.
@@ -1011,6 +1128,10 @@ function runFamilySentinelPreflight() {
   check("trigger", function () {
     const n = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === FMS_TRIGGER_HANDLER; }).length;
     return { ok: n === 1, detail: n + " installed; want 1 (installFamilySentinelTrigger())" };
+  });
+  check("safety pushes", function () {
+    const topic = PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_NTFY_TOPIC");
+    return { ok: !!topic, detail: topic ? "set; sendFamilyAlertTest() to confirm the phone gets it" : "FAMILY_ALERT_NTFY_TOPIC not set (makeFamilyAlertTopic()): safety messages won't reach the phone" };
   });
   check("signal doc", function () {
     const id = PropertiesService.getScriptProperties().getProperty("FAMILY_SIGNAL_DOC_ID");
