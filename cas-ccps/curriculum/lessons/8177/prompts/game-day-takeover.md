@@ -1,5 +1,5 @@
 <!-- lesson: game-day-takeover -->
-<!-- status: draft 2026-10-12, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 -->
 <!-- Written with the lesson plan ("Game Day Takeover"). The pop-up needs
      administration and athletic department approval; if a live event isn't
      approved, the class runs the store's busiest regular shift as the event.
