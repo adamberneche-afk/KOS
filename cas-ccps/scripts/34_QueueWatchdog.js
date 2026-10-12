@@ -563,6 +563,7 @@ function _wdWriteHealthTab_(ss, results, dryRun) {
     ['WarmUpQueue', unknownCell(results.warmUpQueue), ''],
   ];
   sheet.getRange(1, 1, rows.length, 3).setValues(rows);
+  sheet.getRange(2, 2).setNumberFormat('yyyy-mm-dd hh:mm'); // a bare date hides whether the trigger runs
   sheet.getRange(1, 1).setFontWeight('bold').setFontSize(14);
   sheet.getRange(4, 1, 1, 3).setFontWeight('bold');
   sheet.autoResizeColumns(1, 3);
@@ -752,9 +753,10 @@ function _wdSendChatAlert_(message) {
 // =============================================================================
 // SETUP NOTES
 //
-// 1. Time-driven trigger (once, from the Apps Script editor or
-//    programmatically alongside this project's other trigger setup):
-//    runQueueWatchdog, every 10 minutes.
+// 1. Time-driven trigger: run installQueueWatchdogTrigger() once
+//    (runQueueWatchdog, every 10 minutes). Nothing else installs it; until
+//    2026-10-12 the live Ledger had none, so the watchdog and the CAS
+//    signal ran only when someone ran them from the editor.
 // 2. Deploys in DRY RUN by default — see runQueueWatchdog's own header.
 //    Watch at least one full cycle's Health tab / Chat alerts, then set
 //    CAS_WATCHDOG_DRY_RUN = "false" as a Script Property to go live.
@@ -776,3 +778,26 @@ function _wdSendChatAlert_(message) {
 //    WD_TERMINAL_FAILED_STATUSES list, ready to be watched, the moment
 //    the flow itself is fixed to write it.
 // =============================================================================
+
+const WD_TRIGGER_FN = 'runQueueWatchdog';
+
+// Safe to re-run: a second copy would race the first over the release map.
+function installQueueWatchdogTrigger() {
+  const exists = ScriptApp.getProjectTriggers().some(function (t) { return t.getHandlerFunction() === WD_TRIGGER_FN; });
+  if (exists) {
+    Logger.log('[Watchdog] ' + WD_TRIGGER_FN + ' trigger already installed.');
+    return false;
+  }
+  ScriptApp.newTrigger(WD_TRIGGER_FN).timeBased().everyMinutes(10).create();
+  Logger.log('[Watchdog] Installed ' + WD_TRIGGER_FN + ' (every 10 minutes).');
+  return true;
+}
+
+function removeQueueWatchdogTrigger() {
+  let removed = 0;
+  ScriptApp.getProjectTriggers().forEach(function (t) {
+    if (t.getHandlerFunction() === WD_TRIGGER_FN) { ScriptApp.deleteTrigger(t); removed++; }
+  });
+  Logger.log('[Watchdog] Removed ' + removed + ' ' + WD_TRIGGER_FN + ' trigger(s).');
+  return removed;
+}

@@ -297,11 +297,10 @@ function applyReviewQueueTextScrub() {
  */
 function scrubReviewQueueText_(opts) {
   const apply = !!(opts && opts.apply);
-  const sheet = _sdaReviewQueue_();
-  const rows = sheet && sheet.getLastRow() > 1
-    ? sheet.getRange(2, SDA_RQ_TEXT_COL, sheet.getLastRow() - 1, 1).getValues()
-    : [];
-  const rowsWithText = rows.filter(function (r) { return String(r[0]).trim() !== ""; }).length;
+  const found = _sdaReviewQueueText_();
+  const sheet = found.sheet;
+  const rows = found.rows;
+  const rowsWithText = found.rowsWithText;
   let cleared = 0;
   if (apply && rowsWithText) {
     sheet.getRange(2, SDA_RQ_TEXT_COL, rows.length, 1)
@@ -317,8 +316,20 @@ function scrubReviewQueueText_(opts) {
 
 // For the health check (10_AdminRecoveryPanel.js): ReviewQueue rows still
 // holding a student's writing. 0 when the tab is missing.
+// Logs nothing: the CAS attention signal (34b) runs the health checks on
+// every watchdog run, every 10 minutes, and the scrub's "DRY RUN" line
+// there read like the watchdog's own dry-run mode.
 function _countReviewQueueRowsWithText_() {
-  return scrubReviewQueueText_({ apply: false }).rowsWithText;
+  return _sdaReviewQueueText_().rowsWithText;
+}
+
+function _sdaReviewQueueText_() {
+  const sheet = _sdaReviewQueue_();
+  const rows = sheet && sheet.getLastRow() > 1
+    ? sheet.getRange(2, SDA_RQ_TEXT_COL, sheet.getLastRow() - 1, 1).getValues()
+    : [];
+  const rowsWithText = rows.filter(function (r) { return String(r[0]).trim() !== ""; }).length;
+  return { sheet: sheet, rows: rows, rowsWithText: rowsWithText };
 }
 
 function _sdaReviewQueue_() {
