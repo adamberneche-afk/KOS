@@ -3027,3 +3027,26 @@ new lines and the rebuilt Duty Areas. Each doc was checked against its text
 after the re-match sync first, and compared with its repo file afterwards.
 
 Not yet live: push central-ledger (`55b`).
+
+## 8175: lessons expanded to cover every task, 2026-10-12
+
+As 8177's #146 did, the last 26 uncovered tasks were added to the existing
+lesson that comes closest, at the teacher's choice (no new lessons). Each
+gained lesson has three additions: a competency line with a note, a short
+"Mini-Lesson (Comp N)" paragraph after the Hook for the teacher, and one
+student task item in the Canvas assignment text. Placements: L01 marketing
+functions (43); L08 types of communication (48); L09 plain-English
+explanation (54, cited only, already taught); L10 handling a complaint
+(55); L13 internal and external PR (85, optional); L14 the industry
+examined from every side plus ownership types (23–28, 30, 69); L15 the
+business cycle (99, optional); L16 the marketing mix, bundling and
+concessions (40, 95, 97); L18 uncontrollable factors (65); L19 workplace
+safety and ROI (22, 104); L21 sponsorship vs. endorsement (88); L22 sales
+promotions (92); L23 digital revenue (82); L27 keeping customers and ROI
+(79, 104); L31 protecting survey data (16); L33 job-search resources (108).
+All 113 tasks are covered: 106 in lessons, 7 through DECA and work-based
+learning. L06, the live assignment, is unchanged.
+
+The student assignment text changed for 15 lessons, so `55b` and
+`8175.imscc` were rebuilt. Not yet live: push central-ledger and re-import
+the 8175 cartridge. Not yet in Drive: the 16 expanded lesson docs.
