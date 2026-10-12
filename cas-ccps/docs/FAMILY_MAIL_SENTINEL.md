@@ -9,6 +9,8 @@ kind Claude must not read. The sentinel lets the KOS Claude Project's
 - **Prompt:** [`FAMILY_MAIL_TRIAGE_PROMPT.md`](./FAMILY_MAIL_TRIAGE_PROMPT.md),
   generated into `61_FamilyMailPrompt.js`.
 - **Tests:** `tests/cas-ccps/family-mail-sentinel.test.js`.
+- **Status:** live since 2026-10-12. The Flow answered its fixture on the
+  first run and the safety push was tested end to end.
 
 ## How it works
 
@@ -111,11 +113,16 @@ shut its gateway in 2025.)
 
 1. **Make the sheet.** In Drive, create a Google Sheet named *Family Mail
    Sentinel*. Keep it private. Open Extensions → Apps Script.
-2. **Push the code.** `node tools/clasp-sync/sync.js family-sentinel`, copy
+2. **Push the code.** With `run.ps1` (how it was done): bind the project once
+   with `clasp clone <Script ID>` into `clasp-registry\cas-ccps\family-sentinel\`,
+   then `run.ps1 -Only family-sentinel`. By hand instead: `node
+   tools/clasp-sync/sync.js family-sentinel`, copy
    `cas-ccps/clasp/templates/family-sentinel.clasp.json.template` to
-   `cas-ccps/clasp/local/family-sentinel.clasp.json` with the new project's
-   Script ID, then `clasp push` from `cas-ccps/.clasp-build/family-sentinel/`.
-   The manifest turns on the advanced Gmail service.
+   `cas-ccps/clasp/local/family-sentinel.clasp.json` with the Script ID, and
+   `clasp push` from `cas-ccps/.clasp-build/family-sentinel/`. Push the repo's
+   manifest, not one the editor wrote: it turns on the advanced Gmail service
+   and limits Gmail to `gmail.modify`. Without its scope list Apps Script asks
+   for full mailbox access.
 3. **Script Properties:** `CENTRAL_LEDGER_SS_ID` (the Central Ledger's ID,
    for the roster). Optional: `FAMILY_SIGNAL_FOLDER_ID` (where the
    signal doc goes), `DEPLOY_DRIFT_GITHUB_TOKEN`.
