@@ -24,6 +24,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 21:** Demonstrate reading and writing skills (Composing a professional 250-word analytical summary).
   - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (Applying data to make suggestions about the store's physical organization or daily operations).
   - **Competency 77:** Explain market research and its use in the sports, entertainment, and event industries (Using the data to justify an operational change).
+  - **Competency 78:** Explain the need for market research for all functions of marketing (Showing how one survey informs product, pricing, promotion, place and selling decisions).
   - **Competency 84:** Evaluate the results of a market research project (Reviewing the survey responses to identify trends and key metrics).
 
 ## **3. Learning Objectives**
@@ -34,6 +35,7 @@ By the end of this lesson, students will be able to:
 2.  Extract and explain three statistically significant data points.
 3.  Formulate a strategic venue management recommendation based strictly on data rather than personal preference.
 4.  Compose a clear, professional 250-word executive analysis citing specific metrics.
+5.  Explain why every function of marketing depends on market research.
 
 ## **4. Instructional Sequence**
 
@@ -46,6 +48,8 @@ By the end of this lesson, students will be able to:
 
   - **Guided Practice (Comp 77 & 84):** Walk through an example. If 80% of respondents said they get their news from Instagram, and only 10% from Morning Announcements, what management decision should we make about our promotional budget and time?
   - **Operational Impact (Comp 45):** How do qualitative responses (like "the store is too crowded") translate into operational changes (like moving the register or limiting capacity)?
+
+  - **Every Function Needs Research (Comp 78):** Put the seven functions of marketing on the board (the same ones DECA uses): channel management, marketing-information management, market planning, pricing, product/service management, promotion and selling. For each, ask: *"What could our survey tell this part of the business?"* Question 1 informs promotion, Question 2 informs market planning and selling (what message to lead with), and Question 3 informs product decisions. Then ask what the survey *can't* answer, like the right price for a hoodie, which is where the next survey would start.
 
 ### **C. The Executive Analysis Lab (45 Minutes)**
 
