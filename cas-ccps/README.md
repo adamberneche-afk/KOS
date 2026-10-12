@@ -138,7 +138,7 @@ kind Claude must not read. `60_FamilyMailSentinel.js` labels it `KOS/Family`
 triage it with names redacted, and writes `KOS_FAMILY_SIGNAL`: one line per
 thread waiting on the teacher, with course, period, category, a one-line ask
 and hours waiting, and no names. A safety message is flagged before Gemini
-runs, is never summarized, and texts the teacher's phone (email-to-text, no
+runs, is never summarized, and pushes to the teacher's phone (ntfy, no
 details). Setup and the data boundary:
 [`docs/FAMILY_MAIL_SENTINEL.md`](./docs/FAMILY_MAIL_SENTINEL.md).
 

@@ -41,11 +41,13 @@
 // first as "needs you now". Two independent checks set it: Gemini's safety
 // flag, and a keyword tripwire here (FMS_SAFETY_TERMS) that runs before
 // Gemini sees anything, so a Flow that is down cannot hide one.
-// sendFamilySafetyAlerts() then texts the teacher's phone through the
-// carrier's email-to-text address (Script Property FAMILY_ALERT_SMS_ADDRESS,
-// never in the repo): one text per run however many threads, each thread
-// texted once, at any hour. The text is FMS_ALERT_SUBJECT and FMS_ALERT_TEXT
-// with a count. No name, course or word of the message goes to the carrier.
+// sendFamilySafetyAlerts() then pushes a notification to the teacher's phone
+// through ntfy (the free ntfy app, subscribed to a private topic the
+// sentinel makes, Script Property FAMILY_ALERT_NTFY_TOPIC, never in the
+// repo): one push per run however many threads, each thread once, at any
+// hour. The push is FMS_ALERT_TITLE and FMS_ALERT_TEXT with a count. No
+// name, course or word of the message goes to ntfy. (Email-to-text was the
+// first choice; AT&T, the teacher's carrier, no longer has a gateway.)
 //
 // SENSITIVE categories (FMS_SENSITIVE_CATEGORIES) show no course, period or
 // ask: in a 21-student class, "IEP question, period 2" can identify a child.
@@ -69,8 +71,8 @@
 //
 // GMAIL: the advanced Gmail service (Gmail API v1), scope gmail.modify, for
 // reading messages and adding labels. Through Gmail it never sends, drafts,
-// archives, trashes or deletes. The one send is the safety text, through
-// MailApp, to the teacher's own phone (sendFamilySafetyAlerts()).
+// archives, trashes or deletes. The one send is the safety push, through
+// ntfy, to the teacher's own phone (sendFamilySafetyAlerts()).
 // =============================================================================
 
 const FMS_INPUT_TAB = "FamilyMailInput";
@@ -132,12 +134,14 @@ const FMS_TRIGGER_HANDLER = "runFamilySentinel";
 const FMS_TRIGGER_MINUTES = 15;
 const FMS_SIGNAL_TITLE = "KOS_FAMILY_SIGNAL";
 
-// The whole text a carrier ever sees. Kept under 160 characters, with no
-// student, sender, course or message detail: "{n}" is the only variable.
-const FMS_ALERT_SUBJECT = "KOS";
+// The whole push ntfy ever sees: no student, sender, course or message
+// detail; "{n}" is the only variable. Anyone who learned the topic name could
+// read it, which is why it carries nothing else.
+const FMS_ALERT_TITLE = "KOS";
 const FMS_ALERT_TEXT = "{n} now. Open Gmail, label KOS/Family/Now.";
-const FMS_ALERT_LOOKBACK_HOURS = 24;  // older safety messages are not texted
-const FMS_ALERT_DAILY_CAP = 10;       // texts per day, in case something loops
+const FMS_ALERT_LOOKBACK_HOURS = 24;  // older safety messages are not pushed
+const FMS_ALERT_DAILY_CAP = 10;       // pushes per day, in case something loops
+const FMS_NTFY_SERVER = "https://ntfy.sh";
 
 const FMS_CATEGORIES = {
   absence_makeup: "absence or makeup",
@@ -985,17 +989,17 @@ function _fmsEnsureLabels_() {
   return out;
 }
 
-// ── Safety texts ─────────────────────────────────────────────────────────────
+// ── Safety pushes (ntfy) ─────────────────────────────────────────────────────
 
-// Texts the teacher once for every thread that turned "needs you now" in the
-// last FMS_ALERT_LOOKBACK_HOURS and hasn't been texted. One text per call,
-// with a count. A failed send leaves Alerted_At blank, so the next run tries
-// again. Without FAMILY_ALERT_SMS_ADDRESS it does nothing (preflight says so).
+// Pushes once for every thread that turned "needs you now" in the last
+// FMS_ALERT_LOOKBACK_HOURS and hasn't been pushed. One push per call, with a
+// count. A failed push leaves Alerted_At blank, so the next run tries again.
+// Without FAMILY_ALERT_NTFY_TOPIC it does nothing (preflight says so).
 function sendFamilySafetyAlerts(now) {
   now = now ? new Date(now) : new Date();
   const props = PropertiesService.getScriptProperties();
-  const to = String(props.getProperty("FAMILY_ALERT_SMS_ADDRESS") || "").trim();
-  if (!to) return { sent: 0, reason: "FAMILY_ALERT_SMS_ADDRESS not set" };
+  const topic = String(props.getProperty("FAMILY_ALERT_NTFY_TOPIC") || "").trim();
+  if (!topic) return { sent: 0, reason: "FAMILY_ALERT_NTFY_TOPIC not set" };
 
   const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
   const rows = _fmsRows_(logSheet);
@@ -1021,11 +1025,12 @@ function sendFamilySafetyAlerts(now) {
     const dayKey = "FAMILY_ALERT_COUNT_" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd");
     const today = Number(props.getProperty(dayKey)) || 0;
     if (today >= FMS_ALERT_DAILY_CAP) return { sent: 0, reason: "daily cap reached", waiting: n };
-    MailApp.sendEmail(to, FMS_ALERT_SUBJECT, _fmsAlertText_(n));
+    const push = _fmsPush_(topic, _fmsAlertText_(n), "urgent");
+    if (!push.ok) return { sent: 0, error: push.error, waiting: n };
     props.setProperty(dayKey, String(today + 1));
   }
   // Every due row is marked, including a second message in a thread already
-  // texted: one text per thread, not per message.
+  // pushed: one push per thread, not per message.
   due.forEach(function (i) {
     rows[i][FMS_LOG.ALERTED_AT] = now;
     logSheet.getRange(i + 2, 1, 1, FMS_LOG_HEADERS.length).setValues([rows[i]]);
@@ -1037,12 +1042,48 @@ function _fmsAlertText_(n) {
   return FMS_ALERT_TEXT.replace("{n}", n === 1 ? "A family message needs you" : n + " family messages need you");
 }
 
-// Sends one test text, so the operator can confirm the carrier delivers it.
+// One POST to ntfy. "urgent" is ntfy's top priority (5): a long vibration
+// burst, and on iPhone a time-sensitive notification, which Focus can let
+// through. Returns { ok } or { ok:false, error }.
+function _fmsPush_(topic, text, priority) {
+  try {
+    const res = UrlFetchApp.fetch(FMS_NTFY_SERVER + "/" + encodeURIComponent(topic), {
+      method: "post",
+      payload: text,
+      headers: { Title: FMS_ALERT_TITLE, Priority: priority, Tags: "rotating_light" },
+      muteHttpExceptions: true,
+    });
+    const code = res.getResponseCode();
+    return code >= 200 && code < 300 ? { ok: true } : { ok: false, error: "ntfy answered " + code };
+  } catch (e) {
+    return { ok: false, error: String(e) };
+  }
+}
+
+// One-time: makes a private, unguessable topic name, stores it, and logs it
+// so the operator can subscribe to it in the ntfy app. Won't replace an
+// existing topic unless asked, since the phone is subscribed to that one.
+function makeFamilyAlertTopic(replace) {
+  const props = PropertiesService.getScriptProperties();
+  const existing = props.getProperty("FAMILY_ALERT_NTFY_TOPIC");
+  if (existing && replace !== true) {
+    Logger.log("Topic already set: " + existing + " (makeFamilyAlertTopic(true) makes a new one).");
+    return { topic: existing, created: false };
+  }
+  const topic = "kos-" + Utilities.getUuid().replace(/-/g, "");
+  props.setProperty("FAMILY_ALERT_NTFY_TOPIC", topic);
+  Logger.log("In the ntfy app: + → Subscribe to topic → " + topic + " (server ntfy.sh). Then run sendFamilyAlertTest().");
+  return { topic: topic, created: true };
+}
+
+// Sends one test push at normal priority, so the operator can confirm the
+// phone gets it.
 function sendFamilyAlertTest() {
-  const to = String(PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_SMS_ADDRESS") || "").trim();
-  if (!to) throw new Error("Set the Script Property FAMILY_ALERT_SMS_ADDRESS first (for example 5551234567@vtext.com).");
-  MailApp.sendEmail(to, FMS_ALERT_SUBJECT, "Test. Family Mail Sentinel texts will look like this.");
-  Logger.log("Test text sent. If it hasn't arrived in a few minutes, the carrier's gateway isn't delivering (docs/FAMILY_MAIL_SENTINEL.md).");
+  const topic = String(PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_NTFY_TOPIC") || "").trim();
+  if (!topic) throw new Error("Run makeFamilyAlertTopic() first and subscribe to its topic in the ntfy app.");
+  const push = _fmsPush_(topic, "Test. Family Mail Sentinel alerts will look like this.", "default");
+  if (!push.ok) throw new Error("The test push failed: " + push.error);
+  Logger.log("Test push sent to " + topic + ". If the phone didn't show it, check the ntfy app's subscription and notification settings.");
   return { sent: true };
 }
 
@@ -1088,9 +1129,9 @@ function runFamilySentinelPreflight() {
     const n = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === FMS_TRIGGER_HANDLER; }).length;
     return { ok: n === 1, detail: n + " installed; want 1 (installFamilySentinelTrigger())" };
   });
-  check("safety texts", function () {
-    const to = PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_SMS_ADDRESS");
-    return { ok: !!to, detail: to ? "set; sendFamilyAlertTest() to confirm delivery" : "FAMILY_ALERT_SMS_ADDRESS not set: safety messages won't reach the phone" };
+  check("safety pushes", function () {
+    const topic = PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_NTFY_TOPIC");
+    return { ok: !!topic, detail: topic ? "set; sendFamilyAlertTest() to confirm the phone gets it" : "FAMILY_ALERT_NTFY_TOPIC not set (makeFamilyAlertTopic()): safety messages won't reach the phone" };
   });
   check("signal doc", function () {
     const id = PropertiesService.getScriptProperties().getProperty("FAMILY_SIGNAL_DOC_ID");
