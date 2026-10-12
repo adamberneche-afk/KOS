@@ -25,9 +25,9 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 10:** Collaborate with team members (Executing specific shift roles and responsibilities).
   - **Competency 14:** Manage time and resources (Executing efficient inventory counts).
   - **Competency 20:** Demonstrate professionalism (Following the Employee Handbook guidelines).
-  - **Competency 85:** Explain the components of venue management (The mechanics of physically opening and closing a space).
+  - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (The mechanics of physically opening and closing a space).
+  - **Competency 58:** Demonstrate customer-service techniques (Professional communication, dress code, and behavior on the sales floor).
   - **Competency 95:** Analyze personnel needs for an event (Assigning specific roles for a store shift).
-  - **Competency 107 & 108:** Demonstrate workplace etiquette (Professional communication, dress code, and behavior on the sales floor).
 
 ## **3. Learning Objectives**
 

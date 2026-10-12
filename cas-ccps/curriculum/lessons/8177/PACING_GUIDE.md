@@ -21,7 +21,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 <!-- end list -->
 
   - Introduction to 8177 & Cavalier Expectations.
-  - *Lesson:* **The Business of the Game (Franchise Analysis)** \* *Competencies:* 1-22 (Workplace Readiness), 23-27 (Business Role, Ownership, Profit, Competition).
+  - *Lesson:* **The Business of the Game (Franchise Analysis)** \* *Competencies:* 1-22 (Workplace Readiness), 24, 50, 52, 86, 94 (Management, Local Economy, Business Structure, Revenue, Competition).
 
 <!-- end list -->
 
@@ -31,7 +31,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Defining how visuals and reputation drive consumer motivation.
   - *Lesson:* **The Brand Board Project**
-  - *Competencies:* 1, 11, 81, 85, 93.
+  - *Competencies:* 1, 11, 21, 42, 45, 93, 97.
 
 <!-- end list -->
 
@@ -42,7 +42,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
   - Introduction to the Marketing Mix and creating Unique Selling Propositions.
   - *Lesson:* **The 4 Ps of the Fan Experience (Marketing Mix)**
   - *Lesson:* **CHHS School Store Company Description**
-  - *Competencies:* 21, 42, 46, 56, 63.
+  - *Competencies:* 10, 11, 21, 23, 46, 47, 56, 93, 97.
 
 <!-- end list -->
 
@@ -64,7 +64,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Understanding how physical space dictates safety and sales.
   - *Lesson:* **School Store Planogram & Customer Experience**
-  - *Competencies:* 22, 85, 86, 92, 95.
+  - *Competencies:* 1, 11, 22, 45, 92, 95.
 
 <!-- end list -->
 
@@ -84,7 +84,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Exploring supply, demand, scarcity, and algorithmic pricing.
   - *Lesson:* **The Economics of the Arena (Dynamic Pricing)**
-  - *Competencies:* 19, 28, 45.
+  - *Competencies:* 2, 19, 86, 94.
 
 ## **Quarter 3: Market Research, Promotion & The Hype Machine**
 
@@ -96,7 +96,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Designing bias-free data collection instruments.
   - *Lesson:* **Market Research & Survey Design**
-  - *Competencies:* 18, 42, 46.
+  - *Competencies:* 2, 18, 81, 83, 93.
 
 <!-- end list -->
 
@@ -106,7 +106,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Executing the research and understanding statistical significance.
   - *Lesson:* **Survey Deployment & Statistical Significance**
-  - *Competencies:* 4, 7, 14, 43.
+  - *Competencies:* 4, 7, 14, 82, 83.
 
 <!-- end list -->
 
@@ -116,7 +116,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Converting raw data into actionable operational changes.
   - *Lesson:* **Survey Results Analysis & Management Decisions**
-  - *Competencies:* 2, 21, 43, 44, 85.
+  - *Competencies:* 2, 21, 45, 77, 84.
 
 <!-- end list -->
 
@@ -127,7 +127,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
   - Executing the promotional mix (Advertising, PR, Sales Promo).
   - *Lesson:* **Promotional Flyer Design**
   - *Lesson:* **The Hype Machine (Promotional Campaigns)**
-  - *Competencies:* 1, 14, 18, 64-68, 85.
+  - *Competencies:* 1, 14, 18, 21, 42, 97.
 
 ## **Quarter 4: Event Planning, Sponsorships & Global Macroeconomics**
 
@@ -139,7 +139,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Designing a signature event from vision to risk management.
   - *Lesson:* **The Richmond Festival Blueprint**
-  - *Competencies:* 86, 92, 95, 96, 97.
+  - *Competencies:* 1, 67, 92, 95, 96, 97.
 
 <!-- end list -->
 
@@ -159,7 +159,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Analyzing strikes, unions, and the ripple effect of work stoppages.
   - *Lesson:* **The Millionaire's Strike (Organized Labor & Economics)**
-  - *Competencies:* 29, 30, 31, 35, 38.
+  - *Competencies:* 28, 49, 50, 71.
 
 <!-- end list -->
 
@@ -169,7 +169,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Evaluating GDP, inflation, interest rates, and stadium funding.
   - *Lesson:* **The Stadium Economy (Macroeconomics & Venue Funding)**
-  - *Competencies:* 32, 33, 34, 36, 37.
+  - *Competencies:* 45, 49, 50.
 
 <!-- end list -->
 
@@ -179,4 +179,4 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Global trade, exchange rates, and cultural adaptation.
   - *Lesson:* **The Global Expansion (International Sports & Marketing)**
-  - *Competencies:* 39, 40, 41.
+  - *Competencies:* 51, 74.
