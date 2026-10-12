@@ -2974,3 +2974,35 @@ forensic check. The troubleshooting rows for those checks are corrected or
 removed. Both pages' banners now flag only the doc menu as out of date.
 
 Not yet live: `00_SharedConfig.js` changed, so push every cas-ccps project.
+
+## 8175: lesson competencies matched to the 2025 task list, 2026-10-12
+
+The teacher shared the state's 2025 Student Competency Record for 8175. Its
+113 tasks match `data/CompetencyRubrics.json` task for task, in wording and
+in the five optional tasks (36, 38, 85, 99, 113). Checked against that list,
+36 competency lines in 15 lessons cited a number that names a different task.
+Examples: branding was cited as 46, which is hospitality; it is 56–57. L16's
+pricing lines cited 38, 40, 41 and 43, which are a work-based learning task
+and three general marketing tasks. 13 more lines shortened the state wording
+under the right number. As with 8177's #143, each mismatched line now cites
+the closest 2025 task by number and state wording, with what the lesson does
+in parentheses. Shortened lines use the full state wording. The 15 re-matched
+lessons' "Duty Areas" lines name the 2025 duty areas of the tasks they cite.
+`lessons/COMPETENCY_REVIEW.md` is now empty, so every 8175 criterion carries
+a competency ID. L06, the live assignment, was already correct and is
+unchanged.
+
+Coverage went from 35 to 56 of 113 tasks (`lessons/8175/COMPETENCY_TRACKER.md`,
+new, built from the lessons). Not yet covered: 16, 22, 23–30 (industry
+aspects), 31–38 (student organization and work-based learning) and most of
+the marketing groups from 39 to 99. Covering them is the next step, as
+8177's #145–#149 were.
+
+Drive (same day): the 28 changed lesson docs in the 8175 folder were
+edited in place with the Google Docs connector, changing only the edited
+lines. Each doc was checked first against its pre-change text (none had
+changed since 2026-10-07), and each doc's text and bold labels were
+compared afterwards with its repo file. The tracker was written in the repo
+and has no Drive copy.
+
+Not yet live: push central-ledger (`55b`).
