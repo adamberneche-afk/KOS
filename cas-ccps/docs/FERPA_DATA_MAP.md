@@ -322,7 +322,7 @@ retention decision matters more for this tab than for any other.
 | | |
 |---|---|
 | **Where** | The teacher's private *Family Mail Sentinel* spreadsheet, not the Central Ledger (`cas-ccps:family-sentinel`, `60_FamilyMailSentinel.js`) |
-| **Fields** | `FamilyMailInput`: the Gemini prompt with one student or parent email, names, addresses, phone numbers and long numbers redacted. `FamilyMailReturn`: Gemini's JSON answer. `FamilyMailLog`: Gmail message and thread IDs, received time, source (student/parent/staff/canvas/external), a hashed family key, course, period, status, category, urgency, safety and sensitive flags, a one-line ask checked to name nobody, a due date. `FamilyContacts`: parent address → student email, entered by the teacher. |
+| **Fields** | `FamilyMailLog` also records `Alerted_At`, when a safety text went out for that message. `FamilyMailInput`: the Gemini prompt with one student or parent email, names, addresses, phone numbers and long numbers redacted. `FamilyMailReturn`: Gemini's JSON answer. `FamilyMailLog`: Gmail message and thread IDs, received time, source (student/parent/staff/canvas/external), a hashed family key, course, period, status, category, urgency, safety and sensitive flags, a one-line ask checked to name nobody, a due date. `FamilyContacts`: parent address → student email, entered by the teacher. |
 | **Why collected** | So the KOS Claude Project can say how urgent student and parent mail is without reading it: the log feeds the name-free `KOS_FAMILY_SIGNAL` doc. |
 | **Read by** | `60_FamilyMailSentinel.js` and the Workspace Flow (which reads `FamilyMailInput` and writes `FamilyMailReturn`). The roster comes from the Central Ledger's `Ledger` tab and parent addresses from `ParentReportLog`, both read-only. |
 | **Visible to** | The teacher who owns the sheet. |
@@ -336,6 +336,12 @@ wait. No name, address or message text. The Project's own mail search
 excludes the `KOS/Family` label, `student.ccpsnet.net` and Canvas, so Claude
 does not open these messages; mail that arrives between two 15-minute scans
 is the remaining gap (`docs/FAMILY_MAIL_SENTINEL.md`).
+
+**The one send outside the domain.** For a safety message, the sentinel texts
+the teacher's own phone through the carrier's email-to-text address
+(`FAMILY_ALERT_SMS_ADDRESS`). The text is fixed wording and a count, "A
+family message needs you now. Open Gmail, label KOS/Family/Now.", with no
+student, sender, course or message detail, so no education record leaves.
 
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness

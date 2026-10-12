@@ -3078,3 +3078,16 @@ never summarized and is listed first as "needs you now". Prompt:
 Open: how a "needs you now" message reaches the teacher's phone directly (a
 calendar alert won't). Not yet live: the operator creates the sheet, pushes,
 builds the Flow, and adds the signal doc's link to the Project.
+
+## Family Mail Sentinel: safety texts, 2026-10-12
+
+The open question from the entry above, settled with the teacher: a calendar
+alert won't reach them, so a "needs you now" message now sends a text
+through the carrier's email-to-text address (`sendFamilySafetyAlerts()`,
+Script Property `FAMILY_ALERT_SMS_ADDRESS`). Fixed wording and a count, no
+student detail; one text per run, each thread once, 24-hour lookback, 10 a
+day at most, retried if a send fails. It runs after the scan as well as the
+harvest, so the keyword tripwire texts without waiting on Gemini. The
+project gains `script.send_mail`; `FamilyMailLog` gains `Alerted_At`
+(nothing deployed reads the tab yet). `sendFamilyAlertTest()` confirms
+delivery; preflight fails until the address is set.

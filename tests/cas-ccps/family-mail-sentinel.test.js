@@ -32,6 +32,7 @@ const EXPORTS = [
   'scanFamilyMail', 'harvestFamilyMailReturns', 'writeFamilySignal',
   'runFamilySentinelPreflight', 'runFamilyMailCanary', 'checkFamilyMailFlowBinding',
   'checkFamilyMailFlowLiveness', 'installFamilyMailFixture', 'syncFamilyMailFlowBuildSpec',
+  'sendFamilySafetyAlerts', 'sendFamilyAlertTest',
   'FAMILY_MAIL_TRIAGE_PROMPT', 'FMS_LOG', 'FMS_LOG_HEADERS',
 ];
 
@@ -264,6 +265,73 @@ test('a safety message is flagged before Gemini runs and is never summarized', (
   assert.doesNotMatch(text, /hurt|safe\b|8175/i);
 });
 
+test('a safety message texts the phone once, with no detail, before Gemini answers', () => {
+  const safe1 = {
+    id: 's1', threadId: 'ts1', internalDate: now - 1 * HOUR,
+    from: 'Jordan Rivers <jrivers@student.ccpsnet.net>', subject: 'help', body: 'I want to hurt myself.',
+  };
+  const safe2 = Object.assign({}, safe1, { id: 's2', threadId: 'ts2' });
+  const fx = setUp([safe1, safe2]);
+  assert.equal(fx.exported.sendFamilySafetyAlerts().reason, 'FAMILY_ALERT_SMS_ADDRESS not set');
+  fx.props.setProperty('FAMILY_ALERT_SMS_ADDRESS', '5551234567@vtext.com');
+
+  const run = fx.exported.runFamilySentinel();
+  assert.equal(run.alertAfterScan.sent, 1, 'texted after the scan, before any Gemini answer');
+  assert.equal(run.alertAfterScan.threads, 2);
+  const sent = fx.sandbox.MailApp.getSentMessages();
+  assert.equal(sent.length, 1, 'one text for both threads');
+  assert.equal(sent[0].to, '5551234567@vtext.com');
+  assert.equal(sent[0].subject, 'KOS');
+  assert.equal(sent[0].body, '2 family messages need you now. Open Gmail, label KOS/Family/Now.');
+  assert.ok((sent[0].subject + ' ' + sent[0].body).length <= 160);
+  assert.doesNotMatch(sent[0].body, /jordan|rivers|8175|hurt/i);
+
+  // A later message in a texted thread, and later runs, send nothing more.
+  fx.exported.runFamilySentinel();
+  assert.equal(fx.sandbox.MailApp.getSentMessages().length, 1);
+  const LOG = fx.exported.FMS_LOG;
+  assert.ok(logByMessage(fx.ss, LOG, 's1')[LOG.ALERTED_AT]);
+});
+
+test('a safety flag from Gemini alone also texts, and the singular reads right', () => {
+  const fx = setUp([MAIL.student]);
+  fx.props.setProperty('FAMILY_ALERT_SMS_ADDRESS', '5551234567@tmomail.net');
+  fx.exported.scanFamilyMail();
+  assert.equal(fx.exported.sendFamilySafetyAlerts().sent, 0, 'nothing tripped yet');
+  playFlow(fx.ss, () => ({ is_family: true, category: 'safety_wellbeing', urgency: 5, safety: true, ask: '', due: '' }));
+  fx.exported.harvestFamilyMailReturns();
+  assert.equal(fx.exported.sendFamilySafetyAlerts().sent, 1);
+  assert.equal(fx.sandbox.MailApp.getSentMessages()[0].body, 'A family message needs you now. Open Gmail, label KOS/Family/Now.');
+});
+
+test('safety texts stop at the daily cap, and an old message is not texted', () => {
+  const old = {
+    id: 'o1', threadId: 'to1', internalDate: now - 30 * HOUR,
+    from: 'Jordan Rivers <jrivers@student.ccpsnet.net>', subject: 'x', body: 'I want to hurt myself.',
+  };
+  const fx = setUp([old]);
+  fx.props.setProperty('FAMILY_ALERT_SMS_ADDRESS', '5551234567@vtext.com');
+  fx.exported.scanFamilyMail();
+  assert.equal(fx.exported.sendFamilySafetyAlerts().sent, 0, 'older than 24 hours');
+
+  const fresh = setUp([Object.assign({}, old, { id: 'f1', threadId: 'tf1', internalDate: now - 1 * HOUR })]);
+  fresh.props.setProperty('FAMILY_ALERT_SMS_ADDRESS', '5551234567@vtext.com');
+  const day = fresh.sandbox.Utilities.formatDate(new Date(), 'America/New_York', 'yyyyMMdd');
+  fresh.props.setProperty('FAMILY_ALERT_COUNT_' + day, '10');
+  fresh.exported.scanFamilyMail();
+  const out = fresh.exported.sendFamilySafetyAlerts();
+  assert.equal(out.sent, 0);
+  assert.equal(out.reason, 'daily cap reached');
+});
+
+test('the test text goes to the configured address', () => {
+  const fx = setUp([]);
+  assert.throws(() => fx.exported.sendFamilyAlertTest(), /FAMILY_ALERT_SMS_ADDRESS/);
+  fx.props.setProperty('FAMILY_ALERT_SMS_ADDRESS', '5551234567@vtext.com');
+  fx.exported.sendFamilyAlertTest();
+  assert.equal(fx.sandbox.MailApp.getSentMessages()[0].to, '5551234567@vtext.com');
+});
+
 test('the tripwire matches whole words only', () => {
   const msg = {
     id: 'm9', threadId: 't9', internalDate: now - 1 * HOUR,
@@ -487,6 +555,10 @@ test('preflight passes once set up and the trigger is installed', () => {
   assert.equal(fx.exported.runFamilySentinelPreflight().ok, false, 'no trigger yet');
   fx.exported.installFamilySentinelTrigger();
   assert.equal(fx.exported.installFamilySentinelTrigger().installed, false);
+  const noText = fx.exported.runFamilySentinelPreflight();
+  assert.equal(noText.ok, false, 'no text address yet');
+  assert.match(noText.checks.find((c) => c.name === 'safety texts').detail, /FAMILY_ALERT_SMS_ADDRESS not set/);
+  fx.props.setProperty('FAMILY_ALERT_SMS_ADDRESS', '5551234567@vtext.com');
   const out = fx.exported.runFamilySentinelPreflight();
   assert.equal(out.ok, true, JSON.stringify(out.checks.filter((c) => !c.ok)));
 });
