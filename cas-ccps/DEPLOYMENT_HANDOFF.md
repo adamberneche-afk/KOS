@@ -18,11 +18,10 @@
 > - **Done after the push (2026-10-12):** `syncFlowPromptsToSheet()`;
 >   `seedLessonSchedule()` and the first new start dates (2026-10-14, as
 >   `YYYY-MM-DD`); `AI_FLOWS_LIVE` = `true` in the **Student Dashboard**
->   project.
-> - **Not yet reported done:** the Canvas cartridge imports
->   (`8175.imscc`, 36 modules; `8177.imscc`, 31; in progress 2026-10-12);
->   the first end-to-end Flow 2 test. The order is in
->   `meta/HANDOFF_2026-10-12.md`.
+>   project. Step 18: both Canvas cartridges imported (`8175.imscc`, 36
+>   modules; `8177.imscc`, 31) and the next lessons scheduled.
+> - **Not yet reported done:** the first end-to-end Flow 2 test. The order
+>   is in `meta/HANDOFF_2026-10-12.md`.
 > - **Live 2026-10-12: the Family Mail Sentinel**
 >   (`cas-ccps:family-sentinel`, scripts 60-62). A ninth project, on a
 >   private sheet: it labels student and parent mail, has a Gemini flow
@@ -32,8 +31,8 @@
 >   (`clasp-registry\cas-ccps\family-sentinel`), the Flow built, the
 >   trigger installed, and the safety alert tested end to end by the
 >   teacher. Setup and checks: `docs/FAMILY_MAIL_SENTINEL.md`.
-> - Left: step 18 (import the Canvas cartridges), then the first real Flow
->   2 run when students submit.
+> - Left: the end-to-end Flow 2 test, then the first real Flow 2 run when
+>   students submit.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 9 cas-ccps
 > projects (the original eight plus the Family Mail Sentinel) are live in a
