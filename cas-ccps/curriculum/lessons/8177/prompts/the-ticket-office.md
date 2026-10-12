@@ -1,5 +1,5 @@
 <!-- lesson: the-ticket-office -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Ticket Office (Sales Management,
      Quotas & Ethics)"). The rep sales figures in the task are invented so
      students have something to manage. Check: $60,000 goal / $750 per plan

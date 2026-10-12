@@ -1,5 +1,5 @@
 <!-- lesson: secure-the-perimeter -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("Secure the Perimeter (Venue Security &
      Emergency Preparedness)"). The plan's stadium blueprint isn't in the
      repo, so a simplified layout is described in the task. The plan's

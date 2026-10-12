@@ -1,5 +1,5 @@
 <!-- lesson: promotional-flyer-design -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("Venue Promotion & Flyer Design").
      Hours and location: the plan's 8:00 AM - 8:30 PM and "2nd Floor,
      between Room 301 and 401" were last year's, and this year's hours
