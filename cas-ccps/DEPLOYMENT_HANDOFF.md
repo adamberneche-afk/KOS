@@ -31,7 +31,8 @@
 >   curriculum: a student prompt for every lesson, competency lines on the
 >   2025 task list, two new lessons, all 108 tasks covered
 >   (`cas-ccps/HISTORY.md`, newest entry). Push central-ledger (`55b`) and
->   import the rebuilt `8177.imscc` (30 modules).
+>   import the rebuilt `8177.imscc` (31 modules; Game Day
+>   Takeover's prompt approved 2026-10-12).
 > - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-12), then
 >   the first real Flow 2 run when students submit.
 >
