@@ -24,6 +24,7 @@ This lesson addresses the following macro-economic competencies from the **8177*
   - **Competency 49:** Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries (Analyzing the "collateral damage" of a strike on the hourly venue workers who lose their income).
   - **Competency 50:** Examine how sports, entertainment, and events affect local, state, and national economies (How a prolonged lockout disrupts the economic cycle of a sports city).
   - **Competency 69:** Identify purposes, types, and terms of contracts (Negotiating a collective bargaining agreement, the contract between owners and players).
+  - **Competency 70:** Examine the role of labor and antitrust law in the sports, entertainment, and event industries (The National Labor Relations Act gives players the right to a union; why leagues need a CBA to protect the draft and salary cap from antitrust lawsuits).
   - **Competency 71:** Identify unions relevant to labor relations in the sports, entertainment, and event industries (Defining Unions, CBA, Strikes, and Lockouts).
 
 ## **3. Learning Objectives**
@@ -34,6 +35,7 @@ By the end of this lesson, students will be able to:
 2.  Explain how the "Division of Labor" (elite athletic specialization) prevents owners from simply hiring replacement workers.
 3.  Analyze the macroeconomic ripple effect of a sports strike on the local community (restaurants, parking, hotels, and hourly venue staff).
 4.  Negotiate a mock Collective Bargaining Agreement (CBA) balancing revenue sharing, worker safety, and international labor rights.
+5.  Explain how labor law and antitrust law shape the balance of power between leagues and players' unions.
 
 ## **4. Instructional Sequence**
 
@@ -47,6 +49,8 @@ By the end of this lesson, students will be able to:
   - **Specialization (Comp 28):** Why can't the NFL just fire the striking players and hire guys off the street? (Because the product drops in quality, and fans won't pay to watch amateurs).
   - **Global Labor Mobility:** What happens if there is a lockout? Discuss how elite athletes (like US NBA players) can simply take their highly specialized skills to European or Asian leagues to continue earning income during a strike or the off-season. The owners, however, cannot move their physical stadiums, giving the players a unique upper hand in the global market.
   - **The Collateral Damage (Comp 49 & 50):** If the NBA locks out its players, the players are fine (they are rich or playing overseas). Who actually suffers? *The usher. The hot dog vendor. The bartender across the street from the arena.* Discuss how a strike creates localized unemployment and disrupts the business cycle of an entire city.
+
+  - **The Law (Comp 70):** Two federal laws set the rules of the fight. The **National Labor Relations Act** (1935) gives workers, including pro athletes, the right to form a union and bargain as a group. **Antitrust law** (the Sherman Act) bans businesses from teaming up to limit competition. Thirty-two owners agreeing to a draft and a salary cap would normally look like exactly that, but rules agreed to in a CBA with the players' union are protected from antitrust lawsuits. That's why owners *want* a CBA: without one, players can sue. In the 2011 NFL and NBA lockouts, the players' unions disbanded so players could file antitrust suits against their leagues. (Baseball is the exception: a 1922 Supreme Court decision gave MLB an antitrust exemption, which Congress narrowed for player labor issues in 1998.)
 
 ### **C. The CBA Negotiation Simulation (60 Minutes)**
 

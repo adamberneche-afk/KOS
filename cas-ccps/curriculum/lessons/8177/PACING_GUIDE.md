@@ -96,7 +96,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Designing bias-free data collection instruments.
   - *Lesson:* **Market Research & Survey Design**
-  - *Competencies:* 2, 18, 81, 83, 93.
+  - *Competencies:* 2, 18, 79, 81, 83, 93.
 
 <!-- end list -->
 
@@ -159,7 +159,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Analyzing strikes, unions, and the ripple effect of work stoppages.
   - *Lesson:* **The Millionaire's Strike (Organized Labor & Economics)**
-  - *Competencies:* 28, 49, 50, 69, 71.
+  - *Competencies:* 28, 49, 50, 69, 70, 71.
 
 <!-- end list -->
 

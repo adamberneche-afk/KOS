@@ -22,6 +22,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
 
   - **Competency 2:** Demonstrate critical thinking and problem-solving (Identifying and eliminating bias in survey questions).
   - **Competency 18:** Demonstrate proficiency with technologies, tools, and machines common to a specific occupation (Utilizing Google Forms for data collection).
+  - **Competency 79:** Identify sources of data for market research in the sports, entertainment, and event industries (Comparing primary data like our survey with secondary data like POS sales records, social media analytics and industry reports).
   - **Competency 81:** Develop a market segmentation analysis (Defining who to send the survey to).
   - **Competency 83:** Develop a market research project (Developing the primary data collection instrument).
   - **Competency 93:** Describe factors that motivate consumers to attend sports, entertainment, and event occasions (Asking questions that uncover consumer values and motivations).
@@ -34,6 +35,7 @@ By the end of this lesson, students will be able to:
 2.  Differentiate between qualitative and quantitative research questions.
 3.  Identify and eliminate "leading" or biased language in survey design.
 4.  Construct a functional digital survey using Google Forms.
+5.  Distinguish primary from secondary data and identify sources of each used in the sports and event industries.
 
 ## **4. Instructional Sequence**
 
@@ -41,6 +43,7 @@ By the end of this lesson, students will be able to:
 
   - **Target Audience (Comp 81):** Brainstorm with the class: Who actually has the purchasing power? Are we marketing to freshmen who want spirit wear, or parents who have the credit cards?
   - **Concept:** You cannot market to "everyone." If you market to everyone, you reach no one.
+  - **Where Data Comes From (Comp 79):** A survey is *primary data*: information we collect ourselves for this question. Before spending time on one, a researcher checks *secondary data*: information someone already collected. For the Cavalier Shop that means our own POS sales records (which items sell, and when), CHHS enrollment numbers, and Instagram insights. In the pro industry it means ticketing and concession sales data, TV and streaming ratings, social media analytics, league and trade reports, and government data like the U.S. Census. Ask: *"What do we already know, and what can only a survey tell us?"*
 
 ### **B. The "Bias Bootcamp" (15 Minutes)**
 
