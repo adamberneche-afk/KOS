@@ -470,8 +470,11 @@ function getDashboardData(termFilter) {
     return { error: "This dashboard is only available to the teacher it's configured for." };
   }
 
-  const activeTerm = termFilter ||
-    PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "ALL";
+  // No filter means the whole current school year, not CURRENT_TERM: a term
+  // is a marking period ("2627_MP1", 00) and courses run all year, so a
+  // student registered in MP1 must still show in MP2. (The client's first
+  // call sends "" for exactly this default.)
+  const activeTerm = termFilter || "ALL";
 
   const ss          = SpreadsheetApp.openById(cfg.ledgerSsId);
   const ledger      = ss.getSheetByName(cfg.tabs.ledger);
