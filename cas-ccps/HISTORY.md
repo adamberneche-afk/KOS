@@ -2950,7 +2950,11 @@ build on. Over #135–#149:
   lesson-plan docs were edited in place with the Google Docs connector,
   changing only the characters that differ and checking each doc against
   the 2026-10-07 copy first (none had changed). The Cloud Behind the Game's
-  doc was created in the lesson folder. #149 is not in Drive yet.
+  doc was created in the lesson folder. #149 reached Drive later the same day:
+  Survey Results Analysis, The Final Whistle, the pacing guide and the
+  tracker were edited in place (each checked first against its pre-#149
+  text; none had changed), and "Lesson Plan: Game Day Takeover" was created
+  in the lesson folder. Each doc's text was then compared with its repo file.
 
 Not yet live: push central-ledger (`55b`), re-import `8177.imscc` (30
 modules).
