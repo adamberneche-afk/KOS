@@ -11,12 +11,11 @@ off; `start` now reads them, and student and parent mail through the
 edited the instructions by hand for directed writes (SMP-018, filed as
 SMP-005), the CAS attention signal and students-and-families first;
 `PROJECT_INSTRUCTIONS.md` matches them, and adds the SMP register link
-(`meta/SMP_PROCESS.md`). Left: replace the family-signal link (the live
-instructions point at the Family Mail Sentinel spreadsheet, not the
-`KOS_FAMILY_SIGNAL` doc), paste the `KOS_CAS_SIGNAL` and `KOS_SMP_REGISTER`
-links once those docs exist, change SMP-005 to SMP-018 in sections 2 and 6,
-re-sync `KILL_SWITCH_PROTOCOL.md` in knowledge, then re-test `start`. No
-SMP goes into knowledge.
+(`meta/SMP_PROCESS.md`). Later still (reported 2026-10-12): the
+family-signal link now opens the `KOS_FAMILY_SIGNAL` doc, the
+`KOS_CAS_SIGNAL` and `KOS_SMP_REGISTER` docs exist and the instructions
+were updated, and `KILL_SWITCH_PROTOCOL.md` was re-synced in knowledge.
+Left: re-test `start`. No SMP goes into knowledge.
 
 | File | What it is |
 |---|---|

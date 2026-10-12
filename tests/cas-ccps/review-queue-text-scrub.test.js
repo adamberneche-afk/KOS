@@ -25,7 +25,7 @@ function setup(rows) {
   const queue = ss.insertSheet('ReviewQueue');
   queue.appendRow(['Timestamp', 'GoogleID', 'FileID', 'ConfigID', 'StudentText', 'Status', 'ResultRef']);
   (rows || []).forEach((r) => queue.appendRow(r));
-  return { exported, queue };
+  return { exported, sandbox, queue };
 }
 
 const ROWS = [
@@ -53,6 +53,19 @@ test('the apply empties only the StudentText column; rows and statuses stay', ()
   assert.deepEqual(data.slice(1).map((row) => row[5]), ['COMPLETE', 'PENDING', 'STAGED']);
   assert.deepEqual(data.slice(1).map((row) => row[1]), ROWS.map((row) => row[1]));
   assert.equal(exported._countReviewQueueRowsWithText_(), 0);
+});
+
+// The CAS attention signal runs the health checks every 10 minutes; the
+// count must not log the scrub's "DRY RUN" line each time.
+test('the health-check count logs nothing; the preview still logs', () => {
+  const { exported, sandbox } = setup(ROWS);
+  const logged = [];
+  sandbox.Logger = { log: (m) => logged.push(String(m)) };
+  assert.equal(exported._countReviewQueueRowsWithText_(), 2);
+  assert.deepEqual(logged, []);
+  exported.previewReviewQueueTextScrub();
+  assert.equal(logged.length, 1);
+  assert.match(logged[0], /^\[ReviewQueue scrub\] DRY RUN: 2/);
 });
 
 test('an empty or missing ReviewQueue is nothing to do', () => {
