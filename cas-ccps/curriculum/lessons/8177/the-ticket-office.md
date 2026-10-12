@@ -20,12 +20,11 @@ Moving from an individual contributor to a management role requires a massive sh
 
 This lesson successfully completes the Sales block by addressing the following competencies from the **8177** framework:
 
-  - **Competency 72:** Explain the nature of sales management (Overseeing personnel, budgets, and overall sales strategy).
-  - **Competency 73:** Explain the nature of sales motivation (Using commission structures, bonuses, and gamification to drive performance).
-  - **Competency 74:** Explain legal and ethical considerations in selling (Avoiding high-pressure scams, false promises, and ticket scalping).
-  - **Competency 75:** Explain the nature of sales training (Onboarding new reps with product knowledge and objection-handling scripts).
-  - **Competency 78 & 79:** Explain the nature and use of sales quotas (Setting realistic revenue or volume targets for reps to hit).
-  - **Competency 80:** Explain the nature of sales support activities (Providing reps with leads, marketing materials, and CRM software).
+  - **Competency 19:** Apply mathematical skills to job-specific tasks (Calculating realistic revenue or volume quotas for each rep).
+  - **Competency 41:** Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees (Overseeing personnel, budgets, and overall sales strategy; Onboarding new reps with product knowledge and objection-handling scripts).
+  - **Competency 42:** Evaluate the sports, entertainment, and event manager’s role in decision-making for campaigns, employees, and partners (Using commission structures, bonuses, and gamification to drive performance).
+  - **Competency 62:** Explain the importance of constructive feedback in personal and professional growth (Supporting a struggling rep with leads, materials and coaching).
+  - **Competency 63:** Identify ethical issues related to the sports, entertainment, and event industries (Avoiding high-pressure scams, false promises, and ticket scalping).
 
 ## **3. Learning Objectives**
 

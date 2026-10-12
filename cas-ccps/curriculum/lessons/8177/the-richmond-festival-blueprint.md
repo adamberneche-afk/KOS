@@ -21,7 +21,7 @@ In this immersive simulation, students will step into the role of Lead Event Dir
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
   - **Competency 1:** Demonstrate creativity and innovation (Conceptualizing a unique festival theme and vibe).
-  - **Competency 86:** Discuss risk-management strategies for a venue and/or event (Identifying potential threats like weather or power outages and planning mitigations).
+  - **Competency 67:** Examine the importance of risk assessment and management strategies in the sports, entertainment, and event industries (Identifying potential threats like weather or power outages and planning mitigations).
   - **Competency 92:** Explain the process for planning an event (Structuring the blueprint from vision to execution).
   - **Competency 95:** Analyze personnel needs for an event (Identifying 5 specific job roles necessary to operate the festival).
   - **Competency 96:** Analyze the financial resources required for each event activity (Determining "Money In" revenue streams and "Money Out" major expenses).

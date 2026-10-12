@@ -23,8 +23,8 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 1:** Demonstrate creativity and innovation (Designing the visual identity).
   - **Competency 11:** Demonstrate big-picture thinking (Understanding how a font or color choice impacts the entire event's reputation).
   - **Competency 21:** Demonstrate reading and writing skills (Defining brand principles and emotional adjectives).
-  - **Competency 81:** Identify the elements of a brand (Defining the core visual and ideological components of a sports/entertainment entity).
-  - **Competency 85:** Explain the components of venue management (Understanding "Atmospherics"—how colors and themes create a physical environment).
+  - **Competency 42:** Evaluate the sports, entertainment, and event manager’s role in decision-making for campaigns, employees, and partners (Deciding the visual identity every campaign for the event will use).
+  - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (Understanding "Atmospherics"—how colors and themes create a physical environment).
   - **Competency 93:** Describe factors that motivate consumers to attend sports, entertainment, and event occasions (Using brand identity to create emotional pull).
   - **Competency 97:** Develop a marketing plan for an event (The Brand Board serves as the "Visual Identity" section of the plan).
 

@@ -20,10 +20,10 @@ Students will act as Market Researchers for The Cavalier Shop. They will identif
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 2:** Demonstrate critical thinking and problem solving (Identifying and eliminating bias in survey questions).
-  - **Competency 18:** Demonstrate proficiency with technologies (Utilizing Google Forms for data collection).
-  - **Competency 42:** Conduct market research (Developing the primary data collection instrument).
-  - **Competency 46:** Determine a target market (Defining who to send the survey to).
+  - **Competency 2:** Demonstrate critical thinking and problem-solving (Identifying and eliminating bias in survey questions).
+  - **Competency 18:** Demonstrate proficiency with technologies, tools, and machines common to a specific occupation (Utilizing Google Forms for data collection).
+  - **Competency 81:** Develop a market segmentation analysis (Defining who to send the survey to).
+  - **Competency 83:** Develop a market research project (Developing the primary data collection instrument).
   - **Competency 93:** Describe factors that motivate consumers to attend sports, entertainment, and event occasions (Asking questions that uncover consumer values and motivations).
 
 ## **3. Learning Objectives**
