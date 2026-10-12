@@ -3165,3 +3165,25 @@ code treated a term change as a new term, so three things changed with it:
 - `_schoolYearOfTerm_()` (`00`) reads `2627_MP1` as 2026-27 (older terms
   like "2025-26 S1" still read). Set Current Term accepts only the new
   format.
+
+## The watchdog's trigger, and its log line, 2026-10-12
+
+After the #167/#169 push, the operator ran `runQueueWatchdog` once to
+create `KOS_CAS_SIGNAL`. The doc came out right (counts only, both sections
+clear) and the Health tab no longer read DRY RUN. Two findings:
+
+- **The watchdog had no trigger.** `34`'s setup note asked for a
+  10-minute time trigger, but nothing installed it and the deployment
+  handoff never listed it, so the watchdog and the CAS signal had run only
+  from the editor. The operator installed it by hand on 2026-10-12. New:
+  `installQueueWatchdogTrigger()` (safe to re-run) and
+  `removeQueueWatchdogTrigger()`, now in the deployment handoff's Phase 2.
+  The Health tab's "Last checked" cell shows the time, not just the date,
+  so a stopped trigger shows.
+- **A misleading log line on every run.** The signal runs the FERPA health
+  checks, and their ReviewQueue count went through the scrub's dry run,
+  which logs "DRY RUN: 0 ReviewQueue row(s) hold a student's writing;
+  applyReviewQueueTextScrub() empties them." It read like the watchdog's
+  own dry-run mode and would have appeared every 10 minutes.
+  `_countReviewQueueRowsWithText_()` now counts without logging; the
+  preview and apply log as before.
