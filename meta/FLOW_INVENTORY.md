@@ -152,6 +152,24 @@ materialize, then harvest from `WarmUpFlowReturn`) are built in Studio on the
 same native-step pattern and verified live; `checkFlowBinding()` and
 `checkWarmUpFlowLiveness()` are their checks (`cas-ccps/DEPLOYMENT_HANDOFF.md`).
 
+## cas-ccps — Family Mail Triage Flow
+
+**What it does:** `60_FamilyMailSentinel.js` (project `cas-ccps:family-sentinel`,
+on the teacher's private Family Mail Sentinel sheet) finds student and parent
+mail every 15 minutes, labels it `KOS/Family`, and writes one redacted
+message per row to `FamilyMailInput` (`Status = READY`). A Studio Flow asks
+Gemini for a category, urgency, safety flag and one-line ask, and adds a row
+to `FamilyMailReturn`; `harvestFamilyMailReturns()` checks the ask names
+nobody, records it in `FamilyMailLog`, and deletes the mail text.
+`writeFamilySignal()` turns the log into the name-free `KOS_FAMILY_SIGNAL`
+doc the KOS Claude Project reads.
+
+**Where to check:** `checkFamilyMailFlowLiveness()`. No jobs submitted yet →
+no family mail yet; never completed → `FamilyMailLog` has no CLASSIFIED,
+NOT_FAMILY or fixture row; healthy → it has one. The other three rule 9
+checks are in `docs/FAMILY_MAIL_SENTINEL.md`. Built 2026-10-12, not yet
+deployed or run against real mail.
+
 ---
 
 ## kos-personal — Studio ingestion/inference Flow
