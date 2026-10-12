@@ -3006,3 +3006,21 @@ compared afterwards with its repo file. The tracker was written in the repo
 and has no Drive copy.
 
 Not yet live: push central-ledger (`55b`).
+
+## 8175: tasks the lessons already teach, now cited, 2026-10-12
+
+As 8177's #145 did, each lesson was read for state tasks it teaches but
+didn't cite. 24 such tasks are now cited where they are taught, each with
+a note on where. Examples: L24's six steps of a sale (96); L19's ad mockup,
+PR talking points and success metrics (75, 84, 77) and its promotional plan
+(73); L10's service reflection (46, 52, 53); L35's Google Interview Warmup
+(113, a mock interview); L33's exit ticket on keeping a home address off a
+resume posted online (34). The lessons that gained lines have their Duty
+Areas rebuilt from the tasks they cite. DECA (31–33) and work-based
+learning (35–38) are recorded in the tracker as taught outside the lesson
+plans. Coverage: 87 of 113 (80 in lessons, 7 outside). Not yet covered: 16,
+22, 23–28, 30, 40, 43, 48, 54, 55, 65, 69, 79, 82, 85, 88, 92, 95, 97, 99,
+104, 108. L06, the live assignment, is unchanged.
+
+Not yet in Drive: the 17 lesson docs that gained lines. Not yet live: push
+central-ledger (`55b`).
