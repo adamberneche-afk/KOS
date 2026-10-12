@@ -497,7 +497,7 @@ function createAdminAssets_(adminEmail, orgName) {
       "   dispatchFormSubmit       → From spreadsheet, On form submit (handler lives in 18_FormSubmitDispatcher.js)\n\n" +
       "NOTE: The Ledger tab includes an AcademicYear column (column S, index 18).\n" +
       "Script 02 populates this automatically from the CURRENT_TERM property.\n" +
-      "Set CURRENT_TERM in Script Properties (e.g. '2025-26 S1') before registering students.\n\n" +
+      "Set CURRENT_TERM in Script Properties (school year and marking period, e.g. '2627_MP1') before registering students.\n\n" +
       "5. Enable Drive Advanced Service in the Services panel\n\n" +
       "See the admin summary page in your manual for all IDs."
     );

@@ -29,8 +29,9 @@ function getStudentDashboardData(termFilter) {
   }
 
   const cfg        = getConfig_();
-  const activeTerm = termFilter ||
-    PropertiesService.getScriptProperties().getProperty("CURRENT_TERM") || "ALL";
+  // No filter means the whole current school year (see 07's
+  // getDashboardData): a term is one marking period of a year-long course.
+  const activeTerm = termFilter || "ALL";
   const ss    = SpreadsheetApp.openById(cfg.ledgerSsId);
   const sheet = ss.getSheetByName(cfg.tabs.ledger);
   const data  = sheet.getDataRange().getValues();
