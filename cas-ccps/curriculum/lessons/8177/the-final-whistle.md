@@ -22,12 +22,12 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
 
   - **Competency 12:** Demonstrate career- and life-management skills.
   - **Competency 13:** Demonstrate continuous learning and adaptability.
-  - **Competency 98:** Explain the nature of event evaluation (Conducting a post-event SWOT analysis).
-  - **Competency 102:** Identify career opportunities in sports, entertainment, and event management.
-  - **Competency 103:** Explain the role of professional organizations in the industry (e.g., DECA, FBLA).
-  - **Competency 104:** Develop a professional resume/portfolio.
-  - **Competency 105:** Prepare for a job interview.
-  - **Competency 106:** Explain the importance of networking (Building a digital presence like LinkedIn).
+  - **Competency 32:** Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult (e.g., DECA, FBLA).
+  - **Competency 101:** (Optional) Evaluate the event’s overall success (Conducting a post-event SWOT analysis).
+  - **Competency 103:** Identify career opportunities at different levels in sports, entertainment, and event management.
+  - **Competency 106:** Identify professional development opportunities in the sports, entertainment, and event industries (Building a digital presence like LinkedIn).
+  - **Competency 107:** Collect information about a prospective employer (Preparing for a job interview by researching the employer).
+  - **Competency 108:** Develop a career plan (Building a professional resume and portfolio).
 
 ## **3. Learning Objectives**
 

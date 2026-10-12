@@ -25,13 +25,12 @@ This lesson integrates hard technical sales skills with vital Workplace Readines
   - **Competency 3:** Demonstrate initiative and self-direction (Prospecting and cold-calling leads without being hand-fed a list).
   - **Competency 6:** Demonstrate conflict-resolution skills (Navigating contract disputes and handling the word "No" professionally).
   - **Competency 8:** Demonstrate respect for diversity (Identifying local businesses owned by or catering to the diverse demographics of the CHHS community).
-  - **Competency 17:** Demonstrate understanding of current IT systems (Utilizing Customer Relationship Management \[CRM\] software to track sales pipelines).
+  - **Competency 17:** Maintain working knowledge of current information-technology (IT) systems (Utilizing Customer Relationship Management \[CRM\] software to track sales pipelines).
 
 **Industry/Technical Skills:**
 
-  - **Competency 76:** Explain the use of objection-handling techniques in the selling process.
-  - **Competency 77:** Explain the closing process in selling.
-  - **Competency 82:** Explain the nature of sponsorship in the sports/event industry.
+  - **Competency 41:** Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees.
+  - **Competency 86:** Identify revenue sources related to the sports, entertainment, and event industries.
 
 ## **3. Learning Objectives**
 

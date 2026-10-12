@@ -20,11 +20,9 @@ When a sports franchise wants a new $2 billion stadium, they usually ask the cit
 
 This lesson addresses the following macro-economic competencies from the **8177** framework:
 
-  - **Competency 32:** Explain the impact of the law of diminishing returns (Understanding that building a stadium *too* big eventually costs more to maintain than it generates in revenue).
-  - **Competency 33:** Discuss the measure of consumer spending as an economic indicator (Tracking how fans spend money at local restaurants/hotels around the venue).
-  - **Competency 34:** Explain the concept of Gross Domestic Product (GDP) (Analyzing whether a stadium actually grows the total value of goods/services produced in the city).
-  - **Competency 36:** Explain the economic impact of inflation on business (How the rising cost of concrete, steel, and labor drives up stadium construction costs and ticket prices).
-  - **Competency 37:** Explain the economic impact of interest-rate fluctuations (Understanding that cities borrow money to build stadiums; high interest rates cost taxpayers millions in extra fees).
+  - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (Understanding that building a stadium *too* big eventually costs more to maintain than it generates in revenue).
+  - **Competency 49:** Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries (Tracking how fans spend money at local restaurants/hotels around the venue; How the rising cost of concrete, steel, and labor drives up stadium construction costs and ticket prices; Understanding that cities borrow money to build stadiums; high interest rates cost taxpayers millions in extra fees).
+  - **Competency 50:** Examine how sports, entertainment, and events affect local, state, and national economies (GDP) (Analyzing whether a stadium actually grows the total value of goods/services produced in the city).
 
 ## **3. Learning Objectives**
 

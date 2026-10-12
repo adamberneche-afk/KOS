@@ -21,8 +21,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 1:** Demonstrate creativity and innovation.
   - **Competency 11:** Demonstrate big-picture thinking (Venue layout impact on total event/store success).
   - **Competency 22:** Demonstrate workplace safety (Maintaining egress and fire safety codes).
-  - **Competency 85:** Explain the components of venue management (Atmospherics and physical layout).
-  - **Competency 86:** Describe how venue layout influences customer/fan behavior (Traffic patterns and purchase points).
+  - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (Atmospherics and physical layout; Traffic patterns and purchase points).
   - **Competency 92:** Explain the process for planning an event (Visualizing the "event" of a store opening/shift).
   - **Competency 95:** Analyze personnel needs for an event (Strategic placement of staff within the planogram).
 
@@ -39,7 +38,7 @@ By the end of this lesson, students will be able to:
 ### **A. The Venue Manager’s Walk-Through (10 mins)**
 
   - **Activity:** Stand at the store entrance.
-  - **Discussion:** Treat the store as a "stadium concourse." Ask: "Where is the bottleneck? Where do we put the 'high-demand' items to keep people moving safely?" (Relates to Competency 86).
+  - **Discussion:** Treat the store as a "stadium concourse." Ask: "Where is the bottleneck? Where do we put the 'high-demand' items to keep people moving safely?" (Relates to Competency 45).
 
 ### **B. Core Concepts: Atmospherics & Operations (15 mins)**
 

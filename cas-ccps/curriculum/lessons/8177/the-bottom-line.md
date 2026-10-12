@@ -20,10 +20,10 @@ An event can have brilliant marketing, a perfect venue, and massive crowd demand
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 16:** Demonstrate information security (Understanding the confidentiality of vendor contracts, payroll, and corporate financial statements).
-  - **Competency 99:** Explain the nature of budgets (Understanding the purpose of projecting income and capping expenses).
-  - **Competency 100:** Explain the use of financial statements (Reading a basic Profit & Loss / Income Statement).
-  - **Competency 101:** Prepare a budget for an event (Allocating funds for marketing, venue rental, security, and talent).
+  - **Competency 16:** Demonstrate an understanding of information security (Understanding the confidentiality of vendor contracts, payroll, and corporate financial statements).
+  - **Competency 85:** Identify the components of a budget (Understanding the purpose of projecting income and capping expenses).
+  - **Competency 88:** Analyze financial statements (Reading a basic Profit & Loss / Income Statement).
+  - **Competency 98:** Develop a budget for an event (Allocating funds for marketing, venue rental, security, and talent).
 
 ## **3. Learning Objectives**
 

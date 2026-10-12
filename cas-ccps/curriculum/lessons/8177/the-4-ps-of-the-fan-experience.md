@@ -21,10 +21,9 @@ The "Marketing Mix" (Product, Price, Place, Promotion) is the foundation of all 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
   - **Competency 10:** Collaborate with team members (Working in small groups to develop a cohesive pitch).
-  - **Competency 42:** Explain the concept of the marketing mix (Understanding how the 4 Ps interrelate).
-  - **Competency 46:** Explain the nature and scope of product/service management (Designing the physical item and its packaging).
-  - **Competency 56:** Explain the nature and scope of distribution/place (Determining where in the venue or online the product will be sold).
-  - **Competency 63:** Explain the role of promotion as a marketing function (Designing the advertising strategy to launch the product).
+  - **Competency 46:** Explain on-site revenue streams as they relate to sports, entertainment, and event facilities (Designing a new item to sell in the venue, and its packaging).
+  - **Competency 47:** Identify how e-commerce and digital transactions affect sports, entertainment, and event businesses (Deciding whether the product sells in the venue, online, or both).
+  - **Competency 97:** Develop a marketing plan for an event (Using the 4 Ps as the structure of the plan; Designing the advertising strategy to launch the product).
 
 ## **3. Learning Objectives**
 

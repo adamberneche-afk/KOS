@@ -20,11 +20,11 @@ After successfully collecting a statistically significant sample size of data fr
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 2:** Demonstrate critical thinking and problem solving (Synthesizing raw data into actionable insights).
+  - **Competency 2:** Demonstrate critical thinking and problem-solving (Synthesizing raw data into actionable insights).
   - **Competency 21:** Demonstrate reading and writing skills (Composing a professional 250-word analytical summary).
-  - **Competency 43:** Analyze market research data (Reviewing the survey responses to identify trends and key metrics).
-  - **Competency 44:** Describe the use of research to make management decisions (Using the data to justify an operational change).
-  - **Competency 85:** Explain the components of venue management (Applying data to make suggestions about the store's physical organization or daily operations).
+  - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (Applying data to make suggestions about the store's physical organization or daily operations).
+  - **Competency 77:** Explain market research and its use in the sports, entertainment, and event industries (Using the data to justify an operational change).
+  - **Competency 84:** Evaluate the results of a market research project (Reviewing the survey responses to identify trends and key metrics).
 
 ## **3. Learning Objectives**
 
