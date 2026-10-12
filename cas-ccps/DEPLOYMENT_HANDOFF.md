@@ -43,7 +43,8 @@
 >   (`cas-ccps:family-sentinel`, scripts 60-62). A ninth project, on a
 >   private sheet: it labels student and parent mail, has a Gemini flow
 >   triage it with names redacted, and writes the name-free
->   `KOS_FAMILY_SIGNAL` doc the KOS Claude Project reads. Setup, nine steps:
+>   `KOS_FAMILY_SIGNAL` doc the KOS Claude Project reads; a safety message
+>   texts the teacher's phone. Setup, nine steps:
 >   `docs/FAMILY_MAIL_SENTINEL.md`.
 > - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-12), then
 >   the first real Flow 2 run when students submit.

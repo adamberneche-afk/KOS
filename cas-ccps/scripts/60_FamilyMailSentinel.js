@@ -40,8 +40,12 @@
 // summarized: KOS/Family/Now goes on the thread, and the signal doc lists it
 // first as "needs you now". Two independent checks set it: Gemini's safety
 // flag, and a keyword tripwire here (FMS_SAFETY_TERMS) that runs before
-// Gemini sees anything, so a Flow that is down cannot hide one. How that
-// reaches the teacher's phone directly is still open; nothing here sends.
+// Gemini sees anything, so a Flow that is down cannot hide one.
+// sendFamilySafetyAlerts() then texts the teacher's phone through the
+// carrier's email-to-text address (Script Property FAMILY_ALERT_SMS_ADDRESS,
+// never in the repo): one text per run however many threads, each thread
+// texted once, at any hour. The text is FMS_ALERT_SUBJECT and FMS_ALERT_TEXT
+// with a count. No name, course or word of the message goes to the carrier.
 //
 // SENSITIVE categories (FMS_SENSITIVE_CATEGORIES) show no course, period or
 // ask: in a 21-student class, "IEP question, period 2" can identify a child.
@@ -64,8 +68,9 @@
 // installFamilyMailFixture() gives the Flow a synthetic row to match.
 //
 // GMAIL: the advanced Gmail service (Gmail API v1), scope gmail.modify, for
-// reading messages and adding labels. Nothing here sends, drafts, archives,
-// trashes or deletes mail.
+// reading messages and adding labels. Through Gmail it never sends, drafts,
+// archives, trashes or deletes. The one send is the safety text, through
+// MailApp, to the teacher's own phone (sendFamilySafetyAlerts()).
 // =============================================================================
 
 const FMS_INPUT_TAB = "FamilyMailInput";
@@ -80,12 +85,12 @@ const FMS_LOG_TAB = "FamilyMailLog";
 const FMS_LOG_HEADERS = [
   "Message_ID", "Thread_ID", "Received_At", "Source", "Family_Key", "Course",
   "Period", "Status", "Category", "Urgency", "Safety", "Sensitive", "Ask",
-  "Due", "Classified_At", "Note",
+  "Due", "Classified_At", "Note", "Alerted_At",
 ];
 const FMS_LOG = {
   MESSAGE_ID: 0, THREAD_ID: 1, RECEIVED_AT: 2, SOURCE: 3, FAMILY_KEY: 4,
   COURSE: 5, PERIOD: 6, STATUS: 7, CATEGORY: 8, URGENCY: 9, SAFETY: 10,
-  SENSITIVE: 11, ASK: 12, DUE: 13, CLASSIFIED_AT: 14, NOTE: 15,
+  SENSITIVE: 11, ASK: 12, DUE: 13, CLASSIFIED_AT: 14, NOTE: 15, ALERTED_AT: 16,
 };
 
 const FMS_CONTACTS_TAB = "FamilyContacts";
@@ -126,6 +131,13 @@ const FMS_LOG_KEEP_DAYS = 30;
 const FMS_TRIGGER_HANDLER = "runFamilySentinel";
 const FMS_TRIGGER_MINUTES = 15;
 const FMS_SIGNAL_TITLE = "KOS_FAMILY_SIGNAL";
+
+// The whole text a carrier ever sees. Kept under 160 characters, with no
+// student, sender, course or message detail: "{n}" is the only variable.
+const FMS_ALERT_SUBJECT = "KOS";
+const FMS_ALERT_TEXT = "{n} now. Open Gmail, label KOS/Family/Now.";
+const FMS_ALERT_LOOKBACK_HOURS = 24;  // older safety messages are not texted
+const FMS_ALERT_DAILY_CAP = 10;       // texts per day, in case something loops
 
 const FMS_CATEGORIES = {
   absence_makeup: "absence or makeup",
@@ -196,7 +208,10 @@ function runFamilySentinel() {
   const result = {};
   try {
     try { result.scan = scanFamilyMail(); } catch (e) { result.scan = { error: String(e) }; }
+    // Texted before the harvest waits on Gemini: the tripwire alone is enough.
+    try { result.alertAfterScan = sendFamilySafetyAlerts(); } catch (e) { result.alertAfterScan = { error: String(e) }; }
     try { result.harvest = harvestFamilyMailReturns(); } catch (e) { result.harvest = { error: String(e) }; }
+    try { result.alertAfterHarvest = sendFamilySafetyAlerts(); } catch (e) { result.alertAfterHarvest = { error: String(e) }; }
     try { result.signal = writeFamilySignal(); } catch (e) { result.signal = { error: String(e) }; }
   } finally {
     lock.releaseLock();
@@ -970,6 +985,67 @@ function _fmsEnsureLabels_() {
   return out;
 }
 
+// ── Safety texts ─────────────────────────────────────────────────────────────
+
+// Texts the teacher once for every thread that turned "needs you now" in the
+// last FMS_ALERT_LOOKBACK_HOURS and hasn't been texted. One text per call,
+// with a count. A failed send leaves Alerted_At blank, so the next run tries
+// again. Without FAMILY_ALERT_SMS_ADDRESS it does nothing (preflight says so).
+function sendFamilySafetyAlerts(now) {
+  now = now ? new Date(now) : new Date();
+  const props = PropertiesService.getScriptProperties();
+  const to = String(props.getProperty("FAMILY_ALERT_SMS_ADDRESS") || "").trim();
+  if (!to) return { sent: 0, reason: "FAMILY_ALERT_SMS_ADDRESS not set" };
+
+  const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const rows = _fmsRows_(logSheet);
+  const since = now.getTime() - FMS_ALERT_LOOKBACK_HOURS * 3600 * 1000;
+  const alertedThreads = {};
+  rows.forEach(function (r) { if (r[FMS_LOG.ALERTED_AT]) alertedThreads[String(r[FMS_LOG.THREAD_ID])] = true; });
+
+  const due = [];
+  const threads = {};
+  rows.forEach(function (r, i) {
+    const thread = String(r[FMS_LOG.THREAD_ID] || "");
+    const st = String(r[FMS_LOG.STATUS]);
+    if (!thread || !_fmsTrue_(r[FMS_LOG.SAFETY]) || r[FMS_LOG.ALERTED_AT]) return;
+    if (st === FMS_STATUS.NOT_FAMILY || st === FMS_STATUS.FIXTURE) return;
+    if (new Date(r[FMS_LOG.RECEIVED_AT]).getTime() < since) return;
+    due.push(i);
+    if (!alertedThreads[thread]) threads[thread] = true;
+  });
+  if (!due.length) return { sent: 0 };
+
+  const n = Object.keys(threads).length;
+  if (n) {
+    const dayKey = "FAMILY_ALERT_COUNT_" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd");
+    const today = Number(props.getProperty(dayKey)) || 0;
+    if (today >= FMS_ALERT_DAILY_CAP) return { sent: 0, reason: "daily cap reached", waiting: n };
+    MailApp.sendEmail(to, FMS_ALERT_SUBJECT, _fmsAlertText_(n));
+    props.setProperty(dayKey, String(today + 1));
+  }
+  // Every due row is marked, including a second message in a thread already
+  // texted: one text per thread, not per message.
+  due.forEach(function (i) {
+    rows[i][FMS_LOG.ALERTED_AT] = now;
+    logSheet.getRange(i + 2, 1, 1, FMS_LOG_HEADERS.length).setValues([rows[i]]);
+  });
+  return { sent: n ? 1 : 0, threads: n };
+}
+
+function _fmsAlertText_(n) {
+  return FMS_ALERT_TEXT.replace("{n}", n === 1 ? "A family message needs you" : n + " family messages need you");
+}
+
+// Sends one test text, so the operator can confirm the carrier delivers it.
+function sendFamilyAlertTest() {
+  const to = String(PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_SMS_ADDRESS") || "").trim();
+  if (!to) throw new Error("Set the Script Property FAMILY_ALERT_SMS_ADDRESS first (for example 5551234567@vtext.com).");
+  MailApp.sendEmail(to, FMS_ALERT_SUBJECT, "Test. Family Mail Sentinel texts will look like this.");
+  Logger.log("Test text sent. If it hasn't arrived in a few minutes, the carrier's gateway isn't delivering (docs/FAMILY_MAIL_SENTINEL.md).");
+  return { sent: true };
+}
+
 // ── Checks (meta/FLOW_DOCTRINE.md rule 9) ────────────────────────────────────
 
 // Is the structure sound? Tabs and headers, roster, labels, trigger, doc.
@@ -1011,6 +1087,10 @@ function runFamilySentinelPreflight() {
   check("trigger", function () {
     const n = ScriptApp.getProjectTriggers().filter(function (t) { return t.getHandlerFunction() === FMS_TRIGGER_HANDLER; }).length;
     return { ok: n === 1, detail: n + " installed; want 1 (installFamilySentinelTrigger())" };
+  });
+  check("safety texts", function () {
+    const to = PropertiesService.getScriptProperties().getProperty("FAMILY_ALERT_SMS_ADDRESS");
+    return { ok: !!to, detail: to ? "set; sendFamilyAlertTest() to confirm delivery" : "FAMILY_ALERT_SMS_ADDRESS not set: safety messages won't reach the phone" };
   });
   check("signal doc", function () {
     const id = PropertiesService.getScriptProperties().getProperty("FAMILY_SIGNAL_DOC_ID");
