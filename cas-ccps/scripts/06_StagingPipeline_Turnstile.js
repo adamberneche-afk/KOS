@@ -9,6 +9,12 @@
 //          are auto-demoted to ERROR_TIMEOUT, freeing that teacher's lane
 //          without admin intervention.
 //
+//          A row IN_PROCESS with no readable timestamp can't age, so it
+//          would hold its teacher's lane forever (seen live 2026-10-12: a
+//          hand-added test row). It no longer holds the lane; it's left as
+//          it is and reported by the health check (10), the queue watchdog
+//          (34) and the CAS attention signal (34b).
+//
 // STAGING_PIPELINE SCHEMA (0-based):
 //   0: Timestamp | 1: QueueRowRef | 2: StudentFileID | 3: ConfigID
 //   4: TeacherEmail | 5: Status
@@ -73,7 +79,12 @@ function runStagingTurnstile() {
 
       if (status === "IN_PROCESS") {
         const elapsed = now - rowTime;
-        if (!isNaN(rowTime) && elapsed > STALE_THRESHOLD_MS) {
+        if (timestampIdx !== -1 && isNaN(rowTime)) {
+          // (No Timestamp column at all is a different fault: every row
+          // would look like this, so the lane stays held as before.)
+          Logger.log("[TURNSTILE] Row " + (i + 1) + " is IN_PROCESS with no timestamp — " +
+                     "not holding the lane for it. See the System Health Check.");
+        } else if (elapsed > STALE_THRESHOLD_MS) {
           // Lane timed out — demote and free it
           sheet.getRange(i + 1, statusIdx + 1).setValue("ERROR_TIMEOUT");
           Logger.log("[TURNSTILE] Stale lane cleared — Row " + (i + 1) +

@@ -3120,3 +3120,29 @@ The teacher bound the project for `run.ps1` (`clasp clone` into
 there, not from the repo), pushed, ran setup, built the Flow, installed the
 trigger, and tested the safety alert end to end: `sendFamilyAlertTest()` and
 `runFamilySafetyAlertFixture()` both reached the phone through ntfy.
+
+## CAS attention signal and two STAGING_PIPELINE gaps, 2026-10-12
+
+From the KOS Project session of 2026-10-12 (SMP-005: the Project never reads
+CAS sheets; its only view of CAS is a counts-only signal doc).
+
+`34b_CasAttentionSignal.js` writes `KOS_CAS_SIGNAL` at the end of every
+`runQueueWatchdog()` run, even a failed one (the signal then says the
+watchdog failed). Students and families first, admin second, a line only
+above zero, "unavailable" when a count can't be read. The SCR line counts
+students with a current rating of 4 or 5: on the state scale (the 2025
+Student Competency Record) 1 is the highest and 1-3 are satisfactory, and the
+teacher set the bar at greater than 3. SCR counts are re-read at most hourly; the retry scan
+runs once a day under a 90-second budget. `retryCandidates_()` was factored
+out of `getAllRetryEligibleStudents_()` (30b) for it.
+
+The same session found a hand-added test row in `STAGING_PIPELINE`,
+`IN_PROCESS` with no timestamp. It held its teacher's lane in the Turnstile
+forever (a blank timestamp never ages past 12 minutes) and the System Health
+Check called it healthy. Fixed: the Turnstile no longer holds the lane for
+such a row (it leaves the row as it is, unless the sheet has no Timestamp
+column at all); `_stagingPipelineHealthChecks_()` (10) reports IN_PROCESS and
+PENDING_INFERENCE rows with no timestamp as stuck, and lists rows with an
+unknown status, where Studio residue (a step's variable names typed into the
+sheet) lands. The watchdog (34) and the health check skip fully blank rows,
+which used to count as unknown.

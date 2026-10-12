@@ -72,6 +72,16 @@ function _stuckRowContext_(rowNumber, fileId, elapsedMinutes) {
 // whole time — genuinely different from "actively being evaluated" and,
 // before this extension, invisible: runSystemHealthCheck() only ever
 // counted PENDING_INFERENCE rows, never aged them.
+//
+// Two gaps closed 2026-10-12 (a hand-added test row held a teacher's lane
+// IN_PROCESS and this check called it healthy):
+//   - An IN_PROCESS or PENDING_INFERENCE row with no readable timestamp
+//     never ages, so it never crossed either threshold. It's now reported
+//     as stuck, marked "no timestamp".
+//   - A row whose status is none of the known ones (Studio residue: a step
+//     that typed its unbound variable names into the sheet) was counted
+//     nowhere. It's now listed in unknownStatusRows. Fully blank rows are
+//     skipped.
 const STAGING_STUCK_IN_PROCESS_MINUTES = 15;
 const STAGING_STUCK_PENDING_MINUTES    = 20;
 
@@ -79,6 +89,7 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
   const result = {
     inProcessStuckRows: [],
     pendingStuckRows: [],
+    unknownStatusRows: [],
     counts: { inProcess: 0, pending: 0, complete: 0, timeouts: 0, otherErrors: 0 },
   };
 
@@ -94,19 +105,29 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
   const now     = new Date();
 
   for (let i = 1; i < data.length; i++) {
+    if (data[i].every(c => c === "" || c === null)) continue;
     const status = String(data[i][stIdx] || "").trim();
     const rowTs   = tsIdx !== -1 ? new Date(data[i][tsIdx]) : null;
-    const elapsed = rowTs ? Math.round((now - rowTs) / 60000) : null;
+    // A blank or unreadable timestamp: elapsed is unknowable, not zero.
+    const noTs    = tsIdx !== -1 && (data[i][tsIdx] === "" || isNaN(rowTs.getTime()));
+    const elapsed = rowTs && !noTs ? Math.round((now - rowTs) / 60000) : null;
     const fileId  = fileIdx !== -1 ? String(data[i][fileIdx]).trim() : "unknown";
 
     if (status === "IN_PROCESS") {
       result.counts.inProcess++;
-      if (elapsed !== null && elapsed >= STAGING_STUCK_IN_PROCESS_MINUTES) {
+      if (noTs) {
+        result.inProcessStuckRows.push(_stuckRowContext_(i + 1, fileId, null) + " (no timestamp, so it never times out)");
+      } else if (elapsed !== null && elapsed >= STAGING_STUCK_IN_PROCESS_MINUTES) {
         result.inProcessStuckRows.push(_stuckRowContext_(i + 1, fileId, elapsed));
       }
     } else if (status === "PENDING_INFERENCE") {
       result.counts.pending++;
-      if (elapsed !== null && elapsed >= STAGING_STUCK_PENDING_MINUTES) {
+      if (noTs) {
+        const teacher = teachIdx !== -1 ? String(data[i][teachIdx]).trim() : "unknown";
+        result.pendingStuckRows.push(
+          _stuckRowContext_(i + 1, fileId, null) + " (no timestamp) — Teacher: " + (teacher || "unknown")
+        );
+      } else if (elapsed !== null && elapsed >= STAGING_STUCK_PENDING_MINUTES) {
         const teacher = teachIdx !== -1 ? String(data[i][teachIdx]).trim() : "unknown";
         result.pendingStuckRows.push(
           _stuckRowContext_(i + 1, fileId, elapsed) + " — Teacher: " + (teacher || "unknown")
@@ -118,6 +139,10 @@ function _stagingPipelineHealthChecks_(ss, cfg) {
       result.counts.timeouts++;
     } else if (status.startsWith("ERROR")) {
       result.counts.otherErrors++;
+    } else {
+      result.unknownStatusRows.push(
+        "Row " + (i + 1) + " — status \"" + (status || "(blank)").slice(0, 40) + "\""
+      );
     }
   }
 
@@ -426,6 +451,13 @@ function autoHealthAlert() {
       "   Action: Confirm the Turnstile time-driven trigger (06_StagingPipeline_Turnstile.js) is installed and running — a queued row this old with no evaluation started usually means it isn't."
     );
   });
+  staging.unknownStatusRows.forEach(ctx => {
+    issues.push(
+      "❓ STAGING ROW WITH AN UNKNOWN STATUS\n" +
+      "   " + ctx + "\n" +
+      "   Action: Open STAGING_PIPELINE. Text like a step's variable names is Studio residue from a test run; delete the row."
+    );
+  });
 
   // --- Check RubricQueue for stuck PENDING_EXTRACTION rows ---
   const rubricSheet = ss.getSheetByName(cfg.tabs.rubricQueue);
@@ -684,6 +716,7 @@ function runSystemHealthCheck() {
   const sErrors       = staging.counts.otherErrors;
   const stuckRows     = staging.inProcessStuckRows;
   const pendingStuck  = staging.pendingStuckRows;
+  const unknownRows   = staging.unknownStatusRows;
   const stuck         = stuckRows.length;
 
   let qPending = 0, qStaged = 0, qComplete = 0, qErrors = 0;
@@ -754,6 +787,9 @@ function runSystemHealthCheck() {
     (pendingStuck.length > 0
       ? "🕓  " + pendingStuck.length + " queued row(s) never started evaluation:\n      " + pendingStuck.join("\n      ")
       : "✅  No queued rows stuck without starting"),
+    (unknownRows.length > 0
+      ? "❓  " + unknownRows.length + " row(s) with an unknown status (Studio residue?):\n      " + unknownRows.join("\n      ")
+      : "✅  No unknown-status rows"),
     "",
     "REVIEW QUEUE",
     "   Pending:      " + qPending,
@@ -772,7 +808,7 @@ function runSystemHealthCheck() {
     "FERPA",
     ...ferpaChecks.map(c => c.displayLine),
     "",
-    (stuck === 0 && pendingStuck.length === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && ferpaOk
+    (stuck === 0 && pendingStuck.length === 0 && unknownRows.length === 0 && sErrors === 0 && qErrors === 0 && lFlagged === 0 && ferpaOk
       ? "✅ All systems healthy." + (timeouts > 0 ? " (" + timeouts + " timeout(s) auto-resolved.)" : "")
       : "⚠️ Action may be required. See flags above.")
   ].filter(l => l !== "").join("\n"), ui.ButtonSet.OK);

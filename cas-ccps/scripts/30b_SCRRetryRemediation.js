@@ -297,6 +297,24 @@ function aggregateEvidenceForStudentAcrossCompetencies_(evidenceSheet, studentEm
   return countOutcomes_(best);
 }
 
+// The pairs a retry can apply to: a teacher-decided rating of 3 or 4.
+// Shared with the CAS attention signal's daily retry scan (34b).
+function retryCandidates_(data) {
+  const candidates = [];
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = String(row[SCRS.STATUS]).trim();
+    if (status !== "CONFIRMED" && status !== "OVERRIDDEN") continue;
+    const rating = Number(row[SCRS.CONFIRMED_RATING]);
+    if (rating !== 3 && rating !== 4) continue;
+    candidates.push({
+      studentEmail: String(row[SCRS.STUDENT_EMAIL]).trim(),
+      competencyId: String(row[SCRS.COMPETENCY_ID]).trim(),
+    });
+  }
+  return candidates;
+}
+
 // ---------------------------------------------------------------------------
 // getAllRetryEligibleStudents_ -- ENTRY POINT for a teacher dashboard view.
 // Bulk version of checkRetryEligibility_ -- scans every CONFIRMED/
@@ -319,19 +337,7 @@ function getAllRetryEligibleStudents_() {
   const suggestionsSheet = ss.getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
   if (!suggestionsSheet) return { error: "SCRSuggestions tab not found." };
 
-  const data = suggestionsSheet.getDataRange().getValues();
-  const candidates = [];
-  for (let i = 1; i < data.length; i++) {
-    const row = data[i];
-    const status = String(row[SCRS.STATUS]).trim();
-    if (status !== "CONFIRMED" && status !== "OVERRIDDEN") continue;
-    const rating = Number(row[SCRS.CONFIRMED_RATING]);
-    if (rating !== 3 && rating !== 4) continue;
-    candidates.push({
-      studentEmail: String(row[SCRS.STUDENT_EMAIL]).trim(),
-      competencyId: String(row[SCRS.COMPETENCY_ID]).trim(),
-    });
-  }
+  const candidates = retryCandidates_(suggestionsSheet.getDataRange().getValues());
 
   const eligible = [];
   for (const c of candidates) {

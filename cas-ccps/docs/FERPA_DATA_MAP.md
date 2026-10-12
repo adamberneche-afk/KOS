@@ -344,6 +344,20 @@ notification service, on a private random topic
 family message needs you now. Open Gmail, label KOS/Family/Now.", with no
 student, sender, course or message detail, so no education record leaves.
 
+### CAS attention signal (KOS_CAS_SIGNAL doc)
+| | |
+|---|---|
+| **Where** | A Google Doc in the teacher's Drive, rewritten in place by `34b_CasAttentionSignal.js` (Central Ledger project) at the end of every queue-watchdog run. Its ID is in `CAS_SIGNAL_DOC_ID`. |
+| **Fields** | Counts only: submissions waiting on feedback, submissions that failed or timed out, SCR suggestions awaiting confirm (and how many students), students newly retry-eligible, students rated below satisfactory on the SCR, a 4 or 5 (and the change since yesterday), plus admin counts (watchdog mode, timed-out and unknown-status queue rows, rows with no timestamp, failing FERPA checks). No name, email, file ID, config ID, competency, rating per student or student text. |
+| **Why collected** | So the KOS Claude Project can tell the teacher what in CAS needs attention without reading any CAS sheet (SMP-005: RTP never reads CAS sheets). |
+| **Read by** | The teacher, and the KOS Claude Project through its Google Drive connector. |
+| **Retention** | Overwritten every run; it holds only the latest counts. To tell "since yesterday" apart, the Central Ledger's `CAS_SIGNAL_STATE` Script Property keeps yesterday's count and 12-character SHA-256 prefixes of the retry-eligible student and competency pairs, never the emails. |
+
+A count is a fact about a group, and a small one (1 student) can point at a
+person the teacher already knows; that is the point of the signal, and it
+goes only to the teacher's own Claude Project. Adding any field beyond counts
+is the teacher's decision.
+
 ### RubricQueue
 Teacher-authored rubric text only — no student PII. Included for completeness
 since it's a central, shared tab.

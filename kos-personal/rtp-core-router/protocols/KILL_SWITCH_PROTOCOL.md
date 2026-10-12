@@ -42,6 +42,12 @@ Currently named:
 - A batch/auto-confirm process (per the Drive Steward calibration design)
   writing incorrect classifications at volume, undetected by the
   confidence-tier gate.
+- RTP (the KOS Claude Project) writing anything the operator didn't direct
+  in the session, or anything on SMP-005's outside-scope list (CAS or
+  LeaderHub, a delete, a trigger, a script property, sharing, mail or
+  calendar), even when directed. Added 2026-10-12 with
+  [`SMP-005_RTP_DIRECTED_WRITES.md`](./SMP-005_RTP_DIRECTED_WRITES.md). First
+  step: disconnect the connector in Claude settings, then follow §3.
 
 ## 3. The Procedure — one procedure, multiple triggers
 
