@@ -28,10 +28,16 @@ re-test `start` ("Setting it up", steps 3, 5 and 6).
   Calendar on 2026-10-11 and turned off sending. `start` adds today's
   calendar (school, Canvas due dates and a personal calendar if one is
   subscribed) and the mail that needs the operator. Mail can carry student
-  information, so every mail search excludes `student.ccpsnet.net`, and
-  mail from parents or about a student is counted, never read or quoted.
-  This narrows what reaches Claude; it can't promise none does, since a
-  colleague can name a student. The operator decided that trade-off.
+  information, so every mail search excludes the `KOS/Family` label,
+  `student.ccpsnet.net` and Canvas, and anything about a student that still
+  turns up is counted, never read or quoted.
+- **Student and parent mail, without the mail.** It is the most urgent mail,
+  so `start` gives it first, from the `KOS_FAMILY_SIGNAL` doc: one line per
+  thread waiting on the operator (course, period, category, a one-line ask,
+  hours waiting), no names or text. cas-ccps's Family Mail Sentinel writes
+  it and labels the threads `KOS/Family`; Gemini, in a Workspace Flow, does
+  the triage (`cas-ccps/docs/FAMILY_MAIL_SENTINEL.md`). Mail arriving
+  between two 15-minute scans is the remaining gap.
 - **Same council and guardrails.** The six personas, ALIGNMENT's A–D
   thresholds and pause, and the HITL firewall carry over from V6.0, made
   lighter: personas speak when they sharpen the thinking, without a
@@ -44,11 +50,13 @@ re-test `start` ("Setting it up", steps 3, 5 and 6).
 ## Setting it up (operator, once)
 
 1. On claude.ai, create a Project named **KOS**.
-2. Get the three doc links. In Drive, open each Google Doc and copy its
+2. Get the four doc links. In Drive, open each Google Doc and copy its
    URL:
    - `KOS_LATEST_PRIMER`
    - `KOS_OPEN_DECISIONS`
    - `KOS_CORE_FACTS`
+   - `KOS_FAMILY_SIGNAL` (once the Family Mail Sentinel is set up; until
+     then leave the placeholder, and `start` reports it as unconfirmed)
 
    They keep the same file ID every day; Apps Script rewrites them in
    place.
@@ -70,10 +78,11 @@ re-test `start` ("Setting it up", steps 3, 5 and 6).
    - the vision is quoted exactly;
    - Vector State opens with the Data Quality status;
    - five open decisions are listed with their IDs;
+   - family mail comes next, read from `KOS_FAMILY_SIGNAL` as written;
    - "Today" lists today's events from the school calendar and Canvas,
      and personal ones marked `(personal)` if that calendar is subscribed;
-   - "Mail" lists up to five messages from the last day, with no student
-     names and no student mail.
+   - "Other mail" lists up to five messages from the last day, with no
+     student, parent or Canvas mail.
 
 ## Daily use
 

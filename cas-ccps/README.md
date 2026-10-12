@@ -107,13 +107,14 @@ the Central Ledger spreadsheet until those docs age out at year end.
 
 ## What Module 1 (the base system) actually is
 
-The base system is **8 separate Apps Script projects** working together
+The base system is **9 separate Apps Script projects** working together
 (corrected from an earlier "6" here that put Script 20 on the wrong
 project — see `tools/gas-lint/project-map.json`'s header comment, which
 flagged this exact mismatch: `20_SetupCheckpoint.js`'s own `INCLUDED IN:`
 header says the Unified Manual project, not Central Ledger, and the
 file's own header wins; an 8th project, `studio-steps`, was added later
-for the Studio Steps adoption — see its own row below):
+for the Studio Steps adoption, and a 9th, `family-sentinel`, on 2026-10-12 —
+see their own rows below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
@@ -125,8 +126,21 @@ for the Studio Steps adoption — see its own row below):
 | Teacher Dashboard | standalone web app | `00`, `07` (includes the Student Context tab, the teacher-identity gate, and — since D1 — a `doPost()` JSON API for leader-hub: `getPacingGuide`/`getCompetencyRegistry`/`getRoster`, OAuth-token-verified, see `docs/LEADERHUB_CONNECTION_SETUP.md` and `docs/FERPA_DATA_MAP.md`), `29` (student context data read by that tab), `22`/`26`/`27` (lesson-context logging + alignment log + synchronous lesson frame generation, called by Script 07's `submitLessonContext()`), `32` (competency rubric lookup, called by Script 27's frame generation — dual-placed here and in Central Ledger since Script 27 runs in both), `23`/`31` (Module 2 warm-up-readiness summary + pacing-guide lookup, called by Script 07's `getDashboardData()`), `36` (weekly parent reports — the dashboard's review-and-send panel; it may only call functions present in both this project and Central Ledger, since Script 30 isn't in this project — see `36_WeeklyParentReport.js`'s own header) |
 | Student Dashboard | standalone web app | `13` |
 | Studio Steps | standalone (not bound to a spreadsheet/doc) | **Blocked on this account** — needs a standard Cloud project; all five flows were ported to `37_FlowInputBuilder.js`/`41_WarmUpFlowBridge.js` instead. 9 `.gs` files under `cas-ccps/studio-steps/` — the custom Workspace Studio step code behind Flows 1-5 (rubric extraction, student evaluation, warm-up generation, warm-up scoring, bridging); see [`cas-ccps/studio-steps/README.md`](./studio-steps/README.md) for the full file-to-flow map. Pushed, but unreachable from Studio's step picker on this account (see Known gap 1). |
+| Family Sentinel | the teacher's private Family Mail Sentinel sheet | `00`, `60` (Family Mail Sentinel: labels student and parent mail, queues it for a Gemini flow redacted, and writes the name-free `KOS_FAMILY_SIGNAL` doc the KOS Claude Project reads), `61` (its generated prompt), `62` (deploy marker). The only cas-ccps project with a Gmail scope. Not yet live. See [`docs/FAMILY_MAIL_SENTINEL.md`](./docs/FAMILY_MAIL_SENTINEL.md). |
 
 Plus: `15`/`15b` (Studio Flow prompt specs, not deployed scripts).
+
+## Family Mail Sentinel (scripts 60-62)
+
+Student and parent mail is the most urgent mail the teacher gets and the one
+kind Claude must not read. `60_FamilyMailSentinel.js` labels it `KOS/Family`
+(the KOS Claude Project's mail search excludes that label), has a Gemini flow
+triage it with names redacted, and writes `KOS_FAMILY_SIGNAL`: one line per
+thread waiting on the teacher, with course, period, category, a one-line ask
+and hours waiting, and no names. A safety message is flagged before Gemini
+runs and is never summarized. Setup, the data boundary and the open question
+(reaching the teacher's phone for a safety message):
+[`docs/FAMILY_MAIL_SENTINEL.md`](./docs/FAMILY_MAIL_SENTINEL.md).
 
 Each of these 8 projects now has a real, committed `appsscript.json` and
 is a clasp-adoption target — see [Version control (clasp)](#version-control-clasp)
@@ -160,12 +174,12 @@ Teacher Dashboard's Pending Review queue (`PENDING_TEACHER_REVIEW` →
 Scaffolded, not yet connected to a live account — see
 [`meta/CLASP_AND_APPS_SCRIPT.md`](../meta/CLASP_AND_APPS_SCRIPT.md) for
 the full rationale. The short version: `cas-ccps/scripts/` doesn't fit
-clasp's one-folder-one-project model, since it's 7 of the 8 projects above
-sharing overlapping files (`00_SharedConfig.js` alone is pasted into 5 of
-them) — `studio-steps`, the 8th, lives in its own `cas-ccps/studio-steps/`
+clasp's one-folder-one-project model, since it's 8 of the 9 projects above
+sharing overlapping files (`00_SharedConfig.js` alone is pasted into 8 of
+them) — `studio-steps`, the 9th, lives in its own `cas-ccps/studio-steps/`
 (blocked on this account; the flows were ported to `37_FlowInputBuilder.js`
 and `41_WarmUpFlowBridge.js`)
-folder and shares no files with the other 7.
+folder and shares no files with the other 8.
 [`tools/clasp-sync/`](../tools/clasp-sync/README.md) reconciles the
 7-projects-in-one-folder problem — a script reads
 `tools/gas-lint/project-map.json` and generates a throwaway per-project

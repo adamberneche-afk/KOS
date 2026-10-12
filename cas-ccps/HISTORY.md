@@ -3054,3 +3054,27 @@ edited in place, adding only the new lines (competency lines, mini-lessons,
 student task items) and the rebuilt Duty Areas. Each doc was checked first
 against its text after the previous sync, and each added paragraph
 afterwards for its text, bold label, font and list.
+
+## Family Mail Sentinel, 2026-10-12
+
+The KOS Claude Project's `start` now reads the teacher's mail and calendar
+(#159), but student and parent mail, the most urgent kind, is the one kind
+Claude must not read. The teacher asked for a way to bring it in without
+widening exposure, with labels allowed and Gemini (in a Workspace Flow, like
+every other cas-ccps flow) doing the triage.
+
+New project `cas-ccps:family-sentinel` (scripts 60-62), on a private sheet
+so no other cas-ccps project holds a Gmail scope. It labels family mail
+`KOS/Family` (the Project's mail search excludes it), redacts names, numbers
+and addresses before Gemini, withholds any ask that names someone or isn't
+grounded in the message, deletes mail text once answered, and writes the
+`KOS_FAMILY_SIGNAL` doc: course, period, category, ask, hours waiting,
+repeat contact, no names. Sensitive categories show only "sensitive". A
+keyword tripwire flags safety messages before Gemini runs; such a message is
+never summarized and is listed first as "needs you now". Prompt:
+`docs/FAMILY_MAIL_TRIAGE_PROMPT.md` (generated into `61`). Setup:
+`docs/FAMILY_MAIL_SENTINEL.md`.
+
+Open: how a "needs you now" message reaches the teacher's phone directly (a
+calendar alert won't). Not yet live: the operator creates the sheet, pushes,
+builds the Flow, and adds the signal doc's link to the Project.
