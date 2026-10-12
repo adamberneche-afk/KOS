@@ -39,18 +39,18 @@ By the end of this lesson, students will be able to:
 
 ### **A. The Hook: The $1,000 Foam Finger (10 Minutes)**
 
-  - **Discussion:** Hold up a picture of a generic green t-shirt and a picture of a green Philadelphia Eagles t-shirt. *Why does one cost $5 and the other cost $45?* \* **Concept (Comp 51):** Introduce the power of **Branding**. People don't buy the cotton; they buy the identity.
+  - **Discussion:** Hold up a picture of a generic green t-shirt and a picture of a green Philadelphia Eagles t-shirt. *Why does one cost $5 and the other cost $45?* \* **Concept (Comp 54):** Introduce the power of **Branding**. People don't buy the cotton; they buy the identity.
 
 ### **B. The Life Cycle & The "Maturity" Problem (15 Minutes)**
 
-  - **Direct Instruction (Comp 49):** Draw the Product Life Cycle bell curve on the board (Intro, Growth, Maturity, Decline).
+  - **Direct Instruction (Comp 23):** Draw the Product Life Cycle bell curve on the board (Intro, Growth, Maturity, Decline).
   - **The Problem:** Ask the class: "The NFL has been around for over 100 years. It's heavily in the 'Maturity' phase. Everyone who wants to watch football already does. How do they keep making *more* money every year if they can't find new fans?"
 
 ### **C. The Growth Strategies (20 Minutes)**
 
-  - **Bundling (Comp 48):** "The Family 4-Pack" (4 tickets, 4 hot dogs, 4 sodas for $100). It guarantees concession sales before the fan even arrives.
-  - **Brand Extensions (Comp 50):** The WWE creating movies; the NBA creating the WNBA; a local minor league baseball team opening a year-round restaurant.
-  - **Licensing & Naming Rights (Comp 54 & 55):** Explain the difference between *Sponsorship* (paying for a banner) and *Naming Rights* (paying $20 million to call it "Capital One Arena"). Explain *Licensing*: The team doesn't make video games, but they license their logo to EA Sports for *Madden* and collect a 15% royalty on every copy sold.
+  - **Bundling (Comp 46):** "The Family 4-Pack" (4 tickets, 4 hot dogs, 4 sodas for $100). It guarantees concession sales before the fan even arrives.
+  - **Brand Extensions (Comp 54):** The WWE creating movies; the NBA creating the WNBA; a local minor league baseball team opening a year-round restaurant.
+  - **Licensing & Naming Rights (Comp 76 & 86):** Explain the difference between *Sponsorship* (paying for a banner) and *Naming Rights* (paying $20 million to call it "Capital One Arena"). Explain *Licensing*: The team doesn't make video games, but they license their logo to EA Sports for *Madden* and collect a 15% royalty on every copy sold.
 
 ### **D. The Brand Manager Lab (45 Minutes)**
 

@@ -21,6 +21,8 @@ Moving from an individual contributor to a management role requires a massive sh
 This lesson successfully completes the Sales block by addressing the following competencies from the **8177** framework:
 
   - **Competency 19:** Apply mathematical skills to job-specific tasks (Calculating realistic revenue or volume quotas for each rep).
+  - **Competency 39:** Define the role of the sports, entertainment, and event manager (Stepping into the role of Director of Ticket Sales).
+  - **Competency 40:** Examine the traits and skills that successful sports, entertainment, and event managers possess (Why being a great seller and being a great manager take different skills).
   - **Competency 41:** Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees (Overseeing personnel, budgets, and overall sales strategy; Onboarding new reps with product knowledge and objection-handling scripts).
   - **Competency 42:** Evaluate the sports, entertainment, and event manager’s role in decision-making for campaigns, employees, and partners (Using commission structures, bonuses, and gamification to drive performance).
   - **Competency 62:** Explain the importance of constructive feedback in personal and professional growth (Supporting a struggling rep with leads, materials and coaching).
@@ -40,16 +42,16 @@ By the end of this lesson, students will be able to:
 ### **A. The Hook: The Boiler Room vs. The Pro (10 Minutes)**
 
   - **Discussion:** Ask the class: *What is the stereotype of a "salesperson"?* (Usually: pushy, dishonest, annoying).
-  - **Concept (Comp 74):** Introduce the concept of Consultative Selling vs. High-Pressure Selling. A good sports sales rep doesn't trick a fan into buying season tickets; they find out *why* the fan loves the team and offers a package that fits their budget.
+  - **Concept (Comp 63):** Introduce the concept of Consultative Selling vs. High-Pressure Selling. A good sports sales rep doesn't trick a fan into buying season tickets; they find out *why* the fan loves the team and offers a package that fits their budget.
 
 ### **B. Quotas & The Math of Management (15 Minutes)**
 
-  - **Direct Instruction (Comp 78 & 79):** The team needs to make $100,000 this month. You have 5 sales reps.
+  - **Direct Instruction (Comp 19):** The team needs to make $100,000 this month. You have 5 sales reps.
   - **The Math:** If average season tickets cost $1,000, how many tickets does each rep need to sell? (20 tickets). *What happens if you set the quota at 50 tickets?* (Reps get discouraged and quit). *What if you set it at 5?* (The team goes bankrupt). Quotas must be challenging but mathematically possible.
 
 ### **C. Motivation, Training, & Support (15 Minutes)**
 
-  - **Direct Instruction (Comp 73, 75, 80):** Once the quota is set, how do you help them hit it?
+  - **Direct Instruction (Comp 41, 42, 62):** Once the quota is set, how do you help them hit it?
 
 <!-- end list -->
 
@@ -79,4 +81,4 @@ Students will submit a 3-part management plan:
 ## **6. Faculty & Student Handbook Compliance**
 
   - **Integrity in Business:** Heavily emphasize CHHS's core value of Integrity. If a student's "Ethics Policy" relies on deceiving the customer to hit a quota, it will be rejected. Good business is built on repeat customers, which requires ultimate trust.
-  - **Professional Empathy:** Managing people requires empathy. Ensure students understand that part of management is *supporting* struggling employees (Comp 80), not just firing them when they miss a target.
+  - **Professional Empathy:** Managing people requires empathy. Ensure students understand that part of management is *supporting* struggling employees (Comp 62), not just firing them when they miss a target.

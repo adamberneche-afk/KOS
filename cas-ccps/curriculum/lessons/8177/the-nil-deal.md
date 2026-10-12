@@ -38,11 +38,11 @@ By the end of this lesson, students will be able to:
 ### **A. The Hook: The $1 Million Instagram Post (10 Minutes)**
 
   - **Discussion:** Show a picture of a famous athlete (e.g., Cristiano Ronaldo or Caitlin Clark) posting about a brand on Instagram. Ask: *Why does Nike pay them millions for one picture instead of buying a billboard?*
-  - **Concept (Comp 52):** Introduce "Borrowed Equity." Brands borrow the trust and coolness of the athlete to sell their products to the athlete's fans.
+  - **Concept (Comp 42):** Introduce "Borrowed Equity." Brands borrow the trust and coolness of the athlete to sell their products to the athlete's fans.
 
 ### **B. The Rise of NIL & Digital Sponsorships (15 Minutes)**
 
-  - **Direct Instruction (Comp 83 & 84):** Explain the recent shift in NCAA and High School sports regarding Name, Image, and Likeness (NIL).
+  - **Direct Instruction (Comp 42 & 75):** Explain the recent shift in NCAA and High School sports regarding Name, Image, and Likeness (NIL).
   - **The Digital Shift:** Discuss how digital sponsorships work mechanically (e.g., promo codes, affiliate links, TikTok brand takeovers) versus traditional TV endorsements.
   - **Micro vs. Macro:** Explain why a local business in Midlothian would get a better Return on Investment (ROI) sponsoring a popular CHHS senior than they would sponsoring a global celebrity.
 

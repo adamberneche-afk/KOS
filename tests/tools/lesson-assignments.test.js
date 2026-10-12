@@ -89,7 +89,7 @@ test('a competency number whose state wording differs keeps the doc\'s words and
 
 test('8177: lesson competencies cite the 2025 state task list', () => {
   const a = built.assignments['8177-employee-handbook-operations'];
-  assert.deepEqual(a.competencyIds, ['8177-4', '8177-5', '8177-10', '8177-14', '8177-20', '8177-45', '8177-58', '8177-95']);
+  assert.deepEqual(a.competencyIds, ['8177-4', '8177-5', '8177-10', '8177-14', '8177-20', '8177-25', '8177-45', '8177-58', '8177-72', '8177-73', '8177-95']);
   assert.match(a.definitionOfDone, /- 8177-45 Explain facilities management/);
   assert.doesNotMatch(built.review, /\| 8177 \|/, 'no 8177 number is left to review');
 });

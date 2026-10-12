@@ -20,9 +20,11 @@ When a sports franchise wants a new $2 billion stadium, they usually ask the cit
 
 This lesson addresses the following macro-economic competencies from the **8177** framework:
 
+  - **Competency 29:** Examine community issues related to an industry/organization (Debating whether taxpayers, the team or both should pay for a new stadium).
   - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (Understanding that building a stadium *too* big eventually costs more to maintain than it generates in revenue).
   - **Competency 49:** Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries (Tracking how fans spend money at local restaurants/hotels around the venue; How the rising cost of concrete, steel, and labor drives up stadium construction costs and ticket prices; Understanding that cities borrow money to build stadiums; high interest rates cost taxpayers millions in extra fees).
   - **Competency 50:** Examine how sports, entertainment, and events affect local, state, and national economies (GDP) (Analyzing whether a stadium actually grows the total value of goods/services produced in the city).
+  - **Competency 66:** Describe the value of the sports, entertainment, and event industries to the community (Weighing what a stadium really gives back to its city).
 
 ## **3. Learning Objectives**
 
@@ -42,9 +44,9 @@ By the end of this lesson, students will be able to:
 
 ### **B. The Macro Crash Course (20 Minutes)**
 
-  - **The Pros (Comp 33 & 34):** Explain the argument *for* stadiums. They create construction jobs, and on game days, fans pack local bars and hotels. This drives up **Consumer Spending** and boosts the city's **GDP**.
-  - **The Cons (Comp 36 & 37):** Explain the argument *against* stadiums. Cities don't have $1 Billion lying around, so they take out loans (municipal bonds). If **Interest Rates** are high, the city pays double over 30 years. Furthermore, due to **Inflation**, the cost to build is skyrocketing, meaning the team has to charge $150 for a nosebleed ticket just to break even.
-  - **The Sweet Spot (Comp 32):** Introduce the **Law of Diminishing Returns**. If a team averages 10,000 fans, building a 15,000-seat arena is smart. Building a 40,000-seat arena is financial suicide. The extra 25,000 empty seats cost millions to build, heat, and clean, but generate zero revenue.
+  - **The Pros (Comp 49 & 50):** Explain the argument *for* stadiums. They create construction jobs, and on game days, fans pack local bars and hotels. This drives up **Consumer Spending** and boosts the city's **GDP**.
+  - **The Cons (Comp 49):** Explain the argument *against* stadiums. Cities don't have $1 Billion lying around, so they take out loans (municipal bonds). If **Interest Rates** are high, the city pays double over 30 years. Furthermore, due to **Inflation**, the cost to build is skyrocketing, meaning the team has to charge $150 for a nosebleed ticket just to break even.
+  - **The Sweet Spot (Comp 45):** Introduce the **Law of Diminishing Returns**. If a team averages 10,000 fans, building a 15,000-seat arena is smart. Building a 40,000-seat arena is financial suicide. The extra 25,000 empty seats cost millions to build, heat, and clean, but generate zero revenue.
 
 ### **C. The City Council Lab (50 Minutes)**
 

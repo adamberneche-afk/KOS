@@ -21,7 +21,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 <!-- end list -->
 
   - Introduction to 8177 & Cavalier Expectations.
-  - *Lesson:* **The Business of the Game (Franchise Analysis)** \* *Competencies:* 1-22 (Workplace Readiness), 24, 50, 52, 86, 94 (Management, Local Economy, Business Structure, Revenue, Competition).
+  - *Lesson:* **The Business of the Game (Franchise Analysis)** \* *Competencies:* 1-22 (Workplace Readiness), 24, 50, 52, 53, 86, 94 (Management, Local Economy, Business Structure, For-Profit vs. Nonprofit, Revenue, Competition).
 
 <!-- end list -->
 
@@ -64,7 +64,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Understanding how physical space dictates safety and sales.
   - *Lesson:* **School Store Planogram & Customer Experience**
-  - *Competencies:* 1, 11, 22, 45, 92, 95.
+  - *Competencies:* 1, 11, 22, 45, 72, 73, 92, 95.
 
 <!-- end list -->
 
@@ -139,7 +139,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Designing a signature event from vision to risk management.
   - *Lesson:* **The Richmond Festival Blueprint**
-  - *Competencies:* 1, 67, 92, 95, 96, 97.
+  - *Competencies:* 1, 67, 68, 87, 92, 95, 96, 97.
 
 <!-- end list -->
 
@@ -159,7 +159,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Analyzing strikes, unions, and the ripple effect of work stoppages.
   - *Lesson:* **The Millionaire's Strike (Organized Labor & Economics)**
-  - *Competencies:* 28, 49, 50, 71.
+  - *Competencies:* 28, 49, 50, 69, 71.
 
 <!-- end list -->
 
@@ -169,7 +169,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Evaluating GDP, inflation, interest rates, and stadium funding.
   - *Lesson:* **The Stadium Economy (Macroeconomics & Venue Funding)**
-  - *Competencies:* 45, 49, 50.
+  - *Competencies:* 29, 45, 49, 50, 66.
 
 <!-- end list -->
 
@@ -179,4 +179,4 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Global trade, exchange rates, and cultural adaptation.
   - *Lesson:* **The Global Expansion (International Sports & Marketing)**
-  - *Competencies:* 51, 74.
+  - *Competencies:* 51, 74, 80.
