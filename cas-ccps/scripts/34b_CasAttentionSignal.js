@@ -1,0 +1,333 @@
+// =============================================================================
+// FILE: 34b_CasAttentionSignal.js
+// BOUND TO: Central Ledger spreadsheet (cas-ccps:central-ledger)
+// TRIGGERS: none of its own. runQueueWatchdog() (34) calls writeCasSignal_()
+//           at the end of every run, so the doc is rewritten every 10 minutes.
+//
+// PURPOSE: the CAS attention signal (KOS session 2026-10-12, SMP-005). The
+// KOS Claude Project may not read CAS sheets, so this doc is its only view of
+// CAS: counts of what needs the teacher, students and families first, admin
+// second, rewritten in place (same file ID every time, like KOS_FAMILY_SIGNAL
+// in 60). The Project reads it after the family mail signal.
+//
+// DATA BOUNDARY: counts only. No names, emails, file IDs, config IDs, grades,
+// ratings per student or student text ever reach the doc, and nothing in this
+// file writes to any CAS sheet. A line appears only when its count is above
+// zero; a count that couldn't be read says so ("unavailable"), because an
+// unreadable signal must never look like an all-clear. Widening what the doc
+// carries is the teacher's call (meta/HANDOFF_2026-10-12.md, FERPA).
+//
+// SECTION 1, STUDENTS & FAMILIES
+//   - submissions waiting on feedback (STAGING_PIPELINE PENDING_INFERENCE or
+//     IN_PROCESS, one per student doc)
+//   - submissions whose evaluation failed or timed out (ERROR*)
+//   - SCR suggestions awaiting the teacher's confirm (SCRSuggestions
+//     SUGGESTED)
+//   - students newly eligible for a retry since yesterday (30b)
+//   - students not yet at SCR 2 (a current rating of 3, 4 or 5; 1 is the
+//     highest), with the change since yesterday
+// SECTION 2, ADMIN
+//   - watchdog in DRY RUN; the watchdog run itself failing
+//   - rows the watchdog timed out this run; unknown-status rows (Studio
+//     residue lands here)
+//   - STAGING_PIPELINE rows in flight with no timestamp (they never age, so
+//     nothing else ever times them out)
+//   - FERPA checks failing (10's _ferpaHealthChecks_)
+// Apps Script trigger failures can't be seen from inside a script; those
+// still arrive as Google's failure-summary mail.
+//
+// COST: the queue counts are one read of STAGING_PIPELINE per run. The SCR
+// counts are one read of SCRSuggestions, at most hourly. The retry scan
+// (checkRetryEligibility_ per candidate, three tab reads each) runs once a
+// day, under CAS_SIGNAL_RETRY_BUDGET_MS; past the budget it keeps the last
+// result and says so.
+//
+// SETUP: nothing is required. To write it now, run runQueueWatchdog from
+// the Apps Script editor. The first run creates KOS_CAS_SIGNAL in My
+// Drive (or in CAS_SIGNAL_FOLDER_ID's folder, if set) and stores its ID in
+// CAS_SIGNAL_DOC_ID. Paste the doc's link into the KOS Project's
+// instructions.
+// =============================================================================
+
+const CAS_SIGNAL_TITLE = "KOS_CAS_SIGNAL";
+const CAS_SIGNAL_STATE_KEY = "CAS_SIGNAL_STATE";
+const CAS_SIGNAL_SCR_EVERY_MS = 60 * 60 * 1000;
+const CAS_SIGNAL_RETRY_BUDGET_MS = 90 * 1000;
+// Hash prefix length (hex chars) for the retry-eligible pairs kept between
+// days: enough to tell pairs apart, not enough to store anything readable.
+const CAS_SIGNAL_HASH_CHARS = 12;
+
+// watchdog: { dryRun, results, error } from runQueueWatchdog(); results is
+// null when the watchdog run failed.
+function writeCasSignal_(watchdog, now) {
+  now = now ? new Date(now) : new Date();
+  watchdog = watchdog || {};
+  const props = PropertiesService.getScriptProperties();
+  const state = _casSignalReadState_(props);
+  const tz = Session.getScriptTimeZone();
+  _casSignalRollDay_(state, Utilities.formatDate(now, tz, "yyyy-MM-dd"));
+
+  const students = [];
+  const admin = [];
+
+  // ── Queue counts (every run) ──
+  let queue = null;
+  try {
+    queue = _casSignalQueueCounts_();
+  } catch (e) {
+    console.error("[CasSignal] Queue counts failed: " + e.message);
+  }
+  if (!queue) {
+    students.push("Submissions waiting on feedback: unavailable (STAGING_PIPELINE couldn't be read)");
+  } else {
+    if (queue.waiting > 0) students.push("Submissions waiting on feedback: " + queue.waiting);
+    if (queue.failed > 0) students.push("Submissions whose evaluation failed or timed out: " + queue.failed);
+    if (queue.noTimestamp > 0) admin.push("Queue rows in flight with no timestamp (they never time out): " + queue.noTimestamp);
+  }
+
+  // ── SCR counts (hourly) and retry scan (daily) ──
+  const scr = _casSignalScr_(state, now);
+  if (scr.error) {
+    students.push("SCR counts: unavailable (" + scr.error + ")");
+  } else {
+    if (scr.awaiting > 0) {
+      students.push("SCR suggestions awaiting your confirm: " + scr.awaiting +
+        " (" + _casSignalPlural_(scr.awaitingStudents, "student") + ")");
+    }
+    if (scr.notAt2 > 0) {
+      const prev = state.prevNotAt2;
+      const change = prev === null || prev === undefined ? "no count from yesterday yet"
+        : (scr.notAt2 - prev === 0 ? "no change since yesterday"
+          : (scr.notAt2 - prev > 0 ? "+" : "") + (scr.notAt2 - prev) + " since yesterday");
+      students.push("Students not yet at SCR 2: " + scr.notAt2 + " (" + change + ")");
+    }
+  }
+  if (state.retryError) {
+    students.push("Students newly eligible for a retry: unavailable (" + state.retryError + ")");
+  } else if (state.retryNew > 0) {
+    students.push("Students newly eligible for a retry: " + state.retryNew +
+      (state.prevRetry ? "" : " (first scan, so every eligible student counts as new)"));
+  }
+
+  // ── Admin ──
+  if (watchdog.error || !watchdog.results) {
+    admin.push("Queue watchdog: the last run failed" + (watchdog.error ? " (" + watchdog.error + ")" : ""));
+  } else {
+    if (watchdog.dryRun) admin.push("Queue watchdog: DRY RUN (it reports stuck rows but doesn't fix them)");
+    const r = watchdog.results;
+    const timedOut = r.rubricQueue.timedOut + r.stagingPipeline.timedOut + r.warmUpQueue.timedOut;
+    const unknown = r.rubricQueue.unknown + r.stagingPipeline.unknown + r.warmUpQueue.unknown;
+    const missing = [r.rubricQueue, r.stagingPipeline, r.warmUpQueue].filter(function (q) { return q.sheetMissing; }).length;
+    if (timedOut > 0) admin.push("Queue rows " + (watchdog.dryRun ? "that would have timed out" : "timed out") + " this run: " + timedOut);
+    if (unknown > 0) admin.push("Queue rows with an unknown status (check for Studio residue): " + unknown);
+    if (missing > 0) admin.push("Queue tabs missing: " + missing);
+  }
+  try {
+    const failing = _ferpaHealthChecks_().filter(function (c) { return !c.ok; }).length;
+    if (failing > 0) admin.push("FERPA checks failing: " + failing + " (run the System Health Check)");
+  } catch (e) {
+    admin.push("FERPA checks: unavailable (" + e.message + ")");
+  }
+
+  _casSignalWriteState_(props, state);
+  _casSignalWriteDoc_(props, _casSignalLines_(students, admin, now, tz));
+  return { students: students, admin: admin };
+}
+
+function _casSignalLines_(students, admin, now, tz) {
+  const lines = [
+    CAS_SIGNAL_TITLE,
+    "Generated at: " + Utilities.formatDate(now, tz, "yyyy-MM-dd HH:mm") + " (" + tz + ")",
+    "Counts only: no names, IDs, grades or student text. Rewritten every 10 minutes by the CAS queue watchdog. " +
+      "Open the Teacher Dashboard to act on any of it.",
+    "",
+    "1. STUDENTS & FAMILIES",
+  ];
+  if (students.length) students.forEach(function (l) { lines.push("- " + l); });
+  else lines.push("Nothing waiting on you.");
+  lines.push("");
+  lines.push("2. ADMIN");
+  if (admin.length) admin.forEach(function (l) { lines.push("- " + l); });
+  else lines.push("Nothing needs attention.");
+  return lines;
+}
+
+// One read of STAGING_PIPELINE. Counts student docs, not rows, for the two
+// student lines (a doc resubmitted twice is one student waiting).
+function _casSignalQueueCounts_() {
+  const cfg = getConfig_();
+  const sheet = SpreadsheetApp.openById(cfg.adminSsId).getSheetByName(cfg.tabs.stagingPipeline || "STAGING_PIPELINE");
+  if (!sheet) throw new Error("STAGING_PIPELINE tab missing");
+  const C = WD_STAGING_PIPELINE_COLUMNS;
+  const data = sheet.getDataRange().getValues();
+  const waiting = {}, failed = {};
+  let noTimestamp = 0;
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const status = String(row[C.STATUS] || "").trim();
+    const doc = String(row[C.STUDENT_FILE_ID] || "").trim() || "row" + i;
+    if (status === "PENDING_INFERENCE" || status === "IN_PROCESS") {
+      waiting[doc] = true;
+      if (!_casSignalHasTime_(row[C.TIMESTAMP])) noTimestamp++;
+    } else if (status.indexOf("ERROR") === 0) {
+      failed[doc] = true;
+    }
+  }
+  return { waiting: Object.keys(waiting).length, failed: Object.keys(failed).length, noTimestamp: noTimestamp };
+}
+
+function _casSignalHasTime_(value) {
+  if (value === "" || value === null || value === undefined) return false;
+  return !isNaN(new Date(value).getTime());
+}
+
+// SCRSuggestions, at most hourly (the cached counts are reused in between),
+// plus the daily retry scan. Ratings: 1 is the highest; MET maps to 2.
+function _casSignalScr_(state, now) {
+  const nowMs = now.getTime();
+  if (state.scr && state.scrAt && nowMs - state.scrAt < CAS_SIGNAL_SCR_EVERY_MS) {
+    if (!state.scr.error) state.todayNotAt2 = state.scr.notAt2;
+    _casSignalMaybeRetryScan_(state, now, null);
+    return state.scr;
+  }
+  let scr;
+  let data = null;
+  try {
+    const cfg = getConfig_();
+    const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+    if (!sheet) throw new Error("SCRSuggestions tab missing");
+    data = sheet.getDataRange().getValues();
+    scr = _casSignalScrCounts_(data);
+  } catch (e) {
+    console.error("[CasSignal] SCR counts failed: " + e.message);
+    scr = { error: "SCRSuggestions couldn't be read" };
+  }
+  state.scr = scr;
+  state.scrAt = nowMs;
+  if (!scr.error) state.todayNotAt2 = scr.notAt2;
+  _casSignalMaybeRetryScan_(state, now, data);
+  return scr;
+}
+
+function _casSignalScrCounts_(data) {
+  let awaiting = 0;
+  const awaitingStudents = {};
+  const notAt2 = {};
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const email = String(row[SCRS.STUDENT_EMAIL] || "").trim().toLowerCase();
+    if (!email) continue;
+    const status = String(row[SCRS.STATUS] || "").trim();
+    let rating = null;
+    if (status === "SUGGESTED") {
+      awaiting++;
+      awaitingStudents[email] = true;
+      if (row[SCRS.SUGGESTED_RATING] !== "") rating = Number(row[SCRS.SUGGESTED_RATING]);
+    } else if (status === "CONFIRMED" || status === "OVERRIDDEN") {
+      if (row[SCRS.CONFIRMED_RATING] !== "") rating = Number(row[SCRS.CONFIRMED_RATING]);
+    }
+    if (rating !== null && rating > 2) notAt2[email] = true;
+  }
+  return {
+    awaiting: awaiting,
+    awaitingStudents: Object.keys(awaitingStudents).length,
+    notAt2: Object.keys(notAt2).length,
+  };
+}
+
+// Once a day: which students are retry-eligible now that weren't at the end
+// of yesterday. Between runs only short hash prefixes of the
+// student|competency pairs are kept (in this project's Script Properties),
+// never the emails themselves.
+function _casSignalMaybeRetryScan_(state, now, suggestionData) {
+  if (state.retryDay === state.day) return;
+  const started = Date.now();
+  try {
+    let data = suggestionData;
+    if (!data) {
+      const cfg = getConfig_();
+      const sheet = SpreadsheetApp.openById(cfg.ledgerSsId).getSheetByName(cfg.tabs.scrSuggestions || "SCRSuggestions");
+      if (!sheet) throw new Error("SCRSuggestions tab missing");
+      data = sheet.getDataRange().getValues();
+    }
+    const hashes = [];
+    const newStudents = {};
+    const prev = state.prevRetry ? state.prevRetry.reduce(function (m, h) { m[h] = true; return m; }, {}) : null;
+    const candidates = retryCandidates_(data);
+    for (let i = 0; i < candidates.length; i++) {
+      if (Date.now() - started > CAS_SIGNAL_RETRY_BUDGET_MS) throw new Error("scan ran past its time budget");
+      const c = candidates[i];
+      if (!checkRetryEligibility_(c.studentEmail, c.competencyId).eligible) continue;
+      const h = _casSignalHash_(c.studentEmail.toLowerCase() + "|" + c.competencyId);
+      hashes.push(h);
+      if (!prev || !prev[h]) newStudents[c.studentEmail.toLowerCase()] = true;
+    }
+    state.todayRetry = hashes;
+    state.retryNew = Object.keys(newStudents).length;
+    state.retryError = null;
+  } catch (e) {
+    console.error("[CasSignal] Retry scan failed: " + e.message);
+    state.retryError = e.message;
+  }
+  state.retryDay = state.day;
+}
+
+function _casSignalHash_(text) {
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, text);
+  return bytes.map(function (b) { return ((b + 256) % 256).toString(16).padStart(2, "0"); })
+    .join("").slice(0, CAS_SIGNAL_HASH_CHARS);
+}
+
+// At the first run of a new day, the end-of-yesterday values become the
+// baselines "since yesterday" compares against.
+function _casSignalRollDay_(state, today) {
+  if (state.day === today) return;
+  if (state.day) {
+    state.prevNotAt2 = state.todayNotAt2 === undefined ? null : state.todayNotAt2;
+    state.prevRetry = state.todayRetry || null;
+  }
+  state.day = today;
+  state.todayNotAt2 = undefined;
+  state.todayRetry = null;
+  state.retryNew = 0;
+}
+
+function _casSignalReadState_(props) {
+  try {
+    return JSON.parse(props.getProperty(CAS_SIGNAL_STATE_KEY) || "{}");
+  } catch (e) {
+    return {};
+  }
+}
+
+function _casSignalWriteState_(props, state) {
+  props.setProperty(CAS_SIGNAL_STATE_KEY, JSON.stringify(state));
+}
+
+function _casSignalWriteDoc_(props, lines) {
+  const doc = _casSignalDoc_(props);
+  const body = doc.getBody();
+  // A cleared body keeps one empty paragraph: the title goes into it.
+  body.clear();
+  body.setText(lines[0]);
+  lines.slice(1).forEach(function (l) { body.appendParagraph(l); });
+  doc.saveAndClose();
+}
+
+function _casSignalDoc_(props) {
+  const id = props.getProperty("CAS_SIGNAL_DOC_ID");
+  if (id) {
+    try { return DocumentApp.openById(id); } catch (e) { /* recreated below */ }
+  }
+  const doc = DocumentApp.create(CAS_SIGNAL_TITLE);
+  const folderId = props.getProperty("CAS_SIGNAL_FOLDER_ID");
+  if (folderId) {
+    try { DriveApp.getFileById(doc.getId()).moveTo(DriveApp.getFolderById(folderId)); } catch (e) { /* stays in My Drive */ }
+  }
+  props.setProperty("CAS_SIGNAL_DOC_ID", doc.getId());
+  return doc;
+}
+
+function _casSignalPlural_(n, word) {
+  return n + " " + word + (n === 1 ? "" : "s");
+}
