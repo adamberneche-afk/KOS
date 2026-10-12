@@ -24,8 +24,9 @@
 //   - SCR suggestions awaiting the teacher's confirm (SCRSuggestions
 //     SUGGESTED)
 //   - students newly eligible for a retry since yesterday (30b)
-//   - students not yet at SCR 2 (a current rating of 3, 4 or 5; 1 is the
-//     highest), with the change since yesterday
+//   - students rated below satisfactory on the SCR (a current rating of 4
+//     or 5; the state scale counts 1-3 as satisfactory, 1 the highest),
+//     with the change since yesterday
 // SECTION 2, ADMIN
 //   - watchdog in DRY RUN; the watchdog run itself failing
 //   - rows the watchdog timed out this run; unknown-status rows (Studio
@@ -94,12 +95,12 @@ function writeCasSignal_(watchdog, now) {
       students.push("SCR suggestions awaiting your confirm: " + scr.awaiting +
         " (" + _casSignalPlural_(scr.awaitingStudents, "student") + ")");
     }
-    if (scr.notAt2 > 0) {
-      const prev = state.prevNotAt2;
+    if (scr.belowSat > 0) {
+      const prev = state.prevBelowSat;
       const change = prev === null || prev === undefined ? "no count from yesterday yet"
-        : (scr.notAt2 - prev === 0 ? "no change since yesterday"
-          : (scr.notAt2 - prev > 0 ? "+" : "") + (scr.notAt2 - prev) + " since yesterday");
-      students.push("Students not yet at SCR 2: " + scr.notAt2 + " (" + change + ")");
+        : (scr.belowSat - prev === 0 ? "no change since yesterday"
+          : (scr.belowSat - prev > 0 ? "+" : "") + (scr.belowSat - prev) + " since yesterday");
+      students.push("Students below satisfactory on the SCR (a 4 or 5): " + scr.belowSat + " (" + change + ")");
     }
   }
   if (state.retryError) {
@@ -182,11 +183,12 @@ function _casSignalHasTime_(value) {
 }
 
 // SCRSuggestions, at most hourly (the cached counts are reused in between),
-// plus the daily retry scan. Ratings: 1 is the highest; MET maps to 2.
+// plus the daily retry scan. SCR scale: 1 (can teach others) is the highest,
+// 1-3 are satisfactory, 4 is "with supervision", 5 "cannot perform".
 function _casSignalScr_(state, now) {
   const nowMs = now.getTime();
   if (state.scr && state.scrAt && nowMs - state.scrAt < CAS_SIGNAL_SCR_EVERY_MS) {
-    if (!state.scr.error) state.todayNotAt2 = state.scr.notAt2;
+    if (!state.scr.error) state.todayBelowSat = state.scr.belowSat;
     _casSignalMaybeRetryScan_(state, now, null);
     return state.scr;
   }
@@ -204,7 +206,7 @@ function _casSignalScr_(state, now) {
   }
   state.scr = scr;
   state.scrAt = nowMs;
-  if (!scr.error) state.todayNotAt2 = scr.notAt2;
+  if (!scr.error) state.todayBelowSat = scr.belowSat;
   _casSignalMaybeRetryScan_(state, now, data);
   return scr;
 }
@@ -212,7 +214,7 @@ function _casSignalScr_(state, now) {
 function _casSignalScrCounts_(data) {
   let awaiting = 0;
   const awaitingStudents = {};
-  const notAt2 = {};
+  const belowSat = {};
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const email = String(row[SCRS.STUDENT_EMAIL] || "").trim().toLowerCase();
@@ -226,12 +228,12 @@ function _casSignalScrCounts_(data) {
     } else if (status === "CONFIRMED" || status === "OVERRIDDEN") {
       if (row[SCRS.CONFIRMED_RATING] !== "") rating = Number(row[SCRS.CONFIRMED_RATING]);
     }
-    if (rating !== null && rating > 2) notAt2[email] = true;
+    if (rating !== null && rating > 3) belowSat[email] = true;
   }
   return {
     awaiting: awaiting,
     awaitingStudents: Object.keys(awaitingStudents).length,
-    notAt2: Object.keys(notAt2).length,
+    belowSat: Object.keys(belowSat).length,
   };
 }
 
@@ -283,11 +285,11 @@ function _casSignalHash_(text) {
 function _casSignalRollDay_(state, today) {
   if (state.day === today) return;
   if (state.day) {
-    state.prevNotAt2 = state.todayNotAt2 === undefined ? null : state.todayNotAt2;
+    state.prevBelowSat = state.todayBelowSat === undefined ? null : state.todayBelowSat;
     state.prevRetry = state.todayRetry || null;
   }
   state.day = today;
-  state.todayNotAt2 = undefined;
+  state.todayBelowSat = undefined;
   state.todayRetry = null;
   state.retryNew = 0;
 }
