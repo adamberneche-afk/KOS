@@ -3094,3 +3094,14 @@ It runs after the scan as well as the harvest, so the keyword tripwire
 pushes without waiting on Gemini. `FamilyMailLog` gains `Alerted_At`
 (nothing deployed reads the tab yet). `sendFamilyAlertTest()` confirms the
 phone gets it; preflight fails until the topic is set.
+
+## Family Mail Sentinel: first live run fix, 2026-10-12
+
+The first live `runFamilySentinel()` scan failed with "Could not decode
+string." The advanced Gmail service in Apps Script returns a body part's
+data as decoded bytes, not the API's base64url string, and
+`_fmsDecode_()` decoded it again. It now handles both (a string gets its
+`=` padding back), and an undecodable part reads as empty. A message Gmail
+won't return is now skipped and counted (`errors`) instead of stopping the
+scan, and the scan mark is held back so it is retried. The same run's
+harvest answered the fixture, so the Flow works end to end.

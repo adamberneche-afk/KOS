@@ -285,11 +285,20 @@ function scanFamilyMail(opts) {
     if (r[FMS_LOG.THREAD_ID] && st !== FMS_STATUS.NOT_FAMILY && st !== FMS_STATUS.FIXTURE) familyThreads[String(r[FMS_LOG.THREAD_ID])] = r;
   });
 
-  const out = { checked: 0, queued: 0, safety: 0 };
+  const out = { checked: 0, queued: 0, safety: 0, errors: 0 };
   refs.forEach(function (ref) {
     if (seen[ref.id]) return;
     out.checked++;
-    const msg = _fmsReadMessage_(Gmail.Users.Messages.get("me", ref.id, { format: "full" }));
+    let msg;
+    try {
+      msg = _fmsReadMessage_(Gmail.Users.Messages.get("me", ref.id, { format: "full" }));
+    } catch (e) {
+      // One unreadable message is skipped, not the whole scan. The scan
+      // mark isn't moved (below), so it is tried again next run.
+      out.errors++;
+      out.lastError = String(e);
+      return;
+    }
     const fam = _fmsDetectFamily_(msg, roster, contacts, operator) ||
       _fmsFromFamilyThread_(msg, familyThreads[msg.threadId], operator);
     if (!fam) return;
@@ -318,7 +327,7 @@ function scanFamilyMail(opts) {
     familyThreads[msg.threadId] = row;
     out.queued++;
   });
-  props.setProperty("FAMILY_SENTINEL_LAST_SCAN_AT", String(startedAt));
+  if (!out.errors) props.setProperty("FAMILY_SENTINEL_LAST_SCAN_AT", String(startedAt));
   return out;
 }
 
@@ -389,8 +398,21 @@ function _fmsCollectBodies_(part, found) {
   (part.parts || []).forEach(function (child) { _fmsCollectBodies_(child, found); });
 }
 
+// A body part's data, as text. In Apps Script the advanced Gmail service
+// usually hands back the bytes already decoded (a byte array), not the
+// API's base64url string; decoding that again threw "Could not decode
+// string" on the first live run (2026-10-12). Both shapes are handled, a
+// string gets its "=" padding back first, and anything undecodable comes
+// back "" so one odd message can't stop a scan.
 function _fmsDecode_(data) {
-  return Utilities.newBlob(Utilities.base64DecodeWebSafe(data)).getDataAsString("UTF-8");
+  if (data === null || data === undefined || data === "") return "";
+  try {
+    if (typeof data !== "string") return Utilities.newBlob(data).getDataAsString("UTF-8");
+    const padded = data + "===".slice(0, (4 - data.length % 4) % 4);
+    return Utilities.newBlob(Utilities.base64DecodeWebSafe(padded)).getDataAsString("UTF-8");
+  } catch (e) {
+    return "";
+  }
 }
 
 // Returns null, or { source, studentEmail, course, period, student }.
