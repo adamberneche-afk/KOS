@@ -8,7 +8,7 @@ keep the two in step: in October 2026 the 8177 files were edited in the repo (co
 lines re-matched to the 2025 task list, lessons expanded) and the Drive docs were updated
 to match on 2026-10-12. Two 8177 lessons were written in the repo first:
 `the-cloud-behind-the-game.md` (its Drive doc was created from it) and
-`game-day-takeover.md` (no Drive doc yet).
+`game-day-takeover.md` (likewise).
 
 | Folder | Course | Drive folder ID | Contents |
 |---|---|---|---|

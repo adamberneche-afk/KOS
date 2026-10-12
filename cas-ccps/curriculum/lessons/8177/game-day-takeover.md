@@ -1,5 +1,6 @@
+<!-- source: Google Doc 1W76FPone_EiodzhTspZ6UL6SLoGoNEdTkiIbDceGIvc -->
 <!-- title: Lesson Plan: Game Day Takeover -->
-<!-- written in the repo 2026-10-12 to cover competencies 99 and 100; there is no Drive copy yet -->
+<!-- written in the repo 2026-10-12 (competencies 99 and 100, with 10, 58, 95, 101); the Drive doc was created from this file the same day -->
 
 # **Lesson Plan: Game Day Takeover (Running an Event & Thanking the Team)**
 
