@@ -32,7 +32,7 @@ const EXPORTS = [
   'scanFamilyMail', 'harvestFamilyMailReturns', 'writeFamilySignal',
   'runFamilySentinelPreflight', 'runFamilyMailCanary', 'checkFamilyMailFlowBinding',
   'checkFamilyMailFlowLiveness', 'installFamilyMailFixture', 'syncFamilyMailFlowBuildSpec',
-  'sendFamilySafetyAlerts', 'sendFamilyAlertTest', 'makeFamilyAlertTopic',
+  'sendFamilySafetyAlerts', 'sendFamilyAlertTest', 'makeFamilyAlertTopic', 'runFamilySafetyAlertFixture',
   'FAMILY_MAIL_TRIAGE_PROMPT', 'FMS_LOG', 'FMS_LOG_HEADERS',
 ];
 
@@ -392,6 +392,40 @@ test('makeFamilyAlertTopic makes one private topic and keeps it; the test push u
   fx.exported.sendFamilyAlertTest();
   assert.equal(fx.pushes.length, 1);
   assert.equal(fx.pushes[0].headers.Priority, 'default');
+});
+
+test('the notification fixture pushes a TEST through the real alert path and cleans up', () => {
+  const fx = setUp([]);
+  const noTopic = fx.exported.runFamilySafetyAlertFixture();
+  assert.equal(noTopic.ok, false, 'no topic yet');
+  assert.equal(rows(fx.ss, 'FamilyMailLog').length, 0, 'fixture row removed even on failure');
+
+  fx.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
+  const out = fx.exported.runFamilySafetyAlertFixture();
+  assert.equal(out.ok, true, JSON.stringify(out));
+  assert.equal(fx.pushes.length, 1);
+  assert.equal(fx.pushes[0].headers.Title, 'KOS TEST');
+  assert.equal(fx.pushes[0].headers.Priority, 'urgent');
+  assert.equal(fx.pushes[0].body, 'Test: A family message needs you now. Open Gmail, label KOS/Family/Now.');
+  assert.equal(rows(fx.ss, 'FamilyMailLog').length, 0);
+  assert.equal(fx.exported.writeFamilySignal().open, 0, 'never in the signal doc');
+
+  // A failing push fails the fixture.
+  fx.urlFetch.failWith = 500;
+  assert.equal(fx.exported.runFamilySafetyAlertFixture().ok, false);
+});
+
+test('a real safety message due alongside a fixture gets a real push', () => {
+  const safe = {
+    id: 's9', threadId: 'ts9', internalDate: now - 1 * HOUR,
+    from: 'Jordan Rivers <jrivers@student.ccpsnet.net>', subject: 'help', body: 'I want to hurt myself.',
+  };
+  const fx = setUp([safe]);
+  fx.props.setProperty('FAMILY_ALERT_NTFY_TOPIC', 'kos-abc123');
+  fx.exported.scanFamilyMail();
+  fx.exported.runFamilySafetyAlertFixture();
+  assert.equal(fx.pushes[0].headers.Title, 'KOS');
+  assert.equal(fx.pushes[0].body, '2 family messages need you now. Open Gmail, label KOS/Family/Now.');
 });
 
 test('the tripwire matches whole words only', () => {

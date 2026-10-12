@@ -125,7 +125,11 @@ shut its gateway in 2025.)
 4a. **Phone alerts:** install the free ntfy app on the iPhone and allow its
    notifications (and Time Sensitive). Run `makeFamilyAlertTopic()`; its log
    shows the topic. In ntfy, tap + and subscribe to that topic on ntfy.sh.
-   Run `sendFamilyAlertTest()` and check the phone.
+   Run `sendFamilyAlertTest()` and check the phone (proves ntfy reaches it),
+   then `runFamilySafetyAlertFixture()` (proves the sentinel pushes for a
+   flagged message: a synthetic safety row goes through the real alert
+   path, and the phone shows "KOS TEST / Test: A family message needs you
+   now..."; the row is removed afterwards).
 5. **Optional:** add parent addresses to `FamilyContacts` (parent email,
    student email).
 6. **Build the Flow** in Workspace Studio from the `FamilyMailBuildSpec` tab:
@@ -152,3 +156,4 @@ To pause it: Script Property `FAMILY_SENTINEL_ENABLED` = `false`.
 | Does the script half work? | `runFamilyMailCanary()` (Flow and Gmail stubbed) |
 | Are the columns bound right? | `checkFamilyMailFlowBinding()` |
 | Has the Flow ever answered? | `checkFamilyMailFlowLiveness()` |
+| Does a flagged message reach the phone? | `runFamilySafetyAlertFixture()` (a real push, marked TEST) |
