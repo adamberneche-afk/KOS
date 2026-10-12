@@ -52,7 +52,7 @@ By the end of this lesson, students will be able to:
 
 ### **B. Direct Instruction: Branding for Events (15 Minutes)**
 
-  - **Atmospherics (Comp 85):** How branding moves from a computer screen to the physical walls of a venue.
+  - **Atmospherics (Comp 45):** How branding moves from a computer screen to the physical walls of a venue.
   - **Motivation (Comp 93):** The psychology of color in sports (e.g., why "Power" colors like Black and Gold are used for aggressive brands).
 
 ### **C. Guided Application: The Identity Persona (20 Minutes)**
@@ -80,7 +80,7 @@ Students create their boards including:
 
 | **Colors** | 5 total, intentional contrast | |
 
-| **Font** | Matches brand voice (Comp 81) | |
+| **Font** | Matches brand voice (Comp 42) | |
 
 | **Logos** | 2 versions for venue/media use | |
 

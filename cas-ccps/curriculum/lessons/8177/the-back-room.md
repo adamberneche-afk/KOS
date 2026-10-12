@@ -42,7 +42,7 @@ By the end of this lesson, students will be able to:
 
 ### **B. Channels & Technology (15 Minutes)**
 
-  - **Direct Instruction (Comp 57, 58, 59):** Map out the journey of a Cavalier hoodie on the whiteboard:
+  - **Direct Instruction (Comp 27 & 41):** Map out the journey of a Cavalier hoodie on the whiteboard:
 
 <!-- end list -->
 
@@ -54,7 +54,7 @@ By the end of this lesson, students will be able to:
 
 ### **C. Operations: The Receiving Process (15 Minutes)**
 
-  - **Direct Instruction (Comp 60, 61, 62):** Walk students through the back room of the Cavalier Shop (or use photos).
+  - **Direct Instruction (Comp 14 & 26):** Walk students through the back room of the Cavalier Shop (or use photos).
   - **The Tools:** Discuss the safe use of receiving equipment (box cutters, dollies) and digital tools (inventory scanning guns).
   - **The Golden Rule of Receiving:** *Never sign the delivery driver's paperwork until you have opened the box and verified the Packing Slip matches the actual physical items.*
 
@@ -74,5 +74,5 @@ Students will submit a formal operations report containing:
 
 ## **6. Faculty & Student Handbook Compliance**
 
-  - **Workplace Safety (OSHA/School Guidelines):** When discussing receiving equipment (Comp 61), emphasize safety. Students are strictly prohibited from using sharp tools (like box cutters) or heavy lifting equipment without direct, hands-on faculty supervision. Emphasize proper lifting techniques (lift with the knees).
+  - **Workplace Safety (OSHA/School Guidelines):** When discussing receiving equipment (Comp 26), emphasize safety. Students are strictly prohibited from using sharp tools (like box cutters) or heavy lifting equipment without direct, hands-on faculty supervision. Emphasize proper lifting techniques (lift with the knees).
   - **Integrity (Handling Merchandise):** Emphasize that "shrink" (stolen or lost inventory) often happens in the back room before items even hit the sales floor. Handling inventory requires absolute honesty and accountability to the CHHS student body whose funds purchased the goods.
