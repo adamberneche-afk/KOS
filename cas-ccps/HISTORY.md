@@ -3049,4 +3049,8 @@ learning. L06, the live assignment, is unchanged.
 
 The student assignment text changed for 15 lessons, so `55b` and
 `8175.imscc` were rebuilt. Not yet live: push central-ledger and re-import
-the 8175 cartridge. Not yet in Drive: the 16 expanded lesson docs.
+the 8175 cartridge. Drive (same day): the 16 expanded lesson docs were
+edited in place, adding only the new lines (competency lines, mini-lessons,
+student task items) and the rebuilt Duty Areas. Each doc was checked first
+against its text after the previous sync, and each added paragraph
+afterwards for its text, bold label, font and list.
