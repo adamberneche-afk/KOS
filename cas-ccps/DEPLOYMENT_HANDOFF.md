@@ -1,6 +1,6 @@
 # cas-ccps Deployment Handoff
 
-> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-10)
+> ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-12)
 >
 > **The repo-wide handoff is [`meta/HANDOFF_2026-10-10.md`](../meta/HANDOFF_2026-10-10.md)**:
 > every system's state and the operator's queue in order. The other two
@@ -27,7 +27,12 @@
 >   so push **every** cas-ccps project, update both web apps' existing
 >   deployments, and run `syncFlowPromptsToSheet()`. The order is in
 >   `meta/HANDOFF_2026-10-10.md`.
-> - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-10), then
+> - **Merged 2026-10-11/12, not yet pushed (#135–#149):** the 8177
+>   curriculum: a student prompt for every lesson, competency lines on the
+>   2025 task list, two new lessons, all 108 tasks covered
+>   (`cas-ccps/HISTORY.md`, newest entry). Push central-ledger (`55b`) and
+>   import the rebuilt `8177.imscc` (30 modules).
+> - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-12), then
 >   the first real Flow 2 run when students submit.
 >
 > **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
