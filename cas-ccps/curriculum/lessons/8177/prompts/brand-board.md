@@ -1,5 +1,5 @@
 <!-- lesson: brand-board -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Brand Board Project"). Background
      where the plan is thin is listed in the PR that added this file for the
      teacher to check. -->
