@@ -15,9 +15,10 @@
 >   `CAS-8177-EMPLOYEE-HANDBOOK-OPERATIONS`, every rostered student enrolled
 >   (71 in 8175, 21 in 8177). The curricula are complete: every state task is
 >   covered in both courses, and every lesson doc in Drive matches the repo.
+> - **Done after the push:** `AI_FLOWS_LIVE` = `true` in the **Student
+>   Dashboard** project (2026-10-12).
 > - **Not yet reported done after the push:** `syncFlowPromptsToSheet()`;
->   `seedLessonSchedule()` and start dates for the new 8177 lessons;
->   `AI_FLOWS_LIVE` = `true` in the **Student Dashboard** project; the
+>   `seedLessonSchedule()` and start dates for the new 8177 lessons; the
 >   Canvas cartridge imports (`8175.imscc`, 36 modules; `8177.imscc`, 31;
 >   in progress 2026-10-12); the first end-to-end Flow 2 test. The order is
 >   in `meta/HANDOFF_2026-10-12.md`.
@@ -33,9 +34,9 @@
 > - Left: step 18 (import the Canvas cartridges), then the first real Flow
 >   2 run when students submit.
 >
-> **All five cas-ccps flows are live and verified end to end.** All 8 cas-ccps
-> projects are live in a real `ccpsnet.net` Workspace account, Module 1 and
-> Module 2 (Phase A + B) are set up, and Flow 1 through Flow 5 have each been
+> **All five cas-ccps flows are live and verified end to end.** All 9 cas-ccps
+> projects (the original eight plus the Family Mail Sentinel) are live in a
+> real `ccpsnet.net` Workspace account, Module 1 and Module 2 (Phase A + B) are set up, and Flow 1 through Flow 5 have each been
 > built in Studio and confirmed with their own liveness check
 > (`checkFlow2Liveness()`, `checkWarmUpFlowLiveness()`) — not just a green
 > "Run Completed" banner. "Verified" means a real Studio run against seeded
