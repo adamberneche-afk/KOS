@@ -149,7 +149,8 @@ The KOS Claude Project may not read CAS sheets (SMP-005), so
 queue-watchdog run (every 10 minutes) it rewrites `KOS_CAS_SIGNAL`:
 students and families first (submissions waiting on feedback or failed, SCR
 suggestions awaiting the teacher's confirm, students newly retry-eligible,
-students not yet at SCR 2 with the change since yesterday), then admin
+students rated below satisfactory on the SCR, a 4 or 5, with the change
+since yesterday), then admin
 (watchdog dry run or failure, timed-out and unknown-status queue rows, rows
 in flight with no timestamp, failing FERPA checks). A line shows only above
 zero; a count that can't be read says "unavailable". No names, IDs, grades or

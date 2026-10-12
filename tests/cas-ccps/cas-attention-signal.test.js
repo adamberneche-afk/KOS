@@ -108,8 +108,8 @@ test('writeCasSignal_: students first, counts only, no identifiers in the doc', 
   assert.match(text, /- Submissions waiting on feedback: 2/);
   assert.match(text, /- Submissions whose evaluation failed or timed out: 1/);
   assert.match(text, /- SCR suggestions awaiting your confirm: 2 \(1 student\)/);
-  // ann (suggested 3) and cy (confirmed 4); bo is at 2, 1 is the highest.
-  assert.match(text, /- Students not yet at SCR 2: 2 \(no count from yesterday yet\)/);
+  // Only cy (overridden to 4): 1-3 are satisfactory on the state scale.
+  assert.match(text, /- Students below satisfactory on the SCR \(a 4 or 5\): 1 \(no count from yesterday yet\)/);
   assert.ok(text.indexOf('1. STUDENTS') < text.indexOf('2. ADMIN'));
   for (const id of ['FILE-', '@student.net', 'C1', 'CFG', 't@x.net']) {
     assert.ok(!text.includes(id), 'the doc must not carry ' + id);
@@ -164,7 +164,8 @@ test('writeCasSignal_: "since yesterday" compares against the end of the previou
   sh.appendRow(scrRow('c@s.net', 'C1', 'SUGGESTED', 4));
   // Next day, past the hourly SCR cache.
   env.exported.writeCasSignal_(okWatchdog(), new Date('2026-10-13T15:00:00Z'));
-  assert.match(signalText(env), /Students not yet at SCR 2: 3 \(\+2 since yesterday\)/);
+  // a is at 3 (satisfactory); b and c are at 4.
+  assert.match(signalText(env), /below satisfactory on the SCR \(a 4 or 5\): 2 \(\+2 since yesterday\)/);
 });
 
 test('writeCasSignal_: SCR counts are cached for an hour', () => {
