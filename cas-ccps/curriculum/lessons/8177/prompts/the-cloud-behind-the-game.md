@@ -2,7 +2,9 @@
 <!-- status: draft 2026-10-12, for the teacher to review; change to "approved" to use it -->
 <!-- Written with the lesson plan ("The Cloud Behind the Game"). The
      Chesterfield proposal and every number on its fact sheet are made up
-     for practice; the two news excerpts are written from that fact sheet.
+     for practice. The two news stories use only facts from that sheet,
+     so every number in them checks out; they differ only in which facts
+     they pick, how they compare them, and whom they quote.
      Real-world facts in the background: Northern Virginia is the largest
      data center market in the world; the "70% of internet traffic" claim is
      widely repeated but unverified; the IEA (2025) projected data center
@@ -18,12 +20,12 @@ Assignment: The Data Center Decision
 A technology company wants to build a data center campus in Chesterfield County. (This proposal is made up for practice, but proposals like it are real across Virginia.) The county has asked a community advisory panel, you, to study it. Use this fact sheet:
 
 - Investment: $2 billion to build.
-- Site: 200 acres, next to a neighborhood and a county park.
-- Construction jobs: about 1,500 for three years.
-- Permanent jobs after it opens: about 50.
-- Local tax revenue: about $25 million a year.
-- Electricity: as much as about 200,000 homes use.
-- Water: up to 500,000 gallons a day on hot days, for cooling.
+- Site: 200 acres, next to a neighborhood and a county park. The county has about 280,000 acres, so the site is less than one-tenth of 1% of the county's land.
+- Construction jobs: about 1,500, for three years.
+- Permanent jobs after it opens: about 50, paying an average of $90,000 a year.
+- Local tax revenue: about $25 million a year. The county's yearly budget is about $1 billion, so that's about 2.5% of the budget.
+- Electricity: as much as about 200,000 homes use. The county has about 140,000 households.
+- Water: up to 500,000 gallons a day on hot days, for cooling. That's about as much as 1,700 homes use in a day.
 - Noise: a constant hum from cooling fans, plus 40 diesel backup generators tested every month.
 - The AI option: if the campus is built for AI, it would use about twice the electricity and more water for cooling, with about the same number of jobs.
 
@@ -31,11 +33,16 @@ Part 1: Follow the Game. Pick one sports or entertainment experience (a streamed
 
 Part 2: The Pros and Cons. Make a T-chart with at least three pros and three cons from the fact sheet. Include at least one economic, one social and one environmental point. Then explain in a few sentences how your chart changes if the county chooses the AI option.
 
-Part 3: Read the Headlines. Both stories below were written from the same fact sheet. For each one, list the loaded words, name two facts it leaves out, and say whose point of view it shows. Then write your own neutral headline.
+Part 3: Fact-Check the News. Both stories below were written about this proposal. Read them, then:
 
-Story A: "Tech Giant's $2 Billion Investment to Bring 1,500 Jobs and Millions to Chesterfield. The project promises an economic boom for the county, delivering $25 million a year that could fund schools without raising taxes, a company vice president said."
+- Fact-check: list every number or factual claim in each story. For each one, find it on the fact sheet and mark it "true," "true but missing context" or "not on the fact sheet."
+- Fact or opinion: find the quote in each story. Is it a fact you can check, or someone's opinion?
+- Same facts, different story: both stories are accurate, so how do they leave readers with opposite impressions? Explain at least three ways, such as which facts each story includes or leaves out, what each number is compared to, the headline, word choice, and whom each story quotes.
+- Your version: write a headline and a three-sentence story that gives readers both sides, using only facts from the fact sheet.
 
-Story B: "Power-Hungry Data Center Threatens Quiet Neighborhood. The massive complex would guzzle as much electricity as 200,000 homes and roar day and night next to a beloved park, worried residents said, all for just 50 jobs."
+Story A: "$2 Billion Tech Campus Would Bring 1,500 Jobs, $25 Million a Year to Chesterfield. A technology company plans to invest $2 billion in a data center campus in Chesterfield County, a major boost that would create about 1,500 construction jobs. Once it opens, the campus would pay the county about $25 million in taxes every year and employ about 50 people in jobs averaging $90,000 a year. It would take up less than one-tenth of 1% of the county's land. 'This is the kind of investment that pays for schools without raising anyone's taxes,' said a company vice president."
+
+Story B: "Data Center Would Use More Power Than Every Home in Chesterfield. A massive data center campus proposed next to a Chesterfield neighborhood and county park would use as much electricity as about 200,000 homes, more than all 140,000 households in the county combined. On hot days, it could use up to 500,000 gallons of water, about what 1,700 homes use in a day, and its 40 diesel backup generators would be tested every month. Once construction ends, the campus would employ about 50 people, and its taxes would cover about 2.5% of the county's budget. 'We moved here for the quiet,' said a neighbor who lives near the site."
 
 Part 4: The Startup. Design a small business that turns this data center into an opportunity, or solves a problem it creates, and connects to sports, entertainment or events. (Ideas: a company that streams high school games, an esports gaming lounge, a business that reuses the data center's waste heat.) Describe:
 
@@ -45,7 +52,7 @@ Part 4: The Startup. Design a small business that turns this data center into an
 
 Part 5: Your Recommendation. Should the county support the data center, oppose it, or support it with conditions (and if so, which conditions)? Should it allow the AI option? Write one paragraph backed by evidence from the fact sheet.
 
-Use these terms accurately: data center, the cloud, artificial intelligence, esports, media bias, loaded language, entrepreneurial mindset, organizational chart, small business.
+Use these terms accurately: data center, the cloud, artificial intelligence, esports, media bias, framing, fact-check, loaded language, entrepreneurial mindset, organizational chart, small business.
 
 ## Background
 
@@ -76,12 +83,17 @@ The AI factor: AI uses much more computing power than tasks like streaming or st
 
 Small businesses and jobs: small businesses create most new jobs in the U.S. A data center's own staff may be small, but electricians, HVAC technicians, security companies, restaurants and suppliers can all grow around it. That's where much of the local job growth comes from.
 
-Spotting media bias: a news story can be accurate and still one-sided. Watch for:
+Spotting media bias: a news story can be completely accurate and still one-sided. Reporters and editors choose which facts to use, what to compare them to and whom to quote, and those choices shape what readers believe. Watch for:
 
-- Loaded language: words that tell you how to feel, like "boom," "guzzle" or "threatens."
-- Missing facts: a story about jobs that skips the electricity use, or a story about noise that skips the tax revenue.
-- One-sided sources: quoting only the company, or only worried neighbors.
+- Selection: which facts make it into the story, and which are left out. A story about jobs can skip the electricity; a story about noise can skip the tax revenue. Every sentence can be true while the whole picture is not.
+- Framing: the same number can be made to sound big or small. "$25 million a year" sounds like a lot; "about 2.5% of the budget" sounds small. Both describe the same money.
+- Comparisons: "as much electricity as 200,000 homes" means more when you add that the county only has 140,000 households.
+- The headline: many people read only the headline, so it's the strongest framing choice in the story.
+- Loaded language: words that tell you how to feel, like "boost" or "massive."
+- Quotes: a quote is often an opinion, not a fact. Notice whom the story chose to quote, and whether the other side gets a voice.
 - Unchecked numbers: you may hear that "70% of the world's internet traffic passes through Northern Virginia." It gets repeated a lot, but it is very hard to verify. Before you repeat a statistic, find out where it came from.
+
+Fact-checking means tracing each claim back to a reliable source. A good fact-checker asks two questions: "Is it true?" and "What's missing?"
 
 The entrepreneurial mindset: entrepreneurs see problems as opportunities. In England, a startup used the heat from a small data center to warm a public swimming pool, so the pool saved money on heating. Entrepreneurs spot needs, take calculated risks, make the most of what they have, and keep going when something doesn't work.
 
@@ -94,6 +106,8 @@ An organizational chart shows every role in a business and who reports to whom. 
 - Artificial intelligence (AI): computer programs that can do tasks that normally take human thinking, like writing, recognizing images or making predictions.
 - Esports: organized, competitive video gaming, often played in front of live and online audiences.
 - Media bias: when news coverage favors one side, through word choice, which facts it includes, or whom it quotes.
+- Framing: presenting a fact in a way that shapes how people react to it, like what it's compared to.
+- Fact-check: tracing each claim back to a reliable source to see whether it's true and what's missing.
 - Loaded language: words chosen to make readers feel a certain way.
 - Entrepreneurial mindset: a way of thinking that sees problems as opportunities and is willing to take smart risks.
 - Organizational chart: a diagram that shows the roles in an organization and who reports to whom.
@@ -116,4 +130,4 @@ When you stream a game or pull up a mobile ticket, where do you think that infor
 
 ## Vocabulary
 
-data center, the cloud, artificial intelligence, esports, media bias, loaded language, entrepreneurial mindset, organizational chart, small business
+data center, the cloud, artificial intelligence, esports, media bias, framing, fact-check, loaded language, entrepreneurial mindset, organizational chart, small business
