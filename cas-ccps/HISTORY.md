@@ -3112,3 +3112,11 @@ runs the real alert path (topic, daily cap, push, `Alerted_At`), checks the
 row was marked, and removes it. The push is titled "KOS TEST" and starts
 "Test:"; if a real safety message is due at the same moment, the push is a
 real one. Fixture rows never reach the signal doc.
+
+## Family Mail Sentinel live, 2026-10-12
+
+The teacher bound the project for `run.ps1` (`clasp clone` into
+`clasp-registry\cas-ccps\family-sentinel`; `run.ps1` reads script IDs
+there, not from the repo), pushed, ran setup, built the Flow, installed the
+trigger, and tested the safety alert end to end: `sendFamilyAlertTest()` and
+`runFamilySafetyAlertFixture()` both reached the phone through ntfy.
