@@ -61,6 +61,7 @@ Each "open" links to the Gmail thread. Numbers are reassigned every run, so
 | `FamilyMailLog` tab | Message and thread IDs, course, period, category, urgency, the one-line ask. No names, no text. Kept 30 days. |
 | `KOS_FAMILY_SIGNAL` doc, and so Claude | Course, period, source, category, ask, hours waiting, repeat-contact count. Sensitive categories (accommodation, health, discipline, family situation, safety) show none of those, only "sensitive" and the wait. |
 | The KOS Project's own mail search | Nothing labeled `KOS/Family`, nothing from `student.ccpsnet.net` or Canvas. |
+| The phone carrier (safety texts only) | "A family message needs you now. Open Gmail, label KOS/Family/Now." and a count. Nothing else. |
 
 The ask is withheld when it names a rostered student or the sender, uses a
 title or a capitalized name the roster doesn't hold, or shares no content
@@ -80,9 +81,36 @@ Two checks set it independently: a keyword tripwire that runs before Gemini
 safety flag. Either one adds `KOS/Family/Now` and puts the thread first in
 the signal doc as "needs you now".
 
-**Open:** how a "needs you now" message reaches the teacher's phone at once.
-A calendar alert won't reach the teacher directly. Nothing in the sentinel
-sends anything; this is the next thing to plan.
+**A text to the phone.** `sendFamilySafetyAlerts()` texts the teacher through
+the carrier's email-to-text address, right after the scan (so the tripwire
+alone is enough) and again after the harvest (for Gemini's flag). The whole
+text is:
+
+```
+KOS / A family message needs you now. Open Gmail, label KOS/Family/Now.
+```
+
+or "2 family messages need you now". Nothing else: no name, course, sender
+or word of the message reaches the carrier. One text per run however many
+threads; each thread is texted once; at any hour, since only safety texts;
+messages older than 24 hours aren't texted; at most 10 texts a day. A
+failed send is retried on the next run.
+
+**Email-to-text addresses** (your 10-digit number, then):
+
+| Carrier | Address |
+|---|---|
+| Verizon | `@vtext.com` |
+| T-Mobile | `@tmomail.net` |
+| AT&T | none: AT&T shut its email-to-text gateway in 2025 |
+| Others | ask the carrier for its "email to SMS" address |
+
+The address holds a phone number, so it lives only in the Script Property
+`FAMILY_ALERT_SMS_ADDRESS`, never in the repo. Run `sendFamilyAlertTest()`
+after setting it: some carriers drop gateway mail without saying so, and the
+district's mail rules could block a send outside ccpsnet.net. If the test
+never arrives, the alert doesn't work, and the signal doc's "needs you now"
+line is the only notice.
 
 ## Setting it up (operator, once)
 
@@ -94,10 +122,12 @@ sends anything; this is the next thing to plan.
    Script ID, then `clasp push` from `cas-ccps/.clasp-build/family-sentinel/`.
    The manifest turns on the advanced Gmail service.
 3. **Script Properties:** `CENTRAL_LEDGER_SS_ID` (the Central Ledger's ID,
-   for the roster). Optional: `FAMILY_SIGNAL_FOLDER_ID` (where the signal doc
-   goes), `DEPLOY_DRIFT_GITHUB_TOKEN`.
+   for the roster) and `FAMILY_ALERT_SMS_ADDRESS` (the phone's email-to-text
+   address, see Safety). Optional: `FAMILY_SIGNAL_FOLDER_ID` (where the
+   signal doc goes), `DEPLOY_DRIFT_GITHUB_TOKEN`.
 4. **Run `setupFamilySentinel()`** and approve the scopes (Gmail modify,
-   Sheets, Docs, Drive). It makes the tabs, both labels, the signal doc and
+   send mail, Sheets, Docs, Drive). Then run `sendFamilyAlertTest()` and
+   check the phone. It makes the tabs, both labels, the signal doc and
    the `FamilyMailBuildSpec` tab.
 5. **Optional:** add parent addresses to `FamilyContacts` (parent email,
    student email).
