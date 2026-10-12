@@ -23,6 +23,7 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 12:** Demonstrate career- and life-management skills.
   - **Competency 13:** Demonstrate continuous learning and adaptability.
   - **Competency 32:** Explain the benefits and responsibilities of membership in the student organization as a student and in professional/civic organizations as an adult (e.g., DECA, FBLA).
+  - **Competency 43:** Evaluate career opportunities in sports, entertainment, and event management (Identifying at least three career paths in sports and event management beyond being an athlete).
   - **Competency 101:** (Optional) Evaluate the event’s overall success (Conducting a post-event SWOT analysis).
   - **Competency 103:** Identify career opportunities at different levels in sports, entertainment, and event management.
   - **Competency 106:** Identify professional development opportunities in the sports, entertainment, and event industries (Building a digital presence like LinkedIn).
@@ -43,7 +44,7 @@ By the end of this lesson, students will be able to:
 
 ### **A. The Post-Mortem: Evaluating the Event (15 Minutes)**
 
-  - **Direct Instruction (Comp 98):** How do we know if an event was actually successful? It's not just "Did people have fun?" It is:
+  - **Direct Instruction (Comp 101):** How do we know if an event was actually successful? It's not just "Did people have fun?" It is:
 
 <!-- end list -->
 
@@ -53,7 +54,7 @@ By the end of this lesson, students will be able to:
 
 ### **B. Career Pathways & Professional Organizations (15 Minutes)**
 
-  - **Exploration (Comp 102 & 103):** Break the myth that you have to be a professional athlete to work in sports. Highlight "Front Office" careers.
+  - **Exploration (Comp 43 & 103):** Break the myth that you have to be a professional athlete to work in sports. Highlight "Front Office" careers.
   - **Organizations:** Discuss how joining organizations like DECA, FBLA, or the Public Relations Society of America (PRSA) provides a massive competitive advantage on a resume.
 
 ### **C. Building Your Roster: Networking (15 Minutes)**
@@ -63,12 +64,12 @@ By the end of this lesson, students will be able to:
 
 ### **D. The "Free Agent" Resume Workshop (30 Minutes)**
 
-  - **Guided Practice (Comp 104):** Teach the formula for a strong resume bullet point: *Action Verb + Specific Task + Quantifiable Result*.
+  - **Guided Practice (Comp 108):** Teach the formula for a strong resume bullet point: *Action Verb + Specific Task + Quantifiable Result*.
   - **Translation Exercise:** "Calculated dynamic ticket pricing models based on supply and demand, projecting a 15% increase in total game-day revenue."
 
 ### **E. The S.T.A.R. Interview Prep (15 Minutes)**
 
-  - **Direct Instruction (Comp 105):** Teach the S.T.A.R. method for answering behavioral questions. Students will draft 2-3 S.T.A.R. stories based on their group projects this year.
+  - **Direct Instruction (Comp 107):** Teach the S.T.A.R. method for answering behavioral questions. Students will draft 2-3 S.T.A.R. stories based on their group projects this year.
 
 ## **5. Project Deliverables: The "Free Agent" Portfolio**
 

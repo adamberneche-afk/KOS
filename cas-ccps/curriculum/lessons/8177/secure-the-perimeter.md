@@ -21,6 +21,8 @@ The most brilliant marketing campaign and the most profitable pricing strategy m
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
   - **Competency 27:** Examine principles of technology that underlie an industry/organization (Analyzing the use of metal detectors, biometric scanners, CCTV, and communication radios).
+  - **Competency 30:** Examine health, safety, and environmental issues related to an industry/organization (Identifying the physical and environmental threats to a large event).
+  - **Competency 68:** Examine the challenges posed by uncontrollable variables in the sports, entertainment, and event industries (Planning for severe weather evacuations and other events no one can control).
   - **Competency 89:** Explain the importance and types of indoor and outdoor security (i.e., life and property safety) (Understanding the overarching goal of protecting life, property, and brand reputation).
   - **Competency 90:** Explain the security needs of a venue and/or event (Managing ingress/egress, preventing crowd crush, and directing foot traffic; Differentiating between uniform police, private event staff, and specialized crowd managers).
   - **Competency 91:** Explain the use of emergency preparedness plans to address threats to a venue and/or event (Developing evacuation, shelter-in-place, and medical emergency protocols).
@@ -47,12 +49,12 @@ By the end of this lesson, students will be able to:
 
 <!-- end list -->
 
-  - *Technology (Comp 91):* Clear bag policies, magnetometers (metal detectors), facial recognition, and ticketing barcodes.
+  - *Technology (Comp 27):* Clear bag policies, magnetometers (metal detectors), facial recognition, and ticketing barcodes.
   - *Personnel (Comp 90):* Why do venues hire friendly "Guest Services" in bright yellow polos to manage crowds, but use armed local Police Officers at the gates? (De-escalation vs. Enforcement).
 
 ### **C. The Tabletop Exercise (TTX) Lab (60 Minutes)**
 
-  - **Group Work (Comp 88 & 89):** Divide students into "Venue Management Teams." Hand them a blueprint of the CHHS Football Stadium or Gymnasium during a sold-out rivalry game.
+  - **Group Work (Comp 90 & 91):** Divide students into "Venue Management Teams." Hand them a blueprint of the CHHS Football Stadium or Gymnasium during a sold-out rivalry game.
   - **The Injection:** Present a sudden crisis scenario (e.g., "A severe lightning storm has just touched down, and the game is delayed. You have 3,000 fans in the metal bleachers. Go.").
   - **The Task:** Teams must map out their immediate crowd control response, evacuation routes, and staff communication protocol.
 
