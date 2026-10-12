@@ -20,11 +20,10 @@ When athletes go on strike, fans just see millionaires arguing with billionaires
 
 This lesson addresses the following macro-economic competencies from the **8177** framework:
 
-  - **Competency 29:** Explain the concept of productivity (How much revenue a player generates vs. their cost).
-  - **Competency 30:** Analyze impact of specialization/division of labor on productivity (Why a franchise quarterback is irreplaceable, giving the union extreme negotiating leverage).
-  - **Competency 31:** Explain the concept of organized labor and business (Defining Unions, CBA, Strikes, and Lockouts).
-  - **Competency 35:** Discuss the impact of a nation's unemployment rates (Analyzing the "collateral damage" of a strike on the hourly venue workers who lose their income).
-  - **Competency 38:** Determine the impact of business cycles on business activities (How a prolonged lockout disrupts the economic cycle of a sports city).
+  - **Competency 28:** Examine labor issues related to an industry/organization (How much revenue a player generates vs. their cost; Why a franchise quarterback is irreplaceable, giving the union extreme negotiating leverage).
+  - **Competency 49:** Analyze key U.S. economic indicators and their effects on the sports, entertainment, and event industries (Analyzing the "collateral damage" of a strike on the hourly venue workers who lose their income).
+  - **Competency 50:** Examine how sports, entertainment, and events affect local, state, and national economies (How a prolonged lockout disrupts the economic cycle of a sports city).
+  - **Competency 71:** Identify unions relevant to labor relations in the sports, entertainment, and event industries (Defining Unions, CBA, Strikes, and Lockouts).
 
 ## **3. Learning Objectives**
 

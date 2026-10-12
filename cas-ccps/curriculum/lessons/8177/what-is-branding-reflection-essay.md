@@ -20,7 +20,7 @@ Throughout the academic year, students have explored the concept of "branding" f
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 2:** Demonstrate critical thinking and problem solving (Synthesizing various projects and concepts from throughout the year into a single, cohesive definition).
+  - **Competency 2:** Demonstrate critical thinking and problem-solving (Synthesizing various projects and concepts from throughout the year into a single, cohesive definition).
   - **Competency 11:** Demonstrate big-picture thinking (Connecting the abstract concept of branding to practical, real-world business applications).
   - **Competency 21:** Demonstrate reading and writing skills (Composing a formal, well-structured essay of at least 500 words).
   - **Competency 97:** Develop a marketing plan for an event (Reflecting on how brand identity dictates all marketing and promotional efforts).

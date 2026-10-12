@@ -23,8 +23,8 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 4:** Demonstrate integrity (Collecting authentic data without falsifying responses or taking the survey multiple times).
   - **Competency 7:** Demonstrate listening and speaking skills (Approaching peers and pitching the survey effectively to gain compliance).
   - **Competency 14:** Manage time and resources (Strategizing how and when to get 15 unique peers to complete the task).
-  - **Competency 42:** Conduct market research (Deploying the survey instrument to the target market).
-  - **Competency 43:** Analyze market research data (Preparing the sample size needed for accurate future analysis).
+  - **Competency 82:** Describe the steps in developing a market research project (Preparing the sample size needed for accurate future analysis).
+  - **Competency 83:** Develop a market research project (Deploying the survey instrument to the target market).
 
 ## **3. Learning Objectives**
 

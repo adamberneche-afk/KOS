@@ -21,9 +21,9 @@ In the sports and entertainment industry, the "product" is an experience. Theref
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
   - **Competency 9:** Demonstrate customer service skills (Applying the T.H.A.N.K.S. method for service recovery).
-  - **Competency 69:** Explain the nature and scope of the selling function (Understanding the difference between B2B and B2C sales in sports).
-  - **Competency 70:** Explain the selling process (Mastering the 6 steps from approach to close).
-  - **Competency 71:** Describe the nature of customer relations (Understanding how retention is cheaper than acquisition).
+  - **Competency 41:** Identify functions sports, entertainment, and event managers must perform to have success with consumers, partners, and employees (Understanding the difference between B2B and B2C sales in sports).
+  - **Competency 59:** Describe methods used to encourage customer retention (Understanding how retention is cheaper than acquisition).
+  - **Competency 60:** Respond to inquiries and suggestions from customers, coworkers, and supervisors in a sports, entertainment, and event context (Mastering the 6 steps of the selling process, from approach to close, while answering a customer's questions).
 
 ## **3. Learning Objectives**
 

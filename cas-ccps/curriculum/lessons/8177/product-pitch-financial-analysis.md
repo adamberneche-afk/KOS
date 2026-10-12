@@ -20,7 +20,7 @@ In this lesson, students will take on the role of a Merchandise Buyer for a spor
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 2:** Demonstrate critical thinking and problem solving (Evaluating suppliers and financial viability).
+  - **Competency 2:** Demonstrate critical thinking and problem-solving (Evaluating suppliers and financial viability).
   - **Competency 7:** Demonstrate listening and speaking skills (Delivering a persuasive, professional pitch).
   - **Competency 19:** Apply mathematical skills to job-specific tasks (Calculating retail margins, turnover, and break-even points).
   - **Competency 93:** Describe factors that motivate consumers to attend sports, entertainment, and event occasions (Explaining *why* the product will sell to the CHHS fan base).

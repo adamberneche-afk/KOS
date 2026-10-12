@@ -20,8 +20,8 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
 
   - **Competency 11:** Demonstrate big-picture thinking (analyzing the store's role within the larger CHHS athletic and event ecosystem).
   - **Competency 21:** Demonstrate reading and writing skills (composing a professional management-level description).
-  - **Competency 23:** Examine aspects of an industry (specifically the niche retail sector within sports and school events).
-  - **Competency 81:** Identify the elements of a brand (recognizing the "Cavalier" brand as the store's primary asset).
+  - **Competency 23:** Examine aspects of planning within an industry/organization (Writing the company description, the first section of the store's business plan, for its niche in school retail).
+  - **Competency 56:** Identify the steps involved in starting a new business, using the Business Model Canvas (BMC) (Stating the value proposition, the USP, which is the center of the Business Model Canvas).
   - **Competency 93:** Describe factors that motivate consumers to attend sports, entertainment, and event occasions (connecting store traffic to school spirit and events).
 
 ## **3. Learning Objectives**

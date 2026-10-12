@@ -20,11 +20,8 @@ While having a great product and the right price is essential, it means nothing 
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 64:** Explain the types of promotion (Differentiating between institutional and product promotion).
-  - **Competency 65:** Identify the elements of the promotional mix (Advertising, Public Relations, Sales Promotion, and Personal Selling).
-  - **Competency 66:** Explain the use of advertising in the sports, entertainment, and event industries (Analyzing paid media like billboards, social media ads, and TV commercials).
-  - **Competency 67:** Explain the use of publicity/public relations (Understanding how to generate free media coverage and manage brand image).
-  - **Competency 68:** Explain the use of sales promotion (Designing short-term incentives like giveaways, contests, and discount codes).
+  - **Competency 42:** Evaluate the sports, entertainment, and event manager’s role in decision-making for campaigns, employees, and partners (Differentiating between institutional and product promotion; Advertising, Public Relations, Sales Promotion, and Personal Selling).
+  - **Competency 97:** Develop a marketing plan for an event (Analyzing paid media like billboards, social media ads, and TV commercials; Understanding how to generate free media coverage and manage brand image; Designing short-term incentives like giveaways, contests, and discount codes).
 
 ## **3. Learning Objectives**
 
