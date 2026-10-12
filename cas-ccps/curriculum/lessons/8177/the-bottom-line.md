@@ -21,7 +21,9 @@ An event can have brilliant marketing, a perfect venue, and massive crowd demand
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
   - **Competency 16:** Demonstrate an understanding of information security (Understanding the confidentiality of vendor contracts, payroll, and corporate financial statements).
+  - **Competency 34:** Identify Internet safety issues and procedures for complying with acceptable use standards (Technology acceptable use: the digital footprint of shared spreadsheets and documents).
   - **Competency 85:** Identify the components of a budget (Understanding the purpose of projecting income and capping expenses).
+  - **Competency 87:** Identify expenditures related to the sports, entertainment, and event industries (Listing and capping event expenses on the income statement and budget).
   - **Competency 88:** Analyze financial statements (Reading a basic Profit & Loss / Income Statement).
   - **Competency 98:** Develop a budget for an event (Allocating funds for marketing, venue rental, security, and talent).
 
@@ -43,7 +45,7 @@ By the end of this lesson, students will be able to:
 
 ### **B. Financial Statements 101 (20 Minutes)**
 
-  - **Direct Instruction (Comp 99 & 100):** Display a simplified Event Income Statement on the board.
+  - **Direct Instruction (Comp 85 & 88):** Display a simplified Event Income Statement on the board.
 
 <!-- end list -->
 
@@ -57,7 +59,7 @@ By the end of this lesson, students will be able to:
 
 ### **C. The "$10,000 Tip-Off" Budget Lab (55 Minutes)**
 
-  - **Independent or Pair Work (Comp 101):** Students are given $10,000 in "Seed Money" to host a weekend charity basketball tournament at the Clover Hill High School gymnasium.
+  - **Independent or Pair Work (Comp 98):** Students are given $10,000 in "Seed Money" to host a weekend charity basketball tournament at the Clover Hill High School gymnasium.
   - **The Task:** Using Google Sheets or Microsoft Excel, students must build a zero-based budget. They are provided a "Vendor Price List" (e.g., Referees cost $50/hour, CHHS Custodians cost $30/hour, T-shirts cost $8 to print). They must project their expected revenue (from team registration fees and ticket sales) and allocate their expenses so that they generate at least a 15% profit margin for the charity.
 
 ## **5. Project Deliverables: The Financial Packet**
