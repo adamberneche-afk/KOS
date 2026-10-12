@@ -1,5 +1,5 @@
 <!-- lesson: the-back-room -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Back Room (Distribution & Inventory
      Management)"). The plan's box simulation is physical; this written
      version supplies its own purchase order, packing slip and unboxing
