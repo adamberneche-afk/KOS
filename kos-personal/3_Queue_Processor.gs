@@ -513,18 +513,24 @@ function processIntakePayload(rawJSONPayload, stagingPayloadUid) {
     }
 
     // ── BLACKBOARD — SMP proposals ───────────────────────────────
+    // Staged unnumbered. A session's own SMP number is a guess (before
+    // 2026-10-12 "SMP-001" named nine different proposals); numbers are
+    // assigned only in SMP_REGISTER, on approval (meta/SMP_PROCESS.md).
+    // The session's number is kept in the notes as "proposed as".
     const smps = pd.session_delta?.smp_proposals_filed;
     if (smps?.length > 0) {
       const bb = _getOrCreateSheet(ss, CFG.BLACKBOARD_SHEET);
       smps.forEach(smp => bb.appendRow([
         '',
-        smp.proposal_id || '',
+        'SMP-NEW',
         smp.title        || '',
         '',
-        '[' + (smp.proposal_id || 'SMP') + ']',
+        '[SMP-NEW]',
         smp.summary      || '',
         '',
-        'Filed by: ' + (smp.filed_by || 'unknown') + ' | ' + (smp.status || 'PENDING'),
+        'Filed by: ' + (smp.filed_by || 'unknown') + ' | ' + (smp.status || 'PENDING') +
+          (smp.proposal_id ? ' | proposed as ' + smp.proposal_id : '') +
+          ' | numbered in ' + CFG.SMP_REGISTER_SHEET + ' on approval',
         smp.filed_by     || '',
         ts,
         'STAGED_FOR_REVIEW',

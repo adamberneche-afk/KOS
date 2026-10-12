@@ -3123,7 +3123,7 @@ trigger, and tested the safety alert end to end: `sendFamilyAlertTest()` and
 
 ## CAS attention signal and two STAGING_PIPELINE gaps, 2026-10-12
 
-From the KOS Project session of 2026-10-12 (SMP-005: the Project never reads
+From the KOS Project session of 2026-10-12 (SMP-018, filed as SMP-005: the Project never reads
 CAS sheets; its only view of CAS is a counts-only signal doc).
 
 `34b_CasAttentionSignal.js` writes `KOS_CAS_SIGNAL` at the end of every

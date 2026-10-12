@@ -8,16 +8,19 @@ the place where the operator plans, decides and builds
 Gmail and Google Calendar connectors added 2026-10-11, with sending turned
 off; `start` now reads them, and student and parent mail through the
 `KOS_FAMILY_SIGNAL` doc (2026-10-12). Later on 2026-10-12 the operator
-edited the instructions by hand for SMP-005 (directed writes, the CAS
-attention signal, students and families first); `PROJECT_INSTRUCTIONS.md`
-matches them. Left: replace the family-signal link (the live instructions
-point at the Family Mail Sentinel spreadsheet, not the `KOS_FAMILY_SIGNAL`
-doc), paste the `KOS_CAS_SIGNAL` link once the doc exists, add SMP-005 and
-the updated `KILL_SWITCH_PROTOCOL.md` to knowledge, then re-test `start`.
+edited the instructions by hand for directed writes (SMP-018, filed as
+SMP-005), the CAS attention signal and students-and-families first;
+`PROJECT_INSTRUCTIONS.md` matches them, and adds the SMP register link
+(`meta/SMP_PROCESS.md`). Left: replace the family-signal link (the live
+instructions point at the Family Mail Sentinel spreadsheet, not the
+`KOS_FAMILY_SIGNAL` doc), paste the `KOS_CAS_SIGNAL` and `KOS_SMP_REGISTER`
+links once those docs exist, change SMP-005 to SMP-018 in sections 2 and 6,
+re-sync `KILL_SWITCH_PROTOCOL.md` in knowledge, then re-test `start`. No
+SMP goes into knowledge.
 
 | File | What it is |
 |---|---|
-| `PROJECT_INSTRUCTIONS.md` | Paste into the Project's Instructions, after filling in the three doc links |
+| `PROJECT_INSTRUCTIONS.md` | Paste into the Project's Instructions, after filling in the doc links |
 | `SESSION_LOG_FORMAT.md` | Upload as Project knowledge. The shape `log this` produces, matched to what the pipeline's intake reads |
 
 ## What changed from the Gem, and why
@@ -56,7 +59,7 @@ the updated `KILL_SWITCH_PROTOCOL.md` to knowledge, then re-test `start`.
 ## Setting it up (operator, once)
 
 1. On claude.ai, create a Project named **KOS**.
-2. Get the five doc links. In Drive, open each Google Doc and copy its
+2. Get the six doc links. In Drive, open each Google Doc and copy its
    URL (each is a Google **Doc**, never a spreadsheet):
    - `KOS_LATEST_PRIMER`
    - `KOS_OPEN_DECISIONS`
@@ -68,6 +71,8 @@ the updated `KILL_SWITCH_PROTOCOL.md` to knowledge, then re-test `start`.
    - `KOS_CAS_SIGNAL` (created by the first Central Ledger watchdog run
      after `34b_CasAttentionSignal.js` is pushed; its ID is in the Script
      Property `CAS_SIGNAL_DOC_ID`)
+   - `KOS_SMP_REGISTER` (created by the first kos-personal morning run,
+     or `generateBriefingDocs()`, after the SMP register code is pushed)
 
    They keep the same file ID every day; Apps Script rewrites them in
    place.
@@ -79,9 +84,10 @@ the updated `KILL_SWITCH_PROTOCOL.md` to knowledge, then re-test `start`.
      notebook editions, each opening with a core block);
    - `rtp-core-router/notebook-sources/TURN_LOOP_REFERENCE.md`;
    - `rtp-core-router/protocols/COLD_BOOT_PROTOCOL.md`,
-     `KILL_SWITCH_PROTOCOL.md`, `RULE_CONFLICT_RESOLUTION_PROTOCOL.md` and
-     `SMP-005_RTP_DIRECTED_WRITES.md` (re-sync `KILL_SWITCH_PROTOCOL.md` after
-     2026-10-12: it gained the SMP-005 trigger).
+     `KILL_SWITCH_PROTOCOL.md` and `RULE_CONFLICT_RESOLUTION_PROTOCOL.md`
+     (re-sync `KILL_SWITCH_PROTOCOL.md` after 2026-10-12: it gained the
+     SMP-018 trigger). SMPs are not knowledge files: the Project reads them
+     from `KOS_SMP_REGISTER` (`meta/SMP_PROCESS.md`).
 5. Connect the **Google Drive**, **Gmail** and **Google Calendar**
    connectors on the school account, and allow them in the Project. In
    Gmail's connector settings, turn off sending (done 2026-10-11).
