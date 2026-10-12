@@ -29,7 +29,9 @@ Part 4: Spot the Bias. Each question below is biased. For each one, explain what
 - "Don't you agree the store should stay open after school?"
 - "Would you rather buy a cheap hoodie online or a quality Cavalier hoodie that supports your school?"
 
-Use these terms accurately: market research, target market, survey, quantitative data, qualitative data, bias, leading question.
+Part 5: Beyond the Survey. Our survey is primary data. Name two more sources of data the Cavalier Shop could use: one more primary source and one secondary source. For each, say what it would tell the store that the survey can't.
+
+Use these terms accurately: market research, target market, survey, quantitative data, qualitative data, bias, leading question, primary data, secondary data.
 
 ## Background
 
@@ -37,7 +39,16 @@ A business that guesses what customers want wastes money on products nobody buys
 
 You can't market to everyone. A store that tries to appeal to everyone ends up appealing to no one. Freshmen who want spirit wear, parents with the credit cards and teachers buying a staff shirt all want different things and hear about events in different places. Picking a target market means deciding which group you're trying to reach.
 
-Two kinds of data:
+Where data comes from:
+
+- Primary data is information you collect yourself, for your own question: surveys, interviews, focus groups, or watching how customers move through a store.
+- Secondary data is information someone else already collected: sales records, social media analytics, industry reports, news articles, and government data like the U.S. Census.
+- In sports and entertainment, common sources include ticketing and point-of-sale (POS) records (who bought what, and when), TV and streaming ratings, social media and website analytics, and reports from leagues and trade publications.
+- Secondary data is usually faster and cheaper, so researchers check it first. But it was collected for someone else's question, so it often can't tell you exactly what you need. That's when you collect primary data.
+
+For the Cavalier Shop, the store's own POS sales records show which items sell and when, CHHS enrollment numbers show how many possible customers there are, and the store's Instagram insights show which posts people engage with. Only a survey can ask people why.
+
+Two kinds of data from a survey:
 
 - Quantitative data is numbers you can count and compare: multiple choice, checkboxes, rating scales. "62% of students hear about events on Instagram" is quantitative.
 - Qualitative data is ideas and opinions in people's own words: short-answer and paragraph questions. It's harder to count but can surprise you with ideas you never thought of.
@@ -60,6 +71,8 @@ Respect people's privacy. Turning off email collection lets people answer honest
 - Qualitative data: information in words, like opinions and ideas.
 - Bias: anything in a question that pushes people toward a certain answer.
 - Leading question: a question worded to suggest the "right" answer.
+- Primary data: information you collect yourself for your own research question.
+- Secondary data: information that someone else already collected, like sales records or published reports.
 
 ## Example
 
@@ -76,4 +89,4 @@ Who do you think spends the most money at the Cavalier Shop: students, parents o
 
 ## Vocabulary
 
-market research, target market, survey, quantitative data, qualitative data, bias, leading question
+market research, target market, survey, quantitative data, qualitative data, bias, leading question, primary data, secondary data
