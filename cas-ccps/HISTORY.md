@@ -2955,3 +2955,18 @@ build on. Over #135–#149:
 Not yet live: push central-ledger (`55b`), re-import `8177.imscc` (30
 modules).
 
+
+## Turn-In Form leftovers removed, 2026-10-12
+
+These were left after P0-04. `00`'s `turninFormUrl` and `turninResponseSsId`
+config fields are gone: nothing read them, and the setup wizard stopped
+writing `TURNIN_FORM_URL` on 2026-10-10. An existing install's Script
+Properties are harmless and can be deleted. `SYSTEM_ARCHITECTURE.html` and
+`PLATFORM_DOCUMENTATION.html` no longer describe the Turn-In Form or the
+turn-in gate. The architecture page's Turn-In Pipeline section is now
+"Turn-In (Canvas)". Its security model describes the Student Dashboard's
+submission checks in place of the three-point turn-in match and the
+forensic check. The troubleshooting rows for those checks are corrected or
+removed. Both pages' banners now flag only the doc menu as out of date.
+
+Not yet live: `00_SharedConfig.js` changed, so push every cas-ccps project.

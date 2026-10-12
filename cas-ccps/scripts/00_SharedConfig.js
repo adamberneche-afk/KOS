@@ -37,7 +37,7 @@
 // TEACHER PROPERTIES (written automatically by Setup Script 16 — UnifiedManualSetup):
 //   TEACHER_NAME, TEACHER_EMAIL, TEACHER_SUBJECT
 //   TEACHER_MATRIX_SS_ID, TEACHER_FOLDER_ID
-//   RUBRIC_FORM_URL, INTAKE_FORM_URL, TURNIN_FORM_URL, CONFIRM_REVIEW_FORM_URL
+//   RUBRIC_FORM_URL, INTAKE_FORM_URL, CONFIRM_REVIEW_FORM_URL
 //   CONFIRM_REVIEW_FORM_ID, RUBRIC_QUEUE_TAB
 //   CONFIRM_ENTRY_DRAFT_ID ... CONFIRM_ENTRY_DOD
 // =============================================================================
@@ -110,7 +110,6 @@ function getConfig_() {
     teacherMatrixSsId:    p.TEACHER_MATRIX_SS_ID     || "",
     rubricResponseSsId:   p.RUBRIC_RESPONSE_SS_ID    || "",
     confirmResponseSsId:  p.CONFIRM_RESPONSE_SS_ID   || "",
-    turninResponseSsId:   p.TURNIN_RESPONSE_SS_ID    || "",
     rubricQueueTab:       p.RUBRIC_QUEUE_TAB         || "RubricQueue",
 
     // ── Teacher forms ──
@@ -118,7 +117,6 @@ function getConfig_() {
     confirmFormId:        p.CONFIRM_REVIEW_FORM_ID   || "",
     confirmFormUrl:       p.CONFIRM_REVIEW_FORM_URL  || "",
     intakeFormUrl:        p.INTAKE_FORM_URL           || "",
-    turninFormUrl:        p.TURNIN_FORM_URL           || "",
 
     // ── Confirmation form entry IDs (for pre-fill URLs) ──
     confirmEntryDraftId:  p.CONFIRM_ENTRY_DRAFT_ID   || "",
