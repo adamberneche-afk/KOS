@@ -70,6 +70,14 @@ const CFG = {
     'Decision_ID', 'Session_UID', 'Recorded_At', 'Owner', 'Decision',
     'Blocking', 'Status', 'Resolved_At', 'Resolution_Note',
   ],
+  // The one list of System Modification Proposals (meta/SMP_PROCESS.md).
+  // The operator writes it; 22_BriefingDocs.gs renders KOS_SMP_REGISTER
+  // from it. SMP numbers are assigned here and nowhere else.
+  SMP_REGISTER_SHEET:       'SMP_REGISTER',
+  SMP_REGISTER_HEADERS: [
+    'SMP_ID', 'Title', 'Status', 'Rule', 'Filed_At', 'Decided_At',
+    'Doc_URL', 'Former_IDs', 'Notes',
+  ],
 
   // ── STAGING_PIPELINE Column Index Map ────────────────────────
   // Single source of truth — replaces the SC const in Phase 0 patch.
@@ -345,6 +353,7 @@ const CFG = {
     // file, so each doc is overwritten in place and its ID never changes.
     RECENT_SESSIONS_DOC_ID: 'KOS_RECENT_SESSIONS_DOC_ID',
     OPEN_DECISIONS_DOC_ID:  'KOS_OPEN_DECISIONS_DOC_ID',
+    SMP_REGISTER_DOC_ID:    'KOS_SMP_REGISTER_DOC_ID',
     CORE_FACTS_DOC_ID:      'KOS_CORE_FACTS_DOC_ID',
 
     // When the VECTOR_MATRIX repairs and the classify backfill last wrote
@@ -452,6 +461,7 @@ function deployFullSystem() {
       CFG.ERROR_LOG_SHEET,            // v8.0 — error digest
       CFG.AUDIT_LOG_SHEET,            // Auditor accountability check rejections
       CFG.DECISION_REGISTER_SHEET,    // deferred decisions (22_BriefingDocs.gs)
+      CFG.SMP_REGISTER_SHEET,         // System Modification Proposals (meta/SMP_PROCESS.md)
     ];
     sheetNames.forEach(n => _getOrCreateSheet(ss, n));
     _seedBlackboardTemplateRow(ss);
@@ -1160,7 +1170,9 @@ function _createAllFoundationDocs(folders) {
     { p:  'BRIDGE_FIDELITY_001: A verdict produced with knowledge of another cog\'s verdict is VOID.' },
   ]);
 
-  _scaffoldDoc('CE_NAMING_CONVENTION_SMP001', folders.f01, [
+  // In 01.3_SMP_PROPOSALS with every other SMP since 2026-10-12 (it was
+  // CE_NAMING_CONVENTION_SMP001 in 01_ until then; meta/SMP_PROCESS.md).
+  _scaffoldDoc('SMP-001_CE_NAMING_CONVENTION', folders.f01_3, [
     { h1: 'CE NAMING CONVENTION — SMP-001' },
     { h2: 'Formula' },
     { p:  '[CE-TAG]: [Descriptive Title] [vX.X optional]' },
