@@ -10,7 +10,7 @@
 
 **Framework:** VDOE Sports, Entertainment, and Event Management (12163-II), 2025 revision: 108 tasks.
 
-**Status:** 88 tasks are cited by the 29 lesson plans, 6 are addressed outside them (DECA and work-based learning), and 14 are not yet covered.
+**Status:** 92 tasks are cited by the 29 lesson plans, 6 are addressed outside them (DECA and work-based learning), and 10 are not yet covered.
 
 Earlier versions of this tracker and the lesson plans used a different numbering, so most numbers did not match the state task list. Every lesson's competencies have been re-matched to the 2025 list, and the counts below come from those lessons.
 
@@ -108,6 +108,7 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **67:** Examine the importance of risk assessment and management strategies in the sports, entertainment, and event industries. *(The Richmond Festival Blueprint)*
   - **68:** Examine the challenges posed by uncontrollable variables in the sports, entertainment, and event industries. *(Secure the Perimeter, The Richmond Festival Blueprint)*
   - **69:** Identify purposes, types, and terms of contracts. *(The Millionaire's Strike)*
+  - **70:** Examine the role of labor and antitrust law in the sports, entertainment, and event industries. *(The Millionaire's Strike)*
   - **71:** Identify unions relevant to labor relations in the sports, entertainment, and event industries. *(The Millionaire's Strike)*
   - **72:** Explain how the Americans with Disabilities Act (ADA) has influenced the planning of events and design of facilities. *(Venue Operations & The Employee Handbook, Venue Layout & The Cavalier Shop Planogram)*
   - **73:** Explain how legal requirements influence operations in the sports, entertainment, and event industries. *(Venue Operations & The Employee Handbook, Venue Layout & The Cavalier Shop Planogram)*
@@ -124,6 +125,7 @@ Earlier versions of this tracker and the lesson plans used a different numbering
 **Understanding Market Research**
 
   - **77:** Explain market research and its use in the sports, entertainment, and event industries. *(Survey Results Analysis & Management Decisions)*
+  - **79:** Identify sources of data for market research in the sports, entertainment, and event industries. *(Venue Market Research & Survey Design)*
   - **80:** Describe external factors affecting the sports, entertainment, and event marketing process. *(The Global Expansion)*
   - **81:** Develop a market segmentation analysis. *(Venue Market Research & Survey Design)*
   - **82:** Describe the steps in developing a market research project. *(Survey Deployment & Statistical Significance)*
@@ -156,7 +158,9 @@ Earlier versions of this tracker and the lesson plans used a different numbering
 
 **Developing Career Goals**
 
+  - **102:** Identify career and employment-related information sources. *(The Final Whistle)*
   - **103:** Identify career opportunities at different levels in sports, entertainment, and event management. *(The Final Whistle)*
+  - **104:** Describe education and training needed for a sports, entertainment, and event management career. *(The Final Whistle)*
   - **106:** Identify professional development opportunities in the sports, entertainment, and event industries. *(The Final Whistle)*
   - **107:** Collect information about a prospective employer. *(The Final Whistle)*
   - **108:** Develop a career plan. *(The Final Whistle)*
@@ -195,14 +199,9 @@ Earlier versions of this tracker and the lesson plans used a different numbering
   - **64:** Investigate how social and environmental concerns affect decisions in the sports, entertainment, and event industries.
   - **65:** Examine the effect of media bias on public perception and opinion.
 
-**Exploring the Legal Aspects of Sports, Entertainment, and Event Industries**
-
-  - **70:** Examine the role of labor and antitrust law in the sports, entertainment, and event industries.
-
 **Understanding Market Research**
 
   - **78:** Explain the need for market research for all functions of marketing.
-  - **79:** Identify sources of data for market research in the sports, entertainment, and event industries.
 
 **Understanding Event Management**
 
@@ -211,8 +210,6 @@ Earlier versions of this tracker and the lesson plans used a different numbering
 
 **Developing Career Goals**
 
-  - **102:** Identify career and employment-related information sources.
-  - **104:** Describe education and training needed for a sports, entertainment, and event management career.
   - **105:** (Optional) Identify barriers to employment and strategies to overcome them.
 
 Tasks marked (Optional) are optional in the state framework.
