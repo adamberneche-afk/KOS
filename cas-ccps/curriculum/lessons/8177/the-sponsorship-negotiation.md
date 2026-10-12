@@ -51,7 +51,7 @@ By the end of this lesson, students will be able to:
 
 ### **B. The Psychology of "No": Conflict Resolution (15 Minutes)**
 
-  - **Direct Instruction (Comp 6 & 76):** In sales, an objection is simply a conflict of priorities. Teach the **"Feel, Felt, Found"** conflict-resolution framework:
+  - **Direct Instruction (Comp 6 & 41):** In sales, an objection is simply a conflict of priorities. Teach the **"Feel, Felt, Found"** conflict-resolution framework:
 
 <!-- end list -->
 
@@ -61,7 +61,7 @@ By the end of this lesson, students will be able to:
 
 ### **C. The Negotiation Roleplay (45 Minutes)**
 
-  - **Guided Practice (Comp 77 & 82):** Pair students up. One is the CHHS Sponsorship Director; the other is a local business owner who is highly skeptical and protective of their budget.
+  - **Guided Practice (Comp 41 & 86):** Pair students up. One is the CHHS Sponsorship Director; the other is a local business owner who is highly skeptical and protective of their budget.
   - **The Simulation:** The Director must pitch the $500 sponsorship. The Business Owner is instructed to give at least two hard objections (e.g., "Kids don't have money to spend at my store," or "I already sponsor the rival high school"). The Director must actively resolve the conflict to close the deal.
 
 ## **5. Project Deliverables: The Signed Contract & CRM**

@@ -25,8 +25,11 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
   - **Competency 10:** Collaborate with team members (Executing specific shift roles and responsibilities).
   - **Competency 14:** Manage time and resources (Executing efficient inventory counts).
   - **Competency 20:** Demonstrate professionalism (Following the Employee Handbook guidelines).
+  - **Competency 25:** Examine aspects of financial responsibility within an industry/organization (Following the cash drawer and Z-out procedures so every dollar is accounted for).
   - **Competency 45:** Explain facilities management as it relates to the sports, entertainment, and event industries (The mechanics of physically opening and closing a space).
   - **Competency 58:** Demonstrate customer-service techniques (Professional communication, dress code, and behavior on the sales floor).
+  - **Competency 72:** Explain how the Americans with Disabilities Act (ADA) has influenced the planning of events and design of facilities (Keeping the 36-inch walkways clear for wheelchair access).
+  - **Competency 73:** Explain how legal requirements influence operations in the sports, entertainment, and event industries (Opening procedures that meet ADA and fire code requirements).
   - **Competency 95:** Analyze personnel needs for an event (Assigning specific roles for a store shift).
 
 ## **3. Learning Objectives**
@@ -43,11 +46,11 @@ By the end of this lesson, students will be able to:
 ### **A. The "Franchise" Concept (10 Minutes)**
 
   - **Discussion:** Why does a Starbucks in Richmond run exactly the same as one in Seattle? Introduce the concept of Standard Operating Procedures (SOPs).
-  - **Management Lens (Comp 85):** Explain that a venue cannot scale or be successful without repeatable systems.
+  - **Management Lens (Comp 45):** Explain that a venue cannot scale or be successful without repeatable systems.
 
 ### **B. Role Delegation & Etiquette (15 Minutes)**
 
-  - **Direct Instruction (Comp 95, 107, 108):** Review the roles outlined in the handbook and discuss the non-negotiables of workplace etiquette (e.g., no cell phones on the register, greeting every customer).
+  - **Direct Instruction (Comp 58 & 95):** Review the roles outlined in the handbook and discuss the non-negotiables of workplace etiquette (e.g., no cell phones on the register, greeting every customer).
   - **Activity:** Have students group up and role-play a scenario: A rush of customers comes in while the cash register paper jams. Who does what based on their job description, and how do they communicate the delay to customers politely?
 
 ### **C. Operations Walk-Through (60 Minutes - In Store)**
@@ -91,7 +94,7 @@ By the end of this lesson, students will be able to:
   - **Inventory Control (Shrink Prevention):** Every item that leaves the store *must* be scanned through the POS, even if it is a promotional giveaway.
   - **The "Two-Person" Rule:** Cash handling and high-value inventory counts should always be performed by two employees simultaneously to ensure accountability and accuracy.
 
-### **VI. Workplace Etiquette & Professionalism (Comp 107/108)**
+### **VI. Workplace Etiquette & Professionalism (Comp 58)**
 
   - **Dress Code:** Employees must wear their designated Cavalier Shop polo or lanyard while on shift to be easily identifiable to customers.
   - **Device Policy:** Personal cell phones are strictly prohibited while on the sales floor. If an emergency text must be sent, the employee must step into the backroom.

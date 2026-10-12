@@ -44,8 +44,8 @@ By the end of this lesson, students will be able to:
 
 ### **B. Finding the Story in the Data (15 Minutes)**
 
-  - **Guided Practice (Comp 43 & 44):** Walk through an example. If 80% of respondents said they get their news from Instagram, and only 10% from Morning Announcements, what management decision should we make about our promotional budget and time?
-  - **Operational Impact (Comp 85):** How do qualitative responses (like "the store is too crowded") translate into operational changes (like moving the register or limiting capacity)?
+  - **Guided Practice (Comp 77 & 84):** Walk through an example. If 80% of respondents said they get their news from Instagram, and only 10% from Morning Announcements, what management decision should we make about our promotional budget and time?
+  - **Operational Impact (Comp 45):** How do qualitative responses (like "the store is too crowded") translate into operational changes (like moving the register or limiting capacity)?
 
 ### **C. The Executive Analysis Lab (45 Minutes)**
 
