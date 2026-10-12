@@ -22,9 +22,9 @@ This lesson addresses the following competencies from the **8177: Sports, Entert
 
   - **Competency 1:** Demonstrate creativity and innovation (Designing a visually appealing layout without relying on color).
   - **Competency 14:** Manage time and resources (Designing within the physical and financial constraints of black-and-white school printers).
-  - **Competency 18:** Demonstrate proficiency with technologies, tools, and machines (Utilizing graphic design software like Canva, Adobe Express, or Google Slides).
+  - **Competency 18:** Demonstrate proficiency with technologies, tools, and machines common to a specific occupation (Utilizing graphic design software like Canva, Adobe Express, or Google Slides).
   - **Competency 21:** Demonstrate reading and writing skills (Writing clear, concise, and persuasive copy for the flyer).
-  - **Competency 85:** Explain the components of venue management (Clearly communicating venue location and operating hours to the public).
+  - **Competency 97:** Develop a marketing plan for an event (The flyer is the promotional piece that tells the public where the store is and when it is open).
 
 ## **3. Learning Objectives**
 

@@ -20,9 +20,9 @@ Why do fans spend $150 to freeze in a stadium when they could watch the same gam
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 2:** Demonstrate critical thinking and problem solving (Analyzing complex consumer behaviors).
+  - **Competency 2:** Demonstrate critical thinking and problem-solving (Analyzing complex consumer behaviors).
   - **Competency 93:** Describe factors that motivate consumers to attend sports, entertainment, and event occasions (Exploring FOMO, socialization, status, and family bonding).
-  - **Competency 94:** Explain competitive factors in attendance (Evaluating direct vs. indirect competition for discretionary income).
+  - **Competency 94:** Explain how event popularity and competitive factors relate to attendance (Evaluating direct vs. indirect competition for discretionary income).
 
 ## **3. Learning Objectives**
 

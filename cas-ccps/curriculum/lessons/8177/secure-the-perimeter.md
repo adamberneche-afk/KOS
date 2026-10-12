@@ -20,11 +20,10 @@ The most brilliant marketing campaign and the most profitable pricing strategy m
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 87:** Explain the nature of venue/event security (Understanding the overarching goal of protecting life, property, and brand reputation).
-  - **Competency 88:** Describe emergency preparedness procedures (Developing evacuation, shelter-in-place, and medical emergency protocols).
-  - **Competency 89:** Explain the importance of crowd control (Managing ingress/egress, preventing crowd crush, and directing foot traffic).
-  - **Competency 90:** Explain the use of security personnel (Differentiating between uniform police, private event staff, and specialized crowd managers).
-  - **Competency 91:** Explain the use of technology in venue security (Analyzing the use of metal detectors, biometric scanners, CCTV, and communication radios).
+  - **Competency 27:** Examine principles of technology that underlie an industry/organization (Analyzing the use of metal detectors, biometric scanners, CCTV, and communication radios).
+  - **Competency 89:** Explain the importance and types of indoor and outdoor security (i.e., life and property safety) (Understanding the overarching goal of protecting life, property, and brand reputation).
+  - **Competency 90:** Explain the security needs of a venue and/or event (Managing ingress/egress, preventing crowd crush, and directing foot traffic; Differentiating between uniform police, private event staff, and specialized crowd managers).
+  - **Competency 91:** Explain the use of emergency preparedness plans to address threats to a venue and/or event (Developing evacuation, shelter-in-place, and medical emergency protocols).
 
 ## **3. Learning Objectives**
 
