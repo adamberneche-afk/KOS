@@ -3146,3 +3146,22 @@ PENDING_INFERENCE rows with no timestamp as stuck, and lists rows with an
 unknown status, where Studio residue (a step's variable names typed into the
 sheet) lands. The watchdog (34) and the health check skip fully blank rows,
 which used to count as unknown.
+
+## Terms are marking periods, 2026-10-12
+
+The teacher set the term format: the school year plus the marking period,
+`CURRENT_TERM` = `2627_MP1` (MP 1-4), changed at each marking period. The
+code treated a term change as a new term, so three things changed with it:
+
+- Both dashboards defaulted to rows tagged with `CURRENT_TERM`, and new rows
+  are tagged with the term in effect (`02` intake, `52` roster import). In
+  MP2 a student registered in MP1 would have dropped out of the default
+  view of a year-long course. The default is now the whole current school
+  year; the dropdown still narrows to one marking period.
+- "Archive Completed Term" archived every row with that exact term, so
+  archiving `2627_MP1` would have hidden students' work mid-year. Archive
+  and reactivate now take a whole school year (`2627` or `2026-27`) and
+  refuse a single marking period; the menu items say "School Year".
+- `_schoolYearOfTerm_()` (`00`) reads `2627_MP1` as 2026-27 (older terms
+  like "2025-26 S1" still read). Set Current Term accepts only the new
+  format.

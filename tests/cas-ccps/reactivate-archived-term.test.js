@@ -6,6 +6,11 @@
 // own confirm dialog says so explicitly ("This cannot be undone
 // automatically — contact your admin to restore"). This is that restore
 // path. Fixture/harness conventions match tests/cas-ccps/ledger-retention.test.js.
+//
+// Since 2026-10-12 both take a school year ("2526" or "2025-26"), not a
+// term: a term is one marking period ("2526_MP1") of a year-long course
+// (tests/cas-ccps/term-marking-periods.test.js). Older terms still count
+// toward their school year.
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
@@ -51,13 +56,13 @@ function scriptUi(sandbox, responseText) {
   return ui;
 }
 
-test('reactivateArchivedTerm: sets a matching term\'s ARCHIVED rows back to ACTIVE', () => {
+test('reactivateArchivedTerm: sets a school year\'s ARCHIVED rows back to ACTIVE, any term in it', () => {
   const { exported, sandbox } = load();
   const { ledger } = setUpFixture(sandbox, exported.LEDGER, [
     { status: 'ARCHIVED', term: '2025-26 S1' },
-    { status: 'ARCHIVED', term: '2025-26 S1' },
+    { status: 'ARCHIVED', term: '2526_MP3' },
   ]);
-  scriptUi(sandbox, '2025-26 S1');
+  scriptUi(sandbox, '2526');
 
   exported.reactivateArchivedTerm();
 
@@ -65,27 +70,27 @@ test('reactivateArchivedTerm: sets a matching term\'s ARCHIVED rows back to ACTI
   rows.forEach((row) => assert.equal(row[exported.LEDGER.STATUS], 'ACTIVE'));
 });
 
-test('reactivateArchivedTerm: leaves a different term\'s ARCHIVED rows untouched', () => {
+test('reactivateArchivedTerm: leaves a different school year\'s ARCHIVED rows untouched', () => {
   const { exported, sandbox } = load();
   const { ledger } = setUpFixture(sandbox, exported.LEDGER, [
     { status: 'ARCHIVED', term: '2025-26 S1' },
     { status: 'ARCHIVED', term: '2024-25 S2' },
   ]);
-  scriptUi(sandbox, '2025-26 S1');
+  scriptUi(sandbox, '2025-26');
 
   exported.reactivateArchivedTerm();
 
   const rows = ledger.getRange(2, 1, 2, 23).getValues();
   assert.equal(rows[0][exported.LEDGER.STATUS], 'ACTIVE');
-  assert.equal(rows[1][exported.LEDGER.STATUS], 'ARCHIVED'); // different term, untouched
+  assert.equal(rows[1][exported.LEDGER.STATUS], 'ARCHIVED'); // different school year, untouched
 });
 
-test('reactivateArchivedTerm: leaves a non-ARCHIVED row in the matching term untouched', () => {
+test('reactivateArchivedTerm: leaves a non-ARCHIVED row in the matching school year untouched', () => {
   const { exported, sandbox } = load();
   const { ledger } = setUpFixture(sandbox, exported.LEDGER, [
     { status: 'COMPLIANT', term: '2025-26 S1' },
   ]);
-  scriptUi(sandbox, '2025-26 S1');
+  scriptUi(sandbox, '2526');
 
   exported.reactivateArchivedTerm();
 
@@ -99,13 +104,28 @@ test('archiveCompletedTerm then reactivateArchivedTerm: a full round trip lands 
     { status: 'COMPLIANT', term: '2025-26 S1' },
   ]);
 
-  scriptUi(sandbox, '2025-26 S1');
+  scriptUi(sandbox, '2526');
   exported.archiveCompletedTerm();
   assert.equal(ledger.getRange(2, exported.LEDGER.STATUS + 1).getValue(), 'ARCHIVED');
 
-  scriptUi(sandbox, '2025-26 S1');
+  scriptUi(sandbox, '2526');
   exported.reactivateArchivedTerm();
   // Documented, deliberate simplification: the original COMPLIANT/ACTIVE/
   // COMPLETE distinction is not recoverable through the round trip.
   assert.equal(ledger.getRange(2, exported.LEDGER.STATUS + 1).getValue(), 'ACTIVE');
+});
+
+test('archiveCompletedTerm: a single marking period is refused, and nothing is archived', () => {
+  const { exported, sandbox } = load();
+  const { ledger } = setUpFixture(sandbox, exported.LEDGER, [
+    { status: 'COMPLIANT', term: '2526_MP1' },
+  ]);
+  const said = [];
+  const ui = scriptUi(sandbox, '2526_MP1');
+  ui.alert = (msg) => { said.push(String(msg)); return ui.Button.YES; };
+
+  exported.archiveCompletedTerm();
+
+  assert.equal(ledger.getRange(2, exported.LEDGER.STATUS + 1).getValue(), 'COMPLIANT');
+  assert.ok(said.some((m) => /one marking period/.test(m)), said.join(' | '));
 });
