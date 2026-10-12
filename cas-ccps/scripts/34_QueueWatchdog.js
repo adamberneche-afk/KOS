@@ -281,11 +281,14 @@ function runQueueWatchdog() {
     console.log('[Watchdog] Could not acquire lock — another run is active. Skipping.');
     return;
   }
+  // What the CAS attention signal (34b) reports about this run.
+  const signalInput = { dryRun: true, results: null, error: null };
   try {
     const cfg = getConfig_();
     const ss = SpreadsheetApp.openById(cfg.adminSsId);
     const releaseMap = _wdReadReleaseMap_();
     const dryRun = PropertiesService.getScriptProperties().getProperty('CAS_WATCHDOG_DRY_RUN') !== 'false';
+    signalInput.dryRun = dryRun;
     const touchedKeys = new Set(); // every release-map key this run actually looked at — see _wdPruneReleaseMap_
 
     const results = {
@@ -297,6 +300,7 @@ function runQueueWatchdog() {
     _wdPruneReleaseMap_(releaseMap, touchedKeys);
     _wdWriteReleaseMap_(releaseMap);
     _wdWriteHealthTab_(ss, results, dryRun);
+    signalInput.results = results;
 
     const totalTimedOut = results.rubricQueue.timedOut + results.stagingPipeline.timedOut +
       results.warmUpQueue.timedOut;
@@ -308,9 +312,17 @@ function runQueueWatchdog() {
     }
   } catch (e) {
     console.error('[Watchdog] Run failed: ' + e.message);
+    signalInput.error = e.message;
     _wdSendChatAlert_('🔴 cas-ccps Queue Watchdog itself failed to run: ' + e.message);
   } finally {
     lock.releaseLock();
+  }
+  // Written after the lock is released, and even when the run failed, so
+  // the signal says the watchdog failed rather than going quiet.
+  try {
+    writeCasSignal_(signalInput);
+  } catch (e) {
+    console.error('[Watchdog] CAS attention signal failed: ' + e.message);
   }
 }
 
@@ -416,6 +428,9 @@ function _wdCheckSheet_(sheet, sheetLabel, statusCol, watchedStatuses, knownStat
   for (let i = 1; i < data.length; i++) {
     const row = data[i];
     const rowNum = i + 1;
+    // A fully blank row (cleared by hand, not deleted) isn't a queue row;
+    // counting it as an unknown status would be a false alarm.
+    if (row.every(function (c) { return c === '' || c === null; })) continue;
     const status = String(row[statusCol]).trim();
 
     if (watchedStatuses.indexOf(status) !== -1) {

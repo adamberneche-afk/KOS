@@ -118,7 +118,7 @@ see their own rows below):
 
 | Project | Bound to | Scripts |
 |---|---|---|
-| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
+| Central Ledger | Central Ledger spreadsheet | `00`, `02` (intake), `03` (queue bridge), `04` (shared helpers; the turn-in gate was retired 2026-10-10), `06` (turnstile), `10` (admin recovery), `18` (form dispatcher), `22`/`22b`/`23`/`24`/`25`/`26`/`27` (Module 2 Full), `29`/`30`/`30b` (Module 4/5), `31`/`32`/`33` (Module 2 import/bridge utilities), `34` (queue watchdog), `34b` (CAS attention signal: the counts-only `KOS_CAS_SIGNAL` doc the KOS Claude Project reads, rewritten by the watchdog every 10 minutes), `35` (flow preflight/canary), `36` (weekly parent report — see `docs/FERPA_DATA_MAP.md`'s "Disclosure to parents" section), `15b`/`15c`, `37`–`42` (flow plumbing), `43` (deploy marker), `50` (student data access), `51` (course year builder), `52` (Canvas roster import) — see `tools/gas-lint/project-map.json` for the authoritative per-file binding list |
 | Unified Manual | Assignment System Manual Doc | `00`, `16` (unified admin+teacher setup wizard — `detectRole_()` picks admin vs. teacher automatically) plus its two still-live `16_*_ADDENDUM` files (their own top-level code shares this project's scope, not a stale leftover), `19` (required by `16`'s `writeConfigTab_()`), `20` (setup checkpoint), `21` (optional Apps Script API auto-installer — binds all 7 projects and deploys both web apps in ~3 minutes instead of ~20 minutes of manual binding per project, see `REGISTRY_SHEET_SETUP.md`), `28` (Module 2 setup) |
 | Master Student Template | Master Student Template Doc | `00`, `01` (container script — student-facing menu), `09` (M1Base), `17` (doc-only setup notes) |
 | Rubric Response Sheet (cloned per teacher) | cloned sheet | `00`, `05` (teacher rubric intake), `19` |
@@ -141,6 +141,23 @@ and hours waiting, and no names. A safety message is flagged before Gemini
 runs, is never summarized, and pushes to the teacher's phone (ntfy, no
 details). Setup and the data boundary:
 [`docs/FAMILY_MAIL_SENTINEL.md`](./docs/FAMILY_MAIL_SENTINEL.md).
+
+## CAS attention signal (script 34b)
+
+The KOS Claude Project may not read CAS sheets (SMP-005), so
+`34b_CasAttentionSignal.js` gives it counts instead. At the end of every
+queue-watchdog run (every 10 minutes) it rewrites `KOS_CAS_SIGNAL`:
+students and families first (submissions waiting on feedback or failed, SCR
+suggestions awaiting the teacher's confirm, students newly retry-eligible,
+students rated below satisfactory on the SCR, a 4 or 5, with the change
+since yesterday), then admin
+(watchdog dry run or failure, timed-out and unknown-status queue rows, rows
+in flight with no timestamp, failing FERPA checks). A line shows only above
+zero; a count that can't be read says "unavailable". No names, IDs, grades or
+student text. The first run creates the doc and stores its ID in
+`CAS_SIGNAL_DOC_ID` (optional `CAS_SIGNAL_FOLDER_ID` picks its folder); paste
+its link into the Project's instructions. Data boundary:
+`docs/FERPA_DATA_MAP.md`, "CAS attention signal".
 
 Each of these 8 projects now has a real, committed `appsscript.json` and
 is a clasp-adoption target — see [Version control (clasp)](#version-control-clasp)
