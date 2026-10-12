@@ -42,6 +42,3 @@ e.g. `{ "8175": { "46": "8175-56" } }`, and re-run the generator.
 | 8175 | 92 | Create a promotional plan. | Explain the advantages and disadvantages of using various forms of sales promotion in the sports, entertainment, and event industries | L19 |
 | 8175 | 95 | Evaluate a promotional campaign. | Explain the concept of bundling products and/or services | L36 |
 | 8175 | 96 | Explain the nature of ambush marketing. | Explain the steps of the selling process | L21 |
-| 8177 | 85 | Explain the components of venue management (The mechanics of physically opening and closing a space). | Identify the components of a budget | employee-handbook-operations |
-| 8177 | 107 | Demonstrate workplace etiquette (Professional communication, dress code, and behavior on the sales floor). | Collect information about a prospective employer | employee-handbook-operations |
-| 8177 | 108 | Demonstrate workplace etiquette (Professional communication, dress code, and behavior on the sales floor). | Develop a career plan | employee-handbook-operations |

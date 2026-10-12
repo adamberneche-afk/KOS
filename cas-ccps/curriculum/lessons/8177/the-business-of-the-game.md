@@ -21,11 +21,11 @@ Students often view the sports industry strictly from a fan's perspective (wins,
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
   - **Competency 15:** Demonstrate information-literacy skills (Researching corporate financial data and ownership records).
-  - **Competency 23:** Examine aspects of an industry (Analyzing the multi-billion dollar sports/entertainment industry ecosystem).
-  - **Competency 24:** Explain the role of business in society (Evaluating how a sports franchise impacts its local city's economy and community).
-  - **Competency 25:** Describe types of business ownership (Identifying whether the franchise is a sole proprietorship, partnership, or corporation).
-  - **Competency 26:** Explain the concept of profit (Breaking down revenue streams: media rights, gate receipts, merchandising, vs. operating expenses).
-  - **Competency 27:** Explain the concept of competition (Understanding that a sports team competes not just with other teams, but with movies, concerts, and streaming services for discretionary income).
+  - **Competency 24:** Examine aspects of management within an industry/organization (Analyzing who owns and runs a franchise in the multi-billion dollar sports/entertainment industry).
+  - **Competency 50:** Examine how sports, entertainment, and events affect local, state, and national economies (Evaluating how a sports franchise impacts its local city's economy and community).
+  - **Competency 52:** Explore the organizational structures within the sports, entertainment, and event industries (Identifying whether the franchise is a sole proprietorship, partnership, or corporation).
+  - **Competency 86:** Identify revenue sources related to the sports, entertainment, and event industries (Breaking down revenue streams: media rights, gate receipts, merchandising).
+  - **Competency 94:** Explain how event popularity and competitive factors relate to attendance (Understanding that a sports team competes not just with other teams, but with movies, concerts, and streaming services for discretionary income).
 
 ## **3. Learning Objectives**
 
@@ -49,7 +49,7 @@ By the end of this lesson, students will be able to:
 
 ### **C. Franchise Analysis Lab (50 Minutes)**
 
-  - **Independent Work (Competencies 23-27):** Students select a professional sports franchise or major entertainment corporation (e.g., WWE, Live Nation). They must use their Chromebooks to research the business side of the entity, focusing strictly on its corporate operations, ownership, and revenue generation.
+  - **Independent Work (Competencies 24, 50, 52, 86, 94):** Students select a professional sports franchise or major entertainment corporation (e.g., WWE, Live Nation). They must use their Chromebooks to research the business side of the entity, focusing strictly on its corporate operations, ownership, and revenue generation.
 
 ## **5. Project Deliverables: "The Corporate Scouting Report"**
 
