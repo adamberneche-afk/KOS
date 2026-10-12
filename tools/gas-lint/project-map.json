@@ -163,6 +163,16 @@
       "cas-ccps/studio-steps/ExtractBridgeInputsStep.gs"
     ]
   },
+  "cas-ccps:family-sentinel": {
+    "_bound_to": "Family Mail Sentinel spreadsheet, a private sheet the teacher owns (container-bound). Reads the teacher's Gmail through the advanced Gmail service; the only cas-ccps project with a Gmail scope, on purpose.",
+    "manifest": "cas-ccps/clasp/manifests/family-sentinel.appsscript.json",
+    "files": [
+      "cas-ccps/scripts/00_SharedConfig.js",
+      "cas-ccps/scripts/60_FamilyMailSentinel.js",
+      "cas-ccps/scripts/61_FamilyMailPrompt.js",
+      "cas-ccps/scripts/62_DeployVersionMarker_FamilySentinel.js"
+    ]
+  },
   "leader-hub:app": {
     "_bound_to": "Its own single-script project (Gmail-bound), not shared with anything — no collision surface to check against another project, but promoted to a top-level entry (not '_excluded') anyway so Check E (OAuth scope coverage) runs against it, and now Check D (google.script.run <-> server function cross-reference) too now that Code.gs/student-leader-hub.html exist. Renamed from 'leader-hub:email-bridge' now that this project serves the HTML web app as well as the JSON API — see the leader-hub server-migration plan.",
     "manifest": "leader-hub/appsscript.json",
