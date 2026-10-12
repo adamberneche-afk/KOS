@@ -2998,5 +2998,11 @@ aspects), 31–38 (student organization and work-based learning) and most of
 the marketing groups from 39 to 99. Covering them is the next step, as
 8177's #145–#149 were.
 
-Not yet in Drive: the 8175 lesson docs still have the old lines. Not yet
-live: push central-ledger (`55b`).
+Drive (same day): the 28 changed lesson docs in the 8175 folder were
+edited in place with the Google Docs connector, changing only the edited
+lines. Each doc was checked first against its pre-change text (none had
+changed since 2026-10-07), and each doc's text and bold labels were
+compared afterwards with its repo file. The tracker was written in the repo
+and has no Drive copy.
+
+Not yet live: push central-ledger (`55b`).
