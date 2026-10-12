@@ -2,7 +2,7 @@
 
 > ## ✅ STATUS: cas-ccps is live, with real rosters and the teacher's own lessons (updated 2026-10-12)
 >
-> **The repo-wide handoff is [`meta/HANDOFF_2026-10-10.md`](../meta/HANDOFF_2026-10-10.md)**:
+> **The repo-wide handoff is [`meta/HANDOFF_2026-10-12.md`](../meta/HANDOFF_2026-10-12.md)**:
 > every system's state and the operator's queue in order. The other two
 > systems' state is there and in their own handoffs.
 >
@@ -26,13 +26,19 @@
 >   handler and its setup-wizard form retired. `00_SharedConfig.js` changed,
 >   so push **every** cas-ccps project, update both web apps' existing
 >   deployments, and run `syncFlowPromptsToSheet()`. The order is in
->   `meta/HANDOFF_2026-10-10.md`.
+>   `meta/HANDOFF_2026-10-12.md`.
 > - **Merged 2026-10-11/12, not yet pushed (#135–#149):** the 8177
 >   curriculum: a student prompt for every lesson, competency lines on the
 >   2025 task list, two new lessons, all 108 tasks covered
 >   (`cas-ccps/HISTORY.md`, newest entry). Push central-ledger (`55b`) and
 >   import the rebuilt `8177.imscc` (31 modules; Game Day
 >   Takeover's prompt approved 2026-10-12).
+> - **Merged 2026-10-12, not yet pushed (#151–#157):** the 8175
+>   curriculum: competency lines re-matched to the 2025 task list, cited
+>   and expanded lessons, all 113 tasks covered; the Turn-In Form config
+>   keys removed from `00_SharedConfig.js`. Push every cas-ccps project and
+>   import the rebuilt `8175.imscc` (36 modules). Every lesson doc in Drive
+>   matches the repo.
 > - Left: step 18 (import the Canvas cartridges, rebuilt 2026-10-12), then
 >   the first real Flow 2 run when students submit.
 >
