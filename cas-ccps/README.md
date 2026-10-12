@@ -314,7 +314,7 @@ the 8177 pacing guide). One 8177 lesson, `the-cloud-behind-the-game.md`
 (data centers and AI; competencies 44, 48, 55, 57, 64, 65), was written in
 the repo first; its Drive copy was created from it. `game-day-takeover.md`
 (running a Cavalier Shop pop-up and thanking the team; competencies 99, 100)
-was also written in the repo and has no Drive copy yet. `tools/cas-ccps/build-lesson-assignments.js` turns
+was also written in the repo first, and its Drive copy was created from it. `tools/cas-ccps/build-lesson-assignments.js` turns
 them into `scripts/55b_LessonAssignmentData.js`:
 
 - **8175:** the prompt is the lesson's own "Canvas assignment text", the
