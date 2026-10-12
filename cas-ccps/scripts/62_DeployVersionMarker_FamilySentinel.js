@@ -22,7 +22,7 @@
  * tools/deploy-drift/README.md), then run
  * installDeployVersionReportTrigger() once from the Apps Script editor.
  */
-const DEPLOY_VERSION_SHA = '60e85ba31b4089297869b5ed59dfd15567b09997'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
+const DEPLOY_VERSION_SHA = '40d1edfeb7f752a9ab9ea786ac86a28a32d16beb'; // stamped by tools/deploy-drift/stamp.js — never hand-edit
 
 function reportDeployVersion() {
   return _reportDeployVersion_('cas-ccps:family-sentinel', DEPLOY_VERSION_SHA);
