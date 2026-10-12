@@ -25,9 +25,11 @@ Part 4: Your STAR Stories. Write three STAR stories from this year (group projec
 
 Part 5: Your Network. Name one professional organization (like DECA) you could join and one person or organization you could ask for an informational interview. Explain how each could help your career.
 
+Part 6: Clearing the Path. Name two things that could make it hard for you to get your first job in sports, entertainment or events (for example: no experience yet, transportation, working nights and weekends, not knowing anyone in the industry). For each one, write a specific strategy you could use to get past it.
+
 Everything on a resume must be true. Never exaggerate what you did.
 
-Use these terms accurately: SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview, internship, certification.
+Use these terms accurately: SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview, internship, certification, barrier to employment.
 
 ## Background
 
@@ -63,6 +65,15 @@ The education and training you'll need:
 - Experience matters as much as the degree. Internships, part-time game-day jobs (ticket taker, usher, concessions) and event volunteering are how most people get their first full-time job in sports.
 - Some careers add a professional certification after a few years of work, like the Certified Meeting Professional (CMP) for event planners or the Certified Facilities Executive (CFE) for venue managers.
 
+Barriers to employment are the things that make it harder to get hired, and almost everyone faces some. The goal is a plan, not a perfect situation. Common ones in sports and events, and ways around them:
+
+- No experience yet: volunteer at school games and events, work the Cavalier Shop, help run a DECA event. All of it counts on a resume.
+- Transportation: plan the route before you apply, carpool with a coworker, or look for jobs on a bus line.
+- Event schedules: games and concerts happen on nights and weekends. Look for roles and shifts that fit around school, and be upfront about your availability.
+- Age limits: some roles require you to be 18. Many others, like concessions, guest services and team stores, hire younger workers.
+- No network: DECA, informational interviews and asking teachers and coaches for introductions all help you meet people in the industry.
+- Unpaid internships: look for paid ones, or ones that count for school credit, and ask about it before you apply.
+
 Networking means building relationships with people in the field. An informational interview is a short, polite conversation with someone who has a job you're curious about, where you ask about their career. You're not asking for a job, just advice. A professional online presence (like a LinkedIn profile, when you're old enough) helps people find you.
 
 A strong resume bullet = action verb + specific task + result.
@@ -88,6 +99,7 @@ The STAR method answers interview questions with a real story:
 - Networking: building professional relationships that can help your career.
 - Informational interview: a short conversation with someone in a job you're curious about, to learn about their career.
 - Internship: a short-term job, paid or unpaid, where you learn a career by doing it.
+- Barrier to employment: something that makes it harder to get hired, like no experience or no transportation.
 - Certification: a credential from a professional organization showing you've met its standards, usually by passing an exam.
 
 ## Example
@@ -105,4 +117,4 @@ Think of a job in sports or entertainment that doesn't involve playing the sport
 
 ## Vocabulary
 
-SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview, internship, certification
+SWOT analysis, KPI, ROI, resume, action verb, STAR method, networking, informational interview, internship, certification, barrier to employment

@@ -116,7 +116,7 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
 
   - Converting raw data into actionable operational changes.
   - *Lesson:* **Survey Results Analysis & Management Decisions**
-  - *Competencies:* 2, 21, 45, 77, 84.
+  - *Competencies:* 2, 21, 45, 77, 78, 84.
 
 <!-- end list -->
 
@@ -140,6 +140,9 @@ This pacing guide organizes the VDOE 8177 competencies and associated lesson pla
   - Designing a signature event from vision to risk management.
   - *Lesson:* **The Richmond Festival Blueprint**
   - *Competencies:* 1, 67, 68, 87, 92, 95, 96, 97.
+  - Running a real Cavalier Shop pop-up at a home game, then thanking the team and judging the results.
+  - *Lesson:* **Game Day Takeover (Running an Event & Thanking the Team)**
+  - *Competencies:* 10, 58, 95, 99, 100, 101.
 
 <!-- end list -->
 
