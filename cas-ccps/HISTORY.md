@@ -3022,5 +3022,8 @@ plans. Coverage: 87 of 113 (80 in lessons, 7 outside). Not yet covered: 16,
 22, 23–28, 30, 40, 43, 48, 54, 55, 65, 69, 79, 82, 85, 88, 92, 95, 97, 99,
 104, 108. L06, the live assignment, is unchanged.
 
-Not yet in Drive: the 17 lesson docs that gained lines. Not yet live: push
-central-ledger (`55b`).
+Drive (same day): the 17 lesson docs were edited in place, adding only the
+new lines and the rebuilt Duty Areas. Each doc was checked against its text
+after the re-match sync first, and compared with its repo file afterwards.
+
+Not yet live: push central-ledger (`55b`).
