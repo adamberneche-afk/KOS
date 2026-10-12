@@ -81,10 +81,29 @@ test('8177: a draft prompt file is not used', () => {
 });
 
 test('a competency number whose state wording differs keeps the doc\'s words and no ID', () => {
-  const l16 = built.assignments['8175-L16'];
-  assert.ok(!l16.competencyIds.includes('8175-41'), 'L16 "041: Calculate break-even point" is not 8175-41');
-  assert.match(l16.definitionOfDone, /- Calculate break-even point/);
-  assert.match(built.review, /\| 8175 \| 41 \| Calculate break-even point/);
+  const file = path.join(ROOT, 'cas-ccps/curriculum/lessons/8175/L16.md');
+  const read = fs.readFileSync;
+  fs.readFileSync = function (f, ...rest) {
+    const s = read.call(fs, f, ...rest);
+    return path.resolve(String(f)) === file
+      ? String(s).replace(/\*\*019:\*\* [^\n]*/, '**041:** Calculate break-even point.') : s;
+  };
+  try {
+    const b = gen.build();
+    const l16 = b.assignments['8175-L16'];
+    assert.ok(!l16.competencyIds.includes('8175-41'), '"041: Calculate break-even point" is not 8175-41');
+    assert.match(l16.definitionOfDone, /- Calculate break-even point/);
+    assert.match(b.review, /\| 8175 \| 41 \| Calculate break-even point/);
+  } finally {
+    fs.readFileSync = read;
+    gen.build();
+  }
+});
+
+test('8175: lesson competencies cite the 2025 state task list', () => {
+  assert.deepEqual(built.assignments['8175-L16'].competencyIds, ['8175-66', '8175-67', '8175-19', '8175-101']);
+  assert.match(built.assignments['8175-L16'].definitionOfDone, /- 8175-66 Explain pricing and the factors/);
+  assert.doesNotMatch(built.review, /\| 8175 \|/, 'no 8175 number is left to review');
 });
 
 test('8177: lesson competencies cite the 2025 state task list', () => {

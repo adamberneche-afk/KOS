@@ -8,11 +8,12 @@ keep the two in step: in October 2026 the 8177 files were edited in the repo (co
 lines re-matched to the 2025 task list, lessons expanded) and the Drive docs were updated
 to match on 2026-10-12. Two 8177 lessons were written in the repo first:
 `the-cloud-behind-the-game.md` (its Drive doc was created from it) and
-`game-day-takeover.md` (likewise).
+`game-day-takeover.md` (likewise). The 8175 lessons' competency lines were re-matched to
+the 2025 task list on 2026-10-12, in the repo first (see below for Drive).
 
 | Folder | Course | Drive folder ID | Contents |
 |---|---|---|---|
-| `8175/` | 8175 Sports & Entertainment Marketing | `1BksIMpLiRAt4RdEam3mKIYExT8NZGusa` | `L01.md`–`L36.md`, one per "8175 \| Qn \| … \| Lesson NN: …" doc (teacher instructions + Canvas student-view assignment text) |
+| `8175/` | 8175 Sports & Entertainment Marketing | `1BksIMpLiRAt4RdEam3mKIYExT8NZGusa` | `L01.md`–`L36.md`, one per "8175 \| Qn \| … \| Lesson NN: …" doc (teacher instructions + Canvas student-view assignment text), and `COMPETENCY_TRACKER.md` (written in the repo; no Drive copy) |
 | `8177/` | 8177 Sports, Entertainment, and Event Management | `1O5T04ktNN5GWi3fDnpKTbNWjW0Abn73U` | `PACING_GUIDE.md`, `COMPETENCY_TRACKER.md`, and one `<slug>.md` per "Lesson Plan: <Name>" doc |
 
 Each file starts with an HTML-comment header giving the source Google Doc ID, the exact
