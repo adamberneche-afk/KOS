@@ -7,10 +7,13 @@ the place where the operator plans, decides and builds
 **Status:** set up 2026-10-11 with the knowledge files; `start` passed.
 Gmail and Google Calendar connectors added 2026-10-11, with sending turned
 off; `start` now reads them, and student and parent mail through the
-`KOS_FAMILY_SIGNAL` doc (2026-10-12). The operator re-pasted the
-instructions on 2026-10-12; the knowledge files are unchanged since setup.
-Left: the `KOS_FAMILY_SIGNAL` link in the instructions, if not yet pasted,
-then re-test `start`.
+`KOS_FAMILY_SIGNAL` doc (2026-10-12). Later on 2026-10-12 the operator
+edited the instructions by hand for SMP-005 (directed writes, the CAS
+attention signal, students and families first); `PROJECT_INSTRUCTIONS.md`
+matches them. Left: replace the family-signal link (the live instructions
+point at the Family Mail Sentinel spreadsheet, not the `KOS_FAMILY_SIGNAL`
+doc), paste the `KOS_CAS_SIGNAL` link once the doc exists, add SMP-005 and
+the updated `KILL_SWITCH_PROTOCOL.md` to knowledge, then re-test `start`.
 
 | File | What it is |
 |---|---|
@@ -53,25 +56,32 @@ then re-test `start`.
 ## Setting it up (operator, once)
 
 1. On claude.ai, create a Project named **KOS**.
-2. Get the four doc links. In Drive, open each Google Doc and copy its
-   URL:
+2. Get the five doc links. In Drive, open each Google Doc and copy its
+   URL (each is a Google **Doc**, never a spreadsheet):
    - `KOS_LATEST_PRIMER`
    - `KOS_OPEN_DECISIONS`
    - `KOS_CORE_FACTS`
    - `KOS_FAMILY_SIGNAL` (once the Family Mail Sentinel is set up; until
-     then leave the placeholder, and `start` reports it as unconfirmed)
+     then leave the placeholder, and `start` reports it as unconfirmed).
+     Not the *Family Mail Sentinel* spreadsheet: that sheet holds student
+     emails and family contacts, which the Project must never read.
+   - `KOS_CAS_SIGNAL` (created by the first Central Ledger watchdog run
+     after `34b_CasAttentionSignal.js` is pushed; its ID is in the Script
+     Property `CAS_SIGNAL_DOC_ID`)
 
    They keep the same file ID every day; Apps Script rewrites them in
    place.
 3. Paste `PROJECT_INSTRUCTIONS.md` (everything below its line) into the
-   Project's Instructions, with the three links filled in.
+   Project's Instructions, with the links filled in.
 4. Add to the Project's knowledge:
    - `SESSION_LOG_FORMAT.md`;
    - the six `rtp-core-router/notebook-sources/PERSONA_*_V5_1.md` (the
      notebook editions, each opening with a core block);
    - `rtp-core-router/notebook-sources/TURN_LOOP_REFERENCE.md`;
    - `rtp-core-router/protocols/COLD_BOOT_PROTOCOL.md`,
-     `KILL_SWITCH_PROTOCOL.md` and `RULE_CONFLICT_RESOLUTION_PROTOCOL.md`.
+     `KILL_SWITCH_PROTOCOL.md`, `RULE_CONFLICT_RESOLUTION_PROTOCOL.md` and
+     `SMP-005_RTP_DIRECTED_WRITES.md` (re-sync `KILL_SWITCH_PROTOCOL.md` after
+     2026-10-12: it gained the SMP-005 trigger).
 5. Connect the **Google Drive**, **Gmail** and **Google Calendar**
    connectors on the school account, and allow them in the Project. In
    Gmail's connector settings, turn off sending (done 2026-10-11).
