@@ -39,6 +39,10 @@ By the end of this lesson, students will be able to:
 
 ## **4. Instructional Sequence**
 
+This lesson runs over two class periods. **Day 1** builds the evidence: how the industry uses data centers, the pros and cons, and the fact-check (prompt Parts 1–3). **Day 2** puts it to work: the startup and the panel's recommendation (Parts 4–5).
+
+#### **Day 1: The Evidence (65 Minutes)**
+
 ### **A. The Hook: Where Does the Game Go? (10 Minutes)**
 
   - **Discussion:** Ask: *"When you stream a game or pull up a mobile ticket, where is that data actually stored?"* Most students will say "the cloud." Show a photo of a data center campus in Loudoun County and explain: the cloud is a building like this, full of servers, fans and cooling systems.
@@ -64,15 +68,28 @@ By the end of this lesson, students will be able to:
   - **The Discussion:** *"If both stories are true, why do they make you feel so differently?"* Pull out the techniques: which facts each story selects or leaves out, framing the same number two ways ("$25 million a year" vs. "about 2.5% of the budget"), comparisons ("more than every home in the county"), headlines, loaded words ("boost," "massive"), and quotes that are opinions rather than facts.
   - **The Rewrite:** Students write a balanced headline and three-sentence story using facts from both sides.
 
-### **E. The Startup Lab (30 Minutes)**
+  - **Exit Ticket:** *"Which story would you share with a friend, and what would you add so it tells the whole truth?"* Students finish any unfinished Day 1 parts for homework.
+
+#### **Day 2: The Decision (65 Minutes)**
+
+### **E. Recap: What Do We Know? (10 Minutes)**
+
+  - **Warm-up:** Students list the two strongest facts for each side from the fact sheet. Collect a few on the board as a shared T-chart to anchor the day.
+
+### **F. The Startup Lab (30 Minutes)**
 
   - **Entrepreneurial Mindset (Comp 55):** Entrepreneurs see problems as opportunities. Example: in England, a startup used the heat from a small data center to warm a public swimming pool. Discuss the mindset: spotting needs, taking calculated risks, resourcefulness and resilience.
   - **Org Charts (Comp 44):** Model an org chart on the board for a small sports streaming company (owner at the top; production, sales, marketing and tech below). Show how the chart changes as the business grows from 5 people to 15.
   - **Independent Work:** Students design their own startup and org chart (Part 4 of the prompt).
 
+### **G. The Panel's Recommendation (25 Minutes)**
+
+  - **Community Advisory Panel (Comp 64):** Students write their recommendation to the county (Part 5): support, oppose, or support with conditions, and whether to allow the AI option. Remind them to use facts from both sides, the way their balanced story did on Day 1.
+  - **Share-Out:** Take a quick class poll on the three choices and the AI option, then hear one argument from each position.
+
 ## **5. Project Deliverables: The Data Center Decision**
 
-Students submit the student prompt's five parts:
+Students submit the student prompt's five parts, Parts 1–3 on Day 1 and Parts 4–5 on Day 2:
 
 1.  **Follow the Game:** How one sports or entertainment experience depends on data centers, and a sort of uses into "needs AI" and "doesn't need AI."
 2.  **The Pros & Cons:** A T-chart from the fact sheet, plus how the picture changes for an AI data center.
