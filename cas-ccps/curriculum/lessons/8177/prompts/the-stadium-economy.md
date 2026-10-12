@@ -1,5 +1,5 @@
 <!-- lesson: the-stadium-economy -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Stadium Economy (Macroeconomics &
      Venue Funding)"). The plan's mock "Economic Impact Report" isn't in the
      repo, so its figures are written into the task here. The loan totals

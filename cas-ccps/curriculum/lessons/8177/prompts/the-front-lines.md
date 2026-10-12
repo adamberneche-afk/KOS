@@ -1,5 +1,5 @@
 <!-- lesson: the-front-lines -->
-<!-- status: draft 2026-10-11, for the teacher to review; change to "approved" to use it -->
+<!-- status: approved 2026-10-12 (drafted 2026-10-11) -->
 <!-- Drafted from the lesson plan ("The Front Lines (Customer Service &
      Sales)"). The plan's role-play is live; its scenario cards aren't in the
      repo, so two scenarios are written into the task, and this is each
