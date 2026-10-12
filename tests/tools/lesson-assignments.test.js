@@ -101,7 +101,7 @@ test('a competency number whose state wording differs keeps the doc\'s words and
 });
 
 test('8175: lesson competencies cite the 2025 state task list', () => {
-  assert.deepEqual(built.assignments['8175-L16'].competencyIds, ['8175-66', '8175-67', '8175-19', '8175-101']);
+  assert.deepEqual(built.assignments['8175-L16'].competencyIds, ['8175-40', '8175-66', '8175-67', '8175-19', '8175-95', '8175-97', '8175-101']);
   assert.match(built.assignments['8175-L16'].definitionOfDone, /- 8175-66 Explain pricing and the factors/);
   assert.doesNotMatch(built.review, /\| 8175 \|/, 'no 8175 number is left to review');
 });
