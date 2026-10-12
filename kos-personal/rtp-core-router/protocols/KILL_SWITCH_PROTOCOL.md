@@ -43,11 +43,12 @@ Currently named:
   writing incorrect classifications at volume, undetected by the
   confidence-tier gate.
 - RTP (the KOS Claude Project) writing anything the operator didn't direct
-  in the session, or anything on SMP-005's outside-scope list (CAS or
+  in the session, or anything on SMP-018's outside-scope list (CAS or
   LeaderHub, a delete, a trigger, a script property, sharing, mail or
-  calendar), even when directed. Added 2026-10-12 with
-  [`SMP-005_RTP_DIRECTED_WRITES.md`](./SMP-005_RTP_DIRECTED_WRITES.md). First
-  step: disconnect the connector in Claude settings, then follow §3.
+  calendar), even when directed. Added 2026-10-12 with SMP-018, RTP
+  Directed Writes (filed as SMP-005; see `SMP_REGISTER`,
+  `meta/SMP_PROCESS.md`). First step: disconnect the connector in Claude
+  settings, then follow §3.
 
 ## 3. The Procedure — one procedure, multiple triggers
 
