@@ -20,9 +20,8 @@ Why does the NFL play regular-season games in London and Germany? Why does the N
 
 This lesson addresses the final macro-economic and marketing competencies from the **8177** framework, achieving 100% course coverage:
 
-  - **Competency 39:** Explain the nature of global trade (Understanding how merchandise is manufactured globally and how sports products/broadcasts are exported to foreign markets).
-  - **Competency 40:** Describe the determinants of exchange rates and their effects (Calculating how a strong or weak US Dollar affects the profit margin of a jersey sold in Euros, Pounds, or Yen).
-  - **Competency 41:** Explain marketing and its importance in a global economy (Adapting brand messaging, event times, and promotional strategies to fit different cultural norms and global time zones).
+  - **Competency 51:** (Optional) Identify cultural and political environmental factors and their economic impact on the global sports, entertainment, and event industries (Understanding how merchandise is manufactured globally and how sports products/broadcasts are exported to foreign markets; Adapting brand messaging, event times, and promotional strategies to fit different cultural norms and global time zones).
+  - **Competency 74:** Describe external factors affecting the sports, entertainment, and event industries (Calculating how a strong or weak US Dollar affects the profit margin of a jersey sold in Euros, Pounds, or Yen).
 
 ## **3. Learning Objectives**
 

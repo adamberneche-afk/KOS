@@ -20,10 +20,10 @@ Why does a ticket to a Tuesday night baseball game cost $15, but a ticket to see
 
 This lesson addresses the following competencies from the **8177: Sports, Entertainment, and Event Management** framework:
 
-  - **Competency 2:** Demonstrate critical thinking and problem solving (Determining the "sweet spot" where price and consumer willingness to pay meet).
+  - **Competency 2:** Demonstrate critical thinking and problem-solving (Determining the "sweet spot" where price and consumer willingness to pay meet).
   - **Competency 19:** Apply mathematical skills to job-specific tasks (Calculating projected revenue using the formula: Price × Quantity = Total Revenue).
-  - **Competency 28:** Explain economic principles and their impact on business (Understanding macro/micro economic concepts like supply, demand, and scarcity).
-  - **Competency 45:** Explain the nature and scope of pricing (Analyzing how sports teams shift from fixed pricing to dynamic, demand-based pricing).
+  - **Competency 86:** Identify revenue sources related to the sports, entertainment, and event industries (Analyzing how ticket revenue changes when teams shift from fixed pricing to dynamic, demand-based pricing).
+  - **Competency 94:** Explain how event popularity and competitive factors relate to attendance (Understanding how demand rises and falls with the opponent, day, weather and scarcity of seats).
 
 ## **3. Learning Objectives**
 
@@ -48,7 +48,7 @@ By the end of this lesson, students will be able to:
 
 ### **C. The Revenue Math Lab (55 Minutes)**
 
-  - **Independent Work (Competency 19 & 28):** Distribute the "Dynamic Pricing Model" worksheet. Students act as the Director of Ticketing for a minor league hockey team. They are given different game scenarios (e.g., Opening Night, a snowy Tuesday game, a Championship playoff game) and a projected demand curve. They must calculate the mathematical revenue at different price tiers to find the most profitable ticket price for each specific game without pricing out the fans.
+  - **Independent Work (Competencies 19 & 94):** Distribute the "Dynamic Pricing Model" worksheet. Students act as the Director of Ticketing for a minor league hockey team. They are given different game scenarios (e.g., Opening Night, a snowy Tuesday game, a Championship playoff game) and a projected demand curve. They must calculate the mathematical revenue at different price tiers to find the most profitable ticket price for each specific game without pricing out the fans.
 
 ## **5. Project Deliverables: The Pricing Strategy Brief**
 
