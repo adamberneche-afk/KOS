@@ -15,6 +15,8 @@
  *   KOS_OPEN_DECISIONS   every DECISION_REGISTER row still OPEN.
  *   KOS_CORE_FACTS       the operator-pinned Core facts (ALIGNMENT
  *                        Threshold D) and the relational targets.
+ *   KOS_SMP_REGISTER     every System Modification Proposal in
+ *                        SMP_REGISTER: in force, pending, then retired.
  *
  * Each doc keeps one Drive file ID and is overwritten in place, with a
  * generated-at stamp under its title (_writeStableDoc_ in 6_Governance.gs,
@@ -27,6 +29,13 @@
  * The operator closes one by setting its Status to RESOLVED or DROPPED in
  * the sheet, or with resolveDecision(). backfillDecisionRegister() reads
  * the decisions already in CURRENT_STATE into the register, once.
+ *
+ * SMP_REGISTER (meta/SMP_PROCESS.md). The one list of SMPs, written by
+ * the operator. A session's proposal reaches Blackboard unnumbered
+ * (3_Queue_Processor.gs); on approval the operator gives it the next
+ * number here (nextSmpId() prints it) and files its full text in
+ * 01.3_SMP_PROPOSALS as SMP-NNN_TITLE. The Claude Project reads
+ * KOS_SMP_REGISTER by link, never a copy in its knowledge.
  */
 
 const BD_RECENT_SESSIONS = 5;          // sessions shown in full in KOS_RECENT_SESSIONS
@@ -375,6 +384,89 @@ function _coreFactsBlocks_(ss) {
 }
 
 // ================================================================
+// SMP_REGISTER
+// ================================================================
+
+const BD_SMP_IN_FORCE = ['APPROVED'];
+const BD_SMP_PENDING = ['PENDING', 'NEEDS_REVIEW'];
+
+/** The register sheet (_getOrCreateSheet gives a new one its header row). */
+function _bdSmpSheet_(ss) {
+  return _getOrCreateSheet(ss, CFG.SMP_REGISTER_SHEET);
+}
+
+/** Every register row as an object keyed by header, in sheet order. */
+function _bdSmpRows_(ss) {
+  const sheet = _bdSmpSheet_(ss);
+  if (sheet.getLastRow() <= 1) return [];
+  const H = CFG.SMP_REGISTER_HEADERS;
+  return sheet.getRange(2, 1, sheet.getLastRow() - 1, H.length).getValues()
+    .map(function (r) {
+      const o = {};
+      H.forEach(function (h, i) { o[h] = String(r[i] === null || r[i] === undefined ? '' : r[i]).trim(); });
+      if (r[H.indexOf('Filed_At')] instanceof Date) o.Filed_At = _bdDay_(r[H.indexOf('Filed_At')]);
+      if (r[H.indexOf('Decided_At')] instanceof Date) o.Decided_At = _bdDay_(r[H.indexOf('Decided_At')]);
+      return o;
+    })
+    .filter(function (o) { return /^SMP-\d{3,}$/.test(o.SMP_ID); });
+}
+
+/** The next free SMP number, "SMP-019" style. */
+function _bdNextSmpId_(ss) {
+  const max = _bdSmpRows_(ss).reduce(function (m, o) {
+    return Math.max(m, Number(o.SMP_ID.slice(4)) || 0);
+  }, 0);
+  return 'SMP-' + String(max + 1).padStart(3, '0');
+}
+
+/**
+ * Editor entry point: prints the number the next approved SMP gets.
+ * Numbers are only ever assigned from the register; a number a session
+ * proposed (Blackboard's "proposed as") is never reused.
+ */
+function nextSmpId() {
+  const id = _bdNextSmpId_(_getSystemAsset(CFG.INDEX_NAME, 'INDEX_ID', false));
+  console.log('[SMP] Next SMP number: ' + id);
+  return id;
+}
+
+/** KOS_SMP_REGISTER content. */
+function _smpRegisterBlocks_(ss) {
+  const rows = _bdSmpRows_(ss);
+  const line = function (o) {
+    return o.SMP_ID + ' — ' + o.Title + ' [' + o.Status + (o.Decided_At ? ' ' + o.Decided_At : '') + ']' +
+      (o.Rule ? ': ' + o.Rule : '') + (o.Doc_URL ? ' Full text: ' + o.Doc_URL : ' (no full-text doc)');
+  };
+  const inForce = rows.filter(function (o) { return BD_SMP_IN_FORCE.indexOf(o.Status) !== -1; });
+  const pending = rows.filter(function (o) { return BD_SMP_PENDING.indexOf(o.Status) !== -1; });
+  const retired = rows.filter(function (o) {
+    return BD_SMP_IN_FORCE.indexOf(o.Status) === -1 && BD_SMP_PENDING.indexOf(o.Status) === -1;
+  });
+  const out = [];
+  out.push({ kind: 'p', text: 'Every System Modification Proposal, from ' + CFG.SMP_REGISTER_SHEET +
+    '. This is the only list: an SMP not here is not in force, whatever a session or document says. ' +
+    'Cite an SMP by its number here. Older numbers it went by are in brackets.' });
+  out.push({ kind: 'h2', text: 'IN FORCE (' + inForce.length + ')' });
+  if (!inForce.length) out.push({ kind: 'p', text: 'None.' });
+  inForce.forEach(function (o) {
+    out.push({ kind: 'li', text: line(o) + (o.Former_IDs ? ' [formerly ' + o.Former_IDs + ']' : '') });
+  });
+  out.push({ kind: 'h2', text: 'PENDING — not in force until approved (' + pending.length + ')' });
+  if (!pending.length) out.push({ kind: 'p', text: 'None.' });
+  pending.forEach(function (o) {
+    out.push({ kind: 'li', text: line(o) + (o.Notes ? ' Note: ' + o.Notes : '') });
+  });
+  out.push({ kind: 'h2', text: 'RETIRED — superseded or dropped (' + retired.length + ')' });
+  if (!retired.length) out.push({ kind: 'p', text: 'None.' });
+  retired.forEach(function (o) {
+    out.push({ kind: 'li', text: o.SMP_ID + ' — ' + o.Title + ' [' + o.Status + ']' + (o.Notes ? ': ' + o.Notes : '') });
+  });
+  out.push({ kind: 'p', text: 'Next number: ' + _bdNextSmpId_(ss) + '. A new proposal is filed by the operator, ' +
+    'never numbered by a session (meta/SMP_PROCESS.md in the KOS repo).' });
+  return out;
+}
+
+// ================================================================
 // GENERATION
 // ================================================================
 
@@ -382,6 +474,7 @@ const BD_DOCS = [
   { name: 'KOS_RECENT_SESSIONS', title: 'RECENT SESSIONS', prop: 'RECENT_SESSIONS_DOC_ID', build: '_recentSessionsBlocks_' },
   { name: 'KOS_OPEN_DECISIONS',  title: 'OPEN DECISIONS',  prop: 'OPEN_DECISIONS_DOC_ID',  build: '_openDecisionsBlocks_' },
   { name: 'KOS_CORE_FACTS',      title: 'CORE FACTS',      prop: 'CORE_FACTS_DOC_ID',      build: '_coreFactsBlocks_' },
+  { name: 'KOS_SMP_REGISTER',    title: 'SMP REGISTER',    prop: 'SMP_REGISTER_DOC_ID',    build: '_smpRegisterBlocks_' },
 ];
 
 /**
@@ -407,6 +500,7 @@ function generateBriefingDocs_(folder, now) {
     _recentSessionsBlocks_: _recentSessionsBlocks_,
     _openDecisionsBlocks_: _openDecisionsBlocks_,
     _coreFactsBlocks_: _coreFactsBlocks_,
+    _smpRegisterBlocks_: _smpRegisterBlocks_,
   };
   const dateStr = Utilities.formatDate(now, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   BD_DOCS.forEach(function (d) {

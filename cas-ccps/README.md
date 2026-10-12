@@ -144,7 +144,7 @@ details). Setup and the data boundary:
 
 ## CAS attention signal (script 34b)
 
-The KOS Claude Project may not read CAS sheets (SMP-005), so
+The KOS Claude Project may not read CAS sheets (SMP-018), so
 `34b_CasAttentionSignal.js` gives it counts instead. At the end of every
 queue-watchdog run (every 10 minutes) it rewrites `KOS_CAS_SIGNAL`:
 students and families first (submissions waiting on feedback or failed, SCR

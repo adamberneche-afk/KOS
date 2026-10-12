@@ -350,7 +350,7 @@ student, sender, course or message detail, so no education record leaves.
 |---|---|
 | **Where** | A Google Doc in the teacher's Drive, rewritten in place by `34b_CasAttentionSignal.js` (Central Ledger project) at the end of every queue-watchdog run. Its ID is in `CAS_SIGNAL_DOC_ID`. |
 | **Fields** | Counts only: submissions waiting on feedback, submissions that failed or timed out, SCR suggestions awaiting confirm (and how many students), students newly retry-eligible, students rated below satisfactory on the SCR, a 4 or 5 (and the change since yesterday), plus admin counts (watchdog mode, timed-out and unknown-status queue rows, rows with no timestamp, failing FERPA checks). No name, email, file ID, config ID, competency, rating per student or student text. |
-| **Why collected** | So the KOS Claude Project can tell the teacher what in CAS needs attention without reading any CAS sheet (SMP-005: RTP never reads CAS sheets). |
+| **Why collected** | So the KOS Claude Project can tell the teacher what in CAS needs attention without reading any CAS sheet (SMP-018: RTP never reads CAS sheets). |
 | **Read by** | The teacher, and the KOS Claude Project through its Google Drive connector. |
 | **Retention** | Overwritten every run; it holds only the latest counts. To tell "since yesterday" apart, the Central Ledger's `CAS_SIGNAL_STATE` Script Property keeps yesterday's count and 12-character SHA-256 prefixes of the retry-eligible student and competency pairs, never the emails. |
 

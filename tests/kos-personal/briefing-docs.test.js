@@ -28,6 +28,7 @@ const EXPOSE = [
   'processIntakePayload', '_recordDeferredDecisions_', 'resolveDecision',
   'previewDecisionRegisterBackfill', 'applyDecisionRegisterBackfill',
   'generateBriefingDocs_', 'generateDailyPrimer', '_primerDataQuality_', 'getVectorState', 'CFG',
+  '_bdNextSmpId_',
 ];
 
 const STAGING_HEADERS = ['Timestamp', 'Payload_UID', 'Payload_Type', 'Doc_URL', 'File_ID', 'Status', 'Retry_Count'];
@@ -158,7 +159,7 @@ test('each briefing doc opens on its title and stamp, and keeps its file ID acro
   const folder = env.sandbox.DriveApp.getRootFolder();
   const first = env.exported.generateBriefingDocs_(folder, NOW);
   assert.deepEqual(first.failed, []);
-  assert.deepEqual(first.written, ['KOS_RECENT_SESSIONS', 'KOS_OPEN_DECISIONS', 'KOS_CORE_FACTS']);
+  assert.deepEqual(first.written, ['KOS_RECENT_SESSIONS', 'KOS_OPEN_DECISIONS', 'KOS_CORE_FACTS', 'KOS_SMP_REGISTER']);
   const ids = ['RECENT_SESSIONS_DOC_ID', 'OPEN_DECISIONS_DOC_ID', 'CORE_FACTS_DOC_ID']
     .map((k) => env.props.getProperty(env.exported.CFG.PROP[k]));
 
@@ -228,7 +229,7 @@ test('a doc whose read fails keeps its old content and stamp; the others are sti
   env.ss.getSheetByName = (n) => { if (n === 'INCUBATOR') throw new Error('Service Spreadsheets failed'); return realGet(n); };
   const res = env.exported.generateBriefingDocs_(folder, new Date('2026-10-05T06:00:00'));
 
-  assert.deepEqual(res.written, ['KOS_RECENT_SESSIONS', 'KOS_OPEN_DECISIONS']);
+  assert.deepEqual(res.written, ['KOS_RECENT_SESSIONS', 'KOS_OPEN_DECISIONS', 'KOS_SMP_REGISTER']);
   assert.equal(res.failed[0].doc, 'KOS_CORE_FACTS');
   assert.equal(docText(env, 'CORE_FACTS_DOC_ID'), before, 'the failed doc is left exactly as it was');
   assert.match(docText(env, 'OPEN_DECISIONS_DOC_ID'), /Generated at: 2026-10-05/);
@@ -313,4 +314,61 @@ test('generateDailyPrimer: a failed Vector State read leaves KOS_LATEST_PRIMER a
 
   assert.equal(res.success, false);
   assert.equal(env.sandbox.DocumentApp.openById(id).getBody().getText(), before);
+});
+
+// ── SMP_REGISTER (meta/SMP_PROCESS.md) ────────────────────────────────
+
+function smpRegister(env, rows) {
+  const sheet = env.ss.insertSheet('SMP_REGISTER');
+  sheet.appendRow(env.exported.CFG.SMP_REGISTER_HEADERS);
+  rows.forEach((r) => sheet.appendRow(env.exported.CFG.SMP_REGISTER_HEADERS.map((h) => r[h] || '')));
+  return sheet;
+}
+
+test('KOS_SMP_REGISTER: in force, then pending, then retired, with the next number', () => {
+  const env = setup();
+  smpRegister(env, [
+    { SMP_ID: 'SMP-001', Title: 'Naming', Status: 'APPROVED', Rule: 'Tags first.', Doc_URL: 'https://doc/1' },
+    { SMP_ID: 'SMP-010', Title: 'Old startup', Status: 'SUPERSEDED', Notes: 'By the Claude Project start.' },
+    { SMP_ID: 'SMP-018', Title: 'Directed writes', Status: 'APPROVED', Decided_At: '2026-10-12',
+      Rule: 'Writes only what is directed.', Former_IDs: 'SMP-005' },
+    { SMP_ID: 'SMP-013', Title: 'Drop zone', Status: 'PENDING', Notes: 'Operator to confirm.' },
+    { SMP_ID: 'not an id', Title: 'stray row', Status: 'APPROVED' },
+  ]);
+  const res = env.exported.generateBriefingDocs_(env.sandbox.DriveApp.getRootFolder(), NOW);
+  assert.ok(res.written.includes('KOS_SMP_REGISTER'));
+  const text = docText(env, 'SMP_REGISTER_DOC_ID');
+  const at = (s) => text.indexOf(s);
+  assert.ok(at('IN FORCE (2)') < at('SMP-001 — Naming [APPROVED]: Tags first. Full text: https://doc/1'));
+  assert.ok(at('SMP-018 — Directed writes [APPROVED 2026-10-12]') > at('IN FORCE'));
+  assert.match(text, /\[formerly SMP-005\]/);
+  assert.ok(at('PENDING') < at('SMP-013 — Drop zone') && at('SMP-013') < at('RETIRED'));
+  assert.ok(at('RETIRED') < at('SMP-010 — Old startup [SUPERSEDED]: By the Claude Project start.'));
+  assert.ok(!text.includes('stray row'), 'a row without an SMP number is not an SMP');
+  assert.match(text, /Next number: SMP-019\./);
+});
+
+test('the SMP register starts with its header row, and the first number is SMP-001', () => {
+  const env = setup();
+  assert.equal(env.exported._bdNextSmpId_(env.ss), 'SMP-001');
+  const sheet = env.ss.getSheetByName('SMP_REGISTER');
+  assert.deepEqual(sheet.getRange(1, 1, 1, 9).getValues()[0], env.exported.CFG.SMP_REGISTER_HEADERS);
+});
+
+test('a session\'s SMP proposal reaches Blackboard unnumbered; its own number is kept only as "proposed as"', () => {
+  const env = setup();
+  const payload = JSON.stringify({
+    session_metadata: { session_id: 'x', session_type: 'WORKING' },
+    session_summary: 'Proposed a rule.',
+    session_delta: { smp_proposals_filed: [
+      { proposal_id: 'SMP-001', title: 'A new rule', summary: 'One sentence.', filed_by: 'operator', status: 'PENDING' },
+    ] },
+  });
+  assert.equal(env.exported.processIntakePayload(payload, 'LOG-9a9a9a9a_CH01').status, 'SUCCESS');
+  const bb = env.ss.getSheetByName('Blackboard');
+  const row = bb.getRange(bb.getLastRow(), 1, 1, 12).getValues()[0];
+  assert.equal(row[1], 'SMP-NEW');
+  assert.equal(row[2], 'A new rule');
+  assert.match(row[7], /proposed as SMP-001/);
+  assert.match(row[7], /numbered in SMP_REGISTER on approval/);
 });
