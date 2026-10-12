@@ -67,7 +67,8 @@
 //
 // CHECKS (rule 9): runFamilySentinelPreflight(), runFamilyMailCanary(),
 // checkFamilyMailFlowBinding(), checkFamilyMailFlowLiveness();
-// installFamilyMailFixture() gives the Flow a synthetic row to match.
+// installFamilyMailFixture() gives the Flow a synthetic row to match;
+// runFamilySafetyAlertFixture() runs the phone alert path end to end.
 //
 // GMAIL: the advanced Gmail service (Gmail API v1), scope gmail.modify, for
 // reading messages and adding labels. Through Gmail it never sends, drafts,
@@ -108,6 +109,7 @@ const FMS_STATUS = {
   FAILED: "FAILED",
   UNCLASSIFIED: "UNCLASSIFIED",
   FIXTURE: "FIXTURE",
+  SAFETY_FIXTURE: "SAFETY_FIXTURE",
 };
 
 const FMS_LABEL = "KOS/Family";
@@ -285,11 +287,20 @@ function scanFamilyMail(opts) {
     if (r[FMS_LOG.THREAD_ID] && st !== FMS_STATUS.NOT_FAMILY && st !== FMS_STATUS.FIXTURE) familyThreads[String(r[FMS_LOG.THREAD_ID])] = r;
   });
 
-  const out = { checked: 0, queued: 0, safety: 0 };
+  const out = { checked: 0, queued: 0, safety: 0, errors: 0 };
   refs.forEach(function (ref) {
     if (seen[ref.id]) return;
     out.checked++;
-    const msg = _fmsReadMessage_(Gmail.Users.Messages.get("me", ref.id, { format: "full" }));
+    let msg;
+    try {
+      msg = _fmsReadMessage_(Gmail.Users.Messages.get("me", ref.id, { format: "full" }));
+    } catch (e) {
+      // One unreadable message is skipped, not the whole scan. The scan
+      // mark isn't moved (below), so it is tried again next run.
+      out.errors++;
+      out.lastError = String(e);
+      return;
+    }
     const fam = _fmsDetectFamily_(msg, roster, contacts, operator) ||
       _fmsFromFamilyThread_(msg, familyThreads[msg.threadId], operator);
     if (!fam) return;
@@ -318,7 +329,7 @@ function scanFamilyMail(opts) {
     familyThreads[msg.threadId] = row;
     out.queued++;
   });
-  props.setProperty("FAMILY_SENTINEL_LAST_SCAN_AT", String(startedAt));
+  if (!out.errors) props.setProperty("FAMILY_SENTINEL_LAST_SCAN_AT", String(startedAt));
   return out;
 }
 
@@ -389,8 +400,21 @@ function _fmsCollectBodies_(part, found) {
   (part.parts || []).forEach(function (child) { _fmsCollectBodies_(child, found); });
 }
 
+// A body part's data, as text. In Apps Script the advanced Gmail service
+// usually hands back the bytes already decoded (a byte array), not the
+// API's base64url string; decoding that again threw "Could not decode
+// string" on the first live run (2026-10-12). Both shapes are handled, a
+// string gets its "=" padding back first, and anything undecodable comes
+// back "" so one odd message can't stop a scan.
 function _fmsDecode_(data) {
-  return Utilities.newBlob(Utilities.base64DecodeWebSafe(data)).getDataAsString("UTF-8");
+  if (data === null || data === undefined || data === "") return "";
+  try {
+    if (typeof data !== "string") return Utilities.newBlob(data).getDataAsString("UTF-8");
+    const padded = data + "===".slice(0, (4 - data.length % 4) % 4);
+    return Utilities.newBlob(Utilities.base64DecodeWebSafe(padded)).getDataAsString("UTF-8");
+  } catch (e) {
+    return "";
+  }
 }
 
 // Returns null, or { source, studentEmail, course, period, student }.
@@ -700,6 +724,7 @@ function writeFamilySignal(now) {
   const rows = _fmsRows_(logSheet).filter(function (r) {
     const st = String(r[FMS_LOG.STATUS]);
     return r[FMS_LOG.THREAD_ID] && st !== FMS_STATUS.NOT_FAMILY && st !== FMS_STATUS.FIXTURE &&
+      st !== FMS_STATUS.SAFETY_FIXTURE &&
       new Date(r[FMS_LOG.RECEIVED_AT]).getTime() >= since;
   });
 
@@ -1016,16 +1041,20 @@ function sendFamilySafetyAlerts(now) {
     if (st === FMS_STATUS.NOT_FAMILY || st === FMS_STATUS.FIXTURE) return;
     if (new Date(r[FMS_LOG.RECEIVED_AT]).getTime() < since) return;
     due.push(i);
-    if (!alertedThreads[thread]) threads[thread] = true;
+    if (!alertedThreads[thread]) threads[thread] = st === FMS_STATUS.SAFETY_FIXTURE ? "fixture" : "real";
   });
   if (!due.length) return { sent: 0 };
 
   const n = Object.keys(threads).length;
+  // Only fixture rows due: the push says it's a test. Any real row: a real push.
+  const onlyFixture = n > 0 && Object.keys(threads).every(function (t) { return threads[t] === "fixture"; });
   if (n) {
     const dayKey = "FAMILY_ALERT_COUNT_" + Utilities.formatDate(now, Session.getScriptTimeZone(), "yyyyMMdd");
     const today = Number(props.getProperty(dayKey)) || 0;
     if (today >= FMS_ALERT_DAILY_CAP) return { sent: 0, reason: "daily cap reached", waiting: n };
-    const push = _fmsPush_(topic, _fmsAlertText_(n), "urgent");
+    const push = onlyFixture
+      ? _fmsPush_(topic, "Test: " + _fmsAlertText_(n), "urgent", FMS_ALERT_TITLE + " TEST")
+      : _fmsPush_(topic, _fmsAlertText_(n), "urgent", FMS_ALERT_TITLE);
     if (!push.ok) return { sent: 0, error: push.error, waiting: n };
     props.setProperty(dayKey, String(today + 1));
   }
@@ -1035,7 +1064,7 @@ function sendFamilySafetyAlerts(now) {
     rows[i][FMS_LOG.ALERTED_AT] = now;
     logSheet.getRange(i + 2, 1, 1, FMS_LOG_HEADERS.length).setValues([rows[i]]);
   });
-  return { sent: n ? 1 : 0, threads: n };
+  return { sent: n ? 1 : 0, threads: n, test: onlyFixture };
 }
 
 function _fmsAlertText_(n) {
@@ -1045,12 +1074,12 @@ function _fmsAlertText_(n) {
 // One POST to ntfy. "urgent" is ntfy's top priority (5): a long vibration
 // burst, and on iPhone a time-sensitive notification, which Focus can let
 // through. Returns { ok } or { ok:false, error }.
-function _fmsPush_(topic, text, priority) {
+function _fmsPush_(topic, text, priority, title) {
   try {
     const res = UrlFetchApp.fetch(FMS_NTFY_SERVER + "/" + encodeURIComponent(topic), {
       method: "post",
       payload: text,
-      headers: { Title: FMS_ALERT_TITLE, Priority: priority, Tags: "rotating_light" },
+      headers: { Title: title || FMS_ALERT_TITLE, Priority: priority, Tags: "rotating_light" },
       muteHttpExceptions: true,
     });
     const code = res.getResponseCode();
@@ -1074,6 +1103,45 @@ function makeFamilyAlertTopic(replace) {
   props.setProperty("FAMILY_ALERT_NTFY_TOPIC", topic);
   Logger.log("In the ntfy app: + → Subscribe to topic → " + topic + " (server ntfy.sh). Then run sendFamilyAlertTest().");
   return { topic: topic, created: true };
+}
+
+// The notification fixture: runs the real alert path end to end. It adds a
+// synthetic safety row to FamilyMailLog (no mail, no student), runs
+// sendFamilySafetyAlerts() exactly as the trigger does (topic, daily cap,
+// urgent push, Alerted_At), checks the row was marked, then deletes it.
+// The push reads "KOS TEST / Test: A family message needs you now. ...".
+// sendFamilyAlertTest() only proves ntfy reaches the phone; this proves the
+// sentinel would push for a flagged message. It counts toward the daily cap.
+function runFamilySafetyAlertFixture() {
+  const logSheet = _fmsEnsureTab_(_fmsSpreadsheet_(), FMS_LOG_TAB, FMS_LOG_HEADERS);
+  const id = FMS_FIXTURE_PREFIX + "SAFETY-" + Date.now();
+  const row = _fmsBlankLogRow_();
+  row[FMS_LOG.MESSAGE_ID] = id;
+  row[FMS_LOG.THREAD_ID] = id;
+  row[FMS_LOG.RECEIVED_AT] = new Date();
+  row[FMS_LOG.SOURCE] = "fixture";
+  row[FMS_LOG.STATUS] = FMS_STATUS.SAFETY_FIXTURE;
+  row[FMS_LOG.SAFETY] = true;
+  row[FMS_LOG.SENSITIVE] = true;
+  row[FMS_LOG.NOTE] = "notification fixture";
+  logSheet.appendRow(row);
+
+  let result, marked = false;
+  try {
+    result = sendFamilySafetyAlerts();
+  } finally {
+    const rows = _fmsRows_(logSheet);
+    const i = _fmsFindIndex_(rows, FMS_LOG.MESSAGE_ID, id);
+    if (i !== -1) {
+      marked = !!rows[i][FMS_LOG.ALERTED_AT];
+      logSheet.deleteRow(i + 2);
+    }
+  }
+  const ok = !!(result && result.sent === 1 && result.test && marked);
+  Logger.log(ok
+    ? "Notification fixture: PASS. A \"KOS TEST\" push went out through the real alert path; check the phone."
+    : "Notification fixture: FAIL — " + JSON.stringify(result) + (marked ? "" : "; the fixture row was not marked alerted"));
+  return { ok: ok, result: result, marked: marked };
 }
 
 // Sends one test push at normal priority, so the operator can confirm the
