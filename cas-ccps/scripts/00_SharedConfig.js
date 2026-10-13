@@ -561,6 +561,17 @@ function _schoolYearForDate_(d) {
   return start + "-" + String((start + 1) % 100).padStart(2, "0");
 }
 
+// Retention is counted in whole school years: a record is kept N years
+// after the end of the school year it belongs to (the same August start
+// as _schoolYearForDate_). Returns the first day of the oldest school year
+// still kept; a record dated before it is past retention. With N = 5 on
+// 2026-10-13 that is 2021-08-01: 2020-21 and earlier are past.
+function _retentionCutoff_(years, now) {
+  const date = now ? new Date(now) : new Date();
+  const lastEndedYear = date.getMonth() >= 7 ? date.getFullYear() : date.getFullYear() - 1;
+  return new Date(lastEndedYear - years, 7, 1);
+}
+
 function _schoolYearOfTerm_(term) {
   const prefix = String(term || "").trim().split(/\s+/)[0];
   const mp = MP_TERM_RE_.exec(prefix);

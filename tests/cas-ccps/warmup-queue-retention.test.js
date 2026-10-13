@@ -71,9 +71,9 @@ function ymdYearsAgo(n) {
   return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
 }
 
-test('_warmUpQueueRetentionYears_: defaults to 5 when unset, same unconfirmed default as the other four', () => {
+test('_warmUpQueueRetentionYears_: defaults to 1, the working-data tier (57_RetentionSchedule.js)', () => {
   const { exported } = load();
-  assert.equal(exported._warmUpQueueRetentionYears_(), 5);
+  assert.equal(exported._warmUpQueueRetentionYears_(), 1);
 });
 
 test('_warmUpQueueRetentionYears_: an explicitly configured value overrides the default', () => {
@@ -85,9 +85,9 @@ test('_warmUpQueueRetentionYears_: an explicitly configured value overrides the 
 test('_warmUpQueueRetentionYears_: a garbage or non-positive property value falls back to the default', () => {
   const { exported, sandbox } = load();
   sandbox.PropertiesService.getScriptProperties().setProperty('WARMUP_QUEUE_RETENTION_YEARS', 'nope');
-  assert.equal(exported._warmUpQueueRetentionYears_(), 5);
+  assert.equal(exported._warmUpQueueRetentionYears_(), 1);
   sandbox.PropertiesService.getScriptProperties().setProperty('WARMUP_QUEUE_RETENTION_YEARS', '0');
-  assert.equal(exported._warmUpQueueRetentionYears_(), 5);
+  assert.equal(exported._warmUpQueueRetentionYears_(), 1);
 });
 
 test('_archiveExpiredWarmUpQueueRows_: archives an old row past retention', () => {
