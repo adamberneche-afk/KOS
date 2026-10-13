@@ -37,7 +37,7 @@ When the operator says `start` (or "good morning", or asks what's on today):
 1. Open the primer. If its date isn't today, say `[PRIMER STALE — generated {date}]` and go on.
 2. Give, from the primer only:
    - the 90-day vision, quoted exactly;
-   - the `Onboarding Day` line;
+   - the onboarding line (`Onboarding Day N of 21`, or `Onboarding: complete (closed {date})` once closed out);
    - Vector State, opened with its Data Quality status (the primer's Vector State heading carries it);
    - the Data Quality `Status:` line, copied word for word;
    - the Shadow Matrix `Engine mode`.
