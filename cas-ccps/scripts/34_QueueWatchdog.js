@@ -600,10 +600,12 @@ function runQueueWatchdogNow() {
 // not a "pending disposition review" legal-hold marker.
 // =============================================================================
 
+// Working data: one school year after the year ends (57_RetentionSchedule.js,
+// adopted 2026-10-13; was 5 years).
 function _warmUpQueueRetentionYears_() {
   const raw = PropertiesService.getScriptProperties().getProperty('WARMUP_QUEUE_RETENTION_YEARS');
   const n = Number(raw);
-  return (n && n > 0) ? n : 5;
+  return (n && n > 0) ? n : 1;
 }
 
 // Idempotent header add for the archive_status column — same self-healing
@@ -627,8 +629,7 @@ function _archiveExpiredWarmUpQueueRows_() {
   _ensureWarmUpQueueArchiveColumn_(sheet);
 
   const C = WD_WARMUP_QUEUE_COLUMNS;
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _warmUpQueueRetentionYears_());
+  const cutoff = _retentionCutoff_(_warmUpQueueRetentionYears_());
 
   const data = sheet.getRange(1, 1, sheet.getLastRow(), C.ARCHIVE_STATUS + 1).getValues();
   let archived = 0;
@@ -664,8 +665,7 @@ function _countWarmUpQueueRowsPastRetentionUnarchived_() {
   if (!sheet || sheet.getLastRow() < 2) return 0;
 
   const C = WD_WARMUP_QUEUE_COLUMNS;
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _warmUpQueueRetentionYears_());
+  const cutoff = _retentionCutoff_(_warmUpQueueRetentionYears_());
 
   const data = sheet.getRange(1, 1, sheet.getLastRow(), C.ARCHIVE_STATUS + 1).getValues();
   let count = 0;

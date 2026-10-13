@@ -3187,3 +3187,26 @@ clear) and the Health tab no longer read DRY RUN. Two findings:
   own dry-run mode and would have appeared every 10 minutes.
   `_countReviewQueueRowsWithText_()` now counts without logging; the
   preview and apply log as before.
+
+## Retention schedule adopted, 2026-10-13
+
+Five tabs had a configurable "default 5 years, unconfirmed" archive pass,
+and every other student-data tab had no rule at all. The operator adopted a
+tiered schedule on 2026-10-13, pending the district records officer's
+confirmation against the Library of Virginia's GS-21:
+
+- **Records** (what a grade, a rating decision or a disclosure rests on):
+  5 years. Ledger, StudentAssignments, StudentDocRegistry,
+  CompetencyEvidence, SCRDecisionLog, ParentReportLog.
+- **Working data** (queues, Flow inputs, profiles): 1 year. WarmUpQueue
+  (was 5) and ten more tabs under the new `WORKING_DATA_RETENTION_YEARS`.
+- **Student Docs** follow their Ledger or WarmUpQueue row.
+
+Periods are now counted in whole school years after the year ends
+(`_retentionCutoff_()` in `00`, August start), not from today's date, and
+the five archive passes and their health-check counters use it.
+`57_RetentionSchedule.js` holds the schedule, and `checkRetentionSchedule()`
+reports, per record, how many rows are past their period and how many of
+those are archived, counts only. Archival stays automatic where a tab has
+an archive marker; deletion stays manual until the operator-approved
+disposition step is built.

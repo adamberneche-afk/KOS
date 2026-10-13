@@ -734,8 +734,7 @@ function _archiveExpiredScrDecisions_() {
 
   _ensureScrDecisionLogArchiveColumn_(sheet);
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _scrRetentionYears_());
+  const cutoff = _retentionCutoff_(_scrRetentionYears_());
 
   const data = sheet.getDataRange().getValues();
   let archived = 0;
@@ -779,8 +778,7 @@ function _countScrDecisionsPastRetentionUnarchived_() {
   const sheet = ss.getSheetByName(cfg.tabs.scrDecisionLog || "SCRDecisionLog");
   if (!sheet) return 0;
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _scrRetentionYears_());
+  const cutoff = _retentionCutoff_(_scrRetentionYears_());
 
   const data = sheet.getDataRange().getValues();
   let count = 0;
@@ -863,8 +861,7 @@ function _archiveExpiredCompetencyEvidence_() {
     return { archived: 0, checked: Math.max(0, data.length - 1) };
   }
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _competencyEvidenceRetentionYears_());
+  const cutoff = _retentionCutoff_(_competencyEvidenceRetentionYears_());
 
   let archived = 0;
   for (let i = 1; i < data.length; i++) {
@@ -909,8 +906,7 @@ function _countCompetencyEvidencePastRetentionUnarchived_() {
   const iArchiveStatus = headers.indexOf("archive_status");
   if (iEvaluatedAt === -1 || iArchiveStatus === -1) return 0;
 
-  const cutoff = new Date();
-  cutoff.setFullYear(cutoff.getFullYear() - _competencyEvidenceRetentionYears_());
+  const cutoff = _retentionCutoff_(_competencyEvidenceRetentionYears_());
 
   let count = 0;
   for (let i = 1; i < data.length; i++) {
